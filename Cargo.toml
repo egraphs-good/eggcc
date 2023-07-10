@@ -6,3 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+egglog = { git = "https://github.com/oflatt/egg-smol", rev = "a2cf814a91dd98509903e3c744b513f99f96413b" }
+log = "0.4.19"
+thiserror = "1"
+lalrpop-util = {version = "0.19.8", features = ["lexer"]}

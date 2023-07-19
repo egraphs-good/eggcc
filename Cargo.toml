@@ -3,10 +3,20 @@ name = "eggcc"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[test]]
+harness = false
+name = "files"
+
 
 [dependencies]
 egglog = { git = "https://github.com/oflatt/egg-smol", rev = "a2cf814a91dd98509903e3c744b513f99f96413b" }
 log = "0.4.19"
 thiserror = "1"
 lalrpop-util = {version = "0.19.8", features = ["lexer"]}
+
+bril2json = { path = "bril/bril-rs/bril2json" }
+bril-rs = { path = "bril/bril-rs", required-features = ["ssa"]}
+
+[dev-dependencies]
+glob = "0.3.1"
+libtest-mimic = "0.6.1"

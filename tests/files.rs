@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use eggcc::*;
+use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
 #[derive(Clone)]
@@ -13,7 +14,7 @@ impl Run {
         let program_read = std::fs::read_to_string(self.path.clone()).unwrap();
         let optimizer = Optimizer {};
         let res = optimizer.optimize(&program_read).unwrap();
-        println!("{}", res);
+        assert_snapshot!(format!("{}", res));
     }
 }
 

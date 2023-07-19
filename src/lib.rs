@@ -42,6 +42,7 @@ impl Optimizer {
             )
             .map_err(EggCCError::EggLog)?;
         Ok(extract_report.expr)*/
+
         Ok(bril_program)
     }
 

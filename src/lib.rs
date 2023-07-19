@@ -1,6 +1,6 @@
-use bril2json::{parse_abstract_program, parse_abstract_program_from_read};
+use bril2json::parse_abstract_program_from_read;
 use bril_rs::Program;
-use egglog::{ast::parse::ExprParser, ast::Expr, EGraph};
+//use egglog::{ast::parse::ExprParser, ast::Expr, EGraph};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -46,7 +46,7 @@ impl Optimizer {
         Ok(bril_program)
     }
 
-    fn make_optimizer_for(&self, program: &str) -> String {
+    /*fn make_optimizer_for(&self, program: &str) -> String {
         format!(
             "
         (datatype Imp
@@ -59,5 +59,5 @@ impl Optimizer {
         (Div Imp Imp))
         {program}"
         )
-    }
+    }*/
 }

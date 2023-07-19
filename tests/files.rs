@@ -11,15 +11,24 @@ struct Run {
 
 impl Run {
     fn run(&self) {
+        let program_name = self.path.file_stem().unwrap().to_str().unwrap();
         let program_read = std::fs::read_to_string(self.path.clone()).unwrap();
         let parsed = Optimizer::parse_bril(&program_read).unwrap();
+
         let mut optimizer_nothing = Optimizer::default().with_num_iters(0);
         let res_nothing = optimizer_nothing.optimize(&parsed).unwrap();
-        assert_eq!(res_nothing.to_string(), parsed.to_string());
+
+        assert_snapshot!(format!("{program_name}_no_opt"), format!("{}", res_nothing));
 
         let mut optimizer = Optimizer::default();
         let res = optimizer.optimize(&parsed).unwrap();
-        assert_snapshot!(format!("{}", res));
+
+        // TODO test res and res_nothing to make sure
+        // they evaluate the same as the original program
+        // The cost of evaluating both should also go down
+        // compared to original
+
+        assert_snapshot!(format!("{program_name}"), format!("{}", res));
     }
 }
 

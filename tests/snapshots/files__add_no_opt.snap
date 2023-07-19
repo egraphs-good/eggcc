@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: "format!(\"{}\", res_nothing)"
+---
+@main {
+  v0_: int = const 1;
+  v1_: int = const 2;
+  v2_: int = add v0_ v1_;
+  print v2_;
+}
+

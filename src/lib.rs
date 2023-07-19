@@ -67,7 +67,6 @@ impl Optimizer {
         let converted = self.func_to_expr(&bril_program.functions[0]);
 
         let egglog_code = self.make_optimizer_for(&converted.to_string());
-        eprintln!("{}", egglog_code);
 
         let mut egraph = EGraph::default();
         egraph
@@ -78,7 +77,6 @@ impl Optimizer {
         let extract_report = egraph
             .extract_expr(converted, 0)
             .map_err(EggCCError::EggLog)?;
-        eprintln!("{}", extract_report.expr);
 
         let bril_func = self.expr_to_func(extract_report.expr);
 

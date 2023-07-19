@@ -1,7 +1,11 @@
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::Program;
-//use egglog::{ast::parse::ExprParser, ast::Expr, EGraph};
+use egglog::EGraph;
+
 use thiserror::Error;
+
+mod conversions;
+mod util;
 
 #[derive(Debug, Error)]
 pub enum EggCCError {
@@ -13,20 +17,58 @@ pub enum EggCCError {
     ConversionError(String),
 }
 
-pub struct Optimizer {}
+pub struct Optimizer {
+    pub num_iters: usize,
+    pub var_counter: usize,
+}
+
+impl Default for Optimizer {
+    fn default() -> Self {
+        Self {
+            num_iters: 3,
+            var_counter: 0,
+        }
+    }
+}
 
 impl Optimizer {
-    pub fn optimize(&self, program: &str) -> Result<Program, EggCCError> {
-        let bril_program = Program::try_from(parse_abstract_program_from_read(
+    pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, EggCCError> {
+        let parsed = Self::parse_bril(program)?;
+        let res = self.optimize(&parsed)?;
+        Ok(res)
+    }
+
+    pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {
+        Program::try_from(parse_abstract_program_from_read(
             program.as_bytes(),
             false,
             false,
             None,
         ))
-        .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
+        .map_err(|err| EggCCError::ConversionError(err.to_string()))
+    }
 
-        /*let expr_parser = ExprParser::new();
-        let egglog_code = self.make_optimizer_for(program);
+    pub fn fresh(&mut self) -> String {
+        let res = format!("v{}_", self.var_counter);
+        self.var_counter += 1;
+        res
+    }
+
+    pub fn with_num_iters(mut self, num_iters: usize) -> Self {
+        self.num_iters = num_iters;
+        self
+    }
+
+    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
+        assert!(bril_program.functions.len() == 1);
+        assert!(bril_program.functions[0].name == "main");
+        assert!(bril_program.imports.is_empty());
+
+        let converted = self.func_to_expr(&bril_program.functions[0]);
+
+        let egglog_code = self.make_optimizer_for(&converted.to_string());
+        eprintln!("{}", egglog_code);
+
         let mut egraph = EGraph::default();
         egraph
             .parse_and_run_program(&egglog_code)
@@ -34,30 +76,49 @@ impl Optimizer {
             .into_iter()
             .for_each(|output| log::info!("{}", output));
         let extract_report = egraph
-            .extract_expr(
-                expr_parser
-                    .parse(program)
-                    .map_err(|err| EggCCError::Parse(err.to_string()))?,
-                0,
-            )
+            .extract_expr(converted, 0)
             .map_err(EggCCError::EggLog)?;
-        Ok(extract_report.expr)*/
+        eprintln!("{}", extract_report.expr);
 
-        Ok(bril_program)
+        let bril_func = self.expr_to_func(extract_report.expr);
+
+        let output_program = Program {
+            functions: vec![bril_func],
+            imports: vec![],
+        };
+
+        Ok(output_program)
     }
 
-    /*fn make_optimizer_for(&self, program: &str) -> String {
+    fn make_optimizer_for(&mut self, program: &str) -> String {
+        //let schedule = "(run 3)";
+        let schedule = format!("(run {})", self.num_iters);
         format!(
             "
-        (datatype Imp
-        (Int i64)
-        (True)
-        (False)
-        (Add Imp Imp)
-        (Sub Imp Imp)
-        (Mul Imp Imp)
-        (Div Imp Imp))
-        {program}"
+        (datatype Expr
+          (Int String i64)
+          (True String)
+          (False String)
+          (Char String String)
+          (Float String f64)
+          (add String Expr Expr)
+          (sub String Expr Expr)
+          (mul String Expr Expr)
+          (div String Expr Expr))
+        
+        (datatype FunctionBody
+          (End)
+          (Print Expr FunctionBody))
+
+        (datatype Function
+          ;; name and body
+          (Func String FunctionBody))
+
+        (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)))
+
+        {program}
+        {schedule}
+        "
         )
-    }*/
+    }
 }

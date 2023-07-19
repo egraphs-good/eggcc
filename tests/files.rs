@@ -12,8 +12,13 @@ struct Run {
 impl Run {
     fn run(&self) {
         let program_read = std::fs::read_to_string(self.path.clone()).unwrap();
-        let optimizer = Optimizer {};
-        let res = optimizer.optimize(&program_read).unwrap();
+        let parsed = Optimizer::parse_bril(&program_read).unwrap();
+        let mut optimizer_nothing = Optimizer::default().with_num_iters(0);
+        let res_nothing = optimizer_nothing.optimize(&parsed).unwrap();
+        assert_eq!(res_nothing.to_string(), parsed.to_string());
+
+        let mut optimizer = Optimizer::default();
+        let res = optimizer.optimize(&parsed).unwrap();
         assert_snapshot!(format!("{}", res));
     }
 }

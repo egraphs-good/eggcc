@@ -79,6 +79,8 @@ impl Optimizer {
 
         let egglog_code = self.make_optimizer_for(&egg_str);
 
+        println!("{}", egglog_code);
+
         let mut egraph = EGraph::default();
         egraph
             .parse_and_run_program(&egglog_code)
@@ -130,9 +132,15 @@ impl Optimizer {
           (sub String Expr Expr)
           (mul String Expr Expr)
           (div String Expr Expr))
-        
+
+        (datatype RetVal
+            (ReturnValue Expr)
+            (Void))
+
         (datatype FunctionBody
           (End)
+          (Ret RetVal FunctionBody)
+          (Call String Expr FunctionBody)
           (Print Expr FunctionBody))
 
         (datatype Function

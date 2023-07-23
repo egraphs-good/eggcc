@@ -68,7 +68,7 @@ impl Optimizer {
 
         let egg_fns: HashMap<String, Expr> = bril_program.functions
             .iter()
-            .map(|f| { (f.name.clone(), self.func_to_expr(f))})
+            .map(|f| {(f.name.clone(), self.func_to_expr(f))})
             .collect();
 
         let egg_str = egg_fns

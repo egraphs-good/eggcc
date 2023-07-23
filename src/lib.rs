@@ -86,9 +86,10 @@ impl Optimizer {
             .into_iter()
             .for_each(|output| log::info!("{}", output));
 
+        // TODO: idk how rust works, so why do I have to clone??? @ryan-berger
         let mut fn_names = egg_fns
             .keys()
-            .map(|(k, _)| { k.clone() })
+            .map(|k| { k.clone() })
             .collect::<Vec<String>>();
 
         // sort the function names for deterministic map iteration

@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::Program;
 use egglog::EGraph;
+use egglog::ast::Expr;
 
 use thiserror::Error;
 
@@ -60,13 +62,24 @@ impl Optimizer {
     }
 
     pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
-        assert!(bril_program.functions.len() == 1);
-        assert!(bril_program.functions[0].name == "main");
+        assert!(!bril_program.functions.is_empty());
+        assert!(bril_program.functions.iter().any(|f| { f.name == "main" }));
         assert!(bril_program.imports.is_empty());
 
-        let converted = self.func_to_expr(&bril_program.functions[0]);
+        let egg_fns: HashMap<String, Expr> = bril_program.functions
+            .iter()
+            .map(|f| {(f.name.clone(), self.func_to_expr(f))})
+            .collect();
 
-        let egglog_code = self.make_optimizer_for(&converted.to_string());
+        let egg_str = egg_fns
+            .values()
+            .map(|v| {v.to_string()})
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        let egglog_code = self.make_optimizer_for(&egg_str);
+
+        println!("{}", egglog_code);
 
         let mut egraph = EGraph::default();
         egraph
@@ -74,18 +87,34 @@ impl Optimizer {
             .map_err(EggCCError::EggLog)?
             .into_iter()
             .for_each(|output| log::info!("{}", output));
-        let extract_report = egraph
-            .extract_expr(converted, 0)
-            .map_err(EggCCError::EggLog)?;
 
-        let bril_func = self.expr_to_func(extract_report.expr);
+        // TODO: idk how rust works, so why do I have to clone??? @ryan-berger
+        let mut fn_names = egg_fns
+            .keys()
+            .map(|k| { k.clone() })
+            .collect::<Vec<String>>();
 
-        let output_program = Program {
-            functions: vec![bril_func],
-            imports: vec![],
-        };
+        // sort the function names for deterministic map iteration
+        fn_names.sort();
 
-        Ok(output_program)
+        let program = fn_names
+            .iter()
+            .fold(Ok(Program{functions: vec![], imports: vec![],}),
+                  |prev: Result<Program, EggCCError>, name| {
+                      let e = &egg_fns[name];
+                      if let Ok(mut program) = prev {
+                          let rep = egraph.
+                              extract_expr(e.clone(), 0).
+                              map_err(EggCCError::EggLog)?;
+
+                          program.functions.push(self.expr_to_func(rep.expr));
+                          Ok(program)
+                      } else {
+                          prev
+                      }
+                  });
+
+        program
     }
 
     fn make_optimizer_for(&mut self, program: &str) -> String {
@@ -103,9 +132,15 @@ impl Optimizer {
           (sub String Expr Expr)
           (mul String Expr Expr)
           (div String Expr Expr))
-        
+
+        (datatype RetVal
+            (ReturnValue Expr)
+            (Void))
+
         (datatype FunctionBody
           (End)
+          (Ret RetVal FunctionBody)
+          (Call String Expr FunctionBody)
           (Print Expr FunctionBody))
 
         (datatype Function
@@ -113,6 +148,7 @@ impl Optimizer {
           (Func String FunctionBody))
 
         (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)))
+        (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)))
 
         {program}
         {schedule}

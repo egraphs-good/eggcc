@@ -32,6 +32,7 @@ impl Optimizer {
 
     pub(crate) fn body_to_code(&mut self, expr: &Expr) -> Vec<Code> {
         eprintln!("body_to_code: {}", expr);
+
         if let Expr::Call(op, args) = expr {
             let mut res = vec![];
             match op.to_string().as_str() {
@@ -50,6 +51,21 @@ impl Optimizer {
                 }
                 "End" => {
                     assert!(args.is_empty());
+                }
+                "Ret" => {
+                    assert_eq!(args.len(), 2);
+
+                    let arg = self.expr_to_code(&args[0], &mut res);
+
+                    res.push(Code::Instruction(Instruction::Effect {
+                        op: EffectOps::Return,
+                        args: vec![arg],
+                        funcs: vec![],
+                        labels: vec![],
+                        pos: None,
+                    }));
+
+                    res.extend(self.body_to_code(&args[1]));
                 }
                 _ => panic!("unknown effect in body_to_code {}", op),
             }
@@ -76,6 +92,9 @@ impl Optimizer {
             }
             Expr::Var(var) => var.to_string(),
             Expr::Call(op, args) => match op.to_string().as_str() {
+                "ReturnValue" => {
+                    return self.expr_to_code(&args[0], res);
+                }
                 "Int" | "True" | "False" => {
                     let fresh = self.fresh();
                     let literal = match op.to_string().as_str() {
@@ -121,7 +140,8 @@ impl Optimizer {
     }
 
     pub(crate) fn func_to_expr(&mut self, func: &Function) -> Expr {
-        assert!(func.args.is_empty());
+        assert!(!func.instrs.is_empty());
+
         // leave prints in order
         // leave any effects in order
         // leave assignments to variables used outside
@@ -166,9 +186,20 @@ impl Optimizer {
                 pos: _pos,
             } => {
                 assert!(funcs.is_empty());
+
                 let arg_exprs = args
                     .iter()
-                    .map(|arg| env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone())
+                    .map(|arg| {
+                        let arg = env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone();
+                        if op == &EffectOps::Return {
+                            Expr::Call("ReturnValue".into(), vec![
+                                arg
+                            ])
+                        } else {
+                            arg
+                        }
+
+                    })
                     .chain(std::iter::once(rest.clone()))
                     .collect::<Vec<Expr>>();
                 Expr::Call(self.effect_op_to_egglog(*op), arg_exprs)
@@ -269,6 +300,9 @@ impl Optimizer {
         let opstr = op.to_string();
         if opstr == "print" {
             "Print".into()
+        }
+        else if opstr == "ret" {
+            "Ret".into()
         } else {
             let with_quotes = serde_json::to_string(&op).unwrap();
             // remove the quotes around the json string

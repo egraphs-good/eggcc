@@ -1,18 +1,17 @@
 ---
 source: tests/files.rs
-assertion_line: 21
 expression: "format!(\"{}\", res_nothing)"
 ---
 @main {
   v0_: int = const 1;
   v1_: int = const 2;
   v2_: int = add v0_ v1_;
-  print v2_;
+  ret v2_;
 }
 @sub {
   v3_: int = const 1;
   v4_: int = const 2;
   v5_: int = sub v3_ v4_;
-  print v5_;
+  ret v5_;
 }
 

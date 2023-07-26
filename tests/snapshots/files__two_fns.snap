@@ -4,10 +4,10 @@ expression: "format!(\"{}\", res)"
 ---
 @main {
   v0_: int = const 3;
-  print v0_;
+  ret v0_;
 }
 @sub {
   v1_: int = const -1;
-  print v1_;
+  ret v1_;
 }
 

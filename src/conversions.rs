@@ -92,9 +92,7 @@ impl Optimizer {
             }
             Expr::Var(var) => var.to_string(),
             Expr::Call(op, args) => match op.to_string().as_str() {
-                "ReturnValue" => {
-                    return self.expr_to_code(&args[0], res);
-                }
+                "ReturnValue" => self.expr_to_code(&args[0], res),
                 "Int" | "True" | "False" => {
                     let fresh = self.fresh();
                     let literal = match op.to_string().as_str() {
@@ -192,13 +190,10 @@ impl Optimizer {
                     .map(|arg| {
                         let arg = env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone();
                         if op == &EffectOps::Return {
-                            Expr::Call("ReturnValue".into(), vec![
-                                arg
-                            ])
+                            Expr::Call("ReturnValue".into(), vec![arg])
                         } else {
                             arg
                         }
-
                     })
                     .chain(std::iter::once(rest.clone()))
                     .collect::<Vec<Expr>>();
@@ -300,8 +295,7 @@ impl Optimizer {
         let opstr = op.to_string();
         if opstr == "print" {
             "Print".into()
-        }
-        else if opstr == "ret" {
+        } else if opstr == "ret" {
             "Ret".into()
         } else {
             let with_quotes = serde_json::to_string(&op).unwrap();

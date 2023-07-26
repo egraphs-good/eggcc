@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::Program;
-use egglog::EGraph;
 use egglog::ast::Expr;
+use egglog::EGraph;
+use std::collections::HashMap;
 
 use thiserror::Error;
 
@@ -66,14 +66,15 @@ impl Optimizer {
         assert!(bril_program.functions.iter().any(|f| { f.name == "main" }));
         assert!(bril_program.imports.is_empty());
 
-        let egg_fns: HashMap<String, Expr> = bril_program.functions
+        let egg_fns: HashMap<String, Expr> = bril_program
+            .functions
             .iter()
-            .map(|f| {(f.name.clone(), self.func_to_expr(f))})
+            .map(|f| (f.name.clone(), self.func_to_expr(f)))
             .collect();
 
         let egg_str = egg_fns
             .values()
-            .map(|v| {v.to_string()})
+            .map(|v| v.to_string())
             .collect::<Vec<String>>()
             .join("\n");
 
@@ -89,30 +90,30 @@ impl Optimizer {
             .for_each(|output| log::info!("{}", output));
 
         // TODO: idk how rust works, so why do I have to clone??? @ryan-berger
-        let mut fn_names = egg_fns
-            .keys()
-            .map(|k| { k.clone() })
-            .collect::<Vec<String>>();
+        let mut fn_names = egg_fns.keys().cloned().collect::<Vec<String>>();
 
         // sort the function names for deterministic map iteration
         fn_names.sort();
 
-        let program = fn_names
-            .iter()
-            .fold(Ok(Program{functions: vec![], imports: vec![],}),
-                  |prev: Result<Program, EggCCError>, name| {
-                      let e = &egg_fns[name];
-                      if let Ok(mut program) = prev {
-                          let rep = egraph.
-                              extract_expr(e.clone(), 0).
-                              map_err(EggCCError::EggLog)?;
+        let program = fn_names.iter().fold(
+            Ok(Program {
+                functions: vec![],
+                imports: vec![],
+            }),
+            |prev: Result<Program, EggCCError>, name| {
+                let e = &egg_fns[name];
+                if let Ok(mut program) = prev {
+                    let rep = egraph
+                        .extract_expr(e.clone(), 0)
+                        .map_err(EggCCError::EggLog)?;
 
-                          program.functions.push(self.expr_to_func(rep.expr));
-                          Ok(program)
-                      } else {
-                          prev
-                      }
-                  });
+                    program.functions.push(self.expr_to_func(rep.expr));
+                    Ok(program)
+                } else {
+                    prev
+                }
+            },
+        );
 
         program
     }

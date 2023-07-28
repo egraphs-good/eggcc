@@ -1,8 +1,12 @@
 use bril2json::parse_abstract_program_from_read;
+use bril_rs::AbstractProgram;
 use bril_rs::Program;
 use egglog::ast::Expr;
 use egglog::EGraph;
 use std::collections::HashMap;
+use std::io::Write;
+use std::process::Child;
+use std::process::Stdio;
 
 use thiserror::Error;
 
@@ -17,6 +21,29 @@ pub enum EggCCError {
     Parse(String),
     #[error("Conversion error: {0}")]
     ConversionError(String),
+}
+
+fn run_command_with_stdin(command: &mut std::process::Command, input: String) -> String {
+    let mut piped = command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = piped.stdin.take().expect("Failed to open stdin");
+    std::thread::spawn(move || {
+        stdin
+            .write_all(input.as_bytes())
+            .expect("Failed to write to stdin");
+    });
+
+    std::str::from_utf8(
+        &piped
+            .wait_with_output()
+            .expect("Failed to read stdout")
+            .stdout,
+    )
+    .unwrap()
+    .to_string()
 }
 
 pub struct Optimizer {
@@ -42,13 +69,19 @@ impl Optimizer {
     }
 
     pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {
-        Program::try_from(parse_abstract_program_from_read(
-            program.as_bytes(),
-            false,
-            false,
-            None,
-        ))
-        .map_err(|err| EggCCError::ConversionError(err.to_string()))
+        let abstract_prog =
+            parse_abstract_program_from_read(program.as_bytes(), false, false, None);
+        let serialized = serde_json::to_string(&abstract_prog).unwrap();
+
+        // call SSA conversion
+        let ssa_output = run_command_with_stdin(
+            std::process::Command::new("python3").arg("bril/examples/to_ssa.py"),
+            serialized,
+        );
+        eprintln!("ssa output: {}", ssa_output);
+        let ssa_prog: AbstractProgram = serde_json::from_str(&ssa_output).unwrap();
+
+        Program::try_from(ssa_prog).map_err(|err| EggCCError::ConversionError(err.to_string()))
     }
 
     pub fn fresh(&mut self) -> String {

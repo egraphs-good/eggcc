@@ -55,11 +55,19 @@ impl Optimizer {
                 "Ret" => {
                     assert_eq!(args.len(), 2);
 
-                    let arg = self.expr_to_code(&args[0], &mut res);
+                    let arguments = if let Expr::Call(op, _) = args[0] {
+                        if op.as_str() == "Void" {
+                            vec![]
+                        } else {
+                            vec![self.expr_to_code(&args[0], &mut res)]
+                        }
+                    } else {
+                        vec![self.expr_to_code(&args[0], &mut res)]
+                    };
 
                     res.push(Code::Instruction(Instruction::Effect {
                         op: EffectOps::Return,
-                        args: vec![arg],
+                        args: arguments,
                         funcs: vec![],
                         labels: vec![],
                         pos: None,
@@ -115,6 +123,7 @@ impl Optimizer {
                     fresh
                 }
                 _ => {
+                    assert!(op.as_str() != "Void");
                     let etype = self.expr_to_type(&args[0]);
                     let args_vars = args
                         .iter()
@@ -159,8 +168,11 @@ impl Optimizer {
                 Code::Instruction(instr) => {
                     res = self.add_instr_effect(instr, &res, &env);
                 }
-                Code::Label { pos, label } => {
-                    panic!("labels not supported");
+                Code::Label {
+                    pos: _pos,
+                    label: _label,
+                } => {
+                    // TODO handle labels
                 }
             }
         }
@@ -188,18 +200,23 @@ impl Optimizer {
                 labels: _labels,
                 pos: _pos,
             } => {
-                let arg_exprs = args
-                    .iter()
-                    .map(|arg| {
-                        let arg = env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone();
-                        if op == &EffectOps::Return {
-                            Expr::Call("ReturnValue".into(), vec![arg])
-                        } else {
-                            arg
-                        }
-                    })
-                    .chain(std::iter::once(rest.clone()))
-                    .collect::<Vec<Expr>>();
+                let arg_exprs = match op {
+                    EffectOps::Return => match &args.as_slice() {
+                        [] => vec![Expr::Call("Void".into(), vec![])],
+                        [arg] => vec![Expr::Call(
+                            "ReturnValue".into(),
+                            vec![env.get(arg).cloned().unwrap_or(Expr::Var(arg.into()))],
+                        )],
+                        _ => panic!("expected 1 arg for return"),
+                    },
+                    _ => args
+                        .iter()
+                        .map(|arg| env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone())
+                        .collect::<Vec<Expr>>(),
+                }
+                .into_iter()
+                .chain(std::iter::once(rest.clone()))
+                .collect::<Vec<Expr>>();
                 Expr::Call(self.effect_op_to_egglog(*op), arg_exprs)
             }
             _ => rest.clone(),

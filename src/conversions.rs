@@ -138,7 +138,7 @@ impl Optimizer {
     }
 
     pub(crate) fn func_to_expr(&mut self, func: &Function) -> Expr {
-        assert!(!func.instrs.is_empty());
+        eprintln!("func_to_expr: {}", func.name);
 
         // leave prints in order
         // leave any effects in order
@@ -155,8 +155,13 @@ impl Optimizer {
 
         // reverse order to build the linked list
         for code in func.instrs.iter().rev() {
-            if let Code::Instruction(instr) = code {
-                res = self.add_instr_effect(instr, &res, &env);
+            match code {
+                Code::Instruction(instr) => {
+                    res = self.add_instr_effect(instr, &res, &env);
+                }
+                Code::Label { pos, label } => {
+                    panic!("labels not supported");
+                }
             }
         }
 
@@ -179,12 +184,10 @@ impl Optimizer {
             Instruction::Effect {
                 op,
                 args,
-                funcs,
+                funcs: _funcs,
                 labels: _labels,
                 pos: _pos,
             } => {
-                assert!(funcs.is_empty());
-
                 let arg_exprs = args
                     .iter()
                     .map(|arg| {

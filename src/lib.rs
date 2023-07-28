@@ -36,6 +36,7 @@ impl Default for Optimizer {
 impl Optimizer {
     pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, EggCCError> {
         let parsed = Self::parse_bril(program)?;
+        eprintln!("Parsed program: {}", parsed);
         let res = self.optimize(&parsed)?;
         Ok(res)
     }

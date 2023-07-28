@@ -5,7 +5,6 @@ use egglog::ast::Expr;
 use egglog::EGraph;
 use std::collections::HashMap;
 use std::io::Write;
-use std::process::Child;
 use std::process::Stdio;
 
 use thiserror::Error;

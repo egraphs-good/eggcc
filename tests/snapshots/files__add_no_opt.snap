@@ -7,5 +7,6 @@ expression: "format!(\"{}\", res_nothing)"
   v1_: int = const 2;
   v2_: int = add v0_ v1_;
   print v2_;
+  ret;
 }
 

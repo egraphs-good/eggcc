@@ -128,27 +128,21 @@ impl Optimizer {
         // sort the function names for deterministic map iteration
         fn_names.sort();
 
-        let program = fn_names.iter().fold(
-            Ok(Program {
+        fn_names.iter().try_fold(
+            Program {
                 functions: vec![],
                 imports: vec![],
-            }),
-            |prev: Result<Program, EggCCError>, name| {
-                let e = &egg_fns[name];
-                if let Ok(mut program) = prev {
-                    let rep = egraph
-                        .extract_expr(e.clone(), 0)
-                        .map_err(EggCCError::EggLog)?;
-
-                    program.functions.push(self.expr_to_func(rep.expr));
-                    Ok(program)
-                } else {
-                    prev
-                }
             },
-        );
+            |mut program, name| {
+                let e = &egg_fns[name];
+                let rep = egraph
+                    .extract_expr(e.clone(), 0)
+                    .map_err(EggCCError::EggLog)?;
 
-        program
+                program.functions.push(self.expr_to_func(rep.expr));
+                Ok(program)
+            },
+        )
     }
 
     fn make_optimizer_for(&mut self, program: &str) -> String {

@@ -13,6 +13,7 @@ egglog = { git = "https://github.com/oflatt/egg-smol", rev = "7e56187c5190a4a503
 log = "0.4.19"
 thiserror = "1"
 lalrpop-util = { version = "0.19.8", features = ["lexer"] }
+petgraph = "0.6"
 
 bril2json = { path = "bril/bril-rs/bril2json" }
 bril-rs = { path = "bril/bril-rs" }

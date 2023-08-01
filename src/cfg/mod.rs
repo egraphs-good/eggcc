@@ -13,6 +13,9 @@ use petgraph::{graph::NodeIndex, Graph};
 #[cfg(test)]
 mod tests;
 
+mod structured;
+mod to_structured;
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum BlockName {
     Entry,
@@ -20,6 +23,7 @@ pub(crate) enum BlockName {
     Named(String),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct BasicBlock {
     pub(crate) instrs: Vec<Instruction>,
     pub(crate) name: BlockName,
@@ -37,6 +41,7 @@ impl BasicBlock {
 }
 
 /// A branch in the CFG.
+#[derive(Debug, Clone)]
 pub(crate) struct Branch {
     /// The type of branch.
     pub(crate) op: BranchOp,
@@ -45,7 +50,7 @@ pub(crate) struct Branch {
 }
 
 /// The types of branch.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub(crate) enum BranchOp {
     /// An unconditional branch to a block.
     Jmp,
@@ -56,6 +61,7 @@ pub(crate) enum BranchOp {
 }
 
 /// The control-flow graph for a single function.
+#[derive(Debug)]
 pub(crate) struct Cfg {
     /// The arguments to the function.
     pub(crate) args: Vec<Argument>,

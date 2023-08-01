@@ -1,7 +1,12 @@
-use crate::cfg::{to_cfg, BlockName};
+use crate::{
+    cfg::{to_cfg, to_structured::to_structured, BasicBlock, BlockName},
+    EggCCError,
+};
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::{load_program_from_read, Program};
 use petgraph::graph::NodeIndex;
+
+use super::structured::StructuredBlock;
 
 fn parse_from_string(input: &str) -> Program {
     let abs_program = parse_abstract_program_from_read(input.as_bytes(), true, false, None);
@@ -92,3 +97,76 @@ cfg_test!(
         ENTRY = (Jmp) => EXIT,
     ]
 );
+
+cfg_test!(
+    diamond,
+    include_str!("../../data/diamond.bril"),
+    [
+        ENTRY = (Cond { arg: "cond".into(), val: true }) => "B",
+        ENTRY = (Cond { arg: "cond".into(), val: false }) => "C",
+        "B" = (Jmp) => "D",
+        "C" = (Jmp) => "D",
+        "D" = (Jmp) => EXIT,
+    ]
+);
+
+cfg_test!(
+    block_diamond,
+    include_str!("../../data/block-diamond.bril"),
+    [
+        ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
+        ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "D",
+        "B"   = (Cond { arg: "b_cond".into(), val: true}) => "C",
+        "B"   = (Cond { arg: "b_cond".into(), val: false}) => "E",
+        "C" = (Jmp) => "F",
+        "D" = (Jmp) => "E",
+        "E" = (Jmp) => "F",
+        "F" = (Jmp) => EXIT,
+    ]
+);
+
+cfg_test!(
+    unstructured,
+    include_str!("../../data/unstructured.bril"),
+    [
+        ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
+        ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "C",
+        "B"   = (Cond { arg: "b_cond".into(), val: true }) => "C",
+        "B"   = (Cond { arg: "b_cond".into(), val: false }) => "D",
+        "C" = (Jmp) => "B",
+        "D" = (Jmp) => EXIT,
+    ]
+);
+
+#[test]
+fn diamond_structured() {
+    let diamond_test = include_str!("../../data/diamond.bril");
+    let prog = parse_from_string(diamond_test);
+    let cfg = to_cfg(&prog.functions[0]);
+    let dummy = BasicBlock {
+        name: BlockName::Entry,
+        instrs: vec![],
+        pos: None,
+    };
+    let structured = StructuredBlock::Basic(Box::new(dummy.clone())); // TODO convert to structured
+    let target = StructuredBlock::Sequence(vec![
+        StructuredBlock::Basic(Box::new(dummy.clone())),
+        StructuredBlock::Ite(
+            "x".into(),
+            Box::new(StructuredBlock::Basic(Box::new(dummy.clone()))),
+            Box::new(StructuredBlock::Basic(Box::new(dummy.clone()))),
+        ),
+        StructuredBlock::Basic(Box::new(dummy)),
+    ]);
+
+    assert_eq!(structured, target);
+}
+
+#[test]
+fn unstructured_panics() {
+    let func = &parse_from_string(include_str!("../../data/unstructured.bril")).functions[0];
+    assert!(matches!(
+        to_structured(&to_cfg(func)),
+        Err(EggCCError::UnstructuredControlFlow)
+    ))
+}

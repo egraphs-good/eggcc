@@ -16,7 +16,7 @@ lalrpop-util = { version = "0.19.8", features = ["lexer"] }
 petgraph = "0.6"
 
 bril2json = { path = "bril/bril-rs/bril2json" }
-bril-rs = { path = "bril/bril-rs" }
+bril-rs = { path = "bril/bril-rs", features = ["ssa"] }
 ordered-float = { version = "3.7" }
 serde_json = "1.0.103"
 

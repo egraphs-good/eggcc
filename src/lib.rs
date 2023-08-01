@@ -21,6 +21,8 @@ pub enum EggCCError {
     Parse(String),
     #[error("Conversion error: {0}")]
     ConversionError(String),
+    #[error("Unstructed control flow detected")]
+    UnstructuredControlFlow,
 }
 
 fn run_command_with_stdin(command: &mut std::process::Command, input: String) -> String {

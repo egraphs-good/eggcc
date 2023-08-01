@@ -9,6 +9,7 @@ use std::process::Stdio;
 
 use thiserror::Error;
 
+pub(crate) mod cfg;
 mod conversions;
 mod util;
 

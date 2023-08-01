@@ -138,17 +138,24 @@ cfg_test!(
     ]
 );
 
+macro_rules! file_to_structured {
+    ($name:literal) => {{
+        let parsed = parse_from_string(include_str!($name));
+        assert!(parsed.functions.len() == 1);
+        let cfg = to_cfg(&parsed.functions[0]);
+        let structured = to_structured(&cfg).unwrap();
+        structured
+    }};
+}
+
 #[test]
 fn diamond_structured() {
-    let diamond_test = include_str!("../../data/diamond.bril");
-    let prog = parse_from_string(diamond_test);
-    let cfg = to_cfg(&prog.functions[0]);
     let dummy = BasicBlock {
         name: BlockName::Entry,
         instrs: vec![],
         pos: None,
     };
-    let structured = StructuredBlock::Basic(Box::new(dummy.clone())); // TODO convert to structured
+    let structured = file_to_structured!("../../data/diamond.bril");
     let target = StructuredBlock::Sequence(vec![
         StructuredBlock::Basic(Box::new(dummy.clone())),
         StructuredBlock::Ite(

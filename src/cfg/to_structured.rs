@@ -2,30 +2,55 @@ use std::collections::HashMap;
 
 use petgraph::{
     algo::dominators::{simple_fast, Dominators},
-    visit::{DfsPostOrder, EdgeRef, Walker},
+    prelude::NodeIndex,
+    visit::EdgeRef,
 };
 
 use crate::EggCCError;
 
 use super::{structured::StructuredBlock, BlockName, Cfg};
 
-pub(crate) struct StructuredCfgBuilder;
+enum ContainingHistory {
+    ThenBranch,
+    LoopWithLabel(String),
+    BlockFollowedBy(String),
+}
 
-impl StructuredCfgBuilder {
-    fn new() -> Self {
-        StructuredCfgBuilder
+pub(crate) struct StructuredCfgBuilder<'a> {
+    context: Vec<ContainingHistory>,
+    rpostorder: HashMap<BlockName, usize>,
+    dominators: Dominators<NodeIndex>,
+    cfg: &'a Cfg,
+}
+
+impl<'a> StructuredCfgBuilder<'a> {
+    fn new(cfg: &'a Cfg) -> Self {
+        let rpostorder = cfg.reverse_posorder();
+        let dominators = simple_fast(&cfg.graph, cfg.entry);
+        StructuredCfgBuilder {
+            context: vec![],
+            rpostorder,
+            dominators,
+            cfg,
+        }
     }
 
-    fn to_structured(&self, cfg: &Cfg) -> Result<StructuredBlock, EggCCError> {
-        let rpostorder = self.reverse_posorder(cfg);
-        let dominators = simple_fast(&cfg.graph, cfg.entry);
-        for edge in cfg.graph.edge_references() {
+    fn to_structured(&self) -> Result<StructuredBlock, EggCCError> {
+        self.check_reducible()?;
+        Ok(StructuredBlock::Sequence(vec![]))
+    }
+
+    fn check_reducible(&self) -> Result<(), EggCCError> {
+        for edge in self.cfg.graph.edge_references() {
             let source = edge.source();
             let target = edge.target();
             // check if this is a back edge
-            if rpostorder[&cfg.graph[source].name] > rpostorder[&cfg.graph[target].name] {
+            if self.rpostorder[&self.cfg.graph[source].name]
+                > self.rpostorder[&self.cfg.graph[target].name]
+            {
                 // check if the target dominates the source
-                if dominators
+                if self
+                    .dominators
                     .dominators(source)
                     .map(|mut dominators| !dominators.any(|a| a == target))
                     .unwrap_or(false)
@@ -34,24 +59,10 @@ impl StructuredCfgBuilder {
                 }
             }
         }
-
-        Ok(StructuredBlock::Sequence(vec![]))
-    }
-
-    fn reverse_posorder(&self, cfg: &Cfg) -> HashMap<BlockName, usize> {
-        let mut reverse_postorder = HashMap::<BlockName, usize>::new();
-        let mut post_counter = 0;
-        DfsPostOrder::new(&cfg.graph, cfg.entry)
-            .iter(&cfg.graph)
-            .for_each(|node| {
-                reverse_postorder.insert(cfg.graph[node].name.clone(), post_counter);
-                post_counter += 1;
-            });
-
-        reverse_postorder
+        Ok(())
     }
 }
 
 pub(crate) fn to_structured(cfg: &Cfg) -> Result<StructuredBlock, EggCCError> {
-    StructuredCfgBuilder::new().to_structured(cfg)
+    StructuredCfgBuilder::new(cfg).to_structured()
 }

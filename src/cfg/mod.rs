@@ -8,7 +8,11 @@ use std::collections::HashMap;
 use std::mem;
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position};
-use petgraph::{graph::NodeIndex, Graph};
+use petgraph::{
+    graph::NodeIndex,
+    visit::{DfsPostOrder, Walker},
+    Graph,
+};
 
 #[cfg(test)]
 mod tests;
@@ -71,6 +75,21 @@ pub(crate) struct Cfg {
     pub(crate) entry: NodeIndex,
     /// The (single) exit node for the CFG.
     pub(crate) exit: NodeIndex,
+}
+
+impl Cfg {
+    fn reverse_posorder(self: &Cfg) -> HashMap<BlockName, usize> {
+        let mut reverse_postorder = HashMap::<BlockName, usize>::new();
+        let mut post_counter = 0;
+        DfsPostOrder::new(&self.graph, self.entry)
+            .iter(&self.graph)
+            .for_each(|node| {
+                reverse_postorder.insert(self.graph[node].name.clone(), post_counter);
+                post_counter += 1;
+            });
+
+        reverse_postorder
+    }
 }
 
 /// Get the underyling CFG corresponding to the function `func`.

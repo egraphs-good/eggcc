@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use petgraph::{
-    adj::EdgeIndex,
     algo::dominators::{simple_fast, Dominators},
     graph::EdgeReference,
     prelude::NodeIndex,
@@ -12,7 +11,7 @@ use crate::EggCCError;
 
 use super::{
     structured::{StructuredBlock, StructuredFunction},
-    BasicBlock, BlockName, Branch, BranchOp, Cfg,
+    BlockName, Branch, BranchOp, Cfg,
 };
 
 #[derive(Debug)]
@@ -41,7 +40,7 @@ impl<'a> StructuredCfgBuilder<'a> {
         }
     }
 
-    fn to_structured(&mut self) -> Result<StructuredFunction, EggCCError> {
+    fn convert_structured(&mut self) -> Result<StructuredFunction, EggCCError> {
         self.check_reducible()?;
         let result = self.do_tree(self.cfg.entry);
         Ok(StructuredFunction {
@@ -236,5 +235,5 @@ impl<'a> StructuredCfgBuilder<'a> {
 }
 
 pub(crate) fn to_structured(cfg: &Cfg) -> Result<StructuredFunction, EggCCError> {
-    StructuredCfgBuilder::new(cfg).to_structured()
+    StructuredCfgBuilder::new(cfg).convert_structured()
 }

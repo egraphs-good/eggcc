@@ -1,12 +1,10 @@
 use crate::{
-    cfg::{to_cfg, to_structured::to_structured, BasicBlock, BlockName},
+    cfg::{to_cfg, to_structured::to_structured, BlockName},
     EggCCError,
 };
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::{load_program_from_read, Program};
 use petgraph::graph::NodeIndex;
-
-use super::structured::StructuredBlock;
 
 fn parse_from_string(input: &str) -> Program {
     let abs_program = parse_abstract_program_from_read(input.as_bytes(), true, false, None);
@@ -75,7 +73,7 @@ cfg_test!(
 
 cfg_test!(
     queen,
-    include_str!("../../tests/queens-func.bril"),
+    include_str!("../../tests/small/queens-func.bril"),
     [
         ENTRY = (Cond { arg: "ret_cond".into(), val: true }) => "next.ret",
         ENTRY = (Cond { arg: "ret_cond".into(), val: false }) => "for.cond",
@@ -92,7 +90,7 @@ cfg_test!(
 
 cfg_test!(
     implicit_return,
-    include_str!("../../tests/implicit-return.bril"),
+    include_str!("../../tests/small/implicit-return.bril"),
     [
         ENTRY = (Jmp) => EXIT,
     ]
@@ -100,7 +98,7 @@ cfg_test!(
 
 cfg_test!(
     diamond,
-    include_str!("../../tests/diamond.bril"),
+    include_str!("../../tests/small/diamond.bril"),
     [
         ENTRY = (Cond { arg: "cond".into(), val: true }) => "B",
         ENTRY = (Cond { arg: "cond".into(), val: false }) => "C",
@@ -112,7 +110,7 @@ cfg_test!(
 
 cfg_test!(
     block_diamond,
-    include_str!("../../tests/block-diamond.bril"),
+    include_str!("../../tests/small/block-diamond.bril"),
     [
         ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
         ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "D",
@@ -127,7 +125,7 @@ cfg_test!(
 
 cfg_test!(
     unstructured,
-    include_str!("../../tests/unstructured.bril"),
+    include_str!("../../tests/small/unstructured.bril"),
     [
         ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
         ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "C",
@@ -140,7 +138,7 @@ cfg_test!(
 
 #[test]
 fn unstructured_panics() {
-    let func = &parse_from_string(include_str!("../../tests/unstructured.bril")).functions[0];
+    let func = &parse_from_string(include_str!("../../tests/small/unstructured.bril")).functions[0];
     assert!(matches!(
         to_structured(&to_cfg(func)),
         Err(EggCCError::UnstructuredControlFlow)

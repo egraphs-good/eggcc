@@ -1,0 +1,31 @@
+---
+source: tests/files.rs
+expression: "format!(\"{}\", structured)"
+---
+main {
+block:
+
+ break 0
+block:
+ one.0: int = const 1;
+ i.0: int = const 0;
+ break 0
+while true:
+ block:
+  block:
+   i.1: int = phi i.0 i.2 .b1 .body;
+   cond.0: bool = phi __undefined cond.1 .b1 .body;
+   bodyvar.0: int = phi __undefined bodyvar.1 .b1 .body;
+   cond.1: bool = lt i.1 input;
+   if cond.1:
+    break 2
+   else:
+    break 1
+  block:
+   donebody.0: int = const 1;
+   return
+
+ i.2: int = add i.1 one.0;
+ bodyvar.1: int = const 1;
+ break 0
+}

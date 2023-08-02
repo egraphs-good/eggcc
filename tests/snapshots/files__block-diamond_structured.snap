@@ -1,0 +1,42 @@
+---
+source: tests/files.rs
+expression: "format!(\"{}\", structured)"
+---
+main {
+block:
+
+ break 0
+block:
+ block:
+  block:
+   block:
+    one.0: int = const 1;
+    two.0: int = const 2;
+    x.0: int = const 0;
+    a_cond.0: bool = lt one.0 two.0;
+    if a_cond.0:
+     break 2
+    else:
+     break 1
+   x.3: int = add x.0 one.0;
+   break 1
+  block:
+   b_cond.0: bool = lt two.0 one.0;
+   x.1: int = add x.0 two.0;
+   if b_cond.0:
+    break 1
+   else:
+    break 2
+  x.2: int = add x.1 two.0;
+  break 1
+ x.4: int = phi x.1 x.3 .B .D;
+ b_cond.1: bool = phi b_cond.0 __undefined .B .D;
+ x.5: int = add x.4 two.0;
+ break 0
+block:
+ x.6: int = phi x.2 x.5 .C .E;
+ b_cond.2: bool = phi b_cond.0 b_cond.1 .C .E;
+ x.7: int = add x.6 one.0;
+ return
+
+}

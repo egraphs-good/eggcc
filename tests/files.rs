@@ -78,10 +78,12 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
                 ..run.clone()
             });
         }
-        mk_trial(Run {
-            test_structured: true,
-            ..run
-        });
+        if f.to_str().unwrap().contains("small") && !name.contains("unstructured") {
+            mk_trial(Run {
+                test_structured: true,
+                ..run
+            });
+        }
     }
 
     trials

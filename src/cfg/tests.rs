@@ -166,6 +166,9 @@ fn diamond_structured() {
         StructuredBlock::Basic(Box::new(dummy)),
     ]);
 
+    println!("structured:\n{}", structured);
+    println!("target:\n{}", target);
+    assert_eq!(structured.to_string(), target.to_string());
     assert_eq!(structured, target);
 }
 

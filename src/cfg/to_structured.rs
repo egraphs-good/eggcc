@@ -8,36 +8,203 @@ use petgraph::{
 
 use crate::EggCCError;
 
-use super::{structured::StructuredBlock, BlockName, Cfg};
+use super::{structured::StructuredBlock, BlockName, Branch, BranchOp, Cfg};
 
+#[derive(Debug)]
 enum ContainingHistory {
     ThenBranch,
-    LoopWithLabel(String),
-    BlockFollowedBy(String),
+    LoopWithLabel(BlockName),
+    BlockFollowedBy(BlockName),
 }
 
 pub(crate) struct StructuredCfgBuilder<'a> {
     context: Vec<ContainingHistory>,
-    rpostorder: HashMap<BlockName, usize>,
+    postorder: HashMap<BlockName, usize>,
     dominators: Dominators<NodeIndex>,
     cfg: &'a Cfg,
 }
 
 impl<'a> StructuredCfgBuilder<'a> {
     fn new(cfg: &'a Cfg) -> Self {
-        let rpostorder = cfg.reverse_posorder();
+        let postorder = cfg.reverse_posorder();
         let dominators = simple_fast(&cfg.graph, cfg.entry);
         StructuredCfgBuilder {
             context: vec![],
-            rpostorder,
+            postorder,
             dominators,
             cfg,
         }
     }
 
-    fn to_structured(&self) -> Result<StructuredBlock, EggCCError> {
+    fn to_structured(&mut self) -> Result<StructuredBlock, EggCCError> {
         self.check_reducible()?;
-        Ok(StructuredBlock::Sequence(vec![]))
+        let result = self.do_tree(self.cfg.entry);
+        Ok(result)
+    }
+
+    fn do_tree(&mut self, node: NodeIndex) -> StructuredBlock {
+        if self.is_loop_header(node) {
+            self.context
+                .push(ContainingHistory::LoopWithLabel(self.name(node)));
+            let body = StructuredBlock::Loop(Box::new(self.code_for_node(node)));
+            self.context.pop();
+            body
+        } else {
+            self.code_for_node(node)
+        }
+    }
+
+    fn name(&self, node: NodeIndex) -> BlockName {
+        self.cfg.graph[node].name.clone()
+    }
+
+    fn code_for_node(&mut self, node: NodeIndex) -> StructuredBlock {
+        let mut merge_nodes = self
+            .dominators
+            .immediately_dominated_by(node)
+            .filter(|n| self.is_merge_node(*n))
+            .collect::<Vec<_>>();
+        merge_nodes.sort_by_key(|n| self.postorder[&self.cfg.graph[*n].name]);
+        self.node_within(node, merge_nodes)
+    }
+
+    fn node_within(&mut self, node: NodeIndex, merge_nodes: Vec<NodeIndex>) -> StructuredBlock {
+        if node == self.cfg.exit {
+            return StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone()));
+        }
+
+        let edges = self
+            .cfg
+            .graph
+            .edges_directed(node, petgraph::Direction::Outgoing)
+            .collect::<Vec<_>>();
+        match merge_nodes.as_slice() {
+            [] => {
+                StructuredBlock::Sequence(vec![
+                    StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone())),
+                    match edges.as_slice() {
+                        [] => {
+                            panic!("handled above");
+                        }
+                        // Unconditional
+                        [out] => self.do_branch(node, out.target()),
+                        [branch1, branch2] => {
+                            if let (
+                                Branch {
+                                    op:
+                                        BranchOp::Cond {
+                                            val: val1,
+                                            arg: arg1,
+                                        },
+                                    ..
+                                },
+                                Branch {
+                                    op: BranchOp::Cond { val: val2, .. },
+                                    ..
+                                },
+                            ) = (branch1.weight(), branch2.weight())
+                            {
+                                assert!(val1 != val2);
+                                self.context.push(ContainingHistory::ThenBranch);
+                                let then_block = self.do_branch(
+                                    node,
+                                    if *val1 {
+                                        branch1.target()
+                                    } else {
+                                        branch2.target()
+                                    },
+                                );
+                                let else_block = self.do_branch(
+                                    node,
+                                    if *val1 {
+                                        branch2.target()
+                                    } else {
+                                        branch1.target()
+                                    },
+                                );
+                                self.context.pop();
+                                StructuredBlock::Ite(
+                                    arg1.to_string(),
+                                    Box::new(then_block),
+                                    Box::new(else_block),
+                                )
+                            } else {
+                                panic!(
+                                    "Expected two conditional branches. Got {:?} and {:?}",
+                                    branch1, branch2
+                                );
+                            }
+                        }
+                        _ => {
+                            panic!("Expected at most two outgoing edges. Got {:?}", edges);
+                        }
+                    },
+                ])
+            }
+            [first, ..] => {
+                self.context
+                    .push(ContainingHistory::BlockFollowedBy(self.name(*first)));
+                let rest = self.node_within(node, merge_nodes[1..].to_vec());
+                self.context.pop();
+                StructuredBlock::Sequence(vec![
+                    StructuredBlock::Block(Box::new(rest)),
+                    self.do_tree(*first),
+                ])
+            }
+        }
+    }
+
+    fn do_branch(&mut self, source: NodeIndex, target: NodeIndex) -> StructuredBlock {
+        if self.is_backward_edge(source, target) || self.is_merge_node(target) {
+            let index = self.context_index(self.cfg.graph[target].name.clone());
+            StructuredBlock::Break(index)
+        } else {
+            self.do_tree(target)
+        }
+    }
+
+    fn context_index(&self, target: BlockName) -> usize {
+        let mut index = 0;
+        for context in self.context.iter().rev() {
+            match context {
+                ContainingHistory::ThenBranch => {}
+                ContainingHistory::LoopWithLabel(label) => {
+                    if label == &target {
+                        return index;
+                    }
+                }
+                ContainingHistory::BlockFollowedBy(label) => {
+                    if label == &target {
+                        return index;
+                    }
+                }
+            }
+            index += 1;
+        }
+        panic!(
+            "Could not find target {:?} in context {:?}",
+            target, self.context
+        );
+    }
+
+    fn is_backward_edge(&self, source: NodeIndex, target: NodeIndex) -> bool {
+        self.postorder[&self.cfg.graph[target].name] > self.postorder[&self.cfg.graph[source].name]
+    }
+
+    fn is_merge_node(&self, node: NodeIndex) -> bool {
+        self.cfg
+            .graph
+            .neighbors_directed(node, petgraph::Direction::Incoming)
+            .take(1)
+            .next()
+            .is_some()
+    }
+
+    fn is_loop_header(&self, node: NodeIndex) -> bool {
+        self.cfg
+            .graph
+            .edges_directed(node, petgraph::Direction::Incoming)
+            .any(|edge| self.is_backward_edge(edge.source(), node))
     }
 
     fn check_reducible(&self) -> Result<(), EggCCError> {
@@ -45,9 +212,7 @@ impl<'a> StructuredCfgBuilder<'a> {
             let source = edge.source();
             let target = edge.target();
             // check if this is a back edge
-            if self.rpostorder[&self.cfg.graph[source].name]
-                > self.rpostorder[&self.cfg.graph[target].name]
-            {
+            if self.is_backward_edge(source, target) {
                 // check if the target dominates the source
                 if self
                     .dominators

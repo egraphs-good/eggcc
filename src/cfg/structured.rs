@@ -4,7 +4,7 @@ use super::BasicBlock;
 use bril_rs::Argument;
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum StructuredBlock {
+pub enum StructuredBlock {
     // Variable, then and else blocks
     Ite(String, Box<StructuredBlock>, Box<StructuredBlock>),
     Loop(Box<StructuredBlock>),
@@ -16,9 +16,33 @@ pub(crate) enum StructuredBlock {
 }
 
 #[derive(Debug)]
-pub(crate) struct StructuredFunction {
-    pub(crate) args: Vec<Argument>,
-    pub(crate) block: StructuredBlock,
+pub struct StructuredProgram {
+    pub functions: Vec<StructuredFunction>,
+}
+
+impl Display for StructuredProgram {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut functions = self
+            .functions
+            .iter()
+            .map(|f| format!("{}", f))
+            .collect::<Vec<String>>();
+        functions.sort();
+        write!(f, "{}", functions.join("\n\n"))
+    }
+}
+
+#[derive(Debug)]
+pub struct StructuredFunction {
+    pub name: String,
+    pub args: Vec<Argument>,
+    pub block: StructuredBlock,
+}
+
+impl Display for StructuredFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {{\n{}\n}}", self.name, self.block)
+    }
 }
 
 impl Display for StructuredBlock {

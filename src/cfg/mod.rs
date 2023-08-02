@@ -7,18 +7,20 @@
 use std::collections::HashMap;
 use std::mem;
 
-use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position};
+use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program};
 use petgraph::{
     graph::NodeIndex,
     visit::{DfsPostOrder, Walker},
     Graph,
 };
 
+use self::structured::StructuredProgram;
+
 #[cfg(test)]
 mod tests;
 
-mod structured;
-mod to_structured;
+pub(crate) mod structured;
+pub(crate) mod to_structured;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum BlockName {
@@ -28,7 +30,7 @@ pub(crate) enum BlockName {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct BasicBlock {
+pub struct BasicBlock {
     pub(crate) instrs: Vec<Instruction>,
     pub(crate) name: BlockName,
     pub(crate) pos: Option<Position>,
@@ -75,6 +77,7 @@ pub(crate) struct Cfg {
     pub(crate) entry: NodeIndex,
     /// The (single) exit node for the CFG.
     pub(crate) exit: NodeIndex,
+    pub(crate) name: String,
 }
 
 impl Cfg {
@@ -90,6 +93,16 @@ impl Cfg {
 
         reverse_postorder
     }
+}
+
+pub(crate) fn program_to_structured(program: &Program) -> StructuredProgram {
+    let mut functions = Vec::new();
+    for func in &program.functions {
+        let cfg = to_cfg(func);
+        let structured = to_structured::to_structured(&cfg).unwrap();
+        functions.push(structured);
+    }
+    StructuredProgram { functions }
 }
 
 /// Get the underyling CFG corresponding to the function `func`.
@@ -230,6 +243,7 @@ impl CfgBuilder {
                 graph,
                 entry,
                 exit,
+                name: func.name.clone(),
             },
             label_to_block: HashMap::new(),
         }

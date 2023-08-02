@@ -62,8 +62,8 @@ macro_rules! cfg_test {
 }
 
 cfg_test!(
-    fib,
-    include_str!("../../data/fib.bril"),
+    fib_cfg,
+    include_str!("../../tests/fib.bril"),
     [
         ENTRY  = (Jmp) => "loop",
         "loop" = (Cond { arg: "cond".into(), val: true }) => "body",
@@ -75,7 +75,7 @@ cfg_test!(
 
 cfg_test!(
     queen,
-    include_str!("../../data/queens-func.bril"),
+    include_str!("../../tests/queens-func.bril"),
     [
         ENTRY = (Cond { arg: "ret_cond".into(), val: true }) => "next.ret",
         ENTRY = (Cond { arg: "ret_cond".into(), val: false }) => "for.cond",
@@ -92,7 +92,7 @@ cfg_test!(
 
 cfg_test!(
     implicit_return,
-    include_str!("../../data/implicit-return.bril"),
+    include_str!("../../tests/implicit-return.bril"),
     [
         ENTRY = (Jmp) => EXIT,
     ]
@@ -100,7 +100,7 @@ cfg_test!(
 
 cfg_test!(
     diamond,
-    include_str!("../../data/diamond.bril"),
+    include_str!("../../tests/diamond.bril"),
     [
         ENTRY = (Cond { arg: "cond".into(), val: true }) => "B",
         ENTRY = (Cond { arg: "cond".into(), val: false }) => "C",
@@ -112,7 +112,7 @@ cfg_test!(
 
 cfg_test!(
     block_diamond,
-    include_str!("../../data/block-diamond.bril"),
+    include_str!("../../tests/block-diamond.bril"),
     [
         ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
         ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "D",
@@ -127,7 +127,7 @@ cfg_test!(
 
 cfg_test!(
     unstructured,
-    include_str!("../../data/unstructured.bril"),
+    include_str!("../../tests/unstructured.bril"),
     [
         ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
         ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "C",
@@ -138,43 +138,9 @@ cfg_test!(
     ]
 );
 
-macro_rules! file_to_structured {
-    ($name:literal) => {{
-        let parsed = parse_from_string(include_str!($name));
-        assert!(parsed.functions.len() == 1);
-        let cfg = to_cfg(&parsed.functions[0]);
-        let structured = to_structured(&cfg).unwrap();
-        structured
-    }};
-}
-
-#[test]
-fn diamond_structured() {
-    let dummy = BasicBlock {
-        name: BlockName::Entry,
-        instrs: vec![],
-        pos: None,
-    };
-    let structured = file_to_structured!("../../data/diamond.bril");
-    let target = StructuredBlock::Sequence(vec![
-        StructuredBlock::Basic(Box::new(dummy.clone())),
-        StructuredBlock::Ite(
-            "x".into(),
-            Box::new(StructuredBlock::Basic(Box::new(dummy.clone()))),
-            Box::new(StructuredBlock::Basic(Box::new(dummy.clone()))),
-        ),
-        StructuredBlock::Basic(Box::new(dummy)),
-    ]);
-
-    println!("structured:\n{}", structured);
-    println!("target:\n{}", target);
-    assert_eq!(structured.to_string(), target.to_string());
-    assert_eq!(structured, target);
-}
-
 #[test]
 fn unstructured_panics() {
-    let func = &parse_from_string(include_str!("../../data/unstructured.bril")).functions[0];
+    let func = &parse_from_string(include_str!("../../tests/unstructured.bril")).functions[0];
     assert!(matches!(
         to_structured(&to_cfg(func)),
         Err(EggCCError::UnstructuredControlFlow)

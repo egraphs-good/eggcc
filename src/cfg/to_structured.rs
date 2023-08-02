@@ -8,7 +8,10 @@ use petgraph::{
 
 use crate::EggCCError;
 
-use super::{structured::StructuredBlock, BlockName, Branch, BranchOp, Cfg};
+use super::{
+    structured::{StructuredBlock, StructuredFunction},
+    BlockName, Branch, BranchOp, Cfg,
+};
 
 #[derive(Debug)]
 enum ContainingHistory {
@@ -36,10 +39,14 @@ impl<'a> StructuredCfgBuilder<'a> {
         }
     }
 
-    fn to_structured(&mut self) -> Result<StructuredBlock, EggCCError> {
+    fn to_structured(&mut self) -> Result<StructuredFunction, EggCCError> {
         self.check_reducible()?;
         let result = self.do_tree(self.cfg.entry);
-        Ok(result)
+        Ok(StructuredFunction {
+            name: self.cfg.name.clone(),
+            args: self.cfg.args.clone(),
+            block: result,
+        })
     }
 
     fn do_tree(&mut self, node: NodeIndex) -> StructuredBlock {
@@ -164,8 +171,7 @@ impl<'a> StructuredCfgBuilder<'a> {
     }
 
     fn context_index(&self, target: BlockName) -> usize {
-        let mut index = 0;
-        for context in self.context.iter().rev() {
+        for (index, context) in self.context.iter().rev().enumerate() {
             match context {
                 ContainingHistory::ThenBranch => {}
                 ContainingHistory::LoopWithLabel(label) => {
@@ -179,7 +185,6 @@ impl<'a> StructuredCfgBuilder<'a> {
                     }
                 }
             }
-            index += 1;
         }
         panic!(
             "Could not find target {:?} in context {:?}",
@@ -228,6 +233,6 @@ impl<'a> StructuredCfgBuilder<'a> {
     }
 }
 
-pub(crate) fn to_structured(cfg: &Cfg) -> Result<StructuredBlock, EggCCError> {
+pub(crate) fn to_structured(cfg: &Cfg) -> Result<StructuredFunction, EggCCError> {
     StructuredCfgBuilder::new(cfg).to_structured()
 }

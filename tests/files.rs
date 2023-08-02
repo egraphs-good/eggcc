@@ -7,35 +7,45 @@ use libtest_mimic::Trial;
 #[derive(Clone)]
 struct Run {
     path: PathBuf,
+    test_structured: bool,
+    no_opt: bool,
 }
 
 impl Run {
+    fn name(&self) -> String {
+        let mut name = self.path.file_stem().unwrap().to_str().unwrap().to_string();
+        if self.test_structured {
+            name = format!("{}_structured", name);
+        }
+        if self.no_opt {
+            name = format!("{}_no_opt", name);
+        }
+        name
+    }
+
     fn run(&self) {
-        let program_name = self.path.file_stem().unwrap().to_str().unwrap();
         let program_read = std::fs::read_to_string(self.path.clone()).unwrap();
-        let parsed = Optimizer::parse_bril(&program_read).unwrap();
+        if self.test_structured {
+            let structured = Optimizer::parse_to_structured(&program_read).unwrap();
+            assert_snapshot!(self.name(), format!("{}", structured));
+        } else {
+            let parsed = Optimizer::parse_bril(&program_read).unwrap();
 
-        let mut optimizer_nothing = Optimizer::default().with_num_iters(0);
-        let res_nothing = optimizer_nothing.optimize(&parsed).unwrap();
+            let mut optimizer = Optimizer::default();
+            if self.no_opt {
+                optimizer.num_iters = 0;
+            }
+            let res = optimizer.optimize(&parsed).unwrap();
 
-        assert_snapshot!(format!("{program_name}_no_opt"), format!("{}", res_nothing));
-
-        let mut optimizer = Optimizer::default();
-        let res = optimizer.optimize(&parsed).unwrap();
-
-        // TODO test res and res_nothing to make sure
-        // they evaluate the same as the original program
-        // The cost of evaluating both should also go down
-        // compared to original
-
-        assert_snapshot!(format!("{program_name}"), format!("{}", res));
+            assert_snapshot!(self.name(), format!("{}", res));
+        }
     }
 }
 
 fn generate_tests(glob: &str) -> Vec<Trial> {
     let mut trials = vec![];
-    let mut mk_trial = |name: String, run: Run| {
-        trials.push(Trial::test(name, move || {
+    let mut mk_trial = |run: Run| {
+        trials.push(Trial::test(run.name(), move || {
             run.run();
             Ok(())
         }))
@@ -48,8 +58,20 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             .unwrap()
             .to_string_lossy()
             .replace(['.', '-', ' '], "_");
-
-        mk_trial(name.clone(), Run { path: f.clone() });
+        let run = Run {
+            path: f.clone(),
+            test_structured: false,
+            no_opt: false,
+        };
+        mk_trial(run.clone());
+        mk_trial(Run {
+            no_opt: true,
+            ..run.clone()
+        });
+        mk_trial(Run {
+            test_structured: true,
+            ..run
+        });
     }
 
     trials

@@ -20,6 +20,9 @@ bril-rs = { path = "bril/bril-rs", features = ["ssa"] }
 ordered-float = { version = "3.7" }
 serde_json = "1.0.103"
 
+# binary dependencies
+clap = { version = "4", features = ["derive"] }
+
 [dev-dependencies]
 glob = "0.3.1"
 libtest-mimic = "0.6.1"

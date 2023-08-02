@@ -12,6 +12,7 @@ pub enum StructuredBlock {
     Sequence(Vec<StructuredBlock>),
     // how many layers of blocks / loops to break out of
     Break(usize),
+    Return(Option<String>),
     Basic(Box<BasicBlock>),
 }
 
@@ -62,11 +63,9 @@ impl StructuredBlock {
                 then.display(indent + 1),
                 els.display(indent + 1)
             ),
-            StructuredBlock::Loop(body) => format!(
-                "{}while true:\n{}",
-                " ".repeat(indent),
-                body.display(indent + 1)
-            ),
+            StructuredBlock::Loop(body) => {
+                format!("{whitespace}while true:\n{}", body.display(indent + 1))
+            }
             StructuredBlock::Block(body) => {
                 format!("{}block:\n{}", " ".repeat(indent), body.display(indent + 1))
             }
@@ -82,6 +81,13 @@ impl StructuredBlock {
                 .map(|i| format!("{}{i}", " ".repeat(indent)))
                 .collect::<Vec<String>>()
                 .join("\n"),
+            StructuredBlock::Return(val) => {
+                if let Some(val) = val {
+                    format!("{whitespace}return {}", val)
+                } else {
+                    format!("{whitespace}return")
+                }
+            }
         }
     }
 }

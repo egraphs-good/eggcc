@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use petgraph::{
+    adj::EdgeIndex,
     algo::dominators::{simple_fast, Dominators},
+    graph::EdgeReference,
     prelude::NodeIndex,
     visit::EdgeRef,
 };
@@ -10,7 +12,7 @@ use crate::EggCCError;
 
 use super::{
     structured::{StructuredBlock, StructuredFunction},
-    BlockName, Branch, BranchOp, Cfg,
+    BasicBlock, BlockName, Branch, BranchOp, Cfg,
 };
 
 #[derive(Debug)]
@@ -94,7 +96,7 @@ impl<'a> StructuredCfgBuilder<'a> {
                             panic!("handled above");
                         }
                         // Unconditional
-                        [out] => self.do_branch(node, out.target()),
+                        [out] => self.do_branch(out),
                         [branch1, branch2] => {
                             if let (
                                 Branch {
@@ -113,22 +115,10 @@ impl<'a> StructuredCfgBuilder<'a> {
                             {
                                 assert!(val1 != val2);
                                 self.context.push(ContainingHistory::ThenBranch);
-                                let then_block = self.do_branch(
-                                    node,
-                                    if *val1 {
-                                        branch1.target()
-                                    } else {
-                                        branch2.target()
-                                    },
-                                );
-                                let else_block = self.do_branch(
-                                    node,
-                                    if *val1 {
-                                        branch2.target()
-                                    } else {
-                                        branch1.target()
-                                    },
-                                );
+                                let then_block =
+                                    self.do_branch(if *val1 { branch1 } else { branch2 });
+                                let else_block =
+                                    self.do_branch(if !*val1 { branch1 } else { branch2 });
                                 self.context.pop();
                                 StructuredBlock::Ite(
                                     arg1.to_string(),
@@ -161,8 +151,20 @@ impl<'a> StructuredCfgBuilder<'a> {
         }
     }
 
-    fn do_branch(&mut self, source: NodeIndex, target: NodeIndex) -> StructuredBlock {
-        if self.is_backward_edge(source, target) || self.is_merge_node(target) {
+    fn do_branch(&mut self, edge: &EdgeReference<Branch>) -> StructuredBlock {
+        let source = edge.source();
+        let target = edge.target();
+        let target_block = self.cfg.graph[target].clone();
+        if target_block.name == BlockName::Exit {
+            assert!(target_block.instrs.is_empty());
+            match &edge.weight().op {
+                BranchOp::Jmp => StructuredBlock::Return(None),
+                BranchOp::RetVal { arg } => StructuredBlock::Return(Some(arg.clone())),
+                _ => {
+                    panic!("Unexpected branch op {:?}", edge.weight().op);
+                }
+            }
+        } else if self.is_backward_edge(source, target) || self.is_merge_node(target) {
             let index = self.context_index(self.cfg.graph[target].name.clone());
             StructuredBlock::Break(index)
         } else {

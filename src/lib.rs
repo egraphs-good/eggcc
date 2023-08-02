@@ -168,7 +168,8 @@ impl Optimizer {
           (add String Expr Expr)
           (sub String Expr Expr)
           (mul String Expr Expr)
-          (div String Expr Expr))
+          (div String Expr Expr)
+          (lt String Expr Expr))
 
         (datatype RetVal
             (ReturnValue Expr)

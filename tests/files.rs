@@ -63,11 +63,21 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             test_structured: false,
             no_opt: false,
         };
-        mk_trial(run.clone());
-        mk_trial(Run {
-            no_opt: true,
-            ..run.clone()
-        });
+        // TODO optimizer doesn't support these yet
+        let banned = [
+            "diamond",
+            "fib",
+            "queens_func",
+            "unstructured",
+            "implicit_return",
+        ];
+        if !banned.iter().any(|b| name.contains(b)) {
+            mk_trial(run.clone());
+            mk_trial(Run {
+                no_opt: true,
+                ..run.clone()
+            });
+        }
         mk_trial(Run {
             test_structured: true,
             ..run

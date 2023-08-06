@@ -1,0 +1,18 @@
+---
+source: tests/files.rs
+assertion_line: 32
+expression: "format!(\"{}\", res)"
+---
+@add_reassoc(x: int, y: int, z: int) {
+  v0_: int = const 5;
+  v1_: int = const 6;
+  v2_: int = add x z;
+  v3_: int = add v1_ v2_;
+  v4_: int = add y v3_;
+  v5_: int = add v0_ v4_;
+  ret v5_;
+}
+@main {
+  ret;
+}
+

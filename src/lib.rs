@@ -1,6 +1,5 @@
 use bril2json::parse_abstract_program_from_read;
-use bril_rs::AbstractProgram;
-use bril_rs::Program;
+use bril_rs::{AbstractProgram, Program, Function};
 use egglog::ast::Expr;
 use egglog::EGraph;
 use std::collections::HashMap;
@@ -61,14 +60,14 @@ impl Default for Optimizer {
 }
 
 impl Optimizer {
-    pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, EggCCError> {
+    pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, Box<dyn std::error::Error>> {
         let parsed = Self::parse_bril(program)?;
         eprintln!("Parsed program: {}", parsed);
         let res = self.optimize(&parsed)?;
         Ok(res)
     }
 
-    pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {
+    pub fn parse_bril(program: &str) -> Result<Program, Box<dyn std::error::Error>> {
         let abstract_prog =
             parse_abstract_program_from_read(program.as_bytes(), false, false, None);
         let serialized = serde_json::to_string(&abstract_prog).unwrap();
@@ -81,7 +80,8 @@ impl Optimizer {
         eprintln!("ssa output: {}", ssa_output);
         let ssa_prog: AbstractProgram = serde_json::from_str(&ssa_output).unwrap();
 
-        Program::try_from(ssa_prog).map_err(|err| EggCCError::ConversionError(err.to_string()))
+        let program = Program::try_from(ssa_prog)?;
+        return Ok(program)
     }
 
     pub fn fresh(&mut self) -> String {
@@ -95,10 +95,16 @@ impl Optimizer {
         self
     }
 
-    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
+    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, Box<dyn std::error::Error>> {
         assert!(!bril_program.functions.is_empty());
         assert!(bril_program.functions.iter().any(|f| { f.name == "main" }));
         assert!(bril_program.imports.is_empty());
+
+        let bril_fns: HashMap<String, &Function> = bril_program
+            .functions
+            .iter()
+            .map(|f| (f.name.clone(), f))
+            .collect();
 
         let egg_fns: HashMap<String, Expr> = bril_program
             .functions
@@ -123,11 +129,12 @@ impl Optimizer {
             .into_iter()
             .for_each(|output| log::info!("{}", output));
 
-        // TODO: idk how rust works, so why do I have to clone??? @ryan-berger
         let mut fn_names = egg_fns.keys().cloned().collect::<Vec<String>>();
 
         // sort the function names for deterministic map iteration
         fn_names.sort();
+
+        eprintln!("made it through egg parse");
 
         fn_names.iter().try_fold(
             Program {
@@ -137,10 +144,9 @@ impl Optimizer {
             |mut program, name| {
                 let e = &egg_fns[name];
                 let rep = egraph
-                    .extract_expr(e.clone(), 0)
-                    .map_err(EggCCError::EggLog)?;
+                    .extract_expr(e.clone(), 0)?;
 
-                program.functions.push(self.expr_to_func(rep.expr));
+                program.functions.push(self.expr_to_func(&bril_fns, rep.expr));
                 Ok(program)
             },
         )
@@ -152,6 +158,7 @@ impl Optimizer {
         format!(
             "
         (datatype Expr
+          (Arg String)
           (Int String i64)
           (True String)
           (False String)

@@ -1,4 +1,5 @@
 use std::{collections::HashMap, iter::once};
+use std::collections::HashSet;
 
 use crate::Optimizer;
 use bril_rs::{Code, EffectOps, Function, Instruction, Literal, Type, ValueOps};
@@ -6,15 +7,18 @@ use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
 impl Optimizer {
-    pub(crate) fn expr_to_func(&mut self, expr: Expr) -> Function {
+    pub(crate) fn expr_to_func(&mut self, bril_fns: &HashMap<String, &Function>, expr: Expr) -> Function {
         if let Expr::Call(func, args) = expr {
             assert_eq!(func.to_string(), "Func");
             match &args.as_slice() {
                 [func_name, body] => {
                     if let Expr::Lit(egglog::ast::Literal::String(fname)) = func_name {
+                        let name = &fname.to_string().clone();
+                        assert!(bril_fns.contains_key(name));
+
                         Function {
                             name: fname.to_string(),
-                            args: vec![],
+                            args:  bril_fns[name].args.clone(),
                             instrs: self.body_to_code(body),
                             pos: None,
                             return_type: None,
@@ -101,6 +105,10 @@ impl Optimizer {
             Expr::Var(var) => var.to_string(),
             Expr::Call(op, args) => match op.to_string().as_str() {
                 "ReturnValue" => self.expr_to_code(&args[0], res),
+                "Arg" => {
+                    assert_eq!(args.len(), 1);
+                    return args[0].to_string().trim_matches('"').to_string();
+                }
                 "Int" | "True" | "False" => {
                     let fresh = self.fresh();
                     let literal = match op.to_string().as_str() {
@@ -148,7 +156,6 @@ impl Optimizer {
 
     pub(crate) fn func_to_expr(&mut self, func: &Function) -> Expr {
         eprintln!("func_to_expr: {}", func.name);
-
         // leave prints in order
         // leave any effects in order
         // leave assignments to variables used outside
@@ -156,9 +163,11 @@ impl Optimizer {
         // otherwise inline
         let mut res = Expr::Call("End".into(), vec![]);
         let mut env = HashMap::<String, Expr>::new();
+        let args = HashSet::from_iter(func.args.iter().map(|arg| arg.name.clone()));
+
         for code in &func.instrs {
             if let Code::Instruction(instr) = code {
-                self.add_instr_to_env(instr, &mut env);
+                self.add_instr_to_env(instr, &mut env, &args);
             }
         }
 
@@ -227,6 +236,7 @@ impl Optimizer {
         &mut self,
         instr: &Instruction,
         env: &mut HashMap<String, Expr>,
+        fn_args: &HashSet<String>
     ) {
         match instr {
             Instruction::Constant {
@@ -294,7 +304,22 @@ impl Optimizer {
                 let arg_exprs = once(self.type_to_expr(op_type))
                     .chain(
                         args.iter()
-                            .map(|arg| env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone()),
+                            .map(|arg| {
+                                // if we don't have it in the env and it is a function arg
+                                // add it in for future possible uses
+                                if !env.contains_key(arg) && fn_args.contains(arg) {
+                                    println!("found a fn_arg {arg}", );
+                                    env.insert(
+                                        arg.clone(),
+                                        Expr::Call(
+                                        "Arg".into(),
+                                        vec![
+                                            Expr::Lit(egglog::ast::Literal::String(arg.into()))
+                                        ],
+                                    ));
+                                }
+                                return env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone()
+                            }),
                     )
                     .collect::<Vec<Expr>>();
                 let expr = Expr::Call(self.op_to_egglog(*op), arg_exprs);

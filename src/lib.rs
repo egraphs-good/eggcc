@@ -81,7 +81,7 @@ impl Optimizer {
         let ssa_prog: AbstractProgram = serde_json::from_str(&ssa_output).unwrap();
 
         let program = Program::try_from(ssa_prog)?;
-        return Ok(program)
+        Ok(program)
     }
 
     pub fn fresh(&mut self) -> String {

@@ -20,7 +20,6 @@ impl Run {
 
         assert_snapshot!(format!("{program_name}_no_opt"), format!("{}", res_nothing));
 
-
         let mut optimizer = Optimizer::default();
         let res = optimizer.optimize(&parsed).unwrap();
 

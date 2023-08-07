@@ -6,7 +6,11 @@ use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
 impl Optimizer {
-    pub(crate) fn expr_to_func(&mut self, bril_fns: &HashMap<String, &Function>, expr: Expr) -> Function {
+    pub(crate) fn expr_to_func(
+        &mut self,
+        bril_fns: &HashMap<String, &Function>,
+        expr: Expr,
+    ) -> Function {
         if let Expr::Call(func, args) = expr {
             assert_eq!(func.to_string(), "Func");
             match &args.as_slice() {
@@ -17,7 +21,7 @@ impl Optimizer {
 
                         Function {
                             name: fname.to_string(),
-                            args:  bril_fns[name].args.clone(),
+                            args: bril_fns[name].args.clone(),
                             instrs: self.body_to_code(body),
                             pos: None,
                             return_type: None,
@@ -163,18 +167,17 @@ impl Optimizer {
         let mut res = Expr::Call("End".into(), vec![]);
 
         // build iter of pairs of function arg -> Arg exp to seed the env
-        let arg_pairs = func
-            .args
-            .iter()
-            .map(|arg|
-                (arg.name.clone(),
-                 Expr::Call(
-                     "Arg".into(),
-                     vec![
-                         Expr::Lit(egglog::ast::Literal::String(arg.name.clone().into())),
-                     ])
-                )
-            );
+        let arg_pairs = func.args.iter().map(|arg| {
+            (
+                arg.name.clone(),
+                Expr::Call(
+                    "Arg".into(),
+                    vec![Expr::Lit(egglog::ast::Literal::String(
+                        arg.name.clone().into(),
+                    ))],
+                ),
+            )
+        });
 
         // create env with function arguments seeded
         let mut env: HashMap<String, Expr> = HashMap::from_iter(arg_pairs);
@@ -317,7 +320,7 @@ impl Optimizer {
                 let arg_exprs = once(self.type_to_expr(op_type))
                     .chain(
                         args.iter()
-                            .map(|arg|  env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone()),
+                            .map(|arg| env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone()),
                     )
                     .collect::<Vec<Expr>>();
                 let expr = Expr::Call(self.op_to_egglog(*op), arg_exprs);

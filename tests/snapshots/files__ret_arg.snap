@@ -1,6 +1,5 @@
 ---
 source: tests/files.rs
-assertion_line: 32
 expression: "format!(\"{}\", res)"
 ---
 @main {

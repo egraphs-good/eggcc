@@ -1,5 +1,4 @@
 use std::{collections::HashMap, iter::once};
-use std::collections::HashSet;
 
 use crate::Optimizer;
 use bril_rs::{Code, EffectOps, Function, Instruction, Literal, Type, ValueOps};
@@ -162,12 +161,27 @@ impl Optimizer {
         // of this function
         // otherwise inline
         let mut res = Expr::Call("End".into(), vec![]);
-        let mut env = HashMap::<String, Expr>::new();
-        let args = HashSet::from_iter(func.args.iter().map(|arg| arg.name.clone()));
+
+        // build iter of pairs of function arg -> Arg exp to seed the env
+        let arg_pairs = func
+            .args
+            .iter()
+            .map(|arg|
+                (arg.name.clone(),
+                 Expr::Call(
+                     "Arg".into(),
+                     vec![
+                         Expr::Lit(egglog::ast::Literal::String(arg.name.clone().into())),
+                     ])
+                )
+            );
+
+        // create env with function arguments seeded
+        let mut env: HashMap<String, Expr> = HashMap::from_iter(arg_pairs);
 
         for code in &func.instrs {
             if let Code::Instruction(instr) = code {
-                self.add_instr_to_env(instr, &mut env, &args);
+                self.add_instr_to_env(instr, &mut env);
             }
         }
 
@@ -236,7 +250,6 @@ impl Optimizer {
         &mut self,
         instr: &Instruction,
         env: &mut HashMap<String, Expr>,
-        fn_args: &HashSet<String>
     ) {
         match instr {
             Instruction::Constant {
@@ -304,22 +317,7 @@ impl Optimizer {
                 let arg_exprs = once(self.type_to_expr(op_type))
                     .chain(
                         args.iter()
-                            .map(|arg| {
-                                // if we don't have it in the env and it is a function arg
-                                // add it in for future possible uses
-                                if !env.contains_key(arg) && fn_args.contains(arg) {
-                                    println!("found a fn_arg {arg}", );
-                                    env.insert(
-                                        arg.clone(),
-                                        Expr::Call(
-                                        "Arg".into(),
-                                        vec![
-                                            Expr::Lit(egglog::ast::Literal::String(arg.into()))
-                                        ],
-                                    ));
-                                }
-                                return env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone()
-                            }),
+                            .map(|arg|  env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone()),
                     )
                     .collect::<Vec<Expr>>();
                 let expr = Expr::Call(self.op_to_egglog(*op), arg_exprs);

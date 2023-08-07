@@ -1,0 +1,12 @@
+---
+source: tests/files.rs
+assertion_line: 32
+expression: "format!(\"{}\", res)"
+---
+@main {
+  ret;
+}
+@ret_arg(x: int) {
+  ret x;
+}
+

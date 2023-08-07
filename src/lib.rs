@@ -120,8 +120,6 @@ impl Optimizer {
 
         let egglog_code = self.make_optimizer_for(&egg_str);
 
-        println!("{}", egglog_code);
-
         let mut egraph = EGraph::default();
         egraph
             .parse_and_run_program(&egglog_code)
@@ -133,8 +131,6 @@ impl Optimizer {
 
         // sort the function names for deterministic map iteration
         fn_names.sort();
-
-        eprintln!("made it through egg parse");
 
         fn_names.iter().try_fold(
             Program {

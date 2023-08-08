@@ -60,10 +60,7 @@ impl Default for Optimizer {
 }
 
 impl Optimizer {
-    pub fn parse_and_optimize(
-        &mut self,
-        program: &str,
-    ) -> Result<Program, EggCCError> {
+    pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, EggCCError> {
         let parsed = Self::parse_bril(program)?;
         eprintln!("Parsed program: {}", parsed);
         let res = self.optimize(&parsed)?;
@@ -85,7 +82,7 @@ impl Optimizer {
 
         match Program::try_from(ssa_prog) {
             Ok(program) => Ok(program),
-            Err(err) => Err(EggCCError::Parse(err.to_string()))
+            Err(err) => Err(EggCCError::Parse(err.to_string())),
         }
     }
 
@@ -100,10 +97,7 @@ impl Optimizer {
         self
     }
 
-    pub fn optimize(
-        &mut self,
-        bril_program: &Program,
-    ) -> Result<Program, EggCCError> {
+    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
         assert!(!bril_program.functions.is_empty());
         assert!(bril_program.functions.iter().any(|f| { f.name == "main" }));
         assert!(bril_program.imports.is_empty());
@@ -154,8 +148,8 @@ impl Optimizer {
                             .functions
                             .push(self.expr_to_func(&bril_fns, rep.expr));
                         Ok(program)
-                    },
-                    Err(e) => Err(EggCCError::EggLog(e))
+                    }
+                    Err(e) => Err(EggCCError::EggLog(e)),
                 }
             },
         )

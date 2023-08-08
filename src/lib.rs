@@ -63,14 +63,14 @@ impl Optimizer {
     pub fn parse_and_optimize(
         &mut self,
         program: &str,
-    ) -> Result<Program, Box<dyn std::error::Error>> {
+    ) -> Result<Program, EggCCError> {
         let parsed = Self::parse_bril(program)?;
         eprintln!("Parsed program: {}", parsed);
         let res = self.optimize(&parsed)?;
         Ok(res)
     }
 
-    pub fn parse_bril(program: &str) -> Result<Program, Box<dyn std::error::Error>> {
+    pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {
         let abstract_prog =
             parse_abstract_program_from_read(program.as_bytes(), false, false, None);
         let serialized = serde_json::to_string(&abstract_prog).unwrap();
@@ -83,8 +83,10 @@ impl Optimizer {
         eprintln!("ssa output: {}", ssa_output);
         let ssa_prog: AbstractProgram = serde_json::from_str(&ssa_output).unwrap();
 
-        let program = Program::try_from(ssa_prog)?;
-        Ok(program)
+        match Program::try_from(ssa_prog) {
+            Ok(program) => Ok(program),
+            Err(err) => Err(EggCCError::Parse(err.to_string()))
+        }
     }
 
     pub fn fresh(&mut self) -> String {
@@ -101,7 +103,7 @@ impl Optimizer {
     pub fn optimize(
         &mut self,
         bril_program: &Program,
-    ) -> Result<Program, Box<dyn std::error::Error>> {
+    ) -> Result<Program, EggCCError> {
         assert!(!bril_program.functions.is_empty());
         assert!(bril_program.functions.iter().any(|f| { f.name == "main" }));
         assert!(bril_program.imports.is_empty());
@@ -145,12 +147,16 @@ impl Optimizer {
             },
             |mut program, name| {
                 let e = &egg_fns[name];
-                let rep = egraph.extract_expr(e.clone(), 0)?;
 
-                program
-                    .functions
-                    .push(self.expr_to_func(&bril_fns, rep.expr));
-                Ok(program)
+                match egraph.extract_expr(e.clone(), 0) {
+                    Ok(rep) => {
+                        program
+                            .functions
+                            .push(self.expr_to_func(&bril_fns, rep.expr));
+                        Ok(program)
+                    },
+                    Err(e) => Err(EggCCError::EggLog(e))
+                }
             },
         )
     }

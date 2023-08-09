@@ -3,8 +3,16 @@ source: tests/files.rs
 expression: "format!(\"{}\", res)"
 ---
 @main {
+.entry___:
+.sblock___0:
+.b1:
+  v0.0: int = const 1;
+  v1.0: int = const 2;
+  v2.0: int = const 3;
   v0_: int = const 3;
   print v0_;
   ret;
+.sblock___1:
+.exit___:
 }
 

@@ -1,6 +1,5 @@
 use bril2json::parse_abstract_program_from_read;
-use bril_rs::AbstractProgram;
-use bril_rs::Program;
+use bril_rs::{AbstractProgram, Function, Program};
 use egglog::ast::Expr;
 use egglog::EGraph;
 use std::collections::HashMap;
@@ -81,7 +80,10 @@ impl Optimizer {
         eprintln!("ssa output: {}", ssa_output);
         let ssa_prog: AbstractProgram = serde_json::from_str(&ssa_output).unwrap();
 
-        Program::try_from(ssa_prog).map_err(|err| EggCCError::ConversionError(err.to_string()))
+        match Program::try_from(ssa_prog) {
+            Ok(program) => Ok(program),
+            Err(err) => Err(EggCCError::Parse(err.to_string())),
+        }
     }
 
     pub fn fresh(&mut self) -> String {
@@ -100,6 +102,12 @@ impl Optimizer {
         assert!(bril_program.functions.iter().any(|f| { f.name == "main" }));
         assert!(bril_program.imports.is_empty());
 
+        let bril_fns: HashMap<String, &Function> = bril_program
+            .functions
+            .iter()
+            .map(|f| (f.name.clone(), f))
+            .collect();
+
         let egg_fns: HashMap<String, Expr> = bril_program
             .functions
             .iter()
@@ -114,8 +122,6 @@ impl Optimizer {
 
         let egglog_code = self.make_optimizer_for(&egg_str);
 
-        println!("{}", egglog_code);
-
         let mut egraph = EGraph::default();
         egraph
             .parse_and_run_program(&egglog_code)
@@ -123,7 +129,6 @@ impl Optimizer {
             .into_iter()
             .for_each(|output| log::info!("{}", output));
 
-        // TODO: idk how rust works, so why do I have to clone??? @ryan-berger
         let mut fn_names = egg_fns.keys().cloned().collect::<Vec<String>>();
 
         // sort the function names for deterministic map iteration
@@ -136,12 +141,16 @@ impl Optimizer {
             },
             |mut program, name| {
                 let e = &egg_fns[name];
-                let rep = egraph
-                    .extract_expr(e.clone(), 0)
-                    .map_err(EggCCError::EggLog)?;
 
-                program.functions.push(self.expr_to_func(rep.expr));
-                Ok(program)
+                match egraph.extract_expr(e.clone(), 0) {
+                    Ok(rep) => {
+                        program
+                            .functions
+                            .push(self.expr_to_func(&bril_fns, rep.expr));
+                        Ok(program)
+                    }
+                    Err(e) => Err(EggCCError::EggLog(e)),
+                }
             },
         )
     }
@@ -152,6 +161,7 @@ impl Optimizer {
         format!(
             "
         (datatype Expr
+          (Arg String)
           (Int String i64)
           (True String)
           (False String)

@@ -1,0 +1,15 @@
+# (x * (5 * (y * (6 * z)))) -> (x * (y * (z * 30)))
+@mul_reassoc (x: int, y: int, z: int): int {
+    six: int = const 6;
+    five: int = const 5;
+
+    v0: int = mul six z;
+    v1: int = mul y v0;
+    v2: int = mul five v1;
+    v3: int = mul x v2;
+    ret v3;
+}
+
+@main {
+    ret;
+}

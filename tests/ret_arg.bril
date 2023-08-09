@@ -1,0 +1,8 @@
+@ret_arg(x: int) {
+    ret x;
+}
+
+
+@main {
+    ret;
+}

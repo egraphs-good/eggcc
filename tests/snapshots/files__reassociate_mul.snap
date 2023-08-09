@@ -1,0 +1,14 @@
+---
+source: tests/files.rs
+expression: "format!(\"{}\", res)"
+---
+@main {
+  ret;
+}
+@mul_reassoc(x: int, y: int, z: int) {
+  v0_: int = mul z 30;
+  v1_: int = mul y v2_;
+  v2_: int = mul x_ v1_;
+  ret v2_;
+}
+

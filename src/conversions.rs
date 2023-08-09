@@ -6,15 +6,22 @@ use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
 impl Optimizer {
-    pub(crate) fn expr_to_func(&mut self, expr: Expr) -> Function {
+    pub(crate) fn expr_to_func(
+        &mut self,
+        bril_fns: &HashMap<String, &Function>,
+        expr: Expr,
+    ) -> Function {
         if let Expr::Call(func, args) = expr {
             assert_eq!(func.to_string(), "Func");
             match &args.as_slice() {
                 [func_name, body] => {
                     if let Expr::Lit(egglog::ast::Literal::String(fname)) = func_name {
+                        let name = &fname.to_string().clone();
+                        assert!(bril_fns.contains_key(name));
+
                         Function {
                             name: fname.to_string(),
-                            args: vec![],
+                            args: bril_fns[name].args.clone(),
                             instrs: self.body_to_code(body),
                             pos: None,
                             return_type: None,
@@ -101,6 +108,10 @@ impl Optimizer {
             Expr::Var(var) => var.to_string(),
             Expr::Call(op, args) => match op.to_string().as_str() {
                 "ReturnValue" => self.expr_to_code(&args[0], res),
+                "Arg" => {
+                    assert_eq!(args.len(), 1);
+                    return args[0].to_string().trim_matches('"').to_string();
+                }
                 "Int" | "True" | "False" => {
                     let fresh = self.fresh();
                     let literal = match op.to_string().as_str() {
@@ -148,14 +159,29 @@ impl Optimizer {
 
     pub(crate) fn func_to_expr(&mut self, func: &Function) -> Expr {
         eprintln!("func_to_expr: {}", func.name);
-
         // leave prints in order
         // leave any effects in order
         // leave assignments to variables used outside
         // of this function
         // otherwise inline
         let mut res = Expr::Call("End".into(), vec![]);
-        let mut env = HashMap::<String, Expr>::new();
+
+        // build iter of pairs of function arg -> Arg exp to seed the env
+        let arg_pairs = func.args.iter().map(|arg| {
+            (
+                arg.name.clone(),
+                Expr::Call(
+                    "Arg".into(),
+                    vec![Expr::Lit(egglog::ast::Literal::String(
+                        arg.name.clone().into(),
+                    ))],
+                ),
+            )
+        });
+
+        // create env with function arguments seeded
+        let mut env: HashMap<String, Expr> = HashMap::from_iter(arg_pairs);
+
         for code in &func.instrs {
             if let Code::Instruction(instr) = code {
                 self.add_instr_to_env(instr, &mut env);

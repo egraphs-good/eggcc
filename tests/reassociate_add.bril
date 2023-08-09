@@ -1,0 +1,16 @@
+# (x + (5 + (y + (6 + (x + z)))) -> ((2*x) + (y + (z + 11)))
+@add_reassoc (x: int, y: int, z: int) : int {
+    six: int = const 6;
+    five: int = const 5;
+
+    v0: int = add x z;
+    v1: int = add six v0;
+    v2: int = add y v1;
+    v3: int = add five v2;
+    v4: int = add x v3;
+    ret v3;
+}
+
+@main{
+    ret;
+}

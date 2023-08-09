@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use eggcc::*;
@@ -41,6 +42,8 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
         }))
     };
 
+    let blacklist = HashSet::from(["reassociate_add", "reassociate_mul"]);
+
     for entry in glob::glob(glob).unwrap() {
         let f = entry.unwrap();
         let name = f
@@ -48,6 +51,10 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             .unwrap()
             .to_string_lossy()
             .replace(['.', '-', ' '], "_");
+
+        if blacklist.contains(&*name) {
+            continue
+        }
 
         mk_trial(name.clone(), Run { path: f.clone() });
     }

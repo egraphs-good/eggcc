@@ -1,4 +1,7 @@
-use crate::cfg::{to_cfg, BlockName};
+use crate::{
+    cfg::{to_cfg, to_structured::to_structured, BlockName},
+    EggCCError,
+};
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::{load_program_from_read, Program};
 use petgraph::graph::NodeIndex;
@@ -57,8 +60,8 @@ macro_rules! cfg_test {
 }
 
 cfg_test!(
-    fib,
-    include_str!("../../data/fib.bril"),
+    fib_cfg,
+    include_str!("../../tests/fib.bril"),
     [
         ENTRY  = (Jmp) => "loop",
         "loop" = (Cond { arg: "cond".into(), val: true }) => "body",
@@ -70,7 +73,7 @@ cfg_test!(
 
 cfg_test!(
     queen,
-    include_str!("../../data/queens-func.bril"),
+    include_str!("../../tests/small/queens-func.bril"),
     [
         ENTRY = (Cond { arg: "ret_cond".into(), val: true }) => "next.ret",
         ENTRY = (Cond { arg: "ret_cond".into(), val: false }) => "for.cond",
@@ -87,8 +90,57 @@ cfg_test!(
 
 cfg_test!(
     implicit_return,
-    include_str!("../../data/implicit-return.bril"),
+    include_str!("../../tests/small/implicit-return.bril"),
     [
         ENTRY = (Jmp) => EXIT,
     ]
 );
+
+cfg_test!(
+    diamond,
+    include_str!("../../tests/small/diamond.bril"),
+    [
+        ENTRY = (Cond { arg: "cond".into(), val: true }) => "B",
+        ENTRY = (Cond { arg: "cond".into(), val: false }) => "C",
+        "B" = (Jmp) => "D",
+        "C" = (Jmp) => "D",
+        "D" = (Jmp) => EXIT,
+    ]
+);
+
+cfg_test!(
+    block_diamond,
+    include_str!("../../tests/small/block-diamond.bril"),
+    [
+        ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
+        ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "D",
+        "B"   = (Cond { arg: "b_cond".into(), val: true}) => "C",
+        "B"   = (Cond { arg: "b_cond".into(), val: false}) => "E",
+        "C" = (Jmp) => "F",
+        "D" = (Jmp) => "E",
+        "E" = (Jmp) => "F",
+        "F" = (Jmp) => EXIT,
+    ]
+);
+
+cfg_test!(
+    unstructured,
+    include_str!("../../tests/small/unstructured.bril"),
+    [
+        ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
+        ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "C",
+        "B"   = (Cond { arg: "b_cond".into(), val: true }) => "C",
+        "B"   = (Cond { arg: "b_cond".into(), val: false }) => "D",
+        "C" = (Jmp) => "B",
+        "D" = (Jmp) => EXIT,
+    ]
+);
+
+#[test]
+fn unstructured_panics() {
+    let func = &parse_from_string(include_str!("../../tests/small/unstructured.bril")).functions[0];
+    assert!(matches!(
+        to_structured(&to_cfg(func)),
+        Err(EggCCError::UnstructuredControlFlow)
+    ))
+}

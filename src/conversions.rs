@@ -31,8 +31,6 @@ impl Optimizer {
     }
 
     pub(crate) fn body_to_code(&mut self, expr: &Expr) -> Vec<Code> {
-        eprintln!("body_to_code: {}", expr);
-
         if let Expr::Call(op, args) = expr {
             let mut res = vec![];
             match op.to_string().as_str() {

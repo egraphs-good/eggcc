@@ -1,0 +1,16 @@
+---
+source: tests/files.rs
+expression: "format!(\"{}\", structured)"
+---
+main {
+block:
+
+ break 0
+block:
+ v0.0: int = const 1;
+ v1.0: int = const 2;
+ v2.0: int = add v0.0 v1.0;
+ print v2.0;
+ return
+
+}

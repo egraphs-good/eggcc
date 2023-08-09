@@ -1,6 +1,7 @@
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::AbstractProgram;
 use bril_rs::Program;
+use cfg::program_to_structured;
 use egglog::ast::Expr;
 use egglog::EGraph;
 use std::collections::HashMap;
@@ -9,9 +10,10 @@ use std::process::Stdio;
 
 use thiserror::Error;
 
-pub(crate) mod cfg;
+mod cfg;
 mod conversions;
 mod util;
+use cfg::structured::StructuredProgram;
 
 #[derive(Debug, Error)]
 pub enum EggCCError {
@@ -21,6 +23,8 @@ pub enum EggCCError {
     Parse(String),
     #[error("Conversion error: {0}")]
     ConversionError(String),
+    #[error("Unstructed control flow detected")]
+    UnstructuredControlFlow,
 }
 
 fn run_command_with_stdin(command: &mut std::process::Command, input: String) -> String {
@@ -78,10 +82,14 @@ impl Optimizer {
             std::process::Command::new("python3").arg("bril/examples/to_ssa.py"),
             serialized,
         );
-        eprintln!("ssa output: {}", ssa_output);
         let ssa_prog: AbstractProgram = serde_json::from_str(&ssa_output).unwrap();
 
         Program::try_from(ssa_prog).map_err(|err| EggCCError::ConversionError(err.to_string()))
+    }
+
+    pub fn parse_to_structured(program: &str) -> Result<StructuredProgram, EggCCError> {
+        let parsed = Self::parse_bril(program)?;
+        Ok(program_to_structured(&parsed))
     }
 
     pub fn fresh(&mut self) -> String {
@@ -160,7 +168,8 @@ impl Optimizer {
           (add String Expr Expr)
           (sub String Expr Expr)
           (mul String Expr Expr)
-          (div String Expr Expr))
+          (div String Expr Expr)
+          (lt String Expr Expr))
 
         (datatype RetVal
             (ReturnValue Expr)

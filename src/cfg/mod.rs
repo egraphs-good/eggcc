@@ -7,11 +7,20 @@
 use std::collections::HashMap;
 use std::mem;
 
-use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position};
-use petgraph::{graph::NodeIndex, Graph};
+use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program};
+use petgraph::{
+    graph::NodeIndex,
+    visit::{DfsPostOrder, Walker},
+    Graph,
+};
+
+use self::structured::StructuredProgram;
 
 #[cfg(test)]
 mod tests;
+
+pub(crate) mod structured;
+pub(crate) mod to_structured;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum BlockName {
@@ -20,7 +29,8 @@ pub(crate) enum BlockName {
     Named(String),
 }
 
-pub(crate) struct BasicBlock {
+#[derive(Debug, Clone, PartialEq)]
+pub struct BasicBlock {
     pub(crate) instrs: Vec<Instruction>,
     pub(crate) name: BlockName,
     pub(crate) pos: Option<Position>,
@@ -37,6 +47,7 @@ impl BasicBlock {
 }
 
 /// A branch in the CFG.
+#[derive(Debug, Clone)]
 pub(crate) struct Branch {
     /// The type of branch.
     pub(crate) op: BranchOp,
@@ -45,7 +56,7 @@ pub(crate) struct Branch {
 }
 
 /// The types of branch.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub(crate) enum BranchOp {
     /// An unconditional branch to a block.
     Jmp,
@@ -56,6 +67,7 @@ pub(crate) enum BranchOp {
 }
 
 /// The control-flow graph for a single function.
+#[derive(Debug)]
 pub(crate) struct Cfg {
     /// The arguments to the function.
     pub(crate) args: Vec<Argument>,
@@ -65,6 +77,32 @@ pub(crate) struct Cfg {
     pub(crate) entry: NodeIndex,
     /// The (single) exit node for the CFG.
     pub(crate) exit: NodeIndex,
+    pub(crate) name: String,
+}
+
+impl Cfg {
+    fn reverse_posorder(self: &Cfg) -> HashMap<BlockName, usize> {
+        let mut reverse_postorder = HashMap::<BlockName, usize>::new();
+        let mut post_counter = 0;
+        DfsPostOrder::new(&self.graph, self.entry)
+            .iter(&self.graph)
+            .for_each(|node| {
+                reverse_postorder.insert(self.graph[node].name.clone(), post_counter);
+                post_counter += 1;
+            });
+
+        reverse_postorder
+    }
+}
+
+pub(crate) fn program_to_structured(program: &Program) -> StructuredProgram {
+    let mut functions = Vec::new();
+    for func in &program.functions {
+        let cfg = to_cfg(func);
+        let structured = to_structured::to_structured(&cfg).unwrap();
+        functions.push(structured);
+    }
+    StructuredProgram { functions }
 }
 
 /// Get the underyling CFG corresponding to the function `func`.
@@ -205,6 +243,7 @@ impl CfgBuilder {
                 graph,
                 entry,
                 exit,
+                name: func.name.clone(),
             },
             label_to_block: HashMap::new(),
         }

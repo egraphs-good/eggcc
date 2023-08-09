@@ -1,0 +1,54 @@
+---
+source: tests/files.rs
+expression: "format!(\"{}\", structured)"
+---
+queen {
+block:
+
+ break 0
+block:
+ block:
+  block:
+   one.0: int = const 1;
+   ite.0: int = id one.0;
+   ret_cond.0: bool = eq n queens;
+   if ret_cond.0:
+    break 2
+   else:
+    break 1
+  while true:
+   block:
+    block:
+     nptr.0: ptr<int> = phi __undefined nptr.1 .b1 .next.loop;
+     n_1.0: int = phi __undefined n_1.1 .b1 .next.loop;
+     ite.1: int = phi ite.0 ite.2 .b1 .next.loop;
+     is_valid.0: bool = phi __undefined is_valid.1 .b1 .next.loop;
+     icount.0: int = phi icount icount.1 .b1 .next.loop;
+     for_cond_0.0: bool = phi __undefined for_cond_0.1 .b1 .next.loop;
+     for_cond_0.1: bool = le ite.1 queens;
+     if for_cond_0.1:
+      break 2
+     else:
+      break 1
+
+    return icount.0
+   block:
+    block:
+     nptr.1: ptr<int> = ptradd site n;
+     store nptr.1 ite.1;
+     is_valid.1: bool = call @valid n site;
+     if is_valid.1:
+      break 1
+     else:
+      break 2
+    n_1.2: int = add n one.0;
+    icount.2: int = call @queen n_1.2 queens icount.0 site;
+    break 0
+   n_1.1: int = phi n_1.0 n_1.2 .for.body .rec.func;
+   icount.1: int = phi icount.0 icount.2 .for.body .rec.func;
+   ite.2: int = add ite.1 one.0;
+   break 0
+ icount.3: int = add icount one.0;
+ return icount.3
+
+}

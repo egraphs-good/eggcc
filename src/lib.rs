@@ -176,9 +176,10 @@ impl Optimizer {
           (Int String i64)
           (True String)
           (False String)
-          (Var String)
           (Char String String)
           (Float String f64)
+          (Var String)
+          (phi String Expr Expr) ;; both expressions should be variables
           (add String Expr Expr)
           (sub String Expr Expr)
           (mul String Expr Expr)

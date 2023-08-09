@@ -209,6 +209,13 @@ impl Optimizer {
                 }
             }
             Expr::Call(op, args) => match op.to_string().as_str() {
+                "Var" => {
+                    assert!(args.len() == 1);
+                    match &args[0] {
+                        Expr::Lit(egglog::ast::Literal::String(var)) => var.to_string(),
+                        _ => panic!("expected string literal for var"),
+                    }
+                }
                 "ReturnValue" => self.expr_to_code(&args[0], res, assign_to),
                 "Int" | "True" | "False" => {
                     let literal = match op.to_string().as_str() {
@@ -268,7 +275,7 @@ impl Optimizer {
             StructuredBlock::Ite(var, then, els) => Expr::Call(
                 "Ite".into(),
                 vec![
-                    Expr::Var(var.into()),
+                    self.string_to_expr(var.clone()),
                     self.convert_structured_block(then),
                     self.convert_structured_block(els),
                 ],
@@ -313,6 +320,10 @@ impl Optimizer {
 
     pub(crate) fn string_to_expr(&self, string: String) -> Expr {
         Expr::Lit(egglog::ast::Literal::String(string.into()))
+    }
+
+    pub(crate) fn string_to_var_encoding(&self, string: String) -> Expr {
+        Expr::Call("Var".into(), vec![self.string_to_expr(string)])
     }
 
     /*pub(crate) fn string_to_var(&self, string: String) -> Expr {
@@ -397,10 +408,11 @@ impl Optimizer {
             } => {
                 assert!(funcs.is_empty());
                 let arg_exprs = once(self.type_to_expr(op_type))
-                    .chain(
-                        args.iter()
-                            .map(|arg| env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone()),
-                    )
+                    .chain(args.iter().map(|arg| {
+                        env.get(arg)
+                            .unwrap_or(&self.string_to_var_encoding(arg.to_string()))
+                            .clone()
+                    }))
                     .collect::<Vec<Expr>>();
                 let expr = Expr::Call(self.op_to_egglog(*op), arg_exprs);
                 (dest.clone(), expr)

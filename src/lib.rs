@@ -103,26 +103,25 @@ impl Optimizer {
         self
     }
 
-    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
-        assert!(!bril_program.functions.is_empty());
-        assert!(bril_program.functions.iter().any(|f| { f.name == "main" }));
-        assert!(bril_program.imports.is_empty());
-
-        let egg_fns: HashMap<String, Expr> = bril_program
+    pub fn structured_to_optimizer(&mut self, structured: &StructuredProgram) -> String {
+        let egg_fns: HashMap<String, Expr> = structured
             .functions
             .iter()
             .map(|f| (f.name.clone(), self.func_to_expr(f)))
             .collect();
-
         let egg_str = egg_fns
             .values()
             .map(|v| v.to_string())
             .collect::<Vec<String>>()
             .join("\n");
 
-        let egglog_code = self.make_optimizer_for(&egg_str);
+        self.make_optimizer_for(&egg_str)
+    }
 
-        println!("{}", egglog_code);
+    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
+        let structured = program_to_structured(bril_program);
+
+        let egglog_code = self.structured_to_optimizer(&structured);
 
         let mut egraph = EGraph::default();
         egraph
@@ -130,6 +129,12 @@ impl Optimizer {
             .map_err(EggCCError::EggLog)?
             .into_iter()
             .for_each(|output| log::info!("{}", output));
+
+        let egg_fns: HashMap<String, Expr> = structured
+            .functions
+            .iter()
+            .map(|f| (f.name.clone(), self.func_to_expr(f)))
+            .collect();
 
         // TODO: idk how rust works, so why do I have to clone??? @ryan-berger
         let mut fn_names = egg_fns.keys().cloned().collect::<Vec<String>>();
@@ -154,7 +159,7 @@ impl Optimizer {
         )
     }
 
-    fn make_optimizer_for(&mut self, program: &str) -> String {
+    pub fn make_optimizer_for(&mut self, program: &str) -> String {
         //let schedule = "(run 3)";
         let schedule = format!("(run {})", self.num_iters);
         format!(
@@ -175,15 +180,23 @@ impl Optimizer {
             (ReturnValue Expr)
             (Void))
 
-        (datatype FunctionBody
+        (datatype BasicBlock
           (End)
-          (Ret RetVal FunctionBody)
-          (Call String Expr FunctionBody)
-          (Print Expr FunctionBody))
+          (Call String Expr BasicBlock)
+          (Print Expr BasicBlock))
+
+        (datatype StructuredBlock
+            (Block StructuredBlock)
+            (Basic BasicBlock)
+            (Ite String StructuredBlock StructuredBlock)
+            (Loop StructuredBlock)
+            (Sequence StructuredBlock StructuredBlock)
+            (Break i64)
+            (Return RetVal))
 
         (datatype Function
           ;; name and body
-          (Func String FunctionBody))
+          (Func String StructuredBlock))
 
         (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)))
         (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)))

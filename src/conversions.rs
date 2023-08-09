@@ -1,6 +1,12 @@
 use std::{collections::HashMap, iter::once};
 
-use crate::Optimizer;
+use crate::{
+    cfg::{
+        structured::{self, StructuredBlock, StructuredFunction},
+        BasicBlock,
+    },
+    Optimizer,
+};
 use bril_rs::{Code, EffectOps, Function, Instruction, Literal, Type, ValueOps};
 use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
@@ -144,9 +150,63 @@ impl Optimizer {
         }
     }
 
-    pub(crate) fn func_to_expr(&mut self, func: &Function) -> Expr {
-        eprintln!("func_to_expr: {}", func.name);
+    pub(crate) fn func_to_expr(&mut self, func: &StructuredFunction) -> Expr {
+        Expr::Call(
+            "Func".into(),
+            vec![
+                Expr::Lit(egglog::ast::Literal::String(func.name.clone().into())),
+                self.convert_structured_block(&func.block),
+            ],
+        )
+    }
 
+    pub(crate) fn convert_structured_block(&mut self, structured_block: &StructuredBlock) -> Expr {
+        match structured_block {
+            StructuredBlock::Ite(var, then, els) => Expr::Call(
+                "Ite".into(),
+                vec![
+                    Expr::Var(var.into()),
+                    self.convert_structured_block(then),
+                    self.convert_structured_block(els),
+                ],
+            ),
+            StructuredBlock::Loop(body) => {
+                Expr::Call("Loop".into(), vec![self.convert_structured_block(body)])
+            }
+            StructuredBlock::Block(body) => {
+                Expr::Call("Block".into(), vec![self.convert_structured_block(body)])
+            }
+            StructuredBlock::Sequence(blocks) => match &blocks.as_slice() {
+                [] => panic!("empty sequence"),
+                [a] => self.convert_structured_block(a),
+                [a, ..] => Expr::Call(
+                    "Sequence".into(),
+                    vec![
+                        self.convert_structured_block(a),
+                        self.convert_structured_block(&StructuredBlock::Sequence(
+                            blocks[1..].to_vec(),
+                        )),
+                    ],
+                ),
+            },
+            StructuredBlock::Break(n) => Expr::Call(
+                "Break".into(),
+                vec![Expr::Lit(egglog::ast::Literal::Int(*n))],
+            ),
+            StructuredBlock::Return(val) => Expr::Call(
+                "Return".into(),
+                vec![match val {
+                    Some(val) => Expr::Call("ReturnValue".into(), vec![Expr::Var(val.into())]),
+                    None => Expr::Call("Void".into(), vec![]),
+                }],
+            ),
+            StructuredBlock::Basic(block) => {
+                Expr::Call("Basic".into(), vec![self.convert_basic_block(block)])
+            }
+        }
+    }
+
+    pub(crate) fn convert_basic_block(&mut self, block: &BasicBlock) -> Expr {
         // leave prints in order
         // leave any effects in order
         // leave assignments to variables used outside
@@ -154,34 +214,16 @@ impl Optimizer {
         // otherwise inline
         let mut res = Expr::Call("End".into(), vec![]);
         let mut env = HashMap::<String, Expr>::new();
-        for code in &func.instrs {
-            if let Code::Instruction(instr) = code {
-                self.add_instr_to_env(instr, &mut env);
-            }
+        for instr in &block.instrs {
+            self.add_instr_to_env(instr, &mut env);
         }
 
         // reverse order to build the linked list
-        for code in func.instrs.iter().rev() {
-            match code {
-                Code::Instruction(instr) => {
-                    res = self.add_instr_effect(instr, &res, &env);
-                }
-                Code::Label {
-                    pos: _pos,
-                    label: _label,
-                } => {
-                    // TODO handle labels
-                }
-            }
+        for instr in block.instrs.iter().rev() {
+            res = self.add_instr_effect(instr, &res, &env);
         }
 
-        Expr::Call(
-            "Func".into(),
-            vec![
-                Expr::Lit(egglog::ast::Literal::String(func.name.clone().into())),
-                res,
-            ],
-        )
+        res
     }
 
     pub(crate) fn add_instr_effect(

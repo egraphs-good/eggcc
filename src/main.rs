@@ -11,6 +11,8 @@ struct Args {
     ssa: bool,
     #[clap(long)]
     structured: bool,
+    #[clap(long)]
+    egglog_encoding: bool,
     file: PathBuf,
 }
 
@@ -27,6 +29,10 @@ fn main() {
         println!("{}", Optimizer::parse_bril(&input).unwrap());
     } else if args.structured {
         println!("{}", Optimizer::parse_to_structured(&input).unwrap());
+    } else if args.egglog_encoding {
+        let structured = Optimizer::parse_to_structured(&input).unwrap();
+        let mut optimizer = Optimizer::default();
+        println!("{}", optimizer.structured_to_optimizer(&structured));
     } else {
         let mut optimizer = Optimizer::default();
         match optimizer.parse_and_optimize(&input) {

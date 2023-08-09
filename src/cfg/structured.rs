@@ -3,7 +3,7 @@ use std::fmt::Display;
 use super::BasicBlock;
 use bril_rs::Argument;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum StructuredBlock {
     // Variable, then and else blocks
     Ite(String, Box<StructuredBlock>, Box<StructuredBlock>),
@@ -11,7 +11,7 @@ pub enum StructuredBlock {
     Block(Box<StructuredBlock>),
     Sequence(Vec<StructuredBlock>),
     // how many layers of blocks / loops to break out of
-    Break(usize),
+    Break(i64),
     Return(Option<String>),
     Basic(Box<BasicBlock>),
 }

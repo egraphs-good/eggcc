@@ -3,7 +3,7 @@ use std::{collections::HashMap, iter::once};
 use crate::{
     cfg::{
         structured::{self, StructuredBlock, StructuredFunction},
-        BasicBlock,
+        BasicBlock, BlockName,
     },
     Optimizer,
 };
@@ -12,18 +12,16 @@ use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
 impl Optimizer {
-    pub(crate) fn expr_to_func(&mut self, expr: Expr) -> Function {
+    pub(crate) fn expr_to_func(&mut self, expr: Expr) -> StructuredFunction {
         if let Expr::Call(func, args) = expr {
             assert_eq!(func.to_string(), "Func");
             match &args.as_slice() {
                 [func_name, body] => {
                     if let Expr::Lit(egglog::ast::Literal::String(fname)) = func_name {
-                        Function {
+                        StructuredFunction {
                             name: fname.to_string(),
                             args: vec![],
-                            instrs: self.body_to_code(body),
-                            pos: None,
-                            return_type: None,
+                            block: self.expr_to_structured_block(body),
                         }
                     } else {
                         panic!("expected string literal for func name");
@@ -36,7 +34,77 @@ impl Optimizer {
         }
     }
 
-    pub(crate) fn body_to_code(&mut self, expr: &Expr) -> Vec<Code> {
+    pub(crate) fn expr_to_structured_block(&mut self, expr: &Expr) -> StructuredBlock {
+        if let Expr::Call(func, args) = expr {
+            match (func.as_str(), &args.as_slice()) {
+                ("Block", [block]) => {
+                    StructuredBlock::Block(Box::new(self.expr_to_structured_block(block)))
+                }
+                ("Basic", [basic_block]) => {
+                    StructuredBlock::Basic(Box::new(self.expr_to_basic_block(basic_block)))
+                }
+                ("Ite", [name, then_branch, else_branch]) => StructuredBlock::Ite(
+                    name.to_string(),
+                    Box::new(self.expr_to_structured_block(then_branch)),
+                    Box::new(self.expr_to_structured_block(else_branch)),
+                ),
+                ("Loop", [block]) => {
+                    StructuredBlock::Loop(Box::new(self.expr_to_structured_block(block)))
+                }
+                ("Sequence", [block, rest]) => StructuredBlock::Sequence(vec![
+                    self.expr_to_structured_block(block),
+                    self.expr_to_structured_block(rest),
+                ]),
+                ("Break", [n]) => {
+                    if let Expr::Lit(egglog::ast::Literal::Int(n)) = n {
+                        StructuredBlock::Break(*n)
+                    } else {
+                        panic!("expected int literal for break");
+                    }
+                }
+                ("Return", [val]) => {
+                    if let Expr::Call(op, args) = val {
+                        match op.as_str() {
+                            "Void" => StructuredBlock::Return(None),
+                            "ReturnValue" => {
+                                assert_eq!(args.len(), 1);
+                                match &args[0] {
+                                    Expr::Lit(egglog::ast::Literal::String(val)) => {
+                                        StructuredBlock::Return(Some(val.to_string()))
+                                    }
+                                    _ => panic!("expected string literal for return value"),
+                                }
+                            }
+                            _ => panic!("expected void or return value"),
+                        }
+                    } else {
+                        panic!("expected call for return");
+                    }
+                }
+                _ => panic!("unknown structured block"),
+            }
+        } else {
+            panic!("expected call in expr_to_structured_block");
+        }
+    }
+
+    pub(crate) fn expr_to_basic_block(&mut self, expr: &Expr) -> BasicBlock {
+        if let Expr::Call(op, args) = expr {
+            assert_eq!(op.as_str(), "BlockNamed");
+            match &args.as_slice() {
+                [Expr::Lit(egglog::ast::Literal::String(name)), code] => BasicBlock {
+                    name: BlockName::Named(name.to_string()),
+                    instrs: self.code_to_instructions(code),
+                    pos: None,
+                },
+                _ => panic!("expected 2 args in expr_to_basic_block"),
+            }
+        } else {
+            panic!("expected call in expr_to_basic_block");
+        }
+    }
+
+    fn code_to_instructions(&mut self, expr: &Expr) -> Vec<Instruction> {
         if let Expr::Call(op, args) = expr {
             let mut res = vec![];
             match op.to_string().as_str() {
@@ -44,40 +112,17 @@ impl Optimizer {
                     assert!(args.len() == 2);
                     let arg = self.expr_to_code(&args[0], &mut res);
 
-                    res.push(Code::Instruction(Instruction::Effect {
+                    res.push(Instruction::Effect {
                         op: EffectOps::Print,
                         args: vec![arg],
                         funcs: vec![],
                         labels: vec![],
                         pos: None,
-                    }));
-                    res.extend(self.body_to_code(&args[1]));
+                    });
+                    res.extend(self.code_to_instructions(&args[1]));
                 }
                 "End" => {
                     assert!(args.is_empty());
-                }
-                "Ret" => {
-                    assert_eq!(args.len(), 2);
-
-                    let arguments = if let Expr::Call(op, _) = args[0] {
-                        if op.as_str() == "Void" {
-                            vec![]
-                        } else {
-                            vec![self.expr_to_code(&args[0], &mut res)]
-                        }
-                    } else {
-                        vec![self.expr_to_code(&args[0], &mut res)]
-                    };
-
-                    res.push(Code::Instruction(Instruction::Effect {
-                        op: EffectOps::Return,
-                        args: arguments,
-                        funcs: vec![],
-                        labels: vec![],
-                        pos: None,
-                    }));
-
-                    res.extend(self.body_to_code(&args[1]));
                 }
                 _ => panic!("unknown effect in body_to_code {}", op),
             }
@@ -89,17 +134,17 @@ impl Optimizer {
     }
 
     // TODO memoize exprs for common subexpression elimination
-    pub(crate) fn expr_to_code(&mut self, expr: &Expr, res: &mut Vec<Code>) -> String {
+    pub(crate) fn expr_to_code(&mut self, expr: &Expr, res: &mut Vec<Instruction>) -> String {
         match expr {
             Expr::Lit(literal) => {
                 let fresh = self.fresh();
-                res.push(Code::Instruction(Instruction::Constant {
+                res.push(Instruction::Constant {
                     dest: fresh.clone(),
                     op: bril_rs::ConstOps::Const,
                     value: self.literal_to_bril(literal),
                     pos: None,
                     const_type: self.literal_to_type(literal),
-                }));
+                });
                 fresh
             }
             Expr::Var(var) => var.to_string(),
@@ -117,13 +162,13 @@ impl Optimizer {
                         }
                         _ => panic!("unknown literal"),
                     };
-                    res.push(Code::Instruction(Instruction::Constant {
+                    res.push(Instruction::Constant {
                         dest: fresh.clone(),
                         op: bril_rs::ConstOps::Const,
                         value: literal,
                         pos: None,
                         const_type: self.expr_to_type(&args[0]),
-                    }));
+                    });
                     fresh
                 }
                 _ => {
@@ -135,7 +180,7 @@ impl Optimizer {
                         .map(|arg| self.expr_to_code(arg, res))
                         .collect::<Vec<String>>();
                     let fresh = self.fresh();
-                    res.push(Code::Instruction(Instruction::Value {
+                    res.push(Instruction::Value {
                         dest: fresh.clone(),
                         args: args_vars,
                         funcs: vec![],
@@ -143,7 +188,7 @@ impl Optimizer {
                         labels: vec![],
                         pos: None,
                         op_type: etype,
-                    }));
+                    });
                     fresh
                 }
             },
@@ -196,7 +241,9 @@ impl Optimizer {
             StructuredBlock::Return(val) => Expr::Call(
                 "Return".into(),
                 vec![match val {
-                    Some(val) => Expr::Call("ReturnValue".into(), vec![Expr::Var(val.into())]),
+                    Some(val) => {
+                        Expr::Call("ReturnValue".into(), vec![self.string_to_expr(val.clone())])
+                    }
                     None => Expr::Call("Void".into(), vec![]),
                 }],
             ),
@@ -204,6 +251,10 @@ impl Optimizer {
                 Expr::Call("Basic".into(), vec![self.convert_basic_block(block)])
             }
         }
+    }
+
+    pub(crate) fn string_to_expr(&self, string: String) -> Expr {
+        Expr::Lit(egglog::ast::Literal::String(string.into()))
     }
 
     pub(crate) fn convert_basic_block(&mut self, block: &BasicBlock) -> Expr {
@@ -223,7 +274,13 @@ impl Optimizer {
             res = self.add_instr_effect(instr, &res, &env);
         }
 
-        res
+        Expr::Call(
+            "BlockNamed".into(),
+            vec![
+                Expr::Lit(egglog::ast::Literal::String(block.name.to_string().into())),
+                res,
+            ],
+        )
     }
 
     pub(crate) fn add_instr_effect(

@@ -2,6 +2,7 @@ use bril2json::parse_abstract_program_from_read;
 use bril_rs::AbstractProgram;
 use bril_rs::Program;
 use cfg::program_to_structured;
+use cfg::structured::StructuredFunction;
 use egglog::ast::Expr;
 use egglog::EGraph;
 use std::collections::HashMap;
@@ -67,7 +68,6 @@ impl Default for Optimizer {
 impl Optimizer {
     pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, EggCCError> {
         let parsed = Self::parse_bril(program)?;
-        eprintln!("Parsed program: {}", parsed);
         let res = self.optimize(&parsed)?;
         Ok(res)
     }
@@ -118,7 +118,10 @@ impl Optimizer {
         self.make_optimizer_for(&egg_str)
     }
 
-    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
+    pub fn optimized_structured(
+        &mut self,
+        bril_program: &Program,
+    ) -> Result<StructuredProgram, EggCCError> {
         let structured = program_to_structured(bril_program);
 
         let egglog_code = self.structured_to_optimizer(&structured);
@@ -136,27 +139,32 @@ impl Optimizer {
             .map(|f| (f.name.clone(), self.func_to_expr(f)))
             .collect();
 
-        // TODO: idk how rust works, so why do I have to clone??? @ryan-berger
-        let mut fn_names = egg_fns.keys().cloned().collect::<Vec<String>>();
+        let mut keys = egg_fns.keys().collect::<Vec<&String>>();
+        keys.sort();
 
-        // sort the function names for deterministic map iteration
-        fn_names.sort();
+        let mut result = vec![];
+        for (name) in keys {
+            let expr = egg_fns.get(name).unwrap();
+            let rep = egraph
+                .extract_expr(expr.clone(), 0)
+                .map_err(EggCCError::EggLog)?;
+            let structured_func = self.expr_to_func(rep.expr);
 
-        fn_names.iter().try_fold(
-            Program {
-                functions: vec![],
-                imports: vec![],
-            },
-            |mut program, name| {
-                let e = &egg_fns[name];
-                let rep = egraph
-                    .extract_expr(e.clone(), 0)
-                    .map_err(EggCCError::EggLog)?;
+            result.push(structured_func);
+        }
+        Ok(StructuredProgram { functions: result })
+    }
 
-                program.functions.push(self.expr_to_func(rep.expr));
-                Ok(program)
-            },
-        )
+    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
+        Ok(Program {
+            functions: self
+                .optimized_structured(bril_program)?
+                .functions
+                .into_iter()
+                .map(|f| f.to_function())
+                .collect(),
+            imports: vec![],
+        })
     }
 
     pub fn make_optimizer_for(&mut self, program: &str) -> String {
@@ -177,13 +185,16 @@ impl Optimizer {
           (lt String Expr Expr))
 
         (datatype RetVal
-            (ReturnValue Expr)
+            (ReturnValue String)
             (Void))
 
-        (datatype BasicBlock
+        (datatype Code
           (End)
-          (Call String Expr BasicBlock)
-          (Print Expr BasicBlock))
+          (Call String Expr Code)
+          (Print Expr Code))
+
+        (datatype BasicBlock
+          (BlockNamed String Code))
 
         (datatype StructuredBlock
             (Block StructuredBlock)

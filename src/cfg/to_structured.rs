@@ -7,7 +7,7 @@ use petgraph::{
     visit::EdgeRef,
 };
 
-use crate::EggCCError;
+use crate::{cfg::BasicBlock, EggCCError};
 
 use super::{
     structured::{StructuredBlock, StructuredFunction},
@@ -149,13 +149,13 @@ impl<'a> StructuredCfgBuilder<'a> {
             }
         }
     }
-
     fn do_branch(&mut self, edge: &EdgeReference<Branch>) -> StructuredBlock {
         let source = edge.source();
         let target = edge.target();
         let target_block = self.cfg.graph[target].clone();
         if target_block.name == BlockName::Exit {
             assert!(target_block.instrs.is_empty());
+
             match &edge.weight().op {
                 BranchOp::Jmp => StructuredBlock::Return(None),
                 BranchOp::RetVal { arg } => StructuredBlock::Return(Some(arg.clone())),

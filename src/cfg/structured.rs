@@ -1,7 +1,7 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
-use super::BasicBlock;
-use bril_rs::Argument;
+use super::{BasicBlock, Cfg};
+use bril_rs::{Argument, Code, EffectOps, Function, Instruction};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum StructuredBlock {
@@ -87,6 +87,133 @@ impl StructuredBlock {
                 } else {
                     format!("{whitespace}return")
                 }
+            }
+        }
+    }
+}
+
+impl StructuredFunction {
+    pub fn to_function(&self) -> Function {
+        let mut builder = StructuredCfgBuilder {
+            code: vec![],
+            scopes: vec![],
+            name_counter: 0,
+        };
+        self.block.to_code(&mut builder);
+
+        Function {
+            name: self.name.clone(),
+            args: self.args.clone(),
+            instrs: builder.code,
+            pos: None,
+            return_type: None,
+        }
+    }
+}
+
+pub struct StructuredCfgBuilder {
+    code: Vec<Code>,
+    scopes: Vec<String>,
+    name_counter: usize,
+}
+
+impl StructuredCfgBuilder {
+    fn fresh(&mut self) -> String {
+        self.name_counter += 1;
+        format!("sblock___{}", self.name_counter - 1)
+    }
+
+    fn scope_break_to(&self, num: i64) -> String {
+        self.scopes[self.scopes.len() - num as usize].clone()
+    }
+}
+
+impl StructuredBlock {
+    pub(crate) fn to_code(&self, builder: &mut StructuredCfgBuilder) {
+        match self {
+            StructuredBlock::Basic(block) => builder.code.extend(block.to_code()),
+            StructuredBlock::Block(block) => {
+                let block_end_name = builder.fresh();
+                builder.scopes.push(block_end_name.clone());
+                block.to_code(builder);
+                builder.code.push(Code::Label {
+                    label: block_end_name.clone(),
+                    pos: None,
+                });
+                assert!(builder.scopes.pop().unwrap() == block_end_name);
+            }
+            StructuredBlock::Break(num) => {
+                if *num != 0 {
+                    builder.code.push(Code::Instruction(Instruction::Effect {
+                        op: EffectOps::Jump,
+                        args: vec![],
+                        funcs: vec![],
+                        labels: vec![builder.scope_break_to(*num)],
+                        pos: None,
+                    }));
+                }
+            }
+            StructuredBlock::Ite(cond, block1, block2) => {
+                let block1_name = builder.fresh();
+                let block2_name = builder.fresh();
+                builder.code.push(Code::Instruction(Instruction::Effect {
+                    op: EffectOps::Branch,
+                    args: vec![cond.to_string()],
+                    funcs: vec![],
+                    labels: vec![block1_name.clone(), block2_name.clone()],
+                    pos: None,
+                }));
+                builder.code.push(Code::Label {
+                    label: block1_name,
+                    pos: None,
+                });
+                block1.to_code(builder);
+                builder.code.push(Code::Label {
+                    label: block2_name,
+                    pos: None,
+                });
+                block2.to_code(builder);
+            }
+            StructuredBlock::Loop(block) => {
+                let loop_start_name = builder.fresh();
+                let loop_end_name = builder.fresh();
+                builder.code.push(Code::Label {
+                    label: loop_start_name.clone(),
+                    pos: None,
+                });
+                builder.scopes.push(loop_end_name.clone());
+                self.to_code(builder);
+                block.to_code(builder);
+                builder.code.push(Code::Instruction(Instruction::Effect {
+                    op: EffectOps::Jump,
+                    args: vec![],
+                    funcs: vec![],
+                    labels: vec![loop_start_name],
+                    pos: None,
+                }));
+                builder.code.push(Code::Label {
+                    label: loop_end_name.clone(),
+                    pos: None,
+                });
+                assert!(builder.scopes.pop().unwrap() == loop_end_name);
+            }
+            StructuredBlock::Sequence(blocks) => {
+                for block in blocks {
+                    block.to_code(builder);
+                }
+            }
+            StructuredBlock::Return(val) => {
+                let args = match val {
+                    Some(v) => vec![v.clone()],
+                    None => vec![],
+                };
+                builder.code.push(Code::Instruction(Instruction::Effect {
+                    op: EffectOps::Return,
+                    args,
+                    funcs: vec![],
+                    labels: vec![],
+                    pos: None,
+                }));
             }
         }
     }

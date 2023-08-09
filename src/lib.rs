@@ -111,7 +111,7 @@ impl Optimizer {
             .collect();
         let egg_str = egg_fns
             .values()
-            .map(|v| v.to_string())
+            .map(Optimizer::pretty_print_expr)
             .collect::<Vec<String>>()
             .join("\n");
 
@@ -176,6 +176,7 @@ impl Optimizer {
           (Int String i64)
           (True String)
           (False String)
+          (Var String)
           (Char String String)
           (Float String f64)
           (add String Expr Expr)
@@ -185,16 +186,19 @@ impl Optimizer {
           (lt String Expr Expr))
 
         (datatype RetVal
-            (ReturnValue String)
-            (Void))
+          (ReturnValue String)
+          (Void))
 
         (datatype Code
-          (End)
-          (Call String Expr Code)
-          (Print Expr Code))
+          (Assign String Expr)
+          (Print Expr))
+
+        (datatype CodeList
+          (CodeCons Code CodeList)
+          (CodeNil))
 
         (datatype BasicBlock
-          (BlockNamed String Code))
+          (BlockNamed String CodeList))
 
         (datatype StructuredBlock
             (Block StructuredBlock)

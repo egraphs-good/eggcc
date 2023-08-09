@@ -69,17 +69,10 @@ impl BasicBlock {
 
     fn to_code(&self) -> Vec<Code> {
         let mut instrs = Vec::new();
-        if let Some(pos) = &self.pos {
-            instrs.push(Code::Label {
-                label: self.name.to_string(),
-                pos: self.pos.clone(),
-            });
-        } else {
-            instrs.push(Code::Label {
-                label: self.name.to_string(),
-                pos: None,
-            });
-        }
+        instrs.push(Code::Label {
+            label: self.name.to_string(),
+            pos: self.pos.clone(),
+        });
         instrs.extend(self.instrs.iter().map(|i| Code::Instruction(i.clone())));
         instrs
     }

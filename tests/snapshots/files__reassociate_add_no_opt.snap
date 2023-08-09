@@ -1,6 +1,5 @@
 ---
 source: tests/files.rs
-assertion_line: 21
 expression: "format!(\"{}\", res_nothing)"
 ---
 @add_reassoc(x: int, y: int, z: int) {

@@ -149,6 +149,7 @@ impl<'a> StructuredCfgBuilder<'a> {
             }
         }
     }
+
     fn do_branch(&mut self, edge: &EdgeReference<Branch>) -> StructuredBlock {
         let source = edge.source();
         let target = edge.target();
@@ -177,12 +178,12 @@ impl<'a> StructuredCfgBuilder<'a> {
                 ContainingHistory::ThenBranch => {}
                 ContainingHistory::LoopWithLabel(label) => {
                     if label == &target {
-                        return index.try_into().unwrap();
+                        return (index+1).try_into().unwrap();
                     }
                 }
                 ContainingHistory::BlockFollowedBy(label) => {
                     if label == &target {
-                        return index.try_into().unwrap();
+                        return (index+1).try_into().unwrap();
                     }
                 }
             }

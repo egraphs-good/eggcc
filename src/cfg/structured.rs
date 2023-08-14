@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Display};
 
 use super::{BasicBlock, Cfg};
-use bril_rs::{Argument, Code, EffectOps, Function, Instruction};
+use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Program};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum StructuredBlock {
@@ -33,7 +33,21 @@ impl Display for StructuredProgram {
     }
 }
 
-#[derive(Debug)]
+impl StructuredProgram {
+    pub fn to_program(&self) -> Program {
+        Program {
+            functions: self
+                .functions
+                .clone()
+                .into_iter()
+                .map(|f| f.to_function())
+                .collect(),
+            imports: vec![],
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct StructuredFunction {
     pub name: String,
     pub args: Vec<Argument>,
@@ -124,6 +138,7 @@ impl StructuredCfgBuilder {
     }
 
     fn scope_break_to(&self, num: i64) -> String {
+        assert!(num > 0);
         self.scopes[self.scopes.len() - num as usize].clone()
     }
 }
@@ -176,13 +191,13 @@ impl StructuredBlock {
             }
             StructuredBlock::Loop(block) => {
                 let loop_start_name = builder.fresh();
-                let loop_end_name = builder.fresh();
                 builder.code.push(Code::Label {
                     label: loop_start_name.clone(),
                     pos: None,
                 });
+
+                let loop_end_name = builder.fresh();
                 builder.scopes.push(loop_end_name.clone());
-                self.to_code(builder);
                 block.to_code(builder);
                 builder.code.push(Code::Instruction(Instruction::Effect {
                     op: EffectOps::Jump,

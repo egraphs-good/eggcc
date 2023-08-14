@@ -4,6 +4,7 @@ expression: "format!(\"{}\", res)"
 ---
 @main {
 .entry___:
+  jmp .sblock___0;
 .sblock___0:
 .b1:
   v0.0: int = const 1;
@@ -15,6 +16,7 @@ expression: "format!(\"{}\", res)"
 }
 @sub {
 .entry___:
+  jmp .sblock___0;
 .sblock___0:
 .b1:
   v0.0: int = const 1;

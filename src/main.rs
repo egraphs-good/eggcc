@@ -12,6 +12,8 @@ struct Args {
     #[clap(long)]
     structured: bool,
     #[clap(long)]
+    structured_cfg: bool,
+    #[clap(long)]
     egglog_encoding: bool,
     #[clap(long)]
     optimized_structured: bool,
@@ -31,6 +33,11 @@ fn main() {
         println!("{}", Optimizer::parse_bril(&input).unwrap());
     } else if args.structured {
         println!("{}", Optimizer::parse_to_structured(&input).unwrap());
+    } else if args.structured_cfg {
+        println!(
+            "{}",
+            Optimizer::parse_to_structured(&input).unwrap().to_program()
+        );
     } else if args.egglog_encoding {
         let structured = Optimizer::parse_to_structured(&input).unwrap();
         let mut optimizer = Optimizer::default();

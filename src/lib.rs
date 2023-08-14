@@ -156,15 +156,7 @@ impl Optimizer {
     }
 
     pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
-        Ok(Program {
-            functions: self
-                .optimized_structured(bril_program)?
-                .functions
-                .into_iter()
-                .map(|f| f.to_function())
-                .collect(),
-            imports: vec![],
-        })
+        Ok(self.optimized_structured(bril_program)?.to_program())
     }
 
     pub fn make_optimizer_for(&mut self, program: &str) -> String {

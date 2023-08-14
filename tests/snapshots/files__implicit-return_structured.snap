@@ -5,7 +5,7 @@ expression: "format!(\"{}\", structured)"
 main {
 block:
 
- break 0
+ break 1
 block:
  v0.0: float = const 3.2;
  x.0: float = id v0.0;

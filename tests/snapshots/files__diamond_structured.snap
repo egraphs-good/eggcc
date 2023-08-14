@@ -5,20 +5,20 @@ expression: "format!(\"{}\", structured)"
 main {
 block:
 
- break 0
+ break 1
 block:
  block:
   block:
    x.0: int = const 4;
    cond.0: bool = lt x.0 x.0;
    if cond.0:
-    break 2
+    break 3
    else:
-    break 1
+    break 2
   a.1: int = const 2;
-  break 1
+  break 2
  a.0: int = const 1;
- break 0
+ break 1
 block:
  a.2: int = phi a.0 a.1 .B .C;
  w.0: int = const 2;

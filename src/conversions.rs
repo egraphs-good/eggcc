@@ -2,12 +2,12 @@ use std::{collections::HashMap, iter::once};
 
 use crate::{
     cfg::{
-        structured::{self, StructuredBlock, StructuredFunction},
+        structured::{StructuredBlock, StructuredFunction},
         BasicBlock, BlockName,
     },
     Optimizer,
 };
-use bril_rs::{Code, EffectOps, Function, Instruction, Literal, Type, ValueOps};
+use bril_rs::{EffectOps, Instruction, Literal, Type, ValueOps};
 use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
@@ -114,12 +114,12 @@ impl Optimizer {
         }
     }
 
-    fn codelist_to_vec_helper(&mut self, expr: &Expr, res: &mut Vec<Expr>) {
+    fn codelist_to_vec_helper(expr: &Expr, res: &mut Vec<Expr>) {
         match expr {
             Expr::Call(op, args) => match (op.as_str(), args.as_slice()) {
                 ("CodeCons", [head, tail]) => {
                     res.push(head.clone());
-                    self.codelist_to_vec_helper(tail, res);
+                    Self::codelist_to_vec_helper(tail, res);
                 }
                 ("CodeNil", []) => {}
                 _ => panic!("expected CodeCons or CodeNil"),
@@ -128,9 +128,9 @@ impl Optimizer {
         }
     }
 
-    fn codelist_to_vec(&mut self, expr: &Expr) -> Vec<Expr> {
+    fn codelist_to_vec(&self, expr: &Expr) -> Vec<Expr> {
         let mut res = vec![];
-        self.codelist_to_vec_helper(expr, &mut res);
+        Self::codelist_to_vec_helper(expr, &mut res);
         res
     }
 

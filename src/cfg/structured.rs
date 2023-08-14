@@ -1,6 +1,6 @@
-use std::{collections::HashMap, fmt::Display};
+use std::fmt::Display;
 
-use super::{BasicBlock, Cfg};
+use super::BasicBlock;
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Program};
 
 #[derive(Debug, PartialEq, Clone)]

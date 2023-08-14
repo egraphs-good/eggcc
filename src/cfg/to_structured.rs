@@ -7,7 +7,7 @@ use petgraph::{
     visit::EdgeRef,
 };
 
-use crate::{cfg::BasicBlock, EggCCError};
+use crate::EggCCError;
 
 use super::{
     structured::{StructuredBlock, StructuredFunction},
@@ -178,12 +178,12 @@ impl<'a> StructuredCfgBuilder<'a> {
                 ContainingHistory::ThenBranch => {}
                 ContainingHistory::LoopWithLabel(label) => {
                     if label == &target {
-                        return (index+1).try_into().unwrap();
+                        return (index + 1).try_into().unwrap();
                     }
                 }
                 ContainingHistory::BlockFollowedBy(label) => {
                     if label == &target {
-                        return (index+1).try_into().unwrap();
+                        return (index + 1).try_into().unwrap();
                     }
                 }
             }

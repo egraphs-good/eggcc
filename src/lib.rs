@@ -2,7 +2,7 @@ use bril2json::parse_abstract_program_from_read;
 use bril_rs::AbstractProgram;
 use bril_rs::Program;
 use cfg::program_to_structured;
-use cfg::structured::StructuredFunction;
+
 use egglog::ast::Expr;
 use egglog::EGraph;
 use std::collections::HashMap;
@@ -143,7 +143,7 @@ impl Optimizer {
         keys.sort();
 
         let mut result = vec![];
-        for (name) in keys {
+        for name in keys {
             let expr = egg_fns.get(name).unwrap();
             let rep = egraph
                 .extract_expr(expr.clone(), 0)

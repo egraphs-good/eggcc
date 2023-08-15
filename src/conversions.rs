@@ -12,7 +12,7 @@ use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
 impl Optimizer {
-    pub(crate) fn expr_to_func(&mut self, expr: Expr) -> StructuredFunction {
+    pub(crate) fn expr_to_structured_func(&mut self, expr: Expr) -> StructuredFunction {
         if let Expr::Call(func, args) = expr {
             assert_eq!(func.to_string(), "Func");
             match &args.as_slice() {
@@ -188,7 +188,7 @@ impl Optimizer {
     ) -> String {
         let dest = match &assign_to {
             Some(dest) => dest.clone(),
-            None => self.fresh(),
+            None => self.fresh_var(),
         };
         match expr {
             Expr::Lit(literal) => {
@@ -265,35 +265,35 @@ impl Optimizer {
             "Func".into(),
             vec![
                 Expr::Lit(egglog::ast::Literal::String(func.name.clone().into())),
-                self.convert_structured_block(&func.block),
+                self.structured_block_to_expr(&func.block),
             ],
         )
     }
 
-    pub(crate) fn convert_structured_block(&mut self, structured_block: &StructuredBlock) -> Expr {
+    pub(crate) fn structured_block_to_expr(&mut self, structured_block: &StructuredBlock) -> Expr {
         match structured_block {
             StructuredBlock::Ite(var, then, els) => Expr::Call(
                 "Ite".into(),
                 vec![
                     self.string_to_expr(var.clone()),
-                    self.convert_structured_block(then),
-                    self.convert_structured_block(els),
+                    self.structured_block_to_expr(then),
+                    self.structured_block_to_expr(els),
                 ],
             ),
             StructuredBlock::Loop(body) => {
-                Expr::Call("Loop".into(), vec![self.convert_structured_block(body)])
+                Expr::Call("Loop".into(), vec![self.structured_block_to_expr(body)])
             }
             StructuredBlock::Block(body) => {
-                Expr::Call("Block".into(), vec![self.convert_structured_block(body)])
+                Expr::Call("Block".into(), vec![self.structured_block_to_expr(body)])
             }
             StructuredBlock::Sequence(blocks) => match &blocks.as_slice() {
                 [] => panic!("empty sequence"),
-                [a] => self.convert_structured_block(a),
+                [a] => self.structured_block_to_expr(a),
                 [a, ..] => Expr::Call(
                     "Sequence".into(),
                     vec![
-                        self.convert_structured_block(a),
-                        self.convert_structured_block(&StructuredBlock::Sequence(
+                        self.structured_block_to_expr(a),
+                        self.structured_block_to_expr(&StructuredBlock::Sequence(
                             blocks[1..].to_vec(),
                         )),
                     ],

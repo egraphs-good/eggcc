@@ -172,18 +172,14 @@ impl<'a> StructuredCfgBuilder<'a> {
         }
     }
 
-    fn context_index(&self, target: BlockName) -> i64 {
+    fn context_index(&self, target: BlockName) -> usize {
         for (index, context) in self.context.iter().rev().enumerate() {
             match context {
                 ContainingHistory::ThenBranch => {}
-                ContainingHistory::LoopWithLabel(label) => {
+                ContainingHistory::LoopWithLabel(label)
+                | ContainingHistory::BlockFollowedBy(label) => {
                     if label == &target {
-                        return (index + 1).try_into().unwrap();
-                    }
-                }
-                ContainingHistory::BlockFollowedBy(label) => {
-                    if label == &target {
-                        return (index + 1).try_into().unwrap();
+                        return index + 1;
                     }
                 }
             }

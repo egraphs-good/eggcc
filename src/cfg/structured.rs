@@ -11,7 +11,7 @@ pub enum StructuredBlock {
     Block(Box<StructuredBlock>),
     Sequence(Vec<StructuredBlock>),
     // how many layers of blocks / loops to break out of
-    Break(i64),
+    Break(usize),
     Return(Option<String>),
     Basic(Box<BasicBlock>),
 }
@@ -111,7 +111,7 @@ impl StructuredFunction {
         let mut builder = StructuredCfgBuilder {
             code: vec![],
             scopes: vec![],
-            name_counter: 0,
+            fresh_block_name_count: 0,
         };
         self.block.to_code(&mut builder);
 
@@ -128,18 +128,21 @@ impl StructuredFunction {
 pub struct StructuredCfgBuilder {
     code: Vec<Code>,
     scopes: Vec<String>,
-    name_counter: usize,
+    fresh_block_name_count: usize,
 }
 
 impl StructuredCfgBuilder {
     fn fresh(&mut self) -> String {
-        self.name_counter += 1;
-        format!("sblock___{}", self.name_counter - 1)
+        self.fresh_block_name_count += 1;
+        format!("sblock___{}", self.fresh_block_name_count - 1)
     }
 
-    fn scope_break_to(&self, num: i64) -> String {
+    /// find the name of the scope that we break to
+    /// when breaking out of `num` layers of blocks
+    /// we must break out of at least one block
+    fn scope_break_to(&self, num: usize) -> String {
         assert!(num > 0);
-        self.scopes[self.scopes.len() - num as usize].clone()
+        self.scopes[self.scopes.len() - num].clone()
     }
 }
 

@@ -57,7 +57,7 @@ impl Optimizer {
                 ]),
                 ("Break", [n]) => {
                     if let Expr::Lit(egglog::ast::Literal::Int(n)) = n {
-                        StructuredBlock::Break(*n)
+                        StructuredBlock::Break((*n).try_into().unwrap())
                     } else {
                         panic!("expected int literal for break");
                     }
@@ -301,7 +301,9 @@ impl Optimizer {
             },
             StructuredBlock::Break(n) => Expr::Call(
                 "Break".into(),
-                vec![Expr::Lit(egglog::ast::Literal::Int(*n))],
+                vec![Expr::Lit(egglog::ast::Literal::Int(
+                    (*n).try_into().unwrap(),
+                ))],
             ),
             StructuredBlock::Return(val) => Expr::Call(
                 "Return".into(),
@@ -325,10 +327,6 @@ impl Optimizer {
     pub(crate) fn string_to_var_encoding(&self, string: String) -> Expr {
         Expr::Call("Var".into(), vec![self.string_to_expr(string)])
     }
-
-    /*pub(crate) fn string_to_var(&self, string: String) -> Expr {
-        Expr::Call("Var".into(), vec![self.string_to_expr(string)])
-    }*/
 
     pub(crate) fn convert_basic_block(&mut self, block: &BasicBlock) -> Expr {
         // leave prints in order
@@ -378,7 +376,7 @@ impl Optimizer {
                         if *bool {
                             Expr::Call("True".into(), vec![self.type_to_expr(const_type)])
                         } else {
-                            Expr::Call("False".into(), vec![])
+                            Expr::Call("False".into(), vec![self.type_to_expr(const_type)])
                         }
                     }
                     Literal::Char(char) => Expr::Call(
@@ -406,6 +404,8 @@ impl Optimizer {
                 pos: _pos,
                 op_type,
             } => {
+                // Funcs should be empty when it's a constant
+                // in valid Bril code
                 assert!(funcs.is_empty());
                 let arg_exprs = once(self.type_to_expr(op_type))
                     .chain(args.iter().map(|arg| {
@@ -517,9 +517,9 @@ impl Optimizer {
     }
 
     pub(crate) fn pretty_print_expr(expr: &Expr) -> String {
-        Self::pretty_print_expr_helper(expr, 0)
+        Self::pretty_print_expr_with_acc(expr, 0)
     }
-    pub(crate) fn pretty_print_expr_helper(expr: &Expr, indent: usize) -> String {
+    pub(crate) fn pretty_print_expr_with_acc(expr: &Expr, indent: usize) -> String {
         let indent_str = " ".repeat(indent * 2);
         match expr {
             Expr::Lit(lit) => format!("{}{}", indent_str, lit),
@@ -543,7 +543,7 @@ impl Optimizer {
                     let args_str = args
                         .iter()
                         .skip(1)
-                        .map(|arg| Self::pretty_print_expr_helper(arg, indent + 1))
+                        .map(|arg| Self::pretty_print_expr_with_acc(arg, indent + 1))
                         .collect::<Vec<String>>()
                         .join("\n");
                     format!("{}({} {}\n{})", indent_str, op, args[0], args_str)
@@ -551,7 +551,7 @@ impl Optimizer {
                 _ => {
                     let args_str = args
                         .iter()
-                        .map(|arg| Self::pretty_print_expr_helper(arg, indent + 1))
+                        .map(|arg| Self::pretty_print_expr_with_acc(arg, indent + 1))
                         .collect::<Vec<String>>()
                         .join("\n");
                     format!("{}({}\n{})", indent_str, op, args_str)

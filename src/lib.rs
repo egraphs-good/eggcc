@@ -2,6 +2,7 @@ use bril2json::parse_abstract_program_from_read;
 use bril_rs::AbstractProgram;
 use bril_rs::Program;
 use cfg::program_to_structured;
+
 use egglog::ast::Expr;
 use egglog::EGraph;
 use std::collections::HashMap;
@@ -67,7 +68,6 @@ impl Default for Optimizer {
 impl Optimizer {
     pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, EggCCError> {
         let parsed = Self::parse_bril(program)?;
-        eprintln!("Parsed program: {}", parsed);
         let res = self.optimize(&parsed)?;
         Ok(res)
     }
@@ -103,26 +103,28 @@ impl Optimizer {
         self
     }
 
-    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
-        assert!(!bril_program.functions.is_empty());
-        assert!(bril_program.functions.iter().any(|f| { f.name == "main" }));
-        assert!(bril_program.imports.is_empty());
-
-        let egg_fns: HashMap<String, Expr> = bril_program
+    pub fn structured_to_optimizer(&mut self, structured: &StructuredProgram) -> String {
+        let egg_fns: HashMap<String, Expr> = structured
             .functions
             .iter()
             .map(|f| (f.name.clone(), self.func_to_expr(f)))
             .collect();
-
         let egg_str = egg_fns
             .values()
-            .map(|v| v.to_string())
+            .map(Optimizer::pretty_print_expr)
             .collect::<Vec<String>>()
             .join("\n");
 
-        let egglog_code = self.make_optimizer_for(&egg_str);
+        self.make_optimizer_for(&egg_str)
+    }
 
-        println!("{}", egglog_code);
+    pub fn optimized_structured(
+        &mut self,
+        bril_program: &Program,
+    ) -> Result<StructuredProgram, EggCCError> {
+        let structured = program_to_structured(bril_program);
+
+        let egglog_code = self.structured_to_optimizer(&structured);
 
         let mut egraph = EGraph::default();
         egraph
@@ -131,30 +133,33 @@ impl Optimizer {
             .into_iter()
             .for_each(|output| log::info!("{}", output));
 
-        // TODO: idk how rust works, so why do I have to clone??? @ryan-berger
-        let mut fn_names = egg_fns.keys().cloned().collect::<Vec<String>>();
+        let egg_fns: HashMap<String, Expr> = structured
+            .functions
+            .iter()
+            .map(|f| (f.name.clone(), self.func_to_expr(f)))
+            .collect();
 
-        // sort the function names for deterministic map iteration
-        fn_names.sort();
+        let mut keys = egg_fns.keys().collect::<Vec<&String>>();
+        keys.sort();
 
-        fn_names.iter().try_fold(
-            Program {
-                functions: vec![],
-                imports: vec![],
-            },
-            |mut program, name| {
-                let e = &egg_fns[name];
-                let rep = egraph
-                    .extract_expr(e.clone(), 0)
-                    .map_err(EggCCError::EggLog)?;
+        let mut result = vec![];
+        for name in keys {
+            let expr = egg_fns.get(name).unwrap();
+            let rep = egraph
+                .extract_expr(expr.clone(), 0)
+                .map_err(EggCCError::EggLog)?;
+            let structured_func = self.expr_to_func(rep.expr);
 
-                program.functions.push(self.expr_to_func(rep.expr));
-                Ok(program)
-            },
-        )
+            result.push(structured_func);
+        }
+        Ok(StructuredProgram { functions: result })
     }
 
-    fn make_optimizer_for(&mut self, program: &str) -> String {
+    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
+        Ok(self.optimized_structured(bril_program)?.to_program())
+    }
+
+    pub fn make_optimizer_for(&mut self, program: &str) -> String {
         //let schedule = "(run 3)";
         let schedule = format!("(run {})", self.num_iters);
         format!(
@@ -165,6 +170,8 @@ impl Optimizer {
           (False String)
           (Char String String)
           (Float String f64)
+          (Var String)
+          (phi String Expr Expr) ;; both expressions should be variables
           (add String Expr Expr)
           (sub String Expr Expr)
           (mul String Expr Expr)
@@ -172,18 +179,32 @@ impl Optimizer {
           (lt String Expr Expr))
 
         (datatype RetVal
-            (ReturnValue Expr)
-            (Void))
+          (ReturnValue String)
+          (Void))
 
-        (datatype FunctionBody
-          (End)
-          (Ret RetVal FunctionBody)
-          (Call String Expr FunctionBody)
-          (Print Expr FunctionBody))
+        (datatype Code
+          (Assign String Expr)
+          (Print Expr))
+
+        (datatype CodeList
+          (CodeCons Code CodeList)
+          (CodeNil))
+
+        (datatype BasicBlock
+          (BlockNamed String CodeList))
+
+        (datatype StructuredBlock
+            (Block StructuredBlock)
+            (Basic BasicBlock)
+            (Ite String StructuredBlock StructuredBlock)
+            (Loop StructuredBlock)
+            (Sequence StructuredBlock StructuredBlock)
+            (Break i64)
+            (Return RetVal))
 
         (datatype Function
           ;; name and body
-          (Func String FunctionBody))
+          (Func String StructuredBlock))
 
         (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)))
         (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)))

@@ -4,8 +4,9 @@
 //! The methods here largely ignore the instructions in the program: all that we
 //! look for here are instructions that may break up basic blocks (`jmp`, `br`,
 //! `ret`), and labels. All other instructions are copied into the CFG.
-use std::collections::HashMap;
 use std::mem;
+use std::str::FromStr;
+use std::{collections::HashMap, fmt::Display};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program};
 use petgraph::{
@@ -29,6 +30,27 @@ pub(crate) enum BlockName {
     Named(String),
 }
 
+impl Display for BlockName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BlockName::Entry => write!(f, "entry___"),
+            BlockName::Exit => write!(f, "exit___"),
+            BlockName::Named(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl FromStr for BlockName {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "entry___" => Ok(BlockName::Entry),
+            "exit___" => Ok(BlockName::Exit),
+            s => Ok(BlockName::Named(s.to_string())),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct BasicBlock {
     pub(crate) instrs: Vec<Instruction>,
@@ -43,6 +65,16 @@ impl BasicBlock {
             name,
             pos: None,
         }
+    }
+
+    fn to_code(&self) -> Vec<Code> {
+        let mut instrs = Vec::new();
+        instrs.push(Code::Label {
+            label: self.name.to_string(),
+            pos: self.pos.clone(),
+        });
+        instrs.extend(self.instrs.iter().map(|i| Code::Instruction(i.clone())));
+        instrs
     }
 }
 

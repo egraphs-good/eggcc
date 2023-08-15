@@ -5,11 +5,11 @@ expression: "format!(\"{}\", structured)"
 main {
 block:
 
- break 0
+ break 1
 block:
  one.0: int = const 1;
  i.0: int = const 0;
- break 0
+ break 1
 while true:
  block:
   block:
@@ -18,14 +18,14 @@ while true:
    bodyvar.0: int = phi __undefined bodyvar.1 .b1 .body;
    cond.1: bool = lt i.1 input;
    if cond.1:
-    break 2
+    break 3
    else:
-    break 1
+    break 2
   block:
    donebody.0: int = const 1;
    return
 
  i.2: int = add i.1 one.0;
  bodyvar.1: int = const 1;
- break 0
+ break 1
 }

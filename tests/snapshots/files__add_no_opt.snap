@@ -1,12 +1,23 @@
 ---
 source: tests/files.rs
-expression: "format!(\"{}\", res_nothing)"
+expression: "format!(\"{}\", res)"
 ---
 @main {
+.entry___:
+  jmp .sblock___0;
+.sblock___0:
+.b1:
+  v0.0: int = const 1;
+  v1.0: int = const 2;
   v0_: int = const 1;
   v1_: int = const 2;
-  v2_: int = add v0_ v1_;
+  v2.0: int = add v0_ v1_;
+  v3_: int = const 1;
+  v4_: int = const 2;
+  v2_: int = add v3_ v4_;
   print v2_;
   ret;
+.sblock___1:
+.exit___:
 }
 

@@ -1,4 +1,4 @@
-.PHONY: test nits docs
+.PHONY: test nits docs nightly
 
 all: test nits docs
 

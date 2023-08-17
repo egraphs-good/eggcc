@@ -92,7 +92,7 @@ impl Optimizer {
         Ok(program_to_structured(&parsed))
     }
 
-    pub fn fresh(&mut self) -> String {
+    pub fn fresh_var(&mut self) -> String {
         let res = format!("v{}_", self.var_counter);
         self.var_counter += 1;
         res
@@ -148,7 +148,7 @@ impl Optimizer {
             let rep = egraph
                 .extract_expr(expr.clone(), 0)
                 .map_err(EggCCError::EggLog)?;
-            let structured_func = self.expr_to_func(rep.expr);
+            let structured_func = self.expr_to_structured_func(rep.expr);
 
             result.push(structured_func);
         }

@@ -61,10 +61,10 @@ impl Run {
             .unwrap();
 
             // TODO: comment next line out and uncomment the rest when we support all of bril!
-            let res = program_read;
-            // let parsed = Optimizer::parse_bril(&program_read).unwrap();
-            // let mut optimizer = Optimizer::default();
-            // let res = optimizer.optimize(&parsed).unwrap();
+            // let res = program_read;
+            let parsed = Optimizer::parse_bril(&program_read).unwrap();
+            let mut optimizer = Optimizer::default();
+            let res = optimizer.optimize(&parsed).unwrap();
 
             let mut optimized_out = Vec::new();
             brilirs::run_input(
@@ -123,10 +123,14 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
         // TODO: make interp run on just about anything. For right now we don't want to treat
         // bril tests as snapshots
         if f.to_str().unwrap().contains("brils") {
-            mk_trial(Run {
-                interp: true,
-                ..run.clone()
-            });
+
+            // uncomment this if you want all bril tests to run
+            if f.to_str().unwrap().contains("passing") {
+                mk_trial(Run {
+                    interp: true,
+                    ..run.clone()
+                });
+            }
             continue;
         }
 

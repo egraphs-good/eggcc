@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use glob::GlobResult;
+use std::path::PathBuf;
 
 use eggcc::*;
 use insta::assert_snapshot;

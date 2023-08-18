@@ -121,7 +121,6 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
         // TODO: make interp run on just about anything. For right now we don't want to treat
         // bril tests as snapshots
         if f.to_str().unwrap().contains("brils") {
-
             // uncomment this if you want all bril tests to run
             if f.to_str().unwrap().contains("passing") {
                 mk_trial(Run {

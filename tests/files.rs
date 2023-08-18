@@ -1,8 +1,10 @@
 use std::path::PathBuf;
+use glob::GlobResult;
 
 use eggcc::*;
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
+use brilirs;
 
 #[derive(Clone)]
 struct Run {
@@ -89,8 +91,64 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
     trials
 }
 
+fn make_interp_test(gr: GlobResult) -> Trial {
+    let path = gr.unwrap();
+    let name = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map(String::from)
+        .unwrap();
+
+    Trial::test(name.clone(), move || {
+        let mut args: Vec<String> = Vec::new();
+
+        let f_string = std::fs::read_to_string(path.clone()).unwrap();
+
+        // read in the first line, parse it if it has turnt's # ARGS: command.
+        if let Some(first_line) = f_string.split("\n").next() {
+            if first_line.contains("# ARGS:") {
+                for arg in first_line["# ARGS: ".len()..]
+                    .split(" ")
+                    .map(|s| s.to_string()) {
+                    args.push(arg);
+                }
+            }
+        }
+
+        let mut out_buf = Vec::new();
+
+        brilirs::run_input(
+            std::io::BufReader::new(f_string.as_bytes()),
+            std::io::BufWriter::new(&mut out_buf),
+            &args,
+            false,
+            std::io::stderr(),
+            false,
+            true,
+            None
+        )?;
+
+        let mut check_path = path.clone();
+        check_path.set_extension("out");
+
+        let out = std::fs::read_to_string(check_path.clone()).unwrap();
+
+        assert_eq!(String::from_utf8(out_buf).unwrap(), out);
+        Ok(())
+    })
+}
+
+fn generate_interp_tests(glob: &str) -> Vec<Trial> {
+    let trials: Vec<Trial> = glob::glob(glob)
+        .unwrap()
+        .map(make_interp_test)
+        .collect();
+    trials
+}
+
 fn main() {
     let args = libtest_mimic::Arguments::from_args();
-    let tests = generate_tests("tests/**/*.bril");
+    let mut tests = generate_tests("tests/{small,snapshots}/*.bril");
+    tests.append(&mut generate_interp_tests("tests/brils/**/*.bril"));
     libtest_mimic::run(&args, tests).exit();
 }

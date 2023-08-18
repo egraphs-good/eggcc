@@ -4,7 +4,6 @@ use glob::GlobResult;
 use eggcc::*;
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
-use brilirs;
 
 #[derive(Clone)]
 struct Run {
@@ -105,10 +104,10 @@ fn make_interp_test(gr: GlobResult) -> Trial {
         let f_string = std::fs::read_to_string(path.clone()).unwrap();
 
         // read in the first line, parse it if it has turnt's # ARGS: command.
-        if let Some(first_line) = f_string.split("\n").next() {
+        if let Some(first_line) = f_string.split('\n').next() {
             if first_line.contains("# ARGS:") {
                 for arg in first_line["# ARGS: ".len()..]
-                    .split(" ")
+                    .split(' ')
                     .map(|s| s.to_string()) {
                     args.push(arg);
                 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use petgraph::{
-    algo::dominators::{simple_fast, Dominators},
+    algo::dominators::{self, Dominators},
     graph::EdgeReference,
     prelude::NodeIndex,
     visit::EdgeRef,
@@ -14,6 +14,11 @@ use super::{
     BlockName, Branch, BranchOp, Cfg,
 };
 
+/// Records the history of the current node in the CFG
+/// being processed.
+/// For example, BlockFollowedBy(BlockName) means that the current
+/// cfg block being proessed is in a structured block followed by code for
+/// the block with the given name.
 #[derive(Debug)]
 enum ContainingHistory {
     ThenBranch,
@@ -30,8 +35,8 @@ pub(crate) struct StructuredCfgBuilder<'a> {
 
 impl<'a> StructuredCfgBuilder<'a> {
     fn new(cfg: &'a Cfg) -> Self {
-        let postorder = cfg.reverse_posorder();
-        let dominators = simple_fast(&cfg.graph, cfg.entry);
+        let postorder = cfg.reverse_postorder();
+        let dominators = dominators::simple_fast(&cfg.graph, cfg.entry);
         StructuredCfgBuilder {
             context: vec![],
             postorder,
@@ -50,6 +55,8 @@ impl<'a> StructuredCfgBuilder<'a> {
         })
     }
 
+    /// Convert a node and all it's children in the dominator tree
+    /// to a structured representation.
     fn do_tree(&mut self, node: NodeIndex) -> StructuredBlock {
         if self.is_loop_header(node) {
             self.context
@@ -94,7 +101,7 @@ impl<'a> StructuredCfgBuilder<'a> {
                         [] => {
                             panic!("handled above");
                         }
-                        // Unconditional
+                        // Unconditionally jumps to out
                         [out] => self.do_branch(out),
                         [branch1, branch2] => {
                             if let (
@@ -165,21 +172,20 @@ impl<'a> StructuredCfgBuilder<'a> {
                 }
             }
         } else if self.is_backward_edge(source, target) || self.is_merge_node(target) {
-            let index = self.context_index(self.cfg.graph[target].name.clone());
-            StructuredBlock::Break(index)
+            self.break_out_to(self.cfg.graph[target].name.clone())
         } else {
             self.do_tree(target)
         }
     }
 
-    fn context_index(&self, target: BlockName) -> usize {
+    fn break_out_to(&self, target: BlockName) -> StructuredBlock {
         for (index, context) in self.context.iter().rev().enumerate() {
             match context {
                 ContainingHistory::ThenBranch => {}
                 ContainingHistory::LoopWithLabel(label)
                 | ContainingHistory::BlockFollowedBy(label) => {
                     if label == &target {
-                        return index + 1;
+                        return StructuredBlock::Break(index + 1);
                     }
                 }
             }
@@ -210,6 +216,8 @@ impl<'a> StructuredCfgBuilder<'a> {
             .any(|edge| self.is_backward_edge(edge.source(), node))
     }
 
+    /// Check if this cfg is reducible,
+    /// which means that it can be represented as a StructuredBlock
     fn check_reducible(&self) -> Result<(), EggCCError> {
         for edge in self.cfg.graph.edge_references() {
             let source = edge.source();

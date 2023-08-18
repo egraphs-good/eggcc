@@ -113,7 +113,7 @@ pub(crate) struct Cfg {
 }
 
 impl Cfg {
-    fn reverse_posorder(self: &Cfg) -> HashMap<BlockName, usize> {
+    fn reverse_postorder(self: &Cfg) -> HashMap<BlockName, usize> {
         let mut reverse_postorder = HashMap::<BlockName, usize>::new();
         let mut post_counter = 0;
         DfsPostOrder::new(&self.graph, self.entry)

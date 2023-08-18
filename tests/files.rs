@@ -1,4 +1,3 @@
-use glob::GlobResult;
 use std::path::PathBuf;
 
 use eggcc::*;
@@ -10,6 +9,7 @@ struct Run {
     path: PathBuf,
     test_structured: bool,
     no_opt: bool,
+    interp: bool
 }
 
 impl Run {
@@ -21,6 +21,9 @@ impl Run {
         if self.no_opt {
             name = format!("{}_no_opt", name);
         }
+        if self.interp {
+            name = format!("{}_interp", name)
+        }
         name
     }
 
@@ -29,6 +32,54 @@ impl Run {
         if self.test_structured {
             let structured = Optimizer::parse_to_structured(&program_read).unwrap();
             assert_snapshot!(self.name(), format!("{}", structured));
+        } else if self.interp {
+            let mut args = Vec::new();
+
+            if let Some(first_line) = program_read.split('\n').next() {
+                if first_line.contains("# ARGS:") {
+                    for arg in first_line["# ARGS: ".len()..]
+                        .split(' ')
+                        .map(|s| s.to_string())
+                    {
+                        args.push(arg);
+                    }
+                }
+            }
+
+            // interp with no optimizations
+            let mut base_line_out = Vec::new();
+            brilirs::run_input(
+                std::io::BufReader::new(program_read.as_bytes()),
+                std::io::BufWriter::new(&mut base_line_out),
+                &args,
+                false,
+                std::io::stderr(),
+                false,
+                true,
+                None,
+            ).unwrap();
+
+
+            // TODO: comment next line out and uncomment the rest when we support all of bril!
+            let res = program_read;
+            // let parsed = Optimizer::parse_bril(&program_read).unwrap();
+            // let mut optimizer = Optimizer::default();
+            // let res = optimizer.optimize(&parsed).unwrap();
+
+
+            let mut optimized_out = Vec::new();
+            brilirs::run_input(
+                std::io::BufReader::new(res.to_string().as_bytes()),
+                std::io::BufWriter::new(&mut optimized_out),
+                &args,
+                false,
+                std::io::stderr(),
+                false,
+                true,
+                None,
+            ).unwrap();
+
+            assert_eq!(String::from_utf8(base_line_out).unwrap(), String::from_utf8(optimized_out).unwrap());
         } else {
             let parsed = Optimizer::parse_bril(&program_read).unwrap();
 
@@ -63,7 +114,19 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             path: f.clone(),
             test_structured: false,
             no_opt: false,
+            interp: false,
         };
+
+        // TODO: make interp run on just about anything. For right now we don't want to treat
+        // bril tests as snapshots
+        if f.to_str().unwrap().contains("brils") {
+            mk_trial(Run {
+                interp: true,
+                ..run.clone()
+            });
+            continue
+        }
+
         // TODO optimizer doesn't support these yet
         let banned = [
             "diamond",
@@ -90,61 +153,11 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
     trials
 }
 
-fn make_interp_test(gr: GlobResult) -> Trial {
-    let path = gr.unwrap();
-    let name = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .map(String::from)
-        .unwrap();
 
-    Trial::test(name.clone(), move || {
-        let mut args: Vec<String> = Vec::new();
 
-        let f_string = std::fs::read_to_string(path.clone()).unwrap();
-
-        // read in the first line, parse it if it has turnt's # ARGS: command.
-        if let Some(first_line) = f_string.split('\n').next() {
-            if first_line.contains("# ARGS:") {
-                for arg in first_line["# ARGS: ".len()..]
-                    .split(' ')
-                    .map(|s| s.to_string())
-                {
-                    args.push(arg);
-                }
-            }
-        }
-
-        let mut out_buf = Vec::new();
-
-        brilirs::run_input(
-            std::io::BufReader::new(f_string.as_bytes()),
-            std::io::BufWriter::new(&mut out_buf),
-            &args,
-            false,
-            std::io::stderr(),
-            false,
-            true,
-            None,
-        )?;
-
-        let mut check_path = path.clone();
-        check_path.set_extension("out");
-
-        let out = std::fs::read_to_string(check_path.clone()).unwrap();
-
-        assert_eq!(String::from_utf8(out_buf).unwrap(), out);
-        Ok(())
-    })
-}
-
-fn generate_interp_tests(glob: &str) -> Vec<Trial> {
-    glob::glob(glob).unwrap().map(make_interp_test).collect()
-}
 
 fn main() {
     let args = libtest_mimic::Arguments::from_args();
-    let mut tests = generate_tests("tests/{small,snapshots}/*.bril");
-    tests.append(&mut generate_interp_tests("tests/brils/**/*.bril"));
+    let tests = generate_tests("tests/**/*.bril");
     libtest_mimic::run(&args, tests).exit();
 }

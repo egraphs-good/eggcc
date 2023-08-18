@@ -9,7 +9,7 @@ struct Run {
     path: PathBuf,
     test_structured: bool,
     no_opt: bool,
-    interp: bool
+    interp: bool,
 }
 
 impl Run {
@@ -57,15 +57,14 @@ impl Run {
                 false,
                 true,
                 None,
-            ).unwrap();
-
+            )
+            .unwrap();
 
             // TODO: comment next line out and uncomment the rest when we support all of bril!
             let res = program_read;
             // let parsed = Optimizer::parse_bril(&program_read).unwrap();
             // let mut optimizer = Optimizer::default();
             // let res = optimizer.optimize(&parsed).unwrap();
-
 
             let mut optimized_out = Vec::new();
             brilirs::run_input(
@@ -77,9 +76,13 @@ impl Run {
                 false,
                 true,
                 None,
-            ).unwrap();
+            )
+            .unwrap();
 
-            assert_eq!(String::from_utf8(base_line_out).unwrap(), String::from_utf8(optimized_out).unwrap());
+            assert_eq!(
+                String::from_utf8(base_line_out).unwrap(),
+                String::from_utf8(optimized_out).unwrap()
+            );
         } else {
             let parsed = Optimizer::parse_bril(&program_read).unwrap();
 
@@ -124,7 +127,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
                 interp: true,
                 ..run.clone()
             });
-            continue
+            continue;
         }
 
         // TODO optimizer doesn't support these yet
@@ -152,9 +155,6 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
 
     trials
 }
-
-
-
 
 fn main() {
     let args = libtest_mimic::Arguments::from_args();

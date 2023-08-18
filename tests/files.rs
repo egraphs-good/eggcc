@@ -108,7 +108,8 @@ fn make_interp_test(gr: GlobResult) -> Trial {
             if first_line.contains("# ARGS:") {
                 for arg in first_line["# ARGS: ".len()..]
                     .split(' ')
-                    .map(|s| s.to_string()) {
+                    .map(|s| s.to_string())
+                {
                     args.push(arg);
                 }
             }
@@ -124,7 +125,7 @@ fn make_interp_test(gr: GlobResult) -> Trial {
             std::io::stderr(),
             false,
             true,
-            None
+            None,
         )?;
 
         let mut check_path = path.clone();
@@ -138,11 +139,7 @@ fn make_interp_test(gr: GlobResult) -> Trial {
 }
 
 fn generate_interp_tests(glob: &str) -> Vec<Trial> {
-    let trials: Vec<Trial> = glob::glob(glob)
-        .unwrap()
-        .map(make_interp_test)
-        .collect();
-    trials
+    glob::glob(glob).unwrap().map(make_interp_test).collect()
 }
 
 fn main() {

@@ -60,8 +60,6 @@ impl Run {
             )
             .unwrap();
 
-            // TODO: comment next line out and uncomment the rest when we support all of bril!
-            // let res = program_read;
             let parsed = Optimizer::parse_bril(&program_read).unwrap();
             let mut optimizer = Optimizer::default();
             let res = optimizer.optimize(&parsed).unwrap();

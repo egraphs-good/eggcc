@@ -66,6 +66,37 @@ impl Default for Optimizer {
 }
 
 impl Optimizer {
+    /// run the rust interpreter on the program
+    /// without any optimizations
+    pub fn interp(program: &str) -> String {
+        let mut args = Vec::new();
+
+        if let Some(first_line) = program.split('\n').next() {
+            if first_line.contains("# ARGS:") {
+                for arg in first_line["# ARGS: ".len()..]
+                    .split(' ')
+                    .map(|s| s.to_string())
+                {
+                    args.push(arg);
+                }
+            }
+        }
+
+        let mut optimized_out = Vec::new();
+        brilirs::run_input(
+            std::io::BufReader::new(program.to_string().as_bytes()),
+            std::io::BufWriter::new(&mut optimized_out),
+            &args,
+            false,
+            std::io::stderr(),
+            false,
+            true,
+            None,
+        )
+        .unwrap();
+        String::from_utf8(optimized_out).unwrap()
+    }
+
     pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, EggCCError> {
         let parsed = Self::parse_bril(program)?;
         let res = self.optimize(&parsed)?;
@@ -145,10 +176,11 @@ impl Optimizer {
         let mut result = vec![];
         for name in keys {
             let expr = egg_fns.get(name).unwrap();
-            let rep = egraph
+            let mut rep = egraph
                 .extract_expr(expr.clone(), 0)
                 .map_err(EggCCError::EggLog)?;
-            let structured_func = self.expr_to_structured_func(rep.expr);
+            let extracted = rep.termdag.term_to_expr(&rep.expr);
+            let structured_func = self.expr_to_structured_func(extracted);
 
             result.push(structured_func);
         }
@@ -164,19 +196,31 @@ impl Optimizer {
         let schedule = format!("(run {})", self.num_iters);
         format!(
             "
+        (datatype Type
+          (IntT)
+          (BoolT)
+          (FloatT)
+          (CharT)
+          (PointerT Type))
+
         (datatype Expr
-          (Int String i64)
-          (True String)
-          (False String)
-          (Char String String)
-          (Float String f64)
+          (Int Type i64)
+          (True Type)
+          (False Type)
+          (Char Type String)
+          (Float Type f64)
           (Var String)
-          (phi String Expr Expr) ;; both expressions should be variables
-          (add String Expr Expr)
-          (sub String Expr Expr)
-          (mul String Expr Expr)
-          (div String Expr Expr)
-          (lt String Expr Expr))
+          (phi Type Expr Expr) ;; both expressions should be variables
+          (add Type Expr Expr)
+          (sub Type Expr Expr)
+          (mul Type Expr Expr)
+          (div Type Expr Expr)
+          (lt Type Expr Expr)
+          (alloc Type Expr)
+          (ptradd Type Expr Expr)
+          (load Type Expr)
+        
+        )
 
         (datatype RetVal
           (ReturnValue String)
@@ -184,6 +228,8 @@ impl Optimizer {
 
         (datatype Code
           (Assign String Expr)
+          (store Expr Expr)
+          (free Expr)
           (Print Expr))
 
         (datatype CodeList

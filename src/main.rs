@@ -26,6 +26,12 @@ struct Args {
     /// using blocks, loops, and break
     #[clap(long)]
     optimized_structured: bool,
+    /// After optimization, evaluate the bril program
+    #[clap(long)]
+    interp: bool,
+    /// Before optimization, evaluate the bril program
+    #[clap(long)]
+    interp_before: bool,
     /// The bril program to optimize
     file: PathBuf,
 }
@@ -57,11 +63,14 @@ fn main() {
         let optimized_structured =
             optimizer.optimized_structured(&Optimizer::parse_bril(&input).unwrap());
         println!("{}", optimized_structured.unwrap());
+    } else if args.interp {
+        let mut optimizer = Optimizer::default();
+        let optimized = optimizer.parse_and_optimize(&input).unwrap();
+        println!("{}", Optimizer::interp(&format!("{}", optimized)));
+    } else if args.interp_before {
+        println!("{}", Optimizer::interp(&input));
     } else {
         let mut optimizer = Optimizer::default();
-        match optimizer.parse_and_optimize(&input) {
-            Ok(expr) => println!("{}", expr),
-            Err(err) => println!("{}", err),
-        }
+        println!("{}", optimizer.parse_and_optimize(&input).unwrap());
     }
 }

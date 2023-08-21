@@ -52,19 +52,19 @@ impl<'a> StructuredCfgBuilder<'a> {
         Ok(StructuredFunction {
             name: self.cfg.name.clone(),
             args: self.cfg.args.clone(),
-            block: result,
+            block: result.unwrap(),
         })
     }
 
-    fn do_tree(&mut self, node: NodeIndex) -> StructuredBlock {
+    fn do_tree(&mut self, node: NodeIndex) -> Option<StructuredBlock> {
         if self.is_loop_header(node) {
             self.context.push(Context {
                 enclosing: ContainingHistory::LoopWithLabel(self.name(node)),
                 fallthrough: Some(self.name(node)),
             });
-            let body = StructuredBlock::Loop(Box::new(self.code_for_node(node)));
+            let body = StructuredBlock::Loop(Box::new(self.code_for_node(node).unwrap()));
             self.context.pop();
-            body
+            Some(body)
         } else {
             self.code_for_node(node)
         }
@@ -74,7 +74,7 @@ impl<'a> StructuredCfgBuilder<'a> {
         self.cfg.graph[node].name.clone()
     }
 
-    fn code_for_node(&mut self, node: NodeIndex) -> StructuredBlock {
+    fn code_for_node(&mut self, node: NodeIndex) -> Option<StructuredBlock> {
         let mut merge_nodes = self
             .dominators
             .immediately_dominated_by(node)
@@ -84,9 +84,15 @@ impl<'a> StructuredCfgBuilder<'a> {
         self.node_within(node, merge_nodes)
     }
 
-    fn node_within(&mut self, node: NodeIndex, merge_nodes: Vec<NodeIndex>) -> StructuredBlock {
+    fn node_within(
+        &mut self,
+        node: NodeIndex,
+        merge_nodes: Vec<NodeIndex>,
+    ) -> Option<StructuredBlock> {
         if node == self.cfg.exit {
-            return StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone()));
+            return Some(StructuredBlock::Basic(Box::new(
+                self.cfg.graph[node].clone(),
+            )));
         }
 
         let edges = self
@@ -99,7 +105,9 @@ impl<'a> StructuredCfgBuilder<'a> {
         match merge_nodes.as_slice() {
             [] => {
                 let v = vec![
-                    StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone())),
+                    Some(StructuredBlock::Basic(Box::new(
+                        self.cfg.graph[node].clone(),
+                    ))),
                     match edges.as_slice() {
                         [] => {
                             panic!("handled above");
@@ -132,11 +140,11 @@ impl<'a> StructuredCfgBuilder<'a> {
                                 let else_block =
                                     self.do_branch(if !*val1 { branch1 } else { branch2 });
                                 self.context.pop();
-                                StructuredBlock::Ite(
+                                Some(StructuredBlock::Ite(
                                     arg1.to_string(),
-                                    Box::new(then_block),
-                                    Box::new(else_block),
-                                )
+                                    Box::new(then_block.unwrap()),
+                                    Box::new(else_block.unwrap()),
+                                ))
                             } else {
                                 panic!(
                                     "Expected two conditional branches. Got {:?} and {:?}",
@@ -148,8 +156,11 @@ impl<'a> StructuredCfgBuilder<'a> {
                             panic!("Expected at most two outgoing edges. Got {:?}", edges);
                         }
                     },
-                ];
-                StructuredBlock::Sequence(v)
+                ]
+                .into_iter()
+                .flatten()
+                .collect();
+                Some(StructuredBlock::Sequence(v))
             }
             [first, ..] => {
                 self.context.push(Context {
@@ -158,15 +169,19 @@ impl<'a> StructuredCfgBuilder<'a> {
                 });
                 let rest = self.node_within(node, merge_nodes[1..].to_vec());
                 self.context.pop();
-                StructuredBlock::Sequence(vec![
-                    StructuredBlock::Block(Box::new(rest)),
+                let v = vec![
+                    Some(StructuredBlock::Block(Box::new(rest.unwrap()))),
                     self.do_tree(*first),
-                ])
+                ]
+                .into_iter()
+                .flatten()
+                .collect();
+                Some(StructuredBlock::Sequence(v))
             }
         }
     }
 
-    fn do_branch(&mut self, edge: &EdgeReference<Branch>) -> StructuredBlock {
+    fn do_branch(&mut self, edge: &EdgeReference<Branch>) -> Option<StructuredBlock> {
         let source = edge.source();
         let target = edge.target();
         let target_block = self.cfg.graph[target].clone();
@@ -174,8 +189,8 @@ impl<'a> StructuredCfgBuilder<'a> {
             assert!(target_block.instrs.is_empty());
 
             match &edge.weight().op {
-                BranchOp::Jmp => StructuredBlock::Return(None),
-                BranchOp::RetVal { arg } => StructuredBlock::Return(Some(arg.clone())),
+                BranchOp::Jmp => Some(StructuredBlock::Return(None)),
+                BranchOp::RetVal { arg } => Some(StructuredBlock::Return(Some(arg.clone()))),
                 _ => {
                     panic!("Unexpected branch op {:?}", edge.weight().op);
                 }
@@ -183,16 +198,19 @@ impl<'a> StructuredCfgBuilder<'a> {
         } else if self.is_backward_edge(source, target) || self.is_merge_node(target) {
             let index = self.context_index(self.cfg.graph[target].name.clone());
             // Optimization: If target label immediately follows the hole in context, omit the Br
-            if let Some(context) = &self.context.last() {
-                if let Some(fallthrough_label) = &context.fallthrough {
-                    let target_label = self.name(target);
-                    if fallthrough_label == &target_label {
-                        return StructuredBlock::Skip;
-                    }
-                }
-            }
+            assert!(!self.context.is_empty(), "context should not be empty");
+            let top_context = self.context.last().unwrap();
 
-            StructuredBlock::Break(index)
+            if let Some(fallthrough_label) = &top_context.fallthrough {
+                let target_label = self.name(target);
+                if fallthrough_label == &target_label {
+                    None
+                } else {
+                    Some(StructuredBlock::Break(index))
+                }
+            } else {
+                Some(StructuredBlock::Break(index))
+            }
         } else {
             self.do_tree(target)
         }

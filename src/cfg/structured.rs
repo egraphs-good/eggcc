@@ -14,7 +14,6 @@ pub enum StructuredBlock {
     Break(usize),
     Return(Option<String>),
     Basic(Box<BasicBlock>),
-    Skip,
 }
 
 #[derive(Debug)]
@@ -72,7 +71,6 @@ impl StructuredBlock {
         let indent = indent;
         let whitespace = " ".repeat(indent);
         match self {
-            StructuredBlock::Skip => String::new(),
             StructuredBlock::Ite(var, then, els) => format!(
                 "{whitespace}if {}:\n{}\n{whitespace}else:\n{}",
                 var,
@@ -151,7 +149,6 @@ impl StructuredCfgBuilder {
 impl StructuredBlock {
     pub(crate) fn to_code(&self, builder: &mut StructuredCfgBuilder) {
         match self {
-            StructuredBlock::Skip => {}
             StructuredBlock::Basic(block) => builder.code.extend(block.to_code()),
             StructuredBlock::Block(block) => {
                 let block_end_name = builder.fresh();

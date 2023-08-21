@@ -272,7 +272,6 @@ impl Optimizer {
 
     pub(crate) fn convert_structured_block(&mut self, structured_block: &StructuredBlock) -> Expr {
         match structured_block {
-            StructuredBlock::Skip => Expr::Lit(egglog::ast::Literal::Unit),
             StructuredBlock::Ite(var, then, els) => Expr::Call(
                 "Ite".into(),
                 vec![

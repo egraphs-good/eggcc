@@ -5,6 +5,8 @@
 
 echo "Beginning eggcc nightly script..."
 
+rustup update
+
 # exit immediately upon first error
 set -e
 

@@ -28,7 +28,7 @@ struct Context {
 }
 
 pub(crate) struct StructuredCfgBuilder<'a> {
-    context: Vec<Context>,
+    context: Vec<Context>, // last element is newest context
     postorder: HashMap<BlockName, usize>,
     dominators: Dominators<NodeIndex>,
     cfg: &'a Cfg,
@@ -183,15 +183,11 @@ impl<'a> StructuredCfgBuilder<'a> {
         } else if self.is_backward_edge(source, target) || self.is_merge_node(target) {
             let index = self.context_index(self.cfg.graph[target].name.clone());
             // Optimization: If target label immediately follows the hole in context, omit the Br
-            if let Some(context) = &self.context.first() {
+            if let Some(context) = &self.context.last() {
                 if let Some(fallthrough_label) = &context.fallthrough {
                     let target_label = self.name(target);
-                    println!("{} {}", target_label, fallthrough_label);
                     if fallthrough_label == &target_label {
-                        println!("skipping {}", fallthrough_label);
                         return StructuredBlock::Skip;
-                    } else {
-                        println!("not skipping {}", target_label);
                     }
                 }
             }

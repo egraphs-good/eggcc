@@ -26,12 +26,9 @@ struct Args {
     /// using blocks, loops, and break
     #[clap(long)]
     optimized_structured: bool,
-    /// After optimization, evaluate the bril program
+    /// Also evaluate the resulting program and output the results
     #[clap(long)]
     interp: bool,
-    /// Before optimization, evaluate the bril program
-    #[clap(long)]
-    interp_before: bool,
     /// The bril program to optimize
     file: PathBuf,
 }
@@ -45,32 +42,38 @@ fn main() {
         input = std::fs::read_to_string(args.file).unwrap();
     }
 
-    if args.ssa {
-        println!("{}", Optimizer::parse_bril(&input).unwrap());
+    let program = Optimizer::parse_bril(&input).unwrap();
+    let result_program = if args.ssa {
+        println!("{}", program);
+        program
     } else if args.structured {
-        println!("{}", Optimizer::parse_to_structured(&input).unwrap());
+        let structured = Optimizer::parse_to_structured(&input).unwrap();
+        println!("{}", structured);
+        structured.to_program()
     } else if args.structured_cfg {
-        println!(
-            "{}",
-            Optimizer::parse_to_structured(&input).unwrap().to_program()
-        );
+        let prog = Optimizer::parse_to_structured(&input).unwrap().to_program();
+        println!("{}", prog);
+        prog
     } else if args.egglog_encoding {
         let structured = Optimizer::parse_to_structured(&input).unwrap();
         let mut optimizer = Optimizer::default();
         println!("{}", optimizer.structured_to_optimizer(&structured));
+        program
     } else if args.optimized_structured {
         let mut optimizer = Optimizer::default();
-        let optimized_structured =
-            optimizer.optimized_structured(&Optimizer::parse_bril(&input).unwrap());
-        println!("{}", optimized_structured.unwrap());
-    } else if args.interp {
-        let mut optimizer = Optimizer::default();
-        let optimized = optimizer.parse_and_optimize(&input).unwrap();
-        println!("{}", Optimizer::interp(&format!("{}", optimized)));
-    } else if args.interp_before {
-        println!("{}", Optimizer::interp(&input));
+        let optimized_structured = optimizer
+            .optimized_structured(&Optimizer::parse_bril(&input).unwrap())
+            .unwrap();
+        println!("{}", optimized_structured);
+        optimized_structured.to_program()
     } else {
         let mut optimizer = Optimizer::default();
-        println!("{}", optimizer.parse_and_optimize(&input).unwrap());
+        let res = optimizer.optimize(&program).unwrap();
+        println!("{}", res);
+        res
+    };
+
+    if args.interp {
+        println!("{}", Optimizer::interp(&format!("{}", result_program)));
     }
 }

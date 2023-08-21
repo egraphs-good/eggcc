@@ -44,7 +44,7 @@ impl Optimizer {
                     StructuredBlock::Basic(Box::new(self.expr_to_basic_block(basic_block)))
                 }
                 ("Ite", [name, then_branch, else_branch]) => StructuredBlock::Ite(
-                    name.to_string(),
+                    Self::string_expr_to_string(name),
                     Box::new(self.expr_to_structured_block(then_branch)),
                     Box::new(self.expr_to_structured_block(else_branch)),
                 ),
@@ -341,6 +341,14 @@ impl Optimizer {
 
     pub(crate) fn string_to_var_encoding(&self, string: String) -> Expr {
         Expr::Call("Var".into(), vec![self.string_to_expr(string)])
+    }
+
+    fn string_expr_to_string(expr: &Expr) -> String {
+        if let Expr::Lit(egglog::ast::Literal::String(string)) = expr {
+            string.to_string()
+        } else {
+            panic!("expected string literal");
+        }
     }
 
     pub(crate) fn convert_basic_block(&mut self, block: &BasicBlock) -> Expr {

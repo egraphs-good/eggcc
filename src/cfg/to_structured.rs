@@ -94,7 +94,7 @@ impl<'a> StructuredCfgBuilder<'a> {
             .graph
             .edges_directed(node, petgraph::Direction::Outgoing)
             .collect::<Vec<_>>();
-        assert!(edges.len() > 0, "only exit nodes should have empty edges");
+        assert!(!edges.is_empty(), "only exit nodes should have empty edges");
 
         match merge_nodes.as_slice() {
             [] => {

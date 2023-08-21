@@ -72,7 +72,7 @@ impl StructuredBlock {
         let indent = indent;
         let whitespace = " ".repeat(indent);
         match self {
-            StructuredBlock::Skip => format!(""),
+            StructuredBlock::Skip => String::new(),
             StructuredBlock::Ite(var, then, els) => format!(
                 "{whitespace}if {}:\n{}\n{whitespace}else:\n{}",
                 var,

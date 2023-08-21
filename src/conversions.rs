@@ -248,13 +248,13 @@ impl Optimizer {
                         op: bril_rs::ConstOps::Const,
                         value: literal,
                         pos: None,
-                        const_type: self.expr_to_type(&args[0]),
+                        const_type: Self::expr_to_type(&args[0]),
                     });
                     dest
                 }
                 _ => {
                     assert!(op.as_str() != "Void");
-                    let etype = self.expr_to_type(&args[0]);
+                    let etype = Self::expr_to_type(&args[0]);
                     let args_vars = args
                         .iter()
                         .skip(1)
@@ -533,7 +533,7 @@ impl Optimizer {
         }
     }
 
-    pub(crate) fn expr_to_type(&self, expr: &Expr) -> Type {
+    pub(crate) fn expr_to_type(expr: &Expr) -> Type {
         let Expr::Call(op, args) = expr else {
             panic!("expected call in expr_to_type");
         };
@@ -542,7 +542,7 @@ impl Optimizer {
             ("BoolT", []) => Type::Bool,
             ("FloatT", []) => Type::Float,
             ("CharT", []) => Type::Char,
-            ("PointerT", [child]) => Type::Pointer(Box::new(self.expr_to_type(child))),
+            ("PointerT", [child]) => Type::Pointer(Box::new(Self::expr_to_type(child))),
             _ => panic!("unknown type"),
         }
     }

@@ -44,7 +44,7 @@ impl Optimizer {
                     StructuredBlock::Basic(Box::new(self.expr_to_basic_block(basic_block)))
                 }
                 ("Ite", [name, then_branch, else_branch]) => StructuredBlock::Ite(
-                    name.to_string(),
+                    Self::string_expr_to_string(name),
                     Box::new(self.expr_to_structured_block(then_branch)),
                     Box::new(self.expr_to_structured_block(else_branch)),
                 ),
@@ -172,6 +172,21 @@ impl Optimizer {
                     };
                     self.expr_to_code(&args[1], res, Some(dest));
                 }
+                "store" | "free" => {
+                    let args = args
+                        .iter()
+                        .map(|arg| self.expr_to_code(arg, res, None))
+                        .collect::<Vec<String>>();
+
+                    res.push(Instruction::Effect {
+                        op: serde_json::from_str(&format!("\"{}\"", op)).unwrap(),
+                        args,
+                        funcs: vec![],
+                        labels: vec![],
+                        pos: None,
+                    });
+                }
+
                 _ => panic!("unknown effect in body_to_code {}", op),
             }
         } else {
@@ -233,13 +248,13 @@ impl Optimizer {
                         op: bril_rs::ConstOps::Const,
                         value: literal,
                         pos: None,
-                        const_type: self.expr_to_type(&args[0]),
+                        const_type: Self::expr_to_type(&args[0]),
                     });
                     dest
                 }
                 _ => {
                     assert!(op.as_str() != "Void");
-                    let etype = self.expr_to_type(&args[0]);
+                    let etype = Self::expr_to_type(&args[0]);
                     let args_vars = args
                         .iter()
                         .skip(1)
@@ -328,6 +343,14 @@ impl Optimizer {
         Expr::Call("Var".into(), vec![self.string_to_expr(string)])
     }
 
+    fn string_expr_to_string(expr: &Expr) -> String {
+        if let Expr::Lit(egglog::ast::Literal::String(string)) = expr {
+            string.to_string()
+        } else {
+            panic!("expected string literal");
+        }
+    }
+
     pub(crate) fn convert_basic_block(&mut self, block: &BasicBlock) -> Expr {
         // leave prints in order
         // leave any effects in order
@@ -368,28 +391,28 @@ impl Optimizer {
                     Literal::Int(int) => Expr::Call(
                         "Int".into(),
                         vec![
-                            self.type_to_expr(const_type),
+                            Self::type_to_expr(const_type),
                             Expr::Lit(egglog::ast::Literal::Int(*int)),
                         ],
                     ),
                     Literal::Bool(bool) => {
                         if *bool {
-                            Expr::Call("True".into(), vec![self.type_to_expr(const_type)])
+                            Expr::Call("True".into(), vec![Self::type_to_expr(const_type)])
                         } else {
-                            Expr::Call("False".into(), vec![self.type_to_expr(const_type)])
+                            Expr::Call("False".into(), vec![Self::type_to_expr(const_type)])
                         }
                     }
                     Literal::Char(char) => Expr::Call(
                         "Char".into(),
                         vec![
-                            self.type_to_expr(const_type),
+                            Self::type_to_expr(const_type),
                             Expr::Lit(egglog::ast::Literal::String(char.to_string().into())),
                         ],
                     ),
                     Literal::Float(float) => Expr::Call(
                         "Float".into(),
                         vec![
-                            self.type_to_expr(const_type),
+                            Self::type_to_expr(const_type),
                             Expr::Lit(egglog::ast::Literal::F64(OrderedFloat(*float))),
                         ],
                     ),
@@ -407,7 +430,7 @@ impl Optimizer {
                 // Funcs should be empty when it's a constant
                 // in valid Bril code
                 assert!(funcs.is_empty());
-                let arg_exprs = once(self.type_to_expr(op_type))
+                let arg_exprs = once(Self::type_to_expr(op_type))
                     .chain(args.iter().map(|arg| {
                         env.get(arg)
                             .unwrap_or(&self.string_to_var_encoding(arg.to_string()))
@@ -435,7 +458,11 @@ impl Optimizer {
                     },
                     _ => args
                         .iter()
-                        .map(|arg| env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone())
+                        .map(|arg| {
+                            env.get(arg)
+                                .unwrap_or(&self.string_to_var_encoding(arg.to_string()))
+                                .clone()
+                        })
                         .collect::<Vec<Expr>>(),
                 }
                 .into_iter()
@@ -496,23 +523,27 @@ impl Optimizer {
         }
     }
 
-    pub(crate) fn type_to_expr(&self, ty: &Type) -> egglog::ast::Expr {
-        let type_name = serde_json::to_string(&ty).unwrap();
-        // remove the quotes around the json string
-        let without_quotes = &type_name[1..type_name.len() - 1];
-        Expr::Lit(egglog::ast::Literal::String(without_quotes.into()))
+    pub(crate) fn type_to_expr(ty: &Type) -> egglog::ast::Expr {
+        match ty {
+            Type::Int => Expr::Call("IntT".into(), vec![]),
+            Type::Bool => Expr::Call("BoolT".into(), vec![]),
+            Type::Float => Expr::Call("FloatT".into(), vec![]),
+            Type::Char => Expr::Call("CharT".into(), vec![]),
+            Type::Pointer(child) => Expr::Call("PointerT".into(), vec![Self::type_to_expr(child)]),
+        }
     }
 
-    pub(crate) fn expr_to_type(&self, expr: &Expr) -> Type {
-        match expr {
-            Expr::Lit(lit) => match lit {
-                egglog::ast::Literal::String(string) => {
-                    let with_quotes = "\"".to_owned() + &string.to_string() + "\"";
-                    serde_json::from_str(&with_quotes).unwrap()
-                }
-                _ => panic!("expected type literal to be a string"),
-            },
-            _ => panic!("expected type literal. got: {}", expr),
+    pub(crate) fn expr_to_type(expr: &Expr) -> Type {
+        let Expr::Call(op, args) = expr else {
+            panic!("expected call in expr_to_type");
+        };
+        match (op.as_str(), args.as_slice()) {
+            ("IntT", []) => Type::Int,
+            ("BoolT", []) => Type::Bool,
+            ("FloatT", []) => Type::Float,
+            ("CharT", []) => Type::Char,
+            ("PointerT", [child]) => Type::Pointer(Box::new(Self::expr_to_type(child))),
+            _ => panic!("unknown type"),
         }
     }
 

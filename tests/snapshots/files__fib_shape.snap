@@ -1,0 +1,40 @@
+---
+source: tests/files.rs
+expression: "format!(\"{}\", res)"
+---
+@main {
+.entry___:
+  jmp .sblock___0;
+.sblock___0:
+.b1:
+  one.0: int = const 1;
+  i.0: int = const 0;
+  jmp .sblock___1;
+.sblock___1:
+.sblock___2:
+.loop:
+  i.1: int = phi i.0 i.2;
+  cond.0: bool = phi __undefined cond.1;
+  bodyvar.0: int = phi __undefined bodyvar.1;
+  v6_: int = phi i.0 i.2;
+  cond.1: bool = lt v6_ input;
+  br cond.1 .sblock___6 .sblock___7;
+.sblock___6:
+  jmp .sblock___3;
+.sblock___7:
+  jmp .sblock___4;
+.sblock___5:
+.done:
+  donebody.0: int = const 1;
+  ret;
+.sblock___8:
+.exit___:
+.sblock___4:
+.body:
+  i.2: int = add i.1 one.0;
+  bodyvar.1: int = const 1;
+  jmp .sblock___3;
+  jmp .sblock___2;
+.sblock___3:
+}
+

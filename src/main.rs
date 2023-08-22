@@ -31,6 +31,9 @@ struct Args {
     interp: bool,
     /// The bril program to optimize
     file: PathBuf,
+    /// The arguments to the bril program
+    /// (only used when interpreting)
+    bril_args: Vec<String>,
 }
 
 fn main() {
@@ -41,6 +44,12 @@ fn main() {
     } else {
         input = std::fs::read_to_string(args.file).unwrap();
     }
+
+    let bril_args = if args.bril_args.is_empty() {
+        Optimizer::parse_bril_args(&input)
+    } else {
+        args.bril_args
+    };
 
     let program = Optimizer::parse_bril(&input).unwrap();
     let result_program = if args.ssa {
@@ -74,6 +83,9 @@ fn main() {
     };
 
     if args.interp {
-        println!("{}", Optimizer::interp(&format!("{}", result_program)));
+        println!(
+            "{}",
+            Optimizer::interp(&format!("{}", result_program), bril_args)
+        );
     }
 }

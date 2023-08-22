@@ -68,11 +68,8 @@ impl Default for Optimizer {
 }
 
 impl Optimizer {
-    /// run the rust interpreter on the program
-    /// without any optimizations
-    pub fn interp(program: &str) -> String {
+    pub fn parse_bril_args(program: &str) -> Vec<String> {
         let mut args = Vec::new();
-
         if let Some(first_line) = program.split('\n').next() {
             if first_line.contains("# ARGS:") {
                 for arg in first_line["# ARGS: ".len()..]
@@ -83,7 +80,12 @@ impl Optimizer {
                 }
             }
         }
+        args
+    }
 
+    /// run the rust interpreter on the program
+    /// without any optimizations
+    pub fn interp(program: &str, args: Vec<String>) -> String {
         let mut optimized_out = Vec::new();
         brilirs::run_input(
             std::io::BufReader::new(program.to_string().as_bytes()),

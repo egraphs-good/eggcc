@@ -9,7 +9,7 @@ echo "Beginning eggcc nightly script..."
 # -e: exit immediately upon first error
 set -x -e
 
-export PATH=$PATH:~/.cargo/bin
+export PATH=~/.cargo/bin:$PATH
 
 rustup update
 

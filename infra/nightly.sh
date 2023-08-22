@@ -58,4 +58,4 @@ C=$(git rev-parse HEAD | sed 's/\(..........\).*/\1/')
 RDIR="$(date +%s):$(hostname):$B:$C"
 
 # Upload the artifact!
-# nightly-results publish --name "$RDIR" "$DIR"
+nightly-results publish --name "$RDIR" "$DIR"

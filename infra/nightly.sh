@@ -5,6 +5,8 @@
 
 echo "Beginning eggcc nightly script..."
 
+export PATH=$PATH:~/.cargo/bin
+
 rustup update
 
 # exit immediately upon first error

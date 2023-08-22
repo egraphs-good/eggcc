@@ -239,7 +239,6 @@ impl Optimizer {
           (mul Type Expr Expr)
           (div Type Expr Expr)
           (lt Type Expr Expr)
-          (alloc Type Expr)
           (ptradd Type Expr Expr)
           (load Type Expr)
         
@@ -253,6 +252,7 @@ impl Optimizer {
           (Assign String Expr)
           (store Expr Expr)
           (free Expr)
+          (alloc Type String Expr)
           (Print Expr))
 
         (datatype CodeList

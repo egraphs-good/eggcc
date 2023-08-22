@@ -214,6 +214,21 @@ impl Optimizer {
                         pos: None,
                     });
                 }
+                "alloc" => {
+                    assert!(args.len() == 3);
+                    let atype = Self::expr_to_type(&args[0]);
+                    let dest = Self::string_expr_to_string(&args[1]);
+                    let arg = self.expr_to_code(&args[2], res, None);
+                    res.push(Instruction::Value {
+                        dest,
+                        args: vec![arg],
+                        funcs: vec![],
+                        op: ValueOps::Alloc,
+                        labels: vec![],
+                        pos: None,
+                        op_type: atype,
+                    });
+                }
 
                 _ => panic!("unknown effect in body_to_code {}", op),
             }
@@ -471,33 +486,24 @@ impl Optimizer {
                     ),
                 },
             ),
+            // Allocation is actually an effect, so handle it first
             Instruction::Value {
-                dest,
+                op: ValueOps::Alloc,
                 args,
-                funcs,
-                op,
-                labels,
-                pos: _pos,
+                dest,
                 op_type,
+                ..
             } => {
-                // Funcs should be empty when it's a constant
-                // in valid Bril code
-                assert!(funcs.is_empty());
-                let mut arg_exprs = once(Self::type_to_expr(op_type))
-                    .chain(args.iter().map(|arg| {
-                        env.get(arg)
-                            .unwrap_or(&self.string_to_var_encoding(arg.to_string()))
-                            .clone()
-                    }))
-                    .collect::<Vec<Expr>>();
-                let label_exprs = labels
-                    .iter()
-                    .map(|label| self.string_to_expr(label.to_string()))
-                    .collect::<Vec<Expr>>();
-                assert!(label_exprs.is_empty() || op == &ValueOps::Phi);
-                arg_exprs.extend(label_exprs);
-                let expr = Expr::Call(self.op_to_egglog(*op), arg_exprs);
-                (dest.clone(), expr)
+                assert!(args.len() == 1);
+                let arg = env
+                    .get(&args[0])
+                    .cloned()
+                    .unwrap_or(self.string_to_var_encoding(args[0].clone()));
+                let atype = Self::type_to_expr(op_type);
+                return Expr::Call(
+                    "alloc".into(),
+                    vec![atype, self.string_to_expr(dest.to_string()), arg.clone()],
+                );
             }
             Instruction::Effect {
                 op,
@@ -527,6 +533,34 @@ impl Optimizer {
                 .into_iter()
                 .collect::<Vec<Expr>>();
                 return Expr::Call(self.effect_op_to_egglog(*op), arg_exprs);
+            }
+            Instruction::Value {
+                dest,
+                args,
+                funcs,
+                op,
+                labels,
+                pos: _pos,
+                op_type,
+            } => {
+                // Funcs should be empty when it's a constant
+                // in valid Bril code
+                assert!(funcs.is_empty());
+                let mut arg_exprs = once(Self::type_to_expr(op_type))
+                    .chain(args.iter().map(|arg| {
+                        env.get(arg)
+                            .unwrap_or(&self.string_to_var_encoding(arg.to_string()))
+                            .clone()
+                    }))
+                    .collect::<Vec<Expr>>();
+                let label_exprs = labels
+                    .iter()
+                    .map(|label| self.string_to_expr(label.to_string()))
+                    .collect::<Vec<Expr>>();
+                assert!(label_exprs.is_empty() || op == &ValueOps::Phi);
+                arg_exprs.extend(label_exprs);
+                let expr = Expr::Call(self.op_to_egglog(*op), arg_exprs);
+                (dest.clone(), expr)
             }
         };
 

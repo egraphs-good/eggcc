@@ -110,9 +110,10 @@ impl Optimizer {
     pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {
         let abstract_prog =
             parse_abstract_program_from_read(program.as_bytes(), false, false, None);
-        let serialized = serde_json::to_string(&abstract_prog).unwrap();
 
-        // call SSA conversion
+        // TODO dumb encoding does not support phi nodes yet
+        /*
+        let serialized = serde_json::to_string(&abstract_prog).unwrap();
         let ssa_output = run_command_with_stdin(
             std::process::Command::new("python3").arg("bril/examples/to_ssa.py"),
             serialized,
@@ -129,10 +130,14 @@ impl Optimizer {
 
         let res: Program = serde_json::from_str(&dead_code_optimized)
             .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
+        */
 
-        Optimizer::check_for_uninitialized_vars(&res)?;
+        let prog = Program::try_from(abstract_prog)
+            .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
 
-        Ok(res)
+        Optimizer::check_for_uninitialized_vars(&prog)?;
+
+        Ok(prog)
     }
 
     pub fn parse_to_structured(program: &str) -> Result<StructuredProgram, EggCCError> {
@@ -227,7 +232,8 @@ impl Optimizer {
           (Char Type String)
           (Float Type f64)
           (Var String)
-          (phi Type Expr Expr) ;; both expressions should be variables
+          ;; two arguments and two labels
+          (phi Type Expr Expr String String)
           (add Type Expr Expr)
           (sub Type Expr Expr)
           (mul Type Expr Expr)
@@ -265,9 +271,17 @@ impl Optimizer {
             (Break i64)
             (Return RetVal))
 
+        (datatype Argument
+            (Arg String Type))
+
+
+        (datatype ArgList
+            (ArgCons Argument ArgList)
+            (ArgNil))
+
         (datatype Function
-          ;; name and body
-          (Func String StructuredBlock))
+          ;; name, arguments, and body
+          (Func String ArgList StructuredBlock))
 
         (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)))
         (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)))

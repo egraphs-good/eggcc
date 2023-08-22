@@ -185,7 +185,7 @@ impl<'a> StructuredCfgBuilder<'a> {
                 ContainingHistory::LoopWithLabel(label)
                 | ContainingHistory::BlockFollowedBy(label) => {
                     if label == &target {
-                        return StructuredBlock::Break(index + 1);
+                        return StructuredBlock::Break(index);
                     }
                 }
             }

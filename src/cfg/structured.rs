@@ -179,7 +179,6 @@ impl StructuredBlock {
             StructuredBlock::Ite(cond, then_block, else_block) => {
                 let then_name = builder.fresh_block_name();
                 let else_name = builder.fresh_block_name();
-                eprintln!("condition: {}", cond);
                 builder
                     .resulting_code
                     .push(Code::Instruction(Instruction::Effect {
@@ -201,15 +200,19 @@ impl StructuredBlock {
                 else_block.to_code(builder);
             }
             StructuredBlock::Loop(block) => {
+                // we need to be able to loop back to the start
                 let loop_start_name = builder.fresh_block_name();
                 builder.resulting_code.push(Code::Label {
                     label: loop_start_name.clone(),
                     pos: None,
                 });
 
+                // loops can be broken out of
                 let loop_end_name = builder.fresh_block_name();
                 builder.scopes.push(loop_end_name.clone());
                 block.to_code(builder);
+
+                // jump back to the start of the loop if you get to the end
                 builder
                     .resulting_code
                     .push(Code::Instruction(Instruction::Effect {

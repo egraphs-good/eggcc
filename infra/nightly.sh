@@ -5,12 +5,13 @@
 
 echo "Beginning eggcc nightly script..."
 
+# -x: before executing each command, print it
+# -e: exit immediately upon first error
+set -x -e
+
 export PATH=$PATH:~/.cargo/bin
 
 rustup update
-
-# exit immediately upon first error
-set -e
 
 # determine physical directory of this script
 src="${BASH_SOURCE[0]}"

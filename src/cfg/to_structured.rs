@@ -93,6 +93,11 @@ impl<'a> StructuredCfgBuilder<'a> {
             .graph
             .edges_directed(node, petgraph::Direction::Outgoing)
             .collect::<Vec<_>>();
+        assert!(
+            !edges.is_empty(),
+            "edges should not be empty for non-exit block {:?}",
+            self.name(node)
+        );
         match merge_nodes.as_slice() {
             [] => {
                 StructuredBlock::Sequence(vec![

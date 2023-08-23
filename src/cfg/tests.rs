@@ -136,6 +136,18 @@ cfg_test!(
     ]
 );
 
+cfg_test!(
+    fib_shape_cfg,
+    include_str!("../../tests/small/fib_shape.bril"),
+    [
+        ENTRY = (Jmp) => "loop",
+        "loop" = (Cond { arg: "cond".into(), val: true }) => "body",
+        "loop" = (Cond { arg: "cond".into(), val: false }) => "done",
+        "body" = (Jmp) => "loop",
+        "done" = (Jmp) => EXIT,
+    ]
+);
+
 #[test]
 fn unstructured_panics() {
     let func = &parse_from_string(include_str!("../../tests/small/unstructured.bril")).functions[0];

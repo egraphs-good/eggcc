@@ -4,52 +4,42 @@ expression: "format!(\"{}\", res)"
 ---
 @main {
 .entry___:
-  jmp .sblock___0;
-.sblock___0:
-.b1:
-  one.0: int = const 1;
-  two.0: int = const 2;
-  x.0: int = const 0;
+  one: int = const 1;
+  two: int = const 2;
+  x: int = const 0;
   v0_: int = const 1;
   v1_: int = const 2;
-  a_cond.0: bool = lt v0_ v1_;
-  br a_cond.0 .sblock___5 .sblock___6;
-.sblock___5:
-  jmp .sblock___2;
-.sblock___6:
-  jmp .sblock___3;
+  a_cond: bool = lt v0_ v1_;
+  br a_cond .sblock___4 .sblock___5;
 .sblock___4:
-.D:
-  x.3: int = add x.0 one.0;
   jmp .sblock___2;
+.sblock___5:
+  jmp .sblock___3;
 .sblock___3:
-.B:
-  b_cond.0: bool = lt two.0 one.0;
-  x.1: int = add x.0 two.0;
-  br b_cond.0 .sblock___8 .sblock___9;
-.sblock___8:
+.D:
+  x: int = add x one;
   jmp .sblock___2;
-.sblock___9:
-  jmp .sblock___1;
-.sblock___7:
-.C:
-  x.2: int = add x.1 two.0;
-  jmp .sblock___1;
 .sblock___2:
-.E:
-  x.4: int = phi x.1 x.3;
-  b_cond.1: bool = phi b_cond.0 __undefined;
-  v14_: int = phi x.1 x.3;
-  x.5: int = add v14_ two.0;
+.B:
+  b_cond: bool = lt two one;
+  x: int = add x two;
+  br b_cond .sblock___7 .sblock___8;
+.sblock___7:
+  jmp .sblock___6;
+.sblock___8:
+  jmp .sblock___1;
+.sblock___6:
+.C:
+  x: int = add x two;
   jmp .sblock___1;
 .sblock___1:
+.E:
+  x: int = add x two;
+.sblock___0:
 .F:
-  x.6: int = phi x.2 x.5;
-  b_cond.2: bool = phi b_cond.0 b_cond.1;
-  v22_: int = phi x.2 x.5;
-  x.7: int = add v22_ one.0;
+  x: int = add x one;
   ret;
-.sblock___10:
+.sblock___9:
 .exit___:
 }
 

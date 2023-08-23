@@ -7,7 +7,9 @@ use egglog::ast::Expr;
 use egglog::EGraph;
 use std::collections::HashMap;
 use std::io::Write;
+use std::path::PathBuf;
 use std::process::Stdio;
+use std::io::prelude::*;
 
 use thiserror::Error;
 
@@ -68,7 +70,7 @@ impl Default for Optimizer {
 impl Optimizer {
     /// run the rust interpreter on the program
     /// without any optimizations
-    pub fn interp(program: &str) -> String {
+    pub fn interp(program: &str, profile_out: Option<PathBuf>) -> String {
         let mut args = Vec::new();
 
         if let Some(first_line) = program.split('\n').next() {
@@ -83,17 +85,36 @@ impl Optimizer {
         }
 
         let mut optimized_out = Vec::new();
-        brilirs::run_input(
-            std::io::BufReader::new(program.to_string().as_bytes()),
-            std::io::BufWriter::new(&mut optimized_out),
-            &args,
-            false,
-            std::io::stderr(),
-            false,
-            true,
-            None,
-        )
-        .unwrap();
+
+        match profile_out {
+            Some(path) => {
+                let profile_file = std::fs::File::create(path).unwrap();
+
+                brilirs::run_input(
+                    std::io::BufReader::new(program.to_string().as_bytes()),
+                    std::io::BufWriter::new(&mut optimized_out),
+                    &args,
+                    true,
+                    profile_file,
+                    false,
+                    true,
+                    None,
+                ).expect("brili interp error")
+            }
+            None => {
+                brilirs::run_input(
+                    std::io::BufReader::new(program.to_string().as_bytes()),
+                    std::io::BufWriter::new(&mut optimized_out),
+                    &args,
+                    false,
+                    std::io::stderr(),
+                    false,
+                    true,
+                    None,
+                ).unwrap();
+            }
+        }
+
         String::from_utf8(optimized_out).unwrap()
     }
 

@@ -29,6 +29,11 @@ struct Args {
     /// Also evaluate the resulting program and output the results
     #[clap(long)]
     interp: bool,
+
+    /// Path that eggcc will put interp profile results
+    #[clap(long)]
+    profile_out: Option<PathBuf>,
+
     /// The bril program to optimize
     file: PathBuf,
 }
@@ -74,6 +79,6 @@ fn main() {
     };
 
     if args.interp {
-        println!("{}", Optimizer::interp(&format!("{}", result_program)));
+        println!("{}", Optimizer::interp(&format!("{}", result_program), args.profile_out));
     }
 }

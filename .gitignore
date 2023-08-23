@@ -19,3 +19,6 @@ Cargo.lock
 # Added by cargo
 
 /target
+
+tmp
+profile.json

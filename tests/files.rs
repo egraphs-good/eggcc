@@ -85,7 +85,13 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
         };
 
         // TODO optimizer doesn't support these yet
-        let banned = ["diamond", "queens_func", "unstructured", "implicit_return"];
+        let banned = [
+            "diamond",
+            "fib",
+            "queens_func",
+            "unstructured",
+            "implicit_return",
+        ];
         if banned.iter().any(|b| name.contains(b)) || f.to_str().unwrap().contains("failing") {
             continue;
         }

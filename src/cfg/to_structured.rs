@@ -138,7 +138,8 @@ impl<'a> StructuredCfgBuilder<'a> {
                                 )
                             } else {
                                 panic!(
-                                    "Expected two conditional branches. Got {:?} and {:?}",
+                                    "Expected two conditional branches for node {}. Got {:?} and {:?}",
+                                    self.name(node),
                                     branch1, branch2
                                 );
                             }

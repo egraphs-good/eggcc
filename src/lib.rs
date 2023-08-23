@@ -1,5 +1,4 @@
 use bril2json::parse_abstract_program_from_read;
-use bril_rs::AbstractProgram;
 use bril_rs::Program;
 use cfg::program_to_structured;
 
@@ -30,6 +29,7 @@ pub enum EggCCError {
     UninitializedVariable(String, String),
 }
 
+#[allow(dead_code)]
 fn run_command_with_stdin(command: &mut std::process::Command, input: String) -> String {
     let mut piped = command
         .stdin(Stdio::piped())

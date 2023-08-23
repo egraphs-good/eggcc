@@ -15,7 +15,7 @@ PROFILES=tests/small/add.bril
 mkdir -p ./tmp/bench
 mkdir ./tmp/hyperfine
 
-# bench will benchmark a single bril file, outputting its contents to
+# bench will benchmark a single bril file, outputting its contents to ./tmp/bench/<profile_name>.json
 bench() {
     profile=$1
 

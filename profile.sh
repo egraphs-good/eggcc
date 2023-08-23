@@ -20,6 +20,7 @@ bench() {
     profile=$1
 
     # strip the file path down to just the file name
+    # TODO: profile name is not unique, generate a unique output path (it will be aggregated anyway)
     profile_name=$(basename -- $profile)
 
     # run eggcc, interp the program and put the data out to $out

@@ -36,13 +36,14 @@ impl Run {
                 assert_snapshot!(self.name(), format!("{}", structured));
             }
         } else if self.interp {
+            let args = Optimizer::parse_bril_args(&program_read);
             let parsed = Optimizer::parse_bril(&program_read).unwrap();
             let mut optimizer = Optimizer::default();
             let res = optimizer.optimize(&parsed).unwrap();
 
             assert_eq!(
-                Optimizer::interp(&program_read),
-                Optimizer::interp(&format!("{}", res))
+                Optimizer::interp(&program_read, args.clone()),
+                Optimizer::interp(&format!("{}", res), args)
             );
         } else {
             let parsed = Optimizer::parse_bril(&program_read).unwrap();

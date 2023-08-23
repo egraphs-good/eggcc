@@ -7,9 +7,7 @@ block:
 
  break 1
 block:
- v0.0: int = const 1;
- v1.0: int = const 2;
- v2.0: int = add v0.0 v1.0;
+
  return
 
 }
@@ -19,9 +17,7 @@ block:
 
  break 1
 block:
- v0.0: int = const 1;
- v1.0: int = const 2;
- v2.0: int = sub v0.0 v1.0;
+
  return
 
 }

@@ -7,9 +7,6 @@ expression: "format!(\"{}\", res)"
   jmp .sblock___0;
 .sblock___0:
 .b1:
-  v0.0: int = const 1;
-  v1.0: int = const 2;
-  v2.0: int = const 3;
   ret;
 .sblock___1:
 .exit___:
@@ -19,9 +16,6 @@ expression: "format!(\"{}\", res)"
   jmp .sblock___0;
 .sblock___0:
 .b1:
-  v0.0: int = const 1;
-  v1.0: int = const 2;
-  v2.0: int = const -1;
   ret;
 .sblock___1:
 .exit___:

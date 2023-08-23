@@ -1,5 +1,4 @@
 use bril2json::parse_abstract_program_from_read;
-use bril_rs::AbstractProgram;
 use bril_rs::Program;
 use cfg::program_to_structured;
 
@@ -30,6 +29,7 @@ pub enum EggCCError {
     UninitializedVariable(String, String),
 }
 
+#[allow(dead_code)]
 fn run_command_with_stdin(command: &mut std::process::Command, input: String) -> String {
     let mut piped = command
         .stdin(Stdio::piped())
@@ -110,9 +110,10 @@ impl Optimizer {
     pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {
         let abstract_prog =
             parse_abstract_program_from_read(program.as_bytes(), false, false, None);
-        let serialized = serde_json::to_string(&abstract_prog).unwrap();
 
-        // call SSA conversion
+        // TODO dumb encoding does not support phi nodes yet
+        /*
+        let serialized = serde_json::to_string(&abstract_prog).unwrap();
         let ssa_output = run_command_with_stdin(
             std::process::Command::new("python3").arg("bril/examples/to_ssa.py"),
             serialized,
@@ -129,10 +130,16 @@ impl Optimizer {
 
         let res: Program = serde_json::from_str(&dead_code_optimized)
             .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
+        */
 
-        Optimizer::check_for_uninitialized_vars(&res)?;
+        let prog = Program::try_from(abstract_prog)
+            .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
 
-        Ok(res)
+        // HACK: Check for uninitialized variables by looking for `__undefined`
+        // variables in the program.
+        Optimizer::check_for_uninitialized_vars(&prog)?;
+
+        Ok(prog)
     }
 
     pub fn parse_to_structured(program: &str) -> Result<StructuredProgram, EggCCError> {
@@ -227,13 +234,13 @@ impl Optimizer {
           (Char Type String)
           (Float Type f64)
           (Var String)
-          (phi Type Expr Expr) ;; both expressions should be variables
+          ;; two arguments and two labels
+          (phi Type Expr Expr String String)
           (add Type Expr Expr)
           (sub Type Expr Expr)
           (mul Type Expr Expr)
           (div Type Expr Expr)
           (lt Type Expr Expr)
-          (alloc Type Expr)
           (ptradd Type Expr Expr)
           (load Type Expr)
         
@@ -247,6 +254,7 @@ impl Optimizer {
           (Assign String Expr)
           (store Expr Expr)
           (free Expr)
+          (alloc Type String Expr)
           (Print Expr))
 
         (datatype CodeList
@@ -265,9 +273,17 @@ impl Optimizer {
             (Break i64)
             (Return RetVal))
 
+        (datatype Argument
+            (Arg String Type))
+
+
+        (datatype ArgList
+            (ArgCons Argument ArgList)
+            (ArgNil))
+
         (datatype Function
-          ;; name and body
-          (Func String StructuredBlock))
+          ;; name, arguments, and body
+          (Func String ArgList StructuredBlock))
 
         (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)))
         (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)))

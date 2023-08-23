@@ -4,24 +4,20 @@ expression: "format!(\"{}\", structured)"
 ---
 main {
 block:
-
- break 1
-block:
  block:
   block:
-   x.0: int = const 4;
-   cond.0: bool = lt x.0 x.0;
-   if cond.0:
-    break 3
-   else:
+   x: int = const 4;
+   cond: bool = lt x x;
+   if cond:
     break 2
-  a.1: int = const 2;
-  break 2
- a.0: int = const 1;
- break 1
+   else:
+    break 1
+  a: int = const 2;
+  break 1
+ a: int = const 1;
+ break 0
 block:
- a.2: int = phi a.0 a.1 .B .C;
- w.0: int = const 2;
+ w: int = const 2;
  return
 
 }

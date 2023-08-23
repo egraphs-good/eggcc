@@ -7,9 +7,9 @@ use std::{
 
 #[derive(Debug, Parser)]
 struct Args {
-    /// Output the SSA form of the bril program
+    /// Don't perform optimization
     #[clap(long)]
-    ssa: bool,
+    unoptimized: bool,
     /// Output the structured form of the bril program,
     /// which uses blocks, loops, and break
     #[clap(long)]
@@ -52,7 +52,7 @@ fn main() {
     };
 
     let program = Optimizer::parse_bril(&input).unwrap();
-    let result_program = if args.ssa {
+    let result_program = if args.unoptimized {
         println!("{}", program);
         program
     } else if args.structured {

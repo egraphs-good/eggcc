@@ -4,13 +4,10 @@ expression: "format!(\"{}\", structured)"
 ---
 main {
 block:
-
- break 1
-block:
- v0.0: int = const 1;
- v1.0: int = const 2;
- v2.0: int = add v0.0 v1.0;
- print v2.0;
+ v0: int = const 1;
+ v1: int = const 2;
+ v2: int = add v0 v1;
+ print v2;
  return
 
 }

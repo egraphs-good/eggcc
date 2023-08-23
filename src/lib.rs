@@ -239,14 +239,15 @@ impl Optimizer {
         let mut keys = egg_fns.keys().collect::<Vec<&String>>();
         keys.sort();
 
+        let mut termdag = Default::default();
         let mut result = vec![];
         for name in keys {
             let expr = egg_fns.get(name).unwrap();
-            let mut rep = egraph
-                .extract_expr(expr.clone(), 0)
+            let (sort, value) = egraph
+                .eval_expr(expr, None, true)
                 .map_err(EggCCError::EggLog)?;
-            let extracted = rep.termdag.term_to_expr(&rep.expr);
-            let structured_func = self.expr_to_structured_func(extracted);
+            let (_cost, term) = egraph.extract(value, &mut termdag, &sort);
+            let structured_func = self.term_to_structured_func(&termdag, &term);
 
             result.push(structured_func);
         }
@@ -285,7 +286,7 @@ impl Optimizer {
           (lt Type Expr Expr)
           (ptradd Type Expr Expr)
           (load Type Expr)
-        
+
         )
 
         (datatype RetVal

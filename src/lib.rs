@@ -135,6 +135,8 @@ impl Optimizer {
         let prog = Program::try_from(abstract_prog)
             .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
 
+        // HACK: Check for uninitialized variables by looking for `__undefined`
+        // variables in the program.
         Optimizer::check_for_uninitialized_vars(&prog)?;
 
         Ok(prog)

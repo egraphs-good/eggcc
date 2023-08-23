@@ -23,7 +23,7 @@ pub enum EggCCError {
     Parse(String),
     #[error("Conversion error: {0}")]
     ConversionError(String),
-    #[error("Unstructed control flow detected")]
+    #[error("Unstructured control flow detected")]
     UnstructuredControlFlow,
     #[error("Uninitialized variable {0} used in function {1}")]
     UninitializedVariable(String, String),

@@ -20,5 +20,8 @@ Cargo.lock
 
 /target
 
-tmp
+# Generated nightly files
+/nightly
+
+# Profiler output
 profile.json

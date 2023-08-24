@@ -98,63 +98,58 @@ impl<'a> StructuredCfgBuilder<'a> {
 
         match merge_nodes.as_slice() {
             [] => {
-                let v = vec![
-                    Some(StructuredBlock::Basic(Box::new(
-                        self.cfg.graph[node].clone(),
-                    ))),
-                    match edges.as_slice() {
-                        [] => {
-                            panic!("handled above");
+                let first = StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone()));
+                let second = match edges.as_slice() {
+                    [] => {
+                        panic!("handled above");
+                    }
+                    // Unconditional
+                    [out] => self.do_branch(out),
+                    [branch1, branch2] => {
+                        if let (
+                            Branch {
+                                op:
+                                    BranchOp::Cond {
+                                        val: val1,
+                                        arg: arg1,
+                                    },
+                                ..
+                            },
+                            Branch {
+                                op: BranchOp::Cond { val: val2, .. },
+                                ..
+                            },
+                        ) = (branch1.weight(), branch2.weight())
+                        {
+                            assert!(val1 != val2);
+                            self.context.push(Context {
+                                enclosing: ContainingHistory::ThenBranch,
+                                fallthrough: None,
+                            });
+                            let then_block = self.do_branch(if *val1 { branch1 } else { branch2 });
+                            let else_block = self.do_branch(if !*val1 { branch1 } else { branch2 });
+                            self.context.pop();
+                            Some(StructuredBlock::Ite(
+                                arg1.to_string(),
+                                Box::new(then_block.unwrap()),
+                                Box::new(else_block.unwrap()),
+                            ))
+                        } else {
+                            panic!(
+                                "Expected two conditional branches. Got {:?} and {:?}",
+                                branch1, branch2
+                            );
                         }
-                        // Unconditional
-                        [out] => self.do_branch(out),
-                        [branch1, branch2] => {
-                            if let (
-                                Branch {
-                                    op:
-                                        BranchOp::Cond {
-                                            val: val1,
-                                            arg: arg1,
-                                        },
-                                    ..
-                                },
-                                Branch {
-                                    op: BranchOp::Cond { val: val2, .. },
-                                    ..
-                                },
-                            ) = (branch1.weight(), branch2.weight())
-                            {
-                                assert!(val1 != val2);
-                                self.context.push(Context {
-                                    enclosing: ContainingHistory::ThenBranch,
-                                    fallthrough: None,
-                                });
-                                let then_block =
-                                    self.do_branch(if *val1 { branch1 } else { branch2 });
-                                let else_block =
-                                    self.do_branch(if !*val1 { branch1 } else { branch2 });
-                                self.context.pop();
-                                Some(StructuredBlock::Ite(
-                                    arg1.to_string(),
-                                    Box::new(then_block.unwrap()),
-                                    Box::new(else_block.unwrap()),
-                                ))
-                            } else {
-                                panic!(
-                                    "Expected two conditional branches. Got {:?} and {:?}",
-                                    branch1, branch2
-                                );
-                            }
-                        }
-                        _ => {
-                            panic!("Expected at most two outgoing edges. Got {:?}", edges);
-                        }
-                    },
-                ]
-                .into_iter()
-                .flatten()
-                .collect();
-                StructuredBlock::Sequence(v)
+                    }
+                    _ => {
+                        panic!("Expected at most two outgoing edges. Got {:?}", edges);
+                    }
+                };
+                if let Some(block) = second {
+                    StructuredBlock::Sequence(vec![first, block])
+                } else {
+                    first
+                }
             }
             [first, ..] => {
                 self.context.push(Context {

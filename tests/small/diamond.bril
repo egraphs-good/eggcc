@@ -1,4 +1,4 @@
-@main(input: int) {
+@main() {
   x: int = const 4;
   cond: bool = lt x x;
   br cond .B .C;

@@ -113,7 +113,7 @@ pub(crate) struct Cfg {
 }
 
 impl Cfg {
-    fn reverse_posorder(self: &Cfg) -> HashMap<BlockName, usize> {
+    fn reverse_postorder(self: &Cfg) -> HashMap<BlockName, usize> {
         let mut reverse_postorder = HashMap::<BlockName, usize>::new();
         let mut post_counter = 0;
         DfsPostOrder::new(&self.graph, self.entry)
@@ -255,8 +255,26 @@ pub(crate) fn to_cfg(func: &Function) -> Cfg {
             Code::Instruction(i) => block.push(i.clone()),
         }
     }
+    // last block can implicity return, add an edge for that case
+    // only if it doesn't already have an outgoing edge
+    if builder
+        .cfg
+        .graph
+        .neighbors_directed(current, petgraph::Outgoing)
+        .next()
+        .is_none()
+    {
+        builder.add_edge(
+            current,
+            builder.cfg.exit,
+            Branch {
+                op: BranchOp::Jmp,
+                pos: None,
+            },
+        );
+    }
     builder.finish_block(current, mem::take(&mut block));
-    builder.build()
+    builder.cfg
 }
 
 struct CfgBuilder {
@@ -280,26 +298,7 @@ impl CfgBuilder {
             label_to_block: HashMap::new(),
         }
     }
-    fn build(mut self) -> Cfg {
-        // If there are no outgoing edges from the entry block, add a basic one returning to the exit.
-        if self
-            .cfg
-            .graph
-            .neighbors_directed(self.cfg.entry, petgraph::Outgoing)
-            .next()
-            .is_none()
-        {
-            self.cfg.graph.add_edge(
-                self.cfg.entry,
-                self.cfg.exit,
-                Branch {
-                    op: BranchOp::Jmp,
-                    pos: None,
-                },
-            );
-        }
-        self.cfg
-    }
+
     fn get_index(&mut self, label: &str) -> NodeIndex {
         *self
             .label_to_block

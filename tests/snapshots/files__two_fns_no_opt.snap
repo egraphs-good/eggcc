@@ -4,30 +4,24 @@ expression: "format!(\"{}\", res)"
 ---
 @main {
 .entry___:
-  jmp .sblock___0;
-.sblock___0:
-.b1:
-  v0.0: int = const 1;
-  v1.0: int = const 2;
+  v0: int = const 1;
+  v1: int = const 2;
   v0_: int = const 1;
   v1_: int = const 2;
-  v2.0: int = add v0_ v1_;
-  ret v2.0;
-.sblock___1:
+  v2: int = add v0_ v1_;
+  ret;
+.sblock___0:
 .exit___:
 }
 @sub {
 .entry___:
-  jmp .sblock___0;
-.sblock___0:
-.b1:
-  v0.0: int = const 1;
-  v1.0: int = const 2;
+  v0: int = const 1;
+  v1: int = const 2;
   v2_: int = const 1;
   v3_: int = const 2;
-  v2.0: int = sub v2_ v3_;
-  ret v2.0;
-.sblock___1:
+  v2: int = sub v2_ v3_;
+  ret;
+.sblock___0:
 .exit___:
 }
 

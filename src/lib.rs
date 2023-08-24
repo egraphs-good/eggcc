@@ -1,5 +1,4 @@
 use bril2json::parse_abstract_program_from_read;
-use bril_rs::AbstractProgram;
 use bril_rs::Program;
 use cfg::program_to_structured;
 
@@ -24,10 +23,13 @@ pub enum EggCCError {
     Parse(String),
     #[error("Conversion error: {0}")]
     ConversionError(String),
-    #[error("Unstructed control flow detected")]
+    #[error("Unstructured control flow detected")]
     UnstructuredControlFlow,
+    #[error("Uninitialized variable {0} used in function {1}")]
+    UninitializedVariable(String, String),
 }
 
+#[allow(dead_code)]
 fn run_command_with_stdin(command: &mut std::process::Command, input: String) -> String {
     let mut piped = command
         .stdin(Stdio::piped())
@@ -66,6 +68,39 @@ impl Default for Optimizer {
 }
 
 impl Optimizer {
+    pub fn parse_bril_args(program: &str) -> Vec<String> {
+        let mut args = Vec::new();
+        if let Some(first_line) = program.split('\n').next() {
+            if first_line.contains("# ARGS:") {
+                for arg in first_line["# ARGS: ".len()..]
+                    .split(' ')
+                    .map(|s| s.to_string())
+                {
+                    args.push(arg);
+                }
+            }
+        }
+        args
+    }
+
+    /// run the rust interpreter on the program
+    /// without any optimizations
+    pub fn interp(program: &str, args: Vec<String>) -> String {
+        let mut optimized_out = Vec::new();
+        brilirs::run_input(
+            std::io::BufReader::new(program.to_string().as_bytes()),
+            std::io::BufWriter::new(&mut optimized_out),
+            &args,
+            false,
+            std::io::stderr(),
+            false,
+            true,
+            None,
+        )
+        .unwrap();
+        String::from_utf8(optimized_out).unwrap()
+    }
+
     pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, EggCCError> {
         let parsed = Self::parse_bril(program)?;
         let res = self.optimize(&parsed)?;
@@ -75,16 +110,36 @@ impl Optimizer {
     pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {
         let abstract_prog =
             parse_abstract_program_from_read(program.as_bytes(), false, false, None);
-        let serialized = serde_json::to_string(&abstract_prog).unwrap();
 
-        // call SSA conversion
+        // TODO dumb encoding does not support phi nodes yet
+        /*
+        let serialized = serde_json::to_string(&abstract_prog).unwrap();
         let ssa_output = run_command_with_stdin(
             std::process::Command::new("python3").arg("bril/examples/to_ssa.py"),
             serialized,
         );
         let ssa_prog: AbstractProgram = serde_json::from_str(&ssa_output).unwrap();
 
-        Program::try_from(ssa_prog).map_err(|err| EggCCError::ConversionError(err.to_string()))
+        let ssa_res = Program::try_from(ssa_prog)
+            .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
+
+        let dead_code_optimized = run_command_with_stdin(
+            std::process::Command::new("python3").arg("bril/examples/tdce.py"),
+            serde_json::to_string(&ssa_res).unwrap(),
+        );
+
+        let res: Program = serde_json::from_str(&dead_code_optimized)
+            .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
+        */
+
+        let prog = Program::try_from(abstract_prog)
+            .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
+
+        // HACK: Check for uninitialized variables by looking for `__undefined`
+        // variables in the program.
+        Optimizer::check_for_uninitialized_vars(&prog)?;
+
+        Ok(prog)
     }
 
     pub fn parse_to_structured(program: &str) -> Result<StructuredProgram, EggCCError> {
@@ -92,7 +147,7 @@ impl Optimizer {
         Ok(program_to_structured(&parsed))
     }
 
-    pub fn fresh(&mut self) -> String {
+    pub fn fresh_var(&mut self) -> String {
         let res = format!("v{}_", self.var_counter);
         self.var_counter += 1;
         res
@@ -145,10 +200,11 @@ impl Optimizer {
         let mut result = vec![];
         for name in keys {
             let expr = egg_fns.get(name).unwrap();
-            let rep = egraph
+            let mut rep = egraph
                 .extract_expr(expr.clone(), 0)
                 .map_err(EggCCError::EggLog)?;
-            let structured_func = self.expr_to_func(rep.expr);
+            let extracted = rep.termdag.term_to_expr(&rep.expr);
+            let structured_func = self.expr_to_structured_func(extracted);
 
             result.push(structured_func);
         }
@@ -164,19 +220,31 @@ impl Optimizer {
         let schedule = format!("(run {})", self.num_iters);
         format!(
             "
+        (datatype Type
+          (IntT)
+          (BoolT)
+          (FloatT)
+          (CharT)
+          (PointerT Type))
+
         (datatype Expr
-          (Int String i64)
-          (True String)
-          (False String)
-          (Char String String)
-          (Float String f64)
+          (Int Type i64)
+          (True Type)
+          (False Type)
+          (Char Type String)
+          (Float Type f64)
           (Var String)
-          (phi String Expr Expr) ;; both expressions should be variables
-          (add String Expr Expr)
-          (sub String Expr Expr)
-          (mul String Expr Expr)
-          (div String Expr Expr)
-          (lt String Expr Expr))
+          ;; two arguments and two labels
+          (phi Type Expr Expr String String)
+          (add Type Expr Expr)
+          (sub Type Expr Expr)
+          (mul Type Expr Expr)
+          (div Type Expr Expr)
+          (lt Type Expr Expr)
+          (ptradd Type Expr Expr)
+          (load Type Expr)
+        
+        )
 
         (datatype RetVal
           (ReturnValue String)
@@ -184,6 +252,9 @@ impl Optimizer {
 
         (datatype Code
           (Assign String Expr)
+          (store Expr Expr)
+          (free Expr)
+          (alloc Type String Expr)
           (Print Expr))
 
         (datatype CodeList
@@ -202,9 +273,17 @@ impl Optimizer {
             (Break i64)
             (Return RetVal))
 
+        (datatype Argument
+            (Arg String Type))
+
+
+        (datatype ArgList
+            (ArgCons Argument ArgList)
+            (ArgNil))
+
         (datatype Function
-          ;; name and body
-          (Func String StructuredBlock))
+          ;; name, arguments, and body
+          (Func String ArgList StructuredBlock))
 
         (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)))
         (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)))

@@ -9,6 +9,8 @@ struct Run {
     path: PathBuf,
     test_structured: bool,
     no_opt: bool,
+    interp: bool,
+    snapshot: bool,
 }
 
 impl Run {
@@ -20,6 +22,9 @@ impl Run {
         if self.no_opt {
             name = format!("{}_no_opt", name);
         }
+        if self.interp {
+            name = format!("{}_interp", name)
+        }
         name
     }
 
@@ -27,7 +32,19 @@ impl Run {
         let program_read = std::fs::read_to_string(self.path.clone()).unwrap();
         if self.test_structured {
             let structured = Optimizer::parse_to_structured(&program_read).unwrap();
-            assert_snapshot!(self.name(), format!("{}", structured));
+            if self.snapshot {
+                assert_snapshot!(self.name(), format!("{}", structured));
+            }
+        } else if self.interp {
+            let args = Optimizer::parse_bril_args(&program_read);
+            let parsed = Optimizer::parse_bril(&program_read).unwrap();
+            let mut optimizer = Optimizer::default();
+            let res = optimizer.optimize(&parsed).unwrap();
+
+            assert_eq!(
+                Optimizer::interp(&program_read, args.clone()),
+                Optimizer::interp(&format!("{}", res), args)
+            );
         } else {
             let parsed = Optimizer::parse_bril(&program_read).unwrap();
 
@@ -36,8 +53,9 @@ impl Run {
                 optimizer.num_iters = 0;
             }
             let res = optimizer.optimize(&parsed).unwrap();
-
-            assert_snapshot!(self.name(), format!("{}", res));
+            if self.snapshot {
+                assert_snapshot!(self.name(), format!("{}", res));
+            }
         }
     }
 }
@@ -62,28 +80,31 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             path: f.clone(),
             test_structured: false,
             no_opt: false,
+            interp: false,
+            snapshot: f.to_str().unwrap().contains("small"),
         };
+
         // TODO optimizer doesn't support these yet
-        let banned = [
-            "diamond",
-            "fib",
-            "queens_func",
-            "unstructured",
-            "implicit_return",
-        ];
-        if !banned.iter().any(|b| name.contains(b)) {
-            mk_trial(run.clone());
-            mk_trial(Run {
-                no_opt: true,
-                ..run.clone()
-            });
+        let banned = ["queens_func", "unstructured", "implicit_return"];
+        if banned.iter().any(|b| name.contains(b)) || f.to_str().unwrap().contains("failing") {
+            continue;
         }
-        if f.to_str().unwrap().contains("small") && !name.contains("unstructured") {
-            mk_trial(Run {
-                test_structured: true,
-                ..run
-            });
-        }
+
+        mk_trial(Run {
+            interp: true,
+            ..run.clone()
+        });
+
+        mk_trial(run.clone());
+        mk_trial(Run {
+            no_opt: true,
+            ..run.clone()
+        });
+
+        mk_trial(Run {
+            test_structured: true,
+            ..run
+        });
     }
 
     trials

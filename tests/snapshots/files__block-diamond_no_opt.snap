@@ -1,0 +1,45 @@
+---
+source: tests/files.rs
+expression: "format!(\"{}\", res)"
+---
+@main {
+.entry___:
+  one: int = const 1;
+  two: int = const 2;
+  x: int = const 0;
+  v0_: int = const 1;
+  v1_: int = const 2;
+  a_cond: bool = lt v0_ v1_;
+  br a_cond .sblock___4 .sblock___5;
+.sblock___4:
+  jmp .sblock___2;
+.sblock___5:
+  jmp .sblock___3;
+.sblock___3:
+.D:
+  x: int = add x one;
+  jmp .sblock___2;
+.sblock___2:
+.B:
+  b_cond: bool = lt two one;
+  x: int = add x two;
+  br b_cond .sblock___7 .sblock___8;
+.sblock___7:
+  jmp .sblock___6;
+.sblock___8:
+  jmp .sblock___1;
+.sblock___6:
+.C:
+  x: int = add x two;
+  jmp .sblock___1;
+.sblock___1:
+.E:
+  x: int = add x two;
+.sblock___0:
+.F:
+  x: int = add x one;
+  ret;
+.sblock___9:
+.exit___:
+}
+

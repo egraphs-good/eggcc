@@ -5,22 +5,27 @@ use crate::{
         structured::{StructuredBlock, StructuredFunction},
         BasicBlock, BlockName,
     },
-    Optimizer,
+    EggCCError, Optimizer,
 };
-use bril_rs::{EffectOps, Instruction, Literal, Type, ValueOps};
+use bril_rs::{Argument, Code, EffectOps, Instruction, Literal, Program, Type, ValueOps};
 use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
 impl Optimizer {
-    pub(crate) fn expr_to_func(&mut self, expr: Expr) -> StructuredFunction {
+    /// Convert an egglog expression back into a StructuredFunction
+    pub(crate) fn expr_to_structured_func(&mut self, expr: Expr) -> StructuredFunction {
         if let Expr::Call(func, args) = expr {
             assert_eq!(func.to_string(), "Func");
             match &args.as_slice() {
-                [func_name, body] => {
+                [func_name, argslist, body] => {
+                    let args = Self::conslist_to_vec(argslist, "Arg")
+                        .into_iter()
+                        .map(|arg| Self::expr_to_argument(&arg))
+                        .collect();
                     if let Expr::Lit(egglog::ast::Literal::String(fname)) = func_name {
                         StructuredFunction {
                             name: fname.to_string(),
-                            args: vec![],
+                            args,
                             block: self.expr_to_structured_block(body),
                         }
                     } else {
@@ -34,6 +39,29 @@ impl Optimizer {
         }
     }
 
+    fn expr_to_argument(expr: &Expr) -> Argument {
+        let Expr::Call(op, args) = expr else {
+            panic!("expected call in expr_to_argument");
+        };
+        match (op.as_str(), args.as_slice()) {
+            ("Arg", [Expr::Lit(egglog::ast::Literal::String(name)), ty]) => Argument {
+                name: name.to_string(),
+                arg_type: Self::expr_to_type(ty),
+            },
+            _ => panic!("unknown argument"),
+        }
+    }
+
+    fn argument_to_expr(arg: &Argument) -> Expr {
+        Expr::Call(
+            "Arg".into(),
+            vec![
+                Expr::Lit(egglog::ast::Literal::String(arg.name.clone().into())),
+                Self::type_to_expr(&arg.arg_type),
+            ],
+        )
+    }
+
     pub(crate) fn expr_to_structured_block(&mut self, expr: &Expr) -> StructuredBlock {
         if let Expr::Call(func, args) = expr {
             match (func.as_str(), &args.as_slice()) {
@@ -44,7 +72,7 @@ impl Optimizer {
                     StructuredBlock::Basic(Box::new(self.expr_to_basic_block(basic_block)))
                 }
                 ("Ite", [name, then_branch, else_branch]) => StructuredBlock::Ite(
-                    name.to_string(),
+                    Self::string_expr_to_string(name),
                     Box::new(self.expr_to_structured_block(then_branch)),
                     Box::new(self.expr_to_structured_block(else_branch)),
                 ),
@@ -94,7 +122,7 @@ impl Optimizer {
 
             match &args.as_slice() {
                 [Expr::Lit(egglog::ast::Literal::String(name)), code] => {
-                    let code_vec = self.codelist_to_vec(code);
+                    let code_vec = Self::conslist_to_vec(code, "Code");
                     let mut instrs = vec![];
 
                     for expr in code_vec {
@@ -114,30 +142,30 @@ impl Optimizer {
         }
     }
 
-    fn codelist_to_vec_helper(expr: &Expr, res: &mut Vec<Expr>) {
+    fn conslist_to_vec_helper(expr: &Expr, res: &mut Vec<Expr>, prefix: &str) {
         match expr {
             Expr::Call(op, args) => match (op.as_str(), args.as_slice()) {
-                ("CodeCons", [head, tail]) => {
+                (op, [head, tail]) if op == prefix.to_string() + "Cons" => {
                     res.push(head.clone());
-                    Self::codelist_to_vec_helper(tail, res);
+                    Self::conslist_to_vec_helper(tail, res, prefix);
                 }
-                ("CodeNil", []) => {}
-                _ => panic!("expected CodeCons or CodeNil"),
+                (op, []) if op == prefix.to_string() + "Nil" => {}
+                _ => panic!("expected Cons or Nil"),
             },
             _ => panic!("expected call in codelist_to_vec"),
         }
     }
 
-    fn codelist_to_vec(&self, expr: &Expr) -> Vec<Expr> {
+    fn conslist_to_vec(expr: &Expr, prefix: &str) -> Vec<Expr> {
         let mut res = vec![];
-        Self::codelist_to_vec_helper(expr, &mut res);
+        Self::conslist_to_vec_helper(expr, &mut res, prefix);
         res
     }
 
-    fn vec_to_codelist(&mut self, vec: Vec<Expr>) -> Expr {
-        let mut current = Expr::Call("CodeNil".into(), vec![]);
+    fn vec_to_cons_list(vec: Vec<Expr>, prefix: &str) -> Expr {
+        let mut current = Expr::Call(format!("{prefix}Nil").into(), vec![]);
         for expr in vec.into_iter().rev() {
-            current = Expr::Call("CodeCons".into(), vec![expr, current]);
+            current = Expr::Call(format!("{prefix}Cons").into(), vec![expr, current]);
         }
         current
     }
@@ -172,6 +200,36 @@ impl Optimizer {
                     };
                     self.expr_to_code(&args[1], res, Some(dest));
                 }
+                "store" | "free" => {
+                    let args = args
+                        .iter()
+                        .map(|arg| self.expr_to_code(arg, res, None))
+                        .collect::<Vec<String>>();
+
+                    res.push(Instruction::Effect {
+                        op: serde_json::from_str(&format!("\"{}\"", op)).unwrap(),
+                        args,
+                        funcs: vec![],
+                        labels: vec![],
+                        pos: None,
+                    });
+                }
+                "alloc" => {
+                    assert!(args.len() == 3);
+                    let atype = Self::expr_to_type(&args[0]);
+                    let dest = Self::string_expr_to_string(&args[1]);
+                    let arg = self.expr_to_code(&args[2], res, None);
+                    res.push(Instruction::Value {
+                        dest,
+                        args: vec![arg],
+                        funcs: vec![],
+                        op: ValueOps::Alloc,
+                        labels: vec![],
+                        pos: None,
+                        op_type: atype,
+                    });
+                }
+
                 _ => panic!("unknown effect in body_to_code {}", op),
             }
         } else {
@@ -188,7 +246,7 @@ impl Optimizer {
     ) -> String {
         let dest = match &assign_to {
             Some(dest) => dest.clone(),
-            None => self.fresh(),
+            None => self.fresh_var(),
         };
         match expr {
             Expr::Lit(literal) => {
@@ -233,13 +291,31 @@ impl Optimizer {
                         op: bril_rs::ConstOps::Const,
                         value: literal,
                         pos: None,
-                        const_type: self.expr_to_type(&args[0]),
+                        const_type: Self::expr_to_type(&args[0]),
+                    });
+                    dest
+                }
+                "phi" => {
+                    assert!(args.len() == 5);
+                    let etype = Self::expr_to_type(&args[0]);
+                    let arg1 = self.expr_to_code(&args[1], res, None);
+                    let arg2 = self.expr_to_code(&args[2], res, None);
+                    let label1 = Self::string_expr_to_string(&args[3]);
+                    let label2 = Self::string_expr_to_string(&args[4]);
+                    res.push(Instruction::Value {
+                        dest: dest.clone(),
+                        args: vec![arg1, arg2],
+                        funcs: vec![],
+                        op: ValueOps::Phi,
+                        labels: vec![label1, label2],
+                        pos: None,
+                        op_type: etype,
                     });
                     dest
                 }
                 _ => {
                     assert!(op.as_str() != "Void");
-                    let etype = self.expr_to_type(&args[0]);
+                    let etype = Self::expr_to_type(&args[0]);
                     let args_vars = args
                         .iter()
                         .skip(1)
@@ -261,39 +337,46 @@ impl Optimizer {
     }
 
     pub(crate) fn func_to_expr(&mut self, func: &StructuredFunction) -> Expr {
+        let arg_exprs = func
+            .args
+            .iter()
+            .map(Self::argument_to_expr)
+            .collect::<Vec<Expr>>();
+        let arg_expr = Self::vec_to_cons_list(arg_exprs, "Arg");
         Expr::Call(
             "Func".into(),
             vec![
                 Expr::Lit(egglog::ast::Literal::String(func.name.clone().into())),
-                self.convert_structured_block(&func.block),
+                arg_expr,
+                self.structured_block_to_expr(&func.block),
             ],
         )
     }
 
-    pub(crate) fn convert_structured_block(&mut self, structured_block: &StructuredBlock) -> Expr {
+    pub(crate) fn structured_block_to_expr(&mut self, structured_block: &StructuredBlock) -> Expr {
         match structured_block {
             StructuredBlock::Ite(var, then, els) => Expr::Call(
                 "Ite".into(),
                 vec![
                     self.string_to_expr(var.clone()),
-                    self.convert_structured_block(then),
-                    self.convert_structured_block(els),
+                    self.structured_block_to_expr(then),
+                    self.structured_block_to_expr(els),
                 ],
             ),
             StructuredBlock::Loop(body) => {
-                Expr::Call("Loop".into(), vec![self.convert_structured_block(body)])
+                Expr::Call("Loop".into(), vec![self.structured_block_to_expr(body)])
             }
             StructuredBlock::Block(body) => {
-                Expr::Call("Block".into(), vec![self.convert_structured_block(body)])
+                Expr::Call("Block".into(), vec![self.structured_block_to_expr(body)])
             }
             StructuredBlock::Sequence(blocks) => match &blocks.as_slice() {
                 [] => panic!("empty sequence"),
-                [a] => self.convert_structured_block(a),
+                [a] => self.structured_block_to_expr(a),
                 [a, ..] => Expr::Call(
                     "Sequence".into(),
                     vec![
-                        self.convert_structured_block(a),
-                        self.convert_structured_block(&StructuredBlock::Sequence(
+                        self.structured_block_to_expr(a),
+                        self.structured_block_to_expr(&StructuredBlock::Sequence(
                             blocks[1..].to_vec(),
                         )),
                     ],
@@ -328,6 +411,14 @@ impl Optimizer {
         Expr::Call("Var".into(), vec![self.string_to_expr(string)])
     }
 
+    fn string_expr_to_string(expr: &Expr) -> String {
+        if let Expr::Lit(egglog::ast::Literal::String(string)) = expr {
+            string.to_string()
+        } else {
+            panic!("expected string literal");
+        }
+    }
+
     pub(crate) fn convert_basic_block(&mut self, block: &BasicBlock) -> Expr {
         // leave prints in order
         // leave any effects in order
@@ -345,7 +436,7 @@ impl Optimizer {
             "BlockNamed".into(),
             vec![
                 Expr::Lit(egglog::ast::Literal::String(block.name.to_string().into())),
-                self.vec_to_codelist(codelist),
+                Self::vec_to_cons_list(codelist, "Code"),
             ],
         )
     }
@@ -368,54 +459,51 @@ impl Optimizer {
                     Literal::Int(int) => Expr::Call(
                         "Int".into(),
                         vec![
-                            self.type_to_expr(const_type),
+                            Self::type_to_expr(const_type),
                             Expr::Lit(egglog::ast::Literal::Int(*int)),
                         ],
                     ),
                     Literal::Bool(bool) => {
                         if *bool {
-                            Expr::Call("True".into(), vec![self.type_to_expr(const_type)])
+                            Expr::Call("True".into(), vec![Self::type_to_expr(const_type)])
                         } else {
-                            Expr::Call("False".into(), vec![self.type_to_expr(const_type)])
+                            Expr::Call("False".into(), vec![Self::type_to_expr(const_type)])
                         }
                     }
                     Literal::Char(char) => Expr::Call(
                         "Char".into(),
                         vec![
-                            self.type_to_expr(const_type),
+                            Self::type_to_expr(const_type),
                             Expr::Lit(egglog::ast::Literal::String(char.to_string().into())),
                         ],
                     ),
                     Literal::Float(float) => Expr::Call(
                         "Float".into(),
                         vec![
-                            self.type_to_expr(const_type),
+                            Self::type_to_expr(const_type),
                             Expr::Lit(egglog::ast::Literal::F64(OrderedFloat(*float))),
                         ],
                     ),
                 },
             ),
+            // Allocation is actually an effect, so handle it first
             Instruction::Value {
-                dest,
+                op: ValueOps::Alloc,
                 args,
-                funcs,
-                op,
-                labels: _labels,
-                pos: _pos,
+                dest,
                 op_type,
+                ..
             } => {
-                // Funcs should be empty when it's a constant
-                // in valid Bril code
-                assert!(funcs.is_empty());
-                let arg_exprs = once(self.type_to_expr(op_type))
-                    .chain(args.iter().map(|arg| {
-                        env.get(arg)
-                            .unwrap_or(&self.string_to_var_encoding(arg.to_string()))
-                            .clone()
-                    }))
-                    .collect::<Vec<Expr>>();
-                let expr = Expr::Call(self.op_to_egglog(*op), arg_exprs);
-                (dest.clone(), expr)
+                assert!(args.len() == 1);
+                let arg = env
+                    .get(&args[0])
+                    .cloned()
+                    .unwrap_or(self.string_to_var_encoding(args[0].clone()));
+                let atype = Self::type_to_expr(op_type);
+                return Expr::Call(
+                    "alloc".into(),
+                    vec![atype, self.string_to_expr(dest.to_string()), arg.clone()],
+                );
             }
             Instruction::Effect {
                 op,
@@ -435,12 +523,44 @@ impl Optimizer {
                     },
                     _ => args
                         .iter()
-                        .map(|arg| env.get(arg).unwrap_or(&Expr::Var(arg.into())).clone())
+                        .map(|arg| {
+                            env.get(arg)
+                                .unwrap_or(&self.string_to_var_encoding(arg.to_string()))
+                                .clone()
+                        })
                         .collect::<Vec<Expr>>(),
                 }
                 .into_iter()
                 .collect::<Vec<Expr>>();
                 return Expr::Call(self.effect_op_to_egglog(*op), arg_exprs);
+            }
+            Instruction::Value {
+                dest,
+                args,
+                funcs,
+                op,
+                labels,
+                pos: _pos,
+                op_type,
+            } => {
+                // Funcs should be empty when it's a constant
+                // in valid Bril code
+                assert!(funcs.is_empty());
+                let mut arg_exprs = once(Self::type_to_expr(op_type))
+                    .chain(args.iter().map(|arg| {
+                        env.get(arg)
+                            .unwrap_or(&self.string_to_var_encoding(arg.to_string()))
+                            .clone()
+                    }))
+                    .collect::<Vec<Expr>>();
+                let label_exprs = labels
+                    .iter()
+                    .map(|label| self.string_to_expr(label.to_string()))
+                    .collect::<Vec<Expr>>();
+                assert!(label_exprs.is_empty() || op == &ValueOps::Phi);
+                arg_exprs.extend(label_exprs);
+                let expr = Expr::Call(self.op_to_egglog(*op), arg_exprs);
+                (dest.clone(), expr)
             }
         };
 
@@ -496,23 +616,27 @@ impl Optimizer {
         }
     }
 
-    pub(crate) fn type_to_expr(&self, ty: &Type) -> egglog::ast::Expr {
-        let type_name = serde_json::to_string(&ty).unwrap();
-        // remove the quotes around the json string
-        let without_quotes = &type_name[1..type_name.len() - 1];
-        Expr::Lit(egglog::ast::Literal::String(without_quotes.into()))
+    pub(crate) fn type_to_expr(ty: &Type) -> egglog::ast::Expr {
+        match ty {
+            Type::Int => Expr::Call("IntT".into(), vec![]),
+            Type::Bool => Expr::Call("BoolT".into(), vec![]),
+            Type::Float => Expr::Call("FloatT".into(), vec![]),
+            Type::Char => Expr::Call("CharT".into(), vec![]),
+            Type::Pointer(child) => Expr::Call("PointerT".into(), vec![Self::type_to_expr(child)]),
+        }
     }
 
-    pub(crate) fn expr_to_type(&self, expr: &Expr) -> Type {
-        match expr {
-            Expr::Lit(lit) => match lit {
-                egglog::ast::Literal::String(string) => {
-                    let with_quotes = "\"".to_owned() + &string.to_string() + "\"";
-                    serde_json::from_str(&with_quotes).unwrap()
-                }
-                _ => panic!("expected type literal to be a string"),
-            },
-            _ => panic!("expected type literal. got: {}", expr),
+    pub(crate) fn expr_to_type(expr: &Expr) -> Type {
+        let Expr::Call(op, args) = expr else {
+            panic!("expected call in expr_to_type");
+        };
+        match (op.as_str(), args.as_slice()) {
+            ("IntT", []) => Type::Int,
+            ("BoolT", []) => Type::Bool,
+            ("FloatT", []) => Type::Float,
+            ("CharT", []) => Type::Char,
+            ("PointerT", [child]) => Type::Pointer(Box::new(Self::expr_to_type(child))),
+            _ => panic!("unknown type"),
         }
     }
 
@@ -558,5 +682,40 @@ impl Optimizer {
                 }
             },
         }
+    }
+
+    /// The bril to_ssa script generates __undefined variables
+    /// whenever a variable is used before it is defined in a phi node.
+    /// We reject these programs because it means the variable was not defined
+    /// in all control flow paths to the phi node.
+    pub fn check_for_uninitialized_vars(prog: &Program) -> Result<(), EggCCError> {
+        for func in &prog.functions {
+            for instr in &func.instrs {
+                if let Code::Instruction(Instruction::Value {
+                    dest: _,
+                    args,
+                    funcs: _funcs,
+                    op: ValueOps::Phi,
+                    labels: _labels,
+                    pos: _pos,
+                    op_type: _op_type,
+                }) = instr
+                {
+                    assert!(args.len() == 2);
+                    if args[0] == "__undefined" {
+                        return Err(EggCCError::UninitializedVariable(
+                            args[1].clone(),
+                            func.name.clone(),
+                        ));
+                    } else if args[1] == "__undefined" {
+                        return Err(EggCCError::UninitializedVariable(
+                            args[0].clone(),
+                            func.name.clone(),
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }

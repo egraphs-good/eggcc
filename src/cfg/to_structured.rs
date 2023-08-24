@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use petgraph::{
-    algo::dominators::{simple_fast, Dominators},
+    algo::dominators::{self, Dominators},
     graph::EdgeReference,
     prelude::NodeIndex,
     visit::EdgeRef,
@@ -14,6 +14,11 @@ use super::{
     BlockName, Branch, BranchOp, Cfg,
 };
 
+/// Records the history of the current node in the CFG
+/// being processed.
+/// For example, BlockFollowedBy(BlockName) means that the current
+/// cfg block being proessed is in a structured block followed by code for
+/// the block with the given name.
 #[derive(Debug)]
 enum ContainingHistory {
     ThenBranch,
@@ -36,8 +41,8 @@ pub(crate) struct StructuredCfgBuilder<'a> {
 
 impl<'a> StructuredCfgBuilder<'a> {
     fn new(cfg: &'a Cfg) -> Self {
-        let postorder = cfg.reverse_posorder();
-        let dominators = simple_fast(&cfg.graph, cfg.entry);
+        let postorder = cfg.reverse_postorder();
+        let dominators = dominators::simple_fast(&cfg.graph, cfg.entry);
         StructuredCfgBuilder {
             context: vec![],
             postorder,
@@ -56,11 +61,13 @@ impl<'a> StructuredCfgBuilder<'a> {
         })
     }
 
+    /// Convert a node and all it's children in the dominator tree
+    /// to a structured representation.
     fn do_tree(&mut self, node: NodeIndex) -> StructuredBlock {
         if self.is_loop_header(node) {
             self.context.push(Context {
                 enclosing: ContainingHistory::LoopWithLabel(self.name(node)),
-                fallthrough: Some(self.name(node)),
+                fallthrough: None,
             });
             let body = StructuredBlock::Loop(Box::new(self.code_for_node(node)));
             self.context.pop();
@@ -94,8 +101,11 @@ impl<'a> StructuredCfgBuilder<'a> {
             .graph
             .edges_directed(node, petgraph::Direction::Outgoing)
             .collect::<Vec<_>>();
-        assert!(!edges.is_empty(), "only exit nodes should have empty edges");
-
+        assert!(
+            !edges.is_empty(),
+            "edges should not be empty for non-exit block {:?}",
+            self.name(node)
+        );
         match merge_nodes.as_slice() {
             [] => {
                 let first = StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone()));
@@ -103,7 +113,7 @@ impl<'a> StructuredCfgBuilder<'a> {
                     [] => {
                         panic!("handled above");
                     }
-                    // Unconditional
+                    // Unconditionally jumps to out
                     [out] => self.do_branch(out),
                     [branch1, branch2] => {
                         if let (
@@ -126,18 +136,24 @@ impl<'a> StructuredCfgBuilder<'a> {
                                 enclosing: ContainingHistory::ThenBranch,
                                 fallthrough: None,
                             });
-                            let then_block = self.do_branch(if *val1 { branch1 } else { branch2 });
-                            let else_block = self.do_branch(if !*val1 { branch1 } else { branch2 });
+                            let then_block = self
+                                .do_branch(if *val1 { branch1 } else { branch2 })
+                                .unwrap();
+                            let else_block = self
+                                .do_branch(if !*val1 { branch1 } else { branch2 })
+                                .unwrap();
                             self.context.pop();
                             Some(StructuredBlock::Ite(
                                 arg1.to_string(),
-                                Box::new(then_block.unwrap()),
-                                Box::new(else_block.unwrap()),
+                                Box::new(then_block),
+                                Box::new(else_block),
                             ))
                         } else {
                             panic!(
-                                "Expected two conditional branches. Got {:?} and {:?}",
-                                branch1, branch2
+                                "Expected two conditional branches for node {}. Got {:?} and {:?}",
+                                self.name(node),
+                                branch1,
+                                branch2
                             );
                         }
                     }
@@ -154,12 +170,14 @@ impl<'a> StructuredCfgBuilder<'a> {
             [first, ..] => {
                 self.context.push(Context {
                     enclosing: ContainingHistory::BlockFollowedBy(self.name(*first)),
-                    fallthrough: Some(self.name(*first)),
+                    fallthrough: None,
                 });
                 let rest = self.node_within(node, merge_nodes[1..].to_vec());
                 self.context.pop();
-                let v = vec![StructuredBlock::Block(Box::new(rest)), self.do_tree(*first)];
-                StructuredBlock::Sequence(v)
+                StructuredBlock::Sequence(vec![
+                    StructuredBlock::Block(Box::new(rest)),
+                    self.do_tree(*first),
+                ])
             }
         }
     }
@@ -179,34 +197,20 @@ impl<'a> StructuredCfgBuilder<'a> {
                 }
             }
         } else if self.is_backward_edge(source, target) || self.is_merge_node(target) {
-            let index = self.context_index(self.cfg.graph[target].name.clone());
-            // Optimization: If target label immediately follows the hole in context, omit the Br
-            assert!(!self.context.is_empty(), "context should not be empty");
-            let top_context = self.context.last().unwrap();
-
-            let target_label = self.name(target);
-            if let Some(true) = top_context
-                .fallthrough
-                .as_ref()
-                .map(|fallthrough_label| fallthrough_label == &target_label)
-            {
-                None
-            } else {
-                Some(StructuredBlock::Break(index))
-            }
+            self.break_out_to(self.cfg.graph[target].name.clone())
         } else {
             Some(self.do_tree(target))
         }
     }
 
-    fn context_index(&self, target: BlockName) -> usize {
+    fn break_out_to(&self, target: BlockName) -> Option<StructuredBlock> {
         for (index, context) in self.context.iter().rev().enumerate() {
             match &context.enclosing {
                 ContainingHistory::ThenBranch => {}
                 ContainingHistory::LoopWithLabel(label)
                 | ContainingHistory::BlockFollowedBy(label) => {
                     if label == &target {
-                        return index + 1;
+                        return Some(StructuredBlock::Break(index));
                     }
                 }
             }
@@ -237,6 +241,8 @@ impl<'a> StructuredCfgBuilder<'a> {
             .any(|edge| self.is_backward_edge(edge.source(), node))
     }
 
+    /// Check if this cfg is reducible,
+    /// which means that it can be represented as a StructuredBlock
     fn check_reducible(&self) -> Result<(), EggCCError> {
         for edge in self.cfg.graph.edge_references() {
             let source = edge.source();

@@ -108,10 +108,10 @@ impl TermConverter<'_> {
                 let name = self.string_term_to_string(name);
                 let code_vec = self.term_conslist_to_vec(code, "Code");
                 let mut instrs = vec![];
-                // let mut memo = HashMap::<Term, String>::new();
+                let mut memo = HashMap::<TermId, String>::new();
 
                 for t in code_vec {
-                    self.term_to_instructions(&t, &mut instrs);
+                    self.term_to_instructions(&t, &mut instrs, &mut memo);
                 }
 
                 BasicBlock {
@@ -142,10 +142,15 @@ impl TermConverter<'_> {
         res
     }
 
-    fn term_to_instructions(&mut self, id: &TermId, res: &mut Vec<Instruction>) {
+    fn term_to_instructions(
+        &mut self,
+        id: &TermId,
+        res: &mut Vec<Instruction>,
+        memo: &mut HashMap<TermId, String>,
+    ) {
         match_term_app!(self.get(id); {
             ("Print", [arg]) => {
-                let arg = self.term_to_code(arg, res, None);
+                let arg = self.term_to_code(arg, res, None, memo);
 
                 res.push(Instruction::Effect {
                     op: EffectOps::Print,
@@ -158,12 +163,12 @@ impl TermConverter<'_> {
             ("End", []) => {},
             ("Assign", [dest, src]) => {
                 let dest = self.string_term_to_string(dest);
-                self.term_to_code(src, res, Some(dest.to_string()));
+                self.term_to_code(src, res, Some(dest.to_string()), memo);
             },
             (op @ ("store" | "free"), args) => {
                 let args = args
                     .iter()
-                    .map(|arg| self.term_to_code(arg, res, None))
+                    .map(|arg| self.term_to_code(arg, res, None, memo))
                     .collect::<Vec<String>>();
 
 
@@ -178,7 +183,7 @@ impl TermConverter<'_> {
             ("alloc", [atype, dest, arg]) => {
                 let atype = self.term_to_type(atype);
                 let dest = self.string_term_to_string(dest);
-                let arg = self.term_to_code(arg, res, None);
+                let arg = self.term_to_code(arg, res, None, memo);
                 res.push(Instruction::Value {
                     dest,
                     args: vec![arg],
@@ -198,13 +203,18 @@ impl TermConverter<'_> {
         id: &TermId,
         res: &mut Vec<Instruction>,
         assign_to: Option<String>,
+        memo: &mut HashMap<TermId, String>,
     ) -> String {
+        if memo.contains_key(id) && assign_to.is_none() {
+            return memo[id].clone();
+        }
+
         let dest = match &assign_to {
             Some(dest) => dest.clone(),
             None => self.optimizer.fresh_var(),
         };
 
-        match self.get(id) {
+        let ret = match self.get(id) {
             Term::Lit(literal) => {
                 res.push(Instruction::Constant {
                     dest: dest.clone(),
@@ -215,13 +225,6 @@ impl TermConverter<'_> {
                 });
                 dest
             }
-            Term::Var(var) => {
-                if let Some(_output) = assign_to {
-                    panic!("Cannot assign var to var")
-                } else {
-                    var.to_string()
-                }
-            }
             t => {
                 match_term_app!(t; {
                     ("Var", [arg]) => {
@@ -230,7 +233,7 @@ impl TermConverter<'_> {
                             _ => panic!("expected string literal for var"),
                         }
                     },
-                    ("ReturnValue", [arg]) => self.term_to_code(arg, res, assign_to),
+                    ("ReturnValue", [arg]) => self.term_to_code(arg, res, assign_to, memo),
                     (op @ ("True" | "False" | "Int" | "Float" | "Char"), [ty, args @ ..]) => {
                         let lit = match (op, args) {
                             ("True", []) => Literal::Bool(true),
@@ -264,8 +267,8 @@ impl TermConverter<'_> {
                     },
                     ("phi", [etype, arg1, arg2, label1, label2]) => {
                         let etype = self.term_to_type(etype);
-                        let arg1 = self.term_to_code(arg1, res, None);
-                        let arg2 = self.term_to_code(arg2, res, None);
+                        let arg1 = self.term_to_code(arg1, res, None, memo);
+                        let arg2 = self.term_to_code(arg2, res, None, memo);
                         let label1 = self.string_term_to_string(label1);
                         let label2 = self.string_term_to_string(label2);
                         res.push(Instruction::Value {
@@ -285,7 +288,7 @@ impl TermConverter<'_> {
                         let args_vars = args
                             .iter()
                             .skip(1)
-                            .map(|arg| self.term_to_code(arg, res, None))
+                            .map(|arg| self.term_to_code(arg, res, None, memo))
                             .collect::<Vec<String>>();
                         res.push(Instruction::Value {
                             dest: dest.clone(),
@@ -300,7 +303,10 @@ impl TermConverter<'_> {
                     }
                 })
             }
-        }
+        };
+
+        memo.insert(*id, ret.clone());
+        ret
     }
 
     pub(crate) fn term_to_type(&self, id: &TermId) -> Type {

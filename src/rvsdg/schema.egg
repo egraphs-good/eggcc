@@ -1,0 +1,68 @@
+(datatype Type
+    (TNum)
+    (TFloat)
+    (TChar)
+    (TPtr Type))
+
+(datatype Literal
+    (Num i64)
+    (Float f64)
+    (Char String)
+    (Ptr Type i64))
+
+(datatype Expr
+    (Add Operand Operand)
+    (Sub Operand Operand)
+    (Mul Operand Operand)
+    (Div Operand Operand)
+    (Eq Operand Operand)
+    (Lt Operand Operand)
+    (Gt Operand Operand)
+    (Le Operand Operand)
+    (Ge Operand Operand)
+    (Not Operand Operand)
+    (And Operand Operand)
+    (Or Operand Operand)
+    ;; TODO
+    )
+
+(datatype Operand
+    (Arg i64)
+    (Node Body)
+    (Project i64 Body))
+
+(sort VecOperand (Vec Operand))
+(sort VecVecOperand (Vec VecOperand))
+
+(datatype Body
+    (PureOp Expr)
+    (Gamma Operand VecOperand VecVecOperand) ;; branching
+    (Theta Operand VecOperand VecOperand) ;; loop
+)
+
+
+;; procedure f(n):
+;;   i = 0
+;;   while i < n
+;;     ans += i * 5
+;;     i += 1
+;;   return ans
+
+;; ;; inputs: [n]
+;; (Project 1
+;;     (Theta 
+;;         (Lt (Arg 1) (Arg 2)) ;; pred
+;;         (vec-of ;; inputs
+;;             (Node (PureOp (Const 0))) ;; accumulator
+;;             (Node (PureOp (Const 0))) ;; loop var
+;;             (Arg 0) ;; n
+;;             )
+;;         (vec-of ;; outputs
+;;             (Node (PureOp (Add (Arg 0) 
+;;                 (Node (PureOp (Mul 
+;;                     (Arg 1)
+;;                     (Node (PureOp (Const 5)))))))))
+;;             (Node (PureOp (Add (Arg 1) (Node (PureOp (Const 1))))))
+;;             (Arg 2)
+;;         ))
+;; )

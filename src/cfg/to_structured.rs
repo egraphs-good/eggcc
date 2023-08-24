@@ -52,19 +52,19 @@ impl<'a> StructuredCfgBuilder<'a> {
         Ok(StructuredFunction {
             name: self.cfg.name.clone(),
             args: self.cfg.args.clone(),
-            block: result.unwrap(),
+            block: result,
         })
     }
 
-    fn do_tree(&mut self, node: NodeIndex) -> Option<StructuredBlock> {
+    fn do_tree(&mut self, node: NodeIndex) -> StructuredBlock {
         if self.is_loop_header(node) {
             self.context.push(Context {
                 enclosing: ContainingHistory::LoopWithLabel(self.name(node)),
                 fallthrough: Some(self.name(node)),
             });
-            let body = StructuredBlock::Loop(Box::new(self.code_for_node(node).unwrap()));
+            let body = StructuredBlock::Loop(Box::new(self.code_for_node(node)));
             self.context.pop();
-            Some(body)
+            body
         } else {
             self.code_for_node(node)
         }
@@ -74,7 +74,7 @@ impl<'a> StructuredCfgBuilder<'a> {
         self.cfg.graph[node].name.clone()
     }
 
-    fn code_for_node(&mut self, node: NodeIndex) -> Option<StructuredBlock> {
+    fn code_for_node(&mut self, node: NodeIndex) -> StructuredBlock {
         let mut merge_nodes = self
             .dominators
             .immediately_dominated_by(node)
@@ -84,15 +84,9 @@ impl<'a> StructuredCfgBuilder<'a> {
         self.node_within(node, merge_nodes)
     }
 
-    fn node_within(
-        &mut self,
-        node: NodeIndex,
-        merge_nodes: Vec<NodeIndex>,
-    ) -> Option<StructuredBlock> {
+    fn node_within(&mut self, node: NodeIndex, merge_nodes: Vec<NodeIndex>) -> StructuredBlock {
         if node == self.cfg.exit {
-            return Some(StructuredBlock::Basic(Box::new(
-                self.cfg.graph[node].clone(),
-            )));
+            return StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone()));
         }
 
         let edges = self
@@ -160,7 +154,7 @@ impl<'a> StructuredCfgBuilder<'a> {
                 .into_iter()
                 .flatten()
                 .collect();
-                Some(StructuredBlock::Sequence(v))
+                StructuredBlock::Sequence(v)
             }
             [first, ..] => {
                 self.context.push(Context {
@@ -169,14 +163,8 @@ impl<'a> StructuredCfgBuilder<'a> {
                 });
                 let rest = self.node_within(node, merge_nodes[1..].to_vec());
                 self.context.pop();
-                let v = vec![
-                    Some(StructuredBlock::Block(Box::new(rest.unwrap()))),
-                    self.do_tree(*first),
-                ]
-                .into_iter()
-                .flatten()
-                .collect();
-                Some(StructuredBlock::Sequence(v))
+                let v = vec![StructuredBlock::Block(Box::new(rest)), self.do_tree(*first)];
+                StructuredBlock::Sequence(v)
             }
         }
     }
@@ -201,18 +189,18 @@ impl<'a> StructuredCfgBuilder<'a> {
             assert!(!self.context.is_empty(), "context should not be empty");
             let top_context = self.context.last().unwrap();
 
-            if let Some(fallthrough_label) = &top_context.fallthrough {
-                let target_label = self.name(target);
-                if fallthrough_label == &target_label {
-                    None
-                } else {
-                    Some(StructuredBlock::Break(index))
-                }
+            let target_label = self.name(target);
+            if let Some(true) = top_context
+                .fallthrough
+                .as_ref()
+                .map(|fallthrough_label| fallthrough_label == &target_label)
+            {
+                None
             } else {
                 Some(StructuredBlock::Break(index))
             }
         } else {
-            self.do_tree(target)
+            Some(self.do_tree(target))
         }
     }
 

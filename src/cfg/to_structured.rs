@@ -67,7 +67,7 @@ impl<'a> StructuredCfgBuilder<'a> {
         if self.is_loop_header(node) {
             self.context.push(Context {
                 enclosing: ContainingHistory::LoopWithLabel(self.name(node)),
-                fallthrough: None,
+                fallthrough: Some(self.name(node)),
             });
             let body = StructuredBlock::Loop(Box::new(self.code_for_node(node)));
             self.context.pop();
@@ -170,7 +170,7 @@ impl<'a> StructuredCfgBuilder<'a> {
             [first, ..] => {
                 self.context.push(Context {
                     enclosing: ContainingHistory::BlockFollowedBy(self.name(*first)),
-                    fallthrough: None,
+                    fallthrough: Some(self.name(*first)),
                 });
                 let rest = self.node_within(node, merge_nodes[1..].to_vec());
                 self.context.pop();
@@ -197,20 +197,30 @@ impl<'a> StructuredCfgBuilder<'a> {
                 }
             }
         } else if self.is_backward_edge(source, target) || self.is_merge_node(target) {
-            self.break_out_to(self.cfg.graph[target].name.clone())
+            self.break_out_to(self.name(target))
         } else {
             Some(self.do_tree(target))
         }
     }
 
     fn break_out_to(&self, target: BlockName) -> Option<StructuredBlock> {
+        assert!(!self.context.is_empty(), "context should not be empty");
+        let top_context = self.context.last().unwrap();
         for (index, context) in self.context.iter().rev().enumerate() {
             match &context.enclosing {
                 ContainingHistory::ThenBranch => {}
                 ContainingHistory::LoopWithLabel(label)
                 | ContainingHistory::BlockFollowedBy(label) => {
                     if label == &target {
-                        return Some(StructuredBlock::Break(index));
+                        if let Some(true) = top_context
+                            .fallthrough
+                            .as_ref()
+                            .map(|fallthrough_label| fallthrough_label == &target)
+                        {
+                            return None;
+                        } else {
+                            return Some(StructuredBlock::Break(index));
+                        }
                     }
                 }
             }

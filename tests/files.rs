@@ -41,8 +41,8 @@ impl Run {
             let res = optimizer.optimize(&parsed).unwrap();
 
             assert_eq!(
-                Optimizer::interp(&program_read),
-                Optimizer::interp(&format!("{}", res))
+                Optimizer::interp(&program_read, None),
+                Optimizer::interp(&format!("{}", res), None)
             );
         } else {
             let parsed = Optimizer::parse_bril(&program_read).unwrap();

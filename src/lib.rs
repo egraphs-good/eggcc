@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::io::prelude::*;
 
 use thiserror::Error;
 

@@ -38,19 +38,25 @@ rm -rf $NIGHTLY_DIR
 # Prepare output directories
 mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output"
 
-# Run tests.
-pushd $TOP_DIR
-RUST_TEST_THREADS=1 cargo test --release -- --nocapture > log.txt
 
-# Copy log
+pushd $TOP_DIR
+
+# Run tests.
+RUST_TEST_THREADS=1 cargo test --release -- --nocapture > log.txt
 cp log.txt "$NIGHTLY_DIR/output"
+
+# Run profiler.
+$MYDIR/profile.sh
+
 popd
+
 
 # Update HTML index page.
 cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"
 
-# Put the json data in a JS object for consumption by frontend
-echo "var data = {x: 1}; " > "$NIGHTLY_DIR/data/output.js"
+# Put the json profile data in a JS object for consumption by frontend
+(echo "var data = "; cat "$NIGHTLY_DIR/data/profile.json") > "$NIGHTLY_DIR/data/profile.js"
+
 # Copy json directory to the artifact
 cp -r "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output/data"
 

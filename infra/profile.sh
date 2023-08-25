@@ -26,7 +26,7 @@ bench() {
     # run eggcc, interp the program and put the data out to $out
     out="./tmp/bench/${profile_name}.json"
 
-    ./target/debug/eggcc --interp --profile-out="$out" $profile >& /dev/null
+    cargo run --release $profile --interp --profile-out="$out"
 
     # $out now contains a key value of total_dyn_inst: value, so use read to get the key/value
     # TODO: this is kind of a yaml sort of format so maybe yq would be good in the future
@@ -34,7 +34,7 @@ bench() {
 
     # export hyperfine out to tmp file
     hyperfine_out="./tmp/hyperfine/${profile_name}.json"
-    hyperfine --export-json "$hyperfine_out" "./target/debug/eggcc --interp $profile"
+    hyperfine --warmup 2 --export-json "$hyperfine_out" "./target/debug/eggcc --interp $profile"
 
     # overwwrite outfile with json version of profile data, annotate with profile name.
     # we also combine both instruction count and hyperfine json output into a single object
@@ -50,4 +50,4 @@ do
 done
 
 # aggregate all profile data into a single JSON array
-jq -s '.' ./tmp/bench/*.json > profile.json
+jq -s '.' ./tmp/bench/*.json > nightly/data/profile.json

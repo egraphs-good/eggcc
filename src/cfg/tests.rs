@@ -149,7 +149,7 @@ cfg_test!(
 );
 
 #[test]
-fn unstructured_panics() {
+fn unstructured_causes_error() {
     let func = &parse_from_string(include_str!("../../tests/small/unstructured.bril")).functions[0];
     assert!(matches!(
         to_structured(&to_cfg(func)),

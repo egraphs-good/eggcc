@@ -26,8 +26,14 @@ enum ContainingHistory {
     BlockFollowedBy(BlockName),
 }
 
+#[derive(Debug)]
+struct Context {
+    enclosing: ContainingHistory,
+    fallthrough: Option<BlockName>,
+}
+
 pub(crate) struct StructuredCfgBuilder<'a> {
-    context: Vec<ContainingHistory>,
+    context: Vec<Context>, // last element is newest context
     postorder: HashMap<BlockName, usize>,
     dominators: Dominators<NodeIndex>,
     cfg: &'a Cfg,
@@ -59,8 +65,10 @@ impl<'a> StructuredCfgBuilder<'a> {
     /// to a structured representation.
     fn do_tree(&mut self, node: NodeIndex) -> StructuredBlock {
         if self.is_loop_header(node) {
-            self.context
-                .push(ContainingHistory::LoopWithLabel(self.name(node)));
+            self.context.push(Context {
+                enclosing: ContainingHistory::LoopWithLabel(self.name(node)),
+                fallthrough: Some(self.name(node)),
+            });
             let body = StructuredBlock::Loop(Box::new(self.code_for_node(node)));
             self.context.pop();
             body
@@ -100,59 +108,70 @@ impl<'a> StructuredCfgBuilder<'a> {
         );
         match merge_nodes.as_slice() {
             [] => {
-                StructuredBlock::Sequence(vec![
-                    StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone())),
-                    match edges.as_slice() {
-                        [] => {
-                            panic!("handled above");
+                let first = StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone()));
+                let second = match edges.as_slice() {
+                    [] => {
+                        panic!("handled above");
+                    }
+                    // Unconditionally jumps to out
+                    [out] => self.do_branch(out),
+                    [branch1, branch2] => {
+                        if let (
+                            Branch {
+                                op:
+                                    BranchOp::Cond {
+                                        val: val1,
+                                        arg: arg1,
+                                    },
+                                ..
+                            },
+                            Branch {
+                                op: BranchOp::Cond { val: val2, .. },
+                                ..
+                            },
+                        ) = (branch1.weight(), branch2.weight())
+                        {
+                            assert!(val1 != val2);
+                            self.context.push(Context {
+                                enclosing: ContainingHistory::ThenBranch,
+                                fallthrough: None,
+                            });
+                            let then_block = self
+                                .do_branch(if *val1 { branch1 } else { branch2 })
+                                .unwrap();
+                            let else_block = self
+                                .do_branch(if !*val1 { branch1 } else { branch2 })
+                                .unwrap();
+                            self.context.pop();
+                            Some(StructuredBlock::Ite(
+                                arg1.to_string(),
+                                Box::new(then_block),
+                                Box::new(else_block),
+                            ))
+                        } else {
+                            panic!(
+                                "Expected two conditional branches for node {}. Got {:?} and {:?}",
+                                self.name(node),
+                                branch1,
+                                branch2
+                            );
                         }
-                        // Unconditionally jumps to out
-                        [out] => self.do_branch(out),
-                        [branch1, branch2] => {
-                            if let (
-                                Branch {
-                                    op:
-                                        BranchOp::Cond {
-                                            val: val1,
-                                            arg: arg1,
-                                        },
-                                    ..
-                                },
-                                Branch {
-                                    op: BranchOp::Cond { val: val2, .. },
-                                    ..
-                                },
-                            ) = (branch1.weight(), branch2.weight())
-                            {
-                                assert!(val1 != val2);
-                                self.context.push(ContainingHistory::ThenBranch);
-                                let then_block =
-                                    self.do_branch(if *val1 { branch1 } else { branch2 });
-                                let else_block =
-                                    self.do_branch(if !*val1 { branch1 } else { branch2 });
-                                self.context.pop();
-                                StructuredBlock::Ite(
-                                    arg1.to_string(),
-                                    Box::new(then_block),
-                                    Box::new(else_block),
-                                )
-                            } else {
-                                panic!(
-                                    "Expected two conditional branches for node {}. Got {:?} and {:?}",
-                                    self.name(node),
-                                    branch1, branch2
-                                );
-                            }
-                        }
-                        _ => {
-                            panic!("Expected at most two outgoing edges. Got {:?}", edges);
-                        }
-                    },
-                ])
+                    }
+                    _ => {
+                        panic!("Expected at most two outgoing edges. Got {:?}", edges);
+                    }
+                };
+                if let Some(block) = second {
+                    StructuredBlock::Sequence(vec![first, block])
+                } else {
+                    first
+                }
             }
             [first, ..] => {
-                self.context
-                    .push(ContainingHistory::BlockFollowedBy(self.name(*first)));
+                self.context.push(Context {
+                    enclosing: ContainingHistory::BlockFollowedBy(self.name(*first)),
+                    fallthrough: Some(self.name(*first)),
+                });
                 let rest = self.node_within(node, merge_nodes[1..].to_vec());
                 self.context.pop();
                 StructuredBlock::Sequence(vec![
@@ -163,7 +182,7 @@ impl<'a> StructuredCfgBuilder<'a> {
         }
     }
 
-    fn do_branch(&mut self, edge: &EdgeReference<Branch>) -> StructuredBlock {
+    fn do_branch(&mut self, edge: &EdgeReference<Branch>) -> Option<StructuredBlock> {
         let source = edge.source();
         let target = edge.target();
         let target_block = self.cfg.graph[target].clone();
@@ -171,27 +190,37 @@ impl<'a> StructuredCfgBuilder<'a> {
             assert!(target_block.instrs.is_empty());
 
             match &edge.weight().op {
-                BranchOp::Jmp => StructuredBlock::Return(None),
-                BranchOp::RetVal { arg } => StructuredBlock::Return(Some(arg.clone())),
+                BranchOp::Jmp => Some(StructuredBlock::Return(None)),
+                BranchOp::RetVal { arg } => Some(StructuredBlock::Return(Some(arg.clone()))),
                 _ => {
                     panic!("Unexpected branch op {:?}", edge.weight().op);
                 }
             }
         } else if self.is_backward_edge(source, target) || self.is_merge_node(target) {
-            self.break_out_to(self.cfg.graph[target].name.clone())
+            self.break_out_to(self.name(target))
         } else {
-            self.do_tree(target)
+            Some(self.do_tree(target))
         }
     }
 
-    fn break_out_to(&self, target: BlockName) -> StructuredBlock {
+    fn break_out_to(&self, target: BlockName) -> Option<StructuredBlock> {
+        assert!(!self.context.is_empty(), "context should not be empty");
+        let top_context = self.context.last().unwrap();
         for (index, context) in self.context.iter().rev().enumerate() {
-            match context {
+            match &context.enclosing {
                 ContainingHistory::ThenBranch => {}
                 ContainingHistory::LoopWithLabel(label)
                 | ContainingHistory::BlockFollowedBy(label) => {
                     if label == &target {
-                        return StructuredBlock::Break(index);
+                        if let Some(true) = top_context
+                            .fallthrough
+                            .as_ref()
+                            .map(|fallthrough_label| fallthrough_label == &target)
+                        {
+                            return None;
+                        } else {
+                            return Some(StructuredBlock::Break(index));
+                        }
                     }
                 }
             }

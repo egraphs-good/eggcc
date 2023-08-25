@@ -6,7 +6,6 @@ main {
 block:
  one: int = const 1;
  i: int = const 0;
- break 0
 while true:
  block:
   block:
@@ -21,5 +20,4 @@ while true:
 
  i: int = add i one;
  bodyvar: int = const 1;
- break 0
 }

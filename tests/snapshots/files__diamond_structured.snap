@@ -15,7 +15,6 @@ block:
   a: int = const 2;
   break 1
  a: int = const 1;
- break 0
 block:
  w: int = const 2;
  return

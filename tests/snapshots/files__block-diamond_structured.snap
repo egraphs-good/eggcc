@@ -27,7 +27,6 @@ block:
   x: int = add x two;
   break 1
  x: int = add x two;
- break 0
 block:
  x: int = add x one;
  return

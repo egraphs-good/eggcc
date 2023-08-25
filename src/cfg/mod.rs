@@ -257,13 +257,7 @@ pub(crate) fn to_cfg(func: &Function) -> Cfg {
     }
     // last block can implicity return, add an edge for that case
     // only if it doesn't already have an outgoing edge
-    if builder
-        .cfg
-        .graph
-        .neighbors_directed(current, petgraph::Outgoing)
-        .next()
-        .is_none()
-    {
+    if !had_branch {
         builder.add_edge(
             current,
             builder.cfg.exit,

@@ -1,44 +1,49 @@
-(datatype Type
-    (TNum)
-    (TFloat)
-    (TChar)
-    (TPtr Type))
+(datatype Type)
+(datatype Literal)
+(datatype Expr)
+(datatype Operand)
+(datatype Body)
 
-(datatype Literal
-    (Num i64)
-    (Float f64)
-    (Char String)
-    (Ptr Type i64))
+;; Type
+(function TNum () Type)
+(function TFloat () Type)
+(function TChar () Type)
+(function TPtr (Type) Type)
 
-(datatype Expr
-    (Add Operand Operand)
-    (Sub Operand Operand)
-    (Mul Operand Operand)
-    (Div Operand Operand)
-    (Eq Operand Operand)
-    (Lt Operand Operand)
-    (Gt Operand Operand)
-    (Le Operand Operand)
-    (Ge Operand Operand)
-    (Not Operand Operand)
-    (And Operand Operand)
-    (Or Operand Operand)
-    ;; TODO
-    )
+;; Literal
+(function Num (i64) Literal)
+(function Float (f64) Literal)
+(function Char (String) Literal)
+(function Ptr (Type i64) Literal)
 
-(datatype Operand
-    (Arg i64)
-    (Node Body)
-    (Project i64 Body))
+;; Expr
+(function Add (Operand Operand) Expr)
+(function Sub (Operand Operand) Expr)
+(function Mul (Operand Operand) Expr)
+(function Div (Operand Operand) Expr)
+(function Eq (Operand Operand) Expr)
+(function Lt (Operand Operand) Expr)
+(function Gt (Operand Operand) Expr)
+(function Le (Operand Operand) Expr)
+(function Ge (Operand Operand) Expr)
+(function Not (Operand Operand) Expr)
+(function And (Operand Operand) Expr)
+(function Or (Operand Operand) Expr)
+
+;; Operand
+(function Arg (i64) Operand)
+(function Node (Body) Operand)
+(function Project (i64 Body) Operand)
 
 (sort VecOperand (Vec Operand))
-(sort VecVecOperand (Vec VecOperand))
+(datatype VecOperandWrapper
+  (VO VecOperand))
+(sort VecVecOperand (Vec VecOperandWrapper))
 
-(datatype Body
-    (PureOp Expr)
-    (Gamma Operand VecOperand VecVecOperand) ;; branching
-    (Theta Operand VecOperand VecOperand) ;; loop
-)
+;; Body
+(function PureOp (Expr) Body)
+(function Gamma (Operand VecOperand VecVecOperand) Body) ;; branching
+(function Theta (Operand VecOperand VecOperand) Body) ;; loop
 
 
 ;; procedure f(n):

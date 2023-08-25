@@ -22,3 +22,6 @@ Cargo.lock
 
 # Generated nightly files
 /nightly
+
+# Profiler output
+profile.json

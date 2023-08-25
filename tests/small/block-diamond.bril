@@ -1,4 +1,4 @@
-@main(input: int) {
+@main() {
   one: int = const 1;
   two: int = const 2;
   x: int = const 0;

@@ -4,32 +4,27 @@ expression: "format!(\"{}\", res)"
 ---
 @main {
 .entry___:
-  jmp .sblock___0;
-.sblock___0:
-.b1:
-  x.0: int = const 4;
+  x: int = const 4;
   v0_: int = const 4;
   v1_: int = const 4;
-  cond.0: bool = lt v0_ v1_;
-  br cond.0 .sblock___4 .sblock___5;
-.sblock___4:
-  jmp .sblock___1;
-.sblock___5:
-  jmp .sblock___2;
+  cond: bool = lt v0_ v1_;
+  br cond .sblock___3 .sblock___4;
 .sblock___3:
-.C:
-  a.1: int = const 2;
   jmp .sblock___1;
+.sblock___4:
+  jmp .sblock___2;
 .sblock___2:
-.B:
-  a.0: int = const 1;
+.C:
+  a: int = const 2;
   jmp .sblock___1;
 .sblock___1:
+.B:
+  a: int = const 1;
+.sblock___0:
 .D:
-  a.2: int = phi a.0 a.1;
-  w.0: int = const 2;
+  w: int = const 2;
   ret;
-.sblock___6:
+.sblock___5:
 .exit___:
 }
 

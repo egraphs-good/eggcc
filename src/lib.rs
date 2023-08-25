@@ -1,5 +1,4 @@
 use bril2json::parse_abstract_program_from_read;
-use bril_rs::AbstractProgram;
 use bril_rs::Program;
 use cfg::program_to_structured;
 
@@ -27,8 +26,11 @@ pub enum EggCCError {
     ConversionError(String),
     #[error("Unstructured control flow detected")]
     UnstructuredControlFlow,
+    #[error("Uninitialized variable {0} used in function {1}")]
+    UninitializedVariable(String, String),
 }
 
+#[allow(dead_code)]
 fn run_command_with_stdin(command: &mut std::process::Command, input: String) -> String {
     let mut piped = command
         .stdin(Stdio::piped())
@@ -67,11 +69,8 @@ impl Default for Optimizer {
 }
 
 impl Optimizer {
-    /// run the rust interpreter on the program
-    /// without any optimizations
-    pub fn interp(program: &str, profile_out: Option<PathBuf>) -> String {
+    pub fn parse_bril_args(program: &str) -> Vec<String> {
         let mut args = Vec::new();
-
         if let Some(first_line) = program.split('\n').next() {
             if first_line.contains("# ARGS:") {
                 for arg in first_line["# ARGS: ".len()..]
@@ -82,7 +81,12 @@ impl Optimizer {
                 }
             }
         }
+        args
+    }
 
+    /// run the rust interpreter on the program
+    /// without any optimizations
+    pub fn interp(program: &str, args: Vec<String>, profile_out: Option<PathBuf>) -> String {
         let mut optimized_out = Vec::new();
 
         match profile_out {
@@ -126,16 +130,36 @@ impl Optimizer {
     pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {
         let abstract_prog =
             parse_abstract_program_from_read(program.as_bytes(), false, false, None);
-        let serialized = serde_json::to_string(&abstract_prog).unwrap();
 
-        // call SSA conversion
+        // TODO dumb encoding does not support phi nodes yet
+        /*
+        let serialized = serde_json::to_string(&abstract_prog).unwrap();
         let ssa_output = run_command_with_stdin(
             std::process::Command::new("python3").arg("bril/examples/to_ssa.py"),
             serialized,
         );
         let ssa_prog: AbstractProgram = serde_json::from_str(&ssa_output).unwrap();
 
-        Program::try_from(ssa_prog).map_err(|err| EggCCError::ConversionError(err.to_string()))
+        let ssa_res = Program::try_from(ssa_prog)
+            .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
+
+        let dead_code_optimized = run_command_with_stdin(
+            std::process::Command::new("python3").arg("bril/examples/tdce.py"),
+            serde_json::to_string(&ssa_res).unwrap(),
+        );
+
+        let res: Program = serde_json::from_str(&dead_code_optimized)
+            .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
+        */
+
+        let prog = Program::try_from(abstract_prog)
+            .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
+
+        // HACK: Check for uninitialized variables by looking for `__undefined`
+        // variables in the program.
+        Optimizer::check_for_uninitialized_vars(&prog)?;
+
+        Ok(prog)
     }
 
     pub fn parse_to_structured(program: &str) -> Result<StructuredProgram, EggCCError> {
@@ -230,13 +254,13 @@ impl Optimizer {
           (Char Type String)
           (Float Type f64)
           (Var String)
-          (phi Type Expr Expr) ;; both expressions should be variables
+          ;; two arguments and two labels
+          (phi Type Expr Expr String String)
           (add Type Expr Expr)
           (sub Type Expr Expr)
           (mul Type Expr Expr)
           (div Type Expr Expr)
           (lt Type Expr Expr)
-          (alloc Type Expr)
           (ptradd Type Expr Expr)
           (load Type Expr)
         
@@ -250,6 +274,7 @@ impl Optimizer {
           (Assign String Expr)
           (store Expr Expr)
           (free Expr)
+          (alloc Type String Expr)
           (Print Expr))
 
         (datatype CodeList
@@ -268,9 +293,17 @@ impl Optimizer {
             (Break i64)
             (Return RetVal))
 
+        (datatype Argument
+            (Arg String Type))
+
+
+        (datatype ArgList
+            (ArgCons Argument ArgList)
+            (ArgNil))
+
         (datatype Function
-          ;; name and body
-          (Func String StructuredBlock))
+          ;; name, arguments, and body
+          (Func String ArgList StructuredBlock))
 
         (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)))
         (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)))

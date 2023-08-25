@@ -7,9 +7,9 @@ use std::{
 
 #[derive(Debug, Parser)]
 struct Args {
-    /// Output the SSA form of the bril program
+    /// Don't perform optimization
     #[clap(long)]
-    ssa: bool,
+    unoptimized: bool,
     /// Output the structured form of the bril program,
     /// which uses blocks, loops, and break
     #[clap(long)]
@@ -36,6 +36,9 @@ struct Args {
 
     /// The bril program to optimize
     file: PathBuf,
+    /// The arguments to the bril program
+    /// (only used when interpreting)
+    bril_args: Vec<String>,
 }
 
 fn main() {
@@ -47,8 +50,14 @@ fn main() {
         input = std::fs::read_to_string(args.file).unwrap();
     }
 
+    let bril_args = if args.bril_args.is_empty() {
+        Optimizer::parse_bril_args(&input)
+    } else {
+        args.bril_args
+    };
+
     let program = Optimizer::parse_bril(&input).unwrap();
-    let result_program = if args.ssa {
+    let result_program = if args.unoptimized {
         println!("{}", program);
         program
     } else if args.structured {
@@ -79,6 +88,9 @@ fn main() {
     };
 
     if args.interp {
-        println!("{}", Optimizer::interp(&format!("{}", result_program), args.profile_out));
+        println!(
+            "{}",
+            Optimizer::interp(&format!("{}", result_program), bril_args, args.profile_out)
+        );
     }
 }

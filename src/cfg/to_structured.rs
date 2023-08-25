@@ -93,6 +93,11 @@ impl<'a> StructuredCfgBuilder<'a> {
             .graph
             .edges_directed(node, petgraph::Direction::Outgoing)
             .collect::<Vec<_>>();
+        assert!(
+            !edges.is_empty(),
+            "edges should not be empty for non-exit block {:?}",
+            self.name(node)
+        );
         match merge_nodes.as_slice() {
             [] => {
                 StructuredBlock::Sequence(vec![
@@ -133,7 +138,8 @@ impl<'a> StructuredCfgBuilder<'a> {
                                 )
                             } else {
                                 panic!(
-                                    "Expected two conditional branches. Got {:?} and {:?}",
+                                    "Expected two conditional branches for node {}. Got {:?} and {:?}",
+                                    self.name(node),
                                     branch1, branch2
                                 );
                             }
@@ -185,7 +191,7 @@ impl<'a> StructuredCfgBuilder<'a> {
                 ContainingHistory::LoopWithLabel(label)
                 | ContainingHistory::BlockFollowedBy(label) => {
                     if label == &target {
-                        return StructuredBlock::Break(index + 1);
+                        return StructuredBlock::Break(index);
                     }
                 }
             }

@@ -36,13 +36,14 @@ impl Run {
                 assert_snapshot!(self.name(), format!("{}", structured));
             }
         } else if self.interp {
+            let args = Optimizer::parse_bril_args(&program_read);
             let parsed = Optimizer::parse_bril(&program_read).unwrap();
             let mut optimizer = Optimizer::default();
             let res = optimizer.optimize(&parsed).unwrap();
 
             assert_eq!(
-                Optimizer::interp(&program_read, None),
-                Optimizer::interp(&format!("{}", res), None)
+                Optimizer::interp(&program_read, args.clone(), None),
+                Optimizer::interp(&format!("{}", res), args, None)
             );
         } else {
             let parsed = Optimizer::parse_bril(&program_read).unwrap();
@@ -84,13 +85,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
         };
 
         // TODO optimizer doesn't support these yet
-        let banned = [
-            "diamond",
-            "fib",
-            "queens_func",
-            "unstructured",
-            "implicit_return",
-        ];
+        let banned = ["queens_func", "unstructured", "implicit_return"];
         if banned.iter().any(|b| name.contains(b)) || f.to_str().unwrap().contains("failing") {
             continue;
         }

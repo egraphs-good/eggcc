@@ -9,6 +9,7 @@ function load() {
       let results = obj[name].hyperfine.results[0];
       parsed.push({
         name,
+        "# Instructions": obj[name]["total_dyn_inst:"],
         min: tryRound(results.min),
         max: tryRound(results.max),
         mean: tryRound(results.mean),

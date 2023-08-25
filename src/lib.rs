@@ -102,7 +102,8 @@ impl Optimizer {
                     false,
                     true,
                     None,
-                ).expect("brili interp error")
+                )
+                .expect("brili interp error")
             }
             None => {
                 brilirs::run_input(
@@ -114,7 +115,8 @@ impl Optimizer {
                     false,
                     true,
                     None,
-                ).unwrap();
+                )
+                .unwrap();
             }
         }
 

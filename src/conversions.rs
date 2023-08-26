@@ -131,6 +131,7 @@ impl Optimizer {
 
                     BasicBlock {
                         name: BlockName::Named(name.to_string()),
+                        footer: Default::default(),
                         instrs,
                         pos: None,
                     }

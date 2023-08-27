@@ -11,8 +11,9 @@ use std::process::Stdio;
 
 use thiserror::Error;
 
-mod cfg;
+pub(crate) mod cfg;
 mod conversions;
+pub(crate) mod rvsdg;
 mod util;
 use cfg::structured::StructuredProgram;
 

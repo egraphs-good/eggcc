@@ -4,7 +4,6 @@ use crate::{
 };
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::{load_program_from_read, Program};
-use petgraph::graph::NodeIndex;
 
 fn parse_from_string(input: &str) -> Program {
     let abs_program = parse_abstract_program_from_read(input.as_bytes(), true, false, None);
@@ -41,9 +40,10 @@ macro_rules! cfg_test {
                 mentioned.insert(to_block!($src));
                 mentioned.insert(to_block!($dst));
             )*
-            for (i, node) in cfg.graph.raw_nodes().iter().enumerate() {
-                assert!(mentioned.contains(&node.weight.name), "description does not mention block {:?}", node.weight.name);
-                block.insert(node.weight.name.clone(), NodeIndex::new(i));
+            for i in cfg.graph.node_indices() {
+                let node = cfg.graph.node_weight(i).unwrap();
+                assert!(mentioned.contains(&node.name), "description does not mention block {:?}", node.name);
+                block.insert(node.name.clone(), i);
             }
             $({
                 let src_name = to_block!($src);
@@ -64,8 +64,8 @@ cfg_test!(
     include_str!("../../tests/fib.bril"),
     [
         ENTRY  = (Jmp) => "loop",
-        "loop" = (Cond { arg: "cond".into(), val: true }) => "body",
-        "loop" = (Cond { arg: "cond".into(), val: false }) => "done",
+        "loop" = (Cond { arg: "cond".into(), val: true.into() }) => "body",
+        "loop" = (Cond { arg: "cond".into(), val: false.into() }) => "done",
         "body" = (Jmp) => "loop",
         "done" = (Jmp) => EXIT,
     ]
@@ -75,16 +75,16 @@ cfg_test!(
     queen,
     include_str!("../../tests/small/queens-func.bril"),
     [
-        ENTRY = (Cond { arg: "ret_cond".into(), val: true }) => "next.ret",
-        ENTRY = (Cond { arg: "ret_cond".into(), val: false }) => "for.cond",
-        "for.cond" = (Cond { arg: "for_cond_0".into(), val: true }) => "for.body",
-        "for.cond" = (Cond { arg: "for_cond_0".into(), val: false }) => "next.ret.1",
-        "for.body" = (Cond { arg: "is_valid".into(), val: true }) => "rec.func",
-        "for.body" = (Cond { arg: "is_valid".into(), val: false }) => "next.loop",
+        ENTRY = (Cond { arg: "ret_cond".into(), val: true.into() }) => "next.ret",
+        ENTRY = (Cond { arg: "ret_cond".into(), val: false.into() }) => "for.cond",
+        "for.cond" = (Cond { arg: "for_cond_0".into(), val: true.into() }) => "for.body",
+        "for.cond" = (Cond { arg: "for_cond_0".into(), val: false.into() }) => "next.ret.1",
+        "for.body" = (Cond { arg: "is_valid".into(), val: true.into() }) => "rec.func",
+        "for.body" = (Cond { arg: "is_valid".into(), val: false.into() }) => "next.loop",
         "rec.func" = (Jmp) => "next.loop",
         "next.loop" = (Jmp) => "for.cond",
-        "next.ret" = (RetVal { arg: "icount".into() }) => EXIT,
-        "next.ret.1" = (RetVal { arg: "icount".into() }) => EXIT,
+        "next.ret" = (Jmp) => EXIT,
+        "next.ret.1" = (Jmp) => EXIT,
     ]
 );
 
@@ -100,8 +100,8 @@ cfg_test!(
     diamond,
     include_str!("../../tests/small/diamond.bril"),
     [
-        ENTRY = (Cond { arg: "cond".into(), val: true }) => "B",
-        ENTRY = (Cond { arg: "cond".into(), val: false }) => "C",
+        ENTRY = (Cond { arg: "cond".into(), val: true.into() }) => "B",
+        ENTRY = (Cond { arg: "cond".into(), val: false.into() }) => "C",
         "B" = (Jmp) => "D",
         "C" = (Jmp) => "D",
         "D" = (Jmp) => EXIT,
@@ -112,10 +112,10 @@ cfg_test!(
     block_diamond,
     include_str!("../../tests/small/block-diamond.bril"),
     [
-        ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
-        ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "D",
-        "B"   = (Cond { arg: "b_cond".into(), val: true}) => "C",
-        "B"   = (Cond { arg: "b_cond".into(), val: false}) => "E",
+        ENTRY = (Cond { arg: "a_cond".into(), val: true.into() }) => "B",
+        ENTRY = (Cond { arg: "a_cond".into(), val: false.into() }) => "D",
+        "B"   = (Cond { arg: "b_cond".into(), val: true.into() }) => "C",
+        "B"   = (Cond { arg: "b_cond".into(), val: false.into() }) => "E",
         "C" = (Jmp) => "F",
         "D" = (Jmp) => "E",
         "E" = (Jmp) => "F",
@@ -127,10 +127,10 @@ cfg_test!(
     unstructured,
     include_str!("../../tests/small/unstructured.bril"),
     [
-        ENTRY = (Cond { arg: "a_cond".into(), val: true }) => "B",
-        ENTRY = (Cond { arg: "a_cond".into(), val: false }) => "C",
-        "B"   = (Cond { arg: "b_cond".into(), val: true }) => "C",
-        "B"   = (Cond { arg: "b_cond".into(), val: false }) => "D",
+        ENTRY = (Cond { arg: "a_cond".into(), val: true.into() }) => "B",
+        ENTRY = (Cond { arg: "a_cond".into(), val: false.into() }) => "C",
+        "B"   = (Cond { arg: "b_cond".into(), val: true.into() }) => "C",
+        "B"   = (Cond { arg: "b_cond".into(), val: false.into() }) => "D",
         "C" = (Jmp) => "B",
         "D" = (Jmp) => EXIT,
     ]
@@ -141,15 +141,15 @@ cfg_test!(
     include_str!("../../tests/small/fib_shape.bril"),
     [
         ENTRY = (Jmp) => "loop",
-        "loop" = (Cond { arg: "cond".into(), val: true }) => "body",
-        "loop" = (Cond { arg: "cond".into(), val: false }) => "done",
+        "loop" = (Cond { arg: "cond".into(), val: true.into() }) => "body",
+        "loop" = (Cond { arg: "cond".into(), val: false.into() }) => "done",
         "body" = (Jmp) => "loop",
         "done" = (Jmp) => EXIT,
     ]
 );
 
 #[test]
-fn unstructured_panics() {
+fn unstructured_causes_error() {
     let func = &parse_from_string(include_str!("../../tests/small/unstructured.bril")).functions[0];
     assert!(matches!(
         to_structured(&to_cfg(func)),

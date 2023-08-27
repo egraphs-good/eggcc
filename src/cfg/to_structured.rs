@@ -2,12 +2,15 @@ use std::collections::HashMap;
 
 use petgraph::{
     algo::dominators::{self, Dominators},
-    graph::EdgeReference,
     prelude::NodeIndex,
-    visit::EdgeRef,
+    stable_graph::EdgeReference,
+    visit::{EdgeRef, IntoEdgeReferences},
 };
 
-use crate::EggCCError;
+use crate::{
+    cfg::{Annotation, CondVal, Identifier},
+    EggCCError,
+};
 
 use super::{
     structured::{StructuredBlock, StructuredFunction},
@@ -137,10 +140,18 @@ impl<'a> StructuredCfgBuilder<'a> {
                                 fallthrough: None,
                             });
                             let then_block = self
-                                .do_branch(if *val1 { branch1 } else { branch2 })
+                                .do_branch(if val1 == &CondVal::from(true) {
+                                    branch1
+                                } else {
+                                    branch2
+                                })
                                 .unwrap();
                             let else_block = self
-                                .do_branch(if !*val1 { branch1 } else { branch2 })
+                                .do_branch(if val1 == &CondVal::from(false) {
+                                    branch1
+                                } else {
+                                    branch2
+                                })
                                 .unwrap();
                             self.context.pop();
                             Some(StructuredBlock::Ite(
@@ -190,8 +201,22 @@ impl<'a> StructuredCfgBuilder<'a> {
             assert!(target_block.instrs.is_empty());
 
             match &edge.weight().op {
-                BranchOp::Jmp => Some(StructuredBlock::Return(None)),
-                BranchOp::RetVal { arg } => Some(StructuredBlock::Return(Some(arg.clone()))),
+                BranchOp::Jmp => {
+                    if let Some(ret_val) =
+                        self.cfg.graph[source]
+                            .footer
+                            .iter()
+                            .find_map(|ann| match ann {
+                                Annotation::AssignRet { src: Identifier::Name(src) } => Some(&**src),
+                                Annotation::AssignRet { src: Identifier::Num(_) } => panic!("using placeholder identifier as return value (unsupported for structured IR)"),
+                                Annotation::AssignCond {..} => None,
+                            })
+                    {
+                        Some(StructuredBlock::Return(Some(ret_val.into())))
+                    } else {
+                        Some(StructuredBlock::Return(None))
+                    }
+                }
                 _ => {
                     panic!("Unexpected branch op {:?}", edge.weight().op);
                 }

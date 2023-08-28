@@ -43,7 +43,7 @@ pushd $TOP_DIR
 
 # Run tests.
 RUST_TEST_THREADS=1 cargo test --release -- --nocapture > log.txt
-mv log.txt "$NIGHTLY_DIR/output"
+cp log.txt "$NIGHTLY_DIR/output"
 
 # Run profiler.
 $MYDIR/profile.sh

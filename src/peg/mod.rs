@@ -19,7 +19,7 @@ mod tests;
 /// An expression, expressed using PEGs.
 pub(crate) enum PegBody {
     /// A pure operation.
-    PureOp(Expr),
+    PureOp(Expr<Id>),
     /// An argument of the enclosing function.
     Arg(usize),
     /// An if statement..
@@ -98,9 +98,24 @@ fn get_pegs(
             }
             match &rvsdgs[id] {
                 RvsdgBody::PureOp(expr) => {
+                    let expr = match expr {
+                        Expr::Op(op, xs) => Expr::Op(
+                            *op,
+                            xs.iter()
+                                .map(|x| get_pegs(*x, rvsdgs, scope, pegs, memoize))
+                                .collect(),
+                        ),
+                        Expr::Call(f, xs) => Expr::Call(
+                            f.clone(),
+                            xs.iter()
+                                .map(|x| get_pegs(*x, rvsdgs, scope, pegs, memoize))
+                                .collect(),
+                        ),
+                        Expr::Const(o, t, l) => Expr::Const(*o, t.clone(), l.clone()),
+                    };
                     assert_eq!(0, selected);
                     let out = pegs.len();
-                    pegs.push(PegBody::PureOp(expr.clone()));
+                    pegs.push(PegBody::PureOp(expr));
                     memoize.insert((selected, id), out);
                     out
                 }

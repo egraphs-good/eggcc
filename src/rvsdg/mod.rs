@@ -81,10 +81,10 @@ pub(crate) enum Annotation {
 
 pub(crate) type Id = usize;
 
-#[derive(Debug)]
-pub(crate) enum Expr<Op> {
-    Op(ValueOps, Vec<Op>),
-    Call(Identifier, Vec<Op>),
+#[derive(Clone, Debug)]
+pub(crate) enum Expr {
+    Op(ValueOps, Vec<Operand>),
+    Call(Identifier, Vec<Operand>),
     Const(ConstOps, Type, Literal),
 }
 
@@ -100,7 +100,7 @@ pub(crate) enum Operand {
 
 #[derive(Debug)]
 pub(crate) enum RvsdgBody {
-    PureOp(Expr<Operand>),
+    PureOp(Expr),
     Gamma {
         pred: Operand,
         inputs: Vec<Operand>,

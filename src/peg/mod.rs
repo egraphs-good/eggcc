@@ -7,8 +7,14 @@
 //! * ["Equality Saturation: A New Approach to Optimization"](https://arxiv.org/abs/1012.1802)
 //! by Tate, Stepp, Tatlock, and Lerner
 
+// todo: remove this once it no longer does anything
+#![allow(dead_code)]
+
 use crate::rvsdg::{Expr, Id, Operand, RvsdgBody, RvsdgFunction};
 use std::collections::HashMap;
+
+#[cfg(test)]
+mod tests;
 
 /// An expression, expressed using PEGs.
 pub(crate) enum PegBody {

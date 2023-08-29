@@ -17,6 +17,7 @@ use std::collections::HashMap;
 mod tests;
 
 /// An expression, expressed using PEGs.
+#[derive(Debug, PartialEq)]
 pub(crate) enum PegBody {
     /// A pure operation.
     PureOp(Expr<Id>),
@@ -34,6 +35,7 @@ pub(crate) enum PegBody {
 }
 
 /// A function, expressed using PEGs.
+#[derive(Debug, PartialEq)]
 pub(crate) struct PegFunction {
     /// The number of arguments to the function.
     pub(crate) n_args: usize,

@@ -81,7 +81,7 @@ pub(crate) enum Annotation {
 
 pub(crate) type Id = usize;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum Expr<Op> {
     Op(ValueOps, Vec<Op>),
     Call(Identifier, Vec<Op>),

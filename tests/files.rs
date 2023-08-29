@@ -4,57 +4,67 @@ use eggcc::*;
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
+#[derive(Clone, Copy)]
+enum TestType {
+    StructuredConversion,
+    RvsdgConversion,
+    NaiiveOptimization,
+}
+
 #[derive(Clone)]
 struct Run {
     path: PathBuf,
-    test_structured: bool,
+    test_type: TestType,
+    // Don't perform any optimizations, just do round-trip
     no_opt: bool,
-    interp: bool,
+    // Take a snapshot of the result
     snapshot: bool,
 }
 
 impl Run {
     fn name(&self) -> String {
         let mut name = self.path.file_stem().unwrap().to_str().unwrap().to_string();
-        if self.test_structured {
-            name = format!("{}_structured", name);
+        match self.test_type {
+            TestType::StructuredConversion => name = format!("{}_structured", name),
+            TestType::RvsdgConversion => name = format!("{}_rvsdg_conversion", name),
+            TestType::NaiiveOptimization => name = format!("{}_naiive", name),
         }
         if self.no_opt {
             name = format!("{}_no_opt", name);
-        }
-        if self.interp {
-            name = format!("{}_interp", name)
         }
         name
     }
 
     fn run(&self) {
         let program_read = std::fs::read_to_string(self.path.clone()).unwrap();
-        if self.test_structured {
-            let structured = Optimizer::parse_to_structured(&program_read).unwrap();
-            if self.snapshot {
-                assert_snapshot!(self.name(), format!("{}", structured));
+        match self.test_type {
+            TestType::StructuredConversion => {
+                let structured = Optimizer::parse_to_structured(&program_read).unwrap();
+                if self.snapshot {
+                    assert_snapshot!(self.name(), format!("{}", structured));
+                }
             }
-        } else if self.interp {
-            let args = Optimizer::parse_bril_args(&program_read);
-            let parsed = Optimizer::parse_bril(&program_read).unwrap();
-            let mut optimizer = Optimizer::default();
-            let res = optimizer.optimize(&parsed).unwrap();
-
-            assert_eq!(
-                Optimizer::interp(&program_read, args.clone(), None),
-                Optimizer::interp(&format!("{}", res), args, None)
-            );
-        } else {
-            let parsed = Optimizer::parse_bril(&program_read).unwrap();
-
-            let mut optimizer = Optimizer::default();
-            if self.no_opt {
-                optimizer.num_iters = 0;
+            TestType::RvsdgConversion => {
+                todo!()
             }
-            let res = optimizer.optimize(&parsed).unwrap();
-            if self.snapshot {
-                assert_snapshot!(self.name(), format!("{}", res));
+            TestType::NaiiveOptimization => {
+                let parsed = Optimizer::parse_bril(&program_read).unwrap();
+
+                let mut optimizer = Optimizer::default();
+                if self.no_opt {
+                    optimizer.num_iters = 0;
+                }
+                let res = optimizer.optimize(&parsed).unwrap();
+
+                let args = Optimizer::parse_bril_args(&program_read);
+                assert_eq!(
+                    Optimizer::interp(&program_read, args.clone(), None),
+                    Optimizer::interp(&format!("{}", res), args, None)
+                );
+
+                if self.snapshot {
+                    assert_snapshot!(self.name(), format!("{}", res));
+                }
             }
         }
     }
@@ -78,9 +88,8 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             .replace(['.', '-', ' '], "_");
         let run = Run {
             path: f.clone(),
-            test_structured: false,
+            test_type: TestType::NaiiveOptimization,
             no_opt: false,
-            interp: false,
             snapshot: f.to_str().unwrap().contains("small"),
         };
 
@@ -90,11 +99,6 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             continue;
         }
 
-        mk_trial(Run {
-            interp: true,
-            ..run.clone()
-        });
-
         mk_trial(run.clone());
         mk_trial(Run {
             no_opt: true,
@@ -102,7 +106,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
         });
 
         mk_trial(Run {
-            test_structured: true,
+            test_type: TestType::StructuredConversion,
             ..run
         });
     }

@@ -88,9 +88,6 @@ fn rvsdg_expr() {
         ret v2;
     }
     "#;
-    DebugVisualizations::new(PROGRAM)
-        .write_output(["/", "tmp", "rvsdg_expr"].iter().collect())
-        .unwrap();
     let prog = parse_from_string(PROGRAM);
     let mut cfg = to_cfg(&prog.functions[0]);
     let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();

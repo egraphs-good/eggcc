@@ -145,15 +145,15 @@ fn peg_basic_odd_branch() {
 
     let prog = parse_from_string(PROGRAM);
     let mut cfg = to_cfg(&prog.functions[0]);
-    let got = PegFunction::new(&to_rvsdg(&mut cfg).unwrap());
+    let have = PegFunction::new(&to_rvsdg(&mut cfg).unwrap());
 
-    for i in 0..10 {
-        assert_eq!(
-            want.simulate(&[Literal::Int(i)]),
-            got.simulate(&[Literal::Int(i)]),
-            "iteration {i}"
-        );
-    }
+    let want: Vec<_> = (0..10)
+        .map(|i| want.simulate(&[Literal::Int(i)]).unwrap())
+        .collect();
+    let have: Vec<_> = (0..10)
+        .map(|i| have.simulate(&[Literal::Int(i)]).unwrap())
+        .collect();
+    assert_eq!(want, have);
 }
 
 // todo

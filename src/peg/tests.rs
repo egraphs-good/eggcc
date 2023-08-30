@@ -165,78 +165,41 @@ fn peg_basic_odd_branch() {
     assert_eq!(want, have);
 }
 
-// todo
-// #[test]
-// fn peg_unstructured() {
-//     const PROGRAM: &str = r#"@main(): int {
-//         x: int = const 4;
-//         a_cond: bool = lt x x;
-//         br a_cond .B .C;
-//       .B:
-//         a: int = const 1;
-//         b_cond: bool = lt x a;
-//         x: int = add x a;
-//         br b_cond .C .D;
-//       .C:
-//         jmp .B;
-//       .D:
-//         ret x;
-//       }"#;
-//     DebugVisualizations::new(PROGRAM)
-//         .write_output("/tmp/unstructured_")
-//         .unwrap();
-//     let prog = parse_from_string(PROGRAM);
-//     let mut cfg = to_cfg(&prog.functions[0]);
-//     let peg = to_rvsdg(&mut cfg).unwrap();
-//     // This example is a bit less natural, and while I believe this is a
-//     // faithful RVSDG, it'd be nicer to get further assurance that this is
-//     // correct (e.g. by roundtripping this to bril and ensuring the same values
-//     // came out).
-//     let mut expected = PegTest::default();
-//     let four = expected.lit_int(4);
-//     let one = expected.lit_int(1);
-//     let zero = expected.lit_int(0);
+#[test]
+fn peg_unstructured() {
+    const PROGRAM: &str = r#"@main(): int {
+        x: int = const 4;
+        a_cond: bool = lt x x;
+        br a_cond .B .C;
+      .B:
+        a: int = const 1;
+        b_cond: bool = lt x a;
+        x: int = add x a;
+        br b_cond .C .D;
+      .C:
+        jmp .B;
+      .D:
+        ret x;
+      }"#;
 
-//     let pred = expected.lt(four, four);
-//     let phi1 = expected.phi(pred, &[], &[&[four, one], &[four, zero]]);
+    let mut expected = PegTest::default();
+    let four = expected.lit_int(4);
+    let one = expected.lit_int(1);
 
-//     // loop body:
+    let x = expected.theta(four, usize::MAX, 0);
+    let x_plus_one = expected.add(x, one);
+    expected.nodes[x] = PegBody::Theta(four, x_plus_one, 0);
 
-//     let pred2 = expected.lt(Operand::Arg(0), one);
-//     let in0 = expected.add(Operand::Arg(0), one);
-//     let phi_inner0 = expected.phi(
-//         pred2,
-//         &[in0, Operand::Arg(1)],
-//         &[
-//             &[Operand::Arg(0), zero, Operand::Arg(1)],
-//             &[Operand::Arg(0), one, one],
-//         ],
-//     );
+    let lt = expected.lt(x, four);
+    let pass = expected.pass(lt, 0);
+    let eval = expected.eval(x, pass, 0);
+    let add = expected.add(eval, one);
 
-//     let phi_outer = expected.phi(
-//         zero,
-//         &[Operand::Arg(0), Operand::Arg(1)],
-//         &[
-//             &[
-//                 Operand::Project(0, phi_inner0),
-//                 Operand::Project(1, phi_inner0),
-//                 Operand::Project(2, phi_inner0),
-//             ],
-//             &[Operand::Arg(0), one, zero],
-//         ],
-//     );
+    let want = expected.into_function(0, add);
 
-//     let res = expected.theta(
-//         Operand::Project(1, phi_outer),
-//         &[Operand::Project(0, phi1), Operand::Project(1, phi1)],
-//         &[
-//             Operand::Project(0, phi_outer),
-//             Operand::Project(2, phi_outer),
-//         ],
-//     );
+    let prog = parse_from_string(PROGRAM);
+    let mut cfg = to_cfg(&prog.functions[0]);
+    let have = PegFunction::new(&to_rvsdg(&mut cfg).unwrap());
 
-//     assert!(deep_equal(
-//         &expected.into_function(0, Operand::Project(0, res)),
-//         &peg
-//     ));
-// }
+    assert_eq!(want.simulate(&[]).unwrap(), have.simulate(&[]).unwrap());
+}

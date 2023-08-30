@@ -2,8 +2,7 @@
 
 use crate::peg::{PegBody, PegFunction};
 use crate::rvsdg::Expr;
-use bril_rs::ValueOps;
-use bril_rs::{ConstOps, Literal};
+use bril_rs::{ConstOps, Literal, ValueOps};
 use petgraph::{graph::NodeIndex, Graph};
 use std::collections::HashMap;
 
@@ -96,6 +95,9 @@ fn int(literal: Literal) -> i64 {
 fn bool(literal: Literal) -> bool {
     match literal {
         Literal::Bool(x) => x,
+        // todo!: the Type shouldn't be necessary, but RVSDG gives the wrong type for
+        // Annotation::AssignCond, and I couldn't figure out what entry_map was doing
+        Literal::Int(x) => x != 0,
         _ => panic!("expected bool, found {literal}"),
     }
 }

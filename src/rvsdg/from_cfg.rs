@@ -25,7 +25,7 @@ use super::{
     Expr, Id, Operand, RvsdgBody, RvsdgError,
 };
 
-pub(crate) fn to_rvsdg(cfg: &mut Cfg) -> Result<RvsdgFunction> {
+pub(crate) fn cfg_func_to_rvsdg(cfg: &mut Cfg) -> Result<RvsdgFunction> {
     cfg.restructure();
     let analysis = live_variables(cfg);
     let dom = dominators::simple_fast(&cfg.graph, cfg.entry);

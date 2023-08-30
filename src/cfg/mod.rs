@@ -26,6 +26,22 @@ mod tests;
 pub(crate) mod structured;
 pub(crate) mod to_structured;
 
+/// Convert a program to a cfg.
+/// Loops over all the functions, translating individually.
+pub(crate) fn program_to_cfg(program: &Program) -> CfgProgram {
+    let mut functions = Vec::new();
+    for func in &program.functions {
+        let cfg = to_cfg(func);
+        functions.push(cfg);
+    }
+    CfgProgram { functions }
+}
+
+#[derive(Clone)]
+pub struct CfgProgram {
+    pub functions: Vec<Cfg>,
+}
+
 /// The name (or label) associated with a basic block.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum BlockName {
@@ -90,7 +106,7 @@ impl FromStr for BlockName {
 /// part of the RVSDG conversion process. The `Identifier` type stores both
 /// kinds of name.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum Identifier {
+pub enum Identifier {
     Name(Box<str>),
     Num(usize),
 }
@@ -175,7 +191,7 @@ pub(crate) enum BranchOp {
 
 /// The control-flow graph for a single function.
 #[derive(Debug, Clone)]
-pub(crate) struct Cfg {
+pub struct Cfg {
     /// The arguments to the function.
     pub(crate) args: Vec<Argument>,
     /// The graph itself.
@@ -208,16 +224,6 @@ impl Cfg {
 
         reverse_postorder
     }
-}
-
-pub(crate) fn program_to_structured(program: &Program) -> StructuredProgram {
-    let mut functions = Vec::new();
-    for func in &program.functions {
-        let cfg = to_cfg(func);
-        let structured = to_structured::to_structured(&cfg).unwrap();
-        functions.push(structured);
-    }
-    StructuredProgram { functions }
 }
 
 /// Get the underyling CFG corresponding to the function `func`.
@@ -351,6 +357,7 @@ pub(crate) fn to_cfg(func: &Function) -> Cfg {
             },
         )
     }
+
     builder.cfg
 }
 

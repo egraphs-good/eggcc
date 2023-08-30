@@ -45,7 +45,12 @@ impl Run {
                 }
             }
             TestType::RvsdgConversion => {
-                todo!()
+                let parsed = Optimizer::parse_bril(&program_read).unwrap();
+                let rvsdg = Optimizer::program_to_rvsdg(&parsed).unwrap();
+                let svg = rvsdg.to_svg();
+                if self.snapshot {
+                    assert_snapshot!(self.name(), svg);
+                }
             }
             TestType::NaiiveOptimization => {
                 let parsed = Optimizer::parse_bril(&program_read).unwrap();
@@ -107,6 +112,11 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
 
         mk_trial(Run {
             test_type: TestType::StructuredConversion,
+            ..run.clone()
+        });
+
+        mk_trial(Run {
+            test_type: TestType::RvsdgConversion,
             ..run
         });
     }

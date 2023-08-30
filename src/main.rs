@@ -1,5 +1,5 @@
 use clap::Parser;
-use eggcc::*;
+use eggcc::{util::DebugVisualizations, *};
 use std::{
     io::{stdin, Read},
     path::PathBuf,
@@ -7,6 +7,10 @@ use std::{
 
 #[derive(Debug, Parser)]
 struct Args {
+    /// A directory for debug output, including
+    /// svgs for the rvsdg, cfgs, ect.
+    #[clap(long)]
+    debug_dir: Option<PathBuf>,
     /// Don't perform optimization
     #[clap(long)]
     unoptimized: bool,
@@ -18,6 +22,9 @@ struct Args {
     /// output it as a bril program
     #[clap(long)]
     structured_cfg: bool,
+    /// Output the svg of the rvsdg for the program.
+    #[clap(long)]
+    rvsdg_svg: bool,
     /// Output the egglog encoding of the program.
     /// The egglog program can be run to optimize the program.
     #[clap(long, verbatim_doc_comment)]
@@ -57,8 +64,19 @@ fn main() {
     };
 
     let program = Optimizer::parse_bril(&input).unwrap();
+
+    if let Some(debug_dir) = args.debug_dir {
+        let debug = DebugVisualizations::new(&input);
+
+        debug.write_output(debug_dir).unwrap();
+    }
+
     let result_program = if args.unoptimized {
         println!("{}", program);
+        program
+    } else if args.rvsdg_svg {
+        let rvsdg = Optimizer::program_to_rvsdg(&program).unwrap();
+        println!("{}", rvsdg.to_svg());
         program
     } else if args.structured {
         let structured = Optimizer::parse_to_structured(&input).unwrap();

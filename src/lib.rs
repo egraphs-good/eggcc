@@ -1,9 +1,12 @@
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::Program;
-use cfg::program_to_structured;
 
+use cfg::structured::StructuredProgram;
+use cfg::to_structured::cfg_to_structured;
+use cfg::{program_to_cfg, CfgProgram};
 use egglog::ast::Expr;
 use egglog::EGraph;
+use rvsdg::{RvsdgError, RvsdgProgram};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
@@ -14,8 +17,7 @@ use thiserror::Error;
 pub(crate) mod cfg;
 mod conversions;
 pub(crate) mod rvsdg;
-mod util;
-use cfg::structured::StructuredProgram;
+pub mod util;
 
 #[derive(Debug, Error)]
 pub enum EggCCError {
@@ -27,6 +29,8 @@ pub enum EggCCError {
     ConversionError(String),
     #[error("Unstructured control flow detected")]
     UnstructuredControlFlow,
+    #[error("Rvsdg error: {0}")]
+    RvsdgError(RvsdgError),
     #[error("Uninitialized variable {0} used in function {1}")]
     UninitializedVariable(String, String),
 }
@@ -165,9 +169,23 @@ impl Optimizer {
         Ok(prog)
     }
 
+    pub fn program_to_cfg(program: &Program) -> CfgProgram {
+        program_to_cfg(program)
+    }
+
+    pub fn program_to_rvsdg(program: &Program) -> Result<RvsdgProgram, EggCCError> {
+        let cfg = Self::program_to_cfg(program);
+        rvsdg::cfg_to_rvsdg(&cfg)
+    }
+
+    pub fn program_to_structured(program: &Program) -> Result<StructuredProgram, EggCCError> {
+        let cfg = Self::program_to_cfg(program);
+        cfg_to_structured(&cfg)
+    }
+
     pub fn parse_to_structured(program: &str) -> Result<StructuredProgram, EggCCError> {
         let parsed = Self::parse_bril(program)?;
-        Ok(program_to_structured(&parsed))
+        Self::program_to_structured(&parsed)
     }
 
     pub fn fresh_var(&mut self) -> String {
@@ -200,7 +218,7 @@ impl Optimizer {
         &mut self,
         bril_program: &Program,
     ) -> Result<StructuredProgram, EggCCError> {
-        let structured = program_to_structured(bril_program);
+        let structured = Self::program_to_structured(bril_program)?;
 
         let egglog_code = self.structured_to_optimizer(&structured);
 

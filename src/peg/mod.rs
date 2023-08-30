@@ -34,6 +34,8 @@ pub(crate) enum PegBody {
     Eval(Id, Id, usize),
     /// Finds the index of the first value of false in a stream.
     Pass(Id, usize),
+    /// Does nothing (but useful for creating cycles).
+    Edge(Id),
 }
 
 /// A function, expressed using PEGs.
@@ -63,10 +65,16 @@ impl PegFunction {
     }
 }
 
+#[derive(Clone)]
+enum Scope<'a> {
+    Gamma(&'a [Operand]),
+    Theta(Vec<Id>),
+}
+
 fn get_pegs(
     op: Operand,
     rvsdgs: &Vec<RvsdgBody>,
-    scope: &[Id],
+    scope: &[Scope],
     pegs: &mut Vec<PegBody>,
     memoize: &mut HashMap<(usize, Id), usize>,
 ) -> usize {
@@ -75,19 +83,13 @@ fn get_pegs(
             pegs.push(PegBody::Arg(arg));
             pegs.len() - 1
         }
-        (Operand::Arg(arg), Some(id)) => match &rvsdgs[*id] {
-            RvsdgBody::PureOp(_) => panic!("pure ops shouldn't contain regions"),
-            RvsdgBody::Gamma { inputs, .. } => {
+        (Operand::Arg(arg), Some(s)) => match s {
+            Scope::Gamma(inputs) => {
                 let mut inner_scope = scope.to_owned();
                 inner_scope.pop();
                 get_pegs(inputs[arg], rvsdgs, &inner_scope, pegs, memoize)
             }
-            RvsdgBody::Theta { outputs, .. } => {
-                // Layout in `pegs`: thetas, evals, pass internals, pass, theta internals
-                let start_of_evals = get_pegs(Operand::Id(*id), rvsdgs, scope, pegs, memoize);
-                let start_of_thetas = start_of_evals - outputs.len();
-                start_of_thetas + arg
-            }
+            Scope::Theta(thetas) => thetas[arg],
         },
         (Operand::Id(id), _) | (Operand::Project(_, id), _) => {
             let selected = match op {
@@ -121,10 +123,14 @@ fn get_pegs(
                     memoize.insert((selected, id), out);
                     out
                 }
-                RvsdgBody::Gamma { pred, outputs, .. } => {
+                RvsdgBody::Gamma {
+                    pred,
+                    inputs,
+                    outputs,
+                } => {
                     assert_eq!(2, outputs.len());
                     let mut inner_scope = scope.to_owned();
-                    inner_scope.push(id);
+                    inner_scope.push(Scope::Gamma(inputs));
                     let phis: Vec<PegBody> = outputs[0]
                         .iter()
                         .zip(&outputs[1])
@@ -148,25 +154,23 @@ fn get_pegs(
                     inputs,
                     outputs,
                 } => {
-                    let mut inner_scope = scope.to_owned();
-                    inner_scope.push(id);
                     // Generate a default PEG to be replaced later
                     let default = || PegBody::Arg(0);
 
-                    // Layout in `pegs`: thetas, evals, pass internals, pass, theta internals
                     let theta_start = pegs.len();
                     pegs.extend((0..outputs.len()).map(|_| default()));
-                    let evals_start = pegs.len();
-                    let pass = pegs.len() + outputs.len();
-
-                    pegs.extend(
-                        (0..outputs.len()).map(|i| PegBody::Eval(theta_start + i, pass, id)),
-                    );
+                    let pass = pegs.len();
                     pegs.push(default());
+                    let edges_start = pegs.len();
+                    pegs.extend((0..outputs.len()).map(|_| default()));
 
                     for i in 0..outputs.len() {
-                        memoize.insert((i, id), evals_start + i);
+                        memoize.insert((i, id), edges_start + i);
                     }
+
+                    let mut inner_scope = scope.to_owned();
+                    inner_scope.push(Scope::Theta((theta_start..pass).collect()));
+
                     for (i, (output, input)) in outputs.iter().zip(inputs).enumerate() {
                         pegs[theta_start + i] = PegBody::Theta(
                             get_pegs(*input, rvsdgs, scope, pegs, memoize),
@@ -178,7 +182,27 @@ fn get_pegs(
                     pegs[pass] =
                         PegBody::Pass(get_pegs(*pred, rvsdgs, &inner_scope, pegs, memoize), id);
 
-                    evals_start + selected
+                    // We need to unroll the loop once at the end because RVSDGs are do-while
+                    let evals_start = pegs.len();
+                    pegs.extend(
+                        (0..outputs.len()).map(|i| PegBody::Eval(theta_start + i, pass, id)),
+                    );
+                    let mut eval_scope = scope.to_owned();
+                    eval_scope.push(Scope::Theta(
+                        (evals_start..evals_start + outputs.len()).collect(),
+                    ));
+
+                    for (i, output) in outputs.iter().enumerate() {
+                        pegs[edges_start + i] = PegBody::Edge(get_pegs(
+                            *output,
+                            rvsdgs,
+                            &eval_scope,
+                            pegs,
+                            &mut HashMap::new(),
+                        ));
+                    }
+
+                    edges_start + selected
                 }
             }
         }

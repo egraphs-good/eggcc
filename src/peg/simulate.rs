@@ -81,6 +81,7 @@ impl PegBody {
                     i += 1;
                 }
             }
+            PegBody::Edge(i) => nodes[*i].simulate(args, nodes, indices),
         }
     }
 }
@@ -100,6 +101,7 @@ fn bool(literal: Literal) -> bool {
 }
 
 impl PegFunction {
+    /// IMPORTANT: Graph does not track the order of children!
     pub fn graph(&self) -> Graph<String, &str> {
         let mut graph: Graph<String, &str> = Graph::new();
         let mut edges: Vec<(usize, usize)> = Vec::new();
@@ -135,6 +137,10 @@ impl PegFunction {
                 PegBody::Pass(s, l) => {
                     js = vec![*s];
                     format!("pass_{l}")
+                }
+                PegBody::Edge(x) => {
+                    js = vec![*x];
+                    String::from("no-op")
                 }
             };
             edges.extend(js.into_iter().map(|j| (i, j)));

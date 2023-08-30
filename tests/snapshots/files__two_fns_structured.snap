@@ -16,6 +16,6 @@ block:
  v0: int = const 1;
  v1: int = const 2;
  v2: int = sub v0 v1;
- return
+ return v2
 
 }

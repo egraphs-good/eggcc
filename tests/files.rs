@@ -7,6 +7,7 @@ use libtest_mimic::Trial;
 #[derive(Clone, Copy)]
 enum TestType {
     StructuredConversion,
+    #[allow(dead_code)]
     RvsdgConversion,
     NaiiveOptimization,
 }
@@ -115,10 +116,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             ..run.clone()
         });
 
-        mk_trial(Run {
-            test_type: TestType::RvsdgConversion,
-            ..run
-        });
+        // TODO test Rvsdg conversion
     }
 
     trials

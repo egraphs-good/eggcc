@@ -148,6 +148,14 @@ fn get_pegs(
                     inputs,
                     outputs,
                 } => {
+                    // Layout in `pegs`: thetas, evals, pass internals, pass, theta internals
+                    let theta_start = pegs.len();
+                    let evals_start = theta_start + outputs.len();
+                    let pass = evals_start + outputs.len();
+                    for i in 0..outputs.len() {
+                        memoize.insert((i, id), evals_start + i);
+                    }
+
                     let mut scope = scope.to_owned();
                     scope.push(id);
 
@@ -163,14 +171,6 @@ fn get_pegs(
                             )
                         })
                         .collect();
-
-                    // Layout in `pegs`: theta internals, thetas, evals, pass internals, pass
-                    let theta_start = pegs.len();
-                    let evals_start = theta_start + outputs.len();
-                    let pass = evals_start + outputs.len();
-                    for i in 0..outputs.len() {
-                        memoize.insert((i, id), evals_start + i);
-                    }
 
                     pegs.extend(thetas);
                     pegs.extend(

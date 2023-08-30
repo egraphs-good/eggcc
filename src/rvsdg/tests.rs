@@ -3,7 +3,7 @@ use bril_rs::{ConstOps, Literal, Type, ValueOps};
 use crate::{
     cfg::to_cfg,
     rvsdg::{from_cfg::cfg_func_to_rvsdg, Expr, Id, Operand, RvsdgBody},
-    util::{parse_from_string, DebugVisualizations},
+    util::parse_from_string,
 };
 
 use super::RvsdgFunction;

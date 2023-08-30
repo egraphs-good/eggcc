@@ -1,9 +1,10 @@
-//! Simulate a PEG.
+//! This module lets you simulate a PEG, as well as output it to Dot format.
 
 use crate::peg::{PegBody, PegFunction};
 use crate::rvsdg::Expr;
 use bril_rs::ValueOps;
 use bril_rs::{ConstOps, Literal};
+use petgraph::{graph::NodeIndex, Graph};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -95,5 +96,53 @@ fn bool(literal: Literal) -> bool {
     match literal {
         Literal::Bool(x) => x,
         _ => panic!("expected bool, found {literal}"),
+    }
+}
+
+impl PegFunction {
+    pub fn graph(&self) -> Graph<String, &str> {
+        let mut graph: Graph<String, &str> = Graph::new();
+        let mut edges: Vec<(usize, usize)> = Vec::new();
+        for (i, node) in self.nodes.iter().enumerate() {
+            let mut js = Vec::new();
+            let node = match node {
+                PegBody::Arg(arg) => format!("arg {arg}"),
+                PegBody::PureOp(expr) => match expr {
+                    Expr::Op(f, xs) => {
+                        js = xs.to_vec();
+                        format!("{f}")
+                    }
+                    Expr::Call(f, xs) => {
+                        js = xs.to_vec();
+                        format!("{f}")
+                    }
+                    Expr::Const(ConstOps::Const, _, literal) => {
+                        format!("{literal}")
+                    }
+                },
+                PegBody::Phi(c, x, y) => {
+                    js = vec![*c, *x, *y];
+                    String::from("Φ")
+                }
+                PegBody::Theta(a, b, l) => {
+                    js = vec![*a, *b];
+                    format!("Θ_{l}")
+                }
+                PegBody::Eval(s, i, l) => {
+                    js = vec![*s, *i];
+                    format!("eval_{l}")
+                }
+                PegBody::Pass(s, l) => {
+                    js = vec![*s];
+                    format!("pass_{l}")
+                }
+            };
+            edges.extend(js.into_iter().map(|j| (i, j)));
+            graph.add_node(node);
+        }
+        for (i, j) in edges {
+            graph.add_edge(NodeIndex::new(i), NodeIndex::new(j), "");
+        }
+        graph
     }
 }

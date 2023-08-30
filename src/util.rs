@@ -3,11 +3,7 @@ use std::{ffi::OsStr, fmt::Display, io, path::PathBuf};
 use hashbrown::HashMap;
 use petgraph::dot::Dot;
 
-use crate::{
-    cfg::{program_to_cfg, to_cfg},
-    rvsdg::from_cfg::cfg_func_to_rvsdg,
-    Optimizer,
-};
+use crate::Optimizer;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -71,7 +67,7 @@ impl DebugVisualizations {
     /// Any failures in the conversion to CFG or RVSDG will cause a panic.
     pub fn new(input: &str) -> DebugVisualizations {
         let program = parse_from_string(input);
-        let mut cfg = Optimizer::program_to_cfg(&program);
+        let cfg = Optimizer::program_to_cfg(&program);
 
         let input_cfgs = cfg
             .functions

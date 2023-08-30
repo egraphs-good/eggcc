@@ -15,8 +15,6 @@ use petgraph::{
     visit::{DfsPostOrder, Walker},
 };
 
-use self::structured::StructuredProgram;
-
 /// A subset of nodes for a particular CFG.
 pub(crate) type NodeSet = <StableDiGraph<BasicBlock, Branch> as Visitable>::Map;
 

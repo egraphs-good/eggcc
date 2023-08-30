@@ -302,7 +302,7 @@ impl<'a> StructuredCfgBuilder<'a> {
 pub(crate) fn cfg_to_structured(cfg: &CfgProgram) -> Result<StructuredProgram, EggCCError> {
     let mut functions = vec![];
     for func in &cfg.functions {
-        functions.push(StructuredCfgBuilder::new(&func).convert_structured()?)
+        functions.push(StructuredCfgBuilder::new(func).convert_structured()?)
     }
 
     Ok(StructuredProgram { functions })

@@ -78,15 +78,13 @@ fn get_pegs(
         (Operand::Arg(arg), Some(id)) => match &rvsdgs[*id] {
             RvsdgBody::PureOp(_) => panic!("pure ops shouldn't contain regions"),
             RvsdgBody::Gamma { inputs, .. } => {
-                let mut scope = scope.to_owned();
-                scope.pop();
-                get_pegs(inputs[arg], rvsdgs, &scope, pegs, memoize)
+                let mut inner_scope = scope.to_owned();
+                inner_scope.pop();
+                get_pegs(inputs[arg], rvsdgs, &inner_scope, pegs, memoize)
             }
             RvsdgBody::Theta { outputs, .. } => {
-                let mut scope = scope.to_owned();
-                scope.pop();
                 // Layout in `pegs`: thetas, evals, pass internals, pass, theta internals
-                let start_of_evals = get_pegs(Operand::Id(*id), rvsdgs, &scope, pegs, memoize);
+                let start_of_evals = get_pegs(Operand::Id(*id), rvsdgs, scope, pegs, memoize);
                 let start_of_thetas = start_of_evals - outputs.len();
                 start_of_thetas + arg
             }
@@ -125,16 +123,16 @@ fn get_pegs(
                 }
                 RvsdgBody::Gamma { pred, outputs, .. } => {
                     assert_eq!(2, outputs.len());
-                    let mut scope = scope.to_owned();
-                    scope.push(id);
+                    let mut inner_scope = scope.to_owned();
+                    inner_scope.push(id);
                     let phis: Vec<PegBody> = outputs[0]
                         .iter()
                         .zip(&outputs[1])
                         .map(|(if_false, if_true)| {
                             PegBody::Phi(
-                                get_pegs(*pred, rvsdgs, &scope, pegs, memoize),
-                                get_pegs(*if_true, rvsdgs, &scope, pegs, memoize),
-                                get_pegs(*if_false, rvsdgs, &scope, pegs, memoize),
+                                get_pegs(*pred, rvsdgs, scope, pegs, memoize),
+                                get_pegs(*if_true, rvsdgs, &inner_scope, pegs, memoize),
+                                get_pegs(*if_false, rvsdgs, &inner_scope, pegs, memoize),
                             )
                         })
                         .collect();
@@ -150,6 +148,8 @@ fn get_pegs(
                     inputs,
                     outputs,
                 } => {
+                    let mut inner_scope = scope.to_owned();
+                    inner_scope.push(id);
                     // Generate a default PEG to be replaced later
                     let default = || PegBody::Arg(0);
 
@@ -167,19 +167,16 @@ fn get_pegs(
                     for i in 0..outputs.len() {
                         memoize.insert((i, id), evals_start + i);
                     }
-
-                    let mut scope = scope.to_owned();
-                    scope.push(id);
-
                     for (i, (output, input)) in outputs.iter().zip(inputs).enumerate() {
                         pegs[theta_start + i] = PegBody::Theta(
-                            get_pegs(*input, rvsdgs, &scope, pegs, memoize),
-                            get_pegs(*output, rvsdgs, &scope, pegs, memoize),
+                            get_pegs(*input, rvsdgs, scope, pegs, memoize),
+                            get_pegs(*output, rvsdgs, &inner_scope, pegs, memoize),
                             id,
                         );
                     }
 
-                    pegs[pass] = PegBody::Pass(get_pegs(*pred, rvsdgs, &scope, pegs, memoize), id);
+                    pegs[pass] =
+                        PegBody::Pass(get_pegs(*pred, rvsdgs, &inner_scope, pegs, memoize), id);
 
                     evals_start + selected
                 }

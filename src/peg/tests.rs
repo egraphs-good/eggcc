@@ -95,6 +95,67 @@ fn peg_expr() {
     assert_eq!(&expected.into_function(0, res), &peg);
 }
 
+#[test]
+fn peg_basic_odd_branch() {
+    // Bril program summing the numbers from 1 to n, multiplying by 2 if that
+    // value is larger is larger than 5. We test this by simulating both a
+    // hand-writte and a generated peg.
+    const PROGRAM: &str = r#"
+ @main(n: int): int {
+    res: int = const 0;
+    i: int = const 0;
+ .loop:
+    one: int = const 1;
+    res: int = add res i;
+    i: int = add i one;
+    loop_cond: bool = lt i n;
+    br loop_cond .loop .tail;
+ .tail:
+   five: int = const 5;
+   rescale_cond: bool = lt res five;
+   br rescale_cond .rescale .exit;
+ .rescale:
+   two: int = const 2;
+   res: int = mul res two;
+ .exit:
+  ret res;
+}"#;
+
+    let mut expected = PegTest::default();
+    let zero = expected.lit_int(0);
+    let one = expected.lit_int(1);
+    let two = expected.lit_int(2);
+    let five = expected.lit_int(5);
+    let n = expected.arg(0);
+
+    let res = expected.theta(zero, usize::MAX, 0);
+    let i = expected.theta(zero, usize::MAX, 0);
+    let res_plus = expected.add(i, res);
+    let i_plus = expected.add(one, i);
+    expected.nodes[res] = PegBody::Theta(zero, res_plus, 0);
+    expected.nodes[i] = PegBody::Theta(zero, i_plus, 0);
+
+    let pred = expected.lt(i, n);
+    let pass = expected.pass(pred, 0);
+    let eval = expected.eval(res, pass, 0);
+    let pred = expected.lt(eval, five);
+    let mul2 = expected.mul(eval, two);
+    let phi = expected.phi(pred, mul2, eval);
+    let want = expected.into_function(1, phi);
+
+    let prog = parse_from_string(PROGRAM);
+    let mut cfg = to_cfg(&prog.functions[0]);
+    let got = PegFunction::new(&to_rvsdg(&mut cfg).unwrap());
+
+    for i in 0..10 {
+        assert_eq!(
+            want.simulate(&[Literal::Int(i)]),
+            got.simulate(&[Literal::Int(i)]),
+            "iteration {i}"
+        );
+    }
+}
+
 // todo
 // #[test]
 // fn peg_unstructured() {
@@ -170,56 +231,3 @@ fn peg_expr() {
 //         &peg
 //     ));
 // }
-
-#[test]
-fn peg_basic_odd_branch() {
-    // Bril program summing the numbers from 1 to n, multiplying by 2 if that
-    // value is larger is larger than 5. This gives us a theta node and a phi
-    // node, with the phi requiring branch restructuring.
-    const PROGRAM: &str = r#"
- @main(n: int): int {
-    res: int = const 0;
-    i: int = const 0;
- .loop:
-    one: int = const 1;
-    res: int = add res i;
-    i: int = add i one;
-    loop_cond: bool = lt i n;
-    br loop_cond .loop .tail;
- .tail:
-   five: int = const 5;
-   rescale_cond: bool = lt res five;
-   br rescale_cond .rescale .exit;
- .rescale:
-   two: int = const 2;
-   res: int = mul res two;
- .exit:
-  ret res;
-}"#;
-
-    let mut expected = PegTest::default();
-    let zero = expected.lit_int(0);
-    let one = expected.lit_int(1);
-    let two = expected.lit_int(2);
-    let five = expected.lit_int(5);
-    let n = expected.arg(0);
-
-    let res = expected.theta(zero, usize::MAX, 0);
-    let i = expected.theta(zero, usize::MAX, 0);
-    let res_plus = expected.add(i, res);
-    let i_plus = expected.add(one, i);
-    expected.nodes[res] = PegBody::Theta(zero, res_plus, 0);
-    expected.nodes[i] = PegBody::Theta(zero, i_plus, 0);
-
-    let pred = expected.lt(i, n);
-    let pass = expected.pass(pred, 0);
-    let eval = expected.eval(res, pass, 0);
-    let pred = expected.lt(eval, five);
-    let mul2 = expected.mul(eval, two);
-    let phi = expected.phi(pred, mul2, eval);
-
-    let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let got = PegFunction::new(&to_rvsdg(&mut cfg).unwrap());
-    assert_eq!(&expected.into_function(1, phi), &got);
-}

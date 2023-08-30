@@ -10,6 +10,8 @@
 // todo: remove this once it no longer does anything
 #![allow(dead_code)]
 
+pub(crate) mod simulate;
+
 use crate::rvsdg::{Expr, Id, Operand, RvsdgBody, RvsdgFunction};
 use std::collections::HashMap;
 

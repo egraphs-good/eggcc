@@ -109,7 +109,7 @@ impl DebugVisualizations {
 
         // make the directory if it doesn't exist
         if !path.exists() {
-            std::fs::create_dir_all(&path).unwrap();
+            std::fs::create_dir_all(&path)?;
         }
 
         for (name, content) in

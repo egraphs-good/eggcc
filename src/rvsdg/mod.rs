@@ -39,14 +39,19 @@ use std::fmt;
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
 use thiserror::Error;
 
-use crate::cfg::Identifier;
+use crate::{
+    cfg::{CfgProgram, Identifier},
+    EggCCError,
+};
+
+use self::from_cfg::cfg_func_to_rvsdg;
 
 #[cfg(test)]
 mod tests;
 
 /// Errors from the rvsdg module.
 #[derive(Debug, Error)]
-pub(crate) enum RvsdgError {
+pub enum RvsdgError {
     #[error("Unsupported operation: {op:?}, {pos:?}")]
     UnsupportedOperation {
         op: bril_rs::ValueOps,
@@ -113,7 +118,11 @@ pub(crate) enum RvsdgBody {
     },
 }
 
-pub(crate) struct RvsdgFunction {
+/// Represents a single function as an RVSDG.
+/// The function has arguments, a result, and nodes.
+/// The nodes are stored in a vector, and variants of RvsdgBody refer
+/// to nodes by their index in the vector.
+pub struct RvsdgFunction {
     /// The number of input arguments to the function.
     pub(crate) n_args: usize,
     /// The backing heap for Rvsdg node ids within this function.
@@ -137,4 +146,23 @@ impl fmt::Debug for RvsdgFunction {
         map.finish()?;
         write!(f, "}}")
     }
+}
+
+/// A Bril program represented as an Rvsdg.
+/// For now, it's simply a vector of [RvsdgFunction]s.
+/// In the future, we may want functions to be represented within
+/// the RVSDG.
+pub struct RvsdgProgram {
+    pub(crate) functions: Vec<RvsdgFunction>,
+}
+
+pub(crate) fn cfg_to_rvsdg(cfg: &CfgProgram) -> std::result::Result<RvsdgProgram, EggCCError> {
+    // Rvsdg translation also restructured the cfg
+    // so make a copy for that.
+    let mut cfg_restructured = cfg.clone();
+    let mut functions = vec![];
+    for func in cfg_restructured.functions.iter_mut() {
+        functions.push(cfg_func_to_rvsdg(func).map_err(EggCCError::RvsdgError)?);
+    }
+    Ok(RvsdgProgram { functions })
 }

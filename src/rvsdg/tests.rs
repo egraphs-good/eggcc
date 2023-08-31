@@ -2,8 +2,8 @@ use bril_rs::{ConstOps, Literal, Type, ValueOps};
 
 use crate::{
     cfg::to_cfg,
-    rvsdg::{from_cfg::to_rvsdg, Expr, Id, Operand, RvsdgBody},
-    util::{parse_from_string, DebugVisualizations},
+    rvsdg::{from_cfg::cfg_func_to_rvsdg, Expr, Id, Operand, RvsdgBody},
+    util::parse_from_string,
 };
 
 use super::RvsdgFunction;
@@ -90,7 +90,7 @@ fn rvsdg_expr() {
     "#;
     let prog = parse_from_string(PROGRAM);
     let mut cfg = to_cfg(&prog.functions[0]);
-    let rvsdg = to_rvsdg(&mut cfg).unwrap();
+    let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();
 
     let mut expected = RvsdgTest::default();
     let one = expected.lit_int(1);
@@ -115,12 +115,9 @@ fn rvsdg_unstructured() {
       .D:
         ret x;
       }"#;
-    DebugVisualizations::new(PROGRAM)
-        .write_output("/tmp/unstructured_")
-        .unwrap();
     let prog = parse_from_string(PROGRAM);
     let mut cfg = to_cfg(&prog.functions[0]);
-    let rvsdg = to_rvsdg(&mut cfg).unwrap();
+    let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();
     // This example is a bit less natural, and while I believe this is a
     // faithful RVSDG, it'd be nicer to get further assurance that this is
     // correct (e.g. by roundtripping this to bril and ensuring the same values
@@ -230,7 +227,7 @@ fn rvsdg_basic_odd_branch() {
     let gamma = expected.gamma(pred, &[res], &[&[Operand::Arg(0)], &[mul2]]);
     let prog = parse_from_string(PROGRAM);
     let mut cfg = to_cfg(&prog.functions[0]);
-    let got = to_rvsdg(&mut cfg).unwrap();
+    let got = cfg_func_to_rvsdg(&mut cfg).unwrap();
     assert!(deep_equal(
         &expected.into_function(1, Operand::Project(0, gamma)),
         &got

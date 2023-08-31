@@ -118,6 +118,10 @@ pub(crate) enum RvsdgBody {
     },
 }
 
+/// Represents a single function as an RVSDG.
+/// The function has arguments, a result, and nodes.
+/// The nodes are stored in a vector, and variants of RvsdgBody refer
+/// to nodes by their index in the vector.
 pub struct RvsdgFunction {
     /// The number of input arguments to the function.
     pub(crate) n_args: usize,
@@ -144,6 +148,10 @@ impl fmt::Debug for RvsdgFunction {
     }
 }
 
+/// A Bril program represented as an Rvsdg.
+/// For now, it's simply a vector of [RvsdgFunction]s.
+/// In the future, we may want functions to be represented within
+/// the RVSDG.
 pub struct RvsdgProgram {
     pub(crate) functions: Vec<RvsdgFunction>,
 }

@@ -93,8 +93,9 @@ impl DebugVisualizations {
     }
 
     /// Write the visualizations to output files in the given directory.
-    /// If the directory exists, it deletes it compeltely before writing.
-    /// Otherwise, it creates the directory (recursively).
+    /// If the directory does not exist, it creates it.
+    /// If the directory contains any files whose names conflict with the
+    /// output files, it replaces them.
     ///
     /// * The `input_cfg` field is written to `input_cfg.dot`.
     /// * The `restructured_cfg` field is written to `function_name` + `restructured.dot`.
@@ -106,11 +107,10 @@ impl DebugVisualizations {
         use std::fs::File;
         use std::io::Write;
 
-        // make the directory, clearing it if needed
-        if path.exists() {
-            std::fs::remove_dir_all(&path).unwrap();
+        // make the directory if it doesn't exist
+        if !path.exists() {
+            std::fs::create_dir_all(&path).unwrap();
         }
-        std::fs::create_dir_all(&path).unwrap();
 
         for (name, content) in
             self.input_cfgs

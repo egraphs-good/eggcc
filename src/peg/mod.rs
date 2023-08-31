@@ -53,10 +53,12 @@ impl PegFunction {
     #[allow(dead_code)]
     pub fn new(rvsdg: &RvsdgFunction) -> PegFunction {
         let mut nodes = Vec::new();
-        let mut memoize = HashMap::new();
-        let result = rvsdg
-            .result
-            .map(|op| get_pegs(op, &rvsdg.nodes, &[], &mut nodes, &mut memoize));
+        let mut builder = PegBuilder {
+            rvsdgs: &rvsdg.nodes,
+            pegs: &mut nodes,
+            memoize: &mut HashMap::new(),
+        };
+        let result = rvsdg.result.map(|op| builder.get_pegs(op, &[]));
         PegFunction {
             n_args: rvsdg.n_args,
             nodes,
@@ -65,144 +67,142 @@ impl PegFunction {
     }
 }
 
+struct PegBuilder<'a> {
+    rvsdgs: &'a Vec<RvsdgBody>,
+    pegs: &'a mut Vec<PegBody>,
+    memoize: &'a mut HashMap<(usize, Id), usize>,
+}
+
 #[derive(Clone)]
 enum Scope<'a> {
     Gamma(&'a [Operand]),
     Theta(Vec<Id>),
 }
 
-fn get_pegs(
-    op: Operand,
-    rvsdgs: &Vec<RvsdgBody>,
-    scope: &[Scope],
-    pegs: &mut Vec<PegBody>,
-    memoize: &mut HashMap<(usize, Id), usize>,
-) -> usize {
-    match (op, scope.last()) {
-        (Operand::Arg(arg), None) => {
-            pegs.push(PegBody::Arg(arg));
-            pegs.len() - 1
-        }
-        (Operand::Arg(arg), Some(s)) => match s {
-            Scope::Gamma(inputs) => {
-                let mut inner_scope = scope.to_owned();
-                inner_scope.pop();
-                get_pegs(inputs[arg], rvsdgs, &inner_scope, pegs, memoize)
+impl PegBuilder<'_> {
+    fn get_pegs(&mut self, op: Operand, scope: &[Scope]) -> usize {
+        match (op, scope.last()) {
+            (Operand::Arg(arg), None) => {
+                self.pegs.push(PegBody::Arg(arg));
+                self.pegs.len() - 1
             }
-            Scope::Theta(thetas) => thetas[arg],
-        },
-        (Operand::Id(id), _) | (Operand::Project(_, id), _) => {
-            let selected = match op {
-                Operand::Arg(_) => unreachable!(),
-                Operand::Id(_) => 0,
-                Operand::Project(i, _) => i,
-            };
-            if let Some(out) = memoize.get(&(selected, id)) {
-                return *out;
-            }
-            match &rvsdgs[id] {
-                RvsdgBody::PureOp(expr) => {
-                    let expr = match expr {
-                        Expr::Op(op, xs) => Expr::Op(
-                            *op,
-                            xs.iter()
-                                .map(|x| get_pegs(*x, rvsdgs, scope, pegs, memoize))
-                                .collect(),
-                        ),
-                        Expr::Call(f, xs) => Expr::Call(
-                            f.clone(),
-                            xs.iter()
-                                .map(|x| get_pegs(*x, rvsdgs, scope, pegs, memoize))
-                                .collect(),
-                        ),
-                        Expr::Const(o, t, l) => Expr::Const(*o, t.clone(), l.clone()),
-                    };
-                    assert_eq!(0, selected);
-                    let out = pegs.len();
-                    pegs.push(PegBody::PureOp(expr));
-                    memoize.insert((selected, id), out);
-                    out
-                }
-                RvsdgBody::Gamma {
-                    pred,
-                    inputs,
-                    outputs,
-                } => {
-                    assert_eq!(2, outputs.len());
+            (Operand::Arg(arg), Some(s)) => match s {
+                Scope::Gamma(inputs) => {
                     let mut inner_scope = scope.to_owned();
-                    inner_scope.push(Scope::Gamma(inputs));
-                    let phis: Vec<PegBody> = outputs[0]
-                        .iter()
-                        .zip(&outputs[1])
-                        .map(|(if_false, if_true)| {
-                            PegBody::Phi(
-                                get_pegs(*pred, rvsdgs, scope, pegs, memoize),
-                                get_pegs(*if_true, rvsdgs, &inner_scope, pegs, memoize),
-                                get_pegs(*if_false, rvsdgs, &inner_scope, pegs, memoize),
-                            )
-                        })
-                        .collect();
-                    let out = pegs.len() + selected;
-                    for i in 0..phis.len() {
-                        memoize.insert((i, id), pegs.len() + i);
-                    }
-                    pegs.extend(phis);
-                    out
+                    inner_scope.pop();
+                    self.get_pegs(inputs[arg], &inner_scope)
                 }
-                RvsdgBody::Theta {
-                    pred,
-                    inputs,
-                    outputs,
-                } => {
-                    // Generate a default PEG to be replaced later
-                    let default = || PegBody::Arg(0);
-
-                    let theta_start = pegs.len();
-                    pegs.extend((0..outputs.len()).map(|_| default()));
-                    let pass = pegs.len();
-                    pegs.push(default());
-                    let edges_start = pegs.len();
-                    pegs.extend((0..outputs.len()).map(|_| default()));
-
-                    for i in 0..outputs.len() {
-                        memoize.insert((i, id), edges_start + i);
+                Scope::Theta(thetas) => thetas[arg],
+            },
+            (Operand::Id(id), _) | (Operand::Project(_, id), _) => {
+                let selected = match op {
+                    Operand::Arg(_) => unreachable!(),
+                    Operand::Id(_) => 0,
+                    Operand::Project(i, _) => i,
+                };
+                if let Some(out) = self.memoize.get(&(selected, id)) {
+                    return *out;
+                }
+                match &self.rvsdgs[id] {
+                    RvsdgBody::PureOp(expr) => {
+                        let expr = match expr {
+                            Expr::Op(op, xs) => {
+                                Expr::Op(*op, xs.iter().map(|x| self.get_pegs(*x, scope)).collect())
+                            }
+                            Expr::Call(f, xs) => Expr::Call(
+                                f.clone(),
+                                xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
+                            ),
+                            Expr::Const(o, t, l) => Expr::Const(*o, t.clone(), l.clone()),
+                        };
+                        assert_eq!(0, selected);
+                        let out = self.pegs.len();
+                        self.pegs.push(PegBody::PureOp(expr));
+                        self.memoize.insert((selected, id), out);
+                        out
                     }
+                    RvsdgBody::Gamma {
+                        pred,
+                        inputs,
+                        outputs,
+                    } => {
+                        assert_eq!(2, outputs.len());
+                        let mut inner_scope = scope.to_owned();
+                        inner_scope.push(Scope::Gamma(inputs));
+                        let phis: Vec<PegBody> = outputs[0]
+                            .iter()
+                            .zip(&outputs[1])
+                            .map(|(if_false, if_true)| {
+                                PegBody::Phi(
+                                    self.get_pegs(*pred, scope),
+                                    self.get_pegs(*if_true, &inner_scope),
+                                    self.get_pegs(*if_false, &inner_scope),
+                                )
+                            })
+                            .collect();
+                        let out = self.pegs.len() + selected;
+                        for i in 0..phis.len() {
+                            self.memoize.insert((i, id), self.pegs.len() + i);
+                        }
+                        self.pegs.extend(phis);
+                        out
+                    }
+                    RvsdgBody::Theta {
+                        pred,
+                        inputs,
+                        outputs,
+                    } => {
+                        // Generate a default PEG to be replaced later
+                        let default = || PegBody::Arg(0);
 
-                    let mut inner_scope = scope.to_owned();
-                    inner_scope.push(Scope::Theta((theta_start..pass).collect()));
+                        let theta_start = self.pegs.len();
+                        self.pegs.extend((0..outputs.len()).map(|_| default()));
+                        let pass = self.pegs.len();
+                        self.pegs.push(default());
+                        let edges_start = self.pegs.len();
+                        self.pegs.extend((0..outputs.len()).map(|_| default()));
 
-                    for (i, (output, input)) in outputs.iter().zip(inputs).enumerate() {
-                        pegs[theta_start + i] = PegBody::Theta(
-                            get_pegs(*input, rvsdgs, scope, pegs, memoize),
-                            get_pegs(*output, rvsdgs, &inner_scope, pegs, memoize),
-                            id,
+                        for i in 0..outputs.len() {
+                            self.memoize.insert((i, id), edges_start + i);
+                        }
+
+                        let mut inner_scope = scope.to_owned();
+                        inner_scope.push(Scope::Theta((theta_start..pass).collect()));
+
+                        for (i, (output, input)) in outputs.iter().zip(inputs).enumerate() {
+                            self.pegs[theta_start + i] = PegBody::Theta(
+                                self.get_pegs(*input, scope),
+                                self.get_pegs(*output, &inner_scope),
+                                id,
+                            );
+                        }
+
+                        self.pegs[pass] = PegBody::Pass(self.get_pegs(*pred, &inner_scope), id);
+
+                        // We need to unroll the loop once at the end because RVSDGs are do-while
+                        let evals_start = self.pegs.len();
+                        self.pegs.extend(
+                            (0..outputs.len()).map(|i| PegBody::Eval(theta_start + i, pass, id)),
                         );
-                    }
-
-                    pegs[pass] =
-                        PegBody::Pass(get_pegs(*pred, rvsdgs, &inner_scope, pegs, memoize), id);
-
-                    // We need to unroll the loop once at the end because RVSDGs are do-while
-                    let evals_start = pegs.len();
-                    pegs.extend(
-                        (0..outputs.len()).map(|i| PegBody::Eval(theta_start + i, pass, id)),
-                    );
-                    let mut eval_scope = scope.to_owned();
-                    eval_scope.push(Scope::Theta(
-                        (evals_start..evals_start + outputs.len()).collect(),
-                    ));
-
-                    for (i, output) in outputs.iter().enumerate() {
-                        pegs[edges_start + i] = PegBody::Edge(get_pegs(
-                            *output,
-                            rvsdgs,
-                            &eval_scope,
-                            pegs,
-                            &mut HashMap::new(),
+                        let mut eval_scope = scope.to_owned();
+                        eval_scope.push(Scope::Theta(
+                            (evals_start..evals_start + outputs.len()).collect(),
                         ));
-                    }
 
-                    edges_start + selected
+                        for (i, output) in outputs.iter().enumerate() {
+                            // We need a new builder here because memoize already contains
+                            // inside-the-loop definitions for the output nodes.
+                            let mut builder = PegBuilder {
+                                rvsdgs: self.rvsdgs,
+                                pegs: self.pegs,
+                                memoize: &mut HashMap::new(),
+                            };
+                            self.pegs[edges_start + i] =
+                                PegBody::Edge(builder.get_pegs(*output, &eval_scope));
+                        }
+
+                        edges_start + selected
+                    }
                 }
             }
         }

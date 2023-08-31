@@ -182,6 +182,8 @@ fn peg_unstructured() {
         ret x;
       }"#;
 
+    // Since this test doesn't take arguments we could hardcode the output,
+    // but this also serves as an example for other people writing tests.
     let mut expected = PegTest::default();
     let four = expected.lit_int(4);
     let one = expected.lit_int(1);

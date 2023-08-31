@@ -34,7 +34,9 @@ pub(crate) enum PegBody {
     Eval(Id, Id, usize),
     /// Finds the index of the first value of false in a stream.
     Pass(Id, usize),
-    /// Does nothing (but useful for creating cycles).
+    /// This is a layer of indirection for convenience (useful for creating cycles).
+    /// This should not be encoded into egglog, and we should probably have a compiler
+    /// pass to remove it from PegFunctions.
     Edge(Id),
 }
 
@@ -68,42 +70,55 @@ impl PegFunction {
 }
 
 struct PegBuilder<'a> {
+    /// A list of RVSDGs in a function.
     rvsdgs: &'a Vec<RvsdgBody>,
+    /// An output parameter that is the list of PEGs for the function.
     pegs: &'a mut Vec<PegBody>,
+    /// A cache of previously computed RVSDGs.
     memoize: &'a mut HashMap<(usize, Id), usize>,
 }
 
+/// A region that `get_pegs` is inside of.
 #[derive(Clone)]
 enum Scope<'a> {
+    /// A list of the input operands to a gamma node.
     Gamma(&'a [Operand]),
+    /// A list of PEG-theta nodes that are the analogs to the nested input ports.
     Theta(Vec<Id>),
 }
 
 impl PegBuilder<'_> {
+    /// Get the PEG corresponding to `op`.
     fn get_pegs(&mut self, op: Operand, scope: &[Scope]) -> usize {
         match (op, scope.last()) {
+            // If we aren't in a region, the arg refers to the function argument
             (Operand::Arg(arg), None) => {
                 self.pegs.push(PegBody::Arg(arg));
                 self.pegs.len() - 1
             }
-            (Operand::Arg(arg), Some(s)) => match s {
-                Scope::Gamma(inputs) => {
-                    let mut inner_scope = scope.to_owned();
-                    inner_scope.pop();
-                    self.get_pegs(inputs[arg], &inner_scope)
-                }
-                Scope::Theta(thetas) => thetas[arg],
-            },
+            // If we're under a gamma, the arg refers to an input to the gamma node
+            (Operand::Arg(arg), Some(Scope::Gamma(inputs))) => {
+                let mut inner_scope = scope.to_owned();
+                inner_scope.pop();
+                self.get_pegs(inputs[arg], &inner_scope)
+            }
+            // If we're under a theta, the arg refers to an input to the RVSDG-theta
+            // region, which corresponds to a PEG-theta node
+            (Operand::Arg(arg), Some(Scope::Theta(thetas))) => thetas[arg],
+            // Otherwise, we refer to a node directly
             (Operand::Id(id), _) | (Operand::Project(_, id), _) => {
+                // The output port that `op` refers to
                 let selected = match op {
                     Operand::Arg(_) => unreachable!(),
                     Operand::Id(_) => 0,
                     Operand::Project(i, _) => i,
                 };
+                // If we've already computed this node, exit early
                 if let Some(out) = self.memoize.get(&(selected, id)) {
                     return *out;
                 }
                 match &self.rvsdgs[id] {
+                    // To translate a PureOp, translate all its arguments, then change ops to ids
                     RvsdgBody::PureOp(expr) => {
                         let expr = match expr {
                             Expr::Op(op, xs) => {
@@ -121,6 +136,9 @@ impl PegBuilder<'_> {
                         self.memoize.insert((selected, id), out);
                         out
                     }
+                    // To translate a Gamma, we translate the inputs lazily, and compute
+                    // the predicate once (it's memoized), then each output of the Gamma
+                    // becomes its own Phi node
                     RvsdgBody::Gamma {
                         pred,
                         inputs,
@@ -147,6 +165,10 @@ impl PegBuilder<'_> {
                         self.pegs.extend(phis);
                         out
                     }
+                    // To translate a Theta node, we translate its implicit loops to
+                    // PEG-Theta nodes, where its inputs are the initial values and
+                    // its inner expressions are the loop values
+                    // Then the outputs are evals with a shared pass node
                     RvsdgBody::Theta {
                         pred,
                         inputs,
@@ -155,6 +177,8 @@ impl PegBuilder<'_> {
                         // Generate a default PEG to be replaced later
                         let default = || PegBody::Arg(0);
 
+                        // Reserve slots in the list to fill in later
+                        // This breaks cycles by giving us known indices
                         let theta_start = self.pegs.len();
                         self.pegs.extend((0..outputs.len()).map(|_| default()));
                         let pass = self.pegs.len();
@@ -166,6 +190,7 @@ impl PegBuilder<'_> {
                             self.memoize.insert((i, id), edges_start + i);
                         }
 
+                        // To compute the thetas, the args should refer to the thetas also
                         let mut inner_scope = scope.to_owned();
                         inner_scope.push(Scope::Theta((theta_start..pass).collect()));
 
@@ -177,6 +202,7 @@ impl PegBuilder<'_> {
                             );
                         }
 
+                        // The pass condition is very similar
                         self.pegs[pass] = PegBody::Pass(self.get_pegs(*pred, &inner_scope), id);
 
                         // We need to unroll the loop once at the end because RVSDGs are do-while
@@ -185,13 +211,15 @@ impl PegBuilder<'_> {
                             (0..outputs.len()).map(|i| PegBody::Eval(theta_start + i, pass, id)),
                         );
                         let mut eval_scope = scope.to_owned();
+
+                        // The args for the unrolling are the evals, not the thetas
                         eval_scope.push(Scope::Theta(
                             (evals_start..evals_start + outputs.len()).collect(),
                         ));
 
                         for (i, output) in outputs.iter().enumerate() {
-                            // We need a new builder here because memoize already contains
-                            // inside-the-loop definitions for the output nodes.
+                            // We need a new builder here because self.memoize already contains
+                            // inside-the-loop definitions for the output nodes
                             let mut builder = PegBuilder {
                                 rvsdgs: self.rvsdgs,
                                 pegs: self.pegs,

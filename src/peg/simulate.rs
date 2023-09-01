@@ -3,8 +3,8 @@
 use crate::peg::{PegBody, PegFunction};
 use crate::rvsdg::Expr;
 use bril_rs::{ConstOps, Literal, ValueOps};
-use petgraph::{graph::NodeIndex, Graph};
 use std::collections::HashMap;
+use std::fmt::Write;
 
 #[derive(Default)]
 struct Indices(HashMap<usize, usize>);
@@ -103,9 +103,10 @@ fn bool(literal: Literal) -> bool {
 }
 
 impl PegFunction {
-    /// IMPORTANT: Graph does not track the order of children!
-    pub fn graph(&self) -> Graph<String, &str> {
-        let mut graph: Graph<String, &str> = Graph::new();
+    /// Get a .dot file representation of a PegFunction.
+    // Doesn't use petgraph because petgraph doesn't track child orderings.
+    pub fn graph(&self) -> String {
+        let mut nodes: Vec<String> = Vec::new();
         let mut edges: Vec<(usize, usize)> = Vec::new();
         for (i, node) in self.nodes.iter().enumerate() {
             let mut js = Vec::new();
@@ -145,12 +146,19 @@ impl PegFunction {
                     String::from("no-op")
                 }
             };
+            nodes.push(node);
             edges.extend(js.into_iter().map(|j| (i, j)));
-            graph.add_node(node);
         }
-        for (i, j) in edges {
-            graph.add_edge(NodeIndex::new(i), NodeIndex::new(j), "");
+        let mut graph = String::new();
+        writeln!(graph, "digraph G {{").unwrap();
+        writeln!(graph, "node [ordering=out];").unwrap();
+        for (i, node) in nodes.into_iter().enumerate() {
+            writeln!(graph, "{i} [label={node:?}];").unwrap();
         }
+        for (start, end) in edges {
+            writeln!(graph, "{start} -> {end};",).unwrap();
+        }
+        writeln!(graph, "}}").unwrap();
         graph
     }
 }

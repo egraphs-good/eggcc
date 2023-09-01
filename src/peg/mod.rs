@@ -10,6 +10,7 @@
 // todo: remove this once it no longer does anything
 #![allow(dead_code)]
 
+pub(crate) mod peg2dot;
 pub(crate) mod simulate;
 
 use crate::rvsdg::{Expr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
@@ -241,10 +242,8 @@ pub struct PegProgram {
     pub(crate) functions: Vec<PegFunction>,
 }
 
-pub(crate) fn peg_to_rvsdg(
-    RvsdgProgram { functions }: &RvsdgProgram,
-) -> Result<PegProgram, crate::EggCCError> {
-    Ok(PegProgram {
+pub(crate) fn rvsdg_to_peg(RvsdgProgram { functions }: &RvsdgProgram) -> PegProgram {
+    PegProgram {
         functions: functions.iter().map(PegFunction::new).collect(),
-    })
+    }
 }

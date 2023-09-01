@@ -1,10 +1,9 @@
-//! This module lets you simulate a PEG, as well as output it to Dot format.
+//! This module lets you interpret a PEG.
 
 use crate::peg::{PegBody, PegFunction};
 use crate::rvsdg::Expr;
 use bril_rs::{ConstOps, Literal, ValueOps};
 use std::collections::HashMap;
-use std::fmt::Write;
 
 #[derive(Default)]
 struct Indices(HashMap<usize, usize>);
@@ -99,66 +98,5 @@ fn bool(literal: Literal) -> bool {
         // Annotation::AssignCond, and I couldn't figure out what entry_map was doing
         Literal::Int(x) => x != 0,
         _ => panic!("expected bool, found {literal}"),
-    }
-}
-
-impl PegFunction {
-    /// Get a .dot file representation of a PegFunction.
-    // Doesn't use petgraph because petgraph doesn't track child orderings.
-    pub fn graph(&self) -> String {
-        let mut nodes: Vec<String> = Vec::new();
-        let mut edges: Vec<(usize, usize)> = Vec::new();
-        for (i, node) in self.nodes.iter().enumerate() {
-            let mut js = Vec::new();
-            let node = match node {
-                PegBody::Arg(arg) => format!("arg {arg}"),
-                PegBody::PureOp(expr) => match expr {
-                    Expr::Op(f, xs) => {
-                        js = xs.to_vec();
-                        format!("{f}")
-                    }
-                    Expr::Call(f, xs) => {
-                        js = xs.to_vec();
-                        format!("{f}")
-                    }
-                    Expr::Const(ConstOps::Const, _, literal) => {
-                        format!("{literal}")
-                    }
-                },
-                PegBody::Phi(c, x, y) => {
-                    js = vec![*c, *x, *y];
-                    String::from("Φ")
-                }
-                PegBody::Theta(a, b, l) => {
-                    js = vec![*a, *b];
-                    format!("Θ_{l}")
-                }
-                PegBody::Eval(s, i, l) => {
-                    js = vec![*s, *i];
-                    format!("eval_{l}")
-                }
-                PegBody::Pass(s, l) => {
-                    js = vec![*s];
-                    format!("pass_{l}")
-                }
-                PegBody::Edge(x) => {
-                    js = vec![*x];
-                    String::from("no-op")
-                }
-            };
-            nodes.push(node);
-            edges.extend(js.into_iter().map(|j| (i, j)));
-        }
-        let mut graph = String::new();
-        writeln!(graph, "digraph G {{").unwrap();
-        writeln!(graph, "node [ordering=out];").unwrap();
-        for (i, node) in nodes.into_iter().enumerate() {
-            writeln!(graph, "{i} [label={node:?}];").unwrap();
-        }
-        for (start, end) in edges {
-            writeln!(graph, "{start} -> {end};",).unwrap();
-        }
-        writeln!(graph, "}}").unwrap();
-        graph
     }
 }

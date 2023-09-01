@@ -1,9 +1,8 @@
-use std::{ffi::OsStr, fmt::Display, io, path::PathBuf};
-
+use crate::peg::rvsdg_to_peg;
+use crate::Optimizer;
 use hashbrown::HashMap;
 use petgraph::dot::Dot;
-
-use crate::Optimizer;
+use std::{ffi::OsStr, fmt::Display, io, path::PathBuf};
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -56,6 +55,8 @@ pub struct DebugVisualizations {
     pub(crate) restructured_cfgs: HashMap<String, String>,
     /// The RVSDG, rendered in SVG format.
     pub(crate) rvsdg: String,
+    /// The PEG, rendered in DOT format.
+    pub(crate) peg: String,
 }
 
 impl DebugVisualizations {
@@ -68,6 +69,7 @@ impl DebugVisualizations {
     pub fn new(input: &str) -> DebugVisualizations {
         let program = parse_from_string(input);
         let cfg = Optimizer::program_to_cfg(&program);
+        let rvsdg = Optimizer::program_to_rvsdg(&program).unwrap();
 
         let input_cfgs = cfg
             .functions
@@ -84,11 +86,11 @@ impl DebugVisualizations {
             })
             .collect();
 
-        let rvsdg = Optimizer::program_to_rvsdg(&program).unwrap().to_svg();
         DebugVisualizations {
             input_cfgs,
             restructured_cfgs,
-            rvsdg,
+            rvsdg: rvsdg.to_svg(),
+            peg: rvsdg_to_peg(&rvsdg).graph(),
         }
     }
 
@@ -120,6 +122,7 @@ impl DebugVisualizations {
                     (format!("{name}_restructured_cfg.dot"), content.clone())
                 }))
                 .chain([("rvsdg.svg".to_string(), self.rvsdg.clone())])
+                .chain([("peg.dot".to_string(), self.peg.clone())])
         {
             let mut output_path = path.clone();
             assert!(path.is_dir());

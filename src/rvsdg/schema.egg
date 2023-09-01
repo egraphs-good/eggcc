@@ -1,14 +1,20 @@
-(datatype Type)
 (datatype Literal)
 (datatype Expr)
 (datatype Operand)
 (datatype Body)
 
+(sort VecOperand (Vec Operand))
+(datatype VecOperandWrapper
+  (VO VecOperand))
+(sort VecVecOperand (Vec VecOperandWrapper))
+
 ;; Type
-(function TNum () Type)
-(function TFloat () Type)
-(function TChar () Type)
-(function TPtr (Type) Type)
+(datatype Type
+    (IntT)
+    (BoolT)
+    (FloatT)
+    (CharT)
+    (PointerT Type))
 
 ;; Literal
 (function Num (i64) Literal)
@@ -17,6 +23,9 @@
 (function Ptr (Type i64) Literal)
 
 ;; Expr
+(datatype ConstOps (const))
+(function Const (ConstOps Type Literal) Expr)
+(function Call (String VecOperand))
 (function Add (Operand Operand) Expr)
 (function Sub (Operand Operand) Expr)
 (function Mul (Operand Operand) Expr)
@@ -34,11 +43,6 @@
 (function Arg (i64) Operand)
 (function Node (Body) Operand)
 (function Project (i64 Body) Operand)
-
-(sort VecOperand (Vec Operand))
-(datatype VecOperandWrapper
-  (VO VecOperand))
-(sort VecVecOperand (Vec VecOperandWrapper))
 
 ;; Body
 (function PureOp (Expr) Body)

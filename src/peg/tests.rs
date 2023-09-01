@@ -1,6 +1,6 @@
 use crate::cfg::to_cfg;
 use crate::peg::{PegBody, PegFunction};
-use crate::rvsdg::{from_cfg::to_rvsdg, Expr, Id};
+use crate::rvsdg::{from_cfg::cfg_func_to_rvsdg, Expr, Id};
 use crate::util::parse_from_string;
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
 use petgraph::dot::{Config, Dot};
@@ -95,7 +95,7 @@ fn peg_expr() {
     "#;
     let prog = parse_from_string(PROGRAM);
     let mut cfg = to_cfg(&prog.functions[0]);
-    let peg = PegFunction::new(&to_rvsdg(&mut cfg).unwrap());
+    let peg = PegFunction::new(&cfg_func_to_rvsdg(&mut cfg).unwrap());
 
     let mut expected = PegTest::default();
     let one = expected.lit_int(1);
@@ -154,7 +154,7 @@ fn peg_basic_odd_branch() {
 
     let prog = parse_from_string(PROGRAM);
     let mut cfg = to_cfg(&prog.functions[0]);
-    let have = PegFunction::new(&to_rvsdg(&mut cfg).unwrap());
+    let have = PegFunction::new(&cfg_func_to_rvsdg(&mut cfg).unwrap());
 
     let want: Vec<_> = (0..10)
         .map(|i| want.simulate(&[Literal::Int(i)]).unwrap())
@@ -201,7 +201,7 @@ fn peg_unstructured() {
 
     let prog = parse_from_string(PROGRAM);
     let mut cfg = to_cfg(&prog.functions[0]);
-    let have = PegFunction::new(&to_rvsdg(&mut cfg).unwrap());
+    let have = PegFunction::new(&cfg_func_to_rvsdg(&mut cfg).unwrap());
 
     assert_eq!(want.simulate(&[]).unwrap(), have.simulate(&[]).unwrap());
 }

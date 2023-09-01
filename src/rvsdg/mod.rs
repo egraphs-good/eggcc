@@ -37,6 +37,7 @@ pub(crate) mod rvsdg2svg;
 use std::fmt;
 
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
+use egglog::EGraph;
 use ordered_float::OrderedFloat;
 use thiserror::Error;
 
@@ -428,4 +429,11 @@ fn vec_map<T>(inputs: &egglog::ast::Expr, mut f: impl FnMut(&egglog::ast::Expr) 
     }
     results.reverse();
     results
+}
+
+pub fn new_rvsdg_egraph() -> EGraph {
+    let mut egraph = EGraph::default();
+    let schema = std::fs::read_to_string("src/rvsdg/schema.egg").unwrap();
+    egraph.parse_and_run_program(schema.as_str()).unwrap();
+    egraph
 }

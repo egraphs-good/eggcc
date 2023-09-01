@@ -326,7 +326,7 @@ impl Optimizer {
                         dest: dest.clone(),
                         args: args_vars,
                         funcs: vec![],
-                        op: self.egglog_op_to_bril(*op),
+                        op: egglog_op_to_bril(*op),
                         labels: vec![],
                         pos: None,
                         op_type: etype,
@@ -570,11 +570,6 @@ impl Optimizer {
         Expr::Call("Assign".into(), vec![self.string_to_expr(dest), expr])
     }
 
-    pub(crate) fn egglog_op_to_bril(&mut self, op: Symbol) -> ValueOps {
-        let with_quotes = "\"".to_owned() + &op.to_string() + "\"";
-        serde_json::from_str(&with_quotes).unwrap()
-    }
-
     pub(crate) fn effect_op_to_egglog(&mut self, op: EffectOps) -> Symbol {
         let opstr = op.to_string();
         if opstr == "print" {
@@ -719,4 +714,9 @@ impl Optimizer {
         }
         Ok(())
     }
+}
+
+pub(crate) fn egglog_op_to_bril(op: Symbol) -> ValueOps {
+    let with_quotes = "\"".to_owned() + &op.to_string() + "\"";
+    serde_json::from_str(&with_quotes).unwrap()
 }

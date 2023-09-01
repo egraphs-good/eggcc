@@ -43,6 +43,7 @@ use thiserror::Error;
 
 use crate::{
     cfg::{CfgProgram, Identifier},
+    conversions::egglog_op_to_bril,
     EggCCError,
 };
 
@@ -291,7 +292,7 @@ impl RvsdgFunction {
         if let Call(func, args) = op {
             match (func.as_str(), &args.as_slice()) {
                 ("Arg", [Lit(Int(n))]) => Operand::Arg(*n as usize),
-                ("Node", [body]) => Operand::Arg(Self::egglog_expr_to_body(body, bodies)),
+                ("Node", [body]) => Operand::Id(Self::egglog_expr_to_body(body, bodies)),
                 ("Project", [Lit(Int(n)), body]) => {
                     Operand::Project(*n as usize, Self::egglog_expr_to_body(body, bodies))
                 }
@@ -311,7 +312,14 @@ impl RvsdgFunction {
                     let pred = Self::egglog_expr_to_operand(pred, bodies);
                     let inputs = vec_map(inputs, |e| Self::egglog_expr_to_operand(e, bodies));
                     let outputs = vec_map(outputs, |es| {
-                        vec_map(es, |e| Self::egglog_expr_to_operand(e, bodies))
+                        if let Call(func, args) = es {
+                            assert_eq!(func.as_str(), "VO");
+                            assert_eq!(args.len(), 1);
+                            let es = &args[0];
+                            vec_map(es, |e| Self::egglog_expr_to_operand(e, bodies))
+                        } else {
+                            panic!("expect VecOperandWrapper")
+                        }
                     });
                     RvsdgBody::Gamma {
                         pred,
@@ -354,7 +362,7 @@ impl RvsdgFunction {
                 (binop, [opr1, opr2]) => {
                     let opr1 = Self::egglog_expr_to_operand(opr1, bodies);
                     let opr2 = Self::egglog_expr_to_operand(opr2, bodies);
-                    Expr::Call(binop.into(), vec![opr1, opr2])
+                    Expr::Op(egglog_op_to_bril(binop.into()), vec![opr1, opr2])
                 }
                 _ => panic!("expect an operand, got {expr}"),
             }
@@ -397,8 +405,8 @@ impl RvsdgFunction {
 
     pub fn egglog_expr_to_function(func: &egglog::ast::Expr, n_args: usize) -> RvsdgFunction {
         let mut nodes = vec![];
-        let result = Self::egglog_expr_to_body(func, &mut nodes);
-        let result = Some(Operand::Id(result));
+        let result = Self::egglog_expr_to_operand(func, &mut nodes);
+        let result = Some(result);
         RvsdgFunction {
             n_args,
             nodes,
@@ -411,6 +419,11 @@ fn vec_map<T>(inputs: &egglog::ast::Expr, mut f: impl FnMut(&egglog::ast::Expr) 
     use egglog::ast::Expr::*;
     let mut inputs: &egglog::ast::Expr = inputs;
     let mut results = vec![];
+    if let Call(func, args) = inputs {
+        if func.as_str() == "vec-of" {
+            return args.iter().map(|arg| f(arg)).collect();
+        }
+    }
     loop {
         if let Call(func, args) = inputs {
             match (func.as_str(), &args.as_slice()) {

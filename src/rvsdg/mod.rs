@@ -421,7 +421,7 @@ fn vec_map<T>(inputs: &egglog::ast::Expr, mut f: impl FnMut(&egglog::ast::Expr) 
     let mut results = vec![];
     if let Call(func, args) = inputs {
         if func.as_str() == "vec-of" {
-            return args.iter().map(|arg| f(arg)).collect();
+            return args.iter().map(&mut f).collect();
         }
     }
     loop {

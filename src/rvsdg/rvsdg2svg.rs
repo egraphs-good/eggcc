@@ -3,7 +3,7 @@ use std::iter::once;
 
 use bril_rs::ConstOps;
 
-use super::{Expr, Id, Operand, RvsdgBody, RvsdgFunction};
+use super::{Expr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 
 const SIMPLE_NODE_SIZE: f32 = 100.0;
 const STROKE_WIDTH: f32 = SIMPLE_NODE_SIZE * 0.02;
@@ -14,7 +14,7 @@ const CORNER_RADIUS: f32 = NODE_SPACING * 0.2;
 const REGION_SPACING: f32 = NODE_SPACING * 0.5;
 
 #[derive(Debug)]
-struct Region {
+pub(crate) struct Region {
     srcs: usize,
     dsts: usize,
     nodes: BTreeMap<Id, Node>,
@@ -616,10 +616,43 @@ fn mk_region(srcs: usize, dsts: &[Operand], nodes: &[RvsdgBody]) -> Region {
     }
 }
 
+impl RvsdgProgram {
+    pub fn to_svg(&self) -> String {
+        let mut xmls: Vec<Xml> = vec![];
+        let mut height: f32 = 0.0;
+        let mut width: f32 = 0.0;
+        for function in &self.functions {
+            let (size, xml) = function.to_region().to_xml(false);
+            height += size.height;
+            width = width.max(size.width);
+            xmls.push(xml);
+        }
+        Xml::new(
+            "svg",
+            [
+                ("version", "1.1"),
+                ("width", &format!("{}", width)),
+                ("height", &format!("{}", height)),
+                ("xmlns", "http://www.w3.org/2000/svg"),
+            ],
+            &xmls
+                .into_iter()
+                .map(|xml| xml.to_string())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        )
+        .to_string()
+    }
+}
+
 impl RvsdgFunction {
     pub(crate) fn to_svg(&self) -> String {
+        self.to_region().to_svg()
+    }
+
+    pub(crate) fn to_region(&self) -> Region {
         let dsts: Vec<_> = self.result.iter().copied().collect();
-        mk_region(self.n_args, &dsts, &self.nodes).to_svg()
+        mk_region(self.n_args, &dsts, &self.nodes)
     }
 }
 

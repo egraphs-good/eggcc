@@ -20,7 +20,6 @@
 (function Num (i64) Literal)
 (function Float (f64) Literal)
 (function Char (String) Literal)
-(function Ptr (Type i64) Literal)
 
 ;; Expr
 (datatype ConstOps (const))

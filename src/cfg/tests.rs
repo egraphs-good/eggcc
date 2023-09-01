@@ -1,5 +1,5 @@
 use crate::{
-    cfg::{to_cfg, to_structured::to_structured, BlockName},
+    cfg::{program_to_cfg, to_cfg, to_structured::cfg_to_structured, BlockName},
     EggCCError,
 };
 use bril2json::parse_abstract_program_from_read;
@@ -150,9 +150,9 @@ cfg_test!(
 
 #[test]
 fn unstructured_causes_error() {
-    let func = &parse_from_string(include_str!("../../tests/small/unstructured.bril")).functions[0];
+    let func = &parse_from_string(include_str!("../../tests/small/unstructured.bril"));
     assert!(matches!(
-        to_structured(&to_cfg(func)),
+        cfg_to_structured(&program_to_cfg(func)),
         Err(EggCCError::UnstructuredControlFlow)
     ))
 }

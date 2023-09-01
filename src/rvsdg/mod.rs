@@ -40,14 +40,19 @@ use bril_rs::{ConstOps, Literal, Type, ValueOps};
 use ordered_float::OrderedFloat;
 use thiserror::Error;
 
-use crate::cfg::Identifier;
+use crate::{
+    cfg::{CfgProgram, Identifier},
+    EggCCError,
+};
+
+use self::from_cfg::cfg_func_to_rvsdg;
 
 #[cfg(test)]
 mod tests;
 
 /// Errors from the rvsdg module.
 #[derive(Debug, Error)]
-pub(crate) enum RvsdgError {
+pub enum RvsdgError {
     #[error("Unsupported operation: {op:?}, {pos:?}")]
     UnsupportedOperation {
         op: bril_rs::ValueOps,
@@ -82,10 +87,10 @@ pub(crate) enum Annotation {
 
 pub(crate) type Id = usize;
 
-#[derive(Debug)]
-pub(crate) enum Expr {
-    Op(ValueOps, Vec<Operand>),
-    Call(Identifier, Vec<Operand>),
+#[derive(Debug, PartialEq)]
+pub(crate) enum Expr<Op> {
+    Op(ValueOps, Vec<Op>),
+    Call(Identifier, Vec<Op>),
     Const(ConstOps, Type, Literal),
 }
 
@@ -101,7 +106,7 @@ pub(crate) enum Operand {
 
 #[derive(Debug)]
 pub(crate) enum RvsdgBody {
-    PureOp(Expr),
+    PureOp(Expr<Operand>),
     Gamma {
         pred: Operand,
         inputs: Vec<Operand>,
@@ -114,7 +119,11 @@ pub(crate) enum RvsdgBody {
     },
 }
 
-pub(crate) struct RvsdgFunction {
+/// Represents a single function as an RVSDG.
+/// The function has arguments, a result, and nodes.
+/// The nodes are stored in a vector, and variants of RvsdgBody refer
+/// to nodes by their index in the vector.
+pub struct RvsdgFunction {
     /// The number of input arguments to the function.
     pub(crate) n_args: usize,
     /// The backing heap for Rvsdg node ids within this function.
@@ -140,8 +149,27 @@ impl fmt::Debug for RvsdgFunction {
     }
 }
 
+/// A Bril program represented as an Rvsdg.
+/// For now, it's simply a vector of [RvsdgFunction]s.
+/// In the future, we may want functions to be represented within
+/// the RVSDG.
+pub struct RvsdgProgram {
+    pub(crate) functions: Vec<RvsdgFunction>,
+}
+
+pub(crate) fn cfg_to_rvsdg(cfg: &CfgProgram) -> std::result::Result<RvsdgProgram, EggCCError> {
+    // Rvsdg translation also restructured the cfg
+    // so make a copy for that.
+    let mut cfg_restructured = cfg.clone();
+    let mut functions = vec![];
+    for func in cfg_restructured.functions.iter_mut() {
+        functions.push(cfg_func_to_rvsdg(func).map_err(EggCCError::RvsdgError)?);
+    }
+    Ok(RvsdgProgram { functions })
+}
+
 impl RvsdgFunction {
-    fn expr_to_egglog_expr(&self, expr: &Expr) -> egglog::ast::Expr {
+    fn expr_to_egglog_expr(&self, expr: &Expr<Operand>) -> egglog::ast::Expr {
         use egglog::ast::{Expr::*, Literal::*};
         let f = |operands: &Vec<Operand>| {
             operands
@@ -309,7 +337,7 @@ impl RvsdgFunction {
         }
     }
 
-    fn egglog_expr_to_expr(expr: &egglog::ast::Expr, bodies: &mut Vec<RvsdgBody>) -> Expr {
+    fn egglog_expr_to_expr(expr: &egglog::ast::Expr, bodies: &mut Vec<RvsdgBody>) -> Expr<Operand> {
         use egglog::ast::Literal;
         if let egglog::ast::Expr::Call(func, args) = expr {
             match (func.as_str(), &args.as_slice()) {
@@ -334,7 +362,7 @@ impl RvsdgFunction {
         }
     }
     fn egglog_expr_to_ty(ty: &egglog::ast::Expr) -> Type {
-        use egglog::ast::{Expr::*, Literal::*};
+        use egglog::ast::Expr::*;
         if let Call(func, args) = ty {
             match (func.as_str(), &args.as_slice()) {
                 ("IntT", []) => Type::Int,

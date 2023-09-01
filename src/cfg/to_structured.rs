@@ -13,8 +13,8 @@ use crate::{
 };
 
 use super::{
-    structured::{StructuredBlock, StructuredFunction},
-    BlockName, Branch, BranchOp, Cfg,
+    structured::{StructuredBlock, StructuredFunction, StructuredProgram},
+    BlockName, Branch, BranchOp, Cfg, CfgProgram,
 };
 
 /// Records the history of the current node in the CFG
@@ -299,6 +299,11 @@ impl<'a> StructuredCfgBuilder<'a> {
     }
 }
 
-pub(crate) fn to_structured(cfg: &Cfg) -> Result<StructuredFunction, EggCCError> {
-    StructuredCfgBuilder::new(cfg).convert_structured()
+pub(crate) fn cfg_to_structured(cfg: &CfgProgram) -> Result<StructuredProgram, EggCCError> {
+    let mut functions = vec![];
+    for func in &cfg.functions {
+        functions.push(StructuredCfgBuilder::new(func).convert_structured()?)
+    }
+
+    Ok(StructuredProgram { functions })
 }

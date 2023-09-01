@@ -218,7 +218,7 @@ impl RvsdgFunction {
     fn body_to_egglog_expr(&self, body: &RvsdgBody) -> egglog::ast::Expr {
         use egglog::ast::Expr::*;
         match body {
-            RvsdgBody::PureOp(expr) => self.expr_to_egglog_expr(expr),
+            RvsdgBody::PureOp(expr) => Call("PureOp".into(), vec![self.expr_to_egglog_expr(expr)]),
             RvsdgBody::Gamma {
                 pred,
                 inputs,
@@ -233,7 +233,7 @@ impl RvsdgFunction {
                     let region = region
                         .iter()
                         .map(|output| self.operand_to_egglog_expr(output));
-                    Call("vec-of".into(), region.collect())
+                    Call("VO".into(), vec![Call("vec-of".into(), region.collect())])
                 });
                 let outputs = Call("vec-of".into(), outputs.collect());
                 Call("Gamma".into(), vec![pred, inputs, outputs])
@@ -260,11 +260,11 @@ impl RvsdgFunction {
     fn operand_to_egglog_expr(&self, op: &Operand) -> egglog::ast::Expr {
         use egglog::ast::{Expr::*, Literal::*};
         match op {
-            Operand::Arg(p) => {
-                assert!(*p < self.n_args);
-                Call("Arg".into(), vec![Lit(Int(i64::try_from(*p).unwrap()))])
-            }
-            Operand::Id(id) => self.body_to_egglog_expr(&self.nodes[*id]),
+            Operand::Arg(p) => Call("Arg".into(), vec![Lit(Int(i64::try_from(*p).unwrap()))]),
+            Operand::Id(id) => Call(
+                "Node".into(),
+                vec![self.body_to_egglog_expr(&self.nodes[*id])],
+            ),
             Operand::Project(i, id) => {
                 let body = self.body_to_egglog_expr(&self.nodes[*id]);
                 Call(
@@ -391,6 +391,17 @@ impl RvsdgFunction {
             }
         } else {
             panic!("expect a list, got {lit}")
+        }
+    }
+
+    pub fn egglog_expr_to_function(func: &egglog::ast::Expr, n_args: usize) -> RvsdgFunction {
+        let mut nodes = vec![];
+        let result = Self::egglog_expr_to_body(func, &mut nodes);
+        let result = Some(Operand::Id(result));
+        RvsdgFunction {
+            n_args,
+            nodes,
+            result,
         }
     }
 }

@@ -105,7 +105,7 @@ impl FromStr for BlockName {
 /// kinds of name.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Identifier {
-    Name(Box<str>),
+    Name(String),
     Num(usize),
 }
 

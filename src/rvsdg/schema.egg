@@ -1,0 +1,76 @@
+(datatype Literal)
+(datatype Expr)
+(datatype Operand)
+(datatype Body)
+
+(sort VecOperand (Vec Operand))
+(datatype VecOperandWrapper
+  (VO VecOperand))
+(sort VecVecOperand (Vec VecOperandWrapper))
+
+;; Type
+(datatype Type
+    (IntT)
+    (BoolT)
+    (FloatT)
+    (CharT)
+    (PointerT Type))
+
+;; Literal
+(function Num (i64) Literal)
+(function Float (f64) Literal)
+(function Char (String) Literal)
+
+;; Expr
+(datatype ConstOps (const))
+(function Const (ConstOps Type Literal) Expr)
+(function Call (String VecOperand) Expr)
+(function add (Operand Operand) Expr)
+(function sub (Operand Operand) Expr)
+(function mul (Operand Operand) Expr)
+(function div (Operand Operand) Expr)
+(function eq (Operand Operand) Expr)
+(function lt (Operand Operand) Expr)
+(function gt (Operand Operand) Expr)
+(function le (Operand Operand) Expr)
+(function ge (Operand Operand) Expr)
+(function not (Operand Operand) Expr)
+(function and (Operand Operand) Expr)
+(function or (Operand Operand) Expr)
+
+;; Operand
+(function Arg (i64) Operand)
+(function Node (Body) Operand)
+(function Project (i64 Body) Operand)
+
+;; Body
+(function PureOp (Expr) Body)
+(function Gamma (Operand VecOperand VecVecOperand) Body) ;; branching
+(function Theta (Operand VecOperand VecOperand) Body) ;; loop
+
+
+;; procedure f(n):
+;;   i = 0
+;;   while i < n
+;;     ans += i * 5
+;;     i += 1
+;;   return ans
+
+;; ;; inputs: [n]
+;; (Project 1
+;;     (Theta 
+;;         (Lt (Arg 1) (Arg 2)) ;; pred
+;;         (vec-of ;; inputs
+;;             (Node (PureOp (Const 0))) ;; accumulator
+;;             (Node (PureOp (Const 0))) ;; loop var
+;;             (Arg 0) ;; n
+;;             )
+;;         (vec-of ;; outputs
+;;             (Node (PureOp (Add (Arg 0) 
+;;                 (Node (PureOp (Mul 
+;;                     (Arg 1)
+;;                     (Node (PureOp (Const 5)))))))))
+;;             (Node (PureOp (Add (Arg 1) (Node (PureOp (Const 1))))))
+;;             (Arg 2)
+;;         ))
+;; )

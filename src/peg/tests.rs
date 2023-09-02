@@ -3,7 +3,6 @@ use crate::peg::{PegBody, PegFunction};
 use crate::rvsdg::{from_cfg::cfg_func_to_rvsdg, Expr, Id};
 use crate::util::parse_from_string;
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use petgraph::dot::{Config, Dot};
 use std::fs::File;
 use std::io::Write;
 
@@ -78,9 +77,8 @@ impl PegTest {
 }
 
 fn output_dot_graph(name: &str, peg: &PegFunction) {
-    let contents = format!("{}", Dot::with_config(&peg.graph(), &[Config::EdgeNoLabel]));
     let mut file = File::create(name).unwrap();
-    file.write_all(contents.as_bytes()).unwrap();
+    file.write_all(peg.graph().as_bytes()).unwrap();
 }
 
 #[test]

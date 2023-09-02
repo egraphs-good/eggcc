@@ -10,9 +10,10 @@
 // todo: remove this once it no longer does anything
 #![allow(dead_code)]
 
+pub(crate) mod peg2dot;
 pub(crate) mod simulate;
 
-use crate::rvsdg::{Expr, Id, Operand, RvsdgBody, RvsdgFunction};
+use crate::rvsdg::{Expr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use std::collections::HashMap;
 
 #[cfg(test)]
@@ -234,5 +235,15 @@ impl PegBuilder<'_> {
                 }
             }
         }
+    }
+}
+
+pub struct PegProgram {
+    pub(crate) functions: Vec<PegFunction>,
+}
+
+pub(crate) fn rvsdg_to_peg(RvsdgProgram { functions }: &RvsdgProgram) -> PegProgram {
+    PegProgram {
+        functions: functions.iter().map(PegFunction::new).collect(),
     }
 }

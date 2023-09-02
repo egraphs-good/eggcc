@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -34,7 +34,7 @@ bench() {
 
     # export hyperfine out to tmp file
     hyperfine_out="./tmp/hyperfine/${profile_name}.json"
-    hyperfine --warmup 2 --export-json "$hyperfine_out" "./target/debug/eggcc --interp $profile"
+    hyperfine --warmup 2 --export-json "$hyperfine_out" "cargo run --release $profile --interp"
 
     # overwwrite outfile with json version of profile data, annotate with profile name.
     # we also combine both instruction count and hyperfine json output into a single object

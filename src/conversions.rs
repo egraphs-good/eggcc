@@ -9,332 +9,337 @@ use crate::{
 };
 use bril_rs::{Argument, Code, EffectOps, Instruction, Literal, Program, Type, ValueOps};
 use egglog::ast::{Expr, Symbol};
+use egglog::{match_term_app, Term, TermDag, TermId};
 use ordered_float::OrderedFloat;
 
-impl Optimizer {
-    /// Convert an egglog expression back into a StructuredFunction
-    pub(crate) fn expr_to_structured_func(&mut self, expr: Expr) -> StructuredFunction {
-        if let Expr::Call(func, args) = expr {
-            assert_eq!(func.to_string(), "Func");
-            match &args.as_slice() {
-                [func_name, argslist, body] => {
-                    let args = Self::conslist_to_vec(argslist, "Arg")
-                        .into_iter()
-                        .map(|arg| Self::expr_to_argument(&arg))
-                        .collect();
-                    if let Expr::Lit(egglog::ast::Literal::String(fname)) = func_name {
-                        StructuredFunction {
-                            name: fname.to_string(),
-                            args,
-                            block: self.expr_to_structured_block(body),
-                        }
-                    } else {
-                        panic!("expected string literal for func name");
-                    }
+pub(crate) struct TermConverter<'a> {
+    optimizer: &'a mut Optimizer,
+    termdag: &'a TermDag,
+}
+
+impl TermConverter<'_> {
+    pub(crate) fn get(&self, id: &TermId) -> Term {
+        self.termdag.get(*id)
+    }
+
+    pub(crate) fn term_to_structured_func(&mut self, id: &TermId) -> StructuredFunction {
+        match_term_app!(self.get(id); {
+            ("Func", [func_name, argslist, body]) => {
+                let args = self.term_conslist_to_vec(argslist, "Arg")
+                    .into_iter()
+                    .map(|arg| self.term_to_argument(&arg))
+                    .collect();
+
+                let fname = self.string_term_to_string(func_name);
+                StructuredFunction {
+                    name: fname.to_string(),
+                    args,
+                    block: self.term_to_structured_block(body),
                 }
-                _ => panic!("expected 2 args in expr_to_func"),
             }
-        } else {
-            panic!("expected call in expr_to_func");
-        }
+            (head, _) => panic!("unexpected head {}, in {}:{}:{}", head, file!(), line!(), column!())
+        })
     }
 
-    fn expr_to_argument(expr: &Expr) -> Argument {
-        let Expr::Call(op, args) = expr else {
-            panic!("expected call in expr_to_argument");
-        };
-        match (op.as_str(), args.as_slice()) {
-            ("Arg", [Expr::Lit(egglog::ast::Literal::String(name)), ty]) => Argument {
-                name: name.to_string(),
-                arg_type: Self::expr_to_type(ty),
+    fn term_to_argument(&self, id: &TermId) -> Argument {
+        match_term_app!(self.get(id); {
+            ("Arg", [name, ty]) => {
+                let name = self.string_term_to_string(name);
+                Argument {
+                    name: name.to_string(),
+                    arg_type: self.term_to_type(ty),
+                }
+            }
+            (head, _) => panic!("unexpected head {}, in {}:{}:{}", head, file!(), line!(), column!())
+        })
+    }
+
+    pub(crate) fn term_to_structured_block(&mut self, id: &TermId) -> StructuredBlock {
+        match_term_app!(self.get(id); {
+            ("Block", [block]) => {
+                StructuredBlock::Block(Box::new(self.term_to_structured_block(block)))
             },
-            _ => panic!("unknown argument"),
-        }
-    }
-
-    fn argument_to_expr(arg: &Argument) -> Expr {
-        Expr::Call(
-            "Arg".into(),
-            vec![
-                Expr::Lit(egglog::ast::Literal::String(arg.name.clone().into())),
-                Self::type_to_expr(&arg.arg_type),
-            ],
-        )
-    }
-
-    pub(crate) fn expr_to_structured_block(&mut self, expr: &Expr) -> StructuredBlock {
-        if let Expr::Call(func, args) = expr {
-            match (func.as_str(), &args.as_slice()) {
-                ("Block", [block]) => {
-                    StructuredBlock::Block(Box::new(self.expr_to_structured_block(block)))
+            ("Basic", [basic_block]) => {
+                StructuredBlock::Basic(Box::new(self.term_to_basic_block(basic_block)))
+            },
+            ("Ite", [name, then_branch, else_branch]) => {
+                let string = self.string_term_to_string(name);
+                StructuredBlock::Ite(
+                    string.to_string(),
+                    Box::new(self.term_to_structured_block(then_branch)),
+                    Box::new(self.term_to_structured_block(else_branch)),
+                )
+            },
+            ("Loop", [block]) => {
+                StructuredBlock::Loop(Box::new(self.term_to_structured_block(block)))
+            },
+            ("Sequence", [block, rest]) => StructuredBlock::Sequence(vec![
+                self.term_to_structured_block(block),
+                self.term_to_structured_block(rest),
+            ]),
+            ("Break", [n]) => {
+                if let Term::Lit(egglog::ast::Literal::Int(n)) = self.get(n) {
+                    StructuredBlock::Break(n.try_into().unwrap())
+                } else {
+                    panic!("expected int literal for break");
                 }
-                ("Basic", [basic_block]) => {
-                    StructuredBlock::Basic(Box::new(self.expr_to_basic_block(basic_block)))
-                }
-                ("Ite", [name, then_branch, else_branch]) => StructuredBlock::Ite(
-                    Self::string_expr_to_string(name),
-                    Box::new(self.expr_to_structured_block(then_branch)),
-                    Box::new(self.expr_to_structured_block(else_branch)),
-                ),
-                ("Loop", [block]) => {
-                    StructuredBlock::Loop(Box::new(self.expr_to_structured_block(block)))
-                }
-                ("Sequence", [block, rest]) => StructuredBlock::Sequence(vec![
-                    self.expr_to_structured_block(block),
-                    self.expr_to_structured_block(rest),
-                ]),
-                ("Break", [n]) => {
-                    if let Expr::Lit(egglog::ast::Literal::Int(n)) = n {
-                        StructuredBlock::Break((*n).try_into().unwrap())
-                    } else {
-                        panic!("expected int literal for break");
-                    }
-                }
-                ("Return", [val]) => {
-                    if let Expr::Call(op, args) = val {
-                        match op.as_str() {
-                            "Void" => StructuredBlock::Return(None),
-                            "ReturnValue" => {
-                                assert_eq!(args.len(), 1);
-                                match &args[0] {
-                                    Expr::Lit(egglog::ast::Literal::String(val)) => {
-                                        StructuredBlock::Return(Some(val.to_string()))
-                                    }
-                                    _ => panic!("expected string literal for return value"),
-                                }
+            },
+            ("Return", [val]) => {
+                match_term_app!(self.get(val); {
+                    ("Void", _) => StructuredBlock::Return(None),
+                    ("ReturnValue", [arg]) => {
+                        match self.get(arg) {
+                            Term::Lit(egglog::ast::Literal::String(s)) => {
+                                StructuredBlock::Return(Some(s.to_string()))
                             }
-                            _ => panic!("expected void or return value"),
+                            _ => panic!("expected string literal for return value"),
                         }
-                    } else {
-                        panic!("expected call for return");
                     }
-                }
-                _ => panic!("unknown structured block"),
+                    (head, _) => panic!("unexpected head {}, in {}:{}:{}", head, file!(), line!(), column!())
+                })
             }
-        } else {
-            panic!("expected call in expr_to_structured_block");
-        }
+            (head, _) => panic!("unexpected head {}, in {}:{}:{}", head, file!(), line!(), column!())
+        })
     }
 
-    pub(crate) fn expr_to_basic_block(&mut self, expr: &Expr) -> BasicBlock {
-        if let Expr::Call(op, args) = expr {
-            assert_eq!(op.as_str(), "BlockNamed");
+    pub(crate) fn term_to_basic_block(&mut self, id: &TermId) -> BasicBlock {
+        match_term_app!(self.get(id); {
+            ("BlockNamed", [name, code]) => {
+                let name = self.string_term_to_string(name);
+                let code_vec = self.term_conslist_to_vec(code, "Code");
+                let mut instrs = vec![];
+                let mut memo = HashMap::<TermId, String>::new();
 
-            match &args.as_slice() {
-                [Expr::Lit(egglog::ast::Literal::String(name)), code] => {
-                    let code_vec = Self::conslist_to_vec(code, "Code");
-                    let mut instrs = vec![];
-
-                    for expr in code_vec {
-                        self.expr_to_instructions(&expr, &mut instrs);
-                    }
-
-                    BasicBlock {
-                        name: BlockName::Named(name.to_string()),
-                        footer: Default::default(),
-                        instrs,
-                        pos: None,
-                    }
+                for t in code_vec {
+                    self.term_to_instructions(&t, &mut instrs, &mut memo);
                 }
-                _ => panic!("expected 2 args in expr_to_basic_block"),
+
+                BasicBlock {
+                    name: BlockName::Named(name.to_string()),
+                    footer: Default::default(),
+                    instrs,
+                    pos: None,
+                }
             }
-        } else {
-            panic!("expected call in expr_to_basic_block");
-        }
+            (head, _) => panic!("unexpected head {}, in {}:{}:{}", head, file!(), line!(), column!())
+        })
     }
 
-    fn conslist_to_vec_helper(expr: &Expr, res: &mut Vec<Expr>, prefix: &str) {
-        match expr {
-            Expr::Call(op, args) => match (op.as_str(), args.as_slice()) {
-                (op, [head, tail]) if op == prefix.to_string() + "Cons" => {
-                    res.push(head.clone());
-                    Self::conslist_to_vec_helper(tail, res, prefix);
-                }
-                (op, []) if op == prefix.to_string() + "Nil" => {}
-                _ => panic!("expected Cons or Nil"),
+    fn term_conslist_to_vec_helper(&self, id: &TermId, res: &mut Vec<TermId>, prefix: &str) {
+        match_term_app!(self.get(id); {
+            (op, [head, tail]) if op == prefix.to_string() + "Cons" => {
+                res.push(*head);
+                self.term_conslist_to_vec_helper(tail, res, prefix);
             },
-            _ => panic!("expected call in codelist_to_vec"),
-        }
+            (op, []) if op == prefix.to_string() + "Nil" => {}
+            (head, _) => panic!("unexpected head {}, in {}:{}:{}", head, file!(), line!(), column!())
+        })
     }
 
-    fn conslist_to_vec(expr: &Expr, prefix: &str) -> Vec<Expr> {
+    fn term_conslist_to_vec(&self, id: &TermId, prefix: &str) -> Vec<TermId> {
         let mut res = vec![];
-        Self::conslist_to_vec_helper(expr, &mut res, prefix);
+        self.term_conslist_to_vec_helper(id, &mut res, prefix);
         res
     }
 
-    fn vec_to_cons_list(vec: Vec<Expr>, prefix: &str) -> Expr {
-        let mut current = Expr::Call(format!("{prefix}Nil").into(), vec![]);
-        for expr in vec.into_iter().rev() {
-            current = Expr::Call(format!("{prefix}Cons").into(), vec![expr, current]);
-        }
-        current
-    }
-
-    fn expr_to_instructions(&mut self, expr: &Expr, res: &mut Vec<Instruction>) {
-        if let Expr::Call(op, args) = expr {
-            match op.to_string().as_str() {
-                "Print" => {
-                    assert!(args.len() == 1);
-                    let arg = self.expr_to_code(&args[0], res, None);
-
-                    res.push(Instruction::Effect {
-                        op: EffectOps::Print,
-                        args: vec![arg],
-                        funcs: vec![],
-                        labels: vec![],
-                        pos: None,
-                    });
-                }
-                "End" => {
-                    assert!(args.is_empty());
-                }
-                "Assign" => {
-                    assert!(
-                        args.len() == 2,
-                        "expected 2 args in Assign. got: {:?}",
-                        args
-                    );
-                    let dest = match &args[0] {
-                        Expr::Lit(egglog::ast::Literal::String(dest)) => dest.to_string(),
-                        _ => panic!("expected string literal for dest"),
-                    };
-                    self.expr_to_code(&args[1], res, Some(dest));
-                }
-                "store" | "free" => {
-                    let args = args
-                        .iter()
-                        .map(|arg| self.expr_to_code(arg, res, None))
-                        .collect::<Vec<String>>();
-
-                    res.push(Instruction::Effect {
-                        op: serde_json::from_str(&format!("\"{}\"", op)).unwrap(),
-                        args,
-                        funcs: vec![],
-                        labels: vec![],
-                        pos: None,
-                    });
-                }
-                "alloc" => {
-                    assert!(args.len() == 3);
-                    let atype = Self::expr_to_type(&args[0]);
-                    let dest = Self::string_expr_to_string(&args[1]);
-                    let arg = self.expr_to_code(&args[2], res, None);
-                    res.push(Instruction::Value {
-                        dest,
-                        args: vec![arg],
-                        funcs: vec![],
-                        op: ValueOps::Alloc,
-                        labels: vec![],
-                        pos: None,
-                        op_type: atype,
-                    });
-                }
-
-                _ => panic!("unknown effect in body_to_code {}", op),
-            }
-        } else {
-            panic!("expected call in body_to_code");
-        }
-    }
-
-    // TODO memoize exprs for common subexpression elimination
-    pub(crate) fn expr_to_code(
+    fn term_to_instructions(
         &mut self,
-        expr: &Expr,
+        id: &TermId,
+        res: &mut Vec<Instruction>,
+        memo: &mut HashMap<TermId, String>,
+    ) {
+        match_term_app!(self.get(id); {
+            ("Print", [arg]) => {
+                let arg = self.term_to_code(arg, res, None, memo);
+
+                res.push(Instruction::Effect {
+                    op: EffectOps::Print,
+                    args: vec![arg],
+                    funcs: vec![],
+                    labels: vec![],
+                    pos: None,
+                });
+            },
+            ("End", []) => {},
+            ("Assign", [dest, src]) => {
+                let dest = self.string_term_to_string(dest);
+                self.term_to_code(src, res, Some(dest.to_string()), memo);
+            },
+            (op @ ("store" | "free"), args) => {
+                let args = args
+                    .iter()
+                    .map(|arg| self.term_to_code(arg, res, None, memo))
+                    .collect::<Vec<String>>();
+
+
+                res.push(Instruction::Effect {
+                    op: serde_json::from_str(&format!("\"{}\"", op)).unwrap(),
+                    args,
+                    funcs: vec![],
+                    labels: vec![],
+                    pos: None,
+                });
+            },
+            ("alloc", [atype, dest, arg]) => {
+                let atype = self.term_to_type(atype);
+                let dest = self.string_term_to_string(dest);
+                let arg = self.term_to_code(arg, res, None, memo);
+                res.push(Instruction::Value {
+                    dest,
+                    args: vec![arg],
+                    funcs: vec![],
+                    op: ValueOps::Alloc,
+                    labels: vec![],
+                    pos: None,
+                    op_type: atype,
+                });
+            },
+            (head, _) => panic!("unexpected head {}, in {}:{}:{}", head, file!(), line!(), column!())
+        })
+    }
+
+    pub(crate) fn term_to_code(
+        &mut self,
+        id: &TermId,
         res: &mut Vec<Instruction>,
         assign_to: Option<String>,
+        memo: &mut HashMap<TermId, String>,
     ) -> String {
+        if memo.contains_key(id) && assign_to.is_none() {
+            return memo[id].clone();
+        }
+
         let dest = match &assign_to {
             Some(dest) => dest.clone(),
-            None => self.fresh_var(),
+            None => self.optimizer.fresh_var(),
         };
-        match expr {
-            Expr::Lit(literal) => {
+
+        let ret = match self.get(id) {
+            Term::Lit(literal) => {
                 res.push(Instruction::Constant {
                     dest: dest.clone(),
                     op: bril_rs::ConstOps::Const,
-                    value: self.literal_to_bril(literal),
+                    value: self.optimizer.literal_to_bril(&literal),
                     pos: None,
-                    const_type: self.literal_to_type(literal),
+                    const_type: self.optimizer.literal_to_type(&literal),
                 });
                 dest
             }
-            Expr::Var(var) => {
-                if let Some(_output) = assign_to {
-                    panic!("Cannot assign var to var")
-                } else {
-                    var.to_string()
-                }
-            }
-            Expr::Call(op, args) => match op.to_string().as_str() {
-                "Var" => {
-                    assert!(args.len() == 1);
-                    match &args[0] {
-                        Expr::Lit(egglog::ast::Literal::String(var)) => var.to_string(),
-                        _ => panic!("expected string literal for var"),
-                    }
-                }
-                "ReturnValue" => self.expr_to_code(&args[0], res, assign_to),
-                "Int" | "True" | "False" => {
-                    let literal = match op.to_string().as_str() {
-                        "Int" => Literal::Int(args[1].to_string().parse().unwrap()),
-                        "True" => Literal::Bool(true),
-                        "False" => Literal::Bool(false),
-                        "Char" => {
-                            assert_eq!(args[0].to_string().len(), 1);
-                            Literal::Char(args[0].to_string().chars().next().unwrap())
+            t => {
+                match_term_app!(t; {
+                    ("Var", [arg]) => {
+                        match self.get(arg) {
+                            Term::Lit(egglog::ast::Literal::String(var)) => var.to_string(),
+                            _ => panic!("expected string literal for var"),
                         }
-                        _ => panic!("unknown literal"),
-                    };
-                    res.push(Instruction::Constant {
-                        dest: dest.clone(),
-                        op: bril_rs::ConstOps::Const,
-                        value: literal,
-                        pos: None,
-                        const_type: Self::expr_to_type(&args[0]),
-                    });
-                    dest
-                }
-                "phi" => {
-                    assert!(args.len() == 5);
-                    let etype = Self::expr_to_type(&args[0]);
-                    let arg1 = self.expr_to_code(&args[1], res, None);
-                    let arg2 = self.expr_to_code(&args[2], res, None);
-                    let label1 = Self::string_expr_to_string(&args[3]);
-                    let label2 = Self::string_expr_to_string(&args[4]);
-                    res.push(Instruction::Value {
-                        dest: dest.clone(),
-                        args: vec![arg1, arg2],
-                        funcs: vec![],
-                        op: ValueOps::Phi,
-                        labels: vec![label1, label2],
-                        pos: None,
-                        op_type: etype,
-                    });
-                    dest
-                }
-                _ => {
-                    assert!(op.as_str() != "Void");
-                    let etype = Self::expr_to_type(&args[0]);
-                    let args_vars = args
-                        .iter()
-                        .skip(1)
-                        .map(|arg| self.expr_to_code(arg, res, None))
-                        .collect::<Vec<String>>();
-                    res.push(Instruction::Value {
-                        dest: dest.clone(),
-                        args: args_vars,
-                        funcs: vec![],
-                        op: egglog_op_to_bril(*op),
-                        labels: vec![],
-                        pos: None,
-                        op_type: etype,
-                    });
-                    dest
-                }
-            },
+                    },
+                    ("ReturnValue", [arg]) => self.term_to_code(arg, res, assign_to, memo),
+                    (op @ ("True" | "False" | "Int" | "Float" | "Char"), [ty, args @ ..]) => {
+                        let lit = match (op, args) {
+                            ("True", []) => Literal::Bool(true),
+                            ("False", []) => Literal::Bool(false),
+                            ("Int", [arg]) => {
+                                let arg = self.get(arg);
+                                let arg_s = self.termdag.to_string(&arg);
+                                Literal::Int(arg_s.parse::<i64>().unwrap())
+                            }
+                            ("Float", [arg]) => {
+                                let arg = self.get(arg);
+                                let arg_s = self.termdag.to_string(&arg);
+                                Literal::Float(arg_s.parse::<f64>().unwrap())
+                            }
+                            ("Char", [arg]) => {
+                                let arg = self.get(arg);
+                                let arg_s = self.termdag.to_string(&arg);
+                                assert_eq!(arg_s.len(), 1);
+                                Literal::Char(arg_s.chars().next().unwrap())
+                            }
+                            _ => panic!("unexpected args to literal in term_to_code")
+                        };
+                        res.push(Instruction::Constant {
+                            dest: dest.clone(),
+                            op: bril_rs::ConstOps::Const,
+                            value: lit,
+                            pos: None,
+                            const_type: self.term_to_type(ty),
+                        });
+                        dest
+                    },
+                    ("phi", [etype, arg1, arg2, label1, label2]) => {
+                        let etype = self.term_to_type(etype);
+                        let arg1 = self.term_to_code(arg1, res, None, memo);
+                        let arg2 = self.term_to_code(arg2, res, None, memo);
+                        let label1 = self.string_term_to_string(label1);
+                        let label2 = self.string_term_to_string(label2);
+                        res.push(Instruction::Value {
+                            dest: dest.clone(),
+                            args: vec![arg1, arg2],
+                            funcs: vec![],
+                            op: ValueOps::Phi,
+                            labels: vec![label1, label2],
+                            pos: None,
+                            op_type: etype,
+                        });
+                        dest
+                    },
+                    (op, args) => {
+                        assert!(op != "Void");
+                        let etype = self.term_to_type(&args[0]);
+                        let args_vars = args
+                            .iter()
+                            .skip(1)
+                            .map(|arg| self.term_to_code(arg, res, None, memo))
+                            .collect::<Vec<String>>();
+                        res.push(Instruction::Value {
+                            dest: dest.clone(),
+                            args: args_vars,
+                            funcs: vec![],
+                            op: egglog_op_to_bril(op.into()),
+                            labels: vec![],
+                            pos: None,
+                            op_type: etype,
+                        });
+                        dest
+                    }
+                })
+            }
+        };
+
+        memo.insert(*id, ret.clone());
+        ret
+    }
+
+    pub(crate) fn term_to_type(&self, id: &TermId) -> Type {
+        match_term_app!(self.get(id); {
+            ("IntT", []) => Type::Int,
+            ("BoolT", []) => Type::Bool,
+            ("FloatT", []) => Type::Float,
+            ("CharT", []) => Type::Char,
+            ("PointerT", [child]) => Type::Pointer(Box::new(self.term_to_type(child))),
+            (head, _) => panic!("unexpected head {}, in {}:{}:{}", head, file!(), line!(), column!())
+        })
+    }
+
+    fn string_term_to_string(&self, id: &TermId) -> String {
+        if let Term::Lit(egglog::ast::Literal::String(string)) = self.get(id) {
+            string.to_string()
+        } else {
+            panic!("expected string literal");
         }
+    }
+}
+
+impl Optimizer {
+    pub(crate) fn term_to_structured_func(
+        &mut self,
+        termdag: &TermDag,
+        term: &Term,
+    ) -> StructuredFunction {
+        let mut converter = TermConverter {
+            optimizer: self,
+            termdag,
+        };
+        converter.term_to_structured_func(&termdag.lookup(term))
     }
 
     pub(crate) fn func_to_expr(&mut self, func: &StructuredFunction) -> Expr {
@@ -350,6 +355,24 @@ impl Optimizer {
                 Expr::Lit(egglog::ast::Literal::String(func.name.clone().into())),
                 arg_expr,
                 self.structured_block_to_expr(&func.block),
+            ],
+        )
+    }
+
+    fn vec_to_cons_list(vec: Vec<Expr>, prefix: &str) -> Expr {
+        let mut current = Expr::Call(format!("{prefix}Nil").into(), vec![]);
+        for expr in vec.into_iter().rev() {
+            current = Expr::Call(format!("{prefix}Cons").into(), vec![expr, current]);
+        }
+        current
+    }
+
+    fn argument_to_expr(arg: &Argument) -> Expr {
+        Expr::Call(
+            "Arg".into(),
+            vec![
+                Expr::Lit(egglog::ast::Literal::String(arg.name.clone().into())),
+                Self::type_to_expr(&arg.arg_type),
             ],
         )
     }
@@ -410,14 +433,6 @@ impl Optimizer {
 
     pub(crate) fn string_to_var_encoding(&self, string: String) -> Expr {
         Expr::Call("Var".into(), vec![self.string_to_expr(string)])
-    }
-
-    fn string_expr_to_string(expr: &Expr) -> String {
-        if let Expr::Lit(egglog::ast::Literal::String(string)) = expr {
-            string.to_string()
-        } else {
-            panic!("expected string literal");
-        }
     }
 
     pub(crate) fn convert_basic_block(&mut self, block: &BasicBlock) -> Expr {
@@ -619,20 +634,6 @@ impl Optimizer {
             Type::Float => Expr::Call("FloatT".into(), vec![]),
             Type::Char => Expr::Call("CharT".into(), vec![]),
             Type::Pointer(child) => Expr::Call("PointerT".into(), vec![Self::type_to_expr(child)]),
-        }
-    }
-
-    pub(crate) fn expr_to_type(expr: &Expr) -> Type {
-        let Expr::Call(op, args) = expr else {
-            panic!("expected call in expr_to_type");
-        };
-        match (op.as_str(), args.as_slice()) {
-            ("IntT", []) => Type::Int,
-            ("BoolT", []) => Type::Bool,
-            ("FloatT", []) => Type::Float,
-            ("CharT", []) => Type::Char,
-            ("PointerT", [child]) => Type::Pointer(Box::new(Self::expr_to_type(child))),
-            _ => panic!("unknown type"),
         }
     }
 

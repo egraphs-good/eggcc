@@ -5,9 +5,7 @@ expression: "format!(\"{}\", res)"
 @main {
 .entry___:
   x: int = const 4;
-  v0_: int = const 4;
-  v1_: int = const 4;
-  cond: bool = lt v0_ v1_;
+  cond: bool = lt x x;
   br cond .sblock___3 .sblock___4;
 .sblock___3:
   jmp .sblock___1;

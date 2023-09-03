@@ -6,9 +6,7 @@ expression: "format!(\"{}\", res)"
 .entry___:
   v0: int = const 1;
   v1: int = const 2;
-  v0_: int = const 1;
-  v1_: int = const 2;
-  v2: int = add v0_ v1_;
+  v2: int = add v0 v1;
   ret;
 .sblock___0:
 .exit___:
@@ -17,9 +15,7 @@ expression: "format!(\"{}\", res)"
 .entry___:
   v0: int = const 1;
   v1: int = const 2;
-  v2_: int = const 1;
-  v3_: int = const 2;
-  v2: int = sub v2_ v3_;
+  v2: int = sub v0 v1;
   ret;
 .sblock___0:
 .exit___:

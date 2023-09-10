@@ -45,6 +45,7 @@ impl PegBody {
                     }
                 }
                 Expr::Call(..) => panic!("can't simulate inter-function calls"),
+                Expr::Print(..) => panic!("can't simulate print"),
                 Expr::Const(ConstOps::Const, _, literal) => literal.clone(),
             },
             PegBody::Arg(arg) => args[*arg].clone(),

@@ -1,7 +1,7 @@
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
 
 use crate::{
-    cfg::to_cfg,
+    cfg::{to_cfg, Identifier},
     rvsdg::{from_cfg::cfg_func_to_rvsdg, new_rvsdg_egraph, Expr, Id, Operand, RvsdgBody},
     util::parse_from_string,
 };
@@ -15,16 +15,27 @@ struct RvsdgTest {
 }
 
 impl RvsdgTest {
-    fn into_function(self, n_args: usize, output: Operand) -> RvsdgFunction {
+    /// "pure" functions are ones whose state edges 'pass through'.
+    fn into_pure_function(self, n_args: usize, output: Operand) -> RvsdgFunction {
+        self.into_function(n_args, Some(output), Operand::Arg(n_args))
+    }
+
+    fn into_function(
+        self,
+        n_args: usize,
+        result: Option<Operand>,
+        state: Operand,
+    ) -> RvsdgFunction {
         RvsdgFunction {
             n_args,
             nodes: self.nodes,
-            result: Some(output),
+            result,
+            state,
         }
     }
 
     fn lit_int(&mut self, i: i64) -> Operand {
-        self.make_node(RvsdgBody::PureOp(Expr::Const(
+        self.make_node(RvsdgBody::BasicOp(Expr::Const(
             ConstOps::Const,
             Type::Int,
             Literal::Int(i),
@@ -32,23 +43,35 @@ impl RvsdgTest {
     }
 
     fn lit_bool(&mut self, b: bool) -> Operand {
-        self.make_node(RvsdgBody::PureOp(Expr::Const(
+        self.make_node(RvsdgBody::BasicOp(Expr::Const(
             ConstOps::Const,
             Type::Bool,
             Literal::Bool(b),
         )))
     }
 
+    fn void_function(&mut self, func: impl Into<Identifier>, args: &[Operand]) -> Operand {
+        self.make_node(RvsdgBody::BasicOp(Expr::Call(
+            func.into(),
+            args.to_vec(),
+            1,
+        )))
+    }
+
     fn lt(&mut self, l: Operand, r: Operand) -> Operand {
-        self.make_node(RvsdgBody::PureOp(Expr::Op(ValueOps::Lt, vec![l, r])))
+        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Lt, vec![l, r])))
     }
 
     fn add(&mut self, l: Operand, r: Operand) -> Operand {
-        self.make_node(RvsdgBody::PureOp(Expr::Op(ValueOps::Add, vec![l, r])))
+        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Add, vec![l, r])))
     }
 
     fn mul(&mut self, l: Operand, r: Operand) -> Operand {
-        self.make_node(RvsdgBody::PureOp(Expr::Op(ValueOps::Mul, vec![l, r])))
+        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Mul, vec![l, r])))
+    }
+
+    fn print(&mut self, x: Operand, state: Operand) -> Operand {
+        self.make_node(RvsdgBody::BasicOp(Expr::Print(vec![x, state])))
     }
 
     fn gamma(&mut self, pred: Operand, inputs: &[Operand], outputs: &[&[Operand]]) -> Id {
@@ -96,7 +119,61 @@ fn rvsdg_expr() {
     let one = expected.lit_int(1);
     let two = expected.lit_int(2);
     let res = expected.add(one, two);
-    assert!(deep_equal(&expected.into_function(0, res), &rvsdg));
+    assert!(deep_equal(&expected.into_pure_function(0, res), &rvsdg));
+}
+
+#[test]
+fn rvsdg_print() {
+    const PROGRAM: &str = r#"
+    @sub() {
+        v0: int = const 1;
+        v1: int = const 2;
+        v2: int = add v0 v1;
+        print v2;
+        print v1;
+    }
+    "#;
+    let prog = parse_from_string(PROGRAM);
+    let mut cfg = to_cfg(&prog.functions[0]);
+    let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();
+
+    let mut expected = RvsdgTest::default();
+    let v0 = expected.lit_int(1);
+    let v1 = expected.lit_int(2);
+    let v2 = expected.add(v0, v1);
+    let res1 = expected.print(v2, Operand::Arg(0));
+    let res2 = expected.print(v1, res1);
+    assert!(deep_equal(&expected.into_function(0, None, res2), &rvsdg));
+}
+
+#[test]
+fn rvsdg_state_gamma() {
+    const PROGRAM: &str = r#"
+    @sub() {
+        x: int = const 1;
+        c: bool = const true;
+        br c .B .C;
+    .B:
+        call @some_func;
+        jmp .End;
+    .C:
+        call @other_func;
+        jmp .End;
+    .End: 
+    }
+    "#;
+    let prog = parse_from_string(PROGRAM);
+    let mut cfg = to_cfg(&prog.functions[0]);
+    let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();
+
+    let mut expected = RvsdgTest::default();
+    let c = expected.lit_bool(true);
+    let some_func = expected.void_function("some_func", &[Operand::Arg(0)]);
+    let other_func = expected.void_function("other_func", &[Operand::Arg(0)]);
+    let gamma = expected.gamma(c, &[Operand::Arg(0)], &[&[other_func], &[some_func]]);
+    let res = Operand::Project(0, gamma);
+
+    assert!(deep_equal(&expected.into_function(0, None, res), &rvsdg));
 }
 
 #[test]
@@ -118,57 +195,22 @@ fn rvsdg_unstructured() {
     let prog = parse_from_string(PROGRAM);
     let mut cfg = to_cfg(&prog.functions[0]);
     let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();
-    // This example is a bit less natural, and while I believe this is a
-    // faithful RVSDG, it'd be nicer to get further assurance that this is
-    // correct (e.g. by roundtripping this to bril and ensuring the same values
-    // came out).
-    let mut expected = RvsdgTest::default();
-    let four = expected.lit_int(4);
-    let one = expected.lit_int(1);
-    let zero = expected.lit_int(0);
-
-    let pred = expected.lt(four, four);
-    let gamma1 = expected.gamma(pred, &[], &[&[four, one], &[four, zero]]);
-
-    // loop body:
-
-    let pred2 = expected.lt(Operand::Arg(0), one);
-    let in0 = expected.add(Operand::Arg(0), one);
-    let gamma_inner0 = expected.gamma(
-        pred2,
-        &[in0, Operand::Arg(1)],
-        &[
-            &[Operand::Arg(0), zero, Operand::Arg(1)],
-            &[Operand::Arg(0), one, one],
-        ],
-    );
-
-    let gamma_outer = expected.gamma(
-        zero,
-        &[Operand::Arg(0), Operand::Arg(1)],
-        &[
-            &[
-                Operand::Project(0, gamma_inner0),
-                Operand::Project(1, gamma_inner0),
-                Operand::Project(2, gamma_inner0),
-            ],
-            &[Operand::Arg(0), one, zero],
-        ],
-    );
-
-    let res = expected.theta(
-        Operand::Project(1, gamma_outer),
-        &[Operand::Project(0, gamma1), Operand::Project(1, gamma1)],
-        &[
-            Operand::Project(0, gamma_outer),
-            Operand::Project(2, gamma_outer),
-        ],
-    );
-
-    assert!(deep_equal(
-        &expected.into_function(0, Operand::Project(0, res)),
-        &rvsdg
-    ));
+    // It's hard to write a useful test that's more than just a "change
+    // detector" here. In this case, the function is not computing anything
+    // meaningful, but we know it should have the following properties:
+    //
+    // 1. A theta node: .B and .C form a cycle.
+    // 2. A gamma node, as there is a join point in .B for the value of `x`
+    // (whether the predecessor is .B or the entry block).
+    assert!(rvsdg.result.is_some());
+    assert!(search_for(&rvsdg, |body| matches!(
+        body,
+        RvsdgBody::Theta { .. }
+    )));
+    assert!(search_for(&rvsdg, |body| matches!(
+        body,
+        RvsdgBody::Gamma { .. }
+    )))
 }
 
 #[test]
@@ -199,34 +241,124 @@ fn rvsdg_basic_odd_branch() {
 
     // construct expected program
     let mut expected = RvsdgTest::default();
+    let state = Operand::Arg(1);
     let zero = expected.lit_int(0);
     let one = expected.lit_int(1);
     let two = expected.lit_int(2);
     let five = expected.lit_int(5);
 
     // loop variables
-    let res = Operand::Arg(0);
-    let i = Operand::Arg(1);
-    let n = Operand::Arg(2);
+    let res = Operand::Arg(1);
+    let i = Operand::Arg(2);
+    let n = Operand::Arg(3);
 
     let ip1 = expected.add(i, one);
     let rpi = expected.add(res, i);
     let pred = expected.lt(ip1, n);
     let theta = expected.theta(
         pred,
-        &[zero, zero, Operand::Arg(0)],
+        &[state, zero, zero, Operand::Arg(0)],
         &[
-            // res = res + i
-            rpi, // i = i + 1
-            ip1, // n = n
-            n,
+            Operand::Arg(0), // state = state
+            rpi,             // res = res + i
+            ip1,             // i = i + 1
+            n,               // n = n
         ],
     );
-    let res = Operand::Project(0, theta);
+    let state = Operand::Project(0, theta);
+    let res = Operand::Project(1, theta);
     let pred = expected.lt(res, five);
-    let mul2 = expected.mul(Operand::Arg(0), two);
-    let gamma = expected.gamma(pred, &[res], &[&[Operand::Arg(0)], &[mul2]]);
-    let expected = expected.into_function(1, Operand::Project(0, gamma));
+    let mul2 = expected.mul(Operand::Arg(1), two);
+    let gamma = expected.gamma(
+        pred,
+        &[state, res],
+        &[
+            &[Operand::Arg(0), Operand::Arg(1)],
+            &[Operand::Arg(0), mul2],
+        ],
+    );
+    let expected = expected.into_function(
+        1,
+        Some(Operand::Project(1, gamma)),
+        Operand::Project(0, gamma),
+    );
+
+    // test correctness of RVSDGs converted from CFG
+    let prog = parse_from_string(PROGRAM);
+    let mut cfg = to_cfg(&prog.functions[0]);
+    let actual = cfg_func_to_rvsdg(&mut cfg).unwrap();
+    assert!(deep_equal(&expected, &actual));
+}
+
+#[test]
+fn rvsdg_odd_branch_egg_roundtrip() {
+    // Bril program summing the numbers from 1 to n, multiplying by 2 if that
+    // value is larger than 5. This gives us a theta node and a gamma
+    // node, with the gamma requiring branch restructuring.
+    const PROGRAM: &str = r#"
+ @main(n: int): int {
+    res: int = const 0;
+    i: int = const 0;
+ .loop:
+    one: int = const 1;
+    res: int = add res i;
+    i: int = add i one;
+    loop_cond: bool = lt i n;
+    br loop_cond .loop .tail;
+ .tail:
+   five: int = const 5;
+   rescale_cond: bool = lt res five;
+   br rescale_cond .rescale .exit;
+ .rescale:
+   two: int = const 2;
+   res: int = mul res two;
+ .exit:
+  ret res;
+}"#;
+
+    // construct expected program
+    let mut expected = RvsdgTest::default();
+    let state = Operand::Arg(1);
+    let zero = expected.lit_int(0);
+    let one = expected.lit_int(1);
+    let two = expected.lit_int(2);
+    let five = expected.lit_int(5);
+
+    // loop variables
+    let res = Operand::Arg(1);
+    let i = Operand::Arg(2);
+    let n = Operand::Arg(3);
+
+    let ip1 = expected.add(i, one);
+    let rpi = expected.add(res, i);
+    let pred = expected.lt(ip1, n);
+    let theta = expected.theta(
+        pred,
+        &[state, zero, zero, Operand::Arg(0)],
+        &[
+            Operand::Arg(0), // state = state
+            rpi,             // res = res + i
+            ip1,             // i = i + 1
+            n,               // n = n
+        ],
+    );
+    let state = Operand::Project(0, theta);
+    let res = Operand::Project(1, theta);
+    let pred = expected.lt(res, five);
+    let mul2 = expected.mul(Operand::Arg(1), two);
+    let gamma = expected.gamma(
+        pred,
+        &[state, res],
+        &[
+            &[Operand::Arg(0), Operand::Arg(1)],
+            &[Operand::Arg(0), mul2],
+        ],
+    );
+    let expected = expected.into_function(
+        1,
+        Some(Operand::Project(1, gamma)),
+        Operand::Project(0, gamma),
+    );
 
     // test correctness of RVSDGs converted from CFG
     let prog = parse_from_string(PROGRAM);
@@ -275,6 +407,63 @@ fn rvsdg_basic_odd_branch() {
     assert!(deep_equal(&expected, &actual));
 }
 
+fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bool {
+    fn search_op(
+        f: &RvsdgFunction,
+        op: &Operand,
+        pred: &mut impl FnMut(&RvsdgBody) -> bool,
+    ) -> bool {
+        match op {
+            Operand::Arg(_) => false,
+            Operand::Id(x) | Operand::Project(_, x) => search_node(f, &f.nodes[*x], pred),
+        }
+    }
+    fn search_node(
+        f: &RvsdgFunction,
+        node: &RvsdgBody,
+        pred: &mut impl FnMut(&RvsdgBody) -> bool,
+    ) -> bool {
+        if pred(node) {
+            return true;
+        }
+        match node {
+            RvsdgBody::BasicOp(x) => match x {
+                Expr::Op(_, args) | Expr::Call(_, args, _) | Expr::Print(args) => {
+                    args.iter().any(|arg| search_op(f, arg, pred))
+                }
+                Expr::Const(_, _, _) => false,
+            },
+            RvsdgBody::Gamma {
+                pred: p,
+                inputs,
+                outputs,
+            } => {
+                search_op(f, p, pred)
+                    || inputs.iter().any(|arg| search_op(f, arg, pred))
+                    || outputs
+                        .iter()
+                        .any(|outs| outs.iter().any(|arg| search_op(f, arg, pred)))
+            }
+            RvsdgBody::Theta {
+                pred: p,
+                inputs,
+                outputs,
+            } => {
+                search_op(f, p, pred)
+                    || inputs.iter().any(|arg| search_op(f, arg, pred))
+                    || outputs.iter().any(|arg| search_op(f, arg, pred))
+            }
+        }
+    }
+    if search_op(f, &f.state, &mut pred) {
+        return true;
+    }
+    f.result
+        .as_ref()
+        .map(|res| search_op(f, res, &mut pred))
+        .unwrap_or(false)
+}
+
 /// We don't want to commit to the order in which nodes are laid out, so we do a
 /// DFS to check if two functions are equal for the purposes of testing.
 fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
@@ -315,22 +504,29 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
 
     fn ids_equal(i1: Id, i2: Id, f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
         match (&f1.nodes[i1], &f2.nodes[i2]) {
-            (RvsdgBody::PureOp(l), RvsdgBody::PureOp(r)) => match (l, r) {
+            (RvsdgBody::BasicOp(l), RvsdgBody::BasicOp(r)) => match (l, r) {
                 (Expr::Op(vo1, as1), Expr::Op(vo2, as2)) => {
                     vo1 == vo2 && all_equal(as1, as2, f1, f2)
                 }
-                (Expr::Call(func1, as1), Expr::Call(func2, as2)) => {
-                    func1 == func2 && all_equal(as1, as2, f1, f2)
+                (Expr::Call(func1, as1, n1), Expr::Call(func2, as2, n2)) => {
+                    func1 == func2 && n1 == n2 && all_equal(as1, as2, f1, f2)
                 }
                 (Expr::Const(c1, ty1, lit1), Expr::Const(c2, ty2, lit2)) => {
                     c1 == c2 && ty1 == ty2 && lit1 == lit2
                 }
-                (Expr::Call(_, _), Expr::Op(_, _))
-                | (Expr::Call(_, _), Expr::Const(_, _, _))
-                | (Expr::Const(_, _, _), Expr::Call(_, _))
+                (Expr::Print(as1), Expr::Print(as2)) => all_equal(as1, as2, f1, f2),
+                (Expr::Call(_, _, _), Expr::Op(_, _))
+                | (Expr::Call(_, _, _), Expr::Const(_, _, _))
+                | (Expr::Call(_, _, _), Expr::Print(_))
+                | (Expr::Const(_, _, _), Expr::Call(_, _, _))
                 | (Expr::Const(_, _, _), Expr::Op(_, _))
-                | (Expr::Op(_, _), Expr::Call(_, _))
-                | (Expr::Op(_, _), Expr::Const(_, _, _)) => false,
+                | (Expr::Const(_, _, _), Expr::Print(_))
+                | (Expr::Op(_, _), Expr::Call(_, _, _))
+                | (Expr::Op(_, _), Expr::Const(_, _, _))
+                | (Expr::Op(_, _), Expr::Print(_))
+                | (Expr::Print(_), Expr::Call(_, _, _))
+                | (Expr::Print(_), Expr::Const(_, _, _))
+                | (Expr::Print(_), Expr::Op(_, _)) => false,
             },
             (
                 RvsdgBody::Theta {
@@ -369,17 +565,22 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
                         .zip(os2.iter())
                         .all(|(l, r)| all_equal(l, r, f1, f2))
             }
-            (RvsdgBody::PureOp(_), RvsdgBody::Gamma { .. })
-            | (RvsdgBody::PureOp(_), RvsdgBody::Theta { .. })
+            (RvsdgBody::BasicOp(_), RvsdgBody::Gamma { .. })
+            | (RvsdgBody::BasicOp(_), RvsdgBody::Theta { .. })
             | (RvsdgBody::Gamma { .. }, RvsdgBody::Theta { .. })
-            | (RvsdgBody::Gamma { .. }, RvsdgBody::PureOp(_))
-            | (RvsdgBody::Theta { .. }, RvsdgBody::PureOp(_))
+            | (RvsdgBody::Gamma { .. }, RvsdgBody::BasicOp(_))
+            | (RvsdgBody::Theta { .. }, RvsdgBody::BasicOp(_))
             | (RvsdgBody::Theta { .. }, RvsdgBody::Gamma { .. }) => false,
         }
     }
 
+    if !ops_equal(&f1.state, &f2.state, f1, f2) {
+        return false;
+    }
+
     match (&f1.result, &f2.result) {
         (Some(o1), Some(o2)) => ops_equal(o1, o2, f1, f2),
-        (None, None) | (None, Some(_)) | (Some(_), None) => false,
+        (None, None) => true,
+        (None, Some(_)) | (Some(_), None) => false,
     }
 }

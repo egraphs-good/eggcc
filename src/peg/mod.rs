@@ -120,15 +120,19 @@ impl PegBuilder<'_> {
                 }
                 match &self.rvsdgs[id] {
                     // To translate a PureOp, translate all its arguments, then change ops to ids
-                    RvsdgBody::PureOp(expr) => {
+                    RvsdgBody::BasicOp(expr) => {
                         let expr = match expr {
                             Expr::Op(op, xs) => {
                                 Expr::Op(*op, xs.iter().map(|x| self.get_pegs(*x, scope)).collect())
                             }
-                            Expr::Call(f, xs) => Expr::Call(
+                            Expr::Call(f, xs, n) => Expr::Call(
                                 f.clone(),
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
+                                *n,
                             ),
+                            Expr::Print(xs) => {
+                                Expr::Print(xs.iter().map(|x| self.get_pegs(*x, scope)).collect())
+                            }
                             Expr::Const(o, t, l) => Expr::Const(*o, t.clone(), l.clone()),
                         };
                         assert_eq!(0, selected);

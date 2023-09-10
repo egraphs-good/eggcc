@@ -6,7 +6,7 @@
 //! Ken Kennedy.
 use std::fmt;
 
-use bril_rs::Instruction;
+use bril_rs::{EffectOps, Instruction, ValueOps};
 use fixedbitset::FixedBitSet;
 use hashbrown::HashMap;
 use indexmap::IndexSet;
@@ -17,7 +17,7 @@ use petgraph::{
 };
 
 use crate::{
-    cfg::{ret_id, Annotation, BranchOp, Cfg, CondVal, Identifier, NodeSet},
+    cfg::{ret_id, state_id, Annotation, BranchOp, Cfg, CondVal, Identifier, NodeSet},
     util::ListDisplay,
 };
 
@@ -30,9 +30,16 @@ pub(crate) fn live_variables(cfg: &Cfg) -> LiveVariableAnalysis {
         let state = analysis.var_state_mut(block);
         let weight = &cfg.graph[block];
 
-        if block == cfg.exit && cfg.has_return_value() {
-            // The exit block uses the return value, if there is one.
-            state.gen.insert(names.intern(ret_id()));
+        if block == cfg.exit {
+            state.gen.insert(names.intern(state_id()));
+            if cfg.has_return_value() {
+                // The exit block uses the return value, if there is one.
+                state.gen.insert(names.intern(ret_id()));
+            }
+        }
+
+        if block == cfg.entry {
+            state.gen.insert(names.intern(state_id()));
         }
 
         // Live variable analysis is "bottom-up": we do everything in reverse
@@ -74,17 +81,24 @@ pub(crate) fn live_variables(cfg: &Cfg) -> LiveVariableAnalysis {
                     state.kills.insert(var);
                     state.gen.remove(var);
                 }
-                Instruction::Value { args, dest, .. } => {
+                Instruction::Value { args, dest, op, .. } => {
                     let dest = names.intern(dest);
                     state.kills.insert(dest);
                     state.gen.remove(dest);
                     for arg in args {
                         state.gen.insert(names.intern(arg));
                     }
+                    if let ValueOps::Call = op {
+                        state.gen.insert(names.intern(state_id()));
+                    }
                 }
-                Instruction::Effect { args, .. } => {
+                Instruction::Effect { args, op, .. } => {
                     for arg in args {
                         state.gen.insert(names.intern(arg));
+                    }
+
+                    if let EffectOps::Print | EffectOps::Call = op {
+                        state.gen.insert(names.intern(state_id()));
                     }
                 }
             }
@@ -107,6 +121,7 @@ pub(crate) fn live_variables(cfg: &Cfg) -> LiveVariableAnalysis {
         }
 
         if changed {
+            worklist.push(block);
             cfg.graph
                 .neighbors_directed(block, Direction::Incoming)
                 .for_each(|succ| worklist.push(succ))
@@ -151,6 +166,15 @@ impl VarSet {
     pub(crate) fn iter(&self) -> impl Iterator<Item = VarId> + '_ {
         self.vars.ones().map(|x| VarId(x as u32))
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.vars.count_ones(..)
+    }
+
+    pub(crate) fn contains(&self, var: VarId) -> bool {
+        self.vars.contains(var.0 as usize)
+    }
+
     fn insert(&mut self, var: VarId) -> bool {
         let bit = var.0 as usize;
         if self.vars.len() <= bit {
@@ -271,7 +295,7 @@ impl WorkList {
     }
 
     fn push(&mut self, node: NodeIndex) {
-        if !self.node_set.is_visited(&node) {
+        if self.node_set.visit(node) {
             self.stack.push(node);
         }
     }

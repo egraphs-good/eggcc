@@ -38,9 +38,13 @@ impl PegFunction {
                         js = xs.to_vec();
                         format!("{f}")
                     }
-                    Expr::Call(f, xs) => {
+                    Expr::Call(f, xs, _) => {
                         js = xs.to_vec();
                         format!("{f}")
+                    }
+                    Expr::Print(xs) => {
+                        js = xs.to_vec();
+                        "PRINT".into()
                     }
                     Expr::Const(ConstOps::Const, _, literal) => {
                         format!("{literal}")

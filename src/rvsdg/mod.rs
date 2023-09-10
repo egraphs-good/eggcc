@@ -91,9 +91,22 @@ pub(crate) type Id = usize;
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Expr<Op> {
+    /// A primitive operation.
     Op(ValueOps, Vec<Op>),
-    Call(Identifier, Vec<Op>),
+    /// A function call. The last parameter is the number of outputs to the
+    /// function. Functions always have an "extra" output that is used for the
+    /// 'state edge' flowing out of the function.
+    ///
+    /// Essentially all of the code here does not use this value at all. The
+    /// exception is the SVG rendering code, which relies on this value to
+    /// determine how many output ports to add to a function call.
+    Call(Identifier, Vec<Op>, usize),
+    /// A literal constant.
     Const(ConstOps, Type, Literal),
+    /// Following bril, we treat 'print' as a built-in primitive, rather than
+    /// just another function. For the purposes of RVSDG translation, however,
+    /// print is treated the same as any other function that has no ouptputs.
+    Print(Vec<Op>),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -108,12 +121,16 @@ pub(crate) enum Operand {
 
 #[derive(Debug)]
 pub(crate) enum RvsdgBody {
-    PureOp(Expr<Operand>),
+    BasicOp(Expr<Operand>),
+
+    /// Conditional branch, where the outputs chosen depend on the predicate.
     Gamma {
         pred: Operand,
         inputs: Vec<Operand>,
         outputs: Vec<Vec<Operand>>,
     },
+
+    /// A tail-controled loop.
     Theta {
         pred: Operand,
         inputs: Vec<Operand>,
@@ -127,6 +144,10 @@ pub(crate) enum RvsdgBody {
 /// to nodes by their index in the vector.
 pub struct RvsdgFunction {
     /// The number of input arguments to the function.
+    ///
+    /// Functions all take `n_args + 1` arguments, where the last argument is a
+    /// "state edge" used to preserve ordering constraints to (potentially)
+    /// impure function calls.
     pub(crate) n_args: usize,
     /// The backing heap for Rvsdg node ids within this function.
     pub(crate) nodes: Vec<RvsdgBody>,
@@ -135,13 +156,17 @@ pub struct RvsdgFunction {
     /// NB: until effects are supported, the only way to ensure a computation is
     /// marked as used is to populate a result of some kind.
     pub(crate) result: Option<Operand>,
+
+    /// The output port corersponding to the state edge of the function.
+    pub(crate) state: Operand,
 }
 
 impl fmt::Debug for RvsdgFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RvsdgFunction")
             .field("n_args", &self.n_args)
-            .field("result", &self.result);
+            .field("result", &self.result)
+            .field("state", &self.state);
         let mut map = f.debug_map();
         for (i, node) in self.nodes.iter().enumerate() {
             map.entry(&i, node);
@@ -190,7 +215,8 @@ impl RvsdgFunction {
         }
         match expr {
             Expr::Op(op, operands) => Call(op.to_string().into(), f(operands)),
-            Expr::Call(ident, operands) => Call(ident.to_string().into(), f(operands)),
+            Expr::Call(ident, operands, _) => Call(ident.to_string().into(), f(operands)),
+            Expr::Print(operands) => Call("PRINT".into(), f(operands)),
             Expr::Const(ConstOps::Const, ty, lit) => {
                 let lit = match (ty, lit) {
                     (Type::Int, Literal::Int(n)) => Call("Num".into(), vec![Lit(Int(*n))]),
@@ -220,7 +246,7 @@ impl RvsdgFunction {
     fn body_to_egglog_expr(&self, body: &RvsdgBody) -> egglog::ast::Expr {
         use egglog::ast::Expr::*;
         match body {
-            RvsdgBody::PureOp(expr) => Call("PureOp".into(), vec![self.expr_to_egglog_expr(expr)]),
+            RvsdgBody::BasicOp(expr) => Call("PureOp".into(), vec![self.expr_to_egglog_expr(expr)]),
             RvsdgBody::Gamma {
                 pred,
                 inputs,
@@ -307,7 +333,7 @@ impl RvsdgFunction {
         use egglog::ast::Expr::*;
         if let Call(func, args) = body {
             let body = match (func.as_str(), &args.as_slice()) {
-                ("PureOp", [expr]) => RvsdgBody::PureOp(Self::egglog_expr_to_expr(expr, bodies)),
+                ("PureOp", [expr]) => RvsdgBody::BasicOp(Self::egglog_expr_to_expr(expr, bodies)),
                 ("Gamma", [pred, inputs, outputs]) => {
                     let pred = Self::egglog_expr_to_operand(pred, bodies);
                     let inputs = vec_map(inputs, |e| Self::egglog_expr_to_operand(e, bodies));
@@ -352,7 +378,8 @@ impl RvsdgFunction {
             match (func.as_str(), &args.as_slice()) {
                 ("Call", [egglog::ast::Expr::Lit(Literal::String(ident)), args]) => {
                     let args = vec_map(args, |e| Self::egglog_expr_to_operand(e, bodies));
-                    Expr::Call(Identifier::Name(ident.to_string()), args)
+                    // TODO: this is imprecise, we don't know if the number of outputs is 1 or 2.
+                    Expr::Call(Identifier::Name(ident.to_string()), args, 1)
                 }
                 ("Const", [_const_op, ty, lit]) => Expr::Const(
                     ConstOps::Const,
@@ -406,11 +433,13 @@ impl RvsdgFunction {
     pub fn egglog_expr_to_function(func: &egglog::ast::Expr, n_args: usize) -> RvsdgFunction {
         let mut nodes = vec![];
         let result = Self::egglog_expr_to_operand(func, &mut nodes);
-        let result = Some(result);
         RvsdgFunction {
             n_args,
             nodes,
-            result,
+            result: Some(result),
+            // For now, assume that egglog expressions are not stateful, so we
+            // "pass through" the state edge.
+            state: Operand::Arg(n_args),
         }
     }
 }

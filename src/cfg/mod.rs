@@ -56,7 +56,31 @@ pub(crate) enum BlockName {
 /// The distinguished identifier associated with the return value of a function,
 /// if it has one.
 pub(crate) fn ret_id() -> Identifier {
-    Identifier::Num(!0)
+    Identifier::Num(usize::MAX - 1)
+}
+
+/// The distinguished identifier associated with "state".
+///
+/// To recover implicit ordering dependencies between impure operations in bril,
+/// we treat effectful operations as taking an "extra argument" and then
+/// assigning to that a state variable. This allows the rest of the
+/// transformation to preserve the ordering information. So code like:
+///
+/// > x: int = const 1
+/// > print x
+/// > y: int = const 2
+/// > print y
+///
+/// Is effectively translated to:
+///
+/// > x: int = const 1
+/// > <state> = print x <state>
+/// > y: int = const 2
+/// > <state> = print y <state>
+///
+/// `state_id` is the identifier corresponding to this <state> variable.
+pub(crate) fn state_id() -> Identifier {
+    Identifier::Num(usize::MAX)
 }
 
 impl Display for BlockName {

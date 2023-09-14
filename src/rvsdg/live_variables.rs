@@ -231,10 +231,24 @@ pub(crate) struct LiveVariableState {
     gen: VarSet,
 }
 
-#[derive(Default)]
 pub(crate) struct LiveVariableAnalysis {
     pub(crate) intern: Names,
+    /// The variable associated with [`state_id`].
+    pub(crate) state_var: VarId,
     analysis: HashMap<NodeIndex, LiveVariableState>,
+}
+
+impl Default for LiveVariableAnalysis {
+    fn default() -> Self {
+        let mut result = LiveVariableAnalysis {
+            intern: Names::default(),
+            state_var: VarId(0),
+            analysis: HashMap::default(),
+        };
+        let state_var = result.intern.intern(state_id());
+        result.state_var = state_var;
+        result
+    }
 }
 
 impl fmt::Debug for LiveVariableAnalysis {

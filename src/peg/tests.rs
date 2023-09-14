@@ -22,7 +22,7 @@ impl PegTest {
     }
 
     fn lit_int(&mut self, i: i64) -> Id {
-        self.make_node(PegBody::PureOp(Expr::Const(
+        self.make_node(PegBody::BasicOp(Expr::Const(
             ConstOps::Const,
             Type::Int,
             Literal::Int(i),
@@ -30,7 +30,7 @@ impl PegTest {
     }
 
     fn lit_bool(&mut self, b: bool) -> Id {
-        self.make_node(PegBody::PureOp(Expr::Const(
+        self.make_node(PegBody::BasicOp(Expr::Const(
             ConstOps::Const,
             Type::Bool,
             Literal::Bool(b),
@@ -38,15 +38,15 @@ impl PegTest {
     }
 
     fn lt(&mut self, l: Id, r: Id) -> Id {
-        self.make_node(PegBody::PureOp(Expr::Op(ValueOps::Lt, vec![l, r])))
+        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Lt, vec![l, r])))
     }
 
     fn add(&mut self, l: Id, r: Id) -> Id {
-        self.make_node(PegBody::PureOp(Expr::Op(ValueOps::Add, vec![l, r])))
+        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Add, vec![l, r])))
     }
 
     fn mul(&mut self, l: Id, r: Id) -> Id {
-        self.make_node(PegBody::PureOp(Expr::Op(ValueOps::Mul, vec![l, r])))
+        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Mul, vec![l, r])))
     }
 
     fn phi(&mut self, if_: Id, then: Id, else_: Id) -> Id {

@@ -15,7 +15,7 @@ use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use petgraph::{algo::dominators::Dominators, stable_graph::NodeIndex};
 
-use crate::cfg::{ret_id, state_id, Annotation, BranchOp, Cfg, CondVal, Identifier};
+use crate::cfg::{ret_id, Annotation, BranchOp, Cfg, CondVal, Identifier};
 use crate::rvsdg::Result;
 
 use super::live_variables::{live_variables, Names};
@@ -27,17 +27,17 @@ use super::{
 
 pub(crate) fn cfg_func_to_rvsdg(cfg: &mut Cfg) -> Result<RvsdgFunction> {
     cfg.restructure();
-    let mut analysis = live_variables(cfg);
+    let analysis = live_variables(cfg);
     let dom = dominators::simple_fast(&cfg.graph, cfg.entry);
-    let state_var = analysis.intern.intern(state_id());
     let mut builder = RvsdgBuilder {
         cfg,
         expr: Default::default(),
         analysis,
         dom,
-        state_var,
         store: Default::default(),
     };
+
+    let state_var = builder.analysis.state_var;
 
     for (i, arg) in builder.cfg.args.iter().enumerate() {
         let arg_var = builder.analysis.intern.intern(&arg.name);
@@ -81,7 +81,6 @@ pub(crate) struct RvsdgBuilder<'a> {
     analysis: LiveVariableAnalysis,
     dom: Dominators<NodeIndex>,
     store: HashMap<VarId, Operand>,
-    state_var: VarId,
 }
 
 impl<'a> RvsdgBuilder<'a> {
@@ -259,7 +258,7 @@ impl<'a> RvsdgBuilder<'a> {
         let mut outputs = Vec::<Vec<Operand>>::new();
         let live_vars = self.analysis.var_state(block).unwrap();
 
-        // Not all variables that are live have necessarily been bound yet.
+        // Not all live variables have necessarily been bound yet.
         // `input_vars` and `output_vars` store the variables that are bound.
         let mut input_vars = Vec::with_capacity(live_vars.live_in.len());
         let mut output_vars = Vec::new();
@@ -401,12 +400,12 @@ impl<'a> RvsdgBuilder<'a> {
                     ValueOps::Call => {
                         let dest_var = self.analysis.intern.intern(dest);
                         let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
-                        ops.push(self.store[&self.state_var]);
+                        ops.push(self.store[&self.analysis.state_var]);
                         let expr = Expr::Call((&funcs[0]).into(), ops, 2);
                         let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                         self.store.insert(dest_var, Operand::Id(expr_id));
                         self.store
-                            .insert(self.state_var, Operand::Project(1, expr_id));
+                            .insert(self.analysis.state_var, Operand::Project(1, expr_id));
                     }
                     _ => {
                         let dest_var = self.analysis.intern.intern(dest);
@@ -427,10 +426,11 @@ impl<'a> RvsdgBuilder<'a> {
                     ..
                 } => {
                     let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
-                    ops.push(self.store[&self.state_var]);
+                    ops.push(self.store[&self.analysis.state_var]);
                     let expr = Expr::Call((&funcs[0]).into(), ops, 1);
                     let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
-                    self.store.insert(self.state_var, Operand::Id(expr_id));
+                    self.store
+                        .insert(self.analysis.state_var, Operand::Id(expr_id));
                     debug_assert_eq!(funcs.len(), 1);
                 }
                 Instruction::Effect {
@@ -440,10 +440,11 @@ impl<'a> RvsdgBuilder<'a> {
                     ..
                 } => {
                     let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
-                    ops.push(self.store[&self.state_var]);
+                    ops.push(self.store[&self.analysis.state_var]);
                     let expr = Expr::Print(ops);
                     let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
-                    self.store.insert(self.state_var, Operand::Id(expr_id));
+                    self.store
+                        .insert(self.analysis.state_var, Operand::Id(expr_id));
                 }
                 Instruction::Effect { op, pos, .. } => {
                     // Two notes here:

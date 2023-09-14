@@ -33,7 +33,7 @@ impl PegFunction {
             let mut js = Vec::new();
             let node = match node {
                 PegBody::Arg(arg) => format!("arg {arg}"),
-                PegBody::PureOp(expr) => match expr {
+                PegBody::BasicOp(expr) => match expr {
                     Expr::Op(f, xs) => {
                         js = xs.to_vec();
                         format!("{f}")

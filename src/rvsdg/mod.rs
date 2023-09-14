@@ -195,6 +195,19 @@ pub(crate) fn cfg_to_rvsdg(cfg: &CfgProgram) -> std::result::Result<RvsdgProgram
     Ok(RvsdgProgram { functions })
 }
 
+/// The result of a function, as an egglog expression.
+pub enum EgglogFunctionResult {
+    /// The result of a function with no return values (namely, the "state edge"
+    /// only).
+    StateOnly(egglog::ast::Expr),
+    StateAndValue {
+        /// The outgoing state edge for the function.
+        state: egglog::ast::Expr,
+        /// The function return value.
+        value: egglog::ast::Expr,
+    },
+}
+
 impl RvsdgFunction {
     fn expr_to_egglog_expr(&self, expr: &Expr<Operand>) -> egglog::ast::Expr {
         use egglog::ast::{Expr::*, Literal::*};
@@ -303,13 +316,13 @@ impl RvsdgFunction {
         }
     }
 
-    pub fn to_egglog_expr(&self) -> egglog::ast::Expr {
-        // There might be multiple results in the future,
-        // e.g., one for return value and one for effect
+    pub fn to_egglog_expr(&self) -> EgglogFunctionResult {
+        let state = self.operand_to_egglog_expr(&self.state);
         if let Some(result) = &self.result {
-            self.operand_to_egglog_expr(result)
+            let value = self.operand_to_egglog_expr(result);
+            EgglogFunctionResult::StateAndValue { state, value }
         } else {
-            panic!("A function with no output is a noop")
+            EgglogFunctionResult::StateOnly(state)
         }
     }
 
@@ -430,16 +443,22 @@ impl RvsdgFunction {
         }
     }
 
-    pub fn egglog_expr_to_function(func: &egglog::ast::Expr, n_args: usize) -> RvsdgFunction {
+    pub fn egglog_expr_to_function(res: &EgglogFunctionResult, n_args: usize) -> RvsdgFunction {
         let mut nodes = vec![];
-        let result = Self::egglog_expr_to_operand(func, &mut nodes);
+        let (result, state) = match res {
+            EgglogFunctionResult::StateOnly(state) => {
+                (None, Self::egglog_expr_to_operand(state, &mut nodes))
+            }
+            EgglogFunctionResult::StateAndValue { state, value } => (
+                Some(Self::egglog_expr_to_operand(value, &mut nodes)),
+                Self::egglog_expr_to_operand(state, &mut nodes),
+            ),
+        };
         RvsdgFunction {
             n_args,
             nodes,
-            result: Some(result),
-            // For now, assume that egglog expressions are not stateful, so we
-            // "pass through" the state edge.
-            state: Operand::Arg(n_args),
+            result,
+            state,
         }
     }
 }

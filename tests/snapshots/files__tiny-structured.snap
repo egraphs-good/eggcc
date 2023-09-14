@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: result.visualization
+---
+main {
+block:
+ v: int = const 5;
+ print v;
+ return
+
+}

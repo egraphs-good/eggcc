@@ -2,7 +2,12 @@ use crate::peg::rvsdg_to_peg;
 use crate::Optimizer;
 use hashbrown::HashMap;
 use petgraph::dot::Dot;
-use std::{ffi::OsStr, fmt::Display, io, path::PathBuf};
+use std::{
+    ffi::OsStr,
+    fmt::{Display, Formatter},
+    io,
+    path::PathBuf,
+};
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -176,6 +181,126 @@ impl DebugVisualizations {
                 std::io::ErrorKind::Other,
                 "dot program was killed by a signal",
             )),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum RunType {
+    StructuredConversion,
+    RvsdgConversion,
+    NaiiveOptimization,
+}
+
+impl Display for RunType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RunType::StructuredConversion => write!(f, "structured"),
+            RunType::RvsdgConversion => write!(f, "rvsdg"),
+            RunType::NaiiveOptimization => write!(f, "naiive"),
+        }
+    }
+}
+
+impl RunType {
+    pub fn produces_bril(&self) -> bool {
+        match self {
+            RunType::StructuredConversion => false,
+            RunType::RvsdgConversion => false,
+            RunType::NaiiveOptimization => true,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Run {
+    pub path: PathBuf,
+    pub test_type: RunType,
+    // Also interpret the resulting program
+    pub interp: bool,
+}
+
+#[derive(Clone)]
+pub struct RunOutput {
+    // a visualization of the result
+    pub visualization: String,
+    // a viable file extension for the visualization
+    pub visualization_file_extension: String,
+    // if the result was interpreted, the stdout of interpreting it
+    pub result_interpreted: Option<String>,
+    pub original_interpreted: String,
+}
+
+impl Run {
+    pub fn all_configurations_for(path: PathBuf) -> Vec<Run> {
+        let mut res = vec![];
+        for test_type in [
+            RunType::StructuredConversion,
+            //RunType::RvsdgConversion,
+            RunType::NaiiveOptimization,
+        ] {
+            let default = Run {
+                path: path.clone(),
+                test_type,
+                interp: false,
+            };
+            res.push(default.clone());
+            if test_type.produces_bril() {
+                let interp = Run {
+                    interp: true,
+                    ..default
+                };
+                res.push(interp);
+            }
+        }
+        res
+    }
+
+    pub fn name(&self) -> String {
+        let mut name = self.path.file_stem().unwrap().to_str().unwrap().to_string();
+        name = format!("{}-{}", name, self.test_type);
+        if self.interp {
+            name = format!("{}-interp", name);
+        }
+        name
+    }
+
+    pub fn run(&self) -> RunOutput {
+        let program_read = std::fs::read_to_string(self.path.clone()).unwrap();
+        let args = Optimizer::parse_bril_args(&program_read);
+        let original_interpreted = Optimizer::interp(&program_read, args.clone(), None);
+        let (visualization, visualization_file_extension) = match self.test_type {
+            RunType::StructuredConversion => {
+                let structured = Optimizer::parse_to_structured(&program_read).unwrap();
+                (structured.to_string(), ".txt")
+            }
+            RunType::RvsdgConversion => {
+                let parsed = Optimizer::parse_bril(&program_read).unwrap();
+                let rvsdg = Optimizer::program_to_rvsdg(&parsed).unwrap();
+                let svg = rvsdg.to_svg();
+                (svg, ".svg")
+            }
+            RunType::NaiiveOptimization => {
+                let parsed = Optimizer::parse_bril(&program_read).unwrap();
+
+                let mut optimizer = Optimizer::default();
+                let res = optimizer.optimize(&parsed).unwrap();
+
+                (format!("{}", res), ".bril")
+            }
+        };
+
+        let result_interpreted = if self.interp {
+            Some(Optimizer::interp(&program_read, args.clone(), None))
+        } else {
+            None
+        };
+
+        RunOutput {
+            visualization,
+            visualization_file_extension: visualization_file_extension.to_string(),
+            result_interpreted,
+            original_interpreted,
         }
     }
 }

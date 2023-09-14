@@ -61,7 +61,7 @@ macro_rules! cfg_test {
 
 cfg_test!(
     fib_cfg,
-    include_str!("../../tests/fib.bril"),
+    include_str!("../../tests/brils/failing/mem/fib.bril"),
     [
         ENTRY  = (Jmp) => "loop",
         "loop" = (Cond { arg: "cond".into(), val: true.into() }) => "body",
@@ -73,7 +73,7 @@ cfg_test!(
 
 cfg_test!(
     queen,
-    include_str!("../../tests/small/queens-func.bril"),
+    include_str!("../../tests/small/failing/queens-func.bril"),
     [
         ENTRY = (Cond { arg: "ret_cond".into(), val: true.into() }) => "next.ret",
         ENTRY = (Cond { arg: "ret_cond".into(), val: false.into() }) => "for.cond",
@@ -90,7 +90,7 @@ cfg_test!(
 
 cfg_test!(
     implicit_return,
-    include_str!("../../tests/small/implicit-return.bril"),
+    include_str!("../../tests/small/failing/implicit-return.bril"),
     [
         ENTRY = (Jmp) => EXIT,
     ]
@@ -110,7 +110,7 @@ cfg_test!(
 
 cfg_test!(
     block_diamond,
-    include_str!("../../tests/small/block-diamond.bril"),
+    include_str!("../../tests/small/failing/block-diamond.bril"),
     [
         ENTRY = (Cond { arg: "a_cond".into(), val: true.into() }) => "B",
         ENTRY = (Cond { arg: "a_cond".into(), val: false.into() }) => "D",
@@ -125,7 +125,7 @@ cfg_test!(
 
 cfg_test!(
     unstructured,
-    include_str!("../../tests/small/unstructured.bril"),
+    include_str!("../../tests/small/should_fail/unstructured.bril"),
     [
         ENTRY = (Cond { arg: "a_cond".into(), val: true.into() }) => "B",
         ENTRY = (Cond { arg: "a_cond".into(), val: false.into() }) => "C",
@@ -150,7 +150,9 @@ cfg_test!(
 
 #[test]
 fn unstructured_causes_error() {
-    let func = &parse_from_string(include_str!("../../tests/small/unstructured.bril"));
+    let func = &parse_from_string(include_str!(
+        "../../tests/small/should_fail/unstructured.bril"
+    ));
     assert!(matches!(
         cfg_to_structured(&program_to_cfg(func)),
         Err(EggCCError::UnstructuredControlFlow)

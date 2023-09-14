@@ -72,19 +72,10 @@ pub fn visualize(program_path: PathBuf, output_dir: PathBuf) -> io::Result<()> {
             result.visualization_file_extension
         ));
         let mut file = File::create(output_path)?;
-        file.write_all(result.visualization.as_bytes())?;
-
-        if result.visualization_file_extension == ".dot" {
-            let output_path = output_dir.join(format!("{}.svg", run.name()));
-            run_cmd_line(
-                "dot",
-                [
-                    "-Tsvg",
-                    "-o",
-                    &output_path.into_os_string().into_string().unwrap(),
-                ],
-                &result.visualization,
-            )?;
+        if let Some(interpreted) = result.result_interpreted {
+            file.write_all(interpreted.as_bytes())?;
+        } else {
+            file.write_all(result.visualization.as_bytes())?;
         }
     }
 
@@ -94,7 +85,7 @@ pub fn visualize(program_path: PathBuf, output_dir: PathBuf) -> io::Result<()> {
 /// Invokes some program with the given arguments, piping the given input to the program.
 /// Returns an error if the program returns a non-zero exit code.
 /// Code adapted from https://github.com/egraphs-good/egg/blob/e7845c5ae34267256b544c8e6b5bc36d91d096d2/src/dot.rs#L127
-pub fn run_cmd_line<S1, S2, I>(program: S1, args: I, input: &str) -> std::io::Result<()>
+pub fn run_cmd_line<S1, S2, I>(program: S1, args: I, input: &str) -> std::io::Result<String>
 where
     S1: AsRef<OsStr>,
     S2: AsRef<OsStr>,
@@ -105,19 +96,24 @@ where
     let mut child = Command::new(program)
         .args(args)
         .stdin(Stdio::piped())
-        .stdout(Stdio::null())
+        .stdout(Stdio::piped())
         .spawn()?;
+
     let stdin = child.stdin.as_mut().expect("Failed to open stdin");
     write!(stdin, "{}", input)?;
-    match child.wait()?.code() {
-        Some(0) => Ok(()),
+
+    let output = child.wait_with_output()?;
+    match output.status.code() {
+        Some(0) => Ok(String::from_utf8(output.stdout).map_err(|e| {
+            std::io::Error::new(std::io::ErrorKind::Other, format!("utf8 error: {}", e))
+        })?),
         Some(e) => Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            format!("dot program returned error code {}", e),
+            format!("program returned error code {}", e),
         )),
         None => Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            "dot program was killed by a signal",
+            "program was killed by a signal",
         )),
     }
 }
@@ -192,7 +188,7 @@ impl Run {
         let mut res = vec![];
         for test_type in [
             RunType::StructuredConversion,
-            //RunType::RvsdgConversion,
+            RunType::RvsdgConversion,
             RunType::NaiiveOptimization,
         ] {
             let default = Run {

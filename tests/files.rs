@@ -19,15 +19,8 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
 
     for entry in glob::glob(glob).unwrap() {
         let f = entry.unwrap();
-        let name = f
-            .file_stem()
-            .unwrap()
-            .to_string_lossy()
-            .replace(['.', '-', ' '], "_");
 
-        // TODO optimizer doesn't support these yet
-        let banned = ["queens_func", "unstructured", "implicit_return", "fib"];
-        if banned.iter().any(|b| name.contains(b)) || f.to_str().unwrap().contains("failing") {
+        if f.to_str().unwrap().contains("should_fail") || f.to_str().unwrap().contains("failing") {
             continue;
         }
 

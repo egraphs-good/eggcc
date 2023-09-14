@@ -1,0 +1,31 @@
+---
+source: tests/files.rs
+expression: result.visualization
+---
+@main(input: int) {
+.entry___:
+  one: int = const 1;
+  i: int = const 0;
+.sblock___0:
+.sblock___1:
+.loop:
+  cond: bool = lt i input;
+  br cond .sblock___5 .sblock___6;
+.sblock___5:
+  jmp .sblock___3;
+.sblock___6:
+  jmp .sblock___4;
+.sblock___4:
+.done:
+  donebody: int = const 1;
+  ret;
+.sblock___7:
+.exit___:
+.sblock___3:
+.body:
+  i: int = add i one;
+  bodyvar: int = const 1;
+  jmp .sblock___1;
+.sblock___2:
+}
+

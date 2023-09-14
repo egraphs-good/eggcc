@@ -31,7 +31,7 @@ impl PegFunction {
 impl PegBody {
     fn simulate(&self, args: &[Literal], nodes: &[PegBody], indices: &Indices) -> Literal {
         match self {
-            PegBody::PureOp(expr) => match expr {
+            PegBody::BasicOp(expr) => match expr {
                 Expr::Op(op, xs) => {
                     let xs: Vec<_> = xs
                         .iter()
@@ -45,6 +45,7 @@ impl PegBody {
                     }
                 }
                 Expr::Call(..) => panic!("can't simulate inter-function calls"),
+                Expr::Print(..) => panic!("can't simulate print"),
                 Expr::Const(ConstOps::Const, _, literal) => literal.clone(),
             },
             PegBody::Arg(arg) => args[*arg].clone(),

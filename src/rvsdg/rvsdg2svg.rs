@@ -509,13 +509,16 @@ impl Region {
 
 fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) {
     let (node, operands): (Node, Vec<Operand>) = match &nodes[index] {
-        RvsdgBody::PureOp(Expr::Op(f, xs)) => {
+        RvsdgBody::BasicOp(Expr::Op(f, xs)) => {
             (Node::Unit(format!("{f}"), xs.len(), 1), xs.to_vec())
         }
-        RvsdgBody::PureOp(Expr::Call(f, xs)) => {
-            (Node::Unit(f.to_string(), xs.len(), 1), xs.to_vec())
+        RvsdgBody::BasicOp(Expr::Call(f, xs, n_outputs)) => {
+            (Node::Unit(f.to_string(), xs.len(), *n_outputs), xs.to_vec())
         }
-        RvsdgBody::PureOp(Expr::Const(ConstOps::Const, _, v)) => {
+        RvsdgBody::BasicOp(Expr::Print(xs)) => {
+            (Node::Unit("PRINT".into(), xs.len(), 2), xs.to_vec())
+        }
+        RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, _, v)) => {
             (Node::Unit(format!("{v}"), 0, 1), vec![])
         }
         RvsdgBody::Gamma {
@@ -571,8 +574,10 @@ fn reachable_nodes(reachable: &mut BTreeSet<Id>, all: &[RvsdgBody], output: Oper
     };
     if reachable.insert(id) {
         let inputs = match &all[id] {
-            RvsdgBody::PureOp(Expr::Op(_, xs)) | RvsdgBody::PureOp(Expr::Call(_, xs)) => xs.clone(),
-            RvsdgBody::PureOp(Expr::Const(..)) => vec![],
+            RvsdgBody::BasicOp(Expr::Op(_, xs))
+            | RvsdgBody::BasicOp(Expr::Call(_, xs, _))
+            | RvsdgBody::BasicOp(Expr::Print(xs)) => xs.clone(),
+            RvsdgBody::BasicOp(Expr::Const(..)) => vec![],
             RvsdgBody::Gamma { pred, inputs, .. } => once(pred).chain(inputs).copied().collect(),
             RvsdgBody::Theta { inputs, .. } => inputs.clone(),
         };
@@ -651,8 +656,13 @@ impl RvsdgFunction {
     }
 
     pub(crate) fn to_region(&self) -> Region {
-        let dsts: Vec<_> = self.result.iter().copied().collect();
-        mk_region(self.n_args, &dsts, &self.nodes)
+        let dsts: Vec<_> = self
+            .result
+            .iter()
+            .copied()
+            .chain(once(self.state))
+            .collect();
+        mk_region(self.n_args + 1, &dsts, &self.nodes)
     }
 }
 
@@ -663,87 +673,87 @@ mod tests {
 
     #[test]
     fn rvsdg2svg_basic() {
-        let svg_old = Region {
-            srcs: 2,
-            dsts: 1,
-            nodes: BTreeMap::from([
+        let expected_region = Region {
+            srcs: 3,
+            dsts: 2,
+            nodes: BTreeMap::from_iter([
                 (
-                    0,
+                    2,
                     Node::Match(vec![
                         (
-                            "0".to_owned(),
+                            "0".into(),
                             Region {
                                 srcs: 2,
                                 dsts: 1,
-                                nodes: BTreeMap::from([(0, Node::Unit("0".to_owned(), 0, 1))]),
+                                nodes: BTreeMap::from_iter([(0, Node::Unit("0".into(), 0, 1))]),
                                 edges: vec![((Some(0), 0), (None, 0))],
                             },
                         ),
                         (
-                            "1".to_owned(),
+                            "1".into(),
                             Region {
                                 srcs: 2,
                                 dsts: 1,
-                                nodes: BTreeMap::from([(0, Node::Unit("add".to_owned(), 2, 1))]),
+                                nodes: BTreeMap::from_iter([(1, Node::Unit("add".into(), 2, 1))]),
                                 edges: vec![
-                                    ((None, 0), (Some(0), 0)),
-                                    ((None, 1), (Some(0), 1)),
-                                    ((Some(0), 0), (None, 0)),
+                                    ((None, 0), (Some(1), 0)),
+                                    ((None, 1), (Some(1), 1)),
+                                    ((Some(1), 0), (None, 0)),
                                 ],
                             },
                         ),
                     ]),
                 ),
                 (
-                    1,
+                    9,
                     Node::Loop(Region {
                         srcs: 3,
                         dsts: 4,
-                        nodes: BTreeMap::from([
-                            (0, Node::Unit("add".to_owned(), 2, 1)),
-                            (1, Node::Unit("1".to_owned(), 0, 1)),
-                            (2, Node::Unit("5".to_owned(), 0, 1)),
-                            (3, Node::Unit("mul".to_owned(), 2, 1)),
-                            (4, Node::Unit("add".to_owned(), 2, 1)),
-                            (5, Node::Unit("eq".to_owned(), 2, 1)),
+                        nodes: BTreeMap::from_iter([
+                            (3, Node::Unit("add".into(), 2, 1)),
+                            (4, Node::Unit("1".into(), 0, 1)),
+                            (5, Node::Unit("5".into(), 0, 1)),
+                            (6, Node::Unit("mul".into(), 2, 1)),
+                            (7, Node::Unit("add".into(), 2, 1)),
+                            (8, Node::Unit("eq".into(), 2, 1)),
                         ]),
                         edges: vec![
-                            ((None, 0), (Some(0), 0)),
-                            ((Some(1), 0), (Some(0), 1)),
                             ((None, 0), (Some(3), 0)),
-                            ((Some(2), 0), (Some(3), 1)),
-                            ((Some(2), 0), (Some(4), 0)),
-                            ((None, 2), (Some(4), 1)),
-                            ((Some(5), 0), (None, 0)),
-                            ((Some(0), 0), (None, 1)),
-                            ((Some(3), 0), (None, 2)),
-                            ((Some(4), 0), (None, 3)),
-                            ((Some(0), 0), (Some(5), 0)),
-                            ((Some(2), 0), (Some(5), 1)),
+                            ((Some(4), 0), (Some(3), 1)),
+                            ((None, 0), (Some(6), 0)),
+                            ((Some(5), 0), (Some(6), 1)),
+                            ((Some(5), 0), (Some(7), 0)),
+                            ((None, 2), (Some(7), 1)),
+                            ((Some(3), 0), (Some(8), 0)),
+                            ((Some(5), 0), (Some(8), 1)),
+                            ((Some(8), 0), (None, 0)),
+                            ((Some(3), 0), (None, 1)),
+                            ((Some(6), 0), (None, 2)),
+                            ((Some(7), 0), (None, 3)),
                         ],
                     }),
                 ),
-                (2, Node::Unit("add".to_owned(), 2, 1)),
+                (10, Node::Unit("add".into(), 2, 1)),
             ]),
             edges: vec![
-                ((None, 0), (Some(0), 0)),
-                ((None, 0), (Some(0), 1)),
-                ((None, 1), (Some(0), 2)),
-                ((None, 0), (Some(1), 0)),
-                ((None, 1), (Some(1), 1)),
-                ((None, 0), (Some(1), 2)),
-                ((Some(0), 0), (Some(2), 0)),
-                ((Some(1), 1), (Some(2), 1)),
-                ((Some(2), 0), (None, 0)),
+                ((None, 0), (Some(2), 0)),
+                ((None, 0), (Some(2), 1)),
+                ((None, 1), (Some(2), 2)),
+                ((None, 0), (Some(9), 0)),
+                ((None, 1), (Some(9), 1)),
+                ((None, 0), (Some(9), 2)),
+                ((Some(2), 0), (Some(10), 0)),
+                ((Some(9), 1), (Some(10), 1)),
+                ((Some(10), 0), (None, 0)),
+                ((None, 2), (None, 1)),
             ],
-        }
-        .to_svg();
+        };
 
         let svg_new = RvsdgFunction {
             n_args: 2,
             nodes: vec![
-                RvsdgBody::PureOp(Expr::Const(ConstOps::Const, Type::Int, Literal::Int(0))),
-                RvsdgBody::PureOp(Expr::Op(
+                RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Type::Int, Literal::Int(0))),
+                RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Add,
                     vec![Operand::Arg(0), Operand::Arg(1)],
                 )),
@@ -752,35 +762,36 @@ mod tests {
                     inputs: vec![Operand::Arg(0), Operand::Arg(1)],
                     outputs: vec![vec![Operand::Id(0)], vec![Operand::Id(1)]],
                 },
-                RvsdgBody::PureOp(Expr::Op(
+                RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Add,
                     vec![Operand::Arg(0), Operand::Id(4)],
                 )),
-                RvsdgBody::PureOp(Expr::Const(ConstOps::Const, Type::Int, Literal::Int(1))),
-                RvsdgBody::PureOp(Expr::Const(ConstOps::Const, Type::Int, Literal::Int(5))),
-                RvsdgBody::PureOp(Expr::Op(
+                RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Type::Int, Literal::Int(1))),
+                RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Type::Int, Literal::Int(5))),
+                RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Mul,
                     vec![Operand::Arg(0), Operand::Id(5)],
                 )),
-                RvsdgBody::PureOp(Expr::Op(
+                RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Add,
                     vec![Operand::Id(5), Operand::Arg(2)],
                 )),
-                RvsdgBody::PureOp(Expr::Op(ValueOps::Eq, vec![Operand::Id(3), Operand::Id(5)])),
+                RvsdgBody::BasicOp(Expr::Op(ValueOps::Eq, vec![Operand::Id(3), Operand::Id(5)])),
                 RvsdgBody::Theta {
                     pred: Operand::Id(8),
                     inputs: vec![Operand::Arg(0), Operand::Arg(1), Operand::Arg(0)],
                     outputs: vec![Operand::Id(3), Operand::Id(6), Operand::Id(7)],
                 },
-                RvsdgBody::PureOp(Expr::Op(
+                RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Add,
                     vec![Operand::Id(2), Operand::Project(1, 9)],
                 )),
             ],
             result: Some(Operand::Id(10)),
+            state: Operand::Arg(2),
         }
         .to_svg();
 
-        assert_eq!(svg_old, svg_new);
+        assert_eq!(expected_region.to_svg(), svg_new);
     }
 }

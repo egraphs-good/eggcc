@@ -37,10 +37,15 @@ pub(crate) fn cfg_func_to_rvsdg(cfg: &mut Cfg) -> Result<RvsdgFunction> {
         store: Default::default(),
     };
 
+    let state_var = builder.analysis.state_var;
+
     for (i, arg) in builder.cfg.args.iter().enumerate() {
         let arg_var = builder.analysis.intern.intern(&arg.name);
         builder.store.insert(arg_var, Operand::Arg(i));
     }
+    builder
+        .store
+        .insert(state_var, Operand::Arg(builder.cfg.args.len()));
 
     let mut cur = builder.cfg.entry;
     while let Some(next) = builder.try_loop(cur)? {
@@ -60,10 +65,13 @@ pub(crate) fn cfg_func_to_rvsdg(cfg: &mut Cfg) -> Result<RvsdgFunction> {
     } else {
         None
     };
+    let n_args = builder.cfg.args.len();
+    let state = builder.store[&state_var];
     Ok(RvsdgFunction {
-        n_args: builder.cfg.args.len(),
+        n_args,
         nodes: builder.expr,
         result,
+        state,
     })
 }
 
@@ -109,16 +117,16 @@ impl<'a> RvsdgBuilder<'a> {
         // are the loop inputs.
         let live_vars = self.analysis.var_state(block).unwrap();
 
-        let mut block_params = live_vars.live_in.clone();
-        block_params.merge(&live_vars.live_out);
-
+        let mut input_vars = Vec::with_capacity(live_vars.live_in.len());
         let mut inputs = Vec::new();
         let pos = self.cfg.graph[block].pos.clone();
-        for (i, input) in block_params.iter().enumerate() {
-            // Record the initial value of the loop variable
-            inputs.push(get_op(input, &pos, &self.store, &self.analysis.intern)?);
-            // Mark it as an argument to the loop.
-            self.store.insert(input, Operand::Arg(i));
+        let mut arg = 0;
+        for input in live_vars.live_in.iter() {
+            let Some(op) = self.store.get(&input).copied() else { continue; };
+            input_vars.push(input);
+            inputs.push(op);
+            self.store.insert(input, Operand::Arg(arg));
+            arg += 1;
         }
 
         // Now we "run" the loop until we reach the end:
@@ -136,7 +144,7 @@ impl<'a> RvsdgBuilder<'a> {
         self.translate_block(tail)?;
 
         let mut outputs = Vec::with_capacity(inputs.len());
-        for input in block_params.iter() {
+        for input in input_vars.iter().copied() {
             outputs.push(get_op(input, &pos, &self.store, &self.analysis.intern)?);
         }
 
@@ -163,7 +171,7 @@ impl<'a> RvsdgBuilder<'a> {
                 // Predicate is just "true"
                 Operand::Id(get_id(
                     &mut self.expr,
-                    RvsdgBody::PureOp(Expr::Const(
+                    RvsdgBody::BasicOp(Expr::Const(
                         ConstOps::Const,
                         Type::Bool,
                         Literal::Bool(true),
@@ -184,7 +192,7 @@ impl<'a> RvsdgBuilder<'a> {
                     // We need to negate the operand
                     Operand::Id(get_id(
                         &mut self.expr,
-                        RvsdgBody::PureOp(Expr::Op(ValueOps::Not, vec![op])),
+                        RvsdgBody::BasicOp(Expr::Op(ValueOps::Not, vec![op])),
                     ))
                 } else {
                     op
@@ -201,7 +209,7 @@ impl<'a> RvsdgBuilder<'a> {
             },
         );
 
-        for (i, var) in block_params.iter().enumerate() {
+        for (i, var) in input_vars.iter().copied().enumerate() {
             self.store.insert(var, Operand::Project(i, theta_node));
         }
         Ok(self
@@ -249,15 +257,21 @@ impl<'a> RvsdgBuilder<'a> {
         let mut inputs = Vec::<Operand>::new();
         let mut outputs = Vec::<Vec<Operand>>::new();
         let live_vars = self.analysis.var_state(block).unwrap();
+
+        // Not all live variables have necessarily been bound yet.
+        // `input_vars` and `output_vars` store the variables that are bound.
+        let mut input_vars = Vec::with_capacity(live_vars.live_in.len());
+        let mut output_vars = Vec::new();
         for var in live_vars.live_in.iter() {
-            inputs.push(get_op(var, &None, &self.store, &self.analysis.intern)?);
+            let Some(op) = self.store.get(&var).copied() else { continue; };
+            inputs.push(op);
+            input_vars.push(var);
         }
 
         let mut next = None;
         for (_, succ) in succs {
             // First, make sure that all inputs are correctly bound to inputs to the block.
-            let live_vars = self.analysis.var_state(block).unwrap();
-            for (i, var) in live_vars.live_in.iter().enumerate() {
+            for (i, var) in input_vars.iter().copied().enumerate() {
                 self.store.insert(var, Operand::Arg(i));
             }
             // Loop until we reach a join point.
@@ -275,14 +289,16 @@ impl<'a> RvsdgBuilder<'a> {
                 }
             }
 
-            let pos = &self.cfg.graph[curr].pos;
-
             // Use the join point's live outputs
             let live_vars = self.analysis.var_state(curr).unwrap();
             let mut output_vec = Vec::new();
+            let fill_output = output_vars.is_empty();
             for var in live_vars.live_in.iter() {
-                let op = get_op(var, pos, &self.store, &self.analysis.intern)?;
+                let Some(op) = self.store.get(&var).copied() else { continue; };
                 output_vec.push(op);
+                if fill_output {
+                    output_vars.push(var);
+                }
             }
             outputs.push(output_vec);
             if let Some(next) = next {
@@ -309,14 +325,7 @@ impl<'a> RvsdgBuilder<'a> {
             },
         );
         // Remap all input variables to the output of this node.
-        for (i, var) in self
-            .analysis
-            .var_state(next)
-            .unwrap()
-            .live_in
-            .iter()
-            .enumerate()
-        {
+        for (i, var) in output_vars.iter().copied().enumerate() {
             self.store.insert(var, Operand::Project(i, gamma_node));
         }
 
@@ -358,7 +367,7 @@ impl<'a> RvsdgBuilder<'a> {
                     let dest_var = self.analysis.intern.intern(dest);
                     let const_id = get_id(
                         &mut self.expr,
-                        RvsdgBody::PureOp(Expr::Const(*op, const_type.clone(), value.clone())),
+                        RvsdgBody::BasicOp(Expr::Const(*op, const_type.clone(), value.clone())),
                     );
                     self.store.insert(dest_var, Operand::Id(const_id));
                 }
@@ -388,15 +397,21 @@ impl<'a> RvsdgBuilder<'a> {
                         };
                         self.store.insert(dest_var, arg_id);
                     }
+                    ValueOps::Call => {
+                        let dest_var = self.analysis.intern.intern(dest);
+                        let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
+                        ops.push(self.store[&self.analysis.state_var]);
+                        let expr = Expr::Call((&funcs[0]).into(), ops, 2);
+                        let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
+                        self.store.insert(dest_var, Operand::Id(expr_id));
+                        self.store
+                            .insert(self.analysis.state_var, Operand::Project(1, expr_id));
+                    }
                     _ => {
                         let dest_var = self.analysis.intern.intern(dest);
                         let ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
-                        let expr = if let ValueOps::Call = op {
-                            Expr::Call((&funcs[0]).into(), ops)
-                        } else {
-                            Expr::Op(*op, ops)
-                        };
-                        let expr_id = get_id(&mut self.expr, RvsdgBody::PureOp(expr));
+                        let expr = Expr::Op(*op, ops);
+                        let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                         self.store.insert(dest_var, Operand::Id(expr_id));
                     }
                 },
@@ -410,11 +425,26 @@ impl<'a> RvsdgBuilder<'a> {
                     pos,
                     ..
                 } => {
-                    let _ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
+                    let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
+                    ops.push(self.store[&self.analysis.state_var]);
+                    let expr = Expr::Call((&funcs[0]).into(), ops, 1);
+                    let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
+                    self.store
+                        .insert(self.analysis.state_var, Operand::Id(expr_id));
                     debug_assert_eq!(funcs.len(), 1);
-                    // For now, there's nothing more to do when calling
-                    // functions that have no return value. Eventually we'll
-                    // need it though!
+                }
+                Instruction::Effect {
+                    op: EffectOps::Print,
+                    args,
+                    pos,
+                    ..
+                } => {
+                    let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
+                    ops.push(self.store[&self.analysis.state_var]);
+                    let expr = Expr::Print(ops);
+                    let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
+                    self.store
+                        .insert(self.analysis.state_var, Operand::Id(expr_id));
                 }
                 Instruction::Effect { op, pos, .. } => {
                     // Two notes here:
@@ -438,7 +468,7 @@ impl<'a> RvsdgBuilder<'a> {
                 Annotation::AssignCond { dst, cond } => {
                     let id = get_id(
                         &mut self.expr,
-                        RvsdgBody::PureOp(Expr::Const(
+                        RvsdgBody::BasicOp(Expr::Const(
                             ConstOps::Const,
                             Type::Int,
                             Literal::Int(*cond as i64),

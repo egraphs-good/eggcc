@@ -22,8 +22,8 @@ mod tests;
 /// An expression, expressed using PEGs.
 #[derive(Debug, PartialEq)]
 pub(crate) enum PegBody {
-    /// A pure operation.
-    PureOp(Expr<Id>),
+    /// A basic expression.
+    BasicOp(Expr<Id>),
     /// An argument of the enclosing function.
     Arg(usize),
     /// An if statement..
@@ -119,21 +119,25 @@ impl PegBuilder<'_> {
                     return *out;
                 }
                 match &self.rvsdgs[id] {
-                    // To translate a PureOp, translate all its arguments, then change ops to ids
-                    RvsdgBody::PureOp(expr) => {
+                    // To translate a BasicOp, translate all its arguments, then change ops to ids
+                    RvsdgBody::BasicOp(expr) => {
                         let expr = match expr {
                             Expr::Op(op, xs) => {
                                 Expr::Op(*op, xs.iter().map(|x| self.get_pegs(*x, scope)).collect())
                             }
-                            Expr::Call(f, xs) => Expr::Call(
+                            Expr::Call(f, xs, num_outputs) => Expr::Call(
                                 f.clone(),
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
+                                *num_outputs,
                             ),
+                            Expr::Print(xs) => {
+                                Expr::Print(xs.iter().map(|x| self.get_pegs(*x, scope)).collect())
+                            }
                             Expr::Const(o, t, l) => Expr::Const(*o, t.clone(), l.clone()),
                         };
                         assert_eq!(0, selected);
                         let out = self.pegs.len();
-                        self.pegs.push(PegBody::PureOp(expr));
+                        self.pegs.push(PegBody::BasicOp(expr));
                         self.memoize.insert((selected, id), out);
                         out
                     }

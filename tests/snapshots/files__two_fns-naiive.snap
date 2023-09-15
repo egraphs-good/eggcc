@@ -1,12 +1,13 @@
 ---
 source: tests/files.rs
-expression: "format!(\"{}\", res)"
+expression: result.visualization
 ---
 @main {
 .entry___:
   v0: int = const 1;
   v1: int = const 2;
-  v2: int = add v0 v1;
+  v2: int = const 3;
+  print v2;
   ret;
 .sblock___0:
 .exit___:
@@ -15,8 +16,8 @@ expression: "format!(\"{}\", res)"
 .entry___:
   v0: int = const 1;
   v1: int = const 2;
-  v2: int = sub v0 v1;
-  ret;
+  v2: int = const -1;
+  ret v2;
 .sblock___0:
 .exit___:
 }

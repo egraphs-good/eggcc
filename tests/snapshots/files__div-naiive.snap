@@ -1,0 +1,15 @@
+---
+source: tests/files.rs
+expression: result.visualization
+---
+@main {
+.entry___:
+  v0: int = const 9;
+  v1: int = const -20;
+  res: int = div v0 v1;
+  print res;
+  ret;
+.sblock___0:
+.exit___:
+}
+

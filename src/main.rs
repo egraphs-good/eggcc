@@ -1,9 +1,6 @@
 use clap::Parser;
-use eggcc::{util::DebugVisualizations, *};
-use std::{
-    io::{stdin, Read},
-    path::PathBuf,
-};
+use eggcc::util::{visualize, Run, RunType, TestProgram};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -11,29 +8,13 @@ struct Args {
     /// svgs for the rvsdg, cfgs, ect.
     #[clap(long)]
     debug_dir: Option<PathBuf>,
-    /// Don't perform optimization
-    #[clap(long)]
-    unoptimized: bool,
-    /// Output the structured form of the bril program,
-    /// which uses blocks, loops, and break
-    #[clap(long)]
-    structured: bool,
-    /// Convert the program to a structured cfg, and
-    /// output it as a bril program
-    #[clap(long)]
-    structured_cfg: bool,
-    /// Output the svg of the rvsdg for the program.
-    #[clap(long)]
-    rvsdg_svg: bool,
-    /// Output the egglog encoding of the program.
-    /// The egglog program can be run to optimize the program.
-    #[clap(long, verbatim_doc_comment)]
-    egglog_encoding: bool,
-    /// After optimization, output the structured form of the program
-    /// using blocks, loops, and break
-    #[clap(long)]
-    optimized_structured: bool,
-    /// Also evaluate the resulting program and output the results
+    /// Configure the output of the tool.
+    /// Options include a structured cfg, rvsdg,
+    /// or the egglog encoding of the program.
+    #[clap(long, default_value_t = RunType::NaiiveOptimization)]
+    run_mode: RunType,
+    /// Evaluate the resulting program and output
+    /// the result.
     #[clap(long)]
     interp: bool,
 
@@ -50,65 +31,33 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let mut input = String::new();
-    if args.file.to_str() == Some("-") {
-        stdin().read_to_string(&mut input).unwrap();
-    } else {
-        input = std::fs::read_to_string(args.file).unwrap();
-    }
-
-    let bril_args = if args.bril_args.is_empty() {
-        Optimizer::parse_bril_args(&input)
-    } else {
-        args.bril_args
-    };
-
-    let program = Optimizer::parse_bril(&input).unwrap();
 
     if let Some(debug_dir) = args.debug_dir {
-        let debug = DebugVisualizations::new(&input);
-
-        debug.write_output(debug_dir).unwrap();
+        if let Result::Err(error) = visualize(TestProgram::File(args.file.clone()), debug_dir) {
+            eprintln!("{}", error);
+            return;
+        }
     }
 
-    let result_program = if args.unoptimized {
-        println!("{}", program);
-        program
-    } else if args.rvsdg_svg {
-        let rvsdg = Optimizer::program_to_rvsdg(&program).unwrap();
-        println!("{}", rvsdg.to_svg());
-        program
-    } else if args.structured {
-        let structured = Optimizer::parse_to_structured(&input).unwrap();
-        println!("{}", structured);
-        structured.to_program()
-    } else if args.structured_cfg {
-        let prog = Optimizer::parse_to_structured(&input).unwrap().to_program();
-        println!("{}", prog);
-        prog
-    } else if args.egglog_encoding {
-        let structured = Optimizer::parse_to_structured(&input).unwrap();
-        let mut optimizer = Optimizer::default();
-        println!("{}", optimizer.structured_to_optimizer(&structured));
-        program
-    } else if args.optimized_structured {
-        let mut optimizer = Optimizer::default();
-        let optimized_structured = optimizer
-            .optimized_structured(&Optimizer::parse_bril(&input).unwrap())
-            .unwrap();
-        println!("{}", optimized_structured);
-        optimized_structured.to_program()
-    } else {
-        let mut optimizer = Optimizer::default();
-        let res = optimizer.optimize(&program).unwrap();
-        println!("{}", res);
-        res
+    if args.interp && !args.run_mode.produces_bril() {
+        eprintln!(
+            "Cannot interpret run type {} because it doesn't produce a bril program.",
+            args.run_mode
+        );
+        return;
+    }
+
+    let run = Run {
+        prog_with_args: TestProgram::File(args.file.clone()).read_program(),
+        test_type: args.run_mode,
+        interp: args.interp,
     };
 
-    if args.interp {
-        println!(
-            "{}",
-            Optimizer::interp(&format!("{}", result_program), bril_args, args.profile_out)
-        );
+    let result = run.run();
+
+    if result.result_interpreted.is_some() {
+        println!("{}", result.result_interpreted.unwrap());
+    } else {
+        println!("{}", result.visualization);
     }
 }

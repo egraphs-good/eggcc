@@ -8,6 +8,7 @@ use egglog::ast::Expr;
 use egglog::EGraph;
 use rvsdg::{RvsdgError, RvsdgProgram};
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Stdio;
@@ -59,6 +60,32 @@ fn run_command_with_stdin(command: &mut std::process::Command, input: String) ->
     .unwrap()
     .to_string()
 }
+#[derive(Clone, Copy)]
+pub enum RunType {
+    StructuredConversion,
+    RvsdgConversion,
+    NaiiveOptimization,
+}
+
+impl Display for RunType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RunType::StructuredConversion => write!(f, "structured"),
+            RunType::RvsdgConversion => write!(f, "rvsdg"),
+            RunType::NaiiveOptimization => write!(f, "naiive"),
+        }
+    }
+}
+
+impl RunType {
+    pub fn produces_bril(&self) -> bool {
+        match self {
+            RunType::StructuredConversion => false,
+            RunType::RvsdgConversion => false,
+            RunType::NaiiveOptimization => true,
+        }
+    }
+}
 
 pub struct Optimizer {
     pub num_iters: usize,
@@ -92,7 +119,7 @@ impl Optimizer {
 
     /// run the rust interpreter on the program
     /// without any optimizations
-    pub fn interp(program: &str, args: Vec<String>, profile_out: Option<PathBuf>) -> String {
+    pub fn interp(program: &Program, args: Vec<String>, profile_out: Option<PathBuf>) -> String {
         let mut optimized_out = Vec::new();
 
         match profile_out {

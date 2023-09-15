@@ -1,6 +1,6 @@
 ---
 source: tests/files.rs
-expression: "format!(\"{}\", res)"
+expression: result.visualization
 ---
 @main(input: int) {
 .entry___:

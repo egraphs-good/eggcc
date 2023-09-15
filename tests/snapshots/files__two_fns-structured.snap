@@ -1,12 +1,13 @@
 ---
 source: tests/files.rs
-expression: "format!(\"{}\", structured)"
+expression: result.visualization
 ---
 main {
 block:
  v0: int = const 1;
  v1: int = const 2;
  v2: int = add v0 v1;
+ print v2;
  return
 
 }
@@ -16,6 +17,6 @@ block:
  v0: int = const 1;
  v1: int = const 2;
  v2: int = sub v0 v1;
- return
+ return v2
 
 }

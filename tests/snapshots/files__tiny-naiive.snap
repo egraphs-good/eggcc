@@ -1,0 +1,13 @@
+---
+source: tests/files.rs
+expression: result.visualization
+---
+@main {
+.entry___:
+  v: int = const 5;
+  print v;
+  ret;
+.sblock___0:
+.exit___:
+}
+

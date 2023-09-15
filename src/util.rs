@@ -1,3 +1,5 @@
+use bril_rs::Program;
+
 use crate::Optimizer;
 use std::fmt::Debug;
 use std::{
@@ -50,7 +52,7 @@ pub(crate) fn parse_from_string(input: &str) -> bril_rs::Program {
 ///
 /// Like other utilities related to `DebugVisualizations`, this method is
 /// only intended for debugging eggcc.
-pub fn visualize(program_path: PathBuf, output_dir: PathBuf) -> io::Result<()> {
+pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
     use std::fs::File;
     use std::io::Write;
 
@@ -59,7 +61,7 @@ pub fn visualize(program_path: PathBuf, output_dir: PathBuf) -> io::Result<()> {
         std::fs::create_dir_all(&output_dir)?;
     }
 
-    let all_configs = Run::all_configurations_for(program_path);
+    let all_configs = Run::all_configurations_for(test);
 
     let results = all_configs.iter().map(|run| (run, run.run()));
 
@@ -165,8 +167,41 @@ impl RunType {
 }
 
 #[derive(Clone)]
+pub struct ProgWithArguments {
+    program: Program,
+    name: String,
+    args: Vec<String>,
+}
+
+#[derive(Clone)]
+pub enum TestProgram {
+    Prog(ProgWithArguments),
+    File(PathBuf),
+}
+
+impl TestProgram {
+    pub fn read_program(self) -> ProgWithArguments {
+        match self {
+            TestProgram::Prog(prog) => prog,
+            TestProgram::File(path) => {
+                let program_read = std::fs::read_to_string(path.clone()).unwrap();
+                let args = Optimizer::parse_bril_args(&program_read);
+                let program = Optimizer::parse_bril(&program_read).unwrap();
+                let name = path.file_stem().unwrap().to_str().unwrap().to_string();
+
+                ProgWithArguments {
+                    program,
+                    name,
+                    args,
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Run {
-    pub path: PathBuf,
+    pub prog_with_args: ProgWithArguments,
     pub test_type: RunType,
     // Also interpret the resulting program
     pub interp: bool,
@@ -184,7 +219,8 @@ pub struct RunOutput {
 }
 
 impl Run {
-    pub fn all_configurations_for(path: PathBuf) -> Vec<Run> {
+    pub fn all_configurations_for(test: TestProgram) -> Vec<Run> {
+        let prog = test.read_program();
         let mut res = vec![];
         for test_type in [
             RunType::StructuredConversion,
@@ -192,9 +228,9 @@ impl Run {
             RunType::NaiiveOptimization,
         ] {
             let default = Run {
-                path: path.clone(),
                 test_type,
                 interp: false,
+                prog_with_args: prog.clone(),
             };
             res.push(default.clone());
             if test_type.produces_bril() {
@@ -208,9 +244,9 @@ impl Run {
         res
     }
 
+    // give a unique name for this run configuration
     pub fn name(&self) -> String {
-        let mut name = self.path.file_stem().unwrap().to_str().unwrap().to_string();
-        name = format!("{}-{}", name, self.test_type);
+        let mut name = format!("{}-{}", self.prog_with_args.name, self.test_type);
         if self.interp {
             name = format!("{}-interp", name);
         }
@@ -218,32 +254,36 @@ impl Run {
     }
 
     pub fn run(&self) -> RunOutput {
-        let program_read = std::fs::read_to_string(self.path.clone()).unwrap();
-        let args = Optimizer::parse_bril_args(&program_read);
-        let original_interpreted = Optimizer::interp(&program_read, args.clone(), None);
+        let original_interpreted = Optimizer::interp(
+            &self.prog_with_args.program,
+            self.prog_with_args.args.clone(),
+            None,
+        );
         let (visualization, visualization_file_extension) = match self.test_type {
             RunType::StructuredConversion => {
-                let structured = Optimizer::parse_to_structured(&program_read).unwrap();
+                let structured =
+                    Optimizer::program_to_structured(&self.prog_with_args.program).unwrap();
                 (structured.to_string(), ".txt")
             }
             RunType::RvsdgConversion => {
-                let parsed = Optimizer::parse_bril(&program_read).unwrap();
-                let rvsdg = Optimizer::program_to_rvsdg(&parsed).unwrap();
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let svg = rvsdg.to_svg();
                 (svg, ".svg")
             }
             RunType::NaiiveOptimization => {
-                let parsed = Optimizer::parse_bril(&program_read).unwrap();
-
                 let mut optimizer = Optimizer::default();
-                let res = optimizer.optimize(&parsed).unwrap();
+                let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
 
                 (format!("{}", res), ".bril")
             }
         };
 
         let result_interpreted = if self.interp {
-            Some(Optimizer::interp(&program_read, args.clone(), None))
+            Some(Optimizer::interp(
+                &self.prog_with_args.program,
+                self.prog_with_args.args.clone(),
+                None,
+            ))
         } else {
             None
         };

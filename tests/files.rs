@@ -1,10 +1,10 @@
-use eggcc::util::Run;
+use eggcc::util::{Run, TestProgram};
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
 fn generate_tests(glob: &str) -> Vec<Trial> {
     let mut trials = vec![];
-    let mut mk_trial = |run: Run| {
+    let mut mk_trial = |run: Run, snapshot: bool| {
         trials.push(Trial::test(run.name(), move || {
             let result = run.run();
 
@@ -12,7 +12,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
                 assert_eq!(result.original_interpreted, interpreted);
             } else {
                 // only assert a snapshot if we are in the "small" folder
-                if run.path.to_str().unwrap().contains("small") {
+                if snapshot {
                     assert_snapshot!(run.name(), result.visualization);
                 }
             }
@@ -27,8 +27,10 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             continue;
         }
 
-        for run in Run::all_configurations_for(f) {
-            mk_trial(run);
+        let snapshot = f.to_str().unwrap().contains("small");
+
+        for run in Run::all_configurations_for(TestProgram::File(f)) {
+            mk_trial(run, snapshot);
         }
     }
 

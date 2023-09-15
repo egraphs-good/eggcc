@@ -119,7 +119,7 @@ impl Optimizer {
 
     /// run the rust interpreter on the program
     /// without any optimizations
-    pub fn interp(program: &str, args: Vec<String>, profile_out: Option<PathBuf>) -> String {
+    pub fn interp(program: &Program, args: Vec<String>, profile_out: Option<PathBuf>) -> String {
         let mut optimized_out = Vec::new();
 
         match profile_out {

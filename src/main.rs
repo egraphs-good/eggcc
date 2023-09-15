@@ -1,5 +1,5 @@
 use clap::Parser;
-use eggcc::util::{visualize, Run, RunType};
+use eggcc::util::{visualize, Run, RunType, TestProgram};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -33,7 +33,7 @@ fn main() {
     let args = Args::parse();
 
     if let Some(debug_dir) = args.debug_dir {
-        if let Result::Err(error) = visualize(args.file.clone(), debug_dir) {
+        if let Result::Err(error) = visualize(TestProgram::File(args.file.clone()), debug_dir) {
             eprintln!("{}", error);
             return;
         }
@@ -48,7 +48,7 @@ fn main() {
     }
 
     let run = Run {
-        path: args.file.clone(),
+        prog_with_args: TestProgram::File(args.file.clone()).read_program(),
         test_type: args.run_mode,
         interp: args.interp,
     };

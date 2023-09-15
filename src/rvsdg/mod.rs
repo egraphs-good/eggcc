@@ -33,6 +33,7 @@ pub(crate) mod from_cfg;
 pub(crate) mod live_variables;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
+pub(crate) mod to_bril;
 
 use std::fmt;
 

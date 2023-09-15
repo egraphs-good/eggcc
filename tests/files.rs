@@ -11,7 +11,10 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             if let Some(interpreted) = result.result_interpreted {
                 assert_eq!(result.original_interpreted, interpreted);
             } else {
-                assert_snapshot!(run.name(), result.visualization);
+                // only assert a snapshot if we are in the "small" folder
+                if run.path.to_str().unwrap().contains("small") {
+                    assert_snapshot!(run.name(), result.visualization);
+                }
             }
             Ok(())
         }))

@@ -110,6 +110,20 @@ pub(crate) enum Expr<Op> {
     Print(Vec<Op>),
 }
 
+impl<Op> Expr<Op> {
+    fn map_operands(&self, f: impl FnMut(&Op) -> Op) -> Self {
+        use Expr::*;
+        match self {
+            Op(op, operands) => Op(op.clone(), operands.iter().map(f).collect()),
+            Call(ident, operands, n_outputs) => {
+                Call(ident.clone(), operands.iter().map(f).collect(), *n_outputs)
+            }
+            Const(op, ty, lit) => Const(*op, ty.clone(), lit.clone()),
+            Print(operands) => Print(operands.iter().map(f).collect()),
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) enum Operand {
     /// A reference to an argument in the enclosing region.
@@ -142,11 +156,16 @@ pub(crate) enum RvsdgBody {
     },
 }
 
+enum RvsdgType {
+    Multiple(Vec<Type>),
+    Single(Type),
+}
+
 /// Represents a single function as an RVSDG.
 /// The function has arguments, a result, and nodes.
 /// The nodes are stored in a vector, and variants of RvsdgBody refer
 /// to nodes by their index in the vector.
-pub struct RvsdgFunction {
+pub struct BaseRvsdgFunction<Types> {
     /// The number of input arguments to the function.
     ///
     /// Functions all take `n_args + 1` arguments, where the last argument is a
@@ -154,7 +173,13 @@ pub struct RvsdgFunction {
     /// impure function calls.
     pub(crate) n_args: usize,
     /// The backing heap for Rvsdg node ids within this function.
+    /// Invariant: nodes refer only to nodes with a lower index.
     pub(crate) nodes: Vec<RvsdgBody>,
+    /// The types of each node in `nodes`. Before typechecking, it is unit.
+    /// Invariant: the size of the types vector is the same as the nodes
+    /// vector after typechecking.
+    pub(crate) types: Types,
+
     /// The (optional) result pointing into this function.
     ///
     /// NB: until effects are supported, the only way to ensure a computation is
@@ -164,6 +189,9 @@ pub struct RvsdgFunction {
     /// The output port corersponding to the state edge of the function.
     pub(crate) state: Operand,
 }
+
+pub type RvsdgFunction = BaseRvsdgFunction<()>;
+pub type TypedRvsdgFunction = BaseRvsdgFunction<Vec<RvsdgType>>;
 
 impl fmt::Debug for RvsdgFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -487,8 +515,63 @@ impl RvsdgFunction {
             nodes,
             result,
             state,
+            types: (),
         }
     }
+
+    pub fn typecheck(self) -> TypedRvsdgFunction {
+        TypedRvsdgFunction {
+            types: vec![],
+            n_args: self.n_args,
+            nodes: self.nodes,
+            result: self.result,
+            state: self.state,
+        }
+        .do_typechecking()
+    }
+}
+
+impl TypedRvsdgFunction {
+    pub(crate) fn do_typechecking(self) -> Self {
+        assert!(self.types.is_empty());
+
+        let mut types = vec![];
+        for (i, body) in self.nodes.iter().enumerate() {
+            match body {
+                RvsdgBody::BasicOp(expr) => {
+                    self.typecheck_expr(&mut types, expr);
+                }
+                RvsdgBody::Gamma {
+                    pred,
+                    inputs,
+                    outputs,
+                } => todo!(),
+                RvsdgBody::Theta {
+                    pred,
+                    inputs,
+                    outputs,
+                } => todo!(),
+            }
+        }
+
+        self
+    }
+
+    fn typecheck_expr(&self, types: &mut Vec<RvsdgType>, expr: &Expr<Operand>) -> RvsdgType {
+        match expr {
+            Expr::Op(value_op, children) => {
+                let children = children
+                    .iter()
+                    .map(|child| self.type_of(*child))
+                    .collect::<Vec<()>>();
+            }
+            Expr::Call(_, _, _) => todo!(),
+            Expr::Const(_, _, _) => todo!(),
+            Expr::Print(_) => todo!(),
+        }
+    }
+
+    pub fn type_of(&self, operand: Operand) {}
 }
 
 fn vec_map<T>(inputs: &egglog::ast::Expr, mut f: impl FnMut(&egglog::ast::Expr) -> T) -> Vec<T> {

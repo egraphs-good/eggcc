@@ -296,3 +296,19 @@ impl Run {
         }
     }
 }
+
+pub(crate) struct FreshNameGen {
+    next: usize,
+}
+
+impl FreshNameGen {
+    pub(crate) fn new() -> Self {
+        Self { next: 0 }
+    }
+
+    pub(crate) fn fresh(&mut self) -> String {
+        let name = format!("v{}", self.next);
+        self.next += 1;
+        name
+    }
+}

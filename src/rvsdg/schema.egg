@@ -51,26 +51,35 @@
 
 ;; procedure f(n):
 ;;   i = 0
-;;   while i < n
-;;     ans += i * 5
+;;   ans = 0
+;;   do:
+;;     ans += i*5;
 ;;     i += 1
-;;   return ans
+;;   while(i < n);
+;;   return ansm
+
+
+
+
 
 ;; ;; inputs: [n]
-;; (Project 1
-;;     (Theta 
-;;         (Lt (Arg 1) (Arg 2)) ;; pred
-;;         (vec-of ;; inputs
-;;             (Node (PureOp (Const 0))) ;; accumulator
-;;             (Node (PureOp (Const 0))) ;; loop var
-;;             (Arg 0) ;; n
-;;             )
-;;         (vec-of ;; outputs
-;;             (Node (PureOp (Add (Arg 0) 
-;;                 (Node (PureOp (Mul 
-;;                     (Arg 1)
-;;                     (Node (PureOp (Const 5)))))))))
-;;             (Node (PureOp (Add (Arg 1) (Node (PureOp (Const 1))))))
-;;             (Arg 2)
-;;         ))
-;; )
+; (Project 0
+;     (Theta
+;        ;     i       n
+;         (lt (Arg 1) (Arg 2)) ;; pred
+;         (vec-of ;; inputs
+;             (Node (PureOp (Const 0))) ;; accumulator
+;             (Node (PureOp (Const 0))) ;; loop var
+;             (Arg 0) ;; n
+;             )
+;         (vec-of ;; outputs
+;             (Node (PureOp (add (Arg 0) ;; ans
+;                 (Node (PureOp (mul 
+;                     (Arg 1) ;; i
+;                     (Node (PureOp (Const 5))))))))) ;; ans = i*5
+;             (Node (PureOp (add (Arg 1) (Node (PureOp (Const 1)))))) ;; i += 1
+;             (Arg 2) ;; n
+;         ))
+; )
+
+

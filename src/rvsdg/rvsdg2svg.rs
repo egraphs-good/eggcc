@@ -626,11 +626,21 @@ impl RvsdgProgram {
         let mut xmls: Vec<Xml> = vec![];
         let mut height: f32 = 0.0;
         let mut width: f32 = 0.0;
-        for function in &self.functions {
-            let (size, xml) = function.to_region().to_xml(false);
+        let spacing = 50.0;
+
+        for (i, function) in self.functions.iter().enumerate() {
+            if i > 0 {
+                height += spacing;
+            }
+
+            let (size, mut xml) = function.to_region().to_xml(false);
+            // assert that it doesn't have a transform yet
+            assert!(xml.attributes.get("transform").is_none());
+            xml.attributes
+                .insert("transform".to_owned(), format!("translate(0, {})", height));
+            xmls.push(xml);
             height += size.height;
             width = width.max(size.width);
-            xmls.push(xml);
         }
         Xml::new(
             "svg",

@@ -509,10 +509,10 @@ impl Region {
 
 fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) {
     let (node, operands): (Node, Vec<Operand>) = match &nodes[index] {
-        RvsdgBody::BasicOp(Expr::Op(f, xs)) => {
+        RvsdgBody::BasicOp(Expr::Op(f, xs, ty)) => {
             (Node::Unit(format!("{f}"), xs.len(), 1), xs.to_vec())
         }
-        RvsdgBody::BasicOp(Expr::Call(f, xs, n_outputs)) => {
+        RvsdgBody::BasicOp(Expr::Call(f, xs, n_outputs, ty)) => {
             (Node::Unit(f.to_string(), xs.len(), *n_outputs), xs.to_vec())
         }
         RvsdgBody::BasicOp(Expr::Print(xs)) => {
@@ -574,8 +574,8 @@ fn reachable_nodes(reachable: &mut BTreeSet<Id>, all: &[RvsdgBody], output: Oper
     };
     if reachable.insert(id) {
         let inputs = match &all[id] {
-            RvsdgBody::BasicOp(Expr::Op(_, xs))
-            | RvsdgBody::BasicOp(Expr::Call(_, xs, _))
+            RvsdgBody::BasicOp(Expr::Op(_, xs, _))
+            | RvsdgBody::BasicOp(Expr::Call(_, xs, _, _))
             | RvsdgBody::BasicOp(Expr::Print(xs)) => xs.clone(),
             RvsdgBody::BasicOp(Expr::Const(..)) => vec![],
             RvsdgBody::Gamma { pred, inputs, .. } => once(pred).chain(inputs).copied().collect(),
@@ -752,10 +752,11 @@ mod tests {
         let svg_new = RvsdgFunction {
             n_args: 2,
             nodes: vec![
-                RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Type::Int, Literal::Int(0))),
+                RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Literal::Int(0), Type::Int)),
                 RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Add,
                     vec![Operand::Arg(0), Operand::Arg(1)],
+                    Type::Int,
                 )),
                 RvsdgBody::Gamma {
                     pred: Operand::Arg(0),
@@ -765,18 +766,25 @@ mod tests {
                 RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Add,
                     vec![Operand::Arg(0), Operand::Id(4)],
+                    Type::Int,
                 )),
-                RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Type::Int, Literal::Int(1))),
-                RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Type::Int, Literal::Int(5))),
+                RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Literal::Int(1), Type::Int)),
+                RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Literal::Int(5), Type::Int)),
                 RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Mul,
                     vec![Operand::Arg(0), Operand::Id(5)],
+                    Type::Int,
                 )),
                 RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Add,
                     vec![Operand::Id(5), Operand::Arg(2)],
+                    Type::Int,
                 )),
-                RvsdgBody::BasicOp(Expr::Op(ValueOps::Eq, vec![Operand::Id(3), Operand::Id(5)])),
+                RvsdgBody::BasicOp(Expr::Op(
+                    ValueOps::Eq,
+                    vec![Operand::Id(3), Operand::Id(5)],
+                    Type::Bool,
+                )),
                 RvsdgBody::Theta {
                     pred: Operand::Id(8),
                     inputs: vec![Operand::Arg(0), Operand::Arg(1), Operand::Arg(0)],
@@ -785,6 +793,7 @@ mod tests {
                 RvsdgBody::BasicOp(Expr::Op(
                     ValueOps::Add,
                     vec![Operand::Id(2), Operand::Project(1, 9)],
+                    Type::Int,
                 )),
             ],
             result: Some(Operand::Id(10)),

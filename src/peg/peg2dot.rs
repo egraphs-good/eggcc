@@ -34,11 +34,11 @@ impl PegFunction {
             let node = match node {
                 PegBody::Arg(arg) => format!("arg {arg}"),
                 PegBody::BasicOp(expr) => match expr {
-                    Expr::Op(f, xs) => {
+                    Expr::Op(f, xs, _ty) => {
                         js = xs.to_vec();
                         format!("{f}")
                     }
-                    Expr::Call(f, xs, _) => {
+                    Expr::Call(f, xs, _, _) => {
                         js = xs.to_vec();
                         format!("{f}")
                     }

@@ -509,16 +509,16 @@ impl Region {
 
 fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) {
     let (node, operands): (Node, Vec<Operand>) = match &nodes[index] {
-        RvsdgBody::BasicOp(Expr::Op(f, xs, ty)) => {
+        RvsdgBody::BasicOp(Expr::Op(f, xs, _ty)) => {
             (Node::Unit(format!("{f}"), xs.len(), 1), xs.to_vec())
         }
-        RvsdgBody::BasicOp(Expr::Call(f, xs, n_outputs, ty)) => {
+        RvsdgBody::BasicOp(Expr::Call(f, xs, n_outputs, _ty)) => {
             (Node::Unit(f.to_string(), xs.len(), *n_outputs), xs.to_vec())
         }
         RvsdgBody::BasicOp(Expr::Print(xs)) => {
             (Node::Unit("PRINT".into(), xs.len(), 2), xs.to_vec())
         }
-        RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, _, v)) => {
+        RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, v, _ty)) => {
             (Node::Unit(format!("{v}"), 0, 1), vec![])
         }
         RvsdgBody::Gamma {
@@ -673,82 +673,6 @@ mod tests {
 
     #[test]
     fn rvsdg2svg_basic() {
-        let expected_region = Region {
-            srcs: 3,
-            dsts: 2,
-            nodes: BTreeMap::from_iter([
-                (
-                    2,
-                    Node::Match(vec![
-                        (
-                            "0".into(),
-                            Region {
-                                srcs: 2,
-                                dsts: 1,
-                                nodes: BTreeMap::from_iter([(0, Node::Unit("0".into(), 0, 1))]),
-                                edges: vec![((Some(0), 0), (None, 0))],
-                            },
-                        ),
-                        (
-                            "1".into(),
-                            Region {
-                                srcs: 2,
-                                dsts: 1,
-                                nodes: BTreeMap::from_iter([(1, Node::Unit("add".into(), 2, 1))]),
-                                edges: vec![
-                                    ((None, 0), (Some(1), 0)),
-                                    ((None, 1), (Some(1), 1)),
-                                    ((Some(1), 0), (None, 0)),
-                                ],
-                            },
-                        ),
-                    ]),
-                ),
-                (
-                    9,
-                    Node::Loop(Region {
-                        srcs: 3,
-                        dsts: 4,
-                        nodes: BTreeMap::from_iter([
-                            (3, Node::Unit("add".into(), 2, 1)),
-                            (4, Node::Unit("1".into(), 0, 1)),
-                            (5, Node::Unit("5".into(), 0, 1)),
-                            (6, Node::Unit("mul".into(), 2, 1)),
-                            (7, Node::Unit("add".into(), 2, 1)),
-                            (8, Node::Unit("eq".into(), 2, 1)),
-                        ]),
-                        edges: vec![
-                            ((None, 0), (Some(3), 0)),
-                            ((Some(4), 0), (Some(3), 1)),
-                            ((None, 0), (Some(6), 0)),
-                            ((Some(5), 0), (Some(6), 1)),
-                            ((Some(5), 0), (Some(7), 0)),
-                            ((None, 2), (Some(7), 1)),
-                            ((Some(3), 0), (Some(8), 0)),
-                            ((Some(5), 0), (Some(8), 1)),
-                            ((Some(8), 0), (None, 0)),
-                            ((Some(3), 0), (None, 1)),
-                            ((Some(6), 0), (None, 2)),
-                            ((Some(7), 0), (None, 3)),
-                        ],
-                    }),
-                ),
-                (10, Node::Unit("add".into(), 2, 1)),
-            ]),
-            edges: vec![
-                ((None, 0), (Some(2), 0)),
-                ((None, 0), (Some(2), 1)),
-                ((None, 1), (Some(2), 2)),
-                ((None, 0), (Some(9), 0)),
-                ((None, 1), (Some(9), 1)),
-                ((None, 0), (Some(9), 2)),
-                ((Some(2), 0), (Some(10), 0)),
-                ((Some(9), 1), (Some(10), 1)),
-                ((Some(10), 0), (None, 0)),
-                ((None, 2), (None, 1)),
-            ],
-        };
-
         let svg_new = RvsdgFunction {
             n_args: 2,
             nodes: vec![
@@ -801,6 +725,6 @@ mod tests {
         }
         .to_svg();
 
-        assert_eq!(expected_region.to_svg(), svg_new);
+        insta::assert_snapshot!(svg_new);
     }
 }

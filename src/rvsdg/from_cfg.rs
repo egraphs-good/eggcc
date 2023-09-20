@@ -27,7 +27,7 @@ use super::{
 
 pub(crate) fn cfg_func_to_rvsdg(
     cfg: &mut Cfg,
-    function_types: FunctionTypes,
+    function_types: &FunctionTypes,
 ) -> Result<RvsdgFunction> {
     cfg.restructure();
     let analysis = live_variables(cfg);
@@ -38,7 +38,7 @@ pub(crate) fn cfg_func_to_rvsdg(
         analysis,
         dom,
         store: Default::default(),
-        function_types,
+        function_types: function_types.clone(),
     };
 
     let state_var = builder.analysis.state_var;
@@ -79,7 +79,7 @@ pub(crate) fn cfg_func_to_rvsdg(
     })
 }
 
-pub(crate) type FunctionTypes = HashMap<String, Type>;
+pub(crate) type FunctionTypes = HashMap<String, Option<Type>>;
 
 pub(crate) struct RvsdgBuilder<'a> {
     cfg: &'a mut Cfg,
@@ -408,7 +408,7 @@ impl<'a> RvsdgBuilder<'a> {
                         let dest_var = self.analysis.intern.intern(dest);
                         let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
                         ops.push(self.store[&self.analysis.state_var]);
-                        let expr = Expr::Call((&funcs[0]).into(), ops, 2, op_type.clone());
+                        let expr = Expr::Call((&funcs[0]).into(), ops, 2, Some(op_type.clone()));
                         let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                         self.store.insert(dest_var, Operand::Id(expr_id));
                         self.store
@@ -438,7 +438,10 @@ impl<'a> RvsdgBuilder<'a> {
                         (&funcs[0]).into(),
                         ops,
                         1,
-                        self.function_types.get(&funcs[0]).unwrap().clone(),
+                        self.function_types
+                            .get(&funcs[0])
+                            .unwrap_or_else(|| panic!("unknown function {}", funcs[0]))
+                            .clone(),
                     );
                     let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                     self.store

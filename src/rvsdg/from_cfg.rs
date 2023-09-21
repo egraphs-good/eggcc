@@ -25,7 +25,10 @@ use super::{
     Expr, Id, Operand, RvsdgBody, RvsdgError,
 };
 
-pub(crate) fn cfg_func_to_rvsdg(cfg: &mut Cfg) -> Result<RvsdgFunction> {
+pub(crate) fn cfg_func_to_rvsdg(
+    cfg: &mut Cfg,
+    function_types: &FunctionTypes,
+) -> Result<RvsdgFunction> {
     cfg.restructure();
     let analysis = live_variables(cfg);
     let dom = dominators::simple_fast(&cfg.graph, cfg.entry);
@@ -35,6 +38,7 @@ pub(crate) fn cfg_func_to_rvsdg(cfg: &mut Cfg) -> Result<RvsdgFunction> {
         analysis,
         dom,
         store: Default::default(),
+        function_types: function_types.clone(),
     };
 
     let state_var = builder.analysis.state_var;
@@ -75,12 +79,19 @@ pub(crate) fn cfg_func_to_rvsdg(cfg: &mut Cfg) -> Result<RvsdgFunction> {
     })
 }
 
+/// FunctionTypes is a map from the name of the function
+/// to the type of the function.
+/// Bril doesn't have a void type, so this
+/// is `None` when the function returns nothing.
+pub(crate) type FunctionTypes = HashMap<String, Option<Type>>;
+
 pub(crate) struct RvsdgBuilder<'a> {
     cfg: &'a mut Cfg,
     expr: Vec<RvsdgBody>,
     analysis: LiveVariableAnalysis,
     dom: Dominators<NodeIndex>,
     store: HashMap<VarId, Operand>,
+    function_types: FunctionTypes,
 }
 
 impl<'a> RvsdgBuilder<'a> {
@@ -173,8 +184,8 @@ impl<'a> RvsdgBuilder<'a> {
                     &mut self.expr,
                     RvsdgBody::BasicOp(Expr::Const(
                         ConstOps::Const,
-                        Type::Bool,
                         Literal::Bool(true),
+                        Type::Bool,
                     )),
                 ))
             }
@@ -192,7 +203,7 @@ impl<'a> RvsdgBuilder<'a> {
                     // We need to negate the operand
                     Operand::Id(get_id(
                         &mut self.expr,
-                        RvsdgBody::BasicOp(Expr::Op(ValueOps::Not, vec![op])),
+                        RvsdgBody::BasicOp(Expr::Op(ValueOps::Not, vec![op], Type::Bool)),
                     ))
                 } else {
                     op
@@ -367,7 +378,7 @@ impl<'a> RvsdgBuilder<'a> {
                     let dest_var = self.analysis.intern.intern(dest);
                     let const_id = get_id(
                         &mut self.expr,
-                        RvsdgBody::BasicOp(Expr::Const(*op, const_type.clone(), value.clone())),
+                        RvsdgBody::BasicOp(Expr::Const(*op, value.clone(), const_type.clone())),
                     );
                     self.store.insert(dest_var, Operand::Id(const_id));
                 }
@@ -378,7 +389,7 @@ impl<'a> RvsdgBuilder<'a> {
                     labels: _,
                     op,
                     pos,
-                    op_type: _,
+                    op_type,
                 } => match op {
                     ValueOps::Alloc | ValueOps::Load | ValueOps::PtrAdd => {
                         return Err(RvsdgError::UnsupportedOperation {
@@ -401,7 +412,7 @@ impl<'a> RvsdgBuilder<'a> {
                         let dest_var = self.analysis.intern.intern(dest);
                         let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
                         ops.push(self.store[&self.analysis.state_var]);
-                        let expr = Expr::Call((&funcs[0]).into(), ops, 2);
+                        let expr = Expr::Call((&funcs[0]).into(), ops, 2, Some(op_type.clone()));
                         let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                         self.store.insert(dest_var, Operand::Id(expr_id));
                         self.store
@@ -410,7 +421,7 @@ impl<'a> RvsdgBuilder<'a> {
                     _ => {
                         let dest_var = self.analysis.intern.intern(dest);
                         let ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
-                        let expr = Expr::Op(*op, ops);
+                        let expr = Expr::Op(*op, ops, op_type.clone());
                         let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                         self.store.insert(dest_var, Operand::Id(expr_id));
                     }
@@ -427,7 +438,15 @@ impl<'a> RvsdgBuilder<'a> {
                 } => {
                     let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
                     ops.push(self.store[&self.analysis.state_var]);
-                    let expr = Expr::Call((&funcs[0]).into(), ops, 1);
+                    let expr = Expr::Call(
+                        (&funcs[0]).into(),
+                        ops,
+                        1,
+                        self.function_types
+                            .get(&funcs[0])
+                            .unwrap_or_else(|| panic!("unknown function {}", funcs[0]))
+                            .clone(),
+                    );
                     let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                     self.store
                         .insert(self.analysis.state_var, Operand::Id(expr_id));
@@ -470,8 +489,8 @@ impl<'a> RvsdgBuilder<'a> {
                         &mut self.expr,
                         RvsdgBody::BasicOp(Expr::Const(
                             ConstOps::Const,
-                            Type::Int,
                             Literal::Int(*cond as i64),
+                            Type::Int,
                         )),
                     );
                     let dest_var = self.analysis.intern.intern(dst.clone());

@@ -1,11 +1,8 @@
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
 
 use crate::{
-    cfg::{to_cfg, Identifier},
-    rvsdg::{
-        from_cfg::cfg_func_to_rvsdg, new_rvsdg_egraph, EgglogFunctionResult, Expr, Id, Operand,
-        RvsdgBody,
-    },
+    cfg::{program_to_cfg, Identifier},
+    rvsdg::{cfg_to_rvsdg, new_rvsdg_egraph, EgglogFunctionResult, Expr, Id, Operand, RvsdgBody},
     util::parse_from_string,
 };
 
@@ -40,16 +37,16 @@ impl RvsdgTest {
     fn lit_int(&mut self, i: i64) -> Operand {
         self.make_node(RvsdgBody::BasicOp(Expr::Const(
             ConstOps::Const,
-            Type::Int,
             Literal::Int(i),
+            Type::Int,
         )))
     }
 
     fn lit_bool(&mut self, b: bool) -> Operand {
         self.make_node(RvsdgBody::BasicOp(Expr::Const(
             ConstOps::Const,
-            Type::Bool,
             Literal::Bool(b),
+            Type::Bool,
         )))
     }
 
@@ -58,19 +55,24 @@ impl RvsdgTest {
             func.into(),
             args.to_vec(),
             1,
+            None,
         )))
     }
 
     fn lt(&mut self, l: Operand, r: Operand) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Lt, vec![l, r])))
+        self.make_node(RvsdgBody::BasicOp(Expr::Op(
+            ValueOps::Lt,
+            vec![l, r],
+            Type::Bool,
+        )))
     }
 
-    fn add(&mut self, l: Operand, r: Operand) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Add, vec![l, r])))
+    fn add(&mut self, l: Operand, r: Operand, ty: Type) -> Operand {
+        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Add, vec![l, r], ty)))
     }
 
-    fn mul(&mut self, l: Operand, r: Operand) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Mul, vec![l, r])))
+    fn mul(&mut self, l: Operand, r: Operand, ty: Type) -> Operand {
+        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Mul, vec![l, r], ty)))
     }
 
     fn print(&mut self, x: Operand, state: Operand) -> Operand {
@@ -115,14 +117,17 @@ fn rvsdg_expr() {
     }
     "#;
     let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
     let mut expected = RvsdgTest::default();
     let one = expected.lit_int(1);
     let two = expected.lit_int(2);
-    let res = expected.add(one, two);
-    assert!(deep_equal(&expected.into_pure_function(0, res), &rvsdg));
+    let res = expected.add(one, two, Type::Int);
+    assert!(deep_equal(
+        &expected.into_pure_function(0, res),
+        &rvsdg.functions[0]
+    ));
 }
 
 #[test]
@@ -137,16 +142,19 @@ fn rvsdg_print() {
     }
     "#;
     let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
     let mut expected = RvsdgTest::default();
     let v0 = expected.lit_int(1);
     let v1 = expected.lit_int(2);
-    let v2 = expected.add(v0, v1);
+    let v2 = expected.add(v0, v1, Type::Int);
     let res1 = expected.print(v2, Operand::Arg(0));
     let res2 = expected.print(v1, res1);
-    assert!(deep_equal(&expected.into_function(0, None, res2), &rvsdg));
+    assert!(deep_equal(
+        &expected.into_function(0, None, res2),
+        &rvsdg.functions[0]
+    ));
 }
 
 #[test]
@@ -164,10 +172,16 @@ fn rvsdg_state_gamma() {
         jmp .End;
     .End: 
     }
+
+    @other_func() {
+    }
+
+    @some_func() {
+    }
     "#;
     let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
     let mut expected = RvsdgTest::default();
     let c = expected.lit_bool(true);
@@ -176,7 +190,10 @@ fn rvsdg_state_gamma() {
     let gamma = expected.gamma(c, &[Operand::Arg(0)], &[&[other_func], &[some_func]]);
     let res = Operand::Project(0, gamma);
 
-    assert!(deep_equal(&expected.into_function(0, None, res), &rvsdg));
+    assert!(deep_equal(
+        &expected.into_function(0, None, res),
+        &rvsdg.functions[0]
+    ));
 }
 
 #[test]
@@ -196,8 +213,9 @@ fn rvsdg_unstructured() {
         ret x;
       }"#;
     let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let rvsdg = cfg_func_to_rvsdg(&mut cfg).unwrap();
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
+
     // It's hard to write a useful test that's more than just a "change
     // detector" here. In this case, the function is not computing anything
     // meaningful, but we know it should have the following properties:
@@ -206,11 +224,11 @@ fn rvsdg_unstructured() {
     // 2. A gamma node, as there is a join point in .B for the value of `x`
     // (whether the predecessor is .B or the entry block).
     assert!(rvsdg.result.is_some());
-    assert!(search_for(&rvsdg, |body| matches!(
+    assert!(search_for(rvsdg, |body| matches!(
         body,
         RvsdgBody::Theta { .. }
     )));
-    assert!(search_for(&rvsdg, |body| matches!(
+    assert!(search_for(rvsdg, |body| matches!(
         body,
         RvsdgBody::Gamma { .. }
     )))
@@ -255,8 +273,8 @@ fn rvsdg_basic_odd_branch() {
     let i = Operand::Arg(2);
     let n = Operand::Arg(3);
 
-    let ip1 = expected.add(i, one);
-    let rpi = expected.add(res, i);
+    let ip1 = expected.add(i, one, Type::Int);
+    let rpi = expected.add(res, i, Type::Int);
     let pred = expected.lt(ip1, n);
     let theta = expected.theta(
         pred,
@@ -271,7 +289,7 @@ fn rvsdg_basic_odd_branch() {
     let state = Operand::Project(0, theta);
     let res = Operand::Project(1, theta);
     let pred = expected.lt(res, five);
-    let mul2 = expected.mul(Operand::Arg(1), two);
+    let mul2 = expected.mul(Operand::Arg(1), two, Type::Int);
     let gamma = expected.gamma(
         pred,
         &[state, res],
@@ -288,9 +306,9 @@ fn rvsdg_basic_odd_branch() {
 
     // test correctness of RVSDGs converted from CFG
     let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let actual = cfg_func_to_rvsdg(&mut cfg).unwrap();
-    assert!(deep_equal(&expected, &actual));
+    let cfg = program_to_cfg(&prog);
+    let actual = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
+    assert!(deep_equal(&expected, actual));
 }
 
 #[test]
@@ -332,8 +350,8 @@ fn rvsdg_odd_branch_egg_roundtrip() {
     let i = Operand::Arg(2);
     let n = Operand::Arg(3);
 
-    let ip1 = expected.add(i, one);
-    let rpi = expected.add(res, i);
+    let ip1 = expected.add(i, one, Type::Int);
+    let rpi = expected.add(res, i, Type::Int);
     let pred = expected.lt(ip1, n);
     let theta = expected.theta(
         pred,
@@ -348,7 +366,7 @@ fn rvsdg_odd_branch_egg_roundtrip() {
     let state = Operand::Project(0, theta);
     let res = Operand::Project(1, theta);
     let pred = expected.lt(res, five);
-    let mul2 = expected.mul(Operand::Arg(1), two);
+    let mul2 = expected.mul(Operand::Arg(1), two, Type::Int);
     let gamma = expected.gamma(
         pred,
         &[state, res],
@@ -365,15 +383,16 @@ fn rvsdg_odd_branch_egg_roundtrip() {
 
     // test correctness of RVSDGs converted from CFG
     let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let actual = cfg_func_to_rvsdg(&mut cfg).unwrap();
-    assert!(deep_equal(&expected, &actual));
+    let cfg = program_to_cfg(&prog);
+    let actual = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
+    assert!(deep_equal(&expected, actual));
 
     // test equalties of egglog programs generated by RVSDG
     let (actual_state, actual_result) = match actual.to_egglog_expr() {
         EgglogFunctionResult::StateOnly(_) => panic!("expected state and value"),
         EgglogFunctionResult::StateAndValue { state, value } => (state, value),
     };
+
     let actual_result_command = egglog::ast::Command::Action(egglog::ast::Action::Let(
         "actual-result".into(),
         actual_result.clone(),
@@ -385,34 +404,34 @@ fn rvsdg_odd_branch_egg_roundtrip() {
     const EGGLOG_PROGRAM: &str = r#"
     (let loop
         (Theta
-              (Node (PureOp (lt (Node (PureOp (add (Arg 2)
-                                                   (Node (PureOp (Const (const)
-                                                                        (IntT)
+              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+                                                   (Node (PureOp (Const (IntT)
+                                                                        (const)
                                                                         (Num 1)))))))
                                 (Arg 3))))
               (vec-of (Arg 1)
-                      (Node (PureOp (Const (const) (IntT) (Num 0))))
-                      (Node (PureOp (Const (const) (IntT) (Num 0))))
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
                       (Arg 0))
               (vec-of (Arg 0)
-                      (Node (PureOp (add (Arg 1) (Arg 2))))
-                      (Node (PureOp (add (Arg 2)
-                                         (Node (PureOp (Const (const) (IntT) (Num 1)))))))
+                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (add (IntT) (Arg 2)
+                                         (Node (PureOp (Const (IntT) (const) (Num 1)))))))
                       (Arg 3))))
     (let rescaled 
         (Gamma
          (Node
           (PureOp
-           (lt (Project 1 loop)
-               (Node (PureOp (Const (const) (IntT) (Num 5)))))))
+           (lt (BoolT) (Project 1 loop)
+               (Node (PureOp (Const (IntT) (const) (Num 5)))))))
          (vec-of
           (Project 0 loop)
           (Project 1 loop))
          (vec-of (VO (vec-of (Arg 0) (Arg 1)))
                  (VO (vec-of (Arg 0)
-                             (Node (PureOp (mul (Arg 1)
-                                                (Node (PureOp (Const (const)
-                                                                     (IntT)
+                             (Node (PureOp (mul (IntT) (Arg 1)
+                                                (Node (PureOp (Const (IntT)
+                                                                     (const)
                                                                      (Num 2))))))))))))
     (let expected-result (Project 0 rescaled))
     (let expected-state (Project 1 rescaled))
@@ -465,7 +484,7 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
         }
         match node {
             RvsdgBody::BasicOp(x) => match x {
-                Expr::Op(_, args) | Expr::Call(_, args, _) | Expr::Print(args) => {
+                Expr::Op(_, args, _) | Expr::Call(_, args, _, _) | Expr::Print(args) => {
                     args.iter().any(|arg| search_op(f, arg, pred))
                 }
                 Expr::Const(_, _, _) => false,
@@ -542,28 +561,28 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
     fn ids_equal(i1: Id, i2: Id, f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
         match (&f1.nodes[i1], &f2.nodes[i2]) {
             (RvsdgBody::BasicOp(l), RvsdgBody::BasicOp(r)) => match (l, r) {
-                (Expr::Op(vo1, as1), Expr::Op(vo2, as2)) => {
-                    vo1 == vo2 && all_equal(as1, as2, f1, f2)
+                (Expr::Op(vo1, as1, ty1), Expr::Op(vo2, as2, ty2)) => {
+                    vo1 == vo2 && all_equal(as1, as2, f1, f2) && ty1 == ty2
                 }
-                (Expr::Call(func1, as1, n1), Expr::Call(func2, as2, n2)) => {
-                    func1 == func2 && n1 == n2 && all_equal(as1, as2, f1, f2)
+                (Expr::Call(func1, as1, n1, ty1), Expr::Call(func2, as2, n2, ty2)) => {
+                    func1 == func2 && n1 == n2 && all_equal(as1, as2, f1, f2) && ty1 == ty2
                 }
                 (Expr::Const(c1, ty1, lit1), Expr::Const(c2, ty2, lit2)) => {
                     c1 == c2 && ty1 == ty2 && lit1 == lit2
                 }
                 (Expr::Print(as1), Expr::Print(as2)) => all_equal(as1, as2, f1, f2),
-                (Expr::Call(_, _, _), Expr::Op(_, _))
-                | (Expr::Call(_, _, _), Expr::Const(_, _, _))
-                | (Expr::Call(_, _, _), Expr::Print(_))
-                | (Expr::Const(_, _, _), Expr::Call(_, _, _))
-                | (Expr::Const(_, _, _), Expr::Op(_, _))
+                (Expr::Call(_, _, _, _), Expr::Op(_, _, _))
+                | (Expr::Call(_, _, _, _), Expr::Const(_, _, _))
+                | (Expr::Call(_, _, _, _), Expr::Print(_))
+                | (Expr::Const(_, _, _), Expr::Call(_, _, _, _))
+                | (Expr::Const(_, _, _), Expr::Op(_, _, _))
                 | (Expr::Const(_, _, _), Expr::Print(_))
-                | (Expr::Op(_, _), Expr::Call(_, _, _))
-                | (Expr::Op(_, _), Expr::Const(_, _, _))
-                | (Expr::Op(_, _), Expr::Print(_))
-                | (Expr::Print(_), Expr::Call(_, _, _))
+                | (Expr::Op(_, _, _), Expr::Call(_, _, _, _))
+                | (Expr::Op(_, _, _), Expr::Const(_, _, _))
+                | (Expr::Op(_, _, _), Expr::Print(_))
+                | (Expr::Print(_), Expr::Call(_, _, _, _))
                 | (Expr::Print(_), Expr::Const(_, _, _))
-                | (Expr::Print(_), Expr::Op(_, _)) => false,
+                | (Expr::Print(_), Expr::Op(_, _, _)) => false,
             },
             (
                 RvsdgBody::Theta {

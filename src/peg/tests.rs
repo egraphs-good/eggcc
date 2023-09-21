@@ -1,6 +1,7 @@
-use crate::cfg::to_cfg;
+use crate::cfg::program_to_cfg;
 use crate::peg::{PegBody, PegFunction};
-use crate::rvsdg::{from_cfg::cfg_func_to_rvsdg, Expr, Id};
+use crate::rvsdg::cfg_to_rvsdg;
+use crate::rvsdg::{Expr, Id};
 use crate::util::parse_from_string;
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
 use std::fs::File;
@@ -24,29 +25,33 @@ impl PegTest {
     fn lit_int(&mut self, i: i64) -> Id {
         self.make_node(PegBody::BasicOp(Expr::Const(
             ConstOps::Const,
-            Type::Int,
             Literal::Int(i),
+            Type::Int,
         )))
     }
 
     fn lit_bool(&mut self, b: bool) -> Id {
         self.make_node(PegBody::BasicOp(Expr::Const(
             ConstOps::Const,
-            Type::Bool,
             Literal::Bool(b),
+            Type::Bool,
         )))
     }
 
     fn lt(&mut self, l: Id, r: Id) -> Id {
-        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Lt, vec![l, r])))
+        self.make_node(PegBody::BasicOp(Expr::Op(
+            ValueOps::Lt,
+            vec![l, r],
+            Type::Bool,
+        )))
     }
 
-    fn add(&mut self, l: Id, r: Id) -> Id {
-        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Add, vec![l, r])))
+    fn add(&mut self, l: Id, r: Id, ty: Type) -> Id {
+        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Add, vec![l, r], ty)))
     }
 
-    fn mul(&mut self, l: Id, r: Id) -> Id {
-        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Mul, vec![l, r])))
+    fn mul(&mut self, l: Id, r: Id, ty: Type) -> Id {
+        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Mul, vec![l, r], ty)))
     }
 
     fn phi(&mut self, if_: Id, then: Id, else_: Id) -> Id {
@@ -92,13 +97,14 @@ fn peg_expr() {
     }
     "#;
     let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let peg = PegFunction::new(&cfg_func_to_rvsdg(&mut cfg).unwrap());
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    let peg = PegFunction::new(&rvsdg.functions[0]);
 
     let mut expected = PegTest::default();
     let one = expected.lit_int(1);
     let two = expected.lit_int(2);
-    let res = expected.add(one, two);
+    let res = expected.add(one, two, Type::Int);
     assert_eq!(&expected.into_function(0, res), &peg);
 }
 
@@ -137,8 +143,8 @@ fn peg_basic_odd_branch() {
 
     let res = expected.theta(zero, usize::MAX, 0);
     let i = expected.theta(zero, usize::MAX, 0);
-    let res_plus = expected.add(i, res);
-    let i_plus = expected.add(one, i);
+    let res_plus = expected.add(i, res, Type::Int);
+    let i_plus = expected.add(one, i, Type::Int);
     expected.nodes[res] = PegBody::Theta(zero, res_plus, 0);
     expected.nodes[i] = PegBody::Theta(zero, i_plus, 0);
 
@@ -146,13 +152,14 @@ fn peg_basic_odd_branch() {
     let pass = expected.pass(pred, 0);
     let eval = expected.eval(res, pass, 0);
     let pred = expected.lt(eval, five);
-    let mul2 = expected.mul(eval, two);
+    let mul2 = expected.mul(eval, two, Type::Int);
     let phi = expected.phi(pred, mul2, eval);
     let want = expected.into_function(1, phi);
 
     let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let have = PegFunction::new(&cfg_func_to_rvsdg(&mut cfg).unwrap());
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    let have = PegFunction::new(&rvsdg.functions[0]);
 
     let want: Vec<_> = (0..10)
         .map(|i| want.simulate(&[Literal::Int(i)]).unwrap())
@@ -187,19 +194,20 @@ fn peg_unstructured() {
     let one = expected.lit_int(1);
 
     let x = expected.theta(four, usize::MAX, 0);
-    let x_plus_one = expected.add(x, one);
+    let x_plus_one = expected.add(x, one, Type::Int);
     expected.nodes[x] = PegBody::Theta(four, x_plus_one, 0);
 
     let lt = expected.lt(x, four);
     let pass = expected.pass(lt, 0);
     let eval = expected.eval(x, pass, 0);
-    let add = expected.add(eval, one);
+    let add = expected.add(eval, one, Type::Int);
 
     let want = expected.into_function(0, add);
 
     let prog = parse_from_string(PROGRAM);
-    let mut cfg = to_cfg(&prog.functions[0]);
-    let have = PegFunction::new(&cfg_func_to_rvsdg(&mut cfg).unwrap());
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    let have = PegFunction::new(&rvsdg.functions[0]);
 
     assert_eq!(want.simulate(&[]).unwrap(), have.simulate(&[]).unwrap());
 }

@@ -15,6 +15,8 @@ use petgraph::{
     visit::{DfsPostOrder, Walker},
 };
 
+use crate::rvsdg::from_cfg::FunctionTypes;
+
 /// A subset of nodes for a particular CFG.
 pub(crate) type NodeSet = <StableDiGraph<BasicBlock, Branch> as Visitable>::Map;
 
@@ -38,6 +40,17 @@ pub(crate) fn program_to_cfg(program: &Program) -> CfgProgram {
 #[derive(Clone)]
 pub struct CfgProgram {
     pub functions: Vec<Cfg>,
+}
+
+impl CfgProgram {
+    pub(crate) fn function_types(&self) -> FunctionTypes {
+        let mut types = FunctionTypes::default();
+        for func in &self.functions {
+            let output_type = func.return_ty.clone();
+            types.insert(func.name.clone(), output_type);
+        }
+        types
+    }
 }
 
 /// The name (or label) associated with a basic block.

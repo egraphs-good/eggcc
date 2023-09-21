@@ -228,7 +228,7 @@ impl RvsdgFunction {
     fn expr_to_egglog_expr(&self, expr: &Expr<Operand>) -> egglog::ast::Expr {
         use egglog::ast::{Expr::*, Literal::*};
         let f = |operands: &Vec<Operand>, ty: Option<Type>| {
-            let mut res = vec![];
+            let mut res = Vec::with_capacity(operands.len() + ty.is_some() as usize);
             if let Some(ty) = ty {
                 res.push(Self::expr_from_ty(&ty));
             }

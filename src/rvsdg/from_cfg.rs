@@ -79,6 +79,10 @@ pub(crate) fn cfg_func_to_rvsdg(
     })
 }
 
+/// FunctionTypes is a map from the name of the function
+/// to the type of the function.
+/// Bril doesn't have a void type, so this
+/// is `None` when the function returns nothing.
 pub(crate) type FunctionTypes = HashMap<String, Option<Type>>;
 
 pub(crate) struct RvsdgBuilder<'a> {

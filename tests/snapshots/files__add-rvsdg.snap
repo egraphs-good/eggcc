@@ -7,7 +7,8 @@ expression: result.visualization
 	version="1.1"
 	width="650"
 	xmlns="http://www.w3.org/2000/svg">
-	<g>
+	<g
+		transform="translate(0, 0)">
 		<rect
 			fill="white"
 			height="500"

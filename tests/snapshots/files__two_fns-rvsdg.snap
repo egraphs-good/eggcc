@@ -3,11 +3,12 @@ source: tests/files.rs
 expression: result.visualization
 ---
 <svg
-	height="850"
+	height="900"
 	version="1.1"
 	width="650"
 	xmlns="http://www.w3.org/2000/svg">
-	<g>
+	<g
+		transform="translate(0, 0)">
 		<rect
 			fill="white"
 			height="350"
@@ -181,7 +182,8 @@ expression: result.visualization
 		</g>
 	</g>
 	
-	<g>
+	<g
+		transform="translate(0, 400)">
 		<rect
 			fill="white"
 			height="500"

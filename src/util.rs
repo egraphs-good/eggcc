@@ -128,7 +128,7 @@ where
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub enum RunType {
     StructuredConversion,
     RvsdgConversion,
@@ -245,7 +245,7 @@ impl Run {
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
             RunType::NaiiveOptimization,
-            //RunType::RvsdgToCfg,
+            RunType::RvsdgToCfg,
         ] {
             let default = Run {
                 test_type,

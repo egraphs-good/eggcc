@@ -60,32 +60,6 @@ fn run_command_with_stdin(command: &mut std::process::Command, input: String) ->
     .unwrap()
     .to_string()
 }
-#[derive(Clone, Copy)]
-pub enum RunType {
-    StructuredConversion,
-    RvsdgConversion,
-    NaiiveOptimization,
-}
-
-impl Display for RunType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RunType::StructuredConversion => write!(f, "structured"),
-            RunType::RvsdgConversion => write!(f, "rvsdg"),
-            RunType::NaiiveOptimization => write!(f, "naiive"),
-        }
-    }
-}
-
-impl RunType {
-    pub fn produces_bril(&self) -> bool {
-        match self {
-            RunType::StructuredConversion => false,
-            RunType::RvsdgConversion => false,
-            RunType::NaiiveOptimization => true,
-        }
-    }
-}
 
 pub struct Optimizer {
     pub num_iters: usize,

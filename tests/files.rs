@@ -1,10 +1,20 @@
-use eggcc::util::{Run, TestProgram};
+use std::collections::HashSet;
+
+use eggcc::util::{Run, RunType, TestProgram};
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
 fn generate_tests(glob: &str) -> Vec<Trial> {
     let mut trials = vec![];
     let mut mk_trial = |run: Run, snapshot: bool| {
+        let snapshot_configurations: HashSet<RunType> = vec![
+            RunType::StructuredConversion,
+            RunType::RvsdgConversion,
+            RunType::NaiiveOptimization,
+        ]
+        .into_iter()
+        .collect();
+
         trials.push(Trial::test(run.name(), move || {
             let result = run.run();
 

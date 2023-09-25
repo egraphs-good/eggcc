@@ -176,7 +176,7 @@ fn rvsdg_state_gamma() {
     .C:
         call @other_func;
         jmp .End;
-    .End: 
+    .End:
     }
 
     @other_func() {
@@ -417,30 +417,30 @@ fn rvsdg_odd_branch_egg_roundtrip() {
                                                                         (const)
                                                                         (Num 1)))))))
                                 (Arg 3))))
-              (vec-of (Arg 1)
+              (VO (vec-of (Arg 1)
                       (Node (PureOp (Const (IntT) (const) (Num 0))))
                       (Node (PureOp (Const (IntT) (const) (Num 0))))
-                      (Arg 0))
-              (vec-of (Arg 0)
+                      (Arg 0)))
+              (VO (vec-of (Arg 0)
                       (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
                       (Node (PureOp (add (IntT) (Arg 2)
                                          (Node (PureOp (Const (IntT) (const) (Num 1)))))))
-                      (Arg 3))))
+                      (Arg 3)))))
     (let rescaled 
         (Gamma
          (Node
           (PureOp
            (lt (BoolT) (Project 1 loop)
                (Node (PureOp (Const (IntT) (const) (Num 5)))))))
-         (vec-of
+         (VO (vec-of
           (Project 0 loop)
-          (Project 1 loop))
-         (vec-of (VO (vec-of (Arg 0) (Arg 1)))
+          (Project 1 loop)))
+         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
                  (VO (vec-of (Arg 0)
                              (Node (PureOp (mul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
-                                                                     (Num 2))))))))))))
+                                                                     (Num 2)))))))))))))
     (let expected-result (Project 0 rescaled))
     (let expected-state (Project 1 rescaled))
     "#;
@@ -647,4 +647,103 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
         (None, None) => true,
         (None, Some(_)) | (Some(_), None) => false,
     }
+}
+
+#[test]
+fn rvsdg_subst() {
+    const EGGLOG_PROGRAM: &str = r#"
+    (let unsubsted
+              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+                                                   (Node (PureOp (Const (IntT)
+                                                                        (const)
+                                                                        (Num 1)))))))
+                                (Arg 3)))))
+    (let substed (SubstOperand unsubsted 3 (Arg 7)))
+    (run 100)
+    (let expected
+              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+                                                   (Node (PureOp (Const (IntT)
+                                                                        (const)
+                                                                        (Num 1)))))))
+                                (Arg 7)))))
+    (check (= substed expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
+
+    const EGGLOG_THETA_PROGRAM: &str = r#"
+    (let unsubsted
+        (Theta
+              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+                                                   (Node (PureOp (Const (IntT)
+                                                                        (const)
+                                                                        (Num 1)))))))
+                                (Arg 3))))
+              (VO (vec-of (Arg 0)
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
+                      (Arg 1)))
+              (VO (vec-of (Arg 0)
+                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (add (IntT) (Arg 2)
+                                         (Node (PureOp (Const (IntT) (const) (Num 1)))))))
+                      (Arg 3)))))
+    (let substed (SubstBody unsubsted 1 (Arg 7)))
+    (run 100)
+    (let expected
+        (Theta
+              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+                                                   (Node (PureOp (Const (IntT)
+                                                                        (const)
+                                                                        (Num 1)))))))
+                                (Arg 3))))
+              (VO (vec-of (Arg 0)
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
+                      (Arg 7)))
+              (VO (vec-of (Arg 0)
+                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (add (IntT) (Arg 2)
+                                         (Node (PureOp (Const (IntT) (const) (Num 1)))))))
+                      (Arg 3)))))
+    (check (= substed expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM).unwrap();
+
+    const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let unsubsted 
+        (Gamma
+         (Node
+          (PureOp
+           (lt (BoolT) (Arg 0) (Arg 0))))
+         (VO (vec-of
+          (Arg 1)
+          (Arg 0)))
+         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
+                 (VO (vec-of (Arg 0)
+                             (Node (PureOp (mul (IntT) (Arg 1)
+                                                (Node (PureOp (Const (IntT)
+                                                                     (const)
+                                                                     (Num 2)))))))))))))
+    (let substed (SubstBody unsubsted 0 (Arg 7)))
+    (run 100)
+    (let expected
+        (Gamma
+         (Node
+          (PureOp
+           (lt (BoolT) (Arg 7) (Arg 7))))
+         (VO (vec-of
+          (Arg 1)
+          (Arg 7)))
+         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
+                 (VO (vec-of (Arg 0)
+                             (Node (PureOp (mul (IntT) (Arg 1)
+                                                (Node (PureOp (Const (IntT)
+                                                                     (const)
+                                                                     (Num 2)))))))))))))
+    (check (= substed expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
 }

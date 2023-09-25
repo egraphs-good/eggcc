@@ -1,8 +1,11 @@
-.PHONY: test nits docs nightly
+.PHONY: test nits docs nightly test-clean
 
 all: test nits docs
 
 test:
+	cargo insta test
+
+test-clean:
 	cargo insta test --unreferenced=delete
 
 nits:

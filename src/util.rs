@@ -244,7 +244,7 @@ impl Run {
         for test_type in [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
-            //RunType::NaiiveOptimization,
+            RunType::NaiiveOptimization,
             //RunType::RvsdgToCfg,
         ] {
             let default = Run {

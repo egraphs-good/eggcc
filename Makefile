@@ -3,7 +3,7 @@
 all: test nits docs
 
 test:
-	cargo insta test
+	cargo insta test --unreferenced=reject
 
 test-clean:
 	cargo insta test --unreferenced=delete

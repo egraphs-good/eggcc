@@ -66,18 +66,26 @@ pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
     let results = all_configs.iter().map(|run| (run, run.run()));
 
     for (run, result) in results {
-        let mut output_path = output_dir.clone();
-        assert!(output_path.is_dir());
-        output_path.push(format!(
-            "{}{}",
-            run.name(),
-            result.visualization_file_extension
-        ));
-        let mut file = File::create(output_path)?;
+        // if there's an interpreted value do that as well
         if let Some(interpreted) = result.result_interpreted {
+            let mut output_path = output_dir.clone();
+            output_path.push(format!("{}-interp.txt", run.name()));
+            let mut file = File::create(output_path)?;
             file.write_all(interpreted.as_bytes())?;
-        } else {
-            file.write_all(result.visualization.as_bytes())?;
+        }
+
+        for visualization in result.visualizations {
+            let mut output_path = output_dir.clone();
+
+            assert!(output_path.is_dir());
+            output_path.push(format!(
+                "{}{}{}",
+                run.name(),
+                visualization.name,
+                visualization.file_extension
+            ));
+            let mut file = File::create(output_path)?;
+            file.write_all(visualization.result.as_bytes())?;
         }
     }
 
@@ -125,6 +133,7 @@ pub enum RunType {
     StructuredConversion,
     RvsdgConversion,
     NaiiveOptimization,
+    RvsdgToCfg,
 }
 
 impl Debug for RunType {
@@ -152,6 +161,7 @@ impl Display for RunType {
             RunType::StructuredConversion => write!(f, "structured"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::NaiiveOptimization => write!(f, "naiive"),
+            RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
         }
     }
 }
@@ -162,6 +172,7 @@ impl RunType {
             RunType::StructuredConversion => false,
             RunType::RvsdgConversion => false,
             RunType::NaiiveOptimization => true,
+            RunType::RvsdgToCfg => false,
         }
     }
 }
@@ -207,12 +218,20 @@ pub struct Run {
     pub interp: bool,
 }
 
+/// Some sort of visualization of the result, with a name
+/// and a file extension.
+/// For CFGs, the name is the name of the function and the vizalization
+/// is a SVG.
+#[derive(Clone)]
+pub struct Visualization {
+    pub result: String,
+    pub file_extension: String,
+    pub name: String,
+}
+
 #[derive(Clone)]
 pub struct RunOutput {
-    // a visualization of the result
-    pub visualization: String,
-    // a viable file extension for the visualization
-    pub visualization_file_extension: String,
+    pub visualizations: Vec<Visualization>,
     // if the result was interpreted, the stdout of interpreting it
     pub result_interpreted: Option<String>,
     pub original_interpreted: String,
@@ -225,7 +244,8 @@ impl Run {
         for test_type in [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
-            RunType::NaiiveOptimization,
+            //RunType::NaiiveOptimization,
+            //RunType::RvsdgToCfg,
         ] {
             let default = Run {
                 test_type,
@@ -259,22 +279,47 @@ impl Run {
             self.prog_with_args.args.clone(),
             None,
         );
-        let (visualization, visualization_file_extension) = match self.test_type {
+        let visualizations = match self.test_type {
             RunType::StructuredConversion => {
                 let structured =
                     Optimizer::program_to_structured(&self.prog_with_args.program).unwrap();
-                (structured.to_string(), ".txt")
+                vec![Visualization {
+                    result: structured.to_string(),
+                    file_extension: ".txt".to_string(),
+                    name: "".to_string(),
+                }]
             }
             RunType::RvsdgConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let svg = rvsdg.to_svg();
-                (svg, ".svg")
+                vec![Visualization {
+                    result: svg,
+                    file_extension: ".svg".to_string(),
+                    name: "".to_string(),
+                }]
             }
             RunType::NaiiveOptimization => {
                 let mut optimizer = Optimizer::default();
                 let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
-
-                (format!("{}", res), ".bril")
+                vec![Visualization {
+                    result: res.to_string(),
+                    file_extension: ".bril".to_string(),
+                    name: "".to_string(),
+                }]
+            }
+            RunType::RvsdgToCfg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let cfg = rvsdg.to_cfg();
+                let mut visualizations = vec![];
+                for function in cfg.functions {
+                    let svg = function.to_svg();
+                    visualizations.push(Visualization {
+                        result: svg,
+                        file_extension: ".svg".to_string(),
+                        name: function.name.clone(),
+                    });
+                }
+                visualizations
             }
         };
 
@@ -289,8 +334,7 @@ impl Run {
         };
 
         RunOutput {
-            visualization,
-            visualization_file_extension: visualization_file_extension.to_string(),
+            visualizations,
             result_interpreted,
             original_interpreted,
         }

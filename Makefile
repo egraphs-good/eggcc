@@ -3,7 +3,7 @@
 all: test nits docs
 
 test:
-	cargo test --release
+	cargo insta test --unreferenced=delete
 
 nits:
 	@rustup component add clippy

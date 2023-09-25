@@ -1,5 +1,5 @@
-use bril_rs::{Code, ConstOps, EffectOps, Function, Instruction, Program};
-use hashbrown::HashMap;
+use bril_rs::{ConstOps, EffectOps, Instruction};
+
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableDiGraph;
 
@@ -28,6 +28,9 @@ struct RvsdgToCfg<'a> {
     graph: StableDiGraph<BasicBlock, Branch>,
     /// The instructions we have generated for the next block.
     current_instrs: Vec<Instruction>,
+    /// The current set of arguments
+    /// we use None for state/print edges which don't have an actual value
+    current_args: Vec<Option<String>>,
     /// When we finish a block or some blocks in the case of conditionals,
     /// we need to add a way to connect it to the next block.
     incomplete_branches: Vec<IncompleteBranch>,
@@ -53,11 +56,13 @@ impl RvsdgFunction {
             fresh_name: FreshNameGen::new(),
             graph: Default::default(),
             current_instrs: vec![],
+            // TODO hard-coded no arguments (just implicit print arg)
+            current_args: vec![None],
             incomplete_branches: vec![],
             entry_block: None,
         };
 
-        to_bril.operand_to_bril(self.state, &AssignTo::Nothing);
+        to_bril.operand_to_bril(self.state, &AssignTo::Var(None));
         if let Some(operand) = self.result {
             // it doesn't matter what var we assign to
             let res = to_bril.operand_to_bril(operand, &AssignTo::Var(None));
@@ -86,8 +91,6 @@ impl RvsdgFunction {
 
 #[derive(Debug, Clone)]
 enum AssignTo {
-    /// for effects like print, we don't assign to anything
-    Nothing,
     /// assign to a single variable. If the variable is None,
     /// it doesn't matter.
     Var(Option<String>),
@@ -116,7 +119,15 @@ impl<'a> RvsdgToCfg<'a> {
                     panic!("Got multiple outputs for an operand!");
                 }
             }
-            (Operand::Arg(_), _) => panic!("args not supported yet"),
+            (Operand::Arg(index), AssignTo::Var(v)) => {
+                let arg = self.current_args[index].clone();
+                if let Some(v) = v {
+                    if v != &arg.clone().unwrap() {
+                        todo!("Handle assigning to arg");
+                    }
+                }
+                arg
+            }
             (Operand::Project(arg, id), AssignTo::Var(v)) => {
                 let mut assign_to = vec![None; arg + 1];
                 assign_to[arg] = v.clone();
@@ -317,18 +328,14 @@ impl<'a> RvsdgToCfg<'a> {
                 });
                 Some(dest)
             }
-            Expr::Print(operands) => {
-                if let AssignTo::Nothing = assign_to {
-                } else {
-                    panic!(
-                        "Expected AssignTo::Nothing for print, but got {:?}",
-                        assign_to
-                    );
-                }
-                let operands = operands
-                    .iter()
-                    .filter_map(|op| self.operand_to_bril(*op, &AssignTo::Var(None)))
-                    .collect();
+            Expr::Print(print_operands) => {
+                assert!(print_operands.len() == 2);
+                let operands = vec![self
+                    .operand_to_bril(print_operands[0], &AssignTo::Var(None))
+                    .unwrap()];
+                // also need to evaluate other prints before this one
+                self.operand_to_bril(print_operands[1], &AssignTo::Var(None));
+
                 self.current_instrs.push(Instruction::Effect {
                     op: EffectOps::Print,
                     args: operands,

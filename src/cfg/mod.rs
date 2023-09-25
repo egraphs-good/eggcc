@@ -3,11 +3,14 @@
 //! The methods here largely ignore the instructions in the program: all that we
 //! look for here are instructions that may break up basic blocks (`jmp`, `br`,
 //! `ret`), and labels. All other instructions are copied into the CFG.
+use core::fmt::Debug;
+use std::fmt::Formatter;
 use std::str::FromStr;
 use std::{collections::HashMap, fmt::Display};
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};
+use petgraph::dot::Dot;
 use petgraph::stable_graph::StableDiGraph;
 use petgraph::visit::Visitable;
 use petgraph::{
@@ -16,6 +19,7 @@ use petgraph::{
 };
 
 use crate::rvsdg::from_cfg::FunctionTypes;
+use crate::util::{run_cmd_line, ListDisplay};
 
 /// A subset of nodes for a particular CFG.
 pub(crate) type NodeSet = <StableDiGraph<BasicBlock, Branch> as Visitable>::Map;
@@ -173,7 +177,7 @@ pub(crate) enum Annotation {
 }
 
 /// A branch-free sequence of instructions.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct BasicBlock {
     /// The primary instructions for a block.
     pub(crate) instrs: Vec<Instruction>,
@@ -182,6 +186,12 @@ pub struct BasicBlock {
     /// The name for the block.
     pub(crate) name: BlockName,
     pub(crate) pos: Option<Position>,
+}
+
+impl Debug for BasicBlock {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", ListDisplay(self.to_code(), "\n"))
+    }
 }
 
 impl BasicBlock {
@@ -243,6 +253,11 @@ pub struct CfgFunction {
 impl CfgFunction {
     pub(crate) fn has_return_value(&self) -> bool {
         self.return_ty.is_some()
+    }
+
+    pub fn to_svg(&self) -> String {
+        let dot_code = format!("{:?}", Dot::new(&self.graph));
+        run_cmd_line("dot", ["-Tsvg"], &dot_code).unwrap()
     }
 }
 

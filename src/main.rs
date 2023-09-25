@@ -58,6 +58,9 @@ fn main() {
     if result.result_interpreted.is_some() {
         println!("{}", result.result_interpreted.unwrap());
     } else {
-        println!("{}", result.visualization);
+        for visualization in result.visualizations {
+            println!("{}", visualization.name);
+            println!("{}", visualization.result);
+        }
     }
 }

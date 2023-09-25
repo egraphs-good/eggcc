@@ -14,7 +14,7 @@ use crate::{
 
 use super::{
     structured::{StructuredBlock, StructuredFunction, StructuredProgram},
-    BlockName, Branch, BranchOp, Cfg, CfgProgram,
+    BlockName, Branch, BranchOp, CfgFunction, CfgProgram,
 };
 
 /// Records the history of the current node in the CFG
@@ -39,11 +39,11 @@ pub(crate) struct StructuredCfgBuilder<'a> {
     context: Vec<Context>, // last element is newest context
     postorder: HashMap<BlockName, usize>,
     dominators: Dominators<NodeIndex>,
-    cfg: &'a Cfg,
+    cfg: &'a CfgFunction,
 }
 
 impl<'a> StructuredCfgBuilder<'a> {
-    fn new(cfg: &'a Cfg) -> Self {
+    fn new(cfg: &'a CfgFunction) -> Self {
         let postorder = cfg.reverse_postorder();
         let dominators = dominators::simple_fast(&cfg.graph, cfg.entry);
         StructuredCfgBuilder {

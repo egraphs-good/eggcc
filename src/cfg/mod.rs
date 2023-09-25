@@ -39,7 +39,7 @@ pub(crate) fn program_to_cfg(program: &Program) -> CfgProgram {
 
 #[derive(Clone)]
 pub struct CfgProgram {
-    pub functions: Vec<Cfg>,
+    pub functions: Vec<CfgFunction>,
 }
 
 impl CfgProgram {
@@ -226,7 +226,7 @@ pub(crate) enum BranchOp {
 
 /// The control-flow graph for a single function.
 #[derive(Debug, Clone)]
-pub struct Cfg {
+pub struct CfgFunction {
     /// The arguments to the function.
     pub(crate) args: Vec<Argument>,
     /// The graph itself.
@@ -237,17 +237,17 @@ pub struct Cfg {
     pub(crate) exit: NodeIndex,
     /// The name of the function.
     pub(crate) name: String,
-    return_ty: Option<Type>,
+    pub(crate) return_ty: Option<Type>,
 }
 
-impl Cfg {
+impl CfgFunction {
     pub(crate) fn has_return_value(&self) -> bool {
         self.return_ty.is_some()
     }
 }
 
-impl Cfg {
-    fn reverse_postorder(self: &Cfg) -> HashMap<BlockName, usize> {
+impl CfgFunction {
+    fn reverse_postorder(self: &CfgFunction) -> HashMap<BlockName, usize> {
         let mut reverse_postorder = HashMap::<BlockName, usize>::new();
         let mut post_counter = 0;
         DfsPostOrder::new(&self.graph, self.entry)
@@ -265,7 +265,7 @@ impl Cfg {
 ///
 /// The structure is reproduced exactly, aside from the addition of a single
 /// exit node branched to from all return statements.
-pub(crate) fn to_cfg(func: &Function) -> Cfg {
+pub(crate) fn to_cfg(func: &Function) -> CfgFunction {
     let mut builder = CfgBuilder::new(func);
     let mut block = Vec::new();
     let mut anns = Vec::new();
@@ -397,7 +397,7 @@ pub(crate) fn to_cfg(func: &Function) -> Cfg {
 }
 
 struct CfgBuilder {
-    cfg: Cfg,
+    cfg: CfgFunction,
     label_to_block: HashMap<String, NodeIndex>,
 }
 
@@ -407,7 +407,7 @@ impl CfgBuilder {
         let entry = graph.add_node(BasicBlock::empty(BlockName::Entry));
         let exit = graph.add_node(BasicBlock::empty(BlockName::Exit));
         CfgBuilder {
-            cfg: Cfg {
+            cfg: CfgFunction {
                 args: func.args.clone(),
                 graph,
                 entry,

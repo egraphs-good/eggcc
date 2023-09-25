@@ -10,7 +10,7 @@ use petgraph::{
 };
 
 use crate::cfg::{
-    Annotation, BasicBlock, BlockName, Branch, BranchOp, Cfg, CondVal, Identifier, NodeSet,
+    Annotation, BasicBlock, BlockName, Branch, BranchOp, CfgFunction, CondVal, Identifier, NodeSet,
 };
 
 fn node_set(nodes: impl IntoIterator<Item = NodeIndex>) -> NodeSet {
@@ -36,7 +36,7 @@ impl RestructureState {
     }
 }
 
-impl Cfg {
+impl CfgFunction {
     fn fresh_block(&mut self) -> NodeIndex {
         let placeholder = self.graph.node_count();
         self.graph

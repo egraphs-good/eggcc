@@ -311,4 +311,10 @@ impl FreshNameGen {
         self.next += 1;
         name
     }
+
+    pub(crate) fn fresh_usize(&mut self) -> usize {
+        let name = self.next;
+        self.next += 1;
+        name
+    }
 }

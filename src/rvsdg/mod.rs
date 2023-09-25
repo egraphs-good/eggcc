@@ -74,7 +74,7 @@ pub enum RvsdgError {
         pos: Option<bril_rs::Position>,
     },
 
-    // NB: We should  be able to suppor these patterns, but it might be better
+    // NB: We should be able to support these patterns, but it might be better
     // to desugar them away as part of the CFG parsing step.
     #[error("Multiple branches from loop tail to head ({pos:?})")]
     UnsupportedLoopTail { pos: Option<bril_rs::Position> },
@@ -114,10 +114,13 @@ impl<Op> Expr<Op> {
     fn map_operands(&self, f: impl FnMut(&Op) -> Op) -> Self {
         use Expr::*;
         match self {
-            Op(op, operands) => Op(op.clone(), operands.iter().map(f).collect()),
-            Call(ident, operands, n_outputs) => {
-                Call(ident.clone(), operands.iter().map(f).collect(), *n_outputs)
-            }
+            Op(op, operands, ty) => Op(*op, operands.iter().map(f).collect(), ty.clone()),
+            Call(ident, operands, n_outputs, ty) => Call(
+                ident.clone(),
+                operands.iter().map(f).collect(),
+                *n_outputs,
+                ty.clone(),
+            ),
             Const(op, ty, lit) => Const(*op, ty.clone(), lit.clone()),
             Print(operands) => Print(operands.iter().map(f).collect()),
         }

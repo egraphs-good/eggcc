@@ -264,6 +264,7 @@ impl Run {
             self.prog_with_args.args.clone(),
             None,
         );
+        let mut optimized = None;
         let (visualization, visualization_file_extension) = match self.test_type {
             RunType::StructuredConversion => {
                 let structured =
@@ -278,8 +279,9 @@ impl Run {
             RunType::NaiiveOptimization => {
                 let mut optimizer = Optimizer::default();
                 let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
-
-                (format!("{}", res), ".bril")
+                let vis = (format!("{}", res), ".bril");
+                optimized = Some(res);
+                vis
             }
             RunType::PegConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
@@ -289,14 +291,16 @@ impl Run {
             }
         };
 
-        let result_interpreted = if self.interp {
-            Some(Optimizer::interp(
-                &self.prog_with_args.program,
-                self.prog_with_args.args.clone(),
-                None,
-            ))
-        } else {
-            None
+        let result_interpreted = match optimized {
+            Some(program) if self.interp => {
+                assert!(self.test_type.produces_bril());
+                Some(Optimizer::interp(
+                    &program,
+                    self.prog_with_args.args.clone(),
+                    None,
+                ))
+            }
+            _ => None,
         };
 
         RunOutput {

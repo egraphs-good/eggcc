@@ -142,6 +142,12 @@ pub(crate) enum RvsdgBody {
     },
 }
 
+#[derive(Debug)]
+pub(crate) enum RvsdgType {
+    Bril(Type),
+    PrintState,
+}
+
 /// Represents a single function as an RVSDG.
 /// The function has arguments, a result, and nodes.
 /// The nodes are stored in a vector, and variants of RvsdgBody refer
@@ -155,7 +161,11 @@ pub struct RvsdgFunction {
     /// Functions all take `n_args + 1` arguments, where the last argument is a
     /// "state edge" used to preserve ordering constraints to (potentially)
     /// impure function calls.
+    /// TODO remove n_args when the egglog encoding supports args
     pub(crate) n_args: usize,
+    /// The arguments to this function, which can be bril values or
+    /// state edges.
+    pub(crate) args: Vec<RvsdgType>,
     /// The backing heap for Rvsdg node ids within this function.
     pub(crate) nodes: Vec<RvsdgBody>,
     /// The (optional) result pointing into this function.
@@ -171,7 +181,7 @@ pub struct RvsdgFunction {
 impl fmt::Debug for RvsdgFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RvsdgFunction")
-            .field("n_args", &self.n_args)
+            .field("args", &self.args)
             .field("result", &self.result)
             .field("state", &self.state);
         let mut map = f.debug_map();
@@ -489,6 +499,8 @@ impl RvsdgFunction {
             // TODO: the encoding doesn't contain function names
             name: "MISSING_NAME".to_owned(),
             n_args,
+            // TODO properly set args once egglog encoding supports it
+            args: vec![],
             nodes,
             result,
             state,

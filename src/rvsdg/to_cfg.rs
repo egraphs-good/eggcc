@@ -1,4 +1,4 @@
-use bril_rs::{ConstOps, EffectOps, Instruction};
+use bril_rs::{ConstOps, EffectOps, Instruction, Type, ValueOps};
 
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableDiGraph;
@@ -21,6 +21,29 @@ enum IncompleteBranch {
     Direct { from: NodeIndex },
 }
 
+/// Represents the result of a RVSDG computation
+#[derive(Clone, Debug)]
+enum RvsdgValue {
+    StateEdge,
+    BrilValue(String, Type),
+}
+
+impl RvsdgValue {
+    fn unwrap_name(&self) -> String {
+        match self {
+            RvsdgValue::StateEdge => panic!("Tried to unwrap state edge"),
+            RvsdgValue::BrilValue(name, _) => name.clone(),
+        }
+    }
+
+    fn unwrap_type(&self) -> Type {
+        match self {
+            RvsdgValue::StateEdge => panic!("Tried to unwrap state edge"),
+            RvsdgValue::BrilValue(_, ty) => ty.clone(),
+        }
+    }
+}
+
 struct RvsdgToCfg<'a> {
     function: &'a RvsdgFunction,
     fresh_name: FreshNameGen,
@@ -28,9 +51,6 @@ struct RvsdgToCfg<'a> {
     graph: StableDiGraph<BasicBlock, Branch>,
     /// The instructions we have generated for the next block.
     current_instrs: Vec<Instruction>,
-    /// The current set of arguments
-    /// we use None for state/print edges which don't have an actual value
-    current_args: Vec<Option<String>>,
     /// When we finish a block or some blocks in the case of conditionals,
     /// we need to add a way to connect it to the next block.
     incomplete_branches: Vec<IncompleteBranch>,
@@ -56,20 +76,19 @@ impl RvsdgFunction {
             fresh_name: FreshNameGen::new(),
             graph: Default::default(),
             current_instrs: vec![],
-            // TODO hard-coded no arguments (just implicit print arg)
-            current_args: vec![None],
             incomplete_branches: vec![],
             entry_block: None,
         };
 
-        to_bril.operand_to_bril(self.state, &AssignTo::Var(None));
+        // TODO current args hardcoded to implicit print state
+        to_bril.operand_to_bril(self.state, &vec![RvsdgValue::StateEdge]);
         if let Some(operand) = self.result {
             // it doesn't matter what var we assign to
-            let res = to_bril.operand_to_bril(operand, &AssignTo::Var(None));
-            assert!(res.is_some());
+            // TODO current args hardcoded to implicit print state
+            let res = to_bril.operand_to_bril(operand, &vec![RvsdgValue::StateEdge]);
             to_bril.current_instrs.push(Instruction::Effect {
                 op: EffectOps::Return,
-                args: vec![res.unwrap()],
+                args: vec![res.unwrap_name()],
                 funcs: vec![],
                 labels: vec![],
                 pos: None,
@@ -89,49 +108,21 @@ impl RvsdgFunction {
     }
 }
 
-#[derive(Debug, Clone)]
-enum AssignTo {
-    /// assign to a single variable. If the variable is None,
-    /// it doesn't matter.
-    Var(Option<String>),
-    /// assign to multiple variables. If the variable is None,
-    /// it doesn't matter what name is chosen for it.
-    /// if the length of vars is less than the number
-    /// of outputs that's okay, count them as None
-    /// Finally, no two variable names can be the same
-    Vars(Vec<Option<String>>),
-}
-
 impl<'a> RvsdgToCfg<'a> {
     // Returns the name of the variable storing the result
     // or None if no value is returned.
     // The caller of this function should know what this
     // operand is being assigned to.
-    fn operand_to_bril(&mut self, operand: Operand, assign_to: &AssignTo) -> Option<String> {
-        match (operand, assign_to) {
-            (Operand::Id(id), _) => {
-                let res = self.body_to_bril(id, assign_to);
-                if res.len() == 1 {
-                    res[0].clone()
-                } else if res.is_empty() {
-                    None
-                } else {
-                    panic!("Got multiple outputs for an operand!");
-                }
+    fn operand_to_bril(&mut self, operand: Operand, current_args: &Vec<RvsdgValue>) -> RvsdgValue {
+        match operand {
+            Operand::Id(id) => {
+                let res = self.body_to_bril(id, current_args);
+                assert!(res.len() == 1);
+                res[0].clone()
             }
-            (Operand::Arg(index), AssignTo::Var(v)) => {
-                let arg = self.current_args[index].clone();
-                if let Some(v) = v {
-                    if v != &arg.clone().unwrap() {
-                        todo!("Handle assigning to arg");
-                    }
-                }
-                arg
-            }
-            (Operand::Project(arg, id), AssignTo::Var(v)) => {
-                let mut assign_to = vec![None; arg + 1];
-                assign_to[arg] = v.clone();
-                let res = self.body_to_bril(id, &AssignTo::Vars(assign_to));
+            Operand::Arg(index) => current_args[index].clone(),
+            Operand::Project(arg, id) => {
+                let res = self.body_to_bril(id, current_args);
                 res.get(arg)
                     .unwrap_or_else(|| {
                         panic!(
@@ -141,101 +132,164 @@ impl<'a> RvsdgToCfg<'a> {
                     })
                     .clone()
             }
-            _ => panic!("AssignTo was invalid: {:?} vs {:?}", operand, assign_to),
         }
     }
 
-    fn body_to_bril(&mut self, id: Id, assign_to: &AssignTo) -> Vec<Option<String>> {
+    // helper function to assigning to a set of variables
+    // this is helpful in looping for loop variables or assigning to shared
+    // variables across branches in a gamma
+    fn assign_to_vars(&mut self, input_vars: &[RvsdgValue], resulting_vars: &[RvsdgValue]) {
+        // assign to the loop variables, making sure the types line up
+        for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
+            match (ivar, rvar) {
+                (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}
+                (RvsdgValue::BrilValue(oname, oty), RvsdgValue::BrilValue(lname, lty)) => {
+                    assert_eq!(oty, lty);
+                    self.current_instrs.push(Instruction::Value {
+                        dest: lname.clone(),
+                        op: ValueOps::Id,
+                        args: vec![oname.clone()],
+                        funcs: vec![],
+                        labels: vec![],
+                        pos: None,
+                        op_type: oty.clone(),
+                    });
+                }
+                _ => panic!(
+                    "Incompatible values in assign_to_vars: {:?} {:?}",
+                    ivar, rvar
+                ),
+            }
+        }
+    }
+
+    fn fresh_variables_for(&mut self, values: &[RvsdgValue]) -> Vec<RvsdgValue> {
+        values
+            .iter()
+            .map(|ivar| match ivar {
+                RvsdgValue::StateEdge => ivar.clone(),
+                RvsdgValue::BrilValue(_name, ty) => {
+                    RvsdgValue::BrilValue(self.get_fresh(), ty.clone())
+                }
+            })
+            .collect::<Vec<_>>()
+    }
+
+    /// The result of body_to_bril must comply with the assign_to input
+    /// However, unlike AssignTo, there may be duplicate variables in the result
+    /// when AssignTo doesn't specify the variable.
+    fn body_to_bril(&mut self, id: Id, current_args: &Vec<RvsdgValue>) -> Vec<RvsdgValue> {
         // TODO share common sub-expressions
         let body = &self.function.nodes[id];
         match body {
             RvsdgBody::BasicOp(expr) => {
-                vec![self.expr_to_bril(expr, assign_to)]
+                vec![self.expr_to_bril(expr, current_args)]
             }
             RvsdgBody::Gamma {
                 pred,
                 inputs,
                 outputs,
             } => {
-                // TODO right now we
-                // just handle the case where we branch to two things
-                assert!(outputs.len() == 2);
-
-                // evaluate inputs
                 let input_vars = inputs
                     .iter()
-                    .map(|id| self.operand_to_bril(*id, &AssignTo::Var(None)))
+                    .map(|id| self.operand_to_bril(*id, current_args))
                     .collect::<Vec<_>>();
-                // evaluate pred first
-                let pred = self.operand_to_bril(*pred, &AssignTo::Var(None));
+
+                // evaluate pred in this block as well
+                let pred = self.operand_to_bril(*pred, current_args);
+
                 let prev_block = self.finish_block();
 
-                let output_vars = (0..outputs[0].len())
-                    .map(|_| Some(self.fresh_name.fresh()))
-                    .collect::<Vec<_>>();
-                let output_vars_assign = AssignTo::Vars(output_vars.clone());
                 let mut branch_blocks = vec![];
+                let mut shared_vars = None;
                 // for each set of outputs in outputs, make a new block for them
                 for outputs in outputs {
                     // evaluate this branch
                     let resulting_outputs = outputs
                         .iter()
-                        .map(|id| self.operand_to_bril(*id, &output_vars_assign))
+                        .map(|id| self.operand_to_bril(*id, &input_vars))
                         .collect::<Vec<_>>();
-                    assert_eq!(output_vars, resulting_outputs);
+                    if shared_vars.is_none() {
+                        shared_vars = Some(self.fresh_variables_for(&resulting_outputs));
+                    }
+                    // assign to the shared vars
+                    self.assign_to_vars(&resulting_outputs, shared_vars.as_ref().unwrap());
+
                     branch_blocks.push(self.finish_block());
                 }
+
                 // we need to conditionally jump to each of the branch blocks
                 // based on the predicate
+                // TODO right now we
+                // just handle the case where we branch to two things
+                assert!(outputs.len() == 2);
+                assert!(branch_blocks.len() == 2);
+
+                // add a conditional jump from the previous block to the branch blocks
+                self.graph.add_edge(
+                    prev_block,
+                    branch_blocks[0],
+                    Branch {
+                        op: BranchOp::Cond {
+                            arg: Identifier::Name(pred.clone().unwrap_name()),
+                            val: false.into(),
+                        },
+                        pos: None,
+                    },
+                );
+                self.graph.add_edge(
+                    prev_block,
+                    branch_blocks[1],
+                    Branch {
+                        op: BranchOp::Cond {
+                            arg: Identifier::Name(pred.unwrap_name()),
+                            val: true.into(),
+                        },
+                        pos: None,
+                    },
+                );
 
                 // now we have all the branches, make incomplete jumps for each of them
+                for branch_block in branch_blocks {
+                    self.incomplete_branches
+                        .push(IncompleteBranch::Direct { from: branch_block });
+                }
 
-                output_vars
+                shared_vars.unwrap()
             }
             RvsdgBody::Theta {
                 pred,
                 inputs,
                 outputs,
             } => {
-                assert!(inputs.len() == outputs.len());
-                // make variables for all the inputs
-                let mut input_vars: Vec<Option<String>> = (0..inputs.len())
-                    .map(|_| Some(self.fresh_name.fresh()))
-                    .collect();
-
-                let AssignTo::Vars(vars_todo) = assign_to else {
-                    panic!("Expected AssignTo::Vars for theta, but got {:?}", assign_to);
-                };
-
-                // make input_vars comply with the input assign_to
-                for (i, var) in vars_todo.iter().enumerate() {
-                    if let Some(var) = var {
-                        input_vars[i] = Some(var.clone());
-                    }
-                }
-
-                let new_assign_to = AssignTo::Vars(input_vars.clone());
-
                 // evaluate the inputs
-                let input_vars_resulting = inputs
+                let input_vars = inputs
                     .iter()
-                    .map(|id| self.operand_to_bril(*id, &new_assign_to))
+                    .map(|id| self.operand_to_bril(*id, current_args))
                     .collect::<Vec<_>>();
+                // loop vars are like inputs, but we can't re-use inputs
+                // because there may be duplicate names
+                let loop_vars = self.fresh_variables_for(&input_vars);
 
-                assert_eq!(input_vars, input_vars_resulting);
+                // assign to each loop var
+                self.assign_to_vars(&input_vars, &loop_vars);
+
                 // finish the block
                 let prev_block = self.finish_block();
                 self.incomplete_branches
                     .push(IncompleteBranch::Direct { from: prev_block });
 
-                // now evaluate the outputs but with the same variables
+                // now evaluate the outputs
                 let output_vars = outputs
                     .iter()
-                    .map(|id| self.operand_to_bril(*id, &new_assign_to))
+                    .map(|id| self.operand_to_bril(*id, &loop_vars))
                     .collect::<Vec<_>>();
 
                 // then evalute the predicate
-                let pred = self.operand_to_bril(*pred, &AssignTo::Var(None));
+                let pred = self.operand_to_bril(*pred, current_args);
+
+                // assign to the loop variables
+                self.assign_to_vars(&output_vars, &loop_vars);
 
                 let loop_block = self.finish_block();
 
@@ -245,7 +299,7 @@ impl<'a> RvsdgToCfg<'a> {
                     loop_block,
                     Branch {
                         op: BranchOp::Cond {
-                            arg: Identifier::Name(pred.clone().unwrap()),
+                            arg: Identifier::Name(pred.clone().unwrap_name()),
                             val: true.into(),
                         },
                         pos: None,
@@ -255,11 +309,9 @@ impl<'a> RvsdgToCfg<'a> {
                 // add a unfinished conditional jump to the next block
                 self.incomplete_branches.push(IncompleteBranch::Cond {
                     from: prev_block,
-                    var: Identifier::Name(pred.unwrap()),
+                    var: Identifier::Name(pred.unwrap_name()),
                     val: false,
                 });
-
-                assert_eq!(output_vars, input_vars);
 
                 output_vars
             }
@@ -311,33 +363,22 @@ impl<'a> RvsdgToCfg<'a> {
         res
     }
 
-    fn get_name(&mut self, assign_to: &AssignTo) -> String {
-        if let AssignTo::Var(Some(name)) = assign_to {
-            name.clone()
-        } else if let AssignTo::Var(None) = assign_to {
-            self.fresh_name.fresh()
-        } else {
-            panic!(
-                "Expected a single variable to assign to, but got {:?}",
-                assign_to
-            );
-        }
+    fn get_fresh(&mut self) -> String {
+        self.fresh_name.fresh()
     }
 
     // Returns the name of the variable storing the result
     // of evaluating the expression.
     // This could be None when no value is returned,
     // as is the case when printing.
-    fn expr_to_bril(&mut self, expr: &Expr<Operand>, assign_to: &AssignTo) -> Option<String> {
+    fn expr_to_bril(&mut self, expr: &Expr<Operand>, current_args: &Vec<RvsdgValue>) -> RvsdgValue {
         match expr {
             Expr::Op(value_op, operands, ty) => {
                 let operands = operands
                     .iter()
-                    // filter map to get rid of None values
-                    // from the implicit print state
-                    .filter_map(|op| self.operand_to_bril(*op, &AssignTo::Var(None)))
+                    .map(|op| self.operand_to_bril(*op, current_args).unwrap_name())
                     .collect();
-                let name = self.get_name(assign_to);
+                let name = self.get_fresh();
                 self.current_instrs.push(Instruction::Value {
                     dest: name.clone(),
                     op: *value_op,
@@ -347,13 +388,13 @@ impl<'a> RvsdgToCfg<'a> {
                     pos: None,
                     op_type: ty.clone(),
                 });
-                Some(name)
+                RvsdgValue::BrilValue(name, ty.clone())
             }
             Expr::Call(_name, _operands, _output_ports, _return_type_maybe) => {
                 panic!("Not supported yet");
             }
             Expr::Const(_const_op, lit, ty) => {
-                let dest = self.get_name(assign_to);
+                let dest = self.get_fresh();
                 self.current_instrs.push(Instruction::Constant {
                     dest: dest.clone(),
                     op: ConstOps::Const,
@@ -361,15 +402,15 @@ impl<'a> RvsdgToCfg<'a> {
                     pos: None,
                     const_type: ty.clone(),
                 });
-                Some(dest)
+                RvsdgValue::BrilValue(dest, ty.clone())
             }
             Expr::Print(print_operands) => {
                 assert!(print_operands.len() == 2);
                 let operands = vec![self
-                    .operand_to_bril(print_operands[0], &AssignTo::Var(None))
-                    .unwrap()];
+                    .operand_to_bril(print_operands[0], current_args)
+                    .unwrap_name()];
                 // also need to evaluate other prints before this one
-                self.operand_to_bril(print_operands[1], &AssignTo::Var(None));
+                self.operand_to_bril(print_operands[1], current_args);
 
                 self.current_instrs.push(Instruction::Effect {
                     op: EffectOps::Print,
@@ -378,7 +419,7 @@ impl<'a> RvsdgToCfg<'a> {
                     labels: vec![],
                     pos: None,
                 });
-                None
+                RvsdgValue::StateEdge
             }
         }
     }

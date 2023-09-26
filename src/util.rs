@@ -150,6 +150,7 @@ impl FromStr for RunType {
             "structured" => Ok(RunType::StructuredConversion),
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "naiive" => Ok(RunType::NaiiveOptimization),
+            "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }

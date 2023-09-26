@@ -8,7 +8,7 @@ use egglog::ast::Expr;
 use egglog::EGraph;
 use rvsdg::{RvsdgError, RvsdgProgram};
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
+
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Stdio;

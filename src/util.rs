@@ -1,5 +1,6 @@
 use bril_rs::Program;
 
+use crate::peg::rvsdg_to_peg;
 use crate::Optimizer;
 use std::fmt::Debug;
 use std::{
@@ -124,6 +125,7 @@ where
 pub enum RunType {
     StructuredConversion,
     RvsdgConversion,
+    PegConversion,
     NaiiveOptimization,
 }
 
@@ -141,6 +143,7 @@ impl FromStr for RunType {
             "structured" => Ok(RunType::StructuredConversion),
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "naiive" => Ok(RunType::NaiiveOptimization),
+            "peg" => Ok(RunType::PegConversion),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -151,6 +154,7 @@ impl Display for RunType {
         match self {
             RunType::StructuredConversion => write!(f, "structured"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
+            RunType::PegConversion => write!(f, "peg"),
             RunType::NaiiveOptimization => write!(f, "naiive"),
         }
     }
@@ -161,6 +165,7 @@ impl RunType {
         match self {
             RunType::StructuredConversion => false,
             RunType::RvsdgConversion => false,
+            RunType::PegConversion => false,
             RunType::NaiiveOptimization => true,
         }
     }
@@ -275,6 +280,12 @@ impl Run {
                 let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
 
                 (format!("{}", res), ".bril")
+            }
+            RunType::PegConversion => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let peg = rvsdg_to_peg(&rvsdg);
+                let dot = peg.graph();
+                (dot, ".dot")
             }
         };
 

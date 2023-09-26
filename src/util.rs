@@ -230,7 +230,7 @@ impl Run {
         for test_type in [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
-            RunType::NaiiveOptimization,
+            RunType::PegConversion,
         ] {
             let default = Run {
                 test_type,

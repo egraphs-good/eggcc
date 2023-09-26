@@ -50,6 +50,8 @@ pub(crate) struct PegFunction {
     pub(crate) nodes: Vec<PegBody>,
     /// The (optional) result pointing into this function.
     pub(crate) result: Option<Id>,
+    /// The state edge output of this function.
+    pub(crate) state: Id,
 }
 
 impl PegFunction {
@@ -62,10 +64,12 @@ impl PegFunction {
             memoize: &mut HashMap::new(),
         };
         let result = rvsdg.result.map(|op| builder.get_pegs(op, &[]));
+        let state = builder.get_pegs(rvsdg.state, &[]);
         PegFunction {
             n_args: rvsdg.n_args,
             nodes,
             result,
+            state,
         }
     }
 }

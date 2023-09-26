@@ -19,6 +19,7 @@ impl PegTest {
             n_args,
             nodes: self.nodes,
             result: Some(output),
+            state: output,
         }
     }
 

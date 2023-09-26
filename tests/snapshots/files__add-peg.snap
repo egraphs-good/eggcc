@@ -1,0 +1,19 @@
+---
+source: tests/files.rs
+expression: result.visualization
+---
+digraph G {
+subgraph {{
+node [ordering=out];
+0 [label="int"];
+1 [label="int"];
+2 [label="add"];
+3 [label="arg 0"];
+4 [label="PRINT"];
+2 -> 0;
+2 -> 1;
+4 -> 2;
+4 -> 3;
+}
+}
+

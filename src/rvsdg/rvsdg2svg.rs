@@ -684,6 +684,7 @@ mod tests {
     #[test]
     fn rvsdg2svg_basic() {
         let svg_new = RvsdgFunction {
+            name: "main".to_owned(),
             n_args: 2,
             nodes: vec![
                 RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Literal::Int(0), Type::Int)),

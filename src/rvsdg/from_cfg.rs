@@ -32,6 +32,7 @@ pub(crate) fn cfg_func_to_rvsdg(
     cfg.restructure();
     let analysis = live_variables(cfg);
     let dom = dominators::simple_fast(&cfg.graph, cfg.entry);
+    let name = cfg.name.clone();
     let mut builder = RvsdgBuilder {
         cfg,
         expr: Default::default(),
@@ -72,6 +73,7 @@ pub(crate) fn cfg_func_to_rvsdg(
     let n_args = builder.cfg.args.len();
     let state = builder.store[&state_var];
     Ok(RvsdgFunction {
+        name,
         n_args,
         nodes: builder.expr,
         result,

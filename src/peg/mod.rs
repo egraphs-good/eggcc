@@ -44,6 +44,8 @@ pub(crate) enum PegBody {
 /// A function, expressed using PEGs.
 #[derive(Debug, PartialEq)]
 pub(crate) struct PegFunction {
+    /// The name of this function.
+    pub(crate) name: String,
     /// The number of arguments to the function.
     pub(crate) n_args: usize,
     /// The backing heap for Peg nodes within this function.
@@ -66,6 +68,7 @@ impl PegFunction {
         let result = rvsdg.result.map(|op| builder.get_pegs(op, &[]));
         let state = builder.get_pegs(rvsdg.state, &[]);
         PegFunction {
+            name: rvsdg.name.clone(),
             n_args: rvsdg.n_args,
             nodes,
             result,

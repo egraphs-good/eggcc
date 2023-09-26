@@ -106,6 +106,7 @@ pub(crate) enum Expr<Op> {
     /// Following bril, we treat 'print' as a built-in primitive, rather than
     /// just another function. For the purposes of RVSDG translation, however,
     /// print is treated the same as any other function that has no ouptputs.
+    /// The print edge is always passed as the last argument.
     Print(Vec<Op>),
 }
 
@@ -146,6 +147,9 @@ pub(crate) enum RvsdgBody {
 /// The nodes are stored in a vector, and variants of RvsdgBody refer
 /// to nodes by their index in the vector.
 pub struct RvsdgFunction {
+    /// The name of this function.
+    pub(crate) name: String,
+
     /// The number of input arguments to the function.
     ///
     /// Functions all take `n_args + 1` arguments, where the last argument is a
@@ -482,6 +486,8 @@ impl RvsdgFunction {
             ),
         };
         RvsdgFunction {
+            // TODO: the encoding doesn't contain function names
+            name: "MISSING_NAME".to_owned(),
             n_args,
             nodes,
             result,

@@ -16,17 +16,19 @@ struct RvsdgTest {
 
 impl RvsdgTest {
     /// "pure" functions are ones whose state edges 'pass through'.
-    fn into_pure_function(self, n_args: usize, output: Operand) -> RvsdgFunction {
-        self.into_function(n_args, Some(output), Operand::Arg(n_args))
+    fn into_pure_function(self, name: String, n_args: usize, output: Operand) -> RvsdgFunction {
+        self.into_function(name, n_args, Some(output), Operand::Arg(n_args))
     }
 
     fn into_function(
         self,
+        name: String,
         n_args: usize,
         result: Option<Operand>,
         state: Operand,
     ) -> RvsdgFunction {
         RvsdgFunction {
+            name,
             n_args,
             nodes: self.nodes,
             result,
@@ -125,7 +127,7 @@ fn rvsdg_expr() {
     let two = expected.lit_int(2);
     let res = expected.add(one, two, Type::Int);
     assert!(deep_equal(
-        &expected.into_pure_function(0, res),
+        &expected.into_pure_function("sub".to_owned(), 0, res),
         &rvsdg.functions[0]
     ));
 }
@@ -152,7 +154,7 @@ fn rvsdg_print() {
     let res1 = expected.print(v2, Operand::Arg(0));
     let res2 = expected.print(v1, res1);
     assert!(deep_equal(
-        &expected.into_function(0, None, res2),
+        &expected.into_function("sub".to_owned(), 0, None, res2),
         &rvsdg.functions[0]
     ));
 }
@@ -191,7 +193,7 @@ fn rvsdg_state_gamma() {
     let res = Operand::Project(0, gamma);
 
     assert!(deep_equal(
-        &expected.into_function(0, None, res),
+        &expected.into_function("sub".to_owned(), 0, None, res),
         &rvsdg.functions[0]
     ));
 }
@@ -299,6 +301,7 @@ fn rvsdg_basic_odd_branch() {
         ],
     );
     let expected = expected.into_function(
+        "main".to_owned(),
         1,
         Some(Operand::Project(1, gamma)),
         Operand::Project(0, gamma),
@@ -376,6 +379,7 @@ fn rvsdg_odd_branch_egg_roundtrip() {
         ],
     );
     let expected = expected.into_function(
+        "main".to_owned(),
         1,
         Some(Operand::Project(1, gamma)),
         Operand::Project(0, gamma),

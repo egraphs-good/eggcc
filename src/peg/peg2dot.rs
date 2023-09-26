@@ -14,7 +14,7 @@ impl PegProgram {
             // Replace the "digraph" line with "subgraph".
             let g = function.graph();
             let mut subgraph: Vec<_> = g.lines().collect();
-            subgraph[0] = "subgraph {{";
+            subgraph[0] = "subgraph {";
             let subgraph = subgraph.join("\n");
             writeln!(graph, "{}", subgraph).unwrap();
         }
@@ -78,10 +78,10 @@ impl PegFunction {
         writeln!(graph, "digraph G {{").unwrap();
         writeln!(graph, "node [ordering=out];").unwrap();
         for (i, node) in nodes.into_iter().enumerate() {
-            writeln!(graph, "{i} [label={node:?}];").unwrap();
+            writeln!(graph, "v{i} [label={node:?}];").unwrap();
         }
         for (start, end) in edges {
-            writeln!(graph, "{start} -> {end};",).unwrap();
+            writeln!(graph, "v{start} -> v{end};",).unwrap();
         }
         writeln!(graph, "}}").unwrap();
         graph

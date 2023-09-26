@@ -1,7 +1,6 @@
-use bril_rs::Program;
-
 use crate::peg::rvsdg_to_peg;
 use crate::Optimizer;
+use bril_rs::{Literal, Program};
 use std::fmt::Debug;
 use std::{
     ffi::OsStr,
@@ -121,7 +120,7 @@ where
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum RunType {
     StructuredConversion,
     RvsdgConversion,
@@ -238,7 +237,7 @@ impl Run {
                 prog_with_args: prog.clone(),
             };
             res.push(default.clone());
-            if test_type.produces_bril() {
+            if test_type.produces_bril() || test_type == RunType::PegConversion {
                 let interp = Run {
                     interp: true,
                     ..default
@@ -265,6 +264,7 @@ impl Run {
             None,
         );
         let mut optimized = None;
+        let mut peg = None;
         let (visualization, visualization_file_extension) = match self.test_type {
             RunType::StructuredConversion => {
                 let structured =
@@ -285,9 +285,10 @@ impl Run {
             }
             RunType::PegConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
-                let peg = rvsdg_to_peg(&rvsdg);
-                let dot = peg.graph();
-                (dot, ".dot")
+                peg = Some(rvsdg_to_peg(&rvsdg));
+                let dot = peg.as_ref().unwrap().graph();
+                let svg = run_cmd_line("dot", ["-Tsvg"], &dot).unwrap();
+                (svg, ".svg")
             }
         };
 
@@ -299,6 +300,21 @@ impl Run {
                     self.prog_with_args.args.clone(),
                     None,
                 ))
+            }
+            _ if self.test_type == RunType::PegConversion => {
+                let args: Vec<Literal> = self
+                    .prog_with_args
+                    .args
+                    .iter()
+                    .map(|s| {
+                        if let Ok(int) = s.parse::<i64>() {
+                            Literal::Int(int)
+                        } else {
+                            panic!("unsupported argument {s}")
+                        }
+                    })
+                    .collect();
+                Some(peg.unwrap().simulate(&args))
             }
             _ => None,
         };

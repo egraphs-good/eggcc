@@ -14,12 +14,12 @@ struct PegTest {
 }
 
 impl PegTest {
-    fn into_function(self, n_args: usize, output: Id) -> PegFunction {
+    fn into_function(self, n_args: usize, output: Id, state: Id) -> PegFunction {
         PegFunction {
             n_args,
             nodes: self.nodes,
             result: Some(output),
-            state: output,
+            state,
         }
     }
 
@@ -106,7 +106,8 @@ fn peg_expr() {
     let one = expected.lit_int(1);
     let two = expected.lit_int(2);
     let res = expected.add(one, two, Type::Int);
-    assert_eq!(&expected.into_function(0, res), &peg);
+    let arg = expected.arg(0);
+    assert_eq!(&expected.into_function(0, res, arg), &peg);
 }
 
 #[test]
@@ -155,7 +156,7 @@ fn peg_basic_odd_branch() {
     let pred = expected.lt(eval, five);
     let mul2 = expected.mul(eval, two, Type::Int);
     let phi = expected.phi(pred, mul2, eval);
-    let want = expected.into_function(1, phi);
+    let want = expected.into_function(1, phi, 0);
 
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
@@ -203,7 +204,7 @@ fn peg_unstructured() {
     let eval = expected.eval(x, pass, 0);
     let add = expected.add(eval, one, Type::Int);
 
-    let want = expected.into_function(0, add);
+    let want = expected.into_function(0, add, 0);
 
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);

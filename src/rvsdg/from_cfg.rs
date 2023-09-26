@@ -19,11 +19,11 @@ use crate::cfg::{ret_id, Annotation, BranchOp, Cfg, CondVal, Identifier};
 use crate::rvsdg::Result;
 
 use super::live_variables::{live_variables, Names};
-use super::RvsdgFunction;
 use super::{
     live_variables::{LiveVariableAnalysis, VarId},
     Expr, Id, Operand, RvsdgBody, RvsdgError,
 };
+use super::{RvsdgFunction, RvsdgType};
 
 pub(crate) fn cfg_func_to_rvsdg(
     cfg: &mut Cfg,
@@ -71,8 +71,18 @@ pub(crate) fn cfg_func_to_rvsdg(
     };
     let n_args = builder.cfg.args.len();
     let state = builder.store[&state_var];
+
+    let mut args: Vec<RvsdgType> = builder
+        .cfg
+        .args
+        .iter()
+        .map(|arg| RvsdgType::Bril(arg.arg_type.clone()))
+        .collect();
+    args.push(RvsdgType::PrintState);
+
     Ok(RvsdgFunction {
         n_args,
+        args,
         nodes: builder.expr,
         result,
         state,

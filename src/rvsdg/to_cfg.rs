@@ -156,7 +156,42 @@ impl<'a> RvsdgToCfg<'a> {
                 pred,
                 inputs,
                 outputs,
-            } => todo!(),
+            } => {
+                // TODO right now we
+                // just handle the case where we branch to two things
+                assert!(outputs.len() == 2);
+
+                // evaluate inputs
+                let input_vars = inputs
+                    .iter()
+                    .map(|id| self.operand_to_bril(*id, &AssignTo::Var(None)))
+                    .collect::<Vec<_>>();
+                // evaluate pred first
+                let pred = self.operand_to_bril(*pred, &AssignTo::Var(None));
+                let prev_block = self.finish_block();
+
+                let output_vars = (0..outputs[0].len())
+                    .map(|_| Some(self.fresh_name.fresh()))
+                    .collect::<Vec<_>>();
+                let output_vars_assign = AssignTo::Vars(output_vars.clone());
+                let mut branch_blocks = vec![];
+                // for each set of outputs in outputs, make a new block for them
+                for outputs in outputs {
+                    // evaluate this branch
+                    let resulting_outputs = outputs
+                        .iter()
+                        .map(|id| self.operand_to_bril(*id, &output_vars_assign))
+                        .collect::<Vec<_>>();
+                    assert_eq!(output_vars, resulting_outputs);
+                    branch_blocks.push(self.finish_block());
+                }
+                // we need to conditionally jump to each of the branch blocks
+                // based on the predicate
+
+                // now we have all the branches, make incomplete jumps for each of them
+
+                output_vars
+            }
             RvsdgBody::Theta {
                 pred,
                 inputs,

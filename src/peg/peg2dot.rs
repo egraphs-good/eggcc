@@ -12,8 +12,8 @@ impl PegProgram {
         writeln!(graph, "digraph G {{").unwrap();
         for function in &self.functions {
             // Replace the "digraph" line with "subgraph".
-            let mut graph = function.graph();
-            let mut subgraph: Vec<_> = graph.lines().collect();
+            let g = function.graph();
+            let mut subgraph: Vec<_> = g.lines().collect();
             subgraph[0] = "subgraph {{";
             let subgraph = subgraph.join("\n");
             writeln!(graph, "{}", subgraph).unwrap();

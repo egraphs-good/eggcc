@@ -301,7 +301,7 @@ impl Run {
                     None,
                 ))
             }
-            _ if self.test_type == RunType::PegConversion => {
+            _ if self.test_type == RunType::PegConversion && self.interp => {
                 let args: Vec<Literal> = self
                     .prog_with_args
                     .args

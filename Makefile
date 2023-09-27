@@ -1,9 +1,12 @@
-.PHONY: test nits docs nightly
+.PHONY: test nits docs nightly test-clean
 
 all: test nits docs
 
 test:
-	cargo test --release
+	cargo insta test --unreferenced=reject
+
+test-clean:
+	cargo insta test --unreferenced=delete
 
 nits:
 	@rustup component add clippy

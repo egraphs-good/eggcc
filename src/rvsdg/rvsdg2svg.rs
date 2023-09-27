@@ -686,6 +686,7 @@ mod tests {
     #[test]
     fn rvsdg2svg_basic() {
         let svg_new = RvsdgFunction {
+            name: "main".to_owned(),
             n_args: 2,
             args: vec![RvsdgType::Bril(Type::Int), RvsdgType::PrintState],
             nodes: vec![

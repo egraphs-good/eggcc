@@ -1,6 +1,6 @@
-use bril_rs::Program;
-
+use crate::peg::rvsdg_to_peg;
 use crate::Optimizer;
+use bril_rs::{Literal, Program};
 use std::fmt::Debug;
 use std::{
     ffi::OsStr,
@@ -120,10 +120,11 @@ where
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum RunType {
     StructuredConversion,
     RvsdgConversion,
+    PegConversion,
     NaiiveOptimization,
 }
 
@@ -141,6 +142,7 @@ impl FromStr for RunType {
             "structured" => Ok(RunType::StructuredConversion),
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "naiive" => Ok(RunType::NaiiveOptimization),
+            "peg" => Ok(RunType::PegConversion),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -151,6 +153,7 @@ impl Display for RunType {
         match self {
             RunType::StructuredConversion => write!(f, "structured"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
+            RunType::PegConversion => write!(f, "peg"),
             RunType::NaiiveOptimization => write!(f, "naiive"),
         }
     }
@@ -161,6 +164,7 @@ impl RunType {
         match self {
             RunType::StructuredConversion => false,
             RunType::RvsdgConversion => false,
+            RunType::PegConversion => false,
             RunType::NaiiveOptimization => true,
         }
     }
@@ -225,7 +229,7 @@ impl Run {
         for test_type in [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
-            RunType::NaiiveOptimization,
+            RunType::PegConversion,
         ] {
             let default = Run {
                 test_type,
@@ -233,7 +237,7 @@ impl Run {
                 prog_with_args: prog.clone(),
             };
             res.push(default.clone());
-            if test_type.produces_bril() {
+            if test_type.produces_bril() || test_type == RunType::PegConversion {
                 let interp = Run {
                     interp: true,
                     ..default
@@ -259,6 +263,8 @@ impl Run {
             self.prog_with_args.args.clone(),
             None,
         );
+        let mut optimized = None;
+        let mut peg = None;
         let (visualization, visualization_file_extension) = match self.test_type {
             RunType::StructuredConversion => {
                 let structured =
@@ -273,19 +279,44 @@ impl Run {
             RunType::NaiiveOptimization => {
                 let mut optimizer = Optimizer::default();
                 let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
-
-                (format!("{}", res), ".bril")
+                let vis = (format!("{}", res), ".bril");
+                optimized = Some(res);
+                vis
+            }
+            RunType::PegConversion => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                peg = Some(rvsdg_to_peg(&rvsdg));
+                let dot = peg.as_ref().unwrap().graph();
+                let svg = run_cmd_line("dot", ["-Tsvg"], &dot).unwrap();
+                (svg, ".svg")
             }
         };
 
-        let result_interpreted = if self.interp {
-            Some(Optimizer::interp(
-                &self.prog_with_args.program,
-                self.prog_with_args.args.clone(),
-                None,
-            ))
-        } else {
-            None
+        let result_interpreted = match optimized {
+            Some(program) if self.interp => {
+                assert!(self.test_type.produces_bril());
+                Some(Optimizer::interp(
+                    &program,
+                    self.prog_with_args.args.clone(),
+                    None,
+                ))
+            }
+            _ if self.test_type == RunType::PegConversion && self.interp => {
+                let args: Vec<Literal> = self
+                    .prog_with_args
+                    .args
+                    .iter()
+                    .map(|s| {
+                        if let Ok(int) = s.parse::<i64>() {
+                            Literal::Int(int)
+                        } else {
+                            panic!("unsupported argument {s}")
+                        }
+                    })
+                    .collect();
+                Some(peg.unwrap().simulate(&args))
+            }
+            _ => None,
         };
 
         RunOutput {

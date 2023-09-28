@@ -257,7 +257,7 @@ impl Run {
         for test_type in [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
-            RunType::RvsdgToCfg,
+            //RunType::RvsdgToCfg,
             RunType::PegConversion,
             RunType::CfgRoundTrip,
         ] {

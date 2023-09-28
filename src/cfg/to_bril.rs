@@ -7,6 +7,7 @@ use petgraph::{
 };
 
 impl SimpleCfgProgram {
+    /// Converts the Cfg into a bril program.
     pub fn to_bril(&self) -> Program {
         let mut bril = Program {
             functions: vec![],
@@ -20,7 +21,9 @@ impl SimpleCfgProgram {
 }
 
 impl SimpleCfgFunction {
+    /// Converts the cfg function into a bril program.
     pub fn to_bril(&self) -> Function {
+        // Make an empty function
         let mut func = Function {
             name: self.name.clone(),
             args: self.args.clone(),
@@ -32,15 +35,18 @@ impl SimpleCfgFunction {
         // start with the entry block
         self.node_to_bril(self.entry, &mut func);
 
+        // The order of this traversal does not matter, just need to loop over the blocks
         DfsPostOrder::new(&self.graph, self.entry)
             .iter(&self.graph)
             .for_each(|node| {
                 // don't do the exit or entry
                 if node != self.entry && node != self.exit {
+                    // Add a label for the block
                     func.instrs.push(Code::Label {
                         label: format!("{}", self.graph[node].name),
                         pos: None,
                     });
+                    // rest of the block
                     self.node_to_bril(node, &mut func);
                 }
             });

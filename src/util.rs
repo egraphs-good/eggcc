@@ -126,6 +126,7 @@ pub enum RunType {
     RvsdgConversion,
     PegConversion,
     NaiiveOptimization,
+    CfgRoundTrip,
 }
 
 impl Debug for RunType {

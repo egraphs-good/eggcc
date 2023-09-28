@@ -42,7 +42,7 @@ use ordered_float::OrderedFloat;
 use thiserror::Error;
 
 use crate::{
-    cfg::{CfgProgram, Identifier},
+    cfg::{Identifier, SimpleCfgProgram},
     conversions::egglog_op_to_bril,
     EggCCError,
 };
@@ -201,10 +201,12 @@ pub struct RvsdgProgram {
     pub(crate) functions: Vec<RvsdgFunction>,
 }
 
-pub(crate) fn cfg_to_rvsdg(cfg: &CfgProgram) -> std::result::Result<RvsdgProgram, EggCCError> {
+pub(crate) fn cfg_to_rvsdg(
+    cfg: &SimpleCfgProgram,
+) -> std::result::Result<RvsdgProgram, EggCCError> {
     // Rvsdg translation also restructured the cfg
     // so make a copy for that.
-    let mut cfg_restructured = cfg.clone();
+    let mut cfg_restructured = cfg.clone().convert_to_switch();
     let func_types = cfg_restructured.function_types();
 
     let mut functions = vec![];

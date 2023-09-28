@@ -59,8 +59,9 @@ fn main() {
         println!("{}", result.result_interpreted.unwrap());
     } else {
         for visualization in result.visualizations {
-            println!("{}", visualization.name);
+            println!("visualization of {}:", visualization.name);
             println!("{}", visualization.result);
+            println!();
         }
     }
 }

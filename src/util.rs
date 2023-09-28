@@ -134,6 +134,7 @@ pub enum RunType {
     RvsdgConversion,
     NaiiveOptimization,
     RvsdgToCfg,
+    ToCfg,
 }
 
 impl Debug for RunType {
@@ -151,6 +152,7 @@ impl FromStr for RunType {
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "naiive" => Ok(RunType::NaiiveOptimization),
             "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
+            "to-cfg" => Ok(RunType::ToCfg),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -163,6 +165,7 @@ impl Display for RunType {
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::NaiiveOptimization => write!(f, "naiive"),
             RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
+            RunType::ToCfg => write!(f, "to-cfg"),
         }
     }
 }
@@ -174,6 +177,7 @@ impl RunType {
             RunType::RvsdgConversion => false,
             RunType::NaiiveOptimization => true,
             RunType::RvsdgToCfg => false,
+            RunType::ToCfg => true,
         }
     }
 }
@@ -280,6 +284,7 @@ impl Run {
             self.prog_with_args.args.clone(),
             None,
         );
+        eprintln!("run type : {:?}", self.test_type);
         let visualizations = match self.test_type {
             RunType::StructuredConversion => {
                 let structured =
@@ -311,6 +316,19 @@ impl Run {
             RunType::RvsdgToCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let cfg = rvsdg.to_cfg();
+                let mut visualizations = vec![];
+                for function in cfg.functions {
+                    let svg = function.to_svg();
+                    visualizations.push(Visualization {
+                        result: svg,
+                        file_extension: ".svg".to_string(),
+                        name: function.name.clone(),
+                    });
+                }
+                visualizations
+            }
+            RunType::ToCfg => {
+                let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let mut visualizations = vec![];
                 for function in cfg.functions {
                     let svg = function.to_svg();

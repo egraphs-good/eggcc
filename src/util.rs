@@ -120,7 +120,7 @@ where
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RunType {
     StructuredConversion,
     RvsdgConversion,
@@ -291,13 +291,12 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 peg = Some(rvsdg_to_peg(&rvsdg));
                 let dot = peg.as_ref().unwrap().graph();
-                let svg = run_cmd_line("dot", ["-Tsvg"], &dot).unwrap();
-                (svg, ".svg")
+                (dot, ".dot")
             }
             RunType::CfgRoundTrip => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let bril = cfg.to_bril();
-                (bril, ".bril")
+                (bril.to_string(), ".bril")
             }
         };
 

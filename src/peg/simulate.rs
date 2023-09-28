@@ -1,12 +1,12 @@
 //! This module lets you interpret a PEG.
 
-use std::rc::Rc;
-use std::cell::RefCell;
 use crate::cfg::Identifier;
 use crate::peg::{PegBody, PegFunction, PegProgram};
 use crate::rvsdg::Expr;
 use bril_rs::{ConstOps, Literal, ValueOps};
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Default)]
 struct Indices(HashMap<usize, usize>);
@@ -40,13 +40,10 @@ impl PegProgram {
 }
 
 impl PegFunction {
-    fn simulate(
-        &self,
-        s: &mut Simulator,
-    ) -> Option<Literal> {
+    fn simulate(&self, s: &mut Simulator) -> Option<Literal> {
         assert_eq!(self.n_args, s.args.len());
-        assert!(self.nodes[self.state].simulate(&s).is_none());
-        self.result.and_then(|body| self.nodes[body].simulate(&s))
+        assert!(self.nodes[self.state].simulate(s).is_none());
+        self.result.and_then(|body| self.nodes[body].simulate(s))
     }
 }
 
@@ -61,17 +58,11 @@ struct Simulator<'a> {
 
 impl PegBody {
     // Returns None if the output is a print edge
-    fn simulate(
-        &self,
-        s: &Simulator,
-    ) -> Option<Literal> {
+    fn simulate(&self, s: &Simulator) -> Option<Literal> {
         match self {
             PegBody::BasicOp(expr) => match expr {
                 Expr::Op(op, xs, _ty) => {
-                    let xs: Vec<_> = xs
-                        .iter()
-                        .map(|x| s.nodes[*x].simulate(s))
-                        .collect();
+                    let xs: Vec<_> = xs.iter().map(|x| s.nodes[*x].simulate(s)).collect();
                     match op {
                         ValueOps::Add => {
                             Some(Literal::Int(int(xs[0].clone()) + int(xs[1].clone())))
@@ -98,7 +89,8 @@ impl PegBody {
                         .map(Option::unwrap)
                         .collect();
                     let mut s = Simulator {
-                        args: &xs, ..s.clone()
+                        args: &xs,
+                        ..s.clone()
                     };
                     s.program
                         .functions
@@ -142,30 +134,29 @@ impl PegBody {
                 if c == 0 {
                     s.nodes[*a].simulate(s)
                 } else {
-                    let mut s = Simulator {
+                    let s = Simulator {
                         indices: &s.indices.set(*l, c - 1),
                         ..s.clone()
                     };
-                    s.nodes[*b].simulate(&mut s)
+                    s.nodes[*b].simulate(&s)
                 }
             }
             PegBody::Eval(q, i, l) => {
                 let i = s.nodes[*i].simulate(s);
-                let mut s = Simulator {
+                let s = Simulator {
                     indices: &s.indices.set(*l, int(i).try_into().unwrap()),
                     ..s.clone()
                 };
-                s.nodes[*q].simulate(&mut s)
+                s.nodes[*q].simulate(&s)
             }
             PegBody::Pass(q, l) => {
                 let mut i = 0;
                 loop {
-                    let mut s = Simulator {
+                    let s = Simulator {
                         indices: &s.indices.set(*l, i),
                         ..s.clone()
                     };
-                    if !bool(s.nodes[*q].simulate(&mut s))
-                    {
+                    if !bool(s.nodes[*q].simulate(&s)) {
                         return Some(Literal::Int(i.try_into().unwrap()));
                     }
                     i += 1;

@@ -1,4 +1,4 @@
-# ARGS: 9
+# ARGS: 8
 @main(input: int) {
   one: int = const 1;
   i: int = const 0;

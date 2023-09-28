@@ -268,40 +268,38 @@ impl Run {
             self.prog_with_args.args.clone(),
             None,
         );
-        let mut optimized = None;
+
         let mut peg = None;
-        let (visualization, visualization_file_extension) = match self.test_type {
+        let (visualization, visualization_file_extension, bril_out) = match self.test_type {
             RunType::StructuredConversion => {
                 let structured =
                     Optimizer::program_to_structured(&self.prog_with_args.program).unwrap();
-                (structured.to_string(), ".txt")
+                (structured.to_string(), ".txt", None)
             }
             RunType::RvsdgConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let svg = rvsdg.to_svg();
-                (svg, ".svg")
+                (svg, ".svg", None)
             }
             RunType::NaiiveOptimization => {
                 let mut optimizer = Optimizer::default();
                 let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
-                let vis = (format!("{}", res), ".bril");
-                optimized = Some(res);
-                vis
+                (format!("{}", res), ".bril", Some(res))
             }
             RunType::PegConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 peg = Some(rvsdg_to_peg(&rvsdg));
                 let dot = peg.as_ref().unwrap().graph();
-                (dot, ".dot")
+                (dot, ".dot", None)
             }
             RunType::CfgRoundTrip => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let bril = cfg.to_bril();
-                (bril.to_string(), ".bril")
+                (bril.to_string(), ".bril", Some(bril))
             }
         };
 
-        let result_interpreted = match optimized {
+        let result_interpreted = match bril_out {
             Some(program) if self.interp => {
                 assert!(self.test_type.produces_bril());
                 Some(Optimizer::interp(

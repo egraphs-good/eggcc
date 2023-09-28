@@ -44,12 +44,16 @@ pub(crate) enum PegBody {
 /// A function, expressed using PEGs.
 #[derive(Debug, PartialEq)]
 pub(crate) struct PegFunction {
+    /// The name of this function.
+    pub(crate) name: String,
     /// The number of arguments to the function.
     pub(crate) n_args: usize,
     /// The backing heap for Peg nodes within this function.
     pub(crate) nodes: Vec<PegBody>,
     /// The (optional) result pointing into this function.
     pub(crate) result: Option<Id>,
+    /// The state edge output of this function.
+    pub(crate) state: Id,
 }
 
 impl PegFunction {
@@ -62,10 +66,13 @@ impl PegFunction {
             memoize: &mut HashMap::new(),
         };
         let result = rvsdg.result.map(|op| builder.get_pegs(op, &[]));
+        let state = builder.get_pegs(rvsdg.state, &[]);
         PegFunction {
+            name: rvsdg.name.clone(),
             n_args: rvsdg.n_args,
             nodes,
             result,
+            state,
         }
     }
 }

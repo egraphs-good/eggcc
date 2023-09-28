@@ -55,7 +55,7 @@ fn main() {
 
     let result = run.run();
 
-    if result.result_interpreted.is_some() {
+    if args.interp {
         println!("{}", result.result_interpreted.unwrap());
     } else {
         for visualization in result.visualizations {

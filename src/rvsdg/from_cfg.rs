@@ -15,23 +15,24 @@ use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use petgraph::{algo::dominators::Dominators, stable_graph::NodeIndex};
 
-use crate::cfg::{ret_id, Annotation, BranchOp, CfgFunction, CondVal, Identifier};
+use crate::cfg::{ret_id, Annotation, BranchOp, CondVal, Identifier, SwitchCfgFunction};
 use crate::rvsdg::Result;
 
 use super::live_variables::{live_variables, Names};
-use super::RvsdgFunction;
 use super::{
     live_variables::{LiveVariableAnalysis, VarId},
     Expr, Id, Operand, RvsdgBody, RvsdgError,
 };
+use super::{RvsdgFunction, RvsdgType};
 
 pub(crate) fn cfg_func_to_rvsdg(
-    cfg: &mut CfgFunction,
+    cfg: &mut SwitchCfgFunction,
     function_types: &FunctionTypes,
 ) -> Result<RvsdgFunction> {
     cfg.restructure();
     let analysis = live_variables(cfg);
     let dom = dominators::simple_fast(&cfg.graph, cfg.entry);
+    let name = cfg.name.clone();
     let mut builder = RvsdgBuilder {
         cfg,
         expr: Default::default(),
@@ -71,8 +72,19 @@ pub(crate) fn cfg_func_to_rvsdg(
     };
     let n_args = builder.cfg.args.len();
     let state = builder.store[&state_var];
+
+    let mut args: Vec<RvsdgType> = builder
+        .cfg
+        .args
+        .iter()
+        .map(|arg| RvsdgType::Bril(arg.arg_type.clone()))
+        .collect();
+    args.push(RvsdgType::PrintState);
+
     Ok(RvsdgFunction {
+        name,
         n_args,
+        args,
         nodes: builder.expr,
         result,
         state,
@@ -86,7 +98,7 @@ pub(crate) fn cfg_func_to_rvsdg(
 pub(crate) type FunctionTypes = HashMap<String, Option<Type>>;
 
 pub(crate) struct RvsdgBuilder<'a> {
-    cfg: &'a mut CfgFunction,
+    cfg: &'a mut SwitchCfgFunction,
     expr: Vec<RvsdgBody>,
     analysis: LiveVariableAnalysis,
     dom: Dominators<NodeIndex>,

@@ -1,6 +1,6 @@
-use bril_rs::Program;
-
+use crate::peg::rvsdg_to_peg;
 use crate::Optimizer;
+use bril_rs::{Literal, Program};
 use std::fmt::Debug;
 use std::{
     ffi::OsStr,
@@ -128,13 +128,15 @@ where
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RunType {
     StructuredConversion,
     RvsdgConversion,
+    PegConversion,
     NaiiveOptimization,
     RvsdgToCfg,
     ToCfg,
+    CfgRoundTrip,
 }
 
 impl Debug for RunType {
@@ -153,6 +155,8 @@ impl FromStr for RunType {
             "naiive" => Ok(RunType::NaiiveOptimization),
             "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
             "to-cfg" => Ok(RunType::ToCfg),
+            "peg" => Ok(RunType::PegConversion),
+            "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -163,9 +167,11 @@ impl Display for RunType {
         match self {
             RunType::StructuredConversion => write!(f, "structured"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
+            RunType::PegConversion => write!(f, "peg"),
             RunType::NaiiveOptimization => write!(f, "naiive"),
             RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
             RunType::ToCfg => write!(f, "to-cfg"),
+            RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
         }
     }
 }
@@ -175,9 +181,11 @@ impl RunType {
         match self {
             RunType::StructuredConversion => false,
             RunType::RvsdgConversion => false,
+            RunType::PegConversion => false,
             RunType::NaiiveOptimization => true,
             RunType::RvsdgToCfg => false,
             RunType::ToCfg => true,
+            RunType::CfgRoundTrip => true,
         }
     }
 }
@@ -249,8 +257,9 @@ impl Run {
         for test_type in [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
-            RunType::NaiiveOptimization,
             RunType::RvsdgToCfg,
+            RunType::PegConversion,
+            RunType::CfgRoundTrip,
         ] {
             let default = Run {
                 test_type,
@@ -258,7 +267,7 @@ impl Run {
                 prog_with_args: prog.clone(),
             };
             res.push(default.clone());
-            if test_type.produces_bril() {
+            if test_type.produces_bril() || test_type == RunType::PegConversion {
                 let interp = Run {
                     interp: true,
                     ..default
@@ -284,34 +293,44 @@ impl Run {
             self.prog_with_args.args.clone(),
             None,
         );
-        eprintln!("run type : {:?}", self.test_type);
-        let visualizations = match self.test_type {
+
+        let mut peg = None;
+        let (visualizations, bril_out) = match self.test_type {
             RunType::StructuredConversion => {
                 let structured =
                     Optimizer::program_to_structured(&self.prog_with_args.program).unwrap();
-                vec![Visualization {
-                    result: structured.to_string(),
-                    file_extension: ".txt".to_string(),
-                    name: "".to_string(),
-                }]
+                (
+                    vec![Visualization {
+                        result: structured.to_string(),
+                        file_extension: ".txt".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
             }
             RunType::RvsdgConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let svg = rvsdg.to_svg();
-                vec![Visualization {
-                    result: svg,
-                    file_extension: ".svg".to_string(),
-                    name: "".to_string(),
-                }]
+                (
+                    vec![Visualization {
+                        result: svg,
+                        file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
             }
             RunType::NaiiveOptimization => {
                 let mut optimizer = Optimizer::default();
                 let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
-                vec![Visualization {
-                    result: res.to_string(),
-                    file_extension: ".bril".to_string(),
-                    name: "".to_string(),
-                }]
+                (
+                    vec![Visualization {
+                        result: res.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(res),
+                )
             }
             RunType::RvsdgToCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
@@ -325,7 +344,7 @@ impl Run {
                         name: function.name.clone(),
                     });
                 }
-                visualizations
+                (visualizations, None)
             }
             RunType::ToCfg => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
@@ -338,18 +357,60 @@ impl Run {
                         name: function.name.clone(),
                     });
                 }
-                visualizations
+                (visualizations, None)
+            }
+            RunType::PegConversion => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                peg = Some(rvsdg_to_peg(&rvsdg));
+                let dot = peg.as_ref().unwrap().graph();
+                (
+                    vec![Visualization {
+                        result: dot,
+                        file_extension: ".dot".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
+            }
+            RunType::CfgRoundTrip => {
+                let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
+                let bril = cfg.to_bril();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(bril),
+                )
             }
         };
 
-        let result_interpreted = if self.interp {
-            Some(Optimizer::interp(
-                &self.prog_with_args.program,
-                self.prog_with_args.args.clone(),
-                None,
-            ))
-        } else {
-            None
+        let result_interpreted = match bril_out {
+            Some(program) if self.interp => {
+                assert!(self.test_type.produces_bril());
+                Some(Optimizer::interp(
+                    &program,
+                    self.prog_with_args.args.clone(),
+                    None,
+                ))
+            }
+            _ if self.test_type == RunType::PegConversion && self.interp => {
+                let args: Vec<Literal> = self
+                    .prog_with_args
+                    .args
+                    .iter()
+                    .map(|s| {
+                        if let Ok(int) = s.parse::<i64>() {
+                            Literal::Int(int)
+                        } else {
+                            panic!("unsupported argument {s}")
+                        }
+                    })
+                    .collect();
+                Some(peg.unwrap().simulate(&args))
+            }
+            _ => None,
         };
 
         RunOutput {

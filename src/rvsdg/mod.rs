@@ -43,7 +43,7 @@ use ordered_float::OrderedFloat;
 use thiserror::Error;
 
 use crate::{
-    cfg::{CfgProgram, Identifier},
+    cfg::{Identifier, SimpleCfgProgram},
     conversions::egglog_op_to_bril,
     EggCCError,
 };
@@ -107,6 +107,7 @@ pub(crate) enum Expr<Op> {
     /// Following bril, we treat 'print' as a built-in primitive, rather than
     /// just another function. For the purposes of RVSDG translation, however,
     /// print is treated the same as any other function that has no ouptputs.
+    /// The print edge is always passed as the last argument.
     Print(Vec<Op>),
 }
 
@@ -159,17 +160,30 @@ pub(crate) enum RvsdgBody {
     },
 }
 
+#[derive(Debug)]
+pub(crate) enum RvsdgType {
+    Bril(Type),
+    PrintState,
+}
+
 /// Represents a single function as an RVSDG.
 /// The function has arguments, a result, and nodes.
 /// The nodes are stored in a vector, and variants of RvsdgBody refer
 /// to nodes by their index in the vector.
 pub struct RvsdgFunction {
+    /// The name of this function.
+    pub(crate) name: String,
+
     /// The number of input arguments to the function.
     ///
     /// Functions all take `n_args + 1` arguments, where the last argument is a
     /// "state edge" used to preserve ordering constraints to (potentially)
     /// impure function calls.
+    /// TODO remove n_args when the egglog encoding supports args
     pub(crate) n_args: usize,
+    /// The arguments to this function, which can be bril values or
+    /// state edges.
+    pub(crate) args: Vec<RvsdgType>,
     /// The backing heap for Rvsdg node ids within this function.
     /// Invariant: nodes refer only to nodes with a lower index.
     pub(crate) nodes: Vec<RvsdgBody>,
@@ -187,7 +201,7 @@ pub struct RvsdgFunction {
 impl fmt::Debug for RvsdgFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RvsdgFunction")
-            .field("n_args", &self.n_args)
+            .field("args", &self.args)
             .field("result", &self.result)
             .field("state", &self.state);
         let mut map = f.debug_map();
@@ -207,10 +221,12 @@ pub struct RvsdgProgram {
     pub(crate) functions: Vec<RvsdgFunction>,
 }
 
-pub(crate) fn cfg_to_rvsdg(cfg: &CfgProgram) -> std::result::Result<RvsdgProgram, EggCCError> {
+pub(crate) fn cfg_to_rvsdg(
+    cfg: &SimpleCfgProgram,
+) -> std::result::Result<RvsdgProgram, EggCCError> {
     // Rvsdg translation also restructured the cfg
     // so make a copy for that.
-    let mut cfg_restructured = cfg.clone();
+    let mut cfg_restructured = cfg.clone().convert_to_switch();
     let func_types = cfg_restructured.function_types();
 
     let mut functions = vec![];
@@ -502,7 +518,11 @@ impl RvsdgFunction {
             ),
         };
         RvsdgFunction {
+            // TODO: the encoding doesn't contain function names
+            name: "MISSING_NAME".to_owned(),
             n_args,
+            // TODO properly set args once egglog encoding supports it
+            args: vec![],
             nodes,
             result,
             state,

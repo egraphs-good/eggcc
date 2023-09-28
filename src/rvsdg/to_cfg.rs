@@ -4,7 +4,10 @@ use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableDiGraph;
 
 use crate::{
-    cfg::{BasicBlock, BlockName, Branch, BranchOp, CfgFunction, CfgProgram, Identifier},
+    cfg::{
+        BasicBlock, BlockName, Branch, BranchOp, CfgFunction, CfgProgram, Identifier,
+        SimpleCfgFunction, SimpleCfgProgram,
+    },
     util::FreshNameGen,
 };
 
@@ -59,7 +62,7 @@ struct RvsdgToCfg<'a> {
 }
 
 impl RvsdgProgram {
-    pub fn to_cfg(&self) -> CfgProgram {
+    pub fn to_cfg(&self) -> SimpleCfgProgram {
         // TODO right now we only support one function
         // which is named main
         assert!(self.functions.len() == 1);
@@ -70,7 +73,7 @@ impl RvsdgProgram {
 }
 
 impl RvsdgFunction {
-    pub fn to_cfg(&self) -> CfgFunction {
+    pub fn to_cfg(&self) -> SimpleCfgFunction {
         let mut to_bril = RvsdgToCfg {
             function: self,
             fresh_name: FreshNameGen::new(),
@@ -104,6 +107,7 @@ impl RvsdgFunction {
             entry: to_bril.entry_block.unwrap(),
             exit: last_block,
             return_ty: None,
+            phantom: Default::default(),
         }
     }
 }

@@ -1,6 +1,6 @@
 ---
 source: src/rvsdg/rvsdg2svg.rs
-assertion_line: 738
+assertion_line: 742
 expression: svg_new
 ---
 <svg

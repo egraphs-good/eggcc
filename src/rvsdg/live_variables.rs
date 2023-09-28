@@ -17,11 +17,13 @@ use petgraph::{
 };
 
 use crate::{
-    cfg::{ret_id, state_id, Annotation, BranchOp, CfgFunction, CondVal, Identifier, NodeSet},
+    cfg::{
+        ret_id, state_id, Annotation, BranchOp, CondVal, Identifier, NodeSet, SwitchCfgFunction,
+    },
     util::ListDisplay,
 };
 
-pub(crate) fn live_variables(cfg: &CfgFunction) -> LiveVariableAnalysis {
+pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
     let mut analysis = LiveVariableAnalysis::default();
     let mut names = Names::default();
     let mut dfs = DfsPostOrder::new(&cfg.graph, cfg.entry);
@@ -301,7 +303,7 @@ struct WorkList {
 }
 
 impl WorkList {
-    fn new(cfg: &CfgFunction) -> WorkList {
+    fn new(cfg: &SwitchCfgFunction) -> WorkList {
         WorkList {
             node_set: cfg.graph.visit_map(),
             stack: Default::default(),

@@ -5,14 +5,16 @@
 //! `ret`), and labels. All other instructions are copied into the CFG.
 use core::fmt::Debug;
 use std::fmt::Formatter;
+use std::marker::PhantomData;
 use std::str::FromStr;
 use std::{collections::HashMap, fmt::Display};
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};
 use petgraph::dot::Dot;
+
 use petgraph::stable_graph::StableDiGraph;
-use petgraph::visit::Visitable;
+use petgraph::visit::{EdgeRef, Visitable};
 use petgraph::{
     graph::NodeIndex,
     visit::{DfsPostOrder, Walker},
@@ -28,25 +30,59 @@ pub(crate) type NodeSet = <StableDiGraph<BasicBlock, Branch> as Visitable>::Map;
 mod tests;
 
 pub(crate) mod structured;
+pub(crate) mod to_bril;
 pub(crate) mod to_structured;
 
 /// Convert a program to a cfg.
 /// Loops over all the functions, translating individually.
-pub(crate) fn program_to_cfg(program: &Program) -> CfgProgram {
+pub(crate) fn program_to_cfg(program: &Program) -> SimpleCfgProgram {
     let mut functions = Vec::new();
     for func in &program.functions {
-        let cfg = to_cfg(func);
+        let cfg = function_to_cfg(func);
         functions.push(cfg);
     }
     CfgProgram { functions }
 }
 
 #[derive(Clone)]
-pub struct CfgProgram {
-    pub functions: Vec<CfgFunction>,
+pub struct CfgProgram<CfgType> {
+    pub functions: Vec<CfgFunction<CfgType>>,
 }
 
-impl CfgProgram {
+/// Simple programs only branch on booleans defined in bril
+pub type SimpleCfgProgram = CfgProgram<Simple>;
+/// Switch programs can also branch on values defined in annotations
+pub type SwitchCfgProgram = CfgProgram<Switch>;
+
+impl SimpleCfgProgram {
+    // Convert a simple program to a switch program
+    // trivial, since simple programs are a subset of switch programs
+    pub fn convert_to_switch(self) -> SwitchCfgProgram {
+        SwitchCfgProgram {
+            functions: self
+                .functions
+                .into_iter()
+                .map(|f| f.convert_to_switch())
+                .collect(),
+        }
+    }
+}
+
+impl SimpleCfgFunction {
+    pub fn convert_to_switch(self) -> SwitchCfgFunction {
+        SwitchCfgFunction {
+            args: self.args,
+            graph: self.graph,
+            entry: self.entry,
+            exit: self.exit,
+            name: self.name,
+            return_ty: self.return_ty,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<CfgType> CfgProgram<CfgType> {
     pub(crate) fn function_types(&self) -> FunctionTypes {
         let mut types = FunctionTypes::default();
         for func in &self.functions {
@@ -59,7 +95,7 @@ impl CfgProgram {
 
 /// The name (or label) associated with a basic block.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum BlockName {
+pub enum BlockName {
     /// The unique entrypoint for a function.
     Entry,
     /// The unique exit point for a function (assuming the function is not an infinite loop).
@@ -172,7 +208,9 @@ impl fmt::Display for Identifier {
 /// An annotation appended to the end of a basic block.
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum Annotation {
+    // not present in Simple CFGs
     AssignCond { dst: Identifier, cond: u32 },
+    // can be present in Simple CFGs
     AssignRet { src: Identifier },
 }
 
@@ -234,9 +272,14 @@ pub(crate) enum BranchOp {
     Cond { arg: Identifier, val: CondVal },
 }
 
+#[derive(Debug, Clone)]
+pub struct Switch;
+#[derive(Debug, Clone)]
+pub struct Simple;
+
 /// The control-flow graph for a single function.
 #[derive(Debug, Clone)]
-pub struct CfgFunction {
+pub struct CfgFunction<CfgType> {
     /// The arguments to the function.
     pub(crate) args: Vec<Argument>,
     /// The graph itself.
@@ -248,21 +291,29 @@ pub struct CfgFunction {
     /// The name of the function.
     pub(crate) name: String,
     pub(crate) return_ty: Option<Type>,
+    pub(crate) phantom: PhantomData<CfgType>,
 }
 
-impl CfgFunction {
+/// A simple CFG branches only on booleans, instead of allowing annotations
+/// and branching on these annotations.
+pub type SimpleCfgFunction = CfgFunction<Simple>;
+pub type SwitchCfgFunction = CfgFunction<Switch>;
+
+impl<CfgType> CfgFunction<CfgType> {
     pub(crate) fn has_return_value(&self) -> bool {
         self.return_ty.is_some()
     }
 
+    pub fn to_dot(&self) -> String {
+        format!("{:?}", Dot::new(&self.graph))
+    }
+
     pub fn to_svg(&self) -> String {
-        let dot_code = format!("{:?}", Dot::new(&self.graph));
+        let dot_code = self.to_dot();
         run_cmd_line("dot", ["-Tsvg"], &dot_code).unwrap()
     }
-}
 
-impl CfgFunction {
-    fn reverse_postorder(self: &CfgFunction) -> HashMap<BlockName, usize> {
+    fn reverse_postorder(self: &CfgFunction<CfgType>) -> HashMap<BlockName, usize> {
         let mut reverse_postorder = HashMap::<BlockName, usize>::new();
         let mut post_counter = 0;
         DfsPostOrder::new(&self.graph, self.entry)
@@ -276,11 +327,80 @@ impl CfgFunction {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum SimpleBranch {
+    NoBranch, // must be the end of the function
+    Jmp(BlockName),
+    If {
+        arg: Identifier,
+        then_branch: BlockName,
+        else_branch: BlockName,
+    },
+}
+
+impl SimpleCfgFunction {
+    pub fn get_branch(&self, node: NodeIndex) -> SimpleBranch {
+        let outgoing = self.graph.edges(node);
+        match &outgoing.collect::<Vec<_>>().as_slice() {
+            [] => {
+                assert!(self.exit == node);
+                SimpleBranch::NoBranch
+            }
+            [edge] => {
+                let target = edge.target();
+                let branch = edge.weight();
+                let BranchOp::Jmp = branch.op else {
+                            panic!("Unexpected branch type");
+                        };
+                SimpleBranch::Jmp(self.graph[target].name.clone())
+            }
+            [edge1, edge2] => match (&edge1.weight().op, &edge2.weight().op) {
+                (
+                    BranchOp::Cond {
+                        arg: cond1,
+                        val: CondVal { val: val1, of: 2 },
+                    },
+                    BranchOp::Cond {
+                        arg: cond2,
+                        val: CondVal { val: val2, of: 2 },
+                    },
+                ) => {
+                    assert_eq!(cond1, cond2);
+
+                    if *val1 == 0 && *val2 == 1 {
+                        // swap then and else branches
+                        SimpleBranch::If {
+                            arg: cond1.clone(),
+                            then_branch: self.graph[edge2.target()].name.clone(),
+                            else_branch: self.graph[edge1.target()].name.clone(),
+                        }
+                    } else if *val1 == 1 && *val2 == 0 {
+                        SimpleBranch::If {
+                            arg: cond1.clone(),
+                            then_branch: self.graph[edge1.target()].name.clone(),
+                            else_branch: self.graph[edge2.target()].name.clone(),
+                        }
+                    } else {
+                        panic!("Unexpected branch values");
+                    }
+                }
+                _ => panic!(
+                    "Invalid branch types {:?} and {:?}",
+                    edge1.weight().op,
+                    edge2.weight().op
+                ),
+            },
+            _ => panic!("Too many outgoing edges"),
+        }
+    }
+}
+
 /// Get the underyling CFG corresponding to the function `func`.
 ///
 /// The structure is reproduced exactly, aside from the addition of a single
 /// exit node branched to from all return statements.
-pub(crate) fn to_cfg(func: &Function) -> CfgFunction {
+/// Generates a Cfg<Switch> because it returns a value in the annotation
+pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
     let mut builder = CfgBuilder::new(func);
     let mut block = Vec::new();
     let mut anns = Vec::new();
@@ -412,7 +532,7 @@ pub(crate) fn to_cfg(func: &Function) -> CfgFunction {
 }
 
 struct CfgBuilder {
-    cfg: CfgFunction,
+    cfg: SimpleCfgFunction,
     label_to_block: HashMap<String, NodeIndex>,
 }
 
@@ -422,13 +542,14 @@ impl CfgBuilder {
         let entry = graph.add_node(BasicBlock::empty(BlockName::Entry));
         let exit = graph.add_node(BasicBlock::empty(BlockName::Exit));
         CfgBuilder {
-            cfg: CfgFunction {
+            cfg: SimpleCfgFunction {
                 args: func.args.clone(),
                 graph,
                 entry,
                 exit,
                 name: func.name.clone(),
                 return_ty: func.return_type.clone(),
+                phantom: PhantomData,
             },
             label_to_block: HashMap::new(),
         }

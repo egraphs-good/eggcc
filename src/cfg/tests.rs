@@ -1,5 +1,5 @@
 use crate::{
-    cfg::{program_to_cfg, to_cfg, to_structured::cfg_to_structured, BlockName},
+    cfg::{function_to_cfg, program_to_cfg, to_structured::cfg_to_structured, BlockName},
     EggCCError,
 };
 use bril2json::parse_abstract_program_from_read;
@@ -33,7 +33,7 @@ macro_rules! cfg_test {
         fn $name() {
             use $crate::cfg::BranchOp;
             let prog = parse_from_string($prog);
-            let cfg = to_cfg(&prog.functions[0]);
+            let cfg = function_to_cfg(&prog.functions[0]);
             let mut mentioned = std::collections::HashSet::new();
             let mut block = std::collections::HashMap::new();
             $(

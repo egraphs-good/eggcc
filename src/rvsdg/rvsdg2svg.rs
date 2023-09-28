@@ -678,13 +678,17 @@ impl RvsdgFunction {
 
 #[cfg(test)]
 mod tests {
+    use crate::rvsdg::RvsdgType;
+
     use super::*;
     use bril_rs::{Literal, Type, ValueOps};
 
     #[test]
     fn rvsdg2svg_basic() {
         let svg_new = RvsdgFunction {
+            name: "main".to_owned(),
             n_args: 2,
+            args: vec![RvsdgType::Bril(Type::Int), RvsdgType::PrintState],
             nodes: vec![
                 RvsdgBody::BasicOp(Expr::Const(ConstOps::Const, Literal::Int(0), Type::Int)),
                 RvsdgBody::BasicOp(Expr::Op(

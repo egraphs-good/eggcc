@@ -1,5 +1,5 @@
 use crate::cfg::program_to_cfg;
-use crate::peg::{PegBody, PegFunction};
+use crate::peg::{PegBody, PegFunction, PegProgram};
 use crate::rvsdg::cfg_to_rvsdg;
 use crate::rvsdg::{Expr, Id};
 use crate::util::parse_from_string;
@@ -14,11 +14,23 @@ struct PegTest {
 }
 
 impl PegTest {
-    fn into_function(self, n_args: usize, output: Id) -> PegFunction {
+    fn into_main_function(self, n_args: usize, state: Id) -> PegFunction {
+        self.into_function("main".to_owned(), n_args, None, state)
+    }
+
+    fn into_function(
+        self,
+        name: String,
+        n_args: usize,
+        result: Option<Id>,
+        state: Id,
+    ) -> PegFunction {
         PegFunction {
+            name,
             n_args,
             nodes: self.nodes,
-            result: Some(output),
+            result,
+            state,
         }
     }
 
@@ -74,6 +86,10 @@ impl PegTest {
         self.make_node(PegBody::Pass(c, label))
     }
 
+    fn print(&mut self, xs: Vec<Id>) -> Id {
+        self.make_node(PegBody::BasicOp(Expr::Print(xs)))
+    }
+
     fn make_node(&mut self, body: PegBody) -> Id {
         let res = self.nodes.len();
         self.nodes.push(body);
@@ -105,7 +121,11 @@ fn peg_expr() {
     let one = expected.lit_int(1);
     let two = expected.lit_int(2);
     let res = expected.add(one, two, Type::Int);
-    assert_eq!(&expected.into_function(0, res), &peg);
+    let arg = expected.arg(0);
+    assert_eq!(
+        &expected.into_function("sub".to_owned(), 0, Some(res), arg),
+        &peg
+    );
 }
 
 #[test]
@@ -114,7 +134,7 @@ fn peg_basic_odd_branch() {
     // value is larger is larger than 5. We test this by simulating both a
     // hand-writte and a generated peg.
     const PROGRAM: &str = r#"
- @main(n: int): int {
+ @main(n: int) {
     res: int = const 0;
     i: int = const 0;
  .loop:
@@ -131,7 +151,7 @@ fn peg_basic_odd_branch() {
    two: int = const 2;
    res: int = mul res two;
  .exit:
-  ret res;
+  print res;
 }"#;
 
     let mut expected = PegTest::default();
@@ -154,25 +174,29 @@ fn peg_basic_odd_branch() {
     let pred = expected.lt(eval, five);
     let mul2 = expected.mul(eval, two, Type::Int);
     let phi = expected.phi(pred, mul2, eval);
-    let want = expected.into_function(1, phi);
+
+    let print = expected.print(vec![phi]);
+    let want = expected.into_main_function(1, print);
+    let want = PegProgram {
+        functions: vec![want],
+    };
 
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
     let have = PegFunction::new(&rvsdg.functions[0]);
+    let have = PegProgram {
+        functions: vec![have],
+    };
 
-    let want: Vec<_> = (0..10)
-        .map(|i| want.simulate(&[Literal::Int(i)]).unwrap())
-        .collect();
-    let have: Vec<_> = (0..10)
-        .map(|i| have.simulate(&[Literal::Int(i)]).unwrap())
-        .collect();
+    let want: Vec<_> = (0..10).map(|i| want.simulate(&[Literal::Int(i)])).collect();
+    let have: Vec<_> = (0..10).map(|i| have.simulate(&[Literal::Int(i)])).collect();
     assert_eq!(want, have);
 }
 
 #[test]
 fn peg_unstructured() {
-    const PROGRAM: &str = r#"@main(): int {
+    const PROGRAM: &str = r#"@main() {
         x: int = const 4;
         a_cond: bool = lt x x;
         br a_cond .B .C;
@@ -184,7 +208,7 @@ fn peg_unstructured() {
       .C:
         jmp .B;
       .D:
-        ret x;
+        print x;
       }"#;
 
     // Since this test doesn't take arguments we could hardcode the output,
@@ -201,13 +225,20 @@ fn peg_unstructured() {
     let pass = expected.pass(lt, 0);
     let eval = expected.eval(x, pass, 0);
     let add = expected.add(eval, one, Type::Int);
+    let print = expected.print(vec![add]);
 
-    let want = expected.into_function(0, add);
+    let want = expected.into_main_function(0, print);
+    let want = PegProgram {
+        functions: vec![want],
+    };
 
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
     let have = PegFunction::new(&rvsdg.functions[0]);
+    let have = PegProgram {
+        functions: vec![have],
+    };
 
-    assert_eq!(want.simulate(&[]).unwrap(), have.simulate(&[]).unwrap());
+    assert_eq!(want.simulate(&[]), have.simulate(&[]));
 }

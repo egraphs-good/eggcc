@@ -6,7 +6,7 @@ use crate::{
     util::parse_from_string,
 };
 
-use super::RvsdgFunction;
+use super::{RvsdgFunction, RvsdgType};
 
 /// Utility struct for building an RVSDG.
 #[derive(Default)]
@@ -16,18 +16,24 @@ struct RvsdgTest {
 
 impl RvsdgTest {
     /// "pure" functions are ones whose state edges 'pass through'.
-    fn into_pure_function(self, n_args: usize, output: Operand) -> RvsdgFunction {
-        self.into_function(n_args, Some(output), Operand::Arg(n_args))
+    fn into_pure_function(self, name: String, args: Vec<Type>, output: Operand) -> RvsdgFunction {
+        self.into_function(name, args.clone(), Some(output), Operand::Arg(args.len()))
     }
 
     fn into_function(
         self,
-        n_args: usize,
+        name: String,
+        args: Vec<Type>,
         result: Option<Operand>,
         state: Operand,
     ) -> RvsdgFunction {
+        let mut wrapped_args: Vec<_> = args.clone().into_iter().map(RvsdgType::Bril).collect();
+        wrapped_args.push(RvsdgType::PrintState);
+
         RvsdgFunction {
-            n_args,
+            name,
+            n_args: args.len(),
+            args: wrapped_args,
             nodes: self.nodes,
             result,
             state,
@@ -125,7 +131,7 @@ fn rvsdg_expr() {
     let two = expected.lit_int(2);
     let res = expected.add(one, two, Type::Int);
     assert!(deep_equal(
-        &expected.into_pure_function(0, res),
+        &expected.into_pure_function("sub".to_owned(), vec![], res),
         &rvsdg.functions[0]
     ));
 }
@@ -152,7 +158,7 @@ fn rvsdg_print() {
     let res1 = expected.print(v2, Operand::Arg(0));
     let res2 = expected.print(v1, res1);
     assert!(deep_equal(
-        &expected.into_function(0, None, res2),
+        &expected.into_function("sub".to_owned(), vec![], None, res2),
         &rvsdg.functions[0]
     ));
 }
@@ -191,7 +197,7 @@ fn rvsdg_state_gamma() {
     let res = Operand::Project(0, gamma);
 
     assert!(deep_equal(
-        &expected.into_function(0, None, res),
+        &expected.into_function("sub".to_owned(), vec![], None, res),
         &rvsdg.functions[0]
     ));
 }
@@ -299,7 +305,8 @@ fn rvsdg_basic_odd_branch() {
         ],
     );
     let expected = expected.into_function(
-        1,
+        "main".to_owned(),
+        vec![Type::Int],
         Some(Operand::Project(1, gamma)),
         Operand::Project(0, gamma),
     );
@@ -376,7 +383,8 @@ fn rvsdg_odd_branch_egg_roundtrip() {
         ],
     );
     let expected = expected.into_function(
-        1,
+        "main".to_owned(),
+        vec![Type::Int],
         Some(Operand::Project(1, gamma)),
         Operand::Project(0, gamma),
     );

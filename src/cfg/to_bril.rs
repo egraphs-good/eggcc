@@ -1,7 +1,10 @@
 use bril_rs::{Code, EffectOps, Function, Instruction, Program};
 
 use super::{Annotation, BasicBlock, SimpleBranch, SimpleCfgFunction, SimpleCfgProgram};
-use petgraph::visit::{DfsPostOrder, Walker};
+use petgraph::{
+    stable_graph::NodeIndex,
+    visit::{DfsPostOrder, Walker},
+};
 
 impl SimpleCfgProgram {
     pub fn to_bril(&self) -> Program {
@@ -18,7 +21,7 @@ impl SimpleCfgProgram {
 
 impl SimpleCfgFunction {
     pub fn to_bril(&self) -> Function {
-        let mut bril = Function {
+        let mut func = Function {
             name: self.name.clone(),
             args: self.args.clone(),
             instrs: vec![],
@@ -27,50 +30,63 @@ impl SimpleCfgFunction {
         };
 
         // start with the entry block
+        self.node_to_bril(self.entry, &mut func);
 
         DfsPostOrder::new(&self.graph, self.entry)
             .iter(&self.graph)
             .for_each(|node| {
-                // if this is not the start block, add a label for it
-                if node != self.entry {
-                    bril.instrs.push(Code::Label {
+                // don't do the exit or entry
+                if node != self.entry && node != self.exit {
+                    func.instrs.push(Code::Label {
                         label: format!("{}", self.graph[node].name),
                         pos: None,
                     });
-                }
-
-                let block = &self.graph[node];
-                bril.instrs.extend(block.to_bril());
-
-                // now add the jump to another block
-                match self.get_branch(node) {
-                    SimpleBranch::NoBranch => {}
-                    SimpleBranch::Jmp(to) => {
-                        bril.instrs.push(Code::Instruction(Instruction::Effect {
-                            op: EffectOps::Jump,
-                            args: vec![],
-                            labels: vec![format!("{}", to)],
-                            funcs: vec![],
-                            pos: None,
-                        }));
-                    }
-                    SimpleBranch::If {
-                        arg,
-                        then_branch,
-                        else_branch,
-                    } => {
-                        bril.instrs.push(Code::Instruction(Instruction::Effect {
-                            op: EffectOps::Branch,
-                            args: vec![arg.to_string()],
-                            labels: vec![format!("{}", then_branch), format!("{}", else_branch)],
-                            funcs: vec![],
-                            pos: None,
-                        }));
-                    }
+                    self.node_to_bril(node, &mut func);
                 }
             });
 
-        bril
+        // now do the exit at the end
+        func.instrs.push(Code::Label {
+            label: format!("{}", self.graph[self.exit].name),
+            pos: None,
+        });
+        self.node_to_bril(self.exit, &mut func);
+
+        func
+    }
+
+    // Converts a node to bril, including jumps at the end
+    // Doesn't add the label for the node
+    fn node_to_bril(&self, node: NodeIndex, func: &mut Function) {
+        let block = &self.graph[node];
+        func.instrs.extend(block.to_bril());
+
+        // now add the jump to another block
+        match self.get_branch(node) {
+            SimpleBranch::NoBranch => {}
+            SimpleBranch::Jmp(to) => {
+                func.instrs.push(Code::Instruction(Instruction::Effect {
+                    op: EffectOps::Jump,
+                    args: vec![],
+                    labels: vec![format!("{}", to)],
+                    funcs: vec![],
+                    pos: None,
+                }));
+            }
+            SimpleBranch::If {
+                arg,
+                then_branch,
+                else_branch,
+            } => {
+                func.instrs.push(Code::Instruction(Instruction::Effect {
+                    op: EffectOps::Branch,
+                    args: vec![arg.to_string()],
+                    labels: vec![format!("{}", then_branch), format!("{}", else_branch)],
+                    funcs: vec![],
+                    pos: None,
+                }));
+            }
+        }
     }
 }
 

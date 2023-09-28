@@ -5,21 +5,32 @@ use crate::peg::{PegBody, PegProgram};
 use crate::rvsdg::Expr;
 use bril_rs::{ConstOps, Literal, ValueOps};
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
-#[derive(Default)]
-struct Indices(HashMap<usize, usize>);
+enum Indices<'a> {
+    Root,
+    Node {
+        key: usize,
+        value: usize,
+        parent: &'a Indices<'a>,
+    },
+}
 
-impl Indices {
+impl Indices<'_> {
     fn get(&self, label: usize) -> usize {
-        *self.0.get(&label).unwrap_or(&0)
+        match self {
+            Indices::Root => 0,
+            Indices::Node { key, value, .. } if *key == label => *value,
+            Indices::Node { parent, .. } => parent.get(label),
+        }
     }
 
-    fn set(&self, label: usize, value: usize) -> Indices {
-        let mut out = Indices(self.0.clone());
-        out.0.insert(label, value);
-        out
+    fn set(&self, key: usize, value: usize) -> Indices {
+        Indices::Node {
+            key,
+            value,
+            parent: self,
+        }
     }
 }
 
@@ -32,7 +43,7 @@ impl PegProgram {
             .unwrap();
         let mut s = Simulator {
             args,
-            indices: &Indices::default(),
+            indices: &Indices::Root,
             func: usize::MAX, // garbage value
             program: self,
             stdout: Rc::new(RefCell::new(String::new())),
@@ -46,7 +57,7 @@ impl PegProgram {
 #[derive(Clone)]
 struct Simulator<'a> {
     args: &'a [Literal],
-    indices: &'a Indices,
+    indices: &'a Indices<'a>,
     func: usize,
     program: &'a PegProgram,
     stdout: Rc<RefCell<String>>,

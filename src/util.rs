@@ -126,6 +126,7 @@ pub enum RunType {
     RvsdgConversion,
     PegConversion,
     NaiiveOptimization,
+    CfgRoundTrip,
 }
 
 impl Debug for RunType {
@@ -143,6 +144,7 @@ impl FromStr for RunType {
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "naiive" => Ok(RunType::NaiiveOptimization),
             "peg" => Ok(RunType::PegConversion),
+            "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -155,6 +157,7 @@ impl Display for RunType {
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::PegConversion => write!(f, "peg"),
             RunType::NaiiveOptimization => write!(f, "naiive"),
+            RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
         }
     }
 }
@@ -166,6 +169,7 @@ impl RunType {
             RunType::RvsdgConversion => false,
             RunType::PegConversion => false,
             RunType::NaiiveOptimization => true,
+            RunType::CfgRoundTrip => true,
         }
     }
 }
@@ -289,6 +293,11 @@ impl Run {
                 let dot = peg.as_ref().unwrap().graph();
                 let svg = run_cmd_line("dot", ["-Tsvg"], &dot).unwrap();
                 (svg, ".svg")
+            }
+            RunType::CfgRoundTrip => {
+                let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
+                let bril = cfg.to_bril();
+                (bril, ".bril")
             }
         };
 

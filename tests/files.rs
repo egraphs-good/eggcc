@@ -4,6 +4,7 @@ use libtest_mimic::Trial;
 
 fn generate_tests(glob: &str) -> Vec<Trial> {
     let mut trials = vec![];
+
     let mut mk_trial = |run: Run, snapshot: bool| {
         trials.push(Trial::test(run.name(), move || {
             let result = run.run();

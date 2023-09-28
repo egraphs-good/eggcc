@@ -234,6 +234,7 @@ impl Run {
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
             RunType::PegConversion,
+            RunType::CfgRoundTrip,
         ] {
             let default = Run {
                 test_type,

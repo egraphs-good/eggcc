@@ -1,6 +1,6 @@
 use bril_rs::{Code, EffectOps, Function, Instruction, Program};
 
-use super::{BasicBlock, SimpleBranch, SimpleCfgFunction, SimpleCfgProgram};
+use super::{Annotation, BasicBlock, SimpleBranch, SimpleCfgFunction, SimpleCfgProgram};
 use petgraph::visit::{DfsPostOrder, Walker};
 
 impl SimpleCfgProgram {
@@ -85,7 +85,23 @@ impl BasicBlock {
 
         // CFGs only have annotations when they are restructured by RVSDG conversion
         // Here we can assume they don't have any
-        assert!(self.footer.is_empty());
+        for annotation in &self.footer {
+            match annotation {
+                Annotation::AssignCond { .. } => {
+                    panic!("No AssignCond annotations should be present for a Simple CFG")
+                }
+                Annotation::AssignRet { src } => {
+                    res.push(Code::Instruction(Instruction::Effect {
+                        op: EffectOps::Return,
+                        args: vec![src.to_string()],
+                        funcs: vec![],
+                        labels: vec![],
+                        pos: None,
+                    }));
+                }
+            }
+        }
+
         res
     }
 }

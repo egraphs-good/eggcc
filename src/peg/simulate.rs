@@ -5,33 +5,33 @@ use crate::peg::{PegBody, PegProgram};
 use crate::rvsdg::Expr;
 use bril_rs::{ConstOps, Literal, ValueOps};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-enum Indices<'a> {
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum Indices {
     Root,
     Node {
         key: usize,
         value: usize,
-        parent: &'a Indices<'a>,
+        parent: Rc<Indices>,
     },
 }
 
-impl Indices<'_> {
-    fn get(&self, label: usize) -> usize {
-        match self {
-            Indices::Root => 0,
-            Indices::Node { key, value, .. } if *key == label => *value,
-            Indices::Node { parent, .. } => parent.get(label),
-        }
+fn indices_get(indices: &Indices, label: usize) -> usize {
+    match indices {
+        Indices::Root => 0,
+        Indices::Node { key, value, .. } if *key == label => *value,
+        Indices::Node { parent, .. } => indices_get(parent, label),
     }
+}
 
-    fn set(&self, key: usize, value: usize) -> Indices {
-        Indices::Node {
-            key,
-            value,
-            parent: self,
-        }
-    }
+fn indices_set(indices: Rc<Indices>, key: usize, value: usize) -> Rc<Indices> {
+    Rc::new(Indices::Node {
+        key,
+        value,
+        parent: indices,
+    })
 }
 
 impl PegProgram {
@@ -42,11 +42,12 @@ impl PegProgram {
             .position(|f| f.name == "main")
             .unwrap();
         let mut s = Simulator {
-            args,
-            indices: &Indices::Root,
+            args: args.to_vec(),
+            indices: Rc::new(Indices::Root),
             func: usize::MAX, // garbage value
             program: self,
-            stdout: Rc::new(RefCell::new(String::new())),
+            stdout: Rc::default(),
+            memoizer: Rc::default(),
         };
         let output = s.simulate_func(main);
         assert!(output.is_none());
@@ -56,12 +57,15 @@ impl PegProgram {
 
 #[derive(Clone)]
 struct Simulator<'a> {
-    args: &'a [Literal],
-    indices: &'a Indices<'a>,
+    args: Vec<Literal>,
+    indices: Rc<Indices>,
     func: usize,
     program: &'a PegProgram,
     stdout: Rc<RefCell<String>>,
+    memoizer: Rc<RefCell<Memoizer>>,
 }
+
+type Memoizer = HashMap<(usize, usize, Rc<Indices>), Literal>;
 
 impl Simulator<'_> {
     fn simulate_func(&mut self, i: usize) -> Option<Literal> {
@@ -74,7 +78,14 @@ impl Simulator<'_> {
 
     // Returns None if the output is a print edge
     fn simulate_body(&self, i: usize) -> Option<Literal> {
-        match &self.program.functions[self.func].nodes[i] {
+        if let Some(out) = self
+            .memoizer
+            .borrow()
+            .get(&(self.func, i, self.indices.clone()))
+        {
+            return Some(out.clone());
+        }
+        let out = match &self.program.functions[self.func].nodes[i] {
             PegBody::BasicOp(expr) => match expr {
                 Expr::Op(op, xs, _ty) => {
                     let xs: Vec<_> = xs.iter().map(|x| self.simulate_body(*x)).collect();
@@ -98,13 +109,13 @@ impl Simulator<'_> {
                     let Identifier::Name(f) = f else {
                         panic!("function call identifier should be a name");
                     };
-                    let xs: Vec<_> = xs
+                    let args: Vec<_> = xs
                         .iter()
                         .map(|x| self.simulate_body(*x))
                         .map(Option::unwrap)
                         .collect();
                     let mut s = Simulator {
-                        args: &xs,
+                        args,
                         ..self.clone()
                     };
                     s.simulate_func(
@@ -146,12 +157,12 @@ impl Simulator<'_> {
                 }
             }
             PegBody::Theta(a, b, l) => {
-                let c = self.indices.get(*l);
+                let c = indices_get(&self.indices, *l);
                 if c == 0 {
                     self.simulate_body(*a)
                 } else {
                     let s = Simulator {
-                        indices: &self.indices.set(*l, c - 1),
+                        indices: indices_set(self.indices.clone(), *l, c - 1),
                         ..self.clone()
                     };
                     s.simulate_body(*b)
@@ -160,7 +171,7 @@ impl Simulator<'_> {
             PegBody::Eval(q, i, l) => {
                 let i = self.simulate_body(*i);
                 let s = Simulator {
-                    indices: &self.indices.set(*l, int(i).try_into().unwrap()),
+                    indices: indices_set(self.indices.clone(), *l, int(i).try_into().unwrap()),
                     ..self.clone()
                 };
                 s.simulate_body(*q)
@@ -169,7 +180,7 @@ impl Simulator<'_> {
                 let mut i = 0;
                 loop {
                     let s = Simulator {
-                        indices: &self.indices.set(*l, i),
+                        indices: indices_set(self.indices.clone(), *l, i),
                         ..self.clone()
                     };
                     if !bool(s.simulate_body(*q)) {
@@ -179,7 +190,15 @@ impl Simulator<'_> {
                 }
             }
             PegBody::Edge(i) => self.simulate_body(*i),
+        };
+        if let Some(out) = out.clone() {
+            let old = self
+                .memoizer
+                .borrow_mut()
+                .insert((self.func, i, self.indices.clone()), out);
+            assert!(old.is_none());
         }
+        out
     }
 }
 

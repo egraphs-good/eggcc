@@ -15,7 +15,10 @@
     (FloatT)
     (CharT)
     (PointerT Type))
-
+(datatype EffectType
+    (Bril Type)
+    (PrintState))
+(sort FunSig (Vec EffectType))
 ;; Literal
 (function Num (i64) Literal)
 (function Float (f64) Literal)
@@ -47,6 +50,14 @@
 (function PureOp (Expr) Body)
 (function Gamma (Operand VecOperand VecVecOperand) Body) ;; branching
 (function Theta (Operand VecOperand VecOperand) Body) ;; loop
+
+(datatype FunctionOutput
+    (StateOnly Operand)
+    ;;             state   value
+    (StateAndValue Operand Operand))
+
+(datatype Function
+    (Func String FunSig FunctionOutput))
 
 
 ;; procedure f(n):

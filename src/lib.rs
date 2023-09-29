@@ -260,7 +260,7 @@ impl Optimizer {
 
     pub fn make_optimizer_for(&mut self, program: &str) -> String {
         //let schedule = "(run 3)";
-        let schedule = format!("(run {})", self.num_iters);
+        let schedule = format!("(run-schedule (repeat {} cfold subst))", self.num_iters);
         format!(
             "
         (datatype Type
@@ -328,8 +328,8 @@ impl Optimizer {
           ;; name, arguments, and body
           (Func String ArgList StructuredBlock))
 
-        (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)))
-        (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)))
+        (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)) :ruleset cfold)
+        (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)) :ruleset cfold)
 
         {program}
         {schedule}

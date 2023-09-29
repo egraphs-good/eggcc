@@ -214,19 +214,6 @@ pub(crate) fn cfg_to_rvsdg(cfg: &CfgProgram) -> std::result::Result<RvsdgProgram
     Ok(RvsdgProgram { functions })
 }
 
-// /// The result of a function, as an egglog expression.
-// pub enum EgglogFunctionResult {
-//     /// The result of a function with no return values (namely, the "state edge"
-//     /// only).
-//     StateOnly(egglog::ast::Expr),
-//     StateAndValue {
-//         /// The outgoing state edge for the function.
-//         state: egglog::ast::Expr,
-//         /// The function return value.
-//         value: egglog::ast::Expr,
-//     },
-// }
-
 impl RvsdgFunction {
     fn expr_from_ty(ty: &Type) -> egglog::ast::Expr {
         use egglog::ast::Expr::*;

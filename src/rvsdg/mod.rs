@@ -90,7 +90,7 @@ pub(crate) enum Annotation {
 
 pub(crate) type Id = usize;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum Expr<Op> {
     /// A primitive operation.
     Op(ValueOps, Vec<Op>, Type),
@@ -128,7 +128,7 @@ impl<Op> Expr<Op> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum Operand {
     /// A reference to an argument in the enclosing region.
     Arg(usize),
@@ -138,7 +138,7 @@ pub(crate) enum Operand {
     Project(usize, Id),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum RvsdgBody {
     BasicOp(Expr<Operand>),
 

@@ -52,11 +52,13 @@ impl SimpleCfgFunction {
             });
 
         // now do the exit at the end
-        func.instrs.push(Code::Label {
-            label: format!("{}", self.graph[self.exit].name),
-            pos: None,
-        });
-        self.node_to_bril(self.exit, &mut func);
+        if self.exit != self.entry {
+            func.instrs.push(Code::Label {
+                label: format!("{}", self.graph[self.exit].name),
+                pos: None,
+            });
+            self.node_to_bril(self.exit, &mut func);
+        }
 
         func
     }

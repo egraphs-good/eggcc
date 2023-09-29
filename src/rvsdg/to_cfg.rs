@@ -1,5 +1,6 @@
 use bril_rs::{ConstOps, EffectOps, Instruction, Type, ValueOps};
 
+use hashbrown::HashMap;
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableDiGraph;
 
@@ -8,7 +9,7 @@ use crate::{
         BasicBlock, BlockName, Branch, BranchOp, CfgFunction, CfgProgram, Identifier,
         SimpleCfgFunction, SimpleCfgProgram,
     },
-    util::FreshNameGen,
+    util::{FreshNameGen, Visualization},
 };
 
 use super::{Expr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
@@ -57,8 +58,15 @@ struct RvsdgToCfg<'a> {
     /// When we finish a block or some blocks in the case of conditionals,
     /// we need to add a way to connect it to the next block.
     incomplete_branches: Vec<IncompleteBranch>,
-    // set the first time we create a block
+    /// set the first time we create a block
     entry_block: Option<NodeIndex>,
+
+    /// cache common sub-expressions so that we can re-use variables
+    /// the Option<Id> is the context, which is important becuase
+    /// arguments are different in different contexts
+    /// The context is none at the top level
+    operand_cache: HashMap<(Option<Id>, Operand), RvsdgValue>,
+    body_cache: HashMap<(Option<Id>, Id), Vec<RvsdgValue>>,
 }
 
 impl RvsdgProgram {
@@ -81,14 +89,16 @@ impl RvsdgFunction {
             current_instrs: vec![],
             incomplete_branches: vec![],
             entry_block: None,
+            operand_cache: Default::default(),
+            body_cache: Default::default(),
         };
 
         // TODO current args hardcoded to implicit print state
-        to_bril.operand_to_bril(self.state, &vec![RvsdgValue::StateEdge]);
+        to_bril.operand_to_bril(self.state, &vec![RvsdgValue::StateEdge], &None);
         if let Some(operand) = self.result {
             // it doesn't matter what var we assign to
             // TODO current args hardcoded to implicit print state
-            let res = to_bril.operand_to_bril(operand, &vec![RvsdgValue::StateEdge]);
+            let res = to_bril.operand_to_bril(operand, &vec![RvsdgValue::StateEdge], &None);
             to_bril.current_instrs.push(Instruction::Effect {
                 op: EffectOps::Return,
                 args: vec![res.unwrap_name()],
@@ -117,16 +127,25 @@ impl<'a> RvsdgToCfg<'a> {
     // or None if no value is returned.
     // The caller of this function should know what this
     // operand is being assigned to.
-    fn operand_to_bril(&mut self, operand: Operand, current_args: &Vec<RvsdgValue>) -> RvsdgValue {
-        match operand {
+    fn operand_to_bril(
+        &mut self,
+        operand: Operand,
+        current_args: &Vec<RvsdgValue>,
+        context: &Option<Id>,
+    ) -> RvsdgValue {
+        if let Some(existing) = self.operand_cache.get(&(*context, operand)) {
+            return existing.clone();
+        }
+
+        let res = match operand {
             Operand::Id(id) => {
-                let res = self.body_to_bril(id, current_args);
+                let res = self.body_to_bril(id, current_args, context);
                 assert!(res.len() == 1);
                 res[0].clone()
             }
             Operand::Arg(index) => current_args[index].clone(),
             Operand::Project(arg, id) => {
-                let res = self.body_to_bril(id, current_args);
+                let res = self.body_to_bril(id, current_args, context);
                 res.get(arg)
                     .unwrap_or_else(|| {
                         panic!(
@@ -136,7 +155,10 @@ impl<'a> RvsdgToCfg<'a> {
                     })
                     .clone()
             }
-        }
+        };
+
+        self.operand_cache.insert((*context, operand), res.clone());
+        res
     }
 
     // helper function to assigning to a set of variables
@@ -182,12 +204,17 @@ impl<'a> RvsdgToCfg<'a> {
     /// The result of body_to_bril must comply with the assign_to input
     /// However, unlike AssignTo, there may be duplicate variables in the result
     /// when AssignTo doesn't specify the variable.
-    fn body_to_bril(&mut self, id: Id, current_args: &Vec<RvsdgValue>) -> Vec<RvsdgValue> {
+    fn body_to_bril(
+        &mut self,
+        id: Id,
+        current_args: &Vec<RvsdgValue>,
+        ctx: &Option<Id>,
+    ) -> Vec<RvsdgValue> {
         // TODO share common sub-expressions
         let body = &self.function.nodes[id];
         match body {
             RvsdgBody::BasicOp(expr) => {
-                vec![self.expr_to_bril(expr, current_args)]
+                vec![self.expr_to_bril(expr, current_args, ctx)]
             }
             RvsdgBody::Gamma {
                 pred,
@@ -196,11 +223,11 @@ impl<'a> RvsdgToCfg<'a> {
             } => {
                 let input_vars = inputs
                     .iter()
-                    .map(|id| self.operand_to_bril(*id, current_args))
+                    .map(|operand| self.operand_to_bril(*operand, current_args, &Some(id)))
                     .collect::<Vec<_>>();
 
                 // evaluate pred in this block as well
-                let pred = self.operand_to_bril(*pred, current_args);
+                let pred = self.operand_to_bril(*pred, current_args, ctx);
 
                 let prev_block = self.finish_block();
 
@@ -211,7 +238,7 @@ impl<'a> RvsdgToCfg<'a> {
                     // evaluate this branch
                     let resulting_outputs = outputs
                         .iter()
-                        .map(|id| self.operand_to_bril(*id, &input_vars))
+                        .map(|operand| self.operand_to_bril(*operand, &input_vars, &Some(id)))
                         .collect::<Vec<_>>();
                     if shared_vars.is_none() {
                         shared_vars = Some(self.fresh_variables_for(&resulting_outputs));
@@ -269,7 +296,7 @@ impl<'a> RvsdgToCfg<'a> {
                 // evaluate the inputs
                 let input_vars = inputs
                     .iter()
-                    .map(|id| self.operand_to_bril(*id, current_args))
+                    .map(|id| self.operand_to_bril(*id, current_args, ctx))
                     .collect::<Vec<_>>();
                 // loop vars are like inputs, but we can't re-use inputs
                 // because there may be duplicate names
@@ -286,11 +313,11 @@ impl<'a> RvsdgToCfg<'a> {
                 // now evaluate the outputs
                 let output_vars = outputs
                     .iter()
-                    .map(|id| self.operand_to_bril(*id, &loop_vars))
+                    .map(|operand| self.operand_to_bril(*operand, &loop_vars, &Some(id)))
                     .collect::<Vec<_>>();
 
                 // then evalute the predicate
-                let pred = self.operand_to_bril(*pred, current_args);
+                let pred = self.operand_to_bril(*pred, current_args, &Some(id));
 
                 // assign to the loop variables
                 self.assign_to_vars(&output_vars, &loop_vars);
@@ -375,12 +402,17 @@ impl<'a> RvsdgToCfg<'a> {
     // of evaluating the expression.
     // This could be None when no value is returned,
     // as is the case when printing.
-    fn expr_to_bril(&mut self, expr: &Expr<Operand>, current_args: &Vec<RvsdgValue>) -> RvsdgValue {
+    fn expr_to_bril(
+        &mut self,
+        expr: &Expr<Operand>,
+        current_args: &Vec<RvsdgValue>,
+        ctx: &Option<Id>,
+    ) -> RvsdgValue {
         match expr {
             Expr::Op(value_op, operands, ty) => {
                 let operands = operands
                     .iter()
-                    .map(|op| self.operand_to_bril(*op, current_args).unwrap_name())
+                    .map(|op| self.operand_to_bril(*op, current_args, ctx).unwrap_name())
                     .collect();
                 let name = self.get_fresh();
                 self.current_instrs.push(Instruction::Value {
@@ -411,10 +443,10 @@ impl<'a> RvsdgToCfg<'a> {
             Expr::Print(print_operands) => {
                 assert!(print_operands.len() == 2);
                 let operands = vec![self
-                    .operand_to_bril(print_operands[0], current_args)
+                    .operand_to_bril(print_operands[0], current_args, ctx)
                     .unwrap_name()];
                 // also need to evaluate other prints before this one
-                self.operand_to_bril(print_operands[1], current_args);
+                self.operand_to_bril(print_operands[1], current_args, ctx);
 
                 self.current_instrs.push(Instruction::Effect {
                     op: EffectOps::Print,

@@ -21,7 +21,7 @@ use petgraph::{
 };
 
 use crate::rvsdg::from_cfg::FunctionTypes;
-use crate::util::{run_cmd_line, ListDisplay};
+use crate::util::{run_cmd_line, ListDisplay, Visualization};
 
 /// A subset of nodes for a particular CFG.
 pub(crate) type NodeSet = <StableDiGraph<BasicBlock, Branch> as Visitable>::Map;
@@ -90,6 +90,19 @@ impl<CfgType> CfgProgram<CfgType> {
             types.insert(func.name.clone(), output_type);
         }
         types
+    }
+
+    pub(crate) fn visualizations(&self) -> Vec<Visualization> {
+        let mut visualizations = vec![];
+        for function in &self.functions {
+            let svg = function.to_svg();
+            visualizations.push(Visualization {
+                result: svg,
+                file_extension: ".svg".to_string(),
+                name: function.name.clone(),
+            });
+        }
+        visualizations
     }
 }
 

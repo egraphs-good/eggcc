@@ -137,6 +137,7 @@ pub enum RunType {
     RvsdgRoundTrip,
     ToCfg,
     CfgRoundTrip,
+    RvsdgToCfg,
 }
 
 impl Debug for RunType {
@@ -157,6 +158,7 @@ impl FromStr for RunType {
             "to-cfg" => Ok(RunType::ToCfg),
             "peg" => Ok(RunType::PegConversion),
             "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
+            "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -172,6 +174,7 @@ impl Display for RunType {
             RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
             RunType::ToCfg => write!(f, "to-cfg"),
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
+            RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
         }
     }
 }
@@ -186,6 +189,7 @@ impl RunType {
             RunType::RvsdgRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
+            RunType::RvsdgToCfg => true,
         }
     }
 }
@@ -345,18 +349,14 @@ impl Run {
                     Some(bril),
                 )
             }
+            RunType::RvsdgToCfg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let cfg = rvsdg.to_cfg();
+                (cfg.visualizations(), None)
+            }
             RunType::ToCfg => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
-                let mut visualizations = vec![];
-                for function in cfg.functions {
-                    let svg = function.to_svg();
-                    visualizations.push(Visualization {
-                        result: svg,
-                        file_extension: ".svg".to_string(),
-                        name: function.name.clone(),
-                    });
-                }
-                (visualizations, None)
+                (cfg.visualizations(), None)
             }
             RunType::PegConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();

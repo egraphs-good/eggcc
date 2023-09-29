@@ -659,7 +659,7 @@ fn rvsdg_subst() {
                                                                         (Num 1)))))))
                                 (Arg 3)))))
     (let substed (SubstOperand unsubsted 3 (Arg 7)))
-    (run 100)
+    (run-schedule (saturate subst))
     (let expected
               (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
@@ -689,7 +689,7 @@ fn rvsdg_subst() {
                                          (Node (PureOp (Const (IntT) (const) (Num 1)))))))
                       (Arg 3)))))
     (let substed (SubstBody unsubsted 1 (Arg 7)))
-    (run 100)
+    (run-schedule (saturate subst))
     (let expected
         (Theta
               (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
@@ -727,7 +727,7 @@ fn rvsdg_subst() {
                                                                      (const)
                                                                      (Num 2)))))))))))))
     (let substed (SubstBody unsubsted 0 (Arg 7)))
-    (run 100)
+    (run-schedule (saturate subst))
     (let expected
         (Gamma
          (Node

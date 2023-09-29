@@ -362,7 +362,7 @@ impl RvsdgFunction {
             "vec-of".into(),
             self.args
                 .iter()
-                .map(|arg| RvsdgFunction::expr_from_rvsdg_ty(arg))
+                .map(RvsdgFunction::expr_from_rvsdg_ty)
                 .collect(),
         );
         let output = {
@@ -523,8 +523,8 @@ impl RvsdgFunction {
         if let Call(func, args) = expr {
             match (func.as_str(), &args.as_slice()) {
                 ("Func", [Lit(String(name)), sig, Call(func_output, func_args)]) => {
-                    let sig: Vec<RvsdgType> = vec_map(sig, |ty| Self::egglog_expr_to_rvsdg_ty(ty));
-                    let n_args = sig.len() - 1;
+                    let args: Vec<RvsdgType> = vec_map(sig, Self::egglog_expr_to_rvsdg_ty);
+                    let n_args = args.len() - 1;
 
                     let mut nodes = vec![];
                     let (state, result) = match (func_output.as_str(), &func_args.as_slice()) {
@@ -540,11 +540,11 @@ impl RvsdgFunction {
                     };
                     RvsdgFunction {
                         name: name.to_string(),
-                        n_args: n_args,
-                        args: sig,
-                        nodes: nodes,
-                        result: result,
-                        state: state,
+                        n_args,
+                        args,
+                        nodes,
+                        result,
+                        state,
                     }
                 }
                 _ => panic!("expect a function, got {expr}"),

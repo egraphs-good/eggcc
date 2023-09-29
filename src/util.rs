@@ -134,7 +134,7 @@ pub enum RunType {
     RvsdgConversion,
     PegConversion,
     NaiiveOptimization,
-    RvsdgToCfg,
+    RvsdgRoundTrip,
     ToCfg,
     CfgRoundTrip,
 }
@@ -153,7 +153,7 @@ impl FromStr for RunType {
             "structured" => Ok(RunType::StructuredConversion),
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "naiive" => Ok(RunType::NaiiveOptimization),
-            "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
+            "rvsdg-roundtrip" => Ok(RunType::RvsdgRoundTrip),
             "to-cfg" => Ok(RunType::ToCfg),
             "peg" => Ok(RunType::PegConversion),
             "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
@@ -169,7 +169,7 @@ impl Display for RunType {
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::PegConversion => write!(f, "peg"),
             RunType::NaiiveOptimization => write!(f, "naiive"),
-            RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
+            RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
             RunType::ToCfg => write!(f, "to-cfg"),
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
         }
@@ -183,7 +183,7 @@ impl RunType {
             RunType::RvsdgConversion => false,
             RunType::PegConversion => false,
             RunType::NaiiveOptimization => true,
-            RunType::RvsdgToCfg => false,
+            RunType::RvsdgRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
         }
@@ -257,7 +257,7 @@ impl Run {
         for test_type in [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
-            //RunType::RvsdgToCfg,
+            RunType::RvsdgRoundTrip,
             RunType::PegConversion,
             RunType::CfgRoundTrip,
         ] {
@@ -332,19 +332,18 @@ impl Run {
                     Some(res),
                 )
             }
-            RunType::RvsdgToCfg => {
+            RunType::RvsdgRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let cfg = rvsdg.to_cfg();
-                let mut visualizations = vec![];
-                for function in cfg.functions {
-                    let svg = function.to_svg();
-                    visualizations.push(Visualization {
-                        result: svg,
-                        file_extension: ".svg".to_string(),
-                        name: function.name.clone(),
-                    });
-                }
-                (visualizations, None)
+                let bril = cfg.to_bril();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(bril),
+                )
             }
             RunType::ToCfg => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);

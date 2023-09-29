@@ -260,7 +260,10 @@ impl Optimizer {
 
     pub fn make_optimizer_for(&mut self, program: &str) -> String {
         //let schedule = "(run 3)";
-        let schedule = format!("(run-schedule (repeat {} cfold (saturate subst)))", self.num_iters);
+        let schedule = format!(
+            "(run-schedule (repeat {} cfold (saturate subst)))",
+            self.num_iters
+        );
         format!(
             "
         (datatype Type

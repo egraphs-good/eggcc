@@ -65,27 +65,28 @@ struct Simulator<'a> {
     memoizer: Rc<RefCell<Memoizer>>,
 }
 
+/// A Map from (func, body, index) to the output of that body for that index.
 type Memoizer = HashMap<(usize, usize, Rc<Indices>), Literal>;
 
 impl Simulator<'_> {
-    fn simulate_func(&mut self, i: usize) -> Option<Literal> {
-        self.func = i;
-        let func = &self.program.functions[i];
+    fn simulate_func(&mut self, func_index: usize) -> Option<Literal> {
+        self.func = func_index;
+        let func = &self.program.functions[func_index];
         assert_eq!(func.n_args, self.args.len());
         assert!(self.simulate_body(func.state).is_none());
         func.result.and_then(|body| self.simulate_body(body))
     }
 
     // Returns None if the output is a print edge
-    fn simulate_body(&self, i: usize) -> Option<Literal> {
-        if let Some(out) = self
-            .memoizer
-            .borrow()
-            .get(&(self.func, i, self.indices.clone()))
+    fn simulate_body(&self, body_index: usize) -> Option<Literal> {
+        if let Some(out) =
+            self.memoizer
+                .borrow()
+                .get(&(self.func, body_index, self.indices.clone()))
         {
             return Some(out.clone());
         }
-        let out = match &self.program.functions[self.func].nodes[i] {
+        let out = match &self.program.functions[self.func].nodes[body_index] {
             PegBody::BasicOp(expr) => match expr {
                 Expr::Op(op, xs, _ty) => {
                     let xs: Vec<_> = xs.iter().map(|x| self.simulate_body(*x)).collect();
@@ -195,7 +196,7 @@ impl Simulator<'_> {
             let old = self
                 .memoizer
                 .borrow_mut()
-                .insert((self.func, i, self.indices.clone()), out);
+                .insert((self.func, body_index, self.indices.clone()), out);
             assert!(old.is_none());
         }
         out

@@ -445,7 +445,7 @@ fn rvsdg_odd_branch_egg_roundtrip() {
                                                                      (Num 2)))))))))))))
     (let expected-result (Project 0 rescaled))
     (let expected-state (Project 1 rescaled))
-    (let expected (Func "main" (vec-of (Bril (IntT))) (StateAndValue expected-state expected-result)))
+    (let expected (Func "main" (vec-of (Bril (IntT))) (StateAndValue expected-state (IntT) expected-result)))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();

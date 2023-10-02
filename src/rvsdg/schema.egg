@@ -16,11 +16,10 @@
     (FloatT)
     (CharT)
     (PointerT Type))
-(datatype value type EffectType
-    (Bril Type)      Type 
+(datatype EffectType
+    (Bril Type)
     (PrintState))
-;;           arg types        out type
-(sort (Vec EffectType))
+(sort FuncSigs (Vec EffectType))
 ;; Literal
 (function Num (i64) Literal)
 (function Float (f64) Literal)
@@ -59,7 +58,7 @@
     (StateAndValue Operand Type        Operand))
 
 (datatype Function
-    (Func String FunctionOutput))
+    (Func String FuncSigs FunctionOutput))
 
 ;; Substitution
 (ruleset subst)

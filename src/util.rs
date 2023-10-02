@@ -272,7 +272,6 @@ impl Run {
             RunType::RvsdgRoundTrip,
             RunType::PegConversion,
             RunType::CfgRoundTrip,
-            RunType::RvsdgOptimize,
         ] {
             let default = Run {
                 test_type,

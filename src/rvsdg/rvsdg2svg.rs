@@ -490,6 +490,7 @@ impl Region {
 }
 
 impl Region {
+    #[allow(dead_code)]
     fn to_svg(&self) -> String {
         let (size, xml) = self.to_xml(false);
         let svg = Xml::new(
@@ -661,6 +662,7 @@ impl RvsdgProgram {
 }
 
 impl RvsdgFunction {
+    #[allow(dead_code)]
     pub(crate) fn to_svg(&self) -> String {
         self.to_region().to_svg()
     }

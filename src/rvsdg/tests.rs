@@ -1,12 +1,20 @@
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
+use egglog::EGraph;
 
 use crate::{
     cfg::{program_to_cfg, Identifier},
-    rvsdg::{cfg_to_rvsdg, new_rvsdg_egraph, Expr, Id, Operand, RvsdgBody},
+    rvsdg::{cfg_to_rvsdg, Expr, Id, Operand, RvsdgBody},
     util::parse_from_string,
 };
 
 use super::{RvsdgFunction, RvsdgType};
+
+pub fn new_rvsdg_egraph() -> EGraph {
+    let mut egraph = EGraph::default();
+    let schema = std::fs::read_to_string("src/rvsdg/schema.egg").unwrap();
+    egraph.parse_and_run_program(schema.as_str()).unwrap();
+    egraph
+}
 
 /// Utility struct for building an RVSDG.
 #[derive(Default)]

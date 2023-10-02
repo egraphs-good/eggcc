@@ -41,6 +41,7 @@
 (function not (Type Operand Operand) Expr)
 (function and (Type Operand Operand) Expr)
 (function or (Type Operand Operand) Expr)
+(function PRINT (Operand Operand) Expr)
 
 ;; Operand
 (function Arg (i64) Operand)

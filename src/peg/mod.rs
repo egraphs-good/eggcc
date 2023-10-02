@@ -7,9 +7,6 @@
 //! * ["Equality Saturation: A New Approach to Optimization"](https://arxiv.org/abs/1012.1802)
 //! by Tate, Stepp, Tatlock, and Lerner
 
-// todo: remove this once it no longer does anything
-#![allow(dead_code)]
-
 pub(crate) mod peg2dot;
 pub(crate) mod simulate;
 
@@ -57,7 +54,6 @@ pub(crate) struct PegFunction {
 }
 
 impl PegFunction {
-    #[allow(dead_code)]
     pub fn new(rvsdg: &RvsdgFunction) -> PegFunction {
         let mut nodes = Vec::new();
         let mut builder = PegBuilder {

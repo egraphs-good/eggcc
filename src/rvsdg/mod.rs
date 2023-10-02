@@ -82,12 +82,6 @@ pub enum RvsdgError {
 
 pub(crate) type Result<T = ()> = std::result::Result<T, RvsdgError>;
 
-#[derive(Debug)]
-pub(crate) enum Annotation {
-    AssignCond { dst: Identifier, cond: u32 },
-    AssignRet { src: Identifier },
-}
-
 pub(crate) type Id = usize;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -109,23 +103,6 @@ pub(crate) enum Expr<Op> {
     /// print is treated the same as any other function that has no ouptputs.
     /// The print edge is always passed as the last argument.
     Print(Vec<Op>),
-}
-
-impl<Op> Expr<Op> {
-    fn map_operands(&self, f: impl FnMut(&Op) -> Op) -> Self {
-        use Expr::*;
-        match self {
-            Op(op, operands, ty) => Op(*op, operands.iter().map(f).collect(), ty.clone()),
-            Call(ident, operands, n_outputs, ty) => Call(
-                ident.clone(),
-                operands.iter().map(f).collect(),
-                *n_outputs,
-                ty.clone(),
-            ),
-            Const(op, ty, lit) => Const(*op, ty.clone(), lit.clone()),
-            Print(operands) => Print(operands.iter().map(f).collect()),
-        }
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -600,13 +577,6 @@ fn vec_map<T>(inputs: &egglog::ast::Expr, mut f: impl FnMut(&egglog::ast::Expr) 
     }
     results.reverse();
     results
-}
-
-pub fn new_rvsdg_egraph() -> EGraph {
-    let mut egraph = EGraph::default();
-    let schema = std::fs::read_to_string("src/rvsdg/schema.egg").unwrap();
-    egraph.parse_and_run_program(schema.as_str()).unwrap();
-    egraph
 }
 
 impl RvsdgProgram {

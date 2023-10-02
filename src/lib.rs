@@ -8,9 +8,7 @@ use egglog::ast::Expr;
 use egglog::EGraph;
 use rvsdg::{RvsdgError, RvsdgProgram};
 use std::collections::HashMap;
-use std::io::Write;
 use std::path::PathBuf;
-use std::process::Stdio;
 
 use thiserror::Error;
 
@@ -34,30 +32,6 @@ pub enum EggCCError {
     RvsdgError(RvsdgError),
     #[error("Uninitialized variable {0} used in function {1}")]
     UninitializedVariable(String, String),
-}
-
-#[allow(dead_code)]
-fn run_command_with_stdin(command: &mut std::process::Command, input: String) -> String {
-    let mut piped = command
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut stdin = piped.stdin.take().expect("Failed to open stdin");
-    std::thread::spawn(move || {
-        stdin
-            .write_all(input.as_bytes())
-            .expect("Failed to write to stdin");
-    });
-
-    std::str::from_utf8(
-        &piped
-            .wait_with_output()
-            .expect("Failed to read stdout")
-            .stdout,
-    )
-    .unwrap()
-    .to_string()
 }
 
 pub struct Optimizer {
@@ -190,7 +164,7 @@ impl Optimizer {
     }
 
     pub fn rvsdg_optimize(program: &Program) -> Result<Program, EggCCError> {
-        let rvsdg = Self::program_to_rvsdg(&program)?;
+        let rvsdg = Self::program_to_rvsdg(program)?;
         let optimized = rvsdg.optimize()?;
         let cfg = optimized.to_cfg();
         let program = cfg.to_bril();

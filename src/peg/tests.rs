@@ -4,8 +4,6 @@ use crate::rvsdg::cfg_to_rvsdg;
 use crate::rvsdg::{Expr, Id};
 use crate::util::parse_from_string;
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use std::fs::File;
-use std::io::Write;
 
 /// Utility struct for building an Peg.
 #[derive(Default)]
@@ -39,14 +37,6 @@ impl PegTest {
             ConstOps::Const,
             Literal::Int(i),
             Type::Int,
-        )))
-    }
-
-    fn lit_bool(&mut self, b: bool) -> Id {
-        self.make_node(PegBody::BasicOp(Expr::Const(
-            ConstOps::Const,
-            Literal::Bool(b),
-            Type::Bool,
         )))
     }
 
@@ -95,11 +85,6 @@ impl PegTest {
         self.nodes.push(body);
         res
     }
-}
-
-fn output_dot_graph(name: &str, peg: &PegFunction) {
-    let mut file = File::create(name).unwrap();
-    file.write_all(peg.graph().as_bytes()).unwrap();
 }
 
 #[test]

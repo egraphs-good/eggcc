@@ -173,6 +173,7 @@ impl VarSet {
         self.vars.count_ones(..)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn contains(&self, var: VarId) -> bool {
         self.vars.contains(var.0 as usize)
     }
@@ -201,6 +202,7 @@ impl VarSet {
         true
     }
 
+    #[allow(dead_code)]
     pub(crate) fn is_subset(&self, other: &VarSet) -> bool {
         self.vars.is_subset(&other.vars)
     }

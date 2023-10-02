@@ -280,8 +280,8 @@ pub struct CfgFunction<CfgType> {
     pub(crate) exit: NodeIndex,
     /// The name of the function.
     pub(crate) name: String,
-    return_ty: Option<Type>,
     phantom: PhantomData<CfgType>,
+    pub(crate) return_ty: Option<Type>,
 }
 
 /// A simple CFG branches only on booleans, instead of allowing annotations

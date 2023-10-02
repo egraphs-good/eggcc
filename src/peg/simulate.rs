@@ -1,70 +1,95 @@
 //! This module lets you interpret a PEG.
 
 use crate::cfg::Identifier;
-use crate::peg::{PegBody, PegFunction, PegProgram};
+use crate::peg::{PegBody, PegProgram};
 use crate::rvsdg::Expr;
 use bril_rs::{ConstOps, Literal, ValueOps};
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
-#[derive(Default)]
-struct Indices(HashMap<usize, usize>);
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum Indices {
+    Root,
+    Node {
+        key: usize,
+        value: usize,
+        parent: Rc<Indices>,
+    },
+}
 
-impl Indices {
-    fn get(&self, label: usize) -> usize {
-        *self.0.get(&label).unwrap_or(&0)
+fn indices_get(indices: &Indices, label: usize) -> usize {
+    match indices {
+        Indices::Root => 0,
+        Indices::Node { key, value, .. } if *key == label => *value,
+        Indices::Node { parent, .. } => indices_get(parent, label),
     }
+}
 
-    fn set(&self, label: usize, value: usize) -> Indices {
-        let mut out = Indices(self.0.clone());
-        out.0.insert(label, value);
-        out
-    }
+fn indices_set(indices: Rc<Indices>, key: usize, value: usize) -> Rc<Indices> {
+    Rc::new(Indices::Node {
+        key,
+        value,
+        parent: indices,
+    })
 }
 
 impl PegProgram {
     pub fn simulate(&self, args: &[Literal]) -> String {
-        let mut stdout = String::new();
-        let main = self.functions.iter().find(|f| f.name == "main").unwrap();
-        let output = main.simulate(args, self, &mut stdout);
+        let main = self
+            .functions
+            .iter()
+            .position(|f| f.name == "main")
+            .unwrap();
+        let mut s = Simulator {
+            args: args.to_vec(),
+            indices: Rc::new(Indices::Root),
+            func: usize::MAX, // garbage value
+            program: self,
+            stdout: Rc::default(),
+            memoizer: Rc::default(),
+        };
+        let output = s.simulate_func(main);
         assert!(output.is_none());
-        stdout
+        Rc::try_unwrap(s.stdout).unwrap().into_inner()
     }
 }
 
-impl PegFunction {
-    pub fn simulate(
-        &self,
-        args: &[Literal],
-        program: &PegProgram,
-        stdout: &mut String,
-    ) -> Option<Literal> {
-        assert_eq!(self.n_args, args.len());
-        assert!(self.nodes[self.state]
-            .simulate(args, &self.nodes, &Indices::default(), program, stdout)
-            .is_none());
-        self.result.and_then(|body| {
-            self.nodes[body].simulate(args, &self.nodes, &Indices::default(), program, stdout)
-        })
-    }
+#[derive(Clone)]
+struct Simulator<'a> {
+    args: Vec<Literal>,
+    indices: Rc<Indices>,
+    func: usize,
+    program: &'a PegProgram,
+    stdout: Rc<RefCell<String>>,
+    memoizer: Rc<RefCell<Memoizer>>,
 }
 
-impl PegBody {
+/// A Map from (func, body, index) to the output of that body for that index.
+type Memoizer = HashMap<(usize, usize, Rc<Indices>), Literal>;
+
+impl Simulator<'_> {
+    fn simulate_func(&mut self, func_index: usize) -> Option<Literal> {
+        self.func = func_index;
+        let func = &self.program.functions[func_index];
+        assert_eq!(func.n_args, self.args.len());
+        assert!(self.simulate_body(func.state).is_none());
+        func.result.and_then(|body| self.simulate_body(body))
+    }
+
     // Returns None if the output is a print edge
-    fn simulate(
-        &self,
-        args: &[Literal],
-        nodes: &[PegBody],
-        indices: &Indices,
-        program: &PegProgram,
-        stdout: &mut String,
-    ) -> Option<Literal> {
-        match self {
+    fn simulate_body(&self, body_index: usize) -> Option<Literal> {
+        if let Some(out) =
+            self.memoizer
+                .borrow()
+                .get(&(self.func, body_index, self.indices.clone()))
+        {
+            return Some(out.clone());
+        }
+        let out = match &self.program.functions[self.func].nodes[body_index] {
             PegBody::BasicOp(expr) => match expr {
                 Expr::Op(op, xs, _ty) => {
-                    let xs: Vec<_> = xs
-                        .iter()
-                        .map(|x| nodes[*x].simulate(args, nodes, indices, program, stdout))
-                        .collect();
+                    let xs: Vec<_> = xs.iter().map(|x| self.simulate_body(*x)).collect();
                     match op {
                         ValueOps::Add => {
                             Some(Literal::Int(int(xs[0].clone()) + int(xs[1].clone())))
@@ -85,24 +110,29 @@ impl PegBody {
                     let Identifier::Name(f) = f else {
                         panic!("function call identifier should be a name");
                     };
-                    let xs: Vec<_> = xs
+                    let args: Vec<_> = xs
                         .iter()
-                        .map(|x| nodes[*x].simulate(args, nodes, indices, program, stdout))
+                        .map(|x| self.simulate_body(*x))
                         .map(Option::unwrap)
                         .collect();
-                    program
-                        .functions
-                        .iter()
-                        .find(|func| func.name == *f)
-                        .unwrap()
-                        .simulate(&xs, program, stdout)
+                    let mut s = Simulator {
+                        args,
+                        ..self.clone()
+                    };
+                    s.simulate_func(
+                        s.program
+                            .functions
+                            .iter()
+                            .position(|func| func.name == *f)
+                            .unwrap(),
+                    )
                 }
                 Expr::Print(xs) => {
                     for x in xs {
-                        let value = nodes[*x].simulate(args, nodes, indices, program, stdout);
+                        let value = self.simulate_body(*x);
                         // if not a print edge
                         if let Some(value) = value {
-                            stdout.push_str(&format!("{}\n", value));
+                            self.stdout.borrow_mut().push_str(&format!("{}\n", value));
                         }
                     }
                     None
@@ -110,17 +140,17 @@ impl PegBody {
                 Expr::Const(ConstOps::Const, literal, _) => Some(literal.clone()),
             },
             PegBody::Arg(arg) => {
-                if *arg == args.len() {
+                if *arg == self.args.len() {
                     // this is a print edge
                     None
                 } else {
-                    Some(args[*arg].clone())
+                    Some(self.args[*arg].clone())
                 }
             }
             PegBody::Phi(c, x, y) => {
-                let c = nodes[*c].simulate(args, nodes, indices, program, stdout);
-                let x = nodes[*x].simulate(args, nodes, indices, program, stdout);
-                let y = nodes[*y].simulate(args, nodes, indices, program, stdout);
+                let c = self.simulate_body(*c);
+                let x = self.simulate_body(*x);
+                let y = self.simulate_body(*y);
                 if bool(c) {
                     x
                 } else {
@@ -128,35 +158,48 @@ impl PegBody {
                 }
             }
             PegBody::Theta(a, b, l) => {
-                let c = indices.get(*l);
+                let c = indices_get(&self.indices, *l);
                 if c == 0 {
-                    nodes[*a].simulate(args, nodes, indices, program, stdout)
+                    self.simulate_body(*a)
                 } else {
-                    nodes[*b].simulate(args, nodes, &indices.set(*l, c - 1), program, stdout)
+                    let s = Simulator {
+                        indices: indices_set(self.indices.clone(), *l, c - 1),
+                        ..self.clone()
+                    };
+                    s.simulate_body(*b)
                 }
             }
-            PegBody::Eval(s, i, l) => {
-                let i = nodes[*i].simulate(args, nodes, indices, program, stdout);
-                nodes[*s].simulate(
-                    args,
-                    nodes,
-                    &indices.set(*l, int(i).try_into().unwrap()),
-                    program,
-                    stdout,
-                )
+            PegBody::Eval(q, i, l) => {
+                let i = self.simulate_body(*i);
+                let s = Simulator {
+                    indices: indices_set(self.indices.clone(), *l, int(i).try_into().unwrap()),
+                    ..self.clone()
+                };
+                s.simulate_body(*q)
             }
-            PegBody::Pass(s, l) => {
+            PegBody::Pass(q, l) => {
                 let mut i = 0;
                 loop {
-                    if !bool(nodes[*s].simulate(args, nodes, &indices.set(*l, i), program, stdout))
-                    {
+                    let s = Simulator {
+                        indices: indices_set(self.indices.clone(), *l, i),
+                        ..self.clone()
+                    };
+                    if !bool(s.simulate_body(*q)) {
                         return Some(Literal::Int(i.try_into().unwrap()));
                     }
                     i += 1;
                 }
             }
-            PegBody::Edge(i) => nodes[*i].simulate(args, nodes, indices, program, stdout),
+            PegBody::Edge(i) => self.simulate_body(*i),
+        };
+        if let Some(out) = out.clone() {
+            let old = self
+                .memoizer
+                .borrow_mut()
+                .insert((self.func, body_index, self.indices.clone()), out);
+            assert!(old.is_none());
         }
+        out
     }
 }
 

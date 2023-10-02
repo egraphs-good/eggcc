@@ -667,9 +667,9 @@ impl RvsdgFunction {
 
     pub(crate) fn to_region(&self) -> Region {
         let dsts: Vec<_> = self
-            .result
-            .iter()
+            .result_val()
             .copied()
+            .into_iter()
             .chain(once(self.state))
             .collect();
         mk_region(self.n_args + 1, &dsts, &self.nodes)
@@ -734,7 +734,7 @@ mod tests {
                     Type::Int,
                 )),
             ],
-            result: Some(Operand::Id(10)),
+            result: Some((Type::Int, Operand::Id(10))),
             state: Operand::Arg(2),
         }
         .to_svg();

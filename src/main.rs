@@ -18,11 +18,6 @@ struct Args {
     #[clap(long)]
     interp: bool,
 
-    /// Translate the input program to a PEG and run it.
-    /// Throws an error if used with the interp flag.
-    #[clap(long)]
-    peg_interp: bool,
-
     /// Path that eggcc will put interp profile results
     #[clap(long)]
     profile_out: Option<PathBuf>,
@@ -52,22 +47,10 @@ fn main() {
         return;
     }
 
-    let run = if args.peg_interp {
-        if args.interp {
-            eprintln!("--peg-interp is not compatible with --interp");
-            return;
-        }
-        Run {
-            prog_with_args: TestProgram::File(args.file.clone()).read_program(),
-            test_type: RunType::PegConversion,
-            interp: true,
-        }
-    } else {
-        Run {
-            prog_with_args: TestProgram::File(args.file.clone()).read_program(),
-            test_type: args.run_mode,
-            interp: args.interp,
-        }
+    let run = Run {
+        prog_with_args: TestProgram::File(args.file.clone()).read_program(),
+        test_type: args.run_mode,
+        interp: args.interp,
     };
 
     let result = run.run();

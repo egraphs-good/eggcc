@@ -59,17 +59,6 @@ pub(crate) fn cfg_func_to_rvsdg(
         }
         cur = next;
     }
-    // let result = if builder.cfg.has_return_value() {
-    // let ret_var = builder.analysis.intern.intern(ret_id());
-    // Some(get_op(
-    //     ret_var,
-    //     &None,
-    //     &builder.store,
-    //     &builder.analysis.intern,
-    // )?)
-    // } else {
-    //     None
-    // };
     let result = match &builder.cfg.return_ty {
         Some(return_ty) => {
             let ret_var = builder.analysis.intern.intern(ret_id());

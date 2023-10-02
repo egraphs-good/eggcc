@@ -16,15 +16,26 @@ struct RvsdgTest {
 
 impl RvsdgTest {
     /// "pure" functions are ones whose state edges 'pass through'.
-    fn into_pure_function(self, name: String, args: Vec<Type>, output: Operand) -> RvsdgFunction {
-        self.into_function(name, args.clone(), Some(output), Operand::Arg(args.len()))
+    fn into_pure_function(
+        self,
+        name: String,
+        args: Vec<Type>,
+        output_ty: Type,
+        output: Operand,
+    ) -> RvsdgFunction {
+        self.into_function(
+            name,
+            args.clone(),
+            Some((output_ty, output)),
+            Operand::Arg(args.len()),
+        )
     }
 
     fn into_function(
         self,
         name: String,
         args: Vec<Type>,
-        result: Option<Operand>,
+        result: Option<(Type, Operand)>,
         state: Operand,
     ) -> RvsdgFunction {
         let mut wrapped_args: Vec<_> = args.clone().into_iter().map(RvsdgType::Bril).collect();
@@ -131,7 +142,7 @@ fn rvsdg_expr() {
     let two = expected.lit_int(2);
     let res = expected.add(one, two, Type::Int);
     assert!(deep_equal(
-        &expected.into_pure_function("sub".to_owned(), vec![], res),
+        &expected.into_pure_function("sub".to_owned(), vec![], Type::Int, res),
         &rvsdg.functions[0]
     ));
 }
@@ -307,7 +318,7 @@ fn rvsdg_basic_odd_branch() {
     let expected = expected.into_function(
         "main".to_owned(),
         vec![Type::Int],
-        Some(Operand::Project(1, gamma)),
+        Some((Type::Int, Operand::Project(1, gamma))),
         Operand::Project(0, gamma),
     );
 
@@ -385,7 +396,7 @@ fn rvsdg_odd_branch_egg_roundtrip() {
     let expected = expected.into_function(
         "main".to_owned(),
         vec![Type::Int],
-        Some(Operand::Project(1, gamma)),
+        Some((Type::Int, Operand::Project(1, gamma))),
         Operand::Project(0, gamma),
     );
 
@@ -502,8 +513,7 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
     if search_op(f, &f.state, &mut pred) {
         return true;
     }
-    f.result
-        .as_ref()
+    f.result_val()
         .map(|res| search_op(f, res, &mut pred))
         .unwrap_or(false)
 }
@@ -623,7 +633,7 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
     }
 
     match (&f1.result, &f2.result) {
-        (Some(o1), Some(o2)) => ops_equal(o1, o2, f1, f2),
+        (Some((t1, o1)), Some((t2, o2))) => t1 == t2 && ops_equal(o1, o2, f1, f2),
         (None, None) => true,
         (None, Some(_)) | (Some(_), None) => false,
     }

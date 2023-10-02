@@ -172,7 +172,7 @@ pub struct RvsdgFunction {
     ///
     /// NB: until effects are supported, the only way to ensure a computation is
     /// marked as used is to populate a result of some kind.
-    pub(crate) result: Option<Operand>,
+    pub(crate) result: Option<(Type, Operand)>,
 
     /// The output port corersponding to the state edge of the function.
     pub(crate) state: Operand,
@@ -215,6 +215,13 @@ pub(crate) fn cfg_to_rvsdg(cfg: &CfgProgram) -> std::result::Result<RvsdgProgram
 }
 
 impl RvsdgFunction {
+    pub(crate) fn result_val(&self) -> Option<&Operand> {
+        match &self.result {
+            Some((_ty, val)) => Some(val),
+            None => None,
+        }
+    }
+
     fn expr_from_ty(ty: &Type) -> egglog::ast::Expr {
         use egglog::ast::Expr::*;
         match ty {
@@ -354,9 +361,10 @@ impl RvsdgFunction {
         );
         let output = {
             let state = self.operand_to_egglog_expr(&self.state);
-            if let Some(result) = &self.result {
+            if let Some((ty, result)) = &self.result {
                 let value = self.operand_to_egglog_expr(result);
-                Call("StateAndValue".into(), vec![state, value])
+                let ty = Self::expr_from_ty(ty);
+                Call("StateAndValue".into(), vec![state, ty, value])
             } else {
                 Call("StateOnly".into(), vec![state])
             }
@@ -518,10 +526,11 @@ impl RvsdgFunction {
                         ("StateOnly", [state]) => {
                             (Self::egglog_expr_to_operand(state, &mut nodes), None)
                         }
-                        ("StateAndValue", [state, result]) => {
+                        ("StateAndValue", [state, ty, result]) => {
                             let state = Self::egglog_expr_to_operand(state, &mut nodes);
                             let result = Self::egglog_expr_to_operand(result, &mut nodes);
-                            (state, Some(result))
+                            let ty = Self::egglog_expr_to_ty(ty);
+                            (state, Some((ty, result)))
                         }
                         _ => panic!("expect a function, got {expr}"),
                     };

@@ -15,10 +15,11 @@
     (FloatT)
     (CharT)
     (PointerT Type))
-(datatype EffectType
-    (Bril Type)
+(datatype value type EffectType
+    (Bril Type)      Type 
     (PrintState))
-(sort FunSig (Vec EffectType))
+;;           arg types        out type
+(sort (Vec EffectType))
 ;; Literal
 (function Num (i64) Literal)
 (function Float (f64) Literal)
@@ -53,11 +54,11 @@
 
 (datatype FunctionOutput
     (StateOnly Operand)
-    ;;             state   value
-    (StateAndValue Operand Operand))
+    ;;             state   value type  value
+    (StateAndValue Operand Type        Operand))
 
 (datatype Function
-    (Func String FunSig FunctionOutput))
+    (Func String FunctionOutput))
 
 
 ;; procedure f(n):

@@ -1,0 +1,23 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ block:
+  block:
+   one: int = const 1;
+   zero: int = const 0;
+   isless: bool = lt one zero;
+   if isless:
+    break 2
+   else:
+    break 1
+  result: int = const 0;
+  break 1
+ result: int = const 1;
+block:
+ print result;
+ return
+
+}

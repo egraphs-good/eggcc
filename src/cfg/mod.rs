@@ -237,7 +237,7 @@ pub struct Cfg {
     pub(crate) exit: NodeIndex,
     /// The name of the function.
     pub(crate) name: String,
-    return_ty: Option<Type>,
+    pub(crate) return_ty: Option<Type>,
 }
 
 impl Cfg {

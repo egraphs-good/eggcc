@@ -37,7 +37,7 @@ pub(crate) mod rvsdg2svg;
 use std::fmt;
 
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use egglog::EGraph;
+use egglog::{ast::Symbol, EGraph};
 use ordered_float::OrderedFloat;
 use thiserror::Error;
 
@@ -172,7 +172,7 @@ pub struct RvsdgFunction {
     ///
     /// NB: until effects are supported, the only way to ensure a computation is
     /// marked as used is to populate a result of some kind.
-    pub(crate) result: Option<Operand>,
+    pub(crate) result: Option<(Type, Operand)>,
 
     /// The output port corersponding to the state edge of the function.
     pub(crate) state: Operand,
@@ -214,20 +214,14 @@ pub(crate) fn cfg_to_rvsdg(cfg: &CfgProgram) -> std::result::Result<RvsdgProgram
     Ok(RvsdgProgram { functions })
 }
 
-/// The result of a function, as an egglog expression.
-pub enum EgglogFunctionResult {
-    /// The result of a function with no return values (namely, the "state edge"
-    /// only).
-    StateOnly(egglog::ast::Expr),
-    StateAndValue {
-        /// The outgoing state edge for the function.
-        state: egglog::ast::Expr,
-        /// The function return value.
-        value: egglog::ast::Expr,
-    },
-}
-
 impl RvsdgFunction {
+    pub(crate) fn result_val(&self) -> Option<&Operand> {
+        match &self.result {
+            Some((_ty, val)) => Some(val),
+            None => None,
+        }
+    }
+
     fn expr_from_ty(ty: &Type) -> egglog::ast::Expr {
         use egglog::ast::Expr::*;
         match ty {
@@ -236,6 +230,14 @@ impl RvsdgFunction {
             Type::Float => Call("FloatT".into(), vec![]),
             Type::Char => Call("CharT".into(), vec![]),
             Type::Pointer(ty) => Call("PointerT".into(), vec![Self::expr_from_ty(ty.as_ref())]),
+        }
+    }
+
+    fn expr_from_rvsdg_ty(ty: &RvsdgType) -> egglog::ast::Expr {
+        use egglog::ast::Expr::*;
+        match ty {
+            RvsdgType::Bril(ty) => Call("Bril".into(), vec![RvsdgFunction::expr_from_ty(ty)]),
+            RvsdgType::PrintState => Call("PrintState".into(), vec![]),
         }
     }
 
@@ -346,14 +348,28 @@ impl RvsdgFunction {
         }
     }
 
-    pub fn to_egglog_expr(&self) -> EgglogFunctionResult {
-        let state = self.operand_to_egglog_expr(&self.state);
-        if let Some(result) = &self.result {
-            let value = self.operand_to_egglog_expr(result);
-            EgglogFunctionResult::StateAndValue { state, value }
-        } else {
-            EgglogFunctionResult::StateOnly(state)
-        }
+    pub fn to_egglog_expr(&self) -> egglog::ast::Expr {
+        use egglog::ast::{Expr::*, Literal::*};
+        let name: Symbol = self.name.clone().into();
+
+        let sig = Call(
+            "vec-of".into(),
+            self.args
+                .iter()
+                .map(RvsdgFunction::expr_from_rvsdg_ty)
+                .collect(),
+        );
+        let output = {
+            let state = self.operand_to_egglog_expr(&self.state);
+            if let Some((ty, result)) = &self.result {
+                let value = self.operand_to_egglog_expr(result);
+                let ty = Self::expr_from_ty(ty);
+                Call("StateAndValue".into(), vec![state, ty, value])
+            } else {
+                Call("StateOnly".into(), vec![state])
+            }
+        };
+        Call("Func".into(), vec![Lit(String(name)), sig, output])
     }
 
     fn egglog_expr_to_operand(op: &egglog::ast::Expr, bodies: &mut Vec<RvsdgBody>) -> Operand {
@@ -467,6 +483,19 @@ impl RvsdgFunction {
         }
     }
 
+    fn egglog_expr_to_rvsdg_ty(ty: &egglog::ast::Expr) -> RvsdgType {
+        use egglog::ast::Expr::*;
+        if let Call(func, args) = ty {
+            match (func.as_str(), &args.as_slice()) {
+                ("PrintState", []) => RvsdgType::PrintState,
+                ("Bril", [ty]) => RvsdgType::Bril(Self::egglog_expr_to_ty(ty)),
+                _ => panic!("expect an expression, got {ty}"),
+            }
+        } else {
+            panic!("expect an expression, got {ty}")
+        }
+    }
+
     fn egglog_expr_to_literal(lit: &egglog::ast::Expr) -> Literal {
         use egglog::ast::{Expr::*, Literal::*};
         if let Call(func, args) = lit {
@@ -484,26 +513,40 @@ impl RvsdgFunction {
         }
     }
 
-    pub fn egglog_expr_to_function(res: &EgglogFunctionResult, n_args: usize) -> RvsdgFunction {
-        let mut nodes = vec![];
-        let (result, state) = match res {
-            EgglogFunctionResult::StateOnly(state) => {
-                (None, Self::egglog_expr_to_operand(state, &mut nodes))
+    pub fn egglog_expr_to_function(expr: &egglog::ast::Expr) -> RvsdgFunction {
+        use egglog::ast::{Expr::*, Literal::*};
+        if let Call(func, args) = expr {
+            match (func.as_str(), &args.as_slice()) {
+                ("Func", [Lit(String(name)), sig, Call(func_output, func_args)]) => {
+                    let args: Vec<RvsdgType> = vec_map(sig, Self::egglog_expr_to_rvsdg_ty);
+                    let n_args = args.len() - 1;
+
+                    let mut nodes = vec![];
+                    let (state, result) = match (func_output.as_str(), &func_args.as_slice()) {
+                        ("StateOnly", [state]) => {
+                            (Self::egglog_expr_to_operand(state, &mut nodes), None)
+                        }
+                        ("StateAndValue", [state, ty, result]) => {
+                            let state = Self::egglog_expr_to_operand(state, &mut nodes);
+                            let result = Self::egglog_expr_to_operand(result, &mut nodes);
+                            let ty = Self::egglog_expr_to_ty(ty);
+                            (state, Some((ty, result)))
+                        }
+                        _ => panic!("expect a function, got {expr}"),
+                    };
+                    RvsdgFunction {
+                        name: name.to_string(),
+                        n_args,
+                        args,
+                        nodes,
+                        result,
+                        state,
+                    }
+                }
+                _ => panic!("expect a function, got {expr}"),
             }
-            EgglogFunctionResult::StateAndValue { state, value } => (
-                Some(Self::egglog_expr_to_operand(value, &mut nodes)),
-                Self::egglog_expr_to_operand(state, &mut nodes),
-            ),
-        };
-        RvsdgFunction {
-            // TODO: the encoding doesn't contain function names
-            name: "MISSING_NAME".to_owned(),
-            n_args,
-            // TODO properly set args once egglog encoding supports it
-            args: vec![],
-            nodes,
-            result,
-            state,
+        } else {
+            panic!("expect a function, got {expr}")
         }
     }
 }

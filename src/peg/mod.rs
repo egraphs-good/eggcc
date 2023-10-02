@@ -65,7 +65,7 @@ impl PegFunction {
             pegs: &mut nodes,
             memoize: &mut HashMap::new(),
         };
-        let result = rvsdg.result.map(|op| builder.get_pegs(op, &[]));
+        let result = rvsdg.result_val().map(|op| builder.get_pegs(*op, &[]));
         let state = builder.get_pegs(rvsdg.state, &[]);
         PegFunction {
             name: rvsdg.name.clone(),

@@ -1,4 +1,3 @@
-#![allow(dead_code)] // TODO: remove this once wired in
 //! Convert bril programs to RVSDGs.
 //!
 //! Bril functions are written in terms of basic blocks and jumps/gotos. RVSDGs
@@ -38,13 +37,14 @@ pub(crate) mod to_cfg;
 use std::fmt;
 
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use egglog::{ast::Symbol, EGraph};
+use egglog::{ast::Symbol, EGraph, TermDag};
 use ordered_float::OrderedFloat;
 use thiserror::Error;
 
 use crate::{
     cfg::{Identifier, SimpleCfgProgram},
     conversions::egglog_op_to_bril,
+    util::FreshNameGen,
     EggCCError,
 };
 
@@ -607,4 +607,45 @@ pub fn new_rvsdg_egraph() -> EGraph {
     let schema = std::fs::read_to_string("src/rvsdg/schema.egg").unwrap();
     egraph.parse_and_run_program(schema.as_str()).unwrap();
     egraph
+}
+
+impl RvsdgProgram {
+    pub fn build_egglog_code(&self) -> (String, Vec<String>) {
+        let schema = std::include_str!("schema.egg");
+        let mut fresh_names = FreshNameGen::new();
+        let mut func_names = vec![];
+
+        let mut res_string = vec![schema.to_string()];
+
+        for function in &self.functions {
+            let name = fresh_names.fresh();
+            func_names.push(name.clone());
+            let expr = function.to_egglog_expr();
+            res_string.push(format!("(let {} {})", name, expr));
+        }
+
+        (res_string.join("\n").to_string(), func_names)
+    }
+
+    pub fn optimize(&self) -> std::result::Result<Self, EggCCError> {
+        let (egglog_code, function_names) = self.build_egglog_code();
+        let mut egraph = EGraph::default();
+        let _results = egraph
+            .parse_and_run_program(egglog_code.as_str())
+            .map_err(EggCCError::EggLog)?;
+
+        let mut functions = vec![];
+        let mut termdag = TermDag::default();
+        for name in function_names {
+            let (sort, value) = egraph
+                .eval_expr(&egglog::ast::Expr::Var(name.into()), None, true)
+                .unwrap();
+            let (_size, extracted) = egraph.extract(value, &mut termdag, &sort);
+            functions.push(RvsdgFunction::egglog_expr_to_function(
+                &termdag.term_to_expr(&extracted),
+            ));
+        }
+
+        Ok(RvsdgProgram { functions })
+    }
 }

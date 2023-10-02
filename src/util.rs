@@ -139,6 +139,7 @@ pub enum RunType {
     ToCfg,
     CfgRoundTrip,
     RvsdgToCfg,
+    RvsdgOptimize,
 }
 
 impl Debug for RunType {
@@ -161,6 +162,7 @@ impl FromStr for RunType {
             "peg" => Ok(RunType::PegConversion),
             "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
             "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
+            "rvsdg-optimize" => Ok(RunType::RvsdgOptimize),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -178,6 +180,7 @@ impl Display for RunType {
             RunType::ToCfg => write!(f, "to-cfg"),
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
             RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
+            RunType::RvsdgOptimize => write!(f, "rvsdg-optimize"),
         }
     }
 }
@@ -194,6 +197,7 @@ impl RunType {
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
             RunType::RvsdgToCfg => true,
+            RunType::RvsdgOptimize => true,
         }
     }
 }
@@ -268,6 +272,7 @@ impl Run {
             RunType::RvsdgRoundTrip,
             RunType::PegConversion,
             RunType::CfgRoundTrip,
+            RunType::RvsdgOptimize,
         ] {
             let default = Run {
                 test_type,
@@ -386,6 +391,17 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(bril),
+                )
+            }
+            RunType::RvsdgOptimize => {
+                let optimized = Optimizer::rvsdg_optimize(&self.prog_with_args.program).unwrap();
+                (
+                    vec![Visualization {
+                        result: optimized.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(optimized),
                 )
             }
         };

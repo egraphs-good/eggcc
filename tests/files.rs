@@ -13,6 +13,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             RunType::RvsdgConversion,
             RunType::NaiiveOptimization,
             RunType::PegConversion,
+            RunType::RvsdgOptimize,
         ]
         .into_iter()
         .collect();

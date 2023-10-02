@@ -345,6 +345,7 @@ pub enum SimpleBranch {
     NoBranch, // must be the end of the function
     Jmp(BlockName),
     If {
+        // arg is an integer specifying which branch to jump to
         arg: Identifier,
         then_branch: BlockName,
         else_branch: BlockName,

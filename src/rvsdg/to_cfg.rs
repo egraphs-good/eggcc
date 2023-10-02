@@ -1,4 +1,4 @@
-use bril_rs::{ConstOps, EffectOps, Instruction, Type, ValueOps};
+use bril_rs::{Argument, ConstOps, EffectOps, Instruction, Literal, Type, ValueOps};
 
 use hashbrown::HashMap;
 use petgraph::graph::NodeIndex;
@@ -9,10 +9,10 @@ use crate::{
         BasicBlock, BlockName, Branch, BranchOp, CfgFunction, CfgProgram, Identifier,
         SimpleCfgFunction, SimpleCfgProgram,
     },
-    util::{FreshNameGen, Visualization},
+    util::FreshNameGen,
 };
 
-use super::{Expr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
+use super::{Expr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
 
 enum IncompleteBranch {
     /// Conditional jump from a given block to the next one
@@ -93,12 +93,30 @@ impl RvsdgFunction {
             body_cache: Default::default(),
         };
 
+        let mut func_args = vec![];
+        let mut rvsdg_args = vec![];
+        for arg in &self.args {
+            match arg {
+                RvsdgType::PrintState => {
+                    rvsdg_args.push(RvsdgValue::StateEdge);
+                }
+                RvsdgType::Bril(ty) => {
+                    let name = to_bril.get_fresh();
+                    func_args.push(Argument {
+                        name: name.clone(),
+                        arg_type: ty.clone(),
+                    });
+                    rvsdg_args.push(RvsdgValue::BrilValue(name, ty.clone()));
+                }
+            }
+        }
+
         // TODO current args hardcoded to implicit print state
-        to_bril.operand_to_bril(self.state, &vec![RvsdgValue::StateEdge], &None);
+        to_bril.operand_to_bril(self.state, &rvsdg_args, &None);
         if let Some(operand) = self.result {
             // it doesn't matter what var we assign to
             // TODO current args hardcoded to implicit print state
-            let res = to_bril.operand_to_bril(operand, &vec![RvsdgValue::StateEdge], &None);
+            let res = to_bril.operand_to_bril(operand, &rvsdg_args, &None);
             to_bril.current_instrs.push(Instruction::Effect {
                 op: EffectOps::Return,
                 args: vec![res.unwrap_name()],
@@ -112,7 +130,7 @@ impl RvsdgFunction {
         // TODO hard-coded name
         CfgFunction {
             name: "main".into(),
-            args: vec![],
+            args: func_args,
             graph: to_bril.graph,
             entry: to_bril.entry_block.unwrap(),
             exit: last_block,
@@ -133,6 +151,7 @@ impl<'a> RvsdgToCfg<'a> {
         current_args: &Vec<RvsdgValue>,
         context: &Option<Id>,
     ) -> RvsdgValue {
+        eprintln!("operand_to_bril {:?} {:?}", operand, context);
         if let Some(existing) = self.operand_cache.get(&(*context, operand)) {
             return existing.clone();
         }
@@ -201,6 +220,33 @@ impl<'a> RvsdgToCfg<'a> {
             .collect::<Vec<_>>()
     }
 
+    fn cast_bool(&mut self, pred: &RvsdgValue) -> String {
+        if pred.unwrap_type() == Type::Int {
+            let one = self.get_fresh();
+            self.current_instrs.push(Instruction::Constant {
+                dest: one.clone(),
+                op: ConstOps::Const,
+                value: Literal::Int(1),
+                pos: None,
+                const_type: Type::Int,
+            });
+            let new_name = self.get_fresh();
+            self.current_instrs.push(Instruction::Value {
+                dest: new_name.clone(),
+                op: ValueOps::Eq,
+                args: vec![pred.unwrap_name(), one],
+                funcs: vec![],
+                labels: vec![],
+                pos: None,
+                op_type: Type::Bool,
+            });
+            new_name
+        } else {
+            assert!(pred.unwrap_type() == Type::Bool);
+            pred.unwrap_name()
+        }
+    }
+
     /// The result of body_to_bril must comply with the assign_to input
     /// However, unlike AssignTo, there may be duplicate variables in the result
     /// when AssignTo doesn't specify the variable.
@@ -221,13 +267,17 @@ impl<'a> RvsdgToCfg<'a> {
                 inputs,
                 outputs,
             } => {
+                eprintln!("Gamma {:?} {:?} {:?}", pred, inputs, outputs);
                 let input_vars = inputs
                     .iter()
                     .map(|operand| self.operand_to_bril(*operand, current_args, &Some(id)))
                     .collect::<Vec<_>>();
 
                 // evaluate pred in this block as well
+                // TODO we are assuming pred is an int here, is that actually true?
                 let pred = self.operand_to_bril(*pred, current_args, ctx);
+                eprintln!("pred {:?}", pred);
+                let pred_bool = self.cast_bool(&pred);
 
                 let prev_block = self.finish_block();
 
@@ -262,7 +312,7 @@ impl<'a> RvsdgToCfg<'a> {
                     branch_blocks[0],
                     Branch {
                         op: BranchOp::Cond {
-                            arg: Identifier::Name(pred.clone().unwrap_name()),
+                            arg: Identifier::Name(pred_bool.clone()),
                             val: false.into(),
                         },
                         pos: None,
@@ -273,7 +323,7 @@ impl<'a> RvsdgToCfg<'a> {
                     branch_blocks[1],
                     Branch {
                         op: BranchOp::Cond {
-                            arg: Identifier::Name(pred.unwrap_name()),
+                            arg: Identifier::Name(pred_bool),
                             val: true.into(),
                         },
                         pos: None,
@@ -289,15 +339,18 @@ impl<'a> RvsdgToCfg<'a> {
                 shared_vars.unwrap()
             }
             RvsdgBody::Theta {
-                pred,
+                pred: pred_operand,
                 inputs,
                 outputs,
             } => {
+                eprintln!("Theta {:?} {:?} {:?}", pred_operand, inputs, outputs);
+
                 // evaluate the inputs
                 let input_vars = inputs
                     .iter()
                     .map(|id| self.operand_to_bril(*id, current_args, ctx))
                     .collect::<Vec<_>>();
+                eprintln!("input_vars {:?}", input_vars);
                 // loop vars are like inputs, but we can't re-use inputs
                 // because there may be duplicate names
                 let loop_vars = self.fresh_variables_for(&input_vars);
@@ -310,6 +363,12 @@ impl<'a> RvsdgToCfg<'a> {
                 self.incomplete_branches
                     .push(IncompleteBranch::Direct { from: prev_block });
 
+                // make a loop header
+                // TODO this always makes an empty block, even if unnecessary
+                let loop_header = self.finish_block();
+                self.incomplete_branches
+                    .push(IncompleteBranch::Direct { from: loop_header });
+
                 // now evaluate the outputs
                 let output_vars = outputs
                     .iter()
@@ -317,20 +376,21 @@ impl<'a> RvsdgToCfg<'a> {
                     .collect::<Vec<_>>();
 
                 // then evalute the predicate
-                let pred = self.operand_to_bril(*pred, current_args, &Some(id));
+                let pred = self.operand_to_bril(*pred_operand, &loop_vars, &Some(id));
+                let pred_bool = self.cast_bool(&pred);
 
                 // assign to the loop variables
                 self.assign_to_vars(&output_vars, &loop_vars);
 
-                let loop_block = self.finish_block();
+                let loop_footer = self.finish_block();
 
-                // add a conditional jump from the loop block back to itself
+                // add a conditional jump from the loop block back to header
                 self.graph.add_edge(
-                    loop_block,
-                    loop_block,
+                    loop_footer,
+                    loop_header,
                     Branch {
                         op: BranchOp::Cond {
-                            arg: Identifier::Name(pred.clone().unwrap_name()),
+                            arg: Identifier::Name(pred_bool.clone()),
                             val: true.into(),
                         },
                         pos: None,
@@ -339,12 +399,12 @@ impl<'a> RvsdgToCfg<'a> {
 
                 // add a unfinished conditional jump to the next block
                 self.incomplete_branches.push(IncompleteBranch::Cond {
-                    from: prev_block,
-                    var: Identifier::Name(pred.unwrap_name()),
+                    from: loop_footer,
+                    var: Identifier::Name(pred_bool),
                     val: false,
                 });
 
-                output_vars
+                loop_vars
             }
         }
     }

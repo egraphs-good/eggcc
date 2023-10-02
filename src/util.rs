@@ -130,6 +130,7 @@ where
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RunType {
+    Nothing,
     StructuredConversion,
     RvsdgConversion,
     PegConversion,
@@ -151,6 +152,7 @@ impl FromStr for RunType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "nothing" => Ok(RunType::Nothing),
             "structured" => Ok(RunType::StructuredConversion),
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "naiive" => Ok(RunType::NaiiveOptimization),
@@ -167,6 +169,7 @@ impl FromStr for RunType {
 impl Display for RunType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            RunType::Nothing => write!(f, "nothing"),
             RunType::StructuredConversion => write!(f, "structured"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::PegConversion => write!(f, "peg"),
@@ -182,6 +185,7 @@ impl Display for RunType {
 impl RunType {
     pub fn produces_bril(&self) -> bool {
         match self {
+            RunType::Nothing => true,
             RunType::StructuredConversion => false,
             RunType::RvsdgConversion => false,
             RunType::PegConversion => false,
@@ -300,6 +304,7 @@ impl Run {
 
         let mut peg = None;
         let (visualizations, bril_out) = match self.test_type {
+            RunType::Nothing => (vec![], Some(self.prog_with_args.program.clone())),
             RunType::StructuredConversion => {
                 let structured =
                     Optimizer::program_to_structured(&self.prog_with_args.program).unwrap();

@@ -113,10 +113,10 @@ impl RvsdgFunction {
 
         // TODO current args hardcoded to implicit print state
         to_bril.operand_to_bril(self.state, &rvsdg_args, &None);
-        if let Some(operand) = self.result {
+        if let Some((_ty, operand)) = &self.result {
             // it doesn't matter what var we assign to
             // TODO current args hardcoded to implicit print state
-            let res = to_bril.operand_to_bril(operand, &rvsdg_args, &None);
+            let res = to_bril.operand_to_bril(*operand, &rvsdg_args, &None);
             to_bril.current_instrs.push(Instruction::Effect {
                 op: EffectOps::Return,
                 args: vec![res.unwrap_name()],
@@ -256,9 +256,13 @@ impl<'a> RvsdgToCfg<'a> {
         current_args: &Vec<RvsdgValue>,
         ctx: &Option<Id>,
     ) -> Vec<RvsdgValue> {
+        if let Some(existing) = self.body_cache.get(&(*ctx, id)) {
+            return existing.clone();
+        }
+
         // TODO share common sub-expressions
         let body = &self.function.nodes[id];
-        match body {
+        let res = match body {
             RvsdgBody::BasicOp(expr) => {
                 vec![self.expr_to_bril(expr, current_args, ctx)]
             }
@@ -278,7 +282,6 @@ impl<'a> RvsdgToCfg<'a> {
                 let pred = self.operand_to_bril(*pred, current_args, ctx);
                 eprintln!("pred {:?}", pred);
                 let pred_bool = self.cast_bool(&pred);
-
                 let prev_block = self.finish_block();
 
                 let mut branch_blocks = vec![];
@@ -406,7 +409,11 @@ impl<'a> RvsdgToCfg<'a> {
 
                 loop_vars
             }
-        }
+        };
+
+        self.body_cache.insert((*ctx, id), res.clone());
+
+        res
     }
 
     fn finish_block(&mut self) -> NodeIndex {

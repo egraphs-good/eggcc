@@ -151,7 +151,6 @@ impl<'a> RvsdgToCfg<'a> {
         current_args: &Vec<RvsdgValue>,
         context: &Option<Id>,
     ) -> RvsdgValue {
-        eprintln!("operand_to_bril {:?} {:?}", operand, context);
         if let Some(existing) = self.operand_cache.get(&(*context, operand)) {
             return existing.clone();
         }
@@ -271,7 +270,6 @@ impl<'a> RvsdgToCfg<'a> {
                 inputs,
                 outputs,
             } => {
-                eprintln!("Gamma {:?} {:?} {:?}", pred, inputs, outputs);
                 let input_vars = inputs
                     .iter()
                     .map(|operand| self.operand_to_bril(*operand, current_args, &Some(id)))
@@ -280,7 +278,6 @@ impl<'a> RvsdgToCfg<'a> {
                 // evaluate pred in this block as well
                 // TODO we are assuming pred is an int here, is that actually true?
                 let pred = self.operand_to_bril(*pred, current_args, ctx);
-                eprintln!("pred {:?}", pred);
                 let pred_bool = self.cast_bool(&pred);
                 let prev_block = self.finish_block();
 
@@ -346,14 +343,11 @@ impl<'a> RvsdgToCfg<'a> {
                 inputs,
                 outputs,
             } => {
-                eprintln!("Theta {:?} {:?} {:?}", pred_operand, inputs, outputs);
-
                 // evaluate the inputs
                 let input_vars = inputs
                     .iter()
                     .map(|id| self.operand_to_bril(*id, current_args, ctx))
                     .collect::<Vec<_>>();
-                eprintln!("input_vars {:?}", input_vars);
                 // loop vars are like inputs, but we can't re-use inputs
                 // because there may be duplicate names
                 let loop_vars = self.fresh_variables_for(&input_vars);

@@ -206,7 +206,7 @@ pub(crate) fn cfg_to_rvsdg(
 ) -> std::result::Result<RvsdgProgram, EggCCError> {
     // Rvsdg translation also restructured the cfg
     // so make a copy for that.
-    let mut cfg_restructured = cfg.clone().convert_to_switch();
+    let mut cfg_restructured = cfg.clone().into_switch();
     let func_types = cfg_restructured.function_types();
 
     let mut functions = vec![];

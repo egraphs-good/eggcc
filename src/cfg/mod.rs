@@ -3,14 +3,13 @@
 //! The methods here largely ignore the instructions in the program: all that we
 //! look for here are instructions that may break up basic blocks (`jmp`, `br`,
 //! `ret`), and labels. All other instructions are copied into the CFG.
-use std::marker::PhantomData;
 use std::str::FromStr;
 use std::{collections::HashMap, fmt::Display};
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};
 
-use petgraph::stable_graph::StableDiGraph;
+use petgraph::stable_graph::{EdgeReference, StableDiGraph};
 use petgraph::visit::{EdgeRef, Visitable};
 use petgraph::{
     graph::NodeIndex,
@@ -51,21 +50,21 @@ pub type SimpleCfgProgram = CfgProgram<Simple>;
 pub type SwitchCfgProgram = CfgProgram<Switch>;
 
 impl SimpleCfgProgram {
-    // Convert a simple program to a switch program
-    // trivial, since simple programs are a subset of switch programs
-    pub fn convert_to_switch(self) -> SwitchCfgProgram {
+    /// Convert a simple program to a switch program
+    /// trivial, since simple programs are a subset of switch programs
+    pub fn into_switch(self) -> SwitchCfgProgram {
         SwitchCfgProgram {
             functions: self
                 .functions
                 .into_iter()
-                .map(|f| f.convert_to_switch())
+                .map(|f| f.into_switch())
                 .collect(),
         }
     }
 }
 
 impl SimpleCfgFunction {
-    pub fn convert_to_switch(self) -> SwitchCfgFunction {
+    pub fn into_switch(self) -> SwitchCfgFunction {
         SwitchCfgFunction {
             args: self.args,
             graph: self.graph,
@@ -73,7 +72,7 @@ impl SimpleCfgFunction {
             exit: self.exit,
             name: self.name,
             return_ty: self.return_ty,
-            phantom: PhantomData,
+            _phantom: Switch,
         }
     }
 }
@@ -280,7 +279,7 @@ pub struct CfgFunction<CfgType> {
     pub(crate) exit: NodeIndex,
     /// The name of the function.
     pub(crate) name: String,
-    phantom: PhantomData<CfgType>,
+    _phantom: CfgType,
     pub(crate) return_ty: Option<Type>,
 }
 
@@ -321,13 +320,13 @@ pub enum SimpleBranch {
 impl SimpleCfgFunction {
     pub fn get_branch(&self, node: NodeIndex) -> SimpleBranch {
         let outgoing = self.graph.edges(node);
-        match &outgoing.collect::<Vec<_>>().as_slice() {
+        match &outgoing.collect::<Vec<EdgeReference<Branch>>>().as_slice() {
             [] => {
                 assert!(self.exit == node);
                 SimpleBranch::NoBranch
             }
             [edge] => {
-                let target = edge.target();
+                let target: NodeIndex = edge.target();
                 let branch = edge.weight();
                 let BranchOp::Jmp = branch.op else {
                             panic!("Unexpected branch type");
@@ -529,7 +528,7 @@ impl CfgBuilder {
                 exit,
                 name: func.name.clone(),
                 return_ty: func.return_type.clone(),
-                phantom: PhantomData,
+                _phantom: Simple,
             },
             label_to_block: HashMap::new(),
         }

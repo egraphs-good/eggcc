@@ -8,7 +8,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
-        let snapshot_configurations: HashSet<RunType> = vec![
+        let snapshot_configurations: HashSet<RunType> = [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
             RunType::NaiiveOptimization,

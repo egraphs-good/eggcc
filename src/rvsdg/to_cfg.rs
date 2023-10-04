@@ -6,7 +6,7 @@ use petgraph::stable_graph::StableDiGraph;
 
 use crate::{
     cfg::{
-        BasicBlock, BlockName, Branch, BranchOp, CfgFunction, CfgProgram, Identifier,
+        BasicBlock, BlockName, Branch, BranchOp, CfgFunction, CfgProgram, Identifier, Simple,
         SimpleCfgFunction, SimpleCfgProgram,
     },
     util::FreshNameGen,
@@ -135,7 +135,7 @@ impl RvsdgFunction {
             entry: to_bril.entry_block.unwrap(),
             exit: last_block,
             return_ty: None,
-            phantom: Default::default(),
+            _phantom: Simple,
         }
     }
 }

@@ -1,6 +1,6 @@
 use bril_rs::{Code, EffectOps, Function, Instruction, Program};
 
-use super::{Annotation, BasicBlock, SimpleBranch, SimpleCfgFunction, SimpleCfgProgram};
+use super::{Annotation, BasicBlock, BlockName, SimpleBranch, SimpleCfgFunction, SimpleCfgProgram};
 use petgraph::{
     stable_graph::NodeIndex,
     visit::{DfsPostOrder, Walker},
@@ -9,18 +9,19 @@ use petgraph::{
 impl SimpleCfgProgram {
     /// Converts the Cfg into a bril program.
     pub fn to_bril(&self) -> Program {
-        let mut bril = Program {
-            functions: vec![],
+        let bril = Program {
+            functions: self.functions.iter().map(|func| func.to_bril()).collect(),
             imports: vec![],
         };
-        for func in &self.functions {
-            bril.functions.push(func.to_bril());
-        }
         bril
     }
 }
 
 impl SimpleCfgFunction {
+    pub(crate) fn label_name(block_name: &BlockName) -> String {
+        format!("{}", block_name)
+    }
+
     /// Converts the cfg function into a bril program.
     pub fn to_bril(&self) -> Function {
         // Make an empty function
@@ -38,29 +39,30 @@ impl SimpleCfgFunction {
         // The order of this traversal does not matter, just need to loop over the blocks
         DfsPostOrder::new(&self.graph, self.entry)
             .iter(&self.graph)
+            // don't do the exit or entry
+            .filter(|node| node != &self.entry && node != &self.exit)
             .for_each(|node| {
-                // don't do the exit or entry
-                if node != self.entry && node != self.exit {
-                    // Add a label for the block
-                    func.instrs.push(Code::Label {
-                        label: format!("{}", self.graph[node].name),
-                        pos: None,
-                    });
-                    // rest of the block
-                    self.node_to_bril(node, &mut func);
-                }
+                // Add a label for the block
+                self.push_label(&mut func, node);
+                // rest of the block
+                self.node_to_bril(node, &mut func);
             });
 
         // now do the exit at the end
         if self.exit != self.entry {
-            func.instrs.push(Code::Label {
-                label: format!("{}", self.graph[self.exit].name),
-                pos: None,
-            });
+            self.push_label(&mut func, self.exit);
+
             self.node_to_bril(self.exit, &mut func);
         }
 
         func
+    }
+
+    fn push_label(&self, func: &mut Function, node: NodeIndex) {
+        func.instrs.push(Code::Label {
+            label: Self::label_name(&self.graph[node].name),
+            pos: None,
+        });
     }
 
     // Converts a node to bril, including jumps at the end
@@ -76,7 +78,7 @@ impl SimpleCfgFunction {
                 func.instrs.push(Code::Instruction(Instruction::Effect {
                     op: EffectOps::Jump,
                     args: vec![],
-                    labels: vec![format!("{}", to)],
+                    labels: vec![Self::label_name(&to)],
                     funcs: vec![],
                     pos: None,
                 }));
@@ -89,7 +91,10 @@ impl SimpleCfgFunction {
                 func.instrs.push(Code::Instruction(Instruction::Effect {
                     op: EffectOps::Branch,
                     args: vec![arg.to_string()],
-                    labels: vec![format!("{}", then_branch), format!("{}", else_branch)],
+                    labels: vec![
+                        Self::label_name(&then_branch),
+                        Self::label_name(&else_branch),
+                    ],
                     funcs: vec![],
                     pos: None,
                 }));

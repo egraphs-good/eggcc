@@ -120,12 +120,13 @@ where
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RunType {
     StructuredConversion,
     RvsdgConversion,
     PegConversion,
     NaiiveOptimization,
+    CfgRoundTrip,
 }
 
 impl Debug for RunType {
@@ -143,6 +144,7 @@ impl FromStr for RunType {
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "naiive" => Ok(RunType::NaiiveOptimization),
             "peg" => Ok(RunType::PegConversion),
+            "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -155,6 +157,7 @@ impl Display for RunType {
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::PegConversion => write!(f, "peg"),
             RunType::NaiiveOptimization => write!(f, "naiive"),
+            RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
         }
     }
 }
@@ -166,6 +169,7 @@ impl RunType {
             RunType::RvsdgConversion => false,
             RunType::PegConversion => false,
             RunType::NaiiveOptimization => true,
+            RunType::CfgRoundTrip => true,
         }
     }
 }
@@ -230,6 +234,7 @@ impl Run {
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
             RunType::PegConversion,
+            RunType::CfgRoundTrip,
         ] {
             let default = Run {
                 test_type,
@@ -263,36 +268,38 @@ impl Run {
             self.prog_with_args.args.clone(),
             None,
         );
-        let mut optimized = None;
+
         let mut peg = None;
-        let (visualization, visualization_file_extension) = match self.test_type {
+        let (visualization, visualization_file_extension, bril_out) = match self.test_type {
             RunType::StructuredConversion => {
                 let structured =
                     Optimizer::program_to_structured(&self.prog_with_args.program).unwrap();
-                (structured.to_string(), ".txt")
+                (structured.to_string(), ".txt", None)
             }
             RunType::RvsdgConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let svg = rvsdg.to_svg();
-                (svg, ".svg")
+                (svg, ".svg", None)
             }
             RunType::NaiiveOptimization => {
                 let mut optimizer = Optimizer::default();
                 let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
-                let vis = (format!("{}", res), ".bril");
-                optimized = Some(res);
-                vis
+                (format!("{}", res), ".bril", Some(res))
             }
             RunType::PegConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 peg = Some(rvsdg_to_peg(&rvsdg));
                 let dot = peg.as_ref().unwrap().graph();
-                let svg = run_cmd_line("dot", ["-Tsvg"], &dot).unwrap();
-                (svg, ".svg")
+                (dot, ".dot", None)
+            }
+            RunType::CfgRoundTrip => {
+                let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
+                let bril = cfg.to_bril();
+                (bril.to_string(), ".bril", Some(bril))
             }
         };
 
-        let result_interpreted = match optimized {
+        let result_interpreted = match bril_out {
             Some(program) if self.interp => {
                 assert!(self.test_type.produces_bril());
                 Some(Optimizer::interp(

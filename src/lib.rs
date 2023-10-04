@@ -3,7 +3,7 @@ use bril_rs::Program;
 
 use cfg::structured::StructuredProgram;
 use cfg::to_structured::cfg_to_structured;
-use cfg::{program_to_cfg, CfgProgram};
+use cfg::{program_to_cfg, SimpleCfgProgram};
 use egglog::ast::Expr;
 use egglog::EGraph;
 use rvsdg::{RvsdgError, RvsdgProgram};
@@ -170,7 +170,7 @@ impl Optimizer {
         Ok(prog)
     }
 
-    pub fn program_to_cfg(program: &Program) -> CfgProgram {
+    pub fn program_to_cfg(program: &Program) -> SimpleCfgProgram {
         program_to_cfg(program)
     }
 

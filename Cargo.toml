@@ -17,6 +17,7 @@ petgraph = "0.6"
 hashbrown = "0.14"
 indexmap = "2.0"
 fixedbitset = "0.4.2"
+smallvec = "1.11.1"
 
 bril2json = { path = "bril/bril-rs/bril2json" }
 brilirs = { path = "bril/brilirs" }

@@ -15,7 +15,7 @@ use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use petgraph::{algo::dominators::Dominators, stable_graph::NodeIndex};
 
-use crate::cfg::{ret_id, Annotation, BranchOp, Cfg, CondVal, Identifier};
+use crate::cfg::{ret_id, Annotation, BranchOp, CondVal, Identifier, SwitchCfgFunction};
 use crate::rvsdg::Result;
 
 use super::live_variables::{live_variables, Names};
@@ -26,7 +26,7 @@ use super::{
 use super::{RvsdgFunction, RvsdgType};
 
 pub(crate) fn cfg_func_to_rvsdg(
-    cfg: &mut Cfg,
+    cfg: &mut SwitchCfgFunction,
     function_types: &FunctionTypes,
 ) -> Result<RvsdgFunction> {
     cfg.restructure();
@@ -97,7 +97,7 @@ pub(crate) fn cfg_func_to_rvsdg(
 pub(crate) type FunctionTypes = HashMap<String, Option<Type>>;
 
 pub(crate) struct RvsdgBuilder<'a> {
-    cfg: &'a mut Cfg,
+    cfg: &'a mut SwitchCfgFunction,
     expr: Vec<RvsdgBody>,
     analysis: LiveVariableAnalysis,
     dom: Dominators<NodeIndex>,

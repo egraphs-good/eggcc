@@ -1,3 +1,16 @@
+//! This module converts RVSDGs into bril CFGs (SimpleCfg).
+//! It does it by doing a bottom-up translation of the RVSDG into a CFG,
+//! recursively translating each demanded node.
+//! When translating a RVSDG, it returns the variables that are assigned to the output ports.
+//! These variables are guaranteed to be bound to the correct values anywhere in the CFG after that point.
+//! To hook up the control flow, the translation keeps trackof [`IncompleteBranch`]es, since an RVSDG needs to return
+//! control flow to the rest of the program after it is translated.
+//!
+//! In order to get sharing, we cache the resulting variable of each node.
+//! However, this caching is context-sensative to the RVSDG body becuase
+//! arguments refer to different arguments depending on the context.
+//! The top-level context is None and other contexts are some Id corresponding to a Body.
+
 use bril_rs::{Argument, ConstOps, EffectOps, Instruction, Literal, Type, ValueOps};
 
 use hashbrown::HashMap;
@@ -23,6 +36,36 @@ enum IncompleteBranch {
     },
     /// Direct jump from a given block to the next one
     Direct { from: NodeIndex },
+}
+
+impl IncompleteBranch {
+    fn complete(&self, graph: &mut StableDiGraph<BasicBlock, Branch>, to: NodeIndex) {
+        match self {
+            IncompleteBranch::Cond { from, var, val } => {
+                graph.add_edge(
+                    *from,
+                    to,
+                    Branch {
+                        op: BranchOp::Cond {
+                            arg: var.clone(),
+                            val: (*val).into(),
+                        },
+                        pos: None,
+                    },
+                );
+            }
+            IncompleteBranch::Direct { from } => {
+                graph.add_edge(
+                    *from,
+                    to,
+                    Branch {
+                        op: BranchOp::Jmp,
+                        pos: None,
+                    },
+                );
+            }
+        }
+    }
 }
 
 /// Represents the result of a RVSDG computation
@@ -111,7 +154,6 @@ impl RvsdgFunction {
             }
         }
 
-        // TODO current args hardcoded to implicit print state
         to_bril.operand_to_bril(self.state, &rvsdg_args, &None);
         if let Some((_ty, operand)) = &self.result {
             // it doesn't matter what var we assign to
@@ -183,6 +225,8 @@ impl<'a> RvsdgToCfg<'a> {
     // this is helpful in looping for loop variables or assigning to shared
     // variables across branches in a gamma
     fn assign_to_vars(&mut self, input_vars: &[RvsdgValue], resulting_vars: &[RvsdgValue]) {
+        assert!(input_vars.len() == resulting_vars.len());
+
         // assign to the loop variables, making sure the types line up
         for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
             match (ivar, rvar) {
@@ -282,6 +326,8 @@ impl<'a> RvsdgToCfg<'a> {
                 let prev_block = self.finish_block();
 
                 let mut branch_blocks = vec![];
+
+                // we need the outputs to make the shared variables, so do that in the first iteration
                 let mut shared_vars = None;
                 // for each set of outputs in outputs, make a new block for them
                 for outputs in outputs {
@@ -290,6 +336,8 @@ impl<'a> RvsdgToCfg<'a> {
                         .iter()
                         .map(|operand| self.operand_to_bril(*operand, &input_vars, &Some(id)))
                         .collect::<Vec<_>>();
+
+                    // make the shared vars on the first iteration
                     if shared_vars.is_none() {
                         shared_vars = Some(self.fresh_variables_for(&resulting_outputs));
                     }
@@ -343,6 +391,13 @@ impl<'a> RvsdgToCfg<'a> {
                 inputs,
                 outputs,
             } => {
+                // for the Theta case, we
+                // 1) evaluate the inputs
+                // 2) assign these inputs to loop variables
+                // 3) start a new block for the header, evaluating outputs
+                // 4) add a footer to the block, assigning to the *same* loop variables
+                // 5) finish the block with a loop back to the header and incomplete jump otherwise
+
                 // evaluate the inputs
                 let input_vars = inputs
                     .iter()
@@ -425,31 +480,7 @@ impl<'a> RvsdgToCfg<'a> {
 
         // drain the queue of incomplete branches
         for branch in std::mem::take(&mut self.incomplete_branches) {
-            match branch {
-                IncompleteBranch::Cond { from, var, val } => {
-                    self.graph.add_edge(
-                        from,
-                        res,
-                        Branch {
-                            op: BranchOp::Cond {
-                                arg: var,
-                                val: val.into(),
-                            },
-                            pos: None,
-                        },
-                    );
-                }
-                IncompleteBranch::Direct { from } => {
-                    self.graph.add_edge(
-                        from,
-                        res,
-                        Branch {
-                            op: BranchOp::Jmp,
-                            pos: None,
-                        },
-                    );
-                }
-            }
+            branch.complete(&mut self.graph, res);
         }
 
         res

@@ -3,7 +3,7 @@ use egglog::EGraph;
 
 use crate::{
     cfg::{program_to_cfg, Identifier},
-    rvsdg::{cfg_to_rvsdg, Expr, Id, Operand, RvsdgBody},
+    rvsdg::{cfg_to_rvsdg, Id, Operand, RvsdgBody, RvsdgExpr},
     util::parse_from_string,
 };
 
@@ -60,7 +60,7 @@ impl RvsdgTest {
     }
 
     fn lit_int(&mut self, i: i64) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Const(
+        self.make_node(RvsdgBody::BasicOp(RvsdgExpr::Const(
             ConstOps::Const,
             Literal::Int(i),
             Type::Int,
@@ -68,7 +68,7 @@ impl RvsdgTest {
     }
 
     fn lit_bool(&mut self, b: bool) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Const(
+        self.make_node(RvsdgBody::BasicOp(RvsdgExpr::Const(
             ConstOps::Const,
             Literal::Bool(b),
             Type::Bool,
@@ -76,7 +76,7 @@ impl RvsdgTest {
     }
 
     fn void_function(&mut self, func: impl Into<Identifier>, args: &[Operand]) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Call(
+        self.make_node(RvsdgBody::BasicOp(RvsdgExpr::Call(
             func.into(),
             args.to_vec(),
             1,
@@ -85,7 +85,7 @@ impl RvsdgTest {
     }
 
     fn lt(&mut self, l: Operand, r: Operand) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Op(
+        self.make_node(RvsdgBody::BasicOp(RvsdgExpr::Op(
             ValueOps::Lt,
             vec![l, r],
             Type::Bool,
@@ -93,15 +93,23 @@ impl RvsdgTest {
     }
 
     fn add(&mut self, l: Operand, r: Operand, ty: Type) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Add, vec![l, r], ty)))
+        self.make_node(RvsdgBody::BasicOp(RvsdgExpr::Op(
+            ValueOps::Add,
+            vec![l, r],
+            ty,
+        )))
     }
 
     fn mul(&mut self, l: Operand, r: Operand, ty: Type) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Op(ValueOps::Mul, vec![l, r], ty)))
+        self.make_node(RvsdgBody::BasicOp(RvsdgExpr::Op(
+            ValueOps::Mul,
+            vec![l, r],
+            ty,
+        )))
     }
 
     fn print(&mut self, x: Operand, state: Operand) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(Expr::Print(vec![x, state])))
+        self.make_node(RvsdgBody::BasicOp(RvsdgExpr::Print(vec![x, state])))
     }
 
     fn gamma(&mut self, pred: Operand, inputs: &[Operand], outputs: &[&[Operand]]) -> Id {
@@ -491,10 +499,10 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
         }
         match node {
             RvsdgBody::BasicOp(x) => match x {
-                Expr::Op(_, args, _) | Expr::Call(_, args, _, _) | Expr::Print(args) => {
-                    args.iter().any(|arg| search_op(f, arg, pred))
-                }
-                Expr::Const(_, _, _) => false,
+                RvsdgExpr::Op(_, args, _)
+                | RvsdgExpr::Call(_, args, _, _)
+                | RvsdgExpr::Print(args) => args.iter().any(|arg| search_op(f, arg, pred)),
+                RvsdgExpr::Const(_, _, _) => false,
             },
             RvsdgBody::Gamma {
                 pred: p,
@@ -567,28 +575,28 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
     fn ids_equal(i1: Id, i2: Id, f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
         match (&f1.nodes[i1], &f2.nodes[i2]) {
             (RvsdgBody::BasicOp(l), RvsdgBody::BasicOp(r)) => match (l, r) {
-                (Expr::Op(vo1, as1, ty1), Expr::Op(vo2, as2, ty2)) => {
+                (RvsdgExpr::Op(vo1, as1, ty1), RvsdgExpr::Op(vo2, as2, ty2)) => {
                     vo1 == vo2 && all_equal(as1, as2, f1, f2) && ty1 == ty2
                 }
-                (Expr::Call(func1, as1, n1, ty1), Expr::Call(func2, as2, n2, ty2)) => {
+                (RvsdgExpr::Call(func1, as1, n1, ty1), RvsdgExpr::Call(func2, as2, n2, ty2)) => {
                     func1 == func2 && n1 == n2 && all_equal(as1, as2, f1, f2) && ty1 == ty2
                 }
-                (Expr::Const(c1, ty1, lit1), Expr::Const(c2, ty2, lit2)) => {
+                (RvsdgExpr::Const(c1, ty1, lit1), RvsdgExpr::Const(c2, ty2, lit2)) => {
                     c1 == c2 && ty1 == ty2 && lit1 == lit2
                 }
-                (Expr::Print(as1), Expr::Print(as2)) => all_equal(as1, as2, f1, f2),
-                (Expr::Call(_, _, _, _), Expr::Op(_, _, _))
-                | (Expr::Call(_, _, _, _), Expr::Const(_, _, _))
-                | (Expr::Call(_, _, _, _), Expr::Print(_))
-                | (Expr::Const(_, _, _), Expr::Call(_, _, _, _))
-                | (Expr::Const(_, _, _), Expr::Op(_, _, _))
-                | (Expr::Const(_, _, _), Expr::Print(_))
-                | (Expr::Op(_, _, _), Expr::Call(_, _, _, _))
-                | (Expr::Op(_, _, _), Expr::Const(_, _, _))
-                | (Expr::Op(_, _, _), Expr::Print(_))
-                | (Expr::Print(_), Expr::Call(_, _, _, _))
-                | (Expr::Print(_), Expr::Const(_, _, _))
-                | (Expr::Print(_), Expr::Op(_, _, _)) => false,
+                (RvsdgExpr::Print(as1), RvsdgExpr::Print(as2)) => all_equal(as1, as2, f1, f2),
+                (RvsdgExpr::Call(_, _, _, _), RvsdgExpr::Op(_, _, _))
+                | (RvsdgExpr::Call(_, _, _, _), RvsdgExpr::Const(_, _, _))
+                | (RvsdgExpr::Call(_, _, _, _), RvsdgExpr::Print(_))
+                | (RvsdgExpr::Const(_, _, _), RvsdgExpr::Call(_, _, _, _))
+                | (RvsdgExpr::Const(_, _, _), RvsdgExpr::Op(_, _, _))
+                | (RvsdgExpr::Const(_, _, _), RvsdgExpr::Print(_))
+                | (RvsdgExpr::Op(_, _, _), RvsdgExpr::Call(_, _, _, _))
+                | (RvsdgExpr::Op(_, _, _), RvsdgExpr::Const(_, _, _))
+                | (RvsdgExpr::Op(_, _, _), RvsdgExpr::Print(_))
+                | (RvsdgExpr::Print(_), RvsdgExpr::Call(_, _, _, _))
+                | (RvsdgExpr::Print(_), RvsdgExpr::Const(_, _, _))
+                | (RvsdgExpr::Print(_), RvsdgExpr::Op(_, _, _)) => false,
             },
             (
                 RvsdgBody::Theta {

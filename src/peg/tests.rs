@@ -1,7 +1,7 @@
 use crate::cfg::program_to_cfg;
 use crate::peg::{PegBody, PegFunction, PegProgram};
 use crate::rvsdg::cfg_to_rvsdg;
-use crate::rvsdg::{Expr, Id};
+use crate::rvsdg::{Id, RvsdgExpr};
 use crate::util::parse_from_string;
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
 
@@ -33,7 +33,7 @@ impl PegTest {
     }
 
     fn lit_int(&mut self, i: i64) -> Id {
-        self.make_node(PegBody::BasicOp(Expr::Const(
+        self.make_node(PegBody::BasicOp(RvsdgExpr::Const(
             ConstOps::Const,
             Literal::Int(i),
             Type::Int,
@@ -41,7 +41,7 @@ impl PegTest {
     }
 
     fn lt(&mut self, l: Id, r: Id) -> Id {
-        self.make_node(PegBody::BasicOp(Expr::Op(
+        self.make_node(PegBody::BasicOp(RvsdgExpr::Op(
             ValueOps::Lt,
             vec![l, r],
             Type::Bool,
@@ -49,11 +49,19 @@ impl PegTest {
     }
 
     fn add(&mut self, l: Id, r: Id, ty: Type) -> Id {
-        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Add, vec![l, r], ty)))
+        self.make_node(PegBody::BasicOp(RvsdgExpr::Op(
+            ValueOps::Add,
+            vec![l, r],
+            ty,
+        )))
     }
 
     fn mul(&mut self, l: Id, r: Id, ty: Type) -> Id {
-        self.make_node(PegBody::BasicOp(Expr::Op(ValueOps::Mul, vec![l, r], ty)))
+        self.make_node(PegBody::BasicOp(RvsdgExpr::Op(
+            ValueOps::Mul,
+            vec![l, r],
+            ty,
+        )))
     }
 
     fn phi(&mut self, if_: Id, then: Id, else_: Id) -> Id {
@@ -77,7 +85,7 @@ impl PegTest {
     }
 
     fn print(&mut self, xs: Vec<Id>) -> Id {
-        self.make_node(PegBody::BasicOp(Expr::Print(xs)))
+        self.make_node(PegBody::BasicOp(RvsdgExpr::Print(xs)))
     }
 
     fn make_node(&mut self, body: PegBody) -> Id {

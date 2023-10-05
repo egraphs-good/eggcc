@@ -1,7 +1,7 @@
 //! Render a PEG into Dot format;
 
 use crate::peg::{PegBody, PegFunction, PegProgram};
-use crate::rvsdg::Expr;
+use crate::rvsdg::RvsdgExpr;
 use bril_rs::ConstOps;
 use std::fmt::Write;
 
@@ -34,19 +34,19 @@ impl PegFunction {
             let node = match node {
                 PegBody::Arg(arg) => format!("arg {arg}"),
                 PegBody::BasicOp(expr) => match expr {
-                    Expr::Op(f, xs, _ty) => {
+                    RvsdgExpr::Op(f, xs, _ty) => {
                         js = xs.to_vec();
                         format!("{f}")
                     }
-                    Expr::Call(f, xs, _, _) => {
+                    RvsdgExpr::Call(f, xs, _, _) => {
                         js = xs.to_vec();
                         format!("{f}")
                     }
-                    Expr::Print(xs) => {
+                    RvsdgExpr::Print(xs) => {
                         js = xs.to_vec();
                         "PRINT".into()
                     }
-                    Expr::Const(ConstOps::Const, _, literal) => {
+                    RvsdgExpr::Const(ConstOps::Const, _, literal) => {
                         format!("{literal}")
                     }
                 },

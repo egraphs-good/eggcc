@@ -11,4 +11,5 @@
   jmp .loop;
 .done:
   donebody: int = const 1;
+  print i;
 }

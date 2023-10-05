@@ -2,7 +2,7 @@ use bril_rs::{ConstOps, Literal, Type};
 use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
-use super::{Operand, RvsdgBody, RvsdgExpr, RvsdgFunction, RvsdgType};
+use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgType};
 
 impl RvsdgFunction {
     pub(crate) fn result_val(&self) -> Option<&Operand> {
@@ -31,7 +31,7 @@ impl RvsdgFunction {
         }
     }
 
-    fn expr_to_egglog_expr(&self, expr: &RvsdgExpr<Operand>) -> Expr {
+    fn expr_to_egglog_expr(&self, expr: &BasicExpr<Operand>) -> Expr {
         use egglog::ast::{Expr::*, Literal::*};
         let f = |operands: &Vec<Operand>, ty: Option<Type>| {
             let mut res = Vec::with_capacity(operands.len() + ty.is_some() as usize);
@@ -43,15 +43,15 @@ impl RvsdgFunction {
         };
 
         match expr {
-            RvsdgExpr::Op(op, operands, ty) => {
+            BasicExpr::Op(op, operands, ty) => {
                 Call(op.to_string().into(), f(operands, Some(ty.clone())))
             }
             // TODO I'm pretty sure this conversion isn't right
-            RvsdgExpr::Call(ident, operands, _, ty) => {
+            BasicExpr::Call(ident, operands, _, ty) => {
                 Call(ident.to_string().into(), f(operands, ty.clone()))
             }
-            RvsdgExpr::Print(operands) => Call("PRINT".into(), f(operands, None)),
-            RvsdgExpr::Const(ConstOps::Const, lit, ty) => {
+            BasicExpr::Print(operands) => Call("PRINT".into(), f(operands, None)),
+            BasicExpr::Const(ConstOps::Const, lit, ty) => {
                 let lit = match (ty, lit) {
                     (Type::Int, Literal::Int(n)) => Call("Num".into(), vec![Lit(Int(*n))]),
                     (Type::Bool, Literal::Bool(b)) => {

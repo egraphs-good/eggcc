@@ -10,7 +10,7 @@
 pub(crate) mod peg2dot;
 pub(crate) mod simulate;
 
-use crate::rvsdg::{Id, Operand, RvsdgBody, RvsdgExpr, RvsdgFunction, RvsdgProgram};
+use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use std::collections::HashMap;
 
 #[cfg(test)]
@@ -20,7 +20,7 @@ mod tests;
 #[derive(Debug, PartialEq)]
 pub(crate) enum PegBody {
     /// A basic expression.
-    BasicOp(RvsdgExpr<Id>),
+    BasicOp(BasicExpr<Id>),
     /// An argument of the enclosing function.
     Arg(usize),
     /// An if statement..
@@ -125,21 +125,21 @@ impl PegBuilder<'_> {
                     // To translate a BasicOp, translate all its arguments, then change ops to ids
                     RvsdgBody::BasicOp(expr) => {
                         let expr = match expr {
-                            RvsdgExpr::Op(op, xs, ty) => RvsdgExpr::Op(
+                            BasicExpr::Op(op, xs, ty) => BasicExpr::Op(
                                 *op,
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
                                 ty.clone(),
                             ),
-                            RvsdgExpr::Call(f, xs, num_outputs, ty) => RvsdgExpr::Call(
+                            BasicExpr::Call(f, xs, num_outputs, ty) => BasicExpr::Call(
                                 f.clone(),
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
                                 *num_outputs,
                                 ty.clone(),
                             ),
-                            RvsdgExpr::Print(xs) => RvsdgExpr::Print(
+                            BasicExpr::Print(xs) => BasicExpr::Print(
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
                             ),
-                            RvsdgExpr::Const(o, t, l) => RvsdgExpr::Const(*o, t.clone(), l.clone()),
+                            BasicExpr::Const(o, t, l) => BasicExpr::Const(*o, t.clone(), l.clone()),
                         };
                         assert_eq!(0, selected);
                         let out = self.pegs.len();

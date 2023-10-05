@@ -21,7 +21,7 @@ use crate::rvsdg::Result;
 use super::live_variables::{live_variables, Names};
 use super::{
     live_variables::{LiveVariableAnalysis, VarId},
-    Id, Operand, RvsdgBody, RvsdgError, RvsdgExpr,
+    BasicExpr, Id, Operand, RvsdgBody, RvsdgError,
 };
 use super::{RvsdgFunction, RvsdgType};
 
@@ -193,7 +193,7 @@ impl<'a> RvsdgBuilder<'a> {
                 // Predicate is just "true"
                 Operand::Id(get_id(
                     &mut self.expr,
-                    RvsdgBody::BasicOp(RvsdgExpr::Const(
+                    RvsdgBody::BasicOp(BasicExpr::Const(
                         ConstOps::Const,
                         Literal::Bool(true),
                         Type::Bool,
@@ -214,7 +214,7 @@ impl<'a> RvsdgBuilder<'a> {
                     // We need to negate the operand
                     Operand::Id(get_id(
                         &mut self.expr,
-                        RvsdgBody::BasicOp(RvsdgExpr::Op(ValueOps::Not, vec![op], Type::Bool)),
+                        RvsdgBody::BasicOp(BasicExpr::Op(ValueOps::Not, vec![op], Type::Bool)),
                     ))
                 } else {
                     op
@@ -389,7 +389,7 @@ impl<'a> RvsdgBuilder<'a> {
                     let dest_var = self.analysis.intern.intern(dest);
                     let const_id = get_id(
                         &mut self.expr,
-                        RvsdgBody::BasicOp(RvsdgExpr::Const(
+                        RvsdgBody::BasicOp(BasicExpr::Const(
                             *op,
                             value.clone(),
                             const_type.clone(),
@@ -428,7 +428,7 @@ impl<'a> RvsdgBuilder<'a> {
                         let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
                         ops.push(self.store[&self.analysis.state_var]);
                         let expr =
-                            RvsdgExpr::Call((&funcs[0]).into(), ops, 2, Some(op_type.clone()));
+                            BasicExpr::Call((&funcs[0]).into(), ops, 2, Some(op_type.clone()));
                         let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                         self.store.insert(dest_var, Operand::Id(expr_id));
                         self.store
@@ -437,7 +437,7 @@ impl<'a> RvsdgBuilder<'a> {
                     _ => {
                         let dest_var = self.analysis.intern.intern(dest);
                         let ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
-                        let expr = RvsdgExpr::Op(*op, ops, op_type.clone());
+                        let expr = BasicExpr::Op(*op, ops, op_type.clone());
                         let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                         self.store.insert(dest_var, Operand::Id(expr_id));
                     }
@@ -454,7 +454,7 @@ impl<'a> RvsdgBuilder<'a> {
                 } => {
                     let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
                     ops.push(self.store[&self.analysis.state_var]);
-                    let expr = RvsdgExpr::Call(
+                    let expr = BasicExpr::Call(
                         (&funcs[0]).into(),
                         ops,
                         1,
@@ -476,7 +476,7 @@ impl<'a> RvsdgBuilder<'a> {
                 } => {
                     let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
                     ops.push(self.store[&self.analysis.state_var]);
-                    let expr = RvsdgExpr::Print(ops);
+                    let expr = BasicExpr::Print(ops);
                     let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                     self.store
                         .insert(self.analysis.state_var, Operand::Id(expr_id));
@@ -503,7 +503,7 @@ impl<'a> RvsdgBuilder<'a> {
                 Annotation::AssignCond { dst, cond } => {
                     let id = get_id(
                         &mut self.expr,
-                        RvsdgBody::BasicOp(RvsdgExpr::Const(
+                        RvsdgBody::BasicOp(BasicExpr::Const(
                             ConstOps::Const,
                             Literal::Int(*cond as i64),
                             Type::Int,

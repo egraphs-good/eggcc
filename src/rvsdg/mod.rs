@@ -86,7 +86,7 @@ pub(crate) type Result<T = ()> = std::result::Result<T, RvsdgError>;
 pub(crate) type Id = usize;
 
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) enum RvsdgExpr<Op> {
+pub(crate) enum BasicExpr<Op> {
     /// A primitive operation.
     Op(ValueOps, Vec<Op>, Type),
     /// A function call. The last parameter is the number of outputs to the
@@ -118,7 +118,7 @@ pub(crate) enum Operand {
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum RvsdgBody {
-    BasicOp(RvsdgExpr<Operand>),
+    BasicOp(BasicExpr<Operand>),
 
     /// Conditional branch, where the outputs chosen depend on the predicate.
     Gamma {

@@ -183,10 +183,8 @@ impl RvsdgFunction {
 }
 
 impl<'a> RvsdgToCfg<'a> {
-    // Returns the name of the variable storing the result
-    // or None if no value is returned.
-    // The caller of this function should know what this
-    // operand is being assigned to.
+    // Translates an operand to bril, returning the name
+    // of the variable (or a placeholder for state edges, which don't show up in bril).
     fn operand_to_bril(
         &mut self,
         operand: Operand,

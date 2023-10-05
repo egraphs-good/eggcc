@@ -1,0 +1,20 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+
+while true:
+ block:
+  i: int = const 0;
+  cond: bool = lt i i;
+  if cond:
+   break 2
+  else:
+   break 1
+ block:
+  print i;
+  return
+
+}

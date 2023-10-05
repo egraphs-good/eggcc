@@ -251,13 +251,13 @@ impl<'a> StructuredCfgBuilder<'a> {
             }
         }
         panic!(
-            "Could not find target {:?} in context {:?}",
-            target, self.context
+            "Could not find target {:?} in context {:?}. Options are {:?}",
+            target, self.context, self.context
         );
     }
 
     fn is_backward_edge(&self, source: NodeIndex, target: NodeIndex) -> bool {
-        self.postorder[&self.cfg.graph[target].name] > self.postorder[&self.cfg.graph[source].name]
+        self.postorder[&self.cfg.graph[target].name] >= self.postorder[&self.cfg.graph[source].name]
     }
 
     fn is_merge_node(&self, node: NodeIndex) -> bool {

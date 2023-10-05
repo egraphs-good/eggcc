@@ -58,6 +58,10 @@ fn main() {
     if args.interp {
         println!("{}", result.result_interpreted.unwrap());
     } else {
-        println!("{}", result.visualization);
+        for visualization in result.visualizations {
+            println!("visualization of {}:", visualization.name);
+            println!("{}", visualization.result);
+            println!();
+        }
     }
 }

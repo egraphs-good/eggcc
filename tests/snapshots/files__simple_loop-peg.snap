@@ -1,0 +1,28 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+digraph G {
+subgraph {
+node [ordering=out];
+v0 [label="int"];
+v1 [label="Θ_2"];
+v2 [label="pass_2"];
+v3 [label="no-op"];
+v4 [label="arg 0"];
+v5 [label="lt"];
+v6 [label="eval_2"];
+v7 [label="PRINT"];
+v1 -> v4;
+v1 -> v1;
+v2 -> v5;
+v3 -> v6;
+v5 -> v0;
+v5 -> v0;
+v6 -> v1;
+v6 -> v2;
+v7 -> v0;
+v7 -> v3;
+}
+}
+

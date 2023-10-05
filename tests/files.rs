@@ -25,7 +25,9 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             } else {
                 // only assert a snapshot if we are in the "small" folder
                 if snapshot && snapshot_configurations.contains(&run.test_type) {
-                    assert_snapshot!(run.name(), result.visualization);
+                    for visualization in result.visualizations {
+                        assert_snapshot!(run.name() + &visualization.name, visualization.result);
+                    }
                 }
             }
             Ok(())

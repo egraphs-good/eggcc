@@ -3,11 +3,14 @@
 //! The methods here largely ignore the instructions in the program: all that we
 //! look for here are instructions that may break up basic blocks (`jmp`, `br`,
 //! `ret`), and labels. All other instructions are copied into the CFG.
+use core::fmt::Debug;
+use std::fmt::Formatter;
 use std::str::FromStr;
 use std::{collections::HashMap, fmt::Display};
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};
+use petgraph::dot::Dot;
 
 use petgraph::stable_graph::{EdgeReference, StableDiGraph};
 use petgraph::visit::{EdgeRef, Visitable};
@@ -17,6 +20,7 @@ use petgraph::{
 };
 
 use crate::rvsdg::from_cfg::FunctionTypes;
+use crate::util::{run_cmd_line, ListDisplay, Visualization};
 
 /// A subset of nodes for a particular CFG.
 pub(crate) type NodeSet = <StableDiGraph<BasicBlock, Branch> as Visitable>::Map;
@@ -85,6 +89,19 @@ impl<CfgType> CfgProgram<CfgType> {
             types.insert(func.name.clone(), output_type);
         }
         types
+    }
+
+    pub(crate) fn visualizations(&self) -> Vec<Visualization> {
+        let mut visualizations = vec![];
+        for function in &self.functions {
+            let svg = function.to_svg();
+            visualizations.push(Visualization {
+                result: svg,
+                file_extension: ".svg".to_string(),
+                name: function.name.clone(),
+            });
+        }
+        visualizations
     }
 }
 
@@ -210,7 +227,7 @@ pub(crate) enum Annotation {
 }
 
 /// A branch-free sequence of instructions.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct BasicBlock {
     /// The primary instructions for a block.
     pub(crate) instrs: Vec<Instruction>,
@@ -219,6 +236,12 @@ pub struct BasicBlock {
     /// The name for the block.
     pub(crate) name: BlockName,
     pub(crate) pos: Option<Position>,
+}
+
+impl Debug for BasicBlock {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", ListDisplay(self.to_code(), "\n"))
+    }
 }
 
 impl BasicBlock {
@@ -279,7 +302,7 @@ pub struct CfgFunction<CfgType> {
     pub(crate) exit: NodeIndex,
     /// The name of the function.
     pub(crate) name: String,
-    _phantom: CfgType,
+    pub(crate) _phantom: CfgType,
     pub(crate) return_ty: Option<Type>,
 }
 
@@ -292,6 +315,16 @@ impl<CfgType> CfgFunction<CfgType> {
     pub(crate) fn has_return_value(&self) -> bool {
         self.return_ty.is_some()
     }
+
+    pub fn to_dot(&self) -> String {
+        format!("{:?}", Dot::new(&self.graph))
+    }
+
+    pub fn to_svg(&self) -> String {
+        let dot_code = self.to_dot();
+        run_cmd_line("dot", ["-Tsvg"], &dot_code).unwrap()
+    }
+
     fn reverse_postorder(self: &CfgFunction<CfgType>) -> HashMap<BlockName, usize> {
         let mut reverse_postorder = HashMap::<BlockName, usize>::new();
         let mut post_counter = 0;
@@ -311,6 +344,7 @@ pub enum SimpleBranch {
     NoBranch, // must be the end of the function
     Jmp(BlockName),
     If {
+        // arg is an integer specifying which branch to jump to
         arg: Identifier,
         then_branch: BlockName,
         else_branch: BlockName,

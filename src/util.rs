@@ -66,18 +66,26 @@ pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
     let results = all_configs.iter().map(|run| (run, run.run()));
 
     for (run, result) in results {
-        let mut output_path = output_dir.clone();
-        assert!(output_path.is_dir());
-        output_path.push(format!(
-            "{}{}",
-            run.name(),
-            result.visualization_file_extension
-        ));
-        let mut file = File::create(output_path)?;
+        // if there's an interpreted value do that as well
         if let Some(interpreted) = result.result_interpreted {
+            let mut output_path = output_dir.clone();
+            output_path.push(format!("{}-interp.txt", run.name()));
+            let mut file = File::create(output_path)?;
             file.write_all(interpreted.as_bytes())?;
-        } else {
-            file.write_all(result.visualization.as_bytes())?;
+        }
+
+        for visualization in result.visualizations {
+            let mut output_path = output_dir.clone();
+
+            assert!(output_path.is_dir());
+            output_path.push(format!(
+                "{}{}{}",
+                run.name(),
+                visualization.name,
+                visualization.file_extension
+            ));
+            let mut file = File::create(output_path)?;
+            file.write_all(visualization.result.as_bytes())?;
         }
     }
 
@@ -127,7 +135,10 @@ pub enum RunType {
     RvsdgConversion,
     PegConversion,
     NaiiveOptimization,
+    RvsdgRoundTrip,
+    ToCfg,
     CfgRoundTrip,
+    RvsdgToCfg,
 }
 
 impl Debug for RunType {
@@ -145,8 +156,11 @@ impl FromStr for RunType {
             "structured" => Ok(RunType::StructuredConversion),
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "naiive" => Ok(RunType::NaiiveOptimization),
+            "rvsdg-roundtrip" => Ok(RunType::RvsdgRoundTrip),
+            "to-cfg" => Ok(RunType::ToCfg),
             "peg" => Ok(RunType::PegConversion),
             "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
+            "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -160,7 +174,10 @@ impl Display for RunType {
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::PegConversion => write!(f, "peg"),
             RunType::NaiiveOptimization => write!(f, "naiive"),
+            RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
+            RunType::ToCfg => write!(f, "to-cfg"),
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
+            RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
         }
     }
 }
@@ -173,7 +190,10 @@ impl RunType {
             RunType::RvsdgConversion => false,
             RunType::PegConversion => false,
             RunType::NaiiveOptimization => true,
+            RunType::RvsdgRoundTrip => true,
+            RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
+            RunType::RvsdgToCfg => true,
         }
     }
 }
@@ -219,12 +239,20 @@ pub struct Run {
     pub interp: bool,
 }
 
+/// Some sort of visualization of the result, with a name
+/// and a file extension.
+/// For CFGs, the name is the name of the function and the vizalization
+/// is a SVG.
+#[derive(Clone)]
+pub struct Visualization {
+    pub result: String,
+    pub file_extension: String,
+    pub name: String,
+}
+
 #[derive(Clone)]
 pub struct RunOutput {
-    // a visualization of the result
-    pub visualization: String,
-    // a viable file extension for the visualization
-    pub visualization_file_extension: String,
+    pub visualizations: Vec<Visualization>,
     // if the result was interpreted, the stdout of interpreting it
     pub result_interpreted: Option<String>,
     pub original_interpreted: String,
@@ -237,6 +265,7 @@ impl Run {
         for test_type in [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
+            RunType::RvsdgRoundTrip,
             RunType::PegConversion,
             RunType::CfgRoundTrip,
         ] {
@@ -274,36 +303,90 @@ impl Run {
         );
 
         let mut peg = None;
-        let (visualization, visualization_file_extension, bril_out) = match self.test_type {
-            RunType::Nothing => {
-                let bril = self.prog_with_args.program.to_string();
-                (bril, ".bril", Some(self.prog_with_args.program.clone()))
-            }
+        let (visualizations, bril_out) = match self.test_type {
+            RunType::Nothing => (vec![], Some(self.prog_with_args.program.clone())),
             RunType::StructuredConversion => {
                 let structured =
                     Optimizer::program_to_structured(&self.prog_with_args.program).unwrap();
-                (structured.to_string(), ".txt", None)
+                (
+                    vec![Visualization {
+                        result: structured.to_string(),
+                        file_extension: ".txt".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
             }
             RunType::RvsdgConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let svg = rvsdg.to_svg();
-                (svg, ".svg", None)
+                (
+                    vec![Visualization {
+                        result: svg,
+                        file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
             }
             RunType::NaiiveOptimization => {
                 let mut optimizer = Optimizer::default();
                 let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
-                (format!("{}", res), ".bril", Some(res))
+                (
+                    vec![Visualization {
+                        result: res.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(res),
+                )
+            }
+            RunType::RvsdgRoundTrip => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let cfg = rvsdg.to_cfg();
+                let bril = cfg.to_bril();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(bril),
+                )
+            }
+            RunType::RvsdgToCfg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let cfg = rvsdg.to_cfg();
+                (cfg.visualizations(), None)
+            }
+            RunType::ToCfg => {
+                let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
+                (cfg.visualizations(), None)
             }
             RunType::PegConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 peg = Some(rvsdg_to_peg(&rvsdg));
                 let dot = peg.as_ref().unwrap().graph();
-                (dot, ".dot", None)
+                (
+                    vec![Visualization {
+                        result: dot,
+                        file_extension: ".dot".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
             }
             RunType::CfgRoundTrip => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let bril = cfg.to_bril();
-                (bril.to_string(), ".bril", Some(bril))
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(bril),
+                )
             }
         };
 
@@ -335,10 +418,31 @@ impl Run {
         };
 
         RunOutput {
-            visualization,
-            visualization_file_extension: visualization_file_extension.to_string(),
+            visualizations,
             result_interpreted,
             original_interpreted,
         }
+    }
+}
+
+pub(crate) struct FreshNameGen {
+    next: usize,
+}
+
+impl FreshNameGen {
+    pub(crate) fn new() -> Self {
+        Self { next: 0 }
+    }
+
+    pub(crate) fn fresh(&mut self) -> String {
+        let name = format!("v{}", self.next);
+        self.next += 1;
+        name
+    }
+
+    pub(crate) fn fresh_usize(&mut self) -> usize {
+        let name = self.next;
+        self.next += 1;
+        name
     }
 }

@@ -49,9 +49,11 @@ impl SimpleCfgFunction {
             });
 
         // now do the exit at the end
-        self.push_label(&mut func, self.exit);
+        if self.exit != self.entry {
+            self.push_label(&mut func, self.exit);
 
-        self.node_to_bril(self.exit, &mut func);
+            self.node_to_bril(self.exit, &mut func);
+        }
 
         func
     }

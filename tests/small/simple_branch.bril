@@ -1,0 +1,13 @@
+@main() {
+  one: int = const 1;
+  zero: int = const 0;
+  isless: bool = lt one zero;
+  br isless .less .greater;
+.less:
+  result: int = const 1;
+  jmp .done;
+.greater:
+  result: int = const 0;
+.done:
+  print result;
+}

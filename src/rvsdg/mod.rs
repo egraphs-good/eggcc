@@ -33,6 +33,7 @@ pub(crate) mod from_cfg;
 pub(crate) mod live_variables;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
+pub(crate) mod to_cfg;
 
 use std::fmt;
 
@@ -73,7 +74,7 @@ pub enum RvsdgError {
         pos: Option<bril_rs::Position>,
     },
 
-    // NB: We should  be able to suppor these patterns, but it might be better
+    // NB: We should be able to support these patterns, but it might be better
     // to desugar them away as part of the CFG parsing step.
     #[error("Multiple branches from loop tail to head ({pos:?})")]
     UnsupportedLoopTail { pos: Option<bril_rs::Position> },
@@ -89,7 +90,7 @@ pub(crate) enum Annotation {
 
 pub(crate) type Id = usize;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum Expr<Op> {
     /// A primitive operation.
     Op(ValueOps, Vec<Op>, Type),
@@ -110,7 +111,24 @@ pub(crate) enum Expr<Op> {
     Print(Vec<Op>),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+impl<Op> Expr<Op> {
+    fn map_operands(&self, f: impl FnMut(&Op) -> Op) -> Self {
+        use Expr::*;
+        match self {
+            Op(op, operands, ty) => Op(*op, operands.iter().map(f).collect(), ty.clone()),
+            Call(ident, operands, n_outputs, ty) => Call(
+                ident.clone(),
+                operands.iter().map(f).collect(),
+                *n_outputs,
+                ty.clone(),
+            ),
+            Const(op, ty, lit) => Const(*op, ty.clone(), lit.clone()),
+            Print(operands) => Print(operands.iter().map(f).collect()),
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum Operand {
     /// A reference to an argument in the enclosing region.
     Arg(usize),
@@ -120,7 +138,7 @@ pub(crate) enum Operand {
     Project(usize, Id),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum RvsdgBody {
     BasicOp(Expr<Operand>),
 
@@ -167,7 +185,9 @@ pub struct RvsdgFunction {
     /// state edges.
     pub(crate) args: Vec<RvsdgType>,
     /// The backing heap for Rvsdg node ids within this function.
+    /// Invariant: nodes refer only to nodes with a lower index.
     pub(crate) nodes: Vec<RvsdgBody>,
+
     /// The (optional) result pointing into this function.
     ///
     /// NB: until effects are supported, the only way to ensure a computation is

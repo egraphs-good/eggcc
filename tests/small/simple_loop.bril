@@ -1,0 +1,8 @@
+@main() {
+.loop:
+  i: int = const 0;
+  cond: bool = lt i i;
+  br cond .loop .done;
+.done:
+  print i;
+}

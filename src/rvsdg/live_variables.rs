@@ -173,11 +173,6 @@ impl VarSet {
         self.vars.count_ones(..)
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn contains(&self, var: VarId) -> bool {
-        self.vars.contains(var.0 as usize)
-    }
-
     fn insert(&mut self, var: VarId) -> bool {
         let bit = var.0 as usize;
         if self.vars.len() <= bit {
@@ -200,11 +195,6 @@ impl VarSet {
         }
         self.vars.union_with(&other.vars);
         true
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn is_subset(&self, other: &VarSet) -> bool {
-        self.vars.is_subset(&other.vars)
     }
 
     /// Pretty-print the contents of the variable set with the un-interned

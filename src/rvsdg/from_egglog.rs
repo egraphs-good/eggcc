@@ -24,8 +24,8 @@ impl RvsdgFunction {
 
     fn expr_to_vec_operand(vec: &Expr, bodies: &mut Vec<RvsdgBody>) -> Vec<Operand> {
         let Expr::Call(func, args) = vec else {
-        panic!("Expected a VO, got {vec}")
-      };
+            panic!("Expected a VO, got {vec}")
+        };
         assert_eq!(func.as_str(), "VO");
         assert_eq!(args.len(), 1);
         let vec = &args[0];
@@ -201,9 +201,11 @@ impl RvsdgFunction {
     }
 }
 
-fn vec_map<T>(inputs: &Expr, mut f: impl FnMut(&Expr) -> T) -> Vec<T> {
+/// Call `f` on each element of `inputs`, which should be a fully
+/// expanded egglog expression representing a vector.
+/// Returns the result of `f` for each element.
+fn vec_map<T>(mut inputs: &Expr, mut f: impl FnMut(&Expr) -> T) -> Vec<T> {
     use Expr::*;
-    let mut inputs: &Expr = inputs;
     let mut results = vec![];
     if let Call(func, args) = inputs {
         if func.as_str() == "vec-of" {

@@ -68,7 +68,6 @@ impl<'a> StructuredCfgBuilder<'a> {
     /// to a structured representation.
     fn do_tree(&mut self, node: NodeIndex) -> StructuredBlock {
         if self.is_loop_header(node) {
-            eprintln!("loop header {:?}", self.name(node));
             self.context.push(Context {
                 enclosing: ContainingHistory::LoopWithLabel(self.name(node)),
                 fallthrough: Some(self.name(node)),

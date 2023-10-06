@@ -214,13 +214,20 @@ pub(crate) fn cfg_to_rvsdg(
     Ok(RvsdgProgram { functions })
 }
 
+pub fn rvsdg_egglog_code() -> String {
+    let code = vec![
+        include_str!("egglog/schema.egg").to_string(),
+        include_str!("egglog/subst.egg").to_string(),
+    ];
+    code.join("\n")
+}
+
 impl RvsdgProgram {
     pub fn build_egglog_code(&self) -> (String, Vec<String>) {
-        let schema = std::include_str!("schema.egg");
         let mut fresh_names = FreshNameGen::new();
         let mut func_names = vec![];
 
-        let mut res_string = vec![schema.to_string()];
+        let mut res_string = vec![rvsdg_egglog_code()];
 
         for function in &self.functions {
             let name = fresh_names.fresh();

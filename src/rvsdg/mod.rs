@@ -28,6 +28,7 @@
 //!
 //! In addition to those papers, the Jamey Sharp's
 //! [optir](https://github.com/jameysharp/optir) project is a major inspiration.
+mod egglog_optimizer;
 pub(crate) mod from_cfg;
 pub(crate) mod from_egglog;
 pub(crate) mod live_variables;
@@ -49,7 +50,10 @@ use crate::{
     EggCCError,
 };
 
-use self::from_cfg::cfg_func_to_rvsdg;
+use self::{
+    egglog_optimizer::{rvsdg_egglog_code, rvsdg_egglog_schedule},
+    from_cfg::cfg_func_to_rvsdg,
+};
 
 #[cfg(test)]
 mod tests;
@@ -212,19 +216,6 @@ pub(crate) fn cfg_to_rvsdg(
         functions.push(cfg_func_to_rvsdg(func, &func_types).map_err(EggCCError::RvsdgError)?);
     }
     Ok(RvsdgProgram { functions })
-}
-
-pub fn rvsdg_egglog_code() -> String {
-    let code = vec![
-        include_str!("egglog/schema.egg").to_string(),
-        include_str!("egglog/subst.egg").to_string(),
-        include_str!("egglog/constant-fold.egg").to_string(),
-    ];
-    code.join("\n")
-}
-
-pub fn rvsdg_egglog_schedule() -> String {
-    "(run 3)".to_string()
 }
 
 impl RvsdgProgram {

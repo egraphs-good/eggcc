@@ -26,7 +26,7 @@ bench() {
     # run eggcc, interp the program and put the data out to $out
     out="./tmp/bench/${profile_name}.json"
 
-    cargo run --release $profile --interp --profile-out="$out"
+    cargo run --release $profile --interp > "$out"
 
     # $out now contains a key value of total_dyn_inst: value, so use read to get the key/value
     # TODO: this is kind of a yaml sort of format so maybe yq would be good in the future

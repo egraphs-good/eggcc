@@ -18,10 +18,6 @@ struct Args {
     #[clap(long)]
     interp: bool,
 
-    /// Path that eggcc will put interp profile results
-    #[clap(long)]
-    profile_out: Option<PathBuf>,
-
     /// The bril program to optimize
     file: PathBuf,
     /// The arguments to the bril program

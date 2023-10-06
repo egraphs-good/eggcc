@@ -7,12 +7,13 @@ use crate::{
     util::parse_from_string,
 };
 
-use super::{RvsdgFunction, RvsdgType};
+use super::{rvsdg_egglog_code, RvsdgFunction, RvsdgType};
 
 pub fn new_rvsdg_egraph() -> EGraph {
     let mut egraph = EGraph::default();
-    let schema = std::fs::read_to_string("src/rvsdg/schema.egg").unwrap();
-    egraph.parse_and_run_program(schema.as_str()).unwrap();
+    egraph
+        .parse_and_run_program(rvsdg_egglog_code().as_str())
+        .unwrap();
     egraph
 }
 

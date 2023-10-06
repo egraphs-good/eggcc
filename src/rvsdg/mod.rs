@@ -218,8 +218,13 @@ pub fn rvsdg_egglog_code() -> String {
     let code = vec![
         include_str!("egglog/schema.egg").to_string(),
         include_str!("egglog/subst.egg").to_string(),
+        include_str!("egglog/constant-fold.egg").to_string(),
     ];
     code.join("\n")
+}
+
+pub fn rvsdg_egglog_schedule() -> String {
+    "(run 3)".to_string()
 }
 
 impl RvsdgProgram {
@@ -235,6 +240,8 @@ impl RvsdgProgram {
             let expr = function.to_egglog_expr();
             res_string.push(format!("(let {} {})", name, expr));
         }
+
+        res_string.push(rvsdg_egglog_schedule());
 
         (res_string.join("\n").to_string(), func_names)
     }

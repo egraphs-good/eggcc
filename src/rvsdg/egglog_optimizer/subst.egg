@@ -8,6 +8,14 @@
 (function SubstVecOperand (VecOperand i64 Operand) VecOperand :unextractable)
 (function SubstVecVecOperand (VecVecOperand i64 Operand) VecVecOperand :unextractable)
 
+;;  each operand in the vector substitutes into an arg
+;;  corresponding to the index
+;;                   (vec of arguments, expression to substitute into)
+(function SubstExprAll (VecOperand Expr) Expr)
+;;; (vec of arguments, vec to substitute into
+(function SubstVecOperandAll (VecOperand VecOperand) VecOperand)
+
+
 (rewrite (SubstExpr (Const ty ops lit) x v) (Const ty ops lit) :ruleset subst)
 (rewrite (SubstExpr (Call ty f args) x v) (Call ty f (SubstVecOperand args x v)) :ruleset subst)
 (rewrite (SubstExpr (badd ty a b) x v) (badd ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
@@ -91,3 +99,50 @@
   ( 
     (union (SubstVecVecOperandHelper (VVO vec) x v i) (VVO vec))
   ) :ruleset subst)
+ 
+
+
+
+;; ###########################################
+;; handle SubstExprAll and SubstVecOperandAll
+
+;;       (vec of arguments, progress through that vec, and the expression to substitute into
+;; progress means that for all indices before it, we already did the subtitution
+(function SubstExprAllHelper (VecOperand i64 Expr) Expr :cost 100)
+
+(rule
+  ((= helper (SubstExprAllHelper arg-vec progress expr))
+   (< progress (vec-length arg-vec)))
+  ((union helper
+          (SubstExprAllHelper
+            arg-vec
+            ;; increment progress
+            (+ progress 1)
+            ;; substitute the current argument into the expression
+            (SubstExpr expr (Arg progress) (vec-get arg-vec progress))))))
+
+;; base case: we are done substituting
+(rule
+  ((= helper (SubstExprAllHelper arg-vec progress expr))
+   (= progress (vec-length arg-vec)))
+  ((union helper expr)))
+
+
+;; same as SubstExprAllHelper, but substituting into a vec of operands
+(function SubstVecOperandAllHelper (VecOperand i64 VecOperand) VecOperand :cost 100)
+(rule
+  ((= helper (SubstVecOperandAllHelper arg-vec progress expr))
+   (< progress (vec-length arg-vec)))
+  ((union helper
+          (SubstExprAllHelper
+            arg-vec
+            ;; increment progress
+            (+ progress 1)
+            ;; substitute the current argument into the expression
+            (SubstVecOperand expr (Arg progress) (vec-get arg-vec progress))))))
+
+;; base case: we are done substituting
+(rule
+  ((= helper (SubstVecOperandAllHelper arg-vec progress expr))
+   (= progress (vec-length arg-vec)))
+  ((union helper expr)))

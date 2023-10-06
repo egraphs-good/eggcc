@@ -11,7 +11,6 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
         let snapshot_configurations: HashSet<RunType> = [
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
-            RunType::NaiiveOptimization,
             RunType::PegConversion,
             RunType::RvsdgOptimize,
         ]

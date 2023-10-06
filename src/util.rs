@@ -134,7 +134,6 @@ pub enum RunType {
     StructuredConversion,
     RvsdgConversion,
     PegConversion,
-    NaiiveOptimization,
     RvsdgRoundTrip,
     ToCfg,
     CfgRoundTrip,
@@ -156,7 +155,6 @@ impl FromStr for RunType {
             "nothing" => Ok(RunType::Nothing),
             "structured" => Ok(RunType::StructuredConversion),
             "rvsdg" => Ok(RunType::RvsdgConversion),
-            "naiive" => Ok(RunType::NaiiveOptimization),
             "rvsdg-roundtrip" => Ok(RunType::RvsdgRoundTrip),
             "to-cfg" => Ok(RunType::ToCfg),
             "peg" => Ok(RunType::PegConversion),
@@ -175,7 +173,6 @@ impl Display for RunType {
             RunType::StructuredConversion => write!(f, "structured"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::PegConversion => write!(f, "peg"),
-            RunType::NaiiveOptimization => write!(f, "naiive"),
             RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
             RunType::ToCfg => write!(f, "to-cfg"),
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
@@ -192,7 +189,6 @@ impl RunType {
             RunType::StructuredConversion => false,
             RunType::RvsdgConversion => false,
             RunType::PegConversion => false,
-            RunType::NaiiveOptimization => true,
             RunType::RvsdgRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
@@ -332,18 +328,6 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
-                )
-            }
-            RunType::NaiiveOptimization => {
-                let mut optimizer = Optimizer::default();
-                let res = optimizer.optimize(&self.prog_with_args.program).unwrap();
-                (
-                    vec![Visualization {
-                        result: res.to_string(),
-                        file_extension: ".bril".to_string(),
-                        name: "".to_string(),
-                    }],
-                    Some(res),
                 )
             }
             RunType::RvsdgRoundTrip => {

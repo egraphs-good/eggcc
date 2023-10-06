@@ -3,7 +3,7 @@ use egglog::ast::Expr;
 
 use crate::{cfg::Identifier, conversions::egglog_op_to_bril};
 
-use super::{Id, Operand, RvsdgBody, RvsdgExpr, RvsdgFunction, RvsdgType};
+use super::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgType};
 
 impl RvsdgFunction {
     fn egglog_expr_to_operand(op: &Expr, bodies: &mut Vec<RvsdgBody>) -> Operand {
@@ -76,21 +76,21 @@ impl RvsdgFunction {
         }
     }
 
-    fn egglog_expr_to_expr(expr: &Expr, bodies: &mut Vec<RvsdgBody>) -> RvsdgExpr<Operand> {
+    fn egglog_expr_to_expr(expr: &Expr, bodies: &mut Vec<RvsdgBody>) -> BasicExpr<Operand> {
         use egglog::ast::Literal;
         if let Expr::Call(func, args) = expr {
             match (func.as_str(), &args.as_slice()) {
                 ("Call", [ty, Expr::Lit(Literal::String(ident)), args]) => {
                     let args = vec_map(args, |e| Self::egglog_expr_to_operand(e, bodies));
                     // TODO: this is imprecise, we don't know if the number of outputs is 1 or 2.
-                    RvsdgExpr::Call(
+                    BasicExpr::Call(
                         Identifier::Name(ident.to_string()),
                         args,
                         1,
                         Some(Self::egglog_expr_to_ty(ty)),
                     )
                 }
-                ("Const", [ty, _const_op, lit]) => RvsdgExpr::Const(
+                ("Const", [ty, _const_op, lit]) => BasicExpr::Const(
                     // todo remove the const op from the encoding because it is always ConstOps::Const
                     ConstOps::Const,
                     Self::egglog_expr_to_literal(lit),
@@ -99,12 +99,12 @@ impl RvsdgFunction {
                 ("PRINT", [opr1, opr2]) => {
                     let opr1 = Self::egglog_expr_to_operand(opr1, bodies);
                     let opr2 = Self::egglog_expr_to_operand(opr2, bodies);
-                    RvsdgExpr::Print(vec![opr1, opr2])
+                    BasicExpr::Print(vec![opr1, opr2])
                 }
                 (binop, [ty, opr1, opr2]) => {
                     let opr1 = Self::egglog_expr_to_operand(opr1, bodies);
                     let opr2 = Self::egglog_expr_to_operand(opr2, bodies);
-                    RvsdgExpr::Op(
+                    BasicExpr::Op(
                         egglog_op_to_bril(binop.into()),
                         vec![opr1, opr2],
                         Self::egglog_expr_to_ty(ty),

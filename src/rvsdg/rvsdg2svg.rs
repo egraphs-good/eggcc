@@ -3,7 +3,7 @@ use std::iter::once;
 
 use bril_rs::ConstOps;
 
-use super::{Id, Operand, RvsdgBody, RvsdgExpr, RvsdgFunction, RvsdgProgram};
+use super::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 
 const SIMPLE_NODE_SIZE: f32 = 100.0;
 const STROKE_WIDTH: f32 = SIMPLE_NODE_SIZE * 0.02;
@@ -510,16 +510,16 @@ impl Region {
 
 fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) {
     let (node, operands): (Node, Vec<Operand>) = match &nodes[index] {
-        RvsdgBody::BasicOp(RvsdgExpr::Op(f, xs, _ty)) => {
+        RvsdgBody::BasicOp(BasicExpr::Op(f, xs, _ty)) => {
             (Node::Unit(format!("{f}"), xs.len(), 1), xs.to_vec())
         }
-        RvsdgBody::BasicOp(RvsdgExpr::Call(f, xs, n_outputs, _ty)) => {
+        RvsdgBody::BasicOp(BasicExpr::Call(f, xs, n_outputs, _ty)) => {
             (Node::Unit(f.to_string(), xs.len(), *n_outputs), xs.to_vec())
         }
-        RvsdgBody::BasicOp(RvsdgExpr::Print(xs)) => {
+        RvsdgBody::BasicOp(BasicExpr::Print(xs)) => {
             (Node::Unit("PRINT".into(), xs.len(), 2), xs.to_vec())
         }
-        RvsdgBody::BasicOp(RvsdgExpr::Const(ConstOps::Const, v, _ty)) => {
+        RvsdgBody::BasicOp(BasicExpr::Const(ConstOps::Const, v, _ty)) => {
             (Node::Unit(format!("{v}"), 0, 1), vec![])
         }
         RvsdgBody::Gamma {
@@ -575,10 +575,10 @@ fn reachable_nodes(reachable: &mut BTreeSet<Id>, all: &[RvsdgBody], output: Oper
     };
     if reachable.insert(id) {
         let inputs = match &all[id] {
-            RvsdgBody::BasicOp(RvsdgExpr::Op(_, xs, _))
-            | RvsdgBody::BasicOp(RvsdgExpr::Call(_, xs, _, _))
-            | RvsdgBody::BasicOp(RvsdgExpr::Print(xs)) => xs.clone(),
-            RvsdgBody::BasicOp(RvsdgExpr::Const(..)) => vec![],
+            RvsdgBody::BasicOp(BasicExpr::Op(_, xs, _))
+            | RvsdgBody::BasicOp(BasicExpr::Call(_, xs, _, _))
+            | RvsdgBody::BasicOp(BasicExpr::Print(xs)) => xs.clone(),
+            RvsdgBody::BasicOp(BasicExpr::Const(..)) => vec![],
             RvsdgBody::Gamma { pred, inputs, .. } => once(pred).chain(inputs).copied().collect(),
             RvsdgBody::Theta { inputs, .. } => inputs.clone(),
         };
@@ -692,12 +692,12 @@ mod tests {
             n_args: 2,
             args: vec![RvsdgType::Bril(Type::Int), RvsdgType::PrintState],
             nodes: vec![
-                RvsdgBody::BasicOp(RvsdgExpr::Const(
+                RvsdgBody::BasicOp(BasicExpr::Const(
                     ConstOps::Const,
                     Literal::Int(0),
                     Type::Int,
                 )),
-                RvsdgBody::BasicOp(RvsdgExpr::Op(
+                RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Add,
                     vec![Operand::Arg(0), Operand::Arg(1)],
                     Type::Int,
@@ -707,32 +707,32 @@ mod tests {
                     inputs: vec![Operand::Arg(0), Operand::Arg(1)],
                     outputs: vec![vec![Operand::Id(0)], vec![Operand::Id(1)]],
                 },
-                RvsdgBody::BasicOp(RvsdgExpr::Op(
+                RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Add,
                     vec![Operand::Arg(0), Operand::Id(4)],
                     Type::Int,
                 )),
-                RvsdgBody::BasicOp(RvsdgExpr::Const(
+                RvsdgBody::BasicOp(BasicExpr::Const(
                     ConstOps::Const,
                     Literal::Int(1),
                     Type::Int,
                 )),
-                RvsdgBody::BasicOp(RvsdgExpr::Const(
+                RvsdgBody::BasicOp(BasicExpr::Const(
                     ConstOps::Const,
                     Literal::Int(5),
                     Type::Int,
                 )),
-                RvsdgBody::BasicOp(RvsdgExpr::Op(
+                RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Mul,
                     vec![Operand::Arg(0), Operand::Id(5)],
                     Type::Int,
                 )),
-                RvsdgBody::BasicOp(RvsdgExpr::Op(
+                RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Add,
                     vec![Operand::Id(5), Operand::Arg(2)],
                     Type::Int,
                 )),
-                RvsdgBody::BasicOp(RvsdgExpr::Op(
+                RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Eq,
                     vec![Operand::Id(3), Operand::Id(5)],
                     Type::Bool,
@@ -742,7 +742,7 @@ mod tests {
                     inputs: vec![Operand::Arg(0), Operand::Arg(1), Operand::Arg(0)],
                     outputs: vec![Operand::Id(3), Operand::Id(6), Operand::Id(7)],
                 },
-                RvsdgBody::BasicOp(RvsdgExpr::Op(
+                RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Add,
                     vec![Operand::Id(2), Operand::Project(1, 9)],
                     Type::Int,

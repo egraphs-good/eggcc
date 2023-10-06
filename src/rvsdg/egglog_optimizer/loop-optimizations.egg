@@ -1,7 +1,4 @@
 
-
-
-
 ;; unroll loops
 (rule ((= theta (Theta pred inputs outputs)))
                           ;;            arguments body

@@ -1,0 +1,92 @@
+;; Substitution
+(ruleset subst)
+
+;;                   e  [ x -> v ]
+(function SubstExpr (Expr i64 Operand) Expr)
+(function SubstOperand (Operand i64 Operand) Operand)
+(function SubstBody (Body i64 Operand) Body)
+(function SubstVecOperand (VecOperand i64 Operand) VecOperand)
+(function SubstVecVecOperand (VecVecOperand i64 Operand) VecVecOperand)
+
+(rewrite (SubstExpr (Const ty ops lit) x v) (Const ty ops lit) :ruleset subst)
+(rewrite (SubstExpr (Call ty f args) x v) (Call ty f (SubstVecOperand args x v)) :ruleset subst)
+(rewrite (SubstExpr (add ty a b) x v) (add ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (sub ty a b) x v) (sub ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (mul ty a b) x v) (mul ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (div ty a b) x v) (div ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (eq ty a b) x v) (eq ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (lt ty a b) x v) (lt ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (gt ty a b) x v) (gt ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (le ty a b) x v) (le ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (ge ty a b) x v) (ge ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (not ty a b) x v) (not ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (and ty a b) x v) (and ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (or ty a b) x v) (or ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+
+(rewrite (SubstOperand (Arg x) x v) v :ruleset subst)
+(rule ((= f (SubstOperand (Arg y) x v)) (!= y x))
+      ((union f (Arg y))) :ruleset subst)
+(rewrite (SubstOperand (Node b) x v) (Node (SubstBody b x v)) :ruleset subst)
+(rewrite (SubstOperand (Project i b) x v) (Project i (SubstBody b x v)) :ruleset subst)
+
+(rewrite (SubstBody (PureOp e) x v) (PureOp (SubstExpr e x v)) :ruleset subst)
+;; Subst doesn't cross regions - so we subst into the inputs but not outputs
+;; Node that a Gamma node's idx is on the outside, so it gets affected, but not
+;; a Theta node's predicate
+(rewrite (SubstBody (Gamma pred inputs outputs) x v) (Gamma (SubstOperand pred x v) (SubstVecOperand inputs x v) outputs) :ruleset subst)
+(rewrite (SubstBody (Theta pred inputs outputs) x v) (Theta pred (SubstVecOperand inputs x v) outputs) :ruleset subst)
+
+;; params: vec, var, op, next index to subst
+;; rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
+(function SubstVecOperandHelper (VecOperand i64 Operand i64) VecOperand)
+(rewrite (SubstVecOperand vec x v) (SubstVecOperandHelper vec x v 0) :ruleset subst)
+(rule
+  (
+    (= f (SubstVecOperandHelper (VO vec) x v i))
+    (< i (vec-length vec))
+  )
+  ( 
+    (union
+      (SubstVecOperandHelper (VO vec) x v i)
+      (SubstVecOperandHelper
+        (VO (vec-set vec i (SubstOperand (vec-get vec i) x v)))
+        x v (+ i 1)
+        ))
+  ) :ruleset subst)
+
+(rule
+  (
+    (= f (SubstVecOperandHelper (VO vec) x v i))
+    (= i (vec-length vec))
+  )
+  ( 
+    (union (SubstVecOperandHelper (VO vec) x v i) (VO vec))
+  ) :ruleset subst)
+
+
+;; params: vec, var, op, next index to subst
+;; rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
+(function SubstVecVecOperandHelper (VecVecOperand i64 Operand i64) VecVecOperand)
+(rewrite (SubstVecVecOperand vec x v) (SubstVecVecOperandHelper vec x v 0) :ruleset subst)
+(rule
+  (
+    (= f (SubstVecVecOperandHelper (VVO vec) x v i))
+    (< i (vec-length vec))
+  )
+  ( 
+    (union
+      (SubstVecVecOperandHelper (VVO vec) x v i)
+      (SubstVecVecOperandHelper
+        (VVO (vec-set vec i (SubstVecOperand (vec-get vec i) x v)))
+        x v (+ i 1)
+        ))
+  ) :ruleset subst)
+
+(rule
+  (
+    (= f (SubstVecVecOperandHelper (VVO vec) x v i))
+    (= i (vec-length vec))
+  )
+  ( 
+    (union (SubstVecVecOperandHelper (VVO vec) x v i) (VVO vec))
+  ) :ruleset subst)

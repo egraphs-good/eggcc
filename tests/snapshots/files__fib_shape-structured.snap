@@ -1,6 +1,6 @@
 ---
 source: tests/files.rs
-expression: result.visualization
+expression: visualization.result
 ---
 main {
 block:
@@ -16,6 +16,7 @@ while true:
     break 1
   block:
    donebody: int = const 1;
+   print i;
    return
 
  i: int = add i one;

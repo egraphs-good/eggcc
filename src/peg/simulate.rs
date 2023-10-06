@@ -2,7 +2,7 @@
 
 use crate::cfg::Identifier;
 use crate::peg::{PegBody, PegProgram};
-use crate::rvsdg::Expr;
+use crate::rvsdg::RvsdgExpr;
 use bril_rs::{ConstOps, Literal, ValueOps};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -88,7 +88,7 @@ impl Simulator<'_> {
         }
         let out = match &self.program.functions[self.func].nodes[body_index] {
             PegBody::BasicOp(expr) => match expr {
-                Expr::Op(op, xs, _ty) => {
+                RvsdgExpr::Op(op, xs, _ty) => {
                     let xs: Vec<_> = xs.iter().map(|x| self.simulate_body(*x)).collect();
                     match op {
                         ValueOps::Add => {
@@ -106,7 +106,7 @@ impl Simulator<'_> {
                         op => todo!("implement {op}"),
                     }
                 }
-                Expr::Call(f, xs, _, _) => {
+                RvsdgExpr::Call(f, xs, _, _) => {
                     let Identifier::Name(f) = f else {
                         panic!("function call identifier should be a name");
                     };
@@ -127,7 +127,7 @@ impl Simulator<'_> {
                             .unwrap(),
                     )
                 }
-                Expr::Print(xs) => {
+                RvsdgExpr::Print(xs) => {
                     for x in xs {
                         let value = self.simulate_body(*x);
                         // if not a print edge
@@ -137,7 +137,7 @@ impl Simulator<'_> {
                     }
                     None
                 }
-                Expr::Const(ConstOps::Const, literal, _) => Some(literal.clone()),
+                RvsdgExpr::Const(ConstOps::Const, literal, _) => Some(literal.clone()),
             },
             PegBody::Arg(arg) => {
                 if *arg == self.args.len() {

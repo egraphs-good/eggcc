@@ -1,4 +1,3 @@
-#![allow(dead_code)] // TODO: remove this once wired in
 //! Convert bril programs to RVSDGs.
 //!
 //! Bril functions are written in terms of basic blocks and jumps/gotos. RVSDGs
@@ -30,21 +29,23 @@
 //! In addition to those papers, the Jamey Sharp's
 //! [optir](https://github.com/jameysharp/optir) project is a major inspiration.
 pub(crate) mod from_cfg;
+pub(crate) mod from_egglog;
 pub(crate) mod live_variables;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
+pub(crate) mod to_egglog;
 
 use std::fmt;
 
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use egglog::{ast::Symbol, EGraph};
-use ordered_float::OrderedFloat;
+use egglog::{EGraph, TermDag};
+
 use thiserror::Error;
 
 use crate::{
     cfg::{Identifier, SimpleCfgProgram},
-    conversions::egglog_op_to_bril,
+    util::FreshNameGen,
     EggCCError,
 };
 
@@ -82,16 +83,10 @@ pub enum RvsdgError {
 
 pub(crate) type Result<T = ()> = std::result::Result<T, RvsdgError>;
 
-#[derive(Debug)]
-pub(crate) enum Annotation {
-    AssignCond { dst: Identifier, cond: u32 },
-    AssignRet { src: Identifier },
-}
-
 pub(crate) type Id = usize;
 
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) enum Expr<Op> {
+pub(crate) enum RvsdgExpr<Op> {
     /// A primitive operation.
     Op(ValueOps, Vec<Op>, Type),
     /// A function call. The last parameter is the number of outputs to the
@@ -111,23 +106,6 @@ pub(crate) enum Expr<Op> {
     Print(Vec<Op>),
 }
 
-impl<Op> Expr<Op> {
-    fn map_operands(&self, f: impl FnMut(&Op) -> Op) -> Self {
-        use Expr::*;
-        match self {
-            Op(op, operands, ty) => Op(*op, operands.iter().map(f).collect(), ty.clone()),
-            Call(ident, operands, n_outputs, ty) => Call(
-                ident.clone(),
-                operands.iter().map(f).collect(),
-                *n_outputs,
-                ty.clone(),
-            ),
-            Const(op, ty, lit) => Const(*op, ty.clone(), lit.clone()),
-            Print(operands) => Print(operands.iter().map(f).collect()),
-        }
-    }
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum Operand {
     /// A reference to an argument in the enclosing region.
@@ -140,7 +118,7 @@ pub(crate) enum Operand {
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum RvsdgBody {
-    BasicOp(Expr<Operand>),
+    BasicOp(RvsdgExpr<Operand>),
 
     /// Conditional branch, where the outputs chosen depend on the predicate.
     Gamma {
@@ -236,375 +214,43 @@ pub(crate) fn cfg_to_rvsdg(
     Ok(RvsdgProgram { functions })
 }
 
-impl RvsdgFunction {
-    pub(crate) fn result_val(&self) -> Option<&Operand> {
-        match &self.result {
-            Some((_ty, val)) => Some(val),
-            None => None,
+impl RvsdgProgram {
+    pub fn build_egglog_code(&self) -> (String, Vec<String>) {
+        let schema = std::include_str!("schema.egg");
+        let mut fresh_names = FreshNameGen::new();
+        let mut func_names = vec![];
+
+        let mut res_string = vec![schema.to_string()];
+
+        for function in &self.functions {
+            let name = fresh_names.fresh();
+            func_names.push(name.clone());
+            let expr = function.to_egglog_expr();
+            res_string.push(format!("(let {} {})", name, expr));
         }
+
+        (res_string.join("\n").to_string(), func_names)
     }
 
-    fn expr_from_ty(ty: &Type) -> egglog::ast::Expr {
-        use egglog::ast::Expr::*;
-        match ty {
-            Type::Int => Call("IntT".into(), vec![]),
-            Type::Bool => Call("BoolT".into(), vec![]),
-            Type::Float => Call("FloatT".into(), vec![]),
-            Type::Char => Call("CharT".into(), vec![]),
-            Type::Pointer(ty) => Call("PointerT".into(), vec![Self::expr_from_ty(ty.as_ref())]),
+    pub fn optimize(&self) -> std::result::Result<Self, EggCCError> {
+        let (egglog_code, function_names) = self.build_egglog_code();
+        let mut egraph = EGraph::default();
+        let _results = egraph
+            .parse_and_run_program(egglog_code.as_str())
+            .map_err(EggCCError::EggLog)?;
+
+        let mut functions = vec![];
+        let mut termdag = TermDag::default();
+        for name in function_names {
+            let (sort, value) = egraph
+                .eval_expr(&egglog::ast::Expr::Var(name.into()), None, true)
+                .unwrap();
+            let (_size, extracted) = egraph.extract(value, &mut termdag, &sort);
+            functions.push(RvsdgFunction::egglog_expr_to_function(
+                &termdag.term_to_expr(&extracted),
+            ));
         }
+
+        Ok(RvsdgProgram { functions })
     }
-
-    fn expr_from_rvsdg_ty(ty: &RvsdgType) -> egglog::ast::Expr {
-        use egglog::ast::Expr::*;
-        match ty {
-            RvsdgType::Bril(ty) => Call("Bril".into(), vec![RvsdgFunction::expr_from_ty(ty)]),
-            RvsdgType::PrintState => Call("PrintState".into(), vec![]),
-        }
-    }
-
-    fn expr_to_egglog_expr(&self, expr: &Expr<Operand>) -> egglog::ast::Expr {
-        use egglog::ast::{Expr::*, Literal::*};
-        let f = |operands: &Vec<Operand>, ty: Option<Type>| {
-            let mut res = Vec::with_capacity(operands.len() + ty.is_some() as usize);
-            if let Some(ty) = ty {
-                res.push(Self::expr_from_ty(&ty));
-            }
-            res.extend(operands.iter().map(|op| self.operand_to_egglog_expr(op)));
-            res
-        };
-
-        match expr {
-            Expr::Op(op, operands, ty) => {
-                Call(op.to_string().into(), f(operands, Some(ty.clone())))
-            }
-            // TODO I'm pretty sure this conversion isn't right
-            Expr::Call(ident, operands, _, ty) => {
-                Call(ident.to_string().into(), f(operands, ty.clone()))
-            }
-            Expr::Print(operands) => Call("PRINT".into(), f(operands, None)),
-            Expr::Const(ConstOps::Const, lit, ty) => {
-                let lit = match (ty, lit) {
-                    (Type::Int, Literal::Int(n)) => Call("Num".into(), vec![Lit(Int(*n))]),
-                    (Type::Bool, Literal::Bool(b)) => {
-                        Call("Bool".into(), vec![Lit(Int(*b as i64))])
-                    }
-                    (Type::Float, Literal::Float(f)) => Call(
-                        "Float".into(),
-                        vec![Lit(F64(OrderedFloat::<f64>::from(*f)))],
-                    ),
-                    (Type::Char, Literal::Char(c)) => {
-                        Call("Char".into(), vec![Lit(String(c.to_string().into()))])
-                    }
-                    (Type::Pointer(ty), Literal::Int(p)) => Call(
-                        "Ptr".into(),
-                        vec![Self::expr_from_ty(ty.as_ref()), Lit(Int(*p))],
-                    ),
-                    _ => panic!("type mismatch"),
-                };
-                Call(
-                    "Const".into(),
-                    vec![Self::expr_from_ty(ty), Call("const".into(), vec![]), lit],
-                )
-            }
-        }
-    }
-
-    fn body_to_egglog_expr(&self, body: &RvsdgBody) -> egglog::ast::Expr {
-        use egglog::ast::Expr::*;
-        match body {
-            RvsdgBody::BasicOp(expr) => Call("PureOp".into(), vec![self.expr_to_egglog_expr(expr)]),
-            RvsdgBody::Gamma {
-                pred,
-                inputs,
-                outputs,
-            } => {
-                let pred = self.operand_to_egglog_expr(pred);
-                let inputs = inputs
-                    .iter()
-                    .map(|input| self.operand_to_egglog_expr(input));
-                let inputs = Call("vec-of".into(), inputs.collect());
-                let outputs = outputs.iter().map(|region| {
-                    let region = region
-                        .iter()
-                        .map(|output| self.operand_to_egglog_expr(output));
-                    Call("VO".into(), vec![Call("vec-of".into(), region.collect())])
-                });
-                let outputs = Call("vec-of".into(), outputs.collect());
-                Call("Gamma".into(), vec![pred, inputs, outputs])
-            }
-            RvsdgBody::Theta {
-                pred,
-                inputs,
-                outputs,
-            } => {
-                let pred = self.operand_to_egglog_expr(pred);
-                let inputs = inputs
-                    .iter()
-                    .map(|input| self.operand_to_egglog_expr(input));
-                let inputs = Call("vec-of".into(), inputs.collect());
-                let outputs = outputs
-                    .iter()
-                    .map(|output| self.operand_to_egglog_expr(output));
-                let outputs = Call("vec-of".into(), outputs.collect());
-                Call("Theta".into(), vec![pred, inputs, outputs])
-            }
-        }
-    }
-
-    fn operand_to_egglog_expr(&self, op: &Operand) -> egglog::ast::Expr {
-        use egglog::ast::{Expr::*, Literal::*};
-        match op {
-            Operand::Arg(p) => Call("Arg".into(), vec![Lit(Int(i64::try_from(*p).unwrap()))]),
-            Operand::Id(id) => Call(
-                "Node".into(),
-                vec![self.body_to_egglog_expr(&self.nodes[*id])],
-            ),
-            Operand::Project(i, id) => {
-                let body = self.body_to_egglog_expr(&self.nodes[*id]);
-                Call(
-                    "Project".into(),
-                    vec![Lit(Int(i64::try_from(*i).unwrap())), body],
-                )
-            }
-        }
-    }
-
-    pub fn to_egglog_expr(&self) -> egglog::ast::Expr {
-        use egglog::ast::{Expr::*, Literal::*};
-        let name: Symbol = self.name.clone().into();
-
-        let sig = Call(
-            "vec-of".into(),
-            self.args
-                .iter()
-                .map(RvsdgFunction::expr_from_rvsdg_ty)
-                .collect(),
-        );
-        let output = {
-            let state = self.operand_to_egglog_expr(&self.state);
-            if let Some((ty, result)) = &self.result {
-                let value = self.operand_to_egglog_expr(result);
-                let ty = Self::expr_from_ty(ty);
-                Call("StateAndValue".into(), vec![state, ty, value])
-            } else {
-                Call("StateOnly".into(), vec![state])
-            }
-        };
-        Call("Func".into(), vec![Lit(String(name)), sig, output])
-    }
-
-    fn egglog_expr_to_operand(op: &egglog::ast::Expr, bodies: &mut Vec<RvsdgBody>) -> Operand {
-        use egglog::ast::{Expr::*, Literal::*};
-        if let Call(func, args) = op {
-            match (func.as_str(), &args.as_slice()) {
-                ("Arg", [Lit(Int(n))]) => Operand::Arg(*n as usize),
-                ("Node", [body]) => Operand::Id(Self::egglog_expr_to_body(body, bodies)),
-                ("Project", [Lit(Int(n)), body]) => {
-                    Operand::Project(*n as usize, Self::egglog_expr_to_body(body, bodies))
-                }
-                _ => panic!("expect an operand, got {op}"),
-            }
-        } else {
-            panic!("expect an operand, got {op}")
-        }
-    }
-
-    fn egglog_expr_to_body(body: &egglog::ast::Expr, bodies: &mut Vec<RvsdgBody>) -> Id {
-        use egglog::ast::Expr::*;
-        if let Call(func, args) = body {
-            let body = match (func.as_str(), &args.as_slice()) {
-                ("PureOp", [expr]) => RvsdgBody::BasicOp(Self::egglog_expr_to_expr(expr, bodies)),
-                ("Gamma", [pred, inputs, outputs]) => {
-                    let pred = Self::egglog_expr_to_operand(pred, bodies);
-                    let inputs = vec_map(inputs, |e| Self::egglog_expr_to_operand(e, bodies));
-                    let outputs = vec_map(outputs, |es| {
-                        if let Call(func, args) = es {
-                            assert_eq!(func.as_str(), "VO");
-                            assert_eq!(args.len(), 1);
-                            let es = &args[0];
-                            vec_map(es, |e| Self::egglog_expr_to_operand(e, bodies))
-                        } else {
-                            panic!("expect VecOperandWrapper")
-                        }
-                    });
-                    RvsdgBody::Gamma {
-                        pred,
-                        inputs,
-                        outputs,
-                    }
-                }
-                ("Theta", [pred, inputs, outputs]) => {
-                    let pred = Self::egglog_expr_to_operand(pred, bodies);
-                    let inputs = vec_map(inputs, |e| Self::egglog_expr_to_operand(e, bodies));
-                    let outputs = vec_map(outputs, |e| Self::egglog_expr_to_operand(e, bodies));
-                    RvsdgBody::Theta {
-                        pred,
-                        inputs,
-                        outputs,
-                    }
-                }
-                _ => panic!("expect an operand, got {body}"),
-            };
-            bodies.push(body);
-            bodies.len() - 1
-        } else {
-            panic!("expect an operand, got {body}")
-        }
-    }
-
-    fn egglog_expr_to_expr(expr: &egglog::ast::Expr, bodies: &mut Vec<RvsdgBody>) -> Expr<Operand> {
-        use egglog::ast::Literal;
-        if let egglog::ast::Expr::Call(func, args) = expr {
-            match (func.as_str(), &args.as_slice()) {
-                ("Call", [ty, egglog::ast::Expr::Lit(Literal::String(ident)), args]) => {
-                    let args = vec_map(args, |e| Self::egglog_expr_to_operand(e, bodies));
-                    // TODO: this is imprecise, we don't know if the number of outputs is 1 or 2.
-                    Expr::Call(
-                        Identifier::Name(ident.to_string()),
-                        args,
-                        1,
-                        Some(Self::egglog_expr_to_ty(ty)),
-                    )
-                }
-                ("Const", [ty, _const_op, lit]) => Expr::Const(
-                    // todo remove the const op from the encoding because it is always ConstOps::Const
-                    ConstOps::Const,
-                    Self::egglog_expr_to_literal(lit),
-                    Self::egglog_expr_to_ty(ty),
-                ),
-                (binop, [ty, opr1, opr2]) => {
-                    let opr1 = Self::egglog_expr_to_operand(opr1, bodies);
-                    let opr2 = Self::egglog_expr_to_operand(opr2, bodies);
-                    Expr::Op(
-                        egglog_op_to_bril(binop.into()),
-                        vec![opr1, opr2],
-                        Self::egglog_expr_to_ty(ty),
-                    )
-                }
-                _ => panic!("expect an operand, got {expr}"),
-            }
-        } else {
-            panic!("expect an operand, got {expr}")
-        }
-    }
-
-    fn egglog_expr_to_ty(ty: &egglog::ast::Expr) -> Type {
-        use egglog::ast::Expr::*;
-        if let Call(func, args) = ty {
-            match (func.as_str(), &args.as_slice()) {
-                ("IntT", []) => Type::Int,
-                ("BoolT", []) => Type::Bool,
-                ("FloatT", []) => Type::Float,
-                ("CharT", []) => Type::Char,
-                ("PointerT", [inner]) => Type::Pointer(Box::new(Self::egglog_expr_to_ty(inner))),
-                _ => panic!("expect a list, got {ty}"),
-            }
-        } else {
-            panic!("expect a list, got {ty}")
-        }
-    }
-
-    fn egglog_expr_to_rvsdg_ty(ty: &egglog::ast::Expr) -> RvsdgType {
-        use egglog::ast::Expr::*;
-        if let Call(func, args) = ty {
-            match (func.as_str(), &args.as_slice()) {
-                ("PrintState", []) => RvsdgType::PrintState,
-                ("Bril", [ty]) => RvsdgType::Bril(Self::egglog_expr_to_ty(ty)),
-                _ => panic!("expect an expression, got {ty}"),
-            }
-        } else {
-            panic!("expect an expression, got {ty}")
-        }
-    }
-
-    fn egglog_expr_to_literal(lit: &egglog::ast::Expr) -> Literal {
-        use egglog::ast::{Expr::*, Literal::*};
-        if let Call(func, args) = lit {
-            match (func.as_str(), &args.as_slice()) {
-                ("Num", [Lit(Int(n))]) => Literal::Int(*n),
-                ("Float", [Lit(F64(n))]) => Literal::Float(f64::from(*n)),
-                ("Char", [Lit(String(s))]) => {
-                    assert_eq!(s.as_str().len(), 1);
-                    Literal::Char(s.as_str().chars().next().unwrap())
-                }
-                _ => panic!("expect a list, got {lit}"),
-            }
-        } else {
-            panic!("expect a list, got {lit}")
-        }
-    }
-
-    pub fn egglog_expr_to_function(expr: &egglog::ast::Expr) -> RvsdgFunction {
-        use egglog::ast::{Expr::*, Literal::*};
-        if let Call(func, args) = expr {
-            match (func.as_str(), &args.as_slice()) {
-                ("Func", [Lit(String(name)), sig, Call(func_output, func_args)]) => {
-                    let args: Vec<RvsdgType> = vec_map(sig, Self::egglog_expr_to_rvsdg_ty);
-                    let n_args = args.len() - 1;
-
-                    let mut nodes = vec![];
-                    let (state, result) = match (func_output.as_str(), &func_args.as_slice()) {
-                        ("StateOnly", [state]) => {
-                            (Self::egglog_expr_to_operand(state, &mut nodes), None)
-                        }
-                        ("StateAndValue", [state, ty, result]) => {
-                            let state = Self::egglog_expr_to_operand(state, &mut nodes);
-                            let result = Self::egglog_expr_to_operand(result, &mut nodes);
-                            let ty = Self::egglog_expr_to_ty(ty);
-                            (state, Some((ty, result)))
-                        }
-                        _ => panic!("expect a function, got {expr}"),
-                    };
-                    RvsdgFunction {
-                        name: name.to_string(),
-                        n_args,
-                        args,
-                        nodes,
-                        result,
-                        state,
-                    }
-                }
-                _ => panic!("expect a function, got {expr}"),
-            }
-        } else {
-            panic!("expect a function, got {expr}")
-        }
-    }
-}
-
-fn vec_map<T>(inputs: &egglog::ast::Expr, mut f: impl FnMut(&egglog::ast::Expr) -> T) -> Vec<T> {
-    use egglog::ast::Expr::*;
-    let mut inputs: &egglog::ast::Expr = inputs;
-    let mut results = vec![];
-    if let Call(func, args) = inputs {
-        if func.as_str() == "vec-of" {
-            return args.iter().map(&mut f).collect();
-        }
-    }
-    loop {
-        if let Call(func, args) = inputs {
-            match (func.as_str(), &args.as_slice()) {
-                ("vec-push", [head, tail]) => {
-                    results.push(f(head));
-                    inputs = tail;
-                }
-                ("vec-empty", []) => {
-                    break;
-                }
-                _ => panic!("expect a list, got {inputs}"),
-            }
-        } else {
-            panic!("expect a list, got {inputs}")
-        }
-    }
-    results.reverse();
-    results
-}
-
-pub fn new_rvsdg_egraph() -> EGraph {
-    let mut egraph = EGraph::default();
-    let schema = std::fs::read_to_string("src/rvsdg/schema.egg").unwrap();
-    egraph.parse_and_run_program(schema.as_str()).unwrap();
-    egraph
 }

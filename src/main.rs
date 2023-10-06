@@ -11,7 +11,7 @@ struct Args {
     /// Configure the output of the tool.
     /// Options include a structured cfg, rvsdg,
     /// or the egglog encoding of the program.
-    #[clap(long, default_value_t = RunType::NaiiveOptimization)]
+    #[clap(long, default_value_t = RunType::RvsdgOptimize)]
     run_mode: RunType,
     /// Evaluate the resulting program and output
     /// the result.

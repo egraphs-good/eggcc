@@ -25,7 +25,7 @@ use crate::{
     util::FreshNameGen,
 };
 
-use super::{Expr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
+use super::{Id, Operand, RvsdgBody, RvsdgExpr, RvsdgFunction, RvsdgProgram, RvsdgType};
 
 enum IncompleteBranch {
     /// Conditional jump from a given block to the next one
@@ -494,12 +494,12 @@ impl<'a> RvsdgToCfg<'a> {
     // as is the case when printing.
     fn expr_to_bril(
         &mut self,
-        expr: &Expr<Operand>,
+        expr: &RvsdgExpr<Operand>,
         current_args: &Vec<RvsdgValue>,
         ctx: &Option<Id>,
     ) -> RvsdgValue {
         match expr {
-            Expr::Op(value_op, operands, ty) => {
+            RvsdgExpr::Op(value_op, operands, ty) => {
                 let operands = operands
                     .iter()
                     .map(|op| self.operand_to_bril(*op, current_args, ctx).unwrap_name())
@@ -516,10 +516,10 @@ impl<'a> RvsdgToCfg<'a> {
                 });
                 RvsdgValue::BrilValue(name, ty.clone())
             }
-            Expr::Call(_name, _operands, _output_ports, _return_type_maybe) => {
+            RvsdgExpr::Call(_name, _operands, _output_ports, _return_type_maybe) => {
                 panic!("Not supported yet");
             }
-            Expr::Const(_const_op, lit, ty) => {
+            RvsdgExpr::Const(_const_op, lit, ty) => {
                 let dest = self.get_fresh();
                 self.current_instrs.push(Instruction::Constant {
                     dest: dest.clone(),
@@ -530,7 +530,7 @@ impl<'a> RvsdgToCfg<'a> {
                 });
                 RvsdgValue::BrilValue(dest, ty.clone())
             }
-            Expr::Print(print_operands) => {
+            RvsdgExpr::Print(print_operands) => {
                 assert!(print_operands.len() == 2);
                 let operands = vec![self
                     .operand_to_bril(print_operands[0], current_args, ctx)

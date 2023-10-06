@@ -7,13 +7,10 @@
 //! * ["Equality Saturation: A New Approach to Optimization"](https://arxiv.org/abs/1012.1802)
 //! by Tate, Stepp, Tatlock, and Lerner
 
-// todo: remove this once it no longer does anything
-#![allow(dead_code)]
-
 pub(crate) mod peg2dot;
 pub(crate) mod simulate;
 
-use crate::rvsdg::{Expr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
+use crate::rvsdg::{Id, Operand, RvsdgBody, RvsdgExpr, RvsdgFunction, RvsdgProgram};
 use std::collections::HashMap;
 
 #[cfg(test)]
@@ -23,7 +20,7 @@ mod tests;
 #[derive(Debug, PartialEq)]
 pub(crate) enum PegBody {
     /// A basic expression.
-    BasicOp(Expr<Id>),
+    BasicOp(RvsdgExpr<Id>),
     /// An argument of the enclosing function.
     Arg(usize),
     /// An if statement..
@@ -57,7 +54,6 @@ pub(crate) struct PegFunction {
 }
 
 impl PegFunction {
-    #[allow(dead_code)]
     pub fn new(rvsdg: &RvsdgFunction) -> PegFunction {
         let mut nodes = Vec::new();
         let mut builder = PegBuilder {
@@ -129,21 +125,21 @@ impl PegBuilder<'_> {
                     // To translate a BasicOp, translate all its arguments, then change ops to ids
                     RvsdgBody::BasicOp(expr) => {
                         let expr = match expr {
-                            Expr::Op(op, xs, ty) => Expr::Op(
+                            RvsdgExpr::Op(op, xs, ty) => RvsdgExpr::Op(
                                 *op,
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
                                 ty.clone(),
                             ),
-                            Expr::Call(f, xs, num_outputs, ty) => Expr::Call(
+                            RvsdgExpr::Call(f, xs, num_outputs, ty) => RvsdgExpr::Call(
                                 f.clone(),
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
                                 *num_outputs,
                                 ty.clone(),
                             ),
-                            Expr::Print(xs) => {
-                                Expr::Print(xs.iter().map(|x| self.get_pegs(*x, scope)).collect())
-                            }
-                            Expr::Const(o, t, l) => Expr::Const(*o, t.clone(), l.clone()),
+                            RvsdgExpr::Print(xs) => RvsdgExpr::Print(
+                                xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
+                            ),
+                            RvsdgExpr::Const(o, t, l) => RvsdgExpr::Const(*o, t.clone(), l.clone()),
                         };
                         assert_eq!(0, selected);
                         let out = self.pegs.len();

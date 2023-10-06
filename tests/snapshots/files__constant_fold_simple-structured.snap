@@ -1,0 +1,15 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ v0: int = const 1;
+ v1: int = const 2;
+ v2: int = mul v0 v1;
+ v3: int = add v0 v1;
+ v4: int = div v3 v2;
+ print v4;
+ return
+
+}

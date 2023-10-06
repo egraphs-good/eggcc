@@ -18,6 +18,9 @@ struct Args {
     #[clap(long)]
     interp: bool,
 
+    #[clap(long)]
+    profile_out: Option<PathBuf>,
+
     /// The bril program to optimize
     file: PathBuf,
     /// The arguments to the bril program
@@ -47,6 +50,7 @@ fn main() {
         prog_with_args: TestProgram::File(args.file.clone()).read_program(),
         test_type: args.run_mode,
         interp: args.interp,
+        profile_out: args.profile_out,
     };
 
     let result = run.run();

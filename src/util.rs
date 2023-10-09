@@ -128,17 +128,36 @@ where
     }
 }
 
+/// Different ways to run eggcc- the default is RvsdgOptimize,
+/// but these others are useful for testing and debugging.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RunType {
+    /// Do nothing to the input bril program besides parse it.
+    /// Output the original program.
     Nothing,
+    /// Convert the input bril program to an internal, structured
+    /// format and output this.
     StructuredConversion,
+    /// Convert the input bril program to an RVSDG and output it.
     RvsdgConversion,
+    /// Convert the input bril program to a PEG and output it as a dot file.
     PegConversion,
     RvsdgRoundTrip,
+    /// Convert the original program to a CFG and output it.
     ToCfg,
+    /// Convert the original program to a CFG and back to Bril again.
     CfgRoundTrip,
+    /// Convert the original program to a RVSDG and then to a CFG.
     RvsdgToCfg,
+    /// Convert the original program to a RVSDG, optimize it, then turn
+    /// it back into a Bril program. This is the main way to run eggcc.
     RvsdgOptimize,
+    /// Convert the original program to a RVSDG, optimize it, then output
+    /// the optimized RVSDG.
+    OptimizedRvsdg,
+    /// Convert the original program to a RVSDG, then output the egglog program
+    /// that is used to optimize the RVSDG.
+    RvsdgEgglogEncoding,
 }
 
 impl Debug for RunType {
@@ -161,6 +180,8 @@ impl FromStr for RunType {
             "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
             "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
             "rvsdg-optimize" => Ok(RunType::RvsdgOptimize),
+            "rvsdg-egglog-encoding" => Ok(RunType::RvsdgEgglogEncoding),
+            "optimized-rvsdg" => Ok(RunType::OptimizedRvsdg),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -178,6 +199,8 @@ impl Display for RunType {
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
             RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
             RunType::RvsdgOptimize => write!(f, "rvsdg-optimize"),
+            RunType::OptimizedRvsdg => write!(f, "optimized-rvsdg"),
+            RunType::RvsdgEgglogEncoding => write!(f, "rvsdg-egglog-encoding"),
         }
     }
 }
@@ -194,6 +217,8 @@ impl RunType {
             RunType::CfgRoundTrip => true,
             RunType::RvsdgToCfg => true,
             RunType::RvsdgOptimize => true,
+            RunType::RvsdgEgglogEncoding => true,
+            RunType::OptimizedRvsdg => false,
         }
     }
 }
@@ -269,6 +294,7 @@ impl Run {
             RunType::PegConversion,
             RunType::CfgRoundTrip,
             RunType::RvsdgOptimize,
+            RunType::RvsdgToCfg,
         ] {
             let default = Run {
                 test_type,
@@ -386,6 +412,31 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(optimized),
+                )
+            }
+            RunType::RvsdgEgglogEncoding => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let (egglog_code, _) = rvsdg.build_egglog_code();
+                (
+                    vec![Visualization {
+                        result: egglog_code,
+                        file_extension: ".egglog".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
+            }
+            RunType::OptimizedRvsdg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let optimized = rvsdg.optimize().unwrap();
+                let svg = optimized.to_svg();
+                (
+                    vec![Visualization {
+                        result: svg,
+                        file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
                 )
             }
         };

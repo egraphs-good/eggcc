@@ -8,9 +8,9 @@ struct Args {
     /// svgs for the rvsdg, cfgs, ect.
     #[clap(long)]
     debug_dir: Option<PathBuf>,
-    /// Configure the output of the tool.
-    /// Options include a structured cfg, rvsdg,
-    /// or the egglog encoding of the program.
+    /// Configure the output of the tool, which can be an optimized bril program,
+    /// an optimized CFG, or more.
+    /// See documentation for [`RunType`] for different options.
     #[clap(long, default_value_t = RunType::RvsdgOptimize)]
     run_mode: RunType,
     /// Evaluate the resulting program and output

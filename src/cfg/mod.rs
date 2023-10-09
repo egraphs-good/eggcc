@@ -240,7 +240,9 @@ pub struct BasicBlock {
 
 impl Debug for BasicBlock {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", ListDisplay(self.to_code(), "\n"))
+        let mut code_block = self.to_code();
+        code_block.extend(self.debug_code_for_footer());
+        write!(f, "{}", ListDisplay(code_block, "\n"))
     }
 }
 
@@ -252,6 +254,37 @@ impl BasicBlock {
             name,
             pos: None,
         }
+    }
+
+    /// Annotations should not be directly translated back into bril, as they
+    /// include values (like "conditions" branching >2 ways) that do not have a
+    /// clear bril type.
+    ///
+    /// This method is used for debug printing purposes only, and for that
+    /// reason it "reflects" conditions back into bril to the best of its
+    /// ability.
+    fn debug_code_for_footer(&self) -> impl Iterator<Item = Code> + '_ {
+        self.footer.iter().map(|ann| match ann {
+            // Conditions are untyped and they do not generally make sense to directly "reflect" back into bril. For the purposes of printing.
+            Annotation::AssignCond { dst, cond } => Code::Instruction(Instruction::Constant {
+                dest: format!("{dst}"),
+                op: bril_rs::ConstOps::Const,
+                pos: None,
+                const_type: if *cond < 2 { Type::Bool } else { Type::Int },
+                value: match cond {
+                    0 => bril_rs::Literal::Bool(false),
+                    1 => bril_rs::Literal::Bool(true),
+                    n => bril_rs::Literal::Int(*n as i64),
+                },
+            }),
+            Annotation::AssignRet { src } => Code::Instruction(Instruction::Effect {
+                op: EffectOps::Return,
+                args: vec![format!("{src}")],
+                funcs: vec![],
+                labels: vec![],
+                pos: None,
+            }),
+        })
     }
 
     fn to_code(&self) -> Vec<Code> {

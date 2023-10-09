@@ -1,0 +1,147 @@
+---
+source: tests/files.rs
+assertion_line: 30
+expression: visualization.result
+---
+@main {
+  v0: int = const 1;
+  v1: int = const 2;
+  v2: bool = lt v0 v1;
+  br v2 .__93__ .__12__;
+.__570__:
+  v567: int = add v102 v292;
+  v568: int = id v567;
+  v569: int = id v197;
+  jmp .__572__;
+.__571__:
+  v568: int = id v102;
+  v569: int = id v197;
+  jmp .__572__;
+.__566__:
+  v564: int = const 1;
+  v565: bool = eq v481 v564;
+  br v565 .__571__ .__570__;
+.__482__:
+  v474: int = const 1;
+  v475: int = const 1;
+  v476: int = const 2;
+  v477: int = const 0;
+  v478: int = id v474;
+  v479: int = id v475;
+  v480: int = id v476;
+  v481: int = id v477;
+  jmp .__566__;
+.__563__:
+  v478: int = id v507;
+  v479: int = id v524;
+  v480: int = id v541;
+  v481: int = id v558;
+  jmp .__566__;
+.__473__:
+  v470: int = const 1;
+  v471: int = const 2;
+  v472: bool = lt v470 v471;
+  br v472 .__563__ .__482__;
+.__388__:
+  v380: int = const 1;
+  v381: int = const 1;
+  v382: int = const 2;
+  v383: int = const 0;
+  v384: int = id v380;
+  v385: int = id v381;
+  v386: int = id v382;
+  v387: int = id v383;
+  jmp .__473__;
+.__469__:
+  v384: int = id v413;
+  v385: int = id v430;
+  v386: int = id v447;
+  v387: int = id v464;
+  jmp .__473__;
+.__379__:
+  v376: int = const 1;
+  v377: int = const 2;
+  v378: bool = lt v376 v377;
+  br v378 .__469__ .__388__;
+.__294__:
+  v286: int = const 1;
+  v287: int = const 1;
+  v288: int = const 2;
+  v289: int = const 0;
+  v290: int = id v286;
+  v291: int = id v287;
+  v292: int = id v288;
+  v293: int = id v289;
+  jmp .__379__;
+.__375__:
+  v290: int = id v319;
+  v291: int = id v336;
+  v292: int = id v353;
+  v293: int = id v370;
+  jmp .__379__;
+.__285__:
+  v282: int = const 1;
+  v283: int = const 2;
+  v284: bool = lt v282 v283;
+  br v284 .__375__ .__294__;
+.__200__:
+  v192: int = const 1;
+  v193: int = const 1;
+  v194: int = const 2;
+  v195: int = const 0;
+  v196: int = id v192;
+  v197: int = id v193;
+  v198: int = id v194;
+  v199: int = id v195;
+  jmp .__285__;
+.__281__:
+  v196: int = id v225;
+  v197: int = id v242;
+  v198: int = id v259;
+  v199: int = id v276;
+  jmp .__285__;
+.__191__:
+  v188: int = const 1;
+  v189: int = const 2;
+  v190: bool = lt v188 v189;
+  br v190 .__281__ .__200__;
+.__106__:
+  v98: int = const 1;
+  v99: int = const 1;
+  v100: int = const 2;
+  v101: int = const 0;
+  v102: int = id v98;
+  v103: int = id v99;
+  v104: int = id v100;
+  v105: int = id v101;
+  jmp .__191__;
+.__187__:
+  v102: int = id v131;
+  v103: int = id v148;
+  v104: int = id v165;
+  v105: int = id v182;
+  jmp .__191__;
+.__97__:
+  v94: int = const 1;
+  v95: int = const 2;
+  v96: bool = lt v94 v95;
+  br v96 .__187__ .__106__;
+.__12__:
+  v4: int = const 1;
+  v5: int = const 1;
+  v6: int = const 2;
+  v7: int = const 0;
+  v8: int = id v4;
+  v9: int = id v5;
+  v10: int = id v6;
+  v11: int = id v7;
+  jmp .__97__;
+.__93__:
+  v8: int = id v37;
+  v9: int = id v54;
+  v10: int = id v71;
+  v11: int = id v88;
+  jmp .__97__;
+.__572__:
+}
+

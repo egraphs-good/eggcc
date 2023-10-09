@@ -1,0 +1,23 @@
+@main() {
+  one: int = const 1;
+  two: int = const 2;
+  x: int = const 0;
+  a_cond: bool = lt one two;
+  br a_cond .B .D;
+  .B:
+    b_cond: bool = lt two one;
+    x: int = add x two;
+    br b_cond .C .E;
+  .C:
+    x: int = add x two;
+    jmp .F;
+  .D:
+    x: int = add x one;
+    jmp .E;
+  .E:
+    x: int = add x two;
+    jmp .F;
+  .F:
+    x: int = add x one;
+    ret;
+}

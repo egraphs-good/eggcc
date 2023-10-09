@@ -1,9 +1,8 @@
 
 ;; unroll loops
-(rule ((= theta (Theta pred inputs outputs))
-      (= (VO outputs-inner) outputs))
+(rule ((= theta (Theta pred inputs (VO outputs))))
                           ;;            arguments body
-      ((let after-one-iter (SubstVecAll inputs outputs))
+      ((let after-one-iter (SubstVecAll inputs (VO outputs)))
        ;; (vec-of (Arg 0) (Arg 1) ...)
        (let pass-through (PassThroughArguments (vec-length outputs-inner)))
        (union theta
@@ -15,4 +14,6 @@
               pass-through
               ;; otherwise do the rest of the loop
               (Theta pred pass-through
-                          outputs))))))
+                          (VO outputs)))))))
+
+

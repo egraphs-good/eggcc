@@ -114,11 +114,11 @@
          :ruleset subst)
 
 (rule
-  ((= helper (SubstExprAllHelper arg-vec progress expr))
+  ((= helper (SubstExprAllHelper (VO arg-vec) progress expr))
    (< progress (vec-length arg-vec)))
   ((union helper
           (SubstExprAllHelper
-            arg-vec
+            (VO arg-vec)
             ;; increment progress
             (+ progress 1)
             ;; substitute the current argument into the expression

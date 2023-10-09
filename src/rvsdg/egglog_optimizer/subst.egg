@@ -109,6 +109,9 @@
 ;;       (vec of arguments, progress through that vec, and the expression to substitute into
 ;; progress means that for all indices before it, we already did the subtitution
 (function SubstExprAllHelper (VecOperand i64 Expr) Expr :cost 100)
+(rewrite (SubstExprAll arg-vec expr)
+         (SubstExprAllHelper arg-vec 0 expr)
+         :ruleset subst)
 
 (rule
   ((= helper (SubstExprAllHelper arg-vec progress expr))
@@ -132,12 +135,16 @@
 
 ;; same as SubstExprAllHelper, but substituting into a vec of operands
 (function SubstVecOperandAllHelper (VecOperand i64 VecOperand) VecOperand :cost 100)
+(rewrite (SubstVecOperandAll arg-vec expr)
+         (SubstVecOperandAllHelper arg-vec 0 expr)
+         :ruleset subst)
+
 (rule
-  ((= helper (SubstVecOperandAllHelper arg-vec progress expr))
+  ((= helper (SubstVecOperandAllHelper (VO arg-vec) progress expr))
    (< progress (vec-length arg-vec)))
   ((union helper
           (SubstExprAllHelper
-            arg-vec
+            (VO arg-vec)
             ;; increment progress
             (+ progress 1)
             ;; substitute the current argument into the expression
@@ -146,7 +153,21 @@
 
 ;; base case: we are done substituting
 (rule
-  ((= helper (SubstVecOperandAllHelper arg-vec progress expr))
+  ((= helper (SubstVecOperandAllHelper (VO arg-vec) progress expr))
    (= progress (vec-length arg-vec)))
   ((union helper expr))
   :ruleset subst)
+
+
+
+;; ################################
+;; implementation of PassThroughArguments
+(function PassThroughArguments (i64) VecOperand)
+
+;; (how many arguments to generate, rest of the vector)
+(function PassThroughArgumentsHelper (i64 VecOperand) VecOperand)
+
+(rewrite (PassThroughArguments i)
+  (PassThroughArgumentsHelper i (VO (vec-of)))
+  :ruleset subst)
+

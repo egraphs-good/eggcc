@@ -110,7 +110,7 @@ cfg_test!(
 
 cfg_test!(
     block_diamond,
-    include_str!("../../tests/small/failing/block-diamond.bril"),
+    include_str!("../../tests/small/block-diamond.bril"),
     [
         ENTRY = (Cond { arg: "a_cond".into(), val: true.into() }) => "B",
         ENTRY = (Cond { arg: "a_cond".into(), val: false.into() }) => "D",

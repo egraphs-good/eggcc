@@ -3,6 +3,7 @@
 use hashbrown::{HashMap, HashSet};
 use petgraph::{
     algo::{dominators, tarjan_scc},
+    dot::Dot,
     graph::NodeIndex,
     stable_graph::EdgeIndex,
     visit::{EdgeRef, NodeFiltered, VisitMap},
@@ -51,6 +52,8 @@ impl SwitchCfgFunction {
             all.visit(node);
         });
         self.restructure_loops(&all, &mut state);
+
+        eprintln!("After restructuring loops: {:#?}", Dot::new(&self.graph));
         self.restructure_branches(&mut state);
     }
 
@@ -221,7 +224,7 @@ impl SwitchCfgFunction {
         }
     }
 
-    fn split_arc(&mut self, edge: EdgeIndex) {
+    fn split_arc(&mut self, edge: EdgeIndex) -> NodeIndex {
         let (src, dst) = self.graph.edge_endpoints(edge).unwrap();
         let middle = self.fresh_block();
         let weight = self.graph.remove_edge(edge).unwrap();
@@ -234,6 +237,7 @@ impl SwitchCfgFunction {
                 pos: None,
             },
         );
+        middle
     }
 
     fn split_edges(&mut self, node: NodeIndex) {
@@ -300,6 +304,7 @@ impl SwitchCfgFunction {
     }
 
     fn restructure_branches(&mut self, state: &mut RestructureState) {
+        let please_use_nodeset_instead = 1;
         // Credit to optir for structuring the loop in this way; this is pretty different than the paper.
         let dom = dominators::simple_fast(&self.graph, self.entry);
         let dominates = |x: NodeIndex, y| {
@@ -366,6 +371,9 @@ impl SwitchCfgFunction {
                 // NB: there's some extra filtering that happens here in optir, do we need it?
                 while let Some((edge, src)) = walker.next(&self.graph) {
                     if src == mux {
+                        continue;
+                    }
+                    if conts.iter().any(|&c| c == src) {
                         continue;
                     }
                     let branch = self.graph.remove_edge(edge).unwrap();

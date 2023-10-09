@@ -11,6 +11,7 @@
 use bril_rs::{ConstOps, EffectOps, Instruction, Literal, Position, Type, ValueOps};
 use hashbrown::HashMap;
 use petgraph::algo::dominators;
+use petgraph::dot::Dot;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use petgraph::{algo::dominators::Dominators, stable_graph::NodeIndex};
@@ -30,6 +31,7 @@ pub(crate) fn cfg_func_to_rvsdg(
     function_types: &FunctionTypes,
 ) -> Result<RvsdgFunction> {
     cfg.restructure();
+    eprintln!("restructured=\n{:#?}", Dot::new(&cfg.graph));
     let analysis = live_variables(cfg);
     let dom = dominators::simple_fast(&cfg.graph, cfg.entry);
     let name = cfg.name.clone();
@@ -107,6 +109,7 @@ pub(crate) struct RvsdgBuilder<'a> {
 
 impl<'a> RvsdgBuilder<'a> {
     fn try_loop(&mut self, block: NodeIndex) -> Result<Option<NodeIndex>> {
+        eprintln!("Loop? {:?}", self.cfg.graph[block].name);
         // First, check if this is the head of a loop. There are two cases here:
         //
         // 1. The loop is a single block, in which case this block will have
@@ -242,6 +245,7 @@ impl<'a> RvsdgBuilder<'a> {
     }
 
     fn try_branch(&mut self, block: NodeIndex) -> Result<Option<NodeIndex>> {
+        eprintln!("Branch? {:?}", self.cfg.graph[block].name);
         self.translate_block(block)?;
         if self
             .cfg
@@ -269,6 +273,13 @@ impl<'a> RvsdgBuilder<'a> {
                 panic!("Invalid mix of conditional and non-conditional branches in block {block:?}")
             }
         }));
+        let pred_var = self.analysis.intern.intern(pred);
+        let pred_op = get_op(
+            pred_var,
+            &self.cfg.graph[block].pos,
+            &self.store,
+            &self.analysis.intern,
+        )?;
         succs.sort_by_key(|(val, _)| *val);
         // Branches should be contiguous.
         succs
@@ -292,14 +303,20 @@ impl<'a> RvsdgBuilder<'a> {
 
         let mut next = None;
         for (_, succ) in succs {
+            let please_remove = 1;
+            eprintln!(
+                "traversing branch starting at {:?}",
+                self.cfg.graph[succ].name
+            );
             // First, make sure that all inputs are correctly bound to inputs to the block.
             for (i, var) in input_vars.iter().copied().enumerate() {
+                let please_remove = 1;
+                eprintln!("input var={:?}, var_id={:?}", var, i);
                 self.store.insert(var, Operand::Arg(i));
             }
             // Loop until we reach a join point.
             let mut curr = succ;
             loop {
-                curr = self.try_loop(curr)?.unwrap();
                 if self
                     .cfg
                     .graph
@@ -309,6 +326,7 @@ impl<'a> RvsdgBuilder<'a> {
                 {
                     break;
                 }
+                curr = self.try_loop(curr)?.unwrap();
             }
 
             // Use the join point's live outputs
@@ -325,19 +343,17 @@ impl<'a> RvsdgBuilder<'a> {
             outputs.push(output_vec);
             if let Some(next) = next {
                 assert_eq!(next, curr);
+                let please_remove = 1;
+                eprintln!("join point (confirmed) at {:?}", self.cfg.graph[curr].name);
             } else {
+                let please_remove = 1;
+                eprintln!("join point at {:?}", self.cfg.graph[curr].name);
                 next = Some(curr);
             }
         }
 
         let next = next.unwrap();
-        let pred_var = self.analysis.intern.intern(pred);
-        let pred = get_op(
-            pred_var,
-            &self.cfg.graph[block].pos,
-            &self.store,
-            &self.analysis.intern,
-        )?;
+        let pred = pred_op;
         let gamma_node = get_id(
             &mut self.expr,
             RvsdgBody::Gamma {

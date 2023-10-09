@@ -42,6 +42,8 @@ impl IncompleteBranch {
     fn complete(&self, graph: &mut StableDiGraph<BasicBlock, Branch>, to: NodeIndex) {
         match self {
             IncompleteBranch::Cond { from, var, val } => {
+                let please_remove = 1;
+                eprintln!("conditional branch {from:?} => {to:?}");
                 graph.add_edge(
                     *from,
                     to,
@@ -55,6 +57,8 @@ impl IncompleteBranch {
                 );
             }
             IncompleteBranch::Direct { from } => {
+                let please_remove = 1;
+                eprintln!("unconditional branch {from:?} => {to:?}");
                 graph.add_edge(
                     *from,
                     to,
@@ -223,13 +227,15 @@ impl<'a> RvsdgToCfg<'a> {
     // this is helpful in looping for loop variables or assigning to shared
     // variables across branches in a gamma
     fn assign_to_vars(&mut self, input_vars: &[RvsdgValue], resulting_vars: &[RvsdgValue]) {
-        assert!(input_vars.len() == resulting_vars.len());
+        assert_eq!(input_vars.len(), resulting_vars.len());
 
         // assign to the loop variables, making sure the types line up
         for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
             match (ivar, rvar) {
                 (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}
                 (RvsdgValue::BrilValue(oname, oty), RvsdgValue::BrilValue(lname, lty)) => {
+                    let please_remove = 1;
+                    eprintln!("{lname} <- {oname}");
                     assert_eq!(oty, lty);
                     self.current_instrs.push(Instruction::Value {
                         dest: lname.clone(),
@@ -319,6 +325,8 @@ impl<'a> RvsdgToCfg<'a> {
 
                 // evaluate pred in this block as well
                 // TODO we are assuming pred is an int here, is that actually true?
+                let please_remove = 1;
+                eprintln!("pred={pred:?}, current_args={current_args:?}");
                 let pred = self.operand_to_bril(*pred, current_args, ctx);
                 let pred_bool = self.cast_bool(&pred);
                 let prev_block = self.finish_block();
@@ -349,8 +357,10 @@ impl<'a> RvsdgToCfg<'a> {
                 // based on the predicate
                 // TODO right now we
                 // just handle the case where we branch to two things
-                assert!(outputs.len() == 2);
-                assert!(branch_blocks.len() == 2);
+                assert_eq!(outputs.len(), 2);
+                assert_eq!(branch_blocks.len(), 2);
+                let please_remove = 1;
+                eprintln!("branch blocks={branch_blocks:?}, prev_block={prev_block:?}");
 
                 // add a conditional jump from the previous block to the branch blocks
                 self.graph.add_edge(
@@ -473,11 +483,19 @@ impl<'a> RvsdgToCfg<'a> {
         };
         let res = self.graph.add_node(block);
         if self.entry_block.is_none() {
+            let please_remove = 1;
+            eprintln!("entry={res:?}");
             self.entry_block = Some(res);
         }
 
         // drain the queue of incomplete branches
         for branch in std::mem::take(&mut self.incomplete_branches) {
+            match branch {
+                IncompleteBranch::Cond { from, .. } | IncompleteBranch::Direct { from } => {
+                    let please_remove = 1;
+                    eprintln!("handling incomplete branch from {from:?}");
+                }
+            }
             branch.complete(&mut self.graph, res);
         }
 
@@ -485,7 +503,13 @@ impl<'a> RvsdgToCfg<'a> {
     }
 
     fn get_fresh(&mut self) -> String {
-        self.fresh_name.fresh()
+        let res = self.fresh_name.fresh();
+        let please_remove = 1;
+        if res == "v22" {
+            eprintln!("creating v22!");
+            // panic!("show me the stack trace");
+        }
+        res
     }
 
     // Returns the name of the variable storing the result

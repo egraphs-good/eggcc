@@ -86,6 +86,8 @@ impl Optimizer {
                 .expect("brili interp error")
             }
             None => {
+                let please_remove = 1;
+                eprintln!("bril_program=\n{program}");
                 brilirs::run_input(
                     std::io::BufReader::new(program.to_string().as_bytes()),
                     std::io::BufWriter::new(&mut optimized_out),

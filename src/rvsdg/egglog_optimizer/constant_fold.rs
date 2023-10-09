@@ -1,7 +1,7 @@
 use super::BRIL_OPS;
 
 pub(crate) fn constant_fold_egglog() -> String {
-    let mut res = vec![];
+    let mut res = vec![include_str!("constant_fold.egg").to_string()];
 
     for bril_op in BRIL_OPS {
         let op = bril_op.op;

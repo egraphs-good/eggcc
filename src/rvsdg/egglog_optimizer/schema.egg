@@ -24,6 +24,8 @@
 (function Num (i64) Literal)
 (function Float (f64) Literal)
 (function Char (String) Literal)
+(function True () Literal)
+(function False () Literal)
 
 ;; Expr
 (datatype ConstOps (const))
@@ -50,6 +52,7 @@
 
 ;; Body
 (function PureOp (Expr) Body)
+;;   predicate, inputs, and for each branch a vector of outputs
 (function Gamma (Operand VecOperand VecVecOperand) Body) ;; branching
 (function Theta (Operand VecOperand VecOperand) Body) ;; loop
 

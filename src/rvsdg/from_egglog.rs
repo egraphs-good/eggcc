@@ -156,10 +156,14 @@ impl RvsdgFunction {
                     assert_eq!(s.as_str().len(), 1);
                     Literal::Char(s.as_str().chars().next().unwrap())
                 }
-                _ => panic!("expect a list, got {lit}"),
+                ("Bool", [Lit(Int(n))]) => {
+                    assert!(n == &0 || n == &1);
+                    Literal::Bool(*n != 0)
+                }
+                _ => panic!("expected a literal, got {lit}"),
             }
         } else {
-            panic!("expect a list, got {lit}")
+            panic!("expect a literal, got {lit}")
         }
     }
 

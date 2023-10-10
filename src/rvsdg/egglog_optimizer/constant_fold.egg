@@ -3,3 +3,18 @@
 
 
 ;; eliminate gamma nodes for true and false cases
+
+
+(rule ((= gamma
+          ;; gamma predicate is true
+          (Gamma (Const (const) (Bool true))
+                 (VO inputs)
+                 (VO outputs))))
+      (
+        ;; replace whole gamma with second case
+        (union
+          gamma
+          (Subst
+          (vec-get outputs 1)
+
+          

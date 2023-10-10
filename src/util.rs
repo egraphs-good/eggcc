@@ -135,25 +135,29 @@ pub enum RunType {
     /// Do nothing to the input bril program besides parse it.
     /// Output the original program.
     Nothing,
-    /// Convert the input bril program to an internal, structured
-    /// format and output this.
+    /// Convert the input bril program to a structured
+    /// format.
+    /// Output a human-readable debug version of this structured
+    /// program, using while loops and if statements.
     StructuredConversion,
-    /// Convert the input bril program to an RVSDG and output it.
+    /// Convert the input bril program to an RVSDG and output it as an SVG.
     RvsdgConversion,
-    /// Convert the input bril program to a PEG and output it as a dot file.
+    /// Convert the input bril program to a PEG and output it in graphviz dot format.
     PegConversion,
+    /// Convert to RVSDG and back to Bril again,
+    /// outputting the bril program.
     RvsdgRoundTrip,
-    /// Convert the original program to a CFG and output it.
+    /// Convert the original program to a CFG and output it as one SVG per function.
     ToCfg,
     /// Convert the original program to a CFG and back to Bril again.
     CfgRoundTrip,
-    /// Convert the original program to a RVSDG and then to a CFG.
+    /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
     /// Convert the original program to a RVSDG, optimize it, then turn
     /// it back into a Bril program. This is the main way to run eggcc.
     RvsdgOptimize,
     /// Convert the original program to a RVSDG, optimize it, then output
-    /// the optimized RVSDG.
+    /// the optimized RVSDG as an SVG.
     OptimizedRvsdg,
     /// Convert the original program to a RVSDG, then output the egglog program
     /// that is used to optimize the RVSDG.

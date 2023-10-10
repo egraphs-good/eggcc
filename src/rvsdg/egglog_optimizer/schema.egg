@@ -1,13 +1,12 @@
 (datatype Literal)
 (datatype Expr)
 (datatype Operand)
-(datatype Body)
 
 (sort VecOperandBase (Vec Operand))
-(datatype VecOperand (VO VecOperandBase))
+(datatype Body (VO VecOperandBase))
 
-(sort VecVecOperandBase (Vec VecOperand))
-(datatype VecVecOperand (VVO VecVecOperandBase))
+(sort VecVecOperandBase (Vec Body))
+(datatype VecBody (VVO VecVecOperandBase))
 
 ;; Type
 (datatype Type
@@ -29,7 +28,7 @@
 ;; Expr
 (datatype ConstOps (const))
 (function Const (Type ConstOps Literal) Expr)
-(function Call (Type String VecOperand) Expr)
+(function Call (Type String Body) Expr)
 (function badd (Type Operand Operand) Expr)
 (function bsub (Type Operand Operand) Expr)
 (function bmul (Type Operand Operand) Expr)
@@ -52,8 +51,8 @@
 ;; Body
 (function PureOp (Expr) Body)
 ;;   predicate, inputs, and for each branch a vector of outputs
-(function Gamma (Operand VecOperand VecVecOperand) Body) ;; branching
-(function Theta (Operand VecOperand VecOperand) Body) ;; loop
+(function Gamma (Operand Body VecBody) Body) ;; branching
+(function Theta (Operand Body Body) Body) ;; loop
 
 (datatype FunctionOutput
     (StateOnly Operand)

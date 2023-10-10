@@ -7,12 +7,12 @@ fn subst_all_rule(btype: String) -> String {
   ;; For example, (SubstExprAll (vec-of (Const 1) (Const 2))
   ;;                            (Add (Arg 0) (Arg 1)))
   ;; => (Add (Const 1) (Const 2))
-  (function Subst{btype}All (VecOperand {btype}) {btype})
+  (function Subst{btype}All (Body {btype}) {btype})
 
   ;; helper that keeps track of how many arguments
   ;; we have substituted so far
   ;;       (vec of arguments, progress through that vec, and the expression to substitute into
-  (function Subst{btype}AllHelper (VecOperand i64 {btype}) {btype} :cost 100)
+  (function Subst{btype}AllHelper (Body i64 {btype}) {btype} :cost 100)
 
   (rewrite (Subst{btype}All arg-vec expr)
            (Subst{btype}AllHelper arg-vec 0 expr)
@@ -43,7 +43,7 @@ fn subst_all_rule(btype: String) -> String {
 pub(crate) fn subst_rules() -> String {
     let mut res = vec![include_str!("subst.egg").to_string()];
 
-    for btype in &["Expr", "Operand", "VecOperand", "VecVecOperand"] {
+    for btype in &["Expr", "Operand", "Body", "VecBody"] {
         res.push(subst_all_rule(btype.to_string()));
     }
 

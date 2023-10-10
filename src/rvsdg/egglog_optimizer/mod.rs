@@ -15,7 +15,7 @@ pub fn rvsdg_egglog_code() -> String {
 }
 
 pub fn rvsdg_egglog_schedule() -> String {
-    "(run 3)".to_string()
+    "(run-schedule (repeat 3 (run) (saturate subst)))".to_string()
 }
 
 #[derive(Debug, PartialEq, Clone)]

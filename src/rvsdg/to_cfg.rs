@@ -456,10 +456,6 @@ impl<'a> RvsdgToCfg<'a> {
 
                 loop_vars
             }
-            RvsdgBody::Operands { operands } => operands
-                .iter()
-                .map(|op| self.operand_to_bril(*op, current_args, ctx))
-                .collect::<Vec<_>>(),
         };
 
         self.body_cache.insert((*ctx, id), res.clone());

@@ -67,9 +67,6 @@ impl RvsdgFunction {
                         outputs,
                     }
                 }
-                ("VO", _operands) => RvsdgBody::Operands {
-                    operands: Self::expr_to_vec_operand(body, bodies),
-                },
                 _ => panic!("expected a body, got {body}"),
             };
             bodies.push(body);

@@ -525,7 +525,6 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
                     || inputs.iter().any(|arg| search_op(f, arg, pred))
                     || outputs.iter().any(|arg| search_op(f, arg, pred))
             }
-            RvsdgBody::Operands { .. } => todo!(),
         }
     }
     if search_op(f, &f.state, &mut pred) {
@@ -637,24 +636,12 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
                         .zip(os2.iter())
                         .all(|(l, r)| all_equal(l, r, f1, f2))
             }
-            (
-                RvsdgBody::Operands { operands },
-                RvsdgBody::Operands {
-                    operands: operands2,
-                },
-            ) => operands.len() == operands2.len() && all_equal(operands, operands2, f1, f2),
             (RvsdgBody::BasicOp(_), RvsdgBody::Gamma { .. })
             | (RvsdgBody::BasicOp(_), RvsdgBody::Theta { .. })
-            | (RvsdgBody::BasicOp(_), RvsdgBody::Operands { .. })
             | (RvsdgBody::Gamma { .. }, RvsdgBody::Theta { .. })
             | (RvsdgBody::Gamma { .. }, RvsdgBody::BasicOp(_))
-            | (RvsdgBody::Gamma { .. }, RvsdgBody::Operands { .. })
             | (RvsdgBody::Theta { .. }, RvsdgBody::BasicOp(_))
-            | (RvsdgBody::Theta { .. }, RvsdgBody::Gamma { .. })
-            | (RvsdgBody::Theta { .. }, RvsdgBody::Operands { .. })
-            | (RvsdgBody::Operands { .. }, RvsdgBody::BasicOp(_))
-            | (RvsdgBody::Operands { .. }, RvsdgBody::Gamma { .. })
-            | (RvsdgBody::Operands { .. }, RvsdgBody::Theta { .. }) => false,
+            | (RvsdgBody::Theta { .. }, RvsdgBody::Gamma { .. }) => false,
         }
     }
 

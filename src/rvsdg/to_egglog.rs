@@ -136,15 +136,6 @@ impl RvsdgFunction {
                 let outputs = Self::vec_operand(&outputs);
                 Call("Theta".into(), vec![pred, inputs, outputs])
             }
-            RvsdgBody::Operands {
-                operands,
-            } => {
-                let operands = operands
-                    .iter()
-                    .map(|op| self.operand_to_egglog_expr(op))
-                    .collect::<Vec<_>>();
-                Self::vec_operand(&operands)
-            }
         }
     }
 

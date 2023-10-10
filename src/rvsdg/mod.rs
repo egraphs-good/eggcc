@@ -140,13 +140,6 @@ pub(crate) enum RvsdgBody {
         inputs: Vec<Operand>,
         outputs: Vec<Operand>,
     },
-
-    /// Group several operands together
-    /// Useful for avoiding dropping important values
-    /// like the print state edge
-    Operands {
-        operands: Vec<Operand>,
-    },
 }
 
 #[derive(Debug)]

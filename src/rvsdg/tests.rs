@@ -2,7 +2,7 @@ use bril_rs::{ConstOps, Literal, Type, ValueOps};
 use egglog::EGraph;
 
 use crate::{
-    cfg::{program_to_cfg, Identifier},
+    cfg::program_to_cfg,
     rvsdg::{cfg_to_rvsdg, BasicExpr, Id, Operand, RvsdgBody},
     util::parse_from_string,
 };
@@ -76,7 +76,7 @@ impl RvsdgTest {
         )))
     }
 
-    fn void_function(&mut self, func: impl Into<Identifier>, args: &[Operand]) -> Operand {
+    fn void_function(&mut self, func: impl Into<String>, args: &[Operand]) -> Operand {
         self.make_node(RvsdgBody::BasicOp(BasicExpr::Call(
             func.into(),
             args.to_vec(),

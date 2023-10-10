@@ -100,7 +100,7 @@ pub(crate) enum BasicExpr<Op> {
     /// Essentially all of the code here does not use this value at all. The
     /// exception is the SVG rendering code, which relies on this value to
     /// determine how many output ports to add to a function call.
-    Call(Identifier, Vec<Op>, usize, Option<Type>),
+    Call(String, Vec<Op>, usize, Option<Type>),
     /// A literal constant.
     Const(ConstOps, Literal, Type),
     /// Following bril, we treat 'print' as a built-in primitive, rather than
@@ -229,6 +229,7 @@ impl RvsdgProgram {
             let name = fresh_names.fresh();
             func_names.push(name.clone());
             let expr = function.to_egglog_expr();
+            println!("{}", &expr);
             res_string.push(format!("(let {} {})", name, expr));
         }
 

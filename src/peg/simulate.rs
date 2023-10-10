@@ -1,6 +1,5 @@
 //! This module lets you interpret a PEG.
 
-use crate::cfg::Identifier;
 use crate::peg::{PegBody, PegProgram};
 use crate::rvsdg::BasicExpr;
 use bril_rs::{ConstOps, Literal, ValueOps};
@@ -107,9 +106,6 @@ impl Simulator<'_> {
                     }
                 }
                 BasicExpr::Call(f, xs, _, _) => {
-                    let Identifier::Name(f) = f else {
-                        panic!("function call identifier should be a name");
-                    };
                     let args: Vec<_> = xs
                         .iter()
                         .map(|x| self.simulate_body(*x))

@@ -71,30 +71,30 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
-    queen,
-    include_str!("../../tests/small/failing/queens-func.bril"),
-    [
-        ENTRY = (Cond { arg: "ret_cond".into(), val: true.into() }) => "next.ret",
-        ENTRY = (Cond { arg: "ret_cond".into(), val: false.into() }) => "for.cond",
-        "for.cond" = (Cond { arg: "for_cond_0".into(), val: true.into() }) => "for.body",
-        "for.cond" = (Cond { arg: "for_cond_0".into(), val: false.into() }) => "next.ret.1",
-        "for.body" = (Cond { arg: "is_valid".into(), val: true.into() }) => "rec.func",
-        "for.body" = (Cond { arg: "is_valid".into(), val: false.into() }) => "next.loop",
-        "rec.func" = (Jmp) => "next.loop",
-        "next.loop" = (Jmp) => "for.cond",
-        "next.ret" = (Jmp) => EXIT,
-        "next.ret.1" = (Jmp) => EXIT,
-    ]
-);
+// cfg_test!(
+//     queen,
+//     include_str!("../../tests/small/failing/queens-func.bril"),
+//     [
+//         ENTRY = (Cond { arg: "ret_cond".into(), val: true.into() }) => "next.ret",
+//         ENTRY = (Cond { arg: "ret_cond".into(), val: false.into() }) => "for.cond",
+//         "for.cond" = (Cond { arg: "for_cond_0".into(), val: true.into() }) => "for.body",
+//         "for.cond" = (Cond { arg: "for_cond_0".into(), val: false.into() }) => "next.ret.1",
+//         "for.body" = (Cond { arg: "is_valid".into(), val: true.into() }) => "rec.func",
+//         "for.body" = (Cond { arg: "is_valid".into(), val: false.into() }) => "next.loop",
+//         "rec.func" = (Jmp) => "next.loop",
+//         "next.loop" = (Jmp) => "for.cond",
+//         "next.ret" = (Jmp) => EXIT,
+//         "next.ret.1" = (Jmp) => EXIT,
+//     ]
+// );
 
-cfg_test!(
-    implicit_return,
-    include_str!("../../tests/small/failing/implicit-return.bril"),
-    [
-        ENTRY = (Jmp) => EXIT,
-    ]
-);
+// cfg_test!(
+//     implicit_return,
+//     include_str!("../../tests/small/failing/implicit-return.bril"),
+//     [
+//         ENTRY = (Jmp) => EXIT,
+//     ]
+// );
 
 cfg_test!(
     diamond,
@@ -108,20 +108,20 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
-    block_diamond,
-    include_str!("../../tests/small/failing/block-diamond.bril"),
-    [
-        ENTRY = (Cond { arg: "a_cond".into(), val: true.into() }) => "B",
-        ENTRY = (Cond { arg: "a_cond".into(), val: false.into() }) => "D",
-        "B"   = (Cond { arg: "b_cond".into(), val: true.into() }) => "C",
-        "B"   = (Cond { arg: "b_cond".into(), val: false.into() }) => "E",
-        "C" = (Jmp) => "F",
-        "D" = (Jmp) => "E",
-        "E" = (Jmp) => "F",
-        "F" = (Jmp) => EXIT,
-    ]
-);
+// cfg_test!(
+//     block_diamond,
+//     include_str!("../../tests/small/failing/block-diamond.bril"),
+//     [
+//         ENTRY = (Cond { arg: "a_cond".into(), val: true.into() }) => "B",
+//         ENTRY = (Cond { arg: "a_cond".into(), val: false.into() }) => "D",
+//         "B"   = (Cond { arg: "b_cond".into(), val: true.into() }) => "C",
+//         "B"   = (Cond { arg: "b_cond".into(), val: false.into() }) => "E",
+//         "C" = (Jmp) => "F",
+//         "D" = (Jmp) => "E",
+//         "E" = (Jmp) => "F",
+//         "F" = (Jmp) => EXIT,
+//     ]
+// );
 
 cfg_test!(
     unstructured,

@@ -76,7 +76,7 @@ impl RvsdgTest {
         )))
     }
 
-    fn void_function(&mut self, func: impl Into<Identifier>, args: &[Operand]) -> Operand {
+    fn void_function(&mut self, func: impl Into<String>, args: &[Operand]) -> Operand {
         self.make_node(RvsdgBody::BasicOp(BasicExpr::Call(
             func.into(),
             args.to_vec(),

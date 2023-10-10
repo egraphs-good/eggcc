@@ -14,7 +14,7 @@
         ;; replace whole gamma with second case
         (union
           gamma
-          (Subst
-          (vec-get outputs 1)
+          (SubstOperandAll inputs
+            (vec-get outputs 1)))))
 
           

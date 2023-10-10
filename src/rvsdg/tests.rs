@@ -2,7 +2,7 @@ use bril_rs::{ConstOps, Literal, Type, ValueOps};
 use egglog::EGraph;
 
 use crate::{
-    cfg::{program_to_cfg, Identifier},
+    cfg::program_to_cfg,
     rvsdg::{cfg_to_rvsdg, BasicExpr, Id, Operand, RvsdgBody},
     util::parse_from_string,
 };

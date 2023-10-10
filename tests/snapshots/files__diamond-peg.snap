@@ -1,20 +1,21 @@
 ---
 source: tests/files.rs
-expression: result.visualization
+expression: visualization.result
 ---
 digraph G {
 subgraph {
 node [ordering=out];
-v0 [label="int"];
-v1 [label="lt"];
-v2 [label="arg 0"];
-v3 [label="arg 0"];
-v4 [label="Φ"];
-v1 -> v0;
-v1 -> v0;
-v4 -> v1;
-v4 -> v2;
-v4 -> v3;
+v0 [label="arg 0"];
+v1 [label="arg 0"];
+v2 [label="lt"];
+v3 [label="arg 1"];
+v4 [label="arg 1"];
+v5 [label="Φ"];
+v2 -> v0;
+v2 -> v1;
+v5 -> v2;
+v5 -> v3;
+v5 -> v4;
 }
 }
 

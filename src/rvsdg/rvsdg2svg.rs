@@ -548,6 +548,7 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
             )),
             inputs.to_vec(),
         ),
+        RvsdgBody::Operands { .. } => todo!(),
     };
     let input_edges = operands
         .iter()
@@ -581,6 +582,7 @@ fn reachable_nodes(reachable: &mut BTreeSet<Id>, all: &[RvsdgBody], output: Oper
             RvsdgBody::BasicOp(BasicExpr::Const(..)) => vec![],
             RvsdgBody::Gamma { pred, inputs, .. } => once(pred).chain(inputs).copied().collect(),
             RvsdgBody::Theta { inputs, .. } => inputs.clone(),
+            RvsdgBody::Operands { .. } => todo!(),
         };
         for input in inputs {
             reachable_nodes(reachable, all, input);

@@ -242,6 +242,7 @@ impl PegBuilder<'_> {
 
                         edges_start + selected
                     }
+                    RvsdgBody::Operands { .. } => todo!(),
                 }
             }
         }

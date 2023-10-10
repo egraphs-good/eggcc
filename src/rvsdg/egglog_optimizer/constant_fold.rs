@@ -1,7 +1,5 @@
 use bril_rs::Type;
 
-use crate::Optimizer;
-
 use super::BRIL_OPS;
 
 pub(crate) fn constant_fold_egglog() -> String {

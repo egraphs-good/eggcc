@@ -613,6 +613,7 @@ impl Optimizer {
                 assert!(string.to_string().len() == 1);
                 Literal::Char(string.to_string().chars().next().unwrap())
             }
+            egglog::ast::Literal::Bool(bool) => Literal::Bool(*bool),
             egglog::ast::Literal::F64(float) => Literal::Float(float.into_inner()),
             egglog::ast::Literal::Unit => panic!("unit literal not supported"),
         }
@@ -623,6 +624,7 @@ impl Optimizer {
             egglog::ast::Literal::Int(_) => bril_rs::Type::Int,
             egglog::ast::Literal::String(_) => bril_rs::Type::Int,
             egglog::ast::Literal::F64(_) => bril_rs::Type::Float,
+            egglog::ast::Literal::Bool(_) => bril_rs::Type::Bool,
             egglog::ast::Literal::Unit => panic!("unit literal not supported"),
         }
     }
@@ -718,6 +720,23 @@ impl Optimizer {
 }
 
 pub(crate) fn egglog_op_to_bril(op: Symbol) -> ValueOps {
-    let with_quotes = "\"".to_owned() + &op.to_string() + "\"";
+    // remove b for bril
+    // operators like "not" and "and" collide with egglog's
+    // "not" and "and" operators
+
+    let mut b_removed = op.to_string();
+    assert!(b_removed.starts_with('b'));
+    b_removed.remove(0);
+
+    let with_quotes = "\"".to_owned() + &b_removed + "\"";
     serde_json::from_str(&with_quotes).unwrap()
+}
+
+pub(crate) fn op_to_egglog(op: ValueOps) -> Symbol {
+    // add a b for bril
+    // operators like "not" and "and" collide with egglog's
+    // "not" and "and" operators
+
+    let str = "b".to_string() + &op.to_string();
+    str.into()
 }

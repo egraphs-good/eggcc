@@ -2,6 +2,8 @@ use bril_rs::{ConstOps, Literal, Type};
 use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
+use crate::conversions::op_to_egglog;
+
 use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgType};
 
 impl RvsdgFunction {
@@ -44,7 +46,7 @@ impl RvsdgFunction {
 
         match expr {
             BasicExpr::Op(op, operands, ty) => {
-                Call(op.to_string().into(), f(operands, Some(ty.clone())))
+                Call(op_to_egglog(*op), f(operands, Some(ty.clone())))
             }
             // TODO I'm pretty sure this conversion isn't right
             BasicExpr::Call(ident, operands, _, ty) => {

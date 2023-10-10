@@ -31,31 +31,31 @@ struct BrilOp {
 // TODO do I really need to put the constant here for the size of the array?
 const BRIL_OPS: [BrilOp; 5] = [
     BrilOp {
-        op: "add",
+        op: "badd",
         egglog_op: "+",
         input_types: [Some(Type::Int), Some(Type::Int)],
         output_type: Type::Int,
     },
     BrilOp {
-        op: "sub",
+        op: "bsub",
         egglog_op: "-",
         input_types: [Some(Type::Int), Some(Type::Int)],
         output_type: Type::Int,
     },
     BrilOp {
-        op: "mul",
+        op: "bmul",
         egglog_op: "*",
         input_types: [Some(Type::Int), Some(Type::Int)],
         output_type: Type::Int,
     },
     BrilOp {
-        op: "div",
+        op: "bdiv",
         egglog_op: "/",
         input_types: [Some(Type::Int), Some(Type::Int)],
         output_type: Type::Int,
     },
     BrilOp {
-        op: "lt",
+        op: "blt",
         egglog_op: "bool-<",
         input_types: [Some(Type::Int), Some(Type::Int)],
         output_type: Type::Bool,

@@ -1,3 +1,5 @@
+// TODO handle subst from arbitrary Body
+// instead of just a `VO`
 fn subst_all_rule(btype: String) -> String {
     format!(
         "
@@ -30,12 +32,12 @@ fn subst_all_rule(btype: String) -> String {
               (Subst{btype} expr progress (vec-get arg-vec progress)))))
       :ruleset subst)
 
-    ;; base case: we are done substituting
-    (rule
-      ((= helper (Subst{btype}AllHelper (VO arg-vec) progress expr))
-        (= progress (vec-length arg-vec)))
-      ((union helper expr))
-      :ruleset subst)
+  ;; base case: we are done substituting
+  (rule
+    ((= helper (Subst{btype}AllHelper (VO arg-vec) progress expr))
+      (= progress (vec-length arg-vec)))
+    ((union helper expr))
+    :ruleset subst)
   "
     )
 }

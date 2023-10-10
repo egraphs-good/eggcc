@@ -8,13 +8,12 @@
 (rule ((= gamma
           ;; gamma predicate is true
           (Gamma (Const (const) (Bool true))
-                 (VO inputs)
-                 (VO outputs))))
+                 inputs
+                 (VVO outputs))))
       (
         ;; replace whole gamma with second case
         (union
           gamma
-          (SubstOperandAll inputs
+          (SubstBodyAll inputs
             (vec-get outputs 1)))))
 
-          

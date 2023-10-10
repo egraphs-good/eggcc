@@ -168,7 +168,6 @@ impl RvsdgFunction {
     }
 
     pub fn egglog_expr_to_function(expr: &Expr) -> RvsdgFunction {
-        eprintln!("expr: {}", expr);
         use egglog::ast::{Expr::*, Literal::*};
         if let Call(func, args) = expr {
             match (func.as_str(), &args.as_slice()) {

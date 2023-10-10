@@ -7,13 +7,17 @@
 
 (rule ((= gamma
           ;; gamma predicate is true
-          (Gamma (Const (const) (Bool true))
+          (Gamma (Node (PureOp (Const (BoolT) (const) (Bool true))))
                  inputs
-                 (VVO outputs))))
+                 (VVO outputs)))
+       (= gamma-use
+         (Project ith gamma)))
       (
-        ;; replace whole gamma with second case
+        ;; replace use of the gamma with
+        ;; the true case
         (union
-          gamma
+          gamma-use
+          (Project ith
           (SubstBodyAll inputs
-            (vec-get outputs 1)))))
+            (vec-get outputs 1))))))
 

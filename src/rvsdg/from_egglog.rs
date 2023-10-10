@@ -67,12 +67,12 @@ impl RvsdgFunction {
                         outputs,
                     }
                 }
-                _ => panic!("expect an operand, got {body}"),
+                _ => panic!("expected a body, got {body}"),
             };
             bodies.push(body);
             bodies.len() - 1
         } else {
-            panic!("expect an operand, got {body}")
+            panic!("expected a body, got {body}")
         }
     }
 
@@ -165,6 +165,7 @@ impl RvsdgFunction {
     }
 
     pub fn egglog_expr_to_function(expr: &Expr) -> RvsdgFunction {
+        eprintln!("expr: {}", expr);
         use egglog::ast::{Expr::*, Literal::*};
         if let Call(func, args) = expr {
             match (func.as_str(), &args.as_slice()) {

@@ -8,6 +8,14 @@
 (function SubstVecOperand (VecOperand i64 Operand) VecOperand)
 (function SubstVecVecOperand (VecVecOperand i64 Operand) VecVecOperand)
 
+;;  each operand in the vector substitutes into an arg
+;;  corresponding to the index
+;;                   (vec of arguments, expression to substitute into)
+(function SubstExprAll (VecOperand Expr) Expr)
+;;; (vec of arguments, vec to substitute into
+(function SubstVecOperandAll (VecOperand VecOperand) VecOperand)
+
+
 (rewrite (SubstExpr (Const ty ops lit) x v) (Const ty ops lit) :ruleset subst)
 (rewrite (SubstExpr (Call ty f args) x v) (Call ty f (SubstVecOperand args x v)) :ruleset subst)
 (rewrite (SubstExpr (badd ty a b) x v) (badd ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
@@ -90,3 +98,62 @@
   ( 
     (union (SubstVecVecOperandHelper (VVO vec) x v i) (VVO vec))
   ) :ruleset subst)
+ 
+
+
+
+;; ###########################################
+;; handle SubstExprAll and SubstVecOperandAll
+
+;;       (vec of arguments, progress through that vec, and the expression to substitute into
+;; progress means that for all indices before it, we already did the subtitution
+(function SubstExprAllHelper (VecOperand i64 Expr) Expr :cost 100)
+(rewrite (SubstExprAll arg-vec expr)
+         (SubstExprAllHelper arg-vec 0 expr)
+         :ruleset subst)
+
+(rule
+  ((= helper (SubstExprAllHelper (VO arg-vec) progress expr))
+   (< progress (vec-length arg-vec)))
+  ((union helper
+          (SubstExprAllHelper
+            (VO arg-vec)
+            ;; increment progress
+            (+ progress 1)
+            ;; substitute the current argument into the expression
+            (SubstExpr expr progress (vec-get arg-vec progress)))))
+    :ruleset subst)
+
+;; base case: we are done substituting
+(rule
+  ((= helper (SubstExprAllHelper (VO arg-vec) progress expr))
+   (= progress (vec-length arg-vec)))
+  ((union helper expr))
+  :ruleset subst)
+
+
+;; same as SubstExprAllHelper, but substituting into a vec of operands
+(function SubstVecOperandAllHelper (VecOperand i64 VecOperand) VecOperand :cost 100)
+(rewrite (SubstVecOperandAll arg-vec expr)
+         (SubstVecOperandAllHelper arg-vec 0 expr)
+         :ruleset subst)
+
+(rule
+  ((= helper (SubstVecOperandAllHelper (VO arg-vec) progress expr))
+   (< progress (vec-length arg-vec)))
+  ((union helper
+          (SubstVecOperandAllHelper
+            (VO arg-vec)
+            ;; increment progress
+            (+ progress 1)
+            ;; substitute the current argument into the expression
+            (SubstVecOperand expr progress (vec-get arg-vec progress)))))
+  :ruleset subst)
+
+;; base case: we are done substituting
+(rule
+  ((= helper (SubstVecOperandAllHelper (VO arg-vec) progress expr))
+   (= progress (vec-length arg-vec)))
+  ((union helper expr))
+  :ruleset subst)
+

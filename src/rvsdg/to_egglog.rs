@@ -54,9 +54,7 @@ impl RvsdgFunction {
             BasicExpr::Const(ConstOps::Const, lit, ty) => {
                 let lit = match (ty, lit) {
                     (Type::Int, Literal::Int(n)) => Call("Num".into(), vec![Lit(Int(*n))]),
-                    (Type::Bool, Literal::Bool(b)) => {
-                        Call("Bool".into(), vec![Lit(Int(*b as i64))])
-                    }
+                    (Type::Bool, Literal::Bool(b)) => Call("Bool".into(), vec![Lit(Bool(*b))]),
                     (Type::Float, Literal::Float(f)) => Call(
                         "Float".into(),
                         vec![Lit(F64(OrderedFloat::<f64>::from(*f)))],

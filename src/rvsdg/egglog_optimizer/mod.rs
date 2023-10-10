@@ -27,15 +27,9 @@ struct BrilOp {
     output_type: Type,
 }
 
-impl BrilOp {
-    pub fn num_inputs(&self) -> usize {
-        self.input_types.iter().filter(|t| t.is_some()).count()
-    }
-}
-
 // an in-progress list of bril operators and their implementation in egglog
 // TODO do I really need to put the constant here for the size of the array?
-const BRIL_OPS: [BrilOp; 4] = [
+const BRIL_OPS: [BrilOp; 5] = [
     BrilOp {
         op: "add",
         egglog_op: "+",
@@ -59,5 +53,11 @@ const BRIL_OPS: [BrilOp; 4] = [
         egglog_op: "/",
         input_types: [Some(Type::Int), Some(Type::Int)],
         output_type: Type::Int,
+    },
+    BrilOp {
+        op: "lt",
+        egglog_op: "bool-<",
+        input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
     },
 ];

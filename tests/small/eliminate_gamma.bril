@@ -1,6 +1,8 @@
 @main {
-  boolean: bool = const true;
-  br boolean .then .else;
+  a: int = const 1;
+  b: int = const 2;
+  condition: bool = lt a b;
+  br condition .then .else;
 .then:
   thenval: int = const 1;
   print thenval;

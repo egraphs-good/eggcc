@@ -24,7 +24,7 @@
 (function Num (i64) Literal)
 (function Float (f64) Literal)
 (function Char (String) Literal)
-(function Bool (i64) Literal)
+(function Bool (bool) Literal)
 
 ;; Expr
 (datatype ConstOps (const))

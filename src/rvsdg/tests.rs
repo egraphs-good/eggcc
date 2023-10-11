@@ -343,6 +343,7 @@ fn rvsdg_basic_odd_branch() {
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
     let actual = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
+
     assert!(deep_equal(&expected, actual));
 }
 
@@ -750,6 +751,105 @@ fn rvsdg_subst() {
                                                                      (const)
                                                                      (Num 2)))))))))))))
     (check (= substed expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
+}
+
+#[test]
+fn rvsdg_shift() {
+    const EGGLOG_PROGRAM: &str = r#"
+    (let unshifted
+              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+                                                   (Node (PureOp (Const (IntT)
+                                                                        (const)
+                                                                        (Num 1)))))))
+                                (Arg 3)))))
+    (let shifted (ShiftOperand unshifted 2 4))
+    (run-schedule (saturate shift))
+    (let expected
+              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+                                                   (Node (PureOp (Const (IntT)
+                                                                        (const)
+                                                                        (Num 1)))))))
+                                (Arg 7)))))
+    (check (= shifted expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
+
+    const EGGLOG_THETA_PROGRAM: &str = r#"
+    (let unshifted
+        (Theta
+              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+                                                   (Node (PureOp (Const (IntT)
+                                                                        (const)
+                                                                        (Num 1)))))))
+                                (Arg 3))))
+              (VO (vec-of (Arg 0)
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
+                      (Arg 1)))
+              (VO (vec-of (Arg 0)
+                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (add (IntT) (Arg 2)
+                                         (Node (PureOp (Const (IntT) (const) (Num 1)))))))
+                      (Arg 3)))))
+    (let shifted (ShiftBody unshifted 0 10))
+    (run-schedule (saturate shift))
+    (let expected
+        (Theta
+              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+                                                   (Node (PureOp (Const (IntT)
+                                                                        (const)
+                                                                        (Num 1)))))))
+                                (Arg 3))))
+              (VO (vec-of (Arg 0)
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
+                      (Node (PureOp (Const (IntT) (const) (Num 0))))
+                      (Arg 11)))
+              (VO (vec-of (Arg 0)
+                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (add (IntT) (Arg 2)
+                                         (Node (PureOp (Const (IntT) (const) (Num 1)))))))
+                      (Arg 3)))))
+    (check (= shifted expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM).unwrap();
+
+    const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let unshifted 
+        (Gamma
+         (Node
+          (PureOp
+           (lt (BoolT) (Arg 0) (Arg 1))))
+         (VO (vec-of
+          (Arg 3)
+          (Arg 0)))
+         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
+                 (VO (vec-of (Arg 0)
+                             (Node (PureOp (mul (IntT) (Arg 1)
+                                                (Node (PureOp (Const (IntT)
+                                                                     (const)
+                                                                     (Num 2)))))))))))))
+    (let shifted (ShiftBody unshifted 0 10))
+    (run-schedule (saturate shift))
+    (let expected
+        (Gamma
+         (Node
+          (PureOp
+           (lt (BoolT) (Arg 0) (Arg 11))))
+         (VO (vec-of
+          (Arg 13)
+          (Arg 0)))
+         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
+                 (VO (vec-of (Arg 0)
+                             (Node (PureOp (mul (IntT) (Arg 1)
+                                                (Node (PureOp (Const (IntT)
+                                                                     (const)
+                                                                     (Num 2)))))))))))))
+    (check (= shifted expected))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();

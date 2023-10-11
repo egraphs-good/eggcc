@@ -48,9 +48,14 @@ impl RvsdgFunction {
             BasicExpr::Op(op, operands, ty) => {
                 Call(op_to_egglog(*op), f(operands, Some(ty.clone())))
             }
-            // TODO I'm pretty sure this conversion isn't right
             BasicExpr::Call(ident, operands, _, ty) => {
-                Call(ident.to_string().into(), f(operands, ty.clone()))
+                let ident = Lit(String(ident.into()));
+                let args = Self::vec_operand(&f(operands, None));
+                let ty = match ty {
+                    Some(ty) => Call("SomeType".into(), vec![Self::expr_from_ty(ty)]),
+                    None => Call("NoneType".into(), vec![]),
+                };
+                Call("Call".into(), vec![ty, ident, args])
             }
             BasicExpr::Print(operands) => Call("PRINT".into(), f(operands, None)),
             BasicExpr::Const(ConstOps::Const, lit, ty) => {

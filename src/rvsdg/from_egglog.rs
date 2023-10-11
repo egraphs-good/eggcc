@@ -1,7 +1,7 @@
 use bril_rs::{ConstOps, Literal, Type};
 use egglog::ast::Expr;
 
-use crate::{cfg::Identifier, conversions::egglog_op_to_bril};
+use crate::conversions::egglog_op_to_bril;
 
 use super::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgType};
 
@@ -81,14 +81,9 @@ impl RvsdgFunction {
         if let Expr::Call(func, args) = expr {
             match (func.as_str(), &args.as_slice()) {
                 ("Call", [ty, Expr::Lit(Literal::String(ident)), args]) => {
-                    let args = vec_map(args, |e| Self::egglog_expr_to_operand(e, bodies));
-                    // TODO: this is imprecise, we don't know if the number of outputs is 1 or 2.
-                    BasicExpr::Call(
-                        Identifier::Name(ident.to_string()),
-                        args,
-                        1,
-                        Some(Self::egglog_expr_to_ty(ty)),
-                    )
+                    let args = Self::expr_to_vec_operand(args, bodies);
+                    let ty = Self::egglog_expr_to_option_ty(ty);
+                    BasicExpr::Call(ident.to_string(), args, 1 + ty.iter().len(), ty)
                 }
                 ("Const", [ty, _const_op, lit]) => BasicExpr::Const(
                     // todo remove the const op from the encoding because it is always ConstOps::Const
@@ -130,6 +125,19 @@ impl RvsdgFunction {
             }
         } else {
             panic!("expect a list, got {ty}")
+        }
+    }
+
+    fn egglog_expr_to_option_ty(ty: &Expr) -> Option<Type> {
+        use Expr::*;
+        if let Call(func, args) = ty {
+            match (func.as_str(), &args.as_slice()) {
+                ("SomeType", [ty]) => Some(Self::egglog_expr_to_ty(ty)),
+                ("NoneType", []) => None,
+                _ => panic!("expect an option type, got {ty}"),
+            }
+        } else {
+            panic!("expect an option type, got {ty}")
         }
     }
 

@@ -53,7 +53,6 @@ impl SwitchCfgFunction {
         });
         self.restructure_loops(&all, &mut state);
 
-        eprintln!("After restructuring loops: {:#?}", Dot::new(&self.graph));
         self.restructure_branches(&mut state);
     }
 

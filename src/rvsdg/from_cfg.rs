@@ -31,7 +31,6 @@ pub(crate) fn cfg_func_to_rvsdg(
     function_types: &FunctionTypes,
 ) -> Result<RvsdgFunction> {
     cfg.restructure();
-    eprintln!("restructured=\n{:#?}", Dot::new(&cfg.graph));
     let analysis = live_variables(cfg);
     let dom = dominators::simple_fast(&cfg.graph, cfg.entry);
     let name = cfg.name.clone();

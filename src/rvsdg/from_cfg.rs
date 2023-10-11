@@ -108,7 +108,6 @@ pub(crate) struct RvsdgBuilder<'a> {
 
 impl<'a> RvsdgBuilder<'a> {
     fn try_loop(&mut self, block: NodeIndex) -> Result<Option<NodeIndex>> {
-        eprintln!("Loop? {:?}", self.cfg.graph[block].name);
         // First, check if this is the head of a loop. There are two cases here:
         //
         // 1. The loop is a single block, in which case this block will have
@@ -244,7 +243,6 @@ impl<'a> RvsdgBuilder<'a> {
     }
 
     fn try_branch(&mut self, block: NodeIndex) -> Result<Option<NodeIndex>> {
-        eprintln!("Branch? {:?}", self.cfg.graph[block].name);
         self.translate_block(block)?;
         if self
             .cfg

@@ -1,6 +1,5 @@
 ---
 source: tests/files.rs
-assertion_line: 30
 expression: visualization.result
 ---
 main {

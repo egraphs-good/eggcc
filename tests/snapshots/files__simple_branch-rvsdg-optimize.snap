@@ -4,31 +4,67 @@ expression: visualization.result
 ---
 @main {
   v0: int = const 1;
-  v1: int = const 0;
-  v2: bool = lt v0 v1;
-  br v2 .__8__ .__6__;
-.__15__:
-  v13: int = const 0;
-  v14: int = id v13;
-  jmp .__18__;
+  jmp .__3__;
+.__35__:
+  jmp .__36__;
+.__30__:
+  v29: int = id v27;
+  jmp .__35__;
+.__28__:
+  v27: int = const 0;
+  jmp .__30__;
+.__26__:
+  jmp .__28__;
+.__34__:
+  v29: int = id v32;
+  jmp .__35__;
+.__33__:
+  v32: int = const 1;
+  jmp .__34__;
+.__31__:
+  jmp .__33__;
+.__25__:
+  br v22 .__31__ .__26__;
+.__24__:
+  jmp .__25__;
+.__23__:
+  v22: bool = lt v18 v20;
+  jmp .__24__;
+.__21__:
+  v20: int = const 0;
+  jmp .__23__;
+.__19__:
+  v18: int = const 1;
+  jmp .__21__;
 .__17__:
-  v16: int = const 1;
-  v14: int = id v16;
-  jmp .__18__;
+  jmp .__19__;
 .__12__:
-  v9: int = const 1;
-  v10: int = const 0;
-  v11: bool = lt v9 v10;
-  br v11 .__17__ .__15__;
-.__6__:
-  v4: int = const 0;
-  v5: int = id v4;
+  v11: int = id v9;
+  jmp .__17__;
+.__10__:
+  v9: int = const 0;
   jmp .__12__;
 .__8__:
-  v7: int = const 1;
-  v5: int = id v7;
-  jmp .__12__;
-.__18__:
-  print v5;
+  jmp .__10__;
+.__16__:
+  v11: int = id v14;
+  jmp .__17__;
+.__15__:
+  v14: int = const 1;
+  jmp .__16__;
+.__13__:
+  jmp .__15__;
+.__7__:
+  br v4 .__13__ .__8__;
+.__6__:
+  jmp .__7__;
+.__5__:
+  v4: bool = lt v0 v2;
+  jmp .__6__;
+.__3__:
+  v2: int = const 0;
+  jmp .__5__;
+.__36__:
+  print v11;
 }
 

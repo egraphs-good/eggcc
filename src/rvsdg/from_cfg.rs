@@ -303,15 +303,8 @@ impl<'a> RvsdgBuilder<'a> {
 
         let mut next = None;
         for (_, succ) in succs {
-            let please_remove = 1;
-            eprintln!(
-                "traversing branch starting at {:?}",
-                self.cfg.graph[succ].name
-            );
             // First, make sure that all inputs are correctly bound to inputs to the block.
             for (i, var) in input_vars.iter().copied().enumerate() {
-                let please_remove = 1;
-                eprintln!("input var={:?}, var_id={:?}", var, i);
                 self.store.insert(var, Operand::Arg(i));
             }
             // Loop until we reach a join point.
@@ -343,11 +336,7 @@ impl<'a> RvsdgBuilder<'a> {
             outputs.push(output_vec);
             if let Some(next) = next {
                 assert_eq!(next, curr);
-                let please_remove = 1;
-                eprintln!("join point (confirmed) at {:?}", self.cfg.graph[curr].name);
             } else {
-                let please_remove = 1;
-                eprintln!("join point at {:?}", self.cfg.graph[curr].name);
                 next = Some(curr);
             }
         }

@@ -9,15 +9,13 @@
           ;; gamma predicate is true
           (Gamma (Node (PureOp (Const (BoolT) (const) (Bool true))))
                  inputs
-                 (VVO outputs)))
-       (= gamma-use
-         (Project ith gamma)))
+                 (VVO outputs))))
       (
         ;; replace use of the gamma with
         ;; the true case
         (union
-          gamma-use
-          (Project ith
-          (SubstBodyAll inputs
-            (vec-get outputs 1))))))
+          gamma
+          (OperandGroup
+              (SubstVecOperandAll inputs
+                (vec-get outputs 1))))))
 

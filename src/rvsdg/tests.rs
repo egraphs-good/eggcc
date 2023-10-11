@@ -344,8 +344,6 @@ fn rvsdg_basic_odd_branch() {
     let cfg = program_to_cfg(&prog);
     let actual = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
 
-    println!("{:?}", actual);
-    println!("{}", actual.to_svg());
     assert!(deep_equal(&expected, actual));
 }
 

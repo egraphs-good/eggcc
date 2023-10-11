@@ -11,7 +11,7 @@
 use bril_rs::{ConstOps, EffectOps, Instruction, Literal, Position, Type, ValueOps};
 use hashbrown::HashMap;
 use petgraph::algo::dominators;
-use petgraph::dot::Dot;
+
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use petgraph::{algo::dominators::Dominators, stable_graph::NodeIndex};

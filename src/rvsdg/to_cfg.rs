@@ -423,7 +423,7 @@ impl<'a> RvsdgToCfg<'a> {
                         .assign_to_vars(&outputs_for_branch.values, shared_vars.as_ref().unwrap());
 
                     branch_blocks
-                        .push(self.sequence_results(&vec![outputs_for_branch, output_assigned]));
+                        .push(self.sequence_results(&[outputs_for_branch, output_assigned]));
                 }
 
                 // we need to conditionally jump to each of the branch blocks
@@ -522,7 +522,7 @@ impl<'a> RvsdgToCfg<'a> {
                 let assign_to_loop = self.assign_to_vars(&outputs_combined.values, &loop_vars);
 
                 // combine all these into a loop body
-                let loop_body = self.sequence_results(&vec![
+                let loop_body = self.sequence_results(&[
                     outputs_combined,
                     pred,
                     pred_bool.clone(),
@@ -530,7 +530,7 @@ impl<'a> RvsdgToCfg<'a> {
                 ]);
 
                 // make an edge from before the loop to the loop
-                self.sequence_results(&vec![before_block.clone(), loop_body.clone()]);
+                self.sequence_results(&[before_block.clone(), loop_body.clone()]);
 
                 // now make a block for the loop footer
                 let loop_footer_block = self.make_block(vec![]);
@@ -627,7 +627,7 @@ impl<'a> RvsdgToCfg<'a> {
                     end: new_block,
                     values: vec![RvsdgValue::BrilValue(name, ty.clone())],
                 };
-                self.sequence_results(&vec![operands, new_res])
+                self.sequence_results(&[operands, new_res])
             }
             BasicExpr::Call(_name, _operands, _output_ports, _return_type_maybe) => {
                 panic!("Not supported yet");
@@ -654,16 +654,15 @@ impl<'a> RvsdgToCfg<'a> {
                 // also need to evaluate other prints before this one
                 let second_evaluated = self.operand_to_bril(print_operands[1], current_args, ctx);
 
-                let mut instructions = vec![];
-                instructions.push(Instruction::Effect {
+                let instructions = vec![Instruction::Effect {
                     op: EffectOps::Print,
                     args: vec![argument.get_single_res().unwrap_name()],
                     funcs: vec![],
                     labels: vec![],
                     pos: None,
-                });
+                }];
                 let new_block = self.make_block(instructions);
-                self.sequence_results(&vec![
+                self.sequence_results(&[
                     argument,
                     second_evaluated,
                     TranslationResult {

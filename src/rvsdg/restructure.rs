@@ -3,7 +3,6 @@
 use hashbrown::{HashMap, HashSet};
 use petgraph::{
     algo::{dominators, tarjan_scc},
-    dot::Dot,
     graph::NodeIndex,
     stable_graph::EdgeIndex,
     visit::{EdgeRef, NodeFiltered, VisitMap},
@@ -303,7 +302,6 @@ impl SwitchCfgFunction {
     }
 
     fn restructure_branches(&mut self, state: &mut RestructureState) {
-        let please_use_nodeset_instead = 1;
         // Credit to optir for structuring the loop in this way; this is pretty different than the paper.
         let dom = dominators::simple_fast(&self.graph, self.entry);
         let dominates = |x: NodeIndex, y| {

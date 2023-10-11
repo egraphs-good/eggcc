@@ -4,10 +4,8 @@ use bril_rs::Program;
 use cfg::structured::StructuredProgram;
 use cfg::to_structured::cfg_to_structured;
 use cfg::{program_to_cfg, SimpleCfgProgram};
-use egglog::ast::Expr;
-use egglog::EGraph;
+use conversions::check_for_uninitialized_vars;
 use rvsdg::{RvsdgError, RvsdgProgram};
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use thiserror::Error;
@@ -105,18 +103,14 @@ impl Optimizer {
         String::from_utf8(optimized_out).unwrap()
     }
 
-    pub fn parse_and_optimize(&mut self, program: &str) -> Result<Program, EggCCError> {
-        let parsed = Self::parse_bril(program)?;
-        let res = self.optimize(&parsed)?;
-        Ok(res)
-    }
-
     pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {
         let abstract_prog =
             parse_abstract_program_from_read(program.as_bytes(), false, false, None);
 
-        // TODO dumb encoding does not support phi nodes yet
         /*
+        Commented out code converts to SSA format, which
+        we are currently not using anywhere.
+
         let serialized = serde_json::to_string(&abstract_prog).unwrap();
         let ssa_output = run_command_with_stdin(
             std::process::Command::new("python3").arg("bril/examples/to_ssa.py"),
@@ -139,9 +133,7 @@ impl Optimizer {
         let prog = Program::try_from(abstract_prog)
             .map_err(|err| EggCCError::ConversionError(err.to_string()))?;
 
-        // HACK: Check for uninitialized variables by looking for `__undefined`
-        // variables in the program.
-        Optimizer::check_for_uninitialized_vars(&prog)?;
+        check_for_uninitialized_vars(&prog)?;
 
         Ok(prog)
     }
@@ -183,145 +175,5 @@ impl Optimizer {
     pub fn with_num_iters(mut self, num_iters: usize) -> Self {
         self.num_iters = num_iters;
         self
-    }
-
-    pub fn structured_to_optimizer(&mut self, structured: &StructuredProgram) -> String {
-        let egg_fns: HashMap<String, Expr> = structured
-            .functions
-            .iter()
-            .map(|f| (f.name.clone(), self.func_to_expr(f)))
-            .collect();
-        let egg_str = egg_fns
-            .values()
-            .map(Optimizer::pretty_print_expr)
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        self.make_optimizer_for(&egg_str)
-    }
-
-    pub fn optimized_structured(
-        &mut self,
-        bril_program: &Program,
-    ) -> Result<StructuredProgram, EggCCError> {
-        let structured = Self::program_to_structured(bril_program)?;
-
-        let egglog_code = self.structured_to_optimizer(&structured);
-
-        let mut egraph = EGraph::default();
-        egraph
-            .parse_and_run_program(&egglog_code)
-            .map_err(EggCCError::EggLog)?
-            .into_iter()
-            .for_each(|output| log::info!("{}", output));
-
-        let egg_fns: HashMap<String, Expr> = structured
-            .functions
-            .iter()
-            .map(|f| (f.name.clone(), self.func_to_expr(f)))
-            .collect();
-
-        let mut keys = egg_fns.keys().collect::<Vec<&String>>();
-        keys.sort();
-
-        let mut termdag = Default::default();
-        let mut result = vec![];
-        for name in keys {
-            let expr = egg_fns.get(name).unwrap();
-            let (sort, value) = egraph
-                .eval_expr(expr, None, true)
-                .map_err(EggCCError::EggLog)?;
-            let (_cost, term) = egraph.extract(value, &mut termdag, &sort);
-            let structured_func = self.term_to_structured_func(&termdag, &term);
-
-            result.push(structured_func);
-        }
-        Ok(StructuredProgram { functions: result })
-    }
-
-    pub fn optimize(&mut self, bril_program: &Program) -> Result<Program, EggCCError> {
-        Ok(self.optimized_structured(bril_program)?.to_program())
-    }
-
-    pub fn make_optimizer_for(&mut self, program: &str) -> String {
-        //let schedule = "(run 3)";
-        let schedule = format!(
-            "(run-schedule (repeat {} cfold (saturate subst)))",
-            self.num_iters
-        );
-        format!(
-            "
-        (datatype Type
-          (IntT)
-          (BoolT)
-          (FloatT)
-          (CharT)
-          (PointerT Type))
-
-        (datatype Expr
-          (Int Type i64)
-          (True Type)
-          (False Type)
-          (Char Type String)
-          (Float Type f64)
-          (Var String)
-          ;; two arguments and two labels
-          (phi Type Expr Expr String String)
-          (add Type Expr Expr)
-          (sub Type Expr Expr)
-          (mul Type Expr Expr)
-          (div Type Expr Expr)
-          (lt Type Expr Expr)
-          (ptradd Type Expr Expr)
-          (load Type Expr)
-
-        )
-
-        (datatype RetVal
-          (ReturnValue String)
-          (Void))
-
-        (datatype Code
-          (Assign String Expr)
-          (store Expr Expr)
-          (free Expr)
-          (alloc Type String Expr)
-          (Print Expr))
-
-        (datatype CodeList
-          (CodeCons Code CodeList)
-          (CodeNil))
-
-        (datatype BasicBlock
-          (BlockNamed String CodeList))
-
-        (datatype StructuredBlock
-            (Block StructuredBlock)
-            (Basic BasicBlock)
-            (Ite String StructuredBlock StructuredBlock)
-            (Loop StructuredBlock)
-            (Sequence StructuredBlock StructuredBlock)
-            (Break i64)
-            (Return RetVal))
-
-        (datatype Argument
-            (Arg String Type))
-
-
-        (datatype ArgList
-            (ArgCons Argument ArgList)
-            (ArgNil))
-
-        (datatype Function
-          ;; name, arguments, and body
-          (Func String ArgList StructuredBlock))
-
-        (rewrite (add ty (Int ty a) (Int ty b)) (Int ty (+ a b)) :ruleset cfold)
-        (rewrite (sub ty (Int ty a) (Int ty b)) (Int ty (- a b)) :ruleset cfold)
-
-        {program}
-        {schedule}
-        "
-        )
     }
 }

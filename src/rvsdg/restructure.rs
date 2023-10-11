@@ -370,6 +370,8 @@ impl SwitchCfgFunction {
                     if src == mux {
                         continue;
                     }
+
+                    // TODO this is O(n), replace with a HashSet
                     if conts.iter().any(|&c| c == src) {
                         continue;
                     }

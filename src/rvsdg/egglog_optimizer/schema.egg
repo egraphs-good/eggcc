@@ -20,6 +20,9 @@
     (Bril Type)
     (PrintState))
 (sort FuncSigs (Vec EffectType))
+(datatype OptionType
+    (SomeType Type)
+    (NoneType))
 ;; Literal
 (function Num (i64) Literal)
 (function Float (f64) Literal)
@@ -28,10 +31,14 @@
 ;; Expr
 (datatype ConstOps (const))
 (function Const (Type ConstOps Literal) Expr)
-(function Call (Type String VecOperand) Expr)
+;; Call takes n + 1 arguments, where the last one is the state edge.
+;; It returns {1, 2} values, where the first one is a state edge and 
+;; the second one (optional) is the actual return value.
+(function Call (OptionType String VecOperand) Expr)
 (function add (Type Operand Operand) Expr)
 (function sub (Type Operand Operand) Expr)
 (function mul (Type Operand Operand) Expr)
+(function fmul (Type Operand Operand) Expr)
 (function div (Type Operand Operand) Expr)
 (function eq (Type Operand Operand) Expr)
 (function lt (Type Operand Operand) Expr)
@@ -70,10 +77,6 @@
 ;;     i += 1
 ;;   while(i < n);
 ;;   return ansm
-
-
-
-
 
 ;; ;; inputs: [n]
 ; (Project 0

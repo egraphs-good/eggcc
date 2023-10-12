@@ -8,6 +8,7 @@ pub fn rvsdg_egglog_code() -> String {
     let code = vec![
         include_str!("schema.egg").to_string(),
         include_str!("subst.egg").to_string(),
+        include_str!("shift.egg").to_string(),
         constant_fold_egglog(),
     ];
     code.join("\n")

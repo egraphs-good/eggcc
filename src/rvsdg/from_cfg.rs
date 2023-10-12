@@ -432,9 +432,9 @@ impl<'a> RvsdgBuilder<'a> {
                         let expr =
                             BasicExpr::Call((&funcs[0]).into(), ops, 2, Some(op_type.clone()));
                         let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
-                        self.store.insert(dest_var, Operand::Id(expr_id));
+                        self.store.insert(dest_var, Operand::Project(1, expr_id));
                         self.store
-                            .insert(self.analysis.state_var, Operand::Project(1, expr_id));
+                            .insert(self.analysis.state_var, Operand::Project(0, expr_id));
                     }
                     _ => {
                         let dest_var = self.analysis.intern.intern(dest);

@@ -5,13 +5,27 @@ expression: visualization.result
 @main {
   v0: int = const 0;
   jmp .__2__;
-.__5__:
-  v3: int = const 0;
-  v4: bool = lt v3 v3;
-  br v4 .__2__ .__6__;
-.__2__:
-  jmp .__5__;
+.__12__:
+  jmp .__13__;
+.__11__:
+  br v8 .__4__ .__12__;
+.__10__:
+  jmp .__11__;
+.__9__:
+  v8: bool = lt v5 v5;
+  jmp .__10__;
+.__7__:
+  jmp .__9__;
 .__6__:
+  v5: int = const 0;
+  jmp .__7__;
+.__4__:
+  jmp .__6__;
+.__3__:
+  jmp .__4__;
+.__2__:
+  jmp .__3__;
+.__13__:
   print v0;
 }
 

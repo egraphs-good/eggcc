@@ -51,6 +51,7 @@ impl SwitchCfgFunction {
             all.visit(node);
         });
         self.restructure_loops(&all, &mut state);
+
         self.restructure_branches(&mut state);
     }
 
@@ -221,7 +222,7 @@ impl SwitchCfgFunction {
         }
     }
 
-    fn split_arc(&mut self, edge: EdgeIndex) {
+    fn split_arc(&mut self, edge: EdgeIndex) -> NodeIndex {
         let (src, dst) = self.graph.edge_endpoints(edge).unwrap();
         let middle = self.fresh_block();
         let weight = self.graph.remove_edge(edge).unwrap();
@@ -234,6 +235,7 @@ impl SwitchCfgFunction {
                 pos: None,
             },
         );
+        middle
     }
 
     fn split_edges(&mut self, node: NodeIndex) {
@@ -366,6 +368,11 @@ impl SwitchCfgFunction {
                 // NB: there's some extra filtering that happens here in optir, do we need it?
                 while let Some((edge, src)) = walker.next(&self.graph) {
                     if src == mux {
+                        continue;
+                    }
+
+                    // TODO this is O(n), replace with a HashSet
+                    if conts.iter().any(|&c| c == src) {
                         continue;
                     }
                     let branch = self.graph.remove_edge(edge).unwrap();

@@ -3,40 +3,100 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v1: int = const 0;
-  v2: int = const 1;
-  v3: int = id v1;
-  v4: int = id v2;
-  v5: int = id v0;
-  jmp .__7__;
+  jmp .__3__;
+.__51__:
+  jmp .__52__;
+.__50__:
+  jmp .__51__;
+.__49__:
+  v7: int = id v26;
+  v8: int = id v28;
+  v9: int = id v29;
+  br v47 .__11__ .__50__;
+.__48__:
+  v46: int = const 1;
+  v47: bool = eq v27 v46;
+  jmp .__49__;
+.__45__:
+  jmp .__48__;
+.__44__:
+  jmp .__45__;
+.__43__:
+  jmp .__44__;
+.__42__:
+  jmp .__43__;
+.__41__:
+  jmp .__42__;
+.__30__:
+  v26: int = id v7;
+  v27: int = id v22;
+  v28: int = id v8;
+  v29: int = id v9;
+  jmp .__41__;
+.__25__:
+  jmp .__30__;
+.__24__:
+  jmp .__25__;
+.__23__:
+  v22: int = const 0;
+  jmp .__24__;
 .__21__:
-  v19: int = const 1;
-  v20: bool = eq v12 v19;
-  v3: int = id v11;
-  v4: int = id v13;
-  v5: int = id v14;
-  br v20 .__7__ .__22__;
-.__15__:
-  v10: int = const 0;
-  v11: int = id v3;
-  v12: int = id v10;
-  v13: int = id v4;
-  v14: int = id v5;
+  jmp .__23__;
+.__20__:
   jmp .__21__;
+.__40__:
+  v26: int = id v34;
+  v27: int = id v36;
+  v28: int = id v8;
+  v29: int = id v9;
+  jmp .__41__;
+.__39__:
+  jmp .__40__;
+.__38__:
+  jmp .__39__;
+.__37__:
+  v36: int = const 1;
+  jmp .__38__;
+.__35__:
+  v34: int = add v7 v8;
+  jmp .__37__;
+.__33__:
+  jmp .__35__;
+.__32__:
+  jmp .__33__;
+.__31__:
+  jmp .__32__;
+.__19__:
+  br v13 .__31__ .__20__;
 .__18__:
-  v16: int = add v3 v4;
-  v17: int = const 1;
-  v11: int = id v16;
-  v12: int = id v17;
-  v13: int = id v4;
-  v14: int = id v5;
-  jmp .__21__;
-.__9__:
-  v8: bool = lt v3 v5;
-  br v8 .__18__ .__15__;
-.__7__:
-  jmp .__9__;
-.__22__:
-  print v3;
+  jmp .__19__;
+.__17__:
+  jmp .__18__;
+.__16__:
+  jmp .__17__;
+.__15__:
+  jmp .__16__;
+.__14__:
+  v13: bool = lt v7 v9;
+  jmp .__15__;
+.__12__:
+  jmp .__14__;
+.__11__:
+  jmp .__12__;
+.__10__:
+  v7: int = id v2;
+  v8: int = id v4;
+  v9: int = id v0;
+  jmp .__11__;
+.__6__:
+  jmp .__10__;
+.__5__:
+  v4: int = const 1;
+  jmp .__6__;
+.__3__:
+  v2: int = const 0;
+  jmp .__5__;
+.__52__:
+  print v7;
 }
 

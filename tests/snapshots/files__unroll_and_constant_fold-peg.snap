@@ -1,0 +1,60 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+digraph G {
+subgraph {
+node [ordering=out];
+v0 [label="Θ_5"];
+v1 [label="Θ_5"];
+v2 [label="Θ_5"];
+v3 [label="Θ_5"];
+v4 [label="pass_5"];
+v5 [label="no-op"];
+v6 [label="no-op"];
+v7 [label="no-op"];
+v8 [label="no-op"];
+v9 [label="arg 0"];
+v10 [label="int"];
+v11 [label="add"];
+v12 [label="int"];
+v13 [label="int"];
+v14 [label="lt"];
+v15 [label="eval_5"];
+v16 [label="eval_5"];
+v17 [label="eval_5"];
+v18 [label="eval_5"];
+v19 [label="add"];
+v20 [label="PRINT"];
+v0 -> v9;
+v0 -> v0;
+v1 -> v10;
+v1 -> v11;
+v2 -> v12;
+v2 -> v2;
+v3 -> v13;
+v3 -> v3;
+v4 -> v14;
+v5 -> v15;
+v6 -> v19;
+v7 -> v17;
+v8 -> v18;
+v11 -> v1;
+v11 -> v3;
+v14 -> v11;
+v14 -> v2;
+v15 -> v0;
+v15 -> v4;
+v16 -> v1;
+v16 -> v4;
+v17 -> v2;
+v17 -> v4;
+v18 -> v3;
+v18 -> v4;
+v19 -> v16;
+v19 -> v18;
+v20 -> v6;
+v20 -> v5;
+}
+}
+

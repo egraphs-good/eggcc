@@ -35,13 +35,17 @@ enum RvsdgValue {
 }
 
 /// The return type of translating a part of an RVSDG
-/// Translating an RVSDG node always creates new blocks.
-/// These may be redundant or have a single input and output, but these
-/// are removed in an optimization pass.
+/// Translating an RVSDG node always creates a new
+/// subgraph with a single entry and exit node (start and end).
+/// These may be redundant or have a single input and output,
+/// so TODO these should be removed in an optimization pass (Issue #66)
 #[derive(Clone, Debug)]
 struct TranslationResult {
     start: NodeIndex,
     end: NodeIndex,
+    /// All RVSDG nodes return one or more values.
+    /// After translating the node, these output values
+    /// are bound to the following vector of [`RvsdgValue`]s.
     values: Vec<RvsdgValue>,
 }
 
@@ -198,7 +202,7 @@ impl<'a> RvsdgToCfg<'a> {
         }
         TranslationResult {
             start: results[0].start,
-            end: results[results.len() - 1].end,
+            end: results.last().unwrap().end,
             values: results[results.len() - 1].values.clone(),
         }
     }
@@ -209,10 +213,7 @@ impl<'a> RvsdgToCfg<'a> {
         // first sequence results
         let sequenced = self.sequence_results(results);
         // now make a vec of all the values
-        let mut values = vec![];
-        for res in results {
-            values.push(res.get_single_res());
-        }
+        let values = results.iter().map(|res| res.get_single_res()).collect();
 
         TranslationResult {
             start: sequenced.start,

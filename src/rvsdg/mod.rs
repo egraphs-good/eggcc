@@ -229,7 +229,6 @@ impl RvsdgProgram {
             let name = fresh_names.fresh();
             func_names.push(name.clone());
             let expr = function.to_egglog_expr();
-            println!("{}", &expr);
             res_string.push(format!("(let {} {})", name, expr));
         }
 
@@ -252,9 +251,7 @@ impl RvsdgProgram {
                 .eval_expr(&egglog::ast::Expr::Var(name.into()), None, true)
                 .unwrap();
             let (_size, extracted) = egraph.extract(value, &mut termdag, &sort);
-            functions.push(RvsdgFunction::egglog_expr_to_function(
-                &termdag.term_to_expr(&extracted),
-            ));
+            functions.push(RvsdgFunction::egglog_term_to_function(extracted, &termdag));
         }
 
         Ok(RvsdgProgram { functions })

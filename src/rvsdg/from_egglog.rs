@@ -13,7 +13,7 @@ struct RvsdgFromEgglog<'a> {
 }
 
 impl<'a> RvsdgFromEgglog<'a> {
-    fn egglog_expr_to_operand(&mut self, op: Term) -> Operand {
+    fn egglog_term_to_operand(&mut self, op: Term) -> Operand {
         use egglog::ast::Literal::*;
         if let Term::App(func, args) = &op {
             let args = args
@@ -22,9 +22,9 @@ impl<'a> RvsdgFromEgglog<'a> {
                 .collect::<Vec<_>>();
             match (func.as_str(), &args.as_slice()) {
                 ("Arg", [Term::Lit(Int(n))]) => Operand::Arg(*n as usize),
-                ("Node", [body]) => Operand::Id(self.egglog_expr_to_body(body.clone())),
+                ("Node", [body]) => Operand::Id(self.egglog_term_to_body(body.clone())),
                 ("Project", [Term::Lit(Int(n)), body]) => {
-                    Operand::Project(*n as usize, self.egglog_expr_to_body(body.clone()))
+                    Operand::Project(*n as usize, self.egglog_term_to_body(body.clone()))
                 }
                 _ => panic!("expected an operand, got {}", self.termdag.to_string(&op)),
             }
@@ -45,7 +45,7 @@ impl<'a> RvsdgFromEgglog<'a> {
         assert_eq!(args.len(), 1);
         let vec = &args[0];
         vec_map(vec.clone(), self.termdag, |term| {
-            self.egglog_expr_to_operand(term)
+            self.egglog_term_to_operand(term)
         })
     }
 
@@ -66,8 +66,11 @@ impl<'a> RvsdgFromEgglog<'a> {
         })
     }
 
-    fn egglog_expr_to_body(&mut self, body: Term) -> Id {
-        if let Term::App(func, args) = &body {
+    fn egglog_term_to_body(&mut self, body: Term) -> Id {
+        if let Some(id) = self.body_cache.get(&body) {
+            return *id;
+        }
+        let res = if let Term::App(func, args) = &body {
             let body = match (func.as_str(), &args.as_slice()) {
                 ("PureOp", [expr]) => {
                     let expr = self.termdag.get(*expr);
@@ -81,7 +84,7 @@ impl<'a> RvsdgFromEgglog<'a> {
                     let inputs = self.termdag.get(*inputs);
                     let outputs = self.termdag.get(*outputs);
 
-                    let pred = self.egglog_expr_to_operand(pred);
+                    let pred = self.egglog_term_to_operand(pred);
                     let inputs = self.expr_to_vec_operand(inputs);
                     let outputs = self.expr_to_vec_vec_operand(outputs);
                     RvsdgBody::Gamma {
@@ -95,7 +98,7 @@ impl<'a> RvsdgFromEgglog<'a> {
                     let inputs = self.termdag.get(*inputs);
                     let outputs = self.termdag.get(*outputs);
 
-                    let pred = self.egglog_expr_to_operand(pred);
+                    let pred = self.egglog_term_to_operand(pred);
                     let inputs = self.expr_to_vec_operand(inputs);
                     let outputs = self.expr_to_vec_operand(outputs);
                     RvsdgBody::Theta {
@@ -110,7 +113,10 @@ impl<'a> RvsdgFromEgglog<'a> {
             self.bodies.len() - 1
         } else {
             panic!("expect an operand, got {}", self.termdag.to_string(&body))
-        }
+        };
+
+        self.body_cache.insert(body, res);
+        res
     }
 
     fn egglog_expr_to_expr(&mut self, expr: Term) -> BasicExpr<Operand> {
@@ -133,13 +139,13 @@ impl<'a> RvsdgFromEgglog<'a> {
                     self.egglog_expr_to_ty(ty.clone()),
                 ),
                 ("PRINT", [opr1, opr2]) => {
-                    let opr1 = self.egglog_expr_to_operand(opr1.clone());
-                    let opr2 = self.egglog_expr_to_operand(opr2.clone());
+                    let opr1 = self.egglog_term_to_operand(opr1.clone());
+                    let opr2 = self.egglog_term_to_operand(opr2.clone());
                     BasicExpr::Print(vec![opr1, opr2])
                 }
                 (binop, [ty, opr1, opr2]) => {
-                    let opr1 = self.egglog_expr_to_operand(opr1.clone());
-                    let opr2 = self.egglog_expr_to_operand(opr2.clone());
+                    let opr1 = self.egglog_term_to_operand(opr1.clone());
+                    let opr2 = self.egglog_term_to_operand(opr2.clone());
                     BasicExpr::Op(
                         egglog_op_to_bril(binop.into()),
                         vec![opr1, opr2],
@@ -259,11 +265,11 @@ impl RvsdgFunction {
                         .collect::<Vec<_>>();
                     let (state, result) = match (func_output.as_str(), &func_args.as_slice()) {
                         ("StateOnly", [state]) => {
-                            (convert.egglog_expr_to_operand(state.clone()), None)
+                            (convert.egglog_term_to_operand(state.clone()), None)
                         }
                         ("StateAndValue", [state, ty, result]) => {
-                            let state = convert.egglog_expr_to_operand(state.clone());
-                            let result = convert.egglog_expr_to_operand(result.clone());
+                            let state = convert.egglog_term_to_operand(state.clone());
+                            let result = convert.egglog_term_to_operand(result.clone());
                             let ty = convert.egglog_expr_to_ty(ty.clone());
                             (state, Some((ty, result)))
                         }

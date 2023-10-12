@@ -9,198 +9,20 @@ expression: visualization.result
   v4: int = id v2;
   v5: int = id v0;
   jmp .__7__;
-.__130__:
-  v128: int = const 1;
-  v129: bool = eq v121 v128;
-  v68: int = id v87;
-  v69: int = id v100;
-  v70: int = id v112;
-  br v129 .__72__ .__131__;
-.__124__:
-  v119: int = const 0;
-  v120: int = id v68;
-  v121: int = id v119;
-  v122: int = id v69;
-  v123: int = id v70;
-  jmp .__130__;
-.__127__:
-  v125: int = add v68 v69;
-  v126: int = const 1;
-  v120: int = id v125;
-  v121: int = id v126;
-  v122: int = id v69;
-  v123: int = id v70;
-  jmp .__130__;
-.__118__:
-  v117: bool = lt v68 v70;
-  br v117 .__127__ .__124__;
-.__113__:
-  v108: int = const 0;
-  v109: int = id v68;
-  v110: int = id v108;
-  v111: int = id v69;
-  v112: int = id v70;
-  jmp .__118__;
-.__116__:
-  v114: int = add v68 v69;
-  v115: int = const 1;
-  v109: int = id v114;
-  v110: int = id v115;
-  v111: int = id v69;
-  v112: int = id v70;
-  jmp .__118__;
-.__107__:
-  v106: bool = lt v68 v70;
-  br v106 .__116__ .__113__;
-.__102__:
-  v97: int = const 0;
-  v98: int = id v68;
-  v99: int = id v97;
-  v100: int = id v69;
-  v101: int = id v70;
-  jmp .__107__;
-.__105__:
-  v103: int = add v68 v69;
-  v104: int = const 1;
-  v98: int = id v103;
-  v99: int = id v104;
-  v100: int = id v69;
-  v101: int = id v70;
-  jmp .__107__;
-.__96__:
-  v95: bool = lt v68 v70;
-  br v95 .__105__ .__102__;
-.__91__:
-  v86: int = const 0;
-  v87: int = id v68;
-  v88: int = id v86;
-  v89: int = id v69;
-  v90: int = id v70;
-  jmp .__96__;
-.__94__:
-  v92: int = add v68 v69;
-  v93: int = const 1;
-  v87: int = id v92;
-  v88: int = id v93;
-  v89: int = id v69;
-  v90: int = id v70;
-  jmp .__96__;
-.__85__:
-  v84: bool = lt v68 v70;
-  br v84 .__94__ .__91__;
-.__80__:
-  v75: int = const 0;
-  v76: int = id v68;
-  v77: int = id v75;
-  v78: int = id v69;
-  v79: int = id v70;
-  jmp .__85__;
-.__83__:
-  v81: int = add v68 v69;
-  v82: int = const 1;
-  v76: int = id v81;
-  v77: int = id v82;
-  v78: int = id v69;
-  v79: int = id v70;
-  jmp .__85__;
-.__74__:
-  v73: bool = lt v68 v70;
-  br v73 .__83__ .__80__;
-.__72__:
-  jmp .__74__;
-.__71__:
-  v66: int = const 0;
-  v67: int = const 1;
-  v68: int = id v66;
-  v69: int = id v67;
-  v70: int = id v0;
-  jmp .__72__;
-.__65__:
-  v63: int = const 1;
-  v64: bool = eq v56 v63;
-  v3: int = id v22;
-  v4: int = id v35;
-  v5: int = id v47;
-  br v64 .__7__ .__71__;
-.__59__:
-  v54: int = const 0;
-  v55: int = id v3;
-  v56: int = id v54;
-  v57: int = id v4;
-  v58: int = id v5;
-  jmp .__65__;
-.__62__:
-  v60: int = add v3 v4;
-  v61: int = const 1;
-  v55: int = id v60;
-  v56: int = id v61;
-  v57: int = id v4;
-  v58: int = id v5;
-  jmp .__65__;
-.__53__:
-  v52: bool = lt v3 v5;
-  br v52 .__62__ .__59__;
-.__48__:
-  v43: int = const 0;
-  v44: int = id v3;
-  v45: int = id v43;
-  v46: int = id v4;
-  v47: int = id v5;
-  jmp .__53__;
-.__51__:
-  v49: int = add v3 v4;
-  v50: int = const 1;
-  v44: int = id v49;
-  v45: int = id v50;
-  v46: int = id v4;
-  v47: int = id v5;
-  jmp .__53__;
-.__42__:
-  v41: bool = lt v3 v5;
-  br v41 .__51__ .__48__;
-.__37__:
-  v32: int = const 0;
-  v33: int = id v3;
-  v34: int = id v32;
-  v35: int = id v4;
-  v36: int = id v5;
-  jmp .__42__;
-.__40__:
-  v38: int = add v3 v4;
-  v39: int = const 1;
-  v33: int = id v38;
-  v34: int = id v39;
-  v35: int = id v4;
-  v36: int = id v5;
-  jmp .__42__;
-.__31__:
-  v30: bool = lt v3 v5;
-  br v30 .__40__ .__37__;
-.__26__:
-  v21: int = const 0;
-  v22: int = id v3;
-  v23: int = id v21;
-  v24: int = id v4;
-  v25: int = id v5;
-  jmp .__31__;
-.__29__:
-  v27: int = add v3 v4;
-  v28: int = const 1;
-  v22: int = id v27;
-  v23: int = id v28;
-  v24: int = id v4;
-  v25: int = id v5;
-  jmp .__31__;
-.__20__:
-  v19: bool = lt v3 v5;
-  br v19 .__29__ .__26__;
+.__21__:
+  v19: int = const 1;
+  v20: bool = eq v12 v19;
+  v3: int = id v11;
+  v4: int = id v13;
+  v5: int = id v14;
+  br v20 .__7__ .__22__;
 .__15__:
   v10: int = const 0;
   v11: int = id v3;
   v12: int = id v10;
   v13: int = id v4;
   v14: int = id v5;
-  jmp .__20__;
+  jmp .__21__;
 .__18__:
   v16: int = add v3 v4;
   v17: int = const 1;
@@ -208,13 +30,13 @@ expression: visualization.result
   v12: int = id v17;
   v13: int = id v4;
   v14: int = id v5;
-  jmp .__20__;
+  jmp .__21__;
 .__9__:
   v8: bool = lt v3 v5;
   br v8 .__18__ .__15__;
 .__7__:
   jmp .__9__;
-.__131__:
+.__22__:
   print v3;
 }
 

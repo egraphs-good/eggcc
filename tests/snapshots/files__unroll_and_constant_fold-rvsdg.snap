@@ -61,7 +61,7 @@ expression: visualization.result
 				stroke-width="2">
 			</path>
 			<path
-				d="M 983.3333 800V 815Q 983.3333 825 973.3333 825H 560Q 550 825 550 835V 850"
+				d="M 1000 800V 815Q 1000 825 990 825H 560Q 550 825 550 835V 850"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
@@ -519,15 +519,7 @@ expression: visualization.result
 					stroke-width="2">
 				</circle>
 				<circle
-					cx="33.333332"
-					cy="100"
-					fill="white"
-					r="4"
-					stroke="black"
-					stroke-width="2">
-				</circle>
-				<circle
-					cx="66.666664"
+					cx="50"
 					cy="100"
 					fill="white"
 					r="4"

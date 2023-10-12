@@ -24,7 +24,8 @@ pub(crate) struct Region {
 #[derive(Debug)]
 enum Node {
     Unit(String, usize, usize),
-    Match(Vec<(String, Region)>), // vec must be nonempty
+    // vec must be nonempty
+    Match(Vec<(String, Region)>),
     Loop(Region),
 }
 
@@ -517,7 +518,7 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
             (Node::Unit(f.to_string(), xs.len(), *n_outputs), xs.to_vec())
         }
         RvsdgBody::BasicOp(BasicExpr::Print(xs)) => {
-            (Node::Unit("PRINT".into(), xs.len(), 2), xs.to_vec())
+            (Node::Unit("PRINT".into(), xs.len(), 1), xs.to_vec())
         }
         RvsdgBody::BasicOp(BasicExpr::Const(ConstOps::Const, v, _ty)) => {
             (Node::Unit(format!("{v}"), 0, 1), vec![])

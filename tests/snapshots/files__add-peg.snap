@@ -1,6 +1,6 @@
 ---
 source: tests/files.rs
-expression: result.visualization
+expression: visualization.result
 ---
 digraph G {
 subgraph {

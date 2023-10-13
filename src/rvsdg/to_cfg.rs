@@ -135,15 +135,22 @@ impl RvsdgFunction {
             }
         }
 
+        let new_block = to_bril.make_block(vec![]);
+        let mut result = TranslationResult {
+            start: new_block,
+            end: new_block,
+            values: vec![],
+        };
         if let Some(state) = self.state {
-            to_bril.operand_to_bril(
+            let state_block = to_bril.operand_to_bril(
                 state,
                 &rvsdg_args,
-                &&RvsdgContext {
+                &RvsdgContext {
                     body: None,
                     branch: 0,
                 },
             );
+            result = to_bril.sequence_results(&[result, state_block]);
         }
         if let Some((_ty, operand)) = &self.result {
             // it doesn't matter what var we assign to

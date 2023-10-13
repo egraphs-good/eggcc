@@ -672,7 +672,7 @@ impl RvsdgFunction {
             .result_val()
             .copied()
             .into_iter()
-            .chain(self.state.clone())
+            .chain(self.state)
             .collect();
         mk_region(self.n_args + 1, &dsts, &self.nodes)
     }

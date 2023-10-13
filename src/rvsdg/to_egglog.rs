@@ -46,14 +46,19 @@ impl RvsdgFunction {
             BasicExpr::Op(op, operands, ty) => {
                 Call(op.to_string().into(), f(operands, Some(ty.clone())))
             }
-            BasicExpr::Call(ident, operands, _, ty) => {
+            BasicExpr::Call(ident, operands, _, ty, pure) => {
                 let ident = Lit(String(ident.into()));
                 let args = Self::vec_operand(&f(operands, None));
                 let ty = match ty {
                     Some(ty) => Call("SomeType".into(), vec![Self::expr_from_ty(ty)]),
                     None => Call("NoneType".into(), vec![]),
                 };
-                Call("Call".into(), vec![ty, ident, args])
+                let state_flag = if *pure {
+                    Call("Pure".into(), vec![])
+                } else {
+                    Call("Stateful".into(), vec![])
+                };
+                Call("Call".into(), vec![ty, ident, args, state_flag])
             }
             BasicExpr::Print(operands) => Call("PRINT".into(), f(operands, None)),
             BasicExpr::Const(ConstOps::Const, lit, ty) => {

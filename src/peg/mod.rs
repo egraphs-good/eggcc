@@ -130,11 +130,12 @@ impl PegBuilder<'_> {
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
                                 ty.clone(),
                             ),
-                            BasicExpr::Call(f, xs, num_outputs, ty) => BasicExpr::Call(
+                            BasicExpr::Call(f, xs, num_outputs, ty, pure) => BasicExpr::Call(
                                 f.clone(),
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),
                                 *num_outputs,
                                 ty.clone(),
+                                *pure,
                             ),
                             BasicExpr::Print(xs) => BasicExpr::Print(
                                 xs.iter().map(|x| self.get_pegs(*x, scope)).collect(),

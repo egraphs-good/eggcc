@@ -429,8 +429,13 @@ impl<'a> RvsdgBuilder<'a> {
                         let dest_var = self.analysis.intern.intern(dest);
                         let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
                         ops.push(self.store[&self.analysis.state_var]);
-                        let expr =
-                            BasicExpr::Call((&funcs[0]).into(), ops, 2, Some(op_type.clone()));
+                        let expr = BasicExpr::Call(
+                            (&funcs[0]).into(),
+                            ops,
+                            2,
+                            Some(op_type.clone()),
+                            false,
+                        );
                         let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                         self.store.insert(dest_var, Operand::Project(1, expr_id));
                         self.store
@@ -464,6 +469,7 @@ impl<'a> RvsdgBuilder<'a> {
                             .get(&funcs[0])
                             .unwrap_or_else(|| panic!("unknown function {}", funcs[0]))
                             .clone(),
+                        false, // All CFG functions are assumed to be stateful
                     );
                     let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                     self.store

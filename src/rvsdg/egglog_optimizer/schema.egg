@@ -31,12 +31,14 @@
 ;; Expr
 (datatype ConstOps (const))
 (function Const (Type ConstOps Literal) Expr)
+;; Depending on the type of functions being called,
+;; Call takes different number of arguments and returns 
+;; different number of arguments.
 ;; Call takes n + 1 arguments, where the last one is the state edge.
 ;; It returns {1, 2} values, where the first one is a state edge and 
 ;; the second one (optional) is the actual return value.
-(function Call (OptionType String VecOperand) Expr)
-;; PureCall takes exactly n arguments and returns one value.
-(function PureCall (Type String VecOperand) Expr)
+(datatype StateFlag (Pure) (Stateful))
+(function Call (OptionType String VecOperand StateFlag) Expr)
 (function add (Type Operand Operand) Expr)
 (function sub (Type Operand Operand) Expr)
 (function mul (Type Operand Operand) Expr)

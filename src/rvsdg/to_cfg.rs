@@ -639,7 +639,7 @@ impl<'a> RvsdgToCfg<'a> {
                 };
                 self.sequence_results(&[operands, new_res])
             }
-            BasicExpr::Call(_name, _operands, _output_ports, _return_type_maybe) => {
+            BasicExpr::Call(_name, _operands, _output_ports, _return_type_maybe, _pure) => {
                 panic!("Not supported yet");
             }
             BasicExpr::Const(_const_op, lit, ty) => {

@@ -82,6 +82,7 @@ impl RvsdgTest {
             args.to_vec(),
             1,
             None,
+            false,
         )))
     }
 
@@ -223,11 +224,10 @@ fn rvsdg_state_gamma() {
     let other_func = expected.void_function("other_func", &[Operand::Arg(0)]);
     let gamma = expected.gamma(c, &[Operand::Arg(0)], &[&[other_func], &[some_func]]);
     let res = Operand::Project(0, gamma);
-
-    assert!(deep_equal(
-        &expected.into_function("sub".to_owned(), vec![], None, Some(res)),
-        &rvsdg.functions[0]
-    ));
+    let expected = expected.into_function("sub".to_owned(), vec![], None, Some(res));
+    dbg!(&expected);
+    dbg!(&rvsdg.functions[0]);
+    assert!(deep_equal(&expected, &rvsdg.functions[0]));
 }
 
 #[test]
@@ -502,7 +502,7 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
         match node {
             RvsdgBody::BasicOp(x) => match x {
                 BasicExpr::Op(_, args, _)
-                | BasicExpr::Call(_, args, _, _)
+                | BasicExpr::Call(_, args, _, _, _)
                 | BasicExpr::Print(args) => args.iter().any(|arg| search_op(f, arg, pred)),
                 BasicExpr::Const(_, _, _) => false,
             },
@@ -583,25 +583,32 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
                 (BasicExpr::Op(vo1, as1, ty1), BasicExpr::Op(vo2, as2, ty2)) => {
                     vo1 == vo2 && all_equal(as1, as2, f1, f2) && ty1 == ty2
                 }
-                (BasicExpr::Call(func1, as1, n1, ty1), BasicExpr::Call(func2, as2, n2, ty2)) => {
-                    func1 == func2 && n1 == n2 && all_equal(as1, as2, f1, f2) && ty1 == ty2
+                (
+                    BasicExpr::Call(func1, as1, n1, ty1, pure1),
+                    BasicExpr::Call(func2, as2, n2, ty2, pure2),
+                ) => {
+                    func1 == func2
+                        && n1 == n2
+                        && all_equal(as1, as2, f1, f2)
+                        && ty1 == ty2
+                        && pure1 == pure2
                 }
                 (BasicExpr::Const(c1, ty1, lit1), BasicExpr::Const(c2, ty2, lit2)) => {
                     c1 == c2 && ty1 == ty2 && lit1 == lit2
                 }
                 (BasicExpr::Print(as1), BasicExpr::Print(as2)) => all_equal(as1, as2, f1, f2),
-                (BasicExpr::Call(_, _, _, _), BasicExpr::Op(_, _, _))
-                | (BasicExpr::Call(_, _, _, _), BasicExpr::Const(_, _, _))
-                | (BasicExpr::Call(_, _, _, _), BasicExpr::Print(_))
-                | (BasicExpr::Const(_, _, _), BasicExpr::Call(_, _, _, _))
-                | (BasicExpr::Const(_, _, _), BasicExpr::Op(_, _, _))
-                | (BasicExpr::Const(_, _, _), BasicExpr::Print(_))
-                | (BasicExpr::Op(_, _, _), BasicExpr::Call(_, _, _, _))
-                | (BasicExpr::Op(_, _, _), BasicExpr::Const(_, _, _))
-                | (BasicExpr::Op(_, _, _), BasicExpr::Print(_))
-                | (BasicExpr::Print(_), BasicExpr::Call(_, _, _, _))
-                | (BasicExpr::Print(_), BasicExpr::Const(_, _, _))
-                | (BasicExpr::Print(_), BasicExpr::Op(_, _, _)) => false,
+                (BasicExpr::Call(..), BasicExpr::Op(..))
+                | (BasicExpr::Call(..), BasicExpr::Const(..))
+                | (BasicExpr::Call(..), BasicExpr::Print(..))
+                | (BasicExpr::Const(..), BasicExpr::Call(..))
+                | (BasicExpr::Const(..), BasicExpr::Op(..))
+                | (BasicExpr::Const(..), BasicExpr::Print(..))
+                | (BasicExpr::Op(..), BasicExpr::Call(..))
+                | (BasicExpr::Op(..), BasicExpr::Const(..))
+                | (BasicExpr::Op(..), BasicExpr::Print(..))
+                | (BasicExpr::Print(..), BasicExpr::Call(..))
+                | (BasicExpr::Print(..), BasicExpr::Const(..))
+                | (BasicExpr::Print(..), BasicExpr::Op(..)) => false,
             },
             (
                 RvsdgBody::Theta {

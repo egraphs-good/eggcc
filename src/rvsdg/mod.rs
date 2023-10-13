@@ -94,13 +94,15 @@ pub(crate) enum BasicExpr<Op> {
     /// A primitive operation.
     Op(ValueOps, Vec<Op>, Type),
     /// A function call. The last parameter is the number of outputs to the
-    /// function. Functions always have an "extra" output that is used for the
+    /// function. Stateful functions always have an "extra" output that is used for the
     /// 'state edge' flowing out of the function.
     ///
     /// Essentially all of the code here does not use this value at all. The
     /// exception is the SVG rendering code, which relies on this value to
     /// determine how many output ports to add to a function call.
-    Call(String, Vec<Op>, usize, Option<Type>),
+    ///
+    /// The last boolean parameter denotes if the call is pure
+    Call(String, Vec<Op>, usize, Option<Type>, bool),
     /// A literal constant.
     Const(ConstOps, Literal, Type),
     /// Following bril, we treat 'print' as a built-in primitive, rather than

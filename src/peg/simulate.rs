@@ -108,7 +108,7 @@ impl Simulator<'_> {
                         op => todo!("implement {op}"),
                     }
                 }
-                BasicExpr::Call(f, xs, _, _) => {
+                BasicExpr::Call(f, xs, _, _, _) => {
                     let args: Vec<_> = xs
                         .iter()
                         .map(|x| self.simulate_body(*x))

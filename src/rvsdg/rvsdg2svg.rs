@@ -513,7 +513,7 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
         RvsdgBody::BasicOp(BasicExpr::Op(f, xs, _ty)) => {
             (Node::Unit(format!("{f}"), xs.len(), 1), xs.to_vec())
         }
-        RvsdgBody::BasicOp(BasicExpr::Call(f, xs, n_outputs, _ty)) => {
+        RvsdgBody::BasicOp(BasicExpr::Call(f, xs, n_outputs, _ty, _pure)) => {
             (Node::Unit(f.to_string(), xs.len(), *n_outputs), xs.to_vec())
         }
         RvsdgBody::BasicOp(BasicExpr::Print(xs)) => {
@@ -576,7 +576,7 @@ fn reachable_nodes(reachable: &mut BTreeSet<Id>, all: &[RvsdgBody], output: Oper
     if reachable.insert(id) {
         let inputs = match &all[id] {
             RvsdgBody::BasicOp(BasicExpr::Op(_, xs, _))
-            | RvsdgBody::BasicOp(BasicExpr::Call(_, xs, _, _))
+            | RvsdgBody::BasicOp(BasicExpr::Call(_, xs, _, _, _))
             | RvsdgBody::BasicOp(BasicExpr::Print(xs)) => xs.clone(),
             RvsdgBody::BasicOp(BasicExpr::Const(..)) => vec![],
             RvsdgBody::Gamma { pred, inputs, .. } => once(pred).chain(inputs).copied().collect(),

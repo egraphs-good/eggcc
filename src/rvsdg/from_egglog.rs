@@ -80,10 +80,18 @@ impl RvsdgFunction {
         use egglog::ast::Literal;
         if let Expr::Call(func, args) = expr {
             match (func.as_str(), &args.as_slice()) {
-                ("Call", [ty, Expr::Lit(Literal::String(ident)), args]) => {
+                (
+                    "Call",
+                    [ty, Expr::Lit(Literal::String(ident)), args, Expr::Call(state_flag, _)],
+                ) => {
                     let args = Self::expr_to_vec_operand(args, bodies);
                     let ty = Self::egglog_expr_to_option_ty(ty);
-                    BasicExpr::Call(ident.to_string(), args, 1 + ty.iter().len(), ty)
+                    let pure = match state_flag.as_str() {
+                        "Pure" => true,
+                        "Stateful" => false,
+                        _ => panic!("impossible"),
+                    };
+                    BasicExpr::Call(ident.to_string(), args, 1 + ty.iter().len(), ty, pure)
                 }
                 ("Const", [ty, _const_op, lit]) => BasicExpr::Const(
                     // todo remove the const op from the encoding because it is always ConstOps::Const

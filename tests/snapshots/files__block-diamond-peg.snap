@@ -1,0 +1,89 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+digraph G {
+subgraph {
+node [ordering=out];
+v0 [label="int"];
+v1 [label="int"];
+v2 [label="lt"];
+v3 [label="lt"];
+v4 [label="arg 0"];
+v5 [label="arg 0"];
+v6 [label="int"];
+v7 [label="add"];
+v8 [label="add"];
+v9 [label="add"];
+v10 [label="int"];
+v11 [label="int"];
+v12 [label="Φ"];
+v13 [label="Φ"];
+v14 [label="Φ"];
+v15 [label="Φ"];
+v16 [label="Φ"];
+v17 [label="arg 0"];
+v18 [label="int"];
+v19 [label="Φ"];
+v20 [label="Φ"];
+v21 [label="Φ"];
+v22 [label="Φ"];
+v23 [label="Φ"];
+v24 [label="add"];
+v25 [label="Φ"];
+v26 [label="Φ"];
+v27 [label="Φ"];
+v2 -> v0;
+v2 -> v1;
+v3 -> v1;
+v3 -> v0;
+v7 -> v6;
+v7 -> v0;
+v8 -> v7;
+v8 -> v1;
+v9 -> v8;
+v9 -> v1;
+v12 -> v3;
+v12 -> v4;
+v12 -> v5;
+v13 -> v3;
+v13 -> v9;
+v13 -> v8;
+v14 -> v3;
+v14 -> v0;
+v14 -> v0;
+v15 -> v3;
+v15 -> v1;
+v15 -> v1;
+v16 -> v3;
+v16 -> v10;
+v16 -> v11;
+v19 -> v2;
+v19 -> v12;
+v19 -> v17;
+v20 -> v2;
+v20 -> v13;
+v20 -> v7;
+v21 -> v2;
+v21 -> v14;
+v21 -> v0;
+v22 -> v2;
+v22 -> v15;
+v22 -> v1;
+v23 -> v2;
+v23 -> v16;
+v23 -> v18;
+v24 -> v20;
+v24 -> v22;
+v25 -> v23;
+v25 -> v19;
+v25 -> v19;
+v26 -> v23;
+v26 -> v20;
+v26 -> v24;
+v27 -> v23;
+v27 -> v21;
+v27 -> v21;
+}
+}
+

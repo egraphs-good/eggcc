@@ -12,8 +12,23 @@ impl RvsdgFunction {
             match (func.as_str(), &args.as_slice()) {
                 ("Arg", [Lit(Int(n))]) => Operand::Arg(*n as usize),
                 ("Node", [body]) => Operand::Id(Self::egglog_expr_to_body(body, bodies)),
+
                 ("Project", [Lit(Int(n)), body]) => {
-                    Operand::Project(*n as usize, Self::egglog_expr_to_body(body, bodies))
+                    let Call(bfunc, bargs) = body else {
+                        panic!("expected a body after project, got {body}")
+                    };
+
+                    // Every `OperandGroup` should be used by a
+                    // `Project`, so check that here and
+                    // optimize them away.
+                    match (bfunc.as_str(), &bargs.as_slice()) {
+                        ("OperandGroup", [groupbody]) => {
+                            let results = Self::expr_to_vec_operand(groupbody, bodies);
+                            assert!(results.len() > *n as usize);
+                            results[*n as usize]
+                        }
+                        _ => Operand::Project(*n as usize, Self::egglog_expr_to_body(body, bodies)),
+                    }
                 }
                 _ => panic!("expect an operand, got {op}"),
             }

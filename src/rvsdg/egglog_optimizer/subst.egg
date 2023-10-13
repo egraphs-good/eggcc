@@ -2,11 +2,11 @@
 (ruleset subst)
 
 ;;                   e  [ x -> v ]
-(function SubstExpr (Expr i64 Operand) Expr)
-(function SubstOperand (Operand i64 Operand) Operand)
-(function SubstBody (Body i64 Operand) Body)
-(function SubstVecOperand (VecOperand i64 Operand) VecOperand)
-(function SubstVecVecOperand (VecVecOperand i64 Operand) VecVecOperand)
+(function SubstExpr (Expr i64 Operand) Expr :unextractable)
+(function SubstOperand (Operand i64 Operand) Operand :unextractable)
+(function SubstBody (Body i64 Operand) Body :unextractable)
+(function SubstVecOperand (VecOperand i64 Operand) VecOperand :unextractable)
+(function SubstVecVecOperand (VecVecOperand i64 Operand) VecVecOperand :unextractable)
 
 (rewrite (SubstExpr (Const ty ops lit) x v) (Const ty ops lit) :ruleset subst)
 (rewrite (SubstExpr (Call ty f args) x v) (Call ty f (SubstVecOperand args x v)) :ruleset subst)
@@ -38,7 +38,7 @@
 
 ;; params: vec, var, op, next index to subst
 ;; rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
-(function SubstVecOperandHelper (VecOperand i64 Operand i64) VecOperand)
+(function SubstVecOperandHelper (VecOperand i64 Operand i64) VecOperand :unextractable)
 (rewrite (SubstVecOperand vec x v) (SubstVecOperandHelper vec x v 0) :ruleset subst)
 (rule
   (
@@ -66,7 +66,7 @@
 
 ;; params: vec, var, op, next index to subst
 ;; rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
-(function SubstVecVecOperandHelper (VecVecOperand i64 Operand i64) VecVecOperand)
+(function SubstVecVecOperandHelper (VecVecOperand i64 Operand i64) VecVecOperand :unextractable)
 (rewrite (SubstVecVecOperand vec x v) (SubstVecVecOperandHelper vec x v 0) :ruleset subst)
 (rule
   (

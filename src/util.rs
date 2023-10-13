@@ -266,6 +266,7 @@ pub struct Run {
     pub test_type: RunType,
     // Also interpret the resulting program
     pub interp: bool,
+    pub profile_out: Option<PathBuf>,
 }
 
 /// Some sort of visualization of the result, with a name
@@ -304,6 +305,7 @@ impl Run {
                 test_type,
                 interp: false,
                 prog_with_args: prog.clone(),
+                profile_out: None,
             };
             res.push(default.clone());
             if test_type.produces_bril() || test_type == RunType::PegConversion {
@@ -451,7 +453,7 @@ impl Run {
                 Some(Optimizer::interp(
                     &program,
                     self.prog_with_args.args.clone(),
-                    None,
+                    self.profile_out.clone(),
                 ))
             }
             _ if self.test_type == RunType::PegConversion && self.interp => {

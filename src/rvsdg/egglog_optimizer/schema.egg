@@ -35,6 +35,8 @@
 ;; It returns {1, 2} values, where the first one is a state edge and 
 ;; the second one (optional) is the actual return value.
 (function Call (OptionType String VecOperand) Expr)
+;; PureCall takes exactly n arguments and returns one value.
+(function PureCall (Type String VecOperand) Expr)
 (function add (Type Operand Operand) Expr)
 (function sub (Type Operand Operand) Expr)
 (function mul (Type Operand Operand) Expr)
@@ -61,9 +63,13 @@
 (function Theta (Operand VecOperand VecOperand) Body) ;; loop
 
 (datatype FunctionOutput
+    ;; stateful functions with no return value
     (StateOnly Operand)
+    ;; pure functions
+    (ValueOnly Type Operand)
     ;;             state   value type  value
-    (StateAndValue Operand Type        Operand))
+    (StateAndValue Operand Type        Operand)
+    (NopFunc))
 
 (datatype Function
     (Func String FuncSigs FunctionOutput))

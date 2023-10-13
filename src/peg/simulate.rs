@@ -72,7 +72,10 @@ impl Simulator<'_> {
         self.func = func_index;
         let func = &self.program.functions[func_index];
         assert_eq!(func.n_args, self.args.len());
-        assert!(self.simulate_body(func.state).is_none());
+        assert!(func
+            .state
+            .and_then(|state| self.simulate_body(state))
+            .is_none());
         func.result.and_then(|body| self.simulate_body(body))
     }
 

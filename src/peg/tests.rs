@@ -13,7 +13,7 @@ struct PegTest {
 
 impl PegTest {
     fn into_main_function(self, n_args: usize, state: Id) -> PegFunction {
-        self.into_function("main".to_owned(), n_args, None, state)
+        self.into_function("main".to_owned(), n_args, None, Some(state))
     }
 
     fn into_function(
@@ -21,7 +21,7 @@ impl PegTest {
         name: String,
         n_args: usize,
         result: Option<Id>,
-        state: Id,
+        state: Option<Id>,
     ) -> PegFunction {
         PegFunction {
             name,
@@ -116,7 +116,7 @@ fn peg_expr() {
     let res = expected.add(one, two, Type::Int);
     let arg = expected.arg(0);
     assert_eq!(
-        &expected.into_function("sub".to_owned(), 0, Some(res), arg),
+        &expected.into_function("sub".to_owned(), 0, Some(res), Some(arg)),
         &peg
     );
 }

@@ -50,7 +50,7 @@ pub(crate) struct PegFunction {
     /// The (optional) result pointing into this function.
     pub(crate) result: Option<Id>,
     /// The state edge output of this function.
-    pub(crate) state: Id,
+    pub(crate) state: Option<Id>,
 }
 
 impl PegFunction {
@@ -62,7 +62,7 @@ impl PegFunction {
             memoize: &mut HashMap::new(),
         };
         let result = rvsdg.result_val().map(|op| builder.get_pegs(*op, &[]));
-        let state = builder.get_pegs(rvsdg.state, &[]);
+        let state = rvsdg.state.map(|state| builder.get_pegs(state, &[]));
         PegFunction {
             name: rvsdg.name.clone(),
             n_args: rvsdg.n_args,

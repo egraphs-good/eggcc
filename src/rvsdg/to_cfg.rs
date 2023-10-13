@@ -154,7 +154,9 @@ impl RvsdgFunction {
             }
         }
 
-        to_bril.operand_to_bril(self.state, &rvsdg_args, &None);
+        if let Some(state) = self.state {
+            to_bril.operand_to_bril(state, &rvsdg_args, &None);
+        }
         if let Some((_ty, operand)) = &self.result {
             // it doesn't matter what var we assign to
             // TODO current args hardcoded to implicit print state

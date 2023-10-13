@@ -36,7 +36,7 @@ impl RvsdgTest {
             name,
             args.clone(),
             Some((output_ty, output)),
-            Operand::Arg(args.len()),
+            Some(Operand::Arg(args.len())),
         )
     }
 
@@ -45,7 +45,7 @@ impl RvsdgTest {
         name: String,
         args: Vec<Type>,
         result: Option<(Type, Operand)>,
-        state: Operand,
+        state: Option<Operand>,
     ) -> RvsdgFunction {
         let mut wrapped_args: Vec<_> = args.clone().into_iter().map(RvsdgType::Bril).collect();
         wrapped_args.push(RvsdgType::PrintState);
@@ -186,7 +186,7 @@ fn rvsdg_print() {
     let res1 = expected.print(v2, Operand::Arg(0));
     let res2 = expected.print(v1, res1);
     assert!(deep_equal(
-        &expected.into_function("sub".to_owned(), vec![], None, res2),
+        &expected.into_function("sub".to_owned(), vec![], None, Some(res2)),
         &rvsdg.functions[0]
     ));
 }
@@ -225,7 +225,7 @@ fn rvsdg_state_gamma() {
     let res = Operand::Project(0, gamma);
 
     assert!(deep_equal(
-        &expected.into_function("sub".to_owned(), vec![], None, res),
+        &expected.into_function("sub".to_owned(), vec![], None, Some(res)),
         &rvsdg.functions[0]
     ));
 }
@@ -336,13 +336,19 @@ fn rvsdg_basic_odd_branch() {
         "main".to_owned(),
         vec![Type::Int],
         Some((Type::Int, Operand::Project(1, gamma))),
-        Operand::Project(0, gamma),
+        Some(Operand::Project(0, gamma)),
     );
 
     // test correctness of RVSDGs converted from CFG
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
     let actual = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
+    // use std::fs::File;
+    // use std::io::Write;
+    // let mut file = File::create("expected.svg").unwrap();
+    // file.write_all(expected.to_svg().as_bytes()).unwrap();
+    // let mut file = File::create("actual.svg").unwrap();
+    // file.write_all(actual.to_svg().as_bytes()).unwrap();
     assert!(deep_equal(&expected, actual));
 }
 
@@ -414,7 +420,7 @@ fn rvsdg_odd_branch_egg_roundtrip() {
         "main".to_owned(),
         vec![Type::Int],
         Some((Type::Int, Operand::Project(1, gamma))),
-        Operand::Project(0, gamma),
+        Some(Operand::Project(0, gamma)),
     );
 
     // test correctness of RVSDGs converted from CFG
@@ -527,7 +533,10 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
             }
         }
     }
-    if search_op(f, &f.state, &mut pred) {
+    if f.state
+        .as_ref()
+        .is_some_and(|state| search_op(f, state, &mut pred))
+    {
         return true;
     }
     f.result_val()
@@ -645,9 +654,11 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
         }
     }
 
-    if !ops_equal(&f1.state, &f2.state, f1, f2) {
-        return false;
-    }
+    match (&f1.state, &f2.state) {
+        (Some(o1), Some(o2)) if !ops_equal(o1, o2, f1, f2) => return false,
+        (Some(_), None) | (None, Some(_)) => return false,
+        _ => (),
+    };
 
     match (&f1.result, &f2.result) {
         (Some((t1, o1)), Some((t2, o2))) => t1 == t2 && ops_equal(o1, o2, f1, f2),

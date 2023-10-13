@@ -672,7 +672,7 @@ impl RvsdgFunction {
             .result_val()
             .copied()
             .into_iter()
-            .chain(once(self.state))
+            .chain(self.state.clone())
             .collect();
         mk_region(self.n_args + 1, &dsts, &self.nodes)
     }
@@ -749,7 +749,7 @@ mod tests {
                 )),
             ],
             result: Some((Type::Int, Operand::Id(10))),
-            state: Operand::Arg(2),
+            state: Some(Operand::Arg(2)),
         }
         .to_svg();
 

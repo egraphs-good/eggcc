@@ -70,7 +70,7 @@ pub(crate) fn cfg_func_to_rvsdg(
         None => None,
     };
     let n_args = builder.cfg.args.len();
-    let state = builder.store[&state_var];
+    let state = Some(builder.store[&state_var]);
 
     let mut args: Vec<RvsdgType> = builder
         .cfg

@@ -177,21 +177,27 @@ impl RvsdgFunction {
             match (func.as_str(), &args.as_slice()) {
                 ("Func", [Lit(String(name)), sig, Call(func_output, func_args)]) => {
                     let args: Vec<RvsdgType> = vec_map(sig, Self::egglog_expr_to_rvsdg_ty);
-                    let n_args = args.len() - 1;
 
                     let mut nodes = vec![];
                     let (state, result) = match (func_output.as_str(), &func_args.as_slice()) {
                         ("StateOnly", [state]) => {
-                            (Self::egglog_expr_to_operand(state, &mut nodes), None)
+                            (Some(Self::egglog_expr_to_operand(state, &mut nodes)), None)
+                        }
+                        ("ValueOnly", [ty, result]) => {
+                            let result = Self::egglog_expr_to_operand(result, &mut nodes);
+                            let ty = Self::egglog_expr_to_ty(ty);
+                            (None, Some((ty, result)))
                         }
                         ("StateAndValue", [state, ty, result]) => {
                             let state = Self::egglog_expr_to_operand(state, &mut nodes);
                             let result = Self::egglog_expr_to_operand(result, &mut nodes);
                             let ty = Self::egglog_expr_to_ty(ty);
-                            (state, Some((ty, result)))
+                            (Some(state), Some((ty, result)))
                         }
+                        ("NopFunc", []) => (None, None),
                         _ => panic!("expect a function, got {expr}"),
                     };
+                    let n_args = args.len() - state.iter().len();
                     RvsdgFunction {
                         name: name.to_string(),
                         n_args,

@@ -176,8 +176,8 @@ pub struct RvsdgFunction {
     /// marked as used is to populate a result of some kind.
     pub(crate) result: Option<(Type, Operand)>,
 
-    /// The output port corersponding to the state edge of the function.
-    pub(crate) state: Operand,
+    /// The output port corresponding to the state edge of the function.
+    pub(crate) state: Option<Operand>,
 }
 
 impl fmt::Debug for RvsdgFunction {

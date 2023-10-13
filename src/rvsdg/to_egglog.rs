@@ -174,13 +174,21 @@ impl RvsdgFunction {
                 .collect(),
         );
         let output = {
-            let state = self.operand_to_egglog_expr(&self.state);
-            if let Some((ty, result)) = &self.result {
-                let value = self.operand_to_egglog_expr(result);
-                let ty = Self::expr_from_ty(ty);
-                Call("StateAndValue".into(), vec![state, ty, value])
-            } else {
-                Call("StateOnly".into(), vec![state])
+            let result = self
+                .result
+                .as_ref()
+                .map(|(ty, result)| (Self::expr_from_ty(ty), self.operand_to_egglog_expr(result)));
+            let state = self
+                .state
+                .as_ref()
+                .map(|state| self.operand_to_egglog_expr(state));
+            match (result, state) {
+                (Some((ty, result)), Some(state)) => {
+                    Call("StateAndValue".into(), vec![state, ty, result])
+                }
+                (Some((ty, result)), None) => Call("ValueOnly".into(), vec![ty, result]),
+                (None, Some(state)) => Call("StateOnly".into(), vec![state]),
+                (None, None) => Call("NopFunc".into(), vec![]),
             }
         };
         Call("Func".into(), vec![Lit(String(name)), sig, output])

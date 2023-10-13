@@ -11,6 +11,7 @@
 use bril_rs::{ConstOps, EffectOps, Instruction, Literal, Position, Type, ValueOps};
 use hashbrown::HashMap;
 use petgraph::algo::dominators;
+
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use petgraph::{algo::dominators::Dominators, stable_graph::NodeIndex};
@@ -269,6 +270,13 @@ impl<'a> RvsdgBuilder<'a> {
                 panic!("Invalid mix of conditional and non-conditional branches in block {block:?}")
             }
         }));
+        let pred_var = self.analysis.intern.intern(pred);
+        let pred_op = get_op(
+            pred_var,
+            &self.cfg.graph[block].pos,
+            &self.store,
+            &self.analysis.intern,
+        )?;
         succs.sort_by_key(|(val, _)| *val);
         // Branches should be contiguous.
         succs
@@ -299,7 +307,6 @@ impl<'a> RvsdgBuilder<'a> {
             // Loop until we reach a join point.
             let mut curr = succ;
             loop {
-                curr = self.try_loop(curr)?.unwrap();
                 if self
                     .cfg
                     .graph
@@ -309,6 +316,7 @@ impl<'a> RvsdgBuilder<'a> {
                 {
                     break;
                 }
+                curr = self.try_loop(curr)?.unwrap();
             }
 
             // Use the join point's live outputs
@@ -331,13 +339,7 @@ impl<'a> RvsdgBuilder<'a> {
         }
 
         let next = next.unwrap();
-        let pred_var = self.analysis.intern.intern(pred);
-        let pred = get_op(
-            pred_var,
-            &self.cfg.graph[block].pos,
-            &self.store,
-            &self.analysis.intern,
-        )?;
+        let pred = pred_op;
         let gamma_node = get_id(
             &mut self.expr,
             RvsdgBody::Gamma {

@@ -4,13 +4,25 @@ expression: visualization.result
 ---
 @main {
   v0: int = const 4;
-  v1: int = const 4;
-  v2: bool = lt v0 v1;
-  br v2 .__5__ .__4__;
-.__4__:
-  jmp .__6__;
-.__5__:
-  jmp .__6__;
+  jmp .__3__;
+.__9__:
+  jmp .__12__;
+.__8__:
+  jmp .__9__;
+.__11__:
+  jmp .__12__;
+.__10__:
+  jmp .__11__;
+.__7__:
+  br v4 .__10__ .__8__;
 .__6__:
+  jmp .__7__;
+.__5__:
+  v4: bool = lt v0 v2;
+  jmp .__6__;
+.__3__:
+  v2: int = const 4;
+  jmp .__5__;
+.__12__:
 }
 

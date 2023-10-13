@@ -229,7 +229,6 @@ impl RvsdgProgram {
             let name = fresh_names.fresh();
             func_names.push(name.clone());
             let expr = function.to_egglog_expr();
-            println!("{}", &expr);
             res_string.push(format!("(let {} {})", name, expr));
         }
 

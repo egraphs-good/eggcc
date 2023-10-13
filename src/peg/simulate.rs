@@ -147,13 +147,10 @@ impl Simulator<'_> {
                 }
             }
             PegBody::Phi(c, x, y) => {
-                let c = self.simulate_body(*c);
-                let x = self.simulate_body(*x);
-                let y = self.simulate_body(*y);
-                if bool(c) {
-                    x
+                if bool(self.simulate_body(*c)) {
+                    self.simulate_body(*x)
                 } else {
-                    y
+                    self.simulate_body(*y)
                 }
             }
             PegBody::Theta(a, b, l) => {

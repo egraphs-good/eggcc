@@ -1,6 +1,6 @@
 ---
 source: tests/files.rs
-expression: result.visualization
+expression: visualization.result
 ---
 <svg
 	height="500"
@@ -47,7 +47,7 @@ expression: result.visualization
 				stroke-width="2">
 			</path>
 			<path
-				d="M 533.3333 450V 465Q 533.3333 475 523.3333 475H 335Q 325 475 325 485V 500"
+				d="M 550 450V 465Q 550 475 540 475H 335Q 325 475 325 485V 500"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
@@ -195,15 +195,7 @@ expression: result.visualization
 					stroke-width="2">
 				</circle>
 				<circle
-					cx="33.333332"
-					cy="100"
-					fill="white"
-					r="4"
-					stroke="black"
-					stroke-width="2">
-				</circle>
-				<circle
-					cx="66.666664"
+					cx="50"
 					cy="100"
 					fill="white"
 					r="4"

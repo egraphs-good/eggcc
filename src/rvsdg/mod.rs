@@ -94,7 +94,7 @@ pub(crate) enum BasicExpr<Op> {
     /// A primitive operation.
     Op(ValueOps, Vec<Op>, Type),
     /// A function call. The last parameter is the number of outputs to the
-    /// function. Stateful functions always have an "extra" output that is used for the
+    /// function. *Stateful* functions always have an "extra" output that is used for the
     /// 'state edge' flowing out of the function.
     ///
     /// Essentially all of the code here does not use this value at all. The

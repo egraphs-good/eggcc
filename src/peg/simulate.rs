@@ -96,11 +96,26 @@ impl Simulator<'_> {
                         ValueOps::Add => {
                             Some(Literal::Int(int(xs[0].clone()) + int(xs[1].clone())))
                         }
+                        ValueOps::Sub => {
+                            Some(Literal::Int(int(xs[0].clone()) - int(xs[1].clone())))
+                        }
                         ValueOps::Mul => {
                             Some(Literal::Int(int(xs[0].clone()) * int(xs[1].clone())))
                         }
                         ValueOps::Div => {
                             Some(Literal::Int(int(xs[0].clone()) / int(xs[1].clone())))
+                        }
+                        ValueOps::Fadd => {
+                            Some(Literal::Float(float(xs[0].clone()) + float(xs[1].clone())))
+                        }
+                        ValueOps::Fsub => {
+                            Some(Literal::Float(float(xs[0].clone()) - float(xs[1].clone())))
+                        }
+                        ValueOps::Fmul => {
+                            Some(Literal::Float(float(xs[0].clone()) * float(xs[1].clone())))
+                        }
+                        ValueOps::Fdiv => {
+                            Some(Literal::Float(float(xs[0].clone()) / float(xs[1].clone())))
                         }
                         ValueOps::Lt => {
                             Some(Literal::Bool(int(xs[0].clone()) < int(xs[1].clone())))
@@ -108,12 +123,10 @@ impl Simulator<'_> {
                         op => todo!("implement {op}"),
                     }
                 }
-                BasicExpr::Call(f, xs, _, _, _) => {
-                    let args: Vec<_> = xs
-                        .iter()
-                        .map(|x| self.simulate_body(*x))
-                        .map(Option::unwrap)
-                        .collect();
+                BasicExpr::Call(f, xs, _, _, pure) => {
+                    let args: Vec<_> = xs.iter().flat_map(|x| self.simulate_body(*x)).collect();
+                    // Pure functions should not have non-value arguments
+                    assert!(!pure || xs.len() == args.len());
                     let mut s = Simulator {
                         args,
                         ..self.clone()
@@ -202,6 +215,13 @@ impl Simulator<'_> {
 fn int(literal: Option<Literal>) -> i64 {
     match literal.unwrap() {
         Literal::Int(x) => x,
+        literal => panic!("expected int, found {literal}"),
+    }
+}
+
+fn float(literal: Option<Literal>) -> f64 {
+    match literal.unwrap() {
+        Literal::Float(x) => x,
         literal => panic!("expected int, found {literal}"),
     }
 }

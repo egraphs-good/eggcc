@@ -100,7 +100,6 @@ impl RvsdgProgram {
     pub fn to_cfg(&self) -> SimpleCfgProgram {
         // TODO right now we only support one function
         // which is named main
-        assert!(self.functions.len() == 1);
         CfgProgram {
             functions: self.functions.iter().map(|f| f.to_cfg()).collect(),
         }
@@ -184,7 +183,7 @@ impl RvsdgFunction {
 
         // TODO hard-coded name
         CfgFunction {
-            name: "main".into(),
+            name: self.name.clone(),
             args: func_args,
             graph: to_bril.graph,
             entry: result.start,
@@ -639,8 +638,61 @@ impl<'a> RvsdgToCfg<'a> {
                 };
                 self.sequence_results(&[operands, new_res])
             }
-            BasicExpr::Call(_name, _operands, _output_ports, _return_type_maybe, _pure) => {
-                panic!("Not supported yet");
+            BasicExpr::Call(func_name, operands, _output_ports, return_type, pure) => {
+                // We need to remove the last argument if the function call is stateful.
+                let operand_len = operands.len() - ((!pure) as usize);
+                let operand_results = operands[..operand_len]
+                    .iter()
+                    .map(|op| self.operand_to_bril(*op, current_args, ctx))
+                    .collect::<Vec<_>>();
+                let operands = self.combine_results(&operand_results);
+                let args = operands.values.iter().map(|v| v.unwrap_name()).collect();
+
+                let state_value = if *pure {
+                    vec![]
+                } else {
+                    vec![RvsdgValue::StateEdge]
+                };
+
+                let var_name = self.get_fresh();
+                match return_type {
+                    Some(ty) => {
+                        let instructions = vec![Instruction::Value {
+                            args,
+                            dest: var_name.clone(),
+                            funcs: vec![func_name.clone()],
+                            labels: vec![],
+                            op: ValueOps::Call,
+                            pos: None,
+                            op_type: ty.clone(),
+                        }];
+                        let new_block = self.make_block(instructions);
+                        let mut values = vec![RvsdgValue::BrilValue(var_name, ty.clone())];
+                        values.extend(state_value);
+                        let new_res = TranslationResult {
+                            start: new_block,
+                            end: new_block,
+                            values,
+                        };
+                        self.sequence_results(&[operands, new_res])
+                    }
+                    None => {
+                        let instructions = vec![Instruction::Effect {
+                            args,
+                            funcs: vec![func_name.clone()],
+                            labels: vec![],
+                            op: EffectOps::Call,
+                            pos: None,
+                        }];
+                        let new_block = self.make_block(instructions);
+                        let new_res = TranslationResult {
+                            start: new_block,
+                            end: new_block,
+                            values: state_value,
+                        };
+                        self.sequence_results(&[operands, new_res])
+                    }
+                }
             }
             BasicExpr::Const(_const_op, lit, ty) => {
                 let dest = self.get_fresh();

@@ -53,6 +53,6 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
 
 fn main() {
     let args = libtest_mimic::Arguments::from_args();
-    let tests = generate_tests("tests/**/*.bril");
+    let tests = generate_tests("./tests/**/*.bril");
     libtest_mimic::run(&args, tests).exit();
 }

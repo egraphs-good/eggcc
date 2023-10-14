@@ -730,7 +730,7 @@ impl<'a> RvsdgToCfg<'a> {
                     TranslationResult {
                         start: new_block,
                         end: new_block,
-                        values: vec![],
+                        values: vec![RvsdgValue::StateEdge],
                     },
                 ])
             }

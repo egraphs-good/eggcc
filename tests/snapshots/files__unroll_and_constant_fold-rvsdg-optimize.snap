@@ -3,106 +3,108 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main {
-  jmp .__2__;
+  jmp .__1__;
+.__56__:
+  jmp .__57__;
 .__55__:
-  jmp .__56__;
-.__54__:
-  v35: int = id v42;
-  v36: int = id v36;
+  v36: int = id v43;
   v37: int = id v37;
-  br v51 .__39__ .__55__;
+  v38: int = id v38;
+  br v52 .__40__ .__56__;
+.__54__:
+  jmp .__55__;
 .__53__:
+  v52: bool = lt v49 v37;
   jmp .__54__;
-.__52__:
-  v51: bool = lt v48 v36;
+.__51__:
   jmp .__53__;
 .__50__:
-  jmp .__52__;
-.__49__:
-  v48: int = add v35 v37;
+  v49: int = add v36 v38;
+  jmp .__51__;
+.__48__:
   jmp .__50__;
 .__47__:
-  jmp .__49__;
+  jmp .__48__;
 .__46__:
   jmp .__47__;
 .__45__:
   jmp .__46__;
 .__44__:
+  v43: int = add v36 v38;
   jmp .__45__;
-.__43__:
-  v42: int = add v35 v37;
+.__42__:
   jmp .__44__;
 .__41__:
-  jmp .__43__;
+  jmp .__42__;
 .__40__:
   jmp .__41__;
 .__39__:
+  v36: int = id v30;
+  v37: int = id v32;
+  v38: int = id v34;
   jmp .__40__;
-.__38__:
-  v35: int = id v29;
-  v36: int = id v31;
-  v37: int = id v33;
+.__35__:
+  v34: int = const 1;
   jmp .__39__;
-.__34__:
-  v33: int = const 1;
-  jmp .__38__;
-.__32__:
-  v31: int = const 3;
-  jmp .__34__;
-.__30__:
-  v29: int = const 0;
-  jmp .__32__;
+.__33__:
+  v32: int = const 3;
+  jmp .__35__;
+.__31__:
+  v30: int = const 0;
+  jmp .__33__;
+.__29__:
+  jmp .__31__;
 .__28__:
-  jmp .__30__;
+  jmp .__29__;
 .__27__:
-  jmp .__28__;
-.__26__:
-  v7: int = id v14;
-  v8: int = id v8;
+  v8: int = id v15;
   v9: int = id v9;
-  br v23 .__11__ .__27__;
+  v10: int = id v10;
+  br v24 .__12__ .__28__;
+.__26__:
+  jmp .__27__;
 .__25__:
+  v24: bool = lt v21 v9;
   jmp .__26__;
-.__24__:
-  v23: bool = lt v20 v8;
+.__23__:
   jmp .__25__;
 .__22__:
-  jmp .__24__;
-.__21__:
-  v20: int = add v7 v9;
+  v21: int = add v8 v10;
+  jmp .__23__;
+.__20__:
   jmp .__22__;
 .__19__:
-  jmp .__21__;
+  jmp .__20__;
 .__18__:
   jmp .__19__;
 .__17__:
   jmp .__18__;
 .__16__:
+  v15: int = add v8 v10;
   jmp .__17__;
-.__15__:
-  v14: int = add v7 v9;
+.__14__:
   jmp .__16__;
 .__13__:
-  jmp .__15__;
+  jmp .__14__;
 .__12__:
   jmp .__13__;
 .__11__:
+  v8: int = id v2;
+  v9: int = id v4;
+  v10: int = id v6;
   jmp .__12__;
-.__10__:
-  v7: int = id v1;
-  v8: int = id v3;
-  v9: int = id v5;
+.__7__:
+  v6: int = const 1;
   jmp .__11__;
-.__6__:
-  v5: int = const 1;
-  jmp .__10__;
-.__4__:
-  v3: int = const 3;
-  jmp .__6__;
-.__2__:
-  v1: int = const 0;
-  jmp .__4__;
-.__56__:
-  print v7;
+.__5__:
+  v4: int = const 3;
+  jmp .__7__;
+.__3__:
+  v2: int = const 0;
+  jmp .__5__;
+.__1__:
+  jmp .__3__;
+.__57__:
+  print v8;
 }
 

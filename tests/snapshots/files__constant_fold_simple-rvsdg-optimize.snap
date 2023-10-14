@@ -3,11 +3,13 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main {
-  v0: int = const 1;
   jmp .__2__;
-.__2__:
-  jmp .__3__;
 .__3__:
-  print v0;
+  jmp .__4__;
+.__2__:
+  v1: int = const 1;
+  jmp .__3__;
+.__4__:
+  print v1;
 }
 

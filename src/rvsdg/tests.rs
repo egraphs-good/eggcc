@@ -432,7 +432,7 @@ fn rvsdg_odd_branch_egg_roundtrip() {
     const EGGLOG_PROGRAM: &str = r#"
     (let loop
         (Theta
-              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
                                                                         (const)
                                                                         (Num 1)))))))
@@ -442,22 +442,22 @@ fn rvsdg_odd_branch_egg_roundtrip() {
                       (Node (PureOp (Const (IntT) (const) (Num 0))))
                       (Arg 0)))
               (VO (vec-of (Arg 0)
-                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
-                      (Node (PureOp (add (IntT) (Arg 2)
+                      (Node (PureOp (badd (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (badd (IntT) (Arg 2)
                                          (Node (PureOp (Const (IntT) (const) (Num 1)))))))
                       (Arg 3)))))
     (let rescaled 
         (Gamma
          (Node
           (PureOp
-           (lt (BoolT) (Project 1 loop)
+           (blt (BoolT) (Project 1 loop)
                (Node (PureOp (Const (IntT) (const) (Num 5)))))))
          (VO (vec-of
           (Project 0 loop)
           (Project 1 loop)))
          (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
                  (VO (vec-of (Arg 0)
-                             (Node (PureOp (mul (IntT) (Arg 1)
+                             (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
                                                                      (Num 2)))))))))))))
@@ -665,7 +665,7 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
 fn rvsdg_subst() {
     const EGGLOG_PROGRAM: &str = r#"
     (let unsubsted
-              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
                                                                         (const)
                                                                         (Num 1)))))))
@@ -673,7 +673,7 @@ fn rvsdg_subst() {
     (let substed (SubstOperand unsubsted 3 (Arg 7)))
     (run-schedule (saturate subst))
     (let expected
-              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
                                                                         (const)
                                                                         (Num 1)))))))
@@ -686,7 +686,7 @@ fn rvsdg_subst() {
     const EGGLOG_THETA_PROGRAM: &str = r#"
     (let unsubsted
         (Theta
-              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
                                                                         (const)
                                                                         (Num 1)))))))
@@ -696,15 +696,15 @@ fn rvsdg_subst() {
                       (Node (PureOp (Const (IntT) (const) (Num 0))))
                       (Arg 1)))
               (VO (vec-of (Arg 0)
-                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
-                      (Node (PureOp (add (IntT) (Arg 2)
+                      (Node (PureOp (badd (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (badd (IntT) (Arg 2)
                                          (Node (PureOp (Const (IntT) (const) (Num 1)))))))
                       (Arg 3)))))
     (let substed (SubstBody unsubsted 1 (Arg 7)))
     (run-schedule (saturate subst))
     (let expected
         (Theta
-              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
                                                                         (const)
                                                                         (Num 1)))))))
@@ -714,8 +714,8 @@ fn rvsdg_subst() {
                       (Node (PureOp (Const (IntT) (const) (Num 0))))
                       (Arg 7)))
               (VO (vec-of (Arg 0)
-                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
-                      (Node (PureOp (add (IntT) (Arg 2)
+                      (Node (PureOp (badd (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (badd (IntT) (Arg 2)
                                          (Node (PureOp (Const (IntT) (const) (Num 1)))))))
                       (Arg 3)))))
     (check (= substed expected))
@@ -728,13 +728,13 @@ fn rvsdg_subst() {
         (Gamma
          (Node
           (PureOp
-           (lt (BoolT) (Arg 0) (Arg 0))))
+           (blt (BoolT) (Arg 0) (Arg 0))))
          (VO (vec-of
           (Arg 1)
           (Arg 0)))
          (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
                  (VO (vec-of (Arg 0)
-                             (Node (PureOp (mul (IntT) (Arg 1)
+                             (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
                                                                      (Num 2)))))))))))))
@@ -744,13 +744,13 @@ fn rvsdg_subst() {
         (Gamma
          (Node
           (PureOp
-           (lt (BoolT) (Arg 7) (Arg 7))))
+           (blt (BoolT) (Arg 7) (Arg 7))))
          (VO (vec-of
           (Arg 1)
           (Arg 7)))
          (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
                  (VO (vec-of (Arg 0)
-                             (Node (PureOp (mul (IntT) (Arg 1)
+                             (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
                                                                      (Num 2)))))))))))))
@@ -764,7 +764,7 @@ fn rvsdg_subst() {
 fn rvsdg_shift() {
     const EGGLOG_PROGRAM: &str = r#"
     (let unshifted
-              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
                                                                         (const)
                                                                         (Num 1)))))))
@@ -772,7 +772,7 @@ fn rvsdg_shift() {
     (let shifted (ShiftOperand unshifted 2 4))
     (run-schedule (saturate shift))
     (let expected
-              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
                                                                         (const)
                                                                         (Num 1)))))))
@@ -785,7 +785,7 @@ fn rvsdg_shift() {
     const EGGLOG_THETA_PROGRAM: &str = r#"
     (let unshifted
         (Theta
-              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
                                                                         (const)
                                                                         (Num 1)))))))
@@ -795,15 +795,15 @@ fn rvsdg_shift() {
                       (Node (PureOp (Const (IntT) (const) (Num 0))))
                       (Arg 1)))
               (VO (vec-of (Arg 0)
-                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
-                      (Node (PureOp (add (IntT) (Arg 2)
+                      (Node (PureOp (badd (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (badd (IntT) (Arg 2)
                                          (Node (PureOp (Const (IntT) (const) (Num 1)))))))
                       (Arg 3)))))
     (let shifted (ShiftBody unshifted 0 10))
     (run-schedule (saturate shift))
     (let expected
         (Theta
-              (Node (PureOp (lt (BoolT) (Node (PureOp (add (IntT) (Arg 2)
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
                                                                         (const)
                                                                         (Num 1)))))))
@@ -813,8 +813,8 @@ fn rvsdg_shift() {
                       (Node (PureOp (Const (IntT) (const) (Num 0))))
                       (Arg 11)))
               (VO (vec-of (Arg 0)
-                      (Node (PureOp (add (IntT) (Arg 1) (Arg 2))))
-                      (Node (PureOp (add (IntT) (Arg 2)
+                      (Node (PureOp (badd (IntT) (Arg 1) (Arg 2))))
+                      (Node (PureOp (badd (IntT) (Arg 2)
                                          (Node (PureOp (Const (IntT) (const) (Num 1)))))))
                       (Arg 3)))))
     (check (= shifted expected))
@@ -827,13 +827,13 @@ fn rvsdg_shift() {
         (Gamma
          (Node
           (PureOp
-           (lt (BoolT) (Arg 0) (Arg 1))))
+           (blt (BoolT) (Arg 0) (Arg 1))))
          (VO (vec-of
           (Arg 3)
           (Arg 0)))
          (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
                  (VO (vec-of (Arg 0)
-                             (Node (PureOp (mul (IntT) (Arg 1)
+                             (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
                                                                      (Num 2)))))))))))))
@@ -843,13 +843,13 @@ fn rvsdg_shift() {
         (Gamma
          (Node
           (PureOp
-           (lt (BoolT) (Arg 0) (Arg 11))))
+           (blt (BoolT) (Arg 0) (Arg 11))))
          (VO (vec-of
           (Arg 13)
           (Arg 0)))
          (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
                  (VO (vec-of (Arg 0)
-                             (Node (PureOp (mul (IntT) (Arg 1)
+                             (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
                                                                      (Num 2)))))))))))))

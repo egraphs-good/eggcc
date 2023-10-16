@@ -22,6 +22,7 @@
 (rewrite (SubstExpr (bnot ty a b) x v) (bnot ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
 (rewrite (SubstExpr (band ty a b) x v) (band ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
 (rewrite (SubstExpr (bor ty a b) x v) (bor ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (PRINT a b) x v) (PRINT (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
 
 (rewrite (SubstOperand (Arg x) x v) v :ruleset subst)
 (rule ((= f (SubstOperand (Arg y) x v)) (!= y x))

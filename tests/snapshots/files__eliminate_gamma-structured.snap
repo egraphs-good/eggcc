@@ -1,0 +1,25 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ block:
+  block:
+   a: int = const 1;
+   b: int = const 2;
+   condition: bool = lt a b;
+   if condition:
+    break 2
+   else:
+    break 1
+  elseval: int = const 2;
+  print elseval;
+  break 1
+ thenval: int = const 1;
+ print thenval;
+block:
+
+ return
+
+}

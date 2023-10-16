@@ -251,9 +251,7 @@ impl RvsdgProgram {
                 .eval_expr(&egglog::ast::Expr::Var(name.into()), None, true)
                 .unwrap();
             let (_size, extracted) = egraph.extract(value, &mut termdag, &sort);
-            functions.push(RvsdgFunction::egglog_expr_to_function(
-                &termdag.term_to_expr(&extracted),
-            ));
+            functions.push(RvsdgFunction::egglog_term_to_function(extracted, &termdag));
         }
 
         Ok(RvsdgProgram { functions })

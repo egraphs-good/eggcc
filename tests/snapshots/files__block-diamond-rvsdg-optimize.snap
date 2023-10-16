@@ -2,40 +2,59 @@
 source: tests/files.rs
 expression: visualization.result
 ---
-@main {
-  v0: bool = const false;
-  v4: int = const 3;
-  v6: int = const 1;
-  v8: int = const 2;
-  br v0 .__21__ .__10__;
-.__49__:
-  v46: int = id v16;
-  v47: int = id v17;
-  jmp .__53__;
-.__40__:
-  v43: int = add v16 v18;
-  v46: int = id v43;
-  v47: int = id v17;
-  jmp .__53__;
-.__31__:
-  v32: int = const 1;
-  v33: bool = eq v19 v32;
-  br v33 .__49__ .__40__;
-.__21__:
-  v24: int = add v4 v8;
-  v28: int = const 1;
-  v16: int = id v24;
-  v17: int = id v6;
-  v18: int = id v8;
-  v19: int = id v28;
-  jmp .__31__;
-.__10__:
-  v14: int = const 0;
-  v16: int = id v4;
-  v17: int = id v6;
-  v18: int = id v8;
-  v19: int = id v14;
-  jmp .__31__;
-.__53__:
+@main(v0: int) {
+  v2: int = const 2;
+  v4: bool = lt v0 v2;
+  br v4 .__23__ .__9__;
+.__80__:
+  v77: int = id v17;
+  v78: int = id v18;
+  jmp .__84__;
+.__71__:
+  v74: int = add v17 v19;
+  v77: int = id v74;
+  v78: int = id v18;
+  jmp .__84__;
+.__62__:
+  v63: int = const 1;
+  v64: bool = eq v20 v63;
+  br v64 .__80__ .__71__;
+.__56__:
+  v17: int = id v41;
+  v18: int = id v42;
+  v19: int = id v43;
+  v20: int = id v44;
+  jmp .__62__;
+.__46__:
+  v49: int = add v29 v22;
+  v53: int = const 1;
+  v41: int = id v49;
+  v42: int = id v31;
+  v43: int = id v22;
+  v44: int = id v53;
+  jmp .__56__;
+.__35__:
+  v39: int = const 0;
+  v41: int = id v29;
+  v42: int = id v31;
+  v43: int = id v22;
+  v44: int = id v39;
+  jmp .__56__;
+.__23__:
+  v22: int = const 2;
+  v25: bool = lt v22 v0;
+  v29: int = const 3;
+  v31: int = const 1;
+  br v25 .__46__ .__35__;
+.__9__:
+  v10: int = const 1;
+  v13: int = const 2;
+  v15: int = const 0;
+  v17: int = id v10;
+  v18: int = id v10;
+  v19: int = id v13;
+  v20: int = id v15;
+  jmp .__62__;
+.__84__:
 }
 

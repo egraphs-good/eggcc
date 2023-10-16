@@ -1,0 +1,34 @@
+@main {
+    two: int = const 2;
+    result: int = call @fac two;
+    print result;
+}
+
+@fac(i: int): int {
+    zero: int = const 0;
+    one: int = const 1;
+
+    is_zero: bool = eq i zero;
+    br is_zero .base.zero .recurse;
+    
+.base.zero:
+    ret one;
+
+.recurse:
+    is_one: bool = eq i one;
+    br is_one .base.one .general;
+
+.base.one: 
+    result: int = call @fac zero;
+    ret one;
+
+.general:
+    prev_i: int = sub i one;
+    prev: int = call @fac prev_i;
+
+    prev_prev_i: int = sub prev_i one;
+    prev_prev: int = call @fac prev_prev_i;
+
+    result: int = add prev prev_prev;
+    ret result;
+}

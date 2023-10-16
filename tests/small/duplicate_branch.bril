@@ -1,0 +1,15 @@
+# ARGS: 5
+@main(y: int) {
+  x: int = const 4;
+  cond: bool = lt x y;
+  br cond .B .C;
+.B:
+  a: int = const 1;
+  jmp .D;
+.C:
+  a: int = const 1;
+  jmp .B;
+.D:
+  w: int = const 2;
+  ret;
+}

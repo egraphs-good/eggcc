@@ -4,39 +4,10 @@ expression: visualization.result
 ---
 @main {
   jmp .__2__;
-.__36__:
-  jmp .__37__;
-.__31__:
-  v30: int = id v28;
-  jmp .__36__;
-.__29__:
-  v28: int = const 0;
-  jmp .__31__;
-.__27__:
-  jmp .__29__;
-.__35__:
-  v30: int = id v33;
-  jmp .__36__;
-.__34__:
-  v33: int = const 1;
-  jmp .__35__;
-.__32__:
-  jmp .__34__;
-.__26__:
-  br v23 .__32__ .__27__;
-.__25__:
-  jmp .__26__;
-.__24__:
-  v23: bool = lt v19 v21;
-  jmp .__25__;
-.__22__:
-  v21: int = const 0;
-  jmp .__24__;
-.__20__:
-  v19: int = const 1;
-  jmp .__22__;
-.__18__:
+.__19__:
   jmp .__20__;
+.__18__:
+  jmp .__19__;
 .__13__:
   v12: int = id v10;
   jmp .__18__;
@@ -66,7 +37,7 @@ expression: visualization.result
 .__2__:
   v1: int = const 1;
   jmp .__4__;
-.__37__:
+.__20__:
   print v12;
 }
 

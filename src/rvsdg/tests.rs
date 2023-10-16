@@ -1,5 +1,5 @@
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use egglog::EGraph;
+use egglog::{EGraph, TermDag};
 
 use crate::{
     cfg::program_to_cfg,
@@ -476,8 +476,12 @@ fn rvsdg_odd_branch_egg_roundtrip() {
         .unwrap();
 
     // test correctness of RVSDG from egglog
-    let actual = RvsdgFunction::egglog_expr_to_function(&actual);
-    assert!(deep_equal(&expected, &actual));
+
+    // TODO types don't work out now that we convert terms
+    let mut termdag = TermDag::default();
+    let actual_term = termdag.expr_to_term(&actual);
+    let actual_rvsdg = RvsdgFunction::egglog_term_to_function(actual_term, &termdag);
+    assert!(deep_equal(&expected, &actual_rvsdg));
 }
 
 fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bool {

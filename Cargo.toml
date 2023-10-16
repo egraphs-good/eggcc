@@ -9,7 +9,7 @@ name = "files"
 
 
 [dependencies]
-egglog = { git = "https://github.com/oflatt/egg-smol", rev = "288a60b" }
+egglog = { git = "https://github.com/egraphs-good/egglog", rev = "959afb9078b93df7d58afa519b1399c128132507" }
 log = "0.4.19"
 thiserror = "1"
 lalrpop-util = { version = "0.19.8", features = ["lexer"] }

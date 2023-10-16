@@ -1,0 +1,9 @@
+@main {
+.entry:
+  v0: int = const 1;
+.second:
+  v1: int = const 2;
+  v2: int = add v0 v1;
+.end:
+  print v2;
+}

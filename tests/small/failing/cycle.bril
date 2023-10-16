@@ -1,0 +1,8 @@
+@main {
+    cond: bool = const true;
+
+.loop:
+    br cond .loop .end;
+
+.end:
+}

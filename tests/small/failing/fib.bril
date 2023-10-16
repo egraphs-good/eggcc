@@ -1,0 +1,32 @@
+# ARGS: 2
+@main(n: int) {
+    curr: int = const 1;
+    prev: int = const 1;
+    zero: int = const 0;
+    i: int = const 1;
+
+    print prev;
+
+    is_zero: bool = eq n zero;
+    br is_zero .for.done .fencepost;
+
+.fencepost:
+    print curr;
+
+.for.cond:
+    less: bool = lt i n;
+    br less .for.body .for.done;
+
+.for.body:
+    tmp: int = add curr prev;
+    print tmp;
+    prev: int = id curr;
+    curr: int = id tmp;
+
+    one: int = const 1;
+    i: int = add i one;
+    jmp .for.cond;
+
+.for.done:
+
+}

@@ -12,10 +12,10 @@ use petgraph::{
     Direction,
 };
 
-use crate::{
-    cfg::{BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram},
-    Optimizer,
-};
+use crate::cfg::{BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram};
+
+#[cfg(test)]
+use crate::Optimizer;
 
 struct JumpOptimizer<'a> {
     simple_func: &'a SimpleCfgFunction,

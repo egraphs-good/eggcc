@@ -4,10 +4,6 @@ expression: visualization.result
 ---
 @main {
   v0: int = const 1;
-  jmp .__2__;
-.__2__:
-  jmp .__3__;
-.__3__:
   print v0;
 }
 

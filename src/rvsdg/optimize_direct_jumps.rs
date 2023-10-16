@@ -28,6 +28,9 @@ impl<'a> JumpOptimizer<'a> {
         // so it points to the fused node
         let mut node_mapping: HashMap<NodeIndex, NodeIndex> = HashMap::new();
 
+        // we use a bfs so that previous nodes are mapped to new nodes
+        // before their children.
+        // This ensures that `node_mapping[&previous]` succeeds.
         let mut bfs = Bfs::new(&self.simple_func.graph, self.simple_func.entry);
 
         let mut edges_to_add = vec![];
@@ -110,4 +113,66 @@ impl SimpleCfgProgram {
             functions: self.functions.iter().map(|f| f.optimize_jumps()).collect(),
         }
     }
+}
+
+#[test]
+fn single_node() {
+    // TODO these imports are very bad
+    use super::super::cfg::tests::cfg_test_equiv;
+    use crate::cfg::BlockName;
+
+    let mut graph = StableDiGraph::new();
+    let node = graph.add_node(BasicBlock {
+        name: BlockName::Entry,
+        instrs: vec![],
+        footer: vec![],
+        pos: None,
+    });
+    let input_cfg = SimpleCfgFunction {
+        args: vec![],
+        graph,
+        entry: node,
+        exit: node,
+        name: "test".to_string(),
+        _phantom: Simple,
+        return_ty: None,
+    };
+
+    cfg_test_equiv!(input_cfg.optimize_jumps(), []);
+}
+
+#[test]
+fn loops_to_self() {
+    // TODO you have to import both of these
+    //  is there a way to package up some macros all together?
+    use super::super::cfg::tests::cfg_test_equiv;
+    use super::super::cfg::tests::to_block;
+    use crate::cfg::BlockName;
+    let mut graph = StableDiGraph::new();
+    let node = graph.add_node(BasicBlock {
+        name: BlockName::Entry,
+        instrs: vec![],
+        footer: vec![],
+        pos: None,
+    });
+    graph.add_edge(
+        node,
+        node,
+        Branch {
+            op: crate::cfg::BranchOp::Jmp,
+            pos: None,
+        },
+    );
+
+    let input_cfg = SimpleCfgFunction {
+        args: vec![],
+        graph,
+        entry: node,
+        exit: node,
+        name: "test".to_string(),
+        _phantom: Simple,
+        return_ty: None,
+    };
+
+    cfg_test_equiv!(input_cfg.optimize_jumps(), [ENTRY = (Jmp)=> ENTRY,]);
 }

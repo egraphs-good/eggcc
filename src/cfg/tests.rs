@@ -25,21 +25,24 @@ macro_rules! to_block {
         BlockName::Named($name.into())
     };
 }
+pub(crate) use to_block;
 
-// Test that a CFG is wired up correctly.
-macro_rules! cfg_test {
-    ($name:ident, $prog:expr, [ $($src:tt =($($edge:tt)*)=> $dst:tt,)* ]) => {
-        #[test]
-        fn $name() {
-            use $crate::cfg::BranchOp;
-            let prog = parse_from_string($prog);
-            let cfg = function_to_cfg(&prog.functions[0]);
-            let mut mentioned = std::collections::HashSet::new();
+macro_rules! cfg_test_equiv {
+    // for the case of a single-node cfg
+    ($cfg:expr, []) => {
+        assert_eq!($cfg.graph.node_count(), 1);
+        assert_eq!($cfg.graph.edge_count(), 0);
+        assert_eq!($cfg.entry, $cfg.exit);
+    };
+    ($cfg:expr,  [ $($src:tt = ($($edge:tt)*)=> $dst:tt,)* ]) => {
+        use $crate::cfg::BranchOp;
+        let mut mentioned = std::collections::HashSet::new();
             let mut block = std::collections::HashMap::new();
             $(
                 mentioned.insert(to_block!($src));
                 mentioned.insert(to_block!($dst));
             )*
+            let cfg = $cfg;
             for i in cfg.graph.node_indices() {
                 let node = cfg.graph.node_weight(i).unwrap();
                 assert!(mentioned.contains(&node.name), "description does not mention block {:?}", node.name);
@@ -48,18 +51,31 @@ macro_rules! cfg_test {
             $({
                 let src_name = to_block!($src);
                 let dst_name = to_block!($dst);
-                let src = block[&src_name];
-                let dst = block[&dst_name];
+                let src = *block.get(&src_name).unwrap_or_else(|| panic!("missing block {:?}", src_name));
+                let dst = *block.get(&dst_name).unwrap_or_else(|| panic!("missing block {:?}", dst_name));
                 let has_edge = cfg.graph.edges_connecting(src, dst).any(|edge| {
                     edge.weight().op == BranchOp::$($edge)*
                 });
                 assert!(has_edge, "missing edge from {src_name:?} to {dst_name:?}");
             })*
+    };
+}
+
+pub(crate) use cfg_test_equiv;
+
+// Test that a CFG is wired up correctly.
+macro_rules! cfg_test_function_to_cfg {
+    ($name:ident, $prog:expr, [ $($src:tt =($($edge:tt)*)=> $dst:tt,)* ]) => {
+        #[test]
+        fn $name() {
+            let prog = parse_from_string($prog);
+            let cfg = function_to_cfg(&prog.functions[0]);
+            cfg_test_equiv!(cfg, [ $($src =($($edge)*)=> $dst,)* ]);
         }
     };
 }
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     fib_cfg,
     include_str!("../../tests/brils/failing/mem/fib.bril"),
     [
@@ -71,7 +87,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     queen,
     include_str!("../../tests/small/failing/queens-func.bril"),
     [
@@ -88,7 +104,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     implicit_return,
     include_str!("../../tests/small/failing/implicit-return.bril"),
     [
@@ -96,7 +112,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     diamond,
     include_str!("../../tests/small/diamond.bril"),
     [
@@ -108,7 +124,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     block_diamond,
     include_str!("../../tests/small/block-diamond.bril"),
     [
@@ -123,7 +139,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     unstructured,
     include_str!("../../tests/small/should_fail/unstructured.bril"),
     [
@@ -136,7 +152,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     fib_shape_cfg,
     include_str!("../../tests/small/fib_shape.bril"),
     [

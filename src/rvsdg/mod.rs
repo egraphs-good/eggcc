@@ -57,7 +57,7 @@ use self::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 /// Errors from the rvsdg module.
 #[derive(Debug, Error)]

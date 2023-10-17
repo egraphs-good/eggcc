@@ -38,7 +38,7 @@ impl PegFunction {
                         js = xs.to_vec();
                         format!("{f}")
                     }
-                    BasicExpr::Call(f, xs, _, _, _) => {
+                    BasicExpr::Call(f, xs, _, _) => {
                         js = xs.to_vec();
                         f.to_string()
                     }

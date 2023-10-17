@@ -514,7 +514,7 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
         RvsdgBody::BasicOp(BasicExpr::Op(f, xs, _ty)) => {
             (Node::Unit(format!("{f}"), xs.len(), 1), xs.to_vec())
         }
-        RvsdgBody::BasicOp(BasicExpr::Call(f, xs, n_outputs, _ty, _pure)) => {
+        RvsdgBody::BasicOp(BasicExpr::Call(f, xs, n_outputs, _ty)) => {
             (Node::Unit(f.to_string(), xs.len(), *n_outputs), xs.to_vec())
         }
         RvsdgBody::BasicOp(BasicExpr::Print(xs)) => {
@@ -577,7 +577,7 @@ fn reachable_nodes(reachable: &mut BTreeSet<Id>, all: &[RvsdgBody], output: Oper
     if reachable.insert(id) {
         let inputs = match &all[id] {
             RvsdgBody::BasicOp(BasicExpr::Op(_, xs, _))
-            | RvsdgBody::BasicOp(BasicExpr::Call(_, xs, _, _, _))
+            | RvsdgBody::BasicOp(BasicExpr::Call(_, xs, _, _))
             | RvsdgBody::BasicOp(BasicExpr::Print(xs)) => xs.clone(),
             RvsdgBody::BasicOp(BasicExpr::Const(..)) => vec![],
             RvsdgBody::Gamma { pred, inputs, .. } => once(pred).chain(inputs).copied().collect(),
@@ -669,13 +669,8 @@ impl RvsdgFunction {
     }
 
     pub(crate) fn to_region(&self) -> Region {
-        let dsts: Vec<_> = self
-            .result_val()
-            .copied()
-            .into_iter()
-            .chain(self.state)
-            .collect();
-        mk_region(self.n_args + 1, &dsts, &self.nodes)
+        let dsts: Vec<_> = self.results.iter().map(|(_, e)| *e).collect();
+        mk_region(self.args.len(), &dsts, &self.nodes)
     }
 }
 
@@ -690,7 +685,6 @@ mod tests {
     fn rvsdg2svg_basic() {
         let svg_new = RvsdgFunction {
             name: "main".to_owned(),
-            n_args: 2,
             args: vec![RvsdgType::Bril(Type::Int), RvsdgType::PrintState],
             nodes: vec![
                 RvsdgBody::BasicOp(BasicExpr::Const(
@@ -749,8 +743,11 @@ mod tests {
                     Type::Int,
                 )),
             ],
-            result: Some((Type::Int, Operand::Id(10))),
-            state: Some(Operand::Arg(2)),
+            results: vec![
+                (RvsdgType::Bril(Type::Int), Operand::Id(10)),
+                (RvsdgType::PrintState, Operand::Arg(2)),
+            ],
+            // state: Some(Operand::Arg(2)),
         }
         .to_svg();
 

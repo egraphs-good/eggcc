@@ -31,14 +31,12 @@
 ;; Expr
 (datatype ConstOps (const))
 (function Const (Type ConstOps Literal) Expr)
-;; Depending on the type of functions being called,
-;; Call takes different number of arguments and returns 
-;; different number of arguments.
-;; Call takes n + 1 arguments, where the last one is the state edge.
-;; It returns {1, 2} values, where the first one is a state edge and 
-;; the second one (optional) is the actual return value.
-(datatype StateFlag (Pure) (Stateful))
-(function Call (OptionType String VecOperand StateFlag) Expr)
+;; Call may return multiple values but at most one of them
+;; is a value type, which is stored in OptionType.
+;; The last fields denotes how many return values it have
+;; Finally, we assume if call ever returns a value, 
+;; it has to be the first one.
+(function Call (OptionType String VecOperand i64) Expr)
 (function add (Type Operand Operand) Expr)
 (function sub (Type Operand Operand) Expr)
 (function mul (Type Operand Operand) Expr)
@@ -64,17 +62,9 @@
 (function Gamma (Operand VecOperand VecVecOperand) Body) ;; branching
 (function Theta (Operand VecOperand VecOperand) Body) ;; loop
 
-(datatype FunctionOutput
-    ;; stateful functions with no return value
-    (StateOnly Operand)
-    ;; pure functions
-    (ValueOnly Type Operand)
-    ;;             state   value type  value
-    (StateAndValue Operand Type        Operand)
-    (NopFunc))
-
 (datatype Function
-    (Func String FuncSigs FunctionOutput))
+    ;;    name   input types    output types    body
+    (Func String FuncSigs       FuncSigs        VecOperand))
 
 
 ;; procedure f(n):

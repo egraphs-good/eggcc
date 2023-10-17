@@ -4,13 +4,15 @@ expression: visualization.result
 ---
 @main {
   jmp .__2__;
+.__5__:
+  jmp .__7__;
 .__4__:
   v3: int = const 15;
-  jmp .__6__;
+  jmp .__5__;
 .__2__:
   v1: int = const 4;
   jmp .__4__;
-.__6__:
+.__7__:
   call @pow v1 v3;
 }
 @pow(v0: int, v1: int) {

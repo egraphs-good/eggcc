@@ -5,12 +5,12 @@ use ordered_float::OrderedFloat;
 use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgType};
 
 impl RvsdgFunction {
-    pub(crate) fn result_val(&self) -> Option<&Operand> {
-        match &self.result {
-            Some((_ty, val)) => Some(val),
-            None => None,
-        }
-    }
+    // pub(crate) fn result_val(&self) -> Option<&Operand> {
+    //     match &self.result {
+    //         Some((_ty, val)) => Some(val),
+    //         None => None,
+    //     }
+    // }
 
     fn expr_from_ty(ty: &Type) -> Expr {
         use Expr::*;
@@ -46,19 +46,17 @@ impl RvsdgFunction {
             BasicExpr::Op(op, operands, ty) => {
                 Call(op.to_string().into(), f(operands, Some(ty.clone())))
             }
-            BasicExpr::Call(ident, operands, _, ty, pure) => {
+            BasicExpr::Call(ident, operands, n_outs, ty) => {
                 let ident = Lit(String(ident.into()));
                 let args = Self::vec_operand(&f(operands, None));
                 let ty = match ty {
                     Some(ty) => Call("SomeType".into(), vec![Self::expr_from_ty(ty)]),
                     None => Call("NoneType".into(), vec![]),
                 };
-                let state_flag = if *pure {
-                    Call("Pure".into(), vec![])
-                } else {
-                    Call("Stateful".into(), vec![])
-                };
-                Call("Call".into(), vec![ty, ident, args, state_flag])
+                Call(
+                    "Call".into(),
+                    vec![ty, ident, args, Lit(Int(*n_outs as i64))],
+                )
             }
             BasicExpr::Print(operands) => Call("PRINT".into(), f(operands, None)),
             BasicExpr::Const(ConstOps::Const, lit, ty) => {
@@ -178,24 +176,18 @@ impl RvsdgFunction {
                 .map(RvsdgFunction::expr_from_rvsdg_ty)
                 .collect(),
         );
-        let output = {
-            let result = self
-                .result
-                .as_ref()
-                .map(|(ty, result)| (Self::expr_from_ty(ty), self.operand_to_egglog_expr(result)));
-            let state = self
-                .state
-                .as_ref()
-                .map(|state| self.operand_to_egglog_expr(state));
-            match (result, state) {
-                (Some((ty, result)), Some(state)) => {
-                    Call("StateAndValue".into(), vec![state, ty, result])
-                }
-                (Some((ty, result)), None) => Call("ValueOnly".into(), vec![ty, result]),
-                (None, Some(state)) => Call("StateOnly".into(), vec![state]),
-                (None, None) => Call("NopFunc".into(), vec![]),
-            }
-        };
-        Call("Func".into(), vec![Lit(String(name)), sig, output])
+        let (out_sig, body): (Vec<_>, Vec<_>) = self
+            .results
+            .iter()
+            .map(|(ty, result)| {
+                (
+                    Self::expr_from_rvsdg_ty(ty),
+                    self.operand_to_egglog_expr(result),
+                )
+            })
+            .unzip();
+        let out_sig = Call("vec-of".into(), out_sig);
+        let body = Self::vec_operand(&body);
+        Call("Func".into(), vec![Lit(String(name)), sig, out_sig, body])
     }
 }

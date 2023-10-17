@@ -72,11 +72,16 @@ impl Simulator<'_> {
         self.func = func_index;
         let func = &self.program.functions[func_index];
         assert_eq!(func.n_args, self.args.len());
-        assert!(func
-            .state
-            .and_then(|state| self.simulate_body(state))
-            .is_none());
-        func.result.and_then(|body| self.simulate_body(body))
+        let res: Vec<_> = func
+            .results
+            .iter()
+            .flat_map(|state| self.simulate_body(*state))
+            // Needs to `collect` to force the evaluation
+            .collect();
+
+        // function should return zero or one value
+        assert!(res.len() <= 1);
+        res.into_iter().next()
     }
 
     // Returns None if the output is a print edge
@@ -123,10 +128,8 @@ impl Simulator<'_> {
                         op => todo!("implement {op}"),
                     }
                 }
-                BasicExpr::Call(f, xs, _, _, pure) => {
+                BasicExpr::Call(f, xs, _, _) => {
                     let args: Vec<_> = xs.iter().flat_map(|x| self.simulate_body(*x)).collect();
-                    // Pure functions should not have non-value arguments
-                    assert!(!pure || xs.len() == args.len());
                     let mut s = Simulator {
                         args,
                         ..self.clone()

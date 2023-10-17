@@ -49,14 +49,17 @@ impl RvsdgTest {
     ) -> RvsdgFunction {
         let mut wrapped_args: Vec<_> = args.clone().into_iter().map(RvsdgType::Bril).collect();
         wrapped_args.push(RvsdgType::PrintState);
+        let results = result
+            .map(|(t, s)| (RvsdgType::Bril(t), s))
+            .into_iter()
+            .chain(state.map(|s| (RvsdgType::PrintState, s)).into_iter())
+            .collect();
 
         RvsdgFunction {
             name,
-            n_args: args.len(),
             args: wrapped_args,
             nodes: self.nodes,
-            result,
-            state,
+            results,
         }
     }
 
@@ -82,7 +85,6 @@ impl RvsdgTest {
             args.to_vec(),
             1,
             None,
-            false,
         )))
     }
 
@@ -257,7 +259,7 @@ fn rvsdg_unstructured() {
     // 1. A theta node: .B and .C form a cycle.
     // 2. A gamma node, as there is a join point in .B for the value of `x`
     // (whether the predecessor is .B or the entry block).
-    assert!(rvsdg.result.is_some());
+    assert!(rvsdg.results.len() == 2); // return value + state edge
     assert!(search_for(rvsdg, |body| matches!(
         body,
         RvsdgBody::Theta { .. }
@@ -463,7 +465,7 @@ fn rvsdg_odd_branch_egg_roundtrip() {
                                                                      (Num 2)))))))))))))
     (let expected-result (Project 0 rescaled))
     (let expected-state (Project 1 rescaled))
-    (let expected (Func "main" (vec-of (Bril (IntT))) (StateAndValue expected-state (IntT) expected-result)))
+    (let expected (Func "main" (vec-of (Bril (IntT)) (PrintState)) (vec-of (Bril (IntT)) (PrintState)) (VO (vec-of expected-result expected-state))))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
@@ -506,7 +508,7 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
         match node {
             RvsdgBody::BasicOp(x) => match x {
                 BasicExpr::Op(_, args, _)
-                | BasicExpr::Call(_, args, _, _, _)
+                | BasicExpr::Call(_, args, _, _)
                 | BasicExpr::Print(args) => args.iter().any(|arg| search_op(f, arg, pred)),
                 BasicExpr::Const(_, _, _) => false,
             },
@@ -532,21 +534,15 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
             }
         }
     }
-    if f.state
-        .as_ref()
-        .is_some_and(|state| search_op(f, state, &mut pred))
-    {
-        return true;
-    }
-    f.result_val()
-        .map(|res| search_op(f, res, &mut pred))
-        .unwrap_or(false)
+    f.results
+        .iter()
+        .any(|(_ty, res)| search_op(f, res, &mut pred))
 }
 
 /// We don't want to commit to the order in which nodes are laid out, so we do a
 /// DFS to check if two functions are equal for the purposes of testing.
 fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
-    if f1.n_args != f2.n_args {
+    if f1.args != f2.args {
         return false;
     }
 
@@ -587,15 +583,8 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
                 (BasicExpr::Op(vo1, as1, ty1), BasicExpr::Op(vo2, as2, ty2)) => {
                     vo1 == vo2 && all_equal(as1, as2, f1, f2) && ty1 == ty2
                 }
-                (
-                    BasicExpr::Call(func1, as1, n1, ty1, pure1),
-                    BasicExpr::Call(func2, as2, n2, ty2, pure2),
-                ) => {
-                    func1 == func2
-                        && n1 == n2
-                        && all_equal(as1, as2, f1, f2)
-                        && ty1 == ty2
-                        && pure1 == pure2
+                (BasicExpr::Call(func1, as1, n1, ty1), BasicExpr::Call(func2, as2, n2, ty2)) => {
+                    func1 == func2 && n1 == n2 && all_equal(as1, as2, f1, f2) && ty1 == ty2
                 }
                 (BasicExpr::Const(c1, ty1, lit1), BasicExpr::Const(c2, ty2, lit2)) => {
                     c1 == c2 && ty1 == ty2 && lit1 == lit2
@@ -660,17 +649,12 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
         }
     }
 
-    match (&f1.state, &f2.state) {
-        (Some(o1), Some(o2)) if !ops_equal(o1, o2, f1, f2) => return false,
-        (Some(_), None) | (None, Some(_)) => return false,
-        _ => (),
-    };
-
-    match (&f1.result, &f2.result) {
-        (Some((t1, o1)), Some((t2, o2))) => t1 == t2 && ops_equal(o1, o2, f1, f2),
-        (None, None) => true,
-        (None, Some(_)) | (Some(_), None) => false,
-    }
+    return f1.results.len() == f2.results.len()
+        && f1
+            .results
+            .iter()
+            .zip(f2.results.iter())
+            .all(|((t1, o1), (t2, o2))| t1 == t2 && ops_equal(o1, o2, f1, f2));
 }
 
 #[test]

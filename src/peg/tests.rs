@@ -23,12 +23,12 @@ impl PegTest {
         result: Option<Id>,
         state: Option<Id>,
     ) -> PegFunction {
+        let results = result.into_iter().chain(state.into_iter()).collect();
         PegFunction {
             name,
             n_args,
             nodes: self.nodes,
-            result,
-            state,
+            results,
         }
     }
 

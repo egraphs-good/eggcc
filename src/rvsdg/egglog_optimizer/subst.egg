@@ -9,7 +9,7 @@
 (function SubstVecVecOperand (VecVecOperand i64 Operand) VecVecOperand)
 
 (rewrite (SubstExpr (Const ty ops lit) x v) (Const ty ops lit) :ruleset subst)
-(rewrite (SubstExpr (Call ty f args state-flag) x v) (Call ty f (SubstVecOperand args x v) state-flag) :ruleset subst)
+(rewrite (SubstExpr (Call ty f args n-outs) x v) (Call ty f (SubstVecOperand args x v) n-outs) :ruleset subst)
 (rewrite (SubstExpr (add ty a b) x v) (add ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
 (rewrite (SubstExpr (sub ty a b) x v) (sub ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
 (rewrite (SubstExpr (mul ty a b) x v) (mul ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)

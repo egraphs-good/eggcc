@@ -285,7 +285,7 @@ pub struct RunOutput {
     pub visualizations: Vec<Visualization>,
     // if the result was interpreted, the stdout of interpreting it
     pub result_interpreted: Option<String>,
-    pub original_interpreted: String,
+    pub original_interpreted: Option<String>,
 }
 
 impl Run {
@@ -329,11 +329,19 @@ impl Run {
     }
 
     pub fn run(&self) -> RunOutput {
-        let original_interpreted = Optimizer::interp(
-            &self.prog_with_args.program,
-            self.prog_with_args.args.clone(),
-            None,
-        );
+        let original_interpreted =
+            if self.interp {
+                Some (
+                    Optimizer::interp(
+                    &self.prog_with_args.program,
+                    self.prog_with_args.args.clone(),
+                    None,
+                )
+            )
+            } else {
+                None
+            }
+        ;
 
         let mut peg = None;
         let (visualizations, bril_out) = match self.test_type {

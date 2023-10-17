@@ -98,8 +98,6 @@ struct RvsdgToCfg<'a> {
 
 impl RvsdgProgram {
     pub fn to_cfg(&self) -> SimpleCfgProgram {
-        // TODO right now we only support one function
-        // which is named main
         CfgProgram {
             functions: self.functions.iter().map(|f| f.to_cfg()).collect(),
         }
@@ -182,7 +180,6 @@ impl RvsdgFunction {
             ]);
         }
 
-        // TODO hard-coded name
         CfgFunction {
             name: self.name.clone(),
             args: func_args,

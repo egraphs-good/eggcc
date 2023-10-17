@@ -5,13 +5,6 @@ use ordered_float::OrderedFloat;
 use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgType};
 
 impl RvsdgFunction {
-    // pub(crate) fn result_val(&self) -> Option<&Operand> {
-    //     match &self.result {
-    //         Some((_ty, val)) => Some(val),
-    //         None => None,
-    //     }
-    // }
-
     fn expr_from_ty(ty: &Type) -> Expr {
         use Expr::*;
         match ty {

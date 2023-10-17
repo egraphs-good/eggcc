@@ -747,7 +747,6 @@ mod tests {
                 (RvsdgType::Bril(Type::Int), Operand::Id(10)),
                 (RvsdgType::PrintState, Operand::Arg(2)),
             ],
-            // state: Some(Operand::Arg(2)),
         }
         .to_svg();
 

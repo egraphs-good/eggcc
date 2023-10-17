@@ -329,19 +329,15 @@ impl Run {
     }
 
     pub fn run(&self) -> RunOutput {
-        let original_interpreted =
-            if self.interp {
-                Some (
-                    Optimizer::interp(
-                    &self.prog_with_args.program,
-                    self.prog_with_args.args.clone(),
-                    None,
-                )
-            )
-            } else {
-                None
-            }
-        ;
+        let original_interpreted = if self.interp {
+            Some(Optimizer::interp(
+                &self.prog_with_args.program,
+                self.prog_with_args.args.clone(),
+                None,
+            ))
+        } else {
+            None
+        };
 
         let mut peg = None;
         let (visualizations, bril_out) = match self.test_type {

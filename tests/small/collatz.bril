@@ -1,0 +1,26 @@
+# ARGS: 8888
+@main (arg : int) {
+	three : int = const 3;
+	two : int = const 2;
+	one : int = const 1;
+	zero : int = const 0;
+	var : int = id arg;
+.cond:
+	cond : bool = eq var one;
+	br cond .break .body;
+.body:
+	d : int = div var two;
+	m : int = mul d two;
+	mod : int = sub var m;
+	cond : bool = eq mod zero;
+	br cond .then .else;
+.then:
+	var : int = div var two;
+	jmp .cond;
+.else:
+	v1 : int = mul three var;
+	var : int = add one v1;
+	jmp .cond;
+.break:
+	print arg;
+}

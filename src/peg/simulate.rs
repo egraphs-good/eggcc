@@ -93,6 +93,9 @@ impl Simulator<'_> {
                         ValueOps::Add => {
                             Some(Literal::Int(int(xs[0].clone()) + int(xs[1].clone())))
                         }
+                        ValueOps::Sub => {
+                            Some(Literal::Int(int(xs[0].clone()) - int(xs[1].clone())))
+                        }
                         ValueOps::Mul => {
                             Some(Literal::Int(int(xs[0].clone()) * int(xs[1].clone())))
                         }
@@ -101,6 +104,9 @@ impl Simulator<'_> {
                         }
                         ValueOps::Lt => {
                             Some(Literal::Bool(int(xs[0].clone()) < int(xs[1].clone())))
+                        }
+                        ValueOps::Eq => {
+                            Some(Literal::Bool(int(xs[0].clone()) == int(xs[1].clone())))
                         }
                         op => todo!("implement {op}"),
                     }

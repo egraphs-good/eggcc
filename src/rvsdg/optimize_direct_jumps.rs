@@ -121,8 +121,8 @@ impl SimpleCfgProgram {
 #[test]
 fn single_node() {
     // TODO these imports are very bad
-    use super::super::cfg::tests::cfg_test_equiv;
     use crate::cfg::BlockName;
+    use crate::test_util::*;
 
     let mut graph = StableDiGraph::new();
     let node = graph.add_node(BasicBlock {
@@ -148,9 +148,8 @@ fn single_node() {
 fn loops_to_self() {
     // TODO you have to import both of these
     //  is there a way to package up some macros all together?
-    use super::super::cfg::tests::cfg_test_equiv;
-    use super::super::cfg::tests::to_block;
     use crate::cfg::BlockName;
+    use crate::test_util::*;
     let mut graph = StableDiGraph::new();
     let node = graph.add_node(BasicBlock {
         name: BlockName::Entry,

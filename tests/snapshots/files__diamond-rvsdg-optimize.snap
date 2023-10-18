@@ -2,26 +2,13 @@
 source: tests/files.rs
 expression: visualization.result
 ---
-@main {
-  v0: int = const 4;
-  jmp .__2__;
-.__8__:
+@main(v0: int) {
+  v3: bool = lt v0 v0;
+  br v3 .__9__ .__7__;
+.__9__:
   jmp .__11__;
 .__7__:
-  jmp .__8__;
-.__10__:
   jmp .__11__;
-.__9__:
-  jmp .__10__;
-.__6__:
-  br v3 .__9__ .__7__;
-.__5__:
-  jmp .__6__;
-.__4__:
-  v3: bool = lt v0 v0;
-  jmp .__5__;
-.__2__:
-  jmp .__4__;
 .__11__:
 }
 

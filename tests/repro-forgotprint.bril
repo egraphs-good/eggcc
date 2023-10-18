@@ -1,0 +1,17 @@
+# ARGS: 1
+@main(arg: int) {
+  one: int = const 1;
+  two: int = const 2;
+  x: int = const 0;
+  a_cond: bool = lt arg two;
+  br a_cond .A .B;
+  .A:
+    x: int = const 1;
+    print two;
+    jmp .end;
+  .B:
+    x: int = const 2;
+    jmp .end;
+  .end:
+    x: int = add x one;
+}

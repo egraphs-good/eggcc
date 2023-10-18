@@ -104,6 +104,7 @@ impl RvsdgProgram {
         CfgProgram {
             functions: self.functions.iter().map(|f| f.to_cfg()).collect(),
         }
+        .optimize_jumps()
     }
 }
 

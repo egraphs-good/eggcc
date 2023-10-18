@@ -1,7 +1,7 @@
-@main() {
-  one: int = const 1;
+# ARGS: 1
+@main(arg: int) {
   zero: int = const 0;
-  isless: bool = lt one zero;
+  isless: bool = lt arg zero;
   br isless .less .greater;
 .less:
   result: int = const 1;

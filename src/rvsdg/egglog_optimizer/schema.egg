@@ -27,6 +27,7 @@
 (function Num (i64) Literal)
 (function Float (f64) Literal)
 (function Char (String) Literal)
+(function Bool (bool) Literal)
 
 ;; Expr
 (datatype ConstOps (const))
@@ -35,19 +36,18 @@
 ;; It returns {1, 2} values, where the first one is a state edge and 
 ;; the second one (optional) is the actual return value.
 (function Call (OptionType String VecOperand) Expr)
-(function add (Type Operand Operand) Expr)
-(function sub (Type Operand Operand) Expr)
-(function mul (Type Operand Operand) Expr)
-(function fmul (Type Operand Operand) Expr)
-(function div (Type Operand Operand) Expr)
-(function eq (Type Operand Operand) Expr)
-(function lt (Type Operand Operand) Expr)
-(function gt (Type Operand Operand) Expr)
-(function le (Type Operand Operand) Expr)
-(function ge (Type Operand Operand) Expr)
-(function not (Type Operand Operand) Expr)
-(function and (Type Operand Operand) Expr)
-(function or (Type Operand Operand) Expr)
+(function badd (Type Operand Operand) Expr)
+(function bsub (Type Operand Operand) Expr)
+(function bmul (Type Operand Operand) Expr)
+(function bdiv (Type Operand Operand) Expr)
+(function beq (Type Operand Operand) Expr)
+(function blt (Type Operand Operand) Expr)
+(function bgt (Type Operand Operand) Expr)
+(function ble (Type Operand Operand) Expr)
+(function bge (Type Operand Operand) Expr)
+(function bnot (Type Operand Operand) Expr)
+(function band (Type Operand Operand) Expr)
+(function bor (Type Operand Operand) Expr)
 (function PRINT (Operand Operand) Expr)
 
 ;; Operand
@@ -57,8 +57,17 @@
 
 ;; Body
 (function PureOp (Expr) Body)
-(function Gamma (Operand VecOperand VecVecOperand) Body) ;; branching
-(function Theta (Operand VecOperand VecOperand) Body) ;; loop
+;; branching
+;; predicate (outside switch), inputs (outside switch),
+;; and for each branch a vector of outputs
+(function Gamma (Operand VecOperand VecVecOperand) Body)
+;; loops
+;; predicate (inside loop), inputs (outside loop), outputs (inside loop)
+(function Theta (Operand VecOperand VecOperand) Body)
+;; A body can also just be a VecOperand for convenience
+;; This has no corresponding node in rust, it can be
+;; removed during translation
+(function OperandGroup (VecOperand) Body)
 
 (datatype FunctionOutput
     (StateOnly Operand)

@@ -87,17 +87,21 @@ impl Optimizer {
                 .expect("brili interp error")
             }
             None => {
-                brilirs::run_input(
-                    std::io::BufReader::new(program.to_string().as_bytes()),
-                    std::io::BufWriter::new(&mut optimized_out),
-                    &args,
-                    false,
-                    std::io::stderr(),
-                    false,
-                    true,
-                    None,
-                )
-                .unwrap();
+                // brilirs crashes during typechecking if it gets an empty program
+                // this is a hacky workaround
+                if !(program.functions.len() == 1 && program.functions[0].instrs.is_empty()) {
+                    brilirs::run_input(
+                        std::io::BufReader::new(program.to_string().as_bytes()),
+                        std::io::BufWriter::new(&mut optimized_out),
+                        &args,
+                        false,
+                        std::io::stderr(),
+                        false,
+                        true,
+                        None,
+                    )
+                    .unwrap();
+                }
             }
         }
 

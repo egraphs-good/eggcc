@@ -10,6 +10,7 @@ pub fn rvsdg_egglog_code() -> String {
         include_str!("subst.egg").to_string(),
         include_str!("shift.egg").to_string(),
         constant_fold_egglog(),
+        include_str!("gamma_rewrite.egg").to_string(),
     ];
     code.join("\n")
 }

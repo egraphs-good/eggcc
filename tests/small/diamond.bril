@@ -1,5 +1,5 @@
-@main() {
-  x: int = const 4;
+# ARGS: 3
+@main(x: int) {
   cond: bool = lt x x;
   br cond .B .C;
 .B:

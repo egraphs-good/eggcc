@@ -6,9 +6,8 @@ main {
 block:
  block:
   block:
-   one: int = const 1;
    zero: int = const 0;
-   isless: bool = lt one zero;
+   isless: bool = lt arg zero;
    if isless:
     break 2
    else:

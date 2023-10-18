@@ -2,8 +2,7 @@
 source: tests/files.rs
 expression: visualization.result
 ---
-@main {
-  v0: int = const 4;
+@main(v0: int) {
   v3: bool = lt v0 v0;
   br v3 .__9__ .__7__;
 .__9__:

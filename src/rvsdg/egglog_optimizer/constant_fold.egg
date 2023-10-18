@@ -1,0 +1,35 @@
+;; constant_fold.rs adds most constant folding operations
+;; this file is for special cases
+
+
+;; eliminate gamma nodes for true and false cases
+(rule ((= gamma
+          ;; gamma predicate is true
+          (Gamma (Node (PureOp (Const (BoolT) (const) (Bool true))))
+                 inputs
+                 (VVO outputs))))
+      (
+        ;; replace use of the gamma with
+        ;; the true case
+        (union
+          gamma
+          (OperandGroup
+              (SubstVecOperandAll inputs
+                (vec-get outputs 1))))))
+
+
+
+(rule ((= gamma
+          ;; gamma predicate is false
+          (Gamma (Node (PureOp (Const (BoolT) (const) (Bool false))))
+                 inputs
+                 (VVO outputs))))
+      (
+        ;; replace use of the gamma with
+        ;; the false case
+        (union
+          gamma
+          (OperandGroup
+              (SubstVecOperandAll inputs
+                (vec-get outputs 0))))))
+

@@ -287,9 +287,9 @@ impl<'a> RvsdgBuilder<'a> {
 
         // Not all live variables have necessarily been bound yet.
         // `input_vars` and `output_vars` store the variables that are bound.
-        let mut input_vars = Vec::with_capacity(live_vars.live_in.len());
+        let mut input_vars = Vec::with_capacity(live_vars.live_out.len());
         let mut output_vars = Vec::new();
-        for var in live_vars.live_in.iter() {
+        for var in live_vars.live_out.iter() {
             let Some(op) = self.store.get(&var).copied() else { continue; };
             inputs.push(op);
             input_vars.push(var);
@@ -333,6 +333,7 @@ impl<'a> RvsdgBuilder<'a> {
             } else {
                 next = Some(curr);
             }
+            // self.store = snapshot.clone();
         }
 
         let next = next.unwrap();

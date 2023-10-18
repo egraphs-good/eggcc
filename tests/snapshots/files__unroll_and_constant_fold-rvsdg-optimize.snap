@@ -3,55 +3,21 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main {
-  jmp .__1__;
-.__26__:
-  jmp .__27__;
-.__25__:
-  jmp .__26__;
-.__24__:
-  v8: int = id v15;
-  v9: int = id v9;
-  v10: int = id v10;
-  br v21 .__12__ .__25__;
-.__23__:
-  jmp .__24__;
-.__22__:
-  v21: bool = lt v15 v9;
-  jmp .__23__;
-.__20__:
-  jmp .__22__;
-.__19__:
-  jmp .__20__;
-.__18__:
-  jmp .__19__;
-.__17__:
-  jmp .__18__;
-.__16__:
-  v15: int = add v8 v10;
-  jmp .__17__;
-.__14__:
-  jmp .__16__;
-.__13__:
-  jmp .__14__;
-.__12__:
-  jmp .__13__;
-.__11__:
+  v2: int = const 0;
+  v4: int = const 3;
+  v6: int = const 1;
   v8: int = id v2;
   v9: int = id v4;
   v10: int = id v6;
   jmp .__12__;
-.__7__:
-  v6: int = const 1;
-  jmp .__11__;
-.__5__:
-  v4: int = const 3;
-  jmp .__7__;
-.__3__:
-  v2: int = const 0;
-  jmp .__5__;
-.__1__:
-  jmp .__3__;
-.__27__:
+.__12__:
+  v15: int = add v8 v10;
+  v21: bool = lt v15 v9;
+  v8: int = id v15;
+  v9: int = id v9;
+  v10: int = id v10;
+  br v21 .__12__ .__25__;
+.__25__:
   print v8;
 }
 

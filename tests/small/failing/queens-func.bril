@@ -1,12 +1,37 @@
 # exerpted from the larger eight-queens bril benchmark.
 # ARGS: 8
 @main(input: int) {
-  n: int = id input;
+  queens: int = id input;
   zero: int = const 0;
+  n: int = id zero;
   icount: int = id zero;
-  site: ptr<int> = alloc n;
-  result: int = call @queen zero n icount site;
-  print result;
+  site: ptr<int> = alloc queens;
+
+  one: int = const 1;
+  ite: int = id one;
+  ret_cond: bool = eq n queens;
+  br ret_cond .main.next.ret .main.for.cond;
+.main.next.ret:
+  icount: int = add icount one;
+  jmp .main.print;
+.main.for.cond:
+  for_cond_0: bool = le ite queens;
+  br for_cond_0 .main.for.body .main.next.ret.1;
+.main.for.body:
+  nptr: ptr<int> = ptradd site n;
+  store nptr ite;
+  is_valid: bool = call @valid n site;
+  br is_valid .main.rec.func .main.next.loop;
+.main.rec.func:
+  n_1: int = add n one;
+  icount: int = call @queen n_1 queens icount site;
+.main.next.loop:
+  ite: int = add ite one;
+  jmp .main.for.cond;
+.main.next.ret.1:
+  jmp .main.print;
+.main.print:
+  print icount;
   free site;
 }
 

@@ -10,7 +10,7 @@ block:
     one: int = const 1;
     two: int = const 2;
     x: int = const 0;
-    a_cond: bool = lt one two;
+    a_cond: bool = lt arg two;
     if a_cond:
      break 2
     else:
@@ -18,7 +18,7 @@ block:
    x: int = add x one;
    break 1
   block:
-   b_cond: bool = lt two one;
+   b_cond: bool = lt two arg;
    x: int = add x two;
    if b_cond:
     break 1
@@ -29,6 +29,7 @@ block:
  x: int = add x two;
 block:
  x: int = add x one;
+ print x;
  return
 
 }

@@ -20,8 +20,8 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
         trials.push(Trial::test(run.name(), move || {
             let result = run.run();
 
-            if let Some(interpreted) = result.result_interpreted {
-                assert_eq!(result.original_interpreted, interpreted);
+            if result.result_interpreted.is_some() {
+                assert_eq!(result.original_interpreted, result.result_interpreted);
             } else {
                 // only assert a snapshot if we are in the "small" folder
                 if snapshot && snapshot_configurations.contains(&run.test_type) {

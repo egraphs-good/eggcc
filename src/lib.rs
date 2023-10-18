@@ -16,6 +16,9 @@ pub(crate) mod peg;
 pub(crate) mod rvsdg;
 pub mod util;
 
+#[cfg(test)]
+pub(crate) mod test_util;
+
 #[derive(Debug, Error)]
 pub enum EggCCError {
     #[error("Egglog error: {0}")]

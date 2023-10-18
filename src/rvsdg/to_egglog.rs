@@ -2,6 +2,8 @@ use bril_rs::{ConstOps, Literal, Type};
 use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
+use crate::conversions::op_to_egglog;
+
 use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgType};
 
 impl RvsdgFunction {
@@ -37,7 +39,7 @@ impl RvsdgFunction {
 
         match expr {
             BasicExpr::Op(op, operands, ty) => {
-                Call(op.to_string().into(), f(operands, Some(ty.clone())))
+                Call(op_to_egglog(*op), f(operands, Some(ty.clone())))
             }
             BasicExpr::Call(ident, operands, n_outs, ty) => {
                 let ident = Lit(String(ident.into()));
@@ -55,9 +57,7 @@ impl RvsdgFunction {
             BasicExpr::Const(ConstOps::Const, lit, ty) => {
                 let lit = match (ty, lit) {
                     (Type::Int, Literal::Int(n)) => Call("Num".into(), vec![Lit(Int(*n))]),
-                    (Type::Bool, Literal::Bool(b)) => {
-                        Call("Bool".into(), vec![Lit(Int(*b as i64))])
-                    }
+                    (Type::Bool, Literal::Bool(b)) => Call("Bool".into(), vec![Lit(Bool(*b))]),
                     (Type::Float, Literal::Float(f)) => Call(
                         "Float".into(),
                         vec![Lit(F64(OrderedFloat::<f64>::from(*f)))],

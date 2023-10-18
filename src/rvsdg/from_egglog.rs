@@ -24,7 +24,25 @@ impl<'a> RvsdgFromEgglog<'a> {
                 ("Arg", [Term::Lit(Int(n))]) => Operand::Arg(*n as usize),
                 ("Node", [body]) => Operand::Id(self.egglog_term_to_body(body.clone())),
                 ("Project", [Term::Lit(Int(n)), body]) => {
-                    Operand::Project(*n as usize, self.egglog_term_to_body(body.clone()))
+                    let Term::App(bfunc, bargs) = body else {
+                        panic!("expected a body after project, got {}", self.termdag.to_string(body))
+                    };
+                    let bargs = bargs
+                        .iter()
+                        .map(|t| self.termdag.get(*t))
+                        .collect::<Vec<_>>();
+
+                    // Every `OperandGroup` should be used by a
+                    // `Project`, so check that here and
+                    // optimize them away.
+                    match (bfunc.as_str(), &bargs.as_slice()) {
+                        ("OperandGroup", [groupbody]) => {
+                            let results = self.expr_to_vec_operand(groupbody.clone());
+                            assert!(results.len() > *n as usize);
+                            results[*n as usize]
+                        }
+                        _ => Operand::Project(*n as usize, self.egglog_term_to_body(body.clone())),
+                    }
                 }
                 _ => panic!("expected an operand, got {}", self.termdag.to_string(&op)),
             }
@@ -235,10 +253,11 @@ impl<'a> RvsdgFromEgglog<'a> {
                     assert_eq!(s.as_str().len(), 1);
                     Literal::Char(s.as_str().chars().next().unwrap())
                 }
-                _ => panic!("expect a list, got {}", self.termdag.to_string(&lit)),
+                ("Bool", [Term::Lit(Bool(bool))]) => Literal::Bool(*bool),
+                _ => panic!("expect a lit, got {}", self.termdag.to_string(&lit)),
             }
         } else {
-            panic!("expect a list, got {}", self.termdag.to_string(&lit))
+            panic!("expect a lit, got {}", self.termdag.to_string(&lit))
         }
     }
 }

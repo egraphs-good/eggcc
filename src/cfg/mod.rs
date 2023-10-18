@@ -26,7 +26,7 @@ use crate::util::{run_cmd_line, ListDisplay, Visualization};
 pub(crate) type NodeSet = <StableDiGraph<BasicBlock, Branch> as Visitable>::Map;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 pub(crate) mod structured;
 pub(crate) mod to_bril;

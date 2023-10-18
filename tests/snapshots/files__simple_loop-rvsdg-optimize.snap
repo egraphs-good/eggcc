@@ -3,31 +3,12 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main {
-  jmp .__2__;
-.__13__:
-  jmp .__14__;
-.__12__:
-  br v9 .__5__ .__13__;
-.__11__:
-  jmp .__12__;
-.__10__:
-  v9: bool = lt v6 v6;
-  jmp .__11__;
-.__8__:
-  jmp .__10__;
-.__7__:
-  v6: int = const 0;
-  jmp .__8__;
-.__5__:
-  jmp .__7__;
-.__4__:
-  jmp .__5__;
-.__3__:
-  jmp .__4__;
-.__2__:
   v1: int = const 0;
-  jmp .__3__;
-.__14__:
+  jmp .__5__;
+.__5__:
+  v6: bool = const false;
+  br v6 .__5__ .__10__;
+.__10__:
   print v1;
 }
 

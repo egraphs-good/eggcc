@@ -3,102 +3,38 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  jmp .__2__;
-.__52__:
-  jmp .__53__;
-.__51__:
-  jmp .__52__;
-.__50__:
+  v3: int = const 0;
+  v5: int = const 1;
+  v8: int = id v3;
+  v9: int = id v5;
+  v10: int = id v0;
+  jmp .__12__;
+.__42__:
+  v47: int = const 1;
+  v48: bool = eq v28 v47;
   v8: int = id v27;
   v9: int = id v29;
   v10: int = id v30;
   br v48 .__12__ .__51__;
-.__49__:
-  v47: int = const 1;
-  v48: bool = eq v28 v47;
-  jmp .__50__;
-.__46__:
-  jmp .__49__;
-.__45__:
-  jmp .__46__;
-.__44__:
-  jmp .__45__;
-.__43__:
-  jmp .__44__;
-.__42__:
-  jmp .__43__;
-.__31__:
-  v27: int = id v8;
-  v28: int = id v23;
-  v29: int = id v9;
-  v30: int = id v10;
-  jmp .__42__;
-.__26__:
-  jmp .__31__;
-.__25__:
-  jmp .__26__;
-.__24__:
-  v23: int = const 0;
-  jmp .__25__;
-.__22__:
-  jmp .__24__;
-.__21__:
-  jmp .__22__;
-.__41__:
+.__32__:
+  v35: int = add v8 v9;
+  v37: int = const 1;
   v27: int = id v35;
   v28: int = id v37;
   v29: int = id v9;
   v30: int = id v10;
   jmp .__42__;
-.__40__:
-  jmp .__41__;
-.__39__:
-  jmp .__40__;
-.__38__:
-  v37: int = const 1;
-  jmp .__39__;
-.__36__:
-  v35: int = add v8 v9;
-  jmp .__38__;
-.__34__:
-  jmp .__36__;
-.__33__:
-  jmp .__34__;
-.__32__:
-  jmp .__33__;
-.__20__:
-  br v14 .__32__ .__21__;
-.__19__:
-  jmp .__20__;
-.__18__:
-  jmp .__19__;
-.__17__:
-  jmp .__18__;
-.__16__:
-  jmp .__17__;
-.__15__:
-  v14: bool = lt v8 v10;
-  jmp .__16__;
-.__13__:
-  jmp .__15__;
+.__21__:
+  v23: int = const 0;
+  v27: int = id v8;
+  v28: int = id v23;
+  v29: int = id v9;
+  v30: int = id v10;
+  jmp .__42__;
 .__12__:
-  jmp .__13__;
-.__11__:
-  v8: int = id v3;
-  v9: int = id v5;
-  v10: int = id v0;
-  jmp .__12__;
-.__7__:
-  jmp .__11__;
-.__6__:
-  v5: int = const 1;
-  jmp .__7__;
-.__4__:
-  v3: int = const 0;
-  jmp .__6__;
-.__2__:
-  jmp .__4__;
-.__53__:
+  v14: bool = lt v8 v10;
+  br v14 .__32__ .__21__;
+.__51__:
   print v8;
 }
 

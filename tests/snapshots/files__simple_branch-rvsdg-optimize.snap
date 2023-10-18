@@ -2,42 +2,19 @@
 source: tests/files.rs
 expression: visualization.result
 ---
-@main {
-  jmp .__2__;
-.__19__:
-  jmp .__20__;
-.__18__:
-  jmp .__19__;
-.__13__:
-  v12: int = id v10;
-  jmp .__18__;
-.__11__:
-  v10: int = const 0;
-  jmp .__13__;
-.__9__:
-  jmp .__11__;
-.__17__:
+@main(v0: int) {
+  v3: int = const 0;
+  v5: bool = lt v0 v3;
+  br v5 .__14__ .__9__;
+.__14__:
+  v15: int = const 1;
   v12: int = id v15;
   jmp .__18__;
-.__16__:
-  v15: int = const 1;
-  jmp .__17__;
-.__14__:
-  jmp .__16__;
-.__8__:
-  br v5 .__14__ .__9__;
-.__7__:
-  jmp .__8__;
-.__6__:
-  v5: bool = lt v1 v3;
-  jmp .__7__;
-.__4__:
-  v3: int = const 0;
-  jmp .__6__;
-.__2__:
-  v1: int = const 1;
-  jmp .__4__;
-.__20__:
+.__9__:
+  v10: int = const 0;
+  v12: int = id v10;
+  jmp .__18__;
+.__18__:
   print v12;
 }
 

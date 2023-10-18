@@ -1,3 +1,4 @@
+use crate::test_util::*;
 use crate::{
     cfg::{function_to_cfg, program_to_cfg, to_structured::cfg_to_structured, BlockName},
     EggCCError,
@@ -14,52 +15,19 @@ fn parse_from_string(input: &str) -> Program {
     load_program_from_read(json_str.as_bytes())
 }
 
-macro_rules! to_block {
-    (ENTRY) => {
-        BlockName::Entry
-    };
-    (EXIT) => {
-        BlockName::Exit
-    };
-    ($name:expr) => {
-        BlockName::Named($name.into())
-    };
-}
-
 // Test that a CFG is wired up correctly.
-macro_rules! cfg_test {
+macro_rules! cfg_test_function_to_cfg {
     ($name:ident, $prog:expr, [ $($src:tt =($($edge:tt)*)=> $dst:tt,)* ]) => {
         #[test]
         fn $name() {
-            use $crate::cfg::BranchOp;
             let prog = parse_from_string($prog);
             let cfg = function_to_cfg(&prog.functions[0]);
-            let mut mentioned = std::collections::HashSet::new();
-            let mut block = std::collections::HashMap::new();
-            $(
-                mentioned.insert(to_block!($src));
-                mentioned.insert(to_block!($dst));
-            )*
-            for i in cfg.graph.node_indices() {
-                let node = cfg.graph.node_weight(i).unwrap();
-                assert!(mentioned.contains(&node.name), "description does not mention block {:?}", node.name);
-                block.insert(node.name.clone(), i);
-            }
-            $({
-                let src_name = to_block!($src);
-                let dst_name = to_block!($dst);
-                let src = block[&src_name];
-                let dst = block[&dst_name];
-                let has_edge = cfg.graph.edges_connecting(src, dst).any(|edge| {
-                    edge.weight().op == BranchOp::$($edge)*
-                });
-                assert!(has_edge, "missing edge from {src_name:?} to {dst_name:?}");
-            })*
+            cfg_test_equiv!(cfg, [ $($src =($($edge)*)=> $dst,)* ]);
         }
     };
 }
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     fib_cfg,
     include_str!("../../tests/brils/failing/mem/fib.bril"),
     [
@@ -71,25 +39,25 @@ cfg_test!(
     ]
 );
 
-// Comment this for now as queens-func used to have an incomplete definition
-// cfg_test!(
-//     queen,
-//     include_str!("../../tests/small/failing/queens-func.bril"),
-//     [
-//         ENTRY = (Cond { arg: "ret_cond".into(), val: true.into() }) => "next.ret",
-//         ENTRY = (Cond { arg: "ret_cond".into(), val: false.into() }) => "for.cond",
-//         "for.cond" = (Cond { arg: "for_cond_0".into(), val: true.into() }) => "for.body",
-//         "for.cond" = (Cond { arg: "for_cond_0".into(), val: false.into() }) => "next.ret.1",
-//         "for.body" = (Cond { arg: "is_valid".into(), val: true.into() }) => "rec.func",
-//         "for.body" = (Cond { arg: "is_valid".into(), val: false.into() }) => "next.loop",
-//         "rec.func" = (Jmp) => "next.loop",
-//         "next.loop" = (Jmp) => "for.cond",
-//         "next.ret" = (Jmp) => EXIT,
-//         "next.ret.1" = (Jmp) => EXIT,
-//     ]
-// );
+cfg_test_function_to_cfg!(
+    queen,
+    include_str!("../../tests/small/failing/queens-func.bril"),
+    [
+        ENTRY = (Cond { arg: "ret_cond".into(), val: true.into() }) => "main.next.ret",
+        ENTRY = (Cond { arg: "ret_cond".into(), val: false.into() }) => "main.for.cond",
+        "main.for.cond" = (Cond { arg: "for_cond_0".into(), val: true.into() }) => "main.for.body",
+        "main.for.cond" = (Cond { arg: "for_cond_0".into(), val: false.into() }) => "main.next.ret.1",
+        "main.for.body" = (Cond { arg: "is_valid".into(), val: true.into() }) => "main.rec.func",
+        "main.for.body" = (Cond { arg: "is_valid".into(), val: false.into() }) => "main.next.loop",
+        "main.rec.func" = (Jmp) => "main.next.loop",
+        "main.next.loop" = (Jmp) => "main.for.cond",
+        "main.next.ret" = (Jmp) => "main.print",
+        "main.next.ret.1" = (Jmp) => "main.print",
+        "main.print" = (Jmp) => EXIT,
+    ]
+);
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     implicit_return,
     include_str!("../../tests/small/implicit-return.bril"),
     [
@@ -97,7 +65,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     diamond,
     include_str!("../../tests/small/diamond.bril"),
     [
@@ -109,7 +77,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     block_diamond,
     include_str!("../../tests/small/block-diamond.bril"),
     [
@@ -124,7 +92,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     unstructured,
     include_str!("../../tests/small/should_fail/unstructured.bril"),
     [
@@ -137,7 +105,7 @@ cfg_test!(
     ]
 );
 
-cfg_test!(
+cfg_test_function_to_cfg!(
     fib_shape_cfg,
     include_str!("../../tests/small/fib_shape.bril"),
     [

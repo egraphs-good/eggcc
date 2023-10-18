@@ -16,7 +16,16 @@ pub fn rvsdg_egglog_code() -> String {
 }
 
 pub fn rvsdg_egglog_schedule() -> String {
-    "(run-schedule (repeat 3 (run) (saturate subst)))".to_string()
+    // The current schedule runs three iterations.
+    // In-between each iteration, we saturate the subst rules.
+    // It is sound to not saturate these substitution rules,
+    // but it helps substitutions go through since
+    // they take many iterations.
+
+    "(run-schedule
+        (repeat 3 (run)
+                  (saturate subst)))"
+        .to_string()
 }
 
 #[derive(Debug, PartialEq, Clone)]

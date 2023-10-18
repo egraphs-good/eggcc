@@ -29,6 +29,7 @@ block:
  x: int = add x two;
 block:
  x: int = add x one;
+ print x;
  return
 
 }

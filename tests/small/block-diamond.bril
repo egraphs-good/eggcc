@@ -20,5 +20,6 @@
     jmp .F;
   .F:
     x: int = add x one;
+    print x;
     ret;
 }

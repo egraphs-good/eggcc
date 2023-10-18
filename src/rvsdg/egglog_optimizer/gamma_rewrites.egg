@@ -10,7 +10,13 @@
 ;;			B
 ;;	else:
 ;;		B
-;; TODO
+;; TODO: below doesn't work because inner is not a VO
+; (rule ((= gamma (Gamma (Node (PureOp (band BoolT a b))) (VO inputs) (VVO outputs)))
+;        (= (vec-length outputs) 2)
+;        (= (vec-get outputs 1) (VO A))
+;        (= (vec-get outputs 0) (VO B)))
+;       ((let inner (Gamma (Arg (vec-length inputs)) (VO inputs) (vec-of (VO B) (VO A))))
+;        (union gamma (Gamma a (vec-push inputs b) (vec-of (VO B) inner)))))
 
 ;;	if a || b:
 ;;		A
@@ -24,7 +30,13 @@
 ;;			A
 ;;		else:
 ;;			B
-;; TODO
+;; TODO: below doesn't work because inner is not a VO
+; (rule ((= gamma (Gamma (Node (PureOp (bor BoolT a b))) (VO inputs) (VVO outputs)))
+;        (= (vec-length outputs) 2)
+;        (= (vec-get outputs 1) (VO A))
+;        (= (vec-get outputs 0) (VO B)))
+;       ((let inner (Gamma (Arg (vec-length inputs)) (VO inputs) (vec-of (VO B) (VO A))))
+;        (union gamma (Gamma a (vec-push inputs b) (vec-of inner (VO A))))))
 
 ;;	if a:
 ;;		A

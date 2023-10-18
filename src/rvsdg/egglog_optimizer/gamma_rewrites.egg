@@ -1,0 +1,35 @@
+;;	if a && b:
+;;		A
+;;	else:
+;;		B
+;; ----------
+;;	if a:
+;;		if b:
+;;			A
+;;		else:
+;;			B
+;;	else:
+;;		B
+;; TODO
+
+;;	if a || b:
+;;		A
+;;	else:
+;;		B
+;; -----------
+;;	if a:
+;;		A
+;;	else:
+;;		if b:
+;;			A
+;;		else:
+;;			B
+;; TODO
+
+;;	if a:
+;;		A
+;;	else:
+;;		A
+;; ------
+;;	A
+;; TODO

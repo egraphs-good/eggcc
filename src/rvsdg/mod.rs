@@ -32,6 +32,7 @@ mod egglog_optimizer;
 pub(crate) mod from_cfg;
 pub(crate) mod from_egglog;
 pub(crate) mod live_variables;
+pub(crate) mod optimize_direct_jumps;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
@@ -56,7 +57,7 @@ use self::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 /// Errors from the rvsdg module.
 #[derive(Debug, Error)]

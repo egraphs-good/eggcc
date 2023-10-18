@@ -6,56 +6,56 @@ expression: visualization.result
   v0: int = const 1;
   v2: int = const 2;
   v4: bool = lt v0 v2;
-  br v4 .__22__ .__8__;
-.__78__:
-  v75: int = id v16;
-  v76: int = id v17;
-  jmp .__82__;
-.__69__:
-  v72: int = add v16 v18;
-  v75: int = id v72;
-  v76: int = id v17;
-  jmp .__82__;
-.__60__:
-  v61: int = const 1;
-  v62: bool = eq v19 v61;
-  br v62 .__78__ .__69__;
-.__54__:
-  v16: int = id v39;
-  v17: int = id v40;
-  v18: int = id v41;
-  v19: int = id v42;
-  jmp .__60__;
-.__44__:
-  v47: int = add v29 v21;
-  v51: int = const 1;
-  v39: int = id v47;
-  v40: int = id v23;
-  v41: int = id v21;
-  v42: int = id v51;
-  jmp .__54__;
-.__33__:
-  v37: int = const 0;
-  v39: int = id v29;
-  v40: int = id v23;
-  v41: int = id v21;
-  v42: int = id v37;
-  jmp .__54__;
-.__22__:
-  v21: int = const 2;
-  v23: int = const 1;
-  v25: bool = lt v21 v23;
-  v29: int = const 3;
-  br v25 .__44__ .__33__;
-.__8__:
-  v9: int = const 1;
-  v12: int = const 2;
-  v14: int = const 0;
-  v16: int = id v9;
-  v17: int = id v9;
-  v18: int = id v12;
-  v19: int = id v14;
-  jmp .__60__;
+  v8: int = const 0;
+  br v4 .__26__ .__12__;
 .__82__:
+  v79: int = id v21;
+  v80: int = id v22;
+  jmp .__86__;
+.__73__:
+  v76: int = add v21 v23;
+  v79: int = id v76;
+  v80: int = id v22;
+  jmp .__86__;
+.__65__:
+  v66: int = const 1;
+  v67: bool = eq v24 v66;
+  br v67 .__82__ .__73__;
+.__59__:
+  v21: int = id v44;
+  v22: int = id v45;
+  v23: int = id v46;
+  v24: int = id v47;
+  jmp .__65__;
+.__49__:
+  v52: int = add v34 v2;
+  v56: int = const 1;
+  v44: int = id v52;
+  v45: int = id v0;
+  v46: int = id v2;
+  v47: int = id v56;
+  jmp .__59__;
+.__38__:
+  v42: int = const 0;
+  v44: int = id v34;
+  v45: int = id v0;
+  v46: int = id v2;
+  v47: int = id v42;
+  jmp .__59__;
+.__26__:
+  v28: bool = lt v2 v0;
+  v34: int = add v8 v2;
+  br v28 .__49__ .__38__;
+.__12__:
+  v15: int = add v8 v0;
+  v19: int = const 0;
+  v21: int = id v15;
+  v22: int = id v0;
+  v23: int = id v2;
+  v24: int = id v19;
+  jmp .__65__;
+.__86__:
+  v88: int = add v79 v80;
+  print v88;
 }
 

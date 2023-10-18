@@ -1,0 +1,21 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ block:
+  x: int = const 4;
+  cond: bool = lt x y;
+  if cond:
+   break 2
+  else:
+   break 1
+ a: int = const 1;
+block:
+ a: int = const 1;
+block:
+ w: int = const 2;
+ return
+
+}

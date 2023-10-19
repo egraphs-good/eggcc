@@ -10,6 +10,6 @@
   a: int = const 1;
   jmp .B;
 .D:
-  w: int = const 2;
+  print x;
   ret;
 }

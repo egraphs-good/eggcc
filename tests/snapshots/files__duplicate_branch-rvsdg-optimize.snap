@@ -3,5 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
+  v1: int = const 4;
+  print v1;
 }
 

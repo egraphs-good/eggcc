@@ -1,0 +1,52 @@
+;; ####################################
+;; implementation of PassThroughArguments
+;; Creates a vec of arguments
+;; (vec-of (Arg 0) (Arg 1) ...) with length i
+(function PassThroughArguments (i64) VecOperand :unextractable)
+
+
+
+;; (how many arguments to generate, vector so far)
+(function PassThroughArgumentsHelper (i64 VecOperand) VecOperand :unextractable)
+
+(rewrite (PassThroughArguments i)
+  (PassThroughArgumentsHelper i (VO (vec-of)))
+  :ruleset subst)
+
+(rule ((= lhs (PassThroughArgumentsHelper i (VO rest)))
+       (< (vec-length rest) i))
+      ((union lhs
+        (PassThroughArgumentsHelper i
+            (VO (vec-push rest (Arg (vec-length rest)))))))
+      :ruleset subst)
+
+(rule ((= lhs (PassThroughArgumentsHelper i (VO rest)))
+       (= (vec-length rest) i))
+      ((union lhs (VO rest)))
+      :ruleset subst)
+
+
+
+;; Project each argument out of a body
+(function BodyToVecOperand (i64 Body) VecOperand :unextractable)
+;; current index, body length, body, and vector so far
+(function BodyToVecOperandHelper (i64 i64 Body VecOperandBase) VecOperand :unextractable)
+
+(rewrite (BodyToVecOperand body-len body)
+         (BodyToVecOperandHelper 0 body-len body (vec-of)))
+(rule
+  ((= helper (BodyToVecOperandHelper index body-len body so-far))
+   (< index body-len))
+  ((union helper
+          (BodyToVecOperandHelper (+ index 1) body-len body
+                                  (vec-push so-far 
+                                   (Project index body)))))
+  :ruleset subst)
+
+(rule
+  ((= helper (BodyToVecOperandHelper index body-len body so-far))
+   (= index body-len))
+  ((union helper (VO so-far)))
+  :ruleset subst)
+
+

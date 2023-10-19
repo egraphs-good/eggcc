@@ -10,7 +10,9 @@ pub fn rvsdg_egglog_code() -> String {
         include_str!("schema.egg").to_string(),
         subst_rules(),
         include_str!("shift.egg").to_string(),
+        include_str!("util.egg").to_string(),
         constant_fold_egglog(),
+        include_str!("loop-optimizations.egg").to_string(),
     ];
     code.join("\n")
 }
@@ -23,7 +25,7 @@ pub fn rvsdg_egglog_schedule() -> String {
     // they take many iterations.
 
     "(run-schedule
-        (repeat 3 (run)
+        (repeat 5 (run)
                   (saturate subst)))"
         .to_string()
 }

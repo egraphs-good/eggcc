@@ -91,3 +91,5 @@
   ( 
     (union (SubstVecVecOperandHelper (VVO vec) x v i) (VVO vec))
   ) :ruleset subst)
+ 
+

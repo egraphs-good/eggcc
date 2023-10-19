@@ -300,6 +300,7 @@ impl Run {
             RunType::CfgRoundTrip,
             RunType::RvsdgOptimize,
             RunType::RvsdgToCfg,
+            RunType::OptimizedRvsdg,
         ] {
             let default = Run {
                 test_type,

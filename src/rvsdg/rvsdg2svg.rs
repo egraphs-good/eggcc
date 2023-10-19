@@ -669,13 +669,8 @@ impl RvsdgFunction {
     }
 
     pub(crate) fn to_region(&self) -> Region {
-        let dsts: Vec<_> = self
-            .result_val()
-            .copied()
-            .into_iter()
-            .chain(once(self.state))
-            .collect();
-        mk_region(self.n_args + 1, &dsts, &self.nodes)
+        let dsts: Vec<_> = self.results.iter().map(|(_, e)| *e).collect();
+        mk_region(self.args.len(), &dsts, &self.nodes)
     }
 }
 
@@ -690,7 +685,6 @@ mod tests {
     fn rvsdg2svg_basic() {
         let svg_new = RvsdgFunction {
             name: "main".to_owned(),
-            n_args: 2,
             args: vec![RvsdgType::Bril(Type::Int), RvsdgType::PrintState],
             nodes: vec![
                 RvsdgBody::BasicOp(BasicExpr::Const(
@@ -749,8 +743,10 @@ mod tests {
                     Type::Int,
                 )),
             ],
-            result: Some((Type::Int, Operand::Id(10))),
-            state: Operand::Arg(2),
+            results: vec![
+                (RvsdgType::Bril(Type::Int), Operand::Id(10)),
+                (RvsdgType::PrintState, Operand::Arg(2)),
+            ],
         }
         .to_svg();
 

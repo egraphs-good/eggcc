@@ -47,10 +47,8 @@ pub(crate) struct PegFunction {
     pub(crate) n_args: usize,
     /// The backing heap for Peg nodes within this function.
     pub(crate) nodes: Vec<PegBody>,
-    /// The (optional) result pointing into this function.
-    pub(crate) result: Option<Id>,
-    /// The state edge output of this function.
-    pub(crate) state: Id,
+    /// The (value and effect) results pointing into this function.
+    pub(crate) results: Vec<Id>,
 }
 
 impl PegFunction {
@@ -61,14 +59,16 @@ impl PegFunction {
             pegs: &mut nodes,
             memoize: &mut HashMap::new(),
         };
-        let result = rvsdg.result_val().map(|op| builder.get_pegs(*op, &[]));
-        let state = builder.get_pegs(rvsdg.state, &[]);
+        let results = rvsdg
+            .results
+            .iter()
+            .map(|op| builder.get_pegs(op.1, &[]))
+            .collect();
         PegFunction {
             name: rvsdg.name.clone(),
-            n_args: rvsdg.n_args,
+            n_args: rvsdg.n_value_args(),
             nodes,
-            result,
-            state,
+            results,
         }
     }
 }

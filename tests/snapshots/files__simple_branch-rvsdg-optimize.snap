@@ -3,18 +3,18 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v2: int = const 0;
-  v4: bool = lt v0 v2;
-  br v4 .__13__ .__8__;
-.__13__:
-  v14: int = const 1;
-  v11: int = id v14;
-  jmp .__17__;
-.__8__:
-  v9: int = const 0;
-  v11: int = id v9;
-  jmp .__17__;
-.__17__:
-  print v11;
+  v3: int = const 0;
+  v5: bool = lt v0 v3;
+  br v5 .__14__ .__9__;
+.__14__:
+  v15: int = const 1;
+  v12: int = id v15;
+  jmp .__18__;
+.__9__:
+  v10: int = const 0;
+  v12: int = id v10;
+  jmp .__18__;
+.__18__:
+  print v12;
 }
 

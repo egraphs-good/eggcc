@@ -3,12 +3,12 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v3: bool = lt v0 v0;
-  br v3 .__9__ .__7__;
-.__9__:
-  jmp .__11__;
-.__7__:
-  jmp .__11__;
-.__11__:
+  v4: bool = lt v0 v0;
+  br v4 .__10__ .__8__;
+.__10__:
+  jmp .__12__;
+.__8__:
+  jmp .__12__;
+.__12__:
 }
 

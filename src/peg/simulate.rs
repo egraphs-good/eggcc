@@ -72,8 +72,16 @@ impl Simulator<'_> {
         self.func = func_index;
         let func = &self.program.functions[func_index];
         assert_eq!(func.n_args, self.args.len());
-        assert!(self.simulate_body(func.state).is_none());
-        func.result.and_then(|body| self.simulate_body(body))
+        let res: Vec<_> = func
+            .results
+            .iter()
+            .flat_map(|state| self.simulate_body(*state))
+            // Needs to `collect` to force the evaluation
+            .collect();
+
+        // function should return zero or one value
+        assert!(res.len() <= 1);
+        res.into_iter().next()
     }
 
     // Returns None if the output is a print edge
@@ -93,11 +101,26 @@ impl Simulator<'_> {
                         ValueOps::Add => {
                             Some(Literal::Int(int(xs[0].clone()) + int(xs[1].clone())))
                         }
+                        ValueOps::Sub => {
+                            Some(Literal::Int(int(xs[0].clone()) - int(xs[1].clone())))
+                        }
                         ValueOps::Mul => {
                             Some(Literal::Int(int(xs[0].clone()) * int(xs[1].clone())))
                         }
                         ValueOps::Div => {
                             Some(Literal::Int(int(xs[0].clone()) / int(xs[1].clone())))
+                        }
+                        ValueOps::Fadd => {
+                            Some(Literal::Float(float(xs[0].clone()) + float(xs[1].clone())))
+                        }
+                        ValueOps::Fsub => {
+                            Some(Literal::Float(float(xs[0].clone()) - float(xs[1].clone())))
+                        }
+                        ValueOps::Fmul => {
+                            Some(Literal::Float(float(xs[0].clone()) * float(xs[1].clone())))
+                        }
+                        ValueOps::Fdiv => {
+                            Some(Literal::Float(float(xs[0].clone()) / float(xs[1].clone())))
                         }
                         ValueOps::Lt => {
                             Some(Literal::Bool(int(xs[0].clone()) < int(xs[1].clone())))
@@ -106,11 +129,7 @@ impl Simulator<'_> {
                     }
                 }
                 BasicExpr::Call(f, xs, _, _) => {
-                    let args: Vec<_> = xs
-                        .iter()
-                        .map(|x| self.simulate_body(*x))
-                        .map(Option::unwrap)
-                        .collect();
+                    let args: Vec<_> = xs.iter().flat_map(|x| self.simulate_body(*x)).collect();
                     let mut s = Simulator {
                         args,
                         ..self.clone()
@@ -199,6 +218,13 @@ impl Simulator<'_> {
 fn int(literal: Option<Literal>) -> i64 {
     match literal.unwrap() {
         Literal::Int(x) => x,
+        literal => panic!("expected int, found {literal}"),
+    }
+}
+
+fn float(literal: Option<Literal>) -> f64 {
+    match literal.unwrap() {
+        Literal::Float(x) => x,
         literal => panic!("expected int, found {literal}"),
     }
 }

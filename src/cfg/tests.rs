@@ -43,22 +43,23 @@ cfg_test_function_to_cfg!(
     queen,
     include_str!("../../tests/small/failing/queens-func.bril"),
     [
-        ENTRY = (Cond { arg: "ret_cond".into(), val: true.into() }) => "next.ret",
-        ENTRY = (Cond { arg: "ret_cond".into(), val: false.into() }) => "for.cond",
-        "for.cond" = (Cond { arg: "for_cond_0".into(), val: true.into() }) => "for.body",
-        "for.cond" = (Cond { arg: "for_cond_0".into(), val: false.into() }) => "next.ret.1",
-        "for.body" = (Cond { arg: "is_valid".into(), val: true.into() }) => "rec.func",
-        "for.body" = (Cond { arg: "is_valid".into(), val: false.into() }) => "next.loop",
-        "rec.func" = (Jmp) => "next.loop",
-        "next.loop" = (Jmp) => "for.cond",
-        "next.ret" = (Jmp) => EXIT,
-        "next.ret.1" = (Jmp) => EXIT,
+        ENTRY = (Cond { arg: "ret_cond".into(), val: true.into() }) => "main.next.ret",
+        ENTRY = (Cond { arg: "ret_cond".into(), val: false.into() }) => "main.for.cond",
+        "main.for.cond" = (Cond { arg: "for_cond_0".into(), val: true.into() }) => "main.for.body",
+        "main.for.cond" = (Cond { arg: "for_cond_0".into(), val: false.into() }) => "main.next.ret.1",
+        "main.for.body" = (Cond { arg: "is_valid".into(), val: true.into() }) => "main.rec.func",
+        "main.for.body" = (Cond { arg: "is_valid".into(), val: false.into() }) => "main.next.loop",
+        "main.rec.func" = (Jmp) => "main.next.loop",
+        "main.next.loop" = (Jmp) => "main.for.cond",
+        "main.next.ret" = (Jmp) => "main.print",
+        "main.next.ret.1" = (Jmp) => "main.print",
+        "main.print" = (Jmp) => EXIT,
     ]
 );
 
 cfg_test_function_to_cfg!(
     implicit_return,
-    include_str!("../../tests/small/failing/implicit-return.bril"),
+    include_str!("../../tests/small/implicit-return.bril"),
     [
         ENTRY = (Jmp) => EXIT,
     ]

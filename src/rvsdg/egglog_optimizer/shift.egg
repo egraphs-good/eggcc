@@ -11,7 +11,7 @@
 (function ShiftVecVecOperand  (VecVecOperand i64             i64) VecVecOperand)
 
 (rewrite (ShiftExpr (Const ty ops lit) last-unshifted amt) (Const ty ops lit) :ruleset shift)
-(rewrite (ShiftExpr (Call ty f args) last-unshifted amt) (Call ty f (ShiftVecOperand args last-unshifted amt)) :ruleset shift)
+(rewrite (ShiftExpr (Call ty f args n-outs) last-unshifted amt) (Call ty f (ShiftVecOperand args last-unshifted amt) n-outs) :ruleset shift)
 (rewrite (ShiftExpr (badd ty a b) last-unshifted amt) (badd ty (ShiftOperand a last-unshifted amt) (ShiftOperand b last-unshifted amt)) :ruleset shift)
 (rewrite (ShiftExpr (bsub ty a b) last-unshifted amt) (bsub ty (ShiftOperand a last-unshifted amt) (ShiftOperand b last-unshifted amt)) :ruleset shift)
 (rewrite (ShiftExpr (bmul ty a b) last-unshifted amt) (bmul ty (ShiftOperand a last-unshifted amt) (ShiftOperand b last-unshifted amt)) :ruleset shift)

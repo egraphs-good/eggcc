@@ -1,0 +1,26 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ block:
+  block:
+   x: int = const 1;
+   y: int = const 2;
+   z: int = const 3;
+   a: bool = lt x y;
+   b: bool = lt y z;
+   c: bool = and a b;
+   if c:
+    break 2
+   else:
+    break 1
+  print y;
+  break 1
+ print x;
+block:
+ print z;
+ return
+
+}

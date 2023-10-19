@@ -4,18 +4,18 @@ expression: visualization.result
 ---
 main {
 block:
- i: int = const 0;
- one: int = const 1;
+
 while true:
  block:
-  i: int = add i one;
-  cond: bool = lt i one;
+  one: int = const 1;
+  three: int = const 3;
+  cond: bool = lt three one;
   if cond:
    break 2
   else:
    break 1
  block:
-  print i;
+  print one;
   return
 
 }

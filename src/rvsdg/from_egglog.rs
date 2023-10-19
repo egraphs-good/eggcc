@@ -145,10 +145,13 @@ impl<'a> RvsdgFromEgglog<'a> {
                 .map(|t| self.termdag.get(*t))
                 .collect::<Vec<_>>();
             match (func.as_str(), &args.as_slice()) {
-                ("Call", [ty, Term::Lit(Literal::String(ident)), args]) => {
+                (
+                    "Call",
+                    [ty, Term::Lit(Literal::String(ident)), args, Term::Lit(Literal::Int(n_outs))],
+                ) => {
                     let args = self.expr_to_vec_operand(args.clone());
                     let ty = self.egglog_expr_to_option_ty(ty.clone());
-                    BasicExpr::Call(ident.to_string(), args, 1 + ty.iter().len(), ty)
+                    BasicExpr::Call(ident.to_string(), args, *n_outs as usize, ty)
                 }
                 ("Const", [ty, _const_op, lit]) => BasicExpr::Const(
                     // todo remove the const op from the encoding because it is always ConstOps::Const
@@ -272,35 +275,26 @@ impl RvsdgFunction {
         if let Term::App(func, args) = &term {
             let arg_terms = args.iter().map(|t| termdag.get(*t)).collect::<Vec<_>>();
             match (func.as_str(), &arg_terms.as_slice()) {
-                ("Func", [Term::Lit(String(name)), sig, Term::App(func_output, func_args_ids)]) => {
-                    let args: Vec<RvsdgType> = vec_map(sig.clone(), termdag, |ty| {
+                ("Func", [Term::Lit(String(name)), input_sig, output_sig, body]) => {
+                    let args: Vec<RvsdgType> = vec_map(input_sig.clone(), termdag, |ty| {
                         convert.egglog_expr_to_rvsdg_ty(ty)
                     });
-                    let n_args = args.len() - 1;
 
-                    let func_args = func_args_ids
-                        .iter()
-                        .map(|t| termdag.get(*t))
-                        .collect::<Vec<_>>();
-                    let (state, result) = match (func_output.as_str(), &func_args.as_slice()) {
-                        ("StateOnly", [state]) => {
-                            (convert.egglog_term_to_operand(state.clone()), None)
-                        }
-                        ("StateAndValue", [state, ty, result]) => {
-                            let state = convert.egglog_term_to_operand(state.clone());
-                            let result = convert.egglog_term_to_operand(result.clone());
-                            let ty = convert.egglog_expr_to_ty(ty.clone());
-                            (state, Some((ty, result)))
-                        }
-                        _ => panic!("expect a function, got {}", termdag.to_string(&term)),
-                    };
+                    let result_types = vec_map(output_sig.clone(), termdag, |ty| {
+                        convert.egglog_expr_to_rvsdg_ty(ty)
+                    });
+
+                    let result_values = convert.expr_to_vec_operand(body.clone());
+
+                    let results = result_types
+                        .into_iter()
+                        .zip(result_values.into_iter())
+                        .collect();
                     RvsdgFunction {
                         name: name.to_string(),
-                        n_args,
                         args,
                         nodes: convert.bodies,
-                        result,
-                        state,
+                        results,
                     }
                 }
                 _ => panic!("expect a function, got {}", termdag.to_string(&term)),

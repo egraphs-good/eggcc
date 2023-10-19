@@ -60,18 +60,17 @@ pub(crate) fn cfg_func_to_rvsdg(
         }
         cur = next;
     }
-    let result = match &builder.cfg.return_ty {
+    let mut results = match &builder.cfg.return_ty {
         Some(return_ty) => {
             let ret_var = builder.analysis.intern.intern(ret_id());
-            Some((
-                return_ty.clone(),
+            vec![(
+                RvsdgType::Bril(return_ty.clone()),
                 get_op(ret_var, &None, &builder.store, &builder.analysis.intern)?,
-            ))
+            )]
         }
-        None => None,
+        None => vec![],
     };
-    let n_args = builder.cfg.args.len();
-    let state = builder.store[&state_var];
+    results.push((RvsdgType::PrintState, builder.store[&state_var]));
 
     let mut args: Vec<RvsdgType> = builder
         .cfg
@@ -83,11 +82,9 @@ pub(crate) fn cfg_func_to_rvsdg(
 
     Ok(RvsdgFunction {
         name,
-        n_args,
         args,
         nodes: builder.expr,
-        result,
-        state,
+        results,
     })
 }
 

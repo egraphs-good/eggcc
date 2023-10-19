@@ -32,13 +32,16 @@
 ;; Expr
 (datatype ConstOps (const))
 (function Const (Type ConstOps Literal) Expr)
-;; Call takes n + 1 arguments, where the last one is the state edge.
-;; It returns {1, 2} values, where the first one is a state edge and 
-;; the second one (optional) is the actual return value.
-(function Call (OptionType String VecOperand) Expr)
+;; Call may return multiple values but at most one of them
+;; is a value type, which is stored in OptionType.
+;; The last fields denotes how many return values it have
+;; Finally, we assume if call ever returns a value, 
+;; it has to be the first one.
+(function Call (OptionType String VecOperand i64) Expr)
 (function badd (Type Operand Operand) Expr)
 (function bsub (Type Operand Operand) Expr)
 (function bmul (Type Operand Operand) Expr)
+(function bfmul (Type Operand Operand) Expr)
 (function bdiv (Type Operand Operand) Expr)
 (function beq (Type Operand Operand) Expr)
 (function blt (Type Operand Operand) Expr)
@@ -69,13 +72,9 @@
 ;; removed during translation
 (function OperandGroup (VecOperand) Body)
 
-(datatype FunctionOutput
-    (StateOnly Operand)
-    ;;             state   value type  value
-    (StateAndValue Operand Type        Operand))
-
 (datatype Function
-    (Func String FuncSigs FunctionOutput))
+    ;;    name   input types    output types    body
+    (Func String FuncSigs       FuncSigs        VecOperand))
 
 
 ;; procedure f(n):

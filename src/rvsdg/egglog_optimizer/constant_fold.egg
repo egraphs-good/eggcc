@@ -33,3 +33,17 @@
               (SubstVecOperandAll inputs
                 (vec-get outputs 0))))))
 
+;; Eliminate theta
+;; Unroll one layer and get rid of loop
+(rule ((= theta
+          ;; gamma predicate is false
+          (Theta (Node (PureOp (Const (BoolT) (const) (Bool false))))
+                 (VO inputs)
+                 (VO outputs))))
+      ((let after-one-iter (SubstVecOperandAll (VO inputs) (VO outputs)))
+       (union theta
+          (OperandGroup after-one-iter))))
+
+
+
+

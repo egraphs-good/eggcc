@@ -25,7 +25,7 @@ pub fn rvsdg_egglog_schedule() -> String {
     // they take many iterations.
 
     "(run-schedule
-        (repeat 10 (run)
+        (repeat 5 (run)
                   (saturate subst)))"
         .to_string()
 }

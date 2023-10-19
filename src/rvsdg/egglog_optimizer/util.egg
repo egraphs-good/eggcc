@@ -1,3 +1,11 @@
+;; ####################################
+;; implementation of PassThroughArguments
+;; Creates a vec of arguments
+;; (vec-of (Arg 0) (Arg 1) ...) with length i
+(function PassThroughArguments (i64) VecOperand :unextractable)
+
+
+
 ;; (how many arguments to generate, vector so far)
 (function PassThroughArgumentsHelper (i64 VecOperand) VecOperand :unextractable)
 

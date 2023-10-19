@@ -21,18 +21,20 @@
 
 ;; Project each argument out of a body
 (function BodyToVecOperand (i64 Body) VecOperand :unextractable)
-;; current index, body length, vector so far
-(function BodyToVecOperandHelper (i64 Body VecOperandBase) VecOperand :unextractable)
+;; current index, body length, body, and vector so far
+(function BodyToVecOperandHelper (i64 i64 Body VecOperandBase) VecOperand :unextractable)
 
 (rewrite (BodyToVecOperand body-len body)
-         (BodyToVecOperandHelper 0 body-len body vec-of))
+         (BodyToVecOperandHelper 0 body-len body (vec-of)))
 (rule
   ((= helper (BodyToVecOperandHelper index body-len body so-far))
    (< index body-len))
   ((union helper
           (BodyToVecOperandHelper (+ index 1) body-len body
-                                  (vec-push so-far (Arg index)))))
+                                  (vec-push so-far 
+                                   (Project index body)))))
   :ruleset subst)
+
 (rule
   ((= helper (BodyToVecOperandHelper index body-len body so-far))
    (= index body-len))

@@ -8,15 +8,16 @@
        (let pass-through (PassThroughArguments (vec-length outputs)))
        (union theta
           (Gamma
-            (SubstExprAll after-one-iter pred)
+            (SubstOperandAll after-one-iter pred)
             after-one-iter
-            (vec-of
-              ;; in the false case, we are done
-              pass-through
-              ;; otherwise do the rest of the loop
-              (BodyToVecOperand
-               (vec-length outputs)
-               (Theta pred pass-through
-                          (VO outputs))))))))
+            (VVO
+              (vec-of
+                ;; in the false case, we are done
+                pass-through
+                ;; otherwise do the rest of the loop
+                (BodyToVecOperand
+                (vec-length outputs)
+                (Theta pred pass-through
+                            (VO outputs)))))))))
 
 

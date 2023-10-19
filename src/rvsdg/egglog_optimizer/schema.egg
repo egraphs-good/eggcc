@@ -63,7 +63,7 @@
 (function Gamma (Operand VecOperand VecVecOperand) Body)
 ;; loops
 ;; predicate (inside loop), inputs (outside loop), outputs (inside loop)
-(function Theta (Operand VecOperand VecOperand) Body)
+(function Theta (Operand VecOperand VecOperand) Body :cost 20)
 ;; A body can also just be a VecOperand for convenience
 ;; This has no corresponding node in rust, it can be
 ;; removed during translation

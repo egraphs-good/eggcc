@@ -93,14 +93,9 @@
   ) :ruleset subst)
  
 
-;; ################################
+;; ####################################
 ;; implementation of PassThroughArguments
-(function PassThroughArguments (i64) VecOperand)
-
-;; (how many arguments to generate, rest of the vector)
-(function PassThroughArgumentsHelper (i64 VecOperand) VecOperand)
-
-(rewrite (PassThroughArguments i)
-  (PassThroughArgumentsHelper i (VO (vec-of)))
-  :ruleset subst)
+;; Creates a vec of arguments
+;; (vec-of (Arg 0) (Arg 1) ...) with length i
+(function PassThroughArguments (i64) VecOperand :unextractable)
 

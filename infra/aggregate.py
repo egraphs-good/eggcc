@@ -5,15 +5,14 @@ import json
 
 root="./tmp/bench"
 
-res = {}
+res = []
 
 for dir in listdir(root):
     dir_path = join(root, dir)
-    res[dir] = {}
-
     for file_path in listdir(dir_path):
-        run_method=file_path[:-len(".json")]
+        run_method = file_path[:-len(".json")]
         with open(join(dir_path, file_path)) as f:
-            res[dir][run_method] = json.load(f)
+            result = {"runMethod": run_method, "benchmark": dir, "results": json.load(f)}
+            res.append(result)
 
 json.dump(res, stdout)

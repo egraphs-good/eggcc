@@ -6,7 +6,7 @@ set -e
 cleanup() {
   rm -r ./tmp/
 }
-#trap cleanup EXIT
+trap cleanup EXIT
 
 # TODO: take in file glob as command line argument
 PROFILES=tests/small/add.bril

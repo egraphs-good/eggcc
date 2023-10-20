@@ -125,6 +125,9 @@ impl Simulator<'_> {
                         ValueOps::Lt => {
                             Some(Literal::Bool(int(xs[0].clone()) < int(xs[1].clone())))
                         }
+                        ValueOps::Eq => {
+                            Some(Literal::Bool(int(xs[0].clone()) == int(xs[1].clone())))
+                        }
                         op => todo!("implement {op}"),
                     }
                 }

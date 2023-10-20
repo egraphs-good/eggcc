@@ -18,49 +18,49 @@ expression: svg_new
 		</rect>
 		<g>
 			<path
-				d="M 443.75 0V 7.5Q 443.75 17.5 433.75 17.5H 178.75Q 168.75 17.5 168.75 27.5V 50"
+				d="M 591.6667 0V 10Q 591.6667 20 581.6667 20H 178.75Q 168.75 20 168.75 30V 50"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 443.75 0V 7.5Q 443.75 17.5 433.75 17.5H 297.5Q 287.5 17.5 287.5 27.5V 50"
+				d="M 591.6667 0V 10Q 591.6667 20 581.6667 20H 297.5Q 287.5 20 287.5 30V 50"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 443.75 0V 7.5Q 443.75 17.5 453.75 17.5H 827.5Q 837.5 17.5 837.5 27.5V 50"
+				d="M 591.6667 0V 10Q 591.6667 20 601.6667 20H 827.5Q 837.5 20 837.5 30V 50"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 443.75 0V 7.5Q 443.75 17.5 453.75 17.5H 1302.5Q 1312.5 17.5 1312.5 27.5V 50"
+				d="M 591.6667 0V 10Q 591.6667 20 601.6667 20H 1302.5Q 1312.5 20 1312.5 30V 50"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 887.5 0V 15Q 887.5 25 877.5 25H 416.25Q 406.25 25 406.25 35V 50"
+				d="M 1183.3334 0V 20Q 1183.3334 30 1173.3334 30H 416.25Q 406.25 30 406.25 40V 50"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 887.5 0V 15Q 887.5 25 897.5 25H 1065Q 1075 25 1075 35V 50"
+				d="M 1183.3334 0V 20Q 1183.3334 30 1173.3334 30H 1085Q 1075 30 1075 40V 50"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 1331.25 0V 820Q 1331.25 830 1321.25 830H 1193.3334Q 1183.3334 830 1183.3334 840V 850"
+				d="M 1775 0V 820Q 1775 830 1765 830H 1193.3334Q 1183.3334 830 1183.3334 840V 850"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
@@ -858,7 +858,7 @@ expression: svg_new
 		</g>
 		<g>
 			<circle
-				cx="443.75"
+				cx="591.6667"
 				cy="0"
 				fill="white"
 				r="4"
@@ -866,15 +866,7 @@ expression: svg_new
 				stroke-width="2">
 			</circle>
 			<circle
-				cx="887.5"
-				cy="0"
-				fill="white"
-				r="4"
-				stroke="black"
-				stroke-width="2">
-			</circle>
-			<circle
-				cx="1331.25"
+				cx="1183.3334"
 				cy="0"
 				fill="white"
 				r="4"

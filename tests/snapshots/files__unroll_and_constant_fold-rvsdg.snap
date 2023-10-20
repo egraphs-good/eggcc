@@ -5,7 +5,7 @@ expression: visualization.result
 <svg
 	height="850"
 	version="1.1"
-	width="1100"
+	width="950"
 	xmlns="http://www.w3.org/2000/svg">
 	<g
 		transform="translate(0, 0)">
@@ -15,53 +15,46 @@ expression: visualization.result
 			rx="10"
 			stroke="black"
 			stroke-width="2"
-			width="1100">
+			width="950">
 		</rect>
 		<g>
 			<path
-				d="M 550 0V 15Q 550 25 560 25H 585Q 595 25 595 35V 200"
+				d="M 475 0V 15Q 475 25 468.75 25H 468.75Q 462.5 25 462.5 35V 200"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 100 150V 172.5Q 100 182.5 110 182.5H 655Q 665 182.5 665 192.5V 200"
+				d="M 100 150V 170Q 100 180 110 180H 540Q 550 180 550 190V 200"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 250 150V 165Q 250 175 260 175H 795Q 805 175 805 185V 200"
+				d="M 250 150V 160Q 250 170 260 170H 627.5Q 637.5 170 637.5 180V 200"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 400 150V 157.5Q 400 167.5 410 167.5H 725Q 735 167.5 735 177.5V 200"
+				d="M 515 650V 657.5Q 515 667.5 525 667.5H 856.6667Q 866.6667 667.5 866.6667 677.5V 700"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 641.6666 650V 656Q 641.6666 666 651.6666 666H 1006.6667Q 1016.6667 666 1016.6667 676V 700"
+				d="M 585 650V 665Q 585 675 595 675H 823.3333Q 833.3333 675 833.3333 685V 700"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 700 650V 662Q 700 672 710 672H 973.3333Q 983.3333 672 983.3333 682V 700"
-				fill="transparent"
-				stroke="black"
-				stroke-linecap="round"
-				stroke-width="2">
-			</path>
-			<path
-				d="M 1000 800V 815Q 1000 825 990 825H 560Q 550 825 550 835V 850"
+				d="M 850 800V 815Q 850 825 840 825H 485Q 475 825 475 835V 850"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
@@ -128,36 +121,7 @@ expression: visualization.result
 				</circle>
 			</g>
 			<g
-				transform="translate(350, 50)">
-				<g>
-					<rect
-						fill="#FFFF80"
-						height="100"
-						rx="10"
-						stroke="black"
-						stroke-width="2"
-						width="100">
-					</rect>
-					<text
-						fill="black"
-						font-size="50"
-						text-anchor="middle"
-						x="50"
-						y="62.5">
-						3
-					</text>
-				</g>
-				<circle
-					cx="50"
-					cy="100"
-					fill="white"
-					r="4"
-					stroke="black"
-					stroke-width="2">
-				</circle>
-			</g>
-			<g
-				transform="translate(500, 200)">
+				transform="translate(350, 200)">
 				<rect
 					fill="#FF8080"
 					height="450"
@@ -185,49 +149,42 @@ expression: visualization.result
 					</rect>
 					<g>
 						<path
-							d="M 70 0V 310Q 70 320 80 320H 106.666664Q 116.666664 320 116.666664 330V 350"
+							d="M 87.5 0V 312Q 87.5 322 97.5 322H 130Q 140 322 140 332V 350"
 							fill="transparent"
 							stroke="black"
 							stroke-linecap="round"
 							stroke-width="2">
 						</path>
 						<path
-							d="M 140 0V 12Q 140 22 130 22H 93.33333Q 83.33333 22 83.33333 32V 50"
+							d="M 175 0V 15Q 175 25 165 25H 93.33333Q 83.33333 25 83.33333 35V 50"
 							fill="transparent"
 							stroke="black"
 							stroke-linecap="round"
 							stroke-width="2">
 						</path>
 						<path
-							d="M 210 0V 320Q 210 330 220 330H 223.33333Q 233.33333 330 233.33333 340V 350"
+							d="M 262.5 0V 324Q 262.5 334 271.25 334H 271.25Q 280 334 280 344V 350"
 							fill="transparent"
 							stroke="black"
 							stroke-linecap="round"
 							stroke-width="2">
 						</path>
 						<path
-							d="M 210 0V 18Q 210 28 220 28H 256.66666Q 266.66666 28 266.66666 38V 200"
+							d="M 262.5 0V 22.5Q 262.5 32.5 252.5 32.5H 126.666664Q 116.666664 32.5 116.666664 42.5V 50"
 							fill="transparent"
 							stroke="black"
 							stroke-linecap="round"
 							stroke-width="2">
 						</path>
 						<path
-							d="M 280 0V 325Q 280 335 285.8333 335H 285.8333Q 291.66666 335 291.66666 345V 350"
+							d="M 262.5 0V 22.5Q 262.5 32.5 264.5833 32.5H 264.5833Q 266.66666 32.5 266.66666 42.5V 200"
 							fill="transparent"
 							stroke="black"
 							stroke-linecap="round"
 							stroke-width="2">
 						</path>
 						<path
-							d="M 280 0V 24Q 280 34 270 34H 126.666664Q 116.666664 34 116.666664 44V 50"
-							fill="transparent"
-							stroke="black"
-							stroke-linecap="round"
-							stroke-width="2">
-						</path>
-						<path
-							d="M 100 150V 315Q 100 325 110 325H 165Q 175 325 175 335V 350"
+							d="M 100 150V 318Q 100 328 110 328H 200Q 210 328 210 338V 350"
 							fill="transparent"
 							stroke="black"
 							stroke-linecap="round"
@@ -241,7 +198,7 @@ expression: visualization.result
 							stroke-width="2">
 						</path>
 						<path
-							d="M 250 300V 305Q 250 315 240 315H 68.33333Q 58.333332 315 58.333332 325V 350"
+							d="M 250 300V 306Q 250 316 240 316H 80Q 70 316 70 326V 350"
 							fill="transparent"
 							stroke="black"
 							stroke-linecap="round"
@@ -342,7 +299,7 @@ expression: visualization.result
 					</g>
 					<g>
 						<circle
-							cx="70"
+							cx="87.5"
 							cy="0"
 							fill="white"
 							r="4"
@@ -350,7 +307,7 @@ expression: visualization.result
 							stroke-width="2">
 						</circle>
 						<circle
-							cx="140"
+							cx="175"
 							cy="0"
 							fill="white"
 							r="4"
@@ -358,15 +315,7 @@ expression: visualization.result
 							stroke-width="2">
 						</circle>
 						<circle
-							cx="210"
-							cy="0"
-							fill="white"
-							r="4"
-							stroke="black"
-							stroke-width="2">
-						</circle>
-						<circle
-							cx="280"
+							cx="262.5"
 							cy="0"
 							fill="white"
 							r="4"
@@ -376,7 +325,7 @@ expression: visualization.result
 					</g>
 					<g>
 						<circle
-							cx="58.333332"
+							cx="70"
 							cy="350"
 							fill="black"
 							r="4"
@@ -384,7 +333,7 @@ expression: visualization.result
 							stroke-width="2">
 						</circle>
 						<circle
-							cx="116.666664"
+							cx="140"
 							cy="350"
 							fill="white"
 							r="4"
@@ -392,7 +341,7 @@ expression: visualization.result
 							stroke-width="2">
 						</circle>
 						<circle
-							cx="175"
+							cx="210"
 							cy="350"
 							fill="white"
 							r="4"
@@ -400,15 +349,7 @@ expression: visualization.result
 							stroke-width="2">
 						</circle>
 						<circle
-							cx="233.33333"
-							cy="350"
-							fill="white"
-							r="4"
-							stroke="black"
-							stroke-width="2">
-						</circle>
-						<circle
-							cx="291.66666"
+							cx="280"
 							cy="350"
 							fill="white"
 							r="4"
@@ -418,7 +359,23 @@ expression: visualization.result
 					</g>
 				</g>
 				<circle
-					cx="95"
+					cx="112.5"
+					cy="0"
+					fill="white"
+					r="4"
+					stroke="black"
+					stroke-width="2">
+				</circle>
+				<circle
+					cx="200"
+					cy="0"
+					fill="white"
+					r="4"
+					stroke="black"
+					stroke-width="2">
+				</circle>
+				<circle
+					cx="287.5"
 					cy="0"
 					fill="white"
 					r="4"
@@ -427,7 +384,7 @@ expression: visualization.result
 				</circle>
 				<circle
 					cx="165"
-					cy="0"
+					cy="450"
 					fill="white"
 					r="4"
 					stroke="black"
@@ -435,7 +392,7 @@ expression: visualization.result
 				</circle>
 				<circle
 					cx="235"
-					cy="0"
+					cy="450"
 					fill="white"
 					r="4"
 					stroke="black"
@@ -443,38 +400,6 @@ expression: visualization.result
 				</circle>
 				<circle
 					cx="305"
-					cy="0"
-					fill="white"
-					r="4"
-					stroke="black"
-					stroke-width="2">
-				</circle>
-				<circle
-					cx="141.66666"
-					cy="450"
-					fill="white"
-					r="4"
-					stroke="black"
-					stroke-width="2">
-				</circle>
-				<circle
-					cx="200"
-					cy="450"
-					fill="white"
-					r="4"
-					stroke="black"
-					stroke-width="2">
-				</circle>
-				<circle
-					cx="258.3333"
-					cy="450"
-					fill="white"
-					r="4"
-					stroke="black"
-					stroke-width="2">
-				</circle>
-				<circle
-					cx="316.66666"
 					cy="450"
 					fill="white"
 					r="4"
@@ -483,7 +408,7 @@ expression: visualization.result
 				</circle>
 			</g>
 			<g
-				transform="translate(950, 700)">
+				transform="translate(800, 700)">
 				<g>
 					<rect
 						fill="#FFFF80"
@@ -530,7 +455,7 @@ expression: visualization.result
 		</g>
 		<g>
 			<circle
-				cx="550"
+				cx="475"
 				cy="0"
 				fill="white"
 				r="4"
@@ -540,7 +465,7 @@ expression: visualization.result
 		</g>
 		<g>
 			<circle
-				cx="550"
+				cx="475"
 				cy="850"
 				fill="white"
 				r="4"

@@ -2,26 +2,27 @@
 (ruleset subst)
 
 ;;                   e  [ x -> v ]
-(function SubstExpr (Expr i64 Operand) Expr)
-(function SubstOperand (Operand i64 Operand) Operand)
-(function SubstBody (Body i64 Operand) Body)
-(function SubstVecOperand (VecOperand i64 Operand) VecOperand)
-(function SubstVecVecOperand (VecVecOperand i64 Operand) VecVecOperand)
+(function SubstExpr (Expr i64 Operand) Expr :unextractable)
+(function SubstOperand (Operand i64 Operand) Operand :unextractable)
+(function SubstBody (Body i64 Operand) Body :unextractable)
+(function SubstVecOperand (VecOperand i64 Operand) VecOperand :unextractable)
+(function SubstVecVecOperand (VecVecOperand i64 Operand) VecVecOperand :unextractable)
 
 (rewrite (SubstExpr (Const ty ops lit) x v) (Const ty ops lit) :ruleset subst)
-(rewrite (SubstExpr (Call ty f args) x v) (Call ty f (SubstVecOperand args x v)) :ruleset subst)
-(rewrite (SubstExpr (add ty a b) x v) (add ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (sub ty a b) x v) (sub ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (mul ty a b) x v) (mul ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (div ty a b) x v) (div ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (eq ty a b) x v) (eq ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (lt ty a b) x v) (lt ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (gt ty a b) x v) (gt ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (le ty a b) x v) (le ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (ge ty a b) x v) (ge ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (not ty a b) x v) (not ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (and ty a b) x v) (and ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
-(rewrite (SubstExpr (or ty a b) x v) (or ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (Call ty f args n-outs) x v) (Call ty f (SubstVecOperand args x v) n-outs) :ruleset subst)
+(rewrite (SubstExpr (badd ty a b) x v) (badd ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (bsub ty a b) x v) (bsub ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (bmul ty a b) x v) (bmul ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (bdiv ty a b) x v) (bdiv ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (beq ty a b) x v) (beq ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (blt ty a b) x v) (blt ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (bgt ty a b) x v) (bgt ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (ble ty a b) x v) (ble ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (bge ty a b) x v) (bge ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (bnot ty a b) x v) (bnot ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (band ty a b) x v) (band ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (bor ty a b) x v) (bor ty (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
+(rewrite (SubstExpr (PRINT a b) x v) (PRINT (SubstOperand a x v) (SubstOperand b x v)) :ruleset subst)
 
 (rewrite (SubstOperand (Arg x) x v) v :ruleset subst)
 (rule ((= f (SubstOperand (Arg y) x v)) (!= y x))
@@ -38,7 +39,7 @@
 
 ;; params: vec, var, op, next index to subst
 ;; rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
-(function SubstVecOperandHelper (VecOperand i64 Operand i64) VecOperand)
+(function SubstVecOperandHelper (VecOperand i64 Operand i64) VecOperand :unextractable)
 (rewrite (SubstVecOperand vec x v) (SubstVecOperandHelper vec x v 0) :ruleset subst)
 (rule
   (
@@ -66,7 +67,7 @@
 
 ;; params: vec, var, op, next index to subst
 ;; rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
-(function SubstVecVecOperandHelper (VecVecOperand i64 Operand i64) VecVecOperand)
+(function SubstVecVecOperandHelper (VecVecOperand i64 Operand i64) VecVecOperand :unextractable)
 (rewrite (SubstVecVecOperand vec x v) (SubstVecVecOperandHelper vec x v 0) :ruleset subst)
 (rule
   (
@@ -90,3 +91,5 @@
   ( 
     (union (SubstVecVecOperandHelper (VVO vec) x v i) (VVO vec))
   ) :ruleset subst)
+ 
+

@@ -98,12 +98,10 @@ struct RvsdgToCfg<'a> {
 
 impl RvsdgProgram {
     pub fn to_cfg(&self) -> SimpleCfgProgram {
-        // TODO right now we only support one function
-        // which is named main
-        assert!(self.functions.len() == 1);
         CfgProgram {
             functions: self.functions.iter().map(|f| f.to_cfg()).collect(),
         }
+        .optimize_jumps()
     }
 }
 
@@ -135,18 +133,18 @@ impl RvsdgFunction {
             }
         }
 
-        let mut result = to_bril.operand_to_bril(
-            self.state,
-            &rvsdg_args,
-            &RvsdgContext {
-                body: None,
-                branch: 0,
-            },
-        );
-        if let Some((_ty, operand)) = &self.result {
+        let new_block = to_bril.make_block(vec![]);
+        let mut result = TranslationResult {
+            start: new_block,
+            end: new_block,
+            values: vec![],
+        };
+
+        let mut final_block = None;
+        for (ty, operand) in self.results.iter() {
             // it doesn't matter what var we assign to
             // TODO current args hardcoded to implicit print state
-            let return_res = to_bril.operand_to_bril(
+            let new_block = to_bril.operand_to_bril(
                 *operand,
                 &rvsdg_args,
                 &RvsdgContext {
@@ -154,17 +152,27 @@ impl RvsdgFunction {
                     branch: 0,
                 },
             );
-            let final_block = to_bril.make_block(vec![Instruction::Effect {
-                op: EffectOps::Return,
-                args: vec![return_res.get_single_res().unwrap_name()],
-                funcs: vec![],
-                labels: vec![],
-                pos: None,
-            }]);
 
+            // Record the return value if possible
+            if let RvsdgType::Bril(_) = ty {
+                // We don't allow a function to return multiple values
+                assert!(final_block.is_none());
+                final_block = Some(to_bril.make_block(vec![Instruction::Effect {
+                    op: EffectOps::Return,
+                    args: vec![new_block.get_single_res().unwrap_name()],
+                    funcs: vec![],
+                    labels: vec![],
+                    pos: None,
+                }]));
+            }
+
+            result = to_bril.sequence_results(&[result, new_block]);
+        }
+
+        // If the function returns a value
+        if let Some(final_block) = final_block {
             result = to_bril.sequence_results(&[
                 result,
-                return_res,
                 TranslationResult {
                     start: final_block,
                     end: final_block,
@@ -173,9 +181,8 @@ impl RvsdgFunction {
             ]);
         }
 
-        // TODO hard-coded name
         CfgFunction {
-            name: "main".into(),
+            name: self.name.clone(),
             args: func_args,
             graph: to_bril.graph,
             entry: result.start,
@@ -630,8 +637,68 @@ impl<'a> RvsdgToCfg<'a> {
                 };
                 self.sequence_results(&[operands, new_res])
             }
-            BasicExpr::Call(_name, _operands, _output_ports, _return_type_maybe) => {
-                panic!("Not supported yet");
+            BasicExpr::Call(func_name, operands, n_outs, return_type) => {
+                // We need to remove the last argument if the function call is stateful.
+                // let operand_len = operands.len() - ((!pure) as usize);
+                let operand_results = operands
+                    .iter()
+                    .map(|op| self.operand_to_bril(*op, current_args, ctx))
+                    .collect::<Vec<_>>();
+                let operands = self.combine_results(&operand_results);
+                // Keep only value arguments
+                let args = operands
+                    .values
+                    .iter()
+                    .flat_map(|v| {
+                        if let RvsdgValue::BrilValue(name, _ty) = v {
+                            Some(name.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                let var_name = self.get_fresh();
+                match return_type {
+                    Some(ty) => {
+                        let instructions = vec![Instruction::Value {
+                            args,
+                            dest: var_name.clone(),
+                            funcs: vec![func_name.clone()],
+                            labels: vec![],
+                            op: ValueOps::Call,
+                            pos: None,
+                            op_type: ty.clone(),
+                        }];
+                        let new_block = self.make_block(instructions);
+                        let mut values = vec![RvsdgValue::BrilValue(var_name, ty.clone())];
+                        for _ in 1..*n_outs {
+                            values.push(RvsdgValue::StateEdge);
+                        }
+                        let new_res = TranslationResult {
+                            start: new_block,
+                            end: new_block,
+                            values,
+                        };
+                        self.sequence_results(&[operands, new_res])
+                    }
+                    None => {
+                        let instructions = vec![Instruction::Effect {
+                            args,
+                            funcs: vec![func_name.clone()],
+                            labels: vec![],
+                            op: EffectOps::Call,
+                            pos: None,
+                        }];
+                        let new_block = self.make_block(instructions);
+                        let new_res = TranslationResult {
+                            start: new_block,
+                            end: new_block,
+                            values: vec![RvsdgValue::StateEdge; *n_outs],
+                        };
+                        self.sequence_results(&[operands, new_res])
+                    }
+                }
             }
             BasicExpr::Const(_const_op, lit, ty) => {
                 let dest = self.get_fresh();

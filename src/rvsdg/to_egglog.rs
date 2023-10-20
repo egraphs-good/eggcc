@@ -2,16 +2,11 @@ use bril_rs::{ConstOps, Literal, Type};
 use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
+use crate::conversions::op_to_egglog;
+
 use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgType};
 
 impl RvsdgFunction {
-    pub(crate) fn result_val(&self) -> Option<&Operand> {
-        match &self.result {
-            Some((_ty, val)) => Some(val),
-            None => None,
-        }
-    }
-
     fn expr_from_ty(ty: &Type) -> Expr {
         use Expr::*;
         match ty {
@@ -44,24 +39,25 @@ impl RvsdgFunction {
 
         match expr {
             BasicExpr::Op(op, operands, ty) => {
-                Call(op.to_string().into(), f(operands, Some(ty.clone())))
+                Call(op_to_egglog(*op), f(operands, Some(ty.clone())))
             }
-            BasicExpr::Call(ident, operands, _, ty) => {
+            BasicExpr::Call(ident, operands, n_outs, ty) => {
                 let ident = Lit(String(ident.into()));
                 let args = Self::vec_operand(&f(operands, None));
                 let ty = match ty {
                     Some(ty) => Call("SomeType".into(), vec![Self::expr_from_ty(ty)]),
                     None => Call("NoneType".into(), vec![]),
                 };
-                Call("Call".into(), vec![ty, ident, args])
+                Call(
+                    "Call".into(),
+                    vec![ty, ident, args, Lit(Int(*n_outs as i64))],
+                )
             }
             BasicExpr::Print(operands) => Call("PRINT".into(), f(operands, None)),
             BasicExpr::Const(ConstOps::Const, lit, ty) => {
                 let lit = match (ty, lit) {
                     (Type::Int, Literal::Int(n)) => Call("Num".into(), vec![Lit(Int(*n))]),
-                    (Type::Bool, Literal::Bool(b)) => {
-                        Call("Bool".into(), vec![Lit(Int(*b as i64))])
-                    }
+                    (Type::Bool, Literal::Bool(b)) => Call("Bool".into(), vec![Lit(Bool(*b))]),
                     (Type::Float, Literal::Float(f)) => Call(
                         "Float".into(),
                         vec![Lit(F64(OrderedFloat::<f64>::from(*f)))],
@@ -173,16 +169,18 @@ impl RvsdgFunction {
                 .map(RvsdgFunction::expr_from_rvsdg_ty)
                 .collect(),
         );
-        let output = {
-            let state = self.operand_to_egglog_expr(&self.state);
-            if let Some((ty, result)) = &self.result {
-                let value = self.operand_to_egglog_expr(result);
-                let ty = Self::expr_from_ty(ty);
-                Call("StateAndValue".into(), vec![state, ty, value])
-            } else {
-                Call("StateOnly".into(), vec![state])
-            }
-        };
-        Call("Func".into(), vec![Lit(String(name)), sig, output])
+        let (out_sig, body): (Vec<_>, Vec<_>) = self
+            .results
+            .iter()
+            .map(|(ty, result)| {
+                (
+                    Self::expr_from_rvsdg_ty(ty),
+                    self.operand_to_egglog_expr(result),
+                )
+            })
+            .unzip();
+        let out_sig = Call("vec-of".into(), out_sig);
+        let body = Self::vec_operand(&body);
+        Call("Func".into(), vec![Lit(String(name)), sig, out_sig, body])
     }
 }

@@ -1,11 +1,12 @@
-@main() {
+# ARGS: 1
+@main(arg: int) {
   one: int = const 1;
   two: int = const 2;
   x: int = const 0;
-  a_cond: bool = lt one two;
+  a_cond: bool = lt arg two;
   br a_cond .B .D;
   .B:
-    b_cond: bool = lt two one;
+    b_cond: bool = lt two arg;
     x: int = add x two;
     br b_cond .C .E;
   .C:
@@ -19,5 +20,6 @@
     jmp .F;
   .F:
     x: int = add x one;
+    print x;
     ret;
 }

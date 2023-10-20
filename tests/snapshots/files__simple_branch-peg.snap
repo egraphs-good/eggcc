@@ -5,11 +5,11 @@ expression: visualization.result
 digraph G {
 subgraph {
 node [ordering=out];
-v0 [label="int"];
+v0 [label="arg 0"];
 v1 [label="int"];
 v2 [label="lt"];
-v3 [label="arg 0"];
-v4 [label="arg 0"];
+v3 [label="arg 1"];
+v4 [label="arg 1"];
 v5 [label="int"];
 v6 [label="int"];
 v7 [label="Φ"];

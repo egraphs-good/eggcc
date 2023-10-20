@@ -6,11 +6,10 @@ main {
 block:
  i: int = const 0;
  one: int = const 1;
- three: int = const 3;
 while true:
  block:
   i: int = add i one;
-  cond: bool = lt i three;
+  cond: bool = lt i one;
   if cond:
    break 2
   else:

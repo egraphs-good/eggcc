@@ -3,100 +3,38 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  jmp .__3__;
-.__51__:
-  jmp .__52__;
-.__50__:
-  jmp .__51__;
-.__49__:
-  v7: int = id v26;
-  v8: int = id v28;
-  v9: int = id v29;
-  br v47 .__11__ .__50__;
-.__48__:
-  v46: int = const 1;
-  v47: bool = eq v27 v46;
-  jmp .__49__;
-.__45__:
-  jmp .__48__;
-.__44__:
-  jmp .__45__;
-.__43__:
-  jmp .__44__;
-.__42__:
-  jmp .__43__;
-.__41__:
-  jmp .__42__;
-.__30__:
-  v26: int = id v7;
-  v27: int = id v22;
-  v28: int = id v8;
-  v29: int = id v9;
-  jmp .__41__;
-.__25__:
-  jmp .__30__;
-.__24__:
-  jmp .__25__;
-.__23__:
-  v22: int = const 0;
-  jmp .__24__;
-.__21__:
-  jmp .__23__;
-.__20__:
-  jmp .__21__;
-.__40__:
-  v26: int = id v34;
-  v27: int = id v36;
-  v28: int = id v8;
-  v29: int = id v9;
-  jmp .__41__;
-.__39__:
-  jmp .__40__;
-.__38__:
-  jmp .__39__;
-.__37__:
-  v36: int = const 1;
-  jmp .__38__;
-.__35__:
-  v34: int = add v7 v8;
-  jmp .__37__;
-.__33__:
-  jmp .__35__;
-.__32__:
-  jmp .__33__;
-.__31__:
-  jmp .__32__;
-.__19__:
-  br v13 .__31__ .__20__;
-.__18__:
-  jmp .__19__;
-.__17__:
-  jmp .__18__;
-.__16__:
-  jmp .__17__;
-.__15__:
-  jmp .__16__;
-.__14__:
-  v13: bool = lt v7 v9;
-  jmp .__15__;
-.__12__:
-  jmp .__14__;
-.__11__:
+  v3: int = const 0;
+  v5: int = const 1;
+  v8: int = id v3;
+  v9: int = id v5;
+  v10: int = id v0;
   jmp .__12__;
-.__10__:
-  v7: int = id v2;
-  v8: int = id v4;
-  v9: int = id v0;
-  jmp .__11__;
-.__6__:
-  jmp .__10__;
-.__5__:
-  v4: int = const 1;
-  jmp .__6__;
-.__3__:
-  v2: int = const 0;
-  jmp .__5__;
-.__52__:
-  print v7;
+.__42__:
+  v47: int = const 1;
+  v48: bool = eq v28 v47;
+  v8: int = id v27;
+  v9: int = id v29;
+  v10: int = id v30;
+  br v48 .__12__ .__51__;
+.__32__:
+  v35: int = add v8 v9;
+  v37: int = const 1;
+  v27: int = id v35;
+  v28: int = id v37;
+  v29: int = id v9;
+  v30: int = id v10;
+  jmp .__42__;
+.__21__:
+  v23: int = const 0;
+  v27: int = id v8;
+  v28: int = id v23;
+  v29: int = id v9;
+  v30: int = id v10;
+  jmp .__42__;
+.__12__:
+  v14: bool = lt v8 v10;
+  br v14 .__32__ .__21__;
+.__51__:
+  print v8;
 }
 

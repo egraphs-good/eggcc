@@ -60,18 +60,17 @@ pub(crate) fn cfg_func_to_rvsdg(
         }
         cur = next;
     }
-    let result = match &builder.cfg.return_ty {
+    let mut results = match &builder.cfg.return_ty {
         Some(return_ty) => {
             let ret_var = builder.analysis.intern.intern(ret_id());
-            Some((
-                return_ty.clone(),
+            vec![(
+                RvsdgType::Bril(return_ty.clone()),
                 get_op(ret_var, &None, &builder.store, &builder.analysis.intern)?,
-            ))
+            )]
         }
-        None => None,
+        None => vec![],
     };
-    let n_args = builder.cfg.args.len();
-    let state = builder.store[&state_var];
+    results.push((RvsdgType::PrintState, builder.store[&state_var]));
 
     let mut args: Vec<RvsdgType> = builder
         .cfg
@@ -83,11 +82,9 @@ pub(crate) fn cfg_func_to_rvsdg(
 
     Ok(RvsdgFunction {
         name,
-        n_args,
         args,
         nodes: builder.expr,
-        result,
-        state,
+        results,
     })
 }
 
@@ -290,9 +287,9 @@ impl<'a> RvsdgBuilder<'a> {
 
         // Not all live variables have necessarily been bound yet.
         // `input_vars` and `output_vars` store the variables that are bound.
-        let mut input_vars = Vec::with_capacity(live_vars.live_in.len());
+        let mut input_vars = Vec::with_capacity(live_vars.live_out.len());
         let mut output_vars = Vec::new();
-        for var in live_vars.live_in.iter() {
+        for var in live_vars.live_out.iter() {
             let Some(op) = self.store.get(&var).copied() else { continue; };
             inputs.push(op);
             input_vars.push(var);
@@ -336,6 +333,7 @@ impl<'a> RvsdgBuilder<'a> {
             } else {
                 next = Some(curr);
             }
+            // self.store = snapshot.clone();
         }
 
         let next = next.unwrap();

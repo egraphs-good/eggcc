@@ -32,6 +32,7 @@ mod egglog_optimizer;
 pub(crate) mod from_cfg;
 pub(crate) mod from_egglog;
 pub(crate) mod live_variables;
+pub(crate) mod optimize_direct_jumps;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
@@ -56,7 +57,7 @@ use self::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 /// Errors from the rvsdg module.
 #[derive(Debug, Error)]
@@ -93,12 +94,13 @@ pub(crate) type Id = usize;
 pub(crate) enum BasicExpr<Op> {
     /// A primitive operation.
     Op(ValueOps, Vec<Op>, Type),
-    /// A function call. The last parameter is the number of outputs to the
-    /// function. Functions always have an "extra" output that is used for the
-    /// 'state edge' flowing out of the function.
+    /// A function call. In general, there are two kinds of parameters
+    /// to a function: value arguments, which have a Bril type, and state arguments,
+    /// which includes PrintEdge.
     ///
-    /// Essentially all of the code here does not use this value at all. The
-    /// exception is the SVG rendering code, which relies on this value to
+    /// The `usize` fields denotes the number of return values this function call
+    /// will produce. Among them at most one is a non-state value, which, if exists, is the
+    /// first return value. The SVG rendering code also relies on this value to
     /// determine how many output ports to add to a function call.
     Call(String, Vec<Op>, usize, Option<Type>),
     /// A literal constant.
@@ -142,7 +144,7 @@ pub(crate) enum RvsdgBody {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum RvsdgType {
     Bril(Type),
     PrintState,
@@ -156,13 +158,6 @@ pub struct RvsdgFunction {
     /// The name of this function.
     pub(crate) name: String,
 
-    /// The number of input arguments to the function.
-    ///
-    /// Functions all take `n_args + 1` arguments, where the last argument is a
-    /// "state edge" used to preserve ordering constraints to (potentially)
-    /// impure function calls.
-    /// TODO remove n_args when the egglog encoding supports args
-    pub(crate) n_args: usize,
     /// The arguments to this function, which can be bril values or
     /// state edges.
     pub(crate) args: Vec<RvsdgType>,
@@ -170,22 +165,24 @@ pub struct RvsdgFunction {
     /// Invariant: nodes refer only to nodes with a lower index.
     pub(crate) nodes: Vec<RvsdgBody>,
 
-    /// The (optional) result pointing into this function.
-    ///
-    /// NB: until effects are supported, the only way to ensure a computation is
-    /// marked as used is to populate a result of some kind.
-    pub(crate) result: Option<(Type, Operand)>,
+    /// A list of results pointing into this function.
+    pub(crate) results: Vec<(RvsdgType, Operand)>,
+}
 
-    /// The output port corersponding to the state edge of the function.
-    pub(crate) state: Operand,
+impl RvsdgFunction {
+    pub(crate) fn n_value_args(&self) -> usize {
+        self.args
+            .iter()
+            .map(|arg| matches!(arg, RvsdgType::Bril(_)) as usize)
+            .sum()
+    }
 }
 
 impl fmt::Debug for RvsdgFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RvsdgFunction")
             .field("args", &self.args)
-            .field("result", &self.result)
-            .field("state", &self.state);
+            .field("result", &self.results);
         let mut map = f.debug_map();
         for (i, node) in self.nodes.iter().enumerate() {
             map.entry(&i, node);

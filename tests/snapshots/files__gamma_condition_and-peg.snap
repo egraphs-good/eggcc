@@ -5,37 +5,38 @@ expression: visualization.result
 digraph G {
 subgraph {
 node [ordering=out];
-v0 [label="int"];
+v0 [label="arg 0"];
 v1 [label="int"];
 v2 [label="lt"];
 v3 [label="int"];
 v4 [label="lt"];
 v5 [label="and"];
 v6 [label="arg 0"];
-v7 [label="PRINT"];
-v8 [label="arg 0"];
-v9 [label="PRINT"];
-v10 [label="Φ"];
+v7 [label="arg 1"];
+v8 [label="PRINT"];
+v9 [label="arg 1"];
+v10 [label="PRINT"];
 v11 [label="Φ"];
-v12 [label="PRINT"];
+v12 [label="Φ"];
+v13 [label="PRINT"];
 v2 -> v0;
 v2 -> v1;
 v4 -> v1;
 v4 -> v3;
 v5 -> v2;
 v5 -> v4;
-v7 -> v0;
-v7 -> v6;
-v9 -> v1;
-v9 -> v8;
-v10 -> v5;
-v10 -> v7;
+v8 -> v6;
+v8 -> v7;
+v10 -> v1;
 v10 -> v9;
 v11 -> v5;
-v11 -> v3;
-v11 -> v3;
-v12 -> v11;
-v12 -> v10;
+v11 -> v8;
+v11 -> v10;
+v12 -> v5;
+v12 -> v3;
+v12 -> v3;
+v13 -> v12;
+v13 -> v11;
 }
 }
 

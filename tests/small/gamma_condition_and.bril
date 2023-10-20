@@ -1,5 +1,5 @@
-@main() {
-  x: int = const 1;
+# ARGS: 1
+@main(x: int) {
   y: int = const 2;
   z: int = const 3;
   a: bool = lt x y;
@@ -17,8 +17,7 @@
 }
 
 # want to "simplify" to:
-# @main() {
-#   x: int = const 1;
+# @main(x: int) {
 #   y: int = const 2;
 #   z: int = const 3;
 #   a: bool = lt x y;

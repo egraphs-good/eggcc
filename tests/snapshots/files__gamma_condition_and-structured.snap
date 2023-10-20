@@ -6,18 +6,20 @@ main {
 block:
  block:
   block:
-   cond: bool = lt x x;
-   if cond:
+   y: int = const 2;
+   z: int = const 3;
+   a: bool = lt x y;
+   b: bool = lt y z;
+   c: bool = and a b;
+   if c:
     break 2
    else:
     break 1
-  a: int = const 2;
-  print a;
+  print y;
   break 1
- a: int = const 1;
- print a;
+ print x;
 block:
-
+ print z;
  return
 
 }

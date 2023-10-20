@@ -153,6 +153,7 @@ fn peg_basic_odd_branch() {
     let two = expected.lit_int(2);
     let five = expected.lit_int(5);
     let n = expected.arg(0);
+    let print_edge_in = expected.arg(1);
 
     let res = expected.theta(zero, usize::MAX, 0);
     let i = expected.theta(zero, usize::MAX, 0);
@@ -168,7 +169,7 @@ fn peg_basic_odd_branch() {
     let mul2 = expected.mul(eval, two, Type::Int);
     let phi = expected.phi(pred, mul2, eval);
 
-    let print = expected.print(vec![phi]);
+    let print = expected.print(vec![phi, print_edge_in]);
     let want = expected.into_main_function(1, print);
     let want = PegProgram {
         functions: vec![want],
@@ -209,6 +210,7 @@ fn peg_unstructured() {
     let mut expected = PegTest::default();
     let four = expected.lit_int(4);
     let one = expected.lit_int(1);
+    let print_edge_in = expected.arg(0);
 
     let x = expected.theta(four, usize::MAX, 0);
     let x_plus_one = expected.add(x, one, Type::Int);
@@ -218,7 +220,7 @@ fn peg_unstructured() {
     let pass = expected.pass(lt, 0);
     let eval = expected.eval(x, pass, 0);
     let add = expected.add(eval, one, Type::Int);
-    let print = expected.print(vec![add]);
+    let print = expected.print(vec![add, print_edge_in]);
 
     let want = expected.into_main_function(0, print);
     let want = PegProgram {

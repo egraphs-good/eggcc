@@ -4,11 +4,15 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v4: bool = lt v0 v0;
-  br v4 .__10__ .__8__;
-.__10__:
-  jmp .__12__;
-.__8__:
-  jmp .__12__;
-.__12__:
+  br v4 .__14__ .__9__;
+.__14__:
+  v13: int = const 1;
+  print v13;
+  jmp .__18__;
+.__9__:
+  v8: int = const 2;
+  print v8;
+  jmp .__18__;
+.__18__:
 }
 

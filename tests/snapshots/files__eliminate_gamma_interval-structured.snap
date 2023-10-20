@@ -1,0 +1,36 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ block:
+  block:
+   ten: int = const 10;
+   five: int = const 5;
+   cond1: bool = lt input ten;
+   if cond1:
+    break 2
+   else:
+    break 1
+  x: int = const 3;
+  break 1
+ x: int = const 2;
+block:
+ block:
+  block:
+   condition: bool = lt x five;
+   if condition:
+    break 2
+   else:
+    break 1
+  elseval: int = const 2;
+  print elseval;
+  break 1
+ thenval: int = const 1;
+ print thenval;
+block:
+
+ return
+
+}

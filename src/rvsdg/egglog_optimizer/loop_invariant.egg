@@ -1,0 +1,23 @@
+(ruleset loop_inv)
+
+
+(relation no_change (Body i64))
+(relation invariant (Body Operand))
+
+
+
+(rule ((= theta (Theta pred inputs outputs)) 
+		(= n (vec-length inputs)) 
+		(< i n) 
+		(= (vec_get (outputs) i) (Arg i)))
+	(no_change theta i))
+
+
+;;(rule ((= (no_change theta i)))  (invariant theta (Arg i)))
+
+
+(function decompExpr)
+
+(function decompOperand)
+(function decompBody)
+

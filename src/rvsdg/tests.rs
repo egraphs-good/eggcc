@@ -757,6 +757,183 @@ fn rvsdg_subst() {
 }
 
 #[test]
+fn rvsdg_subst_beneath() {
+    const EGGLOG_THETA_PROGRAM: &str = r#"
+    (let unsubsted
+        (Theta
+              (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+              (VO (vec-of
+                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+              ))
+              (VO (vec-of
+                (Node (PureOp (blt (BoolT)
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
+                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+              ))
+            ))
+
+    (can-subst-Operand-beneath
+        unsubsted
+        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+        (Arg 0))
+    (run-schedule (saturate subst))
+
+    (let expected
+        (Theta
+              (Arg 0)
+              (VO (vec-of
+                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+              ))
+              (VO (vec-of
+                (Node (PureOp (blt (BoolT)
+                    (Arg 0)
+                    (Arg 0))))
+                (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
+              ))
+            ))
+    (check (= unsubsted expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM).unwrap();
+
+    const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let unsubsted
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+            (VO (vec-of
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+            ))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                ))
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                ))
+            ))
+          ))
+
+    (can-subst-Operand-beneath
+        unsubsted
+        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+        (Arg 0))
+    (run-schedule (saturate subst))
+
+    (let expected
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+            (VO (vec-of
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+            ))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
+                ))
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
+                ))
+            ))
+          ))
+    (check (= unsubsted expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
+
+    // This also tests what happens when Gamma/Theta appears *within* above
+    const EGGLOG_OPERAND_GROUP_PROGRAM: &str = r#"
+    (let unsubsted
+        (OperandGroup (VO (vec-of
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+            (Node (Theta
+                  (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                  (VO (vec-of
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                  ))
+                  (VO (vec-of
+                    (Node (PureOp (blt (BoolT)
+                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                  ))
+                ))
+            (Node (Gamma
+                (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                (VO (vec-of
+                  (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+                  (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                ))
+                (VVO (vec-of
+                    (VO (vec-of
+                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                    ))
+                    (VO (vec-of
+                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                    ))
+                ))
+              ))
+            ))))
+
+    (can-subst-Operand-beneath
+        unsubsted
+        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+        (Arg 0))
+    (run-schedule (saturate subst))
+
+    (let expected
+        (OperandGroup (VO (vec-of
+            (Arg 0)
+            (Node (Theta
+                  (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                  (VO (vec-of
+                    (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
+                    (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
+                  ))
+                  (VO (vec-of
+                    (Node (PureOp (blt (BoolT)
+                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                  ))
+                ))
+            (Node (Gamma
+                (Arg 0)
+                (VO (vec-of
+                  (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
+                  (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
+                ))
+                (VVO (vec-of
+                    (VO (vec-of
+                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                    ))
+                    (VO (vec-of
+                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                    ))
+                ))
+              ))
+            ))))
+    (check (= unsubsted expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph
+        .parse_and_run_program(EGGLOG_OPERAND_GROUP_PROGRAM)
+        .unwrap();
+}
+
+#[test]
 fn rvsdg_shift() {
     const EGGLOG_PROGRAM: &str = r#"
     (let unshifted

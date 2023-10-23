@@ -44,6 +44,17 @@ fn subst_all_rule(btype: String) -> String {
     )
 }
 
+// "subst-beneath" rules support replacing a specific {Expr, Body, Operand,
+//  VecOperand, VecVecOperand} with another.
+//
+// - The key relations are (relation can-subst-TYPE-beneath (Body TYPE TYPE)),
+//   where TYPE is one of {Expr, Body, Operand, VecOperand, VecVecOperand}.
+// - Add (can-subst-TYPE-beneath above from to) if it is sound to replace zero
+//   or more occurrences of `from` with `to`, strictly within `above`.
+// - Then, saturate the subst ruleset for the appropriate unions to be made.
+//
+// See [src/rvsdg/tests.rs] for examples.
+// 
 // rtjoa: We could parameterize on `above`'s type (currently, always Body) to
 // support substituting under a Function as well
 fn subst_beneath_rules() -> Vec<String> {
@@ -113,7 +124,7 @@ fn subst_beneath_rules() -> Vec<String> {
         "
     .into()];
 
-    // Learn can-subst-expr-beneath
+    // Learn can-subst-Expr-beneath
     res.push(
         "
       (rule ((can-subst-VecOperand-beneath above from to)

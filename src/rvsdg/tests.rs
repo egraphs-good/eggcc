@@ -757,7 +757,7 @@ fn rvsdg_subst() {
 }
 
 #[test]
-fn rvsdg_subst_beneath() {
+fn rvsdg_subst_beneath_theta() {
     const EGGLOG_THETA_PROGRAM: &str = r#"
     (let unsubsted
         (Theta
@@ -798,7 +798,10 @@ fn rvsdg_subst_beneath() {
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM).unwrap();
+}
 
+#[test]
+fn rvsdg_subst_beneath_gamma() {
     const EGGLOG_GAMMA_PROGRAM: &str = r#"
     (let unsubsted
         (Gamma
@@ -847,7 +850,10 @@ fn rvsdg_subst_beneath() {
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
+}
 
+#[test]
+fn rvsdg_subst_beneath_operand_group() {
     // This also tests what happens when Gamma/Theta appears *within* above
     const EGGLOG_OPERAND_GROUP_PROGRAM: &str = r#"
     (let unsubsted

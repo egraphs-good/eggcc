@@ -53,8 +53,17 @@ fn subst_all_rule(btype: String) -> String {
 //   or more occurrences of `from` with `to`, strictly within `above`.
 // - Then, saturate the subst ruleset for the appropriate unions to be made.
 //
+// Some intuition behind what is actually happening:
+//   If it's safe to replace `(badd a b)` with `to` in some context, then it's
+//   also safe to replace `(other-op (badd a b) c)` with `(other-op to c)` in
+//   the same context.
+//
+//   In this way, `can-subst-*-beneath` learns more possible replacements
+//   "bottom-up", then, when we reach the top of a context (a body), we union
+//   only at the top.
+//
 // See [src/rvsdg/tests.rs] for examples.
-// 
+//
 // rtjoa: We could parameterize on `above`'s type (currently, always Body) to
 // support substituting under a Function as well
 fn subst_beneath_rules() -> Vec<String> {

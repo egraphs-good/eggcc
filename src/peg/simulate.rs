@@ -125,6 +125,9 @@ impl Simulator<'_> {
                         ValueOps::Lt => {
                             Some(Literal::Bool(int(xs[0].clone()) < int(xs[1].clone())))
                         }
+                        ValueOps::And => {
+                            Some(Literal::Bool(bool(xs[0].clone()) && bool(xs[1].clone())))
+                        }
                         ValueOps::Eq => {
                             Some(Literal::Bool(int(xs[0].clone()) == int(xs[1].clone())))
                         }
@@ -146,12 +149,13 @@ impl Simulator<'_> {
                     )
                 }
                 BasicExpr::Print(xs) => {
-                    for x in xs {
-                        let value = self.simulate_body(*x);
-                        // if not a print edge
-                        if let Some(value) = value {
-                            self.stdout.borrow_mut().push_str(&format!("{}\n", value));
-                        }
+                    let mut init = xs.clone();
+                    let last = init.pop().unwrap();
+                    let print_edge = self.simulate_body(last);
+                    assert_eq!(print_edge, None);
+                    for x in init {
+                        let value = self.simulate_body(x).unwrap();
+                        self.stdout.borrow_mut().push_str(&format!("{}\n", value));
                     }
                     None
                 }

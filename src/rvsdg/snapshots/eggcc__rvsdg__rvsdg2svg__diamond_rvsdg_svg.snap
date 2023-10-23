@@ -3,51 +3,51 @@ source: src/rvsdg/rvsdg2svg.rs
 expression: svg
 ---
 <svg
-	height="450"
+	height="750"
 	version="1.1"
-	width="425"
+	width="1025"
 	xmlns="http://www.w3.org/2000/svg">
 	<g
 		transform="translate(0, 0)">
 		<rect
 			fill="white"
-			height="450"
+			height="750"
 			rx="10"
 			stroke="black"
 			stroke-width="2"
-			width="425">
+			width="1025">
 		</rect>
 		<g>
 			<path
-				d="M 141.66667 0V 10Q 141.66667 20 131.66667 20H 93.33333Q 83.33333 20 83.33333 30V 50"
+				d="M 341.66666 0V 10Q 341.66666 20 331.66666 20H 93.33333Q 83.33333 20 83.33333 30V 50"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 141.66667 0V 10Q 141.66667 20 131.66667 20H 126.666664Q 116.666664 20 116.666664 30V 50"
+				d="M 341.66666 0V 10Q 341.66666 20 331.66666 20H 126.666664Q 116.666664 20 116.666664 30V 50"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 283.33334 0V 20Q 283.33334 30 293.33334 30H 306.66666Q 316.66666 30 316.66666 40V 200"
+				d="M 683.3333 0V 20Q 683.3333 30 693.3333 30H 706.6667Q 716.6667 30 716.6667 40V 200"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 100 150V 165Q 100 175 110 175H 248.33334Q 258.33334 175 258.33334 185V 200"
+				d="M 100 150V 165Q 100 175 110 175H 448.33334Q 458.33334 175 458.33334 185V 200"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
-				d="M 287.5 400V 415Q 287.5 425 277.5 425H 222.5Q 212.5 425 212.5 435V 450"
+				d="M 587.5 700V 715Q 587.5 725 577.5 725H 522.5Q 512.5 725 512.5 735V 750"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
@@ -104,11 +104,11 @@ expression: svg
 				transform="translate(200, 200)">
 				<rect
 					fill="#80FF80"
-					height="200"
+					height="500"
 					rx="10"
 					stroke="black"
 					stroke-width="2"
-					width="175">
+					width="775">
 				</rect>
 				<text
 					fill="black"
@@ -122,15 +122,29 @@ expression: svg
 						transform="translate(25, 125)">
 						<rect
 							fill="white"
-							height="50"
+							height="350"
 							rx="10"
 							stroke="black"
 							stroke-width="2"
-							width="50">
+							width="350">
 						</rect>
 						<g>
 							<path
-								d="M 25 0V 15Q 25 25 25 25H 25Q 25 25 25 35V 50"
+								d="M 175 0V 15Q 175 25 185 25H 256.66666Q 266.66666 25 266.66666 35V 200"
+								fill="transparent"
+								stroke="black"
+								stroke-linecap="round"
+								stroke-width="2">
+							</path>
+							<path
+								d="M 100 150V 165Q 100 175 110 175H 223.33333Q 233.33333 175 233.33333 185V 200"
+								fill="transparent"
+								stroke="black"
+								stroke-linecap="round"
+								stroke-width="2">
+							</path>
+							<path
+								d="M 250 300V 315Q 250 325 240 325H 185Q 175 325 175 335V 350"
 								fill="transparent"
 								stroke="black"
 								stroke-linecap="round"
@@ -138,10 +152,84 @@ expression: svg
 							</path>
 						</g>
 						<g>
+							<g
+								transform="translate(50, 50)">
+								<g>
+									<rect
+										fill="#FFFF80"
+										height="100"
+										rx="10"
+										stroke="black"
+										stroke-width="2"
+										width="100">
+									</rect>
+									<text
+										fill="black"
+										font-size="50"
+										text-anchor="middle"
+										x="50"
+										y="62.5">
+										2
+									</text>
+								</g>
+								<circle
+									cx="50"
+									cy="100"
+									fill="white"
+									r="4"
+									stroke="black"
+									stroke-width="2">
+								</circle>
+							</g>
+							<g
+								transform="translate(200, 200)">
+								<g>
+									<rect
+										fill="#FFFF80"
+										height="100"
+										rx="10"
+										stroke="black"
+										stroke-width="2"
+										width="100">
+									</rect>
+									<text
+										fill="black"
+										font-size="50"
+										text-anchor="middle"
+										x="50"
+										y="62.5">
+										PRINT
+									</text>
+								</g>
+								<circle
+									cx="33.333332"
+									cy="0"
+									fill="white"
+									r="4"
+									stroke="black"
+									stroke-width="2">
+								</circle>
+								<circle
+									cx="66.666664"
+									cy="0"
+									fill="white"
+									r="4"
+									stroke="black"
+									stroke-width="2">
+								</circle>
+								<circle
+									cx="50"
+									cy="100"
+									fill="white"
+									r="4"
+									stroke="black"
+									stroke-width="2">
+								</circle>
+							</g>
 						</g>
 						<g>
 							<circle
-								cx="25"
+								cx="175"
 								cy="0"
 								fill="white"
 								r="4"
@@ -151,8 +239,8 @@ expression: svg
 						</g>
 						<g>
 							<circle
-								cx="25"
-								cy="50"
+								cx="175"
+								cy="350"
 								fill="white"
 								r="4"
 								stroke="black"
@@ -164,25 +252,39 @@ expression: svg
 						fill="black"
 						font-size="50"
 						text-anchor="middle"
-						x="50"
+						x="200"
 						y="100">
 						0
 					</text>
 				</g>
 				<g>
 					<g
-						transform="translate(100, 125)">
+						transform="translate(400, 125)">
 						<rect
 							fill="white"
-							height="50"
+							height="350"
 							rx="10"
 							stroke="black"
 							stroke-width="2"
-							width="50">
+							width="350">
 						</rect>
 						<g>
 							<path
-								d="M 25 0V 15Q 25 25 25 25H 25Q 25 25 25 35V 50"
+								d="M 175 0V 15Q 175 25 185 25H 256.66666Q 266.66666 25 266.66666 35V 200"
+								fill="transparent"
+								stroke="black"
+								stroke-linecap="round"
+								stroke-width="2">
+							</path>
+							<path
+								d="M 100 150V 165Q 100 175 110 175H 223.33333Q 233.33333 175 233.33333 185V 200"
+								fill="transparent"
+								stroke="black"
+								stroke-linecap="round"
+								stroke-width="2">
+							</path>
+							<path
+								d="M 250 300V 315Q 250 325 240 325H 185Q 175 325 175 335V 350"
 								fill="transparent"
 								stroke="black"
 								stroke-linecap="round"
@@ -190,10 +292,84 @@ expression: svg
 							</path>
 						</g>
 						<g>
+							<g
+								transform="translate(50, 50)">
+								<g>
+									<rect
+										fill="#FFFF80"
+										height="100"
+										rx="10"
+										stroke="black"
+										stroke-width="2"
+										width="100">
+									</rect>
+									<text
+										fill="black"
+										font-size="50"
+										text-anchor="middle"
+										x="50"
+										y="62.5">
+										1
+									</text>
+								</g>
+								<circle
+									cx="50"
+									cy="100"
+									fill="white"
+									r="4"
+									stroke="black"
+									stroke-width="2">
+								</circle>
+							</g>
+							<g
+								transform="translate(200, 200)">
+								<g>
+									<rect
+										fill="#FFFF80"
+										height="100"
+										rx="10"
+										stroke="black"
+										stroke-width="2"
+										width="100">
+									</rect>
+									<text
+										fill="black"
+										font-size="50"
+										text-anchor="middle"
+										x="50"
+										y="62.5">
+										PRINT
+									</text>
+								</g>
+								<circle
+									cx="33.333332"
+									cy="0"
+									fill="white"
+									r="4"
+									stroke="black"
+									stroke-width="2">
+								</circle>
+								<circle
+									cx="66.666664"
+									cy="0"
+									fill="white"
+									r="4"
+									stroke="black"
+									stroke-width="2">
+								</circle>
+								<circle
+									cx="50"
+									cy="100"
+									fill="white"
+									r="4"
+									stroke="black"
+									stroke-width="2">
+								</circle>
+							</g>
 						</g>
 						<g>
 							<circle
-								cx="25"
+								cx="175"
 								cy="0"
 								fill="white"
 								r="4"
@@ -203,8 +379,8 @@ expression: svg
 						</g>
 						<g>
 							<circle
-								cx="25"
-								cy="50"
+								cx="175"
+								cy="350"
 								fill="white"
 								r="4"
 								stroke="black"
@@ -216,13 +392,13 @@ expression: svg
 						fill="black"
 						font-size="50"
 						text-anchor="middle"
-						x="125"
+						x="575"
 						y="100">
 						1
 					</text>
 				</g>
 				<circle
-					cx="58.333332"
+					cx="258.33334"
 					cy="0"
 					fill="black"
 					r="4"
@@ -230,7 +406,7 @@ expression: svg
 					stroke-width="2">
 				</circle>
 				<circle
-					cx="116.666664"
+					cx="516.6667"
 					cy="0"
 					fill="white"
 					r="4"
@@ -238,8 +414,8 @@ expression: svg
 					stroke-width="2">
 				</circle>
 				<circle
-					cx="87.5"
-					cy="200"
+					cx="387.5"
+					cy="500"
 					fill="white"
 					r="4"
 					stroke="black"
@@ -249,7 +425,7 @@ expression: svg
 		</g>
 		<g>
 			<circle
-				cx="141.66667"
+				cx="341.66666"
 				cy="0"
 				fill="white"
 				r="4"
@@ -257,7 +433,7 @@ expression: svg
 				stroke-width="2">
 			</circle>
 			<circle
-				cx="283.33334"
+				cx="683.3333"
 				cy="0"
 				fill="white"
 				r="4"
@@ -267,8 +443,8 @@ expression: svg
 		</g>
 		<g>
 			<circle
-				cx="212.5"
-				cy="450"
+				cx="512.5"
+				cy="750"
 				fill="white"
 				r="4"
 				stroke="black"

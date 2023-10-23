@@ -15,7 +15,7 @@ block:
 block:
  a: int = const 1;
 block:
- w: int = const 2;
+ print x;
  return
 
 }

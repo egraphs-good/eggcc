@@ -1,8 +1,9 @@
 use bril_rs::Type;
 
-use self::{constant_fold::constant_fold_egglog, subst::subst_rules};
+use self::{constant_fold::constant_fold_egglog, reassoc::reassoc_rules, subst::subst_rules};
 
 pub(crate) mod constant_fold;
+pub(crate) mod reassoc;
 pub(crate) mod subst;
 
 pub fn rvsdg_egglog_code() -> String {
@@ -14,6 +15,7 @@ pub fn rvsdg_egglog_code() -> String {
         constant_fold_egglog(),
         include_str!("gamma_rewrites.egg").to_string(),
         include_str!("loop-optimizations.egg").to_string(),
+        reassoc_rules(),
     ];
     code.join("\n")
 }

@@ -14,6 +14,7 @@ pub fn rvsdg_egglog_code() -> String {
         constant_fold_egglog(),
         include_str!("gamma_rewrites.egg").to_string(),
         include_str!("loop-optimizations.egg").to_string(),
+        include_str!("function_inline.egg").to_string(),
     ];
     code.join("\n")
 }

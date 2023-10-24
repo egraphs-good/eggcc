@@ -11,6 +11,22 @@ macro_rules! to_block {
 }
 pub(crate) use to_block;
 
+macro_rules! rvsdg_svg_test {
+    ($name:ident, $filename:expr) => {
+        #[test]
+        fn $name() {
+            use crate::Optimizer;
+
+            let add = include_str!($filename);
+            let rvsdg = Optimizer::program_to_rvsdg(&Optimizer::parse_bril(add).unwrap()).unwrap();
+            let svg = rvsdg.to_svg();
+            insta::assert_snapshot!(svg);
+        }
+    };
+}
+
+pub(crate) use rvsdg_svg_test;
+
 macro_rules! cfg_test_equiv {
   // for the case of a single-node cfg
   ($cfg:expr, []) => {

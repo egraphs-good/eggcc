@@ -151,7 +151,7 @@ impl Simulator<'_> {
                 BasicExpr::Print(xs) => {
                     let mut init = xs.clone();
                     let last = init.pop().unwrap();
-                    let print_edge = self.simulate_body(last);
+                    let _print_edge = self.simulate_body(last);
                     // TODO: commented out this check for now to make test pass
                     // assert_eq!(print_edge, None);
                     for x in init {

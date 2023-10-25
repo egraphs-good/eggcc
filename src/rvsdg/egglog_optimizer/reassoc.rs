@@ -1,8 +1,10 @@
 //! This file is intended to move constants to the left
-//! for addition and multiplication, promoting constant folding
+//! for addition, promoting constant folding
 
 // TODO: we should prune eclasses with constants to just contain the constant
 // otherwise, these rules will reassociate constants many times
+// TODO: improve by also including multiplication in the normalization
+
 pub(crate) fn reassoc_rules() -> String {
     let mut res = vec![];
     for op in ["badd", "bmul"] {

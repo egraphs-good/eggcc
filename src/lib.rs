@@ -12,7 +12,6 @@ use thiserror::Error;
 
 pub(crate) mod cfg;
 mod conversions;
-pub(crate) mod peg;
 pub(crate) mod rvsdg;
 pub mod util;
 

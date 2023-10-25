@@ -1,6 +1,5 @@
-use crate::peg::rvsdg_to_peg;
 use crate::Optimizer;
-use bril_rs::{Literal, Program};
+use bril_rs::Program;
 use std::fmt::Debug;
 use std::{
     ffi::OsStr,
@@ -142,8 +141,6 @@ pub enum RunType {
     StructuredConversion,
     /// Convert the input bril program to an RVSDG and output it as an SVG.
     RvsdgConversion,
-    /// Convert the input bril program to a PEG and output it in graphviz dot format.
-    PegConversion,
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
@@ -180,7 +177,6 @@ impl FromStr for RunType {
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "rvsdg-roundtrip" => Ok(RunType::RvsdgRoundTrip),
             "to-cfg" => Ok(RunType::ToCfg),
-            "peg" => Ok(RunType::PegConversion),
             "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
             "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
             "rvsdg-optimize" => Ok(RunType::RvsdgOptimize),
@@ -197,7 +193,6 @@ impl Display for RunType {
             RunType::Nothing => write!(f, "nothing"),
             RunType::StructuredConversion => write!(f, "structured"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
-            RunType::PegConversion => write!(f, "peg"),
             RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
             RunType::ToCfg => write!(f, "to-cfg"),
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
@@ -215,7 +210,6 @@ impl RunType {
             RunType::Nothing => true,
             RunType::StructuredConversion => false,
             RunType::RvsdgConversion => false,
-            RunType::PegConversion => false,
             RunType::RvsdgRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
@@ -296,7 +290,6 @@ impl Run {
             RunType::StructuredConversion,
             RunType::RvsdgConversion,
             RunType::RvsdgRoundTrip,
-            RunType::PegConversion,
             RunType::CfgRoundTrip,
             RunType::RvsdgOptimize,
             RunType::RvsdgToCfg,
@@ -309,7 +302,7 @@ impl Run {
                 profile_out: None,
             };
             res.push(default.clone());
-            if test_type.produces_bril() || test_type == RunType::PegConversion {
+            if test_type.produces_bril() {
                 let interp = Run {
                     interp: true,
                     ..default
@@ -340,7 +333,6 @@ impl Run {
             None
         };
 
-        let mut peg = None;
         let (visualizations, bril_out) = match self.test_type {
             RunType::Nothing => (vec![], Some(self.prog_with_args.program.clone())),
             RunType::StructuredConversion => {
@@ -388,19 +380,6 @@ impl Run {
             RunType::ToCfg => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 (cfg.visualizations(), None)
-            }
-            RunType::PegConversion => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
-                peg = Some(rvsdg_to_peg(&rvsdg));
-                let dot = peg.as_ref().unwrap().graph();
-                (
-                    vec![Visualization {
-                        result: dot,
-                        file_extension: ".dot".to_string(),
-                        name: "".to_string(),
-                    }],
-                    None,
-                )
             }
             RunType::CfgRoundTrip => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
@@ -460,21 +439,6 @@ impl Run {
                     self.prog_with_args.args.clone(),
                     self.profile_out.clone(),
                 ))
-            }
-            _ if self.test_type == RunType::PegConversion && self.interp => {
-                let args: Vec<Literal> = self
-                    .prog_with_args
-                    .args
-                    .iter()
-                    .map(|s| {
-                        if let Ok(int) = s.parse::<i64>() {
-                            Literal::Int(int)
-                        } else {
-                            panic!("unsupported argument {s}")
-                        }
-                    })
-                    .collect();
-                Some(peg.unwrap().simulate(&args))
             }
             _ => None,
         };

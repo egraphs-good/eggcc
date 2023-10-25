@@ -20,30 +20,31 @@ impl<'a> RvsdgFromEgglog<'a> {
                 .iter()
                 .map(|t| self.termdag.get(*t))
                 .collect::<Vec<_>>();
+            let mut project_body = |n: &i64, body: &Term| {
+                let Term::App(bfunc, bargs) = body else {
+                    panic!("expected a body after project, got {}", self.termdag.to_string(body))
+                };
+                let bargs = bargs
+                    .iter()
+                    .map(|t| self.termdag.get(*t))
+                    .collect::<Vec<_>>();
+
+                // Every `OperandGroup` should be used by a
+                // `Project`, so check that here and
+                // optimize them away.
+                match (bfunc.as_str(), &bargs.as_slice()) {
+                    ("OperandGroup", [groupbody]) => {
+                        let results = self.expr_to_vec_operand(groupbody.clone());
+                        assert!(results.len() > *n as usize);
+                        results[*n as usize]
+                    }
+                    _ => Operand::Project(*n as usize, self.egglog_term_to_body(body.clone())),
+                }
+            };
             match (func.as_str(), &args.as_slice()) {
                 ("Arg", [Term::Lit(Int(n))]) => Operand::Arg(*n as usize),
-                ("Node", [body]) => Operand::Id(self.egglog_term_to_body(body.clone())),
-                ("Project", [Term::Lit(Int(n)), body]) => {
-                    let Term::App(bfunc, bargs) = body else {
-                        panic!("expected a body after project, got {}", self.termdag.to_string(body))
-                    };
-                    let bargs = bargs
-                        .iter()
-                        .map(|t| self.termdag.get(*t))
-                        .collect::<Vec<_>>();
-
-                    // Every `OperandGroup` should be used by a
-                    // `Project`, so check that here and
-                    // optimize them away.
-                    match (bfunc.as_str(), &bargs.as_slice()) {
-                        ("OperandGroup", [groupbody]) => {
-                            let results = self.expr_to_vec_operand(groupbody.clone());
-                            assert!(results.len() > *n as usize);
-                            results[*n as usize]
-                        }
-                        _ => Operand::Project(*n as usize, self.egglog_term_to_body(body.clone())),
-                    }
-                }
+                ("Node", [body]) => project_body(&0, &body),
+                ("Project", [Term::Lit(Int(n)), body]) => project_body(n, &body),
                 _ => panic!("expected an operand, got {}", self.termdag.to_string(&op)),
             }
         } else {

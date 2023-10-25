@@ -43,8 +43,8 @@ impl<'a> RvsdgFromEgglog<'a> {
             };
             match (func.as_str(), &args.as_slice()) {
                 ("Arg", [Term::Lit(Int(n))]) => Operand::Arg(*n as usize),
-                ("Node", [body]) => project_body(&0, &body),
-                ("Project", [Term::Lit(Int(n)), body]) => project_body(n, &body),
+                ("Node", [body]) => project_body(&0, body),
+                ("Project", [Term::Lit(Int(n)), body]) => project_body(n, body),
                 _ => panic!("expected an operand, got {}", self.termdag.to_string(&op)),
             }
         } else {

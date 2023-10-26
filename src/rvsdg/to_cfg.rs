@@ -181,13 +181,26 @@ impl RvsdgFunction {
             ]);
         }
 
+        let return_ty = self
+            .results
+            .iter()
+            .filter_map(|(ty, _)| {
+                if let RvsdgType::Bril(ty) = ty {
+                    Some(ty)
+                } else {
+                    None
+                }
+            })
+            .next()
+            .cloned();
+
         CfgFunction {
             name: self.name.clone(),
             args: func_args,
             graph: to_bril.graph,
             entry: result.start,
             exit: result.end,
-            return_ty: None,
+            return_ty,
             _phantom: Simple,
         }
     }

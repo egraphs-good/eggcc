@@ -1,0 +1,15 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main {
+  v1: int = const 0;
+  v4: int = call @inc v1;
+  print v4;
+}
+@inc(v0: int): int {
+  v2: int = const 1;
+  v5: int = add v2 v0;
+  ret v5;
+}
+

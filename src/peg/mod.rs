@@ -141,7 +141,10 @@ impl PegBuilder<'_> {
                             ),
                             BasicExpr::Const(o, t, l) => BasicExpr::Const(*o, t.clone(), l.clone()),
                         };
-                        assert_eq!(0, selected);
+                        match expr {
+                            BasicExpr::Call(..) => {}
+                            _ => assert_eq!(0, selected),
+                        };
                         let out = self.pegs.len();
                         self.pegs.push(PegBody::BasicOp(expr));
                         self.memoize.insert((selected, id), out);

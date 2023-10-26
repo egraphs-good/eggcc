@@ -169,15 +169,6 @@ pub struct RvsdgFunction {
     pub(crate) results: Vec<(RvsdgType, Operand)>,
 }
 
-impl RvsdgFunction {
-    pub(crate) fn n_value_args(&self) -> usize {
-        self.args
-            .iter()
-            .map(|arg| matches!(arg, RvsdgType::Bril(_)) as usize)
-            .sum()
-    }
-}
-
 impl fmt::Debug for RvsdgFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RvsdgFunction")

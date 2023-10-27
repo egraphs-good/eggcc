@@ -1,0 +1,4 @@
+@main {
+    cond: bool = const true;
+    print cond;
+}

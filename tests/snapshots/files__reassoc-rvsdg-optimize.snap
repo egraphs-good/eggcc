@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int, v1: int) {
+  v3: int = const 8;
+  v7: int = add v0 v1;
+  v9: int = add v3 v7;
+  print v9;
+}
+

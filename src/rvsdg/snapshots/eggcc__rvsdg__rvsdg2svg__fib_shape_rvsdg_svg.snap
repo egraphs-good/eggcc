@@ -1,6 +1,6 @@
 ---
-source: tests/files.rs
-expression: visualization.result
+source: src/rvsdg/rvsdg2svg.rs
+expression: svg
 ---
 <svg
 	height="1100"

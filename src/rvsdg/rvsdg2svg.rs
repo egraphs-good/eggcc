@@ -753,3 +753,13 @@ mod tests {
         insta::assert_snapshot!(svg_new);
     }
 }
+
+#[cfg(test)]
+use crate::test_util::rvsdg_svg_test;
+
+#[cfg(test)]
+rvsdg_svg_test!(add_rvsdg_svg, "../../tests/small/add.bril");
+#[cfg(test)]
+rvsdg_svg_test!(fib_shape_rvsdg_svg, "../../tests/small/fib_shape.bril");
+#[cfg(test)]
+rvsdg_svg_test!(diamond_rvsdg_svg, "../../tests/small/diamond.bril");

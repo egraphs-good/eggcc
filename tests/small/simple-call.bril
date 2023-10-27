@@ -1,0 +1,11 @@
+@main {
+    a: int = const 0;
+    c: int = call @inc a;
+    print c;
+}
+
+@inc (x: int): int {
+    one: int = const 1;
+    res: int = add one x;
+    ret res;
+}

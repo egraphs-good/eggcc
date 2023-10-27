@@ -1,0 +1,64 @@
+;;	if a && b:
+;;		A
+;;	else:
+;;		B
+;; ----------
+;;	if a:
+;;		if b:
+;;			A
+;;		else:
+;;			B
+;;	else:
+;;		B
+(rule ((= gamma (Gamma (Node (PureOp (band BoolT a b))) (VO inputs) (VVO outputs)))
+       (= (vec-length outputs) 2)
+       (= (vec-get outputs 1) (VO A))
+       (= (vec-get outputs 0) (VO B))
+       (= args (vec-length inputs))
+       (= rets (vec-length B)))
+      ((let inner (Gamma (Arg args) ; we pass b as an extra argument to the outer gamma
+                         (PassThroughArguments args)
+                         (VVO (vec-of (VO B)
+                                      (VO A)))))
+       (union gamma (Gamma a
+                           (VO (vec-push inputs b)) ; pass b as an extra argument
+                           (VVO (vec-of (VO B)
+                                        (BodyToVecOperand rets inner)))))))
+
+;;	if a || b:
+;;		A
+;;	else:
+;;		B
+;; -----------
+;;	if a:
+;;		A
+;;	else:
+;;		if b:
+;;			A
+;;		else:
+;;			B
+(rule ((= gamma (Gamma (Node (PureOp (bor BoolT a b))) (VO inputs) (VVO outputs)))
+       (= (vec-length outputs) 2)
+       (= (vec-get outputs 1) (VO A))
+       (= (vec-get outputs 0) (VO B))
+       (= args (vec-length inputs))
+       (= rets (vec-length B)))
+      ((let inner (Gamma (Arg args) ; we pass b as an extra argument to the outer gamma
+                         (PassThroughArguments args)
+                         (VVO (vec-of (VO B)
+                                      (VO A)))))
+       (union gamma (Gamma a
+                           (VO (vec-push inputs b)) ; pass b as an extra argument
+                           (VVO (vec-of (BodyToVecOperand rets inner)
+                                        (VO A)))))))
+
+;;	if a:
+;;		A
+;;	else:
+;;		A
+;; ------
+;;	A
+(rule ((= gamma (Gamma condition inputs (VVO outputs)))
+       (= (vec-length outputs) 2)
+       (= (vec-get outputs 0) (vec-get outputs 1)))
+      ((union gamma (OperandGroup (SubstVecOperandAll inputs (vec-get outputs 0))))))

@@ -14,11 +14,25 @@
 (relation is_inv_body (Body Body))
 (relation is_inv_vo (Body Body VecOperand))
 
-(rule ((= theta (Theta pred (VO inputs) (VO outputs)))
-		(= n (vec-length inputs)) 
-		(< i n)
-		(= (vec-get (outputs) i) (Arg i)))
-	(arg_inv theta i))
+(relation arg_inv_helper (VecOperand Body i64))
+
+; (rule ((= theta (Theta pred (VO inputs) (VO outputs)))
+; 		(= n (vec-length inputs)) 
+; 		(< i n)
+; 		(= (vec-get (outputs) i) (Arg i)))
+; 	(arg_inv theta i))
+
+(rule ((= theta (Theta pred inputs outputs))) 
+	((arg_inv_helper outputs theta 0)))
+
+(rule ((arg_inv_helper (VO outputs) theta i)
+		(< i (vec-length outputs))
+		(= (vec-get outputs i) (Arg i)))
+	((arg_inv theta i)))
+
+(rule ((arg_inv_helper (VO outputs) theta i)
+		(< i (vec-length outputs))) 
+	((arg_inv_helper (VO outputs) theta (+ i 1))))
 
 ;; top level entry ;
 (rule ((= theta (Theta pred inputs output))

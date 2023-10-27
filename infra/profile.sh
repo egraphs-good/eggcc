@@ -40,7 +40,7 @@ bench() {
 			
 	    # $out now contains a key value of total_dyn_inst: value, so use read to get the key/value
       # TODO: this is kind of a yaml sort of format so maybe yq would be good in the future
-			read KEY VAL <<< $(cat $out)
+			IFS=': ' read KEY VAL <<< $(cat $out)
 
 			# generate the profile and overrite the $out file
 			hyperfine --warmup 2 --export-json "$out" "cargo run --release $profile --interp --run-mode $mode"
@@ -61,4 +61,4 @@ do
 done
 
 # aggregate all profile data into a single JSON array
-python infra/aggregate.py > nightly/data/profile.json
+python3 infra/aggregate.py > nightly/data/profile.json

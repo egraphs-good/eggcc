@@ -18,7 +18,7 @@ pub(crate) fn loop_invariant() -> String {
 
     for bop in &["badd", "bsub", "bmul", "bfmul", "bdiv", "beq", 
 				"blt", "bgt", "ble", "bge", "bnot", "band", "bor"] {
-        res.push(subst_all_rule(bop.to_string()));
+        res.push(inv_binary_ops(bop.to_string()));
     }
 
     res.join("\n")

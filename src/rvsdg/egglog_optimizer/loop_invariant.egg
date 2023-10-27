@@ -98,11 +98,11 @@
 	((is_inv_vo body owner vo)))
 
 ;; match on every binary op, see loop_invariants.rs
-(rule ((is_inv_oprd body a) 
-		(is_inv_oprd body b) 
-		(find_inv_expr body expr)
-		(= expr (Someop a b)))
-	(is_inv_expr body expr))
+; (rule ((is_inv_oprd body a) 
+; 		(is_inv_oprd body b) 
+; 		(find_inv_expr body expr)
+; 		(= expr (Someop a b)))
+; 	((is_inv_expr body expr)))
 
 
 (rule ((is_inv_expr body expr)

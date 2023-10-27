@@ -7,11 +7,10 @@ fn inv_binary_ops (bop: String) -> String {
 			 (is_inv_oprd body b) 
 			 (find_inv_expr body expr)
 			 (= expr ({bop} a b)))
-		 (is_inv_expr body expr))
+		 ((is_inv_expr body expr)))
 	"
 	)
 }
-
 
 
 pub(crate) fn loop_invariant() -> String {

@@ -16,43 +16,27 @@ RUNMODES=("nothing" "rvsdg-optimize")
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench
 
-# bench will benchmark a single bril file, outputting its contents to ./tmp/bench/<profile_name>.json
+# bench will benchmark a single bril file, outputting its contents to ./tmp/bench/<PROFILE_NAME>.json
 bench() {
-    profile="../../../$1"
-
     # strip the file path down to just the file name
     # TODO: profile name is not unique, generate a unique output path (it will be aggregated anyway)
-    profile_file=$(basename -- $profile)
-    profile_name="${profile_file%.*}"
+    PROFILE_FILE=$(basename -- "$1")
+    PROFILE_NAME="${PROFILE_FILE%.*}"
 
-    mkdir ./tmp/bench/"$profile_name"
-    pushd ./tmp/bench/"$profile_name"
+    PROFILE_DIR=./tmp/bench/"$PROFILE_NAME"
+    mkdir "$PROFILE_DIR"
 
-		# loop over RUNMODES and generate a profile for each, leaving it in the profile_name directory
-    for mode in ${RUNMODES[@]}
-		do
-		  echo "profiling $mode"
-
-			out="${mode}.json"
-    	pwd
-			# generate the instruction count profile by interp'ing
-			cargo run --release $profile --interp --profile-out="./$out" --run-mode "$mode"
-			
-	    # $out now contains a key value of total_dyn_inst: value, so use read to get the key/value
-      # TODO: this is kind of a yaml sort of format so maybe yq would be good in the future
-			IFS=': ' read KEY VAL <<< $(cat $out)
-
-			# generate the profile and overrite the $out file
-			hyperfine --warmup 2 --export-json "$out" "cargo run --release $profile --interp --run-mode $mode"
-
-			# overwwrite outfile with json version of profile data, annotate with profile name.
-    	# we also combine both instruction count and hyperfine json output into a single object
-    	# to make things super easy
-			printf '{"%s": "%s", "hyperfine": %s}' \
-      	$KEY $VAL "$(cat "$out")" > $out
+    # loop over RUNMODES and generate a profile for each, leaving it in the PROFILE_NAME directory
+    for mode in "${RUNMODES[@]}"
+    do
+      echo "profiling $mode"
+      
+      # generate the instruction count profile by interp'ing
+      cargo run --release "$1" --interp --profile-out="$PROFILE_DIR/$mode.profile" --run-mode "$mode"
+      
+      # run hyperfine with a warmup
+      hyperfine --warmup 2 --export-json "$PROFILE_DIR/$mode.json" "cargo run --release $1 --interp --run-mode $mode"
     done
-
-    popd
 }
 
 for p in $PROFILES

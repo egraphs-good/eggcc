@@ -1,0 +1,38 @@
+;; IVT (aka if/loop inversion) equates programs of the form
+;;   do {
+;;     if (<pred>) {
+;;         <if-case>
+;;     } else {
+;;         <else-case>
+;;     }
+;;   } while(<pred>);
+;; With those of the form:
+;;   if (<pred>) {
+;;     do {
+;;         <if-case>
+;;     } while (<pred>)
+;;   } else {
+;;     <else-case>
+;;   }
+
+
+(relation outputs-aligned (VecOperand Body))
+(function outputs-aligned-upto (VecOperand Body) i64)
+
+; TODO: fill outputs-aligned in, and populate the upto relation
+; (outputs-aligned v b) is there if (vec-get v i) = (Proj i b)
+
+(rule ((= loop (Theta pred loop-in loop-out))
+       (= inner-gamma (Gamma pred gamma-in (VV0 gamma-out)))
+       (= 2 (vec-length gamma-out))
+       ; TODO: do the inputs have to be aligned as well?
+       (outputs-aligned loop-out inner-gamma))
+      ((let inner-loop  (Theta pred gamma-in (vec-get gamma-out 1)))
+       (let outer-gamma (Gamma 
+               (SubstOperandAll loop-in pred) 
+               (SubstVecOperandAll loop-in gamma-in)
+               (VVO (vec-of (vec-get gamma-out 0) 
+                            inner-loop))))
+       ; TODO: do we need to do this for every pred, or is unioning the regions
+       ; enough?                        
+       (union outer-gamma loop)))

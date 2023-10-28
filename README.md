@@ -3,16 +3,7 @@
 ## How to set up
 
 - [Install rust](https://www.rust-lang.org/tools/install)
-- Clone the repo (don't forget to `--recurse-submodules`!)
-  ```
-  git clone --recurse-submodules git@github.com:oflatt/eggcc.git
-  ```
-  - If you forget to pass `--recurse-submodules` to clone, you can either
-    remove the directory and try again, or you can
-    ```
-    cd egcc
-    git submodule update --init --recursive
-    ```
+- Clone the repo
 - Install the `insta` command for `cargo`
   ```
   cargo install cargo-insta

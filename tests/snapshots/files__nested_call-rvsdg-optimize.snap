@@ -1,0 +1,22 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main {
+  v1: int = const 2;
+  print v1;
+  print v1;
+}
+@inc(v0: int): int {
+  v2: int = const 2;
+  v4: int = const 1;
+  v7: int = add v4 v0;
+  v9: int = mul v2 v7;
+  ret v9;
+}
+@double(v0: int): int {
+  v2: int = const 2;
+  v5: int = mul v2 v0;
+  ret v5;
+}
+

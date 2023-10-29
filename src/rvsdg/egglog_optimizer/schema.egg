@@ -37,7 +37,7 @@
 ;; The last fields denotes how many return values it have
 ;; Finally, we assume if call ever returns a value, 
 ;; it has to be the first one.
-(function Call (OptionType String VecOperand i64) Expr)
+(function Call (OptionType String VecOperand i64) Expr :cost 1000) ; TODO: fix cost model
 (function badd (Type Operand Operand) Expr)
 (function bsub (Type Operand Operand) Expr)
 (function bmul (Type Operand Operand) Expr)

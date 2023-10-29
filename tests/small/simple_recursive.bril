@@ -1,0 +1,19 @@
+@main {
+    a: int = const 0;
+    c: int = call @inc a;
+    print c;
+}
+
+@inc (x: int): int {
+    max: int = const 2;
+    cond: bool = lt x max;
+    br cond .recurse .done;
+
+.recurse:
+    one: int = const 1;
+    x: int = add one x;
+    print x;
+    x: int = call @inc x;
+.done:
+    ret x;
+}

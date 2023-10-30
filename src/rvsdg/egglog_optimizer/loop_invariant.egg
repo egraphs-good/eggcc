@@ -6,53 +6,54 @@
 (relation find_inv_expr (Body Expr))
 (relation find_inv_oprd (Body Operand))
 (relation find_inv_body (Body Body))
-;;				body1: context  body2: who owns the vec
+;; body1: context  body2: who owns the vec
 ;; IDK if the owner necessary. If two VecOperand in the same region
 ;; owned by different body, do it need to be considered seperately?
-(relation find_inv_vo (Body Body VecOperand))
+(relation find_inv_vo (Body VecOperand))
 
 (relation is_inv_expr (Body Expr))
 (relation is_inv_oprd (Body Operand))
 (relation is_inv_body (Body Body))
-(relation is_inv_vo (Body Body VecOperand))
+(relation is_inv_vo (Body VecOperand))
 
 (relation arg_inv_helper (VecOperand Body i64))
 
 (rule ((= theta (Theta pred inputs outputs))) 
-	((arg_inv_helper outputs theta 0)))
+    ((arg_inv_helper outputs theta 0)))
 
 (rule ((arg_inv_helper (VO outputs) theta i)
-		(< i (vec-length outputs))
-		(= (vec-get outputs i) (Arg i)))
-	((arg_inv theta i)))
+        (< i (vec-length outputs))
+        (= (vec-get outputs i) (Arg i)))
+    ((arg_inv theta i)))
 
 (rule ((arg_inv_helper (VO outputs) theta i)
-		(< i (vec-length outputs))) 
-	((arg_inv_helper (VO outputs) theta (+ i 1))))
+        (< i (vec-length outputs))) 
+    ((arg_inv_helper (VO outputs) theta (+ i 1))))
 
 ;; top level entry ;
+;; there are at least one arg_inv
 (rule ((= theta (Theta pred inputs output))
-       (arg_inv theta i))
-      ((find_inv_vo theta theta outputs)))
+        (arg_inv theta i))
+    ((find_inv_vo theta outputs)))
 
 (rule ((find_inv_body theta body) 
-		(= body (PureOp op))) 
-	((find_inv_expr theta op)))
+        (= body (PureOp op))) 
+    ((find_inv_expr theta op)))
 
 ;; theta's pred is inside the body
 (rule ((find_inv_body theta body) 
-		(= body (Theta pred inputs outputs))) 
-	((find_inv_vo theta body inputs)))
+        (= body (Theta pred inputs outputs))) 
+    ((find_inv_vo theta body inputs)))
 
 ;; gamma's pred is outside the body
 (rule ((find_inv_body theta body) 
-		(= body (Gamma pred inputs outputs))) 
-	((find_inv_oprd theta pred) (find_inv_vo theta body inputs)))
+        (= body (Gamma pred inputs outputs))) 
+    ((find_inv_oprd theta pred) (find_inv_vo theta body inputs)))
 
 ;; OperandGroup
 (rule ((find_inv_body theta body)
-		(= body (OperandGroup vo)))
-	((find_inv_vo theta body vo)))
+        (= body (OperandGroup vo)))
+    ((find_inv_vo theta body vo)))
 
 ;; vo -> op
 (relation find_inv_vo_helper (VecOperand Body Body i64))
@@ -60,15 +61,15 @@
 (rule ((find_inv_vo	theta owner vo)) ((find_inv_vo_helper theta owner vo 0)))
 
 (rule ((find_inv_vo_helper theta owner (VO vec) i)
-		(= n (vec-length i))
-		(< i n))
-	((find_inv_oprd theta (vec-get vec i))
-	 (find_inv_vo_helper theta owner vo (+ i 1))))
+        (= n (vec-length i))
+        (< i n))
+    ((find_inv_oprd theta (vec-get vec i))
+     (find_inv_vo_helper theta owner vo (+ i 1))))
 
 
 ;; terminal
 (rule ((find_inv_expr theta (Const ty ops lit))) 
-	((is_inv_expr theta (Const ty ops lit))))
+    ((is_inv_expr theta (Const ty ops lit))))
 
 
 ;; TODO: If call is pure it could be invariant
@@ -81,33 +82,33 @@
 
 ;; terminal, if a arg is recorded as inv in current theta
 (rule ((find_inv_oprd theta oprd)
-		(= oprd (Arg i))
-		(arg_inv theta i))
-	((is_inv_oprd theta oprd)))
+        (= oprd (Arg i))
+        (arg_inv theta i))
+    ((is_inv_oprd theta oprd)))
 
 (rule ((find_inv_oprd theta oprd)
-		(= oprd (Node body))) 
-	((find_inv_body theta body)))
+        (= oprd (Node body))) 
+    ((find_inv_body theta body)))
 
 ;; TODO in some case it might be the body is not invariant but ith output is.
 (rule ((find_inv_oprd theta oprd)
-		(= oprd (Project i body))) 
-	((find_inv_body theta body)))
+        (= oprd (Project i body))) 
+    ((find_inv_body theta body)))
 
 ;; vo -> op
-					;; body1: context  body2: owner of vec
+                    ;; body1: context  body2: owner of vec
 (relation is_inv_vo_helper (VecOperand Body Body i64))
 
 (rule ((find_inv_vo theta owner vo)) ((is_inv_vo_helper vo body owener 0)))
 
 (rule ((is_inv_vo_helper (VO vec) body owner i)
-		(is_inv_oprd body oprd)
-		(= oprd (vec-get vec i)))
-	((is_inv_vo_helper (VO vec) body owener (+ i 1))))
+        (is_inv_oprd body oprd)
+        (= oprd (vec-get vec i)))
+    ((is_inv_vo_helper (VO vec) body owener (+ i 1))))
 
 (rule ((is_inv_vo_helper vo body owner i)
-		(= i (vec-length vec)))
-	((is_inv_vo body owner vo)))
+        (= i (vec-length vec)))
+    ((is_inv_vo body owner vo)))
 
 ;; match on every binary op, see loop_invariants.rs
 ; (rule ((is_inv_oprd body a) 
@@ -117,39 +118,38 @@
 ; 	((is_inv_expr body expr)))
 
 (rule ((is_inv_expr body expr)
-		(find_inv_body body to_find)
-		(= to_find (PureOp expr)))
-	(is_inv_body body to_find))
+        (find_inv_body body to_find)
+        (= to_find (PureOp expr)))
+    (is_inv_body body to_find))
 
 (rule ((is_inv_body body inv)
-		(find_inv_oprd body oprd)
-		(= oprd (Node inv)))
-	(is_inv_oprd body oprd))
+        (find_inv_oprd body oprd)
+        (= oprd (Node inv)))
+    (is_inv_oprd body oprd))
 
 (rule ((is_inv_body body inv)
-		(find_inv_oprd body oprd)
-		(= oprd (Project i inv)))
-	(is_inv_oprd body oprd))
+        (find_inv_oprd body oprd)
+        (= oprd (Project i inv)))
+    (is_inv_oprd body oprd))
 
 ;; OperandGroup
 (rule ((find_inv_body theta body)
-		(= body (OperandGroup vo))
-		(is_inv_vo theta body vo))
-	(is_inv_body theta body))
+        (= body (OperandGroup vo))
+        (is_inv_vo theta body vo))
+    (is_inv_body theta body))
 
 ;; a theta is invariant in a context when all input are inv.
 ;; the promblem is only pure theta/gamma can be considered invariant and move out loop.
 ;; but if there are state edge, if it's invariant, it must just pass through the loop....
 ;; need more thinking.
 (rule ((find_inv_body theta body)
-		(= body (Theta pred inputs outputs))
-		(is_inv_vo theta body inputs))
-	((is_inv_body theta body)))
+        (= body (Theta pred inputs outputs))
+        (is_inv_vo theta body inputs))
+    ((is_inv_body theta body)))
 
 (rule ((find_inv_body theta body)
-		(= body (Gamma pred inputs outputs))
-		(is_inv_oprd theta pred)
-		(is_inv_vo theta body inputs))
-	((is_inv_body theta body)))
+        (= body (Gamma pred inputs outputs))
+        (is_inv_oprd theta pred)
+        (is_inv_vo theta body inputs))
+    ((is_inv_body theta body)))
 
-;; what should be function?

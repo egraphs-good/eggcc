@@ -1,0 +1,30 @@
+# ARGS: 10 10
+@main(N: int, M: int) {
+  one: int = const 1;
+  i: int = const 0;
+
+.outer_cond:
+  cond: bool = lt i N;
+  br cond .inner_start .done;
+
+.inner_start:
+  j: int = const 0;
+.inner_cond:
+  cond: bool = lt j M;
+  br cond .inner_body .outer_body;
+
+.inner_body:
+  i_times_m: int = mul i M;
+  plus_j: int = add i_times_m j;
+  print plus_j;
+
+  j: int = add j one;
+  jmp .inner_cond;
+
+.outer_body:
+  i: int = add i one;
+  jmp .outer_cond;
+
+.done:
+  print i;
+}

@@ -1,0 +1,22 @@
+@main {
+    a: int = const 0;
+    b: int = call @inc a;
+    print b;
+    
+    c: int = const 1;
+    c: int = call @double c;
+    print c;
+}
+
+@inc (x: int): int {
+    one: int = const 1;
+    x: int = add one x;
+    x: int = call @double x;
+    ret x;
+}
+
+@double (x: int): int {
+    two: int = const 2;
+    res: int = mul two x;
+    ret res;
+}

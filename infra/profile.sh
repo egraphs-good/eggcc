@@ -9,45 +9,41 @@ cleanup() {
 trap cleanup EXIT
 
 # TODO: take in file glob as command line argument
-PROFILES=tests/small/add.bril
+PROFILES=(tests/small/*.bril)
+
+RUNMODES=("nothing" "rvsdg-optimize")
 
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench
-mkdir ./tmp/hyperfine
 
-# bench will benchmark a single bril file, outputting its contents to ./tmp/bench/<profile_name>.json
+# bench will benchmark a single bril file, outputting hyperfine contents to ./tmp/bench/<PROFILE_NAME>.json
+# and will output the number of instructions it executed to ./tmp/bench/<PROFILE_NAME>.profile
 bench() {
-    profile=$1
-
     # strip the file path down to just the file name
     # TODO: profile name is not unique, generate a unique output path (it will be aggregated anyway)
-    profile_name=$(basename -- $profile)
+    PROFILE_FILE=$(basename -- "$1")
+    PROFILE_NAME="${PROFILE_FILE%.*}"
 
-    # run eggcc, interp the program and put the data out to $out
-    out="./tmp/bench/${profile_name}.json"
+    PROFILE_DIR=./tmp/bench/"$PROFILE_NAME"
+    mkdir "$PROFILE_DIR"
 
-    cargo run --release $profile --interp --profile-out "$out"
-
-    # $out now contains a key value of total_dyn_inst: value, so use read to get the key/value
-    # TODO: this is kind of a yaml sort of format so maybe yq would be good in the future
-    read KEY VAL <<< $(cat $out)
-
-    # export hyperfine out to tmp file
-    hyperfine_out="./tmp/hyperfine/${profile_name}.json"
-    hyperfine --warmup 2 --export-json "$hyperfine_out" "cargo run --release $profile --interp"
-
-    # overwwrite outfile with json version of profile data, annotate with profile name.
-    # we also combine both instruction count and hyperfine json output into a single object
-    # to make things super easy
-    printf '{"%s": {"%s": "%s", "hyperfine": %s}}' \
-      $profile $KEY $VAL \
-      "$(cat "./tmp/hyperfine/${profile_name}.json")" > $out
+    # loop over RUNMODES and generate a profile for each, leaving it in PROFILE_DIR
+    for mode in "${RUNMODES[@]}"
+    do
+      echo "profiling $mode"
+      
+      # generate the instruction count profile by interp'ing
+      cargo run --release "$1" --interp --profile-out="$PROFILE_DIR/$mode.profile" --run-mode "$mode"
+      
+      # run hyperfine with a warmup
+      hyperfine --warmup 2 --export-json "$PROFILE_DIR/$mode.json" "cargo run --release $1 --interp --run-mode $mode"
+    done
 }
 
-for p in $PROFILES
+for p in "${PROFILES[@]}"
 do
-  bench $p
+  bench "$p"
 done
 
 # aggregate all profile data into a single JSON array
-jq -s '.' ./tmp/bench/*.json > nightly/data/profile.json
+python3 infra/aggregate.py > nightly/data/profile.json

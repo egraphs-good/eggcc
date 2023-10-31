@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ cond: bool = const true;
+ print cond;
+ return
+
+}

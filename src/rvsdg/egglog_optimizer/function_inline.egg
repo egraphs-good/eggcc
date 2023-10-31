@@ -1,0 +1,13 @@
+(rule  
+    (
+        ; Match on PureOp because all exprs are converted to bodies
+        ; Will refactor Call in the future
+        (= return (PureOp (Call ty name args num)) )
+        (Func name input-types output-types body)
+    )
+    ((
+        union 
+        return
+        (OperandGroup (SubstVecOperandAll args body))
+    ))
+)

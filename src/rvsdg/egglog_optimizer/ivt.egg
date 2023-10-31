@@ -14,25 +14,40 @@
 ;;   } else {
 ;;     <else-case>
 ;;   }
+(ruleset basechange)
 
+;; TODO / Idea: just need lengths of gamma inputs and theta inputs to be the same.
+;; Then, new theta is (Theta pred ??? (BaseChangeVecOperand gamma-in then-case old-gamma (vec-get gamma-out 1)))
+;; And new gamma is (Gamma (SubstOperandAll loop-in
+;; ... aaand that doesn't work.
+;; Okay, what if inputs and outputs are both aligned: loop-in is still something
+;; of a mystery. Maybe it's just (0..n)?
+;; (Theta pred (0..(vec-length loop-in)) ... 
+;; It's a little unclear. We may want to use an example.
+;; rest is as written.
 
-(relation outputs-aligned (VecOperand Body))
-(function outputs-aligned-upto (VecOperand Body) i64)
-
-; TODO: fill outputs-aligned in, and populate the upto relation
-; (outputs-aligned v b) is there if (vec-get v i) = (Proj i b)
-
-(rule ((= loop (Theta pred loop-in loop-out))
-       (= inner-gamma (Gamma pred gamma-in (VV0 gamma-out)))
-       (= 2 (vec-length gamma-out))
-       ; TODO: do the inputs have to be aligned as well?
-       (outputs-aligned loop-out inner-gamma))
-      ((let inner-loop  (Theta pred gamma-in (vec-get gamma-out 1)))
-       (let outer-gamma (Gamma 
-               (SubstOperandAll loop-in pred) 
-               (SubstVecOperandAll loop-in gamma-in)
-               (VVO (vec-of (vec-get gamma-out 0) 
-                            inner-loop))))
-       ; TODO: do we need to do this for every pred, or is unioning the regions
-       ; enough?                        
-       (union outer-gamma loop)))
+;; BaseChange op from to traverses 'op' recursively and replaces instances of
+;; (Project i from) with (Project i to).
+; (function BaseChangeOperand (Operand Body Body) Operand :unextractable)
+; (function BaseChangeExpr (Epxr Body Body) Expr :unextractable)
+; (function BaseChangeBody (Body Body Body) Body :unextractable)
+; (function BaseChangeVecOperand (VecOperand Body Body) Body :unextractable)
+; (function BaseChangeVecVecOperand (VecVecOperand Body Body) Body :unextractable)
+; 
+; ; TODO: fill outputs-aligned in, and populate the upto relation
+; ; (outputs-aligned v b) is there if (vec-get v i) = (Proj i b)
+; 
+; (rule ((= loop (Theta pred loop-in loop-out))
+;        (= inner-gamma (Gamma pred gamma-in (VVO gamma-out)))
+;        (= 2 (vec-length gamma-out)))
+;       ((let then-case (OperandGroup (vec-get gamma-out 1)))
+;        ; What is loop-in though? What if it exceeds gamma-in, then we need to extend gamma-in!
+;        (let inner-loop  (Theta pred loop-in (BaseChangeVecOperand gamma-in inner-gamma then-case)))
+;        (let outer-gamma (Gamma 
+;                (SubstOperandAll loop-in pred) 
+;                (SubstVecOperandAll loop-in gamma-in)
+;                (VVO (vec-of (vec-get gamma-out 0) 
+;                             inner-loop))))
+;        ; TODO: do we need to do this for every pred, or is unioning the regions
+;        ; enough?                        
+;        (union outer-gamma loop)))

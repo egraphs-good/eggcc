@@ -38,8 +38,13 @@
        (= (vec-get outputs2 1) (VO then_vec))
        (= (vec-length else_vec) 1)
        (= (vec-length then_vec) 1))
-      ((let upper (Theta (Node (PureOp (blt IntT (Arg 0) a)))
+      ((let upper (Theta pred2
                          (VO (vec-of (Node (PureOp (Const IntT const (Num 0)))) theta_input))
                          (VO (vec-of (vec-get outputs1 0) (vec-get then_vec 0)))))
-       (let lower (Gamma TODO))
-       (union theta lower)))
+       (let lower (Theta pred1
+                         (PassThroughArguments 2)
+                         (VO (vec-of (vec-get outputs1 0) (vec-get else_vec 0)))))
+       (union theta (Gamma pred1
+                           (VO (vec-of (Project 0 upper) (Project 1 upper)))
+                           (VVO (vec-of (VO (vec-of (Project 0 lower) (Project 1 lower)))
+                                        (PassThroughArguments 2)))))))

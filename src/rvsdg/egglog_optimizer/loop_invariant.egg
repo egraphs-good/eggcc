@@ -1,4 +1,4 @@
-(ruleset loop_inv)
+(ruleset loop_inv_detect)
 
 (relation arg_inv (Body i64))
 
@@ -16,57 +16,57 @@
 (relation arg_inv_helper (VecOperand Body i64))
 
 (rule ((= theta (Theta pred inputs outputs))) 
-    ((arg_inv_helper outputs theta 0)))
+    ((arg_inv_helper outputs theta 0)) :ruleset loop_inv_detect)
 
 (rule ((arg_inv_helper (VO outputs) theta i)
         (< i (vec-length outputs))
         (= (vec-get outputs i) (Arg i)))
-    ((arg_inv theta i)))
+    ((arg_inv theta i)) :ruleset loop_inv_detect)
 
 (rule ((arg_inv_helper (VO outputs) theta i)
         (< i (vec-length outputs))) 
-    ((arg_inv_helper (VO outputs) theta (+ i 1))))
+    ((arg_inv_helper (VO outputs) theta (+ i 1))) :ruleset loop_inv_detect)
 
 ;; top level entry ;
 ;; there are at least one arg_inv
-(rule ((= theta (Theta pred inputs output))
+(rule ((= theta (Theta pred inputs outputs))
         (arg_inv theta i))
-    ((find_inv_vo theta outputs)))
+    ((find_inv_vo theta outputs)) :ruleset loop_inv_detect)
 
 (rule ((find_inv_body theta body) 
         (= body (PureOp op))) 
-    ((find_inv_expr theta op)))
+    ((find_inv_expr theta op)) :ruleset loop_inv_detect)
 
 ;; theta's pred is inside the body
 (rule ((find_inv_body theta body) 
         (= body (Theta pred inputs outputs))) 
-    ((find_inv_vo theta inputs)))
+    ((find_inv_vo theta inputs)) :ruleset loop_inv_detect)
 
 ;; gamma's pred is outside the body
 (rule ((find_inv_body theta body) 
         (= body (Gamma pred inputs outputs))) 
-    ((find_inv_oprd theta pred) (find_inv_vo theta inputs)))
+    ((find_inv_oprd theta pred) (find_inv_vo theta inputs)) :ruleset loop_inv_detect)
 
 ;; OperandGroup
 (rule ((find_inv_body theta body)
         (= body (OperandGroup vo)))
-    ((find_inv_vo theta vo)))
+    ((find_inv_vo theta vo)) :ruleset loop_inv_detect)
 
 ;; vo -> op
-(relation find_inv_vo_helper (VecOperand Body i64))
+(relation find_inv_vo_helper (Body VecOperand i64))
 
-(rule ((find_inv_vo	theta vo)) ((find_inv_vo_helper theta vo 0)))
+(rule ((find_inv_vo	theta vo)) ((find_inv_vo_helper theta vo 0)) :ruleset loop_inv_detect)
 
 (rule ((find_inv_vo_helper theta (VO vec) i)
-        (= n (vec-length i))
+        (= n (vec-length vec))
         (< i n))
     ((find_inv_oprd theta (vec-get vec i))
-     (find_inv_vo_helper theta vo (+ i 1))))
+     (find_inv_vo_helper theta (VO vec) (+ i 1))) :ruleset loop_inv_detect)
 
 
 ;; terminal
 (rule ((find_inv_expr theta (Const ty ops lit))) 
-    ((is_inv_expr theta (Const ty ops lit))))
+    ((is_inv_expr theta (Const ty ops lit))) :ruleset loop_inv_detect)
 
 
 ;; TODO: If call is pure it could be invariant
@@ -81,30 +81,30 @@
 (rule ((find_inv_oprd theta oprd)
         (= oprd (Arg i))
         (arg_inv theta i))
-    ((is_inv_oprd theta oprd)))
+    ((is_inv_oprd theta oprd)) :ruleset loop_inv_detect)
 
 (rule ((find_inv_oprd theta oprd)
         (= oprd (Node body))) 
-    ((find_inv_body theta body)))
+    ((find_inv_body theta body)) :ruleset loop_inv_detect)
 
 ;; TODO in some case it might be the body is not invariant but ith output is.
 (rule ((find_inv_oprd theta oprd)
         (= oprd (Project i body))) 
-    ((find_inv_body theta body)))
+    ((find_inv_body theta body)) :ruleset loop_inv_detect)
 
 ;; vo -> op
-(relation is_inv_vo_helper (VecOperand Body i64))
+(relation is_inv_vo_helper (Body VecOperand i64))
 
-(rule ((find_inv_vo theta vo)) ((is_inv_vo_helper vo body 0)))
+(rule ((find_inv_vo theta vo)) ((is_inv_vo_helper theta vo 0)) :ruleset loop_inv_detect)
 
-(rule ((is_inv_vo_helper (VO vec) body i)
+(rule ((is_inv_vo_helper body (VO vec) i)
         (is_inv_oprd body oprd)
         (= oprd (vec-get vec i)))
-    ((is_inv_vo_helper (VO vec) body (+ i 1))))
+    ((is_inv_vo_helper body (VO vec) (+ i 1))) :ruleset loop_inv_detect)
 
-(rule ((is_inv_vo_helper vo body i)
+(rule ((is_inv_vo_helper body (VO vec) i)
         (= i (vec-length vec)))
-    ((is_inv_vo body vo)))
+    ((is_inv_vo body (VO vec))) :ruleset loop_inv_detect)
 
 ;; match on every binary op, see loop_invariants.rs
 ; (rule ((is_inv_oprd body a) 
@@ -116,23 +116,23 @@
 (rule ((is_inv_expr body expr)
         (find_inv_body body to_find)
         (= to_find (PureOp expr)))
-    (is_inv_body body to_find))
+    ((is_inv_body body to_find)) :ruleset loop_inv_detect)
 
 (rule ((is_inv_body body inv)
         (find_inv_oprd body oprd)
         (= oprd (Node inv)))
-    (is_inv_oprd body oprd))
+    ((is_inv_oprd body oprd)) :ruleset loop_inv_detect)
 
 (rule ((is_inv_body body inv)
         (find_inv_oprd body oprd)
         (= oprd (Project i inv)))
-    (is_inv_oprd body oprd))
+    ((is_inv_oprd body oprd)) :ruleset loop_inv_detect)
 
 ;; OperandGroup
 (rule ((find_inv_body theta body)
         (= body (OperandGroup vo))
         (is_inv_vo theta vo))
-    (is_inv_body theta body))
+    ((is_inv_body theta body)) :ruleset loop_inv_detect)
 
 ;; a theta is invariant in a context when all input are inv.
 ;; the promblem is only pure theta/gamma can be considered invariant and move out loop.
@@ -141,11 +141,11 @@
 (rule ((find_inv_body theta body)
         (= body (Theta pred inputs outputs))
         (is_inv_vo theta inputs))
-    ((is_inv_body theta body)))
+    ((is_inv_body theta body)) :ruleset loop_inv_detect)
 
 (rule ((find_inv_body theta body)
         (= body (Gamma pred inputs outputs))
         (is_inv_oprd theta pred)
         (is_inv_vo theta inputs))
-    ((is_inv_body theta body)))
+    ((is_inv_body theta body)) :ruleset loop_inv_detect)
 

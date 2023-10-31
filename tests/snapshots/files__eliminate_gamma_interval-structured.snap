@@ -7,7 +7,6 @@ block:
  block:
   block:
    ten: int = const 10;
-   five: int = const 5;
    cond1: bool = lt input ten;
    if cond1:
     break 2
@@ -19,6 +18,7 @@ block:
 block:
  block:
   block:
+   five: int = const 5;
    condition: bool = lt x five;
    if condition:
     break 2

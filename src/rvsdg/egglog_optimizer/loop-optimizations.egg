@@ -20,4 +20,26 @@
                 (Theta pred pass-through
                             (VO outputs)))))))))
 
-
+;; remove range checks
+(rule ((= theta (Theta pred1 (VO inputs1) (VO outputs1)))
+       (= pred1 (Node (PureOp (blt IntT (Arg 0) b))))
+       (= (vec-length inputs1) 2)
+       (= (vec-get inputs1 0) (Node (PureOp (Const IntT const (Num 0)))))
+       (= (vec-get inputs1 1) theta_input)
+       (= (vec-length outputs1) 2)
+       (= (vec-get outputs1 0) (Node (PureOp (badd IntT (Arg 0) (Node (PureOp (Const IntT const (Num 1))))))))
+       (= (vec-get outputs1 1) (Project 0 gamma))
+       (= gamma (Gamma pred2 (VO inputs2) (VVO outputs2)))
+       (= pred2 (Node (PureOp (blt IntT (Arg 0) a))))
+       (= (vec-length inputs2) 1)
+       (= (vec-get inputs2 0) (Arg 1))
+       (= (vec-length outputs2) 2)
+       (= (vec-get outputs2 0) (VO else_vec))
+       (= (vec-get outputs2 1) (VO then_vec))
+       (= (vec-length else_vec) 1)
+       (= (vec-length then_vec) 1))
+      ((let upper (Theta (Node (PureOp (blt IntT (Arg 0) a)))
+                         (VO (vec-of (Node (PureOp (Const IntT const (Num 0)))) theta_input))
+                         (VO (vec-of (vec-get outputs1 0) (vec-get then_vec 0)))))
+       (let lower (Gamma TODO))
+       (union theta lower)))

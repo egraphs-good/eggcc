@@ -13,6 +13,7 @@ pub fn rvsdg_egglog_code() -> String {
         include_str!("util.egg").to_string(),
         constant_fold_egglog(),
         include_str!("loop-optimizations.egg").to_string(),
+        include_str!("interval-analysis.egg").to_string(),
     ];
     code.join("\n")
 }

@@ -1,0 +1,39 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ i: int = const 0;
+ one: int = const 1;
+ two: int = const 2;
+ five: int = const 5;
+ ten: int = const 10;
+while true:
+ block:
+  block:
+   block:
+    if_cond: bool = lt i five;
+    if if_cond:
+     break 2
+    else:
+     break 1
+   print two;
+   break 1
+  print one;
+  if if_cond:
+   break 1
+  else:
+   break 1
+ block:
+  loop_cond: bool = lt i ten;
+  i: int = add i one;
+  if loop_cond:
+   break 2
+  else:
+   break 1
+ block:
+  print i;
+  return
+
+}

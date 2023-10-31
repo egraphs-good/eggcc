@@ -1,0 +1,24 @@
+@main() {
+  i: int = const 0;
+  one: int = const 1;
+  two: int = const 2;
+  five: int = const 5;
+  ten: int = const 10;
+
+.top:
+  if_cond: bool = lt i five;
+  br if_cond .then_if .else_if;
+.then_if:
+  print one;
+  br if_cond .end_if .end_if;
+.else_if:
+  print two;
+.end_if:
+
+  loop_cond: bool = lt i ten;
+  i: int = add i one;
+  br loop_cond .top .end;
+.end:
+
+  print i;
+}

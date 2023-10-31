@@ -57,6 +57,8 @@ fn main() {
 
     if args.interp {
         println!("{}", result.result_interpreted.unwrap());
+    } else if let &[visualization] = &result.visualizations.as_slice() {
+        println!("{}", visualization.result);
     } else {
         for visualization in result.visualizations {
             println!("visualization of {}:", visualization.name);

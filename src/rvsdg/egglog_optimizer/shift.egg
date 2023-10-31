@@ -21,7 +21,7 @@
 (rewrite (ShiftExpr (bgt ty a b) last-unshifted amt) (bgt ty (ShiftOperand a last-unshifted amt) (ShiftOperand b last-unshifted amt)) :ruleset shift)
 (rewrite (ShiftExpr (ble ty a b) last-unshifted amt) (ble ty (ShiftOperand a last-unshifted amt) (ShiftOperand b last-unshifted amt)) :ruleset shift)
 (rewrite (ShiftExpr (bge ty a b) last-unshifted amt) (bge ty (ShiftOperand a last-unshifted amt) (ShiftOperand b last-unshifted amt)) :ruleset shift)
-(rewrite (ShiftExpr (bnot ty a b) last-unshifted amt) (bnot ty (ShiftOperand a last-unshifted amt) (ShiftOperand b last-unshifted amt)) :ruleset shift)
+(rewrite (ShiftExpr (bnot ty a) last-unshifted amt) (bnot ty (ShiftOperand a last-unshifted amt)) :ruleset shift)
 (rewrite (ShiftExpr (band ty a b) last-unshifted amt) (band ty (ShiftOperand a last-unshifted amt) (ShiftOperand b last-unshifted amt)) :ruleset shift)
 (rewrite (ShiftExpr (bor ty a b) last-unshifted amt) (bor ty (ShiftOperand a last-unshifted amt) (ShiftOperand b last-unshifted amt)) :ruleset shift)
 

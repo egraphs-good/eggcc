@@ -56,10 +56,14 @@ fn main() {
     let result = run.run();
 
     if args.interp {
+        // just print out the result of interpreting the program
         println!("{}", result.result_interpreted.unwrap());
     } else if let &[visualization] = &result.visualizations.as_slice() {
+        // when there is just one visualization, print it out without
+        // the "visualization of: {}" header for convenience
         println!("{}", visualization.result);
     } else {
+        // otherwise, print out each visualization with a header
         for visualization in result.visualizations {
             println!("visualization of {}:", visualization.name);
             println!("{}", visualization.result);

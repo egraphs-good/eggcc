@@ -21,10 +21,6 @@ while true:
    print two;
    break 1
   print one;
-  if if_cond:
-   break 1
-  else:
-   break 1
  block:
   loop_cond: bool = lt i ten;
   i: int = add i one;

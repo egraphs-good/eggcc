@@ -1,0 +1,20 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+inc {
+block:
+ one: int = const 1;
+ res: int = add one x;
+ return res
+
+}
+
+main {
+block:
+ a: int = const 0;
+ c: int = call @inc a;
+ print c;
+ return
+
+}

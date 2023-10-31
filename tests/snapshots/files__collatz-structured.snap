@@ -1,0 +1,39 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ three: int = const 3;
+ two: int = const 2;
+ one: int = const 1;
+ zero: int = const 0;
+ var: int = id arg;
+while true:
+ block:
+  block:
+   cond: bool = eq var one;
+   if cond:
+    break 2
+   else:
+    break 1
+  block:
+   block:
+    d: int = div var two;
+    m: int = mul d two;
+    mod: int = sub var m;
+    cond: bool = eq mod zero;
+    if cond:
+     break 2
+    else:
+     break 1
+   v1: int = mul three var;
+   var: int = add one v1;
+   break 2
+  var: int = div var two;
+  break 1
+ block:
+  print arg;
+  return
+
+}

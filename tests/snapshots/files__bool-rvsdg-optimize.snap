@@ -2,8 +2,8 @@
 source: tests/files.rs
 expression: visualization.result
 ---
-@main(v0: int) {
-  v2: int = const 4;
-  print v2;
+@main {
+  v1: bool = const true;
+  print v1;
 }
 

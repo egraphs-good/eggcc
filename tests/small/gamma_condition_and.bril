@@ -1,0 +1,39 @@
+# ARGS: 1
+@main(x: int) {
+  y: int = const 2;
+  z: int = const 3;
+  a: bool = lt x y;
+  b: bool = lt y z;
+
+  c: bool = and a b;
+  br c .A .B;
+.A:
+  print x;
+  jmp .C;
+.B:
+  print y;
+.C:
+  print z;
+}
+
+# want to "simplify" to:
+# @main(x: int) {
+#   y: int = const 2;
+#   z: int = const 3;
+#   a: bool = lt x y;
+#   b: bool = lt y z;
+# 
+#   br a .A .B;
+# .A:
+#   br b .A1 .A2;
+# .A1:
+#   print x;
+#   jmp .C;
+# .A2:
+#   print y;
+#   jmp .C;
+# .B:
+#   print y;
+# .C:
+#   print z;
+# }

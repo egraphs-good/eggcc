@@ -1,0 +1,18 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ one: int = const 1;
+ two: int = const 2;
+ three: int = const 3;
+ four: int = const 4;
+ a2: int = add a three;
+ b4: int = add b four;
+ a2b4: int = add a2 b4;
+ onea2b4: int = add one a2b4;
+ print onea2b4;
+ return
+
+}

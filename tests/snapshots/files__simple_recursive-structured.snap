@@ -1,0 +1,31 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+inc {
+block:
+ block:
+  max: int = const 2;
+  cond: bool = lt x max;
+  if cond:
+   break 1
+  else:
+   break 2
+ one: int = const 1;
+ x: int = add one x;
+ print x;
+ x: int = call @inc x;
+block:
+
+ return x
+
+}
+
+main {
+block:
+ a: int = const 0;
+ c: int = call @inc a;
+ print c;
+ return
+
+}

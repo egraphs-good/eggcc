@@ -4,11 +4,12 @@
   br cond .B .C;
 .B:
   a: int = const 1;
+  print a;
   jmp .D;
 .C:
   a: int = const 2;
+  print a;
   jmp .D;
 .D:
-  w: int = const 2;
   ret;
 }

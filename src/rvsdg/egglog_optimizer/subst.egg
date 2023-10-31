@@ -92,4 +92,89 @@
     (union (SubstVecVecOperandHelper (VVO vec) x v i) (VVO vec))
   ) :ruleset subst)
  
+;; SubstAll - Simultaneous substitutions
+;;
+;; Instead of substituting a particular argument for an operand, the "*All"
+;; variants substitute (Arg i) for (vec-get v i) for a vector `v` passed in as the
+;; first argument.
 
+(function SubstExprAll          (VecOperand Expr)          Expr :unextractable)
+(function SubstOperandAll       (VecOperand Operand)       Operand :unextractable)
+(function SubstBodyAll          (VecOperand Body)          Body :unextractable)
+(function SubstVecOperandAll    (VecOperand VecOperand)    VecOperand :unextractable)
+(function SubstVecVecOperandAll (VecOperand VecVecOperand) VecVecOperand :unextractable)
+
+(rewrite (SubstExprAll x (Const ty ops lit)) (Const ty ops lit) :ruleset subst)
+(rewrite (SubstExprAll x (Call ty f args n-outs)) (Call ty f (SubstVecOperandAll x args) n-outs) :ruleset subst)
+(rewrite (SubstExprAll x (badd ty a b)) (badd ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (bsub ty a b)) (bsub ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (bmul ty a b)) (bmul ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (bdiv ty a b)) (bdiv ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (beq ty a b)) (beq ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (blt ty a b)) (blt ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (bgt ty a b)) (bgt ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (ble ty a b)) (ble ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (bge ty a b)) (bge ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (bnot ty a b)) (bnot ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (band ty a b)) (band ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (bor ty a b)) (bor ty (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+(rewrite (SubstExprAll x (PRINT a b)) (PRINT (SubstOperandAll x a) (SubstOperandAll x b)) :ruleset subst)
+
+(rule ((= res (SubstOperandAll (VO ops) (Arg x)))
+       (< x (vec-length ops)))
+      ((union res (vec-get ops x))) :ruleset subst)
+;; NB: unclear if this rule is needed      
+(rule ((= res (SubstOperandAll (VO ops) (Arg x)))
+       (>= x (vec-length ops)))
+      ((union res (Arg x))) :ruleset subst)
+(rewrite (SubstOperandAll x (Node b)) (Node (SubstBodyAll x b)) :ruleset subst)
+(rewrite (SubstOperandAll x (Project i b)) (Project i (SubstBodyAll x b)) :ruleset subst)
+
+(rewrite (SubstBodyAll x (PureOp e)) (PureOp (SubstExprAll x e)) :ruleset subst)
+;; Subst doesn't cross regions - so we subst into the inputs but not outputs
+;; Node that a Gamma node's idx is on the outside, so it gets affected, but not
+;; a Theta node's predicate
+(rewrite (SubstBodyAll x (Gamma pred inputs outputs)) 
+  (Gamma (SubstOperandAll x pred) (SubstVecOperandAll x inputs) outputs) :ruleset subst)
+(rewrite (SubstBodyAll x (Theta pred inputs outputs)) 
+  (Theta pred (SubstVecOperandAll x inputs) outputs) :ruleset subst)
+
+;; params: substs, vec, next index to subst
+;; rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
+(function SubstVecOperandAllHelper (VecOperand VecOperand i64) VecOperand :unextractable)
+(rewrite (SubstVecOperandAll x vec) (SubstVecOperandAllHelper x vec 0) :ruleset subst)
+(rule
+  ((= f (SubstVecOperandAllHelper x (VO vec) i))
+   (< i (vec-length vec)))
+  ((union
+     (SubstVecOperandAllHelper x (VO vec) i)
+     (SubstVecOperandAllHelper
+       x
+       (VO (vec-set vec i (SubstOperandAll x (vec-get vec i))))
+       (+ i 1)))) :ruleset subst)
+
+(rule
+  ((= f (SubstVecOperandAllHelper x (VO vec) i))
+   (= i (vec-length vec)))
+  ((union (SubstVecOperandAllHelper x (VO vec) i) (VO vec))) :ruleset subst)
+
+
+;; params: substs, vec, next index to subst
+;; rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
+(function SubstVecVecOperandAllHelper (VecOperand VecVecOperand i64) VecVecOperand :unextractable)
+(rewrite (SubstVecVecOperandAll x vec) (SubstVecVecOperandAllHelper x vec 0) :ruleset subst)
+(rule
+  ((= f (SubstVecVecOperandAllHelper x (VVO vec) i))
+   (< i (vec-length vec)))
+  ((union
+     (SubstVecVecOperandAllHelper x (VVO vec) i)
+     (SubstVecVecOperandAllHelper
+       x
+       (VVO (vec-set vec i (SubstVecOperandAll x (vec-get vec i))))
+       (+ i 1)))) :ruleset subst)
+
+(rule
+  ((= f (SubstVecVecOperandAllHelper x (VVO vec) i))
+   (= i (vec-length vec)))
+  ((union (SubstVecVecOperandAllHelper x (VVO vec) i) (VVO vec))) :ruleset subst)
+ 

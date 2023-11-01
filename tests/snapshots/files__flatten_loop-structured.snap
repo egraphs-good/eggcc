@@ -1,0 +1,37 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ one: int = const 1;
+ i: int = const 0;
+while true:
+ block:
+  block:
+   cond: bool = lt i N;
+   if cond:
+    break 2
+   else:
+    break 1
+  block:
+   print i;
+   return
+
+ block:
+  j: int = const 0;
+ while true:
+  block:
+   block:
+    cond: bool = lt j M;
+    if cond:
+     break 2
+    else:
+     break 1
+   i: int = add i one;
+   break 2
+  i_times_m: int = mul i M;
+  plus_j: int = add i_times_m j;
+  print plus_j;
+  j: int = add j one;
+}

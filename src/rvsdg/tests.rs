@@ -1112,4 +1112,58 @@ fn rvsdg_loop_inv_detect_simple() {
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM1).unwrap();
+
+    const EGGLOG_THETA_PROGRAM2: &str = r#"
+    (let t1 (Theta 
+        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Node (PureOp (Const (IntT) (const) (Num 1)))) (Arg 1)))) (Node (PureOp (Const (IntT) (const) (Num 5))))))) 
+        (VO (vec-of (Arg 0) 
+                    (Node (PureOp (Const (IntT) (const) (Num 0)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 10)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 10)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 10))))))
+        (VO (vec-of (Node (PureOp (PRINT (Node (PureOp (bmul (IntT) (Arg 2) 
+                                                                    (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
+                                        (Node (PureOp (PRINT (Project 0 (PureOp (Call (SomeType (IntT)) "mean3" (VO (vec-of (Node (PureOp (badd (IntT) (Arg 4) (Node (PureOp (Const (IntT) (const) (Num 5))))))) 
+                                                                                                                            (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                                                                                                                            (Node (PureOp (bsub (IntT) (Node (PureOp (bsub (IntT) (Arg 3) 
+                                                                                                                                                                                    (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                                                                                                                                                        (Node (PureOp (Const (IntT) (const) (Num 2)))))))
+                                                                                                                            (Arg 0)))
+                                                                                                                2))) 
+                                                                (Project 1 (PureOp (Call (SomeType (IntT)) "mean3" (VO (vec-of (Node (PureOp (badd (IntT) (Arg 4) 
+                                                                                                                                                        (Node (PureOp (Const (IntT) (const) (Num 5))))))) 
+                                                                                                                                (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                                                                                                                                (Node (PureOp (bsub (IntT) (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                                                                                                                                (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
+                                                                                                                                (Arg 0))) 
+                                                                                                                    2)))))))))
+                    (Node (PureOp (badd (IntT) (Node (PureOp (Const (IntT) (const) (Num 1)))) (Arg 1))))
+                    (Node (PureOp (bmul (IntT) (Arg 2) (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
+                    (Arg 3) 
+                    (Arg 4)))))
+
+    (run-schedule
+        (repeat 5 (run) (saturate loop_inv_detect)))
+
+    (check (is_inv_oprd t1 (Arg 3)))
+    (check (is_inv_oprd t1 (Arg 4)))
+    (fail (check (is_inv_oprd t1 (Arg 0))))
+    (fail (check (is_inv_oprd t1 (Arg 1))))
+    (fail (check (is_inv_oprd t1 (Arg 2))))
+    (check (is_inv_oprd t1 (Node (PureOp (Const (IntT) (const) (Num 5))))))
+    (check (is_inv_expr t1 (badd (IntT) (Arg 4) (Node (PureOp (Const (IntT) (const) (Num 5)))))))
+    (check (is_inv_oprd t1 (Node (PureOp (bsub (IntT) (Node (PureOp (bsub (IntT) (Arg 3) 
+                                                                            (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                                                (Node (PureOp (Const (IntT) (const) (Num 2)))))))))
+    (fail (check (is_inv_body t1 (PureOp (Call (SomeType (IntT)) "mean3" (VO (vec-of (Node (PureOp (badd (IntT) (Arg 4) 
+                                                                                                            (Node (PureOp (Const (IntT) (const) (Num 5))))))) 
+                                                                                (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                                                                                (Node (PureOp (bsub (IntT) (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                                                                                (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
+                                                                                (Arg 0))) 
+                                                                    2)))))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM2).unwrap();
+
 }

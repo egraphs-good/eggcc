@@ -1165,5 +1165,4 @@ fn rvsdg_loop_inv_detect_simple() {
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM2).unwrap();
-
 }

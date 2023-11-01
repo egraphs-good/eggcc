@@ -1,7 +1,5 @@
 (ruleset loop_inv_detect)
 
-(relation arg_inv (Body i64))
-
 ;; find invariant
 (relation find_inv_expr (Body Expr))
 (relation find_inv_oprd (Body Operand))
@@ -12,7 +10,12 @@
 (relation is_inv_oprd (Body Operand))
 (relation is_inv_body (Body Body))
 (relation is_inv_vo (Body VecOperand))
-
+ 
+ (relation arg_inv (Body i64))
+ ;; VecOperand: output of Theta node.
+ ;; If the node link directly to input, the input operand is invariant.
+ ;; Body : context
+ ;; i64: iterator index.
 (relation arg_inv_helper (VecOperand Body i64))
 
 (rule ((= theta (Theta pred inputs outputs))) 
@@ -28,7 +31,7 @@
     ((arg_inv_helper (VO outputs) theta (+ i 1))) :ruleset loop_inv_detect)
 
 ;; top level entry ;
-;; there are at least one arg_inv
+;; there are at least one arg_inv so that it won't go into unnecessary check
 (rule ((= theta (Theta pred inputs outputs))
         (arg_inv theta i))
     ((find_inv_vo theta outputs)) :ruleset loop_inv_detect)
@@ -53,9 +56,10 @@
     ((find_inv_vo theta vo)) :ruleset loop_inv_detect)
 
 ;; vo -> op
+;; Body: context, VecOperand: the VO that working on, i64: iterator index. 
 (relation find_inv_vo_helper (Body VecOperand i64))
 
-(rule ((find_inv_vo	theta vo)) ((find_inv_vo_helper theta vo 0)) :ruleset loop_inv_detect)
+(rule ((find_inv_vo theta vo)) ((find_inv_vo_helper theta vo 0)) :ruleset loop_inv_detect)
 
 (rule ((find_inv_vo_helper theta (VO vec) i)
         (= n (vec-length vec))
@@ -63,15 +67,20 @@
     ((find_inv_oprd theta (vec-get vec i))
      (find_inv_vo_helper theta (VO vec) (+ i 1))) :ruleset loop_inv_detect)
 
-
 ;; terminal
 (rule ((find_inv_expr theta (Const ty ops lit))) 
     ((is_inv_expr theta (Const ty ops lit))) :ruleset loop_inv_detect)
 
-
 ;; TODO: If call is pure it could be invariant
 ;; Maybe it's done by function inlining.
-;; print should never be invariant.
+;; print should not invariant, but print and call's children could be
+(rule ((find_inv_expr theta expr)
+        (= expr (PRINT op state)))
+    ((find_inv_oprd theta op)))
+
+(rule ((find_inv_expr theta expr)
+        (= expr (Call option str vo i)))
+    ((find_inv_vo theta vo)))
 
 ;; match on every binary expr, see loop_invariant.rs
 ; (rule ((find_inv_expr theta (Someop ty a b)))

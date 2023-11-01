@@ -1037,3 +1037,79 @@ fn rvsdg_shift() {
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
 }
+
+#[test]
+fn rvsdg_loop_inv_detect_simple() {
+    const EGGLOG_THETA_PROGRAM1: &str = r#"
+    (let t1 (Theta 
+            (Node (PureOp (beq (BoolT) (Node (PureOp (bdiv (IntT) (Arg 2) 
+                                                                  (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1) 
+                                                                                                                        (Node (PureOp (badd (IntT) (Arg 4) 
+                                                                                                                                                    (Arg 5))))))) 
+                                                                                             (Arg 3))))))) 
+                                        (Arg 1)))) 
+            (VO (vec-of (Arg 0)
+                        (Node (PureOp (Const (IntT) (const) (Num 2)))) 
+                        (Node (PureOp (Const (IntT) (const) (Num 6)))) 
+                        (Node (PureOp (Const (IntT) (const) (Num 3)))) 
+                        (Node (PureOp (Const (IntT) (const) (Num 0)))) 
+                        (Node (PureOp (Const (IntT) (const) (Num 1)))))) 
+            (VO (vec-of (Node (PureOp (PRINT (Node (PureOp (bdiv (IntT) (Arg 2) 
+                                                                        (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
+                                                                                                                              (Node (PureOp (badd (IntT) (Arg 4) 
+                                                                                                                                                         (Arg 5))))))) 
+                                                                                                    (Arg 3)))))))
+                                            (Arg 0))))
+            (Arg 1)
+            (Arg 2)
+            (Arg 3)
+            (Arg 4)
+            (Arg 5)))))
+
+    (run-schedule (saturate loop_inv_detect))
+
+    (fail (check (arg_inv t1 0)))
+    (check (arg_inv t1 1))
+    (check (arg_inv t1 2))
+    (check (arg_inv t1 3))
+    (check (arg_inv t1 4))
+    (check (arg_inv t1 5))
+
+    (check (is_inv_oprd t1 (Arg 1)))
+    (check (is_inv_oprd t1 (Arg 2)))
+    (check (is_inv_oprd t1 (Arg 3)))
+    (check (is_inv_oprd t1 (Arg 4)))
+    (check (is_inv_oprd t1 (Arg 5)))
+
+    (let inv_oprd (Node (PureOp (bdiv (IntT) (Arg 2) 
+    (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
+                            (Node (PureOp (badd (IntT) (Arg 4) 
+                                                        (Arg 5))))))) 
+    (Arg 3))))))))
+
+    (check (is_inv_body t1 (PureOp (badd (IntT) (Arg 4) (Arg 5)))))
+    (check (is_inv_expr t1 (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
+                                                                    (Node (PureOp (badd (IntT) (Arg 4) 
+                                                                                                (Arg 5)))))))
+                                        (Arg 3))))
+
+    (check (is_inv_oprd t1 inv_oprd))
+
+
+    ;; the operand at pred of theta is invariant
+    (check (is_inv_oprd t1 (Node (PureOp (beq (BoolT) inv_oprd (Arg 1))))))
+
+    ;; print is not invariant
+    (fail (check (is_inv_oprd t1 (Node (PureOp (PRINT (Node (PureOp (bdiv (IntT) (Arg 2) 
+    (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
+                                                        (Node (PureOp (badd (IntT) (Arg 4) 
+                                                                                    (Arg 5))))))) 
+                                (Arg 3))))))) 
+    (Arg 0)))))))
+
+    ;; an expr that does not exist in original program should fail check
+    (fail (check (is_inv_expr t1 (badd (IntT) (Arg 1) (Arg 2)))))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM1).unwrap();
+}

@@ -11,11 +11,11 @@
 (relation is_inv_body (Body Body))
 (relation is_inv_vo (Body VecOperand))
  
- (relation arg_inv (Body i64))
- ;; VecOperand: output of Theta node.
- ;; If the node link directly to input, the input operand is invariant.
- ;; Body : context
- ;; i64: iterator index.
+(relation arg_inv (Body i64))
+;; VecOperand: output of Theta node.
+;; If the node link directly to input, the input operand is invariant.
+;; Body : context
+;; i64: iterator index.
 (relation arg_inv_helper (VecOperand Body i64))
 
 (rule ((= theta (Theta pred inputs outputs))) 
@@ -34,7 +34,7 @@
 ;; there are at least one arg_inv so that it won't go into unnecessary check
 (rule ((= theta (Theta pred inputs outputs))
         (arg_inv theta i))
-    ((find_inv_vo theta outputs)) :ruleset loop_inv_detect)
+    ((find_inv_oprd theta pred) (find_inv_vo theta outputs)) :ruleset loop_inv_detect)
 
 (rule ((find_inv_body theta body) 
         (= body (PureOp op))) 

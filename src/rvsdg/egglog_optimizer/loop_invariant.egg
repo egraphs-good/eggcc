@@ -76,7 +76,7 @@
 ;; print should not invariant, but print and call's children could be
 (rule ((find_inv_expr theta expr)
         (= expr (PRINT op state)))
-    ((find_inv_oprd theta op)))
+    ((find_inv_oprd theta op) (find_inv_oprd theta state)))
 
 (rule ((find_inv_expr theta expr)
         (= expr (Call option str vo i)))

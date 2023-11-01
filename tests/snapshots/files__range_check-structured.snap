@@ -8,7 +8,7 @@ block:
  one: int = const 1;
  two: int = const 2;
  five: int = const 5;
- ten: int = const 10;
+ six: int = const 6;
 while true:
  block:
   block:
@@ -22,7 +22,7 @@ while true:
    break 1
   print one;
  block:
-  loop_cond: bool = lt i ten;
+  loop_cond: bool = lt i six;
   i: int = add i one;
   if loop_cond:
    break 2

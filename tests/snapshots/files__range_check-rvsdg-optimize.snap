@@ -5,7 +5,7 @@ expression: visualization.result
 @main {
   v2: int = const 0;
   v4: int = const 1;
-  v6: int = const 10;
+  v6: int = const 6;
   v8: int = const 2;
   v10: int = const 5;
   v12: int = id v2;

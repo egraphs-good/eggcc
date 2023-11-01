@@ -149,8 +149,8 @@ fn subst_beneath_rules() -> Vec<String> {
 // arg_rules are hardcoded rules for the Arg case of the function for Operand
 fn functions_modifying_args(
     func_name_fmt: &str,
-    ruleset: &str,
     aux_param_types: Vec<&str>,
+    ruleset: &str,
     arg_rules: &str,
 ) -> Vec<String> {
     let mut res = vec![];
@@ -284,8 +284,8 @@ fn functions_modifying_args(
 fn subst_rules() -> Vec<String> {
     functions_modifying_args(
         "Subst{}",
-        "subst",
         vec!["i64", "Operand"],
+        "subst",
         "
         (rewrite (SubstOperand (Arg x) x v) v :ruleset subst)
         (rule ((= f (SubstOperand (Arg y) x v)) (!= y x))
@@ -299,8 +299,8 @@ fn subst_rules() -> Vec<String> {
 fn shift_rules() -> Vec<String> {
     functions_modifying_args(
         "Shift{}",
-        "shift",
         vec!["i64", "i64"],
+        "shift",
         "
         (rule ((= f (ShiftOperand (Arg x) last-unshifted amt)) (<= x last-unshifted))
               ((union f (Arg x))) :ruleset shift)
@@ -315,8 +315,8 @@ fn shift_rules() -> Vec<String> {
 fn subst_all_rules() -> Vec<String> {
     functions_modifying_args(
         "Subst{}All",
-        "subst",
         vec!["VecOperand"],
+        "subst",
         "
         (rule ((= f (SubstOperandAll (Arg x) (VO ops)))
                (< x (vec-length ops)))

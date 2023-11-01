@@ -22,7 +22,7 @@
   one: int = const 1;
   two: int = const 2;
   five: int = const 5;
-  ten: int = const 10;
+  six: int = const 6;
 
 .top:
   if_cond: bool = lt i five;
@@ -34,7 +34,7 @@
   print two;
 .end_if:
 
-  loop_cond: bool = lt i ten;
+  loop_cond: bool = lt i six;
   i: int = add i one;
   br loop_cond .top .end;
 .end:

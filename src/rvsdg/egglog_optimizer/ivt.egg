@@ -19,28 +19,29 @@
 ;; BaseChange op from to traverses 'op' recursively and replaces instances of
 ;; (Project i from) with (Project i to).
 (function BaseChangeOperand (Operand Body Body) Operand :unextractable)
-(function BaseChangeExpr (Epxr Body Body) Expr :unextractable)
+(function BaseChangeExpr (Expr Body Body) Expr :unextractable)
 (function BaseChangeBody (Body Body Body) Body :unextractable)
-(function BaseChangeVecOperand (VecOperand Body Body) Body :unextractable)
-(function BaseChangeVecVecOperand (VecVecOperand Body Body) Body :unextractable)
-; 
-; ; TODO: fill outputs-aligned in, and populate the upto relation
-; ; (outputs-aligned v b) is there if (vec-get v i) = (Proj i b)
-; 
-; (rule ((= loop (Theta pred loop-in loop-out))
-;        (= inner-gamma (Gamma pred gamma-in (VVO gamma-out)))
-;        (= 2 (vec-length gamma-out)))
-;       ((let then-case (OperandGroup (vec-get gamma-out 1)))
-;        ; What is loop-in though? What if it exceeds gamma-in, then we need to extend gamma-in!
-;        (let inner-loop  (Theta pred loop-in (BaseChangeVecOperand gamma-in inner-gamma then-case)))
-;        (let outer-gamma (Gamma 
-;                (SubstOperandAll loop-in pred) 
-;                (SubstVecOperandAll loop-in gamma-in)
-;                (VVO (vec-of (vec-get gamma-out 0) 
-;                             inner-loop))))
-;        ; TODO: do we need to do this for every pred, or is unioning the regions
-;        ; enough?                        
-;        (union outer-gamma loop)))
+(function BaseChangeVecOperand (VecOperand Body Body) VecOperand :unextractable)
+(function BaseChangeVecVecOperand (VecVecOperand Body Body) VecVecOperand :unextractable)
+
+(relation HasSubterm (Body Body))
+
+(rule ((= loop (Theta pred (VO inputs) outputs))
+       (= gamma (Gamma pred gamma-in (VVO gamma-out)))
+       (HasSubterm loop gamma))
+      ((let inner-else-block (OperandGroup (SubstVecOperandAll gamma-in (vec-get gamma-out 0))))
+       (let outer-else-block (BaseChangeVecOperand outputs gamma inner-else-block))
+       (let inner-then-block (OperandGroup (SubstVecOperandAll gamma-in (vec-get gamma-out 1))))
+       (let inner-theta (Theta (BaseChangeOperand pred gamma inner-then-block) 
+                               (PassThroughArguments (vec-length inputs))
+                               (BaseChangeVecOperand outputs gamma inner-then-block)))
+       (union loop 
+        (Gamma (SubstOperandAll (VO inputs) pred) 
+               (VO inputs) 
+               (VVO 
+                (vec-of 
+                    outer-else-block
+                    (BodyToVecOperand (vec-length inputs) inner-theta)))))))
 
 (rewrite (BaseChangeExpr (Const ty ops lit) from to) (Const ty ops lit) :ruleset subst)
 (rewrite (BaseChangeExpr (Call ty f args n-outs) from to) (Call ty f (BaseChangeVecOperand args from to) n-outs) :ruleset subst)
@@ -63,12 +64,13 @@
 (rewrite (BaseChangeOperand (Project i from) from to) (Project i to) :ruleset subst)
 
 (rewrite (BaseChangeBody (PureOp e) from to) (PureOp (BaseChangeExpr e from to)) :ruleset subst)
+(rewrite (BaseChangeBody (OperandGroup vo) from to) (OperandGroup (BaseChangeVecOperand vo from to)) :ruleset subst)
 (rewrite (BaseChangeBody (Gamma pred inputs outputs) from to) 
     (Gamma (BaseChangeOperand pred from to) (BaseChangeVecOperand inputs from to) outputs) :ruleset subst)
 (rewrite (BaseChangeBody (Theta pred inputs outputs) from to) 
     (Theta pred (BaseChangeVecOperand inputs from to) outputs) :ruleset subst)    
 
-(function BaseChangeVecOperandHelper (VecOperand Body Body i64) Body :unextractable)
+(function BaseChangeVecOperandHelper (VecOperand Body Body i64) VecOperand :unextractable)
 (rewrite (BaseChangeVecOperand ops from to) (BaseChangeVecOperandHelper ops from to 0) :ruleset subst)
 (rule
   ((= f (BaseChangeVecOperandHelper (VO vec) x v i))

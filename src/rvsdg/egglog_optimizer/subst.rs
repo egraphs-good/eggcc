@@ -139,8 +139,196 @@ fn subst_beneath_rules() -> Vec<String> {
     res
 }
 
-pub(crate) fn subst_rules() -> String {
-    let mut res = vec![include_str!("subst.egg").to_string()];
+// Below, TYPE is one of {Expr, Operand, Body, VecOperand, VecVecOperand}
+
+// Generate rules to replace args via some procedure. See below for examples.
+//
+// Will generate functions named func_name_format.replace("{}", TYPE),
+// with parameter types [TYPE] ++ aux_param_types
+//
+// arg_rules are hardcoded rules for the Arg case of the function for Operand
+fn functions_modifying_args(
+    func_name_fmt: &str,
+    aux_param_types: Vec<&str>,
+    ruleset: &str,
+    arg_rules: &str,
+) -> Vec<String> {
+    let mut res = vec![];
+
+    // Define functions
+    let aux_params_str = aux_param_types.join(" ");
+    for ty in ["Expr", "Operand", "Body", "VecOperand", "VecVecOperand"] {
+        let fname = func_name_fmt.replace("{}", ty);
+        res.push(format!(
+            "(function {fname} ({ty} {aux_params_str}) {ty} :unextractable)",
+        ));
+    }
+    let fname_expr = func_name_fmt.replace("{}", "Expr");
+    let fname_operand = func_name_fmt.replace("{}", "Operand");
+    let fname_body = func_name_fmt.replace("{}", "Body");
+    let fname_vec_operand = func_name_fmt.replace("{}", "VecOperand");
+
+    // Rules to compute on Expr
+    let aux_args_str = (0..aux_param_types.len())
+        .map(|i| format!("x{i}"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    for bril_op in BRIL_OPS {
+        let op = bril_op.op;
+        match bril_op.input_types.as_ref() {
+            [Some(_), Some(_)] => res.push(format!(
+                "
+                (rewrite
+                    ({fname_expr} ({op} ty a b) {aux_args_str})
+                    ({op}
+                        ty
+                        ({fname_operand} a {aux_args_str})
+                        ({fname_operand} b {aux_args_str}))
+                    :ruleset {ruleset})
+                     ",
+            )),
+            _ => unimplemented!(),
+        };
+    }
+    res.push(format!(
+        "
+        (rewrite
+            ({fname_expr} (Const ty ops lit) {aux_args_str})
+            (Const ty ops lit)
+            :ruleset {ruleset})
+        (rewrite
+            ({fname_expr} (Call ty f args n-outs) {aux_args_str})
+            (Call ty f ({fname_vec_operand} args {aux_args_str}) n-outs)
+            :ruleset {ruleset})
+        (rewrite
+            ({fname_expr} (PRINT a b) {aux_args_str})
+            (PRINT ({fname_operand} a {aux_args_str}) ({fname_operand} b {aux_args_str}))
+            :ruleset {ruleset})",
+    ));
+
+    // Rules to compute on Operand
+    res.push(arg_rules.into());
+    res.push(format!(
+        "
+        (rewrite
+            ({fname_operand} (Node b) {aux_args_str})
+            (Node ({fname_body} b {aux_args_str}))
+            :ruleset {ruleset})
+        (rewrite
+            ({fname_operand} (Project i b) {aux_args_str})
+            (Project i ({fname_body} b {aux_args_str}))
+            :ruleset {ruleset})"
+    ));
+
+    // Rules to compute on Body
+    res.push(format!(
+        "
+        (rewrite
+            ({fname_body} (PureOp e) {aux_args_str})
+            (PureOp ({fname_expr} e {aux_args_str}))
+            :ruleset {ruleset})
+        ;; Don't cross regions, so so we shift into the inputs but not outputs
+        ;; A Gamma's pred is on the outside, so it's affected, but not a Theta's
+        (rewrite
+            ({fname_body} (Gamma pred inputs outputs) {aux_args_str})
+            (Gamma
+                ({fname_operand} pred {aux_args_str})
+                ({fname_vec_operand} inputs {aux_args_str})
+                outputs)
+            :ruleset {ruleset})
+        (rewrite
+            ({fname_body} (Theta pred inputs outputs) {aux_args_str})
+            (Theta pred ({fname_vec_operand} inputs {aux_args_str}) outputs)
+            :ruleset {ruleset})"
+    ));
+
+    // Rules to compute on VecOperand
+    for (vectype, ctor, eltype) in [
+        ("VecOperand", "VO", "Operand"),
+        ("VecVecOperand", "VVO", "VecOperand"),
+    ] {
+        let fname_vec = func_name_fmt.replace("{}", vectype);
+        let fname_eltype = func_name_fmt.replace("{}", eltype);
+        // rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
+        res.push(format!(
+            "
+            (function {fname_vec}-helper ({vectype} {aux_params_str} i64) {vectype})
+            (rewrite
+                ({fname_vec} vec {aux_args_str})
+                ({fname_vec}-helper vec {aux_args_str} 0)
+                :ruleset {ruleset})
+            (rule
+                ((= f ({fname_vec}-helper ({ctor} vec) {aux_args_str} i))
+                 (< i (vec-length vec)))
+                ((union
+                    ({fname_vec}-helper ({ctor} vec) {aux_args_str} i)
+                    ({fname_vec}-helper
+                        ({ctor} (vec-set vec i ({fname_eltype} (vec-get vec i) {aux_args_str})))
+                        {aux_args_str} (+ i 1))))
+                :ruleset {ruleset})
+            (rule
+                ((= f ({fname_vec}-helper ({ctor} vec) {aux_args_str} i))
+                 (= i (vec-length vec)))
+                ((union
+                    ({fname_vec}-helper ({ctor} vec) {aux_args_str} i)
+                    ({ctor} vec)))
+                :ruleset {ruleset})"
+        ));
+    }
+    res
+}
+
+// Within e, replace (Args x) with v.
+//                      e  [ x -> v ]
+// (function SubstTYPE (TYPE i64  Operand) TYPE)
+fn subst_rules() -> Vec<String> {
+    functions_modifying_args(
+        "Subst{}",
+        vec!["i64", "Operand"],
+        "subst",
+        "
+        (rewrite (SubstOperand (Arg x) x v) v :ruleset subst)
+        (rule ((= f (SubstOperand (Arg y) x v)) (!= y x))
+              ((union f (Arg y))) :ruleset subst)",
+    )
+}
+
+// Within e, replace (Args x), where x > last-unshifted, with (Args (x + amt)).
+//                      e    last-unshifted amt
+// (function ShiftTYPE (TYPE i64            i64) TYPE)
+fn shift_rules() -> Vec<String> {
+    functions_modifying_args(
+        "Shift{}",
+        vec!["i64", "i64"],
+        "shift",
+        "
+        (rule ((= f (ShiftOperand (Arg x) last-unshifted amt)) (<= x last-unshifted))
+              ((union f (Arg x))) :ruleset shift)
+        (rule ((= f (ShiftOperand (Arg x) last-unshifted amt)) (> x last-unshifted))
+              ((union f (Arg (+ x amt)))) :ruleset shift)",
+    )
+}
+
+// Within e, replace (Args x) with ops[x].
+//                         e    ops
+// (function SubstTYPEAll (TYPE VecOperand) TYPE)
+fn subst_all_rules() -> Vec<String> {
+    functions_modifying_args(
+        "Subst{}All",
+        vec!["VecOperand"],
+        "subst",
+        "
+        (rule ((= f (SubstOperandAll (Arg x) (VO ops)))
+               (< x (vec-length ops)))
+              ((union f (vec-get ops x))) :ruleset subst)",
+    )
+}
+
+pub(crate) fn all_rules() -> String {
+    let mut res = vec!["(ruleset subst) (ruleset shift)".into()];
     res.extend(subst_beneath_rules());
+    res.extend(subst_rules());
+    res.extend(subst_all_rules());
+    res.extend(shift_rules());
     res.join("\n")
 }

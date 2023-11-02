@@ -667,7 +667,7 @@ fn rvsdg_subst() {
                                                                         (Num 1)))))))
                                 (Arg 3)))))
     (let substed (SubstOperand unsubsted 3 (Arg 7)))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
     (let expected
               (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
@@ -697,7 +697,7 @@ fn rvsdg_subst() {
                                          (Node (PureOp (Const (IntT) (const) (Num 1)))))))
                       (Arg 3)))))
     (let substed (SubstBody unsubsted 1 (Arg 7)))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
     (let expected
         (Theta
               (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
@@ -735,7 +735,7 @@ fn rvsdg_subst() {
                                                                      (const)
                                                                      (Num 2)))))))))))))
     (let substed (SubstBody unsubsted 0 (Arg 7)))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
     (let expected
         (Gamma
          (Node
@@ -778,7 +778,7 @@ fn rvsdg_subst_beneath_theta() {
         unsubsted
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
 
     (let expected
         (Theta
@@ -826,7 +826,7 @@ fn rvsdg_subst_beneath_gamma() {
         unsubsted
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
 
     (let expected
         (Gamma
@@ -895,7 +895,7 @@ fn rvsdg_subst_beneath_operand_group() {
         unsubsted
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
 
     (let expected
         (OperandGroup (VO (vec-of
@@ -1036,4 +1036,83 @@ fn rvsdg_shift() {
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
+}
+
+#[test]
+fn is_pure() {
+    const EGGLOG_PROGRAM: &str = r#"
+    (let pure-gamma
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+            (VO (vec-of
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+            ))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                ))
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                ))
+            ))
+          ))
+    (run-schedule (saturate fast-analyses))
+    (check (Operand-is-pure (Arg 1)))
+    (check (Expr-is-pure (badd (BoolT) (Arg 1) (Arg 2))))
+    (check (Body-is-pure (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))
+    (check (Operand-is-pure (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))))
+    (check (Body-is-pure pure-gamma))
+
+    (let output1
+        (VO (vec-of
+            (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+            (Node (PureOp (PRINT
+                (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+                (Arg 2)
+            )))
+        ))
+    )
+    (let impure-gamma
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+            (VO (vec-of
+              (Arg 6)
+              (Arg 7)
+              (Arg 8) ; print edge
+            ))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+                    (Arg 2)
+                ))
+                output1
+            ))
+          ))
+    (run-schedule (saturate fast-analyses))
+    (fail (check (Expr-is-pure
+        (PRINT
+            (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+            (Arg 2)
+        )
+    )))
+    (fail (check (Body-is-pure
+        (PureOp (PRINT
+            (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+            (Arg 2)
+        ))
+    )))
+    (fail (check (Operand-is-pure
+        (Node (PureOp (PRINT
+            (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+            (Arg 2)
+        )))
+    )))
+    (fail (check (Body-is-pure impure-gamma)))
+    (check (= 1 (VecOperand-pure-prefix output1)))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
 }

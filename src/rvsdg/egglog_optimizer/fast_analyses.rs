@@ -155,9 +155,121 @@ fn is_pure_rules() -> Vec<String> {
     res
 }
 
+// Tracks what Exprs/Operands/Bodies a body contains in its context.
+// Notably, if a Gamma/Theta contains X, then Args in X are bound by that
+// Gamma/Theta's inputs.
+fn region_contains_rules() -> Vec<String> {
+    let mut res: Vec<String> = vec!["
+        (relation Body-contains-Expr (Body Expr))
+        (relation Body-contains-Operand (Body Operand))
+        (relation Body-contains-Body (Body Body))
+    "
+    .into()];
+
+    // Bodies contain their immediate children
+    res.push(
+        "
+        (rule ((= f (PureOp e)))
+              ((Body-contains-Expr f e))
+              :ruleset fast-analyses)
+        ; A Gamma only contains its outputs
+        (rule ((= f (Gamma pred inputs outputs))
+               (= outputs-i (VecVecOperand-get outputs i))
+               (= x (VecOperand-get outputs-i j)))
+              ((Body-contains-Operand f x))
+              :ruleset fast-analyses)
+        ; A Theta contains its pred and outputs
+        (rule ((= f (Theta pred inputs outputs)))
+              ((Body-contains-Operand f pred))
+              :ruleset fast-analyses)
+        (rule ((= f (Theta pred inputs outputs))
+               (= x (VecOperand-get outputs i)))
+              ((Body-contains-Operand f x))
+              :ruleset fast-analyses)
+        (rule ((= f (OperandGroup vec))
+               (= x (VecOperand-get vec i)))
+              ((Body-contains-Operand f x))
+              :ruleset fast-analyses)
+    "
+        .into(),
+    );
+
+    // Transitivity - Body
+    res.push(
+        "
+        (rule ((Body-contains-Body f (PureOp e)))
+              ((Body-contains-Expr f e))
+              :ruleset fast-analyses)
+        ; A Gamma's pred and inputs are in the outer context
+        (rule ((Body-contains-Body f (Gamma pred inputs outputs)))
+              ((Body-contains-Operand f pred))
+              :ruleset fast-analyses)
+        (rule ((Body-contains-Body f (Gamma pred inputs outputs))
+               (= x (VecOperand-get inputs i)))
+              ((Body-contains-Operand f x))
+              :ruleset fast-analyses)
+        ; A Theta's inputs are in the outer context
+        (rule ((Body-contains-Body f (Theta pred inputs outputs))
+                (= x (VecOperand-get inputs i)))
+              ((Body-contains-Operand f x))
+              :ruleset fast-analyses)
+        (rule ((Body-contains-Body f (OperandGroup vec))
+               (= x (VecOperand-get vec i)))
+              ((Body-contains-Operand f x))
+              :ruleset fast-analyses)
+    "
+        .into(),
+    );
+
+    // Transitivity - Expr
+    res.push(
+        "
+        (rule ((Body-contains-Expr f (Call ty name args n-outs))
+               (= x (VecOperand-get args i)))
+              ((Body-contains-Operand f x))
+              :ruleset fast-analyses)
+        (rule ((Body-contains-Expr f (PRINT e1 e2)))
+              ((Body-contains-Operand f e1)
+               (Body-contains-Operand f e2))
+              :ruleset fast-analyses)
+    "
+        .into(),
+    );
+    for bril_op in BRIL_OPS {
+        let op = bril_op.op;
+        match bril_op.input_types.as_ref() {
+            [Some(_), Some(_)] => res.push(format!(
+                "
+                (rule ((Body-contains-Expr f ({op} type e1 e2)))
+                      ((Body-contains-Operand f e1)
+                       (Body-contains-Operand f e2))
+                      :ruleset fast-analyses)
+                "
+            )),
+            _ => unimplemented!(),
+        };
+    }
+
+    // Transitivity - Operand
+    res.push(
+        "
+        (rule ((Body-contains-Operand f (Node body)))
+              ((Body-contains-Body f body))
+              :ruleset fast-analyses)
+        (rule ((Body-contains-Operand f (Project i body)))
+              ((Body-contains-Body f body))
+              :ruleset fast-analyses)
+    "
+        .into(),
+    );
+
+    res
+}
+
 pub(crate) fn all_rules() -> String {
     let mut res = vec!["(ruleset fast-analyses)".to_string()];
     res.extend(reify_vec_rules());
     res.extend(is_pure_rules());
+    res.extend(region_contains_rules());
     res.join("\n")
 }

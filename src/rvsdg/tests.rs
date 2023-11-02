@@ -1116,3 +1116,129 @@ fn is_pure() {
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
 }
+
+#[test]
+fn rvsdg_body_contains_theta() {
+    const EGGLOG_THETA_PROGRAM: &str = r#"
+    (let theta
+        (Theta
+              (Node (PureOp (badd (BoolT) (Arg 7) (Arg 8))))
+              (VO (vec-of
+                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+                (Arg 7)
+              ))
+              (VO (vec-of
+                (Node (PureOp (blt (BoolT)
+                    (Arg 4)
+                    (Node (PureOp (badd (BoolT) (Arg 5) (Arg 6)))))))
+                (Arg 4)
+              ))
+            ))
+
+    (run-schedule (saturate fast-analyses))
+
+    (check (Body-contains-Expr theta (badd (BoolT) (Arg 7) (Arg 8))))
+    (fail (check (Body-contains-Expr theta (badd (BoolT) (Arg 1) (Arg 2)))))
+    (check (Body-contains-Operand theta (Arg 4)))
+    (fail (check (Body-contains-Body theta theta)))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM).unwrap();
+}
+
+#[test]
+fn rvsdg_body_contains_gamma() {
+    const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let gamma
+        (Gamma
+            (Arg 10)
+            (VO (vec-of
+              (Arg 11)
+              (Arg 12)
+            ))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 0))))
+                ))
+                (VO (vec-of
+                    (Arg 0)
+                ))
+            ))
+          ))
+
+    (run-schedule (saturate fast-analyses))
+
+    (check (Body-contains-Expr gamma (badd (BoolT) (Arg 1) (Arg 0))))
+    (fail (check (Body-contains-Operand gamma (Arg 10))))
+    (fail (check (Body-contains-Operand gamma (Arg 11))))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
+}
+
+#[test]
+fn rvsdg_body_contains_operand_group() {
+    // This also tests what happens when Gamma/Theta appears *within*
+    const EGGLOG_OPERAND_GROUP_PROGRAM: &str = r#"
+    (let theta-pred
+        (Node (PureOp (badd (BoolT) (Arg 7) (Arg 8)))))
+    (let theta-input
+        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3)))))
+    (let theta-output
+        (Node (PureOp (blt (BoolT)
+            (Arg 4)
+            (Node (PureOp (badd (BoolT) (Arg 5) (Arg 6))))))))
+    (let theta
+        (Theta
+            theta-pred
+              (VO (vec-of
+                theta-input
+                (Arg 7)
+              ))
+              (VO (vec-of
+                theta-output
+                (Arg 4)
+              ))
+            ))
+
+    (let gamma-pred (Arg 10))
+    (let gamma-input (Arg 11))
+    (let gamma-output 
+        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 0)))))
+    (let gamma
+        (Gamma
+            gamma-pred
+            (VO (vec-of gamma-input (Arg 12)))
+            (VVO (vec-of
+                (VO (vec-of gamma-output))
+                (VO (vec-of (Arg 0)))
+            ))
+          ))
+
+    (let og
+        (OperandGroup (VO (vec-of
+            (Node (PureOp (badd (BoolT) (Arg 21) (Arg 20))))
+            (Node gamma)
+            (Node theta)
+            ))))
+
+    (run-schedule (saturate fast-analyses))
+
+    (check (Body-contains-Body og theta))
+    (check (Body-contains-Body og gamma))
+    (fail (check (Body-contains-Body og og)))
+    (check (Body-contains-Expr og (badd (BoolT) (Arg 21) (Arg 20))))
+    ; Should contain Gamma pred and inputs, but not outputs
+    (check (Body-contains-Operand og gamma-pred))
+    (check (Body-contains-Operand og gamma-input))
+    (fail (check (Body-contains-Operand og gamma-output)))
+    ; Should contain Theta inputs, but not pred or outputs 
+    (fail (check (Body-contains-Operand og theta-pred)))
+    (check (Body-contains-Operand og theta-input))
+    (fail (check (Body-contains-Operand og theta-output)))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph
+        .parse_and_run_program(EGGLOG_OPERAND_GROUP_PROGRAM)
+        .unwrap();
+}

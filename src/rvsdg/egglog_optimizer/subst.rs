@@ -123,18 +123,6 @@ fn subst_beneath_rules() -> Vec<String> {
         ("VecOperand", "VO", "Operand"),
         ("VecVecOperand", "VVO", "VecOperand"),
     ] {
-        // Reify vec-get to be able to be able to match on vec contents
-        res.push(format!(
-            "
-          (function {vectype}-get ({vectype} i64) {eltype})
-          (rule (({ctor} x) (> (vec-length x) 0))
-                ((union ({vectype}-get ({ctor} x) 0) (vec-get x 0)))
-                :ruleset subst)
-          (rule (({vectype}-get ({ctor} x) j)
-                 (= i (+ j 1)) (< i (vec-length x)))
-                ((union ({vectype}-get ({ctor} x) i) (vec-get x i)))
-                :ruleset subst)"
-        ));
         // Propagate info bottom-up
         res.push(format!(
             "

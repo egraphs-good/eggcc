@@ -64,23 +64,33 @@ pub(crate) fn passthrough_optimize_rules() -> String {
 
     // TODO implement Call
 
-    // Const gets a cost of 1
+    // Constants and arguments get a cost of one
     res.push(format!(
         "
 (rule
   ((= lhs (Const ty ops lit)))
   ((set (ExtractedExpr lhs) (ExprAndCost lhs 1)))
-  :ruleset {ruleset})"
-    ));
-
-    // Arg gets a cost of 1
-    res.push(format!(
-        "
+  :ruleset {ruleset})
+    
 (rule
-  ((= lhs (Arg ty index)))
+  ((= lhs (Arg index)))
   ((set (ExtractedOperand lhs) (OperandAndCost lhs 1)))
   :ruleset {ruleset})"
     ));
+
+    // Optimization! If a theta passes along argument,
+    // can extract the input instead.
+    res.push(
+        "
+    (rule ((= lhs (Project index loop))
+           (= loop (Theta pred (VO inputs) (VO outputs)))
+           (= (vec-get outputs index) (Arg index))
+           (= passedthrough (ExtractedOperand (vec-get inputs index)))
+          )
+          ((set (ExtractedOperand lhs) passedthrough)))
+        "
+        .to_string(),
+    );
 
     res.join("\n").to_string()
 }

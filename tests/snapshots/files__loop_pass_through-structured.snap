@@ -1,0 +1,22 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ i: int = const 1;
+while true:
+ block:
+  max: int = const 10;
+  cond: bool = lt i max;
+  i: int = add i i;
+  if cond:
+   break 2
+  else:
+   break 1
+ block:
+  res: int = add i input;
+  print res;
+  return
+
+}

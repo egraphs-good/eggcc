@@ -1,9 +1,13 @@
 use bril_rs::Type;
 
-use self::{constant_fold::constant_fold_egglog, reassoc::reassoc_rules};
+use self::{
+    constant_fold::constant_fold_egglog, passthrough_optimize::passthrough_optimize_rules,
+    reassoc::reassoc_rules,
+};
 
 pub(crate) mod constant_fold;
 pub(crate) mod fast_analyses;
+pub(crate) mod passthrough_optimize;
 pub(crate) mod reassoc;
 pub(crate) mod subst;
 
@@ -14,6 +18,7 @@ pub fn rvsdg_egglog_code() -> String {
         subst::all_rules(),
         include_str!("util.egg").to_string(),
         constant_fold_egglog(),
+        passthrough_optimize_rules(),
         include_str!("gamma_rewrites.egg").to_string(),
         include_str!("loop-optimizations.egg").to_string(),
         include_str!("interval-analysis.egg").to_string(),

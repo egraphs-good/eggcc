@@ -8,6 +8,6 @@
     ((
         union 
         return
-        (OperandGroup (SubstVecOperandAll args body))
+        (OperandGroup (SubstVecOperandAll body args))
     ))
 )

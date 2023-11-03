@@ -1,0 +1,67 @@
+(datatype Interval
+  (BoolI bool bool)
+  (IntI i64 i64)
+  (interval-intersect Interval Interval)
+  (interval-union Interval Interval))
+
+
+(rewrite (interval-intersect (IntI la ha) (IntI lb hb))
+      (IntI (max la lb) (min ha hb)))
+(rewrite (interval-union (IntI la ha) (IntI lb hb))
+      (IntI (min la lb) (max ha hb)))
+
+(rewrite (interval-intersect (BoolI la ha) (BoolI lb hb))
+      (BoolI (or la lb) (and ha hb)))
+(rewrite (interval-union (BoolI la ha) (BoolI lb hb))
+      (BoolI (and la lb) (or ha hb)))
+
+(function ival (Operand) Interval
+  :merge (interval-intersect old new))
+
+; context-specific intervals (because Args need to have interval analysis but are not globally unique)
+(function context-ival (Operand Body) Interval
+  :merge (interval-intersect old new))
+
+(rule ((= lhs (Node (PureOp (Const (BoolT) (const) (Bool b))))))
+      ((set (ival lhs) (BoolI b b))))
+
+(rule ((= lhs (Node (PureOp (Const (IntT) (const) (Num n))))))
+      ((set (ival lhs) (IntI n n))))
+
+
+; < a b interval (< ha lb) (< la hb)
+(rule ((= lhs (Node (PureOp (blt (BoolT) a b))))
+       (= (IntI la ha) (ival a))
+       (= (IntI lb hb) (ival b)))
+      ((set (ival lhs) (BoolI (bool-< ha lb) (bool-< la hb)))))
+
+; Rule that unions intervals for a gamma
+(rule (
+        (= lhs (Project i (Gamma pred ins (VVO outs))))
+        (= (VO thens) (vec-get outs 1))
+        (= (VO elses) (vec-get outs 0))
+        (= thenival (ival (vec-get thens i)))
+        (= elseival (ival (vec-get elses i)))
+      )
+      (
+        (set (ival lhs) (interval-union thenival elseival))
+      )
+)
+
+; Eliminate gamma with interval analysis
+(rule (
+        (= gamma (Gamma pred inputs (VVO outputs)))
+        (= (BoolI true true) (ival pred))
+      )
+      (
+        (union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 1) inputs)))
+      )
+)
+(rule (
+        (= gamma (Gamma pred inputs (VVO outputs)))
+        (= (BoolI false false) (ival pred))
+      )
+      (
+        (union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 0) inputs)))
+      )
+)

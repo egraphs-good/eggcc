@@ -1,30 +1,29 @@
+; Interval datatype
 (datatype Interval
   (BoolI bool bool)
   (IntI i64 i64)
   (interval-intersect Interval Interval)
   (interval-union Interval Interval))
 
-
+; Interval combinators
 (rewrite (interval-intersect (IntI la ha) (IntI lb hb))
       (IntI (max la lb) (min ha hb)))
 (rewrite (interval-union (IntI la ha) (IntI lb hb))
       (IntI (min la lb) (max ha hb)))
-
 (rewrite (interval-intersect (BoolI la ha) (BoolI lb hb))
       (BoolI (or la lb) (and ha hb)))
 (rewrite (interval-union (BoolI la ha) (BoolI lb hb))
       (BoolI (and la lb) (or ha hb)))
 
+; Interval tables: One for universal and one for context-specific
 (function ival (Operand) Interval
   :merge (interval-intersect old new))
-
-; context-specific intervals (because Args need to have interval analysis but are not globally unique)
 (function context-ival (Operand Body) Interval
   :merge (interval-intersect old new))
 
+; Constant Intervals
 (rule ((= lhs (Node (PureOp (Const (BoolT) (const) (Bool b))))))
       ((set (ival lhs) (BoolI b b))))
-
 (rule ((= lhs (Node (PureOp (Const (IntT) (const) (Num n))))))
       ((set (ival lhs) (IntI n n))))
 
@@ -35,7 +34,7 @@
        (= (IntI lb hb) (ival b)))
       ((set (ival lhs) (BoolI (bool-< ha lb) (bool-< la hb)))))
 
-; Rule that unions intervals for a gamma
+; Rules that union intervals for a gamma
 (rule (
         (= lhs (Project i (Gamma pred ins (VVO outs))))
         (= (VO thens) (vec-get outs 1))
@@ -47,8 +46,20 @@
         (set (ival lhs) (interval-union thenival elseival))
       )
 )
+(rule (
+        (= gamma (Gamma pred ins (VVO outs)))
+        (= lhs (Project i gamma))
+        (= (VO thens) (vec-get outs 1))
+        (= (VO elses) (vec-get outs 0))
+        (= thenival (context-ival (vec-get thens i) gamma))
+        (= elseival (context-ival (vec-get elses i) gamma))
+      )
+      (
+        (set (ival lhs) (interval-union thenival elseival))
+      )
+)
 
-; Eliminate gamma with interval analysis
+; Eliminate Gammas with constant-interval predicates
 (rule (
         (= gamma (Gamma pred inputs (VVO outputs)))
         (= (BoolI true true) (ival pred))
@@ -63,5 +74,76 @@
       )
       (
         (union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 0) inputs)))
+      )
+)
+
+; HACK: Table of fucking integers
+(datatype FNum
+  (NumN i64))
+(NumN 0)
+(NumN 1)
+(NumN 2)
+(NumN 3)
+
+; push interval into Gamma
+(rule (
+      (= gamma (Gamma pred (VO ins) (VVO outs)))
+      (NumN n)
+      (= arg (vec-get ins n))
+      (= (IntI l h) (ival arg))
+      )
+      ((set (context-ival (Arg n) gamma) (IntI l h)))
+)
+
+; interval of a + b = (la + lb, ha + hb)
+(rule (
+      (= lhs (Node (PureOp (badd (IntT) a b))))
+      (= (IntI la ha) (ival a))
+      (= (IntI lb hb) (ival b))
+      )
+      (
+      (set (ival lhs) (IntI (+ la lb) (+ ha hb)))
+      )
+)
+
+; + a b interval (+ la lb) (+ ha hb)
+(rule (
+      (= plus (Node (PureOp (badd (IntT) a b))))     ; plus Operand
+      (= gamma (Gamma pred (VO ins) (VVO outs)))     ; find all the Gammas
+      (NumN n)                                       ; get a number
+      (Body-contains-Operand gamma n plus)           ; if the plus is in the gamma
+      (= (IntI la ha) (ival a))        ; get the context-intervals
+      (= (IntI lb hb) (context-ival b gamma))
+      )
+      (
+      (set (context-ival plus gamma) (IntI (+ la lb) (+ ha hb)))
+      )
+)
+
+; + a b interval (+ la lb) (+ ha hb)
+(rule (
+      (= plus (Node (PureOp (badd (IntT) a b))))     ; plus Operand
+      (= gamma (Gamma pred (VO ins) (VVO outs)))     ; find all the Gammas
+      (NumN n)                                       ; get a number
+      (Body-contains-Operand gamma n plus)           ; if the plus is in the gamma
+      (= (IntI la ha) (context-ival a gamma))        ; get the context-intervals
+      (= (IntI lb hb) (context-ival b gamma))
+      )
+      (
+      (set (context-ival plus gamma) (IntI (+ la lb) (+ ha hb)))
+      )
+)
+
+; + a b interval (+ la lb) (+ ha hb)
+(rule (
+      (= plus (Node (PureOp (badd (IntT) a b))))     ; plus Operand
+      (= gamma (Gamma pred (VO ins) (VVO outs)))     ; find all the Gammas
+      (NumN n)                                       ; get a number
+      (Body-contains-Operand gamma n plus)           ; if the plus is in the gamma
+      (= (IntI la ha) (context-ival a gamma))        ; get the context-intervals
+      (= (IntI lb hb) (ival b))
+      )
+      (
+      (set (context-ival plus gamma) (IntI (+ la lb) (+ ha hb)))
       )
 )

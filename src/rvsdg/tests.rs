@@ -778,7 +778,7 @@ fn rvsdg_subst_beneath_theta() {
         (ThetaCtx inputs)
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate (saturate fast-analyses) subst))
+    (run-schedule (saturate (saturate fast-analyses) subst-beneath))
 
     (let expected
         (Theta
@@ -829,7 +829,7 @@ fn rvsdg_subst_beneath_gamma() {
         (GammaCtx inputs)
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate (saturate fast-analyses) subst))
+    (run-schedule (saturate (saturate fast-analyses) subst-beneath))
 
     (let expected
         (Gamma
@@ -902,7 +902,7 @@ fn rvsdg_subst_beneath_inner_gamma_theta() {
             (VO (vec-of (Arg 0) (Arg 1) (Arg 2)(Arg 3) (Arg 4) (Arg 5))))
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate (saturate fast-analyses) subst))
+    (run-schedule (saturate (saturate fast-analyses) subst-beneath))
 
     (let expected
         (Theta
@@ -1253,6 +1253,101 @@ fn rvsdg_body_contains_operand_group() {
     egraph
         .parse_and_run_program(EGGLOG_OPERAND_GROUP_PROGRAM)
         .unwrap();
+}
+
+#[test]
+fn test_conditional_invariant_code_motion() {
+    const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let add
+        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 0)))))
+    (let gamma-inputs
+        (VO (vec-of (Arg 7) (Arg 8))))
+    (let gamma
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 1))))
+            gamma-inputs
+            (VVO (vec-of
+                (VO (vec-of add (Arg 0)))
+                (VO (vec-of (Arg 0) add))
+            ))
+          ))
+    
+    (run-schedule
+        (saturate fast-analyses)
+        (run)
+        (saturate fast-analyses subst subst-beneath))
+
+    (let new-gamma
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 1))))
+            (VO (vec-of
+                (Arg 7)
+                (Arg 8)
+                (Node (PureOp (badd (BoolT) (Arg 8) (Arg 7))))
+            ))
+            (VVO (vec-of
+                (VO (vec-of (Arg 2) (Arg 0)))
+                (VO (vec-of (Arg 0) (Arg 2)))
+            ))
+          ))
+    
+    (check (= gamma new-gamma))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
+}
+
+#[test]
+fn test_conditional_invariant_code_motion_2() {
+    const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let add
+        (Node (PureOp (badd (BoolT) (Arg 2) (Arg 3)))))
+    (let gamma-inputs
+        (VO (vec-of (Arg 6) (Arg 7) (Arg 8) (Arg 9))))
+    (let gamma
+        (Gamma
+            (Arg 9)
+            gamma-inputs
+            (VVO (vec-of
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (bmul (BoolT) add add)))))
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (bmul (BoolT) add (Arg 1))))))
+            ))
+          ))
+    
+    (run-schedule
+        (saturate fast-analyses)
+        (run)
+        (saturate subst)
+        (repeat 3 (repeat 5 subst-beneath) (saturate fast-analyses))
+    )
+    
+    (let new-gamma
+        (Gamma
+            (Arg 9)
+            (VO (vec-of
+                    (Arg 6) (Arg 7) (Arg 8) (Arg 9)
+                    (Node (PureOp (badd (BoolT) (Arg 8) (Arg 9))))))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (bmul (BoolT) (Arg 4) (Arg 4))))))
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (bmul (BoolT) (Arg 4) (Arg 1))))))
+            ))
+          ))
+    (extract gamma)
+    (check (= gamma new-gamma))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    println!(
+        "{:?}",
+        egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap()
+    );
 }
 
 #[test]

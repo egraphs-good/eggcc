@@ -1,0 +1,24 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ block:
+  block:
+   zero: int = const 0;
+   two: int = const 2;
+   isless: bool = lt x zero;
+   if isless:
+    break 2
+   else:
+    break 1
+  xy: int = add x y;
+  result: int = mul xy two;
+  break 1
+ result: int = add x y;
+block:
+ print result;
+ return
+
+}

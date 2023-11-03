@@ -24,6 +24,7 @@ pub fn rvsdg_egglog_code() -> String {
         include_str!("loop-optimizations.egg").to_string(),
         include_str!("interval-analysis.egg").to_string(),
         include_str!("function_inline.egg").to_string(),
+        include_str!("conditional_invariant_code_motion.egg").to_string(),
         reassoc_rules(),
         loop_invariant_detection(),
     ];
@@ -37,11 +38,16 @@ pub fn rvsdg_egglog_schedule() -> String {
     // but it helps substitutions go through since
     // they take many iterations.
 
-    "(run-schedule
+    "
+    (run-schedule
         (repeat 5 (saturate fast-analyses)
                   (run)
-                  (saturate subst)))"
-        .to_string()
+                  (saturate subst))
+        (repeat 4 subst-beneath)
+        (saturate fast-analyses)
+        (repeat 2 subst-beneath)
+    )"
+    .to_string()
 }
 
 #[derive(Debug, PartialEq, Clone)]

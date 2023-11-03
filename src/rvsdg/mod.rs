@@ -216,7 +216,7 @@ impl RvsdgProgram {
         for function in &self.functions {
             let name = fresh_names.fresh();
             func_names.push(name.clone());
-            let expr = function.to_egglog_expr();
+            let expr = function.to_egglog_expr().to_sexp().pretty();
             res_string.push(format!("(let {} {})", name, expr));
         }
 

@@ -1236,7 +1236,7 @@ fn rvsdg_body_contains_operand_group() {
     (fail (check (Body-contains-Operand og any gamma-output)))
     ; Should contain Theta inputs, but not pred or outputs 
     (fail (check (Body-contains-Operand og any theta-pred)))
-    (check (Body-contains-Operand og 1 theta-input))
+    (check (Body-contains-Operand og 2 theta-input))
     (fail (check (Body-contains-Operand og any theta-output)))
     "#;
     let mut egraph = new_rvsdg_egraph();

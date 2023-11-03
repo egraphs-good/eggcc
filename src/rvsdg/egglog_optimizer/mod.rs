@@ -1,13 +1,15 @@
 use bril_rs::Type;
 
-
-use self::{constant_fold::constant_fold_egglog, reassoc::reassoc_rules, loop_invariant::loop_invariant_detection};
+use self::{
+    constant_fold::constant_fold_egglog, loop_invariant::loop_invariant_detection,
+    reassoc::reassoc_rules,
+};
 
 pub(crate) mod constant_fold;
 pub(crate) mod fast_analyses;
+pub(crate) mod loop_invariant;
 pub(crate) mod reassoc;
 pub(crate) mod subst;
-pub(crate) mod loop_invariant;
 
 pub fn rvsdg_egglog_code() -> String {
     let code = vec![

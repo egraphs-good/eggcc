@@ -21,11 +21,11 @@
                             (VO outputs)))))))))
 
 ;; remove range checks
-;; TODO: this is unsound! it only copies the first output from the inner gamma,
-;;       when it should copy all of them
+;; TODO: this might be unsound! it only copies the first output from the inner gamma,
+;;       when it should probably copy all of them
 (rule ((= theta (Theta theta_pred (VO theta_inputs) (VO theta_outputs)))
        (= (Transparent theta_pred)
-          (Node (PureOp (blt IntT (Arg 0) b))))
+          (Node (PureOp (blt IntT (Arg 1) b))))
 
        (= (vec-length theta_inputs) 2)
        (= (Transparent (vec-get theta_inputs 1))

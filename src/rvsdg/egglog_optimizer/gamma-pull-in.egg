@@ -1,0 +1,29 @@
+(rule ((= gamma (Gamma pred inputs outputs))
+       (= input (VecOperand-get inputs i))
+       (= els (vec-get output 0))
+       (= thn (vec-get output 1))
+
+       (= els-args (arg-used-VecOperand els))
+       (= thn-args (arg-used-VecOperand thn))
+       (set-contains els-args i)
+       (set-not-contains thn-args i)
+       )
+      (
+        ;; Step 1: remove argument0 i
+        (let els-args-vec (set->vec els-args))
+        (let new-inputs (vec-append (vec-remove inputs i) els-args-vec))
+        (let outputs1 (ShiftVecVecOperand outputs i 1))
+        ;; Step 2: pull input node into the gamma
+        (let subst-map (map-of (vec-get args-vec i) i ...))
+        (let new-input (SubstOperandMap subst-map input))
+        (let new-els (SubstVecOperand i new-input els))
+        (let new-gamma (Gamma pred new-inputs (vec-of new-els thn)))
+        ;; Step 3: union
+        (union new-gamma gamma)
+      ))
+
+;; TODO list
+;; 1. implement arg-used-VecOperand; ensure the rule is monotonic (maybe with scheduling)
+;; 2. implement set->vec
+;; 3. build subst-map
+;; 4. implement SubstOperandMap

@@ -24,23 +24,23 @@
 ;; TODO: this might be unsound! it only copies the first output from the inner gamma,
 ;;       when it should probably copy all of them
 (rule ((= theta (Theta theta_pred (VO theta_inputs) (VO theta_outputs)))
-       (= (Transparent theta_pred)
+       (= (look-through theta_pred)
           (Node (PureOp (blt IntT (Arg 1) b))))
 
        (= (vec-length theta_inputs) 2)
-       (= (Transparent (vec-get theta_inputs 1))
+       (= (look-through (vec-get theta_inputs 1))
           (Node (PureOp (Const IntT const (Num 0)))))
 
        (= (vec-length theta_outputs) 2)
-       (= (Transparent (vec-get theta_outputs 0))
+       (= (look-through (vec-get theta_outputs 0))
           (Project 0 gamma))
-       (= (Transparent (vec-get theta_outputs 1))
+       (= (look-through (vec-get theta_outputs 1))
           (Node (PureOp (badd IntT
                               (Arg 1)
                               (Node (PureOp (Const IntT const (Num 1))))))))
 
        (= gamma (Gamma gamma_pred (VO gamma_inputs) (VVO gamma_outputs)))
-       (= (Transparent gamma_pred)
+       (= (look-through gamma_pred)
           (Node (PureOp (blt IntT (Arg 1) a))))
 
        (= (vec-get gamma_inputs 0) (Arg 0))
@@ -67,4 +67,3 @@
                                       (PassThroughArguments 2)))))
 
        (union theta final)))
-       ; (union theta (PureOp (Const IntT const (Num 1))))))

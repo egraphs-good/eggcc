@@ -3,11 +3,11 @@ fn inv_binary_ops(bop: String) -> String {
         "(rule ((find_inv_expr theta ({bop} ty a b)))
             ((find_inv_oprd theta a) (find_inv_oprd theta b)) :ruleset loop_inv_detect)
 
-(rule ((is_inv_oprd body a) 
-            (is_inv_oprd body b) 
+(rule ((= 1 (is_inv_oprd body a))
+            (= 1 (is_inv_oprd body b))
             (find_inv_expr body expr)
             (= expr ({bop} ty a b)))
-        ((is_inv_expr body expr)) :ruleset loop_inv_detect)
+        ((set (is_inv_expr body expr) 1)) :ruleset loop_inv_detect)
     "
     )
 }

@@ -56,11 +56,15 @@
       ((let upper (Theta gamma_pred
                          (VO theta_inputs)
                          (VO (vec-of (vec-get then_vec 0) (vec-get theta_outputs 1)))))
+
        (let lower (Theta theta_pred
                          (PassThroughArguments 2)
                          (VO (vec-of (vec-get else_vec 0) (vec-get theta_outputs 1)))))
+
        (let final (Gamma theta_pred
                          (VO (vec-of (Project 0 upper) (Project 1 upper)))
                          (VVO (vec-of (VO (vec-of (Project 0 lower) (Project 1 lower)))
                                       (PassThroughArguments 2)))))
+
        (union theta final)))
+       ; (union theta (PureOp (Const IntT const (Num 1))))))

@@ -21,37 +21,46 @@
                             (VO outputs)))))))))
 
 ;; remove range checks
-(rule ((= theta (Theta pred1 (VO inputs1) (VO outputs1)))
-       (= (Transparent pred1)
+;; TODO: this is unsound! it only copies the first output from the inner gamma,
+;;       when it should copy all of them
+(rule ((= theta (Theta theta_pred (VO theta_inputs) (VO theta_outputs)))
+       (= (Transparent theta_pred)
           (Node (PureOp (blt IntT (Arg 0) b))))
-       (= (vec-length inputs1) 2)
-       (= (Transparent (vec-get inputs1 0))
+
+       (= (vec-length theta_inputs) 2)
+       (= (Transparent (vec-get theta_inputs 1))
           (Node (PureOp (Const IntT const (Num 0)))))
-       (= (vec-get inputs1 1) theta_input)
-       (= (vec-length outputs1) 2)
-       (= (Transparent (vec-get outputs1 0))
-          (Node (PureOp (badd IntT (Arg 0) (Node (PureOp (Const IntT const (Num 1))))))))
-       (= (vec-get outputs1 1) (Project 0 gamma))
-       (= gamma (Gamma pred2 (VO inputs2) (VVO outputs2)))
-       (= (Transparent pred2)
-          (Node (PureOp (blt IntT (Arg 0) a))))
-       (= (vec-length inputs2) 1)
-       (= (vec-get inputs2 0) (Arg 1))
-       (= (vec-length outputs2) 2)
-       (= (vec-get outputs2 0) (VO else_vec))
-       (= (vec-get outputs2 1) (VO then_vec))
-       (= (vec-length else_vec) 1)
-       (= (vec-length then_vec) 1)
+
+       (= (vec-length theta_outputs) 2)
+       (= (Transparent (vec-get theta_outputs 0))
+          (Project 0 gamma))
+       (= (Transparent (vec-get theta_outputs 1))
+          (Node (PureOp (badd IntT
+                              (Arg 1)
+                              (Node (PureOp (Const IntT const (Num 1))))))))
+
+       (= gamma (Gamma gamma_pred (VO gamma_inputs) (VVO gamma_outputs)))
+       (= (Transparent gamma_pred)
+          (Node (PureOp (blt IntT (Arg 1) a))))
+
+       (= (vec-get gamma_inputs 0) (Arg 0))
+
+       (= (vec-length gamma_outputs) 2)
+       (= (vec-get gamma_outputs 1) (VO then_vec))
+       (= (vec-get gamma_outputs 0) (VO else_vec))
+
        (= (ival a) (IntI a1 a2))
        (= (ival b) (IntI b1 b2))
        (< a2 b1))
-      ((let upper (Theta pred2
-                         (VO (vec-of (Node (PureOp (Const IntT const (Num 0)))) theta_input))
-                         (VO (vec-of (vec-get outputs1 0) (vec-get then_vec 0)))))
-       (let lower (Theta pred1
+
+      ((let upper (Theta gamma_pred
+                         (VO theta_inputs)
+                         (VO (vec-of (vec-get then_vec 0) (vec-get theta_outputs 1)))))
+       (let lower (Theta theta_pred
                          (PassThroughArguments 2)
-                         (VO (vec-of (vec-get outputs1 0) (vec-get else_vec 0)))))
-       (union theta (Gamma pred1
-                           (VO (vec-of (Project 0 upper) (Project 1 upper)))
-                           (VVO (vec-of (VO (vec-of (Project 0 lower) (Project 1 lower)))
-                                        (PassThroughArguments 2)))))))
+                         (VO (vec-of (vec-get else_vec 0) (vec-get theta_outputs 1)))))
+       (let final (Gamma theta_pred
+                         (VO (vec-of (Project 0 upper) (Project 1 upper)))
+                         (VVO (vec-of (VO (vec-of (Project 0 lower) (Project 1 lower)))
+                                      (PassThroughArguments 2)))))
+       (union theta final)))

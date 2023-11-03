@@ -14,7 +14,6 @@
 ;;   } else {
 ;;     <else-case>
 ;;   }
-(ruleset basechange)
 
 ;; BaseChange op from to traverses 'op' recursively and replaces instances of
 ;; (Project i from) with (Project i to).
@@ -24,11 +23,11 @@
 (function BaseChangeVecOperand (VecOperand Body Body) VecOperand :unextractable)
 (function BaseChangeVecVecOperand (VecVecOperand Body Body) VecVecOperand :unextractable)
 
-(relation HasSubterm (Body Body))
+(relation Body-contains-Body (Body Body))
 
 (rule ((= loop (Theta pred (VO inputs) outputs))
        (= gamma (Gamma pred gamma-in (VVO gamma-out)))
-       (HasSubterm loop gamma))
+       (Body-contains-Body loop gamma))
       ((let inner-else-block (OperandGroup (SubstVecOperandAll gamma-in (vec-get gamma-out 0))))
        (let outer-else-block (BaseChangeVecOperand outputs gamma inner-else-block))
        (let inner-then-block (OperandGroup (SubstVecOperandAll gamma-in (vec-get gamma-out 1))))

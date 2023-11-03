@@ -61,4 +61,4 @@
 (rule ((= gamma (Gamma condition inputs (VVO outputs)))
        (= (vec-length outputs) 2)
        (= (vec-get outputs 0) (vec-get outputs 1)))
-      ((union gamma (OperandGroup (SubstVecOperandAll inputs (vec-get outputs 0))))))
+      ((union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 0) inputs)))))

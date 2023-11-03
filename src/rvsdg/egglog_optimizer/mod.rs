@@ -1,20 +1,19 @@
 use bril_rs::Type;
 
-use self::{
-    constant_fold::constant_fold_egglog, loop_invariant::loop_invariant_detection,
-    reassoc::reassoc_rules, subst::subst_rules,
-};
+
+use self::{constant_fold::constant_fold_egglog, reassoc::reassoc_rules, loop_invariant::loop_invariant_detection};
 
 pub(crate) mod constant_fold;
-pub(crate) mod loop_invariant;
+pub(crate) mod fast_analyses;
 pub(crate) mod reassoc;
 pub(crate) mod subst;
+pub(crate) mod loop_invariant;
 
 pub fn rvsdg_egglog_code() -> String {
     let code = vec![
         include_str!("schema.egg").to_string(),
-        subst_rules(),
-        include_str!("shift.egg").to_string(),
+        fast_analyses::all_rules(),
+        subst::all_rules(),
         include_str!("util.egg").to_string(),
         constant_fold_egglog(),
         include_str!("gamma_rewrites.egg").to_string(),
@@ -35,7 +34,8 @@ pub fn rvsdg_egglog_schedule() -> String {
     // they take many iterations.
 
     "(run-schedule
-        (repeat 5 (run)
+        (repeat 5 (saturate fast-analyses)
+                  (run)
                   (saturate subst)))"
         .to_string()
 }

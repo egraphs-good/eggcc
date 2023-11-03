@@ -14,8 +14,9 @@
         (union
           gamma
           (OperandGroup
-              (SubstVecOperandAll inputs
-                (vec-get outputs 1))))))
+              (SubstVecOperandAll
+                (vec-get outputs 1)
+                inputs)))))
 
 
 
@@ -30,8 +31,7 @@
         (union
           gamma
           (OperandGroup
-              (SubstVecOperandAll inputs
-                (vec-get outputs 0))))))
+              (SubstVecOperandAll (vec-get outputs 0) inputs)))))
 
 ;; Eliminate theta
 ;; Unroll one layer and get rid of loop
@@ -40,7 +40,7 @@
           (Theta (Node (PureOp (Const (BoolT) (const) (Bool false))))
                  (VO inputs)
                  (VO outputs))))
-      ((let after-one-iter (SubstVecOperandAll (VO inputs) (VO outputs)))
+      ((let after-one-iter (SubstVecOperandAll (VO outputs) (VO inputs)))
        (union theta
           (OperandGroup after-one-iter))))
 

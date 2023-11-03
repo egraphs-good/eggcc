@@ -667,7 +667,7 @@ fn rvsdg_subst() {
                                                                         (Num 1)))))))
                                 (Arg 3)))))
     (let substed (SubstOperand unsubsted 3 (Arg 7)))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
     (let expected
               (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
                                                    (Node (PureOp (Const (IntT)
@@ -697,7 +697,7 @@ fn rvsdg_subst() {
                                          (Node (PureOp (Const (IntT) (const) (Num 1)))))))
                       (Arg 3)))))
     (let substed (SubstBody unsubsted 1 (Arg 7)))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
     (let expected
         (Theta
               (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Arg 2)
@@ -735,7 +735,7 @@ fn rvsdg_subst() {
                                                                      (const)
                                                                      (Num 2)))))))))))))
     (let substed (SubstBody unsubsted 0 (Arg 7)))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
     (let expected
         (Gamma
          (Node
@@ -778,7 +778,7 @@ fn rvsdg_subst_beneath_theta() {
         unsubsted
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
 
     (let expected
         (Theta
@@ -826,7 +826,7 @@ fn rvsdg_subst_beneath_gamma() {
         unsubsted
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
 
     (let expected
         (Gamma
@@ -895,7 +895,7 @@ fn rvsdg_subst_beneath_operand_group() {
         unsubsted
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate subst))
+    (run-schedule (saturate (saturate fast-analyses) subst))
 
     (let expected
         (OperandGroup (VO (vec-of
@@ -1039,148 +1039,208 @@ fn rvsdg_shift() {
 }
 
 #[test]
-fn rvsdg_loop_inv_detect_simple() {
-    const EGGLOG_THETA_PROGRAM1: &str = r#"
-    (let t1 (Theta 
-            (Node (PureOp (beq (BoolT) (Node (PureOp (bdiv (IntT) (Arg 2) 
-                                                                  (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1) 
-                                                                                                                        (Node (PureOp (badd (IntT) (Arg 4) 
-                                                                                                                                                    (Arg 5))))))) 
-                                                                                             (Arg 3))))))) 
-                                        (Arg 1)))) 
-            (VO (vec-of (Arg 0)
-                        (Node (PureOp (Const (IntT) (const) (Num 2)))) 
-                        (Node (PureOp (Const (IntT) (const) (Num 6)))) 
-                        (Node (PureOp (Const (IntT) (const) (Num 3)))) 
-                        (Node (PureOp (Const (IntT) (const) (Num 0)))) 
-                        (Node (PureOp (Const (IntT) (const) (Num 1)))))) 
-            (VO (vec-of (Node (PureOp (PRINT (Node (PureOp (bdiv (IntT) (Arg 2) 
-                                                                        (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
-                                                                                                                              (Node (PureOp (badd (IntT) (Arg 4) 
-                                                                                                                                                         (Arg 5))))))) 
-                                                                                                    (Arg 3)))))))
-                                            (Arg 0))))
-            (Arg 1)
+fn is_pure() {
+    const EGGLOG_PROGRAM: &str = r#"
+    (let pure-gamma
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+            (VO (vec-of
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+            ))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                ))
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                ))
+            ))
+          ))
+    (run-schedule (saturate fast-analyses))
+    (check (Operand-is-pure (Arg 1)))
+    (check (Expr-is-pure (badd (BoolT) (Arg 1) (Arg 2))))
+    (check (Body-is-pure (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))
+    (check (Operand-is-pure (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))))
+    (check (Body-is-pure pure-gamma))
+
+    (let output1
+        (VO (vec-of
+            (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+            (Node (PureOp (PRINT
+                (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+                (Arg 2)
+            )))
+        ))
+    )
+    (let impure-gamma
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+            (VO (vec-of
+              (Arg 6)
+              (Arg 7)
+              (Arg 8) ; print edge
+            ))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+                    (Arg 2)
+                ))
+                output1
+            ))
+          ))
+    (run-schedule (saturate fast-analyses))
+    (fail (check (Expr-is-pure
+        (PRINT
+            (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
             (Arg 2)
-            (Arg 3)
+        )
+    )))
+    (fail (check (Body-is-pure
+        (PureOp (PRINT
+            (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+            (Arg 2)
+        ))
+    )))
+    (fail (check (Operand-is-pure
+        (Node (PureOp (PRINT
+            (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
+            (Arg 2)
+        )))
+    )))
+    (fail (check (Body-is-pure impure-gamma)))
+    (check (= 1 (VecOperand-pure-prefix output1)))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
+}
+
+#[test]
+fn rvsdg_body_contains_theta() {
+    const EGGLOG_THETA_PROGRAM: &str = r#"
+    (let theta
+        (Theta
+              (Node (PureOp (badd (BoolT) (Arg 7) (Arg 8))))
+              (VO (vec-of
+                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+                (Arg 7)
+              ))
+              (VO (vec-of
+                (Node (PureOp (blt (BoolT)
+                    (Arg 4)
+                    (Node (PureOp (badd (BoolT) (Arg 5) (Arg 6)))))))
+                (Arg 4)
+              ))
+            ))
+
+    (run-schedule (saturate fast-analyses))
+
+    (check (Body-contains-Expr theta -1 (badd (BoolT) (Arg 7) (Arg 8))))
+    (fail (check (Body-contains-Expr theta 0 (badd (BoolT) (Arg 7) (Arg 8)))))
+    (fail (check (Body-contains-Expr theta any (badd (BoolT) (Arg 1) (Arg 2)))))
+    (check (Body-contains-Operand theta 1 (Arg 4)))
+    (fail (check (Body-contains-Body theta any theta)))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM).unwrap();
+}
+
+#[test]
+fn rvsdg_body_contains_gamma() {
+    const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let gamma
+        (Gamma
+            (Arg 10)
+            (VO (vec-of
+              (Arg 11)
+              (Arg 12)
+            ))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 0))))
+                ))
+                (VO (vec-of
+                    (Arg 0)
+                ))
+            ))
+          ))
+
+    (run-schedule (saturate fast-analyses))
+
+    (check (Body-contains-Expr gamma 0 (badd (BoolT) (Arg 1) (Arg 0))))
+    (fail (check (Body-contains-Expr gamma 1 (badd (BoolT) (Arg 1) (Arg 0)))))
+    (fail (check (Body-contains-Operand gamma any (Arg 10))))
+    (fail (check (Body-contains-Operand gamma any (Arg 11))))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
+}
+
+#[test]
+fn rvsdg_body_contains_operand_group() {
+    // This also tests what happens when Gamma/Theta appears *within*
+    const EGGLOG_OPERAND_GROUP_PROGRAM: &str = r#"
+    (let theta-pred
+        (Node (PureOp (badd (BoolT) (Arg 7) (Arg 8)))))
+    (let theta-input
+        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3)))))
+    (let theta-output
+        (Node (PureOp (blt (BoolT)
             (Arg 4)
-            (Arg 5)))))
+            (Node (PureOp (badd (BoolT) (Arg 5) (Arg 6))))))))
+    (let theta
+        (Theta
+            theta-pred
+              (VO (vec-of
+                theta-input
+                (Arg 7)
+              ))
+              (VO (vec-of
+                theta-output
+                (Arg 4)
+              ))
+            ))
 
-    (run-schedule (saturate loop_inv_detect))
+    (let gamma-pred (Arg 10))
+    (let gamma-input (Arg 11))
+    (let gamma-output 
+        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 0)))))
+    (let gamma
+        (Gamma
+            gamma-pred
+            (VO (vec-of gamma-input (Arg 12)))
+            (VVO (vec-of
+                (VO (vec-of gamma-output))
+                (VO (vec-of (Arg 0)))
+            ))
+          ))
 
-    (fail (check (arg_inv t1 0)))
-    (check (arg_inv t1 1))
-    (check (arg_inv t1 2))
-    (check (arg_inv t1 3))
-    (check (arg_inv t1 4))
-    (check (arg_inv t1 5))
+    (let og
+        (OperandGroup (VO (vec-of
+            (Node (PureOp (badd (BoolT) (Arg 21) (Arg 20))))
+            (Node gamma)
+            (Node theta)
+            ))))
 
-    (check (= 1 (is_inv_oprd t1 (Arg 1))))
-    (check (= 1(is_inv_oprd t1 (Arg 2))))
-    (check (= 1(is_inv_oprd t1 (Arg 3))))
-    (check (= 1(is_inv_oprd t1 (Arg 4))))
-    (check (= 1(is_inv_oprd t1 (Arg 5))))
+    (run-schedule (saturate fast-analyses))
 
-   
-
-    (check (= 1 (is_inv_body t1 (PureOp (badd (IntT) (Arg 4) (Arg 5))))))
-
-    (check (= 1 (is_inv_expr t1 (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
-                                                                (Node (PureOp (badd (IntT) (Arg 4) 
-                                                                                            (Arg 5)))))))
-                                    (Arg 3)))))
-
-    (let inv_oprd (Node (PureOp (bdiv (IntT) (Arg 2) 
-    (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
-                            (Node (PureOp (badd (IntT) (Arg 4) 
-                                                        (Arg 5))))))) 
-    (Arg 3))))))))
-    (check (= 1 (is_inv_oprd t1 inv_oprd)))
-
-
-    ; the operand at pred of theta is invariant
-    (check (= 1(is_inv_oprd t1 (Node (PureOp (beq (BoolT) inv_oprd (Arg 1)))))))
-
-    ; print is not invariant
-    (check (= 0 (is_inv_oprd t1 (Node (PureOp (PRINT (Node (PureOp (bdiv (IntT) (Arg 2) 
-    (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
-                                                        (Node (PureOp (badd (IntT) (Arg 4) 
-                                                                                    (Arg 5))))))) 
-                                (Arg 3))))))) 
-    (Arg 0)))))))
-
-    (check (= 0 (is_inv_expr t1 (PRINT (Node (PureOp (bdiv (IntT) (Arg 2) 
-                                                                        (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
-                                                                                                                              (Node (PureOp (badd (IntT) (Arg 4) 
-                                                                                                                                                         (Arg 5))))))) 
-                                                                                                    (Arg 3)))))))
-                                            (Arg 0)))))
-
-
-    (check (= 0 (is_inv_oprd t1 (Node (PureOp (PRINT (Node (PureOp (bdiv (IntT) (Arg 2) 
-    (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
-                                                        (Node (PureOp (badd (IntT) (Arg 4) 
-                                                                                    (Arg 5))))))) 
-                                (Arg 3))))))) 
-    (Arg 0)))))))
-
-    ;; an expr that does not exist in original program should fail check
-    (fail (check (is_inv_expr t1 (badd (IntT) (Arg 1) (Arg 2)))))
+    (check (Body-contains-Body og 2 theta))
+    (check (Body-contains-Body og 1 gamma))
+    (fail (check (Body-contains-Body og any og)))
+    (check (Body-contains-Expr og 0 (badd (BoolT) (Arg 21) (Arg 20))))
+    ; Should contain Gamma pred and inputs, but not outputs
+    (check (Body-contains-Operand og 1 gamma-pred))
+    (check (Body-contains-Operand og 1 gamma-input))
+    (fail (check (Body-contains-Operand og any gamma-output)))
+    ; Should contain Theta inputs, but not pred or outputs 
+    (fail (check (Body-contains-Operand og any theta-pred)))
+    (check (Body-contains-Operand og 2 theta-input))
+    (fail (check (Body-contains-Operand og any theta-output)))
     "#;
     let mut egraph = new_rvsdg_egraph();
-    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM1).unwrap();
-
-    const EGGLOG_THETA_PROGRAM2: &str = r#"
-    (let t1 (Theta 
-        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (IntT) (Node (PureOp (Const (IntT) (const) (Num 1)))) (Arg 1)))) (Node (PureOp (Const (IntT) (const) (Num 5))))))) 
-        (VO (vec-of (Arg 0) 
-                    (Node (PureOp (Const (IntT) (const) (Num 0)))) 
-                    (Node (PureOp (Const (IntT) (const) (Num 10)))) 
-                    (Node (PureOp (Const (IntT) (const) (Num 10)))) 
-                    (Node (PureOp (Const (IntT) (const) (Num 10))))))
-        (VO (vec-of (Node (PureOp (PRINT (Node (PureOp (bmul (IntT) (Arg 2) 
-                                                                    (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
-                                        (Node (PureOp (PRINT (Project 0 (PureOp (Call (SomeType (IntT)) "mean3" (VO (vec-of (Node (PureOp (badd (IntT) (Arg 4) (Node (PureOp (Const (IntT) (const) (Num 5))))))) 
-                                                                                                                            (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
-                                                                                                                            (Node (PureOp (bsub (IntT) (Node (PureOp (bsub (IntT) (Arg 3) 
-                                                                                                                                                                                    (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
-                                                                                                                                                        (Node (PureOp (Const (IntT) (const) (Num 2)))))))
-                                                                                                                            (Arg 0)))
-                                                                                                                2))) 
-                                                                (Project 1 (PureOp (Call (SomeType (IntT)) "mean3" (VO (vec-of (Node (PureOp (badd (IntT) (Arg 4) 
-                                                                                                                                                        (Node (PureOp (Const (IntT) (const) (Num 5))))))) 
-                                                                                                                                (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
-                                                                                                                                (Node (PureOp (bsub (IntT) (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
-                                                                                                                                (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
-                                                                                                                                (Arg 0))) 
-                                                                                                                    2)))))))))
-                    (Node (PureOp (badd (IntT) (Node (PureOp (Const (IntT) (const) (Num 1)))) (Arg 1))))
-                    (Node (PureOp (bmul (IntT) (Arg 2) (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
-                    (Arg 3) 
-                    (Arg 4)))))
-
-    (run-schedule
-        (repeat 5 (run) (saturate loop_inv_detect)))
-
-        (check (= 1 (is_inv_oprd t1 (Arg 3))))
-        (check (= 1 (is_inv_oprd t1 (Arg 4))))
-        (check (= 0 (is_inv_oprd t1 (Arg 0))))
-        (check (= 0 (is_inv_oprd t1 (Arg 1))))
-        (check (= 0 (is_inv_oprd t1 (Arg 2))))
-        (check (= 1 (is_inv_oprd t1 (Node (PureOp (Const (IntT) (const) (Num 5)))))))
-        (check (= 1 (is_inv_expr t1 (badd (IntT) (Arg 4) (Node (PureOp (Const (IntT) (const) (Num 5))))))))
-        (check (= 1 (is_inv_oprd t1 (Node (PureOp (bsub (IntT) (Node (PureOp (bsub (IntT) (Arg 3) 
-                                                                                (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
-                                                    (Node (PureOp (Const (IntT) (const) (Num 2))))))))))
-        (check (= 0 (is_inv_body t1 (PureOp (Call (SomeType (IntT)) "mean3" (VO (vec-of (Node (PureOp (badd (IntT) (Arg 4) 
-                                                                                                                (Node (PureOp (Const (IntT) (const) (Num 5))))))) 
-                                                                                    (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
-                                                                                    (Node (PureOp (bsub (IntT) (Node (PureOp (bsub (IntT) (Arg 3) (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
-                                                                                    (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
-                                                                                    (Arg 0))) 
-                                                                        2)))))
-                                                                
-    "#;
-    let mut egraph = new_rvsdg_egraph();
-    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM2).unwrap();
+    egraph
+        .parse_and_run_program(EGGLOG_OPERAND_GROUP_PROGRAM)
+        .unwrap();
 }

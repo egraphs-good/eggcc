@@ -54,7 +54,7 @@
         (= (BoolI true true) (ival pred))
       )
       (
-        (union gamma (OperandGroup (SubstVecOperandAll inputs (vec-get outputs 1))))
+        (union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 1) inputs)))
       )
 )
 (rule (
@@ -62,6 +62,6 @@
         (= (BoolI false false) (ival pred))
       )
       (
-        (union gamma (OperandGroup (SubstVecOperandAll inputs (vec-get outputs 0))))
+        (union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 0) inputs)))
       )
 )

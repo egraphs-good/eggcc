@@ -117,7 +117,7 @@
       ((set (Transparent op) (Node (PureOp (bor t x_ y_))))))
 
 ;; Recursive case 1: match on Gamma pass-throughs
-;; TODO: generalize to more than two cases
+;; TODO: generalize to more than two cases (this also applies to all 1.x cases)
 (rule ((= op (Project n (Gamma pred (VO ins) (VVO outs))))
        (= (vec-length outs) 2)
        (= (vec-get outs 1) (VO then))
@@ -125,6 +125,17 @@
        (= (vec-get then n) (Arg n))
        (= (vec-get else n) (Arg n)))
       ((set (Transparent op) (vec-get ins n))))
+
+;; Recursive case 1.0: if a project refers to a print, it's definitely not a pass-through
+;; TODO: generalize to all operators
+(rule ((= op (Project n (Gamma pred (VO ins) (VVO outs))))
+       (= (vec-length outs) 2)
+       (= (vec-get outs 1) (VO then))
+       (= (vec-get outs 0) (VO else))
+       (= (vec-get then n) (Node (PureOp (PRINT a b))))
+       (= (vec-get else n) (Node (PureOp (PRINT c d)))))
+      ((set (Transparent op) op)))
+
 ;; Recursive case 1.1: the translator generates constants for tracking which CFG branch
 ;;                     we're in; we undo this for Transparent
 (rule ((= op (Project n (Gamma pred (VO ins) (VVO outs))))
@@ -138,7 +149,7 @@
 ;; Recursive case 2: match on Theta pass-throughs
 ;; TODO: the whole case
 
-;; Unit test for Transparent
+;; Unit test for Transparent (case 1)
 ; (let true_ (Node (PureOp (Const (BoolT) (const) (Bool true)))))
 ; (let seven (Node (PureOp (Const (IntT) (const) (Num 7)))))
 ; (let one (Node (PureOp (Const (IntT) (const) (Num 1)))))
@@ -149,6 +160,20 @@
 ; (let eight2 (Node (PureOp (badd (IntT) (Project 0 gamma) one))))
 ; (run 20)
 ; (check (= (Transparent eight2) eight1))
+
+;; Unit test for Transparent (case 1.0)
+;; We make up a fake print edge to pass around
+; (let print_ (Node (PureOp (Const (IntT) (const) (Num -1)))))
+; (let true_ (Node (PureOp (Const (BoolT) (const) (Bool true)))))
+; (let zero (Node (PureOp (Const (IntT) (const) (Num 0)))))
+; (let one (Node (PureOp (Const (IntT) (const) (Num 1)))))
+; (let gamma (Gamma true_
+;                   (VO (vec-of print_))
+;                   (VVO (vec-of (VO (vec-of (Node (PureOp (PRINT zero (Arg 0))))))
+;                                (VO (vec-of (Node (PureOp (PRINT one  (Arg 0))))))))))
+; (let project (Project 0 gamma))
+; (run 20)
+; (check (= (Transparent project) project))
 
 ;; Unit test for Transparent (case 1.1)
 ; (let true_ (Node (PureOp (Const (BoolT) (const) (Bool true)))))

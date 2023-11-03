@@ -4,11 +4,11 @@
 (relation find_inv_body (Body Body))
 (relation find_inv_vo (Body VecOperand))
 
-;; i64: 0 means the existing term is not invariant, 1 mean it is.
-(function is_inv_expr (Body Expr) i64 :unextractable :merge (max old new))
-(function is_inv_operand (Body Operand) i64 :unextractable :merge (max old new))
-(function is_inv_body (Body Body) i64 :unextractable :merge (max old new))
-(function is_inv_vo (Body VecOperand) i64 :unextractable :merge (max old new))
+;; bool: whether the term in the Body is an invariant.
+(function is_inv_expr (Body Expr) bool :unextractable :merge (or old new))
+(function is_inv_operand (Body Operand) bool :unextractable :merge (or old new))
+(function is_inv_body (Body Body) bool :unextractable :merge (or old new))
+(function is_inv_vo (Body VecOperand) bool :unextractable :merge (or old new))
  
 (relation arg_inv (Body i64))
 ;; VecOperand: output of Theta node.
@@ -18,11 +18,11 @@
 ;; TODO: May be replace this with Ryan's idea of having a table with a range of integers.
 (relation arg_inv_helper (VecOperand Body i64))
 
-;; in default, when there is a find, set is_inv to 0
-(rule ((find_inv_expr body term)) ((set (is_inv_expr body term) 0)) :ruleset fast-analyses)
-(rule ((find_inv_operand body term)) ((set (is_inv_operand body term) 0)) :ruleset fast-analyses)
-(rule ((find_inv_body body term)) ((set (is_inv_body body term) 0)) :ruleset fast-analyses)
-(rule ((find_inv_vo body term)) ((set (is_inv_vo body term) 0)) :ruleset fast-analyses)
+;; in default, when there is a find, set is_inv to false
+(rule ((find_inv_expr body term)) ((set (is_inv_expr body term) false)) :ruleset fast-analyses)
+(rule ((find_inv_operand body term)) ((set (is_inv_operand body term) false)) :ruleset fast-analyses)
+(rule ((find_inv_body body term)) ((set (is_inv_body body term) false)) :ruleset fast-analyses)
+(rule ((find_inv_vo body term)) ((set (is_inv_vo body term) false)) :ruleset fast-analyses)
 
 
 (rule ((= theta (Theta pred inputs outputs))) 
@@ -76,7 +76,7 @@
 
 ;; terminal
 (rule ((find_inv_expr theta (Const ty ops lit))) 
-    ((set (is_inv_expr theta (Const ty ops lit)) 1)) :ruleset fast-analyses)
+    ((set (is_inv_expr theta (Const ty ops lit)) true)) :ruleset fast-analyses)
 
 ;; TODO: If call is pure it could be invariant
 ;; Maybe it's done by function inlining.
@@ -97,7 +97,7 @@
 (rule ((find_inv_operand theta operand)
         (= operand (Arg i))
         (arg_inv theta i))
-    ((set (is_inv_operand theta operand) 1)) :ruleset fast-analyses)
+    ((set (is_inv_operand theta operand) true)) :ruleset fast-analyses)
 
 (rule ((find_inv_operand theta operand)
         (= operand (Node body))) 
@@ -114,13 +114,13 @@
 (rule ((find_inv_vo theta vo)) ((is_inv_vo_helper theta vo 0)) :ruleset fast-analyses)
 
 (rule ((is_inv_vo_helper body (VO vec) i)
-        (= 1 (is_inv_operand body operand))
+        (= true (is_inv_operand body operand))
         (= operand (vec-get vec i)))
     ((is_inv_vo_helper body (VO vec) (+ i 1))) :ruleset fast-analyses)
 
 (rule ((is_inv_vo_helper body (VO vec) i)
         (= i (vec-length vec)))
-    ((set (is_inv_vo body (VO vec)) 1)) :ruleset fast-analyses)
+    ((set (is_inv_vo body (VO vec)) true)) :ruleset fast-analyses)
 
 ;; match on every binary op, see loop_invariants.rs
 ; (rule ((is_inv_operand body a) 
@@ -129,26 +129,26 @@
 ; 		(= expr (Someop a b)))
 ; 	((is_inv_expr body expr)))
 
-(rule ((= 1 (is_inv_expr body expr))
+(rule ((= true (is_inv_expr body expr))
         (find_inv_body body to_find)
         (= to_find (PureOp expr)))
-    ((set (is_inv_body body to_find) 1)) :ruleset fast-analyses)
+    ((set (is_inv_body body to_find) true)) :ruleset fast-analyses)
 
-(rule ((= 1(is_inv_body body inv))
+(rule ((= true (is_inv_body body inv))
         (find_inv_operand body operand)
         (= operand (Node inv)))
-    ((set (is_inv_operand body operand) 1)) :ruleset fast-analyses)
+    ((set (is_inv_operand body operand) true)) :ruleset fast-analyses)
 
-(rule ((= 1 (is_inv_body body inv))
+(rule ((= true (is_inv_body body inv))
         (find_inv_operand body operand)
         (= operand (Project i inv)))
-    ((set (is_inv_operand body operand) 1)) :ruleset fast-analyses)
+    ((set (is_inv_operand body operand) true)) :ruleset fast-analyses)
 
 ;; OperandGroup
 (rule ((find_inv_body theta body)
         (= body (OperandGroup vo))
-        (= 1 (is_inv_vo theta vo)))
-    ((set (is_inv_body theta body) 1)) :ruleset fast-analyses)
+        (= true (is_inv_vo theta vo)))
+    ((set (is_inv_body theta body) true)) :ruleset fast-analyses)
 
 ;; a theta is invariant in a context when all input are inv.
 ;; only pure theta/gamma can be considered invariant and move out loop.
@@ -156,14 +156,14 @@
 ;; need more thinking.
 (rule ((find_inv_body theta body)
         (= body (Theta pred inputs outputs))
-        (= 1 (is_inv_vo theta inputs)))
-    ((set (is_inv_body theta body) 1)) :ruleset fast-analyses)
+        (= true (is_inv_vo theta inputs)))
+    ((set (is_inv_body theta body) true)) :ruleset fast-analyses)
 
 (rule ((find_inv_body theta body)
         (= body (Gamma pred inputs outputs))
-        (= 1(is_inv_operand theta pred))
-        (= 1 (is_inv_vo theta inputs)))
-    ((set (is_inv_body theta body) 1)) :ruleset fast-analyses)
+        (= true (is_inv_operand theta pred))
+        (= true (is_inv_vo theta inputs)))
+    ((set (is_inv_body theta body) true)) :ruleset fast-analyses)
 
 ;; the ports that are invariants, either added or original
 ;; Body: context, Operand: the invariant parts, i64: the port number.
@@ -174,12 +174,12 @@
 ; ;; doing motions
 ; ;; we only need operand cause every other thing need to be in operand
 ; ;; we also need to make sure the operand is not basic operand but how?
-; (rule ((= 1 (is_inv_operand theta operand)) (Someop a b) (= operand a) (= 0 (is_inv_expr theta (Someop a b))))
-;         ((= 0 ))
+; (rule ((= true (is_inv_operand theta operand)) (Someop a b) (= operand a) (= false (is_inv_expr theta (Someop a b))))
+;         ((= false ))
 
 
 ; )
 
 ; ;; skip Gamma and Thetamn
 
-; (rule ((= 1 (is_inv_operand theta operand)) ()))
+; (rule ((= true (is_inv_operand theta operand)) ()))

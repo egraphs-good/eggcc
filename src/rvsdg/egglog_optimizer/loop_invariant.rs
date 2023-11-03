@@ -3,11 +3,11 @@ fn inv_binary_ops(bop: String) -> String {
         "(rule ((find_inv_expr theta ({bop} ty a b)))
             ((find_inv_operand theta a) (find_inv_operand theta b)) :ruleset fast-analyses)
 
-(rule ((= 1 (is_inv_operand body a))
-            (= 1 (is_inv_operand body b))
+(rule ((= true (is_inv_operand body a))
+            (= true (is_inv_operand body b))
             (find_inv_expr body expr)
             (= expr ({bop} ty a b)))
-        ((set (is_inv_expr body expr) 1)) :ruleset fast-analyses)
+        ((set (is_inv_expr body expr) true)) :ruleset fast-analyses)
     "
     )
 }

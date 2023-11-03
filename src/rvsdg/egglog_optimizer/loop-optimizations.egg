@@ -25,7 +25,7 @@
 ;;       when it should probably copy all of them
 (rule ((= theta (Theta theta_pred (VO theta_inputs) (VO theta_outputs)))
        (= (look-through theta_pred)
-          (Node (PureOp (blt IntT (Arg 1) b))))
+          (Node (PureOp (blt BoolT (Arg 1) b))))
 
        (= (vec-length theta_inputs) 2)
        (= (look-through (vec-get theta_inputs 1))
@@ -41,7 +41,7 @@
 
        (= gamma (Gamma gamma_pred (VO gamma_inputs) (VVO gamma_outputs)))
        (= (look-through gamma_pred)
-          (Node (PureOp (blt IntT (Arg 1) a))))
+          (Node (PureOp (blt BoolT (Arg 1) a))))
 
        (= (vec-get gamma_inputs 0) (Arg 0))
 
@@ -67,3 +67,5 @@
                                       (PassThroughArguments 2)))))
 
        (union theta final)))
+       ; (union theta (OperandGroup (VO (vec-of (Node (PureOp (Const IntT const (Num 1))))
+       ;                                        (Node (PureOp (Const IntT const (Num 1))))))))))

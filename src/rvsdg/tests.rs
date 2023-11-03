@@ -1,5 +1,5 @@
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use egglog::{EGraph, TermDag};
+use egglog::EGraph;
 
 use crate::{
     cfg::program_to_cfg,

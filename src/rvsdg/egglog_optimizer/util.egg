@@ -50,3 +50,92 @@
   :ruleset subst)
 
 
+
+;; Find equivalent operands that don't include pass-through Gammas
+;; This is only sound because it's unextractable; otherwise we would have linearity bugs
+(function Transparent (Operand) Operand :unextractable)
+
+;; Base cases:
+;; if there are no arguments, it's already transparent
+(rule ((= op (Arg _)))
+      ((union (Transparent op) op)))
+(rule ((= op (Node (PureOp (Const t (const) literal)))))
+      ((union (Transparent op) op)))
+;; if there are arguments, they have to be transparent-able
+(rule ((= op (Node (PureOp (badd t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (badd t x_ y_))))))
+(rule ((= op (Node (PureOp (bsub t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (bsub t x_ y_))))))
+(rule ((= op (Node (PureOp (bmul t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (bmul t x_ y_))))))
+(rule ((= op (Node (PureOp (bfmul t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (bfmul t x_ y_))))))
+(rule ((= op (Node (PureOp (bdiv t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (bdiv t x_ y_))))))
+(rule ((= op (Node (PureOp (beq t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (beq t x_ y_))))))
+(rule ((= op (Node (PureOp (blt t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (blt t x_ y_))))))
+(rule ((= op (Node (PureOp (bgt t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (bgt t x_ y_))))))
+(rule ((= op (Node (PureOp (ble t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (ble t x_ y_))))))
+(rule ((= op (Node (PureOp (bge t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (bge t x_ y_))))))
+(rule ((= op (Node (PureOp (bnot t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (bnot t x_ y_))))))
+(rule ((= op (Node (PureOp (band t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (band t x_ y_))))))
+(rule ((= op (Node (PureOp (bor t x y))))
+       (= (Transparent x) x_)
+       (= (Transparent y) y_))
+      ((union (Transparent op) (Node (PureOp (bor t x_ y_))))))
+
+;; Recursive case 1: match on Gamma pass-throughs
+;; TODO: generalize to more than two cases
+(rule ((= op (Project n (Gamma pred (VO ins) (VVO outs))))
+       (= (vec-length outs) 2)
+       (= (vec-get outs 1) (VO then))
+       (= (vec-get outs 0) (VO else))
+       (= (vec-get then n) (Arg n))
+       (= (vec-get else n) (Arg n)))
+      ((union (Transparent op) (vec-get ins n))))
+
+;; Recursive case 2: match on Theta pass-throughs
+;; TODO: the whole case
+
+;; Unit test for Transparent
+; (let true_ (Node (PureOp (Const (BoolT) (const) (Bool true)))))
+; (let seven (Node (PureOp (Const (IntT) (const) (Num 7)))))
+; (let one (Node (PureOp (Const (IntT) (const) (Num 1)))))
+; (let eight1 (Node (PureOp (badd (IntT) seven one))))
+; (let gamma (Gamma true_
+;                   (VO (vec-of seven))
+;                   (VVO (vec-of (VO (vec-of (Arg 0))) (VO (vec-of (Arg 0)))))))
+; (let eight2 (Node (PureOp (badd (IntT) (Project 0 gamma) one))))
+; (run 20)
+; (check (= (Transparent eight2) eight1))

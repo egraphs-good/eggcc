@@ -62,35 +62,85 @@ pub(crate) fn passthrough_optimize_rules() -> String {
 "
     ));
 
+    // Rules to extract a vecoperand
+    for (vectype, ctor, eltype) in [
+        ("VecOperand", "VO", "Operand"),
+        // TODO doesn't work because of a typechecking bug in egglog https://github.com/egraphs-good/egglog/issues/113
+        //("VecVecOperand", "VVO", "VecOperand"),
+    ] {
+        res.push(format!(
+            "
+(function Extracted{vectype}Helper ({vectype} i64) TermAndCost :merge (Smaller old new))
+
+;; base case: extract nothing
+(rule
+   (({ctor} vec))
+   ((set (Extracted{vectype}Helper ({ctor} vec) 0)
+         ({vectype}AndCost ({ctor} (vec-of)) 0))))
+
+;; extract one more thing
+(rule
+   ((= ({vectype}AndCost ({ctor} current) current-cost)
+       (Extracted{vectype}Helper ({ctor} vec) index))
+    (< index (vec-length vec))
+    (= (Extracted{eltype} (vec-get vec index)) ({eltype}AndCost expr expr-cost)))
+   ((set (Extracted{vectype}Helper ({ctor} vec) (+ index 1))
+         ({vectype}AndCost
+             ({ctor} (vec-push current expr))
+             (+ current-cost expr-cost)))))
+
+            
+;; finished extracting, create result
+(rule
+  ((= result
+      (Extracted{vectype}Helper ({ctor} vec) index))
+   ;; at the end
+   (= index (vec-length vec)))
+  ((set (Extracted{vectype} ({ctor} vec))
+        result)))
+
+
+      "
+        ))
+    }
+
     // TODO implement Call
 
-    // Constants and arguments get a cost of one
     res.push(format!(
         "
+;; Constant gets cost of 1
 (rule
   ((= lhs (Const ty ops lit)))
   ((set (ExtractedExpr lhs) (ExprAndCost lhs 1)))
   :ruleset {ruleset})
-    
+
+;; arg gets cost of 1
 (rule
   ((= lhs (Arg index)))
   ((set (ExtractedOperand lhs) (OperandAndCost lhs 1)))
-  :ruleset {ruleset})"
-    ));
+  :ruleset {ruleset})
 
-    // Optimization! If a theta passes along argument,
-    // can extract the input instead.
-    res.push(
+
+;; Optimization! If a theta passes along argument,
+;; can extract the input instead.
+(rule ((= lhs (Project index loop))
+        (= loop (Theta pred (VO inputs) (VO outputs)))
+        (= (vec-get outputs index) (Arg index))
+        (= passedthrough (ExtractedOperand (vec-get inputs index)))
+      )
+      ((set (ExtractedOperand lhs) passedthrough))
+      :ruleset {ruleset})
+
+
+;; if we reach the function at the top level, union
+(rule ((= func (Func name intypes outtypes body))
+       (= (VecOperandAndCost extracted cost)
+          (ExtractedVecOperand body)))
+      ((union func
+              (Func name intypes outtypes extracted)))
+      )
         "
-    (rule ((= lhs (Project index loop))
-           (= loop (Theta pred (VO inputs) (VO outputs)))
-           (= (vec-get outputs index) (Arg index))
-           (= passedthrough (ExtractedOperand (vec-get inputs index)))
-          )
-          ((set (ExtractedOperand lhs) passedthrough)))
-        "
-        .to_string(),
-    );
+    ));
 
     res.join("\n").to_string()
 }

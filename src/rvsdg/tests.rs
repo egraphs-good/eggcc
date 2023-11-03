@@ -1137,10 +1137,11 @@ fn rvsdg_body_contains_theta() {
 
     (run-schedule (saturate fast-analyses))
 
-    (check (Body-contains-Expr theta (badd (BoolT) (Arg 7) (Arg 8))))
-    (fail (check (Body-contains-Expr theta (badd (BoolT) (Arg 1) (Arg 2)))))
-    (check (Body-contains-Operand theta (Arg 4)))
-    (fail (check (Body-contains-Body theta theta)))
+    (check (Body-contains-Expr theta -1 (badd (BoolT) (Arg 7) (Arg 8))))
+    (fail (check (Body-contains-Expr theta 0 (badd (BoolT) (Arg 7) (Arg 8)))))
+    (fail (check (Body-contains-Expr theta any (badd (BoolT) (Arg 1) (Arg 2)))))
+    (check (Body-contains-Operand theta 1 (Arg 4)))
+    (fail (check (Body-contains-Body theta any theta)))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM).unwrap();
@@ -1168,9 +1169,10 @@ fn rvsdg_body_contains_gamma() {
 
     (run-schedule (saturate fast-analyses))
 
-    (check (Body-contains-Expr gamma (badd (BoolT) (Arg 1) (Arg 0))))
-    (fail (check (Body-contains-Operand gamma (Arg 10))))
-    (fail (check (Body-contains-Operand gamma (Arg 11))))
+    (check (Body-contains-Expr gamma 0 (badd (BoolT) (Arg 1) (Arg 0))))
+    (fail (check (Body-contains-Expr gamma 1 (badd (BoolT) (Arg 1) (Arg 0)))))
+    (fail (check (Body-contains-Operand gamma any (Arg 10))))
+    (fail (check (Body-contains-Operand gamma any (Arg 11))))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
@@ -1224,18 +1226,18 @@ fn rvsdg_body_contains_operand_group() {
 
     (run-schedule (saturate fast-analyses))
 
-    (check (Body-contains-Body og theta))
-    (check (Body-contains-Body og gamma))
-    (fail (check (Body-contains-Body og og)))
-    (check (Body-contains-Expr og (badd (BoolT) (Arg 21) (Arg 20))))
+    (check (Body-contains-Body og 2 theta))
+    (check (Body-contains-Body og 1 gamma))
+    (fail (check (Body-contains-Body og any og)))
+    (check (Body-contains-Expr og 0 (badd (BoolT) (Arg 21) (Arg 20))))
     ; Should contain Gamma pred and inputs, but not outputs
-    (check (Body-contains-Operand og gamma-pred))
-    (check (Body-contains-Operand og gamma-input))
-    (fail (check (Body-contains-Operand og gamma-output)))
+    (check (Body-contains-Operand og 1 gamma-pred))
+    (check (Body-contains-Operand og 1 gamma-input))
+    (fail (check (Body-contains-Operand og any gamma-output)))
     ; Should contain Theta inputs, but not pred or outputs 
-    (fail (check (Body-contains-Operand og theta-pred)))
-    (check (Body-contains-Operand og theta-input))
-    (fail (check (Body-contains-Operand og theta-output)))
+    (fail (check (Body-contains-Operand og any theta-pred)))
+    (check (Body-contains-Operand og 1 theta-input))
+    (fail (check (Body-contains-Operand og any theta-output)))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph

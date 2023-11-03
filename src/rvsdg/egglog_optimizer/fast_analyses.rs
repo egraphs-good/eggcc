@@ -155,14 +155,15 @@ fn is_pure_rules() -> Vec<String> {
     res
 }
 
-// Tracks what Exprs/Operands/Bodies a body contains in its context.
+// Tracks what Exprs/Operands/Bodies a body contains in its context, in its
+// ith output (-1 indicates it's contained in a Theta predicate).
 // Notably, if a Gamma/Theta contains X, then Args in X are bound by that
 // Gamma/Theta's inputs.
 fn region_contains_rules() -> Vec<String> {
     let mut res: Vec<String> = vec!["
-        (relation Body-contains-Expr (Body Expr))
-        (relation Body-contains-Operand (Body Operand))
-        (relation Body-contains-Body (Body Body))
+        (relation Body-contains-Expr (Body i64 Expr))
+        (relation Body-contains-Operand (Body i64 Operand))
+        (relation Body-contains-Body (Body i64 Body))
     "
     .into()];
 
@@ -170,25 +171,25 @@ fn region_contains_rules() -> Vec<String> {
     res.push(
         "
         (rule ((= f (PureOp e)))
-              ((Body-contains-Expr f e))
+              ((Body-contains-Expr f 0 e))
               :ruleset fast-analyses)
         ; A Gamma only contains its outputs
         (rule ((= f (Gamma pred inputs outputs))
                (= outputs-i (VecVecOperand-get outputs i))
                (= x (VecOperand-get outputs-i j)))
-              ((Body-contains-Operand f x))
+              ((Body-contains-Operand f i x))
               :ruleset fast-analyses)
         ; A Theta contains its pred and outputs
         (rule ((= f (Theta pred inputs outputs)))
-              ((Body-contains-Operand f pred))
+              ((Body-contains-Operand f -1 pred))
               :ruleset fast-analyses)
         (rule ((= f (Theta pred inputs outputs))
                (= x (VecOperand-get outputs i)))
-              ((Body-contains-Operand f x))
+              ((Body-contains-Operand f i x))
               :ruleset fast-analyses)
         (rule ((= f (OperandGroup vec))
                (= x (VecOperand-get vec i)))
-              ((Body-contains-Operand f x))
+              ((Body-contains-Operand f i x))
               :ruleset fast-analyses)
     "
         .into(),
@@ -197,25 +198,25 @@ fn region_contains_rules() -> Vec<String> {
     // Transitivity - Body
     res.push(
         "
-        (rule ((Body-contains-Body f (PureOp e)))
-              ((Body-contains-Expr f e))
+        (rule ((Body-contains-Body f i (PureOp e)))
+              ((Body-contains-Expr f i e))
               :ruleset fast-analyses)
         ; A Gamma's pred and inputs are in the outer context
-        (rule ((Body-contains-Body f (Gamma pred inputs outputs)))
-              ((Body-contains-Operand f pred))
+        (rule ((Body-contains-Body f i (Gamma pred inputs outputs)))
+              ((Body-contains-Operand f i pred))
               :ruleset fast-analyses)
-        (rule ((Body-contains-Body f (Gamma pred inputs outputs))
+        (rule ((Body-contains-Body f i (Gamma pred inputs outputs))
                (= x (VecOperand-get inputs i)))
-              ((Body-contains-Operand f x))
+              ((Body-contains-Operand f i x))
               :ruleset fast-analyses)
         ; A Theta's inputs are in the outer context
-        (rule ((Body-contains-Body f (Theta pred inputs outputs))
+        (rule ((Body-contains-Body f i (Theta pred inputs outputs))
                 (= x (VecOperand-get inputs i)))
-              ((Body-contains-Operand f x))
+              ((Body-contains-Operand f i x))
               :ruleset fast-analyses)
-        (rule ((Body-contains-Body f (OperandGroup vec))
+        (rule ((Body-contains-Body f i (OperandGroup vec))
                (= x (VecOperand-get vec i)))
-              ((Body-contains-Operand f x))
+              ((Body-contains-Operand f i x))
               :ruleset fast-analyses)
     "
         .into(),
@@ -224,13 +225,13 @@ fn region_contains_rules() -> Vec<String> {
     // Transitivity - Expr
     res.push(
         "
-        (rule ((Body-contains-Expr f (Call ty name args n-outs))
+        (rule ((Body-contains-Expr f i (Call ty name args n-outs))
                (= x (VecOperand-get args i)))
-              ((Body-contains-Operand f x))
+              ((Body-contains-Operand f i x))
               :ruleset fast-analyses)
-        (rule ((Body-contains-Expr f (PRINT e1 e2)))
-              ((Body-contains-Operand f e1)
-               (Body-contains-Operand f e2))
+        (rule ((Body-contains-Expr f i (PRINT e1 e2)))
+              ((Body-contains-Operand f i e1)
+               (Body-contains-Operand f i e2))
               :ruleset fast-analyses)
     "
         .into(),
@@ -240,9 +241,9 @@ fn region_contains_rules() -> Vec<String> {
         match bril_op.input_types.as_ref() {
             [Some(_), Some(_)] => res.push(format!(
                 "
-                (rule ((Body-contains-Expr f ({op} type e1 e2)))
-                      ((Body-contains-Operand f e1)
-                       (Body-contains-Operand f e2))
+                (rule ((Body-contains-Expr f i ({op} type e1 e2)))
+                      ((Body-contains-Operand f i e1)
+                       (Body-contains-Operand f i e2))
                       :ruleset fast-analyses)
                 "
             )),
@@ -253,11 +254,11 @@ fn region_contains_rules() -> Vec<String> {
     // Transitivity - Operand
     res.push(
         "
-        (rule ((Body-contains-Operand f (Node body)))
-              ((Body-contains-Body f body))
+        (rule ((Body-contains-Operand f i (Node body)))
+              ((Body-contains-Body f i body))
               :ruleset fast-analyses)
-        (rule ((Body-contains-Operand f (Project i body)))
-              ((Body-contains-Body f body))
+        (rule ((Body-contains-Operand f i (Project i body)))
+              ((Body-contains-Body f i body))
               :ruleset fast-analyses)
     "
         .into(),

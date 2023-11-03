@@ -1273,7 +1273,7 @@ fn rvsdg_loop_inv_detect_simple() {
             (Arg 4)
             (Arg 5)))))
 
-    (run-schedule (saturate loop_inv_detect))
+    (run-schedule (saturate fast_analyses))
 
     (fail (check (arg_inv t1 0)))
     (check (arg_inv t1 1))
@@ -1367,7 +1367,7 @@ fn rvsdg_loop_inv_detect_simple() {
                     (Arg 4)))))
 
     (run-schedule
-        (repeat 5 (run) (saturate loop_inv_detect)))
+        (repeat 5 (run) (saturate fast_analyses)))
 
         (check (= 1 (is_inv_operand t1 (Arg 3))))
         (check (= 1 (is_inv_operand t1 (Arg 4))))

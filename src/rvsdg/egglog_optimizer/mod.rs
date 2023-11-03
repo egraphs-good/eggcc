@@ -31,9 +31,9 @@ pub fn rvsdg_egglog_schedule() -> String {
     // they take many iterations.
 
     "(run-schedule
-        (repeat 5 (saturate fast-analyses)
-                  (run)
-                  (saturate subst)))"
+        (repeat 25 (saturate fast-analyses)
+                   (run)
+                   (saturate subst)))"
         .to_string()
 }
 

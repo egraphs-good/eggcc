@@ -69,3 +69,30 @@
        (union theta final)))
        ; (union theta (OperandGroup (VO (vec-of (Node (PureOp (Const IntT const (Num 1))))
        ;                                        (Node (PureOp (Const IntT const (Num 1))))))))))
+
+(let i_plus_one (Node (PureOp (badd (IntT)
+                                    (Arg 1)
+                                    (Node (PureOp (Const (IntT) (const) (Num 1))))))))
+
+(let then_vec (vec-of (Node (PureOp (PRINT (Node (PureOp (Const (IntT) (const) (Num 1)))) (Arg 0))))))
+(let else_vec (vec-of (Node (PureOp (PRINT (Node (PureOp (Const (IntT) (const) (Num 2)))) (Arg 0))))))
+
+(let gamma_pred (Node (PureOp (blt (BoolT) (Arg 1) (Node (PureOp (Const (IntT) (const) (Num 5))))))))
+(let theta_pred (Node (PureOp (blt (BoolT) (Arg 1) (Node (PureOp (Const (IntT) (const) (Num 6))))))))
+
+(let upper (Theta gamma_pred
+                (VO (vec-of (Arg 0)
+                            (Node (PureOp (Const (IntT) (const) (Num 0))))))
+                (VO (vec-of (vec-get then_vec 0) i_plus_one))))
+
+(let lower (Theta theta_pred
+                (PassThroughArguments 2)
+                (VO (vec-of (vec-get else_vec 0) i_plus_one))))
+
+(let final (Gamma theta_pred
+                (VO (vec-of (Project 0 upper) (Project 1 upper)))
+                (VVO (vec-of (VO (vec-of (Project 0 lower) (Project 1 lower)))
+                             (PassThroughArguments 2)))))
+
+(run 20)
+(extract final)

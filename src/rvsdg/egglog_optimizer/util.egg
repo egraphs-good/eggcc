@@ -54,6 +54,7 @@
 ;; Find equivalent operands that don't include pass-through Gammas
 ;; This is only sound because it's unextractable; otherwise we would have linearity bugs
 ;; TODO: (egglog task) make look-through crash the program on merge instead of staying silent
+;; TODO: (egglog task) make look-through not have a default value
 (function look-through (Operand) Operand :unextractable :merge new)
 
 ;; Base cases:
@@ -123,8 +124,9 @@
        (= (vec-get outs 1) (VO then))
        (= (vec-get outs 0) (VO else))
        (= (vec-get then n) (Arg n))
-       (= (vec-get else n) (Arg n)))
-      ((set (look-through op) (vec-get ins n))))
+       (= (vec-get else n) (Arg n))
+       (= (look-through (vec-get ins n)) in_))
+      ((set (look-through op) in_)))
 
 ;; Recursive case 1.0: if a project refers to a print, it's definitely not a pass-through
 ;; TODO: generalize to all operators
@@ -143,8 +145,9 @@
        (= (vec-get outs 1) (VO then))
        (= (vec-get outs 0) (VO else))
        (= (vec-get then n) (Node (PureOp (Const IntT const (Num 1)))))
-       (= (vec-get else n) (Node (PureOp (Const IntT const (Num 0))))))
-      ((set (look-through op) pred)))
+       (= (vec-get else n) (Node (PureOp (Const IntT const (Num 0)))))
+       (= (look-through pred) pred_))
+      ((set (look-through op) pred_)))
 
 ;; Recursive case 2: match on Theta pass-throughs
 ;; TODO: the whole case

@@ -1,0 +1,33 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ y: int = const 0;
+ zero: int = const 0;
+while true:
+ block:
+  block:
+   block:
+    cond: bool = gt y zero;
+    if cond:
+     break 2
+    else:
+     break 1
+   two: int = const 2;
+   print two;
+   break 1
+  one: int = const 1;
+  print one;
+ block:
+
+  if cond:
+   break 2
+  else:
+   break 1
+ block:
+
+  return
+
+}

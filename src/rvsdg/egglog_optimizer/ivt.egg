@@ -23,24 +23,24 @@
 (function BaseChangeVecOperand (VecOperand Body Body) VecOperand :unextractable)
 (function BaseChangeVecVecOperand (VecVecOperand Body Body) VecVecOperand :unextractable)
 
-(relation Body-contains-Body (Body Body))
+;; (relation Body-contains-Body (Body Body))
 
 (rule ((= loop (Theta pred (VO inputs) outputs))
        (= gamma (Gamma pred gamma-in (VVO gamma-out)))
-       (Body-contains-Body loop gamma))
-      ((let inner-else-block (OperandGroup (SubstVecOperandAll gamma-in (vec-get gamma-out 0))))
+       (Body-contains-Body loop i gamma))
+      ((let inner-else-block (OperandGroup (SubstVecOperandAll (vec-get gamma-out 0) gamma-in)))
        (let outer-else-block (BaseChangeVecOperand outputs gamma inner-else-block))
-       (let inner-then-block (OperandGroup (SubstVecOperandAll gamma-in (vec-get gamma-out 1))))
+       (let inner-then-block (OperandGroup (SubstVecOperandAll (vec-get gamma-out 1) gamma-in)))
        (let inner-theta (Theta (BaseChangeOperand pred gamma inner-then-block) 
                                (PassThroughArguments (vec-length inputs))
                                (BaseChangeVecOperand outputs gamma inner-then-block)))
-       (union loop 
-        (Gamma (SubstOperandAll (VO inputs) pred) 
-               (VO inputs) 
-               (VVO 
-                (vec-of 
-                    outer-else-block
-                    (BodyToVecOperand (vec-length inputs) inner-theta)))))))
+        (union loop 
+           (Gamma (SubstOperandAll pred (VO inputs)) 
+                  (VO inputs) 
+                  (VVO 
+                   (vec-of 
+                       outer-else-block
+                       (BodyToVecOperand (vec-length inputs) inner-theta)))))))
 
 (rewrite (BaseChangeExpr (Const ty ops lit) from to) (Const ty ops lit) :ruleset subst)
 (rewrite (BaseChangeExpr (Call ty f args n-outs) from to) (Call ty f (BaseChangeVecOperand args from to) n-outs) :ruleset subst)

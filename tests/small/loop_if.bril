@@ -1,0 +1,18 @@
+@main() {
+    y: int = const 0;
+    zero: int = const 0;
+.entry:
+    cond: bool = gt y zero;
+    br cond .then .else;
+.then:
+    one: int = const 1;
+    print one;
+    jmp .tail;
+.else:
+    two: int = const 2;
+    print two;
+    jmp .tail;
+.tail:
+    br cond .entry .done;
+.done:
+}

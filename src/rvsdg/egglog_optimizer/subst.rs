@@ -324,11 +324,27 @@ fn subst_all_rules() -> Vec<String> {
     )
 }
 
+// Within e, replace (Args x) with map[x].
+//                         e    map
+// (function SubstTYPEMap (TYPE MapI64Operand) TYPE)
+fn subst_map_rules() -> Vec<String> {
+    functions_modifying_args(
+        "Subst{}Map",
+        vec!["VecOperand"],
+        "subst",
+        "
+        (rule ((= f (SubstOperandMap (Arg x) map))
+               (map-contains-key map x)))
+              ((union f (map-get map x)) :ruleset subst)",
+    )
+}
+
 pub(crate) fn all_rules() -> String {
     let mut res = vec!["(ruleset subst) (ruleset shift)".into()];
     res.extend(subst_beneath_rules());
     res.extend(subst_rules());
     res.extend(subst_all_rules());
+    res.extend(subst_map_rules());
     res.extend(shift_rules());
     res.join("\n")
 }

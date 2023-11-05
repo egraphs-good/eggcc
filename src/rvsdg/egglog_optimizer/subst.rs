@@ -330,12 +330,12 @@ fn subst_all_rules() -> Vec<String> {
 fn subst_map_rules() -> Vec<String> {
     functions_modifying_args(
         "Subst{}Map",
-        vec!["VecOperand"],
+        vec!["IntOperandMap"],
         "subst",
         "
         (rule ((= f (SubstOperandMap (Arg x) map))
-               (map-contains-key map x)))
-              ((union f (map-get map x)) :ruleset subst)",
+               (map-contains map x))
+              ((union f (map-get map x))) :ruleset subst)",
     )
 }
 

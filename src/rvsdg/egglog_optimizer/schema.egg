@@ -9,6 +9,8 @@
 (sort VecVecOperandBase (Vec VecOperand))
 (datatype VecVecOperand (VVO VecVecOperandBase))
 
+(sort IntOperandMap (Map i64 Operand))
+
 ;; Type
 (datatype Type
     (IntT)

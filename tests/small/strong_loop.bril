@@ -1,0 +1,15 @@
+# ARGS: 3
+@main(n: int) {
+    i: int = const 0;
+.loop:
+    c: int = const 7;
+    one: int = const 1;
+
+    cond: bool = lt i n;
+    y: int = mul c i;
+    print y;
+    i: int = add i one;
+    br cond .loop .done;
+.done:
+    print i;
+}

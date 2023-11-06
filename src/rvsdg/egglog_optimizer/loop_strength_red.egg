@@ -1,0 +1,49 @@
+;; in-loop
+;;
+;; ORIGINAL
+;; a = 0
+;; c = 3
+;; for  i = 0 to n:
+;;     a = i * c
+;;
+;; OPTIMIZED
+;; a = 0
+;; c = 3
+;; d = 0
+;; for i = 0 to n:
+;;     a += d
+;;     d += c
+(rule 
+    (
+        ;; Find theta
+        (= old-theta (Theta pred (VO inputs) (VO outputs)))
+        ; Find constant in the theta
+        (= c (Node (PureOp (Const (IntT) (const) (Num 7)))))
+        (= i (Arg 1))
+        (= old-exp (Node (PureOp (bmul (IntT) c i))))
+    )
+    (
+        ; Initial value of temp is i * b
+        (let d-init (Node (PureOp (bmul (IntT) c (Arg 1)))))
+        ; Value of temp in loop
+        (let d-out (Node (PureOp (badd (IntT) (Arg 3) c))))
+        (let new-theta 
+            (Theta pred (VO (vec-push inputs d-init)) (VO (vec-push outputs d-out)))
+        )
+
+        ; Substitute Arg 3, the temp var, for the *i expression
+        (can-subst-Operand-beneath new-theta old-exp (Arg 3))
+
+        (union old-theta
+            (OperandGroup 
+                (VO 
+                    (vec-of
+                        (Project 0 new-theta)
+                        (Project 1 new-theta)
+                        (Project 2 new-theta)
+                    )
+                )
+            )
+        )
+    )
+)

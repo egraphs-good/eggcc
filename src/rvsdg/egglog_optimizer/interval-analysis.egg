@@ -77,22 +77,13 @@
       )
 )
 
-; HACK: Table of fucking integers
-(datatype FNum
-  (NumN i64))
-(NumN 0)
-(NumN 1)
-(NumN 2)
-(NumN 3)
-
 ; push interval into Gamma
 (rule (
-      (= gamma (Gamma pred (VO ins) (VVO outs)))
-      (NumN n)
-      (= arg (vec-get ins n))
-      (= (IntI l h) (ival arg))
+      (= gamma (Gamma pred ins (VVO outs)))
+      (= arg-i (VecOperand-get ins i))
+      (= (IntI l h) (ival arg-i))
       )
-      ((set (context-ival (Arg n) gamma) (IntI l h)))
+      ((set (context-ival (Arg i) gamma) (IntI l h)))
 )
 
 ; interval of a + b = (la + lb, ha + hb)
@@ -110,8 +101,7 @@
 (rule (
       (= plus (Node (PureOp (badd (IntT) a b))))     ; plus Operand
       (= gamma (Gamma pred (VO ins) (VVO outs)))     ; find all the Gammas
-      (NumN n)                                       ; get a number
-      (Body-contains-Operand gamma n plus)           ; if the plus is in the gamma
+      (Body-contains-Operand gamma i plus)           ; if the plus is in the gamma
       (= (IntI la ha) (ival a))        ; get the context-intervals
       (= (IntI lb hb) (context-ival b gamma))
       )
@@ -124,8 +114,7 @@
 (rule (
       (= plus (Node (PureOp (badd (IntT) a b))))     ; plus Operand
       (= gamma (Gamma pred (VO ins) (VVO outs)))     ; find all the Gammas
-      (NumN n)                                       ; get a number
-      (Body-contains-Operand gamma n plus)           ; if the plus is in the gamma
+      (Body-contains-Operand gamma i plus)           ; if the plus is in the gamma
       (= (IntI la ha) (context-ival a gamma))        ; get the context-intervals
       (= (IntI lb hb) (context-ival b gamma))
       )
@@ -138,8 +127,7 @@
 (rule (
       (= plus (Node (PureOp (badd (IntT) a b))))     ; plus Operand
       (= gamma (Gamma pred (VO ins) (VVO outs)))     ; find all the Gammas
-      (NumN n)                                       ; get a number
-      (Body-contains-Operand gamma n plus)           ; if the plus is in the gamma
+      (Body-contains-Operand gamma i plus)           ; if the plus is in the gamma
       (= (IntI la ha) (context-ival a gamma))        ; get the context-intervals
       (= (IntI lb hb) (ival b))
       )

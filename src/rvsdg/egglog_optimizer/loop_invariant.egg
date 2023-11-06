@@ -150,36 +150,19 @@
         (= true (is_inv_vo theta vo)))
     ((set (is_inv_body theta body) true)) :ruleset fast-analyses)
 
-;; a theta is invariant in a context when all input are inv.
-;; only pure theta/gamma can be considered invariant and move out loop.
-;; but if there are state edge, if it's invariant, it must just pass through the loop....
-;; need more thinking.
+;; a Theta/Gamma is invariant in a context when all input are inv and is pure
+;; TODO: current unnecessary port issue #113 and make it impossible to
+;; generate correct rvsdg to test on these two rules.
 (rule ((find_inv_body theta body)
         (= body (Theta pred inputs outputs))
-        (= true (is_inv_vo theta inputs)))
+        (= true (is_inv_vo theta inputs))
+        (Body-is-pure body))
     ((set (is_inv_body theta body) true)) :ruleset fast-analyses)
 
 (rule ((find_inv_body theta body)
         (= body (Gamma pred inputs outputs))
         (= true (is_inv_operand theta pred))
-        (= true (is_inv_vo theta inputs)))
+        (= true (is_inv_vo theta inputs))
+        (Body-is-pure body))
     ((set (is_inv_body theta body) true)) :ruleset fast-analyses)
 
-;; the ports that are invariants, either added or original
-;; Body: context, Operand: the invariant parts, i64: the port number.
-; (relation theta_invariant_port (Body Operand i64))
-
-; (rule ((arg_inv theta i)) ((theta_invariant_port)))
-
-; ;; doing motions
-; ;; we only need operand cause every other thing need to be in operand
-; ;; we also need to make sure the operand is not basic operand but how?
-; (rule ((= true (is_inv_operand theta operand)) (Someop a b) (= operand a) (= false (is_inv_expr theta (Someop a b))))
-;         ((= false ))
-
-
-; )
-
-; ;; skip Gamma and Thetamn
-
-; (rule ((= true (is_inv_operand theta operand)) ()))

@@ -267,10 +267,29 @@ fn region_contains_rules() -> Vec<String> {
     res
 }
 
+
+fn range_rules() -> Vec<String> {
+    vec!["
+        ;                       lo  hi (exclusive)
+        (relation demand-range (i64 i64))
+        ;                   lo  hi (exclusive)  i
+        (relation in-range (i64 i64             i64))
+        (rule ((demand-range lo hi-exclusive) (<= lo hi-exclusive))
+              ((in-range lo hi-exclusive lo))
+              :ruleset fast-analyses)
+        (rule ((demand-range lo hi-exclusive)
+               (in-range lo hi-exclusive i)
+               (< (+ i 1) hi-exclusive))
+              ((in-range lo hi-exclusive (+ i 1)))
+              :ruleset fast-analyses)
+     ".into()]
+}
+
 pub(crate) fn all_rules() -> String {
     let mut res = vec!["(ruleset fast-analyses)".to_string()];
     res.extend(reify_vec_rules());
     res.extend(is_pure_rules());
     res.extend(region_contains_rules());
+    res.extend(range_rules());
     res.join("\n")
 }

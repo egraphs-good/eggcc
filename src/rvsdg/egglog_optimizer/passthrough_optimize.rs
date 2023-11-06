@@ -8,26 +8,28 @@ pub(crate) fn passthrough_optimize_rules() -> String {
     ];
 
     for ty in ["Expr", "Operand", "Body", "VecOperand", "VecVecOperand"] {
-        res.push(format!("(function {ty}AndCost ({ty} i64) TermAndCost)"));
         res.push(format!(
-            "(rule ((= lhs (Smaller ({ty}AndCost t1 cost1)
-                        ({ty}AndCost t2 cost2)))
-        (<= cost1 cost2))
-       ((union lhs ({ty}AndCost t1 cost1)))
-      :ruleset {ruleset})"
-        ));
-        res.push(format!(
-            "(rule ((= lhs (Smaller ({ty}AndCost t1 cost1)
-                        ({ty}AndCost t2 cost2)))
-        (> cost1 cost2))
-       ((union lhs ({ty}AndCost t2 cost2)))
-      :ruleset {ruleset}
-      )"
-        ));
+            "
+;; manual, bottom-up extraction of terms using this function
+(function Extracted{ty} ({ty}) TermAndCost
+            :merge (Smaller old new))
+;; Store a term and its cost for this type
+(function {ty}AndCost ({ty} i64) TermAndCost)
 
-        res.push(format!(
-            "(function Extracted{ty} ({ty}) TermAndCost
-           :merge (Smaller old new))"
+;; Perform smaller using the next two rules
+(rule ((= lhs (Smaller ({ty}AndCost t1 cost1)
+                       ({ty}AndCost t2 cost2)))
+       (<= cost1 cost2))
+      ((union lhs ({ty}AndCost t1 cost1)))
+       :ruleset {ruleset})
+  
+(rule ((= lhs (Smaller ({ty}AndCost t1 cost1)
+                       ({ty}AndCost t2 cost2)))
+       (> cost1 cost2))
+      ((union lhs ({ty}AndCost t2 cost2)))
+       :ruleset {ruleset}
+      )
+"
         ));
     }
 
@@ -36,13 +38,14 @@ pub(crate) fn passthrough_optimize_rules() -> String {
         let op = bril_op.op;
         match bril_op.input_types.as_ref() {
             [Some(_), Some(_)] => res.push(format!(
-                "(rule ((= lhs ({op} ty a b))
-        (= (OperandAndCost expr1 cost1) (ExtractedOperand a))
-        (= (OperandAndCost expr2 cost2) (ExtractedOperand b)))
-       ((set (ExtractedExpr lhs)
-             (ExprAndCost ({op} ty expr1 expr2)
-                          (+ 1 (+ cost1 cost2)))))
-          :ruleset {ruleset})
+                "
+(rule ((= lhs ({op} ty a b))
+       (= (OperandAndCost expr1 cost1) (ExtractedOperand a))
+       (= (OperandAndCost expr2 cost2) (ExtractedOperand b)))
+      ((set (ExtractedExpr lhs)
+            (ExprAndCost ({op} ty expr1 expr2)
+                         (+ 1 (+ cost1 cost2)))))
+        :ruleset {ruleset})
 "
             )),
             _ => unimplemented!(),
@@ -56,8 +59,8 @@ pub(crate) fn passthrough_optimize_rules() -> String {
         (= (OperandAndCost expr1 cost1) (ExtractedOperand a))
         (= (OperandAndCost expr2 cost2) (ExtractedOperand b)))
       ((set (ExtractedExpr lhs)
-        (ExprAndCost (PRINT expr1 expr2)
-                (+ 1 (+ cost1 cost2)))))
+            (ExprAndCost (PRINT expr1 expr2)
+                         (+ 1 (+ cost1 cost2)))))
       :ruleset {ruleset})
 "
     ));
@@ -102,8 +105,6 @@ pub(crate) fn passthrough_optimize_rules() -> String {
   ((set (Extracted{vectype} ({ctor} vec))
         result))
   :ruleset {ruleset})
-
-
       "
         ))
     }

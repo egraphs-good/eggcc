@@ -463,16 +463,13 @@ fn rvsdg_odd_branch_egg_roundtrip() {
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
                                                                      (Num 2)))))))))))))
-    (let expected-result (Project 0 rescaled))
-    (let expected-state (Project 1 rescaled))
+    (let expected-result (Project 1 rescaled))
+    (let expected-state (Project 0 rescaled))
     (let expected (Func "main" (vec-of (Bril (IntT)) (PrintState)) (vec-of (Bril (IntT)) (PrintState)) (VO (vec-of expected-result expected-state))))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
-    // this is weird; shouldn't stop be an optional argument
-    egraph
-        .process_commands(vec![actual_command], egglog::CompilerPassStop::All)
-        .unwrap();
+    egraph.run_program(vec![actual_command]).unwrap();
     egraph
         .parse_and_run_program("(check (= expected actual))")
         .unwrap();

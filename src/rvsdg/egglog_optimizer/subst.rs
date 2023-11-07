@@ -3,8 +3,9 @@ use super::BRIL_OPS;
 /// "subst-beneath" rules support replacing a specific {Expr, Body, Operand,
 ///  VecOperand, VecVecOperand} with another.
 ///
-/// - The key relations are (relation can-subst-TYPE-beneath (Body TYPE TYPE)),
+/// - The key relations are (relation can-subst-TYPE-beneath (Context TYPE TYPE)),
 ///   where TYPE is one of {Expr, Body, Operand, VecOperand, VecVecOperand}.
+/// - A context is a (GammaCtx inputs) or a (ThetaCtx inputs).
 /// - Add (can-subst-TYPE-beneath above from to) if it is sound to replace zero
 ///   or more occurrences of `from` with `to`, strictly within `above`.
 /// - Then, saturate the subst ruleset for the appropriate unions to be made.
@@ -24,33 +25,37 @@ use super::BRIL_OPS;
 /// support substituting under a Function as well
 fn subst_beneath_rules() -> Vec<String> {
     let mut res = vec!["
-        (relation can-subst-Expr-beneath (Body Expr Expr))
-        (relation can-subst-Operand-beneath (Body Operand Operand))
-        (relation can-subst-Body-beneath (Body Body Body))
-        (relation can-subst-VecVecOperand-beneath (Body VecVecOperand VecVecOperand))
-        (relation can-subst-VecOperand-beneath (Body VecOperand VecOperand))
+        (datatype Context
+            (GammaCtx VecOperand)
+            (ThetaCtx VecOperand))
+
+        (relation can-subst-Expr-beneath (Context Expr Expr))
+        (relation can-subst-Operand-beneath (Context Operand Operand))
+        (relation can-subst-Body-beneath (Context Body Body))
+        (relation can-subst-VecVecOperand-beneath (Context VecVecOperand VecVecOperand))
+        (relation can-subst-VecOperand-beneath (Context VecOperand VecOperand))
 
         ;; Base case 'do the substitution' rules
         (rule ((can-subst-Operand-beneath above from to)
-               (= above     (Theta from inputs outputs)))
-              ((union above (Theta to   inputs outputs)))
+               (= above (ThetaCtx inputs))
+               (= theta     (Theta from inputs outputs)))
+              ((union theta (Theta to   inputs outputs)))
               :ruleset subst)
         (rule ((can-subst-VecOperand-beneath above from to)
-               (= above     (Theta pred inputs from)))
-              ((union above (Theta pred inputs to)))
+               (= above (ThetaCtx inputs))
+               (= theta     (Theta pred inputs from)))
+              ((union theta (Theta pred inputs to)))
               :ruleset subst)
         (rule ((can-subst-Operand-beneath above pred-from pred-to)
                (can-subst-VecOperand-beneath above outputs-from outputs-to)
-               (= above     (Theta pred-from inputs outputs-from)))
-              ((union above (Theta pred-from inputs outputs-to)))
+               (= above (ThetaCtx inputs))
+               (= theta     (Theta pred-from inputs outputs-from)))
+              ((union theta (Theta pred-from inputs outputs-to)))
               :ruleset subst)
         (rule ((can-subst-VecVecOperand-beneath above from to)
-               (= above     (Gamma pred inputs from)))
-              ((union above (Gamma pred inputs to)))
-              :ruleset subst)
-        (rule ((can-subst-VecOperand-beneath above from to)
-               (= above     (OperandGroup from)))
-              ((union above (OperandGroup to)))
+               (= above (GammaCtx inputs))
+               (= gamma     (Gamma pred inputs from)))
+              ((union gamma (Gamma pred inputs to)))
               :ruleset subst)
 
         ;; Learn can-subst-Operand-beneath

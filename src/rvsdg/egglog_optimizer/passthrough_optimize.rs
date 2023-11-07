@@ -18,13 +18,14 @@ pub(crate) fn passthrough_optimize_rules() -> String {
 ;; If a gamma passes along an argument in both branches,
 ;; extract the input instead.
 (rule ((= lhs (Project index loop))
-       (= loop (Gamma pred (VO inputs) (VVO outputs)))
-       (= 2 (vec-length outputs))
-       (= (VO outputs0) (vec-get outputs 0))
-       (= (VO outputs1) (vec-get outputs 1))
-       (= (vec-get outputs0 index) (Arg index))
-       (= (vec-get outputs1 index) (Arg index))
-       (= passedthrough (ExtractedOperand (vec-get inputs index))))
+       (= loop (Gamma pred inputs outputs))
+       (= outputs (VVO outputs-inner))
+       (= 2 (vec-length outputs-inner))
+       (= outputs0 (VecVecOperand-get outputs 0))
+       (= outputs1 (VecVecOperand-get outputs 1))
+       (= (VecOperand-get outputs0 index) (Arg index))
+       (= (VecOperand-get outputs1 index) (Arg index))
+       (= passedthrough (ExtractedOperand (VecOperand-get inputs index))))
       ((set (ExtractedOperand lhs) passedthrough))
       :ruleset {ruleset})
 

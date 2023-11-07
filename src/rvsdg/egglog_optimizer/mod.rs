@@ -47,7 +47,9 @@ pub fn rvsdg_egglog_schedule() -> String {
             ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
             (seq (saturate extraction) (saturate extraction-vec))
             (run)
-            (saturate subst))
+            (saturate basechange)
+            ; subst is not saturating.
+            (repeat 5 subst))
         ; Right now, subst-beneath is inefficent (it extracts every possible
         ; spine - we are working on this!), so we only run it a few times at the
         ; end to apply substitutions that the main optimizations find. It's

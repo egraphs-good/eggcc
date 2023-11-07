@@ -15,103 +15,297 @@
 ;;     <else-case>
 ;;   }
 
-;; BaseChange op from to traverses 'op' recursively and replaces instances of
-;; (Project i from) with (Project i to).
-(function BaseChangeOperand (Operand Body Body) Operand :unextractable)
-(function BaseChangeExpr (Expr Body Body) Expr :unextractable)
-(function BaseChangeBody (Body Body Body) Body :unextractable)
-(function BaseChangeVecOperand (VecOperand Body Body) VecOperand :unextractable)
-(function BaseChangeVecVecOperand (VecVecOperand Body Body) VecVecOperand :unextractable)
+(ruleset basechange)
+(ruleset ivt)
+(sort IvtCtx)
+; IvtCtx is used to represent state relevant to a particular "base change" /
+; Body-to-body substitution.
+;;             θ    γ    from to
+(function Ivt (Body Body Body Body) IvtCtx)
 
-;; (relation Body-contains-Body (Body Body))
+; (BaseChange op from to) traverses 'op' recursively and replaces instances of
+; (Project i from) with (Project i to).
+;
+; It is phrased as a relation rather than a function because (Project i to) may
+; match "later", in which case we will want to run the substitution _again_ (the
+; new output may be smaller).
+(relation BaseChangeOperand                (IvtCtx Operand Operand))
+(relation BaseChangeOperandDemand          (IvtCtx Operand))
+(relation BaseChangeExpr                   (IvtCtx Expr Expr))
+(relation BaseChangeExprDemand             (IvtCtx Expr))
+(relation BaseChangeBody                   (IvtCtx Body Body))
+(relation BaseChangeBodyDemand             (IvtCtx Body))
+(relation BaseChangeVecOperand             (IvtCtx VecOperand VecOperand))
+(relation BaseChangeVecOperandDemand       (IvtCtx VecOperand))
+(relation BaseChangeVecVecOperandCtx       (IvtCtx VecVecOperandCtx VecVecOperandCtx))
+(relation BaseChangeVecVecOperandCtxDemand (IvtCtx VecVecOperandCtx))
+
+; IvtState encapsulates the "demand" for running an IVT pass.
+;                   gamma=>else, gamma=>then
+(relation IvtState (IvtCtx       IvtCtx))
 
 (rule ((= loop (Theta pred (VO inputs) outputs))
-       (= gamma (Gamma pred gamma-in (VVO gamma-out)))
-       (Body-contains-Body loop i gamma))
-      ((let inner-else-block (OperandGroup (SubstVecOperandAll (vec-get gamma-out 0) gamma-in)))
-       (let outer-else-block (BaseChangeVecOperand outputs gamma inner-else-block))
-       (let inner-then-block (OperandGroup (SubstVecOperandAll (vec-get gamma-out 1) gamma-in)))
-       (let inner-theta (Theta (BaseChangeOperand pred gamma inner-then-block) 
-                               (PassThroughArguments (vec-length inputs))
-                               (BaseChangeVecOperand outputs gamma inner-then-block)))
-        (union loop 
-           (Gamma (SubstOperandAll pred (VO inputs)) 
-                  (VO inputs) 
-                  (VVO 
-                   (vec-of 
-                       outer-else-block
-                       (BodyToVecOperand (vec-length inputs) inner-theta)))))))
+       (= gamma (Gamma pred gamma-in gamma-out))
+       (= (VOC else-branch) (VecVecOperandCtx-get gamma-out 0))
+       (= (VOC then-branch) (VecVecOperandCtx-get gamma-out 1))
+       (Body-contains-Body loop i gamma)
+       ; Note that in the example code at the top of this file, `pred` really
+       ; _doesn't_ have to be pure: it is run the exact same number of times on
+       ; the left and right-hand side of the rewrite.
+       ;
+       ; However, if pred depends on the value of other inputs, then we could
+       ; potentially run _those_ inputs more than once if we evaluate <pred>
+       ; before the rest of the loop body. This may still be safe, but it
+       ; requires more thought, so we are constraining to pure predicates for
+       ; now.
+       ; TODO: reevaluate whether 'Operand-is-pure' is required here.
+       (Operand-is-pure pred))
+       ; Extract the two blocks out of the gamma, substitute in the gamma inputs
+       ; for each block.
+      ((let inner-else-block (OperandGroup (SubstVecOperandAll (VO else-branch) gamma-in)))
+       (let inner-then-block (OperandGroup (SubstVecOperandAll (VO then-branch) gamma-in)))
+       ; Now start some body-level substitutions.
+       ; ivtctx-1 substitutes any projection from 'gamma' to inner-else-block.
+       (let ivtctx-1 (Ivt loop gamma gamma inner-else-block))
+       ; ivtctx-2 substitutes any projection from 'gamma' to inner-then-block.
+       (let ivtctx-2 (Ivt loop gamma gamma inner-then-block))
+       ; Create a copy of the loop body referencing the 'else' block instead of
+       ; all of 'gamma'.
+       (BaseChangeVecOperandDemand ivtctx-1 outputs)
+       ; Create a copy of the loop predicate referencing the 'then' block
+       ; instead of all of 'gamma'.
+       (BaseChangeOperandDemand ivtctx-2 pred)
+       ; Create a copy of the loop body referencing the 'then' block
+       ; instead of all of 'gamma'.
+       (BaseChangeVecOperandDemand ivtctx-2 outputs)
+       (IvtState ivtctx-1 ivtctx-2)) :ruleset ivt)
 
-(rewrite (BaseChangeExpr (Const ty ops lit) from to)
-  (Const ty ops lit) :ruleset subst)
-(rewrite (BaseChangeExpr (Call ty f args n-outs) from to)
-  (Call ty f (BaseChangeVecOperand args from to) n-outs) :ruleset subst)
-(rewrite (BaseChangeExpr (badd ty a b) from to) 
-  (badd ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (bsub ty a b) from to) 
-  (bsub ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (bmul ty a b) from to) 
-  (bmul ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (bdiv ty a b) from to) 
-  (bdiv ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (beq ty a b) from to)
-  (beq ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (blt ty a b) from to)
-  (blt ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (bgt ty a b) from to)
-  (bgt ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (ble ty a b) from to)
-  (ble ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (bge ty a b) from to)
-  (bge ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (bnot ty a) from to)
-  (bnot ty (BaseChangeOperand a from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (band ty a b) from to)
- (band ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (bor ty a b) from to)
-  (bor ty (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
-(rewrite (BaseChangeExpr (PRINT a b) from to)
-  (PRINT (BaseChangeOperand a from to) (BaseChangeOperand b from to)) :ruleset subst)
+(rule ((= ctx1 (Ivt loop gamma gamma inner-else-block))
+       (= ctx2 (Ivt loop gamma gamma inner-then-block))
+       (= gamma (Gamma pred (VO gamma-inputs) gamma-outs))
+       (= loop (Theta pred (VO inputs) outputs))
+       (IvtState ctx1 ctx2)
+       ; See the above rule where we create this demand.
+       ; * outputs1 contains the "else" block of the new region.
+       (BaseChangeVecOperand ctx1 outputs (VO outputs1))
+       ; * outputs2 contains the body of the loop inside the then block.
+       (BaseChangeVecOperand ctx2 outputs outputs2)
+       ; * pred- contains the predicate of the loop inside the then block.
+       (BaseChangeOperand ctx2 pred pred-))
+      ((let inner-theta (Theta pred- (PassThroughArguments (vec-length inputs)) outputs2))
+       ; Substitute the predicate into the outer context. This has the
+       ; effect of partially unrolling the loop one layer.
+       (let new-gamma (Gamma (SubstOperandAll pred (VO inputs))
+               ; Use the inputs of the loop as-is.
+               (VO inputs)
+               (VVO 
+                  (vec-of 
+                     ; the "else" case
+                     (VOC outputs1)
+                     ; the "then" case
+                     (ToCtx (BodyToVecOperand (vec-length inputs) inner-theta))))))      
+       (union loop new-gamma)) :ruleset ivt)
 
-(rewrite (BaseChangeOperand (Arg x) from to) (Arg x) :ruleset subst)
-(rewrite (BaseChangeOperand (Node from) from to) (Node to) :ruleset subst)
-(rewrite (BaseChangeOperand (Project i from) from to) (Project i to) :ruleset subst)
+;; Const
+(rule ((= c (Const ty ops lit)) (BaseChangeExprDemand ctx c))
+      ((BaseChangeExpr ctx c c)) :ruleset basechange)
 
-(rewrite (BaseChangeBody (PureOp e) from to) (PureOp (BaseChangeExpr e from to)) :ruleset subst)
-(rewrite (BaseChangeBody (OperandGroup vo) from to) (OperandGroup (BaseChangeVecOperand vo from to)) :ruleset subst)
-(rewrite (BaseChangeBody (Gamma pred inputs outputs) from to) 
-    (Gamma (BaseChangeOperand pred from to) (BaseChangeVecOperand inputs from to) outputs) :ruleset subst)
-(rewrite (BaseChangeBody (Theta pred inputs outputs) from to) 
-    (Theta pred (BaseChangeVecOperand inputs from to) outputs) :ruleset subst)    
+;; Call
+(rule ((BaseChangeExprDemand ctx (Call ty f args n-outs)))
+      ((BaseChangeVecOperandDemand ctx args)) :ruleset basechange) 
+(rule ((BaseChangeExprDemand ctx (Call ty f args n-outs))
+       (BaseChangeVecOperand ctx args args-))
+      ((BaseChangeExpr ctx (Call ty f args n-outs) (Call ty f args- n-outs))) :ruleset basechange)
 
-(function BaseChangeVecOperandHelper (VecOperand Body Body i64) VecOperand :unextractable)
-(rewrite (BaseChangeVecOperand ops from to) (BaseChangeVecOperandHelper ops from to 0) :ruleset subst)
-(rule
-  ((= f (BaseChangeVecOperandHelper (VO vec) x v i))
-   (< i (vec-length vec)))
-  ((union
-     (BaseChangeVecOperandHelper (VO vec) x v i)
-     (BaseChangeVecOperandHelper
-       (VO (vec-set vec i (BaseChangeOperand (vec-get vec i) x v)))
-       x v (+ i 1)))) :ruleset subst)
+;; badd      
+(rule ((BaseChangeExprDemand ctx (badd ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (badd ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (badd ty a b) (badd ty a- b-))) :ruleset basechange)
 
-(rule
-  ((= f (BaseChangeVecOperandHelper (VO vec) x v i))
-   (= i (vec-length vec)))
-  ((union (BaseChangeVecOperandHelper (VO vec) x v i) (VO vec))) :ruleset subst)
+;; bsub      
+(rule ((BaseChangeExprDemand ctx (bsub ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (bsub ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (bsub ty a b) (bsub ty a- b-))) :ruleset basechange)
 
-(function BaseChangeVecVecOperandHelper (VecVecOperand Body Body i64) VecVecOperand :unextractable)
-(rewrite (BaseChangeVecVecOperand vec from to) (BaseChangeVecVecOperandHelper vec from to 0) :ruleset subst)
-(rule
-  ((= f (BaseChangeVecVecOperandHelper (VVO vec) from to i))
-   (< i (vec-length vec)))
-  ((union
-     (BaseChangeVecVecOperandHelper (VVO vec) from to i)
-     (BaseChangeVecVecOperandHelper
-       (VVO (vec-set vec i (BaseChangeVecOperand (vec-get vec i) from to)))
-       from to (+ i 1)))) :ruleset subst)
+;; bmul
+(rule ((BaseChangeExprDemand ctx (bmul ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (bmul ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (bmul ty a b) (bmul ty a- b-))) :ruleset basechange)
 
-(rule
-  ((= f (BaseChangeVecVecOperandHelper (VVO vec) from to i))
-   (= i (vec-length vec)))
-  ((union (BaseChangeVecVecOperandHelper (VVO vec) from to i) (VVO vec))) :ruleset subst)
+;; bdiv
+(rule ((BaseChangeExprDemand ctx (bdiv ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (bdiv ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (bdiv ty a b) (bdiv ty a- b-))) :ruleset basechange)
+
+;; beq
+(rule ((BaseChangeExprDemand ctx (beq ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (beq ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (beq ty a b) (beq ty a- b-))) :ruleset basechange)
+
+;; blt
+(rule ((BaseChangeExprDemand ctx (blt ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (blt ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (blt ty a b) (blt ty a- b-))) :ruleset basechange)
+
+;; bgt
+(rule ((BaseChangeExprDemand ctx (bgt ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (bgt ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (bgt ty a b) (bgt ty a- b-))) :ruleset basechange)
+
+;; ble
+(rule ((BaseChangeExprDemand ctx (ble ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (ble ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (ble ty a b) (ble ty a- b-))) :ruleset basechange)
+
+;; bge
+(rule ((BaseChangeExprDemand ctx (bge ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (bge ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (bge ty a b) (bge ty a- b-))) :ruleset basechange)
+
+;; band
+(rule ((BaseChangeExprDemand ctx (band ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (band ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (band ty a b) (band ty a- b-))) :ruleset basechange)
+
+;; bor
+(rule ((BaseChangeExprDemand ctx (bor ty a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (bor ty a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (bor ty a b) (bor ty a- b-))) :ruleset basechange)
+
+;; PRINT
+(rule ((BaseChangeExprDemand ctx (PRINT a b)))
+      ((BaseChangeOperandDemand ctx a) (BaseChangeOperandDemand ctx b)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (PRINT a b))
+       (BaseChangeOperand ctx a a-)
+       (BaseChangeOperand ctx b b-))
+      ((BaseChangeExpr ctx (PRINT a b) (PRINT a- b-))) :ruleset basechange)
+
+;; bnot
+(rule ((BaseChangeExprDemand ctx (bnot ty a)))
+      ((BaseChangeOperandDemand ctx a)) :ruleset basechange)
+(rule ((BaseChangeExprDemand ctx (bnot ty a))
+       (BaseChangeOperand ctx a a-))
+      ((BaseChangeExpr ctx (bnot ty a) (bnot ty a-))) :ruleset basechange)
+
+;; Arg
+(rule ((BaseChangeOperandDemand ctx (Arg x)))
+      ((BaseChangeOperand ctx (Arg x) (Arg x))) :ruleset basechange)
+
+;; Node
+(rule ((= ctx (Ivt loop gamma from to))
+       (BaseChangeOperandDemand ctx (Node from)))
+      ((BaseChangeOperand ctx (Node from) (Node to))) :ruleset basechange)
+(rule ((= ctx (Ivt loop gamma from to))
+       (BaseChangeOperandDemand ctx (Node x))
+       (!= x from))
+      ((BaseChangeBodyDemand ctx x)) :ruleset basechange)
+(rule ((= ctx (Ivt loop gamma from to))
+       (BaseChangeOperandDemand ctx (Node x))
+       (BaseChangeBody ctx x x-))
+      ((BaseChangeOperand ctx (Node x) (Node x-))) :ruleset basechange)
+
+;; Project (very similar to Node)
+(rule ((= ctx (Ivt loop gamma from to))
+       (BaseChangeOperandDemand ctx (Project i from)))
+      ((BaseChangeOperand ctx (Project i from) (Project i to))) :ruleset basechange)
+(rule ((= ctx (Ivt loop gamma from to))
+       (BaseChangeOperandDemand ctx (Project i x))
+       (!= x from))
+      ((BaseChangeBodyDemand ctx x)) :ruleset basechange)
+(rule ((= ctx (Ivt loop gamma from to))
+       (BaseChangeOperandDemand ctx (Project i x))
+       (BaseChangeBody ctx x x-))
+      ((BaseChangeOperand ctx (Project i x) (Project i x-))) :ruleset basechange)
+
+;; PureOp
+(rule ((BaseChangeBodyDemand ctx (PureOp e)))
+      ((BaseChangeExprDemand ctx e)) :ruleset basechange)
+(rule ((BaseChangeBodyDemand ctx (PureOp e))
+       (BaseChangeExpr ctx e e-))
+      ((BaseChangeBody ctx (PureOp e) (PureOp e-))) :ruleset basechange)
+
+;; OperandGroup
+(rule ((BaseChangeBodyDemand ctx (OperandGroup vo)))
+      ((BaseChangeVecOperandDemand ctx vo)) :ruleset basechange)
+(rule ((BaseChangeBodyDemand ctx (OperandGroup vo))
+       (BaseChangeVecOperand ctx vo vo-))
+      ((BaseChangeBody ctx (OperandGroup vo) (OperandGroup vo-))) :ruleset basechange)
+
+;; Gamma
+(rule ((BaseChangeBodyDemand ctx (Gamma pred inputs outputs)))
+      ((BaseChangeOperandDemand    ctx pred)
+       (BaseChangeVecOperandDemand ctx inputs)) :ruleset basechange)
+(rule ((BaseChangeBodyDemand ctx (Gamma pred inputs outputs))
+       (BaseChangeOperand ctx pred pred-) 
+       (BaseChangeVecOperand ctx inputs inputs-))
+      ((BaseChangeBody ctx (Gamma pred inputs outputs) (Gamma pred- inputs- outputs))) :ruleset basechange)
+
+;; Theta
+(rule ((BaseChangeBodyDemand ctx (Theta pred inputs outputs)))
+      ((BaseChangeVecOperandDemand ctx inputs)) :ruleset basechange)
+(rule ((BaseChangeBodyDemand ctx (Theta pred inputs outputs))
+       (BaseChangeVecOperand ctx inputs inputs-))
+      ((BaseChangeBody ctx (Theta pred inputs outputs) (Theta pred inputs- outputs))) :ruleset basechange)
+
+;; BaseChangeVecOperand
+(relation BaseChangeVecOperandHelper (IvtCtx VecOperand VecOperand i64))
+(rule ((BaseChangeVecOperandDemand ctx ops))
+      ((BaseChangeVecOperandHelper ctx ops ops 0)) :ruleset basechange)
+(rule ((BaseChangeVecOperandHelper ctx from ops i)
+       (= op (VecOperand-get ops i)))
+      ((BaseChangeOperandDemand ctx op)) :ruleset basechange)
+(rule ((BaseChangeVecOperandHelper ctx from ops i)
+       (= ops (VO vec))
+       (= op (VecOperand-get ops i))
+       (BaseChangeOperand ctx op op-))
+      ((BaseChangeVecOperandHelper ctx from (VO (vec-set vec i op-)) (+ i 1))) :ruleset basechange)
+(rule ((BaseChangeVecOperandHelper ctx from ops i) (= i (VecOperand-length ops)))
+      ((BaseChangeVecOperand ctx from ops)) :ruleset basechange)
+
+;; BaseChangeVecVecOperandCtx
+(relation BaseChangeVecVecOperandCtxHelper (IvtCtx VecVecOperandCtx VecVecOperandCtx i64))
+(rule ((BaseChangeVecVecOperandCtxDemand ctx ops))
+      ((BaseChangeVecVecOperandCtxHelper ctx ops ops 0)) :ruleset basechange)
+(rule ((BaseChangeVecVecOperandCtxHelper ctx from ops i)
+       (= (VOC op) (VecVecOperandCtx-get ops i)))
+      ((BaseChangeVecOperandDemand ctx (VO op))) :ruleset basechange)
+(rule ((BaseChangeVecVecOperandCtxHelper ctx from ops i)
+       (= ops (VVO vec))
+       (= (VOC op) (VecVecOperandCtx-get ops i))
+       (BaseChangeVecOperand ctx (VO op) (VO op-)))
+      ((BaseChangeVecVecOperandCtxHelper ctx from (VVO (vec-set vec i (VOC op-))) (+ i 1))) :ruleset basechange)
+(rule ((BaseChangeVecVecOperandCtxHelper ctx from ops i) (= i (VecVecOperandCtx-length ops)))
+      ((BaseChangeVecVecOperandCtx ctx from ops)) :ruleset basechange)

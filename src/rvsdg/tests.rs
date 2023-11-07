@@ -1957,3 +1957,45 @@ fn last_iter_gamma() {
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
 }
+
+#[test]
+fn rvsdg_ivt_detect() {
+    const PROGRAM: &str = r#"
+
+    (let inner (Gamma (Arg 0)
+                      (VO (vec-of (Arg 1)))
+                      (VVO (vec-of
+                        (VOC (vec-of (Node (PureOp (badd (IntT) (Arg 0) (Node (PureOp (Const (IntT) (const) (Num 1)))))))))
+                        (VOC (vec-of (Node (PureOp (badd (IntT) (Arg 0) (Node (PureOp (Const (IntT) (const) (Num 2)))))))))
+                      ))))
+    (let theta (Theta 
+        (Arg 0)                      
+        (VO (vec-of (Arg 0) (Arg 1)))
+        (VO (vec-of (Arg 0) (Node (PureOp (badd (IntT) (Arg 1) (Project 0 inner))))))))
+    (let new-theta (Theta
+        (Arg 0)
+        (VO (vec-of (Arg 0) (Arg 1)))
+        (VO (vec-of 
+            (Arg 0)
+            (Node (PureOp (badd (IntT) 
+                (Arg 1) 
+                (Project 0 (OperandGroup (VO (vec-of 
+                    (Node (PureOp (badd (IntT) (Arg 1) 
+                        (Node (PureOp (Const (IntT) (const) (Num 2))))))))))))))))))
+    (let new-gamma (Gamma 
+        (Arg 0) 
+        (VO (vec-of (Arg 0) (Arg 1))) 
+        (VVO (vec-of 
+            (VOC (vec-of (Arg 0) (Node (PureOp (badd (IntT) (Arg 1) 
+                (Project 0 (OperandGroup (VO (vec-of
+                    (Node (PureOp (badd (IntT) (Arg 1) 
+                    (Node (PureOp (Const (IntT) (const) (Num 1))))))))))))))))
+            (VOC (vec-of (Project 0 new-theta) (Project 1 new-theta)))))))
+
+    (run-schedule (repeat 5 (saturate fast-analyses) ivt 
+        (saturate (saturate subst) (saturate basechange))))
+    (check (= new-gamma- theta))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(PROGRAM).unwrap();
+}

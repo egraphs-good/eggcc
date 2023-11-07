@@ -174,6 +174,14 @@ impl<'a> RvsdgFromEgglog<'a> {
                         self.egglog_expr_to_ty(ty.clone()),
                     )
                 }
+                (unop, [ty, opr]) => {
+                    let opr = self.egglog_term_to_operand(opr.clone());
+                    BasicExpr::Op(
+                        egglog_op_to_bril(unop.into()),
+                        vec![opr],
+                        self.egglog_expr_to_ty(ty.clone()),
+                    )
+                }
                 _ => panic!(
                     "expected an expression, got {}",
                     self.termdag.to_string(&expr)

@@ -5,29 +5,29 @@ expression: visualization.result
 main {
 block:
  y: int = const 0;
- zero: int = const 0;
+ x: int = const 0;
 while true:
  block:
   block:
    block:
-    cond: bool = gt y zero;
-    if cond:
+    iseq: bool = eq y x;
+    if iseq:
      break 2
     else:
      break 1
-   two: int = const 2;
-   print two;
+   one: int = const 1;
+   x: int = add x one;
+   y: int = add y one;
    break 1
-  one: int = const 1;
-  print one;
+  two: int = const 2;
  block:
 
-  if cond:
-   break 2
+  if iseq:
+   break 1
   else:
-   break 1
+   break 2
  block:
-
+  print x;
   return
 
 }

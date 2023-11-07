@@ -93,6 +93,3 @@
                 (VO (vec-of (Project 0 upper) (Project 1 upper)))
                 (VVO (vec-of (VO (vec-of (Project 0 lower) (Project 1 lower)))
                              (PassThroughArguments 2)))))
-
-(run 20)
-(extract final)

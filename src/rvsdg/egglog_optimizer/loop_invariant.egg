@@ -89,10 +89,6 @@
         (= expr (Call option str vo i)))
     ((find_inv_vo theta vo)))
 
-;; match on every binary expr, see loop_invariant.rs
-; (rule ((find_inv_expr theta (Someop ty a b)))
-; 		((find_inv_operand theta a) (find_inv_operand theta b)))
-
 ;; terminal, if a arg is recorded as inv in current theta
 (rule ((find_inv_operand theta operand)
         (= operand (Arg i))
@@ -109,6 +105,7 @@
     ((find_inv_body theta body)) :ruleset fast-analyses)
 
 ;; vo -> op
+;; this proce everything up to index - 1 is invariant
 (relation is_inv_vo_helper (Body VecOperand i64))
 
 (rule ((find_inv_vo theta vo)) ((is_inv_vo_helper theta vo 0)) :ruleset fast-analyses)
@@ -121,13 +118,6 @@
 (rule ((is_inv_vo_helper body (VO vec) i)
         (= i (vec-length vec)))
     ((set (is_inv_vo body (VO vec)) true)) :ruleset fast-analyses)
-
-;; match on every binary op, see loop_invariants.rs
-; (rule ((is_inv_operand body a) 
-; 		(is_inv_operand body b) 
-; 		(find_inv_expr body expr)
-; 		(= expr (Someop a b)))
-; 	((is_inv_expr body expr)))
 
 (rule ((= true (is_inv_expr body expr))
         (find_inv_body body to_find)

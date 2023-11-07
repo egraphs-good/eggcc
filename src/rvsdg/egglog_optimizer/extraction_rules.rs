@@ -91,7 +91,7 @@ pub(crate) fn extraction_rules() -> String {
    ((= ({vectype}AndCost ({ctor} current) current-cost)
        (Extracted{vectype}Helper ({ctor} vec) index))
     (< index (vec-length vec))
-    (= (Extracted{eltype} (vec-get vec index)) ({eltype}AndCost expr expr-cost)))
+    (= (Extracted{eltype} ({vectype}-get ({ctor} vec) index)) ({eltype}AndCost expr expr-cost)))
    ((set (Extracted{vectype}Helper ({ctor} vec) (+ index 1))
          ({vectype}AndCost
              ({ctor} (vec-push current expr))

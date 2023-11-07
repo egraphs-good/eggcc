@@ -8,9 +8,9 @@ pub(crate) fn passthrough_optimize_rules() -> String {
 ;; If a theta passes along argument,
 ;; can extract the input instead.
 (rule ((= lhs (Project index loop))
-        (= loop (Theta pred (VO inputs) (VO outputs)))
-        (= (vec-get outputs index) (Arg index))
-        (= passedthrough (ExtractedOperand (vec-get inputs index)))
+        (= loop (Theta pred inputs outputs))
+        (= (VecOperand-get outputs index) (Arg index))
+        (= passedthrough (ExtractedOperand (VecOperand-get inputs index)))
       )
       ((set (ExtractedOperand lhs) passedthrough))
       :ruleset {ruleset})

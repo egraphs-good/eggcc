@@ -27,8 +27,7 @@ pub(crate) fn extraction_rules() -> String {
                        ({ty}AndCost t2 cost2)))
        (> cost1 cost2))
       ((union lhs ({ty}AndCost t2 cost2)))
-       :ruleset {ruleset}
-      )
+       :ruleset {ruleset})
 "
         ));
     }
@@ -62,14 +61,19 @@ pub(crate) fn extraction_rules() -> String {
             (ExprAndCost (PRINT expr1 expr2)
                          (+ 1 (+ cost1 cost2)))))
       :ruleset {ruleset})
+
+;; TODO fix this HACK
+;; this is how we get an empty vector of vectors in egglog because of
+;; typechecking bug in egglog https://github.com/egraphs-good/egglog/issues/113
+(let empty-vvo 
+  (vec-pop (vec-of (VO (vec-of)))))
 "
     ));
 
     // Rules to extract a vecoperand
-    for (vectype, ctor, eltype) in [
-        ("VecOperand", "VO", "Operand"),
-        // TODO doesn't work because of a typechecking bug in egglog https://github.com/egraphs-good/egglog/issues/113
-        //("VecVecOperand", "VVO", "VecOperand"),
+    for (vectype, ctor, eltype, empty_vec) in [
+        ("VecOperand", "VO", "Operand", "(vec-of)"),
+        ("VecVecOperand", "VVO", "VecOperand", "empty-vvo"),
     ] {
         res.push(format!(
             "
@@ -79,7 +83,7 @@ pub(crate) fn extraction_rules() -> String {
 (rule
    (({ctor} vec))
    ((set (Extracted{vectype}Helper ({ctor} vec) 0)
-         ({vectype}AndCost ({ctor} (vec-of)) 0)))
+         ({vectype}AndCost ({ctor} {empty_vec}) 0)))
     :ruleset {ruleset})
 
 ;; extract one more thing
@@ -156,6 +160,22 @@ pub(crate) fn extraction_rules() -> String {
             (Theta pred-extracted inputs-extracted outputs-extracted)
             (+ 1 (+ pred-cost (+ inputs-cost outputs-cost))))))
     :ruleset {ruleset})
+
+;; Gamma gets a cost of 1 for now
+(rule
+  ((= lhs (Gamma pred inputs outputs))
+   (= (OperandAndCost pred-extracted pred-cost)
+      (ExtractedOperand pred))
+   (= (VecOperandAndCost inputs-extracted inputs-cost)
+      (ExtractedVecOperand inputs))
+   (= (VecVecOperandAndCost outputs-extracted outputs-cost)
+      (ExtractedVecVecOperand outputs)))
+  ((set (ExtractedBody lhs)
+        (BodyAndCost
+          (Gamma pred-extracted inputs-extracted outputs-extracted)
+          (+ 1 (+ pred-cost (+ inputs-cost outputs-cost))))))
+    :ruleset {ruleset})
+
 
 ;; Project is also free
 (rule ((= lhs (Project index body))

@@ -36,7 +36,7 @@ pub(crate) fn loop_invariant_detection() -> String {
     }
 
     // delete after bool-= is added to egglog
-    res.push(format!(
+    res.push(
         "(rule ((find_inv_expr theta (beq ty a b)))
     ((find_inv_operand theta a) (find_inv_operand theta b)) :ruleset fast-analyses)
     
@@ -46,7 +46,8 @@ pub(crate) fn loop_invariant_detection() -> String {
         (= expr (beq ty a b)))
     ((set (is_inv_expr body expr) true)) :ruleset fast-analyses)
         "
-    ));
+        .to_string(),
+    );
 
     res.join("\n")
 }

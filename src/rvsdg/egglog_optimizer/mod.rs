@@ -54,7 +54,7 @@ struct BrilOp {
 
 // an in-progress list of bril operators and their implementation in egglog
 // TODO do I really need to put the constant here for the size of the array?
-const BRIL_OPS: [BrilOp; 5] = [
+const BRIL_OPS: [BrilOp; 11] = [
     BrilOp {
         op: "badd",
         egglog_op: "+",
@@ -79,10 +79,53 @@ const BRIL_OPS: [BrilOp; 5] = [
         input_types: [Some(Type::Int), Some(Type::Int)],
         output_type: Type::Int,
     },
+    // add after a bool eq function is added to egglog
+    // BrilOp {
+    //     op: "beq",
+    //     egglog_op: "bool-=",
+    //     input_types: [Some(Type::Int), Some(Type::Int)],
+    //     output_type: Type::Bool,
+    // },
     BrilOp {
         op: "blt",
         egglog_op: "bool-<",
         input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "bgt",
+        egglog_op: "bool->",
+        input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "ble",
+        egglog_op: "bool-<=",
+        input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "bge",
+        egglog_op: "bool->=",
+        input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "bnot",
+        egglog_op: "not",
+        input_types: [Some(Type::Bool), None],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "band",
+        egglog_op: "and",
+        input_types: [Some(Type::Bool), Some(Type::Bool)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "bor",
+        egglog_op: "or",
+        input_types: [Some(Type::Bool), Some(Type::Bool)],
         output_type: Type::Bool,
     },
 ];

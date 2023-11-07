@@ -63,26 +63,6 @@
        (= (vec-get outputs 0) (vec-get outputs 1)))
       ((union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 0) inputs)))))
 
-;;     if a:
-;;            A
-;;     else:
-;;            B
-;; ------
-;;     if !a:
-;;            B
-;;     else:
-;;            A
-(rule  (
-         (= gamma (Gamma condition inputs (VVO outputs)))
-         (= (vec-length outputs) 2)
-       ) 
-       (
-         (union gamma (Gamma (Node (PureOp (bnot (BoolT) condition)))
-                             inputs 
-                             (VVO (vec-of (vec-get outputs 1) (vec-get outputs 0)))))
-       )
-)
-
 ;;	if !(a or b):
 ;;	       A
 ;;	else:
@@ -122,3 +102,7 @@
                             (Node (PureOp (bnot (BoolT) b)))))) inputs outputs))
       )
 )
+
+
+;; !!a -> a
+(rewrite (Node (PureOp (bnot (BoolT) (Node (PureOp (bnot (BoolT) a)))))) a)

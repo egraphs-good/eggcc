@@ -37,11 +37,11 @@
 
 ; Rules that union intervals for a gamma
 (rule (
-        (= lhs (Project i (Gamma pred ins (VVO outs))))
-        (= (VO thens) (vec-get outs 1))
-        (= (VO elses) (vec-get outs 0))
-        (= thenival (ival (vec-get thens i)))
-        (= elseival (ival (vec-get elses i)))
+        (= lhs (Project i (Gamma pred ins outs)))
+        (= thens (VecVecOperand-get outs 1))
+        (= elses (VecVecOperand-get outs 0))
+        (= thenival (ival (VecOperand-get thens i)))
+        (= elseival (ival (VecOperand-get elses i)))
       )
       (
         (set (ival lhs) (interval-union thenival elseival))
@@ -49,12 +49,12 @@
       :ruleset fast-analyses
 )
 (rule (
-        (= gamma (Gamma pred ins (VVO outs)))
+        (= gamma (Gamma pred ins outs))
         (= lhs (Project i gamma))
-        (= (VO thens) (vec-get outs 1))
-        (= (VO elses) (vec-get outs 0))
-        (= thenival (context-ival (vec-get thens i) gamma))
-        (= elseival (context-ival (vec-get elses i) gamma))
+        (= thens (VecVecOperand-get outs 1))
+        (= elses (VecVecOperand-get outs 0))
+        (= thenival (context-ival (VecOperand-get thens i) gamma))
+        (= elseival (context-ival (VecOperand-get elses i) gamma))
       )
       (
         (set (ival lhs) (interval-union thenival elseival))

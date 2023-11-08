@@ -1,5 +1,9 @@
 use super::BRIL_OPS;
 
+/// These extraction rules are not (yet) used to perform actual extraction.
+/// Rather, they are used to perform greedy optimizations like passthrough_optimize.
+/// Optimizations that use extraction are greedy because they may only apply to the current
+/// best program.
 pub(crate) fn extraction_rules() -> String {
     let ruleset = "fast-analyses";
     let mut res = vec![

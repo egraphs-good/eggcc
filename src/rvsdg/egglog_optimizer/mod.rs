@@ -54,7 +54,7 @@ struct BrilOp {
 
 // an in-progress list of bril operators and their implementation in egglog
 // TODO do I really need to put the constant here for the size of the array?
-const BRIL_OPS: [BrilOp; 11] = [
+const BRIL_OPS: [BrilOp; 12] = [
     BrilOp {
         op: "badd",
         egglog_op: "+",
@@ -79,13 +79,12 @@ const BRIL_OPS: [BrilOp; 11] = [
         input_types: [Some(Type::Int), Some(Type::Int)],
         output_type: Type::Int,
     },
-    // add after a bool eq function is added to egglog
-    // BrilOp {
-    //     op: "beq",
-    //     egglog_op: "bool-=",
-    //     input_types: [Some(Type::Int), Some(Type::Int)],
-    //     output_type: Type::Bool,
-    // },
+    BrilOp {
+        op: "beq",
+        egglog_op: "bool-=",
+        input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
+    },
     BrilOp {
         op: "blt",
         egglog_op: "bool-<",

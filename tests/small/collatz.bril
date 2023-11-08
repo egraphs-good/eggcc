@@ -5,10 +5,12 @@
 	one : int = const 1;
 	zero : int = const 0;
 	var : int = id arg;
+	counter: int = id zero;
 .cond:
 	cond : bool = eq var one;
 	br cond .break .body;
 .body:
+	counter : int = add counter one;
 	d : int = div var two;
 	m : int = mul d two;
 	mod : int = sub var m;
@@ -22,5 +24,5 @@
 	var : int = add one v1;
 	jmp .cond;
 .break:
-	print arg;
+	print counter;
 }

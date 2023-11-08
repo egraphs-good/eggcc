@@ -6,27 +6,27 @@ expression: visualization.result
   v2: int = const 0;
   v4: int = id v2;
   jmp .__6__;
-.__51__:
+.__53__:
   v54: int = const 1;
-  v55: bool = eq v44 v54;
-  v4: int = id v43;
+  v55: bool = eq v46 v54;
+  v4: int = id v31;
   br v55 .__6__ .__58__;
-.__46__:
-  v48: int = const 1;
-  v43: int = id v37;
-  v44: int = id v48;
-  jmp .__51__;
-.__39__:
-  v41: int = const 0;
-  v43: int = id v37;
-  v44: int = id v41;
-  jmp .__51__;
+.__48__:
+  v50: int = const 1;
+  v45: int = id v31;
+  v46: int = id v50;
+  jmp .__53__;
+.__41__:
+  v43: int = const 0;
+  v45: int = id v31;
+  v46: int = id v43;
+  jmp .__53__;
 .__27__:
-  v28: int = const 6;
-  v30: bool = lt v19 v28;
-  v35: int = const 1;
-  v37: int = add v19 v35;
-  br v30 .__46__ .__39__;
+  v29: int = const 1;
+  v31: int = add v4 v29;
+  v34: int = const 6;
+  v36: bool = lt v4 v34;
+  br v36 .__48__ .__41__;
 .__22__:
   v21: int = const 1;
   print v21;

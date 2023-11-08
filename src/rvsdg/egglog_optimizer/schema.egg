@@ -48,7 +48,7 @@
 (function bgt (Type Operand Operand) Expr)
 (function ble (Type Operand Operand) Expr)
 (function bge (Type Operand Operand) Expr)
-(function bnot (Type Operand Operand) Expr)
+(function bnot (Type Operand) Expr)
 (function band (Type Operand Operand) Expr)
 (function bor (Type Operand Operand) Expr)
 (function PRINT (Operand Operand) Expr)

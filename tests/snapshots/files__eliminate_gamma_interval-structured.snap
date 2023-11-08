@@ -7,19 +7,21 @@ block:
  block:
   block:
    ten: int = const 10;
+   five: int = const 5;
    cond1: bool = lt input ten;
    if cond1:
     break 2
    else:
     break 1
   x: int = const 3;
+  y: int = add x five;
   break 1
  x: int = const 2;
+ y: int = add x five;
 block:
  block:
   block:
-   five: int = const 5;
-   condition: bool = lt x five;
+   condition: bool = lt y five;
    if condition:
     break 2
    else:

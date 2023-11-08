@@ -39,7 +39,7 @@ function load() {
 
   parsed.sort((l, r) => {
       if (l.name < r.name) { return -1; }
-      if (l.name > l.name) { return 1; }
+      if (l.name > r.name) { return 1; }
       return 0;
   });
   container.innerHTML = ConvertJsonToTable(parsed);

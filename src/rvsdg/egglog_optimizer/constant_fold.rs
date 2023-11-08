@@ -23,6 +23,17 @@ pub(crate) fn constant_fold_egglog() -> String {
                   (Node (PureOp (Const ty3 (const) (Num n2)))))
                 (Const output_type (const) (Bool ({egglog_op} n1 n2))))",
             )),
+            ([Some(Type::Bool), Some(Type::Bool)], Type::Bool) => res.push(format!(
+                "(rewrite ({op} output_type
+                  (Node (PureOp (Const ty2 (const) (Bool n1))))
+                  (Node (PureOp (Const ty3 (const) (Bool n2)))))
+                (Const output_type (const) (Bool ({egglog_op} n1 n2))))",
+            )),
+            ([Some(Type::Bool), None], Type::Bool) => res.push(format!(
+                "(rewrite ({op} output_type
+                  (Node (PureOp (Const ty2 (const) (Bool n1)))))
+                (Const output_type (const) (Bool ({egglog_op} n1))))",
+            )),
             _ => unimplemented!(),
         };
     }

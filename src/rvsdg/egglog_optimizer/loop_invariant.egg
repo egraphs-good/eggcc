@@ -143,3 +143,109 @@
         (Body-is-pure body))
     ((set (is_inv_body theta body) true)) :ruleset fast-analyses)
 
+
+;; the ports that are invariants, either added or original
+;; Body: context, Operand: the invariant parts, i64: the port number.
+(relation theta_invariant_port (Body Operand i64))
+
+;(rule ((arg_inv theta i)) ((theta_inv_port theta (Arg i) i)))
+
+;; can merge the theta not in the program but in somewhere else?
+;(function equiv_theta (Body Body) :unextractable)
+
+;; doing motions
+;; an operand is moved when it's on the edge of invariant and variants
+;; we only need operand cause every other thing need to be in operand
+;; we also need to make sure the operand is not basic operand (Arg i) but how?
+;; Question: do I need to match on both a and b?
+;; question: if something changed in the theta, what happens to the theta in this invariant analysis?
+;; how to replace all proj at the same time?
+;; how to avoid computing the same things for the replaced Theta.
+;; how to avoid computing the same things everytime the Theta changed.
+
+(rule ((= true (is_inv_operand theta operand))
+        (Project i theta)
+        (Someop a b)
+        (= operand a)
+        (= false (is_inv_expr theta (Someop a b)))
+        (!= a (Arg n))) ;; ???
+        ((= false ))
+
+
+)
+
+
+(relation build_inputs_demand (Operand VecOperand i64))
+; ;; ask ryan if can-subst mess up with original program
+(rule ((build_inputs_demand op (VO inputs) i)
+        (= n (vec-length inputs))
+        (< i n))
+    ((can-subst-Operand-beneath op (Arg i) (vec-get inputs i))
+     (build_inputs_demand op (VO inputs) (+ i 1)))
+)
+
+(rule ((build_inputs_demand op (VO inputs) i)
+        (= n (vec-length inputs))
+        (= i n))
+    (
+     (build_inputs_finish op ))
+)
+
+
+(rule ((= true (is_inv_operand theta operand)) 
+        (Project i theta)   
+        (Someop a b)
+        (= operand b) 
+        (= false (is_inv_expr theta (Someop a b)))
+        (= theta (Theta pred (VO inputs) (VO outputs)))
+        (= n (vec-length inputs)))
+
+    (())
+    ((let hoisted (can-subst-Operand-beneath operand (Arg i) (vec-get inputs i))) ;; this should not work
+        
+        (let new_theta
+            (Theta pred (VO (vec-push inputs hoisted)) (VO (vec-push outputs (Arg n)))))
+
+        (can-subst-Operand-beneath new_theta hoisted (ve))
+        )
+
+
+)
+
+; ;; TODO: Gamma and Theta's motion are blocked by issue #113
+
+; (rule ((= true (is_inv_operand theta operand)) ()))
+
+
+
+
+(rule 
+    ((= gamma (Gamma pred (VO inputs) outputs))
+     (Project i gamma)
+     ; All branches contain hoist-me
+     (= (prefix-containing-Operand gamma hoist-me)
+        (VecVecOperand-length outputs))
+     (!= hoist-me (Arg any))
+     ; Can't add another version of an impure node since we might extract both.
+     ; Note: if we lift this requirement via an extraction-like substitution
+     ; procedure, then remember to add (Operand-is-pure hoist-me)!
+     (Body-is-pure gamma)
+     (= n (VecOperand-length (VO inputs)))
+     (< (hoist-count gamma) max-hoists)
+     (> (VecVecOperand-length outputs) 1))
+    ((let new-gamma
+        (Gamma
+            pred
+            ; Move hoist-me into the parent context and add it as an input
+            (VO (vec-push inputs (SubstOperandAll hoist-me (VO inputs))))
+            outputs))
+     ; Union the parent - it's not sound to union Gammas with different numbers
+     ; of arguments, because then we might put an out-of-bounds arg in the
+     ; smaller one.
+     (union
+        (Project i gamma)
+        (Project i new-gamma))
+     ; Allow the hoisted code to be replaced with the new argument
+     (can-subst-Operand-beneath new-gamma hoist-me (Arg n))
+     ; Increment hoist count
+     (set (hoist-count new-gamma) (+ 1 (hoist-count gamma)))))

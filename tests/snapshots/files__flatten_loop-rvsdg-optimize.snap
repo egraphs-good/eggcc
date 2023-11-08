@@ -30,8 +30,8 @@ expression: visualization.result
 .__97__:
   v104: int = const 1;
   v105: bool = eq v72 v104;
-  v45: int = id v70;
-  v46: int = id v71;
+  v45: int = id v45;
+  v46: int = id v46;
   v47: int = id v73;
   v48: int = id v74;
   v49: int = id v75;

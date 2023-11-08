@@ -83,7 +83,7 @@ pub(crate) fn passthrough_optimize_rules() -> String {
        (= (VecOperandAndCost extracted cost)
           (ExtractedVecOperand body)))
       ((union func
-              (Func name intypes outtypes extracted)))
+              (Func name intypes outtypes extracted))))
         "
     ));
 

@@ -47,6 +47,15 @@ pub(crate) fn extraction_rules() -> String {
         :ruleset {ruleset})
 "
             )),
+            [Some(_), None] => res.push(format!(
+                "
+(rule ((= lhs ({op} ty a))
+       (= (OperandAndCost expr1 cost1) (ExtractedOperand a)))
+      ((set (ExtractedExpr lhs)
+            (ExprAndCost ({op} ty expr1)
+                         (+ 1 cost1))))
+      :ruleset {ruleset})"
+            )),
             _ => unimplemented!(),
         }
     }

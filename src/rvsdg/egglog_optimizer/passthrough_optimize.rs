@@ -1,9 +1,5 @@
 pub(crate) fn passthrough_optimize_rules() -> String {
-    let ruleset = "fast-analyses";
-    let mut res = vec![];
-
-    res.push(format!(
-        "
+    "
 ;; #######################  PURE CASES ####################
 
 ;; If a gamma passes along an argument in both branches,
@@ -18,8 +14,7 @@ pub(crate) fn passthrough_optimize_rules() -> String {
       )
       ((union lhs passed-through)
        ;; also subsume the project
-       (delete (Project index loop)))
-      :ruleset {ruleset})
+       (delete (Project index loop))))
 
 ;; If a gamma with two cases passes along an argument in both branches,
 ;; union project with input
@@ -35,8 +30,7 @@ pub(crate) fn passthrough_optimize_rules() -> String {
         (= passed-through (VecOperand-get inputs index)))
       ((union lhs passed-through)
         ;; also subsume the project
-        (delete (Project index loop)))
-      :ruleset {ruleset})
+        (delete (Project index loop))))
 
 
 ;; #######################  IMPRURE CASES ####################
@@ -48,8 +42,7 @@ pub(crate) fn passthrough_optimize_rules() -> String {
         (= (VecOperand-get outputs index) (Arg index))
         (= passedthrough (ExtractedOperand (VecOperand-get inputs index)))
       )
-      ((set (ExtractedOperand lhs) passedthrough))
-      :ruleset {ruleset})
+      ((set (ExtractedOperand lhs) passedthrough)))
 
 ;; If a gamma with two cases passes along an argument in both branches,
 ;; can extract the input instead.
@@ -62,21 +55,18 @@ pub(crate) fn passthrough_optimize_rules() -> String {
        (= (VecOperand-get outputs0 index) (Arg index))
        (= (VecOperand-get outputs1 index) (Arg index))
        (= passedthrough (ExtractedOperand (VecOperand-get inputs index))))
-      ((set (ExtractedOperand lhs) passedthrough))
-      :ruleset {ruleset})
+      ((set (ExtractedOperand lhs) passedthrough)))
 
 
 ;; if we reach a new context, union
 (rule ((= theta (Theta pred inputs outputs))
        (= (BodyAndCost extracted cost)
           (ExtractedBody theta)))
-      ((union theta extracted))
-      :ruleset {ruleset})
+      ((union theta extracted)))
 (rule ((= gamma (Gamma pred inputs outputs))
        (= (BodyAndCost extracted cost)
           (ExtractedBody gamma)))
-      ((union gamma extracted))
-      :ruleset {ruleset})
+      ((union gamma extracted)))
 
 
 ;; if we reach the function at the top level, union
@@ -86,7 +76,5 @@ pub(crate) fn passthrough_optimize_rules() -> String {
       ((union func
               (Func name intypes outtypes extracted))))
         "
-    ));
-
-    res.join("\n").to_string()
+    .to_string()
 }

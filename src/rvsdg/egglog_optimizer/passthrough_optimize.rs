@@ -51,7 +51,8 @@ pub(crate) fn passthrough_optimize_rules() -> String {
       ((set (ExtractedOperand lhs) passedthrough))
       :ruleset {ruleset})
 
-;; TODO comment
+;; If a gamma with two cases passes along an argument in both branches,
+;; can extract the input instead.
 (rule ((= lhs (Project index loop))
        (= loop (Gamma pred inputs outputs))
        (= outputs (VVO outputs-inner))

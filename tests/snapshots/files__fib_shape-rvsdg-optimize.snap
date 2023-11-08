@@ -9,31 +9,31 @@ expression: visualization.result
   v9: int = id v5;
   v10: int = id v0;
   jmp .__12__;
-.__42__:
+.__43__:
   v47: int = const 1;
-  v48: bool = eq v28 v47;
-  v8: int = id v27;
-  v9: int = id v29;
-  v10: int = id v30;
+  v48: bool = eq v29 v47;
+  v8: int = id v28;
+  v9: int = id v30;
+  v10: int = id v31;
   br v48 .__12__ .__51__;
-.__32__:
-  v35: int = add v8 v9;
-  v37: int = const 1;
-  v27: int = id v35;
-  v28: int = id v37;
-  v29: int = id v9;
-  v30: int = id v10;
-  jmp .__42__;
-.__21__:
-  v23: int = const 0;
-  v27: int = id v8;
-  v28: int = id v23;
-  v29: int = id v9;
-  v30: int = id v10;
-  jmp .__42__;
+.__33__:
+  v36: int = add v8 v9;
+  v38: int = const 1;
+  v28: int = id v36;
+  v29: int = id v38;
+  v30: int = id v9;
+  v31: int = id v10;
+  jmp .__43__;
+.__22__:
+  v24: int = const 0;
+  v28: int = id v8;
+  v29: int = id v24;
+  v30: int = id v9;
+  v31: int = id v10;
+  jmp .__43__;
 .__12__:
-  v14: bool = lt v8 v10;
-  br v14 .__32__ .__21__;
+  v15: bool = lt v8 v10;
+  br v15 .__33__ .__22__;
 .__51__:
   print v8;
 }

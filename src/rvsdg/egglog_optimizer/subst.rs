@@ -114,6 +114,14 @@ fn subst_beneath_rules() -> Vec<String> {
                     :ruleset subst)
                      ",
             )),
+            [Some(_), None] => res.push(format!(
+                "
+              (rule ((can-subst-Operand-beneath above from to)
+                      (= new-from ({op} type from)))
+                     ((can-subst-Expr-beneath above new-from ({op} type to)))
+                    :ruleset subst)
+                ",
+            )),
             _ => unimplemented!(),
         };
     }
@@ -184,6 +192,17 @@ fn functions_modifying_args(
                         ty
                         ({fname_operand} a {aux_args_str})
                         ({fname_operand} b {aux_args_str}))
+                    :ruleset {ruleset})
+                     ",
+            )),
+            [Some(_), None] => res.push(format!(
+                "
+                (rewrite
+                    ({fname_expr} ({op} ty a) {aux_args_str})
+                    ({op}
+                        ty
+                        ({fname_operand} a {aux_args_str})
+                    )
                     :ruleset {ruleset})
                      ",
             )),

@@ -14,7 +14,9 @@ pub(crate) fn passthrough_optimize_rules() -> String {
        (= passed-through (VecOperand-get inputs index))
        (Body-is-pure loop)
       )
-      ((union lhs passed-through))
+      ((union lhs passed-through)
+       ;; also subsume the project
+       (delete (Project index loop)))
       :ruleset {ruleset})
 
 ;; If a gamma passes along an argument in both branches,
@@ -29,7 +31,9 @@ pub(crate) fn passthrough_optimize_rules() -> String {
        (= (VecOperand-get outputs0 index) (Arg index))
        (= (VecOperand-get outputs1 index) (Arg index))
        (= passed-through (VecOperand-get inputs index)))
-      ((union lhs passed-through))
+      ((union lhs passed-through)
+       ;; also subsume the project
+       (delete (Project index loop)))
       :ruleset {ruleset})
         "
     ));

@@ -1,0 +1,43 @@
+# i = 0
+# do:
+#   if i < 5:
+#     print 1
+#   else:
+#     print 2
+# while (i < 10)
+# print i
+# --------------
+# i = 0
+# do:
+#   print 1
+# while (i < 5)
+# if (i < 10):
+#   do:
+#     print 2
+#   while (i < 10)
+# print i
+
+@main() {
+  i: int = const 0;
+
+.top:
+  five: int = const 5;
+  if_cond: bool = lt i five;
+  br if_cond .then_if .else_if;
+.then_if:
+  one: int = const 1;
+  print one;
+  jmp .end_if;
+.else_if:
+  two: int = const 2;
+  print two;
+.end_if:
+
+  loop_cond: bool = lt i five;
+  one: int = const 1;
+  i: int = add i one;
+  br loop_cond .top .end;
+.end:
+
+  print i;
+}

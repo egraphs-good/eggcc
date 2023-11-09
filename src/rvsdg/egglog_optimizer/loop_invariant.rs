@@ -1,6 +1,6 @@
 use super::{BrilOp, BRIL_OPS};
 
-fn inv_binary_ops(bril_op: BrilOp) -> String {
+fn inv_ops_detection(bril_op: BrilOp) -> String {
     let bop = bril_op.op.to_string();
     match bril_op.input_types.as_ref() {
         [Some(_), Some(_)] => format!(
@@ -28,11 +28,34 @@ fn inv_binary_ops(bril_op: BrilOp) -> String {
     }
 }
 
+fn boundary_analysis(bril_op: BrilOp) -> String {
+    let bop = bril_op.op.to_string();
+    match bril_op.input_types.as_ref() {
+        // both side of operand need a rule
+        [Some(_), Some(_)] => format!(
+            "
+        (rule ((= true (is_inv_operand theta operand)) 
+                (= false (is_inv_expr theta expr))
+            (= expr ({bop} ty operand b)))
+            ((boundary_operand theta operand)) :ruleset fast-analyses)
+        
+        (rule ((= true (is_inv_operand theta operand)) 
+                (= false (is_inv_expr theta expr))
+                (= expr ({bop} ty a operand)))
+            ((boundary_operand theta operand)) :ruleset fast-analyses)
+        "
+        ),
+        [Some(_), None] => format!(""), // unary operator should not be on boundary.
+        _ => unimplemented!(),
+    }
+}
+
 pub(crate) fn loop_invariant_detection() -> String {
     let mut res = vec![include_str!("loop_invariant.egg").to_string()];
 
     for bril_op in BRIL_OPS {
-        res.push(inv_binary_ops(bril_op));
+        res.push(inv_ops_detection(bril_op.clone()));
+        res.push(boundary_analysis(bril_op));
     }
 
     // delete after bool-= is added to egglog

@@ -23,38 +23,38 @@
 ;; split loops with range checks
 ;; TODO: this might be unsound! it only copies the first output from the inner gamma,
 ;;       when it should probably copy all of them
-(rule ((= theta (Theta theta_pred (VO theta_inputs) (VO theta_outputs)))
+(rule ((= theta (Theta theta_pred theta_inputs theta_outputs))
        (= theta_pred (Node (PureOp (blt BoolT (Arg 1) b))))
 
-       (= (vec-length theta_inputs) 2)
-       (= (vec-get theta_inputs 1) (Node (PureOp (Const IntT const (Num 0)))))
+       (= (VecOperand-length theta_inputs) 2)
+       (= (VecOperand-get theta_inputs 1) (Node (PureOp (Const IntT const (Num 0)))))
 
-       (= (vec-length theta_outputs) 2)
-       (= (vec-get theta_outputs 0) (Project 0 gamma))
-       (= (vec-get theta_outputs 1) (Node (PureOp (badd IntT
+       (= (VecOperand-length theta_outputs) 2)
+       (= (VecOperand-get theta_outputs 0) (Project 0 gamma))
+       (= (VecOperand-get theta_outputs 1) (Node (PureOp (badd IntT
                   (Arg 1)
                   (Node (PureOp (Const IntT const (Num 1))))))))
 
-       (= gamma (Gamma gamma_pred (VO gamma_inputs) (VVO gamma_outputs)))
+       (= gamma (Gamma gamma_pred gamma_inputs gamma_outputs))
        (= gamma_pred (Node (PureOp (blt BoolT (Arg 1) a))))
 
-       (= (vec-get gamma_inputs 0) (Arg 0))
+       (= (VecOperand-get gamma_inputs 0) (Arg 0))
 
-       (= (vec-length gamma_outputs) 2)
-       (= (vec-get gamma_outputs 1) (VO then_vec))
-       (= (vec-get gamma_outputs 0) (VO else_vec))
+       (= (VecVecOperand-length gamma_outputs) 2)
+       (= (VecVecOperand-get gamma_outputs 1) then_vec)
+       (= (VecVecOperand-get gamma_outputs 0) else_vec)
 
        (= (ival a) (IntI a1 a2))
        (= (ival b) (IntI b1 b2))
        (<= a2 b1))
 
       ((let upper (Theta gamma_pred
-                         (VO theta_inputs)
-                         (VO (vec-of (vec-get then_vec 0) (vec-get theta_outputs 1)))))
+                         theta_inputs
+                         (VO (vec-of (VecOperand-get then_vec 0) (VecOperand-get theta_outputs 1)))))
 
        (let lower (Theta theta_pred
                          (PassThroughArguments 2)
-                         (VO (vec-of (vec-get else_vec 0) (vec-get theta_outputs 1)))))
+                         (VO (vec-of (VecOperand-get else_vec 0) (VecOperand-get theta_outputs 1)))))
 
 
        (let final (Gamma (Node (PureOp (blt (BoolT) a b)))

@@ -38,14 +38,11 @@ pub fn rvsdg_egglog_schedule() -> String {
     // but it helps substitutions go through since
     // they take many iterations.
 
-    "
-    (run-schedule
+    "(run-schedule
         (repeat 5 (saturate fast-analyses)
                   (run)
                   (saturate subst))
-        (repeat 4 subst-beneath)
-        (saturate fast-analyses)
-        (repeat 2 subst-beneath)
+        (repeat 6 subst-beneath (saturate fast-analyses))
     )"
     .to_string()
 }

@@ -4,23 +4,6 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v2: int = const 2;
-  v5: int = const 10;
-  v7: bool = lt v0 v5;
-  v11: int = const 5;
-  br v7 .__23__ .__13__;
-.__23__:
-  v24: int = const 2;
-  v27: int = add v24 v11;
-  v20: int = id v27;
-  v21: int = id v11;
-  jmp .__31__;
-.__13__:
-  v14: int = const 3;
-  v17: int = add v14 v11;
-  v20: int = id v17;
-  v21: int = id v11;
-  jmp .__31__;
-.__31__:
   print v2;
 }
 

@@ -756,13 +756,16 @@ fn rvsdg_subst() {
 #[test]
 fn rvsdg_subst_beneath_theta() {
     const EGGLOG_THETA_PROGRAM: &str = r#"
+    (let inputs
+        (VO (vec-of
+            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+        )))
+
     (let unsubsted
         (Theta
               (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-              (VO (vec-of
-                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
-                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-              ))
+              inputs
               (VO (vec-of
                 (Node (PureOp (blt (BoolT)
                     (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
@@ -772,7 +775,7 @@ fn rvsdg_subst_beneath_theta() {
             ))
 
     (can-subst-Operand-beneath
-        unsubsted
+        (ThetaCtx inputs)
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
     (run-schedule (saturate (saturate fast-analyses) subst))
@@ -800,13 +803,16 @@ fn rvsdg_subst_beneath_theta() {
 #[test]
 fn rvsdg_subst_beneath_gamma() {
     const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let inputs
+        (VO (vec-of
+            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+        )))
+
     (let unsubsted
         (Gamma
             (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-            (VO (vec-of
-              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
-              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-            ))
+            inputs
             (VVO (vec-of
                 (VO (vec-of
                     (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
@@ -820,7 +826,7 @@ fn rvsdg_subst_beneath_gamma() {
           ))
 
     (can-subst-Operand-beneath
-        unsubsted
+        (GammaCtx inputs)
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
     (run-schedule (saturate (saturate fast-analyses) subst))
@@ -850,84 +856,91 @@ fn rvsdg_subst_beneath_gamma() {
 }
 
 #[test]
-fn rvsdg_subst_beneath_operand_group() {
-    // This also tests what happens when Gamma/Theta appears *within* above
+fn rvsdg_subst_beneath_inner_gamma_theta() {
+    // This tests what happens when Gamma/Theta appears *within* above
     const EGGLOG_OPERAND_GROUP_PROGRAM: &str = r#"
     (let unsubsted
-        (OperandGroup (VO (vec-of
-            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-            (Node (Theta
-                  (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                  (VO (vec-of
-                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
-                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                  ))
-                  (VO (vec-of
-                    (Node (PureOp (blt (BoolT)
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
-                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                  ))
-                ))
-            (Node (Gamma
+        (Theta
+            (Arg 0)
+            (VO (vec-of (Arg 0) (Arg 1) (Arg 2)(Arg 3) (Arg 4) (Arg 5)))
+            (VO (vec-of
                 (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                (VO (vec-of
-                  (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
-                  (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                ))
-                (VVO (vec-of
-                    (VO (vec-of
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                (Node (Theta
+                      (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                      (VO (vec-of
+                        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
                         (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                    ))
-                    (VO (vec-of
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                      ))
+                      (VO (vec-of
+                        (Node (PureOp (blt (BoolT)
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
                         (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                      ))
                     ))
-                ))
-              ))
-            ))))
+                (Node (Gamma
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                    (VO (vec-of
+                      (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+                      (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                    ))
+                    (VVO (vec-of
+                        (VO (vec-of
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                        ))
+                        (VO (vec-of
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                        ))
+                    ))
+                  ))
+                ))))
 
     (can-subst-Operand-beneath
-        unsubsted
+        (ThetaCtx
+            (VO (vec-of (Arg 0) (Arg 1) (Arg 2)(Arg 3) (Arg 4) (Arg 5))))
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
     (run-schedule (saturate (saturate fast-analyses) subst))
 
     (let expected
-        (OperandGroup (VO (vec-of
+        (Theta
             (Arg 0)
-            (Node (Theta
-                  (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                  (VO (vec-of
-                    (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
-                    (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
-                  ))
-                  (VO (vec-of
-                    (Node (PureOp (blt (BoolT)
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
-                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                  ))
-                ))
-            (Node (Gamma
+            (VO (vec-of (Arg 0) (Arg 1) (Arg 2)(Arg 3) (Arg 4) (Arg 5)))
+            (VO (vec-of
                 (Arg 0)
-                (VO (vec-of
-                  (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
-                  (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
-                ))
-                (VVO (vec-of
-                    (VO (vec-of
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                (Node (Theta
+                      (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                      (VO (vec-of
+                        (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
+                        (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
+                      ))
+                      (VO (vec-of
+                        (Node (PureOp (blt (BoolT)
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
                         (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                      ))
                     ))
+                (Node (Gamma
+                    (Arg 0)
                     (VO (vec-of
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                      (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
+                      (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
                     ))
-                ))
-              ))
-            ))))
+                    (VVO (vec-of
+                        (VO (vec-of
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                        ))
+                        (VO (vec-of
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                        ))
+                    ))
+                  ))
+                ))))
     (check (= unsubsted expected))
     "#;
     let mut egraph = new_rvsdg_egraph();

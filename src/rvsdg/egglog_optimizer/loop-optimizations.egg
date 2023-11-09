@@ -8,7 +8,7 @@
        (let pass-through (PassThroughArguments (vec-length outputs)))
        (union theta
           (Gamma
-            (SubstOperandAll pred after-one-iter)
+            (SubstOperandAll pred (VO inputs))
             after-one-iter
             (VVO
               (vec-of

@@ -6,17 +6,16 @@ main {
 block:
  block:
   block:
-   zero: int = const 0;
    two: int = const 2;
-   isless: bool = lt x zero;
+   isless: bool = lt x two;
    if isless:
     break 2
    else:
     break 1
-  xy: int = add x y;
-  result: int = mul xy two;
+  double: int = add x x;
+  result: int = mul double two;
   break 1
- result: int = add x y;
+ result: int = add x x;
 block:
  print result;
  return

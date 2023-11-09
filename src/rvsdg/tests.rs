@@ -1301,9 +1301,9 @@ fn test_conditional_invariant_code_motion() {
 fn test_conditional_invariant_code_motion_2() {
     const EGGLOG_GAMMA_PROGRAM: &str = r#"
     (let add
-        (Node (PureOp (badd (BoolT) (Arg 2) (Arg 3)))))
+        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))
     (let gamma-inputs
-        (VO (vec-of (Arg 6) (Arg 7) (Arg 8) (Arg 9))))
+        (VO (vec-of (Arg 6) (Arg 7) (Arg 8))))
     (let gamma
         (Gamma
             (Arg 9)
@@ -1329,25 +1329,22 @@ fn test_conditional_invariant_code_motion_2() {
         (Gamma
             (Arg 9)
             (VO (vec-of
-                    (Arg 6) (Arg 7) (Arg 8) (Arg 9)
-                    (Node (PureOp (badd (BoolT) (Arg 8) (Arg 9))))))
+                    (Arg 6) (Arg 7) (Arg 8)
+                    (Node (PureOp (badd (BoolT) (Arg 7) (Arg 8))))))
             (VVO (vec-of
                 (VO (vec-of
                     (Arg 0)
-                    (Node (PureOp (bmul (BoolT) (Arg 4) (Arg 4))))))
+                    (Node (PureOp (bmul (BoolT) (Arg 3) (Arg 3))))))
                 (VO (vec-of
                     (Arg 0)
-                    (Node (PureOp (bmul (BoolT) (Arg 4) (Arg 1))))))
+                    (Node (PureOp (bmul (BoolT) (Arg 3) (Arg 1))))))
             ))
           ))
     (extract gamma)
     (check (= gamma new-gamma))
     "#;
     let mut egraph = new_rvsdg_egraph();
-    println!(
-        "{:?}",
-        egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap()
-    );
+    egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
 }
 
 #[test]

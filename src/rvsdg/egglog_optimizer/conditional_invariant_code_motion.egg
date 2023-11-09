@@ -13,12 +13,15 @@
     ((set (prefix-containing-Operand gamma e) (+ i 1)))
     :ruleset fast-analyses)
 
-; Limit blowup by only repeatedly hoisting so many times
+; Limit blowup by only repeatedly hoisting so many times and by limiting the
+; number of branches we hoist from or max number of inputs we can add.
 (let max-hoists 1)
 (function hoist-count (Body) i64 :merge (max old new))
 (rule ((= gamma (Gamma pred inputs outputs)))
       ((set (hoist-count gamma) 0))
       :ruleset fast-analyses)
+(let max-branches 2)
+(let max-inputs 4)
 
 ; Hoist code out of a gamma, adding it as an argument instead.
 (rule 
@@ -33,6 +36,8 @@
      (Body-is-pure gamma)
      (= n (VecOperand-length (VO inputs)))
      (< (hoist-count gamma) max-hoists)
+     (<= (VecVecOperand-length outputs) max-branches)
+     (<= (+ 1 n) max-inputs)
      (> (VecVecOperand-length outputs) 1))
     ((let new-inputs
         ; Move hoist-me into the parent context and add it as an input

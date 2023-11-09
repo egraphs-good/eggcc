@@ -1350,7 +1350,10 @@ fn test_conditional_invariant_code_motion_2() {
     );
 }
 
+<<<<<<< HEAD
 #[test]
+=======
+>>>>>>> c16a31f (fmt)
 fn rvsdg_loop_inv_detect_simple() {
     const EGGLOG_THETA_PROGRAM1: &str = r#"
     (let t1 

@@ -39,7 +39,7 @@ def main():
                 inst_file_str = f.read()
                 # strip the first piece of the string off to get just the number of instructions
                 # casting to an int
-                result["total_dyn_inst"] = int(inst_file_str[len("total_dyn_inst: ")])
+                result["total_dyn_inst"] = int(inst_file_str[len("total_dyn_inst: "):])
 
             res.append(result)
 

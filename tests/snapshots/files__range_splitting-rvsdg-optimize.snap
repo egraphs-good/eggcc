@@ -12,7 +12,7 @@ expression: visualization.result
   print v8;
   v14: int = add v8 v6;
   v17: int = const 5;
-  v19: bool = lt v6 v17;
+  v19: bool = lt v14 v17;
   v6: int = id v14;
   br v19 .__9__ .__23__;
 .__23__:

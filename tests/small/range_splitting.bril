@@ -33,10 +33,11 @@
   print two;
 .end_if:
 
-  b: int = const 5;
-  loop_cond: bool = lt i b;
   one: int = const 1;
   i: int = add i one;
+
+  b: int = const 5;
+  loop_cond: bool = lt i b;
   br loop_cond .top .end;
 .end:
 

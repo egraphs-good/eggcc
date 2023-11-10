@@ -10,12 +10,10 @@ expression: visualization.result
   v10: int = id v0;
   jmp .__12__;
 .__43__:
-  v47: int = const 1;
-  v48: bool = eq v29 v47;
   v8: int = id v28;
   v9: int = id v30;
   v10: int = id v31;
-  br v48 .__12__ .__51__;
+  br v15 .__12__ .__49__;
 .__33__:
   v36: int = add v8 v9;
   v38: int = const 1;
@@ -34,7 +32,7 @@ expression: visualization.result
 .__12__:
   v15: bool = lt v8 v10;
   br v15 .__33__ .__22__;
-.__51__:
+.__49__:
   print v8;
 }
 

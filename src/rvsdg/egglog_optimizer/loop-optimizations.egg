@@ -32,8 +32,8 @@
        (= (VecOperand-length theta_outputs) 2)
        (= (VecOperand-get theta_outputs 0) (Project 0 gamma))
        (= (VecOperand-get theta_outputs 1) (Node (PureOp (badd IntT
-                  (Arg 1)
-                  (Node (PureOp (Const IntT const (Num 1))))))))
+                    (Arg 1)
+                    (Node (PureOp (Const IntT const (Num 1))))))))
 
        (= gamma (Gamma gamma_pred gamma_inputs gamma_outputs))
        (= gamma_pred (Node (PureOp (blt BoolT (Arg 1) a))))
@@ -59,9 +59,9 @@
 
        (let final (Gamma (Node (PureOp (blt (BoolT) a b)))
                          (VO (vec-of (Project 0 upper) a))
-                         (VVO (vec-of (VO (vec-of (Project 0 lower) (Project 1 lower)))
-                                      (PassThroughArguments 2)))))
+                         (VVO (vec-of (PassThroughArguments 2)
+                                      (VO (vec-of (Project 0 lower) b))))))
 
        (union theta final)))
-       ; (union theta (OperandGroup (VO (vec-of (Node (PureOp (Const IntT const (Num 1))))
-       ;                                        (Node (PureOp (Const IntT const (Num 1))))))))))
+       ; (union theta final)
+       ; (delete (Theta theta_pred theta_inputs theta_outputs))))

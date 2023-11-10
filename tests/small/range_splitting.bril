@@ -21,8 +21,8 @@
   i: int = const 0;
 
 .top:
-  five: int = const 5;
-  if_cond: bool = lt i five;
+  a: int = const 5;
+  if_cond: bool = lt i a;
   br if_cond .then_if .else_if;
 .then_if:
   one: int = const 1;
@@ -33,7 +33,8 @@
   print two;
 .end_if:
 
-  loop_cond: bool = lt i five;
+  b: int = const 5;
+  loop_cond: bool = lt i b;
   one: int = const 1;
   i: int = add i one;
   br loop_cond .top .end;

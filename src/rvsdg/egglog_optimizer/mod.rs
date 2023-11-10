@@ -32,16 +32,17 @@ pub fn rvsdg_egglog_code() -> String {
 }
 
 pub fn rvsdg_egglog_schedule() -> String {
-    // The current schedule runs three iterations.
-    // In-between each iteration, we saturate the subst rules.
-    // It is sound to not saturate these substitution rules,
-    // but it helps substitutions go through since
-    // they take many iterations.
-
     "(run-schedule
-        (repeat 5 (saturate fast-analyses)
-                  (run)
-                  (saturate subst))
+        ; It is sound to not saturate fast-analyses/subst, but we do because
+        ; they won't blow up and will help other rules go through.
+        (repeat 5
+            (saturate fast-analyses)
+            (run)
+            (saturate subst))
+        ; Right now, subst-beneath is inefficent (it extracts every possible
+        ; spine - we are working on this!), so we only run it a few times at the
+        ; end to apply substitutions that the main optimizations find. It's
+        ; interleaved with fast-analyses because it relies on reified vecs.
         (repeat 6 subst-beneath (saturate fast-analyses))
     )"
     .to_string()

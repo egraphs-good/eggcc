@@ -36,16 +36,16 @@ fn boundary_analysis(bril_op: BrilOp) -> String {
             "
         (rule ((= true (is_inv_operand theta operand)) 
                 (= false (is_inv_expr theta expr))
-            (= expr ({bop} ty operand b)))
-            ((boundary_operand theta operand)) :ruleset fast-analyses)
+                (= expr ({bop} ty operand b)))
+            ((boundary_operand theta operand)) :ruleset boundary-analyses)
         
         (rule ((= true (is_inv_operand theta operand)) 
                 (= false (is_inv_expr theta expr))
                 (= expr ({bop} ty a operand)))
-            ((boundary_operand theta operand)) :ruleset fast-analyses)
+            ((boundary_operand theta operand)) :ruleset boundary-analyses)
         "
         ),
-        [Some(_), None] => format!(""), // unary operator should not be on boundary.
+        [Some(_), None] => String::new(), // unary operator should not be on boundary.
         _ => unimplemented!(),
     }
 }

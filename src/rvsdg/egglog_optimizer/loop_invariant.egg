@@ -159,39 +159,42 @@
 (rule ((Node body)) ((set (is_arg_operand (Node body)) false)) :ruleset fast-analyses)
 (rule ((Project i body)) ((set (is_arg_operand (Project i body)) false)) :ruleset fast-analyses)
 
-
+(ruleset boundary-analyses)
 ;; An operand is on boundary when it's on the edge of invariant and variants
+;; Mark: since this relation depends on is_inv_TYPE functions, but their value changes overtime,
+;; fast-analyses need saturate before running boundary-analyses.
+;; An alternative solution is making it a function to bool and merge using (and old new)
 (relation boundary_operand (Body Operand))
 ;; exprs implemented in loop_invariant.rs
 ;; print
 (rule ((= true (is_inv_operand theta operand)) 
         (= false (is_inv_expr theta expr))
         (= expr  (PRINT operand state)))
-    ((boundary_operand theta operand)) :ruleset fast-analyses)
+    ((boundary_operand theta operand)) :ruleset boundary-analyses)
 
 ;; VO
 (rule ((= true (is_inv_operand theta operand))
         (= false (is_inv_vo theta vo))
         (= operand (VecOperand-get vo i)))
-    ((boundary_operand theta operand)) :ruleset fast-analyses)
+    ((boundary_operand theta operand)) :ruleset boundary-analyses)
 
-;; Gamme's pred
+;; Gamma's pred (inside the theta context)
 (rule ((= true (is_inv_operand theta operand))
         (= false (is_inv_body theta body))
         (= body (Gamma operand inputs outputs)))
-    ((boundary_operand theta operand)) :ruleset fast-analyses)
+    ((boundary_operand theta operand)) :ruleset boundary-analyses)
 
+;; Theta's pred (the same Theta we are analyszing)
+;; this case is confusing. If the pred is invariant then the loop either run once or forever.
+;; If the loop run once we don't need this optimization.
+;; If the loop run forever, we can make it run a bit faster though...
+(rule ((= true (is_inv_operand theta operand))
+        (= Theta (Theta operand inputs outputs)))
+    ((boundary_operand theta operand)) :ruleset boundary-analyses)
 
+(ruleset loop_inv_motion)
 ;; doing motions
 ;; an operand is moved when it's on the edge of invariant and variants
-;; we only need operand cause every other thing need to be in operand
-;; we also need to make sure the operand is not basic operand (Arg i) but how?
-;; Question: do I need to match on both a and b?
-;; question: if something changed in the theta, what happens to the theta in this invariant analysis?
-;; how to replace all proj at the same time?
-;; how to avoid computing the same things for the replaced Theta.
-;; how to avoid computing the same things everytime the Theta changed.
-
 (rule ((boundary_operand theta operand)
         (= theta (Theta pred inputs outputs))
         (= false (is_arg_operand operand)) ;; the operand is not simple (Arg n)
@@ -204,5 +207,5 @@
     (can-subst-Operand-beneath (ThetaCtx new_inputs) operand (Arg n))
     (union theta (OperandGroup (BodyToVecOperand n new_theta)))))
 
-; ; ;; TODO: Gamma and Theta's motion are blocked by issue #113
-
+;; TODO: Gamma and Theta's motion
+;; actually it's hard when considering the "nondeterminism as effect" problem.

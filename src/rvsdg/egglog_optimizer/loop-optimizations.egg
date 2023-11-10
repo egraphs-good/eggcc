@@ -42,7 +42,9 @@
 ;; print i
 
 ;; TODO: this might be unsound! it only copies the first output from the inner gamma,
-;;       when it should probably copy all of them
+;;       when it should probably copy all of them. We can't assert soundness right now
+;;       because the pass-though optimization doesn't remove ports. Maybe doing an
+;;       "unused" analysis of the other ports would work?
 (rule ((= theta (Theta theta_pred theta_inputs theta_outputs))
        (= i_plus_one (Node (PureOp (badd IntT
                                          (Arg 1)

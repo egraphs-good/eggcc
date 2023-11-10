@@ -16,16 +16,16 @@ expression: visualization.result
   br v15 .__12__ .__49__;
 .__33__:
   v36: int = add v8 v9;
-  v38: int = const 1;
+  v38: bool = const true;
   v28: int = id v36;
-  v29: int = id v38;
+  v29: bool = id v38;
   v30: int = id v9;
   v31: int = id v10;
   jmp .__43__;
 .__22__:
-  v24: int = const 0;
+  v24: bool = const false;
   v28: int = id v8;
-  v29: int = id v24;
+  v29: bool = id v24;
   v30: int = id v9;
   v31: int = id v10;
   jmp .__43__;

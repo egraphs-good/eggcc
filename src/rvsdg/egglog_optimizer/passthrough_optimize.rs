@@ -45,8 +45,8 @@ pub(crate) fn passthrough_optimize_rules() -> String {
        (= 2 (vec-length outputs-inner))
        (= outputs0 (VecVecOperand-get outputs 0))
        (= outputs1 (VecVecOperand-get outputs 1))
-       (= (VecOperand-get outputs0 index) (Node (PureOp (Const (IntT) (const) (Num 0)))))
-       (= (VecOperand-get outputs1 index) (Node (PureOp (Const (IntT) (const) (Num 1))))))
+       (= (VecOperand-get outputs0 index) (Node (PureOp (Const (BoolT) (const) (Bool false)))))
+       (= (VecOperand-get outputs1 index) (Node (PureOp (Const (BoolT) (const) (Bool true))))))
       ((union lhs pred)
        ;; also subsume the project
        (delete (Project index loop)))

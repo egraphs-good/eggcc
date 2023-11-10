@@ -1,22 +1,3 @@
-# i = 0
-# do:
-#   if i < 5:
-#     print 1
-#   else:
-#     print 2
-# while (i < 10)
-# print i
-# --------------
-# i = 0
-# do:
-#   print 1
-# while (i < 5)
-# if (i < 10):
-#   do:
-#     print 2
-#   while (i < 10)
-# print i
-
 @main() {
   i: int = const 0;
 

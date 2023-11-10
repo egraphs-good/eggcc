@@ -28,23 +28,24 @@
 ;;    print 1
 ;;  else:
 ;;    print 2
+;;  i++
 ;; while (i < 10)
 ;; print i
 ;; --------------
 ;; i = 0
 ;; do:
 ;;  print 1
+;;  i++
 ;; while (i < 5)
-;; if (i < 10):
+;; if (5 < 10):
 ;;  do:
 ;;    print 2
+;;    i++
 ;;  while (i < 10)
 ;; print i
 
-;; TODO: this might be unsound! it only copies the first output from the inner gamma,
-;;       when it should probably copy all of them. We can't assert soundness right now
-;;       because the pass-though optimization doesn't remove ports. Maybe doing an
-;;       "unused" analysis of the other ports would work?
+;; TODO: this rule only copies the first output from the inner gamma. I think this is sound
+;;       because the theta only has two outputs, so it couldn't use the extra gamma port.
 (rule ((= theta (Theta theta_pred theta_inputs theta_outputs))
        (= i_plus_one (Node (PureOp (badd IntT
                                          (Arg 1)

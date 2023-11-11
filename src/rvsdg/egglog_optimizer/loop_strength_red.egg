@@ -13,37 +13,64 @@
 ;; for i = 0 to n:
 ;;     a += d
 ;;     d += c
+
+(ruleset loop-strength-reduction)
+
+;; For a      theta, operand  is in the theta and either invariant or constant
+(relation inv (Body Operand))
+(rule (
+    (= theta (Theta pred inputs outputs))
+    (= (VecOperand-get outputs i) (Arg i)))
+    ((inv theta (Arg i))))
+(rule (
+    (= c (Node (PureOp (Const (IntT) (const) num))))
+    (= theta (Theta pred inputs outputs))
+    (Body-contains-Operand theta contains-i c)
+    )
+    ((inv theta c)))
+
 (rule 
     (
         ;; Find theta
         (= old-theta (Theta pred (VO inputs) (VO outputs)))
-        ; Find constant in the theta
-        (= c (Node (PureOp (Const (IntT) (const) (Num 7)))))
-        (= i (Arg 1))
-        (= old-exp (Node (PureOp (bmul (IntT) c i))))
+
+        ; Find invariant where input is same as output, or constant
+        (inv old-theta c)
+
+        ; Find loop variable (argument that gets incremented with an invariant)
+        (inv old-theta loop-incr)
+        (= (VecOperand-get (VO outputs) i) (Node (PureOp (badd (IntT) (Arg i) loop-incr))))
+
+        ; Find multiplication of loop variable and invariant
+        (= old-exp (Node (PureOp (bmul (IntT) c (Arg i)))))
+        (Body-contains-Operand old-theta contains-i old-exp)
     )
     (
-        ; Initial value of temp is i * b
-        (let d-init (Node (PureOp (bmul (IntT) c (Arg 1)))))
-        ; Value of temp in loop
-        (let d-out (Node (PureOp (badd (IntT) (Arg 3) c))))
+        ; Each time we need to update d by the product of the multiplied constant and the loop increment
+        (let addend (Node (PureOp (bmul (IntT) c loop-incr))))
+        ; n is index of our new, temporary variable d
+        (let n (vec-length inputs))
+
+        ; Initial value of d is i * c
+        (let d-init (Node (PureOp (bmul (IntT) c (VecOperand-get (VO inputs) i)))))
+
+        ; Value of d in loop
+        (let d-out (Node (PureOp (badd (IntT) (Arg n) addend))))
+
+        ; Construct optimized theta
+        (let new-inputs (VO (vec-push inputs d-init)))
         (let new-theta 
-            (Theta pred (VO (vec-push inputs d-init)) (VO (vec-push outputs d-out)))
+            (Theta pred new-inputs (VO (vec-push outputs d-out)))
         )
 
-        ; Substitute Arg 3, the temp var, for the *i expression
-        (can-subst-Operand-beneath new-theta old-exp (Arg 3))
+        ; Substitute d for the *i expression
+        (can-subst-Operand-beneath (ThetaCtx new-inputs) old-exp (Arg n))
 
+        ; Project all but last
         (union old-theta
-            (OperandGroup 
-                (VO 
-                    (vec-of
-                        (Project 0 new-theta)
-                        (Project 1 new-theta)
-                        (Project 2 new-theta)
-                    )
-                )
+            (OperandGroup
+                (BodyToVecOperand n new-theta)
             )
         )
     )
-)
+:ruleset loop-strength-reduction)

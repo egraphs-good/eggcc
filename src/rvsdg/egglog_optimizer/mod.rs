@@ -50,9 +50,14 @@ pub fn rvsdg_egglog_schedule() -> String {
         ; spine - we are working on this!), so we only run it a few times at the
         ; end to apply substitutions that the main optimizations find. It's
         ; interleaved with fast-analyses because it relies on reified vecs.
+<<<<<<< HEAD
         (repeat 6 subst-beneath (saturate fast-analyses))
     )"
     .to_string()
+=======
+        (repeat 6 subst-beneath (saturate fast-analyses)))"
+        .to_string()
+>>>>>>> 0252ac6 (Update mod.rs)
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -2,6 +2,7 @@
 @main(n: int) {
     i: int = const 3;
     x: int = add n i;
+    total: int = const 0;
 .loop:
     c: int = const 7;
     one: int = const 2;
@@ -9,10 +10,12 @@
     cond: bool = lt i n;
     y: int = mul c i;
     print y;
-    print x;
+    print y;
+    total: int = add total y;
     i: int = add i one;
     br cond .loop .done;
 .done:
+    print total;
     print x;
     print i;
 }

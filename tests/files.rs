@@ -14,7 +14,12 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
                 .collect();
 
         trials.push(Trial::test(run.name(), move || {
-            let result = run.run();
+            let result = match run.run() {
+                Err(error) => {
+                    panic!("{}", error);
+                }
+                Ok(res) => res,
+            };
 
             if result.result_interpreted.is_some() {
                 assert_eq!(result.original_interpreted, result.result_interpreted);

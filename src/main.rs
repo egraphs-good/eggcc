@@ -53,7 +53,12 @@ fn main() {
         profile_out: args.profile_out,
     };
 
-    let result = run.run();
+    let result = match run.run() {
+        Ok(result) => result,
+        Err(error) => {
+            panic!("{}", error);
+        }
+    };
 
     if args.interp {
         // just print out the result of interpreting the program

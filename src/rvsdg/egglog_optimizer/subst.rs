@@ -155,6 +155,10 @@ fn subst_beneath_rules() -> Vec<String> {
                (= new-from (PRINT from state)))
                ((can-subst-Expr-beneath above new-from (PRINT to state)))
                :ruleset subst)
+        (rule ((can-subst-Operand-beneath above from to)
+               (= new-from (PRINT op from)))
+               ((can-subst-Expr-beneath above new-from (PRINT op to)))
+               :ruleset subst-beneath)
         ".into()
     );
 

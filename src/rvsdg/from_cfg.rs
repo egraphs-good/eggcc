@@ -510,8 +510,12 @@ impl<'a> RvsdgBuilder<'a> {
                         &mut self.expr,
                         RvsdgBody::BasicOp(BasicExpr::Const(
                             ConstOps::Const,
-                            Literal::Int(*cond as i64),
-                            Type::Int,
+                            match cond {
+                                0 => bril_rs::Literal::Bool(false),
+                                1 => bril_rs::Literal::Bool(true),
+                                n => bril_rs::Literal::Int(*n as i64),
+                            },
+                            if *cond < 2 { Type::Bool } else { Type::Int },
                         )),
                     );
                     let dest_var = self.analysis.intern.intern(dst.clone());

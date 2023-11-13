@@ -201,11 +201,11 @@
         (= n (VecOperand-length inputs))
         (= inputs (VO in_vec))
         (= outputs (VO out_vec)))
-    ((let hoisted (SubstOperandAll operand inputs)) ;; need double check SubstOperandAll?
+    ((let hoisted (SubstOperandAll operand inputs))
     (let new_inputs (VO (vec-push in_vec hoisted)))
     (let new_theta (Theta pred new_inputs (VO (vec-push out_vec (Arg n)))))
-    (can-subst-Operand-beneath (ThetaCtx new_inputs) operand (Arg n))
-    (union theta (OperandGroup (BodyToVecOperand n new_theta)))))
+    (union theta (OperandGroup (BodyToVecOperand n new_theta)))
+    (can-subst-Operand-beneath (ThetaCtx new_inputs) operand (Arg n))) :ruleset loop_inv_motion)
 
 ;; TODO: Gamma and Theta's motion
 ;; actually it's hard when considering the "nondeterminism as effect" problem.

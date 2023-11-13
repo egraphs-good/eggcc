@@ -1350,7 +1350,7 @@ fn test_conditional_invariant_code_motion_2() {
 #[test]
 fn rvsdg_loop_inv_detect_simple() {
     const EGGLOG_THETA_PROGRAM1: &str = r#"
-(let t1 
+    (let t1 
     (Theta 
         (Node (PureOp 
             (beq (BoolT) 
@@ -1699,52 +1699,201 @@ fn rvsdg_loop_inv_detect_simple() {
     egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM2).unwrap();
 }
 
-// #[test]
-// fn rvsdg_loop_inv_boundary () {
-//     const EGGLOG_THETA_PROGRAM1: &str = r#"
-//     (let t1 
-//         (Theta 
-//             (Node (PureOp 
-//                 (beq (BoolT) 
-//                     (Node (PureOp 
-//                         (bdiv (IntT) (Arg 2) 
-//                                     (Node (PureOp 
-//                                         (bmul (IntT) 
-//                                             (Node (PureOp 
-//                                                 (bsub (IntT) (Arg 1) 
-//                                                             (Node (PureOp 
-//                                                                 (badd (IntT) (Arg 4) 
-//                                                                              (Arg 5)))))))
-//                                                             (Arg 3))))))) 
-//                                             (Arg 1)))) 
-//             (VO (vec-of (Arg 0)
-//                         (Node (PureOp (Const (IntT) (const) (Num 2)))) 
-//                         (Node (PureOp (Const (IntT) (const) (Num 6)))) 
-//                         (Node (PureOp (Const (IntT) (const) (Num 3)))) 
-//                         (Node (PureOp (Const (IntT) (const) (Num 0)))) 
-//                         (Node (PureOp (Const (IntT) (const) (Num 1)))))) 
-//             (VO (vec-of 
-//                     (Node (PureOp 
-//                         (PRINT (Node (PureOp 
-//                                     (bdiv (IntT) (Arg 2) 
-//                                                 (Node (PureOp 
-//                                                     (bmul (IntT) 
-//                                                         (Node (PureOp 
-//                                                             (bsub (IntT) (Arg 1)
-//                                                                         (Node (PureOp 
-//                                                                             (badd (IntT) (Arg 4) 
-//                                                                                             (Arg 5))))))) 
-//                                                                         (Arg 3)))))))
-//                                                 (Arg 0))))
-//                     (Arg 1)
-//                     (Arg 2)
-//                     (Arg 3)
-//                     (Arg 4)
-//                     (Arg 5)))))
+#[test]
+fn rvsdg_loop_inv_motion_simple() {
+    const EGGLOG_THETA_PROGRAM: &str = r#"
+    (let t1 (Theta
+                (Node
+                    (PureOp
+                    (blt (BoolT)
+                        (Node
+                        (PureOp
+                            (badd (IntT)
+                            (Arg 1)
+                            (Arg 5))))
+                        (Arg 2))))
+                (VO
+                    (vec-of
+                    (Arg 0)
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 0))))
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 5))))
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 2))))
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 3))))
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 1))))))
+                (VO
+                    (vec-of
+                    (Node
+                        (PureOp
+                        (PRINT
+                            (Node
+                            (PureOp
+                                (bdiv (IntT)
+                                (Node
+                                    (PureOp
+                                    (bmul (IntT)
+                                        (Node
+                                        (PureOp
+                                            (bsub (IntT)
+                                            (Arg 4)
+                                            (Node
+                                                (PureOp
+                                                (badd (IntT)
+                                                    (Arg 5)
+                                                    (Arg 3)))))))
+                                        (Arg 2))))
+                                (Arg 3))))
+                            (Arg 0))))
+                    (Node
+                        (PureOp
+                        (badd (IntT)
+                            (Arg 1)
+                            (Arg 5))))
+                    (Arg 2)
+                    (Arg 3)
+                    (Arg 4)
+                    (Arg 5)))))
 
-//         (run-schedule
-//             (repeat 5 (run) (saturate fast-analyses)))
-    
-        
-//     "#;
-// }
+    (run-schedule
+            (repeat 5 (run) (saturate fast-analyses))
+            (saturate boundary-analyses)
+            (saturate loop_inv_motion)
+            (saturate (saturate fast-analyses) subst)
+            (saturate (saturate fast-analyses) subst-beneath)
+    )
+
+
+    (let hoisted (Node
+                (PureOp
+                    (bdiv (IntT)
+                    (Node
+                        (PureOp
+                        (bmul (IntT)
+                            (Node
+                            (PureOp
+                                (bsub (IntT)
+                                (Arg 4)
+                                (Node
+                                    (PureOp
+                                    (badd (IntT)
+                                        (Arg 5)
+                                        (Arg 3)))))))
+                            (Arg 2))))
+                    (Arg 3)))))
+
+    (check (= false (is_arg_operand hoisted)))
+
+    (let hoisted_substed 
+            (Node
+                (PureOp
+                    (bdiv (IntT)
+                    (Node
+                        (PureOp
+                        (bmul (IntT)
+                            (Node
+                            (PureOp
+                                (bsub (IntT)
+                                (Node
+                                    (PureOp
+                                    (Const (IntT) (const)
+                                        (Num 3))))
+                                (Node
+                                    (PureOp
+                                    (badd (IntT)
+                                        (Node
+                                            (PureOp
+                                            (Const (IntT) (const)
+                                                (Num 1))))  
+                                        (Node
+                                            (PureOp
+                                            (Const (IntT) (const)
+                                                (Num 2))))))))))
+                            (Node
+                                (PureOp
+                                (Const (IntT) (const)
+                                    (Num 5)))))))
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 2))))))))
+
+    (check (boundary_operand t1 hoisted))
+
+    (let moved_theta 
+            (Theta
+                (Node
+                    (PureOp
+                    (blt (BoolT)
+                        (Node
+                        (PureOp
+                            (badd (IntT)
+                            (Arg 1)
+                            (Arg 5))))
+                        (Arg 2))))
+                (VO
+                    (vec-of
+                    (Arg 0)
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 0))))
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 5))))
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 2))))
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 3))))
+                    (Node
+                        (PureOp
+                        (Const (IntT) (const)
+                            (Num 1))))  
+                    hoisted_substed))
+                (VO
+                    (vec-of
+                    (Node
+                        (PureOp
+                        (PRINT
+                            (Arg 6)
+                            (Arg 0))))
+                    (Node
+                        (PureOp
+                        (badd (IntT)
+                            (Arg 1)
+                            (Arg 5))))
+                    (Arg 2)
+                    (Arg 3)
+                    (Arg 4)
+                    (Arg 5)
+                    (Arg 6)))))
+                    
+    (let expected (OperandGroup (VO (vec-of (Project 0 moved_theta)
+                                            (Project 1 moved_theta)
+                                            (Project 2 moved_theta)
+                                            (Project 3 moved_theta)
+                                            (Project 4 moved_theta)
+                                            (Project 5 moved_theta)))))
+    (check (= t1 expected))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM).unwrap();
+}

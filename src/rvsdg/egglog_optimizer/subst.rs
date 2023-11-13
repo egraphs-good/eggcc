@@ -330,7 +330,7 @@ fn subst_all_rules() -> Vec<String> {
 fn subst_map_rules() -> Vec<String> {
     functions_modifying_args(
         "Subst{}Map",
-        vec!["IntOperandMap"],
+        vec!["MapIntOperand"],
         "subst",
         "
         (rule ((= f (SubstOperandMap (Arg x) map))

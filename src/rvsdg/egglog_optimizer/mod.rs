@@ -7,9 +7,15 @@ pub(crate) mod fast_analyses;
 pub(crate) mod reassoc;
 pub(crate) mod subst;
 
-pub fn rvsdg_egglog_code() -> String {
+pub fn rvsdg_egglog_header_code() -> String {
     let code = vec![
         include_str!("schema.egg").to_string(),
+    ];
+    code.join("\n")
+}
+
+pub fn rvsdg_egglog_code() -> String {
+    let code = vec![
         fast_analyses::all_rules(),
         subst::all_rules(),
         include_str!("util.egg").to_string(),

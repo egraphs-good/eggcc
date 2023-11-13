@@ -38,10 +38,13 @@ pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
 pub(crate) mod to_egglog;
 
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use egglog::{EGraph, TermDag};
+use egglog::{
+    sort::{EqSort, SetSort, VecSort, I64Sort, Sort},
+    EGraph, TermDag,
+};
 
 use thiserror::Error;
 
@@ -52,7 +55,7 @@ use crate::{
 };
 
 use self::{
-    egglog_optimizer::{rvsdg_egglog_code, rvsdg_egglog_schedule},
+    egglog_optimizer::{rvsdg_egglog_code, rvsdg_egglog_header_code, rvsdg_egglog_schedule},
     from_cfg::cfg_func_to_rvsdg,
 };
 
@@ -207,6 +210,9 @@ pub(crate) fn cfg_to_rvsdg(
 }
 
 impl RvsdgProgram {
+    pub fn build_egglog_header_code(&self) -> String {
+        rvsdg_egglog_header_code()
+    }
     pub fn build_egglog_code(&self) -> (String, Vec<String>) {
         let mut fresh_names = FreshNameGen::new();
         let mut func_names = vec![];
@@ -226,8 +232,13 @@ impl RvsdgProgram {
     }
 
     pub fn optimize(&self) -> std::result::Result<Self, EggCCError> {
-        let (egglog_code, function_names) = self.build_egglog_code();
+        let egglog_header_code = self.build_egglog_header_code();
         let mut egraph = EGraph::default();
+        let _results = egraph
+            .parse_and_run_program(&egglog_header_code)
+            .map_err(EggCCError::EggLog);
+        self.register_primitives(&mut egraph);
+        let (egglog_code, function_names) = self.build_egglog_code();
         let _results = egraph
             .parse_and_run_program(egglog_code.as_str())
             .map_err(EggCCError::EggLog)?;
@@ -243,5 +254,70 @@ impl RvsdgProgram {
         }
 
         Ok(RvsdgProgram { functions })
+    }
+
+    fn register_primitives(&self, egraph: &mut EGraph) {
+        let i64: Arc<I64Sort> = egraph.get_sort().unwrap();
+        let vec_i64: Arc<VecSort> = egraph
+            .get_sort_by(|s: &Arc<VecSort>| s.element_name() == i64.name())
+            .unwrap();
+        let set_i64: Arc<SetSort> = egraph
+            .get_sort_by(|s: &Arc<SetSort>| s.element_name() == i64.name())
+            .unwrap();
+        // let operand: Arc<EqSort> = egraph
+        //     .get_sort_by(|s: &Arc<EqSort>| s.name.as_str() == "Operand")
+        //     .unwrap();
+        // let vec_operand: Arc<VecSort> = egraph
+        //     .get_sort_by(|s: &Arc<VecSort>| s.element_name() == operand.name)
+        //     .unwrap();
+        // let set_operand: Arc<SetSort> = egraph
+        //     .get_sort_by(|s: &Arc<SetSort>| s.element_name() == operand.name)
+        //     .unwrap();
+        egraph.add_primitive(egglog_extensions::SetToVec {
+            set: set_i64,
+            vec: vec_i64,
+        })
+    }
+}
+
+mod egglog_extensions {
+    use std::{collections::BTreeSet, sync::Arc};
+
+    use egglog::{
+        ast::{Expr, Literal},
+        constraint::AllEqualTypeConstraint,
+        sort::{FromSort, IntoSort, SetSort, VecSort},
+        PrimitiveLike, Value,
+    };
+
+    // Converts a set into a vec
+    pub(crate) struct SetToVec {
+        pub(crate) set: Arc<SetSort>,
+        pub(crate) vec: Arc<VecSort>,
+    }
+
+    impl PrimitiveLike for SetToVec {
+        fn name(&self) -> egglog::ast::Symbol {
+            "set->vec".into()
+        }
+
+        fn get_type_constraints(&self) -> Box<dyn egglog::constraint::TypeConstraint> {
+            AllEqualTypeConstraint::new(self.name())
+                .with_all_arguments_sort(self.set.clone())
+                .with_exact_length(2)
+                .with_output_sort(self.vec.clone())
+                .into_box()
+            // SimpleTypeConstraint::new(self.name(), vec![self.set.clone(), self.vec.clone()]).into_box()
+        }
+
+        fn apply(
+            &self,
+            values: &[egglog::Value],
+            _egraph: &egglog::EGraph,
+        ) -> Option<egglog::Value> {
+            let set = BTreeSet::<Value>::load(&self.set, &values[0]);
+            let vec: Vec<Value> = set.into_iter().collect();
+            vec.store(&self.vec)
+        }
     }
 }

@@ -1,6 +1,8 @@
-(sort IntSet (Set i64))
+(sort SetIntBase (Set i64))
+(sort VecIntBase (Vec i64))
+(datatype VecInt (VI VecIntBase))
 
-;; Note that because the merge function is set-union 
+; Note that because the merge function is set-union 
 ;; instead of set-intersect (which is sound but requires a 
 ;; different set of rules for Node and Project),
 ;; we cannot handle cases like
@@ -8,7 +10,7 @@
 
 ;; It is critical to run these rules after subst rule but before 
 ;; gamma-pull-in optimization rule
-(function arg-used-VecOperand (VecOperand) IntSet :merge (set-union old new))
+(function arg-used-VecOperand (VecOperand) SetInt :merge (set-union old new))
 (rule ((= operand (VecOperand-get operands i))
        (= operand (Arg arg)))
       ((set (arg-used-VecOperand operands) (set-of arg))))
@@ -23,6 +25,25 @@
        (Body-contains-Operand body j (Arg arg)))
       ((set (arg-used-VecOperand operands) (set-of arg))))
 
+(function MapArgOverVec (VecInt) VecOperand :unextractable)
+(function MapArgOverVecHelper (VecInt i64 VecOperandBase) VecOperand :unextractable)
+(let vec-operand-empty (vec-pop (vec-of (Arg 0))))
+(rewrite (MapArgOverVec vec) (MapArgOverVecHelper vec 0 vec-operand-empty))
+(rewrite (MapArgOverVecHelper vec i curr)
+         (MapArgOverVecHelper vec (+ i 1) (vec-push curr (Arg (vec-get vec i))))
+      :when ((< i (vec-length curr))))
+(rewrite (MapArgOverVecHelper vec (vec-length curr) curr)
+         (VO curr)
+      )
+
+(function VecAppend (VecOperand VecOperand) VecOperand)
+(function VecAppendHelper (VecOperandBase VecOperandBase i64) VecOperand)
+;; TODO
+
+;; (let subst-map (map-of (vec-get els-args-vec i) (Arg i) ...))
+(function BuildSubstMapFrom (VecInt) MapIntOperand)
+(function BuildSubstMapFromHelper (VecIntBase i64 MapIntOperandBase) MapIntOperand)
+;; TODO
 
 ;; Gamma optimization
 ;; Note this rule can also suffer from exponential explosion 
@@ -30,10 +51,10 @@
 ;; in which case this rule can generate exponential combination of pulled-in programs
 ;; (2) this rule introduce new arguments, all of which are used in one branch 
 ;; but not the other, causing the rule to be applied again.
-(rule ((= gamma (Gamma pred inputs outputs))
-       (= input (VecOperand-get inputs i))
-       (= els (vec-get outputs 0))
-       (= thn (vec-get outputs 1))
+(rule ((= gamma (Gamma pred (VO inputs) outputs))
+       (= input (VecOperand-get (VO inputs) i))
+       (= els (VecVecOperand-get outputs 0))
+       (= thn (VecVecOperand-get outputs 1))
 
        (= els-args (arg-used-VecOperand els))
        (= thn-args (arg-used-VecOperand thn))
@@ -44,10 +65,11 @@
         ;; Step 1: build the new inputs: remove (Arg i) and 
         ;; introduce arguments used by els-args
         (let els-args-vec (set->vec els-args))
-        (let new-inputs (vec-append (vec-remove inputs i) els-args-vec))
+        (let els-args-vec-operand (MapArgOverVec els-args-vec))
+        (let new-inputs (VecAppend (VO (vec-remove inputs i)) els-args-vec-operand))
 
         ;; Step 2: build the pulled-in input by substituting contexts
-        (let subst-map (map-of (vec-get args-vec i) (Arg i) ...))
+        (let subst-map (BuildSubstMapFrom els-args-vec))
         (let new-input (SubstOperandMap subst-map input))
 
         ;; Step 3: build the new outputs: substitute (Arg i) with the 
@@ -55,12 +77,14 @@
         (let new-outputs (ShiftVecVecOperand (SubstVecVecOperand i new-input outputs) i 1))
 
         ;; Step 3: union
-        (let new-gamma (Gamma pred new-inputs new-outputs))
+        (let new-gamma (Gamma pred (VO new-inputs) new-outputs))
         (union new-gamma gamma)
       ))
 
 ;; TODO list
-;; 1. implement arg-used-VecOperand; ensure the rule is monotonic (maybe with scheduling)
-;; 2. implement set->vec
+;; 1. DONE: implement arg-used-VecOperand; ensure the rule is monotonic (maybe with scheduling)
+;; 2. DONE: implement set->vec
 ;; 3. build subst-map
-;; 4. implement SubstOperandMap
+;; 4. Done: implement SubstOperandMap
+;; 5. figure out a schedule
+;; 6. implement VecAppend

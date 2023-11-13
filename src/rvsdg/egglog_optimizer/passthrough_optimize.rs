@@ -33,6 +33,22 @@ pub(crate) fn passthrough_optimize_rules() -> String {
         (delete (Project index loop))))
 
 
+;; If a gamma passes 1 along the then branch and
+;; 0 along the false branch, union project with predicate
+;; BUT only if the gamma is pure!
+(rule ((= lhs (Project index loop))
+       (= loop (Gamma pred inputs outputs))
+       (= outputs (VVO outputs-inner))
+       (= 2 (vec-length outputs-inner))
+       (= outputs0 (VecVecOperand-get outputs 0))
+       (= outputs1 (VecVecOperand-get outputs 1))
+       (= (VecOperand-get outputs0 index) (Node (PureOp (Const (BoolT) (const) (Bool false)))))
+       (= (VecOperand-get outputs1 index) (Node (PureOp (Const (BoolT) (const) (Bool true))))))
+      ((union lhs pred)
+       ;; also subsume the project
+       (delete (Project index loop))))
+
+
 ;; #######################  IMPRURE CASES ####################
 
 ;; If a theta passes along argument,
@@ -56,7 +72,6 @@ pub(crate) fn passthrough_optimize_rules() -> String {
        (= (VecOperand-get outputs1 index) (Arg index))
        (= passedthrough (ExtractedOperand (VecOperand-get inputs index))))
       ((set (ExtractedOperand lhs) passedthrough)))
-
 
 ;; if we reach a new context, union
 (rule ((= theta (Theta pred inputs outputs))

@@ -37,5 +37,10 @@ function load() {
         parsed.push(toParse);
       });
 
+  parsed.sort((l, r) => {
+      if (l.name < r.name) { return -1; }
+      if (l.name > r.name) { return 1; }
+      return 0;
+  });
   container.innerHTML = ConvertJsonToTable(parsed);
 }

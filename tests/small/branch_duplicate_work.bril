@@ -1,0 +1,14 @@
+# ARGS: 1
+@main(x: int) {
+  two: int = const 2;
+  isless: bool = lt x two;
+  br isless .less .greater;
+.less:
+  result: int = add x x;
+  jmp .done;
+.greater:
+  double: int = add x x;
+  result: int = mul double two;
+.done:
+  print result;
+}

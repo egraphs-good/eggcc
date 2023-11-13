@@ -1,4 +1,4 @@
-use crate::Optimizer;
+use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use std::fmt::Debug;
 use std::{
@@ -65,6 +65,13 @@ pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
     let results = all_configs.iter().map(|run| (run, run.run()));
 
     for (run, result) in results {
+        let result = match result {
+            Ok(res) => res,
+            Err(err) => {
+                eprintln!("Error running {}: {}", run.test_type, err);
+                continue;
+            }
+        };
         // if there's an interpreted value do that as well
         if let Some(interpreted) = result.result_interpreted {
             let mut output_path = output_dir.clone();
@@ -322,7 +329,7 @@ impl Run {
         name
     }
 
-    pub fn run(&self) -> RunOutput {
+    pub fn run(&self) -> Result<RunOutput, EggCCError> {
         let original_interpreted = if self.interp {
             Some(Optimizer::interp(
                 &self.prog_with_args.program,
@@ -336,8 +343,7 @@ impl Run {
         let (visualizations, bril_out) = match self.test_type {
             RunType::Nothing => (vec![], Some(self.prog_with_args.program.clone())),
             RunType::StructuredConversion => {
-                let structured =
-                    Optimizer::program_to_structured(&self.prog_with_args.program).unwrap();
+                let structured = Optimizer::program_to_structured(&self.prog_with_args.program)?;
                 (
                     vec![Visualization {
                         result: structured.to_string(),
@@ -348,7 +354,7 @@ impl Run {
                 )
             }
             RunType::RvsdgConversion => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let svg = rvsdg.to_svg();
                 (
                     vec![Visualization {
@@ -360,7 +366,7 @@ impl Run {
                 )
             }
             RunType::RvsdgRoundTrip => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
                 (
@@ -373,7 +379,7 @@ impl Run {
                 )
             }
             RunType::RvsdgToCfg => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 (cfg.visualizations(), None)
             }
@@ -394,7 +400,7 @@ impl Run {
                 )
             }
             RunType::RvsdgOptimize => {
-                let optimized = Optimizer::rvsdg_optimize(&self.prog_with_args.program).unwrap();
+                let optimized = Optimizer::rvsdg_optimize(&self.prog_with_args.program)?;
                 (
                     vec![Visualization {
                         result: optimized.to_string(),
@@ -405,7 +411,7 @@ impl Run {
                 )
             }
             RunType::RvsdgEgglogEncoding => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (egglog_code, _) = rvsdg.build_egglog_code();
                 (
                     vec![Visualization {
@@ -417,8 +423,8 @@ impl Run {
                 )
             }
             RunType::OptimizedRvsdg => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
-                let optimized = rvsdg.optimize().unwrap();
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let optimized = rvsdg.optimize()?;
                 let svg = optimized.to_svg();
                 (
                     vec![Visualization {
@@ -443,11 +449,11 @@ impl Run {
             _ => None,
         };
 
-        RunOutput {
+        Ok(RunOutput {
             visualizations,
             result_interpreted,
             original_interpreted,
-        }
+        })
     }
 }
 

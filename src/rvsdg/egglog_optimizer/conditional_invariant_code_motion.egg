@@ -1,0 +1,50 @@
+; If (= x (prefix-containing-operand (Gamma ...) e)), then the first x outputs
+; of Gamma contain e.
+(function prefix-containing-Operand (Body Operand) i64 :merge (max old new))
+(rule
+    ((= gamma (Gamma pred inputs outputs))
+     (Body-contains-Operand gamma 0 e))
+    ((set (prefix-containing-Operand gamma e) 0))
+    :ruleset fast-analyses)
+(rule
+    ((= gamma (Gamma pred inputs outputs))
+     (= i (prefix-containing-Operand gamma e))
+     (Body-contains-Operand gamma i e))
+    ((set (prefix-containing-Operand gamma e) (+ i 1)))
+    :ruleset fast-analyses)
+
+; Limit blowup by only repeatedly hoisting so many times and by limiting the
+; number of branches we hoist from or max number of inputs we can add.
+(let max-hoists 1)
+(function hoist-count (Body) i64 :merge (max old new))
+(rule ((= gamma (Gamma pred inputs outputs)))
+      ((set (hoist-count gamma) 0))
+      :ruleset fast-analyses)
+(let max-branches 2)
+(let max-inputs 4)
+
+; Hoist code out of a gamma, adding it as an argument instead.
+(rule 
+    ((= gamma (Gamma pred (VO inputs) outputs))
+     ; All branches contain hoist-me
+     (= (prefix-containing-Operand gamma hoist-me)
+        (VecVecOperand-length outputs))
+     (!= hoist-me (Arg any))
+     ; Can't add another version of an impure node since we might extract both.
+     ; Note: if we lift this requirement via an extraction-like substitution
+     ; procedure, then remember to add (Operand-is-pure hoist-me)!
+     (Body-is-pure gamma)
+     (= n (VecOperand-length (VO inputs)))
+     (< (hoist-count gamma) max-hoists)
+     (<= (VecVecOperand-length outputs) max-branches)
+     (<= (+ 1 n) max-inputs)
+     (> (VecVecOperand-length outputs) 1))
+    ((let new-inputs
+        ; Move hoist-me into the parent context and add it as an input
+        (VO (vec-push inputs (SubstOperandAll hoist-me (VO inputs)))))
+     (let new-gamma (Gamma pred new-inputs outputs))
+     (union gamma new-gamma)
+     ; Allow the hoisted code to be replaced with the new argument
+     (can-subst-Operand-beneath (GammaCtx new-inputs) hoist-me (Arg n))
+     ; Increment hoist count
+     (set (hoist-count new-gamma) (+ 1 (hoist-count gamma)))))

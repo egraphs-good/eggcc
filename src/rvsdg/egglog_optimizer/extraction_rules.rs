@@ -2,8 +2,9 @@ use super::BRIL_OPS;
 
 /// These extraction rules are not (yet) used to perform actual extraction.
 /// Rather, they are used to perform greedy optimizations like passthrough_optimize.
-/// Optimizations that use extraction are greedy because they may only apply to the current
-/// best program.
+/// The optimizations are performed *during* extraction- they find an opportunity to optimize,
+/// and perform the optimization, adding to the Extracted function.
+/// Optimizations that use extraction are greedy because they only apply if they lower the cost.
 pub(crate) fn extraction_rules() -> String {
     let ruleset = "extraction";
     let vec_ruleset = "extraction-vec";
@@ -199,6 +200,35 @@ pub(crate) fn extraction_rules() -> String {
       ((set (ExtractedOperand lhs)
             (OperandAndCost (Project index body-extracted) body-cost)))
       :ruleset {ruleset})
+
+
+
+;; ######################################################
+;; The following rules allow optimizations to be applied
+;; Optimizations may add to the Extracted table, meaning that 
+;; if (= (Extracted body) (BodyAndCost body-extracted body-cost)), `body-extracted` may not be equal
+;; to `body`.
+;; Once we reach a new context, such as a theta, we can union `body` and `body-extracted`, allowing
+;; the optimization to be reflected back into egglog's equivalence relation.
+;; Notice that these rules are in the normal optimization ruleset.
+
+;; if we reach a new context, union
+(rule ((= theta (Theta pred inputs outputs))
+        (= (BodyAndCost extracted cost)
+        (ExtractedBody theta)))
+    ((union theta extracted)))
+(rule ((= gamma (Gamma pred inputs outputs))
+        (= (BodyAndCost extracted cost)
+        (ExtractedBody gamma)))
+    ((union gamma extracted)))
+
+
+;; if we reach the function at the top level, union
+(rule ((= func (Func name intypes outtypes body))
+        (= (VecOperandAndCost extracted cost)
+        (ExtractedVecOperand body)))
+    ((union func
+            (Func name intypes outtypes extracted)))) 
         "
     ));
 

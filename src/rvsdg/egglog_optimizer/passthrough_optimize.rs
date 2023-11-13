@@ -19,8 +19,8 @@ pub(crate) fn passthrough_optimize_rules() -> String {
 ;; If a gamma with two cases passes along an argument in both branches,
 ;; union project with input
 ;; BUT only if the gamma is pure!
-(rule ((= lhs (Project index loop))
-        (= loop (Gamma pred inputs outputs))
+(rule ((= lhs (Project index gamma))
+        (= gamma (Gamma pred inputs outputs))
         (= outputs (VVO outputs-inner))
         (= 2 (vec-length outputs-inner))
         (= outputs0 (VecVecOperand-get outputs 0))
@@ -30,7 +30,7 @@ pub(crate) fn passthrough_optimize_rules() -> String {
         (= passed-through (VecOperand-get inputs index)))
       ((union lhs passed-through)
         ;; also subsume the project
-        (delete (Project index loop))))
+        (delete (Project index gamma))))
 
 
 ;; If a gamma passes 1 along the then branch and
@@ -72,24 +72,6 @@ pub(crate) fn passthrough_optimize_rules() -> String {
        (= (VecOperand-get outputs1 index) (Arg index))
        (= passedthrough (ExtractedOperand (VecOperand-get inputs index))))
       ((set (ExtractedOperand lhs) passedthrough)))
-
-;; if we reach a new context, union
-(rule ((= theta (Theta pred inputs outputs))
-       (= (BodyAndCost extracted cost)
-          (ExtractedBody theta)))
-      ((union theta extracted)))
-(rule ((= gamma (Gamma pred inputs outputs))
-       (= (BodyAndCost extracted cost)
-          (ExtractedBody gamma)))
-      ((union gamma extracted)))
-
-
-;; if we reach the function at the top level, union
-(rule ((= func (Func name intypes outtypes body))
-       (= (VecOperandAndCost extracted cost)
-          (ExtractedVecOperand body)))
-      ((union func
-              (Func name intypes outtypes extracted))))
         "
     .to_string()
 }

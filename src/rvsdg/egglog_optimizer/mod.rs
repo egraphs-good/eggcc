@@ -41,6 +41,8 @@ pub fn rvsdg_egglog_schedule() -> String {
         ; they won't blow up and will help other rules go through.
         (repeat 5
             (saturate fast-analyses)
+            ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
+            (seq (saturate extraction) (saturate extraction-vec))
             (run)
             (saturate subst))
         ; Right now, subst-beneath is inefficent (it extracts every possible

@@ -15,23 +15,13 @@ expression: visualization.result
   v11: int = id v34;
   v12: int = id v35;
   v13: int = id v36;
-<<<<<<< HEAD
-  br v126 .__15__ .__129__;
-.__108__:
-  v111: int = add v10 v11;
-  v113: int = const 1;
-  v32: int = id v111;
-  v33: int = id v113;
-  v34: int = id v11;
-=======
   br v17 .__15__ .__125__;
 .__106__:
-  v109: int = add v45 v46;
+  v109: int = add v10 v11;
   v111: bool = const true;
   v32: int = id v109;
   v33: bool = id v111;
-  v34: int = id v46;
->>>>>>> main
+  v34: int = id v11;
   v35: int = id v48;
   v36: int = id v49;
   jmp .__117__;

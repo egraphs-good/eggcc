@@ -6,27 +6,13 @@ expression: visualization.result
   v2: int = const 0;
   v4: int = id v2;
   jmp .__6__;
-.__53__:
-  v54: int = const 1;
-  v55: bool = eq v46 v54;
-  v4: int = id v31;
-  br v55 .__6__ .__58__;
-.__48__:
-  v50: int = const 1;
-  v45: int = id v31;
-  v46: int = id v50;
-  jmp .__53__;
-.__41__:
-  v43: int = const 0;
-  v45: int = id v31;
-  v46: int = id v43;
-  jmp .__53__;
 .__27__:
   v29: int = const 1;
   v31: int = add v4 v29;
   v34: int = const 6;
   v36: bool = lt v4 v34;
-  br v36 .__48__ .__41__;
+  v4: int = id v31;
+  br v36 .__6__ .__40__;
 .__22__:
   v21: int = const 1;
   print v21;
@@ -41,7 +27,7 @@ expression: visualization.result
   v7: int = const 5;
   v9: bool = lt v4 v7;
   br v9 .__22__ .__15__;
-.__58__:
+.__40__:
   print v4;
 }
 

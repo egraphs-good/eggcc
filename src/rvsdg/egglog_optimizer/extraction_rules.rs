@@ -5,10 +5,13 @@ use super::BRIL_OPS;
 /// Optimizations that use extraction are greedy because they may only apply to the current
 /// best program.
 pub(crate) fn extraction_rules() -> String {
-    let ruleset = "fast-analyses";
+    let ruleset = "extraction";
+    let vec_ruleset = "extraction-vec";
     let mut res = vec![
         "(sort TermAndCost)".to_string(),
         "(function Smaller (TermAndCost TermAndCost) TermAndCost)".to_string(),
+        "(ruleset extraction)".to_string(),
+        "(ruleset extraction-vec)".to_string(),
     ];
 
     for ty in ["Expr", "Operand", "Body", "VecOperand", "VecVecOperand"] {
@@ -97,7 +100,7 @@ pub(crate) fn extraction_rules() -> String {
    (({ctor} vec))
    ((set (Extracted{vectype}Helper ({ctor} vec) 0)
          ({vectype}AndCost ({ctor} {empty_vec}) 0)))
-    :ruleset {ruleset})
+    :ruleset {vec_ruleset})
 
 ;; extract one more thing
 (rule
@@ -109,8 +112,7 @@ pub(crate) fn extraction_rules() -> String {
          ({vectype}AndCost
              ({ctor} (vec-push current expr))
              (+ current-cost expr-cost))))
-    :ruleset {ruleset})
-    
+    :ruleset {vec_ruleset})
 
             
 ;; finished extracting, create result
@@ -121,7 +123,7 @@ pub(crate) fn extraction_rules() -> String {
    (= index (vec-length vec)))
   ((set (Extracted{vectype} ({ctor} vec))
         result))
-  :ruleset {ruleset})
+  :ruleset {vec_ruleset})
       "
         ))
     }

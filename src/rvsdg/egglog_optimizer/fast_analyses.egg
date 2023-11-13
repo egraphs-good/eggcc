@@ -1,0 +1,23 @@
+; Note that because the merge function is set-union 
+;; instead of set-intersect (which is sound but requires a 
+;; different set of rules for Node and Project),
+;; we cannot handle cases like
+;; if (...) x else x - x even accompanied with rules like x - x => 0
+
+(function arg-used-VecOperand (VecOperand) SetIntBase :merge (set-union old new))
+(rule ((= operand (VecOperand-get operands i))
+       (= operand (Arg arg)))
+      ((set (arg-used-VecOperand operands) (set-of arg)))
+    :ruleset fast-analyses)
+
+(rule ((= operand (VecOperand-get operands i))
+       (= operand (Node body))
+       (Body-contains-Operand body j (Arg arg)))
+      ((set (arg-used-VecOperand operands) (set-of arg)))
+    :ruleset fast-analyses)
+
+(rule ((= operand (VecOperand-get operands i))
+       (= operand (Project k body))
+       (Body-contains-Operand body j (Arg arg)))
+      ((set (arg-used-VecOperand operands) (set-of arg)))
+    :ruleset fast-analyses)

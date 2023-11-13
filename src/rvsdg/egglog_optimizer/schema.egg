@@ -110,4 +110,9 @@
 ;         ))
 ; )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Other container definitions
 
+(sort SetIntBase (Set i64))
+(sort VecIntBase (Vec i64))
+(datatype VecInt (VI VecIntBase))

@@ -272,5 +272,6 @@ pub(crate) fn all_rules() -> String {
     res.extend(reify_vec_rules());
     res.extend(is_pure_rules());
     res.extend(region_contains_rules());
+    res.extend(vec![include_str!("fast_analyses.egg").to_string()]);
     res.join("\n")
 }

@@ -333,7 +333,7 @@ fn subst_map_rules() -> Vec<String> {
         vec!["MapIntOperand"],
         "subst",
         "
-        (rule ((= f (SubstOperandMap (Arg x) map))
+        (rule ((= f (SubstOperandMap (Arg x) (MIO map)))
                (map-contains map x))
               ((union f (map-get map x))) :ruleset subst)",
     )

@@ -8,9 +8,7 @@ pub(crate) mod reassoc;
 pub(crate) mod subst;
 
 pub fn rvsdg_egglog_header_code() -> String {
-    let code = vec![
-        include_str!("schema.egg").to_string(),
-    ];
+    let code = vec![include_str!("schema.egg").to_string()];
     code.join("\n")
 }
 
@@ -25,6 +23,7 @@ pub fn rvsdg_egglog_code() -> String {
         include_str!("interval-analysis.egg").to_string(),
         include_str!("function_inline.egg").to_string(),
         reassoc_rules(),
+        include_str!("gamma-pull-in.egg").to_string(),
     ];
     code.join("\n")
 }

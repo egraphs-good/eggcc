@@ -42,7 +42,7 @@ use std::{fmt, sync::Arc};
 
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
 use egglog::{
-    sort::{EqSort, SetSort, VecSort, I64Sort, Sort},
+    sort::{I64Sort, SetSort, Sort, VecSort},
     EGraph, TermDag,
 };
 
@@ -239,9 +239,10 @@ impl RvsdgProgram {
             .map_err(EggCCError::EggLog);
         self.register_primitives(&mut egraph);
         let (egglog_code, function_names) = self.build_egglog_code();
-        let _results = egraph
+        let results = egraph
             .parse_and_run_program(egglog_code.as_str())
             .map_err(EggCCError::EggLog)?;
+        dbg!(results);
 
         let mut functions = vec![];
         let mut termdag = TermDag::default();
@@ -284,7 +285,6 @@ mod egglog_extensions {
     use std::{collections::BTreeSet, sync::Arc};
 
     use egglog::{
-        ast::{Expr, Literal},
         constraint::AllEqualTypeConstraint,
         sort::{FromSort, IntoSort, SetSort, VecSort},
         PrimitiveLike, Value,

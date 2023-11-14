@@ -106,3 +106,32 @@
 
 ;; !!a -> a
 (rewrite (Node (PureOp (bnot (BoolT) (Node (PureOp (bnot (BoolT) a)))))) a)
+
+
+;;	if E:
+;;	       S1
+;;	else:
+;;	       S2
+;;	S3
+;;	------
+;;	if E:
+;;	       S1
+;;	       S3
+;;	else:
+;;	       S2
+;;	       S3
+
+(rule (
+       (= gamma (Gamma pred inputs (VVO outputs)))
+       (= (VO thens) (VecVecOperand-get (VVO outputs) 1)); VecOperand
+       (= (VO elses) (VecVecOperand-get (VVO outputs) 0))
+       (= plus (Node (PureOp (badd (IntT) (Project i gamma) (Project j gamma)))))
+       (Operand-is-pure plus)
+       )
+       (
+       (let new-thens (vec-push thens (Node (PureOp (badd (IntT) (VecOperand-get (VO thens) i) (VecOperand-get (VO thens) j))))))
+       (let new-elses (vec-push elses (Node (PureOp (badd (IntT) (VecOperand-get (VO elses) i) (VecOperand-get (VO elses) j))))))
+       (let new-gamma (Gamma pred inputs (VVO (vec-of (VO new-thens) (VO new-elses)))))
+       (union plus (Project (vec-length outputs) new-gamma))
+       )
+)

@@ -457,8 +457,8 @@ fn rvsdg_odd_branch_egg_roundtrip() {
          (VO (vec-of
           (Project 0 loop)
           (Project 1 loop)))
-         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
-                 (VO (vec-of (Arg 0)
+         (VVO (vec-of (VOC (vec-of (Arg 0) (Arg 1)))
+                 (VOC (vec-of (Arg 0)
                              (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
@@ -725,8 +725,8 @@ fn rvsdg_subst() {
          (VO (vec-of
           (Arg 1)
           (Arg 0)))
-         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
-                 (VO (vec-of (Arg 0)
+         (VVO (vec-of (VOC (vec-of (Arg 0) (Arg 1)))
+                 (VOC (vec-of (Arg 0)
                              (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
@@ -741,8 +741,8 @@ fn rvsdg_subst() {
          (VO (vec-of
           (Arg 1)
           (Arg 7)))
-         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
-                 (VO (vec-of (Arg 0)
+         (VVO (vec-of (VOC (vec-of (Arg 0) (Arg 1)))
+                 (VOC (vec-of (Arg 0)
                              (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
@@ -814,11 +814,11 @@ fn rvsdg_subst_beneath_gamma() {
             (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
             inputs
             (VVO (vec-of
-                (VO (vec-of
+                (VOC (vec-of
                     (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
                     (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
                 ))
-                (VO (vec-of
+                (VOC (vec-of
                     (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
                     (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
                 ))
@@ -839,11 +839,11 @@ fn rvsdg_subst_beneath_gamma() {
               (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
             ))
             (VVO (vec-of
-                (VO (vec-of
+                (VOC (vec-of
                     (Arg 0)
                     (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
                 ))
-                (VO (vec-of
+                (VOC (vec-of
                     (Arg 0)
                     (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
                 ))
@@ -885,11 +885,11 @@ fn rvsdg_subst_beneath_inner_gamma_theta() {
                       (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
                     ))
                     (VVO (vec-of
-                        (VO (vec-of
+                        (VOC (vec-of
                             (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
                             (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
                         ))
-                        (VO (vec-of
+                        (VOC (vec-of
                             (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
                             (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
                         ))
@@ -930,11 +930,11 @@ fn rvsdg_subst_beneath_inner_gamma_theta() {
                       (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
                     ))
                     (VVO (vec-of
-                        (VO (vec-of
+                        (VOC (vec-of
                             (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
                             (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
                         ))
-                        (VO (vec-of
+                        (VOC (vec-of
                             (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
                             (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
                         ))
@@ -1020,8 +1020,8 @@ fn rvsdg_shift() {
          (VO (vec-of
           (Arg 3)
           (Arg 0)))
-         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
-                 (VO (vec-of (Arg 0)
+         (VVO (vec-of (VOC (vec-of (Arg 0) (Arg 1)))
+                 (VOC (vec-of (Arg 0)
                              (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
@@ -1036,8 +1036,8 @@ fn rvsdg_shift() {
          (VO (vec-of
           (Arg 13)
           (Arg 0)))
-         (VVO (vec-of (VO (vec-of (Arg 0) (Arg 1)))
-                 (VO (vec-of (Arg 0)
+         (VVO (vec-of (VOC (vec-of (Arg 0) (Arg 1)))
+                 (VOC (vec-of (Arg 0)
                              (Node (PureOp (bmul (IntT) (Arg 1)
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
@@ -1059,11 +1059,11 @@ fn is_pure() {
               (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
             ))
             (VVO (vec-of
-                (VO (vec-of
+                (VOC (vec-of
                     (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
                     (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
                 ))
-                (VO (vec-of
+                (VOC (vec-of
                     (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
                     (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
                 ))
@@ -1077,7 +1077,7 @@ fn is_pure() {
     (check (Body-is-pure pure-gamma))
 
     (let output1
-        (VO (vec-of
+        (VOC (vec-of
             (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
             (Node (PureOp (PRINT
                 (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
@@ -1094,7 +1094,7 @@ fn is_pure() {
               (Arg 8) ; print edge
             ))
             (VVO (vec-of
-                (VO (vec-of
+                (VOC (vec-of
                     (Node (PureOp (badd (BoolT) (Arg 0) (Arg 1))))
                     (Arg 2)
                 ))
@@ -1121,7 +1121,7 @@ fn is_pure() {
         )))
     )))
     (fail (check (Body-is-pure impure-gamma)))
-    (check (= 1 (VecOperand-pure-prefix output1)))
+    (check (= 1 (VecOperandCtx-pure-prefix output1)))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
@@ -1168,10 +1168,10 @@ fn rvsdg_body_contains_gamma() {
               (Arg 12)
             ))
             (VVO (vec-of
-                (VO (vec-of
+                (VOC (vec-of
                     (Node (PureOp (badd (BoolT) (Arg 1) (Arg 0))))
                 ))
-                (VO (vec-of
+                (VOC (vec-of
                     (Arg 0)
                 ))
             ))
@@ -1222,8 +1222,8 @@ fn rvsdg_body_contains_operand_group() {
             gamma-pred
             (VO (vec-of gamma-input (Arg 12)))
             (VVO (vec-of
-                (VO (vec-of gamma-output))
-                (VO (vec-of (Arg 0)))
+                (VOC (vec-of gamma-output))
+                (VOC (vec-of (Arg 0)))
             ))
           ))
 
@@ -1267,8 +1267,8 @@ fn test_conditional_invariant_code_motion() {
             (Node (PureOp (badd (BoolT) (Arg 1) (Arg 1))))
             gamma-inputs
             (VVO (vec-of
-                (VO (vec-of add (Arg 0)))
-                (VO (vec-of (Arg 0) add))
+                (VOC (vec-of add (Arg 0)))
+                (VOC (vec-of (Arg 0) add))
             ))
           ))
     
@@ -1286,8 +1286,8 @@ fn test_conditional_invariant_code_motion() {
                 (Node (PureOp (badd (BoolT) (Arg 8) (Arg 7))))
             ))
             (VVO (vec-of
-                (VO (vec-of (Arg 2) (Arg 0)))
-                (VO (vec-of (Arg 0) (Arg 2)))
+                (VOC (vec-of (Arg 2) (Arg 0)))
+                (VOC (vec-of (Arg 0) (Arg 2)))
             ))
           ))
     
@@ -1309,10 +1309,10 @@ fn test_conditional_invariant_code_motion_2() {
             (Arg 9)
             gamma-inputs
             (VVO (vec-of
-                (VO (vec-of
+                (VOC (vec-of
                     (Arg 0)
                     (Node (PureOp (bmul (BoolT) add add)))))
-                (VO (vec-of
+                (VOC (vec-of
                     (Arg 0)
                     (Node (PureOp (bmul (BoolT) add (Arg 1))))))
             ))
@@ -1332,10 +1332,10 @@ fn test_conditional_invariant_code_motion_2() {
                     (Arg 6) (Arg 7) (Arg 8)
                     (Node (PureOp (badd (BoolT) (Arg 7) (Arg 8))))))
             (VVO (vec-of
-                (VO (vec-of
+                (VOC (vec-of
                     (Arg 0)
                     (Node (PureOp (bmul (BoolT) (Arg 3) (Arg 3))))))
-                (VO (vec-of
+                (VOC (vec-of
                     (Arg 0)
                     (Node (PureOp (bmul (BoolT) (Arg 3) (Arg 1))))))
             ))

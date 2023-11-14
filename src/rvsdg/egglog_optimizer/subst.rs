@@ -198,7 +198,7 @@ fn subst_beneath_rules() -> Vec<String> {
                 :ruleset subst-beneath)"
         ));
     }
-    
+
     res.push(
         "
         (rule ((can-subst-Operand-beneath above from to)
@@ -209,7 +209,8 @@ fn subst_beneath_rules() -> Vec<String> {
                (= new-from (PRINT op from)))
                ((can-subst-Expr-beneath above new-from (PRINT op to)))
                :ruleset subst-beneath)
-        ".into()
+        "
+        .into(),
     );
 
     res

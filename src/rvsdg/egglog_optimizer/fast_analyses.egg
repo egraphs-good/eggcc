@@ -4,20 +4,23 @@
 ;; we cannot handle cases like
 ;; if (...) x else x - x even accompanied with rules like x - x => 0
 
+(function arg-used-Operand (Operand) SetIntBase :merge (set-union old new))
+(rule ((= operand (Arg arg)))
+      ((set (arg-used-Operand operand) (set-of arg)))
+    :ruleset fast-analyses)
+
+(rule ((= operand (Node body))
+       (Body-contains-Operand body j (Arg arg)))
+      ((set (arg-used-Operand operand) (set-of arg)))
+    :ruleset fast-analyses)
+
+(rule ((= operand (Project k body))
+       (Body-contains-Operand body j (Arg arg)))
+      ((set (arg-used-Operand operand) (set-of arg)))
+    :ruleset fast-analyses)
+
 (function arg-used-VecOperand (VecOperand) SetIntBase :merge (set-union old new))
 (rule ((= operand (VecOperand-get operands i))
-       (= operand (Arg arg)))
-      ((set (arg-used-VecOperand operands) (set-of arg)))
-    :ruleset fast-analyses)
-
-(rule ((= operand (VecOperand-get operands i))
-       (= operand (Node body))
-       (Body-contains-Operand body j (Arg arg)))
-      ((set (arg-used-VecOperand operands) (set-of arg)))
-    :ruleset fast-analyses)
-
-(rule ((= operand (VecOperand-get operands i))
-       (= operand (Project k body))
-       (Body-contains-Operand body j (Arg arg)))
-      ((set (arg-used-VecOperand operands) (set-of arg)))
+       (= arg-set (arg-used-Operand operand)))
+      ((set (arg-used-VecOperand operands) arg-set))
     :ruleset fast-analyses)

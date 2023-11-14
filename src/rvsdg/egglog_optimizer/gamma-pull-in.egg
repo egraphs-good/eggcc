@@ -13,23 +13,28 @@
        (= thn-args (arg-used-VecOperand thn))
        (set-contains els-args i)
        (set-not-contains thn-args i)
+       (= inp-args (arg-used-Operand inp))
        )
       (
         ;; Step 1: build the new inps: remove (Arg i) and 
-        ;; introduce arguments used by els-args
-        (let els-args-vec (VI (set->vec els-args)))
-        (let els-args-vec-operand (MapArgOverVec els-args-vec))
-        (let new-inps (VecAppend (VO (vec-remove inps i)) els-args-vec-operand))
+        ;; introduce arguments used by inp-args
+        (let inp-args-vec (VI (set->vec inp-args)))
+        (let inp-args-vec-operand (MapArgOverVec inp-args-vec))
+        (extract inps)
+        (extract inp-args-vec)
+        (extract (vec-remove inps i))
+        (let new-inps (VecAppend (VO (vec-remove inps i)) inp-args-vec-operand))
 
         ;; Step 2: build the pulled-in inp by substituting contexts
-        (let subst-map (BuildSubstMapFrom els-args-vec))
+        (let subst-map (BuildSubstMapFrom inp-args-vec (vec-length inps))) ;; need to right shift by vec-length
         (let new-inp (SubstOperandMap inp subst-map))
 
         ;; Step 3: build the new outputs: substitute (Arg i) with the 
         ;; inp built in the last step, and shift all other inps by one
-        (let new-outputs (ShiftVecVecOperand (SubstVecVecOperand outputs i new-inp) i 1))
+        (let new-outputs (ShiftVecVecOperand (SubstVecVecOperand outputs i new-inp) i -1))
 
         ;; Step 3: union
         (let new-gamma (Gamma pred new-inps new-outputs))
         (union new-gamma gamma)
+        (delete (Gamma pred (VO inps) outputs))
       ))

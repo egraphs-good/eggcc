@@ -160,7 +160,7 @@ fn functions_modifying_args(
     for ty in ["Expr", "Operand", "Body", "VecOperand", "VecVecOperand"] {
         let fname = func_name_fmt.replace("{}", ty);
         res.push(format!(
-            "(function {fname} ({ty} {aux_params_str}) {ty} :unextractable)",
+            "(function {fname} ({ty} {aux_params_str}) {ty} :cost 10000)",
         ));
     }
     let fname_expr = func_name_fmt.replace("{}", "Expr");
@@ -252,7 +252,7 @@ fn functions_modifying_args(
         // rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
         res.push(format!(
             "
-            (function {fname_vec}-helper ({vectype} {aux_params_str} i64) {vectype})
+            (function {fname_vec}-helper ({vectype} {aux_params_str} i64) {vectype} :unextractable)
             (rewrite
                 ({fname_vec} vec {aux_args_str})
                 ({fname_vec}-helper vec {aux_args_str} 0)
@@ -335,7 +335,11 @@ fn subst_map_rules() -> Vec<String> {
         "
         (rule ((= f (SubstOperandMap (Arg x) (MIO map)))
                (map-contains map x))
-              ((union f (map-get map x))) :ruleset subst)",
+              ((union f (map-get map x))) :ruleset subst)
+              
+        (rule ((= f (SubstOperandMap (Arg x) (MIO map)))
+               (map-not-contains map x))
+              ((union f (Arg x))) :ruleset subst)",
     )
 }
 

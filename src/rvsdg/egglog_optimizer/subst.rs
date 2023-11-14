@@ -1,10 +1,10 @@
 use super::BRIL_OPS;
 
 /// "subst-beneath" rules support replacing a specific {Expr, Body, Operand,
-///  VecOperand, VecVecOperand} with another.
+///  VecOperand, VecVecOperandCtx} with another.
 ///
 /// - The key relations are (relation can-subst-TYPE-beneath (Context TYPE TYPE)),
-///   where TYPE is one of {Expr, Body, Operand, VecOperand, VecVecOperand}.
+///   where TYPE is one of {Expr, Body, Operand, VecOperand, VecVecOperandCtx}.
 /// - A context is a (GammaCtx inputs) or a (ThetaCtx inputs).
 /// - Add (can-subst-TYPE-beneath above from to) if it is sound to replace zero
 ///   or more occurrences of `from` with `to`, strictly within `above`.
@@ -32,8 +32,9 @@ fn subst_beneath_rules() -> Vec<String> {
         (relation can-subst-Expr-beneath (Context Expr Expr))
         (relation can-subst-Operand-beneath (Context Operand Operand))
         (relation can-subst-Body-beneath (Context Body Body))
-        (relation can-subst-VecVecOperand-beneath (Context VecVecOperand VecVecOperand))
+        (relation can-subst-VecVecOperandCtx-beneath (Context VecVecOperandCtx VecVecOperandCtx))
         (relation can-subst-VecOperand-beneath (Context VecOperand VecOperand))
+        (relation can-subst-VecOperandCtx-beneath (Context VecOperandCtx VecOperandCtx))
 
         ;; Base case 'do the substitution' rules
         (rule ((can-subst-Operand-beneath above from to)
@@ -52,7 +53,7 @@ fn subst_beneath_rules() -> Vec<String> {
                (= theta     (Theta pred-from inputs outputs-from)))
               ((union theta (Theta pred-from inputs outputs-to)))
               :ruleset subst-beneath)
-        (rule ((can-subst-VecVecOperand-beneath above from to)
+        (rule ((can-subst-VecVecOperandCtx-beneath above from to)
                (= above (GammaCtx inputs))
                (= gamma     (Gamma pred inputs from)))
               ((union gamma (Gamma pred inputs to)))
@@ -131,10 +132,11 @@ fn subst_beneath_rules() -> Vec<String> {
         };
     }
 
-    // Learn can-subst-{VecOperand, VecVecOperand}-beneath
+    // Learn can-subst-{VecOperand, VecVecOperandCtx}-beneath
     for (vectype, ctor, eltype) in &[
         ("VecOperand", "VO", "Operand"),
-        ("VecVecOperand", "VVO", "VecOperand"),
+        ("VecOperandCtx", "VOC", "Operand"),
+        ("VecVecOperandCtx", "VVO", "VecOperandCtx"),
     ] {
         // Propagate info bottom-up
         res.push(format!(
@@ -165,7 +167,7 @@ fn subst_beneath_rules() -> Vec<String> {
     res
 }
 
-// Below, TYPE is one of {Expr, Operand, Body, VecOperand, VecVecOperand}
+// Below, TYPE is one of {Expr, Operand, Body, VecOperand, VecVecOperandCtx}
 
 // Generate rules to replace args via some procedure. See below for examples.
 //
@@ -183,7 +185,14 @@ fn functions_modifying_args(
 
     // Define functions
     let aux_params_str = aux_param_types.join(" ");
-    for ty in ["Expr", "Operand", "Body", "VecOperand", "VecVecOperand"] {
+    for ty in [
+        "Expr",
+        "Operand",
+        "Body",
+        "VecOperand",
+        "VecOperandCtx",
+        "VecVecOperandCtx",
+    ] {
         let fname = func_name_fmt.replace("{}", ty);
         res.push(format!(
             "(function {fname} ({ty} {aux_params_str}) {ty} :unextractable)",
@@ -282,7 +291,8 @@ fn functions_modifying_args(
     // Rules to compute on VecOperand
     for (vectype, ctor, eltype) in [
         ("VecOperand", "VO", "Operand"),
-        ("VecVecOperand", "VVO", "VecOperand"),
+        ("VecOperandCtx", "VOC", "Operand"),
+        ("VecVecOperandCtx", "VVO", "VecOperandCtx"),
     ] {
         let fname_vec = func_name_fmt.replace("{}", vectype);
         let fname_eltype = func_name_fmt.replace("{}", eltype);

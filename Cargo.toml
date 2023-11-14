@@ -9,8 +9,7 @@ name = "files"
 
 
 [dependencies]
-#egglog = { git = "https://github.com/oflatt/egg-smol", rev = "45e9f5f" }
-egglog = { path = "../egg-smol" }
+egglog = { git = "https://github.com/oflatt/egg-smol", rev = "2be79cec8a0d4a68304fc20b8d97f7562b2e6ad3" }
 log = "0.4.19"
 thiserror = "1"
 lalrpop-util = { version = "0.19.8", features = ["lexer"] }

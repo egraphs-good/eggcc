@@ -1,11 +1,13 @@
 use bril_rs::Type;
 
 use self::{
-    constant_fold::constant_fold_egglog, loop_invariant::loop_invariant_detection,
-    passthrough_optimize::passthrough_optimize_rules, reassoc::reassoc_rules,
+    constant_fold::constant_fold_egglog, extraction_rules::extraction_rules,
+    loop_invariant::loop_invariant_detection, passthrough_optimize::passthrough_optimize_rules,
+    reassoc::reassoc_rules,
 };
 
 pub(crate) mod constant_fold;
+pub(crate) mod extraction_rules;
 pub(crate) mod fast_analyses;
 pub(crate) mod loop_invariant;
 pub(crate) mod passthrough_optimize;
@@ -19,6 +21,8 @@ pub fn rvsdg_egglog_code() -> String {
         subst::all_rules(),
         include_str!("util.egg").to_string(),
         constant_fold_egglog(),
+        extraction_rules(),
+        passthrough_optimize_rules(),
         include_str!("gamma_rewrites.egg").to_string(),
         passthrough_optimize_rules(),
         include_str!("interval-analysis.egg").to_string(),
@@ -38,6 +42,8 @@ pub fn rvsdg_egglog_schedule() -> String {
         (repeat 5
             (saturate fast-analyses)
             (saturate boundary-analyses)
+            ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
+            (seq (saturate extraction) (saturate extraction-vec))
             (run)
             (saturate subst))
         ; Right now, subst-beneath is inefficent (it extracts every possible

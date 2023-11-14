@@ -70,6 +70,7 @@
 (function Gamma (Operand VecOperand VecVecOperandCtx) Body)
 ;; loops
 ;; predicate (inside loop), inputs (outside loop), outputs (inside loop)
+;; todo make outputs a vecoperandctx instead of a vecoperand
 (function Theta (Operand VecOperand VecOperand) Body)
 ;; A body can also just be a VecOperand for convenience
 ;; This has no corresponding node in rust, it can be

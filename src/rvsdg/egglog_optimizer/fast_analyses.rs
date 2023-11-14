@@ -10,7 +10,7 @@ fn reify_vec_rules() -> Vec<String> {
         // Reify vec-get to be able to be able to match on vec contents
         res.push(format!(
             "
-          (function {vectype}-get ({vectype} i64) {eltype})
+          (function {vectype}-get ({vectype} i64) {eltype} :unextractable)
           (rule (({ctor} x) (> (vec-length x) 0))
                 ((union ({vectype}-get ({ctor} x) 0) (vec-get x 0)))
                 :ruleset fast-analyses)

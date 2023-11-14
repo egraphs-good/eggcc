@@ -8,7 +8,7 @@
   ```
   cargo install cargo-insta
   ```
-- Run the tests with `cargo test` and ensure things build and run without errors.
+- Run the tests with `make` and ensure things build and run without errors. You may need to install `graphviz`.
 
 ## How to add a test
 - Add a bril file under `tests/`.

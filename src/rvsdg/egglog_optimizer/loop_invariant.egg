@@ -179,11 +179,16 @@
         (= Theta (Theta operand inputs outputs)))
     ((boundary_operand theta operand)) :ruleset boundary-analyses)
 
+(rule ((= theta (Theta pred inputs outputs)))
+      ((set (hoist-count theta) 0))
+      :ruleset fast-analyses)
+
 ;; doing motions
 ;; an operand is moved when it's on the edge of invariant and variants
 (rule ((boundary_operand theta operand)
         (= theta (Theta pred inputs outputs))
         (= false (is_arg_operand operand)) ;; the operand is not simple (Arg n)
+        (< (hoist-count gamma) 1)
         (= n (VecOperand-length inputs))
         (= inputs (VO in_vec))
         (= outputs (VO out_vec)))
@@ -191,7 +196,8 @@
     (let new_inputs (VO (vec-push in_vec hoisted)))
     (let new_theta (Theta pred new_inputs (VO (vec-push out_vec (Arg n)))))
     (union theta (OperandGroup (BodyToVecOperand n new_theta)))
-    ;(delete (Theta pred inputs outputs))
+    ;(delete (Theta pred inputs outputs)) ;; it extract some other thing...
+    (set (hoist-count theta) 1) ;; no multiple hoist out of same theta.
     (can-subst-Operand-beneath (ThetaCtx new_inputs) operand (Arg n))))
 
 ;; TODO: Gamma and Theta's motion

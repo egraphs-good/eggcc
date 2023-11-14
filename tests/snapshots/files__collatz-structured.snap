@@ -9,6 +9,7 @@ block:
  one: int = const 1;
  zero: int = const 0;
  var: int = id arg;
+ counter: int = id zero;
 while true:
  block:
   block:
@@ -19,6 +20,7 @@ while true:
     break 1
   block:
    block:
+    counter: int = add counter one;
     d: int = div var two;
     m: int = mul d two;
     mod: int = sub var m;
@@ -33,7 +35,7 @@ while true:
   var: int = div var two;
   break 1
  block:
-  print arg;
+  print counter;
   return
 
 }

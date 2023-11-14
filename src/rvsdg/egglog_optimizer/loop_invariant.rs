@@ -61,13 +61,23 @@ pub(crate) fn loop_invariant_detection() -> String {
     // delete after bool-= is added to egglog
     res.push(
         "(rule ((find_inv_expr theta (beq ty a b)))
-    ((find_inv_operand theta a) (find_inv_operand theta b)) :ruleset fast-analyses)
+        ((find_inv_operand theta a) (find_inv_operand theta b)) :ruleset fast-analyses)
     
-(rule ((= true (is_inv_operand body a))
-        (= true (is_inv_operand body b))
-        (find_inv_expr body expr)
-        (= expr (beq ty a b)))
-    ((set (is_inv_expr body expr) true)) :ruleset fast-analyses)
+    (rule ((= true (is_inv_operand body a))
+            (= true (is_inv_operand body b))
+            (find_inv_expr body expr)
+            (= expr (beq ty a b)))
+        ((set (is_inv_expr body expr) true)) :ruleset fast-analyses)
+
+    (rule ((= true (is_inv_operand theta operand)) 
+        (= false (is_inv_expr theta expr))
+        (= expr (beq ty operand b)))
+        ((boundary_operand theta operand)) :ruleset boundary-analyses)
+
+    (rule ((= true (is_inv_operand theta operand)) 
+            (= false (is_inv_expr theta expr))
+            (= expr (beq ty a operand)))
+        ((boundary_operand theta operand)) :ruleset boundary-analyses)
         "
         .to_string(),
     );

@@ -150,7 +150,7 @@
        ; Add a new output that adds outputs i and j on each branch
        (let new-thens (vec-push thens (Node (PureOp (badd (IntT) then-i then-j)))))
        (let new-elses (vec-push elses (Node (PureOp (badd (IntT) else-i else-j)))))
-       (let new-gamma (Gamma pred inputs (VVO (vec-of (VO new-thens) (VO new-elses)))))
+       (let new-gamma (Gamma pred inputs (VVO (vec-of (VO new-elses) (VO new-thens)))))
 
        ; union the original plus node with the new output
        (union plus (Project (vec-length outputs) new-gamma))

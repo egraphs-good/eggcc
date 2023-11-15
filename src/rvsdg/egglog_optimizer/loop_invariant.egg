@@ -206,7 +206,7 @@
     ;(delete (Theta pred inputs outputs)) ;; it extract some other thing...
     (set (hoist-count theta) 1) ;; no multiple hoist out of same theta.
     ;(set (hoist-count new_theta) 1)
-    ;(extract theta)
+    (extract theta)
     (can-subst-Operand-beneath (ThetaCtx new_inputs) operand (Arg n))))
 
 

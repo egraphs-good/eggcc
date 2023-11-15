@@ -1,12 +1,12 @@
 # ARGS: 3
 @main(x: int) {
   i: int = const 0;
-  j: int = const 0;
 .outer:
   maxi: int = const 10;
   notdone: bool = lt i maxi;
   one: int = const 1;
   i: int = add i one;
+  j: int = const 0;
   br notdone .inner .end;
 .inner:
   maxj: int = const 5;

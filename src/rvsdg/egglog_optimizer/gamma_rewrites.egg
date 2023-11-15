@@ -126,6 +126,7 @@
        (= gamma (Gamma pred inputs (VVO outputs)))
 
        ; Special case to two branches
+       (= (vec-length outputs) 2)
        (= (VO thens) (VecVecOperand-get (VVO outputs) 1))
        (= (VO elses) (VecVecOperand-get (VVO outputs) 0))
 

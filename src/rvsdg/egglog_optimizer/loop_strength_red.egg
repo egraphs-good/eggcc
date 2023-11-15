@@ -1,0 +1,83 @@
+;; in-loop
+;;
+;; ORIGINAL
+;; a = 0
+;; c = 3
+;; for  i = 0 to n:
+;;     a = i * c
+;;
+;; OPTIMIZED
+;; a = 0
+;; c = 3
+;; d = 0
+;; for i = 0 to n:
+;;     a += d
+;;     d += c
+
+; TODO: this optimization does not get extracted if the multiplications
+; for the initial value of d and the update to d do not get constant folded.
+; To fix this, we would need to:
+;   1. move the multiplication in the update to d outside the loop
+;   2. count loop bodies as higher cost, so moving a multiplication outside
+;       the loop reduces the overall cost of the program
+
+
+; Finds invariants/constants within a body.
+; Columns: body; value of invariant in inputs; value of invariant in outputs
+(relation inv (Body Operand Operand))
+(rule (
+    (= theta (Theta pred inputs outputs))
+    (= (VecOperand-get outputs i) (Arg i)))
+    ((inv theta (VecOperand-get inputs i) (Arg i))))
+(rule (
+    (= c (Node (PureOp (Const (IntT) (const) num))))
+    (= theta (Theta pred inputs outputs))
+    (Body-contains-Operand theta contains-i c)
+    )
+    ((inv theta c c)))
+
+(rule 
+    (
+        ;; Find theta
+        (= old-theta (Theta pred (VO inputs) (VO outputs)))
+
+        ; Find loop variable (argument that gets incremented with an invariant)
+        (inv old-theta loop-incr-input loop-incr-output)
+        (= (VecOperand-get (VO outputs) i) (Node (PureOp (badd (IntT) (Arg i) loop-incr-output))))
+
+        ; Find invariant where input is same as output, or constant
+        (inv old-theta c-input c-output)
+
+        ; Find multiplication of loop variable and invariant
+        (= old-exp (Node (PureOp (bmul (IntT) c-output (Arg i)))))
+        (Body-contains-Operand old-theta contains-i old-exp)
+    )
+    (
+        ; Each time we need to update d by the product of the multiplied constant and the loop increment
+        (let addend (Node (PureOp (bmul (IntT) c-output loop-incr-output))))
+        ; n is index of our new, temporary variable d
+        (let n (vec-length inputs))
+
+        ; Initial value of d is i * c
+        (let d-init (Node (PureOp (bmul (IntT) c-input (VecOperand-get (VO inputs) i)))))
+
+        ; Value of d in loop
+        (let d-out (Node (PureOp (badd (IntT) (Arg n) addend))))
+
+        ; Construct optimized theta
+        (let new-inputs (VO (vec-push inputs d-init)))
+        (let new-theta 
+            (Theta pred new-inputs (VO (vec-push outputs d-out)))
+        )
+
+        ; Substitute d for the *i expression
+        (can-subst-Operand-beneath (ThetaCtx new-inputs) old-exp (Arg n))
+
+        ; Project all but last
+        (union old-theta
+            (OperandGroup
+                (BodyToVecOperand n new-theta)
+            )
+        )
+    )
+)

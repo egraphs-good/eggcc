@@ -3,59 +3,57 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v3: int = const 2;
-  v5: bool = lt v0 v3;
-  v9: int = const 0;
-  v11: int = const 1;
-  br v5 .__29__ .__15__;
-.__85__:
-  v82: int = id v24;
-  v83: int = id v25;
-  jmp .__89__;
-.__76__:
-  v79: int = add v24 v26;
-  v82: int = id v79;
-  v83: int = id v25;
-  jmp .__89__;
-.__68__:
-  v69: int = const 1;
-  v70: bool = eq v27 v69;
-  br v70 .__85__ .__76__;
-.__62__:
-  v24: int = id v47;
-  v25: int = id v48;
-  v26: int = id v49;
-  v27: int = id v50;
-  jmp .__68__;
-.__52__:
-  v55: int = add v37 v3;
-  v59: int = const 1;
-  v47: int = id v55;
-  v48: int = id v11;
-  v49: int = id v3;
-  v50: int = id v59;
-  jmp .__62__;
-.__41__:
-  v45: int = const 0;
-  v47: int = id v37;
-  v48: int = id v11;
-  v49: int = id v3;
-  v50: int = id v45;
-  jmp .__62__;
-.__29__:
-  v31: bool = lt v3 v0;
-  v37: int = add v9 v3;
-  br v31 .__52__ .__41__;
-.__15__:
-  v18: int = add v9 v11;
-  v22: int = const 0;
-  v24: int = id v18;
-  v25: int = id v11;
-  v26: int = id v3;
-  v27: int = id v22;
-  jmp .__68__;
-.__89__:
-  v91: int = add v82 v83;
-  print v91;
+  v2: int = const 1;
+  v5: int = const 2;
+  v7: bool = lt v0 v5;
+  v11: int = const 0;
+  br v7 .__30__ .__16__;
+.__84__:
+  v81: int = id v25;
+  v82: int = id v2;
+  jmp .__88__;
+.__75__:
+  v78: int = add v25 v5;
+  v81: int = id v78;
+  v82: int = id v2;
+  jmp .__88__;
+.__69__:
+  br v28 .__84__ .__75__;
+.__64__:
+  v25: int = id v49;
+  v26: int = id v2;
+  v27: int = id v5;
+  v28: bool = id v33;
+  jmp .__69__;
+.__54__:
+  v57: int = add v39 v5;
+  v61: bool = const true;
+  v49: int = id v57;
+  v50: int = id v2;
+  v51: int = id v5;
+  v52: bool = id v61;
+  jmp .__64__;
+.__43__:
+  v47: bool = const false;
+  v49: int = id v39;
+  v50: int = id v2;
+  v51: int = id v5;
+  v52: bool = id v47;
+  jmp .__64__;
+.__30__:
+  v33: bool = lt v5 v0;
+  v39: int = add v11 v5;
+  br v33 .__54__ .__43__;
+.__16__:
+  v19: int = add v11 v2;
+  v23: bool = const false;
+  v25: int = id v19;
+  v26: int = id v2;
+  v27: int = id v5;
+  v28: bool = id v23;
+  jmp .__69__;
+.__88__:
+  v89: int = add v2 v81;
+  print v89;
 }
 

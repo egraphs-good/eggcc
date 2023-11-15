@@ -463,16 +463,13 @@ fn rvsdg_odd_branch_egg_roundtrip() {
                                                 (Node (PureOp (Const (IntT)
                                                                      (const)
                                                                      (Num 2)))))))))))))
-    (let expected-result (Project 0 rescaled))
-    (let expected-state (Project 1 rescaled))
+    (let expected-result (Project 1 rescaled))
+    (let expected-state (Project 0 rescaled))
     (let expected (Func "main" (vec-of (Bril (IntT)) (PrintState)) (vec-of (Bril (IntT)) (PrintState)) (VO (vec-of expected-result expected-state))))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
-    // this is weird; shouldn't stop be an optional argument
-    egraph
-        .process_commands(vec![actual_command], egglog::CompilerPassStop::All)
-        .unwrap();
+    egraph.run_program(vec![actual_command]).unwrap();
     egraph
         .parse_and_run_program("(check (= expected actual))")
         .unwrap();
@@ -759,13 +756,16 @@ fn rvsdg_subst() {
 #[test]
 fn rvsdg_subst_beneath_theta() {
     const EGGLOG_THETA_PROGRAM: &str = r#"
+    (let inputs
+        (VO (vec-of
+            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+        )))
+
     (let unsubsted
         (Theta
               (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-              (VO (vec-of
-                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
-                (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-              ))
+              inputs
               (VO (vec-of
                 (Node (PureOp (blt (BoolT)
                     (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
@@ -775,10 +775,10 @@ fn rvsdg_subst_beneath_theta() {
             ))
 
     (can-subst-Operand-beneath
-        unsubsted
+        (ThetaCtx inputs)
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate (saturate fast-analyses) subst))
+    (run-schedule (saturate (saturate fast-analyses) subst-beneath))
 
     (let expected
         (Theta
@@ -803,13 +803,16 @@ fn rvsdg_subst_beneath_theta() {
 #[test]
 fn rvsdg_subst_beneath_gamma() {
     const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let inputs
+        (VO (vec-of
+            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+        )))
+
     (let unsubsted
         (Gamma
             (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-            (VO (vec-of
-              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
-              (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-            ))
+            inputs
             (VVO (vec-of
                 (VO (vec-of
                     (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
@@ -823,10 +826,10 @@ fn rvsdg_subst_beneath_gamma() {
           ))
 
     (can-subst-Operand-beneath
-        unsubsted
+        (GammaCtx inputs)
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate (saturate fast-analyses) subst))
+    (run-schedule (saturate (saturate fast-analyses) subst-beneath))
 
     (let expected
         (Gamma
@@ -853,84 +856,91 @@ fn rvsdg_subst_beneath_gamma() {
 }
 
 #[test]
-fn rvsdg_subst_beneath_operand_group() {
-    // This also tests what happens when Gamma/Theta appears *within* above
+fn rvsdg_subst_beneath_inner_gamma_theta() {
+    // This tests what happens when Gamma/Theta appears *within* above
     const EGGLOG_OPERAND_GROUP_PROGRAM: &str = r#"
     (let unsubsted
-        (OperandGroup (VO (vec-of
-            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-            (Node (Theta
-                  (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                  (VO (vec-of
-                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
-                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                  ))
-                  (VO (vec-of
-                    (Node (PureOp (blt (BoolT)
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
-                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                  ))
-                ))
-            (Node (Gamma
+        (Theta
+            (Arg 0)
+            (VO (vec-of (Arg 0) (Arg 1) (Arg 2)(Arg 3) (Arg 4) (Arg 5)))
+            (VO (vec-of
                 (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                (VO (vec-of
-                  (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
-                  (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                ))
-                (VVO (vec-of
-                    (VO (vec-of
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                (Node (Theta
+                      (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                      (VO (vec-of
+                        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
                         (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                    ))
-                    (VO (vec-of
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                      ))
+                      (VO (vec-of
+                        (Node (PureOp (blt (BoolT)
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
                         (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                      ))
                     ))
-                ))
-              ))
-            ))))
+                (Node (Gamma
+                    (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                    (VO (vec-of
+                      (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 3))))
+                      (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                    ))
+                    (VVO (vec-of
+                        (VO (vec-of
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                        ))
+                        (VO (vec-of
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                        ))
+                    ))
+                  ))
+                ))))
 
     (can-subst-Operand-beneath
-        unsubsted
+        (ThetaCtx
+            (VO (vec-of (Arg 0) (Arg 1) (Arg 2)(Arg 3) (Arg 4) (Arg 5))))
         (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
         (Arg 0))
-    (run-schedule (saturate (saturate fast-analyses) subst))
+    (run-schedule (saturate (saturate fast-analyses) subst-beneath))
 
     (let expected
-        (OperandGroup (VO (vec-of
+        (Theta
             (Arg 0)
-            (Node (Theta
-                  (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                  (VO (vec-of
-                    (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
-                    (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
-                  ))
-                  (VO (vec-of
-                    (Node (PureOp (blt (BoolT)
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
-                    (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
-                  ))
-                ))
-            (Node (Gamma
+            (VO (vec-of (Arg 0) (Arg 1) (Arg 2)(Arg 3) (Arg 4) (Arg 5)))
+            (VO (vec-of
                 (Arg 0)
-                (VO (vec-of
-                  (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
-                  (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
-                ))
-                (VVO (vec-of
-                    (VO (vec-of
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                (Node (Theta
+                      (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                      (VO (vec-of
+                        (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
+                        (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
+                      ))
+                      (VO (vec-of
+                        (Node (PureOp (blt (BoolT)
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))))
                         (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                      ))
                     ))
+                (Node (Gamma
+                    (Arg 0)
                     (VO (vec-of
-                        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
-                        (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                      (Node (PureOp (blt (BoolT) (Arg 0) (Arg 3))))
+                      (Node (PureOp (blt (BoolT) (Arg 0) (Arg 4))))
                     ))
-                ))
-              ))
-            ))))
+                    (VVO (vec-of
+                        (VO (vec-of
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                        ))
+                        (VO (vec-of
+                            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2))))
+                            (Node (PureOp (blt (BoolT) (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))) (Arg 4))))
+                        ))
+                    ))
+                  ))
+                ))))
     (check (= unsubsted expected))
     "#;
     let mut egraph = new_rvsdg_egraph();
@@ -1243,4 +1253,382 @@ fn rvsdg_body_contains_operand_group() {
     egraph
         .parse_and_run_program(EGGLOG_OPERAND_GROUP_PROGRAM)
         .unwrap();
+}
+
+#[test]
+fn test_conditional_invariant_code_motion() {
+    const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let add
+        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 0)))))
+    (let gamma-inputs
+        (VO (vec-of (Arg 7) (Arg 8))))
+    (let gamma
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 1))))
+            gamma-inputs
+            (VVO (vec-of
+                (VO (vec-of add (Arg 0)))
+                (VO (vec-of (Arg 0) add))
+            ))
+          ))
+    
+    (run-schedule
+        (saturate fast-analyses)
+        (run)
+        (saturate fast-analyses subst subst-beneath))
+
+    (let new-gamma
+        (Gamma
+            (Node (PureOp (badd (BoolT) (Arg 1) (Arg 1))))
+            (VO (vec-of
+                (Arg 7)
+                (Arg 8)
+                (Node (PureOp (badd (BoolT) (Arg 8) (Arg 7))))
+            ))
+            (VVO (vec-of
+                (VO (vec-of (Arg 2) (Arg 0)))
+                (VO (vec-of (Arg 0) (Arg 2)))
+            ))
+          ))
+    
+    (check (= gamma new-gamma))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
+}
+
+#[test]
+fn test_conditional_invariant_code_motion_2() {
+    const EGGLOG_GAMMA_PROGRAM: &str = r#"
+    (let add
+        (Node (PureOp (badd (BoolT) (Arg 1) (Arg 2)))))
+    (let gamma-inputs
+        (VO (vec-of (Arg 6) (Arg 7) (Arg 8))))
+    (let gamma
+        (Gamma
+            (Arg 9)
+            gamma-inputs
+            (VVO (vec-of
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (bmul (BoolT) add add)))))
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (bmul (BoolT) add (Arg 1))))))
+            ))
+          ))
+    
+    (run-schedule
+        (saturate fast-analyses)
+        (run)
+        (saturate subst)
+        (repeat 3 (repeat 5 subst-beneath) (saturate fast-analyses))
+    )
+    
+    (let new-gamma
+        (Gamma
+            (Arg 9)
+            (VO (vec-of
+                    (Arg 6) (Arg 7) (Arg 8)
+                    (Node (PureOp (badd (BoolT) (Arg 7) (Arg 8))))))
+            (VVO (vec-of
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (bmul (BoolT) (Arg 3) (Arg 3))))))
+                (VO (vec-of
+                    (Arg 0)
+                    (Node (PureOp (bmul (BoolT) (Arg 3) (Arg 1))))))
+            ))
+          ))
+    (extract gamma)
+    (check (= gamma new-gamma))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_GAMMA_PROGRAM).unwrap();
+}
+
+#[test]
+fn rvsdg_loop_inv_detect_simple() {
+    const EGGLOG_THETA_PROGRAM1: &str = r#"
+    (let t1 
+    (Theta 
+        (Node (PureOp 
+            (beq (BoolT) 
+                (Node (PureOp 
+                    (bdiv (IntT) (Arg 2) 
+                                (Node (PureOp 
+                                    (bmul (IntT) 
+                                        (Node (PureOp 
+                                            (bsub (IntT) (Arg 1) 
+                                                        (Node (PureOp 
+                                                            (badd (IntT) (Arg 4) 
+                                                                         (Arg 5)))))))
+                                                        (Arg 3))))))) 
+                                        (Arg 1)))) 
+        (VO (vec-of (Arg 0)
+                    (Node (PureOp (Const (IntT) (const) (Num 2)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 6)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 3)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 0)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 1)))))) 
+        (VO (vec-of 
+                (Node (PureOp 
+                    (PRINT (Node (PureOp 
+                                (bdiv (IntT) (Arg 2) 
+                                            (Node (PureOp 
+                                                (bmul (IntT) 
+                                                    (Node (PureOp 
+                                                        (bsub (IntT) (Arg 1)
+                                                                    (Node (PureOp 
+                                                                        (badd (IntT) (Arg 4) 
+                                                                                        (Arg 5))))))) 
+                                                                    (Arg 3)))))))
+                                            (Arg 0))))
+                (Arg 1)
+                (Arg 2)
+                (Arg 3)
+                (Arg 4)
+                (Arg 5)))))
+
+    (run-schedule (saturate fast-analyses))
+
+    (fail (check (arg_inv t1 0)))
+    (check (arg_inv t1 1))
+    (check (arg_inv t1 2))
+    (check (arg_inv t1 3))
+    (check (arg_inv t1 4))
+    (check (arg_inv t1 5))
+
+    (check (= true (is_inv_operand t1 (Arg 1))))
+    (check (= true (is_inv_operand t1 (Arg 2))))
+    (check (= true (is_inv_operand t1 (Arg 3))))
+    (check (= true (is_inv_operand t1 (Arg 4))))
+    (check (= true (is_inv_operand t1 (Arg 5))))
+
+    (check (= true (is_inv_body t1 (PureOp (badd (IntT) (Arg 4) (Arg 5))))))
+
+    (check (= true 
+            (is_inv_expr 
+                t1 
+                (bmul (IntT) 
+                    (Node (PureOp 
+                        (bsub (IntT) (Arg 1)
+                                    (Node (PureOp 
+                                        (badd (IntT) (Arg 4) 
+                                                     (Arg 5)))))))
+                    (Arg 3)))))
+
+    (let inv_operand 
+        (Node (PureOp 
+            (bdiv (IntT) 
+                    (Arg 2) 
+                    (Node (PureOp 
+                        (bmul (IntT) 
+                                (Node (PureOp 
+                                    (bsub (IntT) (Arg 1)
+                                                (Node (PureOp 
+                                                    (badd (IntT) (Arg 4) 
+                                                                (Arg 5))))))) 
+                                (Arg 3))))))))
+    (check (= true (is_inv_operand t1 inv_operand)))
+
+
+    ; the operand at pred of theta is invariant
+    (check (= true (is_inv_operand t1 (Node (PureOp (beq (BoolT) inv_operand (Arg 1)))))))
+
+    ; print is not invariant
+    (check (= false (is_inv_operand t1 (Node (PureOp (PRINT (Node (PureOp (bdiv (IntT) (Arg 2) 
+    (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
+                                                        (Node (PureOp (badd (IntT) (Arg 4) 
+                                                                                    (Arg 5))))))) 
+                                (Arg 3))))))) 
+    (Arg 0)))))))
+
+    (check (= false (is_inv_expr 
+                        t1 
+                        (PRINT 
+                            (Node (PureOp 
+                                (bdiv (IntT) (Arg 2) 
+                                            (Node (PureOp 
+                                                (bmul (IntT) 
+                                                    (Node (PureOp 
+                                                        (bsub (IntT) 
+                                                            (Arg 1)
+                                                            (Node (PureOp 
+                                                                (badd (IntT) 
+                                                                    (Arg 4) 
+                                                                    (Arg 5))))))) 
+                                                    (Arg 3)))))))
+                                            (Arg 0)))))
+
+
+    (check (= false 
+            (is_inv_operand 
+                t1 
+                (Node (PureOp 
+                    (PRINT 
+                        (Node (PureOp 
+                            (bdiv (IntT) 
+                                (Arg 2) 
+                                (Node (PureOp 
+                                    (bmul (IntT) 
+                                        (Node (PureOp 
+                                            (bsub (IntT) 
+                                                (Arg 1)
+                                                (Node (PureOp
+                                                    (badd (IntT) 
+                                                        (Arg 4) 
+                                                        (Arg 5))))))) 
+                                        (Arg 3))))))) 
+                            (Arg 0)))))))
+
+    ;; an expr that does not exist in original program should fail check
+    (fail (check (is_inv_expr t1 (badd (IntT) (Arg 1) (Arg 2)))))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM1).unwrap();
+
+    const EGGLOG_THETA_PROGRAM2: &str = r#"
+    (let t1 (Theta 
+        (Node (PureOp 
+            (blt (BoolT) 
+                (Node (PureOp 
+                    (badd (IntT) 
+                        (Node (PureOp 
+                            (Const (IntT) (const) (Num 1)))) 
+                            (Arg 1)))) 
+                        (Node (PureOp 
+                            (Const (IntT) (const) (Num 5))))))) 
+        (VO (vec-of (Arg 0) 
+                    (Node (PureOp (Const (IntT) (const) (Num 0)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 10)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 10)))) 
+                    (Node (PureOp (Const (IntT) (const) (Num 10))))))
+        (VO (vec-of 
+            (Node (PureOp 
+                (PRINT 
+                    (Node (PureOp 
+                        (bmul (IntT) 
+                            (Arg 2) 
+                            (Node (PureOp 
+                                (Const (IntT) (const) (Num 2))))))) 
+                    (Node (PureOp 
+                        (PRINT 
+                            (Project 0 
+                                (PureOp 
+                                    (Call 
+                                        (SomeType (IntT)) 
+                                        "mean3" 
+                                        (VO 
+                                            (vec-of 
+                                                (Node (PureOp 
+                                                    (badd (IntT) 
+                                                        (Arg 4) 
+                                                        (Node (PureOp 
+                                                            (Const (IntT) (const) (Num 5)))))))
+
+                                                (Node (PureOp 
+                                                    (bsub (IntT) 
+                                                        (Arg 3) 
+                                                        (Node (PureOp 
+                                                            (Const (IntT) (const) (Num 3))))))) 
+                                                (Node (PureOp 
+                                                    (bsub (IntT) 
+                                                        (Node (PureOp 
+                                                            (bsub (IntT) (Arg 3) 
+                                                                        (Node (PureOp 
+                                                                            (Const (IntT) (const) (Num 3))))))) 
+                                                                        (Node (PureOp 
+                                                                            (Const (IntT) (const) (Num 2)))))))
+                                                (Arg 0)))
+                                            2))) 
+            (Project 1 
+                (PureOp 
+                    (Call 
+                        (SomeType (IntT)) 
+                        "mean3" 
+                        (VO 
+                            (vec-of 
+                                (Node (PureOp 
+                                    (badd (IntT) 
+                                        (Arg 4) 
+                                        (Node (PureOp 
+                                            (Const (IntT) (const) (Num 5)))))))
+
+                                (Node (PureOp 
+                                    (bsub (IntT) 
+                                        (Arg 3) 
+                                        (Node (PureOp 
+                                            (Const (IntT) (const) (Num 3))))))) 
+                                (Node (PureOp 
+                                    (bsub (IntT) 
+                                        (Node (PureOp 
+                                            (bsub (IntT) (Arg 3) 
+                                                        (Node (PureOp 
+                                                            (Const (IntT) (const) (Num 3))))))) 
+                                                        (Node (PureOp 
+                                                            (Const (IntT) (const) (Num 2)))))))
+                                (Arg 0)))
+                            2)))))))))
+                (Node (PureOp (badd (IntT) (Node (PureOp (Const (IntT) (const) (Num 1)))) (Arg 1))))
+                (Node (PureOp (bmul (IntT) (Arg 2) (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
+                (Arg 3) 
+                (Arg 4)))))
+
+    (run-schedule
+        (repeat 5 (run) (saturate fast-analyses)))
+
+    (check (= true (is_inv_operand t1 (Arg 3))))
+    (check (= true (is_inv_operand t1 (Arg 4))))
+    (check (= false (is_inv_operand t1 (Arg 0))))
+    (check (= false (is_inv_operand t1 (Arg 1))))
+    (check (= false (is_inv_operand t1 (Arg 2))))
+    (check (= true (is_inv_operand t1 (Node (PureOp (Const (IntT) (const) (Num 5)))))))
+    (check (= true 
+            (is_inv_expr 
+                t1 
+                (badd (IntT) 
+                    (Arg 4) 
+                    (Node (PureOp (Const (IntT) (const) (Num 5))))))))
+    (check (= true 
+            (is_inv_operand 
+                t1 
+                (Node (PureOp 
+                    (bsub (IntT) 
+                        (Node (PureOp (
+                            bsub (IntT) (Arg 3) 
+                                        (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                        (Node (PureOp (Const (IntT) (const) (Num 2))))))))))
+                        (check (= false 
+                            (is_inv_body
+                                t1 
+                                (PureOp 
+                                    (Call 
+                                        (SomeType (IntT)) 
+                                        "mean3" 
+                                        (VO (vec-of 
+                                            (Node (PureOp 
+                                                (badd (IntT) 
+                                                    (Arg 4) 
+                                                    (Node (PureOp 
+                                                        (Const (IntT) (const) (Num 5))))))) 
+                                            (Node (PureOp 
+                                                (bsub (IntT) 
+                                                    (Arg 3) 
+                                                    (Node (PureOp 
+                                                        (Const (IntT) (const) (Num 3))))))) 
+                                            (Node (PureOp 
+                                                (bsub (IntT) 
+                                                    (Node (PureOp 
+                                                        (bsub (IntT) 
+                                                            (Arg 3) 
+                                                            (Node (PureOp 
+                                                                (Const (IntT) (const) (Num 3))))))) 
+                                            (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
+                                            (Arg 0))) 
+                                        2)))))
+                                                                
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM2).unwrap();
 }

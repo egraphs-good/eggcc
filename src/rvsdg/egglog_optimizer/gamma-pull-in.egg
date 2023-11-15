@@ -1,3 +1,11 @@
+(relation gamma-body-and-its-two-branches (VecVecOperand VecOperand VecOperand))
+(rule ((= gamma (Gamma pred inps outputs))
+       (= els (VecVecOperand-get outputs 0))
+       (= thn (VecVecOperand-get outputs 1)))
+      ((gamma-body-and-its-two-branches outputs els thn)
+       (gamma-body-and-its-two-branches outputs thn els))
+    :ruleset fast-analyses)
+
 ;; Gamma optimization
 ;; Note this rule can also suffer from exponential explosion 
 ;; (1) multiple arguments can be used in one branch and not the other,
@@ -6,13 +14,13 @@
 ;; but not the other, causing the rule to be applied again.
 (rule ((= gamma (Gamma pred (VO inps) outputs))
        (= inp (VecOperand-get (VO inps) i))
-       (= els (VecVecOperand-get outputs 0))
-       (= thn (VecVecOperand-get outputs 1))
+       (gamma-body-and-its-two-branches outputs thn els)
 
        (= els-args (arg-used-VecOperand els))
        (= thn-args (arg-used-VecOperand thn))
        (set-contains els-args i)
        (set-not-contains thn-args i)
+
        (= inp-args (arg-used-Operand inp))
        )
       (
@@ -20,9 +28,6 @@
         ;; introduce arguments used by inp-args
         (let inp-args-vec (VI (set->vec inp-args)))
         (let inp-args-vec-operand (MapArgOverVec inp-args-vec))
-        (extract inps)
-        (extract inp-args-vec)
-        (extract (vec-remove inps i))
         (let new-inps (VecAppend (VO (vec-remove inps i)) inp-args-vec-operand))
 
         ;; Step 2: build the pulled-in inp by substituting contexts

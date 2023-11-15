@@ -33,7 +33,7 @@
 (function BodyToVecOperandHelper (i64 i64 Body VecOperandBase) VecOperand :unextractable)
 
 (rewrite (BodyToVecOperand body-len body)
-         (BodyToVecOperandHelper 0 body-len body (vec-of)))
+         (BodyToVecOperandHelper 0 body-len body (vec-of)) :ruleset subst)
 (rule
   ((= helper (BodyToVecOperandHelper index body-len body so-far))
    (< index body-len))

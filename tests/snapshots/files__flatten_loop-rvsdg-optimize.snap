@@ -10,50 +10,46 @@ expression: visualization.result
   v12: int = id v1;
   v13: int = id v0;
   jmp .__15__;
-.__119__:
-  v125: int = const 1;
-  v126: bool = eq v33 v125;
+.__117__:
   v10: int = id v32;
   v11: int = id v34;
   v12: int = id v35;
   v13: int = id v36;
-  br v126 .__15__ .__129__;
-.__108__:
-  v111: int = add v45 v46;
-  v113: int = const 1;
-  v32: int = id v111;
-  v33: int = id v113;
-  v34: int = id v46;
+  br v17 .__15__ .__125__;
+.__106__:
+  v109: int = add v10 v11;
+  v111: bool = const true;
+  v32: int = id v109;
+  v33: bool = id v111;
+  v34: int = id v11;
   v35: int = id v48;
   v36: int = id v49;
-  jmp .__119__;
+  jmp .__117__;
 .__97__:
-  v104: int = const 1;
-  v105: bool = eq v72 v104;
-  v45: int = id v70;
-  v46: int = id v71;
+  v45: int = id v45;
+  v46: int = id v46;
   v47: int = id v73;
   v48: int = id v74;
   v49: int = id v75;
-  br v105 .__51__ .__108__;
+  br v53 .__51__ .__106__;
 .__77__:
   v79: int = mul v45 v48;
   v82: int = add v79 v47;
   print v82;
-  v88: int = const 1;
+  v88: bool = const true;
   v92: int = add v47 v46;
   v70: int = id v45;
   v71: int = id v46;
-  v72: int = id v88;
+  v72: bool = id v88;
   v73: int = id v92;
   v74: int = id v48;
   v75: int = id v49;
   jmp .__97__;
 .__62__:
-  v65: int = const 0;
+  v65: bool = const false;
   v70: int = id v45;
   v71: int = id v46;
-  v72: int = id v65;
+  v72: bool = id v65;
   v73: int = id v47;
   v74: int = id v48;
   v75: int = id v49;
@@ -70,17 +66,17 @@ expression: visualization.result
   v49: int = id v13;
   jmp .__51__;
 .__25__:
-  v27: int = const 0;
+  v27: bool = const false;
   v32: int = id v10;
-  v33: int = id v27;
+  v33: bool = id v27;
   v34: int = id v11;
   v35: int = id v12;
   v36: int = id v13;
-  jmp .__119__;
+  jmp .__117__;
 .__15__:
   v17: bool = lt v10 v13;
   br v17 .__38__ .__25__;
-.__129__:
+.__125__:
   print v10;
 }
 

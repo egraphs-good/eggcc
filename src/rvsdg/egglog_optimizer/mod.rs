@@ -1,9 +1,16 @@
 use bril_rs::Type;
 
-use self::{constant_fold::constant_fold_egglog, reassoc::reassoc_rules};
+use self::{
+    constant_fold::constant_fold_egglog, extraction_rules::extraction_rules,
+    loop_invariant::loop_invariant_detection, passthrough_optimize::passthrough_optimize_rules,
+    reassoc::reassoc_rules,
+};
 
 pub(crate) mod constant_fold;
+pub(crate) mod extraction_rules;
 pub(crate) mod fast_analyses;
+pub(crate) mod loop_invariant;
+pub(crate) mod passthrough_optimize;
 pub(crate) mod reassoc;
 pub(crate) mod subst;
 
@@ -18,28 +25,38 @@ pub fn rvsdg_egglog_code() -> String {
         subst::all_rules(),
         include_str!("util.egg").to_string(),
         constant_fold_egglog(),
+        extraction_rules(),
+        passthrough_optimize_rules(),
         include_str!("gamma_rewrites.egg").to_string(),
-        include_str!("loop-optimizations.egg").to_string(),
+        passthrough_optimize_rules(),
         include_str!("interval-analysis.egg").to_string(),
+        include_str!("loop-optimizations.egg").to_string(),
         include_str!("function_inline.egg").to_string(),
+        include_str!("conditional_invariant_code_motion.egg").to_string(),
         reassoc_rules(),
+        loop_invariant_detection(),
         include_str!("gamma-pull-in.egg").to_string(),
     ];
     code.join("\n")
 }
 
 pub fn rvsdg_egglog_schedule() -> String {
-    // The current schedule runs three iterations.
-    // In-between each iteration, we saturate the subst rules.
-    // It is sound to not saturate these substitution rules,
-    // but it helps substitutions go through since
-    // they take many iterations.
-
     "(run-schedule
-        (repeat 5 (saturate fast-analyses)
-                  (run)
-                  (saturate subst shift)))"
-        .to_string()
+        ; It is sound to not saturate fast-analyses/subst, but we do because
+        ; they won't blow up and will help other rules go through.
+        (repeat 5
+            (saturate fast-analyses)
+            ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
+            (seq (saturate extraction) (saturate extraction-vec))
+            (run)
+            (saturate subst shift))
+        ; Right now, subst-beneath is inefficent (it extracts every possible
+        ; spine - we are working on this!), so we only run it a few times at the
+        ; end to apply substitutions that the main optimizations find. It's
+        ; interleaved with fast-analyses because it relies on reified vecs.
+        (repeat 6 subst-beneath (saturate fast-analyses))
+    )"
+    .to_string()
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -54,7 +71,7 @@ struct BrilOp {
 
 // an in-progress list of bril operators and their implementation in egglog
 // TODO do I really need to put the constant here for the size of the array?
-const BRIL_OPS: [BrilOp; 5] = [
+const BRIL_OPS: [BrilOp; 11] = [
     BrilOp {
         op: "badd",
         egglog_op: "+",
@@ -79,10 +96,53 @@ const BRIL_OPS: [BrilOp; 5] = [
         input_types: [Some(Type::Int), Some(Type::Int)],
         output_type: Type::Int,
     },
+    // add after a bool eq function is added to egglog
+    // BrilOp {
+    //     op: "beq",
+    //     egglog_op: "bool-=",
+    //     input_types: [Some(Type::Int), Some(Type::Int)],
+    //     output_type: Type::Bool,
+    // },
     BrilOp {
         op: "blt",
         egglog_op: "bool-<",
         input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "bgt",
+        egglog_op: "bool->",
+        input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "ble",
+        egglog_op: "bool-<=",
+        input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "bge",
+        egglog_op: "bool->=",
+        input_types: [Some(Type::Int), Some(Type::Int)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "bnot",
+        egglog_op: "not",
+        input_types: [Some(Type::Bool), None],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "band",
+        egglog_op: "and",
+        input_types: [Some(Type::Bool), Some(Type::Bool)],
+        output_type: Type::Bool,
+    },
+    BrilOp {
+        op: "bor",
+        egglog_op: "or",
+        input_types: [Some(Type::Bool), Some(Type::Bool)],
         output_type: Type::Bool,
     },
 ];

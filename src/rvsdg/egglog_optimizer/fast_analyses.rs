@@ -70,6 +70,14 @@ fn is_pure_rules() -> Vec<String> {
                       :ruleset fast-analyses)
                 "
             )),
+            [Some(_), None] => res.push(format!(
+                "
+                (rule ((= f ({op} type e1))
+                       (Operand-is-pure e1))
+                      ((Expr-is-pure f))
+                      :ruleset fast-analyses)
+                "
+            )),
             _ => unimplemented!(),
         };
     }
@@ -244,6 +252,13 @@ fn region_contains_rules() -> Vec<String> {
                 (rule ((Body-contains-Expr f i ({op} type e1 e2)))
                       ((Body-contains-Operand f i e1)
                        (Body-contains-Operand f i e2))
+                      :ruleset fast-analyses)
+                "
+            )),
+            [Some(_), None] => res.push(format!(
+                "
+                (rule ((Body-contains-Expr f i ({op} type e1)))
+                      ((Body-contains-Operand f i e1))
                       :ruleset fast-analyses)
                 "
             )),

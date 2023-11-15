@@ -68,7 +68,7 @@
 ;;	else:
 ;;	       B
 ;;	------
-;;	if !a or !b:
+;;	if !a and !b:
 ;;	       A
 ;;	else:
 ;;	       B
@@ -77,7 +77,7 @@
       )
       (
        
-       (union gamma (Gamma (Node (PureOp (bor (BoolT)
+       (union gamma (Gamma (Node (PureOp (band (BoolT)
                             (Node (PureOp (bnot (BoolT) a)))
                             (Node (PureOp (bnot (BoolT) b)))))) inputs outputs))
       )
@@ -88,7 +88,7 @@
 ;;	else:
 ;;	       B
 ;;	------
-;;	if !a and !b:
+;;	if !a or !b:
 ;;	       A
 ;;	else:
 ;;	       B
@@ -97,7 +97,7 @@
       )
       (
        
-       (union gamma (Gamma (Node (PureOp (band (BoolT)
+       (union gamma (Gamma (Node (PureOp (bor (BoolT)
                             (Node (PureOp (bnot (BoolT) a)))
                             (Node (PureOp (bnot (BoolT) b)))))) inputs outputs))
       )

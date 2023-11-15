@@ -1,0 +1,21 @@
+# ARGS: 3
+@main(x: int) {
+  i: int = const 0;
+  j: int = const 0;
+.outer:
+  maxi: int = const 10;
+  notdone: bool = lt i maxi;
+  br notdone .inner .end;
+.inner:
+  maxj: int = const 5;
+  notdone: bool = lt j maxj;
+  br notdone .body .end;
+.body:
+  res: int = mul i maxi;
+  res: int = add res j;
+  print res;
+  print x;
+  jmp .inner;
+.end:
+  ret;
+}

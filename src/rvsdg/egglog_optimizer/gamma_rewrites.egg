@@ -63,46 +63,23 @@
        (= (vec-get outputs 0) (vec-get outputs 1)))
       ((union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 0) inputs)))))
 
-;;	if !(a or b):
-;;	       A
-;;	else:
-;;	       B
-;;	------
-;;	if !a and !b:
-;;	       A
-;;	else:
-;;	       B
-(rule (
-       (= gamma (Gamma (Node (PureOp (bnot (BoolT) (Node (PureOp (bor (BoolT) a b)))))) inputs outputs))
-      )
-      (
-       
-       (union gamma (Gamma (Node (PureOp (band (BoolT)
-                            (Node (PureOp (bnot (BoolT) a)))
-                            (Node (PureOp (bnot (BoolT) b)))))) inputs outputs))
-      )
-)
+;; !(a or b)
+;;--------------
+;; !a and !b
+(rewrite (Node (PureOp (bnot (BoolT)
+                             (Node (PureOp (bor (BoolT) a b))))))
+         (Node (PureOp (band (BoolT)
+                             (Node (PureOp (bnot (BoolT) a)))
+                             (Node (PureOp (bnot (BoolT) b)))))))
 
-;;	if !(a and b):
-;;	       A
-;;	else:
-;;	       B
-;;	------
-;;	if !a or !b:
-;;	       A
-;;	else:
-;;	       B
-(rule (
-       (= gamma (Gamma (Node (PureOp (bnot (BoolT) (Node (PureOp (band (BoolT) a b)))))) inputs outputs))
-      )
-      (
-       
-       (union gamma (Gamma (Node (PureOp (bor (BoolT)
-                            (Node (PureOp (bnot (BoolT) a)))
-                            (Node (PureOp (bnot (BoolT) b)))))) inputs outputs))
-      )
-)
-
+;; !(a and b)
+;;--------------
+;; !a or !b
+(rewrite (Node (PureOp (bnot (BoolT)
+                             (Node (PureOp (band (BoolT) a b))))))
+         (Node (PureOp (bor (BoolT)
+                             (Node (PureOp (bnot (BoolT) a)))
+                             (Node (PureOp (bnot (BoolT) b)))))))
 
 ;; !!a -> a
 (rewrite (Node (PureOp (bnot (BoolT) (Node (PureOp (bnot (BoolT) a)))))) a)

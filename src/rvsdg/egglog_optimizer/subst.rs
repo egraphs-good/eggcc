@@ -29,6 +29,12 @@ fn subst_beneath_rules() -> Vec<String> {
             (GammaCtx VecOperand)
             (ThetaCtx VecOperand))
 
+        (relation creates-context (Body Context))
+        (rule ((= gamma (Gamma pred inputs outputs)))
+              ((creates-context gamma (GammaCtx inputs))) :ruleset fast-analyses)
+        (rule ((= theta (Theta pred inputs outputs)))
+              ((creates-context theta (ThetaCtx inputs))) :ruleset fast-analyses)
+
         (relation can-subst-Expr-beneath (Context Expr Expr))
         (relation can-subst-Operand-beneath (Context Operand Operand))
         (relation can-subst-Body-beneath (Context Body Body))
@@ -61,35 +67,49 @@ fn subst_beneath_rules() -> Vec<String> {
 
         ;; Learn can-subst-Operand-beneath
         (rule ((can-subst-Body-beneath above from to)
-               (= new-from (Node from)))
+               (= new-from (Node from))
+               (creates-context body above)
+               (Body-contains-Operand body ignore-i new-from))
               ((can-subst-Operand-beneath above new-from (Node to)))
               :ruleset subst-beneath)
         (rule ((can-subst-Body-beneath above from to)
-               (= new-from (Project i from)))
+               (= new-from (Project i from))
+               (creates-context body above)
+               (Body-contains-Operand body ignore-i new-from))
               ((can-subst-Operand-beneath above new-from (Project i to)))
               :ruleset subst-beneath)
 
         ;; Learn can-subst-body-beneath
         (rule ((can-subst-Expr-beneath above from to)
-               (= new-from (PureOp from)))
+               (= new-from (PureOp from))
+               (creates-context body above)
+               (Body-contains-Body body ignore-i new-from))
               ((can-subst-Body-beneath above new-from (PureOp to)))
               :ruleset subst-beneath)
         ;; Propagates up same context (Gamma: pred & inputs, Theta: inputs)
         ;; rtjoa: Is it sound to propagate up outputs if we renumber args?
         (rule ((can-subst-Operand-beneath above from to)
-               (= new-from (Gamma from inputs outputs)))
+               (= new-from (Gamma from inputs outputs))
+               (creates-context body above)
+               (Body-contains-Body body ignore-i new-from))
               ((can-subst-Body-beneath above new-from (Gamma to inputs outputs)))
               :ruleset subst-beneath)
         (rule ((can-subst-VecOperand-beneath above from to)
-               (= new-from (Gamma pred from outputs)))
+               (= new-from (Gamma pred from outputs))
+               (creates-context body above)
+               (Body-contains-Body body ignore-i new-from))
               ((can-subst-Body-beneath above new-from (Gamma pred to outputs)))
               :ruleset subst-beneath)
         (rule ((can-subst-VecOperand-beneath above from to)
-               (= new-from (Theta pred from outputs)))
+               (= new-from (Theta pred from outputs))
+               (creates-context body above)
+               (Body-contains-Body body ignore-i new-from))
               ((can-subst-Body-beneath above new-from (Theta pred to outputs)))
               :ruleset subst-beneath)
         (rule ((can-subst-VecOperand-beneath above from to)
-               (= new-from (OperandGroup from)))
+               (= new-from (OperandGroup from))
+               (creates-context body above)
+               (Body-contains-Body body ignore-i new-from))
               ((can-subst-Body-beneath above new-from (OperandGroup to)))
               :ruleset subst-beneath)
         "
@@ -99,7 +119,9 @@ fn subst_beneath_rules() -> Vec<String> {
     res.push(
         "
       (rule ((can-subst-VecOperand-beneath above from to)
-              (= new-from (Call ty f from n-outs)))
+              (= new-from (Call ty f from n-outs))
+              (creates-context body above)
+              (Body-contains-Expr body ignore-i new-from))
              ((can-subst-Expr-beneath above new-from (Call ty f to n-outs)))
             :ruleset subst-beneath)"
             .into(),
@@ -111,19 +133,32 @@ fn subst_beneath_rules() -> Vec<String> {
             [Some(_), Some(_)] => res.push(format!(
                 "
               (rule ((can-subst-Operand-beneath above from to)
-                      (= new-from ({op} type from e2)))
+                      (= new-from ({op} type from e2))
+                      (creates-context body above)
+                      (Body-contains-Expr body ignore-i new-from))
                      ((can-subst-Expr-beneath above new-from ({op} type to e2)))
                     :ruleset subst-beneath)
               (rule ((can-subst-Operand-beneath above from to)
-                      (= new-from ({op} type e1 from)))
+                      (= new-from ({op} type e1 from))
+                      (creates-context body above)
+                      (Body-contains-Expr body ignore-i new-from))
                      ((can-subst-Expr-beneath above new-from ({op} type e1 to)))
+                    :ruleset subst-beneath)
+              (rule ((can-subst-Operand-beneath above from1 to1)
+                     (can-subst-Operand-beneath above from2 to2)
+                      (= new-from ({op} type from1 from2))
+                      (creates-context body above)
+                      (Body-contains-Expr body ignore-i new-from))
+                     ((can-subst-Expr-beneath above new-from ({op} type to1 to2)))
                     :ruleset subst-beneath)
                      ",
             )),
             [Some(_), None] => res.push(format!(
                 "
               (rule ((can-subst-Operand-beneath above from to)
-                      (= new-from ({op} type from)))
+                      (= new-from ({op} type from))
+                      (creates-context body above)
+                      (Body-contains-Expr body ignore-i new-from))
                      ((can-subst-Expr-beneath above new-from ({op} type to)))
                     :ruleset subst)
                 ",
@@ -131,8 +166,23 @@ fn subst_beneath_rules() -> Vec<String> {
             _ => unimplemented!(),
         };
     }
-
-    // Learn can-subst-{VecOperand, VecVecOperandCtx}-beneath
+    res.push(
+        "
+        (rule ((can-subst-Operand-beneath above from to)
+               (= new-from (PRINT from state))
+               (creates-context body above)
+               (Body-contains-Expr body ignore-i new-from))
+              ((can-subst-Expr-beneath above new-from (PRINT to state)))
+              :ruleset subst-beneath)
+        (rule ((can-subst-Operand-beneath above from to)
+               (= new-from (PRINT op from))
+               (creates-context body above)
+               (Body-contains-Expr body ignore-i new-from))
+              ((can-subst-Expr-beneath above new-from (PRINT op to)))
+              :ruleset subst-beneath)"
+            .into(),
+    );
+    // Learn can-subst-{VecOperand, VecVecOperand}-beneath
     for (vectype, ctor, eltype) in &[
         ("VecOperand", "VO", "Operand"),
         ("VecOperandCtx", "VOC", "Operand"),
@@ -150,19 +200,6 @@ fn subst_beneath_rules() -> Vec<String> {
                 :ruleset subst-beneath)"
         ));
     }
-
-    res.push(
-        "
-        (rule ((can-subst-Operand-beneath above from to)
-               (= new-from (PRINT from state)))
-               ((can-subst-Expr-beneath above new-from (PRINT to state)))
-               :ruleset subst-beneath)
-        (rule ((can-subst-Operand-beneath above from to)
-               (= new-from (PRINT op from)))
-               ((can-subst-Expr-beneath above new-from (PRINT op to)))
-               :ruleset subst-beneath)"
-            .into(),
-    );
 
     res
 }

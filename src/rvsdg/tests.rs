@@ -1321,7 +1321,7 @@ fn test_conditional_invariant_code_motion_2() {
     (run-schedule
         (saturate fast-analyses)
         (run)
-        (saturate subst)
+        (saturate subst fast-analyses)
         (repeat 3 (repeat 5 subst-beneath) (saturate fast-analyses))
     )
     

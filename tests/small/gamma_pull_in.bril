@@ -1,0 +1,17 @@
+# ARGS: 1
+@main(input: int) {
+  ten: int = const 10;
+  cond: bool = lt input ten;
+  br cond .then .else;
+  .then:
+    x: int = const 2;
+    jmp .second;
+  .else:
+    x: int = const 3;
+    jmp .second;
+  .second:   
+    y: int = add x x;
+    print y;
+    jmp .end;
+  .end:
+}

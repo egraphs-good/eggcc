@@ -5,16 +5,20 @@
 .outer:
   maxi: int = const 10;
   notdone: bool = lt i maxi;
+  one: int = const 1;
+  j: int = add j one;
   br notdone .inner .end;
 .inner:
   maxj: int = const 5;
   notdone: bool = lt j maxj;
-  br notdone .body .end;
+  br notdone .body .outer;
 .body:
   res: int = mul i maxi;
   res: int = add res j;
   print res;
   print x;
+  one: int = const 1;
+  j: int = add j one;
   jmp .inner;
 .end:
   ret;

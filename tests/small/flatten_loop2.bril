@@ -6,7 +6,7 @@
   maxi: int = const 10;
   notdone: bool = lt i maxi;
   one: int = const 1;
-  j: int = add j one;
+  i: int = add i one;
   br notdone .inner .end;
 .inner:
   maxj: int = const 5;

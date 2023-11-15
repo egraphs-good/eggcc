@@ -15,22 +15,21 @@ expression: visualization.result
   jmp .__20__;
 .__20__:
   print v18;
-  print v18;
-  v26: int = const 2;
-  v28: int = add v14 v26;
-  v33: int = add v16 v18;
-  v36: int = const 14;
-  v39: int = add v36 v18;
-  v43: bool = lt v14 v17;
-  v14: int = id v28;
+  v24: int = const 2;
+  v26: int = add v14 v24;
+  v31: int = add v16 v18;
+  v35: int = const 14;
+  v37: int = add v18 v35;
+  v41: bool = lt v14 v17;
+  v14: int = id v26;
   v15: int = id v15;
-  v16: int = id v33;
+  v16: int = id v31;
   v17: int = id v17;
-  v18: int = id v39;
-  br v43 .__20__ .__47__;
-.__47__:
+  v18: int = id v37;
+  br v41 .__20__ .__45__;
+.__45__:
   print v16;
-  print v15;
+  print v7;
   print v14;
 }
 

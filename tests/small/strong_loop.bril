@@ -10,7 +10,6 @@
     cond: bool = lt i n;
     y: int = mul c i;
     print y;
-    print y;
     total: int = add total y;
     i: int = add i one;
     br cond .loop .done;

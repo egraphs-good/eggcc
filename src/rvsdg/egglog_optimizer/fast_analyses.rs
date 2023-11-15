@@ -4,12 +4,13 @@ fn reify_vec_rules() -> Vec<String> {
     let mut res = vec![];
     for (vectype, ctor, eltype) in &[
         ("VecOperand", "VO", "Operand"),
-        ("VecVecOperand", "VVO", "VecOperand"),
+        ("VecOperandCtx", "VOC", "Operand"),
+        ("VecVecOperandCtx", "VVO", "VecOperandCtx"),
     ] {
         // Reify vec-get to be able to be able to match on vec contents
         res.push(format!(
             "
-          (function {vectype}-get ({vectype} i64) {eltype})
+          (function {vectype}-get ({vectype} i64) {eltype} :unextractable)
           (rule (({ctor} x) (> (vec-length x) 0))
                 ((union ({vectype}-get ({ctor} x) 0) (vec-get x 0)))
                 :ruleset fast-analyses)
@@ -38,8 +39,10 @@ fn is_pure_rules() -> Vec<String> {
         (relation Body-is-pure (Body))
         (relation VecOperand-is-pure (VecOperand))
         (function VecOperand-pure-prefix (VecOperand) i64 :merge (max old new))
-        (relation VecVecOperand-is-pure (VecVecOperand))
-        (function VecVecOperand-pure-prefix (VecVecOperand) i64 :merge (max old new))
+        (relation VecOperandCtx-is-pure (VecOperandCtx))
+        (function VecOperandCtx-pure-prefix (VecOperandCtx) i64 :merge (max old new))
+        (relation VecVecOperandCtx-is-pure (VecVecOperandCtx))
+        (function VecVecOperandCtx-pure-prefix (VecVecOperandCtx) i64 :merge (max old new))
         (relation Function-is-pure (Function))
     "
     .into()];
@@ -110,7 +113,7 @@ fn is_pure_rules() -> Vec<String> {
         (rule ((= f (Gamma pred inputs outputs))
                (Operand-is-pure pred)
                (VecOperand-is-pure inputs)
-               (VecVecOperand-is-pure outputs))
+               (VecVecOperandCtx-is-pure outputs))
               ((Body-is-pure f))
               :ruleset fast-analyses)
         (rule ((= f (Theta pred inputs outputs))
@@ -127,10 +130,11 @@ fn is_pure_rules() -> Vec<String> {
         .into(),
     );
 
-    // {VecOperand,VecVecOperand}-is-pure
+    // {VecOperand,VecVecOperandCtx}-is-pure
     for (vectype, ctor, eltype) in [
         ("VecOperand", "VO", "Operand"),
-        ("VecVecOperand", "VVO", "VecOperand"),
+        ("VecOperandCtx", "VOC", "Operand"),
+        ("VecVecOperandCtx", "VVO", "VecOperandCtx"),
     ] {
         res.push(format!(
             "
@@ -183,8 +187,8 @@ fn region_contains_rules() -> Vec<String> {
               :ruleset fast-analyses)
         ; A Gamma only contains its outputs
         (rule ((= f (Gamma pred inputs outputs))
-               (= outputs-i (VecVecOperand-get outputs i))
-               (= x (VecOperand-get outputs-i j)))
+               (= outputs-i (VecVecOperandCtx-get outputs i))
+               (= x (VecOperandCtx-get outputs-i j)))
               ((Body-contains-Operand f i x))
               :ruleset fast-analyses)
         ; A Theta contains its pred and outputs
@@ -282,10 +286,22 @@ fn region_contains_rules() -> Vec<String> {
     res
 }
 
+pub(crate) fn vo_conversion_rules() -> String {
+    "
+(function VO-to-VOC (VecOperand) VecOperandCtx :unextractable)
+(function VOC-to-VO (VecOperandCtx) VecOperand :unextractable)
+
+(rewrite (VO-to-VOC (VO vo)) (VOC vo) :ruleset fast-analyses)
+(rewrite (VOC-to-VO (VOC voc)) (VO voc) :ruleset fast-analyses)
+    "
+    .to_string()
+}
+
 pub(crate) fn all_rules() -> String {
     let mut res = vec!["(ruleset fast-analyses)".to_string()];
     res.extend(reify_vec_rules());
     res.extend(is_pure_rules());
     res.extend(region_contains_rules());
+    res.push(vo_conversion_rules());
     res.join("\n")
 }

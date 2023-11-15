@@ -122,16 +122,37 @@
 ;;	       S3
 
 (rule (
+       ; Find all gammas
        (= gamma (Gamma pred inputs (VVO outputs)))
-       (= (VO thens) (VecVecOperand-get (VVO outputs) 1)); VecOperand
+
+       ; Special case to two branches
+       (= (VO thens) (VecVecOperand-get (VVO outputs) 1))
        (= (VO elses) (VecVecOperand-get (VVO outputs) 0))
+
+       ; Find a plus that adds two outputs from the Gamma
        (= plus (Node (PureOp (badd (IntT) (Project i gamma) (Project j gamma)))))
        (Operand-is-pure plus)
+
+       ; Get the outputs i and j for each branch       
+       (= then-i (VecOperand-get (VO thens) i))
+       (= else-i (VecOperand-get (VO elses) i))
+       (= then-j (VecOperand-get (VO thens) j))
+       (= else-j (VecOperand-get (VO elses) j))
+
+       ; Make sure they are all consts
+       ; TODO: Can we rip this out after we figure why it's blowing up in combination with loop unrolling?
+       (= then-i (Node (PureOp (Const (IntT) (const) (Num n1)))))
+       (= then-j (Node (PureOp (Const (IntT) (const) (Num n2)))))
+       (= else-i (Node (PureOp (Const (IntT) (const) (Num n3)))))
+       (= else-j (Node (PureOp (Const (IntT) (const) (Num n4)))))
        )
        (
-       (let new-thens (vec-push thens (Node (PureOp (badd (IntT) (VecOperand-get (VO thens) i) (VecOperand-get (VO thens) j))))))
-       (let new-elses (vec-push elses (Node (PureOp (badd (IntT) (VecOperand-get (VO elses) i) (VecOperand-get (VO elses) j))))))
+       ; Add a new output that adds outputs i and j on each branch
+       (let new-thens (vec-push thens (Node (PureOp (badd (IntT) then-i then-j)))))
+       (let new-elses (vec-push elses (Node (PureOp (badd (IntT) else-i else-j)))))
        (let new-gamma (Gamma pred inputs (VVO (vec-of (VO new-thens) (VO new-elses)))))
+
+       ; union the original plus node with the new output
        (union plus (Project (vec-length outputs) new-gamma))
        )
 )

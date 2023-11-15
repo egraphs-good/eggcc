@@ -13,7 +13,13 @@
 ;; for i = 0 to n:
 ;;     a += d
 ;;     d += c
-; TODO: this optimization currently only works for constants c, d, not invariants c,d
+
+; TODO: this optimization does not get extracted if the multiplications
+; for the initial value of d and the update to d do not get constant folded.
+; To fix this, we would need to:
+;   1. move the multiplication in the update to d outside the loop
+;   2. count loop bodies as higher cost, so moving a multiplication outside
+;       the loop reduces the overall cost of the program
 
 
 ; Finds invariants/constants within a body.

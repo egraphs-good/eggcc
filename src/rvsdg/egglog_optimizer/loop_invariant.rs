@@ -50,12 +50,35 @@ fn boundary_analysis(bril_op: BrilOp) -> String {
     }
 }
 
+fn is_complex_analysis(bril_op: BrilOp) -> String {
+    let bop = bril_op.op.to_string();
+    match bril_op.input_types.as_ref() {
+        // both side of operand need a rule
+        [Some(_), Some(_)] => format!(
+            "
+    (rule ((= operand (Node (PureOp expr))) (= expr ({bop} ty (Arg n) op2))) ((is_complex_operand operand)) :ruleset fast-analyses)
+    (rule ((= operand (Node (PureOp expr))) (= expr ({bop} ty op1 (Arg n)))) ((is_complex_operand operand)) :ruleset fast-analyses)
+    (rule ((= operand (Node (PureOp expr))) (= expr ({bop} ty op1 op2)) (is_complex_operand op1)) ((is_complex_operand operand)) :ruleset fast-analyses)
+    (rule ((= operand (Node (PureOp expr))) (= expr ({bop} ty op1 op2)) (is_complex_operand op2)) ((is_complex_operand operand)) :ruleset fast-analyses)  
+
+        "
+        ),
+        [Some(_), None] => format!("
+    (rule ((= operand (Node (PureOp expr))) (= expr (bnot ty (Arg n)))) ((is_complex_operand operand)) :ruleset fast-analyses)
+    (rule ((= operand (Node (PureOp expr))) (= expr (bnot ty op)) (is_complex_operand op)) ((is_complex_operand operand)) :ruleset fast-analyses)
+        
+        "),
+        _ => unimplemented!(),
+    }
+}
+
 pub(crate) fn loop_invariant_detection() -> String {
     let mut res = vec![include_str!("loop_invariant.egg").to_string()];
 
     for bril_op in BRIL_OPS {
         res.push(inv_ops_detection(bril_op.clone()));
-        res.push(boundary_analysis(bril_op));
+        res.push(boundary_analysis(bril_op.clone()));
+        res.push(is_complex_analysis(bril_op))
     }
 
     // delete after bool-= is added to egglog

@@ -7,20 +7,20 @@
 
 
 ;; (how many arguments to generate, vector so far)
-(function PassThroughArgumentsHelper (i64 VecOperand) VecOperand :unextractable)
+(function PassThroughArgumentsHelper (i64 VecOperandBase) VecOperand :unextractable)
 
 (rewrite (PassThroughArguments i)
-  (PassThroughArgumentsHelper i (VO (vec-of)))
+  (PassThroughArgumentsHelper i (vec-of))
   :ruleset subst)
 
-(rule ((= lhs (PassThroughArgumentsHelper i (VO rest)))
+(rule ((= lhs (PassThroughArgumentsHelper i rest))
        (< (vec-length rest) i))
       ((union lhs
         (PassThroughArgumentsHelper i
-            (VO (vec-push rest (Arg (vec-length rest)))))))
+            (vec-push rest (Arg (vec-length rest))))))
       :ruleset subst)
 
-(rule ((= lhs (PassThroughArgumentsHelper i (VO rest)))
+(rule ((= lhs (PassThroughArgumentsHelper i rest))
        (= (vec-length rest) i))
       ((union lhs (VO rest)))
       :ruleset subst)

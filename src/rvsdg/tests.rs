@@ -1350,38 +1350,38 @@ fn test_conditional_invariant_code_motion_2() {
 #[test]
 fn rvsdg_loop_inv_detect_simple() {
     const EGGLOG_THETA_PROGRAM1: &str = r#"
-    (let t1 
-    (Theta 
-        (Node (PureOp 
-            (beq (BoolT) 
-                (Node (PureOp 
-                    (bdiv (IntT) (Arg 2) 
-                                (Node (PureOp 
-                                    (bmul (IntT) 
-                                        (Node (PureOp 
-                                            (bsub (IntT) (Arg 1) 
-                                                        (Node (PureOp 
-                                                            (badd (IntT) (Arg 4) 
+    (let t1
+    (Theta
+        (Node (PureOp
+            (beq (BoolT)
+                (Node (PureOp
+                    (bdiv (IntT) (Arg 2)
+                                (Node (PureOp
+                                    (bmul (IntT)
+                                        (Node (PureOp
+                                            (bsub (IntT) (Arg 1)
+                                                        (Node (PureOp
+                                                            (badd (IntT) (Arg 4)
                                                                          (Arg 5)))))))
-                                                        (Arg 3))))))) 
+                                                        (Arg 3)))))))
                                         (Arg 1))))
         (VO (vec-of (Arg 0)
-                    (Node (PureOp (Const (IntT) (const) (Num 2)))) 
-                    (Node (PureOp (Const (IntT) (const) (Num 6)))) 
-                    (Node (PureOp (Const (IntT) (const) (Num 3)))) 
-                    (Node (PureOp (Const (IntT) (const) (Num 0)))) 
-                    (Node (PureOp (Const (IntT) (const) (Num 1)))))) 
-        (VO (vec-of 
-                (Node (PureOp 
-                    (PRINT (Node (PureOp 
-                                (bdiv (IntT) (Arg 2) 
-                                            (Node (PureOp 
-                                                (bmul (IntT) 
-                                                    (Node (PureOp 
+                    (Node (PureOp (Const (IntT) (const) (Num 2))))
+                    (Node (PureOp (Const (IntT) (const) (Num 6))))
+                    (Node (PureOp (Const (IntT) (const) (Num 3))))
+                    (Node (PureOp (Const (IntT) (const) (Num 0))))
+                    (Node (PureOp (Const (IntT) (const) (Num 1))))))
+        (VO (vec-of
+                (Node (PureOp
+                    (PRINT (Node (PureOp
+                                (bdiv (IntT) (Arg 2)
+                                            (Node (PureOp
+                                                (bmul (IntT)
+                                                    (Node (PureOp
                                                         (bsub (IntT) (Arg 1)
-                                                                    (Node (PureOp 
-                                                                        (badd (IntT) (Arg 4) 
-                                                                                        (Arg 5))))))) 
+                                                                    (Node (PureOp
+                                                                        (badd (IntT) (Arg 4)
+                                                                                        (Arg 5)))))))
                                                                     (Arg 3))))  )))
                                             (Arg 0))))
                 (Arg 1)
@@ -1392,7 +1392,7 @@ fn rvsdg_loop_inv_detect_simple() {
 
     (run-schedule
         (repeat 5 (run) (saturate fast-analyses)) (saturate boundary-analyses) )
-            
+
     (fail (check (arg_inv t1 0)))
     (check (arg_inv t1 1))
     (check (arg_inv t1 2))
@@ -1408,31 +1408,30 @@ fn rvsdg_loop_inv_detect_simple() {
 
     (check (= true (is_inv_body t1 (PureOp (badd (IntT) (Arg 4) (Arg 5))))))
 
-    (check (= true 
-            (is_inv_expr 
-                t1 
-                (bmul (IntT) 
-                    (Node (PureOp 
+    (check (= true
+            (is_inv_expr
+                t1
+                (bmul (IntT)
+                    (Node (PureOp
                         (bsub (IntT) (Arg 1)
-                                    (Node (PureOp 
-                                        (badd (IntT) (Arg 4) 
+                                    (Node (PureOp
+                                        (badd (IntT) (Arg 4)
                                                      (Arg 5)))))))
                     (Arg 3)))))
 
-    (let inv_operand 
-        (Node (PureOp 
-            (bdiv (IntT) 
-                    (Arg 2) 
-                    (Node (PureOp 
-                        (bmul (IntT) 
-                                (Node (PureOp 
+    (let inv_operand
+        (Node (PureOp
+            (bdiv (IntT)
+                    (Arg 2)
+                    (Node (PureOp
+                        (bmul (IntT)
+                                (Node (PureOp
                                     (bsub (IntT) (Arg 1)
-                                                (Node (PureOp 
-                                                    (badd (IntT) (Arg 4) 
-                                                                (Arg 5))))))) 
+                                                (Node (PureOp
+                                                    (badd (IntT) (Arg 4)
+                                                                (Arg 5)))))))
                                 (Arg 3))))))))
     (check (= true (is_inv_operand t1 inv_operand)))
-
 
     ; the operand at pred of theta is invariant
     (check (= true (is_inv_operand t1 (Node (PureOp (beq (BoolT) inv_operand (Arg 1)))))))
@@ -1441,86 +1440,83 @@ fn rvsdg_loop_inv_detect_simple() {
     (check (boundary_operand t1 (Node (PureOp (beq (BoolT) inv_operand (Arg 1))))))
 
     ; print is not invariant
-    (check (= false (is_inv_operand t1 (Node (PureOp (PRINT (Node (PureOp (bdiv (IntT) (Arg 2) 
+    (check (= false (is_inv_operand t1 (Node (PureOp (PRINT (Node (PureOp (bdiv (IntT) (Arg 2)
     (Node (PureOp (bmul (IntT) (Node (PureOp (bsub (IntT) (Arg 1)
-                                                        (Node (PureOp (badd (IntT) (Arg 4) 
-                                                                                    (Arg 5))))))) 
-                                (Arg 3))))))) 
+                                                        (Node (PureOp (badd (IntT) (Arg 4)
+                                                                                    (Arg 5)))))))
+                                (Arg 3)))))))
     (Arg 0)))))))
 
-    (check (= false (is_inv_expr 
-                        t1 
-                        (PRINT 
-                            (Node (PureOp 
-                                (bdiv (IntT) (Arg 2) 
-                                            (Node (PureOp 
-                                                (bmul (IntT) 
-                                                    (Node (PureOp 
-                                                        (bsub (IntT) 
+    (check (= false (is_inv_expr
+                        t1
+                        (PRINT
+                            (Node (PureOp
+                                (bdiv (IntT) (Arg 2)
+                                            (Node (PureOp
+                                                (bmul (IntT)
+                                                    (Node (PureOp
+                                                        (bsub (IntT)
                                                             (Arg 1)
-                                                            (Node (PureOp 
-                                                                (badd (IntT) 
-                                                                    (Arg 4) 
-                                                                    (Arg 5))))))) 
+                                                            (Node (PureOp
+                                                                (badd (IntT)
+                                                                    (Arg 4)
+                                                                    (Arg 5)))))))
                                                     (Arg 3)))))))
                                             (Arg 0)))))
 
-
-    (check (= false 
-            (is_inv_operand 
-                t1 
-                (Node (PureOp 
-                    (PRINT 
-                        (Node (PureOp 
-                            (bdiv (IntT) 
-                                (Arg 2) 
-                                (Node (PureOp 
-                                    (bmul (IntT) 
-                                        (Node (PureOp 
-                                            (bsub (IntT) 
+    (check (= false
+            (is_inv_operand
+                t1
+                (Node (PureOp
+                    (PRINT
+                        (Node (PureOp
+                            (bdiv (IntT)
+                                (Arg 2)
+                                (Node (PureOp
+                                    (bmul (IntT)
+                                        (Node (PureOp
+                                            (bsub (IntT)
                                                 (Arg 1)
                                                 (Node (PureOp
-                                                    (badd (IntT) 
-                                                        (Arg 4) 
-                                                        (Arg 5))))))) 
-                                        (Arg 3))))))) 
+                                                    (badd (IntT)
+                                                        (Arg 4)
+                                                        (Arg 5)))))))
+                                        (Arg 3)))))))
                             (Arg 0)))))))
-    
+
     ;; the thing just beneth print is boundary invariant
     (check (boundary_operand t1
-                     (Node (PureOp 
-                            (bdiv (IntT) 
-                                (Arg 2) 
-                                (Node (PureOp 
-                                    (bmul (IntT) 
-                                        (Node (PureOp 
-                                            (bsub (IntT) 
+                     (Node (PureOp
+                            (bdiv (IntT)
+                                (Arg 2)
+                                (Node (PureOp
+                                    (bmul (IntT)
+                                        (Node (PureOp
+                                            (bsub (IntT)
                                                 (Arg 1)
                                                 (Node (PureOp
-                                                    (badd (IntT) 
-                                                        (Arg 4) 
+                                                    (badd (IntT)
+                                                        (Arg 4)
                                                         (Arg 5)))))))
                                         (Arg 3)))))))))
 
-    
     ;; the thing under boundary should not be boundary
-    (fail (check (boundary_operand t1 
-                                (Node (PureOp 
+    (fail (check (boundary_operand t1
+                                (Node (PureOp
                                         (bsub (IntT) (Arg 1)
-                                                    (Node (PureOp 
-                                                        (badd (IntT) (Arg 4) 
+                                                    (Node (PureOp
+                                                        (badd (IntT) (Arg 4)
                                                                         (Arg 5))))))))))
 
-
     (fail (check (boundary_operand t1
-                        (Node (PureOp 
-                                        (bmul (IntT) 
-                                            (Node (PureOp 
-                                                (bsub (IntT) 
+                        (Node (PureOp
+                                        (bmul (IntT)
+                                            (Node (PureOp
+                                                (bsub (IntT)
                                                     (Arg 1)
                                                     (Node (PureOp
-                                                        (badd (IntT) 
-                                                            (Arg 4) 
+                                                        (badd (IntT)
+                                                            (Arg 4)
                                                             (Arg 5)))))))
                                             (Arg 3)))))))
 
@@ -1531,90 +1527,90 @@ fn rvsdg_loop_inv_detect_simple() {
     egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM1).unwrap();
 
     const EGGLOG_THETA_PROGRAM2: &str = r#"
-    (let t1 (Theta 
-            (Node (PureOp 
-                (blt (BoolT) 
-                    (Node (PureOp 
-                        (badd (IntT) 
-                            (Node (PureOp 
-                                (Const (IntT) (const) (Num 1)))) 
-                                (Arg 1)))) 
-                            (Node (PureOp 
-                                (Const (IntT) (const) (Num 5))))))) 
-            (VO (vec-of (Arg 0) 
-                        (Node (PureOp (Const (IntT) (const) (Num 0)))) 
-                        (Node (PureOp (Const (IntT) (const) (Num 10)))) 
-                        (Node (PureOp (Const (IntT) (const) (Num 10)))) 
+    (let t1 (Theta
+            (Node (PureOp
+                (blt (BoolT)
+                    (Node (PureOp
+                        (badd (IntT)
+                            (Node (PureOp
+                                (Const (IntT) (const) (Num 1))))
+                                (Arg 1))))
+                            (Node (PureOp
+                                (Const (IntT) (const) (Num 5)))))))
+            (VO (vec-of (Arg 0)
+                        (Node (PureOp (Const (IntT) (const) (Num 0))))
+                        (Node (PureOp (Const (IntT) (const) (Num 10))))
+                        (Node (PureOp (Const (IntT) (const) (Num 10))))
                         (Node (PureOp (Const (IntT) (const) (Num 10))))))
-            (VO (vec-of 
-                (Node (PureOp 
-                    (PRINT 
-                        (Node (PureOp 
-                            (bmul (IntT) 
-                                (Arg 2) 
-                                (Node (PureOp 
-                                    (Const (IntT) (const) (Num 2))))))) 
-                        (Node (PureOp 
-                            (PRINT 
-                                (Project 0 
-                                    (PureOp 
-                                        (Call 
-                                            (SomeType (IntT)) 
-                                            "mean3" 
-                                            (VO 
-                                                (vec-of 
-                                                    (Node (PureOp 
-                                                        (badd (IntT) 
-                                                            (Arg 4) 
-                                                            (Node (PureOp 
+            (VO (vec-of
+                (Node (PureOp
+                    (PRINT
+                        (Node (PureOp
+                            (bmul (IntT)
+                                (Arg 2)
+                                (Node (PureOp
+                                    (Const (IntT) (const) (Num 2)))))))
+                        (Node (PureOp
+                            (PRINT
+                                (Project 0
+                                    (PureOp
+                                        (Call
+                                            (SomeType (IntT))
+                                            "mean3"
+                                            (VO
+                                                (vec-of
+                                                    (Node (PureOp
+                                                        (badd (IntT)
+                                                            (Arg 4)
+                                                            (Node (PureOp
                                                                 (Const (IntT) (const) (Num 5)))))))
 
-                                                    (Node (PureOp 
-                                                        (bsub (IntT) 
-                                                            (Arg 3) 
-                                                            (Node (PureOp 
-                                                                (Const (IntT) (const) (Num 3))))))) 
-                                                    (Node (PureOp 
-                                                        (bsub (IntT) 
-                                                            (Node (PureOp 
-                                                                (bsub (IntT) (Arg 3) 
-                                                                            (Node (PureOp 
-                                                                                (Const (IntT) (const) (Num 3))))))) 
-                                                                            (Node (PureOp 
+                                                    (Node (PureOp
+                                                        (bsub (IntT)
+                                                            (Arg 3)
+                                                            (Node (PureOp
+                                                                (Const (IntT) (const) (Num 3)))))))
+                                                    (Node (PureOp
+                                                        (bsub (IntT)
+                                                            (Node (PureOp
+                                                                (bsub (IntT) (Arg 3)
+                                                                            (Node (PureOp
+                                                                                (Const (IntT) (const) (Num 3)))))))
+                                                                            (Node (PureOp
                                                                                 (Const (IntT) (const) (Num 2)))))))
                                                     (Arg 0)))
-                                                2))) 
-                (Project 1 
-                    (PureOp 
-                        (Call 
-                            (SomeType (IntT)) 
-                            "mean3" 
-                            (VO 
-                                (vec-of 
-                                    (Node (PureOp 
-                                        (badd (IntT) 
-                                            (Arg 4) 
-                                            (Node (PureOp 
+                                                2)))
+                (Project 1
+                    (PureOp
+                        (Call
+                            (SomeType (IntT))
+                            "mean3"
+                            (VO
+                                (vec-of
+                                    (Node (PureOp
+                                        (badd (IntT)
+                                            (Arg 4)
+                                            (Node (PureOp
                                                 (Const (IntT) (const) (Num 5)))))))
 
-                                    (Node (PureOp 
-                                        (bsub (IntT) 
-                                            (Arg 3) 
-                                            (Node (PureOp 
-                                                (Const (IntT) (const) (Num 3))))))) 
-                                    (Node (PureOp 
-                                        (bsub (IntT) 
-                                            (Node (PureOp 
-                                                (bsub (IntT) (Arg 3) 
-                                                            (Node (PureOp 
-                                                                (Const (IntT) (const) (Num 3))))))) 
-                                                            (Node (PureOp 
+                                    (Node (PureOp
+                                        (bsub (IntT)
+                                            (Arg 3)
+                                            (Node (PureOp
+                                                (Const (IntT) (const) (Num 3)))))))
+                                    (Node (PureOp
+                                        (bsub (IntT)
+                                            (Node (PureOp
+                                                (bsub (IntT) (Arg 3)
+                                                            (Node (PureOp
+                                                                (Const (IntT) (const) (Num 3)))))))
+                                                            (Node (PureOp
                                                                 (Const (IntT) (const) (Num 2)))))))
                                     (Arg 0)))
                                 2)))))))))
                     (Node (PureOp (badd (IntT) (Node (PureOp (Const (IntT) (const) (Num 1)))) (Arg 1))))
-                    (Node (PureOp (bmul (IntT) (Arg 2) (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
-                    (Arg 3) 
+                    (Node (PureOp (bmul (IntT) (Arg 2) (Node (PureOp (Const (IntT) (const) (Num 2)))))))
+                    (Arg 3)
                     (Arg 4)))))
 
     (run-schedule
@@ -1626,74 +1622,73 @@ fn rvsdg_loop_inv_detect_simple() {
     (check (= false (is_inv_operand t1 (Arg 1))))
     (check (= false (is_inv_operand t1 (Arg 2))))
     (check (= true (is_inv_operand t1 (Node (PureOp (Const (IntT) (const) (Num 5)))))))
-    (check (= true 
-            (is_inv_expr 
-                t1 
-                (badd (IntT) 
-                    (Arg 4) 
+    (check (= true
+            (is_inv_expr
+                t1
+                (badd (IntT)
+                    (Arg 4)
                     (Node (PureOp (Const (IntT) (const) (Num 5))))))))
-    (check (= true 
-            (is_inv_operand 
-                t1 
-                (Node (PureOp 
-                    (bsub (IntT) 
+    (check (= true
+            (is_inv_operand
+                t1
+                (Node (PureOp
+                    (bsub (IntT)
                         (Node (PureOp (
-                            bsub (IntT) (Arg 3) 
-                                        (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                            bsub (IntT) (Arg 3)
+                                        (Node (PureOp (Const (IntT) (const) (Num 3)))))))
                         (Node (PureOp (Const (IntT) (const) (Num 2))))))))))
 
-
-    (check (boundary_operand t1 
-                (Node (PureOp 
-                    (bsub (IntT) 
+    (check (boundary_operand t1
+                (Node (PureOp
+                    (bsub (IntT)
                         (Node (PureOp (
-                            bsub (IntT) (Arg 3) 
-                                        (Node (PureOp (Const (IntT) (const) (Num 3))))))) 
+                            bsub (IntT) (Arg 3)
+                                        (Node (PureOp (Const (IntT) (const) (Num 3)))))))
                         (Node (PureOp (Const (IntT) (const) (Num 2)))))))))
 
-    (check (boundary_operand t1 
-                (Node (PureOp 
-                    (badd (IntT) 
-                        (Arg 4) 
-                        (Node (PureOp 
+    (check (boundary_operand t1
+                (Node (PureOp
+                    (badd (IntT)
+                        (Arg 4)
+                        (Node (PureOp
                             (Const (IntT) (const) (Num 5)))))))))
 
-    (check (boundary_operand t1 
-                (Node (PureOp 
-                    (bsub (IntT) 
-                        (Arg 3) 
-                        (Node (PureOp 
+    (check (boundary_operand t1
+                (Node (PureOp
+                    (bsub (IntT)
+                        (Arg 3)
+                        (Node (PureOp
                             (Const (IntT) (const) (Num 3)))))))))
 
-    (check (= false 
+    (check (= false
         (is_inv_body
-            t1 
-            (PureOp 
-                (Call 
-                    (SomeType (IntT)) 
-                    "mean3" 
-                    (VO (vec-of 
-                        (Node (PureOp 
-                            (badd (IntT) 
-                                (Arg 4) 
-                                (Node (PureOp 
-                                    (Const (IntT) (const) (Num 5))))))) 
-                        (Node (PureOp 
-                            (bsub (IntT) 
-                                (Arg 3) 
-                                (Node (PureOp 
-                                    (Const (IntT) (const) (Num 3))))))) 
-                        (Node (PureOp 
-                            (bsub (IntT) 
-                                (Node (PureOp 
-                                    (bsub (IntT) 
-                                        (Arg 3) 
-                                        (Node (PureOp 
-                                            (Const (IntT) (const) (Num 3))))))) 
-                        (Node (PureOp (Const (IntT) (const) (Num 2))))))) 
-                        (Arg 0))) 
+            t1
+            (PureOp
+                (Call
+                    (SomeType (IntT))
+                    "mean3"
+                    (VO (vec-of
+                        (Node (PureOp
+                            (badd (IntT)
+                                (Arg 4)
+                                (Node (PureOp
+                                    (Const (IntT) (const) (Num 5)))))))
+                        (Node (PureOp
+                            (bsub (IntT)
+                                (Arg 3)
+                                (Node (PureOp
+                                    (Const (IntT) (const) (Num 3)))))))
+                        (Node (PureOp
+                            (bsub (IntT)
+                                (Node (PureOp
+                                    (bsub (IntT)
+                                        (Arg 3)
+                                        (Node (PureOp
+                                            (Const (IntT) (const) (Num 3)))))))
+                        (Node (PureOp (Const (IntT) (const) (Num 2)))))))
+                        (Arg 0)))
                     2)))))
-                                                                    
+
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM2).unwrap();
@@ -1795,7 +1790,9 @@ fn rvsdg_loop_inv_motion_simple() {
                             (Arg 2))))
                     (Arg 3)))))
 
-    (check (= false (is_arg_operand hoisted)))
+    (check (is_complex_operand hoisted))
+    (fail (check (is_complex_operand (Arg 1))))
+    (check (is_complex_operand (Node (PureOp (badd (IntT) (Arg 5) (Arg 3))))))
 
     (let hoisted_substed 
             (Node

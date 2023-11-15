@@ -14,7 +14,7 @@ async function getNightlyLinks(element) {
 
         const [date, __, branch, commit] = hrefText.split("%3A");
         console.log(date)
-        comparisons.push({branch: branch, commit: commit.slice(0, -1), date: +date});
+        comparisons.push({branch: branch, commit: commit.slice(0, -1), date: +date, url: allLinks[i].href});
     }
 
     const select = document.getElementById(element);

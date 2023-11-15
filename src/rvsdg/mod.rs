@@ -238,8 +238,11 @@ impl RvsdgProgram {
             let (sort, value) = egraph
                 .eval_expr(&egglog::ast::Expr::Var(name.into()), None, true)
                 .unwrap();
-            let (_size, extracted) = egraph.extract(value, &mut termdag, &sort);
-            functions.push(RvsdgFunction::egglog_term_to_function(extracted, &termdag));
+            let costset = egraph.extract(value, &mut termdag, &sort);
+            functions.push(RvsdgFunction::egglog_term_to_function(
+                costset.term,
+                &termdag,
+            ));
         }
 
         Ok(RvsdgProgram { functions })

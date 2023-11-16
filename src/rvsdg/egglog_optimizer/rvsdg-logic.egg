@@ -92,7 +92,7 @@
        (= i (refers-to-branch val))
        (= outputs-always-used (VecVecOperandCtx-get outputs i))
        (= output-j (VecOperandCtx-get outputs-always-used j))
-       (might-create-situation outer s) ; for pruning, not needed for soundness
+       (might-create-situation outer situation) ; for pruning, not needed for soundness
       )
       ((let output-j-in-outer-ctx (SubstOperandAll output-j inputs))
         (holds (leq

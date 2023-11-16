@@ -1766,7 +1766,7 @@ fn rvsdg_loop_inv_motion_simple() {
     (run-schedule
             (repeat 5 (run) (saturate fast-analyses))
             (saturate boundary-analyses)
-            (run)
+            (saturate loop-inv-motion)
             (saturate (saturate fast-analyses) subst)
             (saturate (saturate fast-analyses) subst-beneath)
     )

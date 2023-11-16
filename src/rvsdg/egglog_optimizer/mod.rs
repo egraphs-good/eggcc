@@ -26,7 +26,7 @@ pub fn rvsdg_egglog_code() -> String {
         include_str!("gamma_rewrites.egg").to_string(),
         passthrough_optimize_rules(),
         include_str!("interval-analysis.egg").to_string(),
-        //include_str!("loop-optimizations.egg").to_string(),
+        include_str!("loop-optimizations.egg").to_string(),
         include_str!("function_inline.egg").to_string(),
         include_str!("conditional_invariant_code_motion.egg").to_string(),
         reassoc_rules(),
@@ -40,9 +40,9 @@ pub fn rvsdg_egglog_schedule() -> String {
     "(run-schedule
         ; It is sound to not saturate fast-analyses/subst, but we do because
         ; they won't blow up and will help other rules go through.
+        (seq (saturate fast-analyses) (saturate boundary-analyses) (saturate loop-inv-motion))
         (repeat 5
             (saturate fast-analyses)
-            (saturate boundary-analyses)
             ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
             (seq (saturate extraction) (saturate extraction-vec))
             (run)

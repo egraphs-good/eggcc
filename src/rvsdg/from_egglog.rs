@@ -34,7 +34,7 @@ impl<'a> RvsdgFromEgglog<'a> {
                 // optimize them away.
                 match (bfunc.as_str(), &bargs.as_slice()) {
                     ("OperandGroup", [groupbody]) => {
-                        let results = self.expr_to_vec_operand(groupbody.clone());
+                        let results = self.expr_to_vec_operand(groupbody.clone(), "VO");
                         assert!(results.len() > *n as usize);
                         results[*n as usize]
                     }
@@ -52,7 +52,7 @@ impl<'a> RvsdgFromEgglog<'a> {
         }
     }
 
-    fn expr_to_vec_operand(&mut self, vec: Term) -> Vec<Operand> {
+    fn expr_to_vec_operand(&mut self, vec: Term, constructor: &str) -> Vec<Operand> {
         let Term::App(func, args) = vec else {
             panic!("Expected a VO, got {}", self.termdag.to_string(&vec))
         };
@@ -60,7 +60,7 @@ impl<'a> RvsdgFromEgglog<'a> {
             .iter()
             .map(|t| self.termdag.get(*t))
             .collect::<Vec<_>>();
-        assert_eq!(func.as_str(), "VO");
+        assert_eq!(func.as_str(), constructor);
         assert_eq!(args.len(), 1);
         let vec = &args[0];
         vec_map(vec.clone(), self.termdag, |term| {
@@ -81,7 +81,7 @@ impl<'a> RvsdgFromEgglog<'a> {
         assert_eq!(args.len(), 1);
         let vec_vec = &args[0];
         vec_map(vec_vec.clone(), self.termdag, |vec| {
-            self.expr_to_vec_operand(vec)
+            self.expr_to_vec_operand(vec, "VOC")
         })
     }
 
@@ -104,7 +104,7 @@ impl<'a> RvsdgFromEgglog<'a> {
                     let outputs = self.termdag.get(*outputs);
 
                     let pred = self.egglog_term_to_operand(pred);
-                    let inputs = self.expr_to_vec_operand(inputs);
+                    let inputs = self.expr_to_vec_operand(inputs, "VO");
                     let outputs = self.expr_to_vec_vec_operand(outputs);
                     RvsdgBody::Gamma {
                         pred,
@@ -118,8 +118,8 @@ impl<'a> RvsdgFromEgglog<'a> {
                     let outputs = self.termdag.get(*outputs);
 
                     let pred = self.egglog_term_to_operand(pred);
-                    let inputs = self.expr_to_vec_operand(inputs);
-                    let outputs = self.expr_to_vec_operand(outputs);
+                    let inputs = self.expr_to_vec_operand(inputs, "VO");
+                    let outputs = self.expr_to_vec_operand(outputs, "VO");
                     RvsdgBody::Theta {
                         pred,
                         inputs,
@@ -150,7 +150,7 @@ impl<'a> RvsdgFromEgglog<'a> {
                     "Call",
                     [ty, Term::Lit(Literal::String(ident)), args, Term::Lit(Literal::Int(n_outs))],
                 ) => {
-                    let args = self.expr_to_vec_operand(args.clone());
+                    let args = self.expr_to_vec_operand(args.clone(), "VO");
                     let ty = self.egglog_expr_to_option_ty(ty.clone());
                     BasicExpr::Call(ident.to_string(), args, *n_outs as usize, ty)
                 }
@@ -285,7 +285,7 @@ impl RvsdgFunction {
                         convert.egglog_expr_to_rvsdg_ty(ty)
                     });
 
-                    let result_values = convert.expr_to_vec_operand(body.clone());
+                    let result_values = convert.expr_to_vec_operand(body.clone(), "VO");
 
                     let results = result_types
                         .into_iter()

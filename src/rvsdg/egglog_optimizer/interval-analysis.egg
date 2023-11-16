@@ -38,10 +38,10 @@
 ; Rules that union intervals for a gamma
 (rule (
         (= lhs (Project i (Gamma pred ins outs)))
-        (= thens (VecVecOperand-get outs 1))
-        (= elses (VecVecOperand-get outs 0))
-        (= thenival (ival (VecOperand-get thens i)))
-        (= elseival (ival (VecOperand-get elses i)))
+        (= thens (VecVecOperandCtx-get outs 1))
+        (= elses (VecVecOperandCtx-get outs 0))
+        (= thenival (ival (VecOperandCtx-get thens i)))
+        (= elseival (ival (VecOperandCtx-get elses i)))
       )
       (
         (set (ival lhs) (interval-union thenival elseival))
@@ -51,10 +51,10 @@
 (rule (
         (= gamma (Gamma pred ins outs))
         (= lhs (Project i gamma))
-        (= thens (VecVecOperand-get outs 1))
-        (= elses (VecVecOperand-get outs 0))
-        (= thenival (context-ival (VecOperand-get thens i) gamma))
-        (= elseival (context-ival (VecOperand-get elses i) gamma))
+        (= thens (VecVecOperandCtx-get outs 1))
+        (= elses (VecVecOperandCtx-get outs 0))
+        (= thenival (context-ival (VecOperandCtx-get thens i) gamma))
+        (= elseival (context-ival (VecOperandCtx-get elses i) gamma))
       )
       (
         (set (ival lhs) (interval-union thenival elseival))
@@ -68,7 +68,7 @@
         (= (BoolI true true) (ival pred))
       )
       (
-        (union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 1) inputs)))
+        (union gamma (OperandGroup (SubstVecOperandAll (VOC-to-VO (vec-get outputs 1)) inputs)))
       )
       :ruleset fast-analyses
 )
@@ -77,7 +77,7 @@
         (= (BoolI false false) (ival pred))
       )
       (
-        (union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 0) inputs)))
+        (union gamma (OperandGroup (SubstVecOperandAll (VOC-to-VO (vec-get outputs 0)) inputs)))
       )
       :ruleset fast-analyses
 )

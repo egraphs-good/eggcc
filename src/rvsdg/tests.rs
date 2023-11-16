@@ -1632,3 +1632,66 @@ fn rvsdg_loop_inv_detect_simple() {
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(EGGLOG_THETA_PROGRAM2).unwrap();
 }
+
+#[test]
+fn last_iter_gamma() {
+    const EGGLOG_PROGRAM: &str = r#"
+    (let n1
+        (Node (PureOp (Const (IntT) (const) (Num 1)))))
+    (let n7
+        (Node (PureOp (Const (IntT) (const) (Num 7)))))
+    (let n8
+        (Node (PureOp (Const (IntT) (const) (Num 8)))))
+    (let n10
+        (Node (PureOp (Const (IntT) (const) (Num 10)))))
+    (let pred
+        (Node (PureOp (blt (BoolT) (Arg 0) n10))))
+    (let theta-inputs
+        (VO (vec-of (Arg 101))))
+    (let gamma
+        (Gamma
+            pred
+            (VO (vec-of (Arg 0)))
+            (VVO (vec-of
+                (VOC (vec-of (Arg 0) n7))
+                (VOC (vec-of (Arg 0) n8))
+            ))
+        )
+    )
+    (let theta-outputs
+        (VO (vec-of
+            (Arg 0)
+            (Node (PureOp (badd (IntT) (Arg 0) n1)))
+            (Project 1 gamma)
+        ))
+    )
+    (let theta (Theta
+        pred
+        theta-inputs
+        theta-outputs
+    ))
+    (let pgrm
+        (Project 2 theta))
+
+    (run-schedule (saturate fast-analyses subst) (run))
+
+    (let cfalse
+        (Node (PureOp (Const (BoolT) (const) (Bool false)))))
+
+    (let s (last-iter pred theta-inputs theta-outputs))
+    (check (holds (leq s pred (always) cfalse)))
+    (check (holds (leq (always) cfalse s pred)))
+    (check (holds (leq s pred s cfalse)))
+    (check (holds (leq s cfalse s pred)))
+    (check (= 0 (refers-to-branch cfalse)))
+    (check (holds (leq s (SubstOperandAll n7 (VO (vec-of (Arg 0)))) s (Project 1 gamma))))
+    (check (holds (leq s (Project 1 gamma) s (SubstOperandAll n7 (VO (vec-of (Arg 0)))))))
+    (check (holds (leq s n7 s (Project 1 gamma))))
+    (check (holds (leq s (Project 1 gamma) s n7)))
+    (check (holds (leq (always) n7 s (Project 1 gamma))))
+    (check (holds (leq s (Project 1 gamma) (always) n7)))
+    (check (= pgrm n7))
+    "#;
+    let mut egraph = new_rvsdg_egraph();
+    egraph.parse_and_run_program(EGGLOG_PROGRAM).unwrap();
+}

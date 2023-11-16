@@ -2,18 +2,18 @@
     (always)
     ; For last-iter, the Args of the predicate are bound in the Theta's context!
     (last-iter Operand VecOperand VecOperand)
-    
+
     ; Some more situations we may want in the future:
     ; (in-context Context)
     ; ; For kth-iter, the Args of the predicate are bound in the surrounding
     ; ; context!
-    ; ;         kth iter of this Theta  Theta's *outer* context    
+    ; ;         kth iter of this Theta  Theta's *outer* context
     ; (kth-iter Body                    Context)
 
     ; Note that all situations define the most recent binding body. We may want
     ; situation to actually be a stack! E.g., we may want to reason about
     ; an arg's value the kth iteration of a Theta, within a particular Gamma
-    ; branch 
+    ; branch
     )
 
 (datatype Predicate
@@ -49,9 +49,6 @@
       ((holds (leq s o1 s o2 )))
       :ruleset fast-analyses)
 
-(relation demand-weakening (Predicate Situation))
-; TODO: see if a predicate can match a particular situation 
-
 ; a constant has the same value in any situation
 (rule ((= c (Node (PureOp (Const typ cops lit))))
        (holds (leq s1 o1 s2       c)))
@@ -60,12 +57,6 @@
 (rule ((= c (Node (PureOp (Const typ cops lit))))
        (holds (leq s1       c s2 o2)))
       ((holds (leq (always) c s2 o2)))
-      :ruleset fast-analyses)
-
-; leq transitivity
-(rule ((holds (leq sa a sb b))
-       (holds (leq sb b sc c)))
-      ((holds (leq sa a sc c)))
       :ruleset fast-analyses)
 
 ; In the last iteration of a loop, the predicate must have been false
@@ -96,18 +87,20 @@
 
 ; In some context, is the predicate constant?
 (rule ((= gamma (Gamma pred inputs outputs))
-       (holds (leq s pred s c))
-       (holds (leq s c s pred))
-       (= i (refers-to-branch c))
+       (holds (leq situation pred situation val))
+       (holds (leq situation val situation pred))
+       (= i (refers-to-branch val))
        (= outputs-always-used (VecVecOperandCtx-get outputs i))
        (= output-j (VecOperandCtx-get outputs-always-used j))
-       ; below clauses used for pruning/relevance, not necessary for soundness
-       ; (Body-contains-Body outer any-idx gamma)
-       ; (might-create-situation outer s)
+       (might-create-situation outer s) ; for pruning, not needed for soundness
       )
       ((let output-j-in-outer-ctx (SubstOperandAll output-j inputs))
-        (holds (leq s output-j-in-outer-ctx s (Project j gamma)))
-        (holds (leq s (Project j gamma) s output-j-in-outer-ctx))
+        (holds (leq
+            situation output-j-in-outer-ctx
+            situation (Project j gamma)))
+        (holds (leq
+            situation (Project j gamma)
+            situation output-j-in-outer-ctx))
       )
       :ruleset fast-analyses)
 
@@ -126,3 +119,13 @@
       )
       ((union proj val))
       )
+
+; Not needed for https://github.com/oflatt/eggcc/issues/189 but maybe useful:
+; ; leq transitivity
+; (rule ((holds (leq sa a sb b))
+;        (holds (leq sb b sc c)))
+;       ((holds (leq sa a sc c)))
+;       :ruleset fast-analyses)
+
+; (relation demand-weakening (Predicate Situation))
+; ; TODO: see if a predicate can match a particular situation

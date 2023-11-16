@@ -69,11 +69,6 @@
 (rewrite (VecAppend (VO v1) (VO v2)) 
          (VO (vec-append v1 v2))
       :ruleset subst)
-(rule ((= (VO v3) (VecAppend v1 v2)))
-      (
-        (extract v1)
-        (extract v2)
-        (extract v3)))
 
 ;; Converts (vec n1 n2 ...) to (map-of n1 (Arg offset) n2 (Arg (+ offset 1)) ...)
 ;;                           vec    offset

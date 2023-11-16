@@ -5,17 +5,7 @@
 ;; if (...) x else x - x even accompanied with rules like x - x => 0
 
 (function arg-used-Operand (Operand) SetIntBase :merge (set-union old new))
-(rule ((= operand (Arg arg)))
-      ((set (arg-used-Operand operand) (set-of arg)))
-    :ruleset fast-analyses)
-
-(rule ((= operand (Node body))
-       (Body-contains-Operand body j (Arg arg)))
-      ((set (arg-used-Operand operand) (set-of arg)))
-    :ruleset fast-analyses)
-
-(rule ((= operand (Project k body))
-       (Body-contains-Operand body j (Arg arg)))
+(rule ((Operand-contains-Operand operand (Arg arg)))
       ((set (arg-used-Operand operand) (set-of arg)))
     :ruleset fast-analyses)
 

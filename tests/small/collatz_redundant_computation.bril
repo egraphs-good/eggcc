@@ -13,6 +13,7 @@
 	m : int = mul d two;
 	mod : int = sub var m;
 	cond : bool = eq mod zero;
+    print var;
 	var_then : int = div var two;
     v1_else : int = mul three var;
 	var_else : int = add one v1_else;

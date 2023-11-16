@@ -28,7 +28,6 @@ pub fn rvsdg_egglog_code() -> String {
         extraction_rules(),
         passthrough_optimize_rules(),
         include_str!("gamma_rewrites.egg").to_string(),
-        passthrough_optimize_rules(),
         include_str!("interval-analysis.egg").to_string(),
         include_str!("loop-optimizations.egg").to_string(),
         include_str!("function_inline.egg").to_string(),
@@ -44,7 +43,7 @@ pub fn rvsdg_egglog_schedule() -> String {
     "(run-schedule
         ; It is sound to not saturate fast-analyses/subst, but we do because
         ; they won't blow up and will help other rules go through.
-        (repeat 5
+        (repeat 7
             (saturate fast-analyses)
             ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
             (seq (saturate extraction) (saturate extraction-vec))
@@ -55,7 +54,26 @@ pub fn rvsdg_egglog_schedule() -> String {
         ; end to apply substitutions that the main optimizations find. It's
         ; interleaved with fast-analyses because it relies on reified vecs.
         (repeat 6 subst-beneath (saturate fast-analyses))
-    )"
+        )
+        (relation result (SetIntBase SetIntBase))
+        (ruleset debug)
+        (rule  ((= inps-vo (VO inps))
+                (= gamma (Gamma pred inps-vo outputs))
+                (= inp (VecOperand-get inps-vo i))
+                (= true (nontrivial-arg inps-vo i))
+
+                (gamma-body-and-its-two-branches outputs els thn)
+
+                (= els-args (arg-used-VecOperand els))
+                (= thn-args (arg-used-VecOperand thn))
+                (set-contains els-args i)
+                ;; (set-not-contains thn-args i)
+
+                (= inp-args (arg-used-Operand inp)))
+               ((result els-args thn-args)) :ruleset debug)
+        (run debug 1)
+        (print-function result 20)
+    "
     .to_string()
 }
 

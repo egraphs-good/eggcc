@@ -29,12 +29,14 @@ pub fn rvsdg_egglog_code() -> String {
         passthrough_optimize_rules(),
         include_str!("gamma_rewrites.egg").to_string(),
         include_str!("interval-analysis.egg").to_string(),
+        include_str!("rvsdg-logic.egg").to_string(),
         include_str!("loop-optimizations.egg").to_string(),
         include_str!("function_inline.egg").to_string(),
         include_str!("conditional_invariant_code_motion.egg").to_string(),
         reassoc_rules(),
         loop_invariant_detection(),
         include_str!("gamma-pull-in.egg").to_string(),
+        include_str!("loop_strength_red.egg").to_string(),
     ];
     code.join("\n")
 }

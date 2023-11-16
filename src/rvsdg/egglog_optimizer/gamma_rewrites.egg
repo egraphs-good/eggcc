@@ -12,18 +12,18 @@
 ;;		B
 (rule ((= gamma (Gamma (Node (PureOp (band BoolT a b))) (VO inputs) (VVO outputs)))
        (= (vec-length outputs) 2)
-       (= (vec-get outputs 1) (VO A))
-       (= (vec-get outputs 0) (VO B))
+       (= (vec-get outputs 1) (VOC A))
+       (= (vec-get outputs 0) (VOC B))
        (= args (vec-length inputs))
        (= rets (vec-length B)))
       ((let inner (Gamma (Arg args) ; we pass b as an extra argument to the outer gamma
                          (PassThroughArguments args)
-                         (VVO (vec-of (VO B)
-                                      (VO A)))))
+                         (VVO (vec-of (VOC B)
+                                      (VOC A)))))
        (union gamma (Gamma a
                            (VO (vec-push inputs b)) ; pass b as an extra argument
-                           (VVO (vec-of (VO B)
-                                        (BodyToVecOperand rets inner)))))))
+                           (VVO (vec-of (VOC B)
+                                        (VO-to-VOC (BodyToVecOperand rets inner))))))))
 
 ;;	if a || b:
 ;;		A
@@ -39,18 +39,18 @@
 ;;			B
 (rule ((= gamma (Gamma (Node (PureOp (bor BoolT a b))) (VO inputs) (VVO outputs)))
        (= (vec-length outputs) 2)
-       (= (vec-get outputs 1) (VO A))
-       (= (vec-get outputs 0) (VO B))
+       (= (vec-get outputs 1) (VOC A))
+       (= (vec-get outputs 0) (VOC B))
        (= args (vec-length inputs))
        (= rets (vec-length B)))
       ((let inner (Gamma (Arg args) ; we pass b as an extra argument to the outer gamma
                          (PassThroughArguments args)
-                         (VVO (vec-of (VO B)
-                                      (VO A)))))
+                         (VVO (vec-of (VOC B)
+                                      (VOC A)))))
        (union gamma (Gamma a
                            (VO (vec-push inputs b)) ; pass b as an extra argument
-                           (VVO (vec-of (BodyToVecOperand rets inner)
-                                        (VO A)))))))
+                           (VVO (vec-of (VO-to-VOC (BodyToVecOperand rets inner))
+                                        (VOC A)))))))
 
 ;;	if a:
 ;;		A
@@ -61,48 +61,78 @@
 (rule ((= gamma (Gamma condition inputs (VVO outputs)))
        (= (vec-length outputs) 2)
        (= (vec-get outputs 0) (vec-get outputs 1)))
-      ((union gamma (OperandGroup (SubstVecOperandAll (vec-get outputs 0) inputs)))))
+      ((union gamma
+              (OperandGroup
+                (SubstVecOperandAll (VOC-to-VO (vec-get outputs 0)) inputs)))))
 
-;;	if !(a or b):
-;;	       A
-;;	else:
-;;	       B
-;;	------
-;;	if !a or !b:
-;;	       A
-;;	else:
-;;	       B
-(rule (
-       (= gamma (Gamma (Node (PureOp (bnot (BoolT) (Node (PureOp (bor (BoolT) a b)))))) inputs outputs))
-      )
-      (
-       
-       (union gamma (Gamma (Node (PureOp (bor (BoolT)
-                            (Node (PureOp (bnot (BoolT) a)))
-                            (Node (PureOp (bnot (BoolT) b)))))) inputs outputs))
-      )
-)
+;; !(a or b)
+;;--------------
+;; !a and !b
+(rewrite (Node (PureOp (bnot (BoolT)
+                             (Node (PureOp (bor (BoolT) a b))))))
+         (Node (PureOp (band (BoolT)
+                             (Node (PureOp (bnot (BoolT) a)))
+                             (Node (PureOp (bnot (BoolT) b)))))))
 
-;;	if !(a and b):
-;;	       A
-;;	else:
-;;	       B
-;;	------
-;;	if !a and !b:
-;;	       A
-;;	else:
-;;	       B
-(rule (
-       (= gamma (Gamma (Node (PureOp (bnot (BoolT) (Node (PureOp (band (BoolT) a b)))))) inputs outputs))
-      )
-      (
-       
-       (union gamma (Gamma (Node (PureOp (band (BoolT)
-                            (Node (PureOp (bnot (BoolT) a)))
-                            (Node (PureOp (bnot (BoolT) b)))))) inputs outputs))
-      )
-)
-
+;; !(a and b)
+;;--------------
+;; !a or !b
+(rewrite (Node (PureOp (bnot (BoolT)
+                             (Node (PureOp (band (BoolT) a b))))))
+         (Node (PureOp (bor (BoolT)
+                             (Node (PureOp (bnot (BoolT) a)))
+                             (Node (PureOp (bnot (BoolT) b)))))))
 
 ;; !!a -> a
 (rewrite (Node (PureOp (bnot (BoolT) (Node (PureOp (bnot (BoolT) a)))))) a)
+
+
+;;	if E:
+;;	       S1
+;;	else:
+;;	       S2
+;;	S3
+;;	------
+;;	if E:
+;;	       S1
+;;	       S3
+;;	else:
+;;	       S2
+;;	       S3
+
+(rule (
+       ; Find all gammas
+       (= gamma (Gamma pred inputs (VVO outputs)))
+
+       ; Special case to two branches
+       (= (vec-length outputs) 2)
+       (= (VOC thens) (VecVecOperandCtx-get (VVO outputs) 1))
+       (= (VOC elses) (VecVecOperandCtx-get (VVO outputs) 0))
+
+       ; Find a plus that adds two outputs from the Gamma
+       (= plus (Node (PureOp (badd (IntT) (Project i gamma) (Project j gamma)))))
+       (Operand-is-pure plus)
+
+       ; Get the outputs i and j for each branch       
+       (= then-i (VecOperandCtx-get (VOC thens) i))
+       (= else-i (VecOperandCtx-get (VOC elses) i))
+       (= then-j (VecOperandCtx-get (VOC thens) j))
+       (= else-j (VecOperandCtx-get (VOC elses) j))
+
+       ; Make sure they are all consts
+       ; TODO: Can we rip this out after we figure why it's blowing up in combination with loop unrolling?
+       (= then-i (Node (PureOp (Const (IntT) (const) (Num n1)))))
+       (= then-j (Node (PureOp (Const (IntT) (const) (Num n2)))))
+       (= else-i (Node (PureOp (Const (IntT) (const) (Num n3)))))
+       (= else-j (Node (PureOp (Const (IntT) (const) (Num n4)))))
+       )
+       (
+       ; Add a new output that adds outputs i and j on each branch
+       (let new-thens (vec-push thens (Node (PureOp (badd (IntT) then-i then-j)))))
+       (let new-elses (vec-push elses (Node (PureOp (badd (IntT) else-i else-j)))))
+       (let new-gamma (Gamma pred inputs (VVO (vec-of (VOC new-elses) (VOC new-thens)))))
+
+       ; union the original plus node with the new output
+       (union plus (Project (vec-length outputs) new-gamma))
+       )
+)

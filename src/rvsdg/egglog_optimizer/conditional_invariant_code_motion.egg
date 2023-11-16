@@ -28,7 +28,7 @@
     ((= gamma (Gamma pred (VO inputs) outputs))
      ; All branches contain hoist-me
      (= (prefix-containing-Operand gamma hoist-me)
-        (VecVecOperand-length outputs))
+        (VecVecOperandCtx-length outputs))
      (!= hoist-me (Arg any))
      ; Can't add another version of an impure node since we might extract both.
      ; Note: if we lift this requirement via an extraction-like substitution
@@ -36,9 +36,9 @@
      (Body-is-pure gamma)
      (= n (VecOperand-length (VO inputs)))
      (< (hoist-count gamma) max-hoists)
-     (<= (VecVecOperand-length outputs) max-branches)
+     (<= (VecVecOperandCtx-length outputs) max-branches)
      (<= (+ 1 n) max-inputs)
-     (> (VecVecOperand-length outputs) 1))
+     (> (VecVecOperandCtx-length outputs) 1))
     ((let new-inputs
         ; Move hoist-me into the parent context and add it as an input
         (VO (vec-push inputs (SubstOperandAll hoist-me (VO inputs)))))

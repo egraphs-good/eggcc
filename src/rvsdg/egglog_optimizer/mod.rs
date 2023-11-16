@@ -31,6 +31,7 @@ pub fn rvsdg_egglog_code() -> String {
         include_str!("conditional_invariant_code_motion.egg").to_string(),
         reassoc_rules(),
         loop_invariant_detection(),
+        include_str!("loop_strength_red.egg").to_string(),
     ];
     code.join("\n")
 }

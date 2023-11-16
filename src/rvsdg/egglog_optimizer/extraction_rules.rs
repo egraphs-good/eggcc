@@ -15,7 +15,14 @@ pub(crate) fn extraction_rules() -> String {
         "(ruleset extraction-vec)".to_string(),
     ];
 
-    for ty in ["Expr", "Operand", "Body", "VecOperand", "VecVecOperand"] {
+    for ty in [
+        "Expr",
+        "Operand",
+        "Body",
+        "VecOperand",
+        "VecOperandCtx",
+        "VecVecOperandCtx",
+    ] {
         res.push(format!(
             "
 ;; manual, bottom-up extraction of terms using this function
@@ -83,14 +90,15 @@ pub(crate) fn extraction_rules() -> String {
 ;; this is how we get an empty vector of vectors in egglog because of
 ;; typechecking bug in egglog https://github.com/egraphs-good/egglog/issues/113
 (let empty-vvo 
-  (vec-pop (vec-of (VO (vec-of)))))
+  (vec-pop (vec-of (VOC (vec-of)))))
 "
     ));
 
     // Rules to extract a vecoperand
     for (vectype, ctor, eltype, empty_vec) in [
         ("VecOperand", "VO", "Operand", "(vec-of)"),
-        ("VecVecOperand", "VVO", "VecOperand", "empty-vvo"),
+        ("VecOperandCtx", "VOC", "Operand", "(vec-of)"),
+        ("VecVecOperandCtx", "VVO", "VecOperandCtx", "empty-vvo"),
     ] {
         res.push(format!(
             "
@@ -184,8 +192,8 @@ pub(crate) fn extraction_rules() -> String {
       (ExtractedOperand pred))
    (= (VecOperandAndCost inputs-extracted inputs-cost)
       (ExtractedVecOperand inputs))
-   (= (VecVecOperandAndCost outputs-extracted outputs-cost)
-      (ExtractedVecVecOperand outputs)))
+   (= (VecVecOperandCtxAndCost outputs-extracted outputs-cost)
+      (ExtractedVecVecOperandCtx outputs)))
   ((set (ExtractedBody lhs)
         (BodyAndCost
           (Gamma pred-extracted inputs-extracted outputs-extracted)

@@ -7,7 +7,8 @@
           ;; gamma predicate is true
           (Gamma (Node (PureOp (Const (BoolT) (const) (Bool true))))
                  inputs
-                 (VVO outputs))))
+                 outputs))
+       (= (VOC true-branch) (VecVecOperandCtx-get outputs 1)))
       (
         ;; replace use of the gamma with
         ;; the true case
@@ -15,7 +16,7 @@
           gamma
           (OperandGroup
               (SubstVecOperandAll
-                (vec-get outputs 1)
+                (VO true-branch)
                 inputs)))))
 
 
@@ -24,14 +25,15 @@
           ;; gamma predicate is false
           (Gamma (Node (PureOp (Const (BoolT) (const) (Bool false))))
                  inputs
-                 (VVO outputs))))
+                 outputs))
+       (= (VOC false-branch) (VecVecOperandCtx-get outputs 0)))
       (
         ;; replace use of the gamma with
         ;; the false case
         (union
           gamma
           (OperandGroup
-              (SubstVecOperandAll (vec-get outputs 0) inputs)))))
+              (SubstVecOperandAll (VO false-branch) inputs)))))
 
 ;; Eliminate theta
 ;; Unroll one layer and get rid of loop

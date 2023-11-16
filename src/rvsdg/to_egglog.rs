@@ -84,6 +84,11 @@ impl RvsdgFunction {
         Call("VO".into(), vec![Call("vec-of".into(), operands.to_vec())])
     }
 
+    fn vec_operand_ctx(operands: &[Expr]) -> Expr {
+        use Expr::*;
+        Call("VOC".into(), vec![Call("vec-of".into(), operands.to_vec())])
+    }
+
     fn vec_vec_operand(vecs: &[Expr]) -> Expr {
         use Expr::*;
         Call("VVO".into(), vec![Call("vec-of".into(), vecs.to_vec())])
@@ -113,7 +118,7 @@ impl RvsdgFunction {
                             .iter()
                             .map(|output| self.operand_to_egglog_expr(output))
                             .collect::<Vec<_>>();
-                        Self::vec_operand(&region)
+                        Self::vec_operand_ctx(&region)
                     })
                     .collect::<Vec<_>>();
                 let outputs = Self::vec_vec_operand(&outputs);

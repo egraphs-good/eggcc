@@ -4,10 +4,14 @@
 (datatype Body)
 
 (sort VecOperandBase (Vec Operand))
-(datatype VecOperand (VO VecOperandBase))
+(sort VecOperand)
+(function VO (VecOperandBase) VecOperand)
 
-(sort VecVecOperandBase (Vec VecOperand))
-(datatype VecVecOperand (VVO VecVecOperandBase))
+(sort VecOperandCtx)
+(function VOC (VecOperandBase) VecOperandCtx :context-wrapper)
+
+(sort VecVecOperandBase (Vec VecOperandCtx))
+(datatype VecVecOperandCtx (VVO VecVecOperandBase))
 
 ;; Type
 (datatype Type
@@ -40,7 +44,7 @@
 (function Call (OptionType String VecOperand i64) Expr :cost 1000) ; TODO: fix cost model
 (function badd (Type Operand Operand) Expr)
 (function bsub (Type Operand Operand) Expr)
-(function bmul (Type Operand Operand) Expr)
+(function bmul (Type Operand Operand) Expr :cost 900) ; TODO: attempting to make strength reduction work
 (function bfmul (Type Operand Operand) Expr)
 (function bdiv (Type Operand Operand) Expr)
 (function beq (Type Operand Operand) Expr)
@@ -63,9 +67,10 @@
 ;; branching
 ;; predicate (outside switch), inputs (outside switch),
 ;; and for each branch a vector of outputs
-(function Gamma (Operand VecOperand VecVecOperand) Body)
+(function Gamma (Operand VecOperand VecVecOperandCtx) Body)
 ;; loops
 ;; predicate (inside loop), inputs (outside loop), outputs (inside loop)
+;; todo make outputs a vecoperandctx instead of a vecoperand
 (function Theta (Operand VecOperand VecOperand) Body)
 ;; A body can also just be a VecOperand for convenience
 ;; This has no corresponding node in rust, it can be

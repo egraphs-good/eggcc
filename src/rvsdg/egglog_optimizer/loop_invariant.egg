@@ -196,7 +196,7 @@
         (= theta (Theta pred inputs outputs))
         (is_complex_operand operand)
         ;(= false (is_arg_operand operand)) ;; the operand is not simple (Arg n)
-        (< (hoist-count theta) 1)
+        (< (hoist-count theta) 2)
         (= n (VecOperand-length inputs))
         (= inputs (VO in_vec))
         (= outputs (VO out_vec)))

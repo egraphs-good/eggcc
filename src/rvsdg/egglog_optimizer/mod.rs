@@ -30,6 +30,7 @@ pub fn rvsdg_egglog_code() -> String {
         include_str!("loop-optimizations.egg").to_string(),
         include_str!("function_inline.egg").to_string(),
         include_str!("conditional_invariant_code_motion.egg").to_string(),
+        include_str!("ivt.egg").to_string(),
         reassoc_rules(),
         loop_invariant_detection(),
         include_str!("loop_strength_red.egg").to_string(),
@@ -47,6 +48,13 @@ pub fn rvsdg_egglog_schedule() -> String {
             (seq (saturate extraction) (saturate extraction-vec))
             (run)
             (saturate subst))
+        (repeat 2
+          (run ivt)
+          (saturate basechange)
+          ; There's an odd interaction between ivt and subst here where saturating both causes
+          ; things to blow up. IVT uses substitution extensively.
+          (repeat 5 subst))
+
         ; Right now, subst-beneath is inefficent (it extracts every possible
         ; spine - we are working on this!), so we only run it a few times at the
         ; end to apply substitutions that the main optimizations find. It's

@@ -1,0 +1,25 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+main {
+block:
+ block:
+  block:
+   x: int = const 4;
+   cond: bool = lt x y;
+   b1: int = add y x;
+   b2: int = mul y x;
+   a: int = const 0;
+   if cond:
+    break 2
+   else:
+    break 1
+  a: int = id b2;
+  break 1
+ a: int = id b1;
+block:
+ print a;
+ return
+
+}

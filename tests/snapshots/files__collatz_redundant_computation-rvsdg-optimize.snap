@@ -1,0 +1,79 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int) {
+  v5: int = const 1;
+  v7: int = const 3;
+  v9: int = const 2;
+  v11: int = const 0;
+  v13: int = id v0;
+  v14: int = id v0;
+  v15: int = id v5;
+  v16: int = id v7;
+  v17: int = id v9;
+  v18: int = id v11;
+  jmp .__20__;
+.__115__:
+  v13: int = id v13;
+  v14: int = id v99;
+  v15: int = id v100;
+  v16: int = id v101;
+  v17: int = id v102;
+  v18: int = id v103;
+  br v98 .__20__ .__125__;
+.__105__:
+  v107: bool = const false;
+  v97: int = id v13;
+  v98: bool = id v107;
+  v99: int = id v14;
+  v100: int = id v15;
+  v101: int = id v16;
+  v102: int = id v17;
+  v103: int = id v18;
+  jmp .__115__;
+.__91__:
+  v97: int = id v13;
+  v98: bool = id v74;
+  v99: int = id v75;
+  v100: int = id v15;
+  v101: int = id v16;
+  v102: int = id v17;
+  v103: int = id v18;
+  jmp .__115__;
+.__81__:
+  v83: bool = const true;
+  v73: int = id v13;
+  v74: bool = id v83;
+  v75: int = id v39;
+  v76: int = id v15;
+  v77: int = id v16;
+  v78: int = id v17;
+  v79: int = id v18;
+  jmp .__91__;
+.__64__:
+  v66: bool = const true;
+  v73: int = id v13;
+  v74: bool = id v66;
+  v75: int = id v58;
+  v76: int = id v15;
+  v77: int = id v16;
+  v78: int = id v17;
+  v79: int = id v18;
+  jmp .__91__;
+.__32__:
+  print v14;
+  v39: int = div v14 v17;
+  v42: int = mul v39 v17;
+  v44: int = sub v14 v42;
+  v47: bool = eq v44 v18;
+  v56: int = mul v16 v14;
+  v58: int = add v15 v56;
+  br v47 .__81__ .__64__;
+.__20__:
+  v22: bool = eq v14 v15;
+  br v22 .__105__ .__32__;
+.__125__:
+  print v13;
+}
+

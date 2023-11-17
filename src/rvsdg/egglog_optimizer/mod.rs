@@ -53,7 +53,7 @@ pub fn rvsdg_egglog_schedule() -> String {
 
         ; It is sound to not saturate fast-analyses/subst, but we do because
         ; they won't blow up and will help other rules go through.
-        (repeat 7
+        (repeat 5
             (saturate fast-analyses)
             ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
             (seq (saturate extraction) (saturate extraction-vec))

@@ -246,7 +246,7 @@ fn functions_modifying_args(
     ] {
         let fname = func_name_fmt.replace("{}", ty);
         res.push(format!(
-            "(function {fname} ({ty} {aux_params_str}) {ty} :cost 10000)",
+            "(function {fname} ({ty} {aux_params_str}) {ty} :unextractable)",
         ));
     }
     let fname_expr = func_name_fmt.replace("{}", "Expr");

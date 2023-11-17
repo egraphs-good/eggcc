@@ -402,6 +402,35 @@ pub(crate) fn all_rules() -> String {
     res.extend(region_contains_rules());
     res.push(vo_conversion_rules());
     res.extend(operand_contains_rules());
-    res.extend(vec![include_str!("fast_analyses.egg").to_string()]);
+    res.push(arg_used_rules());
     res.join("\n")
+}
+
+fn arg_used_rules() -> String{
+    "
+    ; Note that because the merge function is set-union 
+    ;; instead of set-intersect (which is sound but requires a 
+    ;; different set of rules for Node and Project),
+    ;; we cannot handle cases like
+    ;; if (...) x else x - x even accompanied with rules like x - x => 0
+
+    (function arg-used-Operand (Operand) SetIntBase :merge (set-union old new))
+    (rule ((Operand-contains-Operand operand (Arg arg)))
+        ((set (arg-used-Operand operand) (set-of arg)))
+        :ruleset fast-analyses)
+
+    (function arg-used-VecOperandCtx (VecOperandCtx) SetIntBase :merge (set-union old new))
+    (rule ((= operand (VecOperandCtx-get operands i))
+        (= arg-set (arg-used-Operand operand)))
+        ((set (arg-used-VecOperandCtx operands) arg-set))
+        :ruleset fast-analyses)
+
+    ;; Right now, we should only fire this analysis on children operands of VecOperandCtx and VecOperand
+    (rule ((= operand (VecOperandCtx-get operands i)))
+        ((Operand-contains-demand operand))
+        :ruleset fast-analyses)
+    (rule ((= operand (VecOperand-get operands i)))
+        ((Operand-contains-demand operand))
+        :ruleset fast-analyses)
+        ".into()
 }

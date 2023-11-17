@@ -374,6 +374,9 @@ fn region_contains_rules() -> Vec<String> {
         (rule ((Body-contains-Operand f i (Project i body)))
               ((Body-contains-Body f i body))
               :ruleset fast-analyses)
+        (rule ((Body-contains-Body f i (PureOp e))
+               (Body-contains-Body (PureOp e) j body))
+              ((Body-contains-Body f i body)) :ruleset fast-analyses)
     "
         .into(),
     );

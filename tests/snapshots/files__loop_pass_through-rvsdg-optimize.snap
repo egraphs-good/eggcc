@@ -4,18 +4,20 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v3: int = const 1;
-  v6: int = id v3;
-  v7: int = id v0;
-  jmp .__9__;
-.__9__:
-  v12: int = add v6 v6;
-  v16: int = const 10;
-  v18: bool = lt v6 v16;
-  v6: int = id v12;
-  v7: int = id v7;
-  br v18 .__9__ .__22__;
-.__22__:
-  v24: int = add v6 v0;
-  print v24;
+  v7: int = id v3;
+  v8: int = id v0;
+  v9: int = id v0;
+  jmp .__11__;
+.__11__:
+  v14: int = add v7 v7;
+  v19: int = const 10;
+  v21: bool = lt v7 v19;
+  v7: int = id v14;
+  v8: int = id v9;
+  v9: int = id v9;
+  br v21 .__11__ .__25__;
+.__25__:
+  v27: int = add v7 v0;
+  print v27;
 }
 

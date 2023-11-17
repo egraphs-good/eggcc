@@ -10,7 +10,7 @@ expression: visualization.result
 .__9__:
   v8: int = const 1;
   print v8;
-  v14: int = add v6 v8;
+  v14: int = add v8 v6;
   v17: int = const 5;
   v19: bool = lt v14 v17;
   v6: int = id v14;

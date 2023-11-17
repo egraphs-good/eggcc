@@ -1,12 +1,15 @@
-
+(function unroll_count (i64) i64 :unextractable :merge (max old new))
+(set (unroll_count 0) 0)
 ;; unroll loops
-(rule ((= theta (Theta pred (VO inputs) (VO outputs))))
+(rule ((= theta (Theta pred (VO inputs) (VO outputs)))
+       (< (unroll_count 0) 1))
                           ;;            arguments body
       ((let after-one-iter
          (SubstVecOperandAll (VO outputs) (VO inputs)))
        ;; (vec-of (Arg 0) (Arg 1) ...)
        (let pass-through (PassThroughArguments (vec-length outputs)))
        (let pass-through-c (VO-to-VOC pass-through))
+       (set (unroll_count 0) (+ 1 (unroll_count 0)))
        (union theta
           (Gamma
             (SubstOperandAll pred (VO inputs))

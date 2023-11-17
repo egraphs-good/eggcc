@@ -38,13 +38,10 @@ pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
 pub(crate) mod to_egglog;
 
-use std::{fmt, sync::Arc};
+use std::fmt;
 
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use egglog::{
-    sort::{I64Sort, SetSort, Sort, VecSort},
-    EGraph, TermDag,
-};
+use egglog::{EGraph, TermDag};
 
 use thiserror::Error;
 
@@ -55,6 +52,7 @@ use crate::{
 };
 
 use self::{
+    egglog_extensions::register_primitives,
     egglog_optimizer::{rvsdg_egglog_code, rvsdg_egglog_header_code, rvsdg_egglog_schedule},
     from_cfg::cfg_func_to_rvsdg,
 };
@@ -234,16 +232,14 @@ impl RvsdgProgram {
     pub fn optimize(&self) -> std::result::Result<Self, EggCCError> {
         let egglog_header_code = self.build_egglog_header_code();
         let mut egraph = EGraph::default();
-        egraph.seminaive = false;
         let _results = egraph
             .parse_and_run_program(&egglog_header_code)
             .map_err(EggCCError::EggLog);
-        self.register_primitives(&mut egraph);
+        register_primitives(&mut egraph);
         let (egglog_code, function_names) = self.build_egglog_code();
-        let results = egraph
+        let _results = egraph
             .parse_and_run_program(egglog_code.as_str())
             .map_err(EggCCError::EggLog)?;
-        eprintln!("{:?}", results);
 
         let mut functions = vec![];
         let mut termdag = TermDag::default();
@@ -260,29 +256,6 @@ impl RvsdgProgram {
 
         Ok(RvsdgProgram { functions })
     }
-
-    fn register_primitives(&self, egraph: &mut EGraph) {
-        let i64: Arc<I64Sort> = egraph.get_sort().unwrap();
-        let vec_i64: Arc<VecSort> = egraph
-            .get_sort_by(|s: &Arc<VecSort>| s.element_name() == i64.name())
-            .unwrap();
-        let set_i64: Arc<SetSort> = egraph
-            .get_sort_by(|s: &Arc<SetSort>| s.element_name() == i64.name())
-            .unwrap();
-        // let operand: Arc<EqSort> = egraph
-        //     .get_sort_by(|s: &Arc<EqSort>| s.name.as_str() == "Operand")
-        //     .unwrap();
-        // let vec_operand: Arc<VecSort> = egraph
-        //     .get_sort_by(|s: &Arc<VecSort>| s.element_name() == operand.name)
-        //     .unwrap();
-        // let set_operand: Arc<SetSort> = egraph
-        //     .get_sort_by(|s: &Arc<SetSort>| s.element_name() == operand.name)
-        //     .unwrap();
-        egraph.add_primitive(egglog_extensions::SetToVec {
-            set: set_i64,
-            vec: vec_i64,
-        })
-    }
 }
 
 mod egglog_extensions {
@@ -290,10 +263,23 @@ mod egglog_extensions {
 
     use egglog::{
         constraint::AllEqualTypeConstraint,
-        sort::{FromSort, IntoSort, SetSort, VecSort},
-        PrimitiveLike, Value,
+        sort::{FromSort, I64Sort, IntoSort, SetSort, Sort, VecSort},
+        EGraph, PrimitiveLike, Value,
     };
 
+    pub(crate) fn register_primitives(egraph: &mut EGraph) {
+        let i64: Arc<I64Sort> = egraph.get_sort().unwrap();
+        let vec_i64: Arc<VecSort> = egraph
+            .get_sort_by(|s: &Arc<VecSort>| s.element_name() == i64.name())
+            .unwrap();
+        let set_i64: Arc<SetSort> = egraph
+            .get_sort_by(|s: &Arc<SetSort>| s.element_name() == i64.name())
+            .unwrap();
+        egraph.add_primitive(SetToVec {
+            set: set_i64,
+            vec: vec_i64,
+        })
+    }
     // Converts a set into a vec
     pub(crate) struct SetToVec {
         pub(crate) set: Arc<SetSort>,

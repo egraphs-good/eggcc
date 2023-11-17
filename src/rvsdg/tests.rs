@@ -7,10 +7,19 @@ use crate::{
     util::parse_from_string,
 };
 
-use super::{egglog_optimizer::rvsdg_egglog_code, RvsdgFunction, RvsdgType};
+use super::{
+    egglog_extensions::register_primitives,
+    egglog_optimizer::{rvsdg_egglog_code, rvsdg_egglog_header_code},
+    RvsdgFunction, RvsdgType,
+};
 
 pub fn new_rvsdg_egraph() -> EGraph {
     let mut egraph = EGraph::default();
+    egraph
+        .parse_and_run_program(rvsdg_egglog_header_code().as_str())
+        .unwrap();
+
+    register_primitives(&mut egraph);
     egraph
         .parse_and_run_program(rvsdg_egglog_code().as_str())
         .unwrap();

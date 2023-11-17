@@ -1,7 +1,7 @@
-(relation gamma-body-and-its-two-branches (VecVecOperand VecOperand VecOperand))
+(relation gamma-body-and-its-two-branches (VecVecOperandCtx VecOperandCtx VecOperandCtx))
 (rule ((= gamma (Gamma pred inps outputs))
-       (= els (VecVecOperand-get outputs 0))
-       (= thn (VecVecOperand-get outputs 1)))
+       (= els (VecVecOperandCtx-get outputs 0))
+       (= thn (VecVecOperandCtx-get outputs 1)))
       (
        (gamma-body-and-its-two-branches outputs els thn)
        (gamma-body-and-its-two-branches outputs thn els)
@@ -20,6 +20,7 @@
       ((set (nontrivial-arg vec i) false))
     :ruleset fast-analyses)
 
+(ruleset pull-in)
 ;; Gamma optimization
 ;; Note this rule can also suffer from exponential explosion 
 ;; (1) multiple arguments can be used in one branch and not the other,
@@ -33,8 +34,8 @@
 
        (gamma-body-and-its-two-branches outputs els thn)
 
-       (= els-args (arg-used-VecOperand els))
-       (= thn-args (arg-used-VecOperand thn))
+       (= els-args (arg-used-VecOperandCtx els))
+       (= thn-args (arg-used-VecOperandCtx thn))
        (set-contains els-args i)
        (set-not-contains thn-args i)
 
@@ -53,10 +54,11 @@
 
         ;; Step 3: build the new outputs: substitute (Arg i) with the 
         ;; inp built in the last step, and shift all other inps by one
-        (let new-outputs (ShiftVecVecOperand (SubstVecVecOperand outputs i new-inp) i -1))
+        (let new-outputs (ShiftVecVecOperandCtx (SubstVecVecOperandCtx outputs i new-inp) i -1))
 
         ;; Step 3: union
         (let new-gamma (Gamma pred new-inps new-outputs))
         (union new-gamma gamma)
         (delete (Gamma pred inps-vo outputs))
-      ))
+      )
+    :ruleset pull-in)

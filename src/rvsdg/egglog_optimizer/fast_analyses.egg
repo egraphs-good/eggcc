@@ -9,8 +9,16 @@
       ((set (arg-used-Operand operand) (set-of arg)))
     :ruleset fast-analyses)
 
-(function arg-used-VecOperand (VecOperand) SetIntBase :merge (set-union old new))
-(rule ((= operand (VecOperand-get operands i))
+(function arg-used-VecOperandCtx (VecOperandCtx) SetIntBase :merge (set-union old new))
+(rule ((= operand (VecOperandCtx-get operands i))
        (= arg-set (arg-used-Operand operand)))
-      ((set (arg-used-VecOperand operands) arg-set))
+      ((set (arg-used-VecOperandCtx operands) arg-set))
+    :ruleset fast-analyses)
+
+;; Right now, we should only fire this analysis on children operands of VecOperandCtx and VecOperand
+(rule ((= operand (VecOperandCtx-get operands i)))
+      ((Operand-contains-demand operand))
+    :ruleset fast-analyses)
+(rule ((= operand (VecOperand-get operands i)))
+      ((Operand-contains-demand operand))
     :ruleset fast-analyses)

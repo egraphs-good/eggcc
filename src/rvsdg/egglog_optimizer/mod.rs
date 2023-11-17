@@ -50,31 +50,19 @@ pub fn rvsdg_egglog_schedule() -> String {
             ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
             (seq (saturate extraction) (saturate extraction-vec))
             (run)
-            (saturate subst shift))
+            (repeat 100 subst shift)
+        )
+
+        ;; ad-hoc schedule for gamma pull in optimization
+        (run pull-in)
+        (repeat 100 subst shift)
+
         ; Right now, subst-beneath is inefficent (it extracts every possible
         ; spine - we are working on this!), so we only run it a few times at the
         ; end to apply substitutions that the main optimizations find. It's
         ; interleaved with fast-analyses because it relies on reified vecs.
         (repeat 6 subst-beneath (saturate fast-analyses))
         )
-        (relation result (SetIntBase SetIntBase))
-        (ruleset debug)
-        (rule  ((= inps-vo (VO inps))
-                (= gamma (Gamma pred inps-vo outputs))
-                (= inp (VecOperand-get inps-vo i))
-                (= true (nontrivial-arg inps-vo i))
-
-                (gamma-body-and-its-two-branches outputs els thn)
-
-                (= els-args (arg-used-VecOperand els))
-                (= thn-args (arg-used-VecOperand thn))
-                (set-contains els-args i)
-                ;; (set-not-contains thn-args i)
-
-                (= inp-args (arg-used-Operand inp)))
-               ((result els-args thn-args)) :ruleset debug)
-        (run debug 1)
-        (print-function result 20)
     "
     .to_string()
 }

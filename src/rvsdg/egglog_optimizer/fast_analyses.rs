@@ -171,6 +171,9 @@ fn is_pure_rules() -> Vec<String> {
 // similar to Body-contains-*.
 // A very important difference is that it does not look into the inputs/outputs of Theta
 // and outputs of Gamma. Instead, it only looks at their inputs.
+//
+// Because there are so many operand, the user of this analysis need
+// to explicitly demand annotate operands they are interested in.
 fn operand_contains_rules() -> Vec<String> {
     let mut res: Vec<String> = vec!["
         (relation Operand-contains-Expr (Operand Expr))
@@ -184,18 +187,16 @@ fn operand_contains_rules() -> Vec<String> {
     res.push(
         "
         (rule ((Operand-contains-demand f))
-               (= f (Arg x)))
               ((Operand-contains-Operand f f))
               :ruleset fast-analyses)
-        (rule ((Operand-contains-demand f))
-               (= f (Node body)))
-              ((Operand-contains-Operand f f)
-               (Operand-contains-Body f body))
+              
+        (rule ((Operand-contains-Operand f c)
+               (= c (Node body)))
+              ((Operand-contains-Body f body))
                 :ruleset fast-analyses)
-        (rule ((Operand-contains-demand f))
-               (= f (Project i body)))
-              ((Operand-contains-Operand f f)
-               (Operand-contains-Body f body))
+        (rule ((Operand-contains-Operand f c)
+               (= c (Project i body)))
+              ((Operand-contains-Body f body))
               :ruleset fast-analyses)
 
         (rule ((Operand-contains-Body f (PureOp e)))

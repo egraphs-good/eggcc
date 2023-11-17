@@ -47,8 +47,7 @@ pub fn rvsdg_egglog_schedule() -> String {
             ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
             (seq (saturate extraction) (saturate extraction-vec))
             (run)
-            (saturate subst)
-        )
+            (saturate subst))
         (repeat 2
           (run ivt)
           (saturate basechange)

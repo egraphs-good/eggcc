@@ -350,7 +350,7 @@ fn functions_modifying_args(
         // rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
         res.push(format!(
             "
-            (function {fname_vec}-helper ({vectype} {aux_params_str} i64) {vectype})
+            (function {fname_vec}-helper ({vectype} {aux_params_str} i64) {vectype} :unextractable)
             (rewrite
                 ({fname_vec} vec {aux_args_str})
                 ({fname_vec}-helper vec {aux_args_str} 0)

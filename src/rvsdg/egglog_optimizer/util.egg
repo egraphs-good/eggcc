@@ -25,9 +25,6 @@
       ((union lhs (VO rest)))
       :ruleset subst)
 
-(function ToCtx (VecOperand) VecOperandCtx :unextractable)
-(rewrite (ToCtx (VO v)) (VOC v) :ruleset fast-analyses)
-
 ;; Project each argument out of a body
 (function BodyToVecOperand (i64 Body) VecOperand :unextractable)
 ;; current index, body length, body, and vector so far

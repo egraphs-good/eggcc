@@ -1994,7 +1994,7 @@ fn rvsdg_ivt_detect() {
 
     (run-schedule (repeat 5 (saturate fast-analyses) ivt 
         (saturate (saturate subst) (saturate basechange))))
-    (check (= new-gamma- theta))
+    (check (= new-gamma theta))
     "#;
     let mut egraph = new_rvsdg_egraph();
     egraph.parse_and_run_program(PROGRAM).unwrap();

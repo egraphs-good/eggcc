@@ -103,7 +103,7 @@
                      ; the "else" case
                      (VOC outputs1)
                      ; the "then" case
-                     (ToCtx (BodyToVecOperand (vec-length inputs) inner-theta))))))      
+                     (VO-to-VOC (BodyToVecOperand (vec-length inputs) inner-theta))))))      
        (union loop new-gamma)) :ruleset ivt)
 
 ;; Const

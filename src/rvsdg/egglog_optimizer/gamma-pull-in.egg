@@ -59,6 +59,7 @@
         ;; Step 3: union
         (let new-gamma (Gamma pred new-inps new-outputs))
         (union new-gamma gamma)
+        (extract pred)
         (delete (Gamma pred inps-vo outputs))
       )
     :ruleset pull-in)

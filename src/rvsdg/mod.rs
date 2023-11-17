@@ -237,9 +237,10 @@ impl RvsdgProgram {
             .map_err(EggCCError::EggLog);
         register_primitives(&mut egraph);
         let (egglog_code, function_names) = self.build_egglog_code();
-        let _results = egraph
+        let results = egraph
             .parse_and_run_program(egglog_code.as_str())
             .map_err(EggCCError::EggLog)?;
+        dbg!(results);
 
         let mut functions = vec![];
         let mut termdag = TermDag::default();

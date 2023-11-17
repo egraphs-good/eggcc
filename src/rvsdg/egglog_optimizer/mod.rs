@@ -43,6 +43,13 @@ pub fn rvsdg_egglog_code() -> String {
 
 pub fn rvsdg_egglog_schedule() -> String {
     "(run-schedule
+        ;; ad-hoc schedule for gamma pull in optimization
+        (repeat 2
+            (saturate fast-analyses)
+            (run pull-in)
+            (repeat 100 subst shift)
+        )
+
         ; It is sound to not saturate fast-analyses/subst, but we do because
         ; they won't blow up and will help other rules go through.
         (repeat 7
@@ -52,10 +59,6 @@ pub fn rvsdg_egglog_schedule() -> String {
             (run)
             (repeat 100 subst shift)
         )
-
-        ;; ad-hoc schedule for gamma pull in optimization
-        (run pull-in)
-        (repeat 100 subst shift)
 
         ; Right now, subst-beneath is inefficent (it extracts every possible
         ; spine - we are working on this!), so we only run it a few times at the

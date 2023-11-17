@@ -5,17 +5,17 @@ expression: visualization.result
 @main(v0: int) {
   v2: int = const 4;
   v5: bool = lt v2 v0;
-  v11: int = add v0 v2;
-  br v5 .__22__ .__14__;
-.__22__:
-  v20: int = id v11;
-  jmp .__25__;
-.__14__:
-  v15: int = const 4;
-  v18: int = mul v15 v0;
-  v20: int = id v18;
-  jmp .__25__;
-.__25__:
-  print v20;
+  br v5 .__20__ .__12__;
+.__20__:
+  v23: int = add v0 v2;
+  v18: int = id v23;
+  jmp .__26__;
+.__12__:
+  v13: int = const 4;
+  v16: int = mul v13 v0;
+  v18: int = id v16;
+  jmp .__26__;
+.__26__:
+  print v18;
 }
 

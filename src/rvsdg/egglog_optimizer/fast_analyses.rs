@@ -406,7 +406,7 @@ pub(crate) fn all_rules() -> String {
     res.join("\n")
 }
 
-fn arg_used_rules() -> String{
+fn arg_used_rules() -> String {
     "
     ; Note that because the merge function is set-union 
     ;; instead of set-intersect (which is sound but requires a 

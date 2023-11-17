@@ -1,0 +1,131 @@
+(datatype Situation
+    (always)
+    ; For last-iter, the Args of the predicate are bound in the Theta's context!
+    (last-iter Operand VecOperand VecOperand)
+
+    ; Some more situations we may want in the future:
+    ; (in-context Context)
+    ; ; For kth-iter, the Args of the predicate are bound in the surrounding
+    ; ; context!
+    ; ;         kth iter of this Theta  Theta's *outer* context
+    ; (kth-iter Body                    Context)
+
+    ; Note that all situations define the most recent binding body. We may want
+    ; situation to actually be a stack! E.g., we may want to reason about
+    ; an arg's value the kth iteration of a Theta, within a particular Gamma
+    ; branch
+    )
+
+(datatype Predicate
+    ; [[o1]]_{s1} <= [[o2]]_{s2}
+    ;    s1        o1      s2        o2
+    (leq Situation Operand Situation Operand)
+    ; We prefer to write eq with two leq's because it makes rules simpler
+    ; Some other predicates we may want:
+    ; (eq-mod-k i64 Situation Operand Situation Operand)
+    )
+
+
+(relation might-create-situation (Body Situation))
+(rule ((= body (Gamma pred inputs outputs)))
+      ((might-create-situation body (always)))
+      :ruleset fast-analyses)
+(rule ((= body (Theta pred inputs outputs)))
+      ((might-create-situation body (always)))
+      :ruleset fast-analyses)
+(rule ((= situation (last-iter pred inputs outputs))
+       (= body (Theta pred inputs outputs)))
+      ((might-create-situation body situation))
+      :ruleset fast-analyses)
+
+(relation holds (Predicate))
+
+; leq situation weakening. There are more general ways to write this rule, but
+; we probably mainly want the situations to match
+(rule ((holds (leq s o1 (always) o2)))
+      ((holds (leq s o1 s o2)))
+      :ruleset fast-analyses)
+(rule ((holds (leq (always) o1 s o2)))
+      ((holds (leq s o1 s o2 )))
+      :ruleset fast-analyses)
+
+; a constant has the same value in any situation
+(rule ((= c (Node (PureOp (Const typ cops lit))))
+       (holds (leq s1 o1 s2       c)))
+      ((holds (leq s1 o1 (always) c)))
+      :ruleset fast-analyses)
+(rule ((= c (Node (PureOp (Const typ cops lit))))
+       (holds (leq s1       c s2 o2)))
+      ((holds (leq (always) c s2 o2)))
+      :ruleset fast-analyses)
+
+; In the last iteration of a loop, the predicate must have been false
+(rule ((= theta (Theta pred inputs outputs)))
+      ((holds (leq
+            (last-iter pred inputs outputs)
+            pred
+            (always)
+            (Node (PureOp (Const (BoolT) (const) (Bool false))))
+        ))
+       (holds (leq
+            (always)
+            (Node (PureOp (Const (BoolT) (const) (Bool false))))
+            (last-iter pred inputs outputs)
+            pred
+        ))
+        )
+        :ruleset fast-analyses)
+
+(function refers-to-branch (Operand) i64)
+(set (refers-to-branch (Node (PureOp (Const (BoolT) (const) (Bool false))))) 0)
+(set (refers-to-branch (Node (PureOp (Const (BoolT) (const) (Bool true))))) 1)
+(rule ((= operand (Node (PureOp (Const (IntT) (const) (Num i))))))
+      ((set (refers-to-branch operand) i))
+      :ruleset fast-analyses)
+
+;; TODO: add the standard interval analysis rules over pureop
+
+; In some context, is the predicate constant?
+(rule ((= gamma (Gamma pred inputs outputs))
+       (holds (leq situation pred situation val))
+       (holds (leq situation val situation pred))
+       (= i (refers-to-branch val))
+       (= outputs-always-used (VecVecOperandCtx-get outputs i))
+       (= output-j (VecOperandCtx-get outputs-always-used j))
+       (might-create-situation outer situation) ; for pruning, not needed for soundness
+      )
+      ((let output-j-in-outer-ctx (SubstOperandAll output-j inputs))
+        (holds (leq
+            situation output-j-in-outer-ctx
+            situation (Project j gamma)))
+        (holds (leq
+            situation (Project j gamma)
+            situation output-j-in-outer-ctx))
+      )
+      :ruleset fast-analyses)
+
+; If in the last iter of a loop an output is constant
+; This may make non-terminating code terminate
+
+; This is not in fast-analyses because it adds to the egraph
+(rule ((= theta (Theta pred inputs outputs))
+       (= output-i (VecOperand-get outputs i))
+       ; TODO - this could be generalized to computation dependent on index var
+       ; or invariant var with a last-iter-outer-scope context
+       (holds (leq (last-iter pred inputs outputs) output-i (always) val))
+       (holds (leq (always) val (last-iter pred inputs outputs) output-i))
+       (Body-is-pure theta)
+       (= proj (Project i theta))
+      )
+      ((union proj val))
+      )
+
+; Not needed for https://github.com/oflatt/eggcc/issues/189 but maybe useful:
+; ; leq transitivity
+; (rule ((holds (leq sa a sb b))
+;        (holds (leq sb b sc c)))
+;       ((holds (leq sa a sc c)))
+;       :ruleset fast-analyses)
+
+; (relation demand-weakening (Predicate Situation))
+; ; TODO: see if a predicate can match a particular situation

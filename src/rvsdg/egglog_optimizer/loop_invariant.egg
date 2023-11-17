@@ -136,17 +136,11 @@
         (Body-is-pure body))
     ((set (is_inv_body theta body) true)) :ruleset fast-analyses)
 
-;; to find if an operand is Arg.
+;; To find if an operand is simple Arg or constant.
 ;; TODO: Consider an operand like:
 ;; (Proj 0 (OperandGroup (VecOperand (VO (vec-of (Arg 0))))))
 ;; it's actually an (Arg 0) but in form of Proj
 ;; this operand may be union with (Arg 0) under context
-; (function is_arg_operand (Operand) bool :unextractable :merge (or old new) )
-
-; (rule ((Arg i)) ((set (is_arg_operand (Arg i)) true)) :ruleset fast-analyses)
-; (rule ((Node body)) ((set (is_arg_operand (Node body)) false)) :ruleset fast-analyses)
-; (rule ((Project i body)) ((set (is_arg_operand (Project i body)) false)) :ruleset fast-analyses)
-
 (relation is_complex_operand (Operand))
 
 (rule ((= operand (Node (OperandGroup vec)))) ((is_complex_operand operand)) :ruleset fast-analyses)
@@ -195,7 +189,6 @@
 (rule ((boundary_operand theta operand)
         (= theta (Theta pred inputs outputs))
         (is_complex_operand operand)
-        ;(= false (is_arg_operand operand)) ;; the operand is not simple (Arg n)
         (< (hoist-count theta) 2)
         (= n (VecOperand-length inputs))
         (= inputs (VO in_vec))
@@ -204,12 +197,9 @@
     (let new_inputs (VO (vec-push in_vec hoisted)))
     (let new_theta (Theta pred new_inputs (VO (vec-push out_vec (Arg n)))))
     (union theta (OperandGroup (BodyToVecOperand n new_theta)))
-    (delete (Theta pred inputs outputs)) ;; it extract some other thing...
-    ;(set (hoist-count theta) 1) ;; no multiple hoist out of same theta.
-    (set (hoist-count new_theta) 1) ;; just don't let it hoist again for now.
-    ;(extract theta)
+    (set (hoist-count new_theta) (+ 1 (hoist-count theta))) ;; just don't let it hoist again for now.
+    (delete (Theta pred inputs outputs)) ;; delete for now to reduce # of thetas
     (can-subst-Operand-beneath (ThetaCtx new_inputs) operand (Arg n))) :ruleset loop-inv-motion)
-
 
 ;; TODO: Gamma and Theta's motion
 ;; it's hard considering the "nondeterminism as effect" problem.

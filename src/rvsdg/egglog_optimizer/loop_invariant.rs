@@ -64,8 +64,8 @@ fn is_complex_analysis(bril_op: BrilOp) -> String {
         "
         ),
         [Some(_), None] => format!("
-    (rule ((= operand (Node (PureOp expr))) (= expr (bnot ty (Arg n)))) ((is_complex_operand operand)) :ruleset fast-analyses)
-    (rule ((= operand (Node (PureOp expr))) (= expr (bnot ty op)) (is_complex_operand op)) ((is_complex_operand operand)) :ruleset fast-analyses)
+    (rule ((= operand (Node (PureOp expr))) (= expr ({bop} ty (Arg n)))) ((is_complex_operand operand)) :ruleset fast-analyses)
+    (rule ((= operand (Node (PureOp expr))) (= expr ({bop} ty op)) (is_complex_operand op)) ((is_complex_operand operand)) :ruleset fast-analyses)
         
         "),
         _ => unimplemented!(),

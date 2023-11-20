@@ -1,0 +1,65 @@
+(relation gamma-body-and-its-two-branches (VecVecOperandCtx VecOperandCtx VecOperandCtx))
+(rule ((= gamma (Gamma pred inps outputs))
+       (= els (VecVecOperandCtx-get outputs 0))
+       (= thn (VecVecOperandCtx-get outputs 1)))
+      (
+       (gamma-body-and-its-two-branches outputs els thn)
+       (gamma-body-and-its-two-branches outputs thn els)
+       )
+    :ruleset fast-analyses)
+
+;; 1 means this arg 
+(function nontrivial-arg (VecOperand i64) bool :merge (and old new))
+(rule ((= op (VecOperand-get vec i)))
+      ((set (nontrivial-arg vec i) true))
+    :ruleset fast-analyses)
+(rule ((= (Arg n) (VecOperand-get vec i)))
+      ((set (nontrivial-arg vec i) false))
+    :ruleset fast-analyses)
+(rule ((= (Node (PureOp (Const ty co lit))) (VecOperand-get vec i)))
+      ((set (nontrivial-arg vec i) false))
+    :ruleset fast-analyses)
+
+(ruleset pull-in)
+;; Gamma optimization
+;; Note this rule can also suffer from exponential explosion 
+;; (1) multiple arguments can be used in one branch and not the other,
+;; in which case this rule can generate exponential combination of pulled-in programs
+;; (2) this rule introduce new arguments, all of which are used in one branch 
+;; but not the other, causing the rule to be applied again.
+(rule ((= inps-vo (VO inps))
+       (= gamma (Gamma pred inps-vo outputs))
+       (= inp (VecOperand-get inps-vo i))
+       (= true (nontrivial-arg inps-vo i))
+
+       (gamma-body-and-its-two-branches outputs els thn)
+
+       (= els-args (arg-used-VecOperandCtx els))
+       (= thn-args (arg-used-VecOperandCtx thn))
+       (set-contains els-args i)
+       (set-not-contains thn-args i)
+
+       (= inp-args (arg-used-Operand inp))
+       )
+      (
+        ;; Step 1: build the new inps: remove (Arg i) and 
+        ;; introduce arguments used by inp-args
+        (let inp-args-vec (VI (set->vec inp-args)))
+        (let inp-args-vec-operand (MapArgOverVec inp-args-vec))
+        (let new-inps (VecAppend (VO (vec-remove inps i)) inp-args-vec-operand))
+
+        ;; Step 2: build the pulled-in inp by substituting contexts
+        (let subst-map (BuildSubstMapFrom inp-args-vec (vec-length inps))) ;; need to right shift by vec-length
+        (let new-inp (SubstOperandMap inp subst-map))
+
+        ;; Step 3: build the new outputs: substitute (Arg i) with the 
+        ;; inp built in the last step, and shift all other inps by one
+        (let new-outputs (ShiftVecVecOperandCtx (SubstVecVecOperandCtx outputs i new-inp) i -1))
+
+        ;; Step 3: union
+        (let new-gamma (Gamma pred new-inps new-outputs))
+        (union new-gamma gamma)
+        (extract pred)
+        (delete (Gamma pred inps-vo outputs))
+      )
+    :ruleset pull-in)

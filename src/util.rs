@@ -168,7 +168,7 @@ pub enum RunType {
     RvsdgEgglogEncoding,
     /// Optimize the input as an RVSDG, and output the resulting
     /// egraph as an egraph-serialize crate json.
-    Serialized,
+    Serialize,
 }
 
 impl Debug for RunType {
@@ -192,7 +192,7 @@ impl FromStr for RunType {
             "rvsdg-optimize" => Ok(RunType::RvsdgOptimize),
             "rvsdg-egglog-encoding" => Ok(RunType::RvsdgEgglogEncoding),
             "optimized-rvsdg" => Ok(RunType::OptimizedRvsdg),
-            "serialized" => Ok(RunType::Serialized),
+            "serialize" => Ok(RunType::Serialize),
             _ => Err(format!("Unknown run type: {}", s)),
         }
     }
@@ -211,7 +211,7 @@ impl Display for RunType {
             RunType::RvsdgOptimize => write!(f, "rvsdg-optimize"),
             RunType::OptimizedRvsdg => write!(f, "optimized-rvsdg"),
             RunType::RvsdgEgglogEncoding => write!(f, "rvsdg-egglog-encoding"),
-            RunType::Serialized => write!(f, "serialized"),
+            RunType::Serialize => write!(f, "serialize"),
         }
     }
 }
@@ -229,7 +229,7 @@ impl RunType {
             RunType::RvsdgOptimize => true,
             RunType::RvsdgEgglogEncoding => true,
             RunType::OptimizedRvsdg => false,
-            RunType::Serialized => false,
+            RunType::Serialize => false,
         }
     }
 }
@@ -441,7 +441,7 @@ impl Run {
                     None,
                 )
             }
-            RunType::Serialized => {
+            RunType::Serialize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let serialized = rvsdg.serialized_egraph()?;
                 (

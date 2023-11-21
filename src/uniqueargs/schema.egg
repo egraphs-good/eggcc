@@ -1,0 +1,53 @@
+(datatype EClass)
+
+(sort EVecBase (Vec EClass))
+(sort EVecVecBase (Vec EVec))
+
+(function EVec (EVecBase) EClass)
+(function EVecVec (EVecVecBase) EClass)
+
+(function Num (i64) EClass)
+(function Bool (bool) EClass)
+
+;; Pure expressions that operate on integers or booleans
+(function badd (EClass EClass) EClass)
+(function bsub (EClass EClass) EClass)
+(function bmul (EClass EClass) EClass)
+(function bdiv (EClass EClass) EClass)
+(function beq (EClass EClass) EClass)
+(function blt (EClass EClass) EClass)
+(function bgt (EClass EClass) EClass)
+(function ble (EClass EClass) EClass)
+(function bge (EClass EClass) EClass)
+(function bnot (EClass) EClass)
+(function band (EClass EClass) EClass)
+(function bor (EClass EClass) EClass)
+
+;; Non-pure expressions
+;; Print takes a value, a print state, and returns a print state
+(function PRINT (EClass EClass) EClass)
+
+
+;; OperandGroup is not a region, but does produce a tuple
+(function OperandGroup (EVec) EClass)
+
+;; Regions
+;; Every region get a unique id
+(datatype Id
+  (id i64))
+
+
+;; arguments are predicate (in loop), inputs (outside loop), and outputs (inside loop)
+(function Loop (Id EClass EClass EClass) EClass)
+;; arguments are predicate (outside switch), inputs: EVec, and outputs: EVecVec
+(function Switch (Id EClass EClass EClass) EClass)
+
+;; Name and a outputs: EVec
+(function Func (String EClass) EClass)
+
+;; Arguments
+;; Take the id of the region it is in, and an index for which argument to return
+(function Arg (Id i64) EClass)
+
+
+

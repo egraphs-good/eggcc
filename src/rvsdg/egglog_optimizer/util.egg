@@ -25,8 +25,6 @@
       ((union lhs (VO rest)))
       :ruleset subst)
 
-
-
 ;; Project each argument out of a body
 (function BodyToVecOperand (i64 Body) VecOperand :unextractable)
 ;; current index, body length, body, and vector so far
@@ -49,4 +47,41 @@
   ((union helper (VO so-far)))
   :ruleset subst)
 
+;; Converts (vec n1 n2 ...) to (vec (Arg n1) (Arg n2) ...)
+(function MapArgOverVec (VecInt) VecOperand :unextractable)
+(function MapArgOverVecHelper (VecIntBase i64 VecOperandBase) VecOperand :unextractable)
+(let vec-operand-empty (vec-pop (vec-of (Arg 0))))
+(rewrite (MapArgOverVec (VI vec)) 
+         (MapArgOverVecHelper vec 0 vec-operand-empty)
+      :ruleset subst)
+(rewrite (MapArgOverVecHelper vec i curr)
+         (MapArgOverVecHelper vec (+ i 1) (vec-push curr (Arg (vec-get vec i))))
+      :when ((< i (vec-length vec)))
+      :ruleset subst)
+(rewrite (MapArgOverVecHelper vec i curr)
+         (VO curr)
+      :when ((= i (vec-length vec)))
+      :ruleset subst)
 
+(function VecAppend (VecOperand VecOperand) VecOperand)
+(rewrite (VecAppend (VO v1) (VO v2)) 
+         (VO (vec-append v1 v2))
+      :ruleset subst)
+
+;; Converts (vec n1 n2 ...) to (map-of n1 (Arg offset) n2 (Arg (+ offset 1)) ...)
+;;                           vec    offset
+(function BuildSubstMapFrom (VecInt i64) MapIntOperand :unextractable)
+(function BuildSubstMapFromHelper (VecIntBase i64 i64 MapIntOperandBase) MapIntOperand :unextractable)
+(rewrite (BuildSubstMapFrom (VI vi) offset) 
+         ;; because type checking for actions is broken, we 
+         ;; have to make sure there is only one Map sort right now
+         (BuildSubstMapFromHelper vi offset 0 (map-empty))
+         :ruleset subst)
+(rewrite (BuildSubstMapFromHelper vi offset i m)
+         (BuildSubstMapFromHelper vi offset (+ i 1) (map-insert m (vec-get vi i) (Arg (+ i offset))))
+      :when ((< i (vec-length vi)))
+      :ruleset subst)
+(rewrite (BuildSubstMapFromHelper vi offset i m)
+         (MIO m)
+      :when ((= i (vec-length vi)))
+      :ruleset subst)

@@ -14,9 +14,13 @@ pub(crate) mod passthrough_optimize;
 pub(crate) mod reassoc;
 pub(crate) mod subst;
 
+pub fn rvsdg_egglog_header_code() -> String {
+    let code = vec![include_str!("schema.egg").to_string()];
+    code.join("\n")
+}
+
 pub fn rvsdg_egglog_code() -> String {
     let code = vec![
-        include_str!("schema.egg").to_string(),
         fast_analyses::all_rules(),
         subst::all_rules(),
         include_str!("util.egg").to_string(),
@@ -24,13 +28,15 @@ pub fn rvsdg_egglog_code() -> String {
         extraction_rules(),
         passthrough_optimize_rules(),
         include_str!("gamma_rewrites.egg").to_string(),
-        passthrough_optimize_rules(),
         include_str!("interval-analysis.egg").to_string(),
+        include_str!("rvsdg-logic.egg").to_string(),
         include_str!("loop-optimizations.egg").to_string(),
         include_str!("function_inline.egg").to_string(),
         include_str!("conditional_invariant_code_motion.egg").to_string(),
+        include_str!("ivt.egg").to_string(),
         reassoc_rules(),
         loop_invariant_detection(),
+        include_str!("gamma-pull-in.egg").to_string(),
         include_str!("loop_strength_red.egg").to_string(),
     ];
     code.join("\n")
@@ -38,6 +44,13 @@ pub fn rvsdg_egglog_code() -> String {
 
 pub fn rvsdg_egglog_schedule() -> String {
     "(run-schedule
+        ;; ad-hoc schedule for gamma pull in optimization
+        (repeat 2
+            (saturate fast-analyses)
+            (run pull-in)
+            (repeat 100 subst shift)
+        )
+
         ; It is sound to not saturate fast-analyses/subst, but we do because
         ; they won't blow up and will help other rules go through.
         (repeat 5
@@ -45,13 +58,27 @@ pub fn rvsdg_egglog_schedule() -> String {
             ;; extraction rules- vector extraction is expensive, interleave with other extraction rules
             (seq (saturate extraction) (saturate extraction-vec))
             (run)
-            (saturate subst))
+            (repeat 100 subst shift)
+        )
+
+        (repeat 2
+          (run ivt)
+          (saturate basechange)
+          ; There's an odd interaction between ivt and subst here where saturating both causes
+          ; things to blow up. IVT uses substitution extensively.
+          (repeat 5 subst))
+
         ; Right now, subst-beneath is inefficent (it extracts every possible
         ; spine - we are working on this!), so we only run it a few times at the
         ; end to apply substitutions that the main optimizations find. It's
         ; interleaved with fast-analyses because it relies on reified vecs.
+        (seq (saturate fast-analyses) (saturate boundary-analyses) (saturate loop-inv-motion))
+
+        ; Right now subst don't saturate so make it fixed 
+        (repeat 1000 subst)
         (repeat 6 subst-beneath (saturate fast-analyses))
-    )"
+        )
+    "
     .to_string()
 }
 

@@ -10,6 +10,10 @@
 (sort VecOperandCtx)
 (function VOC (VecOperandBase) VecOperandCtx :context-wrapper)
 
+(sort SetOperandBase (Set Operand))
+(sort MapIntOperandBase (Map i64 Operand))
+(datatype MapIntOperand (MIO MapIntOperandBase))
+
 (sort VecVecOperandBase (Vec VecOperandCtx))
 (datatype VecVecOperandCtx (VVO VecVecOperandBase))
 
@@ -111,4 +115,9 @@
 ;         ))
 ; )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Other container definitions
 
+(sort SetIntBase (Set i64))
+(sort VecIntBase (Vec i64))
+(datatype VecInt (VI VecIntBase))

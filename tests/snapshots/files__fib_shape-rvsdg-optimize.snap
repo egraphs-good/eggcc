@@ -5,34 +5,34 @@ expression: visualization.result
 @main(v0: int) {
   v3: int = const 0;
   v5: int = const 1;
-  v8: int = id v3;
-  v9: int = id v5;
-  v10: int = id v0;
-  jmp .__12__;
-.__43__:
-  v8: int = id v28;
-  v9: int = id v30;
+  v9: int = id v3;
+  v10: int = id v5;
+  v11: int = id v0;
+  jmp .__13__;
+.__44__:
+  v9: int = id v29;
   v10: int = id v31;
-  br v15 .__12__ .__49__;
-.__33__:
-  v36: int = add v8 v9;
-  v38: bool = const true;
-  v28: int = id v36;
-  v29: bool = id v38;
-  v30: int = id v9;
+  v11: int = id v32;
+  br v16 .__13__ .__51__;
+.__34__:
+  v37: int = add v9 v10;
+  v39: bool = const true;
+  v29: int = id v37;
+  v30: bool = id v39;
   v31: int = id v10;
-  jmp .__43__;
-.__22__:
-  v24: bool = const false;
-  v28: int = id v8;
-  v29: bool = id v24;
-  v30: int = id v9;
+  v32: int = id v11;
+  jmp .__44__;
+.__23__:
+  v25: bool = const false;
+  v29: int = id v9;
+  v30: bool = id v25;
   v31: int = id v10;
-  jmp .__43__;
-.__12__:
-  v15: bool = lt v8 v10;
-  br v15 .__33__ .__22__;
-.__49__:
-  print v8;
+  v32: int = id v11;
+  jmp .__44__;
+.__13__:
+  v16: bool = lt v9 v11;
+  br v16 .__34__ .__23__;
+.__51__:
+  print v9;
 }
 

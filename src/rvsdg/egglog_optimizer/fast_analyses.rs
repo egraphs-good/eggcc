@@ -167,6 +167,101 @@ fn is_pure_rules() -> Vec<String> {
     res
 }
 
+// Tracks what Exprs/Operands/Bodies an operand contains in its context,
+// similar to Body-contains-*.
+// A very important difference is that it does not look into the inputs/outputs of Theta
+// and outputs of Gamma. Instead, it only looks at their inputs.
+//
+// Because there are so many operand, the user of this analysis need
+// to explicitly demand annotate operands they are interested in.
+fn operand_contains_rules() -> Vec<String> {
+    let mut res: Vec<String> = vec!["
+        (relation Operand-contains-Expr (Operand Expr))
+        (relation Operand-contains-Operand (Operand Operand))
+        (relation Operand-contains-Body (Operand Body))
+        (relation Operand-contains-demand (Operand))
+    "
+    .into()];
+
+    // Body and operand rules
+    res.push(
+        "
+        (rule ((Operand-contains-demand f))
+              ((Operand-contains-Operand f f))
+              :ruleset fast-analyses)
+              
+        (rule ((Operand-contains-Operand f c)
+               (= c (Node body)))
+              ((Operand-contains-Body f body))
+                :ruleset fast-analyses)
+        (rule ((Operand-contains-Operand f c)
+               (= c (Project i body)))
+              ((Operand-contains-Body f body))
+              :ruleset fast-analyses)
+
+        (rule ((Operand-contains-Body f (PureOp e)))
+              ((Operand-contains-Expr f e))
+              :ruleset fast-analyses)
+        ;; A Gamma contains both its predicate and inputs
+        (rule ((Operand-contains-Body f (Gamma pred inputs outputs)))
+              ((Operand-contains-Operand f pred))
+              :ruleset fast-analyses)
+        (rule ((Operand-contains-Body f (Gamma pred inputs outputs))
+               (= x (VecOperand-get inputs any)))
+              ((Operand-contains-Operand f x))
+              :ruleset fast-analyses)
+        ;; A Theta contains only its predicate
+        (rule ((Operand-contains-Body f (Theta pred inputs outputs)))
+              ((Operand-contains-Operand f pred))
+              :ruleset fast-analyses)
+        ;; OperandGroup contains its operands
+        (rule ((Operand-contains-Body f (OperandGroup vec))
+               (= x (VecOperand-get vec any)))
+              ((Operand-contains-Operand f x))
+              :ruleset fast-analyses)
+    "
+        .into(),
+    );
+
+    // Expr rules
+    res.push(
+        "
+        (rule ((Operand-contains-Expr f (Call ty name args n-outs))
+               (= x (VecOperand-get args any)))
+              ((Operand-contains-Operand f x))
+              :ruleset fast-analyses)
+        (rule ((Operand-contains-Expr f (PRINT e1 e2)))
+              ((Operand-contains-Operand f e1)
+               (Operand-contains-Operand f e2))
+              :ruleset fast-analyses)
+    "
+        .into(),
+    );
+    for bril_op in BRIL_OPS {
+        let op = bril_op.op;
+        match bril_op.input_types.as_ref() {
+            [Some(_), Some(_)] => res.push(format!(
+                "
+                (rule ((Operand-contains-Expr f ({op} type e1 e2)))
+                      ((Operand-contains-Operand f e1)
+                       (Operand-contains-Operand f e2))
+                      :ruleset fast-analyses)
+                "
+            )),
+            [Some(_), None] => res.push(format!(
+                "
+                (rule ((Operand-contains-Expr f ({op} type e1)))
+                      ((Operand-contains-Operand f e1))
+                      :ruleset fast-analyses)
+                "
+            )),
+            _ => unimplemented!(),
+        };
+    }
+
+    res
+}
+
 // Tracks what Exprs/Operands/Bodies a body contains in its context, in its
 // ith output (-1 indicates it's contained in a Theta predicate).
 // Notably, if a Gamma/Theta contains X, then Args in X are bound by that
@@ -223,7 +318,7 @@ fn region_contains_rules() -> Vec<String> {
               :ruleset fast-analyses)
         ; A Theta's inputs are in the outer context
         (rule ((Body-contains-Body f i (Theta pred inputs outputs))
-                (= x (VecOperand-get inputs any)))
+               (= x (VecOperand-get inputs any)))
               ((Body-contains-Operand f i x))
               :ruleset fast-analyses)
         (rule ((Body-contains-Body f i (OperandGroup vec))
@@ -279,6 +374,9 @@ fn region_contains_rules() -> Vec<String> {
         (rule ((Body-contains-Operand f i (Project i body)))
               ((Body-contains-Body f i body))
               :ruleset fast-analyses)
+        (rule ((Body-contains-Body f i (PureOp e))
+               (Body-contains-Body (PureOp e) j body))
+              ((Body-contains-Body f i body)) :ruleset fast-analyses)
     "
         .into(),
     );
@@ -303,5 +401,36 @@ pub(crate) fn all_rules() -> String {
     res.extend(is_pure_rules());
     res.extend(region_contains_rules());
     res.push(vo_conversion_rules());
+    res.extend(operand_contains_rules());
+    res.push(arg_used_rules());
     res.join("\n")
+}
+
+fn arg_used_rules() -> String {
+    "
+    ; Note that because the merge function is set-union 
+    ;; instead of set-intersect (which is sound but requires a 
+    ;; different set of rules for Node and Project),
+    ;; we cannot handle cases like
+    ;; if (...) x else x - x even accompanied with rules like x - x => 0
+
+    (function arg-used-Operand (Operand) SetIntBase :merge (set-union old new))
+    (rule ((Operand-contains-Operand operand (Arg arg)))
+        ((set (arg-used-Operand operand) (set-of arg)))
+        :ruleset fast-analyses)
+
+    (function arg-used-VecOperandCtx (VecOperandCtx) SetIntBase :merge (set-union old new))
+    (rule ((= operand (VecOperandCtx-get operands i))
+        (= arg-set (arg-used-Operand operand)))
+        ((set (arg-used-VecOperandCtx operands) arg-set))
+        :ruleset fast-analyses)
+
+    ;; Right now, we should only fire this analysis on children operands of VecOperandCtx and VecOperand
+    (rule ((= operand (VecOperandCtx-get operands i)))
+        ((Operand-contains-demand operand))
+        :ruleset fast-analyses)
+    (rule ((= operand (VecOperand-get operands i)))
+        ((Operand-contains-demand operand))
+        :ruleset fast-analyses)
+        ".into()
 }

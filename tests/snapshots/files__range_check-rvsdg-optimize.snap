@@ -7,8 +7,8 @@ expression: visualization.result
   v4: int = id v2;
   jmp .__6__;
 .__27__:
-  v29: int = const 1;
-  v31: int = add v4 v29;
+  v28: int = const 1;
+  v31: int = add v28 v4;
   v34: int = const 6;
   v36: bool = lt v4 v34;
   v4: int = id v31;

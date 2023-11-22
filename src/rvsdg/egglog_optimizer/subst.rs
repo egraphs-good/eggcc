@@ -359,6 +359,7 @@ fn functions_modifying_args(
         // rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
         res.push(format!(
             "
+<<<<<<< HEAD
             ;(function {fname_vec}-helper ({vectype} {aux_params_str} i64) {vectype})
             ;(rewrite
             ;    ({fname_vec} vec {aux_args_str})
@@ -384,6 +385,13 @@ fn functions_modifying_args(
             (rule ((= f ({fname_vec} ({ctor} vec) {aux_args_str}))) 
                   (({fname_vec_base}-helper vec {aux_args_str} 0 vec)) :ruleset {ruleset})
 
+=======
+            (function {fname_vec}-helper ({vectype} {aux_params_str} i64) {vectype} :unextractable)
+            (rewrite
+                ({fname_vec} vec {aux_args_str})
+                ({fname_vec}-helper vec {aux_args_str} 0)
+                :ruleset {ruleset})
+>>>>>>> main
             (rule
                 (({fname_vec_base}-helper vec {aux_args_str} i vec_out)
                  (< i (vec-length vec)))
@@ -449,11 +457,31 @@ fn subst_all_rules() -> Vec<String> {
     )
 }
 
+// Within e, replace (Args x) with map[x].
+//                         e    map
+// (function SubstTYPEMap (TYPE MapI64Operand) TYPE)
+fn subst_map_rules() -> Vec<String> {
+    functions_modifying_args(
+        "Subst{}Map",
+        vec!["MapIntOperand"],
+        "subst",
+        "
+        (rule ((= f (SubstOperandMap (Arg x) (MIO map)))
+               (map-contains map x))
+              ((union f (map-get map x))) :ruleset subst)
+              
+        (rule ((= f (SubstOperandMap (Arg x) (MIO map)))
+               (map-not-contains map x))
+              ((union f (Arg x))) :ruleset subst)",
+    )
+}
+
 pub(crate) fn all_rules() -> String {
     let mut res = vec!["(ruleset subst) (ruleset subst-beneath) (ruleset shift)".into()];
     res.extend(subst_beneath_rules());
     res.extend(subst_rules());
     res.extend(subst_all_rules());
+    res.extend(subst_map_rules());
     res.extend(shift_rules());
     res.join("\n")
 }

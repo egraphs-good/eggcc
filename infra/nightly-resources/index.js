@@ -56,7 +56,7 @@ function findBenchToCompare(benchRuns) {
     const idx = path[path.length - 1] === "/" ? parts.length - 2 : parts.length - 1;
     
     const [date, _, branch, commit] = parts[idx].split("%3A");
-    for (let i = benchRuns.length; i >= 0; i--) {
+    for (let i = benchRuns.length-1; i >= 0; i--) {
         const run = benchRuns[i];
         if (run.branch === "main") {
             // If we are comparing a run on a main branch, to previous main branch we need to make sure
@@ -79,39 +79,21 @@ async function getBenchToCompare(comparisons) {
     const bench = findBenchToCompare(comparisons);
     const resp = await fetch(bench.url + "data/profile.json");
     const benchData = await resp.json();
-    return indexBenchmarks(benchData)
+    return groupByBenchmark(benchData)
 }
 
 function groupByBenchmark(benchList) {
     const groupedBy = {};
     benchList.forEach((obj) => {
         if (!groupedBy[obj.benchmark]) {
-            groupedBy[obj.benchmark] = [];
+            groupedBy[obj.benchmark] = {};
         }
-        groupedBy[obj.benchmark].push(obj);
+        groupedBy[obj.benchmark][obj.runMethod] = obj;
     });
     return groupedBy;
 }
 
-function indexBenchmarks(benchmarkList) {
-    const runsByBench = groupByBenchmark(benchmarkList);
-    const benchNames = Object.keys(runsByBench);
-    return benchNames.reduce(
-        (acc, benchName) => {
-            return {
-                ...acc,
-                [benchName]: runsByBench[benchName].reduce(
-                    (obj, run) => {
-                        return {
-                            ...obj, [run.runMethod]: run
-                        }
-                    }, {})
-            }
-        }, {});
-}
-
 const compareKeys = ["# Instructions"];
-
 function buildEntry(run) {
     const results = run.hyperfine.results[0];
     return {
@@ -125,22 +107,23 @@ function buildEntry(run) {
     }
 }
 
-function buildTableText(prevRun) {
-    return (run) => {
-        const entry = buildEntry(run)
-        if (!prevRun) { return entry; }
-
-        const prevEntry= buildEntry(prevRun);
-        compareKeys.forEach((key) => {
-            const diff = Math.abs(entry[key] - prevEntry[key]);
-            if (diff === 0) {
-                return;
-            }
-            
-            const sign = entry[key] < prevEntry[key] ? "-" : "+"
-            entry[key] = `${entry[key]} (${sign}${diff})`
-        })
+function buildTableText(prevRun, run) {
+    const entry = buildEntry(run)
+    if (!prevRun) {
+        return entry;
     }
+
+    const prevEntry = buildEntry(prevRun);
+    compareKeys.forEach((key) => {
+        const diff = Math.abs(entry[key] - prevEntry[key]);
+        if (diff === 0) {
+            return;
+        }
+
+        const sign = entry[key] < prevEntry[key] ? "-" : "+"
+        entry[key] = `${entry[key]} (${sign}${diff})`
+    })
+    return entry;
 }
 
 async function loadBenchmarks(comparisons) {
@@ -150,7 +133,7 @@ async function loadBenchmarks(comparisons) {
     let container = document.getElementById("profile");
 
     // aggregate benchmark runs into a list by their "benchmark" key
-    const currentRun = indexBenchmarks(data);
+    const currentRun = groupByBenchmark(data);
     const previousRun = await getBenchToCompare(comparisons);
 
     const benchmarkNames = Object.keys(currentRun);
@@ -159,7 +142,9 @@ async function loadBenchmarks(comparisons) {
         return {
             name: benchName,
             "Executions ": {
-                data: currentRun[benchName].map(buildTableText(previousRun[benchName]))
+                data: Object
+                    .keys(currentRun[benchName])
+                    .map((runMethod) => buildTableText(previousRun[benchName][runMethod], currentRun[benchName][runMethod]))
             }
         }
     });

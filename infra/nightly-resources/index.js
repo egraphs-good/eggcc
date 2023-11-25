@@ -57,7 +57,7 @@ function findBenchToCompare(comparisons) {
 
 
     const [date, _, branch, commit] = parts[idx].split("%3A");
-    for (let i = comparisons.length; i >= 0; i++) {
+    for (let i = comparisons.length; i >= 0; i--) {
         const curComparison = comparisons[i];
         if (curComparison === "main") {
             // yes, I did mean `==` here. `curComparison.date` is an int, and `date` is a string
@@ -69,6 +69,7 @@ function findBenchToCompare(comparisons) {
     }
     throw new Error("Didn't find a candidate benchmark");
 }
+
 
 async function getBenchToCompare(comparisons) {
     const bench = findBenchToCompare(comparisons);
@@ -106,7 +107,6 @@ function indexBenchmarks(benchmarkList) {
 }
 
 const compareKeys = ["# Instructions"];
-const epsilon = 2;
 
 function buildEntry(run) {
     const results = run.hyperfine.results[0];
@@ -129,7 +129,7 @@ function buildTableText(prevRun) {
         const prevEntry= buildEntry(prevRun);
         compareKeys.forEach((key) => {
             const diff = Math.abs(entry[key] - prevEntry[key]);
-            if (diff < epsilon) {
+            if (diff === 0) {
                 return;
             }
             

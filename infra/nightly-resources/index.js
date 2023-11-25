@@ -165,7 +165,7 @@ async function loadBenchmarks(compareTo) {
                     .keys(currentRun[benchName])
                     .map((runMethod) => {
                         const prevBenchmark = previousRun ? previousRun[benchName] : undefined;
-                        const prevRun = prevBenchmark ? prevBenchmark[previousRun] : undefined;
+                        const prevRun = prevBenchmark ? prevBenchmark[runMethod] : undefined;
                         
                         return buildTableText(prevRun, currentRun[benchName][runMethod]) 
                     })

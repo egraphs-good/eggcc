@@ -1,4 +1,4 @@
-async function getComparisons() {
+async function getPreviousRuns() {
     const req = await fetch("../");
     const html = await req.text();
 
@@ -8,7 +8,7 @@ async function getComparisons() {
     const allLinks = htmlDoc.getElementsByTagName("a");
     
     // map allLinks into an objects of the shape:
-    // {branch: <git branch>, commit: <git commit>, date: <unix timstamp (int)>, url: <absolute url to nightly page>}
+    // {branch: <git branch:string>, commit: <git commit:string>, date: <unix timestamp:int>, url: <absolute url to nightly page:string>}
     const comparisons = [];
     for (let i = 1; i < allLinks.length; i++) {
         const hrefText = allLinks[i].getAttribute("href");
@@ -40,21 +40,27 @@ async function getComparisons() {
     return comparisons;
 }
 
-async function buildNightlyDropdown(element, comparisons) {
+async function buildNightlyDropdown(element, previousRuns, initialIdx) {
     const select = document.getElementById(element);
-    for (let i = 0; i < comparisons.length; i++) {
-        const nightly = comparisons[i];
+    previousRuns.forEach((nightly) => {
         console.log(nightly);
 
         const option = document.createElement("option");
-        option.value = nightly.commit;
         option.innerText = `${nightly.branch} - ${nightly.commit}`
         select.appendChild(option);
+    });
+    
+    select.onchange = () => {
+        const compareTo = previousRuns[select.selectedIndex];
+        loadBenchmarks(compareTo);
     }
+
+    select.selectedIndex = initialIdx;
+    select.onchange();
 }
 
 // findBenchToCompare will find the last benchmark run on the main branch that is not itself
-function findBenchToCompare(benchRuns) {
+function findBenchToCompareIdx(benchRuns) {
     // Determine what benchmark run we are based on the browser's URL
     // This is likely the best way to do this without embedding a bunch of data into our profile.js file
     // or our profile.json file, which although tempting, is not backwards compatible
@@ -87,8 +93,7 @@ function findBenchToCompare(benchRuns) {
 }
 
 
-async function getBenchToCompare(comparisons) {
-    const bench = findBenchToCompare(comparisons);
+async function getBench(bench) {
     const resp = await fetch(bench.url + "data/profile.json");
     const benchData = await resp.json();
     return groupByBenchmark(benchData)
@@ -138,7 +143,7 @@ function buildTableText(prevRun, run) {
     return entry;
 }
 
-async function loadBenchmarks(comparisons) {
+async function loadBenchmarks(compareTo) {
     // data should be in the format of Array<{runMethod: String, benchmark: String, total_dyn_inst: Int, hyperfine: Array<{results: **hyperfine `--json` results**}>}>
     console.log(data);
 
@@ -146,7 +151,7 @@ async function loadBenchmarks(comparisons) {
 
     // aggregate benchmark runs into a list by their "benchmark" key
     const currentRun = groupByBenchmark(data);
-    const previousRun = await getBenchToCompare(comparisons);
+    const previousRun = await getBench(compareTo);
 
     const benchmarkNames = Object.keys(currentRun);
 
@@ -173,8 +178,10 @@ async function loadBenchmarks(comparisons) {
 
 // Top-level load function for the main index page.
 async function load() {
-    const comparisons = await getComparisons();
-
-    buildNightlyDropdown("comparison", comparisons)
-    loadBenchmarks(comparisons);
+    const previousRuns = await getPreviousRuns();
+    
+    const initialRunIdx = findBenchToCompareIdx(previousRuns);
+    
+    buildNightlyDropdown("comparison", previousRuns, initialRunIdx)
+    // loadBenchmarks(initialRun);
 }

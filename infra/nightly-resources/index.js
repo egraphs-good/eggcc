@@ -6,22 +6,34 @@ async function getComparisons() {
     const htmlDoc = parser.parseFromString(html, 'text/html');
 
     const allLinks = htmlDoc.getElementsByTagName("a");
-
+    
+    // map allLinks into an objects of the shape:
+    // {branch: <git branch>, commit: <git commit>, date: <unix timstamp (int)>, url: <absolute url to nightly page>}
     const comparisons = [];
     for (let i = 1; i < allLinks.length; i++) {
         const hrefText = allLinks[i].getAttribute("href");
 
         const [date, _, branch, commit] = hrefText.split("%3A");
-        comparisons.push({branch: branch, commit: commit.slice(0, -1), date: +date, url: allLinks[i].href});
+
+        const run = {
+            branch: branch,
+            // since commit is the last item in the link it has a trailing slash, so we slice it off
+            commit: commit.slice(0, -1),
+            // type coerce a unix timestamp that is a string into an int with a `+`
+            date: +date,
+            // The file server/DOM parser constructs the absolute URL (of a relative URL) based on where we're requesting from,
+            // and since we're requesting from a sibling page, it mangles the link to look something like:
+            //   "/reports/eggcc/<current report>/<report requested>" 
+            // which is a nonsensical url. We can reconstruct the URL with the href attribute which we do here
+            url: `https://nightly.cs.washington.edu/reports/eggcc/${hrefText}`, 
+        }
+
+        comparisons.push(run);
     }
 
     comparisons.sort((l, r) => {
-        if (l.date < r.date) {
-            return -1;
-        }
-        if (l.date > r.date) {
-            return 1;
-        }
+        if (l.date < r.date) {return -1; }
+        if (l.date > r.date) {return 1; }
         return 0;
     });
 

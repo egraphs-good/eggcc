@@ -92,7 +92,6 @@ function findBenchToCompareIdx(benchRuns) {
     throw new Error("Didn't find a candidate benchmark");
 }
 
-
 async function getBench(bench) {
     const resp = await fetch(bench.url + "data/profile.json");
     const benchData = await resp.json();
@@ -151,7 +150,10 @@ async function loadBenchmarks(compareTo) {
 
     // aggregate benchmark runs into a list by their "benchmark" key
     const currentRun = groupByBenchmark(data);
-    const previousRun = await getBench(compareTo);
+    let previousRun = undefined;
+    try {
+        previousRun = await getBench(compareTo);
+    } catch (e) {}
 
     const benchmarkNames = Object.keys(currentRun);
 
@@ -161,7 +163,12 @@ async function loadBenchmarks(compareTo) {
             "Executions ": {
                 data: Object
                     .keys(currentRun[benchName])
-                    .map((runMethod) => buildTableText(previousRun[benchName][runMethod], currentRun[benchName][runMethod]))
+                    .map((runMethod) => {
+                        const prevBenchmark = previousRun ? previousRun[benchName] : undefined;
+                        const prevRun = prevBenchmark ? prevBenchmark[previousRun] : undefined;
+                        
+                        return buildTableText(prevRun, currentRun[benchName][runMethod]) 
+                    })
             }
         }
     });
@@ -175,13 +182,21 @@ async function loadBenchmarks(compareTo) {
     container.innerHTML = ConvertJsonToTable(parsed);
 }
 
-
 // Top-level load function for the main index page.
 async function load() {
     const previousRuns = await getPreviousRuns();
+    // sort runs in descending order
+    previousRuns.sort((l, r) => {
+        if (l.date < r.date) {
+            return 1;
+        }
+        if (l.date > r.date) {
+            return -1;
+        }
+        return 0;
+    });
+    
     
     const initialRunIdx = findBenchToCompareIdx(previousRuns);
-    
     buildNightlyDropdown("comparison", previousRuns, initialRunIdx)
-    // loadBenchmarks(initialRun);
 }

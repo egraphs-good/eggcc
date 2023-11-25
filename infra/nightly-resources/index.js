@@ -41,9 +41,9 @@ async function buildNightlyDropdown(element, comparisons) {
     }
 }
 
-// getLastBench will find the last main benchmark that is not itself
-function findBenchToCompare(comparisons) {
-    // Determine what benchmark run we are actually running based on our URL
+// findBenchToCompare will find the last benchmark run on the main branch that is not itself
+function findBenchToCompare(benchRuns) {
+    // Determine what benchmark run we are based on the browser's URL
     // This is likely the best way to do this without embedding a bunch of data into our profile.js file
     // or our profile.json file, which although tempting, is not backwards compatible
     const path = window.location.pathname;
@@ -53,18 +53,22 @@ function findBenchToCompare(comparisons) {
     // so we should index into `parts` at its length-2
     // Just in case the URL somehow doesn't have a trailing slash and `parts` doesn't
     // have a blank last element, do a quick check and adjust the index accordingly
-    const idx = path[path.length - 1] === "/" ? parts.length - 1 : parts.length - 2;
-
-
+    const idx = path[path.length - 1] === "/" ? parts.length - 2 : parts.length - 1;
+    
     const [date, _, branch, commit] = parts[idx].split("%3A");
-    for (let i = comparisons.length; i >= 0; i--) {
-        const curComparison = comparisons[i];
-        if (curComparison === "main") {
-            // yes, I did mean `==` here. `curComparison.date` is an int, and `date` is a string
-            if (curComparison.commit === commit && curComparison.date == date) {
-                continue;
+    for (let i = benchRuns.length; i >= 0; i--) {
+        const run = benchRuns[i];
+        if (run.branch === "main") {
+            // If we are comparing a run on a main branch, to previous main branch we need to make sure
+            // it is not the same branch.
+            // I did mean `==` here, not `===`. `curComparison.date` is an int, and `date` is a string
+            if (branch === "main" && run.commit === commit && run.date == date) {
+                continue; // skip, we're on the same branch
             }
-            return curComparison;
+            
+            // the branch is now either the latest main run, or if on main the previous main run
+            // return it
+            return run;
         }
     }
     throw new Error("Didn't find a candidate benchmark");

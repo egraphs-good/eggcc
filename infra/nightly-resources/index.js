@@ -90,7 +90,7 @@ function findBenchToCompareIdx(benchRuns) {
             
             // the branch is now either the latest main run, or if on main the previous main run
             // return it
-            return run;
+            return i;
         }
     }
     throw new Error("Didn't find a candidate benchmark");

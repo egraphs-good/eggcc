@@ -42,11 +42,14 @@ async function getPreviousRuns() {
 
 async function buildNightlyDropdown(element, previousRuns, initialIdx) {
     const select = document.getElementById(element);
+    
+    const formatRun = (run) => `${run.branch} - ${run.commit}`
+    
     previousRuns.forEach((nightly) => {
         console.log(nightly);
 
         const option = document.createElement("option");
-        option.innerText = `${nightly.branch} - ${nightly.commit}`
+        option.innerText = formatRun(nightly);
         select.appendChild(option);
     });
     
@@ -56,6 +59,7 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
     }
 
     select.selectedIndex = initialIdx;
+    select.value = formatRun(previousRuns[initialIdx]);
     select.onchange();
 }
 
@@ -187,12 +191,8 @@ async function load() {
     const previousRuns = await getPreviousRuns();
     // sort runs in descending order
     previousRuns.sort((l, r) => {
-        if (l.date < r.date) {
-            return 1;
-        }
-        if (l.date > r.date) {
-            return -1;
-        }
+        if (l.date < r.date) { return 1; }
+        if (l.date > r.date) { return -1; }
         return 0;
     });
     

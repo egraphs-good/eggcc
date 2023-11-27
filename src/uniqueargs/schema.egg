@@ -13,13 +13,7 @@
 (function badd (EClass EClass) EClass)
 (function bsub (EClass EClass) EClass)
 (function bmul (EClass EClass) EClass)
-(function bdiv (EClass EClass) EClass)
-(function beq (EClass EClass) EClass)
 (function blt (EClass EClass) EClass)
-(function bgt (EClass EClass) EClass)
-(function ble (EClass EClass) EClass)
-(function bge (EClass EClass) EClass)
-(function bnot (EClass) EClass)
 (function band (EClass EClass) EClass)
 (function bor (EClass EClass) EClass)
 
@@ -27,12 +21,11 @@
 ;; Print takes a value, a print state, and returns a print state
 (function PRINT (EClass EClass) EClass)
 
-
-;; OperandGroup is not a region, but does produce a tuple
+;; OperandGroup produces a tuple (it is not a region)
 (function OperandGroup (EVec) EClass)
 
 ;; Regions
-;; Every region get a unique id
+;; Every region gets a unique id
 (datatype Id
   (id i64))
 
@@ -49,5 +42,9 @@
 ;; Take the id of the region it is in, and an index for which argument to return
 (function Arg (Id i64) EClass)
 
+
+;; Rename all arguments under the input EClass to have a new Id
+;; preserves all equalities, and propogates them in the future.
+(function WithId (EClass Id) EClass)
 
 

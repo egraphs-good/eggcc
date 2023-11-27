@@ -1,7 +1,7 @@
 (datatype EClass)
 
 (sort EVecBase (Vec EClass))
-(sort EVecVecBase (Vec EVec))
+(sort EVecVecBase (Vec EClass))
 
 (function EVec (EVecBase) EClass)
 (function EVecVec (EVecVecBase) EClass)
@@ -22,7 +22,7 @@
 (function PRINT (EClass EClass) EClass)
 
 ;; OperandGroup produces a tuple (it is not a region)
-(function OperandGroup (EVec) EClass)
+(function OperandGroup (EClass) EClass)
 
 ;; Regions
 ;; Every region gets a unique id

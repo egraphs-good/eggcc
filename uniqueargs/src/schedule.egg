@@ -1,0 +1,3 @@
+; The main (run) statement for the egglog program
+
+(run 5)

@@ -3,6 +3,9 @@ use egglog::EGraph;
 fn main() {
     let program = vec![
         include_str!("schema.egg"),
+
+        include_str!("switch_rewrites.egg"),
+
         include_str!("schedule.egg"),
         include_str!("tests.egg"),
     ]

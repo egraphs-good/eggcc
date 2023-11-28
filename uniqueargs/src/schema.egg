@@ -1,0 +1,99 @@
+(datatype Expr)
+
+(sort EVecBase (Vec Expr))
+
+(function EVec (EVecBase) Expr)
+
+(function VecPush (Expr Expr) Expr :unextractable)
+(rewrite (VecPush (EVec vec) last) (EVec (vec-push vec last)))
+
+
+(function Num (i64) Expr)
+(function Bool (bool) Expr)
+
+;; Pure expressions that operate on integers or booleans
+(function badd (Expr Expr) Expr)
+(function bsub (Expr Expr) Expr)
+(function bmul (Expr Expr) Expr)
+(function blt (Expr Expr) Expr)
+(function band (Expr Expr) Expr)
+(function bor (Expr Expr) Expr)
+
+;; Non-pure expressions
+;; Print takes a value, a print state, and returns a print state
+(function PRINT (Expr Expr) Expr)
+
+;; OperandGroup produces a tuple (it is not a region)
+(function OperandGroup (Expr) Expr)
+
+;; Regions
+;; Every region gets a unique id
+(datatype Id
+  (id i64))
+
+
+;; arguments are predicate (in loop), inputs (outside loop), and outputs (inside loop)
+(function Loop (Id Expr Expr Expr) Expr)
+;; arguments are predicate (outside switch), inputs: EVec, and outputs: EVecVec
+(function Switch (Id Expr Expr Expr) Expr)
+
+;; Name and a outputs: EVec
+(function Func (String Expr) Expr)
+
+;; Arguments
+;; Take the id of the region it is in, and an index for which argument to return
+(function Arg (Id i64) Expr)
+
+
+;; Rename all arguments under the input Expr to have a new Id
+;; preserves all equalities, and propogates them in the future.
+(function DeepCopy (Expr Id) Expr)
+
+;; arguments get the new id
+(rewrite (DeepCopy (Arg id i) newid) (Arg newid i))
+
+(rewrite (DeepCopy (Num num) id) (Num num))
+(rewrite (DeepCopy (Bool b) id) (Bool b))
+
+(rewrite (DeepCopy (badd a b) id) (badd (DeepCopy a id) (DeepCopy b id)))
+(rewrite (DeepCopy (bsub a b) id) (bsub (DeepCopy a id) (DeepCopy b id)))
+(rewrite (DeepCopy (bmul a b) id) (bmul (DeepCopy a id) (DeepCopy b id)))
+(rewrite (DeepCopy (blt a b) id) (blt (DeepCopy a id) (DeepCopy b id)))
+(rewrite (DeepCopy (band a b) id) (band (DeepCopy a id) (DeepCopy b id)))
+(rewrite (DeepCopy (bor a b) id) (bor (DeepCopy a id) (DeepCopy b id)))
+
+(rewrite (DeepCopy (PRINT a b) id) (PRINT (DeepCopy a id) (DeepCopy b id)))
+
+(rewrite (DeepCopy (OperandGroup a) id) (OperandGroup (DeepCopy a id)))
+
+;;     DeepCopy vectors
+(rewrite (DeepCopy (EVec (vec-of)) id) (EVec (vec-of)))
+(rule
+  ((= lhs (DeepCopy (EVec vec) id)))
+  ((let last (vec-get vec (- (vec-length vec) 1)))
+   (let rest (vec-pop vec))
+   (union lhs
+     (VecPush
+       (DeepCopy (EVec rest) id)
+       (DeepCopy last id)))))
+
+;; Deepcopy regions
+;; do nothing if the new id is the old
+;; inner regions get new ids
+(rule
+ ((= lhs (DeepCopy (Loop id pred inputs outputs) outer-id)))
+ ((let inner-id (id (i64-fresh!)))
+  (union lhs
+    (Loop inner-id
+      (DeepCopy pred inner-id)
+      (DeepCopy inputs outer-id)
+      (DeepCopy outputs inner-id)))))
+(rule
+ ((= lhs (DeepCopy (Switch id pred inputs outputs) outer-id)))
+ ((let inner-id (id (i64-fresh!)))
+  (union lhs
+    (Switch inner-id
+      (DeepCopy pred outer-id)
+      (DeepCopy inputs outer-id)
+      (DeepCopy outputs inner-id)))))
+  

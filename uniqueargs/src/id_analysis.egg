@@ -1,0 +1,46 @@
+(ruleset fast-analysis)
+
+(function Id-Of (Expr) Id)
+
+;; sanity check
+(rule ((= (Id a) (Id b))
+    (!= a b))
+  ((panic "Id-Of: Ids don't match")))
+
+(rule ((Num id n))
+  ((set (Id-Of (Num id n)) id)))
+(rule ((Var id x))
+  ((set (Id-Of (Var id x)) id)))
+
+(rule ((badd a b)
+    (= aid (Id-Of a)))
+  ((set (Id-Of (badd a b)) aid)))
+(rule ((bsub a b)
+    (= aid (Id-Of a)))
+  ((set (Id-Of (bsub a b)) aid)))
+(rule ((bmul a b)
+    (= aid (Id-Of a)))
+  ((set (Id-Of (bmul a b)) aid)))
+(rule ((blt a b)
+    (= aid (Id-Of a)))
+  ((set (Id-Of (blt a b)) aid)))
+(rule ((band a b)
+    (= aid (Id-Of a)))
+  ((set (Id-Of (band a b)) aid)))
+(rule ((bor a b)
+    (= aid (Id-Of a)))
+  ((set (Id-Of (bor a b)) aid)))
+
+(rule ((PRINT a b)
+    (= aid (Id-Of a)))
+  ((set (Id-Of (PRINT a b)) aid)))
+
+(rule ((Loop id a b c))
+  ((set (Id-Of (Loop id a b c)) id)))
+(rule ((Switch id a b c))
+  ((set (Id-Of (Switch id a b c)) id)))
+(rule ((Func id name body))
+  ((set (Id-Of (Func id name body)) id)))
+
+(rule ((Arg id a))
+  ((set (Id-Of (Arg id a)) id)))

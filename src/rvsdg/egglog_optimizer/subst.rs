@@ -1,3 +1,5 @@
+use std::vec;
+
 use super::BRIL_OPS;
 
 /// "subst-beneath" rules support replacing a specific {Expr, Body, Operand,
@@ -339,37 +341,46 @@ fn functions_modifying_args(
             :ruleset {ruleset})"
     ));
 
+    for vectypebase in ["VecOperandBase", "VecVecOperandBase"] {
+        let fname_vec_base = func_name_fmt.replace("{}", vectypebase);
+        res.push(format!(
+            "(relation {fname_vec_base}-helper ({vectypebase} {aux_params_str} i64 {vectypebase}))"
+        ))
+    }
+
     // Rules to compute on VecOperand
-    for (vectype, ctor, eltype) in [
-        ("VecOperand", "VO", "Operand"),
-        ("VecOperandCtx", "VOC", "Operand"),
-        ("VecVecOperandCtx", "VVO", "VecOperandCtx"),
+    for (vectype, vectypebase, ctor, eltype) in [
+        ("VecOperand", "VecOperandBase", "VO", "Operand"),
+        ("VecOperandCtx", "VecOperandBase", "VOC", "Operand"),
+        (
+            "VecVecOperandCtx",
+            "VecVecOperandBase",
+            "VVO",
+            "VecOperandCtx",
+        ),
     ] {
         let fname_vec = func_name_fmt.replace("{}", vectype);
+        let fname_vec_base = func_name_fmt.replace("{}", vectypebase);
         let fname_eltype = func_name_fmt.replace("{}", eltype);
         // rtjoa: TODO: implement by mapping internally so they're not O(n^2) time
         res.push(format!(
             "
-            (function {fname_vec}-helper ({vectype} {aux_params_str} i64) {vectype} :unextractable)
-            (rewrite
-                ({fname_vec} vec {aux_args_str})
-                ({fname_vec}-helper vec {aux_args_str} 0)
-                :ruleset {ruleset})
+            (rule (({fname_vec} ({ctor} vec) {aux_args_str})) 
+                  (({fname_vec_base}-helper vec {aux_args_str} 0 vec)) :ruleset {ruleset})
+
             (rule
-                ((= f ({fname_vec}-helper ({ctor} vec) {aux_args_str} i))
+                (({fname_vec_base}-helper vec {aux_args_str} i vec_out)
                  (< i (vec-length vec)))
-                ((union
-                    ({fname_vec}-helper ({ctor} vec) {aux_args_str} i)
-                    ({fname_vec}-helper
-                        ({ctor} (vec-set vec i ({fname_eltype} (vec-get vec i) {aux_args_str})))
-                        {aux_args_str} (+ i 1))))
+                (({fname_vec_base}-helper
+                            vec {aux_args_str} (+ i 1) (vec-set vec_out i ({fname_eltype} (vec-get vec_out i) {aux_args_str}))) )
                 :ruleset {ruleset})
             (rule
-                ((= f ({fname_vec}-helper ({ctor} vec) {aux_args_str} i))
-                 (= i (vec-length vec)))
+                (({fname_vec_base}-helper vec {aux_args_str} i vec_out)
+                 (= i (vec-length vec))
+                 ({fname_vec} ({ctor} vec) {aux_args_str}))
                 ((union
-                    ({fname_vec}-helper ({ctor} vec) {aux_args_str} i)
-                    ({ctor} vec)))
+                    ({ctor} vec_out)
+                    ({fname_vec} ({ctor} vec) {aux_args_str})))
                 :ruleset {ruleset})"
         ));
     }

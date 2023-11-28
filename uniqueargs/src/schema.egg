@@ -4,10 +4,6 @@
 
 (function EVec (EVecBase) Expr)
 
-(function VecPush (Expr Expr) Expr :unextractable)
-(rewrite (VecPush (EVec vec) last) (EVec (vec-push vec last)))
-
-
 (function Num (i64) Expr)
 (function Bool (bool) Expr)
 
@@ -22,9 +18,6 @@
 ;; Non-pure expressions
 ;; Print takes a value, a print state, and returns a print state
 (function PRINT (Expr Expr) Expr)
-
-;; OperandGroup produces a tuple (it is not a region)
-(function OperandGroup (Expr) Expr)
 
 ;; Regions
 ;; Every region gets a unique id
@@ -45,6 +38,9 @@
 (function Arg (Id i64) Expr)
 
 
+(function VecPush (Expr Expr) Expr :unextractable)
+(rewrite (VecPush (EVec vec) last) (EVec (vec-push vec last)))
+
 ;; Rename all arguments under the input Expr to have a new Id
 ;; preserves all equalities, and propogates them in the future.
 (function DeepCopy (Expr Id) Expr)
@@ -64,7 +60,6 @@
 
 (rewrite (DeepCopy (PRINT a b) id) (PRINT (DeepCopy a id) (DeepCopy b id)))
 
-(rewrite (DeepCopy (OperandGroup a) id) (OperandGroup (DeepCopy a id)))
 
 ;;     DeepCopy vectors
 (rewrite (DeepCopy (EVec (vec-of)) id) (EVec (vec-of)))

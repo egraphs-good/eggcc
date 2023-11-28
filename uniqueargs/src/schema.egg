@@ -3,9 +3,14 @@
 (sort EVecBase (Vec Expr))
 (function EVec (EVecBase) Expr)
 
+;; Every region gets a unique id
+(datatype Id (id i64))
+
 ;; Pure expressions
-(function Num (i64) Expr)
-(function Bool (bool) Expr)
+;; Leaf nodes need ids to be unique for the region they 
+;; are in to avoid extracting something from another region
+(function Num (Id i64) Expr)
+(function Bool (Id bool) Expr)
 (function badd (Expr Expr) Expr)
 (function bsub (Expr Expr) Expr)
 (function bmul (Expr Expr) Expr)
@@ -18,8 +23,6 @@
 (function PRINT (Expr Expr) Expr)
 
 ;; Regions
-;; Every region gets a unique id
-(datatype Id (id i64))
 ;; arguments are predicate (in loop), inputs (outside loop), and outputs (inside loop)
 (function Loop (Id Expr Expr Expr) Expr)
 ;; arguments are predicate (outside switch), inputs: EVec, and outputs: EVecVec

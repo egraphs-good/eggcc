@@ -4,6 +4,7 @@ fn main() {
     let program = vec![
         // header
         include_str!("schema.egg"),
+        include_str!("id_analysis.egg"),
         include_str!("deep_copy.egg"),
         // optimizations
         include_str!("switch_rewrites.egg"),

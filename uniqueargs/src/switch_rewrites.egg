@@ -1,27 +1,26 @@
-;;	if a && b:
-;;		A
-;;	else:
-;;		B
+;;  if a && b:
+;;      A
+;;  else:
+;;      B
 ;; ----------
-;;	if a:
-;;		if b:
-;;			A
-;;		else:
-;;			B
-;;	else:
-;;		B
+;;  if a:
+;;      if b:
+;;          A
+;;      else:
+;;          B
+;;  else:
+;;      B
 
-
-;;	if a || b:
-;;		A
-;;	else:
-;;		B
+;;  if a || b:
+;;      A
+;;  else:
+;;      B
 ;; -----------
-;;	if a:
-;;		A
-;;	else:
-;;		if b:
-;;			A
-;;		else:
-;;			B
+;;  if a:
+;;      A
+;;  else:
+;;      if b:
+;;          A
+;;      else:
+;;          B
 

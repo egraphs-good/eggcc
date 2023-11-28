@@ -9,7 +9,8 @@ name = "files"
 
 
 [dependencies]
-egglog = { git = "https://github.com/egraphs-good/egglog", rev = "f0209f0" }
+egglog = { git = "https://github.com/egraphs-good/egglog", rev = "60668dd3f465e5674142c47eea449e64310ecb6a" }
+egraph-serialize = "0.1.0"
 log = "0.4.19"
 thiserror = "1"
 lalrpop-util = { version = "0.19.8", features = ["lexer"] }

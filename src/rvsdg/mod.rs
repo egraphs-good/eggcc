@@ -41,7 +41,7 @@ pub(crate) mod to_egglog;
 use std::fmt;
 
 use bril_rs::{ConstOps, Literal, Type, ValueOps};
-use egglog::{EGraph, TermDag};
+use egglog::{EGraph, SerializeConfig, TermDag};
 
 use thiserror::Error;
 
@@ -227,6 +227,37 @@ impl RvsdgProgram {
         res_string.push(rvsdg_egglog_schedule());
 
         (res_string.join("\n").to_string(), func_names)
+    }
+
+    pub fn serialized_egraph(&self) -> std::result::Result<egraph_serialize::EGraph, EggCCError> {
+        let egglog_header_code = self.build_egglog_header_code();
+        let mut egraph = EGraph::default();
+        let _results = egraph
+            .parse_and_run_program(&egglog_header_code)
+            .map_err(EggCCError::EggLog);
+        register_primitives(&mut egraph);
+        let (egglog_code, function_names) = self.build_egglog_code();
+        let _results = egraph
+            .parse_and_run_program(egglog_code.as_str())
+            .map_err(EggCCError::EggLog)?;
+
+        let mut root_eclasses = vec![];
+        for name in function_names {
+            let (_sort, value) = egraph
+                .eval_expr(&egglog::ast::Expr::Var(name.into()), None, true)
+                .unwrap();
+            root_eclasses.push(value);
+        }
+
+        let config = SerializeConfig {
+            max_functions: None,
+            max_calls_per_function: None,
+            include_temporary_functions: false,
+            split_primitive_outputs: true,
+            root_eclasses,
+        };
+
+        Ok(egraph.serialize(config))
     }
 
     pub fn optimize(&self) -> std::result::Result<Self, EggCCError> {

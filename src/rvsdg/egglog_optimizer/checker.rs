@@ -112,10 +112,77 @@ res.push(format!("
         }
     }
         
+/*
+    // Theta
+    res.push(format!("
+        (function ThetaOutputsEvalToAtIter (Body Env i64) Env)
+        (function ThetaPredEvalsToAtIter (Body Env i64) Env)
 
+        ; demand inputs get evaluated
+        (rule ((BodyEvalsToDemand (Theta pred inputs outputs) env))
+              ((VecOperandEvalsToDemand inputs env))
+              :ruleset checker)
 
-// bodies dont do them ill paste them back
+        ; hack: at iter -1, set the pred to true and outputs to inputs
+        (rule ((= theta (Theta pred inputs outputs))
+               (BodyEvalsToDemand (Theta pred inputs outputs) env)
+               (= inputs-vals (VecOperandEvalsTo inputs env)))
+              ((set (ThetaOutputsEvalToAtIter theta env -1) inputs-vals)
+               (set (ThetaPredEvalsToAtIter theta env -1) (vec-of (Bool true))))
+              :ruleset checker)
 
+        ; if pred is false at the end of some iter, its outputs are the overall result
+        (rule ((= theta (Theta pred inputs outputs))
+               (BodyEvalsToDemand theta env)
+               (= output-vals (ThetaOutputsEvalToAtIter theta env i))
+               (= (vec-of (Bool false)) (ThetaPredEvalsToAtIter theta env i)))
+              ((set (BodyEvalsTo theta env) output-vals))
+              :ruleset checker)
+
+        ; if pred is true, demand next pred and env...
+        (rule ((= theta (Theta pred inputs outputs))
+               (BodyEvalsToDemand theta env)
+               (= env' (ThetaOutputsEvalToAtIter theta env i))
+               (= (vec-of (Bool true)) (ThetaPredEvalsToAtIter theta env i)))
+              ((OperandEvalsToDemand pred env')
+               (VecOperandEvalsToDemand outputs env'))
+              :ruleset checker)
+        
+        ; ...then set what the outputs/preds eval to at the next iter
+        (rule ((= theta (Theta pred inputs outputs))
+               (BodyEvalsToDemand theta env)
+               (= env' (ThetaOutputsEvalToAtIter theta env i))
+               (= (Bool true) (ThetaPredEvalsToAtIter theta env i))
+               (= pred' (OperandEvalsTo pred env'))
+               (= outputs' (VecOperandEvalsTo outputs env')))
+              ((set (ThetaOutputsEvalToAtIter theta env (+ i 1)) outputs')
+               (set (ThetaPredEvalsToAtIter theta env (+ i 1)) outputs'))
+              :ruleset checker)
+        
+    "));
+
+    // Gamma
+    res.push(format!("
+        ; demand pred gets evaluated
+        (rule ((BodyEvalsToDemand (Gamma pred inputs outputs) env))
+              ((OperandEvalsToDemand pred env))
+              :ruleset checker)
+
+        ; demand right branch gets evaluated
+        (rule ((BodyEvalsToDemand (Gamma pred inputs outputs) env)
+               (= (Num i) (OperandEvalsTo pred env))
+               (= outputs-i (VecOperand-get outputs i)))
+              ((VecOperandEvalsToDemand outputs-i env))
+              :ruleset checker)
+
+        (rule ((BodyEvalsToDemand (Gamma pred inputs outputs) env)
+               (= (Num i) (OperandEvalsTo pred env))
+               (= outputs-i (VecOperand-get outputs i))
+               (= outputs-i-vals (VecOperandEvalsTo outputs-i env)))
+              ((set (BodyEvalsTo (Gamma pred inputs outputs) env) outputs-i-vals))
+              :ruleset checker)
+    "));
+*/
 
     res.join("\n")
 }

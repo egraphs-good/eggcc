@@ -4,17 +4,19 @@
 
 ;; (how many arguments to generate, vector so far)
 (function PassThroughArgsHelper (Id i64 EVecBase) Expr :unextractable)
-(rewrite (PassThroughArgs id i) (PassThroughArgsHelper id i (vec-of)))
+(rewrite (PassThroughArgs id i) (PassThroughArgsHelper id i (vec-of)) :ruleset repairs)
 
 (rule ((= lhs (PassThroughArgsHelper id i rest))
        (< (vec-length rest) i))
       ((union lhs
         (PassThroughArgsHelper id i
-            (vec-push rest (Arg id (vec-length rest)))))))
+            (vec-push rest (Arg id (vec-length rest))))))
+      :ruleset repairs)
 
 (rule ((= lhs (PassThroughArgsHelper id i rest))
        (= (vec-length rest) i))
-      ((union lhs (EVec rest))))
+      ((union lhs (EVec rest)))
+      :ruleset repairs)
 
 ;; Creates a vec of Projects out of a body
 ;; (vec-of (Project body 0) (Project body 1) ...) with length i
@@ -23,17 +25,19 @@
 ;; current index, body length, body, and vector so far
 (function ExprToEVecHelper (i64 i64 Expr EVecBase) Expr :unextractable)
 (rewrite (ExprToEVec body-len body)
-         (ExprToEVecHelper 0 body-len body (vec-of)))
+         (ExprToEVecHelper 0 body-len body (vec-of))
+         :ruleset repairs)
 
 (rule
   ((= helper (ExprToEVecHelper index body-len body so-far))
    (< index body-len))
   ((union helper
           (ExprToEVecHelper (+ index 1) body-len body
-                                  (vec-push so-far (Project body index))))))
+                                  (vec-push so-far (Project body index)))))
+  :ruleset repairs)
 
-(rewrite (ExprToEVecHelper index-=-len index-=-len body so-far) (EVec so-far))
+(rewrite (ExprToEVecHelper body-len body-len body so-far) (EVec so-far) :ruleset repairs)
 
 ;; Delayed vec-push utility
 (function VecPush (Expr Expr) Expr :unextractable)
-(rewrite (VecPush (EVec vec) last) (EVec (vec-push vec last)))
+(rewrite (VecPush (EVec vec) last) (EVec (vec-push vec last)) :ruleset repairs)

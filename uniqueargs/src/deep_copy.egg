@@ -1,23 +1,23 @@
 ;; Rename all arguments under the input Expr to have a new Id
 ;; preserves all equalities, and propogates them in the future.
-(function DeepCopy (Expr Id) Expr)
+(function DeepCopy (Expr Id) Expr :unextractable)
 
 ;; leaves get the new id
-(rewrite (DeepCopy (Arg id i) newid) (Arg newid i))
-(rewrite (DeepCopy (Num id num) newid) (Num newid num))
-(rewrite (DeepCopy (Bool id b) newid) (Bool newid b))
+(rewrite (DeepCopy (Arg id i)  newid) (Arg newid i)  :ruleset repairs)
+(rewrite (DeepCopy (Num id n)  newid) (Num newid n)  :ruleset repairs)
+(rewrite (DeepCopy (Bool id b) newid) (Bool newid b) :ruleset repairs)
 
-(rewrite (DeepCopy (badd a b) id) (badd (DeepCopy a id) (DeepCopy b id)))
-(rewrite (DeepCopy (bsub a b) id) (bsub (DeepCopy a id) (DeepCopy b id)))
-(rewrite (DeepCopy (bmul a b) id) (bmul (DeepCopy a id) (DeepCopy b id)))
-(rewrite (DeepCopy (blt a b) id) (blt (DeepCopy a id) (DeepCopy b id)))
-(rewrite (DeepCopy (band a b) id) (band (DeepCopy a id) (DeepCopy b id)))
-(rewrite (DeepCopy (bor a b) id) (bor (DeepCopy a id) (DeepCopy b id)))
+(rewrite (DeepCopy (badd a b) id) (badd (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
+(rewrite (DeepCopy (bsub a b) id) (bsub (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
+(rewrite (DeepCopy (bmul a b) id) (bmul (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
+(rewrite (DeepCopy (blt  a b) id) (blt  (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
+(rewrite (DeepCopy (band a b) id) (band (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
+(rewrite (DeepCopy (bor  a b) id) (bor  (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
 
-(rewrite (DeepCopy (PRINT a b) id) (PRINT (DeepCopy a id) (DeepCopy b id)))
+(rewrite (DeepCopy (PRINT a b) id) (PRINT (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
 
 ;;     DeepCopy vectors
-(rewrite (DeepCopy (EVec (vec-of)) id) (EVec (vec-of)))
+(rewrite (DeepCopy (EVec (vec-of)) id) (EVec (vec-of)) :ruleset repairs)
 (rule
   ((= lhs (DeepCopy (EVec vec) id)))
   ((let last (vec-get vec (- (vec-length vec) 1)))
@@ -25,7 +25,8 @@
    (union lhs
      (VecPush
        (DeepCopy (EVec rest) id)
-       (DeepCopy last id)))))
+       (DeepCopy last id))))
+  :ruleset repairs)
 
 ;; Deepcopy regions
 ;; do nothing if the new id is the old
@@ -37,7 +38,8 @@
     (Loop inner-id
       (DeepCopy pred inner-id)
       (DeepCopy inputs outer-id)
-      (DeepCopy outputs inner-id)))))
+      (DeepCopy outputs inner-id))))
+ :ruleset repairs)
 (rule
  ((= lhs (DeepCopy (Switch id pred inputs outputs) outer-id)))
  ((let inner-id (id (i64-fresh!)))
@@ -45,4 +47,5 @@
     (Switch inner-id
       (DeepCopy pred outer-id)
       (DeepCopy inputs outer-id)
-      (DeepCopy outputs inner-id)))))
+      (DeepCopy outputs inner-id))))
+ :ruleset repairs)

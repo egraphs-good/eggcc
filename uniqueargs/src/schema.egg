@@ -36,3 +36,7 @@
 ;; Projects
 ;; Take a specific output of an Expr with multiple outputs
 (function Project (Expr i64) Expr)
+
+;; Rulesets
+(ruleset analyses)
+(ruleset repairs)

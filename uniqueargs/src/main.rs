@@ -6,6 +6,7 @@ fn main() {
         include_str!("schema.egg"),
         include_str!("util.egg"),
         include_str!("deep_copy.egg"),
+        // analyses
         // optimizations
         include_str!("switch_rewrites.egg"),
         // execution

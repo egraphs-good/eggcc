@@ -4,14 +4,9 @@ mod switch_rewrites;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
-pub fn run_test(a: &str, b: &str) -> Result {
+pub fn run_test(build: &str, check: &str) -> Result {
     let program = format!(
-        "
-        {}
-        (let test_a {a})
-        (let test_b {b})
-        {}
-        (check (= test_a test_b))",
+        "{}\n{build}\n{}\n{check}\n",
         vec![
             include_str!("schema.egg"),
             // analyses

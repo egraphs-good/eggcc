@@ -66,7 +66,7 @@ res.push(format!("
       ((set (ExprEvalsTo lhs env) result)))
       
 (rule ((OperandEvalsToDemand (Arg i) env))
-      ((set (OperandEvalsTo (Arg i) env) (vec-get env i))))
+      ((set (OperandEvalsTo (Arg i) env) (vec-of (vec-get env i)))))
 
 (rule (
         (= lhs (Node body))
@@ -112,7 +112,6 @@ res.push(format!("
         }
     }
         
-/*
     // Theta
     res.push(format!("
         (function ThetaOutputsEvalToAtIter (Body Env i64) Env)
@@ -142,23 +141,22 @@ res.push(format!("
         ; if pred is true, demand next pred and env...
         (rule ((= theta (Theta pred inputs outputs))
                (BodyEvalsToDemand theta env)
-               (= env' (ThetaOutputsEvalToAtIter theta env i))
+               (= next-env (ThetaOutputsEvalToAtIter theta env i))
                (= (vec-of (Bool true)) (ThetaPredEvalsToAtIter theta env i)))
-              ((OperandEvalsToDemand pred env')
-               (VecOperandEvalsToDemand outputs env'))
+              ((OperandEvalsToDemand pred next-env)
+               (VecOperandEvalsToDemand outputs next-env))
               :ruleset checker)
         
         ; ...then set what the outputs/preds eval to at the next iter
         (rule ((= theta (Theta pred inputs outputs))
                (BodyEvalsToDemand theta env)
-               (= env' (ThetaOutputsEvalToAtIter theta env i))
-               (= (Bool true) (ThetaPredEvalsToAtIter theta env i))
-               (= pred' (OperandEvalsTo pred env'))
-               (= outputs' (VecOperandEvalsTo outputs env')))
-              ((set (ThetaOutputsEvalToAtIter theta env (+ i 1)) outputs')
-               (set (ThetaPredEvalsToAtIter theta env (+ i 1)) outputs'))
+               (= next-env (ThetaOutputsEvalToAtIter theta env i))
+               (= (vec-of (Bool true)) (ThetaPredEvalsToAtIter theta env i))
+               (= next-pred (OperandEvalsTo pred next-env))
+               (= next-outputs (VecOperandEvalsTo outputs next-env)))
+              ((set (ThetaOutputsEvalToAtIter theta env (+ i 1)) next-outputs)
+               (set (ThetaPredEvalsToAtIter theta env (+ i 1)) next-outputs))
               :ruleset checker)
-        
     "));
 
     // Gamma
@@ -170,19 +168,18 @@ res.push(format!("
 
         ; demand right branch gets evaluated
         (rule ((BodyEvalsToDemand (Gamma pred inputs outputs) env)
-               (= (Num i) (OperandEvalsTo pred env))
-               (= outputs-i (VecOperand-get outputs i)))
-              ((VecOperandEvalsToDemand outputs-i env))
+               (= (vec-of (Num i)) (OperandEvalsTo pred env))
+               (= outputs-i (VecVecOperandCtx-get outputs i)))
+              ((VecOperandCtxEvalsToDemand outputs-i env))
               :ruleset checker)
 
         (rule ((BodyEvalsToDemand (Gamma pred inputs outputs) env)
-               (= (Num i) (OperandEvalsTo pred env))
-               (= outputs-i (VecOperand-get outputs i))
-               (= outputs-i-vals (VecOperandEvalsTo outputs-i env)))
+               (= (vec-of (Num i)) (OperandEvalsTo pred env))
+               (= outputs-i (VecVecOperandCtx-get outputs i))
+               (= outputs-i-vals (VecOperandCtxEvalsTo outputs-i env)))
               ((set (BodyEvalsTo (Gamma pred inputs outputs) env) outputs-i-vals))
               :ruleset checker)
-    "));
-*/
+    ; "));
 
     res.join("\n")
 }
@@ -198,13 +195,23 @@ fn test_evaluate_add() {
                    (Node (PureOp (Const (IntT) (const)
                                         (Num 2))))))
 
-(ExprEvalsToDemand testadd (vec-of))
+(ExprEvalsToDemand testadd (vec-pop (vec-of (Num 3))))
     "#;
 
     const footer: &str = r#"
 (check (= (vec-of (Num 3)) (ExprEvalsTo testadd (vec-of))))
     "#;
 
-    let mut egraph = build_egglog_test(PROGRAM);
-    egraph.parse_and_run_program(&footer).unwrap();
+    let mut egraph = EGraph::default();
+    let code = build_egglog_test(PROGRAM);
+    match 
+    egraph.parse_and_run_program(&code) {
+        Ok(_) => (),
+        Err(e) => panic!("Error: {}", e),
+    }
+    match 
+    egraph.parse_and_run_program(&footer) {
+        Ok(_) => (),
+        Err(e) => panic!("Error: {}", e),
+    }
 }

@@ -33,3 +33,7 @@
                                   (vec-push so-far (Project body index))))))
 
 (rewrite (ExprToEVecHelper index-=-len index-=-len body so-far) (EVec so-far))
+
+;; Delayed vec-push utility
+(function VecPush (Expr Expr) Expr :unextractable)
+(rewrite (VecPush (EVec vec) last) (EVec (vec-push vec last)))

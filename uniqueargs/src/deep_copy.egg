@@ -1,7 +1,3 @@
-;; Delayed vec-push utility
-(function VecPush (Expr Expr) Expr :unextractable)
-(rewrite (VecPush (EVec vec) last) (EVec (vec-push vec last)))
-
 ;; Rename all arguments under the input Expr to have a new Id
 ;; preserves all equalities, and propogates them in the future.
 (function DeepCopy (Expr Id) Expr)

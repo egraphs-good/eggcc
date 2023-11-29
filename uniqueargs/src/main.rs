@@ -2,7 +2,7 @@ use egglog::EGraph;
 
 fn main() {
     let program = vec![
-        // header
+        // headers
         include_str!("schema.egg"),
         include_str!("util.egg"),
         include_str!("deep_copy.egg"),

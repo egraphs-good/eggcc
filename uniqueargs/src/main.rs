@@ -1,23 +1,31 @@
-use egglog::EGraph;
+// Rust test modules
+// If you don't put your Rust file here it won't get compiled!
+mod switch_rewrites;
 
-fn main() {
-    let program = vec![
-        // headers
-        include_str!("schema.egg"),
-        include_str!("util.egg"),
-        include_str!("deep_copy.egg"),
-        // analyses
-        // optimizations
-        include_str!("switch_rewrites.egg"),
-        // execution
+pub type Result = std::result::Result<(), egglog::Error>;
+
+pub fn run_test(a: &str, b: &str) -> Result {
+    let program = format!(
+        "
+        {}
+        (let test_a {a})
+        (let test_b {b})
+        {}
+        (check (= test_a test_b))",
+        vec![
+            include_str!("schema.egg"),
+            // analyses
+            // repairs
+            include_str!("util.egg"),
+            include_str!("deep_copy.egg"),
+            // optimizations
+            include_str!("switch_rewrites.egg"),
+        ]
+        .join("\n"),
         include_str!("schedule.egg"),
-        include_str!("tests.egg"),
-    ]
-    .join("\n");
+    );
 
-    let mut egraph = EGraph::default();
-    match egraph.parse_and_run_program(&program) {
-        Ok(_) => println!("Success!"),
-        Err(e) => println!("Error: {}", e),
-    }
+    egglog::EGraph::default()
+        .parse_and_run_program(&program)
+        .map(|_| ())
 }

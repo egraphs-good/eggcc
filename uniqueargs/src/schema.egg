@@ -5,6 +5,8 @@
 
 ;; Every region gets a unique id
 (datatype Id (id i64))
+;; The id of the outermost region (used for tests)
+(let global-id (id (i64-fresh!)))
 
 ;; Pure expressions
 ;; Leaf nodes need ids to be unique for the region they 

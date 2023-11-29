@@ -6,11 +6,10 @@
 ;; preserves all equalities, and propogates them in the future.
 (function DeepCopy (Expr Id) Expr)
 
-;; arguments get the new id
+;; leaves get the new id
 (rewrite (DeepCopy (Arg id i) newid) (Arg newid i))
-
-(rewrite (DeepCopy (Num num) id) (Num num))
-(rewrite (DeepCopy (Bool b) id) (Bool b))
+(rewrite (DeepCopy (Num id num) newid) (Num newid num))
+(rewrite (DeepCopy (Bool id b) newid) (Bool newid b))
 
 (rewrite (DeepCopy (badd a b) id) (badd (DeepCopy a id) (DeepCopy b id)))
 (rewrite (DeepCopy (bsub a b) id) (bsub (DeepCopy a id) (DeepCopy b id)))

@@ -13,16 +13,21 @@ use super::{
     RvsdgFunction, RvsdgType,
 };
 
+
 pub fn new_rvsdg_egraph() -> EGraph {
     let mut egraph = EGraph::default();
-    egraph
-        .parse_and_run_program(rvsdg_egglog_header_code().as_str())
-        .unwrap();
+    match egraph
+    .parse_and_run_program(rvsdg_egglog_header_code().as_str()) {
+        Ok(_) => (),
+        Err(e) => panic!("Error parsing egglog header: {}", e),
+    };
 
     register_primitives(&mut egraph);
-    egraph
-        .parse_and_run_program(rvsdg_egglog_code().as_str())
-        .unwrap();
+    match egraph
+    .parse_and_run_program(rvsdg_egglog_code().as_str()) {
+        Ok(_) => (),
+        Err(e) => panic!("Error parsing egglog code: {}", e),
+    };
     egraph
 }
 

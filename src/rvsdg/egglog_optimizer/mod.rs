@@ -5,6 +5,10 @@ use self::{
     loop_invariant::loop_invariant_detection, passthrough_optimize::passthrough_optimize_rules,
     reassoc::reassoc_rules,
 };
+#[cfg(test)]
+use super::tests::new_rvsdg_egraph;
+#[cfg(test)]
+use egglog::EGraph;
 
 pub(crate) mod constant_fold;
 pub(crate) mod extraction_rules;
@@ -80,9 +84,26 @@ pub fn rvsdg_egglog_schedule() -> String {
         ; Right now subst don't saturate so make it fixed 
         (repeat 1000 subst)
         (repeat 6 subst-beneath (saturate fast-analyses))
+        (saturate checker)
         )
     "
     .to_string()
+}
+
+#[cfg(test)]
+pub fn build_egglog_test(test_input: &str) -> EGraph {
+    let mut egraph = new_rvsdg_egraph();
+    match egraph.parse_and_run_program(test_input) {
+        Ok(_) => (),
+        Err(e) => panic!("build_egglog_test: failed to parse and run program: {}", e),
+    };
+    let schedule = rvsdg_egglog_schedule();
+    match 
+    egraph.parse_and_run_program(&schedule) {
+        Ok(_) => (),
+        Err(e) => panic!("build_egglog_test: failed to parse and run schedule: {}", e),
+    };
+    egraph
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -182,3 +203,14 @@ const BRIL_OPS: [BrilOp; 11] = [
         output_type: Type::Bool,
     },
 ];
+
+
+pub(crate) fn type_to_literal_constructor(t: &Type) -> String {
+    match t {
+        Type::Int => "Num".to_string(),
+        Type::Bool => "Bool".to_string(),
+        Type::Float => "Float".to_string(),
+        Type::Char => "Char".to_string(),
+        _ => panic!("type_to_literal_constructor: unsupported type {:?}", t),
+    }
+}

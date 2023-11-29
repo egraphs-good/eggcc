@@ -226,7 +226,7 @@ fn subst_beneath_rules() -> Vec<String> {
 // with parameter types [TYPE] ++ aux_param_types
 //
 // arg_rules are hardcoded rules for the Arg case of the function for Operand
-fn functions_modifying_args(
+pub(crate) fn functions_modifying_args(
     func_name_fmt: &str,
     aux_param_types: Vec<&str>,
     ruleset: &str,
@@ -237,6 +237,7 @@ fn functions_modifying_args(
     // Define functions
     let aux_params_str = aux_param_types.join(" ");
     for ty in [
+        "Literal",
         "Expr",
         "Operand",
         "Body",

@@ -19,13 +19,13 @@
       ((let inner-id (id (i64-fresh!)))
        (let outer-id (id (i64-fresh!)))
        (let inner (Switch inner-id
-                          (Arg inner-id args) ; we pass b as an extra argument to the outer gamma
-                          (PassThroughArgs inner-id args)
-                          (EVec (vec-of (EVec B) (EVec A)))))
+                          (Arg outer-id args) ; we pass b as an extra argument to the outer gamma
+                          (PassThroughArgs outer-id args)
+                          (EVec (vec-of (DeepCopy (EVec B) inner-id) (DeepCopy (EVec A) inner-id)))))
        (let outer (Switch outer-id
-                          (DeepCopy a outer-id)
+                          a
                           (EVec (vec-push inputs b)) ; pass b as an extra argument
-                          (EVec (vec-of (EVec B)
+                          (EVec (vec-of (DeepCopy (EVec B) outer-id)
                                         (ExprToEVec rets inner)))))
        (union switch outer)))
 
@@ -50,11 +50,12 @@
       ((let inner-id (id (i64-fresh!)))
        (let outer-id (id (i64-fresh!)))
        (let inner (Switch inner-id
-                          (Arg inner-id args) ; we pass b as an extra argument to the outer gamma
-                          (PassThroughArgs inner-id args)
-                          (EVec (vec-of (EVec B) (EVec A)))))
+                          (Arg outer-id args) ; we pass b as an extra argument to the outer gamma
+                          (PassThroughArgs outer-id args)
+                          (EVec (vec-of (DeepCopy (EVec B) inner-id) (DeepCopy (EVec A) inner-id)))))
        (let outer (Switch outer-id
-                          (DeepCopy a outer-id)
+                          a
                           (EVec (vec-push inputs b)) ; pass b as an extra argument
-                          (EVec (vec-of (ExprToEVec rets inner) (EVec A)))))
+                          (EVec (vec-of (ExprToEVec rets inner)
+                                        (DeepCopy (EVec A) outer-id)))))
        (union switch outer)))

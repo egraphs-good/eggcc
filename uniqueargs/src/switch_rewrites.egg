@@ -23,7 +23,7 @@
                           (PassThroughArgs inner-id args)
                           (EVec (vec-of (EVec B) (EVec A)))))
        (let outer (Switch outer-id
-                          (DeepCopy a inner-id)
+                          (DeepCopy a outer-id)
                           (EVec (vec-push inputs b)) ; pass b as an extra argument
                           (EVec (vec-of (EVec B)
                                         (ExprToEVec rets inner)))))
@@ -41,4 +41,20 @@
 ;;          A
 ;;      else:
 ;;          B
-
+(rule ((= switch (Switch id (bor a b) (EVec inputs) (EVec outputs)))
+       (= (vec-length outputs) 2)
+       (= (vec-get outputs 1) (EVec A))
+       (= (vec-get outputs 0) (EVec B))
+       (= (vec-length inputs) args)
+       (= (vec-length A)      rets))
+      ((let inner-id (id (i64-fresh!)))
+       (let outer-id (id (i64-fresh!)))
+       (let inner (Switch inner-id
+                          (Arg inner-id args) ; we pass b as an extra argument to the outer gamma
+                          (PassThroughArgs inner-id args)
+                          (EVec (vec-of (EVec B) (EVec A)))))
+       (let outer (Switch outer-id
+                          (DeepCopy a outer-id)
+                          (EVec (vec-push inputs b)) ; pass b as an extra argument
+                          (EVec (vec-of (ExprToEVec rets inner) (EVec A)))))
+       (union switch outer)))

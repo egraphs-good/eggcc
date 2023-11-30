@@ -29,6 +29,11 @@
 (function Switch (Id Expr Expr Expr) Expr)
 ;; Name and a outputs: EVec
 (function Func (Id String Expr) Expr)
+
 ;; Arguments
 ;; Take the id of the region it is in, and an index for which argument to return
 (function Arg (Id i64) Expr)
+
+;; Call
+;; Name and arguments: Evec
+(function Call (String Expr) Expr)

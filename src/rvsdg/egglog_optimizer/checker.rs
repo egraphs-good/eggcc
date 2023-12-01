@@ -17,7 +17,8 @@ pub(crate) fn checker_code() -> String {
 
 (rule ((= (E vec1) (E vec2))
        (!= vec1 vec2))
-      ((panic \"two envs with different values were unioned\")))
+      ((panic \"two envs with different values were unioned\"))
+      :ruleset checker)
 
 ;; Sanity checks: make sure no constants are equal in the database
 (rule ((= (Num a) (Num b)) (!= a b)) ((panic \"unioned two numbers with different values\"))
@@ -67,6 +68,58 @@ res.push(format!("
          :when ((= (BodyEvalsTo body (E env)) (E body-vals)))
          :ruleset checker)
 
+(function VecGet (Env i64) Literal)
+(rewrite (VecGet (E vec) i) (vec-get vec i)
+         :ruleset checker)
+         
+         
+(relation VecOperandInProgress
+    ;; vector, environment, in-progress result
+    (VecOperand Env Env))
+
+(rule ((VecOperandEvalsTo vec env))
+      ((VecOperandInProgress vec env (E (vec-of)))))
+
+(rule ((VecOperandInProgress vec env (E progress-vec))
+       (< (vec-length progress-vec) (vec-length vec))
+       (= l (vec-length progress-vec)))
+      (
+        (VecOperandInProgress vec env
+          (E (vec-push
+               (VecGet
+                 (OperandEvalsTo (vec-get vec l))
+                 0)
+               progress-vec)))))
+;;;;
+
+(function prefix-of-VecOperand-evals-to (VecOperand i64 Env) Env)
+ 
+; the empty prefix evaluates to an empty vec
+(rule ((VecOperandEvalsTo vec env))
+      ((set (prefix-of-VecOperand-evals-to vec 0 env) (vec-empty))))
+
+; grow prefix
+(rule ((VecOperandEvalsTo vec env)
+       (= (E prefix-vals) (prefix-of-VecOperand-evals-to vec i env))
+       (= next-op (VecOperand-get vec i))
+       (= next-op-val (OperandEvalsTo next-op env)))
+      ((set (prefix-of-VecOperand-evals-to vec (+ i 1) env)
+            (E (vec-push prefix-vals next-op-val)))))
+
+; if prefix of length of the vec, save final result
+(rule ((VecOperandEvalsTo vec env)
+       (= l (VecOperand-length vec))
+       (= all-vals (prefix-of-VecOperand-evals-to vec l env)))
+      ((set (VecOperandEvalsTo vec env) all-vals)))
+;;;
+
+
+; Evaluate the individual element
+(rule ((VecOperandEvalsTo e env)
+       (VecOperand-get e i el))
+      ((OperandEvalsTo el env))
+       :ruleset checker)
+
 (rewrite (BodyEvalsTo (PureOp expr) (E env))
          (ExprEvalsTo expr (E env))
          :ruleset checker)
@@ -114,7 +167,7 @@ res.push(format!("
     }
         
     // Theta
-    /*res.push(format!("
+    res.push(format!("
         (function ThetaOutputsEvalToAtIter (Body Env i64) Env)
         (function ThetaPredEvalsToAtIter (Body Env i64) Env)
 
@@ -127,23 +180,23 @@ res.push(format!("
         (rule ((= theta (Theta pred inputs outputs))
                (BodyEvalsTo (Theta pred inputs outputs) env)
                (= inputs-vals (VecOperandEvalsTo inputs env)))
-              ((set (ThetaOutputsEvalToAtIter theta env -1) inputs-vals)
-               (set (ThetaPredEvalsToAtIter theta env -1) (vec-of (Bool true))))
+              ((union (ThetaOutputsEvalToAtIter theta env -1) inputs-vals)
+               (union (ThetaPredEvalsToAtIter theta env -1) (E (vec-of (Bool true)))))
               :ruleset checker)
 
         ; if pred is false at the end of some iter, its outputs are the overall result
         (rule ((= theta (Theta pred inputs outputs))
-               (BodyEvalsToDemand theta env)
+               (BodyEvalsTo theta env)
                (= output-vals (ThetaOutputsEvalToAtIter theta env i))
-               (= (vec-of (Bool false)) (ThetaPredEvalsToAtIter theta env i)))
+               (= (E (vec-of (Bool false))) (ThetaPredEvalsToAtIter theta env i)))
               ((union (BodyEvalsTo theta env) output-vals))
               :ruleset checker)
 
         ; if pred is true, demand next pred and env...
         (rule ((= theta (Theta pred inputs outputs))
-               (BodyEvalsToDemand theta env)
+               (BodyEvalsTo theta env)
                (= next-env (ThetaOutputsEvalToAtIter theta env i))
-               (= (vec-of (Bool true)) (ThetaPredEvalsToAtIter theta env i)))
+               (= (E (vec-of (Bool true))) (ThetaPredEvalsToAtIter theta env i)))
               ((OperandEvalsTo pred next-env)
                (VecOperandEvalsTo outputs next-env))
               :ruleset checker)
@@ -152,35 +205,38 @@ res.push(format!("
         (rule ((= theta (Theta pred inputs outputs))
                (BodyEvalsTo theta env)
                (= next-env (ThetaOutputsEvalToAtIter theta env i))
-               (= (vec-of (Bool true)) (ThetaPredEvalsToAtIter theta env i))
+               (= (E (vec-of (Bool true))) (ThetaPredEvalsToAtIter theta env i))
                (= next-pred (OperandEvalsTo pred next-env))
                (= next-outputs (VecOperandEvalsTo outputs next-env)))
-              ((set (ThetaOutputsEvalToAtIter theta env (+ i 1)) next-outputs)
-               (set (ThetaPredEvalsToAtIter theta env (+ i 1)) next-outputs))
+              ((union (ThetaOutputsEvalToAtIter theta env (+ i 1)) next-outputs)
+               (union (ThetaPredEvalsToAtIter theta env (+ i 1)) next-outputs))
               :ruleset checker)
-    "));*/
+    "));
 
     // Gamma
-    /*res.push(format!("
+    res.push(format!("
         ; demand pred gets evaluated
         (rule ((BodyEvalsTo (Gamma pred inputs outputs) env))
-              ((OperandEvalsTo pred env))
+              ((OperandEvalsTo pred env)
+               (VecOperandEvalsTo inputs env))
               :ruleset checker)
 
-        ; demand right branch gets evaluated
-        (rule ((BodyEvalsToDemand (Gamma pred inputs outputs) env)
-               (= (vec-of (Num i)) (OperandEvalsTo pred env))
+        ; demand correct branch gets evaluated
+        (rule ((BodyEvalsTo (Gamma pred inputs outputs) env)
+               (= (E (vec-of (Num i))) (OperandEvalsTo pred env))
+               (= new-env (VecOperandEvalsTo inputs env))
                (= outputs-i (VecVecOperandCtx-get outputs i)))
-              ((VecOperandCtxEvalsToDemand outputs-i env))
+              ((VecOperandCtxEvalsTo outputs-i new-env))
               :ruleset checker)
 
-        (rule ((BodyEvalsToDemand (Gamma pred inputs outputs) env)
-               (= (vec-of (Num i)) (OperandEvalsTo pred env))
+        (rule ((BodyEvalsTo (Gamma pred inputs outputs) env)
+               (= (E (vec-of (Num i))) (OperandEvalsTo pred env))
+               (= new-env (VecOperandEvalsTo inputs env))
                (= outputs-i (VecVecOperandCtx-get outputs i))
-               (= outputs-i-vals (VecOperandCtxEvalsTo outputs-i env)))
-              ((set (BodyEvalsTo (Gamma pred inputs outputs) env) outputs-i-vals))
+               (= outputs-i-vals (VecOperandCtxEvalsTo outputs-i new-env)))
+              ((union (BodyEvalsTo (Gamma pred inputs outputs) env) outputs-i-vals))
               :ruleset checker)
-    ; "));*/
+    ; "));
 
     res.join("\n")
 }
@@ -195,12 +251,108 @@ fn test_evaluate_add() {
                                         (Num 1))))
                    (Node (PureOp (Const (IntT) (const)
                                         (Num 2))))))
-
-(ExprEvalsTo testadd (E (vec-pop (vec-of (Num 3)))))
+(let empty-env (E (vec-pop (vec-of (Num 3)))))
+(let vec3 (E (vec-of (Num 3))))
+(ExprEvalsTo testadd empty-env)
     "#;
 
     const FOOTER: &str = r#"
-(check (= (E (vec-of (Num 3))) (ExprEvalsTo testadd (E (vec-of)))))
+(check (= vec3 (ExprEvalsTo testadd empty-env)))
+    "#;
+
+    let mut egraph = EGraph::default();
+    let code = build_egglog_test(PROGRAM);
+    println!("{}", code);
+    match 
+    egraph.parse_and_run_program(&code) {
+        Ok(_) => (),
+        Err(e) => panic!("Error: {}", e),
+    }
+    match 
+    egraph.parse_and_run_program(&FOOTER) {
+        Ok(_) => (),
+        Err(e) => panic!("Error: {}", e),
+    }
+}
+
+#[test]
+fn test_evaluate_gamma() {
+    const PROGRAM: &str = r#"
+
+(let empty-env (E (vec-pop (vec-of (Num 3)))))
+
+(let testgamma
+    (Gamma
+        (Arg 0)
+        (VO (vec-of
+            (Arg 1)
+            (Arg 2)
+        ))
+        (VVO (vec-of
+            (VOC (vec-of
+                (Arg 0)
+            ))
+            (VOC (vec-of
+                (Node (PureOp (badd (IntT) (Arg 0) (Arg 1))))
+            ))
+        ))
+    )
+)
+(let myenv (E (vec-of (Num 1) (Num 10) (Num 20))))
+(let vec30 (E (vec-of (Num 30))))
+
+(BodyEvalsTo testgamma myenv)
+
+    "#;
+
+    const FOOTER: &str = r#"
+(check (= vec30 (BodyEvalsTo testgamma myenv)))
+    "#;
+
+    let mut egraph = EGraph::default();
+    let code = build_egglog_test(PROGRAM);
+    let code_and_footer = format!("{}\n{}", code, FOOTER);
+    println!("{}", code_and_footer);
+    match 
+    egraph.parse_and_run_program(&code_and_footer) {
+        Ok(_) => (),
+        Err(e) => panic!("Error: {}", e),
+    }
+}
+
+
+#[test]
+fn test_evaluate_theta() {
+    const PROGRAM: &str = r#"
+
+(let empty-env (E (vec-pop (vec-of (Num 3)))))
+
+(let one (Node (PureOp (Const (IntT) (const) (Num 1)))))
+(let ten (Node (PureOp (Const (IntT) (const) (Num 10)))))
+(let testtheta
+    (Theta
+        ;; stop when i is 10
+        (Node (PureOp (blt (BoolT) (Arg 0) ten)))
+        (VO (vec-of
+            (Arg 0)
+        ))
+        (VO (vec-of
+            ;; add one each iteration
+            (Node (PureOp (badd (IntT) (Arg 0)
+                                       one
+                                       )))
+        ))
+     ))
+
+(let myenv (E (vec-of (Num 1))))
+(let expected (E (vec-of (Num 10))))
+
+(BodyEvalsTo testtheta myenv)
+
+    "#;
+
+    const FOOTER: &str = r#"
+(check (= expected (BodyEvalsTo testtheta myenv)))
     "#;
 
     let mut egraph = EGraph::default();

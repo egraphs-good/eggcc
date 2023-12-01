@@ -91,7 +91,7 @@ pub fn rvsdg_egglog_schedule() -> String {
     .to_string()
 }
 
-#[cfg(test)]
+#[cfg(test)] 
 pub fn build_egglog_test(test_input: &str) -> String {
     let code = vec![
         rvsdg_egglog_code(),

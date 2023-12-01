@@ -5,6 +5,8 @@
 
 ;; Every region gets a unique id
 (datatype Id (id i64))
+;; The id of the outermost region (used for tests)
+(let global-id (id (i64-fresh!)))
 
 ;; Pure expressions
 ;; Leaf nodes need ids to be unique for the region they 
@@ -18,9 +20,18 @@
 (function band (Expr Expr) Expr)
 (function bor (Expr Expr) Expr)
 
+;; Arguments
+;; Take the id of the region it is in, and an index for which argument to return
+(function Arg (Id i64) Expr)
+;; Projects
+;; Take a specific output of an Expr with multiple outputs
+(function Project (Expr i64) Expr)
+
 ;; Non-pure expressions
 ;; Print takes a value, a print state, and returns a print state
 (function PRINT (Expr Expr) Expr)
+;; Call takes a function name, and arguments (as an EVec)
+(function Call (String Expr) Expr)
 
 ;; Regions
 ;; arguments are predicate (in loop), inputs (outside loop), and outputs (inside loop)
@@ -30,10 +41,6 @@
 ;; Name and a outputs: EVec
 (function Func (Id String Expr) Expr)
 
-;; Arguments
-;; Take the id of the region it is in, and an index for which argument to return
-(function Arg (Id i64) Expr)
-
-;; Call
-;; Name and arguments: Evec
-(function Call (String Expr) Expr)
+;; Rulesets
+(ruleset analyses)
+(ruleset repairs)

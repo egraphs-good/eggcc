@@ -10,6 +10,24 @@
 ;;          B
 ;;  else:
 ;;      B
+(rule ((= switch (Switch id (band a b) (EVec inputs) (EVec outputs)))
+       (= (vec-length outputs) 2)
+       (= (vec-get outputs 1) (EVec A))
+       (= (vec-get outputs 0) (EVec B))
+       (= (vec-length inputs) args)
+       (= (vec-length A)      rets))
+      ((let inner-id (id (i64-fresh!)))
+       (let outer-id (id (i64-fresh!)))
+       (let inner (Switch inner-id
+                          (Arg outer-id args) ; we pass b as an extra argument to the outer gamma
+                          (PassThroughArgs outer-id args)
+                          (EVec (vec-of (DeepCopy (EVec B) inner-id) (DeepCopy (EVec A) inner-id)))))
+       (let outer (Switch outer-id
+                          a
+                          (EVec (vec-push inputs b)) ; pass b as an extra argument
+                          (EVec (vec-of (DeepCopy (EVec B) outer-id)
+                                        (ExprToEVec rets inner)))))
+       (union switch outer)))
 
 ;;  if a || b:
 ;;      A
@@ -23,4 +41,21 @@
 ;;          A
 ;;      else:
 ;;          B
-
+(rule ((= switch (Switch id (bor a b) (EVec inputs) (EVec outputs)))
+       (= (vec-length outputs) 2)
+       (= (vec-get outputs 1) (EVec A))
+       (= (vec-get outputs 0) (EVec B))
+       (= (vec-length inputs) args)
+       (= (vec-length A)      rets))
+      ((let inner-id (id (i64-fresh!)))
+       (let outer-id (id (i64-fresh!)))
+       (let inner (Switch inner-id
+                          (Arg outer-id args) ; we pass b as an extra argument to the outer gamma
+                          (PassThroughArgs outer-id args)
+                          (EVec (vec-of (DeepCopy (EVec B) inner-id) (DeepCopy (EVec A) inner-id)))))
+       (let outer (Switch outer-id
+                          a
+                          (EVec (vec-push inputs b)) ; pass b as an extra argument
+                          (EVec (vec-of (ExprToEVec rets inner)
+                                        (DeepCopy (EVec A) outer-id)))))
+       (union switch outer)))

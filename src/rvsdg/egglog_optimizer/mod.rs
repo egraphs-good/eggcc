@@ -27,6 +27,7 @@ pub fn rvsdg_egglog_header_code() -> String {
 
 pub fn rvsdg_egglog_code() -> String {
     let code = vec![
+        rvsdg_egglog_header_code(),
         fast_analyses::all_rules(),
         subst::all_rules(),
         include_str!("util.egg").to_string(),
@@ -42,7 +43,8 @@ pub fn rvsdg_egglog_code() -> String {
         include_str!("ivt.egg").to_string(),
         reassoc_rules(),
         loop_invariant_detection(),
-        include_str!("gamma-pull-in.egg").to_string(),
+        // These require custom primitive
+        //include_str!("gamma-pull-in.egg").to_string(),
         include_str!("loop_strength_red.egg").to_string(),
         checker_code(),
     ];
@@ -54,7 +56,6 @@ pub fn rvsdg_egglog_schedule() -> String {
         ;; ad-hoc schedule for gamma pull in optimization
         (repeat 2
             (saturate fast-analyses)
-            (run pull-in)
             (repeat 100 subst shift)
         )
 
@@ -91,19 +92,13 @@ pub fn rvsdg_egglog_schedule() -> String {
 }
 
 #[cfg(test)]
-pub fn build_egglog_test(test_input: &str) -> EGraph {
-    let mut egraph = new_rvsdg_egraph();
-    match egraph.parse_and_run_program(test_input) {
-        Ok(_) => (),
-        Err(e) => panic!("build_egglog_test: failed to parse and run program: {}", e),
-    };
-    let schedule = rvsdg_egglog_schedule();
-    match 
-    egraph.parse_and_run_program(&schedule) {
-        Ok(_) => (),
-        Err(e) => panic!("build_egglog_test: failed to parse and run schedule: {}", e),
-    };
-    egraph
+pub fn build_egglog_test(test_input: &str) -> String {
+    let code = vec![
+        rvsdg_egglog_code(),
+        test_input.to_string(),
+        rvsdg_egglog_schedule(),
+    ];
+    code.join("\n")
 }
 
 #[derive(Debug, PartialEq, Clone)]

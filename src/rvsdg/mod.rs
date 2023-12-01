@@ -208,9 +208,6 @@ pub(crate) fn cfg_to_rvsdg(
 }
 
 impl RvsdgProgram {
-    pub fn build_egglog_header_code(&self) -> String {
-        rvsdg_egglog_header_code()
-    }
     pub fn build_egglog_code(&self) -> (String, Vec<String>) {
         let mut fresh_names = FreshNameGen::new();
         let mut func_names = vec![];
@@ -230,12 +227,7 @@ impl RvsdgProgram {
     }
 
     pub fn optimize(&self) -> std::result::Result<Self, EggCCError> {
-        let egglog_header_code = self.build_egglog_header_code();
         let mut egraph = EGraph::default();
-        let _results = egraph
-            .parse_and_run_program(&egglog_header_code)
-            .map_err(EggCCError::EggLog);
-        register_primitives(&mut egraph);
         let (egglog_code, function_names) = self.build_egglog_code();
         let _results = egraph
             .parse_and_run_program(egglog_code.as_str())

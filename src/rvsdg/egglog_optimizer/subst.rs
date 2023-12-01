@@ -237,7 +237,6 @@ pub(crate) fn functions_modifying_args(
     // Define functions
     let aux_params_str = aux_param_types.join(" ");
     for ty in [
-        "Literal",
         "Expr",
         "Operand",
         "Body",

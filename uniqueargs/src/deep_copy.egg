@@ -19,7 +19,8 @@
 ;;     DeepCopy vectors
 (rewrite (DeepCopy (EVec (vec-of)) id) (EVec (vec-of)) :ruleset repairs)
 (rule
-  ((= lhs (DeepCopy (EVec vec) id)))
+  ((= lhs (DeepCopy (EVec vec) id))
+   (> (vec-length vec) 0))
   ((let last (vec-get vec (- (vec-length vec) 1)))
    (let rest (vec-pop vec))
    (union lhs

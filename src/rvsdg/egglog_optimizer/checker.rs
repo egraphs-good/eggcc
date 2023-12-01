@@ -1,11 +1,11 @@
 use super::AST_SORTS;
 
-use bril_rs::Type;
 use super::subst::functions_modifying_args;
-use super::BRIL_OPS;
 use super::type_to_literal_constructor;
+use super::BRIL_OPS;
 #[cfg(test)]
 use crate::rvsdg::egglog_optimizer::build_egglog_test;
+use bril_rs::Type;
 use egglog::EGraph;
 
 pub(crate) fn checker_code() -> String {
@@ -45,13 +45,16 @@ pub(crate) fn checker_code() -> String {
     .to_string()];
 
     for sort in &AST_SORTS {
-        res.push(format!("
+        res.push(format!(
+            "
 ;; if a node evaluates to a single value, we wrap it in a vector
 (function {sort}EvalsTo ({sort} Env) Env)
-"));
+"
+        ));
     }
 
-res.push(format!("
+    res.push(format!(
+        "
 (rewrite (ExprEvalsTo (Const t (const) lit) (E env))
          (E (vec-of lit))
          :ruleset checker)
@@ -123,7 +126,8 @@ res.push(format!("
 (rewrite (BodyEvalsTo (PureOp expr) (E env))
          (ExprEvalsTo expr (E env))
          :ruleset checker)
-      "));
+      "
+    ));
 
     for op in BRIL_OPS {
         let name = op.op;
@@ -131,7 +135,8 @@ res.push(format!("
         let constructor = type_to_literal_constructor(&op.output_type);
         match op.input_types {
             [Some(Type::Int), Some(Type::Int)] => {
-                res.push(format!("
+                res.push(format!(
+                    "
                 
 ;; demand rule
 
@@ -159,15 +164,17 @@ res.push(format!("
                            childa
                            childb))))))
      :ruleset checker)
-        "));
+        "
+                ));
             }
 
             _ => (),
         }
     }
-        
+
     // Theta
-    res.push(format!("
+    res.push(format!(
+        "
         (function ThetaOutputsEvalToAtIter (Body Env i64) Env)
         (function ThetaPredEvalsToAtIter (Body Env i64) Env)
 
@@ -211,10 +218,12 @@ res.push(format!("
               ((union (ThetaOutputsEvalToAtIter theta env (+ i 1)) next-outputs)
                (union (ThetaPredEvalsToAtIter theta env (+ i 1)) next-outputs))
               :ruleset checker)
-    "));
+    "
+    ));
 
     // Gamma
-    res.push(format!("
+    res.push(format!(
+        "
         ; demand pred gets evaluated
         (rule ((BodyEvalsTo (Gamma pred inputs outputs) env))
               ((OperandEvalsTo pred env)
@@ -236,12 +245,11 @@ res.push(format!("
                (= outputs-i-vals (VecOperandCtxEvalsTo outputs-i new-env)))
               ((union (BodyEvalsTo (Gamma pred inputs outputs) env) outputs-i-vals))
               :ruleset checker)
-    ; "));
+    ; "
+    ));
 
     res.join("\n")
 }
-
-
 
 #[test]
 fn test_evaluate_add() {
@@ -262,14 +270,9 @@ fn test_evaluate_add() {
 
     let mut egraph = EGraph::default();
     let code = build_egglog_test(PROGRAM);
-    println!("{}", code);
-    match 
-    egraph.parse_and_run_program(&code) {
-        Ok(_) => (),
-        Err(e) => panic!("Error: {}", e),
-    }
-    match 
-    egraph.parse_and_run_program(&FOOTER) {
+    let code_and_footer = format!("{}\n{}", code, FOOTER);
+    println!("{}", code_and_footer);
+    match egraph.parse_and_run_program(&code_and_footer) {
         Ok(_) => (),
         Err(e) => panic!("Error: {}", e),
     }
@@ -313,13 +316,11 @@ fn test_evaluate_gamma() {
     let code = build_egglog_test(PROGRAM);
     let code_and_footer = format!("{}\n{}", code, FOOTER);
     println!("{}", code_and_footer);
-    match 
-    egraph.parse_and_run_program(&code_and_footer) {
+    match egraph.parse_and_run_program(&code_and_footer) {
         Ok(_) => (),
         Err(e) => panic!("Error: {}", e),
     }
 }
-
 
 #[test]
 fn test_evaluate_theta() {
@@ -357,13 +358,11 @@ fn test_evaluate_theta() {
 
     let mut egraph = EGraph::default();
     let code = build_egglog_test(PROGRAM);
-    match 
-    egraph.parse_and_run_program(&code) {
+    match egraph.parse_and_run_program(&code) {
         Ok(_) => (),
         Err(e) => panic!("Error: {}", e),
     }
-    match 
-    egraph.parse_and_run_program(&FOOTER) {
+    match egraph.parse_and_run_program(&FOOTER) {
         Ok(_) => (),
         Err(e) => panic!("Error: {}", e),
     }

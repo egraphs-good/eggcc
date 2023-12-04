@@ -1,9 +1,12 @@
-.PHONY: test nits docs nightly test-clean
+.PHONY: test nits docs nightly test-clean uniqueargs
 
-all: test nits docs
+all: test nits docs uniqueargs
 
 test:
 	cargo insta test --release --unreferenced=reject
+
+uniqueargs:
+	cargo test --manifest-path uniqueargs/Cargo.toml --release
 
 test-clean:
 	cargo insta test --release --unreferenced=delete

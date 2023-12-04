@@ -1,0 +1,12 @@
+(function EVec-get (Expr i64) Expr :unextractable)
+
+(rule ((EVec x) (> (vec-length x) 0))
+        ((union (EVec-get (EVec x) 0) (vec-get x 0)))
+                :ruleset analyses)
+(rule ((EVec-get (EVec x) j)
+		(= i (+ j 1)) (< i (vec-length x)))
+	((union (EVec-get (EVec x) i) (vec-get x i))) :ruleset analyses)
+
+(function EVec-length (Expr) i64)
+(rule ((EVec x))
+		((set (EVec-length (EVec x)) (vec-length x))) :ruleset analyses)

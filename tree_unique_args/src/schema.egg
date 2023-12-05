@@ -38,7 +38,7 @@
 ; Perform a list of operations. Only way to create a tuple!
 (function all (Order ListExpr) Expr)
 
-; Switch on a list of lazily-evaluated branches. Desn't create context
+; Switch on a list of lazily-evaluated branches. Doesn't create context
 ;                 pred branches chosen
 (function switch (Expr ListExpr)    Expr)
 

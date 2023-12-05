@@ -59,3 +59,16 @@
                           (EVec (vec-of (ExprToEVec rets inner)
                                         (DeepCopy (EVec A) outer-id)))))
        (union switch outer)))
+
+;; !(A or B)
+;; ---------
+;; !A and !B
+(rewrite (bnot (bor A B)) (band (bnot A) (bnot B)))
+
+;; !(A and B)
+;; ---------
+;; !A or !B
+(rewrite (bnot (band A B)) (bor (bnot A) (bnot B)))
+
+;; !!a -> a
+(rewrite (bnot (bnot A)) A)

@@ -19,6 +19,7 @@
 (function blt (Expr Expr) Expr)
 (function band (Expr Expr) Expr)
 (function bor (Expr Expr) Expr)
+(function bnot (Expr) Expr)
 
 ;; Arguments
 ;; Take the id of the region it is in, and an index for which argument to return

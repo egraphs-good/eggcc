@@ -1,7 +1,4 @@
 // This file is a reference for the semantics of tree_unique_args
-// WIP
-#![allow(dead_code)]
-#![allow(unused_variables)]
 
 use std::collections::HashMap;
 
@@ -13,7 +10,7 @@ pub enum Order {
 
 #[derive(Clone)]
 pub struct Id {
-    id: i64,
+    _id: i64,
 }
 
 #[derive(Clone)]
@@ -202,4 +199,6 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, mem: &mut HashMap<usize, Value>)
 }
 
 #[test]
-fn test_interpreter() {}
+fn test_interpreter() {
+    // TODO: test me
+}

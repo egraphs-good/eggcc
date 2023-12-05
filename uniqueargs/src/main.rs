@@ -1,6 +1,7 @@
 // Rust test modules
 // If you don't put your Rust file here it won't get compiled!
 mod switch_rewrites;
+mod subst;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
@@ -16,6 +17,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             // repairs
             include_str!("util.egg"),
             include_str!("deep_copy.egg"),
+            include_str!("subst.egg"),
             // optimizations
             include_str!("switch_rewrites.egg"),
         ]

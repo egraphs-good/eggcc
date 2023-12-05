@@ -48,7 +48,7 @@ pub(crate) fn checker_code() -> String {
         res.push(format!(
             "
 ;; if a node evaluates to a single value, we wrap it in a vector
-(function {sort}EvalsTo ({sort} Env) Env)
+(function {sort}EvalsTo ({sort} Env) Env :cost 1000)
 "
         ));
     }
@@ -76,52 +76,32 @@ pub(crate) fn checker_code() -> String {
          :ruleset checker)
          
          
-(relation VecOperandInProgress
-    ;; vector, environment, in-progress result
-    (VecOperand Env Env))
+; (relation VecOperandInProgress
+    ; ;; vector, environment, in-progress result
+    ; (VecOperand Env Env))
 
-(rule ((VecOperandEvalsTo vec env))
-      ((VecOperandInProgress vec env (E (vec-of)))))
+; (rule ((VecOperandEvalsTo vec env))
+      ; ((VecOperandInProgress vec env (E (vec-of)))))
 
-(rule ((VecOperandInProgress vec env (E progress-vec))
-       (< (vec-length progress-vec) (vec-length vec))
-       (= l (vec-length progress-vec)))
-      (
-        (VecOperandInProgress vec env
-          (E (vec-push
-               (VecGet
-                 (OperandEvalsTo (vec-get vec l))
-                 0)
-               progress-vec)))))
+; (rule ((VecOperandInProgress vec env (E progress-vec))
+       ; (< (vec-length progress-vec) (vec-length vec))
+       ; (= l (vec-length progress-vec)))
+      ; (
+        ; (VecOperandInProgress vec env
+          ; (E (vec-push
+               ; (VecGet
+                 ; (OperandEvalsTo (vec-get vec l))
+                 ; 0)
+               ; progress-vec)))))
 ;;;;
 
-(function prefix-of-VecOperand-evals-to (VecOperand i64 Env) Env)
- 
-; the empty prefix evaluates to an empty vec
-(rule ((VecOperandEvalsTo vec env))
-      ((set (prefix-of-VecOperand-evals-to vec 0 env) (vec-empty))))
-
-; grow prefix
-(rule ((VecOperandEvalsTo vec env)
-       (= (E prefix-vals) (prefix-of-VecOperand-evals-to vec i env))
-       (= next-op (VecOperand-get vec i))
-       (= next-op-val (OperandEvalsTo next-op env)))
-      ((set (prefix-of-VecOperand-evals-to vec (+ i 1) env)
-            (E (vec-push prefix-vals next-op-val)))))
-
-; if prefix of length of the vec, save final result
-(rule ((VecOperandEvalsTo vec env)
-       (= l (VecOperand-length vec))
-       (= all-vals (prefix-of-VecOperand-evals-to vec l env)))
-      ((set (VecOperandEvalsTo vec env) all-vals)))
-;;;
 
 
 ; Evaluate the individual element
-(rule ((VecOperandEvalsTo e env)
-       (VecOperand-get e i el))
-      ((OperandEvalsTo el env))
-       :ruleset checker)
+; (rule ((VecOperandEvalsTo e env)
+       ; (VecOperand-get e i el))
+      ; ((OperandEvalsTo el env))
+       ; :ruleset checker)
 
 (rewrite (BodyEvalsTo (PureOp expr) (E env))
          (ExprEvalsTo expr (E env))
@@ -207,7 +187,7 @@ pub(crate) fn checker_code() -> String {
               ((OperandEvalsTo pred next-env)
                (VecOperandEvalsTo outputs next-env))
               :ruleset checker)
-        
+
         ; ...then set what the outputs/preds eval to at the next iter
         (rule ((= theta (Theta pred inputs outputs))
                (BodyEvalsTo theta env)
@@ -224,11 +204,12 @@ pub(crate) fn checker_code() -> String {
     // Gamma
     res.push(format!(
         "
-        ; demand pred gets evaluated
+        ; demand pred and inputs gets evaluated
         (rule ((BodyEvalsTo (Gamma pred inputs outputs) env))
               ((OperandEvalsTo pred env)
                (VecOperandEvalsTo inputs env))
               :ruleset checker)
+
 
         ; demand correct branch gets evaluated
         (rule ((BodyEvalsTo (Gamma pred inputs outputs) env)
@@ -309,7 +290,31 @@ fn test_evaluate_gamma() {
     "#;
 
     const FOOTER: &str = r#"
-(check (= vec30 (BodyEvalsTo testgamma myenv)))
+;; check inputs demanded
+(check (VecOperandEvalsTo (VO (vec-of (Arg 1) (Arg 2))) myenv))
+;; check inputs are evaluated
+(extract (VecOperandEvalsTo (VO (vec-of (Arg 1) (Arg 2))) myenv))
+(check (= (VecOperandEvalsTo (VO (vec-of (Arg 1) (Arg 2))) myenv)
+          (E (vec-of (Num 10) (Num 20)))))
+          
+;; check predicate evaluated
+; (check (= (OperandEvalsTo (Arg 0) myenv) (E (vec-of (Num 1)))))
+
+; (let innerenv (E (vec-of (Num 10) (Num 20))))
+
+; (check (VecOperandCtxEvalsTo
+            ; (VOC (vec-of
+                ; (Node (PureOp (badd (IntT) (Arg 0) (Arg 1))))
+            ; ))
+            ; innerenv
+; ))
+; (check (= vec30 (VecOperandCtxEvalsTo
+            ; (VOC (vec-of
+                ; (Node (PureOp (badd (IntT) (Arg 0) (Arg 1))))
+            ; ))
+            ; innerenv
+; )))
+; (check (= vec30 (BodyEvalsTo testgamma myenv)))
     "#;
 
     let mut egraph = EGraph::default();

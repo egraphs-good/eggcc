@@ -12,6 +12,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
         vec![
             include_str!("schema.egg"),
             // analyses
+            include_str!("fast_analyses.egg"),
             include_str!("id_analysis.egg"),
             // repairs
             include_str!("util.egg"),

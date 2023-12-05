@@ -1,19 +1,27 @@
-use egglog::EGraph;
+// Rust test modules
+// If you don't put your Rust file here it won't get compiled!
 
-fn main() {
-    let program = vec![
-        // header
-        include_str!("schema.egg"),
-        // optimizations
-        // execution
+pub type Result = std::result::Result<(), egglog::Error>;
+
+// Might be useful for typechecking?
+fn main() -> Result {
+    run_test("", "")
+}
+
+pub fn run_test(build: &str, check: &str) -> Result {
+    let program = format!(
+        "{}\n{build}\n{}\n{check}\n",
+        vec![
+            include_str!("schema.egg"),
+            // analyses
+            // repairs
+            // optimizations
+        ]
+        .join("\n"),
         include_str!("schedule.egg"),
-        include_str!("tests.egg"),
-    ]
-    .join("\n");
+    );
 
-    let mut egraph = EGraph::default();
-    match egraph.parse_and_run_program(&program) {
-        Ok(_) => println!("Success!"),
-        Err(e) => println!("Error: {}", e),
-    }
+    egglog::EGraph::default()
+        .parse_and_run_program(&program)
+        .map(|_| ())
 }

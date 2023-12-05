@@ -67,3 +67,7 @@
 
 ;               f  arg
 (function call (Id Expr) Expr)
+
+;; Rulesets
+(ruleset analyses)
+(ruleset repairs)

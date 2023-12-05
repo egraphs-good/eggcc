@@ -47,6 +47,11 @@
   ((union (Id-Of (PRINT a b)) aid))
   :ruleset analyses)
 
+(rule ((Call name a)
+    (= aid (Id-Of a)))
+  ((union (Id-Of (Call name a)) aid))
+  :ruleset analyses)
+
 (rule ((Loop id a b c)
     (= bid (Id-Of b)))
   ((union (Id-Of (Loop id a b c)) bid))

@@ -9,16 +9,16 @@ pub enum Order {
 }
 
 #[derive(Clone)]
-pub struct Id {
-    _id: i64,
-}
+pub struct Id(i64);
 
 #[derive(Clone)]
 pub enum Expr {
-    Num(i32),
+    Num(i64),
     Boolean(bool),
     Unit,
-    Badd(Box<Expr>, Box<Expr>),
+    Add(Box<Expr>, Box<Expr>),
+    Sub(Box<Expr>, Box<Expr>),
+    LessThan(Box<Expr>, Box<Expr>),
     // TODO: other pure ops
     Get(Box<Expr>, usize),
     Print(Box<Expr>),
@@ -32,9 +32,9 @@ pub enum Expr {
     // TODO: call and functions
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
-    Num(i32),
+    Num(i64),
     Boolean(bool),
     Unit,
     Tuple(Vec<Value>),
@@ -69,10 +69,20 @@ pub fn typecheck(e: &Expr, arg_ty: Option<Type>) -> Result<Type, TypeError> {
         Expr::Num(_) => Ok(Type::Num),
         Expr::Boolean(_) => Ok(Type::Boolean),
         Expr::Unit => Ok(Type::Unit),
-        Expr::Badd(e1, e2) => {
+        Expr::Add(e1, e2) => {
             expect_type(&*e1, Type::Num, arg_ty.clone())?;
             expect_type(&*e2, Type::Num, arg_ty.clone())?;
             Ok(Type::Num)
+        }
+        Expr::Sub(e1, e2) => {
+            expect_type(&*e1, Type::Num, arg_ty.clone())?;
+            expect_type(&*e2, Type::Num, arg_ty.clone())?;
+            Ok(Type::Num)
+        }
+        Expr::LessThan(e1, e2) => {
+            expect_type(&*e1, Type::Num, arg_ty.clone())?;
+            expect_type(&*e2, Type::Num, arg_ty.clone())?;
+            Ok(Type::Boolean)
         }
         Expr::Get(tuple, i) => {
             let ty_tuple = typecheck(&*tuple, arg_ty.clone())?;
@@ -133,34 +143,49 @@ pub fn typecheck(e: &Expr, arg_ty: Option<Type>) -> Result<Type, TypeError> {
     }
 }
 
-// assumes e typechecks
-pub fn interpret(e: &Expr, arg: &Option<Value>, mem: &mut HashMap<usize, Value>) -> Value {
+pub struct VirtualMachine {
+    mem: HashMap<usize, Value>,
+    log: Vec<i64>,
+}
+
+// assumes e typechecks and that memory is written before read
+pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Value {
     match e {
         Expr::Num(x) => Value::Num(*x),
         Expr::Boolean(x) => Value::Boolean(*x),
         Expr::Unit => Value::Unit,
-        Expr::Badd(e1, e2) => {
-            let Value::Num(n1) = interpret(&*e1, arg, mem) else { panic!("badd") };
-            let Value::Num(n2) = interpret(&*e2, arg, mem) else { panic!("badd") };
+        Expr::Add(e1, e2) => {
+            let Value::Num(n1) = interpret(&*e1, arg, vm) else { panic!("badd") };
+            let Value::Num(n2) = interpret(&*e2, arg, vm) else { panic!("badd") };
             Value::Num(n1 + n2)
         }
+        Expr::Sub(e1, e2) => {
+            let Value::Num(n1) = interpret(&*e1, arg, vm) else { panic!("badd") };
+            let Value::Num(n2) = interpret(&*e2, arg, vm) else { panic!("badd") };
+            Value::Num(n1 - n2)
+        }
+        Expr::LessThan(e1, e2) => {
+            let Value::Num(n1) = interpret(&*e1, arg, vm) else { panic!("badd") };
+            let Value::Num(n2) = interpret(&*e2, arg, vm) else { panic!("badd") };
+            Value::Boolean(n1 < n2)
+        }
         Expr::Get(e_tuple, i) => {
-            let Value::Tuple(vals) = interpret(&*e_tuple, arg, mem) else { panic!("get") };
+            let Value::Tuple(vals) = interpret(&*e_tuple, arg, vm) else { panic!("get") };
             vals[*i as usize].clone()
         }
         Expr::Print(e) => {
-            let Value::Num(n) = interpret(&*e, arg, mem) else { panic!("print") };
-            println!("{}", n);
+            let Value::Num(n) = interpret(&*e, arg, vm) else { panic!("print") };
+            vm.log.push(n);
             Value::Unit
         }
         Expr::Read(e_addr) => {
-            let Value::Num(addr) = interpret(&*e_addr, arg, mem) else { panic!("read") };
-            mem[&(addr as usize)].clone()
+            let Value::Num(addr) = interpret(&*e_addr, arg, vm) else { panic!("read") };
+            vm.mem[&(addr as usize)].clone()
         }
         Expr::Write(e_addr, e_data) => {
-            let Value::Num(addr) = interpret(&*e_addr, arg, mem) else { panic!("write") };
-            let data = interpret(&*e_data, arg, mem);
-            mem.insert(addr as usize, data);
+            let Value::Num(addr) = interpret(&*e_addr, arg, vm) else { panic!("write") };
+            let data = interpret(&*e_data, arg, vm);
+            vm.mem.insert(addr as usize, data);
             Value::Unit
         }
         Expr::All(_, exprs) => {
@@ -168,19 +193,19 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, mem: &mut HashMap<usize, Value>)
             // execute parallel tuples)
             let vals = exprs
                 .iter()
-                .map(|expr| interpret(&expr, arg, mem))
+                .map(|expr| interpret(&expr, arg, vm))
                 .collect::<Vec<_>>();
             Value::Tuple(vals)
         }
         Expr::Switch(pred, branches) => {
-            let Value::Num(pred) = interpret(&*pred, arg, mem) else { panic!("switch") };
-            interpret(&branches[pred as usize], arg, mem)
+            let Value::Num(pred) = interpret(&*pred, arg, vm) else { panic!("switch") };
+            interpret(&branches[pred as usize], arg, vm)
         }
         Expr::Loop(_, input, pred_output) => {
-            let mut vals = interpret(&*input, arg, mem);
+            let mut vals = interpret(&*input, arg, vm);
             let mut pred = Value::Boolean(true);
             while pred == Value::Boolean(true) {
-                let Value::Tuple(pred_output_val) = interpret(&*pred_output, &Some(vals.clone()), mem) else {panic!("loop")};
+                let Value::Tuple(pred_output_val) = interpret(&*pred_output, &Some(vals.clone()), vm) else {panic!("loop")};
                 let [new_pred, new_vals] = pred_output_val.as_slice() else { panic!("loop") };
                 pred = new_pred.clone();
                 vals = new_vals.clone();
@@ -188,8 +213,8 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, mem: &mut HashMap<usize, Value>)
             vals
         }
         Expr::Body(_, input, output) => {
-            let vals = interpret(&*input, arg, mem);
-            interpret(&*output, &Some(vals.clone()), mem)
+            let vals = interpret(&*input, arg, vm);
+            interpret(&*output, &Some(vals.clone()), vm)
         }
         Expr::Arg(_) => {
             let Some(v) = arg else { panic!("arg") };
@@ -200,5 +225,102 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, mem: &mut HashMap<usize, Value>)
 
 #[test]
 fn test_interpreter() {
-    // TODO: test me
+    // numbers 1-10
+    let e = Expr::Loop(
+        Id(0),
+        Box::new(Expr::Num(1)),
+        Box::new(Expr::All(
+            Order::Parallel,
+            vec![
+                // pred: i < 10
+                Expr::LessThan(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(10))),
+                // output
+                Expr::Get(
+                    Box::new(Expr::All(
+                        Order::Parallel,
+                        vec![
+                            // i = i + 1
+                            Expr::Add(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(1))),
+                            // print(i)
+                            Expr::Print(Box::new(Expr::Arg(Id(0)))),
+                        ],
+                    )),
+                    0,
+                ),
+            ],
+        )),
+    );
+    let mut vm = VirtualMachine {
+        mem: HashMap::new(),
+        log: vec![],
+    };
+    let res = interpret(&e, &None, &mut vm);
+    assert_eq!(res, Value::Num(11));
+    assert_eq!(vm.log, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+}
+
+#[test]
+fn test_interpreter_fib_using_memory() {
+    let nth = 10;
+    let fib_nth = 55;
+    let e = Expr::All(
+        Order::Sequential,
+        vec![
+            Expr::Write(Box::new(Expr::Num(0)), Box::new(Expr::Num(0))),
+            Expr::Write(Box::new(Expr::Num(1)), Box::new(Expr::Num(1))),
+            Expr::Loop(
+                Id(0),
+                Box::new(Expr::Num(2)),
+                Box::new(Expr::All(
+                    Order::Parallel,
+                    vec![
+                        // pred: i < nth
+                        Expr::LessThan(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(nth))),
+                        // output
+                        Expr::Get(
+                            Box::new(Expr::All(
+                                Order::Parallel,
+                                vec![
+                                    // i = i + 1
+                                    Expr::Add(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(1))),
+                                    // mem[i] = mem[i - 1] + mem[i - 2]
+                                    Expr::Write(
+                                        Box::new(Expr::Arg(Id(0))),
+                                        Box::new(Expr::Add(
+                                            Box::new(Expr::Read(Box::new(Expr::Sub(
+                                                Box::new(Expr::Arg(Id(0))),
+                                                Box::new(Expr::Num(1)),
+                                            )))),
+                                            Box::new(Expr::Read(Box::new(Expr::Sub(
+                                                Box::new(Expr::Arg(Id(0))),
+                                                Box::new(Expr::Num(2)),
+                                            )))),
+                                        )),
+                                    ),
+                                ],
+                            )),
+                            0,
+                        ),
+                    ],
+                )),
+            ),
+            Expr::Read(Box::new(Expr::Num(nth))),
+        ],
+    );
+    let mut vm = VirtualMachine {
+        mem: HashMap::new(),
+        log: vec![],
+    };
+    let res = interpret(&e, &None, &mut vm);
+    assert_eq!(
+        res,
+        Value::Tuple(vec![
+            Value::Unit,
+            Value::Unit,
+            Value::Num(nth + 1),
+            Value::Num(fib_nth)
+        ])
+    );
+    assert_eq!(vm.mem[&(nth as usize)], Value::Num(fib_nth));
+    assert!(!vm.mem.contains_key(&(nth as usize + 1)));
 }

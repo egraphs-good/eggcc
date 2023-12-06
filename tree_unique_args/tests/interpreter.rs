@@ -55,37 +55,40 @@ pub enum TypeError {
     NoArg(Expr),
 }
 
-pub fn expect_type(e: &Expr, expected_ty: Type, arg_ty: Option<Type>) -> Result<(), TypeError> {
-    let actual_ty = typecheck(e, arg_ty)?;
-    if actual_ty == expected_ty {
-        Ok(())
-    } else {
-        Err(TypeError::ExpectedType(e.clone(), expected_ty, actual_ty))
-    }
-}
-
-pub fn typecheck(e: &Expr, arg_ty: Option<Type>) -> Result<Type, TypeError> {
+pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
+    let expect_type = |sub_e: &Expr, expected_ty: Type| -> Result<(), TypeError> {
+        let actual_ty = typecheck(sub_e, arg_ty)?;
+        if actual_ty == expected_ty {
+            Ok(())
+        } else {
+            Err(TypeError::ExpectedType(
+                sub_e.clone(),
+                expected_ty,
+                actual_ty,
+            ))
+        }
+    };
     match e {
         Expr::Num(_) => Ok(Type::Num),
         Expr::Boolean(_) => Ok(Type::Boolean),
         Expr::Unit => Ok(Type::Unit),
         Expr::Add(e1, e2) => {
-            expect_type(&*e1, Type::Num, arg_ty.clone())?;
-            expect_type(&*e2, Type::Num, arg_ty.clone())?;
+            expect_type(e1, Type::Num)?;
+            expect_type(e2, Type::Num)?;
             Ok(Type::Num)
         }
         Expr::Sub(e1, e2) => {
-            expect_type(&*e1, Type::Num, arg_ty.clone())?;
-            expect_type(&*e2, Type::Num, arg_ty.clone())?;
+            expect_type(e1, Type::Num)?;
+            expect_type(e2, Type::Num)?;
             Ok(Type::Num)
         }
         Expr::LessThan(e1, e2) => {
-            expect_type(&*e1, Type::Num, arg_ty.clone())?;
-            expect_type(&*e2, Type::Num, arg_ty.clone())?;
+            expect_type(e1, Type::Num)?;
+            expect_type(e2, Type::Num)?;
             Ok(Type::Boolean)
         }
         Expr::Get(tuple, i) => {
-            let ty_tuple = typecheck(&*tuple, arg_ty.clone())?;
+            let ty_tuple = typecheck(tuple, arg_ty)?;
             match ty_tuple {
                 Type::Tuple(tys) => Ok(tys[*i].clone()),
                 _ => Err(TypeError::ExpectedTupleType(
@@ -96,50 +99,54 @@ pub fn typecheck(e: &Expr, arg_ty: Option<Type>) -> Result<Type, TypeError> {
         }
         Expr::Print(e) => {
             // right now, only print nums
-            expect_type(&*e, Type::Num, arg_ty.clone())?;
+            expect_type(e, Type::Num)?;
             Ok(Type::Unit)
         }
         Expr::Read(addr) => {
             // right now, all memory holds nums.
             // read could also take a static type to interpret
             // the memory as.
-            expect_type(addr, Type::Num, arg_ty.clone())?;
+            expect_type(addr, Type::Num)?;
             Ok(Type::Num)
         }
         Expr::Write(addr, data) => {
-            expect_type(addr, Type::Num, arg_ty.clone())?;
-            expect_type(data, Type::Num, arg_ty.clone())?;
+            expect_type(addr, Type::Num)?;
+            expect_type(data, Type::Num)?;
             Ok(Type::Unit)
         }
         Expr::All(_, exprs) => {
             let tys = exprs
                 .iter()
-                .map(|expr| typecheck(&*expr, arg_ty.clone()))
+                .map(|expr| typecheck(expr, arg_ty))
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(Type::Tuple(tys))
         }
         Expr::Switch(pred, branches) => {
-            expect_type(pred, Type::Num, arg_ty.clone())?;
-            let ty = typecheck(&branches[0], arg_ty.clone())?;
+            expect_type(pred, Type::Num)?;
+            let ty = typecheck(&branches[0], arg_ty)?;
             for branch in branches {
-                expect_type(branch, ty.clone(), arg_ty.clone())?;
+                expect_type(branch, ty.clone())?;
             }
             Ok(ty)
         }
         Expr::Loop(_, input, pred_output) => {
-            let input_ty = typecheck(input, arg_ty.clone())?;
-            expect_type(
-                pred_output,
-                Type::Tuple(vec![Type::Boolean, input_ty.clone()]),
-                Some(input_ty.clone()),
-            )?;
+            let input_ty = typecheck(input, arg_ty)?;
+            let pred_output_ty = typecheck(pred_output, &Some(input_ty.clone()))?;
+            let expected_ty = Type::Tuple(vec![Type::Boolean, input_ty.clone()]);
+            if pred_output_ty != expected_ty {
+                return Err(TypeError::ExpectedType(
+                    *pred_output.clone(),
+                    expected_ty,
+                    pred_output_ty,
+                ));
+            }
             Ok(input_ty)
         }
         Expr::Body(_, input, output) => {
-            let input_ty = typecheck(input, arg_ty.clone())?;
-            typecheck(output, Some(input_ty.clone()))
+            let input_ty = typecheck(input, arg_ty)?;
+            typecheck(output, &Some(input_ty.clone()))
         }
-        Expr::Arg(_) => arg_ty.ok_or(TypeError::NoArg(e.clone())),
+        Expr::Arg(_) => arg_ty.clone().ok_or(TypeError::NoArg(e.clone())),
     }
 }
 
@@ -148,6 +155,9 @@ pub struct VirtualMachine {
     log: Vec<i64>,
 }
 
+// TODO: refactor to return a Result<Value, RuntimeError>
+// struct RuntimeError { BadRead(Value) }
+
 // assumes e typechecks and that memory is written before read
 pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Value {
     match e {
@@ -155,36 +165,36 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
         Expr::Boolean(x) => Value::Boolean(*x),
         Expr::Unit => Value::Unit,
         Expr::Add(e1, e2) => {
-            let Value::Num(n1) = interpret(&*e1, arg, vm) else { panic!("badd") };
-            let Value::Num(n2) = interpret(&*e2, arg, vm) else { panic!("badd") };
+            let Value::Num(n1) = interpret(e1, arg, vm) else { panic!("add") };
+            let Value::Num(n2) = interpret(e2, arg, vm) else { panic!("add") };
             Value::Num(n1 + n2)
         }
         Expr::Sub(e1, e2) => {
-            let Value::Num(n1) = interpret(&*e1, arg, vm) else { panic!("badd") };
-            let Value::Num(n2) = interpret(&*e2, arg, vm) else { panic!("badd") };
+            let Value::Num(n1) = interpret(e1, arg, vm) else { panic!("sub") };
+            let Value::Num(n2) = interpret(e2, arg, vm) else { panic!("sub") };
             Value::Num(n1 - n2)
         }
         Expr::LessThan(e1, e2) => {
-            let Value::Num(n1) = interpret(&*e1, arg, vm) else { panic!("badd") };
-            let Value::Num(n2) = interpret(&*e2, arg, vm) else { panic!("badd") };
+            let Value::Num(n1) = interpret(e1, arg, vm) else { panic!("lessthan") };
+            let Value::Num(n2) = interpret(e2, arg, vm) else { panic!("lessthan") };
             Value::Boolean(n1 < n2)
         }
         Expr::Get(e_tuple, i) => {
-            let Value::Tuple(vals) = interpret(&*e_tuple, arg, vm) else { panic!("get") };
-            vals[*i as usize].clone()
+            let Value::Tuple(vals) = interpret(e_tuple, arg, vm) else { panic!("get") };
+            vals[*i].clone()
         }
         Expr::Print(e) => {
-            let Value::Num(n) = interpret(&*e, arg, vm) else { panic!("print") };
+            let Value::Num(n) = interpret(e, arg, vm) else { panic!("print") };
             vm.log.push(n);
             Value::Unit
         }
         Expr::Read(e_addr) => {
-            let Value::Num(addr) = interpret(&*e_addr, arg, vm) else { panic!("read") };
+            let Value::Num(addr) = interpret(e_addr, arg, vm) else { panic!("read") };
             vm.mem[&(addr as usize)].clone()
         }
         Expr::Write(e_addr, e_data) => {
-            let Value::Num(addr) = interpret(&*e_addr, arg, vm) else { panic!("write") };
-            let data = interpret(&*e_data, arg, vm);
+            let Value::Num(addr) = interpret(e_addr, arg, vm) else { panic!("write") };
+            let data = interpret(e_data, arg, vm);
             vm.mem.insert(addr as usize, data);
             Value::Unit
         }
@@ -193,19 +203,19 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             // execute parallel tuples)
             let vals = exprs
                 .iter()
-                .map(|expr| interpret(&expr, arg, vm))
+                .map(|expr| interpret(expr, arg, vm))
                 .collect::<Vec<_>>();
             Value::Tuple(vals)
         }
         Expr::Switch(pred, branches) => {
-            let Value::Num(pred) = interpret(&*pred, arg, vm) else { panic!("switch") };
+            let Value::Num(pred) = interpret(pred, arg, vm) else { panic!("switch") };
             interpret(&branches[pred as usize], arg, vm)
         }
         Expr::Loop(_, input, pred_output) => {
-            let mut vals = interpret(&*input, arg, vm);
+            let mut vals = interpret(input, arg, vm);
             let mut pred = Value::Boolean(true);
             while pred == Value::Boolean(true) {
-                let Value::Tuple(pred_output_val) = interpret(&*pred_output, &Some(vals.clone()), vm) else {panic!("loop")};
+                let Value::Tuple(pred_output_val) = interpret(pred_output, &Some(vals.clone()), vm) else {panic!("loop")};
                 let [new_pred, new_vals] = pred_output_val.as_slice() else { panic!("loop") };
                 pred = new_pred.clone();
                 vals = new_vals.clone();
@@ -213,8 +223,8 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             vals
         }
         Expr::Body(_, input, output) => {
-            let vals = interpret(&*input, arg, vm);
-            interpret(&*output, &Some(vals.clone()), vm)
+            let vals = interpret(input, arg, vm);
+            interpret(output, &Some(vals.clone()), vm)
         }
         Expr::Arg(_) => {
             let Some(v) = arg else { panic!("arg") };

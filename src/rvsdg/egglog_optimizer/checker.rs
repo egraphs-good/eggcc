@@ -212,7 +212,7 @@ pub(crate) fn checker_code() -> String {
        (OperandEvalsTo b (E env)))
        :ruleset checker)
 
-(rule ((= lhs ({name} (IntT) a b))
+(rule ((= lhs ({name} ty a b))
        (ExprEvalsTo lhs (E env))
        (= (OperandEvalsTo a (E env)) (E a-vals))
        (= (OperandEvalsTo b (E env)) (E b-vals))
@@ -235,79 +235,62 @@ pub(crate) fn checker_code() -> String {
     // Theta
     res.push(format!(
         "
-        (function ThetaOutputsEvalToAtIter (Body Env i64) Env)
-        (function ThetaPredEvalsToAtIter (Body Env i64) Env)
+(function ThetaOutputsEvalToAtIter (Body Env i64) Env)
+(function ThetaPredEvalsToAtIter (Body Env i64) Env :cost 1000)
 
-        ; demand inputs get evaluated
-        (rule ((BodyEvalsTo (Theta pred inputs outputs) env))
-              ((VecOperandEvalsTo inputs env))
-              :ruleset checker)
+; hack: at iter -1, set the pred to true and outputs to inputs
+(rule ((= theta (Theta pred inputs outputs))
+       (BodyEvalsTo (Theta pred inputs outputs) env))
+      ((union (ThetaOutputsEvalToAtIter theta env -1) (VecOperandEvalsTo inputs env))
+       (union (ThetaPredEvalsToAtIter theta env -1) (E (vec-of (Bool true)))))
+      :ruleset checker)
 
-        ; hack: at iter -1, set the pred to true and outputs to inputs
-        (rule ((= theta (Theta pred inputs outputs))
-               (BodyEvalsTo (Theta pred inputs outputs) env)
-               (= inputs-vals (VecOperandEvalsTo inputs env)))
-              ((union (ThetaOutputsEvalToAtIter theta env -1) inputs-vals)
-               (union (ThetaPredEvalsToAtIter theta env -1) (E (vec-of (Bool true)))))
-              :ruleset checker)
+; if pred is false at the end of some iter, its outputs are the overall result
+(rule ((= theta (Theta pred inputs outputs))
+       (BodyEvalsTo theta env)
+       (= output-vals (ThetaOutputsEvalToAtIter theta env i))
+       (= (E (vec-of (Bool false))) (ThetaPredEvalsToAtIter theta env i)))
+      ((union (BodyEvalsTo theta env) output-vals))
+      :ruleset checker)
 
-        ; if pred is false at the end of some iter, its outputs are the overall result
-        (rule ((= theta (Theta pred inputs outputs))
-               (BodyEvalsTo theta env)
-               (= output-vals (ThetaOutputsEvalToAtIter theta env i))
-               (= (E (vec-of (Bool false))) (ThetaPredEvalsToAtIter theta env i)))
-              ((union (BodyEvalsTo theta env) output-vals))
-              :ruleset checker)
-
-        ; if pred is true, demand next pred and env...
-        (rule ((= theta (Theta pred inputs outputs))
-               (BodyEvalsTo theta env)
-               (= next-env (ThetaOutputsEvalToAtIter theta env i))
-               (= (E (vec-of (Bool true))) (ThetaPredEvalsToAtIter theta env i)))
-              ((OperandEvalsTo pred next-env)
-               (VecOperandEvalsTo outputs next-env))
-              :ruleset checker)
-
-        ; ...then set what the outputs/preds eval to at the next iter
-        (rule ((= theta (Theta pred inputs outputs))
-               (BodyEvalsTo theta env)
-               (= next-env (ThetaOutputsEvalToAtIter theta env i))
-               (= (E (vec-of (Bool true))) (ThetaPredEvalsToAtIter theta env i))
-               (= next-pred (OperandEvalsTo pred next-env))
-               (= next-outputs (VecOperandEvalsTo outputs next-env)))
-              ((union (ThetaOutputsEvalToAtIter theta env (+ i 1)) next-outputs)
-               (union (ThetaPredEvalsToAtIter theta env (+ i 1)) next-outputs))
-              :ruleset checker)
+; if pred is true, demand next pred and env...
+(rule ((= theta (Theta pred inputs outputs))
+       (BodyEvalsTo theta env)
+       (= next-env (ThetaOutputsEvalToAtIter theta env i))
+       (= (E (vec-of (Bool true))) (ThetaPredEvalsToAtIter theta env i)))
+      ((union (ThetaPredEvalsToAtIter theta env (+ i 1)) (OperandEvalsTo pred next-env))
+       (union (ThetaOutputsEvalToAtIter theta env (+ i 1)) (VecOperandEvalsTo outputs next-env)))
+      :ruleset checker)
     "
     ));
 
     // Gamma
     res.push(format!(
         "
-        ; demand pred and inputs gets evaluated
-        (rule ((BodyEvalsTo (Gamma pred inputs outputs) env))
-              ((OperandEvalsTo pred env)
-               (VecOperandEvalsTo inputs env))
-              :ruleset checker)
+; demand pred and inputs gets evaluated
+(rule ((BodyEvalsTo (Gamma pred inputs outputs) env))
+        ((OperandEvalsTo pred env)
+        (VecOperandEvalsTo inputs env))
+        :ruleset checker)
 
 
-        ; demand correct branch gets evaluated
-        (rule ((BodyEvalsTo (Gamma pred inputs outputs) env)
-               (= (E (vec-of (Num i))) (OperandEvalsTo pred env))
-               (= new-env (VecOperandEvalsTo inputs env))
-               (= (VVO outputs-vec) outputs)
-               (= outputs-i (vec-get outputs-vec i)))
-              ((VecOperandCtxEvalsTo outputs-i new-env))
-              :ruleset checker)
+; demand correct branch gets evaluated
+(rule ((BodyEvalsTo (Gamma pred inputs outputs) env)
+        (= (E (vec-of (Num i))) (OperandEvalsTo pred env))
+        (= new-env (VecOperandEvalsTo inputs env))
+        (= (VVO outputs-vec) outputs)
+        (= outputs-i (vec-get outputs-vec i)))
+        ((VecOperandCtxEvalsTo outputs-i new-env))
+        :ruleset checker)
 
-        (rule ((BodyEvalsTo (Gamma pred inputs outputs) env)
-               (= (E (vec-of (Num i))) (OperandEvalsTo pred env))
-               (= new-env (VecOperandEvalsTo inputs env))
-               (= (VVO outputs-vec) outputs)
-               (= outputs-i (vec-get outputs-vec i))
-               (= outputs-i-vals (VecOperandCtxEvalsTo outputs-i new-env)))
-              ((union (BodyEvalsTo (Gamma pred inputs outputs) env) outputs-i-vals))
-              :ruleset checker)
+(rule ((BodyEvalsTo (Gamma pred inputs outputs) env)
+        (= (E (vec-of (Num i))) (OperandEvalsTo pred env))
+        (= new-env (VecOperandEvalsTo inputs env))
+        (= (VVO outputs-vec) outputs)
+        (= outputs-i (vec-get outputs-vec i))
+        (= outputs-i-vals (VecOperandCtxEvalsTo outputs-i new-env)))
+       ((union (BodyEvalsTo (Gamma pred inputs outputs) env) outputs-i-vals))
+        :ruleset checker)
     ; "
     ));
 
@@ -409,9 +392,6 @@ fn test_evaluate_gamma() {
 #[test]
 fn test_evaluate_theta() {
     const PROGRAM: &str = r#"
-
-(let empty-env (E (vec-pop (vec-of (Num 3)))))
-
 (let one (Node (PureOp (Const (IntT) (const) (Num 1)))))
 (let ten (Node (PureOp (Const (IntT) (const) (Num 10)))))
 (let testtheta
@@ -430,24 +410,48 @@ fn test_evaluate_theta() {
      ))
 
 (let myenv (E (vec-of (Num 1))))
-(let expected (E (vec-of (Num 10))))
+(let expected (E (vec-of (Num 11))))
 
 (BodyEvalsTo testtheta myenv)
 
     "#;
 
     const FOOTER: &str = r#"
+
+    
+; check inputs evaluated
+(check (= (VecOperandEvalsTo (VO (vec-of (Arg 0))) myenv)
+          (E (vec-of (Num 1)))))
+; check iter -1 outputs evaluated
+(check (= (ThetaOutputsEvalToAtIter testtheta myenv -1)
+          (E (vec-of (Num 1)))))
+; check iter -1 pred evaluated
+(check (ThetaPredEvalsToAtIter testtheta myenv -1))
+(check (= (ThetaPredEvalsToAtIter testtheta myenv -1)
+          (E (vec-of (Bool true)))))
+
+; check first iter outputs evaluated
+(check (= (ThetaOutputsEvalToAtIter testtheta myenv 0)
+          (E (vec-of (Num 2)))))
+; check first iter pred evaluated
+(check (ThetaPredEvalsToAtIter testtheta myenv 0))
+(check (= (ThetaPredEvalsToAtIter testtheta myenv 0)
+          (E (vec-of (Bool true)))))
 (check (= expected (BodyEvalsTo testtheta myenv)))
     "#;
 
     let mut egraph = EGraph::default();
-    let code = build_egglog_test(PROGRAM);
+    let code = build_egglog_code(PROGRAM);
     match egraph.parse_and_run_program(&code) {
         Ok(_) => (),
         Err(e) => panic!("Error: {}", e),
     }
     match egraph.parse_and_run_program(&FOOTER) {
-        Ok(_) => (),
+        Ok(s) => {
+            for line in s {
+                println!("{}", line);
+            }
+        }
         Err(e) => panic!("Error: {}", e),
     }
 }

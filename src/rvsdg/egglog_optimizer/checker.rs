@@ -3,6 +3,7 @@ use super::AST_SORTS;
 use super::subst::functions_modifying_args;
 use super::type_to_literal_constructor;
 use super::BRIL_OPS;
+use crate::rvsdg::egglog_optimizer::build_egglog_code;
 #[cfg(test)]
 use crate::rvsdg::egglog_optimizer::build_egglog_test;
 use bril_rs::Type;
@@ -74,26 +75,67 @@ pub(crate) fn checker_code() -> String {
 (function VecGet (Env i64) Literal)
 (rewrite (VecGet (E vec) i) (vec-get vec i)
          :ruleset checker)
-         
-         
-; (relation VecOperandInProgress
-    ; ;; vector, environment, in-progress result
-    ; (VecOperand Env Env))
 
-; (rule ((VecOperandEvalsTo vec env))
-      ; ((VecOperandInProgress vec env (E (vec-of)))))
+(function VecPush (Env Literal) Env)
+(rewrite (VecPush (E vec) lit) (E (vec-push vec lit))
+         :ruleset checker)
+   
+(let empty-env (E (vec-pop (vec-of (Num 3)))))
 
-; (rule ((VecOperandInProgress vec env (E progress-vec))
-       ; (< (vec-length progress-vec) (vec-length vec))
-       ; (= l (vec-length progress-vec)))
-      ; (
-        ; (VecOperandInProgress vec env
-          ; (E (vec-push
-               ; (VecGet
-                 ; (OperandEvalsTo (vec-get vec l))
-                 ; 0)
-               ; progress-vec)))))
+
 ;;;;
+
+;; VecOperand Rules
+(relation VecOperandInProgress
+    ;; vector, environment, in-progress result
+    (VecOperand Env Env))
+
+(rule ((VecOperandEvalsTo vec env))
+      ((VecOperandInProgress vec env empty-env))
+      :ruleset checker)
+
+(rule ((VecOperandInProgress (VO vec) env (E progress-vec))
+       (< (vec-length progress-vec) (vec-length vec))
+       (= len (vec-length progress-vec)))
+      ((VecOperandInProgress (VO vec) env
+         (VecPush
+            (E progress-vec)
+            (VecGet
+              (OperandEvalsTo (vec-get vec len) env)
+              0))))
+      :ruleset checker)
+
+(rule ((VecOperandInProgress (VO vec) env (E progress-vec))
+       (= (vec-length vec) (vec-length progress-vec)))
+      ((union (VecOperandEvalsTo (VO vec) env) (E progress-vec)))
+      :ruleset checker)
+
+
+;; VecOperandCtx Rules
+
+(relation VecOperandCtxInProgress
+    ;; vector, environment, in-progress result
+    (VecOperandCtx Env Env))
+
+(rule ((VecOperandCtxEvalsTo vec env))
+      ((VecOperandCtxInProgress vec env empty-env))
+      :ruleset checker)
+
+(rule ((VecOperandCtxInProgress (VOC vec) env (E progress-vec))
+       (< (vec-length progress-vec) (vec-length vec))
+       (= len (vec-length progress-vec)))
+      ((VecOperandCtxInProgress (VOC vec) env
+         (VecPush
+            (E progress-vec)
+            (VecGet
+              (OperandEvalsTo (vec-get vec len) env)
+              0))))
+      :ruleset checker)
+
+(rule ((VecOperandCtxInProgress (VOC vec) env (E progress-vec))
+       (= (vec-length vec) (vec-length progress-vec)))
+      ((union (VecOperandCtxEvalsTo (VOC vec) env) (E progress-vec)))
+      :ruleset checker)
 
 
 
@@ -108,6 +150,44 @@ pub(crate) fn checker_code() -> String {
          :ruleset checker)
       "
     ));
+
+    //     for sort in ["VecOperand", "VecOperandCtx"] {
+    //         res.push(format!(
+    //             "
+    // (function prefix-of-{sort}-evals-to ({sort} i64 Env) Env)
+
+    // ; the empty prefix evaluates to an empty vec
+    // (rule (({sort}EvalsTo vec env))
+    //       ((union (prefix-of-{sort}-evals-to vec 0 env) (E (vec-pop (vec-of (Num 0))))))
+    //       :ruleset checker)
+
+    // ; grow prefix
+    // (rule (({sort}EvalsTo vec env)
+    //        (= (E prefix-vals) (prefix-of-{sort}-evals-to vec i env))
+    //        (= next-op ({sort}-get vec i))
+    //        (= (E next-op-val-vec) (OperandEvalsTo next-op env)))
+    //       ((union (prefix-of-{sort}-evals-to vec (+ i 1) env)
+    //               (E (vec-push prefix-vals (vec-get next-op-val-vec 0)))))
+    //      :ruleset checker)
+
+    // ; grow prefix
+    // (rule (({sort}EvalsTo vec env)
+    //        (= (E prefix-vals) (prefix-of-{sort}-evals-to vec i env))
+    //        (= next-op ({sort}-get vec i))
+    //        (= (E next-op-val-vec) (OperandEvalsTo next-op env)))
+    //       ((union (prefix-of-{sort}-evals-to vec (+ i 1) env)
+    //               (E (vec-push prefix-vals (vec-get next-op-val-vec 0)))))
+    //      :ruleset checker)
+
+    // ; if prefix of length of the vec, save final result
+    // (rule (({sort}EvalsTo vec env)
+    //        (= l ({sort}-length vec))
+    //        (= all-vals (prefix-of-{sort}-evals-to vec l env)))
+    //       ((union ({sort}EvalsTo vec env) all-vals))
+    //       :ruleset checker)
+    // "
+    //         ));
+    //     }
 
     for op in BRIL_OPS {
         let name = op.op;
@@ -215,14 +295,16 @@ pub(crate) fn checker_code() -> String {
         (rule ((BodyEvalsTo (Gamma pred inputs outputs) env)
                (= (E (vec-of (Num i))) (OperandEvalsTo pred env))
                (= new-env (VecOperandEvalsTo inputs env))
-               (= outputs-i (VecVecOperandCtx-get outputs i)))
+               (= (VVO outputs-vec) outputs)
+               (= outputs-i (vec-get outputs-vec i)))
               ((VecOperandCtxEvalsTo outputs-i new-env))
               :ruleset checker)
 
         (rule ((BodyEvalsTo (Gamma pred inputs outputs) env)
                (= (E (vec-of (Num i))) (OperandEvalsTo pred env))
                (= new-env (VecOperandEvalsTo inputs env))
-               (= outputs-i (VecVecOperandCtx-get outputs i))
+               (= (VVO outputs-vec) outputs)
+               (= outputs-i (vec-get outputs-vec i))
                (= outputs-i-vals (VecOperandCtxEvalsTo outputs-i new-env)))
               ((union (BodyEvalsTo (Gamma pred inputs outputs) env) outputs-i-vals))
               :ruleset checker)
@@ -240,7 +322,6 @@ fn test_evaluate_add() {
                                         (Num 1))))
                    (Node (PureOp (Const (IntT) (const)
                                         (Num 2))))))
-(let empty-env (E (vec-pop (vec-of (Num 3)))))
 (let vec3 (E (vec-of (Num 3))))
 (ExprEvalsTo testadd empty-env)
     "#;
@@ -250,7 +331,7 @@ fn test_evaluate_add() {
     "#;
 
     let mut egraph = EGraph::default();
-    let code = build_egglog_test(PROGRAM);
+    let code = build_egglog_code(PROGRAM);
     let code_and_footer = format!("{}\n{}", code, FOOTER);
     println!("{}", code_and_footer);
     match egraph.parse_and_run_program(&code_and_footer) {
@@ -262,8 +343,6 @@ fn test_evaluate_add() {
 #[test]
 fn test_evaluate_gamma() {
     const PROGRAM: &str = r#"
-
-(let empty-env (E (vec-pop (vec-of (Num 3)))))
 
 (let testgamma
     (Gamma
@@ -298,27 +377,27 @@ fn test_evaluate_gamma() {
           (E (vec-of (Num 10) (Num 20)))))
           
 ;; check predicate evaluated
-; (check (= (OperandEvalsTo (Arg 0) myenv) (E (vec-of (Num 1)))))
+(check (= (OperandEvalsTo (Arg 0) myenv) (E (vec-of (Num 1)))))
 
-; (let innerenv (E (vec-of (Num 10) (Num 20))))
+(let innerenv (E (vec-of (Num 10) (Num 20))))
 
-; (check (VecOperandCtxEvalsTo
-            ; (VOC (vec-of
-                ; (Node (PureOp (badd (IntT) (Arg 0) (Arg 1))))
-            ; ))
-            ; innerenv
-; ))
-; (check (= vec30 (VecOperandCtxEvalsTo
-            ; (VOC (vec-of
-                ; (Node (PureOp (badd (IntT) (Arg 0) (Arg 1))))
-            ; ))
-            ; innerenv
-; )))
-; (check (= vec30 (BodyEvalsTo testgamma myenv)))
+(check (VecOperandCtxEvalsTo
+            (VOC (vec-of
+                (Node (PureOp (badd (IntT) (Arg 0) (Arg 1))))
+            ))
+            innerenv
+))
+(check (= vec30 (VecOperandCtxEvalsTo
+            (VOC (vec-of
+                (Node (PureOp (badd (IntT) (Arg 0) (Arg 1))))
+            ))
+            innerenv
+)))
+(check (= vec30 (BodyEvalsTo testgamma myenv)))
     "#;
 
     let mut egraph = EGraph::default();
-    let code = build_egglog_test(PROGRAM);
+    let code = build_egglog_code(PROGRAM);
     let code_and_footer = format!("{}\n{}", code, FOOTER);
     println!("{}", code_and_footer);
     match egraph.parse_and_run_program(&code_and_footer) {

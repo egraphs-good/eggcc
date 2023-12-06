@@ -85,18 +85,29 @@ pub fn rvsdg_egglog_schedule() -> String {
         ; Right now subst don't saturate so make it fixed 
         (repeat 1000 subst)
         (repeat 6 subst-beneath (saturate fast-analyses))
-        (saturate checker)
         )
     "
     .to_string()
 }
 
-#[cfg(test)] 
+#[cfg(test)]
 pub fn build_egglog_test(test_input: &str) -> String {
     let code = vec![
         rvsdg_egglog_code(),
         test_input.to_string(),
         rvsdg_egglog_schedule(),
+        "(run-schedule (saturate checker))".into(),
+    ];
+    code.join("\n")
+}
+
+#[cfg(test)]
+pub fn build_egglog_code(test_input: &str) -> String {
+    // DOES NOT RUN COMPILER OPTIMIZATIONS
+    let code = vec![
+        rvsdg_egglog_code(),
+        test_input.to_string(),
+        "(run-schedule (saturate checker))".into(),
     ];
     code.join("\n")
 }
@@ -198,7 +209,6 @@ const BRIL_OPS: [BrilOp; 11] = [
         output_type: Type::Bool,
     },
 ];
-
 
 pub(crate) fn type_to_literal_constructor(t: &Type) -> String {
     match t {

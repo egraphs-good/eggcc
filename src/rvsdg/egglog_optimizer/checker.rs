@@ -85,7 +85,8 @@ pub(crate) fn checker_code() -> String {
 ;; PRINT isn't tested right now- we just
 ;; set it to a number
 (rewrite (ExprEvalsTo (PRINT arg1 arg2) env)
-         (E (vec-of (Num 1))))
+         (E (vec-of (Num 1)))
+         :ruleset checker)
 
 (rewrite (OperandEvalsTo (Arg i) (E env)) (E (vec-of (vec-get env i)))
          :ruleset checker)

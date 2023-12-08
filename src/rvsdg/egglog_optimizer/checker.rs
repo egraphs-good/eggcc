@@ -91,8 +91,13 @@ pub(crate) fn checker_code() -> String {
     :ruleset checker)
 
 
-(rewrite (OperandEvalsTo (Arg i) (E env)) (E (vec-of (vec-get env i)))
+(rule ((= f (OperandEvalsTo (Arg i) (E env)))
+       (= x (vec-get env i)))
+      ((union f (E (vec-of x))))
          :ruleset checker)
+; the following can causes an error bc vec-get is in the action:
+; (rewrite (OperandEvalsTo (Arg i) (E env)) (E (vec-of (vec-get env i)))
+         ; :ruleset checker)
          
 (rewrite (OperandEvalsTo (Node body) (E env))
          (BodyEvalsTo body (E env))
@@ -551,6 +556,63 @@ fn test_evaluate_union_arg_0_3() {
     "#;
 
     const FOOTER: &str = r#"
+    "#;
+
+    let mut egraph = EGraph::default();
+    let code = build_egglog_test(PROGRAM);
+    match egraph.parse_and_run_program(&code) {
+        Ok(_) => (),
+        Err(e) => panic!("Error: {}", e),
+    }
+
+    let _ = egraph.parse_and_run_program(&FOOTER);
+}
+
+#[test]
+fn test_evaluate_union_arg_1_9() {
+    const PROGRAM: &str = r#"
+(let zero (Node (PureOp (Const (IntT) (const) (Num 0)))))
+(let one (Node (PureOp (Const (IntT) (const) (Num 1)))))
+(let nine (Node (PureOp (Const (IntT) (const) (Num 9)))))
+(let testtheta
+    (Theta
+        (Node (PureOp (blt (BoolT) (Arg 0) (Arg 1))))
+        (VO (vec-of
+            zero
+            nine
+        ))
+        (VO (vec-of
+            (Node (PureOp (badd (IntT) (Arg 0) one)))
+            (Arg 1)
+        ))
+     ))
+
+(union (Arg 1) nine)
+
+
+(let testtheta2
+    (Theta
+        (Node (PureOp (Const (BoolT) (const) (Bool false))))
+        (VO (vec-of
+            (Node (PureOp (Const (IntT) (const) (Num 4))))
+            (Node (PureOp (Const (IntT) (const) (Num 4))))
+        ))
+        (VO (vec-of
+            (Arg 0)
+            (Arg 1)
+        ))
+     ))
+(let myenv (E (vec-of (Num 3))))
+(BodyEvalsTo testtheta myenv)
+(BodyEvalsTo testtheta2 myenv)
+; (BodyEvalsTo testtheta empty-env)
+; (BodyEvalsTo testtheta2 myenv)
+
+    "#;
+
+    const FOOTER: &str = r#"
+(let expected (E (vec-of (Num 11))))
+(check (= expected (BodyEvalsTo testtheta myenv)))
     "#;
 
     let mut egraph = EGraph::default();

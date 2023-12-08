@@ -219,6 +219,7 @@ impl RvsdgProgram {
             func_names.push(name.clone());
             let expr = function.to_egglog_expr().to_sexp().pretty();
             res_string.push(format!("(let {} {})", name, expr));
+            res_string.push(function.to_evaldemand(name));
         }
 
         res_string.push(rvsdg_egglog_schedule());

@@ -5,8 +5,18 @@ use ordered_float::OrderedFloat;
 use crate::conversions::op_to_egglog;
 
 use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgType};
+use crate::util::ListDisplay;
 
 impl RvsdgFunction {
+    pub fn to_evaldemand(&self, func: String) -> String {
+        let args = format!(
+            "(E (vec-of {}))",
+            ListDisplay(self.args.iter().map(|_| "(Num 1)"), " ")
+        );
+
+        format!("(FunctionEvalsTo {func} {args})")
+    }
+
     fn expr_from_ty(ty: &Type) -> Expr {
         use Expr::*;
         match ty {

@@ -1,12 +1,11 @@
 use super::AST_SORTS;
 
-use super::subst::functions_modifying_args;
 use super::type_to_literal_constructor;
 use super::BRIL_OPS;
-use crate::rvsdg::egglog_optimizer::build_egglog_code;
 #[cfg(test)]
 use crate::rvsdg::egglog_optimizer::build_egglog_test;
 use bril_rs::Type;
+#[cfg(test)]
 use egglog::EGraph;
 
 pub(crate) fn checker_code() -> String {
@@ -15,11 +14,34 @@ pub(crate) fn checker_code() -> String {
 (sort EnvVec (Vec Literal))
 (datatype Env
   (E EnvVec))
+(let empty-env (E (vec-pop (vec-of (Num 3)))))
+
+; (relation crunched (EnvVec))
+; 
+; (crunched empty-env)
+; (rule ((= (E vec)) (= (Num k) (vec-get vec 0)))
+      ; ((crunched (vec-of (Num k))))
+
+(relation nums (i64))
+(nums 0)
+(nums 1)
+(nums 2)
+(nums 3)
+(nums 5)
+(nums 6)
+(nums 7)
+(nums 8)
+(nums 9)
+(nums 10)
 
 (rule ((= (E vec1) (E vec2))
-       (!= vec1 vec2))
-      ((panic \"two envs with different values were unioned\"))
+       (nums i)
+       (= k1 (vec-get vec1 i))
+       (= k2 (vec-get vec2 i)))
+      ((union k1 k2))
       :ruleset checker)
+
+
 
 ;; Sanity checks: make sure no constants are equal in the database
 (rule ((= (Num a) (Num b)) (!= a b)) ((panic \"unioned two numbers with different values\"))
@@ -60,6 +82,11 @@ pub(crate) fn checker_code() -> String {
          (E (vec-of lit))
          :ruleset checker)
 
+;; PRINT isn't tested right now- we just
+;; set it to a number
+(rewrite (ExprEvalsTo (PRINT arg1 arg2) env)
+         (E (vec-of (Num 1))))
+
 (rewrite (OperandEvalsTo (Arg i) (E env)) (E (vec-of (vec-get env i)))
          :ruleset checker)
          
@@ -80,7 +107,6 @@ pub(crate) fn checker_code() -> String {
 (rewrite (VecPush (E vec) lit) (E (vec-push vec lit))
          :ruleset checker)
    
-(let empty-env (E (vec-pop (vec-of (Num 3)))))
 
 
 ;;;;
@@ -294,6 +320,14 @@ pub(crate) fn checker_code() -> String {
     ; "
     ));
 
+    // Function
+    res.push(format!(
+        "
+(rewrite (FunctionEvalsTo (Func name input-types output-types body) env)
+         (VecOperandEvalsTo body env)
+         :ruleset checker)
+    "
+    ));
     res.join("\n")
 }
 
@@ -314,7 +348,7 @@ fn test_evaluate_add() {
     "#;
 
     let mut egraph = EGraph::default();
-    let code = build_egglog_code(PROGRAM);
+    let code = build_egglog_test(PROGRAM);
     let code_and_footer = format!("{}\n{}", code, FOOTER);
     println!("{}", code_and_footer);
     match egraph.parse_and_run_program(&code_and_footer) {
@@ -346,6 +380,25 @@ fn test_evaluate_gamma() {
 )
 (let myenv (E (vec-of (Num 1) (Num 10) (Num 20))))
 (let vec30 (E (vec-of (Num 30))))
+
+(union testgamma
+    (Gamma
+        (Arg 0)
+        (VO (vec-of
+            (Arg 1)
+            (Arg 2)
+            (Arg 2)
+        ))
+        (VVO (vec-of
+            (VOC (vec-of
+                (Arg 0)
+            ))
+            (VOC (vec-of
+                (Node (PureOp (badd (IntT) (Arg 0) (Arg 1))))
+            ))
+        ))
+    )
+)
 
 (BodyEvalsTo testgamma myenv)
 
@@ -380,7 +433,7 @@ fn test_evaluate_gamma() {
     "#;
 
     let mut egraph = EGraph::default();
-    let code = build_egglog_code(PROGRAM);
+    let code = build_egglog_test(PROGRAM);
     let code_and_footer = format!("{}\n{}", code, FOOTER);
     println!("{}", code_and_footer);
     match egraph.parse_and_run_program(&code_and_footer) {
@@ -441,7 +494,7 @@ fn test_evaluate_theta() {
     "#;
 
     let mut egraph = EGraph::default();
-    let code = build_egglog_code(PROGRAM);
+    let code = build_egglog_test(PROGRAM);
     match egraph.parse_and_run_program(&code) {
         Ok(_) => (),
         Err(e) => panic!("Error: {}", e),
@@ -454,4 +507,52 @@ fn test_evaluate_theta() {
         }
         Err(e) => panic!("Error: {}", e),
     }
+}
+
+#[test]
+fn test_evaluate_union_arg_0_3() {
+    const PROGRAM: &str = r#"
+(let one (Node (PureOp (Const (IntT) (const) (Num 1)))))
+(let ten (Node (PureOp (Const (IntT) (const) (Num 10)))))
+(let testtheta
+    (Theta
+        (Node (PureOp (Const (BoolT) (const) (Bool false))))
+        (VO (vec-of
+            (Node (PureOp (Const (IntT) (const) (Num 3))))
+        ))
+        (VO (vec-of
+            (Arg 0)
+        ))
+     ))
+
+(let testtheta2
+    (Theta
+        (Node (PureOp (Const (BoolT) (const) (Bool false))))
+        (VO (vec-of
+            (Node (PureOp (Const (IntT) (const) (Num 4))))
+        ))
+        (VO (vec-of
+            (Arg 0)
+        ))
+     ))
+
+(let myenv (E (vec-of (Num 3))))
+(union (Arg 0) (Node (PureOp (Const (IntT) (const) (Num 3)))))
+
+(BodyEvalsTo testtheta myenv)
+(BodyEvalsTo testtheta2 myenv)
+
+    "#;
+
+    const FOOTER: &str = r#"
+    "#;
+
+    let mut egraph = EGraph::default();
+    let code = build_egglog_test(PROGRAM);
+    match egraph.parse_and_run_program(&code) {
+        Ok(_) => (),
+        Err(e) => panic!("Error: {}", e),
+    }
+
+    let _ = egraph.parse_and_run_program(&FOOTER);
 }

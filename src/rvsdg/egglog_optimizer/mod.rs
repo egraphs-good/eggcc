@@ -85,6 +85,7 @@ pub fn rvsdg_egglog_schedule() -> String {
         ; Right now subst don't saturate so make it fixed 
         (repeat 1000 subst)
         (repeat 6 subst-beneath (saturate fast-analyses))
+        (saturate checker)
         )
     "
     .to_string()
@@ -101,17 +102,6 @@ pub fn build_egglog_test(test_input: &str) -> String {
     code.join("\n")
 }
 
-#[cfg(test)]
-pub fn build_egglog_code(test_input: &str) -> String {
-    // DOES NOT RUN COMPILER OPTIMIZATIONS
-    let code = vec![
-        rvsdg_egglog_code(),
-        test_input.to_string(),
-        "(run-schedule (saturate checker))".into(),
-    ];
-    code.join("\n")
-}
-
 #[derive(Debug, PartialEq, Clone)]
 struct BrilOp {
     op: &'static str,
@@ -122,7 +112,7 @@ struct BrilOp {
     output_type: Type,
 }
 
-const AST_SORTS: [&str; 7] = [
+const AST_SORTS: [&str; 8] = [
     "Literal",
     "Expr",
     "Operand",
@@ -130,6 +120,7 @@ const AST_SORTS: [&str; 7] = [
     "VecOperand",
     "VecOperandCtx",
     "VecVecOperandCtx",
+    "Function",
 ];
 
 // an in-progress list of bril operators and their implementation in egglog

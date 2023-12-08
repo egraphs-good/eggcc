@@ -28,6 +28,7 @@ fn loop_strength_reduction() -> Result {
     ";
     let check = "
         (check (= 
+            old-loop
             (
             Loop
             some-new-id
@@ -41,16 +42,15 @@ fn loop_strength_reduction() -> Result {
                 (Num test-outer-id 3)
                 (bmul (Num test-outer-id 3) (Num test-outer-id 0))
             ))
-            ; outputs: i = i + 1, a += d, b += a, c = c, d += c * 1
+            ; outputs: i = i + 1, a = d, b += a, c = c, d += c * 1
             (EVec (vec-of
                 (badd (Arg some-new-id 0) (Num some-new-id 1))
-                (bmul (Arg some-new-id 3) (Arg some-new-id 0))
+                (Arg some-new-id 4)
                 (badd (Arg some-new-id 1) (Arg some-new-id 2))
                 (Arg some-new-id 3)
                 (badd (Arg some-new-id 4) (bmul (Arg some-new-id 3) (Num some-new-id 1)))
             ))
             )
-            old-loop
         ))
     ";
     run_test(build, check)

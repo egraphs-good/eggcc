@@ -82,11 +82,14 @@ pub(crate) fn checker_code() -> String {
          (E (vec-of lit))
          :ruleset checker)
 
-;; PRINT isn't tested right now- we just
-;; set it to a number
-(rewrite (ExprEvalsTo (PRINT arg1 arg2) env)
-         (E (vec-of (Num 1)))
-         :ruleset checker)
+;; For PRINT, demand inputs and evaluate to what would be printed
+;; it would be better if it also used the other argument and made a buffer
+(rule ((ExprEvalsTo (PRINT arg1 arg2) env))
+      ((OperandEvalsTo arg1 env)
+       (union (ExprEvalsTo (PRINT arg1 arg2) env)
+              (OperandEvalsTo arg2 env)))
+    :ruleset checker)
+
 
 (rewrite (OperandEvalsTo (Arg i) (E env)) (E (vec-of (vec-get env i)))
          :ruleset checker)
@@ -95,14 +98,16 @@ pub(crate) fn checker_code() -> String {
          (BodyEvalsTo body (E env))
          :ruleset checker)
 
-(rewrite (OperandEvalsTo (Project i body) (E env))
-         (E (vec-of (vec-get body-vals i)))
-         :when ((= (BodyEvalsTo body (E env)) (E body-vals)))
-         :ruleset checker)
-
 (function VecGet (Env i64) Literal)
 (rewrite (VecGet (E vec) i) (vec-get vec i)
          :ruleset checker)
+         
+
+
+(rewrite (OperandEvalsTo (Project i body) (E env))
+         (E (vec-of (VecGet (BodyEvalsTo body (E env)) i)))
+         :ruleset checker)
+
 
 (function VecPush (Env Literal) Env)
 (rewrite (VecPush (E vec) lit) (E (vec-push vec lit))
@@ -296,8 +301,8 @@ pub(crate) fn checker_code() -> String {
         "
 ; demand pred and inputs gets evaluated
 (rule ((BodyEvalsTo (Gamma pred inputs outputs) env))
-        ((OperandEvalsTo pred env)
-        (VecOperandEvalsTo inputs env))
+      ((OperandEvalsTo pred env)
+       (VecOperandEvalsTo inputs env))
         :ruleset checker)
 
 

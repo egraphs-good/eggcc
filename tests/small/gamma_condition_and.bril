@@ -1,9 +1,9 @@
 # ARGS: 1
 @main(x: int) {
-  y: int = const 2;
-  z: int = const 3;
+  y: int = const 3;
+  z: int = const 1;
   a: bool = lt x y;
-  b: bool = lt y z;
+  b: bool = gt x z;
 
   c: bool = and a b;
   br c .A .B;
@@ -13,7 +13,6 @@
 .B:
   print y;
 .C:
-  print z;
 }
 
 # want to "simplify" to:

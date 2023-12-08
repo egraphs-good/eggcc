@@ -3,21 +3,21 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v2: int = const 3;
-  v5: int = const 2;
+  v2: int = const 1;
+  v5: int = const 3;
   v7: bool = lt v0 v5;
-  v9: bool = const true;
-  v11: bool = and v7 v9;
-  br v11 .__24__ .__18__;
-.__24__:
+  v11: bool = gt v0 v2;
+  v13: bool = and v7 v11;
+  br v13 .__26__ .__20__;
+.__26__:
   print v0;
-  v22: int = id v2;
-  jmp .__29__;
-.__18__:
+  v24: int = id v2;
+  jmp .__31__;
+.__20__:
   print v5;
-  v22: int = id v2;
-  jmp .__29__;
-.__29__:
+  v24: int = id v2;
+  jmp .__31__;
+.__31__:
   print v2;
 }
 

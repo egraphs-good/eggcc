@@ -21,7 +21,8 @@
                          (VVO (vec-of (VOC B)
                                       (VOC A)))))
        (union gamma (Gamma a
-                           (VO (vec-push inputs b)) ; pass b as an extra argument
+                           ;; OLIVER ADDED A BUG HERE b -> a
+                           (VO (vec-push inputs a)) ; pass b as an extra argument
                            (VVO (vec-of (VOC B)
                                         (VO-to-VOC (BodyToVecOperand rets inner))))))))
 

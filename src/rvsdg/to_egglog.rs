@@ -9,12 +9,18 @@ use crate::util::ListDisplay;
 
 impl RvsdgFunction {
     pub fn to_evaldemand(&self, func: String) -> String {
-        let args = format!(
-            "(E (vec-of {}))",
-            ListDisplay(self.args.iter().map(|_| "(Num 1)"), " ")
-        );
+        let to_test = vec!["1", "2", "3"];
+        let mut res = vec![];
 
-        format!("(FunctionEvalsTo {func} {args})")
+        for num in to_test {
+            let args = format!(
+                "(E (vec-of {}))",
+                ListDisplay(self.args.iter().map(|_| format!("(Num {num})")), " ")
+            );
+
+            res.push(format!("(FunctionEvalsTo {func} {args})"))
+        }
+        res.join("\n")
     }
 
     fn expr_from_ty(ty: &Type) -> Expr {

@@ -1,33 +1,24 @@
 async function getPreviousRuns() {
-    const req = await fetch("../");
-    const html = await req.text();
-
-    const parser = new DOMParser();
-    const htmlDoc = parser.parseFromString(html, 'text/html');
-
-    const allLinks = htmlDoc.getElementsByTagName("a");
+    const req = await fetch("https://nightly.cs.washington.edu/reports-json/eggcc/");
+    const files = await req.json();
     
     // map allLinks into an objects of the shape:
     // {branch: <git branch:string>, commit: <git commit:string>, date: <unix timestamp:int>, url: <absolute url to nightly page:string>}
     const comparisons = [];
-    for (let i = 1; i < allLinks.length; i++) {
-        const hrefText = allLinks[i].getAttribute("href");
-
-        const [date, _, branch, commit] = hrefText.split("%3A");
+    for (let i = 1; i < files.length; i++) {
+        const [date, _, branch, commit] = files[i].name.split(":");
 
         const run = {
             branch: branch,
-            // since commit is the last item in the link it has a trailing slash, so we slice it off
-            commit: commit.slice(0, -1),
+            commit: commit,
             // type coerce a unix timestamp that is a string into an int with a `+`
             date: +date,
-            // The file server/DOM parser constructs the absolute URL (of a relative URL) based on where we're requesting from,
-            // and since we're requesting from a sibling page, it mangles the link to look something like:
-            //   "/reports/eggcc/<current report>/<report requested>" 
-            // which is a nonsensical url. We can reconstruct the URL with the href attribute which we do here
-            url: `https://nightly.cs.washington.edu/reports/eggcc/${hrefText}`, 
+            // The file server only hands us back the directory names,
+            // but we want to make sure that we only use absolute URLs so that we can run this page
+            // in any environment (local or otherwise)
+            url: `https://nightly.cs.washington.edu/reports/eggcc/${files[i].name}`,
         }
-
+        
         comparisons.push(run);
     }
 
@@ -78,7 +69,7 @@ function findBenchToCompareIdx(benchRuns) {
     const idx = path[path.length - 1] === "/" ? parts.length - 2 : parts.length - 1;
     
     const [date, _, branch, commit] = parts[idx].split("%3A");
-    for (let i = benchRuns.length-1; i >= 0; i--) {
+    for (let i = 0; i < benchRuns.length; i--) {
         const run = benchRuns[i];
         if (run.branch === "main") {
             // If we are comparing a run on a main branch, to previous main branch we need to make sure

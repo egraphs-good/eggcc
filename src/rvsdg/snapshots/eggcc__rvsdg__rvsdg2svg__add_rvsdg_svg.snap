@@ -19,7 +19,7 @@ expression: svg
 		</rect>
 		<g>
 			<path
-				d="M 325 0V 15Q 325 25 335 25H 556.6667Q 566.6667 25 566.6667 35V 350"
+				d="M 433.33334 0V 20Q 433.33334 30 443.33334 30H 556.6667Q 566.6667 30 566.6667 40V 350"
 				fill="transparent"
 				stroke="black"
 				stroke-linecap="round"
@@ -206,7 +206,15 @@ expression: svg
 		</g>
 		<g>
 			<circle
-				cx="325"
+				cx="216.66667"
+				cy="0"
+				fill="white"
+				r="4"
+				stroke="black"
+				stroke-width="2">
+			</circle>
+			<circle
+				cx="433.33334"
 				cy="0"
 				fill="white"
 				r="4"

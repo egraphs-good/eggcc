@@ -521,7 +521,7 @@ fn test_evaluate_theta() {
 }
 
 #[test]
-fn test_evaluate_union_arg_0_3() {
+fn test_should_fail_union_arg_0_3() {
     const PROGRAM: &str = r#"
 (let one (Node (PureOp (Const (IntT) (const) (Num 1)))))
 (let ten (Node (PureOp (Const (IntT) (const) (Num 10)))))
@@ -569,7 +569,7 @@ fn test_evaluate_union_arg_0_3() {
 }
 
 #[test]
-fn test_evaluate_union_arg_1_9() {
+fn test_should_fail_union_arg_1_9() {
     const PROGRAM: &str = r#"
 (let zero (Node (PureOp (Const (IntT) (const) (Num 0)))))
 (let one (Node (PureOp (Const (IntT) (const) (Num 1)))))

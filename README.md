@@ -1,3 +1,15 @@
+# 507 project instructions
+
+To run our e-interpreter, which tests the correctness of our compiler, run the following command:
+
+```
+cargo test --release
+```
+
+Two tests are expected to fail, and the rest pass.
+The failing tests are `test_should_fail_union_arg_0_3` and `test_should_fail_union_arg_1_9`.
+These tests are expected to fail because our intepreter raises an (unfortunately) un-catchable error when unsoundness is detected.
+
 # eggcc
 
 ## How to set up

@@ -29,28 +29,28 @@ fn loop_strength_reduction() -> Result {
     let check = "
         (check (= 
             loop
-            (
-            Loop
-            some-new-id
-            ; pred: i < 4
-            (blt (Arg some-new-id 0) (Num some-new-id 4))
-            ; inputs: i = 0, a = 0, b = 0, c = 3, d = i * c
-            (EVec (vec-of
-                (Num test-outer-id 0) 
-                (Num test-outer-id 0)
-                (Num test-outer-id 0)
-                (Num test-outer-id 3)
-                (bmul (Num test-outer-id 3) (Num test-outer-id 0))
+            (ExprToEVec 4 (
+                Loop
+                some-new-id
+                ; pred: i < 4
+                (blt (Arg some-new-id 0) (Num some-new-id 4))
+                ; inputs: i = 0, a = 0, b = 0, c = 3, d = i * c
+                (EVec (vec-of
+                    (Num test-outer-id 0) 
+                    (Num test-outer-id 0)
+                    (Num test-outer-id 0)
+                    (Num test-outer-id 3)
+                    (bmul (Num test-outer-id 3) (Num test-outer-id 0))
+                ))
+                ; outputs: i = i + 1, a = d, b += a, c = c, d += c * 1
+                (EVec (vec-of
+                    (badd (Arg some-new-id 0) (Num some-new-id 1))
+                    (Arg some-new-id 4)
+                    (badd (Arg some-new-id 1) (Arg some-new-id 2))
+                    (Arg some-new-id 3)
+                    (badd (Arg some-new-id 4) (bmul (Arg some-new-id 3) (Num some-new-id 1)))
+                ))
             ))
-            ; outputs: i = i + 1, a = d, b += a, c = c, d += c * 1
-            (EVec (vec-of
-                (badd (Arg some-new-id 0) (Num some-new-id 1))
-                (Arg some-new-id 4)
-                (badd (Arg some-new-id 1) (Arg some-new-id 2))
-                (Arg some-new-id 3)
-                (badd (Arg some-new-id 4) (bmul (Arg some-new-id 3) (Num some-new-id 1)))
-            ))
-            )
         ))
     ";
     run_test(build, check)

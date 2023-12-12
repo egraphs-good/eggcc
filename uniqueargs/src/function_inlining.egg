@@ -1,0 +1,11 @@
+(rule
+(
+    (= call (Call name args))
+    (= call-id (Id-Of call))
+    (= callee (Func id name outputs))
+)
+(
+    (let new-outputs (DeepCopy outputs call-id))
+    (union call (SubstArgsAll new-outputs args))
+)
+)

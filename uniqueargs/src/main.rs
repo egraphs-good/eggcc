@@ -2,6 +2,7 @@
 // If you don't put your Rust file here it won't get compiled!
 mod switch_rewrites;
 mod subst;
+mod function_inlining;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
@@ -21,6 +22,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("subst.egg"),
             // optimizations
             include_str!("switch_rewrites.egg"),
+            include_str!("function_inlining.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

@@ -66,3 +66,24 @@ fn switch_rewrite_or() -> Result {
     ";
     run_test(build, check)
 }
+
+#[test]
+fn switch_rewrite_demorgan_or() -> Result {
+    let build = "(let a (bnot (bor (Arg global-id 0) (Arg global-id 1))))";
+    let check = "(check (= a (band (bnot (Arg global-id 0)) (bnot (Arg global-id 1)))))";
+    run_test(build, check)
+}
+
+#[test]
+fn switch_rewrite_demorgan_and() -> Result {
+    let build = "(let a (bnot (band (Arg global-id 0) (Arg global-id 1))))";
+    let check = "(check (= a (bor (bnot (Arg global-id 0)) (bnot (Arg global-id 1)))))";
+    run_test(build, check)
+}
+
+#[test]
+fn switch_rewrite_double_neg() -> Result {
+    let build = "(let a (bnot (bnot (Arg global-id 0))))";
+    let check = "(check (= a (Arg global-id 0)))";
+    run_test(build, check)
+}

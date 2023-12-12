@@ -28,7 +28,7 @@ fn loop_strength_reduction() -> Result {
     ";
     let check = "
         (check (= 
-            old-loop
+            loop
             (
             Loop
             some-new-id

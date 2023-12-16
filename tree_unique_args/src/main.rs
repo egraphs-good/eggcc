@@ -16,6 +16,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
         "{}\n{build}\n{}\n{check}\n",
         vec![
             include_str!("schema.egg"),
+            include_str!("sugar.egg"),
             // analyses
             &purity_analysis::purity_analysis_rules().join("\n"),
             // repairs

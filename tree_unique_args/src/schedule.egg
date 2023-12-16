@@ -2,6 +2,7 @@
 
 (run-schedule
   (repeat 5
+    (saturate desugar)
     (saturate fast-analyses)
     (run)
     (saturate subst)

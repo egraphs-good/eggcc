@@ -1,0 +1,14 @@
+; Functoins useful for writing tests, but should not be matched on
+(ruleset desugar)
+
+(function Pair (Expr Expr) ListExpr)
+(rewrite (Pair a b)
+         (Cons a (Cons b (Nil)))
+         :ruleset desugar)
+
+(function IgnoreFirst (Expr Expr) Expr)
+(rewrite (IgnoreFirst a b)
+         (Get
+             (All (Sequential) (Cons a (Cons b (Nil))))
+             1)
+         :ruleset desugar)

@@ -10,9 +10,25 @@ enum Purity {
 fn purity(ctor: &Constructor) -> Purity {
     match ctor {
         Constructor::Num => Purity::Pure,
+        Constructor::Boolean => Purity::Pure,
+        Constructor::UnitExpr => Purity::Pure,
         Constructor::Add => Purity::PureIfChildrenAre,
+        Constructor::Sub => Purity::PureIfChildrenAre,
+        Constructor::Mul => Purity::PureIfChildrenAre,
+        Constructor::LessThan => Purity::PureIfChildrenAre,
+        Constructor::And => Purity::PureIfChildrenAre,
+        Constructor::Or => Purity::PureIfChildrenAre,
+        Constructor::Not => Purity::PureIfChildrenAre,
+        Constructor::Get => Purity::PureIfChildrenAre,
         Constructor::Print => Purity::Impure,
+        Constructor::Read => Purity::Impure,
+        Constructor::Write => Purity::Impure,
+        Constructor::All => Purity::PureIfChildrenAre,
+        Constructor::Switch => Purity::PureIfChildrenAre,
         Constructor::Loop => Purity::PureIfChildrenAre,
+        Constructor::Body => Purity::PureIfChildrenAre,
+        Constructor::Arg => Purity::PureIfChildrenAre,
+        Constructor::Call => Purity::Impure,
         Constructor::Cons => Purity::PureIfChildrenAre,
         Constructor::Nil => Purity::Pure,
     }
@@ -76,4 +92,42 @@ pub(crate) fn purity_analysis_rules() -> Vec<String> {
         }
     }
     res
+}
+
+#[test]
+fn test_purity_analysis() -> Result<(), egglog::Error> {
+    let build = &*format!(
+        "
+        (let id1 (i64-fresh!))
+        (let pure-loop
+            (Loop id1
+                (All (Parallel) (Pair (Num 0) (Num 0)))
+                (All (Sequential) (Pair
+                    ; pred
+                    (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
+                    ; output
+                    (All (Parallel) (Pair
+                        (Add (Get (Arg id1) 0) (Num 1))
+                        (Sub (Get (Arg id1) 1) (Num 1))))))))
+
+        (let id2 (i64-fresh!))
+        (let impure-loop
+            (Loop id2
+                (All (Parallel) (Pair (Num 0) (Num 0)))
+                (All (Sequential) (Pair
+                    ; pred
+                    (LessThan (Get (Arg id2) 0) (Get (Arg id2) 1))
+                    ; output
+                    (IgnoreFirst
+                        (Print (Num 1))
+                        (All (Parallel) (Pair
+                            (Add (Get (Arg id2) 0) (Num 1))
+                            (Sub (Get (Arg id2) 1) (Num 1)))))))))
+    "
+    );
+    let check = "
+        (check (ExprIsPure pure-loop))
+        (fail (check (ExprIsPure impure-loop)))
+    ";
+    crate::run_test(build, check)
 }

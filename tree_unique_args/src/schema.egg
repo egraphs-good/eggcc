@@ -68,6 +68,6 @@
 (function Call (i64 Expr) Expr)
 
 ;; Rulesets
-(ruleset analyses)
+(ruleset fast-analyses)
 (ruleset repairs)
 (ruleset subst)

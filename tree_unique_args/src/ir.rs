@@ -1,3 +1,6 @@
+use strum_macros::EnumIter;
+
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum Sort {
     Expr,
     ListExpr,
@@ -18,6 +21,26 @@ impl Sort {
     }
 }
 
+// Subset of sorts that refer to expressions
+pub(crate) enum ESort {
+    Expr,
+    ListExpr,
+}
+
+impl ESort {
+    pub(crate) fn to_sort(&self) -> Sort {
+        match self {
+            ESort::Expr => Sort::Expr,
+            ESort::ListExpr => Sort::ListExpr,
+        }
+    }
+
+    pub(crate) fn name(&self) -> &'static str {
+        self.to_sort().name()
+    }
+}
+
+#[derive(Clone, Copy, EnumIter)]
 pub(crate) enum Constructor {
     Num,
     Boolean,
@@ -41,6 +64,48 @@ pub(crate) enum Constructor {
     Call,
     Cons,
     Nil,
+}
+
+// The constructor fields must purposes such that this is maintained:
+// - A ctor has one or more CapturedExpr fields iff it has exactly one
+//   CapturingId field. The CapturingId field corresponds to the context of the
+//   CapturedExpr field(s).
+//   * Note that this applies to body/loop ids, but not the id in an arg.
+//   * Note also that a call's function reference has purpose Static
+// Invariants of a valid term in the IR:
+// - A ReferencingId must match the nearest enclosing BindingId
+// - It must typecheck (see typechecker in interpreter.rs).
+pub(crate) enum Purpose {
+    Static(Sort), // some int, bool, order that parameterizes constructor
+    CapturingId,
+    ReferencingId,
+    SubExpr,      // subexpression, e.g. Add's summand
+    SubListExpr,  // sublistexpr, e.g. Switch's branch lsit
+    CapturedExpr, // a body's outputs
+}
+
+impl Purpose {
+    pub(crate) fn to_sort(&self) -> Sort {
+        match self {
+            Purpose::CapturingId => Sort::I64,
+            Purpose::ReferencingId => Sort::I64,
+            Purpose::SubExpr => Sort::Expr,
+            Purpose::CapturedExpr => Sort::Expr,
+            Purpose::SubListExpr => Sort::ListExpr,
+            Purpose::Static(sort) => *sort,
+        }
+    }
+}
+
+pub(crate) struct Field {
+    pub purpose: Purpose,
+    pub name: &'static str,
+}
+
+impl Field {
+    pub(crate) fn sort(&self) -> Sort {
+        self.purpose.to_sort()
+    }
 }
 
 impl Constructor {
@@ -71,86 +136,87 @@ impl Constructor {
         }
     }
 
-    pub(crate) fn param_sorts(&self) -> Vec<Sort> {
+    pub(crate) fn fields(&self) -> Vec<Field> {
+        use Purpose::{CapturedExpr, CapturingId, ReferencingId, Static, SubExpr, SubListExpr};
+        let f = |purpose, name| Field { purpose, name };
         match self {
-            Constructor::Num => vec![Sort::I64],
-            Constructor::Boolean => vec![Sort::Bool],
+            Constructor::Num => vec![f(Static(Sort::I64), "n")],
+            Constructor::Boolean => vec![f(Static(Sort::Bool), "b")],
             Constructor::UnitExpr => vec![],
-            Constructor::Add => vec![Sort::Expr, Sort::Expr],
-            Constructor::Sub => vec![Sort::Expr, Sort::Expr],
-            Constructor::Mul => vec![Sort::Expr, Sort::Expr],
-            Constructor::LessThan => vec![Sort::Expr, Sort::Expr],
-            Constructor::And => vec![Sort::Expr, Sort::Expr],
-            Constructor::Or => vec![Sort::Expr, Sort::Expr],
-            Constructor::Not => vec![Sort::Expr],
-            Constructor::Get => vec![Sort::Expr, Sort::I64],
-            Constructor::Print => vec![Sort::Expr],
-            Constructor::Read => vec![Sort::Expr],
-            Constructor::Write => vec![Sort::Expr, Sort::Expr],
-            Constructor::All => vec![Sort::Order, Sort::ListExpr],
-            Constructor::Switch => vec![Sort::Expr, Sort::ListExpr],
-            Constructor::Loop => vec![Sort::I64, Sort::Expr, Sort::Expr],
-            Constructor::Body => vec![Sort::I64, Sort::Expr, Sort::Expr],
-            Constructor::Arg => vec![Sort::I64],
-            Constructor::Call => vec![Sort::I64, Sort::Expr],
-            Constructor::Cons => vec![Sort::Expr, Sort::ListExpr],
+            Constructor::Add => vec![f(SubExpr, "x"), f(SubExpr, "y")],
+            Constructor::Sub => vec![f(SubExpr, "x"), f(SubExpr, "y")],
+            Constructor::Mul => vec![f(SubExpr, "x"), f(SubExpr, "y")],
+            Constructor::LessThan => {
+                vec![f(SubExpr, "x"), f(SubExpr, "y")]
+            }
+            Constructor::And => vec![f(SubExpr, "x"), f(SubExpr, "y")],
+            Constructor::Or => vec![f(SubExpr, "x"), f(SubExpr, "y")],
+            Constructor::Not => vec![f(SubExpr, "x")],
+            Constructor::Get => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
+            Constructor::Print => vec![f(SubExpr, "printee")],
+            Constructor::Read => vec![f(SubExpr, "addr")],
+            Constructor::Write => vec![f(SubExpr, "addr"), f(SubExpr, "data")],
+            Constructor::All => vec![f(Static(Sort::Order), "order"), f(SubListExpr, "exprs")],
+            Constructor::Switch => vec![f(SubExpr, "pred"), f(SubListExpr, "branches")],
+            Constructor::Loop => vec![
+                f(CapturingId, "id"),
+                f(SubExpr, "in"),
+                f(CapturedExpr, "pred-and-output"),
+            ],
+            Constructor::Body => vec![
+                f(CapturingId, "id"),
+                f(SubExpr, "in"),
+                f(CapturedExpr, "out"),
+            ],
+            Constructor::Arg => vec![f(ReferencingId, "id")],
+            Constructor::Call => vec![f(Static(Sort::I64), "f"), f(SubExpr, "arg")],
+            Constructor::Cons => {
+                vec![f(SubExpr, "hd"), f(SubListExpr, "tl")]
+            }
             Constructor::Nil => vec![],
         }
     }
 
-    pub(crate) fn sort(&self) -> Sort {
+    pub(crate) fn sort(&self) -> ESort {
         match self {
-            Constructor::Num => Sort::Expr,
-            Constructor::Boolean => Sort::Expr,
-            Constructor::UnitExpr => Sort::Expr,
-            Constructor::Add => Sort::Expr,
-            Constructor::Sub => Sort::Expr,
-            Constructor::Mul => Sort::Expr,
-            Constructor::LessThan => Sort::Expr,
-            Constructor::And => Sort::Expr,
-            Constructor::Or => Sort::Expr,
-            Constructor::Not => Sort::Expr,
-            Constructor::Get => Sort::Expr,
-            Constructor::Print => Sort::Expr,
-            Constructor::Read => Sort::Expr,
-            Constructor::Write => Sort::Expr,
-            Constructor::All => Sort::Expr,
-            Constructor::Switch => Sort::Expr,
-            Constructor::Loop => Sort::Expr,
-            Constructor::Body => Sort::Expr,
-            Constructor::Arg => Sort::Expr,
-            Constructor::Call => Sort::Expr,
-            Constructor::Cons => Sort::ListExpr,
-            Constructor::Nil => Sort::ListExpr,
+            Constructor::Num => ESort::Expr,
+            Constructor::Boolean => ESort::Expr,
+            Constructor::UnitExpr => ESort::Expr,
+            Constructor::Add => ESort::Expr,
+            Constructor::Sub => ESort::Expr,
+            Constructor::Mul => ESort::Expr,
+            Constructor::LessThan => ESort::Expr,
+            Constructor::And => ESort::Expr,
+            Constructor::Or => ESort::Expr,
+            Constructor::Not => ESort::Expr,
+            Constructor::Get => ESort::Expr,
+            Constructor::Print => ESort::Expr,
+            Constructor::Read => ESort::Expr,
+            Constructor::Write => ESort::Expr,
+            Constructor::All => ESort::Expr,
+            Constructor::Switch => ESort::Expr,
+            Constructor::Loop => ESort::Expr,
+            Constructor::Body => ESort::Expr,
+            Constructor::Arg => ESort::Expr,
+            Constructor::Call => ESort::Expr,
+            Constructor::Cons => ESort::ListExpr,
+            Constructor::Nil => ESort::ListExpr,
         }
-    }
-
-    pub(crate) fn num_params(&self) -> usize {
-        self.param_sorts().len()
     }
 }
 
-pub(crate) const CONSTRUCTORS: [Constructor; 22] = [
-    Constructor::Num,
-    Constructor::Boolean,
-    Constructor::UnitExpr,
-    Constructor::Add,
-    Constructor::Sub,
-    Constructor::Mul,
-    Constructor::LessThan,
-    Constructor::And,
-    Constructor::Or,
-    Constructor::Not,
-    Constructor::Get,
-    Constructor::Print,
-    Constructor::Read,
-    Constructor::Write,
-    Constructor::All,
-    Constructor::Switch,
-    Constructor::Loop,
-    Constructor::Body,
-    Constructor::Arg,
-    Constructor::Call,
-    Constructor::Cons,
-    Constructor::Nil,
-];
+#[cfg(test)]
+use std::collections::HashSet;
+#[cfg(test)]
+use strum::IntoEnumIterator;
+
+#[test]
+fn no_duplicate_field_names() {
+    for ctor in Constructor::iter() {
+        let mut seen: HashSet<String> = HashSet::new();
+        for field in ctor.fields() {
+            assert!(!seen.contains(field.name));
+            seen.insert(field.name.to_string());
+        }
+    }
+}

@@ -2,7 +2,6 @@
 // If you don't put your Rust file here it won't get compiled!
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
-pub(crate) mod util;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 

@@ -41,7 +41,7 @@ impl ESort {
     }
 }
 
-#[derive(Clone, Copy, EnumIter)]
+#[derive(Clone, Copy, EnumIter, PartialEq)]
 pub(crate) enum Constructor {
     Num,
     Boolean,

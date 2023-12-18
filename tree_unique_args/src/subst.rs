@@ -54,9 +54,8 @@ pub(crate) fn subst_rules() -> Vec<String> {
     res
 }
 
-// We use field names as var names, as use v in the same rules to mean the
-// value being substituted in, so this test makes sure we don't add a
-// constructor that overlaps accidentally.
+// We use field names as var names, and bind "v" to the value being substituted
+// in, so this test checks we don't overlap/add extra equality constraints
 #[test]
 fn var_names_available() {
     for ctor in Constructor::iter() {

@@ -7,13 +7,12 @@ fn subst_rule_for_ctor(ctor: Constructor) -> String {
     if ctor == Constructor::Arg {
         return "(rewrite (SubstExpr (Arg id) v) v :ruleset subst)".to_string();
     }
-    let ctor_pattern_without_parens = iter::once(ctor.name())
+
+    // e.g. "Add x y"
+    let ctor_pattern = iter::once(ctor.name())
         .chain(ctor.fields().iter().map(|field| field.name))
         .collect::<Vec<_>>()
         .join(" ");
-
-    // e.g. "(Add x y)"
-    let ctor_pattern = format!("({ctor_pattern_without_parens})");
 
     // e.g. ["(SubstExpr x v)", "(SubstExpr y v)"]
     let substed_fields = ctor
@@ -40,7 +39,7 @@ fn subst_rule_for_ctor(ctor: Constructor) -> String {
 
     let sort = ctor.sort().name();
     let br = "\n         ";
-    format!("(rewrite (Subst{sort} {ctor_pattern} v){br}({substed_ctor}){br}:ruleset subst)")
+    format!("(rewrite (Subst{sort} ({ctor_pattern}) v){br}({substed_ctor}){br}:ruleset subst)")
 }
 
 pub(crate) fn subst_rules() -> Vec<String> {

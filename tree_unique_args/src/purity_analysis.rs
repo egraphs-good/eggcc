@@ -1,6 +1,6 @@
 use std::iter;
 
-use crate::ir::{Constructor, Purpose, Sort};
+use crate::ir::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 
 fn is_pure(ctor: &Constructor) -> bool {
@@ -12,11 +12,16 @@ fn is_pure(ctor: &Constructor) -> bool {
     }
 }
 
+// Builds rules like:
+// (rule ((Add x y) (ExprIsPure x) (ExprIsPure y))
+//       ((ExprIsPure (Add x y)))
+//       :ruleset fast-analyses)
 fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
     if !is_pure(&ctor) {
         return None;
     }
 
+    // e.g. ["(ExprIsPure x)", "(ExprIsPure y)"]
     let children_pure_queries = ctor
         .fields()
         .iter()
@@ -35,6 +40,7 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
         .collect::<Vec<_>>()
         .join(" ");
 
+    // e.g. "(Add x y)"
     let ctor_pattern = format!("({ctor_pattern_without_parens})");
 
     let queries = iter::once(ctor_pattern.clone())
@@ -51,7 +57,7 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
 
 pub(crate) fn purity_analysis_rules() -> Vec<String> {
     let mut res: Vec<String> = vec![];
-    for sort in [Sort::Expr, Sort::ListExpr] {
+    for sort in ESort::iter() {
         let sort_name = sort.name();
         res.push(format!("(relation {sort_name}IsPure ({sort_name}))"));
     }

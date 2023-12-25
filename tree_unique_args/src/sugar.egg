@@ -12,3 +12,13 @@
              (All (Sequential) (Cons a (Cons b (Nil))))
              1)
          :ruleset desugar)
+
+(function NewLoop (i64 Expr Expr) Expr)
+(rewrite (NewLoop id in out)
+         (Loop id (DeepCopyExpr in id) (DeepCopyExpr out id))
+         :ruleset desugar)
+
+(function NewBody (i64 Expr Expr) Expr)
+(rewrite (NewBody id in out)
+         (Body id (DeepCopyExpr in id) (DeepCopyExpr out id))
+         :ruleset desugar)

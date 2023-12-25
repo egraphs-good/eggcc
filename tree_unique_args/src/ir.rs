@@ -1,6 +1,6 @@
 use strum_macros::EnumIter;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Sort {
     Expr,
     ListExpr,
@@ -76,6 +76,7 @@ pub(crate) enum Constructor {
 // Invariants of a valid term in the IR:
 // - A ReferencingId must match the nearest enclosing BindingId
 // - It must typecheck (see typechecker in interpreter.rs).
+#[derive(PartialEq)]
 pub(crate) enum Purpose {
     Static(Sort), // some int, bool, order that parameterizes constructor
     CapturingId,

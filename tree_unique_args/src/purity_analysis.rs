@@ -7,7 +7,7 @@ fn is_pure(ctor: &Constructor) -> bool {
     use Constructor::*;
     match ctor {
         Num | Boolean | UnitExpr | Add | Sub | Mul | LessThan | And | Or | Not | Get | All
-        | Switch | Loop | Body | Arg | Call | Cons | Nil => true,
+        | Switch | Loop | Let | Arg | Call | Cons | Nil => true,
         Print | Read | Write => false,
     }
 }

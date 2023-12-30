@@ -3,14 +3,17 @@ use std::iter;
 use crate::ir::{Constructor, ESort, Purpose, Sort};
 use strum::IntoEnumIterator;
 
-fn rules_for_ctor(ctor: Constructor) -> String {
-    ctor.filter_map_fields(|varying_field| match varying_field.purpose {
+fn rules_for_ctor(ctor: Constructor) -> Option<String> {
+    if ctor.sort() != ESort::Expr || ctor.creates_context() {
+        return None;
+    }
+    Some(ctor.filter_map_fields(|varying_field| match varying_field.purpose {
         Purpose::Static(_)
         | Purpose::CapturingId
         | Purpose::CapturedExpr
         | Purpose::ReferencingId => None,
         Purpose::SubExpr | Purpose::SubListExpr => {
-            if ctor.sort() == ESort::ListExpr || varying_field.sort() == Sort::ListExpr {
+            if varying_field.sort() == Sort::ListExpr {
                 return None;
             }
             let ctor_name = ctor.name();
@@ -65,7 +68,7 @@ fn rules_for_ctor(ctor: Constructor) -> String {
             ))
         }
     })
-    .join("\n")
+    .join("\n"))
 }
 
 pub(crate) fn rules() -> Vec<String> {
@@ -78,7 +81,7 @@ pub(crate) fn rules() -> Vec<String> {
         (rule ((Switch pred list)) ((DemandSameIgnoring list)) :ruleset always-run)"
             .to_string(),
     )
-    .chain(Constructor::iter().map(rules_for_ctor))
+    .chain(Constructor::iter().filter_map(rules_for_ctor))
     .collect::<Vec<_>>()
 }
 

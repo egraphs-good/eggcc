@@ -24,11 +24,7 @@ fn deep_copy_rule_for_ctor(ctor: Constructor) -> String {
 
     let sort = ctor.sort().name();
     let br = "\n      ";
-    let creates_context = ctor
-        .fields()
-        .iter()
-        .any(|field| field.purpose == Purpose::CapturingId);
-    let actions = if creates_context {
+    let actions = if ctor.creates_context() {
         format!("(let new-inner-id (i64-fresh!)){br} (union e {copied_ctor})")
     } else {
         format!("(union e {copied_ctor})")

@@ -1,5 +1,3 @@
-use std::iter;
-
 use crate::ir::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 
@@ -8,38 +6,23 @@ fn subst_rule_for_ctor(ctor: Constructor) -> String {
         return "(rewrite (SubstExpr (Arg id) v) v :ruleset always-run)".to_string();
     }
 
-    // e.g. "Add x y"
-    let ctor_pattern = iter::once(ctor.name())
-        .chain(ctor.fields().iter().map(|field| field.name))
-        .collect::<Vec<_>>()
-        .join(" ");
+    // e.g. "(Add x y)"
+    let ctor_pattern = ctor.construct(|field| field.name.to_string());
 
-    // e.g. ["(SubstExpr x v)", "(SubstExpr y v)"]
-    let substed_fields = ctor
-        .fields()
-        .iter()
-        .map(|field| match field.purpose {
-            Purpose::Static(_) | Purpose::CapturingId | Purpose::CapturedExpr => {
-                field.name.to_string()
-            }
-            Purpose::ReferencingId => panic!("arg case already handled"),
-            Purpose::SubExpr | Purpose::SubListExpr => {
-                let var = field.name;
-                let sort = field.sort().name();
-                format!("(Subst{sort} {var} v)")
-            }
-        })
-        .collect::<Vec<_>>();
-
-    // e.g. "Add (SubstExpr x v) (SubstExpr y v)"
-    let substed_ctor = iter::once(ctor.name().to_string())
-        .chain(substed_fields.into_iter())
-        .collect::<Vec<_>>()
-        .join(" ");
+    // e.g. "(Add (SubstExpr x v) (SubstExpr y v))"
+    let substed_ctor = ctor.construct(|field| match field.purpose {
+        Purpose::Static(_) | Purpose::CapturingId | Purpose::CapturedExpr => field.name.to_string(),
+        Purpose::ReferencingId => panic!("arg case already handled"),
+        Purpose::SubExpr | Purpose::SubListExpr => {
+            let var = field.name;
+            let sort = field.sort().name();
+            format!("(Subst{sort} {var} v)")
+        }
+    });
 
     let sort = ctor.sort().name();
     let br = "\n         ";
-    format!("(rewrite (Subst{sort} ({ctor_pattern}) v){br}({substed_ctor}){br}:ruleset always-run)")
+    format!("(rewrite (Subst{sort} {ctor_pattern} v){br}{substed_ctor}{br}:ruleset always-run)")
 }
 
 pub(crate) fn subst_rules() -> Vec<String> {

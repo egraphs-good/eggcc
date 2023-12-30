@@ -1,6 +1,6 @@
 use std::iter;
 
-use crate::ir::{Constructor, ESort, Purpose, Sort};
+use crate::ir::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 
 fn rules_for_ctor(ctor: Constructor) -> Option<String> {

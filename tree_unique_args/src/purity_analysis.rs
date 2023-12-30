@@ -47,13 +47,10 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
 }
 
 pub(crate) fn purity_analysis_rules() -> Vec<String> {
-    let mut res: Vec<String> = vec![];
-    for sort in ESort::iter() {
-        let sort_name = sort.name();
-        res.push(format!("(relation {sort_name}IsPure ({sort_name}))"));
-    }
-    res.extend(Constructor::iter().filter_map(purity_rule_for_ctor));
-    res
+    ESort::iter()
+        .map(|sort| "(relation *IsPure (*))".replace("*", sort.name()))
+        .chain(Constructor::iter().filter_map(purity_rule_for_ctor))
+        .collect::<Vec<_>>()
 }
 
 #[test]

@@ -13,10 +13,10 @@
 
 (function NewLoop (i64 Expr Expr) Expr)
 (rewrite (NewLoop id in out)
-         (Loop id (DeepCopyExpr in id) (DeepCopyExpr out id))
+         (Loop id in (DeepCopyExpr out id))
          :ruleset always-run)
 
 (function NewLet (i64 Expr Expr) Expr)
 (rewrite (NewLet id in out)
-         (Let id (DeepCopyExpr in id) (DeepCopyExpr out id))
+         (Let id in (DeepCopyExpr out id))
          :ruleset always-run)

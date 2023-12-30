@@ -49,7 +49,7 @@ fn deep_copy_rule_for_ctor(ctor: Constructor) -> String {
         format!("(union e ({copied_ctor}))")
     };
     format!(
-        "(rule ((= e (DeepCopy{sort} ({ctor_pattern}) new-id))){br}({actions}){br}:ruleset subst)"
+        "(rule ((= e (DeepCopy{sort} ({ctor_pattern}) new-id))){br}({actions}){br}:ruleset always-run)"
     )
 }
 
@@ -90,7 +90,7 @@ fn test_deep_copy() -> Result<(), egglog::Error> {
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
-            (Body id2
+            (Let id2
                 (All (Parallel) (Pair
                     (Add (Get (Arg id1) 0) (Num 1))
                     (Sub (Get (Arg id1) 1) (Num 1))))
@@ -105,12 +105,12 @@ fn test_deep_copy() -> Result<(), egglog::Error> {
             ; pred
             (LessThan (Get (Arg 3) 0) (Get (Arg 3) 1))
             ; output
-            (Body 4
+            (Let 4
                 (All (Parallel) (Pair
                     (Add (Get (Arg 3) 0) (Num 1))
                     (Sub (Get (Arg 3) 1) (Num 1))))
                 (Arg 4))))))
-(run-schedule (saturate desugar))
+(run-schedule (saturate always-run))
 (check (= loop-copied loop-copied-expected))
     ";
     crate::run_test(build, check)

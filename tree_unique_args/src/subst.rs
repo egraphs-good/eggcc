@@ -94,7 +94,7 @@ fn test_subst() -> Result<(), egglog::Error> {
             (All (Parallel) (Pair
                 (Add (Get (Arg id1) 0) (Num 1))
                 (Sub (Get (Arg id1) 1) (Num 1))))))))
-(run-schedule (saturate desugar))
+(run-schedule (saturate always-run))
 (check (= loop1-substed loop1-substed-expected))
     ";
     crate::run_test(build, check)

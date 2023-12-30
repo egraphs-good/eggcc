@@ -60,7 +60,7 @@ pub(crate) enum Constructor {
     All,
     Switch,
     Loop,
-    Body,
+    Let,
     Arg,
     Call,
     Cons,
@@ -71,7 +71,7 @@ pub(crate) enum Constructor {
 // - A ctor has one or more CapturedExpr fields iff it has exactly one
 //   CapturingId field. The CapturingId field corresponds to the context of the
 //   CapturedExpr field(s).
-//   * Note that this applies to body/loop ids, but not the id in an arg.
+//   * Note that this applies to let/loop ids, but not the id in an arg.
 //   * Note also that a call's function reference has purpose Static
 // Invariants of a valid term in the IR:
 // - A ReferencingId must match the nearest enclosing BindingId
@@ -129,7 +129,7 @@ impl Constructor {
             Constructor::All => "All",
             Constructor::Switch => "Switch",
             Constructor::Loop => "Loop",
-            Constructor::Body => "Body",
+            Constructor::Let => "Let",
             Constructor::Arg => "Arg",
             Constructor::Call => "Call",
             Constructor::Cons => "Cons",
@@ -164,7 +164,7 @@ impl Constructor {
                 f(SubExpr, "in"),
                 f(CapturedExpr, "pred-and-output"),
             ],
-            Constructor::Body => vec![
+            Constructor::Let => vec![
                 f(CapturingId, "id"),
                 f(SubExpr, "in"),
                 f(CapturedExpr, "out"),
@@ -197,7 +197,7 @@ impl Constructor {
             Constructor::All => ESort::Expr,
             Constructor::Switch => ESort::Expr,
             Constructor::Loop => ESort::Expr,
-            Constructor::Body => ESort::Expr,
+            Constructor::Let => ESort::Expr,
             Constructor::Arg => ESort::Expr,
             Constructor::Call => ESort::Expr,
             Constructor::Cons => ESort::ListExpr,

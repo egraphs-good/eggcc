@@ -5,7 +5,7 @@ use strum::IntoEnumIterator;
 
 fn subst_rule_for_ctor(ctor: Constructor) -> String {
     if ctor == Constructor::Arg {
-        return "(rewrite (SubstExpr (Arg id) v) v :ruleset subst)".to_string();
+        return "(rewrite (SubstExpr (Arg id) v) v :ruleset always-run)".to_string();
     }
 
     // e.g. "Add x y"
@@ -39,7 +39,7 @@ fn subst_rule_for_ctor(ctor: Constructor) -> String {
 
     let sort = ctor.sort().name();
     let br = "\n         ";
-    format!("(rewrite (Subst{sort} ({ctor_pattern}) v){br}({substed_ctor}){br}:ruleset subst)")
+    format!("(rewrite (Subst{sort} ({ctor_pattern}) v){br}({substed_ctor}){br}:ruleset always-run)")
 }
 
 pub(crate) fn subst_rules() -> Vec<String> {

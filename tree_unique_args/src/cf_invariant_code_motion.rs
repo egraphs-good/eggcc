@@ -8,14 +8,8 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
         return None;
     }
     Some(ctor.filter_map_fields(|varying_field| match varying_field.purpose {
-        Purpose::Static(_)
-        | Purpose::CapturingId
-        | Purpose::CapturedExpr
-        | Purpose::ReferencingId => None,
-        Purpose::SubExpr | Purpose::SubListExpr => {
-            if varying_field.sort() == Sort::ListExpr {
-                return None;
-            }
+        Purpose::Static(_) | Purpose::CapturingId | Purpose::CapturedExpr | Purpose::ReferencingId | Purpose::SubListExpr => None,
+        Purpose::SubExpr  => {
             let ctor_name = ctor.name();
             let varying_field_name = varying_field.name;
             let relation = format!("Same{ctor_name}Ignoring-{varying_field_name}");

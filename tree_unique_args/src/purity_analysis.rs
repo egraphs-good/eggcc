@@ -15,7 +15,7 @@ fn is_pure(ctor: &Constructor) -> bool {
 // Builds rules like:
 // (rule ((Add x y) (ExprIsPure x) (ExprIsPure y))
 //       ((ExprIsPure (Add x y)))
-//       :ruleset fast-analyses)
+//       :ruleset always-run)
 fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
     if !is_pure(&ctor) {
         return None;
@@ -51,7 +51,7 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let sort = ctor.sort().name();
     let br = "\n      ";
     Some(format!(
-        "(rule ({queries}){br}(({sort}IsPure {ctor_pattern})){br}:ruleset fast-analyses)"
+        "(rule ({queries}){br}(({sort}IsPure {ctor_pattern})){br}:ruleset always-run)"
     ))
 }
 

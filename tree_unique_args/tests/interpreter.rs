@@ -27,7 +27,7 @@ pub enum Expr {
     All(Order, Vec<Expr>),
     Switch(Box<Expr>, Vec<Expr>),
     Loop(Id, Box<Expr>, Box<Expr>),
-    Body(Id, Box<Expr>, Box<Expr>),
+    Let(Id, Box<Expr>, Box<Expr>),
     Arg(Id),
     // TODO: call and functions
 }
@@ -142,7 +142,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
             }
             Ok(input_ty)
         }
-        Expr::Body(_, input, output) => {
+        Expr::Let(_, input, output) => {
             let input_ty = typecheck(input, arg_ty)?;
             typecheck(output, &Some(input_ty.clone()))
         }
@@ -222,7 +222,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             }
             vals
         }
-        Expr::Body(_, input, output) => {
+        Expr::Let(_, input, output) => {
             let vals = interpret(input, arg, vm);
             interpret(output, &Some(vals.clone()), vm)
         }

@@ -41,10 +41,19 @@
     (= aid (Id-Of a)))
   ((union (Id-Of (bor a b)) aid))
   :ruleset analyses)
+(rule ((bnot a)
+    (= aid (Id-Of a)))
+  ((union (Id-Of (bnot a)) aid))
+  :ruleset analyses)
 
 (rule ((PRINT a b)
     (= aid (Id-Of a)))
   ((union (Id-Of (PRINT a b)) aid))
+  :ruleset analyses)
+
+(rule ((Call name a)
+    (= aid (Id-Of a)))
+  ((union (Id-Of (Call name a)) aid))
   :ruleset analyses)
 
 (rule ((Loop id a b c)

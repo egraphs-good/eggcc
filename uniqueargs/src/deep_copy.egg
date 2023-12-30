@@ -13,6 +13,7 @@
 (rewrite (DeepCopy (blt  a b) id) (blt  (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
 (rewrite (DeepCopy (band a b) id) (band (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
 (rewrite (DeepCopy (bor  a b) id) (bor  (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
+(rewrite (DeepCopy (bnot   a) id) (bnot (DeepCopy a id))                 :ruleset repairs)
 
 (rewrite (DeepCopy (PRINT a b) id) (PRINT (DeepCopy a id) (DeepCopy b id)) :ruleset repairs)
 

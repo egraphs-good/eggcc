@@ -1,0 +1,72 @@
+(datatype Expr)
+(datatype ListExpr (Cons Expr ListExpr) (Nil))
+
+; ==========================
+; Pure operators
+; ==========================
+
+(function Num (i64) Expr)
+(function Boolean (bool) Expr)
+(function UnitExpr () Expr) ; Unit is already an egglog sort
+(function Add (Expr Expr) Expr)
+(function Sub (Expr Expr) Expr)
+(function Mul (Expr Expr) Expr)
+(function LessThan (Expr Expr) Expr)
+(function And (Expr Expr) Expr)
+(function Or (Expr Expr) Expr)
+(function Not (Expr) Expr)
+(function Get (Expr i64) Expr) ; gets from a tuple. static index
+
+; ==========================
+; Effectful operators
+; ==========================
+
+;                value      unit
+(function Print (Expr)      Expr)
+;                addr       value
+(function Read  (Expr)      Expr)
+;                addr value unit
+(function Write (Expr Expr) Expr)
+
+; ==========================
+; Control flow operators
+; ==========================
+
+(datatype Order (Parallel) (Sequential))
+
+; Perform a list of operations. Only way to create a tuple!
+(function All (Order ListExpr) Expr)
+
+; Switch on a list of lazily-evaluated branches. Doesn't create context
+;                 pred branches chosen
+(function Switch (Expr ListExpr)    Expr)
+
+; ==========================
+; Regions
+; ==========================
+
+; pred and output are evaluated inside the loop's context
+; input and output may or may not be a tuples. pred must be boolean.
+; 
+;               id  input (pred, output) tuple
+(function Loop (i64 Expr  Expr)  Expr)
+
+;               id  input output
+(function Let (i64 Expr  Expr) Expr)
+
+; Arg gets the input of a region or the parameter of a function
+(function Arg (i64) Expr)
+
+; ==========================
+; Functions
+; ==========================
+
+;                   f   output
+(relation Function (i64 Expr))
+
+;               f   arg
+(function Call (i64 Expr) Expr)
+
+;; Rulesets
+(ruleset always-run)
+(ruleset error-checking)

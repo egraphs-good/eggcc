@@ -1,13 +1,12 @@
 // Rust test modules
 // If you don't put your Rust file here it won't get compiled!
-mod switch_rewrites;
-mod subst;
-mod loop_strength_reduction;
-mod function_inlining;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
-pub fn main() -> () {}
+// Might be useful for typechecking?
+fn main() -> Result {
+    run_test("", "")
+}
 
 pub fn run_test(build: &str, check: &str) -> Result {
     let program = format!(
@@ -15,16 +14,8 @@ pub fn run_test(build: &str, check: &str) -> Result {
         vec![
             include_str!("schema.egg"),
             // analyses
-            include_str!("fast_analyses.egg"),
-            include_str!("id_analysis.egg"),
             // repairs
-            include_str!("util.egg"),
-            include_str!("deep_copy.egg"),
-            include_str!("subst.egg"),
             // optimizations
-            include_str!("switch_rewrites.egg"),
-            include_str!("loop_strength_reduction.egg"),
-            include_str!("function_inlining.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

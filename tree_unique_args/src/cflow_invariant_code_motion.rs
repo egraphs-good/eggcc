@@ -57,14 +57,14 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
                        (= list (Cons {ctor_pattern1} rest)))
                       ((union (All order- list)
                               {resulting_all}))
-                      :ruleset lift-through-control-flow)
+                      :ruleset control-flow-invariant-code-motion)
                 (rule ((Switch pred- list)
                        ({relation} list)
                        ; Bind non-varying field(s)
                        (= list (Cons {ctor_pattern1} rest)))
                       ((union (Switch pred- list)
                               {resulting_switch}))
-                      :ruleset lift-through-control-flow)"
+                      :ruleset control-flow-invariant-code-motion)"
             ))
         }
     })
@@ -74,7 +74,7 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
 pub(crate) fn rules() -> Vec<String> {
     iter::once(
         "
-        (ruleset lift-through-control-flow)
+        (ruleset control-flow-invariant-code-motion)
         (relation DemandSameIgnoring (ListExpr))
         (rule ((DemandSameIgnoring (Cons hd tl))) ((DemandSameIgnoring tl)) :ruleset always-run)
         (rule ((All order list)) ((DemandSameIgnoring list)) :ruleset always-run)

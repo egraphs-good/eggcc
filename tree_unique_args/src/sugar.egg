@@ -1,4 +1,4 @@
-; Functoins useful for writing tests, but should not be matched on
+; Functions useful for writing tests and actions, but should not be matched on
 (function Pair (Expr Expr) ListExpr)
 (rewrite (Pair a b)
          (Cons a (Cons b (Nil)))

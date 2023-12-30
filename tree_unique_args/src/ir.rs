@@ -23,7 +23,7 @@ impl Sort {
 }
 
 // Subset of sorts that refer to expressions
-#[derive(EnumIter)]
+#[derive(EnumIter, PartialEq)]
 pub(crate) enum ESort {
     Expr,
     ListExpr,
@@ -100,6 +100,7 @@ impl Purpose {
     }
 }
 
+#[derive(PartialEq)]
 pub(crate) struct Field {
     pub purpose: Purpose,
     pub name: &'static str,

@@ -1,5 +1,6 @@
 // Rust test modules
 // If you don't put your Rust file here it won't get compiled!
+pub(crate) mod cflow_invariant_code_motion;
 pub(crate) mod deep_copy;
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
@@ -23,6 +24,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &deep_copy::deep_copy_rules().join("\n"),
             // repairs
             // optimizations
+            &cflow_invariant_code_motion::rules().join("\n"),
             // sugar
             include_str!("sugar.egg"),
         ]

@@ -52,7 +52,7 @@
 (function Loop (i64 Expr  Expr)  Expr)
 
 ;               id  input output
-(function Body (i64 Expr  Expr) Expr)
+(function Let (i64 Expr  Expr) Expr)
 
 ; Arg gets the input of a region or the parameter of a function
 (function Arg (i64) Expr)
@@ -68,6 +68,5 @@
 (function Call (i64 Expr) Expr)
 
 ;; Rulesets
-(ruleset fast-analyses)
-(ruleset repairs)
-(ruleset subst)
+(ruleset always-run)
+(ruleset error-checking)

@@ -7,7 +7,7 @@ fn is_pure(ctor: &Constructor) -> bool {
     use Constructor::*;
     match ctor {
         Num | Boolean | UnitExpr | Add | Sub | Mul | LessThan | And | Or | Not | Get | All
-        | Switch | Loop | Body | Arg | Call | Cons | Nil => true,
+        | Switch | Loop | Let | Arg | Call | Cons | Nil => true,
         Print | Read | Write => false,
     }
 }
@@ -15,33 +15,24 @@ fn is_pure(ctor: &Constructor) -> bool {
 // Builds rules like:
 // (rule ((Add x y) (ExprIsPure x) (ExprIsPure y))
 //       ((ExprIsPure (Add x y)))
-//       :ruleset fast-analyses)
+//       :ruleset always-run)
 fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
     if !is_pure(&ctor) {
         return None;
     }
 
     // e.g. ["(ExprIsPure x)", "(ExprIsPure y)"]
-    let children_pure_queries = ctor
-        .fields()
-        .iter()
-        .filter_map(|field| match field.purpose {
-            Purpose::Static(_) | Purpose::CapturingId | Purpose::ReferencingId => None,
-            Purpose::SubExpr | Purpose::SubListExpr | Purpose::CapturedExpr => {
-                let var = field.name;
-                let sort = field.sort().name();
-                Some(format!("({sort}IsPure {var})"))
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let ctor_pattern_without_parens = iter::once(ctor.name())
-        .chain(ctor.fields().iter().map(|field| field.name))
-        .collect::<Vec<_>>()
-        .join(" ");
+    let children_pure_queries = ctor.filter_map_fields(|field| match field.purpose {
+        Purpose::Static(_) | Purpose::CapturingId | Purpose::ReferencingId => None,
+        Purpose::SubExpr | Purpose::SubListExpr | Purpose::CapturedExpr => {
+            let var = field.name;
+            let sort = field.sort().name();
+            Some(format!("({sort}IsPure {var})"))
+        }
+    });
 
     // e.g. "(Add x y)"
-    let ctor_pattern = format!("({ctor_pattern_without_parens})");
+    let ctor_pattern = ctor.construct(|field| field.name.to_string());
 
     let queries = iter::once(ctor_pattern.clone())
         .chain(children_pure_queries)
@@ -51,7 +42,7 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let sort = ctor.sort().name();
     let br = "\n      ";
     Some(format!(
-        "(rule ({queries}){br}(({sort}IsPure {ctor_pattern})){br}:ruleset fast-analyses)"
+        "(rule ({queries}){br}(({sort}IsPure {ctor_pattern})){br}:ruleset always-run)"
     ))
 }
 

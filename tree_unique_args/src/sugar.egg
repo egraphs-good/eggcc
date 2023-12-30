@@ -1,24 +1,22 @@
 ; Functoins useful for writing tests, but should not be matched on
-(ruleset desugar)
-
 (function Pair (Expr Expr) ListExpr)
 (rewrite (Pair a b)
          (Cons a (Cons b (Nil)))
-         :ruleset desugar)
+         :ruleset always-run)
 
 (function IgnoreFirst (Expr Expr) Expr)
 (rewrite (IgnoreFirst a b)
          (Get
              (All (Sequential) (Cons a (Cons b (Nil))))
              1)
-         :ruleset desugar)
+         :ruleset always-run)
 
 (function NewLoop (i64 Expr Expr) Expr)
 (rewrite (NewLoop id in out)
          (Loop id (DeepCopyExpr in id) (DeepCopyExpr out id))
-         :ruleset desugar)
+         :ruleset always-run)
 
-(function NewBody (i64 Expr Expr) Expr)
-(rewrite (NewBody id in out)
-         (Body id (DeepCopyExpr in id) (DeepCopyExpr out id))
-         :ruleset desugar)
+(function NewLet (i64 Expr Expr) Expr)
+(rewrite (NewLet id in out)
+         (Let id (DeepCopyExpr in id) (DeepCopyExpr out id))
+         :ruleset always-run)

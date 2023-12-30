@@ -1,3 +1,4 @@
+use std::iter;
 use strum_macros::EnumIter;
 
 #[derive(Clone, Copy, Debug)]
@@ -176,6 +177,24 @@ impl Constructor {
             }
             Constructor::Nil => vec![],
         }
+    }
+
+    pub(crate) fn filter_map_fields<F, T>(&self, f: F) -> Vec<T>
+    where
+        F: FnMut(&Field) -> Option<T>,
+    {
+        self.fields().iter().filter_map(f).collect::<Vec<_>>()
+    }
+
+    pub(crate) fn construct<F>(&self, f: F) -> String
+    where
+        F: FnMut(&Field) -> &str,
+    {
+        let without_parens = iter::once(self.name())
+            .chain(self.fields().iter().map(f))
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!("({without_parens})")
     }
 
     pub(crate) fn sort(&self) -> ESort {

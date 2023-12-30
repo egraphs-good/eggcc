@@ -22,26 +22,17 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
     }
 
     // e.g. ["(ExprIsPure x)", "(ExprIsPure y)"]
-    let children_pure_queries = ctor
-        .fields()
-        .iter()
-        .filter_map(|field| match field.purpose {
-            Purpose::Static(_) | Purpose::CapturingId | Purpose::ReferencingId => None,
-            Purpose::SubExpr | Purpose::SubListExpr | Purpose::CapturedExpr => {
-                let var = field.name;
-                let sort = field.sort().name();
-                Some(format!("({sort}IsPure {var})"))
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let ctor_pattern_without_parens = iter::once(ctor.name())
-        .chain(ctor.fields().iter().map(|field| field.name))
-        .collect::<Vec<_>>()
-        .join(" ");
+    let children_pure_queries = ctor.filter_map_fields(|field| match field.purpose {
+        Purpose::Static(_) | Purpose::CapturingId | Purpose::ReferencingId => None,
+        Purpose::SubExpr | Purpose::SubListExpr | Purpose::CapturedExpr => {
+            let var = field.name;
+            let sort = field.sort().name();
+            Some(format!("({sort}IsPure {var})"))
+        }
+    });
 
     // e.g. "(Add x y)"
-    let ctor_pattern = format!("({ctor_pattern_without_parens})");
+    let ctor_pattern = ctor.construct(|field| field.name);
 
     let queries = iter::once(ctor_pattern.clone())
         .chain(children_pure_queries)

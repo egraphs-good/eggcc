@@ -32,7 +32,7 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
     });
 
     // e.g. "(Add x y)"
-    let ctor_pattern = ctor.construct(|field| field.name);
+    let ctor_pattern = ctor.construct(|field| field.name.to_string());
 
     let queries = iter::once(ctor_pattern.clone())
         .chain(children_pure_queries)

@@ -188,9 +188,9 @@ impl Constructor {
 
     pub(crate) fn construct<F>(&self, f: F) -> String
     where
-        F: FnMut(&Field) -> &str,
+        F: FnMut(&Field) -> String,
     {
-        let without_parens = iter::once(self.name())
+        let without_parens = iter::once(self.name().to_string())
             .chain(self.fields().iter().map(f))
             .collect::<Vec<_>>()
             .join(" ");

@@ -26,15 +26,10 @@ fn subst_rule_for_ctor(ctor: Constructor) -> String {
 }
 
 pub(crate) fn subst_rules() -> Vec<String> {
-    let mut res: Vec<String> = vec![];
-    for sort in ESort::iter() {
-        let sort_name = sort.name();
-        res.push(format!(
-            "(function Subst{sort_name} ({sort_name} Expr) {sort_name})"
-        ));
-    }
-    res.extend(Constructor::iter().map(subst_rule_for_ctor));
-    res
+    ESort::iter()
+        .map(|sort| "(function Subst* (* Expr) * :unextractable)".replace("*", sort.name()))
+        .chain(Constructor::iter().map(subst_rule_for_ctor))
+        .collect::<Vec<_>>()
 }
 
 // We use field names as var names, and bind "v" to the value being substituted

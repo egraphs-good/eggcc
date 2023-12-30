@@ -35,15 +35,10 @@ fn deep_copy_rule_for_ctor(ctor: Constructor) -> String {
 }
 
 pub(crate) fn deep_copy_rules() -> Vec<String> {
-    let mut res: Vec<String> = vec![];
-    for sort in ESort::iter() {
-        let sort_name = sort.name();
-        res.push(format!(
-            "(function DeepCopy{sort_name} ({sort_name} i64) {sort_name} :unextractable)"
-        ));
-    }
-    res.extend(Constructor::iter().map(deep_copy_rule_for_ctor));
-    res
+    ESort::iter()
+        .map(|sort| "(function DeepCopy* (* i64) * :unextractable)".replace("*", sort.name()))
+        .chain(Constructor::iter().map(deep_copy_rule_for_ctor))
+        .collect::<Vec<_>>()
 }
 
 // We use field names as var names, and bind "v" to the value being substituted

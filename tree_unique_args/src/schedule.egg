@@ -2,8 +2,5 @@
 
 (run-schedule
   (repeat 5
-    (saturate desugar)
-    (saturate fast-analyses)
-    (run)
-    (saturate subst)
-    (saturate repairs)))
+    (saturate always-run)
+    ))

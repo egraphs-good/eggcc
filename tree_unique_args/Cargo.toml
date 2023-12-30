@@ -1,0 +1,10 @@
+[package]
+name = "tree_unique_args"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# add fresh i64 branch
+egglog = { git = "https://github.com/oflatt/egg-smol", rev = "057725d9353727d831c90c7f8fdd76954d06b351" }

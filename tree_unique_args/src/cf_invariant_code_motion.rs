@@ -17,7 +17,7 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
                 if field == varying_field {
                     varying_field_pat.clone()
                 } else {
-                    field.name.to_string()
+                    field.var()
                 }
             });
             let ctor_pattern1 = mk_pattern("e1".to_string());
@@ -84,7 +84,7 @@ fn var_names_available() {
     for ctor in Constructor::iter() {
         for field in ctor.fields() {
             for var_name in ["e", "e1", "e2", "rest", "list", "pred-", "order-"] {
-                assert_ne!(field.name, var_name);
+                assert_ne!(field.var(), var_name);
             }
         }
     }

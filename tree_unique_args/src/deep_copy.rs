@@ -3,20 +3,20 @@ use strum::IntoEnumIterator;
 
 fn deep_copy_rule_for_ctor(ctor: Constructor) -> String {
     // e.g. "(Add x y)"
-    let ctor_pattern = ctor.construct(|field| field.name.to_string());
+    let ctor_pattern = ctor.construct(|field| field.var());
 
     // e.g. "(Add (DeepCopyExpr x new-id)", "(DeepCopyExpr y new-id))"
     let copied_ctor = ctor.construct(|field| match field.purpose {
         Purpose::CapturingId => "new-inner-id".to_string(),
-        Purpose::Static(_) => field.name.to_string(),
+        Purpose::Static(_) => field.var(),
         Purpose::CapturedExpr => {
-            let var = field.name;
+            let var = field.var();
             let sort = field.sort().name();
             format!("(DeepCopy{sort} {var} new-inner-id)")
         }
         Purpose::ReferencingId => "new-id".to_string(),
         Purpose::SubExpr | Purpose::SubListExpr => {
-            let var = field.name;
+            let var = field.var();
             let sort = field.sort().name();
             format!("(DeepCopy{sort} {var} new-id)")
         }

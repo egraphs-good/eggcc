@@ -229,6 +229,12 @@ impl Constructor {
             Constructor::Nil => ESort::ListExpr,
         }
     }
+
+    pub(crate) fn creates_context(&self) -> bool {
+        self.fields()
+            .iter()
+            .any(|field| field.purpose == Purpose::CapturingId)
+    }
 }
 
 #[cfg(test)]

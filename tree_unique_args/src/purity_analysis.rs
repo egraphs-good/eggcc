@@ -25,14 +25,14 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let children_pure_queries = ctor.filter_map_fields(|field| match field.purpose {
         Purpose::Static(_) | Purpose::CapturingId | Purpose::ReferencingId => None,
         Purpose::SubExpr | Purpose::SubListExpr | Purpose::CapturedExpr => {
-            let var = field.name;
+            let var = field.var();
             let sort = field.sort().name();
             Some(format!("({sort}IsPure {var})"))
         }
     });
 
     // e.g. "(Add x y)"
-    let ctor_pattern = ctor.construct(|field| field.name.to_string());
+    let ctor_pattern = ctor.construct(|field| field.var());
 
     let queries = iter::once(ctor_pattern.clone())
         .chain(children_pure_queries)

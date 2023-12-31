@@ -68,7 +68,7 @@ pub(crate) enum Constructor {
     Nil,
 }
 
-// The constructor fields must purposes such that this is maintained:
+// The constructor fields must have purposes such that this is maintained:
 // - A ctor has one or more CapturedExpr fields iff it has exactly one
 //   CapturingId field. The CapturingId field corresponds to the context of the
 //   CapturedExpr field(s).

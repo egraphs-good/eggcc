@@ -1,7 +1,7 @@
 use std::iter;
 use strum_macros::EnumIter;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Sort {
     Expr,
     ListExpr,
@@ -23,7 +23,7 @@ impl Sort {
 }
 
 // Subset of sorts that refer to expressions
-#[derive(EnumIter)]
+#[derive(Debug, EnumIter, PartialEq)]
 pub(crate) enum ESort {
     Expr,
     ListExpr,
@@ -42,7 +42,7 @@ impl ESort {
     }
 }
 
-#[derive(Clone, Copy, EnumIter, PartialEq)]
+#[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
 pub(crate) enum Constructor {
     Num,
     Boolean,
@@ -77,6 +77,7 @@ pub(crate) enum Constructor {
 // Invariants of a valid term in the IR:
 // - A ReferencingId must match the nearest enclosing BindingId
 // - It must typecheck (see typechecker in interpreter.rs).
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Purpose {
     Static(Sort), // some int, bool, order that parameterizes constructor
     CapturingId,
@@ -99,6 +100,7 @@ impl Purpose {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Field {
     pub purpose: Purpose,
     pub name: &'static str,
@@ -107,6 +109,10 @@ pub(crate) struct Field {
 impl Field {
     pub(crate) fn sort(&self) -> Sort {
         self.purpose.to_sort()
+    }
+
+    pub(crate) fn var(&self) -> String {
+        format!("_{name}", name = self.name)
     }
 }
 

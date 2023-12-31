@@ -2,6 +2,7 @@
 // If you don't put your Rust file here it won't get compiled!
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
+pub(crate) mod subst;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
@@ -18,6 +19,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("sugar.egg"),
             // analyses
             &purity_analysis::purity_analysis_rules().join("\n"),
+            &subst::subst_rules().join("\n"),
             // repairs
             // optimizations
         ]

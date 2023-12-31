@@ -1,0 +1,12 @@
+; Functions useful for writing tests and actions, but should not be matched on
+(function Pair (Expr Expr) ListExpr)
+(rewrite (Pair a b)
+         (Cons a (Cons b (Nil)))
+         :ruleset always-run)
+
+(function IgnoreFirst (Expr Expr) Expr)
+(rewrite (IgnoreFirst a b)
+         (Get
+             (All (Sequential) (Cons a (Cons b (Nil))))
+             1)
+         :ruleset always-run)

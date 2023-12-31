@@ -41,8 +41,6 @@ pub(crate) fn deep_copy_rules() -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
-// We use field names as var names, and bind "v" to the value being substituted
-// in, so this test checks we don't overlap/add extra equality constraints
 #[test]
 fn var_names_available() {
     for ctor in Constructor::iter() {

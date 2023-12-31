@@ -7,14 +7,14 @@ fn subst_rule_for_ctor(ctor: Constructor) -> String {
     }
 
     // e.g. "(Add x y)"
-    let ctor_pattern = ctor.construct(|field| field.name.to_string());
+    let ctor_pattern = ctor.construct(|field| field.var());
 
     // e.g. "(Add (SubstExpr x v) (SubstExpr y v))"
     let substed_ctor = ctor.construct(|field| match field.purpose {
-        Purpose::Static(_) | Purpose::CapturingId | Purpose::CapturedExpr => field.name.to_string(),
+        Purpose::Static(_) | Purpose::CapturingId | Purpose::CapturedExpr => field.var(),
         Purpose::ReferencingId => panic!("arg case already handled"),
         Purpose::SubExpr | Purpose::SubListExpr => {
-            let var = field.name;
+            let var = field.var();
             let sort = field.sort().name();
             format!("(Subst{sort} {var} v)")
         }
@@ -38,7 +38,7 @@ pub(crate) fn subst_rules() -> Vec<String> {
 fn var_names_available() {
     for ctor in Constructor::iter() {
         for field in ctor.fields() {
-            assert_ne!(field.name, "v");
+            assert_ne!(field.var(), "v");
         }
     }
 }

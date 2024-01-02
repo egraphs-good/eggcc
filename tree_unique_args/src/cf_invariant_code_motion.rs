@@ -22,8 +22,8 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
             });
             let ctor_pattern1 = mk_pattern("e1".to_string());
             let ctor_pattern2 = mk_pattern("e2".to_string());
-            let resulting_switch = mk_pattern(format!("(Switch pred- (Map-{ctor_name}-{varying_field_name} list))"));
-            let resulting_all = mk_pattern(format!("(All order- (Map-{ctor_name}-{varying_field_name} list))"));
+            let resulting_switch = mk_pattern(format!("(Switch pred (Map-{ctor_name}-{varying_field_name} exprs))"));
+            let resulting_all = mk_pattern(format!("(All order (Map-{ctor_name}-{varying_field_name} exprs))"));
             Some(format!(
                 "
                 ; Compute {relation}, which detects opportunities for lifting
@@ -45,18 +45,18 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
                          :ruleset always-run)
 
                 ; Lift {ctor_name} when only {varying_field_name} varies
-                (rule ((All order- list)
-                       ({relation} list)
+                (rule ((All order exprs)
+                       ({relation} exprs)
                        ; Bind non-varying field(s)
                        (= list (Cons {ctor_pattern1} rest)))
-                      ((union (All order- list)
+                      ((union (All order exprs)
                               {resulting_all}))
                       :ruleset control-flow-invariant-code-motion)
-                (rule ((Switch pred- list)
-                       ({relation} list)
+                (rule ((Switch pred exprs)
+                       ({relation} exprs)
                        ; Bind non-varying field(s)
                        (= list (Cons {ctor_pattern1} rest)))
-                      ((union (Switch pred- list)
+                      ((union (Switch pred exprs)
                               {resulting_switch}))
                       :ruleset control-flow-invariant-code-motion)"
             ))
@@ -71,8 +71,8 @@ pub(crate) fn rules() -> Vec<String> {
         (ruleset control-flow-invariant-code-motion)
         (relation DemandSameIgnoring (ListExpr))
         (rule ((DemandSameIgnoring (Cons hd tl))) ((DemandSameIgnoring tl)) :ruleset always-run)
-        (rule ((All order list)) ((DemandSameIgnoring list)) :ruleset always-run)
-        (rule ((Switch pred list)) ((DemandSameIgnoring list)) :ruleset always-run)"
+        (rule ((All order exprs)) ((DemandSameIgnoring exprs)) :ruleset always-run)
+        (rule ((Switch pred exprs)) ((DemandSameIgnoring exprs)) :ruleset always-run)"
             .to_string(),
     )
     .chain(Constructor::iter().filter_map(rules_for_ctor))
@@ -83,7 +83,7 @@ pub(crate) fn rules() -> Vec<String> {
 fn var_names_available() {
     for ctor in Constructor::iter() {
         for field in ctor.fields() {
-            for var_name in ["e", "e1", "e2", "rest", "list", "pred-", "order-"] {
+            for var_name in ["e", "e1", "e2", "rest", "pred", "order", "exprs"] {
                 assert_ne!(field.var(), var_name);
             }
         }

@@ -396,8 +396,8 @@ impl SimpleCfgFunction {
                 let target: NodeIndex = edge.target();
                 let branch = edge.weight();
                 let BranchOp::Jmp = branch.op else {
-                            panic!("Unexpected branch type");
-                        };
+                    panic!("Unexpected branch type");
+                };
                 SimpleBranch::Jmp(self.graph[target].name.clone())
             }
             [edge1, edge2] => match (&edge1.weight().op, &edge2.weight().op) {

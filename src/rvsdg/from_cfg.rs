@@ -123,7 +123,9 @@ impl<'a> RvsdgBuilder<'a> {
                 .graph
                 .neighbors_directed(block, Direction::Incoming)
                 .find(|pred| {
-                    let Some(mut dom) = self.dom.dominators(*pred) else { return false; };
+                    let Some(mut dom) = self.dom.dominators(*pred) else {
+                        return false;
+                    };
                     dom.any(|n| n == block)
                 })
         };
@@ -142,7 +144,9 @@ impl<'a> RvsdgBuilder<'a> {
         let pos = self.cfg.graph[block].pos.clone();
         let mut arg = 0;
         for input in live_vars.live_in.iter() {
-            let Some(op) = self.store.get(&input).copied() else { continue; };
+            let Some(op) = self.store.get(&input).copied() else {
+                continue;
+            };
             input_vars.push(input);
             inputs.push(op);
             self.store.insert(input, Operand::Arg(arg));
@@ -290,7 +294,9 @@ impl<'a> RvsdgBuilder<'a> {
         let mut input_vars = Vec::with_capacity(live_vars.live_out.len());
         let mut output_vars = Vec::new();
         for var in live_vars.live_out.iter() {
-            let Some(op) = self.store.get(&var).copied() else { continue; };
+            let Some(op) = self.store.get(&var).copied() else {
+                continue;
+            };
             inputs.push(op);
             input_vars.push(var);
         }
@@ -311,7 +317,9 @@ impl<'a> RvsdgBuilder<'a> {
                     .graph
                     .neighbors_directed(curr, Direction::Incoming)
                     .filter(|neigh| {
-                        let Some(mut dom) = self.dom.dominators(*neigh) else { return true; };
+                        let Some(mut dom) = self.dom.dominators(*neigh) else {
+                            return true;
+                        };
                         !dom.any(|n| n == curr)
                     })
                     .nth(1)
@@ -327,7 +335,9 @@ impl<'a> RvsdgBuilder<'a> {
             let mut output_vec = Vec::new();
             let fill_output = output_vars.is_empty();
             for var in live_vars.live_in.iter() {
-                let Some(op) = self.store.get(&var).copied() else { continue; };
+                let Some(op) = self.store.get(&var).copied() else {
+                    continue;
+                };
                 output_vec.push(op);
                 if fill_output {
                     output_vars.push(var);

@@ -61,7 +61,7 @@ impl RvsdgTest {
         let results = result
             .map(|(t, s)| (RvsdgType::Bril(t), s))
             .into_iter()
-            .chain(state.map(|s| (RvsdgType::PrintState, s)).into_iter())
+            .chain(state.map(|s| (RvsdgType::PrintState, s)))
             .collect();
 
         RvsdgFunction {

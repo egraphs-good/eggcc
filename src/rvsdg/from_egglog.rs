@@ -22,7 +22,10 @@ impl<'a> RvsdgFromEgglog<'a> {
                 .collect::<Vec<_>>();
             let mut project_body = |n: &i64, body: &Term| {
                 let Term::App(bfunc, bargs) = body else {
-                    panic!("expected a body after project, got {}", self.termdag.to_string(body))
+                    panic!(
+                        "expected a body after project, got {}",
+                        self.termdag.to_string(body)
+                    )
                 };
                 let bargs = bargs
                     .iter()
@@ -70,8 +73,8 @@ impl<'a> RvsdgFromEgglog<'a> {
 
     fn expr_to_vec_vec_operand(&mut self, vec_vec: Term) -> Vec<Vec<Operand>> {
         let Term::App(func, args) = vec_vec else {
-        panic!("Expected a VVO, got {}", self.termdag.to_string(&vec_vec))
-      };
+            panic!("Expected a VVO, got {}", self.termdag.to_string(&vec_vec))
+        };
         let args = args
             .iter()
             .map(|t| self.termdag.get(*t))
@@ -295,10 +298,7 @@ impl RvsdgFunction {
 
                     let result_values = convert.expr_to_vec_operand(body.clone(), "VO");
 
-                    let results = result_types
-                        .into_iter()
-                        .zip(result_values.into_iter())
-                        .collect();
+                    let results = result_types.into_iter().zip(result_values).collect();
                     RvsdgFunction {
                         name: name.to_string(),
                         args,

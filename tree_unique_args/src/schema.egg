@@ -1,12 +1,15 @@
+; We could generate this from ir.rs, this manual version is just easier reference.
+
 (datatype Expr)
 (datatype ListExpr (Cons Expr ListExpr) (Nil))
 
 ; ==========================
 ; Pure operators
 ; ==========================
-
-(function Num (i64) Expr)
-(function Boolean (bool) Expr)
+;               id val
+(function Num (i64 i64) Expr)
+;                  id  val
+(function Boolean (i64 bool) Expr)
 (function UnitExpr () Expr) ; Unit is already an egglog sort
 (function Add (Expr Expr) Expr)
 (function Sub (Expr Expr) Expr)

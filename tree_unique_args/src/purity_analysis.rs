@@ -58,30 +58,31 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
     let build = &*format!(
         "
 (let id1 (i64-fresh!))
+(let id-outer (i64-fresh!))
 (let pure-loop
     (Loop id1
-        (All (Parallel) (Pair (Num 0) (Num 0)))
+        (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (All (Parallel) (Pair
-                (Add (Get (Arg id1) 0) (Num 1))
-                (Sub (Get (Arg id1) 1) (Num 1))))))))
+                (Add (Get (Arg id1) 0) (Num id1 1))
+                (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 
 (let id2 (i64-fresh!))
 (let impure-loop
     (Loop id2
-        (All (Parallel) (Pair (Num 0) (Num 0)))
+        (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id2) 0) (Get (Arg id2) 1))
             ; output
             (IgnoreFirst
-                (Print (Num 1))
+                (Print (Num id2 1))
                 (All (Parallel) (Pair
-                    (Add (Get (Arg id2) 0) (Num 1))
-                    (Sub (Get (Arg id2) 1) (Num 1)))))))))
+                    (Add (Get (Arg id2) 0) (Num id2 1))
+                    (Sub (Get (Arg id2) 1) (Num id2 1)))))))))
     "
     );
     let check = "

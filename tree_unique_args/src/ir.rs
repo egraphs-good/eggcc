@@ -148,8 +148,8 @@ impl Constructor {
         use Purpose::{CapturedExpr, CapturingId, ReferencingId, Static, SubExpr, SubListExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
-            Constructor::Num => vec![f(Static(Sort::I64), "n")],
-            Constructor::Boolean => vec![f(Static(Sort::Bool), "b")],
+            Constructor::Num => vec![f(ReferencingId, "id"), f(Static(Sort::I64), "n")],
+            Constructor::Boolean => vec![f(ReferencingId, "id"), f(Static(Sort::Bool), "b")],
             Constructor::UnitExpr => vec![],
             Constructor::Add => vec![f(SubExpr, "x"), f(SubExpr, "y")],
             Constructor::Sub => vec![f(SubExpr, "x"), f(SubExpr, "y")],

@@ -57,33 +57,34 @@ fn test_deep_copy() -> Result<(), egglog::Error> {
     let build = "
 (let id1 (i64-fresh!))
 (let id2 (i64-fresh!))
+(let id-outer (i64-fresh!))
 (let loop
     (Loop id1
-        (All (Parallel) (Pair (Arg id1) (Num 0)))
+        (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (Let id2
                 (All (Parallel) (Pair
-                    (Add (Get (Arg id1) 0) (Num 1))
-                    (Sub (Get (Arg id1) 1) (Num 1))))
+                    (Add (Get (Arg id1) 0) (Num id1 1))
+                    (Sub (Get (Arg id1) 1) (Num id1 1))))
                 (Arg id2))))))
 (let loop-copied (DeepCopyExpr loop (i64-fresh!)))
     ";
     let check = "
 (let loop-copied-expected
-    (Loop 3
-        (All (Parallel) (Pair (Arg 2) (Num 0)))
+    (Loop 4
+        (All (Parallel) (Pair (Arg 3) (Num 3 0)))
         (All (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg 3) 0) (Get (Arg 3) 1))
+            (LessThan (Get (Arg 4) 0) (Get (Arg 4) 1))
             ; output
-            (Let 4
+            (Let 5
                 (All (Parallel) (Pair
-                    (Add (Get (Arg 3) 0) (Num 1))
-                    (Sub (Get (Arg 3) 1) (Num 1))))
-                (Arg 4))))))
+                    (Add (Get (Arg 4) 0) (Num 4 1))
+                    (Sub (Get (Arg 4) 1) (Num 4 1))))
+                (Arg 5))))))
 (run-schedule (saturate always-run))
 (check (= loop-copied loop-copied-expected))
     ";

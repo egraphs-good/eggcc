@@ -284,7 +284,9 @@ impl LiveVariableAnalysis {
 
     /// Union pred's `live_out` set with succ's `live_in` set.
     fn union_out_in(&mut self, pred: NodeIndex, succ: NodeIndex) -> bool {
-        let Some([pred_state, succ_state]) = self.analysis.get_many_mut([&pred, &succ]) else { return false; };
+        let Some([pred_state, succ_state]) = self.analysis.get_many_mut([&pred, &succ]) else {
+            return false;
+        };
         pred_state.live_out.merge(&succ_state.live_in)
     }
 }

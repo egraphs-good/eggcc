@@ -150,9 +150,9 @@ impl Constructor {
         use Purpose::{CapturedExpr, CapturingId, ReferencingId, Static, SubExpr, SubListExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
-            Constructor::Num => vec![f(ReferencingId, "aid"), f(Static(Sort::I64), "n")],
-            Constructor::Boolean => vec![f(ReferencingId, "bid"), f(Static(Sort::Bool), "b")],
-            Constructor::UnitExpr => vec![f(ReferencingId, "cid")],
+            Constructor::Num => vec![f(ReferencingId, "id"), f(Static(Sort::I64), "n")],
+            Constructor::Boolean => vec![f(ReferencingId, "id"), f(Static(Sort::Bool), "b")],
+            Constructor::UnitExpr => vec![f(ReferencingId, "id")],
             Constructor::Add => vec![f(SubExpr, "x"), f(SubExpr, "y")],
             Constructor::Sub => vec![f(SubExpr, "x"), f(SubExpr, "y")],
             Constructor::Mul => vec![f(SubExpr, "x"), f(SubExpr, "y")],
@@ -169,16 +169,16 @@ impl Constructor {
             Constructor::All => vec![f(Static(Sort::Order), "order"), f(SubListExpr, "exprs")],
             Constructor::Switch => vec![f(SubExpr, "pred"), f(SubListExpr, "branches")],
             Constructor::Loop => vec![
-                f(CapturingId, "did"),
+                f(CapturingId, "id"),
                 f(SubExpr, "in"),
                 f(CapturedExpr, "pred-and-output"),
             ],
             Constructor::Let => vec![
-                f(CapturingId, "eid"),
+                f(CapturingId, "id"),
                 f(SubExpr, "in"),
                 f(CapturedExpr, "out"),
             ],
-            Constructor::Arg => vec![f(ReferencingId, "fid")],
+            Constructor::Arg => vec![f(ReferencingId, "id")],
             Constructor::Call => vec![f(Static(Sort::I64), "f"), f(SubExpr, "arg")],
             Constructor::Cons => {
                 vec![f(SubExpr, "hd"), f(SubListExpr, "tl")]

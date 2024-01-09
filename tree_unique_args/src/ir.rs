@@ -6,6 +6,7 @@ pub(crate) enum Sort {
     Expr,
     ListExpr,
     Order,
+    IdSort,
     I64,
     Bool,
 }
@@ -16,6 +17,7 @@ impl Sort {
             Sort::Expr => "Expr",
             Sort::ListExpr => "ListExpr",
             Sort::Order => "Order",
+            Sort::IdSort => "IdSort",
             Sort::I64 => "i64",
             Sort::Bool => "bool",
         }
@@ -90,8 +92,8 @@ pub(crate) enum Purpose {
 impl Purpose {
     pub(crate) fn to_sort(&self) -> Sort {
         match self {
-            Purpose::CapturingId => Sort::I64,
-            Purpose::ReferencingId => Sort::I64,
+            Purpose::CapturingId => Sort::IdSort,
+            Purpose::ReferencingId => Sort::IdSort,
             Purpose::SubExpr => Sort::Expr,
             Purpose::CapturedExpr => Sort::Expr,
             Purpose::SubListExpr => Sort::ListExpr,
@@ -148,9 +150,9 @@ impl Constructor {
         use Purpose::{CapturedExpr, CapturingId, ReferencingId, Static, SubExpr, SubListExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
-            Constructor::Num => vec![f(ReferencingId, "id"), f(Static(Sort::I64), "n")],
-            Constructor::Boolean => vec![f(ReferencingId, "id"), f(Static(Sort::Bool), "b")],
-            Constructor::UnitExpr => vec![],
+            Constructor::Num => vec![f(ReferencingId, "aid"), f(Static(Sort::I64), "n")],
+            Constructor::Boolean => vec![f(ReferencingId, "bid"), f(Static(Sort::Bool), "b")],
+            Constructor::UnitExpr => vec![f(ReferencingId, "cid")],
             Constructor::Add => vec![f(SubExpr, "x"), f(SubExpr, "y")],
             Constructor::Sub => vec![f(SubExpr, "x"), f(SubExpr, "y")],
             Constructor::Mul => vec![f(SubExpr, "x"), f(SubExpr, "y")],
@@ -167,16 +169,16 @@ impl Constructor {
             Constructor::All => vec![f(Static(Sort::Order), "order"), f(SubListExpr, "exprs")],
             Constructor::Switch => vec![f(SubExpr, "pred"), f(SubListExpr, "branches")],
             Constructor::Loop => vec![
-                f(CapturingId, "id"),
+                f(CapturingId, "did"),
                 f(SubExpr, "in"),
                 f(CapturedExpr, "pred-and-output"),
             ],
             Constructor::Let => vec![
-                f(CapturingId, "id"),
+                f(CapturingId, "eid"),
                 f(SubExpr, "in"),
                 f(CapturedExpr, "out"),
             ],
-            Constructor::Arg => vec![f(ReferencingId, "id")],
+            Constructor::Arg => vec![f(ReferencingId, "fid")],
             Constructor::Call => vec![f(Static(Sort::I64), "f"), f(SubExpr, "arg")],
             Constructor::Cons => {
                 vec![f(SubExpr, "hd"), f(SubListExpr, "tl")]

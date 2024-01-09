@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 
 fn subst_rule_for_ctor(ctor: Constructor) -> String {
     if ctor == Constructor::Arg {
-        return "(rewrite (SubstExpr (Arg id) v) v :ruleset always-run)".to_string();
+        return "(rewrite (SubstExpr (Arg (Id id)) v) v :ruleset always-run)".to_string();
     }
 
     // e.g. "(Add x y)"
@@ -49,8 +49,8 @@ fn var_names_available() {
 fn test_subst() -> Result<(), egglog::Error> {
     let build = &*format!(
         "
-(let id1 (i64-fresh!))
-(let id-outer (i64-fresh!))
+(let id1 (Id (i64-fresh!)))
+(let id-outer (Id (i64-fresh!)))
 (let loop1
     (Loop id1
         (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))

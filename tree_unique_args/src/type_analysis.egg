@@ -1,0 +1,155 @@
+(ruleset type-analysis)
+
+(datatype Type
+  (IntT)
+  (BoolT)
+  (UnitT)
+  (FuncT Type Type)
+)
+
+(relation HasTypeDemand (Expr))
+
+(relation HasType (Expr Type))
+
+; Primitives
+(rule ((HasTypeDemand (Num id n)))
+      ((HasType (Num id n) (IntT)))
+      :ruleset type-analysis)
+
+(rule ((HasTypeDemand (Boolean id b)))
+      ((HasType (Boolean id b) (BoolT)))
+      :ruleset type-analysis)
+
+(rule ((HasTypeDemand (UnitExpr id)))
+      ((HasType (UnitExpr id) (UnitT)))
+      :ruleset type-analysis)
+
+
+; Pure Op Demand
+(rule ((HasTypeDemand (Add x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Sub x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Mul x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (LessThan x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (And x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Or x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Not x)))
+      ((HasTypeDemand x))
+      :ruleset type-analysis)
+; TODO: Get from Tuple
+
+; Pure Op Compute
+(rule (
+       (HasTypeDemand (Add x y))
+       (HasType x (IntT))
+       (HasType y (IntT))
+      )
+      (
+       (HasType (Add x y) (IntT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Sub x y))
+       (HasType x (IntT))
+       (HasType y (IntT))
+      )
+      (
+       (HasType (Sub x y) (IntT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Mul x y))
+       (HasType x (IntT))
+       (HasType y (IntT))
+      )
+      (
+       (HasType (Mul x y) (IntT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (LessThan x y))
+       (HasType x (IntT))
+       (HasType y (IntT))
+      )
+      (
+       (HasType (LessThan x y) (BoolT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (And x y))
+       (HasType x (BoolT))
+       (HasType y (BoolT))
+      )
+      (
+       (HasType (And x y) (BoolT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Or x y))
+       (HasType x (BoolT))
+       (HasType y (BoolT))
+      )
+      (
+       (HasType (Or x y) (BoolT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Not x))
+       (HasType x (BoolT))
+      )
+      (
+       (HasType (Not x) (BoolT))
+      )
+      :ruleset type-analysis)
+
+
+; Effectful Ops
+(rule ((HasTypeDemand (Print e)))
+      ((HasType (Print e) (UnitT)))
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Write addr val)))
+      ((HasType (Write addr val) (UnitT)))
+      :ruleset type-analysis)
+;; TODO: Read??
+
+
+
+
+
+
+
+
+
+
+
+
+

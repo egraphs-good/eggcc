@@ -25,6 +25,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             // optimizations
             // sugar
             include_str!("sugar.egg"),
+            include_str!("type_analysis.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

@@ -46,6 +46,28 @@ fn var_names_available() {
 }
 
 #[test]
+fn type_analysis() -> Result<(), egglog::Error> {
+    let build = &*format!(
+        "
+        (let id1 (Id (i64-fresh!)))
+        (let id2 (Id (i64-fresh!)))
+        (let n (Add (Num id1 1) (Num id2 2)))
+        (let m (Mul n n))
+        (let x (LessThan m n))
+        (HasTypeDemand x)
+        "
+    );
+    let check = "
+    (run-schedule (saturate type-analysis))
+
+    (check (HasType n (IntT)))
+    (check (HasType m (IntT)))
+    (check (HasType x (BoolT)))
+    ";
+    crate::run_test(build, check)
+}
+
+#[test]
 fn test_subst() -> Result<(), egglog::Error> {
     let build = &*format!(
         "

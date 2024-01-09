@@ -25,7 +25,7 @@ fn deep_copy_rule_for_ctor(ctor: Constructor) -> String {
     let sort = ctor.sort().name();
     let br = "\n      ";
     let actions = if ctor.creates_context() {
-        format!("(let new-inner-id (i64-fresh!)){br} (union e {copied_ctor})")
+        format!("(let new-inner-id (Id (i64-fresh!))){br} (union e {copied_ctor})")
     } else {
         format!("(union e {copied_ctor})")
     };
@@ -36,7 +36,7 @@ fn deep_copy_rule_for_ctor(ctor: Constructor) -> String {
 
 pub(crate) fn deep_copy_rules() -> Vec<String> {
     ESort::iter()
-        .map(|sort| "(function DeepCopy* (* i64) * :unextractable)".replace("*", sort.name()))
+        .map(|sort| "(function DeepCopy* (* IdSort) * :unextractable)".replace("*", sort.name()))
         .chain(Constructor::iter().map(deep_copy_rule_for_ctor))
         .collect::<Vec<_>>()
 }
@@ -55,35 +55,36 @@ fn var_names_available() {
 #[test]
 fn test_deep_copy() -> Result<(), egglog::Error> {
     let build = "
-(let id1 (i64-fresh!))
-(let id2 (i64-fresh!))
+(let id1 (Id (i64-fresh!)))
+(let id2 (Id (i64-fresh!)))
+(let id-outer (Id (i64-fresh!)))
 (let loop
     (Loop id1
-        (All (Parallel) (Pair (Arg id1) (Num 0)))
+        (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (Let id2
                 (All (Parallel) (Pair
-                    (Add (Get (Arg id1) 0) (Num 1))
-                    (Sub (Get (Arg id1) 1) (Num 1))))
+                    (Add (Get (Arg id1) 0) (Num id1 1))
+                    (Sub (Get (Arg id1) 1) (Num id1 1))))
                 (Arg id2))))))
-(let loop-copied (DeepCopyExpr loop (i64-fresh!)))
+(let loop-copied (DeepCopyExpr loop (Id (i64-fresh!))))
     ";
     let check = "
 (let loop-copied-expected
-    (Loop 3
-        (All (Parallel) (Pair (Arg 2) (Num 0)))
+    (Loop (Id 4)
+        (All (Parallel) (Pair (Arg (Id 3)) (Num (Id 3) 0)))
         (All (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg 3) 0) (Get (Arg 3) 1))
+            (LessThan (Get (Arg (Id 4)) 0) (Get (Arg (Id 4)) 1))
             ; output
-            (Let 4
+            (Let (Id 5)
                 (All (Parallel) (Pair
-                    (Add (Get (Arg 3) 0) (Num 1))
-                    (Sub (Get (Arg 3) 1) (Num 1))))
-                (Arg 4))))))
+                    (Add (Get (Arg (Id 4)) 0) (Num (Id 4) 1))
+                    (Sub (Get (Arg (Id 4)) 1) (Num (Id 4) 1))))
+                (Arg (Id 5)))))))
 (run-schedule (saturate always-run))
 (check (= loop-copied loop-copied-expected))
     ";

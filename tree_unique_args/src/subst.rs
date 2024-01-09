@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 
 fn subst_rule_for_ctor(ctor: Constructor) -> String {
     if ctor == Constructor::Arg {
-        return "(rewrite (SubstExpr (Arg id) v) v :ruleset always-run)".to_string();
+        return "(rewrite (SubstExpr (Arg (Id id)) v) v :ruleset always-run)".to_string();
     }
 
     // e.g. "(Add x y)"
@@ -11,8 +11,10 @@ fn subst_rule_for_ctor(ctor: Constructor) -> String {
 
     // e.g. "(Add (SubstExpr x v) (SubstExpr y v))"
     let substed_ctor = ctor.construct(|field| match field.purpose {
-        Purpose::Static(_) | Purpose::CapturingId | Purpose::CapturedExpr => field.var(),
-        Purpose::ReferencingId => panic!("arg case already handled"),
+        Purpose::Static(_)
+        | Purpose::CapturingId
+        | Purpose::CapturedExpr
+        | Purpose::ReferencingId => field.var(),
         Purpose::SubExpr | Purpose::SubListExpr => {
             let var = field.var();
             let sort = field.sort().name();
@@ -47,31 +49,32 @@ fn var_names_available() {
 fn test_subst() -> Result<(), egglog::Error> {
     let build = &*format!(
         "
-(let id1 (i64-fresh!))
+(let id1 (Id (i64-fresh!)))
+(let id-outer (Id (i64-fresh!)))
 (let loop1
     (Loop id1
-        (All (Parallel) (Pair (Arg id1) (Num 0)))
+        (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (All (Parallel) (Pair
-                (Add (Get (Arg id1) 0) (Num 1))
-                (Sub (Get (Arg id1) 1) (Num 1))))))))
-(let loop1-substed (SubstExpr loop1 (Num 7)))
+                (Add (Get (Arg id1) 0) (Num id1 1))
+                (Sub (Get (Arg id1) 1) (Num id1 1))))))))
+(let loop1-substed (SubstExpr loop1 (Num id-outer 7)))
     "
     );
     let check = "
 (let loop1-substed-expected
     (Loop id1
-        (All (Parallel) (Pair (Num 7) (Num 0)))
+        (All (Parallel) (Pair (Num id-outer 7) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (All (Parallel) (Pair
-                (Add (Get (Arg id1) 0) (Num 1))
-                (Sub (Get (Arg id1) 1) (Num 1))))))))
+                (Add (Get (Arg id1) 0) (Num id1 1))
+                (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (run-schedule (saturate always-run))
 (check (= loop1-substed loop1-substed-expected))
     ";

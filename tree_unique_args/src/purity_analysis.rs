@@ -57,8 +57,8 @@ pub(crate) fn purity_analysis_rules() -> Vec<String> {
 fn test_purity_analysis() -> Result<(), egglog::Error> {
     let build = &*format!(
         "
-(let id1 (i64-fresh!))
-(let id-outer (i64-fresh!))
+(let id1 (Id (i64-fresh!)))
+(let id-outer (Id (i64-fresh!)))
 (let pure-loop
     (Loop id1
         (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
@@ -70,7 +70,7 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
                 (Add (Get (Arg id1) 0) (Num id1 1))
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 
-(let id2 (i64-fresh!))
+(let id2 (Id (i64-fresh!)))
 (let impure-loop
     (Loop id2
         (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))

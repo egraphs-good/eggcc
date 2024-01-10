@@ -1,5 +1,7 @@
 #![allow(clippy::useless_format)]
 
+use main_error::MainError;
+
 // Rust test modules
 // If you don't put your Rust file here it won't get compiled!
 pub(crate) mod deep_copy;
@@ -11,8 +13,8 @@ pub(crate) mod switch_rewrites;
 pub type Result = std::result::Result<(), egglog::Error>;
 
 // Might be useful for typechecking?
-fn main() -> Result {
-    run_test("", "")
+fn main() -> std::result::Result<(), MainError> {
+    run_test("", "").map_err(|e| e.into())
 }
 
 pub fn run_test(build: &str, check: &str) -> Result {

@@ -1,3 +1,5 @@
+#![allow(clippy::useless_format)]
+
 // Rust test modules
 // If you don't put your Rust file here it won't get compiled!
 pub(crate) mod deep_copy;
@@ -15,7 +17,7 @@ fn main() -> Result {
 pub fn run_test(build: &str, check: &str) -> Result {
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
-        vec![
+        [
             include_str!("schema.egg"),
             // analyses
             &purity_analysis::purity_analysis_rules().join("\n"),

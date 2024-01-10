@@ -29,7 +29,7 @@ fn subst_rule_for_ctor(ctor: Constructor) -> String {
 
 pub(crate) fn subst_rules() -> Vec<String> {
     ESort::iter()
-        .map(|sort| "(function Subst* (* Expr) * :unextractable)".replace("*", sort.name()))
+        .map(|sort| "(function Subst* (* Expr) * :unextractable)".replace('*', sort.name()))
         .chain(Constructor::iter().map(subst_rule_for_ctor))
         .collect::<Vec<_>>()
 }

@@ -36,7 +36,7 @@ fn deep_copy_rule_for_ctor(ctor: Constructor) -> String {
 
 pub(crate) fn deep_copy_rules() -> Vec<String> {
     ESort::iter()
-        .map(|sort| "(function DeepCopy* (* IdSort) * :unextractable)".replace("*", sort.name()))
+        .map(|sort| "(function DeepCopy* (* IdSort) * :unextractable)".replace('*', sort.name()))
         .chain(Constructor::iter().map(deep_copy_rule_for_ctor))
         .collect::<Vec<_>>()
 }

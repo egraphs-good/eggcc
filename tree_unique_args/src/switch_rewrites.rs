@@ -7,11 +7,13 @@ pub(crate) fn egglog() -> String {
 (birewrite (Switch (And a b) (Cons A (Cons B (Nil))))
          (Switch a (Pair (Switch b (Pair A B))
                          B))
+         :when ((ExprIsPure b))
          :ruleset switch-rewrites)
 
 (birewrite (Switch (Or a b) (Cons A (Cons B (Nil))))
          (Switch a (Pair A
                          (Switch b (Pair A B))))
+         :when ((ExprIsPure b))
          :ruleset switch-rewrites)
 "
     )

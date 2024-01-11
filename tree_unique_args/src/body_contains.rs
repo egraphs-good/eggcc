@@ -52,7 +52,7 @@ fn subexpr_rule_for_ctor(ctor: Constructor) -> Option<String> {
 
 pub(crate) fn rules() -> Vec<String> {
     ESort::iter()
-        .map(|sort| "(relation BodyContains* (Expr *))".replace("*", sort.name()))
+        .map(|sort| "(relation BodyContains* (Expr *))".replace('*', sort.name()))
         .chain(Constructor::iter().filter_map(captured_expr_rule_for_ctor))
         .chain(Constructor::iter().filter_map(subexpr_rule_for_ctor))
         .collect::<Vec<_>>()
@@ -62,8 +62,8 @@ pub(crate) fn rules() -> Vec<String> {
 fn test_body_contains() -> Result<(), egglog::Error> {
     let build = &*format!(
         "
-(let id1 (i64-fresh!))
-(let id-outer (i64-fresh!))
+(let id1 (Id (i64-fresh!)))
+(let id-outer (Id (i64-fresh!)))
 (let loop
     (Loop id1
         (Num id-outer 1)

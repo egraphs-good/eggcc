@@ -6,11 +6,11 @@ use main_error::MainError;
 // If you don't put your Rust file here it won't get compiled!
 pub(crate) mod body_contains;
 pub(crate) mod deep_copy;
+pub(crate) mod function_inlining;
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
 pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
-pub(crate) mod function_inlining;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 

@@ -3,6 +3,7 @@
 (run-schedule
   (repeat 5
     (saturate always-run)
+    simple-pure
     switch-rewrites
     function-inlining
     ))

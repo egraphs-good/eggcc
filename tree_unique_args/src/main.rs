@@ -11,6 +11,7 @@ pub(crate) mod ir;
 pub(crate) mod purity_analysis;
 pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
+pub(crate) mod simple;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
@@ -31,8 +32,9 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &deep_copy::deep_copy_rules().join("\n"),
             include_str!("sugar.egg"),
             // optimizations
-            &switch_rewrites::egglog(),
+            include_str!("simple.egg"),
             include_str!("function_inlining.egg"),
+            include_str!("switch_rewrites.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

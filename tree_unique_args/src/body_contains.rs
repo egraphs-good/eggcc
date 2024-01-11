@@ -1,10 +1,12 @@
 use crate::ir::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 
-// Builds rules like:
-// (rule ((Let in out))
-//       ((BodyContains (Let in out) out))
-//       :ruleset always-run)
+/// Builds rules like:
+/// ```no_run
+/// (rule ((Let in out))
+///       ((BodyContains (Let in out) out))
+///       :ruleset always-run)
+/// ```
 fn captured_expr_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let pat = ctor.construct(|field| field.var());
     let actions = ctor.filter_map_fields(|field| {
@@ -19,11 +21,13 @@ fn captured_expr_rule_for_ctor(ctor: Constructor) -> Option<String> {
     }
 }
 
-// Builds rules like:
-// (rule ((BodyContainsExpr body (Add x y)))
-//       ((BodyContainsExpr body x)
-//        (BodyContainsExpr body y))
-//       :ruleset always-run)
+/// Builds rules like:
+/// ```no_run
+/// (rule ((BodyContainsExpr body (Add x y)))
+///       ((BodyContainsExpr body x)
+///        (BodyContainsExpr body y))
+///       :ruleset always-run)
+/// ```
 fn subexpr_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let pat = ctor.construct(|field| field.var());
     let actions = ctor.filter_map_fields(|field| {

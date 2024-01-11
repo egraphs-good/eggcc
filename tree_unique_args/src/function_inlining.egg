@@ -1,0 +1,15 @@
+(ruleset function-inlining)
+
+(rule
+    (
+        (= call (Call f arg))
+        (Function f out)
+    )
+    (
+        (let new-id (Id (i64-fresh!)))
+        (union
+            call
+            (NewLet new-id arg out)
+        )
+    )
+:ruleset function-inlining)

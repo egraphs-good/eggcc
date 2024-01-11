@@ -7,6 +7,7 @@ pub(crate) mod deep_copy;
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
 pub(crate) mod subst;
+pub(crate) mod function_inlining;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
@@ -26,9 +27,10 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &subst::subst_rules().join("\n"),
             &deep_copy::deep_copy_rules().join("\n"),
             // repairs
-            // optimizations
             // sugar
             include_str!("sugar.egg"),
+            // optimizations
+            include_str!("function_inlining.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

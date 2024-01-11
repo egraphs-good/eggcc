@@ -1,5 +1,6 @@
 // Rust test modules
 // If you don't put your Rust file here it won't get compiled!
+pub(crate) mod body_contains;
 pub(crate) mod deep_copy;
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
@@ -19,6 +20,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("schema.egg"),
             // analyses
             &purity_analysis::purity_analysis_rules().join("\n"),
+            &body_contains::rules().join("\n"),
             &subst::subst_rules().join("\n"),
             &deep_copy::deep_copy_rules().join("\n"),
             // repairs

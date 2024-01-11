@@ -90,14 +90,14 @@ pub(crate) enum Purpose {
 }
 
 impl Purpose {
-    pub(crate) fn to_sort(&self) -> Sort {
+    pub(crate) fn to_sort(self) -> Sort {
         match self {
             Purpose::CapturingId => Sort::IdSort,
             Purpose::ReferencingId => Sort::IdSort,
             Purpose::SubExpr => Sort::Expr,
             Purpose::CapturedExpr => Sort::Expr,
             Purpose::SubListExpr => Sort::ListExpr,
-            Purpose::Static(sort) => *sort,
+            Purpose::Static(sort) => sort,
         }
     }
 }

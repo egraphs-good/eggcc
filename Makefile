@@ -1,20 +1,25 @@
 .PHONY: test test-clean nits nightly
 
-DIR = tree_unique_args
+DIRS = . uniqueargs tree_unique_args
 
 all: test nits
 
 test:
-	cd $(DIR) && cargo insta test --release --unreferenced=reject
+	for dir in $(DIRS) ; do \
+		(cd $$dir && cargo insta test --release --unreferenced=reject) ; \
+	done
 
 test-clean:
-	cd $(DIR) && cargo insta test --release --unreferenced=delete
+	for dir in $(DIRS) ; do \
+		(cd $$dir && cargo insta test --release --unreferenced=delete) ; \
+	done
 
 nits:
 	@rustup component add clippy
 	@rustup component add rustfmt
-	cd $(DIR) && cargo clippy --tests -- -D warnings
-	cd $(DIR) && cargo fmt --check
+	for dir in $(DIRS) ; do \
+		(cd $$dir && cargo clippy --tests -- -D warnings && cargo fmt --check) ; \
+	done
 
 nightly:
 	bash infra/nightly.sh

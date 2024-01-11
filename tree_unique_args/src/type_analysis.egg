@@ -5,6 +5,7 @@
   (BoolT)
   (UnitT)
   (FuncT Type Type)
+  (TupleT Type) ; TODO: How can I make a list of types?
 )
 
 (relation HasTypeDemand (Expr))
@@ -65,7 +66,9 @@
 (rule ((HasTypeDemand (Not x)))
       ((HasTypeDemand x))
       :ruleset type-analysis)
-; TODO: Get from Tuple
+(rule ((HasTypeDemand (Get e idx)))
+      ((HasTypeDemand e))
+      :ruleset type-analysis)
 
 ; Pure Op Compute
 (rule (
@@ -130,6 +133,14 @@
        (HasType (Not x) (BoolT))
       )
       :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Get e idx))
+       (HasType e (TupleT l)) ; l should be a list of types (see TODO above)
+      )
+      (
+       (HasType (Get e idx) __) ; TODO: index into l at idx
+      )
+      :ruleset type-analysis)
 
 
 ; Effectful Ops
@@ -139,9 +150,22 @@
 (rule ((HasTypeDemand (Write addr val)))
       ((HasType (Write addr val) (UnitT)))
       :ruleset type-analysis)
-;; TODO: Read??
+;; TODO: How do we know the type of read? I guess we could track type on write?
 
-
+; Control Flow
+(rule ((HasTypeDemand (Switch cond lst)))
+      (
+       (HasTypeDemand cond)
+       ; How to demand type for each elt in lst?
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Switch cond lst))
+       (HasType cond (BoolT))
+       (HasType (First lst) t) ; need to check each element in the lst....
+      )
+      ((HasType (Switch cond lst) t))
+      :ruleset type-analysis)
 
 
 

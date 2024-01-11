@@ -20,3 +20,16 @@
 (rewrite (NewLet id in out)
          (Let id in (DeepCopyExpr out id))
          :ruleset always-run)
+
+(function IdOf (Expr) i64)
+(rule ((IdOf (Let id in out)))
+      ((set (IdOf (Let id in out)) id))
+      :ruleset always-run)
+(rule ((IdOf (Loop id in out)))
+      ((set (IdOf (Loop id in out)) id))
+      :ruleset always-run)
+
+(function ArgOf (Expr) Expr)
+(rewrite (ArgOf body)
+         (Arg (IdOf body))
+         :ruleset always-run)

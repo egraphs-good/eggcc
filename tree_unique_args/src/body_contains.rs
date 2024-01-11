@@ -1,5 +1,3 @@
-use std::iter;
-
 use crate::ir::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 

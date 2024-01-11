@@ -11,9 +11,9 @@ test-clean:
 	cd $(DIR) && cargo insta test --release --unreferenced=delete
 
 nits:
-	cd $(DIR) && @rustup component add clippy
+	@rustup component add clippy
+	@rustup component add rustfmt
 	cd $(DIR) && cargo clippy --tests -- -D warnings
-	cd $(DIR) && @rustup component add rustfmt
 	cd $(DIR) && cargo fmt --check
 
 nightly:

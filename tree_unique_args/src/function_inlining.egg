@@ -9,8 +9,7 @@
         (let new-id (Id (i64-fresh!)))
         (union
             call
-            ; (NewLet new-id arg out)
-            (Let new-id arg (DeepCopyExpr out new-id))
+            (NewLet new-id arg out)
         )
     )
 :ruleset function-inlining)

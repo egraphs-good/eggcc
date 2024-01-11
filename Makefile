@@ -1,17 +1,16 @@
-.PHONY: test nits docs nightly test-clean uniqueargs
+.PHONY: test test-clean nits nightly
 
-all: test nits docs uniqueargs
+all: test nits
 
 test:
+	cd tree_unique_args
 	cargo insta test --release --unreferenced=reject
-
-uniqueargs:
-	cargo test --manifest-path uniqueargs/Cargo.toml --release
 
 test-clean:
 	cargo insta test --release --unreferenced=delete
 
 nits:
+	cd tree_unique_args
 	@rustup component add clippy
 	cargo clippy --tests -- -D warnings
 	@rustup component add rustfmt

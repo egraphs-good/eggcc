@@ -25,10 +25,10 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &subst::subst_rules().join("\n"),
             &deep_copy::deep_copy_rules().join("\n"),
             // repairs
-            // optimizations
-            include_str!("function_inlining.egg"),
             // sugar
             include_str!("sugar.egg"),
+            // optimizations
+            include_str!("function_inlining.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

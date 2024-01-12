@@ -23,15 +23,13 @@ fn main() -> std::result::Result<(), MainError> {
 pub fn run_test(build: &str, check: &str) -> Result {
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
-        vec![
+        [
             include_str!("schema.egg"),
             // analyses
             &purity_analysis::purity_analysis_rules().join("\n"),
             &body_contains::rules().join("\n"),
             &subst::subst_rules().join("\n"),
             &deep_copy::deep_copy_rules().join("\n"),
-            // repairs
-            // sugar
             include_str!("sugar.egg"),
             // optimizations
             &switch_rewrites::egglog(),

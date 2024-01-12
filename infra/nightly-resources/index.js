@@ -6,6 +6,7 @@ async function getPreviousRuns() {
     // {branch: <git branch:string>, commit: <git commit:string>, date: <unix timestamp:int>, url: <absolute url to nightly page:string>}
     const comparisons = [];
     for (let i = 1; i < files.length; i++) {
+        // file name is of the format <date>:"nightly":<branch>:<commit>
         const [date, _, branch, commit] = files[i].name.split(":");
 
         const run = {
@@ -69,7 +70,7 @@ function findBenchToCompareIdx(benchRuns) {
     const idx = path[path.length - 1] === "/" ? parts.length - 2 : parts.length - 1;
     
     const [date, _, branch, commit] = parts[idx].split("%3A");
-    for (let i = 0; i < benchRuns.length; i--) {
+    for (let i = 0; i < benchRuns.length; i++) {
         const run = benchRuns[i];
         if (run.branch === "main") {
             // If we are comparing a run on a main branch, to previous main branch we need to make sure
@@ -84,7 +85,7 @@ function findBenchToCompareIdx(benchRuns) {
             return i;
         }
     }
-    throw new Error("Didn't find a candidate benchmark");
+    throw new Error("Couldn't find a benchmark run from main for comparison");
 }
 
 async function getBench(bench) {

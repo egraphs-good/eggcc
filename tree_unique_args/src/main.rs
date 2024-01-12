@@ -12,6 +12,7 @@ pub(crate) mod purity_analysis;
 pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
 pub(crate) mod util;
+pub(crate) mod loop_invariant;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 

@@ -1,0 +1,68 @@
+(relation find-inv-expr (Expr Expr))
+(relation find-inv-list (Expr ListExpr))
+
+;; bool: whether the term in the Expr is an invariant.
+(function is-inv-expr (Body Expr) bool :unextractable :merge (or old new))
+(function is-inv-list (Expr ListExpr) bool :unextractable :merge (or old new))
+
+(relation arg-inv (Expr i64))
+
+;; in default, when there is a find, set is-inv to false
+(rule ((find-inv-expr loop term)) ((set (is-inv-expr loop term) false)) :ruleset always-run)
+(rule ((find-inv-list loop term)) ((set (is-inv-operand loop term) false)) :ruleset always-run)
+
+;; when the input is not tuple
+(rule ((= loop (Loop id inputs outputs))
+       (= output (All ord1 out_list))
+	   (= (All ord2 list) (ListExpr-ith out_list 1))
+	   (= (Arg id) (ListExpr-ith list 0)))
+    ((arg-inv loop 0)) :ruleset always-run)
+
+;; when input is tuple
+(rule ((= loop (Loop id inputs outputs))
+       (= output (All ord1 out_list))
+	   (= (All ord2 list) (ListExpr-ith out_list 1))
+	   (= (Get (Arg id) i) (ListExpr-ith list i))) ;;???
+    ((arg-inv loop i)) :ruleset always-run)
+
+;; top level entry ;
+(rule ((= loop (Loop id inputs outputs))
+	   (arg-inv loop i))
+	((find-inv-expr loop outputs)) :ruleset always-run)
+
+
+;; propagations
+(rule ((find-inv-expr loop expr) 
+        (= expr (All ord list)) ) 
+    ((find-inv-list loop list)) :ruleset always-run)
+
+(rule ((find-inv-expr loop expr) 
+        (= expr (Switch pred list)) ) 
+    ((find-inv-list loop list) (find-inv-expr loop pred)) :ruleset always-run)
+
+(rule ((find-inv-expr loop expr) 
+        (= expr (Loop id inputs outputs)) ) 
+    ((find-inv-expr loop inputs)) :ruleset always-run)
+
+
+;; ListExpr -> expr
+(rule ((find-inv-list loop list) 
+        (= ith (ListExpr-ith list i))) 
+    ((find-inv-expr loop ith)) :ruleset always-run)
+
+
+;; terminal
+(rule ((find-inv-expr loop (Num id n))) ((set (is-inv-expr loop (Num id n)) true)) )
+
+
+;; TODO: If call is pure it could be invariant
+;; Maybe it's done by function inlining.
+
+
+;; terminal, if a arg is recorded as inv in current theta
+(rule ((find-inv-expr loop expr)
+        (= expr (Get (Arg id) i))
+        (arg_inv loop i))
+    ((set (is-inv-expr loop expr) true)) :ruleset fast-analyses)
+
+

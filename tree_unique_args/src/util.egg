@@ -1,0 +1,13 @@
+(function ListExpr-length (ListExpr) i64)
+(function ListExpr-ith (ListExpr i64) Expr :unextractable)
+(function ListExpr-surfix (ListExpr i64) ListExpr :unextractable)
+
+(rule ((All order top)) ((union (ListExpr-surfix top 0) top)) :ruleset always-run)
+
+(rule ((= (ListExpr-surfix top n) (Cons hd tl)))
+    ((union (ListExpr-ith top n) hd)
+     (union (ListExpr-surfix top (+ n 1)) tl)) :ruleset always-run)
+
+(rule ((= (ListExpr-surfix list n) (Nil)))
+    ((set (ListExpr-length list) n)) :ruleset always-run)
+

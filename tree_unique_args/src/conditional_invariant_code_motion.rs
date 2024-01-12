@@ -23,7 +23,6 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
             let ctor_pattern1 = mk_pattern("e1".to_string());
             let ctor_pattern2 = mk_pattern("e2".to_string());
             let resulting_switch = mk_pattern(format!("(Switch pred (Map-{ctor_name}-{varying_field_name} exprs))"));
-            let resulting_all = mk_pattern(format!("(All order (Map-{ctor_name}-{varying_field_name} exprs))"));
             Some(format!(
                 "
                 ; Compute {relation}, which detects opportunities for lifting
@@ -45,20 +44,13 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
                          :ruleset always-run)
 
                 ; Lift {ctor_name} when only {varying_field_name} varies
-                (rule ((All order exprs)
-                       ({relation} exprs)
-                       ; Bind non-varying field(s)
-                       (= list (Cons {ctor_pattern1} rest)))
-                      ((union (All order exprs)
-                              {resulting_all}))
-                      :ruleset control-flow-invariant-code-motion)
                 (rule ((Switch pred exprs)
                        ({relation} exprs)
                        ; Bind non-varying field(s)
                        (= list (Cons {ctor_pattern1} rest)))
                       ((union (Switch pred exprs)
                               {resulting_switch}))
-                      :ruleset control-flow-invariant-code-motion)"
+                      :ruleset conditional-invariant-code-motion)"
             ))
         }
     })
@@ -68,10 +60,9 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
 pub(crate) fn rules() -> Vec<String> {
     iter::once(
         "
-        (ruleset control-flow-invariant-code-motion)
+        (ruleset conditional-invariant-code-motion)
         (relation DemandSameIgnoring (ListExpr))
         (rule ((DemandSameIgnoring (Cons hd tl))) ((DemandSameIgnoring tl)) :ruleset always-run)
-        (rule ((All order exprs)) ((DemandSameIgnoring exprs)) :ruleset always-run)
         (rule ((Switch pred exprs)) ((DemandSameIgnoring exprs)) :ruleset always-run)"
             .to_string(),
     )
@@ -83,7 +74,7 @@ pub(crate) fn rules() -> Vec<String> {
 fn var_names_available() {
     for ctor in Constructor::iter() {
         for field in ctor.fields() {
-            for var_name in ["e", "e1", "e2", "rest", "pred", "order", "exprs"] {
+            for var_name in ["e", "e1", "e2", "rest", "pred", "exprs"] {
                 assert_ne!(field.var(), var_name);
             }
         }
@@ -94,13 +85,13 @@ fn var_names_available() {
 fn test_easy_lift_switch() -> Result<(), egglog::Error> {
     let build = &*format!(
         "
-(let id1 (i64-fresh!))
+(let id1 (Id (i64-fresh!)))
 (let switch1
     (Switch
-        (Num 1)
+        (Num id1 1)
         (Pair
-            (LessThan (Get (Arg id1) 0) (Num 7))
-            (LessThan (Get (Arg id1) 1) (Num 7))
+            (LessThan (Get (Arg id1) 0) (Num id1 7))
+            (LessThan (Get (Arg id1) 1) (Num id1 7))
         )))
     "
     );
@@ -108,12 +99,12 @@ fn test_easy_lift_switch() -> Result<(), egglog::Error> {
 (let switch1-lifted-expected
     (LessThan
         (Switch
-            (Num 1)
+            (Num id1 1)
             (Pair
                 (Get (Arg id1) 0)
                 (Get (Arg id1) 1)
             ))
-        (Num 7)))
+        (Num id1 7)))
 (run-schedule (saturate always-run))
 (check (= switch1 switch1-lifted-expected))
     ";
@@ -121,16 +112,16 @@ fn test_easy_lift_switch() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn test_lift_all() -> Result<(), egglog::Error> {
+fn test_lift_switch_through_switch() -> Result<(), egglog::Error> {
     let build = &*format!(
         "
-(let id1 (i64-fresh!))
-(let all1
-    (All
-        (Parallel)
+(let id1 (Id (i64-fresh!)))
+(let switch1
+    (Switch
+        (Num id1 0)
         (Pair
-            (Switch (LessThan (Get (Arg id1) 0) (Num 7)) (Cons (Num 11) (Nil)))
-            (Switch (LessThan (Get (Arg id1) 1) (Num 7)) (Cons (Num 11) (Nil)))
+            (Switch (LessThan (Get (Arg id1) 0) (Num id1 7)) (Cons (Num id1 11) (Nil)))
+            (Switch (LessThan (Get (Arg id1) 1) (Num id1 7)) (Cons (Num id1 11) (Nil)))
         )))
     "
     );
@@ -138,14 +129,14 @@ fn test_lift_all() -> Result<(), egglog::Error> {
 (let all1-lifted-expected
     (Switch
         (LessThan
-            (All
-                (Parallel)
+            (Switch
+                (Num id1 0)
                 (Pair
                     (Get (Arg id1) 0)
                     (Get (Arg id1) 1)
                 ))
-            (Num 7))
-        (Cons (Num 11) (Nil))))
+            (Num id1 7))
+        (Cons (Num id1 11) (Nil))))
 (run-schedule (saturate always-run))
 (check (= all1 all1-lifted-expected))
     ";

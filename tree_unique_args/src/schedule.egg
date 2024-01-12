@@ -3,5 +3,7 @@
 (run-schedule
   (repeat 5
     (saturate always-run)
-    control-flow-invariant-code-motion
+    conditional-invariant-code-motion
+    switch-rewrites
+    function-inlining
     ))

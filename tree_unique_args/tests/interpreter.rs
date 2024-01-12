@@ -26,7 +26,7 @@ pub enum Expr {
     Write(Box<Expr>, Box<Expr>),
     All(Order, Vec<Expr>),
     Switch(Box<Expr>, Vec<Expr>),
-    Loop(Id, Box<Expr>, Box<Expr>),
+    Loop(Id, Box<Expr>),
     Let(Id, Box<Expr>, Box<Expr>),
     Arg(Id),
     // TODO: call and functions
@@ -129,10 +129,10 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
             }
             Ok(ty)
         }
-        Expr::Loop(_, input, pred_output) => {
-            let input_ty = typecheck(input, arg_ty)?;
-            let pred_output_ty = typecheck(pred_output, &Some(input_ty.clone()))?;
-            let expected_ty = Type::Tuple(vec![Type::Boolean, input_ty.clone()]);
+        Expr::Loop(_, pred_output) => {
+            let args_types = arg_ty.clone().ok_or(TypeError::NoArg(e.clone()))?;
+            let pred_output_ty = typecheck(pred_output, &Some(args_types.clone()))?;
+            let expected_ty = Type::Tuple(vec![Type::Boolean, args_types.clone()]);
             if pred_output_ty != expected_ty {
                 return Err(TypeError::ExpectedType(
                     *pred_output.clone(),
@@ -140,7 +140,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
                     pred_output_ty,
                 ));
             }
-            Ok(input_ty)
+            Ok(args_types)
         }
         Expr::Let(_, input, output) => {
             let input_ty = typecheck(input, arg_ty)?;
@@ -233,8 +233,8 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             interpret(&branches[pred as usize], arg, vm)
         }
-        Expr::Loop(_, input, pred_output) => {
-            let mut vals = interpret(input, arg, vm);
+        Expr::Loop(_, pred_output) => {
+            let mut vals = arg.clone().unwrap_or(Value::Unit);
             let mut pred = Value::Boolean(true);
             while pred == Value::Boolean(true) {
                 let Value::Tuple(pred_output_val) = interpret(pred_output, &Some(vals.clone()), vm)
@@ -263,28 +263,31 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
 #[test]
 fn test_interpreter() {
     // numbers 1-10
-    let e = Expr::Loop(
-        Id(0),
+    let e = Expr::Let(
+        Id(4),
         Box::new(Expr::Num(1)),
-        Box::new(Expr::All(
-            Order::Parallel,
-            vec![
-                // pred: i < 10
-                Expr::LessThan(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(10))),
-                // output
-                Expr::Get(
-                    Box::new(Expr::All(
-                        Order::Parallel,
-                        vec![
-                            // i = i + 1
-                            Expr::Add(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(1))),
-                            // print(i)
-                            Expr::Print(Box::new(Expr::Arg(Id(0)))),
-                        ],
-                    )),
-                    0,
-                ),
-            ],
+        Box::new(Expr::Loop(
+            Id(0),
+            Box::new(Expr::All(
+                Order::Parallel,
+                vec![
+                    // pred: i < 10
+                    Expr::LessThan(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(10))),
+                    // output
+                    Expr::Get(
+                        Box::new(Expr::All(
+                            Order::Parallel,
+                            vec![
+                                // i = i + 1
+                                Expr::Add(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(1))),
+                                // print(i)
+                                Expr::Print(Box::new(Expr::Arg(Id(0)))),
+                            ],
+                        )),
+                        0,
+                    ),
+                ],
+            )),
         )),
     );
     let mut vm = VirtualMachine {
@@ -305,40 +308,46 @@ fn test_interpreter_fib_using_memory() {
         vec![
             Expr::Write(Box::new(Expr::Num(0)), Box::new(Expr::Num(0))),
             Expr::Write(Box::new(Expr::Num(1)), Box::new(Expr::Num(1))),
-            Expr::Loop(
-                Id(0),
+            Expr::Let(
+                Id(3),
                 Box::new(Expr::Num(2)),
-                Box::new(Expr::All(
-                    Order::Parallel,
-                    vec![
-                        // pred: i < nth
-                        Expr::LessThan(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(nth))),
-                        // output
-                        Expr::Get(
-                            Box::new(Expr::All(
-                                Order::Parallel,
-                                vec![
-                                    // i = i + 1
-                                    Expr::Add(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(1))),
-                                    // mem[i] = mem[i - 1] + mem[i - 2]
-                                    Expr::Write(
-                                        Box::new(Expr::Arg(Id(0))),
-                                        Box::new(Expr::Add(
-                                            Box::new(Expr::Read(Box::new(Expr::Sub(
-                                                Box::new(Expr::Arg(Id(0))),
-                                                Box::new(Expr::Num(1)),
-                                            )))),
-                                            Box::new(Expr::Read(Box::new(Expr::Sub(
-                                                Box::new(Expr::Arg(Id(0))),
-                                                Box::new(Expr::Num(2)),
-                                            )))),
-                                        )),
-                                    ),
-                                ],
-                            )),
-                            0,
-                        ),
-                    ],
+                Box::new(Expr::Loop(
+                    Id(0),
+                    Box::new(Expr::All(
+                        Order::Parallel,
+                        vec![
+                            // pred: i < nth
+                            Expr::LessThan(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(nth))),
+                            // output
+                            Expr::Get(
+                                Box::new(Expr::All(
+                                    Order::Parallel,
+                                    vec![
+                                        // i = i + 1
+                                        Expr::Add(
+                                            Box::new(Expr::Arg(Id(0))),
+                                            Box::new(Expr::Num(1)),
+                                        ),
+                                        // mem[i] = mem[i - 1] + mem[i - 2]
+                                        Expr::Write(
+                                            Box::new(Expr::Arg(Id(0))),
+                                            Box::new(Expr::Add(
+                                                Box::new(Expr::Read(Box::new(Expr::Sub(
+                                                    Box::new(Expr::Arg(Id(0))),
+                                                    Box::new(Expr::Num(1)),
+                                                )))),
+                                                Box::new(Expr::Read(Box::new(Expr::Sub(
+                                                    Box::new(Expr::Arg(Id(0))),
+                                                    Box::new(Expr::Num(2)),
+                                                )))),
+                                            )),
+                                        ),
+                                    ],
+                                )),
+                                0,
+                            ),
+                        ],
+                    )),
                 )),
             ),
             Expr::Read(Box::new(Expr::Num(nth))),

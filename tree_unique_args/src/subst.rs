@@ -53,7 +53,6 @@ fn test_subst() -> Result<(), egglog::Error> {
 (let id-outer (Id (i64-fresh!)))
 (let loop1
     (Loop id1
-        (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
@@ -67,7 +66,6 @@ fn test_subst() -> Result<(), egglog::Error> {
     let check = "
 (let loop1-substed-expected
     (Loop id1
-        (All (Parallel) (Pair (Num id-outer 7) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))

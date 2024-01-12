@@ -66,12 +66,11 @@ fn test_body_contains() -> Result<(), egglog::Error> {
 (let id-outer (Id (i64-fresh!)))
 (let loop
     (Loop id1
-        (Num id-outer 1)
-        (All (Sequential) (Pair
-            ; pred
-            (LessThan (Num id1 2) (Num id1 3))
-            ; output
-            (Switch (Boolean id1 true) (Pair (Num id1 4) (Num id1 5)))))))
+      (All (Sequential) (Pair
+        ; pred
+        (LessThan (Num id1 2) (Num id1 3))
+        ; output
+        (Switch (Boolean id1 true) (Pair (Num id1 4) (Num id1 5)))))))
     "
     );
     let check = "

@@ -61,7 +61,6 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
 (let id-outer (Id (i64-fresh!)))
 (let pure-loop
     (Loop id1
-        (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
@@ -73,7 +72,6 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
 (let id2 (Id (i64-fresh!)))
 (let impure-loop
     (Loop id2
-        (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id2) 0) (Get (Arg id2) 1))

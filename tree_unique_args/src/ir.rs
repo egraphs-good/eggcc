@@ -168,11 +168,7 @@ impl Constructor {
             Constructor::Write => vec![f(SubExpr, "addr"), f(SubExpr, "data")],
             Constructor::All => vec![f(Static(Sort::Order), "order"), f(SubListExpr, "exprs")],
             Constructor::Switch => vec![f(SubExpr, "pred"), f(SubListExpr, "branches")],
-            Constructor::Loop => vec![
-                f(CapturingId, "id"),
-                f(SubExpr, "in"),
-                f(CapturedExpr, "pred-and-output"),
-            ],
+            Constructor::Loop => vec![f(CapturingId, "id"), f(CapturedExpr, "pred-and-output")],
             Constructor::Let => vec![
                 f(CapturingId, "id"),
                 f(SubExpr, "in"),

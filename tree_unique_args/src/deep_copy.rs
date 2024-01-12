@@ -57,34 +57,31 @@ fn test_deep_copy() -> Result<(), egglog::Error> {
     let build = "
 (let id1 (Id (i64-fresh!)))
 (let id2 (Id (i64-fresh!)))
-(let id-outer (Id (i64-fresh!)))
 (let loop
-    (Loop id1
-        (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
-        (All (Sequential) (Pair
-            ; pred
-            (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
-            ; output
-            (Let id2
-                (All (Parallel) (Pair
-                    (Add (Get (Arg id1) 0) (Num id1 1))
-                    (Sub (Get (Arg id1) 1) (Num id1 1))))
-                (Arg id2))))))
+  (Loop id1
+    (All (Sequential) (Pair
+        ; pred
+        (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
+        ; output
+        (Let id2
+            (All (Parallel) (Pair
+                (Add (Get (Arg id1) 0) (Num id1 1))
+                (Sub (Get (Arg id1) 1) (Num id1 1))))
+            (Arg id2))))))
 (let loop-copied (DeepCopyExpr loop (Id (i64-fresh!))))
     ";
     let check = "
 (let loop-copied-expected
-    (Loop (Id 4)
-        (All (Parallel) (Pair (Arg (Id 3)) (Num (Id 3) 0)))
+    (Loop (Id 3)
         (All (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg (Id 4)) 0) (Get (Arg (Id 4)) 1))
+            (LessThan (Get (Arg (Id 3)) 0) (Get (Arg (Id 3)) 1))
             ; output
-            (Let (Id 5)
+            (Let (Id 4)
                 (All (Parallel) (Pair
-                    (Add (Get (Arg (Id 4)) 0) (Num (Id 4) 1))
-                    (Sub (Get (Arg (Id 4)) 1) (Num (Id 4) 1))))
-                (Arg (Id 5)))))))
+                    (Add (Get (Arg (Id 3)) 0) (Num (Id 3) 1))
+                    (Sub (Get (Arg (Id 3)) 1) (Num (Id 3) 1))))
+                (Arg (Id 4)))))))
 (run-schedule (saturate always-run))
 (check (= loop-copied loop-copied-expected))
     ";

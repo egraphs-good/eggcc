@@ -51,13 +51,21 @@
 ; Regions
 ; ==========================
 
-; pred and output are evaluated inside the loop's context
-; input and output may or may not be a tuples. pred must be boolean.
+; A loop evaluates its body until
+; the first element, the predicate,
+; is false.
 ; 
-;               id     input (pred, output) tuple
-(function Loop (IdSort Expr  Expr)  Expr)
+; The first iteration, the argument is the
+; same as the surrounding context.
+; In future iterations, output is used
+; as the new argument.
+; The inputs to the loop can be set using 
+; a surrounding Let.
+;
+;               Id     (pred, output) tuple
+(function Loop (IdSort Expr)  Expr)
 
-;              id     input output
+;              Id     input output
 (function Let (IdSort Expr  Expr) Expr)
 
 ; Arg gets the input of a region or the parameter of a function

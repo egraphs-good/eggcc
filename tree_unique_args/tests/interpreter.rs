@@ -165,35 +165,55 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
         Expr::Boolean(x) => Value::Boolean(*x),
         Expr::Unit => Value::Unit,
         Expr::Add(e1, e2) => {
-            let Value::Num(n1) = interpret(e1, arg, vm) else { panic!("add") };
-            let Value::Num(n2) = interpret(e2, arg, vm) else { panic!("add") };
+            let Value::Num(n1) = interpret(e1, arg, vm) else {
+                panic!("add")
+            };
+            let Value::Num(n2) = interpret(e2, arg, vm) else {
+                panic!("add")
+            };
             Value::Num(n1 + n2)
         }
         Expr::Sub(e1, e2) => {
-            let Value::Num(n1) = interpret(e1, arg, vm) else { panic!("sub") };
-            let Value::Num(n2) = interpret(e2, arg, vm) else { panic!("sub") };
+            let Value::Num(n1) = interpret(e1, arg, vm) else {
+                panic!("sub")
+            };
+            let Value::Num(n2) = interpret(e2, arg, vm) else {
+                panic!("sub")
+            };
             Value::Num(n1 - n2)
         }
         Expr::LessThan(e1, e2) => {
-            let Value::Num(n1) = interpret(e1, arg, vm) else { panic!("lessthan") };
-            let Value::Num(n2) = interpret(e2, arg, vm) else { panic!("lessthan") };
+            let Value::Num(n1) = interpret(e1, arg, vm) else {
+                panic!("lessthan")
+            };
+            let Value::Num(n2) = interpret(e2, arg, vm) else {
+                panic!("lessthan")
+            };
             Value::Boolean(n1 < n2)
         }
         Expr::Get(e_tuple, i) => {
-            let Value::Tuple(vals) = interpret(e_tuple, arg, vm) else { panic!("get") };
+            let Value::Tuple(vals) = interpret(e_tuple, arg, vm) else {
+                panic!("get")
+            };
             vals[*i].clone()
         }
         Expr::Print(e) => {
-            let Value::Num(n) = interpret(e, arg, vm) else { panic!("print") };
+            let Value::Num(n) = interpret(e, arg, vm) else {
+                panic!("print")
+            };
             vm.log.push(n);
             Value::Unit
         }
         Expr::Read(e_addr) => {
-            let Value::Num(addr) = interpret(e_addr, arg, vm) else { panic!("read") };
+            let Value::Num(addr) = interpret(e_addr, arg, vm) else {
+                panic!("read")
+            };
             vm.mem[&(addr as usize)].clone()
         }
         Expr::Write(e_addr, e_data) => {
-            let Value::Num(addr) = interpret(e_addr, arg, vm) else { panic!("write") };
+            let Value::Num(addr) = interpret(e_addr, arg, vm) else {
+                panic!("write")
+            };
             let data = interpret(e_data, arg, vm);
             vm.mem.insert(addr as usize, data);
             Value::Unit
@@ -208,15 +228,22 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             Value::Tuple(vals)
         }
         Expr::Switch(pred, branches) => {
-            let Value::Num(pred) = interpret(pred, arg, vm) else { panic!("switch") };
+            let Value::Num(pred) = interpret(pred, arg, vm) else {
+                panic!("switch")
+            };
             interpret(&branches[pred as usize], arg, vm)
         }
         Expr::Loop(_, input, pred_output) => {
             let mut vals = interpret(input, arg, vm);
             let mut pred = Value::Boolean(true);
             while pred == Value::Boolean(true) {
-                let Value::Tuple(pred_output_val) = interpret(pred_output, &Some(vals.clone()), vm) else {panic!("loop")};
-                let [new_pred, new_vals] = pred_output_val.as_slice() else { panic!("loop") };
+                let Value::Tuple(pred_output_val) = interpret(pred_output, &Some(vals.clone()), vm)
+                else {
+                    panic!("loop")
+                };
+                let [new_pred, new_vals] = pred_output_val.as_slice() else {
+                    panic!("loop")
+                };
                 pred = new_pred.clone();
                 vals = new_vals.clone();
             }

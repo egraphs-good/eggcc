@@ -1,0 +1,87 @@
+;; Change multiplication of loop variable to addition to an accumulator
+;;
+;; ORIGINAL
+;; a = 0
+;; c = 3
+;; for  i = 0 to n:
+;;     a = i * c
+;;
+;; OPTIMIZED
+;; a = 0
+;; c = 3
+;; d = 0
+;; for i = 0 to n:
+;;     a = d
+;;     d += c
+
+; Finds invariants/constants within a loop.
+; Columns: loop; value of invariant in inputs; value of invariant in outputs
+(relation inv (Expr Expr Expr))
+(rule (
+    (= loop (Loop id pred inputs outputs))
+    (= (EVec-get outputs i) (Arg id i)))
+    ((inv loop (EVec-get inputs i) (Arg id i))))
+(rule (
+    (= c (Num id n))
+    (= loop (Loop id pred inputs outputs))
+    ;; Note: with the milestone encoding, we had to use
+    ;; Body-contains-Operand here. Here, we already know
+    ;; that c is within loop because it has the correct id. 
+    )
+    ((inv loop c c)))
+
+(rule
+    (
+        ;; Find loop
+        (= old-loop (Loop id pred (EVec inputs) (EVec outputs)))
+
+        ; Find loop variable (argument that gets incremented with an invariant)
+        (inv old-loop loop-incr-input loop-incr-output)
+        (= (EVec-get (EVec outputs) i) (badd (Arg id i) loop-incr-output))
+
+        ; Find invariant where input is same as output, or constant
+        (inv old-loop c-input c-output)
+
+        ; Find multiplication of loop variable and invariant
+        (= old-exp (bmul c-output (Arg id i)))
+
+        ;; NOTE: here we also used Body-contains-Operand before
+        ;; but now we don't, since (Arg id i) can only occur within the loop
+        (= id (Id-Of old-exp))
+    )
+    (
+        ; Each time we need to update d by the product of the multiplied constant and the loop increment
+        (let addend (bmul c-output loop-incr-output))
+        ; n is index of our new, temporary variable d
+        (let n (EVec-length (EVec inputs)))
+
+        ; Initial value of d is i * c
+        (let d-init (bmul c-input (EVec-get (EVec inputs) i)))
+
+        ; Value of d in loop
+        ; the id here will get replaced in the DeepCopy
+        (let d-out (badd (Arg id n) addend))
+
+        ; Construct optimized loop
+        (let new-id (id (i64-fresh!)))
+        (let new-inputs (EVec (vec-push inputs d-init)))
+        (let new-loop
+            (Loop
+                new-id
+                (DeepCopy pred new-id)
+                new-inputs ;; Inputs use outer ID, which is still the same
+                (DeepCopy 
+                    (EVec (vec-push outputs d-out))
+                    new-id
+                )
+            )
+        )
+
+        ; We can just union within this new loop now
+        ;; NOTE: milestone encoding used can-subst-beneath for this
+        (union (DeepCopy old-exp new-id) (Arg new-id n))
+
+        (let projected-loop (ExprToEVec n new-loop))
+        (union old-loop projected-loop)
+    )
+)

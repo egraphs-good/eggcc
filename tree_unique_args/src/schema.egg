@@ -1,13 +1,19 @@
+; We could generate this from ir.rs, this manual version is just easier reference.
+
+(sort IdSort)
+(function Id (i64) IdSort)
 (datatype Expr)
 (datatype ListExpr (Cons Expr ListExpr) (Nil))
 
 ; ==========================
 ; Pure operators
 ; ==========================
-
-(function Num (i64) Expr)
-(function Boolean (bool) Expr)
-(function UnitExpr () Expr) ; Unit is already an egglog sort
+;              id     val
+(function Num (IdSort i64) Expr)
+;                  id     val
+(function Boolean (IdSort bool) Expr)
+;                   id
+(function UnitExpr (IdSort) Expr) ; Unit is already an egglog sort
 (function Add (Expr Expr) Expr)
 (function Sub (Expr Expr) Expr)
 (function Mul (Expr Expr) Expr)
@@ -48,24 +54,24 @@
 ; pred and output are evaluated inside the loop's context
 ; input and output may or may not be a tuples. pred must be boolean.
 ; 
-;               id  input (pred, output) tuple
-(function Loop (i64 Expr  Expr)  Expr)
+;               id     input (pred, output) tuple
+(function Loop (IdSort Expr  Expr)  Expr)
 
-;               id  input output
-(function Let (i64 Expr  Expr) Expr)
+;              id     input output
+(function Let (IdSort Expr  Expr) Expr)
 
 ; Arg gets the input of a region or the parameter of a function
-(function Arg (i64) Expr)
+(function Arg (IdSort) Expr)
 
 ; ==========================
 ; Functions
 ; ==========================
 
-;                   f   output
-(relation Function (i64 Expr))
+;                   f      output
+(relation Function (IdSort Expr))
 
-;               f   arg
-(function Call (i64 Expr) Expr)
+;               f      arg
+(function Call (IdSort Expr) Expr)
 
 ;; Rulesets
 (ruleset always-run)

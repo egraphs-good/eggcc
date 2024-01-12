@@ -12,12 +12,3 @@ target/
 # vscode prefs
 .vscode/
 
-# Added by cargo
-
-/target
-
-# Generated nightly files
-/nightly
-
-# Profiler output
-profile.json

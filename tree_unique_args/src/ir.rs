@@ -6,6 +6,7 @@ pub(crate) enum Sort {
     Expr,
     ListExpr,
     Order,
+    IdSort,
     I64,
     Bool,
 }
@@ -16,6 +17,7 @@ impl Sort {
             Sort::Expr => "Expr",
             Sort::ListExpr => "ListExpr",
             Sort::Order => "Order",
+            Sort::IdSort => "IdSort",
             Sort::I64 => "i64",
             Sort::Bool => "bool",
         }
@@ -68,7 +70,7 @@ pub(crate) enum Constructor {
     Nil,
 }
 
-// The constructor fields must purposes such that this is maintained:
+// The constructor fields must have purposes such that this is maintained:
 // - A ctor has one or more CapturedExpr fields iff it has exactly one
 //   CapturingId field. The CapturingId field corresponds to the context of the
 //   CapturedExpr field(s).
@@ -88,14 +90,14 @@ pub(crate) enum Purpose {
 }
 
 impl Purpose {
-    pub(crate) fn to_sort(&self) -> Sort {
+    pub(crate) fn to_sort(self) -> Sort {
         match self {
-            Purpose::CapturingId => Sort::I64,
-            Purpose::ReferencingId => Sort::I64,
+            Purpose::CapturingId => Sort::IdSort,
+            Purpose::ReferencingId => Sort::IdSort,
             Purpose::SubExpr => Sort::Expr,
             Purpose::CapturedExpr => Sort::Expr,
             Purpose::SubListExpr => Sort::ListExpr,
-            Purpose::Static(sort) => *sort,
+            Purpose::Static(sort) => sort,
         }
     }
 }
@@ -148,9 +150,9 @@ impl Constructor {
         use Purpose::{CapturedExpr, CapturingId, ReferencingId, Static, SubExpr, SubListExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
-            Constructor::Num => vec![f(Static(Sort::I64), "n")],
-            Constructor::Boolean => vec![f(Static(Sort::Bool), "b")],
-            Constructor::UnitExpr => vec![],
+            Constructor::Num => vec![f(ReferencingId, "id"), f(Static(Sort::I64), "n")],
+            Constructor::Boolean => vec![f(ReferencingId, "id"), f(Static(Sort::Bool), "b")],
+            Constructor::UnitExpr => vec![f(ReferencingId, "id")],
             Constructor::Add => vec![f(SubExpr, "x"), f(SubExpr, "y")],
             Constructor::Sub => vec![f(SubExpr, "x"), f(SubExpr, "y")],
             Constructor::Mul => vec![f(SubExpr, "x"), f(SubExpr, "y")],

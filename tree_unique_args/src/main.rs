@@ -37,6 +37,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &switch_rewrites::egglog(),
             include_str!("function_inlining.egg"),
             &conditional_invariant_code_motion::rules().join("\n"),
+            include_str!("loop_unrolling.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

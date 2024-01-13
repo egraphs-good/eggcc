@@ -29,8 +29,9 @@
 (rule ((Loop id inputs outputs)
        (= inputs (All any-order any-contents)))
       ((let new-id (Id (i64-fresh!)))
+       (let new-id-2 (Id (i64-fresh!)))
        (union (Loop id inputs outputs)
               (NewLet new-id inputs
-                      (Loop id (Arg new-id) outputs))))
+                      (NewLoop new-id-2 (Arg new-id) outputs))))
       :ruleset always-run
       :name "loop-desugar")

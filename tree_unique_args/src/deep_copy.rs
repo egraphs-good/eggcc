@@ -73,20 +73,21 @@ fn test_deep_copy() -> Result<(), egglog::Error> {
 (let loop-copied (DeepCopyExpr loop (Id (i64-fresh!))))
     ";
     let check = "
-(let loop-copied-expected
-    (Loop (Id 4)
-        (All (Parallel) (Pair (Arg (Id 3)) (Num (Id 3) 0)))
+(run-schedule (saturate always-run))
+(extract loop-copied)
+(check (= loop-copied
+          (Loop new-id
+        (All (Parallel) (Pair (Arg some-other-id) (Num some-other-id 0)))
         (All (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg (Id 4)) 0) (Get (Arg (Id 4)) 1))
+            (LessThan (Get (Arg new-id) 0) (Get (Arg new-id) 1))
             ; output
-            (Let (Id 5)
+            (Let third-new-id
                 (All (Parallel) (Pair
-                    (Add (Get (Arg (Id 4)) 0) (Num (Id 4) 1))
-                    (Sub (Get (Arg (Id 4)) 1) (Num (Id 4) 1))))
-                (Arg (Id 5)))))))
-(run-schedule (saturate always-run))
-(check (= loop-copied loop-copied-expected))
+                    (Add (Get (Arg new-id) 0) (Num new-id 1))
+                    (Sub (Get (Arg new-id) 1) (Num new-id 1))))
+                (Arg third-new-id))))))
+            )
     ";
     crate::run_test(build, check)
 }

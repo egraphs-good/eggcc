@@ -1,8 +1,8 @@
 ; Functions useful for writing tests and actions, but should not be matched on
 (function Pair (Expr Expr) ListExpr)
-(rewrite (Pair a b)
-         (Cons a (Cons b (Nil)))
-         :ruleset always-run)
+(birewrite (Pair a b)
+           (Cons a (Cons b (Nil)))
+           :ruleset always-run)
 
 (function IgnoreFirst (Expr Expr) Expr)
 (rewrite (IgnoreFirst a b)
@@ -20,3 +20,17 @@
 (rewrite (NewLet id in out)
          (Let id in (DeepCopyExpr out id))
          :ruleset always-run)
+
+;; desugar loops to not have single argument
+;; as input
+;; sometimes it may be useful to have inputs
+;; and no intermediate let, so we 
+;; store both
+(rule ((Loop id inputs outputs)
+       (= inputs (All any-order any-contents)))
+      ((let new-id (Id (i64-fresh!)))
+       (union (Loop id inputs outputs)
+              (NewLet new-id inputs
+                      (Loop id (Arg new-id) outputs))))
+      :ruleset always-run
+      :name "loop-desugar")

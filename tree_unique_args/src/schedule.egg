@@ -3,6 +3,7 @@
 (run-schedule
   (repeat 5
     (saturate always-run)
+    (saturate error-checking) ; wouldn't run in "release mode," but OK now
     conditional-invariant-code-motion
     switch-rewrites
     function-inlining

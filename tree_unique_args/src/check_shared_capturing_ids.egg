@@ -1,0 +1,38 @@
+; See the following for further discussion:
+; https://gist.github.com/rtjoa/a28a0dd7b16da2f4a5a414ad8c4c7127
+
+(rule ((Let id in1 out1)
+       (Let id in2 out2)
+       (!= in1 in2))
+      ((panic "Broke invariant 2"))
+       :ruleset error-checking)
+
+; Check if two loops share ids, but either inputs or outputs differ.
+(rule ((!= (Loop id in1 out1) (Loop id in2 out2)))
+      ((panic "Broke invariant 2"))
+      :ruleset error-checking)
+
+(rule ((Let id in1 out1)
+       (Loop id in2 out2))
+      ((panic "Broke invariant 2"))
+       :ruleset error-checking)
+
+
+; (rule ((Extractable (Let id in1 out1))
+       ; (Extractable (Let id in2 out2))
+       ; (!= in1 in2))
+      ; ((panic "Broke invariant 2"))
+       ; :ruleset error-checking)
+
+; ; Check if two loops share ids, but either inputs or outputs differ.
+; (rule ((= loop1 (Loop id in1 out1))
+       ; (= loop1 (Loop id in2 out2))
+       ; (Extractable loop1)
+       ; (Extractable loop2))
+      ; ((panic "Broke invariant 2"))
+      ; :ruleset error-checking)
+
+; (rule ((Let id in1 out1)
+       ; (Loop id in2 out2))
+      ; ((panic "Broke invariant 2"))
+       ; :ruleset error-checking)

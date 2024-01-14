@@ -24,13 +24,14 @@ async function getPreviousRuns() {
         comparisons.push(run);
     }
 
+    // sort runs in descending order
     comparisons.sort((l, r) => {
-        if (l.date < r.date) {return -1; }
-        if (l.date > r.date) {return 1; }
+        if (l.date < r.date) { return 1; }
+        if (l.date > r.date) { return -1; }
         return 0;
     });
 
-    return comparisons;
+    return comparisons.slice(0, comparisons.length < 30 ? comparisons.length : 30);
 }
 
 async function buildNightlyDropdown(element, previousRuns, initialIdx) {
@@ -90,12 +91,13 @@ function findBenchToCompareIdx(benchRuns) {
     throw new Error("Couldn't find a benchmark run from main for comparison");
 }
 
-async function getBench(bench) {
-    const resp = await fetch(bench.url + "data/profile.json");
+async function getBench(url) {
+    const resp = await fetch(url + "data/profile.json");
     const benchData = await resp.json();
     return groupByBenchmark(benchData)
 }
 
+// benchList should be in the format of Array<{runMethod: String, benchmark: String, total_dyn_inst: Int, hyperfine: Array<{results: **hyperfine `--json` results**}>}>
 function groupByBenchmark(benchList) {
     const groupedBy = {};
     benchList.forEach((obj) => {
@@ -141,16 +143,10 @@ function buildTableText(prevRun, run) {
 }
 
 async function loadBenchmarks(compareTo) {
-    // data should be in the format of Array<{runMethod: String, benchmark: String, total_dyn_inst: Int, hyperfine: Array<{results: **hyperfine `--json` results**}>}>
-    console.log(data);
-
-    let container = document.getElementById("profile");
-
-    // aggregate benchmark runs into a list by their "benchmark" key
-    const currentRun = groupByBenchmark(data);
+    const currentRun = await getBench("../");
     let previousRun = undefined;
     try {
-        previousRun = await getBench(compareTo);
+        previousRun = await getBench(compareTo.url);
     } catch (e) {}
 
     const benchmarkNames = Object.keys(currentRun);
@@ -176,21 +172,15 @@ async function loadBenchmarks(compareTo) {
         if (l.name > r.name) { return 1; }
         return 0;
     });
-    
+
+    let container = document.getElementById("profile");
     container.innerHTML = ConvertJsonToTable(parsed);
 }
 
 // Top-level load function for the main index page.
 async function load() {
     const previousRuns = await getPreviousRuns();
-    // sort runs in descending order
-    previousRuns.sort((l, r) => {
-        if (l.date < r.date) { return 1; }
-        if (l.date > r.date) { return -1; }
-        return 0;
-    });
-    
-    
     const initialRunIdx = findBenchToCompareIdx(previousRuns);
+    
     buildNightlyDropdown("comparison", previousRuns, initialRunIdx)
 }

@@ -2,9 +2,10 @@ async function getPreviousRuns() {
     const req = await fetch("https://nightly.cs.washington.edu/reports-json/eggcc/");
     const files = await req.json();
     
-    // map allLinks into an objects of the shape:
+    // map files into objects of the shape:
     // {branch: <git branch:string>, commit: <git commit:string>, date: <unix timestamp:int>, url: <absolute url to nightly page:string>}
     const comparisons = [];
+    // start at i=1 because / is the first file
     for (let i = 1; i < files.length; i++) {
         // file name is of the format <date>:"nightly":<branch>:<commit>
         const [date, _, branch, commit] = files[i].name.split(":");
@@ -35,7 +36,8 @@ async function getPreviousRuns() {
 async function buildNightlyDropdown(element, previousRuns, initialIdx) {
     const select = document.getElementById(element);
     
-    const formatRun = (run) => `${run.branch} - ${run.commit}`
+    const formatRun = (run) => `${run.branch} - ${run.commit} - ${(new Date(run.date * 1000)).toDateString()}`
+    
     
     previousRuns.forEach((nightly) => {
         console.log(nightly);

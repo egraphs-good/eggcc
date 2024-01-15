@@ -1,6 +1,11 @@
 ; The main (run) statement for the egglog program
 
 (run-schedule
+  ;; unrolling is extremely expensive
+  ;; do it 3 times at the beginning
+  (repeat 3
+   (saturate always-run)
+   loop-unroll)
   (repeat 5
     (saturate always-run)
     conditional-invariant-code-motion

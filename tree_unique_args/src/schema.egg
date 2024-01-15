@@ -63,6 +63,10 @@
 ; Arg gets the input of a region or the parameter of a function
 (function Arg (IdSort) Expr)
 
+; When the id does not matter (e.g. in a NewLet)
+; any id will work.
+(let aarg (Arg (Id 0)))
+
 ; ==========================
 ; Functions
 ; ==========================

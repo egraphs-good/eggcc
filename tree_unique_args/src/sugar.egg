@@ -4,6 +4,11 @@
            (Cons a (Cons b (Nil)))
            :ruleset always-run)
 
+(function Single (Expr) ListExpr)
+(birewrite (Single a)
+           (Cons a (Nil))
+           :ruleset always-run)
+
 (function IgnoreFirst (Expr Expr) Expr)
 (rewrite (IgnoreFirst a b)
          (Get
@@ -11,13 +16,20 @@
              1)
          :ruleset always-run)
 
-(function NewLoop (IdSort Expr Expr) Expr)
+(function NewLoop (IdSort Expr Expr) Expr :unextractable)
 (rewrite (NewLoop id in out)
          (Loop id in (DeepCopyExpr out id))
          :ruleset always-run)
 
-(function NewLet (IdSort Expr Expr) Expr)
+(function NewLet (IdSort Expr Expr) Expr :unextractable)
 (rewrite (NewLet id in out)
          (Let id in (DeepCopyExpr out id))
          :ruleset always-run)
+
+(function FreshLet (Expr Expr) Expr :unextractable)
+(rule ((FreshLet in out))
+      ((let new-id (Id (i64-fresh!)))
+       (Let new-id in (DeepCopyExpr out new-id)))
+       :ruleset always-run)
+         
 

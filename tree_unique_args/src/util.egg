@@ -11,3 +11,20 @@
 (rule ((= (ListExpr-suffix list n) (Nil)))
     ((set (ListExpr-length list) n)) :ruleset always-run)
 
+;; given a start i and an end j,
+;; constructs a list
+;; [(Get (Arg (Id 0)) i), (Get (Arg (Id 0)) i+1), ..., (Get (Arg (Id 0)) j-1)]
+(function SubArgList (i64 i64) Expr :unextractable)
+(function SubArgListHelper (i64 i64) ListExpr :unextractable)
+
+
+(rewrite (SubArgList i j) (All (Parallel) (SubArgListHelper i j)) :ruleset always-run)
+
+(rewrite (SubArgListHelper i i) (Nil) :ruleset always-run)
+
+(rule ((SubArgListHelper i j)
+       (< i j))
+      ((union (SubArgListHelper i j)
+              (Cons (Get aarg i)
+                    (SubArgListHelper (+ i 1) j))))
+      :ruleset always-run)

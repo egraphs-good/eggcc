@@ -21,17 +21,3 @@
          (Let id in (DeepCopyExpr out id))
          :ruleset always-run)
 
-;; desugar loops to not have single argument
-;; as input
-;; sometimes it may be useful to have inputs
-;; and no intermediate let, so we 
-;; store both
-(rule ((Loop id inputs outputs)
-       (= inputs (All any-order any-contents)))
-      ((let new-id (Id (i64-fresh!)))
-       (let new-id-2 (Id (i64-fresh!)))
-       (union (Loop id inputs outputs)
-              (NewLet new-id inputs
-                      (NewLoop new-id-2 (Arg new-id) outputs))))
-      :ruleset always-run
-      :name "loop-desugar")

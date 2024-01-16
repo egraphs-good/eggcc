@@ -15,3 +15,24 @@ fn test_list_util() -> Result<(), egglog::Error> {
     );
     crate::run_test(build, check)
 }
+
+#[test]
+fn append_test() -> Result<(), egglog::Error> {
+    let build = "
+        (let id (Id (i64-fresh!)))
+        (let appended
+            (Append
+                (Cons (Num id 0) (Cons (Num id 1) (Nil)))
+                (Num id 2)))
+    ";
+
+    let check = "
+        (check (
+            =
+            (Cons (Num id 0) (Cons (Num id 1) (Cons (Num id 2) (Nil))))
+            appended
+        ))
+    ";
+
+    crate::run_test(build, check)
+}

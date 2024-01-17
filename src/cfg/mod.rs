@@ -10,7 +10,6 @@ use std::{collections::HashMap, fmt::Display};
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};
-use hashbrown::HashSet;
 use petgraph::dot::Dot;
 
 use petgraph::stable_graph::{EdgeReference, StableDiGraph};
@@ -329,7 +328,6 @@ pub struct CfgFunction<CfgType> {
     /// The arguments to the function.
     pub(crate) args: Vec<Argument>,
     /// The graph itself.
-    /// Invariant: contains only reachable nodes.
     pub(crate) graph: StableDiGraph<BasicBlock, Branch>,
     /// The entry node for the CFG.
     pub(crate) entry: NodeIndex,
@@ -347,22 +345,6 @@ pub type SimpleCfgFunction = CfgFunction<Simple>;
 pub type SwitchCfgFunction = CfgFunction<Switch>;
 
 impl<CfgType> CfgFunction<CfgType> {
-    pub(crate) fn remove_unreachable(&mut self) {
-        let mut reachable = HashSet::new();
-        let mut dfs = DfsPostOrder::new(&self.graph, self.entry);
-        while let Some(node) = dfs.next(&self.graph) {
-            reachable.insert(node);
-        }
-        let mut to_remove = Vec::new();
-        for node in self.graph.node_indices() {
-            if !reachable.contains(&node) {
-                to_remove.push(node);
-            }
-        }
-        for node in to_remove {
-            self.graph.remove_node(node);
-        }
-    }
     pub(crate) fn has_return_value(&self) -> bool {
         self.return_ty.is_some()
     }
@@ -473,14 +455,6 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
     for inst in &func.instrs {
         match inst {
             Code::Label { label, pos } => {
-                assert!(
-                    label != &BlockName::Entry.to_string(),
-                    "not allowed to use entry___ as a label"
-                );
-                assert!(
-                    label != &BlockName::Exit.to_string(),
-                    "not allowed to use exit___ as a label"
-                );
                 let next_block = builder.get_index(label);
                 builder.finish_block(current, mem::take(&mut block), mem::take(&mut anns));
                 builder.set_pos(next_block, pos.clone());
@@ -589,7 +563,6 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
         }
     }
     builder.finish_block(current, block, anns);
-
     if !had_branch {
         builder.add_edge(
             current,
@@ -600,9 +573,6 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
             },
         )
     }
-
-    // also, remove any unreachable blocks
-    builder.cfg.remove_unreachable();
 
     builder.cfg
 }

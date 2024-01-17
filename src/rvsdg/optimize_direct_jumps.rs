@@ -25,10 +25,10 @@ impl<'a> JumpOptimizer<'a> {
     fn optimized(&mut self) -> SimpleCfgFunction {
         let mut resulting_graph: StableGraph<BasicBlock, Branch> = StableDiGraph::new();
 
-        // a map from nodes in the old graph to nodes in the
-        // new graph
-        // if a node was fused into another node,
-        // it points to the new, fused node
+        // a map from nodes in the new graph to nodes in the
+        // old graph
+        // if a node was fused into another node, fix this
+        // so it points to the fused node
         let mut node_mapping: HashMap<NodeIndex, NodeIndex> = HashMap::new();
 
         // we use a bfs so that previous nodes are mapped to new nodes
@@ -59,18 +59,15 @@ impl<'a> JumpOptimizer<'a> {
                 // single outgoing edge from previous
                 // and two distinct nodes
                 if previous_outgoing.len() == 1 && previous != node {
-                    let previous_new = node_mapping[&previous];
+                    let previous_node = node_mapping[&previous];
 
                     // this node will be mapped to the previous
-                    node_mapping.insert(node, previous_new);
+                    node_mapping.insert(node, previous_node);
 
                     // add instructions to the end of the previous node
-                    resulting_graph[previous_new]
+                    resulting_graph[previous_node]
                         .instrs
                         .extend(self.simple_func.graph[node].instrs.to_vec());
-                    resulting_graph[previous_new]
-                        .footer
-                        .extend(self.simple_func.graph[node].footer.to_vec());
 
                     collapse_node = true;
                 }

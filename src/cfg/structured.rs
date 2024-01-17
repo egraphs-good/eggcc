@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use super::BasicBlock;
-use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Program};
+use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Program, Type};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum StructuredBlock {
@@ -51,6 +51,7 @@ impl StructuredProgram {
 pub struct StructuredFunction {
     pub name: String,
     pub args: Vec<Argument>,
+    pub return_ty: Option<Type>,
     pub block: StructuredBlock,
 }
 
@@ -120,7 +121,7 @@ impl StructuredFunction {
             args: self.args.clone(),
             instrs: builder.resulting_code,
             pos: None,
-            return_type: None,
+            return_type: self.return_ty.clone(),
         }
     }
 }

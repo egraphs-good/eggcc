@@ -76,6 +76,7 @@ impl<'a> StructuredCfgBuilder<'a> {
             name: self.cfg.name.clone(),
             args: self.cfg.args.clone(),
             block: result,
+            return_ty: self.cfg.return_ty.clone(),
         })
     }
 

@@ -14,9 +14,9 @@ block:
    if c:
     break 2
    else:
-    break 1
+
   print y;
-  break 1
+  break 2
  print x;
 block:
  print z;

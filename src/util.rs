@@ -308,6 +308,7 @@ impl Run {
         let mut res = vec![];
         for test_type in [
             RunType::StructuredConversion,
+            RunType::StructuredRoundTrip,
             RunType::RvsdgConversion,
             RunType::RvsdgRoundTrip,
             RunType::CfgRoundTrip,

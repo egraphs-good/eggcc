@@ -12,10 +12,10 @@ block:
    if condition:
     break 2
    else:
-    break 1
+
   elseval: int = const 2;
   print elseval;
-  break 1
+  break 2
  thenval: int = const 1;
  print thenval;
 block:

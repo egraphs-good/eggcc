@@ -33,7 +33,7 @@ while true:
    if v7:
     break 2
    else:
-    break 1
+
   block:
    v14: int = id res;
    print v14;

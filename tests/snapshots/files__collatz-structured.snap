@@ -17,7 +17,7 @@ while true:
    if cond:
     break 2
    else:
-    break 1
+
   block:
    block:
     counter: int = add counter one;
@@ -28,12 +28,12 @@ while true:
     if cond:
      break 2
     else:
-     break 1
+
    v1: int = mul three var;
    var: int = add one v1;
-   break 2
+   break 3
   var: int = div var two;
-  break 1
+  break 2
  block:
   print counter;
   return

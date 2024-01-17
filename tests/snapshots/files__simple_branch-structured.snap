@@ -11,9 +11,9 @@ block:
    if isless:
     break 2
    else:
-    break 1
+
   result: int = const 0;
-  break 1
+  break 2
  result: int = const 1;
 block:
  print result;

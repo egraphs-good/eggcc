@@ -193,10 +193,12 @@ impl StructuredBlock {
                     pos: None,
                 });
                 then_block.to_code(builder);
+
                 builder.resulting_code.push(Code::Label {
                     label: else_name,
                     pos: None,
                 });
+
                 else_block.to_code(builder);
             }
             StructuredBlock::Loop(block) => {

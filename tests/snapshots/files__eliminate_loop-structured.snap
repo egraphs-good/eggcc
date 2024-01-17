@@ -13,7 +13,7 @@ while true:
   if cond:
    break 2
   else:
-   break 1
+
  block:
   print one;
   return

@@ -16,7 +16,7 @@ while true:
    if cond:
     break 2
    else:
-    break 1
+
   block:
    block:
     d: int = div var two;
@@ -30,11 +30,11 @@ while true:
     if cond:
      break 2
     else:
-     break 1
+
    var: int = id var_else;
-   break 2
+   break 3
   var: int = id var_then;
-  break 1
+  break 2
  block:
   print arg;
   return

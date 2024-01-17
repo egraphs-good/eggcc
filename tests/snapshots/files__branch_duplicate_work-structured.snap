@@ -11,10 +11,10 @@ block:
    if isless:
     break 2
    else:
-    break 1
+
   double: int = add x x;
   result: int = mul double two;
-  break 1
+  break 2
  result: int = add x x;
 block:
  print result;

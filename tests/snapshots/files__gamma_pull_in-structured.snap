@@ -11,9 +11,9 @@ block:
    if cond:
     break 2
    else:
-    break 1
+
   x: int = const 3;
-  break 1
+  break 2
  x: int = const 2;
 block:
  y: int = add x x;

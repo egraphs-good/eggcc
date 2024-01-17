@@ -10,7 +10,7 @@ block:
   if cond:
    break 2
   else:
-   break 1
+
  a: int = const 1;
 block:
  a: int = const 1;

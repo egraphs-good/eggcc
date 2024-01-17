@@ -10,10 +10,10 @@ block:
    if cond:
     break 2
    else:
-    break 1
+
   a: int = const 2;
   print a;
-  break 1
+  break 2
  a: int = const 1;
  print a;
 block:

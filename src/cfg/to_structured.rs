@@ -257,7 +257,6 @@ impl<'a> StructuredCfgBuilder<'a> {
         let top_context = self.context.last().unwrap();
         for (index, context) in self.context.iter().rev().enumerate() {
             match &context.enclosing {
-                //ContainingHistory::ThenOrElseBranch => {}
                 ContainingHistory::LoopWithLabel(label) if label == &target => {
                     if let Some(true) = top_context
                         .fallthrough

@@ -106,6 +106,14 @@ impl<'a> StructuredCfgBuilder<'a> {
             .filter(|n| self.is_merge_node(*n))
             .collect::<Vec<_>>();
         merge_nodes.sort_by_key(|n| self.postorder[&self.cfg.graph[*n].name]);
+        eprintln!(
+            "merge nodes of {}: {:?}",
+            self.name(node),
+            merge_nodes
+                .iter()
+                .map(|n| self.name(*n))
+                .collect::<Vec<_>>()
+        );
         self.node_within(node, merge_nodes)
     }
 
@@ -134,11 +142,20 @@ impl<'a> StructuredCfgBuilder<'a> {
                 let first = StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone()));
                 let second = match edges.as_slice() {
                     [] => {
-                        panic!("handled above");
+                        panic!(
+                            "handled above- edges should not be empty for non-exit block {:?}",
+                            self.name(node)
+                        );
                     }
                     // Unconditionally jumps to out
                     [out] => self.do_branch(out),
                     [branch1, branch2] => {
+                        eprintln!(
+                            "Two branches {} and {}",
+                            self.name(branch1.target()),
+                            self.name(branch2.target())
+                        );
+                        eprintln!("Branches: {:?} and {:?}", branch1, branch2);
                         if let (
                             Branch {
                                 op:
@@ -155,17 +172,14 @@ impl<'a> StructuredCfgBuilder<'a> {
                         ) = (branch1.weight(), branch2.weight())
                         {
                             assert!(val1 != val2);
-                            /*self.context.push(Context {
-                                enclosing: ContainingHistory::ThenOrElseBranch,
-                                fallthrough: None,
-                            });*/
                             let then_block = self
                                 .do_branch(if val1 == &CondVal::from(true) {
                                     branch1
                                 } else {
+                                    eprintln!("if true go to {}", self.name(branch2.target()));
                                     branch2
                                 })
-                                .unwrap();
+                                .unwrap_or(StructuredBlock::Sequence(vec![]));
                             let else_block = self
                                 .do_branch(if val1 == &CondVal::from(false) {
                                     branch1
@@ -173,7 +187,6 @@ impl<'a> StructuredCfgBuilder<'a> {
                                     branch2
                                 })
                                 .unwrap_or(StructuredBlock::Sequence(vec![]));
-                            //self.context.pop();
                             Some(StructuredBlock::Ite(
                                 arg1.to_string(),
                                 Box::new(then_block),
@@ -283,12 +296,13 @@ impl<'a> StructuredCfgBuilder<'a> {
         self.postorder[&self.cfg.graph[target].name] >= self.postorder[&self.cfg.graph[source].name]
     }
 
+    /// merge nodes have multiple incoming
+    /// edges
     fn is_merge_node(&self, node: NodeIndex) -> bool {
         self.cfg
             .graph
             .neighbors_directed(node, petgraph::Direction::Incoming)
-            .take(1)
-            .next()
+            .nth(1)
             .is_some()
     }
 

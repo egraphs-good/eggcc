@@ -179,6 +179,7 @@ impl StructuredBlock {
             StructuredBlock::Ite(cond, then_block, else_block) => {
                 let then_name = builder.fresh_block_name();
                 let else_name = builder.fresh_block_name();
+                let end_name = builder.fresh_block_name();
                 builder
                     .resulting_code
                     .push(Code::Instruction(Instruction::Effect {
@@ -188,11 +189,23 @@ impl StructuredBlock {
                         labels: vec![then_name.clone(), else_name.clone()],
                         pos: None,
                     }));
+
+                // convert the then block
                 builder.resulting_code.push(Code::Label {
                     label: then_name,
                     pos: None,
                 });
                 then_block.to_code(builder);
+                // jump to the end
+                builder
+                    .resulting_code
+                    .push(Code::Instruction(Instruction::Effect {
+                        op: EffectOps::Jump,
+                        args: vec![],
+                        funcs: vec![],
+                        labels: vec![end_name.clone()],
+                        pos: None,
+                    }));
 
                 builder.resulting_code.push(Code::Label {
                     label: else_name,
@@ -200,6 +213,12 @@ impl StructuredBlock {
                 });
 
                 else_block.to_code(builder);
+
+                // add a label at the end of the if statement
+                builder.resulting_code.push(Code::Label {
+                    label: end_name,
+                    pos: None,
+                });
             }
             StructuredBlock::Loop(block) => {
                 // we need to be able to loop back to the start

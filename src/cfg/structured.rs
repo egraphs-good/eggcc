@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::{function_to_cfg, BasicBlock};
+use super::BasicBlock;
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Program, Type};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -116,6 +116,7 @@ impl StructuredFunction {
         };
         self.block.to_code(&mut builder);
 
+        // TODO get rid of intermediate jumps
         Function {
             name: self.name.clone(),
             args: self.args.clone(),
@@ -123,9 +124,6 @@ impl StructuredFunction {
             pos: None,
             return_type: self.return_ty.clone(),
         }
-        /*function_to_cfg(&)
-        .optimize_jumps()
-        .to_bril()*/
     }
 }
 

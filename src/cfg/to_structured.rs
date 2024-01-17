@@ -107,14 +107,6 @@ impl<'a> StructuredCfgBuilder<'a> {
             .filter(|n| self.is_merge_node(*n))
             .collect::<Vec<_>>();
         merge_nodes.sort_by_key(|n| self.postorder[&self.cfg.graph[*n].name]);
-        eprintln!(
-            "merge nodes of {}: {:?}",
-            self.name(node),
-            merge_nodes
-                .iter()
-                .map(|n| self.name(*n))
-                .collect::<Vec<_>>()
-        );
         self.node_within(node, merge_nodes)
     }
 
@@ -151,12 +143,6 @@ impl<'a> StructuredCfgBuilder<'a> {
                     // Unconditionally jumps to out
                     [out] => self.do_branch(out),
                     [branch1, branch2] => {
-                        eprintln!(
-                            "Two branches {} and {}",
-                            self.name(branch1.target()),
-                            self.name(branch2.target())
-                        );
-                        eprintln!("Branches: {:?} and {:?}", branch1, branch2);
                         if let (
                             Branch {
                                 op:
@@ -177,7 +163,6 @@ impl<'a> StructuredCfgBuilder<'a> {
                                 .do_branch(if val1 == &CondVal::from(true) {
                                     branch1
                                 } else {
-                                    eprintln!("if true go to {}", self.name(branch2.target()));
                                     branch2
                                 })
                                 .unwrap_or(StructuredBlock::Sequence(vec![]));

@@ -155,6 +155,11 @@ pub enum RunType {
     ToCfg,
     /// Convert the original program to a CFG and back to Bril again.
     CfgRoundTrip,
+    /// Removes unecessary direct
+    /// jumps from the input program by
+    /// converting it to a CFG, calling
+    /// optimize_jumps, then converting it back to bril.
+    OptimizeDirectJumps,
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
     /// Convert the original program to a RVSDG, optimize it, then turn
@@ -188,6 +193,7 @@ impl FromStr for RunType {
             "rvsdg-roundtrip" => Ok(RunType::RvsdgRoundTrip),
             "to-cfg" => Ok(RunType::ToCfg),
             "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
+            "optimize-direct-jumps" => Ok(RunType::OptimizeDirectJumps),
             "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
             "rvsdg-optimize" => Ok(RunType::RvsdgOptimize),
             "rvsdg-egglog-encoding" => Ok(RunType::RvsdgEgglogEncoding),
@@ -207,6 +213,7 @@ impl Display for RunType {
             RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
             RunType::ToCfg => write!(f, "to-cfg"),
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
+            RunType::OptimizeDirectJumps => write!(f, "optimize-direct-jumps"),
             RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
             RunType::RvsdgOptimize => write!(f, "rvsdg-optimize"),
             RunType::OptimizedRvsdg => write!(f, "optimized-rvsdg"),
@@ -225,6 +232,7 @@ impl RunType {
             RunType::RvsdgRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
+            RunType::OptimizeDirectJumps => true,
             RunType::RvsdgToCfg => true,
             RunType::RvsdgOptimize => true,
             RunType::RvsdgEgglogEncoding => true,
@@ -304,6 +312,7 @@ impl Run {
             RunType::RvsdgConversion,
             RunType::RvsdgRoundTrip,
             RunType::CfgRoundTrip,
+            RunType::OptimizeDirectJumps,
             RunType::RvsdgOptimize,
             RunType::RvsdgToCfg,
             RunType::OptimizedRvsdg,
@@ -396,6 +405,19 @@ impl Run {
             RunType::CfgRoundTrip => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let bril = cfg.to_bril();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(bril),
+                )
+            }
+            RunType::OptimizeDirectJumps => {
+                let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
+                let optimized = cfg.optimize_jumps();
+                let bril = optimized.to_bril();
                 (
                     vec![Visualization {
                         result: bril.to_string(),

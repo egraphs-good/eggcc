@@ -91,6 +91,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("function_inlining.egg"),
             &switch_rewrites::rules(),
             &conditional_invariant_code_motion::rules().join("\n"),
+            include_str!("loop_strength_reduction.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

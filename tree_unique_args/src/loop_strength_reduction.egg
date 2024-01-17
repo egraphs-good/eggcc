@@ -1,0 +1,110 @@
+(ruleset loop-strength-reduction)
+
+;; Change multiplication of loop variable to addition to an accumulator
+;;
+;; ORIGINAL
+;; a = 0
+;; c = 3
+;; for  i = 0 to n:
+;;     a = i * c
+;;
+;; OPTIMIZED
+;; a = 0
+;; c = 3
+;; d = 0
+;; for i = 0 to n:
+;;     a = d
+;;     d += c
+
+; Finds invariants/constants within a loop.
+; Columns: loop; value of invariant in inputs; value of invariant in outputs
+; TODO: once everything else is working, change this to just use an ID to ref the loop
+(relation Inv (Expr Expr Expr))
+(rule (
+    (= loop (Loop id (All (Parallel) inputs) (All (Sequential) (Pair pred (All (Parallel) outputs)))))
+    (= (ListExpr-ith outputs i) (Get (Arg id) i)))
+    ((Inv loop (ListExpr-ith inputs i) (Get (Arg id) i))) :ruleset always-run)
+
+; NOTE: I removed this rule for now. This is because it is not correct to put
+; (Num id n) into the inputs of this loop. It has the id of the loop, so it
+; belongs within the context of the outputs, and therefore relies on RefIdOf.
+; TODO: handle this and add corresponding test case
+; This note I copied from the previous encoding (unique args) is actually incorrect:
+    ;; Note: with the milestone encoding, we had to use
+    ;; Body-contains-Operand here. Here, we already know
+    ;; that c is within loop because it has the correct id. 
+; (rule (
+;     (= c (Num id n))
+;     (= loop (Loop id inputs predoutputs))
+;     )
+;     ((Inv loop c c)) :ruleset always-run)
+
+(rule
+    (
+        ;; Find loop
+        (= old-loop (
+            Loop
+            id
+            (All (Parallel) input-list)
+            (All (Sequential)
+                (Pair
+                    pred
+                    (All
+                        (Parallel)
+                        output-list
+                    )
+                )))
+            )
+
+        ; Find loop variable (argument that gets incremented with a number)
+        (= (ListExpr-ith output-list i) (Add (Get (Arg id) i) (Num id loop-incr)))
+
+        ; Find invariant where input is same as output
+        ; TODO: no longer works for multiplication by Num, since changing the id of the Num
+        ; to the id for inputs relies on having RefIdOf
+        (Inv old-loop c-input c-output)
+
+        ; Find multiplication of loop variable and invariant
+        (= old-exp (Mul c-output (Get (Arg id) i)))
+    )
+    (
+        ; Generate new id for loop
+        (let new-id (Id (i64-fresh!)))
+
+        ; Each time we need to update d by the product of the multiplied constant and the loop increment
+        (let addend (Mul c-output (Num new-id loop-incr)))
+
+        ; n is index of our new, temporary variable d
+        (let n (ListExpr-length input-list))
+
+        ; Initial value of d is i * c
+        (let d-init (Mul c-input (ListExpr-ith input-list i)))
+
+        ; Value of d in loop
+        ; the id here will get replaced in the DeepCopy
+        (let d-out (Add (Get (Arg id) n) addend))
+
+        ; Construct optimized loop
+        (let new-inputs (All (Parallel) (Append input-list d-init)))
+        (let new-outputs (All (Parallel) (Append output-list d-out)))
+
+        (let new-loop
+            (NewLoop
+                new-id
+                new-inputs
+                (All
+                    (Sequential)
+                    (Pair
+                        pred
+                        new-outputs))))
+
+        ; We can just union within this new loop now
+        ; NOTE: milestone encoding used can-subst-beneath for this
+        (union (DeepCopyExpr old-exp new-id) (Get (Arg new-id) n))
+
+        ; NOTE: with single args, I believe it's ok to just union this
+        ; without adjusting for the number of inputs/outputs
+        (union old-loop new-loop)
+    )
+    :ruleset loop-strength-reduction
+)

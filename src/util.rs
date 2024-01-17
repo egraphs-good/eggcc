@@ -146,6 +146,10 @@ pub enum RunType {
     /// Output a human-readable debug version of this structured
     /// program, using while loops and if statements.
     StructuredConversion,
+    /// Convert the input bril program to
+    /// a structured format, then
+    /// back to bril again.
+    StructuredRoundTrip,
     /// Convert the input bril program to an RVSDG and output it as an SVG.
     RvsdgConversion,
     /// Convert to RVSDG and back to Bril again,
@@ -184,6 +188,7 @@ impl FromStr for RunType {
         match s {
             "nothing" => Ok(RunType::Nothing),
             "structured" => Ok(RunType::StructuredConversion),
+            "structured-roundtrip" => Ok(RunType::StructuredRoundTrip),
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "rvsdg-roundtrip" => Ok(RunType::RvsdgRoundTrip),
             "to-cfg" => Ok(RunType::ToCfg),
@@ -203,6 +208,7 @@ impl Display for RunType {
         match self {
             RunType::Nothing => write!(f, "nothing"),
             RunType::StructuredConversion => write!(f, "structured"),
+            RunType::StructuredRoundTrip => write!(f, "structured-roundtrip"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
             RunType::ToCfg => write!(f, "to-cfg"),
@@ -221,6 +227,7 @@ impl RunType {
         match self {
             RunType::Nothing => true,
             RunType::StructuredConversion => false,
+            RunType::StructuredRoundTrip => true,
             RunType::RvsdgConversion => false,
             RunType::RvsdgRoundTrip => true,
             RunType::ToCfg => true,
@@ -357,6 +364,18 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
+                )
+            }
+            RunType::StructuredRoundTrip => {
+                let structured = Optimizer::program_to_structured(&self.prog_with_args.program)?;
+                let bril = structured.to_program();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(bril),
                 )
             }
             RunType::RvsdgConversion => {

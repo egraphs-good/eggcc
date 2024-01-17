@@ -7,30 +7,21 @@ block:
  i: int = const 0;
 while true:
  block:
-  block:
-   block:
-    a: int = const 5;
-    if_cond: bool = lt i a;
-    if if_cond:
-     break 2
-    else:
-
+  a: int = const 5;
+  if_cond: bool = lt i a;
+  if if_cond:
+   one: int = const 1;
+   print one;
+  else:
    two: int = const 2;
    print two;
-   break 2
-  one: int = const 1;
-  print one;
- block:
-  one: int = const 1;
-  i: int = add i one;
-  b: int = const 5;
-  loop_cond: bool = lt i b;
-  if loop_cond:
-   break 2
-  else:
+ one: int = const 1;
+ i: int = add i one;
+ b: int = const 5;
+ loop_cond: bool = lt i b;
+ if loop_cond:
 
- block:
+ else:
   print i;
   return
-
 }

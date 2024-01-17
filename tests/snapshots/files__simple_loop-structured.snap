@@ -6,15 +6,11 @@ main {
 block:
 
 while true:
- block:
-  i: int = const 0;
-  cond: bool = lt i i;
-  if cond:
-   break 2
-  else:
+ i: int = const 0;
+ cond: bool = lt i i;
+ if cond:
 
- block:
+ else:
   print i;
   return
-
 }

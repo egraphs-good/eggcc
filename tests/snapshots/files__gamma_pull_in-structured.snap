@@ -4,22 +4,14 @@ expression: visualization.result
 ---
 main {
 block:
- block:
-  block:
-   ten: int = const 10;
-   cond: bool = lt input ten;
-   if cond:
-    break 2
-   else:
-
+ ten: int = const 10;
+ cond: bool = lt input ten;
+ if cond:
+  x: int = const 2;
+ else:
   x: int = const 3;
-  break 2
- x: int = const 2;
-block:
- y: int = add x x;
- print y;
-block:
+y: int = add x x;
+print y;
 
- return
-
+return
 }

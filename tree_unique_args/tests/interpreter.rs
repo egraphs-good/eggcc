@@ -2,16 +2,16 @@
 
 use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Order {
     Parallel,
     Sequential,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Id(i64);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     Num(i64),
     Boolean(bool),
@@ -410,8 +410,20 @@ fn test_interpreter_fib_using_memory() {
 impl std::str::FromStr for Expr {
     type Err = String;
     fn from_str(s: &str) -> Result<Expr, String> {
-        fn list_expr_to_vec(_e: &egglog::ast::Expr) -> Result<Vec<Expr>, String> {
-            todo!("need to parse a cons list")
+        fn list_expr_to_vec(e: &egglog::ast::Expr) -> Result<Vec<Expr>, String> {
+            if let egglog::ast::Expr::Call(f, xs) = e {
+                match (f.as_str(), xs.as_slice()) {
+                    ("Nil", []) => return Ok(Vec::new()),
+                    ("Cons", [head, tail]) => {
+                        let head = egglog_expr_to_expr(head)?;
+                        let mut tail = list_expr_to_vec(tail)?;
+                        tail.insert(0, head);
+                        return Ok(tail);
+                    }
+                    _ => {}
+                }
+            }
+            Err(String::from("invalid ListExpr"))
         }
         fn egglog_expr_to_id(e: &egglog::ast::Expr) -> Result<Id, String> {
             if let egglog::ast::Expr::Call(f, xs) = e {
@@ -421,7 +433,7 @@ impl std::str::FromStr for Expr {
                     return Ok(Id(*int));
                 }
             }
-            Err(String::from("invalid id"))
+            Err(String::from("invalid Id"))
         }
         fn egglog_expr_to_expr(e: &egglog::ast::Expr) -> Result<Expr, String> {
             match e {
@@ -527,5 +539,20 @@ fn test_expr_parser() {
         (Cons (Switch (Boolean (Id 1) true) (Cons (Num (Id 1) 4) (Cons (Num (Id 1) 5) (Nil))))
             (Nil)))))
 ";
-    println!("{:?}", s.parse::<Expr>().unwrap());
+    let build = s.parse::<Expr>().unwrap();
+    let check = Expr::Loop(
+        Id(1),
+        Box::new(Expr::Num(1)),
+        Box::new(Expr::All(
+            Order::Sequential,
+            vec![
+                Expr::LessThan(Box::new(Expr::Num(2)), Box::new(Expr::Num(3))),
+                Expr::Switch(
+                    Box::new(Expr::Boolean(true)),
+                    vec![Expr::Num(4), Expr::Num(5)],
+                ),
+            ],
+        )),
+    );
+    assert_eq!(build, check);
 }

@@ -20,7 +20,7 @@ while true:
     j: int = add j one;
    else:
     i: int = add i one;
-    break 2
+    break 1
  else:
   print i;
   return

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::BasicBlock;
+use super::{function_to_cfg, BasicBlock};
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Program, Type};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -123,6 +123,9 @@ impl StructuredFunction {
             pos: None,
             return_type: self.return_ty.clone(),
         }
+        /*function_to_cfg(&)
+        .optimize_jumps()
+        .to_bril()*/
     }
 }
 

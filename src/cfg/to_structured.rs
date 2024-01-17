@@ -264,27 +264,39 @@ impl<'a> StructuredCfgBuilder<'a> {
         }
     }
 
+    /// Within the current context,
+    /// generate a break statement that returns
+    /// control flow to the block with the given name.
     fn break_out_to(&self, target: BlockName) -> Option<StructuredBlock> {
         assert!(!self.context.is_empty(), "context should not be empty");
         let top_context = self.context.last().unwrap();
         for (index, context) in self.context.iter().rev().enumerate() {
             match &context.enclosing {
                 //ContainingHistory::ThenOrElseBranch => {}
-                ContainingHistory::LoopWithLabel(label)
-                | ContainingHistory::BlockFollowedBy(label) => {
-                    if label == &target {
-                        if let Some(true) = top_context
-                            .fallthrough
-                            .as_ref()
-                            .map(|fallthrough_label| fallthrough_label == &target)
-                        {
-                            return None;
-                        } else {
-                            // add one because we are breaking out of the block
-                            return Some(StructuredBlock::Break(index + 1));
-                        }
+                ContainingHistory::LoopWithLabel(label) if label == &target => {
+                    if let Some(true) = top_context
+                        .fallthrough
+                        .as_ref()
+                        .map(|fallthrough_label| fallthrough_label == &target)
+                    {
+                        return None;
+                    } else {
+                        return Some(StructuredBlock::Break(index));
                     }
                 }
+                ContainingHistory::BlockFollowedBy(label) if label == &target => {
+                    if let Some(true) = top_context
+                        .fallthrough
+                        .as_ref()
+                        .map(|fallthrough_label| fallthrough_label == &target)
+                    {
+                        return None;
+                    } else {
+                        // add one to break out of this block
+                        return Some(StructuredBlock::Break(1 + index));
+                    }
+                }
+                _ => (),
             }
         }
         panic!(

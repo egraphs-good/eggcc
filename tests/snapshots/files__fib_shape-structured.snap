@@ -7,18 +7,12 @@ block:
  one: int = const 1;
  i: int = const 0;
 while true:
- block:
-  block:
-   cond: bool = lt i input;
-   if cond:
-    break 2
-   else:
-    break 1
-  block:
-   donebody: int = const 1;
-   print i;
-   return
-
- i: int = add i one;
- bodyvar: int = const 1;
+ cond: bool = lt i input;
+ if cond:
+  i: int = add i one;
+  bodyvar: int = const 1;
+ else:
+  donebody: int = const 1;
+  print i;
+  return
 }

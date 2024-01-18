@@ -407,10 +407,32 @@ fn test_interpreter_fib_using_memory() {
     assert!(!vm.mem.contains_key(&(nth as usize + 1)));
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum ExprParseError {
+    #[error("invalid ListExpr")]
+    InvalidListExpr,
+    #[error("invalid Id")]
+    InvalidId,
+    #[error("literals must be wrapped")]
+    UnwrappedLiteral,
+    #[error("expected a grounded term, got a term with {0:?} in it")]
+    UngroundedTerm(String),
+    #[error("expected Get index to be positive")]
+    NegativeGetIndex,
+    #[error("order had arguments")]
+    InvalidOrderArguments,
+    #[error("expected Parallel or Sequential, found {0:?}")]
+    InvalidOrder(String),
+    #[error("unknown function {0:?} with arguments {1:?}")]
+    UnknownFunction(String, Vec<egglog::ast::Expr>),
+    #[error("{0}")]
+    Egglog(String),
+}
+
 impl std::str::FromStr for Expr {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Expr, String> {
-        fn list_expr_to_vec(e: &egglog::ast::Expr) -> Result<Vec<Expr>, String> {
+    type Err = ExprParseError;
+    fn from_str(s: &str) -> Result<Expr, ExprParseError> {
+        fn list_expr_to_vec(e: &egglog::ast::Expr) -> Result<Vec<Expr>, ExprParseError> {
             if let egglog::ast::Expr::Call(f, xs) = e {
                 match (f.as_str(), xs.as_slice()) {
                     ("Nil", []) => return Ok(Vec::new()),
@@ -423,9 +445,9 @@ impl std::str::FromStr for Expr {
                     _ => {}
                 }
             }
-            Err(String::from("invalid ListExpr"))
+            Err(ExprParseError::InvalidListExpr)
         }
-        fn egglog_expr_to_id(e: &egglog::ast::Expr) -> Result<Id, String> {
+        fn egglog_expr_to_id(e: &egglog::ast::Expr) -> Result<Id, ExprParseError> {
             if let egglog::ast::Expr::Call(f, xs) = e {
                 if let ("Id", [egglog::ast::Expr::Lit(egglog::ast::Literal::Int(int))]) =
                     (f.as_str(), xs.as_slice())
@@ -433,12 +455,14 @@ impl std::str::FromStr for Expr {
                     return Ok(Id(*int));
                 }
             }
-            Err(String::from("invalid Id"))
+            Err(ExprParseError::InvalidId)
         }
-        fn egglog_expr_to_expr(e: &egglog::ast::Expr) -> Result<Expr, String> {
+        fn egglog_expr_to_expr(e: &egglog::ast::Expr) -> Result<Expr, ExprParseError> {
             match e {
-                egglog::ast::Expr::Lit(_) => Err(String::from("literals must be wrapped")),
-                egglog::ast::Expr::Var(s) => Err(format!("unknown variable {:?}", s.as_str())),
+                egglog::ast::Expr::Lit(_) => Err(ExprParseError::UnwrappedLiteral),
+                egglog::ast::Expr::Var(s) => {
+                    Err(ExprParseError::UngroundedTerm(s.as_str().to_owned()))
+                }
                 egglog::ast::Expr::Call(f, xs) => match (f.as_str(), xs.as_slice()) {
                     ("Num", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Int(i))]) => {
                         Ok(Expr::Num(*i))
@@ -476,7 +500,7 @@ impl std::str::FromStr for Expr {
                         Ok(Expr::Get(
                             Box::new(egglog_expr_to_expr(x)?),
                             (*i).try_into()
-                                .map_err(|_| String::from("expected Get index to be positive"))?,
+                                .map_err(|_| ExprParseError::NegativeGetIndex)?,
                         ))
                     }
                     ("Print", [x]) => Ok(Expr::Print(Box::new(egglog_expr_to_expr(x)?))),
@@ -487,12 +511,12 @@ impl std::str::FromStr for Expr {
                     )),
                     ("All", [egglog::ast::Expr::Call(order, empty), xs]) => {
                         if !empty.is_empty() {
-                            return Err(String::from("order had arguments"));
+                            return Err(ExprParseError::InvalidOrderArguments);
                         }
                         let order = match order.as_str() {
                             "Parallel" => Ok(Order::Parallel),
                             "Sequential" => Ok(Order::Sequential),
-                            s => Err(format!("expected Parallel or Sequential, found {s:?}")),
+                            s => Err(ExprParseError::InvalidOrder(s.to_owned())),
                         }?;
                         Ok(Expr::All(order, list_expr_to_vec(xs)?))
                     }
@@ -519,12 +543,14 @@ impl std::str::FromStr for Expr {
                         egglog_expr_to_id(id)?,
                         Box::new(egglog_expr_to_expr(arg)?),
                     )),
-                    (f, xs) => Err(format!("unknown function {:?} with arguments {:?}", f, xs)),
+                    (f, xs) => Err(ExprParseError::UnknownFunction(f.to_owned(), xs.to_vec())),
                 },
             }
         }
         let parser = egglog::ast::parse::ExprParser::new();
-        let egglog_expr = parser.parse(s).map_err(|e| format!("{e}"))?;
+        let egglog_expr = parser
+            .parse(s)
+            .map_err(|e| ExprParseError::Egglog(format!("{e}")))?;
         egglog_expr_to_expr(&egglog_expr)
     }
 }

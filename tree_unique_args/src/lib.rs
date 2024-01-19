@@ -2,6 +2,7 @@ pub(crate) mod body_contains;
 pub(crate) mod conditional_invariant_code_motion;
 pub(crate) mod deep_copy;
 pub(crate) mod function_inlining;
+pub(crate) mod id_analysis;
 pub mod interpreter;
 pub(crate) mod ir;
 pub(crate) mod is_valid;
@@ -83,6 +84,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &deep_copy::deep_copy_rules().join("\n"),
             include_str!("sugar.egg"),
             include_str!("util.egg"),
+            &id_analysis::id_analysis_rules().join("\n"),
             // optimizations
             include_str!("simple.egg"),
             include_str!("function_inlining.egg"),

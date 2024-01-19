@@ -3,30 +3,24 @@ source: tests/files.rs
 expression: visualization.result
 ---
 double {
-block:
- two: int = const 2;
- res: int = mul two x;
- return res
-
+two: int = const 2;
+res: int = mul two x;
+return res
 }
 
 inc {
-block:
- one: int = const 1;
- x: int = add one x;
- x: int = call @double x;
- return x
-
+one: int = const 1;
+x: int = add one x;
+x: int = call @double x;
+return x
 }
 
 main {
-block:
- a: int = const 0;
- b: int = call @inc a;
- print b;
- c: int = const 1;
- c: int = call @double c;
- print c;
- return
-
+a: int = const 0;
+b: int = call @inc a;
+print b;
+c: int = const 1;
+c: int = call @double c;
+print c;
+return
 }

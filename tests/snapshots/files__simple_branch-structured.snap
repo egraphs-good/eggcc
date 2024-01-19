@@ -4,19 +4,12 @@ expression: visualization.result
 ---
 main {
 block:
- block:
-  block:
-   zero: int = const 0;
-   isless: bool = lt arg zero;
-   if isless:
-    break 2
-   else:
-    break 1
+ zero: int = const 0;
+ isless: bool = lt arg zero;
+ if isless:
+  result: int = const 1;
+ else:
   result: int = const 0;
-  break 1
- result: int = const 1;
-block:
- print result;
- return
-
+print result;
+return
 }

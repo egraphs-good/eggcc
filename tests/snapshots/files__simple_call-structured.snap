@@ -3,18 +3,14 @@ source: tests/files.rs
 expression: visualization.result
 ---
 inc {
-block:
- one: int = const 1;
- res: int = add one x;
- print res;
- return
-
+one: int = const 1;
+res: int = add one x;
+print res;
+return
 }
 
 main {
-block:
- a: int = const 0;
- call @inc a;
- return
-
+a: int = const 0;
+call @inc a;
+return
 }

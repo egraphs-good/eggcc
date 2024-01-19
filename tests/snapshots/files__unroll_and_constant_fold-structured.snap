@@ -7,15 +7,11 @@ block:
  i: int = const 0;
  one: int = const 1;
 while true:
- block:
-  i: int = add i one;
-  cond: bool = lt i one;
-  if cond:
-   break 2
-  else:
-   break 1
- block:
+ i: int = add i one;
+ cond: bool = lt i one;
+ if cond:
+
+ else:
   print i;
   return
-
 }

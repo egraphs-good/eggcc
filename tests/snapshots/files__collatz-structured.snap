@@ -11,31 +11,19 @@ block:
  var: int = id arg;
  counter: int = id zero;
 while true:
- block:
-  block:
-   cond: bool = eq var one;
-   if cond:
-    break 2
-   else:
-    break 1
-  block:
-   block:
-    counter: int = add counter one;
-    d: int = div var two;
-    m: int = mul d two;
-    mod: int = sub var m;
-    cond: bool = eq mod zero;
-    if cond:
-     break 2
-    else:
-     break 1
-   v1: int = mul three var;
-   var: int = add one v1;
-   break 2
-  var: int = div var two;
-  break 1
- block:
+ cond: bool = eq var one;
+ if cond:
   print counter;
   return
-
+ else:
+  counter: int = add counter one;
+  d: int = div var two;
+  m: int = mul d two;
+  mod: int = sub var m;
+  cond: bool = eq mod zero;
+  if cond:
+   var: int = div var two;
+  else:
+   v1: int = mul three var;
+   var: int = add one v1;
 }

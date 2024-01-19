@@ -2,24 +2,27 @@
 
 use std::collections::HashMap;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Order {
     Parallel,
     Sequential,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Id(i64);
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     Num(i64),
     Boolean(bool),
     Unit,
     Add(Box<Expr>, Box<Expr>),
     Sub(Box<Expr>, Box<Expr>),
+    Mul(Box<Expr>, Box<Expr>),
     LessThan(Box<Expr>, Box<Expr>),
-    // TODO: other pure ops
+    And(Box<Expr>, Box<Expr>),
+    Or(Box<Expr>, Box<Expr>),
+    Not(Box<Expr>),
     Get(Box<Expr>, usize),
     Print(Box<Expr>),
     Read(Box<Expr>),
@@ -29,7 +32,8 @@ pub enum Expr {
     Loop(Id, Box<Expr>, Box<Expr>),
     Let(Id, Box<Expr>, Box<Expr>),
     Arg(Id),
-    // TODO: call and functions
+    Function(Id, Box<Expr>),
+    Call(Id, Box<Expr>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -72,12 +76,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         Expr::Num(_) => Ok(Type::Num),
         Expr::Boolean(_) => Ok(Type::Boolean),
         Expr::Unit => Ok(Type::Unit),
-        Expr::Add(e1, e2) => {
-            expect_type(e1, Type::Num)?;
-            expect_type(e2, Type::Num)?;
-            Ok(Type::Num)
-        }
-        Expr::Sub(e1, e2) => {
+        Expr::Add(e1, e2) | Expr::Sub(e1, e2) | Expr::Mul(e1, e2) => {
             expect_type(e1, Type::Num)?;
             expect_type(e2, Type::Num)?;
             Ok(Type::Num)
@@ -85,6 +84,15 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         Expr::LessThan(e1, e2) => {
             expect_type(e1, Type::Num)?;
             expect_type(e2, Type::Num)?;
+            Ok(Type::Boolean)
+        }
+        Expr::And(e1, e2) | Expr::Or(e1, e2) => {
+            expect_type(e1, Type::Num)?;
+            expect_type(e2, Type::Num)?;
+            Ok(Type::Boolean)
+        }
+        Expr::Not(e1) => {
+            expect_type(e1, Type::Num)?;
             Ok(Type::Boolean)
         }
         Expr::Get(tuple, i) => {
@@ -147,6 +155,9 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
             typecheck(output, &Some(input_ty.clone()))
         }
         Expr::Arg(_) => arg_ty.clone().ok_or(TypeError::NoArg(e.clone())),
+        // TODO: add an environment for functions so we can typecheck function calls correctly
+        Expr::Function(_, output) => typecheck(output, &None),
+        Expr::Call(_, arg) => typecheck(arg, arg_ty),
     }
 }
 
@@ -165,35 +176,88 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
         Expr::Boolean(x) => Value::Boolean(*x),
         Expr::Unit => Value::Unit,
         Expr::Add(e1, e2) => {
-            let Value::Num(n1) = interpret(e1, arg, vm) else { panic!("add") };
-            let Value::Num(n2) = interpret(e2, arg, vm) else { panic!("add") };
+            let Value::Num(n1) = interpret(e1, arg, vm) else {
+                panic!("add")
+            };
+            let Value::Num(n2) = interpret(e2, arg, vm) else {
+                panic!("add")
+            };
             Value::Num(n1 + n2)
         }
         Expr::Sub(e1, e2) => {
-            let Value::Num(n1) = interpret(e1, arg, vm) else { panic!("sub") };
-            let Value::Num(n2) = interpret(e2, arg, vm) else { panic!("sub") };
+            let Value::Num(n1) = interpret(e1, arg, vm) else {
+                panic!("sub")
+            };
+            let Value::Num(n2) = interpret(e2, arg, vm) else {
+                panic!("sub")
+            };
             Value::Num(n1 - n2)
         }
+        Expr::Mul(e1, e2) => {
+            let Value::Num(n1) = interpret(e1, arg, vm) else {
+                panic!("mul")
+            };
+            let Value::Num(n2) = interpret(e2, arg, vm) else {
+                panic!("mul")
+            };
+            Value::Num(n1 * n2)
+        }
         Expr::LessThan(e1, e2) => {
-            let Value::Num(n1) = interpret(e1, arg, vm) else { panic!("lessthan") };
-            let Value::Num(n2) = interpret(e2, arg, vm) else { panic!("lessthan") };
+            let Value::Num(n1) = interpret(e1, arg, vm) else {
+                panic!("lessthan")
+            };
+            let Value::Num(n2) = interpret(e2, arg, vm) else {
+                panic!("lessthan")
+            };
             Value::Boolean(n1 < n2)
         }
+        Expr::And(e1, e2) => {
+            let Value::Boolean(b1) = interpret(e1, arg, vm) else {
+                panic!("and")
+            };
+            let Value::Boolean(b2) = interpret(e2, arg, vm) else {
+                panic!("and")
+            };
+            Value::Boolean(b1 && b2)
+        }
+        Expr::Or(e1, e2) => {
+            let Value::Boolean(b1) = interpret(e1, arg, vm) else {
+                panic!("or")
+            };
+            let Value::Boolean(b2) = interpret(e2, arg, vm) else {
+                panic!("or")
+            };
+            Value::Boolean(b1 || b2)
+        }
+        Expr::Not(e1) => {
+            let Value::Boolean(b1) = interpret(e1, arg, vm) else {
+                panic!("not")
+            };
+            Value::Boolean(!b1)
+        }
         Expr::Get(e_tuple, i) => {
-            let Value::Tuple(vals) = interpret(e_tuple, arg, vm) else { panic!("get") };
+            let Value::Tuple(vals) = interpret(e_tuple, arg, vm) else {
+                panic!("get")
+            };
             vals[*i].clone()
         }
         Expr::Print(e) => {
-            let Value::Num(n) = interpret(e, arg, vm) else { panic!("print") };
+            let Value::Num(n) = interpret(e, arg, vm) else {
+                panic!("print")
+            };
             vm.log.push(n);
             Value::Unit
         }
         Expr::Read(e_addr) => {
-            let Value::Num(addr) = interpret(e_addr, arg, vm) else { panic!("read") };
+            let Value::Num(addr) = interpret(e_addr, arg, vm) else {
+                panic!("read")
+            };
             vm.mem[&(addr as usize)].clone()
         }
         Expr::Write(e_addr, e_data) => {
-            let Value::Num(addr) = interpret(e_addr, arg, vm) else { panic!("write") };
+            let Value::Num(addr) = interpret(e_addr, arg, vm) else {
+                panic!("write")
+            };
             let data = interpret(e_data, arg, vm);
             vm.mem.insert(addr as usize, data);
             Value::Unit
@@ -208,15 +272,22 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             Value::Tuple(vals)
         }
         Expr::Switch(pred, branches) => {
-            let Value::Num(pred) = interpret(pred, arg, vm) else { panic!("switch") };
+            let Value::Num(pred) = interpret(pred, arg, vm) else {
+                panic!("switch")
+            };
             interpret(&branches[pred as usize], arg, vm)
         }
         Expr::Loop(_, input, pred_output) => {
             let mut vals = interpret(input, arg, vm);
             let mut pred = Value::Boolean(true);
             while pred == Value::Boolean(true) {
-                let Value::Tuple(pred_output_val) = interpret(pred_output, &Some(vals.clone()), vm) else {panic!("loop")};
-                let [new_pred, new_vals] = pred_output_val.as_slice() else { panic!("loop") };
+                let Value::Tuple(pred_output_val) = interpret(pred_output, &Some(vals.clone()), vm)
+                else {
+                    panic!("loop")
+                };
+                let [new_pred, new_vals] = pred_output_val.as_slice() else {
+                    panic!("loop")
+                };
                 pred = new_pred.clone();
                 vals = new_vals.clone();
             }
@@ -230,6 +301,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             let Some(v) = arg else { panic!("arg") };
             v.clone()
         }
+        Expr::Function(_, _) | Expr::Call(_, _) => todo!("interpret functions and calls"),
     }
 }
 
@@ -333,4 +405,180 @@ fn test_interpreter_fib_using_memory() {
     );
     assert_eq!(vm.mem[&(nth as usize)], Value::Num(fib_nth));
     assert!(!vm.mem.contains_key(&(nth as usize + 1)));
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ExprParseError {
+    #[error("invalid ListExpr")]
+    InvalidListExpr,
+    #[error("invalid Id")]
+    InvalidId,
+    #[error("literals must be wrapped")]
+    UnwrappedLiteral,
+    #[error("expected a grounded term, got a term with {0:?} in it")]
+    UngroundedTerm(String),
+    #[error("expected Get index to be positive")]
+    NegativeGetIndex,
+    #[error("order had arguments")]
+    InvalidOrderArguments,
+    #[error("expected Parallel or Sequential, found {0:?}")]
+    InvalidOrder(String),
+    #[error("unknown function {0:?} with arguments {1:?}")]
+    UnknownFunction(String, Vec<egglog::ast::Expr>),
+    #[error("{0}")]
+    Egglog(String),
+}
+
+impl std::str::FromStr for Expr {
+    type Err = ExprParseError;
+    fn from_str(s: &str) -> Result<Expr, ExprParseError> {
+        fn list_expr_to_vec(e: &egglog::ast::Expr) -> Result<Vec<Expr>, ExprParseError> {
+            if let egglog::ast::Expr::Call(f, xs) = e {
+                match (f.as_str(), xs.as_slice()) {
+                    ("Nil", []) => return Ok(Vec::new()),
+                    ("Cons", [head, tail]) => {
+                        let head = egglog_expr_to_expr(head)?;
+                        let mut tail = list_expr_to_vec(tail)?;
+                        tail.insert(0, head);
+                        return Ok(tail);
+                    }
+                    _ => {}
+                }
+            }
+            Err(ExprParseError::InvalidListExpr)
+        }
+        fn egglog_expr_to_id(e: &egglog::ast::Expr) -> Result<Id, ExprParseError> {
+            if let egglog::ast::Expr::Call(f, xs) = e {
+                if let ("Id", [egglog::ast::Expr::Lit(egglog::ast::Literal::Int(int))]) =
+                    (f.as_str(), xs.as_slice())
+                {
+                    return Ok(Id(*int));
+                }
+            }
+            Err(ExprParseError::InvalidId)
+        }
+        fn egglog_expr_to_expr(e: &egglog::ast::Expr) -> Result<Expr, ExprParseError> {
+            match e {
+                egglog::ast::Expr::Lit(_) => Err(ExprParseError::UnwrappedLiteral),
+                egglog::ast::Expr::Var(s) => {
+                    Err(ExprParseError::UngroundedTerm(s.as_str().to_owned()))
+                }
+                egglog::ast::Expr::Call(f, xs) => match (f.as_str(), xs.as_slice()) {
+                    ("Num", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Int(i))]) => {
+                        Ok(Expr::Num(*i))
+                    }
+                    ("Boolean", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Bool(b))]) => {
+                        Ok(Expr::Boolean(*b))
+                    }
+                    ("UnitExpr", [_id]) => Ok(Expr::Unit),
+                    ("Add", [x, y]) => Ok(Expr::Add(
+                        Box::new(egglog_expr_to_expr(x)?),
+                        Box::new(egglog_expr_to_expr(y)?),
+                    )),
+                    ("Sub", [x, y]) => Ok(Expr::Sub(
+                        Box::new(egglog_expr_to_expr(x)?),
+                        Box::new(egglog_expr_to_expr(y)?),
+                    )),
+                    ("Mul", [x, y]) => Ok(Expr::Mul(
+                        Box::new(egglog_expr_to_expr(x)?),
+                        Box::new(egglog_expr_to_expr(y)?),
+                    )),
+                    ("LessThan", [x, y]) => Ok(Expr::LessThan(
+                        Box::new(egglog_expr_to_expr(x)?),
+                        Box::new(egglog_expr_to_expr(y)?),
+                    )),
+                    ("And", [x, y]) => Ok(Expr::And(
+                        Box::new(egglog_expr_to_expr(x)?),
+                        Box::new(egglog_expr_to_expr(y)?),
+                    )),
+                    ("Or", [x, y]) => Ok(Expr::Or(
+                        Box::new(egglog_expr_to_expr(x)?),
+                        Box::new(egglog_expr_to_expr(y)?),
+                    )),
+                    ("Not", [x]) => Ok(Expr::Not(Box::new(egglog_expr_to_expr(x)?))),
+                    ("Get", [x, egglog::ast::Expr::Lit(egglog::ast::Literal::Int(i))]) => {
+                        Ok(Expr::Get(
+                            Box::new(egglog_expr_to_expr(x)?),
+                            (*i).try_into()
+                                .map_err(|_| ExprParseError::NegativeGetIndex)?,
+                        ))
+                    }
+                    ("Print", [x]) => Ok(Expr::Print(Box::new(egglog_expr_to_expr(x)?))),
+                    ("Read", [x]) => Ok(Expr::Read(Box::new(egglog_expr_to_expr(x)?))),
+                    ("Write", [x, y]) => Ok(Expr::Write(
+                        Box::new(egglog_expr_to_expr(x)?),
+                        Box::new(egglog_expr_to_expr(y)?),
+                    )),
+                    ("All", [egglog::ast::Expr::Call(order, empty), xs]) => {
+                        if !empty.is_empty() {
+                            return Err(ExprParseError::InvalidOrderArguments);
+                        }
+                        let order = match order.as_str() {
+                            "Parallel" => Ok(Order::Parallel),
+                            "Sequential" => Ok(Order::Sequential),
+                            s => Err(ExprParseError::InvalidOrder(s.to_owned())),
+                        }?;
+                        Ok(Expr::All(order, list_expr_to_vec(xs)?))
+                    }
+                    ("Switch", [pred, branches]) => Ok(Expr::Switch(
+                        Box::new(egglog_expr_to_expr(pred)?),
+                        list_expr_to_vec(branches)?,
+                    )),
+                    ("Loop", [id, input, other]) => Ok(Expr::Loop(
+                        egglog_expr_to_id(id)?,
+                        Box::new(egglog_expr_to_expr(input)?),
+                        Box::new(egglog_expr_to_expr(other)?),
+                    )),
+                    ("Let", [id, input, other]) => Ok(Expr::Let(
+                        egglog_expr_to_id(id)?,
+                        Box::new(egglog_expr_to_expr(input)?),
+                        Box::new(egglog_expr_to_expr(other)?),
+                    )),
+                    ("Arg", [id]) => Ok(Expr::Arg(egglog_expr_to_id(id)?)),
+                    ("Function", [id, body]) => Ok(Expr::Function(
+                        egglog_expr_to_id(id)?,
+                        Box::new(egglog_expr_to_expr(body)?),
+                    )),
+                    ("Call", [id, arg]) => Ok(Expr::Call(
+                        egglog_expr_to_id(id)?,
+                        Box::new(egglog_expr_to_expr(arg)?),
+                    )),
+                    (f, xs) => Err(ExprParseError::UnknownFunction(f.to_owned(), xs.to_vec())),
+                },
+            }
+        }
+        let parser = egglog::ast::parse::ExprParser::new();
+        let egglog_expr = parser
+            .parse(s)
+            .map_err(|e| ExprParseError::Egglog(format!("{e}")))?;
+        egglog_expr_to_expr(&egglog_expr)
+    }
+}
+
+#[test]
+fn test_expr_parser() {
+    let s = "(Loop
+(Id 1)
+(Num (Id 0) 1)
+(All (Sequential)
+    (Cons (LessThan (Num (Id 1) 2) (Num (Id 1) 3))
+        (Cons (Switch (Boolean (Id 1) true) (Cons (Num (Id 1) 4) (Cons (Num (Id 1) 5) (Nil))))
+            (Nil)))))
+";
+    let build = s.parse::<Expr>().unwrap();
+    let check = Expr::Loop(
+        Id(1),
+        Box::new(Expr::Num(1)),
+        Box::new(Expr::All(
+            Order::Sequential,
+            vec![
+                Expr::LessThan(Box::new(Expr::Num(2)), Box::new(Expr::Num(3))),
+                Expr::Switch(
+                    Box::new(Expr::Boolean(true)),
+                    vec![Expr::Num(4), Expr::Num(5)],
+                ),
+            ],
+        )),
+    );
+    assert_eq!(build, check);
 }

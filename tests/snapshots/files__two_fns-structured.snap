@@ -3,20 +3,16 @@ source: tests/files.rs
 expression: visualization.result
 ---
 main {
-block:
- v0: int = const 1;
- v1: int = const 2;
- v2: int = add v0 v1;
- print v2;
- return
-
+v0: int = const 1;
+v1: int = const 2;
+v2: int = add v0 v1;
+print v2;
+return
 }
 
 sub {
-block:
- v0: int = const 1;
- v1: int = const 2;
- v2: int = sub v0 v1;
- return v2
-
+v0: int = const 1;
+v1: int = const 2;
+v2: int = sub v0 v1;
+return v2
 }

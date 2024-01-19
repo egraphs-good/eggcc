@@ -44,7 +44,7 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
                          :ruleset always-run)
 
                 ; Lift {ctor_name} when only {varying_field_name} varies
-                (rule ((Switch pred exprs)
+                (rule ((ExprShouldBeValid (Switch pred exprs))
                        ({relation} exprs)
                        ; Bind non-varying field(s)
                        (= list (Cons {ctor_pattern1} rest)))
@@ -93,6 +93,7 @@ fn test_easy_lift_switch() -> Result<(), egglog::Error> {
             (LessThan (Get (Arg id1) 0) (Num id1 7))
             (LessThan (Get (Arg id1) 1) (Num id1 7))
         )))
+(ExprShouldBeValid switch1)
     "
     );
     let check = "
@@ -123,6 +124,7 @@ fn test_lift_switch_through_switch() -> Result<(), egglog::Error> {
             (Switch (LessThan (Get (Arg id1) 0) (Num id1 7)) (Cons (Num id1 11) (Nil)))
             (Switch (LessThan (Get (Arg id1) 1) (Num id1 7)) (Cons (Num id1 11) (Nil)))
         )))
+(ExprShouldBeValid switch1)
     "
     );
     let check = "

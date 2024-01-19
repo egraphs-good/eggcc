@@ -4,6 +4,7 @@
     (
         (= call (Call f arg))
         (Function f out)
+        (ExprShouldBeValid call)
     )
     (
         (let new-id (Id (i64-fresh!)))

@@ -28,11 +28,11 @@ pub fn run_test(build: &str, check: &str) -> Result {
         [
             include_str!("schema.egg"),
             // analyses
+            &should_be_valid::rules().join("\n"),
             &purity_analysis::purity_analysis_rules().join("\n"),
             &body_contains::rules().join("\n"),
             &subst::subst_rules().join("\n"),
             &deep_copy::deep_copy_rules().join("\n"),
-            &should_be_valid::rules().join("\n"),
             include_str!("sugar.egg"),
             include_str!("util.egg"),
             // optimizations

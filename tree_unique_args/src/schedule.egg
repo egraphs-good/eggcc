@@ -4,6 +4,7 @@
   (repeat 5
     (saturate always-run)
     simple-pure
+    conditional-invariant-code-motion
     switch-rewrites
     function-inlining
     ))

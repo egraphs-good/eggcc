@@ -6,16 +6,12 @@ main {
 block:
 
 while true:
- block:
-  one: int = const 1;
-  three: int = const 3;
-  cond: bool = lt three one;
-  if cond:
-   break 2
-  else:
-   break 1
- block:
+ one: int = const 1;
+ three: int = const 3;
+ cond: bool = lt three one;
+ if cond:
+
+ else:
   print one;
   return
-
 }

@@ -13,6 +13,8 @@ pub(crate) fn egglog() -> String {
         .map(|(e1, e2)| {
             format!(
                 "(rewrite {e1} {e2} :when ((ExprIsPure b) (ExprShouldBeValid {e1}))
+                                    :ruleset switch-rewrites)
+                 (rewrite {e2} {e1} :when ((ExprIsPure b) (ExprShouldBeValid {e2}))
                                     :ruleset switch-rewrites)"
             )
         })

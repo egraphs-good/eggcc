@@ -10,6 +10,7 @@ pub(crate) mod deep_copy;
 pub(crate) mod function_inlining;
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
+pub(crate) mod should_be_valid;
 pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
 pub(crate) mod util;
@@ -31,6 +32,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &body_contains::rules().join("\n"),
             &subst::subst_rules().join("\n"),
             &deep_copy::deep_copy_rules().join("\n"),
+            &should_be_valid::rules().join("\n"),
             include_str!("sugar.egg"),
             include_str!("util.egg"),
             // optimizations

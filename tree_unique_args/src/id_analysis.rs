@@ -1,57 +1,47 @@
-use crate::ir::{Constructor, ESort};
+use crate::ir::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 
-fn id_analysis_rule_for_ctor(ctor: Constructor) -> Option<String> {
-    if ctor.fields().is_empty() {
-        None
-    } else {
-        let ctor_pattern = ctor.construct(|field| field.var());
-        // TODO: this should be preceded by an underscore
-        let first_var = ctor.fields()[0].var();
-        let var_sort = ctor.fields()[0].sort().name();
-        let sort = ctor.sort().name();
-
-        Some(
-            match ctor {
-                // Base cases: Num, Boolean, UnitExpr, Arg
-                // First arg for these is the id
-                Constructor::Num | Constructor::Boolean | Constructor::UnitExpr | Constructor::Arg=> 
-                    format!(
-"(rule
-    ({ctor_pattern})
-    ((union (RefIdOf{sort} {ctor_pattern}) {first_var}))
-    :ruleset always-run)"),
-
-                // For loops, call, all, let, get the id of the second item
-                Constructor::Loop | Constructor::Call | Constructor::All | Constructor::Let
-                    => format!(
-"(rule
-    ({ctor_pattern} (= aid (RefIdOf{} {})))
-    ((union (RefIdOf{sort} {ctor_pattern}) aid))
-    :ruleset always-run)", ctor.fields()[1].sort().name(), ctor.fields()[1].var()),
-
-                // For everything else, get the id of the first item
-                _ => 
-                    format!(
-"(rule ({ctor_pattern} (= aid (RefIdOf{var_sort} {first_var})))
-    ((union (RefIdOf{sort} {ctor_pattern}) aid))
-    :ruleset always-run)")
-            }
-        )
-    }
+fn id_analysis_rules_for_ctor(ctor: Constructor) -> String {
+    let pat = ctor.construct(|field| field.var());
+    let sort = ctor.sort().name();
+    ctor.filter_map_fields(|field| {
+        let field_var = field.var();
+        let field_sort = field.sort().name();
+        match field.purpose {
+            Purpose::Static(_) | Purpose::CapturedExpr | Purpose::CapturingId => None,
+            Purpose::ReferencingId => Some(format!(
+                "(rule ({pat})
+                       (({sort}HasRefId {pat} {field_var}))
+                       :ruleset always-run)"
+            )),
+            Purpose::SubExpr | Purpose::SubListExpr => Some(format!(
+                "(rule ({pat} ({field_sort}HasRefId {field_var} ref-id))
+                       (({sort}HasRefId {pat} ref-id))
+                       :ruleset always-run)"
+            )),
+        }
+    })
+    .join("\n")
 }
 
 pub(crate) fn id_analysis_rules() -> Vec<String> {
     let id_check = vec!["
-(rule ((= (Id a) (Id b))
-    (!= a b))
-  ((panic \"RefIdOf: Ids don't match\"))
-  :ruleset always-run)
-    ".to_string()];
-    
+(rule ((ExprHasRefId x id1)
+       (ExprHasRefId x id2)
+       (!= id1 id2))
+      ((panic \"Ref ids don't match\"))
+      :ruleset error-checking)
+(rule ((ListExprHasRefId x id1)
+       (ListExprHasRefId x id2)
+       (!= id1 id2))
+      ((panic \"Ref ids don't match\"))
+      :ruleset error-checking)
+    "
+    .to_string()];
+
     ESort::iter()
-        .map(|sort| "(function RefIdOf* (*) IdSort :unextractable)".replace('*', sort.name()))
-        .chain(Constructor::iter().filter_map(id_analysis_rule_for_ctor))
+        .map(|sort| "(relation *HasRefId (* IdSort))".replace('*', sort.name()))
+        .chain(Constructor::iter().map(id_analysis_rules_for_ctor))
         .chain(id_check)
         .collect::<Vec<_>>()
 }

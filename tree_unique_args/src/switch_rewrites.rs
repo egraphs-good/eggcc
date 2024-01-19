@@ -80,7 +80,7 @@ fn switch_rewrite_purity() -> crate::Result {
     let build = "
 (let switch-id (Id (i64-fresh!)))
 (let let-id (Id (i64-fresh!)))
-(let impure (Let let-id (UnitExpr let-id) (All (Sequential) (Pair (Boolean let-id true) (Print (Num let-id 1))))))
+(let impure (Let let-id (UnitExpr switch-id) (All (Sequential) (Pair (Boolean let-id true) (Print (Num let-id 1))))))
 (let switch (Switch (And (Boolean switch-id false) (Get impure 0))
                     (Pair (Num switch-id 1) (Num switch-id 2))))
 (ExprIsValid switch)
@@ -96,7 +96,7 @@ fn switch_rewrite_purity() -> crate::Result {
     let build = "
 (let switch-id (Id (i64-fresh!)))
 (let let-id (Id (i64-fresh!)))
-(let impure (Let let-id (UnitExpr let-id) (All (Sequential) (Cons (Boolean let-id true) (Nil)))))
+(let impure (Let let-id (UnitExpr switch-id) (All (Sequential) (Cons (Boolean let-id true) (Nil)))))
 (let switch (Switch (And (Boolean switch-id false) (Get impure 0))
                     (Pair (Num switch-id 1) (Num switch-id 2))))
 (ExprIsValid switch)

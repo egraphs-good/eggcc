@@ -9,11 +9,15 @@ fn id_analysis_rules_for_ctor(ctor: Constructor) -> String {
         let field_sort = field.sort().name();
         match field.purpose {
             Purpose::Static(_) | Purpose::CapturedExpr | Purpose::CapturingId => None,
+
+            // Base case: constructor has referencing id specified as a field
             Purpose::ReferencingId => Some(format!(
                 "(rule ({pat})
                        (({sort}HasRefId {pat} {field_var}))
                        :ruleset always-run)"
             )),
+
+            // Constructor has referencing id of its subexpr fields
             Purpose::SubExpr | Purpose::SubListExpr => Some(format!(
                 "(rule ({pat} ({field_sort}HasRefId {field_var} ref-id))
                        (({sort}HasRefId {pat} ref-id))
@@ -25,6 +29,7 @@ fn id_analysis_rules_for_ctor(ctor: Constructor) -> String {
 }
 
 pub(crate) fn id_analysis_rules() -> Vec<String> {
+    // Error checks
     let id_check = vec!["
 (rule ((ExprHasRefId x id1)
        (ExprHasRefId x id2)

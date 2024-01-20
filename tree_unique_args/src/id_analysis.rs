@@ -47,6 +47,61 @@ pub(crate) fn id_analysis_rules() -> Vec<String> {
 }
 
 #[test]
-fn test_id_analysis() {
-    print!("{}", id_analysis_rules().join("\n"));
+fn test_id_analysis() -> Result<(), egglog::Error> {
+    let build = "
+        (let outer-id (Id (i64-fresh!)))
+        (let let0-id (Id (i64-fresh!)))
+        (let let1-id (Id (i64-fresh!)))
+        (Let
+            let0-id
+            (Num outer-id 0)
+            (All
+                (Parallel)
+                (Pair
+                    (Let
+                        let1-id
+                        (Num let0-id 3)
+                        (Boolean let1-id true))
+                    (UnitExpr let0-id)
+                    )))
+    ";
+
+    let check = "
+        (check (ExprHasRefId (Num outer-id 0) outer-id))
+        (check (ExprHasRefId (Boolean let1-id true) let1-id))
+        (check (ExprHasRefId (UnitExpr let0-id) let0-id))
+        (check (ExprHasRefId 
+                (Let
+                        let1-id
+                        (Num let0-id 3)
+                        (Boolean let1-id true))
+                let0-id))
+        (check (ListExprHasRefId
+                (Pair
+                    (Let
+                        let1-id
+                        (Num let0-id 3)
+                        (Boolean let1-id true))
+                    (UnitExpr let0-id)
+                    )
+                let0-id
+        ))
+        (check (ExprHasRefId
+            (Let
+                let0-id
+                (Num outer-id 0)
+                (All
+                    (Parallel)
+                    (Pair
+                        (Let
+                            let1-id
+                            (Num let0-id 3)
+                            (Boolean let1-id true))
+                        (UnitExpr let0-id)
+                        )))
+            outer-id
+        ))
+    ";
+
+    crate::run_test(build, check)
 }

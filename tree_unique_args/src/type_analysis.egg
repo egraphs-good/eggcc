@@ -220,3 +220,12 @@
       )
       ((HasType (All ord (Cons hd tl)) (TupleT (TCons ty tylist))))
       :ruleset type-analysis)
+
+; If an expr has two different types, panic
+(rule (
+       (HasType e t1)
+       (HasType e t2)
+       (!= t1 t2)
+      )
+      ((panic "Type Mismatch!"))
+      :ruleset type-analysis)

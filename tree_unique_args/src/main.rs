@@ -10,11 +10,11 @@ pub(crate) mod deep_copy;
 pub(crate) mod function_inlining;
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
+pub(crate) mod simple;
 pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
-pub(crate) mod simple;
-pub(crate) mod util;
 pub(crate) mod type_analysis;
+pub(crate) mod util;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 

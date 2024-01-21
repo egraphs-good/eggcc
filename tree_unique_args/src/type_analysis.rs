@@ -22,8 +22,7 @@ fn type_analysis() -> Result<(), egglog::Error> {
 
 #[test]
 fn switch() -> Result<(), egglog::Error> {
-  let build =
-  "
+    let build = "
   (let b1 (Boolean (Id (i64-fresh!)) true))
   (let n1 (Num (Id (i64-fresh!)) 1))
   (let n2 (Num (Id (i64-fresh!)) 3))
@@ -32,11 +31,10 @@ fn switch() -> Result<(), egglog::Error> {
             (Cons (Add n1 n1) (Cons (Sub n1 n2) (Cons (Mul n2 n2) (Nil))))))
   (HasTypeDemand switch)
   ";
-  let check =
-  "
+    let check = "
   (run-schedule (saturate type-analysis))
 
   (check (HasType switch (IntT)))
   ";
-  crate::run_test(build, check)
+    crate::run_test(build, check)
 }

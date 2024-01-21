@@ -11,6 +11,7 @@ pub(crate) mod function_inlining;
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
 pub(crate) mod should_be_valid;
+pub(crate) mod simple;
 pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
 pub(crate) mod util;
@@ -36,8 +37,9 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("sugar.egg"),
             include_str!("util.egg"),
             // optimizations
-            &switch_rewrites::egglog(),
+            include_str!("simple.egg"),
             include_str!("function_inlining.egg"),
+            &switch_rewrites::rules(),
             &conditional_invariant_code_motion::rules().join("\n"),
         ]
         .join("\n"),

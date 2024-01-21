@@ -1,0 +1,26 @@
+@main {
+.entry:
+  a: int = const 0;
+  c: int = call @inc a;
+  print c;
+  ret;
+}
+@inc(x: int): int {
+.entry:
+  max: int = const 2;
+  cond: bool = lt x max;
+  br cond .sblock1 .sblock2;
+.sblock1:
+.recurse:
+  one: int = const 1;
+  x: int = add one x;
+  print x;
+  x: int = call @inc x;
+  jmp .sblock3;
+.sblock2:
+.sblock3:
+.sblock0:
+.done:
+  ret x;
+}
+

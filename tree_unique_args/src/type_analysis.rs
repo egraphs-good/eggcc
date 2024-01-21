@@ -48,8 +48,7 @@ fn switch() -> Result<(), egglog::Error> {
 
 #[test]
 fn tuple() -> Result<(), egglog::Error> {
-  let build = 
-  "
+    let build = "
   (let n (Add (Num (Id (i64-fresh!)) 1) (Num (Id (i64-fresh!)) 2)))
         (let m (Mul n n))
         (let s (Sub n m))
@@ -73,8 +72,7 @@ fn tuple() -> Result<(), egglog::Error> {
   (HasTypeDemand get2)
   (HasTypeDemand get3)
   ";
-  let check =
-  "
+    let check = "
   (run-schedule (saturate type-analysis))
   (check (HasType tup1 (TupleT (TNil))))
   (check (HasType tup2 (TupleT (TCons (BoolT) (TNil)))))
@@ -89,5 +87,5 @@ fn tuple() -> Result<(), egglog::Error> {
   (check (HasType get2 (IntT)))
   (check (HasType get3 (IntT)))
   ";
-  crate::run_test(build, check)
+    crate::run_test(build, check)
 }

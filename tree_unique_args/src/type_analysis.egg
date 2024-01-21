@@ -1,12 +1,17 @@
 (ruleset type-analysis)
 
+(sort TypeList)
+
 (datatype Type
   (IntT)
   (BoolT)
   (UnitT)
   (FuncT Type Type)
-  (TupleT Type) ; TODO: How can I make a list of types?
+  (TupleT TypeList)
 )
+
+(function TNil () TypeList)
+(function TCons (Type TypeList) TypeList)
 
 (relation HasTypeDemand (Expr))
 
@@ -133,14 +138,14 @@
        (HasType (Not x) (BoolT))
       )
       :ruleset type-analysis)
-(rule (
-       (HasTypeDemand (Get e idx))
-       (HasType e (TupleT l)) ; l should be a list of types (see TODO above)
-      )
-      (
-       (HasType (Get e idx) __) ; TODO: index into l at idx
-      )
-      :ruleset type-analysis)
+; (rule (
+;        (HasTypeDemand (Get e idx))
+;        (HasType e (TupleT l)) ; l should be a list of types (see TODO above)
+;       )
+;       (
+;        (HasType (Get e idx) __) ; TODO: index into l at idx
+;       )
+;       :ruleset type-analysis)
 
 
 ; Effectful Ops
@@ -152,26 +157,35 @@
       :ruleset type-analysis)
 ;; TODO: How do we know the type of read? I guess we could track type on write?
 
-; Control Flow
-(rule ((HasTypeDemand (Switch cond lst)))
+; Switch 
+; peel off a branch and demand type
+(rule ((HasTypeDemand (Switch cond (Cons branch rest))))
       (
-       (HasTypeDemand cond)
-       ; How to demand type for each elt in lst?
+       (HasTypeDemand branch)
+       (HasTypeDemand (Switch cond rest))
       )
       :ruleset type-analysis)
+; base case- demand the type of the condition
+(rule ((HasTypeDemand (Switch cond Nil)))
+      ((HasTypeDemand cond))
+      :ruleset type-analysis)
+
+; base case- single branch switch has type of branch
 (rule (
-       (HasTypeDemand (Switch cond lst))
-       (HasType cond (BoolT))
-       (HasType (First lst) t) ; need to check each element in the lst....
+       (HasTypeDemand (Switch cond (Cons branch (Nil))))
+       (HasType cond BoolT)
+       (HasType branch ty)
       )
-      ((HasType (Switch cond lst) t))
+      ((HasType (Switch cond (Cons branch (Nil))) ty))
       :ruleset type-analysis)
-
-
-
-
-
-
+; recursive case
+(rule (
+       (HasTypeDemand (Switch cond (Cons branch rest)))
+       (HasType (Switch cond rest) ty)
+       (HasType branch ty)
+      )
+      ((HasType (Switch cond (Cons branch rest)) ty))
+      :ruleset type-analysis)
 
 
 

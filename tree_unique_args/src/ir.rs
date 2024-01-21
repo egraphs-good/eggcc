@@ -318,9 +318,9 @@ pub(crate) enum SPurpose {
 impl SPurpose {
     pub(crate) fn to_sort(self) -> Sort {
         match self {
-            SPurpose::SubExpr => Sort::Expr,
-            SPurpose::CapturedExpr => Sort::Expr,
-            SPurpose::SubListExpr => Sort::ListExpr,
+            SPurpose::SubExpr => Sort::SExpr,
+            SPurpose::CapturedExpr => Sort::SExpr,
+            SPurpose::SubListExpr => Sort::ListSExpr,
             SPurpose::Static(sort) => sort,
         }
     }
@@ -470,7 +470,7 @@ fn no_duplicate_sfield_names() {
 }
 
 pub(crate) fn schema_shared() -> String {
-    once("(datatype SExpr) (datatype ListSExpr)".to_string())
+    once("(datatype SExpr)\n(datatype ListSExpr)".to_string())
         .chain(SConstructor::iter().map(|ctor| {
             format!(
                 "(function {name} ({field_sorts}) {sort})",

@@ -155,7 +155,9 @@
 (rule ((HasTypeDemand (Write addr val)))
       ((HasType (Write addr val) (UnitT)))
       :ruleset type-analysis)
-;; TODO: How do we know the type of read? I guess we could track type on write?
+(rule ((HasTypeDemand (Read addr)))
+      ((HasType (Read addr) (IntT))) ; all reads are ints
+      :ruleset type-analysis)
 
 ; Switch 
 ; peel off a branch and demand type
@@ -187,7 +189,24 @@
       ((HasType (Switch cond (Cons branch rest)) ty))
       :ruleset type-analysis)
 
-
-
-
-
+; Sequencing
+(rule ((HasTypeDemand (All ord (Cons hd tl))))
+      (
+       (HasTypeDemand hd)
+       (HasTypeDemand (All ord tl))
+      )
+      :ruleset type-analysis)
+; base case: Nil
+(rule (
+       (HasTypeDemand (All ord (Nil)))
+      )
+      ((HasType (All ord (Nil)) (TupleT (TNil))))
+      :ruleset type-analysis)
+; rec case
+(rule (
+       (HasTypeDemand (All ord (Cons hd tl)))
+       (HasType hd ty)
+       (HasType (All ord tl) (TupleT tylist))
+      )
+      ((HasType (All ord (Cons hd tl)) (TupleT (TCons ty tylist))))
+      :ruleset type-analysis)

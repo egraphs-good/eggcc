@@ -27,6 +27,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
         "{}\n{build}\n{}\n{check}\n",
         [
             include_str!("schema.egg"),
+            &ir::schema_shared(),
             // analyses
             &purity_analysis::purity_analysis_rules().join("\n"),
             &body_contains::rules().join("\n"),

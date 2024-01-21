@@ -5,7 +5,7 @@ fn rule_for_ctor(ctor: Constructor) -> Option<String> {
     let actions = ctor.filter_map_fields(|field| match field.purpose {
         Purpose::Static(_) | Purpose::CapturingId | Purpose::ReferencingId => None,
         Purpose::CapturedExpr | Purpose::SubExpr | Purpose::SubListExpr => Some(format!(
-            "({sort}ShouldBeValid {var})",
+            "({sort}IsValid {var})",
             sort = field.sort().name(),
             var = field.var()
         )),
@@ -21,13 +21,13 @@ fn rule_for_ctor(ctor: Constructor) -> Option<String> {
 
 pub(crate) fn rules() -> Vec<String> {
     ESort::iter()
-        .map(|sort| "(relation *ShouldBeValid (*))".replace('*', sort.name()))
+        .map(|sort| "(relation *IsValid (*))".replace('*', sort.name()))
         .chain(Constructor::iter().filter_map(rule_for_ctor))
         .collect::<Vec<_>>()
 }
 
 #[test]
-fn test_should_be_valid() -> Result<(), egglog::Error> {
+fn test_is_valid() -> Result<(), egglog::Error> {
     let build = &*format!(
         "
 (let id1 (Id (i64-fresh!)))
@@ -42,13 +42,13 @@ fn test_should_be_valid() -> Result<(), egglog::Error> {
             (All (Parallel) (Pair
                 (Add (Get (Arg id1) 0) (Num id1 1))
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
-(ExprShouldBeValid loop)
+(ExprIsValid loop)
     "
     );
     let check = "
-(check (ExprShouldBeValid (Num id-outer 0)))
-(check (ExprShouldBeValid (Arg id1)))
-(check (ListExprShouldBeValid
+(check (ExprIsValid (Num id-outer 0)))
+(check (ExprIsValid (Arg id1)))
+(check (ListExprIsValid
          (Pair (Add (Get (Arg id1) 0) (Num id1 1))
                (Sub (Get (Arg id1) 1) (Num id1 1)))))
     ";

@@ -17,7 +17,7 @@ fn function_inlining() -> Result<(), egglog::Error> {
                 (Num outer-id 2)
             )
         )
-        (ExprShouldBeValid call)
+        (ExprIsValid call)
     ";
 
     let check = "

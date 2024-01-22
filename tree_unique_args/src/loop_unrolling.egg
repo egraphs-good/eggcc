@@ -1,10 +1,5 @@
-
 (ruleset loop-unroll)
 
-
-;; this rule depends on the "loop-desugar"
-;; rule, which makes loop inputs
-;; just refer to a let-bound argument
 
 ;; Loop unrolling is fairly simple,
 ;; but we must be careful about evaluation
@@ -14,26 +9,26 @@
 ;; use a "NewLet" to bind them together.
 (rule
   ((= lhs (Loop id inputs pred-outputs))
+   (ExprIsValid lhs)
    (= pred-outputs (All seq-or-parallel pred-outputs-list))
    (= length (ListExpr-length pred-outputs-list)))
   ((let outputs (SubArgList 1 length))
    (union lhs
-    (NewLet ;; new let to bind inputs
+    ;; NewLet to deep copy everything
+    (NewLet ;; let to bind inputs
       (Id (i64-fresh!))
       inputs
-      (NewLet ;; evaluate the pred and outputs
-        (Id (i64-fresh!))
+      (Let ;; evaluate the pred and outputs
+        aid
         pred-outputs
         ;; check the pred, run loop if true
         (Switch
           (Get aarg 0)
           (Pair
-            ;; bind outputs 
-            (NewLoop
-              (Id (i64-fresh!))
-              outputs pred-outputs)
             ;; if pred is false, return outputs
-            outputs))))))
+            outputs
+            ;; inputs to loop are outputs of last iteration
+            (Loop aid outputs pred-outputs)))))))
    :ruleset loop-unroll
    :name "loop-unrolling")
 

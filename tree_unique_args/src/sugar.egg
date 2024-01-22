@@ -26,10 +26,4 @@
          (Let id in (DeepCopyExpr out id))
          :ruleset always-run)
 
-(function FreshLet (Expr Expr) Expr :unextractable)
-(rule ((FreshLet in out))
-      ((let new-id (Id (i64-fresh!)))
-       (Let new-id in (DeepCopyExpr out new-id)))
-       :ruleset always-run)
-         
 

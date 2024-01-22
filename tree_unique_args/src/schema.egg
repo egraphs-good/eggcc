@@ -63,9 +63,12 @@
 ; Arg gets the input of a region or the parameter of a function
 (function Arg (IdSort) Expr)
 
-; When the id does not matter (e.g. in a NewLet)
+; aid stands for "any id" and aarg stands for "any argument"
+; When the id does not matter (e.g. under a DeepCopy),
 ; any id will work.
+(let aid (Id 0))
 (let aarg (Arg (Id 0)))
+
 
 ; ==========================
 ; Functions

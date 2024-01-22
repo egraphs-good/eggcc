@@ -12,14 +12,14 @@ fn id_analysis_rules_for_ctor(ctor: Constructor) -> String {
 
             // Base case: constructor has referencing id specified as a field
             Purpose::ReferencingId => Some(format!(
-                "(rule ({pat})
+                "(rule ({pat} ({sort}IsValid {pat}))
                        (({sort}HasRefId {pat} {field_var}))
                        :ruleset always-run)"
             )),
 
             // Constructor has referencing id of its subexpr fields
             Purpose::SubExpr | Purpose::SubListExpr => Some(format!(
-                "(rule ({pat} ({field_sort}HasRefId {field_var} ref-id))
+                "(rule ({pat} ({field_sort}HasRefId {field_var} ref-id) ({sort}IsValid {pat}))
                        (({sort}HasRefId {pat} ref-id))
                        :ruleset always-run)"
             )),
@@ -51,7 +51,7 @@ fn test_id_analysis() -> Result<(), egglog::Error> {
         (let outer-id (Id (i64-fresh!)))
         (let let0-id (Id (i64-fresh!)))
         (let let1-id (Id (i64-fresh!)))
-        (Let
+        (ExprIsValid (Let
             let0-id
             (Num outer-id 0)
             (All
@@ -62,7 +62,7 @@ fn test_id_analysis() -> Result<(), egglog::Error> {
                         (Num let0-id 3)
                         (Boolean let1-id true))
                     (UnitExpr let0-id)
-                    )))
+                    ))))
     ";
 
     let check = "

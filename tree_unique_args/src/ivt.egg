@@ -1,18 +1,24 @@
 (ruleset ivt)
 
-; do {
-;    if (x) Y else Z
-; } while(x);
+; IVT inverts ifs and loops when their predicates match, e.g.
+;
+;        do {
+;           if (x) Y else Z
+;        } while(x);
 ; 
-; =>
+;        =>
 ; 
-; if (x) {
-;     do {
-;         Y
-;     } while (x);
-; } else {
-;     Z
-; }
+;        if (x) {
+;            do {
+;                Y
+;            } while (x);
+;        } else {
+;            Z
+;        }
+;
+; The rules here assume that the entire loop body _is_ an if. This of course
+; will not match most loops directly: we rely on optimizations that nest
+; computations inside of an if for this rule to fire.
 
 ;                     switch  inputs
 (function LiftSwitch (Expr    Expr)   Expr)
@@ -34,5 +40,3 @@
        (let inner (NewLoop new-id in (All ord (Pair pred thn*))))
        (let outer (Switch pred_ (Cons inner (Cons els (Nil)))))
        (union loop outer)) :ruleset ivt)
-       
-

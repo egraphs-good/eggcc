@@ -1,0 +1,66 @@
+(ruleset interval-analysis)
+
+(datatype Interval
+  (BoolI bool bool)
+  (IntI i64 i64)
+  (interval-intersect Interval Interval)
+  (interval-union Interval Interval))
+
+; Interval combinators
+(rewrite (interval-intersect (IntI la ha) (IntI lb hb))
+         (IntI (max la lb) (min ha hb))
+         :ruleset interval-analysis)
+(rewrite (interval-union (IntI la ha) (IntI lb hb))
+         (IntI (min la lb) (max ha hb))
+         :ruleset interval-analysis)
+(rewrite (interval-intersect (BoolI la ha) (BoolI lb hb))
+         (BoolI (or la lb) (and ha hb))
+         :ruleset interval-analysis)
+(rewrite (interval-union (BoolI la ha) (BoolI lb hb))
+         (BoolI (and la lb) (or ha hb))
+         :ruleset interval-analysis)
+
+
+; Interval Table
+(function ival (Expr) Interval
+  :merge (interval-intersect old new))
+
+; Consts
+(rule ((Num id value))
+      ((set (ival (Num id value)) (IntI value value)))
+      :ruleset interval-analysis)
+(rule ((Boolean id value))
+      ((set (ival (Boolean id value)) (BoolI value value)))
+      :ruleset interval-analysis)      
+
+; < a b interval is (< ha lb) (< la hb)
+(rule (
+       (= lhs (LessThan a b))
+       (= (IntI la ha) (ival a))
+       (= (IntI lb hb) (ival b))
+      )
+      ((set (ival lhs) (BoolI (bool-< ha lb) (bool-< la hb))))
+      :ruleset interval-analysis)
+
+; + a b interval is (+ la lb) (+ ha hb)
+(rule (
+       (= lhs (Add a b))
+       (= (IntI la ha) (ival a))
+       (= (IntI lb hb) (ival b))
+      )
+      ((set (ival lhs) (IntI (+ la lb) (+ ha hb))))
+      :ruleset interval-analysis)
+
+; Constant condition elimination with interval analysis
+(rule (
+       (= lhs (Switch pred (Cons A (Cons B (Nil)))))
+       (= (BoolI true true) (ival pred))
+      )
+      ((union lhs A))
+      :ruleset interval-analysis)
+(rule (
+       (= lhs (Switch pred (Cons A (Cons B (Nil)))))
+       (= (BoolI false false) (ival pred))
+      )
+      ((union lhs B))
+      :ruleset interval-analysis)

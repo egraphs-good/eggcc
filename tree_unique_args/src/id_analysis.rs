@@ -29,25 +29,19 @@ fn id_analysis_rules_for_ctor(ctor: Constructor) -> String {
 }
 
 pub(crate) fn id_analysis_rules() -> Vec<String> {
-    // Error checks
-    let id_check = vec!["
-(rule ((ExprHasRefId x id1)
-       (ExprHasRefId x id2)
-       (!= id1 id2))
-      ((panic \"Ref ids don't match\"))
-      :ruleset error-checking)
-(rule ((ListExprHasRefId x id1)
-       (ListExprHasRefId x id2)
-       (!= id1 id2))
-      ((panic \"Ref ids don't match\"))
-      :ruleset error-checking)
-    "
-    .to_string()];
-
     ESort::iter()
-        .map(|sort| "(relation *HasRefId (* IdSort))".replace('*', sort.name()))
+        .flat_map(|sort|
+
+            // Declare relation for ref id
+            ["(relation *HasRefId (* IdSort))".replace('*', sort.name()),
+
+            // Error checking - each (list)expr should only have a single ref id
+            "(rule ((*HasRefId x id1)
+                (*HasRefId x id2)
+                (!= id1 id2))
+                ((panic \"Ref ids don't match\"))
+                :ruleset error-checking)".replace('*', sort.name())])
         .chain(Constructor::iter().map(id_analysis_rules_for_ctor))
-        .chain(id_check)
         .collect::<Vec<_>>()
 }
 

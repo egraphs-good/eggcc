@@ -205,6 +205,14 @@ impl Constructor {
         format!("({without_parens})")
     }
 
+    pub(crate) fn construct_only_fields<F>(&self, f: F) -> String
+    where
+        F: FnMut(&Field) -> String,
+    {
+        let without_parens = self.fields().iter().map(f).collect::<Vec<_>>().join(" ");
+        format!("{without_parens}")
+    }
+
     pub(crate) fn sort(&self) -> ESort {
         match self {
             Constructor::Num => ESort::Expr,

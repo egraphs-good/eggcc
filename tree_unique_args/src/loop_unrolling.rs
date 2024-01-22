@@ -9,7 +9,7 @@ fn test_unroll_once() -> Result<(), egglog::Error> {
     (All (Parallel)
      (Pair (LessThan (Num id1 3) (Num id1 3))
            (Print (Num id1 4))))))
-  ";
+(ExprIsValid loop)";
     let expected = "(Let newid1
     (Num id-outer 2)
     (Let newid2

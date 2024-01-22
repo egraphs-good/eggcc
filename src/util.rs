@@ -146,6 +146,10 @@ pub enum RunType {
     /// Output a human-readable debug version of this structured
     /// program, using while loops and if statements.
     StructuredConversion,
+    /// Convert the input bril program to
+    /// a structured format, then
+    /// back to bril again.
+    StructuredRoundTrip,
     /// Convert the input bril program to an RVSDG and output it as an SVG.
     RvsdgConversion,
     /// Convert to RVSDG and back to Bril again,
@@ -155,6 +159,11 @@ pub enum RunType {
     ToCfg,
     /// Convert the original program to a CFG and back to Bril again.
     CfgRoundTrip,
+    /// Removes unecessary direct
+    /// jumps from the input program by
+    /// converting it to a CFG, calling
+    /// optimize_jumps, then converting it back to bril.
+    OptimizeDirectJumps,
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
     /// Convert the original program to a RVSDG, optimize it, then turn
@@ -184,10 +193,12 @@ impl FromStr for RunType {
         match s {
             "nothing" => Ok(RunType::Nothing),
             "structured" => Ok(RunType::StructuredConversion),
+            "structured-roundtrip" => Ok(RunType::StructuredRoundTrip),
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "rvsdg-roundtrip" => Ok(RunType::RvsdgRoundTrip),
             "to-cfg" => Ok(RunType::ToCfg),
             "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
+            "optimize-direct-jumps" => Ok(RunType::OptimizeDirectJumps),
             "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
             "rvsdg-optimize" => Ok(RunType::RvsdgOptimize),
             "rvsdg-egglog-encoding" => Ok(RunType::RvsdgEgglogEncoding),
@@ -203,10 +214,12 @@ impl Display for RunType {
         match self {
             RunType::Nothing => write!(f, "nothing"),
             RunType::StructuredConversion => write!(f, "structured"),
+            RunType::StructuredRoundTrip => write!(f, "structured-roundtrip"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
             RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
             RunType::ToCfg => write!(f, "to-cfg"),
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
+            RunType::OptimizeDirectJumps => write!(f, "optimize-direct-jumps"),
             RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
             RunType::RvsdgOptimize => write!(f, "rvsdg-optimize"),
             RunType::OptimizedRvsdg => write!(f, "optimized-rvsdg"),
@@ -221,10 +234,12 @@ impl RunType {
         match self {
             RunType::Nothing => true,
             RunType::StructuredConversion => false,
+            RunType::StructuredRoundTrip => true,
             RunType::RvsdgConversion => false,
             RunType::RvsdgRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
+            RunType::OptimizeDirectJumps => true,
             RunType::RvsdgToCfg => true,
             RunType::RvsdgOptimize => true,
             RunType::RvsdgEgglogEncoding => true,
@@ -301,9 +316,11 @@ impl Run {
         let mut res = vec![];
         for test_type in [
             RunType::StructuredConversion,
+            RunType::StructuredRoundTrip,
             RunType::RvsdgConversion,
             RunType::RvsdgRoundTrip,
             RunType::CfgRoundTrip,
+            RunType::OptimizeDirectJumps,
             RunType::RvsdgOptimize,
             RunType::RvsdgToCfg,
             RunType::OptimizedRvsdg,
@@ -359,6 +376,18 @@ impl Run {
                     None,
                 )
             }
+            RunType::StructuredRoundTrip => {
+                let structured = Optimizer::program_to_structured(&self.prog_with_args.program)?;
+                let bril = structured.to_program();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(bril),
+                )
+            }
             RunType::RvsdgConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let svg = rvsdg.to_svg();
@@ -396,6 +425,19 @@ impl Run {
             RunType::CfgRoundTrip => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let bril = cfg.to_bril();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(bril),
+                )
+            }
+            RunType::OptimizeDirectJumps => {
+                let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
+                let optimized = cfg.optimize_jumps();
+                let bril = optimized.to_bril();
                 (
                     vec![Visualization {
                         result: bril.to_string(),

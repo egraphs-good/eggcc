@@ -4,20 +4,13 @@ expression: visualization.result
 ---
 main {
 block:
- block:
-  block:
-   cond: bool = lt x x;
-   if cond:
-    break 2
-   else:
-    break 1
+ cond: bool = lt x x;
+ if cond:
+  a: int = const 1;
+  print a;
+ else:
   a: int = const 2;
   print a;
-  break 1
- a: int = const 1;
- print a;
-block:
 
- return
-
+return
 }

@@ -8,22 +8,18 @@ block:
  x: int = add n i;
  total: int = const 0;
 while true:
- block:
-  c: int = const 7;
-  one: int = const 2;
-  cond: bool = lt i n;
-  y: int = mul c i;
-  print y;
-  total: int = add total y;
-  i: int = add i one;
-  if cond:
-   break 2
-  else:
-   break 1
- block:
+ c: int = const 7;
+ one: int = const 2;
+ cond: bool = lt i n;
+ y: int = mul c i;
+ print y;
+ total: int = add total y;
+ i: int = add i one;
+ if cond:
+
+ else:
   print total;
   print x;
   print i;
   return
-
 }

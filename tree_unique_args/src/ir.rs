@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::iter::{self, once};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -133,7 +131,7 @@ impl Field {
         format!("_{name}", name = self.name)
     }
 
-    pub(crate) fn to_sfield(&self) -> Option<SField> {
+    pub(crate) fn to_sfield(self) -> Option<SField> {
         match self.purpose {
             Purpose::CapturingId | Purpose::ReferencingId => None,
             Purpose::Static(sort) => Some(SField {
@@ -294,6 +292,7 @@ impl Constructor {
             .collect::<Vec<_>>()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn filter_map_sfields<F, T>(&self, f: F) -> Vec<T>
     where
         F: FnMut(&SField) -> Option<T>,
@@ -333,8 +332,6 @@ fn no_duplicate_field_names() {
         }
     }
 }
-
-// SHARED EXPPS
 
 // Subset of sorts that refer to shared expressions
 #[derive(Debug, EnumIter, PartialEq)]

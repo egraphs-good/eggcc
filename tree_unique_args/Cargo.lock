@@ -1109,6 +1109,7 @@ dependencies = [
  "main_error",
  "strum",
  "strum_macros",
+ "thiserror",
 ]
 
 [[package]]

@@ -11,3 +11,4 @@ egglog = { git = "https://github.com/oflatt/egg-smol", rev = "057725d9353727d831
 strum = "0.25"
 strum_macros = "0.25"
 main_error = "0.1.2"
+thiserror = "1.0"

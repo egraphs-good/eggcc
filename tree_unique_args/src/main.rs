@@ -5,10 +5,12 @@ use main_error::MainError;
 // Rust test modules
 // If you don't put your Rust file here it won't get compiled!
 pub(crate) mod body_contains;
+pub(crate) mod conditional_invariant_code_motion;
 pub(crate) mod deep_copy;
 pub(crate) mod function_inlining;
 pub(crate) mod ir;
 pub(crate) mod purity_analysis;
+pub(crate) mod simple;
 pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
 pub(crate) mod util;
@@ -34,8 +36,10 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("sugar.egg"),
             include_str!("util.egg"),
             // optimizations
-            &switch_rewrites::egglog(),
+            include_str!("simple.egg"),
             include_str!("function_inlining.egg"),
+            include_str!("switch_rewrites.egg"),
+            &conditional_invariant_code_motion::rules().join("\n"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

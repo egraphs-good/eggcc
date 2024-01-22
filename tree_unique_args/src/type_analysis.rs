@@ -52,7 +52,7 @@ fn switch_boolean() -> Result<(), egglog::Error> {
 
 #[test]
 fn switch_int() -> Result<(), egglog::Error> {
-  let build = "
+    let build = "
   (let n1 (Num (Id (i64-fresh!)) 1))
   (let n2 (Num (Id (i64-fresh!)) 2))
   (let n3 (Num (Id (i64-fresh!)) 3))

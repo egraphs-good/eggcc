@@ -28,20 +28,52 @@ fn simple_types() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn switch() -> Result<(), egglog::Error> {
+fn switch_boolean() -> Result<(), egglog::Error> {
     let build = "
   (let b1 (Boolean (Id (i64-fresh!)) true))
   (let n1 (Num (Id (i64-fresh!)) 1))
   (let n2 (Num (Id (i64-fresh!)) 3))
   (let switch
     (Switch (Not (LessThan n1 n2))
-            (Cons (Add n1 n1) (Cons (Sub n1 n2) (Cons (Mul n2 n2) (Nil))))))
+            (Cons (Add n1 n1) (Cons (Sub n1 n2) (Nil)))))
+  (let wrong_switch
+    (Switch b1 (Cons n1 (Cons n2 (Cons n1 (Nil))))))
   (HasTypeDemand switch)
+  (HasTypeDemand wrong_switch)
   ";
     let check = "
   (run-schedule (saturate type-analysis))
 
   (check (HasType switch (IntT)))
+  (fail (check (HasType wrong_switch ty))) ; should not be able to type a boolean swith with 3 cases
+  ";
+    crate::run_test(build, check)
+}
+
+#[test]
+fn switch_int() -> Result<(), egglog::Error> {
+  let build = "
+  (let n1 (Num (Id (i64-fresh!)) 1))
+  (let n2 (Num (Id (i64-fresh!)) 2))
+  (let n3 (Num (Id (i64-fresh!)) 3))
+  (let n4 (Num (Id (i64-fresh!)) 4))
+  (let s1
+    (Switch n1
+            (Cons (Add n1 n1) (Cons (Sub n1 n2) (Nil)))))
+  (let s2
+    (Switch (Mul n1 n2) (Cons (LessThan n3 n4) (Nil))))
+  (let s3
+    (Switch (Sub n2 n2) (Cons (Print n1) (Cons (Print n4) (Cons (Print n3) (Nil))))))  
+  (HasTypeDemand s1)
+  (HasTypeDemand s2)
+  (HasTypeDemand s3)
+  ";
+    let check = "
+  (run-schedule (saturate type-analysis))
+
+  (check (HasType s1 (IntT)))
+  (check (HasType s2 (BoolT)))
+  (check (HasType s3 (UnitT)))
   ";
     crate::run_test(build, check)
 }

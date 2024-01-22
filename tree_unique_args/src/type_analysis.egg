@@ -162,14 +162,29 @@
 (rule ((HasTypeDemand (Print e)))
       ((HasType (Print e) (UnitT)))
       :ruleset type-analysis)
-(rule ((HasTypeDemand (Write addr val)))
-      ((HasType (Write addr val) (UnitT)))
-      :ruleset type-analysis)
-(rule ((HasTypeDemand (Read addr)))
-      ((HasType (Read addr) (IntT))) ; all reads are ints
-      :ruleset type-analysis)
+; TODO: Read and Write (requires type annotations)
 
 ; Switch 
+; if the condition is a boolean, it must have exactly two branches
+(rule ((HasTypeDemand (Switch cond (Cons A (Cons B (Nil))))))
+      (
+       (HasTypeDemand cond)
+       (HasTypeDemand A)
+       (HasTypeDemand B)
+      )
+      :ruleset type-analysis)
+(rule (
+       (= switch (Switch cond (Cons A (Cons B (Nil)))))
+       (HasTypeDemand switch)
+       (HasType cond (BoolT))
+       (HasType A ty)
+       (HasType B ty)
+      )
+      ((HasType switch ty))
+      :ruleset type-analysis)
+
+; Otherwise, the condition must be an integer, and we can have any number of branches.
+
 ; peel off a branch and demand type
 (rule ((HasTypeDemand (Switch cond (Cons branch rest))))
       (
@@ -185,7 +200,8 @@
 ; base case- single branch switch has type of branch
 (rule (
        (HasTypeDemand (Switch cond (Cons branch (Nil))))
-       (HasType cond BoolT)
+       ; boolean condition handled above, now we must have an integer condition
+       (HasType cond (IntT))
        (HasType branch ty)
       )
       ((HasType (Switch cond (Cons branch (Nil))) ty))
@@ -194,6 +210,9 @@
 (rule (
        (HasTypeDemand (Switch cond (Cons branch rest)))
        (HasType (Switch cond rest) ty)
+       ; make sure the condition is an integer
+       ; (prevents us from typing boolean switches with >2 branches)
+       (HasType cond (IntT))
        (HasType branch ty)
       )
       ((HasType (Switch cond (Cons branch rest)) ty))

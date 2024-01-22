@@ -54,12 +54,14 @@
 ; Constant condition elimination with interval analysis
 (rule (
        (= lhs (Switch pred (Cons A (Cons B (Nil)))))
+       (ExprIsPure pred)
        (= (BoolI true true) (ival pred))
       )
       ((union lhs A))
       :ruleset interval-analysis)
 (rule (
        (= lhs (Switch pred (Cons A (Cons B (Nil)))))
+       (ExprIsPure pred)
        (= (BoolI false false) (ival pred))
       )
       ((union lhs B))

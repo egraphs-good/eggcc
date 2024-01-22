@@ -16,23 +16,23 @@
 
 ;                     switch  inputs
 (function LiftSwitch (Expr    Expr)   Expr)
-(rewrite (LiftSwitch inner subst) (SubstExpr inner subst))
+(rewrite (LiftSwitch inner subst) (SubstExpr inner subst) :ruleset always-run)
 
 ; Create demand
 (rule ((= loop (Loop id in out))
-       (= out (All ord (Pair pred1 switch)))
-       (= switch (Switch pred2 branches))
-       (ExprIsPure pred2))
+       (= out (All ord (Pair pred switch)))
+       (= switch (Switch pred branches))
+       (ExprIsPure pred))
       ((LiftSwitch switch in)) :ruleset ivt)
 
 ; Apply the rule
 (rule ((= loop (Loop id in out))
        (= out (All ord (Pair pred switch)))
-       (= switch (Switch pred2 (Pair thn* els*)))
-       (= (Switch pred (Pair thn els)) (LiftSwitch switch in)))
+       (= switch (Switch pred (Pair thn* els*)))
+       (= (Switch pred_ (Pair thn els)) (LiftSwitch switch in)))
       ((let new-id (Id (i64-fresh!)))
        (let inner (NewLoop new-id in (All ord (Pair pred thn*))))
-       (let outer (Switch pred (Cons els (Cons inner (Nil)))))
+       (let outer (Switch pred_ (Cons inner (Cons els (Nil)))))
        (union loop outer)) :ruleset ivt)
        
 

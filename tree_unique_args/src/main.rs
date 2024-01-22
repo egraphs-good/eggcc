@@ -13,6 +13,7 @@ pub(crate) mod purity_analysis;
 pub(crate) mod simple;
 pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
+pub(crate) mod unique_to_shared;
 pub(crate) mod util;
 
 pub type Result = std::result::Result<(), egglog::Error>;
@@ -40,6 +41,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("function_inlining.egg"),
             include_str!("switch_rewrites.egg"),
             &conditional_invariant_code_motion::rules().join("\n"),
+            &unique_to_shared::rules(),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

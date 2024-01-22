@@ -109,6 +109,15 @@ impl Purpose {
     }
 }
 
+// Subset of purposes that appear in shared expressions
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum SPurpose {
+    Static(Sort), // some int, bool, order that parameterizes constructor
+    SubExpr,      // subexpression, e.g. Add's summand
+    SubListExpr,  // sublistexpr, e.g. Switch's branch lsit
+    CapturedExpr, // a body's outputs
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Field {
     pub purpose: Purpose,
@@ -122,6 +131,28 @@ impl Field {
 
     pub(crate) fn var(&self) -> String {
         format!("_{name}", name = self.name)
+    }
+
+    pub(crate) fn to_sfield(&self) -> Option<SField> {
+        match self.purpose {
+            Purpose::CapturingId | Purpose::ReferencingId => None,
+            Purpose::Static(sort) => Some(SField {
+                name: self.name,
+                purpose: SPurpose::Static(sort),
+            }),
+            Purpose::SubExpr => Some(SField {
+                name: self.name,
+                purpose: SPurpose::SubExpr,
+            }),
+            Purpose::SubListExpr => Some(SField {
+                name: self.name,
+                purpose: SPurpose::SubListExpr,
+            }),
+            Purpose::CapturedExpr => Some(SField {
+                name: self.name,
+                purpose: SPurpose::CapturedExpr,
+            }),
+        }
     }
 }
 
@@ -186,7 +217,7 @@ impl Constructor {
                 f(CapturedExpr, "out"),
             ],
             Constructor::Arg => vec![f(ReferencingId, "id")],
-            Constructor::Call => vec![f(Static(Sort::I64), "f"), f(SubExpr, "arg")],
+            Constructor::Call => vec![f(Static(Sort::IdSort), "f"), f(SubExpr, "arg")],
             Constructor::Cons => {
                 vec![f(SubExpr, "hd"), f(SubListExpr, "tl")]
             }
@@ -244,6 +275,49 @@ impl Constructor {
             .iter()
             .any(|field| field.purpose == Purpose::CapturingId)
     }
+
+    pub(crate) fn name_shared(&self) -> String {
+        format!("S{name}", name = self.name())
+    }
+
+    pub(crate) fn sort_shared(&self) -> SESort {
+        match self.sort() {
+            ESort::Expr => SESort::Expr,
+            ESort::ListExpr => SESort::ListExpr,
+        }
+    }
+
+    pub(crate) fn sfields(&self) -> Vec<SField> {
+        self.fields()
+            .iter()
+            .filter_map(|field| field.to_sfield())
+            .collect::<Vec<_>>()
+    }
+
+    pub(crate) fn filter_map_sfields<F, T>(&self, f: F) -> Vec<T>
+    where
+        F: FnMut(&SField) -> Option<T>,
+    {
+        self.sfields().iter().filter_map(f).collect::<Vec<_>>()
+    }
+
+    pub(crate) fn map_sfields<F, T>(&self, f: F) -> Vec<T>
+    where
+        F: FnMut(&SField) -> T,
+    {
+        self.sfields().iter().map(f).collect::<Vec<_>>()
+    }
+
+    pub(crate) fn construct_shared<F>(&self, f: F) -> String
+    where
+        F: FnMut(&SField) -> String,
+    {
+        let without_parens = iter::once(self.name_shared().to_string())
+            .chain(self.sfields().iter().map(f))
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!("({without_parens})")
+    }
 }
 
 #[cfg(test)]
@@ -281,40 +355,6 @@ impl SESort {
     }
 }
 
-#[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
-pub(crate) enum SConstructor {
-    Num,
-    Boolean,
-    UnitExpr,
-    Add,
-    Sub,
-    Mul,
-    LessThan,
-    And,
-    Or,
-    Not,
-    Get,
-    Print,
-    Read,
-    Write,
-    All,
-    Switch,
-    Loop,
-    Let,
-    Arg,
-    Call,
-    Cons,
-    Nil,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum SPurpose {
-    Static(Sort), // some int, bool, order that parameterizes constructor
-    SubExpr,      // subexpression, e.g. Add's summand
-    SubListExpr,  // sublistexpr, e.g. Switch's branch lsit
-    CapturedExpr, // a body's outputs
-}
-
 impl SPurpose {
     pub(crate) fn to_sort(self) -> Sort {
         match self {
@@ -342,141 +382,14 @@ impl SField {
     }
 }
 
-impl SConstructor {
-    pub(crate) fn name(&self) -> &'static str {
-        match self {
-            SConstructor::Num => "SNum",
-            SConstructor::Boolean => "SBoolean",
-            SConstructor::UnitExpr => "SUnitExpr",
-            SConstructor::Add => "SAdd",
-            SConstructor::Sub => "SSub",
-            SConstructor::Mul => "SMul",
-            SConstructor::LessThan => "SLessThan",
-            SConstructor::And => "SAnd",
-            SConstructor::Or => "SOr",
-            SConstructor::Not => "SNot",
-            SConstructor::Get => "SGet",
-            SConstructor::Print => "SPrint",
-            SConstructor::Read => "SRead",
-            SConstructor::Write => "SWrite",
-            SConstructor::All => "SAll",
-            SConstructor::Switch => "SSwitch",
-            SConstructor::Loop => "SLoop",
-            SConstructor::Let => "SLet",
-            SConstructor::Arg => "SArg",
-            SConstructor::Call => "SCall",
-            SConstructor::Cons => "SCons",
-            SConstructor::Nil => "SNil",
-        }
-    }
-
-    pub(crate) fn fields(&self) -> Vec<SField> {
-        use SPurpose::{CapturedExpr, Static, SubExpr, SubListExpr};
-        let f = |purpose, name| SField { purpose, name };
-        match self {
-            SConstructor::Num => vec![f(Static(Sort::I64), "n")],
-            SConstructor::Boolean => vec![f(Static(Sort::Bool), "b")],
-            SConstructor::UnitExpr => vec![],
-            SConstructor::Add => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            SConstructor::Sub => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            SConstructor::Mul => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            SConstructor::LessThan => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            SConstructor::And => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            SConstructor::Or => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            SConstructor::Not => vec![f(SubExpr, "x")],
-            SConstructor::Get => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
-            SConstructor::Print => vec![f(SubExpr, "printee")],
-            SConstructor::Read => vec![f(SubExpr, "addr")],
-            SConstructor::Write => vec![f(SubExpr, "addr"), f(SubExpr, "data")],
-            SConstructor::All => vec![f(Static(Sort::Order), "order"), f(SubListExpr, "exprs")],
-            SConstructor::Switch => vec![f(SubExpr, "pred"), f(SubListExpr, "branches")],
-            SConstructor::Loop => vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")],
-            SConstructor::Let => vec![f(SubExpr, "in"), f(CapturedExpr, "out")],
-            SConstructor::Arg => vec![],
-            SConstructor::Call => vec![f(Static(Sort::I64), "f"), f(SubExpr, "arg")],
-            SConstructor::Cons => vec![f(SubExpr, "hd"), f(SubListExpr, "tl")],
-            SConstructor::Nil => vec![],
-        }
-    }
-
-    pub(crate) fn map_fields<F, T>(&self, f: F) -> Vec<T>
-    where
-        F: FnMut(&SField) -> T,
-    {
-        self.fields().iter().map(f).collect::<Vec<_>>()
-    }
-
-    pub(crate) fn filter_map_fields<F, T>(&self, f: F) -> Vec<T>
-    where
-        F: FnMut(&SField) -> Option<T>,
-    {
-        self.fields().iter().filter_map(f).collect::<Vec<_>>()
-    }
-
-    pub(crate) fn construct<F>(&self, f: F) -> String
-    where
-        F: FnMut(&SField) -> String,
-    {
-        let without_parens = iter::once(self.name().to_string())
-            .chain(self.fields().iter().map(f))
-            .collect::<Vec<_>>()
-            .join(" ");
-        format!("({without_parens})")
-    }
-
-    pub(crate) fn sort(&self) -> SESort {
-        match self {
-            SConstructor::Num => SESort::Expr,
-            SConstructor::Boolean => SESort::Expr,
-            SConstructor::UnitExpr => SESort::Expr,
-            SConstructor::Add => SESort::Expr,
-            SConstructor::Sub => SESort::Expr,
-            SConstructor::Mul => SESort::Expr,
-            SConstructor::LessThan => SESort::Expr,
-            SConstructor::And => SESort::Expr,
-            SConstructor::Or => SESort::Expr,
-            SConstructor::Not => SESort::Expr,
-            SConstructor::Get => SESort::Expr,
-            SConstructor::Print => SESort::Expr,
-            SConstructor::Read => SESort::Expr,
-            SConstructor::Write => SESort::Expr,
-            SConstructor::All => SESort::Expr,
-            SConstructor::Switch => SESort::Expr,
-            SConstructor::Loop => SESort::Expr,
-            SConstructor::Let => SESort::Expr,
-            SConstructor::Arg => SESort::Expr,
-            SConstructor::Call => SESort::Expr,
-            SConstructor::Cons => SESort::ListExpr,
-            SConstructor::Nil => SESort::ListExpr,
-        }
-    }
-
-    pub(crate) fn creates_context(&self) -> bool {
-        self.fields()
-            .iter()
-            .any(|field| field.purpose == SPurpose::CapturedExpr)
-    }
-}
-
-#[test]
-fn no_duplicate_sfield_names() {
-    for ctor in SConstructor::iter() {
-        let mut seen: HashSet<String> = HashSet::new();
-        for field in ctor.fields() {
-            assert!(!seen.contains(field.name));
-            seen.insert(field.name.to_string());
-        }
-    }
-}
-
 pub(crate) fn schema_shared() -> String {
     once("(datatype SExpr)\n(datatype ListSExpr)".to_string())
-        .chain(SConstructor::iter().map(|ctor| {
+        .chain(Constructor::iter().map(|ctor| {
             format!(
                 "(function {name} ({field_sorts}) {sort})",
-                name = ctor.name(),
-                sort = ctor.sort().name(),
-                field_sorts = ctor.map_fields(|field| field.sort().name()).join(" ")
+                name = ctor.name_shared(),
+                sort = ctor.sort_shared().name(),
+                field_sorts = ctor.map_sfields(|field| field.sort().name()).join(" ")
             )
         }))
         .collect::<Vec<_>>()

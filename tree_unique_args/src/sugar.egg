@@ -4,6 +4,11 @@
          (Cons a (Cons b (Nil)))
          :ruleset always-run)
 
+(function SPair (SExpr SExpr) ListSExpr)
+(rewrite (SPair a b)
+         (SCons a (SCons b (SNil)))
+         :ruleset always-run)
+
 (function IgnoreFirst (Expr Expr) Expr)
 (rewrite (IgnoreFirst a b)
          (Get

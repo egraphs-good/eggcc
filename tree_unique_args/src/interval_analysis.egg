@@ -64,3 +64,12 @@
       )
       ((union lhs B))
       :ruleset interval-analysis)
+
+; Switch interval is union of branch intervals
+(rule (
+       (= lhs (Switch pred (Cons A (Cons B (Nil)))))
+       (= a-ival (ival A))
+       (= b-ival (ival B))
+      )
+      ((set (ival lhs) (interval-union a-ival b-ival)))
+      :ruleset interval-analysis)

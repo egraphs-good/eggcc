@@ -116,3 +116,23 @@ fn switch_interval() -> Result<(), egglog::Error> {
     ";
     crate::run_test(build, check)
 }
+
+#[test]
+fn switch_interval2() -> Result<(), egglog::Error> {
+    let build = "
+    (let one   (Num (Id (i64-fresh!))  1))
+    (let two   (Num (Id (i64-fresh!))  2))
+    (let three (Num (Id (i64-fresh!))  3))
+    (let four  (Num (Id (i64-fresh!))  4))
+    (let five  (Num (Id (i64-fresh!))  5))
+    (let ten   (Num (Id (i64-fresh!)) 10))
+    (let c (Read one))
+    (let cc (LessThan two three))
+    (let switch1 (Switch c (Cons four (Cons five (Nil)))))
+    (let switch (Switch (LessThan switch1 ten) (Cons two (Cons two (Nil)))))
+    ";
+    let check = "
+    (check (= switch two))
+    ";
+    crate::run_test(build, check)
+}

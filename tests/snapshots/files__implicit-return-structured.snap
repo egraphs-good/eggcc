@@ -3,17 +3,15 @@ source: tests/files.rs
 expression: visualization.result
 ---
 main {
-block:
- v0: int = const 4;
- x: int = id v0;
- v1: int = const 15;
- n: int = id v1;
- v2: int = id x;
- v3: int = id n;
- call @pow v2 v3;
- v4: int = const 0;
- return
-
+v0: int = const 4;
+x: int = id v0;
+v1: int = const 15;
+n: int = id v1;
+v2: int = id x;
+v3: int = id n;
+call @pow v2 v3;
+v4: int = const 0;
+return
 }
 
 pow {
@@ -23,29 +21,23 @@ block:
  v2: int = const 0;
  _i: int = id v2;
 while true:
- block:
-  block:
-   v3: int = id _i;
-   v4: int = id n;
-   v5: int = const 1;
-   v6: int = sub v4 v5;
-   v7: bool = lt v3 v6;
-   if v7:
-    break 2
-   else:
-    break 1
-  block:
-   v14: int = id res;
-   print v14;
-   v15: int = const 0;
-   return
-
- v8: int = id res;
- v9: int = id x;
- v10: int = mul v8 v9;
- res: int = id v10;
- v11: int = id _i;
- v12: int = const 1;
- v13: int = add v11 v12;
- _i: int = id v13;
+ v3: int = id _i;
+ v4: int = id n;
+ v5: int = const 1;
+ v6: int = sub v4 v5;
+ v7: bool = lt v3 v6;
+ if v7:
+  v8: int = id res;
+  v9: int = id x;
+  v10: int = mul v8 v9;
+  res: int = id v10;
+  v11: int = id _i;
+  v12: int = const 1;
+  v13: int = add v11 v12;
+  _i: int = id v13;
+ else:
+  v14: int = id res;
+  print v14;
+  v15: int = const 0;
+  return
 }

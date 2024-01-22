@@ -1,6 +1,7 @@
 (function ListExpr-length (ListExpr) i64)
 (function ListExpr-ith (ListExpr i64) Expr :unextractable)
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
+(function Append (ListExpr Expr) ListExpr :unextractable)
 
 (rule ((All order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
 
@@ -28,3 +29,10 @@
               (Cons (Get aarg i)
                     (SubArgListHelper (+ i 1) j))))
       :ruleset always-run)
+
+(rewrite (Append (Cons a b) e)
+    (Cons a (Append b e))
+    :ruleset always-run)
+(rewrite (Append (Nil) e)
+    (Cons e (Nil))
+    :ruleset always-run)

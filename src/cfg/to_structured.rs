@@ -1,3 +1,12 @@
+//! This module converts a [`SimpleCfgProgram`] to a [`StructuredProgram`].
+//! It is based on the algorithm described in Beyond Relooper:
+//! Recursive Translation of Unstructured Control Flow to Structured Control Flow (Functional Pearl)
+//! Link: https://dl.acm.org/doi/pdf/10.1145/3547621
+//!
+//! The algorithm recursively translates the structured code into blocks and jumps.
+//! It works by keeping a stack of the current context, allowing
+//! break statements to jump to the correct block.
+
 use std::collections::HashMap;
 
 use petgraph::{
@@ -17,15 +26,21 @@ use super::{
     BlockName, Branch, BranchOp, SimpleCfgFunction, SimpleCfgProgram,
 };
 
-/// Records the history of the current node in the CFG
-/// being processed.
-/// For example, BlockFollowedBy(BlockName) means that the current
-/// cfg block being proessed is in a structured block followed by code for
-/// the block with the given name.
+/// Records the history of the scopes
+/// the current node in the CFG
+/// being processed is in.
+/// The original paper has a IfThenElse variant
+/// which we do not need because we define
+/// the if-then-else construct as not introducing
+/// a new scope.
 #[derive(Debug)]
 enum ContainingHistory {
-    ThenBranch,
+    /// The current node being processed
+    /// is in a loop with the given label.
     LoopWithLabel(BlockName),
+    /// The node being processed
+    /// is in a structured block followed by code for
+    /// the block with the given name.
     BlockFollowedBy(BlockName),
 }
 
@@ -61,6 +76,7 @@ impl<'a> StructuredCfgBuilder<'a> {
             name: self.cfg.name.clone(),
             args: self.cfg.args.clone(),
             block: result,
+            return_ty: self.cfg.return_ty.clone(),
         })
     }
 
@@ -94,6 +110,11 @@ impl<'a> StructuredCfgBuilder<'a> {
         self.node_within(node, merge_nodes)
     }
 
+    /// Translate a node and all of the merge_nodes
+    /// it dominates.
+    /// This method first wraps the translation of the node in blocks
+    /// containing the merge nodes.
+    /// Then, it translates node which can break out to these blocks.
     fn node_within(&mut self, node: NodeIndex, merge_nodes: Vec<NodeIndex>) -> StructuredBlock {
         if node == self.cfg.exit {
             return StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone()));
@@ -114,7 +135,10 @@ impl<'a> StructuredCfgBuilder<'a> {
                 let first = StructuredBlock::Basic(Box::new(self.cfg.graph[node].clone()));
                 let second = match edges.as_slice() {
                     [] => {
-                        panic!("handled above");
+                        panic!(
+                            "handled above- edges should not be empty for non-exit block {:?}",
+                            self.name(node)
+                        );
                     }
                     // Unconditionally jumps to out
                     [out] => self.do_branch(out),
@@ -135,25 +159,20 @@ impl<'a> StructuredCfgBuilder<'a> {
                         ) = (branch1.weight(), branch2.weight())
                         {
                             assert!(val1 != val2);
-                            self.context.push(Context {
-                                enclosing: ContainingHistory::ThenBranch,
-                                fallthrough: None,
-                            });
                             let then_block = self
                                 .do_branch(if val1 == &CondVal::from(true) {
                                     branch1
                                 } else {
                                     branch2
                                 })
-                                .unwrap();
+                                .unwrap_or(StructuredBlock::Sequence(vec![]));
                             let else_block = self
                                 .do_branch(if val1 == &CondVal::from(false) {
                                     branch1
                                 } else {
                                     branch2
                                 })
-                                .unwrap();
-                            self.context.pop();
+                                .unwrap_or(StructuredBlock::Sequence(vec![]));
                             Some(StructuredBlock::Ite(
                                 arg1.to_string(),
                                 Box::new(then_block),
@@ -178,6 +197,8 @@ impl<'a> StructuredCfgBuilder<'a> {
                     first
                 }
             }
+            // Add the code for the first merge node,
+            // recur on the rest.
             [first, ..] => {
                 self.context.push(Context {
                     enclosing: ContainingHistory::BlockFollowedBy(self.name(*first)),
@@ -228,26 +249,38 @@ impl<'a> StructuredCfgBuilder<'a> {
         }
     }
 
+    /// Within the current context,
+    /// generate a break statement that returns
+    /// control flow to the block with the given name.
     fn break_out_to(&self, target: BlockName) -> Option<StructuredBlock> {
         assert!(!self.context.is_empty(), "context should not be empty");
         let top_context = self.context.last().unwrap();
         for (index, context) in self.context.iter().rev().enumerate() {
             match &context.enclosing {
-                ContainingHistory::ThenBranch => {}
-                ContainingHistory::LoopWithLabel(label)
-                | ContainingHistory::BlockFollowedBy(label) => {
-                    if label == &target {
-                        if let Some(true) = top_context
-                            .fallthrough
-                            .as_ref()
-                            .map(|fallthrough_label| fallthrough_label == &target)
-                        {
-                            return None;
-                        } else {
-                            return Some(StructuredBlock::Break(index));
-                        }
+                ContainingHistory::LoopWithLabel(label) if label == &target => {
+                    if let Some(true) = top_context
+                        .fallthrough
+                        .as_ref()
+                        .map(|fallthrough_label| fallthrough_label == &target)
+                    {
+                        return None;
+                    } else {
+                        return Some(StructuredBlock::Break(index));
                     }
                 }
+                ContainingHistory::BlockFollowedBy(label) if label == &target => {
+                    if let Some(true) = top_context
+                        .fallthrough
+                        .as_ref()
+                        .map(|fallthrough_label| fallthrough_label == &target)
+                    {
+                        return None;
+                    } else {
+                        // add one to break out of this block
+                        return Some(StructuredBlock::Break(1 + index));
+                    }
+                }
+                _ => (),
             }
         }
         panic!(
@@ -260,12 +293,13 @@ impl<'a> StructuredCfgBuilder<'a> {
         self.postorder[&self.cfg.graph[target].name] >= self.postorder[&self.cfg.graph[source].name]
     }
 
+    /// merge nodes have multiple incoming
+    /// edges
     fn is_merge_node(&self, node: NodeIndex) -> bool {
         self.cfg
             .graph
             .neighbors_directed(node, petgraph::Direction::Incoming)
-            .take(1)
-            .next()
+            .nth(1)
             .is_some()
     }
 

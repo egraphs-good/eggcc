@@ -8,26 +8,17 @@ block:
  x: int = const 0;
 while true:
  block:
-  block:
-   block:
-    iseq: bool = eq y x;
-    if iseq:
-     break 2
-    else:
-     break 1
+  iseq: bool = eq y x;
+  if iseq:
+   two: int = const 2;
+  else:
    one: int = const 1;
    x: int = add x one;
    y: int = add y one;
-   break 1
-  two: int = const 2;
- block:
 
-  if iseq:
-   break 1
-  else:
-   break 2
- block:
+ if iseq:
   print x;
   return
+ else:
 
 }

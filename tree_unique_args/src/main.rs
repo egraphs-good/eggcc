@@ -40,7 +40,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("function_inlining.egg"),
             include_str!("switch_rewrites.egg"),
             &conditional_invariant_code_motion::rules().join("\n"),
-            &loop_invariant::find_inv_expr_rules().join("\n"),
+            &loop_invariant::rules(),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

@@ -1,49 +1,28 @@
+;; Loop Invariant
 (relation find-inv-Expr (Expr Expr))
 (relation find-inv-ListExpr (Expr ListExpr))
 
 ;; bool: whether the term in the Expr is an invariant.
-(function is-inv-Expr (Body Expr) bool :unextractable :merge (or old new))
+(function is-inv-Expr (Expr Expr) bool :unextractable :merge (or old new))
 (function is-inv-ListExpr (Expr ListExpr) bool :unextractable :merge (or old new))
 
 (relation arg-inv (Expr i64))
 
 ;; in default, when there is a find, set is-inv to false
 (rule ((find-inv-Expr loop term)) ((set (is-inv-Expr loop term) false)) :ruleset always-run)
-(rule ((find-inv-ListExpr loop term)) ((set (is-inv-operand loop term) false)) :ruleset always-run)
+(rule ((find-inv-ListExpr loop term)) ((set (is-inv-ListExpr loop term) false)) :ruleset always-run)
 
-;; when the input is not tuple
+;; I assume input is tuple here
 (rule ((= loop (Loop id inputs outputs))
-       (= output (All ord1 out_list))
-	   (= (All ord2 list) (ListExpr-ith out_list 1))
-	   (= (Arg id) (ListExpr-ith list 0)))
-    ((arg-inv loop 0)) :ruleset always-run)
-
-;; when input is tuple
-(rule ((= loop (Loop id inputs outputs))
-       (= output (All ord1 out_list))
-	   (= (All ord2 list) (ListExpr-ith out_list 1))
-	   (= (Get (Arg id) i) (ListExpr-ith list i))) ;;???
+       (= (Get (Arg id) i) (get-loop-outputs-ith loop i)))
     ((arg-inv loop i)) :ruleset always-run)
 
-;; top level entry ;
+;; top level entry
 (rule ((= loop (Loop id inputs outputs))
 	   (arg-inv loop i))
 	((find-inv-Expr loop outputs)) :ruleset always-run)
 
-
 ;; propagations
-(rule ((find-inv-Expr loop expr) 
-        (= expr (All ord list)) ) 
-    ((find-inv-ListExpr loop list)) :ruleset always-run)
-
-(rule ((find-inv-Expr loop expr) 
-        (= expr (Switch pred list)) ) 
-    ((find-inv-ListExpr loop list) (find-inv-Expr loop pred)) :ruleset always-run)
-
-(rule ((find-inv-Expr loop expr) 
-        (= expr (Loop id inputs outputs)) ) 
-    ((find-inv-Expr loop inputs)) :ruleset always-run)
-
 
 ;; ListExpr -> expr
 (rule ((find-inv-ListExpr loop list) 
@@ -51,18 +30,14 @@
     ((find-inv-Expr loop ith)) :ruleset always-run)
 
 
-;; terminal
-(rule ((find-inv-Expr loop (Num id n))) ((set (is-inv-Expr loop (Num id n)) true)) )
+(relation is-inv-ListExpr-helper (Expr ListExpr i64))
+(rule ((find-inv-ListExpr loop list)) ((is-inv-ListExpr-helper loop list 0)) :ruleset always-run)
 
+(rule ((is-inv-ListExpr-helper loop list i)
+       (= true (is-inv-Expr loop expr))
+       (= expr (ListExpr-ith list i)))
+    ((is-inv-ListExpr-helper loop list (+ i 1))))
 
-;; TODO: If call is pure it could be invariant
-;; Maybe it's done by function inlining.
-
-
-;; terminal, if a arg is recorded as inv in current theta
-(rule ((find-inv-Expr loop expr)
-        (= expr (Get (Arg id) i))
-        (arg_inv loop i))
-    ((set (is-inv-Expr loop expr) true)) :ruleset fast-analyses)
-
-
+(rule ((is-inv-ListExpr-helper loop list i)
+       (= i (ListExpr-length list)))
+    ((set (is-inv-ListExpr loop list) true)))

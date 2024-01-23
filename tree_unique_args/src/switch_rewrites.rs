@@ -80,7 +80,7 @@ fn switch_rewrite_purity() -> crate::Result {
     let build = "
 (let switch-id (Id (i64-fresh!)))
 (let let-id (Id (i64-fresh!)))
-(let impure (Let let-id (UnitExpr let-id) (All (Sequential) (Pair (Boolean let-id true) (Print (Num let-id 1))))))
+(let impure (Let let-id (UnitExpr switch-id) (All (Sequential) (Pair (Boolean let-id true) (Print (Num let-id 1))))))
 (let switch (Switch (And (Boolean switch-id false) (Get impure 0))
                     (Pair (Num switch-id 1) (Num switch-id 2))))
 (ExprIsValid switch)
@@ -96,7 +96,7 @@ fn switch_rewrite_purity() -> crate::Result {
     let build = "
 (let switch-id (Id (i64-fresh!)))
 (let let-id (Id (i64-fresh!)))
-(let impure (Let let-id (UnitExpr let-id) (All (Sequential) (Cons (Boolean let-id true) (Nil)))))
+(let impure (Let let-id (UnitExpr switch-id) (All (Sequential) (Cons (Boolean let-id true) (Nil)))))
 (let switch (Switch (And (Boolean switch-id false) (Get impure 0))
                     (Pair (Num switch-id 1) (Num switch-id 2))))
 (ExprIsValid switch)
@@ -113,10 +113,11 @@ fn switch_rewrite_purity() -> crate::Result {
 #[test]
 fn test_constant_condition() -> Result<(), egglog::Error> {
     let build = "
-    (let t (Boolean (Id (i64-fresh!)) true))
-    (let f (Boolean (Id (i64-fresh!)) false))
-    (let a (Num (Id (i64-fresh!)) 3))
-    (let b (Num (Id (i64-fresh!)) 4))
+    (let id (Id (i64-fresh!)))
+    (let t (Boolean id true))
+    (let f (Boolean id false))
+    (let a (Num id 3))
+    (let b (Num id 4))
     (let switch_t (Switch t (Cons a (Cons b (Nil)))))
     (let switch_f (Switch f (Cons a (Cons b (Nil)))))
     (ExprIsValid switch_t)
@@ -132,10 +133,11 @@ fn test_constant_condition() -> Result<(), egglog::Error> {
 #[test]
 fn switch_pull_in_below() -> Result<(), egglog::Error> {
     let build = "
-    (let c (Read (Num (Id (i64-fresh!)) 3)))
-    (let s1 (Read (Num (Id (i64-fresh!)) 4)))
-    (let s2 (Read (Num (Id (i64-fresh!)) 5)))
-    (let s3 (Read (Num (Id (i64-fresh!)) 6)))
+    (let id (Id (i64-fresh!)))
+    (let c (Read (Num id 3)))
+    (let s1 (Read (Num id 4)))
+    (let s2 (Read (Num id 5)))
+    (let s3 (Read (Num id 6)))
 
     (let switch (Switch c (Cons s1 (Cons s2 (Nil)))))
     (let lhs (All (Sequential) (Cons switch (Cons s3 (Nil)))))

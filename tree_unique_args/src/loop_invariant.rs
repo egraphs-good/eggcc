@@ -6,22 +6,20 @@ fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let ruleset = " :ruleset always-run";
 
     match ctor {
-        Constructor::Cons
-        | Constructor::Nil
-        | Constructor::Arg
-        | Constructor::UnitExpr => None,
+        Constructor::Cons | Constructor::Nil | Constructor::Arg | Constructor::UnitExpr => None,
         Constructor::Call => Some(format!(
-            "(rule ((find-inv-Expr loop expr){br}(= expr (Call f arg))){br}((find-inv-Expr loop arg)){ruleset})"
+            "(rule ((find-inv-Expr loop expr) \
+            {br} (= expr (Call f arg))) \
+            {br}((find-inv-Expr loop arg)){ruleset})"
         )),
         Constructor::Get => Some(format!(
-        "{br}(rule ((find-inv-Expr loop expr)
-                (= expr (Get tup i)))
-            ((find-inv-Expr loop tup)){ruleset})
-
-        (rule ((find-inv-Expr loop expr)
-               (= expr (Get (Arg id) i))
-               (arg-inv loop i))
-            ((set (is-inv-Expr loop expr) true)){ruleset})"
+            "(rule ((find-inv-Expr loop expr) \
+            {br} (= expr (Get tup i))) \
+            {br}((find-inv-Expr loop tup)){ruleset})\n \
+            (rule ((find-inv-Expr loop expr) \
+            {br} (= expr (Get (Arg id) i)) \
+            {br} (arg-inv loop i)) \
+            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
         _ => {
             let ctor_pattern = ctor.construct(|field| field.var());
@@ -40,7 +38,11 @@ fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                     format!("(find-inv-{sort} loop {var})")
                 }
             });
-            Some(format!("\n(rule ((find-inv-Expr loop expr){br} (= expr {ctor_pattern})){br}({find_inv_ctor}){ruleset})"))
+            Some(format!(
+                "(rule ((find-inv-Expr loop expr) \
+                {br} (= expr {ctor_pattern})) \
+                {br}({find_inv_ctor}){ruleset})"
+            ))
         }
     }
 }
@@ -76,31 +78,31 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
         //         (ExprIsPure expr))
         //     ((set (is-inv-Expr loop expr) true)){ruleset})")),
         Constructor::Get => Some(format!(
-            "{br}(rule ((find-inv-Expr loop expr)
-                (= expr (Get tup i))
-                (= true (is-inv-Expr loop tup)))
-            ((set (is-inv-Expr loop expr) true)){ruleset})"
+            "(rule ((find-inv-Expr loop expr) \
+            {br} (= expr (Get tup i)) \
+            {br} (= true (is-inv-Expr loop tup))) \
+            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
         Constructor::Loop => Some(format!(
-            "{br}(rule ((find-inv-Expr loop expr)
-                (= expr (Loop id inputs pred-out))
-                (= true (is-inv-Expr loop inputs))
-                (ExprIsPure expr))
-            ((set (is-inv-Expr loop expr) true)){ruleset})"
+            "(rule ((find-inv-Expr loop expr) \
+            {br} (= expr (Loop id inputs pred-out)) \
+            {br} (= true (is-inv-Expr loop inputs)) \
+            {br} (ExprIsPure expr)) \
+            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
         Constructor::Let => Some(format!(
-            "{br}(rule ((find-inv-Expr loop expr)
-            (= expr (Let id inputs outputs))
-            (= true (is-inv-Expr loop inputs))
-            (ExprIsPure expr))
-        ((set (is-inv-Expr loop expr) true)){ruleset})"
+            "(rule ((find-inv-Expr loop expr) \
+            {br} (= expr (Let id inputs outputs)) \
+            {br} (= true (is-inv-Expr loop inputs)) \
+            {br} (ExprIsPure expr)) \
+            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
         Constructor::Switch => Some(format!(
-            "{br}(rule ((find-inv-Expr loop expr)
-            (= expr (Switch pred branch))
-            (= true (is-inv-ListExpr loop branch))
-            (= true (is-inv-Expr loop pred)))
-        ((set (is-inv-Expr loop expr) true)){ruleset})"
+            "(rule ((find-inv-Expr loop expr) \
+            {br} (= expr (Switch pred branch)) \
+            {br} (= true (is-inv-ListExpr loop branch)) \
+            {br} (= true (is-inv-Expr loop pred))) \
+            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
         _ => {
             let ctor_pattern = ctor.construct(|field| field.var());
@@ -117,10 +119,10 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                 }
             });
             Some(format!(
-                "{br}(rule ((find-inv-Expr loop expr)
-                (= expr {ctor_pattern})
-                {is_inv_ctor})
-            ((set (is-inv-Expr loop expr) true)){ruleset})"
+                "(rule ((find-inv-Expr loop expr) \
+                {br} (= expr {ctor_pattern}) \
+                {br} {is_inv_ctor}) \
+                {br}((set (is-inv-Expr loop expr) true)){ruleset})"
             ))
         }
     }
@@ -135,10 +137,10 @@ pub(crate) fn is_inv_expr_rules() -> Vec<String> {
 pub(crate) fn rules() -> String {
     [
         include_str!("loop_invariant.egg"),
-        &find_inv_expr_rules().join("\n"),
-        &is_inv_expr_rules().join("\n"),
+        &find_inv_expr_rules().join("\n\n"),
+        &is_inv_expr_rules().join("\n\n"),
     ]
-    .join("\n")
+    .join("\n\n")
 }
 
 #[test]

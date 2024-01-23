@@ -338,7 +338,7 @@ dependencies = [
  "bril2json",
  "brilirs",
  "clap",
- "egglog",
+ "egglog 0.1.0 (git+https://github.com/egraphs-good/egglog?rev=60668dd3f465e5674142c47eea449e64310ecb6a)",
  "egraph-serialize",
  "fixedbitset",
  "glob",
@@ -352,6 +352,35 @@ dependencies = [
  "petgraph",
  "serde_json",
  "smallvec",
+ "thiserror",
+ "tree-unique-args",
+]
+
+[[package]]
+name = "egglog"
+version = "0.1.0"
+source = "git+https://github.com/oflatt/egg-smol?rev=057725d9353727d831c90c7f8fdd76954d06b351#057725d9353727d831c90c7f8fdd76954d06b351"
+dependencies = [
+ "clap",
+ "egraph-serialize",
+ "env_logger",
+ "generic_symbolic_expressions",
+ "hashbrown 0.14.1",
+ "indexmap",
+ "instant",
+ "lalrpop",
+ "lalrpop-util 0.20.0",
+ "lazy_static",
+ "log",
+ "num-integer",
+ "num-rational",
+ "num-traits",
+ "ordered-float",
+ "regex",
+ "rustc-hash",
+ "serde_json",
+ "smallvec",
+ "symbol_table",
  "thiserror",
 ]
 
@@ -747,6 +776,12 @@ name = "log"
 version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
+
+[[package]]
+name = "main_error"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "155db5e86c6e45ee456bf32fad5a290ee1f7151c2faca27ea27097568da67d1a"
 
 [[package]]
 name = "memchr"
@@ -1169,6 +1204,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
+name = "strum"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
+
+[[package]]
+name = "strum_macros"
+version = "0.25.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23dc1fa9ac9c169a78ba62f0b841814b7abae11bdd047b9c58f893439e309ea0"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.37",
+]
+
+[[package]]
 name = "symbol_table"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1269,6 +1323,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
 dependencies = [
  "crunchy",
+]
+
+[[package]]
+name = "tree-unique-args"
+version = "0.1.0"
+dependencies = [
+ "egglog 0.1.0 (git+https://github.com/oflatt/egg-smol?rev=057725d9353727d831c90c7f8fdd76954d06b351)",
+ "main_error",
+ "strum",
+ "strum_macros",
+ "thiserror",
 ]
 
 [[package]]

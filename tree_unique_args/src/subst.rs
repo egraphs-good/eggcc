@@ -47,8 +47,7 @@ fn var_names_available() {
 
 #[test]
 fn test_subst() -> Result<(), egglog::Error> {
-    let build = &*format!(
-        "
+    let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))
 (let loop1
@@ -63,7 +62,7 @@ fn test_subst() -> Result<(), egglog::Error> {
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (let loop1-substed (SubstExpr loop1 (Num id-outer 7)))
     "
-    );
+    .to_string();
     let check = "
 (let loop1-substed-expected
     (Loop id1

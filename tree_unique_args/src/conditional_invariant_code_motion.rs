@@ -44,7 +44,7 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
                          :ruleset always-run)
 
                 ; Lift {ctor_name} when only {varying_field_name} varies
-                (rule ((Switch pred exprs)
+                (rule ((ExprIsValid (Switch pred exprs))
                        ({relation} exprs)
                        ; Bind non-varying field(s)
                        (= list (Cons {ctor_pattern1} rest)))
@@ -83,8 +83,7 @@ fn var_names_available() {
 
 #[test]
 fn test_easy_lift_switch() -> Result<(), egglog::Error> {
-    let build = &*format!(
-        "
+    let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let switch1
     (Switch
@@ -93,8 +92,9 @@ fn test_easy_lift_switch() -> Result<(), egglog::Error> {
             (LessThan (Get (Arg id1) 0) (Num id1 7))
             (LessThan (Get (Arg id1) 1) (Num id1 7))
         )))
+(ExprIsValid switch1)
     "
-    );
+    .to_string();
     let check = "
 (let switch1-lifted-expected
     (LessThan
@@ -113,8 +113,7 @@ fn test_easy_lift_switch() -> Result<(), egglog::Error> {
 
 #[test]
 fn test_lift_switch_through_switch() -> Result<(), egglog::Error> {
-    let build = &*format!(
-        "
+    let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let switch1
     (Switch
@@ -123,8 +122,9 @@ fn test_lift_switch_through_switch() -> Result<(), egglog::Error> {
             (Switch (LessThan (Get (Arg id1) 0) (Num id1 7)) (Cons (Num id1 11) (Nil)))
             (Switch (LessThan (Get (Arg id1) 1) (Num id1 7)) (Cons (Num id1 11) (Nil)))
         )))
+(ExprIsValid switch1)
     "
-    );
+    .to_string();
     let check = "
 (let all1-lifted-expected
     (Switch

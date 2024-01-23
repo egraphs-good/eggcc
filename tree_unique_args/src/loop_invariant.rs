@@ -99,7 +99,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
             "{br}(rule ((find-inv-Expr loop expr)
             (= expr (Switch pred branch))
             (= true (is-inv-ListExpr loop branch))
-            (= true (is-inv-ListExpr loop pred)))
+            (= true (is-inv-Expr loop pred)))
         ((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
         _ => {

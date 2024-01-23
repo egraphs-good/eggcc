@@ -28,8 +28,7 @@ pub(crate) fn rules() -> Vec<String> {
 
 #[test]
 fn test_is_valid() -> Result<(), egglog::Error> {
-    let build = &*format!(
-        "
+    let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))
 (let loop
@@ -44,7 +43,7 @@ fn test_is_valid() -> Result<(), egglog::Error> {
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (ExprIsValid loop)
     "
-    );
+    .to_string();
     let check = "
 (check (ExprIsValid (Num id-outer 0)))
 (check (ExprIsValid (Arg id1)))

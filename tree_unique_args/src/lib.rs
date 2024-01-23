@@ -11,6 +11,8 @@ pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
 pub(crate) mod util;
 
+pub type Result = std::result::Result<(), egglog::Error>;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Order {
     Parallel,
@@ -66,4 +68,38 @@ pub enum TypeError {
     ExpectedTupleType(Expr, Type),
     ExpectedLoopOutputType(Expr, Type),
     NoArg(Expr),
+}
+
+pub fn run_test(build: &str, check: &str) -> Result {
+    let program = format!(
+        "{}\n{build}\n{}\n{check}\n",
+        [
+            include_str!("schema.egg"),
+            // analyses
+            &is_valid::rules().join("\n"),
+            &purity_analysis::purity_analysis_rules().join("\n"),
+            &body_contains::rules().join("\n"),
+            &subst::subst_rules().join("\n"),
+            &deep_copy::deep_copy_rules().join("\n"),
+            include_str!("sugar.egg"),
+            include_str!("util.egg"),
+            // optimizations
+            include_str!("simple.egg"),
+            include_str!("function_inlining.egg"),
+            &switch_rewrites::rules(),
+            &conditional_invariant_code_motion::rules().join("\n"),
+        ]
+        .join("\n"),
+        include_str!("schedule.egg"),
+    );
+
+    println!("{}", program);
+
+    egglog::EGraph::default()
+        .parse_and_run_program(&program)
+        .map(|lines| {
+            for line in lines {
+                println!("{}", line);
+            }
+        })
 }

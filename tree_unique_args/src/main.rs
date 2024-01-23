@@ -9,6 +9,7 @@ pub(crate) mod conditional_invariant_code_motion;
 pub(crate) mod deep_copy;
 pub(crate) mod function_inlining;
 pub(crate) mod ir;
+pub(crate) mod is_valid;
 pub(crate) mod loop_invariant;
 pub(crate) mod purity_analysis;
 pub(crate) mod simple;
@@ -29,6 +30,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
         [
             include_str!("schema.egg"),
             // analyses
+            &is_valid::rules().join("\n"),
             &purity_analysis::purity_analysis_rules().join("\n"),
             &body_contains::rules().join("\n"),
             &subst::subst_rules().join("\n"),
@@ -38,7 +40,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             // optimizations
             include_str!("simple.egg"),
             include_str!("function_inlining.egg"),
-            include_str!("switch_rewrites.egg"),
+            &switch_rewrites::rules(),
             &conditional_invariant_code_motion::rules().join("\n"),
             &loop_invariant::rules(),
         ]

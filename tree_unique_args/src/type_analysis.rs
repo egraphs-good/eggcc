@@ -1,7 +1,6 @@
 #[test]
 fn simple_types() -> Result<(), egglog::Error> {
-    let build = &*format!(
-        "
+    let build = "
         (let id1 (Id (i64-fresh!)))
         (let id2 (Id (i64-fresh!)))
         (let n (Add (Num id1 1) (Num id2 2)))
@@ -12,8 +11,7 @@ fn simple_types() -> Result<(), egglog::Error> {
         (let z (And x (Or y y)))
         (HasTypeDemand s)
         (HasTypeDemand z)
-        "
-    );
+        ";
     let check = "
     (run-schedule (saturate type-analysis))
 

@@ -149,6 +149,7 @@ fn switch_interval() -> Result<(), egglog::Error> {
     (let five  (Num (Id (i64-fresh!)) 5))
     (let cc (LessThan two three))
     (let switch (Switch cc (Cons four (Cons five (Nil)))))
+    (ExprIsValid switch)
     ";
     let check = "
     (check (= switch four))
@@ -169,6 +170,7 @@ fn switch_interval2() -> Result<(), egglog::Error> {
     (let cc (LessThan two three))
     (let switch1 (Switch c (Cons four (Cons five (Nil)))))
     (let switch (Switch (LessThan switch1 ten) (Cons two (Cons two (Nil)))))
+    (ExprIsValid switch)
     ";
     let check = "
     (check (= switch two))

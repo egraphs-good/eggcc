@@ -26,16 +26,23 @@
   :merge (interval-intersect old new))
 
 ; Consts
-(rule ((Num id value))
-      ((set (ival (Num id value)) (IntI value value)))
+(rule (
+       (= lhs (Num id value))
+       (ExprIsValid lhs)
+      )
+      ((set (ival lhs) (IntI value value)))
       :ruleset interval-analysis)
-(rule ((Boolean id value))
-      ((set (ival (Boolean id value)) (BoolI value value)))
+(rule (
+       (= lhs (Boolean id value))
+       (ExprIsValid lhs)
+      )
+      ((set (ival lhs) (BoolI value value)))
       :ruleset interval-analysis)      
 
 ; < a b interval is (< ha lb) (< la hb)
 (rule (
        (= lhs (LessThan a b))
+       (ExprIsValid lhs)
        (= (IntI la ha) (ival a))
        (= (IntI lb hb) (ival b))
       )
@@ -45,6 +52,7 @@
 ; + a b interval is (+ la lb) (+ ha hb)
 (rule (
        (= lhs (Add a b))
+       (ExprIsValid lhs)
        (= (IntI la ha) (ival a))
        (= (IntI lb hb) (ival b))
       )
@@ -54,6 +62,7 @@
 ; Constant condition elimination with interval analysis
 (rule (
        (= lhs (Switch pred (Cons A (Cons B (Nil)))))
+       (ExprIsValid lhs)
        (ExprIsPure pred)
        (= (BoolI true true) (ival pred))
       )
@@ -61,6 +70,7 @@
       :ruleset interval-analysis)
 (rule (
        (= lhs (Switch pred (Cons A (Cons B (Nil)))))
+       (ExprIsValid lhs)
        (ExprIsPure pred)
        (= (BoolI false false) (ival pred))
       )
@@ -70,6 +80,7 @@
 ; Switch interval is union of branch intervals
 (rule (
        (= lhs (Switch pred (Cons A (Cons B (Nil)))))
+       (ExprIsValid lhs)
        (= a-ival (ival A))
        (= b-ival (ival B))
       )

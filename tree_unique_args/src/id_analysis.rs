@@ -128,7 +128,6 @@ fn test_id_analysis_expr_id_conflict_panics_if_valid() {
     let _ = crate::run_test(build, check);
 }
 
-
 #[test]
 #[should_panic]
 // Create an id conflict for a ListExpr on purpose and check that we catch it

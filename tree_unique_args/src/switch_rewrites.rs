@@ -71,6 +71,7 @@ fn switch_rewrite_or() -> crate::Result {
                          (Pair (Num id 1)
                                (Switch (Boolean id true)
                                        (Pair (Num id 1) (Num id 2)))))))
+(extract switch)
     ";
     crate::run_test(build, check)
 }
@@ -106,12 +107,13 @@ fn switch_rewrite_purity() -> crate::Result {
                                (Pair (Switch (Get impure 0)
                                              (Pair (Num switch-id 1) (Num switch-id 2)))
                                      (Num switch-id 2)))))
+(extract switch)
     ";
     crate::run_test(build, check)
 }
 
 #[test]
-fn test_constant_condition() -> Result<(), egglog::Error> {
+fn test_constant_condition() -> crate::Result {
     let build = "
     (let t (Boolean (Id (i64-fresh!)) true))
     (let f (Boolean (Id (i64-fresh!)) false))
@@ -125,12 +127,14 @@ fn test_constant_condition() -> Result<(), egglog::Error> {
     let check = "
     (check (= switch_t a))
     (check (= switch_f b))
+    (extract switch_t)
+    (extract a)
   ";
     crate::run_test(build, check)
 }
 
 #[test]
-fn switch_pull_in_below() -> Result<(), egglog::Error> {
+fn switch_pull_in_below() -> crate::Result {
     let build = "
     (let c (Read (Num (Id (i64-fresh!)) 3)))
     (let s1 (Read (Num (Id (i64-fresh!)) 4)))
@@ -145,6 +149,8 @@ fn switch_pull_in_below() -> Result<(), egglog::Error> {
     (let s2s3 (All (Sequential) (Cons s2 (Cons s3 (Nil)))))
     (let expected (Switch c (Cons s1s3 (Cons s2s3 (Nil)))))
     (check (= lhs expected))
+    (extract lhs)
+    (extract expected)
   ";
     crate::run_test(build, check)
 }

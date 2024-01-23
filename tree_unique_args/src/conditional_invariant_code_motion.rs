@@ -82,7 +82,7 @@ fn var_names_available() {
 }
 
 #[test]
-fn test_easy_lift_switch() -> Result<(), egglog::Error> {
+fn test_easy_lift_switch() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let switch1
@@ -107,12 +107,14 @@ fn test_easy_lift_switch() -> Result<(), egglog::Error> {
         (Num id1 7)))
 (run-schedule (saturate always-run))
 (check (= switch1 switch1-lifted-expected))
+(extract switch1)
+(extract switch1-lifted-expected)
     ";
     crate::run_test(build, check)
 }
 
 #[test]
-fn test_lift_switch_through_switch() -> Result<(), egglog::Error> {
+fn test_lift_switch_through_switch() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let switch1
@@ -139,6 +141,8 @@ fn test_lift_switch_through_switch() -> Result<(), egglog::Error> {
         (Cons (Num id1 11) (Nil))))
 (run-schedule (saturate always-run))
 (check (= all1 all1-lifted-expected))
+(extract all1)
+(extract all1-lifted-expected)
     ";
     crate::run_test(build, check)
 }

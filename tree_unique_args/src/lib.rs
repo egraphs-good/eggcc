@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 pub(crate) mod body_contains;
 pub(crate) mod conditional_invariant_code_motion;
 pub(crate) mod deep_copy;
@@ -11,7 +13,22 @@ pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
 pub(crate) mod util;
 
-pub type Result = std::result::Result<(), egglog::Error>;
+pub type Result = std::result::Result<(), Error>;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("{0}")]
+    Egglog(egglog::Error),
+    #[error("{0}")]
+    Parse(interpreter::ExprParseError),
+    #[error("{0}")]
+    Type(TypeError),
+    #[error("test failed, extracted Exprs were not equal:\n{0:?}\n{1:?}")]
+    Assert(
+        (Value, interpreter::VirtualMachine),
+        (Value, interpreter::VirtualMachine),
+    ),
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Order {
@@ -55,7 +72,7 @@ pub enum Value {
     Tuple(Vec<Value>),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     Num,
     Boolean,
@@ -63,10 +80,13 @@ pub enum Type {
     Tuple(Vec<Type>),
 }
 
+#[derive(Debug, Error)]
 pub enum TypeError {
+    #[error("expected {0:?} to have type {1:?} but it had type {2:?}")]
     ExpectedType(Expr, Type, Type),
+    #[error("expected {0:?} to be a tuple, but it had type {1:?}")]
     ExpectedTupleType(Expr, Type),
-    ExpectedLoopOutputType(Expr, Type),
+    #[error("no argument for {0:?}")]
     NoArg(Expr),
 }
 
@@ -93,13 +113,30 @@ pub fn run_test(build: &str, check: &str) -> Result {
         include_str!("schedule.egg"),
     );
 
-    println!("{}", program);
-
-    egglog::EGraph::default()
+    let lines = egglog::EGraph::default()
         .parse_and_run_program(&program)
-        .map(|lines| {
-            for line in lines {
-                println!("{}", line);
+        .map_err(Error::Egglog)?;
+
+    let mut results = Vec::new();
+    for line in lines {
+        let mut vm = interpreter::VirtualMachine {
+            mem: std::collections::HashMap::new(),
+            log: vec![],
+        };
+
+        let expr = line.parse::<Expr>().map_err(Error::Parse)?;
+        interpreter::typecheck(&expr, &None).map_err(Error::Type)?;
+        let value = interpreter::interpret(&expr, &None, &mut vm);
+        results.push((value, vm));
+    }
+
+    if results.len() >= 2 {
+        for result in &results[1..] {
+            if result != &results[0] {
+                return Err(Error::Assert(result.clone(), results[0].clone()));
             }
-        })
+        }
+    }
+
+    Ok(())
 }

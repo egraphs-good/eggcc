@@ -59,7 +59,7 @@ pub(crate) fn rules() -> Vec<String> {
 }
 
 #[test]
-fn test_body_contains() -> Result<(), egglog::Error> {
+fn test_body_contains() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))
@@ -80,6 +80,7 @@ fn test_body_contains() -> Result<(), egglog::Error> {
 (check (BodyContainsExpr loop (Num id1 4)))
 (check (BodyContainsExpr loop (Num id1 5)))
 (check (BodyContainsListExpr loop (Pair (Num id1 4) (Num id1 5))))
+(extract loop)
     ";
     crate::run_test(build, check)
 }

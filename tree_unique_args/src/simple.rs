@@ -1,5 +1,5 @@
 #[test]
-fn test_simple_bool_rules() -> Result<(), egglog::Error> {
+fn test_simple_bool_rules() -> crate::Result {
     let build = "
     (let id1 (Id (i64-fresh!)))
     (let id2 (Id (i64-fresh!)))
@@ -13,6 +13,8 @@ fn test_simple_bool_rules() -> Result<(), egglog::Error> {
     (check (= lhs1 (And (Not a) (Not b))))
     (check (= lhs2 (Or (Not a) (Not b))))
     (check (= lhs3 a))
+    (extract lhs3)
+    (extract a)
   ";
     crate::run_test(build, check)
 }

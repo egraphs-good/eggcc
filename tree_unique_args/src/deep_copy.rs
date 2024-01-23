@@ -53,7 +53,7 @@ fn var_names_available() {
 }
 
 #[test]
-fn test_deep_copy() -> Result<(), egglog::Error> {
+fn test_deep_copy() -> crate::Result {
     let build = "
 (let id1 (Id (i64-fresh!)))
 (let id2 (Id (i64-fresh!)))
@@ -87,6 +87,8 @@ fn test_deep_copy() -> Result<(), egglog::Error> {
                 (Arg (Id 5)))))))
 (run-schedule (saturate always-run))
 (check (= loop-copied loop-copied-expected))
+(extract loop-copied)
+(extract loop-copied-expected)
     ";
     crate::run_test(build, check)
 }

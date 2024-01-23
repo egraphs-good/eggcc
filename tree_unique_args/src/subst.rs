@@ -46,7 +46,7 @@ fn var_names_available() {
 }
 
 #[test]
-fn test_subst() -> Result<(), egglog::Error> {
+fn test_subst() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))
@@ -76,6 +76,7 @@ fn test_subst() -> Result<(), egglog::Error> {
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (run-schedule (saturate always-run))
 (check (= loop1-substed loop1-substed-expected))
+(extract loop1-substed loop1-substed-expected)
     ";
     crate::run_test(build, check)
 }

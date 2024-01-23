@@ -1,5 +1,5 @@
 #[test]
-fn function_inlining() -> Result<(), egglog::Error> {
+fn function_inlining() -> crate::Result {
     let build = "
         (let outer-id (Id (i64-fresh!)))
         (let func-id (Id (i64-fresh!)))
@@ -31,6 +31,7 @@ fn function_inlining() -> Result<(), egglog::Error> {
             )
         
         )
+        (extract call)
     ";
 
     crate::run_test(build, check)

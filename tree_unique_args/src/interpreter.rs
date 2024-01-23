@@ -106,9 +106,16 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
     }
 }
 
+#[derive(Clone, PartialEq)]
 pub struct VirtualMachine {
-    mem: HashMap<usize, Value>,
-    log: Vec<i64>,
+    pub mem: HashMap<usize, Value>,
+    pub log: Vec<i64>,
+}
+
+impl std::fmt::Debug for VirtualMachine {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "\n{:?}\n{:?}", self.mem, self.log)
+    }
 }
 
 // TODO: refactor to return a Result<Value, RuntimeError>

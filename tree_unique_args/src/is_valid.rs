@@ -30,7 +30,7 @@ pub(crate) fn rules() -> Vec<String> {
 }
 
 #[test]
-fn test_is_valid() -> Result<(), egglog::Error> {
+fn test_is_valid() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))

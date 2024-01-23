@@ -88,6 +88,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             // optimizations
             include_str!("simple.egg"),
             include_str!("function_inlining.egg"),
+            include_str!("interval_analysis.egg"),
             &switch_rewrites::rules(),
             &conditional_invariant_code_motion::rules().join("\n"),
         ]

@@ -39,6 +39,22 @@
       ((set (ival lhs) (BoolI value value)))
       :ruleset interval-analysis)      
 
+; Constant folding from interval analysis
+(rule (
+        (= (IntI x x) (ival expr))
+        (ExprIsPure expr)
+        (ExprHasRefId expr id)
+      )
+      ((union expr (Num id x)))
+      :ruleset interval-analysis)
+(rule (
+        (= (BoolI x x) (ival expr))
+        (ExprIsPure expr)
+        (ExprHasRefId expr id)
+      )
+      ((union expr (Boolean id x)))
+      :ruleset interval-analysis)
+
 ; < a b interval is (< ha lb) (< la hb)
 (rule (
        (= lhs (LessThan a b))
@@ -57,24 +73,6 @@
        (= (IntI lb hb) (ival b))
       )
       ((set (ival lhs) (IntI (+ la lb) (+ ha hb))))
-      :ruleset interval-analysis)
-
-; Constant condition elimination with interval analysis
-(rule (
-       (= lhs (Switch pred (Cons A (Cons B (Nil)))))
-       (ExprIsValid lhs)
-       (ExprIsPure pred)
-       (= (BoolI true true) (ival pred))
-      )
-      ((union lhs A))
-      :ruleset interval-analysis)
-(rule (
-       (= lhs (Switch pred (Cons A (Cons B (Nil)))))
-       (ExprIsValid lhs)
-       (ExprIsPure pred)
-       (= (BoolI false false) (ival pred))
-      )
-      ((union lhs B))
       :ruleset interval-analysis)
 
 ; Switch interval is union of branch intervals

@@ -21,6 +21,16 @@ pub(crate) fn rules() -> String {
         .join("\n");
     format!(
         "(ruleset switch-rewrites)
+
+        ; Constant condition elimination
+        (rewrite (Switch (Boolean id true) (Cons A (Cons B (Nil))))
+                 A
+                 :when ((ExprIsValid (Switch (Boolean id true) (Cons A (Cons B (Nil))))))
+                 :ruleset switch-rewrites)
+        (rewrite (Switch (Boolean id false) (Cons A (Cons B (Nil))))
+                 B
+                 :when ((ExprIsValid (Switch (Boolean id false) (Cons A (Cons B (Nil))))))
+                 :ruleset switch-rewrites)
     
         ; (if E then S1 else S2); S3 ==> if E then S1;S3 else S2;S3
         (rewrite (All ord (Cons (Switch e (Cons S1 (Cons S2 (Nil)))) S3))
@@ -144,11 +154,12 @@ fn switch_pull_in_below() -> Result<(), egglog::Error> {
 #[test]
 fn switch_interval() -> Result<(), egglog::Error> {
     let build = "
-    (let one   (Num (Id (i64-fresh!)) 1))
-    (let two   (Num (Id (i64-fresh!)) 2))
-    (let three (Num (Id (i64-fresh!)) 3))
-    (let four  (Num (Id (i64-fresh!)) 4))
-    (let five  (Num (Id (i64-fresh!)) 5))
+    (let id (Id (i64-fresh!)))
+    (let one   (Num id 1))
+    (let two   (Num id 2))
+    (let three (Num id 3))
+    (let four  (Num id 4))
+    (let five  (Num id 5))
     (let cc (LessThan two three))
     (let switch (Switch cc (Cons four (Cons five (Nil)))))
     (ExprIsValid switch)
@@ -162,13 +173,14 @@ fn switch_interval() -> Result<(), egglog::Error> {
 #[test]
 fn switch_interval2() -> Result<(), egglog::Error> {
     let build = "
-    (let one   (Num (Id (i64-fresh!))  1))
-    (let two   (Num (Id (i64-fresh!))  2))
-    (let three (Num (Id (i64-fresh!))  3))
-    (let four  (Num (Id (i64-fresh!))  4))
-    (let five  (Num (Id (i64-fresh!))  5))
-    (let ten   (Num (Id (i64-fresh!)) 10))
-    (let c (Arg (Id (i64-fresh!))))
+    (let id (Id (i64-fresh!)))
+    (let one   (Num id  1))
+    (let two   (Num id  2))
+    (let three (Num id  3))
+    (let four  (Num id  4))
+    (let five  (Num id  5))
+    (let ten   (Num id 10))
+    (let c (Arg id))
     (let cc (LessThan two three))
     (let switch1 (Switch c (Cons four (Cons five (Nil)))))
     (let switch (Switch (LessThan switch1 ten) (Cons two (Cons two (Nil)))))

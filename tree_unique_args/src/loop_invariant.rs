@@ -98,7 +98,8 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
         Constructor::Switch => Some(format!(
             "{br}(rule ((find-inv-Expr loop expr)
             (= expr (Switch pred branch))
-            (= true (is-inv-ListExpr loop branch)))
+            (= true (is-inv-ListExpr loop branch))
+            (= true (is-inv-ListExpr loop pred)))
         ((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
         _ => {
@@ -169,7 +170,6 @@ fn loop_invariant_detection1() -> Result<(), egglog::Error> {
 
     crate::run_test(build, check)
 }
-
 
 #[test]
 fn loop_invariant_detection2() -> Result<(), egglog::Error> {

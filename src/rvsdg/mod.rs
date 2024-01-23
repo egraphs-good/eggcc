@@ -37,6 +37,7 @@ pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
 pub(crate) mod to_egglog;
+mod tree_unique;
 
 use std::fmt;
 

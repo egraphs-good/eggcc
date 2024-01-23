@@ -16,7 +16,10 @@ fn rule_for_ctor(ctor: Constructor) -> Option<String> {
     }
     let actions = actions.join("\n");
     let pat = ctor.construct(|field| field.var());
-    Some(format!("(rule ({pat}) ({actions}) :ruleset always-run)"))
+    let sort = ctor.sort().name();
+    Some(format!(
+        "(rule (({sort}IsValid {pat})) ({actions}) :ruleset always-run)"
+    ))
 }
 
 pub(crate) fn rules() -> Vec<String> {
@@ -28,8 +31,7 @@ pub(crate) fn rules() -> Vec<String> {
 
 #[test]
 fn test_is_valid() -> Result<(), egglog::Error> {
-    let build = &*format!(
-        "
+    let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))
 (let loop
@@ -43,14 +45,16 @@ fn test_is_valid() -> Result<(), egglog::Error> {
                 (Add (Get (Arg id1) 0) (Num id1 1))
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (ExprIsValid loop)
+(let bad-expr (Sub (Arg id1) (Arg id-outer)))
     "
-    );
+    .to_string();
     let check = "
 (check (ExprIsValid (Num id-outer 0)))
 (check (ExprIsValid (Arg id1)))
 (check (ListExprIsValid
          (Pair (Add (Get (Arg id1) 0) (Num id1 1))
                (Sub (Get (Arg id1) 1) (Num id1 1)))))
+(fail (check (ExprIsValid bad-expr)))
     ";
     crate::run_test(build, check)
 }

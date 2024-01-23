@@ -104,3 +104,41 @@ fn test_id_analysis() -> Result<(), egglog::Error> {
 
     crate::run_test(build, check)
 }
+
+// Check that invalid expr (expr that has not been marked valid) does not have a RefId
+#[test]
+fn test_id_analysis_no_invalid_entry() {
+    let build = "(let some-expr (Not (Boolean (Id (i64-fresh!)) false))";
+    let check = "(fail (check (ExprHasRefId some-expr any-id)))";
+
+    let _ = crate::run_test(build, check);
+}
+
+// Create an id conflict for an Expr on purpose and check that we catch it
+#[test]
+#[should_panic]
+fn test_id_analysis_expr_id_conflict_panics_if_valid() {
+    let build = "
+        (let id1 (Id (i64-fresh!)))
+        (let id2 (Id (i64-fresh!)))
+        (let conflict-expr (And (Boolean id1 false) (Boolean id2 true)))
+        (ExprIsValid conflict-expr)";
+    let check = "";
+
+    let _ = crate::run_test(build, check);
+}
+
+
+#[test]
+#[should_panic]
+// Create an id conflict for a ListExpr on purpose and check that we catch it
+fn test_id_analysis_listexpr_id_conflict_panics() {
+    let build = "
+        (let id1 (Id (i64-fresh!)))
+        (let id2 (Id (i64-fresh!)))
+        (let conflict-expr (Cons (Num id1 3) (Cons (UnitExpr id2) (Nil))))
+        (ListExprIsValid conflict-expr)";
+    let check = "";
+
+    let _ = crate::run_test(build, check);
+}

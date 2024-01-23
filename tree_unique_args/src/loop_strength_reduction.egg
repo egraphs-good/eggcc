@@ -33,11 +33,11 @@
     ;; Note: with the milestone encoding, we had to use
     ;; Body-contains-Operand here. Here, we already know
     ;; that c is within loop because it has the correct id. 
-; (rule (
-;     (= c (Num id n))
-;     (= loop (Loop id inputs predoutputs))
-;     )
-;     ((Inv loop c c)) :ruleset always-run)
+(rule (
+    (= c (Num id n))
+    (= loop (Loop id inputs predoutputs))
+    (ExprHasRefId loop outer-id))
+    ((Inv loop (Num outer-id n) c)) :ruleset always-run)
 
 (rule
     (
@@ -55,6 +55,7 @@
                     )
                 )))
             )
+        (ExprIsValid old-loop)
 
         ; Find loop variable (argument that gets incremented with a number)
         (= (ListExpr-ith output-list i) (Add (Get (Arg id) i) (Num id loop-incr)))
@@ -72,7 +73,7 @@
         (let new-id (Id (i64-fresh!)))
 
         ; Each time we need to update d by the product of the multiplied constant and the loop increment
-        (let addend (Mul c-output (Num new-id loop-incr)))
+        (let addend (Mul c-output (Num id loop-incr)))
 
         ; n is index of our new, temporary variable d
         (let n (ListExpr-length input-list))

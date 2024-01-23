@@ -40,6 +40,7 @@ fn loop_strength_reduction() -> Result<(), egglog::Error> {
                 )
             )
         )
+        (ExprIsValid loop)
     ";
 
     let check = "

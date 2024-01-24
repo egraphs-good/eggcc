@@ -18,6 +18,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         }
     };
     match e {
+        Expr::Program(_) => panic!("Found non top level program."),
         Expr::Num(_) => Ok(Type::Num),
         Expr::Boolean(_) => Ok(Type::Boolean),
         Expr::Unit => Ok(Type::Unit),
@@ -47,6 +48,19 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
                 _ => Err(TypeError::ExpectedTupleType(
                     *tuple.clone(),
                     ty_tuple.clone(),
+                )),
+            }
+        }
+        Expr::Concat(tuple_1, tuple_2) => {
+            let ty_tuple_1 = typecheck(tuple_1, arg_ty)?;
+            let ty_tuple_2 = typecheck(tuple_2, arg_ty)?;
+            match (ty_tuple_1.clone(), ty_tuple_2) {
+                (Type::Tuple(tys_1), Type::Tuple(tys_2)) => {
+                    Ok(Type::Tuple(tys_1.into_iter().chain(tys_2).collect()))
+                }
+                _ => Err(TypeError::ExpectedTupleType(
+                    *tuple_1.clone(),
+                    ty_tuple_1.clone(),
                 )),
             }
         }
@@ -117,6 +131,7 @@ pub struct VirtualMachine {
 // assumes e typechecks and that memory is written before read
 pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Value {
     match e {
+        Expr::Program(_) => todo!("interpret programs"),
         Expr::Num(x) => Value::Num(*x),
         Expr::Boolean(x) => Value::Boolean(*x),
         Expr::Unit => Value::Unit,
@@ -185,6 +200,15 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
                 panic!("get")
             };
             vals[*i].clone()
+        }
+        Expr::Concat(tuple_1, tuple_2) => {
+            let Value::Tuple(t1) = interpret(tuple_1, arg, vm) else {
+                panic!("concat")
+            };
+            let Value::Tuple(t2) = interpret(tuple_2, arg, vm) else {
+                panic!("concat")
+            };
+            Value::Tuple(t1.into_iter().chain(t2).collect())
         }
         Expr::Print(e) => {
             let Value::Num(n) = interpret(e, arg, vm) else {

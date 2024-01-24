@@ -14,28 +14,8 @@ use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 use crate::rvsdg::{RvsdgFunction, RvsdgProgram};
 use tree_unique_args::Expr;
 
-struct FreshIdGen {
-    counter: i64,
-}
-
-impl FreshIdGen {
-    fn new() -> Self {
-        Self { counter: 0 }
-    }
-
-    fn fresh(&mut self) -> i64 {
-        let id = self.counter;
-        self.counter += 1;
-        id
-    }
-}
-
 impl RvsdgProgram {
     pub fn to_tree_encoding(&self) -> Expr {
-        self.to_tree_encoding_helper(&mut FreshIdGen::new())
-    }
-
-    fn to_tree_encoding_helper(&self, idgen: &mut FreshIdGen) -> Expr {
         unimplemented!()
     }
 }
@@ -48,7 +28,7 @@ impl RvsdgFunction {
 
 #[test]
 fn simple_translation() {
-    use Expr::*;
+    use tree_unique_args::ast::*;
     const PROGRAM: &str = r#"
     @sub() {
         v0: int = const 1;
@@ -63,5 +43,10 @@ fn simple_translation() {
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
-    assert_eq!(rvsdg.to_tree_encoding(), Program(vec![]));
+    rvsdg
+        .to_tree_encoding()
+        .assert_eq_ignoring_ids(&program(vec![function(tlet(
+            concat(arg(), num(1)),
+            unit(),
+        ))]));
 }

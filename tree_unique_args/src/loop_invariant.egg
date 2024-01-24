@@ -1,8 +1,10 @@
 ;; Loop Invariant
+;;                      loop  expr-in-loop
 (relation find-inv-Expr (Expr Expr))
 (relation find-inv-ListExpr (Expr ListExpr))
 
 ;; bool: whether the term in the Expr is an invariant.
+;;                    loop  expr-in-loop
 (function is-inv-Expr (Expr Expr) bool :unextractable :merge (or old new))
 (function is-inv-ListExpr (Expr ListExpr) bool :unextractable :merge (or old new))
 
@@ -26,7 +28,7 @@
 
 ;; ListExpr -> expr
 (rule ((find-inv-ListExpr loop list) 
-        (= ith (ListExpr-ith list i))) 
+       (= ith (ListExpr-ith list i))) 
     ((find-inv-Expr loop ith)) :ruleset always-run)
 
 
@@ -41,3 +43,27 @@
 (rule ((is-inv-ListExpr-helper loop list i)
        (= i (ListExpr-length list)))
     ((set (is-inv-ListExpr loop list) true)) :ruleset always-run)
+
+(ruleset boundary-analysis)
+;; An Expr is on boundary when it is invariant and its parent is not
+;                       loop invariant-expr
+(relation boundary-Expr (Expr Expr))
+
+;; boundary for ListExpr's children
+(rule ((= true (is-inv-Expr loop expr))
+       (= false (is-inv-ListExpr loop list))
+       (= expr (ListExpr-ith list i)))
+      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+
+;; if a output branch is invariant, it's also boundary-Expr
+(rule ((= true (is-inv-Expr loop expr))
+       (= expr (get-loop-outputs-ith loop i))) 
+      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+
+;; a ListExpr could be on invariant boundary if it occur in switch
+;; we don't hoist this ListExpr but hoist all Expr in list.
+;; maybe no, it's unsound
+; (rule ((= true (is-inv-ListExpr loop list))
+;        (= false (is-inv-Expr loop (Switch pred list)))
+;        (= subexpr (ListExpr-ith list i)))
+;        ((boundary-Expr loop subexpr)))

@@ -1,3 +1,4 @@
+
 use crate::ir::{Constructor, Purpose, Sort};
 use strum::IntoEnumIterator;
 
@@ -61,7 +62,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
         // list are handled in loop_invariant.egg
         // print, read, write are not invariant
         // assume Arg as whole is not invariant
-        //
+        // Unit?
         Constructor::Cons
         | Constructor::Nil
         | Constructor::UnitExpr
@@ -134,11 +135,77 @@ pub(crate) fn is_inv_expr_rules() -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
+fn boundary_for_ctor(ctor: Constructor) -> Option<String> {
+    let br = "\n      ";
+    let ruleset = " :ruleset boundary-analysis";
+
+    match ctor {
+        // Ops with one SubExpr should not be boundary, except effects
+        // ListExpr handled separately
+        // We 
+        // Unit?
+        Constructor::Cons
+        | Constructor::Nil
+        | Constructor::UnitExpr
+        | Constructor::Arg
+        | Constructor::Not 
+        | Constructor::Get 
+        | Constructor::All => None,
+        _ => {
+            let ctor_pattern = ctor.construct(|field| field.var());
+            let res = ctor
+                .fields()
+                .iter()
+                .filter_map(|field| {
+                    let var = field.var();
+                    match field.purpose {
+                        Purpose::SubExpr => Some(format!(
+                            "(rule ((= true (is-inv-Expr loop expr1)) \
+                            {br} (= false (is-inv-Expr loop expr2)) \
+                            {br} (= expr2 {ctor_pattern}) \
+                            {br} (= expr1 {var})) \
+                            {br}((boundary-Expr loop expr1)){ruleset})\n"
+                        )),
+                        _ => None,
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            Some(res)
+        }
+    }
+}
+
+pub(crate) fn boundary_rules() -> Vec<String> {
+    Constructor::iter()
+        .filter_map(boundary_for_ctor)
+        .collect::<Vec<_>>()
+}
+
+
+// fn complexity_analysis_for_ctor(ctor: Constructor) -> Option<String> {
+//     let br = "\n      ";
+//     let ruleset = " :ruleset always-run";
+
+//     match ctor {
+
+//     }
+
+// }
+
+// pub(crate) fn complexity_analysis_rules() -> Vec<String> {
+//     Constructor::iter()
+//         .filter_map(complexity_analysis_for_ctor)
+//         .collect::<Vec<_>>()
+// }
+
 pub(crate) fn rules() -> String {
     [
         include_str!("loop_invariant.egg"),
         &find_inv_expr_rules().join("\n\n"),
         &is_inv_expr_rules().join("\n\n"),
+        &boundary_rules().join("\n\n"),
     ]
     .join("\n\n")
 }
@@ -168,6 +235,10 @@ fn loop_invariant_detection1() -> Result<(), egglog::Error> {
         (check (= false (is-inv-Expr loop (Get (Arg id1) 1))))
         (check (= true (is-inv-Expr loop (Add (Num id1 1) (Get (Arg id1) 0)))))
         (check (= false (is-inv-Expr loop (Sub (Get (Arg id1) 1) (Add (Num id1 1) (Get (Arg id1) 0))) )))
+
+        (run-schedule (saturate boundary-analysis))
+        (check (boundary-Expr loop (Get (Arg id1) 0)))
+        (check (boundary-Expr loop (Add (Num id1 1) (Get (Arg id1) 0)) ))
     ";
 
     crate::run_test(build, check)
@@ -225,6 +296,12 @@ fn loop_invariant_detection2() -> Result<(), egglog::Error> {
         (check (= false (is-inv-Expr loop (Add (Get (Arg id1) 0) inv))))
         ;; a non exist expr should fail
         (fail (check (is-inv-Expr loop (Switch (Num id1 2) l4))))
+
+        (run-schedule (saturate boundary-analysis))
+        ;; inv is boundary
+        (check (boundary-Expr loop inv))
+        (fail (check (boundary-Expr loop (Add (Get (Arg id1) 0) inv))))
+        (fail (check (boundary-Expr loop (Switch (Num id1 1) l4)))
     ";
 
     crate::run_test(build, check)

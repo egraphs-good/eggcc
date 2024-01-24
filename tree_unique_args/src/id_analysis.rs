@@ -46,7 +46,7 @@ pub(crate) fn id_analysis_rules() -> Vec<String> {
 }
 
 #[test]
-fn test_id_analysis() -> Result<(), egglog::Error> {
+fn test_id_analysis() -> crate::Result {
     let build = "
         (let outer-id (Id (i64-fresh!)))
         (let let0-id (Id (i64-fresh!)))

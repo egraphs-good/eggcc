@@ -158,7 +158,7 @@ fn switch_pull_in_below() -> crate::Result {
 }
 
 #[test]
-fn switch_interval() -> Result<(), egglog::Error> {
+fn switch_interval() -> crate::Result {
     let build = "
     (let id (Id (i64-fresh!)))
     (let one   (Num id 1))
@@ -172,12 +172,14 @@ fn switch_interval() -> Result<(), egglog::Error> {
     ";
     let check = "
     (check (= switch four))
+    (extract switch)
+    (extract four)
     ";
     crate::run_test(build, check)
 }
 
 #[test]
-fn switch_interval2() -> Result<(), egglog::Error> {
+fn switch_interval2() -> crate::Result {
     let build = "
     (let id (Id (i64-fresh!)))
     (let one   (Num id  1))
@@ -194,6 +196,8 @@ fn switch_interval2() -> Result<(), egglog::Error> {
     ";
     let check = "
     (check (= switch two))
+    (extract switch)
+    (extract two)
     ";
     crate::run_test(build, check)
 }

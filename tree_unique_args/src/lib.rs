@@ -6,6 +6,7 @@ pub(crate) mod id_analysis;
 pub mod interpreter;
 pub(crate) mod ir;
 pub(crate) mod is_valid;
+pub(crate) mod ivt;
 pub(crate) mod purity_analysis;
 pub(crate) mod simple;
 pub(crate) mod subst;
@@ -89,6 +90,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("simple.egg"),
             include_str!("function_inlining.egg"),
             include_str!("interval_analysis.egg"),
+            include_str!("ivt.egg"),
             &switch_rewrites::rules(),
             &conditional_invariant_code_motion::rules().join("\n"),
         ]

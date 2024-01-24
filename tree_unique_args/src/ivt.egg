@@ -32,7 +32,7 @@
 (rule ((= loop (Loop id in out))
        (ExprHasRefId loop outer-id)
        (ExprIsValid loop)
-       (= out (All ord (Pair pred switch)))
+       (= out (All ord (Cons pred (Cons switch (Nil)))))
        (= switch (Switch pred branches))
        (ExprIsPure pred))
       ((LiftSwitch switch in outer-id)) :ruleset ivt)
@@ -40,12 +40,12 @@
 ; Apply the rule
 (rule ((= loop (Loop id in out))
        (ExprIsValid loop)
-       (= out (All ord (Pair pred switch)))
-       (= switch (Switch pred (Pair thn* els*)))
+       (= out (All ord (Cons pred (Cons switch (Nil)))))
+       (= switch (Switch pred (Cons thn* (Cons els* (Nil)))))
        ; NB: we don't constrain 'outer-id' here in part because there can only
        ; be _one_ outer-id that is referenced by it. (See the panic in the rules
        ; for *HasRefId).
-       (= (Switch pred_ (Pair thn els)) (LiftSwitch switch in outer-id)))
+       (= (Switch pred_ (Cons thn (Cons els (Nil)))) (LiftSwitch switch in outer-id)))
       ((let new-id (Id (i64-fresh!)))
        (let inner (NewLoop new-id in (All ord (Pair pred thn*))))
        (let outer (Switch pred_ (Cons inner (Cons els (Nil)))))

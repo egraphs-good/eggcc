@@ -36,7 +36,7 @@ pub enum Order {
     Sequential,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Id(i64);
 
 #[derive(Clone, Debug, PartialEq)]
@@ -60,7 +60,6 @@ pub enum Expr {
     Loop(Id, Box<Expr>, Box<Expr>),
     Let(Id, Box<Expr>, Box<Expr>),
     Arg(Id),
-    Function(Id, Box<Expr>),
     Call(Id, Box<Expr>),
 }
 
@@ -119,11 +118,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
 
     let mut results = Vec::new();
     for line in lines {
-        let mut vm = interpreter::VirtualMachine {
-            mem: std::collections::HashMap::new(),
-            log: vec![],
-        };
-
+        let mut vm = interpreter::VirtualMachine::new();
         let expr = line.parse::<Expr>().map_err(Error::Parse)?;
         interpreter::typecheck(&expr, &None).map_err(Error::Type)?;
         let value = interpreter::interpret(&expr, &None, &mut vm);

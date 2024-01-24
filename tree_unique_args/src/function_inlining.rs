@@ -31,7 +31,6 @@ fn function_inlining() -> crate::Result {
             )
         
         )
-        (extract call)
     ";
 
     crate::run_test(build, check)

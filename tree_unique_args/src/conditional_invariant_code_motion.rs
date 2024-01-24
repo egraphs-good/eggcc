@@ -113,37 +113,36 @@ fn test_easy_lift_switch() -> crate::Result {
     crate::run_test(build, check)
 }
 
-// I don't understand this test at all, please bring this up in code review if it gets there
-// #[test]
-// fn test_lift_switch_through_switch() -> crate::Result {
-//     let build = &*"
-// (let id1 (Id (i64-fresh!)))
-// (let switch1
-//     (Switch
-//         (Num id1 0)
-//         (Pair
-//             (Switch (LessThan (Num id1 0) (Num id1 7)) (Cons (Num id1 11) (Nil)))
-//             (Switch (LessThan (Num id1 1) (Num id1 7)) (Cons (Num id1 11) (Nil)))
-//         )))
-// (ExprIsValid switch1)
-//     "
-//     .to_string();
-//     let check = "
-// (let all1-lifted-expected
-//     (Switch
-//         (LessThan
-//             (Switch
-//                 (Num id1 0)
-//                 (Pair
-//                     (Num id1 0)
-//                     (Num id1 1)
-//                 ))
-//             (Num id1 7))
-//         (Pair (Num id1 11) (Num id1 11))))
-// (run-schedule (saturate always-run))
-// (check (= switch1 all1-lifted-expected))
-// (extract switch1)
-// (extract all1-lifted-expected)
-//     ";
-//     crate::run_test(build, check)
-// }
+#[test]
+fn test_lift_switch_through_switch() -> crate::Result {
+    let build = &*"
+(let id1 (Id (i64-fresh!)))
+(let switch1
+    (Switch
+        (Num id1 0)
+        (Pair
+            (Switch (LessThan (Num id1 0) (Num id1 -7)) (Cons (Num id1 11) (Nil)))
+            (Switch (LessThan (Num id1 1) (Num id1 -7)) (Cons (Num id1 11) (Nil)))
+        )))
+(ExprIsValid switch1)
+    "
+    .to_string();
+    let check = "
+(let all1-lifted-expected
+    (Switch
+        (LessThan
+            (Switch
+                (Num id1 0)
+                (Pair
+                    (Num id1 0)
+                    (Num id1 1)
+                ))
+            (Num id1 -7))
+        (Cons (Num id1 11) (Nil))))
+(run-schedule (saturate always-run))
+(check (= switch1 all1-lifted-expected))
+(extract switch1)
+(extract all1-lifted-expected)
+    ";
+    crate::run_test(build, check)
+}

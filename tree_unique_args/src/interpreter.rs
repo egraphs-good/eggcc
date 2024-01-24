@@ -103,16 +103,24 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
             typecheck(output, &Some(input_ty.clone()))
         }
         Expr::Arg(_) => arg_ty.clone().ok_or(TypeError::NoArg(e.clone())),
-        // TODO: add an environment for functions so we can typecheck function calls correctly
-        Expr::Function(_, output) => typecheck(output, &None),
-        Expr::Call(_, arg) => typecheck(arg, arg_ty),
+        Expr::Call(_f, arg) => {
+            typecheck(arg, arg_ty)?;
+            todo!("add a function environment to the typechecker")
+        }
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 pub struct VirtualMachine {
     pub mem: HashMap<usize, Value>,
     pub log: Vec<i64>,
+    pub funcs: HashMap<Id, Expr>,
+}
+
+impl VirtualMachine {
+    pub fn new() -> VirtualMachine {
+        VirtualMachine::default()
+    }
 }
 
 impl std::fmt::Debug for VirtualMachine {
@@ -266,7 +274,13 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             let Some(v) = arg else { panic!("arg") };
             v.clone()
         }
-        Expr::Function(_, _) | Expr::Call(_, _) => todo!("interpret functions and calls"),
+        Expr::Call(f, x) => {
+            let Some(func) = vm.funcs.get(f).cloned() else {
+                panic!("call")
+            };
+            let arg = interpret(x, arg, vm);
+            interpret(&func, &Some(arg), vm)
+        }
     }
 }
 
@@ -297,10 +311,7 @@ fn test_interpreter() {
             ],
         )),
     );
-    let mut vm = VirtualMachine {
-        mem: HashMap::new(),
-        log: vec![],
-    };
+    let mut vm = VirtualMachine::new();
     let res = interpret(&e, &None, &mut vm);
     assert_eq!(res, Value::Num(11));
     assert_eq!(vm.log, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -354,10 +365,7 @@ fn test_interpreter_fib_using_memory() {
             Expr::Read(Box::new(Expr::Num(nth))),
         ],
     );
-    let mut vm = VirtualMachine {
-        mem: HashMap::new(),
-        log: vec![],
-    };
+    let mut vm = VirtualMachine::new();
     let res = interpret(&e, &None, &mut vm);
     assert_eq!(
         res,
@@ -503,10 +511,6 @@ impl std::str::FromStr for Expr {
                         Box::new(egglog_expr_to_expr(other)?),
                     )),
                     ("Arg", [id]) => Ok(Expr::Arg(egglog_expr_to_id(id)?)),
-                    ("Function", [id, body]) => Ok(Expr::Function(
-                        egglog_expr_to_id(id)?,
-                        Box::new(egglog_expr_to_expr(body)?),
-                    )),
                     ("Call", [id, arg]) => Ok(Expr::Call(
                         egglog_expr_to_id(id)?,
                         Box::new(egglog_expr_to_expr(arg)?),

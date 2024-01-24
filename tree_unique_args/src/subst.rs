@@ -76,7 +76,8 @@ fn test_subst() -> crate::Result {
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (run-schedule (saturate always-run))
 (check (= loop1-substed loop1-substed-expected))
-(extract loop1-substed loop1-substed-expected)
+(extract loop1-substed)
+(extract loop1-substed-expected)
     ";
     crate::run_test(build, check)
 }

@@ -60,7 +60,7 @@ fn test_deep_copy() -> crate::Result {
 (let id-outer (Id (i64-fresh!)))
 (let loop
     (Loop id1
-        (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
+        (All (Parallel) (Pair (Num id-outer 17) (Num id-outer 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
@@ -75,7 +75,7 @@ fn test_deep_copy() -> crate::Result {
     let check = "
 (let loop-copied-expected
     (Loop (Id 4)
-        (All (Parallel) (Pair (Arg (Id 3)) (Num (Id 3) 0)))
+        (All (Parallel) (Pair (Num (Id 3) 17) (Num (Id 3) 0)))
         (All (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg (Id 4)) 0) (Get (Arg (Id 4)) 1))

@@ -136,10 +136,11 @@ fn test_constant_condition() -> crate::Result {
 #[test]
 fn switch_pull_in_below() -> crate::Result {
     let build = "
-    (let c (Read (Num (Id (i64-fresh!)) 3)))
-    (let s1 (Read (Num (Id (i64-fresh!)) 4)))
-    (let s2 (Read (Num (Id (i64-fresh!)) 5)))
-    (let s3 (Read (Num (Id (i64-fresh!)) 6)))
+    (let id (Id (i64-fresh!)))
+    (let c (Add (Num id 0) (Num id 1)))
+    (let s1 (Add (Num id 4) (Num id 1)))
+    (let s2 (Add (Num id 5) (Num id 1)))
+    (let s3 (Add (Num id 6) (Num id 1)))
 
     (let switch (Switch c (Cons s1 (Cons s2 (Nil)))))
     (let lhs (All (Sequential) (Cons switch (Cons s3 (Nil)))))

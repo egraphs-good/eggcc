@@ -75,7 +75,10 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
             Ok(Type::Tuple(tys))
         }
         Expr::Switch(pred, branches) => {
-            expect_type(pred, Type::Num)?;
+            if expect_type(pred, Type::Num).is_err() {
+                expect_type(pred, Type::Boolean)?
+            }
+
             let ty = typecheck(&branches[0], arg_ty)?;
             for branch in branches {
                 expect_type(branch, ty.clone())?;
@@ -204,7 +207,11 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             let Value::Num(addr) = interpret(e_addr, arg, vm) else {
                 panic!("read")
             };
-            vm.mem[&(addr as usize)].clone()
+            if let Some(value) = vm.mem.get(&(addr as usize)) {
+                value.clone()
+            } else {
+                panic!("read: no value at addr")
+            }
         }
         Expr::Write(e_addr, e_data) => {
             let Value::Num(addr) = interpret(e_addr, arg, vm) else {
@@ -224,10 +231,16 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             Value::Tuple(vals)
         }
         Expr::Switch(pred, branches) => {
-            let Value::Num(pred) = interpret(pred, arg, vm) else {
-                panic!("switch")
+            let pred = match interpret(pred, arg, vm) {
+                Value::Num(x) => x as usize,
+                Value::Boolean(x) => x as usize,
+                _ => panic!("switch"),
             };
-            interpret(&branches[pred as usize], arg, vm)
+            if pred < branches.len() {
+                interpret(&branches[pred], arg, vm)
+            } else {
+                panic!("switch: not enough branches: {e:?}")
+            }
         }
         Expr::Loop(_, input, pred_output) => {
             let mut vals = interpret(input, arg, vm);
@@ -393,6 +406,9 @@ impl std::str::FromStr for Expr {
                         let mut tail = list_expr_to_vec(tail)?;
                         tail.insert(0, head);
                         return Ok(tail);
+                    }
+                    ("Pair", [fst, snd]) => {
+                        return Ok(vec![egglog_expr_to_expr(fst)?, egglog_expr_to_expr(snd)?])
                     }
                     _ => {}
                 }

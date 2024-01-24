@@ -68,14 +68,14 @@ fn test_body_contains() -> crate::Result {
         (Num id-outer 1)
         (All (Sequential) (Pair
             ; pred
-            (LessThan (Num id1 2) (Num id1 3))
+            (LessThan (Arg id1) (Num id1 3))
             ; output
             (Switch (Boolean id1 true) (Pair (Num id1 4) (Num id1 5)))))))
     "
     .to_string();
     let check = "
 (fail (check (BodyContainsExpr loop (Num id-outer 1))))
-(check (BodyContainsExpr loop (Num id1 2)))
+(check (BodyContainsExpr loop (Arg id1)))
 (check (BodyContainsExpr loop (Num id1 3)))
 (check (BodyContainsExpr loop (Num id1 4)))
 (check (BodyContainsExpr loop (Num id1 5)))

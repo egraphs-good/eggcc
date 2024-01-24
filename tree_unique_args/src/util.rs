@@ -31,7 +31,6 @@ fn append_test() -> crate::Result {
             (Cons (Num id 0) (Cons (Num id 1) (Cons (Num id 2) (Nil))))
             appended
         ))
-        (extract appended)
     ";
 
     crate::run_test(build, check)

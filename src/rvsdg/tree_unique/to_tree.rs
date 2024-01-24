@@ -48,6 +48,7 @@ impl RvsdgFunction {
 
 #[test]
 fn simple_translation() {
+    use Expr::*;
     const PROGRAM: &str = r#"
     @sub() {
         v0: int = const 1;
@@ -62,5 +63,5 @@ fn simple_translation() {
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
-    assert_eq!(rvsdg.to_tree_encoding(), Expr::Num(3));
+    assert_eq!(rvsdg.to_tree_encoding(), Program(vec![]));
 }

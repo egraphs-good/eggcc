@@ -13,7 +13,7 @@ impl Expr {
         if self != &copy {
             panic!(
                 "assertion failed: `(left == right)`\n\
-                 left: `{:?}`\n\
+                 left:  `{:?}`\n\
                  right: `{:?}`\n",
                 self, copy
             );

@@ -21,7 +21,7 @@ pub(crate) fn rules() -> String {
         .join("\n");
     format!(
         "(ruleset switch-rewrites)
-    
+
         ; Constant condition elimination
         (rewrite (Switch (Boolean id true) (Cons A (Cons B (Nil))))
                  A
@@ -31,7 +31,7 @@ pub(crate) fn rules() -> String {
                  B
                  :when ((ExprIsValid (Switch (Boolean id false) (Cons A (Cons B (Nil))))))
                  :ruleset switch-rewrites)
-
+    
         ; (if E then S1 else S2); S3 ==> if E then S1;S3 else S2;S3
         (rewrite (All ord (Cons (Switch e (Cons S1 (Cons S2 (Nil)))) S3))
                  (Switch e (Cons (All ord (Cons S1 S3)) (Cons (All ord (Cons S2 S3)) (Nil))))
@@ -148,5 +148,46 @@ fn switch_pull_in_below() -> Result<(), egglog::Error> {
     (let expected (Switch c (Cons s1s3 (Cons s2s3 (Nil)))))
     (check (= lhs expected))
   ";
+    crate::run_test(build, check)
+}
+
+#[test]
+fn switch_interval() -> Result<(), egglog::Error> {
+    let build = "
+    (let id (Id (i64-fresh!)))
+    (let one   (Num id 1))
+    (let two   (Num id 2))
+    (let three (Num id 3))
+    (let four  (Num id 4))
+    (let five  (Num id 5))
+    (let cc (LessThan two three))
+    (let switch (Switch cc (Cons four (Cons five (Nil)))))
+    (ExprIsValid switch)
+    ";
+    let check = "
+    (check (= switch four))
+    ";
+    crate::run_test(build, check)
+}
+
+#[test]
+fn switch_interval2() -> Result<(), egglog::Error> {
+    let build = "
+    (let id (Id (i64-fresh!)))
+    (let one   (Num id  1))
+    (let two   (Num id  2))
+    (let three (Num id  3))
+    (let four  (Num id  4))
+    (let five  (Num id  5))
+    (let ten   (Num id 10))
+    (let c (Arg id))
+    (let cc (LessThan two three))
+    (let switch1 (Switch c (Cons four (Cons five (Nil)))))
+    (let switch (Switch (LessThan switch1 ten) (Cons two (Cons two (Nil)))))
+    (ExprIsValid switch)
+    ";
+    let check = "
+    (check (= switch two))
+    ";
     crate::run_test(build, check)
 }

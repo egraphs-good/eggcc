@@ -8,4 +8,5 @@
     conditional-invariant-code-motion
     switch-rewrites
     function-inlining
+    interval-analysis
     ))

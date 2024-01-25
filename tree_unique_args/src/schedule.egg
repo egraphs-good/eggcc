@@ -3,8 +3,10 @@
 (run-schedule
   (repeat 5
     (saturate always-run)
+    (saturate error-checking) ; In the future, this will be "debug mode" only
     simple-pure
     conditional-invariant-code-motion
     switch-rewrites
     function-inlining
+    interval-analysis
     ))

@@ -1,5 +1,7 @@
-use crate::ir::{Constructor, Purpose, Sort};
+use std::iter;
 use strum::IntoEnumIterator;
+
+use crate::ir::{Constructor, Purpose, Sort};
 
 fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let br = "\n      ";
@@ -45,12 +47,6 @@ fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
             ))
         }
     }
-}
-
-pub(crate) fn find_inv_expr_rules() -> Vec<String> {
-    Constructor::iter()
-        .filter_map(find_invariant_rule_for_ctor)
-        .collect::<Vec<_>>()
 }
 
 fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
@@ -128,19 +124,11 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
     }
 }
 
-pub(crate) fn is_inv_expr_rules() -> Vec<String> {
-    Constructor::iter()
-        .filter_map(is_invariant_rule_for_ctor)
+pub(crate) fn rules() -> Vec<String> {
+    iter::once(include_str!("loop_invariant.egg").to_string())
+        .chain(Constructor::iter().filter_map(find_invariant_rule_for_ctor))
+        .chain(Constructor::iter().filter_map(is_invariant_rule_for_ctor))
         .collect::<Vec<_>>()
-}
-
-pub(crate) fn rules() -> String {
-    [
-        include_str!("loop_invariant.egg"),
-        &find_inv_expr_rules().join("\n\n"),
-        &is_inv_expr_rules().join("\n\n"),
-    ]
-    .join("\n\n")
 }
 
 #[test]

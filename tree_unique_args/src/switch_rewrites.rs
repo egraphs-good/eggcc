@@ -21,7 +21,7 @@ pub(crate) fn rules() -> String {
         .join("\n");
     format!(
         "(ruleset switch-rewrites)
-    
+
         ; Constant condition elimination
         (rewrite (Switch (Boolean id true) (Cons A (Cons B (Nil))))
                  A
@@ -31,7 +31,7 @@ pub(crate) fn rules() -> String {
                  B
                  :when ((ExprIsValid (Switch (Boolean id false) (Cons A (Cons B (Nil))))))
                  :ruleset switch-rewrites)
-
+    
         ; (if E then S1 else S2); S3 ==> if E then S1;S3 else S2;S3
         (rewrite (All ord (Cons (Switch e (Cons S1 (Cons S2 (Nil)))) S3))
                  (Switch e (Cons (All ord (Cons S1 S3)) (Cons (All ord (Cons S2 S3)) (Nil))))
@@ -80,7 +80,7 @@ fn switch_rewrite_purity() -> crate::Result {
     let build = "
 (let switch-id (Id (i64-fresh!)))
 (let let-id (Id (i64-fresh!)))
-(let impure (Let let-id (UnitExpr let-id) (All (Sequential) (Pair (Boolean let-id true) (Print (Num let-id 1))))))
+(let impure (Let let-id (UnitExpr switch-id) (All (Sequential) (Pair (Boolean let-id true) (Print (Num let-id 1))))))
 (let switch (Switch (And (Boolean switch-id false) (Get impure 0))
                     (Pair (Num switch-id 1) (Num switch-id 2))))
 (ExprIsValid switch)
@@ -96,7 +96,7 @@ fn switch_rewrite_purity() -> crate::Result {
     let build = "
 (let switch-id (Id (i64-fresh!)))
 (let let-id (Id (i64-fresh!)))
-(let impure (Let let-id (UnitExpr let-id) (All (Sequential) (Cons (Boolean let-id true) (Nil)))))
+(let impure (Let let-id (UnitExpr switch-id) (All (Sequential) (Cons (Boolean let-id true) (Nil)))))
 (let switch (Switch (And (Boolean switch-id false) (Get impure 0))
                     (Pair (Num switch-id 1) (Num switch-id 2))))
 (ExprIsValid switch)
@@ -113,10 +113,11 @@ fn switch_rewrite_purity() -> crate::Result {
 #[test]
 fn test_constant_condition() -> Result<(), egglog::Error> {
     let build = "
-    (let t (Boolean (Id (i64-fresh!)) true))
-    (let f (Boolean (Id (i64-fresh!)) false))
-    (let a (Num (Id (i64-fresh!)) 3))
-    (let b (Num (Id (i64-fresh!)) 4))
+    (let id (Id (i64-fresh!)))
+    (let t (Boolean id true))
+    (let f (Boolean id false))
+    (let a (Num id 3))
+    (let b (Num id 4))
     (let switch_t (Switch t (Cons a (Cons b (Nil)))))
     (let switch_f (Switch f (Cons a (Cons b (Nil)))))
     (ExprIsValid switch_t)
@@ -132,10 +133,11 @@ fn test_constant_condition() -> Result<(), egglog::Error> {
 #[test]
 fn switch_pull_in_below() -> Result<(), egglog::Error> {
     let build = "
-    (let c (Read (Num (Id (i64-fresh!)) 3)))
-    (let s1 (Read (Num (Id (i64-fresh!)) 4)))
-    (let s2 (Read (Num (Id (i64-fresh!)) 5)))
-    (let s3 (Read (Num (Id (i64-fresh!)) 6)))
+    (let id (Id (i64-fresh!)))
+    (let c (Read (Num id 3)))
+    (let s1 (Read (Num id 4)))
+    (let s2 (Read (Num id 5)))
+    (let s3 (Read (Num id 6)))
 
     (let switch (Switch c (Cons s1 (Cons s2 (Nil)))))
     (let lhs (All (Sequential) (Cons switch (Cons s3 (Nil)))))
@@ -146,5 +148,46 @@ fn switch_pull_in_below() -> Result<(), egglog::Error> {
     (let expected (Switch c (Cons s1s3 (Cons s2s3 (Nil)))))
     (check (= lhs expected))
   ";
+    crate::run_test(build, check)
+}
+
+#[test]
+fn switch_interval() -> Result<(), egglog::Error> {
+    let build = "
+    (let id (Id (i64-fresh!)))
+    (let one   (Num id 1))
+    (let two   (Num id 2))
+    (let three (Num id 3))
+    (let four  (Num id 4))
+    (let five  (Num id 5))
+    (let cc (LessThan two three))
+    (let switch (Switch cc (Cons four (Cons five (Nil)))))
+    (ExprIsValid switch)
+    ";
+    let check = "
+    (check (= switch four))
+    ";
+    crate::run_test(build, check)
+}
+
+#[test]
+fn switch_interval2() -> Result<(), egglog::Error> {
+    let build = "
+    (let id (Id (i64-fresh!)))
+    (let one   (Num id  1))
+    (let two   (Num id  2))
+    (let three (Num id  3))
+    (let four  (Num id  4))
+    (let five  (Num id  5))
+    (let ten   (Num id 10))
+    (let c (Arg id))
+    (let cc (LessThan two three))
+    (let switch1 (Switch c (Cons four (Cons five (Nil)))))
+    (let switch (Switch (LessThan switch1 ten) (Cons two (Cons two (Nil)))))
+    (ExprIsValid switch)
+    ";
+    let check = "
+    (check (= switch two))
+    ";
     crate::run_test(build, check)
 }

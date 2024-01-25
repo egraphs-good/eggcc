@@ -83,8 +83,7 @@ fn var_names_available() {
 
 #[test]
 fn test_easy_lift_switch() -> Result<(), egglog::Error> {
-    let build = &*format!(
-        "
+    let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let switch1
     (Switch
@@ -95,7 +94,7 @@ fn test_easy_lift_switch() -> Result<(), egglog::Error> {
         )))
 (ExprIsValid switch1)
     "
-    );
+    .to_string();
     let check = "
 (let switch1-lifted-expected
     (LessThan
@@ -114,8 +113,7 @@ fn test_easy_lift_switch() -> Result<(), egglog::Error> {
 
 #[test]
 fn test_lift_switch_through_switch() -> Result<(), egglog::Error> {
-    let build = &*format!(
-        "
+    let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let switch1
     (Switch
@@ -126,7 +124,7 @@ fn test_lift_switch_through_switch() -> Result<(), egglog::Error> {
         )))
 (ExprIsValid switch1)
     "
-    );
+    .to_string();
     let check = "
 (let all1-lifted-expected
     (Switch

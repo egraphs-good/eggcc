@@ -32,12 +32,12 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
             Ok(Type::Boolean)
         }
         Expr::And(e1, e2) | Expr::Or(e1, e2) => {
-            expect_type(e1, Type::Num)?;
-            expect_type(e2, Type::Num)?;
+            expect_type(e1, Type::Boolean)?;
+            expect_type(e2, Type::Boolean)?;
             Ok(Type::Boolean)
         }
         Expr::Not(e1) => {
-            expect_type(e1, Type::Num)?;
+            expect_type(e1, Type::Boolean)?;
             Ok(Type::Boolean)
         }
         Expr::Get(tuple, i) => {

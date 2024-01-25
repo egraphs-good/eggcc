@@ -71,6 +71,7 @@ fn test_body_contains() -> crate::Result {
             (LessThan (Arg id1) (Num id1 3))
             ; output
             (Switch (Boolean id1 true) (Pair (Num id1 4) (Num id1 5)))))))
+(extract loop)
     "
     .to_string();
     let check = "
@@ -80,7 +81,6 @@ fn test_body_contains() -> crate::Result {
 (check (BodyContainsExpr loop (Num id1 4)))
 (check (BodyContainsExpr loop (Num id1 5)))
 (check (BodyContainsListExpr loop (Pair (Num id1 4) (Num id1 5))))
-(extract loop)
     ";
     crate::run_test(build, check)
 }

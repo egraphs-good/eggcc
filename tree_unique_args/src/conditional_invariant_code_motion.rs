@@ -93,6 +93,7 @@ fn test_easy_lift_switch() -> crate::Result {
             (LessThan (Num id1 1) (Num id1 7))
         )))
 (ExprIsValid switch1)
+(extract switch1)
     "
     .to_string();
     let check = "
@@ -105,10 +106,9 @@ fn test_easy_lift_switch() -> crate::Result {
                 (Num id1 1)
             ))
         (Num id1 7)))
+(extract switch1-lifted-expected)
 (run-schedule (saturate always-run))
 (check (= switch1 switch1-lifted-expected))
-(extract switch1)
-(extract switch1-lifted-expected)
     ";
     crate::run_test(build, check)
 }
@@ -125,6 +125,7 @@ fn test_lift_switch_through_switch() -> crate::Result {
             (Switch (LessThan (Num id1 1) (Num id1 -7)) (Cons (Num id1 11) (Nil)))
         )))
 (ExprIsValid switch1)
+(extract switch1)
     "
     .to_string();
     let check = "
@@ -139,10 +140,9 @@ fn test_lift_switch_through_switch() -> crate::Result {
                 ))
             (Num id1 -7))
         (Cons (Num id1 11) (Nil))))
+(extract all1-lifted-expected)
 (run-schedule (saturate always-run))
 (check (= switch1 all1-lifted-expected))
-(extract switch1)
-(extract all1-lifted-expected)
     ";
     crate::run_test(build, check)
 }

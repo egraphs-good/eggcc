@@ -7,13 +7,13 @@ fn test_simple_bool_rules() -> crate::Result {
     (let lhs1 (Not (Or a b)))
     (let lhs2 (Not (And a b)))
     (let lhs3 (Not (Not a)))
+    (extract lhs3)
+    (extract a)
   ";
     let check = "
     (check (= lhs1 (And (Not a) (Not b))))
     (check (= lhs2 (Or (Not a) (Not b))))
     (check (= lhs3 a))
-    (extract lhs3)
-    (extract a)
   ";
     crate::run_test(build, check)
 }

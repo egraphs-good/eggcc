@@ -64,6 +64,7 @@ fn test_subst() -> crate::Result {
     "
     .to_string();
     let check = "
+(extract loop1-substed)
 (let loop1-substed-expected
     (Loop id1
         (All (Parallel) (Pair (Num id-outer 7) (Num id-outer 0)))
@@ -74,10 +75,9 @@ fn test_subst() -> crate::Result {
             (All (Parallel) (Pair
                 (Add (Get (Arg id1) 0) (Num id1 1))
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
+(extract loop1-substed-expected)
 (run-schedule (saturate always-run))
 (check (= loop1-substed loop1-substed-expected))
-(extract loop1-substed)
-(extract loop1-substed-expected)
     ";
     crate::run_test(build, check)
 }

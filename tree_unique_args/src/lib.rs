@@ -135,7 +135,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
     if results.len() >= 2 {
         for result in &results[1..] {
             if result != &results[0] {
-                return Err(Error::Assert(result.clone(), results[0].clone()));
+                return Err(Error::Assert(results[0].clone(), result.clone()));
             }
         }
     }

@@ -24,11 +24,11 @@ pub(crate) fn rules() -> String {
 
         ; Constant condition elimination
         (rewrite (Switch (Boolean id true) (Cons A (Cons B (Nil))))
-                 A
+                 B
                  :when ((ExprIsValid (Switch (Boolean id true) (Cons A (Cons B (Nil))))))
                  :ruleset switch-rewrites)
         (rewrite (Switch (Boolean id false) (Cons A (Cons B (Nil))))
-                 B
+                 A
                  :when ((ExprIsValid (Switch (Boolean id false) (Cons A (Cons B (Nil))))))
                  :ruleset switch-rewrites)
     
@@ -65,13 +65,13 @@ fn switch_rewrite_or() -> crate::Result {
 (let switch (Switch (Or (Boolean id false) (Boolean id true))
                     (Pair (Num id 1) (Num id 2))))
 (ExprIsValid switch)
+(extract switch)
     ";
     let check = "
 (check (= switch (Switch (Boolean id false)
                          (Pair (Num id 1)
                                (Switch (Boolean id true)
                                        (Pair (Num id 1) (Num id 2)))))))
-(extract switch)
     ";
     crate::run_test(build, check)
 }
@@ -101,13 +101,13 @@ fn switch_rewrite_purity() -> crate::Result {
 (let switch (Switch (And (Boolean switch-id false) (Get impure 0))
                     (Pair (Num switch-id 1) (Num switch-id 2))))
 (ExprIsValid switch)
+(extract switch)
     ";
     let check = "
 (check (= switch (Switch (Boolean switch-id false)
                                (Pair (Switch (Get impure 0)
                                              (Pair (Num switch-id 1) (Num switch-id 2)))
                                      (Num switch-id 2)))))
-(extract switch)
     ";
     crate::run_test(build, check)
 }
@@ -124,12 +124,12 @@ fn test_constant_condition() -> crate::Result {
     (let switch_f (Switch f (Cons a (Cons b (Nil)))))
     (ExprIsValid switch_t)
     (ExprIsValid switch_f)
+    (extract switch_t)
+    (extract b)
   ";
     let check = "
-    (check (= switch_t a))
-    (check (= switch_f b))
-    (extract switch_t)
-    (extract a)
+    (check (= switch_t b))
+    (check (= switch_f a))
   ";
     crate::run_test(build, check)
 }
@@ -145,14 +145,14 @@ fn switch_pull_in_below() -> crate::Result {
 
     (let switch (Switch c (Cons s1 (Cons s2 (Nil)))))
     (let lhs (All (Sequential) (Cons switch (Cons s3 (Nil)))))
+    (extract lhs)
   ";
     let check = "
     (let s1s3 (All (Sequential) (Cons s1 (Cons s3 (Nil)))))
     (let s2s3 (All (Sequential) (Cons s2 (Cons s3 (Nil)))))
     (let expected (Switch c (Cons s1s3 (Cons s2s3 (Nil)))))
-    (check (= lhs expected))
-    (extract lhs)
     (extract expected)
+    (check (= lhs expected))
   ";
     crate::run_test(build, check)
 }
@@ -169,11 +169,11 @@ fn switch_interval() -> crate::Result {
     (let cc (LessThan two three))
     (let switch (Switch cc (Cons four (Cons five (Nil)))))
     (ExprIsValid switch)
+    (extract switch)
+    (extract five)
     ";
     let check = "
-    (check (= switch four))
-    (extract switch)
-    (extract four)
+    (check (= switch five))
     ";
     crate::run_test(build, check)
 }
@@ -196,8 +196,6 @@ fn switch_interval2() -> crate::Result {
     ";
     let check = "
     (check (= switch two))
-    (extract switch)
-    (extract two)
     ";
     crate::run_test(build, check)
 }

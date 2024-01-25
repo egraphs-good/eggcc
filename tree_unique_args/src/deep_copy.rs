@@ -73,6 +73,7 @@ fn test_deep_copy() -> crate::Result {
 (let loop-copied (DeepCopyExpr loop (Id (i64-fresh!))))
     ";
     let check = "
+(extract loop-copied)
 (let loop-copied-expected
     (Loop (Id 4)
         (All (Parallel) (Pair (Num (Id 3) 17) (Num (Id 3) 0)))
@@ -85,10 +86,9 @@ fn test_deep_copy() -> crate::Result {
                     (Add (Get (Arg (Id 4)) 0) (Num (Id 4) 1))
                     (Sub (Get (Arg (Id 4)) 1) (Num (Id 4) 1))))
                 (Arg (Id 5)))))))
+(extract loop-copied-expected)
 (run-schedule (saturate always-run))
 (check (= loop-copied loop-copied-expected))
-(extract loop-copied)
-(extract loop-copied-expected)
     ";
     crate::run_test(build, check)
 }

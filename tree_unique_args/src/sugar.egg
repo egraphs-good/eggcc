@@ -11,7 +11,7 @@
              1)
          :ruleset always-run)
 
-(function NewLoop (IdSort Expr Expr) Expr)
+(function NewLoop (IdSort Expr Expr) Expr :unextractable)
 (rewrite (NewLoop id in out)
          (Loop id in (DeepCopyExpr out id))
          :ruleset always-run)

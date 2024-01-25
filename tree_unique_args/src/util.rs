@@ -83,7 +83,6 @@ fn append_test() -> Result<(), egglog::Error> {
     crate::run_test(build, check)
 }
 
-
 #[test]
 fn ast_size_test() -> Result<(), egglog::Error> {
     let build = "

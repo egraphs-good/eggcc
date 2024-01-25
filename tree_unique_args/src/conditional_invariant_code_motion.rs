@@ -121,8 +121,8 @@ fn test_lift_switch_through_switch() -> crate::Result {
     (Switch
         (Num id1 0)
         (Pair
-            (Switch (LessThan (Num id1 0) (Num id1 -7)) (Cons (Num id1 11) (Nil)))
-            (Switch (LessThan (Num id1 1) (Num id1 -7)) (Cons (Num id1 11) (Nil)))
+            (Switch (LessThan (Num id1 0) (Num id1 -7)) (Cons (Num id1 12) (Cons (Num id1 11) (Nil))))
+            (Switch (LessThan (Num id1 1) (Num id1 -7)) (Cons (Num id1 12) (Cons (Num id1 11) (Nil))))
         )))
 (ExprIsValid switch1)
 (extract switch1)
@@ -139,7 +139,7 @@ fn test_lift_switch_through_switch() -> crate::Result {
                     (Num id1 1)
                 ))
             (Num id1 -7))
-        (Cons (Num id1 11) (Nil))))
+        (Cons (Num id1 12) (Cons (Num id1 11) (Nil)))))
 (extract all1-lifted-expected)
 (run-schedule (saturate always-run))
 (check (= switch1 all1-lifted-expected))

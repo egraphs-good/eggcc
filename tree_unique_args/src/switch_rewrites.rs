@@ -199,3 +199,24 @@ fn switch_interval2() -> crate::Result {
     ";
     crate::run_test(build, check)
 }
+
+// #[test]
+// fn single_branch_switch() -> crate::Result {
+//     let build = &*"
+// (let id1 (Id (i64-fresh!)))
+// (let switch1
+//     (Switch
+//         (Num id1 1)
+//         (Pair
+//             (Switch (Boolean id1 false) (Cons (Num id1 12) (Nil)))
+//             (Switch (Boolean id1 false) (Cons (Num id1 12) (Nil)))
+//         )))
+// (ExprIsValid switch1)
+// (extract switch1)
+//     "
+//     .to_string();
+//     let check = "
+// (extract switch1)
+//     ";
+//     crate::run_test(build, check)
+// }

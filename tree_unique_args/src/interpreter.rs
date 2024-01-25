@@ -54,10 +54,14 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         Expr::Concat(tuple_1, tuple_2) => {
             let ty_tuple_1 = typecheck(tuple_1, arg_ty)?;
             let ty_tuple_2 = typecheck(tuple_2, arg_ty)?;
-            match (ty_tuple_1.clone(), ty_tuple_2) {
+            match (ty_tuple_1.clone(), ty_tuple_2.clone()) {
                 (Type::Tuple(tys_1), Type::Tuple(tys_2)) => {
                     Ok(Type::Tuple(tys_1.into_iter().chain(tys_2).collect()))
                 }
+                (Type::Tuple(_tys_1), _) => Err(TypeError::ExpectedTupleType(
+                    *tuple_2.clone(),
+                    ty_tuple_2.clone(),
+                )),
                 _ => Err(TypeError::ExpectedTupleType(
                     *tuple_1.clone(),
                     ty_tuple_1.clone(),

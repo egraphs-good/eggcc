@@ -248,3 +248,26 @@
       )
       ((panic "Type Mismatch!"))
       :ruleset type-analysis)
+
+
+; Lets
+(rule ((HasTypeDemand (Let id in out)))
+      ((HasTypeDemand in))
+      :ruleset type-analysis)
+
+(rule (
+       (HasTypeDemand (Let id in out))
+       (HasType in ty)
+      )
+      (
+       (HasType (Arg id) ty) ; assert the let's argument has type ty in the let's context
+       (HasTypeDemand out) ; demand the type of out in the let's context
+      )
+      :ruleset type-analysis)
+
+(rule (
+       (HasTypeDemand (Let id in out))
+       (HasType out ty)
+      )
+      ((HasType (Let id in out) ty))
+      :ruleset type-analysis)

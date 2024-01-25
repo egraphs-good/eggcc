@@ -129,9 +129,7 @@ fn lets() -> Result<(), egglog::Error> {
     (let let-id (Id (i64-fresh!)))
     (let outer-ctx (Id (i64-fresh!)))
     (let l (Let let-id (Num outer-ctx 5) (Add (Arg let-id) (Arg let-id))))
-
-    (HasTypeDemand outer-ctx l)
-
+    (HasTypeDemand l)
     (let outer (Id (i64-fresh!)))
     (let inner (Id (i64-fresh!)))
     (let ctx (Id (i64-fresh!)))
@@ -139,13 +137,12 @@ fn lets() -> Result<(), egglog::Error> {
       (Let outer (Num ctx 3)
                  (Let inner (All (Parallel) (Cons (Arg outer) (Cons (Num outer 2) (Nil))))
                             (Add (Get (Arg inner) 0) (Get (Arg inner) 1)))))
-    (HasTypeDemand ctx nested)
+    (HasTypeDemand nested)
   ";
     let check = "
     (run-schedule (saturate type-analysis))
-    (check (HasType outer-ctx l (IntT)))
-
-    (check (HasType ctx nested (IntT)))
+    (check (HasType l (IntT)))
+    (check (HasType nested (IntT)))
   ";
     crate::run_test(build, check)
 }

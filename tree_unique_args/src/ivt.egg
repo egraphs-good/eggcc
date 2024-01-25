@@ -20,9 +20,6 @@
 ; will not match most loops directly: we rely on optimizations that nest
 ; computations inside of an if for this rule to fire.
 
-; TODO, wait for #265 to ship
-; hmmm...
-
 ;                     switch  inputs output id
 (function LiftSwitch (Expr    Expr   IdSort)     Expr)
 (rewrite (LiftSwitch inner subst outer-id) 

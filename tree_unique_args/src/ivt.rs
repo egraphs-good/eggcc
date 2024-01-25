@@ -31,13 +31,13 @@ fn basic_ivt() -> Result {
         (let loop (Loop loop-id (Arg outer-id) (All (Sequential) (Pair pred switch))))
         (ExprIsValid loop)";
     let check = "
-        (check (= loop 
-          (Switch 
-            (LessThan (Arg outer-id) (Num outer-id 1)) 
-            (Cons 
-                (Loop new-id (Arg outer-id) 
+        (check (= loop
+          (Switch
+            (LessThan (Arg outer-id) (Num outer-id 1))
+            (Cons
+                (Loop new-id (Arg outer-id)
                     (All (Sequential)
-                        (Cons (LessThan (Arg new-id) (Num new-id 1)) 
+                        (Cons (LessThan (Arg new-id) (Num new-id 1))
                         (Cons (Print (Num new-id 0)) (Nil)))))
                 (Cons (Print (Num outer-id 1)) (Nil))))))";
     run_test(build, check)

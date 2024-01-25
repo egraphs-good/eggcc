@@ -273,26 +273,26 @@
       :ruleset type-analysis)
 
 ; Loops
-(rule ((HasTypeDemand ctx (Loop id in pred-out)))
-      ((HasTypeDemand ctx in))
+(rule ((HasTypeDemand (Loop id in pred-out)))
+      ((HasTypeDemand in))
       :ruleset type-analysis)
 
 (rule (
-       (HasTypeDemand ctx (Loop id in pred-out))
-       (HasType ctx in ty)
+       (HasTypeDemand (Loop id in pred-out))
+       (HasType in ty)
       )
       (
-       (HasType id (Arg id) ty) ; assert the argument has type ty in the loop's context
-       (HasTypeDemand id pred-out) ; demand the types of the predicate and output in the loop's context
+       (HasType (Arg id) ty) ; assert the argument has type ty in the loop's context
+       (HasTypeDemand pred-out) ; demand the types of the predicate and output in the loop's context
       )
       :ruleset type-analysis)
 
 (rule (
-       (HasTypeDemand ctx (Loop id in pred-out))
-       (HasType ctx in ty) ; input type
+       (HasTypeDemand (Loop id in pred-out))
+       (HasType in ty) ; input type
        ; pred-out must be a two-element tuple.
        ; pred must be boolean, output type must match input type
-       (HasType id pred-out (TupleT (TCons BoolT (TCons ty (TNil)))))
+       (HasType pred-out (TupleT (TCons BoolT (TCons ty (TNil)))))
       )
-      ((HasType ctx (Loop id in pred-out) ty)) ; whole loop has type of output
+      ((HasType (Loop id in pred-out) ty)) ; whole loop has type of output
       :ruleset type-analysis)

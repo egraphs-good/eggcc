@@ -155,11 +155,11 @@ fn loops() -> Result<(), egglog::Error> {
                (Cons (Switch (Boolean loop-id true)
                              (Cons (Num loop-id 4) (Cons (Num loop-id 5) (Nil))))
                      (Nil))))))
-  (HasTypeDemand ctx l)
+  (HasTypeDemand l)
   ";
     let check = "
   (run-schedule (saturate type-analysis))
-  (check (HasType ctx l (IntT)))
+  (check (HasType l (IntT)))
   ";
     crate::run_test(build, check)
 }

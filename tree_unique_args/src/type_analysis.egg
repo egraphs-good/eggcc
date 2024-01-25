@@ -260,7 +260,15 @@
        (HasType ctx in ty)
       )
       (
-       (HasType id in ty) ; assert in has type ty in the let's context
+      ;  (HasType id in ty) ; assert in has type ty in the let's context ; TODO- is this needed?
+       (HasType id (Arg id) ty) ; assert the let's argument has type ty in the let's context
        (HasTypeDemand id out) ; demand the type of out in the let's context
       )
+      :ruleset type-analysis)
+
+(rule (
+       (HasTypeDemand ctx (Let id in out))
+       (HasType id out ty)
+      )
+      ((HasType ctx (Let id in out) ty))
       :ruleset type-analysis)

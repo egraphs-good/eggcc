@@ -119,6 +119,7 @@ fn tuple() -> Result<(), egglog::Error> {
   (check (HasType id get1 (BoolT)))
   (check (HasType id get2 (IntT)))
   (check (HasType id get3 (IntT)))
+  
   ";
     crate::run_test(build, check)
 }
@@ -129,7 +130,12 @@ fn lets() -> Result<(), egglog::Error> {
     (let let-id (Id (i64-fresh!)))
     (let outer-ctx (Id (i64-fresh!)))
     (let l (Let let-id (Num outer-ctx 5) (Add (Arg let-id) (Arg let-id))))
+
+    (HasTypeDemand outer-ctx l)
   ";
-  let check = "";
+  let check = "
+    (run-schedule (saturate type-analysis))
+    (check (HasType outer-ctx l (IntT)))
+  ";
   crate::run_test(build, check)
 }

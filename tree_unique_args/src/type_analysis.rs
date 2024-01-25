@@ -24,7 +24,6 @@ fn simple_types() -> Result<(), egglog::Error> {
     crate::run_test(build, check)
 }
 
-
 #[test]
 fn switch_boolean() -> Result<(), egglog::Error> {
     let build = "
@@ -126,16 +125,16 @@ fn tuple() -> Result<(), egglog::Error> {
 
 #[test]
 fn lets() -> Result<(), egglog::Error> {
-  let build = "
+    let build = "
     (let let-id (Id (i64-fresh!)))
     (let outer-ctx (Id (i64-fresh!)))
     (let l (Let let-id (Num outer-ctx 5) (Add (Arg let-id) (Arg let-id))))
 
     (HasTypeDemand outer-ctx l)
   ";
-  let check = "
+    let check = "
     (run-schedule (saturate type-analysis))
     (check (HasType outer-ctx l (IntT)))
   ";
-  crate::run_test(build, check)
+    crate::run_test(build, check)
 }

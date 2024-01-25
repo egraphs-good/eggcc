@@ -4,6 +4,18 @@
          (Cons a (Cons b (Nil)))
          :ruleset always-run)
 
+(function list3 (Expr Expr Expr) ListExpr)
+(rewrite (list3 a b c)
+         (Cons a (Cons b (Cons c (Nil)))) :ruleset always-run)
+
+(function list4 (Expr Expr Expr Expr) ListExpr)
+(rewrite (list4 a b c d)
+         (Cons a (Cons b (Cons c (Cons d (Nil))))) :ruleset always-run)
+
+(function list5 (Expr Expr Expr Expr Expr) ListExpr)
+(rewrite (list5 a b c d e)
+         (Cons a (Cons b (Cons c (Cons d (Cons e (Nil)))))) :ruleset always-run)
+
 (function IgnoreFirst (Expr Expr) Expr)
 (rewrite (IgnoreFirst a b)
          (Get

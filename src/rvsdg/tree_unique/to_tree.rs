@@ -7,7 +7,6 @@
 //! These shared nodes need to be let-bound so that they are only
 //! computed once in the tree encoded
 //! program.
-
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 

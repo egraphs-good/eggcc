@@ -28,16 +28,16 @@ fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
 
             let find_inv_ctor = ctor.construct_only_fields(|field| match field.purpose {
                 Purpose::Static(Sort::I64) | Purpose::Static(Sort::Bool) => {
-                    format!("(set (is-inv-Expr loop expr) true)")
+                    Some("(set (is-inv-Expr loop expr) true)".to_string())
                 }
                 Purpose::Static(_)
                 | Purpose::CapturingId
                 | Purpose::CapturedExpr
-                | Purpose::ReferencingId => format!(""),
+                | Purpose::ReferencingId => None,
                 Purpose::SubExpr | Purpose::SubListExpr => {
                     let var = field.var();
                     let sort = field.sort().name();
-                    format!("(find-inv-{sort} loop {var})")
+                    Some(format!("(find-inv-{sort} loop {var})"))
                 }
             });
             Some(format!(
@@ -107,11 +107,11 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                 Purpose::Static(_)
                 | Purpose::CapturingId
                 | Purpose::CapturedExpr
-                | Purpose::ReferencingId => format!(""),
+                | Purpose::ReferencingId => None,
                 Purpose::SubExpr | Purpose::SubListExpr => {
                     let var = field.var();
                     let sort = field.sort().name();
-                    format!("(= true (is-inv-{sort} loop {var}))")
+                    Some(format!("(= true (is-inv-{sort} loop {var}))"))
                 }
             });
             Some(format!(

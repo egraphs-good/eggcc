@@ -119,3 +119,27 @@ fn tuple() -> crate::Result {
   ";
     crate::run_test(build, check)
 }
+
+#[test]
+fn lets() -> crate::Result {
+    let build = "
+    (let let-id (Id (i64-fresh!)))
+    (let outer-ctx (Id (i64-fresh!)))
+    (let l (Let let-id (Num outer-ctx 5) (Add (Arg let-id) (Arg let-id))))
+    (HasTypeDemand l)
+    (let outer (Id (i64-fresh!)))
+    (let inner (Id (i64-fresh!)))
+    (let ctx (Id (i64-fresh!)))
+    (let nested
+      (Let outer (Num ctx 3)
+                 (Let inner (All (Parallel) (Cons (Arg outer) (Cons (Num outer 2) (Nil))))
+                            (Add (Get (Arg inner) 0) (Get (Arg inner) 1)))))
+    (HasTypeDemand nested)
+  ";
+    let check = "
+    (run-schedule (saturate type-analysis))
+    (check (HasType l (IntT)))
+    (check (HasType nested (IntT)))
+  ";
+    crate::run_test(build, check)
+}

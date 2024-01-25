@@ -292,7 +292,24 @@
        (HasType in ty) ; input type
        ; pred-out must be a two-element tuple.
        ; pred must be boolean, output type must match input type
-       (HasType pred-out (TupleT (TCons BoolT (TCons ty (TNil)))))
+       (HasType pred-out (TupleT (TCons (BoolT) (TCons ty (TNil)))))
       )
       ((HasType (Loop id in pred-out) ty)) ; whole loop has type of output
+      :ruleset type-analysis)
+
+(rule (
+       (HasTypeDemand (Loop id in pred-out))
+       (HasType pred-out (TupleT (TCons pred-ty rest)))
+       (!= pred-ty (BoolT))
+      )
+      ((panic "Loop predicate was not a boolean"))
+      :ruleset type-analysis)
+
+(rule (
+       (HasTypeDemand (Loop id in pred-out))
+       (HasType in in-ty)
+       (HasType pred-out (TupleT lst))
+       (!= (TypeList-length lst) 2)
+      )
+      ((panic "Loop did not get two arguments (predicate and output)"))
       :ruleset type-analysis)

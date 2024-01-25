@@ -57,6 +57,7 @@ pub enum Expr {
 }
 
 impl Expr {
+    /// Runs `func` on every child of this expression.
     pub fn for_each_child(&mut self, mut func: impl FnMut(&mut Expr)) {
         match self {
             Expr::Num(_) | Expr::Boolean(_) | Expr::Unit | Expr::Arg(_) => {}

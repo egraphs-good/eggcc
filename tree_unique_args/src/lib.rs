@@ -6,11 +6,8 @@ pub(crate) mod id_analysis;
 pub mod interpreter;
 pub(crate) mod ir;
 pub(crate) mod is_valid;
-<<<<<<< HEAD
 pub(crate) mod loop_invariant;
-=======
 pub(crate) mod ivt;
->>>>>>> main
 pub(crate) mod purity_analysis;
 pub(crate) mod simple;
 pub(crate) mod subst;

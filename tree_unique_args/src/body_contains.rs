@@ -2,7 +2,7 @@ use crate::ir::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 
 /// Builds rules like:
-/// ```no_run
+/// ```txt
 /// (rule ((Let in out))
 ///       ((BodyContains (Let in out) out))
 ///       :ruleset always-run)
@@ -22,7 +22,7 @@ fn captured_expr_rule_for_ctor(ctor: Constructor) -> Option<String> {
 }
 
 /// Builds rules like:
-/// ```no_run
+/// ```txt
 /// (rule ((BodyContainsExpr body (Add x y)))
 ///       ((BodyContainsExpr body x)
 ///        (BodyContainsExpr body y))
@@ -60,8 +60,7 @@ pub(crate) fn rules() -> Vec<String> {
 
 #[test]
 fn test_body_contains() -> Result<(), egglog::Error> {
-    let build = &*format!(
-        "
+    let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))
 (let loop
@@ -73,7 +72,7 @@ fn test_body_contains() -> Result<(), egglog::Error> {
             ; output
             (Switch (Boolean id1 true) (Pair (Num id1 4) (Num id1 5)))))))
     "
-    );
+    .to_string();
     let check = "
 (fail (check (BodyContainsExpr loop (Num id-outer 1))))
 (check (BodyContainsExpr loop (Num id1 2)))

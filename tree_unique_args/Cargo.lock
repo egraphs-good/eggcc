@@ -1102,7 +1102,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree_unique_args"
+name = "tree-unique-args"
 version = "0.1.0"
 dependencies = [
  "egglog",

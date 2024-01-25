@@ -2,62 +2,7 @@
 
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Order {
-    Parallel,
-    Sequential,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Id(i64);
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Expr {
-    Num(i64),
-    Boolean(bool),
-    Unit,
-    Add(Box<Expr>, Box<Expr>),
-    Sub(Box<Expr>, Box<Expr>),
-    Mul(Box<Expr>, Box<Expr>),
-    LessThan(Box<Expr>, Box<Expr>),
-    And(Box<Expr>, Box<Expr>),
-    Or(Box<Expr>, Box<Expr>),
-    Not(Box<Expr>),
-    Get(Box<Expr>, usize),
-    Print(Box<Expr>),
-    Read(Box<Expr>),
-    Write(Box<Expr>, Box<Expr>),
-    All(Order, Vec<Expr>),
-    Switch(Box<Expr>, Vec<Expr>),
-    Loop(Id, Box<Expr>, Box<Expr>),
-    Let(Id, Box<Expr>, Box<Expr>),
-    Arg(Id),
-    Function(Id, Box<Expr>),
-    Call(Id, Box<Expr>),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Value {
-    Num(i64),
-    Boolean(bool),
-    Unit,
-    Tuple(Vec<Value>),
-}
-
-#[derive(Clone, PartialEq)]
-pub enum Type {
-    Num,
-    Boolean,
-    Unit,
-    Tuple(Vec<Type>),
-}
-
-pub enum TypeError {
-    ExpectedType(Expr, Type, Type),
-    ExpectedTupleType(Expr, Type),
-    ExpectedLoopOutputType(Expr, Type),
-    NoArg(Expr),
-}
+use crate::{Expr, Id, Order, Type, TypeError, Value};
 
 pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
     let expect_type = |sub_e: &Expr, expected_ty: Type| -> Result<(), TypeError> {

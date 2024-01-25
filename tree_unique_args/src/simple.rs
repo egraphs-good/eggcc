@@ -1,10 +1,9 @@
 #[test]
 fn test_simple_bool_rules() -> Result<(), egglog::Error> {
     let build = "
-    (let id1 (Id (i64-fresh!)))
-    (let id2 (Id (i64-fresh!)))
-    (let a (Boolean id1 true))
-    (let b (Boolean id2 false))
+    (let id (Id (i64-fresh!)))
+    (let a (Boolean id true))
+    (let b (Boolean id false))
     (let lhs1 (Not (Or a b)))
     (let lhs2 (Not (And a b)))
     (let lhs3 (Not (Not a)))

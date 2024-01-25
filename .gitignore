@@ -12,6 +12,9 @@ target/
 # vscode prefs
 .vscode/
 
+# vim prefs
+.*.swp
+
 # Added by cargo
 
 /target

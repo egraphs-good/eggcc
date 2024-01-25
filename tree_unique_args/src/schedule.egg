@@ -1,7 +1,7 @@
 ; The main (run) statement for the egglog program
 
 (run-schedule
-  (repeat 5
+  (repeat 6
     (saturate always-run)
     (saturate error-checking) ; In the future, this will be "release mode" only
     simple-pure
@@ -9,4 +9,6 @@
     switch-rewrites
     function-inlining
     loop-strength-reduction
+    interval-analysis
+    ivt
     ))

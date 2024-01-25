@@ -1,5 +1,5 @@
 #[test]
-fn simple_types() -> Result<(), egglog::Error> {
+fn simple_types() -> crate::Result {
     let build = "
         (let id1 (Id (i64-fresh!)))
         (let id2 (Id (i64-fresh!)))
@@ -26,7 +26,7 @@ fn simple_types() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn switch_boolean() -> Result<(), egglog::Error> {
+fn switch_boolean() -> crate::Result {
     let build = "
   (let b1 (Boolean (Id (i64-fresh!)) true))
   (let n1 (Num (Id (i64-fresh!)) 1))
@@ -49,7 +49,7 @@ fn switch_boolean() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn switch_int() -> Result<(), egglog::Error> {
+fn switch_int() -> crate::Result {
     let build = "
   (let n1 (Num (Id (i64-fresh!)) 1))
   (let n2 (Num (Id (i64-fresh!)) 2))
@@ -77,7 +77,7 @@ fn switch_int() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn tuple() -> Result<(), egglog::Error> {
+fn tuple() -> crate::Result {
     let build = "
   (let n (Add (Num (Id (i64-fresh!)) 1) (Num (Id (i64-fresh!)) 2)))
         (let m (Mul n n))

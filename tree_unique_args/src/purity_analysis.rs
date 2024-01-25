@@ -99,7 +99,7 @@ fn test_purity_analysis() -> crate::Result {
 }
 
 #[test]
-fn test_purity_function() -> Result<(), egglog::Error> {
+fn test_purity_function() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id2 (Id (i64-fresh!)))

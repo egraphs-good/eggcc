@@ -143,3 +143,75 @@ fn lets() -> Result<(), egglog::Error> {
   ";
     crate::run_test(build, check)
 }
+
+#[test]
+fn loops() -> Result<(), egglog::Error> {
+    let build = "
+  (let ctx (Id 0))
+  (let loop-id (Id 1))
+  (let l (Loop loop-id (Num ctx 1)
+    (All (Sequential)
+         (Cons (LessThan (Num loop-id 2) (Num loop-id 3))
+               (Cons (Switch (Boolean loop-id true)
+                             (Cons (Num loop-id 4) (Cons (Num loop-id 5) (Nil))))
+                     (Nil))))))
+  (HasTypeDemand l)
+  ";
+    let check = "
+  (run-schedule (saturate type-analysis))
+  (check (HasType l (IntT)))
+  ";
+    crate::run_test(build, check)
+}
+
+#[test]
+#[should_panic]
+fn loop_pred_boolean() {
+    let build = "
+  (let ctx (Id 0))
+  (let loop-id (Id 1))
+  (let l (Loop loop-id (Num ctx 1)
+    (All (Sequential)
+        (Cons (Add (Num loop-id 2) (Num loop-id 3))
+              (Cons (Switch (Boolean loop-id true)
+                            (Cons (Num loop-id 4) (Cons (Num loop-id 5) (Nil))))
+                    (Nil))))))
+  (HasTypeDemand l)
+  (run-schedule (saturate type-analysis))";
+    let check = "";
+
+    let _ = crate::run_test(build, check);
+}
+
+#[test]
+#[should_panic]
+fn loop_args1() {
+    let build = "
+  (let ctx (Id 0))
+  (let loop-id (Id 1))
+  (let l (Loop loop-id (Num ctx 1) (All (Sequential) (Nil))))
+  (HasTypeDemand l)
+  (run-schedule (saturate type-analysis))";
+    let check = "";
+
+    let _ = crate::run_test(build, check);
+}
+
+#[test]
+#[should_panic]
+fn loop_args3() {
+    let build = "
+  (let ctx (Id 0))
+  (let loop-id (Id 1))
+  (let l (Loop loop-id (Num ctx 1)
+    (All (Sequential)
+        (Cons (LessThan (Num loop-id 2) (Num loop-id 3))
+              (Cons (Switch (Boolean loop-id true)
+                            (Cons (Num loop-id 4) (Cons (Num loop-id 5) (Nil))))
+                    (Cons (Num loop-id 1) (Nil)))))))
+  (HasTypeDemand l)
+  (run-schedule (saturate type-analysis))";
+    let check = "";
+
+    let _ = crate::run_test(build, check);
+}

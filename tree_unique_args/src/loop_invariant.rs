@@ -27,9 +27,7 @@ fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
             let ctor_pattern = ctor.construct(|field| field.var());
 
             let find_inv_ctor = ctor
-                .fields()
-                .iter()
-                .filter_map(|field| match field.purpose {
+                .filter_map_fields(|field| match field.purpose {
                     Purpose::Static(Sort::I64) | Purpose::Static(Sort::Bool) => {
                         Some("(set (is-inv-Expr loop expr) true)".to_string())
                     }
@@ -43,7 +41,6 @@ fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                         Some(format!("(find-inv-{sort} loop {var})"))
                     }
                 })
-                .collect::<Vec<_>>()
                 .join(" ");
 
             Some(format!(
@@ -79,9 +76,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
         )),
         _ => {
             let is_inv_ctor = ctor
-                .fields()
-                .iter()
-                .filter_map(|field| match field.purpose {
+                .filter_map_fields(|field| match field.purpose {
                     Purpose::Static(_)
                     | Purpose::CapturingId
                     | Purpose::CapturedExpr
@@ -92,7 +87,6 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                         Some(format!("(= true (is-inv-{sort} loop {var}))"))
                     }
                 })
-                .collect::<Vec<_>>()
                 .join(" ");
             let is_pure = match ctor {
                 Constructor::Call | Constructor::Let | Constructor::Loop => {

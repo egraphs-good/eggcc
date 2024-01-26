@@ -2,7 +2,7 @@
 (function ListExpr-ith (ListExpr i64) Expr :unextractable)
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (function Append (ListExpr Expr) ListExpr :unextractable)
-(function Extend (ListExpr ListExpr) ListExpr :unextractable)
+(function Concat (ListExpr ListExpr) ListExpr :unextractable)
 (function Remove (ListExpr i64) ListExpr :unextractable)
 (rule ((All order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
 
@@ -20,10 +20,10 @@
     (Cons e (Nil))
     :ruleset always-run)
 
-(rewrite (Extend (Cons a b) e)
-    (Cons a (Extend b e))
+(rewrite (Concat (Cons a b) e)
+    (Cons a (Concat b e))
     :ruleset always-run)
-(rewrite (Extend (Nil) e) e
+(rewrite (Concat (Nil) e) e
     :ruleset always-run)
 
 (rewrite (Remove (Cons a b) 0)

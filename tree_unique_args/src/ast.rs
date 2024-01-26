@@ -59,10 +59,18 @@ fn give_fresh_ids_helper(expr: &mut Expr, current_id: i64, fresh_id: &mut i64) {
     }
 }
 
-pub fn program(args: Vec<Expr>) -> Expr {
-    let mut prog = Program(args);
-    give_fresh_ids(&mut prog);
-    prog
+/// a macro that wraps the children in
+/// a vec for program
+#[macro_export]
+macro_rules! program {
+    ($($x:expr),*) => (program_vec(vec![$($x),*]))
+}
+pub use program;
+
+pub fn program_vec(args: Vec<Expr>) -> Expr {
+    let mut res = Program(args);
+    give_fresh_ids(&mut res);
+    res
 }
 
 pub fn num(n: i64) -> Expr {
@@ -120,15 +128,33 @@ pub fn print(a: Expr) -> Expr {
     Print(Box::new(a))
 }
 
-pub fn sequence(args: Vec<Expr>) -> Expr {
+#[macro_export]
+macro_rules! sequence {
+    ($($x:expr),*) => (sequence_vec(vec![$($x),*]))
+}
+pub use sequence;
+
+pub fn sequence_vec(args: Vec<Expr>) -> Expr {
     All(Order::Sequential, args)
 }
 
-pub fn parallel(args: Vec<Expr>) -> Expr {
+#[macro_export]
+macro_rules! parallel {
+    ($($x:expr),*) => (parallel_vec(vec![$($x),*]))
+}
+pub use parallel;
+
+pub fn parallel_vec(args: Vec<Expr>) -> Expr {
     All(Order::Parallel, args)
 }
 
-pub fn switch(arg: Expr, cases: Vec<Expr>) -> Expr {
+#[macro_export]
+macro_rules! switch {
+    ($arg:expr, $($x:expr),*) => (switch_vec($arg, vec![$($x),*]))
+}
+pub use switch;
+
+pub fn switch_vec(arg: Expr, cases: Vec<Expr>) -> Expr {
     Switch(Box::new(arg), cases)
 }
 
@@ -184,21 +210,19 @@ fn test_gives_loop_ids() {
 fn test_complex_program_ids() {
     // test a program that includes
     // a let, a loop, a switch, and a call
-    let prog = program(vec![function(tlet(
+    let prog = program!(function(tlet(
         num(0),
         tloop(
             num(1),
-            switch(
+            switch!(
                 arg(),
-                vec![
-                    num(2),
-                    call(num(3)),
-                    tlet(num(4), num(5)),
-                    tloop(num(6), num(7)),
-                ],
+                num(2),
+                call(num(3)),
+                tlet(num(4), num(5)),
+                tloop(num(6), num(7))
             ),
         ),
-    ))]);
+    )));
     assert_eq!(
         prog,
         Program(vec![Function(

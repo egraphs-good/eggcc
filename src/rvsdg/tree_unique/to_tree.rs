@@ -9,18 +9,22 @@
 //! program.
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
+#[cfg(test)]
+use tree_unique_args::ast::{program, sequence};
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_unique_args::{
-    ast::{add, arg, concat, function, get, num, print, program, sequence, tfalse, tlet, ttrue},
+    ast::{
+        add, arg, concat, function, get, num, print, program_vec, sequence_vec, tfalse, tlet, ttrue,
+    },
     Expr,
 };
 
 impl RvsdgProgram {
     pub fn to_tree_encoding(&self) -> Expr {
-        program(
+        program_vec(
             self.functions
                 .iter()
                 .map(|f| f.to_tree_encoding())
@@ -72,7 +76,7 @@ impl<'a> RegionTranslator<'a> {
             result_indices.push(translator.translate_operand(result));
         }
 
-        let mut expr = sequence(result_indices.iter().map(|i| get(arg(), *i)).collect());
+        let mut expr = sequence_vec(result_indices.iter().map(|i| get(arg(), *i)).collect());
 
         for binding in translator.bindings.into_iter().rev() {
             expr = cbind(binding, expr);
@@ -162,6 +166,29 @@ impl RvsdgFunction {
 }
 
 #[test]
+fn translate_loop() {
+    const PROGRAM: &str = r#"
+@main {
+    .entry:
+        i: int = const 0;
+        jmp .loop;
+    .loop:
+        max: int = const 10;
+        i: int = add i 1;
+        cond: bool = lt i max;
+        br cond .loop .exit;
+    .exit:
+        print i;
+}
+"#;
+    let prog = parse_from_string(PROGRAM);
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+
+    rvsdg.to_tree_encoding().assert_eq_ignoring_ids(&program!())
+}
+
+#[test]
 fn simple_translation() {
     const PROGRAM: &str = r#"
   @add(): int {
@@ -177,13 +204,13 @@ fn simple_translation() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program(vec![function(cbind(
+        .assert_eq_ignoring_ids(&program!(function(cbind(
             num(1),
             cbind(
                 add(get(arg(), 1), get(arg(), 1)),
-                sequence(vec![get(arg(), 2), get(arg(), 0)]), // returns res and print state (unit)
+                sequence!(get(arg(), 2), get(arg(), 0)), // returns res and print state (unit)
             ),
-        ))]));
+        ))));
 }
 
 #[test]
@@ -204,7 +231,7 @@ fn two_print_translation() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program(vec![function(cbind(
+        .assert_eq_ignoring_ids(&program!(function(cbind(
             num(2),
             cbind(
                 num(1),
@@ -212,9 +239,9 @@ fn two_print_translation() {
                     add(get(arg(), 2), get(arg(), 1)),
                     cbind(
                         print(get(arg(), 3)),
-                        cbind(print(get(arg(), 1)), sequence(vec![get(arg(), 5)])),
+                        cbind(print(get(arg(), 1)), sequence!(get(arg(), 5))),
                     ),
                 ),
             ),
-        ))]));
+        ))));
 }

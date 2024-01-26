@@ -84,7 +84,7 @@ fn append_test() -> crate::Result {
 }
 
 #[test]
-fn ast_size_test() -> Result<(), egglog::Error> {
+fn ast_size_test() -> crate::Result {
     let build = "
     (let id1 (Id (i64-fresh!)))
     (let id-outer (Id (i64-fresh!)))

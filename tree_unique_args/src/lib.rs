@@ -148,7 +148,7 @@ pub enum TypeError {
     NoArg(Expr),
 }
 
-pub fn run_test(build: &str, check: &str) -> Result {
+pub fn run_test(build: &str, check: &str, exprs: &[Expr]) -> Result {
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
         [
@@ -179,19 +179,23 @@ pub fn run_test(build: &str, check: &str) -> Result {
         .parse_and_run_program(&program)
         .map_err(Error::Egglog)?;
 
-    let mut results = Vec::new();
-    for line in lines {
-        let mut vm = interpreter::VirtualMachine::new();
-        let expr = line.parse::<Expr>().map_err(Error::Parse)?;
-        interpreter::typecheck(&expr, &None).map_err(Error::Type)?;
-        let value = interpreter::interpret(&expr, &None, &mut vm);
-        results.push((value, vm));
+    if !lines.is_empty() {
+        panic!("egglog log: {}", lines.join("\n"))
     }
 
-    if results.len() >= 2 {
-        for result in &results[1..] {
-            if result != &results[0] {
-                return Err(Error::Assert(results[0].clone(), result.clone()));
+    let eval = |expr: &Expr| {
+        let mut vm = interpreter::VirtualMachine::new();
+        interpreter::typecheck(expr, &None).map_err(Error::Type)?;
+        let value = interpreter::interpret(expr, &None, &mut vm);
+        Ok((value, vm))
+    };
+
+    if !exprs.is_empty() {
+        let x = eval(&exprs[0])?;
+        for expr in &exprs[1..] {
+            let y = eval(expr)?;
+            if x != y {
+                return Err(Error::Assert(x, y));
             }
         }
     }

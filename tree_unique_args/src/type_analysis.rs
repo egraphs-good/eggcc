@@ -129,7 +129,7 @@ fn lets() -> crate::Result {
 }
 
 #[test]
-fn loops() -> Result<(), egglog::Error> {
+fn loops() -> crate::Result {
     let build = "
   (let ctx (Id 0))
   (let loop-id (Id 1))

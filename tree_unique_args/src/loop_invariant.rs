@@ -25,20 +25,23 @@ fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
         _ => {
             let ctor_pattern = ctor.construct(|field| field.var());
 
-            let find_inv_ctor = ctor.construct_only_fields(|field| match field.purpose {
-                Purpose::Static(Sort::I64) | Purpose::Static(Sort::Bool) => {
-                    Some("(set (is-inv-Expr loop expr) true)".to_string())
-                }
-                Purpose::Static(_)
-                | Purpose::CapturingId
-                | Purpose::CapturedExpr
-                | Purpose::ReferencingId => None,
-                Purpose::SubExpr | Purpose::SubListExpr => {
-                    let var = field.var();
-                    let sort = field.sort().name();
-                    Some(format!("(find-inv-{sort} loop {var})"))
-                }
-            });
+            let find_inv_ctor = ctor
+                .filter_map_fields(|field| match field.purpose {
+                    Purpose::Static(Sort::I64) | Purpose::Static(Sort::Bool) => {
+                        Some("(set (is-inv-Expr loop expr) true)".to_string())
+                    }
+                    Purpose::Static(_)
+                    | Purpose::CapturingId
+                    | Purpose::CapturedExpr
+                    | Purpose::ReferencingId => None,
+                    Purpose::SubExpr | Purpose::SubListExpr => {
+                        let var = field.var();
+                        let sort = field.sort().name();
+                        Some(format!("(find-inv-{sort} loop {var})"))
+                    }
+                })
+                .join(" ");
+
             Some(format!(
                 "(rule ((find-inv-Expr loop expr) \
                 {br} (= expr {ctor_pattern})) \
@@ -51,12 +54,12 @@ fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
 fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let br = "\n      ";
     let ruleset = " :ruleset always-run";
+    let ctor_pattern = ctor.construct(|field| field.var());
 
     match ctor {
-        // list are handled in loop_invariant.egg
+        // list handled in loop_invariant.egg
         // print, read, write are not invariant
         // assume Arg as whole is not invariant
-        // Unit?
         Constructor::Cons
         | Constructor::Nil
         | Constructor::UnitExpr
@@ -64,59 +67,36 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
         | Constructor::Read
         | Constructor::Write
         | Constructor::Arg => None,
-        Constructor::Call => None,
-        // TODO fix expr is pure?
-        // Some(format!(
-        // "{br}(rule ((find-inv-Expr loop expr)
-        //         (= expr (Call f arg))
-        //         (= true (is-inv-Expr loop arg))
-        //         (ExprIsPure expr))
-        //     ((set (is-inv-Expr loop expr) true)){ruleset})")),
         Constructor::Get => Some(format!(
             "(rule ((find-inv-Expr loop expr) \
             {br} (= expr (Get tup i)) \
             {br} (= true (is-inv-Expr loop tup))) \
             {br}((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
-        Constructor::Loop => Some(format!(
-            "(rule ((find-inv-Expr loop expr) \
-            {br} (= expr (Loop id inputs pred-out)) \
-            {br} (= true (is-inv-Expr loop inputs)) \
-            {br} (ExprIsPure expr)) \
-            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
-        )),
-        Constructor::Let => Some(format!(
-            "(rule ((find-inv-Expr loop expr) \
-            {br} (= expr (Let id inputs outputs)) \
-            {br} (= true (is-inv-Expr loop inputs)) \
-            {br} (ExprIsPure expr)) \
-            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
-        )),
-        Constructor::Switch => Some(format!(
-            "(rule ((find-inv-Expr loop expr) \
-            {br} (= expr (Switch pred branch)) \
-            {br} (= true (is-inv-ListExpr loop branch)) \
-            {br} (= true (is-inv-Expr loop pred))) \
-            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
-        )),
         _ => {
-            let ctor_pattern = ctor.construct(|field| field.var());
-
-            let is_inv_ctor = ctor.construct_only_fields(|field| match field.purpose {
-                Purpose::Static(_)
-                | Purpose::CapturingId
-                | Purpose::CapturedExpr
-                | Purpose::ReferencingId => None,
-                Purpose::SubExpr | Purpose::SubListExpr => {
-                    let var = field.var();
-                    let sort = field.sort().name();
-                    Some(format!("(= true (is-inv-{sort} loop {var}))"))
+            let is_inv_ctor = ctor
+                .filter_map_fields(|field| match field.purpose {
+                    Purpose::Static(_)
+                    | Purpose::CapturingId
+                    | Purpose::CapturedExpr
+                    | Purpose::ReferencingId => None,
+                    Purpose::SubExpr | Purpose::SubListExpr => {
+                        let var = field.var();
+                        let sort = field.sort().name();
+                        Some(format!("(= true (is-inv-{sort} loop {var}))"))
+                    }
+                })
+                .join(" ");
+            let is_pure = match ctor {
+                Constructor::Call | Constructor::Let | Constructor::Loop => {
+                    format!("{br} (ExprIsPure expr)")
                 }
-            });
+                _ => String::new(),
+            };
             Some(format!(
                 "(rule ((find-inv-Expr loop expr) \
                 {br} (= expr {ctor_pattern}) \
-                {br} {is_inv_ctor}) \
+                {br} {is_inv_ctor} {is_pure}) \
                 {br}((set (is-inv-Expr loop expr) true)){ruleset})"
             ))
         }
@@ -142,9 +122,7 @@ fn boundary_for_ctor(ctor: Constructor) -> Option<String> {
         _ => {
             let ctor_pattern = ctor.construct(|field| field.var());
             let res = ctor
-                .fields()
-                .iter()
-                .filter_map(|field| {
+                .filter_map_fields(|field| {
                     let var = field.var();
                     match field.purpose {
                         Purpose::SubExpr => Some(format!(
@@ -157,7 +135,6 @@ fn boundary_for_ctor(ctor: Constructor) -> Option<String> {
                         _ => None,
                     }
                 })
-                .collect::<Vec<_>>()
                 .join("\n");
 
             Some(res)
@@ -172,22 +149,6 @@ pub(crate) fn rules() -> Vec<String> {
         .chain(Constructor::iter().filter_map(boundary_for_ctor))
         .collect::<Vec<_>>()
 }
-
-// fn complexity_analysis_for_ctor(ctor: Constructor) -> Option<String> {
-//     let br = "\n      ";
-//     let ruleset = " :ruleset always-run";
-
-//     match ctor {
-
-//     }
-
-// }
-
-// pub(crate) fn complexity_analysis_rules() -> Vec<String> {
-//     Constructor::iter()
-//         .filter_map(complexity_analysis_for_ctor)
-//         .collect::<Vec<_>>()
-// }
 
 #[test]
 fn loop_invariant_detection1() -> Result<(), egglog::Error> {

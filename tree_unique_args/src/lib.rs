@@ -2,6 +2,7 @@ pub mod ast;
 pub(crate) mod body_contains;
 pub(crate) mod conditional_invariant_code_motion;
 pub(crate) mod deep_copy;
+pub(crate) mod disallow_empty_all;
 pub(crate) mod function_inlining;
 pub(crate) mod id_analysis;
 pub mod interpreter;
@@ -142,6 +143,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("sugar.egg"),
             &util::rules().join("\n"),
             &id_analysis::id_analysis_rules().join("\n"),
+            include_str!("disallow_empty_all.egg"),
             // optimizations
             include_str!("simple.egg"),
             include_str!("function_inlining.egg"),

@@ -21,7 +21,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         Expr::Program(_) => panic!("Found non top level program."),
         Expr::Num(_) => Ok(Type::Num),
         Expr::Boolean(_) => Ok(Type::Boolean),
-        Expr::Unit => Ok(Type::Unit),
+        Expr::Unit => Ok(Type::Tuple(vec![])),
         Expr::Add(e1, e2) | Expr::Sub(e1, e2) | Expr::Mul(e1, e2) => {
             expect_type(e1, Type::Num)?;
             expect_type(e2, Type::Num)?;
@@ -71,7 +71,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         Expr::Print(e) => {
             // right now, only print nums
             expect_type(e, Type::Num)?;
-            Ok(Type::Unit)
+            Ok(Type::Tuple(vec![]))
         }
         Expr::Read(addr) => {
             // right now, all memory holds nums.
@@ -83,7 +83,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         Expr::Write(addr, data) => {
             expect_type(addr, Type::Num)?;
             expect_type(data, Type::Num)?;
-            Ok(Type::Unit)
+            Ok(Type::Tuple(vec![]))
         }
         Expr::All(_, exprs) => {
             let tys = exprs
@@ -138,7 +138,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
         Expr::Program(_) => todo!("interpret programs"),
         Expr::Num(x) => Value::Num(*x),
         Expr::Boolean(x) => Value::Boolean(*x),
-        Expr::Unit => Value::Unit,
+        Expr::Unit => Value::Tuple(vec![]),
         Expr::Add(e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("add")
@@ -219,7 +219,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
                 panic!("print")
             };
             vm.log.push(n);
-            Value::Unit
+            Value::Tuple(vec![])
         }
         Expr::Read(e_addr) => {
             let Value::Num(addr) = interpret(e_addr, arg, vm) else {
@@ -233,7 +233,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             let data = interpret(e_data, arg, vm);
             vm.mem.insert(addr as usize, data);
-            Value::Unit
+            Value::Tuple(vec![])
         }
         Expr::All(_, exprs) => {
             // this always executes sequentially (which is a valid way to
@@ -370,8 +370,8 @@ fn test_interpreter_fib_using_memory() {
     assert_eq!(
         res,
         Value::Tuple(vec![
-            Value::Unit,
-            Value::Unit,
+            Value::Tuple(vec![]),
+            Value::Tuple(vec![]),
             Value::Num(nth + 1),
             Value::Num(fib_nth)
         ])

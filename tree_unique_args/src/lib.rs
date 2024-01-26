@@ -110,7 +110,6 @@ impl Expr {
 pub enum Value {
     Num(i64),
     Boolean(bool),
-    Unit,
     Tuple(Vec<Value>),
 }
 
@@ -118,7 +117,6 @@ pub enum Value {
 pub enum Type {
     Num,
     Boolean,
-    Unit,
     Tuple(Vec<Type>),
 }
 

@@ -160,7 +160,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &subst::subst_rules().join("\n"),
             &deep_copy::deep_copy_rules().join("\n"),
             include_str!("sugar.egg"),
-            include_str!("util.egg"),
+            &util::rules().join("\n"),
             &id_analysis::id_analysis_rules().join("\n"),
             // optimizations
             include_str!("simple.egg"),

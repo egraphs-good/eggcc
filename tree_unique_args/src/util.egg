@@ -33,3 +33,6 @@
     (Remove b (- i 1))
     :when ((> i 0))
     :ruleset always-run)
+
+(function Expr-size (Expr) i64 :merge (min old new))
+(function ListExpr-size (ListExpr) i64 :merge (min old new))

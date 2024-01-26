@@ -21,7 +21,6 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         Expr::Program(_) => panic!("Found non top level program."),
         Expr::Num(_) => Ok(Type::Num),
         Expr::Boolean(_) => Ok(Type::Boolean),
-        Expr::Unit => Ok(Type::Tuple(vec![])),
         Expr::Add(e1, e2) | Expr::Sub(e1, e2) | Expr::Mul(e1, e2) => {
             expect_type(e1, Type::Num)?;
             expect_type(e2, Type::Num)?;
@@ -85,7 +84,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
             expect_type(data, Type::Num)?;
             Ok(Type::Tuple(vec![]))
         }
-        Expr::All(_, exprs) => {
+        Expr::All(_, _, exprs) => {
             let tys = exprs
                 .iter()
                 .map(|expr| typecheck(expr, arg_ty))
@@ -138,7 +137,6 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
         Expr::Program(_) => todo!("interpret programs"),
         Expr::Num(x) => Value::Num(*x),
         Expr::Boolean(x) => Value::Boolean(*x),
-        Expr::Unit => Value::Tuple(vec![]),
         Expr::Add(e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("add")
@@ -235,7 +233,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             vm.mem.insert(addr as usize, data);
             Value::Tuple(vec![])
         }
-        Expr::All(_, exprs) => {
+        Expr::All(_, _, exprs) => {
             // this always executes sequentially (which is a valid way to
             // execute parallel tuples)
             let vals = exprs
@@ -285,6 +283,7 @@ fn test_interpreter() {
         Id(0),
         Box::new(Expr::Num(1)),
         Box::new(Expr::All(
+            Id(0),
             Order::Parallel,
             vec![
                 // pred: i < 10
@@ -292,6 +291,7 @@ fn test_interpreter() {
                 // output
                 Expr::Get(
                     Box::new(Expr::All(
+                        Id(0),
                         Order::Parallel,
                         vec![
                             // i = i + 1
@@ -319,6 +319,7 @@ fn test_interpreter_fib_using_memory() {
     let nth = 10;
     let fib_nth = 55;
     let e = Expr::All(
+        Id(-1),
         Order::Sequential,
         vec![
             Expr::Write(Box::new(Expr::Num(0)), Box::new(Expr::Num(0))),
@@ -327,6 +328,7 @@ fn test_interpreter_fib_using_memory() {
                 Id(0),
                 Box::new(Expr::Num(2)),
                 Box::new(Expr::All(
+                    Id(0),
                     Order::Parallel,
                     vec![
                         // pred: i < nth
@@ -334,6 +336,7 @@ fn test_interpreter_fib_using_memory() {
                         // output
                         Expr::Get(
                             Box::new(Expr::All(
+                                Id(0),
                                 Order::Parallel,
                                 vec![
                                     // i = i + 1
@@ -443,7 +446,6 @@ impl std::str::FromStr for Expr {
                     ("Boolean", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Bool(b))]) => {
                         Ok(Expr::Boolean(*b))
                     }
-                    ("UnitExpr", [_id]) => Ok(Expr::Unit),
                     ("Add", [x, y]) => Ok(Expr::Add(
                         Box::new(egglog_expr_to_expr(x)?),
                         Box::new(egglog_expr_to_expr(y)?),
@@ -482,7 +484,7 @@ impl std::str::FromStr for Expr {
                         Box::new(egglog_expr_to_expr(x)?),
                         Box::new(egglog_expr_to_expr(y)?),
                     )),
-                    ("All", [egglog::ast::Expr::Call(order, empty), xs]) => {
+                    ("All", [id, egglog::ast::Expr::Call(order, empty), xs]) => {
                         if !empty.is_empty() {
                             return Err(ExprParseError::InvalidOrderArguments);
                         }
@@ -491,7 +493,11 @@ impl std::str::FromStr for Expr {
                             "Sequential" => Ok(Order::Sequential),
                             s => Err(ExprParseError::InvalidOrder(s.to_owned())),
                         }?;
-                        Ok(Expr::All(order, list_expr_to_vec(xs)?))
+                        Ok(Expr::All(
+                            egglog_expr_to_id(id)?,
+                            order,
+                            list_expr_to_vec(xs)?,
+                        ))
                     }
                     ("Switch", [pred, branches]) => Ok(Expr::Switch(
                         Box::new(egglog_expr_to_expr(pred)?),
@@ -533,7 +539,7 @@ fn test_expr_parser() {
     let s = "(Loop
 (Id 1)
 (Num (Id 0) 1)
-(All (Sequential)
+(All (Id 1) (Sequential)
     (Cons (LessThan (Num (Id 1) 2) (Num (Id 1) 3))
         (Cons (Switch (Boolean (Id 1) true) (Cons (Num (Id 1) 4) (Cons (Num (Id 1) 5) (Nil))))
             (Nil)))))
@@ -543,6 +549,7 @@ fn test_expr_parser() {
         Id(1),
         Box::new(Expr::Num(1)),
         Box::new(Expr::All(
+            Id(1),
             Order::Sequential,
             vec![
                 Expr::LessThan(Box::new(Expr::Num(2)), Box::new(Expr::Num(3))),

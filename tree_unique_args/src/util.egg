@@ -3,7 +3,7 @@
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (function Append (ListExpr Expr) ListExpr :unextractable)
 
-(rule ((All order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
+(rule ((All id order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
 
 (rule ((= (ListExpr-suffix top n) (Cons hd tl)))
     ((union (ListExpr-ith top n) hd)

@@ -1,3 +1,0 @@
-(rule ((ExprIsValid (All order (Nil))))
-      ((panic "UnitExpr should be used instead of an empty All"))
-      :ruleset error-checking)

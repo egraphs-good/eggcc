@@ -2,7 +2,6 @@ pub mod ast;
 pub(crate) mod body_contains;
 pub(crate) mod conditional_invariant_code_motion;
 pub(crate) mod deep_copy;
-pub(crate) mod disallow_empty_all;
 pub(crate) mod function_inlining;
 pub(crate) mod id_analysis;
 pub mod interpreter;
@@ -31,7 +30,6 @@ pub struct Id(i64);
 pub enum Expr {
     Num(i64),
     Boolean(bool),
-    Unit,
     Add(Box<Expr>, Box<Expr>),
     Sub(Box<Expr>, Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
@@ -48,7 +46,7 @@ pub enum Expr {
     Print(Box<Expr>),
     Read(Box<Expr>),
     Write(Box<Expr>, Box<Expr>),
-    All(Order, Vec<Expr>),
+    All(Id, Order, Vec<Expr>),
     Switch(Box<Expr>, Vec<Expr>),
     Loop(Id, Box<Expr>, Box<Expr>),
     Let(Id, Box<Expr>, Box<Expr>),
@@ -64,7 +62,7 @@ impl Expr {
     /// Runs `func` on every child of this expression.
     pub fn for_each_child(&mut self, mut func: impl FnMut(&mut Expr)) {
         match self {
-            Expr::Num(_) | Expr::Boolean(_) | Expr::Unit | Expr::Arg(_) => {}
+            Expr::Num(_) | Expr::Boolean(_) | Expr::Arg(_) => {}
             Expr::Add(a, b)
             | Expr::Sub(a, b)
             | Expr::Mul(a, b)
@@ -82,7 +80,7 @@ impl Expr {
             Expr::Get(a, _) | Expr::Function(_, a) | Expr::Call(_, a) => {
                 func(a);
             }
-            Expr::All(_, children) => {
+            Expr::All(_, _, children) => {
                 for child in children {
                     func(child);
                 }
@@ -141,7 +139,6 @@ pub fn run_test(build: &str, check: &str) -> Result {
             include_str!("sugar.egg"),
             &util::rules().join("\n"),
             &id_analysis::id_analysis_rules().join("\n"),
-            include_str!("disallow_empty_all.egg"),
             // optimizations
             include_str!("simple.egg"),
             include_str!("function_inlining.egg"),

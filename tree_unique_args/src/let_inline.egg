@@ -1,0 +1,40 @@
+(ruleset let-inline)
+(rule (
+    (= expr (Let id (All inp-ord inp-exprs) out))
+    (= inp (ListExpr-ith inp-exprs ith))
+    (= (ExprIsNontrivial inp) true)
+    (ExprIsPure inp)
+
+    ;; NB: arg-used-count might undercount 
+    ;; # argument is used
+    (= (arg-used-count out ith) 1)
+    
+    (= inp-args (arg-used-Expr inp))
+) (
+    (let new-id (fresh-id!))
+
+    ;; Step 1: build the new inps: remove (Arg i) and 
+    ;; introduce arguments used by inp-args
+    (let new-inp-args-i64 (set->vec inp-args))
+    (let new-inp-args (MapArgOverVec new-inp-args-i64 (Arg new-id)))
+    (let new-inp-exprs (Extend (Remove in-exprs i) new-in-args))
+
+    ;; Step 2: build the pulled-in inp by substituting contexts
+    (let subst-map (BuildSubstMapFrom new-inp-args-i64 (vec-length inps))) ;; need to right shift by vec-length
+    (let new-inp (SubstOperandMap inp subst-map))
+
+    ;; Step 3: build the new outputs
+    ;; (All (Parallel) '(
+    ;;  (Get (Arg new-id) 0)
+    ;;  ...
+    ;;  (Get (Arg new-id) k-1)
+    ;;  substed-ink
+    ;;  (Get (Arg new-id) k) ;; this actually has index k+1
+    ;;  ...
+    ;;  (Get (Arg new-id) n)))
+    (let new-args (All (Parallel) (BuildLetInlineSubstArgs id new-inp k)))
+    (let new-out (DeepCopy (SubstExpr out new-args) new-id))
+
+    (let new-expr (Let new-id new-inp-exprs new-out))
+    (union expr new-expr)
+))

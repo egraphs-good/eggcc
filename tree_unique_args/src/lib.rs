@@ -3,13 +3,16 @@ pub(crate) mod body_contains;
 pub(crate) mod conditional_invariant_code_motion;
 pub(crate) mod deep_copy;
 pub(crate) mod function_inlining;
+pub(crate) mod id_analysis;
 pub mod interpreter;
 pub(crate) mod ir;
 pub(crate) mod is_valid;
+pub(crate) mod ivt;
 pub(crate) mod purity_analysis;
 pub(crate) mod simple;
 pub(crate) mod subst;
 pub(crate) mod switch_rewrites;
+pub(crate) mod type_analysis;
 pub(crate) mod util;
 
 pub type Result = std::result::Result<(), egglog::Error>;
@@ -57,6 +60,7 @@ pub enum Expr {
 }
 
 impl Expr {
+    /// Runs `func` on every child of this expression.
     pub fn for_each_child(&mut self, mut func: impl FnMut(&mut Expr)) {
         match self {
             Expr::Num(_) | Expr::Boolean(_) | Expr::Unit | Expr::Arg(_) => {}
@@ -136,11 +140,15 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &subst::subst_rules().join("\n"),
             &deep_copy::deep_copy_rules().join("\n"),
             include_str!("sugar.egg"),
-            include_str!("util.egg"),
+            &util::rules().join("\n"),
+            &id_analysis::id_analysis_rules().join("\n"),
             // optimizations
             include_str!("simple.egg"),
             include_str!("function_inlining.egg"),
+            include_str!("interval_analysis.egg"),
+            include_str!("ivt.egg"),
             &switch_rewrites::rules(),
+            include_str!("type_analysis.egg"),
             &conditional_invariant_code_motion::rules().join("\n"),
         ]
         .join("\n"),

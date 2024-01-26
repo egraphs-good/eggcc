@@ -5,7 +5,6 @@
 (datatype Type
   (IntT)
   (BoolT)
-  (UnitT)
   (FuncT Type Type)
   (TupleT TypeList)
 )
@@ -38,7 +37,7 @@
       :ruleset type-analysis)
 
 (rule ((UnitExpr id))
-      ((HasType (UnitExpr id) (UnitT)))
+      ((HasType (UnitExpr id) (TupleT (TNil))))
       :ruleset type-analysis)
 
 ; Pure Op Compute
@@ -113,7 +112,7 @@
 
 ; Effectful Ops
 (rule ((Print e))
-      ((HasType (Print e) (UnitT)))
+      ((HasType (Print e) (TupleT (TNil))))
       :ruleset type-analysis)
 ; TODO: Read and Write (requires type annotations)
 

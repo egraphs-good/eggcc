@@ -64,7 +64,7 @@ fn switch_int() -> Result<(), egglog::Error> {
 
   (check (HasType s1 (IntT)))
   (check (HasType s2 (BoolT)))
-  (check (HasType s3 (UnitT)))
+  (check (HasType s3 (TupleT (TNil))))
   ";
     crate::run_test(build, check)
 }

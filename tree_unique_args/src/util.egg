@@ -18,3 +18,6 @@
 (rewrite (Append (Nil) e)
     (Cons e (Nil))
     :ruleset always-run)
+
+(function Expr-size (Expr) i64 :merge (min old new))
+(function ListExpr-size (ListExpr) i64 :merge (min old new))

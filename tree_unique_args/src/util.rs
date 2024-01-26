@@ -13,7 +13,7 @@ fn ast_size_for_ctor(ctor: Constructor) -> String {
         Constructor::Get => format!("(rule ((= expr (Get tup i)) (= n (Expr-size tup))) ((set (Expr-size expr) n)) {ruleset})"),
         Constructor::All => format!("(rule ((= expr (All ord list)) (= n (ListExpr-size list))) ((set (Expr-size expr) n)) {ruleset})"),
         _ => {
-            let field_pattern = ctor.fields().iter().filter_map(|field| {
+            let field_pattern = ctor.filter_map_fields(|field| {
                 let sort = field.sort().name();
                 let var = field.var();
                 match field.purpose {
@@ -23,7 +23,7 @@ fn ast_size_for_ctor(ctor: Constructor) -> String {
                         Some(format!("({sort}-size {var})")),
                     _ => None
                 }
-            }).collect::<Vec<_>>();
+            });
 
             let len = field_pattern.len();
             let result_str = field_pattern.join(" ");

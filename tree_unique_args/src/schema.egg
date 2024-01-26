@@ -68,7 +68,7 @@
 ; ==========================
 
 ;                   f      output
-(relation Function (IdSort Expr))
+(function Function (IdSort Expr) Expr)
 
 ;               f      arg
 (function Call (IdSort Expr) Expr)

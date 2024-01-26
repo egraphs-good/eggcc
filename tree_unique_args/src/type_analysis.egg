@@ -1,0 +1,273 @@
+(ruleset type-analysis)
+
+(sort TypeList)
+
+(datatype Type
+  (IntT)
+  (BoolT)
+  (UnitT)
+  (FuncT Type Type)
+  (TupleT TypeList)
+)
+
+(function TNil () TypeList)
+(function TCons (Type TypeList) TypeList)
+
+(function TypeList-length (TypeList) i64)
+(function TypeList-ith (TypeList i64) Type :unextractable)
+(function TypeList-suffix (TypeList i64) TypeList :unextractable)
+
+(rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset type-analysis)
+
+(rule ((= (TypeList-suffix top n) (TCons hd tl)))
+    ((union (TypeList-ith top n) hd)
+     (union (TypeList-suffix top (+ n 1)) tl)) :ruleset type-analysis)
+
+(rule ((= (TypeList-suffix list n) (TNil)))
+    ((set (TypeList-length list) n)) :ruleset type-analysis)
+
+(relation HasTypeDemand (Expr))
+
+(relation HasType (Expr Type))
+
+; Primitives
+(rule ((HasTypeDemand (Num id n)))
+      ((HasType (Num id n) (IntT)))
+      :ruleset type-analysis)
+
+(rule ((HasTypeDemand (Boolean id b)))
+      ((HasType (Boolean id b) (BoolT)))
+      :ruleset type-analysis)
+
+(rule ((HasTypeDemand (UnitExpr id)))
+      ((HasType (UnitExpr id) (UnitT)))
+      :ruleset type-analysis)
+
+
+; Pure Op Demand
+(rule ((HasTypeDemand (Add x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Sub x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Mul x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (LessThan x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (And x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Or x y)))
+      (
+       (HasTypeDemand x)
+       (HasTypeDemand y)
+      )
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Not x)))
+      ((HasTypeDemand x))
+      :ruleset type-analysis)
+(rule ((HasTypeDemand (Get e idx)))
+      ((HasTypeDemand e))
+      :ruleset type-analysis)
+
+; Pure Op Compute
+(rule (
+       (HasTypeDemand (Add x y))
+       (HasType x (IntT))
+       (HasType y (IntT))
+      )
+      (
+       (HasType (Add x y) (IntT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Sub x y))
+       (HasType x (IntT))
+       (HasType y (IntT))
+      )
+      (
+       (HasType (Sub x y) (IntT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Mul x y))
+       (HasType x (IntT))
+       (HasType y (IntT))
+      )
+      (
+       (HasType (Mul x y) (IntT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (LessThan x y))
+       (HasType x (IntT))
+       (HasType y (IntT))
+      )
+      (
+       (HasType (LessThan x y) (BoolT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (And x y))
+       (HasType x (BoolT))
+       (HasType y (BoolT))
+      )
+      (
+       (HasType (And x y) (BoolT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Or x y))
+       (HasType x (BoolT))
+       (HasType y (BoolT))
+      )
+      (
+       (HasType (Or x y) (BoolT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Not x))
+       (HasType x (BoolT))
+      )
+      (
+       (HasType (Not x) (BoolT))
+      )
+      :ruleset type-analysis)
+(rule (
+       (HasTypeDemand (Get e n))
+       (HasType e (TupleT tylist))
+      )
+      ((HasType (Get e n) (TypeList-ith tylist n)))
+      :ruleset type-analysis)
+
+; Effectful Ops
+(rule ((HasTypeDemand (Print e)))
+      ((HasType (Print e) (UnitT)))
+      :ruleset type-analysis)
+; TODO: Read and Write (requires type annotations)
+
+; Switch 
+; if the condition is a boolean, it must have exactly two branches
+(rule ((HasTypeDemand (Switch cond (Cons A (Cons B (Nil))))))
+      (
+       (HasTypeDemand cond)
+       (HasTypeDemand A)
+       (HasTypeDemand B)
+      )
+      :ruleset type-analysis)
+(rule (
+       (= switch (Switch cond (Cons A (Cons B (Nil)))))
+       (HasTypeDemand switch)
+       (HasType cond (BoolT))
+       (HasType A ty)
+       (HasType B ty)
+      )
+      ((HasType switch ty))
+      :ruleset type-analysis)
+
+; Otherwise, the condition must be an integer, and we can have any number of branches.
+
+; peel off a branch and demand type
+(rule ((HasTypeDemand (Switch cond (Cons branch rest))))
+      (
+       (HasTypeDemand branch)
+       (HasTypeDemand (Switch cond rest))
+      )
+      :ruleset type-analysis)
+; base case- demand the type of the condition
+(rule ((HasTypeDemand (Switch cond Nil)))
+      ((HasTypeDemand cond))
+      :ruleset type-analysis)
+
+; base case- single branch switch has type of branch
+(rule (
+       (HasTypeDemand (Switch cond (Cons branch (Nil))))
+       ; boolean condition handled above, now we must have an integer condition
+       (HasType cond (IntT))
+       (HasType branch ty)
+      )
+      ((HasType (Switch cond (Cons branch (Nil))) ty))
+      :ruleset type-analysis)
+; recursive case
+(rule (
+       (HasTypeDemand (Switch cond (Cons branch rest)))
+       (HasType (Switch cond rest) ty)
+       ; make sure the condition is an integer
+       ; (prevents us from typing boolean switches with >2 branches)
+       (HasType cond (IntT))
+       (HasType branch ty)
+      )
+      ((HasType (Switch cond (Cons branch rest)) ty))
+      :ruleset type-analysis)
+
+; Sequencing
+(rule ((HasTypeDemand (All ord (Cons hd tl))))
+      (
+       (HasTypeDemand hd)
+       (HasTypeDemand (All ord tl))
+      )
+      :ruleset type-analysis)
+; base case: Nil
+(rule (
+       (HasTypeDemand (All ord (Nil)))
+      )
+      ((HasType (All ord (Nil)) (TupleT (TNil))))
+      :ruleset type-analysis)
+; rec case
+(rule (
+       (HasTypeDemand (All ord (Cons hd tl)))
+       (HasType hd ty)
+       (HasType (All ord tl) (TupleT tylist))
+      )
+      ((HasType (All ord (Cons hd tl)) (TupleT (TCons ty tylist))))
+      :ruleset type-analysis)
+
+; If an expr has two different types, panic
+(rule (
+       (HasType e t1)
+       (HasType e t2)
+       (!= t1 t2)
+      )
+      ((panic "Type Mismatch!"))
+      :ruleset type-analysis)
+
+
+; Lets
+(rule ((HasTypeDemand (Let id in out)))
+      ((HasTypeDemand in))
+      :ruleset type-analysis)
+
+(rule (
+       (HasTypeDemand (Let id in out))
+       (HasType in ty)
+      )
+      (
+       (HasType (Arg id) ty) ; assert the let's argument has type ty in the let's context
+       (HasTypeDemand out) ; demand the type of out in the let's context
+      )
+      :ruleset type-analysis)
+
+(rule (
+       (HasTypeDemand (Let id in out))
+       (HasType out ty)
+      )
+      ((HasType (Let id in out) ty))
+      :ruleset type-analysis)

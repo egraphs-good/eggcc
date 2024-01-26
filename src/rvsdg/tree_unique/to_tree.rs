@@ -10,14 +10,15 @@
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 #[cfg(test)]
-use tree_unique_args::ast::{program, sequence};
+use tree_unique_args::ast::{lessthan, parallel, program, sequence, tloop};
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_unique_args::{
     ast::{
-        add, arg, concat, function, get, num, print, program_vec, sequence_vec, tfalse, tlet, ttrue,
+        add, arg, concat, function, get, getarg, num, print, program_vec, sequence_vec, tfalse,
+        tlet, ttrue,
     },
     Expr,
 };
@@ -76,7 +77,7 @@ impl<'a> RegionTranslator<'a> {
             result_indices.push(translator.translate_operand(result));
         }
 
-        let mut expr = sequence_vec(result_indices.iter().map(|i| get(arg(), *i)).collect());
+        let mut expr = sequence_vec(result_indices);
 
         for binding in translator.bindings.into_iter().rev() {
             expr = cbind(binding, expr);
@@ -84,12 +85,13 @@ impl<'a> RegionTranslator<'a> {
         expr
     }
 
-    fn translate_operand(&mut self, operand: Operand) -> usize {
+    fn translate_operand(&mut self, operand: Operand) -> Expr {
         match operand {
-            Operand::Arg(index) => index,
-            Operand::Id(id) => self.translate_node(id),
-            Operand::Project(_id, _indexx) => {
-                todo!("Doesn't handle subregions yet");
+            Operand::Arg(index) => getarg(index),
+            Operand::Id(id) => getarg(self.translate_node(id)),
+            Operand::Project(id, p_index) => {
+                let index = self.translate_node(id);
+                get(getarg(index), p_index)
             }
         }
     }
@@ -102,7 +104,18 @@ impl<'a> RegionTranslator<'a> {
             let node = &self.nodes[id];
             match node {
                 RvsdgBody::BasicOp(expr) => self.translate_basic_expr(expr.clone(), id),
-                _ => todo!("Doesn't handle subregions yet"),
+                RvsdgBody::Gamma {
+                    pred,
+                    inputs,
+                    outputs,
+                } => todo!("Doesn't handle gamma yet"),
+                RvsdgBody::Theta {
+                    pred,
+                    inputs,
+                    outputs,
+                } => {
+                    let pred_expr = self.translate_operand(pred);
+                }
             }
         }
     }
@@ -114,7 +127,7 @@ impl<'a> RegionTranslator<'a> {
             BasicExpr::Op(op, children, _ty) => {
                 let children = children
                     .iter()
-                    .map(|c| get(arg(), self.translate_operand(*c)))
+                    .map(|c| self.translate_operand(*c))
                     .collect::<Vec<_>>();
                 let expr = match (op, children.as_slice()) {
                     (ValueOps::Add, [a, b]) => add(a.clone(), b.clone()),
@@ -139,8 +152,9 @@ impl<'a> RegionTranslator<'a> {
             BasicExpr::Print(args) => {
                 assert!(args.len() == 2, "print should have 2 arguments");
                 let arg1 = self.translate_operand(args[0]);
+                // should be unit
                 let _arg2 = self.translate_operand(args[1]);
-                let expr = print(get(arg(), arg1));
+                let expr = print(arg1);
                 self.add_binding(expr, id)
             }
         }
@@ -185,7 +199,30 @@ fn translate_loop() {
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
-    rvsdg.to_tree_encoding().assert_eq_ignoring_ids(&program!())
+    rvsdg
+        .to_tree_encoding()
+        .assert_eq_ignoring_ids(&program!(cbind(
+            num(0), // [(), 0]
+            cbind(
+                tloop(
+                    parallel!(getarg(0), getarg(1)),
+                    cbind(
+                        num(10), // [(), i, 10]
+                        cbind(
+                            num(1), // [(), i, 10, 1]
+                            cbind(
+                                add(getarg(1), getarg(3)), // [(), i, 10, 1, i+1]
+                                cbind(
+                                    lessthan(getarg(4), getarg(2)), // [(), i, 10, 1, i+1, i<10]
+                                    parallel!(getarg(5), parallel!(getarg(0), getarg(5)))
+                                )
+                            )
+                        )
+                    )
+                ),
+                get(getarg(1), 1)
+            ), // [(), 0, [() i]]
+        )));
 }
 
 #[test]

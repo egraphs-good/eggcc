@@ -116,6 +116,10 @@ pub fn not(a: Expr) -> Expr {
     Not(Box::new(a))
 }
 
+pub fn getarg(i: usize) -> Expr {
+    get(arg(), i)
+}
+
 pub fn get(a: Expr, i: usize) -> Expr {
     Get(Box::new(a), i)
 }
@@ -138,15 +142,15 @@ pub fn sequence_vec(args: Vec<Expr>) -> Expr {
     All(Order::Sequential, args)
 }
 
+pub fn parallel_vec(args: Vec<Expr>) -> Expr {
+    All(Order::Parallel, args)
+}
+
 #[macro_export]
 macro_rules! parallel {
     ($($x:expr),*) => (parallel_vec(vec![$($x),*]))
 }
 pub use parallel;
-
-pub fn parallel_vec(args: Vec<Expr>) -> Expr {
-    All(Order::Parallel, args)
-}
 
 #[macro_export]
 macro_rules! switch {
@@ -162,6 +166,8 @@ pub fn tloop(input: Expr, body: Expr) -> Expr {
     Loop(Id(0), Box::new(input), Box::new(body))
 }
 
+/// Let is reserved by rust, so we call it
+/// tlet for tree-let
 pub fn tlet(arg: Expr, body: Expr) -> Expr {
     Let(Id(0), Box::new(arg), Box::new(body))
 }

@@ -67,3 +67,39 @@
 ;        (= false (is-inv-Expr loop (Switch pred list)))
 ;        (= subexpr (ListExpr-ith list i)))
 ;        ((boundary-Expr loop subexpr)))
+
+(ruleset loop-inv-motion)
+
+;; In milestone, a hoist-count is set to track how many time a loop is hoisted
+;; It was used to prevent generating too many loops and program never finish
+;; I don't know if this problem still exist in tree unique arg
+;; this rule is toooo long...
+(rule ((boundary-Expr loop inv)
+       (> (Expr-size inv) 1)
+       (ExprIsValid loop)
+       (= loop (Loop id inputs pred_out))
+       (= inputs (All ord1 inputs_list))
+       (= len (ListExpr-length inputs_list))
+       (= pred_out (All ord2 pred_out_list))
+       (= pred (get-loop-pred loop))
+       (= (All ord3 outputs_list) (get-loop-output loop)))
+      ((let new_let_id (Id (i64-fresh!)))
+       (let new_loop_id (Id (i64-fresh!)))
+       ;; change all id in invariant to new let's id
+       (let hoisted (DeepCopyExpr inv new_let_id))
+       (let hoisted_in_new_loop (DeepCopyExpr inv new_loop_id))
+       ;; create a list of [(Get (Arg new_let_id) 0) ... hoisted_term]
+       (let new_input_list (Append (get-arg-list new_let_id len) hoisted))
+       ;; it have to be sequential because the hoisted term depend on old_inputs
+       ;; which is linked by new Let
+       (let new_inputs (Let new_let_id inputs (All (Sequential) new_input_list)))
+       ;; append (Get (Arg id) len+1) to end of output
+       (let new_input_branch (Get (Arg new_loop_id) (+ len 1)))
+       (let new_outputs_list (Append outputs_list new_input_branch))
+       (let new_pred_out (All ord2 (Pair pred (All ord3 new_outputs_list))))
+       (let new_loop (NewLoop new_loop_id new_inputs new_pred_out))
+       ;; now the invariant in loop can be union with the hoisted part outside of loop
+       (union hoisted_in_new_loop new_input_branch)
+       ;; and two loop can be unioned.
+       (union loop new_loop))
+       :ruleset loop-inv-motion)

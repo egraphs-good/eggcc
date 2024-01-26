@@ -27,3 +27,5 @@
        (= (All ord2 outputs-list) (ListExpr-ith pred-out-list 1))
        (= ith-outputs (ListExpr-ith outputs-list i)))
     ((union (get-loop-outputs-ith loop i) ith-outputs)) :ruleset always-run)
+(function Expr-size (Expr) i64 :merge (min old new))
+(function ListExpr-size (ListExpr) i64 :merge (min old new))

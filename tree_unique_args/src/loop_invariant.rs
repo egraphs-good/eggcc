@@ -241,7 +241,7 @@ fn loop_invariant_detection2() -> Result<(), egglog::Error> {
         ;; inv is boundary
         (check (boundary-Expr loop inv))
         (fail (check (boundary-Expr loop (Add (Get (Arg id1) 0) inv))))
-        (fail (check (boundary-Expr loop (Switch (Num id1 1) l4)))
+        (fail (check (boundary-Expr loop (Switch (Num id1 1) l4))))
     ";
 
     crate::run_test(build, check)

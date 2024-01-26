@@ -34,9 +34,11 @@ struct RegionTranslator<'a> {
     num_args: usize,
     /// a stack of let bindings to generate
     bindings: Vec<Expr>,
-    /// a map from the rvsdg node id
+    /// A map from the rvsdg node id
     /// to the index in the argument
-    /// where the value is stored
+    /// where the value is stored.
+    /// After evaluating a node, do not evaluate it again.
+    /// Instead find it's index here.
     index_of: HashMap<Id, usize>,
     nodes: &'a Vec<RvsdgBody>,
 }
@@ -90,7 +92,9 @@ impl<'a> RegionTranslator<'a> {
         }
     }
 
-    /// Translate a node or return the index of the already-translated node.
+    /// Translate a node or return the index of the already evaluated node.
+    /// It's important not to evaluate a node twice, instead using the cached index
+    /// in `self.index_of`
     fn translate_node(&mut self, id: Id) -> usize {
         if let Some(index) = self.index_of.get(&id) {
             *index

@@ -191,3 +191,23 @@ fn switch_interval2() -> Result<(), egglog::Error> {
     ";
     crate::run_test(build, check)
 }
+
+#[test]
+fn single_branch_switch() -> crate::Result {
+    let build = &*"
+(let id1 (Id (i64-fresh!)))
+(let switch1
+    (Switch
+        (Num id1 1)
+        (Pair
+            (Switch (Boolean id1 false) (Cons (Num id1 12) (Nil)))
+            (Switch (Boolean id1 false) (Cons (Num id1 12) (Nil)))
+        )))
+(ExprIsValid switch1)
+    "
+    .to_string();
+    let check = "
+(check (!= switch1 (Num id1 1)))
+    ";
+    crate::run_test(build, check)
+}

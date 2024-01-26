@@ -38,11 +38,13 @@ struct RegionTranslator<'a> {
     /// to the index in the argument
     /// where the value is stored.
     /// After evaluating a node, do not evaluate it again.
-    /// Instead find it's index here.
+    /// Instead find its index here.
     index_of: HashMap<Id, usize>,
     nodes: &'a Vec<RvsdgBody>,
 }
 
+/// helper that binds a new expression, adding it
+/// to the environment using concat
 fn cbind(expr: Expr, body: Expr) -> Expr {
     tlet(concat(arg(), expr), body)
 }
@@ -53,7 +55,11 @@ impl<'a> RegionTranslator<'a> {
     fn add_binding(&mut self, expr: Expr, id: Id) -> usize {
         self.bindings.push(expr);
         let res = self.bindings.len() - 1 + self.num_args;
-        assert_eq!(self.index_of.insert(id, res), None);
+        assert_eq!(
+            self.index_of.insert(id, res),
+            None,
+            "Node already evaluated. Cycle in the RVSDG or similar bug."
+        );
         res
     }
 

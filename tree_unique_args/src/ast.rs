@@ -1,12 +1,18 @@
 use crate::{Expr, Expr::*, Id, Order};
 
 impl Expr {
+    /// Check that two expressions are the same ignoring their ids.
+    /// To do this, simply assign them all new ids.
+    /// If they are the same expression, they will get the same ids
+    /// since `give_fresh_ids` is deterministic.
     pub fn eq_ignoring_ids(&self, other: &Expr) -> bool {
         let mut copy = other.clone();
         give_fresh_ids(&mut copy);
         self == &copy
     }
 
+    /// Like [`Expr::eq_ignoring_ids`] but asserts
+    /// that they are equal with a good error message.
     pub fn assert_eq_ignoring_ids(&self, other: &Expr) {
         let mut copy = other.clone();
         give_fresh_ids(&mut copy);

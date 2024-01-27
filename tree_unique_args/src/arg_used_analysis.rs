@@ -3,7 +3,7 @@ use strum::IntoEnumIterator;
 
 fn arg_used_rule_for_ctor(ctor: Constructor) -> Option<String> {
     if ctor == Constructor::Arg {
-        return Some(format!(
+        return Some(
             "
             (rule (
                 (ExprUsesArgs-demand e)
@@ -12,7 +12,8 @@ fn arg_used_rule_for_ctor(ctor: Constructor) -> Option<String> {
                 (set (ExprUsesArgs e) (set-of i))
             )
             :ruleset always-run)"
-        ));
+                .to_string(),
+        );
     }
 
     let children_queries = ctor

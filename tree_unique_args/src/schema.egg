@@ -1,3 +1,7 @@
+;; container definitions
+
+(sort I64Set (Set i64))
+
 ; We could generate this from ir.rs, this manual version is just easier reference.
 
 (sort IdSort)

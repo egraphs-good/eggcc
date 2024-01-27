@@ -1,3 +1,4 @@
+pub(crate) mod arg_used_analysis;
 pub mod ast;
 pub(crate) mod body_contains;
 pub(crate) mod conditional_invariant_code_motion;
@@ -137,6 +138,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &is_valid::rules().join("\n"),
             &purity_analysis::purity_analysis_rules().join("\n"),
             &body_contains::rules().join("\n"),
+            &arg_used_analysis::arg_used_analysis_rules().join("\n"),
             &subst::subst_rules().join("\n"),
             &deep_copy::deep_copy_rules().join("\n"),
             include_str!("sugar.egg"),

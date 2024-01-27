@@ -1,19 +1,34 @@
 (ruleset let-inline)
 
 ;; To implement
-;;   ExprIsNontrivial
 ;;   arg-used-Expr-count
-;;   arg-used-Expr
+;;   arg-used-Expr <== easy
 ;;   MapArgOverVec
 ;;   set->vec
 ;;   BuildSubstMapFrom
 ;;   SubsetOperandMap
 
+(relation ExprUsesArgs-demand (Expr))
+(rule (
+    (= expr (Let id (All inp-ord inp-exprs) out))
+    (= inp (ListExpr-ith inp-exprs ith))
+    (ExprIsValid inp)
+    (ExprIsPure inp)
+) (
+    (arg-used-Expr-demand inp)
+))
+
+(function ExprUsesArgs (Expr) I64Set :merge (set-union old new))
+(rule (
+    (BodyContainsExpr body (Get (Arg id) i))
+) (
+    (set (arg-used-Expr e) (set-of i))
+))
 
 (rule (
     (= expr (Let id (All inp-ord inp-exprs) out))
     (= inp (ListExpr-ith inp-exprs ith))
-    (= (ExprIsNontrivial inp) true)
+    (>= (Expr-size inp) 3) ;; so that `inp` involves at least some binary operation
     (ExprIsPure inp)
 
     ;; NB: arg-used-count might undercount 

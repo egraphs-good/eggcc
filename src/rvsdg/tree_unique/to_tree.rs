@@ -7,18 +7,20 @@
 //! These shared nodes need to be let-bound so that they are only
 //! computed once in the tree encoded
 //! program.
+use std::iter;
+
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 #[cfg(test)]
-use tree_unique_args::ast::{lessthan, parallel, program, sequence, tloop};
+use tree_unique_args::ast::{program, sequence};
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_unique_args::{
     ast::{
-        add, arg, concat, function, get, getarg, num, print, program_vec, sequence_vec, tfalse,
-        tlet, ttrue,
+        add, arg, concat, function, get, getarg, lessthan, num, parallel, parallel_vec, print,
+        program_vec, sequence_vec, tfalse, tlet, tloop, ttrue,
     },
     Expr,
 };
@@ -60,36 +62,37 @@ impl<'a> RegionTranslator<'a> {
         res
     }
 
-    /// Build a translator and translate
-    /// the operands to the tree encoding.
-    /// Produces a tree-encoded term that evaluates
-    /// to a tuple containing results.
-    fn translate(num_args: usize, nodes: &'a Vec<RvsdgBody>, results: Vec<Operand>) -> Expr {
-        let mut translator = RegionTranslator {
+    fn new(num_args: usize, nodes: &'a Vec<RvsdgBody>) -> RegionTranslator {
+        RegionTranslator {
             num_args,
             bindings: Vec::new(),
             index_of: HashMap::new(),
             nodes,
-        };
-
-        let mut result_indices = Vec::new();
-        for result in results {
-            result_indices.push(translator.translate_operand(result));
         }
+    }
 
-        let mut expr = sequence_vec(result_indices);
+    /// Build a translator and translate
+    /// the operands to the tree encoding.
+    /// Produces a tree-encoded term that evaluates
+    /// to a tuple containing results.
+    fn build_translation(&self, inner: Expr) -> Expr {
+        let mut expr = inner;
 
-        for binding in translator.bindings.into_iter().rev() {
-            expr = cbind(binding, expr);
+        for binding in self.bindings.iter().rev() {
+            expr = cbind(binding.clone(), expr);
         }
         expr
     }
 
+    /// Returns a pure expression (e.g. `getarg(0)`) that
+    /// returns the value for this operand.
+    /// The value of the operand is let-bound
+    /// and the expression refers to it.
     fn translate_operand(&mut self, operand: Operand) -> Expr {
         match operand {
             Operand::Arg(index) => getarg(index),
             Operand::Id(id) => getarg(self.translate_node(id)),
-            Operand::Project(id, p_index) => {
+            Operand::Project(p_index, id) => {
                 let index = self.translate_node(id);
                 get(getarg(index), p_index)
             }
@@ -114,7 +117,22 @@ impl<'a> RegionTranslator<'a> {
                     inputs,
                     outputs,
                 } => {
-                    let pred_expr = self.translate_operand(pred);
+                    let mut translated_inputs = vec![];
+                    // for loop instead of iterator because of lifetimes
+                    for input in inputs {
+                        translated_inputs.push(self.translate_operand(*input));
+                    }
+
+                    let mut sub_translator = RegionTranslator::new(inputs.len(), self.nodes);
+                    let pred_translated = sub_translator.translate_operand(*pred);
+                    let outputs_translated =
+                        outputs.iter().map(|o| sub_translator.translate_operand(*o));
+                    let pred_and_outputs =
+                        parallel!(pred_translated, parallel_vec(outputs_translated.collect()));
+                    let loop_translated = sub_translator.build_translation(pred_and_outputs);
+
+                    let loop_expr = tloop(parallel_vec(translated_inputs), loop_translated);
+                    self.add_binding(loop_expr, id)
                 }
             }
         }
@@ -131,6 +149,7 @@ impl<'a> RegionTranslator<'a> {
                     .collect::<Vec<_>>();
                 let expr = match (op, children.as_slice()) {
                     (ValueOps::Add, [a, b]) => add(a.clone(), b.clone()),
+                    (ValueOps::Lt, [a, b]) => lessthan(a.clone(), b.clone()),
                     _ => todo!("handle other ops"),
                 };
                 self.add_binding(expr, id)
@@ -171,11 +190,14 @@ impl RvsdgFunction {
     /// In the inner-most scope, the value of
     /// all nodes is available.
     pub fn to_tree_encoding(&self) -> Expr {
-        function(RegionTranslator::translate(
-            self.args.len(),
-            &self.nodes,
-            self.results.iter().map(|r| r.1).collect(),
-        ))
+        let mut translator = RegionTranslator::new(self.args.len(), &self.nodes);
+        let translated_results = self
+            .results
+            .iter()
+            .map(|r| translator.translate_operand(r.1))
+            .collect::<Vec<_>>();
+
+        translator.build_translation(parallel_vec(translated_results))
     }
 }
 
@@ -185,10 +207,10 @@ fn translate_loop() {
 @main {
     .entry:
         i: int = const 0;
-        jmp .loop;
     .loop:
         max: int = const 10;
-        i: int = add i 1;
+        one: int = const 1;
+        i: int = add i one;
         cond: bool = lt i max;
         br cond .loop .exit;
     .exit:
@@ -198,6 +220,7 @@ fn translate_loop() {
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    eprintln!("{}", rvsdg.to_svg());
 
     rvsdg
         .to_tree_encoding()
@@ -207,21 +230,24 @@ fn translate_loop() {
                 tloop(
                     parallel!(getarg(0), getarg(1)),
                     cbind(
-                        num(10), // [(), i, 10]
+                        num(1), // [(), i, 1]
                         cbind(
-                            num(1), // [(), i, 10, 1]
+                            add(getarg(1), getarg(2)), // [(), i, 1, i+1]
                             cbind(
-                                add(getarg(1), getarg(3)), // [(), i, 10, 1, i+1]
+                                num(10), // [(), i, 1, i+1, 10]
                                 cbind(
-                                    lessthan(getarg(4), getarg(2)), // [(), i, 10, 1, i+1, i<10]
-                                    parallel!(getarg(5), parallel!(getarg(0), getarg(5)))
+                                    lessthan(getarg(3), getarg(4)), // [(), i, 1, i+1, 10, i<10]
+                                    parallel!(getarg(5), parallel!(getarg(0), getarg(3)))
                                 )
                             )
                         )
                     )
                 ),
-                get(getarg(1), 1)
-            ), // [(), 0, [() i]]
+                cbind(
+                    print(get(getarg(2), 1)), // [(), 0, [() i]]
+                    parallel!(getarg(3))
+                )
+            ),
         )));
 }
 

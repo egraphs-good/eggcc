@@ -41,7 +41,7 @@
 (datatype Order (Parallel) (Sequential))
 
 ; Perform a list of operations. Only way to create a tuple!
-(function All (Order ListExpr) Expr)
+(function All (IdSort Order ListExpr) Expr)
 
 ; Switch on a list of lazily-evaluated branches. Doesn't create context
 ;                 pred branches chosen

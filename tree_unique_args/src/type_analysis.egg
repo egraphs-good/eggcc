@@ -5,7 +5,6 @@
 (datatype Type
   (IntT)
   (BoolT)
-  (UnitT)
   (FuncT Type Type)
   (TupleT TypeList)
 )
@@ -35,10 +34,6 @@
 
 (rule ((Boolean id b))
       ((HasType (Boolean id b) (BoolT)))
-      :ruleset type-analysis)
-
-(rule ((UnitExpr id))
-      ((HasType (UnitExpr id) (UnitT)))
       :ruleset type-analysis)
 
 ; Pure Op Compute
@@ -113,7 +108,7 @@
 
 ; Effectful Ops
 (rule ((Print e))
-      ((HasType (Print e) (UnitT)))
+      ((HasType (Print e) (TupleT (TNil))))
       :ruleset type-analysis)
 ; TODO: Read and Write (requires type annotations)
 
@@ -156,20 +151,20 @@
       :ruleset type-analysis)
 
 ; Sequencing
-(rule ((All ord (Cons hd tl)))
-      ((All ord tl))                ; peel off a layer for type checking
+(rule ((All id ord (Cons hd tl)))
+      ((All id ord tl))                ; peel off a layer for type checking
       :ruleset type-analysis)
 ; base case: Nil
-(rule ((All ord (Nil)))
-      ((HasType (All ord (Nil)) (TupleT (TNil))))
+(rule ((All id ord (Nil)))
+      ((HasType (All id ord (Nil)) (TupleT (TNil))))
       :ruleset type-analysis)
 ; rec case
 (rule (
-       (All ord (Cons hd tl))
+       (All id ord (Cons hd tl))
        (HasType hd ty)
-       (HasType (All ord tl) (TupleT tylist))
+       (HasType (All id ord tl) (TupleT tylist))
       )
-      ((HasType (All ord (Cons hd tl)) (TupleT (TCons ty tylist))))
+      ((HasType (All id ord (Cons hd tl)) (TupleT (TCons ty tylist))))
       :ruleset type-analysis)
 
 ; If an expr has two different types, panic

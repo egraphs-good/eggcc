@@ -11,7 +11,7 @@
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 #[cfg(test)]
-use tree_unique_args::ast::{program, sequence};
+use tree_unique_args::ast::program;
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{Literal, ValueOps};
@@ -303,7 +303,7 @@ fn simple_translation() {
             num(1),
             cbind(
                 add(get(arg(), 1), get(arg(), 1)),
-                sequence!(get(arg(), 2), get(arg(), 0)), // returns res and print state (unit)
+                parallel!(get(arg(), 2), get(arg(), 0)), // returns res and print state (unit)
             ),
         ))));
 }
@@ -334,7 +334,7 @@ fn two_print_translation() {
                     add(get(arg(), 2), get(arg(), 1)),
                     cbind(
                         print(get(arg(), 3)),
-                        cbind(print(get(arg(), 1)), sequence!(get(arg(), 5))),
+                        cbind(print(get(arg(), 1)), parallel!(get(arg(), 5))),
                     ),
                 ),
             ),

@@ -61,6 +61,8 @@ impl<'a> RegionTranslator<'a> {
         res
     }
 
+    /// Make a new translator for a region with
+    /// num_args and the given nodes.
     fn new(num_args: usize, nodes: &'a Vec<RvsdgBody>) -> RegionTranslator {
         RegionTranslator {
             num_args,
@@ -70,10 +72,8 @@ impl<'a> RegionTranslator<'a> {
         }
     }
 
-    /// Build a translator and translate
-    /// the operands to the tree encoding.
-    /// Produces a tree-encoded term that evaluates
-    /// to a tuple containing results.
+    /// Wrap the given expression in all the
+    /// bindings that have been generated.
     fn build_translation(&self, inner: Expr) -> Expr {
         let mut expr = inner;
 

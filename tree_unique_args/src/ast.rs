@@ -63,7 +63,7 @@ fn give_fresh_ids_helper(expr: &mut Expr, current_id: i64, fresh_id: &mut i64) {
 /// a vec for program
 #[macro_export]
 macro_rules! program {
-    ($($x:expr),*) => (program_vec(vec![$($x),*]))
+    ($($x:expr),*) => ($crate::ast::program_vec(vec![$($x),*]))
 }
 pub use program;
 
@@ -132,15 +132,16 @@ pub fn print(a: Expr) -> Expr {
     Print(Box::new(a))
 }
 
-#[macro_export]
-macro_rules! sequence {
-    ($($x:expr),*) => (sequence_vec(vec![$($x),*]))
-}
-pub use sequence;
-
 pub fn sequence_vec(args: Vec<Expr>) -> Expr {
     All(Order::Sequential, args)
 }
+
+#[macro_export]
+macro_rules! sequence {
+    // use crate::ast::sequence_vec to resolve import errors
+    ($($x:expr),*) => ($crate::ast::sequence_vec(vec![$($x),*]))
+}
+pub use sequence;
 
 pub fn parallel_vec(args: Vec<Expr>) -> Expr {
     All(Order::Parallel, args)
@@ -148,13 +149,13 @@ pub fn parallel_vec(args: Vec<Expr>) -> Expr {
 
 #[macro_export]
 macro_rules! parallel {
-    ($($x:expr),*) => (parallel_vec(vec![$($x),*]))
+    ($($x:expr),*) => ($crate::ast::parallel_vec(vec![$($x),*]))
 }
 pub use parallel;
 
 #[macro_export]
 macro_rules! switch {
-    ($arg:expr, $($x:expr),*) => (switch_vec($arg, vec![$($x),*]))
+    ($arg:expr, $($x:expr),*) => ($crate::ast::switch_vec($arg, vec![$($x),*]))
 }
 pub use switch;
 

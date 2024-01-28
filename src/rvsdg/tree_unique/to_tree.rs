@@ -7,7 +7,6 @@
 //! These shared nodes need to be let-bound so that they are only
 //! computed once in the tree encoded
 //! program.
-use std::iter;
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
@@ -20,7 +19,7 @@ use hashbrown::HashMap;
 use tree_unique_args::{
     ast::{
         add, arg, concat, function, get, getarg, lessthan, num, parallel, parallel_vec, print,
-        program_vec, sequence_vec, tfalse, tlet, tloop, ttrue,
+        program_vec, tfalse, tlet, tloop, ttrue,
     },
     Expr,
 };
@@ -107,11 +106,7 @@ impl<'a> RegionTranslator<'a> {
             let node = &self.nodes[id];
             match node {
                 RvsdgBody::BasicOp(expr) => self.translate_basic_expr(expr.clone(), id),
-                RvsdgBody::Gamma {
-                    pred,
-                    inputs,
-                    outputs,
-                } => todo!("Doesn't handle gamma yet"),
+                RvsdgBody::Gamma { .. } => todo!("Doesn't handle gamma yet"),
                 RvsdgBody::Theta {
                     pred,
                     inputs,
@@ -197,8 +192,46 @@ impl RvsdgFunction {
             .map(|r| translator.translate_operand(r.1))
             .collect::<Vec<_>>();
 
-        translator.build_translation(parallel_vec(translated_results))
+        function(translator.build_translation(parallel_vec(translated_results)))
     }
+}
+
+#[test]
+fn translate_simple_loop() {
+    const PROGRAM: &str = r#"
+@myfunc(): int {
+    .entry:
+        one: int = const 1;
+        two: int = const 2;
+    .loop:
+        cond: bool = lt one two;
+        br cond .loop .exit;
+    .exit:
+        ret one;
+}
+"#;
+    let prog = parse_from_string(PROGRAM);
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+
+    rvsdg
+        .to_tree_encoding()
+        .assert_eq_ignoring_ids(&program!(function(cbind(
+            num(1), // [(), 1]
+            cbind(
+                num(2), // [(), 1, 2]
+                cbind(
+                    tloop(
+                        parallel!(getarg(0), getarg(1), getarg(2)), // [(), 1, 2]
+                        cbind(
+                            lessthan(getarg(1), getarg(2)), // [(), 1, 2, 1<2]
+                            parallel!(getarg(3), parallel!(getarg(0), getarg(1), getarg(2)))
+                        )
+                    ), // [(), 1, 2, [(), 1, 2]]
+                    parallel!(get(getarg(3), 1), get(getarg(3), 0)) // return [1, ()]
+                ),
+            )
+        ))));
 }
 
 #[test]
@@ -220,11 +253,10 @@ fn translate_loop() {
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
-    eprintln!("{}", rvsdg.to_svg());
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(cbind(
+        .assert_eq_ignoring_ids(&program!(function(cbind(
             num(0), // [(), 0]
             cbind(
                 tloop(
@@ -248,7 +280,7 @@ fn translate_loop() {
                     parallel!(getarg(3))
                 )
             ),
-        )));
+        ))));
 }
 
 #[test]

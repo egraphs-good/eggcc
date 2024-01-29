@@ -1,0 +1,81 @@
+; We could generate this from ir.rs, this manual version is just easier reference.
+
+(sort IdSort)
+(function Id (i64) IdSort)
+(function Shared () IdSort)
+(let shared (Shared))
+(datatype Expr)
+(datatype ListExpr (Cons Expr ListExpr) (Nil))
+
+; ==========================
+; Pure operators
+; ==========================
+;              id     val
+(function Num (IdSort i64) Expr)
+;                  id     val
+(function Boolean (IdSort bool) Expr)
+;                   id
+(function UnitExpr (IdSort) Expr) ; Unit is already an egglog sort
+(function Add (Expr Expr) Expr)
+(function Sub (Expr Expr) Expr)
+(function Mul (Expr Expr) Expr)
+(function LessThan (Expr Expr) Expr)
+(function And (Expr Expr) Expr)
+(function Or (Expr Expr) Expr)
+(function Not (Expr) Expr)
+(function Get (Expr i64) Expr) ; gets from a tuple. static index
+
+; ==========================
+; Effectful operators
+; ==========================
+
+;                value      unit
+(function Print (Expr)      Expr)
+;                addr       value
+(function Read  (Expr)      Expr)
+;                addr value unit
+(function Write (Expr Expr) Expr)
+
+; ==========================
+; Control flow operators
+; ==========================
+
+(datatype Order (Parallel) (Sequential))
+
+; Perform a list of operations. Only way to create a tuple!
+(function All (IdSort Order ListExpr) Expr)
+
+; Switch on a list of lazily-evaluated branches. Doesn't create context
+;                 pred branches chosen
+(function Switch (Expr ListExpr)    Expr)
+(function Branch (IdSort Expr) Expr)
+
+; ==========================
+; Regions
+; ==========================
+
+; pred and output are evaluated inside the loop's context
+; input and output may or may not be a tuples. pred must be boolean.
+; 
+;               id     input (pred, output) tuple
+(function Loop (IdSort Expr  Expr)  Expr)
+
+;              id     input output
+(function Let (IdSort Expr  Expr) Expr)
+
+; Arg gets the input of a region or the parameter of a function
+(function Arg (IdSort) Expr)
+
+; ==========================
+; Functions
+; ==========================
+
+;                   f      output
+(function Function (IdSort Expr) Expr)
+
+;               f      arg
+(function Call (IdSort Expr) Expr)
+
+;; Rulesets
+(ruleset always-run)
+(ruleset error-checking)

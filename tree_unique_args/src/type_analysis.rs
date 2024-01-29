@@ -255,3 +255,38 @@ fn func() -> Result<(), egglog::Error> {
     );
     crate::run_test(build, &check)
 }
+
+#[test]
+#[should_panic]
+fn func_input_type() {
+    let build = "
+    (let ctx (Id 0))
+    (let f-id (Id 1))
+    (let f (Function f-id (Add (Arg f-id) (Num f-id 2)) (IntT) (IntT)))
+    (let c (Call f-id (Boolean ctx true)))
+  ";
+    let check = format!(
+        "
+    {SCHED}
+    "
+    );
+
+    let _ = crate::run_test(build, &check);
+}
+
+#[test]
+#[should_panic]
+fn func_output_type() {
+    let build = "
+    (let ctx (Id 0))
+    (let f-id (Id 1))
+    (let f (Function f-id (Add (Arg f-id) (Num f-id 2)) (IntT) (BoolT)))
+  ";
+    let check = format!(
+        "
+    {SCHED}
+    "
+    );
+
+    let _ = crate::run_test(build, &check);
+}

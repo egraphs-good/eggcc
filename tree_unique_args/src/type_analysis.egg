@@ -226,10 +226,27 @@
       :ruleset type-analysis)
 
 (rule (
+       (= f (Function id body in-ty out-ty))
+       (HasType body ty)
+       (!= ty out-ty)
+      )
+      ((panic "Function body had wrong type :("))
+      :ruleset type-analysis)
+
+(rule (
        (= c (Call f-id arg))
        (= f (Function f-id body in-ty out-ty))
        (HasType f (FuncT in-ty out-ty))
        (HasType arg in-ty)
       )
       ((HasType c out-ty))
+      :ruleset type-analysis)
+
+(rule (
+       (= c (Call f-id arg))
+       (=  f (Function f-id body in-ty out-ty))
+       (HasType arg ty)
+       (!= ty in-ty)
+      )
+      ((panic "Function call had wrong argument type :("))
       :ruleset type-analysis)

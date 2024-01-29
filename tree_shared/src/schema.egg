@@ -44,8 +44,8 @@
 
 ;                value      unit
 (function Print (Expr)      Expr)
-;                addr       value
-(function Read  (Expr)      Expr)
+;                addr type      value
+(function Read  (Expr Type)      Expr)
 ;                addr value unit
 (function Write (Expr Expr) Expr)
 
@@ -83,11 +83,12 @@
 ; Functions
 ; ==========================
 
-;                   f      output
-(function Function (IdSort Expr) Expr)
+;                   f      output   input ty    output ty
+(function Function (IdSort Expr     Type        Type)      Expr)
 
-;               f      arg
-(function Call (IdSort Expr) Expr)
+;               referencing id   name of func  arg
+(function Call (IdSort           String        Expr) Expr)
+
 
 ;; Rulesets
 (ruleset always-run)

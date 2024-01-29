@@ -1,54 +1,27 @@
 use std::iter;
 use strum::IntoEnumIterator;
+use crate::ir::{Constructor, Purpose};
 
-use crate::ir::{Constructor, Purpose, Sort};
-
-fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
+fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
     let br = "\n      ";
     let ruleset = " :ruleset always-run";
 
     match ctor {
-        Constructor::Cons | Constructor::Nil | Constructor::Arg | Constructor::UnitExpr => None,
-        Constructor::Call => Some(format!(
-            "(rule ((find-inv-Expr loop expr) \
-            {br} (= expr (Call f arg))) \
-            {br}((find-inv-Expr loop arg)){ruleset})"
-        )),
         Constructor::Get => Some(format!(
-            "(rule ((find-inv-Expr loop expr) \
-            {br} (= expr (Get tup i))) \
-            {br}((find-inv-Expr loop tup)){ruleset})\n \
-            (rule ((find-inv-Expr loop expr) \
+            "(rule ((BodyContainsExpr loop expr) \
             {br} (= expr (Get (Arg id) i)) \
             {br} (arg-inv loop i)) \
             {br}((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
-        _ => {
+        Constructor::Num | Constructor::Boolean | Constructor::UnitExpr => {
             let ctor_pattern = ctor.construct(|field| field.var());
-
-            let find_inv_ctor = ctor
-                .filter_map_fields(|field| match field.purpose {
-                    Purpose::Static(Sort::I64) | Purpose::Static(Sort::Bool) => {
-                        Some("(set (is-inv-Expr loop expr) true)".to_string())
-                    }
-                    Purpose::Static(_)
-                    | Purpose::CapturingId
-                    | Purpose::CapturedExpr
-                    | Purpose::ReferencingId => None,
-                    Purpose::SubExpr | Purpose::SubListExpr => {
-                        let var = field.var();
-                        let sort = field.sort().name();
-                        Some(format!("(find-inv-{sort} loop {var})"))
-                    }
-                })
-                .join(" ");
-
             Some(format!(
-                "(rule ((find-inv-Expr loop expr) \
+                "(rule ((BodyContainsExpr loop expr) \
                 {br} (= expr {ctor_pattern})) \
-                {br}({find_inv_ctor}){ruleset})"
+                {br}((set (is-inv-Expr loop expr) true)){ruleset})"
             ))
         }
+        _ => None,
     }
 }
 
@@ -59,21 +32,18 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
 
     match ctor {
         // list handled in loop_invariant.egg
+        // base cases are skipped
         // print, read, write are not invariant
         // assume Arg as whole is not invariant
         Constructor::Cons
         | Constructor::Nil
         | Constructor::UnitExpr
+        | Constructor::Num
+        | Constructor::Boolean
         | Constructor::Print
         | Constructor::Read
         | Constructor::Write
         | Constructor::Arg => None,
-        Constructor::Get => Some(format!(
-            "(rule ((find-inv-Expr loop expr) \
-            {br} (= expr (Get tup i)) \
-            {br} (= true (is-inv-Expr loop tup))) \
-            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
-        )),
         _ => {
             let is_inv_ctor = ctor
                 .filter_map_fields(|field| match field.purpose {
@@ -95,7 +65,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                 _ => String::new(),
             };
             Some(format!(
-                "(rule ((find-inv-Expr loop expr) \
+                "(rule ((BodyContainsExpr loop expr) \
                 {br} (= expr {ctor_pattern}) \
                 {br} {is_inv_ctor} {is_pure}) \
                 {br}((set (is-inv-Expr loop expr) true)){ruleset})"
@@ -106,7 +76,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
 
 pub(crate) fn rules() -> Vec<String> {
     iter::once(include_str!("loop_invariant.egg").to_string())
-        .chain(Constructor::iter().filter_map(find_invariant_rule_for_ctor))
+        .chain(Constructor::iter().filter_map(is_inv_base_case_for_ctor))
         .chain(Constructor::iter().filter_map(is_invariant_rule_for_ctor))
         .collect::<Vec<_>>()
 }

@@ -3,9 +3,12 @@
 use std::collections::HashMap;
 
 use crate::{
-    Expr,
-    Id::{self, Shared, Unique},
-    Order, Type, TypeError, Value,
+    expr::Expr,
+    expr::{
+        Id::{self, Shared, Unique},
+        Type, Value,
+    },
+    expr::{Order, TypeError},
 };
 
 pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {

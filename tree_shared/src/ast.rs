@@ -1,4 +1,6 @@
-use crate::{Expr, Expr::*, Id, Id::Shared, Id::Unique, Order};
+//! Provides a set of functions for constructing `[Expr]`s.
+
+use crate::{expr::Expr, expr::Expr::*, expr::Id, expr::Id::Shared, expr::Id::Unique, expr::Order};
 
 pub fn give_fresh_ids(expr: &mut Expr) {
     let mut id = 1;

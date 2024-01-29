@@ -9,6 +9,7 @@ pub(crate) enum Sort {
     IdSort,
     I64,
     Bool,
+    Type,
 }
 
 impl Sort {
@@ -20,6 +21,7 @@ impl Sort {
             Sort::IdSort => "IdSort",
             Sort::I64 => "i64",
             Sort::Bool => "bool",
+            Sort::Type => "Type",
         }
     }
 }
@@ -161,7 +163,7 @@ impl Constructor {
             Constructor::Not => vec![f(SubExpr, "x")],
             Constructor::Get => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
             Constructor::Print => vec![f(SubExpr, "printee")],
-            Constructor::Read => vec![f(SubExpr, "addr")],
+            Constructor::Read => vec![f(SubExpr, "addr"), f(Static(Sort::Type), "type")],
             Constructor::Write => vec![f(SubExpr, "addr"), f(SubExpr, "data")],
             Constructor::All => vec![
                 f(ReferencingId, "id"),

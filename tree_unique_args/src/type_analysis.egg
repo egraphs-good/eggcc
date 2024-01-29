@@ -1,30 +1,5 @@
 (ruleset type-analysis)
 
-(sort TypeList)
-
-(datatype Type
-  (IntT)
-  (BoolT)
-  (FuncT Type Type)
-  (TupleT TypeList)
-)
-
-(function TNil () TypeList)
-(function TCons (Type TypeList) TypeList)
-
-(function TypeList-length (TypeList) i64)
-(function TypeList-ith (TypeList i64) Type :unextractable)
-(function TypeList-suffix (TypeList i64) TypeList :unextractable)
-
-(rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset type-analysis)
-
-(rule ((= (TypeList-suffix top n) (TCons hd tl)))
-    ((union (TypeList-ith top n) hd)
-     (union (TypeList-suffix top (+ n 1)) tl)) :ruleset type-analysis)
-
-(rule ((= (TypeList-suffix list n) (TNil)))
-    ((set (TypeList-length list) n)) :ruleset type-analysis)
-
 (relation HasType (Expr Type))
 
 ; Primitives

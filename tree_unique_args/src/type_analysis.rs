@@ -11,8 +11,6 @@ fn simple_types() -> Result<(), egglog::Error> {
         (let z (And x (Or y y)))
         ";
     let check = "
-    (run-schedule (saturate type-analysis))
-
     (check (HasType n (IntT)))
     (check (HasType m (IntT)))
     (check (HasType s (IntT)))
@@ -36,8 +34,6 @@ fn switch_boolean() -> Result<(), egglog::Error> {
     (Switch b1 (Cons n1 (Cons n2 (Cons n1 (Nil))))))
   ";
     let check = "
-  (run-schedule (saturate type-analysis))
-
   (check (HasType switch (IntT)))
   (fail (check (HasType wrong_switch ty))) ; should not be able to type a boolean swith with 3 cases
   ";
@@ -60,8 +56,6 @@ fn switch_int() -> Result<(), egglog::Error> {
     (Switch (Sub n2 n2) (Cons (Print n1) (Cons (Print n4) (Cons (Print n3) (Nil))))))  
   ";
     let check = "
-  (run-schedule (saturate type-analysis))
-
   (check (HasType s1 (IntT)))
   (check (HasType s2 (BoolT)))
   (check (HasType s3 (TupleT (TNil))))
@@ -90,7 +84,6 @@ fn tuple() -> Result<(), egglog::Error> {
   (let get3 (Get (Get tup4 1) 1))
   ";
     let check = "
-  (run-schedule (saturate type-analysis))
   (check (HasType tup1 (TupleT (TNil))))
   (check (HasType tup2 (TupleT (TCons (BoolT) (TNil)))))
   (check (HasType tup3 (TupleT (TCons (BoolT) (TCons (IntT) (TNil))))))
@@ -122,7 +115,6 @@ fn lets() -> Result<(), egglog::Error> {
                             (Add (Get (Arg inner) 0) (Get (Arg inner) 1)))))
   ";
     let check = "
-    (run-schedule (saturate type-analysis))
     (check (HasType l (IntT)))
     (check (HasType nested (IntT)))
   ";
@@ -142,7 +134,6 @@ fn loops() -> Result<(), egglog::Error> {
                      (Nil))))))
   ";
     let check = "
-  (run-schedule (saturate type-analysis))
   (check (HasType l (IntT)))
   ";
     crate::run_test(build, check)
@@ -159,8 +150,7 @@ fn loop_pred_boolean() {
         (Cons (Add (Num loop-id 2) (Num loop-id 3))
               (Cons (Switch (Boolean loop-id true)
                             (Cons (Num loop-id 4) (Cons (Num loop-id 5) (Nil))))
-                    (Nil))))))
-  (run-schedule (saturate type-analysis))";
+                    (Nil))))))";
     let check = "";
 
     let _ = crate::run_test(build, check);
@@ -172,8 +162,7 @@ fn loop_args1() {
     let build = "
   (let ctx (Id 0))
   (let loop-id (Id 1))
-  (let l (Loop loop-id (Num ctx 1) (All loop-id (Sequential) (Nil))))
-  (run-schedule (saturate type-analysis))";
+  (let l (Loop loop-id (Num ctx 1) (All loop-id (Sequential) (Nil))))";
     let check = "";
 
     let _ = crate::run_test(build, check);
@@ -190,8 +179,7 @@ fn loop_args3() {
         (Cons (LessThan (Num loop-id 2) (Num loop-id 3))
               (Cons (Switch (Boolean loop-id true)
                             (Cons (Num loop-id 4) (Cons (Num loop-id 5) (Nil))))
-                    (Cons (Num loop-id 1) (Nil)))))))
-  (run-schedule (saturate type-analysis))";
+                    (Cons (Num loop-id 1) (Nil)))))))";
     let check = "";
 
     let _ = crate::run_test(build, check);

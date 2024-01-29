@@ -4,6 +4,7 @@
   (repeat 6
     (saturate always-run)
     (saturate error-checking) ; In the future, this will be "debug mode" only
+    (saturate type-analysis)
     simple-pure
     conditional-invariant-code-motion
     switch-rewrites

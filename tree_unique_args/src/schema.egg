@@ -5,6 +5,19 @@
 (datatype Expr)
 (datatype ListExpr (Cons Expr ListExpr) (Nil))
 
+(sort TypeList)
+
+(datatype Type
+  (IntT)
+  (BoolT)
+  (FuncT Type Type)
+  (TupleT TypeList)
+  (UnitT)
+)
+
+(function TNil () TypeList)
+(function TCons (Type TypeList) TypeList)
+
 ; ==========================
 ; Pure operators
 ; ==========================
@@ -29,8 +42,8 @@
 
 ;                value      unit
 (function Print (Expr)      Expr)
-;                addr       value
-(function Read  (Expr)      Expr)
+;                addr type      value
+(function Read  (Expr Type)      Expr)
 ;                addr value unit
 (function Write (Expr Expr) Expr)
 

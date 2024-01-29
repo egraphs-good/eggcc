@@ -1,4 +1,7 @@
-use std::iter;
+use std::{
+    fmt::{Display, Formatter},
+    iter,
+};
 use strum_macros::EnumIter;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -115,6 +118,12 @@ impl Field {
 
     pub(crate) fn var(&self) -> String {
         format!("_{name}", name = self.name)
+    }
+}
+
+impl Display for Constructor {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
     }
 }
 

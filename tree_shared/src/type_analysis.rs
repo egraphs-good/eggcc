@@ -163,7 +163,7 @@ fn loop_pred_boolean() {
   (run-schedule (saturate type-analysis))";
     let check = "";
 
-    let _ = crate::run_test(build, check);
+    crate::run_test(build, check).unwrap()
 }
 
 #[test]
@@ -176,7 +176,7 @@ fn loop_args1() {
   (run-schedule (saturate type-analysis))";
     let check = "";
 
-    let _ = crate::run_test(build, check);
+    crate::run_test(build, check).unwrap()
 }
 
 #[test]
@@ -194,5 +194,5 @@ fn loop_args3() {
   (run-schedule (saturate type-analysis))";
     let check = "";
 
-    let _ = crate::run_test(build, check);
+    crate::run_test(build, check).unwrap()
 }

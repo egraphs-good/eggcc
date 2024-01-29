@@ -122,7 +122,7 @@ fn test_id_analysis_no_invalid_entry() {
     let build = "(let some-expr (Not (Boolean (Id (i64-fresh!)) false))";
     let check = "(fail (check (ExprHasRefId some-expr any-id)))";
 
-    let _ = crate::run_test(build, check);
+    crate::run_test(build, check).unwrap()
 }
 
 // Create an id conflict for an Expr on purpose and check that we catch it
@@ -136,7 +136,7 @@ fn test_id_analysis_expr_id_conflict_panics_if_valid() {
         (ExprIsValid conflict-expr)";
     let check = "";
 
-    let _ = crate::run_test(build, check);
+    crate::run_test(build, check).unwrap()
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn test_id_analysis_listexpr_id_conflict_panics() {
         (ListExprIsValid conflict-expr)";
     let check = "";
 
-    let _ = crate::run_test(build, check);
+    crate::run_test(build, check).unwrap()
 }
 
 #[test]
@@ -165,5 +165,5 @@ fn test_shared_unique_id_mix_panics() {
                 (Num id2 1)))
         (ExprIsValid conflict-expr)";
     let check = "";
-    let _ = crate::run_test(build, check);
+    crate::run_test(build, check).unwrap()
 }

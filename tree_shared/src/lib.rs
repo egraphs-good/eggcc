@@ -1,5 +1,6 @@
 pub mod ast;
 pub(crate) mod deep_copy;
+pub(crate) mod error_checking;
 pub(crate) mod id_analysis;
 pub mod interpreter;
 pub(crate) mod ir;
@@ -142,6 +143,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &deep_copy::deep_copy_rules().join("\n"),
             include_str!("sugar.egg"),
             &util::rules().join("\n"),
+            &error_checking::error_checking_rules().join("\n"),
             &id_analysis::id_analysis_rules().join("\n"),
             // optimizations
             include_str!("simple.egg"),

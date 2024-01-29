@@ -92,6 +92,8 @@ impl<'a> RegionTranslator<'a> {
             Operand::Arg(index) => getarg(index),
             Operand::Id(id) => getarg(self.translate_node(id)),
             Operand::Project(p_index, id) => {
+                // Translated region becomes a tuple in the environment.
+                // This is the index of that tuple.
                 let index = self.translate_node(id);
                 get(getarg(index), p_index)
             }
@@ -99,6 +101,8 @@ impl<'a> RegionTranslator<'a> {
     }
 
     /// Translate a node or return the index of the already-translated node.
+    /// For regions, translates the region and returns the index of the
+    /// tuple containing the results.
     fn translate_node(&mut self, id: Id) -> usize {
         if let Some(index) = self.index_of.get(&id) {
             *index
@@ -166,8 +170,10 @@ impl<'a> RegionTranslator<'a> {
             BasicExpr::Print(args) => {
                 assert!(args.len() == 2, "print should have 2 arguments");
                 let arg1 = self.translate_operand(args[0]);
-                // should be unit
+                // argument 2 should have value unit, since it is
+                // the print buffer value.
                 let _arg2 = self.translate_operand(args[1]);
+                // print outputs a new unit value
                 let expr = print(arg1);
                 self.add_binding(expr, id)
             }

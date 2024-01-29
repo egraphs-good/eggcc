@@ -24,7 +24,13 @@ fn rule_for_ctor(ctor: Constructor) -> Option<String> {
 
 pub(crate) fn rules() -> Vec<String> {
     ESort::iter()
-        .map(|sort| "(relation *IsValid (*))".replace('*', sort.name()))
+        .map(|sort| {
+            format!(
+                "
+(relation {sort}IsValid ({sort}))
+"
+            )
+        })
         .chain(Constructor::iter().filter_map(rule_for_ctor))
         .collect::<Vec<_>>()
 }

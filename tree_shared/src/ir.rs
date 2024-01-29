@@ -34,6 +34,12 @@ pub(crate) enum ESort {
     ListExpr,
 }
 
+impl Display for ESort {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
 impl ESort {
     pub(crate) fn to_sort(&self) -> Sort {
         match self {

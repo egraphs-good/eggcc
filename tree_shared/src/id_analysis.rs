@@ -43,14 +43,29 @@ pub(crate) fn id_analysis_rules() -> Vec<String> {
         .flat_map(|sort|
 
             // Declare relation for ref id
-            ["(relation *HasRefId (* IdSort))".replace('*', sort.name()),
+            [
+                format!("
+(relation {sort}HasRefId ({sort} IdSort))
 
-            // Error checking - each (list)expr should only have a single ref id
-            "(rule ((*HasRefId x id1)
-                (*HasRefId x id2)
-                (!= id1 id2))
-                ((panic \"Ref ids don't match\"))
-                :ruleset error-checking)".replace('*', sort.name())])
+(relation {sort}IsValidShared ({sort}))
+(relation {sort}IsValidUnique ({sort}))
+(rule (({sort}IsValid expr)
+       ({sort}HasRefId expr (Shared)))
+      (({sort}IsValidShared expr))
+        :ruleset always-run)
+(rule (({sort}IsValid expr)
+       ({sort}HasRefId expr (Id id)))
+      (({sort}IsValidUnique expr))
+        :ruleset always-run)
+
+;; Error checking - each (list)expr should only have a single ref id
+(rule (({sort}HasRefId x id1)
+       ({sort}HasRefId x id2)
+       (!= id1 id2))
+      ((panic \"Ref ids don't match\"))
+        :ruleset error-checking)
+            ")
+])
         .chain(Constructor::iter().map(id_analysis_rules_for_ctor))
         .collect::<Vec<_>>()
 }

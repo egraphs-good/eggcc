@@ -28,7 +28,7 @@ fn basic_ivt() -> Result {
         (let switch (Switch pred
                             (Pair (Print (Num loop-id 0))
                                   (Print (Num loop-id 1)))))
-        (let loop (Loop loop-id (Arg outer-id) (All (Sequential) (Pair pred switch))))
+        (let loop (Loop loop-id (Arg outer-id) (All loop-id (Sequential) (Pair pred switch))))
         (ExprIsValid loop)";
     let check = "
         (check (= loop
@@ -36,7 +36,7 @@ fn basic_ivt() -> Result {
             (LessThan (Arg outer-id) (Num outer-id 1))
             (Cons
                 (Loop new-id (Arg outer-id)
-                    (All (Sequential)
+                    (All new-id (Sequential)
                         (Cons (LessThan (Arg new-id) (Num new-id 1))
                         (Cons (Print (Num new-id 0)) (Nil)))))
                 (Cons (Print (Num outer-id 1)) (Nil))))))";

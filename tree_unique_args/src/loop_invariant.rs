@@ -1,6 +1,6 @@
+use crate::ir::{Constructor, Purpose};
 use std::iter;
 use strum::IntoEnumIterator;
-use crate::ir::{Constructor, Purpose};
 
 fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
     let br = "\n      ";
@@ -13,7 +13,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
             {br} (arg-inv loop i)) \
             {br}((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
-        Constructor::Num | Constructor::Boolean | Constructor::UnitExpr => {
+        Constructor::Num | Constructor::Boolean => {
             let ctor_pattern = ctor.construct(|field| field.var());
             Some(format!(
                 "(rule ((BodyContainsExpr loop expr) \
@@ -37,7 +37,6 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
         // assume Arg as whole is not invariant
         Constructor::Cons
         | Constructor::Nil
-        | Constructor::UnitExpr
         | Constructor::Num
         | Constructor::Boolean
         | Constructor::Print
@@ -88,12 +87,12 @@ fn loop_invariant_detection1() -> Result<(), egglog::Error> {
     (let id-outer (Id (i64-fresh!)))
     (let loop
         (Loop id1
-            (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 5)))
-            (All (Sequential) (Pair
+            (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 5)))
+            (All id1 (Sequential) (Pair
                 ; pred
                 (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
                 ; output
-                (All (Parallel) 
+                (All id1 (Parallel) 
                     (Pair
                         (Get (Arg id1) 0)
                         (Sub (Get (Arg id1) 1) (Add (Num id1 1) (Get (Arg id1) 0))) ))))))
@@ -129,16 +128,16 @@ fn loop_invariant_detection2() -> Result<(), egglog::Error> {
     
     (let loop
         (Loop id1
-            (All (Parallel) (list5 (Num id-outer 0)
+            (All id-outer (Parallel) (list5 (Num id-outer 0)
                                     (Num id-outer 1)
                                     (Num id-outer 2)
                                     (Num id-outer 3)
                                     (Num id-outer 4)))
-            (All (Sequential) (Pair
+            (All id1 (Sequential) (Pair
                 ; pred
                 (LessThan (Get (Arg id1) 0) (Get (Arg id1) 4))
                 ; output
-                (All (Parallel) 
+                (All id1 (Parallel) 
                     (list5
                         (Add (Get (Arg id1) 0) 
                             inv

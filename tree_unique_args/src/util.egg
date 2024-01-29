@@ -3,8 +3,8 @@
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (function Append (ListExpr Expr) ListExpr :unextractable)
 
-(rule ((All order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
 (rule ((Switch pred top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
+(rule ((All id order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
 
 (rule ((= (ListExpr-suffix top n) (Cons hd tl)))
     ((union (ListExpr-ith top n) hd)
@@ -23,7 +23,9 @@
 ;; get the ith output of a loop
 (function get-loop-outputs-ith (Expr i64) Expr :unextractable)
 (rule ((= loop (Loop id inputs pred-outputs))
-       (= pred-outputs (All ord1 pred-out-list))
-       (= (All ord2 outputs-list) (ListExpr-ith pred-out-list 1))
+       (= pred-outputs (All id1 ord1 pred-out-list))
+       (= (All id2 ord2 outputs-list) (ListExpr-ith pred-out-list 1))
        (= ith-outputs (ListExpr-ith outputs-list i)))
     ((union (get-loop-outputs-ith loop i) ith-outputs)) :ruleset always-run)
+(function Expr-size (Expr) i64 :merge (min old new))
+(function ListExpr-size (ListExpr) i64 :merge (min old new))

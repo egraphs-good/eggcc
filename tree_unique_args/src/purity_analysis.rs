@@ -6,8 +6,8 @@ use strum::IntoEnumIterator;
 fn is_pure(ctor: &Constructor) -> bool {
     use Constructor::*;
     match ctor {
-        Num | Boolean | UnitExpr | Add | Sub | Mul | LessThan | And | Or | Not | Get | All
-        | Switch | Loop | Let | Arg | Call | Cons | Nil => true,
+        Num | Boolean | Add | Sub | Mul | LessThan | And | Or | Not | Get | All | Switch | Loop
+        | Let | Arg | Call | Cons | Nil => true,
         Print | Read | Write => false,
     }
 }
@@ -67,26 +67,26 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
 (let id-outer (Id (i64-fresh!)))
 (let pure-loop
     (Loop id1
-        (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
-        (All (Sequential) (Pair
+        (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
+        (All id1 (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
-            (All (Parallel) (Pair
+            (All id1 (Parallel) (Pair
                 (Add (Get (Arg id1) 0) (Num id1 1))
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 
 (let id2 (Id (i64-fresh!)))
 (let impure-loop
     (Loop id2
-        (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
-        (All (Sequential) (Pair
+        (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
+        (All id2 (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id2) 0) (Get (Arg id2) 1))
             ; output
-            (IgnoreFirst
+            (IgnoreFirst id2
                 (Print (Num id2 1))
-                (All (Parallel) (Pair
+                (All id2 (Parallel) (Pair
                     (Add (Get (Arg id2) 0) (Num id2 1))
                     (Sub (Get (Arg id2) 1) (Num id2 1)))))))))
     "
@@ -117,7 +117,7 @@ fn test_purity_function() -> Result<(), egglog::Error> {
 (let f2
     (Function id_fun2
         (Get 
-            (All (Sequential)
+            (All id_fun2 (Sequential)
                     (Pair 
                     (Print (Get (Arg id_fun2) 0)) 
                     (Add 
@@ -126,25 +126,25 @@ fn test_purity_function() -> Result<(), egglog::Error> {
             1)))
 (let pure-loop
     (Loop id1
-        (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
-        (All (Sequential) (Pair
+        (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
+        (All id1 (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
-            (All (Parallel) 
+            (All id1 (Parallel) 
                     (Pair
-                    (Add (Call id_fun1 (All (Sequential) (Cons (Get (Arg id1) 0) (Nil)))) (Num id1 1))
+                    (Add (Call id_fun1 (All id1 (Sequential) (Cons (Get (Arg id1) 0) (Nil)))) (Num id1 1))
                     (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (let impure-loop
     (Loop id2
-        (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
-        (All (Sequential) (Pair
+        (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
+        (All id2 (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id2) 0) (Get (Arg id2) 1))
             ; output
-            (All (Parallel) 
+            (All id2 (Parallel) 
                     (Pair
-                    (Add (Call id_fun2 (All (Sequential) (Cons (Get (Arg id2) 0) (Nil)))) (Num id2 1))
+                    (Add (Call id_fun2 (All id2 (Sequential) (Cons (Get (Arg id2) 0) (Nil)))) (Num id2 1))
                     (Sub (Get (Arg id2) 1) (Num id2 1))))))))
     "
     .to_string();

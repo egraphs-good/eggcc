@@ -52,12 +52,12 @@ fn test_subst() -> Result<(), egglog::Error> {
 (let id-outer (Id (i64-fresh!)))
 (let loop1
     (Loop id1
-        (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
-        (All (Sequential) (Pair
+        (All id-outer (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
+        (All id1 (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
-            (All (Parallel) (Pair
+            (All id1 (Parallel) (Pair
                 (Add (Get (Arg id1) 0) (Num id1 1))
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (let loop1-substed (SubstExpr loop1 (Num id-outer 7)))
@@ -66,12 +66,12 @@ fn test_subst() -> Result<(), egglog::Error> {
     let check = "
 (let loop1-substed-expected
     (Loop id1
-        (All (Parallel) (Pair (Num id-outer 7) (Num id-outer 0)))
-        (All (Sequential) (Pair
+        (All id-outer (Parallel) (Pair (Num id-outer 7) (Num id-outer 0)))
+        (All id1 (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
-            (All (Parallel) (Pair
+            (All id1 (Parallel) (Pair
                 (Add (Get (Arg id1) 0) (Num id1 1))
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (run-schedule (saturate always-run))

@@ -212,3 +212,24 @@
       )
       ((panic "Loop did not get two arguments (predicate and output)"))
       :ruleset type-analysis)
+
+; Functions
+(rule ((= f (Function id body in-ty out-ty)))
+      ((HasType (Arg id) in-ty))
+      :ruleset type-analysis)
+
+(rule (
+       (= f (Function id body in-ty out-ty))
+       (HasType body out-ty)
+      )
+      ((HasType f (FuncT in-ty out-ty)))
+      :ruleset type-analysis)
+
+(rule (
+       (= c (Call f-id arg))
+       (= f (Function f-id body in-ty out-ty))
+       (HasType f (FuncT in-ty out-ty))
+       (HasType arg in-ty)
+      )
+      ((HasType c out-ty))
+      :ruleset type-analysis)

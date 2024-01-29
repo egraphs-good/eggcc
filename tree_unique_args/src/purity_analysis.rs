@@ -55,7 +55,7 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
 pub(crate) fn purity_analysis_rules() -> Vec<String> {
     ESort::iter()
         .map(|sort| "(relation *IsPure (*))".replace('*', sort.name()))
-        .chain(iter::once( "(relation FunctionIsPure (IdSort))\n(rule ((Function id out) (ExprIsPure out)) ((FunctionIsPure id)):ruleset always-run)".to_string()))
+        .chain(iter::once( "(relation FunctionIsPure (IdSort))\n(rule ((Function id out in-ty out-ty) (ExprIsPure out)) ((FunctionIsPure id)):ruleset always-run)".to_string()))
         .chain(Constructor::iter().filter_map(purity_rule_for_ctor))
         .collect::<Vec<_>>()
 }
@@ -112,7 +112,8 @@ fn test_purity_function() -> Result<(), egglog::Error> {
     (Function id_fun1
             (Add 
                 (Get (Arg id_fun1) 0) 
-                (Get (Arg id_fun1) 0))))
+                (Get (Arg id_fun1) 0))
+            (TupleT (TCons (IntT) (TNil))) (IntT)))
 ;; f2 is impure
 (let f2
     (Function id_fun2
@@ -123,7 +124,8 @@ fn test_purity_function() -> Result<(), egglog::Error> {
                     (Add 
                         (Get (Arg id_fun2) 0) 
                         (Get (Arg id_fun2) 0))))
-            1)))
+            1)
+        (TupleT (TCons (IntT) (TNil))) (IntT)))
 (let pure-loop
     (Loop id1
         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))

@@ -97,7 +97,7 @@ pub(crate) fn arg_used_analysis_rules() -> Vec<String> {
     ESort::iter()
         .map(|sort| {
             "
-            (function *UsesArgs (*) I64Set :merge (set-union old new))
+            (function *UsesArgs (*) I64Set :merge (set-intersect old new))
             (relation *UsesArgs-demand (*))
             
             (rule ((*UsesArgs-demand e)) 

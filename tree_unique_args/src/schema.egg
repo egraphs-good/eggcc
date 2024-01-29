@@ -12,6 +12,7 @@
   (BoolT)
   (FuncT Type Type)
   (TupleT TypeList)
+  (UnitT)
 )
 
 (function TNil () TypeList)

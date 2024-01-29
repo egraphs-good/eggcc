@@ -184,3 +184,17 @@ fn loop_args3() {
 
     let _ = crate::run_test(build, check);
 }
+
+#[test]
+fn read_write() -> Result<(), egglog::Error> {
+  let build = "
+    (let id (Id 0))
+    (let r (Read (Num id 4) (IntT)))
+    (let w (Write (Num id 2) (Num id 45)))
+  ";
+  let check = "
+    (check (HasType r (IntT)))
+    (check (HasType w (UnitT)))
+  ";
+  crate::run_test(build, check)
+}

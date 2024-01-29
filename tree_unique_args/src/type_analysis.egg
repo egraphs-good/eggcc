@@ -85,7 +85,12 @@
 (rule ((Print e))
       ((HasType (Print e) (TupleT (TNil))))
       :ruleset type-analysis)
-; TODO: Read and Write (requires type annotations)
+(rule ((= lhs (Read addr ty)))
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Write addr val)))
+      ((HasType lhs (UnitT)))
+      :ruleset type-analysis)
 
 ; Switch 
 ; if the condition is a boolean, it must have exactly two branches

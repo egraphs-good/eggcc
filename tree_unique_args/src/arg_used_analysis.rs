@@ -50,7 +50,7 @@ fn arg_used_rule_for_ctor(ctor: Constructor) -> Option<String> {
         .filter(|field| field.purpose == Purpose::SubExpr || field.purpose == Purpose::SubListExpr)
         .collect::<Vec<_>>();
     let union_expr = match fields.len() {
-        0 => return None,
+        0 => "(set-empty)".to_string(),
         1 => format!("args-{}", fields[0].var()),
         _ => {
             let mut union_expr = vec![];
@@ -99,9 +99,6 @@ pub(crate) fn arg_used_analysis_rules() -> Vec<String> {
             "
             (function *UsesArgs (*) I64Set :merge (set-intersect old new))
             (relation *UsesArgs-demand (*))
-            
-            (rule ((*UsesArgs-demand e)) 
-                  ((set (*UsesArgs e) (set-empty))) :ruleset always-run)
             "
             .replace('*', sort.name())
         })

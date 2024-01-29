@@ -112,8 +112,8 @@ fn test_args_used_analysis() -> Result<(), egglog::Error> {
     (let id1 (Id (i64-fresh!)))
     (let id2 (Id (i64-fresh!)))
     (let expr1
-        (All (Parallel) (Pair (Let id2 (All (Parallel) (Pair (Get (Arg id1) 3) 
-                                                             (Num id1 1)))
+        (All id1 (Parallel) (Pair (Let id2 (All id1 (Parallel) (Pair (Get (Arg id1) 3) 
+                                                                     (Num id1 1)))
                                         (Get (Arg id2) 0))
                               (Add (Get (Arg id1) 1)
                                    (Get (Arg id1) 2)))))

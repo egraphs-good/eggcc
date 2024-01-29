@@ -48,7 +48,6 @@ impl ESort {
 pub(crate) enum Constructor {
     Num,
     Boolean,
-    UnitExpr,
     Add,
     Sub,
     Mul,
@@ -123,7 +122,6 @@ impl Constructor {
         match self {
             Constructor::Num => "Num",
             Constructor::Boolean => "Boolean",
-            Constructor::UnitExpr => "UnitExpr",
             Constructor::Add => "Add",
             Constructor::Sub => "Sub",
             Constructor::Mul => "Mul",
@@ -152,7 +150,6 @@ impl Constructor {
         match self {
             Constructor::Num => vec![f(ReferencingId, "id"), f(Static(Sort::I64), "n")],
             Constructor::Boolean => vec![f(ReferencingId, "id"), f(Static(Sort::Bool), "b")],
-            Constructor::UnitExpr => vec![f(ReferencingId, "id")],
             Constructor::Add => vec![f(SubExpr, "x"), f(SubExpr, "y")],
             Constructor::Sub => vec![f(SubExpr, "x"), f(SubExpr, "y")],
             Constructor::Mul => vec![f(SubExpr, "x"), f(SubExpr, "y")],
@@ -166,7 +163,11 @@ impl Constructor {
             Constructor::Print => vec![f(SubExpr, "printee")],
             Constructor::Read => vec![f(SubExpr, "addr")],
             Constructor::Write => vec![f(SubExpr, "addr"), f(SubExpr, "data")],
-            Constructor::All => vec![f(Static(Sort::Order), "order"), f(SubListExpr, "exprs")],
+            Constructor::All => vec![
+                f(ReferencingId, "id"),
+                f(Static(Sort::Order), "order"),
+                f(SubListExpr, "exprs"),
+            ],
             Constructor::Switch => vec![f(SubExpr, "pred"), f(SubListExpr, "branches")],
             Constructor::Loop => vec![
                 f(CapturingId, "id"),
@@ -209,7 +210,6 @@ impl Constructor {
         match self {
             Constructor::Num => ESort::Expr,
             Constructor::Boolean => ESort::Expr,
-            Constructor::UnitExpr => ESort::Expr,
             Constructor::Add => ESort::Expr,
             Constructor::Sub => ESort::Expr,
             Constructor::Mul => ESort::Expr,

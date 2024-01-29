@@ -66,7 +66,7 @@ fn test_body_contains() -> Result<(), egglog::Error> {
 (let loop
     (Loop id1
         (Num id-outer 1)
-        (All (Sequential) (Pair
+        (All id1 (Sequential) (Pair
             ; pred
             (LessThan (Num id1 2) (Num id1 3))
             ; output

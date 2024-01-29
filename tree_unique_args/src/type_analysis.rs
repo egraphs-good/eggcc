@@ -64,7 +64,7 @@ fn switch_int() -> Result<(), egglog::Error> {
 
   (check (HasType s1 (IntT)))
   (check (HasType s2 (BoolT)))
-  (check (HasType s3 (UnitT)))
+  (check (HasType s3 (TupleT (TNil))))
   ";
     crate::run_test(build, check)
 }
@@ -72,17 +72,18 @@ fn switch_int() -> Result<(), egglog::Error> {
 #[test]
 fn tuple() -> Result<(), egglog::Error> {
     let build = "
-  (let n (Add (Num (Id (i64-fresh!)) 1) (Num (Id (i64-fresh!)) 2)))
+  (let id (Id (i64-fresh!)))
+  (let n (Add (Num id 1) (Num id 2)))
         (let m (Mul n n))
         (let s (Sub n m))
         (let x (LessThan m n))
         (let y (Not x))
         (let z (And x (Or y y)))
   
-  (let tup1 (All (Sequential) (Nil)))
-  (let tup2 (All (Sequential) (Cons z (Nil))))
-  (let tup3 (All (Parallel) (Cons x (Cons m (Nil)))))
-  (let tup4 (All (Parallel) (Cons tup2 (Cons tup3 (Nil)))))
+  (let tup1 (All id (Sequential) (Nil)))
+  (let tup2 (All id (Sequential) (Cons z (Nil))))
+  (let tup3 (All id (Parallel) (Cons x (Cons m (Nil)))))
+  (let tup4 (All id (Parallel) (Cons tup2 (Cons tup3 (Nil)))))
 
   (let get1 (Get tup3 0))
   (let get2 (Get tup3 1))
@@ -117,7 +118,7 @@ fn lets() -> Result<(), egglog::Error> {
     (let ctx (Id (i64-fresh!)))
     (let nested
       (Let outer (Num ctx 3)
-                 (Let inner (All (Parallel) (Cons (Arg outer) (Cons (Num outer 2) (Nil))))
+                 (Let inner (All ctx (Parallel) (Cons (Arg outer) (Cons (Num outer 2) (Nil))))
                             (Add (Get (Arg inner) 0) (Get (Arg inner) 1)))))
   ";
     let check = "
@@ -134,7 +135,7 @@ fn loops() -> Result<(), egglog::Error> {
   (let ctx (Id 0))
   (let loop-id (Id 1))
   (let l (Loop loop-id (Num ctx 1)
-    (All (Sequential)
+    (All loop-id (Sequential)
          (Cons (LessThan (Num loop-id 2) (Num loop-id 3))
                (Cons (Switch (Boolean loop-id true)
                              (Cons (Num loop-id 4) (Cons (Num loop-id 5) (Nil))))
@@ -154,7 +155,7 @@ fn loop_pred_boolean() {
   (let ctx (Id 0))
   (let loop-id (Id 1))
   (let l (Loop loop-id (Num ctx 1)
-    (All (Sequential)
+    (All loop-id (Sequential)
         (Cons (Add (Num loop-id 2) (Num loop-id 3))
               (Cons (Switch (Boolean loop-id true)
                             (Cons (Num loop-id 4) (Cons (Num loop-id 5) (Nil))))
@@ -171,7 +172,7 @@ fn loop_args1() {
     let build = "
   (let ctx (Id 0))
   (let loop-id (Id 1))
-  (let l (Loop loop-id (Num ctx 1) (All (Sequential) (Nil))))
+  (let l (Loop loop-id (Num ctx 1) (All loop-id (Sequential) (Nil))))
   (run-schedule (saturate type-analysis))";
     let check = "";
 
@@ -185,7 +186,7 @@ fn loop_args3() {
   (let ctx (Id 0))
   (let loop-id (Id 1))
   (let l (Loop loop-id (Num ctx 1)
-    (All (Sequential)
+    (All loop-id (Sequential)
         (Cons (LessThan (Num loop-id 2) (Num loop-id 3))
               (Cons (Switch (Boolean loop-id true)
                             (Cons (Num loop-id 4) (Cons (Num loop-id 5) (Nil))))

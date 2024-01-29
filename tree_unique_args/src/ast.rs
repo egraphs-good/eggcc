@@ -1,12 +1,18 @@
 use crate::{Expr, Expr::*, Id, Order};
 
 impl Expr {
+    /// Check that two expressions are the same ignoring their ids.
+    /// To do this, simply assign them all new ids.
+    /// If they are the same expression, they will get the same ids
+    /// since `give_fresh_ids` is deterministic.
     pub fn eq_ignoring_ids(&self, other: &Expr) -> bool {
         let mut copy = other.clone();
         give_fresh_ids(&mut copy);
         self == &copy
     }
 
+    /// Like [`Expr::eq_ignoring_ids`] but asserts
+    /// that they are equal with a good error message.
     pub fn assert_eq_ignoring_ids(&self, other: &Expr) {
         let mut copy = other.clone();
         give_fresh_ids(&mut copy);
@@ -84,10 +90,6 @@ pub fn tfalse() -> Expr {
     Boolean(false)
 }
 
-pub fn unit() -> Expr {
-    Unit
-}
-
 pub fn add(a: Expr, b: Expr) -> Expr {
     Add(Box::new(a), Box::new(b))
 }
@@ -133,7 +135,7 @@ pub fn print(a: Expr) -> Expr {
 }
 
 pub fn sequence_vec(args: Vec<Expr>) -> Expr {
-    All(Order::Sequential, args)
+    All(Id(0), Order::Sequential, args)
 }
 
 #[macro_export]
@@ -144,7 +146,7 @@ macro_rules! sequence {
 pub use sequence;
 
 pub fn parallel_vec(args: Vec<Expr>) -> Expr {
-    All(Order::Parallel, args)
+    All(Id(0), Order::Parallel, args)
 }
 
 #[macro_export]

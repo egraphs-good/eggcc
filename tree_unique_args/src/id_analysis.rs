@@ -54,21 +54,21 @@ fn test_id_analysis() -> Result<(), egglog::Error> {
         (ExprIsValid (Let
             let0-id
             (Num outer-id 0)
-            (All
+            (All let0-id
                 (Parallel)
                 (Pair
                     (Let
                         let1-id
                         (Num let0-id 3)
                         (Boolean let1-id true))
-                    (UnitExpr let0-id)
+                    (All let0-id (Parallel) (Nil))
                     ))))
     ";
 
     let check = "
         (check (ExprHasRefId (Num outer-id 0) outer-id))
         (check (ExprHasRefId (Boolean let1-id true) let1-id))
-        (check (ExprHasRefId (UnitExpr let0-id) let0-id))
+        (check (ExprHasRefId (All let0-id (Parallel) (Nil)) let0-id))
         (check (ExprHasRefId 
                 (Let
                         let1-id
@@ -81,7 +81,7 @@ fn test_id_analysis() -> Result<(), egglog::Error> {
                         let1-id
                         (Num let0-id 3)
                         (Boolean let1-id true))
-                    (UnitExpr let0-id)
+                    (All let0-id (Parallel) (Nil))
                     )
                 let0-id
         ))
@@ -90,13 +90,14 @@ fn test_id_analysis() -> Result<(), egglog::Error> {
                 let0-id
                 (Num outer-id 0)
                 (All
+                    let0-id
                     (Parallel)
                     (Pair
                         (Let
                             let1-id
                             (Num let0-id 3)
                             (Boolean let1-id true))
-                        (UnitExpr let0-id)
+                        (All let0-id (Parallel) (Nil))
                         )))
             outer-id
         ))
@@ -135,7 +136,7 @@ fn test_id_analysis_listexpr_id_conflict_panics() {
     let build = "
         (let id1 (Id (i64-fresh!)))
         (let id2 (Id (i64-fresh!)))
-        (let conflict-expr (Cons (Num id1 3) (Cons (UnitExpr id2) (Nil))))
+        (let conflict-expr (Cons (Num id1 3) (Cons (All id2 (Parallel) (Nil)) (Nil))))
         (ListExprIsValid conflict-expr)";
     let check = "";
 

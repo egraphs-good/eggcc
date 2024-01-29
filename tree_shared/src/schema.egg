@@ -7,6 +7,19 @@
 (datatype Expr)
 (datatype ListExpr (Cons Expr ListExpr) (Nil))
 
+(sort TypeList)
+
+(datatype Type
+  (IntT)
+  (BoolT)
+  (FuncT Type Type)
+  (TupleT TypeList)
+  (UnitT)
+)
+
+(function TNil () TypeList)
+(function TCons (Type TypeList) TypeList)
+
 ; ==========================
 ; Pure operators
 ; ==========================

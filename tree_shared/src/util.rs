@@ -12,6 +12,11 @@ fn ast_size_for_ctor(ctor: Constructor) -> String {
         // let Get and All's size = children's size (I prefer not +1 here)
         Constructor::Get => format!("(rule ((= expr (Get tup i)) (= n (Expr-size tup))) ((set (Expr-size expr) n)) {ruleset})"),
         Constructor::All => format!("(rule ((= expr (All id ord list)) (= n (ListExpr-size list))) ((set (Expr-size expr) n)) {ruleset})"),
+        Constructor::Branch => format!("
+(rule ((= expr (Branch id child))
+       (= n (Expr-size child)))
+      ((set (Expr-size expr) n)) {ruleset})
+        "),
         _ => {
             let field_pattern = ctor.filter_map_fields(|field| {
                 let sort = field.sort().name();
@@ -86,39 +91,39 @@ fn append_test() -> Result<(), egglog::Error> {
 #[test]
 fn ast_size_test() -> Result<(), egglog::Error> {
     let build = "
-    (let id1 (Id (i64-fresh!)))
-    (let id-outer (Id (i64-fresh!)))
     (let inv 
-        (Sub (Get (Arg id1) 4)
-            (Mul (Get (Arg id1) 2) 
-                (Switch (Num id1 1) (list4 (Num id1 1)
-                                        (Num id1 2)
-                                        (Num id1 3)
-                                        (Num id1 4))
+        (Sub (Get (Arg shared) 4)
+            (Mul (Get (Arg shared) 2) 
+                (Switch (Num shared 1)
+                  (list4 (Branch shared (Num shared 1))
+                         (Branch shared (Num shared 2))
+                         (Branch shared (Num shared 3))
+                         (Branch shared (Num shared 4)))
                 )
             )
         ))
     
     (let loop
-        (Loop id1
-            (All id-outer (Parallel) (list5 (Num id-outer 0)
-                                    (Num id-outer 1)
-                                    (Num id-outer 2)
-                                    (Num id-outer 3)
-                                    (Num id-outer 4)))
-            (All id1 (Sequential) (Pair
+        (Loop shared
+            (All shared (Parallel) (list5 (Num shared 0)
+                                    (Num shared 1)
+                                    (Num shared 2)
+                                    (Num shared 3)
+                                    (Num shared 4)))
+            (All shared (Sequential)
+                (Pair
                 ; pred
-                (LessThan (Get (Arg id1) 0) (Get (Arg id1) 4))
+                (LessThan (Get (Arg shared) 0) (Get (Arg shared) 4))
                 ; output
-                (All id1 (Parallel) 
+                (All shared (Parallel) 
                     (list5
-                        (Add (Get (Arg id1) 0) 
+                        (Add (Get (Arg shared) 0) 
                             inv
                         )
-                        (Get (Arg id1) 1)
-                        (Get (Arg id1) 2)
-                        (Get (Arg id1) 3)
-                        (Get (Arg id1) 4) ))))))
+                        (Get (Arg shared) 1)
+                        (Get (Arg shared) 2)
+                        (Get (Arg shared) 3)
+                        (Get (Arg shared) 4) ))))))
     ";
 
     let check = "

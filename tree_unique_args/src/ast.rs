@@ -55,10 +55,6 @@ pub fn tfalse() -> Expr {
     Boolean(false)
 }
 
-pub fn unit() -> Expr {
-    Unit
-}
-
 pub fn add(a: Expr, b: Expr) -> Expr {
     Add(Box::new(a), Box::new(b))
 }
@@ -99,12 +95,12 @@ pub fn print(a: Expr) -> Expr {
     Print(Box::new(a))
 }
 
-pub fn sequence(args: Vec<Expr>) -> Expr {
-    All(Order::Sequential, args)
+pub fn sequence(id: Id, args: Vec<Expr>) -> Expr {
+    All(id, Order::Sequential, args)
 }
 
-pub fn parallel(args: Vec<Expr>) -> Expr {
-    All(Order::Parallel, args)
+pub fn parallel(id: Id, args: Vec<Expr>) -> Expr {
+    All(id, Order::Parallel, args)
 }
 
 pub fn switch(arg: Expr, cases: Vec<Expr>) -> Expr {

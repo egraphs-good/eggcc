@@ -11,7 +11,7 @@ fn ast_size_for_ctor(ctor: Constructor) -> String {
         Constructor::Cons => format!("(rule ((= list (Cons expr xs)) (= a (Expr-size expr)) (= b (ListExpr-size xs))) ((set (ListExpr-size list) (+ a b))){ruleset})"), 
         // let Get and All's size = children's size (I prefer not +1 here)
         Constructor::Get => format!("(rule ((= expr (Get tup i)) (= n (Expr-size tup))) ((set (Expr-size expr) n)) {ruleset})"),
-        Constructor::All => format!("(rule ((= expr (All ord list)) (= n (ListExpr-size list))) ((set (Expr-size expr) n)) {ruleset})"),
+        Constructor::All => format!("(rule ((= expr (All id ord list)) (= n (ListExpr-size list))) ((set (Expr-size expr) n)) {ruleset})"),
         _ => {
             let field_pattern = ctor.filter_map_fields(|field| {
                 let sort = field.sort().name();
@@ -50,7 +50,7 @@ fn test_list_util() -> Result<(), egglog::Error> {
     let build = &*"
         (let id (Id 1))
         (let list (Cons (Num id 0) (Cons (Num id 1) (Cons (Num id 2) (Cons (Num id 3) (Cons (Num id 4) (Nil)))))))
-        (let t (All (Sequential) list))
+        (let t (All id (Sequential) list))
     ".to_string();
     let check = &*"
         (check (= (ListExpr-ith list 1) (Num id 1)))
@@ -90,12 +90,12 @@ fn get_loop_output_ith_test() -> Result<(), egglog::Error> {
     (let id-outer (Id (i64-fresh!)))
     (let loop1
         (Loop id1
-            (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
-            (All (Sequential) (Pair
+            (All id-outer (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
+            (All id1 (Sequential) (Pair
                 ; pred
                 (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
                 ; output
-                (All (Parallel) (Pair
+                (All id1 (Parallel) (Pair
                     (Add (Get (Arg id1) 0) (Num id1 1))
                     (Sub (Get (Arg id1) 1) (Num id1 1))))))))
     (let out0 (Add (Get (Arg id1) 0) (Num id1 1)))
@@ -134,16 +134,16 @@ fn ast_size_test() -> Result<(), egglog::Error> {
     
     (let loop
         (Loop id1
-            (All (Parallel) (list5 (Num id-outer 0)
+            (All id-outer (Parallel) (list5 (Num id-outer 0)
                                     (Num id-outer 1)
                                     (Num id-outer 2)
                                     (Num id-outer 3)
                                     (Num id-outer 4)))
-            (All (Sequential) (Pair
+            (All id1 (Sequential) (Pair
                 ; pred
                 (LessThan (Get (Arg id1) 0) (Get (Arg id1) 4))
                 ; output
-                (All (Parallel) 
+                (All id1 (Parallel) 
                     (list5
                         (Add (Get (Arg id1) 0) 
                             inv

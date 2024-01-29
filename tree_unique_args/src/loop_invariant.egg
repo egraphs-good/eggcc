@@ -1,7 +1,4 @@
 ;; Loop Invariant
-;;                      loop  expr-in-loop
-(relation find-inv-Expr (Expr Expr))
-(relation find-inv-ListExpr (Expr ListExpr))
 
 ;; bool: whether the term in the Expr is an invariant.
 ;;                    loop  expr-in-loop
@@ -11,29 +8,16 @@
 (relation arg-inv (Expr i64))
 
 ;; in default, when there is a find, set is-inv to false
-(rule ((find-inv-Expr loop term)) ((set (is-inv-Expr loop term) false)) :ruleset always-run)
-(rule ((find-inv-ListExpr loop term)) ((set (is-inv-ListExpr loop term) false)) :ruleset always-run)
+(rule ((BodyContainsExpr loop term) (= loop (Loop id in pred_out))) ((set (is-inv-Expr loop term) false)) :ruleset always-run)
+(rule ((BodyContainsListExpr loop term) (= loop (Loop id in pred_out))) ((set (is-inv-ListExpr loop term) false)) :ruleset always-run)
 
 ;; I assume input is tuple here
 (rule ((= loop (Loop id inputs outputs))
        (= (Get (Arg id) i) (get-loop-outputs-ith loop i)))
     ((arg-inv loop i)) :ruleset always-run)
 
-;; top level entry
-(rule ((= loop (Loop id inputs outputs))
-	   (arg-inv loop i))
-	((find-inv-Expr loop outputs)) :ruleset always-run)
-
-;; propagations
-
-;; ListExpr -> expr
-(rule ((find-inv-ListExpr loop list) 
-       (= ith (ListExpr-ith list i))) 
-    ((find-inv-Expr loop ith)) :ruleset always-run)
-
-
 (relation is-inv-ListExpr-helper (Expr ListExpr i64))
-(rule ((find-inv-ListExpr loop list)) ((is-inv-ListExpr-helper loop list 0)) :ruleset always-run)
+(rule ((BodyContainsListExpr loop list)) ((is-inv-ListExpr-helper loop list 0)) :ruleset always-run)
 
 (rule ((is-inv-ListExpr-helper loop list i)
        (= true (is-inv-Expr loop expr))

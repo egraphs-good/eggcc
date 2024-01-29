@@ -1,53 +1,27 @@
-use crate::ir::{Constructor, Purpose, Sort};
+use crate::ir::{Constructor, Purpose};
 use std::iter;
 use strum::IntoEnumIterator;
 
-fn find_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
+fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
     let br = "\n      ";
     let ruleset = " :ruleset always-run";
 
     match ctor {
-        Constructor::Cons | Constructor::Nil | Constructor::Arg | Constructor::UnitExpr => None,
-        Constructor::Call => Some(format!(
-            "(rule ((find-inv-Expr loop expr) \
-            {br} (= expr (Call f arg))) \
-            {br}((find-inv-Expr loop arg)){ruleset})"
-        )),
         Constructor::Get => Some(format!(
-            "(rule ((find-inv-Expr loop expr) \
-            {br} (= expr (Get tup i))) \
-            {br}((find-inv-Expr loop tup)){ruleset})\n \
-            (rule ((find-inv-Expr loop expr) \
+            "(rule ((BodyContainsExpr loop expr) \
             {br} (= expr (Get (Arg id) i)) \
             {br} (arg-inv loop i)) \
             {br}((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
-        _ => {
+        Constructor::Num | Constructor::Boolean => {
             let ctor_pattern = ctor.construct(|field| field.var());
-
-            let find_inv_ctor = ctor
-                .filter_map_fields(|field| match field.purpose {
-                    Purpose::Static(Sort::I64) | Purpose::Static(Sort::Bool) => {
-                        Some("(set (is-inv-Expr loop expr) true)".to_string())
-                    }
-                    Purpose::Static(_)
-                    | Purpose::CapturingId
-                    | Purpose::CapturedExpr
-                    | Purpose::ReferencingId => None,
-                    Purpose::SubExpr | Purpose::SubListExpr => {
-                        let var = field.var();
-                        let sort = field.sort().name();
-                        Some(format!("(find-inv-{sort} loop {var})"))
-                    }
-                })
-                .join(" ");
-
             Some(format!(
-                "(rule ((find-inv-Expr loop expr) \
+                "(rule ((BodyContainsExpr loop expr) \
                 {br} (= expr {ctor_pattern})) \
-                {br}({find_inv_ctor}){ruleset})"
+                {br}((set (is-inv-Expr loop expr) true)){ruleset})"
             ))
         }
+        _ => None,
     }
 }
 
@@ -58,21 +32,17 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
 
     match ctor {
         // list handled in loop_invariant.egg
+        // base cases are skipped
         // print, read, write are not invariant
         // assume Arg as whole is not invariant
         Constructor::Cons
         | Constructor::Nil
-        | Constructor::UnitExpr
+        | Constructor::Num
+        | Constructor::Boolean
         | Constructor::Print
         | Constructor::Read
         | Constructor::Write
         | Constructor::Arg => None,
-        Constructor::Get => Some(format!(
-            "(rule ((find-inv-Expr loop expr) \
-            {br} (= expr (Get tup i)) \
-            {br} (= true (is-inv-Expr loop tup))) \
-            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
-        )),
         _ => {
             let is_inv_ctor = ctor
                 .filter_map_fields(|field| match field.purpose {
@@ -94,7 +64,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                 _ => String::new(),
             };
             Some(format!(
-                "(rule ((find-inv-Expr loop expr) \
+                "(rule ((BodyContainsExpr loop expr) \
                 {br} (= expr {ctor_pattern}) \
                 {br} {is_inv_ctor} {is_pure}) \
                 {br}((set (is-inv-Expr loop expr) true)){ruleset})"
@@ -114,7 +84,6 @@ fn boundary_for_ctor(ctor: Constructor) -> Option<String> {
         // Unit?
         Constructor::Cons
         | Constructor::Nil
-        | Constructor::UnitExpr
         | Constructor::Arg
         | Constructor::Not
         | Constructor::Get
@@ -144,7 +113,7 @@ fn boundary_for_ctor(ctor: Constructor) -> Option<String> {
 
 pub(crate) fn rules() -> Vec<String> {
     iter::once(include_str!("loop_invariant.egg").to_string())
-        .chain(Constructor::iter().filter_map(find_invariant_rule_for_ctor))
+        .chain(Constructor::iter().filter_map(is_inv_base_case_for_ctor))
         .chain(Constructor::iter().filter_map(is_invariant_rule_for_ctor))
         .chain(Constructor::iter().filter_map(boundary_for_ctor))
         .collect::<Vec<_>>()
@@ -157,12 +126,12 @@ fn loop_invariant_detection1() -> Result<(), egglog::Error> {
     (let id-outer (Id (i64-fresh!)))
     (let loop
         (Loop id1
-            (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 5)))
-            (All (Sequential) (Pair
+            (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 5)))
+            (All id1 (Sequential) (Pair
                 ; pred
                 (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
                 ; output
-                (All (Parallel) 
+                (All id1 (Parallel) 
                     (Pair
                         (Get (Arg id1) 0)
                         (Sub (Get (Arg id1) 1) (Add (Num id1 1) (Get (Arg id1) 0))) ))))))
@@ -202,16 +171,16 @@ fn loop_invariant_detection2() -> Result<(), egglog::Error> {
     
     (let loop
         (Loop id1
-            (All (Parallel) (list5 (Num id-outer 0)
+            (All id-outer (Parallel) (list5 (Num id-outer 0)
                                     (Num id-outer 1)
                                     (Num id-outer 2)
                                     (Num id-outer 3)
                                     (Num id-outer 4)))
-            (All (Sequential) (Pair
+            (All id1 (Sequential) (Pair
                 ; pred
                 (LessThan (Get (Arg id1) 0) (Get (Arg id1) 4))
                 ; output
-                (All (Parallel) 
+                (All id1 (Parallel) 
                     (list5
                         (Add (Get (Arg id1) 0) 
                             inv

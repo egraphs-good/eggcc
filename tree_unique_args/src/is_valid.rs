@@ -36,12 +36,12 @@ fn test_is_valid() -> Result<(), egglog::Error> {
 (let id-outer (Id (i64-fresh!)))
 (let loop
     (Loop id1
-        (All (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
-        (All (Sequential) (Pair
+        (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
+        (All id1 (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
-            (All (Parallel) (Pair
+            (All id1 (Parallel) (Pair
                 (Add (Get (Arg id1) 0) (Num id1 1))
                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
 (ExprIsValid loop)

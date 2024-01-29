@@ -3,8 +3,8 @@
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (function Append (ListExpr Expr) ListExpr :unextractable)
 
-(rule ((All order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
 (rule ((Switch pred top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
+(rule ((All id order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
 
 (rule ((= (ListExpr-suffix top n) (Cons hd tl)))
     ((union (ListExpr-ith top n) hd)
@@ -20,30 +20,12 @@
     (Cons e (Nil))
     :ruleset always-run)
 
-(function get-loop-output (Expr) Expr :unextractable)
-(function get-loop-pred (Expr) Expr :unextractable)
-(rule ((= loop (Loop id inputs pred_outputs))
-       (= pred_outputs (All ord1 pred_out_list))
-       (= pred (ListExpr-ith pred_out_list 0))
-       (= out (ListExpr-ith pred_out_list 1)))
-      ((union (get-loop-output loop) out)
-       (union (get-loop-pred loop) pred)) :ruleset always-run)
-
 ;; get the ith output of a loop
 (function get-loop-outputs-ith (Expr i64) Expr :unextractable)
-(rule ((= (All ord2 outputs-list) (get-loop-output loop))
-       (= ith_outputs (ListExpr-ith outputs-list i)))
-      ((union (get-loop-outputs-ith loop i) ith_outputs)) :ruleset always-run)
-
+(rule ((= loop (Loop id inputs pred-outputs))
+       (= pred-outputs (All id1 ord1 pred-out-list))
+       (= (All id2 ord2 outputs-list) (ListExpr-ith pred-out-list 1))
+       (= ith-outputs (ListExpr-ith outputs-list i)))
+    ((union (get-loop-outputs-ith loop i) ith-outputs)) :ruleset always-run)
 (function Expr-size (Expr) i64 :merge (min old new))
 (function ListExpr-size (ListExpr) i64 :merge (min old new))
-
-(function get-arg-list-helper (IdSort i64 i64) ListExpr :unextractable)
-(rewrite (get-arg-list-helper id 0 x) (Nil) :ruleset always-run)
-(rule ((get-arg-list-helper id a b) (> a 0)) 
-      ((union (get-arg-list-helper id a b)
-              (Cons (Get (Arg id) b) (get-arg-list-helper id (- a 1) (+ b 1))))) :ruleset always-run)
-
-;; creat a new ListExpr like: [(Get (Arg id) 0) ... (Get (Arg id) n)]
-(function get-arg-list (IdSort i64) ListExpr :unextractable)
-(rewrite (get-arg-list id n) (get-arg-list-helper id n 0) :ruleset always-run)

@@ -16,10 +16,10 @@
 (rewrite (list5 a b c d e)
          (Cons a (Cons b (Cons c (Cons d (Cons e (Nil)))))) :ruleset always-run)
 
-(function IgnoreFirst (Expr Expr) Expr)
-(rewrite (IgnoreFirst a b)
+(function IgnoreFirst (IdSort Expr Expr) Expr)
+(rewrite (IgnoreFirst id a b)
          (Get
-             (All (Sequential) (Cons a (Cons b (Nil))))
+             (All id (Sequential) (Cons a (Cons b (Nil))))
              1)
          :ruleset always-run)
 

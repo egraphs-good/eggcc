@@ -60,13 +60,13 @@ fn test_deep_copy() -> Result<(), egglog::Error> {
 (let id-outer (Id (i64-fresh!)))
 (let loop
     (Loop id1
-        (All (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
-        (All (Sequential) (Pair
+        (All id-outer (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
+        (All id1 (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (Let id2
-                (All (Parallel) (Pair
+                (All id1 (Parallel) (Pair
                     (Add (Get (Arg id1) 0) (Num id1 1))
                     (Sub (Get (Arg id1) 1) (Num id1 1))))
                 (Arg id2))))))
@@ -75,13 +75,13 @@ fn test_deep_copy() -> Result<(), egglog::Error> {
     let check = "
 (let loop-copied-expected
     (Loop (Id 4)
-        (All (Parallel) (Pair (Arg (Id 3)) (Num (Id 3) 0)))
-        (All (Sequential) (Pair
+        (All (Id 3) (Parallel) (Pair (Arg (Id 3)) (Num (Id 3) 0)))
+        (All (Id 4) (Sequential) (Pair
             ; pred
             (LessThan (Get (Arg (Id 4)) 0) (Get (Arg (Id 4)) 1))
             ; output
             (Let (Id 5)
-                (All (Parallel) (Pair
+                (All (Id 4) (Parallel) (Pair
                     (Add (Get (Arg (Id 4)) 0) (Num (Id 4) 1))
                     (Sub (Get (Arg (Id 4)) 1) (Num (Id 4) 1))))
                 (Arg (Id 5)))))))

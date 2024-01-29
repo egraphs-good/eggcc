@@ -8,8 +8,18 @@ fn id_analysis_rules_for_ctor(ctor: Constructor) -> String {
         let field_var = field.var();
         let field_sort = field.sort().name();
         match field.purpose {
-            Purpose::Static(_) | Purpose::CapturedExpr | Purpose::CapturingId => None,
-
+            Purpose::Static(_) | Purpose::CapturingId => None,
+            Purpose::CapturedExpr => {
+                // If the captured expr is shared, then this expr
+                // is also shared.
+                Some(format!(
+                    "(rule ({pat}
+                            ({field_sort}HasRefId {field_var} (Shared))  
+                            ({sort}IsValid {pat}))
+                           (({sort}HasRefId {pat} (Shared)))
+                    :ruleset always-run)"
+                ))
+            }
             // Base case: constructor has referencing id specified as a field
             Purpose::ReferencingId => Some(format!(
                 "(rule ({pat} ({sort}IsValid {pat}))
@@ -140,5 +150,20 @@ fn test_id_analysis_listexpr_id_conflict_panics() {
         (ListExprIsValid conflict-expr)";
     let check = "";
 
+    let _ = crate::run_test(build, check);
+}
+
+#[test]
+#[should_panic]
+// Mix shared and unique ids and catch the panic
+fn test_shared_unique_id_mix_panics() {
+    let build = "
+        (let idouter (Id (i64-fresh!)))
+        (let id2 (Shared))
+        (let conflict-expr 
+             (Let id2 (Num idouter 0)
+                (Num id2 1)))
+        (ExprIsValid conflict-expr)";
+    let check = "";
     let _ = crate::run_test(build, check);
 }

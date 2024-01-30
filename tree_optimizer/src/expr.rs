@@ -111,6 +111,63 @@ impl PureUOp {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Sort {
+    Expr,
+    ListExpr,
+    Order,
+    BinPureOp,
+    UnaryPureOp,
+    IdSort,
+    I64,
+    Bool,
+    Type,
+    String,
+}
+
+impl Sort {
+    pub(crate) fn name(&self) -> &'static str {
+        match self {
+            Sort::Expr => "Expr",
+            Sort::ListExpr => "ListExpr",
+            Sort::Order => "Order",
+            Sort::IdSort => "IdSort",
+            Sort::I64 => "i64",
+            Sort::String => "String",
+            Sort::Bool => "bool",
+            Sort::Type => "Type",
+            Sort::BinPureOp => "BinPureOp",
+            Sort::UnaryPureOp => "UnaryPureOp",
+        }
+    }
+}
+
+// Subset of sorts that refer to expressions
+#[derive(Debug, EnumIter, PartialEq)]
+pub(crate) enum ESort {
+    Expr,
+    ListExpr,
+}
+
+impl std::fmt::Display for ESort {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
+impl ESort {
+    pub(crate) fn to_sort(&self) -> Sort {
+        match self {
+            ESort::Expr => Sort::Expr,
+            ESort::ListExpr => Sort::ListExpr,
+        }
+    }
+
+    pub(crate) fn name(&self) -> &'static str {
+        self.to_sort().name()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, EnumIter)]
 pub enum Expr {
     Num(i64),
@@ -151,6 +208,39 @@ impl Default for Expr {
 }
 
 impl Expr {
+    pub fn is_pure(&self) -> bool {
+        use Expr::*;
+        match self {
+            Num(..) | Boolean(..) | Arg(..) | BOp(..) | UOp(..) | Get(..) | Concat(..)
+            | Read(..) | All(..) | Switch(..) | Branch(..) | Loop(..) | Let(..) | Function(..)
+            | Program(..) | Call(..) => true,
+            Print(..) | Write(..) => false,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Expr::Num(_) => "Num",
+            Expr::Boolean(_) => "Boolean",
+            Expr::BOp(_, _, _) => "BOp",
+            Expr::UOp(_, _) => "UOp",
+            Expr::Get(_, _) => "Get",
+            Expr::Concat(_, _) => todo!("Remove concat from ast"),
+            Expr::Print(_) => "Print",
+            Expr::Read(_) => "Read",
+            Expr::Write(_, _) => "Write",
+            Expr::All(_, _, _) => "All",
+            Expr::Switch(_, _) => "Switch",
+            Expr::Branch(_, _) => "Branch",
+            Expr::Loop(_, _, _) => "Loop",
+            Expr::Let(_, _, _) => "Let",
+            Expr::Arg(_) => "Arg",
+            Expr::Function(_, _, _, _, _) => "Function",
+            Expr::Program(_) => "Program",
+            Expr::Call(_, _, _) => "Call",
+        }
+    }
+
     /// Runs `func` on every child of this expression.
     pub fn for_each_child(&mut self, mut func: impl FnMut(&mut Expr)) {
         match self {
@@ -206,12 +296,16 @@ pub enum Value {
     Tuple(Vec<Value>),
 }
 
-#[derive(Clone, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum TreeType {
-    #[default]
-    Unit,
     Bril(Type),
     Tuple(Vec<TreeType>),
+}
+
+impl Default for TreeType {
+    fn default() -> Self {
+        TreeType::Tuple(vec![])
+    }
 }
 
 pub enum TypeError {

@@ -1,83 +1,13 @@
-use std::{
-    fmt::{Display, Formatter},
-    iter,
-};
-use strum_macros::EnumIter;
+use std::iter;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Sort {
-    Expr,
-    ListExpr,
-    Order,
-    BinPureOp,
-    UnaryPureOp,
-    IdSort,
-    I64,
-    Bool,
-    Type,
-    String,
-}
-
-impl Sort {
-    pub(crate) fn name(&self) -> &'static str {
-        match self {
-            Sort::Expr => "Expr",
-            Sort::ListExpr => "ListExpr",
-            Sort::Order => "Order",
-            Sort::IdSort => "IdSort",
-            Sort::I64 => "i64",
-            Sort::String => "String",
-            Sort::Bool => "bool",
-            Sort::Type => "Type",
-            Sort::BinPureOp => "BinPureOp",
-            Sort::UnaryPureOp => "UnaryPureOp",
-        }
-    }
-}
-
-// Subset of sorts that refer to expressions
-#[derive(Debug, EnumIter, PartialEq)]
-pub(crate) enum ESort {
-    Expr,
-    ListExpr,
-}
-
-impl Display for ESort {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
-    }
-}
-
-impl ESort {
-    pub(crate) fn to_sort(&self) -> Sort {
-        match self {
-            ESort::Expr => Sort::Expr,
-            ESort::ListExpr => Sort::ListExpr,
-        }
-    }
-
-    pub(crate) fn name(&self) -> &'static str {
-        self.to_sort().name()
-    }
-}
-
-#[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
+/// A an enum of all the constructors
+/// in the IR.
+/// A constructor is either something
+/// that creates an [`Expr`]
+/// or it is a list constructor.
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Constructor {
-    Num,
-    Boolean,
-    BOp,
-    UOp,
-    Get,
-    Print,
-    Read,
-    Write,
-    All,
-    Switch,
-    Branch,
-    Loop,
-    Let,
-    Arg,
-    Call,
+    Expr(Expr),
     Cons,
     Nil,
 }
@@ -130,32 +60,28 @@ impl Field {
     }
 }
 
-impl Display for Constructor {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
-    }
-}
-
 impl Constructor {
+    /// Iterate over all constructors
+    pub(crate) fn iter() -> impl Iterator<Item = Constructor> {
+        Expr::iter()
+            .map(Constructor::Expr)
+            .chain(iter::once(Constructor::Cons))
+            .chain(iter::once(Constructor::Nil))
+    }
+
     pub(crate) fn name(&self) -> &'static str {
         match self {
-            Constructor::Num => "Num",
-            Constructor::Boolean => "Boolean",
-            Constructor::BOp => "BOp",
-            Constructor::UOp => "UOp",
-            Constructor::Get => "Get",
-            Constructor::Print => "Print",
-            Constructor::Read => "Read",
-            Constructor::Write => "Write",
-            Constructor::All => "All",
-            Constructor::Switch => "Switch",
-            Constructor::Branch => "Branch",
-            Constructor::Loop => "Loop",
-            Constructor::Let => "Let",
-            Constructor::Arg => "Arg",
-            Constructor::Call => "Call",
+            Constructor::Expr(expr) => expr.name(),
             Constructor::Cons => "Cons",
             Constructor::Nil => "Nil",
+        }
+    }
+
+    pub(crate) fn is_pure(&self) -> bool {
+        use Constructor::*;
+        match self {
+            Expr(expr) => expr.is_pure(),
+            Cons | Nil => true,
         }
     }
 
@@ -163,37 +89,66 @@ impl Constructor {
         use Purpose::{CapturedExpr, CapturingId, ReferencingId, Static, SubExpr, SubListExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
-            Constructor::Num => vec![f(ReferencingId, "id"), f(Static(Sort::I64), "n")],
-            Constructor::Boolean => vec![f(ReferencingId, "id"), f(Static(Sort::Bool), "b")],
-            Constructor::BOp => vec![
+            Constructor::Expr(Expr::Concat(..)) => {
+                todo!("Remove concat from enum")
+            }
+            Constructor::Expr(Expr::Function(..)) => {
+                vec![
+                    f(Static(Sort::IdSort), "id"),
+                    f(Static(Sort::String), "name"),
+                    f(Static(Sort::Type), "tyin"),
+                    f(Static(Sort::Type), "tyout"),
+                    f(SubExpr, "out"),
+                ]
+            }
+            Constructor::Expr(Expr::Program(..)) => {
+                vec![f(SubListExpr, "functions")]
+            }
+            Constructor::Expr(Expr::Num(..)) => {
+                vec![f(ReferencingId, "id"), f(Static(Sort::I64), "n")]
+            }
+            Constructor::Expr(Expr::Boolean(..)) => {
+                vec![f(ReferencingId, "id"), f(Static(Sort::Bool), "b")]
+            }
+            Constructor::Expr(Expr::BOp(..)) => vec![
                 f(Static(Sort::BinPureOp), "op"),
                 f(SubExpr, "x"),
                 f(SubExpr, "y"),
             ],
-            Constructor::UOp => vec![f(Static(Sort::UnaryPureOp), "op"), f(SubExpr, "x")],
-            Constructor::Get => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
-            Constructor::Print => vec![f(SubExpr, "printee")],
-            Constructor::Read => vec![f(SubExpr, "addr"), f(Static(Sort::Type), "type")],
-            Constructor::Write => vec![f(SubExpr, "addr"), f(SubExpr, "data")],
-            Constructor::All => vec![
+            Constructor::Expr(Expr::UOp(..)) => {
+                vec![f(Static(Sort::UnaryPureOp), "op"), f(SubExpr, "x")]
+            }
+            Constructor::Expr(Expr::Get(..)) => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
+            Constructor::Expr(Expr::Print(..)) => vec![f(SubExpr, "printee")],
+            Constructor::Expr(Expr::Read(..)) => {
+                vec![f(SubExpr, "addr"), f(Static(Sort::Type), "type")]
+            }
+            Constructor::Expr(Expr::Write(..)) => {
+                vec![f(SubExpr, "addr"), f(SubExpr, "data")]
+            }
+            Constructor::Expr(Expr::All(..)) => vec![
                 f(ReferencingId, "id"),
                 f(Static(Sort::Order), "order"),
                 f(SubListExpr, "exprs"),
             ],
-            Constructor::Switch => vec![f(SubExpr, "pred"), f(SubListExpr, "branches")],
-            Constructor::Branch => vec![f(CapturingId, "id"), f(SubExpr, "expr")],
-            Constructor::Loop => vec![
+            Constructor::Expr(Expr::Switch(..)) => {
+                vec![f(SubExpr, "pred"), f(SubListExpr, "branches")]
+            }
+            Constructor::Expr(Expr::Branch(..)) => {
+                vec![f(CapturingId, "id"), f(SubExpr, "expr")]
+            }
+            Constructor::Expr(Expr::Loop(..)) => vec![
                 f(CapturingId, "id"),
                 f(SubExpr, "in"),
                 f(CapturedExpr, "pred-and-output"),
             ],
-            Constructor::Let => vec![
+            Constructor::Expr(Expr::Let(..)) => vec![
                 f(CapturingId, "id"),
                 f(SubExpr, "in"),
                 f(CapturedExpr, "out"),
             ],
-            Constructor::Arg => vec![f(ReferencingId, "id")],
-            Constructor::Call => {
+            Constructor::Expr(Expr::Arg(..)) => vec![f(ReferencingId, "id")],
+            Constructor::Expr(Expr::Call(..)) => {
                 vec![
                     f(Static(Sort::I64), "id"),
                     f(Static(Sort::String), "func"),
@@ -227,21 +182,7 @@ impl Constructor {
 
     pub(crate) fn sort(&self) -> ESort {
         match self {
-            Constructor::Num => ESort::Expr,
-            Constructor::Boolean => ESort::Expr,
-            Constructor::BOp => ESort::Expr,
-            Constructor::UOp => ESort::Expr,
-            Constructor::Get => ESort::Expr,
-            Constructor::Print => ESort::Expr,
-            Constructor::Read => ESort::Expr,
-            Constructor::Write => ESort::Expr,
-            Constructor::All => ESort::Expr,
-            Constructor::Switch => ESort::Expr,
-            Constructor::Branch => ESort::Expr,
-            Constructor::Loop => ESort::Expr,
-            Constructor::Let => ESort::Expr,
-            Constructor::Arg => ESort::Expr,
-            Constructor::Call => ESort::Expr,
+            Constructor::Expr(_) => ESort::Expr,
             Constructor::Cons => ESort::ListExpr,
             Constructor::Nil => ESort::ListExpr,
         }
@@ -256,8 +197,10 @@ impl Constructor {
 
 #[cfg(test)]
 use std::collections::HashSet;
-#[cfg(test)]
+
 use strum::IntoEnumIterator;
+
+use crate::expr::{ESort, Expr, Sort};
 
 #[test]
 fn no_duplicate_field_names() {

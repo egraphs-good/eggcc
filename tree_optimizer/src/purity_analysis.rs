@@ -1,28 +1,22 @@
 use std::iter;
 
-use crate::ir::{Constructor, ESort, Purpose};
+use crate::{
+    expr::{ESort, Expr},
+    ir::{Constructor, Purpose},
+};
 use strum::IntoEnumIterator;
-
-fn is_pure(ctor: &Constructor) -> bool {
-    use Constructor::*;
-    match ctor {
-        Num | Boolean | BOp | UOp | Get | All | Switch | Loop | Branch | Let | Arg | Call
-        | Cons | Nil => true,
-        Print | Read | Write => false,
-    }
-}
 
 // Builds rules like:
 // (rule ((BOp op x y) (ExprIsPure x) (ExprIsPure y))
 //       ((ExprIsPure (BOp op x y)))
 //       :ruleset always-run)
 fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
-    if !is_pure(&ctor) {
+    if !ctor.is_pure() {
         return None;
     }
 
     let br = "\n      ";
-    if ctor == Constructor::Call {
+    if let Constructor::Expr(Expr::Call(..)) = ctor {
         return Some(format!(
             "(rule ((Call f name arg) (ExprIsPure arg) (FunctionIsPure name)){br}((ExprIsPure (Call f name arg))):ruleset always-run)"
         ));

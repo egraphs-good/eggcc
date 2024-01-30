@@ -241,8 +241,8 @@ fn translate_simple_loop() {
         .to_tree_encoding()
         .assert_eq_ignoring_ids(&program!(function(
             "myfunc",
-            TreeType::Tuple(vec![TreeType::Unit]),
-            TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Unit]),
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
+            TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Tuple(vec![])]),
             cbind(
                 num(1), // [(), 1]
                 cbind(
@@ -286,8 +286,8 @@ fn translate_loop() {
         .to_tree_encoding()
         .assert_eq_ignoring_ids(&program!(function(
             "main",
-            TreeType::Tuple(vec![TreeType::Unit]),
-            TreeType::Tuple(vec![TreeType::Unit]),
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             cbind(
                 num(0), // [(), 0]
                 cbind(
@@ -334,8 +334,8 @@ fn simple_translation() {
         .to_tree_encoding()
         .assert_eq_ignoring_ids(&program!(function(
             "add",
-            TreeType::Tuple(vec![TreeType::Unit]),
-            TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Unit]),
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
+            TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Tuple(vec![])]),
             cbind(
                 num(1),
                 cbind(
@@ -366,8 +366,8 @@ fn two_print_translation() {
         .to_tree_encoding()
         .assert_eq_ignoring_ids(&program!(function(
             "add",
-            TreeType::Tuple(vec![TreeType::Unit]),
-            TreeType::Tuple(vec![TreeType::Unit]),
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             cbind(
                 num(2),
                 cbind(

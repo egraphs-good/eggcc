@@ -1,8 +1,11 @@
-use crate::ir::{Constructor, ESort, Purpose};
+use crate::{
+    expr::{ESort, Expr},
+    ir::{Constructor, Purpose},
+};
 use strum::IntoEnumIterator;
 
 fn subst_rule_for_ctor(ctor: Constructor) -> String {
-    if ctor == Constructor::Arg {
+    if let Constructor::Expr(Expr::Arg(..)) = ctor {
         return "(rewrite (SubstExpr (Arg (Id id)) v) v :ruleset always-run)".to_string();
     }
 

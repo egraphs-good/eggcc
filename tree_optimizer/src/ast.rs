@@ -235,8 +235,8 @@ fn test_complex_program_ids() {
     // a let, a loop, a switch, and a call
     let prog = program!(function(
         "main",
-        TreeType::Unit,
-        TreeType::Unit,
+        TreeType::Tuple(vec![]),
+        TreeType::Tuple(vec![]),
         tlet(
             num(0),
             tloop(
@@ -256,8 +256,8 @@ fn test_complex_program_ids() {
         Program(vec![Function(
             Unique(1),
             "main".into(),
-            TreeType::Unit,
-            TreeType::Unit,
+            TreeType::Tuple(vec![]),
+            TreeType::Tuple(vec![]),
             Box::new(Let(
                 Unique(2),
                 Box::new(Num(0)),

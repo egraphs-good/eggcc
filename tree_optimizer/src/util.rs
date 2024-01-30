@@ -1,6 +1,5 @@
-use crate::ir::{Constructor, Purpose};
+use crate::{expr::Expr, ir::{Constructor, Purpose}};
 use std::iter;
-use strum::IntoEnumIterator;
 
 fn ast_size_for_ctor(ctor: Constructor) -> String {
     let ctor_pattern = ctor.construct(|field| field.var());
@@ -10,9 +9,9 @@ fn ast_size_for_ctor(ctor: Constructor) -> String {
         Constructor::Nil =>  format!("(rule ({ctor_pattern}) ((set (ListExpr-size {ctor_pattern}) 0)) {ruleset})"),
         Constructor::Cons => format!("(rule ((= list (Cons expr xs)) (= a (Expr-size expr)) (= b (ListExpr-size xs))) ((set (ListExpr-size list) (+ a b))){ruleset})"), 
         // let Get and All's size = children's size (I prefer not +1 here)
-        Constructor::Get => format!("(rule ((= expr (Get tup i)) (= n (Expr-size tup))) ((set (Expr-size expr) n)) {ruleset})"),
-        Constructor::All => format!("(rule ((= expr (All id ord list)) (= n (ListExpr-size list))) ((set (Expr-size expr) n)) {ruleset})"),
-        Constructor::Branch => format!("
+        Constructor::Expr(Expr::Get(..)) => format!("(rule ((= expr (Get tup i)) (= n (Expr-size tup))) ((set (Expr-size expr) n)) {ruleset})"),
+        Constructor::Expr(Expr::All(..)) => format!("(rule ((= expr (All id ord list)) (= n (ListExpr-size list))) ((set (Expr-size expr) n)) {ruleset})"),
+        Constructor::Expr(Expr::Branch(..)) => format!("
 (rule ((= expr (Branch id child))
        (= n (Expr-size child)))
       ((set (Expr-size expr) n)) {ruleset})

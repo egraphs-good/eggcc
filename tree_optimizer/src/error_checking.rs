@@ -2,9 +2,10 @@
 //! such as checking that switch children
 //! are all `Branch`es.
 
-use strum::IntoEnumIterator;
-
-use crate::ir::{Constructor, ESort};
+use crate::{
+    expr::{ESort, Expr},
+    ir::Constructor,
+};
 
 pub(crate) fn error_checking_rules() -> Vec<String> {
     let mut res = vec![format!(
@@ -25,15 +26,16 @@ pub(crate) fn error_checking_rules() -> Vec<String> {
         if ctor.sort() == ESort::ListExpr {
             continue;
         }
-        if ctor == Constructor::Branch {
+        if let Constructor::Expr(Expr::Branch(..)) = ctor {
             continue;
         }
 
         let pat = ctor.construct(|field| field.var());
+        let ctor_name = ctor.name();
         res.push(format!(
             "
 (rule ((IsBranchList (Cons {pat} rest)))
-      ((panic \"Expected Branch, got {ctor}\"))
+      ((panic \"Expected Branch, got {ctor_name}\"))
       :ruleset error-checking)
 "
         ));

@@ -1,4 +1,7 @@
-use crate::ir::{Constructor, ESort, Purpose};
+use crate::{
+    expr::ESort,
+    ir::{Constructor, Purpose},
+};
 use strum::IntoEnumIterator;
 
 fn id_analysis_rules_for_ctor(ctor: Constructor) -> String {

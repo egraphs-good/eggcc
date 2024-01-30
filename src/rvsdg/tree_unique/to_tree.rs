@@ -20,8 +20,8 @@ use bril_rs::{Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_optimizer::{
     ast::{
-        add, arg, concat, function, get, getarg, lessthan, num, parallel, parallel_vec,
-        program_vec, tfalse, tlet, tloop, tprint, ttrue,
+        add, function, get, getarg, lessthan, num, parallel, parallel_vec, program_vec,
+        tfalse, tlet, tloop, tprint, ttrue,
     },
     expr::{Expr, TreeType},
 };
@@ -53,8 +53,13 @@ struct RegionTranslator<'a> {
 
 /// helper that binds a new expression, adding it
 /// to the environment using concat
-fn cbind(expr: Expr, body: Expr) -> Expr {
-    tlet(concat(arg(), expr), body)
+fn cbind(index: usize, expr: Expr, body: Expr) -> Expr {
+    let mut concatted = vec![];
+    for i in 0..index {
+        concatted.push(getarg(i as usize));
+    }
+    concatted.push(expr);
+    tlet(parallel_vec(concatted), body)
 }
 
 impl<'a> RegionTranslator<'a> {
@@ -87,8 +92,8 @@ impl<'a> RegionTranslator<'a> {
     fn build_translation(&self, inner: Expr) -> Expr {
         let mut expr = inner;
 
-        for binding in self.bindings.iter().rev() {
-            expr = cbind(binding.clone(), expr);
+        for (i, binding) in self.bindings.iter().rev().enumerate() {
+            expr = cbind(i, binding.clone(), expr);
         }
         expr
     }
@@ -244,13 +249,17 @@ fn translate_simple_loop() {
             TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Tuple(vec![])]),
             cbind(
+                1,
                 num(1), // [(), 1]
                 cbind(
+                    2,
                     num(2), // [(), 1, 2]
                     cbind(
+                        3,
                         tloop(
                             parallel!(getarg(0), getarg(1), getarg(2)), // [(), 1, 2]
                             cbind(
+                                4,
                                 lessthan(getarg(1), getarg(2)), // [(), 1, 2, 1<2]
                                 parallel!(getarg(3), parallel!(getarg(0), getarg(1), getarg(2)))
                             )
@@ -289,17 +298,23 @@ fn translate_loop() {
             TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             cbind(
+                1,
                 num(0), // [(), 0]
                 cbind(
+                    2,
                     tloop(
                         parallel!(getarg(0), getarg(1)),
                         cbind(
+                            3,
                             num(1), // [(), i, 1]
                             cbind(
+                                4,
                                 add(getarg(1), getarg(2)), // [(), i, 1, i+1]
                                 cbind(
+                                    5,
                                     num(10), // [(), i, 1, i+1, 10]
                                     cbind(
+                                        6,
                                         lessthan(getarg(3), getarg(4)), // [(), i, 1, i+1, 10, i<10]
                                         parallel!(getarg(5), parallel!(getarg(0), getarg(3)))
                                     )
@@ -308,6 +323,7 @@ fn translate_loop() {
                         )
                     ),
                     cbind(
+                        2,
                         tprint(get(getarg(2), 1)), // [(), 0, [() i]]
                         parallel!(getarg(3))
                     )
@@ -337,8 +353,10 @@ fn simple_translation() {
             TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Tuple(vec![])]),
             cbind(
+                1,
                 num(1),
                 cbind(
+                    2,
                     add(get(arg(), 1), get(arg(), 1)),
                     parallel!(get(arg(), 2), get(arg(), 0)), // returns res and print state (unit)
                 ),
@@ -369,14 +387,18 @@ fn two_print_translation() {
             TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             cbind(
+                1,
                 num(2),
                 cbind(
+                    2,
                     num(1),
                     cbind(
+                        3,
                         add(get(arg(), 2), get(arg(), 1)),
                         cbind(
+                            4,
                             tprint(get(arg(), 3)),
-                            cbind(tprint(get(arg(), 1)), parallel!(get(arg(), 5))),
+                            cbind(5, tprint(get(arg(), 1)), parallel!(get(arg(), 5))),
                         ),
                     ),
                 ),

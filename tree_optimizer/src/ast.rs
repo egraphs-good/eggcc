@@ -142,10 +142,6 @@ pub fn get(a: Expr, i: usize) -> Expr {
     Get(Box::new(a), i)
 }
 
-pub fn concat(a: Expr, b: Expr) -> Expr {
-    Concat(Box::new(a), Box::new(b))
-}
-
 pub fn tprint(a: Expr) -> Expr {
     Print(Box::new(a))
 }

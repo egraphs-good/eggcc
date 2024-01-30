@@ -175,11 +175,6 @@ pub enum Expr {
     BOp(PureBOp, Box<Expr>, Box<Expr>),
     UOp(PureUOp, Box<Expr>),
     Get(Box<Expr>, usize),
-    /// Concat is a convenient built-in way
-    /// to put two tuples together.
-    /// It's not strictly necessary, but
-    /// doing it by constructing a new big tuple is tedius and slow.
-    Concat(Box<Expr>, Box<Expr>),
     Print(Box<Expr>),
     Read(Box<Expr>),
     Write(Box<Expr>, Box<Expr>),
@@ -211,9 +206,9 @@ impl Expr {
     pub fn is_pure(&self) -> bool {
         use Expr::*;
         match self {
-            Num(..) | Boolean(..) | Arg(..) | BOp(..) | UOp(..) | Get(..) | Concat(..)
-            | Read(..) | All(..) | Switch(..) | Branch(..) | Loop(..) | Let(..) | Function(..)
-            | Program(..) | Call(..) => true,
+            Num(..) | Boolean(..) | Arg(..) | BOp(..) | UOp(..) | Get(..) | Read(..) | All(..)
+            | Switch(..) | Branch(..) | Loop(..) | Let(..) | Function(..) | Program(..)
+            | Call(..) => true,
             Print(..) | Write(..) => false,
         }
     }
@@ -225,7 +220,6 @@ impl Expr {
             Expr::BOp(_, _, _) => "BOp",
             Expr::UOp(_, _) => "UOp",
             Expr::Get(_, _) => "Get",
-            Expr::Concat(_, _) => todo!("Remove concat from ast"),
             Expr::Print(_) => "Print",
             Expr::Read(_) => "Read",
             Expr::Write(_, _) => "Write",
@@ -252,7 +246,7 @@ impl Expr {
             Expr::UOp(_, a) => {
                 func(a);
             }
-            Expr::Concat(a, b) | Expr::Write(a, b) => {
+            Expr::Write(a, b) => {
                 func(a);
                 func(b);
             }

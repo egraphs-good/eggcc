@@ -89,9 +89,6 @@ impl Constructor {
         use Purpose::{CapturedExpr, CapturingId, ReferencingId, Static, SubExpr, SubListExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
-            Constructor::Expr(Expr::Concat(..)) => {
-                todo!("Remove concat from enum")
-            }
             Constructor::Expr(Expr::Function(..)) => {
                 vec![
                     f(Static(Sort::IdSort), "id"),

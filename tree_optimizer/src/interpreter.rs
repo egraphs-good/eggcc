@@ -54,23 +54,6 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<TreeType>) -> Result<TreeType, TypeEr
                 )),
             }
         }
-        Expr::Concat(tuple_1, tuple_2) => {
-            let ty_tuple_1 = typecheck(tuple_1, arg_ty)?;
-            let ty_tuple_2 = typecheck(tuple_2, arg_ty)?;
-            match (ty_tuple_1.clone(), ty_tuple_2.clone()) {
-                (TreeType::Tuple(tys_1), TreeType::Tuple(tys_2)) => {
-                    Ok(TreeType::Tuple(tys_1.into_iter().chain(tys_2).collect()))
-                }
-                (TreeType::Tuple(_tys_1), _) => Err(TypeError::ExpectedTupleType(
-                    *tuple_2.clone(),
-                    ty_tuple_2.clone(),
-                )),
-                _ => Err(TypeError::ExpectedTupleType(
-                    *tuple_1.clone(),
-                    ty_tuple_1.clone(),
-                )),
-            }
-        }
         Expr::Print(e) => {
             // right now, only print nums
             expect_type(e, Bril(Int))?;
@@ -217,15 +200,6 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
                 panic!("get")
             };
             vals[*i].clone()
-        }
-        Expr::Concat(tuple_1, tuple_2) => {
-            let Value::Tuple(t1) = interpret(tuple_1, arg, vm) else {
-                panic!("concat")
-            };
-            let Value::Tuple(t2) = interpret(tuple_2, arg, vm) else {
-                panic!("concat")
-            };
-            Value::Tuple(t1.into_iter().chain(t2).collect())
         }
         Expr::Print(e) => {
             let Value::Num(n) = interpret(e, arg, vm) else {

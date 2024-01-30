@@ -17,7 +17,7 @@ impl Expr {
     /// since `give_fresh_ids` is deterministic.
     pub fn eq_ignoring_ids(&self, other: &Expr) -> bool {
         let mut copy = other.clone();
-        give_fresh_ids(&mut copy);
+        copy.give_fresh_ids();
         self == &copy
     }
 
@@ -25,7 +25,7 @@ impl Expr {
     /// that they are equal with a good error message.
     pub fn assert_eq_ignoring_ids(&self, other: &Expr) {
         let mut copy = other.clone();
-        give_fresh_ids(&mut copy);
+        copy.give_fresh_ids();
         if self != &copy {
             panic!(
                 "assertion failed: `(left == right)`\n\
@@ -35,49 +35,61 @@ impl Expr {
             );
         }
     }
-}
 
-pub fn give_fresh_ids(expr: &mut Expr) {
-    let mut id = 1;
-    give_fresh_ids_helper(expr, 0, &mut id);
-}
+    pub fn give_fresh_ids(&mut self) {
+        let mut id = 1;
+        self.give_fresh_ids_helper(0, &mut id);
+    }
 
-fn give_fresh_ids_helper(expr: &mut Expr, current_id: i64, fresh_id: &mut i64) {
-    match expr {
-        Loop(id, input, body) => {
-            let new_id = *fresh_id;
-            *fresh_id += 1;
-            *id = Unique(new_id);
-            give_fresh_ids_helper(input, current_id, fresh_id);
-            give_fresh_ids_helper(body, new_id, fresh_id);
+    fn give_fresh_ids_helper(&mut self, current_id: i64, fresh_id: &mut i64) {
+        match self {
+            Loop(id, input, body) => {
+                let new_id = *fresh_id;
+                *fresh_id += 1;
+                *id = Unique(new_id);
+                input.give_fresh_ids_helper(current_id, fresh_id);
+                body.give_fresh_ids_helper(new_id, fresh_id);
+            }
+            Let(id, arg, body) => {
+                let new_id = *fresh_id;
+                *fresh_id += 1;
+                *id = Unique(new_id);
+                arg.give_fresh_ids_helper(current_id, fresh_id);
+                body.give_fresh_ids_helper(new_id, fresh_id);
+            }
+            Arg(id) => {
+                *id = Unique(current_id);
+            }
+            Function(id, _name, _in_ty, _out_ty, body) => {
+                let new_id = *fresh_id;
+                *fresh_id += 1;
+                *id = Unique(new_id);
+                body.give_fresh_ids_helper(new_id, fresh_id);
+            }
+            Call(id, _name, arg) => {
+                *id = Unique(current_id);
+                arg.give_fresh_ids_helper(current_id, fresh_id);
+            }
+            Branch(id, child) => {
+                let new_id = *fresh_id;
+                *fresh_id += 1;
+                *id = Unique(new_id);
+                child.give_fresh_ids_helper(new_id, fresh_id);
+            }
+            Num(id, _) | Boolean(id, _) => {
+                *id = Unique(current_id);
+            }
+            All(id, _order, children) => {
+                *id = Unique(current_id);
+                for child in children {
+                    child.give_fresh_ids_helper(current_id, fresh_id);
+                }
+            }
+            BOp(..) | UOp(..) | Print(..) | Write(..) | Read(..) | Get(..) | Program(..)
+            | Switch(..) => {
+                self.for_each_child(move |child| child.give_fresh_ids_helper(current_id, fresh_id))
+            }
         }
-        Let(id, arg, body) => {
-            let new_id = *fresh_id;
-            *fresh_id += 1;
-            *id = Unique(new_id);
-            give_fresh_ids_helper(arg, current_id, fresh_id);
-            give_fresh_ids_helper(body, new_id, fresh_id);
-        }
-        Arg(id) => {
-            *id = Unique(current_id);
-        }
-        Function(id, _name, _in_ty, _out_ty, body) => {
-            let new_id = *fresh_id;
-            *fresh_id += 1;
-            *id = Unique(new_id);
-            give_fresh_ids_helper(body, new_id, fresh_id);
-        }
-        Call(id, _name, arg) => {
-            *id = Unique(current_id);
-            give_fresh_ids_helper(arg, current_id, fresh_id);
-        }
-        Branch(id, child) => {
-            let new_id = *fresh_id;
-            *fresh_id += 1;
-            *id = Unique(new_id);
-            give_fresh_ids_helper(child, new_id, fresh_id);
-        }
-        _ => expr.for_each_child(move |child| give_fresh_ids_helper(child, current_id, fresh_id)),
     }
 }
 
@@ -92,7 +104,7 @@ pub use program;
 
 pub fn program_vec(args: Vec<Expr>) -> Expr {
     let mut res = Program(args);
-    give_fresh_ids(&mut res);
+    res.give_fresh_ids();
     res
 }
 
@@ -190,7 +202,7 @@ pub use parallel;
 
 #[macro_export]
 macro_rules! switch {
-    ($arg:expr, $($x:expr),* $(,)?) => ($crate::ast::switch_vec($arg, vec![$($x),*]))
+    ($arg:expr; $($x:expr),* $(,)?) => ($crate::ast::switch_vec($arg, vec![$($x),*]))
 }
 pub use switch;
 
@@ -221,15 +233,15 @@ pub fn call(name: &str, arg: Expr) -> Expr {
 #[test]
 fn test_gives_nested_ids() {
     let mut prog = tlet(num(0), tlet(num(1), num(2)));
-    give_fresh_ids(&mut prog);
+    prog.give_fresh_ids();
     assert_eq!(
         prog,
         Let(
             Unique(1),
-            Box::new(Num(Unique(1), 0)),
+            Box::new(Num(Unique(0), 0)),
             Box::new(Let(
                 Unique(2),
-                Box::new(Num(Unique(2), 1)),
+                Box::new(Num(Unique(1), 1)),
                 Box::new(Num(Unique(2), 2))
             ))
         )
@@ -239,15 +251,15 @@ fn test_gives_nested_ids() {
 #[test]
 fn test_gives_loop_ids() {
     let mut prog = tlet(num(0), tloop(num(1), num(2)));
-    give_fresh_ids(&mut prog);
+    prog.give_fresh_ids();
     assert_eq!(
         prog,
         Let(
             Unique(1),
-            Box::new(Num(Unique(1), 0)),
+            Box::new(Num(Unique(0), 0)),
             Box::new(Loop(
                 Unique(2),
-                Box::new(Num(Unique(2), 1)),
+                Box::new(Num(Unique(1), 1)),
                 Box::new(Num(Unique(2), 2))
             ))
         )
@@ -267,7 +279,7 @@ fn test_complex_program_ids() {
             tloop(
                 num(1),
                 switch!(
-                    branch(arg()),
+                    arg();
                     branch(num(2)),
                     branch(call("otherfunc", num(3))),
                     branch(tlet(num(4), num(5))),
@@ -285,10 +297,10 @@ fn test_complex_program_ids() {
             TreeType::Tuple(vec![]),
             Box::new(Let(
                 Unique(2),
-                Box::new(Num(Unique(2), 0)),
+                Box::new(Num(Unique(1), 0)),
                 Box::new(Loop(
                     Unique(3),
-                    Box::new(Num(Unique(3), 1)),
+                    Box::new(Num(Unique(2), 1)),
                     Box::new(Switch(
                         Box::new(Arg(Unique(3))),
                         vec![
@@ -305,7 +317,7 @@ fn test_complex_program_ids() {
                                 Unique(6),
                                 Box::new(Let(
                                     Unique(7),
-                                    Box::new(Num(Unique(7), 4)),
+                                    Box::new(Num(Unique(6), 4)),
                                     Box::new(Num(Unique(7), 5))
                                 ))
                             ),
@@ -313,7 +325,7 @@ fn test_complex_program_ids() {
                                 Unique(8),
                                 Box::new(Loop(
                                     Unique(9),
-                                    Box::new(Num(Unique(9), 6)),
+                                    Box::new(Num(Unique(8), 6)),
                                     Box::new(Num(Unique(9), 7))
                                 ))
                             ),

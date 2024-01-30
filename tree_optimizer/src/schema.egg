@@ -90,6 +90,8 @@
 ; Functions
 ; ==========================
 
+; A list of functions, with the first one being the entry point
+(function Program  (ListExpr) Expr)
 ;                   id     name   input ty  output ty  output
 (function Function (IdSort String Type      Type       Expr)      Expr)
 

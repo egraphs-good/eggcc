@@ -568,16 +568,17 @@ fn test_expr_parser() {
             (Nil)))))
 ";
     let build = s.parse::<Expr>().unwrap();
-    let check = tloop(
+    let mut check = tloop(
         num(1),
         sequence!(
             lessthan(num(2), num(3)),
             switch!(
-                ttrue(),
+                ttrue();
                 Expr::Branch(Unique(2), Box::new(Expr::Num(Unique(2), 4))),
                 Expr::Branch(Unique(3), Box::new(Expr::Num(Unique(2), 5))),
             )
         ),
     );
+    check.give_fresh_ids();
     assert_eq!(build, check);
 }

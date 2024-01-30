@@ -5,8 +5,10 @@ use std::iter;
 /// A constructor is either something
 /// that creates an [`Expr`]
 /// or it is a list constructor.
+/// The arguments of the [`Expr`] should not be used-
+/// it is just there to specify the type of the constructor.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Constructor {
+pub enum Constructor {
     Expr(Expr),
     Cons,
     Nil,

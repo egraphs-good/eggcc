@@ -134,10 +134,10 @@ fn test_constant_condition() -> Result<(), egglog::Error> {
 fn switch_pull_in_below() -> Result<(), egglog::Error> {
     let build = "
     (let id (Id (i64-fresh!)))
-    (let c (Read (Num id 3)))
-    (let s1 (Read (Num id 4)))
-    (let s2 (Read (Num id 5)))
-    (let s3 (Read (Num id 6)))
+    (let c (Read (Num id 3) (IntT)))
+    (let s1 (Read (Num id 4) (IntT)))
+    (let s2 (Read (Num id 5) (IntT)))
+    (let s3 (Read (Num id 6) (IntT)))
 
     (let switch (Switch c (Cons s1 (Cons s2 (Nil)))))
     (let lhs (All id (Sequential) (Cons switch (Cons s3 (Nil)))))

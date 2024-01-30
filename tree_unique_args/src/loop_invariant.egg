@@ -1,48 +1,47 @@
 ;; Loop Invariant
 
 ;; bool: whether the term in the Expr is an invariant.
-;;                    loop  expr-in-loop
-(function is-inv-Expr (Expr Expr) bool :unextractable :merge (or old new))
-(function is-inv-ListExpr (Expr ListExpr) bool :unextractable :merge (or old new))
+(function is-inv-Expr (IdSort Expr) bool :unextractable :merge (or old new))
+(function is-inv-ListExpr (IdSort ListExpr) bool :unextractable :merge (or old new))
 
-(relation arg-inv (Expr i64))
+(relation arg-inv (IdSort i64))
 
 ;; in default, when there is a find, set is-inv to false
-(rule ((BodyContainsExpr loop term) (= loop (Loop id in pred_out))) ((set (is-inv-Expr loop term) false)) :ruleset always-run)
-(rule ((BodyContainsListExpr loop term) (= loop (Loop id in pred_out))) ((set (is-inv-ListExpr loop term) false)) :ruleset always-run)
+(rule ((BodyContainsExpr loop_id term) (Loop loop_id in pred_out)) ((set (is-inv-Expr loop_id term) false)) :ruleset always-run)
+(rule ((BodyContainsListExpr loop_id term) (Loop loop_id in pred_out)) ((set (is-inv-ListExpr loop_id term) false)) :ruleset always-run)
 
 ;; I assume input is tuple here
 (rule ((= loop (Loop id inputs outputs))
-       (= (Get (Arg id) i) (get-loop-outputs-ith loop i)))
-    ((arg-inv loop i)) :ruleset always-run)
+       (= (Get (Arg id) i) (get-loop-outputs-ith id i)))
+    ((arg-inv id i)) :ruleset always-run)
 
-(relation is-inv-ListExpr-helper (Expr ListExpr i64))
-(rule ((BodyContainsListExpr loop list)) ((is-inv-ListExpr-helper loop list 0)) :ruleset always-run)
+(relation is-inv-ListExpr-helper (IdSort ListExpr i64))
+(rule ((BodyContainsListExpr loop_id list) (Loop loop_id in out)) ((is-inv-ListExpr-helper loop_id list 0)) :ruleset always-run)
 
-(rule ((is-inv-ListExpr-helper loop list i)
-       (= true (is-inv-Expr loop expr))
+(rule ((is-inv-ListExpr-helper loop_id list i)
+       (= true (is-inv-Expr loop_id expr))
        (= expr (ListExpr-ith list i)))
-    ((is-inv-ListExpr-helper loop list (+ i 1))) :ruleset always-run)
+    ((is-inv-ListExpr-helper loop_id list (+ i 1))) :ruleset always-run)
 
-(rule ((is-inv-ListExpr-helper loop list i)
+(rule ((is-inv-ListExpr-helper loop_id list i)
        (= i (ListExpr-length list)))
-    ((set (is-inv-ListExpr loop list) true)) :ruleset always-run)
+    ((set (is-inv-ListExpr loop_id list) true)) :ruleset always-run)
 
 (ruleset boundary-analysis)
 ;; An Expr is on boundary when it is invariant and its parent is not
 ;                       loop invariant-expr
-(relation boundary-Expr (Expr Expr))
+(relation boundary-Expr (IdSort Expr))
 
 ;; boundary for ListExpr's children
-(rule ((= true (is-inv-Expr loop expr))
-       (= false (is-inv-ListExpr loop list))
+(rule ((= true (is-inv-Expr loop_id expr))
+       (= false (is-inv-ListExpr loop_id list))
        (= expr (ListExpr-ith list i)))
-      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+      ((boundary-Expr loop_id expr)) :ruleset boundary-analysis)
 
 ;; if a output branch is invariant, it's also boundary-Expr
-(rule ((= true (is-inv-Expr loop expr))
-       (= expr (get-loop-outputs-ith loop i))) 
-      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+(rule ((= true (is-inv-Expr loop_id expr))
+       (= expr (get-loop-outputs-ith loop_id i))) 
+      ((boundary-Expr loop_id expr)) :ruleset boundary-analysis)
 
 ;; a ListExpr could be on invariant boundary if it occur in switch
 ;; we don't hoist this ListExpr but hoist all Expr in list.
@@ -56,17 +55,17 @@
 
 ;; In milestone, a hoist-count is set to track how many time a loop is hoisted
 ;; It was used to prevent generating too many loops and program never finish
-;; I don't know if this problem still exist in tree unique arg
+;; I don't know if this problem still exists in tree unique arg
 ;; this rule is toooo long...
-(rule ((boundary-Expr loop inv)
+(rule ((boundary-Expr loop_id inv)
        (> (Expr-size inv) 1)
        (ExprIsValid loop)
-       (= loop (Loop id inputs pred_out))
-       (= inputs (All ord1 inputs_list))
+       (= loop (Loop loop_id inputs pred_out))
+       (= inputs (All id1 ord1 inputs_list))
        (= len (ListExpr-length inputs_list))
-       (= pred_out (All ord2 pred_out_list))
-       (= pred (get-loop-pred loop))
-       (= (All ord3 outputs_list) (get-loop-output loop)))
+       (= pred_out (All id2 ord2 pred_out_list))
+       (= pred (get-loop-pred loop_id))
+       (= (All id3 ord3 outputs_list) (get-loop-output loop_id)))
       ((let new_let_id (Id (i64-fresh!)))
        (let new_loop_id (Id (i64-fresh!)))
        ;; change all id in invariant to new let's id
@@ -76,14 +75,15 @@
        (let new_input_list (Append (get-arg-list new_let_id len) hoisted))
        ;; it have to be sequential because the hoisted term depend on old_inputs
        ;; which is linked by new Let
-       (let new_inputs (Let new_let_id inputs (All (Sequential) new_input_list)))
+       (let new_inputs (Let new_let_id inputs (All new_let_id (Sequential) new_input_list)))
        ;; append (Get (Arg id) len+1) to end of output
        (let new_input_branch (Get (Arg new_loop_id) (+ len 1)))
        (let new_outputs_list (Append outputs_list new_input_branch))
-       (let new_pred_out (All ord2 (Pair pred (All ord3 new_outputs_list))))
+       (let new_pred_out (All new_loop_id ord2 (Pair pred (All new_loop_id ord3 new_outputs_list))))
        (let new_loop (NewLoop new_loop_id new_inputs new_pred_out))
        ;; now the invariant in loop can be union with the hoisted part outside of loop
        (union hoisted_in_new_loop new_input_branch)
        ;; and two loop can be unioned.
        (union loop new_loop))
        :ruleset loop-inv-motion)
+   

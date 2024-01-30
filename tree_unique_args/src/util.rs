@@ -105,12 +105,12 @@ fn get_loop_output_ith_test() -> Result<(), egglog::Error> {
     let check = "
         (check (
             =
-            (get-loop-outputs-ith loop 0)
+            (get-loop-outputs-ith id1 0)
             out0
         ))
         (check (
             =
-            (get-loop-outputs-ith loop 1)
+            (get-loop-outputs-ith id1 1)
             out1
         ))";
     crate::run_test(build, check)
@@ -163,7 +163,7 @@ fn ast_size_test() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn new_get_arg_list_test() -> Result<(), egglog::Error> {
+fn get_arg_list_test() -> Result<(), egglog::Error> {
     let build = "
     (let id (Id (i64-fresh!)))
     (let list (get-arg-list id 5))

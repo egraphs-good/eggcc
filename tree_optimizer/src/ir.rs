@@ -12,6 +12,8 @@ pub(crate) enum Sort {
     IdSort,
     I64,
     Bool,
+    Type,
+    String,
 }
 
 impl Sort {
@@ -22,7 +24,9 @@ impl Sort {
             Sort::Order => "Order",
             Sort::IdSort => "IdSort",
             Sort::I64 => "i64",
+            Sort::String => "String",
             Sort::Bool => "bool",
+            Sort::Type => "Type",
         }
     }
 }
@@ -178,7 +182,7 @@ impl Constructor {
             Constructor::Not => vec![f(SubExpr, "x")],
             Constructor::Get => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
             Constructor::Print => vec![f(SubExpr, "printee")],
-            Constructor::Read => vec![f(SubExpr, "addr")],
+            Constructor::Read => vec![f(SubExpr, "addr"), f(Static(Sort::Type), "type")],
             Constructor::Write => vec![f(SubExpr, "addr"), f(SubExpr, "data")],
             Constructor::All => vec![
                 f(ReferencingId, "id"),
@@ -198,7 +202,13 @@ impl Constructor {
                 f(CapturedExpr, "out"),
             ],
             Constructor::Arg => vec![f(ReferencingId, "id")],
-            Constructor::Call => vec![f(Static(Sort::I64), "f"), f(SubExpr, "arg")],
+            Constructor::Call => {
+                vec![
+                    f(Static(Sort::I64), "id"),
+                    f(Static(Sort::String), "func"),
+                    f(SubExpr, "arg"),
+                ]
+            }
             Constructor::Cons => {
                 vec![f(SubExpr, "hd"), f(SubListExpr, "tl")]
             }

@@ -1,3 +1,5 @@
+use bril_rs::Type;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Order {
     Parallel,
@@ -40,7 +42,7 @@ pub enum Expr {
     Loop(Id, Box<Expr>, Box<Expr>),
     Let(Id, Box<Expr>, Box<Expr>),
     Arg(Id),
-    Function(Id, Box<Expr>),
+    Function(Id, String, TreeType, TreeType, Box<Expr>),
     /// A list of functions, with the first
     /// being the main function.
     Program(Vec<Expr>),
@@ -66,7 +68,7 @@ impl Expr {
             Expr::Not(a) | Expr::Print(a) | Expr::Read(a) => {
                 func(a);
             }
-            Expr::Get(a, _) | Expr::Function(_, a) | Expr::Call(_, a) => {
+            Expr::Get(a, _) | Expr::Function(_, _, _, _, a) | Expr::Call(_, a) => {
                 func(a);
             }
             Expr::All(_, _, children) => {
@@ -103,16 +105,16 @@ pub enum Value {
     Tuple(Vec<Value>),
 }
 
-#[derive(Clone, PartialEq)]
-pub enum Type {
-    Num,
-    Boolean,
-    Tuple(Vec<Type>),
+#[derive(Clone, PartialEq, Debug)]
+pub enum TreeType {
+    Unit,
+    Bril(Type),
+    Tuple(Vec<TreeType>),
 }
 
 pub enum TypeError {
-    ExpectedType(Expr, Type, Type),
-    ExpectedTupleType(Expr, Type),
-    ExpectedLoopOutputType(Expr, Type),
+    ExpectedType(Expr, TreeType, TreeType),
+    ExpectedTupleType(Expr, TreeType),
+    ExpectedLoopOutputType(Expr, TreeType),
     NoArg(Expr),
 }

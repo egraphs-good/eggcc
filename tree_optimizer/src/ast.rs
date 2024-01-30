@@ -1,6 +1,39 @@
 //! Provides a set of functions for constructing `[Expr]`s.
 
-use crate::{expr::Expr, expr::Expr::*, expr::Id, expr::Id::Shared, expr::Id::Unique, expr::Order};
+use crate::{
+    expr::Expr,
+    expr::Expr::*,
+    expr::Id::Unique,
+    expr::Order,
+    expr::{Id::Shared, TreeType},
+};
+
+impl Expr {
+    /// Check that two expressions are the same ignoring their ids.
+    /// To do this, simply assign them all new ids.
+    /// If they are the same expression, they will get the same ids
+    /// since `give_fresh_ids` is deterministic.
+    pub fn eq_ignoring_ids(&self, other: &Expr) -> bool {
+        let mut copy = other.clone();
+        give_fresh_ids(&mut copy);
+        self == &copy
+    }
+
+    /// Like [`Expr::eq_ignoring_ids`] but asserts
+    /// that they are equal with a good error message.
+    pub fn assert_eq_ignoring_ids(&self, other: &Expr) {
+        let mut copy = other.clone();
+        give_fresh_ids(&mut copy);
+        if self != &copy {
+            panic!(
+                "assertion failed: `(left == right)`\n\
+                 left:  `{:?}`\n\
+                 right: `{:?}`\n",
+                self, copy
+            );
+        }
+    }
+}
 
 pub fn give_fresh_ids(expr: &mut Expr) {
     let mut id = 1;
@@ -26,7 +59,7 @@ fn give_fresh_ids_helper(expr: &mut Expr, current_id: i64, fresh_id: &mut i64) {
         Arg(id) => {
             *id = Unique(current_id);
         }
-        Function(id, body) => {
+        Function(id, _name, _in_ty, _out_ty, body) => {
             let new_id = *fresh_id;
             *fresh_id += 1;
             *id = Unique(new_id);
@@ -46,10 +79,18 @@ fn give_fresh_ids_helper(expr: &mut Expr, current_id: i64, fresh_id: &mut i64) {
     }
 }
 
-pub fn program(args: Vec<Expr>) -> Expr {
-    let mut prog = Program(args);
-    give_fresh_ids(&mut prog);
-    prog
+/// a macro that wraps the children in
+/// a vec for program
+#[macro_export]
+macro_rules! program {
+    ($($x:expr),*) => ($crate::ast::program_vec(vec![$($x),*]))
+}
+pub use program;
+
+pub fn program_vec(args: Vec<Expr>) -> Expr {
+    let mut res = Program(args);
+    give_fresh_ids(&mut res);
+    res
 }
 
 pub fn num(n: i64) -> Expr {
@@ -91,6 +132,10 @@ pub fn not(a: Expr) -> Expr {
     Not(Box::new(a))
 }
 
+pub fn getarg(i: usize) -> Expr {
+    get(arg(), i)
+}
+
 pub fn get(a: Expr, i: usize) -> Expr {
     Get(Box::new(a), i)
 }
@@ -103,13 +148,26 @@ pub fn print(a: Expr) -> Expr {
     Print(Box::new(a))
 }
 
-pub fn sequence(id: Id, args: Vec<Expr>) -> Expr {
-    All(id, Order::Sequential, args)
+pub fn sequence_vec(args: Vec<Expr>) -> Expr {
+    All(Shared, Order::Sequential, args)
 }
 
-pub fn parallel(id: Id, args: Vec<Expr>) -> Expr {
-    All(id, Order::Parallel, args)
+#[macro_export]
+macro_rules! sequence {
+    // use crate::ast::sequence_vec to resolve import errors
+    ($($x:expr),*) => ($crate::ast::sequence_vec(vec![$($x),*]))
 }
+pub use sequence;
+
+pub fn parallel_vec(args: Vec<Expr>) -> Expr {
+    All(Shared, Order::Parallel, args)
+}
+
+#[macro_export]
+macro_rules! parallel {
+    ($($x:expr),*) => ($crate::ast::parallel_vec(vec![$($x),*]))
+}
+pub use parallel;
 
 pub fn switch(arg: Expr, cases: Vec<Expr>) -> Expr {
     let cases_wrapped = cases
@@ -131,8 +189,8 @@ pub fn arg() -> Expr {
     Arg(Shared)
 }
 
-pub fn function(arg: Expr) -> Expr {
-    Function(Shared, Box::new(arg))
+pub fn function(name: String, in_ty: TreeType, out_ty: TreeType, arg: Expr) -> Expr {
+    Function(Shared, name, in_ty, out_ty, Box::new(arg))
 }
 
 pub fn call(arg: Expr) -> Expr {
@@ -171,44 +229,36 @@ fn test_gives_loop_ids() {
 fn test_complex_program_ids() {
     // test a program that includes
     // a let, a loop, a switch, and a call
-    let prog = program(vec![function(tlet(
+    let prog = program!(function(tlet(
         num(0),
         tloop(
             num(1),
-            switch(
+            switch!(
                 arg(),
-                vec![
-                    num(2),
-                    call(num(3)),
-                    tlet(num(4), num(5)),
-                    tloop(num(6), num(7)),
-                ],
+                num(2),
+                call(num(3)),
+                tlet(num(4), num(5)),
+                tloop(num(6), num(7))
             ),
         ),
-    ))]);
+    )));
     assert_eq!(
         prog,
         Program(vec![Function(
-            Unique(1),
+            Id(1),
             Box::new(Let(
-                Unique(2),
+                Id(2),
                 Box::new(Num(0)),
                 Box::new(Loop(
-                    Unique(3),
+                    Id(3),
                     Box::new(Num(1)),
                     Box::new(Switch(
-                        Box::new(Arg(Unique(3))),
+                        Box::new(Arg(Id(3))),
                         vec![
-                            Branch(Unique(4), Box::new(Num(2))),
-                            Branch(Unique(5), Box::new(Call(Unique(5), Box::new(Num(3))))),
-                            Branch(
-                                Unique(6),
-                                Box::new(Let(Unique(7), Box::new(Num(4)), Box::new(Num(5))))
-                            ),
-                            Branch(
-                                Unique(8),
-                                Box::new(Loop(Unique(9), Box::new(Num(6)), Box::new(Num(7))))
-                            ),
+                            Num(2),
+                            Call(Id(3), Box::new(Num(3))),
+                            Let(Id(4), Box::new(Num(4)), Box::new(Num(5))),
+                            Loop(Id(5), Box::new(Num(6)), Box::new(Num(7))),
                         ]
                     ))
                 ))

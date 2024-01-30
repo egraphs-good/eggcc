@@ -1,7 +1,7 @@
 pub mod ast;
 pub(crate) mod deep_copy;
 pub(crate) mod error_checking;
-pub(crate) mod expr;
+pub mod expr;
 pub(crate) mod id_analysis;
 pub mod interpreter;
 pub(crate) mod ir;

@@ -354,6 +354,7 @@ dependencies = [
  "smallvec",
  "thiserror",
  "tree-unique-args",
+ "tree_optimizer",
 ]
 
 [[package]]
@@ -1329,6 +1330,18 @@ dependencies = [
 name = "tree-unique-args"
 version = "0.1.0"
 dependencies = [
+ "egglog 0.1.0 (git+https://github.com/oflatt/egg-smol?rev=057725d9353727d831c90c7f8fdd76954d06b351)",
+ "main_error",
+ "strum",
+ "strum_macros",
+ "thiserror",
+]
+
+[[package]]
+name = "tree_optimizer"
+version = "0.1.0"
+dependencies = [
+ "bril-rs",
  "egglog 0.1.0 (git+https://github.com/oflatt/egg-smol?rev=057725d9353727d831c90c7f8fdd76954d06b351)",
  "main_error",
  "strum",

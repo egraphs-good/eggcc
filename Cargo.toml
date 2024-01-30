@@ -27,6 +27,7 @@ ordered-float = { version = "3.7" }
 serde_json = "1.0.103"
 
 tree-unique-args = { path = "tree_unique_args" }
+tree_optimizer = { path = "tree_optimizer" }
 
 # binary dependencies
 clap = { version = "4.4.7", features = ["derive"] }

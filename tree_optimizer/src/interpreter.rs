@@ -1,18 +1,20 @@
 // This file is a reference for the semantics of tree_unique_args
 
-use std::collections::HashMap;
-
 use crate::{
     expr::Expr,
     expr::{
         Id::{self, Shared, Unique},
-        Type, Value,
+        TreeType::{self, Bril, Tuple},
+        Value,
     },
     expr::{Order, TypeError},
 };
+use bril_rs::Type::{Bool, Int};
+use egglog::ast::Literal;
+use std::collections::HashMap;
 
-pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
-    let expect_type = |sub_e: &Expr, expected_ty: Type| -> Result<(), TypeError> {
+pub fn typecheck(e: &Expr, arg_ty: &Option<TreeType>) -> Result<TreeType, TypeError> {
+    let expect_type = |sub_e: &Expr, expected_ty: TreeType| -> Result<(), TypeError> {
         let actual_ty = typecheck(sub_e, arg_ty)?;
         if actual_ty == expected_ty {
             Ok(())
@@ -26,31 +28,31 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
     };
     match e {
         Expr::Program(_) => panic!("Found non top level program."),
-        Expr::Num(_) => Ok(Type::Num),
-        Expr::Boolean(_) => Ok(Type::Boolean),
+        Expr::Num(_) => Ok(Bril(Int)),
+        Expr::Boolean(_) => Ok(Bril(Bool)),
         Expr::Add(e1, e2) | Expr::Sub(e1, e2) | Expr::Mul(e1, e2) => {
-            expect_type(e1, Type::Num)?;
-            expect_type(e2, Type::Num)?;
-            Ok(Type::Num)
+            expect_type(e1, Bril(Int))?;
+            expect_type(e2, Bril(Int))?;
+            Ok(Bril(Int))
         }
         Expr::LessThan(e1, e2) => {
-            expect_type(e1, Type::Num)?;
-            expect_type(e2, Type::Num)?;
-            Ok(Type::Boolean)
+            expect_type(e1, Bril(Int))?;
+            expect_type(e2, Bril(Int))?;
+            Ok(Bril(Bool))
         }
         Expr::And(e1, e2) | Expr::Or(e1, e2) => {
-            expect_type(e1, Type::Num)?;
-            expect_type(e2, Type::Num)?;
-            Ok(Type::Boolean)
+            expect_type(e1, Bril(Int))?;
+            expect_type(e2, Bril(Int))?;
+            Ok(Bril(Bool))
         }
         Expr::Not(e1) => {
-            expect_type(e1, Type::Num)?;
-            Ok(Type::Boolean)
+            expect_type(e1, Bril(Int))?;
+            Ok(Bril(Bool))
         }
         Expr::Get(tuple, i) => {
             let ty_tuple = typecheck(tuple, arg_ty)?;
             match ty_tuple {
-                Type::Tuple(tys) => Ok(tys[*i].clone()),
+                TreeType::Tuple(tys) => Ok(tys[*i].clone()),
                 _ => Err(TypeError::ExpectedTupleType(
                     *tuple.clone(),
                     ty_tuple.clone(),
@@ -61,10 +63,10 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
             let ty_tuple_1 = typecheck(tuple_1, arg_ty)?;
             let ty_tuple_2 = typecheck(tuple_2, arg_ty)?;
             match (ty_tuple_1.clone(), ty_tuple_2.clone()) {
-                (Type::Tuple(tys_1), Type::Tuple(tys_2)) => {
-                    Ok(Type::Tuple(tys_1.into_iter().chain(tys_2).collect()))
+                (TreeType::Tuple(tys_1), TreeType::Tuple(tys_2)) => {
+                    Ok(TreeType::Tuple(tys_1.into_iter().chain(tys_2).collect()))
                 }
-                (Type::Tuple(_tys_1), _) => Err(TypeError::ExpectedTupleType(
+                (TreeType::Tuple(_tys_1), _) => Err(TypeError::ExpectedTupleType(
                     *tuple_2.clone(),
                     ty_tuple_2.clone(),
                 )),
@@ -76,30 +78,30 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         }
         Expr::Print(e) => {
             // right now, only print nums
-            expect_type(e, Type::Num)?;
-            Ok(Type::Tuple(vec![]))
+            expect_type(e, Bril(Int))?;
+            Ok(TreeType::Tuple(vec![]))
         }
         Expr::Read(addr) => {
             // right now, all memory holds nums.
             // read could also take a static type to interpret
             // the memory as.
-            expect_type(addr, Type::Num)?;
-            Ok(Type::Num)
+            expect_type(addr, Bril(Int))?;
+            Ok(Bril(Int))
         }
         Expr::Write(addr, data) => {
-            expect_type(addr, Type::Num)?;
-            expect_type(data, Type::Num)?;
-            Ok(Type::Tuple(vec![]))
+            expect_type(addr, Bril(Int))?;
+            expect_type(data, Bril(Int))?;
+            Ok(TreeType::Tuple(vec![]))
         }
         Expr::All(_, _, exprs) => {
             let tys = exprs
                 .iter()
                 .map(|expr| typecheck(expr, arg_ty))
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(Type::Tuple(tys))
+            Ok(TreeType::Tuple(tys))
         }
         Expr::Switch(pred, branches) => {
-            expect_type(pred, Type::Num)?;
+            expect_type(pred, Bril(Int))?;
             let ty = typecheck(&branches[0], arg_ty)?;
             for branch in branches {
                 expect_type(branch, ty.clone())?;
@@ -110,7 +112,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         Expr::Loop(_, input, pred_output) => {
             let input_ty = typecheck(input, arg_ty)?;
             let pred_output_ty = typecheck(pred_output, &Some(input_ty.clone()))?;
-            let expected_ty = Type::Tuple(vec![Type::Boolean, input_ty.clone()]);
+            let expected_ty = TreeType::Tuple(vec![Bril(Bool), input_ty.clone()]);
             if pred_output_ty != expected_ty {
                 return Err(TypeError::ExpectedType(
                     *pred_output.clone(),
@@ -126,7 +128,17 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<Type>) -> Result<Type, TypeError> {
         }
         Expr::Arg(_) => arg_ty.clone().ok_or(TypeError::NoArg(e.clone())),
         // TODO: add an environment for functions so we can typecheck function calls correctly
-        Expr::Function(_, output) => typecheck(output, &None),
+        Expr::Function(_, _name, in_ty, out_ty, output) => {
+            let output_ty = typecheck(output, &Some(in_ty.clone()))?;
+            if output_ty != *out_ty {
+                return Err(TypeError::ExpectedType(
+                    *output.clone(),
+                    out_ty.clone(),
+                    output_ty,
+                ));
+            }
+            Ok(out_ty.clone())
+        }
         Expr::Call(_, arg) => typecheck(arg, arg_ty),
     }
 }
@@ -281,7 +293,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             let Some(v) = arg else { panic!("arg") };
             v.clone()
         }
-        Expr::Function(_, _) | Expr::Call(_, _) => todo!("interpret functions and calls"),
+        Expr::Function(_, _, _, _, _) | Expr::Call(_, _) => todo!("interpret functions and calls"),
     }
 }
 
@@ -405,6 +417,8 @@ pub enum ExprParseError {
     UnwrappedLiteral,
     #[error("expected a grounded term, got a term with {0:?} in it")]
     UngroundedTerm(String),
+    #[error("expected a type, got {0:?}")]
+    UnknownType(egglog::ast::Expr),
     #[error("expected Get index to be positive")]
     NegativeGetIndex,
     #[error("order had arguments")]
@@ -435,6 +449,26 @@ impl std::str::FromStr for Expr {
             }
             Err(ExprParseError::InvalidListExpr)
         }
+
+        fn egglog_type_to_type(e: &egglog::ast::Expr) -> Result<TreeType, ExprParseError> {
+            if let egglog::ast::Expr::Call(f, xs) = e {
+                match (f.as_str(), xs.as_slice()) {
+                    ("BoolT", []) => Ok(Bril(Bool)),
+                    ("IntT", []) => Ok(Bril(Int)),
+                    ("TupleT", xs) => {
+                        let tys = xs
+                            .iter()
+                            .map(|x| egglog_type_to_type(x))
+                            .collect::<Result<Vec<_>, _>>()?;
+                        Ok(Tuple(tys))
+                    }
+                    _ => Err(ExprParseError::UnknownType(e.clone())),
+                }
+            } else {
+                Err(ExprParseError::UnknownType(e.clone()))
+            }
+        }
+
         fn egglog_expr_to_id(e: &egglog::ast::Expr) -> Result<Id, ExprParseError> {
             if let egglog::ast::Expr::Call(f, xs) = e {
                 match (f.as_str(), xs.as_slice()) {
@@ -533,8 +567,14 @@ impl std::str::FromStr for Expr {
                         Box::new(egglog_expr_to_expr(other)?),
                     )),
                     ("Arg", [id]) => Ok(Expr::Arg(egglog_expr_to_id(id)?)),
-                    ("Function", [id, body]) => Ok(Expr::Function(
+                    (
+                        "Function",
+                        [id, egglog::ast::Expr::Lit(Literal::String(name)), in_ty, out_ty, body],
+                    ) => Ok(Expr::Function(
                         egglog_expr_to_id(id)?,
+                        name.as_str().to_owned(),
+                        egglog_type_to_type(in_ty)?,
+                        egglog_type_to_type(out_ty)?,
                         Box::new(egglog_expr_to_expr(body)?),
                     )),
                     ("Call", [id, arg]) => Ok(Expr::Call(

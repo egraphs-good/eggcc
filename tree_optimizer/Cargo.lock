@@ -140,6 +140,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bril-rs"
+version = "0.1.0"
+source = "git+https://github.com/sampsyo/bril?rev=daaff28#daaff284fdaee0319ab8cdcdaa9c620606125889"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1102,9 +1112,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-unique-args"
+name = "tree_optimizer"
 version = "0.1.0"
 dependencies = [
+ "bril-rs",
  "egglog",
  "main_error",
  "strum",

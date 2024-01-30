@@ -8,6 +8,8 @@
 //! computed once in the tree encoded
 //! program.
 
+use std::iter;
+
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 #[cfg(test)]
@@ -16,12 +18,12 @@ use tree_unique_args::ast::program;
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{Literal, ValueOps};
 use hashbrown::HashMap;
-use tree_unique_args::{
+use tree_optimizer::{
     ast::{
         add, arg, concat, function, get, getarg, lessthan, num, parallel, parallel_vec, print,
         program_vec, tfalse, tlet, tloop, ttrue,
     },
-    Expr,
+    expr::{Expr, TreeType},
 };
 
 impl RvsdgProgram {
@@ -208,7 +210,24 @@ impl RvsdgFunction {
             .map(|r| translator.translate_operand(r.1))
             .collect::<Vec<_>>();
 
-        function(translator.build_translation(parallel_vec(translated_results)))
+        function(
+            self.name.clone(),
+            TreeType::Tuple(
+                self.args
+                    .iter()
+                    .map(|ty| ty.to_tree_type())
+                    .chain(iter::once(TreeType::Unit))
+                    .collect(),
+            ),
+            TreeType::Tuple(
+                self.results
+                    .iter()
+                    .map(|r| r.0.to_tree_type())
+                    .chain(iter::once(TreeType::Unit))
+                    .collect(),
+            ),
+            translator.build_translation(parallel_vec(translated_results)),
+        )
     }
 }
 

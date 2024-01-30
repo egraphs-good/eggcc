@@ -1,7 +1,9 @@
 // This file is a reference for the semantics of tree_unique_args
 
+#[cfg(test)]
+use crate::ast::{add, arg, get, lessthan, num, parallel, sub, tloop, tprint};
+
 use crate::{
-    ast::{add, arg, get, lessthan, num, parallel, sub, tloop, tprint},
     expr::Expr,
     expr::{
         Id::{self, Shared, Unique},
@@ -150,7 +152,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
         Expr::Program(_) => todo!("interpret programs"),
         Expr::Num(x) => Value::Num(*x),
         Expr::Boolean(x) => Value::Boolean(*x),
-        Expr::BOp(Add, e1, e2) => {
+        Expr::BOp(PureBOp::Add, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("add")
             };
@@ -159,7 +161,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Num(n1 + n2)
         }
-        Expr::BOp(Sub, e1, e2) => {
+        Expr::BOp(PureBOp::Sub, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("sub")
             };
@@ -168,7 +170,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Num(n1 - n2)
         }
-        Expr::BOp(Mul, e1, e2) => {
+        Expr::BOp(PureBOp::Mul, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("mul")
             };
@@ -177,7 +179,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Num(n1 * n2)
         }
-        Expr::BOp(LessThan, e1, e2) => {
+        Expr::BOp(PureBOp::LessThan, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("lessthan")
             };
@@ -186,7 +188,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Boolean(n1 < n2)
         }
-        Expr::BOp(And, e1, e2) => {
+        Expr::BOp(PureBOp::And, e1, e2) => {
             let Value::Boolean(b1) = interpret(e1, arg, vm) else {
                 panic!("and")
             };
@@ -195,7 +197,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Boolean(b1 && b2)
         }
-        Expr::BOp(Or, e1, e2) => {
+        Expr::BOp(PureBOp::Or, e1, e2) => {
             let Value::Boolean(b1) = interpret(e1, arg, vm) else {
                 panic!("or")
             };
@@ -204,7 +206,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Boolean(b1 || b2)
         }
-        Expr::UOp(Not, e1) => {
+        Expr::UOp(PureUOp::Not, e1) => {
             let Value::Boolean(b1) = interpret(e1, arg, vm) else {
                 panic!("not")
             };
@@ -468,7 +470,7 @@ impl std::str::FromStr for Expr {
 
         fn egglog_binop_to_binop(e: &egglog::ast::Expr) -> Result<PureBOp, ExprParseError> {
             if let egglog::ast::Expr::Call(str, xs) = e {
-                if let (Some(op), []) = (PureBOp::from_str(&str.to_string()), xs.as_slice()) {
+                if let (Ok(op), []) = (PureBOp::from_str(&str.to_string()), xs.as_slice()) {
                     Ok(op)
                 } else {
                     Err(ExprParseError::UnknownOp(e.clone()))
@@ -480,7 +482,7 @@ impl std::str::FromStr for Expr {
 
         fn egglog_unaryop_to_unaryop(e: &egglog::ast::Expr) -> Result<PureUOp, ExprParseError> {
             if let egglog::ast::Expr::Call(str, xs) = e {
-                if let (Some(op), []) = (PureUOp::from_str(&str.to_string()), xs.as_slice()) {
+                if let (Ok(op), []) = (PureUOp::from_str(&str.to_string()), xs.as_slice()) {
                     Ok(op)
                 } else {
                     Err(ExprParseError::UnknownOp(e.clone()))
@@ -594,7 +596,7 @@ fn test_expr_parser() {
 (Id 1)
 (Num (Id 0) 1)
 (All (Id 1) (Sequential)
-    (Cons (LessThan (Num (Id 1) 2) (Num (Id 1) 3))
+    (Cons (BOp (LessThan) (Num (Id 1) 2) (Num (Id 1) 3))
         (Cons (Switch (Boolean (Id 1) true) (Cons (Branch (Id 2) (Num (Id 2) 4)) (Cons (Branch (Id 3) (Num (Id 3) 5)) (Nil))))
             (Nil)))))
 ";

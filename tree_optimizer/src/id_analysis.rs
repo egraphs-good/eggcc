@@ -134,7 +134,7 @@ fn test_id_analysis() -> Result<(), egglog::Error> {
 // Check that invalid expr (expr that has not been marked valid) does not have a RefId
 #[test]
 fn test_id_analysis_no_invalid_entry() {
-    let build = "(let some-expr (Not (Boolean (Id (i64-fresh!)) false)))";
+    let build = "(let some-expr (UOp (Not) (Boolean (Id (i64-fresh!)) false)))";
     let check = "(fail (check (ExprHasRefId some-expr any-id)))";
 
     crate::run_test(build, check).unwrap()
@@ -147,7 +147,7 @@ fn test_id_analysis_expr_id_conflict_panics_if_valid() {
     let build = "
         (let id1 (Id (i64-fresh!)))
         (let id2 (Id (i64-fresh!)))
-        (let conflict-expr (And (Boolean id1 false) (Boolean id2 true)))
+        (let conflict-expr (BOp (And) (Boolean id1 false) (Boolean id2 true)))
         (ExprIsValid conflict-expr)";
     let check = "";
 

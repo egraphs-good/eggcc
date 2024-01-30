@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use bril_rs::Type;
 use strum_macros::{Display, EnumIter};
 
@@ -8,11 +10,29 @@ pub enum Order {
     Sequential,
 }
 
+impl std::fmt::Display for Order {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Order::Parallel => write!(f, "(Parallel)"),
+            Order::Sequential => write!(f, "(Sequential)"),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum Id {
     Unique(i64),
     #[default]
     Shared,
+}
+
+impl std::fmt::Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Id::Unique(id) => write!(f, "(Id {})", id),
+            Id::Shared => write!(f, "(Shared)"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, EnumIter, Default, Display)]
@@ -26,19 +46,23 @@ pub enum PureBOp {
     Or,
 }
 
-impl PureBOp {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for PureBOp {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Add" => Some(PureBOp::Add),
-            "Sub" => Some(PureBOp::Sub),
-            "Mul" => Some(PureBOp::Mul),
-            "LessThan" => Some(PureBOp::LessThan),
-            "And" => Some(PureBOp::And),
-            "Or" => Some(PureBOp::Or),
-            _ => None,
+            "Add" => Ok(PureBOp::Add),
+            "Sub" => Ok(PureBOp::Sub),
+            "Mul" => Ok(PureBOp::Mul),
+            "LessThan" => Ok(PureBOp::LessThan),
+            "And" => Ok(PureBOp::And),
+            "Or" => Ok(PureBOp::Or),
+            _ => Err(()),
         }
     }
+}
 
+impl PureBOp {
     pub fn input_types(&self) -> (Type, Type) {
         match self {
             PureBOp::Add | PureBOp::Sub | PureBOp::Mul | PureBOp::LessThan => {
@@ -62,14 +86,18 @@ pub enum PureUOp {
     Not,
 }
 
-impl PureUOp {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for PureUOp {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Not" => Some(PureUOp::Not),
-            _ => None,
+            "Not" => Ok(PureUOp::Not),
+            _ => Err(()),
         }
     }
+}
 
+impl PureUOp {
     pub fn input_type(&self) -> Type {
         match self {
             PureUOp::Not => Type::Bool,

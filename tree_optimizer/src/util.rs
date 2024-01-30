@@ -92,8 +92,8 @@ fn append_test() -> Result<(), egglog::Error> {
 fn ast_size_test() -> Result<(), egglog::Error> {
     let build = "
     (let inv 
-        (Sub (Get (Arg shared) 4)
-            (Mul (Get (Arg shared) 2) 
+        (BOp (Sub) (Get (Arg shared) 4)
+            (BOp (Mul) (Get (Arg shared) 2) 
                 (Switch (Num shared 1)
                   (list4 (Branch shared (Num shared 1))
                          (Branch shared (Num shared 2))
@@ -113,11 +113,11 @@ fn ast_size_test() -> Result<(), egglog::Error> {
             (All shared (Sequential)
                 (Pair
                 ; pred
-                (LessThan (Get (Arg shared) 0) (Get (Arg shared) 4))
+                (BOp (LessThan) (Get (Arg shared) 0) (Get (Arg shared) 4))
                 ; output
                 (All shared (Parallel) 
                     (list5
-                        (Add (Get (Arg shared) 0) 
+                        (BOp (Add) (Get (Arg shared) 0) 
                             inv
                         )
                         (Get (Arg shared) 1)

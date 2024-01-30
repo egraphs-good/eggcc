@@ -85,8 +85,9 @@ fn give_fresh_ids_helper(expr: &mut Expr, current_id: i64, fresh_id: &mut i64) {
 /// a vec for program
 #[macro_export]
 macro_rules! program {
-    ($($x:expr),*) => ($crate::ast::program_vec(vec![$($x),*]))
+    ($($x:expr),* $(,)?) => ($crate::ast::program_vec(vec![$($x),*]))
 }
+use bril_rs::Type;
 pub use program;
 
 pub fn program_vec(args: Vec<Expr>) -> Expr {
@@ -96,14 +97,30 @@ pub fn program_vec(args: Vec<Expr>) -> Expr {
 }
 
 pub fn num(n: i64) -> Expr {
-    Num(n)
+    Num(Shared, n)
 }
 
 pub fn ttrue() -> Expr {
-    Boolean(true)
+    Boolean(Shared, true)
 }
 pub fn tfalse() -> Expr {
-    Boolean(false)
+    Boolean(Shared, false)
+}
+
+pub fn tint() -> TreeType {
+    TreeType::Bril(Type::Int)
+}
+
+pub fn tbool() -> TreeType {
+    TreeType::Bril(Type::Bool)
+}
+
+pub fn twrite(addr: Expr, data: Expr) -> Expr {
+    Write(Box::new(addr), Box::new(data))
+}
+
+pub fn tread(addr: Expr, ty: TreeType) -> Expr {
+    Read(Box::new(addr), ty)
 }
 
 pub fn add(a: Expr, b: Expr) -> Expr {
@@ -142,6 +159,10 @@ pub fn get(a: Expr, i: usize) -> Expr {
     Get(Box::new(a), i)
 }
 
+pub fn branch(a: Expr) -> Expr {
+    Branch(Shared, Box::new(a))
+}
+
 pub fn tprint(a: Expr) -> Expr {
     Print(Box::new(a))
 }
@@ -153,7 +174,7 @@ pub fn sequence_vec(args: Vec<Expr>) -> Expr {
 #[macro_export]
 macro_rules! sequence {
     // use crate::ast::sequence_vec to resolve import errors
-    ($($x:expr),*) => ($crate::ast::sequence_vec(vec![$($x),*]))
+    ($($x:expr),* $(,)?) => ($crate::ast::sequence_vec(vec![$($x),*]))
 }
 pub use sequence;
 
@@ -163,13 +184,13 @@ pub fn parallel_vec(args: Vec<Expr>) -> Expr {
 
 #[macro_export]
 macro_rules! parallel {
-    ($($x:expr),*) => ($crate::ast::parallel_vec(vec![$($x),*]))
+    ($($x:expr),* $(,)?) => ($crate::ast::parallel_vec(vec![$($x),*]))
 }
 pub use parallel;
 
 #[macro_export]
 macro_rules! switch {
-    ($arg:expr, $($x:expr),*) => ($crate::ast::switch_vec($arg, vec![$($x),*]))
+    ($arg:expr, $($x:expr),* $(,)?) => ($crate::ast::switch_vec($arg, vec![$($x),*]))
 }
 pub use switch;
 
@@ -205,8 +226,12 @@ fn test_gives_nested_ids() {
         prog,
         Let(
             Unique(1),
-            Box::new(Num(0)),
-            Box::new(Let(Unique(2), Box::new(Num(1)), Box::new(Num(2))))
+            Box::new(Num(Unique(1), 0)),
+            Box::new(Let(
+                Unique(2),
+                Box::new(Num(Unique(2), 1)),
+                Box::new(Num(Unique(2), 2))
+            ))
         )
     );
 }
@@ -219,8 +244,12 @@ fn test_gives_loop_ids() {
         prog,
         Let(
             Unique(1),
-            Box::new(Num(0)),
-            Box::new(Loop(Unique(2), Box::new(Num(1)), Box::new(Num(2))))
+            Box::new(Num(Unique(1), 0)),
+            Box::new(Loop(
+                Unique(2),
+                Box::new(Num(Unique(2), 1)),
+                Box::new(Num(Unique(2), 2))
+            ))
         )
     );
 }
@@ -238,11 +267,11 @@ fn test_complex_program_ids() {
             tloop(
                 num(1),
                 switch!(
-                    arg(),
-                    num(2),
-                    call("otherfunc", num(3)),
-                    tlet(num(4), num(5)),
-                    tloop(num(6), num(7))
+                    branch(arg()),
+                    branch(num(2)),
+                    branch(call("otherfunc", num(3))),
+                    branch(tlet(num(4), num(5))),
+                    branch(tloop(num(6), num(7))),
                 ),
             ),
         )
@@ -256,17 +285,38 @@ fn test_complex_program_ids() {
             TreeType::Tuple(vec![]),
             Box::new(Let(
                 Unique(2),
-                Box::new(Num(0)),
+                Box::new(Num(Unique(2), 0)),
                 Box::new(Loop(
                     Unique(3),
-                    Box::new(Num(1)),
+                    Box::new(Num(Unique(3), 1)),
                     Box::new(Switch(
                         Box::new(Arg(Unique(3))),
                         vec![
-                            Num(2),
-                            Call(Unique(3), "otherfunc".into(), Box::new(Num(3))),
-                            Let(Unique(4), Box::new(Num(4)), Box::new(Num(5))),
-                            Loop(Unique(5), Box::new(Num(6)), Box::new(Num(7))),
+                            Branch(Unique(4), Box::new(Num(Unique(4), 2))),
+                            Branch(
+                                Unique(5),
+                                Box::new(Call(
+                                    Unique(5),
+                                    "otherfunc".into(),
+                                    Box::new(Num(Unique(5), 3))
+                                ))
+                            ),
+                            Branch(
+                                Unique(6),
+                                Box::new(Let(
+                                    Unique(7),
+                                    Box::new(Num(Unique(7), 4)),
+                                    Box::new(Num(Unique(7), 5))
+                                ))
+                            ),
+                            Branch(
+                                Unique(8),
+                                Box::new(Loop(
+                                    Unique(9),
+                                    Box::new(Num(Unique(9), 6)),
+                                    Box::new(Num(Unique(9), 7))
+                                ))
+                            ),
                         ]
                     ))
                 ))

@@ -170,13 +170,13 @@ impl ESort {
 
 #[derive(Clone, Debug, PartialEq, EnumIter)]
 pub enum Expr {
-    Num(i64),
-    Boolean(bool),
+    Num(Id, i64),
+    Boolean(Id, bool),
     BOp(PureBOp, Box<Expr>, Box<Expr>),
     UOp(PureUOp, Box<Expr>),
     Get(Box<Expr>, usize),
     Print(Box<Expr>),
-    Read(Box<Expr>),
+    Read(Box<Expr>, TreeType),
     Write(Box<Expr>, Box<Expr>),
     All(Id, Order, Vec<Expr>),
     /// A pred and a list of branches
@@ -198,7 +198,7 @@ pub enum Expr {
 
 impl Default for Expr {
     fn default() -> Self {
-        Expr::Num(0)
+        Expr::Num(Id::Shared, 0)
     }
 }
 
@@ -215,13 +215,13 @@ impl Expr {
 
     pub fn name(&self) -> &'static str {
         match self {
-            Expr::Num(_) => "Num",
-            Expr::Boolean(_) => "Boolean",
+            Expr::Num(..) => "Num",
+            Expr::Boolean(..) => "Boolean",
             Expr::BOp(_, _, _) => "BOp",
             Expr::UOp(_, _) => "UOp",
             Expr::Get(_, _) => "Get",
             Expr::Print(_) => "Print",
-            Expr::Read(_) => "Read",
+            Expr::Read(..) => "Read",
             Expr::Write(_, _) => "Write",
             Expr::All(_, _, _) => "All",
             Expr::Switch(_, _) => "Switch",
@@ -238,7 +238,7 @@ impl Expr {
     /// Runs `func` on every child of this expression.
     pub fn for_each_child(&mut self, mut func: impl FnMut(&mut Expr)) {
         match self {
-            Expr::Num(_) | Expr::Boolean(_) | Expr::Arg(_) => {}
+            Expr::Num(..) | Expr::Boolean(..) | Expr::Arg(..) => {}
             Expr::BOp(_, a, b) => {
                 func(a);
                 func(b);
@@ -250,7 +250,7 @@ impl Expr {
                 func(a);
                 func(b);
             }
-            Expr::Print(a) | Expr::Read(a) => {
+            Expr::Print(a) | Expr::Read(a, _) => {
                 func(a);
             }
             Expr::Get(a, _) | Expr::Function(_, _, _, _, a) | Expr::Call(_, _, a) => {

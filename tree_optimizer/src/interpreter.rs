@@ -1,7 +1,10 @@
 // This file is a reference for the semantics of tree_unique_args
 
 #[cfg(test)]
-use crate::ast::{add, arg, get, lessthan, num, parallel, sub, tloop, tprint};
+use crate::ast::{
+    add, arg, get, lessthan, num, parallel, sequence, sub, switch, tint, tloop, tprint, tread,
+    ttrue, twrite,
+};
 
 use crate::{
     expr::Expr,
@@ -32,8 +35,8 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<TreeType>) -> Result<TreeType, TypeEr
     };
     match e {
         Expr::Program(_) => panic!("Found non top level program."),
-        Expr::Num(_) => Ok(Bril(Int)),
-        Expr::Boolean(_) => Ok(Bril(Bool)),
+        Expr::Num(..) => Ok(Bril(Int)),
+        Expr::Boolean(..) => Ok(Bril(Bool)),
         Expr::BOp(op, e1, e2) => {
             let expected = op.input_types();
             expect_type(e1, Bril(expected.0))?;
@@ -59,12 +62,12 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<TreeType>) -> Result<TreeType, TypeEr
             expect_type(e, Bril(Int))?;
             Ok(TreeType::Tuple(vec![]))
         }
-        Expr::Read(addr) => {
+        Expr::Read(addr, ty) => {
             // right now, all memory holds nums.
             // read could also take a static type to interpret
             // the memory as.
-            expect_type(addr, Bril(Int))?;
-            Ok(Bril(Int))
+            expect_type(addr, ty.clone())?;
+            Ok(ty.clone())
         }
         Expr::Write(addr, data) => {
             expect_type(addr, Bril(Int))?;
@@ -133,8 +136,8 @@ pub struct VirtualMachine {
 pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Value {
     match e {
         Expr::Program(_) => todo!("interpret programs"),
-        Expr::Num(x) => Value::Num(*x),
-        Expr::Boolean(x) => Value::Boolean(*x),
+        Expr::Num(_id, x) => Value::Num(*x),
+        Expr::Boolean(_id, x) => Value::Boolean(*x),
         Expr::BOp(PureBOp::Add, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("add")
@@ -208,7 +211,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             vm.log.push(n);
             Value::Tuple(vec![])
         }
-        Expr::Read(e_addr) => {
+        Expr::Read(e_addr, _ty) => {
             let Value::Num(addr) = interpret(e_addr, arg, vm) else {
                 panic!("read")
             };
@@ -272,24 +275,20 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
 fn test_interpreter() {
     // numbers 1-10
     let e = tloop(
-        Expr::Num(1),
-        Expr::All(
-            Unique(0),
-            Order::Parallel,
-            vec![
-                // pred: i < 10
-                lessthan(arg(), Expr::Num(10)),
-                // output
-                get(
-                    parallel!(
-                        // i = i + 1
-                        add(arg(), num(1)),
-                        // print(i)
-                        tprint(arg())
-                    ),
-                    0,
+        num(1),
+        parallel!(
+            // pred: i < 10
+            lessthan(arg(), num(10)),
+            // output
+            get(
+                parallel!(
+                    // i = i + 1
+                    add(arg(), num(1)),
+                    // print(i)
+                    tprint(arg())
                 ),
-            ],
+                0,
+            )
         ),
     );
     let mut vm = VirtualMachine {
@@ -305,46 +304,37 @@ fn test_interpreter() {
 fn test_interpreter_fib_using_memory() {
     let nth = 10;
     let fib_nth = 55;
-    let e = Expr::All(
-        Unique(-1),
-        Order::Sequential,
-        vec![
-            Expr::Write(Box::new(Expr::Num(0)), Box::new(Expr::Num(0))),
-            Expr::Write(Box::new(Expr::Num(1)), Box::new(Expr::Num(1))),
-            Expr::Loop(
-                Unique(0),
-                Box::new(Expr::Num(2)),
-                Box::new(Expr::All(
-                    Unique(0),
-                    Order::Parallel,
-                    vec![
-                        // pred: i < nth
-                        lessthan(arg(), num(nth)),
-                        // output
-                        Expr::Get(
-                            Box::new(Expr::All(
-                                Unique(0),
-                                Order::Parallel,
-                                vec![
-                                    // i = i + 1
-                                    add(arg(), num(1)),
-                                    // mem[i] = mem[i - 1] + mem[i - 2]
-                                    Expr::Write(
-                                        Box::new(Expr::Arg(Unique(0))),
-                                        Box::new(add(
-                                            Expr::Read(Box::new(sub(arg(), num(1)))),
-                                            Expr::Read(Box::new(sub(arg(), Expr::Num(2)))),
-                                        )),
-                                    ),
-                                ],
-                            )),
-                            0,
-                        ),
-                    ],
-                )),
-            ),
-            Expr::Read(Box::new(Expr::Num(nth))),
-        ],
+    let e = sequence!(
+        twrite(num(0), num(0)),
+        twrite(num(1), num(1)),
+        tloop(
+            num(2),
+            parallel!(
+                // pred: i < nth
+                lessthan(arg(), num(nth)),
+                // output
+                Expr::Get(
+                    Box::new(Expr::All(
+                        Unique(0),
+                        Order::Parallel,
+                        vec![
+                            // i = i + 1
+                            add(arg(), num(1)),
+                            // mem[i] = mem[i - 1] + mem[i - 2]
+                            Expr::Write(
+                                Box::new(Expr::Arg(Unique(0))),
+                                Box::new(add(
+                                    tread(sub(arg(), num(1)), tint()),
+                                    tread(sub(arg(), num(2)), tint()),
+                                )),
+                            ),
+                        ],
+                    )),
+                    0,
+                )
+            )
+        ),
+        tread(num(nth), tint())
     );
     let mut vm = VirtualMachine {
         mem: HashMap::new(),
@@ -473,11 +463,11 @@ impl std::str::FromStr for Expr {
                     Err(ExprParseError::UngroundedTerm(s.as_str().to_owned()))
                 }
                 egglog::ast::Expr::Call(f, xs) => match (f.as_str(), xs.as_slice()) {
-                    ("Num", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Int(i))]) => {
-                        Ok(Expr::Num(*i))
+                    ("Num", [id, egglog::ast::Expr::Lit(egglog::ast::Literal::Int(i))]) => {
+                        Ok(Expr::Num(egglog_expr_to_id(id)?, *i))
                     }
-                    ("Boolean", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Bool(b))]) => {
-                        Ok(Expr::Boolean(*b))
+                    ("Boolean", [id, egglog::ast::Expr::Lit(egglog::ast::Literal::Bool(b))]) => {
+                        Ok(Expr::Boolean(egglog_expr_to_id(id)?, *b))
                     }
                     ("BOp", [op, x, y]) => Ok(Expr::BOp(
                         egglog_binop_to_binop(op)?,
@@ -496,7 +486,10 @@ impl std::str::FromStr for Expr {
                         ))
                     }
                     ("Print", [x]) => Ok(Expr::Print(Box::new(egglog_expr_to_expr(x)?))),
-                    ("Read", [x]) => Ok(Expr::Read(Box::new(egglog_expr_to_expr(x)?))),
+                    ("Read", [x, ty]) => Ok(Expr::Read(
+                        Box::new(egglog_expr_to_expr(x)?),
+                        egglog_type_to_type(ty)?,
+                    )),
                     ("Write", [x, y]) => Ok(Expr::Write(
                         Box::new(egglog_expr_to_expr(x)?),
                         Box::new(egglog_expr_to_expr(y)?),
@@ -575,23 +568,16 @@ fn test_expr_parser() {
             (Nil)))))
 ";
     let build = s.parse::<Expr>().unwrap();
-    let check = Expr::Loop(
-        Unique(1),
-        Box::new(Expr::Num(1)),
-        Box::new(Expr::All(
-            Unique(1),
-            Order::Sequential,
-            vec![
-                lessthan(num(2), num(3)),
-                Expr::Switch(
-                    Box::new(Expr::Boolean(true)),
-                    vec![
-                        Expr::Branch(Unique(2), Box::new(Expr::Num(4))),
-                        Expr::Branch(Unique(3), Box::new(Expr::Num(5))),
-                    ],
-                ),
-            ],
-        )),
+    let check = tloop(
+        num(1),
+        sequence!(
+            lessthan(num(2), num(3)),
+            switch!(
+                ttrue(),
+                Expr::Branch(Unique(2), Box::new(Expr::Num(Unique(2), 4))),
+                Expr::Branch(Unique(3), Box::new(Expr::Num(Unique(2), 5))),
+            )
+        ),
     );
     assert_eq!(build, check);
 }

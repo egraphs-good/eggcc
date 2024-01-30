@@ -1,0 +1,23 @@
+(function ListExpr-length (ListExpr) i64)
+(function ListExpr-ith (ListExpr i64) Expr :unextractable)
+(function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
+(function Append (ListExpr Expr) ListExpr :unextractable)
+
+(rule ((All id order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
+
+(rule ((= (ListExpr-suffix top n) (Cons hd tl)))
+    ((union (ListExpr-ith top n) hd)
+     (union (ListExpr-suffix top (+ n 1)) tl)) :ruleset always-run)
+
+(rule ((= (ListExpr-suffix list n) (Nil)))
+    ((set (ListExpr-length list) n)) :ruleset always-run)
+
+(rewrite (Append (Cons a b) e)
+    (Cons a (Append b e))
+    :ruleset always-run)
+(rewrite (Append (Nil) e)
+    (Cons e (Nil))
+    :ruleset always-run)
+
+(function Expr-size (Expr) i64 :merge (min old new))
+(function ListExpr-size (ListExpr) i64 :merge (min old new))

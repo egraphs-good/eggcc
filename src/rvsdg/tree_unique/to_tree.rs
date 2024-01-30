@@ -11,17 +11,19 @@
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 #[cfg(test)]
-use tree_unique_args::ast::program;
+use bril_rs::Type;
+#[cfg(test)]
+use tree_optimizer::ast::{arg, program};
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{Literal, ValueOps};
 use hashbrown::HashMap;
-use tree_unique_args::{
+use tree_optimizer::{
     ast::{
-        add, arg, concat, function, get, getarg, lessthan, num, parallel, parallel_vec, print,
-        program_vec, tfalse, tlet, tloop, ttrue,
+        add, function, get, getarg, lessthan, num, parallel, parallel_vec, program_vec, tfalse,
+        tlet, tloop, tprint, ttrue,
     },
-    Expr,
+    expr::{Expr, TreeType},
 };
 
 impl RvsdgProgram {
@@ -50,9 +52,15 @@ struct RegionTranslator<'a> {
 }
 
 /// helper that binds a new expression, adding it
-/// to the environment using concat
-fn cbind(expr: Expr, body: Expr) -> Expr {
-    tlet(concat(arg(), expr), body)
+/// to the environment by concatenating all previous values
+/// with the new one
+fn cbind(index: usize, expr: Expr, body: Expr) -> Expr {
+    let mut concatted = vec![];
+    for i in 0..index {
+        concatted.push(getarg(i));
+    }
+    concatted.push(expr);
+    tlet(parallel_vec(concatted), body)
 }
 
 impl<'a> RegionTranslator<'a> {
@@ -85,8 +93,8 @@ impl<'a> RegionTranslator<'a> {
     fn build_translation(&self, inner: Expr) -> Expr {
         let mut expr = inner;
 
-        for binding in self.bindings.iter().rev() {
-            expr = cbind(binding.clone(), expr);
+        for (i, binding) in self.bindings.iter().enumerate().rev() {
+            expr = cbind(i + self.num_args, binding.clone(), expr);
         }
         expr
     }
@@ -184,7 +192,7 @@ impl<'a> RegionTranslator<'a> {
                 // the print buffer value.
                 let _arg2 = self.translate_operand(args[1]);
                 // print outputs a new unit value
-                let expr = print(arg1);
+                let expr = tprint(arg1);
                 self.add_binding(expr, id)
             }
         }
@@ -208,7 +216,12 @@ impl RvsdgFunction {
             .map(|r| translator.translate_operand(r.1))
             .collect::<Vec<_>>();
 
-        function(translator.build_translation(parallel_vec(translated_results)))
+        function(
+            self.name.as_str(),
+            TreeType::Tuple(self.args.iter().map(|ty| ty.to_tree_type()).collect()),
+            TreeType::Tuple(self.results.iter().map(|r| r.0.to_tree_type()).collect()),
+            translator.build_translation(parallel_vec(translated_results)),
+        )
     }
 }
 
@@ -232,22 +245,31 @@ fn translate_simple_loop() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(function(cbind(
-            num(1), // [(), 1]
+        .assert_eq_ignoring_ids(&program!(function(
+            "myfunc",
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
+            TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Tuple(vec![])]),
             cbind(
-                num(2), // [(), 1, 2]
+                1,
+                num(1), // [(), 1]
                 cbind(
-                    tloop(
-                        parallel!(getarg(0), getarg(1), getarg(2)), // [(), 1, 2]
-                        cbind(
-                            lessthan(getarg(1), getarg(2)), // [(), 1, 2, 1<2]
-                            parallel!(getarg(3), parallel!(getarg(0), getarg(1), getarg(2)))
-                        )
-                    ), // [(), 1, 2, [(), 1, 2]]
-                    parallel!(get(getarg(3), 1), get(getarg(3), 0)) // return [1, ()]
-                ),
+                    2,
+                    num(2), // [(), 1, 2]
+                    cbind(
+                        3,
+                        tloop(
+                            parallel!(getarg(0), getarg(1), getarg(2)), // [(), 1, 2]
+                            cbind(
+                                3,
+                                lessthan(getarg(1), getarg(2)), // [(), 1, 2, 1<2]
+                                parallel!(getarg(3), parallel!(getarg(0), getarg(1), getarg(2)))
+                            )
+                        ), // [(), 1, 2, [(), 1, 2]]
+                        parallel!(get(getarg(3), 1), get(getarg(3), 0)) // return [1, ()]
+                    ),
+                )
             )
-        ))));
+        )));
 }
 
 #[test]
@@ -272,31 +294,43 @@ fn translate_loop() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(function(cbind(
-            num(0), // [(), 0]
+        .assert_eq_ignoring_ids(&program!(function(
+            "main",
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             cbind(
-                tloop(
-                    parallel!(getarg(0), getarg(1)),
-                    cbind(
-                        num(1), // [(), i, 1]
+                1,
+                num(0), // [(), 0]
+                cbind(
+                    2,
+                    tloop(
+                        parallel!(getarg(0), getarg(1)),
                         cbind(
-                            add(getarg(1), getarg(2)), // [(), i, 1, i+1]
+                            2,
+                            num(1), // [(), i, 1]
                             cbind(
-                                num(10), // [(), i, 1, i+1, 10]
+                                3,
+                                add(getarg(1), getarg(2)), // [(), i, 1, i+1]
                                 cbind(
-                                    lessthan(getarg(3), getarg(4)), // [(), i, 1, i+1, 10, i<10]
-                                    parallel!(getarg(5), parallel!(getarg(0), getarg(3)))
+                                    4,
+                                    num(10), // [(), i, 1, i+1, 10]
+                                    cbind(
+                                        5,
+                                        lessthan(getarg(3), getarg(4)), // [(), i, 1, i+1, 10, i<10]
+                                        parallel!(getarg(5), parallel!(getarg(0), getarg(3)))
+                                    )
                                 )
                             )
                         )
+                    ),
+                    cbind(
+                        3,
+                        tprint(get(getarg(2), 1)), // [(), 0, [() i], ()]
+                        parallel!(getarg(3))
                     )
                 ),
-                cbind(
-                    print(get(getarg(2), 1)), // [(), 0, [() i]]
-                    parallel!(getarg(3))
-                )
-            ),
-        ))));
+            )
+        )));
 }
 
 #[test]
@@ -315,13 +349,20 @@ fn simple_translation() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(function(cbind(
-            num(1),
+        .assert_eq_ignoring_ids(&program!(function(
+            "add",
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
+            TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Tuple(vec![])]),
             cbind(
-                add(get(arg(), 1), get(arg(), 1)),
-                parallel!(get(arg(), 2), get(arg(), 0)), // returns res and print state (unit)
-            ),
-        ))));
+                1,
+                num(1),
+                cbind(
+                    2,
+                    add(get(arg(), 1), get(arg(), 1)),
+                    parallel!(get(arg(), 2), get(arg(), 0)), // returns res and print state (unit)
+                ),
+            )
+        )));
 }
 
 #[test]
@@ -342,17 +383,26 @@ fn two_print_translation() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(function(cbind(
-            num(2),
+        .assert_eq_ignoring_ids(&program!(function(
+            "add",
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
+            TreeType::Tuple(vec![TreeType::Tuple(vec![])]),
             cbind(
-                num(1),
+                1,
+                num(2),
                 cbind(
-                    add(get(arg(), 2), get(arg(), 1)),
+                    2,
+                    num(1),
                     cbind(
-                        print(get(arg(), 3)),
-                        cbind(print(get(arg(), 1)), parallel!(get(arg(), 5))),
+                        3,
+                        add(get(arg(), 2), get(arg(), 1)),
+                        cbind(
+                            4,
+                            tprint(get(arg(), 3)),
+                            cbind(5, tprint(get(arg(), 1)), parallel!(get(arg(), 5))),
+                        ),
                     ),
                 ),
-            ),
-        ))));
+            )
+        )));
 }

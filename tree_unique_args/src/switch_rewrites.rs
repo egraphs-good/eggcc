@@ -51,9 +51,10 @@ fn switch_rewrite_and() -> crate::Result {
     ";
     let check = "
 (check (= switch (Switch (Boolean id false)
-                         (Pair (Switch (Boolean id true)
-                                       (Pair (Num id 1) (Num id 2)))
-                               (Num id 2)))))
+                         (Pair (Num id 1)
+                               (Switch (Boolean id true)
+                                       (Pair (Num id 1) (Num id 2)))))))
+
     ";
     crate::run_test(build, check)
 }
@@ -68,9 +69,9 @@ fn switch_rewrite_or() -> crate::Result {
     ";
     let check = "
 (check (= switch (Switch (Boolean id false)
-                         (Pair (Num id 1)
-                               (Switch (Boolean id true)
-                                       (Pair (Num id 1) (Num id 2)))))))
+                         (Pair (Switch (Boolean id true)
+                                       (Pair (Num id 1) (Num id 2)))
+                               (Num id 2)))))
     ";
     crate::run_test(build, check)
 }
@@ -87,25 +88,25 @@ fn switch_rewrite_purity() -> crate::Result {
     ";
     let check = "
 (fail (check (= switch (Switch (Boolean switch-id false)
-                               (Pair (Switch (Get impure 0)
-                                             (Pair (Num switch-id 1) (Num switch-id 2)))
-                                     (Num switch-id 2))))))
+                               (Pair (Num switch-id 1)
+                                     (Switch (Get impure 0)
+                                             (Pair (Num switch-id 1) (Num switch-id 2))))))))
     ";
     crate::run_test(build, check)?;
 
     let build = "
 (let switch-id (Id (i64-fresh!)))
 (let let-id (Id (i64-fresh!)))
-(let impure (Let let-id (All switch-id (Parallel) (Nil)) (All let-id (Sequential) (Cons (Boolean let-id true) (Nil)))))
-(let switch (Switch (And (Boolean switch-id false) (Get impure 0))
+(let pure   (Let let-id (All switch-id (Parallel) (Nil)) (All let-id (Sequential) (Cons (Boolean let-id true) (Nil)))))
+(let switch (Switch (And (Boolean switch-id false) (Get pure   0))
                     (Pair (Num switch-id 1) (Num switch-id 2))))
 (ExprIsValid switch)
     ";
     let check = "
 (check (= switch (Switch (Boolean switch-id false)
-                               (Pair (Switch (Get impure 0)
-                                             (Pair (Num switch-id 1) (Num switch-id 2)))
-                                     (Num switch-id 2)))))
+                               (Pair (Num switch-id 1)
+                                     (Switch (Get pure   0)
+                                             (Pair (Num switch-id 1) (Num switch-id 2)))))))
     ";
     crate::run_test(build, check)
 }

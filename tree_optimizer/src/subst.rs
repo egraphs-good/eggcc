@@ -49,7 +49,7 @@ fn var_names_available() {
 }
 
 #[test]
-fn test_subst() -> Result<(), egglog::Error> {
+fn test_subst() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))

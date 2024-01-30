@@ -1,4 +1,7 @@
-use crate::{expr::Expr, ir::{Constructor, Purpose}};
+use crate::{
+    expr::Expr,
+    ir::{Constructor, Purpose},
+};
 use std::iter;
 
 fn ast_size_for_ctor(ctor: Constructor) -> String {
@@ -50,7 +53,7 @@ pub(crate) fn rules() -> Vec<String> {
 }
 
 #[test]
-fn test_list_util() -> Result<(), egglog::Error> {
+fn test_list_util() -> crate::Result {
     let build = &*"
         (let id (Id 1))
         (let list (Cons (Num id 0) (Cons (Num id 1) (Cons (Num id 2) (Cons (Num id 3) (Cons (Num id 4) (Nil)))))))
@@ -67,7 +70,7 @@ fn test_list_util() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn append_test() -> Result<(), egglog::Error> {
+fn append_test() -> crate::Result {
     let build = "
         (let id (Id (i64-fresh!)))
         (let appended
@@ -88,7 +91,7 @@ fn append_test() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn ast_size_test() -> Result<(), egglog::Error> {
+fn ast_size_test() -> crate::Result {
     let build = "
     (let inv 
         (BOp (Sub) (Get (Arg shared) 4)

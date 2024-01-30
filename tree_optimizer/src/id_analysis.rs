@@ -74,7 +74,7 @@ pub(crate) fn id_analysis_rules() -> Vec<String> {
 }
 
 #[test]
-fn test_id_analysis() -> Result<(), egglog::Error> {
+fn test_id_analysis() -> crate::Result {
     let build = "
         (let outer-id (Id (i64-fresh!)))
         (let let0-id (Id (i64-fresh!)))
@@ -136,16 +136,16 @@ fn test_id_analysis() -> Result<(), egglog::Error> {
 
 // Check that invalid expr (expr that has not been marked valid) does not have a RefId
 #[test]
-fn test_id_analysis_no_invalid_entry() {
+fn test_id_analysis_no_invalid_entry() -> crate::Result {
     let build = "(let some-expr (UOp (Not) (Boolean (Id (i64-fresh!)) false)))";
     let check = "(fail (check (ExprHasRefId some-expr any-id)))";
 
-    crate::run_test(build, check).unwrap()
+    crate::run_test(build, check)
 }
 
 // Create an id conflict for an Expr on purpose and check that we catch it
 #[test]
-#[should_panic]
+#[should_panic(expected = "Ref ids don't match")]
 fn test_id_analysis_expr_id_conflict_panics_if_valid() {
     let build = "
         (let id1 (Id (i64-fresh!)))
@@ -154,11 +154,12 @@ fn test_id_analysis_expr_id_conflict_panics_if_valid() {
         (ExprIsValid conflict-expr)";
     let check = "";
 
-    crate::run_test(build, check).unwrap()
+    // suppress result because we expect a rules panic
+    let _ = crate::run_test(build, check);
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "Ref ids don't match")]
 // Create an id conflict for a ListExpr on purpose and check that we catch it
 fn test_id_analysis_listexpr_id_conflict_panics() {
     let build = "
@@ -168,11 +169,12 @@ fn test_id_analysis_listexpr_id_conflict_panics() {
         (ListExprIsValid conflict-expr)";
     let check = "";
 
-    crate::run_test(build, check).unwrap()
+    // suppress result because we expect a rules panic
+    let _ = crate::run_test(build, check);
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "Ref ids don't match")]
 // Mix shared and unique ids and catch the panic
 fn test_shared_unique_id_mix_panics() {
     let build = "

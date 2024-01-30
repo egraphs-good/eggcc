@@ -55,7 +55,7 @@ pub(crate) fn purity_analysis_rules() -> Vec<String> {
 }
 
 #[test]
-fn test_purity_analysis() -> Result<(), egglog::Error> {
+fn test_purity_analysis() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))
@@ -93,7 +93,7 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn test_purity_function() -> Result<(), egglog::Error> {
+fn test_purity_function() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id2 (Id (i64-fresh!)))

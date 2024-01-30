@@ -56,5 +56,5 @@ fn test_switch_with_num_child() {
                 (Branch (Shared) (Num (Shared) 2))
                 (Nil))))
     ";
-    crate::run_test(build, "").unwrap()
+    let _ = crate::run_test(build, "");
 }

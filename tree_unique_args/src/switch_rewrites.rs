@@ -24,11 +24,11 @@ pub(crate) fn rules() -> String {
 
         ; Constant condition elimination
         (rewrite (Switch (Boolean id true) (Cons A (Cons B (Nil))))
-                 A
+                 B
                  :when ((ExprIsValid (Switch (Boolean id true) (Cons A (Cons B (Nil))))))
                  :ruleset switch-rewrites)
         (rewrite (Switch (Boolean id false) (Cons A (Cons B (Nil))))
-                 B
+                 A
                  :when ((ExprIsValid (Switch (Boolean id false) (Cons A (Cons B (Nil))))))
                  :ruleset switch-rewrites)
     
@@ -124,8 +124,8 @@ fn test_constant_condition() -> Result<(), egglog::Error> {
     (ExprIsValid switch_f)
   ";
     let check = "
-    (check (= switch_t a))
-    (check (= switch_f b))
+    (check (= switch_t b))
+    (check (= switch_f a))
   ";
     crate::run_test(build, check)
 }
@@ -165,7 +165,7 @@ fn switch_interval() -> Result<(), egglog::Error> {
     (ExprIsValid switch)
     ";
     let check = "
-    (check (= switch four))
+    (check (= switch five))
     ";
     crate::run_test(build, check)
 }

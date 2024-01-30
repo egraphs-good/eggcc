@@ -9,6 +9,8 @@ pub(crate) enum Sort {
     Expr,
     ListExpr,
     Order,
+    BinPureOp,
+    UnaryPureOp,
     IdSort,
     I64,
     Bool,
@@ -27,6 +29,8 @@ impl Sort {
             Sort::String => "String",
             Sort::Bool => "bool",
             Sort::Type => "Type",
+            Sort::BinPureOp => "BinPureOp",
+            Sort::UnaryPureOp => "UnaryPureOp",
         }
     }
 }
@@ -61,13 +65,8 @@ impl ESort {
 pub(crate) enum Constructor {
     Num,
     Boolean,
-    Add,
-    Sub,
-    Mul,
-    LessThan,
-    And,
-    Or,
-    Not,
+    BinOp,
+    UnaryOp,
     Get,
     Print,
     Read,
@@ -142,13 +141,8 @@ impl Constructor {
         match self {
             Constructor::Num => "Num",
             Constructor::Boolean => "Boolean",
-            Constructor::Add => "Add",
-            Constructor::Sub => "Sub",
-            Constructor::Mul => "Mul",
-            Constructor::LessThan => "LessThan",
-            Constructor::And => "And",
-            Constructor::Or => "Or",
-            Constructor::Not => "Not",
+            Constructor::BinOp => "BinOp",
+            Constructor::UnaryOp => "UnaryOp",
             Constructor::Get => "Get",
             Constructor::Print => "Print",
             Constructor::Read => "Read",
@@ -171,15 +165,13 @@ impl Constructor {
         match self {
             Constructor::Num => vec![f(ReferencingId, "id"), f(Static(Sort::I64), "n")],
             Constructor::Boolean => vec![f(ReferencingId, "id"), f(Static(Sort::Bool), "b")],
-            Constructor::Add => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            Constructor::Sub => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            Constructor::Mul => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            Constructor::LessThan => {
-                vec![f(SubExpr, "x"), f(SubExpr, "y")]
-            }
-            Constructor::And => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            Constructor::Or => vec![f(SubExpr, "x"), f(SubExpr, "y")],
-            Constructor::Not => vec![f(SubExpr, "x")],
+            Constructor::BinOp => vec![
+                f(ReferencingId, "id"),
+                f(Static(Sort::BinPureOp), "op"),
+                f(SubExpr, "x"),
+                f(SubExpr, "y"),
+            ],
+            Constructor::UnaryOp => vec![f(Static(Sort::UnaryPureOp), "op"), f(SubExpr, "x")],
             Constructor::Get => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
             Constructor::Print => vec![f(SubExpr, "printee")],
             Constructor::Read => vec![f(SubExpr, "addr"), f(Static(Sort::Type), "type")],
@@ -238,13 +230,8 @@ impl Constructor {
         match self {
             Constructor::Num => ESort::Expr,
             Constructor::Boolean => ESort::Expr,
-            Constructor::Add => ESort::Expr,
-            Constructor::Sub => ESort::Expr,
-            Constructor::Mul => ESort::Expr,
-            Constructor::LessThan => ESort::Expr,
-            Constructor::And => ESort::Expr,
-            Constructor::Or => ESort::Expr,
-            Constructor::Not => ESort::Expr,
+            Constructor::BinOp => ESort::Expr,
+            Constructor::UnaryOp => ESort::Expr,
             Constructor::Get => ESort::Expr,
             Constructor::Print => ESort::Expr,
             Constructor::Read => ESort::Expr,

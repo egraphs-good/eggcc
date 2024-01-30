@@ -5,6 +5,8 @@ use crate::{
     expr::Expr::*,
     expr::Id::Unique,
     expr::Order,
+    expr::PureBinOp::*,
+    expr::PureUnaryOp::*,
     expr::{Id::Shared, TreeType},
 };
 
@@ -105,31 +107,31 @@ pub fn tfalse() -> Expr {
 }
 
 pub fn add(a: Expr, b: Expr) -> Expr {
-    Add(Box::new(a), Box::new(b))
+    Expr::BinOp(Add, Box::new(a), Box::new(b))
 }
 
 pub fn sub(a: Expr, b: Expr) -> Expr {
-    Sub(Box::new(a), Box::new(b))
+    BinOp(Sub, Box::new(a), Box::new(b))
 }
 
 pub fn mul(a: Expr, b: Expr) -> Expr {
-    Mul(Box::new(a), Box::new(b))
+    BinOp(Mul, Box::new(a), Box::new(b))
 }
 
 pub fn lessthan(a: Expr, b: Expr) -> Expr {
-    LessThan(Box::new(a), Box::new(b))
+    BinOp(LessThan, Box::new(a), Box::new(b))
 }
 
 pub fn and(a: Expr, b: Expr) -> Expr {
-    And(Box::new(a), Box::new(b))
+    BinOp(And, Box::new(a), Box::new(b))
 }
 
 pub fn or(a: Expr, b: Expr) -> Expr {
-    Or(Box::new(a), Box::new(b))
+    BinOp(Or, Box::new(a), Box::new(b))
 }
 
 pub fn not(a: Expr) -> Expr {
-    Not(Box::new(a))
+    UnaryOp(Not, Box::new(a))
 }
 
 pub fn getarg(i: usize) -> Expr {
@@ -144,7 +146,7 @@ pub fn concat(a: Expr, b: Expr) -> Expr {
     Concat(Box::new(a), Box::new(b))
 }
 
-pub fn print(a: Expr) -> Expr {
+pub fn tprint(a: Expr) -> Expr {
     Print(Box::new(a))
 }
 

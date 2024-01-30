@@ -1,28 +1,94 @@
 use bril_rs::Type;
+use strum_macros::{Display, EnumIter};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum Order {
     Parallel,
+    #[default]
     Sequential,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum Id {
     Unique(i64),
+    #[default]
     Shared,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, EnumIter, Default, Display)]
+pub enum PureBinOp {
+    #[default]
+    Add,
+    Sub,
+    Mul,
+    LessThan,
+    And,
+    Or,
+}
+
+impl PureBinOp {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "Add" => Some(PureBinOp::Add),
+            "Sub" => Some(PureBinOp::Sub),
+            "Mul" => Some(PureBinOp::Mul),
+            "LessThan" => Some(PureBinOp::LessThan),
+            "And" => Some(PureBinOp::And),
+            "Or" => Some(PureBinOp::Or),
+            _ => None,
+        }
+    }
+
+    pub fn input_types(&self) -> (Type, Type) {
+        match self {
+            PureBinOp::Add | PureBinOp::Sub | PureBinOp::Mul | PureBinOp::LessThan => {
+                (Type::Int, Type::Int)
+            }
+            PureBinOp::And | PureBinOp::Or => (Type::Bool, Type::Bool),
+        }
+    }
+
+    pub fn output_type(&self) -> Type {
+        match self {
+            PureBinOp::Add | PureBinOp::Sub | PureBinOp::Mul => Type::Int,
+            PureBinOp::LessThan | PureBinOp::And | PureBinOp::Or => Type::Bool,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, EnumIter, Default, Display)]
+pub enum PureUnaryOp {
+    #[default]
+    Not,
+}
+
+impl PureUnaryOp {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "Not" => Some(PureUnaryOp::Not),
+            _ => None,
+        }
+    }
+
+    pub fn input_type(&self) -> Type {
+        match self {
+            PureUnaryOp::Not => Type::Bool,
+        }
+    }
+
+    pub fn output_type(&self) -> Type {
+        match self {
+            PureUnaryOp::Not => Type::Bool,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, EnumIter)]
 pub enum Expr {
     Num(i64),
     Boolean(bool),
-    Add(Box<Expr>, Box<Expr>),
-    Sub(Box<Expr>, Box<Expr>),
-    Mul(Box<Expr>, Box<Expr>),
-    LessThan(Box<Expr>, Box<Expr>),
-    And(Box<Expr>, Box<Expr>),
-    Or(Box<Expr>, Box<Expr>),
-    Not(Box<Expr>),
+    BinOp(PureBinOp, Box<Expr>, Box<Expr>),
+    UnaryOp(PureUnaryOp, Box<Expr>),
     Get(Box<Expr>, usize),
     /// Concat is a convenient built-in way
     /// to put two tuples together.
@@ -49,23 +115,29 @@ pub enum Expr {
     Call(Id, Box<Expr>),
 }
 
+impl Default for Expr {
+    fn default() -> Self {
+        Expr::Num(0)
+    }
+}
+
 impl Expr {
     /// Runs `func` on every child of this expression.
     pub fn for_each_child(&mut self, mut func: impl FnMut(&mut Expr)) {
         match self {
             Expr::Num(_) | Expr::Boolean(_) | Expr::Arg(_) => {}
-            Expr::Add(a, b)
-            | Expr::Sub(a, b)
-            | Expr::Mul(a, b)
-            | Expr::LessThan(a, b)
-            | Expr::And(a, b)
-            | Expr::Or(a, b)
-            | Expr::Concat(a, b)
-            | Expr::Write(a, b) => {
+            Expr::BinOp(_, a, b) => {
                 func(a);
                 func(b);
             }
-            Expr::Not(a) | Expr::Print(a) | Expr::Read(a) => {
+            Expr::UnaryOp(_, a) => {
+                func(a);
+            }
+            Expr::Concat(a, b) | Expr::Write(a, b) => {
+                func(a);
+                func(b);
+            }
+            Expr::Print(a) | Expr::Read(a) => {
                 func(a);
             }
             Expr::Get(a, _) | Expr::Function(_, _, _, _, a) | Expr::Call(_, a) => {
@@ -105,8 +177,9 @@ pub enum Value {
     Tuple(Vec<Value>),
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub enum TreeType {
+    #[default]
     Unit,
     Bril(Type),
     Tuple(Vec<TreeType>),

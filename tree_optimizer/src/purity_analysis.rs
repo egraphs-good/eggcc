@@ -6,8 +6,8 @@ use strum::IntoEnumIterator;
 fn is_pure(ctor: &Constructor) -> bool {
     use Constructor::*;
     match ctor {
-        Num | Boolean | Add | Sub | Mul | LessThan | And | Or | Not | Get | All | Switch | Loop
-        | Branch | Let | Arg | Call | Cons | Nil => true,
+        Num | Boolean | BinOp | UnaryOp | Get | All | Switch | Loop | Branch | Let | Arg | Call
+        | Cons | Nil => true,
         Print | Read | Write => false,
     }
 }

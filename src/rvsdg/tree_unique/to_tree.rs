@@ -20,8 +20,8 @@ use bril_rs::{Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_optimizer::{
     ast::{
-        add, arg, concat, function, get, getarg, lessthan, num, parallel, parallel_vec, print,
-        program_vec, tfalse, tlet, tloop, ttrue,
+        add, arg, concat, function, get, getarg, lessthan, num, parallel, parallel_vec,
+        program_vec, tfalse, tlet, tloop, tprint, ttrue,
     },
     expr::{Expr, TreeType},
 };
@@ -186,7 +186,7 @@ impl<'a> RegionTranslator<'a> {
                 // the print buffer value.
                 let _arg2 = self.translate_operand(args[1]);
                 // print outputs a new unit value
-                let expr = print(arg1);
+                let expr = tprint(arg1);
                 self.add_binding(expr, id)
             }
         }
@@ -308,7 +308,7 @@ fn translate_loop() {
                         )
                     ),
                     cbind(
-                        print(get(getarg(2), 1)), // [(), 0, [() i]]
+                        tprint(get(getarg(2), 1)), // [(), 0, [() i]]
                         parallel!(getarg(3))
                     )
                 ),

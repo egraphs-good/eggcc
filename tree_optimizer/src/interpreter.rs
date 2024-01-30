@@ -1,9 +1,11 @@
 // This file is a reference for the semantics of tree_unique_args
 
 use crate::{
+    ast::{add, arg, get, lessthan, num, parallel, sub, tloop, tprint},
     expr::Expr,
     expr::{
         Id::{self, Shared, Unique},
+        PureBinOp, PureUnaryOp,
         TreeType::{self, Bril, Tuple},
         Value,
     },
@@ -30,24 +32,15 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<TreeType>) -> Result<TreeType, TypeEr
         Expr::Program(_) => panic!("Found non top level program."),
         Expr::Num(_) => Ok(Bril(Int)),
         Expr::Boolean(_) => Ok(Bril(Bool)),
-        Expr::Add(e1, e2) | Expr::Sub(e1, e2) | Expr::Mul(e1, e2) => {
-            expect_type(e1, Bril(Int))?;
-            expect_type(e2, Bril(Int))?;
-            Ok(Bril(Int))
+        Expr::BinOp(op, e1, e2) => {
+            let expected = op.input_types();
+            expect_type(e1, Bril(expected.0))?;
+            expect_type(e2, Bril(expected.1))?;
+            Ok(Bril(op.output_type()))
         }
-        Expr::LessThan(e1, e2) => {
-            expect_type(e1, Bril(Int))?;
-            expect_type(e2, Bril(Int))?;
-            Ok(Bril(Bool))
-        }
-        Expr::And(e1, e2) | Expr::Or(e1, e2) => {
-            expect_type(e1, Bril(Int))?;
-            expect_type(e2, Bril(Int))?;
-            Ok(Bril(Bool))
-        }
-        Expr::Not(e1) => {
-            expect_type(e1, Bril(Int))?;
-            Ok(Bril(Bool))
+        Expr::UnaryOp(op, e) => {
+            expect_type(e, Bril(op.input_type()))?;
+            Ok(Bril(op.output_type()))
         }
         Expr::Get(tuple, i) => {
             let ty_tuple = typecheck(tuple, arg_ty)?;
@@ -157,7 +150,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
         Expr::Program(_) => todo!("interpret programs"),
         Expr::Num(x) => Value::Num(*x),
         Expr::Boolean(x) => Value::Boolean(*x),
-        Expr::Add(e1, e2) => {
+        Expr::BinOp(Add, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("add")
             };
@@ -166,7 +159,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Num(n1 + n2)
         }
-        Expr::Sub(e1, e2) => {
+        Expr::BinOp(Sub, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("sub")
             };
@@ -175,7 +168,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Num(n1 - n2)
         }
-        Expr::Mul(e1, e2) => {
+        Expr::BinOp(Mul, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("mul")
             };
@@ -184,7 +177,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Num(n1 * n2)
         }
-        Expr::LessThan(e1, e2) => {
+        Expr::BinOp(LessThan, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("lessthan")
             };
@@ -193,7 +186,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Boolean(n1 < n2)
         }
-        Expr::And(e1, e2) => {
+        Expr::BinOp(And, e1, e2) => {
             let Value::Boolean(b1) = interpret(e1, arg, vm) else {
                 panic!("and")
             };
@@ -202,7 +195,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Boolean(b1 && b2)
         }
-        Expr::Or(e1, e2) => {
+        Expr::BinOp(Or, e1, e2) => {
             let Value::Boolean(b1) = interpret(e1, arg, vm) else {
                 panic!("or")
             };
@@ -211,7 +204,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Boolean(b1 || b2)
         }
-        Expr::Not(e1) => {
+        Expr::UnaryOp(Not, e1) => {
             let Value::Boolean(b1) = interpret(e1, arg, vm) else {
                 panic!("not")
             };
@@ -300,31 +293,26 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
 #[test]
 fn test_interpreter() {
     // numbers 1-10
-    let e = Expr::Loop(
-        Unique(0),
-        Box::new(Expr::Num(1)),
-        Box::new(Expr::All(
+    let e = tloop(
+        Expr::Num(1),
+        Expr::All(
             Unique(0),
             Order::Parallel,
             vec![
                 // pred: i < 10
-                Expr::LessThan(Box::new(Expr::Arg(Unique(0))), Box::new(Expr::Num(10))),
+                lessthan(arg(), Expr::Num(10)),
                 // output
-                Expr::Get(
-                    Box::new(Expr::All(
-                        Unique(0),
-                        Order::Parallel,
-                        vec![
-                            // i = i + 1
-                            Expr::Add(Box::new(Expr::Arg(Unique(0))), Box::new(Expr::Num(1))),
-                            // print(i)
-                            Expr::Print(Box::new(Expr::Arg(Unique(0)))),
-                        ],
-                    )),
+                get(
+                    parallel!(
+                        // i = i + 1
+                        add(arg(), num(1)),
+                        // print(i)
+                        tprint(arg())
+                    ),
                     0,
                 ),
             ],
-        )),
+        ),
     );
     let mut vm = VirtualMachine {
         mem: HashMap::new(),
@@ -353,7 +341,7 @@ fn test_interpreter_fib_using_memory() {
                     Order::Parallel,
                     vec![
                         // pred: i < nth
-                        Expr::LessThan(Box::new(Expr::Arg(Unique(0))), Box::new(Expr::Num(nth))),
+                        lessthan(arg(), num(nth)),
                         // output
                         Expr::Get(
                             Box::new(Expr::All(
@@ -361,22 +349,13 @@ fn test_interpreter_fib_using_memory() {
                                 Order::Parallel,
                                 vec![
                                     // i = i + 1
-                                    Expr::Add(
-                                        Box::new(Expr::Arg(Unique(0))),
-                                        Box::new(Expr::Num(1)),
-                                    ),
+                                    add(arg(), num(1)),
                                     // mem[i] = mem[i - 1] + mem[i - 2]
                                     Expr::Write(
                                         Box::new(Expr::Arg(Unique(0))),
-                                        Box::new(Expr::Add(
-                                            Box::new(Expr::Read(Box::new(Expr::Sub(
-                                                Box::new(Expr::Arg(Unique(0))),
-                                                Box::new(Expr::Num(1)),
-                                            )))),
-                                            Box::new(Expr::Read(Box::new(Expr::Sub(
-                                                Box::new(Expr::Arg(Unique(0))),
-                                                Box::new(Expr::Num(2)),
-                                            )))),
+                                        Box::new(add(
+                                            Expr::Read(Box::new(sub(arg(), num(1)))),
+                                            Expr::Read(Box::new(sub(arg(), Expr::Num(2)))),
                                         )),
                                     ),
                                 ],
@@ -419,6 +398,8 @@ pub enum ExprParseError {
     UngroundedTerm(String),
     #[error("expected a type, got {0:?}")]
     UnknownType(egglog::ast::Expr),
+    #[error("expected an op, got {0:?}")]
+    UnknownOp(egglog::ast::Expr),
     #[error("expected Get index to be positive")]
     NegativeGetIndex,
     #[error("order had arguments")]
@@ -482,6 +463,31 @@ impl std::str::FromStr for Expr {
                 Err(ExprParseError::InvalidId)
             }
         }
+
+        fn egglog_binop_to_binop(e: &egglog::ast::Expr) -> Result<PureBinOp, ExprParseError> {
+            if let egglog::ast::Expr::Call(str, xs) = e {
+                if let (Some(op), []) = (PureBinOp::from_str(&str.to_string()), xs.as_slice()) {
+                    Ok(op)
+                } else {
+                    Err(ExprParseError::UnknownOp(e.clone()))
+                }
+            } else {
+                Err(ExprParseError::UnknownOp(e.clone()))
+            }
+        }
+
+        fn egglog_unaryop_to_unaryop(e: &egglog::ast::Expr) -> Result<PureUnaryOp, ExprParseError> {
+            if let egglog::ast::Expr::Call(str, xs) = e {
+                if let (Some(op), []) = (PureUnaryOp::from_str(&str.to_string()), xs.as_slice()) {
+                    Ok(op)
+                } else {
+                    Err(ExprParseError::UnknownOp(e.clone()))
+                }
+            } else {
+                Err(ExprParseError::UnknownOp(e.clone()))
+            }
+        }
+
         fn egglog_expr_to_expr(e: &egglog::ast::Expr) -> Result<Expr, ExprParseError> {
             match e {
                 egglog::ast::Expr::Lit(_) => Err(ExprParseError::UnwrappedLiteral),
@@ -495,31 +501,15 @@ impl std::str::FromStr for Expr {
                     ("Boolean", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Bool(b))]) => {
                         Ok(Expr::Boolean(*b))
                     }
-                    ("Add", [x, y]) => Ok(Expr::Add(
+                    ("BinOp", [op, x, y]) => Ok(Expr::BinOp(
+                        egglog_binop_to_binop(op)?,
                         Box::new(egglog_expr_to_expr(x)?),
                         Box::new(egglog_expr_to_expr(y)?),
                     )),
-                    ("Sub", [x, y]) => Ok(Expr::Sub(
+                    ("UnaryOp", [op, x]) => Ok(Expr::UnaryOp(
+                        egglog_unaryop_to_unaryop(op)?,
                         Box::new(egglog_expr_to_expr(x)?),
-                        Box::new(egglog_expr_to_expr(y)?),
                     )),
-                    ("Mul", [x, y]) => Ok(Expr::Mul(
-                        Box::new(egglog_expr_to_expr(x)?),
-                        Box::new(egglog_expr_to_expr(y)?),
-                    )),
-                    ("LessThan", [x, y]) => Ok(Expr::LessThan(
-                        Box::new(egglog_expr_to_expr(x)?),
-                        Box::new(egglog_expr_to_expr(y)?),
-                    )),
-                    ("And", [x, y]) => Ok(Expr::And(
-                        Box::new(egglog_expr_to_expr(x)?),
-                        Box::new(egglog_expr_to_expr(y)?),
-                    )),
-                    ("Or", [x, y]) => Ok(Expr::Or(
-                        Box::new(egglog_expr_to_expr(x)?),
-                        Box::new(egglog_expr_to_expr(y)?),
-                    )),
-                    ("Not", [x]) => Ok(Expr::Not(Box::new(egglog_expr_to_expr(x)?))),
                     ("Get", [x, egglog::ast::Expr::Lit(egglog::ast::Literal::Int(i))]) => {
                         Ok(Expr::Get(
                             Box::new(egglog_expr_to_expr(x)?),
@@ -611,7 +601,7 @@ fn test_expr_parser() {
             Unique(1),
             Order::Sequential,
             vec![
-                Expr::LessThan(Box::new(Expr::Num(2)), Box::new(Expr::Num(3))),
+                lessthan(num(2), num(3)),
                 Expr::Switch(
                     Box::new(Expr::Boolean(true)),
                     vec![

@@ -1,12 +1,12 @@
 pub(crate) fn rules() -> String {
     let equiv_when_b_pure = [
         (
-            "(Switch (And a b) (Cons A (Cons B (Nil))))",
-            "(Switch a (Pair (Switch b (Pair B A)) A))",
+            "(Switch (And a b) (Cons E (Cons T (Nil))))", // if (a and b) then T else E
+            "(Switch a (Pair E (Switch b (Pair E T))))",  // if a then (if b then T else E) else E
         ),
         (
-            "(Switch (Or a b) (Cons A (Cons B (Nil))))",
-            "(Switch a (Pair B (Switch b (Pair B A))))",
+            "(Switch (Or a b) (Cons E (Cons T (Nil))))", // if (a or  b) then T else E
+            "(Switch a (Pair (Switch b (Pair E T)) T))", // if a then T else (if b then T else E)
         ),
     ];
     let rules_needing_purity = equiv_when_b_pure

@@ -16,7 +16,7 @@ pub enum Id {
 }
 
 #[derive(Clone, Debug, PartialEq, EnumIter, Default, Display)]
-pub enum PureBinOp {
+pub enum PureBOp {
     #[default]
     Add,
     Sub,
@@ -26,59 +26,59 @@ pub enum PureBinOp {
     Or,
 }
 
-impl PureBinOp {
+impl PureBOp {
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "Add" => Some(PureBinOp::Add),
-            "Sub" => Some(PureBinOp::Sub),
-            "Mul" => Some(PureBinOp::Mul),
-            "LessThan" => Some(PureBinOp::LessThan),
-            "And" => Some(PureBinOp::And),
-            "Or" => Some(PureBinOp::Or),
+            "Add" => Some(PureBOp::Add),
+            "Sub" => Some(PureBOp::Sub),
+            "Mul" => Some(PureBOp::Mul),
+            "LessThan" => Some(PureBOp::LessThan),
+            "And" => Some(PureBOp::And),
+            "Or" => Some(PureBOp::Or),
             _ => None,
         }
     }
 
     pub fn input_types(&self) -> (Type, Type) {
         match self {
-            PureBinOp::Add | PureBinOp::Sub | PureBinOp::Mul | PureBinOp::LessThan => {
+            PureBOp::Add | PureBOp::Sub | PureBOp::Mul | PureBOp::LessThan => {
                 (Type::Int, Type::Int)
             }
-            PureBinOp::And | PureBinOp::Or => (Type::Bool, Type::Bool),
+            PureBOp::And | PureBOp::Or => (Type::Bool, Type::Bool),
         }
     }
 
     pub fn output_type(&self) -> Type {
         match self {
-            PureBinOp::Add | PureBinOp::Sub | PureBinOp::Mul => Type::Int,
-            PureBinOp::LessThan | PureBinOp::And | PureBinOp::Or => Type::Bool,
+            PureBOp::Add | PureBOp::Sub | PureBOp::Mul => Type::Int,
+            PureBOp::LessThan | PureBOp::And | PureBOp::Or => Type::Bool,
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, EnumIter, Default, Display)]
-pub enum PureUnaryOp {
+pub enum PureUOp {
     #[default]
     Not,
 }
 
-impl PureUnaryOp {
+impl PureUOp {
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "Not" => Some(PureUnaryOp::Not),
+            "Not" => Some(PureUOp::Not),
             _ => None,
         }
     }
 
     pub fn input_type(&self) -> Type {
         match self {
-            PureUnaryOp::Not => Type::Bool,
+            PureUOp::Not => Type::Bool,
         }
     }
 
     pub fn output_type(&self) -> Type {
         match self {
-            PureUnaryOp::Not => Type::Bool,
+            PureUOp::Not => Type::Bool,
         }
     }
 }
@@ -87,8 +87,8 @@ impl PureUnaryOp {
 pub enum Expr {
     Num(i64),
     Boolean(bool),
-    BinOp(PureBinOp, Box<Expr>, Box<Expr>),
-    UnaryOp(PureUnaryOp, Box<Expr>),
+    BOp(PureBOp, Box<Expr>, Box<Expr>),
+    UOp(PureUOp, Box<Expr>),
     Get(Box<Expr>, usize),
     /// Concat is a convenient built-in way
     /// to put two tuples together.
@@ -112,7 +112,8 @@ pub enum Expr {
     /// A list of functions, with the first
     /// being the main function.
     Program(Vec<Expr>),
-    Call(Id, Box<Expr>),
+    /// referencing id, function name, and argument
+    Call(Id, String, Box<Expr>),
 }
 
 impl Default for Expr {
@@ -126,11 +127,11 @@ impl Expr {
     pub fn for_each_child(&mut self, mut func: impl FnMut(&mut Expr)) {
         match self {
             Expr::Num(_) | Expr::Boolean(_) | Expr::Arg(_) => {}
-            Expr::BinOp(_, a, b) => {
+            Expr::BOp(_, a, b) => {
                 func(a);
                 func(b);
             }
-            Expr::UnaryOp(_, a) => {
+            Expr::UOp(_, a) => {
                 func(a);
             }
             Expr::Concat(a, b) | Expr::Write(a, b) => {
@@ -140,7 +141,7 @@ impl Expr {
             Expr::Print(a) | Expr::Read(a) => {
                 func(a);
             }
-            Expr::Get(a, _) | Expr::Function(_, _, _, _, a) | Expr::Call(_, a) => {
+            Expr::Get(a, _) | Expr::Function(_, _, _, _, a) | Expr::Call(_, _, a) => {
                 func(a);
             }
             Expr::All(_, _, children) => {

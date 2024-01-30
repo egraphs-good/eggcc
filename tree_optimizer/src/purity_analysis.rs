@@ -6,7 +6,7 @@ use strum::IntoEnumIterator;
 fn is_pure(ctor: &Constructor) -> bool {
     use Constructor::*;
     match ctor {
-        Num | Boolean | BinOp | UnaryOp | Get | All | Switch | Loop | Branch | Let | Arg | Call
+        Num | Boolean | BOp | UOp | Get | All | Switch | Loop | Branch | Let | Arg | Call
         | Cons | Nil => true,
         Print | Read | Write => false,
     }
@@ -24,7 +24,7 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let br = "\n      ";
     if ctor == Constructor::Call {
         return Some(format!(
-            "(rule ((Call _f _arg) (ExprIsPure _arg) (FunctionIsPure _f)){br}((ExprIsPure (Call _f _arg))):ruleset always-run)"
+            "(rule ((Call f name arg) (ExprIsPure arg) (FunctionIsPure f)){br}((ExprIsPure (Call f name arg))):ruleset always-run)"
         ));
     }
 
@@ -55,7 +55,7 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
 pub(crate) fn purity_analysis_rules() -> Vec<String> {
     ESort::iter()
         .map(|sort| "(relation *IsPure (*))".replace('*', sort.name()))
-        .chain(iter::once( "(relation FunctionIsPure (IdSort))\n(rule ((Function id out) (ExprIsPure out)) ((FunctionIsPure id)):ruleset always-run)".to_string()))
+        .chain(iter::once( "(relation FunctionIsPure (IdSort))\n(rule ((Function id name tyin tyout out) (ExprIsPure out)) ((FunctionIsPure id)):ruleset always-run)".to_string()))
         .chain(Constructor::iter().filter_map(purity_rule_for_ctor))
         .collect::<Vec<_>>()
 }

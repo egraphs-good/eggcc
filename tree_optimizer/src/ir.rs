@@ -65,8 +65,8 @@ impl ESort {
 pub(crate) enum Constructor {
     Num,
     Boolean,
-    BinOp,
-    UnaryOp,
+    BOp,
+    UOp,
     Get,
     Print,
     Read,
@@ -141,8 +141,8 @@ impl Constructor {
         match self {
             Constructor::Num => "Num",
             Constructor::Boolean => "Boolean",
-            Constructor::BinOp => "BinOp",
-            Constructor::UnaryOp => "UnaryOp",
+            Constructor::BOp => "BOp",
+            Constructor::UOp => "UOp",
             Constructor::Get => "Get",
             Constructor::Print => "Print",
             Constructor::Read => "Read",
@@ -165,13 +165,12 @@ impl Constructor {
         match self {
             Constructor::Num => vec![f(ReferencingId, "id"), f(Static(Sort::I64), "n")],
             Constructor::Boolean => vec![f(ReferencingId, "id"), f(Static(Sort::Bool), "b")],
-            Constructor::BinOp => vec![
-                f(ReferencingId, "id"),
+            Constructor::BOp => vec![
                 f(Static(Sort::BinPureOp), "op"),
                 f(SubExpr, "x"),
                 f(SubExpr, "y"),
             ],
-            Constructor::UnaryOp => vec![f(Static(Sort::UnaryPureOp), "op"), f(SubExpr, "x")],
+            Constructor::UOp => vec![f(Static(Sort::UnaryPureOp), "op"), f(SubExpr, "x")],
             Constructor::Get => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
             Constructor::Print => vec![f(SubExpr, "printee")],
             Constructor::Read => vec![f(SubExpr, "addr"), f(Static(Sort::Type), "type")],
@@ -230,8 +229,8 @@ impl Constructor {
         match self {
             Constructor::Num => ESort::Expr,
             Constructor::Boolean => ESort::Expr,
-            Constructor::BinOp => ESort::Expr,
-            Constructor::UnaryOp => ESort::Expr,
+            Constructor::BOp => ESort::Expr,
+            Constructor::UOp => ESort::Expr,
             Constructor::Get => ESort::Expr,
             Constructor::Print => ESort::Expr,
             Constructor::Read => ESort::Expr,

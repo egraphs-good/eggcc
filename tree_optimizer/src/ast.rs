@@ -5,8 +5,8 @@ use crate::{
     expr::Expr::*,
     expr::Id::Unique,
     expr::Order,
-    expr::PureBinOp::*,
-    expr::PureUnaryOp::*,
+    expr::PureBOp::*,
+    expr::PureUOp::*,
     expr::{Id::Shared, TreeType},
 };
 
@@ -67,7 +67,7 @@ fn give_fresh_ids_helper(expr: &mut Expr, current_id: i64, fresh_id: &mut i64) {
             *id = Unique(new_id);
             give_fresh_ids_helper(body, new_id, fresh_id);
         }
-        Call(id, arg) => {
+        Call(id, _name, arg) => {
             *id = Unique(current_id);
             give_fresh_ids_helper(arg, current_id, fresh_id);
         }
@@ -107,31 +107,31 @@ pub fn tfalse() -> Expr {
 }
 
 pub fn add(a: Expr, b: Expr) -> Expr {
-    Expr::BinOp(Add, Box::new(a), Box::new(b))
+    Expr::BOp(Add, Box::new(a), Box::new(b))
 }
 
 pub fn sub(a: Expr, b: Expr) -> Expr {
-    BinOp(Sub, Box::new(a), Box::new(b))
+    BOp(Sub, Box::new(a), Box::new(b))
 }
 
 pub fn mul(a: Expr, b: Expr) -> Expr {
-    BinOp(Mul, Box::new(a), Box::new(b))
+    BOp(Mul, Box::new(a), Box::new(b))
 }
 
 pub fn lessthan(a: Expr, b: Expr) -> Expr {
-    BinOp(LessThan, Box::new(a), Box::new(b))
+    BOp(LessThan, Box::new(a), Box::new(b))
 }
 
 pub fn and(a: Expr, b: Expr) -> Expr {
-    BinOp(And, Box::new(a), Box::new(b))
+    BOp(And, Box::new(a), Box::new(b))
 }
 
 pub fn or(a: Expr, b: Expr) -> Expr {
-    BinOp(Or, Box::new(a), Box::new(b))
+    BOp(Or, Box::new(a), Box::new(b))
 }
 
 pub fn not(a: Expr) -> Expr {
-    UnaryOp(Not, Box::new(a))
+    UOp(Not, Box::new(a))
 }
 
 pub fn getarg(i: usize) -> Expr {
@@ -194,11 +194,11 @@ pub fn arg() -> Expr {
 }
 
 pub fn function(name: &str, in_ty: TreeType, out_ty: TreeType, arg: Expr) -> Expr {
-    Function(Shared, name.to_string(), in_ty, out_ty, Box::new(arg))
+    Function(Shared, name.into(), in_ty, out_ty, Box::new(arg))
 }
 
-pub fn call(arg: Expr) -> Expr {
-    Call(Shared, Box::new(arg))
+pub fn call(name: &str, arg: Expr) -> Expr {
+    Call(Shared, name.into(), Box::new(arg))
 }
 
 #[test]
@@ -244,7 +244,7 @@ fn test_complex_program_ids() {
                 switch!(
                     arg(),
                     num(2),
-                    call(num(3)),
+                    call("otherfunc", num(3)),
                     tlet(num(4), num(5)),
                     tloop(num(6), num(7))
                 ),
@@ -255,7 +255,7 @@ fn test_complex_program_ids() {
         prog,
         Program(vec![Function(
             Unique(1),
-            "main".to_string(),
+            "main".into(),
             TreeType::Unit,
             TreeType::Unit,
             Box::new(Let(
@@ -268,7 +268,7 @@ fn test_complex_program_ids() {
                         Box::new(Arg(Unique(3))),
                         vec![
                             Num(2),
-                            Call(Unique(3), Box::new(Num(3))),
+                            Call(Unique(3), "otherfunc".into(), Box::new(Num(3))),
                             Let(Unique(4), Box::new(Num(4)), Box::new(Num(5))),
                             Loop(Unique(5), Box::new(Num(6)), Box::new(Num(7))),
                         ]

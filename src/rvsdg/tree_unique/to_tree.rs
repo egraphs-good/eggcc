@@ -375,8 +375,8 @@ fn two_print_translation() {
                     cbind(
                         add(get(arg(), 2), get(arg(), 1)),
                         cbind(
-                            print(get(arg(), 3)),
-                            cbind(print(get(arg(), 1)), parallel!(get(arg(), 5))),
+                            tprint(get(arg(), 3)),
+                            cbind(tprint(get(arg(), 1)), parallel!(get(arg(), 5))),
                         ),
                     ),
                 ),

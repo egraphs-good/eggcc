@@ -41,8 +41,8 @@
 (function Boolean (IdSort bool) Expr)
 
 ;; Pure operators
-(function BinOp (BinPureOp Expr Expr) Expr)
-(function UnaryOp (UnaryPureOp Expr) Expr)
+(function BOp (BinPureOp Expr Expr) Expr)
+(function UOp (UnaryPureOp Expr) Expr)
 (function Get (Expr i64) Expr) ; gets from a tuple. static index
 
 ; ==========================
@@ -90,8 +90,8 @@
 ; Functions
 ; ==========================
 
-;                   f      output   input ty    output ty
-(function Function (IdSort Expr     Type        Type)      Expr)
+;                   id     name   input ty  output ty  output
+(function Function (IdSort String Type      Type       Expr)      Expr)
 
 ;               referencing id   name of func  arg
 (function Call (IdSort           String        Expr) Expr)

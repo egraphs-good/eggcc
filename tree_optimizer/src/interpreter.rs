@@ -5,7 +5,7 @@ use crate::{
     expr::Expr,
     expr::{
         Id::{self, Shared, Unique},
-        PureBinOp, PureUnaryOp,
+        PureBOp, PureUOp,
         TreeType::{self, Bril, Tuple},
         Value,
     },
@@ -32,13 +32,13 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<TreeType>) -> Result<TreeType, TypeEr
         Expr::Program(_) => panic!("Found non top level program."),
         Expr::Num(_) => Ok(Bril(Int)),
         Expr::Boolean(_) => Ok(Bril(Bool)),
-        Expr::BinOp(op, e1, e2) => {
+        Expr::BOp(op, e1, e2) => {
             let expected = op.input_types();
             expect_type(e1, Bril(expected.0))?;
             expect_type(e2, Bril(expected.1))?;
             Ok(Bril(op.output_type()))
         }
-        Expr::UnaryOp(op, e) => {
+        Expr::UOp(op, e) => {
             expect_type(e, Bril(op.input_type()))?;
             Ok(Bril(op.output_type()))
         }
@@ -132,7 +132,7 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<TreeType>) -> Result<TreeType, TypeEr
             }
             Ok(out_ty.clone())
         }
-        Expr::Call(_, arg) => typecheck(arg, arg_ty),
+        Expr::Call(_, _name, arg) => typecheck(arg, arg_ty),
     }
 }
 
@@ -150,7 +150,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
         Expr::Program(_) => todo!("interpret programs"),
         Expr::Num(x) => Value::Num(*x),
         Expr::Boolean(x) => Value::Boolean(*x),
-        Expr::BinOp(Add, e1, e2) => {
+        Expr::BOp(Add, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("add")
             };
@@ -159,7 +159,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Num(n1 + n2)
         }
-        Expr::BinOp(Sub, e1, e2) => {
+        Expr::BOp(Sub, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("sub")
             };
@@ -168,7 +168,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Num(n1 - n2)
         }
-        Expr::BinOp(Mul, e1, e2) => {
+        Expr::BOp(Mul, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("mul")
             };
@@ -177,7 +177,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Num(n1 * n2)
         }
-        Expr::BinOp(LessThan, e1, e2) => {
+        Expr::BOp(LessThan, e1, e2) => {
             let Value::Num(n1) = interpret(e1, arg, vm) else {
                 panic!("lessthan")
             };
@@ -186,7 +186,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Boolean(n1 < n2)
         }
-        Expr::BinOp(And, e1, e2) => {
+        Expr::BOp(And, e1, e2) => {
             let Value::Boolean(b1) = interpret(e1, arg, vm) else {
                 panic!("and")
             };
@@ -195,7 +195,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Boolean(b1 && b2)
         }
-        Expr::BinOp(Or, e1, e2) => {
+        Expr::BOp(Or, e1, e2) => {
             let Value::Boolean(b1) = interpret(e1, arg, vm) else {
                 panic!("or")
             };
@@ -204,7 +204,7 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             };
             Value::Boolean(b1 || b2)
         }
-        Expr::UnaryOp(Not, e1) => {
+        Expr::UOp(Not, e1) => {
             let Value::Boolean(b1) = interpret(e1, arg, vm) else {
                 panic!("not")
             };
@@ -286,7 +286,9 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
             let Some(v) = arg else { panic!("arg") };
             v.clone()
         }
-        Expr::Function(_, _, _, _, _) | Expr::Call(_, _) => todo!("interpret functions and calls"),
+        Expr::Function(_, _, _, _, _) | Expr::Call(_, _, _) => {
+            todo!("interpret functions and calls")
+        }
     }
 }
 
@@ -464,9 +466,9 @@ impl std::str::FromStr for Expr {
             }
         }
 
-        fn egglog_binop_to_binop(e: &egglog::ast::Expr) -> Result<PureBinOp, ExprParseError> {
+        fn egglog_binop_to_binop(e: &egglog::ast::Expr) -> Result<PureBOp, ExprParseError> {
             if let egglog::ast::Expr::Call(str, xs) = e {
-                if let (Some(op), []) = (PureBinOp::from_str(&str.to_string()), xs.as_slice()) {
+                if let (Some(op), []) = (PureBOp::from_str(&str.to_string()), xs.as_slice()) {
                     Ok(op)
                 } else {
                     Err(ExprParseError::UnknownOp(e.clone()))
@@ -476,9 +478,9 @@ impl std::str::FromStr for Expr {
             }
         }
 
-        fn egglog_unaryop_to_unaryop(e: &egglog::ast::Expr) -> Result<PureUnaryOp, ExprParseError> {
+        fn egglog_unaryop_to_unaryop(e: &egglog::ast::Expr) -> Result<PureUOp, ExprParseError> {
             if let egglog::ast::Expr::Call(str, xs) = e {
-                if let (Some(op), []) = (PureUnaryOp::from_str(&str.to_string()), xs.as_slice()) {
+                if let (Some(op), []) = (PureUOp::from_str(&str.to_string()), xs.as_slice()) {
                     Ok(op)
                 } else {
                     Err(ExprParseError::UnknownOp(e.clone()))
@@ -501,12 +503,12 @@ impl std::str::FromStr for Expr {
                     ("Boolean", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Bool(b))]) => {
                         Ok(Expr::Boolean(*b))
                     }
-                    ("BinOp", [op, x, y]) => Ok(Expr::BinOp(
+                    ("BOp", [op, x, y]) => Ok(Expr::BOp(
                         egglog_binop_to_binop(op)?,
                         Box::new(egglog_expr_to_expr(x)?),
                         Box::new(egglog_expr_to_expr(y)?),
                     )),
-                    ("UnaryOp", [op, x]) => Ok(Expr::UnaryOp(
+                    ("UOp", [op, x]) => Ok(Expr::UOp(
                         egglog_unaryop_to_unaryop(op)?,
                         Box::new(egglog_expr_to_expr(x)?),
                     )),
@@ -562,15 +564,18 @@ impl std::str::FromStr for Expr {
                         [id, egglog::ast::Expr::Lit(Literal::String(name)), in_ty, out_ty, body],
                     ) => Ok(Expr::Function(
                         egglog_expr_to_id(id)?,
-                        name.as_str().to_owned(),
+                        name.to_string(),
                         egglog_type_to_type(in_ty)?,
                         egglog_type_to_type(out_ty)?,
                         Box::new(egglog_expr_to_expr(body)?),
                     )),
-                    ("Call", [id, arg]) => Ok(Expr::Call(
-                        egglog_expr_to_id(id)?,
-                        Box::new(egglog_expr_to_expr(arg)?),
-                    )),
+                    ("Call", [id, egglog::ast::Expr::Lit(Literal::String(name)), arg]) => {
+                        Ok(Expr::Call(
+                            egglog_expr_to_id(id)?,
+                            name.to_string(),
+                            Box::new(egglog_expr_to_expr(arg)?),
+                        ))
+                    }
                     (f, xs) => Err(ExprParseError::UnknownFunction(f.to_owned(), xs.to_vec())),
                 },
             }

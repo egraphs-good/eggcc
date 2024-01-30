@@ -8,12 +8,12 @@
 //! computed once in the tree encoded
 //! program.
 
-use std::iter;
-
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 #[cfg(test)]
-use tree_unique_args::ast::program;
+use bril_rs::Type;
+#[cfg(test)]
+use tree_optimizer::ast::program;
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{Literal, ValueOps};
@@ -211,21 +211,9 @@ impl RvsdgFunction {
             .collect::<Vec<_>>();
 
         function(
-            self.name.clone(),
-            TreeType::Tuple(
-                self.args
-                    .iter()
-                    .map(|ty| ty.to_tree_type())
-                    .chain(iter::once(TreeType::Unit))
-                    .collect(),
-            ),
-            TreeType::Tuple(
-                self.results
-                    .iter()
-                    .map(|r| r.0.to_tree_type())
-                    .chain(iter::once(TreeType::Unit))
-                    .collect(),
-            ),
+            self.name.as_str(),
+            TreeType::Tuple(self.args.iter().map(|ty| ty.to_tree_type()).collect()),
+            TreeType::Tuple(self.results.iter().map(|r| r.0.to_tree_type()).collect()),
             translator.build_translation(parallel_vec(translated_results)),
         )
     }
@@ -251,22 +239,27 @@ fn translate_simple_loop() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(function(cbind(
-            num(1), // [(), 1]
+        .assert_eq_ignoring_ids(&program!(function(
+            "myfunc",
+            TreeType::Tuple(vec![TreeType::Unit]),
+            TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Unit]),
             cbind(
-                num(2), // [(), 1, 2]
+                num(1), // [(), 1]
                 cbind(
-                    tloop(
-                        parallel!(getarg(0), getarg(1), getarg(2)), // [(), 1, 2]
-                        cbind(
-                            lessthan(getarg(1), getarg(2)), // [(), 1, 2, 1<2]
-                            parallel!(getarg(3), parallel!(getarg(0), getarg(1), getarg(2)))
-                        )
-                    ), // [(), 1, 2, [(), 1, 2]]
-                    parallel!(get(getarg(3), 1), get(getarg(3), 0)) // return [1, ()]
-                ),
+                    num(2), // [(), 1, 2]
+                    cbind(
+                        tloop(
+                            parallel!(getarg(0), getarg(1), getarg(2)), // [(), 1, 2]
+                            cbind(
+                                lessthan(getarg(1), getarg(2)), // [(), 1, 2, 1<2]
+                                parallel!(getarg(3), parallel!(getarg(0), getarg(1), getarg(2)))
+                            )
+                        ), // [(), 1, 2, [(), 1, 2]]
+                        parallel!(get(getarg(3), 1), get(getarg(3), 0)) // return [1, ()]
+                    ),
+                )
             )
-        ))));
+        )));
 }
 
 #[test]
@@ -291,31 +284,36 @@ fn translate_loop() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(function(cbind(
-            num(0), // [(), 0]
+        .assert_eq_ignoring_ids(&program!(function(
+            "main",
+            TreeType::Tuple(vec![TreeType::Unit]),
+            TreeType::Tuple(vec![TreeType::Unit]),
             cbind(
-                tloop(
-                    parallel!(getarg(0), getarg(1)),
-                    cbind(
-                        num(1), // [(), i, 1]
+                num(0), // [(), 0]
+                cbind(
+                    tloop(
+                        parallel!(getarg(0), getarg(1)),
                         cbind(
-                            add(getarg(1), getarg(2)), // [(), i, 1, i+1]
+                            num(1), // [(), i, 1]
                             cbind(
-                                num(10), // [(), i, 1, i+1, 10]
+                                add(getarg(1), getarg(2)), // [(), i, 1, i+1]
                                 cbind(
-                                    lessthan(getarg(3), getarg(4)), // [(), i, 1, i+1, 10, i<10]
-                                    parallel!(getarg(5), parallel!(getarg(0), getarg(3)))
+                                    num(10), // [(), i, 1, i+1, 10]
+                                    cbind(
+                                        lessthan(getarg(3), getarg(4)), // [(), i, 1, i+1, 10, i<10]
+                                        parallel!(getarg(5), parallel!(getarg(0), getarg(3)))
+                                    )
                                 )
                             )
                         )
+                    ),
+                    cbind(
+                        print(get(getarg(2), 1)), // [(), 0, [() i]]
+                        parallel!(getarg(3))
                     )
                 ),
-                cbind(
-                    print(get(getarg(2), 1)), // [(), 0, [() i]]
-                    parallel!(getarg(3))
-                )
-            ),
-        ))));
+            )
+        )));
 }
 
 #[test]
@@ -334,13 +332,18 @@ fn simple_translation() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(function(cbind(
-            num(1),
+        .assert_eq_ignoring_ids(&program!(function(
+            "add",
+            TreeType::Tuple(vec![TreeType::Unit]),
+            TreeType::Tuple(vec![TreeType::Bril(Type::Int), TreeType::Unit]),
             cbind(
-                add(get(arg(), 1), get(arg(), 1)),
-                parallel!(get(arg(), 2), get(arg(), 0)), // returns res and print state (unit)
-            ),
-        ))));
+                num(1),
+                cbind(
+                    add(get(arg(), 1), get(arg(), 1)),
+                    parallel!(get(arg(), 2), get(arg(), 0)), // returns res and print state (unit)
+                ),
+            )
+        )));
 }
 
 #[test]
@@ -361,17 +364,22 @@ fn two_print_translation() {
 
     rvsdg
         .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(function(cbind(
-            num(2),
+        .assert_eq_ignoring_ids(&program!(function(
+            "add",
+            TreeType::Tuple(vec![TreeType::Unit]),
+            TreeType::Tuple(vec![TreeType::Unit]),
             cbind(
-                num(1),
+                num(2),
                 cbind(
-                    add(get(arg(), 2), get(arg(), 1)),
+                    num(1),
                     cbind(
-                        print(get(arg(), 3)),
-                        cbind(print(get(arg(), 1)), parallel!(get(arg(), 5))),
+                        add(get(arg(), 2), get(arg(), 1)),
+                        cbind(
+                            print(get(arg(), 3)),
+                            cbind(print(get(arg(), 1)), parallel!(get(arg(), 5))),
+                        ),
                     ),
                 ),
-            ),
-        ))));
+            )
+        )));
 }

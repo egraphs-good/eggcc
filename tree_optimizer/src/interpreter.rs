@@ -458,7 +458,7 @@ impl std::str::FromStr for Expr {
                     ("TupleT", xs) => {
                         let tys = xs
                             .iter()
-                            .map(|x| egglog_type_to_type(x))
+                            .map(egglog_type_to_type)
                             .collect::<Result<Vec<_>, _>>()?;
                         Ok(Tuple(tys))
                     }

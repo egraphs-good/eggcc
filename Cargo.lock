@@ -353,7 +353,6 @@ dependencies = [
  "serde_json",
  "smallvec",
  "thiserror",
- "tree-unique-args",
  "tree_optimizer",
 ]
 
@@ -1324,17 +1323,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
 dependencies = [
  "crunchy",
-]
-
-[[package]]
-name = "tree-unique-args"
-version = "0.1.0"
-dependencies = [
- "egglog 0.1.0 (git+https://github.com/oflatt/egg-smol?rev=057725d9353727d831c90c7f8fdd76954d06b351)",
- "main_error",
- "strum",
- "strum_macros",
- "thiserror",
 ]
 
 [[package]]

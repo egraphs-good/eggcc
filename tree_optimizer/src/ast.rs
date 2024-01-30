@@ -169,12 +169,14 @@ macro_rules! parallel {
 }
 pub use parallel;
 
-pub fn switch(arg: Expr, cases: Vec<Expr>) -> Expr {
-    let cases_wrapped = cases
-        .into_iter()
-        .map(|case| Branch(Shared, Box::new(case)))
-        .collect();
-    Switch(Box::new(arg), cases_wrapped)
+#[macro_export]
+macro_rules! switch {
+    ($arg:expr, $($x:expr),*) => ($crate::ast::switch_vec($arg, vec![$($x),*]))
+}
+pub use switch;
+
+pub fn switch_vec(arg: Expr, cases: Vec<Expr>) -> Expr {
+    Switch(Box::new(arg), cases)
 }
 
 pub fn tloop(input: Expr, body: Expr) -> Expr {
@@ -189,8 +191,8 @@ pub fn arg() -> Expr {
     Arg(Shared)
 }
 
-pub fn function(name: String, in_ty: TreeType, out_ty: TreeType, arg: Expr) -> Expr {
-    Function(Shared, name, in_ty, out_ty, Box::new(arg))
+pub fn function(name: &str, in_ty: TreeType, out_ty: TreeType, arg: Expr) -> Expr {
+    Function(Shared, name.to_string(), in_ty, out_ty, Box::new(arg))
 }
 
 pub fn call(arg: Expr) -> Expr {
@@ -229,36 +231,44 @@ fn test_gives_loop_ids() {
 fn test_complex_program_ids() {
     // test a program that includes
     // a let, a loop, a switch, and a call
-    let prog = program!(function(tlet(
-        num(0),
-        tloop(
-            num(1),
-            switch!(
-                arg(),
-                num(2),
-                call(num(3)),
-                tlet(num(4), num(5)),
-                tloop(num(6), num(7))
+    let prog = program!(function(
+        "main",
+        TreeType::Unit,
+        TreeType::Unit,
+        tlet(
+            num(0),
+            tloop(
+                num(1),
+                switch!(
+                    arg(),
+                    num(2),
+                    call(num(3)),
+                    tlet(num(4), num(5)),
+                    tloop(num(6), num(7))
+                ),
             ),
-        ),
-    )));
+        )
+    ));
     assert_eq!(
         prog,
         Program(vec![Function(
-            Id(1),
+            Unique(1),
+            "main".to_string(),
+            TreeType::Unit,
+            TreeType::Unit,
             Box::new(Let(
-                Id(2),
+                Unique(2),
                 Box::new(Num(0)),
                 Box::new(Loop(
-                    Id(3),
+                    Unique(3),
                     Box::new(Num(1)),
                     Box::new(Switch(
-                        Box::new(Arg(Id(3))),
+                        Box::new(Arg(Unique(3))),
                         vec![
                             Num(2),
-                            Call(Id(3), Box::new(Num(3))),
-                            Let(Id(4), Box::new(Num(4)), Box::new(Num(5))),
-                            Loop(Id(5), Box::new(Num(6)), Box::new(Num(7))),
+                            Call(Unique(3), Box::new(Num(3))),
+                            Let(Unique(4), Box::new(Num(4)), Box::new(Num(5))),
+                            Loop(Unique(5), Box::new(Num(6)), Box::new(Num(7))),
                         ]
                     ))
                 ))

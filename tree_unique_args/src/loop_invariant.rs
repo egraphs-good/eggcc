@@ -8,17 +8,19 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
 
     match ctor {
         Constructor::Get => Some(format!(
-            "(rule ((BodyContainsExpr loop expr) \
-            {br} (= expr (Get (Arg id) i)) \
-            {br} (arg-inv loop i)) \
-            {br}((set (is-inv-Expr loop expr) true)){ruleset})"
+            "(rule ((BodyContainsExpr loop_id expr) \
+            {br} (Loop loop_id in out) \
+            {br} (= expr (Get (Arg loop_id) i)) \
+            {br} (arg-inv loop_id i)) \
+            {br}((set (is-inv-Expr loop_id expr) true)){ruleset})"
         )),
         Constructor::Num | Constructor::Boolean => {
             let ctor_pattern = ctor.construct(|field| field.var());
             Some(format!(
-                "(rule ((BodyContainsExpr loop expr) \
+                "(rule ((BodyContainsExpr loop_id expr) \
+                {br} (Loop loop_id in out) \
                 {br} (= expr {ctor_pattern})) \
-                {br}((set (is-inv-Expr loop expr) true)){ruleset})"
+                {br}((set (is-inv-Expr loop_id expr) true)){ruleset})"
             ))
         }
         _ => None,
@@ -53,7 +55,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                     Purpose::SubExpr | Purpose::SubListExpr => {
                         let var = field.var();
                         let sort = field.sort().name();
-                        Some(format!("(= true (is-inv-{sort} loop {var}))"))
+                        Some(format!("(= true (is-inv-{sort} loop_id {var}))"))
                     }
                 })
                 .join(" ");
@@ -64,10 +66,11 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                 _ => String::new(),
             };
             Some(format!(
-                "(rule ((BodyContainsExpr loop expr) \
+                "(rule ((BodyContainsExpr loop_id expr) \
+                {br} (Loop loop_id in out) \
                 {br} (= expr {ctor_pattern}) \
                 {br} {is_inv_ctor} {is_pure}) \
-                {br}((set (is-inv-Expr loop expr) true)){ruleset})"
+                {br}((set (is-inv-Expr loop_id expr) true)){ruleset})"
             ))
         }
     }
@@ -99,12 +102,12 @@ fn loop_invariant_detection1() -> Result<(), egglog::Error> {
     ";
 
     let check = "
-        (check (arg-inv loop 0))
-        (fail (check (arg-inv loop 1)))
-        (check (= true (is-inv-Expr loop (Get (Arg id1) 0))))
-        (check (= false (is-inv-Expr loop (Get (Arg id1) 1))))
-        (check (= true (is-inv-Expr loop (Add (Num id1 1) (Get (Arg id1) 0)))))
-        (check (= false (is-inv-Expr loop (Sub (Get (Arg id1) 1) (Add (Num id1 1) (Get (Arg id1) 0))) )))
+        (check (arg-inv id1 0))
+        (fail (check (arg-inv id1 1)))
+        (check (= true (is-inv-Expr id1 (Get (Arg id1) 0))))
+        (check (= false (is-inv-Expr id1 (Get (Arg id1) 1))))
+        (check (= true (is-inv-Expr id1 (Add (Num id1 1) (Get (Arg id1) 0)))))
+        (check (= false (is-inv-Expr id1 (Sub (Get (Arg id1) 1) (Add (Num id1 1) (Get (Arg id1) 0))) )))
     ";
 
     crate::run_test(build, check)
@@ -149,19 +152,19 @@ fn loop_invariant_detection2() -> Result<(), egglog::Error> {
     ";
 
     let check = "
-        (check (arg-inv loop 1))
-        (check (arg-inv loop 2))
-        (check (arg-inv loop 3))
-        (check (arg-inv loop 4))
-        (fail (check (arg-inv loop 0)))
+        (check (arg-inv id1 1))
+        (check (arg-inv id1 2))
+        (check (arg-inv id1 3))
+        (check (arg-inv id1 4))
+        (fail (check (arg-inv id1 0)))
         (let l4 (list4 (Num id1 1) (Num id1 2) (Num id1 3) (Num id1 4)))
-        (check (is-inv-ListExpr-helper loop l4 4))
-        (check (= true (is-inv-ListExpr loop l4)))
-        (check (= true (is-inv-Expr loop (Switch (Num id1 1) l4))))
-        (check (= true (is-inv-Expr loop inv)))
-        (check (= false (is-inv-Expr loop (Add (Get (Arg id1) 0) inv))))
+        (check (is-inv-ListExpr-helper id1 l4 4))
+        (check (= true (is-inv-ListExpr id1 l4)))
+        (check (= true (is-inv-Expr id1 (Switch (Num id1 1) l4))))
+        (check (= true (is-inv-Expr id1 inv)))
+        (check (= false (is-inv-Expr id1 (Add (Get (Arg id1) 0) inv))))
         ;; a non exist expr should fail
-        (fail (check (is-inv-Expr loop (Switch (Num id1 2) l4))))
+        (fail (check (is-inv-Expr id1 (Switch (Num id1 2) l4))))
     ";
 
     crate::run_test(build, check)

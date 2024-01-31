@@ -317,12 +317,6 @@ fn rvsdg_state_mem() {
     let printed = expected.print(Operand::Project(0, loaded), Operand::Project(1, loaded));
     let freed = expected.free(Operand::Project(0, p), printed);
     let expected = expected.into_function("main".to_owned(), vec![], None, Some(freed));
-    // let c = expected.lit_bool(true);
-    // let some_func = expected.void_function("some_func", &[Operand::Arg(0)]);
-    // let other_func = expected.void_function("other_func", &[Operand::Arg(0)]);
-    // let gamma = expected.gamma(c, &[Operand::Arg(0)], &[&[other_func], &[some_func]]);
-    // let res = Operand::Project(0, gamma);
-    // let expected = expected.into_function("sub".to_owned(), vec![], None, Some(res));
     dbg!(&expected);
     dbg!(&rvsdg.functions[0]);
     assert!(deep_equal(&expected, &rvsdg.functions[0]));

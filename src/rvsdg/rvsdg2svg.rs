@@ -537,6 +537,18 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
             ),
             once(pred).chain(inputs).copied().collect::<Vec<_>>(),
         ),
+        RvsdgBody::If {
+            pred,
+            inputs,
+            then_branch,
+            else_branch,
+        } => (
+            Node::Match(vec![
+                ("true".into(), mk_region(inputs.len(), then_branch, nodes)),
+                ("false".into(), mk_region(inputs.len(), else_branch, nodes)),
+            ]),
+            once(pred).chain(inputs).copied().collect::<Vec<_>>(),
+        ),
         RvsdgBody::Theta {
             pred,
             inputs,
@@ -581,6 +593,12 @@ fn reachable_nodes(reachable: &mut BTreeSet<Id>, all: &[RvsdgBody], output: Oper
             | RvsdgBody::BasicOp(BasicExpr::Print(xs)) => xs.clone(),
             RvsdgBody::BasicOp(BasicExpr::Const(..)) => vec![],
             RvsdgBody::Gamma { pred, inputs, .. } => once(pred).chain(inputs).copied().collect(),
+            RvsdgBody::If {
+                pred,
+                inputs,
+                then_branch: _,
+                else_branch: _,
+            } => once(pred).chain(inputs).copied().collect(),
             RvsdgBody::Theta { inputs, .. } => inputs.clone(),
         };
         for input in inputs {

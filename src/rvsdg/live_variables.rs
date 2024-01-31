@@ -51,6 +51,7 @@ pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
             if let BranchOp::Cond {
                 arg,
                 val: CondVal { val: _, of },
+                bril_type: _,
             } = &edge.weight().op
             {
                 if *of > 1 {

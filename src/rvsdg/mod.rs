@@ -129,9 +129,17 @@ pub(crate) enum Operand {
 pub(crate) enum RvsdgBody {
     BasicOp(BasicExpr<Operand>),
 
+    /// Conditional branch, witha boolean predicate.
+    If {
+        pred: Operand,
+        inputs: Vec<Operand>,
+        /// invariant: then_branch and else_branch have same length
+        then_branch: Vec<Operand>,
+        else_branch: Vec<Operand>,
+    },
+
     /// Conditional branch, where the outputs chosen depend on the predicate.
     Gamma {
-        /// always has type bool
         pred: Operand,
         inputs: Vec<Operand>,
         /// invariant: all of the vecs in output have

@@ -315,7 +315,11 @@ pub(crate) enum BranchOp {
     /// An unconditional branch to a block.
     Jmp,
     /// A conditional branch to a block.
-    Cond { arg: Identifier, val: CondVal },
+    Cond {
+        arg: Identifier,
+        val: CondVal,
+        bril_type: Type,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -423,10 +427,12 @@ impl SimpleCfgFunction {
                     BranchOp::Cond {
                         arg: cond1,
                         val: CondVal { val: val1, of: 2 },
+                        bril_type: Type::Bool,
                     },
                     BranchOp::Cond {
                         arg: cond2,
                         val: CondVal { val: val2, of: 2 },
+                        bril_type: Type::Bool,
                     },
                 ) => {
                     assert_eq!(cond1, cond2);
@@ -517,6 +523,7 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
                         op: BranchOp::Cond {
                             arg: arg.into(),
                             val: true.into(),
+                            bril_type: Type::Bool,
                         },
                         pos: pos.clone(),
                     },
@@ -528,6 +535,7 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
                         op: BranchOp::Cond {
                             arg: arg.into(),
                             val: false.into(),
+                            bril_type: Type::Bool,
                         },
                         pos: pos.clone(),
                     },

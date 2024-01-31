@@ -16,7 +16,7 @@ use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use petgraph::{algo::dominators::Dominators, stable_graph::NodeIndex};
 
-use crate::cfg::{ret_id, Annotation, BranchOp, CondVal, Identifier, SwitchCfgFunction};
+use crate::cfg::{ret_id, Annotation, BranchOp, CondVal, SwitchCfgFunction};
 use crate::rvsdg::Result;
 
 use super::live_variables::{live_variables, Names};
@@ -205,10 +205,16 @@ impl<'a> RvsdgBuilder<'a> {
             BranchOp::Cond {
                 arg,
                 val: CondVal { val, of },
+                bril_type,
             } => {
                 assert_eq!(
                     of, 2,
                     "loop predicate has more than two options (restructuring should avoid this)"
+                );
+                assert_eq!(
+                    bril_type,
+                    Type::Bool,
+                    "loop predicate is not a boolean in RVSDG translation"
                 );
                 let var = self.analysis.intern.intern(arg);
                 let op = get_op(var, &None, &self.store, &self.analysis.intern)?;
@@ -259,18 +265,42 @@ impl<'a> RvsdgBuilder<'a> {
                 .neighbors_directed(block, Direction::Outgoing)
                 .next());
         }
-        let placeholder = Identifier::Num(!0);
-        let mut pred = placeholder.clone();
-        let mut succs = Vec::from_iter(self.cfg.graph.edges_directed(block, Direction::Outgoing).map(|e| {
-            if let BranchOp::Cond { arg, val: CondVal { val, of:_ }} = &e.weight().op {
-                if pred == placeholder {
-                    pred = arg.clone();
-                }
-                (*val, e.target())
+
+        let mut succs_iter = self.cfg.graph.edges_directed(block, Direction::Outgoing);
+        let mut succs = vec![];
+        let first_e = succs_iter.next();
+        // Bind pred, first_val, and bril_type from the first edge
+        let Some(BranchOp::Cond {
+            arg: pred,
+            val: CondVal {
+                val: first_val,
+                of: _,
+            },
+            bril_type,
+        }) = first_e.map(|e| e.weight().op.clone())
+        else {
+            panic!("Couldn't find a conditional branch in block {block:?}");
+        };
+        succs.push((first_val, first_e.unwrap().target()));
+        // for the rest of the edges, make sure pred and bril_type match up
+        for e in succs_iter {
+            if let BranchOp::Cond {
+                arg,
+                val: CondVal { val, of: _ },
+                bril_type: other_bril_type,
+            } = &e.weight().op
+            {
+                assert_eq!(
+                    bril_type, *other_bril_type,
+                    "Mismatched types in conditional branches in block {block:?}"
+                );
+                assert_eq!(pred, *arg, "Multiple predicates in block {block:?}");
+                succs.push((*val, e.target()));
             } else {
                 panic!("Invalid mix of conditional and non-conditional branches in block {block:?}")
             }
-        }));
+        }
+
         let pred_var = self.analysis.intern.intern(pred);
         let pred_op = get_op(
             pred_var,
@@ -353,14 +383,36 @@ impl<'a> RvsdgBuilder<'a> {
 
         let next = next.unwrap();
         let pred = pred_op;
-        let gamma_node = get_id(
-            &mut self.expr,
-            RvsdgBody::Gamma {
-                pred,
-                inputs,
-                outputs,
-            },
-        );
+        let gamma_node = if bril_type == Type::Bool {
+            assert_eq!(
+                outputs.len(),
+                2,
+                "Found wrong number of branches for boolean.",
+            );
+            get_id(
+                &mut self.expr,
+                RvsdgBody::If {
+                    pred,
+                    inputs,
+                    then_branch: outputs[1].clone(),
+                    else_branch: outputs[0].clone(),
+                },
+            )
+        } else {
+            assert_eq!(
+                bril_type,
+                Type::Int,
+                "Branch predicate should be bool or integer"
+            );
+            get_id(
+                &mut self.expr,
+                RvsdgBody::Gamma {
+                    pred,
+                    inputs,
+                    outputs,
+                },
+            )
+        };
         // Remap all input variables to the output of this node.
         for (i, var) in output_vars.iter().copied().enumerate() {
             self.store.insert(var, Operand::Project(i, gamma_node));

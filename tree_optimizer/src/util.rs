@@ -32,17 +32,20 @@ fn ast_size_for_ctor(ctor: Constructor) -> String {
                 }
             });
 
-            let len = field_pattern.len();
-            let result_str = field_pattern.join(" ");
-
-            match len {
-                // Num, Bool Arg, UnitExpr for 0
-                0 => format!("(rule ((= expr {ctor_pattern})) ((set (Expr-size expr) 1)) {ruleset})"),
-                1 => format!("(rule ((= expr {ctor_pattern}) (= n {result_str})) ((set (Expr-size expr) (+ 1 n))){ruleset})"),
-                2 => format!("(rule ((= expr {ctor_pattern}) (= sum (+ {result_str}))) ((set (Expr-size expr) (+ 1 sum))){ruleset})"),
-                _ => panic!("Unimplemented") // we don't have ast take three Expr
-            }
+            let result_str = sum_vars(field_pattern);
+            format!("(rule ((= expr {ctor_pattern}) (= sum {result_str})) ((set (Expr-size expr) (+ 1 sum))){ruleset})")
         },
+    }
+}
+
+fn sum_vars(vars: Vec<String>) -> String {
+    let len = vars.len();
+    match len {
+        0 => "0".to_string(),
+        1 => vars[0].clone(),
+        2 => format!("(+ {} {})", vars[0], vars[1]),
+        3 => format!("(+ {} (+ {} {}))", vars[0], vars[1], vars[2]),
+        _ => panic!("Unimplemented"),
     }
 }
 

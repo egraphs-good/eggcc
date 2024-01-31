@@ -19,6 +19,10 @@ pub(crate) fn error_checking_rules() -> Vec<String> {
 (rule ((IsBranchList (Cons a rest)))
       ((IsBranchList rest))
       :ruleset error-checking)
+
+(rule ((If pred then else))
+      ((IsBranchList (Cons then (Cons else (Nil)))))
+      :ruleset error-checking)
   "
     )];
 
@@ -55,6 +59,17 @@ fn test_switch_with_num_child() {
             (Cons
                 (Branch (Shared) (Num (Shared) 2))
                 (Nil))))
+    ";
+    let _ = crate::run_test(build, "");
+}
+
+#[test]
+#[should_panic(expected = "Expected Branch, got Switch")]
+fn test_if_switch_child() {
+    let build = "
+(If (Boolean (Shared) true)
+    (Switch (Num (Shared) 0) (Nil))
+    (Branch (Shared) (Num (Shared) 1)))
     ";
     let _ = crate::run_test(build, "");
 }

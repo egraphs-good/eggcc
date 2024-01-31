@@ -65,9 +65,14 @@
 ; Perform a list of operations. Only way to create a tuple!
 (function All (IdSort Order ListExpr) Expr)
 
-; Switch on a list of lazily-evaluated branches. Doesn't create context
+; Switch on a list of lazily-evaluated branches.
+; branches must be constructed with `(Branch id expr)`.
+; pred must be an integer
 ;                 pred branches chosen
 (function Switch (Expr ListExpr)    Expr)
+; If is like switch, but with a boolean predicate
+;  pred then else
+(function If (Expr Expr Expr) Expr)
 (function Branch (IdSort Expr) Expr)
 
 ; ==========================

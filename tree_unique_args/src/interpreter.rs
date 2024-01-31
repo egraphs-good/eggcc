@@ -409,7 +409,7 @@ impl std::str::FromStr for Expr {
     type Err = ExprParseError;
     fn from_str(s: &str) -> Result<Expr, ExprParseError> {
         fn list_expr_to_vec(e: &egglog::ast::Expr) -> Result<Vec<Expr>, ExprParseError> {
-            if let egglog::ast::Expr::Call(f, xs) = e {
+            if let egglog::ast::Expr::Call((), f, xs) = e {
                 match (f.as_str(), xs.as_slice()) {
                     ("Nil", []) => return Ok(Vec::new()),
                     ("Cons", [head, tail]) => {
@@ -424,8 +424,8 @@ impl std::str::FromStr for Expr {
             Err(ExprParseError::InvalidListExpr)
         }
         fn egglog_expr_to_id(e: &egglog::ast::Expr) -> Result<Id, ExprParseError> {
-            if let egglog::ast::Expr::Call(f, xs) = e {
-                if let ("Id", [egglog::ast::Expr::Lit(egglog::ast::Literal::Int(int))]) =
+            if let egglog::ast::Expr::Call((), f, xs) = e {
+                if let ("Id", [egglog::ast::Expr::Lit((), egglog::ast::Literal::Int(int))]) =
                     (f.as_str(), xs.as_slice())
                 {
                     return Ok(Id(*int));
@@ -435,17 +435,18 @@ impl std::str::FromStr for Expr {
         }
         fn egglog_expr_to_expr(e: &egglog::ast::Expr) -> Result<Expr, ExprParseError> {
             match e {
-                egglog::ast::Expr::Lit(_) => Err(ExprParseError::UnwrappedLiteral),
-                egglog::ast::Expr::Var(s) => {
+                egglog::ast::Expr::Lit((), _) => Err(ExprParseError::UnwrappedLiteral),
+                egglog::ast::Expr::Var((), s) => {
                     Err(ExprParseError::UngroundedTerm(s.as_str().to_owned()))
                 }
-                egglog::ast::Expr::Call(f, xs) => match (f.as_str(), xs.as_slice()) {
-                    ("Num", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Int(i))]) => {
+                egglog::ast::Expr::Call((), f, xs) => match (f.as_str(), xs.as_slice()) {
+                    ("Num", [_id, egglog::ast::Expr::Lit((), egglog::ast::Literal::Int(i))]) => {
                         Ok(Expr::Num(*i))
                     }
-                    ("Boolean", [_id, egglog::ast::Expr::Lit(egglog::ast::Literal::Bool(b))]) => {
-                        Ok(Expr::Boolean(*b))
-                    }
+                    (
+                        "Boolean",
+                        [_id, egglog::ast::Expr::Lit((), egglog::ast::Literal::Bool(b))],
+                    ) => Ok(Expr::Boolean(*b)),
                     ("Add", [x, y]) => Ok(Expr::Add(
                         Box::new(egglog_expr_to_expr(x)?),
                         Box::new(egglog_expr_to_expr(y)?),
@@ -471,7 +472,7 @@ impl std::str::FromStr for Expr {
                         Box::new(egglog_expr_to_expr(y)?),
                     )),
                     ("Not", [x]) => Ok(Expr::Not(Box::new(egglog_expr_to_expr(x)?))),
-                    ("Get", [x, egglog::ast::Expr::Lit(egglog::ast::Literal::Int(i))]) => {
+                    ("Get", [x, egglog::ast::Expr::Lit((), egglog::ast::Literal::Int(i))]) => {
                         Ok(Expr::Get(
                             Box::new(egglog_expr_to_expr(x)?),
                             (*i).try_into()
@@ -484,7 +485,7 @@ impl std::str::FromStr for Expr {
                         Box::new(egglog_expr_to_expr(x)?),
                         Box::new(egglog_expr_to_expr(y)?),
                     )),
-                    ("All", [id, egglog::ast::Expr::Call(order, empty), xs]) => {
+                    ("All", [id, egglog::ast::Expr::Call((), order, empty), xs]) => {
                         if !empty.is_empty() {
                             return Err(ExprParseError::InvalidOrderArguments);
                         }

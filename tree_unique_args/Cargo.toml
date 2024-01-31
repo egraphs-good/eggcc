@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 # add fresh i64 branch
-egglog = { git = "https://github.com/oflatt/egg-smol", rev = "057725d9353727d831c90c7f8fdd76954d06b351" }
+egglog = { git = "https://github.com/oflatt/egg-smol", rev = "3510d65" }
 strum = "0.25"
 strum_macros = "0.25"
 main_error = "0.1.2"

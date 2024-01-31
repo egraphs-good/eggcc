@@ -1,0 +1,42 @@
+
+;; SymbolicEval tries to 
+;; The first expr is the term we wish to symbolicly evaluate
+;; The second expr is the symbolic arguments (e.g (All (Parallel) (Pair (Get (Arg shared 0) (Get (Arg shared 1))))))
+(function SymbolicEval (Expr Expr) Expr :unextractable)
+;; symbolic evaluation of a sequence of exprs
+(function SymbolicEvalSeq (ListExpr Expr) ListExpr :unextractable)
+
+(ruleset symbolic-eval)
+
+(rewrite (SymbolicEval (Arg shared) vals) vals :ruleset symbolic-evals)
+(rewrite (SymbolicEval (Num shared n) vals) (Num shared n) :ruleset symbolic-evals)
+(rewrite (SymbolicEval (Boolean shared b) vals) (Boolean shared b) :ruleset symbolic-evals)
+
+(rewrite (SymbolicEvalSeq (Nil) vals) (Nil) :ruleset symbolic-evals)
+(rewrite (SymbolicEvalSeq (Cons first rest) vals)
+         (Cons (SymbolicEval first vals) (SymbolicEvalSeq rest vals))
+         :ruleset symbolic-evals)
+
+;; demand the inputs are evaluated
+(rule ((= lhs (SymbolicEval term vals))
+       (= term (Let inputs body)))
+      ((union lhs
+        (SymbolicEval body (SymbolicEval inputs vals))))
+      :ruleset symbolic-eval)
+
+(rewrite (SymbolicEval (All (Sequential) list) vals)
+         (All (Sequential) (SymbolicEvalSeq list vals))
+         :ruleset symbolic-eval)
+
+(let mylet
+  (Let shared
+    (All (Parallel) (Pair (Get (Arg shared) 0) (Get (Arg shared) 1)))
+         (Pair (Get (Arg shared) 1)
+               (Get (Arg shared) 0))))
+
+(let symboliceval (SymbolicEval mylet (All (Parallel) (Pair (Get (Arg shared) 0) (Get (Arg shared) 1)))))
+
+(run-schedule (saturate symbolic-eval))
+
+(check (= symboliceval
+          (All (Parallel) (Pair (Get (Arg shared) 0) (Get (Arg shared) 1)))))

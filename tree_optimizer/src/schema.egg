@@ -2,6 +2,8 @@
 
 (sort IdSort)
 (function Id (i64) IdSort)
+(function Shared () IdSort)
+(let shared (Shared))
 (datatype Expr)
 (datatype ListExpr (Cons Expr ListExpr) (Nil))
 
@@ -22,18 +24,25 @@
 ; Pure operators
 ; ==========================
 ;              id     val
+(datatype BinPureOp
+  (Add)
+  (Sub)
+  (Mul)
+  (LessThan)
+  (And)
+  (Or))
+(datatype UnaryPureOp
+  (Not))
+
+;; Constants
+(function UnitExpr (IdSort) Expr)
 (function Num (IdSort i64) Expr)
 ;                  id     val
 (function Boolean (IdSort bool) Expr)
-;                   id
-(function UnitExpr (IdSort) Expr) ; Unit is already an egglog sort
-(function Add (Expr Expr) Expr)
-(function Sub (Expr Expr) Expr)
-(function Mul (Expr Expr) Expr)
-(function LessThan (Expr Expr) Expr)
-(function And (Expr Expr) Expr)
-(function Or (Expr Expr) Expr)
-(function Not (Expr) Expr)
+
+;; Pure operators
+(function BOp (BinPureOp Expr Expr) Expr)
+(function UOp (UnaryPureOp Expr) Expr)
 (function Get (Expr i64) Expr) ; gets from a tuple. static index
 
 ; ==========================
@@ -59,6 +68,7 @@
 ; Switch on a list of lazily-evaluated branches. Doesn't create context
 ;                 pred branches chosen
 (function Switch (Expr ListExpr)    Expr)
+(function Branch (IdSort Expr) Expr)
 
 ; ==========================
 ; Regions
@@ -80,11 +90,14 @@
 ; Functions
 ; ==========================
 
-;                   f    output in-type out-type
-(function Function (IdSort Expr Type Type) Expr)
+; A list of functions, with the first one being the entry point
+(function Program  (ListExpr) Expr)
+;                   id     name   input ty  output ty  output
+(function Function (IdSort String Type      Type       Expr)      Expr)
 
-;               f      arg
-(function Call (IdSort Expr) Expr)
+;               referencing id   name of func  arg
+(function Call (IdSort           String        Expr) Expr)
+
 
 ;; Rulesets
 (ruleset always-run)

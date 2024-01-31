@@ -1,5 +1,30 @@
 (ruleset type-analysis)
 
+(sort TypeList)
+
+(datatype Type
+  (IntT)
+  (BoolT)
+  (FuncT Type Type)
+  (TupleT TypeList)
+)
+
+(function TNil () TypeList)
+(function TCons (Type TypeList) TypeList)
+
+(function TypeList-length (TypeList) i64)
+(function TypeList-ith (TypeList i64) Type :unextractable)
+(function TypeList-suffix (TypeList i64) TypeList :unextractable)
+
+(rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset type-analysis)
+
+(rule ((= (TypeList-suffix top n) (TCons hd tl)))
+    ((union (TypeList-ith top n) hd)
+     (union (TypeList-suffix top (+ n 1)) tl)) :ruleset type-analysis)
+
+(rule ((= (TypeList-suffix list n) (TNil)))
+    ((set (TypeList-length list) n)) :ruleset type-analysis)
+
 (relation HasType (Expr Type))
 
 ; Primitives
@@ -85,12 +110,7 @@
 (rule ((Print e))
       ((HasType (Print e) (TupleT (TNil))))
       :ruleset type-analysis)
-(rule ((= lhs (Read addr ty)))
-      ((HasType lhs ty))
-      :ruleset type-analysis)
-(rule ((= lhs (Write addr val)))
-      ((HasType lhs (UnitT)))
-      :ruleset type-analysis)
+; TODO: Read and Write (requires type annotations)
 
 ; Switch 
 ; if the condition is a boolean, it must have exactly two branches
@@ -211,42 +231,4 @@
        (!= (TypeList-length lst) 2)
       )
       ((panic "Loop did not get two arguments (predicate and output)"))
-      :ruleset type-analysis)
-
-; Functions
-(rule ((= f (Function id body in-ty out-ty)))
-      ((HasType (Arg id) in-ty))
-      :ruleset type-analysis)
-
-(rule (
-       (= f (Function id body in-ty out-ty))
-       (HasType body out-ty)
-      )
-      ((HasType f (FuncT in-ty out-ty)))
-      :ruleset type-analysis)
-
-(rule (
-       (= f (Function id body in-ty out-ty))
-       (HasType body ty)
-       (!= ty out-ty)
-      )
-      ((panic "Function body had wrong type :("))
-      :ruleset type-analysis)
-
-(rule (
-       (= c (Call f-id arg))
-       (= f (Function f-id body in-ty out-ty))
-       (HasType f (FuncT in-ty out-ty))
-       (HasType arg in-ty)
-      )
-      ((HasType c out-ty))
-      :ruleset type-analysis)
-
-(rule (
-       (= c (Call f-id arg))
-       (=  f (Function f-id body in-ty out-ty))
-       (HasType arg ty)
-       (!= ty in-ty)
-      )
-      ((panic "Function call had wrong argument type :("))
       :ruleset type-analysis)

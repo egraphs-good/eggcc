@@ -45,6 +45,7 @@ use bril_rs::{ConstOps, Literal, Type, ValueOps};
 use egglog::{EGraph, SerializeConfig, TermDag};
 
 use thiserror::Error;
+use tree_optimizer::expr::TreeType;
 
 use crate::{
     cfg::{Identifier, SimpleCfgProgram},
@@ -150,6 +151,15 @@ pub(crate) enum RvsdgBody {
 pub(crate) enum RvsdgType {
     Bril(Type),
     PrintState,
+}
+
+impl RvsdgType {
+    pub(crate) fn to_tree_type(&self) -> TreeType {
+        match self {
+            RvsdgType::Bril(t) => TreeType::Bril(t.clone()),
+            RvsdgType::PrintState => TreeType::Tuple(vec![]),
+        }
+    }
 }
 
 /// Represents a single function as an RVSDG.

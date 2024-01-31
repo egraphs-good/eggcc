@@ -1,12 +1,12 @@
 pub(crate) fn rules() -> String {
     let equiv_when_b_pure = [
         (
-            "(Switch (And a b) (Cons A (Cons B (Nil))))",
-            "(Switch a (Pair (Switch b (Pair A B)) B))",
+            "(Switch (And a b) (Cons E (Cons T (Nil))))", // if (a and b) then T else E
+            "(Switch a (Pair E (Switch b (Pair E T))))",  // if a then (if b then T else E) else E
         ),
         (
-            "(Switch (Or a b) (Cons A (Cons B (Nil))))",
-            "(Switch a (Pair A (Switch b (Pair A B))))",
+            "(Switch (Or a b) (Cons E (Cons T (Nil))))", // if (a or  b) then T else E
+            "(Switch a (Pair (Switch b (Pair E T)) T))", // if a then T else (if b then T else E)
         ),
     ];
     let rules_needing_purity = equiv_when_b_pure
@@ -24,11 +24,11 @@ pub(crate) fn rules() -> String {
 
         ; Constant condition elimination
         (rewrite (Switch (Boolean id true) (Cons A (Cons B (Nil))))
-                 A
+                 B
                  :when ((ExprIsValid (Switch (Boolean id true) (Cons A (Cons B (Nil))))))
                  :ruleset switch-rewrites)
         (rewrite (Switch (Boolean id false) (Cons A (Cons B (Nil))))
-                 B
+                 A
                  :when ((ExprIsValid (Switch (Boolean id false) (Cons A (Cons B (Nil))))))
                  :ruleset switch-rewrites)
     
@@ -51,9 +51,10 @@ fn switch_rewrite_and() -> crate::Result {
     ";
     let check = "
 (check (= switch (Switch (Boolean id false)
-                         (Pair (Switch (Boolean id true)
-                                       (Pair (Num id 1) (Num id 2)))
-                               (Num id 2)))))
+                         (Pair (Num id 1)
+                               (Switch (Boolean id true)
+                                       (Pair (Num id 1) (Num id 2)))))))
+
     ";
     crate::run_test(build, check)
 }
@@ -68,9 +69,9 @@ fn switch_rewrite_or() -> crate::Result {
     ";
     let check = "
 (check (= switch (Switch (Boolean id false)
-                         (Pair (Num id 1)
-                               (Switch (Boolean id true)
-                                       (Pair (Num id 1) (Num id 2)))))))
+                         (Pair (Switch (Boolean id true)
+                                       (Pair (Num id 1) (Num id 2)))
+                               (Num id 2)))))
     ";
     crate::run_test(build, check)
 }
@@ -87,25 +88,25 @@ fn switch_rewrite_purity() -> crate::Result {
     ";
     let check = "
 (fail (check (= switch (Switch (Boolean switch-id false)
-                               (Pair (Switch (Get impure 0)
-                                             (Pair (Num switch-id 1) (Num switch-id 2)))
-                                     (Num switch-id 2))))))
+                               (Pair (Num switch-id 1)
+                                     (Switch (Get impure 0)
+                                             (Pair (Num switch-id 1) (Num switch-id 2))))))))
     ";
     crate::run_test(build, check)?;
 
     let build = "
 (let switch-id (Id (i64-fresh!)))
 (let let-id (Id (i64-fresh!)))
-(let impure (Let let-id (All switch-id (Parallel) (Nil)) (All let-id (Sequential) (Cons (Boolean let-id true) (Nil)))))
-(let switch (Switch (And (Boolean switch-id false) (Get impure 0))
+(let pure   (Let let-id (All switch-id (Parallel) (Nil)) (All let-id (Sequential) (Cons (Boolean let-id true) (Nil)))))
+(let switch (Switch (And (Boolean switch-id false) (Get pure 0))
                     (Pair (Num switch-id 1) (Num switch-id 2))))
 (ExprIsValid switch)
     ";
     let check = "
 (check (= switch (Switch (Boolean switch-id false)
-                               (Pair (Switch (Get impure 0)
-                                             (Pair (Num switch-id 1) (Num switch-id 2)))
-                                     (Num switch-id 2)))))
+                         (Pair (Num switch-id 1)
+                               (Switch (Get pure 0)
+                                       (Pair (Num switch-id 1) (Num switch-id 2)))))))
     ";
     crate::run_test(build, check)
 }
@@ -124,8 +125,8 @@ fn test_constant_condition() -> Result<(), egglog::Error> {
     (ExprIsValid switch_f)
   ";
     let check = "
-    (check (= switch_t a))
-    (check (= switch_f b))
+    (check (= switch_t b))
+    (check (= switch_f a))
   ";
     crate::run_test(build, check)
 }
@@ -165,7 +166,7 @@ fn switch_interval() -> Result<(), egglog::Error> {
     (ExprIsValid switch)
     ";
     let check = "
-    (check (= switch four))
+    (check (= switch five))
     ";
     crate::run_test(build, check)
 }

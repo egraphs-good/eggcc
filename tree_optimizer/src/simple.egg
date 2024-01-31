@@ -1,0 +1,9 @@
+(ruleset simple-pure)
+; !(a or b) ==> !a and !b
+(rewrite (UOp (Not) (BOp (Or) A B)) (BOp (And) (UOp (Not) A) (UOp (Not) B)) :ruleset simple-pure)
+
+; !(a and b) ==> !a or !b
+(rewrite (UOp (Not) (BOp (And) A B)) (BOp (Or) (UOp (Not) A) (UOp (Not) B)) :ruleset simple-pure)
+
+; !! a ==> a
+(rewrite (UOp (Not) (UOp (Not) A)) A :ruleset simple-pure)

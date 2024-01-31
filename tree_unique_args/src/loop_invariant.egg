@@ -4,16 +4,9 @@
 (function is-inv-Expr (IdSort Expr) bool :unextractable :merge (or old new))
 (function is-inv-ListExpr (IdSort ListExpr) bool :unextractable :merge (or old new))
 
-(relation arg-inv (IdSort i64))
-
 ;; in default, when there is a find, set is-inv to false
 (rule ((BodyContainsExpr loop_id term) (Loop loop_id in pred_out)) ((set (is-inv-Expr loop_id term) false)) :ruleset always-run)
 (rule ((BodyContainsListExpr loop_id term) (Loop loop_id in pred_out)) ((set (is-inv-ListExpr loop_id term) false)) :ruleset always-run)
-
-;; I assume input is tuple here
-(rule ((= loop (Loop id inputs outputs))
-       (= (Get (Arg id) i) (get-loop-outputs-ith id i)))
-    ((arg-inv id i)) :ruleset always-run)
 
 (relation is-inv-ListExpr-helper (IdSort ListExpr i64))
 (rule ((BodyContainsListExpr loop_id list) (Loop loop_id in out)) ((is-inv-ListExpr-helper loop_id list 0)) :ruleset always-run)

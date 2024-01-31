@@ -7,11 +7,12 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
     let ruleset = " :ruleset always-run";
 
     match ctor {
+        // I assume input is tuple here
         Constructor::Get => Some(format!(
             "(rule ((BodyContainsExpr loop_id expr) \
             {br} (Loop loop_id in out) \
             {br} (= expr (Get (Arg loop_id) i)) \
-            {br} (arg-inv loop_id i)) \
+            {br} (= expr (get-loop-outputs-ith id i))) \
             {br}((set (is-inv-Expr loop_id expr) true)){ruleset})"
         )),
         Constructor::Num | Constructor::Boolean => {
@@ -102,8 +103,8 @@ fn loop_invariant_detection1() -> Result<(), egglog::Error> {
     ";
 
     let check = "
-        (check (arg-inv id1 0))
-        (fail (check (arg-inv id1 1)))
+        (check (= true (is-inv-Expr id1 (Get (Arg id1) 0))))
+        (check (= false (is-inv-Expr id1 (Get (Arg id1) 1))))
         (check (= true (is-inv-Expr id1 (Get (Arg id1) 0))))
         (check (= false (is-inv-Expr id1 (Get (Arg id1) 1))))
         (check (= true (is-inv-Expr id1 (Add (Num id1 1) (Get (Arg id1) 0)))))
@@ -152,11 +153,11 @@ fn loop_invariant_detection2() -> Result<(), egglog::Error> {
     ";
 
     let check = "
-        (check (arg-inv id1 1))
-        (check (arg-inv id1 2))
-        (check (arg-inv id1 3))
-        (check (arg-inv id1 4))
-        (fail (check (arg-inv id1 0)))
+        (check (= false (is-inv-Expr id1 (Get (Arg id1) 0))))
+        (check (= true (is-inv-Expr id1 (Get (Arg id1) 1))))
+        (check (= true (is-inv-Expr id1 (Get (Arg id1) 2))))
+        (check (= true (is-inv-Expr id1 (Get (Arg id1) 3))))
+        (check (= true (is-inv-Expr id1 (Get (Arg id1) 4))))
         (let l4 (list4 (Num id1 1) (Num id1 2) (Num id1 3) (Num id1 4)))
         (check (is-inv-ListExpr-helper id1 l4 4))
         (check (= true (is-inv-ListExpr id1 l4)))

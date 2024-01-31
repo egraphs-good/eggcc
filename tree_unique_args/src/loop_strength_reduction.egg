@@ -18,17 +18,15 @@
 
 ; Finds invariants/constants within a loop.
 ; Columns: loop; value of invariant in inputs; value of invariant in outputs
-; TODO: once everything else is working, change this to just use an ID to ref the loop
 (relation Inv (Expr Expr Expr))
 (rule (
-    (= loop (Loop id (All (Parallel) inputs) (All (Sequential) (Pair pred (All (Parallel) outputs)))))
+    (= loop (Loop id (All input-order inputs) (All predoutput-order (Pair pred (All output-order outputs)))))
     (= (ListExpr-ith outputs i) (Get (Arg id) i)))
     ((Inv loop (ListExpr-ith inputs i) (Get (Arg id) i))) :ruleset always-run)
 
 ; NOTE: I removed this rule for now. This is because it is not correct to put
 ; (Num id n) into the inputs of this loop. It has the id of the loop, so it
 ; belongs within the context of the outputs, and therefore relies on RefIdOf.
-; TODO: handle this and add corresponding test case
 ; This note I copied from the previous encoding (unique args) is actually incorrect:
     ;; Note: with the milestone encoding, we had to use
     ;; Body-contains-Operand here. Here, we already know
@@ -45,13 +43,16 @@
         (= old-loop (
             Loop
             id
-            (All (Parallel) input-list)
-            (All (Sequential)
-                (Pair
+            (All input-order input-list)
+            (All predoutput-order
+                (Cons
                     pred
-                    (All
-                        (Parallel)
-                        output-list
+                    (Cons
+                        (All
+                            output-order
+                            output-list
+                        )
+                        (Nil)
                     )
                 )))
             )
@@ -61,8 +62,6 @@
         (= (ListExpr-ith output-list i) (Add (Get (Arg id) i) (Num id loop-incr)))
 
         ; Find invariant where input is same as output
-        ; TODO: no longer works for multiplication by Num, since changing the id of the Num
-        ; to the id for inputs relies on having RefIdOf
         (Inv old-loop c-input c-output)
 
         ; Find multiplication of loop variable and invariant
@@ -86,15 +85,15 @@
         (let d-out (Add (Get (Arg id) n) addend))
 
         ; Construct optimized loop
-        (let new-inputs (All (Parallel) (Append input-list d-init)))
-        (let new-outputs (All (Parallel) (Append output-list d-out)))
+        (let new-inputs (All input-order (Append input-list d-init)))
+        (let new-outputs (All output-order (Append output-list d-out)))
 
         (let new-loop
             (NewLoop
                 new-id
                 new-inputs
                 (All
-                    (Sequential)
+                    predoutput-order
                     (Pair
                         pred
                         new-outputs))))
@@ -103,9 +102,24 @@
         ; NOTE: milestone encoding used can-subst-beneath for this
         (union (DeepCopyExpr old-exp new-id) (Get (Arg new-id) n))
 
-        ; NOTE: with single args, I believe it's ok to just union this
-        ; without adjusting for the number of inputs/outputs
-        (union old-loop new-loop)
+        ; We need this extra let, because otherwise the ith input will be re-used in the loop
+        ; This is not sound for trees if the ith input is impure, and could be inefficient if
+        ; the ith input is pure but expensive to compute.
+        (let outer-inputs (Append (TODO list of gets from outer id) (ListExpr-ith input-list i)))
+        (let outer-let
+            (NewLet
+            (Id (i64-fresh!))
+            outer-inputs
+                (
+                    NewLet
+                    (Id (i64-fresh!))
+                    new-loop
+                    (TODO list of gets)
+                )
+            )
+        )
+
+        (union old-loop outer-let)
     )
     :ruleset loop-strength-reduction
 )

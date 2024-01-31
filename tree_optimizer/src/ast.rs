@@ -86,7 +86,7 @@ impl Expr {
                 }
             }
             BOp(..) | UOp(..) | Print(..) | Write(..) | Read(..) | Get(..) | Program(..)
-            | Switch(..) => {
+            | Switch(..) | If(..) => {
                 self.for_each_child(move |child| child.give_fresh_ids_helper(current_id, fresh_id))
             }
         }

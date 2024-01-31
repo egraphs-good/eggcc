@@ -133,6 +133,9 @@ impl Constructor {
             Constructor::Expr(Expr::Switch(..)) => {
                 vec![f(SubExpr, "pred"), f(SubListExpr, "branches")]
             }
+            Constructor::Expr(Expr::If(..)) => {
+                vec![f(SubExpr, "pred"), f(SubExpr, "then"), f(SubExpr, "else")]
+            }
             Constructor::Expr(Expr::Branch(..)) => {
                 vec![f(CapturingId, "id"), f(SubExpr, "expr")]
             }

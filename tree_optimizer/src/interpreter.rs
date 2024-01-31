@@ -89,6 +89,20 @@ pub fn typecheck(e: &Expr, arg_ty: &Option<TreeType>) -> Result<TreeType, TypeEr
             }
             Ok(ty)
         }
+        Expr::If(pred, then, els) => {
+            expect_type(pred, Bril(Bool))?;
+            let then_ty = typecheck(then, arg_ty)?;
+            let else_ty = typecheck(els, arg_ty)?;
+            if then_ty == else_ty {
+                Ok(then_ty)
+            } else {
+                Err(TypeError::ExpectedType(
+                    *els.clone(),
+                    then_ty.clone(),
+                    else_ty,
+                ))
+            }
+        }
         Expr::Branch(_id, child) => typecheck(child, arg_ty),
         Expr::Loop(_, input, pred_output) => {
             let input_ty = typecheck(input, arg_ty)?;
@@ -239,6 +253,16 @@ pub fn interpret(e: &Expr, arg: &Option<Value>, vm: &mut VirtualMachine) -> Valu
                 panic!("switch")
             };
             interpret(&branches[pred as usize], arg, vm)
+        }
+        Expr::If(pred, then, els) => {
+            let Value::Boolean(pred) = interpret(pred, arg, vm) else {
+                panic!("if")
+            };
+            if pred {
+                interpret(then, arg, vm)
+            } else {
+                interpret(els, arg, vm)
+            }
         }
         Expr::Branch(_id, child) => interpret(child, arg, vm),
         Expr::Loop(_, input, pred_output) => {

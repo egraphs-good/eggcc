@@ -179,8 +179,10 @@ pub enum Expr {
     Read(Box<Expr>, TreeType),
     Write(Box<Expr>, Box<Expr>),
     All(Id, Order, Vec<Expr>),
-    /// A pred and a list of branches
+    /// An integer pred and a list of branches
     Switch(Box<Expr>, Vec<Expr>),
+    /// A boolean pred, then and else
+    If(Box<Expr>, Box<Expr>, Box<Expr>),
     /// Should only be a child of `Switch`
     /// Represents a single branch of a switch, giving
     /// it a unique id
@@ -208,7 +210,7 @@ impl Expr {
         match self {
             Num(..) | Boolean(..) | Arg(..) | BOp(..) | UOp(..) | Get(..) | Read(..) | All(..)
             | Switch(..) | Branch(..) | Loop(..) | Let(..) | Function(..) | Program(..)
-            | Call(..) => true,
+            | If(..) | Call(..) => true,
             Print(..) | Write(..) => false,
         }
     }
@@ -232,6 +234,7 @@ impl Expr {
             Expr::Function(_, _, _, _, _) => "Function",
             Expr::Program(_) => "Program",
             Expr::Call(_, _, _) => "Call",
+            Expr::If(_, _, _) => "If",
         }
     }
 
@@ -266,6 +269,11 @@ impl Expr {
                 for child in children {
                     func(child);
                 }
+            }
+            Expr::If(pred, then, els) => {
+                func(pred);
+                func(then);
+                func(els);
             }
             Expr::Branch(_id, child) => {
                 func(child);

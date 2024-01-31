@@ -1,15 +1,18 @@
-use crate::ir::{Constructor, ESort, Purpose};
+use crate::{
+    expr::{ESort, Expr},
+    ir::{Constructor, Purpose},
+};
 use strum::IntoEnumIterator;
 
 fn subst_rule_for_ctor(ctor: Constructor) -> String {
-    if ctor == Constructor::Arg {
+    if let Constructor::Expr(Expr::Arg(..)) = ctor {
         return "(rewrite (SubstExpr (Arg (Id id)) v) v :ruleset always-run)".to_string();
     }
 
-    // e.g. "(Add x y)"
+    // e.g. "(BOp op x y)"
     let ctor_pattern = ctor.construct(|field| field.var());
 
-    // e.g. "(Add (SubstExpr x v) (SubstExpr y v))"
+    // e.g. "(BOp op (SubstExpr x v) (SubstExpr y v))"
     let substed_ctor = ctor.construct(|field| match field.purpose {
         Purpose::Static(_)
         | Purpose::CapturingId
@@ -46,7 +49,7 @@ fn var_names_available() {
 }
 
 #[test]
-fn test_subst() -> Result<(), egglog::Error> {
+fn test_subst() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))
@@ -55,11 +58,11 @@ fn test_subst() -> Result<(), egglog::Error> {
         (All id-outer (Parallel) (Pair (Arg id-outer) (Num id-outer 0)))
         (All id1 (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
+            (BOp (LessThan) (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (All id1 (Parallel) (Pair
-                (Add (Get (Arg id1) 0) (Num id1 1))
-                (Sub (Get (Arg id1) 1) (Num id1 1))))))))
+                (BOp (Add) (Get (Arg id1) 0) (Num id1 1))
+                (BOp (Sub) (Get (Arg id1) 1) (Num id1 1))))))))
 (let loop1-substed (SubstExpr loop1 (Num id-outer 7)))
     "
     .to_string();
@@ -69,11 +72,11 @@ fn test_subst() -> Result<(), egglog::Error> {
         (All id-outer (Parallel) (Pair (Num id-outer 7) (Num id-outer 0)))
         (All id1 (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
+            (BOp (LessThan) (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (All id1 (Parallel) (Pair
-                (Add (Get (Arg id1) 0) (Num id1 1))
-                (Sub (Get (Arg id1) 1) (Num id1 1))))))))
+                (BOp (Add) (Get (Arg id1) 0) (Num id1 1))
+                (BOp (Sub) (Get (Arg id1) 1) (Num id1 1))))))))
 (run-schedule (saturate always-run))
 (check (= loop1-substed loop1-substed-expected))
     ";

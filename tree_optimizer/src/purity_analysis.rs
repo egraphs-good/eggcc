@@ -1,30 +1,24 @@
 use std::iter;
 
-use crate::ir::{Constructor, ESort, Purpose};
+use crate::{
+    expr::{ESort, Expr},
+    ir::{Constructor, Purpose},
+};
 use strum::IntoEnumIterator;
 
-fn is_pure(ctor: &Constructor) -> bool {
-    use Constructor::*;
-    match ctor {
-        Num | Boolean | Add | Sub | Mul | LessThan | And | Or | Not | Get | All | Switch | Loop
-        | Let | Arg | Call | Cons | Nil => true,
-        Print | Read | Write => false,
-    }
-}
-
 // Builds rules like:
-// (rule ((Add x y) (ExprIsPure x) (ExprIsPure y))
-//       ((ExprIsPure (Add x y)))
+// (rule ((BOp op x y) (ExprIsPure x) (ExprIsPure y))
+//       ((ExprIsPure (BOp op x y)))
 //       :ruleset always-run)
 fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
-    if !is_pure(&ctor) {
+    if !ctor.is_pure() {
         return None;
     }
 
     let br = "\n      ";
-    if ctor == Constructor::Call {
+    if let Constructor::Expr(Expr::Call(..)) = ctor {
         return Some(format!(
-            "(rule ((Call _f _arg) (ExprIsPure _arg) (FunctionIsPure _f)){br}((ExprIsPure (Call _f _arg))):ruleset always-run)"
+            "(rule ((Call f name arg) (ExprIsPure arg) (FunctionIsPure name)){br}((ExprIsPure (Call f name arg))):ruleset always-run)"
         ));
     }
 
@@ -55,13 +49,13 @@ fn purity_rule_for_ctor(ctor: Constructor) -> Option<String> {
 pub(crate) fn purity_analysis_rules() -> Vec<String> {
     ESort::iter()
         .map(|sort| "(relation *IsPure (*))".replace('*', sort.name()))
-        .chain(iter::once( "(relation FunctionIsPure (IdSort))\n(rule ((Function id out in-ty out-ty) (ExprIsPure out)) ((FunctionIsPure id)):ruleset always-run)".to_string()))
+        .chain(iter::once( "(relation FunctionIsPure (String))\n(rule ((Function id name tyin tyout out) (ExprIsPure out)) ((FunctionIsPure name)):ruleset always-run)".to_string()))
         .chain(Constructor::iter().filter_map(purity_rule_for_ctor))
         .collect::<Vec<_>>()
 }
 
 #[test]
-fn test_purity_analysis() -> Result<(), egglog::Error> {
+fn test_purity_analysis() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id-outer (Id (i64-fresh!)))
@@ -70,11 +64,11 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
         (All id1 (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
+            (BOp (LessThan) (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (All id1 (Parallel) (Pair
-                (Add (Get (Arg id1) 0) (Num id1 1))
-                (Sub (Get (Arg id1) 1) (Num id1 1))))))))
+                (BOp (Add) (Get (Arg id1) 0) (Num id1 1))
+                (BOp (Sub) (Get (Arg id1) 1) (Num id1 1))))))))
 
 (let id2 (Id (i64-fresh!)))
 (let impure-loop
@@ -82,13 +76,13 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
         (All id2 (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg id2) 0) (Get (Arg id2) 1))
+            (BOp (LessThan) (Get (Arg id2) 0) (Get (Arg id2) 1))
             ; output
             (IgnoreFirst id2
                 (Print (Num id2 1))
                 (All id2 (Parallel) (Pair
-                    (Add (Get (Arg id2) 0) (Num id2 1))
-                    (Sub (Get (Arg id2) 1) (Num id2 1)))))))))
+                    (BOp (Add) (Get (Arg id2) 0) (Num id2 1))
+                    (BOp (Sub) (Get (Arg id2) 1) (Num id2 1)))))))))
     "
     .to_string();
     let check = "
@@ -99,7 +93,7 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
 }
 
 #[test]
-fn test_purity_function() -> Result<(), egglog::Error> {
+fn test_purity_function() -> crate::Result {
     let build = &*"
 (let id1 (Id (i64-fresh!)))
 (let id2 (Id (i64-fresh!)))
@@ -110,49 +104,53 @@ fn test_purity_function() -> Result<(), egglog::Error> {
 ;; f1 is pure
 (let f1
     (Function id_fun1
-            (Add 
+            \"fun1\"
+            (IntT)
+            (IntT)
+            (BOp (Add) 
                 (Get (Arg id_fun1) 0) 
-                (Get (Arg id_fun1) 0))
-            (TupleT (TCons (IntT) (TNil))) (IntT)))
+                (Get (Arg id_fun1) 0))))
 ;; f2 is impure
 (let f2
     (Function id_fun2
+        \"fun2\"
+        (IntT)
+        (IntT)
         (Get 
             (All id_fun2 (Sequential)
                     (Pair 
                     (Print (Get (Arg id_fun2) 0)) 
-                    (Add 
+                    (BOp (Add) 
                         (Get (Arg id_fun2) 0) 
                         (Get (Arg id_fun2) 0))))
-            1)
-        (TupleT (TCons (IntT) (TNil))) (IntT)))
+            1)))
 (let pure-loop
     (Loop id1
         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
         (All id1 (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
+            (BOp (LessThan) (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (All id1 (Parallel) 
                     (Pair
-                    (Add (Call id_fun1 (All id1 (Sequential) (Cons (Get (Arg id1) 0) (Nil)))) (Num id1 1))
-                    (Sub (Get (Arg id1) 1) (Num id1 1))))))))
+                    (BOp (Add) (Call id1 \"fun1\" (All id1 (Sequential) (Cons (Get (Arg id1) 0) (Nil)))) (Num id1 1))
+                    (BOp (Sub) (Get (Arg id1) 1) (Num id1 1))))))))
 (let impure-loop
     (Loop id2
         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
         (All id2 (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg id2) 0) (Get (Arg id2) 1))
+            (BOp (LessThan) (Get (Arg id2) 0) (Get (Arg id2) 1))
             ; output
             (All id2 (Parallel) 
                     (Pair
-                    (Add (Call id_fun2 (All id2 (Sequential) (Cons (Get (Arg id2) 0) (Nil)))) (Num id2 1))
-                    (Sub (Get (Arg id2) 1) (Num id2 1))))))))
+                    (BOp (Add) (Call id2 \"fun2\" (All id2 (Sequential) (Cons (Get (Arg id2) 0) (Nil)))) (Num id2 1))
+                    (BOp (Sub) (Get (Arg id2) 1) (Num id2 1))))))))
     "
     .to_string();
     let check = "
-(check (FunctionIsPure id_fun1))
-(fail (check (FunctionIsPure id_fun2)))
+(check (FunctionIsPure \"fun1\"))
+(fail (check (FunctionIsPure \"fun2\")))
 (check (ExprIsPure pure-loop))
 (fail (check (ExprIsPure impure-loop)))
     ";

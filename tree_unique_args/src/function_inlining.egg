@@ -3,7 +3,7 @@
 (rule
     (
         (= call (Call f arg))
-        (Function f out)
+        (Function f out in-ty out-ty)
         (ExprIsValid call)
     )
     (

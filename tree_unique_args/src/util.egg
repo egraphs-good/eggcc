@@ -3,7 +3,7 @@
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (function Append (ListExpr Expr) ListExpr :unextractable)
 
-(rule ((All order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
+(rule ((All id order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
 
 (rule ((= (ListExpr-suffix top n) (Cons hd tl)))
     ((union (ListExpr-ith top n) hd)
@@ -18,3 +18,28 @@
 (rewrite (Append (Nil) e)
     (Cons e (Nil))
     :ruleset always-run)
+
+(function Expr-size (Expr) i64 :merge (min old new))
+(function ListExpr-size (ListExpr) i64 :merge (min old new))
+
+(function TypeList-length (TypeList) i64)
+(function TypeList-ith (TypeList i64) Type :unextractable)
+(function TypeList-suffix (TypeList i64) TypeList :unextractable)
+
+(rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset always-run)
+
+(rule ((= (TypeList-suffix top n) (TCons hd tl)))
+    ((union (TypeList-ith top n) hd)
+     (union (TypeList-suffix top (+ n 1)) tl)) :ruleset always-run)
+
+(rule ((= (TypeList-suffix list n) (TNil)))
+    ((set (TypeList-length list) n)) :ruleset always-run)
+
+(function list-of-get-arg-helper (IdSort i64 i64) ListExpr :unextractable)
+(rewrite (list-of-get-arg-helper id 0 x) (Nil) :ruleset always-run)
+(rule ((list-of-get-arg-helper id a b) (> a 0))
+      ((union (list-of-get-arg-helper id a b)
+              (Cons (Get (Arg id) b) (list-of-get-arg-helper id (- a 1) (+ b 1))))) :ruleset always-run)
+;; creat a new ListExpr like: [(Get (Arg id) 0) ... (Get (Arg id) n)]
+(function list-of-get-arg (IdSort i64) ListExpr :unextractable)
+(rewrite (list-of-get-arg id n) (list-of-get-arg-helper id n 0) :ruleset always-run)

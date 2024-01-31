@@ -1,4 +1,7 @@
-use crate::ir::{Constructor, ESort, Purpose};
+use crate::{
+    expr::ESort,
+    ir::{Constructor, Purpose},
+};
 use strum::IntoEnumIterator;
 
 fn rule_for_ctor(ctor: Constructor) -> Option<String> {
@@ -24,7 +27,13 @@ fn rule_for_ctor(ctor: Constructor) -> Option<String> {
 
 pub(crate) fn rules() -> Vec<String> {
     ESort::iter()
-        .map(|sort| "(relation *IsValid (*))".replace('*', sort.name()))
+        .map(|sort| {
+            format!(
+                "
+(relation {sort}IsValid ({sort}))
+"
+            )
+        })
         .chain(Constructor::iter().filter_map(rule_for_ctor))
         .collect::<Vec<_>>()
 }
@@ -39,21 +48,21 @@ fn test_is_valid() -> Result<(), egglog::Error> {
         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
         (All id1 (Sequential) (Pair
             ; pred
-            (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
+            (BOp (LessThan) (Get (Arg id1) 0) (Get (Arg id1) 1))
             ; output
             (All id1 (Parallel) (Pair
-                (Add (Get (Arg id1) 0) (Num id1 1))
-                (Sub (Get (Arg id1) 1) (Num id1 1))))))))
+                (BOp (Add) (Get (Arg id1) 0) (Num id1 1))
+                (BOp (Sub) (Get (Arg id1) 1) (Num id1 1))))))))
 (ExprIsValid loop)
-(let bad-expr (Sub (Arg id1) (Arg id-outer)))
+(let bad-expr (BOp (Sub) (Arg id1) (Arg id-outer)))
     "
     .to_string();
     let check = "
 (check (ExprIsValid (Num id-outer 0)))
 (check (ExprIsValid (Arg id1)))
 (check (ListExprIsValid
-         (Pair (Add (Get (Arg id1) 0) (Num id1 1))
-               (Sub (Get (Arg id1) 1) (Num id1 1)))))
+         (Pair (BOp (Add) (Get (Arg id1) 0) (Num id1 1))
+               (BOp (Sub) (Get (Arg id1) 1) (Num id1 1)))))
 (fail (check (ExprIsValid bad-expr)))
     ";
     crate::run_test(build, check)

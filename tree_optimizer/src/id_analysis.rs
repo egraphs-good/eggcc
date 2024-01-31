@@ -1,4 +1,7 @@
-use crate::ir::{Constructor, ESort, Purpose};
+use crate::{
+    expr::ESort,
+    ir::{Constructor, Purpose},
+};
 use strum::IntoEnumIterator;
 
 fn id_analysis_rules_for_ctor(ctor: Constructor) -> String {
@@ -8,8 +11,18 @@ fn id_analysis_rules_for_ctor(ctor: Constructor) -> String {
         let field_var = field.var();
         let field_sort = field.sort().name();
         match field.purpose {
-            Purpose::Static(_) | Purpose::CapturedExpr | Purpose::CapturingId => None,
-
+            Purpose::Static(_) | Purpose::CapturingId => None,
+            Purpose::CapturedExpr => {
+                // If the captured expr is shared, then this expr
+                // is also shared.
+                Some(format!(
+                    "(rule ({pat}
+                            ({field_sort}HasRefId {field_var} (Shared))  
+                            ({sort}IsValid {pat}))
+                           (({sort}HasRefId {pat} (Shared)))
+                    :ruleset always-run)"
+                ))
+            }
             // Base case: constructor has referencing id specified as a field
             Purpose::ReferencingId => Some(format!(
                 "(rule ({pat} ({sort}IsValid {pat}))
@@ -33,20 +46,35 @@ pub(crate) fn id_analysis_rules() -> Vec<String> {
         .flat_map(|sort|
 
             // Declare relation for ref id
-            ["(relation *HasRefId (* IdSort))".replace('*', sort.name()),
+            [
+                format!("
+(relation {sort}HasRefId ({sort} IdSort))
 
-            // Error checking - each (list)expr should only have a single ref id
-            "(rule ((*HasRefId x id1)
-                (*HasRefId x id2)
-                (!= id1 id2))
-                ((panic \"Ref ids don't match\"))
-                :ruleset error-checking)".replace('*', sort.name())])
+(relation {sort}IsValidShared ({sort}))
+(relation {sort}IsValidUnique ({sort}))
+(rule (({sort}IsValid expr)
+       ({sort}HasRefId expr (Shared)))
+      (({sort}IsValidShared expr))
+        :ruleset always-run)
+(rule (({sort}IsValid expr)
+       ({sort}HasRefId expr (Id id)))
+      (({sort}IsValidUnique expr))
+        :ruleset always-run)
+
+;; Error checking - each (list)expr should only have a single ref id
+(rule (({sort}HasRefId x id1)
+       ({sort}HasRefId x id2)
+       (!= id1 id2))
+      ((panic \"Ref ids don't match\"))
+        :ruleset error-checking)
+            ")
+])
         .chain(Constructor::iter().map(id_analysis_rules_for_ctor))
         .collect::<Vec<_>>()
 }
 
 #[test]
-fn test_id_analysis() -> Result<(), egglog::Error> {
+fn test_id_analysis() -> crate::Result {
     let build = "
         (let outer-id (Id (i64-fresh!)))
         (let let0-id (Id (i64-fresh!)))
@@ -108,29 +136,30 @@ fn test_id_analysis() -> Result<(), egglog::Error> {
 
 // Check that invalid expr (expr that has not been marked valid) does not have a RefId
 #[test]
-fn test_id_analysis_no_invalid_entry() {
-    let build = "(let some-expr (Not (Boolean (Id (i64-fresh!)) false))";
+fn test_id_analysis_no_invalid_entry() -> crate::Result {
+    let build = "(let some-expr (UOp (Not) (Boolean (Id (i64-fresh!)) false)))";
     let check = "(fail (check (ExprHasRefId some-expr any-id)))";
 
-    let _ = crate::run_test(build, check);
+    crate::run_test(build, check)
 }
 
 // Create an id conflict for an Expr on purpose and check that we catch it
 #[test]
-#[should_panic]
+#[should_panic(expected = "Ref ids don't match")]
 fn test_id_analysis_expr_id_conflict_panics_if_valid() {
     let build = "
         (let id1 (Id (i64-fresh!)))
         (let id2 (Id (i64-fresh!)))
-        (let conflict-expr (And (Boolean id1 false) (Boolean id2 true)))
+        (let conflict-expr (BOp (And) (Boolean id1 false) (Boolean id2 true)))
         (ExprIsValid conflict-expr)";
     let check = "";
 
+    // suppress result because we expect a rules panic
     let _ = crate::run_test(build, check);
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "Ref ids don't match")]
 // Create an id conflict for a ListExpr on purpose and check that we catch it
 fn test_id_analysis_listexpr_id_conflict_panics() {
     let build = "
@@ -140,5 +169,21 @@ fn test_id_analysis_listexpr_id_conflict_panics() {
         (ListExprIsValid conflict-expr)";
     let check = "";
 
+    // suppress result because we expect a rules panic
     let _ = crate::run_test(build, check);
+}
+
+#[test]
+#[should_panic(expected = "Ref ids don't match")]
+// Mix shared and unique ids and catch the panic
+fn test_shared_unique_id_mix_panics() {
+    let build = "
+        (let idouter (Id (i64-fresh!)))
+        (let id2 (Shared))
+        (let conflict-expr 
+             (Let id2 (Num idouter 0)
+                (Num id2 1)))
+        (ExprIsValid conflict-expr)";
+    let check = "";
+    crate::run_test(build, check).unwrap()
 }

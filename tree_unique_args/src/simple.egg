@@ -7,3 +7,4 @@
 
 ; !! a ==> a
 (rewrite (Not (Not A)) A :ruleset simple-pure)
+

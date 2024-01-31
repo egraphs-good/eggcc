@@ -145,7 +145,10 @@ impl RvsdgTest {
         res
     }
 
-    fn gamma(&mut self, pred: Operand, inputs: &[Operand], outputs: &[&[Operand]]) -> Id {
+    /// TODO: write a test that
+    /// translates to a gamma.
+    /// Blocked on issue #307
+    fn _gamma(&mut self, pred: Operand, inputs: &[Operand], outputs: &[&[Operand]]) -> Id {
         let res = self.nodes.len();
         self.nodes.push(RvsdgBody::Gamma {
             pred,

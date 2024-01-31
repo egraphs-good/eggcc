@@ -933,7 +933,7 @@ expression: svg
 						text-anchor="middle"
 						x="50"
 						y="62.5">
-						PRINT
+						print
 					</text>
 				</g>
 				<circle

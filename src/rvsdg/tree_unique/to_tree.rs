@@ -16,7 +16,7 @@ use bril_rs::Type;
 use tree_optimizer::ast::{arg, program};
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
-use bril_rs::{Literal, ValueOps};
+use bril_rs::{EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_optimizer::{
     ast::{
@@ -186,7 +186,7 @@ impl<'a> RegionTranslator<'a> {
                 }
                 _ => todo!("handle other literals"),
             },
-            BasicExpr::Print(args) => {
+            BasicExpr::Effect(EffectOps::Print, args) => {
                 assert!(args.len() == 2, "print should have 2 arguments");
                 let arg1 = self.translate_operand(args[0]);
                 // argument 2 should have value unit, since it is
@@ -195,6 +195,9 @@ impl<'a> RegionTranslator<'a> {
                 // print outputs a new unit value
                 let expr = tprint(arg1);
                 self.add_binding(expr, id)
+            }
+            BasicExpr::Effect(..) => {
+                todo!("handle memory operations")
             }
         }
     }

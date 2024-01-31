@@ -1,4 +1,4 @@
-use bril_rs::{ConstOps, Literal, Type, ValueOps};
+use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 use egglog::{EGraph, TermDag};
 use insta::assert_snapshot;
 
@@ -99,31 +99,59 @@ impl RvsdgTest {
     }
 
     fn lt(&mut self, l: Operand, r: Operand) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(BasicExpr::Op(
-            ValueOps::Lt,
-            vec![l, r],
-            Type::Bool,
-        )))
+        self.val_op(ValueOps::Lt, &[l, r], Type::Bool)
     }
 
     fn add(&mut self, l: Operand, r: Operand, ty: Type) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(BasicExpr::Op(
-            ValueOps::Add,
-            vec![l, r],
-            ty,
-        )))
+        self.val_op(ValueOps::Add, &[l, r], ty)
     }
 
     fn mul(&mut self, l: Operand, r: Operand, ty: Type) -> Operand {
+        self.val_op(ValueOps::Mul, &[l, r], ty)
+    }
+    fn load(&mut self, ptr: Operand, state: Operand, ty: Type) -> Id {
+        let res = self.nodes.len();
+        self.nodes.push(RvsdgBody::BasicOp(BasicExpr::Op(
+            ValueOps::Load,
+            vec![ptr, state],
+            ty,
+        )));
+        res
+    }
+    fn alloc(&mut self, size: Operand, state: Operand, ty: Type) -> Id {
+        let res = self.nodes.len();
+        self.nodes.push(RvsdgBody::BasicOp(BasicExpr::Op(
+            ValueOps::Alloc,
+            vec![size, state],
+            ty,
+        )));
+        res
+    }
+    fn val_op(&mut self, bril_op: ValueOps, args: &[Operand], ty: Type) -> Operand {
         self.make_node(RvsdgBody::BasicOp(BasicExpr::Op(
-            ValueOps::Mul,
-            vec![l, r],
+            bril_op,
+            args.to_vec(),
             ty,
         )))
     }
 
     fn print(&mut self, x: Operand, state: Operand) -> Operand {
-        self.make_node(RvsdgBody::BasicOp(BasicExpr::Print(vec![x, state])))
+        self.effect(EffectOps::Print, &[x, state])
+    }
+
+    fn store(&mut self, ptr: Operand, val: Operand, state: Operand) -> Operand {
+        self.effect(EffectOps::Store, &[ptr, val, state])
+    }
+
+    fn free(&mut self, ptr: Operand, state: Operand) -> Operand {
+        self.effect(EffectOps::Free, &[ptr, state])
+    }
+
+    fn effect(&mut self, bril_effect: EffectOps, ops: &[Operand]) -> Operand {
+        self.make_node(RvsdgBody::BasicOp(BasicExpr::Effect(
+            bril_effect,
+            ops.to_vec(),
+        )))
     }
 
     // if is a rust keyword so I called this "rif"
@@ -259,6 +287,42 @@ fn rvsdg_state_gamma() {
     let gamma = expected.rif(c, &[Operand::Arg(0)], &[some_func], &[other_func]);
     let res = Operand::Project(0, gamma);
     let expected = expected.into_function("sub".to_owned(), vec![], None, Some(res));
+    dbg!(&expected);
+    dbg!(&rvsdg.functions[0]);
+    assert!(deep_equal(&expected, &rvsdg.functions[0]));
+}
+
+#[test]
+fn rvsdg_state_mem() {
+    const PROGRAM: &str = r#"
+    @main() {
+        x: int = const 1;
+        ten: int = const 10;
+        p: ptr<int> = alloc x;
+        store p ten;
+        loaded: int = load p;
+        print loaded;
+        free p;
+    }"#;
+    let prog = parse_from_string(PROGRAM);
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+
+    let mut expected = RvsdgTest::default();
+    let x = expected.lit_int(1);
+    let ten = expected.lit_int(10);
+    let p = expected.alloc(x, Operand::Arg(0), Type::Pointer(Box::new(Type::Int)));
+    let stored = expected.store(Operand::Project(0, p), ten, Operand::Project(1, p));
+    let loaded = expected.load(Operand::Project(0, p), stored, Type::Int);
+    let printed = expected.print(Operand::Project(0, loaded), Operand::Project(1, loaded));
+    let freed = expected.free(Operand::Project(0, p), printed);
+    let expected = expected.into_function("main".to_owned(), vec![], None, Some(freed));
+    // let c = expected.lit_bool(true);
+    // let some_func = expected.void_function("some_func", &[Operand::Arg(0)]);
+    // let other_func = expected.void_function("other_func", &[Operand::Arg(0)]);
+    // let gamma = expected.gamma(c, &[Operand::Arg(0)], &[&[other_func], &[some_func]]);
+    // let res = Operand::Project(0, gamma);
+    // let expected = expected.into_function("sub".to_owned(), vec![], None, Some(res));
     dbg!(&expected);
     dbg!(&rvsdg.functions[0]);
     assert!(deep_equal(&expected, &rvsdg.functions[0]));
@@ -538,7 +602,7 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
             RvsdgBody::BasicOp(x) => match x {
                 BasicExpr::Op(_, args, _)
                 | BasicExpr::Call(_, args, _, _)
-                | BasicExpr::Print(args) => args.iter().any(|arg| search_op(f, arg, pred)),
+                | BasicExpr::Effect(_, args) => args.iter().any(|arg| search_op(f, arg, pred)),
                 BasicExpr::Const(_, _, _) => false,
             },
             RvsdgBody::Gamma {
@@ -629,19 +693,21 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
                 (BasicExpr::Const(c1, ty1, lit1), BasicExpr::Const(c2, ty2, lit2)) => {
                     c1 == c2 && ty1 == ty2 && lit1 == lit2
                 }
-                (BasicExpr::Print(as1), BasicExpr::Print(as2)) => all_equal(as1, as2, f1, f2),
+                (BasicExpr::Effect(op1, as1), BasicExpr::Effect(op2, as2)) => {
+                    op1 == op2 && all_equal(as1, as2, f1, f2)
+                }
                 (BasicExpr::Call(..), BasicExpr::Op(..))
                 | (BasicExpr::Call(..), BasicExpr::Const(..))
-                | (BasicExpr::Call(..), BasicExpr::Print(..))
+                | (BasicExpr::Call(..), BasicExpr::Effect(..))
                 | (BasicExpr::Const(..), BasicExpr::Call(..))
                 | (BasicExpr::Const(..), BasicExpr::Op(..))
-                | (BasicExpr::Const(..), BasicExpr::Print(..))
+                | (BasicExpr::Const(..), BasicExpr::Effect(..))
                 | (BasicExpr::Op(..), BasicExpr::Call(..))
                 | (BasicExpr::Op(..), BasicExpr::Const(..))
-                | (BasicExpr::Op(..), BasicExpr::Print(..))
-                | (BasicExpr::Print(..), BasicExpr::Call(..))
-                | (BasicExpr::Print(..), BasicExpr::Const(..))
-                | (BasicExpr::Print(..), BasicExpr::Op(..)) => false,
+                | (BasicExpr::Op(..), BasicExpr::Effect(..))
+                | (BasicExpr::Effect(..), BasicExpr::Call(..))
+                | (BasicExpr::Effect(..), BasicExpr::Const(..))
+                | (BasicExpr::Effect(..), BasicExpr::Op(..)) => false,
             },
             (
                 RvsdgBody::Theta {

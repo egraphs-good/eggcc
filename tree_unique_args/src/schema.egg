@@ -80,8 +80,8 @@
 ; Functions
 ; ==========================
 
-;                   f      output
-(function Function (IdSort Expr) Expr)
+;                   f    output in-type out-type
+(function Function (IdSort Expr Type Type) Expr)
 
 ;               f      arg
 (function Call (IdSort Expr) Expr)

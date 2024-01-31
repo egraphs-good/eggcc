@@ -8,6 +8,7 @@ fn function_inlining() -> Result<(), egglog::Error> {
             (Function
                 func-id
                 (Add (Arg func-id) (Num func-id 1))
+                (IntT) (IntT)
             )
         )
 

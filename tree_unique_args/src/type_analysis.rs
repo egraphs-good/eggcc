@@ -231,3 +231,62 @@ fn read_write() -> Result<(), egglog::Error> {
     );
     crate::run_test(build, &check)
 }
+
+#[test]
+fn func() -> Result<(), egglog::Error> {
+    let build = "
+  (let f-id (Id (i64-fresh!)))
+  (let ctx  (Id (i64-fresh!)))
+  
+(let f (Function f-id (Switch (Get (Arg f-id) 1) 
+(Cons (Add (Get (Arg f-id) 0) (Num f-id 4))
+      (Cons (Get (Arg f-id) 0) (Nil))))
+      (TupleT (TCons (IntT) (TCons (BoolT) (TNil))))
+      (IntT)))
+  (let call (Call f-id (All ctx (Parallel) (Cons (Num ctx 2) (Cons (Boolean ctx true) (Nil))))))
+
+  ";
+    let check = format!(
+        "
+  {SCHED}
+  (check (HasType call (IntT)))
+  (check (HasType f (FuncT (TupleT (TCons (IntT) (TCons (BoolT) (TNil)))) (IntT))))
+  "
+    );
+    crate::run_test(build, &check)
+}
+
+#[test]
+#[should_panic]
+fn func_input_type() {
+    let build = "
+    (let ctx (Id 0))
+    (let f-id (Id 1))
+    (let f (Function f-id (Add (Arg f-id) (Num f-id 2)) (IntT) (IntT)))
+    (let c (Call f-id (Boolean ctx true)))
+  ";
+    let check = format!(
+        "
+    {SCHED}
+    "
+    );
+
+    let _ = crate::run_test(build, &check);
+}
+
+#[test]
+#[should_panic]
+fn func_output_type() {
+    let build = "
+    (let ctx (Id 0))
+    (let f-id (Id 1))
+    (let f (Function f-id (Add (Arg f-id) (Num f-id 2)) (IntT) (BoolT)))
+  ";
+    let check = format!(
+        "
+    {SCHED}
+    "
+    );
+
+    let _ = crate::run_test(build, &check);
+}

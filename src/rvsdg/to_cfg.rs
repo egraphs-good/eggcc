@@ -393,7 +393,7 @@ impl<'a> RvsdgToCfg<'a> {
                 let switch = RvsdgBody::Gamma {
                     pred: *pred,
                     inputs: inputs.clone(),
-                    outputs: vec![then_branch.clone(), else_branch.clone()],
+                    outputs: vec![else_branch.clone(), then_branch.clone()],
                 };
                 // Desugar to a switch with a boolean predicate,
                 // then translate the switch

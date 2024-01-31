@@ -288,7 +288,7 @@ fn rvsdg_unstructured() {
     // meaningful, but we know it should have the following properties:
     //
     // 1. A theta node: .B and .C form a cycle.
-    // 2. A gamma node, as there is a join point in .B for the value of `x`
+    // 2. An if node, as there is a join point in .B for the value of `x`
     // (whether the predecessor is .B or the entry block).
     assert!(rvsdg.results.len() == 2); // return value + state edge
     assert!(search_for(rvsdg, |body| matches!(
@@ -297,7 +297,7 @@ fn rvsdg_unstructured() {
     )));
     assert!(search_for(rvsdg, |body| matches!(
         body,
-        RvsdgBody::Gamma { .. }
+        RvsdgBody::If { .. }
     )))
 }
 

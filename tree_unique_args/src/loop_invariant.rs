@@ -207,12 +207,136 @@ fn loop_invariant_detection2() -> Result<(), egglog::Error> {
         ;; a non exist expr should fail
         (fail (check (is-inv-Expr id1 (Switch (Num id1 2) l4))))
 
-        (run-schedule (saturate boundary-analysis))
         ;; inv is boundary
         (check (boundary-Expr id1 inv))
         (fail (check (boundary-Expr id1 (Add (Get (Arg id1) 0) inv))))
         (fail (check (boundary-Expr id1 (Switch (Num id1 1) l4))))
     ";
 
+    crate::run_test(build, check)
+}
+
+#[test]
+fn loop_invariant_hoist_simple() -> Result<(), egglog::Error> {
+    let build = "
+    (let id1 (Id (i64-fresh!)))
+    (let id_outer (Id (i64-fresh!)))
+    (let loop
+            (Loop id1
+                (All id_outer (Parallel) (Pair (Num id_outer 0) (Num id_outer 5)))
+                (All id1 (Sequential) (Pair
+                    ; pred
+                    (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
+                    ; output
+                    (All id1 (Parallel) 
+                        (Pair
+                            (Get (Arg id1) 0)
+                            (Sub (Get (Arg id1) 1) (Add (Num id1 1) (Get (Arg id1) 0))) ))))))
+    (ExprIsValid loop)
+    ";
+
+    let check = "
+    (check 
+        (Loop loop_id 
+             (Let let_id 
+                   (All id_outer (Parallel) 
+                   (Pair (Num id_outer 0) (Num id_outer 5))) 
+                   (All let_id (Sequential) 
+                         (Cons (Get (Arg let_id) 0) 
+                         (Cons (Get (Arg let_id) 1) 
+                         (Cons (Add (Num let_id 1) (Get (Arg let_id) 0))
+                         (Nil)))))  )
+             (All loop_id (Sequential) 
+                   (Cons (LessThan (Get (Arg loop_id) 0) (Get (Arg loop_id) 1)) 
+             (Cons (All loop_id (Parallel) 
+                   (Cons (Get (Arg loop_id) 0) 
+                   (Cons (Sub (Get (Arg loop_id) 1) (Get (Arg loop_id) 2)) 
+                   (Cons (Get (Arg loop_id) 2) (Nil))))) (Nil))))))
+    ";
+    crate::run_test(build, check)
+}
+
+#[test]
+fn loop_invariant_hoist2() -> Result<(), egglog::Error> {
+    let build = "
+    (let id1 (Id (i64-fresh!)))
+    (let id-outer (Id (i64-fresh!)))
+    (let inv 
+        (Sub (Get (Arg id1) 4)
+            (Mul (Get (Arg id1) 2) 
+                (Switch (Num id1 1) (list4 (Num id1 1)
+                                        (Num id1 2)
+                                        (Num id1 3)
+                                        (Num id1 4))
+                )
+            )
+        ))
+    (let old_inputs (All id-outer (Parallel) 
+                                (list5 (Num id-outer 0)
+                                        (Num id-outer 1)
+                                        (Num id-outer 2)
+                                        (Num id-outer 3)
+                                        (Num id-outer 4))))
+    (let loop
+        (Loop id1
+            (All id-outer (Parallel) (list5 (Num id-outer 0)
+                                    (Num id-outer 1)
+                                    (Num id-outer 2)
+                                    (Num id-outer 3)
+                                    (Num id-outer 4)))
+            (All id1 (Sequential) (Pair
+                ; pred
+                (LessThan (Get (Arg id1) 0) (Get (Arg id1) 4))
+                ; output
+                (All id1 (Parallel) 
+                    (list5
+                        (Add (Get (Arg id1) 0) 
+                            inv
+                        )
+                        (Get (Arg id1) 1)
+                        (Get (Arg id1) 2)
+                        (Get (Arg id1) 3)
+                        (Get (Arg id1) 4) ))))))
+    (ExprIsValid loop)
+    ";
+
+    let check = "
+(check
+    (Loop loop_id
+          (Let new_let_id old_inputs 
+                (All new_let_id (Sequential) 
+                      (Cons (Get (Arg new_let_id) 0) 
+                      (Cons (Get (Arg new_let_id) 1) 
+                      (Cons (Get (Arg new_let_id) 2) 
+                      (Cons (Get (Arg new_let_id) 3) 
+                      (Cons (Get (Arg new_let_id) 4) 
+                      (Cons 
+                            (Sub (Get (Arg new_let_id) 4)
+                                  (Mul (Get (Arg new_let_id) 2) 
+                                        (Switch (Num new_let_id 1) 
+                                              (Cons (Num new_let_id 1) 
+                                              (Cons (Num new_let_id 2) 
+                                              (Cons (Num new_let_id 3) 
+                                              (Cons (Num new_let_id 4) (Nil)))))
+                                        )
+                                  )
+                            )
+                      (Nil)))))))))
+          (All loop_id (Sequential) 
+                (Cons
+                ; pred
+                (LessThan (Get (Arg loop_id) 0) (Get (Arg loop_id) 4))
+                ; output
+                (Cons
+                (All loop_id (Parallel) 
+                      (Cons (Add (Get (Arg loop_id) 0) 
+                            (Get (Arg loop_id) 5)) 
+                      (Cons (Get (Arg loop_id) 1)
+                      (Cons (Get (Arg loop_id) 2)
+                      (Cons (Get (Arg loop_id) 3)
+                      (Cons (Get (Arg loop_id) 4)
+                      (Cons (Get (Arg loop_id) 5) (Nil)) )))))) (Nil) ) ) )))
+        
+    ";
     crate::run_test(build, check)
 }

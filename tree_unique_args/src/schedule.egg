@@ -10,6 +10,8 @@
     function-inlining
     interval-analysis
     ivt
+    (saturate boundary-analysis)
+    loop-inv-motion
     ; can't add the type-analysis rules here yet until we fix the correctness bug
     ; described in https://github.com/egraphs-good/eggcc/issues/292
     ))

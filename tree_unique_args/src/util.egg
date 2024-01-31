@@ -53,12 +53,11 @@
 (rule ((= (TypeList-suffix list n) (TNil)))
     ((set (TypeList-length list) n)) :ruleset always-run)
 
-(function get-arg-list-helper (IdSort i64 i64) ListExpr :unextractable)
-(rewrite (get-arg-list-helper id 0 x) (Nil) :ruleset always-run)
-(rule ((get-arg-list-helper id a b) (> a 0)) 
-      ((union (get-arg-list-helper id a b)
-              (Cons (Get (Arg id) b) (get-arg-list-helper id (- a 1) (+ b 1))))) :ruleset always-run)
-
+(function list-of-get-arg-helper (IdSort i64 i64) ListExpr :unextractable)
+(rewrite (list-of-get-arg-helper id 0 x) (Nil) :ruleset always-run)
+(rule ((list-of-get-arg-helper id a b) (> a 0))
+      ((union (list-of-get-arg-helper id a b)
+              (Cons (Get (Arg id) b) (list-of-get-arg-helper id (- a 1) (+ b 1))))) :ruleset always-run)
 ;; creat a new ListExpr like: [(Get (Arg id) 0) ... (Get (Arg id) n)]
-(function get-arg-list (IdSort i64) ListExpr :unextractable)
-(rewrite (get-arg-list id n) (get-arg-list-helper id n 0) :ruleset always-run)
+(function list-of-get-arg (IdSort i64) ListExpr :unextractable)
+(rewrite (list-of-get-arg id n) (list-of-get-arg-helper id n 0) :ruleset always-run)

@@ -128,3 +128,16 @@ fn ast_size_test() -> Result<(), egglog::Error> {
 
     crate::run_test(build, check)
 }
+
+#[test]
+fn get_arg_list_test() -> Result<(), egglog::Error> {
+    let build = "
+    (let id (Id (i64-fresh!)))
+    (let list (list-of-get-arg id 5))
+    (let expected (list5 (Get (Arg id) 0) (Get (Arg id) 1) (Get (Arg id) 2) (Get (Arg id) 3) (Get (Arg id) 4)))
+    ";
+    let check = "
+    (check (= list expected))
+    ";
+    crate::run_test(build, check)
+}

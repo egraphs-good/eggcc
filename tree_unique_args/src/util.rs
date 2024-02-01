@@ -141,3 +141,29 @@ fn get_arg_list_test() -> Result<(), egglog::Error> {
     ";
     crate::run_test(build, check)
 }
+
+#[test]
+fn test_list_replace() -> Result<(), egglog::Error> {
+    let build = "
+    (let id (Id (i64-fresh!)))
+    (let list (list4 (Num id 0) (Num id 1) (Num id 2) (Num id 3)))
+    (let replaced-0-list (ListExpr-replace-ith list 0 (Boolean id true)))
+    (let replaced-1-list (ListExpr-replace-ith list 1 (Boolean id true)))
+    (let replaced-2-list (ListExpr-replace-ith list 2 (Boolean id true)))
+    (let replaced-3-list (ListExpr-replace-ith list 3 (Boolean id true)))
+
+    (let expected-0-list (list4 (Boolean id true) (Num id 1) (Num id 2) (Num id 3)))
+    (let expected-1-list (list4 (Num id 0) (Boolean id true) (Num id 2) (Num id 3)))
+    (let expected-2-list (list4 (Num id 0) (Num id 1) (Boolean id true) (Num id 3)))
+    (let expected-3-list (list4 (Num id 0) (Num id 1) (Num id 2) (Boolean id true)))
+    ";
+
+    let check = "
+    (check (= replaced-0-list expected-0-list))
+    (check (= replaced-1-list expected-1-list))
+    (check (= replaced-2-list expected-2-list))
+    (check (= replaced-3-list expected-3-list))
+    ";
+
+    crate::run_test(build, check)
+}

@@ -2,6 +2,7 @@
 (function ListExpr-ith (ListExpr i64) Expr :unextractable)
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (function Append (ListExpr Expr) ListExpr :unextractable)
+(function ListExpr-replace-ith (ListExpr i64 Expr) ListExpr :unextractable)
 
 (rule ((All id order top)) ((union (ListExpr-suffix top 0) top)) :ruleset always-run)
 
@@ -43,3 +44,10 @@
 ;; creat a new ListExpr like: [(Get (Arg id) 0) ... (Get (Arg id) n)]
 (function list-of-get-arg (IdSort i64) ListExpr :unextractable)
 (rewrite (list-of-get-arg id n) (list-of-get-arg-helper id n 0) :ruleset always-run)
+
+;; Recursive case: propagate replacement deeper into Cons
+(rule ((ListExpr-replace-ith list i new-expr) (> i 0) (= list (Cons a list-suffix)))
+    ((union (ListExpr-replace-ith list i new-expr)
+            (Cons a (ListExpr-replace-ith list-suffix (- i 1) new-expr)))) :ruleset always-run)
+;; Base case: replace the first element of the Cons
+(rewrite (ListExpr-replace-ith (Cons a list-suffix) 0 new-expr) (Cons new-expr list-suffix) :ruleset always-run)

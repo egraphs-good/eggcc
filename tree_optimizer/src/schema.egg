@@ -7,7 +7,7 @@
   (IntT)
   (BoolT)
   (FuncT Type Type)
-  (TupleT TypeList) ;; Use a tuple of length 0 for a "unit" type
+  (TupleT TypeList) ; Use a tuple of length 0 for a "unit" type
 )
 
 (function TNil () TypeList)
@@ -29,12 +29,12 @@
   (Print))
 
 ; A Ctx defines an equality relation.
-; All program leafs need to refer to a context to distinguish the equality relations.
+; All program leaves need to refer to a context to distinguish the equality relations.
 ; No term should mix two contexts that are not equal.
 (datatype Ctx
   (Global) ; set of equalities between programs, assuming nothing
   ; Ctx is hard to add but easy to remove.
-  ; We haven't decided what other Ctx's we may want to support. Here are two
+  ; We haven't decided what other Ctxs we may want to support. Here are two
   ; potential use cases:
   ; (Term)   ; set of only reflexive equalities between programs (e.g. a = a)
   ; (PathCondition Expr) ; set of equalities between programs, assuming the path condition on the argument
@@ -49,8 +49,10 @@
 ; Operators
 (function Bop   (BinaryOp Expr Expr) Expr)
 (function Uop   (UnaryOp Expr) Expr)
-(function Get   (Expr i64) Expr) ; gets from a tuple. static index
-(function Read  (Expr Type)      Expr) ; read has a type, so it can't be a bop
+; gets from a tuple. static index
+(function Get   (Expr i64) Expr)
+; read has a type, so it can't be a bop
+(function Read  (Expr Type)      Expr) 
 
 ; ==========================
 ; Tuple operations
@@ -59,6 +61,7 @@
 
 ; Perform a list of operations. Only way to create a tuple!
 ; Needs a Ctx because the list may be empty.
+; E.g. (All (Parallel) (Nil)) is a leaf, so it needs a Ctx.
 (function All (Ctx Order ListExpr) Expr)
 
 ; Switch on a list of lazily-evaluated branches. Does not create a region.
@@ -69,6 +72,7 @@
 ;             pred then else
 (function If (Expr Expr Expr) Expr)
 
+
 ; ==========================
 ; Regions
 ; ==========================
@@ -78,8 +82,11 @@
 ; Invariant: (Input a) = (Input b) iff a = b.
 ; Invariant: An Input must have an enclosing region. An input cannot be
 ; a child of an input without a region constructor (Loop or Let) in-between.
+; e.g. (Input (Add (Input 1) 2)) is invalid, since a new region was not created for the inner input.
+; e.g. (Let (Input (Let (Input (Farg (IntT)))))) is valid.
 ; Don't union Inputs directly- they will be unioned via congruence.
 (function Input (Expr) Expr)
+; A function argument.
 ; In leaf regions, use `(Input (Farg some_type))` to refer to
 ; the function's inputs.
 (function Farg (Type) Expr)
@@ -93,20 +100,22 @@
 ;              output
 (function Let (Expr) Expr)
 
+
 ; A do-while loop.
 ; `output` and `pred` are evaluated inside the loop,
 ; with the `output` evaluated first.
 ; `pred` must be a boolean, while `output` can have any type.
 ; 
 ;               output   pred
-(function Loop (Expr     Expr)                   Expr)
+(function Loop (Expr     Expr)    Expr)
 
 ; ==========================
 ; Functions
 ; ==========================
 
-; A list of functions, with the first one being the entry point
-(function Program  (ListExpr) Expr)
+; An entry function and a list of additional functions.
+;                      entry function     other functions
+(relation Program     (Expr               ListExpr))
 ;                   name   input ty  output ty  output
 (function Function (String Type      Type       Expr)      Expr)
 

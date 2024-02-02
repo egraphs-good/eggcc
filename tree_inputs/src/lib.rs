@@ -1,10 +1,10 @@
-use schema::Program;
-
+pub mod expr_helpers;
+pub mod interpreter;
 pub mod schema;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
-pub fn run_test(build: &str, check: &str, progs: Vec<Program>) -> Result {
+pub fn run_test(build: &str, check: &str) -> Result {
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
         [include_str!("schema.egg"),].join("\n"),

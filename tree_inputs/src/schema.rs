@@ -4,15 +4,18 @@
 
 use std::rc::Rc;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Program {
-    entry: Expr,          // must be a function
-    functions: Vec<Expr>, // a list of other functions
+    pub entry: RcExpr,          // must be a function
+    pub functions: Vec<RcExpr>, // a list of other functions
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ctx {
     Global,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     IntT,
     BoolT,
@@ -20,6 +23,7 @@ pub enum Type {
     TupleT(Vec<Rc<Type>>),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -30,21 +34,25 @@ pub enum BinaryOp {
     Write,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnaryOp {
     Not,
     Print,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Constant {
     Int(i64),
     Bool(bool),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Order {
     Parallel,
     Sequential,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Const(Ctx, Constant),
     Bop(BinaryOp, Rc<Expr>, Rc<Expr>),
@@ -61,3 +69,5 @@ pub enum Expr {
     DoWhile(Rc<Expr>, Rc<Expr>, Rc<Expr>),
     Function(String, Type, Type, Rc<Expr>),
 }
+
+pub type RcExpr = Rc<Expr>;

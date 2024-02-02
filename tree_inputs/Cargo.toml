@@ -1,5 +1,5 @@
 [package]
-name = "tree_optimizer"
+name = "tree_inputs"
 version = "0.1.0"
 edition = "2021"
 

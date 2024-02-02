@@ -79,6 +79,9 @@
 (function Get   (Expr i64) Expr)
 ; read has a type, so it can't be a bop
 (function Read  (Expr Type)      Expr) 
+;               name of func   arg
+(function Call (String         Expr) Expr)
+
 
 ; =================================
 ; Tuple operations
@@ -147,8 +150,6 @@
 ;                   name   input ty  output ty  output
 (function Function (String Type      Type       Expr)      Expr)
 
-;               name of func  arg
-(function Call (String        Expr) Expr)
 
 
 ; Rulesets

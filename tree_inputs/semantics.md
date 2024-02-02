@@ -1,4 +1,4 @@
-;; Input schema idea
+# Semantics of Tree Encoding with Inputs
 
 ;; current schema:
 (Let id1 some_input

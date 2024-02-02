@@ -1,9 +1,3 @@
-; We could generate this from ir.rs, this manual version is just easier reference.
-
-(sort IdSort)
-(function Id (i64) IdSort)
-(function Shared () IdSort)
-(let shared (Shared))
 (datatype Expr)
 (datatype ListExpr (Cons Expr ListExpr) (Nil))
 
@@ -13,83 +7,99 @@
   (IntT)
   (BoolT)
   (FuncT Type Type)
-  (TupleT TypeList)
-  (UnitT)
+  (TupleT TypeList) ;; Use a tuple of length 0 for a "unit" type
 )
 
 (function TNil () TypeList)
 (function TCons (Type TypeList) TypeList)
 
 ; ==========================
-; Pure operators
+; Operators that do not create regions
 ; ==========================
-;              id     val
-(datatype BinPureOp
+(datatype BinaryOp
   (Add)
   (Sub)
   (Mul)
   (LessThan)
   (And)
-  (Or))
-(datatype UnaryPureOp
-  (Not))
+  (Or)
+  (Write))
+(datatype UnaryOp
+  (Not)
+  (Print))
 
-;; Constants
-(function UnitExpr (IdSort) Expr)
-(function Num (IdSort i64) Expr)
-;                  id     val
-(function Boolean (IdSort bool) Expr)
+; A Ctx defines an equality relation.
+; All program leafs need to refer to a context to distinguish the equality relations.
+; No term should mix two contexts that are not equal.
+(datatype Ctx
+  (Global) ; set of equalities between programs, assuming nothing
+  ; Ctx is hard to add but easy to remove.
+  ; We haven't decided what other Ctx's we may want to support. Here are two
+  ; potential use cases:
+  ; (Term)   ; set of only reflexive equalities between programs (e.g. a = a)
+  ; (PathCondition Expr) ; set of equalities between programs, assuming the path condition on the argument
+)
 
-;; Pure operators
-(function BOp (BinPureOp Expr Expr) Expr)
-(function UOp (UnaryPureOp Expr) Expr)
-(function Get (Expr i64) Expr) ; gets from a tuple. static index
+; Constants
+(datatype Constant
+  (Int i64)
+  (Bool bool))
+(function Const (Ctx Constant) Expr)
+
+; Operators
+(function Bop   (BinaryOp Expr Expr) Expr)
+(function Uop   (UnaryOp Expr) Expr)
+(function Get   (Expr i64) Expr) ; gets from a tuple. static index
+(function Read  (Expr Type)      Expr) ; read has a type, so it can't be a bop
 
 ; ==========================
-; Effectful operators
+; Tuple operations
 ; ==========================
-
-;                value      unit
-(function Print (Expr)      Expr)
-;                addr type      value
-(function Read  (Expr Type)      Expr)
-;                addr value unit
-(function Write (Expr Expr) Expr)
-
-; ==========================
-; Control flow operators
-; ==========================
-
 (datatype Order (Parallel) (Sequential))
 
 ; Perform a list of operations. Only way to create a tuple!
-(function All (IdSort Order ListExpr) Expr)
+; Needs a Ctx because the list may be empty.
+(function All (Ctx Order ListExpr) Expr)
 
-; Switch on a list of lazily-evaluated branches.
-; branches must be constructed with `(Branch id expr)`.
+; Switch on a list of lazily-evaluated branches. Does not create a region.
 ; pred must be an integer
-;                 pred branches chosen
-(function Switch (Expr ListExpr)    Expr)
+;                 pred     branches     chosen
+(function Switch (Expr     ListExpr)    Expr)
 ; If is like switch, but with a boolean predicate
-;  pred then else
+;             pred then else
 (function If (Expr Expr Expr) Expr)
-(function Branch (IdSort Expr) Expr)
 
 ; ==========================
 ; Regions
 ; ==========================
 
-; pred and output are evaluated inside the loop's context
-; input and output may or may not be a tuples. pred must be boolean.
+; An `Input` marks a shared computation inside of a region (Loop or Let).
+; Invariant: All inputs that are children of a region are equal.
+; Invariant: (Input a) = (Input b) iff a = b.
+; Invariant: An Input must have an enclosing region. An input cannot be
+; a child of an input without a region constructor (Loop or Let) in-between.
+; Don't union Inputs directly- they will be unioned via congruence.
+(function Input (Expr) Expr)
+; In leaf regions, use `(Input (Farg some_type))` to refer to
+; the function's inputs.
+(function Farg (Type) Expr)
+
+
+
+; Creates a region, allowing for a shared computation
+; using `Input`. Evaluates the `input` first, then
+; evaluates `output` on the result.
 ; 
-;               id     input (pred, output) tuple
-(function Loop (IdSort Expr  Expr)  Expr)
+;              output
+(function Let (Expr) Expr)
 
-;              id     input output
-(function Let (IdSort Expr  Expr) Expr)
-
-; Arg gets the input of a region or the parameter of a function
-(function Arg (IdSort) Expr)
+; A do-while loop.
+; `output` and `pred` are evaluated inside the loop,
+; with the `output` evaluated first.
+; `pred` must be a boolean, while `output` can have any type.
+; 
+;               output   pred
+(function Loop (Expr     Expr)                   Expr)
 
 ; ==========================
 ; Functions
@@ -97,13 +107,13 @@
 
 ; A list of functions, with the first one being the entry point
 (function Program  (ListExpr) Expr)
-;                   id     name   input ty  output ty  output
-(function Function (IdSort String Type      Type       Expr)      Expr)
+;                   name   input ty  output ty  output
+(function Function (String Type      Type       Expr)      Expr)
 
-;               referencing id   name of func  arg
-(function Call (IdSort           String        Expr) Expr)
+;               name of func  arg
+(function Call (String        Expr) Expr)
 
 
-;; Rulesets
+; Rulesets
 (ruleset always-run)
 (ruleset error-checking)

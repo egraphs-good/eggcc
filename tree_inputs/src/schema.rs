@@ -4,23 +4,23 @@
 
 use std::rc::Rc;
 
-struct Program {
+pub struct Program {
     entry: Expr,          // must be a function
     functions: Vec<Expr>, // a list of other functions
 }
 
-enum Ctx {
+pub enum Ctx {
     Global,
 }
 
-enum Type {
+pub enum Type {
     IntT,
     BoolT,
     FuncT(Rc<Type>, Rc<Type>),
     TupleT(Vec<Rc<Type>>),
 }
 
-enum BinaryOp {
+pub enum BinaryOp {
     Add,
     Sub,
     Mul,
@@ -30,22 +30,22 @@ enum BinaryOp {
     Write,
 }
 
-enum UnaryOp {
+pub enum UnaryOp {
     Not,
     Print,
 }
 
-enum Constant {
+pub enum Constant {
     Int(i64),
     Bool(bool),
 }
 
-enum Order {
+pub enum Order {
     Parallel,
     Sequential,
 }
 
-enum Expr {
+pub enum Expr {
     Const(Ctx, Constant),
     Bop(BinaryOp, Rc<Expr>, Rc<Expr>),
     Uop(UnaryOp, Rc<Expr>),

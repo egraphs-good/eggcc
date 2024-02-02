@@ -1,4 +1,6 @@
-pub mod expr;
+use schema::Program;
+
+pub mod schema;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 

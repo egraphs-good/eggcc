@@ -1,21 +1,28 @@
 # Semantics of Tree Encoding with Inputs
 
-;; current schema:
-(Let id1 some_input
+## Comparison to previous "unique id" schemas
+
+In previous schemas, we might write 
+shared computation like this:
+```
+(Let id1 some_impure_computation
   (Add (Get (Arg id1) 0) (Get (Arg id1) 1)))
+```
 
-=>
+The reason for `id` is to give a context-specific equality relation
+to this `Let`, allowing us to assume
+the argument is equal to `some_impure_computation`.
 
-;; input appears twice but evaluated only once
-;; "dag semantics for inputs"
+`Input`s allow us to avoid this id by
+allowing us to refer to the impure computation directly:
+
+```
 (Let
-  (Add (Get (Input some_input) 0) (Get (Input some_input) 1)))
+  (Add (Get (Input some_impure_computation) 0) (Get (Input some_impure_computation) 1)))
+```
 
+The semantics of an `Input` is that it is evaluated only once in its enclosing `Let`.
+Each `Let` can only have one `Input`.
 
-(Let
-  (Add (Get (Input inner) 0) (Get (Input inner) 1)))
-
-
-(Loop
-  (Add (Input some_loop_inputs) (Input some_loop_inputs)))
-
+Now, no ids are necessary because the 
+context is baked into the `Input` itself.

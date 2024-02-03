@@ -94,7 +94,7 @@ pub use parallel;
 pub fn parallel_vec(es: Vec<RcExpr>) -> RcExpr {
     let mut res = unit();
     for expr in es {
-        res = push_parallel(res, expr);
+        res = push_parallel(expr, res);
     }
     res
 }
@@ -108,7 +108,7 @@ pub use sequence;
 pub fn sequence_vec(es: Vec<RcExpr>) -> RcExpr {
     let mut res = unit();
     for expr in es {
-        res = push_sequential(res, expr);
+        res = push_sequential(expr, res);
     }
     res
 }

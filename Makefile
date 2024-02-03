@@ -1,6 +1,6 @@
 .PHONY: test test-clean nits nightly
 
-DIRS = . uniqueargs tree_unique_args tree_optimizer
+DIRS = . uniqueargs tree_unique_args tree_optimizer tree_inputs
 
 all: test nits
 

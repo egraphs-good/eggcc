@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display};
 
-use crate::schema::{BinaryOp, Constant, Expr, RcExpr, UnaryOp};
+use crate::schema::{BinaryOp, Constant, Expr, RcExpr, Type, UnaryOp};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
@@ -57,14 +57,14 @@ impl VirtualMachine {
         e2: &RcExpr,
         arg: &Option<Value>,
     ) -> Value {
-        let mut get_int = |e: &RcExpr| match self.interpret(e, arg) {
+        let get_int = |e: &RcExpr, vm: &mut Self| match vm.interpret(e, arg) {
             Const(Constant::Int(n)) => n,
             _ => panic!(
                 "Expected integer in binary operation {:?}. Got {:?}",
                 bop, e
             ),
         };
-        let mut get_bool = |e: &RcExpr| match self.interpret(e, arg) {
+        let get_bool = |e: &RcExpr, vm: &mut Self| match vm.interpret(e, arg) {
             Const(Constant::Bool(b)) => b,
             _ => panic!(
                 "Expected boolean in binary operation {:?}. Got {:?}",
@@ -72,20 +72,27 @@ impl VirtualMachine {
             ),
         };
         match bop {
-            BinaryOp::Add => Const(Constant::Int(get_int(e1) + get_int(e2))),
-            BinaryOp::Sub => Const(Constant::Int(get_int(e1) - get_int(e2))),
-            BinaryOp::Mul => Const(Constant::Int(get_int(e1) * get_int(e2))),
-            BinaryOp::LessThan => Const(Constant::Bool(get_int(e1) < get_int(e2))),
-            BinaryOp::And => Const(Constant::Bool(get_bool(e1) && get_bool(e2))),
-            BinaryOp::Or => Const(Constant::Bool(get_bool(e1) || get_bool(e2))),
-            BinaryOp::Write => panic!("Write is not a binary operation"),
+            BinaryOp::Add => Const(Constant::Int(get_int(e1, self) + get_int(e2, self))),
+            BinaryOp::Sub => Const(Constant::Int(get_int(e1, self) - get_int(e2, self))),
+            BinaryOp::Mul => Const(Constant::Int(get_int(e1, self) * get_int(e2, self))),
+            BinaryOp::LessThan => Const(Constant::Bool(get_int(e1, self) < get_int(e2, self))),
+            BinaryOp::And => Const(Constant::Bool(get_bool(e1, self) && get_bool(e2, self))),
+            BinaryOp::Or => Const(Constant::Bool(get_bool(e1, self) || get_bool(e2, self))),
+            BinaryOp::Write => {
+                let addr = get_int(e1, self) as usize;
+                let val = self.interpret(e2, arg).clone();
+                self.mem.insert(addr, val);
+                Tuple(vec![])
+            }
         }
     }
 
     fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Option<Value>) -> Value {
         match uop {
             UnaryOp::Not => {
-                let Const(Constant::Bool(b)) = self.interpret(e, arg);
+                let Const(Constant::Bool(b)) = self.interpret(e, arg) else {
+                    panic!("expected boolean in not")
+                };
                 Const(Constant::Bool(!b))
             }
             UnaryOp::Print => {
@@ -112,21 +119,40 @@ impl VirtualMachine {
                 };
                 vals[*i].clone()
             }
-            Expr::Read(e_addr, ty) => {
-                let Const(Constant::Int(addr)) = self.interpret(e_addr, arg);
-                self.mem[&(addr as usize)].clone()
-            }
+            Expr::Read(e_addr, ty) => match ty {
+                Type::IntT => {
+                    let Const(Constant::Int(addr)) = self.interpret(e_addr, arg) else {
+                        panic!("expected integer in read")
+                    };
+                    self.mem[&(addr as usize)].clone()
+                }
+                Type::BoolT => {
+                    let Const(Constant::Int(addr)) = self.interpret(e_addr, arg) else {
+                        panic!("expected integer in read")
+                    };
+                    self.mem[&(addr as usize)].clone()
+                }
+                Type::FuncT(_, _) => panic!("tried to read function from memory"),
+                Type::TupleT(_) => panic!("tried to read tuple from memory"),
+            },
             Expr::Unit() => Tuple(vec![]),
             Expr::Push(_order, e1, e2) => {
                 // Always execute sequentially
                 // We could also test other orders for parallel tuples
                 let v1 = self.interpret(e1, arg);
-                let Tuple(mut v2) = self.interpret(e2, arg);
+                if let Tuple(..) = v1 {
+                    panic!("expected non-tuple in push's first argument: {:?}", e1)
+                }
+                let Tuple(mut v2) = self.interpret(e2, arg) else {
+                    panic!("expected tuple in push's second argument")
+                };
                 v2.push(v1);
                 Tuple(v2)
             }
             Expr::Switch(pred, branches) => {
-                let Const(Constant::Int(index)) = self.interpret(pred, arg);
+                let Const(Constant::Int(index)) = self.interpret(pred, arg) else {
+                    panic!("expected integer in switch")
+                };
                 if index < 0 || index as usize >= branches.len() {
                     // TODO refactor to return a Result
                     panic!("switch index out of bounds")
@@ -134,7 +160,9 @@ impl VirtualMachine {
                 self.interpret(&branches[index as usize], arg)
             }
             Expr::If(pred, then, els) => {
-                let Const(Constant::Bool(pred_evaluated)) = self.interpret(pred, arg);
+                let Const(Constant::Bool(pred_evaluated)) = self.interpret(pred, arg) else {
+                    panic!("expected boolean in if")
+                };
                 if pred_evaluated {
                     self.interpret(then, arg)
                 } else {
@@ -142,11 +170,16 @@ impl VirtualMachine {
                 }
             }
             Expr::DoWhile(input, pred_output) => {
-                let Tuple(mut vals) = self.interpret(input, arg);
+                let Tuple(mut vals) = self.interpret(input, arg) else {
+                    panic!("expected tuple for input in do-while")
+                };
                 let mut pred = Const(Constant::Bool(true));
                 while pred == Const(Constant::Bool(true)) {
                     let Tuple(pred_output_val) =
-                        self.interpret(pred_output, &Some(Tuple(vals.clone())));
+                        self.interpret(pred_output, &Some(Tuple(vals.clone())))
+                    else {
+                        panic!("expected tuple for pred_output in do-while")
+                    };
                     assert!(pred_output_val.len() == 1 + vals.len());
                     pred = pred_output_val[0].clone();
                     vals = pred_output_val[1..].to_vec();
@@ -171,7 +204,7 @@ fn test_interpreter() {
     use crate::ast::*;
     // numbers 1-10
     let expr = dowhile(
-        int(1),
+        parallel!(int(1)),
         parallel!(
             less_than(iarg(), int(10)),
             first(parallel!(add(iarg(), int(1)), tprint(iarg())))

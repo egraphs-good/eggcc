@@ -28,12 +28,20 @@ pub fn not(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Not, e.clone()))
 }
 
-pub fn print(e: RcExpr) -> RcExpr {
+pub fn tprint(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Print, e.clone()))
 }
 
-pub fn get(e: RcExpr, i: i64) -> RcExpr {
+pub fn get(e: RcExpr, i: usize) -> RcExpr {
     RcExpr::new(Expr::Get(e.clone(), i))
+}
+
+pub fn first(e: RcExpr) -> RcExpr {
+    get(e, 0)
+}
+
+pub fn second(e: RcExpr) -> RcExpr {
+    get(e, 1)
 }
 
 pub fn read(e: RcExpr, ty: Type) -> RcExpr {
@@ -103,6 +111,22 @@ pub fn sequence_vec(es: Vec<RcExpr>) -> RcExpr {
         res = push_sequential(res, expr);
     }
     res
+}
+
+pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Let(lhs.clone(), rhs.clone()))
+}
+
+pub fn arg(ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Arg(ty))
+}
+
+pub fn barg() -> RcExpr {
+    arg(Type::BoolT)
+}
+
+pub fn iarg() -> RcExpr {
+    arg(Type::IntT)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {

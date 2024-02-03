@@ -4,6 +4,7 @@
 
 use std::rc::Rc;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     IntT,
     BoolT,
@@ -23,6 +24,7 @@ pub enum BinaryOp {
     Write,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnaryOp {
     Not,
     Print,
@@ -34,6 +36,7 @@ pub enum Constant {
     Bool(bool),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Order {
     Parallel,
     Sequential,
@@ -41,6 +44,7 @@ pub enum Order {
 
 pub type RcExpr = Rc<Expr>;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Assumption {
     InLet(RcExpr),
     InLoop(RcExpr, RcExpr),

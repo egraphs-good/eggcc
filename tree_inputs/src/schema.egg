@@ -40,7 +40,7 @@
 (datatype Constant
   (Int i64)
   (Bool bool))
-(function Const (Ctx Constant) Expr)
+(function Const (Constant) Expr)
 
 ; Operators
 (function Bop   (BinaryOp Expr Expr) Expr)
@@ -56,12 +56,15 @@
 ; =================================
 ; Tuple operations
 ; =================================
+
+; An (All (Parallel) ...) term must be equivalent
+; to any re-ordering of its arguments.
+; An (All (Sequential) ...) is executed sequentially.
 (datatype Order (Parallel) (Sequential))
 
-; Perform a list of operations. Only way to create a tuple!
-; Needs a Ctx because the list may be empty.
-; E.g. (All (Parallel) (Nil)) is a leaf, so it needs a Ctx.
-(function All (Ctx Order ListExpr) Expr)
+; Perform a list of operations.
+; The only way to create a tuple.
+(function All (Order ListExpr) Expr)
 
 ; =================================
 ; Control flow

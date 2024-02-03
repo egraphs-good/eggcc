@@ -12,6 +12,7 @@ pub enum Type {
     TupleT(Vec<Rc<Type>>),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -27,6 +28,7 @@ pub enum UnaryOp {
     Print,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Constant {
     Int(i64),
     Bool(bool),
@@ -44,11 +46,12 @@ pub enum Assumption {
     InLoop(RcExpr, RcExpr),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Const(Constant),
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
-    Get(RcExpr, i64),
+    Get(RcExpr, usize),
     Read(RcExpr, Type),
     Call(String, RcExpr),
     Unit(),

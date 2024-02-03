@@ -1,4 +1,5 @@
 pub mod ast;
+pub mod interpreter;
 pub mod schema;
 
 pub type Result = std::result::Result<(), egglog::Error>;

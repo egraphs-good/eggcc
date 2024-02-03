@@ -8,7 +8,7 @@ use std::rc::Rc;
 pub enum Type {
     IntT,
     BoolT,
-    FuncT(Rc<Type>, Rc<Type>),
+    UnitT,
     /// Nested tuple types are not allowed.
     TupleT(Vec<Rc<Type>>),
 }
@@ -34,6 +34,7 @@ pub enum UnaryOp {
 pub enum Constant {
     Int(i64),
     Bool(bool),
+    Unit,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,7 +59,7 @@ pub enum Expr {
     Get(RcExpr, usize),
     Read(RcExpr, Type),
     Call(String, RcExpr),
-    Unit(),
+    Empty(),
     Push(Order, RcExpr, RcExpr),
     Switch(RcExpr, Vec<RcExpr>),
     If(RcExpr, RcExpr, RcExpr),

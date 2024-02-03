@@ -12,6 +12,7 @@
 (datatype Type
   (IntT)
   (BoolT)
+  ; TODO delete? No first-class functions
   (FuncT Type Type)
   ; Use a tuple of length 0 for a "unit" type
   (TupleT TypeList) 
@@ -19,35 +20,6 @@
 
 (function TNil () TypeList)
 (function TCons (Type TypeList) TypeList)
-
-
-; =================================
-; Equality relations
-; =================================
-
-; A Ctx defines an equality relation.
-; All program leaves need to refer to a context to distinguish the equality relations.
-; No term should mix two contexts that are not equal.
-(datatype Ctx
-  ; set of equalities between programs, assuming nothing
-  (Global)
-  ; Ctx is hard to add but easy to remove.
-  ; We haven't decided what other Ctxs we may want to support. Here are two
-  ; potential use case:
-    ; set of reflexive equalities between programs (e.g. a = a)
-    ; (Term)   
-)
-
-; An Assume node returns its input, but also assumes some (pure) predicate.
-; e.g. The following term assumes that the first element of the Input
-; to this region is strictly positive:
-; (Assume (Input some_computation)
-;         (> (Get (Input some_computation) 0) (Num (Global) 0)))
-; Analysis of this term can now make use of this fact.
-
-;                 input     predicate
-(function Assume (Expr      Expr)       Expr)
-
 
 ; =================================
 ; Operators that do not create regions
@@ -64,8 +36,6 @@
   (Not)
   (Print))
 
-
-
 ; Constants
 (datatype Constant
   (Int i64)
@@ -77,7 +47,7 @@
 (function Uop   (UnaryOp Expr) Expr)
 ; gets from a tuple. static index
 (function Get   (Expr i64) Expr)
-; read has a type, so it can't be a bop
+; read has a type, so it can't be a BinaryOp
 (function Read  (Expr Type)      Expr) 
 ;               name of func   arg
 (function Call (String         Expr) Expr)
@@ -93,7 +63,12 @@
 ; E.g. (All (Parallel) (Nil)) is a leaf, so it needs a Ctx.
 (function All (Ctx Order ListExpr) Expr)
 
-; Switch on a list of lazily-evaluated branches. Does not create a region.
+; =================================
+; Control flow
+; =================================
+
+; Switch on a list of lazily-evaluated branches.
+; Does not create a region.
 ; pred must be an integer
 ;                 pred     branches     chosen
 (function Switch (Expr     ListExpr)    Expr)
@@ -102,48 +77,60 @@
 (function If (Expr Expr Expr) Expr)
 
 
-; =================================
-; Regions
-; =================================
+; Creates a region, binding the input so that it can
+; be referred to using `Arg`.
+; 
+;              input    output
+(function Let (Expr     Expr)    Expr)
 
-; An `Input` marks a shared computation inside of a Let.
-; `Input` is not allowed in `Loop` or `Function` (use `Arg` instead).
-; Invariant: All inputs that are children of a region are equal.
-; Invariant: (Input a) = (Input b) iff a = b.
-; Don't union Inputs directly- they will be unioned via congruence.
-(function Input (Expr) Expr)
-; An argument to a `Function` or
-; a `Loop`.
-; Since nothing can be assumed by
-; default about a function's inputs
-; or a loop's outputs, we use
-; `Arg` to represent the input.
+
+; A do-while loop.
+
+; iter_val = [[input]]
+; pred_val = false
+; while !pred_val:
+;   pred_val, iter_val = iter_val = [[pred_output[ arg |-> iter_val]]]
+; iter_val
+
+; input must have the same type as output
+; pred must be a boolean
+;                  input   (pred, output) tuple
+(function DoWhile (Expr    Expr)                   Expr)
+
+
+; An argument to a region.
 (function Arg (Type) Expr)
 
 
 
-; Creates a region, allowing for a shared computation
-; using `Input`. Evaluates the input first, then
-; evaluates `output` on the result.
-; 
-;              output
-(function Let (Expr)   Expr)
+; =================================
+; Assume
+; =================================
 
+(datatype Assumption
+  ; The argument is bound to `expr`.
+  ; The argument cannot be unioned with `expr` because `expr`
+  ; is evaluated once at the nearest enclosing `Let`.
+  ;      expr
+  (InLet Expr)
+  ; The term is in a loop with `input` and `output`.
+  ;      input    output
+  (InLoop Expr     Expr)
+  ; Other assumptions are possible, but not supported yet.
+  ; For example:
+  ;      A boolean predicate is true.
+  ;      e.g. (> (Arg (IntT)) (Const (Int 2)))
+  ; (IsTrue Expr))
+)
 
-; A do-while loop.
-; Evaluates `input` first, then evaluates `output` on the result.
-; Last, evaluates `pred`.
-; `pred` must be a boolean, and `output` can have any type.
-; `pred` and `output` use `Arg` to refer to loop arguments.
-; 
-;                  input output   pred
-(function DoWhile (Expr  Expr     Expr)    Expr)
+; Assume allows creating context-specific terms.
+; e.g. (Assume (InLet (Const (Int 2))) (Arg (IntT))) is equal to (Const (Int 2))
+(function Assume (Assumption Expr) Expr)
 
 
 ; =================================
-; Functions
+; Top-level expressions
 ; =================================
-
 ; An entry function and a list of additional functions.
 ;                      entry function     other functions
 (relation Program     (Expr               ListExpr))

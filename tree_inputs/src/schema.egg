@@ -1,6 +1,7 @@
-; Every term is an `Expr`.
+; Every term is an `Expr` or a `ListExpr`.
 (datatype Expr)
-; Used for constructing tuples and `Switch`es.
+; Used for constructing a list of branches for `Switch`es
+; or a list of functions in a `Program`.
 (datatype ListExpr (Cons Expr ListExpr) (Nil))
 
 ; =================================
@@ -14,7 +15,7 @@
   (BoolT)
   ; TODO delete? No first-class functions
   (FuncT Type Type)
-  ; Use a tuple of length 0 for a "unit" type
+  ; Nested tuple types are not allowed.
   (TupleT TypeList) 
 )
 
@@ -57,14 +58,33 @@
 ; Tuple operations
 ; =================================
 
-; An (All (Parallel) ...) term must be equivalent
-; to any re-ordering of its arguments.
-; An (All (Sequential) ...) is executed sequentially.
-(datatype Order (Parallel) (Sequential))
+; There are only two ways to create a tuple.
+; 1. Use `(Unit)` for an empty tuple.
+; 2. Use `(Push)` to add to the back of a tuple.
+; Nested tuples are not allowed.
+; The helpers `Concat` and `SubTuple` help keep tuples flatt.
 
-; Perform a list of operations.
-; The only way to create a tuple.
-(function All (Order ListExpr) Expr)
+
+; Defines the order of evaluating a `Push` term.
+; If the order is `Parallel`, the "value expr" may be evaluated first
+; or the "tuple expr" may be evaluated first.
+; Either way, the program should reach an equivalent state.
+(datatype Order (Parallel) (Sequential))
+; global short hand for (Parallel)
+(let par (Parallel))
+; global short hand for (Sequential)
+(let seq (Sequential))
+
+; An empty tuple
+(function Unit () Expr)
+; global short hand for (Unit)
+(let unit (Unit))
+
+; Evaluates an expression and adds it to the *back* of a tuple.
+; e.g. (Push (Parallel) a (Push (Sequential) b c)) = (c, b, a)
+; There are two valid evaluation orders: a, b, c or b, c, a
+;               order   value expr        tuple expr
+(function Push (Order   Expr              Expr)       Expr)
 
 ; =================================
 ; Control flow

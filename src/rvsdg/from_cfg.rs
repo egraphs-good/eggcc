@@ -279,7 +279,7 @@ impl<'a> RvsdgBuilder<'a> {
             bril_type,
         }) = first_e.map(|e| e.weight().op.clone())
         else {
-            panic!("Couldn't find a conditional branch in block {block:?}");
+            panic!("Couldn't find a branch in block {block:?}");
         };
         succs.push((first_val, first_e.unwrap().target()));
         // for the rest of the edges, make sure pred and bril_type match up
@@ -383,35 +383,39 @@ impl<'a> RvsdgBuilder<'a> {
 
         let next = next.unwrap();
         let pred = pred_op;
-        let gamma_node = if bril_type == Type::Bool {
-            assert_eq!(
-                outputs.len(),
-                2,
-                "Found wrong number of branches for boolean.",
-            );
-            get_id(
-                &mut self.expr,
-                RvsdgBody::If {
-                    pred,
-                    inputs,
-                    then_branch: outputs[1].clone(),
-                    else_branch: outputs[0].clone(),
-                },
-            )
-        } else {
-            assert_eq!(
-                bril_type,
-                Type::Int,
-                "Branch predicate should be bool or integer"
-            );
-            get_id(
-                &mut self.expr,
-                RvsdgBody::Gamma {
-                    pred,
-                    inputs,
-                    outputs,
-                },
-            )
+        let gamma_node = match bril_type {
+            Type::Bool => {
+                assert_eq!(
+                    outputs.len(),
+                    2,
+                    "Found wrong number of branches for boolean.",
+                );
+                get_id(
+                    &mut self.expr,
+                    RvsdgBody::If {
+                        pred,
+                        inputs,
+                        then_branch: outputs[1].clone(),
+                        else_branch: outputs[0].clone(),
+                    },
+                )
+            }
+            Type::Int => {
+                assert_eq!(
+                    bril_type,
+                    Type::Int,
+                    "Branch predicate should be bool or integer"
+                );
+                get_id(
+                    &mut self.expr,
+                    RvsdgBody::Gamma {
+                        pred,
+                        inputs,
+                        outputs,
+                    },
+                )
+            }
+            _ => panic!("Branch predicate should be bool or integer"),
         };
         // Remap all input variables to the output of this node.
         for (i, var) in output_vars.iter().copied().enumerate() {

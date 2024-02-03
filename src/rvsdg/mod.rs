@@ -129,7 +129,7 @@ pub(crate) enum Operand {
 pub(crate) enum RvsdgBody {
     BasicOp(BasicExpr<Operand>),
 
-    /// Conditional branch, witha boolean predicate.
+    /// Conditional branch, with a boolean predicate.
     If {
         pred: Operand,
         inputs: Vec<Operand>,

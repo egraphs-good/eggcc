@@ -317,7 +317,11 @@ pub(crate) enum BranchOp {
     /// A conditional branch to a block.
     Cond {
         arg: Identifier,
+        /// If the condition matches the
+        /// CondVal, take this branch.
         val: CondVal,
+        /// A condition can branch on either
+        /// a boolean or an integer.
         bril_type: Type,
     },
 }

@@ -8,6 +8,7 @@ pub enum Type {
     IntT,
     BoolT,
     FuncT(Rc<Type>, Rc<Type>),
+    /// Nested tuple types are not allowed.
     TupleT(Vec<Rc<Type>>),
 }
 
@@ -50,7 +51,8 @@ pub enum Expr {
     Get(RcExpr, i64),
     Read(RcExpr, Type),
     Call(String, RcExpr),
-    All(Order, Vec<RcExpr>),
+    Unit(),
+    Push(Order, RcExpr, RcExpr),
     Switch(RcExpr, Vec<RcExpr>),
     If(RcExpr, RcExpr, RcExpr),
     Let(RcExpr, RcExpr),
@@ -62,7 +64,7 @@ pub enum Expr {
 
 pub struct Program {
     /// must be a function
-    entry: Expr,
+    pub entry: Expr,
     /// a list of other functions
-    functions: Vec<Expr>,
+    pub functions: Vec<Expr>,
 }

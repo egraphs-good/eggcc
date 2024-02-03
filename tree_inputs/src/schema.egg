@@ -15,7 +15,7 @@
   (BoolT)
   ; TODO delete? No first-class functions
   (FuncT Type Type)
-  ; Use a tuple of length 0 for a "unit" type
+  ; Nested tuple types are not allowed.
   (TupleT TypeList) 
 )
 

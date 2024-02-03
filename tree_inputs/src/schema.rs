@@ -4,15 +4,6 @@
 
 use std::rc::Rc;
 
-pub struct Program {
-    entry: Expr,          // must be a function
-    functions: Vec<Expr>, // a list of other functions
-}
-
-pub enum Ctx {
-    Global,
-}
-
 pub enum Type {
     IntT,
     BoolT,
@@ -45,19 +36,33 @@ pub enum Order {
     Sequential,
 }
 
+pub type RcExpr = Rc<Expr>;
+
+pub enum Assumption {
+    InLet(RcExpr),
+    InLoop(RcExpr, RcExpr),
+}
+
 pub enum Expr {
-    Const(Ctx, Constant),
-    Bop(BinaryOp, Rc<Expr>, Rc<Expr>),
-    Uop(UnaryOp, Rc<Expr>),
-    Get(Rc<Expr>, i64),
-    Read(Rc<Expr>, Type),
-    Call(String, Rc<Expr>),
-    All(Ctx, Order, Vec<Rc<Expr>>),
-    Switch(Rc<Expr>, Vec<Rc<Expr>>),
-    If(Rc<Expr>, Rc<Expr>, Rc<Expr>),
-    Input(Rc<Expr>),
+    Const(Constant),
+    Bop(BinaryOp, RcExpr, RcExpr),
+    Uop(UnaryOp, RcExpr),
+    Get(RcExpr, i64),
+    Read(RcExpr, Type),
+    Call(String, RcExpr),
+    All(Order, Vec<RcExpr>),
+    Switch(RcExpr, Vec<RcExpr>),
+    If(RcExpr, RcExpr, RcExpr),
+    Let(RcExpr, RcExpr),
+    DoWhile(RcExpr, RcExpr),
     Arg(Type),
-    Let(Rc<Expr>),
-    DoWhile(Rc<Expr>, Rc<Expr>, Rc<Expr>),
-    Function(String, Type, Type, Rc<Expr>),
+    Assume(Assumption, RcExpr),
+    Function(String, Type, Type, RcExpr),
+}
+
+pub struct Program {
+    /// must be a function
+    entry: Expr,
+    /// a list of other functions
+    functions: Vec<Expr>,
 }

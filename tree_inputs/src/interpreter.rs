@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::schema::{BinaryOp, Constant, Expr, RcExpr, UnaryOp};
 
@@ -7,6 +7,23 @@ pub enum Value {
     Const(Constant),
     Tuple(Vec<Value>),
 }
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Const(constant) => write!(f, "{}", constant),
+            Tuple(vs) => {
+                write!(f, "(")?;
+                for v in vs {
+                    write!(f, "{}, ", v)?;
+                }
+                write!(f, ")")
+            }
+        }
+    }
+}
+
+use Value::{Const, Tuple};
 
 pub(crate) struct VirtualMachine {
     mem: HashMap<usize, Value>,
@@ -22,26 +39,26 @@ impl VirtualMachine {
         arg: &Option<Value>,
     ) -> Value {
         let mut get_int = |e: &RcExpr| match self.interpret(e, arg) {
-            Value::Const(Constant::Int(n)) => n,
+            Const(Constant::Int(n)) => n,
             _ => panic!(
                 "Expected integer in binary operation {:?}. Got {:?}",
                 bop, e
             ),
         };
         let mut get_bool = |e: &RcExpr| match self.interpret(e, arg) {
-            Value::Const(Constant::Bool(b)) => b,
+            Const(Constant::Bool(b)) => b,
             _ => panic!(
                 "Expected boolean in binary operation {:?}. Got {:?}",
                 bop, e
             ),
         };
         match bop {
-            BinaryOp::Add => Value::Const(Constant::Int(get_int(e1) + get_int(e2))),
-            BinaryOp::Sub => Value::Const(Constant::Int(get_int(e1) - get_int(e2))),
-            BinaryOp::Mul => Value::Const(Constant::Int(get_int(e1) * get_int(e2))),
-            BinaryOp::LessThan => Value::Const(Constant::Bool(get_int(e1) < get_int(e2))),
-            BinaryOp::And => Value::Const(Constant::Bool(get_bool(e1) && get_bool(e2))),
-            BinaryOp::Or => Value::Const(Constant::Bool(get_bool(e1) || get_bool(e2))),
+            BinaryOp::Add => Const(Constant::Int(get_int(e1) + get_int(e2))),
+            BinaryOp::Sub => Const(Constant::Int(get_int(e1) - get_int(e2))),
+            BinaryOp::Mul => Const(Constant::Int(get_int(e1) * get_int(e2))),
+            BinaryOp::LessThan => Const(Constant::Bool(get_int(e1) < get_int(e2))),
+            BinaryOp::And => Const(Constant::Bool(get_bool(e1) && get_bool(e2))),
+            BinaryOp::Or => Const(Constant::Bool(get_bool(e1) || get_bool(e2))),
             BinaryOp::Write => panic!("Write is not a binary operation"),
         }
     }
@@ -49,11 +66,14 @@ impl VirtualMachine {
     fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Option<Value>) -> Value {
         match uop {
             UnaryOp::Not => {
-                let Value::Const(Constant::Bool(b)) = self.interpret(e, arg);
-                Value::Const(Constant::Bool(!b))
+                let Const(Constant::Bool(b)) = self.interpret(e, arg);
+                Const(Constant::Bool(!b))
             }
             UnaryOp::Print => {
-                todo!("print")
+                let val = self.interpret(e, arg);
+                let v_str = format!("{}", val);
+                self.log.push(v_str.clone());
+                val
             }
         }
     }
@@ -63,56 +83,66 @@ impl VirtualMachine {
     // assumes e typechecks and that memory is written before read
     pub fn interpret(&mut self, expr: &RcExpr, arg: &Option<Value>) -> Value {
         match expr.as_ref() {
-            Expr::Const(c) => Value::Const(c.clone()),
+            Expr::Const(c) => Const(c.clone()),
             Expr::Bop(bop, e1, e2) => self.interpret_bop(bop, e1, e2, arg),
+            Expr::Uop(uop, e) => self.interpret_uop(uop, e, arg),
+            Expr::Assume(_assumption, e) => self.interpret(e, arg),
             Expr::Get(e_tuple, i) => {
-                let Value::Tuple(vals) = self.interpret(e_tuple, arg) else {
+                let Tuple(vals) = self.interpret(e_tuple, arg) else {
                     panic!("get")
                 };
                 vals[*i].clone()
             }
             Expr::Read(e_addr, ty) => {
-                let Value::Const(Constant::Int(addr)) = self.interpret(e_addr, arg);
+                let Const(Constant::Int(addr)) = self.interpret(e_addr, arg);
                 self.mem[&(addr as usize)].clone()
             }
-            Expr::All(_order, exprs) => {
-                // this always executes sequentially
-                // in the future we should test other orders for parallel tuples
-                let vals = exprs
-                    .iter()
-                    .map(|expr| self.interpret(expr, arg))
-                    .collect::<Vec<_>>();
-                Value::Tuple(vals)
+            Expr::Unit() => Tuple(vec![]),
+            Expr::Push(_order, e1, e2) => {
+                // Always execute sequentially
+                // We could also test other orders for parallel tuples
+                let v1 = self.interpret(e1, arg);
+                let Tuple(mut v2) = self.interpret(e2, arg);
+                v2.push(v1);
+                Tuple(v2)
             }
             Expr::Switch(pred, branches) => {
-                let Value::Const(Constant::Int(index)) = self.interpret(pred, arg);
+                let Const(Constant::Int(index)) = self.interpret(pred, arg);
                 if index < 0 || index as usize >= branches.len() {
                     // TODO refactor to return a Result
                     panic!("switch index out of bounds")
                 }
                 self.interpret(&branches[index as usize], arg)
             }
+            Expr::If(pred, then, els) => {
+                let Const(Constant::Bool(pred_evaluated)) = self.interpret(pred, arg);
+                if pred_evaluated {
+                    self.interpret(then, arg)
+                } else {
+                    self.interpret(els, arg)
+                }
+            }
             Expr::DoWhile(input, pred_output) => {
-                let mut vals = self.interpret(input, arg);
-                let mut pred = Value::Const(Constant::Bool(true));
-                while pred == Value::Const(Constant::Bool(true)) {
-                    let Value::Tuple(pred_output_val) =
-                        self.interpret(pred_output, &Some(vals.clone()));
+                let Tuple(mut vals) = self.interpret(input, arg);
+                let mut pred = Const(Constant::Bool(true));
+                while pred == Const(Constant::Bool(true)) {
+                    let Tuple(pred_output_val) =
+                        self.interpret(pred_output, &Some(Tuple(vals.clone())));
                     assert!(pred_output_val.len() == 1 + vals.len());
                     pred = pred_output_val[0].clone();
                     vals = pred_output_val[1..].to_vec();
                 }
-                vals
+                Tuple(vals)
             }
-            Expr::Let(_, input, output) => {
-                let vals = interpret(input, arg, self);
-                interpret(output, &Some(vals.clone()), self)
+            Expr::Let(input, output) => {
+                let vals = self.interpret(input, arg);
+                self.interpret(output, &Some(vals.clone()))
             }
             Expr::Arg(_) => {
                 let Some(v) = arg else { panic!("arg") };
                 v.clone()
             }
-            Expr::Function(_, _) | Expr::Call(_, _) => todo!("interpret functions and calls"),
+            Expr::Function(_, _, _, _) | Expr::Call(_, _) => todo!("interpret functions and calls"),
         }
     }
 }
@@ -151,7 +181,7 @@ fn test_interpreter() {
         log: vec![],
     };
     let res = interpret(&e, &None, &mut vm);
-    assert_eq!(res, Value::Num(11));
+    assert_eq!(res, Num(11));
     assert_eq!(vm.log, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 }
 
@@ -213,14 +243,14 @@ fn test_interpreter_fib_using_memory() {
     let res = interpret(&e, &None, &mut vm);
     assert_eq!(
         res,
-        Value::Tuple(vec![
-            Value::Tuple(vec![]),
-            Value::Tuple(vec![]),
-            Value::Num(nth + 1),
-            Value::Num(fib_nth)
+        Tuple(vec![
+            Tuple(vec![]),
+            Tuple(vec![]),
+            Num(nth + 1),
+            Num(fib_nth)
         ])
     );
-    assert_eq!(vm.mem[&(nth as usize)], Value::Num(fib_nth));
+    assert_eq!(vm.mem[&(nth as usize)], Num(fib_nth));
     assert!(!vm.mem.contains_key(&(nth as usize + 1)));
 }
 

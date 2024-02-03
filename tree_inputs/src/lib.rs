@@ -1,6 +1,7 @@
 pub mod ast;
 pub mod interpreter;
 pub mod schema;
+pub mod schema_helpers;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 

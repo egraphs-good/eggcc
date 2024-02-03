@@ -65,6 +65,18 @@ pub fn switch_vec(cond: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
     RcExpr::new(Expr::Switch(cond.clone(), cases))
 }
 
+pub fn unit() -> RcExpr {
+    RcExpr::new(Expr::Unit())
+}
+
+pub fn push_parallel(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Push(Order::Parallel, l.clone(), r.clone()))
+}
+
+pub fn push_sequential(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Push(Order::Sequential, l.clone(), r.clone()))
+}
+
 #[macro_export]
 macro_rules! parallel {
     ($($x:expr),* $(,)?) => ($crate::ast::parallel_vec(vec![$($x),*]))
@@ -72,7 +84,11 @@ macro_rules! parallel {
 pub use parallel;
 
 pub fn parallel_vec(es: Vec<RcExpr>) -> RcExpr {
-    RcExpr::new(Expr::All(Order::Parallel, es))
+    let mut res = unit();
+    for expr in es {
+        res = push_parallel(res, expr);
+    }
+    res
 }
 
 #[macro_export]
@@ -82,7 +98,11 @@ macro_rules! sequence {
 pub use sequence;
 
 pub fn sequence_vec(es: Vec<RcExpr>) -> RcExpr {
-    RcExpr::new(Expr::All(Order::Sequential, es))
+    let mut res = unit();
+    for expr in es {
+        res = push_sequential(res, expr);
+    }
+    res
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {

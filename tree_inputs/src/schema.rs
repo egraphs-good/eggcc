@@ -64,7 +64,7 @@ pub enum Expr {
 
 pub struct TreeProgram {
     /// must be a function
-    pub entry: Expr,
+    pub entry: RcExpr,
     /// a list of other functions
-    pub functions: Vec<Expr>,
+    pub functions: Vec<RcExpr>,
 }

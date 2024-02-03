@@ -60,9 +60,9 @@ pub enum Expr {
     Function(String, Type, Type, RcExpr),
 }
 
-pub struct Program {
+pub struct TreeProgram {
     /// must be a function
-    entry: Expr,
+    pub entry: RcExpr,
     /// a list of other functions
-    functions: Vec<Expr>,
+    pub functions: Vec<RcExpr>,
 }

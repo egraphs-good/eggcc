@@ -1,4 +1,4 @@
-use crate::schema::{BinaryOp, Ctx, Expr, Order, Program, RcExpr, Type, UnaryOp};
+use crate::schema::{Assumption, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp};
 
 pub fn add(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Add, l.clone(), r.clone()))
@@ -51,8 +51,8 @@ macro_rules! program {
 }
 pub use program;
 
-pub fn program_vec(entry: RcExpr, functions: Vec<RcExpr>) -> Program {
-    Program { entry, functions }
+pub fn program_vec(entry: RcExpr, functions: Vec<RcExpr>) -> TreeProgram {
+    TreeProgram { entry, functions }
 }
 
 #[macro_export]
@@ -72,7 +72,7 @@ macro_rules! parallel {
 pub use parallel;
 
 pub fn parallel_vec(es: Vec<RcExpr>) -> RcExpr {
-    RcExpr::new(Expr::All(Ctx::Global, Order::Parallel, es))
+    RcExpr::new(Expr::All(Order::Parallel, es))
 }
 
 #[macro_export]
@@ -82,15 +82,15 @@ macro_rules! sequence {
 pub use sequence;
 
 pub fn sequence_vec(es: Vec<RcExpr>) -> RcExpr {
-    RcExpr::new(Expr::All(Ctx::Global, Order::Sequential, es))
+    RcExpr::new(Expr::All(Order::Sequential, es))
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {
     RcExpr::new(Expr::If(cond.clone(), then_case.clone(), else_case.clone()))
 }
 
-pub fn dowhile(inputs: RcExpr, pred: RcExpr, body: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::DoWhile(inputs.clone(), pred.clone(), body.clone()))
+pub fn dowhile(inputs: RcExpr, pred_and_body: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::DoWhile(inputs.clone(), pred_and_body.clone()))
 }
 
 pub fn function(name: &str, arg_ty: Type, ret_ty: Type, body: RcExpr) -> RcExpr {
@@ -102,24 +102,26 @@ pub fn function(name: &str, arg_ty: Type, ret_ty: Type, body: RcExpr) -> RcExpr 
     ))
 }
 
-pub fn input(e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Input(e.clone()))
-}
-
 pub fn ttrue() -> RcExpr {
-    RcExpr::new(Expr::Const(
-        Ctx::Global,
-        crate::schema::Constant::Bool(true),
-    ))
+    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(true)))
 }
 
 pub fn tfalse() -> RcExpr {
-    RcExpr::new(Expr::Const(
-        Ctx::Global,
-        crate::schema::Constant::Bool(false),
-    ))
+    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(false)))
 }
 
 pub fn int(i: i64) -> RcExpr {
-    RcExpr::new(Expr::Const(Ctx::Global, crate::schema::Constant::Int(i)))
+    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i)))
+}
+
+pub fn inlet(e: RcExpr) -> Assumption {
+    Assumption::InLet(e)
+}
+
+pub fn inloop(e1: RcExpr, e2: RcExpr) -> Assumption {
+    Assumption::InLoop(e1, e2)
+}
+
+pub fn assume(assumption: Assumption, body: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Assume(assumption, body))
 }

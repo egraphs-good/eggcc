@@ -13,9 +13,8 @@
 (datatype Type
   (IntT)
   (BoolT)
-  ; TODO delete? No first-class functions
-  (FuncT Type Type)
-  ; Use a tuple of length 0 for a "unit" type
+  (UnitT)
+  ; Nested tuple types are not allowed
   (TupleT TypeList) 
 )
 
@@ -40,8 +39,11 @@
 ; Constants
 (datatype Constant
   (Int i64)
-  (Bool bool))
+  (Bool bool)
+  (Unit))
 (function Const (Constant) Expr)
+;; global short hand for (Const (Unit))
+(let unit (Const (Unit)))
 
 ; Operators
 (function Bop   (BinaryOp Expr Expr) Expr)
@@ -76,9 +78,9 @@
 (let seq (Sequential))
 
 ; An empty tuple
-(function Unit () Expr)
-; global short hand for (Unit)
-(let unit (Unit))
+(function Empty () Expr)
+; global short hand for (Empty)
+(let empty (Empty))
 
 ; Evaluates an expression and adds it to the *back* of a tuple.
 ; e.g. (Push (Parallel) a (Push (Sequential) b c)) = (c, b, a)

@@ -372,34 +372,42 @@ impl<'a> RvsdgToCfg<'a> {
         }
     }
 
-    /// The result of body_to_bril must comply with the assign_to input
-    /// However, unlike AssignTo, there may be duplicate variables in the result
-    /// when AssignTo doesn't specify the variable.
-    fn body_to_bril(
+    /// Translates a body to bril.
+    /// This is a helper for `body_to_bril`, which retrieves cached
+    /// results when available and calls `rvsdg_body_to_bril` otherwise.
+    fn rvsdg_body_to_bril(
         &mut self,
         id: Id,
+        body: &RvsdgBody,
         current_args: &Vec<RvsdgValue>,
         ctx: &RvsdgContext,
     ) -> TranslationResult {
-        if let Some(existing) = self.body_cache.get(&(ctx.clone(), id)).cloned() {
-            let new_block = self.make_block(vec![]);
-            return TranslationResult {
-                start: new_block,
-                end: new_block,
-                values: existing.clone(),
-            };
-        }
-
-        let body = &self.function.nodes[id];
-        let res = match body {
+        match body {
             RvsdgBody::BasicOp(expr) => self.expr_to_bril(expr, current_args, ctx),
+            RvsdgBody::If {
+                pred,
+                inputs,
+                then_branch,
+                else_branch,
+            } => {
+                let switch = RvsdgBody::Gamma {
+                    pred: *pred,
+                    inputs: inputs.clone(),
+                    outputs: vec![else_branch.clone(), then_branch.clone()],
+                };
+                // Desugar to a switch with a boolean predicate,
+                // then translate the switch
+                self.rvsdg_body_to_bril(id, &switch, current_args, ctx)
+            }
+            // Handles translation for If and Gamma
             RvsdgBody::Gamma {
                 pred,
                 inputs,
                 outputs,
             } => {
                 let pred = self.operand_to_bril(*pred, current_args, ctx);
-                // convert the predicate to a bool if needed
+                // convert the predicate to a bool, since this might
+                // actually be an `If`
                 let pred_bool = self.cast_bool(&pred.get_single_res());
                 let pred_res = self.sequence_results(&[pred, pred_bool.clone()]);
 
@@ -462,6 +470,7 @@ impl<'a> RvsdgToCfg<'a> {
                         op: BranchOp::Cond {
                             arg: Identifier::Name(pred_bool.get_single_res().unwrap_name()),
                             val: false.into(),
+                            bril_type: Type::Bool,
                         },
                         pos: None,
                     },
@@ -473,6 +482,7 @@ impl<'a> RvsdgToCfg<'a> {
                         op: BranchOp::Cond {
                             arg: Identifier::Name(pred_bool.get_single_res().unwrap_name()),
                             val: true.into(),
+                            bril_type: Type::Bool,
                         },
                         pos: None,
                     },
@@ -569,6 +579,7 @@ impl<'a> RvsdgToCfg<'a> {
                         op: BranchOp::Cond {
                             arg: Identifier::Name(pred_bool.get_single_res().unwrap_name()),
                             val: true.into(),
+                            bril_type: Type::Bool,
                         },
                         pos: None,
                     },
@@ -581,6 +592,7 @@ impl<'a> RvsdgToCfg<'a> {
                         op: BranchOp::Cond {
                             arg: Identifier::Name(pred_bool.get_single_res().unwrap_name()),
                             val: false.into(),
+                            bril_type: Type::Bool,
                         },
                         pos: None,
                     },
@@ -592,7 +604,29 @@ impl<'a> RvsdgToCfg<'a> {
                     values: loop_vars,
                 }
             }
-        };
+        }
+    }
+
+    /// The result of body_to_bril must comply with the assign_to input
+    /// However, unlike AssignTo, there may be duplicate variables in the result
+    /// when AssignTo doesn't specify the variable.
+    fn body_to_bril(
+        &mut self,
+        id: Id,
+        current_args: &Vec<RvsdgValue>,
+        ctx: &RvsdgContext,
+    ) -> TranslationResult {
+        if let Some(existing) = self.body_cache.get(&(ctx.clone(), id)).cloned() {
+            let new_block = self.make_block(vec![]);
+            return TranslationResult {
+                start: new_block,
+                end: new_block,
+                values: existing.clone(),
+            };
+        }
+
+        let body = &self.function.nodes[id];
+        let res = self.rvsdg_body_to_bril(id, body, current_args, ctx);
 
         self.body_cache
             .insert((ctx.clone(), id), res.values.clone());

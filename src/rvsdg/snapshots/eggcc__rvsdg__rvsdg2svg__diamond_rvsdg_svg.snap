@@ -169,7 +169,7 @@ expression: svg
 										text-anchor="middle"
 										x="50"
 										y="62.5">
-										2
+										1
 									</text>
 								</g>
 								<circle
@@ -254,7 +254,7 @@ expression: svg
 						text-anchor="middle"
 						x="200"
 						y="100">
-						0
+						true
 					</text>
 				</g>
 				<g>
@@ -309,7 +309,7 @@ expression: svg
 										text-anchor="middle"
 										x="50"
 										y="62.5">
-										1
+										2
 									</text>
 								</g>
 								<circle
@@ -394,7 +394,7 @@ expression: svg
 						text-anchor="middle"
 						x="575"
 						y="100">
-						1
+						false
 					</text>
 				</g>
 				<circle

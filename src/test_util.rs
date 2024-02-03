@@ -9,6 +9,7 @@ macro_rules! to_block {
         BlockName::Named($name.into())
     };
 }
+use bril_rs::Type;
 pub(crate) use to_block;
 
 macro_rules! rvsdg_svg_test {
@@ -25,6 +26,22 @@ macro_rules! rvsdg_svg_test {
     };
 }
 
+pub(crate) fn true_cond(name: &str) -> BranchOp {
+    BranchOp::Cond {
+        arg: name.into(),
+        val: true.into(),
+        bril_type: Type::Bool,
+    }
+}
+
+pub(crate) fn false_cond(name: &str) -> BranchOp {
+    BranchOp::Cond {
+        arg: name.into(),
+        val: false.into(),
+        bril_type: Type::Bool,
+    }
+}
+
 pub(crate) use rvsdg_svg_test;
 
 macro_rules! cfg_test_equiv {
@@ -35,7 +52,7 @@ macro_rules! cfg_test_equiv {
       assert_eq!($cfg.entry, $cfg.exit);
   };
   ($cfg:expr,  [ $($src:tt = ($($edge:tt)*)=> $dst:tt,)* ]) => {
-      use $crate::cfg::BranchOp;
+      use $crate::cfg::BranchOp::{*};
       let mut mentioned = std::collections::HashSet::new();
           let mut block = std::collections::HashMap::new();
           $(
@@ -54,7 +71,7 @@ macro_rules! cfg_test_equiv {
               let src = *block.get(&src_name).unwrap_or_else(|| panic!("missing block {:?}", src_name));
               let dst = *block.get(&dst_name).unwrap_or_else(|| panic!("missing block {:?}", dst_name));
               let has_edge = cfg.graph.edges_connecting(src, dst).any(|edge| {
-                  edge.weight().op == BranchOp::$($edge)*
+                  edge.weight().op == $($edge)*
               });
               assert!(has_edge, "missing edge from {src_name:?} to {dst_name:?}");
           })*
@@ -62,3 +79,5 @@ macro_rules! cfg_test_equiv {
 }
 
 pub(crate) use cfg_test_equiv;
+
+use crate::cfg::BranchOp;

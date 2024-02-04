@@ -31,6 +31,7 @@
   (LessThan)
   (And)
   (Or)
+  ;; (address, value) -> Unit
   (Write))
 (datatype UnaryOp
   (Not)
@@ -71,11 +72,18 @@
 ; If the order is `Parallel`, the "value expr" may be evaluated first
 ; or the "tuple expr" may be evaluated first.
 ; Either way, the program should reach an equivalent state.
-(datatype Order (Parallel) (Sequential))
+(datatype Order
+  (Parallel)
+  ;; evaluate the "value expr" first
+  (Sequential)
+  ;; evaluate the "tuple expr" first
+  (Reversed))
+
 ; global short hand for (Parallel)
 (let par (Parallel))
 ; global short hand for (Sequential)
 (let seq (Sequential))
+(let rev (Reversed))
 
 ; An empty tuple
 (function Empty () Expr)

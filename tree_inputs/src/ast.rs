@@ -28,6 +28,10 @@ pub fn not(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Not, e.clone()))
 }
 
+pub fn twrite(addr: RcExpr, val: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Write, addr.clone(), val.clone()))
+}
+
 pub fn tprint(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Print, e.clone()))
 }
@@ -73,16 +77,20 @@ pub fn switch_vec(cond: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
     RcExpr::new(Expr::Switch(cond.clone(), cases))
 }
 
-pub fn unit() -> RcExpr {
-    RcExpr::new(Expr::Unit())
+pub fn empty() -> RcExpr {
+    RcExpr::new(Expr::Empty())
 }
 
-pub fn push_parallel(l: RcExpr, r: RcExpr) -> RcExpr {
+pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Push(Order::Parallel, l.clone(), r.clone()))
 }
 
-pub fn push_sequential(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Push(Order::Sequential, l.clone(), r.clone()))
+pub fn push_seq(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Push(Order::Sequential, l, r))
+}
+
+pub fn push_rev(val: RcExpr, tuple: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Push(Order::Reversed, val, tuple))
 }
 
 #[macro_export]
@@ -92,9 +100,9 @@ macro_rules! parallel {
 pub use parallel;
 
 pub fn parallel_vec(es: Vec<RcExpr>) -> RcExpr {
-    let mut res = unit();
+    let mut res = empty();
     for expr in es {
-        res = push_parallel(expr, res);
+        res = push_par(expr, res);
     }
     res
 }
@@ -106,9 +114,9 @@ macro_rules! sequence {
 pub use sequence;
 
 pub fn sequence_vec(es: Vec<RcExpr>) -> RcExpr {
-    let mut res = unit();
+    let mut res = empty();
     for expr in es {
-        res = push_sequential(expr, res);
+        res = push_seq(expr, res);
     }
     res
 }
@@ -127,6 +135,10 @@ pub fn barg() -> RcExpr {
 
 pub fn iarg() -> RcExpr {
     arg(Type::IntT)
+}
+
+pub fn geti(index: usize) -> RcExpr {
+    get(iarg(), index)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {
@@ -156,6 +168,10 @@ pub fn tfalse() -> RcExpr {
 
 pub fn int(i: i64) -> RcExpr {
     RcExpr::new(Expr::Const(crate::schema::Constant::Int(i)))
+}
+
+pub fn unit() -> RcExpr {
+    RcExpr::new(Expr::Const(crate::schema::Constant::Unit))
 }
 
 pub fn inlet(e: RcExpr) -> Assumption {

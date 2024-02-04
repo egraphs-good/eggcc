@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display};
 
-use crate::schema::{BinaryOp, Constant, Expr, RcExpr, Type, UnaryOp};
+use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, UnaryOp};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
@@ -59,9 +59,9 @@ impl VirtualMachine {
     ) -> Value {
         let get_int = |e: &RcExpr, vm: &mut Self| match vm.interpret(e, arg) {
             Const(Constant::Int(n)) => n,
-            _ => panic!(
-                "Expected integer in binary operation {:?}. Got {:?}",
-                bop, e
+            other => panic!(
+                "Expected integer in binary operation {:?}. Got {:?} from expr {:?}",
+                bop, other, e
             ),
         };
         let get_bool = |e: &RcExpr, vm: &mut Self| match vm.interpret(e, arg) {
@@ -82,7 +82,7 @@ impl VirtualMachine {
                 let addr = get_int(e1, self) as usize;
                 let val = self.interpret(e2, arg).clone();
                 self.mem.insert(addr, val);
-                Tuple(vec![])
+                Const(Constant::Unit)
             }
         }
     }
@@ -99,7 +99,7 @@ impl VirtualMachine {
                 let val = self.interpret(e, arg);
                 let v_str = format!("{}", val);
                 self.log.push(v_str.clone());
-                val
+                Value::Const(Constant::Unit)
             }
         }
     }
@@ -119,31 +119,35 @@ impl VirtualMachine {
                 };
                 vals[*i].clone()
             }
-            Expr::Read(e_addr, ty) => match ty {
-                Type::IntT => {
-                    let Const(Constant::Int(addr)) = self.interpret(e_addr, arg) else {
-                        panic!("expected integer in read")
-                    };
-                    self.mem[&(addr as usize)].clone()
+            Expr::Read(e_addr, ty) => {
+                let Const(Constant::Int(addr)) = self.interpret(e_addr, arg) else {
+                    panic!("expected integer address in read")
+                };
+
+                if let Some(res) = self.mem.get(&(addr as usize)) {
+                    res.clone()
+                } else {
+                    panic!("No value bound at memory address {:?}", addr)
                 }
-                Type::BoolT => {
-                    let Const(Constant::Int(addr)) = self.interpret(e_addr, arg) else {
-                        panic!("expected integer in read")
-                    };
-                    self.mem[&(addr as usize)].clone()
-                }
-                Type::FuncT(_, _) => panic!("tried to read function from memory"),
-                Type::TupleT(_) => panic!("tried to read tuple from memory"),
-            },
-            Expr::Unit() => Tuple(vec![]),
-            Expr::Push(_order, e1, e2) => {
-                // Always execute sequentially
-                // We could also test other orders for parallel tuples
-                let v1 = self.interpret(e1, arg);
+            }
+            Expr::Empty() => Tuple(vec![]),
+            Expr::Push(order, e1, e2) => {
+                let (v1, v2_tuple) = match order {
+                    // Always parallel execute sequentially
+                    // We could also test other orders for parallel tuples
+                    Order::Sequential | Order::Parallel => {
+                        (self.interpret(e1, arg), self.interpret(e2, arg))
+                    }
+                    Order::Reversed => {
+                        let v2 = self.interpret(e2, arg);
+                        let v1 = self.interpret(e1, arg);
+                        (v1, v2)
+                    }
+                };
                 if let Tuple(..) = v1 {
                     panic!("expected non-tuple in push's first argument: {:?}", e1)
                 }
-                let Tuple(mut v2) = self.interpret(e2, arg) else {
+                let Tuple(mut v2) = v2_tuple else {
                     panic!("expected tuple in push's second argument")
                 };
                 v2.push(v1);
@@ -203,12 +207,15 @@ impl VirtualMachine {
 fn test_interpreter() {
     use crate::ast::*;
     // numbers 1-10
-    let expr = dowhile(
-        parallel!(int(1)),
-        parallel!(
-            less_than(iarg(), int(10)),
-            first(parallel!(add(iarg(), int(1)), tprint(iarg())))
+    let expr = get(
+        dowhile(
+            parallel!(int(1)),
+            parallel!(
+                less_than(geti(0), int(10)),
+                first(parallel!(add(geti(0), int(1)), tprint(geti(0))))
+            ),
         ),
+        0,
     );
     let res = interpret(&expr, &None);
     assert_eq!(res.value, Const(Constant::Int(11)));
@@ -220,74 +227,50 @@ fn test_interpreter() {
             .collect::<Vec<String>>()
     );
 }
-/*
+
 #[test]
 fn test_interpreter_fib_using_memory() {
+    use crate::ast::*;
+    use crate::schema::Type::*;
     let nth = 10;
     let fib_nth = 55;
-    let e = Expr::All(
-        Id(-1),
-        Order::Sequential,
-        vec![
-            Expr::Write(Box::new(Expr::Num(0)), Box::new(Expr::Num(0))),
-            Expr::Write(Box::new(Expr::Num(1)), Box::new(Expr::Num(1))),
-            Expr::Loop(
-                Id(0),
-                Box::new(Expr::Num(2)),
-                Box::new(Expr::All(
-                    Id(0),
-                    Order::Parallel,
-                    vec![
-                        // pred: i < nth
-                        Expr::LessThan(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(nth))),
-                        // output
-                        Expr::Get(
-                            Box::new(Expr::All(
-                                Id(0),
-                                Order::Parallel,
-                                vec![
-                                    // i = i + 1
-                                    Expr::Add(Box::new(Expr::Arg(Id(0))), Box::new(Expr::Num(1))),
-                                    // mem[i] = mem[i - 1] + mem[i - 2]
-                                    Expr::Write(
-                                        Box::new(Expr::Arg(Id(0))),
-                                        Box::new(Expr::Add(
-                                            Box::new(Expr::Read(Box::new(Expr::Sub(
-                                                Box::new(Expr::Arg(Id(0))),
-                                                Box::new(Expr::Num(1)),
-                                            )))),
-                                            Box::new(Expr::Read(Box::new(Expr::Sub(
-                                                Box::new(Expr::Arg(Id(0))),
-                                                Box::new(Expr::Num(2)),
-                                            )))),
-                                        )),
-                                    ),
-                                ],
-                            )),
-                            0,
+    let expr = tlet(
+        sequence!(
+            twrite(int(0), int(0)), // address 0, value 0
+            twrite(int(1), int(1)), // address 1, value 1
+        ),
+        push_rev(
+            read(int(nth), IntT),
+            dowhile(
+                parallel!(int(2)),
+                parallel!(
+                    less_than(geti(0), int(nth)),
+                    get(
+                        parallel!(
+                            add(geti(0), int(1)),
+                            twrite(
+                                geti(0),
+                                add(
+                                    read(sub(geti(0), int(1)), IntT),
+                                    read(sub(geti(0), int(2)), IntT)
+                                )
+                            )
                         ),
-                    ],
-                )),
+                        0
+                    )
+                ),
             ),
-            Expr::Read(Box::new(Expr::Num(nth))),
-        ],
+        ),
     );
-    let mut vm = VirtualMachine {
-        mem: HashMap::new(),
-        log: vec![],
-    };
-    let res = interpret(&e, &None, &mut vm);
+
+    let res = interpret(&expr, &None);
     assert_eq!(
-        res,
+        res.value,
         Tuple(vec![
-            Tuple(vec![]),
-            Tuple(vec![]),
-            Num(nth + 1),
-            Num(fib_nth)
+            Const(Constant::Int(nth + 1)),
+            Const(Constant::Int(fib_nth))
         ])
     );
-    assert_eq!(vm.mem[&(nth as usize)], Num(fib_nth));
-    assert!(!vm.mem.contains_key(&(nth as usize + 1)));
+    assert_eq!(res.mem[&(nth as usize)], Const(Constant::Int(fib_nth)));
+    assert!(!res.mem.contains_key(&(nth as usize + 1)));
 }
-
-*/

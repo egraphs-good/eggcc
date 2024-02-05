@@ -13,6 +13,8 @@
 (datatype Type
   (IntT)
   (BoolT)
+  ; pointers cannot point to tuple types
+  (PointerT Type)
   ; Nested tuple types are not allowed
   (TupleT TypeList) 
 )
@@ -55,18 +57,28 @@
   (LessThan)
   (And)
   (Or)
-  (Write))
+  ; given a pointer and a value, writes
+  ; the value to the pointer
+  (Write)
+  ; Takes a pointer and an integer, and offsets
+  ; the pointer by the integer
+  (PtrAdd))
 (datatype UnaryOp
   (Not)
-  (Print))
+  ; prints any non-tuple value
+  ; returns an empty tuple
+  (Print)
+  ; given a pointer, loads the value at the pointer
+  (Load))
 
 ; Operators
 (function Bop   (BinaryOp Expr Expr) Expr)
 (function Uop   (UnaryOp Expr) Expr)
 ; gets from a tuple. static index
 (function Get   (Expr i64) Expr)
-; read has a type, so it can't be a BinaryOp
-(function Read  (Expr Type)      Expr) 
+; allocate an integer amount of memory for a particular type
+; returns a pointer to the allocated memory
+(function Alloc (Expr Type)      Expr)
 ;               name of func   arg
 (function Call (String         Expr) Expr)
 

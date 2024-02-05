@@ -128,6 +128,7 @@ impl VirtualMachine {
             BinaryOp::And => Const(Constant::Bool(get_bool(e1, self) && get_bool(e2, self))),
             BinaryOp::Or => Const(Constant::Bool(get_bool(e1, self) || get_bool(e2, self))),
             BinaryOp::Write => {
+                eprintln!("write {:?} {:?}", e1, e2);
                 let pointer = get_pointer(e1, self);
                 let val = self.interpret(e2, arg).clone();
                 self.mem.insert(pointer.addr(), val);
@@ -154,6 +155,7 @@ impl VirtualMachine {
                 Tuple(vec![])
             }
             UnaryOp::Load => {
+                eprintln!("load {:?}", e);
                 let ptr = self.get_pointer(e, arg);
                 if let Some(val) = self.mem.get(&ptr.addr()) {
                     val.clone()
@@ -190,17 +192,17 @@ impl VirtualMachine {
             Expr::Single(e) => Tuple(vec![self.interpret(e, arg)]),
             Expr::Extend(order, e1, e2) => {
                 let (v1_tuple, v2_tuple) = match order {
-                    // Always parallel execute sequentially
+                    // Always execute sequentially
                     // We could also test other orders for parallel tuples
                     Order::Sequential | Order::Parallel => {
                         (self.interpret(e1, arg), self.interpret(e2, arg))
                     }
                 };
                 let Tuple(v1) = v1_tuple else {
-                    panic!("expected tuple in push's first argument")
+                    panic!("expected tuple in extend's first argument in: {:?}", e1)
                 };
                 let Tuple(mut v2) = v2_tuple else {
-                    panic!("expected tuple in push's second argument")
+                    panic!("expected tuple in extend's second argument in {:?}", e2)
                 };
                 v2.extend(v1);
                 Tuple(v2)
@@ -229,6 +231,7 @@ impl VirtualMachine {
                 let Tuple(mut vals) = self.interpret(input, arg) else {
                     panic!("expected tuple for input in do-while")
                 };
+                eprintln!("do-while input: {:?}", vals);
                 let mut pred = Const(Constant::Bool(true));
                 while pred == Const(Constant::Bool(true)) {
                     let Tuple(pred_output_val) =
@@ -236,10 +239,15 @@ impl VirtualMachine {
                     else {
                         panic!("expected tuple for pred_output in do-while")
                     };
-                    assert!(pred_output_val.len() == 1 + vals.len());
+                    assert!(
+                        pred_output_val.len() == 1 + vals.len(),
+                        "expected pred_output to have one more element than input in {:?}",
+                        pred_output
+                    );
                     pred = pred_output_val[0].clone();
                     vals = pred_output_val[1..].to_vec();
                 }
+                eprintln!("do-while result: {:?}", vals);
                 Tuple(vals)
             }
             Expr::Let(input, output) => {
@@ -287,31 +295,37 @@ fn test_interpreter_fib_using_memory() {
     let nth = 10;
     let fib_nth = 55;
     let expr = tlet(
-        sequence!(
-            twrite(int(0), int(0)), // address 0, value 0
-            twrite(int(1), int(1)), // address 1, value 1
-        ),
+        alloc(int(nth + 2), IntT),
         tlet(
-            dowhile(
-                parallel!(int(2)),
-                parallel!(
-                    less_than(getat(0), int(nth)),
-                    get(
-                        parallel!(
-                            add(getat(0), int(1)),
-                            twrite(
-                                getat(0),
-                                add(
-                                    read(sub(getat(0), int(1)), IntT),
-                                    read(sub(getat(0), int(2)), IntT)
-                                )
-                            )
-                        ),
-                        0
-                    )
+            extend_seq(
+                twrite(arg(), int(0)), // address 0, value 0
+                extend_seq(
+                    twrite(ptradd(arg(), int(1)), int(1)), // address 1, value 1
+                    single(arg()),
                 ),
             ),
-            push_par(read(int(nth), IntT), arg()),
+            tlet(
+                dowhile(
+                    parallel!(ptradd(getat(0), int(2)), int(2)),
+                    cons_par(
+                        less_than(getat(1), int(nth)),
+                        tlet(
+                            extend_seq(
+                                twrite(
+                                    getat(0),
+                                    add(
+                                        load(ptradd(getat(0), int(-1))),
+                                        load(ptradd(getat(0), int(-2))),
+                                    ),
+                                ),
+                                arg(),
+                            ),
+                            parallel!(ptradd(getat(0), int(1)), add(getat(1), int(1))),
+                        ),
+                    ),
+                ),
+                parallel!(load(ptradd(getat(0), int(-1))), getat(1)),
+            ),
         ),
     );
 
@@ -319,8 +333,8 @@ fn test_interpreter_fib_using_memory() {
     assert_eq!(
         res.value,
         Tuple(vec![
-            Const(Constant::Int(nth + 1)),
-            Const(Constant::Int(fib_nth))
+            Const(Constant::Int(fib_nth)),
+            Const(Constant::Int(11))
         ])
     );
     assert_eq!(res.mem[&(nth as usize)], Const(Constant::Int(fib_nth)));

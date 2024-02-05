@@ -21,43 +21,43 @@ macro_rules! tuplet {
 pub use tuplet;
 
 pub fn add(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Add, l.clone(), r.clone()))
+    RcExpr::new(Expr::Bop(BinaryOp::Add, l, r))
 }
 
 pub fn sub(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Sub, l.clone(), r.clone()))
+    RcExpr::new(Expr::Bop(BinaryOp::Sub, l, r))
 }
 
 pub fn mul(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Mul, l.clone(), r.clone()))
+    RcExpr::new(Expr::Bop(BinaryOp::Mul, l, r))
 }
 
 pub fn less_than(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::LessThan, l.clone(), r.clone()))
+    RcExpr::new(Expr::Bop(BinaryOp::LessThan, l, r))
 }
 
 pub fn and(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::And, l.clone(), r.clone()))
+    RcExpr::new(Expr::Bop(BinaryOp::And, l, r))
 }
 
 pub fn or(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Or, l.clone(), r.clone()))
+    RcExpr::new(Expr::Bop(BinaryOp::Or, l, r))
 }
 
 pub fn not(e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Uop(UnaryOp::Not, e.clone()))
+    RcExpr::new(Expr::Uop(UnaryOp::Not, e))
 }
 
 pub fn twrite(addr: RcExpr, val: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Write, addr.clone(), val.clone()))
+    RcExpr::new(Expr::Bop(BinaryOp::Write, addr, val))
 }
 
 pub fn tprint(e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Uop(UnaryOp::Print, e.clone()))
+    RcExpr::new(Expr::Uop(UnaryOp::Print, e))
 }
 
 pub fn get(e: RcExpr, i: usize) -> RcExpr {
-    RcExpr::new(Expr::Get(e.clone(), i))
+    RcExpr::new(Expr::Get(e, i))
 }
 
 pub fn first(e: RcExpr) -> RcExpr {
@@ -68,23 +68,23 @@ pub fn second(e: RcExpr) -> RcExpr {
     get(e, 1)
 }
 pub fn write(ptr: RcExpr, val: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Write, ptr.clone(), val.clone()))
+    RcExpr::new(Expr::Bop(BinaryOp::Write, ptr, val))
 }
 
 pub fn load(e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Uop(UnaryOp::Load, e.clone()))
+    RcExpr::new(Expr::Uop(UnaryOp::Load, e))
 }
 
-pub fn ptradd(ptr: RcExpr, i: i64) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::PtrAdd, ptr.clone(), int(i)))
+pub fn ptradd(ptr: RcExpr, i: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::PtrAdd, ptr, i))
 }
 
 pub fn alloc(e: RcExpr, ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Alloc(e.clone(), ty))
+    RcExpr::new(Expr::Alloc(e, ty))
 }
 
 pub fn call(s: &str, e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Call(s.to_string(), e.clone()))
+    RcExpr::new(Expr::Call(s.to_string(), e))
 }
 /// a macro that wraps the children in
 /// a vec for program
@@ -105,7 +105,7 @@ macro_rules! switch {
 pub use switch;
 
 pub fn switch_vec(cond: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
-    RcExpr::new(Expr::Switch(cond.clone(), cases))
+    RcExpr::new(Expr::Switch(cond, cases))
 }
 
 pub fn empty() -> RcExpr {
@@ -113,7 +113,11 @@ pub fn empty() -> RcExpr {
 }
 
 pub fn single(e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Single(e.clone()))
+    RcExpr::new(Expr::Single(e))
+}
+
+pub fn cons_par(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Extend(Order::Parallel, r, single(l)))
 }
 
 pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
@@ -146,22 +150,8 @@ pub fn parallel_vec(es: Vec<RcExpr>) -> RcExpr {
     res
 }
 
-#[macro_export]
-macro_rules! sequence {
-    ($($x:expr),* $(,)?) => ($crate::ast::sequence_vec(vec![$($x),*]))
-}
-pub use sequence;
-
-pub fn sequence_vec(es: Vec<RcExpr>) -> RcExpr {
-    let mut res = empty();
-    for expr in es {
-        res = push_seq(expr, res);
-    }
-    res
-}
-
 pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Let(lhs.clone(), rhs.clone()))
+    RcExpr::new(Expr::Let(lhs, rhs))
 }
 
 pub fn arg() -> RcExpr {
@@ -173,20 +163,15 @@ pub fn getat(index: usize) -> RcExpr {
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::If(cond.clone(), then_case.clone(), else_case.clone()))
+    RcExpr::new(Expr::If(cond, then_case, else_case))
 }
 
 pub fn dowhile(inputs: RcExpr, pred_and_body: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::DoWhile(inputs.clone(), pred_and_body.clone()))
+    RcExpr::new(Expr::DoWhile(inputs, pred_and_body))
 }
 
 pub fn function(name: &str, arg_ty: Type, ret_ty: Type, body: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Function(
-        name.to_string(),
-        arg_ty,
-        ret_ty,
-        body.clone(),
-    ))
+    RcExpr::new(Expr::Function(name.to_string(), arg_ty, ret_ty, body))
 }
 
 pub fn ttrue() -> RcExpr {

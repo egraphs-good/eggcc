@@ -1,5 +1,5 @@
 [package]
-name = "tree_inputs"
+name = "tree_assume"
 version = "0.1.0"
 edition = "2021"
 

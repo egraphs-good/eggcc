@@ -290,6 +290,42 @@ impl<'a> VirtualMachine<'a> {
 }
 
 #[test]
+fn test_interpret_calls() {
+    use crate::ast::*;
+    let expr = program!(
+        function(
+            "func1",
+            intt(),
+            intt(),
+            mul(call("func2", sub(arg(), int(1))), int(2))
+        ),
+        function("func2", intt(), intt(), tlet(arg(), add(arg(), int(1)))),
+    );
+    let res = interpret(&expr, Const(Constant::Int(5)));
+    assert_eq!(res, Const(Constant::Int(10)));
+}
+
+#[test]
+fn test_interpret_recursive() {
+    use crate::ast::*;
+    let expr = program!(function(
+        "fib",
+        intt(),
+        intt(),
+        tif(
+            less_than(arg(), int(2)),
+            arg(),
+            add(
+                call("fib", sub(arg(), int(1))),
+                call("fib", sub(arg(), int(2)))
+            )
+        )
+    ),);
+    let res = interpret(&expr, Const(Constant::Int(10)));
+    assert_eq!(res, Const(Constant::Int(55)));
+}
+
+#[test]
 fn test_interpreter() {
     use crate::ast::*;
     // numbers 1-10

@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::schema::{
     Assumption, BaseType, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
 };
@@ -9,10 +7,10 @@ pub fn intt() -> Type {
 }
 
 pub fn boolt() -> Type {
-    Type::BoolT
+    Type::Base(BaseType::BoolT)
 }
 
-pub fn tuplet_vec(types: Vec<Rc<Type>>) -> Type {
+pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
 }
 
@@ -92,7 +90,7 @@ pub fn call(s: &str, e: RcExpr) -> RcExpr {
 /// a vec for program
 #[macro_export]
 macro_rules! program {
-    ($main:expr, $($x:expr),* $(,)?) => ($crate::ast::program_vec(vec![$main, $($x),*]))
+    ($main:expr, $($x:expr),* $(,)?) => ($crate::ast::program_vec($main, vec![$($x),*]))
 }
 pub use program;
 

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display};
 
-use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, UnaryOp};
+use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, UnaryOp};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pointer {
@@ -62,7 +62,8 @@ impl Display for Value {
 
 use Value::{Const, Ptr, Tuple};
 
-pub(crate) struct VirtualMachine {
+pub(crate) struct VirtualMachine<'a> {
+    program: &'a TreeProgram,
     next_addr: usize,
     mem: HashMap<usize, Value>,
     log: Vec<String>,
@@ -74,13 +75,28 @@ pub struct BrilState {
     pub value: Value,
 }
 
-pub fn interpret(expr: &RcExpr, arg: &Option<Value>) -> BrilState {
+pub fn interpret(prog: &TreeProgram, arg: Value) -> Value {
     let mut vm = VirtualMachine {
+        program: prog,
         next_addr: 0,
         mem: HashMap::new(),
         log: vec![],
     };
-    let value = vm.interpret(expr, arg);
+    vm.interpret(&prog.entry.func_name().unwrap(), &Some(arg))
+}
+
+pub fn interpret_expr(expr: &RcExpr, arg: &Option<Value>) -> BrilState {
+    let mut vm = VirtualMachine {
+        program: &TreeProgram {
+            // expr should be call-free so this doesn't matter
+            entry: expr.clone(),
+            functions: vec![],
+        },
+        next_addr: 0,
+        mem: HashMap::new(),
+        log: vec![],
+    };
+    let value = vm.interpret_expr(expr, arg);
     BrilState {
         mem: vm.mem,
         log: vm.log,
@@ -88,23 +104,23 @@ pub fn interpret(expr: &RcExpr, arg: &Option<Value>) -> BrilState {
     }
 }
 
-impl VirtualMachine {
+impl<'a> VirtualMachine<'a> {
     fn get_int(&mut self, e: &RcExpr, arg: &Option<Value>) -> i64 {
-        match self.interpret(e, arg) {
+        match self.interpret_expr(e, arg) {
             Const(Constant::Int(n)) => n,
             other => panic!("Expected integer. Got {:?} from expr {:?}", other, e),
         }
     }
 
     fn get_bool(&mut self, e: &RcExpr, arg: &Option<Value>) -> bool {
-        match self.interpret(e, arg) {
+        match self.interpret_expr(e, arg) {
             Const(Constant::Bool(b)) => b,
             other => panic!("Expected boolean. Got {:?} from expr {:?}", other, e),
         }
     }
 
     fn get_pointer(&mut self, e: &RcExpr, arg: &Option<Value>) -> Pointer {
-        match self.interpret(e, arg) {
+        match self.interpret_expr(e, arg) {
             Ptr(ptr) => ptr,
             other => panic!("Expected pointer. Got {:?} from expr {:?}", other, e),
         }
@@ -130,7 +146,7 @@ impl VirtualMachine {
             BinaryOp::Write => {
                 eprintln!("write {:?} {:?}", e1, e2);
                 let pointer = get_pointer(e1, self);
-                let val = self.interpret(e2, arg).clone();
+                let val = self.interpret_expr(e2, arg).clone();
                 self.mem.insert(pointer.addr(), val);
                 Tuple(vec![])
             }
@@ -149,7 +165,7 @@ impl VirtualMachine {
         match uop {
             UnaryOp::Not => Const(Constant::Bool(!self.get_bool(e, arg))),
             UnaryOp::Print => {
-                let val = self.interpret(e, arg);
+                let val = self.interpret_expr(e, arg);
                 let v_str = format!("{}", val);
                 self.log.push(v_str.clone());
                 Tuple(vec![])
@@ -168,15 +184,20 @@ impl VirtualMachine {
 
     // TODO: refactor to return a Result<Value, RuntimeError>
     // struct RuntimeError { BadRead(Value) }
-    // assumes e typechecks and that memory is written before read
-    pub fn interpret(&mut self, expr: &RcExpr, arg: &Option<Value>) -> Value {
+    // assumes e typechecks
+    pub fn interpret(&mut self, func_name: &str, arg: &Option<Value>) -> Value {
+        let func = self.program.get_function(func_name).unwrap();
+        self.interpret_expr(func.func_body().unwrap(), arg)
+    }
+
+    pub fn interpret_expr(&mut self, expr: &RcExpr, arg: &Option<Value>) -> Value {
         match expr.as_ref() {
             Expr::Const(c) => Const(c.clone()),
             Expr::Bop(bop, e1, e2) => self.interpret_bop(bop, e1, e2, arg),
             Expr::Uop(uop, e) => self.interpret_uop(uop, e, arg),
-            Expr::Assume(_assumption, e) => self.interpret(e, arg),
+            Expr::Assume(_assumption, e) => self.interpret_expr(e, arg),
             Expr::Get(e_tuple, i) => {
-                let Tuple(vals) = self.interpret(e_tuple, arg) else {
+                let Tuple(vals) = self.interpret_expr(e_tuple, arg) else {
                     panic!("get")
                 };
                 vals[*i].clone()
@@ -189,13 +210,13 @@ impl VirtualMachine {
                 Ptr(Pointer::new(addr, size as usize, 0))
             }
             Expr::Empty => Tuple(vec![]),
-            Expr::Single(e) => Tuple(vec![self.interpret(e, arg)]),
+            Expr::Single(e) => Tuple(vec![self.interpret_expr(e, arg)]),
             Expr::Extend(order, e1, e2) => {
                 let (v1_tuple, v2_tuple) = match order {
                     // Always execute sequentially
                     // We could also test other orders for parallel tuples
                     Order::Sequential | Order::Parallel => {
-                        (self.interpret(e1, arg), self.interpret(e2, arg))
+                        (self.interpret_expr(e1, arg), self.interpret_expr(e2, arg))
                     }
                 };
                 let Tuple(v1) = v1_tuple else {
@@ -208,34 +229,34 @@ impl VirtualMachine {
                 Tuple(v2)
             }
             Expr::Switch(pred, branches) => {
-                let Const(Constant::Int(index)) = self.interpret(pred, arg) else {
+                let Const(Constant::Int(index)) = self.interpret_expr(pred, arg) else {
                     panic!("expected integer in switch")
                 };
                 if index < 0 || index as usize >= branches.len() {
                     // TODO refactor to return a Result
                     panic!("switch index out of bounds")
                 }
-                self.interpret(&branches[index as usize], arg)
+                self.interpret_expr(&branches[index as usize], arg)
             }
             Expr::If(pred, then, els) => {
-                let Const(Constant::Bool(pred_evaluated)) = self.interpret(pred, arg) else {
+                let Const(Constant::Bool(pred_evaluated)) = self.interpret_expr(pred, arg) else {
                     panic!("expected boolean in if")
                 };
                 if pred_evaluated {
-                    self.interpret(then, arg)
+                    self.interpret_expr(then, arg)
                 } else {
-                    self.interpret(els, arg)
+                    self.interpret_expr(els, arg)
                 }
             }
             Expr::DoWhile(input, pred_output) => {
-                let Tuple(mut vals) = self.interpret(input, arg) else {
+                let Tuple(mut vals) = self.interpret_expr(input, arg) else {
                     panic!("expected tuple for input in do-while")
                 };
                 eprintln!("do-while input: {:?}", vals);
                 let mut pred = Const(Constant::Bool(true));
                 while pred == Const(Constant::Bool(true)) {
                     let Tuple(pred_output_val) =
-                        self.interpret(pred_output, &Some(Tuple(vals.clone())))
+                        self.interpret_expr(pred_output, &Some(Tuple(vals.clone())))
                     else {
                         panic!("expected tuple for pred_output in do-while")
                     };
@@ -251,14 +272,19 @@ impl VirtualMachine {
                 Tuple(vals)
             }
             Expr::Let(input, output) => {
-                let vals = self.interpret(input, arg);
-                self.interpret(output, &Some(vals.clone()))
+                let vals = self.interpret_expr(input, arg);
+                self.interpret_expr(output, &Some(vals.clone()))
             }
             Expr::Arg => {
                 let Some(v) = arg else { panic!("arg") };
                 v.clone()
             }
-            Expr::Function(_, _, _, _) | Expr::Call(_, _) => todo!("interpret functions and calls"),
+            // just interpret the body
+            Expr::Function(_, _, _, body) => self.interpret_expr(body, arg),
+            Expr::Call(func_name, e) => {
+                let e_val = self.interpret_expr(e, arg);
+                self.interpret(func_name, &Some(e_val))
+            }
         }
     }
 }
@@ -277,7 +303,7 @@ fn test_interpreter() {
         ),
         0,
     );
-    let res = interpret(&expr, &None);
+    let res = interpret_expr(&expr, &None);
     assert_eq!(res.value, Const(Constant::Int(11)));
     assert_eq!(
         res.log,
@@ -329,7 +355,7 @@ fn test_interpreter_fib_using_memory() {
         ),
     );
 
-    let res = interpret(&expr, &None);
+    let res = interpret_expr(&expr, &None);
     assert_eq!(
         res.value,
         Tuple(vec![

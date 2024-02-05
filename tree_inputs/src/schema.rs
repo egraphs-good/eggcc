@@ -72,6 +72,7 @@ pub enum Expr {
     Function(String, Type, Type, RcExpr),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeProgram {
     /// must be a function
     pub entry: RcExpr,

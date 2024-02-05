@@ -10,9 +10,9 @@ pub enum BaseType {
 }
 
 pub enum Type {
-    PointerT(Box<Type>),
+    PointerT(BaseType),
     /// Nested tuple types are not allowed.
-    TupleT(Vec<Rc<Type>>),
+    TupleT(Vec<BaseType>),
 }
 
 pub enum BinaryOp {

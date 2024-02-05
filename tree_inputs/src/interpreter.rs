@@ -82,7 +82,7 @@ impl VirtualMachine {
                 let addr = get_int(e1, self) as usize;
                 let val = self.interpret(e2, arg).clone();
                 self.mem.insert(addr, val);
-                Const(Constant::Unit)
+                Tuple(vec![])
             }
         }
     }
@@ -99,7 +99,7 @@ impl VirtualMachine {
                 let val = self.interpret(e, arg);
                 let v_str = format!("{}", val);
                 self.log.push(v_str.clone());
-                Value::Const(Constant::Unit)
+                Tuple(vec![])
             }
         }
     }
@@ -124,28 +124,30 @@ impl VirtualMachine {
                     panic!("expected integer address in read")
                 };
 
+                // TODO cast to correct type?
                 if let Some(res) = self.mem.get(&(addr as usize)) {
                     res.clone()
                 } else {
                     panic!("No value bound at memory address {:?}", addr)
                 }
             }
-            Expr::Empty() => Tuple(vec![]),
-            Expr::Push(order, e1, e2) => {
-                let (v1, v2_tuple) = match order {
+            Expr::Empty => Tuple(vec![]),
+            Expr::Single(e) => Tuple(vec![self.interpret(e, arg)]),
+            Expr::Extend(order, e1, e2) => {
+                let (v1_tuple, v2_tuple) = match order {
                     // Always parallel execute sequentially
                     // We could also test other orders for parallel tuples
                     Order::Sequential | Order::Parallel => {
                         (self.interpret(e1, arg), self.interpret(e2, arg))
                     }
                 };
-                if let Tuple(..) = v1 {
-                    panic!("expected non-tuple in push's first argument: {:?}", e1)
-                }
+                let Tuple(v1) = v1_tuple else {
+                    panic!("expected tuple in push's first argument")
+                };
                 let Tuple(mut v2) = v2_tuple else {
                     panic!("expected tuple in push's second argument")
                 };
-                v2.push(v1);
+                v2.extend(v1);
                 Tuple(v2)
             }
             Expr::Switch(pred, branches) => {
@@ -189,7 +191,7 @@ impl VirtualMachine {
                 let vals = self.interpret(input, arg);
                 self.interpret(output, &Some(vals.clone()))
             }
-            Expr::Arg(_) => {
+            Expr::Arg => {
                 let Some(v) = arg else { panic!("arg") };
                 v.clone()
             }
@@ -206,8 +208,8 @@ fn test_interpreter() {
         dowhile(
             parallel!(int(1)),
             parallel!(
-                less_than(geti(0), int(10)),
-                first(parallel!(add(geti(0), int(1)), tprint(geti(0))))
+                less_than(getat(0), int(10)),
+                first(parallel!(add(getat(0), int(1)), tprint(getat(0))))
             ),
         ),
         0,
@@ -238,15 +240,15 @@ fn test_interpreter_fib_using_memory() {
             dowhile(
                 parallel!(int(2)),
                 parallel!(
-                    less_than(geti(0), int(nth)),
+                    less_than(getat(0), int(nth)),
                     get(
                         parallel!(
-                            add(geti(0), int(1)),
+                            add(getat(0), int(1)),
                             twrite(
-                                geti(0),
+                                getat(0),
                                 add(
-                                    read(sub(geti(0), int(1)), IntT),
-                                    read(sub(geti(0), int(2)), IntT)
+                                    read(sub(getat(0), int(1)), IntT),
+                                    read(sub(getat(0), int(2)), IntT)
                                 )
                             )
                         ),
@@ -254,7 +256,7 @@ fn test_interpreter_fib_using_memory() {
                     )
                 ),
             ),
-            push_par(read(int(nth), IntT), arg(tuplet!(intt()))),
+            push_par(read(int(nth), IntT), arg()),
         ),
     );
 

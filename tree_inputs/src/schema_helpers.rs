@@ -10,7 +10,6 @@ impl Display for Constant {
         match self {
             Constant::Int(i) => write!(f, "{}", i),
             Constant::Bool(b) => write!(f, "{}", b),
-            Constant::Unit => write!(f, "unit()"),
         }
     }
 }

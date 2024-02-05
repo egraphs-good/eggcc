@@ -98,15 +98,27 @@ pub fn switch_vec(cond: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
 }
 
 pub fn empty() -> RcExpr {
-    RcExpr::new(Expr::Empty())
+    RcExpr::new(Expr::Empty)
+}
+
+pub fn single(e: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Single(e.clone()))
 }
 
 pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Push(Order::Parallel, l.clone(), r.clone()))
+    RcExpr::new(Expr::Extend(Order::Parallel, single(l), r))
 }
 
 pub fn push_seq(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Push(Order::Sequential, l, r))
+    RcExpr::new(Expr::Extend(Order::Sequential, single(l), r))
+}
+
+pub fn extend_par(tuple: RcExpr, onto: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Extend(Order::Parallel, tuple, onto))
+}
+
+pub fn extend_seq(tuple: RcExpr, onto: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Extend(Order::Sequential, tuple, onto))
 }
 
 #[macro_export]
@@ -141,20 +153,12 @@ pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Let(lhs.clone(), rhs.clone()))
 }
 
-pub fn arg(ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Arg(ty))
+pub fn arg() -> RcExpr {
+    RcExpr::new(Expr::Arg)
 }
 
-pub fn barg() -> RcExpr {
-    arg(Type::BoolT)
-}
-
-pub fn iarg() -> RcExpr {
-    arg(Type::IntT)
-}
-
-pub fn geti(index: usize) -> RcExpr {
-    get(iarg(), index)
+pub fn getat(index: usize) -> RcExpr {
+    get(arg(), index)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {
@@ -184,10 +188,6 @@ pub fn tfalse() -> RcExpr {
 
 pub fn int(i: i64) -> RcExpr {
     RcExpr::new(Expr::Const(crate::schema::Constant::Int(i)))
-}
-
-pub fn unit() -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Unit))
 }
 
 pub fn inlet(e: RcExpr) -> Assumption {

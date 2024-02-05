@@ -13,7 +13,6 @@
 (datatype Type
   (IntT)
   (BoolT)
-  (UnitT)
   ; Nested tuple types are not allowed
   (TupleT TypeList) 
 )
@@ -21,8 +20,33 @@
 (function TNil () TypeList)
 (function TCons (Type TypeList) TypeList)
 
+
 ; =================================
-; Operators that do not create regions
+; Leaf nodes
+; Constants, argument, and empty tuple
+; =================================
+
+; Every expression can be thought of as a function with one argument.
+; The argument to this expression.
+; Only a single argument is bound- if multiple values are needed, arg will be a tuple.
+; e.g. `(Get (Arg)) 1)` gets the second value in the argument with type (int, bool).
+(function Arg () Expr)
+(let arg (Arg))
+
+; Constants
+(datatype Constant
+  (Int i64)
+  (Bool bool))
+(function Const (Constant) Expr)
+
+; An empty tuple.
+(function Empty () Expr)
+; global short hand for (Empty)
+(let empty (Empty))
+
+
+; =================================
+; Operators
 ; =================================
 (datatype BinaryOp
   (Add)
@@ -37,15 +61,6 @@
   (Not)
   (Print))
 
-; Constants
-(datatype Constant
-  (Int i64)
-  (Bool bool)
-  (Unit))
-(function Const (Constant) Expr)
-;; global short hand for (Const (Unit))
-(let unit (Const (Unit)))
-
 ; Operators
 (function Bop   (BinaryOp Expr Expr) Expr)
 (function Uop   (UnaryOp Expr) Expr)
@@ -57,23 +72,34 @@
 (function Call (String         Expr) Expr)
 
 
+
 ; =================================
 ; Tuple operations
 ; =================================
 
-; There are only two ways to create a tuple.
-; 1. Use `(Unit)` for an empty tuple.
-; 2. Use `(Push)` to add to the back of a tuple.
+; `Empty`, `Push` and `Extend` create tuples.
+; 1. Use `Empty` for an empty tuple.
+; 2. Use `Push` to add to the back of a tuple.
+; 3. Use `Extend` to add one tuple to the back of another.
 ; Nested tuples are not allowed.
-; The helpers `Concat` and `SubTuple` help keep tuples flatt.
 
 
+<<<<<<< HEAD
 ; Defines the order of evaluating a `Push` term.
 (datatype Order
   ; evaluate in any order
   ; the program should reach an equivalent state either way
   (Parallel)
   ; evaluate the "value expr" first
+=======
+; Defines the order of evaluating an `Extend` term.
+(datatype Order
+  ; Either argument may be evaluated first.
+  ; Either way, the program should reach an equivalent state.
+  (Parallel)
+  ; evaluate the first argument first
+  ; e.g. `(Extend (Single a) (Single b))` evalutes to `(b, a)` with `a` evaluated first
+>>>>>>> oflatt-input-schema-sugar
   (Sequential))
 
 ; global short hand for (Parallel)
@@ -82,16 +108,17 @@
 (let seq (Sequential))
 (let rev (Reversed))
 
-; An empty tuple
-(function Empty () Expr)
-; global short hand for (Empty)
-(let empty (Empty))
+; A tuple with a single element.
+; Necessary because we only use `Extend` to add to tuples.
+(function Single (Expr) Expr)
+; Extend adds `expr1` to the end of `tuple expr2` elementwise.
+; e.g. (Extend (Parallel) (Extend (Sequential) (Single b) (Single a))
+;                         (Extend (Sequential) (Single d) (Single c))) = (c, d, a, b)
+; Extend keeps tuples flat, since nested tuples are not allowed.
+;                 order   expr1       expr2
+(function Extend (Order   Expr        Expr)       Expr)
 
-; Evaluates an expression and adds it to the *back* of a tuple.
-; e.g. (Push (Parallel) a (Push (Sequential) b c)) = (c, b, a)
-; There are two valid evaluation orders: a, b, c or b, c, a
-;               order   value expr        tuple expr
-(function Push (Order   Expr              Expr)       Expr)
+
 
 ; =================================
 ; Control flow
@@ -107,29 +134,22 @@
 (function If (Expr Expr Expr) Expr)
 
 
-; Creates a region, binding the input so that it can
-; be referred to using `Arg`.
+; Creates a region, binding the input to `Arg`.
+; e.g. `(Let (Extend new_tuple (Arg)) output)`
+; binds argument to the old argument plus some new values `new_tuple`.
 ; 
 ;              input    output
 (function Let (Expr     Expr)    Expr)
 
 
 ; A do-while loop.
-
-; iter_val = [[input]]
-; pred_val = false
-; while !pred_val:
-;   pred_val, iter_val = iter_val = [[pred_output[ arg |-> iter_val]]]
-; iter_val
-
-; input must have the same type as output
+; Evaluates the input, then evaluates the body.
+; Keeps looping while the predicate is true.
+; input must have the same type as (output1, output2, ..., outputi)
 ; pred must be a boolean
-;                  input   (pred, output) tuple
+;                  input   (pred, output1, output2, ..., outputi) tuple
 (function DoWhile (Expr    Expr)                   Expr)
 
-
-; An argument to a region.
-(function Arg (Type) Expr)
 
 
 
@@ -149,12 +169,12 @@
   ; Other assumptions are possible, but not supported yet.
   ; For example:
   ;      A boolean predicate is true.
-  ;      e.g. (> (Arg (IntT)) (Const (Int 2)))
+  ;      e.g. (> (Arg) (Const (Int 2)))
   ; (IsTrue Expr))
 )
 
 ; Assume allows creating context-specific terms.
-; e.g. (Assume (InLet (Const (Int 2))) (Arg (IntT))) is equal to (Const (Int 2))
+; e.g. (Assume (InLet (Const (Int 2))) (Arg)) is equal to (Const (Int 2))
 (function Assume (Assumption Expr) Expr)
 
 

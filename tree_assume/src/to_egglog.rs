@@ -106,8 +106,8 @@ impl Expr {
             }
             Expr::Get(expr, index) => {
                 let expr = expr.to_egglog_internal(term_dag);
-                let index =
-                    term_dag.app("Int".into(), vec![Term::Lit(Literal::Int(*index as i64))]);
+                let lit_index = term_dag.lit(Literal::Int(*index as i64));
+                let index = term_dag.app("Int".into(), vec![lit_index]);
                 term_dag.app("Get".into(), vec![expr, index])
             }
             Expr::Alloc(expr, ty) => {
@@ -117,10 +117,8 @@ impl Expr {
             }
             Expr::Call(name, arg) => {
                 let arg = arg.to_egglog_internal(term_dag);
-                term_dag.app(
-                    "Call".into(),
-                    vec![Term::Lit(Literal::String(name.into())), arg],
-                )
+                let name_lit = term_dag.lit(Literal::String(name.into()));
+                term_dag.app("Call".into(), vec![name_lit, arg])
             }
             Expr::Empty => term_dag.app("Empty".into(), vec![]),
             Expr::Single(expr) => {
@@ -168,10 +166,8 @@ impl Expr {
                 let body = body.to_egglog_internal(term_dag);
                 let ty_in = ty_in.to_egglog_internal(term_dag);
                 let ty_out = ty_out.to_egglog_internal(term_dag);
-                term_dag.app(
-                    "Function".into(),
-                    vec![Term::Lit(Literal::String(name.into())), ty_in, ty_out, body],
-                )
+                let name_lit = term_dag.lit(Literal::String(name.into()));
+                term_dag.app("Function".into(), vec![name_lit, ty_in, ty_out, body])
             }
         }
     }
@@ -206,7 +202,7 @@ impl TreeProgram {
             .map(|expr| expr.to_egglog_internal(term_dag))
             .collect();
         let functions_list = to_listexpr(functions_terms, term_dag);
-        term_dag.app("TreeProgram".into(), vec![entry_term, functions_list])
+        term_dag.app("Program".into(), vec![entry_term, functions_list])
     }
 }
 
@@ -227,8 +223,19 @@ fn to_tlistexpr(terms: Vec<Term>, term_dag: &mut TermDag) -> Term {
 }
 
 #[cfg(test)]
+fn test_program_parses_to(prog: TreeProgram, expected: &str) {
+    let (term, mut termdag) = prog.to_egglog();
+    test_parses_to(term, &mut termdag, expected);
+}
+
+#[cfg(test)]
 fn test_expr_parses_to(expr: RcExpr, expected: &str) {
     let (term, mut termdag) = expr.to_egglog();
+    test_parses_to(term, &mut termdag, expected);
+}
+
+#[cfg(test)]
+fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
     let parser = egglog::ast::parse::ExprParser::new();
     let parsed = parser.parse(expected).unwrap();
     let term2 = termdag.expr_to_term(&parsed);
@@ -256,5 +263,35 @@ fn convert_to_egglog_switch() {
                   (Cons 
                    (Extend (Parallel) (Single (Const (Int 3))) (Single (Const (Int 4))))
                    (Nil))))",
+    );
+}
+
+#[test]
+fn convert_whole_program() {
+    use crate::ast::*;
+    let expr = program!(
+        function("main", intt(), intt(), add(int(1), call("f", int(2)))),
+        function(
+            "f",
+            intt(),
+            intt(),
+            dowhile(
+                arg(),
+                extend_par(add(arg(), int(1)), single(less_than(arg(), int(10))))
+            )
+        )
+    );
+    test_program_parses_to(
+        expr,
+        "(Program 
+            (Function \"main\" (Base (IntT)) (Base (IntT)) 
+                (Add (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
+            (Cons 
+                (Function \"f\" (Base (IntT)) (Base (IntT)) 
+                    (DoWhile (Arg) 
+                        (Extend (Parallel) 
+                            (Add (Arg) (Const (Int 1))) 
+                            (Single (LessThan (Arg) (Const (Int 10))))))) 
+                (Nil)))",
     );
 }

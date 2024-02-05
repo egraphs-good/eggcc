@@ -4,9 +4,12 @@
 
 use std::rc::Rc;
 
-pub enum Type {
+pub enum BaseType {
     IntT,
     BoolT,
+}
+
+pub enum Type {
     PointerT(Box<Type>),
     /// Nested tuple types are not allowed.
     TupleT(Vec<Rc<Type>>),

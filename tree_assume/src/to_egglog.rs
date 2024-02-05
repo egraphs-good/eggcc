@@ -1,12 +1,18 @@
 use egglog::{ast::Literal, Term, TermDag};
 
-use crate::schema::{Assumption, BaseType, Constant, Expr, RcExpr, TreeProgram, Type};
+use crate::schema::{Assumption, BaseType, Constant, Expr, Order, RcExpr, TreeProgram, Type};
 
 impl Constant {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
         match self {
-            Constant::Int(i) => term_dag.app("Int".into(), vec![Term::Lit(Literal::Int(*i))]),
-            Constant::Bool(b) => term_dag.app("Bool".into(), vec![Term::Lit(Literal::Bool(*b))]),
+            Constant::Int(i) => {
+                let i = term_dag.lit(Literal::Int(*i));
+                term_dag.app("Int".into(), vec![i])
+            }
+            Constant::Bool(b) => {
+                let b = term_dag.lit(Literal::Bool(*b));
+                term_dag.app("Bool".into(), vec![b])
+            }
         }
     }
 }
@@ -53,6 +59,12 @@ impl Assumption {
                 term_dag.app("InLoop".into(), vec![lhs, rhs])
             }
         }
+    }
+}
+
+impl Order {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
+        term_dag.app(format!("{:?}", self).into(), vec![])
     }
 }
 
@@ -111,11 +123,15 @@ impl Expr {
                 )
             }
             Expr::Empty => term_dag.app("Empty".into(), vec![]),
-            Expr::Single(expr) => expr.to_egglog_internal(term_dag),
+            Expr::Single(expr) => {
+                let expr = expr.to_egglog_internal(term_dag);
+                term_dag.app("Single".into(), vec![expr])
+            }
             Expr::Extend(order, lhs, rhs) => {
                 let lhs = lhs.to_egglog_internal(term_dag);
                 let rhs = rhs.to_egglog_internal(term_dag);
-                term_dag.app(format!("{:?}", order).into(), vec![lhs, rhs])
+                let order = order.to_egglog_internal(term_dag);
+                term_dag.app("Extend".into(), vec![order, lhs, rhs])
             }
             Expr::Switch(expr, cases) => {
                 let expr = expr.to_egglog_internal(term_dag);
@@ -146,9 +162,17 @@ impl Expr {
             Expr::Assume(assumption, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 let assumption = assumption.to_egglog_internal(term_dag);
-                termdag.app("Assume".into(), vec![assumption, expr])
+                term_dag.app("Assume".into(), vec![assumption, expr])
             }
-            _ => todo!(),
+            Expr::Function(name, ty_in, ty_out, body) => {
+                let body = body.to_egglog_internal(term_dag);
+                let ty_in = ty_in.to_egglog_internal(term_dag);
+                let ty_out = ty_out.to_egglog_internal(term_dag);
+                term_dag.app(
+                    "Function".into(),
+                    vec![Term::Lit(Literal::String(name.into())), ty_in, ty_out, body],
+                )
+            }
         }
     }
 }
@@ -188,7 +212,7 @@ impl TreeProgram {
 
 fn to_listexpr(terms: Vec<Term>, term_dag: &mut TermDag) -> Term {
     let mut list = term_dag.app("Nil".into(), vec![]);
-    for term in terms {
+    for term in terms.into_iter().rev() {
         list = term_dag.app("Cons".into(), vec![term, list]);
     }
     list
@@ -196,16 +220,41 @@ fn to_listexpr(terms: Vec<Term>, term_dag: &mut TermDag) -> Term {
 
 fn to_tlistexpr(terms: Vec<Term>, term_dag: &mut TermDag) -> Term {
     let mut list = term_dag.app("TNil".into(), vec![]);
-    for term in terms {
+    for term in terms.into_iter().rev() {
         list = term_dag.app("TCons".into(), vec![term, list]);
     }
     list
+}
+
+#[cfg(test)]
+fn test_expr_parses_to(expr: RcExpr, expected: &str) {
+    let (term, mut termdag) = expr.to_egglog();
+    let parser = egglog::ast::parse::ExprParser::new();
+    let parsed = parser.parse(expected).unwrap();
+    let term2 = termdag.expr_to_term(&parsed);
+    let pretty1 = termdag.term_to_expr(&term).to_sexp().pretty();
+    let pretty2 = termdag.term_to_expr(&term2).to_sexp().pretty();
+    assert!(pretty1 == pretty2, "Expected:\n{pretty2}\nGot:\n{pretty1}");
 }
 
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
     let expr = add(int(1), arg());
-    let (term, termdag) = expr.to_egglog();
-    assert_eq!(termdag.to_string(&term), "(Add (Int 1) Arg)");
+    test_expr_parses_to(expr, "(Add (Const (Int 1)) (Arg))");
+}
+
+#[test]
+fn convert_to_egglog_switch() {
+    use crate::ast::*;
+    let expr = switch!(int(1); extend_par(single(int(1)), single(int(2))), extend_par(single(int(3)), single(int(4))));
+    test_expr_parses_to(
+        expr,
+        "(Switch (Const (Int 1))
+                 (Cons 
+                  (Extend (Parallel) (Single (Const (Int 1))) (Single (Const (Int 2))))
+                  (Cons 
+                   (Extend (Parallel) (Single (Const (Int 3))) (Single (Const (Int 4))))
+                   (Nil))))",
+    );
 }

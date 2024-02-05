@@ -291,11 +291,10 @@ fn test_interpreter() {
 #[test]
 fn test_interpreter_fib_using_memory() {
     use crate::ast::*;
-    use crate::schema::Type::*;
     let nth = 10;
     let fib_nth = 55;
     let expr = tlet(
-        alloc(int(nth + 2), IntT),
+        alloc(int(nth + 2), intt()),
         tlet(
             extend_seq(
                 twrite(arg(), int(0)), // address 0, value 0

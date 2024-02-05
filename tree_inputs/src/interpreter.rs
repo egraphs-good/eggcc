@@ -3,9 +3,38 @@ use std::{collections::HashMap, fmt::Display};
 use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, UnaryOp};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pointer {
+    // start address of this pointer
+    start_addr: usize,
+    // how many elements are in the allocated region
+    size: usize,
+    // offset from the start address
+    offset: i64,
+}
+
+impl Pointer {
+    fn new(addr: usize, size: usize, offset: i64) -> Self {
+        Pointer {
+            start_addr: addr,
+            size,
+            offset,
+        }
+    }
+
+    // gets the address of this pointer, panicing
+    // if the pointer is out of bounds
+    fn addr(&self) -> usize {
+        if self.offset < 0 || self.offset as usize >= self.size {
+            panic!("Pointer out of bounds {:?}", self);
+        }
+        self.start_addr + self.offset as usize
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
     Const(Constant),
-    Pointer(usize, usize), // address, offset
+    Ptr(Pointer),
     Tuple(Vec<Value>),
 }
 
@@ -13,7 +42,13 @@ impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Const(constant) => write!(f, "{}", constant),
-            Pointer(addr, offset) => write!(f, "Pointer({}, {})", addr, offset),
+            Ptr(Pointer {
+                start_addr: addr,
+                size,
+                offset,
+            }) => {
+                write!(f, "Pointer::new({addr}, {size}, {offset})")
+            }
             Tuple(vs) => {
                 write!(f, "(")?;
                 for v in vs {
@@ -25,9 +60,10 @@ impl Display for Value {
     }
 }
 
-use Value::{Const, Tuple};
+use Value::{Const, Ptr, Tuple};
 
 pub(crate) struct VirtualMachine {
+    next_addr: usize,
     mem: HashMap<usize, Value>,
     log: Vec<String>,
 }
@@ -40,6 +76,7 @@ pub struct BrilState {
 
 pub fn interpret(expr: &RcExpr, arg: &Option<Value>) -> BrilState {
     let mut vm = VirtualMachine {
+        next_addr: 0,
         mem: HashMap::new(),
         log: vec![],
     };
@@ -52,6 +89,27 @@ pub fn interpret(expr: &RcExpr, arg: &Option<Value>) -> BrilState {
 }
 
 impl VirtualMachine {
+    fn get_int(&mut self, e: &RcExpr, arg: &Option<Value>) -> i64 {
+        match self.interpret(e, arg) {
+            Const(Constant::Int(n)) => n,
+            other => panic!("Expected integer. Got {:?} from expr {:?}", other, e),
+        }
+    }
+
+    fn get_bool(&mut self, e: &RcExpr, arg: &Option<Value>) -> bool {
+        match self.interpret(e, arg) {
+            Const(Constant::Bool(b)) => b,
+            other => panic!("Expected boolean. Got {:?} from expr {:?}", other, e),
+        }
+    }
+
+    fn get_pointer(&mut self, e: &RcExpr, arg: &Option<Value>) -> Pointer {
+        match self.interpret(e, arg) {
+            Ptr(ptr) => ptr,
+            other => panic!("Expected pointer. Got {:?} from expr {:?}", other, e),
+        }
+    }
+
     fn interpret_bop(
         &mut self,
         bop: &BinaryOp,
@@ -59,20 +117,9 @@ impl VirtualMachine {
         e2: &RcExpr,
         arg: &Option<Value>,
     ) -> Value {
-        let get_int = |e: &RcExpr, vm: &mut Self| match vm.interpret(e, arg) {
-            Const(Constant::Int(n)) => n,
-            other => panic!(
-                "Expected integer in binary operation {:?}. Got {:?} from expr {:?}",
-                bop, other, e
-            ),
-        };
-        let get_bool = |e: &RcExpr, vm: &mut Self| match vm.interpret(e, arg) {
-            Const(Constant::Bool(b)) => b,
-            _ => panic!(
-                "Expected boolean in binary operation {:?}. Got {:?}",
-                bop, e
-            ),
-        };
+        let get_int = |e: &RcExpr, vm: &mut Self| vm.get_int(e, arg);
+        let get_bool = |e: &RcExpr, vm: &mut Self| vm.get_bool(e, arg);
+        let get_pointer = |e: &RcExpr, vm: &mut Self| vm.get_pointer(e, arg);
         match bop {
             BinaryOp::Add => Const(Constant::Int(get_int(e1, self) + get_int(e2, self))),
             BinaryOp::Sub => Const(Constant::Int(get_int(e1, self) - get_int(e2, self))),
@@ -81,27 +128,38 @@ impl VirtualMachine {
             BinaryOp::And => Const(Constant::Bool(get_bool(e1, self) && get_bool(e2, self))),
             BinaryOp::Or => Const(Constant::Bool(get_bool(e1, self) || get_bool(e2, self))),
             BinaryOp::Write => {
-                let addr = get_int(e1, self) as usize;
+                let pointer = get_pointer(e1, self);
                 let val = self.interpret(e2, arg).clone();
-                self.mem.insert(addr, val);
+                self.mem.insert(pointer.addr(), val);
                 Tuple(vec![])
+            }
+            BinaryOp::PtrAdd => {
+                let Pointer {
+                    start_addr: addr,
+                    size,
+                    offset,
+                } = get_pointer(e1, self);
+                Ptr(Pointer::new(addr, size, offset + get_int(e2, self)))
             }
         }
     }
 
     fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Option<Value>) -> Value {
         match uop {
-            UnaryOp::Not => {
-                let Const(Constant::Bool(b)) = self.interpret(e, arg) else {
-                    panic!("expected boolean in not")
-                };
-                Const(Constant::Bool(!b))
-            }
+            UnaryOp::Not => Const(Constant::Bool(!self.get_bool(e, arg))),
             UnaryOp::Print => {
                 let val = self.interpret(e, arg);
                 let v_str = format!("{}", val);
                 self.log.push(v_str.clone());
                 Tuple(vec![])
+            }
+            UnaryOp::Load => {
+                let ptr = self.get_pointer(e, arg);
+                if let Some(val) = self.mem.get(&ptr.addr()) {
+                    val.clone()
+                } else {
+                    panic!("No value bound at memory address {:?}", ptr.addr())
+                }
             }
         }
     }
@@ -121,17 +179,12 @@ impl VirtualMachine {
                 };
                 vals[*i].clone()
             }
-            Expr::Alloc(e_addr, ty) => {
-                let Const(Constant::Int(addr)) = self.interpret(e_addr, arg) else {
-                    panic!("expected integer address in read")
-                };
-
-                // TODO cast to correct type?
-                if let Some(res) = self.mem.get(&(addr as usize)) {
-                    res.clone()
-                } else {
-                    panic!("No value bound at memory address {:?}", addr)
-                }
+            // assume this is type checked, so ignore type
+            Expr::Alloc(e_size, _ty) => {
+                let size = self.get_int(e_size, arg);
+                let addr = self.next_addr;
+                self.next_addr += usize::try_from(size).unwrap();
+                Ptr(Pointer::new(addr, size as usize, 0))
             }
             Expr::Empty => Tuple(vec![]),
             Expr::Single(e) => Tuple(vec![self.interpret(e, arg)]),

@@ -58,17 +58,12 @@
   (LessThan)
   (And)
   (Or)
-<<<<<<< HEAD
-  ;; (address, value) -> Unit
-  (Write))
-=======
   ; given a pointer and a value, writes
   ; the value to the pointer
   (Write)
   ; Takes a pointer and an integer, and offsets
   ; the pointer by the integer
   (PtrAdd))
->>>>>>> oflatt-input-schema-sugar
 (datatype UnaryOp
   (Not)
   ; prints any non-tuple value
@@ -101,14 +96,6 @@
 ; Nested tuples are not allowed.
 
 
-<<<<<<< HEAD
-; Defines the order of evaluating a `Push` term.
-(datatype Order
-  ; evaluate in any order
-  ; the program should reach an equivalent state either way
-  (Parallel)
-  ; evaluate the "value expr" first
-=======
 ; Defines the order of evaluating an `Extend` term.
 (datatype Order
   ; Either argument may be evaluated first.
@@ -116,7 +103,6 @@
   (Parallel)
   ; evaluate the first argument first
   ; e.g. `(Extend (Single a) (Single b))` evalutes to `(b, a)` with `a` evaluated first
->>>>>>> oflatt-input-schema-sugar
   (Sequential))
 
 ; global short hand for (Parallel)

@@ -66,15 +66,27 @@ pub fn switch_vec(cond: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
 }
 
 pub fn unit() -> RcExpr {
-    RcExpr::new(Expr::Unit())
+    RcExpr::new(Expr::Empty)
+}
+
+pub fn single(e: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Single(e.clone()))
 }
 
 pub fn push_parallel(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Push(Order::Parallel, l.clone(), r.clone()))
+    RcExpr::new(Expr::Extend(Order::Parallel, single(l), r))
 }
 
 pub fn push_sequential(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Push(Order::Sequential, l.clone(), r.clone()))
+    RcExpr::new(Expr::Extend(Order::Sequential, single(l), r))
+}
+
+pub fn extend_parallel(tuple: RcExpr, onto: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Extend(Order::Parallel, tuple, onto))
+}
+
+pub fn extend_sequential(tuple: RcExpr, onto: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Extend(Order::Sequential, tuple, onto))
 }
 
 #[macro_export]

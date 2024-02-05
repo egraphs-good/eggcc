@@ -8,6 +8,7 @@ use std::rc::Rc;
 pub enum Type {
     IntT,
     BoolT,
+    PointerT(Box<Type>),
     /// Nested tuple types are not allowed.
     TupleT(Vec<Rc<Type>>),
 }
@@ -21,12 +22,14 @@ pub enum BinaryOp {
     And,
     Or,
     Write,
+    PtrAdd,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnaryOp {
     Not,
     Print,
+    Load,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,7 +58,7 @@ pub enum Expr {
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
     Get(RcExpr, usize),
-    Read(RcExpr, Type),
+    Alloc(RcExpr, Type),
     Call(String, RcExpr),
     Empty,
     Single(RcExpr),

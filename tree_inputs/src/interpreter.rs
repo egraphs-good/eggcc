@@ -5,6 +5,7 @@ use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, UnaryOp};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
     Const(Constant),
+    Pointer(usize, usize), // address, offset
     Tuple(Vec<Value>),
 }
 
@@ -12,6 +13,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Const(constant) => write!(f, "{}", constant),
+            Pointer(addr, offset) => write!(f, "Pointer({}, {})", addr, offset),
             Tuple(vs) => {
                 write!(f, "(")?;
                 for v in vs {
@@ -119,7 +121,7 @@ impl VirtualMachine {
                 };
                 vals[*i].clone()
             }
-            Expr::Read(e_addr, ty) => {
+            Expr::Alloc(e_addr, ty) => {
                 let Const(Constant::Int(addr)) = self.interpret(e_addr, arg) else {
                     panic!("expected integer address in read")
                 };

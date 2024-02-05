@@ -1,9 +1,11 @@
 use std::rc::Rc;
 
-use crate::schema::{Assumption, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp};
+use crate::schema::{
+    Assumption, BaseType, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
+};
 
 pub fn intt() -> Type {
-    Type::IntT
+    Type::Base(BaseType::IntT)
 }
 
 pub fn boolt() -> Type {

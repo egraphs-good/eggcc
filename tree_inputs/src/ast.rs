@@ -36,8 +36,20 @@ pub fn get(e: RcExpr, i: i64) -> RcExpr {
     RcExpr::new(Expr::Get(e.clone(), i))
 }
 
-pub fn read(e: RcExpr, ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Read(e.clone(), ty))
+pub fn write(ptr: RcExpr, val: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Write, ptr.clone(), val.clone()))
+}
+
+pub fn load(e: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Uop(UnaryOp::Load, e.clone()))
+}
+
+pub fn ptradd(ptr: RcExpr, i: i64) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::PtrAdd, ptr.clone(), int(i)))
+}
+
+pub fn alloc(e: RcExpr, ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Alloc(e.clone(), ty))
 }
 
 pub fn call(s: &str, e: RcExpr) -> RcExpr {

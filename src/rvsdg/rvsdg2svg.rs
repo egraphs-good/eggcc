@@ -511,9 +511,10 @@ impl Region {
 
 fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) {
     let (node, operands): (Node, Vec<Operand>) = match &nodes[index] {
-        RvsdgBody::BasicOp(BasicExpr::Op(f, xs, _ty)) => {
-            (Node::Unit(format!("{f}"), xs.len(), 1), xs.to_vec())
-        }
+        RvsdgBody::BasicOp(x @ BasicExpr::Op(f, xs, _ty)) => (
+            Node::Unit(format!("{f}"), xs.len(), x.num_outputs()),
+            xs.to_vec(),
+        ),
         RvsdgBody::BasicOp(BasicExpr::Call(f, xs, n_outputs, _ty)) => {
             (Node::Unit(f.to_string(), xs.len(), *n_outputs), xs.to_vec())
         }

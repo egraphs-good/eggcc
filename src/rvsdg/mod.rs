@@ -117,6 +117,18 @@ pub(crate) enum BasicExpr<Op> {
     Effect(EffectOps, Vec<Op>),
 }
 
+impl<Op> BasicExpr<Op> {
+    pub(crate) fn num_outputs(&self) -> usize {
+        match self {
+            BasicExpr::Op(ValueOps::Alloc | ValueOps::Load, _, _) => 2,
+            BasicExpr::Op(_, _, _) => 1,
+            BasicExpr::Call(_, _, n_outputs, _) => *n_outputs,
+            BasicExpr::Const(_, _, _) => 1,
+            BasicExpr::Effect(_, _) => 1,
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum Operand {
     /// A reference to an argument in the enclosing region.

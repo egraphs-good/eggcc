@@ -109,7 +109,6 @@
 (let par (Parallel))
 ; global short hand for (Sequential)
 (let seq (Sequential))
-(let rev (Reversed))
 
 ; A tuple with a single element.
 ; Necessary because we only use `Extend` to add to tuples.

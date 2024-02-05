@@ -5,12 +5,16 @@
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Type {
+pub enum BaseType {
     IntT,
     BoolT,
-    PointerT(Box<Type>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Type {
+    PointerT(BaseType),
     /// Nested tuple types are not allowed.
-    TupleT(Vec<Rc<Type>>),
+    TupleT(Vec<BaseType>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

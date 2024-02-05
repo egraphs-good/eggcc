@@ -10,13 +10,14 @@
 
 (sort TypeList)
 
-(datatype Type
+(datatype BaseType
   (IntT)
-  (BoolT)
-  ; pointers cannot point to tuple types
-  (PointerT Type)
-  ; Nested tuple types are not allowed
-  (TupleT TypeList) 
+  (BoolT))
+
+(datatype Type
+  (Base BaseType)
+  (PointerT BaseType)
+  (TupleT BaseType) 
 )
 
 (function TNil () TypeList)

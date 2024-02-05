@@ -69,15 +69,12 @@
 
 
 ; Defines the order of evaluating a `Push` term.
-; If the order is `Parallel`, the "value expr" may be evaluated first
-; or the "tuple expr" may be evaluated first.
-; Either way, the program should reach an equivalent state.
 (datatype Order
+  ; evaluate in any order
+  ; the program should reach an equivalent state either way
   (Parallel)
-  ;; evaluate the "value expr" first
-  (Sequential)
-  ;; evaluate the "tuple expr" first
-  (Reversed))
+  ; evaluate the "value expr" first
+  (Sequential))
 
 ; global short hand for (Parallel)
 (let par (Parallel))

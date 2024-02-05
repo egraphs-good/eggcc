@@ -1,4 +1,24 @@
+use std::rc::Rc;
+
 use crate::schema::{Assumption, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp};
+
+pub fn intt() -> Type {
+    Type::IntT
+}
+
+pub fn boolt() -> Type {
+    Type::BoolT
+}
+
+pub fn tuplet_vec(types: Vec<Rc<Type>>) -> Type {
+    Type::TupleT(types)
+}
+
+#[macro_export]
+macro_rules! tuplet {
+    ($($x:expr),* $(,)?) => ($crate::ast::tuplet_vec(vec![$(std::rc::Rc::new($x)),*]))
+}
+pub use tuplet;
 
 pub fn add(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Add, l.clone(), r.clone()))
@@ -87,10 +107,6 @@ pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
 
 pub fn push_seq(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Push(Order::Sequential, l, r))
-}
-
-pub fn push_rev(val: RcExpr, tuple: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Push(Order::Reversed, val, tuple))
 }
 
 #[macro_export]

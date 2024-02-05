@@ -41,7 +41,6 @@ pub enum Constant {
 pub enum Order {
     Parallel,
     Sequential,
-    Reversed,
 }
 
 pub type RcExpr = Rc<Expr>;

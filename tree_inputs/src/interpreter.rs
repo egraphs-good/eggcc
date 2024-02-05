@@ -138,11 +138,6 @@ impl VirtualMachine {
                     Order::Sequential | Order::Parallel => {
                         (self.interpret(e1, arg), self.interpret(e2, arg))
                     }
-                    Order::Reversed => {
-                        let v2 = self.interpret(e2, arg);
-                        let v1 = self.interpret(e1, arg);
-                        (v1, v2)
-                    }
                 };
                 if let Tuple(..) = v1 {
                     panic!("expected non-tuple in push's first argument: {:?}", e1)
@@ -239,8 +234,7 @@ fn test_interpreter_fib_using_memory() {
             twrite(int(0), int(0)), // address 0, value 0
             twrite(int(1), int(1)), // address 1, value 1
         ),
-        push_rev(
-            read(int(nth), IntT),
+        tlet(
             dowhile(
                 parallel!(int(2)),
                 parallel!(
@@ -260,6 +254,7 @@ fn test_interpreter_fib_using_memory() {
                     )
                 ),
             ),
+            push_par(read(int(nth), IntT), arg(tuplet!(intt()))),
         ),
     );
 

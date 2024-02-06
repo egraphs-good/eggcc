@@ -99,12 +99,12 @@ impl Expr {
                 let lhs = lhs.to_egglog_internal(term_dag);
                 let rhs = rhs.to_egglog_internal(term_dag);
                 let op = op.to_egglog_internal(term_dag);
-                term_dag.app("BOp".into(), vec![op, lhs, rhs])
+                term_dag.app("Bop".into(), vec![op, lhs, rhs])
             }
             Expr::Uop(op, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 let op = op.to_egglog_internal(term_dag);
-                term_dag.app("UOp".into(), vec![op, expr])
+                term_dag.app("Uop".into(), vec![op, expr])
             }
             Expr::Get(expr, index) => {
                 let expr = expr.to_egglog_internal(term_dag);
@@ -244,7 +244,7 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
     let expr = add(int(1), arg());
-    test_expr_parses_to(expr, "(BOp (Add) (Const (Int 1)) (Arg))");
+    test_expr_parses_to(expr, "(Bop (Add) (Const (Int 1)) (Arg))");
 }
 
 #[test]
@@ -281,13 +281,13 @@ fn convert_whole_program() {
         expr,
         "(Program 
             (Function \"main\" (Base (IntT)) (Base (IntT)) 
-                (BOp (Add) (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
+                (Bop (Add) (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (DoWhile (Arg) 
                         (Concat (Parallel) 
-                            (Single (BOp (LessThan) (Arg) (Const (Int 10))))
-                            (Single (BOp (Add) (Arg) (Const (Int 1))))))) 
+                            (Single (Bop (LessThan) (Arg) (Const (Int 10))))
+                            (Single (Bop (Add) (Arg) (Const (Int 1))))))) 
                 (Nil)))",
     );
 }

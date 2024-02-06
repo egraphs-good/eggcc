@@ -10,7 +10,7 @@ pub fn boolt() -> Type {
     Type::Base(BaseType::BoolT)
 }
 
-pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
+pub fn tuplet_vec(types: impl IntoIterator<BaseType>) -> Type {
     Type::TupleT(types)
 }
 

@@ -17,11 +17,11 @@
 (datatype Type
   (Base BaseType)
   (PointerT BaseType)
-  (TupleT BaseType) 
+  (TupleT TypeList) 
 )
 
 (function TNil () TypeList)
-(function TCons (Type TypeList) TypeList)
+(function TCons (BaseType TypeList) TypeList)
 
 
 ; =================================

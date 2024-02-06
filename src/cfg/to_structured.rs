@@ -9,6 +9,7 @@
 
 use std::collections::HashMap;
 
+use bril_rs::Type;
 use petgraph::{
     algo::dominators::{self, Dominators},
     prelude::NodeIndex,
@@ -149,6 +150,7 @@ impl<'a> StructuredCfgBuilder<'a> {
                                     BranchOp::Cond {
                                         val: val1,
                                         arg: arg1,
+                                        bril_type: Type::Bool,
                                     },
                                 ..
                             },

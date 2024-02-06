@@ -100,6 +100,20 @@ impl RvsdgFunction {
         use Expr::*;
         match body {
             RvsdgBody::BasicOp(expr) => Call("PureOp".into(), vec![self.expr_to_egglog_expr(expr)]),
+            // Schema doesn't have If, instead use Switch
+            RvsdgBody::If {
+                pred,
+                inputs,
+                then_branch,
+                else_branch,
+            } => {
+                let switch = RvsdgBody::Gamma {
+                    pred: *pred,
+                    inputs: inputs.clone(),
+                    outputs: vec![else_branch.clone(), then_branch.clone()],
+                };
+                self.body_to_egglog_expr(&switch)
+            }
             RvsdgBody::Gamma {
                 pred,
                 inputs,

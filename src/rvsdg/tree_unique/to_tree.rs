@@ -128,6 +128,7 @@ impl<'a> RegionTranslator<'a> {
             let node = &self.nodes[id];
             match node {
                 RvsdgBody::BasicOp(expr) => self.translate_basic_expr(expr.clone(), id),
+                RvsdgBody::If { .. } => todo!("Doesn't handle if yet"),
                 RvsdgBody::Gamma { .. } => todo!("Doesn't handle gamma yet"),
                 RvsdgBody::Theta {
                     pred,

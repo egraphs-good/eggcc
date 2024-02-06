@@ -1,5 +1,6 @@
 //! Convert a potentially irreducible CFG to a reducible one.
 
+use bril_rs::Type;
 use hashbrown::{HashMap, HashSet};
 use petgraph::{
     algo::{dominators, tarjan_scc},
@@ -55,6 +56,9 @@ impl SwitchCfgFunction {
         self.restructure_branches(&mut state);
     }
 
+    /// Using a boolean predicate,
+    /// add a branch to the graph that jumps from `from` and to
+    /// `to` when the predicate has value `cv`.
     fn branch_if(
         &mut self,
         from: NodeIndex,
@@ -69,6 +73,7 @@ impl SwitchCfgFunction {
                 op: BranchOp::Cond {
                     arg: id.clone(),
                     val: cv,
+                    bril_type: Type::Bool,
                 },
                 pos: None,
             },

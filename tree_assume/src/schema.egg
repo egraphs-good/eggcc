@@ -112,7 +112,7 @@
 
 ; global short hands for orders
 (let par (Parallel))
-(let seq (Sequential))
+(let sequ (Sequential))
 (let rev (Reversed))
 
 ; A tuple with a single element.

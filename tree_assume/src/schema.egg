@@ -169,8 +169,8 @@
   ; is evaluated once at the nearest enclosing `Let`.
   ;      expr
   (InLet Expr)
-  ; The term is in a loop with `input` and `output`.
-  ;      input    output
+  ; The term is in a loop with `input` and `pred_output`.
+  ;      input    pred_output
   (InLoop Expr     Expr)
   ; Other assumptions are possible, but not supported yet.
   ; For example:

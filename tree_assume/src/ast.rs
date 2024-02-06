@@ -10,7 +10,7 @@ pub fn boolt() -> Type {
     Type::Base(BaseType::BoolT)
 }
 
-pub fn tuplet_vec(types: impl IntoIterator<BaseType>) -> Type {
+pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
 }
 
@@ -150,12 +150,8 @@ macro_rules! parallel {
 }
 pub use parallel;
 
-pub fn parallel_vec(es: Vec<RcExpr>) -> RcExpr {
-    let mut res = empty();
-    for expr in es {
-        res = push_par(expr, res);
-    }
-    res
+pub fn parallel_vec(es: impl Iterator<Item = RcExpr>) -> RcExpr {
+    es.fold(empty(), |acc, x| push_par(x, acc))
 }
 
 pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {

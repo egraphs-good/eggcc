@@ -21,7 +21,7 @@ impl Pointer {
         }
     }
 
-    // gets the address of this pointer, panicing
+    // gets the address of this pointer, panicking
     // if the pointer is out of bounds
     fn addr(&self) -> usize {
         if self.offset < 0 || self.offset as usize >= self.size {
@@ -118,21 +118,21 @@ pub fn interpret_expr(expr: &RcExpr, arg: &Option<Value>) -> BrilState {
 }
 
 impl<'a> VirtualMachine<'a> {
-    fn interp_intexpr(&mut self, e: &RcExpr, arg: &Option<Value>) -> i64 {
+    fn interp_int_expr(&mut self, e: &RcExpr, arg: &Option<Value>) -> i64 {
         match self.interpret_expr(e, arg) {
             Const(Constant::Int(n)) => n,
             other => panic!("Expected integer. Got {:?} from expr {:?}", other, e),
         }
     }
 
-    fn interp_boolexpr(&mut self, e: &RcExpr, arg: &Option<Value>) -> bool {
+    fn interp_bool_expr(&mut self, e: &RcExpr, arg: &Option<Value>) -> bool {
         match self.interpret_expr(e, arg) {
             Const(Constant::Bool(b)) => b,
             other => panic!("Expected boolean. Got {:?} from expr {:?}", other, e),
         }
     }
 
-    fn interp_pointerexpr(&mut self, e: &RcExpr, arg: &Option<Value>) -> Pointer {
+    fn interp_pointer_expr(&mut self, e: &RcExpr, arg: &Option<Value>) -> Pointer {
         match self.interpret_expr(e, arg) {
             Ptr(ptr) => ptr,
             other => panic!("Expected pointer. Got {:?} from expr {:?}", other, e),
@@ -146,9 +146,9 @@ impl<'a> VirtualMachine<'a> {
         e2: &RcExpr,
         arg: &Option<Value>,
     ) -> Value {
-        let get_int = |e: &RcExpr, vm: &mut Self| vm.interp_intexpr(e, arg);
-        let get_bool = |e: &RcExpr, vm: &mut Self| vm.interp_boolexpr(e, arg);
-        let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointerexpr(e, arg);
+        let get_int = |e: &RcExpr, vm: &mut Self| vm.interp_int_expr(e, arg);
+        let get_bool = |e: &RcExpr, vm: &mut Self| vm.interp_bool_expr(e, arg);
+        let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointer_expr(e, arg);
         match bop {
             BinaryOp::Add => Const(Constant::Int(get_int(e1, self) + get_int(e2, self))),
             BinaryOp::Sub => Const(Constant::Int(get_int(e1, self) - get_int(e2, self))),
@@ -175,7 +175,7 @@ impl<'a> VirtualMachine<'a> {
 
     fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Option<Value>) -> Value {
         match uop {
-            UnaryOp::Not => Const(Constant::Bool(!self.interp_boolexpr(e, arg))),
+            UnaryOp::Not => Const(Constant::Bool(!self.interp_bool_expr(e, arg))),
             UnaryOp::Print => {
                 let val = self.interpret_expr(e, arg);
                 let v_str = format!("{}", val);
@@ -183,7 +183,7 @@ impl<'a> VirtualMachine<'a> {
                 Tuple(vec![])
             }
             UnaryOp::Load => {
-                let ptr = self.interp_pointerexpr(e, arg);
+                let ptr = self.interp_pointer_expr(e, arg);
                 if let Some(val) = self.mem.get(&ptr.addr()) {
                     val.clone()
                 } else {
@@ -215,7 +215,7 @@ impl<'a> VirtualMachine<'a> {
             }
             // assume this is type checked, so ignore type
             Expr::Alloc(e_size, _ty) => {
-                let size = self.interp_intexpr(e_size, arg);
+                let size = self.interp_int_expr(e_size, arg);
                 let addr = self.next_addr;
                 self.next_addr += usize::try_from(size).unwrap();
                 Ptr(Pointer::new(addr, size as usize, 0))
@@ -245,9 +245,7 @@ impl<'a> VirtualMachine<'a> {
                 Tuple(v1)
             }
             Expr::Switch(pred, branches) => {
-                let Const(Constant::Int(index)) = self.interpret_expr(pred, arg) else {
-                    panic!("expected integer in switch")
-                };
+                let index = self.interp_int_expr(pred, arg);
                 if index < 0 || index as usize >= branches.len() {
                     // TODO refactor to return a Result
                     panic!("switch index out of bounds")
@@ -255,9 +253,7 @@ impl<'a> VirtualMachine<'a> {
                 self.interpret_expr(&branches[index as usize], arg)
             }
             Expr::If(pred, then, els) => {
-                let Const(Constant::Bool(pred_evaluated)) = self.interpret_expr(pred, arg) else {
-                    panic!("expected boolean in if")
-                };
+                let pred_evaluated = self.interp_bool_expr(pred, arg);
                 if pred_evaluated {
                     self.interpret_expr(then, arg)
                 } else {
@@ -349,7 +345,7 @@ fn test_interpret_recursive() {
 #[test]
 fn test_interpreter() {
     use crate::ast::*;
-    // numbers 1-10
+    // print numbers 1-10
     let expr = get(
         dowhile(
             parallel!(int(1)),

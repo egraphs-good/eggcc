@@ -117,23 +117,31 @@ pub fn single(e: RcExpr) -> RcExpr {
 }
 
 pub fn cons_par(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Extend(Order::Parallel, r, single(l)))
+    RcExpr::new(Expr::Concat(Order::Parallel, single(l), r))
 }
 
 pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Extend(Order::Parallel, single(l), r))
+    RcExpr::new(Expr::Concat(Order::Parallel, r, single(l)))
 }
 
 pub fn push_seq(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Extend(Order::Sequential, single(l), r))
+    RcExpr::new(Expr::Concat(Order::Sequential, r, single(l)))
 }
 
-pub fn extend_par(tuple: RcExpr, onto: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Extend(Order::Parallel, tuple, onto))
+pub fn push_rev(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Concat(Order::Reversed, r, single(l)))
 }
 
-pub fn extend_seq(tuple: RcExpr, onto: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Extend(Order::Sequential, tuple, onto))
+pub fn concat_par(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Concat(Order::Parallel, tuple, tuple2))
+}
+
+pub fn concat_seq(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Concat(Order::Sequential, tuple, tuple2))
+}
+
+pub fn concat_rev(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Concat(Order::Reversed, tuple, tuple2))
 }
 
 #[macro_export]

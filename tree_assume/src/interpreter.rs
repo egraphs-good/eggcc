@@ -211,22 +211,27 @@ impl<'a> VirtualMachine<'a> {
             }
             Expr::Empty => Tuple(vec![]),
             Expr::Single(e) => Tuple(vec![self.interpret_expr(e, arg)]),
-            Expr::Extend(order, e1, e2) => {
+            Expr::Concat(order, e1, e2) => {
                 let (v1_tuple, v2_tuple) = match order {
                     // Always execute sequentially
                     // We could also test other orders for parallel tuples
                     Order::Sequential | Order::Parallel => {
                         (self.interpret_expr(e1, arg), self.interpret_expr(e2, arg))
                     }
+                    Order::Reversed => {
+                        let v2 = self.interpret_expr(e2, arg);
+                        let v1 = self.interpret_expr(e1, arg);
+                        (v1, v2)
+                    }
                 };
-                let Tuple(v1) = v1_tuple else {
+                let Tuple(mut v1) = v1_tuple else {
                     panic!("expected tuple in extend's first argument in: {:?}", e1)
                 };
-                let Tuple(mut v2) = v2_tuple else {
+                let Tuple(v2) = v2_tuple else {
                     panic!("expected tuple in extend's second argument in {:?}", e2)
                 };
-                v2.extend(v1);
-                Tuple(v2)
+                v1.extend(v2);
+                Tuple(v1)
             }
             Expr::Switch(pred, branches) => {
                 let Const(Constant::Int(index)) = self.interpret_expr(pred, arg) else {
@@ -358,9 +363,9 @@ fn test_interpreter_fib_using_memory() {
     let expr = tlet(
         alloc(int(nth + 2), intt()),
         tlet(
-            extend_seq(
+            concat_seq(
                 twrite(arg(), int(0)), // address 0, value 0
-                extend_seq(
+                concat_seq(
                     twrite(ptradd(arg(), int(1)), int(1)), // address 1, value 1
                     single(arg()),
                 ),
@@ -371,7 +376,7 @@ fn test_interpreter_fib_using_memory() {
                     cons_par(
                         less_than(getat(1), int(nth)),
                         tlet(
-                            extend_seq(
+                            concat_seq(
                                 twrite(
                                     getat(0),
                                     add(

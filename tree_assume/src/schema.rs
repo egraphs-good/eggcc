@@ -47,6 +47,7 @@ pub enum Constant {
 pub enum Order {
     Parallel,
     Sequential,
+    Reversed,
 }
 
 pub type RcExpr = Rc<Expr>;
@@ -67,7 +68,7 @@ pub enum Expr {
     Call(String, RcExpr),
     Empty,
     Single(RcExpr),
-    Extend(Order, RcExpr, RcExpr),
+    Concat(Order, RcExpr, RcExpr),
     Switch(RcExpr, Vec<RcExpr>),
     If(RcExpr, RcExpr, RcExpr),
     Let(RcExpr, RcExpr),

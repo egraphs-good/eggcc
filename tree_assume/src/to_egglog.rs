@@ -125,11 +125,11 @@ impl Expr {
                 let expr = expr.to_egglog_internal(term_dag);
                 term_dag.app("Single".into(), vec![expr])
             }
-            Expr::Extend(order, lhs, rhs) => {
+            Expr::Concat(order, lhs, rhs) => {
                 let lhs = lhs.to_egglog_internal(term_dag);
                 let rhs = rhs.to_egglog_internal(term_dag);
                 let order = order.to_egglog_internal(term_dag);
-                term_dag.app("Extend".into(), vec![order, lhs, rhs])
+                term_dag.app("Concat".into(), vec![order, lhs, rhs])
             }
             Expr::Switch(expr, cases) => {
                 let expr = expr.to_egglog_internal(term_dag);
@@ -254,14 +254,14 @@ fn convert_to_egglog_simple_arithmetic() {
 #[test]
 fn convert_to_egglog_switch() {
     use crate::ast::*;
-    let expr = switch!(int(1); extend_par(single(int(1)), single(int(2))), extend_par(single(int(3)), single(int(4))));
+    let expr = switch!(int(1); concat_par(single(int(1)), single(int(2))), concat_par(single(int(3)), single(int(4))));
     test_expr_parses_to(
         expr,
         "(Switch (Const (Int 1))
                  (Cons 
-                  (Extend (Parallel) (Single (Const (Int 1))) (Single (Const (Int 2))))
+                  (Concat (Parallel) (Single (Const (Int 1))) (Single (Const (Int 2))))
                   (Cons 
-                   (Extend (Parallel) (Single (Const (Int 3))) (Single (Const (Int 4))))
+                   (Concat (Parallel) (Single (Const (Int 3))) (Single (Const (Int 4))))
                    (Nil))))",
     );
 }
@@ -277,7 +277,7 @@ fn convert_whole_program() {
             intt(),
             dowhile(
                 arg(),
-                extend_par(add(arg(), int(1)), single(less_than(arg(), int(10))))
+                push_par(add(arg(), int(1)), single(less_than(arg(), int(10))))
             )
         )
     );
@@ -289,9 +289,9 @@ fn convert_whole_program() {
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (DoWhile (Arg) 
-                        (Extend (Parallel) 
-                            (Add (Arg) (Const (Int 1))) 
-                            (Single (LessThan (Arg) (Const (Int 10))))))) 
+                        (Concat (Parallel) 
+                            (Single (LessThan (Arg) (Const (Int 10))))
+                            (Single (Add (Arg) (Const (Int 1))))))) 
                 (Nil)))",
     );
 }

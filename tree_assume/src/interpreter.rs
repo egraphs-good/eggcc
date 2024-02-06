@@ -62,19 +62,31 @@ impl Display for Value {
 
 use Value::{Const, Ptr, Tuple};
 
+/// Keeps track of state while running
+/// the given TreeProgram.
 pub(crate) struct VirtualMachine<'a> {
     program: &'a TreeProgram,
+    /// Next address for allocating memory.
     next_addr: usize,
+    /// All of memory
     mem: HashMap<usize, Value>,
+    /// Print log
     log: Vec<String>,
 }
 
+/// Represents the result of running a
+/// TreeProgram.
 pub struct BrilState {
+    /// Resulting memory state
     pub mem: HashMap<usize, Value>,
+    /// Pring log
     pub log: Vec<String>,
+    /// Return value from the program
     pub value: Value,
 }
 
+/// Interprets a program, returning the value
+/// returned by the program.
 pub fn interpret(prog: &TreeProgram, arg: Value) -> Value {
     let mut vm = VirtualMachine {
         program: prog,
@@ -85,6 +97,7 @@ pub fn interpret(prog: &TreeProgram, arg: Value) -> Value {
     vm.interpret(&prog.entry.func_name().unwrap(), &Some(arg))
 }
 
+/// Interprets an expression, returning the value
 pub fn interpret_expr(expr: &RcExpr, arg: &Option<Value>) -> BrilState {
     let mut vm = VirtualMachine {
         program: &TreeProgram {
@@ -105,21 +118,21 @@ pub fn interpret_expr(expr: &RcExpr, arg: &Option<Value>) -> BrilState {
 }
 
 impl<'a> VirtualMachine<'a> {
-    fn get_int(&mut self, e: &RcExpr, arg: &Option<Value>) -> i64 {
+    fn interp_intexpr(&mut self, e: &RcExpr, arg: &Option<Value>) -> i64 {
         match self.interpret_expr(e, arg) {
             Const(Constant::Int(n)) => n,
             other => panic!("Expected integer. Got {:?} from expr {:?}", other, e),
         }
     }
 
-    fn get_bool(&mut self, e: &RcExpr, arg: &Option<Value>) -> bool {
+    fn interp_boolexpr(&mut self, e: &RcExpr, arg: &Option<Value>) -> bool {
         match self.interpret_expr(e, arg) {
             Const(Constant::Bool(b)) => b,
             other => panic!("Expected boolean. Got {:?} from expr {:?}", other, e),
         }
     }
 
-    fn get_pointer(&mut self, e: &RcExpr, arg: &Option<Value>) -> Pointer {
+    fn interp_pointerexpr(&mut self, e: &RcExpr, arg: &Option<Value>) -> Pointer {
         match self.interpret_expr(e, arg) {
             Ptr(ptr) => ptr,
             other => panic!("Expected pointer. Got {:?} from expr {:?}", other, e),
@@ -133,9 +146,9 @@ impl<'a> VirtualMachine<'a> {
         e2: &RcExpr,
         arg: &Option<Value>,
     ) -> Value {
-        let get_int = |e: &RcExpr, vm: &mut Self| vm.get_int(e, arg);
-        let get_bool = |e: &RcExpr, vm: &mut Self| vm.get_bool(e, arg);
-        let get_pointer = |e: &RcExpr, vm: &mut Self| vm.get_pointer(e, arg);
+        let get_int = |e: &RcExpr, vm: &mut Self| vm.interp_intexpr(e, arg);
+        let get_bool = |e: &RcExpr, vm: &mut Self| vm.interp_boolexpr(e, arg);
+        let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointerexpr(e, arg);
         match bop {
             BinaryOp::Add => Const(Constant::Int(get_int(e1, self) + get_int(e2, self))),
             BinaryOp::Sub => Const(Constant::Int(get_int(e1, self) - get_int(e2, self))),
@@ -144,7 +157,6 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::And => Const(Constant::Bool(get_bool(e1, self) && get_bool(e2, self))),
             BinaryOp::Or => Const(Constant::Bool(get_bool(e1, self) || get_bool(e2, self))),
             BinaryOp::Write => {
-                eprintln!("write {:?} {:?}", e1, e2);
                 let pointer = get_pointer(e1, self);
                 let val = self.interpret_expr(e2, arg).clone();
                 self.mem.insert(pointer.addr(), val);
@@ -163,7 +175,7 @@ impl<'a> VirtualMachine<'a> {
 
     fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Option<Value>) -> Value {
         match uop {
-            UnaryOp::Not => Const(Constant::Bool(!self.get_bool(e, arg))),
+            UnaryOp::Not => Const(Constant::Bool(!self.interp_boolexpr(e, arg))),
             UnaryOp::Print => {
                 let val = self.interpret_expr(e, arg);
                 let v_str = format!("{}", val);
@@ -171,8 +183,7 @@ impl<'a> VirtualMachine<'a> {
                 Tuple(vec![])
             }
             UnaryOp::Load => {
-                eprintln!("load {:?}", e);
-                let ptr = self.get_pointer(e, arg);
+                let ptr = self.interp_pointerexpr(e, arg);
                 if let Some(val) = self.mem.get(&ptr.addr()) {
                     val.clone()
                 } else {
@@ -204,7 +215,7 @@ impl<'a> VirtualMachine<'a> {
             }
             // assume this is type checked, so ignore type
             Expr::Alloc(e_size, _ty) => {
-                let size = self.get_int(e_size, arg);
+                let size = self.interp_intexpr(e_size, arg);
                 let addr = self.next_addr;
                 self.next_addr += usize::try_from(size).unwrap();
                 Ptr(Pointer::new(addr, size as usize, 0))
@@ -257,7 +268,8 @@ impl<'a> VirtualMachine<'a> {
                 let Tuple(mut vals) = self.interpret_expr(input, arg) else {
                     panic!("expected tuple for input in do-while")
                 };
-                eprintln!("do-while input: {:?}", vals);
+
+                // Because it's a do-while, we always execute the body at least once
                 let mut pred = Const(Constant::Bool(true));
                 while pred == Const(Constant::Bool(true)) {
                     let Tuple(pred_output_val) =
@@ -273,19 +285,23 @@ impl<'a> VirtualMachine<'a> {
                     pred = pred_output_val[0].clone();
                     vals = pred_output_val[1..].to_vec();
                 }
-                eprintln!("do-while result: {:?}", vals);
                 Tuple(vals)
             }
             Expr::Let(input, output) => {
+                // Evaluate the input first, once
                 let vals = self.interpret_expr(input, arg);
+                // Evaluate the output with the result
+                // bound to `(Arg)`
                 self.interpret_expr(output, &Some(vals.clone()))
             }
             Expr::Arg => {
-                let Some(v) = arg else { panic!("arg") };
+                // Argument should be bound to a value
+                let Some(v) = arg else {
+                    panic!("Argument not bound to any value")
+                };
                 v.clone()
             }
-            // just interpret the body
-            Expr::Function(_, _, _, body) => self.interpret_expr(body, arg),
+            Expr::Function(..) => panic!("Function should not be interpreted as an expression"),
             Expr::Call(func_name, e) => {
                 let e_val = self.interpret_expr(e, arg);
                 self.interpret(func_name, &Some(e_val))

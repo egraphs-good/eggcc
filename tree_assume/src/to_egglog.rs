@@ -1,6 +1,6 @@
 use egglog::{ast::Literal, Term, TermDag};
 
-use crate::schema::{Assumption, BaseType, Constant, Expr, Order, RcExpr, TreeProgram, Type};
+use crate::schema::{Assumption, BaseType, Constant, Expr, Order, TreeProgram, Type};
 
 impl Constant {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
@@ -69,20 +69,6 @@ impl Order {
 }
 
 impl Expr {
-    pub fn func_name(&self) -> Option<String> {
-        match self {
-            Expr::Function(name, _, _, _) => Some(name.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn func_body(&self) -> Option<&RcExpr> {
-        match self {
-            Expr::Function(_, _, _, body) => Some(body),
-            _ => None,
-        }
-    }
-
     pub fn to_egglog(&self) -> (Term, TermDag) {
         let mut termdag = TermDag::default();
         let term = self.to_egglog_internal(&mut termdag);
@@ -174,15 +160,6 @@ impl Expr {
 }
 
 impl TreeProgram {
-    pub fn get_function(&self, name: &str) -> Option<&RcExpr> {
-        if self.entry.func_name() == Some(name.to_string()) {
-            return Some(&self.entry);
-        }
-        self.functions
-            .iter()
-            .find(|expr| expr.func_name() == Some(name.to_string()))
-    }
-
     /// Translates an the program to an egglog term
     /// encoded with respect to `schema.egg`.
     /// Shares common subexpressions.
@@ -221,6 +198,9 @@ fn to_tlistexpr(terms: Vec<Term>, term_dag: &mut TermDag) -> Term {
     }
     list
 }
+
+#[cfg(test)]
+use crate::schema::RcExpr;
 
 #[cfg(test)]
 fn test_program_parses_to(prog: TreeProgram, expected: &str) {

@@ -17,11 +17,11 @@
 (datatype Type
   (Base BaseType)
   (PointerT BaseType)
-  (TupleT BaseType) 
+  (TupleT TypeList) 
 )
 
 (function TNil () TypeList)
-(function TCons (Type TypeList) TypeList)
+(function TCons (BaseType TypeList) TypeList)
 
 
 ; =================================
@@ -89,36 +89,36 @@
 ; Tuple operations
 ; =================================
 
-; `Empty`, `Push` and `Extend` create tuples.
+; `Empty`, `Single` and `Concat` create tuples.
 ; 1. Use `Empty` for an empty tuple.
-; 2. Use `Push` to add to the back of a tuple.
-; 3. Use `Extend` to add one tuple to the back of another.
+; 2. Use `Single` for a tuple with one element.
+; 3. Use `Concat` to append the elements from two tuples together.
 ; Nested tuples are not allowed.
 
 
-; Defines the order of evaluating an `Extend` term.
+; Defines the order of evaluating a `Concat` term.
 (datatype Order
   ; Either argument may be evaluated first.
   ; Either way, the program should reach an equivalent state.
   (Parallel)
-  ; evaluate the first argument first
-  ; e.g. `(Extend (Single a) (Single b))` evalutes to `(b, a)` with `a` evaluated first
-  (Sequential))
+  ; Evaluate the first argument first.
+  (Sequential)
+  ; Evaluate the second argument first.
+  (Reversed))
 
-; global short hand for (Parallel)
+; global short hands for orders
 (let par (Parallel))
-; global short hand for (Sequential)
 (let seq (Sequential))
+(let rev (Reversed))
 
 ; A tuple with a single element.
-; Necessary because we only use `Extend` to add to tuples.
+; Necessary because we only use `Concat` to add to tuples.
 (function Single (Expr) Expr)
-; Extend adds `expr1` to the end of `tuple expr2` elementwise.
-; e.g. (Extend (Parallel) (Extend (Sequential) (Single b) (Single a))
-;                         (Extend (Sequential) (Single d) (Single c))) = (c, d, a, b)
-; Extend keeps tuples flat, since nested tuples are not allowed.
+; Concat appends the elemnts from two tuples together
+; e.g. (Concat (Parallel) (Concat (Sequential) (Single a) (Single b))
+;                         (Concat (Sequential) (Single c) (Single d))) = (a, b, c, d)
 ;                 order   expr1       expr2
-(function Extend (Order   Expr        Expr)       Expr)
+(function Concat (Order   Expr        Expr)       Expr)
 
 
 

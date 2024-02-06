@@ -14,9 +14,13 @@
   (IntT)
   (BoolT))
 
+
 (datatype Type
+  ; a primitive type
   (Base BaseType)
+  ; a pointer to a memory region with a particular type
   (PointerT BaseType)
+  ; a typed tuple. Use an empty tuple as a unit type.
   (TupleT TypeList) 
 )
 

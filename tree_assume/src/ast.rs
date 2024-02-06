@@ -14,6 +14,8 @@ pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
 }
 
+/// Construct a tuple type from the child types
+/// e.g. `tuple!(intt(), boolt())` becomes `Type::TupleT(vec![BaseType::IntT, BaseType::BoolT])`
 #[macro_export]
 macro_rules! tuplet {
     ($($x:expr),* $(,)?) => ($crate::ast::tuplet_vec(vec![$(std::rc::Rc::new($x)),*]))
@@ -88,6 +90,7 @@ pub fn call(s: &str, e: RcExpr) -> RcExpr {
 }
 /// a macro that wraps the children in
 /// a vec for program
+/// e.g. `program!(main, f1, f2, f3)` becomes `TreeProgram { entry: main, functions: vec![f1, f2, f3] }`
 #[macro_export]
 macro_rules! program {
     ($main:expr, $($x:expr),* $(,)?) => ($crate::ast::program_vec($main, vec![$($x),*]))
@@ -98,6 +101,8 @@ pub fn program_vec(entry: RcExpr, functions: Vec<RcExpr>) -> TreeProgram {
     TreeProgram { entry, functions }
 }
 
+/// Create a switch given a predicate and a list of cases
+/// e.g. `switch!(cond; case1, case2, case3)` becomes `switch_vec(cond, vec![case1, case2, case3])`
 #[macro_export]
 macro_rules! switch {
     ($arg:expr; $($x:expr),* $(,)?) => ($crate::ast::switch_vec($arg, vec![$($x),*]))
@@ -144,6 +149,9 @@ pub fn concat_rev(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Concat(Order::Reversed, tuple, tuple2))
 }
 
+/// Create a tuple where each element can be executed
+/// in any order.
+/// e.g. `parallel!(e1, e2, e3)` becomes `Concat(Order::Parallel, Concat(Order::Parallel, e1, e2), e3)`
 #[macro_export]
 macro_rules! parallel {
     ($($x:expr),* $(,)?) => ($crate::ast::parallel_vec(vec![$($x),*]))

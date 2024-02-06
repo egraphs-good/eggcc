@@ -17,6 +17,12 @@ impl Constant {
             }
         }
     }
+
+    pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
+        let mut termdag = TermDag::default();
+        let term = self.to_egglog_internal(&mut termdag);
+        (term, termdag)
+    }
 }
 
 impl BaseType {

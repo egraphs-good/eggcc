@@ -137,7 +137,7 @@
 
 
 ; Creates a region, binding the input to `Arg`.
-; e.g. `(Let (Extend new_tuple (Arg)) output)`
+; e.g. `(Let (Concat (Parallel) (Arg) new_tuple) output)`
 ; binds argument to the old argument plus some new values `new_tuple`.
 ; 
 ;              input    output

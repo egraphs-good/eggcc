@@ -1,6 +1,8 @@
 use egglog::{ast::Literal, Term, TermDag};
 
-use crate::schema::{Assumption, BaseType, Constant, Expr, Order, TreeProgram, Type};
+use crate::schema::{
+    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TreeProgram, Type, UnaryOp,
+};
 
 impl Constant {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
@@ -68,6 +70,18 @@ impl Order {
     }
 }
 
+impl BinaryOp {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
+        term_dag.app(format!("{:?}", self).into(), vec![])
+    }
+}
+
+impl UnaryOp {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
+        term_dag.app(format!("{:?}", self).into(), vec![])
+    }
+}
+
 impl Expr {
     pub fn to_egglog(&self) -> (Term, TermDag) {
         let mut termdag = TermDag::default();
@@ -84,11 +98,13 @@ impl Expr {
             Expr::Bop(op, lhs, rhs) => {
                 let lhs = lhs.to_egglog_internal(term_dag);
                 let rhs = rhs.to_egglog_internal(term_dag);
-                term_dag.app(format!("{:?}", op).into(), vec![lhs, rhs])
+                let op = op.to_egglog_internal(term_dag);
+                term_dag.app("BOp".into(), vec![op, lhs, rhs])
             }
             Expr::Uop(op, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
-                term_dag.app(format!("{:?}", op).into(), vec![expr])
+                let op = op.to_egglog_internal(term_dag);
+                term_dag.app("UOp".into(), vec![op, expr])
             }
             Expr::Get(expr, index) => {
                 let expr = expr.to_egglog_internal(term_dag);
@@ -228,7 +244,7 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
     let expr = add(int(1), arg());
-    test_expr_parses_to(expr, "(Add (Const (Int 1)) (Arg))");
+    test_expr_parses_to(expr, "(BOp (Add) (Const (Int 1)) (Arg))");
 }
 
 #[test]
@@ -265,13 +281,13 @@ fn convert_whole_program() {
         expr,
         "(Program 
             (Function \"main\" (Base (IntT)) (Base (IntT)) 
-                (Add (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
+                (BOp (Add) (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (DoWhile (Arg) 
                         (Concat (Parallel) 
-                            (Single (LessThan (Arg) (Const (Int 10))))
-                            (Single (Add (Arg) (Const (Int 1))))))) 
+                            (Single (BOp (LessThan) (Arg) (Const (Int 10))))
+                            (Single (BOp (Add) (Arg) (Const (Int 1))))))) 
                 (Nil)))",
     );
 }

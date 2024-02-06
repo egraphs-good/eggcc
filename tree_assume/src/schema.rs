@@ -50,6 +50,9 @@ pub enum Order {
     Reversed,
 }
 
+/// A reference counted expression.
+/// We want sharing between sub-expressions, so we
+/// use Rc instead of Box.
 pub type RcExpr = Rc<Expr>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

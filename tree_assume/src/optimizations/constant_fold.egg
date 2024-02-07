@@ -2,6 +2,6 @@
 
 (ruleset constant_fold)
 
-(rewrite (Add (Const (Int a)) (Const (Int b)))
+(rewrite (Bop (Add) (Const (Int a)) (Const (Int b)))
          (Const (Int (+ a b)))
          :ruleset constant_fold)

@@ -41,7 +41,7 @@ mod tree_unique;
 
 use std::fmt;
 
-use bril_rs::{ConstOps, Literal, Type, ValueOps};
+use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 use egglog::{EGraph, SerializeConfig, TermDag};
 
 use thiserror::Error;
@@ -108,11 +108,25 @@ pub(crate) enum BasicExpr<Op> {
     Call(String, Vec<Op>, usize, Option<Type>),
     /// A literal constant.
     Const(ConstOps, Literal, Type),
-    /// Following bril, we treat 'print' as a built-in primitive, rather than
-    /// just another function. For the purposes of RVSDG translation, however,
-    /// print is treated the same as any other function that has no ouptputs.
-    /// The print edge is always passed as the last argument.
-    Print(Vec<Op>),
+    /// A bril effect. These are a lot like an `Op`, but they only produce a
+    /// "state edge" as output.
+    ///
+    /// Note: the only bril effects that can show up are print and
+    /// memory-related (Print, Store, Free). Other effects (e.g. control flow)
+    /// are handled separately.
+    Effect(EffectOps, Vec<Op>),
+}
+
+impl<Op> BasicExpr<Op> {
+    pub(crate) fn num_outputs(&self) -> usize {
+        match self {
+            BasicExpr::Op(ValueOps::Alloc | ValueOps::Load, _, _) => 2,
+            BasicExpr::Op(_, _, _) => 1,
+            BasicExpr::Call(_, _, n_outputs, _) => *n_outputs,
+            BasicExpr::Const(_, _, _) => 1,
+            BasicExpr::Effect(_, _) => 1,
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]

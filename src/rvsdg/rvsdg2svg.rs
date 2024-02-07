@@ -511,14 +511,15 @@ impl Region {
 
 fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) {
     let (node, operands): (Node, Vec<Operand>) = match &nodes[index] {
-        RvsdgBody::BasicOp(BasicExpr::Op(f, xs, _ty)) => {
-            (Node::Unit(format!("{f}"), xs.len(), 1), xs.to_vec())
-        }
+        RvsdgBody::BasicOp(x @ BasicExpr::Op(f, xs, _ty)) => (
+            Node::Unit(format!("{f}"), xs.len(), x.num_outputs()),
+            xs.to_vec(),
+        ),
         RvsdgBody::BasicOp(BasicExpr::Call(f, xs, n_outputs, _ty)) => {
             (Node::Unit(f.to_string(), xs.len(), *n_outputs), xs.to_vec())
         }
-        RvsdgBody::BasicOp(BasicExpr::Print(xs)) => {
-            (Node::Unit("PRINT".into(), xs.len(), 1), xs.to_vec())
+        RvsdgBody::BasicOp(BasicExpr::Effect(op, xs)) => {
+            (Node::Unit(format!("{op}"), xs.len(), 1), xs.to_vec())
         }
         RvsdgBody::BasicOp(BasicExpr::Const(ConstOps::Const, v, _ty)) => {
             (Node::Unit(format!("{v}"), 0, 1), vec![])
@@ -590,7 +591,7 @@ fn reachable_nodes(reachable: &mut BTreeSet<Id>, all: &[RvsdgBody], output: Oper
         let inputs = match &all[id] {
             RvsdgBody::BasicOp(BasicExpr::Op(_, xs, _))
             | RvsdgBody::BasicOp(BasicExpr::Call(_, xs, _, _))
-            | RvsdgBody::BasicOp(BasicExpr::Print(xs)) => xs.clone(),
+            | RvsdgBody::BasicOp(BasicExpr::Effect(_, xs)) => xs.clone(),
             RvsdgBody::BasicOp(BasicExpr::Const(..)) => vec![],
             RvsdgBody::Gamma { pred, inputs, .. } => once(pred).chain(inputs).copied().collect(),
             RvsdgBody::If {

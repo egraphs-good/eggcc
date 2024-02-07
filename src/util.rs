@@ -247,12 +247,30 @@ impl RunType {
             RunType::Serialize => false,
         }
     }
+
+    pub fn supports_memory(&self) -> bool {
+        match self {
+            RunType::RvsdgConversion | RunType::Nothing => true,
+            RunType::StructuredConversion
+            | RunType::StructuredRoundTrip
+            | RunType::RvsdgRoundTrip
+            | RunType::ToCfg
+            | RunType::CfgRoundTrip
+            | RunType::OptimizeDirectJumps
+            | RunType::RvsdgToCfg
+            | RunType::RvsdgOptimize
+            | RunType::RvsdgEgglogEncoding
+            | RunType::OptimizedRvsdg
+            | RunType::Serialize => false,
+        }
+    }
 }
 
 #[derive(Clone)]
 pub struct ProgWithArguments {
     program: Program,
     name: String,
+    has_mem: bool,
     args: Vec<String>,
 }
 
@@ -267,6 +285,11 @@ impl TestProgram {
         match self {
             TestProgram::Prog(prog) => prog,
             TestProgram::File(path) => {
+                let has_mem = path
+                    .as_os_str()
+                    .to_str()
+                    .expect("invalid path")
+                    .contains("/mem/");
                 let program_read = std::fs::read_to_string(path.clone()).unwrap();
                 let args = Optimizer::parse_bril_args(&program_read);
                 let program = Optimizer::parse_bril(&program_read).unwrap();
@@ -276,6 +299,7 @@ impl TestProgram {
                     program,
                     name,
                     args,
+                    has_mem,
                 }
             }
         }
@@ -325,6 +349,9 @@ impl Run {
             RunType::RvsdgToCfg,
             RunType::OptimizedRvsdg,
         ] {
+            if prog.has_mem && !test_type.supports_memory() {
+                continue;
+            }
             let default = Run {
                 test_type,
                 interp: false,

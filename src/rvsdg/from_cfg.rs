@@ -477,11 +477,20 @@ impl<'a> RvsdgBuilder<'a> {
                     pos,
                     op_type,
                 } => match op {
-                    ValueOps::Alloc | ValueOps::Load | ValueOps::PtrAdd => {
-                        return Err(RvsdgError::UnsupportedOperation {
-                            op: *op,
-                            pos: pos.clone(),
-                        });
+                    ValueOps::Load | ValueOps::Alloc => {
+                        // NB: Load takes a state edge _and_ returns one. We
+                        // could relax this later (making it easier to reorder
+                        // loads, etc.), but only after confirming that it is
+                        // safe wrt the model we're using. For example, in
+                        // WebAssembly, loads can trap.
+                        let dest_var = self.analysis.intern.intern(dest);
+                        let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
+                        ops.push(self.store[&self.analysis.state_var]);
+                        let expr = BasicExpr::Op(*op, ops, op_type.clone());
+                        let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
+                        self.store.insert(dest_var, Operand::Project(0, expr_id));
+                        self.store
+                            .insert(self.analysis.state_var, Operand::Project(1, expr_id));
                     }
                     ValueOps::Id => {
                         let dest_var = self.analysis.intern.intern(dest);
@@ -540,27 +549,24 @@ impl<'a> RvsdgBuilder<'a> {
                     debug_assert_eq!(funcs.len(), 1);
                 }
                 Instruction::Effect {
-                    op: EffectOps::Print,
+                    op: op @ (EffectOps::Print | EffectOps::Store | EffectOps::Free),
                     args,
                     pos,
                     ..
                 } => {
                     let mut ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
                     ops.push(self.store[&self.analysis.state_var]);
-                    let expr = BasicExpr::Print(ops);
+                    let expr = BasicExpr::Effect(*op, ops);
                     let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                     self.store
                         .insert(self.analysis.state_var, Operand::Id(expr_id));
                 }
                 Instruction::Effect { op, pos, .. } => {
-                    // Two notes here:
-                    // * Control flow like Return and Jmp _are_ supported, but
-                    // the instructions should be eliminated as part of CFG
+                    // Note: Control flow like Return and Jmp _are_ supported,
+                    // but the instructions should be eliminated as part of CFG
                     // conversion and they should instead show up as branches.
                     //
-                    // * Print isn't supported (yet!) because it would require
-                    // some form of "state" plumbing to ensure it is actually
-                    // run.
+                    // Effects like `speculate` are truly unsupported
                     return Err(RvsdgError::UnsupportedEffect {
                         op: *op,
                         pos: pos.clone(),

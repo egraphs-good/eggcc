@@ -763,7 +763,7 @@ impl<'a> RvsdgToCfg<'a> {
                     values: vec![RvsdgValue::BrilValue(dest, ty.clone())],
                 }
             }
-            BasicExpr::Print(print_operands) => {
+            BasicExpr::Effect(EffectOps::Print, print_operands) => {
                 assert!(print_operands.len() == 2);
                 let argument = self.operand_to_bril(print_operands[0], current_args, ctx);
                 // also need to evaluate other prints before this one
@@ -787,6 +787,9 @@ impl<'a> RvsdgToCfg<'a> {
                     },
                 ])
             }
+
+            // TODO: support translating non-print effects.
+            BasicExpr::Effect(..) => unimplemented!(),
         }
     }
 }

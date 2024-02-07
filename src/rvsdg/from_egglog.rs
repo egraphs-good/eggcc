@@ -1,4 +1,4 @@
-use bril_rs::{ConstOps, Literal, Type};
+use bril_rs::{ConstOps, EffectOps, Literal, Type};
 use egglog::{Term, TermDag};
 use hashbrown::HashMap;
 
@@ -166,7 +166,7 @@ impl<'a> RvsdgFromEgglog<'a> {
                 ("PRINT", [opr1, opr2]) => {
                     let opr1 = self.egglog_term_to_operand(opr1.clone());
                     let opr2 = self.egglog_term_to_operand(opr2.clone());
-                    BasicExpr::Print(vec![opr1, opr2])
+                    BasicExpr::Effect(EffectOps::Print, vec![opr1, opr2])
                 }
                 (binop, [ty, opr1, opr2]) => {
                     let opr1 = self.egglog_term_to_operand(opr1.clone());

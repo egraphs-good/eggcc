@@ -1,4 +1,4 @@
-use bril_rs::{ConstOps, Literal, Type};
+use bril_rs::{ConstOps, EffectOps, Literal, Type};
 use egglog::ast::{Expr, Symbol};
 use ordered_float::OrderedFloat;
 
@@ -53,7 +53,11 @@ impl RvsdgFunction {
                     vec![ty, ident, args, Lit(Int(*n_outs as i64))],
                 )
             }
-            BasicExpr::Print(operands) => Call("PRINT".into(), f(operands, None)),
+            BasicExpr::Effect(EffectOps::Print, operands) => {
+                // TODO: consider a uniform naming scheme between print and other operations.
+                Call("PRINT".into(), f(operands, None))
+            }
+            BasicExpr::Effect(op, operands) => Call(format!("{op}").into(), f(operands, None)),
             BasicExpr::Const(ConstOps::Const, lit, ty) => {
                 let lit = match (ty, lit) {
                     (Type::Int, Literal::Int(n)) => Call("Num".into(), vec![Lit(Int(*n))]),

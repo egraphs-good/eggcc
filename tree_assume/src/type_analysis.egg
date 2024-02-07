@@ -1,0 +1,35 @@
+(ruleset type-analysis)
+
+(relation HasType (Expr Type))
+
+; Primitives
+(rule ((= lhs (Const (Int i))))
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+
+(rule ((= lhs (Const (Bool b))))
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+
+(rule ((= lhs (Empty)))
+      ((HasType lhs (TupleT (TNil))))
+      :ruleset type-analysis)
+
+; Unary Ops
+(rule (
+        (= lhs (Uop (Not) e))
+        (HasType e (Base (BoolT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+
+(rule ((= lhs (Uop (Print) e)))
+      ((HasType lhs (TupleT (TNil))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Uop (Load) e))
+        (HasType e (PointerT ty))
+      )
+      ((HasType lhs (Base ty)))
+      :ruleset type-analysis)

@@ -8,6 +8,7 @@ pub mod interpreter;
 pub mod schema;
 pub mod schema_helpers;
 mod to_egglog;
+pub(crate) mod type_analysis;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
@@ -35,7 +36,11 @@ pub fn egglog_test(
 
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
-        [include_str!("schema.egg"),].join("\n"),
+        [
+            include_str!("schema.egg"),
+            include_str!("type_analysis.egg")
+        ]
+        .join("\n"),
         include_str!("schedule.egg"),
     );
 

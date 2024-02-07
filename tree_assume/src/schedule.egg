@@ -2,4 +2,5 @@
   (repeat 6
     (saturate always-run)
     (saturate error-checking)
+    (saturate type-analysis)
     ))

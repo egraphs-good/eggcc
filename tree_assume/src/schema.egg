@@ -112,7 +112,8 @@
 
 ; global short hands for orders
 (let par (Parallel))
-(let seq (Sequential))
+; seq is reserved by egglog, so sequ it is
+(let sequ (Sequential))
 (let rev (Reversed))
 
 ; A tuple with a single element.

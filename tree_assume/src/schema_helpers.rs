@@ -7,10 +7,15 @@ use crate::schema::{Constant, Expr, RcExpr, TreeProgram};
 /// the sugar in `ast.rs`.
 impl Display for Constant {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        match self {
-            Constant::Int(i) => write!(f, "{}", i),
-            Constant::Bool(b) => write!(f, "{}", b),
-        }
+        let (term, termdag) = self.to_egglog();
+        write!(f, "{}", termdag.to_string(&term))
+    }
+}
+
+impl Display for Expr {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let (term, termdag) = self.to_egglog();
+        write!(f, "{}", termdag.to_string(&term))
     }
 }
 

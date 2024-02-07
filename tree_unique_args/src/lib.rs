@@ -8,6 +8,7 @@ pub mod interpreter;
 pub(crate) mod ir;
 pub(crate) mod is_valid;
 pub(crate) mod ivt;
+pub(crate) mod loop_invariant;
 pub(crate) mod purity_analysis;
 pub(crate) mod simple;
 pub(crate) mod subst;
@@ -147,6 +148,7 @@ pub fn run_test(build: &str, check: &str) -> Result {
             &switch_rewrites::rules(),
             include_str!("type_analysis.egg"),
             &conditional_invariant_code_motion::rules().join("\n"),
+            &loop_invariant::rules().join("\n\n"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

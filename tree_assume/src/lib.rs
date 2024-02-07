@@ -5,6 +5,7 @@ use crate::interpreter::interpret;
 
 pub mod ast;
 pub mod interpreter;
+mod optimizations;
 pub mod schema;
 pub mod schema_helpers;
 mod to_egglog;
@@ -38,7 +39,8 @@ pub fn egglog_test(
         "{}\n{build}\n{}\n{check}\n",
         [
             include_str!("schema.egg"),
-            include_str!("type_analysis.egg")
+            include_str!("type_analysis.egg"),
+            include_str!("optimizations/constant_fold.egg")
         ]
         .join("\n"),
         include_str!("schedule.egg"),

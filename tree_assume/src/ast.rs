@@ -10,6 +10,10 @@ pub fn boolt() -> Type {
     Type::Base(BaseType::BoolT)
 }
 
+pub fn emptyt() -> Type {
+    Type::TupleT(vec![])
+}
+
 pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
 }

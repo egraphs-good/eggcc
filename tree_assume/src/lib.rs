@@ -5,6 +5,7 @@ use crate::interpreter::interpret;
 
 pub mod ast;
 pub mod interpreter;
+mod optimizations;
 pub mod schema;
 pub mod schema_helpers;
 mod to_egglog;

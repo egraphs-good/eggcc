@@ -33,3 +33,68 @@
       )
       ((HasType lhs (Base ty)))
       :ruleset type-analysis)
+
+; Binary ops
+(rule (
+        (= lhs (Bop (Add) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (Sub) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (Mul) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (LessThan) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (And) e1 e2))
+        (HasType e1 (Base (BoolT)))
+        (HasType e2 (Base (BoolT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (Or) e1 e2))
+        (HasType e1 (Base (BoolT)))
+        (HasType e2 (Base (BoolT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (Write) ptr val))
+        (HasType ptr (PointerT ty))
+        (HasType val (Base t)) ; must be BaseType??
+      )
+      ((HasType lhs (TupleT (TNil)))) ; Write returns ()
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (PtrAdd) ptr n))
+        (HasType ptr (PointerT ty))
+        (HasType n (Base (IntT)))
+      )
+      ((HasType lhs (TupleT (TNil)))) ; Returns () ??
+      :ruleset type-analysis)

@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::schema::{Constant, Expr, RcExpr, TreeProgram};
+use crate::schema::{Constant, Expr, RcExpr, TreeProgram, Type};
 
 /// Display for Constant implements a
 /// rust-readable representation using
@@ -31,6 +31,18 @@ impl Expr {
         match self {
             Expr::Function(_, _, _, body) => Some(body),
             _ => None,
+        }
+    }
+
+    pub fn to_program(self: &RcExpr, input_ty: Type, output_ty: Type) -> TreeProgram {
+        TreeProgram {
+            entry: RcExpr::new(Expr::Function(
+                "main".to_string(),
+                input_ty,
+                output_ty,
+                self.clone(),
+            )),
+            functions: vec![],
         }
     }
 }

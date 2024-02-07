@@ -85,6 +85,7 @@
         (let inner-let-id (Id (i64-fresh!)))
 
         ; Each time we need to update d by the product of the multiplied constant and the loop increment
+        ; TODO: this should be shared actually, I think I need to add a let within the loop body
         (let addend (Mul c-output (Num id loop-incr)))
 
         ; n is index of our new, temporary variable d

@@ -47,51 +47,38 @@ fn loop_strength_reduction_passthrough_const() -> Result<(), egglog::Error> {
         (ExprIsValid loop)
     ";
 
-    "
-    (Let
-        (Id 2)
-        (All
-            (Id 0)
-            (Parallel)
-            (Pair (Arg (Id 0)) (Num (Id 0) 0)))
-            (Let
-                (Id 3)
-                (Loop whatever-id
-                    (All (Id 2) (Parallel) (Cons (Num (Id 2) 0) (Cons (Get (Arg (Id 2)) 1) (Cons (Num (Id 2) 3) (Cons (Mul (Num (Id 2) 3) (Num (Id 2) 0)) (Nil))))))
-                    (All whatever-id (Sequential) (Cons (LessThan (Get (Arg whatever-id) 1) (Num whatever-id 4)) (Cons (All whatever-id (Parallel) (Cons (Get (Arg whatever-id) 3) (Cons (Add (Get (Arg whatever-id) 1) (Num whatever-id 1)) (Cons (Get (Arg whatever-id) 2) (Cons (Add (Get (Arg whatever-id) 3) (Mul (Get (Arg whatever-id) 2) (Num whatever-id 1))) (Nil)))))) (Nil)))))
-                (All (Id 3) (Parallel) (Cons (Get (Arg (Id 3)) 0) (Cons (Get (Arg (Id 3)) 1) (Cons (Get (Arg (Id 3)) 2) (Nil)))))))
-    ";
     let check = "
-    (check (=
-            loop
-            (Loop
-                whatever-id
+    (check (= loop
+    (Let
+        outer-let-id
+        (All outer-id (Parallel) (Pair (Arg outer-id) (Num outer-id 0)))
+        (Let
+            inner-let-id
+            (Loop whatever-id
                 (All
-                    outer-id
+                    outer-let-id
                     (Parallel)
-                    (Cons (Num outer-id 0) ; a
-                    (Cons (Num outer-id 0) ; i
-                    (Cons (Num outer-id 3) ; c
+                    (Cons (Num outer-let-id 0)
+                    (Cons (Get (Arg outer-let-id) 1)
+                    (Cons (Num outer-let-id 3)
                     (Cons
-                        (Mul (Num outer-id 3) (Num outer-id 0))
+                        (Mul (Num outer-let-id 3) (Num outer-let-id 0))
                         (Nil))))))
                 (All
                     whatever-id
                     (Sequential)
-                    (Cons
-                        (LessThan (Get (Arg whatever-id) 1) (Num whatever-id 4))
-                        (Cons (All
-                            whatever-id
-                            (Parallel)
-                            (Cons (Get (Arg whatever-id) 3) ; i * c => d
-                            (Cons (Add (Get (Arg whatever-id) 1) (Num whatever-id 1)) ; i += 1
-                            (Cons (Get (Arg whatever-id) 2)
-                            (Cons 
-                                (Add (Get (Arg whatever-id) 3) (Mul (Get (Arg whatever-id) 2)
-                                    (Num whatever-id 1)
-                                  ))
-                            (Nil)))))) (Nil)))))))
-    ";
+                    (Cons (LessThan (Get (Arg whatever-id) 1) (Num whatever-id 4))
+                    (Cons (All
+                        whatever-id
+                        (Parallel)
+                        (Cons (Get (Arg whatever-id) 3)
+                        (Cons (Add (Get (Arg whatever-id) 1)
+                        (Num whatever-id 1))
+                        (Cons (Get (Arg whatever-id) 2)
+                        (Cons (Add (Get (Arg whatever-id) 3) (Mul (Get (Arg whatever-id) 2) (Num whatever-id 1)))
+                        (Nil)))))) (Nil)))))
+            (All inner-let-id (Parallel) (Cons (Get (Arg inner-let-id) 0) (Cons (Get (Arg inner-let-id) 1) (Cons (Get (Arg inner-let-id) 2) (Nil)))))))
+                ))";
 
     crate::run_test(build, check)
 }
@@ -147,15 +134,20 @@ fn loop_strength_reduction_num_const() -> Result<(), egglog::Error> {
         (check (
             =
             loop
-            (Loop
+    (Let
+        outer-let-id
+        (All outer-id (Parallel) (Pair (Arg outer-id) (Num outer-id 0)))
+        (Let
+            inner-let-id
+             (Loop
                 whatever-id
                 (All
-                    outer-id
+                    outer-let-id
                     (Parallel)
-                    (Cons (Num outer-id 0) ; a
-                    (Cons (Num outer-id 0) ; i
+                    (Cons (Num outer-let-id 0) ; a
+                    (Cons (Get (Arg outer-let-id) 1) ; i
                     (Cons
-                        (Mul (Num outer-id 5) (Num outer-id 0))
+                        (Mul (Num outer-let-id 5) (Num outer-let-id 0))
                         (Nil)))))
                 (All
                     whatever-id
@@ -174,8 +166,8 @@ fn loop_strength_reduction_num_const() -> Result<(), egglog::Error> {
                             (Nil))))) (Nil))
                             ))
             )
-    ))
-    ";
+            (All inner-let-id (Parallel) (Cons (Get (Arg inner-let-id) 0) (Cons (Get (Arg inner-let-id) 1) (Cons (Get (Arg inner-let-id) 2) (Nil)))))))
+                ))";
 
     crate::run_test(build, check)
 }

@@ -12,6 +12,13 @@ impl Display for Constant {
     }
 }
 
+impl Display for Type {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let (term, termdag) = self.to_egglog();
+        write!(f, "{}", termdag.to_string(&term))
+    }
+}
+
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let (term, termdag) = self.to_egglog();

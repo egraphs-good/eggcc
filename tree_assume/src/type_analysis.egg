@@ -38,7 +38,10 @@
       :ruleset type-analysis)
 
 
-(rule ((= lhs (Uop (Print) e)))
+(rule (
+        (= lhs (Uop (Print) e))
+        (HasType e _ty)             ; just make sure it has some type.
+      )
       ((HasType lhs (TupleT (TNil))))
       :ruleset type-analysis)
 

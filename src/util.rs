@@ -285,11 +285,8 @@ impl TestProgram {
         match self {
             TestProgram::Prog(prog) => prog,
             TestProgram::File(path) => {
-                let has_mem = path
-                    .as_os_str()
-                    .to_str()
-                    .expect("invalid path")
-                    .contains("/mem/");
+                // check if the path has a folder called mem in it
+                let has_mem = path.iter().any(|x| x == "mem");
                 let program_read = std::fs::read_to_string(path.clone()).unwrap();
                 let args = Optimizer::parse_bril_args(&program_read);
                 let program = Optimizer::parse_bril(&program_read).unwrap();

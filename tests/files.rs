@@ -38,7 +38,9 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
     for entry in glob::glob(glob).unwrap() {
         let f = entry.unwrap();
 
-        if f.to_str().unwrap().contains("should_fail") || f.to_str().unwrap().contains("failing") {
+        if f.iter().any(|folder| folder == "should_fail")
+            || f.iter().any(|folder| folder == "failing")
+        {
             continue;
         }
 

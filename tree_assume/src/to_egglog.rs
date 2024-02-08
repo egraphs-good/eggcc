@@ -32,6 +32,12 @@ impl BaseType {
 }
 
 impl Type {
+    pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
+        let mut termdag = TermDag::default();
+        let term = self.to_egglog_internal(&mut termdag);
+        (term, termdag)
+    }
+    
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
         match self {
             Type::Base(base) => {

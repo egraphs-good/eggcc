@@ -3,4 +3,5 @@
     (repeat 100 assume)
     (saturate always-run)
     (saturate error-checking)
+    (saturate type-analysis)
     (saturate constant_fold)))

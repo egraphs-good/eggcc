@@ -1,6 +1,6 @@
-use crate::schema::{
-    Assumption, BaseType, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
-};
+use crate::{interpreter::Value, schema::{
+    Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp
+}};
 
 pub fn intt() -> Type {
     Type::Base(BaseType::IntT)
@@ -16,6 +16,18 @@ pub fn emptyt() -> Type {
 
 pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
+}
+
+pub fn val_int(i: i64) -> Value {
+    Value::Const(Constant::Int(i))
+}
+
+pub fn val_bool(i: bool) -> Value {
+    Value::Const(Constant::Bool(i))
+}
+
+pub fn val_empty() -> Value {
+    Value::Tuple(vec![])
 }
 
 /// Construct a tuple type from the child types

@@ -1,0 +1,168 @@
+(ruleset type-analysis)
+
+(relation HasType (Expr Type))
+
+;; Keep track of type expectations for error messages
+(relation ExpectType (Expr Type String))
+
+(rule (
+        (ExpectType e expected msg)
+        (HasType e actual)
+        (!= expected actual) ;; OKAY to compare types for equality because we never union types.
+      )
+      ((panic "type mismatch, better error message later :(")) ; once egglog allows non-literal panics
+      :ruleset type-analysis)
+
+; Primitives
+(rule ((= lhs (Const (Int i))))
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+
+(rule ((= lhs (Const (Bool b))))
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+
+(rule ((= lhs (Empty)))
+      ((HasType lhs (TupleT (TNil))))
+      :ruleset type-analysis)
+
+; Unary Ops
+(rule (
+        (= lhs (Uop (Not) e))
+        (HasType e (Base (BoolT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Uop (Not) e)))
+      ((ExpectType e (Base (BoolT)) "(Not) expected bool, received {?}"))
+      :ruleset type-analysis)
+
+
+(rule (
+        (= lhs (Uop (Print) e))
+        (HasType e _ty)             ; just make sure it has some type.
+      )
+      ((HasType lhs (TupleT (TNil))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Uop (Load) e))
+        (HasType e (PointerT ty))
+      )
+      ((HasType lhs (Base ty)))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (Uop (Load) e))
+        (HasType e ty)
+        (= ty (Base x))
+      )
+      ((panic "(Load) expected pointer, received base"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (Uop (Load) e))
+        (HasType e ty)
+        (= ty (TupleT x))
+      )
+      ((panic "(Load) expected pointer, received tuple"))
+      :ruleset type-analysis)
+
+; Binary ops
+(rule (
+        (= lhs (Bop (Add) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Add) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(Add) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(Add) expected int, received {?}")
+      )
+      :ruleset type-analysis)  
+
+(rule (
+        (= lhs (Bop (Sub) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Sub) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(Sub) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(Sub) expected int, received {?}")
+      )
+      :ruleset type-analysis)  
+
+(rule (
+        (= lhs (Bop (Mul) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Mul) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(Mul) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(Mul) expected int, received {?}")
+      )
+      :ruleset type-analysis)  
+
+(rule (
+        (= lhs (Bop (LessThan) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (LessThan) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(LessThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(LessThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)  
+
+(rule (
+        (= lhs (Bop (And) e1 e2))
+        (HasType e1 (Base (BoolT)))
+        (HasType e2 (Base (BoolT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (And) e1 e2)))
+      (
+        (ExpectType e1 (Base (BoolT)) "(And) expected bool, received {?}")
+        (ExpectType e2 (Base (BoolT)) "(And) expected bool, received {?}")
+      )
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (Or) e1 e2))
+        (HasType e1 (Base (BoolT)))
+        (HasType e2 (Base (BoolT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Or) e1 e2)))
+      (
+        (ExpectType e1 (Base (BoolT)) "(Or) expected bool, received {?}")
+        (ExpectType e2 (Base (BoolT)) "(Or) expected bool, received {?}")
+      )
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (Write) ptr val))
+        (HasType ptr (PointerT ty))
+        (HasType val (Base t)) ; must be BaseType??
+      )
+      ((HasType lhs (TupleT (TNil)))) ; Write returns ()
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (PtrAdd) ptr n))
+        (HasType ptr (PointerT ty))
+        (HasType n (Base (IntT)))
+      )
+      ((HasType lhs (TupleT (TNil)))) ; Returns () ??
+      :ruleset type-analysis)

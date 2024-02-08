@@ -9,6 +9,7 @@ mod optimizations;
 pub mod schema;
 pub mod schema_helpers;
 mod to_egglog;
+pub(crate) mod type_analysis;
 pub(crate) mod utility;
 
 pub type Result = std::result::Result<(), egglog::Error>;
@@ -39,6 +40,7 @@ pub fn egglog_test(
         "{}\n{build}\n{}\n{check}\n",
         [
             include_str!("schema.egg"),
+            include_str!("type_analysis.egg"),
             include_str!("optimizations/constant_fold.egg"),
             include_str!("utility/assume.egg"),
         ]

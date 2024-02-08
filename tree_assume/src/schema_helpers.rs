@@ -35,14 +35,20 @@ impl Expr {
     }
 
     pub fn to_program(self: &RcExpr, input_ty: Type, output_ty: Type) -> TreeProgram {
-        TreeProgram {
-            entry: RcExpr::new(Expr::Function(
-                "main".to_string(),
-                input_ty,
-                output_ty,
-                self.clone(),
-            )),
-            functions: vec![],
+        match self.as_ref() {
+            Expr::Function(..) => TreeProgram {
+                entry: self.clone(),
+                functions: vec![],
+            },
+            _ => TreeProgram {
+                entry: RcExpr::new(Expr::Function(
+                    "main".to_string(),
+                    input_ty,
+                    output_ty,
+                    self.clone(),
+                )),
+                functions: vec![],
+            },
         }
     }
 }

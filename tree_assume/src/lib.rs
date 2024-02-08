@@ -9,6 +9,7 @@ mod optimizations;
 pub mod schema;
 pub mod schema_helpers;
 mod to_egglog;
+pub(crate) mod utility;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
@@ -29,7 +30,7 @@ pub fn egglog_test(
         let result = interpret(&prog, input.clone());
         assert_eq!(
             result, expected,
-            "Program {:?} produced {} instead of expected {}",
+            "Program {:?}\nproduced:\n{}\ninstead of expected:\n{}",
             prog, result, expected
         );
     }
@@ -38,7 +39,8 @@ pub fn egglog_test(
         "{}\n{build}\n{}\n{check}\n",
         [
             include_str!("schema.egg"),
-            include_str!("optimizations/constant_fold.egg")
+            include_str!("optimizations/constant_fold.egg"),
+            include_str!("utility/assume.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

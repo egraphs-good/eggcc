@@ -163,7 +163,12 @@ macro_rules! parallel {
 pub use parallel;
 
 pub fn parallel_vec(es: impl IntoIterator<Item = RcExpr>) -> RcExpr {
-    es.into_iter().fold(empty(), |acc, x| push_par(x, acc))
+    let mut iter = es.into_iter();
+    if let Some(e) = iter.next() {
+        iter.fold(single(e), |acc, x| push_par(x, acc))
+    } else {
+        empty()
+    }
 }
 
 pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
@@ -208,6 +213,14 @@ pub fn inlet(e: RcExpr) -> Assumption {
 
 pub fn inloop(e1: RcExpr, e2: RcExpr) -> Assumption {
     Assumption::InLoop(e1, e2)
+}
+
+pub fn inif(is_then: bool, pred: RcExpr) -> Assumption {
+    Assumption::InIf(is_then, pred)
+}
+
+pub fn infunc(name: &str) -> Assumption {
+    Assumption::InFunc(name.to_string())
 }
 
 pub fn assume(assumption: Assumption, body: RcExpr) -> RcExpr {

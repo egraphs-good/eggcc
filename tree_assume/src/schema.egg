@@ -173,6 +173,12 @@
   ; The term is in a loop with `input` and `pred_output`.
   ;      input    pred_output
   (InLoop Expr     Expr)
+  ; name of the function
+  (InFunc String)
+  ; Branch of the switch and the predicate
+  (InSwitch i64 Expr)
+  ; If the predicate was true, and the predicate
+  (InIf bool Expr)
   ; Other assumptions are possible, but not supported yet.
   ; For example:
   ;      A boolean predicate is true.

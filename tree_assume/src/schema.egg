@@ -173,6 +173,11 @@
   ; The term is in a loop with `input` and `pred_output`.
   ;      input    pred_output
   (InLoop Expr     Expr)
+  (InFunc String Expr)
+  ; Branch of the switch and the predicate
+  (InSwitch i64 Expr)
+  ; If the predicate was true, and the predicate
+  (InIf bool Expr)
   ; Other assumptions are possible, but not supported yet.
   ; For example:
   ;      A boolean predicate is true.
@@ -183,6 +188,7 @@
 ; Assume allows creating context-specific terms.
 ; e.g. (Assume (InLet (Const (Int 2))) (Arg)) is equal to (Const (Int 2))
 (function Assume (Assumption Expr) Expr)
+(function AssumeList (Assumption ListExpr) ListExpr)
 
 
 ; =================================

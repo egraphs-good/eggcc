@@ -1,6 +1,9 @@
-use crate::{interpreter::Value, schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp
-}};
+use crate::{
+    interpreter::Value,
+    schema::{
+        Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
+    },
+};
 
 pub fn intt() -> Type {
     Type::Base(BaseType::IntT)
@@ -16,6 +19,13 @@ pub fn emptyt() -> Type {
 
 pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
+}
+
+pub fn pointert(t: Type) -> Type {
+    match t {
+        Type::Base(b) => Type::PointerT(b),
+        _ => panic!("cannot create a pointer from a non-base type"),
+    }
 }
 
 pub fn val_int(i: i64) -> Value {

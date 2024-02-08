@@ -163,3 +163,15 @@
       )
       ((HasType lhs (TupleT (TNil)))) ; Returns () ??
       :ruleset type-analysis)
+
+; Other ops
+(rule ((= lhs (Alloc amt ty))) 
+      ((ExpectType amt (Base (IntT)) "(Alloc) expected int, got {?}"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Alloc amt (Base ty)))
+        (HasType amt (Base (IntT)))
+      )
+      ((HasType lhs (PointerT ty)))
+      :ruleset type-analysis)

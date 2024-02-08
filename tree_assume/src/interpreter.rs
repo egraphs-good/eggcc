@@ -13,7 +13,7 @@ pub struct Pointer {
 }
 
 impl Pointer {
-    fn new(addr: usize, size: usize, offset: i64) -> Self {
+    pub(crate) fn new(addr: usize, size: usize, offset: i64) -> Self {
         Pointer {
             start_addr: addr,
             size,

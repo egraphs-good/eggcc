@@ -210,6 +210,14 @@ pub fn inloop(e1: RcExpr, e2: RcExpr) -> Assumption {
     Assumption::InLoop(e1, e2)
 }
 
+pub fn inif(is_then: bool, pred: RcExpr) -> Assumption {
+    Assumption::InIf(is_then, pred)
+}
+
+pub fn infunc(name: &str) -> Assumption {
+    Assumption::InFunc(name.to_string())
+}
+
 pub fn assume(assumption: Assumption, body: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Assume(assumption, body))
 }

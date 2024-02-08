@@ -5,107 +5,77 @@
 (ruleset assume)
 
 (sort AssumeList)
-; We collect multiple assumes into one AssumeMulti.
-; These happen when there are nested `If` or `Switch` statements.
-; When it gets to the bottom, we flatten it back out to multiple `Assume` nodes
-; for the convenience of other analyses.
-(function AssumeMulti (AssumeList Expr) Expr :unextractable)
 
-(function AssumeCons (Assumption AssumeList) AssumeList :unextractable)
-(function AssumeNil () AssumeList :unextractable)
+; In order to saturate and not create unecessary contexts, we need to collapse
+; duplicate assumptions.
+; For example, the rewrite over `Function` could create many
+; `(Assume (InFunc name) (Assume (InFunc name) ...))` nestings
+(rewrite (Assume assumption (Assume assumption rest))
+         (Assume assumption rest)
+         :ruleset assume)
 
 ; ################### start top-down assumptions
 
 (rewrite
- (Function name in_ty out_ty output)
+ (Function name in_ty out_ty out)
  (Function name in_ty out_ty
-   (AssumeMulti (AssumeCons (InFunction name) (AssumeNil))
-               output))
+   (Assume (InFunc  name)
+               out))
  :ruleset assume)
 
 
 ; ################### operations
-(rewrite (AssumeMulti asum (Bop op c1 c2))
-         (Bop op (AssumeMulti asum c1) (AssumeMulti asum c2))
+(rewrite (Assume asum (Bop op c1 c2))
+         (Bop op (Assume asum c1) (Assume asum c2))
          :ruleset assume)
-(rewrite (AssumeMulti assum (Uop op c1))
-         (Uop op (AssumeMulti assum c1))
+(rewrite (Assume assum (Uop op c1))
+         (Uop op (Assume assum c1))
          :ruleset assume)
-(rewrite (AssumeMulti assum (Get expr index))
-         (Get (AssumeMulti assum expr) index)
+(rewrite (Assume assum (Get expr index))
+         (Get (Assume assum expr) index)
          :ruleset assume)
-(rewrite (AssumeMulti assum (Alloc expr ty))
-         (Alloc (AssumeMulti assum expr) ty)
+(rewrite (Assume assum (Alloc expr ty))
+         (Alloc (Assume assum expr) ty)
          :ruleset assume)
-(rewrite (AssumeMulti assum (Call name expr))
-         (Call name (AssumeMulti assum expr))
+(rewrite (Assume assum (Call name expr))
+         (Call name (Assume assum expr))
          :ruleset assume)
 
 ; ################### tuple operations
-(rewrite (AssumeMulti assum (Single expr))
-         (Single (AssumeMulti assum expr))
+(rewrite (Assume assum (Single expr))
+         (Single (Assume assum expr))
          :ruleset assume)
-(rewrite (AssumeMulti assum (Concat order e1 e2))
-         (Concat order (AssumeMulti assum e1) (AssumeMulti assum e2))
+(rewrite (Assume assum (Concat order e1 e2))
+         (Concat order (Assume assum e1) (Assume assum e2))
          :ruleset assume)
 
 ; #################### control flow
 
 ;                       assumptions, predicate, cases,   current case
-(function SwitchAssume (AssumeList   Expr       ExprList i64) ExprList :unextractable) 
+(function SwitchAssume (AssumeList   Expr       ListExpr i64) ListExpr :unextractable) 
 
-(rewrite (AssumeMulti assum (Switch pred cases))
-         (Switch (AssumeMulti assum pred)
-                 (SwitchAssume assum 
-                               (AssumeMulti assum pred)
-                               cases
-                               0))
+(rewrite (Assume assum (If pred then else))
+         (If (Assume assum pred)
+             (Assume
+               (InIf true (Assume assum pred)) then)
+             (Assume
+               (InIf false (Assume assum pred)) else))
          :ruleset assume)
 
-(rewrite (SwitchAssume pred assum (Nil) current_case)
-         (AssumeMulti assum (Nil))
-         :ruleset assume)
-
-(rewrite (SwitchAssume pred
-                       assum 
-                       (Cons current rest)
-                       current_case)
-         (Cons
-           (AssumeMulti
-             (AssumeCons (InSwitch current_case pred) assum)
-             current)
-           (SwitchAssume
-             pred
-             assum 
-             rest
-             (+ current_case 1)))
-          :ruleset assume)
-
-(rewrite (AssumeMulti assum (If pred then else))
-         (If (AssumeMulti assum pred)
-             (AssumeMulti
-               (Cons (InIf true (AssumeMulti assum pred)) assum) then)
-             (AssumeMulti
-               (Cons (InIf false (AssumeMulti assum pred)) assum) else))
-         :ruleset assume)
-
-(rewrite (AssumeMulti assum (Let inputs body))
+(rewrite (Assume assum (Let inputs body))
          (Let
-           (AssumeMulti assum inputs)
-           (AssumeMulti
-             ; new context, make a list with one assumption in it
-             (Cons (InLet (AssumeMulti assum inputs)) (Nil))
+           (Assume assum inputs)
+           (Assume
+             (InLet (Assume assum inputs))
              body))
           :ruleset assume)
 
 
-(rewrite (AssumeMulti assum (DoWhile inputs pred_outputs))
+(rewrite (Assume assum (DoWhile inputs pred_outputs))
          (DoWhile
-           (AssumeMulti assum inputs)
-           (AssumeMulti
-             (Cons (InLoop (AssumeMulti assum inputs) pred_outputs)
-                   (Nil))
+           (Assume assum inputs)
+           (Assume
+             (InLoop (Assume assum inputs) pred_outputs)
               pred_outputs))
         :ruleset assume)
                    
-

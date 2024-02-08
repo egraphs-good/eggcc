@@ -39,7 +39,8 @@ pub fn egglog_test(
         "{}\n{build}\n{}\n{check}\n",
         [
             include_str!("schema.egg"),
-            include_str!("optimizations/constant_fold.egg")
+            include_str!("optimizations/constant_fold.egg"),
+            include_str!("utility/assume.egg"),
         ]
         .join("\n"),
         include_str!("schedule.egg"),

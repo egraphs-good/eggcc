@@ -71,11 +71,12 @@
           :ruleset assume)
 
 
-(rewrite (Assume assum (DoWhile inputs pred_outputs))
+(rule ((= lhs (Assume assum (DoWhile inputs pred_outputs))))
+      ((union lhs
          (DoWhile
            (Assume assum inputs)
            (Assume
              (InLoop (Assume assum inputs) pred_outputs)
-              pred_outputs))
+              pred_outputs))))
         :ruleset assume)
                    

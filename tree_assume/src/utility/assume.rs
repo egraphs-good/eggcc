@@ -83,3 +83,41 @@ fn test_switch_contexts() -> crate::Result {
         Value::Const(Constant::Int(1)),
     )
 }
+
+#[test]
+fn test_dowhile_cycle_assume() -> crate::Result {
+    use crate::ast::*;
+    // loop runs one iteration and returns 3
+    let myloop = dowhile(single(int(2)), parallel!(tfalse(), int(3)));
+    let expr = function("main", intt(), intt(), myloop);
+
+    let int2 = single(assume(infunc("main"), int(2)));
+    let inner_assume = inloop(int2.clone(), parallel!(tfalse(), int(3)));
+    let expr2 = function(
+        "main",
+        intt(),
+        intt(),
+        dowhile(
+            int2.clone(),
+            parallel!(
+                assume(inner_assume.clone(), tfalse()),
+                assume(inner_assume.clone(), int(3)),
+            ),
+        ),
+    );
+
+    egglog_test(
+        &format!(
+            "{expr}
+(union {} {expr})",
+            single(int(3))
+        ),
+        &format!("(check (= {expr} {expr2}))"),
+        vec![
+            expr.to_program(emptyt(), intt()),
+            expr2.to_program(emptyt(), intt()),
+        ],
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![Value::Const(Constant::Int(3))]),
+    )
+}

@@ -163,7 +163,12 @@ macro_rules! parallel {
 pub use parallel;
 
 pub fn parallel_vec(es: impl IntoIterator<Item = RcExpr>) -> RcExpr {
-    es.into_iter().fold(empty(), |acc, x| push_par(x, acc))
+    let mut iter = es.into_iter();
+    if let Some(e) = iter.next() {
+        iter.fold(single(e), |acc, x| push_par(x, acc))
+    } else {
+        empty()
+    }
 }
 
 pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {

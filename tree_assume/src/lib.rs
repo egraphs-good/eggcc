@@ -30,7 +30,7 @@ pub fn egglog_test(
         let result = interpret(&prog, input.clone());
         assert_eq!(
             result, expected,
-            "Program {:?} produced {} instead of expected {}",
+            "Program {:?}\nproduced:\n{}\ninstead of expected:\n{}",
             prog, result, expected
         );
     }

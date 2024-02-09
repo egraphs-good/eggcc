@@ -19,6 +19,7 @@ pub fn prologue() -> String {
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
         include_str!("optimizations/constant_fold.egg"),
+        &optimizations::is_valid::rules().join("\n"),
         include_str!("utility/assume.egg"),
     ]
     .join("\n")

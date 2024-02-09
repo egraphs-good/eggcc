@@ -1,5 +1,5 @@
 use tree_assume::prologue;
 
-fn main() -> () {
+fn main() {
     println!("{}", prologue());
 }

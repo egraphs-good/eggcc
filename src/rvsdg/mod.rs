@@ -45,7 +45,7 @@ use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 use egglog::{EGraph, SerializeConfig, TermDag};
 
 use thiserror::Error;
-use tree_optimizer::expr::TreeType;
+use tree_assume::schema::{BaseType, Type as TreeType};
 
 use crate::{
     cfg::{Identifier, SimpleCfgProgram},
@@ -175,10 +175,20 @@ pub(crate) enum RvsdgType {
     PrintState,
 }
 
+fn type_to_treetype(ty: &Type) -> TreeType {
+    match ty {
+        Type::Int => TreeType::Base(BaseType::IntT),
+        Type::Bool => TreeType::Base(BaseType::BoolT),
+        Type::Float => todo!("Floats not supported yet"),
+        Type::Char => todo!("Chars not supported yet"),
+        Type::Pointer(ty) => TreeType::PointerT(type_to_treetype(ty)),
+    }
+}
+
 impl RvsdgType {
     pub(crate) fn to_tree_type(&self) -> TreeType {
         match self {
-            RvsdgType::Bril(t) => TreeType::Bril(t.clone()),
+            RvsdgType::Bril(ty) => type_to_treetype(ty),
             RvsdgType::PrintState => TreeType::Tuple(vec![]),
         }
     }

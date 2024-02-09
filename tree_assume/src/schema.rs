@@ -59,6 +59,8 @@ pub type RcExpr = Rc<Expr>;
 pub enum Assumption {
     InLet(RcExpr),
     InLoop(RcExpr, RcExpr),
+    InFunc(String),
+    InIf(bool, RcExpr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,7 +1,7 @@
 (run-schedule
   (repeat 6
+    (repeat 100 assume)
     (saturate always-run)
     (saturate error-checking)
     (saturate type-analysis)
-    (run constant_fold)
-    ))
+    (saturate constant_fold)))

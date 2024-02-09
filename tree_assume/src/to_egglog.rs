@@ -72,6 +72,15 @@ impl Assumption {
                 let rhs = rhs.to_egglog_internal(term_dag);
                 term_dag.app("InLoop".into(), vec![lhs, rhs])
             }
+            Assumption::InFunc(name) => {
+                let name_lit = term_dag.lit(Literal::String(name.into()));
+                term_dag.app("InFunc".into(), vec![name_lit])
+            }
+            Assumption::InIf(is_then, pred) => {
+                let pred = pred.to_egglog_internal(term_dag);
+                let is_then = term_dag.lit(Literal::Bool(*is_then));
+                term_dag.app("InIf".into(), vec![is_then, pred])
+            }
         }
     }
 }
@@ -121,8 +130,7 @@ impl Expr {
             Expr::Get(expr, index) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 let lit_index = term_dag.lit(Literal::Int(*index as i64));
-                let index = term_dag.app("Int".into(), vec![lit_index]);
-                term_dag.app("Get".into(), vec![expr, index])
+                term_dag.app("Get".into(), vec![expr, lit_index])
             }
             Expr::Alloc(expr, ty) => {
                 let expr = expr.to_egglog_internal(term_dag);

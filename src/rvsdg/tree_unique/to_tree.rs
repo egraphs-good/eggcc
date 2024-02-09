@@ -13,12 +13,12 @@ use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 #[cfg(test)]
 use bril_rs::Type;
 #[cfg(test)]
-use tree_optimizer::ast::{arg, program};
+use tree_assume::ast::{arg, program};
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
-use tree_optimizer::{
+use tree_assume::{
     ast::{
         add, function, get, getarg, lessthan, num, parallel, parallel_vec, program_vec, tfalse,
         tlet, tloop, tprint, ttrue,
@@ -28,11 +28,13 @@ use tree_optimizer::{
 
 impl RvsdgProgram {
     pub fn to_tree_encoding(&self) -> Expr {
+        let first_function = self.functions.first().unwrap();
+        let rest_functions = self.functions.iter().skip(1);
         program_vec(
-            self.functions
-                .iter()
+            first_function.to_tree_encoding(),
+            rest_functions
                 .map(|f| f.to_tree_encoding())
-                .collect(),
+                .collect::<Vec<_>>(),
         )
     }
 }

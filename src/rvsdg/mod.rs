@@ -175,13 +175,20 @@ pub(crate) enum RvsdgType {
     PrintState,
 }
 
-fn type_to_treetype(ty: &Type) -> TreeType {
+fn type_to_treetype_base(ty: &Type) -> BaseType {
     match ty {
-        Type::Int => TreeType::Base(BaseType::IntT),
-        Type::Bool => TreeType::Base(BaseType::BoolT),
+        Type::Int => BaseType::IntT,
+        Type::Bool => BaseType::BoolT,
         Type::Float => todo!("Floats not supported yet"),
         Type::Char => todo!("Chars not supported yet"),
-        Type::Pointer(ty) => TreeType::PointerT(type_to_treetype(ty)),
+        Type::Pointer(_) => panic!("Pointers should be handled by type_to_treetype"),
+    }
+}
+
+fn type_to_treetype(ty: &Type) -> TreeType {
+    match ty {
+        Type::Pointer(ty) => TreeType::PointerT(type_to_treetype_base(ty)),
+        _ => TreeType::Base(type_to_treetype_base(ty)),
     }
 }
 

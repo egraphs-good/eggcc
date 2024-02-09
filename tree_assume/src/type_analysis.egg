@@ -1,5 +1,12 @@
 (ruleset type-analysis)
 
+
+(function TLConcat (TypeList TypeList) TypeList :unextractable)
+(rewrite (TLConcat (TNil) r) r :ruleset type-analysis)
+(rewrite (TLConcat (TCons hd tl) r)
+         (TCons hd (TLConcat tl r))
+         :ruleset type-analysis)
+
 (relation HasType (Expr Type))
 
 ;; Keep track of type expectations for error messages
@@ -38,9 +45,20 @@
       :ruleset type-analysis)
 
 
-(rule ((= lhs (Uop (Print) e)))
+(rule (
+        (= lhs (Uop (Print) e))
+        (HasType e ty)
+      )
       ((HasType lhs (TupleT (TNil))))
       :ruleset type-analysis)
+
+(rule (
+        (= lhs (Uop (Print) e))
+        (HasType e (TupleT ty))
+      )
+      ((panic "Don't print a tuple"))
+      :ruleset type-analysis)
+
 
 (rule (
         (= lhs (Uop (Load) e))
@@ -174,4 +192,31 @@
         (HasType amt (Base (IntT)))
       )
       ((HasType lhs (PointerT ty)))
+      :ruleset type-analysis)
+
+
+; =================================
+; Tuple operations
+; =================================
+
+(rule (
+        (= lhs (Single e))
+        (HasType e (TupleT tylist))
+      )
+      ((panic "don't nest tuples"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Single e))
+        (HasType e ty)
+      )
+      ((HasType lhs (TupleT (TCons ty (TNil)))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Concat ord e1 e2))
+        (HasType e1 (TupleT tylist1))
+        (HasType e2 (TupleT tylist2))
+      )
+      ((HasType lhs (TupleT (TLConcat tylist1 tylist2))))
       :ruleset type-analysis)

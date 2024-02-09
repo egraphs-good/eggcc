@@ -17,7 +17,7 @@ pub fn emptyt() -> Type {
     Type::TupleT(vec![])
 }
 
-pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
+pub fn tuplet_vec(types: Vec<Type>) -> Type {
     Type::TupleT(types)
 }
 
@@ -38,6 +38,10 @@ pub fn val_bool(i: bool) -> Value {
 
 pub fn val_empty() -> Value {
     Value::Tuple(vec![])
+}
+
+pub fn val_vec(vals: Vec<Value>) -> Value {
+    Value::Tuple(vals)
 }
 
 /// Construct a tuple type from the child types

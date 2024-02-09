@@ -141,3 +141,20 @@ fn pointers() -> crate::Result {
 fn pointer_type_error() {
     let _ = type_error_test(alloc(less_than(int(1), int(2)), boolt()));
 }
+
+#[test]
+fn tuple() -> crate::Result {
+    type_test(
+        single(int(30)),
+        tuplet_vec(vec![intt()]),
+        val_int(0),
+        val_vec(vec![val_int(30)]),
+    )?;
+
+    type_test(
+        concat_par(single(int(20)), single(ttrue())),
+        tuplet_vec(vec![intt(), boolt()]),
+        val_int(0),
+        val_vec(vec![val_int(20), val_bool(true)]),
+    )
+}

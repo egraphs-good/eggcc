@@ -14,6 +14,16 @@ pub(crate) mod utility;
 
 pub type Result = std::result::Result<(), egglog::Error>;
 
+pub fn prologue() -> String {
+    [
+        include_str!("schema.egg"),
+        include_str!("type_analysis.egg"),
+        include_str!("optimizations/constant_fold.egg"),
+        include_str!("utility/assume.egg"),
+    ]
+    .join("\n")
+}
+
 /// Runs an egglog test.
 /// `build` is egglog code that runs before the running rules.
 /// `check` is egglog code that runs after the running rules.
@@ -38,23 +48,22 @@ pub fn egglog_test(
 
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
-        [
-            include_str!("schema.egg"),
-            include_str!("type_analysis.egg"),
-            include_str!("optimizations/constant_fold.egg"),
-            include_str!("utility/assume.egg"),
-        ]
-        .join("\n"),
+        prologue(),
         include_str!("schedule.egg"),
     );
 
-    println!("{}", program);
-
-    egglog::EGraph::default()
+    let res = egglog::EGraph::default()
         .parse_and_run_program(&program)
         .map(|lines| {
             for line in lines {
                 println!("{}", line);
             }
-        })
+        });
+
+    if res.is_err() {
+        println!("{}", program);
+        println!("{:?}", res);
+    }
+
+    res
 }

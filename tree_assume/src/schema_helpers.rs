@@ -154,7 +154,7 @@ impl ESort {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, EnumIter, PartialEq)]
 pub enum Constructor {
     Function,
     Const,
@@ -220,7 +220,7 @@ impl Constructor {
             Constructor::Uop => "Uop",
             Constructor::Get => "Get",
             Constructor::Concat => "Concat",
-            Constructor::Single => "Singl",
+            Constructor::Single => "Single",
             Constructor::Switch => "Switch",
             Constructor::If => "If",
             Constructor::DoWhile => "DoWhile",

@@ -61,8 +61,8 @@ pub fn egglog_test(
         });
 
     if res.is_err() {
-        println!("{:?}", res);
         println!("{}", program);
+        println!("{:?}", res);
     }
 
     res

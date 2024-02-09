@@ -120,7 +120,7 @@
         (let new-loop
             (NewLoop
                 new-id
-                new-inputs ; TODO: we need to replace ith arg with (Get (Arg outer-let-id 1)) AND subst (Arg outer-id) for (Get (Arg outer-let-id) 0)
+                new-inputs
                 (All
                     new-id
                     predoutput-order
@@ -132,7 +132,6 @@
         ; NOTE: milestone encoding used can-subst-beneath for this
         (union (DeepCopyExpr old-exp new-id) (Get (Arg new-id) n))
 
-
         ; We are pulling up the ith loop input to this new outer context, because we need to 
         ; re-use the ith loop input. For soundness and efficiency, the ith loop input should
         ; only be computed once. We do this by computing it in a new outer let, which also
@@ -142,10 +141,6 @@
                 (Pair (Arg outer-context-id) (ListExpr-ith input-list i))
             )
         )
-        ; TODO  actually maybe this shouldn't be append, we should just create a pair
-        ; of (arg outer context) (list expr ith)
-        ; list expr ith should have the right inputs
-        ; Ok, then instead of (Get (Arg loop-id? which id?) i) we will use get /??
 
         (let outer-let
             (NewLet

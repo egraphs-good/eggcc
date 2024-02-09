@@ -59,13 +59,16 @@ pub(crate) fn rules() -> Vec<String> {
 #[cfg(test)]
 use crate::ast::*;
 #[cfg(test)]
+use crate::schema::Constant;
+#[cfg(test)]
 use crate::Value;
+
 #[test]
 fn test_body_contains() -> Result<(), egglog::Error> {
     let myloop = dowhile(
         assume(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(get(arg(), 0), tlet(int(6), assume(inlet(int(6)), arg()))),
+            less_than(get(arg(), 0), tlet(int(3), assume(inlet(int(3)), arg()))),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     );
@@ -75,24 +78,24 @@ fn test_body_contains() -> Result<(), egglog::Error> {
 (fail (check (BodyContainsExpr {myloop} {num1})))
 (fail (check (BodyContainsExpr {myloop} {num2})))
 (fail (check (BodyContainsExpr {myloop} {assume})))
+(check (BodyContainsExpr {myloop} {num3}))
 (check (BodyContainsExpr {myloop} {num4}))
 (check (BodyContainsExpr {myloop} {num5}))
-(check (BodyContainsExpr {myloop} {num6}))
 (check (BodyContainsListExpr {myloop} (Cons {tup45} (Nil))))
     ",
         num1 = int(1),
         num2 = int(2),
+        num3 = int(3),
         num4 = int(4),
         num5 = int(5),
-        num6 = int(6),
         assume = assume(inlet(int(6)), arg()),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(
         &build,
         &check,
-        vec![],
+        vec![myloop.to_program(emptyt(), intt())],
         Value::Tuple(vec![]),
-        Value::Tuple(vec![]),
+        Value::Tuple(vec![Value::Const(Constant::Int(4))]),
     )
 }

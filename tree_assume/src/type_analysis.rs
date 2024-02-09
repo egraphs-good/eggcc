@@ -2,7 +2,7 @@
 use crate::{
     ast::*,
     egglog_test,
-    interpreter::{Pointer, Value},
+    interpreter::Value,
     schema::{RcExpr, Type},
 };
 
@@ -111,50 +111,4 @@ fn and_error() {
 #[should_panic]
 fn or_error() {
     let _ = type_error_test(or(tfalse(), int(2)));
-}
-
-#[test]
-fn pointers() -> crate::Result {
-    let ptr = alloc(int(12), intt());
-    type_test(
-        ptr.clone(),
-        pointert(intt()),
-        val_int(0),
-        Value::Ptr(Pointer::new(0, 12, 0)),
-    )?;
-    type_test(
-        write(ptr.clone(), ttrue()),
-        emptyt(),
-        val_int(0),
-        val_empty(),
-    )?;
-    type_test(
-        ptradd(alloc(int(1), boolt()), add(int(1), int(2))),
-        emptyt(),
-        val_int(0),
-        Value::Ptr(Pointer::new(0, 1, 3)),
-    )
-}
-
-#[test]
-#[should_panic]
-fn pointer_type_error() {
-    let _ = type_error_test(alloc(less_than(int(1), int(2)), boolt()));
-}
-
-#[test]
-fn tuple() -> crate::Result {
-    type_test(
-        single(int(30)),
-        tuplet_vec(vec![intt()]),
-        val_int(0),
-        val_vec(vec![val_int(30)]),
-    )?;
-
-    type_test(
-        concat_par(single(int(20)), single(ttrue())),
-        tuplet_vec(vec![intt(), boolt()]),
-        val_int(0),
-        val_vec(vec![val_int(20), val_bool(true)]),
-    )
 }

@@ -22,6 +22,7 @@ pub fn prologue() -> String {
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
         include_str!("utility/assume.egg"),
+        include_str!("utility/util.egg"),
     ]
     .join("\n")
 }

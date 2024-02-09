@@ -31,15 +31,17 @@ pub(crate) fn rules() -> Vec<String> {
 #[cfg(test)]
 use crate::ast::*;
 #[cfg(test)]
+use crate::schema::Constant;
+#[cfg(test)]
 use crate::Value;
 
 #[test]
 fn test_is_valid() -> Result<(), egglog::Error> {
     let myloop = dowhile(
-        int(1),
+        assume(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(arg(), int(3)),
-            switch!(int(0); parallel!(int(4), int(5)))
+            less_than(get(arg(), 0), int(3)),
+            get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     );
     let not_made_valid = sub(arg(), arg()); // this expression is indeed valid, but won't be marked as so
@@ -50,16 +52,19 @@ fn test_is_valid() -> Result<(), egglog::Error> {
 (check (ExprIsValid {arg}))
 (check (ListExprIsValid (Cons {tup45} (Nil))))
 (fail (check (ExprIsValid {not_made_valid})))
+(fail (check (ExprIsValid {num2})))
     ",
         num0 = int(0),
+        num2 = int(2),
         arg = arg(),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(
         &build,
         &check,
-        vec![],
+        vec![myloop.to_program(emptyt(), intt())],
         Value::Tuple(vec![]),
-        Value::Tuple(vec![]),
+        // Value::Tuple(vec![]),
+        Value::Tuple(vec![Value::Const(Constant::Int(4))]),
     )
 }

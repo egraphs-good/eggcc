@@ -15,7 +15,7 @@ pub enum Type {
     Base(BaseType),
     PointerT(BaseType),
     /// Nested tuple types are not allowed.
-    TupleT(Vec<BaseType>),
+    TupleT(Vec<Type>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

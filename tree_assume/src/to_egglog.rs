@@ -37,7 +37,7 @@ impl Type {
         let term = self.to_egglog_internal(&mut termdag);
         (term, termdag)
     }
-    
+
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
         match self {
             Type::Base(base) => {
@@ -130,8 +130,7 @@ impl Expr {
             Expr::Get(expr, index) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 let lit_index = term_dag.lit(Literal::Int(*index as i64));
-                let index = term_dag.app("Int".into(), vec![lit_index]);
-                term_dag.app("Get".into(), vec![expr, index])
+                term_dag.app("Get".into(), vec![expr, lit_index])
             }
             Expr::Alloc(expr, ty) => {
                 let expr = expr.to_egglog_internal(term_dag);

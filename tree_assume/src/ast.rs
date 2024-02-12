@@ -201,12 +201,12 @@ pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Let(lhs, rhs))
 }
 
-pub fn arg() -> RcExpr {
-    RcExpr::new(Expr::Arg)
+pub fn arg(ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Arg(ty))
 }
 
-pub fn getat(index: usize) -> RcExpr {
-    get(arg(), index)
+pub fn getat(ty: Type, index: usize) -> RcExpr {
+    get(arg(ty), index)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {

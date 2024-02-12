@@ -68,7 +68,10 @@ fn test_body_contains() -> Result<(), egglog::Error> {
     let myloop = dowhile(
         assume(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(get(arg(), 0), tlet(int(3), assume(inlet(int(3)), arg()))),
+            less_than(
+                get(arg(intt()), 0),
+                tlet(int(3), assume(inlet(int(3)), arg(intt())))
+            ),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     );
@@ -88,7 +91,7 @@ fn test_body_contains() -> Result<(), egglog::Error> {
         num3 = int(3),
         num4 = int(4),
         num5 = int(5),
-        assume = assume(inlet(int(6)), arg()),
+        assume = assume(inlet(int(6)), arg(intt())),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(

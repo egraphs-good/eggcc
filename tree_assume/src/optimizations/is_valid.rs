@@ -40,11 +40,11 @@ fn test_is_valid() -> Result<(), egglog::Error> {
     let myloop = dowhile(
         assume(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(get(arg(), 0), int(3)),
+            less_than(get(arg(intt()), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     );
-    let not_made_valid = sub(arg(), arg()); // this expression is indeed valid, but won't be marked as so
+    let not_made_valid = sub(arg(intt()), arg(intt())); // this expression is indeed valid, but won't be marked as so
     let build = format!("(ExprIsValid {myloop}) {not_made_valid}");
     let check = format!(
         "
@@ -56,7 +56,7 @@ fn test_is_valid() -> Result<(), egglog::Error> {
     ",
         num0 = int(0),
         num2 = int(2),
-        arg = arg(),
+        arg = arg(intt()),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(

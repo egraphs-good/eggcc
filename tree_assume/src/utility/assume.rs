@@ -25,13 +25,16 @@ fn test_assume_two_lets() -> crate::Result {
         "main",
         intt(),
         intt(),
-        tlet(int(1), tlet(add(arg(), arg()), mul(arg(), int(2)))),
+        tlet(
+            int(1),
+            tlet(add(arg(intt()), arg(intt())), mul(arg(intt()), int(2))),
+        ),
     );
     let int1 = assume(infunc("main"), int(1));
-    let arg1 = assume(inlet(int1.clone()), arg());
+    let arg1 = assume(inlet(int1.clone()), arg(intt()));
     let addarg1 = add(arg1.clone(), arg1.clone());
     let int2 = assume(inlet(addarg1.clone()), int(2));
-    let arg2 = assume(inlet(addarg1.clone()), arg());
+    let arg2 = assume(inlet(addarg1.clone()), arg(intt()));
     let expr2 = function(
         "main",
         intt(),

@@ -57,6 +57,13 @@ impl UnaryOp {
     }
 }
 
+impl Display for TreeProgram {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let (term, termdag) = self.to_egglog();
+        write!(f, "{}", termdag.to_string(&term))
+    }
+}
+
 impl Expr {
     pub fn constructor(&self) -> Constructor {
         match self {

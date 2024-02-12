@@ -196,7 +196,7 @@ impl RvsdgType {
     pub(crate) fn to_tree_type(&self) -> TreeType {
         match self {
             RvsdgType::Bril(ty) => type_to_treetype(ty),
-            RvsdgType::PrintState => TreeType::Tuple(vec![]),
+            RvsdgType::PrintState => TreeType::TupleT(vec![]),
         }
     }
 }

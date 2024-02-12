@@ -92,6 +92,10 @@ pub fn get(e: RcExpr, i: usize) -> RcExpr {
     RcExpr::new(Expr::Get(e, i))
 }
 
+pub fn getarg(i: usize) -> RcExpr {
+    get(arg(), i)
+}
+
 pub fn first(e: RcExpr) -> RcExpr {
     get(e, 0)
 }

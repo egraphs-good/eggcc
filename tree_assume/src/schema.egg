@@ -37,8 +37,7 @@
 ; The argument to this expression.
 ; Only a single argument is bound- if multiple values are needed, arg will be a tuple.
 ; e.g. `(Get (Arg)) 1)` gets the second value in the argument with type (int, bool).
-(function Arg () Expr)
-(let arg (Arg))
+(function Arg (Type) Expr)
 
 ; Constants
 (datatype Constant

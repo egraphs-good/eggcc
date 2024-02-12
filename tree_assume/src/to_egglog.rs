@@ -178,7 +178,10 @@ impl Expr {
                 let body = body.to_egglog_internal(term_dag);
                 term_dag.app("DoWhile".into(), vec![cond, body])
             }
-            Expr::Arg => term_dag.app("Arg".into(), vec![]),
+            Expr::Arg(ty) => {
+                let ty = ty.to_egglog_internal(term_dag);
+                term_dag.app("Arg".into(), vec![ty])
+            }
             Expr::Assume(assumption, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 let assumption = assumption.to_egglog_internal(term_dag);
@@ -263,8 +266,8 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
-    let expr = add(int(1), arg());
-    test_expr_parses_to(expr, "(Bop (Add) (Const (Int 1)) (Arg))");
+    let expr = add(int(1), arg(intt()));
+    test_expr_parses_to(expr, "(Bop (Add) (Const (Int 1)) (Arg (Base (IntT))))");
 }
 
 #[test]
@@ -292,8 +295,11 @@ fn convert_whole_program() {
             intt(),
             intt(),
             dowhile(
-                arg(),
-                push_par(add(arg(), int(1)), single(less_than(arg(), int(10))))
+                arg(intt()),
+                push_par(
+                    add(arg(intt()), int(1)),
+                    single(less_than(arg(intt()), int(10)))
+                )
             )
         )
     );
@@ -304,10 +310,10 @@ fn convert_whole_program() {
                 (Bop (Add) (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
-                    (DoWhile (Arg) 
+                    (DoWhile (Arg (Base (IntT))) 
                         (Concat (Parallel) 
-                            (Single (Bop (LessThan) (Arg) (Const (Int 10))))
-                            (Single (Bop (Add) (Arg) (Const (Int 1))))))) 
+                            (Single (Bop (LessThan) (Arg (Base (IntT))) (Const (Int 10))))
+                            (Single (Bop (Add) (Arg (Base (IntT))) (Const (Int 1))))))) 
                 (Nil)))",
     );
 }

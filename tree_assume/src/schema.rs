@@ -78,7 +78,7 @@ pub enum Expr {
     If(RcExpr, RcExpr, RcExpr),
     Let(RcExpr, RcExpr),
     DoWhile(RcExpr, RcExpr),
-    Arg,
+    Arg(Type),
     Assume(Assumption, RcExpr),
     Function(String, Type, Type, RcExpr),
 }

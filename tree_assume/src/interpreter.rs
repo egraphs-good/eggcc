@@ -290,7 +290,7 @@ impl<'a> VirtualMachine<'a> {
                 // bound to `(Arg)`
                 self.interpret_expr(output, &Some(vals.clone()))
             }
-            Expr::Arg => {
+            Expr::Arg(_ty) => {
                 // Argument should be bound to a value
                 let Some(v) = arg else {
                     panic!("Argument not bound to any value")
@@ -314,9 +314,14 @@ fn test_interpret_calls() {
             "func1",
             intt(),
             intt(),
-            mul(call("func2", sub(arg(), int(1))), int(2))
+            mul(call("func2", sub(arg(intt()), int(1))), int(2))
         ),
-        function("func2", intt(), intt(), tlet(arg(), add(arg(), int(1)))),
+        function(
+            "func2",
+            intt(),
+            intt(),
+            tlet(arg(intt()), add(arg(intt()), int(1)))
+        ),
     );
     let res = interpret(&expr, Const(Constant::Int(5)));
     assert_eq!(res, Const(Constant::Int(10)));
@@ -330,11 +335,11 @@ fn test_interpret_recursive() {
         intt(),
         intt(),
         tif(
-            less_than(arg(), int(2)),
-            arg(),
+            less_than(arg(intt()), int(2)),
+            arg(intt()),
             add(
-                call("fib", sub(arg(), int(1))),
-                call("fib", sub(arg(), int(2)))
+                call("fib", sub(arg(intt()), int(1))),
+                call("fib", sub(arg(intt()), int(2)))
             )
         )
     ),);
@@ -350,8 +355,11 @@ fn test_interpreter() {
         dowhile(
             parallel!(int(1)),
             parallel!(
-                less_than(getat(0), int(10)),
-                first(parallel!(add(getat(0), int(1)), tprint(getat(0))))
+                less_than(getat(intt(), 0), int(10)),
+                first(parallel!(
+                    add(getat(intt(), 0), int(1)),
+                    tprint(getat(intt(), 0))
+                ))
             ),
         ),
         0,
@@ -376,33 +384,36 @@ fn test_interpreter_fib_using_memory() {
         alloc(int(nth + 2), intt()),
         tlet(
             concat_seq(
-                twrite(arg(), int(0)), // address 0, value 0
+                twrite(arg(intt()), int(0)), // address 0, value 0
                 concat_seq(
-                    twrite(ptradd(arg(), int(1)), int(1)), // address 1, value 1
-                    single(arg()),
+                    twrite(ptradd(arg(intt()), int(1)), int(1)), // address 1, value 1
+                    single(arg(intt())),
                 ),
             ),
             tlet(
                 dowhile(
-                    parallel!(ptradd(getat(0), int(2)), int(2)),
+                    parallel!(ptradd(getat(intt(), 0), int(2)), int(2)),
                     cons_par(
-                        less_than(getat(1), int(nth)),
+                        less_than(getat(intt(), 1), int(nth)),
                         tlet(
                             concat_seq(
                                 twrite(
-                                    getat(0),
+                                    getat(intt(), 0),
                                     add(
-                                        load(ptradd(getat(0), int(-1))),
-                                        load(ptradd(getat(0), int(-2))),
+                                        load(ptradd(getat(intt(), 0), int(-1))),
+                                        load(ptradd(getat(intt(), 0), int(-2))),
                                     ),
                                 ),
-                                arg(),
+                                arg(intt()),
                             ),
-                            parallel!(ptradd(getat(0), int(1)), add(getat(1), int(1))),
+                            parallel!(
+                                ptradd(getat(intt(), 0), int(1)),
+                                add(getat(intt(), 1), int(1))
+                            ),
                         ),
                     ),
                 ),
-                parallel!(load(ptradd(getat(0), int(-1))), getat(1)),
+                parallel!(load(ptradd(getat(intt(), 0), int(-1))), getat(intt(), 1)),
             ),
         ),
     );

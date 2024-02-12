@@ -43,7 +43,7 @@ impl Expr {
             Expr::If(..) => Constructor::If,
             Expr::DoWhile(..) => Constructor::DoWhile,
             Expr::Let(..) => Constructor::Let,
-            Expr::Arg => Constructor::Arg,
+            Expr::Arg(..) => Constructor::Arg,
             Expr::Call(..) => Constructor::Call,
             Expr::Empty => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,

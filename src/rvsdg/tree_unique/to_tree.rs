@@ -108,10 +108,13 @@ impl<'a> RegionTranslator<'a> {
     /// into the argument list.
     /// `expr` must not have a tuple type.
     fn add_binding(&mut self, expr: RcExpr, id: Id, is_state_edge: bool) -> StoredNode {
-        self.bindings.push(single(expr));
         let res = if is_state_edge {
+            // produces an empty tuple, so just push it to bindings
+            self.bindings.push(expr);
             StoredNode::StateEdge
         } else {
+            // produces a value, so wrap in `single` and push to bindings
+            self.bindings.push(single(expr));
             self.current_num_args += 1;
             StoredNode::Arg(self.current_num_args - 1)
         };
@@ -483,7 +486,7 @@ fn translate_simple_loop() {
         Value::Tuple(vec![Value::Const(Constant::Int(1))]),
     );
 }
-/*
+
 #[test]
 fn translate_loop() {
     const PROGRAM: &str = r#"
@@ -504,48 +507,42 @@ fn translate_loop() {
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
-    assert_eq!(
-        rvsdg.to_tree_encoding(),
-        program!(function(
+    assert_progs_eq(
+        &rvsdg.to_tree_encoding(),
+        &program!(function(
             "main",
-            TreeType::TupleT(vec![emptyt()]),
-            TreeType::TupleT(vec![emptyt()]),
+            TreeType::TupleT(vec![]),
+            TreeType::TupleT(vec![]),
             bind_value(
-                1,
-                int(0), // [(), 0]
-                bind_value(
-                    2,
+                int(0), // [0]
+                bind_tuple(
                     dowhile(
-                        parallel!(getarg(0), getarg(1)),
+                        parallel!(getarg(0)), // [i]
                         bind_value(
-                            2,
-                            int(1), // [(), i, 1]
+                            int(1), // [i, 1]
                             bind_value(
-                                3,
-                                add(getarg(1), getarg(2)), // [(), i, 1, i+1]
+                                add(getarg(0), getarg(1)), // [i, 1, i+1]
                                 bind_value(
-                                    4,
-                                    int(10), // [(), i, 1, i+1, 10]
+                                    int(10), // [i, 1, i+1, 10]
                                     bind_value(
-                                        5,
-                                        less_than(getarg(3), getarg(4)), // [(), i, 1, i+1, 10, i<10]
-                                        parallel!(getarg(5), parallel!(getarg(0), getarg(3)))
+                                        less_than(getarg(2), getarg(3)), // [i, 1, i+1, 10, i+1<10]
+                                        parallel!(getarg(4), getarg(2))
                                     )
                                 )
                             )
                         )
-                    ),
-                    bind_value(
-                        3,
-                        tprint(get(getarg(2), 1)), // [(), 0, [() i], ()]
-                        parallel!(getarg(3))
+                    ), // [0, 10]
+                    bind_tuple(
+                        tprint(getarg(1)), // [0, 10]
+                        parallel!()
                     )
-                ),
-            )
-        ),)
+                )
+            ),
+        ),),
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![]),
     );
 }
-
 
 #[test]
 fn two_print_translation() {
@@ -563,29 +560,27 @@ fn two_print_translation() {
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
-    rvsdg
-        .to_tree_encoding()
-        .assert_eq_ignoring_ids(&program!(function(
+    assert_progs_eq(
+        &rvsdg.to_tree_encoding(),
+        &program!(function(
             "add",
-            TreeType::TupleT(vec![emptyt()]),
-            TreeType::TupleT(vec![emptyt()]),
+            TreeType::TupleT(vec![]),
+            TreeType::TupleT(vec![]),
             bind_value(
-                1,
-                int(2),
+                int(2), // [2]
                 bind_value(
-                    2,
-                    int(1),
+                    int(1), // [2, 1]
                     bind_value(
-                        3,
-                        add(get(arg(), 2), get(arg(), 1)),
-                        bind_value(
-                            4,
-                            tprint(get(arg(), 3)),
-                            bind_value(5, tprint(get(arg(), 1)), parallel!(get(arg(), 5))),
+                        add(getarg(1), getarg(0)), // [2, 1, 3]
+                        bind_tuple(
+                            tprint(getarg(2)),
+                            bind_tuple(tprint(getarg(0)), parallel!()),
                         ),
                     ),
                 ),
             )
-        )));
+        ),),
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![]),
+    );
 }
-*/

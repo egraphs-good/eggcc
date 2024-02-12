@@ -211,6 +211,12 @@ impl<'a> VirtualMachine<'a> {
                 let Tuple(vals) = self.interpret_expr(e_tuple, arg) else {
                     panic!("get")
                 };
+                if *i >= vals.len() {
+                    panic!(
+                        "get index out of bounds. Got index {} for tuple {:?}",
+                        i, vals
+                    )
+                }
                 vals[*i].clone()
             }
             // assume this is type checked, so ignore type

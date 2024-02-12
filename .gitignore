@@ -24,3 +24,7 @@ target/
 
 # Profiler output
 profile.json
+
+# Cargo.lock has caused problems for egglog; don't include it in case
+# it causes problems for us too
+Cargo.lock

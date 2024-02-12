@@ -12,3 +12,5 @@ target/
 # vscode prefs
 .vscode/
 
+
+Cargo.lock

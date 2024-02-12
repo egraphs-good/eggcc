@@ -220,3 +220,67 @@
       )
       ((HasType lhs (TupleT (TLConcat tylist1 tylist2))))
       :ruleset type-analysis)
+
+; =================================
+; Control flow
+; =================================
+(rule ((= lhs (If pred then else)))
+      ((ExpectType pred (Base (BoolT)) "If predicate must be boolean"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (If pred then else))
+        (HasType pred (Base (BoolT)))
+        (HasType then ty)
+        (HasType else ty)
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (If pred then else))
+        (HasType pred (Base (BoolT)))
+        (HasType then tya)
+        (HasType else tyb)
+        (!= tya tyb)
+      )
+      ((panic "if branches had different types"))
+      :ruleset type-analysis)
+
+
+
+(rule ((= lhs (Switch pred branches)))
+      ((ExpectType pred (Base (IntT)) "Switch predicate must be integer"))
+      :ruleset type-analysis)
+
+; base case: single branch switch has type of branch
+(rule (
+        (= lhs (Switch pred (Cons branch (Nil))))
+        (HasType pred (Base (IntT)))
+        (HasType branch ty)
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+
+; recursive case: peel off a layer
+(rule ((Switch pred (Cons branch rest)))
+      ((Switch pred rest))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Switch pred (Cons branch rest)))
+        (HasType pred (Base (IntT)))
+        (HasType branch ty)
+        (HasType (Switch pred rest) ty) ; rest of the branches also have type ty
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Switch pred (Cons branch rest)))
+        (HasType pred (Base (IntT)))
+        (HasType branch tya)
+        (HasType (Switch pred rest) tyb)
+        (!= tya tyb)
+      )
+      ((panic "switch branches had different types"))
+      :ruleset type-analysis)

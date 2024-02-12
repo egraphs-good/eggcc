@@ -51,13 +51,13 @@ fn uops() -> crate::Result {
 #[test]
 #[should_panic]
 fn not_error() {
-    let _ = type_error_test(not(int(4)));
+    type_error_test(not(int(4)));
 }
 
 #[test]
 #[should_panic]
 fn load_error() {
-    let _ = type_error_test(load(int(4)));
+    type_error_test(load(int(4)));
 }
 
 #[test]
@@ -157,6 +157,68 @@ fn tuple() -> crate::Result {
         val_int(0),
         val_vec(vec![val_int(20), val_bool(true)]),
     )
+}
+
+#[test]
+fn ifs() -> crate::Result {
+    type_test(tif(ttrue(), int(1), int(2)), intt(), val_int(0), val_int(1))?;
+
+    type_test(
+        tif(
+            less_than(int(2), int(3)),
+            and(ttrue(), tfalse()),
+            or(less_than(int(3), int(4)), ttrue()),
+        ),
+        boolt(),
+        val_int(0),
+        val_bool(false),
+    )
+}
+
+#[test]
+#[should_panic]
+fn if_pred() {
+    type_error_test(tif(int(1), int(2), int(3)));
+}
+
+#[test]
+#[should_panic]
+fn if_branches() {
+    type_error_test(tif(ttrue(), int(2), tfalse()));
+}
+
+#[test]
+fn switches() -> crate::Result {
+    type_test(
+        switch_vec(int(1), vec![int(0), int(21)]),
+        intt(),
+        val_int(0),
+        val_int(21),
+    )?;
+    type_test(
+        switch_vec(int(0), vec![ttrue()]),
+        boolt(),
+        val_int(0),
+        val_bool(true),
+    )?;
+    type_test(
+        switch_vec(int(2), vec![int(1), int(2), int(3), int(4)]),
+        intt(),
+        val_int(0),
+        val_int(3),
+    )
+}
+
+#[test]
+#[should_panic]
+fn switch_pred() {
+    type_error_test(switch_vec(ttrue(), vec![int(1), int(2)]));
+}
+
+#[test]
+#[should_panic]
+fn switch_branches() {
+    type_error_test(switch_vec(int(1), vec![ttrue(), int(1)]));
 }
 
 #[test]

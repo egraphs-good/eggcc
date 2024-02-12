@@ -193,10 +193,12 @@ fn type_to_treetype(ty: &Type) -> TreeType {
 }
 
 impl RvsdgType {
-    pub(crate) fn to_tree_type(&self) -> TreeType {
+    /// Converts a bril type to a tree type.
+    /// If the type is a print state, returns None.
+    pub(crate) fn to_tree_type(&self) -> Option<TreeType> {
         match self {
-            RvsdgType::Bril(ty) => type_to_treetype(ty),
-            RvsdgType::PrintState => TreeType::TupleT(vec![]),
+            RvsdgType::Bril(ty) => Some(type_to_treetype(ty)),
+            RvsdgType::PrintState => None,
         }
     }
 }

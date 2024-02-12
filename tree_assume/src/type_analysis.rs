@@ -20,8 +20,8 @@ fn type_test(inp: RcExpr, expected_ty: Type, arg: Value, expected_val: Value) ->
 }
 
 #[cfg(test)]
-fn type_error_test(inp: RcExpr) -> crate::Result {
-    egglog_test(&format!("{inp}"), "", vec![], val_empty(), val_empty())
+fn type_error_test(inp: RcExpr) {
+    let _ = egglog_test(&format!("{inp}"), "", vec![], val_empty(), val_empty());
 }
 
 #[cfg(test)]
@@ -51,13 +51,13 @@ fn uops() -> crate::Result {
 #[test]
 #[should_panic]
 fn not_error() {
-    let _ = type_error_test(not(int(4)));
+    type_error_test(not(int(4)));
 }
 
 #[test]
 #[should_panic]
 fn load_error() {
-    let _ = type_error_test(load(int(4)));
+    type_error_test(load(int(4)));
 }
 
 #[test]
@@ -80,37 +80,37 @@ fn bops() -> crate::Result {
 #[test]
 #[should_panic]
 fn add_error() {
-    let _ = type_error_test(add(int(4), ttrue()));
+    type_error_test(add(int(4), ttrue()));
 }
 
 #[test]
 #[should_panic]
 fn sub_error() {
-    let _ = type_error_test(sub(tfalse(), ttrue()));
+    type_error_test(sub(tfalse(), ttrue()));
 }
 
 #[test]
 #[should_panic]
 fn mul_error() {
-    let _ = type_error_test(mul(less_than(int(4), int(5)), int(3)));
+    type_error_test(mul(less_than(int(4), int(5)), int(3)));
 }
 
 #[test]
 #[should_panic]
 fn less_than_error() {
-    let _ = type_error_test(less_than(less_than(int(4), int(5)), int(3)));
+    type_error_test(less_than(less_than(int(4), int(5)), int(3)));
 }
 
 #[test]
 #[should_panic]
 fn and_error() {
-    let _ = type_error_test(and(ttrue(), and(tfalse(), int(2))));
+    type_error_test(and(ttrue(), and(tfalse(), int(2))));
 }
 
 #[test]
 #[should_panic]
 fn or_error() {
-    let _ = type_error_test(or(tfalse(), int(2)));
+    type_error_test(or(tfalse(), int(2)));
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn pointers() -> crate::Result {
 #[test]
 #[should_panic]
 fn pointer_type_error() {
-    let _ = type_error_test(alloc(less_than(int(1), int(2)), boolt()));
+    type_error_test(alloc(less_than(int(1), int(2)), boolt()));
 }
 
 #[test]
@@ -178,13 +178,13 @@ fn ifs() -> crate::Result {
 #[test]
 #[should_panic]
 fn if_pred() {
-    let _ = type_error_test(tif(int(1), int(2), int(3)));
+    type_error_test(tif(int(1), int(2), int(3)));
 }
 
 #[test]
 #[should_panic]
 fn if_branches() {
-    let _ = type_error_test(tif(ttrue(), int(2), tfalse()));
+    type_error_test(tif(ttrue(), int(2), tfalse()));
 }
 
 #[test]
@@ -212,11 +212,23 @@ fn switches() -> crate::Result {
 #[test]
 #[should_panic]
 fn switch_pred() {
-    let _ = type_error_test(switch_vec(ttrue(), vec![int(1), int(2)]));
+    type_error_test(switch_vec(ttrue(), vec![int(1), int(2)]));
 }
 
 #[test]
 #[should_panic]
 fn switch_branches() {
-    let _ = type_error_test(switch_vec(int(1), vec![ttrue(), int(1)]));
+    type_error_test(switch_vec(int(1), vec![ttrue(), int(1)]));
+}
+
+#[test]
+fn lets() -> crate::Result {
+    let inp = tlet(int(4), add(arg(intt()), arg(intt())));
+    type_test(inp, intt(), val_int(0), val_int(8))
+}
+
+#[test]
+#[should_panic]
+fn let_type_error() {
+    type_error_test(tlet(int(1), and(arg(boolt()), ttrue())));
 }

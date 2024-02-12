@@ -167,10 +167,7 @@ impl<'a> RegionTranslator<'a> {
     /// return one value.
     fn translate_operand(&mut self, operand: Operand) -> StoredNode {
         match operand {
-            Operand::Arg(index) => {
-                eprintln!("Arg {} in {:?}", index, self.argument_values);
-                self.argument_values[index].clone()
-            }
+            Operand::Arg(index) => self.argument_values[index].clone(),
             Operand::Id(id) => {
                 let res = self.translate_node(id);
                 if matches!(res, StoredNode::Region(_)) {
@@ -210,7 +207,6 @@ impl<'a> RegionTranslator<'a> {
                     inputs,
                     outputs,
                 } => {
-                    eprintln!("here");
                     let mut input_values = vec![];
                     for input in inputs {
                         input_values.push(self.translate_operand(*input));
@@ -259,7 +255,7 @@ impl<'a> RegionTranslator<'a> {
                     let mut output_values = vec![];
                     for output in outputs_translated {
                         match output {
-                            StoredNode::StateEdge => (),
+                            StoredNode::StateEdge => output_values.push(StoredNode::StateEdge),
                             StoredNode::Arg(_) => {
                                 output_values.push(StoredNode::Arg(self.current_num_args));
                                 self.current_num_args += 1;
@@ -267,6 +263,7 @@ impl<'a> RegionTranslator<'a> {
                             StoredNode::Region(_) => panic!("Found nested region in theta output"),
                         }
                     }
+
                     self.add_region_binding(loop_expr, id, output_values)
                 }
             }

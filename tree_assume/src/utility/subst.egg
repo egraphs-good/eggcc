@@ -1,16 +1,16 @@
 
 ;; (Subst assumption to in) substitutes 
-;; (Assume assumption to) for `(Arg)` in `in`
-;; It also replaces `(Asuume anything (Arg))` with `(Assume assumption to)`
+;; (Assume assumption to) for `(Arg ty)` in `in`
+;; It also replaces `(Asuume anything (Arg ty))` with `(Assume assumption to)`
 (function Subst (Assumption Expr Expr) Expr :unextractable)
 (function SubstList (Assumption Expr ListExpr) ListExpr :unextractable)
 
 
 ;; Base case- leaf nodes
-(rewrite (Subst assum to (Arg))
+(rewrite (Subst assum to (Arg ty))
          (Assume assum to)
          :ruleset always-run)
-(rewrite (Subst assum to (Assume assum2 (Arg)))
+(rewrite (Subst assum to (Assume assum2 (Arg ty)))
          (Assume assum to)
          :ruleset always-run)
 (rewrite (Subst assum to (Const constant))

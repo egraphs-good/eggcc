@@ -666,30 +666,57 @@ impl<'a> RvsdgToCfg<'a> {
     ) -> TranslationResult {
         match expr {
             BasicExpr::Op(value_op, operands, ty) => {
-                let mut instructions = vec![];
-                let operand_results = operands
+                let mut operand_results = operands
                     .iter()
                     .map(|op| self.operand_to_bril(*op, current_args, ctx))
                     .collect::<Vec<_>>();
-                let operands = self.combine_results(&operand_results);
 
                 let name = self.get_fresh();
-                instructions.push(Instruction::Value {
-                    dest: name.clone(),
-                    op: *value_op,
-                    args: operands.values.iter().map(|v| v.unwrap_name()).collect(),
-                    funcs: vec![],
-                    labels: vec![],
-                    pos: None,
-                    op_type: ty.clone(),
-                });
-                let new_block = self.make_block(instructions);
-                let new_res = TranslationResult {
-                    start: new_block,
-                    end: new_block,
-                    values: vec![RvsdgValue::BrilValue(name, ty.clone())],
-                };
-                self.sequence_results(&[operands, new_res])
+                match value_op {
+                    ValueOps::Alloc | ValueOps::Load => {
+                        let non_state_results = &operand_results[0..operand_results.len() - 1];
+                        let operands = self.combine_results(non_state_results);
+                        let args: Vec<String> =
+                            operands.values.iter().map(|v| v.unwrap_name()).collect();
+                        let new_block = self.make_block(vec![Instruction::Value {
+                            args,
+                            dest: name.clone(),
+                            funcs: vec![],
+                            labels: vec![],
+                            op: *value_op,
+                            pos: None,
+                            op_type: ty.clone(),
+                        }]);
+                        let new_res = TranslationResult {
+                            start: new_block,
+                            end: new_block,
+                            values: vec![
+                                RvsdgValue::BrilValue(name, ty.clone()),
+                                RvsdgValue::StateEdge,
+                            ],
+                        };
+                        operand_results.push(new_res);
+                        self.sequence_results(&operand_results)
+                    }
+                    _ => {
+                        let operands = self.combine_results(&operand_results);
+                        let new_block = self.make_block(vec![Instruction::Value {
+                            dest: name.clone(),
+                            op: *value_op,
+                            args: operands.values.iter().map(|v| v.unwrap_name()).collect(),
+                            funcs: vec![],
+                            labels: vec![],
+                            pos: None,
+                            op_type: ty.clone(),
+                        }]);
+                        let new_res = TranslationResult {
+                            start: new_block,
+                            end: new_block,
+                            values: vec![RvsdgValue::BrilValue(name, ty.clone())],
+                        };
+                        self.sequence_results(&[operands, new_res])
+                    }
+                }
             }
             BasicExpr::Call(func_name, operands, n_outs, return_type) => {
                 // We need to remove the last argument if the function call is stateful.
@@ -770,33 +797,30 @@ impl<'a> RvsdgToCfg<'a> {
                     values: vec![RvsdgValue::BrilValue(dest, ty.clone())],
                 }
             }
-            BasicExpr::Effect(EffectOps::Print, print_operands) => {
-                assert!(print_operands.len() == 2);
-                let argument = self.operand_to_bril(print_operands[0], current_args, ctx);
-                // also need to evaluate other prints before this one
-                let second_evaluated = self.operand_to_bril(print_operands[1], current_args, ctx);
-
-                let instructions = vec![Instruction::Effect {
-                    op: EffectOps::Print,
-                    args: vec![argument.get_single_res().unwrap_name()],
+            BasicExpr::Effect(op, args) => {
+                // TODO: should we combine these?
+                let mut results: Vec<TranslationResult> = args
+                    .iter()
+                    .map(|op| self.operand_to_bril(*op, current_args, ctx))
+                    .collect();
+                let args: Vec<String> = results[0..results.len() - 1]
+                    .iter()
+                    .map(|res| res.get_single_res().unwrap_name())
+                    .collect();
+                let new_block = self.make_block(vec![Instruction::Effect {
+                    op: *op,
+                    args,
                     funcs: vec![],
                     labels: vec![],
                     pos: None,
-                }];
-                let new_block = self.make_block(instructions);
-                self.sequence_results(&[
-                    argument,
-                    second_evaluated,
-                    TranslationResult {
-                        start: new_block,
-                        end: new_block,
-                        values: vec![RvsdgValue::StateEdge],
-                    },
-                ])
+                }]);
+                results.push(TranslationResult {
+                    start: new_block,
+                    end: new_block,
+                    values: vec![RvsdgValue::StateEdge],
+                });
+                self.sequence_results(&results)
             }
-
-            // TODO: support translating non-print effects.
-            BasicExpr::Effect(..) => unimplemented!(),
         }
     }
 }

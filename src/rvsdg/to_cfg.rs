@@ -803,9 +803,11 @@ impl<'a> RvsdgToCfg<'a> {
                     .iter()
                     .map(|op| self.operand_to_bril(*op, current_args, ctx))
                     .collect();
-                let args: Vec<String> = results[0..results.len() - 1]
+                let main_result = self.combine_results(&results[0..results.len() - 1]);
+                let args: Vec<String> = main_result
+                    .values
                     .iter()
-                    .map(|res| res.get_single_res().unwrap_name())
+                    .map(|res| res.unwrap_name())
                     .collect();
                 let new_block = self.make_block(vec![Instruction::Effect {
                     op: *op,
@@ -814,12 +816,15 @@ impl<'a> RvsdgToCfg<'a> {
                     labels: vec![],
                     pos: None,
                 }]);
-                results.push(TranslationResult {
-                    start: new_block,
-                    end: new_block,
-                    values: vec![RvsdgValue::StateEdge],
-                });
-                self.sequence_results(&results)
+                self.sequence_results(&[
+                    main_result,
+                    results.pop().unwrap(),
+                    TranslationResult {
+                        start: new_block,
+                        end: new_block,
+                        values: vec![RvsdgValue::StateEdge],
+                    },
+                ])
             }
         }
     }

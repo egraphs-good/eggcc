@@ -94,10 +94,11 @@ struct RegionTranslator<'a> {
 /// helper that binds a new expression, adding it
 /// to the environment by concatenating all previous values
 /// with the new one
-fn bind_tuple(expr: RcExpr, body: RcExpr) -> RcExpr {
-    tlet(concat_par(arg(), expr), body)
+fn bind_tuple(new_tuple_expr: RcExpr, body: RcExpr) -> RcExpr {
+    tlet(concat_par(arg(), new_tuple_expr), body)
 }
 
+/// Bind a single value instead of a tuple, convenient for testing
 #[cfg(test)]
 fn bind_value(expr: RcExpr, body: RcExpr) -> RcExpr {
     tlet(push_par(expr, arg()), body)
@@ -106,18 +107,13 @@ fn bind_value(expr: RcExpr, body: RcExpr) -> RcExpr {
 impl<'a> RegionTranslator<'a> {
     /// Adds a binding and returns its index
     /// into the argument list.
-    /// `expr` must not have a tuple type.
-    fn add_binding(&mut self, expr: RcExpr, id: Id, is_state_edge: bool) -> StoredNode {
-        let res = if is_state_edge {
-            // produces an empty tuple, so just push it to bindings
-            self.bindings.push(expr);
-            StoredNode::StateEdge
-        } else {
-            // produces a value, so wrap in `single` and push to bindings
-            self.bindings.push(single(expr));
-            self.current_num_args += 1;
-            StoredNode::Arg(self.current_num_args - 1)
-        };
+    /// `expr` must produce a single value, not a tuple.
+    fn add_binding(&mut self, expr: RcExpr, id: Id) -> StoredNode {
+        let res = StoredNode::Arg(self.current_num_args);
+        // produces a value, so wrap in `single` and push to bindings
+        self.bindings.push(single(expr));
+        self.current_num_args += 1;
+
         assert_eq!(
             self.index_of.insert(id, res.clone()),
             None,
@@ -126,6 +122,20 @@ impl<'a> RegionTranslator<'a> {
         res
     }
 
+    /// Adds a binding for a state edge (e.g. a print or write)
+    fn add_state_edge_binding(&mut self, expr: RcExpr, id: Id) -> StoredNode {
+        self.bindings.push(expr);
+        let res = StoredNode::StateEdge;
+        assert_eq!(
+            self.index_of.insert(id, res.clone()),
+            None,
+            "Node already evaluated. Cycle in the RVSDG or similar bug."
+        );
+        res
+    }
+
+    /// Adds a tuple to the bindings.
+    /// `values` is a vector refering to each value in the tuple.
     fn add_region_binding(&mut self, expr: RcExpr, id: Id, values: Vec<StoredNode>) -> StoredNode {
         self.bindings.push(expr);
         let res = StoredNode::Region(values);
@@ -232,6 +242,9 @@ impl<'a> RegionTranslator<'a> {
                         }
                     }
 
+                    // For the sub-region, we need a new region translator
+                    // with its own arguments and bindings.
+                    // We then put the whole loop in a let binding and move on.
                     let mut sub_translator = RegionTranslator::new(self.nodes, argument_values);
                     let mut pred_outputs = vec![sub_translator
                         .translate_operand(*pred)
@@ -291,7 +304,7 @@ impl<'a> RegionTranslator<'a> {
                     (ValueOps::Lt, [a, b]) => less_than(a.clone(), b.clone()),
                     _ => todo!("handle other ops"),
                 };
-                self.add_binding(expr, id, false)
+                self.add_binding(expr, id)
             }
             BasicExpr::Call(..) => {
                 todo!("handle calls");
@@ -299,11 +312,11 @@ impl<'a> RegionTranslator<'a> {
             BasicExpr::Const(_op, literal, _ty) => match literal {
                 Literal::Int(n) => {
                     let expr = int(n);
-                    self.add_binding(expr, id, false)
+                    self.add_binding(expr, id)
                 }
                 Literal::Bool(b) => {
                     let expr = if b { ttrue() } else { tfalse() };
-                    self.add_binding(expr, id, false)
+                    self.add_binding(expr, id)
                 }
                 _ => todo!("handle other literals"),
             },
@@ -325,7 +338,7 @@ impl<'a> RegionTranslator<'a> {
                 );
                 // print outputs a new unit value
                 let expr = tprint(arg1);
-                self.add_binding(expr, id, true)
+                self.add_state_edge_binding(expr, id)
             }
             BasicExpr::Effect(..) => {
                 todo!("handle memory operations")

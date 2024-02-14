@@ -6,6 +6,8 @@ use crate::{
 };
 
 impl TreeProgram {
+    /// Adds correct types to arguments in the program
+    /// and performs type checking.
     pub(crate) fn with_arg_types(&self) -> TreeProgram {
         let checker = TypeChecker::new(self);
         checker.add_arg_types()
@@ -13,8 +15,9 @@ impl TreeProgram {
 }
 
 impl Expr {
-    /// Adds types to an expression, given the input type and
-    /// expected output type.
+    /// Adds correct types to arguments in the expression
+    /// given the input type and expected output type.
+    /// Performs type checking.
     /// TODO remove dead code after use in translation
     #[allow(dead_code)]
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
@@ -30,7 +33,9 @@ impl Expr {
     }
 }
 
-pub struct TypeChecker<'a> {
+/// Type checks program fragments.
+/// Uses the program to look up function types.
+pub(crate) struct TypeChecker<'a> {
     program: &'a TreeProgram,
 }
 
@@ -39,7 +44,7 @@ impl<'a> TypeChecker<'a> {
         TypeChecker { program: prog }
     }
 
-    pub fn add_arg_types(&self) -> TreeProgram {
+    pub(crate) fn add_arg_types(&self) -> TreeProgram {
         TreeProgram {
             entry: self.add_arg_types_to_func(self.program.entry.clone()),
             functions: self
@@ -51,7 +56,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    pub fn add_arg_types_to_func(&self, func: RcExpr) -> RcExpr {
+    pub(crate) fn add_arg_types_to_func(&self, func: RcExpr) -> RcExpr {
         match func.as_ref() {
             Expr::Function(name, in_ty, out_ty, body) => {
                 let (ety, new_body) = self.add_arg_types_to_expr(body.clone(), in_ty.clone());
@@ -71,11 +76,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    pub fn add_arg_types_to_expr(&self, expr: RcExpr, arg_ty: Type) -> (Type, RcExpr) {
-        eprintln!(
-            "add_arg_types_to_expr: expr: {:?}, arg_ty: {:?}",
-            expr, arg_ty
-        );
+    pub(crate) fn add_arg_types_to_expr(&self, expr: RcExpr, arg_ty: Type) -> (Type, RcExpr) {
         match expr.as_ref() {
             Expr::Const(constant) => {
                 let ty = match constant {
@@ -119,6 +120,7 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Bop(BinaryOp::PtrAdd, new_left, new_right)),
                 )
             }
+            // covers all cases where the input and output types are concrete
             Expr::Bop(op, left, right) if op.types().is_some() => {
                 let (left_expected, right_expected, out_expected) = op.types().unwrap();
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty.clone());
@@ -138,6 +140,7 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Bop(op.clone(), new_left, new_right)),
                 )
             }
+            // covers all cases where the input and output types are concrete
             Expr::Uop(op, inner) if op.types().is_some() => {
                 let (expected_inner, expected_out) = op.types().unwrap();
                 let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty.clone());
@@ -290,8 +293,8 @@ impl<'a> TypeChecker<'a> {
                 (bty, RcExpr::new(Expr::Assume(assumption.clone(), new_body)))
             }
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
-            // should have covered all cases, but used `types` method of BinaryOp
-            //  so rust can't prove it
+            // should have covered all cases, but rust can't prove it
+            // due to the side conditions
             _ => panic!("Unexpected expression {:?}", expr),
         }
     }

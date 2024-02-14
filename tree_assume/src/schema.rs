@@ -17,6 +17,12 @@ pub enum Type {
     PointerT(BaseType),
     /// Nested tuple types are not allowed.
     TupleT(Vec<Type>),
+    /// Before `with_arg_types`, users of this IR can leave unknown types
+    /// in arguments.
+    /// When all types are present except for unknowns in arguments,
+    /// `with_arg_types` succeeds and the unknowns are replaced with the correct types.
+    /// In the egraph there should never be any unknown arg types.
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter)]

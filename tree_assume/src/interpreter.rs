@@ -376,10 +376,10 @@ fn test_interpreter_fib_using_memory() {
         alloc(int(nth + 2), intt()),
         tlet(
             concat_seq(
-                twrite(arg(), int(0)), // address 0, value 0
+                twrite(int_arg(), int(0)), // address 0, value 0
                 concat_seq(
-                    twrite(ptradd(arg(), int(1)), int(1)), // address 1, value 1
-                    single(arg()),
+                    twrite(ptradd(int_arg(), int(1)), int(1)), // address 1, value 1
+                    single(int_arg()),
                 ),
             ),
             tlet(
@@ -396,7 +396,7 @@ fn test_interpreter_fib_using_memory() {
                                         load(ptradd(getat(0), int(-2))),
                                     ),
                                 ),
-                                arg(),
+                                int_arg(),
                             ),
                             parallel!(ptradd(getat(0), int(1)), add(getat(1), int(1))),
                         ),

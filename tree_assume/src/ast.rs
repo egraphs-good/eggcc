@@ -203,10 +203,14 @@ pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Let(lhs, rhs))
 }
 
-/// Assumes the argument has an integer type.
-/// If this is not true, use `with_arg_types` to add
-/// the correct types to arguments after construction.
+/// Returns an argument with an unknown type.
+/// Use `with_arg_types` to fill in the correct type.
 pub fn arg() -> RcExpr {
+    RcExpr::new(Expr::Arg(Type::Unknown))
+}
+
+/// An argument with an integer type.
+pub fn int_arg() -> RcExpr {
     RcExpr::new(Expr::Arg(intt()))
 }
 
@@ -216,7 +220,7 @@ pub fn bool_arg() -> RcExpr {
 }
 
 pub fn getat(index: usize) -> RcExpr {
-    get(arg(), index)
+    get(int_arg(), index)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {

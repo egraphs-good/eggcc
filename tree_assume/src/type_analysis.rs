@@ -243,7 +243,7 @@ fn switch_branches() {
 
 #[test]
 fn lets() -> crate::Result {
-    let inp = tlet(int(4), add(arg(), arg()));
+    let inp = tlet(int(4), add(int_arg(), int_arg()));
     type_test(inp, intt(), val_int(0), val_int(8))
 }
 

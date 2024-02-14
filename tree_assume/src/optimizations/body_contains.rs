@@ -89,7 +89,7 @@ fn test_body_contains() -> Result<(), egglog::Error> {
         num3 = int(3),
         num4 = int(4),
         num5 = int(5),
-        assume = assume(inlet(int(6)), arg()),
+        assume = assume(inlet(int(6)), int_arg()),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(

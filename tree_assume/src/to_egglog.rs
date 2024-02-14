@@ -56,6 +56,7 @@ impl Type {
                 let tlist = to_tlistexpr(types, term_dag);
                 term_dag.app("TupleT".into(), vec![tlist])
             }
+            Type::Unknown => panic!("Found unknown type when converting to egglog. Did you forget to call `with_arg_types`?"),
         }
     }
 }
@@ -266,7 +267,7 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
-    let expr = add(int(1), arg());
+    let expr = add(int(1), int_arg());
     test_expr_parses_to(expr, "(Bop (Add) (Const (Int 1)) (Arg (Base (IntT))))");
 }
 

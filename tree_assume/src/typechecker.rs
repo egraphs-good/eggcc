@@ -15,9 +15,8 @@ impl TreeProgram {
 }
 
 impl Expr {
-    /// Adds correct types to arguments in the expression
-    /// given the input type and expected output type.
-    /// Performs type checking.
+    /// Performs type checking, and also replaces any `Unknown` types
+    /// in arguments with the correct types.
     /// TODO remove dead code after use in translation
     #[allow(dead_code)]
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
@@ -59,11 +58,11 @@ impl<'a> TypeChecker<'a> {
     pub(crate) fn add_arg_types_to_func(&self, func: RcExpr) -> RcExpr {
         match func.as_ref() {
             Expr::Function(name, in_ty, out_ty, body) => {
-                let (ety, new_body) = self.add_arg_types_to_expr(body.clone(), in_ty.clone());
+                let (expr_ty, new_body) = self.add_arg_types_to_expr(body.clone(), in_ty.clone());
                 assert_eq!(
-                    ety, *out_ty,
+                    expr_ty, *out_ty,
                     "Expected return type to be {:?}. Got {:?}",
-                    out_ty, ety
+                    out_ty, expr_ty
                 );
                 RcExpr::new(Expr::Function(
                     name.clone(),
@@ -287,7 +286,15 @@ impl<'a> TypeChecker<'a> {
                 )
             }
             // Replace the argument type with the new type
-            Expr::Arg(_ignored_ty) => (arg_ty.clone(), Rc::new(Expr::Arg(arg_ty))),
+            Expr::Arg(Type::Unknown) => (arg_ty.clone(), Rc::new(Expr::Arg(arg_ty))),
+            Expr::Arg(found_ty) => {
+                assert_eq!(
+                    found_ty, &arg_ty,
+                    "Expected argument type to be {:?}. Got {:?}",
+                    arg_ty, found_ty
+                );
+                (arg_ty, expr)
+            }
             Expr::Assume(assumption, body) => {
                 let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), arg_ty.clone());
                 (bty, RcExpr::new(Expr::Assume(assumption.clone(), new_body)))

@@ -13,10 +13,20 @@ impl TreeProgram {
 }
 
 impl Expr {
+    /// Adds types to an expression, given the input type and
+    /// expected output type.
+    /// TODO remove dead code after use in translation
+    #[allow(dead_code)]
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
-        let prog = self.to_program(input_ty.clone(), output_ty);
+        let prog = self.to_program(input_ty.clone(), output_ty.clone());
         let checker = TypeChecker::new(&prog);
-        checker.add_arg_types_to_expr(self.clone(), input_ty).1
+        let (ty, new_expr) = checker.add_arg_types_to_expr(self.clone(), input_ty);
+        assert_eq!(
+            ty, output_ty,
+            "Expected return type to be {:?}. Got {:?}",
+            output_ty, ty
+        );
+        new_expr
     }
 }
 

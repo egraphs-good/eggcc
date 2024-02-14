@@ -22,6 +22,7 @@ fn test_list_util() -> crate::Result {
         vec![],
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
+        vec![],
     )
 }
 
@@ -47,5 +48,6 @@ fn append_test() -> crate::Result {
         vec![],
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
+        vec![],
     )
 }

@@ -128,5 +128,6 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
         vec![pureloop.to_program(emptyt(), tuplet!(intt()))],
         Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(4))]),
+        vec![],
     )
 }

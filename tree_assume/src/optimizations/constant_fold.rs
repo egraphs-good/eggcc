@@ -16,5 +16,6 @@ fn test_add_constant_fold() -> crate::Result {
         ],
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(3)),
+        vec![],
     )
 }

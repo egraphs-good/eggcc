@@ -8,6 +8,7 @@ use std::{
     path::PathBuf,
     str::FromStr,
 };
+use tree_assume::schema::TreeProgram;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -152,6 +153,8 @@ pub enum RunType {
     StructuredRoundTrip,
     /// Convert the input bril program to an RVSDG and output it as an SVG.
     RvsdgConversion,
+    /// Convert the input bril program to a tree-encoded expression.
+    TreeConversion,
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
@@ -194,6 +197,7 @@ impl FromStr for RunType {
             "nothing" => Ok(RunType::Nothing),
             "structured" => Ok(RunType::StructuredConversion),
             "structured-roundtrip" => Ok(RunType::StructuredRoundTrip),
+            "tree" => Ok(RunType::TreeConversion),
             "rvsdg" => Ok(RunType::RvsdgConversion),
             "rvsdg-roundtrip" => Ok(RunType::RvsdgRoundTrip),
             "to-cfg" => Ok(RunType::ToCfg),
@@ -216,6 +220,7 @@ impl Display for RunType {
             RunType::StructuredConversion => write!(f, "structured"),
             RunType::StructuredRoundTrip => write!(f, "structured-roundtrip"),
             RunType::RvsdgConversion => write!(f, "rvsdg"),
+            RunType::TreeConversion => write!(f, "tree"),
             RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
             RunType::ToCfg => write!(f, "to-cfg"),
             RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
@@ -230,7 +235,9 @@ impl Display for RunType {
 }
 
 impl RunType {
-    pub fn produces_bril(&self) -> bool {
+    /// Returns true if the run type produces an IR
+    /// that can be interpreted.
+    pub fn produces_interpretable(&self) -> bool {
         match self {
             RunType::Nothing => true,
             RunType::StructuredConversion => false,
@@ -245,6 +252,7 @@ impl RunType {
             RunType::RvsdgEgglogEncoding => true,
             RunType::OptimizedRvsdg => false,
             RunType::Serialize => false,
+            RunType::TreeConversion => true,
         }
     }
 
@@ -260,7 +268,8 @@ impl RunType {
             | RunType::RvsdgOptimize
             | RunType::RvsdgEgglogEncoding
             | RunType::OptimizedRvsdg
-            | RunType::Serialize => false,
+            | RunType::Serialize
+            | RunType::TreeConversion => false,
         }
     }
 }
@@ -311,6 +320,12 @@ pub struct Run {
     pub profile_out: Option<PathBuf>,
 }
 
+/// an enum of IRs that can be interpreted
+pub enum Interpretable {
+    Bril(Program),
+    TreeProgram(TreeProgram),
+}
+
 /// Some sort of visualization of the result, with a name
 /// and a file extension.
 /// For CFGs, the name is the name of the function and the vizalization
@@ -344,6 +359,7 @@ impl Run {
             RunType::RvsdgOptimize,
             RunType::RvsdgToCfg,
             RunType::OptimizedRvsdg,
+            RunType::TreeConversion,
         ] {
             if prog.has_mem && !test_type.supports_memory() {
                 continue;
@@ -355,7 +371,7 @@ impl Run {
                 profile_out: None,
             };
             res.push(default.clone());
-            if test_type.produces_bril() {
+            if test_type.produces_interpretable() {
                 let interp = Run {
                     interp: true,
                     ..default
@@ -377,7 +393,7 @@ impl Run {
 
     pub fn run(&self) -> Result<RunOutput, EggCCError> {
         let original_interpreted = if self.interp {
-            Some(Optimizer::interp(
+            Some(Optimizer::interp_bril(
                 &self.prog_with_args.program,
                 self.prog_with_args.args.clone(),
                 None,
@@ -386,8 +402,11 @@ impl Run {
             None
         };
 
-        let (visualizations, bril_out) = match self.test_type {
-            RunType::Nothing => (vec![], Some(self.prog_with_args.program.clone())),
+        let (visualizations, interpretable_out) = match self.test_type {
+            RunType::Nothing => (
+                vec![],
+                Some(Interpretable::Bril(self.prog_with_args.program.clone())),
+            ),
             RunType::StructuredConversion => {
                 let structured = Optimizer::program_to_structured(&self.prog_with_args.program)?;
                 (
@@ -408,7 +427,7 @@ impl Run {
                         file_extension: ".bril".to_string(),
                         name: "".to_string(),
                     }],
-                    Some(bril),
+                    Some(Interpretable::Bril(bril)),
                 )
             }
             RunType::RvsdgConversion => {
@@ -433,7 +452,19 @@ impl Run {
                         file_extension: ".bril".to_string(),
                         name: "".to_string(),
                     }],
-                    Some(bril),
+                    Some(Interpretable::Bril(bril)),
+                )
+            }
+            RunType::TreeConversion => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding();
+                (
+                    vec![Visualization {
+                        result: tree.to_string(),
+                        file_extension: ".egg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::TreeProgram(tree)),
                 )
             }
             RunType::RvsdgToCfg => {
@@ -454,7 +485,7 @@ impl Run {
                         file_extension: ".bril".to_string(),
                         name: "".to_string(),
                     }],
-                    Some(bril),
+                    Some(Interpretable::Bril(bril)),
                 )
             }
             RunType::OptimizeDirectJumps => {
@@ -467,7 +498,7 @@ impl Run {
                         file_extension: ".bril".to_string(),
                         name: "".to_string(),
                     }],
-                    Some(bril),
+                    Some(Interpretable::Bril(bril)),
                 )
             }
             RunType::RvsdgOptimize => {
@@ -478,7 +509,7 @@ impl Run {
                         file_extension: ".bril".to_string(),
                         name: "".to_string(),
                     }],
-                    Some(optimized),
+                    Some(Interpretable::Bril(optimized)),
                 )
             }
             RunType::RvsdgEgglogEncoding => {
@@ -520,16 +551,20 @@ impl Run {
             }
         };
 
-        let result_interpreted = match bril_out {
-            Some(program) if self.interp => {
-                assert!(self.test_type.produces_bril());
-                Some(Optimizer::interp(
-                    &program,
-                    self.prog_with_args.args.clone(),
-                    self.profile_out.clone(),
-                ))
+        let result_interpreted = if !self.interp {
+            None
+        } else {
+            match interpretable_out {
+                Some(program) if self.interp => {
+                    assert!(self.test_type.produces_interpretable());
+                    Some(Optimizer::interp(
+                        &program,
+                        self.prog_with_args.args.clone(),
+                        self.profile_out.clone(),
+                    ))
+                }
+                _ => None,
             }
-            _ => None,
         };
 
         Ok(RunOutput {

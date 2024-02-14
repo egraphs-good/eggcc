@@ -40,6 +40,7 @@ fn test_subst_nested() -> crate::Result {
             Value::Const(Constant::Int(10)),
         ]),
         Value::Const(Constant::Int(0)),
+        vec![],
     )
 }
 
@@ -73,5 +74,6 @@ fn test_subst_makes_new_context() -> crate::Result {
         ],
         Value::Const(Constant::Int(2)),
         Value::Const(Constant::Int(3)),
+        vec![],
     )
 }

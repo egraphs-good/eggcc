@@ -15,6 +15,7 @@ fn test_assume_in_func() -> crate::Result {
         ],
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(2)),
+        vec![],
     )
 }
 
@@ -57,6 +58,7 @@ fn test_assume_two_lets() -> crate::Result {
         ],
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(4)),
+        vec![],
     )
 }
 
@@ -84,6 +86,7 @@ fn test_switch_contexts() -> crate::Result {
         ],
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(1)),
+        vec![],
     )
 }
 
@@ -122,5 +125,6 @@ fn test_dowhile_cycle_assume() -> crate::Result {
         ],
         Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(3))]),
+        vec![],
     )
 }

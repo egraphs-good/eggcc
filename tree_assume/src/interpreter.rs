@@ -86,15 +86,16 @@ pub struct BrilState {
 }
 
 /// Interprets a program, returning the value
-/// returned by the program.
-pub fn interpret(prog: &TreeProgram, arg: Value) -> Value {
+/// returned by the program and the print log.
+pub fn interpret_tree_prog(prog: &TreeProgram, arg: Value) -> (Value, Vec<String>) {
     let mut vm = VirtualMachine {
         program: prog,
         next_addr: 0,
         mem: HashMap::new(),
         log: vec![],
     };
-    vm.interpret(&prog.entry.func_name().unwrap(), &Some(arg))
+    let ret_val = vm.interpret(&prog.entry.func_name().unwrap(), &Some(arg));
+    (ret_val, vm.log)
 }
 
 /// Interprets an expression, returning the value
@@ -324,7 +325,7 @@ fn test_interpret_calls() {
         ),
         function("func2", intt(), intt(), tlet(arg(), add(arg(), int(1)))),
     );
-    let res = interpret(&expr, Const(Constant::Int(5)));
+    let res = interpret_tree_prog(&expr, Const(Constant::Int(5))).0;
     assert_eq!(res, Const(Constant::Int(10)));
 }
 
@@ -344,7 +345,7 @@ fn test_interpret_recursive() {
             )
         )
     ),);
-    let res = interpret(&expr, Const(Constant::Int(10)));
+    let res = interpret_tree_prog(&expr, Const(Constant::Int(10))).0;
     assert_eq!(res, Const(Constant::Int(55)));
 }
 

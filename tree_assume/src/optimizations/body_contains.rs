@@ -98,5 +98,6 @@ fn test_body_contains() -> Result<(), egglog::Error> {
         vec![myloop.to_program(emptyt(), tuplet!(intt()))],
         Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(4))]),
+        vec![],
     )
 }

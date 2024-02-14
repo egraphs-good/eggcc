@@ -8,6 +8,17 @@ use crate::{
 
 #[cfg(test)]
 fn type_test(inp: RcExpr, expected_ty: Type, arg: Value, expected_val: Value) -> crate::Result {
+    type_test_with_log(inp, expected_ty, arg, expected_val, vec![])
+}
+
+#[cfg(test)]
+fn type_test_with_log(
+    inp: RcExpr,
+    expected_ty: Type,
+    arg: Value,
+    expected_val: Value,
+    expected_log: Vec<String>,
+) -> crate::Result {
     let with_arg_types = inp.clone().with_arg_types(emptyt(), expected_ty.clone());
     let build = format!("{with_arg_types}");
     let check = format!("(check (HasType {with_arg_types} {expected_ty}))");
@@ -17,17 +28,32 @@ fn type_test(inp: RcExpr, expected_ty: Type, arg: Value, expected_val: Value) ->
         vec![inp.to_program(emptyt(), expected_ty)],
         arg,
         expected_val,
+        expected_log,
     )
 }
 
 #[cfg(test)]
 fn type_error_test(inp: RcExpr) {
-    let _ = egglog_test(&format!("{inp}"), "", vec![], val_empty(), val_empty());
+    let _ = egglog_test(
+        &format!("{inp}"),
+        "",
+        vec![],
+        val_empty(),
+        val_empty(),
+        vec![],
+    );
 }
 
 #[cfg(test)]
 fn _debug(inp: RcExpr, after: &str) -> crate::Result {
-    egglog_test(&format!("{inp}"), after, vec![], val_empty(), val_empty())
+    egglog_test(
+        &format!("{inp}"),
+        after,
+        vec![],
+        val_empty(),
+        val_empty(),
+        vec![],
+    )
 }
 
 #[test]
@@ -46,7 +72,13 @@ fn uops() -> crate::Result {
     let y = tfalse();
     type_test(not(x), boolt(), val_int(0), val_bool(false))?;
     type_test(not(y), boolt(), val_int(0), val_bool(true))?;
-    type_test(tprint(m), emptyt(), val_int(0), val_empty())
+    type_test_with_log(
+        tprint(m),
+        emptyt(),
+        val_int(0),
+        val_empty(),
+        vec!["3".to_string()],
+    )
 }
 
 #[test]
@@ -362,5 +394,6 @@ fn funcs_and_calls() -> crate::Result {
         vec![f.to_program(intt(), intt())],
         val_int(4),
         val_int(6),
+        vec![],
     )
 }

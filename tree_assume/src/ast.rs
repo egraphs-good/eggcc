@@ -48,7 +48,7 @@ pub fn val_vec(vals: Vec<Value>) -> Value {
 /// e.g. `tuple!(intt(), boolt())` becomes `Type::TupleT(vec![BaseType::IntT, BaseType::BoolT])`
 #[macro_export]
 macro_rules! tuplet {
-    ($($x:expr),* $(,)?) => ($crate::ast::tuplet_vec(vec![$(std::rc::Rc::new($x)),*]))
+    ($($x:expr),* $(,)?) => ($crate::ast::tuplet_vec(vec![$($x),*]))
 }
 pub use tuplet;
 

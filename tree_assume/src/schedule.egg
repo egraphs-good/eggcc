@@ -1,5 +1,6 @@
 (run-schedule
   (repeat 6
+    (saturate always-run)
     (repeat 100 assume)
     (saturate always-run)
     (saturate error-checking)

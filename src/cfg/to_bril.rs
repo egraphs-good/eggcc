@@ -55,6 +55,18 @@ impl SimpleCfgFunction {
             self.node_to_bril(self.exit, &mut func);
         }
 
+        if func.instrs.is_empty() {
+            // RVSDG conversions for empty functions do not add returns on their
+            // own. The bril interpreter rejects functions without returns.
+            func.instrs.push(Code::Instruction(Instruction::Effect {
+                op: EffectOps::Return,
+                args: vec![],
+                funcs: vec![],
+                labels: vec![],
+                pos: None,
+            }));
+        }
+
         func
     }
 

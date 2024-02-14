@@ -798,11 +798,11 @@ impl<'a> RvsdgToCfg<'a> {
                 }
             }
             BasicExpr::Effect(op, args) => {
-                // TODO: should we combine these?
                 let mut results: Vec<TranslationResult> = args
                     .iter()
                     .map(|op| self.operand_to_bril(*op, current_args, ctx))
                     .collect();
+                // Combine all arguments but the state edge.
                 let main_result = self.combine_results(&results[0..results.len() - 1]);
                 let args: Vec<String> = main_result
                     .values

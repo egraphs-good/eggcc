@@ -14,9 +14,9 @@ impl TreeProgram {
 
 impl Expr {
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
-        let prog = self.to_program(input_ty, output_ty);
+        let prog = self.to_program(input_ty.clone(), output_ty);
         let checker = TypeChecker::new(&prog);
-        checker.add_arg_types_to_expr(self.clone(), emptyt()).1
+        checker.add_arg_types_to_expr(self.clone(), input_ty).1
     }
 }
 

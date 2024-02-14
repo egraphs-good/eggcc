@@ -294,9 +294,15 @@ fn convert_whole_program() {
             "f",
             intt(),
             intt(),
-            dowhile(
-                arg(),
-                push_par(add(arg(), int(1)), single(less_than(arg(), int(10))))
+            get(
+                dowhile(
+                    single(arg()),
+                    push_par(
+                        add(get(arg(), 0), int(1)),
+                        single(less_than(get(arg(), 0), int(10)))
+                    )
+                ),
+                0
             )
         )
     );
@@ -307,10 +313,12 @@ fn convert_whole_program() {
                 (Bop (Add) (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
-                    (DoWhile (Arg (Base (IntT))) 
+                    (Get
+                        (DoWhile (Single (Arg (Base (IntT))))
                         (Concat (Parallel) 
-                            (Single (Bop (LessThan) (Arg (Base (IntT))) (Const (Int 10))))
-                            (Single (Bop (Add) (Arg (Base (IntT))) (Const (Int 1))))))) 
+                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10))))
+                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1))))))
+                        0)) 
                 (Nil)))",
     );
 }

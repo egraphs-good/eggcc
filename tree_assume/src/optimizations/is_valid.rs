@@ -44,7 +44,7 @@ fn test_is_valid() -> Result<(), egglog::Error> {
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     )
-    .with_arg_types(emptyt(), intt());
+    .with_arg_types(emptyt(), tuplet!(intt()));
     let not_made_valid = sub(arg(), arg()).with_arg_types(intt(), intt()); // this expression is indeed valid, but won't be marked as so
     let build = format!("(ExprIsValid {myloop}) {not_made_valid}");
     let check = format!(
@@ -57,13 +57,13 @@ fn test_is_valid() -> Result<(), egglog::Error> {
     ",
         num0 = int(0),
         num2 = int(2),
-        arg = arg(),
+        arg = arg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(
         &build,
         &check,
-        vec![myloop.to_program(emptyt(), intt())],
+        vec![myloop.to_program(emptyt(), tuplet!(intt()))],
         Value::Tuple(vec![]),
         // Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(4))]),

@@ -45,7 +45,10 @@ fn test_is_valid() -> Result<(), egglog::Error> {
         ),
     )
     .with_arg_types(emptyt(), tuplet!(intt()));
-    let not_made_valid = sub(arg(), arg()).with_arg_types(intt(), intt()); // this expression is indeed valid, but won't be marked as so
+    // this expression is valid (it uses only IR constructors)
+    // but it isn't a sub-expression of the initial one, so it won't be
+    // marked as valid.
+    let not_made_valid = sub(arg(), arg()).with_arg_types(intt(), intt());
     let build = format!("(ExprIsValid {myloop}) {not_made_valid}");
     let check = format!(
         "

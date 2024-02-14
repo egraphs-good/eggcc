@@ -1,9 +1,10 @@
-#![allow(dead_code)]
-
 use std::fmt::{Display, Formatter};
 use strum_macros::EnumIter;
 
-use crate::schema::{BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp};
+use crate::{
+    ast::{boolt, intt},
+    schema::{BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
+};
 
 /// Display for Constant implements a
 /// rust-readable representation using
@@ -84,6 +85,20 @@ impl Expr {
         }
     }
 
+    pub fn func_input_ty(&self) -> Option<Type> {
+        match self {
+            Expr::Function(_, ty, _, _) => Some(ty.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn func_output_ty(&self) -> Option<Type> {
+        match self {
+            Expr::Function(_, _, ty, _) => Some(ty.clone()),
+            _ => None,
+        }
+    }
+
     pub fn func_body(&self) -> Option<&RcExpr> {
         match self {
             Expr::Function(_, _, _, body) => Some(body),
@@ -91,6 +106,8 @@ impl Expr {
         }
     }
 
+    /// Converts this expression to a program, and ensures arguments
+    /// have the correct type by calling `with_arg_types`.
     pub fn to_program(self: &RcExpr, input_ty: Type, output_ty: Type) -> TreeProgram {
         match self.as_ref() {
             Expr::Function(..) => TreeProgram {
@@ -107,6 +124,7 @@ impl Expr {
                 functions: vec![],
             },
         }
+        .with_arg_types()
     }
 }
 
@@ -356,6 +374,29 @@ impl Constructor {
             Constructor::Assume => ESort::Expr,
             Constructor::Cons => ESort::ListExpr,
             Constructor::Nil => ESort::ListExpr,
+        }
+    }
+}
+
+impl BinaryOp {
+    /// When a binary op has concrete input sorts, return them.
+    pub(crate) fn types(&self) -> Option<(Type, Type, Type)> {
+        match self {
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul => Some((intt(), intt(), intt())),
+            BinaryOp::And | BinaryOp::Or => Some((boolt(), boolt(), boolt())),
+            BinaryOp::LessThan => Some((intt(), intt(), boolt())),
+            BinaryOp::Write => None,
+            BinaryOp::PtrAdd => None,
+        }
+    }
+}
+
+impl UnaryOp {
+    pub(crate) fn types(&self) -> Option<(Type, Type)> {
+        match self {
+            UnaryOp::Not => Some((boolt(), boolt())),
+            UnaryOp::Print => None,
+            UnaryOp::Load => None,
         }
     }
 }

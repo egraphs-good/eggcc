@@ -266,7 +266,7 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
-    let expr = add(int(1), arg(intt()));
+    let expr = add(int(1), arg());
     test_expr_parses_to(expr, "(Bop (Add) (Const (Int 1)) (Arg (Base (IntT))))");
 }
 
@@ -295,11 +295,8 @@ fn convert_whole_program() {
             intt(),
             intt(),
             dowhile(
-                arg(intt()),
-                push_par(
-                    add(arg(intt()), int(1)),
-                    single(less_than(arg(intt()), int(10)))
-                )
+                arg(),
+                push_par(add(arg(), int(1)), single(less_than(arg(), int(10))))
             )
         )
     );

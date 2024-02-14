@@ -123,17 +123,24 @@ fn pointers() -> crate::Result {
         Value::Ptr(Pointer::new(0, 12, 0)),
     )?;
     type_test(
-        write(ptr.clone(), ttrue()),
+        write(ptr.clone(), int(1)),
         emptyt(),
         val_int(0),
         val_empty(),
     )?;
     type_test(
         ptradd(alloc(int(1), boolt()), add(int(1), int(2))),
-        emptyt(),
+        pointert(boolt()),
         val_int(0),
         Value::Ptr(Pointer::new(0, 1, 3)),
     )
+}
+
+#[test]
+#[should_panic]
+fn pointer_write_error() {
+    let ptr = alloc(int(12), intt());
+    type_error_test(write(ptr.clone(), ttrue()));
 }
 
 #[test]
@@ -236,14 +243,14 @@ fn switch_branches() {
 
 #[test]
 fn lets() -> crate::Result {
-    let inp = tlet(int(4), add(arg(intt()), arg(intt())));
+    let inp = tlet(int(4), add(arg(), arg()));
     type_test(inp, intt(), val_int(0), val_int(8))
 }
 
 #[test]
 #[should_panic]
 fn let_type_error() {
-    type_error_test(tlet(int(1), and(arg(boolt()), ttrue())));
+    type_error_test(tlet(int(1), and(bool_arg(), ttrue())));
 }
 
 #[test]

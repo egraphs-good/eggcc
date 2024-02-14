@@ -10,6 +10,7 @@ pub mod schema;
 pub mod schema_helpers;
 mod to_egglog;
 pub(crate) mod type_analysis;
+pub mod typechecker;
 pub(crate) mod utility;
 
 pub type Result = std::result::Result<(), egglog::Error>;

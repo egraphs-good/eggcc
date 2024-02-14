@@ -25,16 +25,13 @@ fn test_assume_two_lets() -> crate::Result {
         "main",
         intt(),
         intt(),
-        tlet(
-            int(1),
-            tlet(add(arg(intt()), arg(intt())), mul(arg(intt()), int(2))),
-        ),
+        tlet(int(1), tlet(add(arg(), arg()), mul(arg(), int(2)))),
     );
     let int1 = assume(infunc("main"), int(1));
-    let arg1 = assume(inlet(int1.clone()), arg(intt()));
+    let arg1 = assume(inlet(int1.clone()), arg());
     let addarg1 = add(arg1.clone(), arg1.clone());
     let int2 = assume(inlet(addarg1.clone()), int(2));
-    let arg2 = assume(inlet(addarg1.clone()), arg(intt()));
+    let arg2 = assume(inlet(addarg1.clone()), arg());
     let expr2 = function(
         "main",
         intt(),
@@ -92,14 +89,14 @@ fn test_dowhile_cycle_assume() -> crate::Result {
     use crate::ast::*;
     // loop runs one iteration and returns 3
     let myloop = dowhile(single(int(2)), parallel!(tfalse(), int(3)));
-    let expr = function("main", intt(), intt(), myloop);
+    let expr = function("main", intt(), tuplet!(intt()), myloop);
 
     let int2 = single(assume(infunc("main"), int(2)));
     let inner_assume = inloop(int2.clone(), parallel!(tfalse(), int(3)));
     let expr2 = function(
         "main",
         intt(),
-        intt(),
+        tuplet!(intt()),
         dowhile(
             int2.clone(),
             parallel!(
@@ -117,8 +114,8 @@ fn test_dowhile_cycle_assume() -> crate::Result {
         ),
         &format!("(check (= {expr} {expr2}))"),
         vec![
-            expr.to_program(emptyt(), intt()),
-            expr2.to_program(emptyt(), intt()),
+            expr.to_program(emptyt(), tuplet!(intt())),
+            expr2.to_program(emptyt(), tuplet!(intt())),
         ],
         Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(3))]),

@@ -26,11 +26,6 @@ fn uop_is_pure(uop: &UnaryOp) -> bool {
 fn purity_rules_for_ctor(ctor: Constructor) -> String {
     use Constructor::*;
     match ctor {
-        Call => "
-            (rule ((Call _f _arg) (ExprIsPure _arg) (ExprIsPure (Function _f inty outty out)))
-                  ((ExprIsPure (Call _f _arg)))
-                  :ruleset always-run)"
-            .to_string(),
         Function | Const | Get | Concat | Single | Switch | If | DoWhile | Let | Arg | Empty
         | Cons | Nil | Assume | Bop | Uop => {
             // e.g. ["(ExprIsPure x)", "(ExprIsPure y)"]
@@ -63,6 +58,12 @@ fn purity_rules_for_ctor(ctor: Constructor) -> String {
                       :ruleset always-run)"
             )
         }
+        // Call also requires the function to be pure
+        Call => "
+            (rule ((Call _f _arg) (ExprIsPure _arg) (ExprIsPure (Function _f inty outty out)))
+                  ((ExprIsPure (Call _f _arg)))
+                  :ruleset always-run)"
+            .to_string(),
         Alloc => "".to_string(),
     }
 }

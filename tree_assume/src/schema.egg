@@ -152,8 +152,11 @@
 ; Evaluates the input, then evaluates the body.
 ; Keeps looping while the predicate is true.
 ; input must have the same type as (output1, output2, ..., outputi)
+; input must be a tuple 
 ; pred must be a boolean
-;                  input   (pred, output1, output2, ..., outputi) tuple
+; pred-and-body must be a flat tuple (pred, out1, out2, ..., outi)
+; input must be the same type as (out1, out2, ..., outi)
+;                  input   pred-and-body
 (function DoWhile (Expr    Expr)                   Expr)
 
 

@@ -1,11 +1,11 @@
 (ruleset type-analysis)
-
+(ruleset type-helpers)       ;; these rules need to saturate between every iter of type-analysis rules
 
 (function TLConcat (TypeList TypeList) TypeList :unextractable)
-(rewrite (TLConcat (TNil) r) r :ruleset type-analysis)
+(rewrite (TLConcat (TNil) r) r :ruleset type-helpers)
 (rewrite (TLConcat (TCons hd tl) r)
          (TCons hd (TLConcat tl r))
-         :ruleset type-analysis)
+         :ruleset type-helpers)
 
 (relation HasType (Expr Type))
 
@@ -236,6 +236,12 @@
       ((HasType lhs (PointerT ty)))
       :ruleset type-analysis)
 
+(rule (
+        (= lhs (Get e 0))     ; TODO: Generalize
+        (HasType e (TupleT (TCons ty rest)))
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
 
 ; =================================
 ; Tuple operations
@@ -347,4 +353,60 @@
         (HasType (Arg ty) ty)
         (HasArgType (Arg ty) ty)
       )
+      :ruleset type-analysis)
+
+
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (Base ty))
+      )
+      ((panic "loop input must be tuple"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (PointerT ty))
+      )
+      ((panic "loop input must be tuple"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType pred-body (Base ty))
+      )
+      ((panic "loop pred-body must be tuple"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType pred-body (PointerT ty))
+      )
+      ((panic "loop pred-body must be tuple"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (TupleT tylist))
+      )
+      ((HasArgType pred-body (TupleT tylist)))
+      :ruleset type-analysis)
+
+(rule ((= lhs (DoWhile inp pred-body)))
+      ((ExpectType (Get pred-body 0) (Base (BoolT)) "loop pred must be bool"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (TupleT tylist)) ; input is a tuple
+        ; pred-body is a tuple where the first elt is a bool
+        ; and the rest of the list matches the input type
+        (HasType pred-body (TupleT (TCons (Base (BoolT)) tylist)))
+      )
+      ((HasType lhs (TupleT tylist))) ; whole thing has type of inputs/outputs
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (TupleT in-tys))
+        (HasType pred-body (TupleT (TCons (Base (BoolT)) out-tys)))
+        (!= in-tys out-tys)
+      )
+      ((panic "input types and output types don't match"))
       :ruleset type-analysis)

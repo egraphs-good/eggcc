@@ -25,8 +25,8 @@ fn type_error_test(inp: RcExpr) {
 }
 
 #[cfg(test)]
-fn _debug(before: &str, after: &str) -> crate::Result {
-    egglog_test(before, after, vec![], val_empty(), val_empty())
+fn _debug(inp: RcExpr, after: &str) -> crate::Result {
+    egglog_test(&format!("{inp}"), after, vec![], val_empty(), val_empty())
 }
 
 #[test]
@@ -231,4 +231,40 @@ fn lets() -> crate::Result {
 #[should_panic]
 fn let_type_error() {
     type_error_test(tlet(int(1), and(arg(boolt()), ttrue())));
+}
+
+#[test]
+fn loops() -> crate::Result {
+    let l1 = dowhile(single(int(1)), concat_seq(single(tfalse()), single(int(3))));
+    type_test(
+        l1,
+        tuplet_vec(vec![intt()]),
+        val_int(0),
+        val_vec(vec![val_int(3)]),
+    )?;
+
+    let l15 = dowhile(
+        single(int(1)),
+        concat_seq(
+            single(tfalse()),
+            single(add(get(arg(tuplet_vec(vec![intt()])), 0), int(1))),
+        ),
+    );
+    type_test(
+        l15,
+        tuplet_vec(vec![intt()]),
+        val_int(0),
+        val_vec(vec![val_int(2)]),
+    )?;
+
+    // while x < 4, x++
+    let pred = single(less_than(get(arg(tuplet_vec(vec![intt()])), 0), int(4)));
+    let body = single(add(get(arg(tuplet_vec(vec![intt()])), 0), int(1)));
+    let l2 = dowhile(single(int(1)), concat_seq(pred, body));
+    type_test(
+        l2,
+        tuplet_vec(vec![intt()]),
+        val_int(0),
+        val_vec(vec![val_int(5)]),
+    )
 }

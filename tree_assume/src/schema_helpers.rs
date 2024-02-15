@@ -279,7 +279,7 @@ impl Constructor {
                 vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")]
             }
             Constructor::Let => vec![f(SubExpr, "in"), f(CapturedExpr, "out")],
-            Constructor::Arg => vec![],
+            Constructor::Arg => vec![f(Static(Sort::Type), "ty")],
             Constructor::Call => {
                 vec![f(Static(Sort::String), "func"), f(SubExpr, "arg")]
             }

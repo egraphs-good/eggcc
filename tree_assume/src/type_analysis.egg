@@ -7,6 +7,20 @@
          (TCons hd (TLConcat tl r))
          :ruleset type-helpers)
 
+(function TypeList-length (TypeList) i64)
+(function TypeList-ith (TypeList i64) Type :unextractable)
+(function TypeList-suffix (TypeList i64) TypeList :unextractable)
+
+(rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset type-helpers)
+
+(rule ((= (TypeList-suffix top n) (TCons hd tl)))
+    ((union (TypeList-ith top n) hd)
+     (union (TypeList-suffix top (+ n 1)) tl)) :ruleset type-helpers)
+
+(rule ((= (TypeList-suffix list n) (TNil)))
+    ((set (TypeList-length list) n)) :ruleset type-helpers)
+
+
 (relation HasType (Expr Type))
 
 ;; Keep track of type expectations for error messages
@@ -240,7 +254,7 @@
         (= lhs (Get e i))
         (HasType e (TupleT tylist))
       )
-      ; TypeList-ith needs to compute immediately, so we need to saturate always-run
+      ; TypeList-ith needs to compute immediately, so we need to saturate type-helpers
       ; rules between every iter of type-analysis rules.
       ((HasType lhs (TypeList-ith tylist i))) 
       :ruleset type-analysis)

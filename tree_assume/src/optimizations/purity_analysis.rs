@@ -1,7 +1,5 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
 use crate::schema::{BinaryOp, UnaryOp};
-use crate::schema_helpers::{Constructor, ESort, Purpose, Sort};
+use crate::schema_helpers::{Constructor, Purpose, Sort};
 use std::iter;
 use strum::IntoEnumIterator;
 

@@ -1,5 +1,5 @@
-//! Convert RVSDG programs to the tree
 //! encoding of programs.
+//! Convert RVSDG programs to the tree
 //! RVSDGs are close to this encoding,
 //! but use a DAG-based semantics.
 //! This means that nodes that are shared
@@ -41,36 +41,33 @@ impl RvsdgProgram {
     }
 }
 
-/// A `ValueIndex` stores the location of the value or values of
-/// an RVSDG node.
-/// During translation, values for each node are stored in the bindings.
+/// Stores the location of a single value of an RVSDG node.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum StoredNode {
+enum ArgOrState {
     /// The value is stored at get(arg(), usize)
     Arg(usize),
-    /// The node is a region with values stored at
-    /// the given indices.
-    /// The indices in the vec will never be another Region, but might be a state edge.
-    Region(Vec<StoredNode>),
     /// The value is a state edge, thus not stored.
     StateEdge,
 }
 
-impl StoredNode {
-    /// Translates a value index to an expression
-    /// that returns the value of the index.
-    /// Returns None for state edges.
+/// Stores the location of the values of
+/// an RVSDG node.
+/// During translation, values for each node are stored in the bindings.
+type StoredNode = Vec<ArgOrState>;
+
+fn storedarg(index: usize) -> StoredNode {
+    vec![ArgOrState::Arg(index)]
+}
+
+fn storedstate() -> StoredNode {
+    vec![ArgOrState::StateEdge]
+}
+
+impl ArgOrState {
     fn to_expr(&self) -> Option<RcExpr> {
         match self {
-            StoredNode::Arg(index) => Some(getarg(*index)),
-            StoredNode::Region(indices) => {
-                let exprs = indices
-                    .iter()
-                    .filter_map(|i| i.to_expr())
-                    .collect::<Vec<_>>();
-                Some(parallel_vec(exprs))
-            }
-            StoredNode::StateEdge => None,
+            ArgOrState::Arg(index) => Some(getarg(*index)),
+            ArgOrState::StateEdge => None,
         }
     }
 }
@@ -78,7 +75,7 @@ impl StoredNode {
 struct RegionTranslator<'a> {
     /// The values of the arguments to this region.
     /// Must be either StoredNode::Arg or StoredNode::StateEdge.
-    argument_values: Vec<StoredNode>,
+    argument_values: Vec<ArgOrState>,
     /// The number of arguments in the current environment.
     current_num_args: usize,
     /// a stack of let bindings to generate
@@ -109,7 +106,7 @@ impl<'a> RegionTranslator<'a> {
     /// into the argument list.
     /// `expr` must produce a single value, not a tuple.
     fn add_binding(&mut self, expr: RcExpr, id: Id) -> StoredNode {
-        let res = StoredNode::Arg(self.current_num_args);
+        let res = storedarg(self.current_num_args);
         // produces a value, so wrap in `single` and push to bindings
         self.bindings.push(single(expr));
         self.current_num_args += 1;
@@ -125,7 +122,7 @@ impl<'a> RegionTranslator<'a> {
     /// Adds a binding for a state edge (e.g. a print or write)
     fn add_state_edge_binding(&mut self, expr: RcExpr, id: Id) -> StoredNode {
         self.bindings.push(expr);
-        let res = StoredNode::StateEdge;
+        let res = storedstate();
         assert_eq!(
             self.index_of.insert(id, res.clone()),
             None,
@@ -136,25 +133,24 @@ impl<'a> RegionTranslator<'a> {
 
     /// Adds a tuple to the bindings.
     /// `values` is a vector refering to each value in the tuple.
-    fn add_region_binding(&mut self, expr: RcExpr, id: Id, values: Vec<StoredNode>) -> StoredNode {
+    fn add_region_binding(&mut self, expr: RcExpr, id: Id, values: Vec<ArgOrState>) -> StoredNode {
         self.bindings.push(expr);
-        let res = StoredNode::Region(values);
         assert_eq!(
-            self.index_of.insert(id, res.clone()),
+            self.index_of.insert(id, values.clone()),
             None,
             "Node already evaluated. Cycle in the RVSDG or similar bug."
         );
-        res
+        values
     }
 
     /// Make a new translator for a region with
     /// num_args and the given nodes.
-    fn new(nodes: &'a Vec<RvsdgBody>, argument_values: Vec<StoredNode>) -> RegionTranslator {
+    fn new(nodes: &'a Vec<RvsdgBody>, argument_values: Vec<ArgOrState>) -> RegionTranslator {
         // count the number of non-state-edge args
         let num_args = argument_values
             .iter()
-            .map(|ele| matches!(ele, StoredNode::Arg(_)) as usize)
-            .sum();
+            .filter(|ele| matches!(ele, ArgOrState::Arg(_)))
+            .count();
         RegionTranslator {
             current_num_args: num_args,
             bindings: Vec::new(),
@@ -175,28 +171,21 @@ impl<'a> RegionTranslator<'a> {
         expr
     }
 
-    /// Returns a ValueIndex for the given operand.
-    /// The ValueIndex should not be a `Region`, since operands
-    /// return one value.
-    fn translate_operand(&mut self, operand: Operand) -> StoredNode {
+    /// Stores the operand in the bindings, returning
+    /// the SingleStoredNode as a result.
+    fn translate_operand(&mut self, operand: Operand) -> ArgOrState {
         match operand {
             Operand::Arg(index) => self.argument_values[index].clone(),
             Operand::Id(id) => {
                 let res = self.translate_node(id);
-                if matches!(res, StoredNode::Region(_)) {
+                if !res.len() == 1 {
                     panic!("Expected a single value, found a region");
                 }
-                res
+                res.into_iter().next().unwrap()
             }
             Operand::Project(p_index, id) => {
-                let StoredNode::Region(values) = self.translate_node(id) else {
-                    panic!("Expected a region, found a single value");
-                };
-                let res = values[p_index].clone();
-                if matches!(res, StoredNode::Region(_)) {
-                    panic!("Found region inside of region value");
-                }
-                res
+                let values = self.translate_node(id);
+                values[p_index].clone()
             }
         }
     }
@@ -229,15 +218,12 @@ impl<'a> RegionTranslator<'a> {
                     let mut new_arg_index = 0;
                     for input_val in &input_values {
                         match input_val {
-                            StoredNode::Arg(_index) => {
-                                argument_values.push(StoredNode::Arg(new_arg_index));
+                            ArgOrState::Arg(_index) => {
+                                argument_values.push(ArgOrState::Arg(new_arg_index));
                                 new_arg_index += 1;
                             }
-                            StoredNode::StateEdge => {
-                                argument_values.push(StoredNode::StateEdge);
-                            }
-                            StoredNode::Region(_) => {
-                                panic!("Found region in theta input");
+                            ArgOrState::StateEdge => {
+                                argument_values.push(ArgOrState::StateEdge);
                             }
                         }
                     }
@@ -249,15 +235,13 @@ impl<'a> RegionTranslator<'a> {
                     let mut pred_outputs = vec![sub_translator
                         .translate_operand(*pred)
                         .to_expr()
-                        .unwrap_or_else(|| panic!("Pred was a state edge"))];
+                        .expect("Pred was a state edge")];
                     let outputs_translated = outputs
                         .iter()
                         .map(|o| sub_translator.translate_operand(*o))
-                        .collect::<Vec<StoredNode>>();
-                    for output in outputs_translated.iter() {
-                        if let Some(output_expr) = output.to_expr() {
-                            pred_outputs.push(output_expr);
-                        }
+                        .collect::<Vec<ArgOrState>>();
+                    for output in outputs_translated.iter().filter_map(|o| o.to_expr()) {
+                        pred_outputs.push(output);
                     }
                     let loop_translated =
                         sub_translator.build_translation(parallel_vec(pred_outputs));
@@ -271,12 +255,11 @@ impl<'a> RegionTranslator<'a> {
                     let mut output_values = vec![];
                     for output in outputs_translated {
                         match output {
-                            StoredNode::StateEdge => output_values.push(StoredNode::StateEdge),
-                            StoredNode::Arg(_) => {
-                                output_values.push(StoredNode::Arg(self.current_num_args));
+                            ArgOrState::StateEdge => output_values.push(ArgOrState::StateEdge),
+                            ArgOrState::Arg(_) => {
+                                output_values.push(ArgOrState::Arg(self.current_num_args));
                                 self.current_num_args += 1;
                             }
-                            StoredNode::Region(_) => panic!("Found nested region in theta output"),
                         }
                     }
 
@@ -296,7 +279,7 @@ impl<'a> RegionTranslator<'a> {
                     .map(|c| {
                         self.translate_operand(*c)
                             .to_expr()
-                            .unwrap_or_else(|| panic!("State edge in op"))
+                            .expect("State edge in op")
                     })
                     .collect::<Vec<_>>();
                 let expr = match (op, children.as_slice()) {
@@ -325,14 +308,14 @@ impl<'a> RegionTranslator<'a> {
                 let arg1 = self
                     .translate_operand(args[0])
                     .to_expr()
-                    .unwrap_or_else(|| panic!("Print buffer expr should be a single value"));
+                    .expect("Print buffer expr should be a single value");
                 let arg2 = self.translate_operand(args[1]);
 
                 // Print returns a state edge, which should be translated as
                 // a unit value
                 assert_eq!(
                     arg2,
-                    StoredNode::StateEdge,
+                    ArgOrState::StateEdge,
                     "Print buffer second argument should be state edge. Found {:?}",
                     arg2
                 );
@@ -362,10 +345,10 @@ impl RvsdgFunction {
             .args
             .iter()
             .map(|ty| match ty {
-                RvsdgType::PrintState => StoredNode::StateEdge,
+                RvsdgType::PrintState => ArgOrState::StateEdge,
                 RvsdgType::Bril(_) => {
                     arg_index += 1;
-                    StoredNode::Arg(arg_index - 1)
+                    ArgOrState::Arg(arg_index - 1)
                 }
             })
             .collect();

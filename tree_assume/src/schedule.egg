@@ -6,6 +6,7 @@
     (saturate error-checking)
     (saturate
       (saturate type-helpers)
+      (saturate always-run)
       type-analysis
     )
     (saturate constant_fold)))

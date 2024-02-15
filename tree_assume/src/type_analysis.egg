@@ -237,10 +237,12 @@
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Get e 0))     ; TODO: Generalize
-        (HasType e (TupleT (TCons ty rest)))
+        (= lhs (Get e i))
+        (HasType e (TupleT tylist))
       )
-      ((HasType lhs ty))
+      ; TypeList-ith needs to compute immediately, so we need to saturate always-run
+      ; rules between every iter of type-analysis rules.
+      ((HasType lhs (TypeList-ith tylist i))) 
       :ruleset type-analysis)
 
 ; =================================
@@ -266,6 +268,8 @@
         (HasType e1 (TupleT tylist1))
         (HasType e2 (TupleT tylist2))
       )
+      ; TLConcat needs to compute immediately, so we need to saturate type-helpers
+      ; rules between every iter of type-analysis rules.
       ((HasType lhs (TupleT (TLConcat tylist1 tylist2))))
       :ruleset type-analysis)
 

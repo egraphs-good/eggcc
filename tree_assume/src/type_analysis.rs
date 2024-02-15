@@ -160,6 +160,19 @@ fn tuple() -> crate::Result {
 }
 
 #[test]
+fn tuple_get() -> crate::Result {
+    let t = concat_par(single(int(2)), concat_par(single(ttrue()), single(int(4))));
+    type_test(get(t.clone(), 0), intt(), val_int(0), val_int(2))?;
+    type_test(get(t.clone(), 1), boolt(), val_int(0), val_bool(true))?;
+    type_test(get(t, 2), intt(), val_int(0), val_int(4))?;
+    let t2 = concat_seq(
+        single(tfalse()),
+        single(add(get(single(int(2)), 0), int(1))),
+    );
+    type_test(get(t2, 0), boolt(), val_int(0), val_bool(false))
+}
+
+#[test]
 fn ifs() -> crate::Result {
     type_test(tif(ttrue(), int(1), int(2)), intt(), val_int(0), val_int(1))?;
 

@@ -97,101 +97,44 @@ pub(crate) fn rules() -> Vec<String> {
     .collect::<Vec<String>>()
 }
 
-// #[test]
-// fn test_purity_analysis() -> Result<(), egglog::Error> {
-//     let build = &*"
-// (let id1 (Id (i64-fresh!)))
-// (let id-outer (Id (i64-fresh!)))
-// (let pure-loop
-//     (Loop id1
-//         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
-//         (All id1 (Sequential) (Pair
-//             ; pred
-//             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
-//             ; output
-//             (All id1 (Parallel) (Pair
-//                 (Add (Get (Arg id1) 0) (Num id1 1))
-//                 (Sub (Get (Arg id1) 1) (Num id1 1))))))))
+#[cfg(test)]
+use crate::ast::*;
+#[cfg(test)]
+use crate::schema::Constant;
+#[cfg(test)]
+use crate::Value;
 
-// (let id2 (Id (i64-fresh!)))
-// (let impure-loop
-//     (Loop id2
-//         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
-//         (All id2 (Sequential) (Pair
-//             ; pred
-//             (LessThan (Get (Arg id2) 0) (Get (Arg id2) 1))
-//             ; output
-//             (IgnoreFirst id2
-//                 (Print (Num id2 1))
-//                 (All id2 (Parallel) (Pair
-//                     (Add (Get (Arg id2) 0) (Num id2 1))
-//                     (Sub (Get (Arg id2) 1) (Num id2 1)))))))))
-//     "
-//     .to_string();
-//     let check = "
-// (check (ExprIsPure pure-loop))
-// (fail (check (ExprIsPure impure-loop)))
-//     ";
-//     crate::run_test(build, check)
-// }
-
-// #[test]
-// fn test_purity_function() -> Result<(), egglog::Error> {
-//     let build = &*"
-// (let id1 (Id (i64-fresh!)))
-// (let id2 (Id (i64-fresh!)))
-// (let id_fun1 (Id (i64-fresh!)))
-// (let id_fun2 (Id (i64-fresh!)))
-// (let id-outer (Id (i64-fresh!)))
-
-// ;; f1 is pure
-// (let f1
-//     (Function id_fun1
-//             (Add
-//                 (Get (Arg id_fun1) 0)
-//                 (Get (Arg id_fun1) 0))
-//             (TupleT (TCons (IntT) (TNil))) (IntT)))
-// ;; f2 is impure
-// (let f2
-//     (Function id_fun2
-//         (Get
-//             (All id_fun2 (Sequential)
-//                     (Pair
-//                     (Print (Get (Arg id_fun2) 0))
-//                     (Add
-//                         (Get (Arg id_fun2) 0)
-//                         (Get (Arg id_fun2) 0))))
-//             1)
-//         (TupleT (TCons (IntT) (TNil))) (IntT)))
-// (let pure-loop
-//     (Loop id1
-//         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
-//         (All id1 (Sequential) (Pair
-//             ; pred
-//             (LessThan (Get (Arg id1) 0) (Get (Arg id1) 1))
-//             ; output
-//             (All id1 (Parallel)
-//                     (Pair
-//                     (Add (Call id_fun1 (All id1 (Sequential) (Cons (Get (Arg id1) 0) (Nil)))) (Num id1 1))
-//                     (Sub (Get (Arg id1) 1) (Num id1 1))))))))
-// (let impure-loop
-//     (Loop id2
-//         (All id-outer (Parallel) (Pair (Num id-outer 0) (Num id-outer 0)))
-//         (All id2 (Sequential) (Pair
-//             ; pred
-//             (LessThan (Get (Arg id2) 0) (Get (Arg id2) 1))
-//             ; output
-//             (All id2 (Parallel)
-//                     (Pair
-//                     (Add (Call id_fun2 (All id2 (Sequential) (Cons (Get (Arg id2) 0) (Nil)))) (Num id2 1))
-//                     (Sub (Get (Arg id2) 1) (Num id2 1))))))))
-//     "
-//     .to_string();
-//     let check = "
-// (check (FunctionIsPure id_fun1))
-// (fail (check (FunctionIsPure id_fun2)))
-// (check (ExprIsPure pure-loop))
-// (fail (check (ExprIsPure impure-loop)))
-//     ";
-//     crate::run_test(build, check)
-// }
+#[test]
+fn test_purity_analysis() -> Result<(), egglog::Error> {
+    let pureloop = dowhile(
+        assume(inlet(int(2)), single(int(1))),
+        parallel!(
+            less_than(get(arg(intt()), 0), int(3)),
+            get(switch!(int(0); parallel!(int(4), int(5))), 0)
+        ),
+    );
+    let impureloop = dowhile(
+        assume(inlet(int(2)), single(int(1))),
+        parallel!(
+            less_than(get(arg(intt()), 0), int(3)),
+            get(
+                switch!(load(alloc(int(0), intt())); parallel!(int(4), int(5))),
+                0
+            )
+        ),
+    );
+    let build = format!("{pureloop} {impureloop}");
+    let check = format!(
+        "
+        (check (ExprIsPure {pureloop}))
+        (fail (check (ExprIsPure {impureloop})))
+    "
+    );
+    crate::egglog_test(
+        &build,
+        &check,
+        vec![pureloop.to_program(emptyt(), intt())],
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![Value::Const(Constant::Int(4))]),
+    )
+}

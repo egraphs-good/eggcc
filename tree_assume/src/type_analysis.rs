@@ -279,5 +279,73 @@ fn loops() -> crate::Result {
         tuplet_vec(vec![intt()]),
         val_int(0),
         val_vec(vec![val_int(5)]),
+    )?;
+
+    // x = 1, y = 2
+    // do (x = x + 1, y = x * 2)
+    // while (x < 5)
+    let l2 = dowhile(
+        concat_par(single(int(1)), single(int(2))),
+        concat_par(
+            single(less_than(
+                get(arg(tuplet_vec(vec![intt(), intt()])), 0),
+                int(5),
+            )),
+            concat_par(
+                single(add(get(arg(tuplet_vec(vec![intt(), intt()])), 0), int(1))),
+                single(mul(get(arg(tuplet_vec(vec![intt(), intt()])), 0), int(2))),
+            ),
+        ),
+    );
+
+    type_test(
+        l2,
+        tuplet_vec(vec![intt(), intt()]),
+        val_int(0),
+        val_vec(vec![val_int(6), val_int(10)]),
     )
+}
+
+#[test]
+#[should_panic]
+fn loop_input_error() {
+    // input is not a tuple
+    type_error_test(dowhile(int(4), concat_par(single(ttrue()), single(int(5)))))
+}
+
+#[test]
+#[should_panic]
+fn loop_predbody_error() {
+    // pred-body is not a tuple
+    type_error_test(dowhile(single(int(4)), ttrue()))
+}
+
+#[test]
+#[should_panic]
+fn loop_pred_error() {
+    // pred is not a bool
+    type_error_test(dowhile(
+        single(int(1)),
+        concat_par(single(int(2)), single(int(3))),
+    ))
+}
+
+#[test]
+#[should_panic]
+fn loop_inputs_outputs_error1() {
+    // input is bool, output is int
+    type_error_test(dowhile(
+        single(ttrue()),
+        concat_par(single(tfalse()), single(int(2))),
+    ))
+}
+
+#[test]
+#[should_panic]
+fn loop_inputs_outputs_error2() {
+    // input is (int, bool), output is (int)
+    type_error_test(dowhile(
+        concat_seq(single(int(2)), single(ttrue())),
+        concat_par(single(tfalse()), single(int(2))),
+    ))
 }

@@ -17,13 +17,13 @@ pub type Result = std::result::Result<(), egglog::Error>;
 pub fn prologue() -> String {
     [
         include_str!("schema.egg"),
-        include_str!("type_analysis.egg"),
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
         include_str!("utility/assume.egg"),
         include_str!("utility/util.egg"),
         include_str!("utility/subst.egg"),
         include_str!("optimizations/constant_fold.egg"),
+        include_str!("type_analysis.egg"),
     ]
     .join("\n")
 }

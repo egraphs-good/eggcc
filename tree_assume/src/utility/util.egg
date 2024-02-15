@@ -18,16 +18,3 @@
 (rewrite (Append (Nil) e)
    (Cons e (Nil))
    :ruleset always-run)
-
-(function TypeList-length (TypeList) i64)
-(function TypeList-ith (TypeList i64) Type :unextractable)
-(function TypeList-suffix (TypeList i64) TypeList :unextractable)
-
-(rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset always-run)
-
-(rule ((= (TypeList-suffix top n) (TCons hd tl)))
-    ((union (TypeList-ith top n) hd)
-     (union (TypeList-suffix top (+ n 1)) tl)) :ruleset always-run)
-
-(rule ((= (TypeList-suffix list n) (TNil)))
-    ((set (TypeList-length list) n)) :ruleset always-run)

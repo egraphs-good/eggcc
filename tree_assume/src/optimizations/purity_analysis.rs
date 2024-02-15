@@ -19,15 +19,6 @@ fn uop_is_pure(uop: &UnaryOp) -> bool {
     }
 }
 
-// fn is_pure(ctor: &Constructor) -> bool {
-//     use Constructor::*;
-//     match ctor {
-//         Num | Boolean | Add | Sub | Mul | LessThan | And | Or | Not | Get | All | Switch | Loop
-//         | Let | Arg | Call | Cons | Nil => true,
-//         Print | Read | Write => false,
-//     }
-// }
-
 // Builds rules like:
 // (rule ((Bop op x y) (BinaryOpIsPure op) (ExprIsPure x) (ExprIsPure y))
 //       ((ExprIsPure (Bop op x y)))

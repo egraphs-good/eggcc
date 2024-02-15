@@ -4,8 +4,8 @@
     (repeat 100 assume)
     (saturate always-run)
     (saturate error-checking)
-    (repeat 10 ; TODO: do this til saturation?
-      (saturate immediate)
-      (repeat 1 type-analysis)
+    (saturate
+      (saturate type-helpers)
+      type-analysis
     )
     (saturate constant_fold)))

@@ -1,11 +1,11 @@
 (ruleset type-analysis)
-(ruleset immediate)       ;; these rules need to saturate between every iter of type-analysis rules
+(ruleset type-helpers)       ;; these rules need to saturate between every iter of type-analysis rules
 
 (function TLConcat (TypeList TypeList) TypeList :unextractable)
-(rewrite (TLConcat (TNil) r) r :ruleset immediate)
+(rewrite (TLConcat (TNil) r) r :ruleset type-helpers)
 (rewrite (TLConcat (TCons hd tl) r)
          (TCons hd (TLConcat tl r))
-         :ruleset immediate)
+         :ruleset type-helpers)
 
 (relation HasType (Expr Type))
 

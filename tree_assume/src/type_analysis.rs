@@ -8,8 +8,9 @@ use crate::{
 
 #[cfg(test)]
 fn type_test(inp: RcExpr, expected_ty: Type, arg: Value, expected_val: Value) -> crate::Result {
-    let build = format!("{inp}");
-    let check = format!("(check (HasType {inp} {expected_ty}))");
+    let with_arg_types = inp.clone().with_arg_types(emptyt(), expected_ty.clone());
+    let build = format!("{with_arg_types}");
+    let check = format!("(check (HasType {with_arg_types} {expected_ty}))");
     egglog_test(
         &build,
         &check,
@@ -265,10 +266,7 @@ fn loops() -> crate::Result {
 
     let l15 = dowhile(
         single(int(1)),
-        concat_seq(
-            single(tfalse()),
-            single(add(get(arg(tuplet_vec(vec![intt()])), 0), int(1))),
-        ),
+        concat_seq(single(tfalse()), single(add(get(arg(), 0), int(1)))),
     );
     type_test(
         l15,
@@ -278,8 +276,8 @@ fn loops() -> crate::Result {
     )?;
 
     // while x < 4, x++
-    let pred = single(less_than(get(arg(tuplet_vec(vec![intt()])), 0), int(4)));
-    let body = single(add(get(arg(tuplet_vec(vec![intt()])), 0), int(1)));
+    let pred = single(less_than(get(arg(), 0), int(4)));
+    let body = single(add(get(arg(), 0), int(1)));
     let l2 = dowhile(single(int(1)), concat_seq(pred, body));
     type_test(
         l2,
@@ -294,13 +292,10 @@ fn loops() -> crate::Result {
     let l2 = dowhile(
         concat_par(single(int(1)), single(int(2))),
         concat_par(
-            single(less_than(
-                get(arg(tuplet_vec(vec![intt(), intt()])), 0),
-                int(5),
-            )),
+            single(less_than(get(arg(), 0), int(5))),
             concat_par(
-                single(add(get(arg(tuplet_vec(vec![intt(), intt()])), 0), int(1))),
-                single(mul(get(arg(tuplet_vec(vec![intt(), intt()])), 0), int(2))),
+                single(add(get(arg(), 0), int(1))),
+                single(mul(get(arg(), 0), int(2))),
             ),
         ),
     );
@@ -359,7 +354,7 @@ fn loop_inputs_outputs_error2() {
 
 #[test]
 fn funcs_and_calls() -> crate::Result {
-    let f = function("f", intt(), intt(), add(arg(intt()), int(2)));
+    let f = function("f", intt(), intt(), add(int_arg(), int(2)));
     let c = call("f", int(4));
     egglog_test(
         &format!("{f}{c}"),

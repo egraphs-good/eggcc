@@ -99,20 +99,22 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
     let pureloop = dowhile(
         assume(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(get(arg(intt()), 0), int(3)),
+            less_than(get(arg(), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
-    );
+    )
+    .with_arg_types(emptyt(), tuplet!(intt()));
     let impureloop = dowhile(
         assume(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(get(arg(intt()), 0), int(3)),
+            less_than(get(arg(), 0), int(3)),
             get(
                 switch!(load(alloc(int(0), intt())); parallel!(int(4), int(5))),
                 0
             )
         ),
-    );
+    )
+    .with_arg_types(emptyt(), tuplet!(intt()));
     let build = format!("{pureloop} {impureloop}");
     let check = format!(
         "
@@ -123,7 +125,7 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
     crate::egglog_test(
         &build,
         &check,
-        vec![pureloop.to_program(emptyt(), intt())],
+        vec![pureloop.to_program(emptyt(), tuplet!(intt()))],
         Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(4))]),
     )

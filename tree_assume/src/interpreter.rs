@@ -383,7 +383,7 @@ fn test_interpreter() {
         res.log,
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             .into_iter()
-            .map(|i| format!("(Int {})", i))
+            .map(|i| format!("{}", i))
             .collect::<Vec<String>>()
     );
 }

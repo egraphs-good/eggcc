@@ -68,13 +68,11 @@ fn test_body_contains() -> Result<(), egglog::Error> {
     let myloop = dowhile(
         assume(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(
-                get(arg(intt()), 0),
-                tlet(int(3), assume(inlet(int(3)), arg(intt())))
-            ),
+            less_than(get(arg(), 0), tlet(int(3), assume(inlet(int(3)), arg()))),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
-    );
+    )
+    .with_arg_types(emptyt(), tuplet!(intt()));
     let build = format!("{myloop}");
     let check = format!(
         "
@@ -91,13 +89,13 @@ fn test_body_contains() -> Result<(), egglog::Error> {
         num3 = int(3),
         num4 = int(4),
         num5 = int(5),
-        assume = assume(inlet(int(6)), arg(intt())),
+        assume = assume(inlet(int(6)), int_arg()),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(
         &build,
         &check,
-        vec![myloop.to_program(emptyt(), intt())],
+        vec![myloop.to_program(emptyt(), tuplet!(intt()))],
         Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(4))]),
     )

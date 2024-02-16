@@ -314,14 +314,9 @@ fn test_interpret_calls() {
             "func1",
             intt(),
             intt(),
-            mul(call("func2", sub(arg(intt()), int(1))), int(2))
+            mul(call("func2", sub(arg(), int(1))), int(2))
         ),
-        function(
-            "func2",
-            intt(),
-            intt(),
-            tlet(arg(intt()), add(arg(intt()), int(1)))
-        ),
+        function("func2", intt(), intt(), tlet(arg(), add(arg(), int(1)))),
     );
     let res = interpret(&expr, Const(Constant::Int(5)));
     assert_eq!(res, Const(Constant::Int(10)));
@@ -335,11 +330,11 @@ fn test_interpret_recursive() {
         intt(),
         intt(),
         tif(
-            less_than(arg(intt()), int(2)),
-            arg(intt()),
+            less_than(arg(), int(2)),
+            arg(),
             add(
-                call("fib", sub(arg(intt()), int(1))),
-                call("fib", sub(arg(intt()), int(2)))
+                call("fib", sub(arg(), int(1))),
+                call("fib", sub(arg(), int(2)))
             )
         )
     ),);
@@ -355,11 +350,8 @@ fn test_interpreter() {
         dowhile(
             parallel!(int(1)),
             parallel!(
-                less_than(getat(intt(), 0), int(10)),
-                first(parallel!(
-                    add(getat(intt(), 0), int(1)),
-                    tprint(getat(intt(), 0))
-                ))
+                less_than(getat(0), int(10)),
+                first(parallel!(add(getat(0), int(1)), tprint(getat(0))))
             ),
         ),
         0,
@@ -384,36 +376,33 @@ fn test_interpreter_fib_using_memory() {
         alloc(int(nth + 2), intt()),
         tlet(
             concat_seq(
-                twrite(arg(intt()), int(0)), // address 0, value 0
+                twrite(int_arg(), int(0)), // address 0, value 0
                 concat_seq(
-                    twrite(ptradd(arg(intt()), int(1)), int(1)), // address 1, value 1
-                    single(arg(intt())),
+                    twrite(ptradd(int_arg(), int(1)), int(1)), // address 1, value 1
+                    single(int_arg()),
                 ),
             ),
             tlet(
                 dowhile(
-                    parallel!(ptradd(getat(intt(), 0), int(2)), int(2)),
+                    parallel!(ptradd(getat(0), int(2)), int(2)),
                     cons_par(
-                        less_than(getat(intt(), 1), int(nth)),
+                        less_than(getat(1), int(nth)),
                         tlet(
                             concat_seq(
                                 twrite(
-                                    getat(intt(), 0),
+                                    getat(0),
                                     add(
-                                        load(ptradd(getat(intt(), 0), int(-1))),
-                                        load(ptradd(getat(intt(), 0), int(-2))),
+                                        load(ptradd(getat(0), int(-1))),
+                                        load(ptradd(getat(0), int(-2))),
                                     ),
                                 ),
-                                arg(intt()),
+                                int_arg(),
                             ),
-                            parallel!(
-                                ptradd(getat(intt(), 0), int(1)),
-                                add(getat(intt(), 1), int(1))
-                            ),
+                            parallel!(ptradd(getat(0), int(1)), add(getat(1), int(1))),
                         ),
                     ),
                 ),
-                parallel!(load(ptradd(getat(intt(), 0), int(-1))), getat(intt(), 1)),
+                parallel!(load(ptradd(getat(0), int(-1))), getat(1)),
             ),
         ),
     );

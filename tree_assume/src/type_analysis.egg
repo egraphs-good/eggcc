@@ -225,17 +225,25 @@
 (rule (
         (= lhs (Bop (Write) ptr val))
         (HasType ptr (PointerT ty))
-        (HasType val (Base t)) ; must be BaseType??
+        (HasType val (Base t)) ; TODO need to support pointers to pointers
       )
       ((HasType lhs (TupleT (TNil)))) ; Write returns ()
       :ruleset type-analysis)
+
+(rule (
+       (= lhs (Bop (Write) ptr val))
+       (HasType ptr (PointerT ty)))
+      ((ExpectType val (Base ty) "(Write) type mismatch, received {?}"))
+      :ruleset type-analysis)
+      
+       
 
 (rule (
         (= lhs (Bop (PtrAdd) ptr n))
         (HasType ptr (PointerT ty))
         (HasType n (Base (IntT)))
       )
-      ((HasType lhs (TupleT (TNil)))) ; Returns () ??
+      ((HasType lhs (PointerT ty)))
       :ruleset type-analysis)
 
 ; Other ops

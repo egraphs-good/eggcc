@@ -56,6 +56,7 @@ impl Type {
                 let tlist = to_tlistexpr(types, term_dag);
                 term_dag.app("TupleT".into(), vec![tlist])
             }
+            Type::Unknown => panic!("Found unknown type when converting to egglog. Did you forget to call `with_arg_types`?"),
         }
     }
 }
@@ -266,7 +267,7 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
-    let expr = add(int(1), arg(intt()));
+    let expr = add(int(1), int_arg());
     test_expr_parses_to(expr, "(Bop (Add) (Const (Int 1)) (Arg (Base (IntT))))");
 }
 
@@ -294,12 +295,15 @@ fn convert_whole_program() {
             "f",
             intt(),
             intt(),
-            dowhile(
-                arg(intt()),
-                push_par(
-                    add(arg(intt()), int(1)),
-                    single(less_than(arg(intt()), int(10)))
-                )
+            get(
+                dowhile(
+                    single(arg()),
+                    push_par(
+                        add(get(arg(), 0), int(1)),
+                        single(less_than(get(arg(), 0), int(10)))
+                    )
+                ),
+                0
             )
         )
     );
@@ -310,10 +314,12 @@ fn convert_whole_program() {
                 (Bop (Add) (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
-                    (DoWhile (Arg (Base (IntT))) 
+                    (Get
+                        (DoWhile (Single (Arg (Base (IntT))))
                         (Concat (Parallel) 
-                            (Single (Bop (LessThan) (Arg (Base (IntT))) (Const (Int 10))))
-                            (Single (Bop (Add) (Arg (Base (IntT))) (Const (Int 1))))))) 
+                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10))))
+                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1))))))
+                        0)) 
                 (Nil)))",
     );
 }

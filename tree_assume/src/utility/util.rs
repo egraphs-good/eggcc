@@ -17,8 +17,8 @@ fn test_list_util() -> crate::Result {
         (check (= (ListExpr-length list) 5))
 	";
     egglog_test(
-        &build,
-        &check,
+        build,
+        check,
         vec![],
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
@@ -42,8 +42,8 @@ fn append_test() -> crate::Result {
         ))
     ";
     egglog_test(
-        &build,
-        &check,
+        build,
+        check,
         vec![],
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),

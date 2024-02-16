@@ -119,7 +119,7 @@ pub fn call(s: &str, e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Call(s.to_string(), e))
 }
 /// a macro that wraps the children in
-/// a vec for program
+/// a vec for program. Also ensures the program has correct argument types.
 /// e.g. `program!(main, f1, f2, f3)` becomes `TreeProgram { entry: main, functions: vec![f1, f2, f3] }`
 #[macro_export]
 macro_rules! program {
@@ -127,8 +127,10 @@ macro_rules! program {
 }
 pub use program;
 
+/// Ensures the program has correct argument types
+/// by calling `with_arg_types`.
 pub fn program_vec(entry: RcExpr, functions: Vec<RcExpr>) -> TreeProgram {
-    TreeProgram { entry, functions }
+    TreeProgram { entry, functions }.with_arg_types()
 }
 
 /// Create a switch given a predicate and a list of cases
@@ -201,12 +203,24 @@ pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Let(lhs, rhs))
 }
 
-pub fn arg(ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Arg(ty))
+/// Returns an argument with an unknown type.
+/// Use `with_arg_types` to fill in the correct type.
+pub fn arg() -> RcExpr {
+    RcExpr::new(Expr::Arg(Type::Unknown))
 }
 
-pub fn getat(ty: Type, index: usize) -> RcExpr {
-    get(arg(ty), index)
+/// An argument with an integer type.
+pub fn int_arg() -> RcExpr {
+    RcExpr::new(Expr::Arg(intt()))
+}
+
+/// An argument with a boolean type.
+pub fn bool_arg() -> RcExpr {
+    RcExpr::new(Expr::Arg(boolt()))
+}
+
+pub fn getat(index: usize) -> RcExpr {
+    get(arg(), index)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {

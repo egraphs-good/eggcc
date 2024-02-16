@@ -40,11 +40,15 @@ fn test_is_valid() -> Result<(), egglog::Error> {
     let myloop = dowhile(
         assume(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(get(arg(intt()), 0), int(3)),
+            less_than(get(arg(), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
-    );
-    let not_made_valid = sub(arg(intt()), arg(intt())); // this expression is indeed valid, but won't be marked as so
+    )
+    .with_arg_types(emptyt(), tuplet!(intt()));
+    // this expression is valid (it uses only IR constructors)
+    // but it isn't a sub-expression of the initial one, so it won't be
+    // marked as valid.
+    let not_made_valid = sub(arg(), arg()).with_arg_types(intt(), intt());
     let build = format!("(ExprIsValid {myloop}) {not_made_valid}");
     let check = format!(
         "
@@ -56,13 +60,13 @@ fn test_is_valid() -> Result<(), egglog::Error> {
     ",
         num0 = int(0),
         num2 = int(2),
-        arg = arg(intt()),
+        arg = arg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(
         &build,
         &check,
-        vec![myloop.to_program(emptyt(), intt())],
+        vec![myloop.to_program(emptyt(), tuplet!(intt()))],
         Value::Tuple(vec![]),
         // Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(4))]),

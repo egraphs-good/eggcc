@@ -228,8 +228,8 @@ impl<'a> VirtualMachine<'a> {
                 };
                 if *i >= vals.len() {
                     panic!(
-                        "get index out of bounds. Got index {} for tuple {:?}",
-                        i, vals
+                        "get index out of bounds. Got index {} for tuple {:?}. Expression:\n{}",
+                        i, vals, expr
                     )
                 }
                 vals[*i].clone()

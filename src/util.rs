@@ -460,7 +460,7 @@ impl Run {
                 let tree = rvsdg.to_tree_encoding();
                 (
                     vec![Visualization {
-                        result: tree.to_string(),
+                        result: tree.pretty(),
                         file_extension: ".egg".to_string(),
                         name: "".to_string(),
                     }],

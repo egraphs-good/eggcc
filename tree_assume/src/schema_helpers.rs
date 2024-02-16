@@ -145,6 +145,12 @@ impl TreeProgram {
             .iter()
             .find(|expr| expr.func_name() == Some(name.to_string()))
     }
+
+    pub fn pretty(&self) -> String {
+        let (term, termdag) = self.to_egglog();
+        let expr = termdag.term_to_expr(&term);
+        expr.to_sexp().pretty()
+    }
 }
 
 use std::iter;

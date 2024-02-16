@@ -193,7 +193,7 @@ impl<'a> VirtualMachine<'a> {
             UnaryOp::Not => Const(Constant::Bool(!self.interp_bool_expr(e, arg))),
             UnaryOp::Print => {
                 let val = self.interpret_expr(e, arg);
-                let v_str = format!("{}\n", val.bril_print());
+                let v_str = val.bril_print().to_string();
                 self.log.push(v_str.clone());
                 Tuple(vec![])
             }

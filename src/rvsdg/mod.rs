@@ -45,7 +45,7 @@ use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 use egglog::{EGraph, SerializeConfig, TermDag};
 
 use thiserror::Error;
-use tree_optimizer::expr::TreeType;
+use tree_assume::schema::{BaseType, Type as TreeType};
 
 use crate::{
     cfg::{Identifier, SimpleCfgProgram},
@@ -175,11 +175,30 @@ pub(crate) enum RvsdgType {
     PrintState,
 }
 
+fn type_to_treetype_base(ty: &Type) -> BaseType {
+    match ty {
+        Type::Int => BaseType::IntT,
+        Type::Bool => BaseType::BoolT,
+        Type::Float => todo!("Floats not supported yet"),
+        Type::Char => todo!("Chars not supported yet"),
+        Type::Pointer(_) => panic!("Pointers should be handled by type_to_treetype"),
+    }
+}
+
+fn type_to_treetype(ty: &Type) -> TreeType {
+    match ty {
+        Type::Pointer(ty) => TreeType::PointerT(type_to_treetype_base(ty)),
+        _ => TreeType::Base(type_to_treetype_base(ty)),
+    }
+}
+
 impl RvsdgType {
-    pub(crate) fn to_tree_type(&self) -> TreeType {
+    /// Converts a bril type to a tree type.
+    /// If the type is a print state, returns None.
+    pub(crate) fn to_tree_type(&self) -> Option<TreeType> {
         match self {
-            RvsdgType::Bril(t) => TreeType::Bril(t.clone()),
-            RvsdgType::PrintState => TreeType::Tuple(vec![]),
+            RvsdgType::Bril(ty) => Some(type_to_treetype(ty)),
+            RvsdgType::PrintState => None,
         }
     }
 }

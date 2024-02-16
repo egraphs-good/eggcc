@@ -92,6 +92,10 @@ pub fn get(e: RcExpr, i: usize) -> RcExpr {
     RcExpr::new(Expr::Get(e, i))
 }
 
+pub fn getarg(i: usize) -> RcExpr {
+    get(arg(), i)
+}
+
 pub fn first(e: RcExpr) -> RcExpr {
     get(e, 0)
 }
@@ -220,7 +224,7 @@ pub fn bool_arg() -> RcExpr {
 }
 
 pub fn getat(index: usize) -> RcExpr {
-    get(arg(), index)
+    get(int_arg(), index)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {

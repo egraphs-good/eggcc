@@ -353,13 +353,13 @@ dependencies = [
  "serde_json",
  "smallvec",
  "thiserror",
- "tree_optimizer",
+ "tree_assume",
 ]
 
 [[package]]
 name = "egglog"
 version = "0.1.0"
-source = "git+https://github.com/oflatt/egg-smol?rev=057725d9353727d831c90c7f8fdd76954d06b351#057725d9353727d831c90c7f8fdd76954d06b351"
+source = "git+https://github.com/egraphs-good/egglog?rev=60668dd3f465e5674142c47eea449e64310ecb6a#60668dd3f465e5674142c47eea449e64310ecb6a"
 dependencies = [
  "clap",
  "egraph-serialize",
@@ -387,7 +387,7 @@ dependencies = [
 [[package]]
 name = "egglog"
 version = "0.1.0"
-source = "git+https://github.com/egraphs-good/egglog?rev=60668dd3f465e5674142c47eea449e64310ecb6a#60668dd3f465e5674142c47eea449e64310ecb6a"
+source = "git+https://github.com/egraphs-good/egglog?rev=7b41bb07e5e065928d653cb340a9a0dea0259466#7b41bb07e5e065928d653cb340a9a0dea0259466"
 dependencies = [
  "clap",
  "egraph-serialize",
@@ -1326,11 +1326,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree_optimizer"
+name = "tree_assume"
 version = "0.1.0"
 dependencies = [
  "bril-rs",
- "egglog 0.1.0 (git+https://github.com/oflatt/egg-smol?rev=057725d9353727d831c90c7f8fdd76954d06b351)",
+ "egglog 0.1.0 (git+https://github.com/egraphs-good/egglog?rev=7b41bb07e5e065928d653cb340a9a0dea0259466)",
  "main_error",
  "strum",
  "strum_macros",

@@ -250,10 +250,9 @@ impl RunType {
 
     pub fn supports_memory(&self) -> bool {
         match self {
-            RunType::RvsdgConversion | RunType::Nothing => true,
+            RunType::RvsdgRoundTrip | RunType::RvsdgConversion | RunType::Nothing => true,
             RunType::StructuredConversion
             | RunType::StructuredRoundTrip
-            | RunType::RvsdgRoundTrip
             | RunType::ToCfg
             | RunType::CfgRoundTrip
             | RunType::OptimizeDirectJumps

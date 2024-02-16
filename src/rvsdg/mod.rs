@@ -241,6 +241,8 @@ impl fmt::Debug for RvsdgFunction {
 /// In the future, we may want functions to be represented within
 /// the RVSDG.
 pub struct RvsdgProgram {
+    /// A list of functions in this program.
+    /// The last function is the entry point (main function).
     pub(crate) functions: Vec<RvsdgFunction>,
 }
 

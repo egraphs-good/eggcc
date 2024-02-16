@@ -2,11 +2,6 @@
 source: tests/files.rs
 expression: visualization.result
 ---
-@main {
-  v1: int = const 2;
-  print v1;
-  print v1;
-}
 @inc(v0: int): int {
   v2: int = const 2;
   v4: int = const 1;
@@ -18,5 +13,10 @@ expression: visualization.result
   v2: int = const 2;
   v5: int = mul v2 v0;
   ret v5;
+}
+@main {
+  v1: int = const 2;
+  print v1;
+  print v1;
 }
 

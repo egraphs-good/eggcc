@@ -2,14 +2,12 @@
 source: tests/files.rs
 expression: visualization.result
 ---
-@main {
-  v2: int = const 4;
-  v4: int = const 0;
-  v7: int = const 15;
-  v10: int = id v2;
-  v11: int = id v4;
-  v12: int = id v2;
-  v13: int = id v7;
+@pow(v0: int, v1: int) {
+  v5: int = const 0;
+  v10: int = id v0;
+  v11: int = id v5;
+  v12: int = id v0;
+  v13: int = id v1;
   jmp .__15__;
 .__58__:
   v10: int = id v37;
@@ -44,12 +42,14 @@ expression: visualization.result
 .__66__:
   print v10;
 }
-@pow(v0: int, v1: int) {
-  v5: int = const 0;
-  v10: int = id v0;
-  v11: int = id v5;
-  v12: int = id v0;
-  v13: int = id v1;
+@main {
+  v2: int = const 4;
+  v4: int = const 0;
+  v7: int = const 15;
+  v10: int = id v2;
+  v11: int = id v4;
+  v12: int = id v2;
+  v13: int = id v7;
   jmp .__15__;
 .__58__:
   v10: int = id v37;

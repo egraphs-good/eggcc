@@ -38,6 +38,19 @@ pub enum Value {
     Tuple(Vec<Value>),
 }
 
+impl Value {
+    pub fn bril_print(&self) -> String {
+        match self {
+            Const(Constant::Int(n)) => format!("{}", n),
+            Const(Constant::Bool(b)) => format!("{}", b),
+            Ptr(Pointer { .. }) => todo!("How does bril print pointers?"),
+            Tuple(_vs) => {
+                panic!("Tried to print tuple as Bril value. There are no tuples in Bril.");
+            }
+        }
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -179,7 +192,7 @@ impl<'a> VirtualMachine<'a> {
             UnaryOp::Not => Const(Constant::Bool(!self.interp_bool_expr(e, arg))),
             UnaryOp::Print => {
                 let val = self.interpret_expr(e, arg);
-                let v_str = format!("{}", val);
+                let v_str = format!("{}\n", val.bril_print());
                 self.log.push(v_str.clone());
                 Tuple(vec![])
             }

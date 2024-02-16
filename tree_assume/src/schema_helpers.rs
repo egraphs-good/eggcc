@@ -38,6 +38,8 @@ impl BinaryOp {
             Sub => "Sub",
             Mul => "Mul",
             Div => "Div",
+            Eq => "Eq",
+            GreaterThan => "GreaterThan",
             LessThan => "LessThan",
             And => "And",
             Or => "Or",
@@ -398,7 +400,9 @@ impl BinaryOp {
                 Some((intt(), intt(), intt()))
             }
             BinaryOp::And | BinaryOp::Or => Some((boolt(), boolt(), boolt())),
-            BinaryOp::LessThan => Some((intt(), intt(), boolt())),
+            BinaryOp::LessThan | BinaryOp::GreaterThan | BinaryOp::Eq => {
+                Some((intt(), intt(), boolt()))
+            }
             BinaryOp::Write => None,
             BinaryOp::PtrAdd => None,
         }

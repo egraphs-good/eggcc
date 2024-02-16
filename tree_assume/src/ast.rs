@@ -72,6 +72,14 @@ pub fn less_than(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::LessThan, l, r))
 }
 
+pub fn greater_than(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::GreaterThan, l, r))
+}
+
+pub fn eq(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Eq, l, r))
+}
+
 pub fn and(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::And, l, r))
 }

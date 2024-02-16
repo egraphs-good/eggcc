@@ -6,7 +6,7 @@ use strum::IntoEnumIterator;
 fn bop_is_pure(bop: &BinaryOp) -> bool {
     use BinaryOp::*;
     match bop {
-        Add | Sub | Mul | LessThan | And | Or | Div | PtrAdd => true,
+        Add | Sub | Mul | LessThan | And | Or | Div | PtrAdd | Eq | GreaterThan => true,
         Write => false,
     }
 }

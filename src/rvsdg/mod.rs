@@ -134,6 +134,7 @@ pub(crate) enum Operand {
     /// A reference to an argument in the enclosing region.
     Arg(usize),
     /// Another node in the RVSDG.
+    /// Equivalent to Project(0, id).
     Id(Id),
     /// Project a single output from a multi-output region.
     Project(usize, Id),

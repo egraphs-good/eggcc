@@ -21,7 +21,8 @@ pub enum Type {
     /// in arguments.
     /// When all types are present except for unknowns in arguments,
     /// `with_arg_types` succeeds and the unknowns are replaced with the correct types.
-    /// In the egraph there should never be any unknown arg types.
+    /// `to_egglog` calls `with_arg_types`, so there are never any
+    /// unknown types in the egraph.
     Unknown,
 }
 

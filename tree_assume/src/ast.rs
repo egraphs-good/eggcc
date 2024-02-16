@@ -220,7 +220,7 @@ pub fn bool_arg() -> RcExpr {
 }
 
 pub fn getat(index: usize) -> RcExpr {
-    get(int_arg(), index)
+    get(arg(), index)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {

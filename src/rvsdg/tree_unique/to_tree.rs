@@ -85,7 +85,7 @@ struct RegionTranslator<'a> {
     /// After evaluating a node, do not evaluate it again.
     /// Instead find its index here.
     index_of: HashMap<Id, StoredNode>,
-    nodes: &'a Vec<RvsdgBody>,
+    nodes: &'a [RvsdgBody],
 }
 
 /// helper that binds a new expression, adding it
@@ -145,7 +145,7 @@ impl<'a> RegionTranslator<'a> {
 
     /// Make a new translator for a region with
     /// num_args and the given nodes.
-    fn new(nodes: &'a Vec<RvsdgBody>, argument_values: Vec<ArgOrState>) -> RegionTranslator {
+    fn new(nodes: &'a [RvsdgBody], argument_values: Vec<ArgOrState>) -> RegionTranslator {
         // count the number of non-state-edge args
         let num_args = argument_values
             .iter()

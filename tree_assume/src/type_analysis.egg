@@ -428,3 +428,33 @@
       )
       ((panic "input types and output types don't match"))
       :ruleset type-analysis)
+
+; =================================
+; Functions
+; =================================
+
+(rule ((= lhs (Function name in-ty out-ty body)))
+      (
+        ; Arg should have the specified type in the body
+        (HasArgType body in-ty)
+        ; Expect the body to have the specified output type
+        (ExpectType body out-ty "Function body had wrong type")
+      )
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Call name arg))
+        (Function name in-ty out-ty body)
+      )
+      ; Expect the arg to have the right type for the function
+      ((ExpectType arg in-ty "function called with wrong arg type"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Call name arg))
+        (Function name in-ty out-ty body)
+        (HasType arg in-ty)
+        (HasType body out-ty)
+      )
+      ((HasType lhs out-ty))
+      :ruleset type-analysis)

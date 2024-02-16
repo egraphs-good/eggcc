@@ -147,7 +147,7 @@ impl<'a> RegionTranslator<'a> {
     /// Make a new translator for a region with
     /// num_args and the given nodes.
     fn new(
-        nodes: &'a Vec<RvsdgBody>,
+        nodes: &'a [RvsdgBody],
         argument_values: Vec<ArgOrState>,
         num_args: usize,
     ) -> RegionTranslator {

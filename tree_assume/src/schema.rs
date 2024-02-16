@@ -3,6 +3,7 @@
 //! be implemented in this file.
 
 use std::rc::Rc;
+use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BaseType {
@@ -18,7 +19,7 @@ pub enum Type {
     TupleT(Vec<Type>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -30,7 +31,7 @@ pub enum BinaryOp {
     PtrAdd,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
 pub enum UnaryOp {
     Not,
     Print,

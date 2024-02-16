@@ -3,7 +3,7 @@
 use std::fmt::{Display, Formatter};
 use strum_macros::EnumIter;
 
-use crate::schema::{Constant, Expr, RcExpr, TreeProgram, Type};
+use crate::schema::{BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp};
 
 /// Display for Constant implements a
 /// rust-readable representation using
@@ -26,6 +26,33 @@ impl Display for Expr {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let (term, termdag) = self.to_egglog();
         write!(f, "{}", termdag.to_string(&term))
+    }
+}
+
+impl BinaryOp {
+    pub(crate) fn name(&self) -> &'static str {
+        use BinaryOp::*;
+        match self {
+            Add => "Add",
+            Sub => "Sub",
+            Mul => "Mul",
+            LessThan => "LessThan",
+            And => "And",
+            Or => "Or",
+            Write => "Write",
+            PtrAdd => "PtrAdd",
+        }
+    }
+}
+
+impl UnaryOp {
+    pub(crate) fn name(&self) -> &'static str {
+        use UnaryOp::*;
+        match self {
+            Not => "Not",
+            Print => "Print",
+            Load => "Load",
+        }
     }
 }
 

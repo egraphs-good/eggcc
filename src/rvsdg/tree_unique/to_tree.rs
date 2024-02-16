@@ -10,7 +10,7 @@
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_assume::ast::{empty, mul, switch_vec, tif};
+use tree_assume::ast::{div, empty, mul, sub, switch_vec, tif};
 #[cfg(test)]
 use tree_assume::ast::{intt, parallel, program, push_par};
 #[cfg(test)]
@@ -391,7 +391,9 @@ impl<'a> RegionTranslator<'a> {
                     (ValueOps::Add, [a, b]) => add(a.clone(), b.clone()),
                     (ValueOps::Lt, [a, b]) => less_than(a.clone(), b.clone()),
                     (ValueOps::Mul, [a, b]) => mul(a.clone(), b.clone()),
-                    _ => todo!("handle other operations"),
+                    (ValueOps::Sub, [a, b]) => sub(a.clone(), b.clone()),
+                    (ValueOps::Div, [a, b]) => div(a.clone(), b.clone()),
+                    _ => todo!("handle {} op", op),
                 };
                 self.add_binding(expr, id)
             }

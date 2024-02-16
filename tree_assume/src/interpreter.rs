@@ -167,6 +167,7 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::Add => Const(Constant::Int(get_int(e1, self) + get_int(e2, self))),
             BinaryOp::Sub => Const(Constant::Int(get_int(e1, self) - get_int(e2, self))),
             BinaryOp::Mul => Const(Constant::Int(get_int(e1, self) * get_int(e2, self))),
+            BinaryOp::Div => Const(Constant::Int(get_int(e1, self) / get_int(e2, self))),
             BinaryOp::LessThan => Const(Constant::Bool(get_int(e1, self) < get_int(e2, self))),
             BinaryOp::And => Const(Constant::Bool(get_bool(e1, self) && get_bool(e2, self))),
             BinaryOp::Or => Const(Constant::Bool(get_bool(e1, self) || get_bool(e2, self))),

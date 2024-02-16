@@ -64,6 +64,10 @@ pub fn mul(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Mul, l, r))
 }
 
+pub fn div(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Div, l, r))
+}
+
 pub fn less_than(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::LessThan, l, r))
 }

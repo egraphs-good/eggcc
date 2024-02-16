@@ -57,6 +57,7 @@
 (datatype BinaryOp
   (Add)
   (Sub)
+  (Div)
   (Mul)
   (LessThan)
   (And)

@@ -37,6 +37,7 @@ impl BinaryOp {
             Add => "Add",
             Sub => "Sub",
             Mul => "Mul",
+            Div => "Div",
             LessThan => "LessThan",
             And => "And",
             Or => "Or",
@@ -387,7 +388,9 @@ impl BinaryOp {
     /// When a binary op has concrete input sorts, return them.
     pub(crate) fn types(&self) -> Option<(Type, Type, Type)> {
         match self {
-            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul => Some((intt(), intt(), intt())),
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
+                Some((intt(), intt(), intt()))
+            }
             BinaryOp::And | BinaryOp::Or => Some((boolt(), boolt(), boolt())),
             BinaryOp::LessThan => Some((intt(), intt(), boolt())),
             BinaryOp::Write => None,

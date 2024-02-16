@@ -31,6 +31,7 @@ pub enum BinaryOp {
     Add,
     Sub,
     Mul,
+    Div,
     LessThan,
     And,
     Or,

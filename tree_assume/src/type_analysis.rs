@@ -349,3 +349,16 @@ fn loop_inputs_outputs_error2() {
         concat_par(single(tfalse()), single(int(2))),
     ))
 }
+
+#[test]
+fn funcs_and_calls() -> crate::Result {
+    let f = function("f", intt(), intt(), add(arg(intt()), int(2)));
+    let c = call("f", int(4));
+    egglog_test(
+        &format!("{f}{c}"),
+        &format!("(check (HasType {c} (Base (IntT))))"),
+        vec![f.to_program(intt(), intt())],
+        val_int(4),
+        val_int(6),
+    )
+}

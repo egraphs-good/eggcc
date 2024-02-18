@@ -15,10 +15,7 @@ use petgraph::dot::Dot;
 
 use petgraph::stable_graph::{EdgeReference, StableDiGraph};
 use petgraph::visit::{EdgeRef, Visitable};
-use petgraph::{
-    graph::NodeIndex,
-    visit::{DfsPostOrder, Walker},
-};
+use petgraph::{graph::NodeIndex, visit::DfsPostOrder};
 
 use crate::rvsdg::from_cfg::FunctionTypes;
 use crate::util::{run_cmd_line, ListDisplay, Visualization};
@@ -29,9 +26,7 @@ pub(crate) type NodeSet = <StableDiGraph<BasicBlock, Branch> as Visitable>::Map;
 #[cfg(test)]
 pub(crate) mod tests;
 
-pub(crate) mod structured;
 pub(crate) mod to_bril;
-pub(crate) mod to_structured;
 
 /// Convert a program to a cfg.
 /// Loops over all the functions, translating individually.
@@ -387,19 +382,6 @@ impl<CfgType> CfgFunction<CfgType> {
     pub fn to_svg(&self) -> String {
         let dot_code = self.to_dot();
         run_cmd_line("dot", ["-Tsvg"], &dot_code).unwrap()
-    }
-
-    fn reverse_postorder(self: &CfgFunction<CfgType>) -> HashMap<BlockName, usize> {
-        let mut reverse_postorder = HashMap::<BlockName, usize>::new();
-        let mut post_counter = 0;
-        DfsPostOrder::new(&self.graph, self.entry)
-            .iter(&self.graph)
-            .for_each(|node| {
-                reverse_postorder.insert(self.graph[node].name.clone(), post_counter);
-                post_counter += 1;
-            });
-
-        reverse_postorder
     }
 }
 

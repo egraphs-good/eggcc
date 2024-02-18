@@ -1,8 +1,6 @@
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::Program;
 
-use cfg::structured::StructuredProgram;
-use cfg::to_structured::cfg_to_structured;
 use cfg::{program_to_cfg, SimpleCfgProgram};
 use conversions::check_for_uninitialized_vars;
 use rvsdg::{RvsdgError, RvsdgProgram};
@@ -194,16 +192,6 @@ impl Optimizer {
     pub fn program_to_rvsdg(program: &Program) -> Result<RvsdgProgram, EggCCError> {
         let cfg = Self::program_to_cfg(program);
         rvsdg::cfg_to_rvsdg(&cfg)
-    }
-
-    pub fn program_to_structured(program: &Program) -> Result<StructuredProgram, EggCCError> {
-        let cfg = Self::program_to_cfg(program);
-        cfg_to_structured(&cfg)
-    }
-
-    pub fn parse_to_structured(program: &str) -> Result<StructuredProgram, EggCCError> {
-        let parsed = Self::parse_bril(program)?;
-        Self::program_to_structured(&parsed)
     }
 
     pub fn rvsdg_optimize(program: &Program) -> Result<Program, EggCCError> {

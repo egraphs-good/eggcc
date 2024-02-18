@@ -1,8 +1,5 @@
+use crate::cfg::{function_to_cfg, BlockName};
 use crate::test_util::*;
-use crate::{
-    cfg::{function_to_cfg, program_to_cfg, to_structured::cfg_to_structured, BlockName},
-    EggCCError,
-};
 use bril2json::parse_abstract_program_from_read;
 use bril_rs::{load_program_from_read, Program, Type};
 
@@ -116,14 +113,3 @@ cfg_test_function_to_cfg!(
         "done" = (Jmp) => EXIT,
     ]
 );
-
-#[test]
-fn unstructured_causes_error() {
-    let func = &parse_from_string(include_str!(
-        "../../tests/small/should_fail/unstructured.bril"
-    ));
-    assert!(matches!(
-        cfg_to_structured(&program_to_cfg(func)),
-        Err(EggCCError::UnstructuredControlFlow)
-    ))
-}

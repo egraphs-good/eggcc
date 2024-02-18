@@ -57,8 +57,11 @@
 (datatype BinaryOp
   (Add)
   (Sub)
+  (Div)
   (Mul)
   (LessThan)
+  (GreaterThan)
+  (Eq)
   (And)
   (Or)
   ; given a pointer and a value, writes

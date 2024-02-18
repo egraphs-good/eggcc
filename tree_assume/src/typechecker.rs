@@ -170,7 +170,11 @@ impl<'a> TypeChecker<'a> {
                     panic!("Expected tuple type in {:?}. Got {:?}", child, cty)
                 };
                 if *index >= types.len() {
-                    panic!("Index out of bounds. Tuple has {} elements", types.len());
+                    panic!(
+                        "Index out of bounds. Tuple has {} elements, index is {}",
+                        types.len(),
+                        index
+                    );
                 }
                 let expected_ty = types[*index].clone();
                 (expected_ty, RcExpr::new(Expr::Get(new_child, *index)))

@@ -37,6 +37,9 @@ impl BinaryOp {
             Add => "Add",
             Sub => "Sub",
             Mul => "Mul",
+            Div => "Div",
+            Eq => "Eq",
+            GreaterThan => "GreaterThan",
             LessThan => "LessThan",
             And => "And",
             Or => "Or",
@@ -143,6 +146,12 @@ impl TreeProgram {
         self.functions
             .iter()
             .find(|expr| expr.func_name() == Some(name.to_string()))
+    }
+
+    pub fn pretty(&self) -> String {
+        let (term, termdag) = self.to_egglog();
+        let expr = termdag.term_to_expr(&term);
+        expr.to_sexp().pretty()
     }
 }
 
@@ -387,9 +396,13 @@ impl BinaryOp {
     /// When a binary op has concrete input sorts, return them.
     pub(crate) fn types(&self) -> Option<(Type, Type, Type)> {
         match self {
-            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul => Some((intt(), intt(), intt())),
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
+                Some((intt(), intt(), intt()))
+            }
             BinaryOp::And | BinaryOp::Or => Some((boolt(), boolt(), boolt())),
-            BinaryOp::LessThan => Some((intt(), intt(), boolt())),
+            BinaryOp::LessThan | BinaryOp::GreaterThan | BinaryOp::Eq => {
+                Some((intt(), intt(), boolt()))
+            }
             BinaryOp::Write => None,
             BinaryOp::PtrAdd => None,
         }

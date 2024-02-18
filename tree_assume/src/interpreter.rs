@@ -38,6 +38,19 @@ pub enum Value {
     Tuple(Vec<Value>),
 }
 
+impl Value {
+    pub fn bril_print(&self) -> String {
+        match self {
+            Const(Constant::Int(n)) => format!("{}", n),
+            Const(Constant::Bool(b)) => format!("{}", b),
+            Ptr(Pointer { .. }) => todo!("How does bril print pointers?"),
+            Tuple(_vs) => {
+                panic!("Tried to print tuple as Bril value. There are no tuples in Bril.");
+            }
+        }
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -86,15 +99,16 @@ pub struct BrilState {
 }
 
 /// Interprets a program, returning the value
-/// returned by the program.
-pub fn interpret(prog: &TreeProgram, arg: Value) -> Value {
+/// returned by the program and the print log.
+pub fn interpret_tree_prog(prog: &TreeProgram, arg: Value) -> (Value, Vec<String>) {
     let mut vm = VirtualMachine {
         program: prog,
         next_addr: 0,
         mem: HashMap::new(),
         log: vec![],
     };
-    vm.interpret(&prog.entry.func_name().unwrap(), &Some(arg))
+    let ret_val = vm.interpret(&prog.entry.func_name().unwrap(), &Some(arg));
+    (ret_val, vm.log)
 }
 
 /// Interprets an expression, returning the value
@@ -153,7 +167,10 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::Add => Const(Constant::Int(get_int(e1, self) + get_int(e2, self))),
             BinaryOp::Sub => Const(Constant::Int(get_int(e1, self) - get_int(e2, self))),
             BinaryOp::Mul => Const(Constant::Int(get_int(e1, self) * get_int(e2, self))),
+            BinaryOp::Div => Const(Constant::Int(get_int(e1, self) / get_int(e2, self))),
+            BinaryOp::Eq => Const(Constant::Bool(get_int(e1, self) == get_int(e2, self))),
             BinaryOp::LessThan => Const(Constant::Bool(get_int(e1, self) < get_int(e2, self))),
+            BinaryOp::GreaterThan => Const(Constant::Bool(get_int(e1, self) > get_int(e2, self))),
             BinaryOp::And => Const(Constant::Bool(get_bool(e1, self) && get_bool(e2, self))),
             BinaryOp::Or => Const(Constant::Bool(get_bool(e1, self) || get_bool(e2, self))),
             BinaryOp::Write => {
@@ -178,7 +195,7 @@ impl<'a> VirtualMachine<'a> {
             UnaryOp::Not => Const(Constant::Bool(!self.interp_bool_expr(e, arg))),
             UnaryOp::Print => {
                 let val = self.interpret_expr(e, arg);
-                let v_str = format!("{}", val);
+                let v_str = val.bril_print().to_string();
                 self.log.push(v_str.clone());
                 Tuple(vec![])
             }
@@ -213,8 +230,8 @@ impl<'a> VirtualMachine<'a> {
                 };
                 if *i >= vals.len() {
                     panic!(
-                        "get index out of bounds. Got index {} for tuple {:?}",
-                        i, vals
+                        "get index out of bounds. Got index {} for tuple {:?}. Expression:\n{}",
+                        i, vals, expr
                     )
                 }
                 vals[*i].clone()
@@ -324,7 +341,7 @@ fn test_interpret_calls() {
         ),
         function("func2", intt(), intt(), tlet(arg(), add(arg(), int(1)))),
     );
-    let res = interpret(&expr, Const(Constant::Int(5)));
+    let res = interpret_tree_prog(&expr, Const(Constant::Int(5))).0;
     assert_eq!(res, Const(Constant::Int(10)));
 }
 
@@ -344,7 +361,7 @@ fn test_interpret_recursive() {
             )
         )
     ),);
-    let res = interpret(&expr, Const(Constant::Int(10)));
+    let res = interpret_tree_prog(&expr, Const(Constant::Int(10))).0;
     assert_eq!(res, Const(Constant::Int(55)));
 }
 
@@ -368,7 +385,7 @@ fn test_interpreter() {
         res.log,
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             .into_iter()
-            .map(|i| format!("(Int {})", i))
+            .map(|i| format!("{}", i))
             .collect::<Vec<String>>()
     );
 }

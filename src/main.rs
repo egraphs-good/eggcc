@@ -38,7 +38,7 @@ fn main() {
         }
     }
 
-    if args.interp && !args.run_mode.produces_bril() {
+    if args.interp && !args.run_mode.produces_interpretable() {
         eprintln!(
             "Cannot interpret run type {} because it doesn't produce a bril program.",
             args.run_mode

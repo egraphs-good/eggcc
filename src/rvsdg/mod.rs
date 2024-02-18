@@ -134,6 +134,7 @@ pub(crate) enum Operand {
     /// A reference to an argument in the enclosing region.
     Arg(usize),
     /// Another node in the RVSDG.
+    /// Equivalent to Project(0, id).
     Id(Id),
     /// Project a single output from a multi-output region.
     Project(usize, Id),
@@ -241,6 +242,8 @@ impl fmt::Debug for RvsdgFunction {
 /// In the future, we may want functions to be represented within
 /// the RVSDG.
 pub struct RvsdgProgram {
+    /// A list of functions in this program.
+    /// The last function is the entry point (main function).
     pub(crate) functions: Vec<RvsdgFunction>,
 }
 

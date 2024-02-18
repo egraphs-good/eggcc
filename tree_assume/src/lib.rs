@@ -1,7 +1,7 @@
 use interpreter::Value;
 use schema::TreeProgram;
 
-use crate::interpreter::interpret;
+use crate::interpreter::interpret_tree_prog;
 
 pub mod ast;
 pub mod interpreter;
@@ -41,14 +41,20 @@ pub fn egglog_test(
     progs: Vec<TreeProgram>,
     input: Value,
     expected: Value,
+    expected_log: Vec<String>,
 ) -> Result {
     // first interpret the programs on the value
     for prog in progs {
-        let result = interpret(&prog, input.clone());
+        let (result_val, print_log) = interpret_tree_prog(&prog, input.clone());
         assert_eq!(
-            result, expected,
+            result_val, expected,
             "Program {:?}\nproduced:\n{}\ninstead of expected:\n{}",
-            prog, result, expected
+            prog, result_val, expected
+        );
+        assert_eq!(
+            print_log, expected_log,
+            "Program {:?}\nproduced log:\n{:?}\ninstead of expected log:\n{:?}",
+            prog, print_log, expected_log
         );
     }
 

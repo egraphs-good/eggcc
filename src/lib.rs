@@ -7,6 +7,10 @@ use cfg::{program_to_cfg, SimpleCfgProgram};
 use conversions::check_for_uninitialized_vars;
 use rvsdg::{RvsdgError, RvsdgProgram};
 use std::path::PathBuf;
+use tree_assume::interpreter::{interpret_tree_prog, Value};
+use tree_assume::schema::Constant;
+
+use util::Interpretable;
 
 use thiserror::Error;
 
@@ -64,10 +68,55 @@ impl Optimizer {
         args
     }
 
+    /// Produces a tuple value from the string arguments
+    fn parse_arguments(args: Vec<String>) -> Value {
+        Value::Tuple(
+            args.into_iter()
+                .map(|arg| {
+                    if let Ok(int) = arg.parse::<i64>() {
+                        Value::Const(Constant::Int(int))
+                    } else if arg == "true" {
+                        Value::Const(Constant::Bool(true))
+                    } else if arg == "false" {
+                        Value::Const(Constant::Bool(false))
+                    } else {
+                        panic!("Invalid argument to bril program: {}", arg);
+                    }
+                })
+                .collect(),
+        )
+    }
+
+    /// Interpret a program in an `Interpretable` IR.
+    /// Returns the printed output of the program.
+    /// The program should not return a value.
+    pub fn interp(
+        program: &Interpretable,
+        args: Vec<String>,
+        profile_out: Option<PathBuf>,
+    ) -> String {
+        match program {
+            Interpretable::Bril(program) => Self::interp_bril(program, args, profile_out),
+            Interpretable::TreeProgram(program) => {
+                let (val, mut printed) = interpret_tree_prog(program, Self::parse_arguments(args));
+                assert_eq!(val, Value::Tuple(vec![]));
+                // add new line to the end of each line in printed
+                for line in printed.iter_mut() {
+                    line.push('\n');
+                }
+                printed.join("")
+            }
+        }
+    }
+
     /// run the rust interpreter on the program
     /// without any optimizations
-    pub fn interp(program: &Program, args: Vec<String>, profile_out: Option<PathBuf>) -> String {
-        let mut optimized_out = Vec::new();
+    pub fn interp_bril(
+        program: &Program,
+        args: Vec<String>,
+        profile_out: Option<PathBuf>,
+    ) -> String {
+        let mut program_out = Vec::new();
 
         match profile_out {
             Some(path) => {
@@ -75,7 +124,7 @@ impl Optimizer {
 
                 brilirs::run_input(
                     std::io::BufReader::new(program.to_string().as_bytes()),
-                    std::io::BufWriter::new(&mut optimized_out),
+                    std::io::BufWriter::new(&mut program_out),
                     &args,
                     true,
                     profile_file,
@@ -88,7 +137,7 @@ impl Optimizer {
             None => {
                 brilirs::run_input(
                     std::io::BufReader::new(program.to_string().as_bytes()),
-                    std::io::BufWriter::new(&mut optimized_out),
+                    std::io::BufWriter::new(&mut program_out),
                     &args,
                     false,
                     std::io::stderr(),
@@ -100,7 +149,7 @@ impl Optimizer {
             }
         }
 
-        String::from_utf8(optimized_out).unwrap()
+        String::from_utf8(program_out).unwrap()
     }
 
     pub fn parse_bril(program: &str) -> Result<Program, EggCCError> {

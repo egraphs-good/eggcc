@@ -6,7 +6,7 @@ use strum::IntoEnumIterator;
 fn bop_is_pure(bop: &BinaryOp) -> bool {
     use BinaryOp::*;
     match bop {
-        Add | Sub | Mul | LessThan | And | Or | PtrAdd => true,
+        Add | Sub | Mul | LessThan | And | Or | Div | PtrAdd | Eq | GreaterThan => true,
         Write => false,
     }
 }
@@ -128,5 +128,6 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
         vec![pureloop.to_program(emptyt(), tuplet!(intt()))],
         Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(4))]),
+        vec![],
     )
 }

@@ -41,11 +41,16 @@ pub(crate) fn program_to_cfg(program: &Program) -> SimpleCfgProgram {
         let cfg = function_to_cfg(func);
         functions.push(cfg);
     }
+
+    // If one of the functions is called "main", put it last
+    functions.sort_by_key(|f| f.name == "main");
     CfgProgram { functions }
 }
 
 #[derive(Clone)]
 pub struct CfgProgram<CfgType> {
+    /// A list of functions in the program.
+    /// The last entry of this list is the entry point.
     pub functions: Vec<CfgFunction<CfgType>>,
 }
 

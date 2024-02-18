@@ -70,5 +70,6 @@ fn test_is_valid() -> Result<(), egglog::Error> {
         Value::Tuple(vec![]),
         // Value::Tuple(vec![]),
         Value::Tuple(vec![Value::Const(Constant::Int(4))]),
+        vec![],
     )
 }

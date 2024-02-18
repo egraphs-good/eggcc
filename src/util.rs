@@ -146,6 +146,9 @@ pub enum RunType {
     RvsdgConversion,
     /// Convert the input bril program to a tree-encoded expression.
     TreeConversion,
+    /// Convert the input bril program to a tree-encoded expression without
+    /// trying to prevent generating unnecessary let bindings
+    TreeConversionVerboseLets,
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
@@ -164,7 +167,27 @@ pub enum RunType {
 
 impl Display for RunType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+<<<<<<< HEAD
         write!(f, "{}", self.to_possible_value().unwrap().get_name())
+=======
+        match self {
+            RunType::Nothing => write!(f, "nothing"),
+            RunType::StructuredConversion => write!(f, "structured"),
+            RunType::StructuredRoundTrip => write!(f, "structured-roundtrip"),
+            RunType::RvsdgConversion => write!(f, "rvsdg"),
+            RunType::TreeConversion => write!(f, "tree"),
+            RunType::TreeConversionVerboseLets => write!(f, "tree-verbose-lets"),
+            RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
+            RunType::ToCfg => write!(f, "to-cfg"),
+            RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
+            RunType::OptimizeDirectJumps => write!(f, "optimize-direct-jumps"),
+            RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
+            RunType::RvsdgOptimize => write!(f, "rvsdg-optimize"),
+            RunType::OptimizedRvsdg => write!(f, "optimized-rvsdg"),
+            RunType::RvsdgEgglogEncoding => write!(f, "rvsdg-egglog-encoding"),
+            RunType::Serialize => write!(f, "serialize"),
+        }
+>>>>>>> 2839363 (working on better conversion code)
     }
 }
 
@@ -181,6 +204,7 @@ impl RunType {
             RunType::OptimizeDirectJumps => true,
             RunType::RvsdgToCfg => true,
             RunType::TreeConversion => true,
+            RunType::TreeConversionVerboseLets => true,
         }
     }
 
@@ -191,7 +215,16 @@ impl RunType {
             | RunType::CfgRoundTrip
             | RunType::OptimizeDirectJumps
             | RunType::RvsdgToCfg
+<<<<<<< HEAD
             | RunType::TreeConversion => false,
+=======
+            | RunType::RvsdgOptimize
+            | RunType::RvsdgEgglogEncoding
+            | RunType::OptimizedRvsdg
+            | RunType::Serialize
+            | RunType::TreeConversion
+            | RunType::TreeConversionVerboseLets => false,
+>>>>>>> 2839363 (working on better conversion code)
         }
     }
 }
@@ -352,7 +385,19 @@ impl Run {
             }
             RunType::TreeConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding();
+                let tree = rvsdg.to_tree_encoding(true);
+                (
+                    vec![Visualization {
+                        result: tree.pretty(),
+                        file_extension: ".egg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::TreeProgram(tree)),
+                )
+            }
+            RunType::TreeConversionVerboseLets => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(false);
                 (
                     vec![Visualization {
                         result: tree.pretty(),

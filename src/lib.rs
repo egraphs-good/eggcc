@@ -194,15 +194,6 @@ impl Optimizer {
         rvsdg::cfg_to_rvsdg(&cfg)
     }
 
-    pub fn rvsdg_optimize(program: &Program) -> Result<Program, EggCCError> {
-        let rvsdg = Self::program_to_rvsdg(program)?;
-        let optimized = rvsdg.optimize()?;
-        let cfg = optimized.to_cfg();
-        let program = cfg.to_bril();
-
-        Ok(program)
-    }
-
     pub fn fresh_var(&mut self) -> String {
         let res = format!("v{}_", self.var_counter);
         self.var_counter += 1;

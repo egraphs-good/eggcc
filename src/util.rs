@@ -1,12 +1,12 @@
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
+use clap::ValueEnum;
 use std::fmt::Debug;
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
     io,
     path::PathBuf,
-    str::FromStr,
 };
 use tree_assume::schema::TreeProgram;
 
@@ -69,7 +69,7 @@ pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
         let result = match result {
             Ok(res) => res,
             Err(err) => {
-                eprintln!("Error running {}: {}", run.test_type, err);
+                eprintln!("Error running {:?}: {}", run.test_type, err);
                 continue;
             }
         };
@@ -135,9 +135,9 @@ where
     }
 }
 
-/// Different ways to run eggcc- the default is RvsdgOptimize,
+/// Different ways to run eggcc- the default is TreeConversion,
 /// but these others are useful for testing and debugging.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ValueEnum, Debug)]
 pub enum RunType {
     /// Do nothing to the input bril program besides parse it.
     /// Output the original program.
@@ -160,64 +160,11 @@ pub enum RunType {
     OptimizeDirectJumps,
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
-    /// Convert the original program to a RVSDG, optimize it, then turn
-    /// it back into a Bril program. This is the main way to run eggcc.
-    RvsdgOptimize,
-    /// Convert the original program to a RVSDG, optimize it, then output
-    /// the optimized RVSDG as an SVG.
-    OptimizedRvsdg,
-    /// Convert the original program to a RVSDG, then output the egglog program
-    /// that is used to optimize the RVSDG.
-    RvsdgEgglogEncoding,
-    /// Optimize the input as an RVSDG, and output the resulting
-    /// egraph as an egraph-serialize crate json.
-    Serialize,
-}
-
-impl Debug for RunType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl FromStr for RunType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "nothing" => Ok(RunType::Nothing),
-            "tree" => Ok(RunType::TreeConversion),
-            "rvsdg" => Ok(RunType::RvsdgConversion),
-            "rvsdg-roundtrip" => Ok(RunType::RvsdgRoundTrip),
-            "to-cfg" => Ok(RunType::ToCfg),
-            "cfg-roundtrip" => Ok(RunType::CfgRoundTrip),
-            "optimize-direct-jumps" => Ok(RunType::OptimizeDirectJumps),
-            "rvsdg-to-cfg" => Ok(RunType::RvsdgToCfg),
-            "rvsdg-optimize" => Ok(RunType::RvsdgOptimize),
-            "rvsdg-egglog-encoding" => Ok(RunType::RvsdgEgglogEncoding),
-            "optimized-rvsdg" => Ok(RunType::OptimizedRvsdg),
-            "serialize" => Ok(RunType::Serialize),
-            _ => Err(format!("Unknown run type: {}", s)),
-        }
-    }
 }
 
 impl Display for RunType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RunType::Nothing => write!(f, "nothing"),
-            RunType::RvsdgConversion => write!(f, "rvsdg"),
-            RunType::TreeConversion => write!(f, "tree"),
-            RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
-            RunType::ToCfg => write!(f, "to-cfg"),
-            RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
-            RunType::OptimizeDirectJumps => write!(f, "optimize-direct-jumps"),
-            RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
-            RunType::RvsdgOptimize => write!(f, "rvsdg-optimize"),
-            RunType::OptimizedRvsdg => write!(f, "optimized-rvsdg"),
-            RunType::RvsdgEgglogEncoding => write!(f, "rvsdg-egglog-encoding"),
-            RunType::Serialize => write!(f, "serialize"),
-        }
+        write!(f, "{}", self.to_possible_value().unwrap().get_name())
     }
 }
 
@@ -233,10 +180,6 @@ impl RunType {
             RunType::CfgRoundTrip => true,
             RunType::OptimizeDirectJumps => true,
             RunType::RvsdgToCfg => true,
-            RunType::RvsdgOptimize => true,
-            RunType::RvsdgEgglogEncoding => true,
-            RunType::OptimizedRvsdg => false,
-            RunType::Serialize => false,
             RunType::TreeConversion => true,
         }
     }
@@ -248,10 +191,6 @@ impl RunType {
             | RunType::CfgRoundTrip
             | RunType::OptimizeDirectJumps
             | RunType::RvsdgToCfg
-            | RunType::RvsdgOptimize
-            | RunType::RvsdgEgglogEncoding
-            | RunType::OptimizedRvsdg
-            | RunType::Serialize
             | RunType::TreeConversion => false,
         }
     }
@@ -313,7 +252,7 @@ pub enum Interpretable {
 /// and a file extension.
 /// For CFGs, the name is the name of the function and the vizalization
 /// is a SVG.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Visualization {
     pub result: String,
     pub file_extension: String,
@@ -337,9 +276,7 @@ impl Run {
             RunType::RvsdgRoundTrip,
             RunType::CfgRoundTrip,
             RunType::OptimizeDirectJumps,
-            RunType::RvsdgOptimize,
             RunType::RvsdgToCfg,
-            RunType::OptimizedRvsdg,
             RunType::TreeConversion,
         ] {
             if prog.has_mem && !test_type.supports_memory() {
@@ -457,54 +394,6 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::Bril(bril)),
-                )
-            }
-            RunType::RvsdgOptimize => {
-                let optimized = Optimizer::rvsdg_optimize(&self.prog_with_args.program)?;
-                (
-                    vec![Visualization {
-                        result: optimized.to_string(),
-                        file_extension: ".bril".to_string(),
-                        name: "".to_string(),
-                    }],
-                    Some(Interpretable::Bril(optimized)),
-                )
-            }
-            RunType::RvsdgEgglogEncoding => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (egglog_code, _) = rvsdg.build_egglog_code();
-                (
-                    vec![Visualization {
-                        result: egglog_code,
-                        file_extension: ".egglog".to_string(),
-                        name: "".to_string(),
-                    }],
-                    None,
-                )
-            }
-            RunType::OptimizedRvsdg => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let optimized = rvsdg.optimize()?;
-                let svg = optimized.to_svg();
-                (
-                    vec![Visualization {
-                        result: svg,
-                        file_extension: ".svg".to_string(),
-                        name: "".to_string(),
-                    }],
-                    None,
-                )
-            }
-            RunType::Serialize => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let serialized = rvsdg.serialized_egraph()?;
-                (
-                    vec![Visualization {
-                        result: serde_json::to_string_pretty(&serialized).unwrap(),
-                        file_extension: ".json".to_string(),
-                        name: "".to_string(),
-                    }],
-                    None,
                 )
             }
         };

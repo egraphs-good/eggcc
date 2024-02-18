@@ -215,7 +215,7 @@ impl<'a> RegionTranslator<'a> {
                     let pred = self
                         .translate_operand(*pred)
                         .to_expr()
-                        .unwrap_or_else(|| panic!("Pred was a state edge"));
+                        .expect("Pred was a state edge");
 
                     let before_current_args = self.current_num_args;
                     let mut then_translator = RegionTranslator::new(
@@ -270,7 +270,7 @@ impl<'a> RegionTranslator<'a> {
                     let pred = self
                         .translate_operand(*pred)
                         .to_expr()
-                        .unwrap_or_else(|| panic!("Pred was a state edge"));
+                        .expect("Pred was a state edge");
 
                     let before_num_args = self.current_num_args;
                     let mut resulting_values = vec![];

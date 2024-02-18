@@ -1,8 +1,0 @@
-; The main (run) statement for the egglog program
-
-(run-schedule
-  (repeat 5
-    (saturate analyses)
-    (run)
-    (saturate subst)
-    (saturate repairs)))

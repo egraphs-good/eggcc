@@ -12,7 +12,7 @@
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 use tree_in_context::ast::{and, div, empty, eq, mul, sub, switch_vec, tif};
 #[cfg(test)]
-use tree_in_context::ast::{intt, parallel, program, push_par};
+use tree_in_context::ast::{get, intt, parallel, program, push_par};
 #[cfg(test)]
 use tree_in_context::interpreter::Value;
 #[cfg(test)]
@@ -263,6 +263,8 @@ impl<'a> RegionTranslator<'a> {
             let node = &self.nodes[id];
             match node {
                 RvsdgBody::BasicOp(expr) => self.translate_basic_expr(expr.clone(), id),
+                // TODO we currently always bind if eagerly, so we create
+                // unecessary let bindings.
                 RvsdgBody::If {
                     pred,
                     inputs,
@@ -323,6 +325,8 @@ impl<'a> RegionTranslator<'a> {
                     let expr = tif(pred, then_translated, else_translated);
                     self.add_region_binding(expr, id, resulting_values)
                 }
+                // TODO we currently always bind gamma eagerly, so we create
+                // unecessary let bindings.
                 RvsdgBody::Gamma {
                     pred,
                     inputs,
@@ -840,7 +844,6 @@ fn translate_loop() {
     );
 }
 
-/*
 #[test]
 fn simple_if_translation() {
     const PROGRAM: &str = r#"
@@ -856,13 +859,9 @@ fn simple_if_translation() {
         ret v1;
 }"#;
 
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
-
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(false),
-        &program!(function(
+    let_translation_test(
+        PROGRAM,
+        program!(function(
             "main",
             emptyt(),
             intt(),
@@ -881,11 +880,25 @@ fn simple_if_translation() {
                 ),
             ),
         ),),
+        program!(function(
+            "main",
+            emptyt(),
+            intt(),
+            bind_tuple(
+                tif(
+                    less_than(int(1), int(1)),
+                    parallel!(int(1)),
+                    parallel!(int(2)),
+                ),
+                getarg(0)
+            )
+        ),),
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(2)),
+        vec![],
     );
 }
-
+/*
 #[test]
 fn two_print_translation() {
     const PROGRAM: &str = r#"

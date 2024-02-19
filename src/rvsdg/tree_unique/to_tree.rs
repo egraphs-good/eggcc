@@ -10,7 +10,7 @@
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_in_context::ast::{and, div, empty, eq, mul, sub, switch_vec, tif};
+use tree_in_context::ast::{and, cons_par, div, empty, eq, mul, sub, switch_vec, tif};
 #[cfg(test)]
 use tree_in_context::ast::{get, intt, parallel, program, push_par};
 #[cfg(test)]
@@ -146,6 +146,15 @@ fn bind_value(expr: RcExpr, body: RcExpr) -> RcExpr {
 }
 
 impl<'a> RegionTranslator<'a> {
+    fn bind_binary(
+        &mut self,
+        constructor: Fn(RcExpr, RcExpr) -> RcExpr,
+        a: StoredValue,
+        b: StoredValue,
+        id: Id,
+    ) -> StoredNode {
+    }
+
     /// Adds a pure expression to the cache.
     fn add_pure_value(&mut self, expr: RcExpr, id: Id) -> StoredNode {
         if self.optimize_lets {
@@ -898,7 +907,7 @@ fn simple_if_translation() {
         vec![],
     );
 }
-/*
+
 #[test]
 fn two_print_translation() {
     const PROGRAM: &str = r#"
@@ -910,14 +919,9 @@ fn two_print_translation() {
         print v1;
     }
     "#;
-
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
-
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(false),
-        &program!(function(
+    let_translation_test(
+        PROGRAM,
+        program!(function(
             "add",
             TreeType::TupleT(vec![]),
             TreeType::TupleT(vec![]),
@@ -935,11 +939,19 @@ fn two_print_translation() {
                 ),
             )
         ),),
+        program!(function(
+            "add",
+            TreeType::TupleT(vec![]),
+            TreeType::TupleT(vec![]),
+            cons_par(tprint(add(int(1), int(2))), tprint(int(2)))
+        ),),
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
+        vec!["3".to_string(), "2".to_string()],
     );
 }
 
+/*
 #[test]
 fn multi_function_translation() {
     const PROGRAM: &str = r#"

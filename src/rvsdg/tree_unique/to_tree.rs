@@ -93,8 +93,6 @@ struct RegionTranslator<'a> {
     /// These tuples are concatenated to the current argument during `build_translation`.
     bindings: Vec<RcExpr>,
     /// `stored_node` is a cache of already translated rvsdg nodes.
-    /// A stored value may be an expression, in which case translation must be
-    /// careful about re-use of the expression. See `to_bind`.
     stored_node: HashMap<Id, StoredNode>,
     /// A reference to the nodes in the RVSDG.
     nodes: &'a [RvsdgBody],

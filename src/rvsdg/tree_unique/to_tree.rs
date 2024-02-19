@@ -52,10 +52,13 @@ enum StoredValue {
     Arg(usize),
     /// The value is a state edge, thus not stored.
     StateEdge,
-    /// The value is an expression without any Write or Print effects.
-    /// The expression may read, however.
-    /// This variant should only be constructed when the `optimize_lets` flag is true.
-    Expr { expr: RcExpr, is_pure: bool },
+    /// An expression representing this stored value.
+    /// It tracks the oldest read that it depends on, an index into `to_bind`.f
+    /// If this expression is needed after a write, it must be let-bound before use.
+    Expr {
+        expr: RcExpr,
+        oldest_read: Option<usize>,
+    },
 }
 
 /// Stores the location of the values of
@@ -82,27 +85,28 @@ impl StoredValue {
 }
 
 struct RegionTranslator<'a> {
-    /// The values of the arguments to this region.
+    /// The values of the RVSDG arguments to this region.
     argument_values: Vec<StoredValue>,
-    /// The number of arguments in the current environment.
+    /// The number of tree arguments in the current environment.
+    /// This is not equal to the length of `argument_values` because it refers to
+    /// translated tree arguments, not the original RVSDG arguments.
     current_num_args: usize,
     /// a stack of let bindings to generate
     /// each `RcExpr` is an expression producing a tuple.
     /// These tuples are concatenated to the current argument during `build_translation`.
     bindings: Vec<RcExpr>,
     /// `stored_node` is a cache of already translated rvsdg nodes.
-    /// A pure node can be stored as an expression.
-    /// Reads may need to be let-bound in `bindings` so they can be
-    /// computed before writes.
+    /// A stored value may be an expression, in which case translation must be
+    /// careful about re-use of the expression. See `to_bind`.
     stored_node: HashMap<Id, StoredNode>,
-    /// Delay binding of read nodes until necessary.
-    /// `to_bind` stores a set of nodes such that
-    /// 1) `stored_node[node]` is a `StoredNode::Expr(e)`
-    /// 2) `e` contains a read
-    /// When `optimize_lets` is enabled, stored nodes can be expressions.
-    /// These expressions may contain reads.
-    /// After a write occurs, and the next time any of these nodes are referenced,
-    /// we need to let bind them.
+    /// `to_bind` is an ordered list of stored nodes
+    /// that need to be let-bound.
+    /// These nodes are expressions with effects
+    /// (read, write, print, or loop (nontermination)).
+    /// Translation must ensure these are let-bound before the end of the region.
+    /// They also need to be let-bound when a data dependency on an old `read`
+    /// is encountered after a `write`.
+    ///
     /// Here's an example execution trace of four RVSDG nodes being processed:
     /// ```text
     /// node1: read(2)
@@ -110,19 +114,19 @@ struct RegionTranslator<'a> {
     /// node2: read(3)
     /// ; stored_node[node2] = read(3), to_bind = [node1, node2]
     /// node3: write(2, 14)
-    /// ; stored_node[node3] = write(2, 14), has_write_occurred = true, effects_to_bind = [node3]
+    /// ; stored_node[node3] = write(2, 14), to_bind = [node1, node2, node3], has_write_occurred = true
     /// node4: add(node1, node1)
     /// ; node1, node2, and node3 get added to the bindings
     /// ; stored_node[node1] = StoredNode::Arg(0), stored_node[node2] = StoredNode::Arg(1), stored_node[node3] = StoredNode::StateEdge
     /// ; stored_node[node4] = StoredNode::Expr(add(getarg(0), getarg(0)))
     /// ```
     to_bind: Vec<Id>,
-    /// Tracks a set of print or write nodes that need to be bound.
-    effects_to_bind: Vec<Id>,
-    /// Tracks whether a write has occurred since the last time we added
-    /// `to_bind` nodes to the bindings.
-    /// After a write, we need to add a binding the next time a read is encountered.
-    has_write_occurred: bool,
+    /// An index into `to_bind` that indicates the most recent write.
+    /// When a `read` that occurs before the most recent `write` is encountered,
+    /// bind everything in `to_bind`. A `StoredValue` stores the oldest read
+    /// it references.
+    most_recent_write: Option<usize>,
+    /// A reference to the nodes in the RVSDG.
     nodes: &'a [RvsdgBody],
     /// Whether to optimize let bindings
     optimize_lets: bool,
@@ -147,7 +151,7 @@ impl<'a> RegionTranslator<'a> {
         if self.optimize_lets {
             let res = StoredValue::Expr {
                 expr: expr.clone(),
-                is_pure: true,
+                oldest_read: None,
             };
             self.stored_node.insert(id, vec![res.clone()]);
             vec![res]
@@ -213,8 +217,7 @@ impl<'a> RegionTranslator<'a> {
             nodes,
             optimize_lets,
             to_bind: Vec::new(),
-            effects_to_bind: Vec::new(),
-            has_write_occurred: false,
+            most_recent_write: None,
         }
     }
 
@@ -372,6 +375,9 @@ impl<'a> RegionTranslator<'a> {
                     let expr = switch_vec(pred, branches);
                     self.add_region_binding(expr, id, resulting_values)
                 }
+                // TODO we currently always bind loops eagerly,
+                // but we could delay binding it (like writes) so we don't create a new let
+                // before other nodes that don't depend on the output are evaluated.
                 RvsdgBody::Theta {
                     pred,
                     inputs,
@@ -723,13 +729,9 @@ fn translate_simple_loop() {
         ret one;
 }
 "#;
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
-
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(false),
-        &program!(function(
+    let_translation_test(
+        PROGRAM,
+        program!(function(
             "myfunc",
             emptyt(),
             intt(),
@@ -750,13 +752,23 @@ fn translate_simple_loop() {
                 )
             )
         ),),
+        program!(function(
+            "myfunc",
+            emptyt(),
+            intt(),
+            bind_tuple(
+                dowhile(
+                    parallel!(int(1), int(2)),
+                    parallel!(less_than(getarg(1), getarg(0)), getarg(0), getarg(1))
+                ),
+                getarg(0)
+            ),
+        ),),
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(1)),
         vec![],
     );
 }
-
-/*
 
 #[test]
 fn translate_loop() {
@@ -774,13 +786,10 @@ fn translate_loop() {
         print i;
 }
 "#;
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(false),
-        &program!(function(
+    let_translation_test(
+        PROGRAM,
+        program!(function(
             "main",
             TreeType::TupleT(vec![]),
             TreeType::TupleT(vec![]),
@@ -810,11 +819,28 @@ fn translate_loop() {
                 )
             ),
         ),),
+        program!(function(
+            "main",
+            TreeType::TupleT(vec![]),
+            TreeType::TupleT(vec![]),
+            bind_tuple(
+                dowhile(
+                    parallel!(int(0)),
+                    parallel!(
+                        less_than(add(getarg(0), int(1)), int(10)),
+                        add(getarg(0), int(1))
+                    )
+                ),
+                bind_tuple(tprint(getarg(0)), parallel!())
+            ),
+        ),),
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
+        vec!["10".to_string()],
     );
 }
 
+/*
 #[test]
 fn simple_if_translation() {
     const PROGRAM: &str = r#"

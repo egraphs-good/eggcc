@@ -24,3 +24,6 @@ target/
 
 # Profiler output
 profile.json
+
+# commonly used test file
+test.egg

@@ -10,18 +10,18 @@
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_assume::ast::{and, div, empty, eq, mul, sub, switch_vec, tif};
+use tree_in_context::ast::{and, div, empty, eq, mul, sub, switch_vec, tif};
 #[cfg(test)]
-use tree_assume::ast::{intt, parallel, program, push_par};
+use tree_in_context::ast::{intt, parallel, program, push_par};
 #[cfg(test)]
-use tree_assume::interpreter::Value;
+use tree_in_context::interpreter::Value;
 #[cfg(test)]
-use tree_assume::schema::Constant;
+use tree_in_context::schema::Constant;
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
 use bril_rs::{EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
-use tree_assume::{
+use tree_in_context::{
     ast::{
         add, arg, call, concat_par, dowhile, emptyt, function, getarg, int, less_than,
         parallel_vec, program_vec, single, tfalse, tlet, tprint, ttrue,
@@ -528,7 +528,7 @@ fn assert_progs_eq(
 ) {
     // first, check expected works properly
 
-    use tree_assume::interpreter::interpret_tree_prog;
+    use tree_in_context::interpreter::interpret_tree_prog;
     let (expected_res, _expected_printlog) = interpret_tree_prog(expected, input_val);
     assert_eq!(
         expected_res, output_val,

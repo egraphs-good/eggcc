@@ -166,7 +166,7 @@
 
 
 ; =================================
-; Assume
+; InContext
 ; =================================
 
 (datatype Assumption
@@ -191,9 +191,9 @@
   ; (IsTrue Expr))
 )
 
-; Assume allows creating context-specific terms.
-; e.g. (Assume (InLet (Const (Int 2))) (Arg)) is equal to (Const (Int 2))
-(function Assume (Assumption Expr) Expr)
+; InContext allows creating context-specific terms.
+; e.g. (InContext (InLet (Const (Int 2))) (Arg)) is equal to (Const (Int 2))
+(function InContext (Assumption Expr) Expr)
 
 
 ; =================================

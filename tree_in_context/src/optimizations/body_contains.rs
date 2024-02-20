@@ -66,9 +66,12 @@ use crate::Value;
 #[test]
 fn test_body_contains() -> Result<(), egglog::Error> {
     let myloop = dowhile(
-        assume(inlet(int(2)), single(int(1))),
+        in_context(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(get(arg(), 0), tlet(int(3), assume(inlet(int(3)), arg()))),
+            less_than(
+                get(arg(), 0),
+                tlet(int(3), in_context(inlet(int(3)), arg()))
+            ),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     )
@@ -78,7 +81,7 @@ fn test_body_contains() -> Result<(), egglog::Error> {
         "
 (fail (check (BodyContainsExpr {myloop} {num1})))
 (fail (check (BodyContainsExpr {myloop} {num2})))
-(fail (check (BodyContainsExpr {myloop} {assume})))
+(fail (check (BodyContainsExpr {myloop} {in_context})))
 (check (BodyContainsExpr {myloop} {num3}))
 (check (BodyContainsExpr {myloop} {num4}))
 (check (BodyContainsExpr {myloop} {num5}))
@@ -89,7 +92,7 @@ fn test_body_contains() -> Result<(), egglog::Error> {
         num3 = int(3),
         num4 = int(4),
         num5 = int(5),
-        assume = assume(inlet(int(6)), int_arg()),
+        in_context = in_context(inlet(int(6)), int_arg()),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(

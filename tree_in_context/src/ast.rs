@@ -279,6 +279,6 @@ pub fn infunc(name: &str) -> Assumption {
     Assumption::InFunc(name.to_string())
 }
 
-pub fn assume(assumption: Assumption, body: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Assume(assumption, body))
+pub fn in_context(assumption: Assumption, body: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::InContext(assumption, body))
 }

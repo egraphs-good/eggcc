@@ -8,7 +8,7 @@ use std::{
     io,
     path::PathBuf,
 };
-use tree_assume::schema::TreeProgram;
+use tree_in_context::schema::TreeProgram;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 

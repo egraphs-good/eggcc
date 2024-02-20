@@ -5,8 +5,8 @@ use cfg::{program_to_cfg, SimpleCfgProgram};
 use conversions::check_for_uninitialized_vars;
 use rvsdg::{RvsdgError, RvsdgProgram};
 use std::path::PathBuf;
-use tree_assume::interpreter::{interpret_tree_prog, Value};
-use tree_assume::schema::Constant;
+use tree_in_context::interpreter::{interpret_tree_prog, Value};
+use tree_in_context::schema::Constant;
 
 use util::Interpretable;
 

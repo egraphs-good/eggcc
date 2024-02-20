@@ -212,7 +212,7 @@ impl<'a> VirtualMachine<'a> {
 
     // TODO: refactor to return a Result<Value, RuntimeError>
     // struct RuntimeError { BadRead(Value) }
-    // assumes e typechecks
+    // in_contexts e typechecks
     pub fn interpret(&mut self, func_name: &str, arg: &Option<Value>) -> Value {
         let func = self.program.get_function(func_name).unwrap();
         self.interpret_expr(func.func_body().unwrap(), arg)
@@ -223,7 +223,7 @@ impl<'a> VirtualMachine<'a> {
             Expr::Const(c) => Const(c.clone()),
             Expr::Bop(bop, e1, e2) => self.interpret_bop(bop, e1, e2, arg),
             Expr::Uop(uop, e) => self.interpret_uop(uop, e, arg),
-            Expr::Assume(_assumption, e) => self.interpret_expr(e, arg),
+            Expr::InContext(_assumption, e) => self.interpret_expr(e, arg),
             Expr::Get(e_tuple, i) => {
                 let Tuple(vals) = self.interpret_expr(e_tuple, arg) else {
                     panic!("get")
@@ -236,7 +236,7 @@ impl<'a> VirtualMachine<'a> {
                 }
                 vals[*i].clone()
             }
-            // assume this is type checked, so ignore type
+            // in_context this is type checked, so ignore type
             Expr::Alloc(e_size, _ty) => {
                 let size = self.interp_int_expr(e_size, arg);
                 let addr = self.next_addr;

@@ -183,10 +183,10 @@ impl Expr {
                 let ty = ty.to_egglog_internal(term_dag);
                 term_dag.app("Arg".into(), vec![ty])
             }
-            Expr::Assume(assumption, expr) => {
+            Expr::InContext(assumption, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 let assumption = assumption.to_egglog_internal(term_dag);
-                term_dag.app("Assume".into(), vec![assumption, expr])
+                term_dag.app("InContext".into(), vec![assumption, expr])
             }
             Expr::Function(name, ty_in, ty_out, body) => {
                 let body = body.to_egglog_internal(term_dag);

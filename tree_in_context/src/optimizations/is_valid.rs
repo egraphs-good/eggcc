@@ -38,7 +38,7 @@ use crate::Value;
 #[test]
 fn test_is_valid() -> Result<(), egglog::Error> {
     let myloop = dowhile(
-        assume(inlet(int(2)), single(int(1))),
+        in_context(inlet(int(2)), single(int(1))),
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)

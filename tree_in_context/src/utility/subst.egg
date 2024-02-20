@@ -1,29 +1,29 @@
 
 ;; (Subst assumption to in) substitutes 
-;; (Assume assumption to) for `(Arg ty)` in `in`
-;; It also replaces `(Asuume anything (Arg ty))` with `(Assume assumption to)`
+;; (InContext assumption to) for `(Arg ty)` in `in`
+;; It also replaces `(Asuume anything (Arg ty))` with `(InContext assumption to)`
 (function Subst (Assumption Expr Expr) Expr :unextractable)
 (function SubstList (Assumption Expr ListExpr) ListExpr :unextractable)
 
 
 ;; Base case- leaf nodes
 (rewrite (Subst assum to (Arg ty))
-         (Assume assum to)
+         (InContext assum to)
          :ruleset always-run)
-(rewrite (Subst assum to (Assume assum2 (Arg ty)))
-         (Assume assum to)
+(rewrite (Subst assum to (InContext assum2 (Arg ty)))
+         (InContext assum to)
          :ruleset always-run)
 (rewrite (Subst assum to (Const constant))
-         (Assume assum (Const constant))
+         (InContext assum (Const constant))
          :ruleset always-run)
-(rewrite (Subst assum to (Assume assum2 (Const constant)))
-         (Assume assum (Const constant))
+(rewrite (Subst assum to (InContext assum2 (Const constant)))
+         (InContext assum (Const constant))
          :ruleset always-run)
 (rewrite (Subst assum to (Empty))
-         (Assume assum (Empty))
+         (InContext assum (Empty))
           :ruleset always-run)
-(rewrite (Subst assum to (Assume assum2 (Empty)))
-         (Assume assum (Empty))
+(rewrite (Subst assum to (InContext assum2 (Empty)))
+         (InContext assum (Empty))
          :ruleset always-run)
 
 

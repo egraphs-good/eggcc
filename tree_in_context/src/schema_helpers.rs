@@ -85,7 +85,7 @@ impl Expr {
             Expr::Call(..) => Constructor::Call,
             Expr::Empty => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,
-            Expr::Assume(..) => Constructor::Assume,
+            Expr::InContext(..) => Constructor::InContext,
         }
     }
     pub fn func_name(&self) -> Option<String> {
@@ -232,7 +232,7 @@ pub enum Constructor {
     Cons,
     Nil,
     Alloc,
-    Assume,
+    InContext,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -288,7 +288,7 @@ impl Constructor {
             Constructor::Call => "Call",
             Constructor::Empty => "Empty",
             Constructor::Alloc => "Alloc",
-            Constructor::Assume => "Assume",
+            Constructor::InContext => "InContext",
             Constructor::Cons => "Cons",
             Constructor::Nil => "Nil",
         }
@@ -346,7 +346,9 @@ impl Constructor {
             Constructor::Cons => vec![f(SubExpr, "hd"), f(SubListExpr, "tl")],
             Constructor::Nil => vec![],
             Constructor::Alloc => vec![f(SubExpr, "e"), f(Static(Sort::Type), "ty")],
-            Constructor::Assume => vec![f(Static(Sort::Assumption), "assumption"), f(SubExpr, "e")],
+            Constructor::InContext => {
+                vec![f(Static(Sort::Assumption), "assumption"), f(SubExpr, "e")]
+            }
         }
     }
 
@@ -385,7 +387,7 @@ impl Constructor {
             Constructor::Call => ESort::Expr,
             Constructor::Empty => ESort::Expr,
             Constructor::Alloc => ESort::Expr,
-            Constructor::Assume => ESort::Expr,
+            Constructor::InContext => ESort::Expr,
             Constructor::Cons => ESort::ListExpr,
             Constructor::Nil => ESort::ListExpr,
         }

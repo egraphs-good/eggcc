@@ -1,5 +1,5 @@
 [package]
-name = "tree_assume"
+name = "tree_in_context"
 version = "0.1.0"
 edition = "2021"
 

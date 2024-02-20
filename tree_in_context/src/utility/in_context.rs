@@ -2,10 +2,10 @@
 use crate::{egglog_test, interpreter::Value, schema::Constant};
 
 #[test]
-fn test_assume_in_func() -> crate::Result {
+fn test_in_context_in_func() -> crate::Result {
     use crate::ast::*;
     let expr = function("main", intt(), intt(), int(2));
-    let expected = function("main", intt(), intt(), assume(infunc("main"), int(2)));
+    let expected = function("main", intt(), intt(), in_context(infunc("main"), int(2)));
     egglog_test(
         &format!("{expr}"),
         &format!("(check (= {expr} {expected}))"),
@@ -20,7 +20,7 @@ fn test_assume_in_func() -> crate::Result {
 }
 
 #[test]
-fn test_assume_two_lets() -> crate::Result {
+fn test_in_context_two_lets() -> crate::Result {
     use crate::ast::*;
     let expr = function(
         "main",
@@ -31,11 +31,11 @@ fn test_assume_two_lets() -> crate::Result {
             tlet(add(int_arg(), int_arg()), mul(int_arg(), int(2))),
         ),
     );
-    let int1 = assume(infunc("main"), int(1));
-    let arg1 = assume(inlet(int1.clone()), int_arg());
+    let int1 = in_context(infunc("main"), int(1));
+    let arg1 = in_context(inlet(int1.clone()), int_arg());
     let addarg1 = add(arg1.clone(), arg1.clone());
-    let int2 = assume(inlet(addarg1.clone()), int(2));
-    let arg2 = assume(inlet(addarg1.clone()), int_arg());
+    let int2 = in_context(inlet(addarg1.clone()), int(2));
+    let arg2 = in_context(inlet(addarg1.clone()), int_arg());
     let expr2 = function(
         "main",
         intt(),
@@ -66,15 +66,15 @@ fn test_assume_two_lets() -> crate::Result {
 fn test_switch_contexts() -> crate::Result {
     use crate::ast::*;
     let expr = function("main", intt(), intt(), tif(ttrue(), int(1), int(2)));
-    let pred = assume(infunc("main"), ttrue());
+    let pred = in_context(infunc("main"), ttrue());
     let expr2 = function(
         "main",
         intt(),
         intt(),
         tif(
             pred.clone(),
-            assume(inif(true, pred.clone()), int(1)),
-            assume(inif(false, pred.clone()), int(2)),
+            in_context(inif(true, pred.clone()), int(1)),
+            in_context(inif(false, pred.clone()), int(2)),
         ),
     );
     egglog_test(
@@ -91,14 +91,14 @@ fn test_switch_contexts() -> crate::Result {
 }
 
 #[test]
-fn test_dowhile_cycle_assume() -> crate::Result {
+fn test_dowhile_cycle_in_context() -> crate::Result {
     use crate::ast::*;
     // loop runs one iteration and returns 3
     let myloop = dowhile(single(int(2)), parallel!(tfalse(), int(3)));
     let expr = function("main", intt(), tuplet!(intt()), myloop);
 
-    let int2 = single(assume(infunc("main"), int(2)));
-    let inner_assume = inloop(int2.clone(), parallel!(tfalse(), int(3)));
+    let int2 = single(in_context(infunc("main"), int(2)));
+    let inner_in_context = inloop(int2.clone(), parallel!(tfalse(), int(3)));
     let expr2 = function(
         "main",
         intt(),
@@ -106,8 +106,8 @@ fn test_dowhile_cycle_assume() -> crate::Result {
         dowhile(
             int2.clone(),
             parallel!(
-                assume(inner_assume.clone(), tfalse()),
-                assume(inner_assume.clone(), int(3)),
+                in_context(inner_in_context.clone(), tfalse()),
+                in_context(inner_in_context.clone(), int(3)),
             ),
         ),
     );

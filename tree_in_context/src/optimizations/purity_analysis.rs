@@ -27,7 +27,7 @@ fn purity_rules_for_ctor(ctor: Constructor) -> String {
     use Constructor::*;
     match ctor {
         Function | Const | Get | Concat | Single | Switch | If | DoWhile | Let | Arg | Empty
-        | Cons | Nil | Assume | Bop | Uop => {
+        | Cons | Nil | InContext | Bop | Uop => {
             // e.g. ["(ExprIsPure x)", "(ExprIsPure y)"]
             let children_pure_queries = ctor.filter_map_fields(|field| match field.purpose {
                 Purpose::Static(Sort::BinaryOp)
@@ -97,7 +97,7 @@ use crate::Value;
 #[test]
 fn test_purity_analysis() -> Result<(), egglog::Error> {
     let pureloop = dowhile(
-        assume(inlet(int(2)), single(int(1))),
+        in_context(inlet(int(2)), single(int(1))),
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
@@ -105,7 +105,7 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
     )
     .with_arg_types(emptyt(), tuplet!(intt()));
     let impureloop = dowhile(
-        assume(inlet(int(2)), single(int(1))),
+        in_context(inlet(int(2)), single(int(1))),
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(

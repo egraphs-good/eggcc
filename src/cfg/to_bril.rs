@@ -125,7 +125,7 @@ impl BasicBlock {
         }
 
         // CFGs only have annotations when they are restructured by RVSDG conversion
-        // Here we can assume they don't have any
+        // Here we can in_context they don't have any
         for annotation in &self.footer {
             match annotation {
                 Annotation::AssignCond { .. } => {

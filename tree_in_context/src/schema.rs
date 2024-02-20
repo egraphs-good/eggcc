@@ -90,7 +90,7 @@ pub enum Expr {
     Let(RcExpr, RcExpr),
     DoWhile(RcExpr, RcExpr),
     Arg(Type),
-    Assume(Assumption, RcExpr),
+    InContext(Assumption, RcExpr),
     Function(String, Type, Type, RcExpr),
 }
 

@@ -299,9 +299,12 @@ impl<'a> TypeChecker<'a> {
                 );
                 (arg_ty, expr)
             }
-            Expr::Assume(assumption, body) => {
+            Expr::InContext(assumption, body) => {
                 let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), arg_ty.clone());
-                (bty, RcExpr::new(Expr::Assume(assumption.clone(), new_body)))
+                (
+                    bty,
+                    RcExpr::new(Expr::InContext(assumption.clone(), new_body)),
+                )
             }
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
             // should have covered all cases, but rust can't prove it

@@ -41,7 +41,7 @@ use std::fmt;
 use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 
 use thiserror::Error;
-use tree_assume::schema::{BaseType, Type as TreeType};
+use tree_in_context::schema::{BaseType, Type as TreeType};
 
 use crate::{
     cfg::{Identifier, SimpleCfgProgram},

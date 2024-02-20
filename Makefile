@@ -1,6 +1,6 @@
 .PHONY: test test-clean nits nightly
 
-DIRS = . tree_assume
+DIRS = . tree_in_context
 
 all: test nits
 

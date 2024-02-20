@@ -1,5 +1,5 @@
 use tree_assume::prologue;
 
 fn main() {
-    println!("{}", prologue());
+    println!("{}\n{}", prologue(), include_str!("schedule.egg"));
 }

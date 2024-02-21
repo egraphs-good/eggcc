@@ -1,0 +1,82 @@
+; This file propogates in_context nodes top-down from functions.
+; It gives each program path a unique equality relation.
+; This can be quite expensive, so be careful running these rules.
+
+(ruleset in_context)
+
+(sort InContextList)
+
+; In order to saturate and not create unecessary contexts, we need to collapse
+; duplicate assumptions.
+; For example, the rewrite over `Function` could create many
+; `(InContext (InFunc name) (InContext (InFunc name) ...))` nestings
+(rewrite (InContext assumption (InContext assumption rest))
+         (InContext assumption rest)
+         :ruleset in_context)
+
+; ################### start top-down assumptions
+
+(rewrite
+ (Function name in_ty out_ty out)
+ (Function name in_ty out_ty
+   (InContext (InFunc  name)
+               out))
+ :ruleset in_context)
+
+
+; ################### operations
+(rewrite (InContext asum (Bop op c1 c2))
+         (Bop op (InContext asum c1) (InContext asum c2))
+         :ruleset in_context)
+(rewrite (InContext assum (Uop op c1))
+         (Uop op (InContext assum c1))
+         :ruleset in_context)
+(rewrite (InContext assum (Get expr index))
+         (Get (InContext assum expr) index)
+         :ruleset in_context)
+(rewrite (InContext assum (Alloc expr ty))
+         (Alloc (InContext assum expr) ty)
+         :ruleset in_context)
+(rewrite (InContext assum (Call name expr))
+         (Call name (InContext assum expr))
+         :ruleset in_context)
+
+; ################### tuple operations
+(rewrite (InContext assum (Single expr))
+         (Single (InContext assum expr))
+         :ruleset in_context)
+(rewrite (InContext assum (Concat order e1 e2))
+         (Concat order (InContext assum e1) (InContext assum e2))
+         :ruleset in_context)
+
+; #################### control flow
+
+;                       assumptions, predicate, cases,   current case
+(function SwitchInContext (InContextList   Expr       ListExpr i64) ListExpr :unextractable) 
+
+(rewrite (InContext assum (If pred then else))
+         (If (InContext assum pred)
+             (InContext
+               (InIf true (InContext assum pred)) then)
+             (InContext
+               (InIf false (InContext assum pred)) else))
+         :ruleset in_context)
+
+(rewrite (InContext assum (Let inputs body))
+         (Let
+           (InContext assum inputs)
+           (InContext
+             (InLet (InContext assum inputs))
+             body))
+          :ruleset in_context)
+
+
+(rule ((= lhs (InContext assum (DoWhile inputs pred_outputs))))
+      ((union lhs
+         (DoWhile
+           (InContext assum inputs)
+           (InContext
+             (InLoop (InContext assum inputs) pred_outputs)
+              pred_outputs))))
+        :ruleset in_context)
+                   

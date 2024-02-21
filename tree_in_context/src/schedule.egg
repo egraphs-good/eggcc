@@ -1,0 +1,11 @@
+(run-schedule
+  (repeat 6
+    (saturate always-run)
+    (repeat 100 in_context)
+    (saturate always-run)
+    (saturate error-checking)
+    (saturate
+      (saturate type-helpers)
+      type-analysis
+    )
+    (saturate constant_fold)))

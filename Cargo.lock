@@ -338,7 +338,7 @@ dependencies = [
  "bril2json",
  "brilirs",
  "clap",
- "egglog 0.1.0 (git+https://github.com/egraphs-good/egglog?rev=60668dd3f465e5674142c47eea449e64310ecb6a)",
+ "egglog",
  "egraph-serialize",
  "fixedbitset",
  "glob",
@@ -353,35 +353,7 @@ dependencies = [
  "serde_json",
  "smallvec",
  "thiserror",
- "tree_assume",
-]
-
-[[package]]
-name = "egglog"
-version = "0.1.0"
-source = "git+https://github.com/egraphs-good/egglog?rev=60668dd3f465e5674142c47eea449e64310ecb6a#60668dd3f465e5674142c47eea449e64310ecb6a"
-dependencies = [
- "clap",
- "egraph-serialize",
- "env_logger",
- "generic_symbolic_expressions",
- "hashbrown 0.14.1",
- "indexmap",
- "instant",
- "lalrpop",
- "lalrpop-util 0.20.0",
- "lazy_static",
- "log",
- "num-integer",
- "num-rational",
- "num-traits",
- "ordered-float",
- "regex",
- "rustc-hash",
- "serde_json",
- "smallvec",
- "symbol_table",
- "thiserror",
+ "tree_in_context",
 ]
 
 [[package]]
@@ -1326,11 +1298,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree_assume"
+name = "tree_in_context"
 version = "0.1.0"
 dependencies = [
  "bril-rs",
- "egglog 0.1.0 (git+https://github.com/egraphs-good/egglog?rev=7b41bb07e5e065928d653cb340a9a0dea0259466)",
+ "egglog",
  "main_error",
  "strum",
  "strum_macros",

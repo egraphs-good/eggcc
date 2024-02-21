@@ -1,0 +1,212 @@
+; Every term is an `Expr` or a `ListExpr`.
+(datatype Expr)
+; Used for constructing a list of branches for `Switch`es
+; or a list of functions in a `Program`.
+(datatype ListExpr (Cons Expr ListExpr) (Nil))
+
+; =================================
+; Types
+; =================================
+
+(sort TypeList)
+
+(datatype BaseType
+  (IntT)
+  (BoolT))
+
+
+(datatype Type
+  ; a primitive type
+  (Base BaseType)
+  ; a pointer to a memory region with a particular type
+  (PointerT BaseType)
+  ; a typed tuple. Use an empty tuple as a unit type.
+  (TupleT TypeList) 
+)
+
+(function TNil () TypeList)
+(function TCons (Type TypeList) TypeList) ; Head element should never be a tuple
+
+
+; =================================
+; Leaf nodes
+; Constants, argument, and empty tuple
+; =================================
+
+; Every expression can be thought of as a function with one argument.
+; The argument to this expression.
+; Only a single argument is bound- if multiple values are needed, arg will be a tuple.
+; e.g. `(Get (Arg)) 1)` gets the second value in the argument with type (int, bool).
+(function Arg (Type) Expr)
+
+; Constants
+(datatype Constant
+  (Int i64)
+  (Bool bool))
+(function Const (Constant) Expr)
+
+; An empty tuple.
+(function Empty () Expr)
+; global short hand for (Empty)
+(let empty (Empty))
+
+
+; =================================
+; Operators
+; =================================
+(datatype BinaryOp
+  (Add)
+  (Sub)
+  (Div)
+  (Mul)
+  (LessThan)
+  (GreaterThan)
+  (Eq)
+  (And)
+  (Or)
+  ; given a pointer and a value, writes
+  ; the value to the pointer
+  (Write)
+  ; Takes a pointer and an integer, and offsets
+  ; the pointer by the integer
+  (PtrAdd))
+(datatype UnaryOp
+  (Not)
+  ; prints any non-tuple value
+  ; returns an empty tuple
+  (Print)
+  ; given a pointer, loads the value at the pointer
+  (Load))
+
+; Operators
+(function Bop   (BinaryOp Expr Expr) Expr)
+(function Uop   (UnaryOp Expr) Expr)
+; gets from a tuple. static index
+(function Get   (Expr i64) Expr)
+; allocate an integer amount of memory for a particular type
+; returns a pointer to the allocated memory
+(function Alloc (Expr Type)      Expr)
+;               name of func   arg
+(function Call (String         Expr) Expr)
+
+
+
+; =================================
+; Tuple operations
+; =================================
+
+; `Empty`, `Single` and `Concat` create tuples.
+; 1. Use `Empty` for an empty tuple.
+; 2. Use `Single` for a tuple with one element.
+; 3. Use `Concat` to append the elements from two tuples together.
+; Nested tuples are not allowed.
+
+
+; Defines the order of evaluating a `Concat` term.
+(datatype Order
+  ; Either argument may be evaluated first.
+  ; Either way, the program should reach an equivalent state.
+  (Parallel)
+  ; Evaluate the first argument first.
+  (Sequential)
+  ; Evaluate the second argument first.
+  (Reversed))
+
+; global short hands for orders
+(let par (Parallel))
+; seq is reserved by egglog, so sequ it is
+(let sequ (Sequential))
+(let rev (Reversed))
+
+; A tuple with a single element.
+; Necessary because we only use `Concat` to add to tuples.
+(function Single (Expr) Expr)
+; Concat appends the elemnts from two tuples together
+; e.g. (Concat (Parallel) (Concat (Sequential) (Single a) (Single b))
+;                         (Concat (Sequential) (Single c) (Single d))) = (a, b, c, d)
+;                 order   expr1       expr2
+(function Concat (Order   Expr        Expr)       Expr)
+
+
+
+; =================================
+; Control flow
+; =================================
+
+; Switch on a list of lazily-evaluated branches.
+; Does not create a region.
+; pred must be an integer
+;                 pred     branches     chosen
+(function Switch (Expr     ListExpr)    Expr)
+; If is like switch, but with a boolean predicate
+;             pred then else
+(function If (Expr Expr Expr) Expr)
+
+
+; Creates a region, binding the input to `Arg`.
+; e.g. `(Let (Concat (Parallel) (Arg) new_tuple) output)`
+; binds argument to the old argument plus some new values `new_tuple`.
+; 
+;              input    output
+(function Let (Expr     Expr)    Expr)
+
+
+; A do-while loop.
+; Evaluates the input, then evaluates the body.
+; Keeps looping while the predicate is true.
+; input must have the same type as (output1, output2, ..., outputi)
+; input must be a tuple 
+; pred must be a boolean
+; pred-and-body must be a flat tuple (pred, out1, out2, ..., outi)
+; input must be the same type as (out1, out2, ..., outi)
+;                  input   pred-and-body
+(function DoWhile (Expr    Expr)                   Expr)
+
+
+
+
+; =================================
+; InContext
+; =================================
+
+(datatype Assumption
+  ; The argument is bound to `expr`.
+  ; The argument cannot be unioned with `expr` because `expr`
+  ; is evaluated once at the nearest enclosing `Let`.
+  ;      expr
+  (InLet Expr)
+  ; The term is in a loop with `input` and `pred_output`.
+  ;      input    pred_output
+  (InLoop Expr     Expr)
+  ; name of the function
+  (InFunc String)
+  ; Branch of the switch and the predicate
+  (InSwitch i64 Expr)
+  ; If the predicate was true, and the predicate
+  (InIf bool Expr)
+  ; Other assumptions are possible, but not supported yet.
+  ; For example:
+  ;      A boolean predicate is true.
+  ;      e.g. (> (Arg) (Const (Int 2)))
+  ; (IsTrue Expr))
+)
+
+; InContext allows creating context-specific terms.
+; e.g. (InContext (InLet (Const (Int 2))) (Arg)) is equal to (Const (Int 2))
+(function InContext (Assumption Expr) Expr)
+
+
+; =================================
+; Top-level expressions
+; =================================
+; An entry function and a list of additional functions.
+;                      entry function     other functions
+(relation Program     (Expr               ListExpr))
+;                   name   input ty  output ty  output
+(function Function (String Type      Type       Expr)      Expr)
+
+
+
+; Rulesets
+(ruleset always-run)
+(ruleset error-checking)

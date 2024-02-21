@@ -1,9 +1,0 @@
----
-source: tests/files.rs
-expression: visualization.result
----
-main {
-cond: bool = const true;
-print cond;
-return
-}

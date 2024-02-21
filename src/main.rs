@@ -11,7 +11,7 @@ struct Args {
     /// Configure the output of the tool, which can be an optimized bril program,
     /// an optimized CFG, or more.
     /// See documentation for [`RunType`] for different options.
-    #[clap(long, default_value_t = RunType::RvsdgOptimize)]
+    #[clap(long, default_value_t = RunType::Nothing)]
     run_mode: RunType,
     /// Evaluate the resulting program and output
     /// the result.

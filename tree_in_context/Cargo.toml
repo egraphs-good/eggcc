@@ -1,0 +1,14 @@
+[package]
+name = "tree_in_context"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+egglog = { git = "https://github.com/egraphs-good/egglog", rev = "7b41bb07e5e065928d653cb340a9a0dea0259466" }
+strum = "0.25"
+strum_macros = "0.25"
+main_error = "0.1.2"
+thiserror = "1.0"
+bril-rs = { git = "https://github.com/sampsyo/bril", rev = "daaff28" }

@@ -18,3 +18,20 @@
 (rewrite (Append (Nil) e)
    (Cons e (Nil))
    :ruleset always-run)
+
+(function tuple-ith (Expr i64) Expr :unextractable)
+(function tuple-length (Expr) i64 :unextractable)
+
+(rule ((HasType expr (TupleT tl))
+       (= len (TypeList-length tl)))
+      ((set (tuple-length expr) len)) :ruleset always-run)
+
+(rule ((Single expr)) ((union (tuple-ith (Single expr) 0) expr)) :ruleset always-run)
+(rule ((Concat ord expr1 expr2)
+       (= ith (tuple-ith expr1 i)))
+       ((union (tuple-ith (Concat ord expr1 expr2) i) ith)) :ruleset always-run)
+
+(rule ((Concat ord expr1 expr2)
+       (= len1 (tuple-length expr1))
+       (= ith (tuple-ith expr2 i)))
+       ((union (tuple-ith (Concat ord expr1 expr2) (+ len1 i)) ith)) :ruleset always-run)

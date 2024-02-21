@@ -397,3 +397,13 @@ fn funcs_and_calls() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn repro_argtype_bug() -> crate::Result {
+    type_test(
+        concat_par(tlet(int(1), empty()), tlet(ttrue(), empty())),
+        emptyt(),
+        val_empty(),
+        val_empty(),
+    )
+}

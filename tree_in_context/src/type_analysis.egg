@@ -35,7 +35,8 @@
 
 (relation HasArgType (Expr Type))
 
-(rule ((HasArgType e t1) (HasArgType e t2) (!= t1 t2))
+(rule ((HasArgType (Arg t1) t2)
+       (!= t1 t2))
       ((panic "arg type mismatch"))
       :ruleset type-analysis)
 

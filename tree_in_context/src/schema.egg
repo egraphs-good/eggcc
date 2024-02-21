@@ -199,9 +199,10 @@
 ; =================================
 ; Top-level expressions
 ; =================================
+(sort ProgramType)
 ; An entry function and a list of additional functions.
 ;                      entry function     other functions
-(relation Program     (Expr               ListExpr))
+(function Program     (Expr               ListExpr) ProgramType)
 ;                   name   input ty  output ty  output
 (function Function (String Type      Type       Expr)      Expr)
 

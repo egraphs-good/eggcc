@@ -96,24 +96,31 @@ fn test_tuple_ith() -> crate::Result {
 #[test]
 fn test_tuple_remove_fst() -> crate::Result {
     let tup1 = parallel!(int(1), int(2), int(3), int(4));
-    let tup2 = concat_par(concat_par(tprint(int(0)), tprint(int(0))), concat_par( single(int(1)), single(int(2))));
-    let build = format!("(let tup1 {}) (let tup2 {}) 
-                                 (tuple-remove-fst tup1) 
-                                 (tuple-remove-fst tup2)", tup1, tup2);
+    let tup2 = concat_par(
+        concat_par(tprint(int(0)), tprint(int(0))),
+        concat_par(single(int(1)), single(int(2))),
+    );
+    let build = format!(
+        "(let tup1 {}) 
+        (let tup2 {}) 
+        (tuple-remove-fst tup1) 
+        (tuple-remove-fst tup2)",
+        tup1, tup2
+    );
     let check = "(check (= (tuple-remove-fst tup1) 
-                                 (Concat (Parallel) (Concat (Parallel) 
-                                 (Single (Const (Int 2))) 
-                                 (Single (Const (Int 3)))) 
-                                 (Single (Const (Int 4))))))
-                        ;; it should only remove the first one that is not Tuple (TNil) type
-                        (check (= (tuple-remove-fst tup2) 
-                             (Concat (Parallel) (Concat (Parallel) 
-                                (Uop (Print) (Const (Int 0))) 
-                                (Uop (Print) (Const (Int 0)))) 
-                                (Single (Const (Int 2)))) )) ";
+                    (Concat (Parallel) (Concat (Parallel) 
+                            (Single (Const (Int 2))) 
+                            (Single (Const (Int 3)))) 
+                            (Single (Const (Int 4))))))
+        ;; it should only remove the first one that is not Tuple (TNil) type
+        (check (= (tuple-remove-fst tup2) 
+                (Concat (Parallel) (Concat (Parallel) 
+                    (Uop (Print) (Const (Int 0))) 
+                    (Uop (Print) (Const (Int 0)))) 
+                    (Single (Const (Int 2))))))";
     egglog_test(
         &build,
-        &check,
+        check,
         vec![],
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
@@ -124,7 +131,7 @@ fn test_tuple_remove_fst() -> crate::Result {
 #[test]
 fn test_do_while_output_ith() -> crate::Result {
     let output_ty = tuplet!(intt(), intt(), intt(), intt());
-    let myloop = dowhile(
+    let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4)),
         parallel!(
             less_than(getarg(0), getarg(3)),
@@ -136,9 +143,7 @@ fn test_do_while_output_ith() -> crate::Result {
     )
     .with_arg_types(emptyt(), output_ty.clone());
 
-    let str = output_ty.to_string();
-
-    let build = format!("(let loop {})", myloop);
+    let build = format!("(let loop {})", my_loop);
     let check = str::replace(
         "(let ty *)
         (check (= pred (tuple-ith pred_out 0)))
@@ -146,7 +151,7 @@ fn test_do_while_output_ith() -> crate::Result {
         (check (= (DoWhile-outputs-ith loop 0) (Bop (Add) (Get (Arg ty) 0) (Bop (Sub) (Get (Arg ty) 2) (Get (Arg ty) 1)))))       
         (check (= (DoWhile-outputs-ith loop 1) (Get (Arg ty ) 1)))
         (check (= (DoWhile-outputs-ith loop 2) (Get (Arg ty ) 2)))
-        (check (= (DoWhile-outputs-ith loop 3) (Get (Arg ty ) 3)))", "*", str.as_str());
+        (check (= (DoWhile-outputs-ith loop 3) (Get (Arg ty ) 3)))", "*", output_ty.to_string().as_str());
 
     egglog_test(
         &build,

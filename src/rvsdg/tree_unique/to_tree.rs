@@ -1,4 +1,3 @@
-//! encoding of programs.
 //! Convert RVSDG programs to the tree
 //! RVSDGs are close to this encoding,
 //! but use a DAG-based semantics.
@@ -7,6 +6,8 @@
 //! These shared nodes need to be let-bound so that they are only
 //! computed once in the tree encoded
 //! program.
+//! When `optimize_lets` is true, the conversion will also
+//! prevent adding unnecessary let bindings for pure expressions.
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
@@ -30,13 +31,16 @@ use tree_in_context::{
 };
 
 impl RvsdgProgram {
-    pub fn to_tree_encoding(&self) -> TreeProgram {
+    /// Converts an RVSDG program to the tree encoding.
+    /// When `optimize_lets` is true, the conversion will also
+    /// try to prevent adding unnecessary let bindings.
+    pub fn to_tree_encoding(&self, optimize_lets: bool) -> TreeProgram {
         let last_function = self.functions.last().unwrap();
         let rest_functions = self.functions.iter().take(self.functions.len() - 1);
         program_vec(
-            last_function.to_tree_encoding(),
+            last_function.to_tree_encoding(optimize_lets),
             rest_functions
-                .map(|f| f.to_tree_encoding())
+                .map(|f| f.to_tree_encoding(optimize_lets))
                 .collect::<Vec<_>>(),
         )
     }
@@ -44,49 +48,56 @@ impl RvsdgProgram {
 
 /// Stores the location of a single value of an RVSDG node.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum ArgOrState {
+enum StoredValue {
     /// The value is stored at get(arg(), usize)
     Arg(usize),
     /// The value is a state edge, thus not stored.
     StateEdge,
+    /// An expression representing this stored value.
+    /// Must be a completely pure expression (no reads, writes, prints, or loops).
+    Expr(RcExpr),
 }
 
 /// Stores the location of the values of
 /// an RVSDG node.
 /// During translation, values for each node are stored in the bindings.
-type StoredNode = Vec<ArgOrState>;
+type StoredNode = Vec<StoredValue>;
 
 fn storedarg(index: usize) -> StoredNode {
-    vec![ArgOrState::Arg(index)]
+    vec![StoredValue::Arg(index)]
 }
 
 fn storedstate() -> StoredNode {
-    vec![ArgOrState::StateEdge]
+    vec![StoredValue::StateEdge]
 }
 
-impl ArgOrState {
+impl StoredValue {
     fn to_expr(&self) -> Option<RcExpr> {
         match self {
-            ArgOrState::Arg(index) => Some(getarg(*index)),
-            ArgOrState::StateEdge => None,
+            StoredValue::Arg(index) => Some(getarg(*index)),
+            StoredValue::StateEdge => None,
+            StoredValue::Expr(expr) => Some(expr.clone()),
         }
     }
 }
 
 struct RegionTranslator<'a> {
-    /// The values of the arguments to this region.
-    /// Must be either StoredNode::Arg or StoredNode::StateEdge.
-    argument_values: Vec<ArgOrState>,
-    /// The number of arguments in the current environment.
+    /// The values of the RVSDG arguments to this region.
+    argument_values: Vec<StoredValue>,
+    /// The number of tree arguments in the current environment.
+    /// This is not equal to the length of `argument_values` because it refers to
+    /// translated tree arguments, not the original RVSDG arguments.
     current_num_args: usize,
     /// a stack of let bindings to generate
     /// each `RcExpr` is an expression producing a tuple.
     /// These tuples are concatenated to the current argument during `build_translation`.
     bindings: Vec<RcExpr>,
-    /// After evaluating a node, do not evaluate it again.
-    /// Instead find its index here.
-    index_of: HashMap<Id, StoredNode>,
+    /// `stored_node` is a cache of already translated rvsdg nodes.
+    stored_node: HashMap<Id, StoredNode>,
+    /// A reference to the nodes in the RVSDG.
     nodes: &'a [RvsdgBody],
+    /// Whether to optimize let bindings
+    optimize_lets: bool,
 }
 
 /// helper that binds a new expression, adding it
@@ -103,6 +114,20 @@ fn bind_value(expr: RcExpr, body: RcExpr) -> RcExpr {
 }
 
 impl<'a> RegionTranslator<'a> {
+    /// Adds a pure expression to the cache.
+    /// Essentially inlines all references to this expression instead of binding it.
+    /// Importantly, on translation back to RVSDG we should ensure that pure
+    /// common subexpressions are not duplicated.
+    fn add_pure_value(&mut self, expr: RcExpr, id: Id) -> StoredNode {
+        if self.optimize_lets {
+            let res = StoredValue::Expr(expr.clone());
+            self.stored_node.insert(id, vec![res.clone()]);
+            vec![res]
+        } else {
+            self.add_binding(expr, id)
+        }
+    }
+
     /// Adds a binding and returns its index
     /// into the argument list.
     /// `expr` must produce a single value, not a tuple.
@@ -113,7 +138,7 @@ impl<'a> RegionTranslator<'a> {
         self.current_num_args += 1;
 
         assert_eq!(
-            self.index_of.insert(id, res.clone()),
+            self.stored_node.insert(id, res.clone()),
             None,
             "Node already evaluated. Cycle in the RVSDG or similar bug."
         );
@@ -125,7 +150,7 @@ impl<'a> RegionTranslator<'a> {
         self.bindings.push(expr);
         let res = storedstate();
         assert_eq!(
-            self.index_of.insert(id, res.clone()),
+            self.stored_node.insert(id, res.clone()),
             None,
             "Node already evaluated. Cycle in the RVSDG or similar bug."
         );
@@ -134,10 +159,10 @@ impl<'a> RegionTranslator<'a> {
 
     /// Adds a tuple to the bindings.
     /// `values` is a vector refering to each value in the tuple.
-    fn add_region_binding(&mut self, expr: RcExpr, id: Id, values: Vec<ArgOrState>) -> StoredNode {
+    fn add_region_binding(&mut self, expr: RcExpr, id: Id, values: Vec<StoredValue>) -> StoredNode {
         self.bindings.push(expr);
         assert_eq!(
-            self.index_of.insert(id, values.clone()),
+            self.stored_node.insert(id, values.clone()),
             None,
             "Node already evaluated. Cycle in the RVSDG or similar bug."
         );
@@ -148,15 +173,17 @@ impl<'a> RegionTranslator<'a> {
     /// num_args and the given nodes.
     fn new(
         nodes: &'a [RvsdgBody],
-        argument_values: Vec<ArgOrState>,
+        argument_values: Vec<StoredValue>,
         num_args: usize,
+        optimize_lets: bool,
     ) -> RegionTranslator {
         RegionTranslator {
             current_num_args: num_args,
             bindings: Vec::new(),
-            index_of: HashMap::new(),
+            stored_node: HashMap::new(),
             argument_values,
             nodes,
+            optimize_lets,
         }
     }
 
@@ -173,7 +200,7 @@ impl<'a> RegionTranslator<'a> {
 
     /// Stores the operand in the bindings, returning
     /// the SingleStoredNode as a result.
-    fn translate_operand(&mut self, operand: Operand) -> ArgOrState {
+    fn translate_operand(&mut self, operand: Operand) -> StoredValue {
         match operand {
             Operand::Arg(index) => self.argument_values[index].clone(),
             Operand::Id(id) => {
@@ -194,9 +221,9 @@ impl<'a> RegionTranslator<'a> {
     /// For regions, translates the region and returns the index of the
     /// tuple containing the results.
     /// It's important not to evaluate a node twice, instead using the cached index
-    /// in `self.index_of`
+    /// in `self.stored_node`
     fn translate_node(&mut self, id: Id) -> StoredNode {
-        if let Some(index) = self.index_of.get(&id) {
+        if let Some(index) = self.stored_node.get(&id) {
             index.clone()
         } else {
             let node = &self.nodes[id];
@@ -222,6 +249,7 @@ impl<'a> RegionTranslator<'a> {
                         self.nodes,
                         input_values.clone(),
                         before_current_args,
+                        self.optimize_lets,
                     );
 
                     let mut resulting_values = vec![];
@@ -230,12 +258,12 @@ impl<'a> RegionTranslator<'a> {
                         .filter_map(|operand| {
                             let res = then_translator.translate_operand(*operand);
                             match res {
-                                ArgOrState::Arg(_) => {
-                                    resulting_values.push(ArgOrState::Arg(self.current_num_args));
+                                StoredValue::Arg(_) | StoredValue::Expr { .. } => {
+                                    resulting_values.push(StoredValue::Arg(self.current_num_args));
                                     self.current_num_args += 1;
                                 }
-                                ArgOrState::StateEdge => {
-                                    resulting_values.push(ArgOrState::StateEdge);
+                                StoredValue::StateEdge => {
+                                    resulting_values.push(StoredValue::StateEdge);
                                 }
                             }
 
@@ -245,8 +273,12 @@ impl<'a> RegionTranslator<'a> {
                     let then_expr = parallel_vec(then_values);
                     let then_translated = then_translator.build_translation(then_expr);
 
-                    let mut else_translator =
-                        RegionTranslator::new(self.nodes, input_values, before_current_args);
+                    let mut else_translator = RegionTranslator::new(
+                        self.nodes,
+                        input_values,
+                        before_current_args,
+                        self.optimize_lets,
+                    );
                     let else_values = else_branch
                         .iter()
                         .filter_map(|operand| else_translator.translate_operand(*operand).to_expr())
@@ -280,6 +312,7 @@ impl<'a> RegionTranslator<'a> {
                             self.nodes,
                             inputs_values.clone(),
                             before_num_args,
+                            self.optimize_lets,
                         );
                         let branch_values = output_vec
                             .iter()
@@ -288,13 +321,13 @@ impl<'a> RegionTranslator<'a> {
                                 // during the first iteration, fill in the resulting values
                                 if i == 0 {
                                     match res {
-                                        ArgOrState::Arg(_) => {
+                                        StoredValue::Arg(_) | StoredValue::Expr { .. } => {
                                             resulting_values
-                                                .push(ArgOrState::Arg(self.current_num_args));
+                                                .push(StoredValue::Arg(self.current_num_args));
                                             self.current_num_args += 1;
                                         }
-                                        ArgOrState::StateEdge => {
-                                            resulting_values.push(ArgOrState::StateEdge);
+                                        StoredValue::StateEdge => {
+                                            resulting_values.push(StoredValue::StateEdge);
                                         }
                                     }
                                 }
@@ -322,12 +355,12 @@ impl<'a> RegionTranslator<'a> {
                     let mut new_arg_index = 0;
                     for input_val in &input_values {
                         match input_val {
-                            ArgOrState::Arg(_index) => {
-                                argument_values.push(ArgOrState::Arg(new_arg_index));
+                            StoredValue::Arg(_) | StoredValue::Expr { .. } => {
+                                argument_values.push(StoredValue::Arg(new_arg_index));
                                 new_arg_index += 1;
                             }
-                            ArgOrState::StateEdge => {
-                                argument_values.push(ArgOrState::StateEdge);
+                            StoredValue::StateEdge => {
+                                argument_values.push(StoredValue::StateEdge);
                             }
                         }
                     }
@@ -335,8 +368,12 @@ impl<'a> RegionTranslator<'a> {
                     // For the sub-region, we need a new region translator
                     // with its own arguments and bindings.
                     // We then put the whole loop in a let binding and move on.
-                    let mut sub_translator =
-                        RegionTranslator::new(self.nodes, argument_values, new_arg_index);
+                    let mut sub_translator = RegionTranslator::new(
+                        self.nodes,
+                        argument_values,
+                        new_arg_index,
+                        self.optimize_lets,
+                    );
                     let mut pred_outputs = vec![sub_translator
                         .translate_operand(*pred)
                         .to_expr()
@@ -344,7 +381,7 @@ impl<'a> RegionTranslator<'a> {
                     let outputs_translated = outputs
                         .iter()
                         .map(|o| sub_translator.translate_operand(*o))
-                        .collect::<Vec<ArgOrState>>();
+                        .collect::<Vec<StoredValue>>();
                     for output in outputs_translated.iter().filter_map(|o| o.to_expr()) {
                         pred_outputs.push(output);
                     }
@@ -360,9 +397,9 @@ impl<'a> RegionTranslator<'a> {
                     let mut output_values = vec![];
                     for output in outputs_translated {
                         match output {
-                            ArgOrState::StateEdge => output_values.push(ArgOrState::StateEdge),
-                            ArgOrState::Arg(_) => {
-                                output_values.push(ArgOrState::Arg(self.current_num_args));
+                            StoredValue::StateEdge => output_values.push(StoredValue::StateEdge),
+                            StoredValue::Arg(_) | StoredValue::Expr { .. } => {
+                                output_values.push(StoredValue::Arg(self.current_num_args));
                                 self.current_num_args += 1;
                             }
                         }
@@ -397,7 +434,8 @@ impl<'a> RegionTranslator<'a> {
                     (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
                     _ => todo!("handle {} op", op),
                 };
-                self.add_binding(expr, id)
+                // All ops handled here are pure
+                self.add_pure_value(expr, id)
             }
             BasicExpr::Call(name, inputs, num_ret_values, output_type) => {
                 let mut input_values = vec![];
@@ -410,14 +448,14 @@ impl<'a> RegionTranslator<'a> {
                 );
                 let mut ret_values = vec![];
                 if output_type.is_some() {
-                    ret_values.push(ArgOrState::Arg(self.current_num_args));
+                    ret_values.push(StoredValue::Arg(self.current_num_args));
                     self.current_num_args += 1;
                 }
                 let num_state_edges = num_ret_values - output_type.is_some() as usize;
 
                 // push a state edge for every extra return value
                 for _ in 0..num_state_edges {
-                    ret_values.push(ArgOrState::StateEdge);
+                    ret_values.push(StoredValue::StateEdge);
                 }
 
                 match output_type {
@@ -428,11 +466,11 @@ impl<'a> RegionTranslator<'a> {
             BasicExpr::Const(_op, literal, _ty) => match literal {
                 Literal::Int(n) => {
                     let expr = int(n);
-                    self.add_binding(expr, id)
+                    self.add_pure_value(expr, id)
                 }
                 Literal::Bool(b) => {
                     let expr = if b { ttrue() } else { tfalse() };
-                    self.add_binding(expr, id)
+                    self.add_pure_value(expr, id)
                 }
                 _ => todo!("handle other literals"),
             },
@@ -448,7 +486,7 @@ impl<'a> RegionTranslator<'a> {
                 // a unit value
                 assert_eq!(
                     arg2,
-                    ArgOrState::StateEdge,
+                    StoredValue::StateEdge,
                     "Print buffer second argument should be state edge. Found {:?}",
                     arg2
                 );
@@ -472,20 +510,24 @@ impl RvsdgFunction {
     /// using the `concat` constructor.
     /// In the inner-most scope, the value of
     /// all nodes is available.
-    pub fn to_tree_encoding(&self) -> RcExpr {
+    ///
+    /// When `optimize_lets` is true, the conversion will also
+    /// try to prevent adding unnecessary let bindings.
+    pub fn to_tree_encoding(&self, optimize_lets: bool) -> RcExpr {
         let mut arg_index = 0;
         let argument_values = self
             .args
             .iter()
             .map(|ty| match ty {
-                RvsdgType::PrintState => ArgOrState::StateEdge,
+                RvsdgType::PrintState => StoredValue::StateEdge,
                 RvsdgType::Bril(_) => {
                     arg_index += 1;
-                    ArgOrState::Arg(arg_index - 1)
+                    StoredValue::Arg(arg_index - 1)
                 }
             })
             .collect();
-        let mut translator = RegionTranslator::new(&self.nodes, argument_values, arg_index);
+        let mut translator =
+            RegionTranslator::new(&self.nodes, argument_values, arg_index, optimize_lets);
         let translated_results = self
             .results
             .iter()
@@ -520,46 +562,99 @@ impl RvsdgFunction {
 /// Assert that two programs are equal, and
 /// test them on a particular input and output value
 #[cfg(test)]
-fn assert_progs_eq(
-    prog1: &TreeProgram,
-    expected: &TreeProgram,
+fn assert_progs_eq(prog1: &TreeProgram, expected: &TreeProgram, error_msg: &str) {
+    if prog1 != expected {
+        panic!(
+            "{error_msg}\nFound:\n{}\nExpected:\n{}",
+            prog1.pretty(),
+            expected.pretty()
+        );
+    }
+}
+
+#[cfg(test)]
+fn let_translation_test(
+    program: &str,
+    expected: TreeProgram,
+    expected_optimized: TreeProgram,
     input_val: Value,
-    output_val: Value,
+    expected_val: Value,
+    expected_printlog: Vec<String>,
 ) {
-    // first, check expected works properly
+    let prog = parse_from_string(program);
+    let cfg = program_to_cfg(&prog);
+    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    let result = rvsdg.to_tree_encoding(false);
+    let result_optimized = rvsdg.to_tree_encoding(true);
 
     use tree_in_context::interpreter::interpret_tree_prog;
-    let (expected_res, _expected_printlog) = interpret_tree_prog(expected, input_val);
+
+    let (found_val, found_printlog) = interpret_tree_prog(&expected, input_val.clone());
     assert_eq!(
-        expected_res, output_val,
+        expected_val, found_val,
         "Reference program produced incorrect result. Expected {:?}, found {:?}",
-        output_val, expected_res,
+        expected_val, found_val
+    );
+    assert_eq!(
+        expected_printlog, found_printlog,
+        "Reference program produced incorrect print log. Expected {:?}, found {:?}",
+        expected_printlog, found_printlog
+    );
+    let (found_val, found_printlog) = interpret_tree_prog(&expected_optimized, input_val.clone());
+    assert_eq!(
+        expected_val, found_val,
+        "Reference optimized program produced incorrect result. Expected {:?}, found {:?}",
+        expected_val, found_val
+    );
+    assert_eq!(
+        expected_printlog, found_printlog,
+        "Reference optimized program produced incorrect print log. Expected {:?}, found {:?}",
+        expected_printlog, found_printlog
     );
 
+    let (found_val, found_printlog) = interpret_tree_prog(&result, input_val.clone());
     assert_eq!(
-        prog1, expected,
-        "Found:\n{}\nExpected:\n{}",
-        prog1, expected
+        expected_val, found_val,
+        "Resulting program produced incorrect result. Expected {:?}, found {:?}",
+        expected_val, found_val
+    );
+    assert_eq!(
+        expected_printlog, found_printlog,
+        "Resulting program produced incorrect print log. Expected {:?}, found {:?}",
+        expected_printlog, found_printlog
+    );
+
+    let (found_val, found_printlog) = interpret_tree_prog(&result_optimized, input_val);
+    assert_eq!(
+        expected_val, found_val,
+        "Resulting optimized program produced incorrect result. Expected {:?}, found {:?}",
+        expected_val, found_val
+    );
+    assert_eq!(
+        expected_printlog, found_printlog,
+        "Resulting optimized program produced incorrect print log. Expected {:?}, found {:?}",
+        expected_printlog, found_printlog
+    );
+
+    assert_progs_eq(&result, &expected, "Resulting program is incorrect");
+    assert_progs_eq(
+        &result_optimized,
+        &expected_optimized,
+        "Resulting optimized program is incorrect",
     );
 }
 
 #[test]
 fn simple_translation() {
-    const PROGRAM: &str = r#"
+    let_translation_test(
+        r#"
   @add(): int {
     v0: int = const 1;
     res: int = add v0 v0;
     ret res;
   }
-  "#;
-
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
-
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(),
-        &program!(function(
+  "#,
+        program!(function(
             "add",
             TreeType::TupleT(vec![]),
             intt(),
@@ -571,8 +666,15 @@ fn simple_translation() {
                 ),
             )
         ),),
+        program!(function(
+            "add",
+            TreeType::TupleT(vec![]),
+            intt(),
+            add(int(1), int(1)),
+        ),),
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(2)),
+        vec![],
     );
 }
 
@@ -590,13 +692,9 @@ fn translate_simple_loop() {
         ret one;
 }
 "#;
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
-
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(),
-        &program!(function(
+    let_translation_test(
+        PROGRAM,
+        program!(function(
             "myfunc",
             emptyt(),
             intt(),
@@ -617,8 +715,21 @@ fn translate_simple_loop() {
                 )
             )
         ),),
+        program!(function(
+            "myfunc",
+            emptyt(),
+            intt(),
+            bind_tuple(
+                dowhile(
+                    parallel!(int(1), int(2)),
+                    parallel!(less_than(getarg(1), getarg(0)), getarg(0), getarg(1))
+                ),
+                getarg(0)
+            ),
+        ),),
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(1)),
+        vec![],
     );
 }
 
@@ -638,13 +749,10 @@ fn translate_loop() {
         print i;
 }
 "#;
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(),
-        &program!(function(
+    let_translation_test(
+        PROGRAM,
+        program!(function(
             "main",
             TreeType::TupleT(vec![]),
             TreeType::TupleT(vec![]),
@@ -674,8 +782,24 @@ fn translate_loop() {
                 )
             ),
         ),),
+        program!(function(
+            "main",
+            TreeType::TupleT(vec![]),
+            TreeType::TupleT(vec![]),
+            bind_tuple(
+                dowhile(
+                    parallel!(int(0)),
+                    parallel!(
+                        less_than(add(getarg(0), int(1)), int(10)),
+                        add(getarg(0), int(1))
+                    )
+                ),
+                bind_tuple(tprint(getarg(0)), parallel!())
+            ),
+        ),),
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
+        vec!["10".to_string()],
     );
 }
 
@@ -694,13 +818,9 @@ fn simple_if_translation() {
         ret v1;
 }"#;
 
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
-
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(),
-        &program!(function(
+    let_translation_test(
+        PROGRAM,
+        program!(function(
             "main",
             emptyt(),
             intt(),
@@ -719,8 +839,22 @@ fn simple_if_translation() {
                 ),
             ),
         ),),
+        program!(function(
+            "main",
+            emptyt(),
+            intt(),
+            bind_tuple(
+                tif(
+                    less_than(int(1), int(1)),
+                    parallel!(int(1)),
+                    parallel!(int(2)),
+                ),
+                getarg(0)
+            )
+        ),),
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(2)),
+        vec![],
     );
 }
 
@@ -735,14 +869,9 @@ fn two_print_translation() {
         print v1;
     }
     "#;
-
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
-
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(),
-        &program!(function(
+    let_translation_test(
+        PROGRAM,
+        program!(function(
             "add",
             TreeType::TupleT(vec![]),
             TreeType::TupleT(vec![]),
@@ -760,8 +889,18 @@ fn two_print_translation() {
                 ),
             )
         ),),
+        program!(function(
+            "add",
+            TreeType::TupleT(vec![]),
+            TreeType::TupleT(vec![]),
+            bind_tuple(
+                tprint(add(int(1), int(2))),
+                bind_tuple(tprint(int(2)), parallel!(),)
+            )
+        ),),
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
+        vec!["3".to_string(), "2".to_string()],
     );
 }
 
@@ -779,13 +918,10 @@ fn multi_function_translation() {
     print v0;
 }
 "#;
-    let prog = parse_from_string(PROGRAM);
-    let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
 
-    assert_progs_eq(
-        &rvsdg.to_tree_encoding(),
-        &program!(
+    let_translation_test(
+        PROGRAM,
+        program!(
             function(
                 "main",
                 TreeType::TupleT(vec![]),
@@ -808,7 +944,25 @@ fn multi_function_translation() {
                 ),
             ),
         ),
+        program!(
+            function(
+                "main",
+                TreeType::TupleT(vec![]),
+                TreeType::TupleT(vec![]),
+                bind_value(
+                    call("myadd", parallel!()),
+                    bind_tuple(tprint(getarg(0)), parallel!()),
+                ),
+            ),
+            function(
+                "myadd",
+                TreeType::TupleT(vec![]),
+                intt(),
+                add(int(1), int(1)),
+            ),
+        ),
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
+        vec!["2".to_string()],
     );
 }

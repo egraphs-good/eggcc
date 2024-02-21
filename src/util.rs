@@ -147,6 +147,9 @@ pub enum RunType {
     RvsdgConversion,
     /// Convert the input bril program to a tree-encoded expression.
     TreeConversion,
+    /// Convert the input bril program to a tree-encoded expression without
+    /// trying to prevent generating unnecessary let bindings
+    TreeConversionVerboseLets,
     /// Convert the input bril program to tree-encoded expression and optimize it with egglog.
     TreeOptimize,
     /// Give the egglog program used to optimize the tree-encoded expression.
@@ -186,6 +189,7 @@ impl RunType {
             RunType::OptimizeDirectJumps => true,
             RunType::RvsdgToCfg => true,
             RunType::TreeConversion => true,
+            RunType::TreeConversionVerboseLets => true,
             RunType::TreeOptimize => true,
             RunType::Egglog => true,
         }
@@ -199,8 +203,8 @@ impl RunType {
             | RunType::OptimizeDirectJumps
             | RunType::RvsdgToCfg
             | RunType::TreeConversion
-            | RunType::TreeOptimize
-            | RunType::Egglog => false,
+            | RunType::TreeConversionVerboseLets => false,
+            RunType::TreeOptimize | RunType::Egglog => false,
         }
     }
 }
@@ -362,7 +366,19 @@ impl Run {
             }
             RunType::TreeConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding();
+                let tree = rvsdg.to_tree_encoding(true);
+                (
+                    vec![Visualization {
+                        result: tree.pretty(),
+                        file_extension: ".egg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::TreeProgram(tree)),
+                )
+            }
+            RunType::TreeConversionVerboseLets => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(false);
                 (
                     vec![Visualization {
                         result: tree.pretty(),
@@ -374,7 +390,7 @@ impl Run {
             }
             RunType::TreeOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding();
+                let tree = rvsdg.to_tree_encoding(true);
                 let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
@@ -387,7 +403,7 @@ impl Run {
             }
             RunType::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding();
+                let tree = rvsdg.to_tree_encoding(true);
                 let egglog = build_program(&tree);
                 (
                     vec![Visualization {

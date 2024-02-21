@@ -37,14 +37,14 @@ impl FromEgglog {
         })
     }
 
-    fn from_tlistexpr_reversed(&self, tlistexpr: Term) -> Vec<Type> {
+    fn vec_from_tlistexpr_reversed(&self, tlistexpr: Term) -> Vec<Type> {
         match_term_app!(tlistexpr.clone();
         {
           ("TNil", []) => vec![],
           ("TCons", [type_, tlistexpr]) => {
             let type_ = self.termdag.get(*type_);
             let tlistexpr = self.termdag.get(*tlistexpr);
-            let mut rest = self.from_tlistexpr(tlistexpr);
+            let mut rest = self.vec_from_tlistexpr(tlistexpr);
             rest.push(self.type_from_egglog(type_));
             rest
           }
@@ -52,28 +52,28 @@ impl FromEgglog {
         })
     }
 
-    fn from_tlistexpr(&self, tlistexpr: Term) -> Vec<Type> {
-        let mut types = self.from_tlistexpr_reversed(tlistexpr);
+    fn vec_from_tlistexpr(&self, tlistexpr: Term) -> Vec<Type> {
+        let mut types = self.vec_from_tlistexpr_reversed(tlistexpr);
         types.reverse();
         types
     }
 
-    fn from_listexpr_reversed(&self, listexpr: Term) -> Vec<RcExpr> {
+    fn vec_from_listexpr_reversed(&self, listexpr: Term) -> Vec<RcExpr> {
         match_term_app!(listexpr.clone();
         {
           ("Nil", []) => vec![],
           ("Cons", [expr, listexpr]) => {
             let expr = self.termdag.get(*expr);
             let listexpr = self.termdag.get(*listexpr);
-            let rest = self.from_listexpr(listexpr);
+            let rest = self.vec_from_listexpr(listexpr);
             rest.into_iter().chain(std::iter::once(self.expr_from_egglog(expr))).collect()
           }
           _ => panic!("Invalid listexpr: {:?}", listexpr),
         })
     }
 
-    fn from_listexpr(&self, listexpr: Term) -> Vec<RcExpr> {
-        let mut exprs = self.from_listexpr_reversed(listexpr);
+    fn vec_from_listexpr(&self, listexpr: Term) -> Vec<RcExpr> {
+        let mut exprs = self.vec_from_listexpr_reversed(listexpr);
         exprs.reverse();
         exprs
     }
@@ -84,7 +84,7 @@ impl FromEgglog {
           ("PointerT", [basetype]) => Type::PointerT(self.basetype_from_egglog(self.termdag.get(*basetype))),
           ("TupleT", [types]) => {
             let types = self.termdag.get(*types);
-            Type::TupleT(self.from_tlistexpr(types))
+            Type::TupleT(self.vec_from_tlistexpr(types))
           }
           _ => panic!("Invalid type: {:?}", type_),
         })
@@ -231,7 +231,7 @@ impl FromEgglog {
             let exprs = self.termdag.get(*exprs);
             Rc::new(Expr::Switch(
               self.expr_from_egglog(expr),
-              self.from_listexpr(exprs),
+              self.vec_from_listexpr(exprs),
             ))
           }
           ("If", [cond, then_, else_]) => {
@@ -297,7 +297,7 @@ impl FromEgglog {
             let entry = self.termdag.get(*entry);
             let others = self.termdag.get(*functions);
             let entry = self.expr_from_egglog(entry);
-            let functions = self.from_listexpr(others);
+            let functions = self.vec_from_listexpr(others);
             TreeProgram { entry, functions }
           }
           _ => panic!("Invalid program: {:?}", program),

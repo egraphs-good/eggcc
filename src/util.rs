@@ -8,6 +8,7 @@ use std::{
     io,
     path::PathBuf,
 };
+use tree_in_context::build_program;
 use tree_in_context::schema::TreeProgram;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
@@ -148,6 +149,8 @@ pub enum RunType {
     TreeConversion,
     /// Convert the input bril program to tree-encoded expression and optimize it with egglog.
     TreeOptimize,
+    /// Give the egglog program used to optimize the tree-encoded expression.
+    Egglog,
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
@@ -184,6 +187,7 @@ impl RunType {
             RunType::RvsdgToCfg => true,
             RunType::TreeConversion => true,
             RunType::TreeOptimize => true,
+            RunType::Egglog => true,
         }
     }
 
@@ -195,7 +199,8 @@ impl RunType {
             | RunType::OptimizeDirectJumps
             | RunType::RvsdgToCfg
             | RunType::TreeConversion
-            | RunType::TreeOptimize => false,
+            | RunType::TreeOptimize
+            | RunType::Egglog => false,
         }
     }
 }
@@ -378,6 +383,19 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::TreeProgram(optimized)),
+                )
+            }
+            RunType::Egglog => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding();
+                let egglog = build_program(&tree);
+                (
+                    vec![Visualization {
+                        result: egglog,
+                        file_extension: ".egg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
                 )
             }
             RunType::RvsdgToCfg => {

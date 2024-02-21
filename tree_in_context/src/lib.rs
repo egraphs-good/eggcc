@@ -32,11 +32,11 @@ pub fn prologue() -> String {
     .join("\n")
 }
 
-fn build_program(program: &TreeProgram) -> String {
+pub fn build_program(program: &TreeProgram) -> String {
     format!(
         "{}\n(let PROG {})\n{}\n",
         prologue(),
-        program,
+        program.pretty(),
         include_str!("schedule.egg"),
     )
 }

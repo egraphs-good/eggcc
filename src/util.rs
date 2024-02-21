@@ -167,27 +167,7 @@ pub enum RunType {
 
 impl Display for RunType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-<<<<<<< HEAD
         write!(f, "{}", self.to_possible_value().unwrap().get_name())
-=======
-        match self {
-            RunType::Nothing => write!(f, "nothing"),
-            RunType::StructuredConversion => write!(f, "structured"),
-            RunType::StructuredRoundTrip => write!(f, "structured-roundtrip"),
-            RunType::RvsdgConversion => write!(f, "rvsdg"),
-            RunType::TreeConversion => write!(f, "tree"),
-            RunType::TreeConversionVerboseLets => write!(f, "tree-verbose-lets"),
-            RunType::RvsdgRoundTrip => write!(f, "rvsdg-roundtrip"),
-            RunType::ToCfg => write!(f, "to-cfg"),
-            RunType::CfgRoundTrip => write!(f, "cfg-roundtrip"),
-            RunType::OptimizeDirectJumps => write!(f, "optimize-direct-jumps"),
-            RunType::RvsdgToCfg => write!(f, "rvsdg-to-cfg"),
-            RunType::RvsdgOptimize => write!(f, "rvsdg-optimize"),
-            RunType::OptimizedRvsdg => write!(f, "optimized-rvsdg"),
-            RunType::RvsdgEgglogEncoding => write!(f, "rvsdg-egglog-encoding"),
-            RunType::Serialize => write!(f, "serialize"),
-        }
->>>>>>> 2839363 (working on better conversion code)
     }
 }
 
@@ -215,16 +195,8 @@ impl RunType {
             | RunType::CfgRoundTrip
             | RunType::OptimizeDirectJumps
             | RunType::RvsdgToCfg
-<<<<<<< HEAD
-            | RunType::TreeConversion => false,
-=======
-            | RunType::RvsdgOptimize
-            | RunType::RvsdgEgglogEncoding
-            | RunType::OptimizedRvsdg
-            | RunType::Serialize
             | RunType::TreeConversion
             | RunType::TreeConversionVerboseLets => false,
->>>>>>> 2839363 (working on better conversion code)
         }
     }
 }

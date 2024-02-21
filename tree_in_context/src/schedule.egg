@@ -1,7 +1,7 @@
 (run-schedule
   (repeat 6
     (saturate always-run)
-    (repeat 100 in_context)
+    (repeat 20 in_context)
     (saturate always-run)
     (saturate error-checking)
     (saturate

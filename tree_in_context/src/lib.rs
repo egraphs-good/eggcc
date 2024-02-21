@@ -1,9 +1,11 @@
+use from_egglog::FromEgglog;
 use interpreter::Value;
 use schema::TreeProgram;
 
 use crate::interpreter::interpret_tree_prog;
 
 pub mod ast;
+mod from_egglog;
 pub mod interpreter;
 mod optimizations;
 pub mod schema;
@@ -28,6 +30,26 @@ pub fn prologue() -> String {
         include_str!("utility/util.egg"),
     ]
     .join("\n")
+}
+
+fn build_program(program: &TreeProgram) -> String {
+    format!(
+        "{}\n(let PROG {})\n{}\n",
+        prologue(),
+        program,
+        include_str!("schedule.egg"),
+    )
+}
+
+pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
+    let program = build_program(program);
+    let mut egraph = egglog::EGraph::default();
+    egraph.parse_and_run_program(&program)?;
+    let (sort, value) = egraph.eval_expr(&egglog::ast::Expr::Var((), "PROG".into()))?;
+    let mut termdag = egglog::TermDag::default();
+    let extracted = egraph.extract(value, &mut termdag, &sort);
+    let from_egglog = FromEgglog { termdag };
+    Ok(from_egglog.program_from_egglog(extracted.1))
 }
 
 /// Runs an egglog test.

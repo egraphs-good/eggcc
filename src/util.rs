@@ -146,6 +146,8 @@ pub enum RunType {
     RvsdgConversion,
     /// Convert the input bril program to a tree-encoded expression.
     TreeConversion,
+    /// Convert the input bril program to tree-encoded expression and optimize it with egglog.
+    TreeOptimize,
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
@@ -181,6 +183,7 @@ impl RunType {
             RunType::OptimizeDirectJumps => true,
             RunType::RvsdgToCfg => true,
             RunType::TreeConversion => true,
+            RunType::TreeOptimize => true,
         }
     }
 
@@ -191,7 +194,8 @@ impl RunType {
             | RunType::CfgRoundTrip
             | RunType::OptimizeDirectJumps
             | RunType::RvsdgToCfg
-            | RunType::TreeConversion => false,
+            | RunType::TreeConversion
+            | RunType::TreeOptimize => false,
         }
     }
 }
@@ -278,6 +282,7 @@ impl Run {
             RunType::OptimizeDirectJumps,
             RunType::RvsdgToCfg,
             RunType::TreeConversion,
+            RunType::TreeOptimize,
         ] {
             if prog.has_mem && !test_type.supports_memory() {
                 continue;
@@ -360,6 +365,19 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::TreeProgram(tree)),
+                )
+            }
+            RunType::TreeOptimize => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding();
+                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                (
+                    vec![Visualization {
+                        result: optimized.pretty(),
+                        file_extension: ".egg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::TreeProgram(optimized)),
                 )
             }
             RunType::RvsdgToCfg => {

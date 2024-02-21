@@ -204,8 +204,7 @@ impl RunType {
             | RunType::RvsdgToCfg
             | RunType::TreeConversion
             | RunType::TreeConversionVerboseLets => false,
-            | RunType::TreeOptimize
-            | RunType::Egglog => false,
+            RunType::TreeOptimize | RunType::Egglog => false,
         }
     }
 }
@@ -391,7 +390,7 @@ impl Run {
             }
             RunType::TreeOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding();
+                let tree = rvsdg.to_tree_encoding(true);
                 let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
@@ -404,7 +403,7 @@ impl Run {
             }
             RunType::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding();
+                let tree = rvsdg.to_tree_encoding(true);
                 let egglog = build_program(&tree);
                 (
                     vec![Visualization {

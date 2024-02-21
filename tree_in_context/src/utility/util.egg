@@ -35,3 +35,37 @@
        (= len1 (tuple-length expr1))
        (= ith (tuple-ith expr2 i)))
        ((union (tuple-ith (Concat ord expr1 expr2) (+ len1 i)) ith)) :ruleset always-run)
+
+(function tuple-remove-fst (Expr) Expr :unextractable)
+(rule ((tuple-remove-fst tup)
+       (= tup (Concat ord (Single expr1) expr2)))
+      ((union (tuple-remove-fst tup) expr2)) :ruleset always-run)
+
+(rule ((tuple-remove-fst tup)
+       (= tup (Concat ord expr1 (Single expr2)))
+       (HasType expr1 (TupleT (TNil))))
+      ((union (tuple-remove-fst tup) expr1)) :ruleset always-run)
+
+(rule ((tuple-remove-fst tup)
+       (= tup (Concat ord expr1 expr2))
+       (HasType expr1 (TupleT (TCons ty tl))))
+      ((union (tuple-remove-fst tup) (Concat ord (tuple-remove-fst expr1) expr2))) :ruleset always-run)
+
+(rule ((tuple-remove-fst tup)
+       (= tup (Concat ord expr1 expr2))
+       (HasType expr1 (TupleT (TNil))))
+      ((union (tuple-remove-fst tup) (Concat ord expr1 (tuple-remove-fst expr2)))) :ruleset always-run)
+
+(function DoWhile-outputs-ith (Expr i64) Expr :unextractable)
+(function DoWhile-outputs (Expr) Expr :unextractable)
+(function DoWhile-pred (Expr) Expr :unextractable)
+
+(rule ((= loop (DoWhile in pred_out))
+       (= pred (tuple-ith pred_out 0)))
+      ((union (DoWhile-pred loop) pred)
+       (union (DoWhile-outputs loop) (tuple-remove-fst pred_out))) :ruleset always-run)
+
+(rule ((= outs (DoWhile-outputs loop))
+       (= ith (tuple-ith outs i)))
+      ((union (DoWhile-outputs-ith loop i) ith)) :ruleset always-run)
+

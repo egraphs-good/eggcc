@@ -115,6 +115,9 @@ fn bind_value(expr: RcExpr, body: RcExpr) -> RcExpr {
 
 impl<'a> RegionTranslator<'a> {
     /// Adds a pure expression to the cache.
+    /// Essentially inlines all references to this expression instead of binding it.
+    /// Importantly, on translation back to RVSDG we should ensure that pure
+    /// common subexpressions are not duplicated.
     fn add_pure_value(&mut self, expr: RcExpr, id: Id) -> StoredNode {
         if self.optimize_lets {
             let res = StoredValue::Expr(expr.clone());

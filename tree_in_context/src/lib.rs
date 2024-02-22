@@ -26,6 +26,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/constant_fold.egg"),
         include_str!("type_analysis.egg"),
         include_str!("utility/util.egg"),
+        &optimizations::loop_invariant::rules().join("\n"),
     ]
     .join("\n")
 }

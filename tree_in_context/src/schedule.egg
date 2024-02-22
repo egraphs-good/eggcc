@@ -14,4 +14,6 @@
         context))
     conditional-invariant-code-motion
     switch_rewrite
-    loop-simplify))
+    loop-simplify
+    function-inlining
+    ))

@@ -1,0 +1,433 @@
+(ruleset extraction)
+
+(datatype Expr%)
+(datatype ListExpr% (Cons% Expr% ListExpr%) (Nil%))
+
+; Things we can reuse
+; - Type
+; - BinaryOp and UnaryOp
+; - Order
+; Things that are missing for now
+; - Program
+; - Function
+
+(function Arg% (Type) Expr%)
+(datatype Constant%
+  (Int% i64)
+  (Bool% bool))
+(function Const% (Constant%) Expr%)
+
+(function Empty% () Expr%)
+(let empty% (Empty%))
+
+(function Bop%   (BinaryOp% Expr% Expr%) Expr%)
+(function Uop%   (UnaryOp% Expr%) Expr%)
+(function Get%   (Expr% i64) Expr%)
+(function Alloc% (Expr% Type)      Expr%)
+(function Call%  (String         Expr%) Expr%)
+
+(function Single% (Expr%) Expr%)
+(function Concat% (Order   Expr%        Expr%)       Expr%)
+
+(function Switch% (Expr%     ListExpr%)    Expr%)
+(function If% (Expr% Expr% Expr%) Expr%)
+(function Let% (Expr%     Expr%)    Expr%)
+(function DoWhile% (Expr%    Expr%)                   Expr%)
+(datatype Assumption%
+  (InLet% Expr%)
+  (InLoop% Expr%     Expr%)
+  (InFunc% String)
+  (InSwitch% i64 Expr%)
+  (InIf% bool Expr%)
+)
+(function InContext% (Assumption% Expr%) Expr%)
+
+
+(datatype ExtractExpr-resT (ExtractExpr-res Expr% f64))
+(datatype ExtractAssumption-resT (ExtractAssumption-res Expr% f64))
+(datatype ExtractListExpr-resT (ExtractListExpr-res ListExpr% f64))
+
+; =================================
+; An order on Extract*-res
+; =================================
+
+(function ExtractExpr-res-min (ExtractExpr-resT ExtractExpr-resT) ExtractExpr-resT)
+(rule (
+    (= goal (ExtractExpr-res-min r1 r2))
+    (= r1 (ExtractExpr-res e1% c1))
+    (= r2 (ExtractExpr-res e2% c2))
+    (<= r1 r2)
+) ((union goal r1)))
+(rule (
+    (= goal (ExtractExpr-res-min r1 r2))
+    (= r1 (ExtractExpr-res e1% c1))
+    (= r2 (ExtractExpr-res e2% c2))
+    (> r1 r2)
+) ((union goal r2)))
+
+(function ExtractAssumption-res-min (ExtractAssumption-resT ExtractAssumption-resT) ExtractAssumption-resT)
+(rule (
+    (= goal (ExtractAssumption-res-min r1 r2))
+    (= r1 (ExtractAssumption-res e1% c1))
+    (= r2 (ExtractAssumption-res e2% c2))
+    (<= r1 r2)
+) ((union goal r1)))
+(rule (
+    (= goal (ExtractAssumption-res-min r1 r2))
+    (= r1 (ExtractAssumption-res e1% c1))
+    (= r2 (ExtractAssumption-res e2% c2))
+    (> r1 r2)
+) ((union goal r2)))
+
+(function ExtractListExpr-res-min (ExtractListExpr-resT ExtractListExpr-resT) ExtractListExpr-resT)
+(rule (
+    (= goal (ExtractListExpr-res-min r1 r2))
+    (= r1 (ExtractListExpr-res l1% c1))
+    (= r2 (ExtractListExpr-res l2% c2))
+    (<= r1 r2)
+) ((union goal r1)))
+(rule (
+    (= goal (ExtractListExpr-res-min r1 r2))
+    (= r1 (ExtractListExpr-res l1% c1))
+    (= r2 (ExtractListExpr-res l2% c2))
+    (> r1 r2)
+) ((union goal r2)))
+
+; =================================
+; Costs
+; =================================
+(function cost-of-bop (BinaryOp) f64)
+(set (cost-of-bop (Add)) 1.0)
+(set (cost-of-bop (Sub)) 1.0)
+(set (cost-of-bop (Div)) 10.0)
+(set (cost-of-bop (Mul)) 4.0)
+(set (cost-of-bop (LessThan)) 1.0)
+(set (cost-of-bop (GreaterThan)) 1.0)
+(set (cost-of-bop (Eq)) 1.0)
+(set (cost-of-bop (And)) 1.0)
+(set (cost-of-bop (Or)) 1.0)
+(set (cost-of-bop (Write)) 4.0)
+(set (cost-of-bop (PtrAdd)) 1.0)
+
+(function cost-of-uop (UnaryOp) f64)
+(set (cost-of-uop (Not)) 1.0)
+(set (cost-of-uop (Print)) 100.0)
+(set (cost-of-uop (Load)) 4.0)
+
+(let Alloc-cost 1000.0)
+(let Get-cost 0.0)
+(let If-cost 2.0)
+;; penalize Let to encourage inlining
+(let Let-cost 1.0)
+
+; =================================
+; Main extraction interface
+; =================================
+(relation ExtractExpr-demand (Expr))
+(function ExtractExpr (Expr) ExtractExpr-resT :merge (ExtractExpr-res-min old new))
+(relation ExtractAssumption (Assumption))
+(function ExtractAssumption (Assumption) ExtractAssumption-resT :merge (ExtractAssumption-res-min old new))
+(relation ExtractListExpr-demand (ListExpr))
+(function ExtractListExpr (ListExpr) ExtractListExpr-resT :merge (ExtractListExpr-res-min old new))
+
+; =================================
+; ExtractExpr
+; =================================
+
+;; bop
+(rule (
+    (ExtractExpr-demand (Bop bop e1 e2))
+) (
+    (ExtractExpr-demand e1)
+    (ExtractExpr-demand e2)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (Bop bop e1 e2))
+    (= c (cost-of-bop bop))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+    (= (ExtractExpr e2) (ExtractExpr-res e2% c2))
+) (
+    (let e% (Bop% bop e1% e2%))
+    (set (ExtractExpr e) (ExtractExpr-res e% (+ c (+ c1 c2))))
+) :ruleset extraction)
+
+;; uop
+(rule (
+    (ExtractExpr-demand (Uop uop e))
+) (
+    (ExtractExpr-demand e)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (Uop uop e1))
+    (= c (cost-of-uop uop))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+) (
+    (let e% (Uop% uop e1%))
+    (set (ExtractExpr e) (ExtractExpr-res e% (+ c c1)))
+) :ruleset extraction)
+
+;; get
+(rule (
+    (ExtractExpr-demand (Get e i))
+) (
+    (ExtractExpr-demand e)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (Get e1 i))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+) (
+    (let e% (Get% e1% i))
+    ;; get does not have cost
+    (set (ExtractExpr e) (ExtractExpr-res e% (+ Get-cost c1)))
+) :ruleset extraction)
+
+;; alloc
+(rule (
+    (ExtractExpr-demand (Alloc e t))
+) (
+    (ExtractExpr-demand e)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (Alloc e1 t))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+) (
+    (let e% (Alloc% e1% t))
+    (set (ExtractExpr e) (ExtractExpr-res e% (+ Alloc-cost c1)))
+) :ruleset extraction)
+
+;; call
+(rule (
+    (ExtractExpr-demand (Call f e))
+) (
+    (ExtractExpr-demand e)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (Call f e1))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+) (
+    (let e% (Call% f e1%))
+    (set (ExtractExpr e) (ExtractExpr-res e% c1))
+) :ruleset extraction)
+
+;; single
+(rule (
+    (ExtractExpr-demand (Single e))
+) (
+    (ExtractExpr-demand e)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (Single e1))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+) (
+    (let e% (Single% e1%))
+    (set (ExtractExpr e) (ExtractExpr-res e% c1))
+) :ruleset extraction)
+
+;; concat
+(rule (
+    (ExtractExpr-demand (Concat o e1 e2))
+) (
+    (ExtractExpr-demand e1)
+    (ExtractExpr-demand e2)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (Concat o e1 e2))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+    (= (ExtractExpr e2) (ExtractExpr-res e2% c2))
+) (
+    (let e% (Concat% o e1% e2%))
+    (set (ExtractExpr e) (ExtractExpr-res e% (+ c1 c2)))
+) :ruleset extraction)
+
+;; switch
+(rule (
+    (ExtractExpr-demand (Switch e l))
+) (
+    (ExtractExpr-demand e)
+    (ExtractListExpr-demand l)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (Switch e1 l))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+    (= (ExtractListExpr l) (ExtractListExpr-res l% c2))
+) (
+    (let e% (Switch% e1% l%))
+    ;; TODO: decide on how to compute the cost of switch
+    (set (ExtractExpr e) (ExtractExpr-res e% (+ c1 c2)))
+) :ruleset extraction)
+
+;; if
+(rule (
+    (ExtractExpr-demand (If e1 e2 e3))
+) (
+    (ExtractExpr-demand e1)
+    (ExtractExpr-demand e2)
+    (ExtractExpr-demand e3)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (If e1 e2 e3))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+    (= (ExtractExpr e2) (ExtractExpr-res e2% c2))
+    (= (ExtractExpr e3) (ExtractExpr-res e3% c3))
+) (
+    (let e% (If% e1% e2% e3%))
+    (set (ExtractExpr e) (ExtractExpr-res e% (+ (+ If-cost c1) (max c2 c3))))
+) :ruleset extraction)
+
+;; let
+(rule (
+    (ExtractExpr-demand (Let e1 e2))
+) (
+    (ExtractExpr-demand e1)
+    (ExtractExpr-demand e2)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (Let e1 e2))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+    (= (ExtractExpr e2) (ExtractExpr-res e2% c2))
+) (
+    (let e% (Let% e1% e2%))
+    (set (ExtractExpr e) (ExtractExpr-res e%  (+ Let-cost (+ c1 c2))))
+) :ruleset extraction)
+
+;; do-while
+(rule (
+    (ExtractExpr-demand (DoWhile e1 e2))
+) (
+    (ExtractExpr-demand e1)
+    (ExtractExpr-demand e2)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (DoWhile e1 e2))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+    (= (ExtractExpr e2) (ExtractExpr-res e2% c2))
+) (
+    (let e% (DoWhile% e1% e2%))
+    ;; TODO: weird cost for now; need more precise analysis later
+    (set (ExtractExpr e) (ExtractExpr-res e% (* 100 (+ c1 c2))))
+) :ruleset extraction)
+
+;; incontext
+(rule (
+    (ExtractExpr-demand (InContext a e))
+) (
+    (ExtractAssumption-demand a)
+    (ExtractExpr-demand e)
+) :ruleset extraction)
+(rule (
+    (ExtractExpr-demand e)
+    (= e (InContext a e1))
+    (= (ExtractAssumption a) (ExtractAssumption-res a% c1))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c2))
+) (
+    (let e% (InContext% a% e1%))
+    ;; we record try to extract assumptions with smallest cost
+    ;; since we want to maximize sharing, but their cost
+    ;; does not matter for the assume node itself.
+    (set (ExtractExpr e) (ExtractExpr-res e% c2))
+) :ruleset extraction)
+
+; =================================
+; ExtractAssumption
+; =================================
+
+;; inlet
+(rule (
+    (ExtractAssumption-demand (InLet e))
+) (
+    (ExtractExpr-demand e)
+) :ruleset extraction)
+(rule (
+    (ExtractAssumption-demand a)
+    (= a (InLet e))
+    (= (ExtractExpr e) (ExtractExpr-res e% c))
+) (
+    (let a% (InLet% e%))
+    (set (ExtractAssumption a) (ExtractAssumption-res a% c))
+) :ruleset extraction)
+
+;; inloop
+(rule (
+    (ExtractAssumption-demand (InLoop e1 e2))
+) (
+    (ExtractExpr-demand e1)
+    (ExtractExpr-demand e2)
+) :ruleset extraction)
+(rule (
+    (ExtractAssumption-demand a)
+    (= a (InLoop e1 e2))
+    (= (ExtractExpr e1) (ExtractExpr-res e1% c1))
+    (= (ExtractExpr e2) (ExtractExpr-res e2% c2))
+) (
+    (let a% (InLoop% e1% e2%))
+    (set (ExtractAssumption a) (ExtractAssumption-res a% (+ c1 c2)))
+) :ruleset extraction)
+
+;; infunc
+(rule (
+    (ExtractAssumption-demand (InFunc f))
+) (
+    (set (ExtractAssumption (InFunc f)) (ExtractAssumption-res (InFunc% f) 0.0))
+) :ruleset extraction)
+
+;; inswitch
+(rule (
+    (ExtractAssumption-demand (InSwitch i e))
+) (
+    (ExtractExpr-demand e)
+) :ruleset extraction)
+(rule (
+    (ExtractAssumption-demand a)
+    (= a (InSwitch i e))
+    (= (ExtractExpr e) (ExtractExpr-res e% c))
+) (
+    (let a% (InSwitch% i e%))
+    (set (ExtractAssumption a) (ExtractAssumption-res a% c))
+) :ruleset extraction)
+
+;; inif
+(rule (
+    (ExtractAssumption-demand (InIf b e))
+) (
+    (ExtractExpr-demand e)
+) :ruleset extraction)
+(rule (
+    (ExtractAssumption-demand a)
+    (= a (InIf b e))
+    (= (ExtractExpr e) (ExtractExpr-res e% c))
+) (
+    (let a% (InIf% b e%))
+    (set (ExtractAssumption a) (ExtractAssumption-res a% c))
+) :ruleset extraction)
+
+; =================================
+; ExtractListExpr
+; =================================
+
+(set (ExtractListExpr (Nil)) (ExtractListExpr-res (Nil%) 0.0))
+(rule (
+    (ExtractListExpr-demand (Cons e l))
+) (
+    (ExtractExpr-demand e)
+    (ExtractListExpr-demand l)
+) :ruleset extraction)
+(rule (
+    (ExtractListExpr-demand l)
+    (= l (Cons e l1))
+    (= (ExtractExpr e) (ExtractExpr-res e% c1))
+    (= (ExtractListExpr l1) (ExtractListExpr-res l1% c2))
+) (
+    (let l% (Cons% e% l1%))
+    (set (ExtractListExpr l) (ExtractListExpr-res l% (min c1 c2)))
+) :ruleset extraction)

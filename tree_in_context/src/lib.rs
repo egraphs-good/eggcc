@@ -26,6 +26,7 @@ pub fn prologue() -> String {
         include_str!("utility/in_context.egg"),
         include_str!("utility/subst.egg"),
         include_str!("optimizations/constant_fold.egg"),
+        include_str!("optimizations/switch_rewrites.egg"),
         include_str!("type_analysis.egg"),
         include_str!("utility/util.egg"),
     ]

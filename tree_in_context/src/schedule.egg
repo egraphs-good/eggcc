@@ -2,6 +2,7 @@
   (repeat 6
     (saturate always-run)
     (repeat 20 in_context)
+    conditional-invariant-code-motion
     (saturate always-run)
     (saturate error-checking)
     (saturate

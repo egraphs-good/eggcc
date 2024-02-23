@@ -5,11 +5,17 @@
 (function is-inv-ListExpr (Expr ListExpr) bool :unextractable :merge (or old new))
 
 ;; in default, when there is a find, set is-inv to false
-(rule ((BodyContainsExpr loop term) (= loop (DoWhile inputs pred_out))) ((set (is-inv-Expr loop term) false)) :ruleset always-run)
-(rule ((BodyContainsListExpr loop term) (= loop (DoWhile inputs pred_out))) ((set (is-inv-ListExpr loop term) false)) :ruleset always-run)
+(rule ((BodyContainsExpr loop term)
+       (= loop (DoWhile inputs pred_out)))
+      ((set (is-inv-Expr loop term) false)) :ruleset always-run)
+(rule ((BodyContainsListExpr loop term)
+       (= loop (DoWhile inputs pred_out)))
+      ((set (is-inv-ListExpr loop term) false)) :ruleset always-run)
 
 (relation is-inv-ListExpr-helper (Expr ListExpr i64))
-(rule ((BodyContainsListExpr loop list) (= loop (DoWhile inputs pred_out))) ((is-inv-ListExpr-helper loop list 0)) :ruleset always-run)
+(rule ((BodyContainsListExpr loop list) 
+       (= loop (DoWhile inputs pred_out))) 
+      ((is-inv-ListExpr-helper loop list 0)) :ruleset always-run)
 
 (rule ((is-inv-ListExpr-helper loop list i)
        (= true (is-inv-Expr loop expr))

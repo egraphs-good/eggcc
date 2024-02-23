@@ -28,6 +28,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/constant_fold.egg"),
         include_str!("type_analysis.egg"),
         include_str!("utility/util.egg"),
+        include_str!("optimizations/loop_simplify.egg"),
     ]
     .join("\n")
 }
@@ -85,6 +86,7 @@ pub fn egglog_test(
         prologue(),
         include_str!("schedule.egg"),
     );
+    eprintln!("{}", program);
 
     let res = egglog::EGraph::default()
         .parse_and_run_program(&program)

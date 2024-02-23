@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     ast::emptyt,
-    schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
+    schema::{Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
 };
 
 impl TreeProgram {
@@ -29,6 +29,18 @@ impl Expr {
             output_ty, ty
         );
         new_expr
+    }
+
+    pub(crate) fn func_with_arg_types(self: RcExpr) -> RcExpr {
+        match self.as_ref() {
+            Expr::Function(name, in_ty, out_ty, body) => RcExpr::new(Expr::Function(
+                name.clone(),
+                in_ty.clone(),
+                out_ty.clone(),
+                body.clone().with_arg_types(in_ty.clone(), out_ty.clone()),
+            )),
+            _ => panic!("Expected function, got {:?}", self),
+        }
     }
 }
 
@@ -282,8 +294,16 @@ impl<'a> TypeChecker<'a> {
                 let Type::TupleT(out_tys) = pty else {
                     panic!("Expected tuple type. Got {:?}", pty)
                 };
-                assert_eq!(out_tys[0], Type::Base(BaseType::BoolT));
-                assert_eq!(out_tys[1..], in_tys);
+                assert_eq!(
+                    out_tys[0],
+                    Type::Base(BaseType::BoolT),
+                    "Expected first output type to be bool"
+                );
+                assert_eq!(
+                    in_tys,
+                    out_tys[1..],
+                    "Expected output types to match input types"
+                );
                 (
                     Type::TupleT(out_tys[1..].to_vec()),
                     RcExpr::new(Expr::DoWhile(new_inputs, new_pred_and_outputs)),

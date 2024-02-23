@@ -296,8 +296,9 @@ impl<'a> VirtualMachine<'a> {
                     else {
                         panic!("expected tuple for pred_output in do-while")
                     };
-                    assert!(
-                        pred_output_val.len() == 1 + vals.len(),
+                    assert_eq!(
+                        pred_output_val.len(),
+                        1 + vals.len(),
                         "expected pred_output to have one more element than input in {:?}",
                         pred_output
                     );

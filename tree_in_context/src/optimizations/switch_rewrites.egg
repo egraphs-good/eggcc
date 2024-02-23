@@ -2,8 +2,10 @@
 
 (rewrite (If (Bop (And) a b) X Y)
          (If a (If b X Y) Y)
+         :when ((ExprIsPure b))
          :ruleset switch_rewrite)
 
 (rewrite (If (Bop (Or) a b) X Y)
          (If a X (If b X Y))
+         :when ((ExprIsPure b))
          :ruleset switch_rewrite)

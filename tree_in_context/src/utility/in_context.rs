@@ -96,13 +96,22 @@ fn test_dowhile_cycle_in_context() -> crate::Result {
     // loop runs one iteration and returns 3
     let myloop = dowhile(arg(), parallel!(tfalse(), int(3)));
     let expr = function("main", tuplet!(intt()), tuplet!(intt()), myloop).func_with_arg_types();
-    let int3 = single(int(3));
+    let int3func = function("main", tuplet!(intt()), tuplet!(intt()), single(int(3)));
 
     let fargincontext = in_context(
         infunc("main"),
         arg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
     );
     let inner_in_context = inloop(fargincontext.clone(), parallel!(tfalse(), int(3)));
+    let expr_intermediate = function(
+        "main",
+        tuplet!(intt()),
+        tuplet!(intt()),
+        dowhile(
+            fargincontext.clone(),
+            in_context(inner_in_context.clone(), parallel!(tfalse(), int(3))),
+        ),
+    );
     let expr2 = function(
         "main",
         tuplet!(intt()),
@@ -122,8 +131,9 @@ fn test_dowhile_cycle_in_context() -> crate::Result {
         &format!(
             "
 (check (ContextLess {expr}))
+(check (= {expr} {expr_intermediate}))
 (check (= {expr} {expr2}))
-(check (= {expr} {int3}))"
+(check (= {expr} {int3func}))"
         ),
         vec![
             expr.to_program(tuplet!(intt()), tuplet!(intt())),

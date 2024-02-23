@@ -4,7 +4,7 @@
 ;; TODO generalize for more inputs
 (rewrite
  (DoWhile (Arg ty)
-  (Concat (Parallel) (Const (Bool false))
+  (Concat (Parallel) (Single (Const (Bool false)))
     body))
  body
  :ruleset loop-simplify)

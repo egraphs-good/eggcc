@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     ast::emptyt,
-    schema::{Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
+    schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
 };
 
 impl TreeProgram {

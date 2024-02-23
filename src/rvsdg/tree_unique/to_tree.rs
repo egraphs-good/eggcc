@@ -24,8 +24,8 @@ use bril_rs::{EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_in_context::{
     ast::{
-        add, arg, call, concat_par, dowhile, emptyt, function, getarg, int, less_than,
-        parallel_vec, program_vec, single, tfalse, tlet, tprint, ttrue,
+        add, arg, call, concat_par, dowhile, emptyt, function, int, less_than, parallel_vec,
+        program_vec, single, tfalse, tlet, tprint, ttrue,
     },
     schema::{RcExpr, TreeProgram, Type as TreeType},
 };

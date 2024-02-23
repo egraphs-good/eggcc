@@ -331,9 +331,9 @@ impl<'a> VirtualMachine<'a> {
                 self.interpret_expr(output, &new_arg)
             }
             Expr::Arg(scope, _ty) => match scope {
-                Scope::FuncScope => arg.func_arg.expect("Function argument not bound"),
-                Scope::LetScope => arg.let_arg.expect("Let argument not bound"),
-                Scope::LoopScope => arg.loop_arg.expect("Loop argument not bound"),
+                Scope::FuncScope => arg.func_arg.clone().expect("Function argument not bound"),
+                Scope::LetScope => arg.let_arg.clone().expect("Let argument not bound"),
+                Scope::LoopScope => arg.loop_arg.clone().expect("Loop argument not bound"),
             },
             Expr::Function(..) => panic!("Function should not be interpreted as an expression"),
             Expr::Call(func_name, e) => {

@@ -90,7 +90,7 @@ pub(crate) struct VirtualMachine<'a> {
 /// Arguments represents the currently bound arguments
 /// in the current scope
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Args {
+pub struct Args {
     /// Function argument
     func_arg: Option<Value>,
     /// Loop argument (optional since we might not be evaluating something inside a loop)

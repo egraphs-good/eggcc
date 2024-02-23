@@ -109,6 +109,14 @@ pub fn get_letarg(i: usize) -> RcExpr {
     get(letarg(), i)
 }
 
+pub fn get_looparg(i: usize) -> RcExpr {
+    get(looparg(), i)
+}
+
+pub fn get_funcarg(i: usize) -> RcExpr {
+    get(funcarg(), i)
+}
+
 pub fn first(e: RcExpr) -> RcExpr {
     get(e, 0)
 }

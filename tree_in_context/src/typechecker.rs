@@ -15,7 +15,7 @@ impl TreeProgram {
 }
 
 #[derive(Clone)]
-struct ArgTypes {
+pub(crate) struct ArgTypes {
     func_arg_ty: Type,
     /// Loop type is available in a loop's scope
     loop_arg_ty: Option<Type>,

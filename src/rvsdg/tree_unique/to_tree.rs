@@ -11,7 +11,9 @@
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_in_context::ast::{and, div, empty, eq, mul, sub, switch_vec, tif};
+use tree_in_context::ast::{
+    and, div, empty, eq, get_funcarg, get_letarg, get_looparg, letarg, mul, sub, switch_vec, tif,
+};
 #[cfg(test)]
 use tree_in_context::ast::{intt, parallel, program, push_par};
 #[cfg(test)]
@@ -24,7 +26,7 @@ use bril_rs::{EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_in_context::{
     ast::{
-        add, arg, call, concat_par, dowhile, emptyt, function, int, less_than, parallel_vec,
+        add, call, concat_par, dowhile, emptyt, function, int, less_than, parallel_vec,
         program_vec, single, tfalse, tlet, tprint, ttrue,
     },
     schema::{RcExpr, TreeProgram, Type as TreeType},
@@ -49,8 +51,10 @@ impl RvsdgProgram {
 /// Stores the location of a single value of an RVSDG node.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum StoredValue {
-    /// The value is stored at get(arg(), usize)
-    Arg(usize),
+    /// The value is stored at get(let_arg(), usize)
+    LetArg(usize),
+    LoopArg(usize),
+    FuncArg(usize),
     /// The value is a state edge, thus not stored.
     StateEdge,
     /// An expression representing this stored value.
@@ -64,7 +68,7 @@ enum StoredValue {
 type StoredNode = Vec<StoredValue>;
 
 fn storedarg(index: usize) -> StoredNode {
-    vec![StoredValue::Arg(index)]
+    vec![StoredValue::LetArg(index)]
 }
 
 fn storedstate() -> StoredNode {
@@ -74,7 +78,9 @@ fn storedstate() -> StoredNode {
 impl StoredValue {
     fn to_expr(&self) -> Option<RcExpr> {
         match self {
-            StoredValue::Arg(index) => Some(getarg(*index)),
+            StoredValue::LetArg(index) => Some(get_letarg(*index)),
+            StoredValue::LoopArg(index) => Some(get_looparg(*index)),
+            StoredValue::FuncArg(index) => Some(get_funcarg(*index)),
             StoredValue::StateEdge => None,
             StoredValue::Expr(expr) => Some(expr.clone()),
         }
@@ -87,7 +93,7 @@ struct RegionTranslator<'a> {
     /// The number of tree arguments in the current environment.
     /// This is not equal to the length of `argument_values` because it refers to
     /// translated tree arguments, not the original RVSDG arguments.
-    current_num_args: usize,
+    current_num_let_bound: usize,
     /// a stack of let bindings to generate
     /// each `RcExpr` is an expression producing a tuple.
     /// These tuples are concatenated to the current argument during `build_translation`.
@@ -104,13 +110,13 @@ struct RegionTranslator<'a> {
 /// to the environment by concatenating all previous values
 /// with the new one
 fn bind_tuple(new_tuple_expr: RcExpr, body: RcExpr) -> RcExpr {
-    tlet(concat_par(arg(), new_tuple_expr), body)
+    tlet(concat_par(letarg(), new_tuple_expr), body)
 }
 
 /// Bind a single value instead of a tuple, convenient for testing
 #[cfg(test)]
 fn bind_value(expr: RcExpr, body: RcExpr) -> RcExpr {
-    tlet(push_par(expr, arg()), body)
+    tlet(push_par(expr, letarg()), body)
 }
 
 impl<'a> RegionTranslator<'a> {
@@ -132,10 +138,10 @@ impl<'a> RegionTranslator<'a> {
     /// into the argument list.
     /// `expr` must produce a single value, not a tuple.
     fn add_binding(&mut self, expr: RcExpr, id: Id) -> StoredNode {
-        let res = storedarg(self.current_num_args);
+        let res = storedarg(self.current_num_let_bound);
         // produces a value, so wrap in `single` and push to bindings
         self.bindings.push(single(expr));
-        self.current_num_args += 1;
+        self.current_num_let_bound += 1;
 
         assert_eq!(
             self.stored_node.insert(id, res.clone()),
@@ -178,7 +184,7 @@ impl<'a> RegionTranslator<'a> {
         optimize_lets: bool,
     ) -> RegionTranslator {
         RegionTranslator {
-            current_num_args: num_args,
+            current_num_let_bound: num_args,
             bindings: Vec::new(),
             stored_node: HashMap::new(),
             argument_values,
@@ -244,7 +250,7 @@ impl<'a> RegionTranslator<'a> {
                         .to_expr()
                         .expect("Pred was a state edge");
 
-                    let before_current_args = self.current_num_args;
+                    let before_current_args = self.current_num_let_bound;
                     let mut then_translator = RegionTranslator::new(
                         self.nodes,
                         input_values.clone(),
@@ -258,12 +264,13 @@ impl<'a> RegionTranslator<'a> {
                         .filter_map(|operand| {
                             let res = then_translator.translate_operand(*operand);
                             match res {
-                                StoredValue::Arg(_) | StoredValue::Expr { .. } => {
-                                    resulting_values.push(StoredValue::Arg(self.current_num_args));
-                                    self.current_num_args += 1;
-                                }
                                 StoredValue::StateEdge => {
                                     resulting_values.push(StoredValue::StateEdge);
+                                }
+                                _ => {
+                                    resulting_values
+                                        .push(StoredValue::LetArg(self.current_num_let_bound));
+                                    self.current_num_let_bound += 1;
                                 }
                             }
 
@@ -304,7 +311,7 @@ impl<'a> RegionTranslator<'a> {
                         .to_expr()
                         .expect("Pred was a state edge");
 
-                    let before_num_args = self.current_num_args;
+                    let before_num_args = self.current_num_let_bound;
                     let mut resulting_values = vec![];
                     let mut branches = vec![];
                     for (i, output_vec) in outputs.iter().enumerate() {
@@ -321,13 +328,14 @@ impl<'a> RegionTranslator<'a> {
                                 // during the first iteration, fill in the resulting values
                                 if i == 0 {
                                     match res {
-                                        StoredValue::Arg(_) | StoredValue::Expr { .. } => {
-                                            resulting_values
-                                                .push(StoredValue::Arg(self.current_num_args));
-                                            self.current_num_args += 1;
-                                        }
                                         StoredValue::StateEdge => {
                                             resulting_values.push(StoredValue::StateEdge);
+                                        }
+                                        _ => {
+                                            resulting_values.push(StoredValue::LetArg(
+                                                self.current_num_let_bound,
+                                            ));
+                                            self.current_num_let_bound += 1;
                                         }
                                     }
                                 }
@@ -355,12 +363,12 @@ impl<'a> RegionTranslator<'a> {
                     let mut new_arg_index = 0;
                     for input_val in &input_values {
                         match input_val {
-                            StoredValue::Arg(_) | StoredValue::Expr { .. } => {
-                                argument_values.push(StoredValue::Arg(new_arg_index));
-                                new_arg_index += 1;
-                            }
                             StoredValue::StateEdge => {
                                 argument_values.push(StoredValue::StateEdge);
+                            }
+                            _ => {
+                                argument_values.push(StoredValue::LetArg(new_arg_index));
+                                new_arg_index += 1;
                             }
                         }
                     }
@@ -398,9 +406,9 @@ impl<'a> RegionTranslator<'a> {
                     for output in outputs_translated {
                         match output {
                             StoredValue::StateEdge => output_values.push(StoredValue::StateEdge),
-                            StoredValue::Arg(_) | StoredValue::Expr { .. } => {
-                                output_values.push(StoredValue::Arg(self.current_num_args));
-                                self.current_num_args += 1;
+                            _ => {
+                                output_values.push(StoredValue::LetArg(self.current_num_let_bound));
+                                self.current_num_let_bound += 1;
                             }
                         }
                     }
@@ -448,8 +456,8 @@ impl<'a> RegionTranslator<'a> {
                 );
                 let mut ret_values = vec![];
                 if output_type.is_some() {
-                    ret_values.push(StoredValue::Arg(self.current_num_args));
-                    self.current_num_args += 1;
+                    ret_values.push(StoredValue::LetArg(self.current_num_let_bound));
+                    self.current_num_let_bound += 1;
                 }
                 let num_state_edges = num_ret_values - output_type.is_some() as usize;
 
@@ -522,12 +530,11 @@ impl RvsdgFunction {
                 RvsdgType::PrintState => StoredValue::StateEdge,
                 RvsdgType::Bril(_) => {
                     arg_index += 1;
-                    StoredValue::Arg(arg_index - 1)
+                    StoredValue::FuncArg(arg_index - 1)
                 }
             })
             .collect();
-        let mut translator =
-            RegionTranslator::new(&self.nodes, argument_values, arg_index, optimize_lets);
+        let mut translator = RegionTranslator::new(&self.nodes, argument_values, 0, optimize_lets);
         let translated_results = self
             .results
             .iter()
@@ -661,8 +668,8 @@ fn simple_translation() {
             bind_value(
                 int(1),
                 bind_value(
-                    add(getarg(0), getarg(0)),
-                    getarg(1), // returns res
+                    add(get_letarg(0), get_letarg(0)),
+                    get_letarg(1), // returns res
                 ),
             )
         ),),
@@ -704,13 +711,13 @@ fn translate_simple_loop() {
                     int(2), // [1, 2]
                     bind_tuple(
                         dowhile(
-                            parallel!(getarg(0), getarg(1)), // [1, 2]
+                            parallel!(get_letarg(0), get_letarg(1)), // [1, 2]
                             bind_value(
-                                less_than(getarg(1), getarg(0)), // [1, 2, 2<1]
-                                parallel!(getarg(2), getarg(0), getarg(1))
+                                less_than(get_looparg(1), get_looparg(0)), // looparg: [1, 2] letarg: [2<1]
+                                parallel!(get_letarg(0), get_looparg(0), get_looparg(1))
                             )
                         ), // [1, 2, 1, 2]
-                        getarg(2) // return 1
+                        get_letarg(2) // return 1
                     ),
                 )
             )
@@ -722,9 +729,13 @@ fn translate_simple_loop() {
             bind_tuple(
                 dowhile(
                     parallel!(int(1), int(2)),
-                    parallel!(less_than(getarg(1), getarg(0)), getarg(0), getarg(1))
+                    parallel!(
+                        less_than(get_looparg(0), get_looparg(1)),
+                        get_looparg(0),
+                        get_looparg(1)
+                    )
                 ),
-                getarg(0)
+                get_letarg(0)
             ),
         ),),
         Value::Tuple(vec![]),
@@ -760,23 +771,23 @@ fn translate_loop() {
                 int(0), // [0]
                 bind_tuple(
                     dowhile(
-                        parallel!(getarg(0)), // [i]
+                        parallel!(get_letarg(0)), // [i]
                         bind_value(
-                            int(1), // [i, 1]
+                            int(1), // loop: [i], let: [1]
                             bind_value(
-                                add(getarg(0), getarg(1)), // [i, 1, i+1]
+                                add(get_looparg(0), get_letarg(0)), // [1, i+1]
                                 bind_value(
-                                    int(10), // [i, 1, i+1, 10]
+                                    int(10), // [1, i+1, 10]
                                     bind_value(
-                                        less_than(getarg(2), getarg(3)), // [i, 1, i+1, 10, i+1<10]
-                                        parallel!(getarg(4), getarg(2))
+                                        less_than(get_letarg(1), get_letarg(3)), // [1, i+1, 10, i+1<10]
+                                        parallel!(get_letarg(3), get_letarg(1))
                                     )
                                 )
                             )
                         )
                     ), // [0, 10]
                     bind_tuple(
-                        tprint(getarg(1)), // [0, 10]
+                        tprint(get_letarg(1)), // [0, 10]
                         parallel!()
                     )
                 )
@@ -790,11 +801,11 @@ fn translate_loop() {
                 dowhile(
                     parallel!(int(0)),
                     parallel!(
-                        less_than(add(getarg(0), int(1)), int(10)),
-                        add(getarg(0), int(1))
+                        less_than(add(get_looparg(0), int(1)), int(10)),
+                        add(get_looparg(0), int(1))
                     )
                 ),
-                bind_tuple(tprint(getarg(0)), parallel!())
+                bind_tuple(tprint(get_looparg(0)), parallel!())
             ),
         ),),
         Value::Tuple(vec![]),
@@ -827,14 +838,14 @@ fn simple_if_translation() {
             bind_value(
                 int(1), // [1]
                 bind_value(
-                    less_than(getarg(0), getarg(0)), // [1, 1<1]
+                    less_than(get_letarg(0), get_letarg(0)), // [1, 1<1]
                     bind_tuple(
                         tif(
-                            getarg(1),
-                            parallel!(getarg(0)),
-                            bind_value(int(2), parallel!(getarg(2)))
+                            get_letarg(1),
+                            parallel!(get_letarg(0)),
+                            bind_value(int(2), parallel!(get_letarg(2)))
                         ), // [1, 1<1, 2]
-                        getarg(2)
+                        get_letarg(2)
                     ),
                 ),
             ),
@@ -849,7 +860,7 @@ fn simple_if_translation() {
                     parallel!(int(1)),
                     parallel!(int(2)),
                 ),
-                getarg(0)
+                get_letarg(0)
             )
         ),),
         Value::Tuple(vec![]),
@@ -880,10 +891,10 @@ fn two_print_translation() {
                 bind_value(
                     int(1), // [2, 1]
                     bind_value(
-                        add(getarg(1), getarg(0)), // [2, 1, 3]
+                        add(get_letarg(1), get_letarg(0)), // [2, 1, 3]
                         bind_tuple(
-                            tprint(getarg(2)),
-                            bind_tuple(tprint(getarg(0)), parallel!()),
+                            tprint(get_letarg(2)),
+                            bind_tuple(tprint(get_letarg(0)), parallel!()),
                         ),
                     ),
                 ),
@@ -928,7 +939,7 @@ fn multi_function_translation() {
                 TreeType::TupleT(vec![]),
                 bind_value(
                     call("myadd", parallel!()),
-                    bind_tuple(tprint(getarg(0)), parallel!()),
+                    bind_tuple(tprint(get_letarg(0)), parallel!()),
                 ),
             ),
             function(
@@ -938,8 +949,8 @@ fn multi_function_translation() {
                 bind_value(
                     int(1),
                     bind_value(
-                        add(getarg(0), getarg(0)),
-                        getarg(1), // returns res
+                        add(get_letarg(0), get_letarg(0)),
+                        get_letarg(1), // returns res
                     ),
                 ),
             ),
@@ -951,7 +962,7 @@ fn multi_function_translation() {
                 TreeType::TupleT(vec![]),
                 bind_value(
                     call("myadd", parallel!()),
-                    bind_tuple(tprint(getarg(0)), parallel!()),
+                    bind_tuple(tprint(get_letarg(0)), parallel!()),
                 ),
             ),
             function(

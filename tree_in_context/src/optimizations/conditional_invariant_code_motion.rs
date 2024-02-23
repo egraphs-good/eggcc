@@ -43,9 +43,10 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
                          (Cons e1 (Map-{ctor_name}-{varying_field_name} rest))
                          :ruleset always-run)
 
-                ; ; Lift {ctor_name} when only {varying_field_name} varies
+                ; Lift {ctor_name} when only {varying_field_name} varies
                 (rule ((ExprIsValid (Switch pred exprs))
                        ({relation} exprs)
+                       (> (ListExpr-length exprs) 1)
                        ; Bind non-varying field(s)
                        (= list (Cons {ctor_pattern1} rest)))
                       ((union (Switch pred exprs)

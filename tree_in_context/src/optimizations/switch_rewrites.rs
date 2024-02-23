@@ -70,7 +70,7 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
 
     egglog_test(
         &format!("{build}"),
-        &format!("(check (!= {build} {check}))"),
+        &format!("(fail (check (= {build} {check})))"),
         vec![build.to_program(emptyt(), intt())],
         val_empty(),
         val_int(2),

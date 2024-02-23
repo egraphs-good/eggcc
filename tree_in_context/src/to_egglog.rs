@@ -1,7 +1,7 @@
 use egglog::{ast::Literal, Term, TermDag};
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TreeProgram, Type, UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, Order, Scope, TreeProgram, Type, UnaryOp,
 };
 
 impl Constant {
@@ -87,6 +87,12 @@ impl Assumption {
 }
 
 impl Order {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
+        term_dag.app(format!("{:?}", self).into(), vec![])
+    }
+}
+
+impl Scope {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
         term_dag.app(format!("{:?}", self).into(), vec![])
     }
@@ -179,9 +185,10 @@ impl Expr {
                 let body = body.to_egglog_internal(term_dag);
                 term_dag.app("DoWhile".into(), vec![cond, body])
             }
-            Expr::Arg(ty) => {
+            Expr::Arg(scope, ty) => {
                 let ty = ty.to_egglog_internal(term_dag);
-                term_dag.app("Arg".into(), vec![ty])
+                let scope = scope.to_egglog_internal(term_dag);
+                term_dag.app("Arg".into(), vec![scope, ty])
             }
             Expr::InContext(assumption, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
@@ -297,10 +304,10 @@ fn convert_whole_program() {
             intt(),
             get(
                 dowhile(
-                    single(arg()),
+                    single(funcarg()),
                     push_par(
-                        add(get(arg(), 0), int(1)),
-                        single(less_than(get(arg(), 0), int(10)))
+                        add(get(looparg(), 0), int(1)),
+                        single(less_than(get(looparg(), 0), int(10)))
                     )
                 ),
                 0

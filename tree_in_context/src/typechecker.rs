@@ -14,6 +14,14 @@ impl TreeProgram {
     }
 }
 
+struct ArgTypes {
+    func_arg_ty: Type,
+    /// Loop type is available in a loop's scope
+    loop_arg_ty: Option<Type>,
+    /// Let type is available in a let's scope
+    let_arg_ty: Option<Type>,
+}
+
 impl Expr {
     /// Performs type checking, and also replaces any `Unknown` types
     /// in arguments with the correct types.

@@ -11,4 +11,5 @@
       type-analysis
     )
     (saturate constant_fold)
+    switch_rewrite
     loop-simplify))

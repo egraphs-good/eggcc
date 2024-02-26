@@ -4,7 +4,7 @@ fn test_subst_nested() -> crate::Result {
     use crate::{interpreter::Value, schema::Constant};
     let twoint = tuplet!(intt(), intt());
     let expr = tlet(
-        parallel!(int(1), get(arg(), 1), tlet(int(2), arg())),
+        parallel!(int(1), get(funcarg(), 1), tlet(int(2), funcarg())),
         int(0),
     )
     .with_arg_types(twoint.clone(), intt());
@@ -14,7 +14,7 @@ fn test_subst_nested() -> crate::Result {
         parallel!(
             in_context(infunc("main"), int(1)),
             get(replacement.clone(), 1),
-            tlet(in_context(infunc("main"), int(2)), arg())
+            tlet(in_context(infunc("main"), int(2)), funcarg())
         ),
         int(0),
     )
@@ -50,7 +50,7 @@ fn test_subst_makes_new_context() -> crate::Result {
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(
         in_context(infunc("otherfunc"), int(1)),
-        in_context(infunc("otherfunc"), int_arg()),
+        in_context(infunc("otherfunc"), int_funcarg()),
     );
     let replace_with = in_context(infunc("main"), int(2));
     let expected = add(

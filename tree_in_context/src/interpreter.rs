@@ -395,13 +395,16 @@ fn test_interpreter() {
         dowhile(
             parallel!(int(1)),
             parallel!(
-                less_than(getat(0), int(10)),
-                first(parallel!(add(getat(0), int(1)), tprint(getat(0))))
+                less_than(get_looparg(0), int(10)),
+                first(parallel!(
+                    add(get_looparg(0), int(1)),
+                    tprint(get_looparg(0))
+                ))
             ),
         ),
         0,
     );
-    let res = interpret_expr(&expr, &None);
+    let res = interpret_expr(&expr, None);
     assert_eq!(res.value, Const(Constant::Int(11)));
     assert_eq!(
         res.log,
@@ -421,38 +424,38 @@ fn test_interpreter_fib_using_memory() {
         alloc(int(nth + 2), intt()),
         tlet(
             concat_seq(
-                twrite(int_arg(), int(0)), // address 0, value 0
+                twrite(int_letarg(), int(0)), // address 0, value 0
                 concat_seq(
-                    twrite(ptradd(int_arg(), int(1)), int(1)), // address 1, value 1
-                    single(int_arg()),
+                    twrite(ptradd(int_letarg(), int(1)), int(1)), // address 1, value 1
+                    single(int_letarg()),
                 ),
             ),
             tlet(
                 dowhile(
-                    parallel!(ptradd(getat(0), int(2)), int(2)),
+                    parallel!(ptradd(get_letarg(0), int(2)), int(2)),
                     cons_par(
-                        less_than(getat(1), int(nth)),
+                        less_than(get_looparg(0), int(nth)),
                         tlet(
                             concat_seq(
                                 twrite(
-                                    getat(0),
+                                    get_looparg(0),
                                     add(
-                                        load(ptradd(getat(0), int(-1))),
-                                        load(ptradd(getat(0), int(-2))),
+                                        load(ptradd(get_looparg(0), int(-1))),
+                                        load(ptradd(get_looparg(0), int(-2))),
                                     ),
                                 ),
-                                int_arg(),
+                                int_looparg(),
                             ),
-                            parallel!(ptradd(getat(0), int(1)), add(getat(1), int(1))),
+                            parallel!(ptradd(get_looparg(0), int(1)), add(get_looparg(1), int(1))),
                         ),
                     ),
                 ),
-                parallel!(load(ptradd(getat(0), int(-1))), getat(1)),
+                parallel!(load(ptradd(get_letarg(0), int(-1))), get_letarg(1)),
             ),
         ),
     );
 
-    let res = interpret_expr(&expr, &None);
+    let res = interpret_expr(&expr, None);
     assert_eq!(
         res.value,
         Tuple(vec![

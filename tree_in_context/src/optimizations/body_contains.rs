@@ -69,8 +69,8 @@ fn test_body_contains() -> Result<(), egglog::Error> {
         in_context(inlet(int(2)), single(int(1))),
         parallel!(
             less_than(
-                get(arg(), 0),
-                tlet(int(3), in_context(inlet(int(3)), arg()))
+                get(looparg(), 0),
+                tlet(int(3), in_context(inlet(int(3)), looparg()))
             ),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
@@ -92,7 +92,7 @@ fn test_body_contains() -> Result<(), egglog::Error> {
         num3 = int(3),
         num4 = int(4),
         num5 = int(5),
-        in_context = in_context(inlet(int(6)), int_arg()),
+        in_context = in_context(inlet(int(6)), int_looparg()),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(

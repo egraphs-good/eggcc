@@ -251,6 +251,14 @@ pub fn int_letarg() -> RcExpr {
     RcExpr::new(Expr::Arg(Scope::LetScope, intt()))
 }
 
+pub fn int_looparg() -> RcExpr {
+    RcExpr::new(Expr::Arg(Scope::LoopScope, intt()))
+}
+
+pub fn int_funcarg() -> RcExpr {
+    RcExpr::new(Expr::Arg(Scope::FuncScope, intt()))
+}
+
 /// An argument with a boolean type.
 pub fn bool_letarg() -> RcExpr {
     RcExpr::new(Expr::Arg(Scope::LetScope, boolt()))

@@ -28,14 +28,14 @@ fn test_in_context_two_lets() -> crate::Result {
         intt(),
         tlet(
             int(1),
-            tlet(add(int_arg(), int_arg()), mul(int_arg(), int(2))),
+            tlet(add(int_letarg(), int_letarg()), mul(int_letarg(), int(2))),
         ),
     );
     let int1 = in_context(infunc("main"), int(1));
-    let arg1 = in_context(inlet(int1.clone()), int_arg());
+    let arg1 = in_context(inlet(int1.clone()), int_letarg());
     let addarg1 = add(arg1.clone(), arg1.clone());
     let int2 = in_context(inlet(addarg1.clone()), int(2));
-    let arg2 = in_context(inlet(addarg1.clone()), int_arg());
+    let arg2 = in_context(inlet(addarg1.clone()), int_letarg());
     let expr2 = function(
         "main",
         intt(),

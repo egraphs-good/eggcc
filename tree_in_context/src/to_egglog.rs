@@ -274,8 +274,11 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
-    let expr = add(int(1), int_arg());
-    test_expr_parses_to(expr, "(Bop (Add) (Const (Int 1)) (Arg (Base (IntT))))");
+    let expr = add(int(1), int_funcarg());
+    test_expr_parses_to(
+        expr,
+        "(Bop (Add) (Const (Int 1)) (Arg (FuncScope) (Base (IntT))))",
+    );
 }
 
 #[test]

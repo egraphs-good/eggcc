@@ -361,20 +361,6 @@ impl<'a> RegionTranslator<'a> {
                         input_values.push(self.translate_operand(*input));
                     }
 
-                    let mut argument_values = vec![];
-                    let mut new_arg_index = 0;
-                    for input_val in &input_values {
-                        match input_val {
-                            StoredValue::StateEdge => {
-                                argument_values.push(StoredValue::StateEdge);
-                            }
-                            _ => {
-                                argument_values.push(StoredValue::LoopArg(new_arg_index));
-                                new_arg_index += 1;
-                            }
-                        }
-                    }
-
                     // For the sub-region, we need a new region translator
                     // with its own arguments and bindings.
                     // We then put the whole loop in a let binding and move on.
@@ -459,10 +445,10 @@ impl<'a> RegionTranslator<'a> {
             },
             BasicExpr::Effect(EffectOps::Print, args) => {
                 assert!(args.len() == 2, "print should have 2 arguments");
-                let arg1 = self
-                    .translate_operand(args[0])
+                let translated = self.translate_operand(args[0]);
+                let arg1 = translated
                     .to_expr()
-                    .expect("Print buffer expr should be a single value");
+                    .expect("Print buffer expr should be a value, not a state edge");
                 let arg2 = self.translate_operand(args[1]);
 
                 // Print returns a state edge, which should be translated as

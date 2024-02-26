@@ -325,10 +325,10 @@ fn convert_whole_program() {
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (Get
-                        (DoWhile (Single (Arg (Base (IntT))))
+                        (DoWhile (Single (Arg (FuncScope) (Base (IntT))))
                         (Concat (Parallel) 
-                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10))))
-                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1))))))
+                            (Single (Bop (LessThan) (Get (Arg (LoopScope) (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10))))
+                            (Single (Bop (Add) (Get (Arg (LoopScope) (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1))))))
                         0)) 
                 (Nil)))",
     );

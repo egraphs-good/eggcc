@@ -377,8 +377,8 @@
 
 (rule ((Arg scope ty))
       (
-        (HasType (Arg (LetScope) ty) ty)
-        (HasArgType (Arg (LetScope) ty) scope ty)
+        (HasType (Arg scope ty) ty)
+        (HasArgType (Arg scope ty) scope ty)
       )
       :ruleset type-analysis)
 

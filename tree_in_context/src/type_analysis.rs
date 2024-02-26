@@ -386,11 +386,16 @@ fn loop_inputs_outputs_error2() {
 
 #[test]
 fn funcs_and_calls() -> crate::Result {
-    let f = function("f", intt(), intt(), add(int_funcarg(), int(2)));
+    let body = add(int_funcarg(), int(2));
+    let f = function("f", intt(), intt(), body.clone());
     let c = call("f", int(4));
     egglog_test(
         &format!("{f}{c}"),
-        &format!("(check (HasType {c} (Base (IntT))))"),
+        &format!(
+            "
+        (check (HasType {body} (Base (IntT))))
+        (check (HasType {c} (Base (IntT))))"
+        ),
         vec![f.to_program(intt(), intt())],
         val_int(4),
         val_int(6),

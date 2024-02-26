@@ -96,6 +96,7 @@ impl<'a> TypeChecker<'a> {
     }
 
     pub(crate) fn add_arg_types_to_expr(&self, expr: RcExpr, arg_ty: &ArgTypes) -> (Type, RcExpr) {
+        eprintln!("checking {:?}", expr);
         match expr.as_ref() {
             Expr::Const(constant) => {
                 let ty = match constant {
@@ -186,14 +187,13 @@ impl<'a> TypeChecker<'a> {
             }
             Expr::Get(child, index) => {
                 let (cty, new_child) = self.add_arg_types_to_expr(child.clone(), arg_ty);
-                let Type::TupleT(types) = cty else {
+                let Type::TupleT(types) = cty.clone() else {
                     panic!("Expected tuple type in {:?}. Got {:?}", child, cty)
                 };
                 if *index >= types.len() {
                     panic!(
-                        "Index out of bounds. Tuple has {} elements, index is {}",
-                        types.len(),
-                        index
+                        "Index out of bounds. Tuple has type {}, index is {}. Expr:\n{}",
+                        cty, index, expr
                     );
                 }
                 let expected_ty = types[*index].clone();

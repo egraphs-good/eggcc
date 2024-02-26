@@ -105,6 +105,7 @@ pub(crate) enum BasicExpr<Op> {
     /// Note: the only bril effects that can show up are print and
     /// memory-related (Print, Store, Free). Other effects (e.g. control flow)
     /// are handled separately.
+    /// The state edge for these operators is the first input.
     Effect(EffectOps, Vec<Op>),
 }
 

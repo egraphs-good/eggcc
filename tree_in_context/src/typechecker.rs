@@ -96,7 +96,6 @@ impl<'a> TypeChecker<'a> {
     }
 
     pub(crate) fn add_arg_types_to_expr(&self, expr: RcExpr, arg_ty: &ArgTypes) -> (Type, RcExpr) {
-        eprintln!("checking {:?}", expr);
         match expr.as_ref() {
             Expr::Const(constant) => {
                 let ty = match constant {

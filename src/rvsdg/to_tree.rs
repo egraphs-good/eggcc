@@ -694,8 +694,8 @@ fn translate_simple_loop() {
                     bind_tuple(
                         dowhile(
                             parallel!(get_letarg(0), get_letarg(1)), // [1, 2]
-                            bind_value(
-                                less_than(get_looparg(1), get_looparg(0)), // looparg: [1, 2] letarg: [2<1]
+                            tlet(
+                                single(less_than(get_looparg(1), get_looparg(0))), // looparg: [1, 2] letarg: [2<1]
                                 parallel!(get_letarg(0), get_looparg(0), get_looparg(1))
                             )
                         ), // [1, 2, 1, 2]
@@ -712,7 +712,7 @@ fn translate_simple_loop() {
                 dowhile(
                     parallel!(int(1), int(2)),
                     parallel!(
-                        less_than(get_looparg(0), get_looparg(1)),
+                        less_than(get_looparg(1), get_looparg(0)),
                         get_looparg(0),
                         get_looparg(1)
                     )
@@ -868,8 +868,8 @@ fn two_print_translation() {
             "add",
             TreeType::TupleT(vec![]),
             TreeType::TupleT(vec![]),
-            bind_value(
-                int(2), // [2]
+            tlet(
+                single(int(2)), // [2]
                 bind_value(
                     int(1), // [2, 1]
                     bind_value(
@@ -886,9 +886,9 @@ fn two_print_translation() {
             "add",
             TreeType::TupleT(vec![]),
             TreeType::TupleT(vec![]),
-            bind_tuple(
+            tlet(
                 tprint(add(int(1), int(2))),
-                bind_tuple(tprint(int(2)), parallel!(),)
+                tlet(tprint(int(2)), parallel!(),)
             )
         ),),
         Value::Tuple(vec![]),

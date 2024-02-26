@@ -9,6 +9,7 @@ impl TreeProgram {
     /// Adds correct types to arguments in the program
     /// and performs type checking.
     pub(crate) fn with_arg_types(&self) -> TreeProgram {
+        eprintln!("{}", self.pretty());
         let checker = TypeChecker::new(self);
         checker.add_arg_types()
     }

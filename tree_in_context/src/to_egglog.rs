@@ -56,7 +56,9 @@ impl Type {
                 let tlist = to_tlistexpr(types, term_dag);
                 term_dag.app("TupleT".into(), vec![tlist])
             }
-            Type::Unknown => panic!("Found unknown type when converting to egglog. Did you forget to call `with_arg_types`?"),
+            // Unknown shouldn't show up in the egglog file, but is useful for printing
+            // before types are annotated.
+            Type::Unknown => term_dag.app("Unknown".into(), vec![]),
         }
     }
 }

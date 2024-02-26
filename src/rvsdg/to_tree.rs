@@ -9,6 +9,8 @@
 //! When `optimize_lets` is true, the conversion will also
 //! prevent adding unnecessary let bindings for pure expressions.
 
+use std::iter;
+
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 use tree_in_context::ast::{
@@ -175,12 +177,18 @@ impl<'a> RegionTranslator<'a> {
 
     /// Adds a tuple to the bindings.
     /// `values` is a vector refering to each value in the tuple.
+    /// `expr_tuple_type_len` refers to the length of expr's tuple type.
     fn add_region_binding(&mut self, expr: RcExpr, id: Id, values: Vec<StoredValue>) -> StoredNode {
         if self.current_num_let_bound == 0 {
             self.bindings.push(expr);
         } else {
             self.bindings.push(concat_par(letarg(), expr));
         }
+        let num_not_state_edges = values
+            .iter()
+            .filter(|v| v != &&StoredValue::StateEdge)
+            .count();
+        self.current_num_let_bound += num_not_state_edges;
         assert_eq!(
             self.stored_node.insert(id, values.clone()),
             None,
@@ -205,6 +213,42 @@ impl<'a> RegionTranslator<'a> {
             nodes,
             optimize_lets,
         }
+    }
+
+    /// Translate a sub-region by creating a new region
+    /// translator and translating the operands.
+    /// Returns the translated expression and the resulting
+    /// values, assuming the new expression is let-bound
+    /// using `add_region_binding`.
+    fn translate_subregion(
+        &mut self,
+        argument_values: Vec<StoredValue>,
+        num_let_bound: usize,
+        operands: impl Iterator<Item = Operand>,
+    ) -> (RcExpr, Vec<StoredValue>) {
+        let mut translator = RegionTranslator::new(
+            self.nodes,
+            argument_values,
+            num_let_bound,
+            self.optimize_lets,
+        );
+        let mut number_non_state_edges = 0;
+        let mut resulting_values = vec![];
+        let resulting_exprs = operands.filter_map(|operand| {
+            let res = translator.translate_operand(operand);
+            match res {
+                StoredValue::StateEdge => resulting_values.push(StoredValue::StateEdge),
+                _ => {
+                    resulting_values.push(StoredValue::LetArg(
+                        self.current_num_let_bound + number_non_state_edges,
+                    ));
+                    number_non_state_edges += 1;
+                }
+            }
+            res.to_expr()
+        });
+        let expr = parallel_vec(resulting_exprs);
+        (translator.build_translation(expr), resulting_values)
     }
 
     /// Wrap the given expression in all the
@@ -264,49 +308,16 @@ impl<'a> RegionTranslator<'a> {
                         .translate_operand(*pred)
                         .to_expr()
                         .expect("Pred was a state edge");
-
-                    let before_current_args = self.current_num_let_bound;
-                    let mut then_translator = RegionTranslator::new(
-                        self.nodes,
+                    let (then_translated, resulting_values) = self.translate_subregion(
                         input_values.clone(),
-                        before_current_args,
-                        self.optimize_lets,
+                        self.current_num_let_bound,
+                        then_branch.iter().copied(),
                     );
-
-                    let mut resulting_values = vec![];
-                    let then_values = then_branch
-                        .iter()
-                        .filter_map(|operand| {
-                            let res = then_translator.translate_operand(*operand);
-                            match res {
-                                StoredValue::StateEdge => {
-                                    resulting_values.push(StoredValue::StateEdge);
-                                }
-                                _ => {
-                                    resulting_values
-                                        .push(StoredValue::LetArg(self.current_num_let_bound));
-                                    self.current_num_let_bound += 1;
-                                }
-                            }
-
-                            res.to_expr()
-                        })
-                        .collect::<Vec<_>>();
-                    let then_expr = parallel_vec(then_values);
-                    let then_translated = then_translator.build_translation(then_expr);
-
-                    let mut else_translator = RegionTranslator::new(
-                        self.nodes,
-                        input_values,
-                        before_current_args,
-                        self.optimize_lets,
+                    let (else_translated, _) = self.translate_subregion(
+                        input_values.clone(),
+                        self.current_num_let_bound,
+                        else_branch.iter().copied(),
                     );
-                    let else_values = else_branch
-                        .iter()
-                        .filter_map(|operand| else_translator.translate_operand(*operand).to_expr())
-                        .collect::<Vec<_>>();
-                    let else_expr = parallel_vec(else_values);
-                    let else_translated = else_translator.build_translation(else_expr);
 
                     let expr = tif(pred, then_translated, else_translated);
                     self.add_region_binding(expr, id, resulting_values)
@@ -326,40 +337,16 @@ impl<'a> RegionTranslator<'a> {
                         .to_expr()
                         .expect("Pred was a state edge");
 
-                    let before_num_args = self.current_num_let_bound;
                     let mut resulting_values = vec![];
                     let mut branches = vec![];
-                    for (i, output_vec) in outputs.iter().enumerate() {
-                        let mut output_translator = RegionTranslator::new(
-                            self.nodes,
+                    for output_vec in outputs.iter().enumerate() {
+                        let (translated, values) = self.translate_subregion(
                             inputs_values.clone(),
-                            before_num_args,
-                            self.optimize_lets,
+                            self.current_num_let_bound,
+                            output_vec.1.iter().copied(),
                         );
-                        let branch_values = output_vec
-                            .iter()
-                            .filter_map(|operand| {
-                                let res = output_translator.translate_operand(*operand);
-                                // during the first iteration, fill in the resulting values
-                                if i == 0 {
-                                    match res {
-                                        StoredValue::StateEdge => {
-                                            resulting_values.push(StoredValue::StateEdge);
-                                        }
-                                        _ => {
-                                            resulting_values.push(StoredValue::LetArg(
-                                                self.current_num_let_bound,
-                                            ));
-                                            self.current_num_let_bound += 1;
-                                        }
-                                    }
-                                }
-                                res.to_expr()
-                            })
-                            .collect::<Vec<_>>();
-                        let branch_expr = parallel_vec(branch_values);
-                        let branch_translated = output_translator.build_translation(branch_expr);
-                        branches.push(branch_translated);
+                        resulting_values = values;
+                        branches.push(translated);
                     }
                     let expr = switch_vec(pred, branches);
                     self.add_region_binding(expr, id, resulting_values)
@@ -391,38 +378,16 @@ impl<'a> RegionTranslator<'a> {
                     // For the sub-region, we need a new region translator
                     // with its own arguments and bindings.
                     // We then put the whole loop in a let binding and move on.
-                    let mut sub_translator =
-                        RegionTranslator::new(self.nodes, argument_values, 0, self.optimize_lets);
-                    let mut pred_outputs = vec![sub_translator
-                        .translate_operand(*pred)
-                        .to_expr()
-                        .expect("Pred was a state edge")];
-                    let outputs_translated = outputs
-                        .iter()
-                        .map(|o| sub_translator.translate_operand(*o))
-                        .collect::<Vec<StoredValue>>();
-                    for output in outputs_translated.iter().filter_map(|o| o.to_expr()) {
-                        pred_outputs.push(output);
-                    }
-                    let loop_translated =
-                        sub_translator.build_translation(parallel_vec(pred_outputs));
+                    let (loop_translated, output_values) = self.translate_subregion(
+                        input_values.clone(),
+                        0,
+                        iter::once(pred).chain(outputs.iter()).copied(),
+                    );
 
                     let loop_expr = dowhile(
                         parallel_vec(input_values.into_iter().filter_map(|val| val.to_expr())),
                         loop_translated,
                     );
-
-                    // build the stored node
-                    let mut output_values = vec![];
-                    for output in outputs_translated {
-                        match output {
-                            StoredValue::StateEdge => output_values.push(StoredValue::StateEdge),
-                            _ => {
-                                output_values.push(StoredValue::LetArg(self.current_num_let_bound));
-                                self.current_num_let_bound += 1;
-                            }
-                        }
-                    }
 
                     self.add_region_binding(loop_expr, id, output_values)
                 }
@@ -468,7 +433,6 @@ impl<'a> RegionTranslator<'a> {
                 let mut ret_values = vec![];
                 if output_type.is_some() {
                     ret_values.push(StoredValue::LetArg(self.current_num_let_bound));
-                    self.current_num_let_bound += 1;
                 }
                 let num_state_edges = num_ret_values - output_type.is_some() as usize;
 

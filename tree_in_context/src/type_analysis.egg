@@ -377,8 +377,8 @@
 
 (rule ((Arg scope ty))
       (
-        (HasType (LetArg ty) ty)
-        (HasArgType (LetArg ty) scope ty)
+        (HasType (Arg (LetScope) ty) ty)
+        (HasArgType (Arg (LetScope) ty) scope ty)
       )
       :ruleset type-analysis)
 
@@ -412,7 +412,7 @@
         (= lhs (DoWhile inp pred-body))
         (HasType inp (TupleT tylist))
       )
-      ((HasLoopArgType pred-body (TupleT tylist)))
+      ((HasArgType pred-body (LoopScope) (TupleT tylist)))
       :ruleset type-analysis)
 
 (rule ((= lhs (DoWhile inp pred-body)))
@@ -445,7 +445,7 @@
 (rule ((= lhs (Function name in-ty out-ty body)))
       (
         ; Arg should have the specified type in the body
-        (HasFuncArgType body in-ty)
+        (HasArgType body (FuncScope) in-ty)
         ; Expect the body to have the specified output type
         (ExpectType body out-ty "Function body had wrong type")
       )

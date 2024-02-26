@@ -70,7 +70,7 @@
 ;; Control flow
 (rewrite (Subst assum scope to (Switch pred branches))
          (Switch (Subst assum scope to pred)
-                 (SubstList assum to branches))
+                 (SubstList assum scope to branches))
          :ruleset always-run)
 (rewrite (Subst assum scope to (If pred c1 c2))
          (If (Subst assum scope to pred)
@@ -79,7 +79,7 @@
          :ruleset always-run)
 
 (rewrite (Subst assum (LetScope) to (Let in out))
-         (Let (Subst assum scope to in)
+         (Let (Subst assum (LetScope) to in)
               out)
          :ruleset always-run)
 (rewrite (Subst assum scope to (Let in out))
@@ -88,7 +88,7 @@
          :when ((!= scope (LetScope)))
          :ruleset always-run)
 (rewrite (Subst assum (LoopScope) to (DoWhile in out))
-         (DoWhile (Subst assum scope to in)
+         (DoWhile (Subst assum (LoopScope) to in)
                   out)
          :ruleset always-run)
 (rewrite (Subst assum scope to (DoWhile in out))

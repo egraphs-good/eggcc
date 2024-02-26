@@ -12,10 +12,11 @@
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 use tree_in_context::ast::{
-    and, div, empty, eq, get_funcarg, get_letarg, get_looparg, letarg, mul, sub, switch_vec, tif,
+    and, div, empty, eq, get_funcarg, get_letarg, get_looparg, letarg, mul, push_par, sub,
+    switch_vec, tif,
 };
 #[cfg(test)]
-use tree_in_context::ast::{intt, parallel, program, push_par};
+use tree_in_context::ast::{intt, parallel, program};
 #[cfg(test)]
 use tree_in_context::interpreter::Value;
 #[cfg(test)]
@@ -106,6 +107,7 @@ struct RegionTranslator<'a> {
     optimize_lets: bool,
 }
 
+#[cfg(test)]
 /// helper that binds a new expression, adding it
 /// to the environment by concatenating all previous values
 /// with the new one
@@ -139,8 +141,12 @@ impl<'a> RegionTranslator<'a> {
     /// `expr` must produce a single value, not a tuple.
     fn add_binding(&mut self, expr: RcExpr, id: Id) -> StoredNode {
         let res = storedarg(self.current_num_let_bound);
-        // produces a value, so wrap in `single` and push to bindings
-        self.bindings.push(single(expr));
+        if self.current_num_let_bound == 0 {
+            self.bindings.push(single(expr));
+        } else {
+            self.bindings.push(push_par(letarg(), expr));
+        }
+
         self.current_num_let_bound += 1;
 
         assert_eq!(
@@ -153,7 +159,11 @@ impl<'a> RegionTranslator<'a> {
 
     /// Adds a binding for a state edge (e.g. a print or write)
     fn add_state_edge_binding(&mut self, expr: RcExpr, id: Id) -> StoredNode {
-        self.bindings.push(expr);
+        if self.current_num_let_bound == 0 {
+            self.bindings.push(expr);
+        } else {
+            self.bindings.push(concat_par(letarg(), expr));
+        }
         let res = storedstate();
         assert_eq!(
             self.stored_node.insert(id, res.clone()),
@@ -166,7 +176,11 @@ impl<'a> RegionTranslator<'a> {
     /// Adds a tuple to the bindings.
     /// `values` is a vector refering to each value in the tuple.
     fn add_region_binding(&mut self, expr: RcExpr, id: Id, values: Vec<StoredValue>) -> StoredNode {
-        self.bindings.push(expr);
+        if self.current_num_let_bound == 0 {
+            self.bindings.push(expr);
+        } else {
+            self.bindings.push(concat_par(letarg(), expr));
+        }
         assert_eq!(
             self.stored_node.insert(id, values.clone()),
             None,
@@ -199,8 +213,9 @@ impl<'a> RegionTranslator<'a> {
         let mut expr = inner;
 
         for binding in self.bindings.iter().rev() {
-            expr = bind_tuple(binding.clone(), expr);
+            expr = tlet(binding.clone(), expr);
         }
+
         expr
     }
 

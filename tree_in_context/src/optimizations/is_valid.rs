@@ -65,7 +65,7 @@ fn test_is_valid() -> crate::Result {
     ",
         num0 = int(0),
         num2 = int(2),
-        arg = arg_with_type(Scope::LoopScope, intt()),
+        arg = arg_with_type(Scope::LoopScope, tuplet!(intt())),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(

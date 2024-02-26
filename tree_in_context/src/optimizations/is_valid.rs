@@ -1,3 +1,4 @@
+#[cfg(test)]
 use crate::schema::Scope;
 use crate::schema_helpers::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;

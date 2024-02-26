@@ -180,11 +180,11 @@ impl<'a> RegionTranslator<'a> {
     fn new(
         nodes: &'a [RvsdgBody],
         argument_values: Vec<StoredValue>,
-        num_args: usize,
+        args_let_bound: usize,
         optimize_lets: bool,
     ) -> RegionTranslator {
         RegionTranslator {
-            current_num_let_bound: num_args,
+            current_num_let_bound: args_let_bound,
             bindings: Vec::new(),
             stored_node: HashMap::new(),
             argument_values,
@@ -367,7 +367,7 @@ impl<'a> RegionTranslator<'a> {
                                 argument_values.push(StoredValue::StateEdge);
                             }
                             _ => {
-                                argument_values.push(StoredValue::LetArg(new_arg_index));
+                                argument_values.push(StoredValue::LoopArg(new_arg_index));
                                 new_arg_index += 1;
                             }
                         }
@@ -376,12 +376,8 @@ impl<'a> RegionTranslator<'a> {
                     // For the sub-region, we need a new region translator
                     // with its own arguments and bindings.
                     // We then put the whole loop in a let binding and move on.
-                    let mut sub_translator = RegionTranslator::new(
-                        self.nodes,
-                        argument_values,
-                        new_arg_index,
-                        self.optimize_lets,
-                    );
+                    let mut sub_translator =
+                        RegionTranslator::new(self.nodes, argument_values, 0, self.optimize_lets);
                     let mut pred_outputs = vec![sub_translator
                         .translate_operand(*pred)
                         .to_expr()

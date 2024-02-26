@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::{egglog_test, interpreter::Value, schema::Constant};
+use crate::egglog_test;
 
 #[test]
 fn test_add_constant_fold() -> crate::Result {
@@ -14,8 +14,8 @@ fn test_add_constant_fold() -> crate::Result {
             expr.to_program(emptyt(), intt()),
             expr2.to_program(emptyt(), intt()),
         ],
-        Value::Tuple(vec![]),
-        Value::Const(Constant::Int(3)),
+        val_empty(),
+        val_int(3),
         vec![],
     )
 }

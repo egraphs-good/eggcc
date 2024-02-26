@@ -9,9 +9,9 @@ cleanup() {
 trap cleanup EXIT
 
 # TODO: take in file glob as command line argument
-PROFILES=(tests/*.bril tests/small/*.bril tests/brils/passing/**/*.bril)
+PROFILES=(tests/*.bril)
 
-RUNMODES=("nothing" "rvsdg-optimize")
+RUNMODES=("nothing" "rvsdg-round-trip")
 
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench

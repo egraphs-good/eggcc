@@ -8,4 +8,5 @@
       (saturate type-helpers)
       type-analysis
     )
-    (saturate constant_fold)))
+    (saturate constant_fold)
+    switch_rewrite))

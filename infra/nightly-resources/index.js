@@ -146,7 +146,7 @@ async function loadBenchmarks(compareTo) {
     const currentRun = await getBench("../");
     let previousRun = undefined;
     try {
-        previousRun = await getBench(compareTo.url);
+        previousRun = await getBench(compareTo.url+"/");
     } catch (e) {}
 
     const benchmarkNames = Object.keys(currentRun);

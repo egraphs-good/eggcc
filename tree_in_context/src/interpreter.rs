@@ -186,8 +186,16 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::Eq => Const(Constant::Bool(get_int(e1, self) == get_int(e2, self))),
             BinaryOp::LessThan => Const(Constant::Bool(get_int(e1, self) < get_int(e2, self))),
             BinaryOp::GreaterThan => Const(Constant::Bool(get_int(e1, self) > get_int(e2, self))),
-            BinaryOp::And => Const(Constant::Bool(get_bool(e1, self) && get_bool(e2, self))),
-            BinaryOp::Or => Const(Constant::Bool(get_bool(e1, self) || get_bool(e2, self))),
+            BinaryOp::And => {
+                let b1 = get_bool(e1, self);
+                let b2 = get_bool(e2, self);
+                Const(Constant::Bool(b1 && b2))
+            }
+            BinaryOp::Or => {
+                let b1 = get_bool(e1, self);
+                let b2 = get_bool(e2, self);
+                Const(Constant::Bool(b1 || b2))
+            }
             BinaryOp::Write => {
                 let pointer = get_pointer(e1, self);
                 let val = self.interpret_expr(e2, arg).clone();

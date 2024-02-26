@@ -8,6 +8,7 @@ use std::{
     io,
     path::PathBuf,
 };
+use tree_in_context::build_program;
 use tree_in_context::schema::TreeProgram;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
@@ -146,6 +147,13 @@ pub enum RunType {
     RvsdgConversion,
     /// Convert the input bril program to a tree-encoded expression.
     TreeConversion,
+    /// Convert the input bril program to a tree-encoded expression without
+    /// trying to prevent generating unnecessary let bindings
+    TreeConversionVerboseLets,
+    /// Convert the input bril program to tree-encoded expression and optimize it with egglog.
+    TreeOptimize,
+    /// Give the egglog program used to optimize the tree-encoded expression.
+    Egglog,
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
@@ -181,6 +189,9 @@ impl RunType {
             RunType::OptimizeDirectJumps => true,
             RunType::RvsdgToCfg => true,
             RunType::TreeConversion => true,
+            RunType::TreeConversionVerboseLets => true,
+            RunType::TreeOptimize => true,
+            RunType::Egglog => true,
         }
     }
 
@@ -191,7 +202,9 @@ impl RunType {
             | RunType::CfgRoundTrip
             | RunType::OptimizeDirectJumps
             | RunType::RvsdgToCfg
-            | RunType::TreeConversion => false,
+            | RunType::TreeConversion
+            | RunType::TreeConversionVerboseLets => false,
+            RunType::TreeOptimize | RunType::Egglog => false,
         }
     }
 }
@@ -278,6 +291,7 @@ impl Run {
             RunType::OptimizeDirectJumps,
             RunType::RvsdgToCfg,
             RunType::TreeConversion,
+            RunType::TreeOptimize,
         ] {
             if prog.has_mem && !test_type.supports_memory() {
                 continue;
@@ -352,7 +366,7 @@ impl Run {
             }
             RunType::TreeConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding();
+                let tree = rvsdg.to_tree_encoding(true);
                 (
                     vec![Visualization {
                         result: tree.pretty(),
@@ -360,6 +374,44 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::TreeProgram(tree)),
+                )
+            }
+            RunType::TreeConversionVerboseLets => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(false);
+                (
+                    vec![Visualization {
+                        result: tree.pretty(),
+                        file_extension: ".egg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::TreeProgram(tree)),
+                )
+            }
+            RunType::TreeOptimize => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                (
+                    vec![Visualization {
+                        result: optimized.pretty(),
+                        file_extension: ".egg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::TreeProgram(optimized)),
+                )
+            }
+            RunType::Egglog => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let egglog = build_program(&tree);
+                (
+                    vec![Visualization {
+                        result: egglog,
+                        file_extension: ".egg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
                 )
             }
             RunType::RvsdgToCfg => {

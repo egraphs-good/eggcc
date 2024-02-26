@@ -34,7 +34,6 @@ pub(crate) mod optimize_direct_jumps;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
-mod tree_unique;
 
 use std::fmt;
 

@@ -37,7 +37,7 @@ use crate::schema::Constant;
 use crate::Value;
 
 #[test]
-fn test_is_valid() -> Result<(), egglog::Error> {
+fn test_is_valid() -> crate::Result {
     let myloop = dowhile(
         in_context(inlet(int(2)), single(int(1))),
         parallel!(

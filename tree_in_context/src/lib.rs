@@ -14,8 +14,9 @@ mod to_egglog;
 pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
+use main_error::MainError;
 
-pub type Result = std::result::Result<(), egglog::Error>;
+pub type Result = std::result::Result<(), MainError>;
 
 pub fn prologue() -> String {
     [
@@ -99,5 +100,5 @@ pub fn egglog_test(
         println!("{:?}", res);
     }
 
-    res
+    Ok(res?)
 }

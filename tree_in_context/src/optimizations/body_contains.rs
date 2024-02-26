@@ -64,7 +64,7 @@ use crate::schema::Constant;
 use crate::Value;
 
 #[test]
-fn test_body_contains() -> Result<(), egglog::Error> {
+fn test_body_contains() -> crate::Result {
     let myloop = dowhile(
         in_context(inlet(int(2)), single(int(1))),
         parallel!(

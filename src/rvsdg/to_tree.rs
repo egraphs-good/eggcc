@@ -255,7 +255,6 @@ impl<'a> RegionTranslator<'a> {
             res.to_expr()
         });
         let expr = parallel_vec(resulting_exprs);
-        eprintln!("Resulting values: {:?}", resulting_values);
         (translator.build_translation(expr), resulting_values)
     }
 

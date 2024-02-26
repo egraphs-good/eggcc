@@ -424,27 +424,24 @@ fn test_interpreter_fib_using_memory() {
         alloc(int(nth + 2), intt()),
         tlet(
             concat_seq(
-                twrite(int_letarg(), int(0)), // address 0, value 0
+                twrite(letarg(), int(0)), // address 0, value 0
                 concat_seq(
-                    twrite(ptradd(int_letarg(), int(1)), int(1)), // address 1, value 1
-                    single(int_letarg()),
+                    twrite(ptradd(letarg(), int(1)), int(1)), // address 1, value 1
+                    single(letarg()),
                 ),
             ),
             tlet(
                 dowhile(
                     parallel!(ptradd(get_letarg(0), int(2)), int(2)),
                     cons_par(
-                        less_than(get_looparg(0), int(nth)),
+                        less_than(get_looparg(1), int(nth)),
                         tlet(
-                            concat_seq(
-                                twrite(
-                                    get_looparg(0),
-                                    add(
-                                        load(ptradd(get_looparg(0), int(-1))),
-                                        load(ptradd(get_looparg(0), int(-2))),
-                                    ),
+                            twrite(
+                                get_looparg(0),
+                                add(
+                                    load(ptradd(get_looparg(0), int(-1))),
+                                    load(ptradd(get_looparg(0), int(-2))),
                                 ),
-                                int_looparg(),
                             ),
                             parallel!(ptradd(get_looparg(0), int(1)), add(get_looparg(1), int(1))),
                         ),

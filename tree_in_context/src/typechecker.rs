@@ -297,8 +297,11 @@ impl<'a> TypeChecker<'a> {
                 let Type::TupleT(in_tys) = ity.clone() else {
                     panic!("Expected tuple type. Got {:?}", ity)
                 };
+                // input type is the new argument type
+                // let type is unbound
                 let new_arg_tys = ArgTypes {
                     loop_arg_ty: Some(Type::TupleT(in_tys.clone())),
+                    let_arg_ty: None,
                     ..arg_ty.clone()
                 };
                 let (pty, new_pred_and_outputs) =

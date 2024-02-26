@@ -70,7 +70,7 @@ fn test_body_contains() -> Result<(), egglog::Error> {
         parallel!(
             less_than(
                 get(looparg(), 0),
-                tlet(int(3), in_context(inlet(int(3)), looparg()))
+                tlet(int(3), in_context(inlet(int(3)), get_looparg(0)))
             ),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),

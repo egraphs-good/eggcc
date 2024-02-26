@@ -308,6 +308,8 @@ impl<'a> VirtualMachine<'a> {
                 while pred == Const(Constant::Bool(true)) {
                     let mut new_args = arg.clone();
                     new_args.loop_arg = Some(Tuple(vals.clone()));
+                    // unbind let arg now that we are in a loop's scope
+                    new_args.let_arg = None;
                     let Tuple(pred_output_val) = self.interpret_expr(pred_output, &new_args) else {
                         panic!("expected tuple for pred_output in do-while")
                     };

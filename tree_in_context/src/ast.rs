@@ -228,6 +228,10 @@ pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Let(lhs, rhs))
 }
 
+pub fn arg_with_type(scope: Scope, ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Arg(scope, ty))
+}
+
 /// Returns an argument with an unknown type.
 /// Use `with_arg_types` to fill in the correct type.
 pub fn arg(scope: Scope) -> RcExpr {

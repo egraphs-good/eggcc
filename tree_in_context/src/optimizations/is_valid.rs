@@ -1,3 +1,4 @@
+use crate::schema::Scope;
 use crate::schema_helpers::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 
@@ -48,7 +49,10 @@ fn test_is_valid() -> Result<(), egglog::Error> {
     // this expression is valid (it uses only IR constructors)
     // but it isn't a sub-expression of the initial one, so it won't be
     // marked as valid.
-    let not_made_valid = sub(looparg(), looparg()).with_arg_types(intt(), intt());
+    let not_made_valid = sub(
+        arg_with_type(Scope::LoopScope, intt()),
+        arg_with_type(Scope::LoopScope, intt()),
+    );
     let build = format!("(ExprIsValid {myloop}) {not_made_valid}");
     let check = format!(
         "
@@ -60,7 +64,7 @@ fn test_is_valid() -> Result<(), egglog::Error> {
     ",
         num0 = int(0),
         num2 = int(2),
-        arg = looparg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
+        arg = arg_with_type(Scope::LoopScope, intt()),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(

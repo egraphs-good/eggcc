@@ -1,10 +1,9 @@
 ;; Some simple simplifications of loops
 (ruleset loop-simplify)
 
-;; TODO generalize for more inputs
 (rewrite
- (DoWhile (Arg ty)
+ (DoWhile (Arg any_scope ty)
   (Concat (Parallel) (Single (Const (Bool false)))
-    body))
- body
+    (Single (Const constant))))
+ (Single (Const constant))
  :ruleset loop-simplify)

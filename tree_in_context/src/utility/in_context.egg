@@ -93,7 +93,7 @@
 
 
 
-(rule ((Arg ty)) ((ContextLess (Arg ty))) :ruleset context_propagate)
+(rule ((Arg scope ty)) ((ContextLess (Arg scope ty))) :ruleset context_propagate)
 (rule ((Const c)) ((ContextLess (Const c))) :ruleset context_propagate)
 (rule ((Empty)) ((ContextLess (Empty))) :ruleset context_propagate)
 (rule ((Bop op a b)

@@ -12,7 +12,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
             "
 (rule ((BodyContainsExpr loop expr) 
        (= loop (DoWhile in out)) 
-       (= expr (Get (Arg ty) i)) 
+       (= expr (Get (Arg (LoopScope) ty) i)) 
        (= loop (DoWhile in pred_out))
        (= expr (tuple-ith pred_out (+ i 1)))) 
       ((set (is-inv-Expr loop expr) true)){ruleset})"

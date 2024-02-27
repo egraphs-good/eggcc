@@ -29,6 +29,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("type_analysis.egg"),
         include_str!("utility/util.egg"),
+        include_str!("optimizations/loop_simplify.egg"),
     ]
     .join("\n")
 }

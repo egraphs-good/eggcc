@@ -92,17 +92,18 @@ use crate::{ast::*, egglog_test, interpreter::Value};
 #[test]
 fn test_invariant_detect_simple() -> crate::Result {
     let output_ty = tuplet!(intt(), intt(), intt(), intt());
-    let inv = sub(getarg(2), getarg(1)).with_arg_types(output_ty.clone(), intt());
-    let pred = less_than(getarg(0), getarg(3)).with_arg_types(output_ty.clone(), boolt());
-    let not_inv = add(getarg(0), inv.clone()).with_arg_types(output_ty.clone(), intt());
+    let inv = sub(get_looparg(2), get_looparg(1)).with_loop_arg_types(output_ty.clone(), intt());
+    let pred =
+        less_than(get_looparg(0), get_looparg(3)).with_loop_arg_types(output_ty.clone(), boolt());
+    let not_inv = add(get_looparg(0), inv.clone()).with_loop_arg_types(output_ty.clone(), intt());
     let inv_in_print = add(inv.clone(), int(4));
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4)),
         concat_par(
-            parallel!(pred.clone(), not_inv.clone(), getarg(1),),
+            parallel!(pred.clone(), not_inv.clone(), get_looparg(1),),
             concat_par(
                 tprint(inv_in_print.clone()),
-                parallel!(getarg(2), getarg(3),),
+                parallel!(get_looparg(2), get_looparg(3),),
             ),
         ),
     )

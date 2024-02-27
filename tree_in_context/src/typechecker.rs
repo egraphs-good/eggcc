@@ -45,6 +45,27 @@ impl Expr {
         new_expr
     }
 
+    pub(crate) fn with_loop_arg_types(self: RcExpr, loop_arg_ty: Type, output_ty: Type) -> RcExpr {
+        // program doesn't matter
+        let prog = TreeProgram {
+            entry: self.clone(),
+            functions: vec![],
+        };
+        let checker = TypeChecker::new(&prog);
+        let arg_ty = ArgTypes {
+            func_arg_ty: emptyt(),
+            loop_arg_ty: Some(loop_arg_ty),
+            let_arg_ty: None,
+        };
+        let (ty, new_expr) = checker.add_arg_types_to_expr(self.clone(), &arg_ty);
+        assert_eq!(
+            ty, output_ty,
+            "Expected return type to be {:?}. Got {:?}",
+            output_ty, ty
+        );
+        new_expr
+    }
+
     pub(crate) fn func_with_arg_types(self: RcExpr) -> RcExpr {
         match self.as_ref() {
             Expr::Function(name, in_ty, out_ty, body) => RcExpr::new(Expr::Function(

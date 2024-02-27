@@ -94,13 +94,13 @@ fn test_switch_contexts() -> crate::Result {
 fn test_dowhile_cycle_in_context() -> crate::Result {
     use crate::ast::*;
     // loop runs one iteration and returns 3
-    let myloop = dowhile(arg(), parallel!(tfalse(), int(3)));
+    let myloop = dowhile(funcarg(), parallel!(tfalse(), int(3)));
     let expr = function("main", tuplet!(intt()), tuplet!(intt()), myloop).func_with_arg_types();
     let int3func = function("main", tuplet!(intt()), tuplet!(intt()), single(int(3)));
 
     let fargincontext = in_context(
         infunc("main"),
-        arg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
+        funcarg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
     );
     let inner_in_context = inloop(fargincontext.clone(), parallel!(tfalse(), int(3)));
     let expr_intermediate = function(

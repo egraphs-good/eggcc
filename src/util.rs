@@ -1,3 +1,4 @@
+use crate::rvsdg::from_tree::tree_to_rvsdg;
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
@@ -157,6 +158,9 @@ pub enum RunType {
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
+    /// Convert to Tree Encoding and back to Bril again,
+    /// outputting the bril program.
+    TreeRoundTrip,
     /// Convert the original program to a CFG and output it as one SVG per function.
     ToCfg,
     /// Convert the original program to a CFG and back to Bril again.
@@ -184,6 +188,7 @@ impl RunType {
             RunType::Nothing => true,
             RunType::RvsdgConversion => false,
             RunType::RvsdgRoundTrip => true,
+            RunType::TreeRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
             RunType::OptimizeDirectJumps => true,
@@ -204,7 +209,7 @@ impl RunType {
             | RunType::RvsdgToCfg
             | RunType::TreeConversion
             | RunType::TreeConversionVerboseLets => false,
-            RunType::TreeOptimize | RunType::Egglog => false,
+            RunType::TreeOptimize | RunType::Egglog | RunType::TreeRoundTrip => false,
         }
     }
 }
@@ -354,6 +359,21 @@ impl Run {
             RunType::RvsdgRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
+                let bril = cfg.to_bril();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::Bril(bril)),
+                )
+            }
+            RunType::TreeRoundTrip => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let rvsdg2 = tree_to_rvsdg(tree);
+                let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
                 (
                     vec![Visualization {

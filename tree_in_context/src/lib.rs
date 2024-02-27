@@ -1,6 +1,6 @@
 use from_egglog::FromEgglog;
 use interpreter::Value;
-use schema::TreeProgram;
+use schema::{RcExpr, TreeProgram};
 
 use crate::interpreter::interpret_tree_prog;
 
@@ -55,6 +55,47 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     Ok(from_egglog.program_from_egglog(extracted.1))
 }
 
+fn check_func_type(func: RcExpr) {
+    let prologue = [
+        include_str!("schema.egg"),
+        include_str!("type_analysis.egg"),
+    ]
+    .join("\n");
+    let schedule = format!(
+        "
+    (run-schedule
+      (repeat 6
+        (saturate
+            (saturate type-helpers)
+            type-analysis
+          )))
+    "
+    );
+    
+    let body = func.func_body().expect("couldn't parse body");
+    let out_ty = func.func_output_ty().expect("couldn't parse output type");
+    let check = format!("(check (HasType BODY {out_ty}))");
+    let s = format!(
+        "{prologue}\n(let BODY {body})\n{schedule}\n{check}",
+    );
+
+    let res = egglog::EGraph::default()
+        .parse_and_run_program(&s)
+        .map(|lines| {
+            for line in lines {
+                println!("{}", line);
+            }
+        });
+    assert!(res.is_ok(), "Failed to type {} with expected type {}", body, out_ty);
+}
+
+fn check_program_gets_type(program: TreeProgram) {
+    check_func_type(program.entry);
+    for func in program.functions {
+        check_func_type(func);
+    }
+}
+
 /// Runs an egglog test.
 /// `build` is egglog code that runs before the running rules.
 /// `check` is egglog code that runs after the running rules.
@@ -81,6 +122,10 @@ pub fn egglog_test(
             "Program {:?}\nproduced log:\n{:?}\ninstead of expected log:\n{:?}",
             prog, print_log, expected_log
         );
+
+        // Check that the input program gets a type by the type analysis
+        check_program_gets_type(prog.clone());
+        println!("typed {prog}")
     }
 
     let program = format!(

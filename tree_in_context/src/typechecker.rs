@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     ast::emptyt,
-    schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
+    schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, Scope, TreeProgram, Type, UnaryOp},
 };
 
 impl TreeProgram {
@@ -14,6 +14,15 @@ impl TreeProgram {
     }
 }
 
+#[derive(Clone)]
+pub(crate) struct ArgTypes {
+    func_arg_ty: Type,
+    /// Loop type is available in a loop's scope
+    loop_arg_ty: Option<Type>,
+    /// Let type is available in a let's scope
+    let_arg_ty: Option<Type>,
+}
+
 impl Expr {
     /// Performs type checking, and also replaces any `Unknown` types
     /// in arguments with the correct types.
@@ -22,7 +31,12 @@ impl Expr {
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
         let prog = self.to_program(input_ty.clone(), output_ty.clone());
         let checker = TypeChecker::new(&prog);
-        let (ty, new_expr) = checker.add_arg_types_to_expr(self.clone(), input_ty);
+        let arg_ty = ArgTypes {
+            func_arg_ty: input_ty,
+            loop_arg_ty: None,
+            let_arg_ty: None,
+        };
+        let (ty, new_expr) = checker.add_arg_types_to_expr(self.clone(), &arg_ty);
         assert_eq!(
             ty, output_ty,
             "Expected return type to be {:?}. Got {:?}",
@@ -70,7 +84,12 @@ impl<'a> TypeChecker<'a> {
     pub(crate) fn add_arg_types_to_func(&self, func: RcExpr) -> RcExpr {
         match func.as_ref() {
             Expr::Function(name, in_ty, out_ty, body) => {
-                let (expr_ty, new_body) = self.add_arg_types_to_expr(body.clone(), in_ty.clone());
+                let arg_tys = ArgTypes {
+                    func_arg_ty: in_ty.clone(),
+                    loop_arg_ty: None,
+                    let_arg_ty: None,
+                };
+                let (expr_ty, new_body) = self.add_arg_types_to_expr(body.clone(), &arg_tys);
                 assert_eq!(
                     expr_ty, *out_ty,
                     "Expected return type to be {:?}. Got {:?}",
@@ -87,7 +106,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    pub(crate) fn add_arg_types_to_expr(&self, expr: RcExpr, arg_ty: Type) -> (Type, RcExpr) {
+    pub(crate) fn add_arg_types_to_expr(&self, expr: RcExpr, arg_ty: &ArgTypes) -> (Type, RcExpr) {
         match expr.as_ref() {
             Expr::Const(constant) => {
                 let ty = match constant {
@@ -97,8 +116,8 @@ impl<'a> TypeChecker<'a> {
                 (ty, expr)
             }
             Expr::Bop(BinaryOp::Write, left, right) => {
-                let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty.clone());
-                let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty.clone());
+                let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty);
+                let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty);
                 let Type::PointerT(innert) = lty else {
                     panic!("Expected pointer type. Got {:?}", lty)
                 };
@@ -118,8 +137,8 @@ impl<'a> TypeChecker<'a> {
                 )
             }
             Expr::Bop(BinaryOp::PtrAdd, left, right) => {
-                let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty.clone());
-                let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty.clone());
+                let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty);
+                let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty);
                 let Type::PointerT(innert) = lty else {
                     panic!("Expected pointer type. Got {:?}", lty)
                 };
@@ -134,8 +153,8 @@ impl<'a> TypeChecker<'a> {
             // covers all cases where the input and output types are concrete
             Expr::Bop(op, left, right) if op.types().is_some() => {
                 let (left_expected, right_expected, out_expected) = op.types().unwrap();
-                let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty.clone());
-                let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty.clone());
+                let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty);
+                let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty);
                 assert_eq!(
                     lty, left_expected,
                     "Expected left type to be {:?}. Got {:?}",
@@ -154,7 +173,7 @@ impl<'a> TypeChecker<'a> {
             // covers all cases where the input and output types are concrete
             Expr::Uop(op, inner) if op.types().is_some() => {
                 let (expected_inner, expected_out) = op.types().unwrap();
-                let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty.clone());
+                let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
                 assert_eq!(
                     ity, expected_inner,
                     "Expected inner type to be {:?}. Got {:?}",
@@ -163,11 +182,11 @@ impl<'a> TypeChecker<'a> {
                 (expected_out, RcExpr::new(Expr::Uop(op.clone(), new_inner)))
             }
             Expr::Uop(UnaryOp::Print, inner) => {
-                let (_ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty.clone());
+                let (_ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
                 (emptyt(), RcExpr::new(Expr::Uop(UnaryOp::Print, new_inner)))
             }
             Expr::Uop(UnaryOp::Load, inner) => {
-                let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty.clone());
+                let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
                 let Type::PointerT(out_ty) = ity else {
                     panic!("Expected pointer type. Got {:?}", ity)
                 };
@@ -177,22 +196,21 @@ impl<'a> TypeChecker<'a> {
                 )
             }
             Expr::Get(child, index) => {
-                let (cty, new_child) = self.add_arg_types_to_expr(child.clone(), arg_ty.clone());
-                let Type::TupleT(types) = cty else {
+                let (cty, new_child) = self.add_arg_types_to_expr(child.clone(), arg_ty);
+                let Type::TupleT(types) = cty.clone() else {
                     panic!("Expected tuple type in {:?}. Got {:?}", child, cty)
                 };
                 if *index >= types.len() {
                     panic!(
-                        "Index out of bounds. Tuple has {} elements, index is {}",
-                        types.len(),
-                        index
+                        "Index out of bounds. Tuple has type {}, index is {}. Expr:\n{}",
+                        cty, index, expr
                     );
                 }
                 let expected_ty = types[*index].clone();
                 (expected_ty, RcExpr::new(Expr::Get(new_child, *index)))
             }
             Expr::Alloc(amount, ty) => {
-                let (aty, new_amount) = self.add_arg_types_to_expr(amount.clone(), arg_ty.clone());
+                let (aty, new_amount) = self.add_arg_types_to_expr(amount.clone(), arg_ty);
                 let Type::Base(BaseType::IntT) = aty else {
                     panic!("Expected int type. Got {:?}", aty)
                 };
@@ -205,7 +223,7 @@ impl<'a> TypeChecker<'a> {
                 )
             }
             Expr::Call(string, arg) => {
-                let (aty, new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty.clone());
+                let (aty, new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty);
                 let func = self.program.get_function(string).unwrap();
                 assert_eq!(
                     aty,
@@ -221,12 +239,12 @@ impl<'a> TypeChecker<'a> {
             }
             Expr::Empty => (emptyt(), expr),
             Expr::Single(arg) => {
-                let (ty, new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty.clone());
+                let (ty, new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty);
                 (Type::TupleT(vec![ty]), RcExpr::new(Expr::Single(new_arg)))
             }
             Expr::Concat(order, left, right) => {
-                let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty.clone());
-                let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty.clone());
+                let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty);
+                let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty);
                 let Type::TupleT(ltypes) = lty else {
                     panic!("Expected tuple type. Got {:?}", lty)
                 };
@@ -240,16 +258,14 @@ impl<'a> TypeChecker<'a> {
                 )
             }
             Expr::Switch(integer, branches) => {
-                let (ity, new_integer) =
-                    self.add_arg_types_to_expr(integer.clone(), arg_ty.clone());
+                let (ity, new_integer) = self.add_arg_types_to_expr(integer.clone(), arg_ty);
                 let Type::Base(BaseType::IntT) = ity else {
                     panic!("Expected int type. Got {:?}", ity)
                 };
                 let mut new_branches = vec![];
                 let mut res_type = None;
                 for branch in branches {
-                    let (bty, new_branch) =
-                        self.add_arg_types_to_expr(branch.clone(), arg_ty.clone());
+                    let (bty, new_branch) = self.add_arg_types_to_expr(branch.clone(), arg_ty);
                     new_branches.push(new_branch);
                     res_type = match res_type {
                         Some(t) => {
@@ -265,13 +281,12 @@ impl<'a> TypeChecker<'a> {
                 )
             }
             Expr::If(pred, then, else_branch) => {
-                let (pty, new_pred) = self.add_arg_types_to_expr(pred.clone(), arg_ty.clone());
+                let (pty, new_pred) = self.add_arg_types_to_expr(pred.clone(), arg_ty);
                 let Type::Base(BaseType::BoolT) = pty else {
                     panic!("Expected bool type. Got {:?}", pty)
                 };
-                let (tty, new_then) = self.add_arg_types_to_expr(then.clone(), arg_ty.clone());
-                let (ety, new_else) =
-                    self.add_arg_types_to_expr(else_branch.clone(), arg_ty.clone());
+                let (tty, new_then) = self.add_arg_types_to_expr(then.clone(), arg_ty);
+                let (ety, new_else) = self.add_arg_types_to_expr(else_branch.clone(), arg_ty);
                 assert_eq!(
                     tty, ety,
                     "Expected then and else types to be the same. Got {:?} and {:?}",
@@ -280,17 +295,28 @@ impl<'a> TypeChecker<'a> {
                 (tty, RcExpr::new(Expr::If(new_pred, new_then, new_else)))
             }
             Expr::Let(input, body) => {
-                let (ity, new_input) = self.add_arg_types_to_expr(input.clone(), arg_ty.clone());
-                let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), ity);
+                let (ity, new_input) = self.add_arg_types_to_expr(input.clone(), arg_ty);
+                let new_arg_tys = ArgTypes {
+                    let_arg_ty: Some(ity.clone()),
+                    ..arg_ty.clone()
+                };
+                let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), &new_arg_tys);
                 (bty, RcExpr::new(Expr::Let(new_input, new_body)))
             }
             Expr::DoWhile(inputs, pred_and_outputs) => {
-                let (ity, new_inputs) = self.add_arg_types_to_expr(inputs.clone(), arg_ty.clone());
+                let (ity, new_inputs) = self.add_arg_types_to_expr(inputs.clone(), arg_ty);
                 let Type::TupleT(in_tys) = ity.clone() else {
                     panic!("Expected tuple type. Got {:?}", ity)
                 };
+                // input type is the new argument type
+                // let type is unbound
+                let new_arg_tys = ArgTypes {
+                    loop_arg_ty: Some(Type::TupleT(in_tys.clone())),
+                    let_arg_ty: None,
+                    ..arg_ty.clone()
+                };
                 let (pty, new_pred_and_outputs) =
-                    self.add_arg_types_to_expr(pred_and_outputs.clone(), ity);
+                    self.add_arg_types_to_expr(pred_and_outputs.clone(), &new_arg_tys);
                 let Type::TupleT(out_tys) = pty else {
                     panic!("Expected tuple type. Got {:?}", pty)
                 };
@@ -310,8 +336,44 @@ impl<'a> TypeChecker<'a> {
                 )
             }
             // Replace the argument type with the new type
-            Expr::Arg(Type::Unknown) => (arg_ty.clone(), Rc::new(Expr::Arg(arg_ty))),
-            Expr::Arg(found_ty) => {
+            Expr::Arg(scope, Type::Unknown) => match scope {
+                Scope::FuncScope => (
+                    arg_ty.func_arg_ty.clone(),
+                    Rc::new(Expr::Arg(scope.clone(), arg_ty.func_arg_ty.clone())),
+                ),
+                Scope::LoopScope => {
+                    let loop_arg_ty = arg_ty
+                        .loop_arg_ty
+                        .clone()
+                        .expect("Program refers to loop argument outside of loop");
+                    (
+                        loop_arg_ty.clone(),
+                        Rc::new(Expr::Arg(scope.clone(), loop_arg_ty)),
+                    )
+                }
+                Scope::LetScope => {
+                    let let_arg_ty = arg_ty
+                        .let_arg_ty
+                        .clone()
+                        .expect("Program refers to let argument outside of let");
+                    (
+                        let_arg_ty.clone(),
+                        Rc::new(Expr::Arg(scope.clone(), let_arg_ty)),
+                    )
+                }
+            },
+            Expr::Arg(scope, found_ty) => {
+                let arg_ty = match scope {
+                    Scope::FuncScope => arg_ty.func_arg_ty.clone(),
+                    Scope::LoopScope => arg_ty
+                        .loop_arg_ty
+                        .clone()
+                        .expect("Program refers to loop argument outside of loop"),
+                    Scope::LetScope => arg_ty
+                        .let_arg_ty
+                        .clone()
+                        .expect("Program refers to let argument outside of let"),
+                };
                 assert_eq!(
                     found_ty, &arg_ty,
                     "Expected argument type to be {:?}. Got {:?}",
@@ -320,7 +382,7 @@ impl<'a> TypeChecker<'a> {
                 (arg_ty, expr)
             }
             Expr::InContext(assumption, body) => {
-                let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), arg_ty.clone());
+                let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), arg_ty);
                 (
                     bty,
                     RcExpr::new(Expr::InContext(assumption.clone(), new_body)),

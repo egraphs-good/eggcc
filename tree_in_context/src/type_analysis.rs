@@ -276,14 +276,14 @@ fn switch_branches() {
 
 #[test]
 fn lets() -> crate::Result {
-    let inp = tlet(int(4), add(int_arg(), int_arg()));
+    let inp = tlet(int(4), add(int_letarg(), int_letarg()));
     type_test(inp, intt(), val_int(0), val_int(8))
 }
 
 #[test]
 #[should_panic]
 fn let_type_error() {
-    type_error_test(tlet(int(1), and(bool_arg(), ttrue())));
+    type_error_test(tlet(int(1), and(bool_letarg(), ttrue())));
 }
 
 #[test]
@@ -298,7 +298,7 @@ fn loops() -> crate::Result {
 
     let l15 = dowhile(
         single(int(1)),
-        concat_seq(single(tfalse()), single(add(get(arg(), 0), int(1)))),
+        concat_seq(single(tfalse()), single(add(get(looparg(), 0), int(1)))),
     );
     type_test(
         l15,
@@ -308,8 +308,8 @@ fn loops() -> crate::Result {
     )?;
 
     // while x < 4, x++
-    let pred = single(less_than(get(arg(), 0), int(4)));
-    let body = single(add(get(arg(), 0), int(1)));
+    let pred = single(less_than(get(looparg(), 0), int(4)));
+    let body = single(add(get(looparg(), 0), int(1)));
     let l2 = dowhile(single(int(1)), concat_seq(pred, body));
     type_test(
         l2,
@@ -324,10 +324,10 @@ fn loops() -> crate::Result {
     let l2 = dowhile(
         concat_par(single(int(1)), single(int(2))),
         concat_par(
-            single(less_than(get(arg(), 0), int(5))),
+            single(less_than(get(looparg(), 0), int(5))),
             concat_par(
-                single(add(get(arg(), 0), int(1))),
-                single(mul(get(arg(), 0), int(2))),
+                single(add(get(looparg(), 0), int(1))),
+                single(mul(get(looparg(), 0), int(2))),
             ),
         ),
     );
@@ -386,11 +386,16 @@ fn loop_inputs_outputs_error2() {
 
 #[test]
 fn funcs_and_calls() -> crate::Result {
-    let f = function("f", intt(), intt(), add(int_arg(), int(2)));
+    let body = add(int_funcarg(), int(2));
+    let f = function("f", intt(), intt(), body.clone());
     let c = call("f", int(4));
     egglog_test(
         &format!("{f}{c}"),
-        &format!("(check (HasType {c} (Base (IntT))))"),
+        &format!(
+            "
+        (check (HasType {body} (Base (IntT))))
+        (check (HasType {c} (Base (IntT))))"
+        ),
         vec![f.to_program(intt(), intt())],
         val_int(4),
         val_int(6),

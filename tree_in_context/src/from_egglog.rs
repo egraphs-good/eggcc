@@ -129,6 +129,16 @@ impl FromEgglog {
         })
     }
 
+    fn scope_from_egglog(&self, scope: Term) -> crate::schema::Scope {
+        match_term_app!(scope.clone();
+        {
+          ("LetScope", []) => crate::schema::Scope::LetScope,
+          ("LoopScope", []) => crate::schema::Scope::LoopScope,
+          ("FuncScope", []) => crate::schema::Scope::FuncScope,
+          _ => panic!("Invalid scope: {:?}", scope),
+        })
+    }
+
     fn binop_from_egglog(&self, op: Term) -> BinaryOp {
         match_term_app!(op.clone();
         {
@@ -260,9 +270,9 @@ impl FromEgglog {
               self.expr_from_egglog(body),
             ))
           }
-          ("Arg", [type_]) => {
+          ("Arg", [scope, type_]) => {
             let type_ = self.termdag.get(*type_);
-            Rc::new(Expr::Arg(self.type_from_egglog(type_)))
+            Rc::new(Expr::Arg(self.scope_from_egglog(self.termdag.get(*scope)), self.type_from_egglog(type_)))
           }
           ("InContext", [assumption, expr]) => {
             let assumption = self.termdag.get(*assumption);

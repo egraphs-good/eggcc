@@ -1,7 +1,8 @@
 use crate::{
     interpreter::Value,
     schema::{
-        Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
+        Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, Scope, TreeProgram, Type,
+        UnaryOp,
     },
 };
 
@@ -104,8 +105,16 @@ pub fn get(e: RcExpr, i: usize) -> RcExpr {
     RcExpr::new(Expr::Get(e, i))
 }
 
-pub fn getarg(i: usize) -> RcExpr {
-    get(arg(), i)
+pub fn get_letarg(i: usize) -> RcExpr {
+    get(letarg(), i)
+}
+
+pub fn get_looparg(i: usize) -> RcExpr {
+    get(looparg(), i)
+}
+
+pub fn get_funcarg(i: usize) -> RcExpr {
+    get(funcarg(), i)
 }
 
 pub fn first(e: RcExpr) -> RcExpr {
@@ -219,24 +228,48 @@ pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Let(lhs, rhs))
 }
 
+pub fn arg_with_type(scope: Scope, ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Arg(scope, ty))
+}
+
 /// Returns an argument with an unknown type.
 /// Use `with_arg_types` to fill in the correct type.
-pub fn arg() -> RcExpr {
-    RcExpr::new(Expr::Arg(Type::Unknown))
+pub fn arg(scope: Scope) -> RcExpr {
+    RcExpr::new(Expr::Arg(scope, Type::Unknown))
+}
+
+pub fn letarg() -> RcExpr {
+    arg(Scope::LetScope)
+}
+
+pub fn looparg() -> RcExpr {
+    arg(Scope::LoopScope)
+}
+
+pub fn funcarg() -> RcExpr {
+    arg(Scope::FuncScope)
 }
 
 /// An argument with an integer type.
-pub fn int_arg() -> RcExpr {
-    RcExpr::new(Expr::Arg(intt()))
+pub fn int_letarg() -> RcExpr {
+    RcExpr::new(Expr::Arg(Scope::LetScope, intt()))
+}
+
+pub fn int_looparg() -> RcExpr {
+    RcExpr::new(Expr::Arg(Scope::LoopScope, intt()))
+}
+
+pub fn int_funcarg() -> RcExpr {
+    RcExpr::new(Expr::Arg(Scope::FuncScope, intt()))
 }
 
 /// An argument with a boolean type.
-pub fn bool_arg() -> RcExpr {
-    RcExpr::new(Expr::Arg(boolt()))
+pub fn bool_letarg() -> RcExpr {
+    RcExpr::new(Expr::Arg(Scope::LetScope, boolt()))
 }
 
-pub fn getat(index: usize) -> RcExpr {
-    get(int_arg(), index)
+pub fn get_let_at(index: usize) -> RcExpr {
+    get(int_letarg(), index)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {

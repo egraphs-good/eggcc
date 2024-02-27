@@ -162,6 +162,7 @@ pub(crate) enum Sort {
     Expr,
     ListExpr,
     Order,
+    Scope,
     BinaryOp,
     UnaryOp,
     I64,
@@ -177,6 +178,7 @@ impl Sort {
             Sort::Expr => "Expr",
             Sort::ListExpr => "ListExpr",
             Sort::Order => "Order",
+            Sort::Scope => "Scope",
             Sort::I64 => "i64",
             Sort::String => "String",
             Sort::Type => "Type",
@@ -338,7 +340,7 @@ impl Constructor {
                 vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")]
             }
             Constructor::Let => vec![f(SubExpr, "in"), f(CapturedExpr, "out")],
-            Constructor::Arg => vec![f(Static(Sort::Type), "ty")],
+            Constructor::Arg => vec![f(Static(Sort::Scope), "scope"), f(Static(Sort::Type), "ty")],
             Constructor::Call => {
                 vec![f(Static(Sort::String), "func"), f(SubExpr, "arg")]
             }

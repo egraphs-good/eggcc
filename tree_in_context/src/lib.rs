@@ -14,8 +14,9 @@ mod to_egglog;
 pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
+use main_error::MainError;
 
-pub type Result = std::result::Result<(), egglog::Error>;
+pub type Result = std::result::Result<(), MainError>;
 
 pub fn prologue() -> String {
     [
@@ -24,7 +25,6 @@ pub fn prologue() -> String {
         &optimizations::body_contains::rules().join("\n"),
         &optimizations::purity_analysis::rules().join("\n"),
         include_str!("utility/in_context.egg"),
-        include_str!("utility/subst.egg"),
         include_str!("optimizations/constant_fold.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("type_analysis.egg"),
@@ -102,5 +102,5 @@ pub fn egglog_test(
         println!("{:?}", res);
     }
 
-    res
+    Ok(res?)
 }

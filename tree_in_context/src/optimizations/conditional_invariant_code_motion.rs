@@ -90,10 +90,11 @@ use crate::schema::Constant;
 use crate::Value;
 
 #[test]
-fn test_lift_switch() -> Result<(), egglog::Error> {
-    let switch = switch!(int(1); less_than(getarg(0), int(7)), less_than(getarg(1), int(7)))
-        .with_arg_types(tuplet!(intt(), intt()), boolt());
-    let lifted = less_than(switch!(int(1); getarg(0), getarg(1)), int(7))
+fn test_lift_switch() -> crate::Result {
+    let switch =
+        switch!(int(1); less_than(get_funcarg(0), int(7)), less_than(get_funcarg(1), int(7)))
+            .with_arg_types(tuplet!(intt(), intt()), boolt());
+    let lifted = less_than(switch!(int(1); get_funcarg(0), get_funcarg(1)), int(7))
         .with_arg_types(tuplet!(intt(), intt()), boolt());
     let build = format!("(ExprIsValid {switch})");
     let check = format!("(check (= {switch} {lifted}))");

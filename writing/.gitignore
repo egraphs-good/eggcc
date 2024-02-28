@@ -1,0 +1,17 @@
+# latex stuff
+
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+*.pdf
+
+# mac trash
+.DS_Store
+
+_build/
+*.drawio.bkp

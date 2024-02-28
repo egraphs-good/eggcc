@@ -106,3 +106,22 @@
 (rule ((= expr (InContext assumption e)) 
        (= sum (Expr-size e))) 
       ((set (Expr-size expr) sum)) :ruleset always-run)
+
+;; Subst the scope under a expr from a scope to a another scope
+;; not implemented yet, it might be solved by subst?
+(function subst-arg-scope (Expr Scope Scope) Expr :unextractable)
+;; base case example
+(rule ((= f (subst-arg-scope expr from to))
+       (= expr (Arg from ty)))
+      ((union f (Arg to ty))))
+
+(function tuple-of-get-arg (Type Scope i64) Expr :unextractable)
+(function tuple-of-get-arg-helper (Type Scope i64 i64) Expr :unextractable)
+
+(rewrite (tuple-of-get-arg ty scope n) (tuple-of-get-arg-helper ty scope n 0) :ruleset always-run)
+(rewrite (tuple-of-get-arg-helper ty scope 1 x) (Single (Get (Arg scope ty) x)) :ruleset always-run)
+(rule ((= f (tuple-of-get-arg-helper ty scope a b)) (> a 1))
+      ((union f 
+         (Concat par
+               (Get (Arg scope ty) b) 
+               (tuple-of-get-arg-helper ty scope (- a 1) (+ b 1))))) :ruleset always-run)

@@ -128,12 +128,6 @@ use crate::{ast::*, egglog_test, interpreter::Value};
 #[test]
 fn test_invariant_detect_simple() -> crate::Result {
     let output_ty = tuplet!(intt(), intt(), intt(), intt());
-
-    // let inv = sub(get_looparg(2), get_looparg(1)).with_loop_arg_types(output_ty.clone(), intt());
-    // let pred =
-    //     less_than(get_looparg(0), get_looparg(3)).with_loop_arg_types(output_ty.clone(), boolt());
-    // let not_inv = add(get_looparg(0), inv.clone()).with_loop_arg_types(output_ty.clone(), intt());
-
     let inner_inv =
         sub(get_looparg(2), get_looparg(1)).with_loop_arg_types(output_ty.clone(), intt());
     let inv = add(inner_inv.clone(), int(0)).with_loop_arg_types(output_ty.clone(), intt());
@@ -146,11 +140,6 @@ fn test_invariant_detect_simple() -> crate::Result {
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4)),
         concat_par(
-            // parallel!(pred.clone(), not_inv.clone(), get_looparg(1),),
-            // concat_par(
-            //     tprint(inv_in_print.clone()),
-            //     parallel!(get_looparg(2), get_looparg(3),),
-            // ),
             parallel!(pred.clone(), not_inv.clone(), get_looparg(1)),
             concat_par(print.clone(), parallel!(get_looparg(2), get_looparg(3))),
         ),

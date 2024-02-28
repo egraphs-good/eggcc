@@ -1,50 +1,4 @@
-\newcommand{\inferax}[2]{\infrule[#1]{\mbox{}}{\mbox{$#2$}}}
-\renewcommand{\inferrule}[3]{\infrule[#1]{\mbox{$#2$}}{\mbox{$#3$}}}
-\newcommand{\bigstep}[2]{#1 \Downarrow #2}
-\newcommand{\ang}[1]{\langle #1 \rangle}
-\newcommand{\spair}[2]{\ang{#1, #2}}
-\newcommand{\strip}[3]{\ang{#1, #2, #3}}
-
-\newcommand{\targ}{\alpha}
-\newcommand{\tmem}{\sigma}
-
-\newcommand{\uop}[2]{\operatorname{#1}\ #2}
-\newcommand{\bop}[3]{\operatorname{#1}\ #2\ #3}
-\newcommand{\trop}[4]{\operatorname{#1}\ #2\ #3\ #4}
-
-% (expression, arg, state) to (value, state)
-\newcommand{\easvs}[5]{\bigstep{\strip{#1}{#2}{#3}}{\spair{#4}{#5}}}
-
-% "definition" version of easvs
-\newcommand{\easvsd}[5]{\easvs{#1}{#2}{#3}{#4}{#5}}
-
-\newcommand{\append}[2]{#1\ \texttt{+\hspace{-1pt}+}\ #2}
-
-\clearpage
-
-\newpage
-
 \subsection*{Denotational semantics}
-
-\renewcommand{\denote}[1]{\left\llbracket #1 \right\rrbracket}
-\newcommand{\denotesub}[2]{\left\llbracket #2 \right\rrbracket_{#1}}
-\newcommand{\denotevalue}[1]{\denotesub{v}{#1}}
-\newcommand{\denotestate}[1]{\denotesub{s}{#1}}
-
-% denote called as a function
-\newcommand{\denotef}[2]{\denote{#1}\hspace{-.1em}\left(#2\right)}
-
-\newcommand{\denotefv}[2]{\denotevalue{#1}\hspace{-.2em}\left(#2\right)}
-\newcommand{\denotefs}[2]{\denotestate{#1}\hspace{-.2em}\left(#2\right)}
-\newcommand{\denotefsub}[3]{\denotesub{#1}{#2}\hspace{-.2em}\left(#3\right)}
-
-\newcommand{\eqdef}{\triangleq}
-
-%% $\denote{\cdot} : \mathrm{Value} \times \mathrm{State} \to \mathrm{Value} \times \mathrm{State}$
-
-%% $\easvs{e}{\targ}{\tmem}{v}{\tmem'}$ means: with argument $\targ$ and state $\tmem$, $e$ evaluates to $v$ and the resulting state is $\tmem'$.
-
-%% $\denotevalue{\cdot} : \mathrm{Value} \times \mathrm{State} \to \mathrm{Value} \triangleq \mathrm{fst} \circ \denote{\cdot}$
 
 Evaluating $e$ with argument $\targ$ and state $\tmem$ results in the value $\denotefv{e}{\targ,\tmem}$ and the updated state $\denotefs{e}{\targ,\tmem}$.\\
 $\denotevalue{\cdot} : \mathrm{Value} \times \mathrm{State} \to \mathrm{Value}$\quad\quad
@@ -123,7 +77,6 @@ $\operatorname{malloc}$ takes a state and number of bytes $n$, finds a contiguou
 \denotefs{\bop{Concat\ Sequential}{e_1}{e_2}}{\targ,\tmem} &\eqdef
 \denotefs{e_2}{\targ,\denotefs{e_1}{\targ,\tmem}}\\
 %
-%% \mathrm{NextArgState_{e_{po}}}(\targ,\tmem) &\eqdef (\denotefv{e_{po}}(\targ,\tmem)[1], \denotefs{e_{po}}(\targ,\tmem))\\
 \denotef{\bop{DoWhile}{e_{in}}{e_{po}}}{\targ,\tmem} &\eqdef
 \mathrm{let}\ (v_{in},\tmem') = \denotef{e_{in}}{\targ,\tmem}\ \mathrm{in}\\
 &\hspace{1.3em}\mathrm{let}\ ((v_{pred}, v_{out}), \tmem'') = \denotef{e_{po}}{v_{in},\tmem'}\ \mathrm{in}\\
@@ -137,46 +90,18 @@ $\operatorname{malloc}$ takes a state and number of bytes $n$, finds a contiguou
 \denotef{\bop{Context}{(\uop{InLet}{e_{in}})}{e}}{\targ,\tmem} &\eqdef
 \begin{cases}
   \denotef{e}{\targ,\tmem} & \exists \targ', \tmem' . \; \denotefv{e_{in}}{\targ',\tmem'} = \targ
-  %% \\ \mathrm{undefined} & \text{otherwise}
 \end{cases}\\
 %
 \denotef{\bop{Context}{(\bop{AfterWrite}{e_p}{e_d})}{e}}{\targ,\tmem} &\eqdef
 \begin{cases}
   \denotef{e}{\targ,\tmem} & \exists \targ', \tmem' . \; \denotefs{\bop{Write}{e_p}{e_d}}{\targ',\tmem'} = \tmem
-  %% \\ \mathrm{undefined} & \text{otherwise}
 \end{cases}\\
 %
-%% \operatorname{possibleargs}(e_{in},e_{po}) &\eqdef \{\denotefv{e_{in}}{\targ,\tmem} \ |\  \targ \in \mathrm{Value}, \tmem \in \mathrm{State} \}\\
-%% \denotef{\bop{Context}{(\bop{InLoop}{e_{in}}{e_{po}})}{e}}{\targ,\tmem} &\eqdef
-%% \begin{cases}
-%%   \denotef{e}{\targ,\tmem} &
-%%     \begin{aligned}
-%%       &\exists \targ', \tmem' . \\
-%%       &\denotefv{e_{in}}{\targ',\tmem'} = \targ \; \lor\\
-%%       &(\mathrm{let}\ (v_p, v_o) = \denotefv{e_{po}}{\targ',\tmem'} \mathrm{in}\\
-%%       &v_p = \top \land\\
-%%       & (v_o, \tmem') \in \operatorname{domain}(\denote{\bop{Context}{(\bop{InLoop}{\mathrm{Arg}}{e_{po}})}{e}}))
-%%     \end{aligned}
-%%   %% \\ \mathrm{undefined} & \text{otherwise}
-%% \end{cases}\\
 \denotef{\bop{Context}{(\bop{InLoop}{e_{in}}{e_{po}})}{e}}{\targ,\tmem} &\eqdef
 \begin{cases}
   \denotef{e}{\targ,\tmem} &
     \exists  \tmem' . \; (\targ,\tmem') \in  \operatorname{loop\_reachable}(e_{in},e_{po})
 \end{cases}
-%% \text{\color{gray}alternate version:}&\\
-%% \denotef{\bop{Context}{(\bop{InLoop}{e_{in}}{e_{po}})}{e}}{\targ,\tmem} &\eqdef
-%% \begin{cases}
-%%   \denotef{e}{\targ,\tmem} &
-%%     \begin{aligned}
-%%       &\exists \targ', \tmem' . \\
-%%       &\denotefv{e_{in}}{\targ',\tmem'} = \targ \; \lor\\
-%%       &(\mathrm{let}\ (v_p, v_o) = \denotefv{e_{po}}{\targ',\tmem'} \mathrm{in}\\
-%%       &v_p = \top \land\\
-%%       & (v_o, \tmem') \in \operatorname{domain}(\denote{\bop{Context}{(\bop{InLoop}{\mathrm{Arg}}{e_{po}})}{e}}))
-%%     \end{aligned}
-%%   %% \\ \mathrm{undefined} & \text{otherwise}
-%% \end{cases}\\
 \end{align*}
 \begin{lstlisting}[escapeinside={(*}{*)}]
 def loop_reachable((*$e_{in}$*), (*$e_{po}$*)):
@@ -189,19 +114,6 @@ def loop_reachable((*$e_{in}$*), (*$e_{po}$*)):
   return res
 \end{lstlisting}
 
-%% \begin{gather*}
-%% F_{(e_{in},e_{po})} : (\mathrm{Value} \times \mathrm{State} \to \mathrm{Value} \times \mathrm{State}) \to (\mathrm{Value} \times \mathrm{State} \to \mathrm{Value} \times \mathrm{State})\\
-%% F_{(e_{in},e_{po})}(f) \eqdef \lambda \targ. \tmem. \begin{cases}
-%%   (\denotefv{e_{po}}{\denotef{e_{in}}{\targ,\tmem}},
-%%    \denotefs{e_{po}}{\denotef{e_{in}}{\targ,\tmem}})
-%%    & \denotefv{e_{po}}{\targ,\tmem}[1] = \bot\\
-%%   (\denotefv{e_{po}}{\denotef{e_{in}}{\targ,\tmem}},
-%%    \denotefs{e_{po}}{\denotef{e_{in}}{\targ,\tmem}})
-%%    & \denotefv{e_{po}}{\targ,\tmem}[1] = \top\\
-%% \end{cases}
-%% \end{gather*}
-%% \begin{align*}
-%% \end{align*}
 
 \newpage
 
@@ -330,56 +242,53 @@ A state is a pair $(M, L)$, containing memory and a print log.
 
 \newpage
 \subsection*{Abstract grammar}
-%% \begin{figure}%{\linewidth}
-  \begin{minipage}[t]{0.45\linewidth}
-    \begin{grammar}
-      <basetype> ::= IntT \alt BoolT
+\begin{minipage}[t]{0.45\linewidth}
+  \begin{grammar}
+    <basetype> ::= IntT \alt BoolT
 
-      <type> ::= <basetype> \alt PointerT <type> \alt TupleT <basetype>*
+    <type> ::= <basetype> \alt PointerT <type> \alt TupleT <basetype>*
 
-      <bool> ::= $\top$ \alt $\bot$
+    <bool> ::= $\top$ \alt $\bot$
 
-      <order> ::= Parallel \alt Sequential
+    <order> ::= Parallel \alt Sequential
 
-      <function> ::= Function <type> <expr>
+    <function> ::= Function <type> <expr>
 
-      <assumption> ::= InLet <expr>
-      \alt InLoop <expr> <expr>
-      %% \alt InFunc <function>
-      %% \alt InSwitch <\N> <expr>
-      %% \alt InIf <bool> <expr>
-      \alt AfterWrite <expr> <expr>
-    \end{grammar}
-  \end{minipage}\hfill%
-  \begin{minipage}[t]{0.5\linewidth}
-    \begin{grammar}
-      <expr> ::= Arg <type>
-      \alt Int <\N>
-      \alt Bool <bool>
-      \alt Empty
-      \alt Add <expr> <expr>
-      \alt Sub <expr> <expr>
-      \alt Mul <expr> <expr>
-      \alt LessThan <expr> <expr>
-      \alt And <expr> <expr>
-      \alt Or <expr> <expr>
-      \alt Write <expr> <expr>
-      %% \alt PtrAdd <expr> <expr>
-      \alt Not <expr>
-      \alt Print <expr>
-      \alt Read <expr>
-      \alt Get <expr> <\N>
-      \alt Alloc <expr> <type>
-      \alt Call <function> <expr>
-      \alt Single <expr>
-      \alt Concat <order> <expr> <expr>
-      \alt Switch <expr> <expr>*
-      \alt If <expr> <expr> <expr>
-      \alt Let <expr> <expr>
-      \alt DoWhile <expr> <expr>
-      \alt Context <assumption> <expr>
-    \end{grammar}%
-    \end{minipage}%
-%%   \caption{expr abstract syntax.}
-%% \end{figure}
+    <assumption> ::= InLet <expr>
+    \alt InLoop <expr> <expr>
+    %% \alt InFunc <function>
+    %% \alt InSwitch <\N> <expr>
+    %% \alt InIf <bool> <expr>
+    \alt AfterWrite <expr> <expr>
+  \end{grammar}
+\end{minipage}\hfill%
+\begin{minipage}[t]{0.5\linewidth}
+  \begin{grammar}
+    <expr> ::= Arg <type>
+    \alt Int <\N>
+    \alt Bool <bool>
+    \alt Empty
+    \alt Add <expr> <expr>
+    \alt Sub <expr> <expr>
+    \alt Mul <expr> <expr>
+    \alt LessThan <expr> <expr>
+    \alt And <expr> <expr>
+    \alt Or <expr> <expr>
+    \alt Write <expr> <expr>
+    %% \alt PtrAdd <expr> <expr>
+    \alt Not <expr>
+    \alt Print <expr>
+    \alt Read <expr>
+    \alt Get <expr> <\N>
+    \alt Alloc <expr> <type>
+    \alt Call <function> <expr>
+    \alt Single <expr>
+    \alt Concat <order> <expr> <expr>
+    \alt Switch <expr> <expr>*
+    \alt If <expr> <expr> <expr>
+    \alt Let <expr> <expr>
+    \alt DoWhile <expr> <expr>
+    \alt Context <assumption> <expr>
+  \end{grammar}%
+\end{minipage}%
 

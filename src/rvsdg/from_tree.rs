@@ -1,8 +1,11 @@
 //! Convert tree programs to RVSDGs
 
-use tree_in_context::schema::{BaseType, RcExpr, TreeProgram, Type};
+use bril_rs::{ConstOps, Literal};
+use tree_in_context::schema::{BaseType, Expr, RcExpr, TreeProgram, Type};
 
-use super::{RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
+use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
+
+type Operands = Vec<Operand>;
 
 struct TreeToRvsdg {
     nodes: Vec<RvsdgBody>,
@@ -44,12 +47,52 @@ fn rvsdg_types_from_tuple_type(ty: Type) -> Vec<RvsdgType> {
 fn tree_func_to_rvsdg(func: RcExpr) -> RvsdgFunction {
     let types = func.func_output_ty().expect("Expected function types");
 
-    let mut res = RvsdgFunction {
+    let mut converter = TreeToRvsdg { nodes: vec![] };
+
+    let converted = converter.convert_func(func.clone());
+
+    RvsdgFunction {
         name: func
             .func_name()
             .expect("Expected function in tree_func_to_rvsdg"),
-        args: todo!(),
-        nodes: todo!(),
-        results: todo!(),
-    };
+        args: rvsdg_types_from_tuple_type(types),
+        nodes: converter.nodes,
+        results: converted,
+    }
+}
+
+impl TreeToRvsdg {
+    pub fn convert_func(&mut self, func: RcExpr) -> Vec<(RvsdgType, Operand)> {
+        todo!()
+    }
+
+    fn push_basic(&mut self, basic: BasicExpr<Operand>) -> Vec<Operand> {
+        let new_id = self.nodes.len();
+        self.nodes.push(RvsdgBody::BasicOp(basic));
+        vec![Operand::Project(0, new_id)]
+    }
+
+    fn convert_expr(&mut self, expr: RcExpr) -> Operands {
+        match expr.as_ref() {
+            Expr::Const(constant) => match constant {
+                tree_in_context::schema::Constant::Int(integer) => self.push_basic(
+                    BasicExpr::Const(ConstOps::Const, Literal::Int(*integer), bril_rs::Type::Int),
+                ),
+                tree_in_context::schema::Constant::Bool(boolean) => {
+                    self.push_basic(BasicExpr::Const(
+                        ConstOps::Const,
+                        Literal::Bool(*boolean),
+                        bril_rs::Type::Bool,
+                    ))
+                }
+            },
+            Expr::Bop(op, l, r) => {
+                let l = self.convert_expr(l.clone());
+                let r = self.convert_expr(r.clone());
+                let l = l[0].clone();
+                let r = r[0].clone();
+                self.push_basic(BasicExpr::Op(*op, vec![l, r], bril_rs::Type::Int))
+            }
+        }
+    }
 }

@@ -95,11 +95,11 @@ use crate::schema::Constant;
 use crate::Value;
 
 #[test]
-fn test_purity_analysis() -> Result<(), egglog::Error> {
+fn test_purity_analysis() -> crate::Result {
     let pureloop = dowhile(
         in_context(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(get(arg(), 0), int(3)),
+            less_than(get(looparg(), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     )
@@ -107,7 +107,7 @@ fn test_purity_analysis() -> Result<(), egglog::Error> {
     let impureloop = dowhile(
         in_context(inlet(int(2)), single(int(1))),
         parallel!(
-            less_than(get(arg(), 0), int(3)),
+            less_than(get(looparg(), 0), int(3)),
             get(
                 switch!(load(alloc(int(0), intt())); parallel!(int(4), int(5))),
                 0

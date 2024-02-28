@@ -34,7 +34,7 @@ pub(crate) mod optimize_direct_jumps;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
-mod tree_unique;
+mod to_tree;
 
 use std::fmt;
 
@@ -105,6 +105,7 @@ pub(crate) enum BasicExpr<Op> {
     /// Note: the only bril effects that can show up are print and
     /// memory-related (Print, Store, Free). Other effects (e.g. control flow)
     /// are handled separately.
+    /// The state edge for these operators is the last input and last output.
     Effect(EffectOps, Vec<Op>),
 }
 

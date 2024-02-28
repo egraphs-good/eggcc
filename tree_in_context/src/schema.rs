@@ -75,6 +75,13 @@ pub enum Assumption {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Scope {
+    FuncScope,
+    LetScope,
+    LoopScope,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Const(Constant),
     Bop(BinaryOp, RcExpr, RcExpr),
@@ -89,7 +96,7 @@ pub enum Expr {
     If(RcExpr, RcExpr, RcExpr),
     Let(RcExpr, RcExpr),
     DoWhile(RcExpr, RcExpr),
-    Arg(Type),
+    Arg(Scope, Type),
     InContext(Assumption, RcExpr),
     Function(String, Type, Type, RcExpr),
 }

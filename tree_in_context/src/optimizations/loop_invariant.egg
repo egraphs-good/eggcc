@@ -25,3 +25,62 @@
 (rule ((is-inv-ListExpr-helper loop list i)
        (= i (ListExpr-length list)))
     ((set (is-inv-ListExpr loop list) true)) :ruleset always-run)
+
+(ruleset boundary-analysis)
+;; An Expr is on boundary when it is invariant and its parent is not
+;                       loop invariant-expr
+(relation boundary-Expr (Expr Expr))
+
+;; boundary for ListExpr's children
+(rule ((= true (is-inv-Expr loop expr))
+       (= false (is-inv-ListExpr loop list))
+       (= expr (ListExpr-ith list i)))
+      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+
+;; if a output branch/pred is invariant, it's also boundary-Expr
+(rule ((= true (is-inv-Expr loop expr))
+       (= loop (DoWhile in pred_out))
+       (= expr (tuple-ith pred_out i))) 
+      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+
+;; a ListExpr could be on invariant boundary if it occur in switch
+;; but it's unsound to hoist any of it's children
+
+(function hoisted-loop (Expr) bool :merge (or old new))
+(rule ((= loop (DoWhile in pred_out))) ((set (hoisted-loop loop) false)) :ruleset always-run)
+
+(ruleset loop-inv-motion)
+
+;; This rule allow hoist the generated new loop again
+;; which cause trouble when interleaves with loop unrolling in milestone
+;; The way to fix was to restrict the unrolling number
+;; TODO: replace Expr-size after cost model is ready
+; (rule ((boundary-Expr loop inv)
+;        (> (Expr-size inv) 1)
+;        (= loop (DoWhile in pred_out))
+;        (= false (hoisted-loop loop))
+;        ;;(= inputs (All id1 ord1 inputs_list))
+;        (= len (tuple-length in))
+;        (= pred (tuple-ith pred_out)))
+;       (
+;        ;; change all id in invariant to new let's id
+;        (let hoisted (DeepCopyExpr inv new_let_id))
+;        (let hoisted_in_new_loop (DeepCopyExpr inv new_loop_id))
+;        ;; create a list of [(Get (Arg new_let_id) 0) ... hoisted_term]
+;        (let new_input_list (Append (list-of-get-arg new_let_id len) hoisted))
+;        ;; it have to be sequential because the hoisted term depend on old inputs
+;        ;; which is linked by new Let
+;        (let new_inputs (Let new_let_id inputs (All new_let_id (Sequential) new_input_list)))
+;        ;; append (Get (Arg id) len+1) to end of output
+;        (let new_input_branch (Get (Arg new_loop_id) len ))
+;        (let new_outputs_list (Append outputs_list new_input_branch))
+;        (let new_pred_out (All new_loop_id ord2 (Pair pred (All new_loop_id ord3 new_outputs_list))))
+;        (let new_loop (NewLoop new_loop_id new_inputs new_pred_out))
+;        ;; now the invariant in loop can be union with the hoisted part outside of loop
+;        (union hoisted_in_new_loop new_input_branch)
+;        ;; and two loop can be unioned.
+;        (union loop new_loop)
+;        ;; don't hoist same loop again
+;        (set (hoisted-loop loop_id) true))
+;        :ruleset loop-inv-motion)
+   

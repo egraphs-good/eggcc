@@ -35,3 +35,74 @@
        (= len1 (tuple-length expr1))
        (= ith (tuple-ith expr2 i)))
        ((union (tuple-ith (Concat ord expr1 expr2) (+ len1 i)) ith)) :ruleset always-run)
+
+;; This Expr size actually do the same thing as cost function, can be removed afterwards.
+(function Expr-size (Expr) i64 :merge (min old new))
+(function ListExpr-size (ListExpr) i64 :merge (min old new))
+
+(rule ((= expr (Function name tyin tyout out)) 
+       (= sum (Expr-size out))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (Const n))) 
+      ((set (Expr-size expr) 1))  :ruleset always-run)
+
+(rule ((= expr (Bop op x y)) 
+       (= sum (+ (Expr-size y) (Expr-size x)))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (Uop op x)) 
+       (= sum (Expr-size x))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (Get tup i)) 
+       (= sum (Expr-size tup))) 
+      ((set (Expr-size expr) sum)) :ruleset always-run)
+
+(rule ((= expr (Concat order x y)) 
+       (= sum (+ (Expr-size y) (Expr-size x)))) 
+      ((set (Expr-size expr) sum)) :ruleset always-run)
+
+(rule ((= expr (Single x)) 
+       (= sum (Expr-size x))) 
+      ((set (Expr-size expr) sum)) :ruleset always-run)
+
+(rule ((= expr (Switch pred branches)) 
+       (= sum (+ (ListExpr-size branches) (Expr-size pred)))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (If pred then else)) 
+       (= sum (+ (Expr-size else) (+ (Expr-size then) (Expr-size pred))))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (DoWhile in pred-and-output)) 
+       (= sum (+ (Expr-size pred-and-output) (Expr-size in)))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (Let in out)) 
+       (= sum (+ (Expr-size out) (Expr-size in)))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (Arg scope ty))) 
+      ((set (Expr-size expr) 1)) :ruleset always-run)
+
+(rule ((= expr (Call func arg)) 
+       (= sum (Expr-size arg))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((Empty)) ((set (Expr-size (Empty)) 0))  :ruleset always-run)
+
+(rule ((= expr (Cons hd tl)) 
+       (= sum (+ (ListExpr-size tl) (Expr-size hd)))) 
+      ((set (ListExpr-size expr) sum)) :ruleset always-run)
+
+(rule ((Nil)) 
+      ((set (ListExpr-size (Nil)) 0))  :ruleset always-run)
+
+(rule ((= expr (Alloc e ty)) 
+        (= sum (Expr-size e))) 
+        ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (InContext assumption e)) 
+       (= sum (Expr-size e))) 
+      ((set (Expr-size expr) sum)) :ruleset always-run)

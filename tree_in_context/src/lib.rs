@@ -71,13 +71,11 @@ fn check_func_type(func: RcExpr) {
           )))
     "
     );
-    
+
     let body = func.func_body().expect("couldn't parse body");
     let out_ty = func.func_output_ty().expect("couldn't parse output type");
     let check = format!("(check (HasType BODY {out_ty}))");
-    let s = format!(
-        "{prologue}\n(let BODY {body})\n{schedule}\n{check}",
-    );
+    let s = format!("{prologue}\n(let BODY {body})\n{schedule}\n{check}",);
 
     let res = egglog::EGraph::default()
         .parse_and_run_program(&s)
@@ -86,7 +84,12 @@ fn check_func_type(func: RcExpr) {
                 println!("{}", line);
             }
         });
-    assert!(res.is_ok(), "Failed to type {} with expected type {}", body, out_ty);
+    assert!(
+        res.is_ok(),
+        "Failed to type {} with expected type {}",
+        body,
+        out_ty
+    );
 }
 
 fn check_program_gets_type(program: TreeProgram) {
@@ -125,7 +128,6 @@ pub fn egglog_test(
 
         // Check that the input program gets a type by the type analysis
         check_program_gets_type(prog.clone());
-        println!("typed {prog}")
     }
 
     let program = format!(

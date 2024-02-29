@@ -467,3 +467,13 @@
       )
       ((HasType lhs out-ty))
       :ruleset type-analysis)
+
+; =================================
+; InContext
+; =================================
+(rule (
+        (= lhs (InContext ass expr))
+        (HasType expr ty)
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)

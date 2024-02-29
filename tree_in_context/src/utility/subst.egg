@@ -1,0 +1,154 @@
+(ruleset subst)
+
+
+;; (Subst seen-exprs seen-contexts new-ctx scope to in) substitutes 
+;; (InContext current-ctx to) for `(Arg scope ty)` in `in`
+;; It also replaces `(Asuume anything (Arg scope ty))` with `(InContext assumption to)`
+;; It keeps track of a list of scopes it has seen (loop, let, ect) and the new contexts for those scopes.
+;; `seen-exprs` and `seen-contexts` are parallel lists (with the current ctx as the most recent element of seen-contexts)
+(function Subst (ListExpr ListAssume Scope Expr Expr) Expr :unextractable)
+(function SubstList (ListExpr ListAssume Scope Expr ListExpr) ListExpr :unextractable)
+
+
+;; Base case- leaf nodes
+(rewrite (Subst seen (ListAssumeCons ctx other-seen) scope to (Arg scope ty))
+         (InContext ctx to)
+         :ruleset subst)
+;; use of != here is okay since scopes are never unioned
+(rule ((= lhs (Subst seen (ListAssumeCons ctx other-seen) scope to (Arg scope2 ty)))
+       (!= scope scope2))
+      ((union lhs
+         (InContext ctx (Arg scope2 ty))))
+         :ruleset subst)
+
+(rewrite (Subst seen (ListAssumeCons ctx other-seen) scope to (InContext ctx2 (Arg scope ty)))
+         (InContext ctx to)
+         :ruleset subst)
+(rule ((= lhs (Subst seen (ListAssumeCons ctx other-seen) scope to (InContext ctx2 (Arg scope2 ty))))
+       (!= scope scope2))
+      ((union lhs
+         (InContext ctx (Arg scope2 ty))))
+         :ruleset subst)
+
+(rewrite (Subst seen (ListAssumeCons ctx other-seen) scope to (Const constant))
+         (InContext ctx (Const constant))
+         :ruleset subst)
+(rewrite (Subst seen (ListAssumeCons ctx other-seen) scope to (InContext ctx2 (Const constant)))
+         (InContext ctx (Const constant))
+         :ruleset subst)
+
+(rewrite (Subst seen (ListAssumeCons ctx other-seen) ctx scope to (Empty))
+         (InContext ctx (Empty))
+          :ruleset subst)
+(rewrite (Subst seen (ListAssumeCons ctx other-seen) scope to (InContext ctx2 (Empty)))
+         (InContext ctx (Empty))
+         :ruleset subst)
+
+
+;; ######################################################## Operators
+(rewrite (Subst seen seen-ctxs scope to (Bop op c1 c2))
+         (Bop op (Subst seen seen-ctxs scope to c1)
+                 (Subst seen seen-ctxs scope to c2))
+         :ruleset subst)
+(rewrite (Subst seen seen-ctxs scope to (Uop op c1))
+         (Uop op (Subst seen seen-ctxs scope to c1))
+         :ruleset subst)
+(rewrite (Subst seen seen-ctxs scope to (Get c1 index))
+         (Get (Subst seen seen-ctxs scope to c1) index)
+         :ruleset subst)
+(rewrite (Subst seen seen-ctxs scope to (Alloc c1 ty))
+         (Alloc (Subst seen seen-ctxs scope to c1) ty)
+         :ruleset subst)
+(rewrite (Subst seen seen-ctxs scope to (Call name c1))
+         (Call name (Subst seen seen-ctxs scope to c1))
+         :ruleset subst)
+
+
+;; Tuple operators
+(rewrite (Subst seen seen-ctxs scope to (Single c1))
+         (Single (Subst seen seen-ctxs scope to c1))
+         :ruleset subst)
+(rewrite (Subst seen seen-ctxs scope to (Concat order c1 c2))
+         (Concat order (Subst seen seen-ctxs scope to c1) (Subst seen seen-ctxs scope to c2))
+         :ruleset subst)
+
+
+;; #####################################################   Control flow
+(rewrite (Subst seen seen-ctxs scope to (Switch pred branches))
+         (Switch (Subst seen seen-ctxs scope to pred)
+                 (SubstList seen seen-ctxs scope to branches))
+         :ruleset subst)
+(rewrite (Subst seen seen-ctxs scope to (If pred c1 c2))
+         (If (Subst seen seen-ctxs scope to pred)
+             (Subst seen seen-ctxs scope to c1)
+             (Subst seen seen-ctxs scope to c2))
+         :ruleset subst)
+
+;; For let args, just substitute into the inputs of a let
+(rewrite (Subst seen seen-ctxs (LetScope) to (Let in out))
+         (Let (Subst seen seen-ctxs (LetScope) to in)
+              out)
+         :ruleset subst)
+;; For other args, we need to substitute into both
+;; and create a new context for the child
+(rule ((= lhs (Subst seen seen-ctxs scope to (Let in out)))
+       (!= scope (LetScope)))
+      ((let new-inputs
+          (Subst seen seen-ctxs ctx scope to in))
+       (let new-ctx
+          (InLet new-inputs))
+       (union lhs
+        (Let new-inputs
+            (Subst (Cons lhs seen) (ListAssumeCons new-ctx seen-ctxs) scope to out))))
+         :ruleset subst)
+
+;; Substitute just into inputs for loop scopes
+(rewrite (Subst seen seen-ctxs (LoopScope) to (DoWhile in out))
+         (DoWhile (Subst seen seen-ctxs (LoopScope) to in)
+                  out)
+         :ruleset subst)
+;; Subsiitute just into inputs for let scopes
+(rewrite (Subst seen seen-ctxs (LetScope) to (DoWhile in out))
+         (DoWhile (Subst seen seen-ctxs (LetScope) to in)
+                   out)
+          :ruleset subst)
+;; Substitute into inputs and outputs for fuction scopes
+;; also create new context
+(rule ((= lhs (Subst seen seen-ctxs (FuncScope) to (DoWhile in out))))
+      ((let new-inputs
+        (Subst seen seen-ctxs (FuncScope) to in))
+       (let new-ctx
+         (InLoop new-inputs out))
+       (union lhs
+        (DoWhile new-inputs
+         (Subst (Cons lhs seen) (AssumeListCons new-ctx seen-ctxs) (FuncScope) to out))))
+       :ruleset subst)
+
+;; List operators
+(rewrite (SubstList seen seen-ctxs scope to (Cons c1 c2))
+         (Cons (Subst seen seen-ctxs scope to c1)
+               (SubstList seen seen-ctxs scope to c2))
+         :ruleset subst)
+(rewrite (SubstList seen seen-ctxs scope to (Nil))
+         (Nil)
+         :ruleset subst)
+
+;; ##########################  Saturation
+;; This rule ensures saturation by detecting cycles and making contexts equivalent as a result.
+;; If a substitution has seen the same eclass twice, it has passed through a cycle.
+;; Therefore, the two contexts are the same.
+(rule ((Subst (Cons most-recent others)
+              (ListAssumeCons most-recent-ctx other-ctxs)
+              scope to expr)
+       ;; other eclasses contains most recent eclass
+       (= (ListExpr-ith others some_index) most-recent)
+       ;; find the corresponding ctx
+       (= (ListAssume-ith other-ctxs some_index) other-ctx))
+      ((union most-recent-ctx other-ctx))
+      :ruleset subst)
+
+;; demand ith helpers
+(rule ((Subst seen seen-ctxs scope to expr))
+      ((DemandListExpr-ith seen)
+       (DemandListAssume-ith seen-ctxs))
+      :ruleset subst)

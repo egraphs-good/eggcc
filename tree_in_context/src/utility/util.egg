@@ -1,10 +1,14 @@
 (function ListExpr-length (ListExpr) i64)
 (function ListExpr-ith (ListExpr i64) Expr :unextractable)
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
+(relation DemandListExpr-ith (ListExpr))
 (function Append (ListExpr Expr) ListExpr :unextractable)
 
 (rule ((Switch pred branch)) ((union (ListExpr-suffix branch 0) branch)) :ruleset always-run)
 
+
+(rule ((DemandListExpr-ith list))
+      ((union (ListExpr-suffix list 0) list)) :ruleset always-run)
 (rule ((= (ListExpr-suffix top n) (Cons hd tl)))
     ((union (ListExpr-ith top n) hd)
      (union (ListExpr-suffix top (+ n 1)) tl)) :ruleset always-run)
@@ -35,3 +39,20 @@
        (= len1 (tuple-length expr1))
        (= ith (tuple-ith expr2 i)))
        ((union (tuple-ith (Concat ord expr1 expr2) (+ len1 i)) ith)) :ruleset always-run)
+
+
+(sort ListAssume)
+(function ListAssumeNil () ListAssume)
+(function ListAssumeCons (Assume ListAssume) ListAssume)
+
+(relation DemandListAssume-ith (ListAssume))
+
+(function ListAssume-suffix (ListAssume i64) ListAssume :unextractable)
+(function ListAssume-ith (ListAssume i64) Assume :unextractable)
+
+(rule ((DemandListAssume-ith list))
+      ((union (ListAssume-suffix list 0) list)) :ruleset always-run)
+
+(rule ((= (ListAssume-suffix top n) (ListAssumeCons hd tl)))
+    ((union (ListAssume-ith top n) hd)
+     (union (ListAssume-suffix top (+ n 1)) tl)) :ruleset always-run)

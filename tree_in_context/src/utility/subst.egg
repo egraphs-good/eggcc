@@ -3,12 +3,7 @@
 
 ;; (Subst new-ctx scope to in) substitutes `to` for `(Arg scope ty)` in `in`, copying equalities
 ;; to new-ctx as the new equality relation.
-(function Subst (Assume Scope Expr Expr) Expr :unextractable)
-
-(rewrite (Subst assum scope to in)
-         (DoSubst (Nil) (AssumeCons assum (AssumeNil))
-           scope to in)
-         :ruleset subst)
+(function Subst (Assumption Scope Expr Expr) Expr :unextractable)
 
 ;; (DoSubst cpath new-ctx scope to in) substitutes 
 ;; (InContext current-ctx to) for `(Arg scope ty)` in `in`
@@ -17,8 +12,14 @@
 ;; in the `ContextPath`.
 ;; When an e-node is passed twice, a cycle is detected and so the paths and 
 ;; corresponding contexts are made equivalent (see util.egg).
-(function DoSubst (ContextPath Assume Scope Expr Expr) Expr :unextractable)
-(function DoSubstList (ContextPath Assume Scope Expr ListExpr) ListExpr :unextractable)
+(function DoSubst (ContextPath Assumption Scope Expr Expr) Expr :unextractable)
+(function DoSubstList (ContextPath Assumption Scope Expr ListExpr) ListExpr :unextractable)
+
+
+(rewrite (Subst assum scope to in)
+         (DoSubst (PathNil) assum scope to in)
+         :ruleset subst)
+
 
 
 ;; Base case- leaf nodes
@@ -48,7 +49,7 @@
          (InContext ctx (Const constant))
          :ruleset subst)
 
-(rewrite (DoSubst seen ctx ctx scope to (Empty))
+(rewrite (DoSubst seen ctx scope to (Empty))
          (InContext ctx (Empty))
           :ruleset subst)
 (rewrite (DoSubst seen ctx scope to (InContext ctx2 (Empty)))
@@ -105,7 +106,7 @@
 (rule ((= lhs (DoSubst seen ctx scope to (Let in out)))
        (!= scope (LetScope)))
       ((let new-inputs
-          (DoSubst seen ctx ctx scope to in))
+          (DoSubst seen ctx scope to in))
        (let new-ctx
           (InLet new-inputs))
        (union lhs
@@ -132,7 +133,7 @@
          (InLoop new-inputs out))
        (union lhs
         (DoWhile new-inputs
-         (DoSubst (PathCons (DoWhileNode in out) seen) new-ctx (FuncScope) to out))))
+         (DoSubst (PathCons (DoWhileNode in out) new-ctx seen) new-ctx (FuncScope) to out))))
        :ruleset subst)
 
 ;; List operators

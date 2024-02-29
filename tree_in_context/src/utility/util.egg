@@ -54,7 +54,7 @@
 ;; Then the corresponding contexts are inferred to be equal.
 (datatype ContextPath
   (PathNil)
-  (PathCons ENode Assume ContextPath))
+  (PathCons ENode Assumption ContextPath))
 
 (relation Path-contains (ContextPath ContextPath))
 
@@ -64,8 +64,8 @@
       ((Path-contains top tl)) :ruleset always-run)
 
 ;; This is the key rule that detects when contexts are equal
-(rule ((= lhs (ParallelCons node ctx1 rest))
-       (Parallel-contains rest
-         (ParallelCons node ctx2 rest2)))
+(rule ((= lhs (PathCons node ctx1 rest))
+       (Path-contains rest
+         (PathCons node ctx2 rest2)))
       ((union ctx1 ctx2)
        (union lhs rest)) :ruleset always-run)

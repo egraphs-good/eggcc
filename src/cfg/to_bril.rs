@@ -1,9 +1,12 @@
+use std::iter;
+
 use bril_rs::{Code, EffectOps, Function, Instruction, Program};
+use indexmap::IndexSet;
 
 use super::{Annotation, BasicBlock, BlockName, SimpleBranch, SimpleCfgFunction, SimpleCfgProgram};
 use petgraph::{
     stable_graph::NodeIndex,
-    visit::{DfsPostOrder, Walker},
+    visit::{Dfs, Walker},
 };
 
 impl SimpleCfgProgram {
@@ -33,11 +36,27 @@ impl SimpleCfgFunction {
             return_type: self.return_ty.clone(),
         };
 
-        // start with the entry block
-        self.node_to_bril(self.entry, &mut func);
-
-        // The order of this traversal does not matter, just need to loop over the blocks
-        DfsPostOrder::new(&self.graph, self.entry)
+        // Pre-traverse the graph to get the order in which nodes will appear.
+        // We'll use this to omit direct jumps to the block immediately
+        // following the current one.
+        //
+        // Use DFS (preorder) to move adjacent blocks next to each other in the
+        // bril output.
+        let mut node_order = IndexSet::<&BlockName>::with_capacity(self.graph.node_count());
+        for node in Dfs::new(&self.graph, self.entry)
+            .iter(&self.graph)
+            // don't do the exit or entry
+            .filter(|node| node != &self.exit)
+            .map(|node| &self.graph[node].name)
+            .chain(iter::once(&self.graph[self.exit].name))
+        {
+            assert!(
+                node_order.insert(node),
+                "logic bug: DFS of graph visited node {node:?} twice"
+            );
+        }
+        self.node_to_bril(self.entry, &mut func, &node_order);
+        Dfs::new(&self.graph, self.entry)
             .iter(&self.graph)
             // don't do the exit or entry
             .filter(|node| node != &self.entry && node != &self.exit)
@@ -45,14 +64,14 @@ impl SimpleCfgFunction {
                 // Add a label for the block
                 self.push_label(&mut func, node);
                 // rest of the block
-                self.node_to_bril(node, &mut func);
+                self.node_to_bril(node, &mut func, &node_order);
             });
 
         // now do the exit at the end
         if self.exit != self.entry {
             self.push_label(&mut func, self.exit);
 
-            self.node_to_bril(self.exit, &mut func);
+            self.node_to_bril(self.exit, &mut func, &node_order);
         }
 
         if func.instrs.is_empty() {
@@ -79,21 +98,30 @@ impl SimpleCfgFunction {
 
     // Converts a node to bril, including jumps at the end
     // Doesn't add the label for the node
-    fn node_to_bril(&self, node: NodeIndex, func: &mut Function) {
+    fn node_to_bril(
+        &self,
+        node: NodeIndex,
+        func: &mut Function,
+        node_order: &IndexSet<&BlockName>,
+    ) {
         let block = &self.graph[node];
+        let cur_index = node_order.get_index_of(&block.name).unwrap();
+        let next_node = node_order.get_index(cur_index + 1).copied();
         func.instrs.extend(block.to_bril());
 
         // now add the jump to another block
         match self.get_branch(node) {
             SimpleBranch::NoBranch => {}
             SimpleBranch::Jmp(to) => {
-                func.instrs.push(Code::Instruction(Instruction::Effect {
-                    op: EffectOps::Jump,
-                    args: vec![],
-                    labels: vec![Self::label_name(&to)],
-                    funcs: vec![],
-                    pos: None,
-                }));
+                if Some(&to) != next_node {
+                    func.instrs.push(Code::Instruction(Instruction::Effect {
+                        op: EffectOps::Jump,
+                        args: vec![],
+                        labels: vec![Self::label_name(&to)],
+                        funcs: vec![],
+                        pos: None,
+                    }));
+                }
             }
             SimpleBranch::If {
                 arg,

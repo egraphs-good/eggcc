@@ -4,19 +4,27 @@ fn test_subst_nested() -> crate::Result {
     use crate::{interpreter::Value, schema::Constant};
     let twoint = tuplet!(intt(), intt());
     let expr = tlet(
-        parallel!(int(1), get(funcarg(), 1), tlet(int(2), funcarg())),
+        parallel!(int(1), get(funcarg(), 1), tlet(int(2), get(funcarg(), 0))),
         int(0),
     )
     .with_arg_types(twoint.clone(), intt());
     let replace_with = parallel!(int(3), int(4));
     let replacement = in_context(infunc("main"), replace_with.clone());
-    let expected = tlet(
-        parallel!(
-            in_context(infunc("main"), int(1)),
-            get(replacement.clone(), 1),
-            tlet(in_context(infunc("main"), int(2)), funcarg())
+    let replacement_2 = get(
+        in_context(
+            inlet(in_context(infunc("main"), int(2))),
+            replace_with.clone(),
         ),
-        int(0),
+        0,
+    );
+    let new_inputs = parallel!(
+        in_context(infunc("main"), int(1)),
+        get(replacement.clone(), 1),
+        tlet(in_context(infunc("main"), int(2)), replacement_2)
+    );
+    let expected = tlet(
+        new_inputs.clone(),
+        in_context(inlet(new_inputs.clone()), int(0)),
     )
     .with_arg_types(twoint, intt());
 
@@ -27,7 +35,11 @@ fn test_subst_nested() -> crate::Result {
                         {replace_with}
                         {expr}))"
     );
-    let check = format!("(check (= substituted {expected}))");
+    let check = format!(
+        "
+(check (= substituted {expected}))",
+        get(replacement.clone(), 1)
+    );
 
     crate::egglog_test(
         &build.to_string(),
@@ -53,14 +65,15 @@ fn test_subst_makes_new_context() -> crate::Result {
         in_context(infunc("otherfunc"), int(1)),
         in_context(infunc("otherfunc"), int_funcarg()),
     );
-    let replace_with = in_context(infunc("main"), int(2));
+    let replace_with = int(2);
     let expected = add(
         in_context(infunc("main"), int(1)),
         in_context(infunc("main"), int(2)),
     );
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\") 
+(let substituted (Subst (InFunc \"main\")
+                        (FuncScope) 
                         {replace_with}
                         {expr}))"
     );

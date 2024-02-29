@@ -21,7 +21,6 @@
          :ruleset subst)
 
 
-
 ;; Base case- leaf nodes
 (rewrite (DoSubst seen ctx scope to (Arg scope ty))
          (InContext ctx to)
@@ -144,5 +143,3 @@
 (rewrite (DoSubstList seen ctx scope to (Nil))
          (Nil)
          :ruleset subst)
-
-

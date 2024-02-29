@@ -13,4 +13,7 @@
     (saturate constant_fold)
     conditional-invariant-code-motion
     switch_rewrite
-    loop-simplify))
+    loop-simplify
+    (saturate
+      (saturate context_propagate)
+      (saturate subst))))

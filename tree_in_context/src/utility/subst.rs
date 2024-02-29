@@ -23,7 +23,6 @@ fn test_subst_nested() -> crate::Result {
     let build = format!(
         "
 (let substituted (Subst (InFunc \"main\")
-                        (InFunc \"main\")
                         (FuncScope)
                         {replace_with}
                         {expr}))"

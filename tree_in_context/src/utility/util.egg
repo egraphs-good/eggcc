@@ -42,8 +42,8 @@
 
 
 (sort ListAssume)
-(function ListAssumeNil () ListAssume)
-(function ListAssumeCons (Assume ListAssume) ListAssume)
+(function AssumeNil () ListAssume)
+(function AssumeCons (Assume ListAssume) ListAssume)
 
 (relation DemandListAssume-ith (ListAssume))
 
@@ -53,6 +53,6 @@
 (rule ((DemandListAssume-ith list))
       ((union (ListAssume-suffix list 0) list)) :ruleset always-run)
 
-(rule ((= (ListAssume-suffix top n) (ListAssumeCons hd tl)))
+(rule ((= (ListAssume-suffix top n) (AssumeCons hd tl)))
     ((union (ListAssume-ith top n) hd)
      (union (ListAssume-suffix top (+ n 1)) tl)) :ruleset always-run)

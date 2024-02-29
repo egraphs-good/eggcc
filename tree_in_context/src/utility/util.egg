@@ -59,7 +59,8 @@
 (relation Path-contains (ContextPath ContextPath))
 
 (rule ((= lhs (PathCons hd1 hd2 tl)))
-      ((Path-contains lhs lhs)))
+      ((Path-contains lhs lhs))
+      :ruleset always-run)
 (rule ((Path-contains top (PathCons hd1 hd2 tl)))
       ((Path-contains top tl)) :ruleset always-run)
 
@@ -67,5 +68,6 @@
 (rule ((= lhs (PathCons node ctx1 rest))
        (Path-contains rest
          (PathCons node ctx2 rest2)))
-      ((union ctx1 ctx2)
+      ((panic "test")
+       (union ctx1 ctx2)
        (union lhs rest)) :ruleset always-run)

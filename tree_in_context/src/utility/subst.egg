@@ -17,9 +17,20 @@
 ;; Helper for fully instantiating a function's contexts top-down
 (relation ExpandFuncContext (Expr))
 
+
 (rule ((ExpandFuncContext (Function name inty outty body)))
   ((union (Function name inty outty body)
     (Function name inty outty (Subst (InFunc name) (FuncScope) (Arg (FuncScope) inty) body))))
+   :ruleset subst)
+
+;; ExpandFuncContext can fire multiple times, so fix the resulting saturation issue
+;; with this identity
+(rewrite
+  (Subst (InFunc name) (FuncScope) (Arg (FuncScope) inty)
+    (Subst (InFunc name) (FuncScope) (Arg (FuncScope) inty)
+      body))
+  (Subst (InFunc name) (FuncScope) (Arg (FuncScope) inty)
+      body)
    :ruleset subst)
 
 

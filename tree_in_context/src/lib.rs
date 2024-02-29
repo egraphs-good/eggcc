@@ -132,6 +132,8 @@ pub fn egglog_test(
         include_str!("schedule.egg"),
     );
 
+    eprintln!("{}", program);
+
     let res = egglog::EGraph::default()
         .parse_and_run_program(&program)
         .map(|lines| {

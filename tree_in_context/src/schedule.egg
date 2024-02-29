@@ -15,5 +15,6 @@
     switch_rewrite
     loop-simplify
     (saturate
+      (saturate always-run)
       (saturate context_propagate)
       (saturate subst))))

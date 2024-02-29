@@ -1,4 +1,27 @@
 #[test]
+fn simple_identity_subst() -> crate::Result {
+    use crate::ast::*;
+    use crate::egglog_test;
+    use crate::{interpreter::Value, schema::Constant};
+    let expr = function("main", intt(), intt(), int(2));
+    let expected = function("main", intt(), intt(), in_context(infunc("main"), int(2)));
+    egglog_test(
+        &format!("(ExpandFuncContext {expr})"),
+        &format!(
+            "
+(check (= {expr} {expected}))",
+        ),
+        vec![
+            expr.to_program(emptyt(), intt()),
+            expected.to_program(emptyt(), intt()),
+        ],
+        Value::Tuple(vec![]),
+        Value::Const(Constant::Int(2)),
+        vec![],
+    )
+}
+
+#[test]
 fn test_subst_nested() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
@@ -38,7 +61,6 @@ fn test_subst_nested() -> crate::Result {
     let check = format!(
         "
 (check (= substituted {expected}))",
-        get(replacement.clone(), 1)
     );
 
     crate::egglog_test(

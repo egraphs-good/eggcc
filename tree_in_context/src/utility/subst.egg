@@ -14,6 +14,13 @@
 ;; corresponding contexts are made equivalent (see util.egg).
 (function DoSubst (ContextPath Assumption Scope Expr Expr) Expr :unextractable)
 (function DoSubstList (ContextPath Assumption Scope Expr ListExpr) ListExpr :unextractable)
+;; Helper for fully instantiating a function's contexts top-down
+(relation ExpandFuncContext (Expr))
+
+(rule ((ExpandFuncContext (Function name inty outty body)))
+  ((union (Function name inty outty body)
+    (Function name inty outty (Subst (InFunc name) (FuncScope) (Arg (FuncScope) inty) body))))
+   :ruleset subst)
 
 
 (rewrite (Subst assum scope to in)

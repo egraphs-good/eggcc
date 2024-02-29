@@ -1,23 +1,6 @@
 #[cfg(test)]
 use crate::{egglog_test, interpreter::Value, schema::Constant};
 
-#[test]
-fn test_in_context_in_func() -> crate::Result {
-    use crate::ast::*;
-    let expr = function("main", intt(), intt(), int(2));
-    let expected = function("main", intt(), intt(), in_context(infunc("main"), int(2)));
-    egglog_test(
-        &format!("{expr}"),
-        &format!("(check (= {expr} {expected}))"),
-        vec![
-            expr.to_program(emptyt(), intt()),
-            expected.to_program(emptyt(), intt()),
-        ],
-        Value::Tuple(vec![]),
-        Value::Const(Constant::Int(2)),
-        vec![],
-    )
-}
 
 #[test]
 fn test_in_context_two_lets() -> crate::Result {

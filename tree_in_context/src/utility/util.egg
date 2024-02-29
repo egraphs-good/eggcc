@@ -41,18 +41,31 @@
        ((union (tuple-ith (Concat ord expr1 expr2) (+ len1 i)) ith)) :ruleset always-run)
 
 
-(sort ListAssume)
-(function AssumeNil () ListAssume)
-(function AssumeCons (Assume ListAssume) ListAssume)
 
-(relation DemandListAssume-ith (ListAssume))
+;; ################## 
+;; Represents an e-node in the database, currently only let and dowhile supported
+(datatype ENode
+  (LetNode Expr Expr)
+  (DoWhileNode Expr Expr))
 
-(function ListAssume-suffix (ListAssume i64) ListAssume :unextractable)
-(function ListAssume-ith (ListAssume i64) Assume :unextractable)
 
-(rule ((DemandListAssume-ith list))
-      ((union (ListAssume-suffix list 0) list)) :ruleset always-run)
+;; A context path is a potentially infinite stream of (e-node, context) pairs.
+;; When we visit an e-node for the second time, we have found a cycle in the egraph.
+;; Then the corresponding contexts are inferred to be equal.
+(datatype ContextPath
+  (PathNil)
+  (PathCons ENode Assume ContextPath))
 
-(rule ((= (ListAssume-suffix top n) (AssumeCons hd tl)))
-    ((union (ListAssume-ith top n) hd)
-     (union (ListAssume-suffix top (+ n 1)) tl)) :ruleset always-run)
+(relation Path-contains (ContextPath ContextPath))
+
+(rule ((= lhs (PathCons hd1 hd2 tl)))
+      ((Path-contains lhs lhs)))
+(rule ((Path-contains top (PathCons hd1 hd2 tl)))
+      ((Path-contains top tl)) :ruleset always-run)
+
+;; This is the key rule that detects when contexts are equal
+(rule ((= lhs (ParallelCons node ctx1 rest))
+       (Parallel-contains rest
+         (ParallelCons node ctx2 rest2)))
+      ((union ctx1 ctx2)
+       (union lhs rest)) :ruleset always-run)

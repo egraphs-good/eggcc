@@ -1,7 +1,7 @@
 use egglog::{ast::Literal, Term, TermDag};
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TreeProgram, Type, UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, Order, Scope, TreeProgram, Type, UnaryOp,
 };
 
 impl Constant {
@@ -56,7 +56,9 @@ impl Type {
                 let tlist = to_tlistexpr(types, term_dag);
                 term_dag.app("TupleT".into(), vec![tlist])
             }
-            Type::Unknown => panic!("Found unknown type when converting to egglog. Did you forget to call `with_arg_types`?"),
+            // Unknown shouldn't show up in the egglog file, but is useful for printing
+            // before types are annotated.
+            Type::Unknown => term_dag.app("Unknown".into(), vec![]),
         }
     }
 }
@@ -87,6 +89,12 @@ impl Assumption {
 }
 
 impl Order {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
+        term_dag.app(format!("{:?}", self).into(), vec![])
+    }
+}
+
+impl Scope {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
         term_dag.app(format!("{:?}", self).into(), vec![])
     }
@@ -179,9 +187,10 @@ impl Expr {
                 let body = body.to_egglog_internal(term_dag);
                 term_dag.app("DoWhile".into(), vec![cond, body])
             }
-            Expr::Arg(ty) => {
+            Expr::Arg(scope, ty) => {
                 let ty = ty.to_egglog_internal(term_dag);
-                term_dag.app("Arg".into(), vec![ty])
+                let scope = scope.to_egglog_internal(term_dag);
+                term_dag.app("Arg".into(), vec![scope, ty])
             }
             Expr::InContext(assumption, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
@@ -267,8 +276,11 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
-    let expr = add(int(1), int_arg());
-    test_expr_parses_to(expr, "(Bop (Add) (Const (Int 1)) (Arg (Base (IntT))))");
+    let expr = add(int(1), int_funcarg());
+    test_expr_parses_to(
+        expr,
+        "(Bop (Add) (Const (Int 1)) (Arg (FuncScope) (Base (IntT))))",
+    );
 }
 
 #[test]
@@ -297,10 +309,10 @@ fn convert_whole_program() {
             intt(),
             get(
                 dowhile(
-                    single(arg()),
+                    single(funcarg()),
                     push_par(
-                        add(get(arg(), 0), int(1)),
-                        single(less_than(get(arg(), 0), int(10)))
+                        add(get(looparg(), 0), int(1)),
+                        single(less_than(get(looparg(), 0), int(10)))
                     )
                 ),
                 0
@@ -315,10 +327,10 @@ fn convert_whole_program() {
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (Get
-                        (DoWhile (Single (Arg (Base (IntT))))
+                        (DoWhile (Single (Arg (FuncScope) (Base (IntT))))
                         (Concat (Parallel) 
-                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10))))
-                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1))))))
+                            (Single (Bop (LessThan) (Get (Arg (LoopScope) (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10))))
+                            (Single (Bop (Add) (Get (Arg (LoopScope) (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1))))))
                         0)) 
                 (Nil)))",
     );

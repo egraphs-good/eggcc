@@ -1,0 +1,9 @@
+;; Some simple simplifications of loops
+(ruleset loop-simplify)
+
+(rewrite
+ (DoWhile (Arg any_scope ty)
+  (Concat (Parallel) (Single (Const (Bool false)))
+    (Single (Const constant))))
+ (Single (Const constant))
+ :ruleset loop-simplify)

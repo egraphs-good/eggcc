@@ -1,11 +1,16 @@
 (run-schedule
+  (saturate
+   (saturate always-run)
+   context_creation
+   (saturate context_propagate))
   (repeat 6
-    (saturate always-run)
-    (repeat 20 in_context)
     (saturate always-run)
     (saturate error-checking)
     (saturate
       (saturate type-helpers)
       type-analysis
     )
-    (saturate constant_fold)))
+    (saturate constant_fold)
+    conditional-invariant-code-motion
+    switch_rewrite
+    loop-simplify))

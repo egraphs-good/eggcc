@@ -143,7 +143,7 @@ function buildTableText(prevRun, run) {
 }
 
 async function loadBenchmarks(compareTo) {
-    const currentRun = await getBench("../");
+    const currentRun = await getBench("./");
     let previousRun = undefined;
     try {
         previousRun = await getBench(compareTo.url);

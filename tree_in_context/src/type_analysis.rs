@@ -412,3 +412,12 @@ fn repro_argtype_bug() -> crate::Result {
         val_empty(),
     )
 }
+
+#[test]
+fn incontext() -> crate::Result {
+    let body = tlet(
+        int(1),
+        in_context(inlet(int(1)), add(int_letarg(), int_letarg())),
+    );
+    type_test(body, intt(), val_int(0), val_int(2))
+}

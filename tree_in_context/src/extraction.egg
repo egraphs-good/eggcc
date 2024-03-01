@@ -20,8 +20,8 @@
 (function Empty% () Expr%)
 (let empty% (Empty%))
 
-(function Bop%   (BinaryOp% Expr% Expr%) Expr%)
-(function Uop%   (UnaryOp% Expr%) Expr%)
+(function Bop%   (BinaryOp Expr% Expr%) Expr%)
+(function Uop%   (UnaryOp Expr%) Expr%)
 (function Get%   (Expr% i64) Expr%)
 (function Alloc% (Expr% Type)      Expr%)
 (function Call%  (String         Expr%) Expr%)
@@ -44,7 +44,7 @@
 
 
 (datatype ExtractExpr-resT (ExtractExpr-res Expr% f64))
-(datatype ExtractAssumption-resT (ExtractAssumption-res Expr% f64))
+(datatype ExtractAssumption-resT (ExtractAssumption-res Assumption% f64))
 (datatype ExtractListExpr-resT (ExtractListExpr-res ListExpr% f64))
 
 ; =================================
@@ -56,13 +56,13 @@
     (= goal (ExtractExpr-res-min r1 r2))
     (= r1 (ExtractExpr-res e1% c1))
     (= r2 (ExtractExpr-res e2% c2))
-    (<= r1 r2)
+    (<= c1 c2)
 ) ((union goal r1)))
 (rule (
     (= goal (ExtractExpr-res-min r1 r2))
     (= r1 (ExtractExpr-res e1% c1))
     (= r2 (ExtractExpr-res e2% c2))
-    (> r1 r2)
+    (> c1 c2)
 ) ((union goal r2)))
 
 (function ExtractAssumption-res-min (ExtractAssumption-resT ExtractAssumption-resT) ExtractAssumption-resT)
@@ -70,13 +70,13 @@
     (= goal (ExtractAssumption-res-min r1 r2))
     (= r1 (ExtractAssumption-res e1% c1))
     (= r2 (ExtractAssumption-res e2% c2))
-    (<= r1 r2)
+    (<= c1 c2)
 ) ((union goal r1)))
 (rule (
     (= goal (ExtractAssumption-res-min r1 r2))
     (= r1 (ExtractAssumption-res e1% c1))
     (= r2 (ExtractAssumption-res e2% c2))
-    (> r1 r2)
+    (> c1 c2)
 ) ((union goal r2)))
 
 (function ExtractListExpr-res-min (ExtractListExpr-resT ExtractListExpr-resT) ExtractListExpr-resT)
@@ -84,13 +84,13 @@
     (= goal (ExtractListExpr-res-min r1 r2))
     (= r1 (ExtractListExpr-res l1% c1))
     (= r2 (ExtractListExpr-res l2% c2))
-    (<= r1 r2)
+    (<= c1 c2)
 ) ((union goal r1)))
 (rule (
     (= goal (ExtractListExpr-res-min r1 r2))
     (= r1 (ExtractListExpr-res l1% c1))
     (= r2 (ExtractListExpr-res l2% c2))
-    (> r1 r2)
+    (> c1 c2)
 ) ((union goal r2)))
 
 ; =================================
@@ -125,7 +125,7 @@
 ; =================================
 (relation ExtractExpr-demand (Expr))
 (function ExtractExpr (Expr) ExtractExpr-resT :merge (ExtractExpr-res-min old new))
-(relation ExtractAssumption (Assumption))
+(relation ExtractAssumption-demand (Assumption))
 (function ExtractAssumption (Assumption) ExtractAssumption-resT :merge (ExtractAssumption-res-min old new))
 (relation ExtractListExpr-demand (ListExpr))
 (function ExtractListExpr (ListExpr) ExtractListExpr-resT :merge (ExtractListExpr-res-min old new))
@@ -315,7 +315,7 @@
 ) (
     (let e% (DoWhile% e1% e2%))
     ;; TODO: weird cost for now; need more precise analysis later
-    (set (ExtractExpr e) (ExtractExpr-res e% (* 100 (+ c1 c2))))
+    (set (ExtractExpr e) (ExtractExpr-res e% (* 100.0 (+ c1 c2))))
 ) :ruleset extraction)
 
 ;; incontext

@@ -62,11 +62,9 @@ fn check_func_type(func: RcExpr) {
     ]
     .join("\n");
     let schedule = "(run-schedule
-      (repeat 6
-        (saturate
-            (saturate type-helpers)
-            type-analysis
-          )))";
+      (saturate
+        (saturate type-helpers)
+        type-analysis))";
 
     let body = func.func_body().expect("couldn't parse body");
     let out_ty = func.func_output_ty().expect("couldn't parse output type");

@@ -1,8 +1,4 @@
 (run-schedule
-  (saturate
-   (saturate always-run)
-   context_creation
-   (saturate context_propagate))
   (repeat 6
     (saturate always-run)
     (saturate error-checking)
@@ -15,6 +11,6 @@
     switch_rewrite
     loop-simplify
     (saturate
-      (saturate always-run)
+      (saturate subst-helpers)
       (saturate context_propagate)
-      (saturate subst))))
+      subst)))

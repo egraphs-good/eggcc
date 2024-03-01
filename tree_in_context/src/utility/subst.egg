@@ -1,5 +1,33 @@
 (ruleset subst)
+(ruleset subst-helpers)
 
+
+
+
+;; ################## 
+;; A context path is a list of (eclass, context) pairs.
+;; In substitution, the path is used to store every eclass we have visited, and the context
+;; before taking that eclass.
+;; When we visit an eclass for the second time, we have found a cycle in the egraph.
+;; Then the corresponding contexts are inferred to be equal.
+(datatype ContextPath
+  (PathNil)
+  (PathCons Expr Assumption ContextPath))
+
+(relation Path-contains (ContextPath ContextPath))
+
+(rule ((= lhs (PathCons hd1 hd2 tl)))
+      ((Path-contains lhs lhs))
+      :ruleset subst-helpers)
+(rule ((Path-contains top (PathCons hd1 hd2 tl)))
+      ((Path-contains top tl)) :ruleset subst-helpers)
+
+;; This is the key rule that detects when contexts are equal
+(rule ((= lhs (PathCons node ctx1 rest))
+       (Path-contains rest
+         (PathCons node ctx2 rest2)))
+      ((union ctx1 ctx2)
+       (union lhs rest)) :ruleset subst-helpers)
 
 ;; (Subst new-ctx scope to in) substitutes `to` for `(Arg scope ty)` in `in`, copying equalities
 ;; to new-ctx as the new equality relation.
@@ -25,14 +53,23 @@
 
 ;; ExpandFuncContext can fire multiple times, so fix the resulting saturation issue
 ;; with this identity
-(rewrite
-  (Subst (InFunc name) (FuncScope) (Arg (FuncScope) inty)
-    (Subst (InFunc name) (FuncScope) (Arg (FuncScope) inty)
-      body))
-  (Subst (InFunc name) (FuncScope) (Arg (FuncScope) inty)
-      body)
-   :ruleset subst)
+(rule
+  ((= lhs (DoSubst seen ctx (FuncScope) (Arg (FuncScope) inty) inner))
+   (= inner (DoSubst seen ctx (FuncScope) (Arg (FuncScope) inty) expr)))
+  ((union lhs inner))
+   :ruleset subst-helpers)
 
+(rule
+  ((= lhs (DoSubstList seen ctx (FuncScope) (Arg (FuncScope) inty) inner))
+   (= inner (DoSubstList seen ctx (FuncScope) (Arg (FuncScope) inty) expr)))
+  ((union lhs inner))
+   :ruleset subst-helpers)
+
+(rule
+  ((= lhs (Subst ctx (FuncScope) (Arg (FuncScope) inty) inner))
+   (= inner (Subst ctx (FuncScope) (Arg (FuncScope) inty) expr)))
+  ((union lhs inner))
+    :ruleset subst-helpers)
 
 (rewrite (Subst assum scope to in)
          (DoSubst (PathNil) assum scope to in)
@@ -107,10 +144,15 @@
          (Switch (DoSubst seen ctx scope to pred)
                  (DoSubstList seen ctx scope to branches))
          :ruleset subst)
-(rewrite (DoSubst seen ctx scope to (If pred c1 c2))
-         (If (DoSubst seen ctx scope to pred)
-             (DoSubst seen ctx scope to c1)
-             (DoSubst seen ctx scope to c2))
+
+
+(rule ((= lhs (DoSubst seen ctx scope to (If pred c1 c2))))
+      ((let newpred (DoSubst seen ctx scope to pred))
+       (let newpath (PathCons (If pred c1 c2) ctx seen))
+       (union lhs
+        (If newpred
+            (DoSubst newpath (InIf true newpred) scope to c1)
+            (DoSubst newpath (InIf false newpred) scope to c2))))
          :ruleset subst)
 
 ;; For let args, just DoSubstitute into the inputs of a let
@@ -128,7 +170,7 @@
           (InLet new-inputs))
        (union lhs
         (Let new-inputs
-            (DoSubst (PathCons (LetNode in out) new-ctx seen) new-ctx scope to out))))
+            (DoSubst (PathCons (Let in out) ctx seen) new-ctx scope to out))))
          :ruleset subst)
 
 ;; DoSubstitute just into inputs for loop scopes
@@ -150,7 +192,7 @@
          (InLoop new-inputs out))
        (union lhs
         (DoWhile new-inputs
-         (DoSubst (PathCons (DoWhileNode in out) new-ctx seen) new-ctx (FuncScope) to out))))
+         (DoSubst (PathCons (DoWhile in out) ctx seen) new-ctx (FuncScope) to out))))
        :ruleset subst)
 
 ;; List operators

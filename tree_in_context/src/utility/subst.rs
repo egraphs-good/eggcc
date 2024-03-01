@@ -45,7 +45,7 @@ fn test_in_context_two_lets() -> crate::Result {
 }
 
 #[test]
-fn test_switch_contexts() -> crate::Result {
+fn test_if_contexts() -> crate::Result {
     use crate::ast::*;
     let expr = function("main", intt(), intt(), tif(ttrue(), int(1), int(2)));
     let pred = in_context(infunc("main"), ttrue());
@@ -73,11 +73,37 @@ fn test_switch_contexts() -> crate::Result {
 }
 
 #[test]
+fn test_simple_subst_cycle() -> crate::Result {
+    use crate::ast::*;
+    let expr = dowhile(single(funcarg()), parallel!(tfalse(), int(3)))
+        .with_arg_types(intt(), tuplet!(intt()));
+    let inner = single(int(3));
+
+    egglog_test(
+        &format!(
+            "
+(union {expr} {inner})
+(Subst (InFunc \"main\") (FuncScope) (Arg (FuncScope) (Base (IntT))) {expr})",
+        ),
+        &format!(
+            "
+(check (= {expr} {inner}))"
+        ),
+        vec![expr.to_program(intt(), tuplet!(intt()))],
+        Value::Const(Constant::Int(3)),
+        Value::Tuple(vec![Value::Const(Constant::Int(3))]),
+        vec![],
+    )
+}
+
+#[test]
 fn test_dowhile_cycle_in_context() -> crate::Result {
     use crate::ast::*;
     // loop runs one iteration and returns 3
-    let myloop = dowhile(funcarg(), parallel!(tfalse(), int(3)));
-    let expr = function("main", tuplet!(intt()), tuplet!(intt()), myloop).func_with_arg_types();
+    let myloop = dowhile(funcarg(), parallel!(tfalse(), int(3)))
+        .with_arg_types(tuplet!(intt()), tuplet!(intt()));
+    let expr =
+        function("main", tuplet!(intt()), tuplet!(intt()), myloop.clone()).func_with_arg_types();
     let int3func = function("main", tuplet!(intt()), tuplet!(intt()), single(int(3)));
 
     let fargincontext = in_context(
@@ -85,15 +111,6 @@ fn test_dowhile_cycle_in_context() -> crate::Result {
         funcarg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
     );
     let inner_in_context = inloop(fargincontext.clone(), parallel!(tfalse(), int(3)));
-    let expr_intermediate = function(
-        "main",
-        tuplet!(intt()),
-        tuplet!(intt()),
-        dowhile(
-            fargincontext.clone(),
-            in_context(inner_in_context.clone(), parallel!(tfalse(), int(3))),
-        ),
-    );
     let expr2 = function(
         "main",
         tuplet!(intt()),
@@ -107,13 +124,19 @@ fn test_dowhile_cycle_in_context() -> crate::Result {
         ),
     )
     .func_with_arg_types();
+    let ituple = tuplet!(intt());
 
     egglog_test(
-        &format!("(ExpandFuncContext {expr})",),
         &format!(
             "
-(check (ContextLess {expr}))
-(check (= {expr} {expr_intermediate}))
+{expr}
+(ExpandFuncContext {expr})
+;(union {expr} (Function \"main\" {ituple} {ituple}
+                 ;(Subst (InFunc \"main\") (FuncScope) (Arg (FuncScope) {ituple}) {myloop})))
+    ",
+        ),
+        &format!(
+            "
 (check (= {expr} {expr2}))
 (check (= {expr} {int3func}))"
         ),

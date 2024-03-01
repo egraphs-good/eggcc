@@ -40,34 +40,3 @@
        (= ith (tuple-ith expr2 i)))
        ((union (tuple-ith (Concat ord expr1 expr2) (+ len1 i)) ith)) :ruleset always-run)
 
-
-
-;; ################## 
-;; Represents an e-node in the database, currently only let and dowhile supported
-(datatype ENode
-  (LetNode Expr Expr)
-  (DoWhileNode Expr Expr))
-
-
-;; A context path is a potentially infinite stream of (e-node, context) pairs.
-;; When we visit an e-node for the second time, we have found a cycle in the egraph.
-;; Then the corresponding contexts are inferred to be equal.
-(datatype ContextPath
-  (PathNil)
-  (PathCons ENode Assumption ContextPath))
-
-(relation Path-contains (ContextPath ContextPath))
-
-(rule ((= lhs (PathCons hd1 hd2 tl)))
-      ((Path-contains lhs lhs))
-      :ruleset always-run)
-(rule ((Path-contains top (PathCons hd1 hd2 tl)))
-      ((Path-contains top tl)) :ruleset always-run)
-
-;; This is the key rule that detects when contexts are equal
-(rule ((= lhs (PathCons node ctx1 rest))
-       (Path-contains rest
-         (PathCons node ctx2 rest2)))
-      ((panic "test")
-       (union ctx1 ctx2)
-       (union lhs rest)) :ruleset always-run)

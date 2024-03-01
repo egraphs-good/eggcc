@@ -3,7 +3,6 @@
 ; This can be quite expensive, so be careful running these rules.
 
 (ruleset context_propagate)
-(ruleset context_creation)
 
 (sort InContextList)
 
@@ -40,12 +39,4 @@
 
 ;                       assumptions, predicate, cases,   current case
 (function SwitchInContext (InContextList   Expr       ListExpr i64) ListExpr :unextractable) 
-
-(rewrite (InContext assum (If pred then else))
-         (If (InContext assum pred)
-             (InContext
-               (InIf true (InContext assum pred)) then)
-             (InContext
-               (InIf false (InContext assum pred)) else))
-         :ruleset context_propagate)
-
+;; TODO propogate context for switch statements using substitution

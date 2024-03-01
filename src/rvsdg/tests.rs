@@ -389,7 +389,6 @@ fn rvsdg_state_mem_to_cfg_more_blocks() {
   free v4;
   print v24;
   v31: int = id v7;
-  jmp .__40__;
 .__40__:
   print v31;
 }

@@ -79,7 +79,7 @@
 
 ;; Another rule essential for ensuring saturation-
 ;; Since `InLoop` context nodes contain a loop body, substitution
-;; can keep creating new contexts where the body has more contextual information.
+;; can keep creating new contexts where the body has more nested `InLoop` nodes.
 ;; This rule finds this case and makes the two contexts equal.
 ;; This is sound because the set of reachable states in the loop is the same in both cases
 (rule

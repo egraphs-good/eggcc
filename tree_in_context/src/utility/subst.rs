@@ -118,21 +118,18 @@ fn test_dowhile_cycle_in_context() -> crate::Result {
         dowhile(
             fargincontext.clone(),
             parallel!(
-                in_context(inner_in_context.clone(), tfalse()),
-                in_context(inner_in_context.clone(), int(3)),
+                in_context(inner_in_context.clone(), tfalse()), // false gets the loop context
+                in_context(infunc("main"), int(3)) // 3 is equal to the loop, which is equal to 3 in the outer context
             ),
         ),
     )
     .func_with_arg_types();
-    let ituple = tuplet!(intt());
 
     egglog_test(
         &format!(
             "
 {expr}
 (ExpandFuncContext {expr})
-;(union {expr} (Function \"main\" {ituple} {ituple}
-                 ;(Subst (InFunc \"main\") (FuncScope) (Arg (FuncScope) {ituple}) {myloop})))
     ",
         ),
         &format!(

@@ -5,14 +5,14 @@
 
 
 ;; ################## 
-;; A context path is a list of (eclass, context) pairs.
-;; In substitution, the path is used to store every eclass we have visited, and the context
-;; before taking that eclass.
+;; A context path is a list of (eclass, eclass) pairs.
+;; In substitution, the path is used to store every context-related eclass we have visited, 
+;; and the corresponding expression at that point.
 ;; When we visit an eclass for the second time, we have found a cycle in the egraph.
-;; Then the corresponding contexts are inferred to be equal.
+;; Then the corresponding eclasses are made equivalent.
 (datatype ContextPath
   (PathNil)
-  (PathCons Expr Assumption ContextPath))
+  (PathCons Expr Expr ContextPath))
 
 (relation Path-contains (ContextPath ContextPath))
 
@@ -22,12 +22,6 @@
 (rule ((Path-contains top (PathCons hd1 hd2 tl)))
       ((Path-contains top tl)) :ruleset subst-helpers)
 
-;; This is the key rule that detects when contexts are equal
-(rule ((= lhs (PathCons node ctx1 rest))
-       (Path-contains rest
-         (PathCons node ctx2 rest2)))
-      ((union ctx1 ctx2)
-       (union lhs rest)) :ruleset subst-helpers)
 
 ;; (Subst new-ctx scope to in) substitutes `to` for `(Arg scope ty)` in `in`, copying equalities
 ;; to new-ctx as the new equality relation.
@@ -46,6 +40,18 @@
 (relation ExpandFuncContext (Expr))
 
 
+;; This is the key rule that detects cycles
+;; It finds that we have already seen the eclass we are about to substitute into
+;; The corresponding eclasses are unioned, and the cyclic
+;; substitution is subsumed to ensure saturation.
+(rule ((= lhs (DoSubst seen ctx scope to in))
+       (Path-contains seen
+         (PathCons in original_subst rest)))
+      ((union lhs original_subst)
+       (subsume (DoSubst seen ctx scope to in))) :ruleset subst-helpers)
+
+;; helper that expands function contexts
+;; using substitution
 (rule ((ExpandFuncContext (Function name inty outty body)))
   ((union (Function name inty outty body)
     (Function name inty outty (Subst (InFunc name) (FuncScope) (Arg (FuncScope) inty) body))))
@@ -71,6 +77,25 @@
   ((union lhs inner))
     :ruleset subst-helpers)
 
+;; Another rule essential for ensuring saturation-
+;; Since `InLoop` context nodes contain a loop body, substitution
+;; can keep creating new contexts where the body has more contextual information.
+;; This rule finds this case and makes the two contexts equal.
+;; This is sound because the set of reachable states in the loop is the same in both cases
+(rule
+  ((DoSubst seen nestedctx (FuncScope) (Arg (FuncScope) inty)
+     already-substituted) ;; substituting into something already expanded
+   (= sinputs (DoSubst seen2 ctx (FuncScope) (Arg (FuncScope) inty) inputs))
+   (= already-substituted ;; body already has an InLoop
+     (DoSubst seen3 (InLoop sinputs outputs) (FuncScope) (Arg (FuncScope) inty) outputs))
+   (= nextedctx ;; the nested context has already-substituted body
+      (InLoop sinputs
+         already-substituted)))
+  ((union nestedctx (InLoop sinputs outputs)))
+  :ruleset subst-helpers)
+  
+
+;; Subst is sugar for DoSubst
 (rewrite (Subst assum scope to in)
          (DoSubst (PathNil) assum scope to in)
          :ruleset subst)
@@ -148,7 +173,8 @@
 
 (rule ((= lhs (DoSubst seen ctx scope to (If pred c1 c2))))
       ((let newpred (DoSubst seen ctx scope to pred))
-       (let newpath (PathCons (If pred c1 c2) ctx seen))
+       (let newpath
+        (PathCons (If pred c1 c2) lhs seen))
        (union lhs
         (If newpred
             (DoSubst newpath (InIf true newpred) scope to c1)
@@ -170,7 +196,7 @@
           (InLet new-inputs))
        (union lhs
         (Let new-inputs
-            (DoSubst (PathCons (Let in out) ctx seen) new-ctx scope to out))))
+            (DoSubst (PathCons (Let in out) lhs seen) new-ctx scope to out))))
          :ruleset subst)
 
 ;; DoSubstitute just into inputs for loop scopes
@@ -192,7 +218,7 @@
          (InLoop new-inputs out))
        (union lhs
         (DoWhile new-inputs
-         (DoSubst (PathCons (DoWhile in out) ctx seen) new-ctx (FuncScope) to out))))
+         (DoSubst (PathCons (DoWhile in out) lhs seen) new-ctx (FuncScope) to out))))
        :ruleset subst)
 
 ;; List operators

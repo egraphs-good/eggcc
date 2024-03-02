@@ -1,3 +1,4 @@
+use crate::schema::Scope;
 #[cfg(test)]
 use crate::{egglog_test, interpreter::Value, schema::Constant};
 
@@ -91,6 +92,38 @@ fn test_simple_subst_cycle() -> crate::Result {
         ),
         vec![expr.to_program(intt(), tuplet!(intt()))],
         Value::Const(Constant::Int(3)),
+        Value::Tuple(vec![Value::Const(Constant::Int(3))]),
+        vec![],
+    )
+}
+
+#[test]
+fn test_let_cycle() -> crate::Result {
+    use crate::ast::*;
+    let tuple_looparg = arg_with_type(Scope::LoopScope, tuplet!(intt()));
+    let mylet = tlet(int(3), tuple_looparg.clone());
+
+    let new_value = parallel!(int(3));
+    let target = tlet(
+        in_context(infunc("main"), int(3)),
+        parallel!(in_context(infunc("main"), int(3))),
+    );
+    let target2 = parallel!(in_context(infunc("main"), int(3)));
+
+    egglog_test(
+        &format!(
+            "
+(union {mylet} {tuple_looparg})
+(let mysubst (Subst (InFunc \"main\") (LoopScope) {new_value} {mylet}))
+",
+        ),
+        &format!(
+            "
+(check (= mysubst {target}))
+(check (= mysubst {target2}))",
+        ),
+        vec![],
+        Value::Tuple(vec![Value::Const(Constant::Int(3))]),
         Value::Tuple(vec![Value::Const(Constant::Int(3))]),
         vec![],
     )

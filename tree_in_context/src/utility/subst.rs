@@ -115,12 +115,14 @@ fn test_let_cycle() -> crate::Result {
             "
 (union {mylet} {tuple_looparg})
 (let mysubst (Subst (InFunc \"main\") (LoopScope) {new_value} {mylet}))
+(let mysubst2 (Subst (InFunc \"main\") (LoopScope) {new_value} mysubst))
 ",
         ),
         &format!(
             "
 (check (= mysubst {target}))
-(check (= mysubst {target2}))",
+(check (= mysubst {target2}))
+(check (= mysubst mysubst2))",
         ),
         vec![],
         Value::Tuple(vec![Value::Const(Constant::Int(3))]),

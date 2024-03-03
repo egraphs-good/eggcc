@@ -1,4 +1,3 @@
-use crate::schema::Scope;
 #[cfg(test)]
 use crate::{egglog_test, interpreter::Value, schema::Constant};
 
@@ -100,6 +99,7 @@ fn test_simple_subst_cycle() -> crate::Result {
 #[test]
 fn test_let_cycle() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Scope;
     let tuple_looparg = arg_with_type(Scope::LoopScope, tuplet!(intt()));
     let mylet = tlet(int(3), tuple_looparg.clone());
 

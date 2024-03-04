@@ -74,7 +74,10 @@
        (let new_out_branch (Get (Arg (LoopScope) new_in_type) len))
        (let substed_pred_out (MOCK-subst pred_out (Arg (LoopScope) in_type) (Arg (LoopScope) new_in_type)))
        (let new_pred_out (Concat par substed_pred_out new_out_branch))
+       (let inv_in_new_loop (MOCK-subst inv (Arg (LoopScope) in_type) (Arg (LoopScope) new_in_type)))
        (let new_loop (DoWhile new_input new_pred_out))
+       (union (InContext (InLoop new_input new_pred_out) inv_in_new_loop) 
+              (InContext (InLoop new_input new_pred_out) new_out_branch))
        ;; and two loop can be unioned.
        (let let_wrapper (Let new_loop (tuple-of-get-arg new_in_type (LetScope) len)))
        (union loop let_wrapper)

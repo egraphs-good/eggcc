@@ -273,24 +273,24 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
-    let expr = add(int(1), iarg());
+    let expr = add(int(1), iarg()).with_arg_types(intt(), intt());
     test_expr_parses_to(
         expr,
-        "(Bop (Add) (Const (Int 1)) (Arg (FuncScope) (Base (IntT))))",
+        "(Bop (Add) (Const (Int 1) (Base (IntT))) (Arg (Base (IntT))))",
     );
 }
 
 #[test]
 fn convert_to_egglog_switch() {
     use crate::ast::*;
-    let expr = switch!(int(1); concat_par(single(int(1)), single(int(2))), concat_par(single(int(3)), single(int(4))));
+    let expr = switch!(int(1); concat_par(single(int(1)), single(int(2))), concat_par(single(int(3)), single(int(4)))).with_arg_types(intt(), tuplet!(intt(), intt()));
     test_expr_parses_to(
         expr,
-        "(Switch (Const (Int 1))
+        "(Switch (Const (Int 1) (Base (IntT)))
                  (Cons 
-                  (Concat (Parallel) (Single (Const (Int 1))) (Single (Const (Int 2))))
+                  (Concat (Parallel) (Single (Const (Int 1) (Base (IntT)))) (Single (Const (Int 2) (Base (IntT)))))
                   (Cons 
-                   (Concat (Parallel) (Single (Const (Int 3))) (Single (Const (Int 4))))
+                   (Concat (Parallel) (Single (Const (Int 3) (Base (IntT)))) (Single (Const (Int 4) (Base (IntT)))))
                    (Nil))))",
     );
 }
@@ -317,14 +317,14 @@ fn convert_whole_program() {
         expr,
         "(Program 
             (Function \"main\" (Base (IntT)) (Base (IntT)) 
-                (Bop (Add) (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
+                (Bop (Add) (Const (Int 1) (Base (IntT))) (Call \"f\" (Const (Int 2) (Base (IntT)))))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (Get
-                        (DoWhile (Single (Arg (FuncScope) (Base (IntT))))
+                        (DoWhile (Single (Arg (Base (IntT))))
                         (Concat (Parallel) 
-                            (Single (Bop (LessThan) (Get (Arg (LoopScope) (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10))))
-                            (Single (Bop (Add) (Get (Arg (LoopScope) (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1))))))
+                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10) (TupleT (TCons (Base (IntT)) (TNil))))))
+                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1) (TupleT (TCons (Base (IntT)) (TNil))))))))
                         0)) 
                 (Nil)))",
     );

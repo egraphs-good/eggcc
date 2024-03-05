@@ -4,8 +4,9 @@ use crate::{egglog_test, interpreter::Value, schema::Constant};
 #[test]
 fn test_in_context_in_func() -> crate::Result {
     use crate::ast::*;
-    let expr = function("main", intt(), intt(), int(2));
-    let expected = function("main", intt(), intt(), in_context(infunc("main"), int(2)));
+    let expr = function("main", intt(), intt(), int(2)).func_with_arg_types();
+    let expected =
+        function("main", intt(), intt(), in_context(infunc("main"), int(2))).func_with_arg_types();
     egglog_test(
         &format!("{expr}"),
         &format!("(check (= {expr} {expected}))"),
@@ -27,11 +28,12 @@ fn test_in_context_two_lets() -> crate::Result {
         intt(),
         intt(),
         tlet(int(1), tlet(add(iarg(), iarg()), mul(iarg(), int(2)))),
-    );
-    let int1 = in_context(infunc("main"), int(1));
+    )
+    .func_with_arg_types();
+    let int1 = in_context(infunc("main"), int(1)).with_arg_types(intt(), intt());
     let arg1 = in_context(inlet(int1.clone()), iarg());
     let addarg1 = add(arg1.clone(), arg1.clone());
-    let int2 = in_context(inlet(addarg1.clone()), int(2));
+    let int2 = in_context(inlet(addarg1.clone()), int_ty(2, intt()));
     let arg2 = in_context(inlet(addarg1.clone()), iarg());
     let expr2 = function(
         "main",
@@ -44,7 +46,8 @@ fn test_in_context_two_lets() -> crate::Result {
                 mul(arg2.clone(), int2.clone()),
             ),
         ),
-    );
+    )
+    .func_with_arg_types();
 
     egglog_test(
         &format!("{expr}"),
@@ -62,8 +65,8 @@ fn test_in_context_two_lets() -> crate::Result {
 #[test]
 fn test_switch_contexts() -> crate::Result {
     use crate::ast::*;
-    let expr = function("main", intt(), intt(), tif(ttrue(), int(1), int(2)));
-    let pred = in_context(infunc("main"), ttrue());
+    let expr = function("main", intt(), intt(), tif(ttrue(), int(1), int(2))).func_with_arg_types();
+    let pred = in_context(infunc("main"), ttrue_ty(intt()));
     let expr2 = function(
         "main",
         intt(),
@@ -73,7 +76,8 @@ fn test_switch_contexts() -> crate::Result {
             in_context(inif(true, pred.clone()), int(1)),
             in_context(inif(false, pred.clone()), int(2)),
         ),
-    );
+    )
+    .func_with_arg_types();
     egglog_test(
         &format!("{expr}"),
         &format!("(check (= {expr} {expr2}))"),

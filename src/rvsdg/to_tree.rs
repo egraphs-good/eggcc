@@ -378,7 +378,7 @@ impl<'a> RegionTranslator<'a> {
                     // We then put the whole loop in a let binding and move on.
                     let (loop_translated, output_values) = self.translate_subregion(
                         inner_inputs.collect(),
-                        0,
+                        input_index,
                         iter::once(pred).chain(outputs.iter()).copied(),
                         1,
                     );
@@ -687,9 +687,9 @@ fn translate_simple_loop() {
                     bind_tuple(
                         dowhile(
                             parallel!(getat(0), getat(1)), // [1, 2]
-                            tlet(
-                                single(less_than(getat(1), getat(0))), // looparg: [1, 2] letarg: [2<1]
-                                parallel!(getat(0), getat(0), getat(1))
+                            bind_value(
+                                less_than(getat(1), getat(0)), // [1, 2, 2<1]
+                                parallel!(getat(2), getat(0), getat(1))
                             )
                         ), // [1, 2, 1, 2]
                         getat(2) // return 1
@@ -743,15 +743,15 @@ fn translate_loop() {
                 bind_tuple(
                     dowhile(
                         parallel!(getat(0)), // [i]
-                        tlet(
-                            single(int(1)), // loop: [i], let: [1]
+                        bind_value(
+                            int(1), // loop: [i, 1]
                             bind_value(
-                                add(getat(0), getat(0)), // [1, i+1]
+                                add(getat(0), getat(1)), // [i, 1, i+1]
                                 bind_value(
-                                    int(10), // [i], [1, i+1, 10]
+                                    int(10), // [i, 1, i+1, 10]
                                     bind_value(
-                                        less_than(getat(1), getat(2)), // [i], [1, i+1, 10, i+1<10]
-                                        parallel!(getat(3), getat(1))
+                                        less_than(getat(2), getat(3)), // [i, 1, i+1, 10, i+1<10]
+                                        parallel!(getat(4), getat(2))
                                     )
                                 )
                             )

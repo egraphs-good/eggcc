@@ -28,6 +28,7 @@ pub fn prologue() -> String {
         &optimizations::purity_analysis::rules().join("\n"),
         &optimizations::conditional_invariant_code_motion::rules().join("\n"),
         include_str!("utility/in_context.egg"),
+        include_str!("utility/subst.egg"),
         include_str!("optimizations/constant_fold.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         &optimizations::loop_invariant::rules().join("\n"),

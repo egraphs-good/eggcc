@@ -83,7 +83,7 @@ impl Expr {
             Expr::Let(..) => Constructor::Let,
             Expr::Arg(..) => Constructor::Arg,
             Expr::Call(..) => Constructor::Call,
-            Expr::Empty => Constructor::Empty,
+            Expr::Empty(..) => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,
             Expr::InContext(..) => Constructor::InContext,
         }
@@ -162,7 +162,6 @@ pub(crate) enum Sort {
     Expr,
     ListExpr,
     Order,
-    Scope,
     BinaryOp,
     UnaryOp,
     I64,
@@ -178,7 +177,6 @@ impl Sort {
             Sort::Expr => "Expr",
             Sort::ListExpr => "ListExpr",
             Sort::Order => "Order",
-            Sort::Scope => "Scope",
             Sort::I64 => "i64",
             Sort::String => "String",
             Sort::Type => "Type",
@@ -309,7 +307,7 @@ impl Constructor {
                 ]
             }
             Constructor::Const => {
-                vec![f(Static(Sort::Constant), "n")]
+                vec![f(Static(Sort::Constant), "n"), f(Static(Sort::Type), "ty")]
             }
             Constructor::Bop => vec![
                 f(Static(Sort::BinaryOp), "op"),
@@ -340,11 +338,11 @@ impl Constructor {
                 vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")]
             }
             Constructor::Let => vec![f(SubExpr, "in"), f(CapturedExpr, "out")],
-            Constructor::Arg => vec![f(Static(Sort::Scope), "scope"), f(Static(Sort::Type), "ty")],
+            Constructor::Arg => vec![f(Static(Sort::Type), "ty")],
             Constructor::Call => {
                 vec![f(Static(Sort::String), "func"), f(SubExpr, "arg")]
             }
-            Constructor::Empty => vec![],
+            Constructor::Empty => vec![f(Static(Sort::Type), "ty")],
             Constructor::Cons => vec![f(SubExpr, "hd"), f(SubListExpr, "tl")],
             Constructor::Nil => vec![],
             Constructor::Alloc => vec![f(SubExpr, "e"), f(Static(Sort::Type), "ty")],

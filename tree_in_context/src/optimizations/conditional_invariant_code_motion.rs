@@ -91,10 +91,9 @@ use crate::Value;
 
 #[test]
 fn test_lift_switch() -> crate::Result {
-    let switch =
-        switch!(int(1); less_than(get_funcarg(0), int(7)), less_than(get_funcarg(1), int(7)))
-            .with_arg_types(tuplet!(intt(), intt()), boolt());
-    let lifted = less_than(switch!(int(1); get_funcarg(0), get_funcarg(1)), int(7))
+    let switch = switch!(int(1); less_than(getat(0), int(7)), less_than(getat(1), int(7)))
+        .with_arg_types(tuplet!(intt(), intt()), boolt());
+    let lifted = less_than(switch!(int(1); getat(0), getat(1)), int(7))
         .with_arg_types(tuplet!(intt(), intt()), boolt());
     let build = format!("(ExprIsValid {switch})");
     let check = format!("(check (= {switch} {lifted}))");

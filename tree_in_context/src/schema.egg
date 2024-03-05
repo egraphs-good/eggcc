@@ -33,29 +33,21 @@
 ; Constants, argument, and empty tuple
 ; =================================
 
-; There are three types of arguments.
-; FuncScope refers to the function's argument.
-; LoopScope refers to the most recent loop's argument.
-; LetScope refers to the most recent let's argument.
-(datatype Scope
-  (FuncScope)
-  (LoopScope)
-  (LetScope))
-
-; Only a single function/loop/let argument is bound- if multiple values are needed, arg will be a tuple.
-; e.g. `(Get (FuncArg tuple_type) 1)` gets the second value in the argument with some tuple_type.
-(function Arg (Scope Type) Expr)
+; Only a single argument is bound- if multiple values are needed, arg will be a tuple.
+; e.g. `(Get (Arg tuple_type) 1)` gets the second value in the argument with some tuple_type.
+(function Arg (Type) Expr)
 
 ; Constants
 (datatype Constant
   (Int i64)
   (Bool bool))
-(function Const (Constant) Expr)
+; All leaf nodes need the type of the argument
+; Type is the type of the bound argument in scope
+(function Const (Constant Type) Expr)
 
 ; An empty tuple.
-(function Empty () Expr)
-; global short hand for (Empty)
-(let empty (Empty))
+; Type is the type of the bound argument in scope
+(function Empty (Type) Expr)
 
 
 ; =================================

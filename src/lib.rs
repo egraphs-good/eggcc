@@ -96,7 +96,7 @@ impl Optimizer {
         match program {
             Interpretable::Bril(program) => Self::interp_bril(program, args, profile_out),
             Interpretable::TreeProgram(program) => {
-                let (val, mut printed) = interpret_tree_prog(program, Self::parse_arguments(args));
+                let (val, mut printed) = interpret_tree_prog(program, &Self::parse_arguments(args));
                 assert_eq!(val, Value::Tuple(vec![]));
                 // add new line to the end of each line in printed
                 for line in printed.iter_mut() {

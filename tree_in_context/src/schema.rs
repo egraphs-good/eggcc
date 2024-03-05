@@ -1,6 +1,7 @@
 //! This module mirrors `schema.egg`.
 //! No implementation or conversion should
 //! be implemented in this file.
+//! Also see schema.egg for documentation
 
 use std::rc::Rc;
 use strum_macros::EnumIter;
@@ -75,28 +76,21 @@ pub enum Assumption {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Scope {
-    FuncScope,
-    LetScope,
-    LoopScope,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
-    Const(Constant),
+    Const(Constant, Type),
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
     Get(RcExpr, usize),
     Alloc(RcExpr, Type),
     Call(String, RcExpr),
-    Empty,
+    Empty(Type),
     Single(RcExpr),
     Concat(Order, RcExpr, RcExpr),
     Switch(RcExpr, Vec<RcExpr>),
     If(RcExpr, RcExpr, RcExpr),
     Let(RcExpr, RcExpr),
     DoWhile(RcExpr, RcExpr),
-    Arg(Scope, Type),
+    Arg(Type),
     InContext(Assumption, RcExpr),
     Function(String, Type, Type, RcExpr),
 }

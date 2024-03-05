@@ -56,7 +56,7 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     Ok(from_egglog.program_from_egglog(extracted.1))
 }
 
-fn check_func_type(func: RcExpr) {
+fn check_func_type(func: RcExpr) -> Result {
     let prologue = [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
@@ -72,26 +72,22 @@ fn check_func_type(func: RcExpr) {
     let check = format!("(check (HasType BODY {out_ty}))");
     let s = format!("{prologue}\n(let BODY {body})\n{schedule}\n{check}",);
 
-    let res = egglog::EGraph::default()
+    egglog::EGraph::default()
         .parse_and_run_program(&s)
         .map(|lines| {
             for line in lines {
                 println!("{}", line);
             }
-        });
-    assert!(
-        res.is_ok(),
-        "Failed to type {} with expected type {}",
-        body,
-        out_ty
-    );
+        })?;
+    Ok(())
 }
 
-fn check_program_gets_type(program: TreeProgram) {
-    check_func_type(program.entry);
+fn check_program_gets_type(program: TreeProgram) -> Result {
+    check_func_type(program.entry)?;
     for func in program.functions {
-        check_func_type(func);
+        check_func_type(func)?;
     }
+    Ok(())
 }
 
 /// Runs an egglog test.
@@ -109,7 +105,7 @@ pub fn egglog_test(
 ) -> Result {
     // first interpret the programs on the value
     for prog in progs {
-        let (result_val, print_log) = interpret_tree_prog(&prog, input.clone());
+        let (result_val, print_log) = interpret_tree_prog(&prog, &input);
         assert_eq!(
             result_val, expected,
             "Program {:?}\nproduced:\n{}\ninstead of expected:\n{}",
@@ -122,7 +118,13 @@ pub fn egglog_test(
         );
 
         // Check that the input program gets a type by the type analysis
-        check_program_gets_type(prog.clone());
+        match check_program_gets_type(prog.clone()) {
+            Ok(_) => (),
+            Err(e) => {
+                println!("Error in type analysis for program {:?}: {:?}", prog, e);
+                return Err(e);
+            }
+        }
     }
 
     let program = format!(

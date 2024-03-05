@@ -129,16 +129,6 @@ impl FromEgglog {
         })
     }
 
-    fn scope_from_egglog(&self, scope: Term) -> crate::schema::Scope {
-        match_term_app!(scope.clone();
-        {
-          ("LetScope", []) => crate::schema::Scope::LetScope,
-          ("LoopScope", []) => crate::schema::Scope::LoopScope,
-          ("FuncScope", []) => crate::schema::Scope::FuncScope,
-          _ => panic!("Invalid scope: {:?}", scope),
-        })
-    }
-
     fn binop_from_egglog(&self, op: Term) -> BinaryOp {
         match_term_app!(op.clone();
         {
@@ -170,9 +160,9 @@ impl FromEgglog {
     fn expr_from_egglog(&self, expr: Term) -> RcExpr {
         match_term_app!(expr.clone();
         {
-          ("Const", [constant]) => {
+          ("Const", [constant, ty]) => {
             let constant = self.termdag.get(*constant);
-            Rc::new(Expr::Const(self.const_from_egglog(constant)))
+            Rc::new(Expr::Const(self.const_from_egglog(constant), self.type_from_egglog(self.termdag.get(*ty))))
           }
           ("Bop", [op, lhs, rhs]) => {
             let op = self.termdag.get(*op);
@@ -221,7 +211,7 @@ impl FromEgglog {
               self.expr_from_egglog(expr),
             ))
           }
-          ("Empty", []) => Rc::new(Expr::Empty),
+          ("Empty", [ty]) => Rc::new(Expr::Empty(self.type_from_egglog(self.termdag.get(*ty)))),
           ("Single", [expr]) => {
             let expr = self.termdag.get(*expr);
             Rc::new(Expr::Single(self.expr_from_egglog(expr)))
@@ -270,9 +260,9 @@ impl FromEgglog {
               self.expr_from_egglog(body),
             ))
           }
-          ("Arg", [scope, type_]) => {
-            let type_ = self.termdag.get(*type_);
-            Rc::new(Expr::Arg(self.scope_from_egglog(self.termdag.get(*scope)), self.type_from_egglog(type_)))
+          ("Arg", [ty]) => {
+            let type_ = self.termdag.get(*ty);
+            Rc::new(Expr::Arg(self.type_from_egglog(type_)))
           }
           ("InContext", [assumption, expr]) => {
             let assumption = self.termdag.get(*assumption);

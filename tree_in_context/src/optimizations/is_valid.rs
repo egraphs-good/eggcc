@@ -1,5 +1,3 @@
-#[cfg(test)]
-use crate::schema::Scope;
 use crate::schema_helpers::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 
@@ -40,9 +38,9 @@ use crate::Value;
 #[test]
 fn test_is_valid() -> crate::Result {
     let myloop = dowhile(
-        in_context(inlet(int(2)), single(int(1))),
+        in_context(inlet(int_ty(2, emptyt())), single(int(1))),
         parallel!(
-            less_than(get(looparg(), 0), int(3)),
+            less_than(get(arg(), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     )
@@ -50,10 +48,7 @@ fn test_is_valid() -> crate::Result {
     // this expression is valid (it uses only IR constructors)
     // but it isn't a sub-expression of the initial one, so it won't be
     // marked as valid.
-    let not_made_valid = sub(
-        arg_with_type(Scope::LoopScope, intt()),
-        arg_with_type(Scope::LoopScope, intt()),
-    );
+    let not_made_valid = sub(iarg(), iarg());
     let build = format!("(ExprIsValid {myloop}) {not_made_valid}");
     let check = format!(
         "
@@ -63,10 +58,10 @@ fn test_is_valid() -> crate::Result {
 (fail (check (ExprIsValid {not_made_valid})))
 (fail (check (ExprIsValid {num2})))
     ",
-        num0 = int(0),
-        num2 = int(2),
-        arg = arg_with_type(Scope::LoopScope, tuplet!(intt())),
-        tup45 = parallel!(int(4), int(5)),
+        num0 = int_ty(0, tuplet!(intt())),
+        arg = arg_ty(tuplet!(intt())),
+        tup45 = parallel!(int(4), int(5)).with_arg_types(tuplet!(intt()), tuplet!(intt(), intt())),
+        num2 = int_ty(2, tuplet!(intt())),
     );
     crate::egglog_test(
         &build,

@@ -66,11 +66,11 @@ use crate::Value;
 #[test]
 fn test_body_contains() -> crate::Result {
     let myloop = dowhile(
-        in_context(inlet(int(2)), single(int(1))),
+        single(int(1)),
         parallel!(
             less_than(
-                get(looparg(), 0),
-                tlet(int(3), in_context(inlet(int(3)), get_looparg(0)))
+                get(arg(), 0),
+                tlet(int(3), in_context(inlet(int_ty(3, intt())), arg()))
             ),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
@@ -80,20 +80,20 @@ fn test_body_contains() -> crate::Result {
     let check = format!(
         "
 (fail (check (BodyContainsExpr {myloop} {num1})))
+(fail (check (BodyContainsExpr {myloop} {num1inside})))
 (fail (check (BodyContainsExpr {myloop} {num2})))
-(fail (check (BodyContainsExpr {myloop} {in_context})))
 (check (BodyContainsExpr {myloop} {num3}))
 (check (BodyContainsExpr {myloop} {num4}))
 (check (BodyContainsExpr {myloop} {num5}))
 (check (BodyContainsListExpr {myloop} (Cons {tup45} (Nil))))
     ",
-        num1 = int(1),
-        num2 = int(2),
-        num3 = int(3),
-        num4 = int(4),
-        num5 = int(5),
-        in_context = in_context(inlet(int(6)), int_looparg()),
-        tup45 = parallel!(int(4), int(5)),
+        num1 = int_ty(1, emptyt()),
+        num1inside = int_ty(1, tuplet!(intt())),
+        num2 = int_ty(2, emptyt()),
+        num3 = int_ty(3, tuplet!(intt())),
+        num4 = int_ty(4, tuplet!(intt())),
+        num5 = int_ty(5, tuplet!(intt())),
+        tup45 = parallel!(int(4), int(5)).with_arg_types(tuplet!(intt()), tuplet!(intt(), intt())),
     );
     crate::egglog_test(
         &build,

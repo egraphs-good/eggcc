@@ -33,61 +33,64 @@
       ((panic "type mismatch, better error message later :(")) ; once egglog allows non-literal panics
       :ruleset type-analysis)
 
-(relation HasArgType (Expr Scope Type))
+(relation HasArgType (Expr Type))
 
-(rule ((HasArgType (Arg scope t1) scope t2)
+(rule ((HasArgType (Arg t1) t2)
        (!= t1 t2))
       ((panic "arg type mismatch"))
       :ruleset type-analysis)
 
 ; Pushing expected arg types down
-(rule ((HasArgType (Uop _ e) scope ty)) ((HasArgType e scope ty)) :ruleset type-analysis)
-(rule ((HasArgType (Bop _ e1 e2) scope ty))
+(rule ((HasArgType (Uop _ e) ty)) ((HasArgType e ty)) :ruleset type-analysis)
+(rule ((HasArgType (Bop _ e1 e2) ty))
       (
-        (HasArgType e1 scope ty)
-        (HasArgType e2 scope ty)
+        (HasArgType e1 ty)
+        (HasArgType e2 ty)
       )
       :ruleset type-analysis)
-(rule ((HasArgType (Get e _) scope ty)) ((HasArgType e scope ty)) :ruleset type-analysis)
-(rule ((HasArgType (Alloc e _) scope ty)) ((HasArgType e scope ty)) :ruleset type-analysis)
-(rule ((HasArgType (Call _ e) scope ty)) ((HasArgType e scope ty)) :ruleset type-analysis)
-(rule ((HasArgType (Single e) scope ty)) ((HasArgType e scope ty)) :ruleset type-analysis)
-(rule ((HasArgType (Concat _ e1 e2) scope ty))
+(rule ((HasArgType (Get e _) ty)) ((HasArgType e ty)) :ruleset type-analysis)
+(rule ((HasArgType (Alloc e _) ty)) ((HasArgType e ty)) :ruleset type-analysis)
+(rule ((HasArgType (Call _ e) ty)) ((HasArgType e ty)) :ruleset type-analysis)
+(rule ((HasArgType (Single e) ty)) ((HasArgType e ty)) :ruleset type-analysis)
+(rule ((HasArgType (Concat _ e1 e2) ty))
       (
-        (HasArgType e1 scope ty)
-        (HasArgType e2 scope ty)
+        (HasArgType e1 ty)
+        (HasArgType e2 ty)
       )
       :ruleset type-analysis)
-(rule ((HasArgType (Switch pred (Cons branch (Nil))) scope ty))
+(rule ((HasArgType (Switch pred (Cons branch (Nil))) ty))
       (
-        (HasArgType pred scope ty)
-        (HasArgType branch scope ty)
+        (HasArgType pred ty)
+        (HasArgType branch ty)
       )
       :ruleset type-analysis)
-(rule ((HasArgType (Switch pred (Cons branch rest)) scope ty))
-      ((HasArgType (Switch pred rest) scope ty))
+(rule ((HasArgType (Switch pred (Cons branch rest)) ty))
+      ((HasArgType (Switch pred rest) ty))
       :ruleset type-analysis)
-(rule ((HasArgType (If c t e) scope ty))
+(rule ((HasArgType (If c t e) ty))
       (
-        (HasArgType c scope ty)
-        (HasArgType t scope ty)
-        (HasArgType e scope ty)
+        (HasArgType c ty)
+        (HasArgType t ty)
+        (HasArgType e ty)
       )
       :ruleset type-analysis)
 ; Don't push arg types through Program, Function, DoWhile, Let exprs because
 ; these create new arg contexts.
 
 ; Primitives
-(rule ((= lhs (Const (Int i))))
-      ((HasType lhs (Base (IntT))))
+(rule ((= lhs (Const (Int i) ty)))
+      ((HasType lhs (Base (IntT)))
+       (HasArgType lhs ty))
       :ruleset type-analysis)
 
-(rule ((= lhs (Const (Bool b))))
-      ((HasType lhs (Base (BoolT))))
+(rule ((= lhs (Const (Bool b) ty)))
+      ((HasType lhs (Base (BoolT)))
+       (HasArgType lhs ty))
       :ruleset type-analysis)
 
-(rule ((= lhs (Empty)))
-      ((HasType lhs (TupleT (TNil))))
+(rule ((= lhs (Empty ty)))
+      ((HasType lhs (TupleT (TNil)))
+       (HasArgType lhs ty))
       :ruleset type-analysis)
 
 ; Unary Ops
@@ -364,7 +367,7 @@
         (= lhs (Let inp out))
         (HasType inp ty-in)
       )
-      ((HasArgType out (LetScope) ty-in)) ; Track what type we expect the arg to have
+      ((HasArgType out ty-in)) ; Track what type we expect the arg to have
       :ruleset type-analysis)
 
 (rule (
@@ -375,10 +378,10 @@
       ((HasType lhs ty-out))
       :ruleset type-analysis)
 
-(rule ((Arg scope ty))
+(rule ((Arg ty))
       (
-        (HasType (Arg scope ty) ty)
-        (HasArgType (Arg scope ty) scope ty)
+        (HasType (Arg ty) ty)
+        (HasArgType (Arg ty) ty)
       )
       :ruleset type-analysis)
 
@@ -412,7 +415,7 @@
         (= lhs (DoWhile inp pred-body))
         (HasType inp (TupleT tylist))
       )
-      ((HasArgType pred-body (LoopScope) (TupleT tylist)))
+      ((HasArgType pred-body (TupleT tylist)))
       :ruleset type-analysis)
 
 (rule ((= lhs (DoWhile inp pred-body)))
@@ -445,7 +448,7 @@
 (rule ((= lhs (Function name in-ty out-ty body)))
       (
         ; Arg should have the specified type in the body
-        (HasArgType body (FuncScope) in-ty)
+        (HasArgType body in-ty)
         ; Expect the body to have the specified output type
         (ExpectType body out-ty "Function body had wrong type")
       )

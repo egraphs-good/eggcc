@@ -79,7 +79,7 @@ fn test_body_contains() -> crate::Result {
     let build = format!("{myloop}");
     let check = format!(
         "
-(check (BodyContainsExpr {myloop} {num1}))
+(fail (check (BodyContainsExpr {myloop} {num1})))
 (fail (check (BodyContainsExpr {myloop} {num1inside})))
 (fail (check (BodyContainsExpr {myloop} {num2})))
 (check (BodyContainsExpr {myloop} {num3}))

@@ -88,8 +88,6 @@ impl<'a> TypeChecker<'a> {
     }
 
     pub(crate) fn add_arg_types_to_expr(&self, expr: RcExpr, arg_ty: &Type) -> (Type, RcExpr) {
-        eprintln!("Adding arg types to {:?}", expr);
-        eprintln!("Arg type: {:?}", arg_ty);
         assert!(arg_ty != &Type::Unknown, "Expected known argument type");
         match expr.as_ref() {
             Expr::Const(constant, ty) => {

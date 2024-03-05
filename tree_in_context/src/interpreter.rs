@@ -400,13 +400,13 @@ fn test_interpreter_fib_using_memory() {
                     twrite(ptradd(arg(), int(1)), int(1)), // address 1, value 1
                     single(arg()),
                 ),
-            ),
+            ), // [ptr(0)]
             tlet(
                 dowhile(
-                    parallel!(ptradd(getat(0), int(2)), int(2)),
+                    parallel!(ptradd(getat(0), int(2)), int(2)), // [ptr(2), 2]
                     cons_par(
                         less_than(getat(1), int(nth)),
-                        tlet(
+                        concat_par(
                             twrite(
                                 getat(0),
                                 add(

@@ -268,7 +268,7 @@ pub fn int(i: i64) -> RcExpr {
     RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), Type::Unknown))
 }
 
-pub fn int_with_arg_type(i: i64, ty: Type) -> RcExpr {
+pub fn int_ty(i: i64, ty: Type) -> RcExpr {
     RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), ty))
 }
 

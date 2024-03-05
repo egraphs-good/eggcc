@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display};
 
-use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, Scope, TreeProgram, UnaryOp};
+use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, UnaryOp};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pointer {
@@ -87,17 +87,6 @@ pub(crate) struct VirtualMachine<'a> {
     log: Vec<String>,
 }
 
-/// Arguments represents the currently bound arguments
-/// in the current scope
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Args {
-    /// Function argument
-    func_arg: Option<Value>,
-    /// Loop argument (optional since we might not be evaluating something inside a loop)
-    loop_arg: Option<Value>,
-    /// Let-bound argument
-    let_arg: Option<Value>,
-}
 /// Represents the result of running a
 /// TreeProgram.
 pub struct BrilState {
@@ -111,24 +100,19 @@ pub struct BrilState {
 
 /// Interprets a program, returning the value
 /// returned by the program and the print log.
-pub fn interpret_tree_prog(prog: &TreeProgram, arg: Value) -> (Value, Vec<String>) {
+pub fn interpret_tree_prog(prog: &TreeProgram, arg: &Value) -> (Value, Vec<String>) {
     let mut vm = VirtualMachine {
         program: prog,
         next_addr: 0,
         mem: HashMap::new(),
         log: vec![],
     };
-    let args = Args {
-        func_arg: Some(arg),
-        loop_arg: None,
-        let_arg: None,
-    };
-    let ret_val = vm.interpret(&prog.entry.func_name().unwrap(), &args);
+    let ret_val = vm.interpret(&prog.entry.func_name().unwrap(), arg);
     (ret_val, vm.log)
 }
 
 /// Interprets an expression, returning the value
-pub fn interpret_expr(expr: &RcExpr, func_arg: Option<Value>) -> BrilState {
+pub fn interpret_expr(expr: &RcExpr, func_arg: &Value) -> BrilState {
     let mut vm = VirtualMachine {
         program: &TreeProgram {
             // expr should be call-free so this doesn't matter
@@ -139,12 +123,7 @@ pub fn interpret_expr(expr: &RcExpr, func_arg: Option<Value>) -> BrilState {
         mem: HashMap::new(),
         log: vec![],
     };
-    let arg = Args {
-        func_arg,
-        loop_arg: None,
-        let_arg: None,
-    };
-    let value = vm.interpret_expr(expr, &arg);
+    let value = vm.interpret_expr(expr, func_arg);
     BrilState {
         mem: vm.mem,
         log: vm.log,
@@ -153,28 +132,28 @@ pub fn interpret_expr(expr: &RcExpr, func_arg: Option<Value>) -> BrilState {
 }
 
 impl<'a> VirtualMachine<'a> {
-    fn interp_int_expr(&mut self, e: &RcExpr, arg: &Args) -> i64 {
+    fn interp_int_expr(&mut self, e: &RcExpr, arg: &Value) -> i64 {
         match self.interpret_expr(e, arg) {
             Const(Constant::Int(n)) => n,
             other => panic!("Expected integer. Got {:?} from expr {:?}", other, e),
         }
     }
 
-    fn interp_bool_expr(&mut self, e: &RcExpr, arg: &Args) -> bool {
+    fn interp_bool_expr(&mut self, e: &RcExpr, arg: &Value) -> bool {
         match self.interpret_expr(e, arg) {
             Const(Constant::Bool(b)) => b,
             other => panic!("Expected boolean. Got {:?} from expr {:?}", other, e),
         }
     }
 
-    fn interp_pointer_expr(&mut self, e: &RcExpr, arg: &Args) -> Pointer {
+    fn interp_pointer_expr(&mut self, e: &RcExpr, arg: &Value) -> Pointer {
         match self.interpret_expr(e, arg) {
             Ptr(ptr) => ptr,
             other => panic!("Expected pointer. Got {:?} from expr {:?}", other, e),
         }
     }
 
-    fn interpret_bop(&mut self, bop: &BinaryOp, e1: &RcExpr, e2: &RcExpr, arg: &Args) -> Value {
+    fn interpret_bop(&mut self, bop: &BinaryOp, e1: &RcExpr, e2: &RcExpr, arg: &Value) -> Value {
         let get_int = |e: &RcExpr, vm: &mut Self| vm.interp_int_expr(e, arg);
         let get_bool = |e: &RcExpr, vm: &mut Self| vm.interp_bool_expr(e, arg);
         let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointer_expr(e, arg);
@@ -213,7 +192,7 @@ impl<'a> VirtualMachine<'a> {
         }
     }
 
-    fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Args) -> Value {
+    fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Value) -> Value {
         match uop {
             UnaryOp::Not => Const(Constant::Bool(!self.interp_bool_expr(e, arg))),
             UnaryOp::Print => {
@@ -236,14 +215,14 @@ impl<'a> VirtualMachine<'a> {
     // TODO: refactor to return a Result<Value, RuntimeError>
     // struct RuntimeError { BadRead(Value) }
     // in_contexts e typechecks
-    pub fn interpret(&mut self, func_name: &str, arg: &Args) -> Value {
+    pub fn interpret(&mut self, func_name: &str, arg: &Value) -> Value {
         let func = self.program.get_function(func_name).unwrap();
         self.interpret_expr(func.func_body().unwrap(), arg)
     }
 
-    pub fn interpret_expr(&mut self, expr: &RcExpr, arg: &Args) -> Value {
+    pub fn interpret_expr(&mut self, expr: &RcExpr, arg: &Value) -> Value {
         match expr.as_ref() {
-            Expr::Const(c) => Const(c.clone()),
+            Expr::Const(c, _ty) => Const(c.clone()),
             Expr::Bop(bop, e1, e2) => self.interpret_bop(bop, e1, e2, arg),
             Expr::Uop(uop, e) => self.interpret_uop(uop, e, arg),
             Expr::InContext(_assumption, e) => self.interpret_expr(e, arg),
@@ -266,7 +245,7 @@ impl<'a> VirtualMachine<'a> {
                 self.next_addr += usize::try_from(size).unwrap();
                 Ptr(Pointer::new(addr, size as usize, 0))
             }
-            Expr::Empty => Tuple(vec![]),
+            Expr::Empty(_ty) => Tuple(vec![]),
             Expr::Single(e) => Tuple(vec![self.interpret_expr(e, arg)]),
             Expr::Concat(order, e1, e2) => {
                 let (v1_tuple, v2_tuple) = match order {
@@ -314,11 +293,9 @@ impl<'a> VirtualMachine<'a> {
                 // Because it's a do-while, we always execute the body at least once
                 let mut pred = Const(Constant::Bool(true));
                 while pred == Const(Constant::Bool(true)) {
-                    let mut new_args = arg.clone();
-                    new_args.loop_arg = Some(Tuple(vals.clone()));
-                    // unbind let arg now that we are in a loop's scope
-                    new_args.let_arg = None;
-                    let Tuple(pred_output_val) = self.interpret_expr(pred_output, &new_args) else {
+                    let Tuple(pred_output_val) =
+                        self.interpret_expr(pred_output, &Tuple(vals.clone()))
+                    else {
                         panic!("expected tuple for pred_output in do-while")
                     };
                     assert_eq!(
@@ -333,25 +310,16 @@ impl<'a> VirtualMachine<'a> {
                 Tuple(vals)
             }
             Expr::Let(input, output) => {
-                // Evaluate the input first, once
-                let vals = self.interpret_expr(input, arg);
-                let mut new_arg = arg.clone();
-                new_arg.let_arg = Some(vals.clone());
+                let input_val = self.interpret_expr(input, arg);
                 // Evaluate the output with the result
                 // bound to `(Arg)`
-                self.interpret_expr(output, &new_arg)
+                self.interpret_expr(output, &input_val)
             }
-            Expr::Arg(scope, _ty) => match scope {
-                Scope::FuncScope => arg.func_arg.clone().expect("Function argument not bound"),
-                Scope::LetScope => arg.let_arg.clone().expect("Let argument not bound"),
-                Scope::LoopScope => arg.loop_arg.clone().expect("Loop argument not bound"),
-            },
+            Expr::Arg(_ty) => arg.clone(),
             Expr::Function(..) => panic!("Function should not be interpreted as an expression"),
             Expr::Call(func_name, e) => {
                 let e_val = self.interpret_expr(e, arg);
-                let mut new_args = arg.clone();
-                new_args.func_arg = Some(e_val.clone());
-                self.interpret(func_name, &new_args)
+                self.interpret(func_name, &e_val)
             }
         }
     }
@@ -365,16 +333,11 @@ fn test_interpret_calls() {
             "func1",
             intt(),
             intt(),
-            mul(call("func2", sub(funcarg(), int(1))), int(2))
+            mul(call("func2", sub(arg(), int(1))), int(2))
         ),
-        function(
-            "func2",
-            intt(),
-            intt(),
-            tlet(funcarg(), add(letarg(), int(1)))
-        ),
+        function("func2", intt(), intt(), tlet(arg(), add(arg(), int(1)))),
     );
-    let res = interpret_tree_prog(&expr, Const(Constant::Int(5))).0;
+    let res = interpret_tree_prog(&expr, &Const(Constant::Int(5))).0;
     assert_eq!(res, Const(Constant::Int(10)));
 }
 
@@ -386,15 +349,15 @@ fn test_interpret_recursive() {
         intt(),
         intt(),
         tif(
-            less_than(funcarg(), int(2)),
-            funcarg(),
+            less_than(arg(), int(2)),
+            arg(),
             add(
-                call("fib", sub(funcarg(), int(1))),
-                call("fib", sub(funcarg(), int(2)))
+                call("fib", sub(arg(), int(1))),
+                call("fib", sub(arg(), int(2)))
             )
         )
     ),);
-    let res = interpret_tree_prog(&expr, Const(Constant::Int(10))).0;
+    let res = interpret_tree_prog(&expr, &Const(Constant::Int(10))).0;
     assert_eq!(res, Const(Constant::Int(55)));
 }
 
@@ -406,16 +369,13 @@ fn test_interpreter() {
         dowhile(
             parallel!(int(1)),
             parallel!(
-                less_than(get_looparg(0), int(10)),
-                first(parallel!(
-                    add(get_looparg(0), int(1)),
-                    tprint(get_looparg(0))
-                ))
+                less_than(getat(0), int(10)),
+                first(parallel!(add(getat(0), int(1)), tprint(getat(0))))
             ),
         ),
         0,
     );
-    let res = interpret_expr(&expr, None);
+    let res = interpret_expr(&expr, &val_empty());
     assert_eq!(res.value, Const(Constant::Int(11)));
     assert_eq!(
         res.log,
@@ -435,35 +395,35 @@ fn test_interpreter_fib_using_memory() {
         alloc(int(nth + 2), intt()),
         tlet(
             concat_seq(
-                twrite(letarg(), int(0)), // address 0, value 0
+                twrite(arg(), int(0)), // address 0, value 0
                 concat_seq(
-                    twrite(ptradd(letarg(), int(1)), int(1)), // address 1, value 1
-                    single(letarg()),
+                    twrite(ptradd(arg(), int(1)), int(1)), // address 1, value 1
+                    single(arg()),
                 ),
             ),
             tlet(
                 dowhile(
-                    parallel!(ptradd(get_letarg(0), int(2)), int(2)),
+                    parallel!(ptradd(getat(0), int(2)), int(2)),
                     cons_par(
-                        less_than(get_looparg(1), int(nth)),
+                        less_than(getat(1), int(nth)),
                         tlet(
                             twrite(
-                                get_looparg(0),
+                                getat(0),
                                 add(
-                                    load(ptradd(get_looparg(0), int(-1))),
-                                    load(ptradd(get_looparg(0), int(-2))),
+                                    load(ptradd(getat(0), int(-1))),
+                                    load(ptradd(getat(0), int(-2))),
                                 ),
                             ),
-                            parallel!(ptradd(get_looparg(0), int(1)), add(get_looparg(1), int(1))),
+                            parallel!(ptradd(getat(0), int(1)), add(getat(1), int(1))),
                         ),
                     ),
                 ),
-                parallel!(load(ptradd(get_letarg(0), int(-1))), get_letarg(1)),
+                parallel!(load(ptradd(getat(0), int(-1))), getat(1)),
             ),
         ),
     );
 
-    let res = interpret_expr(&expr, None);
+    let res = interpret_expr(&expr, &val_empty());
     assert_eq!(
         res.value,
         Tuple(vec![

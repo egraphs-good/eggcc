@@ -109,7 +109,7 @@ pub fn egglog_test(
 ) -> Result {
     // first interpret the programs on the value
     for prog in progs {
-        let (result_val, print_log) = interpret_tree_prog(&prog, input.clone());
+        let (result_val, print_log) = interpret_tree_prog(&prog, &input);
         assert_eq!(
             result_val, expected,
             "Program {:?}\nproduced:\n{}\ninstead of expected:\n{}",

@@ -276,14 +276,14 @@ fn switch_branches() {
 
 #[test]
 fn lets() -> crate::Result {
-    let inp = tlet(int(4), add(int_letarg(), int_letarg()));
+    let inp = tlet(int(4), add(iarg(), iarg()));
     type_test(inp, intt(), val_int(0), val_int(8))
 }
 
 #[test]
 #[should_panic]
 fn let_type_error() {
-    type_error_test(tlet(int(1), and(bool_letarg(), ttrue())));
+    type_error_test(tlet(int(1), and(barg(), ttrue())));
 }
 
 #[test]
@@ -298,7 +298,7 @@ fn loops() -> crate::Result {
 
     let l15 = dowhile(
         single(int(1)),
-        concat_seq(single(tfalse()), single(add(get(looparg(), 0), int(1)))),
+        concat_seq(single(tfalse()), single(add(getat(0), int(1)))),
     );
     type_test(
         l15,
@@ -308,8 +308,8 @@ fn loops() -> crate::Result {
     )?;
 
     // while x < 4, x++
-    let pred = single(less_than(get(looparg(), 0), int(4)));
-    let body = single(add(get(looparg(), 0), int(1)));
+    let pred = single(less_than(getat(0), int(4)));
+    let body = single(add(getat(0), int(1)));
     let l2 = dowhile(single(int(1)), concat_seq(pred, body));
     type_test(
         l2,
@@ -324,11 +324,8 @@ fn loops() -> crate::Result {
     let l2 = dowhile(
         concat_par(single(int(1)), single(int(2))),
         concat_par(
-            single(less_than(get(looparg(), 0), int(5))),
-            concat_par(
-                single(add(get(looparg(), 0), int(1))),
-                single(mul(get(looparg(), 0), int(2))),
-            ),
+            single(less_than(getat(0), int(5))),
+            concat_par(single(add(getat(0), int(1))), single(mul(getat(0), int(2)))),
         ),
     );
 
@@ -386,7 +383,7 @@ fn loop_inputs_outputs_error2() {
 
 #[test]
 fn funcs_and_calls() -> crate::Result {
-    let body = add(int_funcarg(), int(2));
+    let body = add(iarg(), int(2));
     let f = function("f", intt(), intt(), body.clone());
     let c = call("f", int(4));
     egglog_test(
@@ -415,9 +412,6 @@ fn repro_argtype_bug() -> crate::Result {
 
 #[test]
 fn incontext() -> crate::Result {
-    let body = tlet(
-        int(1),
-        in_context(inlet(int(1)), add(int_letarg(), int_letarg())),
-    );
+    let body = tlet(int(1), in_context(inlet(int(1)), add(iarg(), iarg())));
     type_test(body, intt(), val_int(0), val_int(2))
 }

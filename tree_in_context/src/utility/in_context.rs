@@ -26,16 +26,13 @@ fn test_in_context_two_lets() -> crate::Result {
         "main",
         intt(),
         intt(),
-        tlet(
-            int(1),
-            tlet(add(int_letarg(), int_letarg()), mul(int_letarg(), int(2))),
-        ),
+        tlet(int(1), tlet(add(iarg(), iarg()), mul(iarg(), int(2)))),
     );
     let int1 = in_context(infunc("main"), int(1));
-    let arg1 = in_context(inlet(int1.clone()), int_letarg());
+    let arg1 = in_context(inlet(int1.clone()), iarg());
     let addarg1 = add(arg1.clone(), arg1.clone());
     let int2 = in_context(inlet(addarg1.clone()), int(2));
-    let arg2 = in_context(inlet(addarg1.clone()), int_letarg());
+    let arg2 = in_context(inlet(addarg1.clone()), iarg());
     let expr2 = function(
         "main",
         intt(),
@@ -94,13 +91,13 @@ fn test_switch_contexts() -> crate::Result {
 fn test_dowhile_cycle_in_context() -> crate::Result {
     use crate::ast::*;
     // loop runs one iteration and returns 3
-    let myloop = dowhile(funcarg(), parallel!(tfalse(), int(3)));
+    let myloop = dowhile(arg(), parallel!(tfalse(), int(3)));
     let expr = function("main", tuplet!(intt()), tuplet!(intt()), myloop).func_with_arg_types();
     let int3func = function("main", tuplet!(intt()), tuplet!(intt()), single(int(3)));
 
     let fargincontext = in_context(
         infunc("main"),
-        funcarg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
+        arg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
     );
     let inner_in_context = inloop(fargincontext.clone(), parallel!(tfalse(), int(3)));
     let expr_intermediate = function(

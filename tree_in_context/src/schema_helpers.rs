@@ -83,7 +83,7 @@ impl Expr {
             Expr::Let(..) => Constructor::Let,
             Expr::Arg(..) => Constructor::Arg,
             Expr::Call(..) => Constructor::Call,
-            Expr::Empty => Constructor::Empty,
+            Expr::Empty(..) => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,
             Expr::InContext(..) => Constructor::InContext,
         }

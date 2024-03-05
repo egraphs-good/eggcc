@@ -13,10 +13,7 @@ use std::iter;
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_in_context::ast::{
-    and, div, empty, eq, get_funcarg, get_letarg, get_looparg, letarg, mul, push_par, sub,
-    switch_vec, tif,
-};
+use tree_in_context::ast::{and, arg, div, empty, eq, getat, mul, push_par, sub, switch_vec, tif};
 #[cfg(test)]
 use tree_in_context::ast::{intt, parallel, program};
 #[cfg(test)]
@@ -54,10 +51,8 @@ impl RvsdgProgram {
 /// Stores the location of a single value of an RVSDG node.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum StoredValue {
-    /// The value is stored at get(let_arg(), usize)
-    LetArg(usize),
-    LoopArg(usize),
-    FuncArg(usize),
+    /// The value is stored at get(arg(), usize)
+    Arg(usize),
     /// The value is a state edge, thus not stored.
     StateEdge,
     /// An expression representing this stored value.
@@ -71,7 +66,7 @@ enum StoredValue {
 type StoredNode = Vec<StoredValue>;
 
 fn storedarg(index: usize) -> StoredNode {
-    vec![StoredValue::LetArg(index)]
+    vec![StoredValue::Arg(index)]
 }
 
 fn storedstate() -> StoredNode {
@@ -81,9 +76,7 @@ fn storedstate() -> StoredNode {
 impl StoredValue {
     fn to_expr(&self) -> Option<RcExpr> {
         match self {
-            StoredValue::LetArg(index) => Some(get_letarg(*index)),
-            StoredValue::LoopArg(index) => Some(get_looparg(*index)),
-            StoredValue::FuncArg(index) => Some(get_funcarg(*index)),
+            StoredValue::Arg(index) => Some(getat(*index)),
             StoredValue::StateEdge => None,
             StoredValue::Expr(expr) => Some(expr.clone()),
         }
@@ -114,13 +107,13 @@ struct RegionTranslator<'a> {
 /// to the environment by concatenating all previous values
 /// with the new one
 fn bind_tuple(new_tuple_expr: RcExpr, body: RcExpr) -> RcExpr {
-    tlet(concat_par(letarg(), new_tuple_expr), body)
+    tlet(concat_par(arg(), new_tuple_expr), body)
 }
 
 /// Bind a single value instead of a tuple, convenient for testing
 #[cfg(test)]
 fn bind_value(expr: RcExpr, body: RcExpr) -> RcExpr {
-    tlet(push_par(expr, letarg()), body)
+    tlet(push_par(expr, arg()), body)
 }
 
 impl<'a> RegionTranslator<'a> {
@@ -146,7 +139,7 @@ impl<'a> RegionTranslator<'a> {
         if self.current_num_let_bound == 0 {
             self.bindings.push(single(expr));
         } else {
-            self.bindings.push(push_par(expr, letarg()));
+            self.bindings.push(push_par(expr, arg()));
         }
 
         self.current_num_let_bound += 1;
@@ -164,7 +157,7 @@ impl<'a> RegionTranslator<'a> {
         if self.current_num_let_bound == 0 {
             self.bindings.push(expr);
         } else {
-            self.bindings.push(concat_par(letarg(), expr));
+            self.bindings.push(concat_par(arg(), expr));
         }
         let res = storedstate();
         assert_eq!(
@@ -182,7 +175,7 @@ impl<'a> RegionTranslator<'a> {
         if self.current_num_let_bound == 0 {
             self.bindings.push(expr);
         } else {
-            self.bindings.push(concat_par(letarg(), expr));
+            self.bindings.push(concat_par(arg(), expr));
         }
         let num_not_state_edges = values
             .iter()
@@ -245,7 +238,7 @@ impl<'a> RegionTranslator<'a> {
                 match res {
                     StoredValue::StateEdge => resulting_values.push(StoredValue::StateEdge),
                     _ => {
-                        resulting_values.push(StoredValue::LetArg(
+                        resulting_values.push(StoredValue::Arg(
                             self.current_num_let_bound + number_non_state_edges,
                         ));
                         number_non_state_edges += 1;
@@ -376,7 +369,7 @@ impl<'a> RegionTranslator<'a> {
                         StoredValue::StateEdge => StoredValue::StateEdge,
                         _ => {
                             input_index += 1;
-                            StoredValue::LoopArg(input_index - 1)
+                            StoredValue::Arg(input_index - 1)
                         }
                     });
 
@@ -438,7 +431,7 @@ impl<'a> RegionTranslator<'a> {
                 );
                 let mut ret_values = vec![];
                 if output_type.is_some() {
-                    ret_values.push(StoredValue::LetArg(self.current_num_let_bound));
+                    ret_values.push(StoredValue::Arg(self.current_num_let_bound));
                 }
                 let num_state_edges = num_ret_values - output_type.is_some() as usize;
 
@@ -511,11 +504,12 @@ impl RvsdgFunction {
                 RvsdgType::PrintState => StoredValue::StateEdge,
                 RvsdgType::Bril(_) => {
                     arg_index += 1;
-                    StoredValue::FuncArg(arg_index - 1)
+                    StoredValue::Arg(arg_index - 1)
                 }
             })
             .collect();
-        let mut translator = RegionTranslator::new(&self.nodes, argument_values, 0, optimize_lets);
+        let mut translator =
+            RegionTranslator::new(&self.nodes, argument_values, arg_index, optimize_lets);
         let translated_results = self
             .results
             .iter()
@@ -577,7 +571,7 @@ fn let_translation_test(
 
     use tree_in_context::interpreter::interpret_tree_prog;
 
-    let (found_val, found_printlog) = interpret_tree_prog(&expected, input_val.clone());
+    let (found_val, found_printlog) = interpret_tree_prog(&expected, &input_val);
     assert_eq!(
         expected_val, found_val,
         "Reference program produced incorrect result. Expected {:?}, found {:?}",
@@ -588,7 +582,7 @@ fn let_translation_test(
         "Reference program produced incorrect print log. Expected {:?}, found {:?}",
         expected_printlog, found_printlog
     );
-    let (found_val, found_printlog) = interpret_tree_prog(&expected_optimized, input_val.clone());
+    let (found_val, found_printlog) = interpret_tree_prog(&expected_optimized, &input_val);
     assert_eq!(
         expected_val, found_val,
         "Reference optimized program produced incorrect result. Expected {:?}, found {:?}",
@@ -600,7 +594,7 @@ fn let_translation_test(
         expected_printlog, found_printlog
     );
 
-    let (found_val, found_printlog) = interpret_tree_prog(&result, input_val.clone());
+    let (found_val, found_printlog) = interpret_tree_prog(&result, &input_val);
     assert_eq!(
         expected_val, found_val,
         "Resulting program produced incorrect result. Expected {:?}, found {:?}",
@@ -612,7 +606,7 @@ fn let_translation_test(
         expected_printlog, found_printlog
     );
 
-    let (found_val, found_printlog) = interpret_tree_prog(&result_optimized, input_val);
+    let (found_val, found_printlog) = interpret_tree_prog(&result_optimized, &input_val);
     assert_eq!(
         expected_val, found_val,
         "Resulting optimized program produced incorrect result. Expected {:?}, found {:?}",
@@ -649,8 +643,8 @@ fn simple_translation() {
             tlet(
                 single(int(1)),
                 bind_value(
-                    add(get_letarg(0), get_letarg(0)),
-                    get_letarg(1), // returns res
+                    add(getat(0), getat(0)),
+                    getat(1), // returns res
                 ),
             )
         ),),
@@ -692,13 +686,13 @@ fn translate_simple_loop() {
                     int(2), // [1, 2]
                     bind_tuple(
                         dowhile(
-                            parallel!(get_letarg(0), get_letarg(1)), // [1, 2]
+                            parallel!(getat(0), getat(1)), // [1, 2]
                             tlet(
-                                single(less_than(get_looparg(1), get_looparg(0))), // looparg: [1, 2] letarg: [2<1]
-                                parallel!(get_letarg(0), get_looparg(0), get_looparg(1))
+                                single(less_than(getat(1), getat(0))), // looparg: [1, 2] letarg: [2<1]
+                                parallel!(getat(0), getat(0), getat(1))
                             )
                         ), // [1, 2, 1, 2]
-                        get_letarg(2) // return 1
+                        getat(2) // return 1
                     ),
                 )
             )
@@ -710,13 +704,9 @@ fn translate_simple_loop() {
             tlet(
                 dowhile(
                     parallel!(int(1), int(2)),
-                    parallel!(
-                        less_than(get_looparg(1), get_looparg(0)),
-                        get_looparg(0),
-                        get_looparg(1)
-                    )
+                    parallel!(less_than(getat(1), getat(0)), getat(0), getat(1))
                 ),
-                get_letarg(0)
+                getat(0)
             ),
         ),),
         Value::Tuple(vec![]),
@@ -752,23 +742,23 @@ fn translate_loop() {
                 single(int(0)), // [0]
                 bind_tuple(
                     dowhile(
-                        parallel!(get_letarg(0)), // [i]
+                        parallel!(getat(0)), // [i]
                         tlet(
                             single(int(1)), // loop: [i], let: [1]
                             bind_value(
-                                add(get_looparg(0), get_letarg(0)), // [1, i+1]
+                                add(getat(0), getat(0)), // [1, i+1]
                                 bind_value(
                                     int(10), // [i], [1, i+1, 10]
                                     bind_value(
-                                        less_than(get_letarg(1), get_letarg(2)), // [i], [1, i+1, 10, i+1<10]
-                                        parallel!(get_letarg(3), get_letarg(1))
+                                        less_than(getat(1), getat(2)), // [i], [1, i+1, 10, i+1<10]
+                                        parallel!(getat(3), getat(1))
                                     )
                                 )
                             )
                         )
                     ), // [0, 10]
                     bind_tuple(
-                        tprint(get_letarg(1)), // [0, 10]
+                        tprint(getat(1)), // [0, 10]
                         parallel!()
                     )
                 )
@@ -782,11 +772,11 @@ fn translate_loop() {
                 dowhile(
                     parallel!(int(0)),
                     parallel!(
-                        less_than(add(get_looparg(0), int(1)), int(10)),
-                        add(get_looparg(0), int(1))
+                        less_than(add(getat(0), int(1)), int(10)),
+                        add(getat(0), int(1))
                     )
                 ),
-                bind_tuple(tprint(get_letarg(0)), parallel!())
+                bind_tuple(tprint(getat(0)), parallel!())
             ),
         ),),
         Value::Tuple(vec![]),
@@ -819,14 +809,14 @@ fn simple_if_translation() {
             tlet(
                 single(int(1)), // [1]
                 bind_value(
-                    less_than(get_letarg(0), get_letarg(0)), // [1, 1<1]
+                    less_than(getat(0), getat(0)), // [1, 1<1]
                     bind_tuple(
                         tif(
-                            get_letarg(1),
-                            parallel!(get_letarg(0)),
-                            bind_value(int(2), parallel!(get_letarg(2)))
+                            getat(1),
+                            parallel!(getat(0)),
+                            bind_value(int(2), parallel!(getat(2)))
                         ), // [1, 1<1, 2]
-                        get_letarg(2)
+                        getat(2)
                     ),
                 ),
             ),
@@ -841,7 +831,7 @@ fn simple_if_translation() {
                     parallel!(int(1)),
                     parallel!(int(2)),
                 ),
-                get_letarg(0)
+                getat(0)
             )
         ),),
         Value::Tuple(vec![]),
@@ -872,11 +862,8 @@ fn two_print_translation() {
                 bind_value(
                     int(1), // [2, 1]
                     bind_value(
-                        add(get_letarg(1), get_letarg(0)), // [2, 1, 3]
-                        bind_tuple(
-                            tprint(get_letarg(2)),
-                            bind_tuple(tprint(get_letarg(0)), parallel!()),
-                        ),
+                        add(getat(1), getat(0)), // [2, 1, 3]
+                        bind_tuple(tprint(getat(2)), bind_tuple(tprint(getat(0)), parallel!()),),
                     ),
                 ),
             )
@@ -920,7 +907,7 @@ fn multi_function_translation() {
                 TreeType::TupleT(vec![]),
                 tlet(
                     single(call("myadd", parallel!())),
-                    bind_tuple(tprint(get_letarg(0)), parallel!()),
+                    bind_tuple(tprint(getat(0)), parallel!()),
                 ),
             ),
             function(
@@ -930,8 +917,8 @@ fn multi_function_translation() {
                 tlet(
                     single(int(1)),
                     bind_value(
-                        add(get_letarg(0), get_letarg(0)),
-                        get_letarg(1), // returns res
+                        add(getat(0), getat(0)),
+                        getat(1), // returns res
                     ),
                 ),
             ),
@@ -943,7 +930,7 @@ fn multi_function_translation() {
                 TreeType::TupleT(vec![]),
                 tlet(
                     single(call("myadd", parallel!())),
-                    bind_tuple(tprint(get_letarg(0)), parallel!()),
+                    bind_tuple(tprint(getat(0)), parallel!()),
                 ),
             ),
             function(

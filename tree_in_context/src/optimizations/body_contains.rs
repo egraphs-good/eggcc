@@ -69,8 +69,8 @@ fn test_body_contains() -> crate::Result {
         in_context(inlet(int(2)), single(int(1))),
         parallel!(
             less_than(
-                get(looparg(), 0),
-                tlet(int(3), in_context(inlet(int(3)), get_looparg(0)))
+                get(arg(), 0),
+                tlet(int(3), in_context(inlet(int(3)), getat(0)))
             ),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
@@ -79,7 +79,8 @@ fn test_body_contains() -> crate::Result {
     let build = format!("{myloop}");
     let check = format!(
         "
-(fail (check (BodyContainsExpr {myloop} {num1})))
+(check (BodyContainsExpr {myloop} {num1}))
+(fail (check (BodyContainsExpr {myloop} {num1inside})))
 (fail (check (BodyContainsExpr {myloop} {num2})))
 (fail (check (BodyContainsExpr {myloop} {in_context})))
 (check (BodyContainsExpr {myloop} {num3}))
@@ -87,12 +88,13 @@ fn test_body_contains() -> crate::Result {
 (check (BodyContainsExpr {myloop} {num5}))
 (check (BodyContainsListExpr {myloop} (Cons {tup45} (Nil))))
     ",
-        num1 = int(1),
-        num2 = int(2),
+        num1 = int_with_arg_type(1, emptyt()),
+        num1inside = int_with_arg_type(1, tuplet!(intt())),
+        num2 = int_with_arg_type(2, emptyt()),
+        in_context = in_context(inlet(int(6)), iarg()),
         num3 = int(3),
         num4 = int(4),
         num5 = int(5),
-        in_context = in_context(inlet(int(6)), int_looparg()),
         tup45 = parallel!(int(4), int(5)),
     );
     crate::egglog_test(

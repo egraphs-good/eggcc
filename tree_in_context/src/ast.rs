@@ -215,7 +215,7 @@ pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Let(lhs, rhs))
 }
 
-pub fn arg_with_type(ty: Type) -> RcExpr {
+pub fn arg_ty(ty: Type) -> RcExpr {
     RcExpr::new(Expr::Arg(ty))
 }
 
@@ -257,11 +257,19 @@ pub fn ttrue() -> RcExpr {
     ))
 }
 
+pub fn ttrue_ty(ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(true), ty))
+}
+
 pub fn tfalse() -> RcExpr {
     RcExpr::new(Expr::Const(
         crate::schema::Constant::Bool(false),
         Type::Unknown,
     ))
+}
+
+pub fn tfalse_ty(ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(false), ty))
 }
 
 pub fn int(i: i64) -> RcExpr {

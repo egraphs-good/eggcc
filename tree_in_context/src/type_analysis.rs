@@ -84,13 +84,13 @@ fn uops() -> crate::Result {
 #[test]
 #[should_panic]
 fn not_error() {
-    type_error_test(not(int(4)));
+    type_error_test(not(int_ty(4, emptyt())));
 }
 
 #[test]
 #[should_panic]
 fn load_error() {
-    type_error_test(load(int(4)));
+    type_error_test(load(int_ty(4, emptyt())));
 }
 
 #[test]
@@ -113,42 +113,51 @@ fn bops() -> crate::Result {
 #[test]
 #[should_panic]
 fn add_error() {
-    type_error_test(add(int(4), ttrue()));
+    type_error_test(add(int_ty(4, emptyt()), ttrue_ty(emptyt())));
 }
 
 #[test]
 #[should_panic]
 fn sub_error() {
-    type_error_test(sub(tfalse(), ttrue()));
+    type_error_test(sub(tfalse_ty(emptyt()), ttrue_ty(emptyt())));
 }
 
 #[test]
 #[should_panic]
 fn mul_error() {
-    type_error_test(mul(less_than(int(4), int(5)), int(3)));
+    type_error_test(mul(
+        less_than(int_ty(4, emptyt()), int_ty(5, emptyt())),
+        int_ty(3, emptyt()),
+    ));
 }
 
 #[test]
 #[should_panic]
 fn less_than_error() {
-    type_error_test(less_than(less_than(int(4), int(5)), int(3)));
+    type_error_test(less_than(
+        less_than(int_ty(4, emptyt()), int_ty(5, emptyt())),
+        int_ty(3, emptyt()),
+    ));
 }
 
 #[test]
 #[should_panic]
 fn and_error() {
-    type_error_test(and(ttrue(), and(tfalse(), int(2))));
+    type_error_test(and(
+        ttrue_ty(emptyt()),
+        and(tfalse_ty(emptyt()), int_ty(2, emptyt())),
+    ));
 }
 
 #[test]
 #[should_panic]
 fn or_error() {
-    type_error_test(or(tfalse(), int(2)));
+    type_error_test(or(tfalse_ty(emptyt()), int_ty(2, emptyt())));
 }
 
 #[test]
 fn pointers() -> crate::Result {
-    let ptr = alloc(int(12), intt());
+    let ptr = alloc(int_ty(12, emptyt()), intt());
     type_test(
         ptr.clone(),
         pointert(intt()),
@@ -156,13 +165,14 @@ fn pointers() -> crate::Result {
         Value::Ptr(Pointer::new(0, 12, 0)),
     )?;
     type_test(
-        write(ptr.clone(), int(1)),
+        write(ptr.clone(), int_ty(1, emptyt())),
         emptyt(),
         val_int(0),
         val_empty(),
     )?;
     type_test(
-        ptradd(alloc(int(1), boolt()), add(int(1), int(2))),
+        ptradd(alloc(int(1), boolt()), add(int(1), int(2)))
+            .with_arg_types(emptyt(), pointert(boolt())),
         pointert(boolt()),
         val_int(0),
         Value::Ptr(Pointer::new(0, 1, 3)),
@@ -172,27 +182,31 @@ fn pointers() -> crate::Result {
 #[test]
 #[should_panic]
 fn pointer_write_error() {
-    let ptr = alloc(int(12), intt());
-    type_error_test(write(ptr.clone(), ttrue()));
+    let ptr = alloc(int_ty(12, emptyt()), intt());
+    type_error_test(write(ptr.clone(), ttrue_ty(emptyt())));
 }
 
 #[test]
 #[should_panic]
 fn pointer_type_error() {
-    type_error_test(alloc(less_than(int(1), int(2)), boolt()));
+    type_error_test(alloc(
+        less_than(int_ty(1, emptyt()), int_ty(2, emptyt())),
+        boolt(),
+    ));
 }
 
 #[test]
 fn tuple() -> crate::Result {
     type_test(
-        single(int(30)),
+        single(int_ty(30, emptyt())),
         tuplet_vec(vec![intt()]),
         val_int(0),
         val_vec(vec![val_int(30)]),
     )?;
 
     type_test(
-        concat_par(single(int(20)), single(ttrue())),
+        concat_par(single(int(20)), single(ttrue()))
+            .with_arg_types(emptyt(), tuplet!(intt(), boolt())),
         tuplet_vec(vec![intt(), boolt()]),
         val_int(0),
         val_vec(vec![val_int(20), val_bool(true)]),
@@ -201,14 +215,16 @@ fn tuple() -> crate::Result {
 
 #[test]
 fn tuple_get() -> crate::Result {
-    let t = concat_par(single(int(2)), concat_par(single(ttrue()), single(int(4))));
+    let t = concat_par(single(int(2)), concat_par(single(ttrue()), single(int(4))))
+        .with_arg_types(emptyt(), tuplet!(intt(), boolt(), intt()));
     type_test(get(t.clone(), 0), intt(), val_int(0), val_int(2))?;
     type_test(get(t.clone(), 1), boolt(), val_int(0), val_bool(true))?;
     type_test(get(t, 2), intt(), val_int(0), val_int(4))?;
     let t2 = concat_seq(
         single(tfalse()),
         single(add(get(single(int(2)), 0), int(1))),
-    );
+    )
+    .with_arg_types(emptyt(), tuplet!(boolt(), intt()));
     type_test(get(t2, 0), boolt(), val_int(0), val_bool(false))
 }
 
@@ -231,31 +247,39 @@ fn ifs() -> crate::Result {
 #[test]
 #[should_panic]
 fn if_pred() {
-    type_error_test(tif(int(1), int(2), int(3)));
+    type_error_test(tif(
+        int_ty(1, emptyt()),
+        int_ty(2, emptyt()),
+        int_ty(3, emptyt()),
+    ));
 }
 
 #[test]
 #[should_panic]
 fn if_branches() {
-    type_error_test(tif(ttrue(), int(2), tfalse()));
+    type_error_test(tif(
+        ttrue_ty(emptyt()),
+        int_ty(2, emptyt()),
+        tfalse_ty(emptyt()),
+    ));
 }
 
 #[test]
 fn switches() -> crate::Result {
     type_test(
-        switch_vec(int(1), vec![int(0), int(21)]),
+        switch_vec(int(1), vec![int(0), int(21)]).with_arg_types(emptyt(), intt()),
         intt(),
         val_int(0),
         val_int(21),
     )?;
     type_test(
-        switch_vec(int(0), vec![ttrue()]),
+        switch_vec(int(0), vec![ttrue()]).with_arg_types(emptyt(), boolt()),
         boolt(),
         val_int(0),
         val_bool(true),
     )?;
     type_test(
-        switch_vec(int(2), vec![int(1), int(2), int(3), int(4)]),
+        switch_vec(int(2), vec![int(1), int(2), int(3), int(4)]).with_arg_types(emptyt(), intt()),
         intt(),
         val_int(0),
         val_int(3),
@@ -265,13 +289,19 @@ fn switches() -> crate::Result {
 #[test]
 #[should_panic]
 fn switch_pred() {
-    type_error_test(switch_vec(ttrue(), vec![int(1), int(2)]));
+    type_error_test(switch_vec(
+        ttrue_ty(emptyt()),
+        vec![int_ty(1, emptyt()), int_ty(2, emptyt())],
+    ));
 }
 
 #[test]
 #[should_panic]
 fn switch_branches() {
-    type_error_test(switch_vec(int(1), vec![ttrue(), int(1)]));
+    type_error_test(switch_vec(
+        int_ty(1, emptyt()),
+        vec![ttrue_ty(emptyt()), int_ty(1, emptyt())],
+    ));
 }
 
 #[test]
@@ -283,7 +313,7 @@ fn lets() -> crate::Result {
 #[test]
 #[should_panic]
 fn let_type_error() {
-    type_error_test(tlet(int(1), and(barg(), ttrue())));
+    type_error_test(tlet(int_ty(1, emptyt()), and(barg(), ttrue_ty(intt()))));
 }
 
 #[test]
@@ -341,14 +371,23 @@ fn loops() -> crate::Result {
 #[should_panic]
 fn loop_input_error() {
     // input is not a tuple
-    type_error_test(dowhile(int(4), concat_par(single(ttrue()), single(int(5)))))
+    type_error_test(dowhile(
+        int_ty(4, emptyt()),
+        concat_par(
+            single(ttrue_ty(tuplet!(intt()))),
+            single(int_ty(5, tuplet!(intt()))),
+        ),
+    ))
 }
 
 #[test]
 #[should_panic]
 fn loop_predbody_error() {
     // pred-body is not a tuple
-    type_error_test(dowhile(single(int(4)), ttrue()))
+    type_error_test(dowhile(
+        single(int_ty(4, emptyt())),
+        ttrue_ty(tuplet!(intt())),
+    ))
 }
 
 #[test]
@@ -356,8 +395,11 @@ fn loop_predbody_error() {
 fn loop_pred_error() {
     // pred is not a bool
     type_error_test(dowhile(
-        single(int(1)),
-        concat_par(single(int(2)), single(int(3))),
+        single(int_ty(1, emptyt())),
+        concat_par(
+            single(int_ty(2, tuplet!(intt()))),
+            single(int_ty(3, tuplet!(intt()))),
+        ),
     ))
 }
 
@@ -366,8 +408,11 @@ fn loop_pred_error() {
 fn loop_inputs_outputs_error1() {
     // input is bool, output is int
     type_error_test(dowhile(
-        single(ttrue()),
-        concat_par(single(tfalse()), single(int(2))),
+        single(ttrue_ty(emptyt())),
+        concat_par(
+            single(tfalse_ty(tuplet!(boolt()))),
+            single(int_ty(2, tuplet!(boolt()))),
+        ),
     ))
 }
 
@@ -376,16 +421,19 @@ fn loop_inputs_outputs_error1() {
 fn loop_inputs_outputs_error2() {
     // input is (int, bool), output is (int)
     type_error_test(dowhile(
-        concat_seq(single(int(2)), single(ttrue())),
-        concat_par(single(tfalse()), single(int(2))),
+        concat_seq(single(int_ty(2, emptyt())), single(ttrue_ty(emptyt()))),
+        concat_par(
+            single(tfalse_ty(tuplet!(intt(), boolt()))),
+            single(int_ty(2, tuplet!(intt(), boolt()))),
+        ),
     ))
 }
 
 #[test]
 fn funcs_and_calls() -> crate::Result {
-    let body = add(iarg(), int(2));
-    let f = function("f", intt(), intt(), body.clone());
-    let c = call("f", int(4));
+    let body = add(arg(), int(2)).with_arg_types(intt(), intt());
+    let f = function("f", intt(), intt(), body.clone()).func_with_arg_types();
+    let c = call("f", int_ty(4, emptyt()));
     egglog_test(
         &format!("{f}{c}"),
         &format!(
@@ -403,7 +451,8 @@ fn funcs_and_calls() -> crate::Result {
 #[test]
 fn repro_argtype_bug() -> crate::Result {
     type_test(
-        concat_par(tlet(int(1), empty()), tlet(ttrue(), empty())),
+        concat_par(tlet(int(1), empty()), tlet(ttrue(), empty()))
+            .with_arg_types(emptyt(), emptyt()),
         emptyt(),
         val_empty(),
         val_empty(),
@@ -412,6 +461,10 @@ fn repro_argtype_bug() -> crate::Result {
 
 #[test]
 fn incontext() -> crate::Result {
-    let body = tlet(int(1), in_context(inlet(int(1)), add(iarg(), iarg())));
+    let body = tlet(
+        int(1),
+        in_context(inlet(int_ty(1, emptyt())), add(iarg(), iarg())),
+    )
+    .with_arg_types(emptyt(), intt());
     type_test(body, intt(), val_int(0), val_int(2))
 }

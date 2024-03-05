@@ -59,7 +59,7 @@ fn test_is_valid() -> crate::Result {
 (fail (check (ExprIsValid {num2})))
     ",
         num0 = int_ty(0, tuplet!(intt())),
-        arg = arg_with_type(tuplet!(intt())),
+        arg = arg_ty(tuplet!(intt())),
         tup45 = parallel!(int(4), int(5)).with_arg_types(tuplet!(intt()), tuplet!(intt(), intt())),
         num2 = int_ty(2, tuplet!(intt())),
     );

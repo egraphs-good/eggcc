@@ -1,0 +1,84 @@
+
+;; (Subst assumption to in) substitutes 
+;; (InContext assumption to) for `(Arg ty)` in `in`
+;; It also replaces `(Asuume anything (Arg ty))` with `(InContext assumption to)`
+(function Subst (Assumption Expr Expr) Expr :unextractable)
+(function SubstList (Assumption Expr ListExpr) ListExpr :unextractable)
+
+
+;; Base case- leaf nodes
+(rewrite (Subst assum to (Arg ty))
+         (InContext assum to)
+         :ruleset always-run)
+(rewrite (Subst assum to (InContext assum2 (Arg ty)))
+         (InContext assum to)
+         :ruleset always-run)
+(rewrite (Subst assum to (Const constant))
+         (InContext assum (Const constant))
+         :ruleset always-run)
+(rewrite (Subst assum to (InContext assum2 (Const constant)))
+         (InContext assum (Const constant))
+         :ruleset always-run)
+(rewrite (Subst assum to (Empty))
+         (InContext assum (Empty))
+          :ruleset always-run)
+(rewrite (Subst assum to (InContext assum2 (Empty)))
+         (InContext assum (Empty))
+         :ruleset always-run)
+
+
+;; Operators
+(rewrite (Subst assum to (Bop op c1 c2))
+         (Bop op (Subst assum to c1)
+                 (Subst assum to c2))
+         :ruleset always-run)
+(rewrite (Subst assum to (Uop op c1))
+         (Uop op (Subst assum to c1))
+         :ruleset always-run)
+(rewrite (Subst assum to (Get c1 index))
+         (Get (Subst assum to c1) index)
+         :ruleset always-run)
+(rewrite (Subst assum to (Alloc c1 ty))
+         (Alloc (Subst assum to c1) ty)
+         :ruleset always-run)
+(rewrite (Subst assum to (Call name c1))
+         (Call name (Subst assum to c1))
+         :ruleset always-run)
+
+
+;; Tuple operators
+(rewrite (Subst assum to (Single c1))
+         (Single (Subst assum to c1))
+         :ruleset always-run)
+(rewrite (Subst assum to (Concat order c1 c2))
+         (Concat order (Subst assum to c1) (Subst assum to c2))
+         :ruleset always-run)
+
+
+;; Control flow
+(rewrite (Subst assum to (Switch pred branches))
+         (Switch (Subst assum to pred)
+                 (SubstList assum to branches))
+         :ruleset always-run)
+(rewrite (Subst assum to (If pred c1 c2))
+         (If (Subst assum to pred)
+             (Subst assum to c1)
+             (Subst assum to c2))
+         :ruleset always-run)
+(rewrite (Subst assum to (Let in out))
+         (Let (Subst assum to in)
+              out)
+         :ruleset always-run)
+(rewrite (Subst assum to (DoWhile in out))
+         (DoWhile (Subst assum to in)
+                  out)
+         :ruleset always-run)
+
+;; List operators
+(rewrite (SubstList assum to (Cons c1 c2))
+         (Cons (Subst assum to c1)
+               (SubstList assum to c2))
+         :ruleset always-run)
+(rewrite (SubstList assum to (Nil))
+         (Nil)
+         :ruleset always-run)

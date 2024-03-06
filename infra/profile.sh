@@ -11,7 +11,7 @@ trap cleanup EXIT
 # TODO: take in file glob as command line argument
 PROFILES=(tests/*.bril)
 
-RUNMODES=("nothing" "rvsdg-round-trip")
+RUNMODES=("nothing" "rvsdg-round-trip" "optimize")
 
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench

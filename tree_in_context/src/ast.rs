@@ -1,8 +1,7 @@
 use crate::{
     interpreter::Value,
     schema::{
-        Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, Scope, TreeProgram, Type,
-        UnaryOp,
+        Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
     },
 };
 
@@ -105,18 +104,6 @@ pub fn get(e: RcExpr, i: usize) -> RcExpr {
     RcExpr::new(Expr::Get(e, i))
 }
 
-pub fn get_letarg(i: usize) -> RcExpr {
-    get(letarg(), i)
-}
-
-pub fn get_looparg(i: usize) -> RcExpr {
-    get(looparg(), i)
-}
-
-pub fn get_funcarg(i: usize) -> RcExpr {
-    get(funcarg(), i)
-}
-
 pub fn first(e: RcExpr) -> RcExpr {
     get(e, 0)
 }
@@ -171,7 +158,7 @@ pub fn switch_vec(cond: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
 }
 
 pub fn empty() -> RcExpr {
-    RcExpr::new(Expr::Empty)
+    RcExpr::new(Expr::Empty(Type::Unknown))
 }
 
 pub fn single(e: RcExpr) -> RcExpr {
@@ -228,48 +215,27 @@ pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Let(lhs, rhs))
 }
 
-pub fn arg_with_type(scope: Scope, ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Arg(scope, ty))
+pub fn arg_ty(ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Arg(ty))
 }
 
 /// Returns an argument with an unknown type.
 /// Use `with_arg_types` to fill in the correct type.
-pub fn arg(scope: Scope) -> RcExpr {
-    RcExpr::new(Expr::Arg(scope, Type::Unknown))
-}
-
-pub fn letarg() -> RcExpr {
-    arg(Scope::LetScope)
-}
-
-pub fn looparg() -> RcExpr {
-    arg(Scope::LoopScope)
-}
-
-pub fn funcarg() -> RcExpr {
-    arg(Scope::FuncScope)
+pub fn arg() -> RcExpr {
+    RcExpr::new(Expr::Arg(Type::Unknown))
 }
 
 /// An argument with an integer type.
-pub fn int_letarg() -> RcExpr {
-    RcExpr::new(Expr::Arg(Scope::LetScope, intt()))
+pub fn iarg() -> RcExpr {
+    RcExpr::new(Expr::Arg(intt()))
 }
 
-pub fn int_looparg() -> RcExpr {
-    RcExpr::new(Expr::Arg(Scope::LoopScope, intt()))
+pub fn barg() -> RcExpr {
+    RcExpr::new(Expr::Arg(boolt()))
 }
 
-pub fn int_funcarg() -> RcExpr {
-    RcExpr::new(Expr::Arg(Scope::FuncScope, intt()))
-}
-
-/// An argument with a boolean type.
-pub fn bool_letarg() -> RcExpr {
-    RcExpr::new(Expr::Arg(Scope::LetScope, boolt()))
-}
-
-pub fn get_let_at(index: usize) -> RcExpr {
-    get(int_letarg(), index)
+pub fn getat(index: usize) -> RcExpr {
+    get(arg(), index)
 }
 
 pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {
@@ -285,15 +251,33 @@ pub fn function(name: &str, arg_ty: Type, ret_ty: Type, body: RcExpr) -> RcExpr 
 }
 
 pub fn ttrue() -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(true)))
+    RcExpr::new(Expr::Const(
+        crate::schema::Constant::Bool(true),
+        Type::Unknown,
+    ))
+}
+
+pub fn ttrue_ty(ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(true), ty))
 }
 
 pub fn tfalse() -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(false)))
+    RcExpr::new(Expr::Const(
+        crate::schema::Constant::Bool(false),
+        Type::Unknown,
+    ))
+}
+
+pub fn tfalse_ty(ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(false), ty))
 }
 
 pub fn int(i: i64) -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i)))
+    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), Type::Unknown))
+}
+
+pub fn int_ty(i: i64, ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), ty))
 }
 
 pub fn inlet(e: RcExpr) -> Assumption {

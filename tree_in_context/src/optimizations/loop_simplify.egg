@@ -2,8 +2,8 @@
 (ruleset loop-simplify)
 
 (rewrite
- (DoWhile (Arg any_scope ty)
-  (Concat (Parallel) (Single (Const (Bool false)))
-    (Single (Const constant))))
- (Single (Const constant))
+ (DoWhile (Arg ty)
+  (Concat (Parallel) (Single (Const (Bool false) ty))
+    (Single (Const constant ty))))
+ (Single (Const constant ty))
  :ruleset loop-simplify)

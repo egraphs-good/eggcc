@@ -50,38 +50,38 @@
 (rule ((= loop (DoWhile in pred_out))) 
       ((set (hoisted-loop loop) false)) :ruleset always-run)
 
-(ruleset loop-inv-motion)
+; (ruleset loop-inv-motion)
 
-(function MOCK-subst (Expr Expr Expr) Expr :unextractable)
-;; This rule allow hoist the generated new loop again
-;; which cause trouble when interleaves with loop unrolling in milestone
-;; The way to fix was to restrict the unrolling number
-;; TODO: replace Expr-size after cost model is ready
-(rule ((boundary-Expr loop inv)
-       (> (Expr-size inv) 1)
-       (= loop (DoWhile in pred_out))
-       (HasType in (TupleT tylist))
-       (HasType inv inv_type)
-       (= in_type (TupleT tylist))
-       (= false (hoisted-loop loop))
-       (= len (tuple-length in)))
-      (;; change the args in the hoisted from inloop to inlet
-       (let hoisted (subst-arg-scope inv (LoopScope) (LetScope)))
-       ;; create a list of [(Get (Arg new_let_id) 0) ... hoisted_term]
-       (let new_input (Concat par (tuple-of-get-arg in_type (LetScope) len) (Single hoisted)))
-       ;; append (Get (Arg id) len+1) to end of output
-       (let new_in_type (TupleT (TCons inv_type tylist)))
-       (let new_out_branch (Get (Arg (LoopScope) new_in_type) len))
-       (let substed_pred_out (MOCK-subst pred_out (Arg (LoopScope) in_type) (Arg (LoopScope) new_in_type)))
-       (let new_pred_out (Concat par substed_pred_out new_out_branch))
-       (let inv_in_new_loop (MOCK-subst inv (Arg (LoopScope) in_type) (Arg (LoopScope) new_in_type)))
-       (let new_loop (DoWhile new_input new_pred_out))
-       (union (InContext (InLoop new_input new_pred_out) inv_in_new_loop) 
-              (InContext (InLoop new_input new_pred_out) new_out_branch))
-       ;; and two loop can be unioned.
-       (let let_wrapper (Let new_loop (tuple-of-get-arg new_in_type (LetScope) len)))
-       (union loop let_wrapper)
-       ;; don't hoist same loop again
-       (set (hoisted-loop loop) true))
-       :ruleset loop-inv-motion)
+; (function MOCK-subst (Expr Expr Expr) Expr :unextractable)
+; ;; This rule allow hoist the generated new loop again
+; ;; which cause trouble when interleaves with loop unrolling in milestone
+; ;; The way to fix was to restrict the unrolling number
+; ;; TODO: replace Expr-size after cost model is ready
+; (rule ((boundary-Expr loop inv)
+;        (> (Expr-size inv) 1)
+;        (= loop (DoWhile in pred_out))
+;        (HasType in (TupleT tylist))
+;        (HasType inv inv_type)
+;        (= in_type (TupleT tylist))
+;        (= false (hoisted-loop loop))
+;        (= len (tuple-length in)))
+;       (;; change the args in the hoisted from inloop to inlet
+;        (let hoisted (subst-arg-scope inv (LoopScope) (LetScope)))
+;        ;; create a list of [(Get (Arg new_let_id) 0) ... hoisted_term]
+;        (let new_input (Concat par (tuple-of-get-arg in_type (LetScope) len) (Single hoisted)))
+;        ;; append (Get (Arg id) len+1) to end of output
+;        (let new_in_type (TupleT (TCons inv_type tylist)))
+;        (let new_out_branch (Get (Arg (LoopScope) new_in_type) len))
+;        (let substed_pred_out (MOCK-subst pred_out (Arg (LoopScope) in_type) (Arg (LoopScope) new_in_type)))
+;        (let new_pred_out (Concat par substed_pred_out new_out_branch))
+;        (let inv_in_new_loop (MOCK-subst inv (Arg (LoopScope) in_type) (Arg (LoopScope) new_in_type)))
+;        (let new_loop (DoWhile new_input new_pred_out))
+;        (union (InContext (InLoop new_input new_pred_out) inv_in_new_loop) 
+;               (InContext (InLoop new_input new_pred_out) new_out_branch))
+;        ;; and two loop can be unioned.
+;        (let let_wrapper (Let new_loop (tuple-of-get-arg new_in_type (LetScope) len)))
+;        (union loop let_wrapper)
+;        ;; don't hoist same loop again
+;        (set (hoisted-loop loop) true))
+;        :ruleset loop-inv-motion)
    

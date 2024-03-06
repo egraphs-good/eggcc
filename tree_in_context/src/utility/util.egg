@@ -44,7 +44,7 @@
        (= sum (Expr-size out))) 
       ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
 
-(rule ((= expr (Const n))) 
+(rule ((= expr (Const n ty))) 
       ((set (Expr-size expr) 1))  :ruleset always-run)
 
 (rule ((= expr (Bop op x y)) 
@@ -83,14 +83,14 @@
        (= sum (+ (Expr-size out) (Expr-size in)))) 
       ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
 
-(rule ((= expr (Arg scope ty))) 
+(rule ((= expr (Arg ty))) 
       ((set (Expr-size expr) 1)) :ruleset always-run)
 
 (rule ((= expr (Call func arg)) 
        (= sum (Expr-size arg))) 
       ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
 
-(rule ((Empty)) ((set (Expr-size (Empty)) 0))  :ruleset always-run)
+(rule ((Empty ty)) ((set (Expr-size (Empty ty)) 0))  :ruleset always-run)
 
 (rule ((= expr (Cons hd tl)) 
        (= sum (+ (ListExpr-size tl) (Expr-size hd)))) 
@@ -107,21 +107,14 @@
        (= sum (Expr-size e))) 
       ((set (Expr-size expr) sum)) :ruleset always-run)
 
-;; Subst the scope under a expr from a scope to a another scope
-;; not implemented yet, it might be solved by subst?
-(function subst-arg-scope (Expr Scope Scope) Expr :unextractable)
-;; base case example
-(rule ((= f (subst-arg-scope expr from to))
-       (= expr (Arg from ty)))
-      ((union f (Arg to ty))))
 
-(function tuple-of-get-arg (Type Scope i64) Expr :unextractable)
-(function tuple-of-get-arg-helper (Type Scope i64 i64) Expr :unextractable)
+(function tuple-of-get-arg (Type i64) Expr :unextractable)
+(function tuple-of-get-arg-helper (Type i64 i64) Expr :unextractable)
 
-(rewrite (tuple-of-get-arg ty scope n) (tuple-of-get-arg-helper ty scope n 0) :ruleset always-run)
-(rewrite (tuple-of-get-arg-helper ty scope 1 x) (Single (Get (Arg scope ty) x)) :ruleset always-run)
-(rule ((= f (tuple-of-get-arg-helper ty scope a b)) (> a 1))
+(rewrite (tuple-of-get-arg ty n) (tuple-of-get-arg-helper ty n 0) :ruleset always-run)
+(rewrite (tuple-of-get-arg-helper ty 1 x) (Single (Get (Arg ty) x)) :ruleset always-run)
+(rule ((= f (tuple-of-get-arg-helper ty a b)) (> a 1))
       ((union f 
          (Concat par
-               (Get (Arg scope ty) b) 
-               (tuple-of-get-arg-helper ty scope (- a 1) (+ b 1))))) :ruleset always-run)
+               (Get (Arg ty) b) 
+               (tuple-of-get-arg-helper ty (- a 1) (+ b 1))))) :ruleset always-run)

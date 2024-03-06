@@ -1,0 +1,36 @@
+\newcommand{\N}{$\mathbb{N}$}
+\newcommand{\inferax}[2]{\infrule[#1]{\mbox{}}{\mbox{$#2$}}}
+\renewcommand{\inferrule}[3]{\infrule[#1]{\mbox{$#2$}}{\mbox{$#3$}}}
+\newcommand{\bigstep}[2]{#1 \Downarrow #2}
+\newcommand{\ang}[1]{\langle #1 \rangle}
+\newcommand{\spair}[2]{\ang{#1, #2}}
+\newcommand{\strip}[3]{\ang{#1, #2, #3}}
+
+\newcommand{\targ}{\alpha}
+\newcommand{\tmem}{\sigma}
+
+\newcommand{\uop}[2]{\operatorname{#1}\ #2}
+\newcommand{\bop}[3]{\operatorname{#1}\ #2\ #3}
+\newcommand{\trop}[4]{\operatorname{#1}\ #2\ #3\ #4}
+
+% (expression, arg, state) to (value, state)
+\newcommand{\easvs}[5]{\bigstep{\strip{#1}{#2}{#3}}{\spair{#4}{#5}}}
+
+% "definition" version of easvs
+\newcommand{\easvsd}[5]{\easvs{#1}{#2}{#3}{#4}{#5}}
+
+\newcommand{\append}[2]{#1\ \texttt{+\hspace{-1pt}+}\ #2}
+
+\newcommand{\denote}[1]{\left\llbracket #1 \right\rrbracket}
+\newcommand{\denotesub}[2]{\left\llbracket #2 \right\rrbracket_{#1}}
+\newcommand{\denotevalue}[1]{\denotesub{v}{#1}}
+\newcommand{\denotestate}[1]{\denotesub{s}{#1}}
+
+% denote called as a function
+\newcommand{\denotef}[2]{\denote{#1}\hspace{-.1em}\left(#2\right)}
+
+\newcommand{\denotefv}[2]{\denotevalue{#1}\hspace{-.2em}\left(#2\right)}
+\newcommand{\denotefs}[2]{\denotestate{#1}\hspace{-.2em}\left(#2\right)}
+\newcommand{\denotefsub}[3]{\denotesub{#1}{#2}\hspace{-.2em}\left(#3\right)}
+
+\newcommand{\eqdef}{\triangleq}

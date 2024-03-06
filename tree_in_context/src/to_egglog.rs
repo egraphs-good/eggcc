@@ -1,7 +1,7 @@
 use egglog::{ast::Literal, Term, TermDag};
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, Scope, TreeProgram, Type, UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TreeProgram, Type, UnaryOp,
 };
 
 impl Constant {
@@ -94,12 +94,6 @@ impl Order {
     }
 }
 
-impl Scope {
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
-        term_dag.app(format!("{:?}", self).into(), vec![])
-    }
-}
-
 impl BinaryOp {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
         term_dag.app(format!("{:?}", self).into(), vec![])
@@ -121,9 +115,10 @@ impl Expr {
 
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TermDag) -> Term {
         match self {
-            Expr::Const(c) => {
+            Expr::Const(c, ty) => {
                 let child = c.to_egglog_internal(term_dag);
-                term_dag.app("Const".into(), vec![child])
+                let ty = ty.to_egglog_internal(term_dag);
+                term_dag.app("Const".into(), vec![child, ty])
             }
             Expr::Bop(op, lhs, rhs) => {
                 let lhs = lhs.to_egglog_internal(term_dag);
@@ -151,7 +146,10 @@ impl Expr {
                 let name_lit = term_dag.lit(Literal::String(name.into()));
                 term_dag.app("Call".into(), vec![name_lit, arg])
             }
-            Expr::Empty => term_dag.app("Empty".into(), vec![]),
+            Expr::Empty(ty) => {
+                let ty = ty.to_egglog_internal(term_dag);
+                term_dag.app("Empty".into(), vec![ty])
+            }
             Expr::Single(expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 term_dag.app("Single".into(), vec![expr])
@@ -187,10 +185,9 @@ impl Expr {
                 let body = body.to_egglog_internal(term_dag);
                 term_dag.app("DoWhile".into(), vec![cond, body])
             }
-            Expr::Arg(scope, ty) => {
+            Expr::Arg(ty) => {
                 let ty = ty.to_egglog_internal(term_dag);
-                let scope = scope.to_egglog_internal(term_dag);
-                term_dag.app("Arg".into(), vec![scope, ty])
+                term_dag.app("Arg".into(), vec![ty])
             }
             Expr::InContext(assumption, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
@@ -276,24 +273,24 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
-    let expr = add(int(1), int_funcarg());
+    let expr = add(int(1), iarg()).with_arg_types(intt(), intt());
     test_expr_parses_to(
         expr,
-        "(Bop (Add) (Const (Int 1)) (Arg (FuncScope) (Base (IntT))))",
+        "(Bop (Add) (Const (Int 1) (Base (IntT))) (Arg (Base (IntT))))",
     );
 }
 
 #[test]
 fn convert_to_egglog_switch() {
     use crate::ast::*;
-    let expr = switch!(int(1); concat_par(single(int(1)), single(int(2))), concat_par(single(int(3)), single(int(4))));
+    let expr = switch!(int(1); concat_par(single(int(1)), single(int(2))), concat_par(single(int(3)), single(int(4)))).with_arg_types(intt(), tuplet!(intt(), intt()));
     test_expr_parses_to(
         expr,
-        "(Switch (Const (Int 1))
+        "(Switch (Const (Int 1) (Base (IntT)))
                  (Cons 
-                  (Concat (Parallel) (Single (Const (Int 1))) (Single (Const (Int 2))))
+                  (Concat (Parallel) (Single (Const (Int 1) (Base (IntT)))) (Single (Const (Int 2) (Base (IntT)))))
                   (Cons 
-                   (Concat (Parallel) (Single (Const (Int 3))) (Single (Const (Int 4))))
+                   (Concat (Parallel) (Single (Const (Int 3) (Base (IntT)))) (Single (Const (Int 4) (Base (IntT)))))
                    (Nil))))",
     );
 }
@@ -309,11 +306,8 @@ fn convert_whole_program() {
             intt(),
             get(
                 dowhile(
-                    single(funcarg()),
-                    push_par(
-                        add(get(looparg(), 0), int(1)),
-                        single(less_than(get(looparg(), 0), int(10)))
-                    )
+                    single(arg()),
+                    push_par(add(getat(0), int(1)), single(less_than(getat(0), int(10))))
                 ),
                 0
             )
@@ -323,14 +317,14 @@ fn convert_whole_program() {
         expr,
         "(Program 
             (Function \"main\" (Base (IntT)) (Base (IntT)) 
-                (Bop (Add) (Const (Int 1)) (Call \"f\" (Const (Int 2))))) 
+                (Bop (Add) (Const (Int 1) (Base (IntT))) (Call \"f\" (Const (Int 2) (Base (IntT)))))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (Get
-                        (DoWhile (Single (Arg (FuncScope) (Base (IntT))))
+                        (DoWhile (Single (Arg (Base (IntT))))
                         (Concat (Parallel) 
-                            (Single (Bop (LessThan) (Get (Arg (LoopScope) (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10))))
-                            (Single (Bop (Add) (Get (Arg (LoopScope) (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1))))))
+                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 10) (TupleT (TCons (Base (IntT)) (TNil))))))
+                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (Base (IntT)) (TNil)))) 0) (Const (Int 1) (TupleT (TCons (Base (IntT)) (TNil))))))))
                         0)) 
                 (Nil)))",
     );

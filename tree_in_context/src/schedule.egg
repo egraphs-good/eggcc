@@ -11,6 +11,7 @@
       type-analysis
     )
     (saturate constant_fold)
+    conditional-invariant-code-motion
     switch_rewrite
     loop-simplify
     (saturate boundary-analysis)))

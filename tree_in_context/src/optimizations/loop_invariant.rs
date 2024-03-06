@@ -12,7 +12,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
             "
 (rule ((BodyContainsExpr loop expr) 
        (= loop (DoWhile in out)) 
-       (= expr (Get (Arg (LoopScope) ty) i)) 
+       (= expr (Get (Arg ty) i)) 
        (= loop (DoWhile in pred_out))
        (= expr (tuple-ith pred_out (+ i 1)))) 
       ((set (is-inv-Expr loop expr) true)){ruleset})"
@@ -129,22 +129,23 @@ use crate::{ast::*, egglog_test, interpreter::Value};
 fn test_invariant_detect_simple() -> crate::Result {
     let output_ty = tuplet!(intt(), intt(), intt(), intt());
     let inner_inv =
-        sub(get_looparg(2), get_looparg(1)).with_loop_arg_types(output_ty.clone(), intt());
-    let inv = add(inner_inv.clone(), int(0)).with_loop_arg_types(output_ty.clone(), intt());
+        sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), intt());
+    let inv = add(inner_inv.clone(), int(0)).with_arg_types(output_ty.clone(), intt());
     let pred =
-        less_than(get_looparg(0), get_looparg(3)).with_loop_arg_types(output_ty.clone(), boolt());
-    let not_inv = add(get_looparg(0), inv.clone()).with_loop_arg_types(output_ty.clone(), intt());
-    let inv_in_print = add(inv.clone(), int(4));
-    let print = tprint(inv_in_print.clone()).with_loop_arg_types(output_ty.clone(), emptyt());
+        less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), boolt());
+    let not_inv = add(getat(0), inv.clone()).with_arg_types(output_ty.clone(), intt());
+    let inv_in_print = add(inv.clone(), int_ty(4, output_ty.clone()));
+    let print = tprint(inv_in_print.clone()).with_arg_types(output_ty.clone(), emptyt());
 
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4)),
         concat_par(
-            parallel!(pred.clone(), not_inv.clone(), get_looparg(1)),
-            concat_par(print.clone(), parallel!(get_looparg(2), get_looparg(3))),
+            parallel!(pred.clone(), not_inv.clone(), getat(1)),
+            concat_par(print.clone(), parallel!(getat(2), getat(3))),
         ),
     )
     .with_arg_types(emptyt(), output_ty.clone());
+
 
     let build = format!(
         "(let loop {})

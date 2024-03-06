@@ -161,18 +161,15 @@ impl<'a> TreeToRvsdg<'a> {
             .collect()
     }
 
-    fn translate_subregion(&mut self, expr: RcExpr) -> Vec<Operand> {
-        let inner_args = self
-            .current_args
-            .iter()
-            .enumerate()
-            .map(|(i, _)| Operand::Arg(i))
-            .collect();
+    /// Translates an expression in a new subregion
+    /// num_args is the number of non-state-edge arguments
+    fn translate_subregion(&mut self, expr: RcExpr, num_args: usize) -> Vec<Operand> {
+        let inner_args = (0..num_args).map(Operand::Arg).collect();
         let mut translator = TreeToRvsdg {
             program: self.program,
             nodes: self.nodes,
             type_cache: self.type_cache,
-            current_state_edge: self.current_state_edge,
+            current_state_edge: Operand::Arg(num_args),
             current_args: inner_args,
         };
         let mut results = translator.convert_expr(expr);
@@ -258,7 +255,12 @@ impl<'a> TreeToRvsdg<'a> {
             }
             Expr::Get(child, index) => {
                 let child = self.convert_expr(child.clone());
-                assert!(child.len() > *index, "Index out of bounds");
+                assert!(
+                    child.len() > *index,
+                    "Index out of bounds. Got child {:?} with index {:?}",
+                    child,
+                    index
+                );
                 vec![child[*index]]
             }
             Expr::Alloc(size, ty) => {
@@ -305,9 +307,11 @@ impl<'a> TreeToRvsdg<'a> {
             Expr::If(pred, then_branch, else_branch) => {
                 let pred = self.convert_expr(pred.clone());
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
-                let then_branch = self.translate_subregion(then_branch.clone());
+                let then_branch =
+                    self.translate_subregion(then_branch.clone(), self.current_args.len());
 
-                let else_branch = self.translate_subregion(else_branch.clone());
+                let else_branch =
+                    self.translate_subregion(else_branch.clone(), self.current_args.len());
 
                 let new_id = self.nodes.len();
                 assert_eq!(
@@ -340,7 +344,7 @@ impl<'a> TreeToRvsdg<'a> {
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
                 let mut outputs = vec![];
                 for case in cases {
-                    let case = self.translate_subregion(case.clone());
+                    let case = self.translate_subregion(case.clone(), self.current_args.len());
                     outputs.push(case);
                 }
                 assert!(
@@ -362,7 +366,8 @@ impl<'a> TreeToRvsdg<'a> {
             Expr::DoWhile(inputs, body) => {
                 let mut inputs_with_state_edge = self.convert_expr(inputs.clone());
                 inputs_with_state_edge.push(self.current_state_edge);
-                let pred_and_body_and_state_edge = self.translate_subregion(body.clone());
+                let pred_and_body_and_state_edge =
+                    self.translate_subregion(body.clone(), inputs_with_state_edge.len() - 1);
                 assert_eq!(
                     inputs_with_state_edge.len(),
                     pred_and_body_and_state_edge.len() - 1,

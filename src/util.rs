@@ -165,6 +165,8 @@ pub enum RunType {
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
+    /// Convert to tree encoding and back to RVSDG again.
+    TreeToRvsdg,
     /// Convert to Tree Encoding and back to Bril again,
     /// outputting the bril program.
     TreeRoundTrip,
@@ -196,6 +198,7 @@ impl RunType {
             RunType::Optimize => true,
             RunType::RvsdgConversion => false,
             RunType::RvsdgRoundTrip => true,
+            RunType::TreeToRvsdg => false,
             RunType::OptimizedRvsdg => false,
             RunType::TreeRoundTrip => true,
             RunType::ToCfg => true,
@@ -219,7 +222,8 @@ impl RunType {
             | RunType::TreeConversion
             | RunType::TreeConversionVerboseLets
             | RunType::OptimizedRvsdg
-            | RunType::Optimize => false,
+            | RunType::Optimize
+            | RunType::TreeToRvsdg => false,
             RunType::TreeOptimize | RunType::Egglog | RunType::TreeRoundTrip => false,
         }
     }
@@ -394,6 +398,19 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::Bril(bril)),
+                )
+            }
+            RunType::TreeToRvsdg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let rvsdg2 = tree_to_rvsdg(&tree);
+                (
+                    vec![Visualization {
+                        result: rvsdg2.to_svg(),
+                        file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
                 )
             }
             RunType::Optimize => {

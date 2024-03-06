@@ -46,7 +46,6 @@ fn bril_type_from_type(ty: Type) -> bril_rs::Type {
 }
 
 fn convert_func_output_type(ty: Type) -> Option<bril_rs::Type> {
-    eprintln!("Converting {:?}", ty);
     match ty {
         Type::TupleT(inner) => {
             assert_eq!(
@@ -179,19 +178,18 @@ impl<'a> TreeToRvsdg<'a> {
 
     fn push_basic(&mut self, mut basic: BasicExpr<Operand>) -> Vec<Operand> {
         match &basic {
-            BasicExpr::Effect(..) => {
+            BasicExpr::Effect(..)
+            | BasicExpr::Op(ValueOps::Alloc | ValueOps::Load, _, _)
+            | BasicExpr::Call(..) => {
                 let new_id = self.nodes.len();
                 basic.push_operand(self.current_state_edge);
+                let num_outputs = basic.num_outputs();
                 self.nodes.push(RvsdgBody::BasicOp(basic));
-                self.current_state_edge = Operand::Project(0, new_id);
-                vec![]
-            }
-            BasicExpr::Op(ValueOps::Alloc | ValueOps::Load, _, _) | BasicExpr::Call(..) => {
-                let new_id = self.nodes.len();
-                basic.push_operand(self.current_state_edge);
-                self.nodes.push(RvsdgBody::BasicOp(basic));
-                self.current_state_edge = Operand::Project(1, new_id);
-                vec![Operand::Project(0, new_id)]
+
+                self.current_state_edge = Operand::Project(num_outputs - 1, new_id);
+                (0..(num_outputs - 1))
+                    .map(|i| Operand::Project(i, new_id))
+                    .collect()
             }
             BasicExpr::Op(..) | BasicExpr::Const(..) => {
                 let new_id = self.nodes.len();
@@ -202,7 +200,6 @@ impl<'a> TreeToRvsdg<'a> {
     }
 
     fn convert_expr(&mut self, expr: RcExpr) -> Operands {
-        eprintln!("Converting {:?}", expr);
         let res = match expr.as_ref() {
             Expr::Function(_name, _inty, _outty, expr) => self.convert_expr(expr.clone()),
             Expr::Const(constant, _ty) => match constant {
@@ -394,7 +391,6 @@ impl<'a> TreeToRvsdg<'a> {
                 res
             }
         };
-        eprintln!("Converted {:?} to {:?}", expr, res);
         res
     }
 }

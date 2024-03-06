@@ -258,7 +258,6 @@ impl<'a> RvsdgToCfg<'a> {
         current_args: &Vec<RvsdgValue>,
         context: &RvsdgContext,
     ) -> TranslationResult {
-        eprintln!("translating operand {:?}", operand);
         if let Some(existing) = self.operand_cache.get(&(context.clone(), operand)).cloned() {
             // make an empty block
             let new_block = self.make_block(vec![]);
@@ -288,7 +287,6 @@ impl<'a> RvsdgToCfg<'a> {
             }
             Operand::Project(arg, id) => {
                 let res = self.body_to_bril(id, current_args, context);
-                eprintln!("projecting {:?}", res);
                 TranslationResult {
                     start: res.start,
                     end: res.end,

@@ -313,6 +313,7 @@ impl Run {
             RunType::TreeConversion,
             RunType::TreeOptimize,
             RunType::TreeRoundTrip,
+            RunType::TreeOptimize,
         ] {
             if prog.has_mem && !test_type.supports_memory() {
                 continue;

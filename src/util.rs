@@ -144,6 +144,10 @@ pub enum RunType {
     /// Do nothing to the input bril program besides parse it.
     /// Output the original program.
     Nothing,
+    /// Convert the input bril program to the tree encoding, optimize the program
+    /// using egglog, and output the resulting bril program.
+    /// The default way to run this tool.
+    Optimize,
     /// Convert the input bril program to an RVSDG and output it as an SVG.
     RvsdgConversion,
     /// Convert the input bril program to a tree-encoded expression.
@@ -153,6 +157,9 @@ pub enum RunType {
     TreeConversionVerboseLets,
     /// Convert the input bril program to tree-encoded expression and optimize it with egglog.
     TreeOptimize,
+    /// Convert the input bril program to a tree-encoded expression and optimize it with egglog,
+    /// outputting the resulting RVSDG
+    OptimizedRvsdg,
     /// Give the egglog program used to optimize the tree-encoded expression.
     Egglog,
     /// Convert to RVSDG and back to Bril again,
@@ -186,8 +193,10 @@ impl RunType {
     pub fn produces_interpretable(&self) -> bool {
         match self {
             RunType::Nothing => true,
+            RunType::Optimize => true,
             RunType::RvsdgConversion => false,
             RunType::RvsdgRoundTrip => true,
+            RunType::OptimizedRvsdg => false,
             RunType::TreeRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
@@ -208,7 +217,9 @@ impl RunType {
             | RunType::OptimizeDirectJumps
             | RunType::RvsdgToCfg
             | RunType::TreeConversion
-            | RunType::TreeConversionVerboseLets => false,
+            | RunType::TreeConversionVerboseLets
+            | RunType::OptimizedRvsdg
+            | RunType::Optimize => false,
             RunType::TreeOptimize | RunType::Egglog | RunType::TreeRoundTrip => false,
         }
     }
@@ -297,6 +308,7 @@ impl Run {
             RunType::RvsdgToCfg,
             RunType::TreeConversion,
             RunType::TreeOptimize,
+            RunType::TreeRoundTrip,
         ] {
             if prog.has_mem && !test_type.supports_memory() {
                 continue;
@@ -384,6 +396,22 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
+            RunType::Optimize => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                let rvsdg2 = tree_to_rvsdg(&optimized);
+                let cfg = rvsdg2.to_cfg();
+                let bril = cfg.to_bril();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::Bril(bril)),
+                )
+            }
             RunType::TreeConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_tree_encoding(true);
@@ -419,6 +447,20 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::TreeProgram(optimized)),
+                )
+            }
+            RunType::OptimizedRvsdg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                let rvsdg = tree_to_rvsdg(&optimized);
+                (
+                    vec![Visualization {
+                        result: rvsdg.to_svg(),
+                        file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
                 )
             }
             RunType::Egglog => {

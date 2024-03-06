@@ -1,10 +1,11 @@
 //! Convert tree programs to RVSDGs
 
-use std::iter;
+use std::{iter, rc::Rc};
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
-use tree_in_context::schema::{
-    BaseType, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
+use tree_in_context::{
+    schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp},
+    typechecker::TypeCache,
 };
 
 use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
@@ -13,6 +14,7 @@ type Operands = Vec<Operand>;
 
 struct TreeToRvsdg<'a> {
     program: &'a TreeProgram,
+    type_cache: &'a TypeCache,
     nodes: &'a mut Vec<RvsdgBody>,
     current_state_edge: Operand,
     current_args: Vec<Operand>,
@@ -43,7 +45,8 @@ fn bril_type_from_type(ty: Type) -> bril_rs::Type {
     }
 }
 
-fn func_type_from_type(ty: Type) -> Option<bril_rs::Type> {
+fn convert_func_output_type(ty: Type) -> Option<bril_rs::Type> {
+    eprintln!("Converting {:?}", ty);
     match ty {
         Type::TupleT(inner) => {
             assert_eq!(
@@ -65,9 +68,11 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
     };
 
     let mut nodes = vec![];
+    let (typechecked_program, type_cache) = program.with_arg_types_and_cache();
     // initial state edge is last argument
     let mut converter = TreeToRvsdg {
-        program,
+        program: &typechecked_program,
+        type_cache: &type_cache,
         nodes: &mut nodes,
         current_state_edge: Operand::Arg(input_types.len()),
         current_args: (0..input_types.len()).map(Operand::Arg).collect(),
@@ -88,7 +93,7 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
             .chain(iter::once(RvsdgType::PrintState))
             .collect(),
         nodes,
-        results: match func_type_from_type(output_type) {
+        results: match convert_func_output_type(output_type) {
             Some(func_type) => {
                 assert!(converted.len() == 1, "Expected exactly one result");
                 vec![
@@ -97,7 +102,11 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
                 ]
             }
             None => {
-                assert!(converted.is_empty(), "Expected no results");
+                assert!(
+                    converted.is_empty(),
+                    "Expected no results. Got {:?}",
+                    converted
+                );
                 vec![(RvsdgType::PrintState, resulting_state_edge)]
             }
         },
@@ -162,6 +171,7 @@ impl<'a> TreeToRvsdg<'a> {
         let mut translator = TreeToRvsdg {
             program: self.program,
             nodes: self.nodes,
+            type_cache: self.type_cache,
             current_state_edge: self.current_state_edge,
             current_args: inner_args,
         };
@@ -172,9 +182,14 @@ impl<'a> TreeToRvsdg<'a> {
 
     fn push_basic(&mut self, mut basic: BasicExpr<Operand>) -> Vec<Operand> {
         match &basic {
-            BasicExpr::Effect(..)
-            | BasicExpr::Op(ValueOps::Alloc | ValueOps::Load, _, _)
-            | BasicExpr::Call(..) => {
+            BasicExpr::Effect(..) => {
+                let new_id = self.nodes.len();
+                basic.push_operand(self.current_state_edge);
+                self.nodes.push(RvsdgBody::BasicOp(basic));
+                self.current_state_edge = Operand::Project(0, new_id);
+                vec![]
+            }
+            BasicExpr::Op(ValueOps::Alloc | ValueOps::Load, _, _) | BasicExpr::Call(..) => {
                 let new_id = self.nodes.len();
                 basic.push_operand(self.current_state_edge);
                 self.nodes.push(RvsdgBody::BasicOp(basic));
@@ -190,8 +205,9 @@ impl<'a> TreeToRvsdg<'a> {
     }
 
     fn convert_expr(&mut self, expr: RcExpr) -> Operands {
-        match expr.as_ref() {
-            Expr::Function(_name, _inty, _outty, expr) => self.translate_subregion(expr.clone()),
+        eprintln!("Converting {:?}", expr);
+        let res = match expr.as_ref() {
+            Expr::Function(_name, _inty, _outty, expr) => self.convert_expr(expr.clone()),
             Expr::Const(constant, _ty) => match constant {
                 tree_in_context::schema::Constant::Int(integer) => self.push_basic(
                     BasicExpr::Const(ConstOps::Const, Literal::Int(*integer), bril_rs::Type::Int),
@@ -212,7 +228,16 @@ impl<'a> TreeToRvsdg<'a> {
                 let l = l[0];
                 let r = r[0];
                 if let Some(vop) = value_op_from_binary_op(op.clone()) {
-                    self.push_basic(BasicExpr::Op(vop, vec![l, r], bril_rs::Type::Int))
+                    self.push_basic(BasicExpr::Op(
+                        vop,
+                        vec![l, r],
+                        bril_type_from_type(
+                            self.type_cache
+                                .get(&Rc::as_ptr(&expr))
+                                .expect("Expected type for expression")
+                                .clone(),
+                        ),
+                    ))
                 } else if let Some(eop) = effect_op_from_binary_op(op.clone()) {
                     self.push_basic(BasicExpr::Effect(eop, vec![l, r]))
                 } else {
@@ -249,8 +274,9 @@ impl<'a> TreeToRvsdg<'a> {
             Expr::Arg(_ty) => self.current_args.clone(),
             Expr::Call(name, args) => {
                 let func = self.program.get_function(name).expect("Function not found");
-                let func_ty =
-                    func_type_from_type(func.func_input_ty().expect("Expected function types"));
+                let func_ty = convert_func_output_type(
+                    func.func_output_ty().expect("Expected function types"),
+                );
                 let args = self.convert_expr(args.clone());
                 let num_results = func_ty.is_some() as usize + 1;
                 self.push_basic(BasicExpr::Call(name.clone(), args, num_results, func_ty))
@@ -334,29 +360,26 @@ impl<'a> TreeToRvsdg<'a> {
                 res
             }
             Expr::DoWhile(inputs, body) => {
-                let inputs = self.convert_expr(inputs.clone());
-                let pred_and_body = self.translate_subregion(body.clone());
-                assert!(
-                    !pred_and_body.is_empty(),
-                    "Expected at least one result for do-while body"
-                );
+                let mut inputs_with_state_edge = self.convert_expr(inputs.clone());
+                inputs_with_state_edge.push(self.current_state_edge);
+                let pred_and_body_and_state_edge = self.translate_subregion(body.clone());
                 assert_eq!(
-                    inputs.len(),
-                    pred_and_body.len() - 1,
+                    inputs_with_state_edge.len(),
+                    pred_and_body_and_state_edge.len() - 1,
                     "Expected matching number of inputs and outputs for do-while body"
                 );
-                let pred_inner = pred_and_body[0];
-                let body = pred_and_body[1..].to_vec();
+                let pred_inner = pred_and_body_and_state_edge[0];
+                let body_and_state_edge = pred_and_body_and_state_edge[1..].to_vec();
 
                 let new_id = self.nodes.len();
-                self.current_state_edge = Operand::Project(body.len() - 1, new_id);
-                let res = (0..(body.len() - 1))
+                self.current_state_edge = Operand::Project(body_and_state_edge.len() - 1, new_id);
+                let res = (0..(body_and_state_edge.len() - 1))
                     .map(|i| Operand::Project(i, new_id))
                     .collect();
                 self.nodes.push(RvsdgBody::Theta {
                     pred: pred_inner,
-                    inputs,
-                    outputs: body,
+                    inputs: inputs_with_state_edge,
+                    outputs: body_and_state_edge,
                 });
                 res
             }
@@ -365,6 +388,8 @@ impl<'a> TreeToRvsdg<'a> {
                 assert_eq!(res.len(), 1, "Expected exactly one result for Single node");
                 res
             }
-        }
+        };
+        eprintln!("Converted {:?} to {:?}", expr, res);
+        res
     }
 }

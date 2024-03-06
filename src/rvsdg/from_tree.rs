@@ -3,7 +3,9 @@
 use std::iter;
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
-use tree_in_context::schema::{BaseType, BinaryOp, Expr, RcExpr, TreeProgram, Type, UnaryOp};
+use tree_in_context::schema::{
+    BaseType, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
+};
 
 use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
 
@@ -163,6 +165,7 @@ impl<'a> TreeToRvsdg<'a> {
 
     fn convert_expr(&mut self, expr: RcExpr) -> Operands {
         match expr.as_ref() {
+            Expr::Function(..) => panic!("Expected non-function expr in convert_expr"),
             Expr::Const(constant, ty) => match constant {
                 tree_in_context::schema::Constant::Int(integer) => self.push_basic(
                     BasicExpr::Const(ConstOps::Const, Literal::Int(*integer), bril_rs::Type::Int),
@@ -229,6 +232,33 @@ impl<'a> TreeToRvsdg<'a> {
                 let input = self.convert_expr(input.clone());
                 self.current_args = input.clone();
                 self.convert_expr(body.clone())
+            }
+            Expr::InContext(_assum, body) => self.convert_expr(body.clone()),
+            Expr::Concat(order, left, right) => match order {
+                Order::Parallel | Order::Sequential => {
+                    let left = self.convert_expr(left.clone());
+                    let right = self.convert_expr(right.clone());
+                    left.into_iter().chain(right).collect()
+                }
+                Order::Reversed => {
+                    let left = self.convert_expr(left.clone());
+                    let right = self.convert_expr(right.clone());
+                    right.into_iter().chain(left).collect()
+                }
+            },
+            Expr::If(pred, then_branch, else_branch) => {
+                todo!()
+            }
+            Expr::Switch(pred, cases) => {
+                todo!()
+            }
+            Expr::DoWhile(pred, body) => {
+                todo!()
+            }
+            Expr::Single(body) => {
+                let res = self.convert_expr(body.clone());
+                assert_eq!(res.len(), 1, "Expected exactly one result for Single node");
+                res
             }
         }
     }

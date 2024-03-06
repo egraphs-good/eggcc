@@ -331,19 +331,19 @@ impl<'a> TreeToRvsdg<'a> {
                     "Expected same number of values for then and else branches"
                 );
 
-                self.current_state_edge = Operand::Project(then_branch.len() - 1, new_id);
-                let res = (0..(then_branch.len() - 1))
+                let res: Vec<Operand> = (0..(then_branch.len() - 1))
                     .map(|i| Operand::Project(i, new_id))
                     .collect();
                 self.nodes.push(RvsdgBody::If {
                     pred: pred[0],
-                    // inputs to the If node are just the
+                    // inputs to the If node are the
                     // current arguments, since in the tree IR
-                    // if doesn't bind anything
+                    // If doesn't bind anything
                     inputs: self.args_with_state_edge(),
                     then_branch,
                     else_branch,
                 });
+                self.current_state_edge = Operand::Project(res.len(), new_id);
 
                 res
             }
@@ -359,17 +359,17 @@ impl<'a> TreeToRvsdg<'a> {
                     "Expected at least one case for switch statement"
                 );
                 let new_id = self.nodes.len();
-                let res = (0..outputs[0].len())
+                let res: Vec<Operand> = (0..outputs[0].len())
                     .map(|i| Operand::Project(i, new_id))
                     .collect();
 
-                self.current_state_edge = Operand::Project(outputs[0].len() - 1, new_id);
                 self.nodes.push(RvsdgBody::Gamma {
                     pred: pred[0],
-                    // inputs to the Gamma node are just the
+                    // inputs to the Gamma node are the current arguments and state edge
                     inputs: self.args_with_state_edge(),
                     outputs,
                 });
+                self.current_state_edge = Operand::Project(res.len(), new_id);
                 res
             }
             Expr::DoWhile(inputs, body) => {

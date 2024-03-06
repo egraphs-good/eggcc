@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     ast::emptyt,
@@ -9,8 +9,14 @@ impl TreeProgram {
     /// Adds correct types to arguments in the program
     /// and performs type checking.
     pub(crate) fn with_arg_types(&self) -> TreeProgram {
-        let checker = TypeChecker::new(self);
+        let mut checker = TypeChecker::new(self);
         checker.add_arg_types()
+    }
+
+    pub fn with_arg_types_and_cache(&self) -> (TreeProgram, TypeCache) {
+        let mut checker = TypeChecker::new(self);
+        let prog = checker.add_arg_types();
+        (prog, checker.type_cache)
     }
 }
 
@@ -21,7 +27,7 @@ impl Expr {
     #[allow(dead_code)]
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
         let prog = self.to_program(input_ty.clone(), output_ty.clone());
-        let checker = TypeChecker::new(&prog);
+        let mut checker = TypeChecker::new(&prog);
         let (ty, new_expr) = checker.add_arg_types_to_expr(self.clone(), &input_ty);
         assert_eq!(
             ty, output_ty,
@@ -44,18 +50,23 @@ impl Expr {
     }
 }
 
+pub type TypeCache = HashMap<*const Expr, Type>;
 /// Type checks program fragments.
 /// Uses the program to look up function types.
 pub(crate) struct TypeChecker<'a> {
     program: &'a TreeProgram,
+    type_cache: TypeCache,
 }
 
 impl<'a> TypeChecker<'a> {
     pub(crate) fn new(prog: &'a TreeProgram) -> Self {
-        TypeChecker { program: prog }
+        TypeChecker {
+            program: prog,
+            type_cache: HashMap::new(),
+        }
     }
 
-    pub(crate) fn add_arg_types(&self) -> TreeProgram {
+    pub(crate) fn add_arg_types(&mut self) -> TreeProgram {
         TreeProgram {
             entry: self.add_arg_types_to_func(self.program.entry.clone()),
             functions: self
@@ -67,7 +78,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    pub(crate) fn add_arg_types_to_func(&self, func: RcExpr) -> RcExpr {
+    pub(crate) fn add_arg_types_to_func(&mut self, func: RcExpr) -> RcExpr {
         match func.as_ref() {
             Expr::Function(name, in_ty, out_ty, body) => {
                 let (expr_ty, new_body) = self.add_arg_types_to_expr(body.clone(), in_ty);
@@ -87,9 +98,10 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    pub(crate) fn add_arg_types_to_expr(&self, expr: RcExpr, arg_ty: &Type) -> (Type, RcExpr) {
+    pub(crate) fn add_arg_types_to_expr(&mut self, expr: RcExpr, arg_ty: &Type) -> (Type, RcExpr) {
         assert!(arg_ty != &Type::Unknown, "Expected known argument type");
-        match expr.as_ref() {
+        let expr_ptr = Rc::as_ptr(&expr);
+        let (res_ty, res_expr) = match expr.as_ref() {
             Expr::Const(constant, ty) => {
                 let cty = match constant {
                     Constant::Int(_) => Type::Base(BaseType::IntT),
@@ -350,6 +362,10 @@ impl<'a> TypeChecker<'a> {
             // should have covered all cases, but rust can't prove it
             // due to the side conditions
             _ => panic!("Unexpected expression {:?}", expr),
-        }
+        };
+
+        self.type_cache.insert(expr_ptr, res_ty.clone());
+
+        (res_ty, res_expr)
     }
 }

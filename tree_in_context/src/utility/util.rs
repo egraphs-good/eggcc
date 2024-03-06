@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::{egglog_test, interpreter::Value};
+use crate::{ast::*, egglog_test, interpreter::Value};
 
 #[test]
 fn test_list_util() -> crate::Result {
@@ -100,6 +100,29 @@ fn test_tuple_ith() -> crate::Result {
     egglog_test(
         &build,
         &check,
+        vec![],
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![]),
+        vec![],
+    )
+}
+
+#[test]
+fn test_expr_size() -> crate::Result {
+    let pureloop = dowhile(
+        in_context(inlet(int_ty(1, emptyt())), single(int(1))),
+        parallel!(
+            less_than(getat(0), int(3)),
+            get(switch!(int(2); parallel!(int(4), int(5))), 0)
+        ),
+    )
+    .with_arg_types(emptyt(), tuplet!(intt()));
+    let build = format!("(let loop {})", pureloop);
+
+    let check = "(check (= 9 (Expr-size loop)))";
+    egglog_test(
+        build.as_str(),
+        check,
         vec![],
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),

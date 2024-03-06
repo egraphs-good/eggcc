@@ -70,12 +70,12 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
         program,
         nodes: &mut nodes,
         current_state_edge: Operand::Arg(input_types.len()),
-        current_args: (0..input_types.len()).map(|i| Operand::Arg(i)).collect(),
+        current_args: (0..input_types.len()).map(Operand::Arg).collect(),
     };
 
-    let converted = converter.convert_func(func.clone());
+    let converted = converter.convert_expr(func.clone());
 
-    let resulting_state_edge = converter.current_state_edge.clone();
+    let resulting_state_edge = converter.current_state_edge;
     drop(converter);
     RvsdgFunction {
         name: func
@@ -92,12 +92,12 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
             Some(func_type) => {
                 assert!(converted.len() == 1, "Expected exactly one result");
                 vec![
-                    (RvsdgType::Bril(func_type), converted[0].clone()),
+                    (RvsdgType::Bril(func_type), converted[0]),
                     (RvsdgType::PrintState, resulting_state_edge),
                 ]
             }
             None => {
-                assert!(converted.len() == 0, "Expected no results");
+                assert!(converted.is_empty(), "Expected no results");
                 vec![(RvsdgType::PrintState, resulting_state_edge)]
             }
         },
@@ -144,8 +144,30 @@ fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
 }
 
 impl<'a> TreeToRvsdg<'a> {
-    pub fn convert_func(&mut self, func: RcExpr) -> Vec<Operand> {
-        todo!()
+    fn args_with_state_edge(&self) -> Vec<Operand> {
+        self.current_args
+            .iter()
+            .cloned()
+            .chain(iter::once(self.current_state_edge))
+            .collect()
+    }
+
+    fn translate_subregion(&mut self, expr: RcExpr) -> Vec<Operand> {
+        let inner_args = self
+            .current_args
+            .iter()
+            .enumerate()
+            .map(|(i, _)| Operand::Arg(i))
+            .collect();
+        let mut translator = TreeToRvsdg {
+            program: self.program,
+            nodes: self.nodes,
+            current_state_edge: self.current_state_edge,
+            current_args: inner_args,
+        };
+        let mut results = translator.convert_expr(expr);
+        results.push(translator.current_state_edge);
+        results
     }
 
     fn push_basic(&mut self, mut basic: BasicExpr<Operand>) -> Vec<Operand> {
@@ -154,7 +176,7 @@ impl<'a> TreeToRvsdg<'a> {
             | BasicExpr::Op(ValueOps::Alloc | ValueOps::Load, _, _)
             | BasicExpr::Call(..) => {
                 let new_id = self.nodes.len();
-                basic.push_operand(self.current_state_edge.clone());
+                basic.push_operand(self.current_state_edge);
                 self.nodes.push(RvsdgBody::BasicOp(basic));
                 self.current_state_edge = Operand::Project(1, new_id);
                 vec![Operand::Project(0, new_id)]
@@ -169,7 +191,7 @@ impl<'a> TreeToRvsdg<'a> {
 
     fn convert_expr(&mut self, expr: RcExpr) -> Operands {
         match expr.as_ref() {
-            Expr::Function(..) => panic!("Expected non-function expr in convert_expr"),
+            Expr::Function(_name, _inty, _outty, expr) => self.translate_subregion(expr.clone()),
             Expr::Const(constant, _ty) => match constant {
                 tree_in_context::schema::Constant::Int(integer) => self.push_basic(
                     BasicExpr::Const(ConstOps::Const, Literal::Int(*integer), bril_rs::Type::Int),
@@ -185,8 +207,10 @@ impl<'a> TreeToRvsdg<'a> {
             Expr::Bop(op, l, r) => {
                 let l = self.convert_expr(l.clone());
                 let r = self.convert_expr(r.clone());
-                let l = l[0].clone();
-                let r = r[0].clone();
+                assert_eq!(l.len(), 1, "Expected exactly one result for left operand");
+                assert_eq!(r.len(), 1, "Expected exactly one result for right operand");
+                let l = l[0];
+                let r = r[0];
                 if let Some(vop) = value_op_from_binary_op(op.clone()) {
                     self.push_basic(BasicExpr::Op(vop, vec![l, r], bril_rs::Type::Int))
                 } else if let Some(eop) = effect_op_from_binary_op(op.clone()) {
@@ -197,7 +221,8 @@ impl<'a> TreeToRvsdg<'a> {
             }
             Expr::Uop(op, child) => {
                 let child = self.convert_expr(child.clone());
-                let child = child[0].clone();
+                assert_eq!(child.len(), 1, "Expected exactly one result for child");
+                let child = child[0];
                 if let Some(vop) = value_op_from_unary_op(op.clone()) {
                     self.push_basic(BasicExpr::Op(vop, vec![child], bril_rs::Type::Int))
                 } else if let Some(eop) = effect_op_from_unary_op(op.clone()) {
@@ -209,11 +234,12 @@ impl<'a> TreeToRvsdg<'a> {
             Expr::Get(child, index) => {
                 let child = self.convert_expr(child.clone());
                 assert!(child.len() > *index, "Index out of bounds");
-                vec![child[*index].clone()]
+                vec![child[*index]]
             }
             Expr::Alloc(size, ty) => {
                 let size = self.convert_expr(size.clone());
-                let size = size[0].clone();
+                assert_eq!(size.len(), 1, "Expected exactly one result for size");
+                let size = size[0];
                 self.push_basic(BasicExpr::Op(
                     ValueOps::Alloc,
                     vec![size],
@@ -229,7 +255,7 @@ impl<'a> TreeToRvsdg<'a> {
                 let num_results = func_ty.is_some() as usize + 1;
                 self.push_basic(BasicExpr::Call(name.clone(), args, num_results, func_ty))
             }
-            Expr::Empty(ty) => {
+            Expr::Empty(_ty) => {
                 vec![]
             }
             Expr::Let(input, body) => {
@@ -252,36 +278,10 @@ impl<'a> TreeToRvsdg<'a> {
             },
             Expr::If(pred, then_branch, else_branch) => {
                 let pred = self.convert_expr(pred.clone());
-                let args_and_state_edge = self
-                    .current_args
-                    .iter()
-                    .cloned()
-                    .chain(iter::once(self.current_state_edge))
-                    .collect();
+                assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
+                let then_branch = self.translate_subregion(then_branch.clone());
 
-                let inner_args: Vec<Operand> = self
-                    .current_args
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| Operand::Arg(i))
-                    .collect();
-                let mut then_translator = TreeToRvsdg {
-                    program: self.program,
-                    nodes: self.nodes,
-                    current_state_edge: Operand::Arg(self.current_args.len()),
-                    current_args: inner_args.clone(),
-                };
-                let mut then_branch = then_translator.convert_expr(then_branch.clone());
-                then_branch.push(then_translator.current_state_edge.clone());
-
-                let mut else_translator = TreeToRvsdg {
-                    program: self.program,
-                    nodes: self.nodes,
-                    current_state_edge: Operand::Arg(self.current_args.len()),
-                    current_args: inner_args,
-                };
-                let mut else_branch = else_translator.convert_expr(else_branch.clone());
-                else_branch.push(else_translator.current_state_edge.clone());
+                let else_branch = self.translate_subregion(else_branch.clone());
 
                 let new_id = self.nodes.len();
                 assert_eq!(
@@ -289,23 +289,76 @@ impl<'a> TreeToRvsdg<'a> {
                     else_branch.len(),
                     "Expected same number of values for then and else branches"
                 );
+                let args_and_state_edge = self
+                    .current_args
+                    .iter()
+                    .cloned()
+                    .chain(iter::once(self.current_state_edge))
+                    .collect();
+
+                self.current_state_edge = Operand::Project(then_branch.len() - 1, new_id);
+                let res = (0..(then_branch.len() - 1))
+                    .map(|i| Operand::Project(i, new_id))
+                    .collect();
                 self.nodes.push(RvsdgBody::If {
-                    pred: pred[0].clone(),
+                    pred: pred[0],
                     inputs: args_and_state_edge,
                     then_branch,
                     else_branch,
                 });
 
-                self.current_state_edge = Operand::Project(then_branch.len() - 1, new_id);
-                (0..(then_branch.len() - 1))
-                    .map(|i| Operand::Project(i, new_id))
-                    .collect()
+                res
             }
             Expr::Switch(pred, cases) => {
-                todo!()
+                let pred = self.convert_expr(pred.clone());
+                assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
+                let mut outputs = vec![];
+                for case in cases {
+                    let case = self.translate_subregion(case.clone());
+                    outputs.push(case);
+                }
+                assert!(
+                    !outputs.is_empty(),
+                    "Expected at least one case for switch statement"
+                );
+                let new_id = self.nodes.len();
+                let res = (0..outputs[0].len())
+                    .map(|i| Operand::Project(i, new_id))
+                    .collect();
+                self.current_state_edge = Operand::Project(outputs[0].len() - 1, new_id);
+                self.nodes.push(RvsdgBody::Gamma {
+                    pred: pred[0],
+                    inputs: self.args_with_state_edge(),
+                    outputs,
+                });
+                res
             }
-            Expr::DoWhile(pred, body) => {
-                todo!()
+            Expr::DoWhile(inputs, body) => {
+                let inputs = self.convert_expr(inputs.clone());
+                let pred_and_body = self.translate_subregion(body.clone());
+                assert!(
+                    !pred_and_body.is_empty(),
+                    "Expected at least one result for do-while body"
+                );
+                assert_eq!(
+                    inputs.len(),
+                    pred_and_body.len() - 1,
+                    "Expected matching number of inputs and outputs for do-while body"
+                );
+                let pred_inner = pred_and_body[0];
+                let body = pred_and_body[1..].to_vec();
+
+                let new_id = self.nodes.len();
+                self.current_state_edge = Operand::Project(body.len() - 1, new_id);
+                let res = (0..(body.len() - 1))
+                    .map(|i| Operand::Project(i, new_id))
+                    .collect();
+                self.nodes.push(RvsdgBody::Theta {
+                    pred: pred_inner,
+                    inputs,
+                    outputs: body,
+                });
+                res
             }
             Expr::Single(body) => {
                 let res = self.convert_expr(body.clone());

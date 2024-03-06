@@ -12,11 +12,18 @@ use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgTyp
 
 type Operands = Vec<Operand>;
 
+/// State needed to translate a tree program to
+/// an RVSDG.
 struct TreeToRvsdg<'a> {
     program: &'a TreeProgram,
+    /// A cache of types for every expression in program
     type_cache: &'a TypeCache,
     nodes: &'a mut Vec<RvsdgBody>,
+    /// The current state edge, threaded through
+    /// as the last arg to all stateful operations.
     current_state_edge: Operand,
+    /// The current arguments to the tree program
+    /// as RVSDG operands. (doesn't include state edge)
     current_args: Vec<Operand>,
 }
 
@@ -68,12 +75,14 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
 
     let mut nodes = vec![];
     let (typechecked_program, type_cache) = program.with_arg_types_and_cache();
-    // initial state edge is last argument
+
     let mut converter = TreeToRvsdg {
         program: &typechecked_program,
         type_cache: &type_cache,
         nodes: &mut nodes,
+        // initial state edge is last argument
         current_state_edge: Operand::Arg(input_types.len()),
+        // initial arguments are the first n arguments
         current_args: (0..input_types.len()).map(Operand::Arg).collect(),
     };
 
@@ -92,6 +101,8 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
             .chain(iter::once(RvsdgType::PrintState))
             .collect(),
         nodes,
+        // functions return a single value and a state edge
+        // or just a state edge
         results: match convert_func_output_type(output_type) {
             Some(func_type) => {
                 assert!(converted.len() == 1, "Expected exactly one result");
@@ -316,12 +327,6 @@ impl<'a> TreeToRvsdg<'a> {
                     else_branch.len(),
                     "Expected same number of values for then and else branches"
                 );
-                let args_and_state_edge = self
-                    .current_args
-                    .iter()
-                    .cloned()
-                    .chain(iter::once(self.current_state_edge))
-                    .collect();
 
                 self.current_state_edge = Operand::Project(then_branch.len() - 1, new_id);
                 let res = (0..(then_branch.len() - 1))
@@ -329,7 +334,10 @@ impl<'a> TreeToRvsdg<'a> {
                     .collect();
                 self.nodes.push(RvsdgBody::If {
                     pred: pred[0],
-                    inputs: args_and_state_edge,
+                    // inputs to the If node are just the
+                    // current arguments, since in the tree IR
+                    // if doesn't bind anything
+                    inputs: self.args_with_state_edge(),
                     then_branch,
                     else_branch,
                 });
@@ -339,11 +347,10 @@ impl<'a> TreeToRvsdg<'a> {
             Expr::Switch(pred, cases) => {
                 let pred = self.convert_expr(pred.clone());
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
-                let mut outputs = vec![];
-                for case in cases {
-                    let case = self.translate_subregion(case.clone(), self.current_args.len());
-                    outputs.push(case);
-                }
+                let outputs: Vec<Vec<Operand>> = cases
+                    .iter()
+                    .map(|case| self.translate_subregion(case.clone(), self.current_args.len()))
+                    .collect();
                 assert!(
                     !outputs.is_empty(),
                     "Expected at least one case for switch statement"
@@ -352,9 +359,11 @@ impl<'a> TreeToRvsdg<'a> {
                 let res = (0..outputs[0].len())
                     .map(|i| Operand::Project(i, new_id))
                     .collect();
+
                 self.current_state_edge = Operand::Project(outputs[0].len() - 1, new_id);
                 self.nodes.push(RvsdgBody::Gamma {
                     pred: pred[0],
+                    // inputs to the Gamma node are just the
                     inputs: self.args_with_state_edge(),
                     outputs,
                 });
@@ -370,11 +379,15 @@ impl<'a> TreeToRvsdg<'a> {
                     pred_and_body_and_state_edge.len() - 1,
                     "Expected matching number of inputs and outputs for do-while body"
                 );
+
                 let pred_inner = pred_and_body_and_state_edge[0];
                 let body_and_state_edge = pred_and_body_and_state_edge[1..].to_vec();
 
                 let new_id = self.nodes.len();
                 self.current_state_edge = Operand::Project(body_and_state_edge.len() - 1, new_id);
+
+                // Project each result out of the
+                // resulting Theta node (excluding state edge)
                 let res = (0..(body_and_state_edge.len() - 1))
                     .map(|i| Operand::Project(i, new_id))
                     .collect();

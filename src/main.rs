@@ -17,7 +17,6 @@ struct Args {
     /// the result.
     #[clap(long)]
     interp: bool,
-
     #[clap(long)]
     profile_out: Option<PathBuf>,
 

@@ -120,6 +120,15 @@ impl<Op> BasicExpr<Op> {
             BasicExpr::Effect(_, _) => 1,
         }
     }
+
+    pub(crate) fn push_operand(&mut self, op: Op) {
+        match self {
+            BasicExpr::Op(_, operands, _) => operands.push(op),
+            BasicExpr::Call(_, operands, _, _) => operands.push(op),
+            BasicExpr::Const(_, _, _) => panic!("Cannot push operand to const"),
+            BasicExpr::Effect(_, operands) => operands.push(op),
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]

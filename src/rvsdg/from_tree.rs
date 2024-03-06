@@ -9,17 +9,19 @@ use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgTyp
 
 type Operands = Vec<Operand>;
 
-struct TreeToRvsdg {
+struct TreeToRvsdg<'a> {
+    program: &'a TreeProgram,
     nodes: Vec<RvsdgBody>,
     current_state_edge: Operand,
+    current_args: Vec<Operand>,
 }
 
-pub(crate) fn tree_to_rvsdg(tree: TreeProgram) -> RvsdgProgram {
+pub(crate) fn tree_to_rvsdg(tree: &TreeProgram) -> RvsdgProgram {
     let mut res = RvsdgProgram { functions: vec![] };
     for func in tree.functions {
-        res.functions.push(tree_func_to_rvsdg(func));
+        res.functions.push(tree_func_to_rvsdg(func, tree));
     }
-    res.functions.push(tree_func_to_rvsdg(tree.entry));
+    res.functions.push(tree_func_to_rvsdg(tree.entry, tree));
     res
 }
 
@@ -38,35 +40,36 @@ fn bril_type_from_type(ty: Type) -> bril_rs::Type {
     }
 }
 
-fn tree_func_to_rvsdg(func: RcExpr) -> RvsdgFunction {
-    let Type::TupleT(output_types) = func.func_output_ty().expect("Expected function types") else {
-        panic!("Expected tuple type in tree_func_to_rvsdg")
-    };
+fn func_type_from_type(ty: Type) -> Option<bril_rs::Type> {
+    match ty {
+        Type::TupleT(inner) => {
+            assert_eq!(
+                inner.len(),
+                0,
+                "Expected no tuple types in function_type_from_type"
+            );
+            None
+        }
+        _ => Some(bril_type_from_type(ty)),
+    }
+}
+
+fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
+    let output_type = func.func_output_ty().expect("Expected function types");
 
     let Type::TupleT(input_types) = func.func_input_ty().expect("Expected function types") else {
         panic!("Expected tuple type for inputs in tree_func_to_rvsdg")
     };
 
     // initial state edge is last argument
-    let state_edge = Operand::Arg(output_types.len());
     let mut converter = TreeToRvsdg {
+        program,
         nodes: vec![],
-        current_state_edge: state_edge,
+        current_state_edge: Operand::Arg(input_types.len()),
+        current_args: (0..input_types.len()).map(|i| Operand::Arg(i)).collect(),
     };
 
-    let output_rvsdg_types: Vec<RvsdgType> = output_types
-        .into_iter()
-        .map(|ty| RvsdgType::Bril(bril_type_from_type(ty)))
-        .chain(iter::once(RvsdgType::PrintState))
-        .collect();
-
     let converted = converter.convert_func(func.clone());
-
-    assert_eq!(
-        converted.len(),
-        output_rvsdg_types.len(),
-        "Expected same number of results as output types"
-    );
 
     RvsdgFunction {
         name: func
@@ -79,7 +82,19 @@ fn tree_func_to_rvsdg(func: RcExpr) -> RvsdgFunction {
             .chain(iter::once(RvsdgType::PrintState))
             .collect(),
         nodes: converter.nodes,
-        results: output_rvsdg_types.into_iter().zip(converted).collect(),
+        results: match func_type_from_type(output_type) {
+            Some(func_type) => {
+                assert!(converted.len() == 1, "Expected exactly one result");
+                vec![
+                    (RvsdgType::Bril(func_type), converted[0].clone()),
+                    (RvsdgType::PrintState, converter.current_state_edge),
+                ]
+            }
+            None => {
+                assert!(converted.len() == 0, "Expected no results");
+                vec![(RvsdgType::PrintState, converter.current_state_edge)]
+            }
+        },
     }
 }
 
@@ -122,23 +137,27 @@ fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
     }
 }
 
-impl TreeToRvsdg {
+impl<'a> TreeToRvsdg<'a> {
     pub fn convert_func(&mut self, func: RcExpr) -> Vec<Operand> {
         todo!()
     }
 
-    fn push_basic(&mut self, basic: BasicExpr<Operand>) -> Vec<Operand> {
-        if let BasicExpr::Effect(effect, mut operands) = basic {
-            let new_id = self.nodes.len();
-            operands.push(self.current_state_edge.clone());
-            self.nodes
-                .push(RvsdgBody::BasicOp(BasicExpr::Effect(effect, operands)));
-            self.current_state_edge = Operand::Project(1, new_id);
-            vec![Operand::Project(0, new_id)]
-        } else {
-            let new_id = self.nodes.len();
-            self.nodes.push(RvsdgBody::BasicOp(basic));
-            vec![Operand::Project(0, new_id)]
+    fn push_basic(&mut self, mut basic: BasicExpr<Operand>) -> Vec<Operand> {
+        match &basic {
+            BasicExpr::Effect(..)
+            | BasicExpr::Op(ValueOps::Alloc | ValueOps::Load, _, _)
+            | BasicExpr::Call(..) => {
+                let new_id = self.nodes.len();
+                basic.push_operand(self.current_state_edge.clone());
+                self.nodes.push(RvsdgBody::BasicOp(basic));
+                self.current_state_edge = Operand::Project(1, new_id);
+                vec![Operand::Project(0, new_id)]
+            }
+            BasicExpr::Op(..) | BasicExpr::Const(..) => {
+                let new_id = self.nodes.len();
+                self.nodes.push(RvsdgBody::BasicOp(basic));
+                vec![Operand::Project(0, new_id)]
+            }
         }
     }
 
@@ -194,15 +213,22 @@ impl TreeToRvsdg {
                     bril_type_from_type(ty.clone()),
                 ))
             }
-            Expr::Arg(ty) => {
-                let Type::TupleT(tys) = ty.clone() else {
-                    panic!("Expected tuple type in tree_type_to_rvsdg_types")
-                };
-                // One operand for each argument
-                tys.iter()
-                    .enumerate()
-                    .map(|(i, _ty)| Operand::Arg(i))
-                    .collect()
+            Expr::Arg(ty) => self.current_args,
+            Expr::Call(name, args) => {
+                let func = self.program.get_function(name).expect("Function not found");
+                let func_ty =
+                    func_type_from_type(func.func_input_ty().expect("Expected function types"));
+                let args = self.convert_expr(args.clone());
+                let num_results = func_ty.is_some() as usize + 1;
+                self.push_basic(BasicExpr::Call(name.clone(), args, num_results, func_ty))
+            }
+            Expr::Empty(ty) => {
+                vec![]
+            }
+            Expr::Let(input, body) => {
+                let input = self.convert_expr(input.clone());
+                self.current_args = input.clone();
+                self.convert_expr(body.clone())
             }
         }
     }

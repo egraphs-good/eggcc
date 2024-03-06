@@ -187,6 +187,9 @@ impl<'a> TreeToRvsdg<'a> {
         results
     }
 
+    /// Creates a new node for a basic expression.
+    /// For nodes that require and return a state edge, adds the state edge
+    /// to the inputs remembers the newly returned state edge.
     fn push_basic(&mut self, mut basic: BasicExpr<Operand>) -> Vec<Operand> {
         match &basic {
             BasicExpr::Effect(..)

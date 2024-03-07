@@ -317,6 +317,25 @@ fn let_type_error() {
 }
 
 #[test]
+fn let_arg_types() -> crate::Result {
+    let expr = and(barg(), ttrue_ty(boolt()));
+    let build = format!("{expr}");
+    let expected_ty = boolt();
+    let check = format!(
+        "(check (HasType {expr} {expected_ty}))
+(check (HasArgType {expr} {expected_ty}))"
+    );
+    crate::egglog_test(
+        &build,
+        &check,
+        vec![expr.to_program(boolt(), boolt())],
+        val_bool(true),
+        val_bool(true),
+        vec![],
+    )
+}
+
+#[test]
 fn loops() -> crate::Result {
     let l1 = dowhile(single(int(1)), concat_seq(single(tfalse()), single(int(3))));
     type_test(

@@ -4,13 +4,15 @@
    context_creation
    (saturate context_propagate))
   (repeat 6
-    (saturate always-run)
-    (saturate error-checking)
-    (saturate
-      (saturate type-helpers)
-      type-analysis
-    )
-    (saturate constant_fold)
+    (saturate ;; saturate all rulesets that we run to saturation
+      (saturate always-run)
+      (saturate error-checking)
+      (saturate
+        (saturate type-helpers)
+        type-analysis
+      )
+      (saturate subst) ;; subst depends on type information for the argument
+      (saturate constant_fold))
     conditional-invariant-code-motion
     switch_rewrite
     loop-simplify

@@ -23,8 +23,8 @@ fn test_subst_nested() -> crate::Result {
     let build = format!(
         "
 (let substituted (Subst (InFunc \"main\") 
-                                {replace_with}
-                                {expr}))"
+                        {replace_with}
+                        {expr}))"
     );
     let check = format!("(check (= substituted {expected}))");
 
@@ -52,7 +52,7 @@ fn test_subst_makes_new_context() -> crate::Result {
         in_context(infunc("otherfunc"), int_ty(1, intt())),
         in_context(infunc("otherfunc"), iarg()),
     );
-    let replace_with = in_context(infunc("main"), int_ty(2, intt()));
+    let replace_with = int_ty(2, intt());
     let expected = add(
         in_context(infunc("main"), int(1)),
         in_context(infunc("main"), int(2)),
@@ -75,6 +75,35 @@ fn test_subst_makes_new_context() -> crate::Result {
         ],
         Value::Const(Constant::Int(2)),
         Value::Const(Constant::Int(3)),
+        vec![],
+    )
+}
+
+#[test]
+fn test_subst_arg_type_changes() -> crate::Result {
+    use crate::ast::*;
+    use crate::{interpreter::Value, schema::Constant};
+    let expr = add(iarg(), iarg());
+    let tupletype = tuplet!(intt(), intt());
+    let expected = add(
+        in_context(infunc("main"), get(arg(), 0)),
+        in_context(infunc("main"), get(arg(), 0)),
+    )
+    .with_arg_types(tupletype.clone(), intt());
+    let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), intt());
+    let build = format!(
+        "
+(let substituted (Subst (InFunc \"main\") 
+                        {replace_with}
+                        {expr}))"
+    );
+    let check = format!("(check (= substituted {expected}))");
+    crate::egglog_test(
+        &build.to_string(),
+        &check.to_string(),
+        vec![expr.to_program(intt(), intt())],
+        Value::Const(Constant::Int(2)),
+        Value::Const(Constant::Int(4)),
         vec![],
     )
 }

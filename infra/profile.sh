@@ -9,7 +9,7 @@ cleanup() {
 trap cleanup EXIT
 
 # TODO: take in file glob as command line argument
-PROFILES=(tests/*.bril tests/small/*.bril tests/brils/passing/**/*.bril
+PROFILES=(tests/*.bril tests/small/*.bril tests/brils/passing/**/*.bril)
 
 RUNMODES=("nothing" "rvsdg-round-trip")
 

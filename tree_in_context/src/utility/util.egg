@@ -115,6 +115,6 @@
 (rewrite (tuple-of-get-arg-helper ty 1 x) (Single (Get (Arg ty) x)) :ruleset always-run)
 (rule ((= f (tuple-of-get-arg-helper ty a b)) (> a 1))
       ((union f 
-         (Concat par
+         (Concat par ;; just make it parallel here
                (Get (Arg ty) b) 
                (tuple-of-get-arg-helper ty (- a 1) (+ b 1))))) :ruleset always-run)

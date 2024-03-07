@@ -228,7 +228,10 @@ impl<'a> VirtualMachine<'a> {
             Expr::InContext(_assumption, e) => self.interpret_expr(e, arg),
             Expr::Get(e_tuple, i) => {
                 let Tuple(vals) = self.interpret_expr(e_tuple, arg) else {
-                    panic!("get")
+                    panic!(
+                        "get expects a tuple as its first argument. Got {:?}",
+                        e_tuple
+                    )
                 };
                 if *i >= vals.len() {
                     panic!(

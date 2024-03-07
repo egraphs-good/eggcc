@@ -78,3 +78,31 @@ fn test_subst_makes_new_context() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn test_subst_arg_type_changes() -> crate::Result {
+    use crate::ast::*;
+    use crate::{interpreter::Value, schema::Constant};
+    let expr = add(iarg(), iarg());
+    let tupletype = tuplet!(intt(), intt());
+    let expected = add(get(arg(), 0), get(arg(), 0)).with_arg_types(tupletype.clone(), intt());
+    let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), intt());
+    let build = format!(
+        "
+(let substituted (Subst (InFunc \"main\") 
+                        {replace_with}
+                        {expr}))"
+    );
+    let check = format!("(check (= substituted {expected}))");
+    crate::egglog_test(
+        &build.to_string(),
+        &check.to_string(),
+        vec![
+            expr.to_program(tupletype.clone(), intt()),
+            expected.to_program(tupletype, intt()),
+        ],
+        Value::Const(Constant::Int(2)),
+        Value::Const(Constant::Int(4)),
+        vec![],
+    )
+}

@@ -480,3 +480,10 @@
       )
       ((HasType lhs ty))
       :ruleset type-analysis)
+
+(rule (
+       (= lhs (InContext ass expr))
+       (HasArgType expr argtype)
+)
+      ((HasArgType lhs argtype))
+      :ruleset type-analysis)

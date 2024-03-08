@@ -202,6 +202,13 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Uop(UnaryOp::Load, new_inner)),
                 )
             }
+            Expr::Uop(UnaryOp::Free, inner) => {
+                let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
+                let Type::PointerT(_out_ty) = ity else {
+                    panic!("Expected pointer type. Got {:?}", ity)
+                };
+                (emptyt(), RcExpr::new(Expr::Uop(UnaryOp::Free, new_inner)))
+            }
             Expr::Get(child, index) => {
                 let (cty, new_child) = self.add_arg_types_to_expr(child.clone(), arg_ty);
                 let Type::TupleT(types) = cty.clone() else {

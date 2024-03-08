@@ -6,8 +6,8 @@ use crate::schema::{
     Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
 };
 
-pub(crate) struct FromEgglog {
-    pub(crate) termdag: egglog::TermDag,
+pub struct FromEgglog {
+    pub termdag: egglog::TermDag,
 }
 
 impl FromEgglog {
@@ -37,44 +37,43 @@ impl FromEgglog {
         })
     }
 
-    fn vec_from_tlistexpr_reversed(&self, tlistexpr: Term) -> Vec<Type> {
+    fn vec_from_tlistexpr_helper(&self, tlistexpr: Term, acc: &mut Vec<Type>) {
         match_term_app!(tlistexpr.clone();
         {
-          ("TNil", []) => vec![],
+          ("TNil", []) => (),
           ("TCons", [type_, tlistexpr]) => {
             let type_ = self.termdag.get(*type_);
             let tlistexpr = self.termdag.get(*tlistexpr);
-            let mut rest = self.vec_from_tlistexpr(tlistexpr);
-            rest.push(self.type_from_egglog(type_));
-            rest
+            acc.push(self.type_from_egglog(type_));
+            self.vec_from_tlistexpr_helper(tlistexpr, acc);
           }
           _ => panic!("Invalid tlistexpr: {:?}", tlistexpr),
         })
     }
 
     fn vec_from_tlistexpr(&self, tlistexpr: Term) -> Vec<Type> {
-        let mut types = self.vec_from_tlistexpr_reversed(tlistexpr);
-        types.reverse();
+        let mut types = vec![];
+        self.vec_from_tlistexpr_helper(tlistexpr, &mut types);
         types
     }
 
-    fn vec_from_listexpr_reversed(&self, listexpr: Term) -> Vec<RcExpr> {
+    fn vec_from_listexpr_helper(&self, listexpr: Term, acc: &mut Vec<RcExpr>) {
         match_term_app!(listexpr.clone();
         {
-          ("Nil", []) => vec![],
+          ("Nil", []) => (),
           ("Cons", [expr, listexpr]) => {
             let expr = self.termdag.get(*expr);
+            acc.push(self.expr_from_egglog(expr));
             let listexpr = self.termdag.get(*listexpr);
-            let rest = self.vec_from_listexpr(listexpr);
-            rest.into_iter().chain(std::iter::once(self.expr_from_egglog(expr))).collect()
+            self.vec_from_listexpr_helper(listexpr, acc);
           }
           _ => panic!("Invalid listexpr: {:?}", listexpr),
         })
     }
 
     fn vec_from_listexpr(&self, listexpr: Term) -> Vec<RcExpr> {
-        let mut exprs = self.vec_from_listexpr_reversed(listexpr);
-        exprs.reverse();
+        let mut exprs = vec![];
+        self.vec_from_listexpr_helper(listexpr, &mut exprs);
         exprs
     }
 
@@ -290,7 +289,7 @@ impl FromEgglog {
         })
     }
 
-    pub(crate) fn program_from_egglog(&self, program: Term) -> TreeProgram {
+    pub fn program_from_egglog(&self, program: Term) -> TreeProgram {
         match_term_app!(program.clone();
         {
           ("Program", [entry, functions]) => {

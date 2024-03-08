@@ -219,7 +219,10 @@ impl RunType {
 
     pub fn supports_memory(&self) -> bool {
         match self {
-            RunType::RvsdgRoundTrip | RunType::RvsdgConversion | RunType::Nothing => true,
+            RunType::RvsdgRoundTrip
+            | RunType::RvsdgConversion
+            | RunType::Nothing
+            | RunType::Optimize => true,
             RunType::ToCfg
             | RunType::CfgRoundTrip
             | RunType::OptimizeDirectJumps
@@ -227,7 +230,6 @@ impl RunType {
             | RunType::TreeConversion
             | RunType::TreeConversionVerboseLets
             | RunType::OptimizedRvsdg
-            | RunType::Optimize
             | RunType::TreeToRvsdg
             | RunType::CheckTreeIdentical => false,
             RunType::TreeOptimize | RunType::Egglog | RunType::TreeRoundTrip => false,

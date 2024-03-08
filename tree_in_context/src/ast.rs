@@ -92,6 +92,10 @@ pub fn not(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Not, e))
 }
 
+pub fn alloc(amount: RcExpr, value_ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Alloc(amount, value_ty))
+}
+
 pub fn twrite(addr: RcExpr, val: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Write, addr, val))
 }
@@ -121,10 +125,6 @@ pub fn load(e: RcExpr) -> RcExpr {
 
 pub fn ptradd(ptr: RcExpr, i: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::PtrAdd, ptr, i))
-}
-
-pub fn alloc(e: RcExpr, ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Alloc(e, ty))
 }
 
 pub fn call(s: &str, e: RcExpr) -> RcExpr {

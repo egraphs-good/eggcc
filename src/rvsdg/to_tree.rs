@@ -13,7 +13,9 @@ use std::iter;
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_in_context::ast::{and, arg, div, empty, eq, getat, mul, push_par, sub, switch_vec, tif};
+use tree_in_context::ast::{
+    alloc, and, arg, div, empty, eq, getat, mul, push_par, sub, switch_vec, tif,
+};
 #[cfg(test)]
 use tree_in_context::ast::{intt, parallel, program};
 #[cfg(test)]
@@ -398,13 +400,27 @@ impl<'a> RegionTranslator<'a> {
     /// return the newly created index.
     fn translate_basic_expr(&mut self, expr: BasicExpr<Operand>, id: Id) -> StoredNode {
         match expr {
+            BasicExpr::Op(ValueOps::Alloc, children, ty) => {
+                let [size, _state_edge] = children.as_slice() else {
+                    panic!("Alloc should have 2 children, found {:?}", children);
+                };
+                let bril_rs::Type::Pointer(inner) = ty else {
+                    panic!("Alloc should return a pointer type, found {:?}", ty);
+                };
+                let size = self.translate_operand(*size);
+                let expr = alloc(
+                    size.to_expr().expect("Alloc size was a state edge"),
+                    RvsdgType::Bril(*inner).to_tree_type().unwrap(),
+                );
+                self.add_binding(expr, id)
+            }
             BasicExpr::Op(op, children, _ty) => {
                 let children = children
                     .iter()
                     .map(|c| {
-                        self.translate_operand(*c)
-                            .to_expr()
-                            .expect("State edge in op")
+                        self.translate_operand(*c).to_expr().unwrap_or_else(|| {
+                            panic!("Found state edge as child of operator{} ", op)
+                        })
                     })
                     .collect::<Vec<_>>();
                 let expr = match (op, children.as_slice()) {

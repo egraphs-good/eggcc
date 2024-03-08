@@ -1,3 +1,4 @@
+use crate::rvsdg::from_tree::tree_to_rvsdg;
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
@@ -143,6 +144,10 @@ pub enum RunType {
     /// Do nothing to the input bril program besides parse it.
     /// Output the original program.
     Nothing,
+    /// Convert the input bril program to the tree encoding, optimize the program
+    /// using egglog, and output the resulting bril program.
+    /// The default way to run this tool.
+    Optimize,
     /// Convert the input bril program to an RVSDG and output it as an SVG.
     RvsdgConversion,
     /// Convert the input bril program to a tree-encoded expression.
@@ -152,11 +157,19 @@ pub enum RunType {
     TreeConversionVerboseLets,
     /// Convert the input bril program to tree-encoded expression and optimize it with egglog.
     TreeOptimize,
+    /// Convert the input bril program to a tree-encoded expression and optimize it with egglog,
+    /// outputting the resulting RVSDG
+    OptimizedRvsdg,
     /// Give the egglog program used to optimize the tree-encoded expression.
     Egglog,
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
+    /// Convert to tree encoding and back to RVSDG again.
+    TreeToRvsdg,
+    /// Convert to Tree Encoding and back to Bril again,
+    /// outputting the bril program.
+    TreeRoundTrip,
     /// Convert the original program to a CFG and output it as one SVG per function.
     ToCfg,
     /// Convert the original program to a CFG and back to Bril again.
@@ -182,8 +195,12 @@ impl RunType {
     pub fn produces_interpretable(&self) -> bool {
         match self {
             RunType::Nothing => true,
+            RunType::Optimize => true,
             RunType::RvsdgConversion => false,
             RunType::RvsdgRoundTrip => true,
+            RunType::TreeToRvsdg => false,
+            RunType::OptimizedRvsdg => false,
+            RunType::TreeRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
             RunType::OptimizeDirectJumps => true,
@@ -203,8 +220,11 @@ impl RunType {
             | RunType::OptimizeDirectJumps
             | RunType::RvsdgToCfg
             | RunType::TreeConversion
-            | RunType::TreeConversionVerboseLets => false,
-            RunType::TreeOptimize | RunType::Egglog => false,
+            | RunType::TreeConversionVerboseLets
+            | RunType::OptimizedRvsdg
+            | RunType::Optimize
+            | RunType::TreeToRvsdg => false,
+            RunType::TreeOptimize | RunType::Egglog | RunType::TreeRoundTrip => false,
         }
     }
 }
@@ -292,6 +312,8 @@ impl Run {
             RunType::RvsdgToCfg,
             RunType::TreeConversion,
             RunType::TreeOptimize,
+            RunType::TreeRoundTrip,
+            RunType::TreeOptimize,
         ] {
             if prog.has_mem && !test_type.supports_memory() {
                 continue;
@@ -364,6 +386,50 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
+            RunType::TreeRoundTrip => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let rvsdg2 = tree_to_rvsdg(&tree);
+                let cfg = rvsdg2.to_cfg();
+                let bril = cfg.to_bril();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::Bril(bril)),
+                )
+            }
+            RunType::TreeToRvsdg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let rvsdg2 = tree_to_rvsdg(&tree);
+                (
+                    vec![Visualization {
+                        result: rvsdg2.to_svg(),
+                        file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
+            }
+            RunType::Optimize => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                let rvsdg2 = tree_to_rvsdg(&optimized);
+                let cfg = rvsdg2.to_cfg();
+                let bril = cfg.to_bril();
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: "".to_string(),
+                    }],
+                    Some(Interpretable::Bril(bril)),
+                )
+            }
             RunType::TreeConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_tree_encoding(true);
@@ -399,6 +465,20 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::TreeProgram(optimized)),
+                )
+            }
+            RunType::OptimizedRvsdg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                let rvsdg = tree_to_rvsdg(&optimized);
+                (
+                    vec![Visualization {
+                        result: rvsdg.to_svg(),
+                        file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
                 )
             }
             RunType::Egglog => {

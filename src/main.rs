@@ -11,13 +11,12 @@ struct Args {
     /// Configure the output of the tool, which can be an optimized bril program,
     /// an optimized CFG, or more.
     /// See documentation for [`RunType`] for different options.
-    #[clap(long, default_value_t = RunType::Nothing)]
+    #[clap(long, default_value_t = RunType::Optimize)]
     run_mode: RunType,
     /// Evaluate the resulting program and output
     /// the result.
     #[clap(long)]
     interp: bool,
-
     #[clap(long)]
     profile_out: Option<PathBuf>,
 

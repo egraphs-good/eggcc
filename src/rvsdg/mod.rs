@@ -29,6 +29,7 @@
 //! In addition to those papers, the Jamey Sharp's
 //! [optir](https://github.com/jameysharp/optir) project is a major inspiration.
 pub(crate) mod from_cfg;
+pub(crate) mod from_tree;
 pub(crate) mod live_variables;
 pub(crate) mod optimize_direct_jumps;
 pub(crate) mod restructure;
@@ -117,6 +118,15 @@ impl<Op> BasicExpr<Op> {
             BasicExpr::Call(_, _, n_outputs, _) => *n_outputs,
             BasicExpr::Const(_, _, _) => 1,
             BasicExpr::Effect(_, _) => 1,
+        }
+    }
+
+    pub(crate) fn push_operand(&mut self, op: Op) {
+        match self {
+            BasicExpr::Op(_, operands, _) => operands.push(op),
+            BasicExpr::Call(_, operands, _, _) => operands.push(op),
+            BasicExpr::Const(_, _, _) => panic!("Cannot push operand to const"),
+            BasicExpr::Effect(_, operands) => operands.push(op),
         }
     }
 }

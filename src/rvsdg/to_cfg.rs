@@ -220,10 +220,18 @@ impl<'a> RvsdgToCfg<'a> {
                 },
             );
         }
-        TranslationResult {
-            start: results[0].start,
-            end: results.last().unwrap().end,
-            values: results[results.len() - 1].values.clone(),
+        if results.is_empty() {
+            TranslationResult {
+                start: self.make_block(vec![]),
+                end: self.make_block(vec![]),
+                values: vec![],
+            }
+        } else {
+            TranslationResult {
+                start: results[0].start,
+                end: results.last().unwrap().end,
+                values: results[results.len() - 1].values.clone(),
+            }
         }
     }
 

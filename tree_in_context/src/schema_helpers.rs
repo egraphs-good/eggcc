@@ -396,7 +396,7 @@ impl Constructor {
 
 impl BinaryOp {
     /// When a binary op has concrete input sorts, return them.
-    pub(crate) fn types(&self) -> Option<(Type, Type, Type)> {
+    pub fn types(&self) -> Option<(Type, Type, Type)> {
         match self {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
                 Some((intt(), intt(), intt()))

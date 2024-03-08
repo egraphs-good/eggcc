@@ -165,6 +165,8 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::Eq => Const(Constant::Bool(get_int(e1, self) == get_int(e2, self))),
             BinaryOp::LessThan => Const(Constant::Bool(get_int(e1, self) < get_int(e2, self))),
             BinaryOp::GreaterThan => Const(Constant::Bool(get_int(e1, self) > get_int(e2, self))),
+            BinaryOp::LessEq => Const(Constant::Bool(get_int(e1, self) <= get_int(e2, self))),
+            BinaryOp::GreaterEq => Const(Constant::Bool(get_int(e1, self) >= get_int(e2, self))),
             BinaryOp::And => {
                 let b1 = get_bool(e1, self);
                 let b2 = get_bool(e2, self);
@@ -208,6 +210,11 @@ impl<'a> VirtualMachine<'a> {
                 } else {
                     panic!("No value bound at memory address {:?}", ptr.addr())
                 }
+            }
+            UnaryOp::Free => {
+                let ptr = self.interp_pointer_expr(e, arg);
+                self.mem.remove(&ptr.addr());
+                Tuple(vec![])
             }
         }
     }

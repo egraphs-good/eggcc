@@ -136,6 +136,8 @@ fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
         BinaryOp::Eq => Some(ValueOps::Eq),
         BinaryOp::LessThan => Some(ValueOps::Lt),
         BinaryOp::GreaterThan => Some(ValueOps::Gt),
+        BinaryOp::LessEq => Some(ValueOps::Le),
+        BinaryOp::GreaterEq => Some(ValueOps::Ge),
         BinaryOp::Write => None,
         BinaryOp::PtrAdd => Some(ValueOps::PtrAdd),
     }
@@ -153,6 +155,7 @@ fn value_op_from_unary_op(uop: UnaryOp) -> Option<ValueOps> {
         UnaryOp::Not => Some(ValueOps::Not),
         UnaryOp::Print => None,
         UnaryOp::Load => Some(ValueOps::Load),
+        UnaryOp::Free => None,
     }
 }
 
@@ -161,6 +164,7 @@ fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
         UnaryOp::Not => None,
         UnaryOp::Print => Some(EffectOps::Print),
         UnaryOp::Load => None,
+        UnaryOp::Free => Some(EffectOps::Free),
     }
 }
 

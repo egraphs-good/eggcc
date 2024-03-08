@@ -14,7 +14,8 @@ use std::iter;
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 use tree_in_context::ast::{
-    alloc, and, arg, div, empty, eq, getat, mul, push_par, sub, switch_vec, tif,
+    alloc, and, arg, div, empty, eq, free, getat, greater_eq, less_eq, mul, not, push_par, sub,
+    switch_vec, tif, twrite,
 };
 #[cfg(test)]
 use tree_in_context::ast::{intt, parallel, program};
@@ -431,6 +432,9 @@ impl<'a> RegionTranslator<'a> {
                     (ValueOps::Div, [a, b]) => div(a.clone(), b.clone()),
                     (ValueOps::Eq, [a, b]) => eq(a.clone(), b.clone()),
                     (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
+                    (ValueOps::Ge, [a, b]) => greater_eq(a.clone(), b.clone()),
+                    (ValueOps::Le, [a, b]) => less_eq(b.clone(), a.clone()),
+                    (ValueOps::Not, [a]) => not(a.clone()),
                     _ => todo!("handle {} op", op),
                 };
                 // All ops handled here are pure
@@ -492,8 +496,32 @@ impl<'a> RegionTranslator<'a> {
                 let expr = tprint(arg1);
                 self.add_state_edge_binding(expr, id)
             }
-            BasicExpr::Effect(..) => {
-                todo!("handle memory operations")
+            BasicExpr::Effect(EffectOps::Store, args) => {
+                assert!(args.len() == 3, "store should have 3 arguments");
+                let arg1 = self
+                    .translate_operand(args[0])
+                    .to_expr()
+                    .expect("Store address");
+                let arg2 = self
+                    .translate_operand(args[1])
+                    .to_expr()
+                    .expect("Store value");
+                assert_eq!(self.translate_operand(args[2]), StoredValue::StateEdge);
+                let expr = twrite(arg1, arg2);
+                self.add_state_edge_binding(expr, id)
+            }
+            BasicExpr::Effect(EffectOps::Free, args) => {
+                assert!(args.len() == 2, "free should have 2 arguments");
+                let arg1 = self
+                    .translate_operand(args[0])
+                    .to_expr()
+                    .expect("Free address");
+                assert_eq!(self.translate_operand(args[1]), StoredValue::StateEdge);
+                let expr = free(arg1);
+                self.add_state_edge_binding(expr, id)
+            }
+            BasicExpr::Effect(effect_op, _args) => {
+                panic!("Unrecognized effect op {:?}", effect_op)
             }
         }
     }

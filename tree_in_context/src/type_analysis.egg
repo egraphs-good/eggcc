@@ -170,6 +170,19 @@
       :ruleset type-analysis)
 
 
+(rule ((= lhs (Uop (Free) e))
+       (HasType e (PointerT _ty)))
+      ((HasType lhs (TupleT (TNil))))
+      :ruleset type-analysis)
+(rule ((= lhs (Uop (Free) e))
+       (HasType e (Base _ty)))
+      ((panic "Free expected pointer, received base"))
+      :ruleset type-analysis)
+(rule ((= lhs (Uop (Free) e))
+       (HasType e (TupleT _ty)))
+      ((panic "Free expected pointer, received tuple"))
+      :ruleset type-analysis)
+
 (rule (
         (= lhs (Uop (Load) e))
         (HasType e (PointerT ty))
@@ -247,6 +260,36 @@
         (ExpectType e2 (Base (IntT)) "(LessThan) expected int, received {?}")
       )
       :ruleset type-analysis)  
+
+
+(rule (
+        (= lhs (Bop (LessEq) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (LessEq) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(LessThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(LessThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)
+
+
+(rule (
+        (= lhs (Bop (GreaterEq) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (GreaterEq) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(LessThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(LessThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)
 
 (rule (
         (= lhs (Bop (And) e1 e2))

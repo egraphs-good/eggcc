@@ -41,6 +41,8 @@ impl BinaryOp {
             Eq => "Eq",
             GreaterThan => "GreaterThan",
             LessThan => "LessThan",
+            GreaterEq => "GreaterEq",
+            LessEq => "LessEq",
             And => "And",
             Or => "Or",
             Write => "Write",
@@ -56,6 +58,7 @@ impl UnaryOp {
             Not => "Not",
             Print => "Print",
             Load => "Load",
+            Free => "Free",
         }
     }
 }
@@ -402,9 +405,11 @@ impl BinaryOp {
                 Some((intt(), intt(), intt()))
             }
             BinaryOp::And | BinaryOp::Or => Some((boolt(), boolt(), boolt())),
-            BinaryOp::LessThan | BinaryOp::GreaterThan | BinaryOp::Eq => {
-                Some((intt(), intt(), boolt()))
-            }
+            BinaryOp::LessThan
+            | BinaryOp::GreaterThan
+            | BinaryOp::GreaterEq
+            | BinaryOp::LessEq
+            | BinaryOp::Eq => Some((intt(), intt(), boolt())),
             BinaryOp::Write => None,
             BinaryOp::PtrAdd => None,
         }
@@ -417,6 +422,7 @@ impl UnaryOp {
             UnaryOp::Not => Some((boolt(), boolt())),
             UnaryOp::Print => None,
             UnaryOp::Load => None,
+            UnaryOp::Free => None,
         }
     }
 }

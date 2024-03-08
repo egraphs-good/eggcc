@@ -36,6 +36,8 @@ pub enum BinaryOp {
     Eq,
     LessThan,
     GreaterThan,
+    LessEq,
+    GreaterEq,
     And,
     Or,
     Write,
@@ -47,6 +49,7 @@ pub enum UnaryOp {
     Not,
     Print,
     Load,
+    Free,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

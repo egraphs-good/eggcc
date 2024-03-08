@@ -72,6 +72,14 @@ pub fn less_than(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::LessThan, l, r))
 }
 
+pub fn less_eq(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::LessEq, l, r))
+}
+
+pub fn greater_eq(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::GreaterEq, l, r))
+}
+
 pub fn greater_than(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::GreaterThan, l, r))
 }
@@ -94,6 +102,10 @@ pub fn not(e: RcExpr) -> RcExpr {
 
 pub fn alloc(amount: RcExpr, value_ty: Type) -> RcExpr {
     RcExpr::new(Expr::Alloc(amount, value_ty))
+}
+
+pub fn free(ptr: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Uop(UnaryOp::Free, ptr))
 }
 
 pub fn twrite(addr: RcExpr, val: RcExpr) -> RcExpr {

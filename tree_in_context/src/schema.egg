@@ -60,6 +60,8 @@
   (Mul)
   (LessThan)
   (GreaterThan)
+  (LessEq)
+  (GreaterEq)
   (Eq)
   (And)
   (Or)
@@ -75,7 +77,9 @@
   ; returns an empty tuple
   (Print)
   ; given a pointer, loads the value at the pointer
-  (Load))
+  (Load)
+  ; given a pointer, frees the whole memory region at the pointer
+  (Free))
 
 ; Operators
 (function Bop   (BinaryOp Expr Expr) Expr)

@@ -14,8 +14,8 @@ use std::iter;
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 use tree_in_context::ast::{
-    alloc, and, arg, div, empty, eq, free, getat, greater_eq, less_eq, mul, not, push_par, sub,
-    switch_vec, tif, twrite,
+    alloc, and, arg, div, empty, eq, free, getat, greater_eq, less_eq, load, mul, not, ptradd,
+    push_par, sub, switch_vec, tif, twrite,
 };
 #[cfg(test)]
 use tree_in_context::ast::{intt, parallel, program};
@@ -411,17 +411,40 @@ impl<'a> RegionTranslator<'a> {
     fn translate_basic_expr(&mut self, expr: BasicExpr<Operand>, id: Id) -> StoredNode {
         match expr {
             BasicExpr::Op(ValueOps::Alloc, children, ty) => {
-                let [size, _state_edge] = children.as_slice() else {
+                let [size, state_edge] = children.as_slice() else {
                     panic!("Alloc should have 2 children, found {:?}", children);
                 };
                 let bril_rs::Type::Pointer(inner) = ty else {
                     panic!("Alloc should return a pointer type, found {:?}", ty);
                 };
                 let size = self.translate_operand(*size);
+                let state_edge = self.translate_operand(*state_edge);
+                assert_eq!(
+                    state_edge,
+                    StoredValue::StateEdge,
+                    "Alloc state edge should be state edge. Found {:?}",
+                    state_edge
+                );
                 let expr = alloc(
                     size.to_expr().expect("Alloc size was a state edge"),
                     RvsdgType::Bril(*inner).to_tree_type().unwrap(),
                 );
+                self.add_state_edge_binding(expr, id, true)
+            }
+            BasicExpr::Op(ValueOps::Load, children, _ty) => {
+                let [address, state_edge] = children.as_slice() else {
+                    panic!("Load should have 2 children, found {:?}", children);
+                };
+                let address = self.translate_operand(*address);
+                let state_edge_translated = self.translate_operand(*state_edge);
+                assert_eq!(
+                    state_edge_translated,
+                    StoredValue::StateEdge,
+                    "Load state edge should be state edge. Found {:?}",
+                    state_edge_translated
+                );
+                let expr = load(address.to_expr().expect("Load address was a state edge"));
+
                 self.add_state_edge_binding(expr, id, true)
             }
             BasicExpr::Op(op, children, _ty) => {
@@ -444,6 +467,7 @@ impl<'a> RegionTranslator<'a> {
                     (ValueOps::Ge, [a, b]) => greater_eq(a.clone(), b.clone()),
                     (ValueOps::Le, [a, b]) => less_eq(b.clone(), a.clone()),
                     (ValueOps::Not, [a]) => not(a.clone()),
+                    (ValueOps::PtrAdd, [a, b]) => ptradd(a.clone(), b.clone()),
                     _ => todo!("handle {} op", op),
                 };
                 // All ops handled here are pure

@@ -5,7 +5,7 @@ use schema::{RcExpr, TreeProgram};
 use crate::interpreter::interpret_tree_prog;
 
 pub mod ast;
-mod from_egglog;
+pub mod from_egglog;
 pub mod interpreter;
 mod optimizations;
 pub mod schema;

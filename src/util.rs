@@ -10,6 +10,7 @@ use std::{
     path::PathBuf,
 };
 use tree_in_context::build_program;
+use tree_in_context::from_egglog::FromEgglog;
 use tree_in_context::schema::TreeProgram;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
@@ -162,6 +163,9 @@ pub enum RunType {
     OptimizedRvsdg,
     /// Give the egglog program used to optimize the tree-encoded expression.
     Egglog,
+    /// Check that converting the tree program to egglog
+    /// and back again results in an identical program.
+    CheckTreeIdentical,
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
@@ -209,6 +213,7 @@ impl RunType {
             RunType::TreeConversionVerboseLets => true,
             RunType::TreeOptimize => true,
             RunType::Egglog => true,
+            RunType::CheckTreeIdentical => false,
         }
     }
 
@@ -223,7 +228,8 @@ impl RunType {
             | RunType::TreeConversionVerboseLets
             | RunType::OptimizedRvsdg
             | RunType::Optimize
-            | RunType::TreeToRvsdg => false,
+            | RunType::TreeToRvsdg
+            | RunType::CheckTreeIdentical => false,
             RunType::TreeOptimize | RunType::Egglog | RunType::TreeRoundTrip => false,
         }
     }
@@ -314,6 +320,7 @@ impl Run {
             RunType::TreeOptimize,
             RunType::TreeRoundTrip,
             RunType::TreeOptimize,
+            RunType::Optimize,
         ] {
             if prog.has_mem && !test_type.supports_memory() {
                 continue;
@@ -400,6 +407,17 @@ impl Run {
                     }],
                     Some(Interpretable::Bril(bril)),
                 )
+            }
+            RunType::CheckTreeIdentical => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_tree_encoding(true);
+                let (term, termdag) = tree.to_egglog();
+                let from_egglog = FromEgglog { termdag };
+                let res_term = from_egglog.program_from_egglog(term);
+                if tree != res_term {
+                    panic!("Check failed: terms should be equal after conversion to and from egglog. Got:\n{}\nExpected:\n{}", res_term.pretty(), tree.pretty());
+                }
+                (vec![], None)
             }
             RunType::TreeToRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;

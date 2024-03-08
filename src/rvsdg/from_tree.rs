@@ -55,10 +55,10 @@ fn bril_type_from_type(ty: Type) -> bril_rs::Type {
 fn convert_func_output_type(ty: Type) -> Option<bril_rs::Type> {
     match ty {
         Type::TupleT(inner) => {
-            assert_eq!(
-                inner.len(),
-                0,
-                "Expected no tuple types in function_type_from_type"
+            assert!(
+                inner.is_empty(),
+                "Expected no tuple types in function_type_from_type. Got: {:?}",
+                inner
             );
             None
         }
@@ -70,7 +70,10 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
     let output_type = func.func_output_ty().expect("Expected function types");
 
     let Type::TupleT(input_types) = func.func_input_ty().expect("Expected function types") else {
-        panic!("Expected tuple type for inputs in tree_func_to_rvsdg")
+        panic!(
+            "Expected tuple type for inputs in tree_func_to_rvsdg. Got: {:?}",
+            func.func_input_ty()
+        )
     };
 
     let mut nodes = vec![];
@@ -89,7 +92,6 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
     let converted = converter.convert_expr(func.clone());
 
     let resulting_state_edge = converter.current_state_edge;
-    drop(converter);
     RvsdgFunction {
         name: func
             .func_name()
@@ -105,7 +107,7 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
         // or just a state edge
         results: match convert_func_output_type(output_type) {
             Some(func_type) => {
-                assert!(converted.len() == 1, "Expected exactly one result");
+                assert_eq!(converted.len(), 1, "Expected exactly one result");
                 vec![
                     (RvsdgType::Bril(func_type), converted[0]),
                     (RvsdgType::PrintState, resulting_state_edge),

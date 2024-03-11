@@ -25,7 +25,8 @@ impl Display for Type {
 
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        let (term, termdag) = self.to_egglog();
+        let rcexpr = RcExpr::new(self.clone());
+        let (term, termdag) = rcexpr.to_egglog();
         write!(f, "{}", termdag.to_string(&term))
     }
 }

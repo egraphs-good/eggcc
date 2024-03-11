@@ -38,7 +38,6 @@
          (Concat order (InContext assum e1) (InContext assum e2))
          :ruleset context_propagate)
 
-;                       assumptions, predicate, cases,   current case
 (function SwitchInContext (InContextList   Expr       ListExpr i64) ListExpr :unextractable) 
 
 (rewrite (InContext assum (If pred then else))

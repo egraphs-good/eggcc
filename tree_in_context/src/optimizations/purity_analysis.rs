@@ -6,7 +6,8 @@ use strum::IntoEnumIterator;
 fn bop_is_pure(bop: &BinaryOp) -> bool {
     use BinaryOp::*;
     match bop {
-        Add | Sub | Mul | LessThan | And | Or | Div | PtrAdd | Eq | GreaterThan => true,
+        Add | Sub | Mul | LessThan | And | Or | Div | PtrAdd | Eq | GreaterThan | LessEq
+        | GreaterEq => true,
         Write => false,
     }
 }
@@ -15,7 +16,7 @@ fn uop_is_pure(uop: &UnaryOp) -> bool {
     use UnaryOp::*;
     match uop {
         Not => true,
-        Print | Load => false,
+        Print | Load | Free => false,
     }
 }
 
@@ -109,7 +110,7 @@ fn test_purity_analysis() -> crate::Result {
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(
-                switch!(load(alloc(int(0), intt())); parallel!(int(4), int(5))),
+                switch!(load(alloc(int(0), pointert(intt()))); parallel!(int(4), int(5))),
                 0
             )
         ),

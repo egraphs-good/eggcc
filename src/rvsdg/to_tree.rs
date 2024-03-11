@@ -13,9 +13,7 @@ use std::iter;
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_in_context::ast::{and, arg, div, empty, eq, getat, mul, push_par, sub, switch_vec, tif};
-#[cfg(test)]
-use tree_in_context::ast::{intt, parallel, program};
+use tree_in_context::ast::*;
 #[cfg(test)]
 use tree_in_context::interpreter::Value;
 #[cfg(test)]
@@ -64,14 +62,6 @@ enum StoredValue {
 /// an RVSDG node.
 /// During translation, values for each node are stored in the bindings.
 type StoredNode = Vec<StoredValue>;
-
-fn storedarg(index: usize) -> StoredNode {
-    vec![StoredValue::Arg(index)]
-}
-
-fn storedstate() -> StoredNode {
-    vec![StoredValue::StateEdge]
-}
 
 impl StoredValue {
     fn to_expr(&self) -> Option<RcExpr> {
@@ -135,7 +125,7 @@ impl<'a> RegionTranslator<'a> {
     /// into the argument list.
     /// `expr` must produce a single value, not a tuple.
     fn add_binding(&mut self, expr: RcExpr, id: Id) -> StoredNode {
-        let res = storedarg(self.current_num_let_bound);
+        let res = vec![StoredValue::Arg(self.current_num_let_bound)];
         if self.current_num_let_bound == 0 {
             self.bindings.push(single(expr));
         } else {
@@ -152,14 +142,31 @@ impl<'a> RegionTranslator<'a> {
         res
     }
 
-    /// Adds a binding for a state edge (e.g. a print or write)
-    fn add_state_edge_binding(&mut self, expr: RcExpr, id: Id) -> StoredNode {
+    /// Adds a binding for a state edge (ex. a print or write)
+    /// Some stateful operators produce a value (ex. alloc)
+    fn add_state_edge_binding(&mut self, expr: RcExpr, id: Id, produces_value: bool) -> StoredNode {
+        let res = if produces_value {
+            vec![
+                StoredValue::Arg(self.current_num_let_bound),
+                StoredValue::StateEdge,
+            ]
+        } else {
+            vec![StoredValue::StateEdge]
+        };
         if self.current_num_let_bound == 0 {
-            self.bindings.push(expr);
+            if produces_value {
+                self.bindings.push(single(expr));
+            } else {
+                self.bindings.push(expr);
+            }
+        } else if produces_value {
+            self.bindings.push(push_par(expr, arg()));
         } else {
             self.bindings.push(concat_par(arg(), expr));
         }
-        let res = storedstate();
+        if produces_value {
+            self.current_num_let_bound += 1;
+        }
         assert_eq!(
             self.stored_node.insert(id, res.clone()),
             None,
@@ -398,13 +405,50 @@ impl<'a> RegionTranslator<'a> {
     /// return the newly created index.
     fn translate_basic_expr(&mut self, expr: BasicExpr<Operand>, id: Id) -> StoredNode {
         match expr {
+            BasicExpr::Op(ValueOps::Alloc, children, ty) => {
+                let [size, state_edge] = children.as_slice() else {
+                    panic!("Alloc should have 2 children, found {:?}", children);
+                };
+                let bril_rs::Type::Pointer(_inner) = &ty else {
+                    panic!("Alloc should return a pointer type, found {:?}", ty);
+                };
+                let size = self.translate_operand(*size);
+                let state_edge = self.translate_operand(*state_edge);
+                assert_eq!(
+                    state_edge,
+                    StoredValue::StateEdge,
+                    "Alloc state edge should be state edge. Found {:?}",
+                    state_edge
+                );
+                let expr = alloc(
+                    size.to_expr().expect("Alloc size was a state edge"),
+                    TreeType::Base(RvsdgType::Bril(ty).to_tree_type().unwrap()),
+                );
+                self.add_state_edge_binding(expr, id, true)
+            }
+            BasicExpr::Op(ValueOps::Load, children, _ty) => {
+                let [address, state_edge] = children.as_slice() else {
+                    panic!("Load should have 2 children, found {:?}", children);
+                };
+                let address = self.translate_operand(*address);
+                let state_edge_translated = self.translate_operand(*state_edge);
+                assert_eq!(
+                    state_edge_translated,
+                    StoredValue::StateEdge,
+                    "Load state edge should be state edge. Found {:?}",
+                    state_edge_translated
+                );
+                let expr = load(address.to_expr().expect("Load address was a state edge"));
+
+                self.add_state_edge_binding(expr, id, true)
+            }
             BasicExpr::Op(op, children, _ty) => {
                 let children = children
                     .iter()
                     .map(|c| {
-                        self.translate_operand(*c)
-                            .to_expr()
-                            .expect("State edge in op")
+                        self.translate_operand(*c).to_expr().unwrap_or_else(|| {
+                            panic!("Found state edge as child of operator{} ", op)
+                        })
                     })
                     .collect::<Vec<_>>();
                 let expr = match (op, children.as_slice()) {
@@ -415,6 +459,10 @@ impl<'a> RegionTranslator<'a> {
                     (ValueOps::Div, [a, b]) => div(a.clone(), b.clone()),
                     (ValueOps::Eq, [a, b]) => eq(a.clone(), b.clone()),
                     (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
+                    (ValueOps::Ge, [a, b]) => greater_eq(a.clone(), b.clone()),
+                    (ValueOps::Le, [a, b]) => less_eq(b.clone(), a.clone()),
+                    (ValueOps::Not, [a]) => not(a.clone()),
+                    (ValueOps::PtrAdd, [a, b]) => ptradd(a.clone(), b.clone()),
                     _ => todo!("handle {} op", op),
                 };
                 // All ops handled here are pure
@@ -474,10 +522,34 @@ impl<'a> RegionTranslator<'a> {
                 );
                 // print outputs a new unit value
                 let expr = tprint(arg1);
-                self.add_state_edge_binding(expr, id)
+                self.add_state_edge_binding(expr, id, false)
             }
-            BasicExpr::Effect(..) => {
-                todo!("handle memory operations")
+            BasicExpr::Effect(EffectOps::Store, args) => {
+                assert!(args.len() == 3, "store should have 3 arguments");
+                let arg1 = self
+                    .translate_operand(args[0])
+                    .to_expr()
+                    .expect("Store address");
+                let arg2 = self
+                    .translate_operand(args[1])
+                    .to_expr()
+                    .expect("Store value");
+                assert_eq!(self.translate_operand(args[2]), StoredValue::StateEdge);
+                let expr = twrite(arg1, arg2);
+                self.add_state_edge_binding(expr, id, false)
+            }
+            BasicExpr::Effect(EffectOps::Free, args) => {
+                assert!(args.len() == 2, "free should have 2 arguments");
+                let arg1 = self
+                    .translate_operand(args[0])
+                    .to_expr()
+                    .expect("Free address was a state edge");
+                assert_eq!(self.translate_operand(args[1]), StoredValue::StateEdge);
+                let expr = free(arg1);
+                self.add_state_edge_binding(expr, id, false)
+            }
+            BasicExpr::Effect(effect_op, _args) => {
+                panic!("Unrecognized effect op {:?}", effect_op)
             }
         }
     }
@@ -522,7 +594,9 @@ impl RvsdgFunction {
             .collect::<Vec<_>>();
         let (single_result, single_type) =
             match (translated_results.as_slice(), result_types.as_slice()) {
-                ([single_result], [single_type]) => (single_result.clone(), single_type.clone()),
+                ([single_result], [single_type]) => {
+                    (single_result.clone(), TreeType::Base(single_type.clone()))
+                }
                 ([], []) => (empty(), emptyt()),
                 _ => panic!("Expected a single result type, found {:?}", result_types),
             };
@@ -639,7 +713,7 @@ fn simple_translation() {
         program!(function(
             "add",
             TreeType::TupleT(vec![]),
-            intt(),
+            base(intt()),
             tlet(
                 single(int(1)),
                 bind_value(
@@ -651,7 +725,7 @@ fn simple_translation() {
         program!(function(
             "add",
             TreeType::TupleT(vec![]),
-            intt(),
+            base(intt()),
             add(int(1), int(1)),
         ),),
         Value::Tuple(vec![]),
@@ -679,7 +753,7 @@ fn translate_simple_loop() {
         program!(function(
             "myfunc",
             emptyt(),
-            intt(),
+            base(intt()),
             tlet(
                 single(int(1)), // [1]
                 bind_value(
@@ -700,7 +774,7 @@ fn translate_simple_loop() {
         program!(function(
             "myfunc",
             emptyt(),
-            intt(),
+            base(intt()),
             tlet(
                 dowhile(
                     parallel!(int(1), int(2)),
@@ -805,7 +879,7 @@ fn simple_if_translation() {
         program!(function(
             "main",
             emptyt(),
-            intt(),
+            base(intt()),
             tlet(
                 single(int(1)), // [1]
                 bind_value(
@@ -824,7 +898,7 @@ fn simple_if_translation() {
         program!(function(
             "main",
             emptyt(),
-            intt(),
+            base(intt()),
             tlet(
                 tif(
                     less_than(int(1), int(1)),
@@ -913,7 +987,7 @@ fn multi_function_translation() {
             function(
                 "myadd",
                 TreeType::TupleT(vec![]),
-                intt(),
+                base(intt()),
                 tlet(
                     single(int(1)),
                     bind_value(
@@ -936,7 +1010,7 @@ fn multi_function_translation() {
             function(
                 "myadd",
                 TreeType::TupleT(vec![]),
-                intt(),
+                base(intt()),
                 add(int(1), int(1)),
             ),
         ),

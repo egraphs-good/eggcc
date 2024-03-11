@@ -33,25 +33,26 @@ impl FromEgglog {
         match_term_app!(basetype.clone(); {
           ("IntT", []) => BaseType::IntT,
           ("BoolT", []) => BaseType::BoolT,
+          ("PointerT", [basetype]) => BaseType::PointerT(Box::new(self.basetype_from_egglog(self.termdag.get(*basetype)))),
           _ => panic!("Invalid basetype: {:?}", basetype),
         })
     }
 
-    fn vec_from_tlistexpr_helper(&self, tlistexpr: Term, acc: &mut Vec<Type>) {
+    fn vec_from_tlistexpr_helper(&self, tlistexpr: Term, acc: &mut Vec<BaseType>) {
         match_term_app!(tlistexpr.clone();
         {
           ("TNil", []) => (),
           ("TCons", [type_, tlistexpr]) => {
             let type_ = self.termdag.get(*type_);
             let tlistexpr = self.termdag.get(*tlistexpr);
-            acc.push(self.type_from_egglog(type_));
+            acc.push(self.basetype_from_egglog(type_));
             self.vec_from_tlistexpr_helper(tlistexpr, acc);
           }
           _ => panic!("Invalid tlistexpr: {:?}", tlistexpr),
         })
     }
 
-    fn vec_from_tlistexpr(&self, tlistexpr: Term) -> Vec<Type> {
+    fn vec_from_tlistexpr(&self, tlistexpr: Term) -> Vec<BaseType> {
         let mut types = vec![];
         self.vec_from_tlistexpr_helper(tlistexpr, &mut types);
         types
@@ -80,7 +81,6 @@ impl FromEgglog {
     fn type_from_egglog(&self, type_: Term) -> Type {
         match_term_app!(type_.clone(); {
           ("Base", [basetype]) => Type::Base(self.basetype_from_egglog(self.termdag.get(*basetype))),
-          ("PointerT", [basetype]) => Type::PointerT(self.basetype_from_egglog(self.termdag.get(*basetype))),
           ("TupleT", [types]) => {
             let types = self.termdag.get(*types);
             Type::TupleT(self.vec_from_tlistexpr(types))
@@ -138,6 +138,8 @@ impl FromEgglog {
           ("Eq", []) => BinaryOp::Eq,
           ("LessThan", []) => BinaryOp::LessThan,
           ("GreaterThan", []) => BinaryOp::GreaterThan,
+          ("LessEq", []) => BinaryOp::LessEq,
+          ("GreaterEq", []) => BinaryOp::GreaterEq,
           ("And", []) => BinaryOp::And,
           ("Or", []) => BinaryOp::Or,
           ("Write", []) => BinaryOp::Write,
@@ -152,6 +154,7 @@ impl FromEgglog {
           ("Not", []) => UnaryOp::Not,
           ("Print", []) => UnaryOp::Print,
           ("Load", []) => UnaryOp::Load,
+          ("Free", []) => UnaryOp::Free,
           _ => panic!("Invalid unary op: {:?}", uop),
         })
     }

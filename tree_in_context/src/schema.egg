@@ -12,20 +12,20 @@
 
 (datatype BaseType
   (IntT)
-  (BoolT))
+  (BoolT)
+  ; a pointer to a memory region with a particular type
+  (PointerT BaseType))
 
 
 (datatype Type
   ; a primitive type
   (Base BaseType)
-  ; a pointer to a memory region with a particular type
-  (PointerT BaseType)
   ; a typed tuple. Use an empty tuple as a unit type.
   (TupleT TypeList) 
 )
 
 (function TNil () TypeList)
-(function TCons (Type TypeList) TypeList) ; Head element should never be a tuple
+(function TCons (BaseType TypeList) TypeList) ; Head element should never be a tuple
 
 
 ; =================================
@@ -60,6 +60,8 @@
   (Mul)
   (LessThan)
   (GreaterThan)
+  (LessEq)
+  (GreaterEq)
   (Eq)
   (And)
   (Or)
@@ -75,7 +77,9 @@
   ; returns an empty tuple
   (Print)
   ; given a pointer, loads the value at the pointer
-  (Load))
+  (Load)
+  ; given a pointer, frees the whole memory region at the pointer
+  (Free))
 
 ; Operators
 (function Bop   (BinaryOp Expr Expr) Expr)

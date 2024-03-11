@@ -8,7 +8,7 @@
          :ruleset type-helpers)
 
 (function TypeList-length (TypeList) i64)
-(function TypeList-ith (TypeList i64) Type :unextractable)
+(function TypeList-ith (TypeList i64) BaseType :unextractable)
 (function TypeList-suffix (TypeList i64) TypeList :unextractable)
 
 (rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset type-helpers)
@@ -170,18 +170,31 @@
       :ruleset type-analysis)
 
 
+(rule ((= lhs (Uop (Free) e))
+       (HasType e (Base (PointerT _ty))))
+      ((HasType lhs (TupleT (TNil))))
+      :ruleset type-analysis)
+(rule ((= lhs (Uop (Free) e))
+       (HasType e (Base (IntT))))
+      ((panic "Free expected pointer, received integer"))
+      :ruleset type-analysis)
+(rule ((= lhs (Uop (Free) e))
+       (HasType e (TupleT _ty)))
+      ((panic "Free expected pointer, received tuple"))
+      :ruleset type-analysis)
+
 (rule (
         (= lhs (Uop (Load) e))
-        (HasType e (PointerT ty))
+        (HasType e (Base (PointerT ty)))
       )
       ((HasType lhs (Base ty)))
       :ruleset type-analysis)
 (rule (
         (= lhs (Uop (Load) e))
         (HasType e ty)
-        (= ty (Base x))
+        (= ty (Base (IntT)))
       )
-      ((panic "(Load) expected pointer, received base"))
+      ((panic "(Load) expected pointer, received int"))
       :ruleset type-analysis)
 (rule (
         (= lhs (Uop (Load) e))
@@ -248,6 +261,36 @@
       )
       :ruleset type-analysis)  
 
+
+(rule (
+        (= lhs (Bop (LessEq) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (LessEq) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(LessThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(LessThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)
+
+
+(rule (
+        (= lhs (Bop (GreaterEq) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (GreaterEq) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(LessThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(LessThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)
+
 (rule (
         (= lhs (Bop (And) e1 e2))
         (HasType e1 (Base (BoolT)))
@@ -278,7 +321,7 @@
 
 (rule (
         (= lhs (Bop (Write) ptr val))
-        (HasType ptr (PointerT ty))
+        (HasType ptr (Base (PointerT ty)))
         (HasType val (Base t)) ; TODO need to support pointers to pointers
       )
       ((HasType lhs (TupleT (TNil)))) ; Write returns ()
@@ -286,7 +329,7 @@
 
 (rule (
        (= lhs (Bop (Write) ptr val))
-       (HasType ptr (PointerT ty)))
+       (HasType ptr (Base (PointerT ty))))
       ((ExpectType val (Base ty) "(Write) type mismatch, received {?}"))
       :ruleset type-analysis)
       
@@ -294,10 +337,10 @@
 
 (rule (
         (= lhs (Bop (PtrAdd) ptr n))
-        (HasType ptr (PointerT ty))
+        (HasType ptr (Base (PointerT ty)))
         (HasType n (Base (IntT)))
       )
-      ((HasType lhs (PointerT ty)))
+      ((HasType lhs (Base (PointerT ty))))
       :ruleset type-analysis)
 
 ; Other ops
@@ -306,10 +349,10 @@
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Alloc amt (Base ty)))
+        (= lhs (Alloc amt ty))
         (HasType amt (Base (IntT)))
       )
-      ((HasType lhs (PointerT ty)))
+      ((HasType lhs ty))
       :ruleset type-analysis)
 
 (rule (
@@ -318,7 +361,7 @@
       )
       ; TypeList-ith needs to compute immediately, so we need to saturate type-helpers
       ; rules between every iter of type-analysis rules.
-      ((HasType lhs (TypeList-ith tylist i))) 
+      ((HasType lhs (Base (TypeList-ith tylist i)))) 
       :ruleset type-analysis)
 
 ; =================================
@@ -334,9 +377,9 @@
 
 (rule (
         (= lhs (Single e))
-        (HasType e ty)
+        (HasType e (Base basety))
       )
-      ((HasType lhs (TupleT (TCons ty (TNil)))))
+      ((HasType lhs (TupleT (TCons basety (TNil)))))
       :ruleset type-analysis)
 
 (rule (
@@ -444,7 +487,7 @@
       :ruleset type-analysis)
 (rule (
         (= lhs (DoWhile inp pred-body))
-        (HasType inp (PointerT ty))
+        (HasType inp (Base (PointerT ty)))
       )
       ((panic "loop input must be tuple"))
       :ruleset type-analysis)
@@ -456,7 +499,7 @@
       :ruleset type-analysis)
 (rule (
         (= lhs (DoWhile inp pred-body))
-        (HasType pred-body (PointerT ty))
+        (HasType pred-body (Base (PointerT ty)))
       )
       ((panic "loop pred-body must be tuple"))
       :ruleset type-analysis)
@@ -477,7 +520,7 @@
         (HasType inp (TupleT tylist)) ; input is a tuple
         ; pred-body is a tuple where the first elt is a bool
         ; and the rest of the list matches the input type
-        (HasType pred-body (TupleT (TCons (Base (BoolT)) tylist)))
+        (HasType pred-body (TupleT (TCons (BoolT) tylist)))
       )
       ((HasType lhs (TupleT tylist))) ; whole thing has type of inputs/outputs
       :ruleset type-analysis)
@@ -485,7 +528,7 @@
 (rule (
         (= lhs (DoWhile inp pred-body))
         (HasType inp (TupleT in-tys))
-        (HasType pred-body (TupleT (TCons (Base (BoolT)) out-tys)))
+        (HasType pred-body (TupleT (TCons (BoolT) out-tys)))
         (!= in-tys out-tys)
       )
       ((panic "input types and output types don't match"))

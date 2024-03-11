@@ -5,27 +5,28 @@ use crate::{
     },
 };
 
-pub fn intt() -> Type {
-    Type::Base(BaseType::IntT)
+pub fn base(t: BaseType) -> Type {
+    Type::Base(t)
 }
 
-pub fn boolt() -> Type {
-    Type::Base(BaseType::BoolT)
+pub fn intt() -> BaseType {
+    BaseType::IntT
+}
+
+pub fn boolt() -> BaseType {
+    BaseType::BoolT
 }
 
 pub fn emptyt() -> Type {
     Type::TupleT(vec![])
 }
 
-pub fn tuplet_vec(types: Vec<Type>) -> Type {
+pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
 }
 
-pub fn pointert(t: Type) -> Type {
-    match t {
-        Type::Base(b) => Type::PointerT(b),
-        _ => panic!("cannot create a pointer from a non-base type"),
-    }
+pub fn pointert(t: BaseType) -> Type {
+    Type::Base(BaseType::PointerT(Box::new(t)))
 }
 
 pub fn val_int(i: i64) -> Value {
@@ -72,6 +73,14 @@ pub fn less_than(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::LessThan, l, r))
 }
 
+pub fn less_eq(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::LessEq, l, r))
+}
+
+pub fn greater_eq(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::GreaterEq, l, r))
+}
+
 pub fn greater_than(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::GreaterThan, l, r))
 }
@@ -90,6 +99,14 @@ pub fn or(l: RcExpr, r: RcExpr) -> RcExpr {
 
 pub fn not(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Not, e))
+}
+
+pub fn alloc(amount: RcExpr, value_ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Alloc(amount, value_ty))
+}
+
+pub fn free(ptr: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Uop(UnaryOp::Free, ptr))
 }
 
 pub fn twrite(addr: RcExpr, val: RcExpr) -> RcExpr {
@@ -121,10 +138,6 @@ pub fn load(e: RcExpr) -> RcExpr {
 
 pub fn ptradd(ptr: RcExpr, i: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::PtrAdd, ptr, i))
-}
-
-pub fn alloc(e: RcExpr, ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Alloc(e, ty))
 }
 
 pub fn call(s: &str, e: RcExpr) -> RcExpr {
@@ -227,11 +240,11 @@ pub fn arg() -> RcExpr {
 
 /// An argument with an integer type.
 pub fn iarg() -> RcExpr {
-    RcExpr::new(Expr::Arg(intt()))
+    RcExpr::new(Expr::Arg(base(intt())))
 }
 
 pub fn barg() -> RcExpr {
-    RcExpr::new(Expr::Arg(boolt()))
+    RcExpr::new(Expr::Arg(base(boolt())))
 }
 
 pub fn getat(index: usize) -> RcExpr {

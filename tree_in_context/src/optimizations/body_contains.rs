@@ -70,7 +70,7 @@ fn test_body_contains() -> crate::Result {
         parallel!(
             less_than(
                 get(arg(), 0),
-                tlet(int(3), in_context(inlet(int_ty(3, intt())), arg()))
+                tlet(int(3), in_context(inlet(int_ty(3, base(intt()))), arg()))
             ),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),

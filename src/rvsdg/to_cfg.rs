@@ -311,7 +311,7 @@ impl<'a> RvsdgToCfg<'a> {
         let mut instructions = vec![];
         assert_eq!(input_vars.len(), resulting_vars.len());
 
-        // assign to the loop variables, making sure the types line up
+        // assign to the variables, making sure the types line up
         for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
             match (ivar, rvar) {
                 (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}

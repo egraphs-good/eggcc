@@ -92,17 +92,17 @@ use crate::Value;
 #[test]
 fn test_lift_switch() -> crate::Result {
     let switch = switch!(int(1); less_than(getat(0), int(7)), less_than(getat(1), int(7)))
-        .with_arg_types(tuplet!(intt(), intt()), boolt());
+        .with_arg_types(tuplet!(intt(), intt()), base(boolt()));
     let lifted = less_than(switch!(int(1); getat(0), getat(1)), int(7))
-        .with_arg_types(tuplet!(intt(), intt()), boolt());
+        .with_arg_types(tuplet!(intt(), intt()), base(boolt()));
     let build = format!("(ExprIsValid {switch})");
     let check = format!("(check (= {switch} {lifted}))");
     crate::egglog_test(
         &build,
         &check,
         vec![
-            switch.to_program(tuplet!(intt(), intt()), boolt()),
-            lifted.to_program(tuplet!(intt(), intt()), boolt()),
+            switch.to_program(tuplet!(intt(), intt()), base(boolt())),
+            lifted.to_program(tuplet!(intt(), intt()), base(boolt())),
         ],
         Value::Tuple(vec![
             Value::Const(Constant::Int(6)),

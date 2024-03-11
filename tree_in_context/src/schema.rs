@@ -10,14 +10,14 @@ use strum_macros::EnumIter;
 pub enum BaseType {
     IntT,
     BoolT,
+    PointerT(Box<BaseType>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Base(BaseType),
-    PointerT(BaseType),
     /// Nested tuple types are not allowed.
-    TupleT(Vec<Type>),
+    TupleT(Vec<BaseType>),
     /// Before `with_arg_types`, users of this IR can leave unknown types
     /// in arguments.
     /// When all types are present except for unknowns in arguments,
@@ -36,6 +36,8 @@ pub enum BinaryOp {
     Eq,
     LessThan,
     GreaterThan,
+    LessEq,
+    GreaterEq,
     And,
     Or,
     Write,
@@ -47,6 +49,7 @@ pub enum UnaryOp {
     Not,
     Print,
     Load,
+    Free,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

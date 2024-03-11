@@ -427,7 +427,7 @@ impl<'a> RegionTranslator<'a> {
                 );
                 let expr = alloc(
                     size.to_expr().expect("Alloc size was a state edge"),
-                    RvsdgType::Bril(*inner).to_tree_type().unwrap(),
+                    TreeType::Base(RvsdgType::Bril(*inner).to_tree_type().unwrap()),
                 );
                 self.add_state_edge_binding(expr, id, true)
             }
@@ -599,7 +599,9 @@ impl RvsdgFunction {
             .collect::<Vec<_>>();
         let (single_result, single_type) =
             match (translated_results.as_slice(), result_types.as_slice()) {
-                ([single_result], [single_type]) => (single_result.clone(), single_type.clone()),
+                ([single_result], [single_type]) => {
+                    (single_result.clone(), TreeType::Base(single_type.clone()))
+                }
                 ([], []) => (empty(), emptyt()),
                 _ => panic!("Expected a single result type, found {:?}", result_types),
             };

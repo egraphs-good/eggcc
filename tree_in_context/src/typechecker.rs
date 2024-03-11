@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::emptyt,
+    ast::{emptyt, pointert},
     schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
 };
 
@@ -125,14 +125,14 @@ impl<'a> TypeChecker<'a> {
             Expr::Bop(BinaryOp::Write, left, right) => {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty);
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty);
-                let Type::PointerT(innert) = lty else {
+                let Type::Base(BaseType::PointerT(innert)) = lty else {
                     panic!("Expected pointer type. Got {:?}", lty)
                 };
                 let Type::Base(baset) = &rty else {
                     todo!("Support pointers to pointers");
                 };
                 assert_eq!(
-                    innert,
+                    *innert,
                     baset.clone(),
                     "Expected right type to be {:?}. Got {:?}",
                     innert,
@@ -146,14 +146,14 @@ impl<'a> TypeChecker<'a> {
             Expr::Bop(BinaryOp::PtrAdd, left, right) => {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty);
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty);
-                let Type::PointerT(innert) = lty else {
+                let Type::Base(BaseType::PointerT(innert)) = lty else {
                     panic!("Expected pointer type. Got {:?}", lty)
                 };
                 let Type::Base(BaseType::IntT) = rty else {
                     panic!("Expected int type. Got {:?}", rty)
                 };
                 (
-                    Type::PointerT(innert),
+                    Type::Base(BaseType::PointerT(innert)),
                     RcExpr::new(Expr::Bop(BinaryOp::PtrAdd, new_left, new_right)),
                 )
             }
@@ -194,17 +194,17 @@ impl<'a> TypeChecker<'a> {
             }
             Expr::Uop(UnaryOp::Load, inner) => {
                 let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
-                let Type::PointerT(out_ty) = ity else {
+                let Type::Base(BaseType::PointerT(out_ty)) = ity else {
                     panic!("Expected pointer type. Got {:?}", ity)
                 };
                 (
-                    Type::Base(out_ty),
+                    Type::Base(*out_ty),
                     RcExpr::new(Expr::Uop(UnaryOp::Load, new_inner)),
                 )
             }
             Expr::Uop(UnaryOp::Free, inner) => {
                 let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
-                let Type::PointerT(_out_ty) = ity else {
+                let Type::Base(BaseType::PointerT(_out_ty)) = ity else {
                     panic!("Expected pointer type. Got {:?}", ity)
                 };
                 (emptyt(), RcExpr::new(Expr::Uop(UnaryOp::Free, new_inner)))
@@ -221,7 +221,10 @@ impl<'a> TypeChecker<'a> {
                     );
                 }
                 let expected_ty = types[*index].clone();
-                (expected_ty, RcExpr::new(Expr::Get(new_child, *index)))
+                (
+                    Type::Base(expected_ty),
+                    RcExpr::new(Expr::Get(new_child, *index)),
+                )
             }
             Expr::Alloc(amount, ty) => {
                 let (aty, new_amount) = self.add_arg_types_to_expr(amount.clone(), arg_ty);
@@ -232,7 +235,7 @@ impl<'a> TypeChecker<'a> {
                     todo!("Support pointers to pointers");
                 };
                 (
-                    Type::PointerT(baset.clone()),
+                    pointert(baset.clone()),
                     RcExpr::new(Expr::Alloc(new_amount, ty.clone())),
                 )
             }
@@ -263,8 +266,14 @@ impl<'a> TypeChecker<'a> {
                 }
             },
             Expr::Single(arg) => {
-                let (ty, new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty);
-                (Type::TupleT(vec![ty]), RcExpr::new(Expr::Single(new_arg)))
+                let (Type::Base(basety), new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty)
+                else {
+                    panic!("Expected base type in child of Single")
+                };
+                (
+                    Type::TupleT(vec![basety]),
+                    RcExpr::new(Expr::Single(new_arg)),
+                )
             }
             Expr::Concat(order, left, right) => {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty);
@@ -335,7 +344,7 @@ impl<'a> TypeChecker<'a> {
                 };
                 assert_eq!(
                     out_tys[0],
-                    Type::Base(BaseType::BoolT),
+                    BaseType::BoolT,
                     "Expected first output type to be bool"
                 );
                 assert_eq!(

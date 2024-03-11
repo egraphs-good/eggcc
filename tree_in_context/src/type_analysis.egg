@@ -171,7 +171,7 @@
 
 
 (rule ((= lhs (Uop (Free) e))
-       (HasType e (PointerT _ty)))
+       (HasType e (Base (PointerT _ty))))
       ((HasType lhs (TupleT (TNil))))
       :ruleset type-analysis)
 (rule ((= lhs (Uop (Free) e))
@@ -185,7 +185,7 @@
 
 (rule (
         (= lhs (Uop (Load) e))
-        (HasType e (PointerT ty))
+        (HasType e (Base (PointerT ty)))
       )
       ((HasType lhs (Base ty)))
       :ruleset type-analysis)
@@ -321,7 +321,7 @@
 
 (rule (
         (= lhs (Bop (Write) ptr val))
-        (HasType ptr (PointerT ty))
+        (HasType ptr (Base (PointerT ty)))
         (HasType val (Base t)) ; TODO need to support pointers to pointers
       )
       ((HasType lhs (TupleT (TNil)))) ; Write returns ()
@@ -329,7 +329,7 @@
 
 (rule (
        (= lhs (Bop (Write) ptr val))
-       (HasType ptr (PointerT ty)))
+       (HasType ptr (Base (PointerT ty))))
       ((ExpectType val (Base ty) "(Write) type mismatch, received {?}"))
       :ruleset type-analysis)
       
@@ -337,10 +337,10 @@
 
 (rule (
         (= lhs (Bop (PtrAdd) ptr n))
-        (HasType ptr (PointerT ty))
+        (HasType ptr (Base (PointerT ty)))
         (HasType n (Base (IntT)))
       )
-      ((HasType lhs (PointerT ty)))
+      ((HasType lhs (Base (PointerT ty))))
       :ruleset type-analysis)
 
 ; Other ops
@@ -352,7 +352,7 @@
         (= lhs (Alloc amt (Base ty)))
         (HasType amt (Base (IntT)))
       )
-      ((HasType lhs (PointerT ty)))
+      ((HasType lhs (Base (PointerT ty))))
       :ruleset type-analysis)
 
 (rule (
@@ -487,7 +487,7 @@
       :ruleset type-analysis)
 (rule (
         (= lhs (DoWhile inp pred-body))
-        (HasType inp (PointerT ty))
+        (HasType inp (Base (PointerT ty)))
       )
       ((panic "loop input must be tuple"))
       :ruleset type-analysis)
@@ -499,7 +499,7 @@
       :ruleset type-analysis)
 (rule (
         (= lhs (DoWhile inp pred-body))
-        (HasType pred-body (PointerT ty))
+        (HasType pred-body (Base (PointerT ty)))
       )
       ((panic "loop pred-body must be tuple"))
       :ruleset type-analysis)

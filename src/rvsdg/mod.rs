@@ -42,7 +42,7 @@ use std::fmt;
 use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 
 use thiserror::Error;
-use tree_in_context::schema::{BaseType, Type as TreeType};
+use tree_in_context::schema::BaseType;
 
 use crate::{
     cfg::{Identifier, SimpleCfgProgram},
@@ -184,23 +184,16 @@ fn type_to_treetype_base(ty: &Type) -> BaseType {
         Type::Bool => BaseType::BoolT,
         Type::Float => todo!("Floats not supported yet"),
         Type::Char => todo!("Chars not supported yet"),
-        Type::Pointer(_) => panic!("Pointers should be handled by type_to_treetype"),
-    }
-}
-
-fn type_to_treetype(ty: &Type) -> TreeType {
-    match ty {
-        Type::Pointer(ty) => TreeType::PointerT(type_to_treetype_base(ty)),
-        _ => TreeType::Base(type_to_treetype_base(ty)),
+        Type::Pointer(inner) => BaseType::PointerT(Box::new(type_to_treetype_base(inner))),
     }
 }
 
 impl RvsdgType {
     /// Converts a bril type to a tree type.
     /// If the type is a print state, returns None.
-    pub(crate) fn to_tree_type(&self) -> Option<TreeType> {
+    pub(crate) fn to_tree_type(&self) -> Option<BaseType> {
         match self {
-            RvsdgType::Bril(ty) => Some(type_to_treetype(ty)),
+            RvsdgType::Bril(ty) => Some(type_to_treetype_base(ty)),
             RvsdgType::PrintState => None,
         }
     }

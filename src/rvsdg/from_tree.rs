@@ -37,18 +37,11 @@ pub(crate) fn tree_to_rvsdg(tree: &TreeProgram) -> RvsdgProgram {
     res
 }
 
-fn bril_type_from_type(ty: Type) -> bril_rs::Type {
+fn bril_type_from_type(ty: BaseType) -> bril_rs::Type {
     match ty {
-        Type::Base(base_ty) => match base_ty {
-            BaseType::IntT => bril_rs::Type::Int,
-            BaseType::BoolT => bril_rs::Type::Bool,
-        },
-        Type::PointerT(ty) => {
-            let base_ty = bril_type_from_type(Type::Base(ty));
-            bril_rs::Type::Pointer(Box::new(base_ty))
-        }
-        Type::TupleT(_) => panic!("Tuple types not supported in RVSDG"),
-        Type::Unknown => panic!("Unknown type in tree_type_to_rvsdg_types"),
+        BaseType::IntT => bril_rs::Type::Int,
+        BaseType::BoolT => bril_rs::Type::Bool,
+        BaseType::PointerT(inner) => bril_rs::Type::Pointer(Box::new(bril_type_from_type(*inner))),
     }
 }
 
@@ -62,7 +55,8 @@ fn convert_func_output_type(ty: Type) -> Option<bril_rs::Type> {
             );
             None
         }
-        _ => Some(bril_type_from_type(ty)),
+        Type::Base(basetype) => Some(bril_type_from_type(basetype)),
+        Type::Unknown => panic!("Expected known type in function_type_from_type"),
     }
 }
 
@@ -242,15 +236,17 @@ impl<'a> TreeToRvsdg<'a> {
                 let l = l[0];
                 let r = r[0];
                 if let Some(vop) = value_op_from_binary_op(op.clone()) {
+                    let Type::Base(cached) = self
+                        .type_cache
+                        .get(&Rc::as_ptr(&expr))
+                        .expect("Expected to find type for expr")
+                    else {
+                        panic!("Expected base type for binary op. Got: {:?}", expr)
+                    };
                     self.push_basic(BasicExpr::Op(
                         vop,
                         vec![l, r],
-                        bril_type_from_type(
-                            self.type_cache
-                                .get(&Rc::as_ptr(&expr))
-                                .expect("Expected type for expression")
-                                .clone(),
-                        ),
+                        bril_type_from_type(cached.clone()),
                     ))
                 } else if let Some(eop) = effect_op_from_binary_op(op.clone()) {
                     self.push_basic(BasicExpr::Effect(eop, vec![l, r]))
@@ -284,10 +280,13 @@ impl<'a> TreeToRvsdg<'a> {
                 let size = self.convert_expr(size.clone());
                 assert_eq!(size.len(), 1, "Expected exactly one result for size");
                 let size = size[0];
+                let Type::Base(basety) = ty else {
+                    panic!("Expected base type for alloc. Got: {:?}", ty)
+                };
                 self.push_basic(BasicExpr::Op(
                     ValueOps::Alloc,
                     vec![size],
-                    bril_type_from_type(ty.clone()),
+                    bril_type_from_type(basety.clone()),
                 ))
             }
             Expr::Arg(_ty) => self.current_args.clone(),

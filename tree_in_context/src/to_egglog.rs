@@ -44,10 +44,6 @@ impl Type {
                 let baset = base.to_egglog_internal(term_dag);
                 term_dag.app("Base".into(), vec![baset])
             }
-            Type::PointerT(base) => {
-                let base = base.to_egglog_internal(term_dag);
-                term_dag.app("PointerT".into(), vec![base])
-            }
             Type::TupleT(types) => {
                 let types = types
                     .iter()

@@ -9,6 +9,14 @@ pub fn intt() -> Type {
     Type::Base(BaseType::IntT)
 }
 
+pub fn base_intt() -> BaseType {
+    BaseType::IntT
+}
+
+pub fn base_boolt() -> BaseType {
+    BaseType::BoolT
+}
+
 pub fn boolt() -> Type {
     Type::Base(BaseType::BoolT)
 }
@@ -17,15 +25,12 @@ pub fn emptyt() -> Type {
     Type::TupleT(vec![])
 }
 
-pub fn tuplet_vec(types: Vec<Type>) -> Type {
+pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
 }
 
-pub fn pointert(t: Type) -> Type {
-    match t {
-        Type::Base(b) => Type::PointerT(b),
-        _ => panic!("cannot create a pointer from a non-base type"),
-    }
+pub fn pointert(t: BaseType) -> Type {
+    Type::Base(BaseType::PointerT(Box::new(t)))
 }
 
 pub fn val_int(i: i64) -> Value {

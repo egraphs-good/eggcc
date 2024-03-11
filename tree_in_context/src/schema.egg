@@ -25,7 +25,7 @@
 )
 
 (function TNil () TypeList)
-(function TCons (Type TypeList) TypeList) ; Head element should never be a tuple
+(function TCons (BaseType TypeList) TypeList) ; Head element should never be a tuple
 
 
 ; =================================

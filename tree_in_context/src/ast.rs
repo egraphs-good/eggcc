@@ -5,20 +5,16 @@ use crate::{
     },
 };
 
-pub fn intt() -> Type {
-    Type::Base(BaseType::IntT)
+pub fn base(t: BaseType) -> Type {
+    Type::Base(t)
 }
 
-pub fn base_intt() -> BaseType {
+pub fn intt() -> BaseType {
     BaseType::IntT
 }
 
-pub fn base_boolt() -> BaseType {
+pub fn boolt() -> BaseType {
     BaseType::BoolT
-}
-
-pub fn boolt() -> Type {
-    Type::Base(BaseType::BoolT)
 }
 
 pub fn emptyt() -> Type {
@@ -244,11 +240,11 @@ pub fn arg() -> RcExpr {
 
 /// An argument with an integer type.
 pub fn iarg() -> RcExpr {
-    RcExpr::new(Expr::Arg(intt()))
+    RcExpr::new(Expr::Arg(base(intt())))
 }
 
 pub fn barg() -> RcExpr {
-    RcExpr::new(Expr::Arg(boolt()))
+    RcExpr::new(Expr::Arg(base(boolt())))
 }
 
 pub fn getat(index: usize) -> RcExpr {

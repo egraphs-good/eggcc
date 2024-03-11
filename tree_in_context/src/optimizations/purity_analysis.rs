@@ -110,7 +110,7 @@ fn test_purity_analysis() -> crate::Result {
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(
-                switch!(load(alloc(int(0), intt())); parallel!(int(4), int(5))),
+                switch!(load(alloc(int(0), pointert(intt()))); parallel!(int(4), int(5))),
                 0
             )
         ),

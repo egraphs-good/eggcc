@@ -341,11 +341,16 @@ fn test_interpret_calls() {
     let expr = program!(
         function(
             "func1",
-            intt(),
-            intt(),
+            base(intt()),
+            base(intt()),
             mul(call("func2", sub(arg(), int(1))), int(2))
         ),
-        function("func2", intt(), intt(), tlet(arg(), add(arg(), int(1)))),
+        function(
+            "func2",
+            base(intt()),
+            base(intt()),
+            tlet(arg(), add(arg(), int(1)))
+        ),
     );
     let res = interpret_tree_prog(&expr, &Const(Constant::Int(5))).0;
     assert_eq!(res, Const(Constant::Int(10)));
@@ -356,8 +361,8 @@ fn test_interpret_recursive() {
     use crate::ast::*;
     let expr = program!(function(
         "fib",
-        intt(),
-        intt(),
+        base(intt()),
+        base(intt()),
         tif(
             less_than(arg(), int(2)),
             arg(),
@@ -402,7 +407,7 @@ fn test_interpreter_fib_using_memory() {
     let nth = 10;
     let fib_nth = 55;
     let expr = tlet(
-        alloc(int(nth + 2), intt()),
+        alloc(int(nth + 2), base(intt())),
         tlet(
             concat_seq(
                 twrite(arg(), int(0)), // address 0, value 0

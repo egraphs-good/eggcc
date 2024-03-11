@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 use strum_macros::EnumIter;
 
 use crate::{
-    ast::{boolt, intt},
+    ast::{base, boolt, intt},
     schema::{BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
 };
 
@@ -402,14 +402,14 @@ impl BinaryOp {
     pub fn types(&self) -> Option<(Type, Type, Type)> {
         match self {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
-                Some((intt(), intt(), intt()))
+                Some((base(intt()), base(intt()), base(intt())))
             }
-            BinaryOp::And | BinaryOp::Or => Some((boolt(), boolt(), boolt())),
+            BinaryOp::And | BinaryOp::Or => Some((base(boolt()), base(boolt()), base(boolt()))),
             BinaryOp::LessThan
             | BinaryOp::GreaterThan
             | BinaryOp::GreaterEq
             | BinaryOp::LessEq
-            | BinaryOp::Eq => Some((intt(), intt(), boolt())),
+            | BinaryOp::Eq => Some((base(intt()), base(intt()), base(boolt()))),
             BinaryOp::Write => None,
             BinaryOp::PtrAdd => None,
         }
@@ -419,7 +419,7 @@ impl BinaryOp {
 impl UnaryOp {
     pub(crate) fn types(&self) -> Option<(Type, Type)> {
         match self {
-            UnaryOp::Not => Some((boolt(), boolt())),
+            UnaryOp::Not => Some((base(boolt()), base(boolt()))),
             UnaryOp::Print => None,
             UnaryOp::Load => None,
             UnaryOp::Free => None,

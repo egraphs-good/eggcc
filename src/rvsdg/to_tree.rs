@@ -13,12 +13,7 @@ use std::iter;
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_in_context::ast::{
-    alloc, and, arg, div, empty, eq, free, getat, greater_eq, less_eq, load, mul, not, ptradd,
-    push_par, sub, switch_vec, tif, twrite,
-};
-#[cfg(test)]
-use tree_in_context::ast::{intt, parallel, program};
+use tree_in_context::ast::*;
 #[cfg(test)]
 use tree_in_context::interpreter::Value;
 #[cfg(test)]
@@ -414,7 +409,7 @@ impl<'a> RegionTranslator<'a> {
                 let [size, state_edge] = children.as_slice() else {
                     panic!("Alloc should have 2 children, found {:?}", children);
                 };
-                let bril_rs::Type::Pointer(inner) = ty else {
+                let bril_rs::Type::Pointer(_inner) = &ty else {
                     panic!("Alloc should return a pointer type, found {:?}", ty);
                 };
                 let size = self.translate_operand(*size);
@@ -427,7 +422,7 @@ impl<'a> RegionTranslator<'a> {
                 );
                 let expr = alloc(
                     size.to_expr().expect("Alloc size was a state edge"),
-                    TreeType::Base(RvsdgType::Bril(*inner).to_tree_type().unwrap()),
+                    TreeType::Base(RvsdgType::Bril(ty).to_tree_type().unwrap()),
                 );
                 self.add_state_edge_binding(expr, id, true)
             }
@@ -718,7 +713,7 @@ fn simple_translation() {
         program!(function(
             "add",
             TreeType::TupleT(vec![]),
-            intt(),
+            base(intt()),
             tlet(
                 single(int(1)),
                 bind_value(
@@ -730,7 +725,7 @@ fn simple_translation() {
         program!(function(
             "add",
             TreeType::TupleT(vec![]),
-            intt(),
+            base(intt()),
             add(int(1), int(1)),
         ),),
         Value::Tuple(vec![]),
@@ -758,7 +753,7 @@ fn translate_simple_loop() {
         program!(function(
             "myfunc",
             emptyt(),
-            intt(),
+            base(intt()),
             tlet(
                 single(int(1)), // [1]
                 bind_value(
@@ -779,7 +774,7 @@ fn translate_simple_loop() {
         program!(function(
             "myfunc",
             emptyt(),
-            intt(),
+            base(intt()),
             tlet(
                 dowhile(
                     parallel!(int(1), int(2)),
@@ -884,7 +879,7 @@ fn simple_if_translation() {
         program!(function(
             "main",
             emptyt(),
-            intt(),
+            base(intt()),
             tlet(
                 single(int(1)), // [1]
                 bind_value(
@@ -903,7 +898,7 @@ fn simple_if_translation() {
         program!(function(
             "main",
             emptyt(),
-            intt(),
+            base(intt()),
             tlet(
                 tif(
                     less_than(int(1), int(1)),
@@ -992,7 +987,7 @@ fn multi_function_translation() {
             function(
                 "myadd",
                 TreeType::TupleT(vec![]),
-                intt(),
+                base(intt()),
                 tlet(
                     single(int(1)),
                     bind_value(
@@ -1015,7 +1010,7 @@ fn multi_function_translation() {
             function(
                 "myadd",
                 TreeType::TupleT(vec![]),
-                intt(),
+                base(intt()),
                 add(int(1), int(1)),
             ),
         ),

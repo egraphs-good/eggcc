@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::{emptyt, pointert},
+    ast::emptyt,
     schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
 };
 
@@ -231,13 +231,11 @@ impl<'a> TypeChecker<'a> {
                 let Type::Base(BaseType::IntT) = aty else {
                     panic!("Expected int type. Got {:?}", aty)
                 };
-                let Type::Base(baset) = ty else {
-                    todo!("Support pointers to pointers");
+                let Type::Base(_baset) = ty else {
+                    panic!("Expected base type. Got {:?}", ty)
                 };
-                (
-                    pointert(baset.clone()),
-                    RcExpr::new(Expr::Alloc(new_amount, ty.clone())),
-                )
+
+                (ty.clone(), RcExpr::new(Expr::Alloc(new_amount, ty.clone())))
             }
             Expr::Call(string, arg) => {
                 let (aty, new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty);

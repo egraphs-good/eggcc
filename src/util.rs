@@ -216,32 +216,12 @@ impl RunType {
             RunType::CheckTreeIdentical => false,
         }
     }
-
-    pub fn supports_memory(&self) -> bool {
-        match self {
-            RunType::RvsdgRoundTrip
-            | RunType::RvsdgConversion
-            | RunType::Nothing
-            | RunType::Optimize => true,
-            RunType::ToCfg
-            | RunType::CfgRoundTrip
-            | RunType::OptimizeDirectJumps
-            | RunType::RvsdgToCfg
-            | RunType::TreeConversion
-            | RunType::TreeConversionVerboseLets
-            | RunType::OptimizedRvsdg
-            | RunType::TreeToRvsdg
-            | RunType::CheckTreeIdentical => false,
-            RunType::TreeOptimize | RunType::Egglog | RunType::TreeRoundTrip => false,
-        }
-    }
 }
 
 #[derive(Clone)]
 pub struct ProgWithArguments {
     program: Program,
     name: String,
-    has_mem: bool,
     args: Vec<String>,
 }
 
@@ -256,8 +236,6 @@ impl TestProgram {
         match self {
             TestProgram::Prog(prog) => prog,
             TestProgram::File(path) => {
-                // check if the path has a folder called mem in it
-                let has_mem = path.iter().any(|x| x == "mem");
                 let program_read = std::fs::read_to_string(path.clone()).unwrap();
                 let args = Optimizer::parse_bril_args(&program_read);
                 let program = Optimizer::parse_bril(&program_read).unwrap();
@@ -267,7 +245,6 @@ impl TestProgram {
                     program,
                     name,
                     args,
-                    has_mem,
                 }
             }
         }
@@ -324,9 +301,6 @@ impl Run {
             RunType::TreeOptimize,
             RunType::Optimize,
         ] {
-            if prog.has_mem && !test_type.supports_memory() {
-                continue;
-            }
             let default = Run {
                 test_type,
                 interp: false,

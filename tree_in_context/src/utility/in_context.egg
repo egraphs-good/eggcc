@@ -1,146 +1,108 @@
-; This file propogates in_context nodes top-down from functions.
-; It gives each program path a unique equality relation.
-; This can be quite expensive, so be careful running these rules.
-
-(ruleset context_propagate)
-(ruleset context_creation)
-
-(sort InContextList)
-
-; Here's a helpful rule that chooses a more specific context over
-; an inner, less specific one.
-(rewrite (InContext assumption (InContext assumption2 rest))
-         (InContext assumption rest)
-         :ruleset context_propagate)
-
-; ################### operations
-(rewrite (InContext asum (Bop op c1 c2))
-         (Bop op (InContext asum c1) (InContext asum c2))
-         :ruleset context_propagate)
-(rewrite (InContext assum (Uop op c1))
-         (Uop op (InContext assum c1))
-         :ruleset context_propagate)
-(rewrite (InContext assum (Get expr index))
-         (Get (InContext assum expr) index)
-         :ruleset context_propagate)
-(rewrite (InContext assum (Alloc expr ty))
-         (Alloc (InContext assum expr) ty)
-         :ruleset context_propagate)
-(rewrite (InContext assum (Call name expr))
-         (Call name (InContext assum expr))
-         :ruleset context_propagate)
-
-; ################### tuple operations
-(rewrite (InContext assum (Single expr))
-         (Single (InContext assum expr))
-         :ruleset context_propagate)
-(rewrite (InContext assum (Concat order e1 e2))
-         (Concat order (InContext assum e1) (InContext assum e2))
-         :ruleset context_propagate)
-
-;                       assumptions, predicate, cases,   current case
-(function SwitchInContext (InContextList   Expr       ListExpr i64) ListExpr :unextractable) 
-
-(rewrite (InContext assum (If pred then else))
-         (If (InContext assum pred)
-             (InContext
-               (InIf true (InContext assum pred)) then)
-             (InContext
-               (InIf false (InContext assum pred)) else))
-         :ruleset context_propagate)
+; This file provides AddContext, a helpers that copies a sub-egraph into
+; a new one with context.
+; Users of AddContext can specify how deeply to do this copy.
 
 
-
-; ###########################  Context creation
-
-(relation ContextLess (Expr))
-(relation ContextLessList (ListExpr))
+(ruleset context)
+(ruleset context-helpers)
 
 
-;; check that term has no context to ensure saturation
+;; ################################ datatypes
+;; A context path is a list of (eclass, eclass) pairs.
+;; In substitution, the path is used to store every context-related eclass we have visited, 
+;; and the corresponding expression at that point.
+;; When we visit an eclass for the second time, we have found a cycle in the egraph.
+;; Then the corresponding eclasses are made equivalent.
+(datatype ContextPath
+  (PathNil)
+  (PathCons Expr Expr ContextPath))
+
+(relation Path-contains (ContextPath ContextPath))
+
+(rule ((= lhs (PathCons hd1 hd2 tl)))
+      ((Path-contains lhs lhs))
+      :ruleset context-helpers)
+(rule ((Path-contains top (PathCons hd1 hd2 tl)))
+      ((Path-contains top tl)) :ruleset context-helpers)
+
+
+(datatype ContextDepth
+  ;; Keep making new contexts for the entire reachable egraph
+  (Full)
+  ;; Don't make new contexts for sub-loops
+  (StopAtLoop)
+  ;; Don't make any new contextx for loops or lets (still make new ones for if statements)
+  (StopAtLoopOrLet))
+
+(function AddFuncContext (Expr) Expr :unextractable)
+(function AddContext (Assumption ContextDepth Expr) Expr :unextractable)
+(function DoAddContext (ContextPath Assumption ContextDepth Expr) Expr :unextractable)
+
+;; ###################### sugar
+
+
+;; desugar add func context
+(rule ((= lhs (AddFuncContext (Function name inty outty body))))
+      ((union lhs
+         (Function name inty outty
+           (AddContext (InFunc name) (Full) body))))
+       :ruleset context-helpers)
+
+
+
+;; AddContext is sugar for DoAddContext
+(rewrite (AddContext ctx depth expr)
+         (DoAddContext (PathNil) ctx depth expr)
+         :ruleset context-helpers)
+
+
+;; ################################ saturation
+
+;; Adding context a second time does nothing, so union
 (rule
- ((= lhs (Function name in_ty out_ty out))
-  (ContextLess out))
- ((union lhs
-   (Function name in_ty out_ty
-      (InContext (InFunc  name)
-               out))))
- :ruleset context_creation)
-
-(rule ((= lhs (InContext assum (Let inputs body)))
-       (ContextLess inputs)
-       (ContextLess body))
-      ((union lhs
-        (Let
-           (InContext assum inputs)
-           (InContext
-             (InLet (InContext assum inputs))
-             body))))
-          :ruleset context_creation)
+  ((= lhs (DoAddContext seen ctx (Full) inner))
+   (= inner (DoAddContext seen ctx (Full) expr)))
+  ((union lhs inner))
+  :ruleset context-helpers)
 
 
-(rule ((= lhs (InContext assum (DoWhile inputs pred_outputs)))
-       (ContextLess inputs)
-       (ContextLess pred_outputs))
-      ((union lhs
-         (DoWhile
-           (InContext assum inputs)
-           (InContext
-             (InLoop (InContext assum inputs) pred_outputs)
-              pred_outputs))))
-        :ruleset context_creation)
+;; Adding context may not saturate for loops.
+;; This is because a loop (DoWhile inputs outputs)
+;; can become equal to
+;; (DoWhile inputs ctx1)
+;; where ctx1 = (InContext (InLoop inputs outputs) outputs)
+;; Which we can add context to again:
+;; (DoWhile inputs (InContext (InLoop inputs ctx1) ctx1))
+;; These two contexts are equal, since the set of reachable
+;; values is the same.
+(rule ((= body_with_context (InContext (InLoop inputs outputs) body)) ;; a loop body with context
+       (InContext (InLoop inputs body_with_context) body_with_context) ;; a loop body whose context already has context
+       )
+      ((union (InLoop inputs outputs) (InLoop inputs old_body)))
+      :ruleset context-helpers)
+
+;; key rule that detects cycles
+;; It finds that we have already seen the eclass we are adding context to.
+;; The corresponding eclasses are unioned, and the cyclic
+;; substitution is subsumed to ensure saturation.
+(rule ((= lhs (DoAddContext seen ctx scope in))
+       (Path-contains seen
+         (PathCons in original ctx)))
+      ((union lhs original)
+       (subsume (DoAddContext seen ctx scope in) in))
+      :ruleset context-helpers)
 
 
 
 
-(rule ((Arg ty)) ((ContextLess (Arg ty))) :ruleset context_propagate)
-(rule ((Const c ty)) ((ContextLess (Const c ty))) :ruleset context_propagate)
-(rule ((Empty ty)) ((ContextLess (Empty ty))) :ruleset context_propagate)
-(rule ((Bop op a b)
-       (ContextLess a)
-        (ContextLess b))
-      ((ContextLess (Bop op a b))) :ruleset context_propagate)
-(rule ((Uop op a)
-       (ContextLess a))
-      ((ContextLess (Uop op a))) :ruleset context_propagate)
-(rule ((Get a i)
-       (ContextLess a))
-      ((ContextLess (Get a i))) :ruleset context_propagate)
-(rule ((Alloc a ty)
-       (ContextLess a))
-      ((ContextLess (Alloc a ty))) :ruleset context_propagate)
-(rule ((Call name a)
-       (ContextLess a))
-      ((ContextLess (Call name a))) :ruleset context_propagate)
-(rule ((Single a)
-       (ContextLess a))
-      ((ContextLess (Single a))) :ruleset context_propagate)
-(rule ((Concat order a b)
-       (ContextLess a)
-       (ContextLess b))
-      ((ContextLess (Concat order a b))) :ruleset context_propagate)
-(rule ((If pred then else)
-       (ContextLess pred)
-       (ContextLess then)
-       (ContextLess else))
-      ((ContextLess (If pred then else))) :ruleset context_propagate)
-(rule ((Switch pred cases)
-       (ContextLess pred)
-       (ContextLessList cases))
-      ((ContextLess (Switch pred cases))) :ruleset context_propagate)
-(rule ((Let inputs body)
-       (ContextLess inputs)
-       (ContextLess body))
-      ((ContextLess (Let inputs body))) :ruleset context_propagate)
-(rule ((DoWhile inputs pred_outputs)
-       (ContextLess inputs)
-       (ContextLess pred_outputs))
-      ((ContextLess (DoWhile inputs pred_outputs))) :ruleset context_propagate)
-(rule ((Nil)) ((ContextLessList (Nil))) :ruleset context_propagate)
-(rule ((Cons a b)
-       (ContextLess a)
-       (ContextLessList b))
-      ((ContextLessList (Cons a b))) :ruleset context_propagate)
-(rule ((Function name in_ty out_ty out)
-       (ContextLess out))
-      ((ContextLess (Function name in_ty out_ty out))) :ruleset context_propagate)
+;; ############################## Base cases- leaf nodes
+
+(rewrite (AddContext seen ctx scope (Arg ty))
+         (InContext ctx (Arg ty))
+         :ruleset context)
+
+
+
+
+
+

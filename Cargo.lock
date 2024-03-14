@@ -359,7 +359,7 @@ dependencies = [
 [[package]]
 name = "egglog"
 version = "0.1.0"
-source = "git+https://github.com/egraphs-good/egglog?rev=7b41bb07e5e065928d653cb340a9a0dea0259466#7b41bb07e5e065928d653cb340a9a0dea0259466"
+source = "git+https://github.com/egraphs-good/egglog?rev=77ffa1f#77ffa1f7599b5e2d8936a5b78fa89bfa563bf2bc"
 dependencies = [
  "clap",
  "egraph-serialize",

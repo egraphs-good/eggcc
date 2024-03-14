@@ -37,6 +37,7 @@
 (function AddFuncContext (Expr) Expr :unextractable)
 (function AddContext (Assumption ContextDepth Expr) Expr :unextractable)
 (function DoAddContext (ContextPath Assumption ContextDepth Expr) Expr :unextractable)
+(function DoAddContextList (ContextPath Assumption ContextDepth ListExpr) ListExpr :unextractable)
 
 ;; ###################### sugar
 
@@ -75,10 +76,11 @@
 ;; (DoWhile inputs (InContext (InLoop inputs ctx1) ctx1))
 ;; These two contexts are equal, since the set of reachable
 ;; values is the same.
-(rule ((= body_with_context (InContext (InLoop inputs outputs) body)) ;; a loop body with context
-       (InContext (InLoop inputs body_with_context) body_with_context) ;; a loop body whose context already has context
+(rule ((= body_with_context (InContext (InLoop inputs outputs) outputs)) ;; a loop body with context
+       (InContext (InLoop inputs body_with_context) ;; same inputs
+                  body_with_context) ;; a loop body whose context already has context
        )
-      ((union (InLoop inputs outputs) (InLoop inputs old_body)))
+      ((union (InLoop inputs outputs) (InLoop inputs outputs)))
       :ruleset context-helpers)
 
 ;; key rule that detects cycles
@@ -89,7 +91,7 @@
        (Path-contains seen
          (PathCons in original ctx)))
       ((union lhs original)
-       (subsume (DoAddContext seen ctx scope in) in))
+       (subsume (DoAddContext seen ctx scope in)))
       :ruleset context-helpers)
 
 
@@ -97,11 +99,107 @@
 
 ;; ############################## Base cases- leaf nodes
 
-(rewrite (AddContext seen ctx scope (Arg ty))
+(rewrite (DoAddContext seen ctx scope (Arg ty))
          (InContext ctx (Arg ty))
          :ruleset context)
 
+(rewrite (DoAddContext seen ctx scope (Const constant))
+         (InContext ctx (Const constant))
+         :ruleset context)
 
+(rewrite (DoAddContext seen ctx scope (Empty))
+         (InContext ctx (Empty)))
+
+
+;; ######################################### Operators
+
+
+(rewrite (DoAddContext seen ctx scope (Bop op c1 c2))
+         (Bop op
+           (DoAddContext seen ctx scope c1)
+           (DoAddContext seen ctx scope c2))
+               :ruleset context)
+(rewrite (DoAddContext seen ctx scope (Uop op c1))
+         (Uop op (DoAddContext seen ctx scope c1))
+         :ruleset context)
+(rewrite (DoAddContext seen ctx scope to (Get c1 index))
+         (Get (DoAddContext seen ctx scope c1) index)
+               :ruleset context)
+(rewrite (DoAddContext seen ctx scope to (Alloc c1 ty))
+         (Alloc (DoAddContext seen ctx scope c1) ty)
+         :ruleset context)
+(rewrite (DoAddContext seen ctx scope to (Call name c1))
+         (Call name (DoAddContext seen ctx scope c1))
+         :ruleset context)
+
+(rewrite (DoAddContext seen ctx scope to (Single c1))
+         (Single (DoAddContext seen ctx scope c1))
+         :ruleset context)
+(rewrite (DoAddContext seen ctx scope to (Concat order c1 c2))
+         (Concat order
+           (DoAddContext seen ctx scope c1)
+           (DoAddContext seen ctx scope c2))
+         :ruleset context)
+
+;; Replace existing contexts.
+;; This relies on the fact that new contexts must be more specific than old ones.
+;; This is a part of the semantics of InContext.
+(rewrite (DoAddContext seen ctx scope (InContext ctx2 expr))
+         (DoAddContext seen ctx scope expr)
+         :ruleset context)
+
+;; ################################### List operators
+
+(rewrite (DoAddContextList seen ctx scope (Nil))
+         (Nil)
+         :ruleset context-helpers)
+
+(rewrite (DoAddContextList seen ctx scope (Cons c1 rest))
+         (Cons (DoAddContext seen ctx scope c1)
+               (DoAddContextList seen ctx scope rest))
+               :ruleset context-helpers)
+
+
+;; ########################################## Control flow
+(rewrite (DoAddContext seen ctx scope to (Switch pred branches))
+         (Switch (DoAddContext seen ctx scope pred)
+                 (DoAddContextList seen ctx scope branches))
+         :ruleset context)
+
+
+(rule ((= lhs (DoAddContext seen ctx scope (If pred c1 c2))))
+      ((let new-inputs
+         (DoAddContext seen ctx scope pred))
+       (let newpath
+         (PathCons (If pred c1 c2) lhs seen))
+       (union lhs
+         (If newpred
+           (DoAddContext newpath (InIf true newpred) scope to c1)
+           (DoAddContext newpath (InIf false newpred) scope to c2))))
+       :ruleset context)
+
+
+(rule ((= lhs (DoAddContext seen ctx scope (Let in out)))
+       (!= scope (StopAtLoopOrLet)))
+      ((let new-inputs
+         (DoAddContext seen ctx scope in))
+       (let newpath
+          (PathCons (Let in out) lhs seen))
+       (union lhs
+         (Let new-inputs
+           (DoAddContext newpath (InLet new-inputs) scope out))))
+       :ruleset context)
+
+(rule ((= lhs (DoAddContext seen ctx scope (DoWhile inputs outputs)))
+       (= scope (Full)))
+      ((let new-inputs
+         (DoAddContext seen ctx scope inputs))
+       (let newpath
+         (PathCons (DoWhile inputs outputs) lhs seen))
+       (union lhs
+         (DoWhile new-inputs
+           (DoAddContext newpath (InLoop new-inputs outputs) scope outputs))))
+       :ruleset context)
 
 
 

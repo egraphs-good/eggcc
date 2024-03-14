@@ -1,7 +1,0 @@
-
-
-(ruleset constant_fold)
-
-(rewrite (Bop (Add) (Const (Int a) ty) (Const (Int b) ty))
-         (Const (Int (+ a b)) ty)
-         :ruleset constant_fold)

@@ -34,3 +34,31 @@
 (rule ((= lhs (Const (Bool x) ty)))
       ((set (ival lhs) (BoolI x x)))
       :ruleset interval-analysis)
+
+; =================================
+; Constant Folding
+; =================================
+(rule (
+       (= (IntI x x) (ival expr))
+       (HasArgType expr ty)
+      )
+      ((union expr (Const (Int x) ty)))
+      :ruleset interval-analysis)
+
+(rule (
+       (= (BoolI x x) (ival expr))
+       (HasArgType expr ty)
+      )
+      ((union expr (Const (Bool x) ty)))
+      :ruleset interval-analysis)
+
+; =================================
+; Arithmetic
+; =================================
+(rule (
+       (= lhs (Bop (Add) x y))
+       (= (ival x) (IntI la ha))
+       (= (ival y) (IntI lb hb))
+      )
+      ((set (ival lhs) (IntI (+ la hb) (+ ha hb))))
+      :ruleset interval-analysis)

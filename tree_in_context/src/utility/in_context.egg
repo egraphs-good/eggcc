@@ -23,7 +23,8 @@
       ((Path-contains lhs lhs))
       :ruleset context-helpers)
 (rule ((Path-contains top (PathCons hd1 hd2 tl)))
-      ((Path-contains top tl)) :ruleset context-helpers)
+      ((Path-contains top tl))
+      :ruleset context-helpers)
 
 
 (datatype ContextDepth
@@ -33,6 +34,10 @@
   (StopAtLoop)
   ;; Don't make any new contextx for loops or lets (still make new ones for if statements)
   (StopAtLoopOrLet))
+;; we need to add these to the database so we can match on them
+(Full)
+(StopAtLoop)
+(StopAtLoopOrLet)
 
 (function AddFuncContext (Expr) Expr :unextractable)
 (function AddContext (Assumption ContextDepth Expr) Expr :unextractable)
@@ -44,11 +49,10 @@
 
 ;; desugar add func context
 (rule ((= lhs (AddFuncContext (Function name inty outty body))))
-      ((union lhs
+      ((union (Function name inty outty body)
          (Function name inty outty
            (AddContext (InFunc name) (Full) body))))
        :ruleset context-helpers)
-
 
 
 ;; AddContext is sugar for DoAddContext
@@ -108,7 +112,8 @@
          :ruleset context)
 
 (rewrite (DoAddContext seen ctx scope (Empty ty))
-         (InContext ctx (Empty ty)))
+         (InContext ctx (Empty ty))
+         :ruleset context)
 
 
 ;; ######################################### Operators

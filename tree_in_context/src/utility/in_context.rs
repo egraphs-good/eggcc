@@ -21,7 +21,7 @@ fn test_in_context_two_lets() -> crate::Result {
         base(intt()),
         base(intt()),
         tlet(
-            int1,
+            int1.clone(),
             tlet(
                 add(arg1.clone(), arg1.clone()),
                 mul(arg2.clone(), int2.clone()),
@@ -32,7 +32,13 @@ fn test_in_context_two_lets() -> crate::Result {
 
     egglog_test(
         &format!("(AddFuncContext {expr})"),
-        &format!("(check (= {expr} {expr2}))"),
+        &format!(
+            "
+(check (Let (Const (Int 1) (Base (IntT))) whatever))
+(check (DoAddContext something (InFunc \"main\") (Full) (Let (Const (Int 1) (Base (IntT))) bsdfody)))
+(check (DoAddContext somethingelse (InFunc \"main\") (Full) (Const (Int 1) (Base (IntT)))))
+(check (= {expr} {expr2}))"
+        ),
         vec![
             expr.to_program(emptyt(), base(intt())),
             expr2.to_program(emptyt(), base(intt())),
@@ -51,8 +57,9 @@ fn test_if_contexts() -> crate::Result {
         base(intt()),
         base(intt()),
         tif(ttrue(), int(1), int(2)),
-    );
-    let pred = in_context(infunc("main"), ttrue());
+    )
+    .func_with_arg_types();
+    let pred = in_context(infunc("main"), ttrue_ty(base(intt())));
     let expr2 = function(
         "main",
         base(intt()),
@@ -62,7 +69,8 @@ fn test_if_contexts() -> crate::Result {
             in_context(inif(true, pred.clone()), int(1)),
             in_context(inif(false, pred.clone()), int(2)),
         ),
-    );
+    )
+    .func_with_arg_types();
     egglog_test(
         &format!("(AddFuncContext {expr})"),
         &format!("(check (= {expr} {expr2}))"),
@@ -186,17 +194,18 @@ fn test_dowhile_cycle_in_context() -> crate::Result {
 }
 
 #[test]
-fn simple_identity_subst() -> crate::Result {
+fn simple_context() -> crate::Result {
     use crate::ast::*;
     use crate::egglog_test;
     use crate::{interpreter::Value, schema::Constant};
-    let expr = function("main", base(intt()), base(intt()), int(2));
+    let expr = function("main", base(intt()), base(intt()), int(2)).func_with_arg_types();
     let expected = function(
         "main",
         base(intt()),
         base(intt()),
         in_context(infunc("main"), int(2)),
-    );
+    )
+    .func_with_arg_types();
     egglog_test(
         &format!("(AddFuncContext {expr})"),
         &format!(

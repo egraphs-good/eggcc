@@ -39,6 +39,7 @@
 (StopAtLoop)
 (StopAtLoopOrLet)
 
+;; AddFuncContext is a helper for tests, it adds full context to everything in a function.
 (function AddFuncContext (Expr) Expr :unextractable)
 (function AddContext (Assumption ContextDepth Expr) Expr :unextractable)
 (function DoAddContext (ContextPath Assumption ContextDepth Expr) Expr :unextractable)
@@ -63,6 +64,12 @@
 
 ;; ################################ saturation
 
+;; Outer context nodes are more specific by our semantics
+(rewrite (InContext ctx-outer (InContext ctx-inner expr))
+         (InContext ctx-outer expr)
+         :ruleset context-helpers)
+
+
 ;; Adding context a second time does nothing, so union
 (rule
   ((= lhs (DoAddContext seen ctx (Full) inner))
@@ -80,11 +87,12 @@
 ;; (DoWhile inputs (InContext (InLoop inputs ctx1) ctx1))
 ;; These two contexts are equal, since the set of reachable
 ;; values is the same.
-(rule ((= body_with_context (InContext (InLoop inputs outputs) outputs)) ;; a loop body with context
-       (InContext (InLoop inputs body_with_context) ;; same inputs
-                  body_with_context) ;; a loop body whose context already has context
+(rule ((= body_with_context
+          (DoAddContext seen  (InLoop inputs outputs) (Full) outputs)) ;; a loop body with context
+       (DoAddContext    seen2 (InLoop inputs body_with_context) ;; same inputs
+                    (Full) body_with_context) ;; a loop body whose context already has context
        )
-      ((union (InLoop inputs outputs) (InLoop inputs outputs)))
+      ((union (InLoop inputs outputs) (InLoop inputs body_with_context)))
       :ruleset context-helpers)
 
 ;; key rule that detects cycles
@@ -105,15 +113,15 @@
 
 (rewrite (DoAddContext seen ctx scope (Arg ty))
          (InContext ctx (Arg ty))
-         :ruleset context)
+         :ruleset context-helpers)
 
 (rewrite (DoAddContext seen ctx scope (Const constant ty))
          (InContext ctx (Const constant ty))
-         :ruleset context)
+         :ruleset context-helpers)
 
 (rewrite (DoAddContext seen ctx scope (Empty ty))
          (InContext ctx (Empty ty))
-         :ruleset context)
+         :ruleset context-helpers)
 
 
 ;; ######################################### Operators
@@ -123,35 +131,35 @@
          (Bop op
            (DoAddContext seen ctx scope c1)
            (DoAddContext seen ctx scope c2))
-               :ruleset context)
+               :ruleset context-helpers)
 (rewrite (DoAddContext seen ctx scope (Uop op c1))
          (Uop op (DoAddContext seen ctx scope c1))
-         :ruleset context)
+         :ruleset context-helpers)
 (rewrite (DoAddContext seen ctx scope (Get c1 index))
          (Get (DoAddContext seen ctx scope c1) index)
-               :ruleset context)
+               :ruleset context-helpers)
 (rewrite (DoAddContext seen ctx scope (Alloc c1 ty))
          (Alloc (DoAddContext seen ctx scope c1) ty)
-         :ruleset context)
+         :ruleset context-helpers)
 (rewrite (DoAddContext seen ctx scope (Call name c1))
          (Call name (DoAddContext seen ctx scope c1))
-         :ruleset context)
+         :ruleset context-helpers)
 
 (rewrite (DoAddContext seen ctx scope (Single c1))
          (Single (DoAddContext seen ctx scope c1))
-         :ruleset context)
+         :ruleset context-helpers)
 (rewrite (DoAddContext seen ctx scope (Concat order c1 c2))
          (Concat order
            (DoAddContext seen ctx scope c1)
            (DoAddContext seen ctx scope c2))
-         :ruleset context)
+         :ruleset context-helpers)
 
 ;; Replace existing contexts.
 ;; This relies on the fact that new contexts must be more specific than old ones.
 ;; This is a part of the semantics of InContext.
 (rewrite (DoAddContext seen ctx scope (InContext ctx2 expr))
          (DoAddContext seen ctx scope expr)
-         :ruleset context)
+         :ruleset context-helpers)
 
 ;; ################################### List operators
 
@@ -169,7 +177,7 @@
 (rewrite (DoAddContext seen ctx scope (Switch pred branches))
          (Switch (DoAddContext seen ctx scope pred)
                  (DoAddContextList seen ctx scope branches))
-         :ruleset context)
+         :ruleset context-helpers)
 
 
 (rule ((= lhs (DoAddContext seen ctx scope (If pred c1 c2))))

@@ -1,0 +1,36 @@
+(ruleset interval-analysis)
+
+(datatype Interval
+  (BoolI bool bool)
+  (IntI i64 i64)
+  (interval-intersect Interval Interval)
+  (interval-union Interval Interval))
+
+; Interval combinators
+(rewrite (interval-intersect (IntI la ha) (IntI lb hb))
+         (IntI (max la lb) (min ha hb))
+         :ruleset interval-analysis)
+(rewrite (interval-union (IntI la ha) (IntI lb hb))
+         (IntI (min la lb) (max ha hb))
+         :ruleset interval-analysis)
+(rewrite (interval-intersect (BoolI la ha) (BoolI lb hb))
+         (BoolI (or la lb) (and ha hb))
+         :ruleset interval-analysis)
+(rewrite (interval-union (BoolI la ha) (BoolI lb hb))
+         (BoolI (and la lb) (or ha hb))
+         :ruleset interval-analysis)
+
+; Interval Table
+(function ival (Expr) Interval
+  :merge (interval-intersect old new))
+
+; =================================
+; Constants
+; =================================
+(rule ((= lhs (Const (Int x) ty)))
+      ((set (ival lhs) (IntI x x)))
+      :ruleset interval-analysis)
+
+(rule ((= lhs (Const (Bool x) ty)))
+      ((set (ival lhs) (BoolI x x)))
+      :ruleset interval-analysis)

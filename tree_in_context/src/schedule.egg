@@ -12,7 +12,7 @@
         type-analysis
       )
       (saturate subst) ;; subst depends on type information for the argument
-      (saturate constant_fold))
+      (saturate interval-analysis))
     conditional-invariant-code-motion
     switch_rewrite
     loop-simplify))

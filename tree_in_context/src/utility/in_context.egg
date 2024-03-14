@@ -89,7 +89,7 @@
 ;; substitution is subsumed to ensure saturation.
 (rule ((= lhs (DoAddContext seen ctx scope in))
        (Path-contains seen
-         (PathCons in original ctx)))
+         (PathCons in original rest)))
       ((union lhs original)
        (subsume (DoAddContext seen ctx scope in)))
       :ruleset context-helpers)
@@ -103,12 +103,12 @@
          (InContext ctx (Arg ty))
          :ruleset context)
 
-(rewrite (DoAddContext seen ctx scope (Const constant))
-         (InContext ctx (Const constant))
+(rewrite (DoAddContext seen ctx scope (Const constant ty))
+         (InContext ctx (Const constant ty))
          :ruleset context)
 
-(rewrite (DoAddContext seen ctx scope (Empty))
-         (InContext ctx (Empty)))
+(rewrite (DoAddContext seen ctx scope (Empty ty))
+         (InContext ctx (Empty ty)))
 
 
 ;; ######################################### Operators
@@ -122,20 +122,20 @@
 (rewrite (DoAddContext seen ctx scope (Uop op c1))
          (Uop op (DoAddContext seen ctx scope c1))
          :ruleset context)
-(rewrite (DoAddContext seen ctx scope to (Get c1 index))
+(rewrite (DoAddContext seen ctx scope (Get c1 index))
          (Get (DoAddContext seen ctx scope c1) index)
                :ruleset context)
-(rewrite (DoAddContext seen ctx scope to (Alloc c1 ty))
+(rewrite (DoAddContext seen ctx scope (Alloc c1 ty))
          (Alloc (DoAddContext seen ctx scope c1) ty)
          :ruleset context)
-(rewrite (DoAddContext seen ctx scope to (Call name c1))
+(rewrite (DoAddContext seen ctx scope (Call name c1))
          (Call name (DoAddContext seen ctx scope c1))
          :ruleset context)
 
-(rewrite (DoAddContext seen ctx scope to (Single c1))
+(rewrite (DoAddContext seen ctx scope (Single c1))
          (Single (DoAddContext seen ctx scope c1))
          :ruleset context)
-(rewrite (DoAddContext seen ctx scope to (Concat order c1 c2))
+(rewrite (DoAddContext seen ctx scope (Concat order c1 c2))
          (Concat order
            (DoAddContext seen ctx scope c1)
            (DoAddContext seen ctx scope c2))
@@ -161,21 +161,21 @@
 
 
 ;; ########################################## Control flow
-(rewrite (DoAddContext seen ctx scope to (Switch pred branches))
+(rewrite (DoAddContext seen ctx scope (Switch pred branches))
          (Switch (DoAddContext seen ctx scope pred)
                  (DoAddContextList seen ctx scope branches))
          :ruleset context)
 
 
 (rule ((= lhs (DoAddContext seen ctx scope (If pred c1 c2))))
-      ((let new-inputs
+      ((let newpred
          (DoAddContext seen ctx scope pred))
        (let newpath
          (PathCons (If pred c1 c2) lhs seen))
        (union lhs
          (If newpred
-           (DoAddContext newpath (InIf true newpred) scope to c1)
-           (DoAddContext newpath (InIf false newpred) scope to c2))))
+           (DoAddContext newpath (InIf true newpred) scope c1)
+           (DoAddContext newpath (InIf false newpred) scope c2))))
        :ruleset context)
 
 

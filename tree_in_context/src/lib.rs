@@ -1,6 +1,10 @@
+use std::collections::HashMap;
+
+use egglog::{Term, TermDag};
 use from_egglog::FromEgglog;
 use interpreter::Value;
 use schema::{RcExpr, TreeProgram};
+use std::fmt::Write;
 
 use crate::interpreter::interpret_tree_prog;
 
@@ -15,6 +19,7 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
+pub(crate) mod add_context;
 
 pub type Result = std::result::Result<(), MainError>;
 
@@ -37,11 +42,52 @@ pub fn prologue() -> String {
     .join("\n")
 }
 
+/// Adds an egglog program to `res` that adds the given term
+/// to the database.
+/// Returns a fresh variable referring to the program.
+fn print_with_intermediate_helper(
+    termdag: &TermDag,
+    term: Term,
+    cache: &mut HashMap<Term, String>,
+    res: &mut String,
+) -> String {
+    if let Some(var) = cache.get(&term) {
+        return var.clone();
+    }
+
+    match &term {
+        Term::Lit(_) => termdag.to_string(&term),
+        Term::Var(_) => termdag.to_string(&term),
+        Term::App(head, children) => {
+            let child_vars = children
+                .iter()
+                .map(|child| {
+                    print_with_intermediate_helper(termdag, termdag.get(*child), cache, res)
+                })
+                .collect::<Vec<String>>()
+                .join(" ");
+            let fresh_var = format!("__tmp{}", cache.len());
+            write!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
+            cache.insert(term, fresh_var.clone());
+            fresh_var
+        }
+    }
+}
+
+fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
+    let mut printed = String::new();
+    let mut cache = HashMap::<Term, String>::new();
+    let res = print_with_intermediate_helper(termdag, term, &mut cache, &mut printed);
+    printed.push_str(&format!("(let PROG {res})\n"));
+    printed
+}
+
 pub fn build_program(program: &TreeProgram) -> String {
+    let (term, termdag) = program.to_egglog();
+    let printed = print_with_intermediate_vars(&termdag, term);
     format!(
-        "{}\n(let PROG {})\n{}\n",
+        "{}\n{printed}\n{}\n",
         prologue(),
-        program.pretty(),
         include_str!("schedule.egg"),
     )
 }

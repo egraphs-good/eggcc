@@ -4,6 +4,7 @@ use egglog::{Term, TermDag};
 use from_egglog::FromEgglog;
 use interpreter::Value;
 use schema::{RcExpr, TreeProgram};
+use std::fmt::Write;
 
 use crate::interpreter::interpret_tree_prog;
 
@@ -41,7 +42,9 @@ pub fn prologue() -> String {
     .join("\n")
 }
 
-// Returns a variable representing the
+/// Adds an egglog program to `res` that adds the given term
+/// to the database.
+/// Returns a fresh variable referring to the program.
 fn print_with_intermediate_helper(
     termdag: &TermDag,
     term: Term,
@@ -52,9 +55,9 @@ fn print_with_intermediate_helper(
         return var.clone();
     }
 
-    let (converted, fresh_var) = match &term {
-        Term::Lit(_) => return termdag.to_string(&term),
-        Term::Var(_) => return termdag.to_string(&term),
+    match &term {
+        Term::Lit(_) => termdag.to_string(&term),
+        Term::Var(_) => termdag.to_string(&term),
         Term::App(head, children) => {
             let child_vars = children
                 .iter()
@@ -64,15 +67,11 @@ fn print_with_intermediate_helper(
                 .collect::<Vec<String>>()
                 .join(" ");
             let fresh_var = format!("__tmp{}", cache.len());
-            (
-                format!("(let {fresh_var} ({head} {child_vars}))"),
-                fresh_var,
-            )
+            write!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
+            cache.insert(term, fresh_var.clone());
+            fresh_var
         }
-    };
-    cache.insert(term, fresh_var.clone());
-    res.push_str(&converted);
-    fresh_var
+    }
 }
 
 fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {

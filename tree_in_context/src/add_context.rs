@@ -1,3 +1,7 @@
+//! Adds context to the tree program.
+//! The `add_context` method recursively adds context to all of the nodes in the tree program
+//! by remembering the most recent context (ex. Let or If).
+
 use crate::{
     ast::{in_context, infunc},
     schema::{Assumption, Expr, RcExpr, TreeProgram},
@@ -64,7 +68,7 @@ impl Expr {
                 let new_case_num = case_num.add_context(current_ctx.clone());
                 let new_branches = branches
                     .iter()
-                    .map(|b| b.clone().add_context(current_ctx.clone()))
+                    .map(|b| b.add_context(current_ctx.clone()))
                     .collect();
                 RcExpr::new(Expr::Switch(new_case_num, new_branches))
             }
@@ -86,8 +90,9 @@ impl Expr {
                 x.add_context(current_ctx.clone()),
                 y.add_context(current_ctx),
             )),
-            // overwrite old context with new, more specific one
-            Expr::InContext(_old_assumption, child) => child.add_context(current_ctx),
+            Expr::InContext(..) => {
+                panic!("add_context expects a term without context")
+            }
             Expr::Function(..) => panic!("Function should have been handled in func_add_context"),
         }
     }

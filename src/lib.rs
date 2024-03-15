@@ -104,6 +104,10 @@ impl Optimizer {
                 }
                 printed.join("")
             }
+            Interpretable::ObjectFile {
+                filename: _,
+                args: _,
+            } => todo!(),
         }
     }
 

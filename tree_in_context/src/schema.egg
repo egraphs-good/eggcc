@@ -183,9 +183,9 @@
   (InLoop Expr     Expr)
   ; name of the function
   (InFunc String)
-  ; Branch of the switch and the predicate
+  ; Branch of the switch and what the predicate is
   (InSwitch i64 Expr)
-  ; If the predicate was true, and the predicate
+  ; If the predicate was true, and what the predicate is
   (InIf bool Expr)
   ; Other assumptions are possible, but not supported yet.
   ; For example:

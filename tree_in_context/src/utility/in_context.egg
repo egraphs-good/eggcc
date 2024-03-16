@@ -17,6 +17,16 @@
   (PathNil)
   (PathCons Expr Expr ContextPath))
 
+
+;; For every path P in the database,
+;; we add a (Path-contains P S)
+;; for every subpath S with the same endpoint.
+;; We also include the empty path.
+;; Ex: for path P = (PathCons a (PathCons b (PathCons c (PathNil))))
+;; we have (Path-contains P P),
+;; (Path-contains P (PathCons b (PathCons c (PathNil)))),
+;; (Path-contains P (PathCons c (PathNil))),
+;; and (Path-contains P (PathNil)).
 (relation Path-contains (ContextPath ContextPath))
 
 (rule ((= lhs (PathCons hd1 hd2 tl)))
@@ -213,7 +223,4 @@
          (DoWhile new-inputs
            (DoAddContext newpath (InLoop new-inputs outputs) scope outputs))))
        :ruleset context)
-
-
-
 

@@ -516,7 +516,13 @@ impl Run {
             RunType::ObjectFile => {
                 let opt_level = "none"; // options are "none", "speed", and "speed_and_size"
                 let filename = self.name() + ".o";
-                brilift::compile(&self.prog_with_args.program, None, opt_level, &filename);
+                brilift::compile(
+                    &self.prog_with_args.program,
+                    None,
+                    opt_level,
+                    &filename,
+                    false,
+                );
                 (
                     vec![],
                     Some(Interpretable::ObjectFile {

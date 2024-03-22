@@ -1,10 +1,6 @@
 (run-schedule
-  (saturate
-   (saturate always-run)
-   context_creation
-   (saturate context_propagate))
   (repeat 6
-    (saturate ;; saturate all rulesets that we run to saturation
+    (saturate ;; saturate rulesets that we run to saturation
       (saturate always-run)
       (saturate error-checking)
       (saturate
@@ -12,7 +8,10 @@
         type-analysis
       )
       (saturate subst) ;; subst depends on type information for the argument
-      (saturate interval-analysis))
+      (saturate interval-analysis)
+      (saturate
+        (saturate context-helpers)
+        context))
     conditional-invariant-code-motion
     switch_rewrite
     loop-simplify))

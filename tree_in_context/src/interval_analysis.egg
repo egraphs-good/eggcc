@@ -1,5 +1,7 @@
 (ruleset interval-analysis)
 
+
+
 (datatype Interval
   (BoolI bool bool)
   (IntI i64 i64)
@@ -55,10 +57,31 @@
 ; =================================
 ; Arithmetic
 ; =================================
+; + a b interval is (+ la lb) (+ ha hb)
 (rule (
        (= lhs (Bop (Add) x y))
        (= (ival x) (IntI la ha))
        (= (ival y) (IntI lb hb))
       )
       ((set (ival lhs) (IntI (+ la hb) (+ ha hb))))
+      :ruleset interval-analysis)
+
+; < a b interval is (< ha lb) (< la hb)
+(rule (
+        (= lhs (Bop (LessThan) a b))
+        (= (IntI la ha) (ival a))
+        (= (IntI lb hb) (ival b))
+      )
+      ((set (ival lhs) (BoolI (bool-< ha lb) (bool-< la hb))))
+      :ruleset interval-analysis)
+
+; =================================
+; Conditionals
+; =================================
+(rule (
+        (= lhs (If cond thn els))
+        (= thn-ival (ival thn))
+        (= els-ival (ival els))
+      )
+      ((set (ival lhs) (interval-union thn-ival els-ival)))
       :ruleset interval-analysis)

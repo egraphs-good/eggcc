@@ -18,5 +18,5 @@ nits:
 nightly:
 	bash infra/nightly.sh
 
-infra/rt.o: infra/rt.c
+infra/brilift.o: infra/brilift.c
 	cc $(CFLAGS) -c -o $@ $^

@@ -179,7 +179,7 @@ pub enum RunType {
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
     /// Converts to an object file (.o) using brilift
-    ObjectFile,
+    Compiled,
 }
 
 impl Display for RunType {
@@ -208,7 +208,7 @@ impl RunType {
             RunType::TreeOptimize => true,
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
-            RunType::ObjectFile => true,
+            RunType::Compiled => true,
         }
     }
 }
@@ -259,7 +259,7 @@ pub struct Run {
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
-    ObjectFile { filename: String, args: Vec<String> },
+    Executable { filename: String, args: Vec<String> },
 }
 
 /// Some sort of visualization of the result, with a name
@@ -513,7 +513,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::ObjectFile => {
+            RunType::Compiled => {
                 let opt_level = "none"; // options are "none", "speed", and "speed_and_size"
                 let filename = self.name() + ".o";
                 brilift::compile(
@@ -525,7 +525,7 @@ impl Run {
                 );
                 (
                     vec![],
-                    Some(Interpretable::ObjectFile {
+                    Some(Interpretable::Executable {
                         filename,
                         args: self.prog_with_args.args.clone(),
                     }),

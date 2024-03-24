@@ -515,18 +515,28 @@ impl Run {
             }
             RunType::Compiled => {
                 let opt_level = "none"; // options are "none", "speed", and "speed_and_size"
-                let filename = self.name() + ".o";
+                let object_filename = self.name() + ".o";
                 brilift::compile(
                     &self.prog_with_args.program,
                     None,
                     opt_level,
-                    &filename,
+                    &object_filename,
                     false,
                 );
+
+                let executable_filename = self.name();
+                std::process::Command::new("cc")
+                    .arg(object_filename)
+                    .arg("infra/brilift.o")
+                    .arg("-o")
+                    .arg(executable_filename.clone())
+                    .spawn()
+                    .expect("c compiler error");
+
                 (
                     vec![],
                     Some(Interpretable::Executable {
-                        filename,
+                        filename: executable_filename,
                         args: self.prog_with_args.args.clone(),
                     }),
                 )

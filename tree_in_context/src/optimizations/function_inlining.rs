@@ -5,15 +5,15 @@ use crate::{egglog_test, interpreter::Value, schema::Constant};
 fn test_function_inlining_single_function() -> crate::Result {
     use crate::ast::*;
     // main := inc 5
-    let main_body = call("inc", int(5));
-    let main = function("main", emptyt(), intt(), main_body.clone());
+    let main_body = call("inc", int_ty(5, emptyt()));
+    let main = function("main", emptyt(), base(intt()), main_body.clone());
 
     // inc n := n + 1
-    let inc_body = add(arg().with_arg_types(intt(), intt()), int(1));
-    let inc = function("inc", intt(), intt(), inc_body.clone());
+    let inc_body = add(arg(), int(1)).with_arg_types(base(intt()), base(intt()));
+    let inc = function("inc", base(intt()), base(intt()), inc_body.clone());
 
     let prog = program!(main.clone(), inc.clone());
-    let result = tlet(int(5), inc_body);
+    let result = tlet(int_ty(5, emptyt()), inc_body);
 
     // check that (inc 5) = 6
     egglog_test(
@@ -31,16 +31,17 @@ fn test_function_inlining_recursive_function() -> crate::Result {
     use crate::ast::*;
     // main := fact 5
     let main_body = call("fact", int(5));
-    let main = function("main", emptyt(), intt(), main_body.clone());
+    let main = function("main", emptyt(), base(intt()), main_body.clone());
 
     // fact n := if n > 1 then n * fact n-1 else 1    (don't bother with handling n < 1)
-    let n = arg().with_arg_types(intt(), intt());
+    let n = arg().with_arg_types(base(intt()), base(intt()));
     let fact_body = tif(
         greater_than(n.clone(), int(1)),
         mul(n.clone(), call("fact", sub(n.clone(), int(1)))),
         int(1),
     );
-    let fact = function("fact", intt(), intt(), fact_body.clone());
+    let fact =
+        function("fact", base(intt()), base(intt()), fact_body.clone());
 
     let prog = program!(main.clone(), fact.clone());
 
@@ -48,10 +49,13 @@ fn test_function_inlining_recursive_function() -> crate::Result {
     let result = tlet(
         int(5),
         tif(
-            greater_than(arg().with_arg_types(intt(), intt()), int(1)),
+            greater_than(arg().with_arg_types(base(intt()), base(intt())), int(1)),
             mul(
-                arg().with_arg_types(intt(), intt()),
-                call("fact", sub(arg().with_arg_types(intt(), intt()), int(1))),
+                arg().with_arg_types(base(intt()), base(intt())),
+                call(
+                    "fact",
+                    sub(arg().with_arg_types(base(intt()), base(intt())), int(1)),
+                ),
             ),
             int(1),
         ),

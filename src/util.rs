@@ -259,7 +259,7 @@ pub struct Run {
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
-    Executable { filename: String, args: Vec<String> },
+    Executable(PathBuf),
 }
 
 /// Some sort of visualization of the result, with a name
@@ -516,31 +516,40 @@ impl Run {
             }
             RunType::Compile => {
                 let opt_level = "none"; // options are "none", "speed", and "speed_and_size"
-                let object_filename = self.name() + ".o";
+                let object = self.name() + ".o";
                 brilift::compile(
                     &self.prog_with_args.program,
                     None,
-                    &object_filename,
+                    &object,
                     opt_level,
                     false,
                 );
 
-                let executable_filename = self.name();
+                let executable = self.name();
                 std::process::Command::new("cc")
-                    .arg(object_filename)
+                    .arg(object.clone())
                     .arg("infra/brilift.o")
                     .arg("-o")
-                    .arg(executable_filename.clone())
-                    .spawn()
-                    .expect("error in C compiler");
+                    .arg(executable.clone())
+                    .status()
+                    .unwrap();
 
-                (
-                    vec![],
-                    Some(Interpretable::Executable {
-                        filename: executable_filename,
-                        args: self.prog_with_args.args.clone(),
-                    }),
-                )
+                let executable = std::path::Path::new(&executable).canonicalize().unwrap();
+
+                std::process::Command::new("rm")
+                    .arg(object)
+                    .status()
+                    .unwrap();
+
+                // TODO: only do this during tests
+                if !self.interp {
+                    std::process::Command::new("rm")
+                        .arg(executable.clone())
+                        .status()
+                        .unwrap();
+                }
+
+                (vec![], Some(Interpretable::Executable(executable)))
             }
         };
 

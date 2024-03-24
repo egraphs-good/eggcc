@@ -104,13 +104,17 @@ impl Optimizer {
                 }
                 printed.join("")
             }
-            Interpretable::Executable { filename, args } => {
-                let mut command = &mut std::process::Command::new(format!("./{filename}"));
-                for arg in args {
-                    command = command.arg(arg);
-                }
-                String::from_utf8(command.output().expect("error in compiled program").stdout)
+            Interpretable::Executable(executable) => {
+                let output = std::process::Command::new(executable)
+                    .args(args)
+                    .output()
                     .unwrap()
+                    .stdout;
+                std::process::Command::new("rm")
+                    .arg(executable)
+                    .status()
+                    .unwrap();
+                String::from_utf8(output).unwrap()
             }
         }
     }

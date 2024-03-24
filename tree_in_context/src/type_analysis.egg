@@ -292,6 +292,20 @@
       :ruleset type-analysis)
 
 (rule (
+        (= lhs (Bop (GreaterThan) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (GreaterThan) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(GreaterThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(GreaterThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)
+
+(rule (
         (= lhs (Bop (And) e1 e2))
         (HasType e1 (Base (BoolT)))
         (HasType e2 (Base (BoolT)))
@@ -559,7 +573,9 @@
         (= lhs (Call name arg))
         (Function name in-ty out-ty body)
         (HasType arg in-ty)
-        (HasType body out-ty)
+        ; We don't need to check the type of the function body, it will
+        ; be checked elsewhere. If we did require (HasType body out-ty),
+        ; recursive functions would not get assigned a type.
       )
       ((HasType lhs out-ty))
       :ruleset type-analysis)

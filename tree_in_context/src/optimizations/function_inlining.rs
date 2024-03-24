@@ -30,34 +30,42 @@ fn test_function_inlining_single_function() -> crate::Result {
 fn test_function_inlining_recursive_function() -> crate::Result {
     use crate::ast::*;
     // main := fact 5
-    let main_body = call("fact", int(5));
+    let main_body = call("fact", int_ty(5, emptyt()));
     let main = function("main", emptyt(), base(intt()), main_body.clone());
 
     // fact n := if n > 1 then n * fact n-1 else 1    (don't bother with handling n < 1)
     let n = arg().with_arg_types(base(intt()), base(intt()));
     let fact_body = tif(
-        greater_than(n.clone(), int(1)),
-        mul(n.clone(), call("fact", sub(n.clone(), int(1)))),
-        int(1),
+        greater_than(n.clone(), int_ty(1, base(intt()))),
+        mul(
+            n.clone(),
+            call("fact", sub(n.clone(), int_ty(1, base(intt())))),
+        ),
+        int_ty(1, base(intt())),
     );
-    let fact =
-        function("fact", base(intt()), base(intt()), fact_body.clone());
+    let fact = function("fact", base(intt()), base(intt()), fact_body.clone());
 
     let prog = program!(main.clone(), fact.clone());
 
     // check that (fact 5) = (let 5 in (if arg > 1 then (arg * fact arg-1) else 1))
     let result = tlet(
-        int(5),
+        int_ty(5, emptyt()),
         tif(
-            greater_than(arg().with_arg_types(base(intt()), base(intt())), int(1)),
+            greater_than(
+                arg().with_arg_types(base(intt()), base(intt())),
+                int_ty(1, base(intt())),
+            ),
             mul(
                 arg().with_arg_types(base(intt()), base(intt())),
                 call(
                     "fact",
-                    sub(arg().with_arg_types(base(intt()), base(intt())), int(1)),
+                    sub(
+                        arg().with_arg_types(base(intt()), base(intt())),
+                        int_ty(1, base(intt())),
+                    ),
                 ),
             ),
-            int(1),
+            int_ty(1, base(intt())),
         ),
     );
 

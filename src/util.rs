@@ -531,7 +531,7 @@ impl Run {
                     .arg("-o")
                     .arg(executable_filename.clone())
                     .spawn()
-                    .expect("c compiler error");
+                    .expect("error in C compiler");
 
                 (
                     vec![],

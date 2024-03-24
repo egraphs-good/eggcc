@@ -520,8 +520,8 @@ impl Run {
                 brilift::compile(
                     &self.prog_with_args.program,
                     None,
-                    opt_level,
                     &object_filename,
+                    opt_level,
                     false,
                 );
 

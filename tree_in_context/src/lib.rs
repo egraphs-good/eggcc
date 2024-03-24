@@ -11,6 +11,7 @@ use crate::interpreter::interpret_tree_prog;
 pub mod ast;
 pub mod from_egglog;
 pub mod interpreter;
+pub(crate) mod interval_analysis;
 mod optimizations;
 pub mod schema;
 pub mod schema_helpers;
@@ -27,6 +28,7 @@ pub fn prologue() -> String {
     [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
+        include_str!("interval_analysis.egg"),
         include_str!("utility/util.egg"),
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
@@ -34,7 +36,6 @@ pub fn prologue() -> String {
         &optimizations::conditional_invariant_code_motion::rules().join("\n"),
         include_str!("utility/in_context.egg"),
         include_str!("utility/subst.egg"),
-        include_str!("optimizations/constant_fold.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),

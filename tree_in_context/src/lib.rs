@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use egglog::{Term, TermDag};
 use from_egglog::FromEgglog;
 use interpreter::Value;
-use schema::{RcExpr, TreeProgram};
+use schema::TreeProgram;
 use std::fmt::Write;
 
 use crate::interpreter::interpret_tree_prog;
@@ -104,21 +104,43 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     Ok(from_egglog.program_from_egglog(extracted.1))
 }
 
-fn check_func_type(func: RcExpr) -> Result {
+fn check_program_gets_type(program: TreeProgram) -> Result {
     let prologue = [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
     ]
     .join("\n");
+
+    // We need to include the whole program, since function bodies could
+    // include calls to other functions.
+    let (term, termdag) = program.to_egglog();
+    let printed_program = print_with_intermediate_vars(&termdag, term);
+
     let schedule = "(run-schedule
       (saturate
         (saturate type-helpers)
         type-analysis))";
 
-    let body = func.func_body().expect("couldn't parse body");
-    let out_ty = func.func_output_ty().expect("couldn't parse output type");
-    let check = format!("(check (HasType BODY {out_ty}))");
-    let s = format!("{prologue}\n(let BODY {body})\n{schedule}\n{check}",);
+    // For each function body, we check its type
+    let mut bodies = Vec::new();
+    let mut checks = Vec::new();
+
+    let mut funcs = program.functions.clone();
+    funcs.push(program.entry.clone());
+    for func in funcs {
+        let body = func.func_body().expect("couldn't parse body");
+        let name = func.func_name().expect("couldn't parse function name");
+        bodies.push(format!("(let BODY_{name} {body})"));
+        let out_ty = func.func_output_ty().expect("couldn't parse output type");
+        checks.push(format!("(check (HasType BODY_{name} {out_ty}))"));
+    }
+
+    let s = format!(
+        "{prologue}\n{printed_program}\n{}\n{schedule}\n{}",
+        bodies.join("\n"),
+        checks.join("\n")
+    );
+    println!("{}", s);
 
     egglog::EGraph::default()
         .parse_and_run_program(&s)
@@ -127,14 +149,6 @@ fn check_func_type(func: RcExpr) -> Result {
                 println!("{}", line);
             }
         })?;
-    Ok(())
-}
-
-fn check_program_gets_type(program: TreeProgram) -> Result {
-    check_func_type(program.entry)?;
-    for func in program.functions {
-        check_func_type(func)?;
-    }
     Ok(())
 }
 

@@ -239,7 +239,10 @@ impl<'a> TypeChecker<'a> {
             }
             Expr::Call(string, arg) => {
                 let (aty, new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty);
-                let func = self.program.get_function(string).unwrap();
+                let func = self
+                    .program
+                    .get_function(string)
+                    .expect(format!("Function {string} should exist in program.").as_str());
                 assert_eq!(
                     aty,
                     func.func_input_ty().unwrap(),

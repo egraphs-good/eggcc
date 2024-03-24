@@ -242,7 +242,7 @@ impl<'a> TypeChecker<'a> {
                 let func = self
                     .program
                     .get_function(string)
-                    .expect(format!("Function {string} should exist in program.").as_str());
+                    .unwrap_or_else(|| panic!("Function {string} should exist in program."));
                 assert_eq!(
                     aty,
                     func.func_input_ty().unwrap(),

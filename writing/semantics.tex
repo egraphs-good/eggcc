@@ -240,6 +240,58 @@ A state is a pair $(M, L)$, containing memory and a print log.
   {\bop{Context}{(\bop{InLoop}{e_{in}}{e_{po}})}{e}}{\targ}{\tmem}
   {v}{\tmem'}}
 
+
+\inferrule{E-BeforeWrite}{
+  M' = \operatorname{delete}(M,v_p) \andalso
+  \easvs{e_p}{\targ}{(M',L)}{v_p}{\tmem} \andalso
+  \easvs{e}{\targ}{(M',L)}{v}{\tmem}}
+{\easvsd
+  {\bop{Context}{(\bop{BeforeWrite}{e_{p}})}{e}}{\targ}{(M,L)}
+  {v}{\tmem}}
+
+\begin{comment}
+〈     e, a, del(s, v_addr)〉⇓〈v, s'〉
+〈e_addr, a, del(s, v_addr)〉⇓〈v_addr, s''〉
+--------------------------------------------
+〈(BeforeWrite e_addr e), a, s〉⇓〈v, s〉
+
+The top condition is the "more intiutive" part of the rule. But why also delete
+v_addr when stepping e_addr? This is motivating by the following example:
+  The address
+    (Snd (Print (Read addr)) addr)
+  can never be the first argument to BeforeWrite, because it reads from the
+  address written to!
+
+----- Example of BeforeWrite rewrites ---
+
+; As there are no writes in the second argument of outer-write,
+; the assumption can go to both children. Otherwise it would only go
+; to the second argument.
+(Write
+  (Snd (Write addr x) addr)
+  y)
+~~>
+(Write
+  (BeforeWrite addr
+    (Snd (Write addr x) addr))
+  (BeforeWrite addr
+    y))
+
+; As there are no writes in the second argument of (Snd (Write addr x)) addr,
+; the first assumption can go to both children.
+(BeforeWrite addr
+  (Snd (Write addr x) addr))
+~~>
+(Snd
+  (BeforeWrite addr (Write addr x))
+  (BeforeWrite addr addr))
+
+; We detected a shadowed write (as both write to the same address)!
+(BeforeWrite addr (Write addr x))
+~~>
+(Empty)
+\end{comment}
+
 \newpage
 \subsection*{Abstract grammar}
 \begin{minipage}[t]{0.45\linewidth}

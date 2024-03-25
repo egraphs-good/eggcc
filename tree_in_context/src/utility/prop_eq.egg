@@ -5,6 +5,7 @@
 (relation HasContext (Expr Assumption))
 ;; Every context except the top-level Function context
 ;; has a parent context
+;; (ParentContext child-ctx parent-ctx) stores this relation
 (relation ParentContext (Assumption Assumption))
 
 
@@ -96,16 +97,31 @@
 ;; but we can draw a correspondance between pure expressions.
 (relation EqOuter (Expr Expr))
 
-(rule ((= lhs (InContext (InLet outer) (Const const inner_ty)))
-       (HasContext outer outer-ctx)
-       (HasArgType outer outer_ty))
-      ((EqOuter lhs (InContext outer-ctx (Const const outer_ty))))
+
+;; The following rules push equalities down through let
+;; by populating EqOuter
+
+;; the key rule that propagates equalities
+(rule ((EqOuter a outer)
+       (EqOuter b outer))
+      ((union a b))
       :ruleset prop-eq)
 
-(rule ((= lhs (InContext (InLet inputs) (Arg)))
-       (IsPure inputs))
-      ((EqOuter lhs inputs))
+;; find corresponding constant in child context
+(rule ((= lhs (InContext ctx (Const const outer-ty)))
+       (ParentContext (InLet inputs) ctx)
+       (HasType inputs inner-ty))
+      ((EqOuter (InContext (InLet inputs)
+                   (Const const inner-ty))
+                lhs))
       :ruleset prop-eq)
+
+;; pure arguments in a tuple are equal
+(rule ((= lhs (Get (InContext (InLet inputs) (Arg ty)) i))
+       (ExprIsPure (tuple-ith inputs i)))
+      ((EqOuter lhs (tuple-ith inputs i)))
+      :ruleset prop-eq)
+
 
 (rule ((Bop op outera outerb)
        (EqOuter a outera)
@@ -117,7 +133,3 @@
       ((EqOuter (Uop op c) (Uop op outerc)))
       :ruleset prop-eq)
 
-(rule ((= lhs (Get (InContext (InLet inputs) (Arg ty)) i))
-       (IsPure (tuple-ith inputs i)))
-      ((EqOuter lhs (Get inputs i)))
-      :ruleset prop-eq)

@@ -1,0 +1,6 @@
+(ruleset peephole)
+
+(rule ((= lhs (Bop (Add) a a))
+       (HasArgType lhs argty))
+      ((union lhs (Bop (Mul) a (Const (Int 2) argty))))
+  :ruleset peephole)

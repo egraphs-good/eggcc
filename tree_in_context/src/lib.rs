@@ -37,6 +37,7 @@ pub fn prologue() -> String {
         include_str!("utility/in_context.egg"),
         include_str!("utility/subst.egg"),
         include_str!("utility/prop_eq.egg"),
+        include_str!("optimizations/peephole.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("optimizations/function_inlining.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
@@ -196,6 +197,7 @@ pub fn egglog_test(
         prologue(),
         include_str!("schedule.egg"),
     );
+    eprintln!("{}", program);
 
     let res = egglog::EGraph::default()
         .parse_and_run_program(&program)

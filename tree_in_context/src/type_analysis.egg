@@ -573,7 +573,9 @@
         (= lhs (Call name arg))
         (Function name in-ty out-ty body)
         (HasType arg in-ty)
-        (HasType body out-ty)
+        ; We don't need to check the type of the function body, it will
+        ; be checked elsewhere. If we did require (HasType body out-ty),
+        ; recursive functions would not get assigned a type.
       )
       ((HasType lhs out-ty))
       :ruleset type-analysis)

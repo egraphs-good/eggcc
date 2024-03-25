@@ -11,7 +11,9 @@
       (saturate interval-analysis)
       (saturate
         (saturate context-helpers)
-        context))
+        context)
+      (saturate prop-eq))
+    peephole
     conditional-invariant-code-motion
     switch_rewrite
     loop-simplify

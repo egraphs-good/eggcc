@@ -222,6 +222,42 @@ impl<'a> TreeToRvsdg<'a> {
                     ))
                 }
             },
+            Expr::Bop(BinaryOp::Load, l, _ignore_state_edge) => {
+                let child = self.convert_expr(l.clone());
+                self.push_basic(BasicExpr::Op(
+                    ValueOps::Load,
+                    child,
+                    type_to_bril_type(
+                        self.type_cache
+                            .get(&Rc::as_ptr(&expr))
+                            .expect("Expected to find type for expr")
+                            .clone(),
+                    )
+                    .expect("Expected base type for load"),
+                ))
+            }
+            Expr::Uop(op, child) => {
+                let child = self.convert_expr(child.clone());
+                assert_eq!(child.len(), 1, "Expected exactly one result for child");
+                let child = child[0];
+                if let Some(vop) = value_op_from_unary_op(op.clone()) {
+                    self.push_basic(BasicExpr::Op(
+                        vop,
+                        vec![child],
+                        type_to_bril_type(
+                            self.type_cache
+                                .get(&Rc::as_ptr(&expr))
+                                .expect("Expected to find type for expr")
+                                .clone(),
+                        )
+                        .expect("Expected base type for unary op"),
+                    ))
+                } else if let Some(eop) = effect_op_from_unary_op(op.clone()) {
+                    self.push_basic(BasicExpr::Effect(eop, vec![child]))
+                } else {
+                    panic!("Unknown unary op {:?}", op)
+                }
+            }
             Expr::Bop(op, l, r) => {
                 let l = self.convert_expr(l.clone());
                 let r = self.convert_expr(r.clone());
@@ -254,28 +290,6 @@ impl<'a> TreeToRvsdg<'a> {
                 let child1 = child1[0];
                 let child2 = child2[0];
                 self.push_basic(BasicExpr::Effect(EffectOps::Store, vec![child1, child2]))
-            }
-            Expr::Uop(op, child) => {
-                let child = self.convert_expr(child.clone());
-                assert_eq!(child.len(), 1, "Expected exactly one result for child");
-                let child = child[0];
-                if let Some(vop) = value_op_from_unary_op(op.clone()) {
-                    self.push_basic(BasicExpr::Op(
-                        vop,
-                        vec![child],
-                        type_to_bril_type(
-                            self.type_cache
-                                .get(&Rc::as_ptr(&expr))
-                                .expect("Expected to find type for expr")
-                                .clone(),
-                        )
-                        .expect("Expected base type for unary op"),
-                    ))
-                } else if let Some(eop) = effect_op_from_unary_op(op.clone()) {
-                    self.push_basic(BasicExpr::Effect(eop, vec![child]))
-                } else {
-                    panic!("Unknown unary op {:?}", op)
-                }
             }
             Expr::Get(child, index) => {
                 let child = self.convert_expr(child.clone());

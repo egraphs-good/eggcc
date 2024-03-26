@@ -3,7 +3,8 @@ use std::rc::Rc;
 use egglog::{ast::Literal, match_term_app, Term};
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type,
+    UnaryOp,
 };
 
 pub struct FromEgglog {
@@ -128,6 +129,14 @@ impl FromEgglog {
         })
     }
 
+    fn top_from_egglog(&self, top: Term) -> TernaryOp {
+        match_term_app!(top.clone();
+        {
+          ("Write", []) => TernaryOp::Write,
+          _ => panic!("Invalid top: {:?}", top),
+        })
+    }
+
     fn binop_from_egglog(&self, op: Term) -> BinaryOp {
         match_term_app!(op.clone();
         {
@@ -164,6 +173,18 @@ impl FromEgglog {
           ("Const", [constant, ty]) => {
             let constant = self.termdag.get(*constant);
             Rc::new(Expr::Const(self.const_from_egglog(constant), self.type_from_egglog(self.termdag.get(*ty))))
+          }
+          ("Top", [op, lhs, mid, rhs]) => {
+            let op = self.termdag.get(*op);
+            let lhs = self.termdag.get(*lhs);
+            let mid = self.termdag.get(*mid);
+            let rhs = self.termdag.get(*rhs);
+            Rc::new(Expr::Top(
+              self.top_from_egglog(op),
+              self.expr_from_egglog(lhs),
+              self.expr_from_egglog(mid),
+              self.expr_from_egglog(rhs),
+            ))
           }
           ("Bop", [op, lhs, rhs]) => {
             let op = self.termdag.get(*op);
@@ -287,6 +308,7 @@ impl FromEgglog {
               self.expr_from_egglog(expr),
             ))
           }
+          ("FakeState", []) => Rc::new(Expr::FakeState),
           _ => panic!("Invalid expr: {:?}", expr),
         })
     }

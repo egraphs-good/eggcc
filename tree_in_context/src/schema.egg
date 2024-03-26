@@ -91,6 +91,7 @@
   (Free))
 
 ; Operators
+(function Top   (TernaryOp Expr Expr Expr) Expr)
 (function Bop   (BinaryOp Expr Expr) Expr)
 (function Uop   (UnaryOp Expr) Expr)
 ; gets from a tuple. static index

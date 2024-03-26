@@ -380,6 +380,7 @@ impl<'a> TypeChecker<'a> {
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
             // should have covered all cases, but rust can't prove it
             // due to the side conditions
+            Expr::FakeState => (emptyt(), RcExpr::new(Expr::FakeState)),
             _ => panic!("Unexpected expression {:?}", expr),
         };
 

@@ -161,7 +161,7 @@ impl<'a> VirtualMachine<'a> {
         _e3: &RcExpr,
         arg: &Value,
     ) -> Value {
-        let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointer_expr(e, &Tuple(vec![]));
+        let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointer_expr(e, arg);
         match top {
             TernaryOp::Write => {
                 let pointer = get_pointer(e1, self);

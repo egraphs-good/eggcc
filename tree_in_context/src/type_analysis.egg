@@ -184,20 +184,20 @@
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Uop (Load) e))
+        (= lhs (Bop (Load) e state))
         (HasType e (Base (PointerT ty)))
       )
       ((HasType lhs (Base ty)))
       :ruleset type-analysis)
 (rule (
-        (= lhs (Uop (Load) e))
+        (= lhs (Bop (Load) e state))
         (HasType e ty)
         (= ty (Base (IntT)))
       )
       ((panic "(Load) expected pointer, received int"))
       :ruleset type-analysis)
 (rule (
-        (= lhs (Uop (Load) e))
+        (= lhs (Bop (Load) e state))
         (HasType e ty)
         (= ty (TupleT x))
       )
@@ -334,7 +334,7 @@
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Bop (Write) ptr val))
+        (= lhs (Top (Write) ptr val state))
         (HasType ptr (Base (PointerT ty)))
         (HasType val (Base t)) ; TODO need to support pointers to pointers
       )
@@ -342,7 +342,7 @@
       :ruleset type-analysis)
 
 (rule (
-       (= lhs (Bop (Write) ptr val))
+       (= lhs (Top (Write) ptr val state))
        (HasType ptr (Base (PointerT ty))))
       ((ExpectType val (Base ty) "(Write) type mismatch, received {?}"))
       :ruleset type-analysis)

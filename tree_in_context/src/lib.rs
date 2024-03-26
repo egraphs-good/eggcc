@@ -27,6 +27,7 @@ pub type Result = std::result::Result<(), MainError>;
 pub fn prologue() -> String {
     [
         include_str!("schema.egg"),
+        include_str!("extraction.egg"),
         include_str!("type_analysis.egg"),
         include_str!("interval_analysis.egg"),
         include_str!("utility/util.egg"),

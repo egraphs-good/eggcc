@@ -1,14 +1,20 @@
-use crate::schema::{BinaryOp, UnaryOp};
+use crate::schema::{BinaryOp, TernaryOp, UnaryOp};
 use crate::schema_helpers::{Constructor, Purpose, Sort};
 use std::iter;
 use strum::IntoEnumIterator;
+
+fn top_is_pure(top: &TernaryOp) -> bool {
+    match top {
+        TernaryOp::Write => false,
+    }
+}
 
 fn bop_is_pure(bop: &BinaryOp) -> bool {
     use BinaryOp::*;
     match bop {
         Add | Sub | Mul | LessThan | And | Or | Div | PtrAdd | Eq | GreaterThan | LessEq
         | GreaterEq => true,
-        Write => false,
+        Load => false,
     }
 }
 
@@ -16,7 +22,7 @@ fn uop_is_pure(uop: &UnaryOp) -> bool {
     use UnaryOp::*;
     match uop {
         Not => true,
-        Print | Load | Free => false,
+        Print | Free => false,
     }
 }
 
@@ -28,7 +34,7 @@ fn purity_rules_for_ctor(ctor: Constructor) -> String {
     use Constructor::*;
     match ctor {
         Function | Const | Get | Concat | Single | Switch | If | DoWhile | Let | Arg | Empty
-        | Cons | Nil | InContext | Bop | Uop => {
+        | Cons | Nil | InContext | Bop | Uop | Top | FakeState => {
             // e.g. ["(ExprIsPure x)", "(ExprIsPure y)"]
             let children_pure_queries = ctor.filter_map_fields(|field| match field.purpose {
                 Purpose::Static(Sort::BinaryOp)
@@ -78,6 +84,9 @@ pub(crate) fn rules() -> Vec<String> {
         (relation UnaryOpIsPure (UnaryOp))"
             .to_string(),
     )
+    .chain(TernaryOp::iter().filter_map(|top| {
+        top_is_pure(&top).then(|| format!("(TopIsPure ({name}))", name = top.name()))
+    }))
     .chain(BinaryOp::iter().filter_map(|bop| {
         bop_is_pure(&bop).then(|| format!("(BinaryOpIsPure ({name}))", name = bop.name()))
     }))

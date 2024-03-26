@@ -136,13 +136,13 @@ impl FromEgglog {
           ("Mul", []) => BinaryOp::Mul,
           ("Div", []) => BinaryOp::Div,
           ("Eq", []) => BinaryOp::Eq,
+          ("Load", []) => BinaryOp::Load,
           ("LessThan", []) => BinaryOp::LessThan,
           ("GreaterThan", []) => BinaryOp::GreaterThan,
           ("LessEq", []) => BinaryOp::LessEq,
           ("GreaterEq", []) => BinaryOp::GreaterEq,
           ("And", []) => BinaryOp::And,
           ("Or", []) => BinaryOp::Or,
-          ("Write", []) => BinaryOp::Write,
           ("PtrAdd", []) => BinaryOp::PtrAdd,
           _ => panic!("Invalid binary op: {:?}", op),
         })
@@ -153,7 +153,6 @@ impl FromEgglog {
         {
           ("Not", []) => UnaryOp::Not,
           ("Print", []) => UnaryOp::Print,
-          ("Load", []) => UnaryOp::Load,
           ("Free", []) => UnaryOp::Free,
           _ => panic!("Invalid unary op: {:?}", uop),
         })

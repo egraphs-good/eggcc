@@ -4,7 +4,7 @@ use std::{iter, rc::Rc};
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
 use tree_in_context::{
-    schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp},
+    schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
 };
 
@@ -123,6 +123,7 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
 
 fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
     match bop {
+        BinaryOp::Load => Some(ValueOps::Load),
         BinaryOp::Add => Some(ValueOps::Add),
         BinaryOp::Sub => Some(ValueOps::Sub),
         BinaryOp::Mul => Some(ValueOps::Mul),
@@ -134,15 +135,7 @@ fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
         BinaryOp::GreaterThan => Some(ValueOps::Gt),
         BinaryOp::LessEq => Some(ValueOps::Le),
         BinaryOp::GreaterEq => Some(ValueOps::Ge),
-        BinaryOp::Write => None,
         BinaryOp::PtrAdd => Some(ValueOps::PtrAdd),
-    }
-}
-
-fn effect_op_from_binary_op(bop: BinaryOp) -> Option<EffectOps> {
-    match bop {
-        BinaryOp::Write => Some(EffectOps::Store),
-        _ => None,
     }
 }
 
@@ -150,7 +143,6 @@ fn value_op_from_unary_op(uop: UnaryOp) -> Option<ValueOps> {
     match uop {
         UnaryOp::Not => Some(ValueOps::Not),
         UnaryOp::Print => None,
-        UnaryOp::Load => Some(ValueOps::Load),
         UnaryOp::Free => None,
     }
 }
@@ -159,7 +151,6 @@ fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
     match uop {
         UnaryOp::Not => None,
         UnaryOp::Print => Some(EffectOps::Print),
-        UnaryOp::Load => None,
         UnaryOp::Free => Some(EffectOps::Free),
     }
 }
@@ -217,6 +208,7 @@ impl<'a> TreeToRvsdg<'a> {
 
     fn convert_expr(&mut self, expr: RcExpr) -> Operands {
         let res = match expr.as_ref() {
+            Expr::FakeState => panic!("FakeState should not be converted back"),
             Expr::Function(_name, _inty, _outty, expr) => self.convert_expr(expr.clone()),
             Expr::Const(constant, _ty) => match constant {
                 tree_in_context::schema::Constant::Int(integer) => self.push_basic(
@@ -250,11 +242,18 @@ impl<'a> TreeToRvsdg<'a> {
                         vec![l, r],
                         basetype_to_bril_type(cached.clone()),
                     ))
-                } else if let Some(eop) = effect_op_from_binary_op(op.clone()) {
-                    self.push_basic(BasicExpr::Effect(eop, vec![l, r]))
                 } else {
                     panic!("Unknown binary op {:?}", op)
                 }
+            }
+            Expr::Top(TernaryOp::Write, child1, child2, _fake_state) => {
+                let child1 = self.convert_expr(child1.clone());
+                let child2 = self.convert_expr(child2.clone());
+                assert_eq!(child1.len(), 1, "Expected exactly one result for child1");
+                assert_eq!(child2.len(), 1, "Expected exactly one result for child2");
+                let child1 = child1[0];
+                let child2 = child2[0];
+                self.push_basic(BasicExpr::Effect(EffectOps::Store, vec![child1, child2]))
             }
             Expr::Uop(op, child) => {
                 let child = self.convert_expr(child.clone());

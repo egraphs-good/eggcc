@@ -6,7 +6,7 @@ use egglog::{
 };
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TreeProgram, Type, UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TernaryOp, TreeProgram, Type, UnaryOp,
 };
 
 pub(crate) struct TreeToEgglog {
@@ -130,6 +130,12 @@ impl BinaryOp {
     }
 }
 
+impl TernaryOp {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
+        term_dag.app(format!("{:?}", self).into(), vec![])
+    }
+}
+
 impl UnaryOp {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
         term_dag.app(format!("{:?}", self).into(), vec![])
@@ -151,6 +157,7 @@ impl Expr {
             return term.clone();
         }
         let res = match self.as_ref() {
+            Expr::FakeState => term_dag.app("FakeState".into(), vec![]),
             Expr::Const(c, ty) => {
                 let child = c.to_egglog_internal(term_dag);
                 let ty = ty.to_egglog_internal(term_dag);
@@ -161,6 +168,13 @@ impl Expr {
                 let rhs = rhs.to_egglog_internal(term_dag);
                 let op = op.to_egglog_internal(term_dag);
                 term_dag.app("Bop".into(), vec![op, lhs, rhs])
+            }
+            Expr::Top(op, x, y, z) => {
+                let x = x.to_egglog_internal(term_dag);
+                let y = y.to_egglog_internal(term_dag);
+                let z = z.to_egglog_internal(term_dag);
+                let op = op.to_egglog_internal(term_dag);
+                term_dag.app("Top".into(), vec![op, x, y, z])
             }
             Expr::Uop(op, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);

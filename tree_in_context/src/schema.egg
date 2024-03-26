@@ -21,6 +21,7 @@
   ; a primitive type
   (Base BaseType)
   ; a typed tuple. Use an empty tuple as a unit type.
+  ; state edge also has unit type
   (TupleT TypeList) 
 )
 
@@ -32,6 +33,10 @@
 ; Leaf nodes
 ; Constants, argument, and empty tuple
 ; =================================
+
+;; when tree semantics are enabled, no state edges
+;; are required and this is used
+(function FakeState () Expr)
 
 ; Only a single argument is bound- if multiple values are needed, arg will be a tuple.
 ; e.g. `(Get (Arg tuple_type) 1)` gets the second value in the argument with some tuple_type.
@@ -53,6 +58,12 @@
 ; =================================
 ; Operators
 ; =================================
+
+(datatype TernaryOp
+  ; given a pointer, value, and a state edge
+  ; writes the value to the pointer and returns
+  ; the resulting state edge
+  (Write))
 (datatype BinaryOp
   (Add)
   (Sub)
@@ -65,9 +76,9 @@
   (Eq)
   (And)
   (Or)
-  ; given a pointer and a value, writes
-  ; the value to the pointer
-  (Write)
+  ; given a pointer and a state edge
+  ; loads the value at the pointer and returns (value, state edge)
+  (Load)
   ; Takes a pointer and an integer, and offsets
   ; the pointer by the integer
   (PtrAdd))
@@ -76,8 +87,6 @@
   ; prints any non-tuple value
   ; returns an empty tuple
   (Print)
-  ; given a pointer, loads the value at the pointer
-  (Load)
   ; given a pointer, frees the whole memory region at the pointer
   (Free))
 

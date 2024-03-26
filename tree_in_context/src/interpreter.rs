@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display};
 
-use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, UnaryOp};
+use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, UnaryOp};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pointer {
@@ -153,6 +153,25 @@ impl<'a> VirtualMachine<'a> {
         }
     }
 
+    fn interpret_top(
+        &mut self,
+        top: &TernaryOp,
+        e1: &RcExpr,
+        e2: &RcExpr,
+        _e3: &RcExpr,
+        arg: &Value,
+    ) -> Value {
+        let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointer_expr(e, &Tuple(vec![]));
+        match top {
+            TernaryOp::Write => {
+                let pointer = get_pointer(e1, self);
+                let val = self.interpret_expr(e2, arg).clone();
+                self.mem.insert(pointer.addr(), val);
+                Tuple(vec![])
+            }
+        }
+    }
+
     fn interpret_bop(&mut self, bop: &BinaryOp, e1: &RcExpr, e2: &RcExpr, arg: &Value) -> Value {
         let get_int = |e: &RcExpr, vm: &mut Self| vm.interp_int_expr(e, arg);
         let get_bool = |e: &RcExpr, vm: &mut Self| vm.interp_bool_expr(e, arg);
@@ -167,6 +186,14 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::GreaterThan => Const(Constant::Bool(get_int(e1, self) > get_int(e2, self))),
             BinaryOp::LessEq => Const(Constant::Bool(get_int(e1, self) <= get_int(e2, self))),
             BinaryOp::GreaterEq => Const(Constant::Bool(get_int(e1, self) >= get_int(e2, self))),
+            BinaryOp::Load => {
+                let ptr = self.interp_pointer_expr(e1, arg);
+                if let Some(val) = self.mem.get(&ptr.addr()) {
+                    val.clone()
+                } else {
+                    panic!("No value bound at memory address {:?}", ptr.addr())
+                }
+            }
             BinaryOp::And => {
                 let b1 = get_bool(e1, self);
                 let b2 = get_bool(e2, self);
@@ -176,12 +203,6 @@ impl<'a> VirtualMachine<'a> {
                 let b1 = get_bool(e1, self);
                 let b2 = get_bool(e2, self);
                 Const(Constant::Bool(b1 || b2))
-            }
-            BinaryOp::Write => {
-                let pointer = get_pointer(e1, self);
-                let val = self.interpret_expr(e2, arg).clone();
-                self.mem.insert(pointer.addr(), val);
-                Tuple(vec![])
             }
             BinaryOp::PtrAdd => {
                 let Pointer {
@@ -203,14 +224,6 @@ impl<'a> VirtualMachine<'a> {
                 self.log.push(v_str.clone());
                 Tuple(vec![])
             }
-            UnaryOp::Load => {
-                let ptr = self.interp_pointer_expr(e, arg);
-                if let Some(val) = self.mem.get(&ptr.addr()) {
-                    val.clone()
-                } else {
-                    panic!("No value bound at memory address {:?}", ptr.addr())
-                }
-            }
             UnaryOp::Free => {
                 let ptr = self.interp_pointer_expr(e, arg);
                 self.mem.remove(&ptr.addr());
@@ -229,9 +242,11 @@ impl<'a> VirtualMachine<'a> {
 
     pub fn interpret_expr(&mut self, expr: &RcExpr, arg: &Value) -> Value {
         match expr.as_ref() {
+            Expr::FakeState => panic!("FakeState should not be interpreted"),
             Expr::Const(c, _ty) => Const(c.clone()),
             Expr::Bop(bop, e1, e2) => self.interpret_bop(bop, e1, e2, arg),
             Expr::Uop(uop, e) => self.interpret_uop(uop, e, arg),
+            Expr::Top(top, e1, e2, e3) => self.interpret_top(top, e1, e2, e3, arg),
             Expr::InContext(_assumption, e) => self.interpret_expr(e, arg),
             Expr::Get(e_tuple, i) => {
                 let Tuple(vals) = self.interpret_expr(e_tuple, arg) else {

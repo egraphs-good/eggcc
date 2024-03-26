@@ -1,7 +1,8 @@
 use crate::{
     interpreter::Value,
     schema::{
-        Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp,
+        Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram,
+        Type, UnaryOp,
     },
 };
 
@@ -109,8 +110,12 @@ pub fn free(ptr: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Free, ptr))
 }
 
+pub fn fakestate() -> RcExpr {
+    RcExpr::new(Expr::FakeState)
+}
+
 pub fn twrite(addr: RcExpr, val: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Write, addr, val))
+    RcExpr::new(Expr::Top(TernaryOp::Write, addr, val, fakestate()))
 }
 
 pub fn tprint(e: RcExpr) -> RcExpr {
@@ -129,11 +134,11 @@ pub fn second(e: RcExpr) -> RcExpr {
     get(e, 1)
 }
 pub fn write(ptr: RcExpr, val: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Write, ptr, val))
+    RcExpr::new(Expr::Top(TernaryOp::Write, ptr, val, fakestate()))
 }
 
 pub fn load(e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Uop(UnaryOp::Load, e))
+    RcExpr::new(Expr::Bop(BinaryOp::Load, e, fakestate()))
 }
 
 pub fn ptradd(ptr: RcExpr, i: RcExpr) -> RcExpr {

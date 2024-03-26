@@ -28,6 +28,11 @@ pub enum Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
+pub enum TernaryOp {
+    Write,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -40,15 +45,14 @@ pub enum BinaryOp {
     GreaterEq,
     And,
     Or,
-    Write,
     PtrAdd,
+    Load,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
 pub enum UnaryOp {
     Not,
     Print,
-    Load,
     Free,
 }
 
@@ -80,7 +84,9 @@ pub enum Assumption {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
+    FakeState,
     Const(Constant, Type),
+    Top(TernaryOp, RcExpr, RcExpr, RcExpr),
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
     Get(RcExpr, usize),

@@ -36,6 +36,7 @@ impl Expr {
 
     fn add_context(self: &RcExpr, current_ctx: Assumption) -> RcExpr {
         match self.as_ref() {
+            Expr::FakeState => RcExpr::new(Expr::FakeState),
             // leaf nodes are constant, empty, and arg
             Expr::Const(..) | Expr::Empty(..) | Expr::Arg(..) => {
                 in_context(current_ctx, self.clone())
@@ -77,6 +78,12 @@ impl Expr {
                 op.clone(),
                 x.add_context(current_ctx.clone()),
                 y.add_context(current_ctx),
+            )),
+            Expr::Top(op, x, y, z) => RcExpr::new(Expr::Top(
+                op.clone(),
+                x.add_context(current_ctx.clone()),
+                y.add_context(current_ctx.clone()),
+                z.add_context(current_ctx),
             )),
             Expr::Uop(op, x) => RcExpr::new(Expr::Uop(op.clone(), x.add_context(current_ctx))),
             Expr::Get(e, i) => RcExpr::new(Expr::Get(e.add_context(current_ctx), *i)),

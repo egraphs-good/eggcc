@@ -2,7 +2,7 @@ use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     ast::emptyt,
-    schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
+    schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
 };
 
 impl TreeProgram {
@@ -122,9 +122,10 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
             }
-            Expr::Bop(BinaryOp::Write, left, right) => {
+            Expr::Top(TernaryOp::Write, left, right, state) => {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_ty);
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_ty);
+                let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_ty);
                 let Type::Base(BaseType::PointerT(innert)) = lty else {
                     panic!("Expected pointer type. Got {:?}", lty)
                 };
@@ -140,7 +141,7 @@ impl<'a> TypeChecker<'a> {
                 );
                 (
                     emptyt(),
-                    RcExpr::new(Expr::Bop(BinaryOp::Write, new_left, new_right)),
+                    RcExpr::new(Expr::Top(TernaryOp::Write, new_left, new_right, new_state)),
                 )
             }
             Expr::Bop(BinaryOp::PtrAdd, left, right) => {
@@ -192,14 +193,15 @@ impl<'a> TypeChecker<'a> {
                 let (_ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
                 (emptyt(), RcExpr::new(Expr::Uop(UnaryOp::Print, new_inner)))
             }
-            Expr::Uop(UnaryOp::Load, inner) => {
+            Expr::Bop(BinaryOp::Load, inner, state) => {
                 let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
+                let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_ty);
                 let Type::Base(BaseType::PointerT(out_ty)) = ity else {
                     panic!("Expected pointer type. Got {:?}", ity)
                 };
                 (
                     Type::Base(*out_ty),
-                    RcExpr::new(Expr::Uop(UnaryOp::Load, new_inner)),
+                    RcExpr::new(Expr::Bop(BinaryOp::Load, new_inner, new_state)),
                 )
             }
             Expr::Uop(UnaryOp::Free, inner) => {

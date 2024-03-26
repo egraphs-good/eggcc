@@ -91,7 +91,7 @@ fn test_complex_prop_eq() -> crate::Result {
             prog.to_program(ty.clone(), ty.clone()),
             expected.to_program(ty.clone(), ty.clone()),
         ],
-        val_int(2),
+        tuple!(int(20), int(21)),
         val_int(4),
         vec![],
     )

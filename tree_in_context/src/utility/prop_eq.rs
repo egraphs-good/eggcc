@@ -4,6 +4,8 @@ use crate::egglog_test;
 #[test]
 fn test_simple_prop_eq() -> crate::Result {
     use crate::ast::*;
+    // (let (Concat (Parallel) (Arg) (Arg))
+    //      (Add (Get (Arg) 0) (Get (Arg) 1)))
     let prog = function(
         "main",
         base(intt()),
@@ -12,6 +14,8 @@ fn test_simple_prop_eq() -> crate::Result {
             .with_arg_types(base(intt()), base(intt())),
     )
     .func_with_arg_types();
+    // (let (Concat (Parallel) (Arg) (Arg))
+    //      (Mul (Get (Arg) 0) 2))
     let expected = function(
         "main",
         base(intt()),

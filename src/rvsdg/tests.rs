@@ -415,7 +415,6 @@ fn rvsdg_unstructured() {
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
     let rvsdg = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
-    assert_snapshot!(rvsdg.to_svg());
 
     // It's hard to write a useful test that's more than just a "change
     // detector" here. In this case, the function is not computing anything

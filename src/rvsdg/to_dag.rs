@@ -559,9 +559,8 @@ fn dag_translate_loop() {
     );
 }
 
-/*
 #[test]
-fn simple_if_translation() {
+fn dag_if_translation() {
     const PROGRAM: &str = r#"
 @main(): int {
     .entry:
@@ -575,39 +574,18 @@ fn simple_if_translation() {
         ret v1;
 }"#;
 
+    let myif = tif(
+        less_than(int(1), int(1)),
+        parallel!(getat(0), int(1)),
+        parallel!(getat(0), int(2)),
+    );
     dag_translation_test(
         PROGRAM,
         dagprogram!(function(
             "main",
-            emptyt(),
-            base(intt()),
-            tlet(
-                single(int(1)), // [1]
-                bind_value(
-                    less_than(getat(0), getat(0)), // [1, 1<1]
-                    bind_tuple(
-                        tif(
-                            getat(1),
-                            parallel!(getat(0)),
-                            bind_value(int(2), parallel!(getat(2)))
-                        ), // [1, 1<1, 2]
-                        getat(2)
-                    ),
-                ),
-            ),
-        ),),
-        dagprogram!(function(
-            "main",
-            emptyt(),
-            base(intt()),
-            tlet(
-                tif(
-                    less_than(int(1), int(1)),
-                    parallel!(int(1)),
-                    parallel!(int(2)),
-                ),
-                getat(0)
-            )
+            tuplet!(statet()),
+            tuplet!(intt(), statet()),
+            parallel!(get(myif.clone(), 1), get(myif, 0)),
         ),),
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(2)),
@@ -616,7 +594,7 @@ fn simple_if_translation() {
 }
 
 #[test]
-fn two_print_translation() {
+fn dag_print_translation() {
     const PROGRAM: &str = r#"
     @add() {
         v0: int = const 1;
@@ -626,31 +604,15 @@ fn two_print_translation() {
         print v1;
     }
     "#;
+    let first_print = dprint(add(int(1), int(2)), getat(0));
+    let second_print = dprint(int(2), first_print);
     dag_translation_test(
         PROGRAM,
         dagprogram!(function(
             "add",
-            TreeType::TupleT(vec![]),
-            TreeType::TupleT(vec![]),
-            tlet(
-                single(int(2)), // [2]
-                bind_value(
-                    int(1), // [2, 1]
-                    bind_value(
-                        add(getat(1), getat(0)), // [2, 1, 3]
-                        bind_tuple(tprint(getat(2)), bind_tuple(tprint(getat(0)), parallel!()),),
-                    ),
-                ),
-            )
-        ),),
-        dagprogram!(function(
-            "add",
-            TreeType::TupleT(vec![]),
-            TreeType::TupleT(vec![]),
-            tlet(
-                tprint(add(int(1), int(2))),
-                tlet(tprint(int(2)), parallel!(),)
-            )
+            tuplet!(statet()),
+            tuplet!(statet()),
+            parallel!(second_print),
         ),),
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
@@ -659,7 +621,7 @@ fn two_print_translation() {
 }
 
 #[test]
-fn multi_function_translation() {
+fn dag_multi_function_translation() {
     const PROGRAM: &str = r#"
 @myadd(): int {
     v0: int = const 1;
@@ -673,46 +635,21 @@ fn multi_function_translation() {
 }
 "#;
 
+    let mycall = call("myadd", parallel!(getat(0)));
     dag_translation_test(
         PROGRAM,
         dagprogram!(
             function(
                 "main",
-                TreeType::TupleT(vec![]),
-                TreeType::TupleT(vec![]),
-                tlet(
-                    single(call("myadd", parallel!())),
-                    bind_tuple(tprint(getat(0)), parallel!()),
-                ),
+                tuplet!(statet()),
+                tuplet!(statet()),
+                parallel!(dprint(get(mycall.clone(), 0), get(mycall, 1))),
             ),
             function(
                 "myadd",
-                TreeType::TupleT(vec![]),
-                base(intt()),
-                tlet(
-                    single(int(1)),
-                    bind_value(
-                        add(getat(0), getat(0)),
-                        getat(1), // returns res
-                    ),
-                ),
-            ),
-        ),
-        dagprogram!(
-            function(
-                "main",
-                TreeType::TupleT(vec![]),
-                TreeType::TupleT(vec![]),
-                tlet(
-                    single(call("myadd", parallel!())),
-                    bind_tuple(tprint(getat(0)), parallel!()),
-                ),
-            ),
-            function(
-                "myadd",
-                TreeType::TupleT(vec![]),
-                base(intt()),
-                add(int(1), int(1)),
+                tuplet!(statet()),
+                tuplet!(intt(), statet()),
+                parallel!(add(int(1), int(1)), getat(0)),
             ),
         ),
         Value::Tuple(vec![]),
@@ -720,4 +657,3 @@ fn multi_function_translation() {
         vec!["2".to_string()],
     );
 }
- */

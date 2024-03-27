@@ -9,6 +9,7 @@ use std::fmt::Write;
 use crate::interpreter::interpret_tree_prog;
 
 pub mod ast;
+pub mod dag_typechecker;
 pub mod from_egglog;
 pub mod interpreter;
 pub(crate) mod interval_analysis;

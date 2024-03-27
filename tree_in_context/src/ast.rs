@@ -106,31 +106,19 @@ pub fn not(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Not, e))
 }
 
-pub fn alloc(amount: RcExpr, value_ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Alloc(amount, fakestate(), value_ty))
-}
-
-pub fn dalloc(amount: RcExpr, state: RcExpr, value_ty: Type) -> RcExpr {
+pub fn alloc(amount: RcExpr, state: RcExpr, value_ty: Type) -> RcExpr {
     RcExpr::new(Expr::Alloc(amount, state, value_ty))
 }
 
-pub fn free(ptr: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Free, ptr, fakestate()))
-}
-
-pub fn fakestate() -> RcExpr {
-    RcExpr::new(Expr::FakeState)
+pub fn free(ptr: RcExpr, state: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Free, ptr, state))
 }
 
 pub fn twrite(addr: RcExpr, val: RcExpr, state: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Top(TernaryOp::Write, addr, val, state))
 }
 
-pub fn tprint(e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Print, e, fakestate()))
-}
-
-pub fn dprint(e: RcExpr, state: RcExpr) -> RcExpr {
+pub fn tprint(e: RcExpr, state: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Print, e, state))
 }
 
@@ -145,15 +133,11 @@ pub fn first(e: RcExpr) -> RcExpr {
 pub fn second(e: RcExpr) -> RcExpr {
     get(e, 1)
 }
-pub fn write(ptr: RcExpr, val: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Top(TernaryOp::Write, ptr, val, fakestate()))
+pub fn write(ptr: RcExpr, val: RcExpr, state: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Top(TernaryOp::Write, ptr, val, state))
 }
 
-pub fn load(e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Bop(BinaryOp::Load, e, fakestate()))
-}
-
-pub fn dload(e: RcExpr, state: RcExpr) -> RcExpr {
+pub fn load(e: RcExpr, state: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Load, e, state))
 }
 

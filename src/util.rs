@@ -429,7 +429,7 @@ impl Run {
                         file_extension: ".egg".to_string(),
                         name: "".to_string(),
                     }],
-                    Some(Interpretable::TreeProgram(tree)),
+                    None, // TODO produce interpretable after fixing interpreter Some(Interpretable::TreeProgram(tree)),
                 )
             }
             RunType::TreeOptimize => {

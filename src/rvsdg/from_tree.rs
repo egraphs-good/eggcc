@@ -207,7 +207,6 @@ impl<'a> TreeToRvsdg<'a> {
 
     fn convert_expr(&mut self, expr: RcExpr) -> Operands {
         let res = match expr.as_ref() {
-            Expr::FakeState => panic!("FakeState should not be converted back"),
             Expr::Function(_name, _inty, _outty, expr) => self.convert_expr(expr.clone()),
             Expr::Const(constant, _ty) => match constant {
                 tree_in_context::schema::Constant::Int(integer) => self.push_basic(

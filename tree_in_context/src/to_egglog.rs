@@ -158,7 +158,6 @@ impl Expr {
             return term.clone();
         }
         let res = match self.as_ref() {
-            Expr::FakeState => term_dag.app("FakeState".into(), vec![]),
             Expr::Const(c, ty) => {
                 let child = c.to_egglog_internal(term_dag);
                 let ty = ty.to_egglog_internal(term_dag);

@@ -310,7 +310,6 @@ impl FromEgglog {
               self.expr_from_egglog(expr),
             ))
           }
-          ("FakeState", []) => Rc::new(Expr::FakeState),
           _ => panic!("Invalid expr: {:?}", expr),
         })
     }

@@ -6,22 +6,21 @@ use std::iter;
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
+use tree_in_context::ast::*;
 #[cfg(test)]
 use tree_in_context::interpreter::Value;
 #[cfg(test)]
 use tree_in_context::schema::Constant;
-use tree_in_context::ast::*;
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_in_context::{
-    ast::{
-        add, call, dowhile,function, int, less_than, parallel_vec, program_vec, tfalse,
-        ttrue,
-    },
+    ast::{add, call, dowhile, function, int, less_than, parallel_vec, program_vec, tfalse, ttrue},
     schema::{RcExpr, TreeProgram, Type as TreeType},
 };
+
+use super::RvsdgType;
 
 impl RvsdgProgram {
     /// Converts an RVSDG program to the dag encoding.
@@ -49,11 +48,13 @@ enum StoredValue {
 }
 
 impl StoredValue {
-    fn to_expr(&self) -> RcExpr {
+    fn to_single_expr(&self) -> RcExpr {
         match self {
             StoredValue::Arg(index) => getat(*index),
             StoredValue::ValExpr(expr) => expr.clone(),
-            StoredValue::TupleExpr(expr) => expr.clone(),
+            StoredValue::TupleExpr(expr) => {
+                panic!("Cannot convert tuple to single expr. Got {:?}", expr)
+            }
         }
     }
 
@@ -129,22 +130,11 @@ impl<'a> DagTranslator<'a> {
         argument_values: Vec<StoredValue>,
         num_let_bound: usize,
         operands: impl Iterator<Item = Operand>,
-        mut skip_outputs: usize,
     ) -> RcExpr {
         let mut translator = DagTranslator::new(self.nodes, argument_values, num_let_bound);
-        let mut number_non_state_edges = 0;
-        let mut resulting_values = vec![];
         let resulting_exprs = operands.map(|operand| {
             let res = translator.translate_operand(operand);
-            if skip_outputs > 0 {
-                skip_outputs -= 1;
-            } else {
-                resulting_values.push(StoredValue::Arg(
-                    self.current_num_let_bound + number_non_state_edges,
-                ));
-                number_non_state_edges += 1;
-            }
-            res.to_expr()
+            res.to_single_expr()
         });
         let expr = parallel_vec(resulting_exprs);
         translator.build_translation(expr)
@@ -159,7 +149,11 @@ impl<'a> DagTranslator<'a> {
     fn translate_operand(&mut self, operand: Operand) -> StoredValue {
         match operand {
             Operand::Arg(index) => self.argument_values[index].clone(),
-            Operand::Id(id) => self.translate_node(id),
+            Operand::Id(id) => match self.translate_node(id) {
+                StoredValue::ValExpr(expr) => StoredValue::ValExpr(expr),
+                StoredValue::TupleExpr(expr) => StoredValue::ValExpr(get(expr, 0)),
+                StoredValue::Arg(argindex) => StoredValue::Arg(argindex),
+            },
             Operand::Project(p_index, id) => {
                 let values = self.translate_node(id);
                 StoredValue::ValExpr(values.get_at(p_index))
@@ -189,18 +183,16 @@ impl<'a> DagTranslator<'a> {
                     for input in inputs {
                         input_values.push(self.translate_operand(*input));
                     }
-                    let pred = self.translate_operand(*pred).to_expr();
+                    let pred = self.translate_operand(*pred).to_single_expr();
                     let then_translated = self.translate_subregion(
                         input_values.clone(),
                         self.current_num_let_bound,
                         then_branch.iter().copied(),
-                        0,
                     );
                     let else_translated = self.translate_subregion(
                         input_values.clone(),
                         self.current_num_let_bound,
                         else_branch.iter().copied(),
-                        0,
                     );
 
                     let expr = tif(pred, then_translated, else_translated);
@@ -216,7 +208,7 @@ impl<'a> DagTranslator<'a> {
                         inputs_values.push(self.translate_operand(*input));
                     }
 
-                    let pred = self.translate_operand(*pred).to_expr();
+                    let pred = self.translate_operand(*pred).to_single_expr();
 
                     let mut branches = vec![];
                     for output_vec in outputs.iter().enumerate() {
@@ -224,7 +216,6 @@ impl<'a> DagTranslator<'a> {
                             inputs_values.clone(),
                             self.current_num_let_bound,
                             output_vec.1.iter().copied(),
-                            0,
                         );
                         branches.push(translated);
                     }
@@ -254,11 +245,10 @@ impl<'a> DagTranslator<'a> {
                         inner_inputs.collect(),
                         input_index,
                         iter::once(pred).chain(outputs.iter()).copied(),
-                        1,
                     );
 
                     let loop_expr = dowhile(
-                        parallel_vec(input_values.into_iter().map(|val| val.to_expr())),
+                        parallel_vec(input_values.into_iter().map(|val| val.to_single_expr())),
                         loop_translated,
                     );
 
@@ -272,10 +262,10 @@ impl<'a> DagTranslator<'a> {
     /// return the newly created index.
     fn translate_basic_expr(&mut self, expr: BasicExpr<Operand>, id: Id) -> StoredValue {
         match expr {
-            BasicExpr::Op(op, children, _ty) => {
+            BasicExpr::Op(op, children, ty) => {
                 let children = children
                     .iter()
-                    .map(|c| self.translate_operand(*c).to_expr())
+                    .map(|c| self.translate_operand(*c).to_single_expr())
                     .collect::<Vec<_>>();
                 let expr = match (op, children.as_slice()) {
                     (ValueOps::Add, [a, b]) => add(a.clone(), b.clone()),
@@ -289,7 +279,17 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::Le, [a, b]) => less_eq(b.clone(), a.clone()),
                     (ValueOps::Not, [a]) => not(a.clone()),
                     (ValueOps::PtrAdd, [a, b]) => ptradd(a.clone(), b.clone()),
-                    (ValueOps::Load, [a, b]) => dload(a.clone(), b.clone()),
+                    (ValueOps::Load, [a, b]) => load(a.clone(), b.clone()),
+                    (ValueOps::Alloc, [a, b]) => {
+                        let bril_rs::Type::Pointer(_inner) = &ty else {
+                            panic!("Alloc should return a pointer type, found {:?}", ty);
+                        };
+                        alloc(
+                            a.clone(),
+                            b.clone(),
+                            TreeType::Base(RvsdgType::Bril(ty).to_tree_type().unwrap()),
+                        )
+                    }
                     _ => todo!("handle {} op", op),
                 };
                 match op {
@@ -304,7 +304,7 @@ impl<'a> DagTranslator<'a> {
                 }
                 let expr = call(
                     name.as_str(),
-                    parallel_vec(input_values.into_iter().map(|val| val.to_expr())),
+                    parallel_vec(input_values.into_iter().map(|val| val.to_single_expr())),
                 );
                 self.cache_tuple_res(expr, id)
             }
@@ -322,25 +322,26 @@ impl<'a> DagTranslator<'a> {
             BasicExpr::Effect(EffectOps::Print, args) => {
                 assert!(args.len() == 2, "print should have 2 arguments");
                 let translated = self.translate_operand(args[0]);
-                let arg1 = translated.to_expr();
-                let arg2 = self.translate_operand(args[1]).to_expr();
+                let arg1 = translated.to_single_expr();
+                let arg2 = self.translate_operand(args[1]).to_single_expr();
 
                 // print outputs a new unit value
-                let expr = dprint(arg1, arg2);
+                let expr = tprint(arg1, arg2);
                 self.cache_single_res(expr, id)
             }
             BasicExpr::Effect(EffectOps::Store, args) => {
                 assert!(args.len() == 3, "store should have 3 arguments");
-                let arg1 = self.translate_operand(args[0]).to_expr();
-                let arg2 = self.translate_operand(args[1]).to_expr();
-                let arg3 = self.translate_operand(args[2]).to_expr();
+                let arg1 = self.translate_operand(args[0]).to_single_expr();
+                let arg2 = self.translate_operand(args[1]).to_single_expr();
+                let arg3 = self.translate_operand(args[2]).to_single_expr();
                 let expr = twrite(arg1, arg2, arg3);
                 self.cache_single_res(expr, id)
             }
             BasicExpr::Effect(EffectOps::Free, args) => {
                 assert!(args.len() == 2, "free should have 2 arguments");
-                let arg1 = self.translate_operand(args[0]).to_expr();
-                let expr = free(arg1);
+                let arg1 = self.translate_operand(args[0]).to_single_expr();
+                let arg2 = self.translate_operand(args[1]).to_single_expr();
+                let expr = free(arg1, arg2);
                 self.cache_single_res(expr, id)
             }
             BasicExpr::Effect(effect_op, _args) => {
@@ -374,7 +375,7 @@ impl RvsdgFunction {
         let translated_results = self
             .results
             .iter()
-            .map(|r| translator.translate_operand(r.1).to_expr())
+            .map(|r| translator.translate_operand(r.1).to_single_expr())
             .collect::<Vec<_>>();
         let result_types = self
             .results
@@ -545,7 +546,7 @@ fn dag_translate_loop() {
             add(getat(1), int(1))
         ),
     );
-    let myprint = dprint(get(myloop.clone(), 1), get(myloop, 0));
+    let myprint = tprint(get(myloop.clone(), 1), get(myloop, 0));
     dag_translation_test(
         PROGRAM,
         program!(function(
@@ -605,8 +606,8 @@ fn dag_print_translation() {
         print v1;
     }
     "#;
-    let first_print = dprint(add(int(1), int(2)), getat(0));
-    let second_print = dprint(int(2), first_print);
+    let first_print = tprint(add(int(1), int(2)), getat(0));
+    let second_print = tprint(int(2), first_print);
     dag_translation_test(
         PROGRAM,
         program!(function(
@@ -644,7 +645,7 @@ fn dag_multi_function_translation() {
                 "main",
                 tuplet!(statet()),
                 tuplet!(statet()),
-                parallel!(dprint(get(mycall.clone(), 0), get(mycall, 1))),
+                parallel!(tprint(get(mycall.clone(), 0), get(mycall, 1))),
             ),
             function(
                 "myadd",

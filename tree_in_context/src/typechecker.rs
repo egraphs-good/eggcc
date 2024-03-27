@@ -243,12 +243,12 @@ impl<'a> TypeChecker<'a> {
                 let Type::Base(BaseType::IntT) = aty else {
                     panic!("Expected int type. Got {:?}", aty)
                 };
-                let Type::Base(_baset) = ty else {
+                let Type::Base(baset) = ty else {
                     panic!("Expected base type. Got {:?}", ty)
                 };
 
                 (
-                    ty.clone(),
+                    tuplet!(baset.clone(), statet()),
                     RcExpr::new(Expr::Alloc(new_amount, new_state, ty.clone())),
                 )
             }
@@ -284,7 +284,7 @@ impl<'a> TypeChecker<'a> {
             Expr::Single(arg) => {
                 let (Type::Base(basety), new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty)
                 else {
-                    panic!("Expected base type in child of Single")
+                    panic!("Expected base type in child of Single. Got {:?}", arg)
                 };
                 (
                     Type::TupleT(vec![basety]),

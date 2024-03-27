@@ -82,7 +82,6 @@ impl Display for TreeProgram {
 impl Expr {
     pub fn constructor(&self) -> Constructor {
         match self {
-            Expr::FakeState => Constructor::FakeState,
             Expr::Function(..) => Constructor::Function,
             Expr::Const(..) => Constructor::Const,
             Expr::Bop(..) => Constructor::Bop,

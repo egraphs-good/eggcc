@@ -242,7 +242,6 @@ impl<'a> VirtualMachine<'a> {
 
     pub fn interpret_expr(&mut self, expr: &RcExpr, arg: &Value) -> Value {
         match expr.as_ref() {
-            Expr::FakeState => panic!("FakeState should not be interpreted"),
             Expr::Const(c, _ty) => Const(c.clone()),
             Expr::Bop(bop, e1, e2) => self.interpret_bop(bop, e1, e2, arg),
             Expr::Uop(uop, e) => self.interpret_uop(uop, e, arg),

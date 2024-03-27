@@ -85,7 +85,6 @@ pub enum Assumption {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
-    FakeState,
     Const(Constant, Type),
     Top(TernaryOp, RcExpr, RcExpr, RcExpr),
     Bop(BinaryOp, RcExpr, RcExpr),

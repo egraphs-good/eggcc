@@ -96,7 +96,6 @@ pub(crate) fn rules() -> Vec<String> {
     .collect::<Vec<String>>()
 }
 
-
 /* TODO fix purity test after move to dag semantics
 #[test]
 fn test_purity_analysis() -> crate::Result {

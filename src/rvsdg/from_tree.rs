@@ -1,5 +1,5 @@
 //! Convert tree programs to RVSDGs
-
+#![allow(dead_code)]
 use std::{iter, rc::Rc};
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};

@@ -10,15 +10,15 @@ use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
 use tree_in_context::interpreter::Value;
 #[cfg(test)]
 use tree_in_context::schema::Constant;
-use tree_in_context::{ast::*, schema::BaseType};
+use tree_in_context::ast::*;
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_in_context::{
     ast::{
-        add, call, dowhile, emptyt, function, int, less_than, parallel_vec, program_vec, tfalse,
-        tprint, ttrue,
+        add, call, dowhile,function, int, less_than, parallel_vec, program_vec, tfalse,
+        ttrue,
     },
     schema::{RcExpr, TreeProgram, Type as TreeType},
 };
@@ -28,7 +28,7 @@ impl RvsdgProgram {
     pub fn to_dag_encoding(&self) -> TreeProgram {
         let last_function = self.functions.last().unwrap();
         let rest_functions = self.functions.iter().take(self.functions.len() - 1);
-        dagprogram_vec(
+        program_vec(
             last_function.to_dag_encoding(),
             rest_functions
                 .map(|f| f.to_dag_encoding())
@@ -333,7 +333,8 @@ impl<'a> DagTranslator<'a> {
                 assert!(args.len() == 3, "store should have 3 arguments");
                 let arg1 = self.translate_operand(args[0]).to_expr();
                 let arg2 = self.translate_operand(args[1]).to_expr();
-                let expr = twrite(arg1, arg2);
+                let arg3 = self.translate_operand(args[2]).to_expr();
+                let expr = twrite(arg1, arg2, arg3);
                 self.cache_single_res(expr, id)
             }
             BasicExpr::Effect(EffectOps::Free, args) => {
@@ -475,7 +476,7 @@ fn simple_translation_dag() {
     ret res;
   }
   "#,
-        dagprogram!(function(
+        program!(function(
             "add",
             TreeType::TupleT(vec![statet()]),
             tuplet!(intt(), statet()),
@@ -507,7 +508,7 @@ fn dag_translate_simple_loop() {
     );
     dag_translation_test(
         PROGRAM,
-        dagprogram!(function(
+        program!(function(
             "myfunc",
             tuplet!(statet()),
             tuplet!(intt(), statet()),
@@ -547,7 +548,7 @@ fn dag_translate_loop() {
     let myprint = dprint(get(myloop.clone(), 1), get(myloop, 0));
     dag_translation_test(
         PROGRAM,
-        dagprogram!(function(
+        program!(function(
             "main",
             tuplet!(statet()),
             tuplet!(statet()),
@@ -581,7 +582,7 @@ fn dag_if_translation() {
     );
     dag_translation_test(
         PROGRAM,
-        dagprogram!(function(
+        program!(function(
             "main",
             tuplet!(statet()),
             tuplet!(intt(), statet()),
@@ -608,7 +609,7 @@ fn dag_print_translation() {
     let second_print = dprint(int(2), first_print);
     dag_translation_test(
         PROGRAM,
-        dagprogram!(function(
+        program!(function(
             "add",
             tuplet!(statet()),
             tuplet!(statet()),
@@ -638,7 +639,7 @@ fn dag_multi_function_translation() {
     let mycall = call("myadd", parallel!(getat(0)));
     dag_translation_test(
         PROGRAM,
-        dagprogram!(
+        program!(
             function(
                 "main",
                 tuplet!(statet()),

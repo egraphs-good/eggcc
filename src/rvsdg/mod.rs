@@ -36,7 +36,6 @@ pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
 mod to_dag;
-mod to_tree;
 
 use std::fmt;
 

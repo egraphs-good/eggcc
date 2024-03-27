@@ -122,11 +122,7 @@ pub fn fakestate() -> RcExpr {
     RcExpr::new(Expr::FakeState)
 }
 
-pub fn twrite(addr: RcExpr, val: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Top(TernaryOp::Write, addr, val, fakestate()))
-}
-
-pub fn dwrite(addr: RcExpr, val: RcExpr, state: RcExpr) -> RcExpr {
+pub fn twrite(addr: RcExpr, val: RcExpr, state: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Top(TernaryOp::Write, addr, val, state))
 }
 
@@ -181,21 +177,6 @@ pub use program;
 /// by calling `with_arg_types`.
 pub fn program_vec(entry: RcExpr, functions: Vec<RcExpr>) -> TreeProgram {
     TreeProgram { entry, functions }.with_arg_types()
-}
-
-/// a macro that wraps the children in
-/// a vec for program. Also ensures the program has correct argument types.
-/// e.g. `program!(main, f1, f2, f3)` becomes `TreeProgram { entry: main, functions: vec![f1, f2, f3] }`
-#[macro_export]
-macro_rules! dagprogram {
-    ($main:expr, $($x:expr),* $(,)?) => ($crate::ast::dagprogram_vec($main, vec![$($x),*]))
-}
-pub use dagprogram;
-
-/// Ensures the program has correct argument types
-/// by calling `with_arg_types`.
-pub fn dagprogram_vec(entry: RcExpr, functions: Vec<RcExpr>) -> TreeProgram {
-    TreeProgram { entry, functions }.dag_with_arg_types()
 }
 
 /// Create a switch given a predicate and a list of cases

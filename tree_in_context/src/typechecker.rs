@@ -1,8 +1,9 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::emptyt,
-    schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
+    ast::{base, emptyt, statet},
+    schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type},
+    tuplet,
 };
 
 impl TreeProgram {
@@ -140,7 +141,7 @@ impl<'a> TypeChecker<'a> {
                     rty
                 );
                 (
-                    emptyt(),
+                    base(statet()),
                     RcExpr::new(Expr::Top(TernaryOp::Write, new_left, new_right, new_state)),
                 )
             }
@@ -193,7 +194,7 @@ impl<'a> TypeChecker<'a> {
                 let (_ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
                 let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_ty);
                 (
-                    emptyt(),
+                    base(statet()),
                     RcExpr::new(Expr::Bop(BinaryOp::Print, new_inner, new_state)),
                 )
             }
@@ -204,7 +205,7 @@ impl<'a> TypeChecker<'a> {
                     panic!("Expected pointer type. Got {:?}", ity)
                 };
                 (
-                    Type::Base(*out_ty),
+                    tuplet!(*out_ty, statet()),
                     RcExpr::new(Expr::Bop(BinaryOp::Load, new_inner, new_state)),
                 )
             }
@@ -215,7 +216,7 @@ impl<'a> TypeChecker<'a> {
                     panic!("Expected pointer type. Got {:?}", ity)
                 };
                 (
-                    emptyt(),
+                    base(statet()),
                     RcExpr::new(Expr::Bop(BinaryOp::Free, new_inner, new_state)),
                 )
             }
@@ -392,7 +393,6 @@ impl<'a> TypeChecker<'a> {
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
             // should have covered all cases, but rust can't prove it
             // due to the side conditions
-            Expr::FakeState => (emptyt(), RcExpr::new(Expr::FakeState)),
             _ => panic!("Unexpected expression {:?}", expr),
         };
 

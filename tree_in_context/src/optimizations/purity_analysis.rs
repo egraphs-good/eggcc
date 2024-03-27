@@ -22,7 +22,6 @@ fn uop_is_pure(uop: &UnaryOp) -> bool {
     use UnaryOp::*;
     match uop {
         Not => true,
-        Free => false,
     }
 }
 

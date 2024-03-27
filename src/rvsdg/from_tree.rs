@@ -234,6 +234,15 @@ impl<'a> TreeToRvsdg<'a> {
                     .expect("Expected base type for load"),
                 ))
             }
+            Expr::Bop(BinaryOp::Free, l, _ignore_state_edge) => {
+                let child = self.convert_expr(l.clone());
+                self.push_basic(BasicExpr::Effect(EffectOps::Free, child))
+            }
+            Expr::Bop(BinaryOp::Print, l, _ignore_state_edge) => {
+                let child = self.convert_expr(l.clone());
+                self.push_basic(BasicExpr::Effect(EffectOps::Print, child))
+            }
+
             Expr::Uop(op, child) => {
                 let child = self.convert_expr(child.clone());
                 assert_eq!(child.len(), 1, "Expected exactly one result for child");

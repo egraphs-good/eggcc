@@ -194,6 +194,17 @@ impl<'a> VirtualMachine<'a> {
                     panic!("No value bound at memory address {:?}", ptr.addr())
                 }
             }
+            BinaryOp::Free => {
+                let ptr = get_pointer(e1, self);
+                self.mem.remove(&ptr.addr());
+                Tuple(vec![])
+            }
+            BinaryOp::Print => {
+                let val = self.interpret_expr(e1, arg);
+                let v_str = val.bril_print().to_string();
+                self.log.push(v_str.clone());
+                Tuple(vec![])
+            }
             BinaryOp::And => {
                 let b1 = get_bool(e1, self);
                 let b2 = get_bool(e2, self);
@@ -218,17 +229,6 @@ impl<'a> VirtualMachine<'a> {
     fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Value) -> Value {
         match uop {
             UnaryOp::Not => Const(Constant::Bool(!self.interp_bool_expr(e, arg))),
-            UnaryOp::Print => {
-                let val = self.interpret_expr(e, arg);
-                let v_str = val.bril_print().to_string();
-                self.log.push(v_str.clone());
-                Tuple(vec![])
-            }
-            UnaryOp::Free => {
-                let ptr = self.interp_pointer_expr(e, arg);
-                self.mem.remove(&ptr.addr());
-                Tuple(vec![])
-            }
         }
     }
 
@@ -264,7 +264,7 @@ impl<'a> VirtualMachine<'a> {
                 vals[*i].clone()
             }
             // in_context this is type checked, so ignore type
-            Expr::Alloc(e_size, _ty) => {
+            Expr::Alloc(e_size, _ignore_state, _ty) => {
                 let size = self.interp_int_expr(e_size, arg);
                 let addr = self.next_addr;
                 self.next_addr += usize::try_from(size).unwrap();

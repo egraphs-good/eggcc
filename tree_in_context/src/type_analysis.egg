@@ -70,7 +70,7 @@
        (HasArgType e ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (Alloc e _))
+(rule ((= lhs (Alloc e state _))
        (HasArgType e ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
@@ -156,29 +156,29 @@
 
 
 (rule (
-        (= lhs (Uop (Print) e))
+        (= lhs (Bop (Print) e state))
         (HasType e _ty)             ; just make sure it has some type.
       )
       ((HasType lhs (TupleT (TNil))))
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Uop (Print) e))
+        (= lhs (Bop (Print) e state))
         (HasType e (TupleT ty))
       )
       ((panic "Don't print a tuple"))
       :ruleset type-analysis)
 
 
-(rule ((= lhs (Uop (Free) e))
+(rule ((= lhs (Bop (Free) e s))
        (HasType e (Base (PointerT _ty))))
       ((HasType lhs (TupleT (TNil))))
       :ruleset type-analysis)
-(rule ((= lhs (Uop (Free) e))
+(rule ((= lhs (Bop (Free) e s))
        (HasType e (Base (IntT))))
       ((panic "Free expected pointer, received integer"))
       :ruleset type-analysis)
-(rule ((= lhs (Uop (Free) e))
+(rule ((= lhs (Bop (Free) e s))
        (HasType e (TupleT _ty)))
       ((panic "Free expected pointer, received tuple"))
       :ruleset type-analysis)
@@ -358,12 +358,12 @@
       :ruleset type-analysis)
 
 ; Other ops
-(rule ((= lhs (Alloc amt ty))) 
+(rule ((= lhs (Alloc amt state ty))) 
       ((ExpectType amt (Base (IntT)) "(Alloc) expected int, got {?}"))
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Alloc amt ty))
+        (= lhs (Alloc amt state ty))
         (HasType amt (Base (IntT)))
       )
       ((HasType lhs ty))

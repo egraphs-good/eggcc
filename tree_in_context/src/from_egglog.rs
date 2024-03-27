@@ -153,6 +153,8 @@ impl FromEgglog {
           ("And", []) => BinaryOp::And,
           ("Or", []) => BinaryOp::Or,
           ("PtrAdd", []) => BinaryOp::PtrAdd,
+          ("Print", []) => BinaryOp::Print,
+          ("Free", []) => BinaryOp::Free,
           _ => panic!("Invalid binary op: {:?}", op),
         })
     }
@@ -161,8 +163,6 @@ impl FromEgglog {
         match_term_app!(uop.clone();
         {
           ("Not", []) => UnaryOp::Not,
-          ("Print", []) => UnaryOp::Print,
-          ("Free", []) => UnaryOp::Free,
           _ => panic!("Invalid unary op: {:?}", uop),
         })
     }
@@ -215,11 +215,13 @@ impl FromEgglog {
               index.try_into().unwrap(),
             ))
           }
-          ("Alloc", [expr, type_]) => {
+          ("Alloc", [expr, state, type_]) => {
             let expr = self.termdag.get(*expr);
             let type_ = self.termdag.get(*type_);
+            let state = self.termdag.get(*state);
             Rc::new(Expr::Alloc(
               self.expr_from_egglog(expr),
+              self.expr_from_egglog(state),
               self.type_from_egglog(type_),
             ))
           }

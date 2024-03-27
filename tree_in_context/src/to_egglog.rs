@@ -186,10 +186,11 @@ impl Expr {
                 let lit_index = term_dag.lit(Literal::Int(*index as i64));
                 term_dag.app("Get".into(), vec![expr, lit_index])
             }
-            Expr::Alloc(expr, ty) => {
+            Expr::Alloc(expr, state, ty) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 let ty = ty.to_egglog_internal(term_dag);
-                term_dag.app("Alloc".into(), vec![expr, ty])
+                let state = state.to_egglog_internal(term_dag);
+                term_dag.app("Alloc".into(), vec![expr, state, ty])
             }
             Expr::Call(name, arg) => {
                 let arg = arg.to_egglog_internal(term_dag);

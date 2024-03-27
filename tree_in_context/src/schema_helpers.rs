@@ -56,6 +56,8 @@ impl BinaryOp {
             And => "And",
             Or => "Or",
             Load => "Load",
+            Free => "Free",
+            Print => "Print",
             PtrAdd => "PtrAdd",
         }
     }
@@ -66,8 +68,6 @@ impl UnaryOp {
         use UnaryOp::*;
         match self {
             Not => "Not",
-            Print => "Print",
-            Free => "Free",
         }
     }
 }
@@ -372,7 +372,11 @@ impl Constructor {
             Constructor::Empty => vec![f(Static(Sort::Type), "ty")],
             Constructor::Cons => vec![f(SubExpr, "hd"), f(SubListExpr, "tl")],
             Constructor::Nil => vec![],
-            Constructor::Alloc => vec![f(SubExpr, "e"), f(Static(Sort::Type), "ty")],
+            Constructor::Alloc => vec![
+                f(SubExpr, "e"),
+                f(SubExpr, "state"),
+                f(Static(Sort::Type), "ty"),
+            ],
             Constructor::InContext => {
                 vec![f(Static(Sort::Assumption), "assumption"), f(SubExpr, "e")]
             }
@@ -437,6 +441,8 @@ impl BinaryOp {
             | BinaryOp::LessEq
             | BinaryOp::Eq => Some((base(intt()), base(intt()), base(boolt()))),
             BinaryOp::Load => None,
+            BinaryOp::Free => None,
+            BinaryOp::Print => None,
             BinaryOp::PtrAdd => None,
         }
     }
@@ -446,8 +452,6 @@ impl UnaryOp {
     pub(crate) fn types(&self) -> Option<(Type, Type)> {
         match self {
             UnaryOp::Not => Some((base(boolt()), base(boolt()))),
-            UnaryOp::Print => None,
-            UnaryOp::Free => None,
         }
     }
 }

@@ -136,22 +136,20 @@ fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
         BinaryOp::LessEq => Some(ValueOps::Le),
         BinaryOp::GreaterEq => Some(ValueOps::Ge),
         BinaryOp::PtrAdd => Some(ValueOps::PtrAdd),
+        BinaryOp::Print => None,
+        BinaryOp::Free => None,
     }
 }
 
 fn value_op_from_unary_op(uop: UnaryOp) -> Option<ValueOps> {
     match uop {
         UnaryOp::Not => Some(ValueOps::Not),
-        UnaryOp::Print => None,
-        UnaryOp::Free => None,
     }
 }
 
 fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
     match uop {
         UnaryOp::Not => None,
-        UnaryOp::Print => Some(EffectOps::Print),
-        UnaryOp::Free => Some(EffectOps::Free),
     }
 }
 
@@ -301,7 +299,7 @@ impl<'a> TreeToRvsdg<'a> {
                 );
                 vec![child[*index]]
             }
-            Expr::Alloc(size, ty) => {
+            Expr::Alloc(size, _state, ty) => {
                 let size = self.convert_expr(size.clone());
                 assert_eq!(size.len(), 1, "Expected exactly one result for size");
                 let size = size[0];

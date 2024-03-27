@@ -81,14 +81,15 @@
   (Load)
   ; Takes a pointer and an integer, and offsets
   ; the pointer by the integer
-  (PtrAdd))
-(datatype UnaryOp
-  (Not)
-  ; prints any non-tuple value
+  (PtrAdd)
+  ; given and value and a state edge, prints the value as a side-effect
+  ; the value must be a base value, not a tuple
   ; returns an empty tuple
   (Print)
-  ; given a pointer, frees the whole memory region at the pointer
+  ; given a pointer and state edge, frees the whole memory region at the pointer
   (Free))
+(datatype UnaryOp
+  (Not))
 
 ; Operators
 (function Top   (TernaryOp Expr Expr Expr) Expr)
@@ -96,9 +97,10 @@
 (function Uop   (UnaryOp Expr) Expr)
 ; gets from a tuple. static index
 (function Get   (Expr i64) Expr)
+; (Alloc amount state_edge pointer_type)
 ; allocate an integer amount of memory for a particular type
 ; returns a pointer to the allocated memory
-(function Alloc (Expr Type)      Expr)
+(function Alloc (Expr Expr Type)      Expr)
 ;               name of func   arg
 (function Call (String         Expr) Expr)
 

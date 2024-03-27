@@ -47,13 +47,13 @@ pub enum BinaryOp {
     Or,
     PtrAdd,
     Load,
+    Print,
+    Free,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
 pub enum UnaryOp {
     Not,
-    Print,
-    Free,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,7 +90,7 @@ pub enum Expr {
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
     Get(RcExpr, usize),
-    Alloc(RcExpr, Type),
+    Alloc(RcExpr, RcExpr, Type),
     Call(String, RcExpr),
     Empty(Type),
     Single(RcExpr),

@@ -189,9 +189,13 @@ impl<'a> TypeChecker<'a> {
                 );
                 (expected_out, RcExpr::new(Expr::Uop(op.clone(), new_inner)))
             }
-            Expr::Uop(UnaryOp::Print, inner) => {
+            Expr::Bop(BinaryOp::Print, inner, state) => {
                 let (_ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
-                (emptyt(), RcExpr::new(Expr::Uop(UnaryOp::Print, new_inner)))
+                let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_ty);
+                (
+                    emptyt(),
+                    RcExpr::new(Expr::Bop(BinaryOp::Print, new_inner, new_state)),
+                )
             }
             Expr::Bop(BinaryOp::Load, inner, state) => {
                 let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
@@ -204,12 +208,16 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Bop(BinaryOp::Load, new_inner, new_state)),
                 )
             }
-            Expr::Uop(UnaryOp::Free, inner) => {
+            Expr::Bop(BinaryOp::Free, inner, state) => {
                 let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_ty);
+                let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_ty);
                 let Type::Base(BaseType::PointerT(_out_ty)) = ity else {
                     panic!("Expected pointer type. Got {:?}", ity)
                 };
-                (emptyt(), RcExpr::new(Expr::Uop(UnaryOp::Free, new_inner)))
+                (
+                    emptyt(),
+                    RcExpr::new(Expr::Bop(BinaryOp::Free, new_inner, new_state)),
+                )
             }
             Expr::Get(child, index) => {
                 let (cty, new_child) = self.add_arg_types_to_expr(child.clone(), arg_ty);
@@ -228,8 +236,9 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Get(new_child, *index)),
                 )
             }
-            Expr::Alloc(amount, ty) => {
+            Expr::Alloc(amount, state, ty) => {
                 let (aty, new_amount) = self.add_arg_types_to_expr(amount.clone(), arg_ty);
+                let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_ty);
                 let Type::Base(BaseType::IntT) = aty else {
                     panic!("Expected int type. Got {:?}", aty)
                 };
@@ -237,7 +246,10 @@ impl<'a> TypeChecker<'a> {
                     panic!("Expected base type. Got {:?}", ty)
                 };
 
-                (ty.clone(), RcExpr::new(Expr::Alloc(new_amount, ty.clone())))
+                (
+                    ty.clone(),
+                    RcExpr::new(Expr::Alloc(new_amount, new_state, ty.clone())),
+                )
             }
             Expr::Call(string, arg) => {
                 let (aty, new_arg) = self.add_arg_types_to_expr(arg.clone(), arg_ty);

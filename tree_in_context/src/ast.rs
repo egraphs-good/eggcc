@@ -103,11 +103,15 @@ pub fn not(e: RcExpr) -> RcExpr {
 }
 
 pub fn alloc(amount: RcExpr, value_ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Alloc(amount, value_ty))
+    RcExpr::new(Expr::Alloc(amount, fakestate(), value_ty))
+}
+
+pub fn dalloc(amount: RcExpr, state: RcExpr, value_ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Alloc(amount, state, value_ty))
 }
 
 pub fn free(ptr: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Uop(UnaryOp::Free, ptr))
+    RcExpr::new(Expr::Bop(BinaryOp::Free, ptr, fakestate()))
 }
 
 pub fn fakestate() -> RcExpr {
@@ -118,8 +122,12 @@ pub fn twrite(addr: RcExpr, val: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Top(TernaryOp::Write, addr, val, fakestate()))
 }
 
+pub fn dwrite(addr: RcExpr, val: RcExpr, state: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Top(TernaryOp::Write, addr, val, state))
+}
+
 pub fn tprint(e: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Uop(UnaryOp::Print, e))
+    RcExpr::new(Expr::Bop(BinaryOp::Print, e, fakestate()))
 }
 
 pub fn get(e: RcExpr, i: usize) -> RcExpr {
@@ -139,6 +147,10 @@ pub fn write(ptr: RcExpr, val: RcExpr) -> RcExpr {
 
 pub fn load(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Load, e, fakestate()))
+}
+
+pub fn dload(e: RcExpr, state: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Load, e, state))
 }
 
 pub fn ptradd(ptr: RcExpr, i: RcExpr) -> RcExpr {

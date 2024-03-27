@@ -74,11 +74,11 @@ fn test_tuple_ith() -> crate::Result {
     ;; with print
     (let tup2 (Concat par
                 (Concat par 
-                    (Uop (Print) (Const (Int 0) {emptyt})) 
+                    (Bop (Print) (Const (Int 0) {emptyt}) (FakeState)) 
                     (Concat par (Single (Const (Int 1) {emptyt})) 
-                                (Concat par (Uop (Print) (Const (Int 0) {emptyt})) 
+                                (Concat par (Bop (Print) (Const (Int 0) {emptyt}) (FakeState)) 
                                             (Single (Const (Int 2) {emptyt})))))
-                (Concat par (Single (Const (Int 3) {emptyt})) (Uop (Print) (Const (Int 0) {emptyt})))))
+                (Concat par (Single (Const (Int 3) {emptyt})) (Bop (Print) (Const (Int 0) {emptyt}) (FakeState)))))
     ");
 
     let check = format!(

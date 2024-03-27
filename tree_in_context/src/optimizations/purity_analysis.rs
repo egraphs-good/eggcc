@@ -14,7 +14,7 @@ fn bop_is_pure(bop: &BinaryOp) -> bool {
     match bop {
         Add | Sub | Mul | LessThan | And | Or | Div | PtrAdd | Eq | GreaterThan | LessEq
         | GreaterEq => true,
-        Load => false,
+        Load | Print | Free => false,
     }
 }
 
@@ -22,7 +22,7 @@ fn uop_is_pure(uop: &UnaryOp) -> bool {
     use UnaryOp::*;
     match uop {
         Not => true,
-        Print | Free => false,
+        Free => false,
     }
 }
 

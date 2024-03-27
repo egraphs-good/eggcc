@@ -1,10 +1,10 @@
 //! Convert tree programs to RVSDGs
-#![allow(dead_code)]
+
 use std::{iter, rc::Rc};
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
 use tree_in_context::{
-    schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
+    schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
 };
 
@@ -44,7 +44,6 @@ fn basetype_to_bril_type(ty: BaseType) -> bril_rs::Type {
         BaseType::PointerT(inner) => {
             bril_rs::Type::Pointer(Box::new(basetype_to_bril_type(*inner)))
         }
-        BaseType::StateT => panic!("State type not supported in bril"),
     }
 }
 
@@ -124,7 +123,6 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
 
 fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
     match bop {
-        BinaryOp::Load => Some(ValueOps::Load),
         BinaryOp::Add => Some(ValueOps::Add),
         BinaryOp::Sub => Some(ValueOps::Sub),
         BinaryOp::Mul => Some(ValueOps::Mul),
@@ -136,21 +134,33 @@ fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
         BinaryOp::GreaterThan => Some(ValueOps::Gt),
         BinaryOp::LessEq => Some(ValueOps::Le),
         BinaryOp::GreaterEq => Some(ValueOps::Ge),
+        BinaryOp::Write => None,
         BinaryOp::PtrAdd => Some(ValueOps::PtrAdd),
-        BinaryOp::Print => None,
-        BinaryOp::Free => None,
+    }
+}
+
+fn effect_op_from_binary_op(bop: BinaryOp) -> Option<EffectOps> {
+    match bop {
+        BinaryOp::Write => Some(EffectOps::Store),
+        _ => None,
     }
 }
 
 fn value_op_from_unary_op(uop: UnaryOp) -> Option<ValueOps> {
     match uop {
         UnaryOp::Not => Some(ValueOps::Not),
+        UnaryOp::Print => None,
+        UnaryOp::Load => Some(ValueOps::Load),
+        UnaryOp::Free => None,
     }
 }
 
 fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
     match uop {
         UnaryOp::Not => None,
+        UnaryOp::Print => Some(EffectOps::Print),
+        UnaryOp::Load => None,
+        UnaryOp::Free => Some(EffectOps::Free),
     }
 }
 
@@ -220,29 +230,32 @@ impl<'a> TreeToRvsdg<'a> {
                     ))
                 }
             },
-            Expr::Bop(BinaryOp::Load, l, _ignore_state_edge) => {
-                let child = self.convert_expr(l.clone());
-                self.push_basic(BasicExpr::Op(
-                    ValueOps::Load,
-                    child,
-                    type_to_bril_type(
-                        self.type_cache
-                            .get(&Rc::as_ptr(&expr))
-                            .expect("Expected to find type for expr")
-                            .clone(),
-                    )
-                    .expect("Expected base type for load"),
-                ))
+            Expr::Bop(op, l, r) => {
+                let l = self.convert_expr(l.clone());
+                let r = self.convert_expr(r.clone());
+                assert_eq!(l.len(), 1, "Expected exactly one result for left operand");
+                assert_eq!(r.len(), 1, "Expected exactly one result for right operand");
+                let l = l[0];
+                let r = r[0];
+                if let Some(vop) = value_op_from_binary_op(op.clone()) {
+                    let Type::Base(cached) = self
+                        .type_cache
+                        .get(&Rc::as_ptr(&expr))
+                        .expect("Expected to find type for expr")
+                    else {
+                        panic!("Expected base type for binary op. Got: {:?}", expr)
+                    };
+                    self.push_basic(BasicExpr::Op(
+                        vop,
+                        vec![l, r],
+                        basetype_to_bril_type(cached.clone()),
+                    ))
+                } else if let Some(eop) = effect_op_from_binary_op(op.clone()) {
+                    self.push_basic(BasicExpr::Effect(eop, vec![l, r]))
+                } else {
+                    panic!("Unknown binary op {:?}", op)
+                }
             }
-            Expr::Bop(BinaryOp::Free, l, _ignore_state_edge) => {
-                let child = self.convert_expr(l.clone());
-                self.push_basic(BasicExpr::Effect(EffectOps::Free, child))
-            }
-            Expr::Bop(BinaryOp::Print, l, _ignore_state_edge) => {
-                let child = self.convert_expr(l.clone());
-                self.push_basic(BasicExpr::Effect(EffectOps::Print, child))
-            }
-
             Expr::Uop(op, child) => {
                 let child = self.convert_expr(child.clone());
                 assert_eq!(child.len(), 1, "Expected exactly one result for child");
@@ -265,39 +278,6 @@ impl<'a> TreeToRvsdg<'a> {
                     panic!("Unknown unary op {:?}", op)
                 }
             }
-            Expr::Bop(op, l, r) => {
-                let l = self.convert_expr(l.clone());
-                let r = self.convert_expr(r.clone());
-                assert_eq!(l.len(), 1, "Expected exactly one result for left operand");
-                assert_eq!(r.len(), 1, "Expected exactly one result for right operand");
-                let l = l[0];
-                let r = r[0];
-                if let Some(vop) = value_op_from_binary_op(op.clone()) {
-                    let Type::Base(cached) = self
-                        .type_cache
-                        .get(&Rc::as_ptr(&expr))
-                        .expect("Expected to find type for expr")
-                    else {
-                        panic!("Expected base type for binary op. Got: {:?}", expr)
-                    };
-                    self.push_basic(BasicExpr::Op(
-                        vop,
-                        vec![l, r],
-                        basetype_to_bril_type(cached.clone()),
-                    ))
-                } else {
-                    panic!("Unknown binary op {:?}", op)
-                }
-            }
-            Expr::Top(TernaryOp::Write, child1, child2, _fake_state) => {
-                let child1 = self.convert_expr(child1.clone());
-                let child2 = self.convert_expr(child2.clone());
-                assert_eq!(child1.len(), 1, "Expected exactly one result for child1");
-                assert_eq!(child2.len(), 1, "Expected exactly one result for child2");
-                let child1 = child1[0];
-                let child2 = child2[0];
-                self.push_basic(BasicExpr::Effect(EffectOps::Store, vec![child1, child2]))
-            }
             Expr::Get(child, index) => {
                 let child = self.convert_expr(child.clone());
                 assert!(
@@ -308,7 +288,7 @@ impl<'a> TreeToRvsdg<'a> {
                 );
                 vec![child[*index]]
             }
-            Expr::Alloc(size, _state, ty) => {
+            Expr::Alloc(size, ty) => {
                 let size = self.convert_expr(size.clone());
                 assert_eq!(size.len(), 1, "Expected exactly one result for size");
                 let size = size[0];

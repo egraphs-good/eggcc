@@ -29,7 +29,6 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    println!("1");
 
     if let Some(debug_dir) = args.debug_dir {
         if let Result::Err(error) = visualize(TestProgram::BrilFile(args.file.clone()), debug_dir) {
@@ -37,7 +36,6 @@ fn main() {
             return;
         }
     }
-    println!("2");
 
     if args.interp && !args.run_mode.produces_interpretable() {
         eprintln!(
@@ -46,7 +44,6 @@ fn main() {
         );
         return;
     }
-    println!("3");
 
     let file = match args.file.extension().and_then(OsStr::to_str) {
         Some("rs") => TestProgram::RustFile(args.file.clone()),

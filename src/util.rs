@@ -255,7 +255,7 @@ impl TestProgram {
             TestProgram::RustFile(path) => {
                 let mut src = String::new();
                 let mut file = std::fs::File::open(path.clone()).unwrap();
-                
+
                 file.read_to_string(&mut src).unwrap();
                 let syntax = syn::parse_file(&src).unwrap();
                 let name = path.display().to_string();
@@ -349,7 +349,6 @@ impl Run {
     }
 
     pub fn run(&self) -> Result<RunOutput, EggCCError> {
-        println!("{:?}", self.test_type);
         let original_interpreted = if self.interp {
             Some(Optimizer::interp_bril(
                 &self.prog_with_args.program,
@@ -544,8 +543,15 @@ impl Run {
                 )
             }
             RunType::RustToBril => {
-                println!("here");
-                (vec![], None)
+                let bril = &self.prog_with_args.program;
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: self.prog_with_args.name.clone(),
+                    }],
+                    Some(Interpretable::Bril(bril.clone())),
+                )
             }
         };
 

@@ -3,6 +3,7 @@ use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
 use std::fmt::Debug;
+use std::io::Read;
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
@@ -144,7 +145,7 @@ where
 pub enum RunType {
     /// Do nothing to the input bril program besides parse it.
     /// Output the original program.
-    Nothing,
+    Parse,
     /// Convert the input bril program to the tree encoding, optimize the program
     /// using egglog, and output the resulting bril program.
     /// The default way to run this tool.
@@ -185,6 +186,8 @@ pub enum RunType {
     OptimizeDirectJumps,
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
+    /// Convert Rust to bril
+    RustToBril,
 }
 
 impl Display for RunType {
@@ -198,7 +201,7 @@ impl RunType {
     /// that can be interpreted.
     pub fn produces_interpretable(&self) -> bool {
         match self {
-            RunType::Nothing => true,
+            RunType::Parse => true,
             RunType::Optimize => true,
             RunType::RvsdgConversion => false,
             RunType::RvsdgRoundTrip => true,
@@ -214,6 +217,7 @@ impl RunType {
             RunType::TreeOptimize => true,
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
+            RunType::RustToBril => true,
         }
     }
 }
@@ -228,14 +232,15 @@ pub struct ProgWithArguments {
 #[derive(Clone)]
 pub enum TestProgram {
     Prog(ProgWithArguments),
-    File(PathBuf),
+    BrilFile(PathBuf),
+    RustFile(PathBuf),
 }
 
 impl TestProgram {
     pub fn read_program(self) -> ProgWithArguments {
         match self {
             TestProgram::Prog(prog) => prog,
-            TestProgram::File(path) => {
+            TestProgram::BrilFile(path) => {
                 let program_read = std::fs::read_to_string(path.clone()).unwrap();
                 let args = Optimizer::parse_bril_args(&program_read);
                 let program = Optimizer::parse_bril(&program_read).unwrap();
@@ -245,6 +250,21 @@ impl TestProgram {
                     program,
                     name,
                     args,
+                }
+            }
+            TestProgram::RustFile(path) => {
+                let mut src = String::new();
+                let mut file = std::fs::File::open(path.clone()).unwrap();
+
+                file.read_to_string(&mut src).unwrap();
+                let syntax = syn::parse_file(&src).unwrap();
+                let name = path.display().to_string();
+                let program = rs2bril::from_file_to_program(syntax, false, Some(name.clone()));
+
+                ProgWithArguments {
+                    program,
+                    name,
+                    args: vec![],
                 }
             }
         }
@@ -340,7 +360,7 @@ impl Run {
         };
 
         let (visualizations, interpretable_out) = match self.test_type {
-            RunType::Nothing => (
+            RunType::Parse => (
                 vec![],
                 Some(Interpretable::Bril(self.prog_with_args.program.clone())),
             ),
@@ -520,6 +540,17 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::Bril(bril)),
+                )
+            }
+            RunType::RustToBril => {
+                let bril = &self.prog_with_args.program;
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: self.prog_with_args.name.clone(),
+                    }],
+                    Some(Interpretable::Bril(bril.clone())),
                 )
             }
         };

@@ -56,13 +56,14 @@ pub(crate) fn rules() -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
+/* TODO fix up with dag semantics
 #[cfg(test)]
 use crate::ast::*;
 #[cfg(test)]
 use crate::schema::Constant;
 #[cfg(test)]
 use crate::Value;
-/* TODO fix up with dag semantics
+
 #[test]
 fn test_body_contains() -> crate::Result {
     let myloop = dowhile(

@@ -3,6 +3,7 @@ use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
 use std::fmt::Debug;
+use std::io::Read;
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
@@ -185,6 +186,8 @@ pub enum RunType {
     OptimizeDirectJumps,
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
+    /// Convert Rust to bril
+    RustToBril,
 }
 
 impl Display for RunType {
@@ -214,6 +217,7 @@ impl RunType {
             RunType::TreeOptimize => true,
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
+            RunType::RustToBril => true,
         }
     }
 }
@@ -228,14 +232,15 @@ pub struct ProgWithArguments {
 #[derive(Clone)]
 pub enum TestProgram {
     Prog(ProgWithArguments),
-    File(PathBuf),
+    BrilFile(PathBuf),
+    RustFile(PathBuf),
 }
 
 impl TestProgram {
     pub fn read_program(self) -> ProgWithArguments {
         match self {
             TestProgram::Prog(prog) => prog,
-            TestProgram::File(path) => {
+            TestProgram::BrilFile(path) => {
                 let program_read = std::fs::read_to_string(path.clone()).unwrap();
                 let args = Optimizer::parse_bril_args(&program_read);
                 let program = Optimizer::parse_bril(&program_read).unwrap();
@@ -245,6 +250,21 @@ impl TestProgram {
                     program,
                     name,
                     args,
+                }
+            }
+            TestProgram::RustFile(path) => {
+                let mut src = String::new();
+                let mut file = std::fs::File::open(path.clone()).unwrap();
+                
+                file.read_to_string(&mut src).unwrap();
+                let syntax = syn::parse_file(&src).unwrap();
+                let name = path.display().to_string();
+                let program = rs2bril::from_file_to_program(syntax, false, Some(name.clone()));
+
+                ProgWithArguments {
+                    program,
+                    name,
+                    args: vec![],
                 }
             }
         }
@@ -329,6 +349,7 @@ impl Run {
     }
 
     pub fn run(&self) -> Result<RunOutput, EggCCError> {
+        println!("{:?}", self.test_type);
         let original_interpreted = if self.interp {
             Some(Optimizer::interp_bril(
                 &self.prog_with_args.program,
@@ -521,6 +542,10 @@ impl Run {
                     }],
                     Some(Interpretable::Bril(bril)),
                 )
+            }
+            RunType::RustToBril => {
+                println!("here");
+                (vec![], None)
             }
         };
 

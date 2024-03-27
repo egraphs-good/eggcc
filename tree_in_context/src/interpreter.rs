@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fmt::Display};
+//! Interpret DAG programs. Each expression is evaluated once, so side-effects only happen
+//! once. All the dependencies of an expression are evaluted first.
+//! The interpreter relies on the invariant that common subexpressions are
+//! shared as the same Rc pointer. Otherwise, effects may be executed multiple times.
+
+use std::{collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, UnaryOp};
 
@@ -36,6 +41,7 @@ pub enum Value {
     Const(Constant),
     Ptr(Pointer),
     Tuple(Vec<Value>),
+    StateV,
 }
 
 impl Value {
@@ -46,6 +52,11 @@ impl Value {
             Ptr(Pointer { .. }) => todo!("How does bril print pointers?"),
             Tuple(_vs) => {
                 panic!("Tried to print tuple as Bril value. There are no tuples in Bril.");
+            }
+            Value::StateV => {
+                panic!(
+                    "Tried to print state value as Bril value. There are no state values in Bril."
+                );
             }
         }
     }
@@ -69,6 +80,7 @@ impl Display for Value {
                 }
                 write!(f, ")")
             }
+            Value::StateV => write!(f, "StateV"),
         }
     }
 }
@@ -83,6 +95,8 @@ pub(crate) struct VirtualMachine<'a> {
     next_addr: usize,
     /// All of memory
     mem: HashMap<usize, Value>,
+    /// Values for already evaluated expressions
+    memo: HashMap<*const Expr, Value>,
     /// Print log
     log: Vec<String>,
 }
@@ -100,14 +114,17 @@ pub struct BrilState {
 
 /// Interprets a program, returning the value
 /// returned by the program and the print log.
+/// The interpreter relies on the invariant that common subexpressions are
+/// shared as the same Rc pointer. Otherwise, effects may be executed multiple times.
 pub fn interpret_tree_prog(prog: &TreeProgram, arg: &Value) -> (Value, Vec<String>) {
     let mut vm = VirtualMachine {
         program: prog,
         next_addr: 0,
         mem: HashMap::new(),
+        memo: HashMap::new(),
         log: vec![],
     };
-    let ret_val = vm.interpret(&prog.entry.func_name().unwrap(), arg);
+    let ret_val = vm.interpret_call(&prog.entry.func_name().unwrap(), arg);
     (ret_val, vm.log)
 }
 
@@ -120,6 +137,7 @@ pub fn interpret_expr(expr: &RcExpr, func_arg: &Value) -> BrilState {
             functions: vec![],
         },
         next_addr: 0,
+        memo: HashMap::new(),
         mem: HashMap::new(),
         log: vec![],
     };
@@ -167,7 +185,7 @@ impl<'a> VirtualMachine<'a> {
                 let pointer = get_pointer(e1, self);
                 let val = self.interpret_expr(e2, arg).clone();
                 self.mem.insert(pointer.addr(), val);
-                Tuple(vec![])
+                Value::StateV
             }
         }
     }
@@ -197,13 +215,13 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::Free => {
                 let ptr = get_pointer(e1, self);
                 self.mem.remove(&ptr.addr());
-                Tuple(vec![])
+                Value::StateV
             }
             BinaryOp::Print => {
                 let val = self.interpret_expr(e1, arg);
                 let v_str = val.bril_print().to_string();
                 self.log.push(v_str.clone());
-                Tuple(vec![])
+                Value::StateV
             }
             BinaryOp::And => {
                 let b1 = get_bool(e1, self);
@@ -235,13 +253,31 @@ impl<'a> VirtualMachine<'a> {
     // TODO: refactor to return a Result<Value, RuntimeError>
     // struct RuntimeError { BadRead(Value) }
     // in_contexts e typechecks
-    pub fn interpret(&mut self, func_name: &str, arg: &Value) -> Value {
+    pub fn interpret_call(&mut self, func_name: &str, arg: &Value) -> Value {
         let func = self.program.get_function(func_name).unwrap();
-        self.interpret_expr(func.func_body().unwrap(), arg)
+        self.interpret_region(
+            func.func_body()
+                .expect("Expected function in interpret_call"),
+            arg,
+        )
+    }
+
+    pub fn interpret_region(&mut self, expr: &RcExpr, arg: &Value) -> Value {
+        let mut memo_before = HashMap::new();
+        // save the memo before, since we are evaluating in a new region
+        std::mem::swap(&mut self.memo, &mut memo_before);
+        // evaluate expression with brand new memo
+        let res = self.interpret_expr(expr, arg);
+        // restore the old memo now that we are back in the previous region
+        std::mem::swap(&mut self.memo, &mut memo_before);
+        res
     }
 
     pub fn interpret_expr(&mut self, expr: &RcExpr, arg: &Value) -> Value {
-        match expr.as_ref() {
+        if let Some(val) = self.memo.get(&(expr.as_ref() as *const Expr)) {
+            return val.clone();
+        }
+        let res = match expr.as_ref() {
             Expr::Const(c, _ty) => Const(c.clone()),
             Expr::Bop(bop, e1, e2) => self.interpret_bop(bop, e1, e2, arg),
             Expr::Uop(uop, e) => self.interpret_uop(uop, e, arg),
@@ -318,7 +354,7 @@ impl<'a> VirtualMachine<'a> {
                 let mut pred = Const(Constant::Bool(true));
                 while pred == Const(Constant::Bool(true)) {
                     let Tuple(pred_output_val) =
-                        self.interpret_expr(pred_output, &Tuple(vals.clone()))
+                        self.interpret_region(pred_output, &Tuple(vals.clone()))
                     else {
                         panic!("expected tuple for pred_output in do-while")
                     };
@@ -333,19 +369,18 @@ impl<'a> VirtualMachine<'a> {
                 }
                 Tuple(vals)
             }
-            Expr::Let(input, output) => {
-                let input_val = self.interpret_expr(input, arg);
-                // Evaluate the output with the result
-                // bound to `(Arg)`
-                self.interpret_expr(output, &input_val)
+            Expr::Let(_input, _output) => {
+                panic!("let bindings should be removed for dag");
             }
             Expr::Arg(_ty) => arg.clone(),
             Expr::Function(..) => panic!("Function should not be interpreted as an expression"),
             Expr::Call(func_name, e) => {
                 let e_val = self.interpret_expr(e, arg);
-                self.interpret(func_name, &e_val)
+                self.interpret_call(func_name, &e_val)
             }
-        }
+        };
+        self.memo.insert(Rc::as_ptr(expr), res.clone());
+        res
     }
 }
 
@@ -369,7 +404,7 @@ fn test_interpret_calls() {
     let res = interpret_tree_prog(&expr, &Const(Constant::Int(5))).0;
     assert_eq!(res, Const(Constant::Int(10)));
 }
-/*TODO make interpreter work with DAG semantics
+
 #[test]
 fn test_interpret_recursive() {
     use crate::ast::*;
@@ -396,10 +431,11 @@ fn test_interpreter() {
     // print numbers 1-10
     let expr = get(
         dowhile(
-            parallel!(int(1)),
+            parallel!(int(1), arg()),
             parallel!(
                 less_than(getat(0), int(10)),
-                first(parallel!(add(getat(0), int(1)), tprint(getat(0))))
+                add(getat(0), int(1)),
+                tprint(getat(0), getat(1))
             ),
         ),
         0,
@@ -414,53 +450,3 @@ fn test_interpreter() {
             .collect::<Vec<String>>()
     );
 }
-
-#[test]
-fn test_interpreter_fib_using_memory() {
-    use crate::ast::*;
-    let nth = 10;
-    let fib_nth = 55;
-    let expr = tlet(
-        alloc(int(nth + 2), base(intt())),
-        tlet(
-            concat_seq(
-                twrite(arg(), int(0)), // address 0, value 0
-                concat_seq(
-                    twrite(ptradd(arg(), int(1)), int(1)), // address 1, value 1
-                    single(arg()),
-                ),
-            ), // [ptr(0)]
-            tlet(
-                dowhile(
-                    parallel!(ptradd(getat(0), int(2)), int(2)), // [ptr(2), 2]
-                    cons_par(
-                        less_than(getat(1), int(nth)),
-                        concat_par(
-                            twrite(
-                                getat(0),
-                                add(
-                                    load(ptradd(getat(0), int(-1))),
-                                    load(ptradd(getat(0), int(-2))),
-                                ),
-                            ),
-                            parallel!(ptradd(getat(0), int(1)), add(getat(1), int(1))),
-                        ),
-                    ),
-                ),
-                parallel!(load(ptradd(getat(0), int(-1))), getat(1)),
-            ),
-        ),
-    );
-
-    let res = interpret_expr(&expr, &val_empty());
-    assert_eq!(
-        res.value,
-        Tuple(vec![
-            Const(Constant::Int(fib_nth)),
-            Const(Constant::Int(11))
-        ])
-    );
-    assert_eq!(res.mem[&(nth as usize)], Const(Constant::Int(fib_nth)));
-    assert!(!res.mem.contains_key(&(nth as usize + 1)));
-}
-*/

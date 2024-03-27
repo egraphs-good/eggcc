@@ -67,8 +67,7 @@ impl Optimizer {
     }
 
     /// Produces a tuple value from the string arguments
-    fn parse_arguments(args: Vec<String>) -> Value {
-        Value::Tuple(
+    fn parse_arguments(args: Vec<String>) -> Vec<Value> {
             args.into_iter()
                 .map(|arg| {
                     if let Ok(int) = arg.parse::<i64>() {
@@ -81,8 +80,7 @@ impl Optimizer {
                         panic!("Invalid argument to bril program: {}", arg);
                     }
                 })
-                .collect(),
-        )
+                .collect()
     }
 
     /// Interpret a program in an `Interpretable` IR.
@@ -96,8 +94,11 @@ impl Optimizer {
         match program {
             Interpretable::Bril(program) => Self::interp_bril(program, args, profile_out),
             Interpretable::TreeProgram(program) => {
-                let (val, mut printed) = interpret_tree_prog(program, &Self::parse_arguments(args));
-                assert_eq!(val, Value::Tuple(vec![]));
+                let mut parsed = Self::parse_arguments(args);
+                // add the state value to the end
+                parsed.push(Value::StateV);
+                let (val, mut printed) = interpret_tree_prog(program, &Value::Tuple(parsed));
+                assert_eq!(val, Value::Tuple(vec![Value::StateV]));
                 // add new line to the end of each line in printed
                 for line in printed.iter_mut() {
                     line.push('\n');

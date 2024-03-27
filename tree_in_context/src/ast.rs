@@ -30,12 +30,20 @@ pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
 }
 
+pub fn tuplev_vec(types: Vec<Value>) -> Value {
+    Value::Tuple(types)
+}
+
 pub fn pointert(t: BaseType) -> Type {
     Type::Base(BaseType::PointerT(Box::new(t)))
 }
 
 pub fn val_int(i: i64) -> Value {
     Value::Const(Constant::Int(i))
+}
+
+pub fn val_state() -> Value {
+    Value::StateV
 }
 
 pub fn val_bool(i: bool) -> Value {
@@ -57,6 +65,13 @@ macro_rules! tuplet {
     ($($x:expr),* $(,)?) => ($crate::ast::tuplet_vec(vec![$($x),*]))
 }
 pub use tuplet;
+
+/// Construct a tuple value from the child values
+#[macro_export]
+macro_rules! tuplev {
+    ($($x:expr),* $(,)?) => ($crate::ast::tuplev_vec(vec![$($x),*]))
+}
+pub use tuplev;
 
 pub fn add(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Add, l, r))

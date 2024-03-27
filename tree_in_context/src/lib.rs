@@ -70,7 +70,7 @@ fn print_with_intermediate_helper(
                 .collect::<Vec<String>>()
                 .join(" ");
             let fresh_var = format!("__tmp{}", cache.len());
-            write!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
+            write!(res, "(let {fresh_var} ({head} {child_vars}))\n").unwrap();
             cache.insert(term, fresh_var.clone());
             fresh_var
         }

@@ -68,19 +68,19 @@ impl Optimizer {
 
     /// Produces a tuple value from the string arguments
     fn parse_arguments(args: Vec<String>) -> Vec<Value> {
-            args.into_iter()
-                .map(|arg| {
-                    if let Ok(int) = arg.parse::<i64>() {
-                        Value::Const(Constant::Int(int))
-                    } else if arg == "true" {
-                        Value::Const(Constant::Bool(true))
-                    } else if arg == "false" {
-                        Value::Const(Constant::Bool(false))
-                    } else {
-                        panic!("Invalid argument to bril program: {}", arg);
-                    }
-                })
-                .collect()
+        args.into_iter()
+            .map(|arg| {
+                if let Ok(int) = arg.parse::<i64>() {
+                    Value::Const(Constant::Int(int))
+                } else if arg == "true" {
+                    Value::Const(Constant::Bool(true))
+                } else if arg == "false" {
+                    Value::Const(Constant::Bool(false))
+                } else {
+                    panic!("Invalid argument to bril program: {}", arg);
+                }
+            })
+            .collect()
     }
 
     /// Interpret a program in an `Interpretable` IR.

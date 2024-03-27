@@ -5,7 +5,10 @@
 
 use std::{collections::HashMap, fmt::Display, rc::Rc};
 
-use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, UnaryOp};
+use crate::{
+    schema::{BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, UnaryOp},
+    tuplev,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pointer {
@@ -176,7 +179,7 @@ impl<'a> VirtualMachine<'a> {
         top: &TernaryOp,
         e1: &RcExpr,
         e2: &RcExpr,
-        _e3: &RcExpr,
+        e3: &RcExpr,
         arg: &Value,
     ) -> Value {
         let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointer_expr(e, arg);
@@ -184,6 +187,8 @@ impl<'a> VirtualMachine<'a> {
             TernaryOp::Write => {
                 let pointer = get_pointer(e1, self);
                 let val = self.interpret_expr(e2, arg).clone();
+                let state_val = self.interpret_expr(e3, arg);
+                assert_eq!(state_val, Value::StateV);
                 self.mem.insert(pointer.addr(), val);
                 Value::StateV
             }
@@ -206,19 +211,25 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::GreaterEq => Const(Constant::Bool(get_int(e1, self) >= get_int(e2, self))),
             BinaryOp::Load => {
                 let ptr = self.interp_pointer_expr(e1, arg);
+                let state_val = self.interpret_expr(e2, arg);
+                assert_eq!(state_val, Value::StateV);
                 if let Some(val) = self.mem.get(&ptr.addr()) {
-                    val.clone()
+                    tuplev!(val.clone(), Value::StateV)
                 } else {
                     panic!("No value bound at memory address {:?}", ptr.addr())
                 }
             }
             BinaryOp::Free => {
                 let ptr = get_pointer(e1, self);
+                let state_val = self.interpret_expr(e2, arg);
+                assert_eq!(state_val, Value::StateV);
                 self.mem.remove(&ptr.addr());
                 Value::StateV
             }
             BinaryOp::Print => {
                 let val = self.interpret_expr(e1, arg);
+                let state_val = self.interpret_expr(e2, arg);
+                assert_eq!(state_val, Value::StateV);
                 let v_str = val.bril_print().to_string();
                 self.log.push(v_str.clone());
                 Value::StateV
@@ -274,7 +285,7 @@ impl<'a> VirtualMachine<'a> {
     }
 
     pub fn interpret_expr(&mut self, expr: &RcExpr, arg: &Value) -> Value {
-        if let Some(val) = self.memo.get(&(expr.as_ref() as *const Expr)) {
+        if let Some(val) = self.memo.get(&Rc::as_ptr(expr)) {
             return val.clone();
         }
         let res = match expr.as_ref() {
@@ -299,11 +310,14 @@ impl<'a> VirtualMachine<'a> {
                 vals[*i].clone()
             }
             // in_context this is type checked, so ignore type
-            Expr::Alloc(e_size, _ignore_state, _ty) => {
+            Expr::Alloc(e_size, state_expr, _ty) => {
                 let size = self.interp_int_expr(e_size, arg);
+                let state_val = self.interpret_expr(state_expr, arg);
+                assert_eq!(state_val, Value::StateV);
                 let addr = self.next_addr;
                 self.next_addr += usize::try_from(size).unwrap();
-                Ptr(Pointer::new(addr, size as usize, 0))
+
+                tuplev!(Ptr(Pointer::new(addr, size as usize, 0)), Value::StateV)
             }
             Expr::Empty(_ty) => Tuple(vec![]),
             Expr::Single(e) => Tuple(vec![self.interpret_expr(e, arg)]),
@@ -394,12 +408,7 @@ fn test_interpret_calls() {
             base(intt()),
             mul(call("func2", sub(arg(), int(1))), int(2))
         ),
-        function(
-            "func2",
-            base(intt()),
-            base(intt()),
-            tlet(arg(), add(arg(), int(1)))
-        ),
+        function("func2", base(intt()), base(intt()), add(arg(), int(1))),
     );
     let res = interpret_tree_prog(&expr, &Const(Constant::Int(5))).0;
     assert_eq!(res, Const(Constant::Int(10)));
@@ -440,7 +449,7 @@ fn test_interpreter() {
         ),
         0,
     );
-    let res = interpret_expr(&expr, &val_empty());
+    let res = interpret_expr(&expr, &val_state());
     assert_eq!(res.value, Const(Constant::Int(11)));
     assert_eq!(
         res.log,
@@ -450,3 +459,6 @@ fn test_interpreter() {
             .collect::<Vec<String>>()
     );
 }
+
+#[test]
+fn test_recursive_interp() {}

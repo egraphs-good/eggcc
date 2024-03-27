@@ -167,8 +167,8 @@ impl<'a> DagTranslator<'a> {
     /// It's important not to evaluate a node twice, instead using the cached index
     /// in `self.stored_node`
     fn translate_node(&mut self, id: Id) -> StoredValue {
-        if let Some(index) = self.stored_node.get(&id) {
-            index.clone()
+        if let Some(stored) = self.stored_node.get(&id) {
+            stored.clone()
         } else {
             let node = &self.nodes[id];
             match node {

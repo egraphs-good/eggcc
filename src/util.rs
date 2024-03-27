@@ -144,7 +144,7 @@ where
 pub enum RunType {
     /// Do nothing to the input bril program besides parse it.
     /// Output the original program.
-    Nothing,
+    Parse,
     /// Convert the input bril program to the tree encoding, optimize the program
     /// using egglog, and output the resulting bril program.
     /// The default way to run this tool.
@@ -198,7 +198,7 @@ impl RunType {
     /// that can be interpreted.
     pub fn produces_interpretable(&self) -> bool {
         match self {
-            RunType::Nothing => true,
+            RunType::Parse => true,
             RunType::Optimize => true,
             RunType::RvsdgConversion => false,
             RunType::RvsdgRoundTrip => true,
@@ -340,7 +340,7 @@ impl Run {
         };
 
         let (visualizations, interpretable_out) = match self.test_type {
-            RunType::Nothing => (
+            RunType::Parse => (
                 vec![],
                 Some(Interpretable::Bril(self.prog_with_args.program.clone())),
             ),

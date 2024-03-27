@@ -11,6 +11,7 @@ pub enum BaseType {
     IntT,
     BoolT,
     PointerT(Box<BaseType>),
+    StateT,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

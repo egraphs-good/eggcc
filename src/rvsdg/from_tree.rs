@@ -44,6 +44,7 @@ fn basetype_to_bril_type(ty: BaseType) -> bril_rs::Type {
         BaseType::PointerT(inner) => {
             bril_rs::Type::Pointer(Box::new(basetype_to_bril_type(*inner)))
         }
+        BaseType::StateT => panic!("State type not supported in bril"),
     }
 }
 

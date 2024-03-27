@@ -195,7 +195,7 @@ impl RvsdgType {
     pub(crate) fn to_tree_type(&self) -> Option<BaseType> {
         match self {
             RvsdgType::Bril(ty) => Some(type_to_treetype_base(ty)),
-            RvsdgType::PrintState => None,
+            RvsdgType::PrintState => Some(BaseType::StateT),
         }
     }
 }

@@ -22,7 +22,8 @@
   (Base BaseType)
   ; a typed tuple. Use an empty tuple as a unit type.
   ; state edge also has unit type
-  (TupleT TypeList) 
+  (TupleT TypeList)
+  (StateT)
 )
 
 (function TNil () TypeList)

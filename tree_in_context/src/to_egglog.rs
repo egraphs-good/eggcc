@@ -58,6 +58,7 @@ impl BaseType {
                 let inner = inner.to_egglog_internal(state);
                 state.app("PointerT".into(), vec![inner])
             }
+            BaseType::StateT => state.app("StateT".into(), vec![]),
         }
     }
 }

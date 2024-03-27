@@ -130,6 +130,10 @@ pub fn tprint(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Print, e, fakestate()))
 }
 
+pub fn dprint(e: RcExpr, state: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Print, e, state))
+}
+
 pub fn get(e: RcExpr, i: usize) -> RcExpr {
     RcExpr::new(Expr::Get(e, i))
 }

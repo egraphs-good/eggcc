@@ -6,11 +6,11 @@ use std::iter;
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_in_context::ast::*;
 #[cfg(test)]
 use tree_in_context::interpreter::Value;
 #[cfg(test)]
 use tree_in_context::schema::Constant;
+use tree_in_context::{ast::*, schema::BaseType};
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
@@ -239,7 +239,7 @@ impl<'a> DagTranslator<'a> {
                     }
 
                     let mut input_index = 0;
-                    let inner_inputs = input_values.iter().map(|val| {
+                    let inner_inputs = input_values.iter().map(|_val| {
                         input_index += 1;
                         StoredValue::Arg(input_index - 1)
                     });
@@ -247,7 +247,7 @@ impl<'a> DagTranslator<'a> {
                     // For the sub-region, we need a new region translator
                     // with its own arguments and bindings.
                     // We then put the whole loop in a let binding and move on.
-                    let (loop_translated, output_values) = self.translate_subregion(
+                    let (loop_translated, _output_values) = self.translate_subregion(
                         inner_inputs.collect(),
                         input_index,
                         iter::once(pred).chain(outputs.iter()).copied(),
@@ -295,7 +295,7 @@ impl<'a> DagTranslator<'a> {
                 };
                 self.cache_result(expr, id)
             }
-            BasicExpr::Call(name, inputs, num_ret_values, output_type) => {
+            BasicExpr::Call(name, inputs, _num_ret_values, _output_type) => {
                 let mut input_values = vec![];
                 for input in inputs {
                     input_values.push(self.translate_operand(input));
@@ -323,10 +323,13 @@ impl<'a> DagTranslator<'a> {
                 let arg1 = translated
                     .to_expr()
                     .expect("Print buffer expr should be a value, not a state edge");
-                let arg2 = self.translate_operand(args[1]);
+                let arg2 = self
+                    .translate_operand(args[1])
+                    .to_expr()
+                    .expect("Print state edge");
 
                 // print outputs a new unit value
-                let expr = tprint(arg1);
+                let expr = dprint(arg1, arg2);
                 self.cache_result(expr, id)
             }
             BasicExpr::Effect(EffectOps::Store, args) => {
@@ -371,14 +374,14 @@ impl RvsdgFunction {
     /// When `optimize_lets` is true, the conversion will also
     /// try to prevent adding unnecessary let bindings.
     pub fn to_dag_encoding(&self) -> RcExpr {
-        let mut arg_index = 0;
-        let argument_values = self
+        let argument_values: Vec<StoredValue> = self
             .args
             .iter()
             .enumerate()
             .map(|(i, _ty)| StoredValue::Arg(i))
             .collect();
-        let mut translator = DagTranslator::new(&self.nodes, argument_values, arg_index);
+        let mut translator =
+            DagTranslator::new(&self.nodes, argument_values.clone(), argument_values.len());
         let translated_results = self
             .results
             .iter()
@@ -394,7 +397,10 @@ impl RvsdgFunction {
                 ([single_result], [single_type]) => {
                     (single_result.clone(), TreeType::Base(single_type.clone()))
                 }
-                ([], []) => (empty(), emptyt()),
+                ([val_result, state_result], [val_type, BaseType::StateT]) => (
+                    parallel!(val_result.clone(), state_result.clone()),
+                    tuplet!(val_type.clone(), BaseType::StateT),
+                ),
                 _ => panic!("Expected a single result type, found {:?}", result_types),
             };
 
@@ -482,7 +488,7 @@ fn dag_translation_test(
 
     assert_progs_eq(&result, &expected, "Resulting program is incorrect");
 }
-/*
+
 #[test]
 fn simple_translation_dag() {
     dag_translation_test(
@@ -505,7 +511,7 @@ fn simple_translation_dag() {
     );
 }
 
-
+/*
 #[test]
 fn translate_simple_loop() {
     const PROGRAM: &str = r#"

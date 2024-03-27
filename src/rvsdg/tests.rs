@@ -1,5 +1,4 @@
 use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
-use insta::assert_snapshot;
 
 use crate::{
     cfg::program_to_cfg,

@@ -1,10 +1,11 @@
 //! Convert tree programs to RVSDGs
 
-use std::{iter, rc::Rc};
+use std::rc::Rc;
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
+use hashbrown::HashMap;
 use tree_in_context::{
-    schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TreeProgram, Type, UnaryOp},
+    schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
 };
 
@@ -18,16 +19,16 @@ struct TreeToRvsdg<'a> {
     program: &'a TreeProgram,
     /// A cache of types for every expression in program
     type_cache: &'a TypeCache,
+    /// A cache of already converted expressions.
+    /// Shared expressions must be converted to the same RVSDG nodes.
+    translation_cache: HashMap<*const Expr, Operands>,
     nodes: &'a mut Vec<RvsdgBody>,
-    /// The current state edge, threaded through
-    /// as the last arg to all stateful operations.
-    current_state_edge: Operand,
     /// The current arguments to the tree program
     /// as RVSDG operands. (doesn't include state edge)
     current_args: Vec<Operand>,
 }
 
-pub(crate) fn tree_to_rvsdg(tree: &TreeProgram) -> RvsdgProgram {
+pub(crate) fn dag_to_rvsdg(tree: &TreeProgram) -> RvsdgProgram {
     let mut res = RvsdgProgram { functions: vec![] };
     for func in &tree.functions {
         res.functions.push(tree_func_to_rvsdg(func.clone(), tree));
@@ -44,6 +45,28 @@ fn basetype_to_bril_type(ty: BaseType) -> bril_rs::Type {
         BaseType::PointerT(inner) => {
             bril_rs::Type::Pointer(Box::new(basetype_to_bril_type(*inner)))
         }
+        BaseType::StateT => panic!("State type not supported in bril"),
+    }
+}
+
+fn basetype_to_rvsdg_type(ty: BaseType) -> RvsdgType {
+    match ty {
+        BaseType::StateT => RvsdgType::PrintState,
+        _ => RvsdgType::Bril(basetype_to_bril_type(ty)),
+    }
+}
+
+/// RVSDG functions support at most one return type, and at most one state edge.
+/// This function returns the return type and if there is a state edge
+fn convert_func_type(ty: Type) -> (Option<bril_rs::Type>, bool) {
+    match ty {
+        Type::TupleT(inner) => match inner.as_slice() {
+            [BaseType::StateT] => (None, true),
+            [some_ty, BaseType::StateT] => (Some(basetype_to_bril_type(some_ty.clone())), true),
+            [other_ty] => (Some(basetype_to_bril_type(other_ty.clone())), false),
+            _ => panic!("Expected one bril type and at most one state edge"),
+        },
+        _ => panic!("Expected tuple type for call type"),
     }
 }
 
@@ -52,17 +75,20 @@ fn type_to_bril_type(ty: Type) -> Option<bril_rs::Type> {
         Type::TupleT(inner) => {
             assert!(
                 inner.is_empty(),
-                "Expected no tuple types in function_type_from_type. Got: {:?}",
+                "Expected no tuple types in type_to_bril_type. Got: {:?}",
                 inner
             );
             None
         }
         Type::Base(basetype) => Some(basetype_to_bril_type(basetype)),
-        Type::Unknown => panic!("Expected known type in function_type_from_type"),
+        Type::Unknown => panic!("Expected known type in type_to_bril_type"),
     }
 }
 
 fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
+    let func_name = func
+        .func_name()
+        .expect("Expected function in tree_func_to_rvsdg");
     let output_type = func.func_output_ty().expect("Expected function types");
 
     let Type::TupleT(input_types) = func.func_input_ty().expect("Expected function types") else {
@@ -74,20 +100,21 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
 
     let mut nodes = vec![];
     let (typechecked_program, type_cache) = program.with_arg_types_and_cache();
+    let typechecked_func = typechecked_program
+        .get_function(&func_name)
+        .expect("Expected function in tree_func_to_rvsdg");
 
     let mut converter = TreeToRvsdg {
         program: &typechecked_program,
         type_cache: &type_cache,
+        translation_cache: HashMap::new(),
         nodes: &mut nodes,
-        // initial state edge is last argument
-        current_state_edge: Operand::Arg(input_types.len()),
         // initial arguments are the first n arguments
         current_args: (0..input_types.len()).map(Operand::Arg).collect(),
     };
 
-    let converted = converter.convert_expr(func.clone());
+    let converted = converter.convert_expr(typechecked_func.clone());
 
-    let resulting_state_edge = converter.current_state_edge;
     RvsdgFunction {
         name: func
             .func_name()
@@ -95,28 +122,18 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
         // normal types and a state edge at the end
         args: input_types
             .into_iter()
-            .map(|ty| RvsdgType::Bril(basetype_to_bril_type(ty)))
-            .chain(iter::once(RvsdgType::PrintState))
+            .map(basetype_to_rvsdg_type)
             .collect(),
         nodes,
         // functions return a single value and a state edge
         // or just a state edge
-        results: match type_to_bril_type(output_type) {
-            Some(func_type) => {
-                assert_eq!(converted.len(), 1, "Expected exactly one result");
-                vec![
-                    (RvsdgType::Bril(func_type), converted[0]),
-                    (RvsdgType::PrintState, resulting_state_edge),
-                ]
-            }
-            None => {
-                assert!(
-                    converted.is_empty(),
-                    "Expected no results. Got {:?}",
-                    converted
-                );
-                vec![(RvsdgType::PrintState, resulting_state_edge)]
-            }
+        results: match output_type {
+            Type::TupleT(types) => types
+                .into_iter()
+                .map(basetype_to_rvsdg_type)
+                .zip(converted)
+                .collect(),
+            _ => panic!("expected tuple type for function output type"),
         },
     }
 }
@@ -134,14 +151,17 @@ fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
         BinaryOp::GreaterThan => Some(ValueOps::Gt),
         BinaryOp::LessEq => Some(ValueOps::Le),
         BinaryOp::GreaterEq => Some(ValueOps::Ge),
-        BinaryOp::Write => None,
         BinaryOp::PtrAdd => Some(ValueOps::PtrAdd),
+        BinaryOp::Load => Some(ValueOps::Load),
+        BinaryOp::Print => None,
+        BinaryOp::Free => None,
     }
 }
 
 fn effect_op_from_binary_op(bop: BinaryOp) -> Option<EffectOps> {
     match bop {
-        BinaryOp::Write => Some(EffectOps::Store),
+        BinaryOp::Free => Some(EffectOps::Free),
+        BinaryOp::Print => Some(EffectOps::Print),
         _ => None,
     }
 }
@@ -149,30 +169,16 @@ fn effect_op_from_binary_op(bop: BinaryOp) -> Option<EffectOps> {
 fn value_op_from_unary_op(uop: UnaryOp) -> Option<ValueOps> {
     match uop {
         UnaryOp::Not => Some(ValueOps::Not),
-        UnaryOp::Print => None,
-        UnaryOp::Load => Some(ValueOps::Load),
-        UnaryOp::Free => None,
     }
 }
 
 fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
     match uop {
         UnaryOp::Not => None,
-        UnaryOp::Print => Some(EffectOps::Print),
-        UnaryOp::Load => None,
-        UnaryOp::Free => Some(EffectOps::Free),
     }
 }
 
 impl<'a> TreeToRvsdg<'a> {
-    fn args_with_state_edge(&self) -> Vec<Operand> {
-        self.current_args
-            .iter()
-            .cloned()
-            .chain(iter::once(self.current_state_edge))
-            .collect()
-    }
-
     /// Translates an expression in a new subregion
     /// num_args is the number of non-state-edge arguments
     fn translate_subregion(&mut self, expr: RcExpr, num_args: usize) -> Vec<Operand> {
@@ -181,41 +187,45 @@ impl<'a> TreeToRvsdg<'a> {
             program: self.program,
             nodes: self.nodes,
             type_cache: self.type_cache,
-            current_state_edge: Operand::Arg(num_args),
+            translation_cache: HashMap::new(),
             current_args: inner_args,
         };
-        let mut results = translator.convert_expr(expr);
-        results.push(translator.current_state_edge);
-        results
+        translator.convert_expr(expr)
     }
 
-    /// Creates a new node for a basic expression.
-    /// For nodes that require and return a state edge, adds the state edge
-    /// to the inputs remembers the newly returned state edge.
-    fn push_basic(&mut self, mut basic: BasicExpr<Operand>) -> Vec<Operand> {
-        match &basic {
-            BasicExpr::Effect(..)
-            | BasicExpr::Op(ValueOps::Alloc | ValueOps::Load, _, _)
-            | BasicExpr::Call(..) => {
-                let new_id = self.nodes.len();
-                basic.push_operand(self.current_state_edge);
-                let num_outputs = basic.num_outputs();
-                self.nodes.push(RvsdgBody::BasicOp(basic));
+    /// push a new basic expr and memoize the results
+    fn push_basic(&mut self, basic: BasicExpr<Operand>) -> Vec<Operand> {
+        let new_id = self.nodes.len();
+        let num_outputs = basic.num_outputs();
+        self.nodes.push(RvsdgBody::BasicOp(basic));
 
-                self.current_state_edge = Operand::Project(num_outputs - 1, new_id);
-                (0..(num_outputs - 1))
-                    .map(|i| Operand::Project(i, new_id))
-                    .collect()
-            }
-            BasicExpr::Op(..) | BasicExpr::Const(..) => {
-                let new_id = self.nodes.len();
-                self.nodes.push(RvsdgBody::BasicOp(basic));
-                vec![Operand::Project(0, new_id)]
-            }
+        (0..num_outputs)
+            .map(|i| Operand::Project(i, new_id))
+            .collect()
+    }
+
+    /// Some expressions such as Load and Alloc also return a state edge,
+    /// so we need to ignore this when computing the bril type.
+    fn get_basic_expr_type(&self, expr: RcExpr) -> bril_rs::Type {
+        let cached = self
+            .type_cache
+            .get(&Rc::as_ptr(&expr))
+            .expect("Expected to find type for expr")
+            .clone();
+        match cached {
+            Type::Base(base) => basetype_to_bril_type(base),
+            Type::TupleT(tuplet) => match tuplet.as_slice() {
+                [base, BaseType::StateT] => basetype_to_bril_type(base.clone()),
+                _ => panic!("Expected at most one type in basic expr type"),
+            },
+            Type::Unknown => panic!("Expected known type for expr"),
         }
     }
 
     fn convert_expr(&mut self, expr: RcExpr) -> Operands {
+        if let Some(operands) = self.translation_cache.get(&Rc::as_ptr(&expr)) {
+            return operands.clone();
+        }
         let res = match expr.as_ref() {
             Expr::Function(_name, _inty, _outty, expr) => self.convert_expr(expr.clone()),
             Expr::Const(constant, _ty) => match constant {
@@ -230,6 +240,15 @@ impl<'a> TreeToRvsdg<'a> {
                     ))
                 }
             },
+            Expr::Top(TernaryOp::Write, c1, c2, c3) => {
+                let c1 = self.convert_expr(c1.clone());
+                let c2 = self.convert_expr(c2.clone());
+                let c3 = self.convert_expr(c3.clone());
+                self.push_basic(BasicExpr::Effect(
+                    EffectOps::Store,
+                    vec![c1[0], c2[0], c3[0]],
+                ))
+            }
             Expr::Bop(op, l, r) => {
                 let l = self.convert_expr(l.clone());
                 let r = self.convert_expr(r.clone());
@@ -238,18 +257,8 @@ impl<'a> TreeToRvsdg<'a> {
                 let l = l[0];
                 let r = r[0];
                 if let Some(vop) = value_op_from_binary_op(op.clone()) {
-                    let Type::Base(cached) = self
-                        .type_cache
-                        .get(&Rc::as_ptr(&expr))
-                        .expect("Expected to find type for expr")
-                    else {
-                        panic!("Expected base type for binary op. Got: {:?}", expr)
-                    };
-                    self.push_basic(BasicExpr::Op(
-                        vop,
-                        vec![l, r],
-                        basetype_to_bril_type(cached.clone()),
-                    ))
+                    let bril_type = self.get_basic_expr_type(expr.clone());
+                    self.push_basic(BasicExpr::Op(vop, vec![l, r], bril_type))
                 } else if let Some(eop) = effect_op_from_binary_op(op.clone()) {
                     self.push_basic(BasicExpr::Effect(eop, vec![l, r]))
                 } else {
@@ -282,32 +291,33 @@ impl<'a> TreeToRvsdg<'a> {
                 let child = self.convert_expr(child.clone());
                 assert!(
                     child.len() > *index,
-                    "Index out of bounds. Got child {:?} with index {:?}",
+                    "Index out of bounds. Got child {:?} with index {:?}. Expression: {}",
                     child,
-                    index
+                    index,
+                    expr
                 );
                 vec![child[*index]]
             }
-            Expr::Alloc(size, ty) => {
+            Expr::Alloc(size, state, ty) => {
                 let size = self.convert_expr(size.clone());
                 assert_eq!(size.len(), 1, "Expected exactly one result for size");
-                let size = size[0];
+                let state = self.convert_expr(state.clone());
+                assert_eq!(state.len(), 1, "Expected exactly one result for state");
                 let Type::Base(basety) = ty else {
                     panic!("Expected base type for alloc. Got: {:?}", ty)
                 };
                 self.push_basic(BasicExpr::Op(
                     ValueOps::Alloc,
-                    vec![size],
+                    vec![size[0], state[0]],
                     basetype_to_bril_type(basety.clone()),
                 ))
             }
             Expr::Arg(_ty) => self.current_args.clone(),
             Expr::Call(name, args) => {
                 let func = self.program.get_function(name).expect("Function not found");
-                let func_ty =
-                    type_to_bril_type(func.func_output_ty().expect("Expected function types"));
+                let (func_ty, has_state_edge) = convert_func_type(func.func_output_ty().unwrap());
                 let args = self.convert_expr(args.clone());
-                let num_results = func_ty.is_some() as usize + 1;
+                let num_results = func_ty.is_some() as usize + has_state_edge as usize;
                 self.push_basic(BasicExpr::Call(name.clone(), args, num_results, func_ty))
             }
             Expr::Empty(_ty) => {
@@ -332,6 +342,8 @@ impl<'a> TreeToRvsdg<'a> {
                 }
             },
             Expr::If(pred, then_branch, else_branch) => {
+                panic!("fix if translation");
+                // TODO fix if conversion with dag semantics
                 let pred = self.convert_expr(pred.clone());
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
                 let then_branch =
@@ -355,15 +367,15 @@ impl<'a> TreeToRvsdg<'a> {
                     // inputs to the If node are the
                     // current arguments, since in the tree IR
                     // If doesn't bind anything
-                    inputs: self.args_with_state_edge(),
+                    inputs: self.current_args.clone(),
                     then_branch,
                     else_branch,
                 });
-                self.current_state_edge = Operand::Project(res.len(), new_id);
 
                 res
             }
             Expr::Switch(pred, cases) => {
+                panic!("fix switch translation");
                 let pred = self.convert_expr(pred.clone());
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
                 let outputs: Vec<Vec<Operand>> = cases
@@ -382,37 +394,33 @@ impl<'a> TreeToRvsdg<'a> {
                 self.nodes.push(RvsdgBody::Gamma {
                     pred: pred[0],
                     // inputs to the Gamma node are the current arguments and state edge
-                    inputs: self.args_with_state_edge(),
+                    inputs: self.current_args.clone(),
                     outputs,
                 });
-                self.current_state_edge = Operand::Project(res.len(), new_id);
                 res
             }
             Expr::DoWhile(inputs, body) => {
-                let mut inputs_with_state_edge = self.convert_expr(inputs.clone());
-                inputs_with_state_edge.push(self.current_state_edge);
-                let pred_and_body_and_state_edge =
-                    self.translate_subregion(body.clone(), inputs_with_state_edge.len() - 1);
+                let inputs_converted = self.convert_expr(inputs.clone());
+                let pred_and_body = self.translate_subregion(body.clone(), inputs_converted.len());
                 assert_eq!(
-                    inputs_with_state_edge.len(),
-                    pred_and_body_and_state_edge.len() - 1,
+                    inputs_converted.len(),
+                    pred_and_body.len() - 1,
                     "Expected matching number of inputs and outputs for do-while body"
                 );
 
-                let pred_inner = pred_and_body_and_state_edge[0];
-                let body_and_state_edge = pred_and_body_and_state_edge[1..].to_vec();
+                let pred_inner = pred_and_body[0];
+                let body_and_state_edge = pred_and_body[1..].to_vec();
 
                 let new_id = self.nodes.len();
-                self.current_state_edge = Operand::Project(body_and_state_edge.len() - 1, new_id);
 
                 // Project each result out of the
                 // resulting Theta node (excluding state edge)
-                let res = (0..(body_and_state_edge.len() - 1))
+                let res = (0..body_and_state_edge.len())
                     .map(|i| Operand::Project(i, new_id))
                     .collect();
                 self.nodes.push(RvsdgBody::Theta {
                     pred: pred_inner,
-                    inputs: inputs_with_state_edge,
+                    inputs: inputs_converted,
                     outputs: body_and_state_edge,
                 });
                 res
@@ -423,7 +431,8 @@ impl<'a> TreeToRvsdg<'a> {
                 res
             }
         };
+        self.translation_cache
+            .insert(Rc::as_ptr(&expr), res.clone());
         res
     }
 }
-

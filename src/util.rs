@@ -8,6 +8,7 @@ use std::{
     io,
     path::PathBuf,
 };
+use tree_in_context::build_program;
 use tree_in_context::schema::TreeProgram;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
@@ -429,7 +430,7 @@ impl Run {
                         file_extension: ".egg".to_string(),
                         name: "".to_string(),
                     }],
-                    None, // TODO produce interpretable after fixing interpreter Some(Interpretable::TreeProgram(tree)),
+                    Some(Interpretable::TreeProgram(tree)),
                 )
             }
             RunType::TreeOptimize => {
@@ -462,9 +463,8 @@ impl Run {
                 )*/
             }
             RunType::Egglog => {
-                todo!();
-                /*let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_dag_encoding();
                 let egglog = build_program(&tree);
                 (
                     vec![Visualization {
@@ -473,7 +473,7 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
-                )*/
+                )
             }
             RunType::RvsdgToCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;

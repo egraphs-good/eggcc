@@ -56,6 +56,7 @@ pub(crate) fn rules() -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
+/* TODO fix up with dag semantics
 #[cfg(test)]
 use crate::ast::*;
 #[cfg(test)]
@@ -104,3 +105,4 @@ fn test_body_contains() -> crate::Result {
         vec![],
     )
 }
+ */

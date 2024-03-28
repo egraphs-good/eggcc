@@ -9,6 +9,8 @@ use crate::{
 impl TreeProgram {
     /// Adds correct types to arguments in the program
     /// and performs type checking.
+    /// Maintains the invariant that common subexpressions are shared using
+    /// the same Rc<Expr> pointer.
     pub(crate) fn with_arg_types(&self) -> TreeProgram {
         let mut checker = TypeChecker::new(self);
         checker.add_arg_types()
@@ -51,12 +53,20 @@ impl Expr {
     }
 }
 
+/// Typechecking produces new, typed expressions.
+/// This map is used to memoize the results of typechecking.
+/// It maps the old untyped expression to the new typed expression
+pub type TypedExprCache = HashMap<*const Expr, RcExpr>;
+
+/// We also need to keep track of the type of the newly typed expression.
+/// This maps the newly instrumented expression to its type.
 pub type TypeCache = HashMap<*const Expr, Type>;
 /// Type checks program fragments.
 /// Uses the program to look up function types.
 pub(crate) struct TypeChecker<'a> {
     program: &'a TreeProgram,
     type_cache: TypeCache,
+    type_expr_cache: TypedExprCache,
 }
 
 impl<'a> TypeChecker<'a> {
@@ -64,6 +74,7 @@ impl<'a> TypeChecker<'a> {
         TypeChecker {
             program: prog,
             type_cache: HashMap::new(),
+            type_expr_cache: HashMap::new(),
         }
     }
 
@@ -101,7 +112,14 @@ impl<'a> TypeChecker<'a> {
 
     pub(crate) fn add_arg_types_to_expr(&mut self, expr: RcExpr, arg_ty: &Type) -> (Type, RcExpr) {
         assert!(arg_ty != &Type::Unknown, "Expected known argument type");
-        let expr_ptr = Rc::as_ptr(&expr);
+        let old_expr_ptr = Rc::as_ptr(&expr);
+
+        if let Some(updated_expr) = self.type_expr_cache.get(&old_expr_ptr) {
+            let new_expr_ptr = Rc::as_ptr(updated_expr);
+            let ty = self.type_cache.get(&new_expr_ptr).unwrap();
+            return (ty.clone(), updated_expr.clone());
+        }
+
         let (res_ty, res_expr) = match expr.as_ref() {
             Expr::Const(constant, ty) => {
                 let cty = match constant {
@@ -395,8 +413,9 @@ impl<'a> TypeChecker<'a> {
             // due to the side conditions
             _ => panic!("Unexpected expression {:?}", expr),
         };
-
-        self.type_cache.insert(expr_ptr, res_ty.clone());
+        let new_expr_ptr = Rc::as_ptr(&res_expr);
+        self.type_expr_cache.insert(old_expr_ptr, res_expr.clone());
+        self.type_cache.insert(new_expr_ptr, res_ty.clone());
 
         (res_ty, res_expr)
     }

@@ -24,6 +24,7 @@ use super::RvsdgType;
 
 impl RvsdgProgram {
     /// Converts an RVSDG program to the dag encoding.
+    /// Common subexpressions are shared by the same Rc<Expr> in the dag encoding.
     pub fn to_dag_encoding(&self) -> TreeProgram {
         let last_function = self.functions.last().unwrap();
         let rest_functions = self.functions.iter().take(self.functions.len() - 1);
@@ -167,8 +168,8 @@ impl<'a> DagTranslator<'a> {
     /// It's important not to evaluate a node twice, instead using the cached index
     /// in `self.stored_node`
     fn translate_node(&mut self, id: Id) -> StoredValue {
-        if let Some(index) = self.stored_node.get(&id) {
-            index.clone()
+        if let Some(stored) = self.stored_node.get(&id) {
+            stored.clone()
         } else {
             let node = &self.nodes[id];
             match node {

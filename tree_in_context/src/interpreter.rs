@@ -98,9 +98,9 @@ pub(crate) struct VirtualMachine<'a> {
     /// Next address for allocating memory.
     next_addr: usize,
     /// All of memory
-    mem: HashMap<usize, Value>,
+    memory: HashMap<usize, Value>,
     /// Values for already evaluated expressions
-    memo: HashMap<*const Expr, Value>,
+    eval_cache: HashMap<*const Expr, Value>,
     /// Print log
     log: Vec<String>,
 }
@@ -124,8 +124,8 @@ pub fn interpret_tree_prog(prog: &TreeProgram, arg: &Value) -> (Value, Vec<Strin
     let mut vm = VirtualMachine {
         program: prog,
         next_addr: 0,
-        mem: HashMap::new(),
-        memo: HashMap::new(),
+        memory: HashMap::new(),
+        eval_cache: HashMap::new(),
         log: vec![],
     };
     let ret_val = vm.interpret_call(&prog.entry.func_name().unwrap(), arg);
@@ -141,13 +141,13 @@ pub fn interpret_expr(expr: &RcExpr, func_arg: &Value) -> BrilState {
             functions: vec![],
         },
         next_addr: 0,
-        memo: HashMap::new(),
-        mem: HashMap::new(),
+        eval_cache: HashMap::new(),
+        memory: HashMap::new(),
         log: vec![],
     };
     let value = vm.interpret_expr(expr, func_arg);
     BrilState {
-        mem: vm.mem,
+        mem: vm.memory,
         log: vm.log,
         value,
     }
@@ -190,7 +190,7 @@ impl<'a> VirtualMachine<'a> {
                 let val = self.interpret_expr(e2, arg).clone();
                 let state_val = self.interpret_expr(e3, arg);
                 assert_eq!(state_val, Value::StateV);
-                self.mem.insert(pointer.addr(), val);
+                self.memory.insert(pointer.addr(), val);
                 Value::StateV
             }
         }
@@ -214,7 +214,7 @@ impl<'a> VirtualMachine<'a> {
                 let ptr = self.interp_pointer_expr(e1, arg);
                 let state_val = self.interpret_expr(e2, arg);
                 assert_eq!(state_val, Value::StateV);
-                if let Some(val) = self.mem.get(&ptr.addr()) {
+                if let Some(val) = self.memory.get(&ptr.addr()) {
                     tuplev!(val.clone(), Value::StateV)
                 } else {
                     panic!("No value bound at memory address {:?}", ptr.addr())
@@ -224,7 +224,7 @@ impl<'a> VirtualMachine<'a> {
                 let ptr = get_pointer(e1, self);
                 let state_val = self.interpret_expr(e2, arg);
                 assert_eq!(state_val, Value::StateV);
-                self.mem.remove(&ptr.addr());
+                self.memory.remove(&ptr.addr());
                 Value::StateV
             }
             BinaryOp::Print => {
@@ -277,16 +277,16 @@ impl<'a> VirtualMachine<'a> {
     pub fn interpret_region(&mut self, expr: &RcExpr, arg: &Value) -> Value {
         let mut memo_before = HashMap::new();
         // save the memo before, since we are evaluating in a new region
-        std::mem::swap(&mut self.memo, &mut memo_before);
+        std::mem::swap(&mut self.eval_cache, &mut memo_before);
         // evaluate expression with brand new memo
         let res = self.interpret_expr(expr, arg);
         // restore the old memo now that we are back in the previous region
-        std::mem::swap(&mut self.memo, &mut memo_before);
+        std::mem::swap(&mut self.eval_cache, &mut memo_before);
         res
     }
 
     pub fn interpret_expr(&mut self, expr: &RcExpr, arg: &Value) -> Value {
-        if let Some(val) = self.memo.get(&Rc::as_ptr(expr)) {
+        if let Some(val) = self.eval_cache.get(&Rc::as_ptr(expr)) {
             return val.clone();
         }
         let res = match expr.as_ref() {
@@ -318,6 +318,7 @@ impl<'a> VirtualMachine<'a> {
                 let addr = self.next_addr;
                 self.next_addr += usize::try_from(size).unwrap();
 
+                // make a new pointer at the address, with an initial offset of 0
                 tuplev!(Ptr(Pointer::new(addr, size as usize, 0)), Value::StateV)
             }
             Expr::Empty(_ty) => Tuple(vec![]),
@@ -394,7 +395,7 @@ impl<'a> VirtualMachine<'a> {
                 self.interpret_call(func_name, &e_val)
             }
         };
-        self.memo.insert(Rc::as_ptr(expr), res.clone());
+        self.eval_cache.insert(Rc::as_ptr(expr), res.clone());
         res
     }
 }

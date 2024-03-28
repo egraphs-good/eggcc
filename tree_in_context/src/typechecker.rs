@@ -53,10 +53,13 @@ impl Expr {
     }
 }
 
-/// A map from the old, untyped expression to the new, typed expression
+/// Typechecking produces new, typed expressions.
+/// This map is used to memoize the results of typechecking.
+/// It maps the old untyped expression to the new typed expression
 pub type TypedExprCache = HashMap<*const Expr, RcExpr>;
 
-/// A map from the newly instrumented expression to its type
+/// We also need to keep track of the type of the newly typed expression.
+/// This maps the newly instrumented expression to its type.
 pub type TypeCache = HashMap<*const Expr, Type>;
 /// Type checks program fragments.
 /// Uses the program to look up function types.

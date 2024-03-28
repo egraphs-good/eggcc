@@ -518,24 +518,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::Compile => {
-                let executable = self.run_brilift(false);
-
-                if self.in_test && !self.interp {
-                    std::process::Command::new("rm")
-                        .arg(executable.clone())
-                        .status()
-                        .unwrap();
-                }
-
-                (
-                    vec![],
-                    Some(Interpretable::Executable {
-                        executable,
-                        in_test: self.in_test,
-                    }),
-                )
-            }
+            RunType::Compile => self.run_brilift(false, false),
         };
 
         let result_interpreted = if !self.interp {
@@ -561,17 +544,21 @@ impl Run {
         })
     }
 
-    fn run_brilift(&self, optimize: bool) -> String {
+    fn run_brilift(
+        &self,
+        optimize_brilift: bool,
+        optimize_egglog: bool,
+    ) -> (Vec<Visualization>, Option<Interpretable>) {
+        let program = if optimize_egglog {
+            Optimizer::program_to_cfg(&self.prog_with_args.program).to_bril()
+        } else {
+            self.prog_with_args.program.clone()
+        };
+
         // options are "none", "speed", and "speed_and_size"
-        let opt_level = if optimize { "speed" } else { "none" };
+        let opt_level = if optimize_brilift { "speed" } else { "none" };
         let object = self.name() + ".o";
-        brilift::compile(
-            &self.prog_with_args.program,
-            None,
-            &object,
-            opt_level,
-            false,
-        );
+        brilift::compile(&program, None, &object, opt_level, false);
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
         std::process::Command::new("cc")
@@ -587,7 +574,20 @@ impl Run {
             .status()
             .unwrap();
 
-        executable
+        if self.in_test && !self.interp {
+            std::process::Command::new("rm")
+                .arg(executable.clone())
+                .status()
+                .unwrap();
+        }
+
+        (
+            vec![],
+            Some(Interpretable::Executable {
+                executable,
+                in_test: self.in_test,
+            }),
+        )
     }
 }
 

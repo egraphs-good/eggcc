@@ -179,7 +179,7 @@ pub enum RunType {
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
     /// Converts to an object file (.o) using brilift
-    Compiled,
+    Compile,
 }
 
 impl Display for RunType {
@@ -208,7 +208,7 @@ impl RunType {
             RunType::TreeOptimize => true,
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
-            RunType::Compiled => true,
+            RunType::Compile => true,
         }
     }
 }
@@ -296,6 +296,7 @@ impl Run {
             //RunType::DagRoundTrip,
             //RunType::TreeOptimize,
             //RunType::Optimize,
+            RunType::Compile,
         ] {
             let default = Run {
                 test_type,
@@ -513,7 +514,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::Compiled => {
+            RunType::Compile => {
                 let opt_level = "none"; // options are "none", "speed", and "speed_and_size"
                 let object_filename = self.name() + ".o";
                 brilift::compile(

@@ -515,31 +515,7 @@ impl Run {
                 )
             }
             RunType::Compile => {
-                let opt_level = "none"; // options are "none", "speed", and "speed_and_size"
-                let object = self.name() + ".o";
-                brilift::compile(
-                    &self.prog_with_args.program,
-                    None,
-                    &object,
-                    opt_level,
-                    false,
-                );
-
-                let executable = self.name();
-                std::process::Command::new("cc")
-                    .arg(object.clone())
-                    .arg("infra/brilift.o")
-                    .arg("-o")
-                    .arg(executable.clone())
-                    .status()
-                    .unwrap();
-
-                let executable = std::path::Path::new(&executable).canonicalize().unwrap();
-
-                std::process::Command::new("rm")
-                    .arg(object)
-                    .status()
-                    .unwrap();
+                let executable = self.run_brilift(false);
 
                 // TODO: only do this during tests
                 if !self.interp {
@@ -574,6 +550,35 @@ impl Run {
             result_interpreted,
             original_interpreted,
         })
+    }
+
+    fn run_brilift(&self, optimize: bool) -> std::path::PathBuf {
+        // options are "none", "speed", and "speed_and_size"
+        let opt_level = if optimize { "speed" } else { "none" };
+        let object = self.name() + ".o";
+        brilift::compile(
+            &self.prog_with_args.program,
+            None,
+            &object,
+            opt_level,
+            false,
+        );
+
+        let executable = self.name();
+        std::process::Command::new("cc")
+            .arg(object.clone())
+            .arg("infra/brilift.o")
+            .arg("-o")
+            .arg(executable.clone())
+            .status()
+            .unwrap();
+
+        std::process::Command::new("rm")
+            .arg(object)
+            .status()
+            .unwrap();
+
+        std::path::Path::new(&executable).canonicalize().unwrap()
     }
 }
 

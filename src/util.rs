@@ -178,7 +178,7 @@ pub enum RunType {
     OptimizeDirectJumps,
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
-    /// Converts to an object file (.o) using brilift
+    /// Converts to an executable using brilift
     Compile,
 }
 
@@ -253,13 +253,15 @@ pub struct Run {
     // Also interpret the resulting program
     pub interp: bool,
     pub profile_out: Option<PathBuf>,
+    pub output_path: Option<String>,
+    pub in_test: bool,
 }
 
 /// an enum of IRs that can be interpreted
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
-    Executable(PathBuf),
+    Executable { executable: String, in_test: bool },
 }
 
 /// Some sort of visualization of the result, with a name
@@ -303,6 +305,8 @@ impl Run {
                 interp: false,
                 prog_with_args: prog.clone(),
                 profile_out: None,
+                output_path: None,
+                in_test: true,
             };
             res.push(default.clone());
             if test_type.produces_interpretable() {
@@ -517,15 +521,20 @@ impl Run {
             RunType::Compile => {
                 let executable = self.run_brilift(false);
 
-                // TODO: only do this during tests
-                if !self.interp {
+                if self.in_test && !self.interp {
                     std::process::Command::new("rm")
                         .arg(executable.clone())
                         .status()
                         .unwrap();
                 }
 
-                (vec![], Some(Interpretable::Executable(executable)))
+                (
+                    vec![],
+                    Some(Interpretable::Executable {
+                        executable,
+                        in_test: self.in_test,
+                    }),
+                )
             }
         };
 
@@ -552,7 +561,7 @@ impl Run {
         })
     }
 
-    fn run_brilift(&self, optimize: bool) -> std::path::PathBuf {
+    fn run_brilift(&self, optimize: bool) -> String {
         // options are "none", "speed", and "speed_and_size"
         let opt_level = if optimize { "speed" } else { "none" };
         let object = self.name() + ".o";
@@ -564,7 +573,7 @@ impl Run {
             false,
         );
 
-        let executable = self.name();
+        let executable = self.output_path.clone().unwrap_or_else(|| self.name());
         std::process::Command::new("cc")
             .arg(object.clone())
             .arg("infra/brilift.o")
@@ -578,7 +587,7 @@ impl Run {
             .status()
             .unwrap();
 
-        std::path::Path::new(&executable).canonicalize().unwrap()
+        executable
     }
 }
 

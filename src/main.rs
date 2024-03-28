@@ -25,6 +25,13 @@ struct Args {
     /// The arguments to the bril program
     /// (only used when interpreting)
     bril_args: Vec<String>,
+
+    /// Where to put the executable (only for compiled run modes)
+    /// If not provided, the executable will be in a file with the same prefix as the
+    /// input file, but with no file extension. That is, if `abc.bril` is passed in,
+    /// then the executable will be in `abc`.
+    #[clap(short)]
+    output_path: Option<String>,
 }
 
 fn main() {
@@ -50,6 +57,8 @@ fn main() {
         test_type: args.run_mode,
         interp: args.interp,
         profile_out: args.profile_out,
+        output_path: args.output_path,
+        in_test: false,
     };
 
     let result = match run.run() {

@@ -35,6 +35,7 @@ pub(crate) mod restructure;
 pub(crate) mod from_dag;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
+pub(crate) mod dag_to_graph;
 mod to_dag;
 
 use std::fmt;

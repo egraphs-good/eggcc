@@ -149,6 +149,34 @@ impl Expr {
         }
         .with_arg_types()
     }
+
+    /// Get the children of this expression.
+    /// For context nodes, doesn't include the context (which is an assumption)
+    pub fn children(self: &RcExpr) -> Vec<RcExpr> {
+        match self.as_ref() {
+            Expr::Function(_, _, _, body) => vec![body.clone()],
+            Expr::Const(..) => vec![],
+            Expr::Top(_, x, y, z) => vec![x.clone(), y.clone(), z.clone()],
+            Expr::Bop(_, x, y) => vec![x.clone(), y.clone()],
+            Expr::Uop(_, x) => vec![x.clone()],
+            Expr::Get(x, _) => vec![x.clone()],
+            Expr::Alloc(x, y, _) => vec![x.clone(), y.clone()],
+            Expr::Call(_, x) => vec![x.clone()],
+            Expr::Empty(_) => vec![],
+            Expr::Single(x) => vec![x.clone()],
+            Expr::Concat(_, x, y) => vec![x.clone(), y.clone()],
+            Expr::Switch(x, branches) => {
+                let mut children = vec![x.clone()];
+                children.extend(branches.clone());
+                children
+            }
+            Expr::If(x, y, z) => vec![x.clone(), y.clone(), z.clone()],
+            Expr::DoWhile(x, y) => vec![x.clone(), y.clone()],
+            Expr::Let(x, y) => vec![x.clone(), y.clone()],
+            Expr::Arg(_) => vec![],
+            Expr::InContext(_, x) => vec![x.clone()],
+        }
+    }
 }
 
 impl TreeProgram {

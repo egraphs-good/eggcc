@@ -26,12 +26,18 @@ struct Args {
     /// (only used when interpreting)
     bril_args: Vec<String>,
 
-    /// Where to put the executable (only for compiled run modes)
+    /// Where to put the executable (only for the CompileBrilfit run mode)
     /// If not provided, the executable will be in a file with the same prefix as the
     /// input file, but with no file extension. That is, if `abc.bril` is passed in,
     /// then the executable will be in `abc`.
     #[clap(short)]
     output_path: Option<String>,
+    /// Run the eggcc optimizer (only for the CompileBrilfit run mode)
+    #[clap(long)]
+    optimize_egglog: bool,
+    /// Run the brilift optimizer (only for the CompileBrilfit run mode)
+    #[clap(long)]
+    optimize_brilift: bool,
 }
 
 fn main() {
@@ -59,6 +65,8 @@ fn main() {
         profile_out: args.profile_out,
         output_path: args.output_path,
         in_test: false,
+        optimize_egglog: args.optimize_egglog,
+        optimize_brilift: args.optimize_brilift,
     };
 
     let result = match run.run() {

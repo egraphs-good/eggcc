@@ -179,7 +179,7 @@ pub enum RunType {
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
     /// Converts to an executable using brilift
-    Compile,
+    CompileBrilift,
 }
 
 impl Display for RunType {
@@ -208,7 +208,7 @@ impl RunType {
             RunType::TreeOptimize => true,
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
-            RunType::Compile => true,
+            RunType::CompileBrilift => true,
         }
     }
 }
@@ -255,6 +255,8 @@ pub struct Run {
     pub profile_out: Option<PathBuf>,
     pub output_path: Option<String>,
     pub in_test: bool,
+    pub optimize_egglog: bool,
+    pub optimize_brilift: bool,
 }
 
 /// an enum of IRs that can be interpreted
@@ -298,7 +300,6 @@ impl Run {
             //RunType::DagRoundTrip,
             //RunType::TreeOptimize,
             //RunType::Optimize,
-            RunType::Compile,
         ] {
             let default = Run {
                 test_type,
@@ -307,6 +308,8 @@ impl Run {
                 profile_out: None,
                 output_path: None,
                 in_test: true,
+                optimize_egglog: false,
+                optimize_brilift: false,
             };
             res.push(default.clone());
             if test_type.produces_interpretable() {
@@ -317,12 +320,40 @@ impl Run {
                 res.push(interp);
             }
         }
+
+        // TODO: uncomment `true` once the optimizer works
+        for optimize_egglog in [/*true, */ false] {
+            for optimize_brilift in [true, false] {
+                for interp in [true, false] {
+                    res.push(Run {
+                        test_type: RunType::CompileBrilift,
+                        interp,
+                        prog_with_args: prog.clone(),
+                        profile_out: None,
+                        output_path: None,
+                        in_test: true,
+                        optimize_egglog,
+                        optimize_brilift,
+                    });
+                }
+            }
+        }
+
         res
     }
 
     // give a unique name for this run configuration
     pub fn name(&self) -> String {
-        let mut name = format!("{}-{}", self.prog_with_args.name, self.test_type);
+        let mut name = if self.test_type == RunType::CompileBrilift {
+            match (self.optimize_egglog, self.optimize_brilift) {
+                (false, false) => format!("{}-{}-none", self.prog_with_args.name, self.test_type),
+                (true, false) => format!("{}-{}-egglog", self.prog_with_args.name, self.test_type),
+                (false, true) => format!("{}-{}-brilift", self.prog_with_args.name, self.test_type),
+                (true, true) => format!("{}-{}-both", self.prog_with_args.name, self.test_type),
+            }
+        } else {
+            format!("{}-{}", self.prog_with_args.name, self.test_type)
+        };
         if self.interp {
             name = format!("{}-interp", name);
         }
@@ -518,7 +549,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::Compile => self.run_brilift(false, false),
+            RunType::CompileBrilift => self.run_brilift(),
         };
 
         let result_interpreted = if !self.interp {
@@ -544,19 +575,19 @@ impl Run {
         })
     }
 
-    fn run_brilift(
-        &self,
-        optimize_brilift: bool,
-        optimize_egglog: bool,
-    ) -> (Vec<Visualization>, Option<Interpretable>) {
-        let program = if optimize_egglog {
+    fn run_brilift(&self) -> (Vec<Visualization>, Option<Interpretable>) {
+        let program = if self.optimize_egglog {
             Optimizer::program_to_cfg(&self.prog_with_args.program).to_bril()
         } else {
             self.prog_with_args.program.clone()
         };
 
         // options are "none", "speed", and "speed_and_size"
-        let opt_level = if optimize_brilift { "speed" } else { "none" };
+        let opt_level = if self.optimize_brilift {
+            "speed"
+        } else {
+            "none"
+        };
         let object = self.name() + ".o";
         brilift::compile(&program, None, &object, opt_level, false);
 

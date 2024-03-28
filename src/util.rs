@@ -1,3 +1,4 @@
+use crate::rvsdg::from_dag::dag_to_rvsdg;
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
@@ -298,7 +299,7 @@ impl Run {
             RunType::RvsdgToCfg,
             RunType::DagConversion,
             //RunType::TreeOptimize,
-            //RunType::DagRoundTrip,
+            RunType::DagRoundTrip,
             //RunType::TreeOptimize,
             //RunType::Optimize,
         ] {
@@ -402,10 +403,9 @@ impl Run {
                 )
             }
             RunType::DagRoundTrip => {
-                todo!();
-                /*let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
-                let rvsdg2 = tree_to_rvsdg(&tree);
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_dag_encoding();
+                let rvsdg2 = dag_to_rvsdg(&tree);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
                 (
@@ -415,7 +415,7 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::Bril(bril)),
-                )*/
+                )
             }
             RunType::CheckTreeIdentical => {
                 todo!();

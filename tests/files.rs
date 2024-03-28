@@ -19,7 +19,13 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             };
 
             if result.result_interpreted.is_some() {
-                assert_eq!(result.original_interpreted, result.result_interpreted);
+                if result.original_interpreted != result.result_interpreted {
+                    panic!(
+                        "Interpreted result does not match expected:\nExpected: {}\nGot: {}",
+                        result.original_interpreted.unwrap(),
+                        result.result_interpreted.unwrap()
+                    );
+                }
             } else {
                 // only assert a snapshot if we are in the "small" folder
                 if snapshot && snapshot_configurations.contains(&run.test_type) {

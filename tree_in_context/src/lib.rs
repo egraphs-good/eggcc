@@ -9,6 +9,7 @@ use std::fmt::Write;
 use crate::interpreter::interpret_tree_prog;
 
 pub mod ast;
+pub mod dag_typechecker;
 pub mod from_egglog;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
@@ -69,7 +70,7 @@ fn print_with_intermediate_helper(
                 .collect::<Vec<String>>()
                 .join(" ");
             let fresh_var = format!("__tmp{}", cache.len());
-            write!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
+            writeln!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
             cache.insert(term, fresh_var.clone());
             fresh_var
         }

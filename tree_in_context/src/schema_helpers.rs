@@ -3,7 +3,7 @@ use strum_macros::EnumIter;
 
 use crate::{
     ast::{base, boolt, intt},
-    schema::{BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
+    schema::{BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
 };
 
 /// Display for Constant implements a
@@ -31,6 +31,15 @@ impl Display for Expr {
     }
 }
 
+impl TernaryOp {
+    pub(crate) fn name(&self) -> &'static str {
+        use TernaryOp::*;
+        match self {
+            Write => "Write",
+        }
+    }
+}
+
 impl BinaryOp {
     pub(crate) fn name(&self) -> &'static str {
         use BinaryOp::*;
@@ -46,7 +55,9 @@ impl BinaryOp {
             LessEq => "LessEq",
             And => "And",
             Or => "Or",
-            Write => "Write",
+            Load => "Load",
+            Free => "Free",
+            Print => "Print",
             PtrAdd => "PtrAdd",
         }
     }
@@ -57,9 +68,6 @@ impl UnaryOp {
         use UnaryOp::*;
         match self {
             Not => "Not",
-            Print => "Print",
-            Load => "Load",
-            Free => "Free",
         }
     }
 }
@@ -90,6 +98,7 @@ impl Expr {
             Expr::Empty(..) => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,
             Expr::InContext(..) => Constructor::InContext,
+            Expr::Top(..) => Constructor::Top,
         }
     }
     pub fn func_name(&self) -> Option<String> {
@@ -168,6 +177,7 @@ pub(crate) enum Sort {
     Order,
     BinaryOp,
     UnaryOp,
+    TernaryOp,
     I64,
     Type,
     String,
@@ -186,6 +196,7 @@ impl Sort {
             Sort::Type => "Type",
             Sort::BinaryOp => "BinaryOp",
             Sort::UnaryOp => "UnaryOp",
+            Sort::TernaryOp => "TernaryOp",
             Sort::Constant => "Constant",
             Sort::Assumption => "Assumption",
         }
@@ -219,8 +230,10 @@ impl ESort {
 
 #[derive(Clone, Debug, EnumIter, PartialEq)]
 pub enum Constructor {
+    FakeState,
     Function,
     Const,
+    Top,
     Bop,
     Uop,
     Get,
@@ -277,6 +290,7 @@ impl Field {
 impl Constructor {
     pub(crate) fn name(&self) -> &'static str {
         match self {
+            Constructor::FakeState => "FakeState",
             Constructor::Function => "Function",
             Constructor::Const => "Const",
             Constructor::Bop => "Bop",
@@ -295,6 +309,7 @@ impl Constructor {
             Constructor::InContext => "InContext",
             Constructor::Cons => "Cons",
             Constructor::Nil => "Nil",
+            Constructor::Top => "Top",
         }
     }
 
@@ -302,6 +317,7 @@ impl Constructor {
         use Purpose::{CapturedExpr, Static, SubExpr, SubListExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
+            Constructor::FakeState => vec![],
             Constructor::Function => {
                 vec![
                     f(Static(Sort::String), "name"),
@@ -313,6 +329,12 @@ impl Constructor {
             Constructor::Const => {
                 vec![f(Static(Sort::Constant), "n"), f(Static(Sort::Type), "ty")]
             }
+            Constructor::Top => vec![
+                f(Static(Sort::TernaryOp), "op"),
+                f(SubExpr, "x"),
+                f(SubExpr, "y"),
+                f(SubExpr, "z"),
+            ],
             Constructor::Bop => vec![
                 f(Static(Sort::BinaryOp), "op"),
                 f(SubExpr, "x"),
@@ -349,7 +371,11 @@ impl Constructor {
             Constructor::Empty => vec![f(Static(Sort::Type), "ty")],
             Constructor::Cons => vec![f(SubExpr, "hd"), f(SubListExpr, "tl")],
             Constructor::Nil => vec![],
-            Constructor::Alloc => vec![f(SubExpr, "e"), f(Static(Sort::Type), "ty")],
+            Constructor::Alloc => vec![
+                f(SubExpr, "e"),
+                f(SubExpr, "state"),
+                f(Static(Sort::Type), "ty"),
+            ],
             Constructor::InContext => {
                 vec![f(Static(Sort::Assumption), "assumption"), f(SubExpr, "e")]
             }
@@ -376,8 +402,10 @@ impl Constructor {
 
     pub(crate) fn sort(&self) -> ESort {
         match self {
+            Constructor::FakeState => ESort::Expr,
             Constructor::Function => ESort::Expr,
             Constructor::Const => ESort::Expr,
+            Constructor::Top => ESort::Expr,
             Constructor::Bop => ESort::Expr,
             Constructor::Uop => ESort::Expr,
             Constructor::Get => ESort::Expr,
@@ -411,7 +439,9 @@ impl BinaryOp {
             | BinaryOp::GreaterEq
             | BinaryOp::LessEq
             | BinaryOp::Eq => Some((base(intt()), base(intt()), base(boolt()))),
-            BinaryOp::Write => None,
+            BinaryOp::Load => None,
+            BinaryOp::Free => None,
+            BinaryOp::Print => None,
             BinaryOp::PtrAdd => None,
         }
     }
@@ -421,9 +451,6 @@ impl UnaryOp {
     pub(crate) fn types(&self) -> Option<(Type, Type)> {
         match self {
             UnaryOp::Not => Some((base(boolt()), base(boolt()))),
-            UnaryOp::Print => None,
-            UnaryOp::Load => None,
-            UnaryOp::Free => None,
         }
     }
 }

@@ -71,8 +71,9 @@ pub enum Order {
 }
 
 /// A reference counted expression.
-/// We want sharing between sub-expressions, so we
-/// use Rc instead of Box.
+/// We want sharing between sub-expressions, so we use Rc instead of Box.
+/// Invariant: Every shared sub-expression is re-used by the same Rc<Expr> (pointer equality).
+/// This is important for the correctness of the interpreter, which makes this assumption.
 pub type RcExpr = Rc<Expr>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

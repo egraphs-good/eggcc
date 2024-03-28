@@ -66,7 +66,7 @@ impl Optimizer {
         args
     }
 
-    /// Produces a tuple value from the string arguments
+    /// Produces a vector of values, one per string argument to the program
     fn parse_arguments(args: Vec<String>) -> Vec<Value> {
         args.into_iter()
             .map(|arg| {

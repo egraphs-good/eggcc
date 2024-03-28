@@ -2,6 +2,7 @@
 //! once. All the dependencies of an expression are evaluted first.
 //! The interpreter relies on the invariant that common subexpressions are
 //! shared as the same Rc pointer. Otherwise, effects may be executed multiple times.
+//! The invariant is maintained by translation from RVSDG, type checking, and translation from egglog.
 
 use std::{collections::HashMap, fmt::Display, rc::Rc};
 

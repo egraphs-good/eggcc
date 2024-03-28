@@ -9,6 +9,8 @@ use crate::{
 impl TreeProgram {
     /// Adds correct types to arguments in the program
     /// and performs type checking.
+    /// Maintains the invariant that common subexpressions are shared using
+    /// the same Rc<Expr> pointer.
     pub(crate) fn with_arg_types(&self) -> TreeProgram {
         let mut checker = TypeChecker::new(self);
         checker.add_arg_types()

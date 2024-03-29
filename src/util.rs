@@ -179,6 +179,8 @@ pub enum RunType {
     OptimizeDirectJumps,
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
+    /// Converts to an executable using brilift
+    CompileBrilift,
 }
 
 impl Display for RunType {
@@ -207,6 +209,7 @@ impl RunType {
             RunType::TreeOptimize => true,
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
+            RunType::CompileBrilift => true,
         }
     }
 }
@@ -251,12 +254,17 @@ pub struct Run {
     // Also interpret the resulting program
     pub interp: bool,
     pub profile_out: Option<PathBuf>,
+    pub output_path: Option<String>,
+    pub in_test: bool,
+    pub optimize_egglog: bool,
+    pub optimize_brilift: bool,
 }
 
 /// an enum of IRs that can be interpreted
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
+    Executable { executable: String, in_test: bool },
 }
 
 /// Some sort of visualization of the result, with a name
@@ -299,6 +307,10 @@ impl Run {
                 interp: false,
                 prog_with_args: prog.clone(),
                 profile_out: None,
+                output_path: None,
+                in_test: true,
+                optimize_egglog: false,
+                optimize_brilift: false,
             };
             res.push(default.clone());
             if test_type.produces_interpretable() {
@@ -309,14 +321,41 @@ impl Run {
                 res.push(interp);
             }
         }
+
+        // TODO: uncomment `true` once the optimizer works
+        for optimize_egglog in [/*true, */ false] {
+            for optimize_brilift in [true, false] {
+                for interp in [true, false] {
+                    res.push(Run {
+                        test_type: RunType::CompileBrilift,
+                        interp,
+                        prog_with_args: prog.clone(),
+                        profile_out: None,
+                        output_path: None,
+                        in_test: true,
+                        optimize_egglog,
+                        optimize_brilift,
+                    });
+                }
+            }
+        }
+
         res
     }
 
     // give a unique name for this run configuration
     pub fn name(&self) -> String {
         let mut name = format!("{}-{}", self.prog_with_args.name, self.test_type);
+        if self.test_type == RunType::CompileBrilift {
+            name += match (self.optimize_egglog, self.optimize_brilift) {
+                (false, false) => "-opt_none",
+                (true, false) => "-opt_egglog",
+                (false, true) => "-opt_brilift",
+                (true, true) => "-opt_both",
+            };
+        }
         if self.interp {
-            name = format!("{}-interp", name);
+            name += "-interp";
         }
         name
     }
@@ -509,6 +548,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
+            RunType::CompileBrilift => self.run_brilift(),
         };
 
         let result_interpreted = if !self.interp {
@@ -532,6 +572,68 @@ impl Run {
             result_interpreted,
             original_interpreted,
         })
+    }
+
+    fn run_brilift(&self) -> (Vec<Visualization>, Option<Interpretable>) {
+        let program = if self.optimize_egglog {
+            Optimizer::program_to_cfg(&self.prog_with_args.program).to_bril()
+        } else {
+            self.prog_with_args.program.clone()
+        };
+
+        // Compile the input bril file
+        // options are "none", "speed", and "speed_and_size"
+        let opt_level = if self.optimize_brilift {
+            "speed"
+        } else {
+            "none"
+        };
+        let object = self.name() + ".o";
+        brilift::compile(&program, None, &object, opt_level, false);
+
+        // Compile runtime C library
+        // We use unique names so that tests can run in parallel
+        let library_c = self.name() + "-library.c";
+        let library_o = self.name() + "-library.o";
+        std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
+        std::process::Command::new("cc")
+            .arg(library_c.clone())
+            .arg("-c") // create object file instead of executable
+            .arg("-o")
+            .arg(library_o.clone())
+            .status()
+            .unwrap();
+
+        let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+        std::process::Command::new("cc")
+            .arg(object.clone())
+            .arg(library_o.clone())
+            .arg("-o")
+            .arg(executable.clone())
+            .status()
+            .unwrap();
+
+        std::process::Command::new("rm")
+            .arg(object)
+            .arg(library_o)
+            .arg(library_c)
+            .status()
+            .unwrap();
+
+        if self.in_test && !self.interp {
+            std::process::Command::new("rm")
+                .arg(executable.clone())
+                .status()
+                .unwrap();
+        }
+
+        (
+            vec![],
+            Some(Interpretable::Executable {
+                executable,
+                in_test: self.in_test,
+            }),
+        )
     }
 }
 

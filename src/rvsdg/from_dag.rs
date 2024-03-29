@@ -4,12 +4,16 @@ use std::rc::Rc;
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
+use petgraph::{algo::dominators::Dominators, graph::NodeIndex};
 use tree_in_context::{
     schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
 };
 
-use super::{dag_to_graph::{region_graph, RegionGraph}, BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
+use super::{
+    dag_to_graph::{region_graph, RegionGraph},
+    BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType,
+};
 
 type Operands = Vec<Operand>;
 
@@ -193,6 +197,7 @@ impl<'a> TreeToRvsdg<'a> {
             type_cache: self.type_cache,
             translation_cache: HashMap::new(),
             current_args: inner_args,
+            current_region_graph: region_graph(&expr),
         };
         translator.convert_expr(expr)
     }
@@ -346,6 +351,11 @@ impl<'a> TreeToRvsdg<'a> {
                 }
             },
             Expr::If(pred, then_branch, else_branch) => {
+                let then_dominated_nodes = self.current_region_graph.dominated_by(&expr, 0);
+                
+                let else_dominated_nodes = self.current_region_graph.dominated_by(&expr, 1);
+
+
                 panic!("fix if translation");
                 // TODO fix if conversion with dag semantics
                 let pred = self.convert_expr(pred.clone());

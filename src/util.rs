@@ -169,6 +169,8 @@ pub enum RunType {
     /// Convert to Tree Encoding and back to Bril again,
     /// outputting the bril program.
     DagRoundTrip,
+    /// Convert the program to a DAG reprensentation then back to an RVSDG.
+    DagToRvsdg,
     /// Convert the original program to a CFG and output it as one SVG per function.
     ToCfg,
     /// Convert the original program to a CFG and back to Bril again.
@@ -202,6 +204,7 @@ impl RunType {
             RunType::TreeToRvsdg => false,
             RunType::OptimizedRvsdg => false,
             RunType::DagRoundTrip => true,
+            RunType::DagToRvsdg => false,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
             RunType::OptimizeDirectJumps => true,
@@ -400,6 +403,19 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::Bril(bril)),
+                )
+            }
+            RunType::DagToRvsdg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_dag_encoding();
+                let rvsdg2 = dag_to_rvsdg(&tree);
+                (
+                    vec![Visualization {
+                        result: rvsdg2.to_svg(),
+                        file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
                 )
             }
             RunType::DagRoundTrip => {

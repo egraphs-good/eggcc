@@ -73,6 +73,22 @@ pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
                 todo.push(then_branch.clone());
                 todo.push(else_branch.clone());
             }
+            Expr::Switch(inputs, branches) => {
+                let expr_node = rgraph.node(&expr);
+                for (i, branch) in branches.iter().enumerate() {
+                    let branch_intermediate = rgraph.graph.add_node(());
+                    rgraph
+                        .expr_branch_node
+                        .insert((Rc::as_ptr(&expr), i), branch_intermediate);
+                    let branch_node = rgraph.node(branch);
+                    rgraph.graph.add_edge(expr_node, branch_intermediate, ());
+                    rgraph.graph.add_edge(branch_intermediate, branch_node, ());
+                    todo.push(branch.clone());
+                }
+                let inputs_node = rgraph.node(inputs);
+                rgraph.graph.add_edge(expr_node, inputs_node, ());
+                todo.push(inputs.clone());
+            }
             _ => {
                 // for loops, don't recur into subregions
                 let children = match expr.as_ref() {

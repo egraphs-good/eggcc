@@ -117,7 +117,7 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
         type_cache: &type_cache,
         translation_cache: HashMap::new(),
         nodes: &mut nodes,
-        current_region_graph: region_graph(&func),
+        current_region_graph: region_graph(typechecked_func),
         // initial arguments are the first n arguments
         current_args: (0..input_types.len()).map(Operand::Arg).collect(),
     };
@@ -189,15 +189,22 @@ fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
 
 impl<'a> TreeToRvsdg<'a> {
     /// Translates an expression in a new subregion
-    /// num_args is the number of non-state-edge arguments
-    fn translate_subregion(&mut self, expr: RcExpr, num_args: usize) -> Vec<Operand> {
-        let inner_args = (0..num_args).map(Operand::Arg).collect();
+    /// current_args is the operands that (Arg) refers to.
+    /// initial_translation_cache is a cache of already evaluated expressions.
+    /// For branch subregions, the initial translation cache maps branch input expressions
+    /// to the Operand::Arg corresponding to them.
+    fn translate_subregion(
+        &mut self,
+        expr: RcExpr,
+        current_args: Vec<Operand>,
+        initial_translation_cache: HashMap<*const Expr, Operands>,
+    ) -> Vec<Operand> {
         let mut translator = TreeToRvsdg {
             program: self.program,
             nodes: self.nodes,
             type_cache: self.type_cache,
-            translation_cache: HashMap::new(),
-            current_args: inner_args,
+            translation_cache: initial_translation_cache,
+            current_args,
             current_region_graph: region_graph(&expr),
         };
         translator.convert_expr(expr)
@@ -352,41 +359,64 @@ impl<'a> TreeToRvsdg<'a> {
                 }
             },
             Expr::If(pred, then_branch, else_branch) => {
-                panic!("fix if translation");
-                // TODO fix if conversion with dag semantics
+                // first convert the predicate
                 let pred = self.convert_expr(pred.clone());
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
-                let then_branch =
-                    self.translate_subregion(then_branch.clone(), self.current_args.len());
 
-                let else_branch =
-                    self.translate_subregion(else_branch.clone(), self.current_args.len());
+                // find the branch inputs for then and else branches
+                let mut branch_inputs = self.current_region_graph.branch_inputs(&expr, 0);
+                let else_branch_inputs = self.current_region_graph.branch_inputs(&expr, 1);
+                branch_inputs.extend(else_branch_inputs);
+
+                // new inputs always start with current arguments
+                let mut new_inputs: Vec<Operand> =
+                    (0..self.current_args.len()).map(Operand::Arg).collect();
+                // branch inputs are added to this cache
+                let mut new_expr_cache = HashMap::new();
+                for (_pointer, input_expr) in branch_inputs {
+                    let input = self.convert_expr(input_expr.clone());
+                    let cached_input = input
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _operand)| Operand::Arg(i + new_inputs.len()))
+                        .collect();
+                    new_expr_cache.insert(Rc::as_ptr(&input_expr), cached_input);
+                    new_inputs.extend(input);
+                }
+
+                let then_region = self.translate_subregion(
+                    then_branch.clone(),
+                    new_inputs.clone(),
+                    new_expr_cache.clone(),
+                );
+                let else_region = self.translate_subregion(
+                    else_branch.clone(),
+                    new_inputs.clone(),
+                    new_expr_cache,
+                );
 
                 let new_id = self.nodes.len();
                 assert_eq!(
-                    then_branch.len(),
-                    else_branch.len(),
+                    then_region.len(),
+                    else_region.len(),
                     "Expected same number of values for then and else branches"
                 );
 
-                let res: Vec<Operand> = (0..(then_branch.len() - 1))
+                let res: Vec<Operand> = (0..then_region.len())
                     .map(|i| Operand::Project(i, new_id))
                     .collect();
                 self.nodes.push(RvsdgBody::If {
                     pred: pred[0],
-                    // inputs to the If node are the
-                    // current arguments, since in the tree IR
-                    // If doesn't bind anything
-                    inputs: self.current_args.clone(),
-                    then_branch,
-                    else_branch,
+                    inputs: new_inputs,
+                    then_branch: then_region,
+                    else_branch: else_region,
                 });
 
                 res
             }
-            Expr::Switch(pred, cases) => {
+            Expr::Switch(_pred, _cases) => {
                 panic!("fix switch translation");
-                let pred = self.convert_expr(pred.clone());
+                /*let pred = self.convert_expr(pred.clone());
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
                 let outputs: Vec<Vec<Operand>> = cases
                     .iter()
@@ -407,11 +437,15 @@ impl<'a> TreeToRvsdg<'a> {
                     inputs: self.current_args.clone(),
                     outputs,
                 });
-                res
+                res*/
             }
             Expr::DoWhile(inputs, body) => {
                 let inputs_converted = self.convert_expr(inputs.clone());
-                let pred_and_body = self.translate_subregion(body.clone(), inputs_converted.len());
+                let new_args = (0..inputs_converted.len())
+                    .map(|i| Operand::Arg(i))
+                    .collect();
+                let pred_and_body =
+                    self.translate_subregion(body.clone(), new_args, HashMap::new());
                 assert_eq!(
                     inputs_converted.len(),
                     pred_and_body.len() - 1,

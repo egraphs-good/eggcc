@@ -9,7 +9,7 @@ use tree_in_context::{
     typechecker::TypeCache,
 };
 
-use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
+use super::{dag_to_graph::{region_graph, RegionGraph}, BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
 
 type Operands = Vec<Operand>;
 
@@ -23,6 +23,9 @@ struct TreeToRvsdg<'a> {
     /// Shared expressions must be converted to the same RVSDG nodes.
     translation_cache: HashMap<*const Expr, Operands>,
     nodes: &'a mut Vec<RvsdgBody>,
+    /// The current region's graph.
+    /// Allows us to query the dominance fronteir of a branch.
+    current_region_graph: RegionGraph,
     /// The current arguments to the tree program
     /// as RVSDG operands. (doesn't include state edge)
     current_args: Vec<Operand>,
@@ -109,6 +112,7 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
         type_cache: &type_cache,
         translation_cache: HashMap::new(),
         nodes: &mut nodes,
+        current_region_graph: region_graph(&func),
         // initial arguments are the first n arguments
         current_args: (0..input_types.len()).map(Operand::Arg).collect(),
     };

@@ -12,7 +12,7 @@ use hashbrown::{HashMap, HashSet};
 use petgraph::graph::{DiGraph, NodeIndex};
 use tree_in_context::schema::{Expr, RcExpr};
 
-struct RegionGraph {
+pub(crate) struct RegionGraph {
     graph: DiGraph<(), ()>,
     expr_to_node: HashMap<*const Expr, NodeIndex>,
     node_to_expr: HashMap<NodeIndex, *const Expr>,

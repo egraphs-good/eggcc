@@ -241,3 +241,23 @@ fn test_simple_branch_share_outside() {
     assert_eq!(rgraph.branch_inputs(&my_if, 0), expected);
     assert_eq!(rgraph.branch_inputs(&my_if, 1), expected2);
 }
+
+#[test]
+fn test_branch_share_effects() {
+    use tree_in_context::ast::*;
+    let addr = alloc(int(10), arg(), pointert(intt()));
+    let shared_read = load(get(addr.clone(), 0), get(addr.clone(), 1));
+    let shared_write = write(get(addr.clone(), 0), int(20), get(shared_read.clone(), 1));
+
+    let root = tif(
+        ttrue(),
+        write(get(addr.clone(), 0), int(30), shared_write.clone()),
+        write(get(addr.clone(), 0), int(40), shared_write.clone()),
+    );
+
+    let rgraph = region_graph(&root);
+    let expected = rcexpr_set(vec![addr.clone(), shared_write.clone()]);
+
+    assert_eq!(rgraph.branch_inputs(&root, 0), expected);
+    assert_eq!(rgraph.branch_inputs(&root, 1), expected);
+}

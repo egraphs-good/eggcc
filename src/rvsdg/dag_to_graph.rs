@@ -139,6 +139,7 @@ impl RegionGraph {
 
     /// For a given branch, find all the expressions that need to be passed in
     /// as arguments to the region.
+    /// The argument is always passed through, so it is not included in the result.
     pub(crate) fn branch_inputs(
         &self,
         expr: &RcExpr,
@@ -158,15 +159,13 @@ impl RegionGraph {
         }
 
         for (_expr_ptr, expr) in dominated_exprs.iter() {
-            match expr.as_ref() {
-                // any referenced arguments need to be passed through
-                Expr::Arg(_) => {
-                    result.insert(Rc::as_ptr(expr), expr.clone());
-                }
-                // besides that, expressions on the dominance frontier need to be passed through
-                _ => {
-                    for child in expr.children() {
-                        if dominated_exprs.get(&Rc::as_ptr(&child)).is_none() {
+            for child in expr.children() {
+                // if the child is not dominated by the branch, it needs to be passed through
+                if dominated_exprs.get(&Rc::as_ptr(&child)).is_none() {
+                    match child.as_ref() {
+                        // unless it is an argument
+                        Expr::Arg(_) => {}
+                        _ => {
                             result.insert(Rc::as_ptr(&child), child.clone());
                         }
                     }
@@ -190,8 +189,8 @@ fn test_simple_branch_inputs() {
     let outside_computation = add(int(3), int(4));
     let root = add(my_if.clone(), outside_computation.clone());
     let rgraph = region_graph(&root);
-    assert_eq!(rgraph.branch_inputs(&my_if, 0).len(), 0);
-    assert_eq!(rgraph.branch_inputs(&my_if, 1).len(), 0);
+    assert_eq!(rgraph.branch_inputs(&my_if, 0), rcexpr_set(vec![]));
+    assert_eq!(rgraph.branch_inputs(&my_if, 1), rcexpr_set(vec![]));
 }
 
 #[test]

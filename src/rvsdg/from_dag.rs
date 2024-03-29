@@ -25,13 +25,14 @@ struct TreeToRvsdg<'a> {
     type_cache: &'a TypeCache,
     /// A cache of already converted expressions.
     /// Shared expressions must be converted to the same RVSDG nodes.
+    /// For branches, this can be pre-propulated with the arguments passed to the branch.
     translation_cache: HashMap<*const Expr, Operands>,
     nodes: &'a mut Vec<RvsdgBody>,
     /// The current region's graph.
     /// Allows us to query the dominance fronteir of a branch.
     current_region_graph: RegionGraph,
     /// The current arguments to the tree program
-    /// as RVSDG operands. (doesn't include state edge)
+    /// as RVSDG operands.
     current_args: Vec<Operand>,
 }
 
@@ -351,11 +352,6 @@ impl<'a> TreeToRvsdg<'a> {
                 }
             },
             Expr::If(pred, then_branch, else_branch) => {
-                let then_dominated_nodes = self.current_region_graph.dominated_by(&expr, 0);
-                
-                let else_dominated_nodes = self.current_region_graph.dominated_by(&expr, 1);
-
-
                 panic!("fix if translation");
                 // TODO fix if conversion with dag semantics
                 let pred = self.convert_expr(pred.clone());

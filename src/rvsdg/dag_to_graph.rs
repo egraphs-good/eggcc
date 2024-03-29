@@ -22,7 +22,8 @@ pub(crate) struct RegionGraph {
     /// For each branch node, we need an extra node in the graph.
     /// This allows us to query for the nodes dominated by the branch.
     expr_branch_node: HashMap<(*const Expr, usize), NodeIndex>,
-    dominators: Dominators<NodeIndex>,
+    /// Dominators for the graph. This is None until the graph is fully constructed.
+    dominators: Option<Dominators<NodeIndex>>,
 }
 
 /// In the DAG IR, there are two nodes that create new "regions"
@@ -38,7 +39,7 @@ pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
         node_to_expr: HashMap::new(),
         expr_branch_node: HashMap::new(),
         // dummy dominators, will be replaced later
-        dominators: dominators::simple_fast::<&DiGraph<(), ()>>(&DiGraph::new(), NodeIndex::new(0)),
+        dominators: None,
     };
     while let Some(expr) = todo.pop() {
         if !processed.insert(Rc::as_ptr(&expr)) {
@@ -92,7 +93,7 @@ pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
     }
 
     let root = rgraph.node(expr);
-    rgraph.dominators = dominators::simple_fast(&rgraph.graph, root);
+    rgraph.dominators = Some(dominators::simple_fast(&rgraph.graph, root));
     rgraph
 }
 
@@ -114,11 +115,7 @@ impl RegionGraph {
     /// Expressions that are in this set should be only evaluated in the branch.
     /// Expressions that have a child that is not in the set
     /// are along the dominance frontier.
-    pub(crate) fn dominated_by(
-        &self,
-        expr: &RcExpr,
-        branch: usize,
-    ) -> HashMap<*const Expr, RcExpr> {
+    fn dominated_by(&self, expr: &RcExpr, branch: usize) -> HashMap<*const Expr, RcExpr> {
         let branch_node = self.expr_branch_node[&(Rc::as_ptr(expr), branch)];
         let mut result = HashMap::new();
         let mut todo = vec![branch_node];
@@ -127,7 +124,12 @@ impl RegionGraph {
                 let expr = self.node_to_expr[&node].clone();
                 result.insert(Rc::as_ptr(&expr), expr);
             }
-            for child in self.dominators.immediately_dominated_by(node) {
+            for child in self
+                .dominators
+                .as_ref()
+                .unwrap()
+                .immediately_dominated_by(node)
+            {
                 todo.push(child);
             }
         }
@@ -143,7 +145,18 @@ impl RegionGraph {
         branch: usize,
     ) -> HashMap<*const Expr, RcExpr> {
         let dominated_exprs = self.dominated_by(expr, branch);
+
         let mut result = HashMap::new();
+
+        // when there are no dominated exprs, the branch expression
+        // is the only one that needs to be passed through
+        if dominated_exprs.is_empty() {
+            let branch_node = self.expr_branch_node[&(Rc::as_ptr(expr), branch)];
+            let branch_node_child = self.graph.neighbors(branch_node).next().unwrap();
+            let branch_expr = self.node_to_expr[&branch_node_child].clone();
+            result.insert(Rc::as_ptr(&branch_expr), branch_expr);
+        }
+
         for (_expr_ptr, expr) in dominated_exprs.iter() {
             match expr.as_ref() {
                 // any referenced arguments need to be passed through
@@ -163,4 +176,67 @@ impl RegionGraph {
 
         result
     }
+}
+
+fn rcexpr_set(iterator: impl IntoIterator<Item = RcExpr>) -> HashMap<*const Expr, RcExpr> {
+    iterator.into_iter().map(|e| (Rc::as_ptr(&e), e)).collect()
+}
+
+#[test]
+fn test_simple_branch_inputs() {
+    use tree_in_context::ast::*;
+    let my_if = tif(ttrue(), int(1), int(2));
+    let outside_computation = add(int(3), int(4));
+    let root = add(my_if.clone(), outside_computation.clone());
+    let rgraph = region_graph(&root);
+    assert_eq!(rgraph.branch_inputs(&my_if, 0).len(), 0);
+    assert_eq!(rgraph.branch_inputs(&my_if, 1).len(), 0);
+}
+
+#[test]
+fn test_simple_branch_inputs_share_between_branches() {
+    use tree_in_context::ast::*;
+    let shared_expr = int(1);
+    let my_if = tif(ttrue(), shared_expr.clone(), shared_expr.clone());
+    let outside_computation = add(int(3), int(4));
+    let root = add(my_if.clone(), outside_computation.clone());
+    let rgraph = region_graph(&root);
+    let expected = rcexpr_set(vec![shared_expr.clone()]);
+    assert_eq!(rgraph.branch_inputs(&my_if, 0), expected);
+    assert_eq!(rgraph.branch_inputs(&my_if, 1), expected);
+}
+
+#[test]
+fn test_simple_branch_inputs_share_between_branches2() {
+    use tree_in_context::ast::*;
+    let shared_expr = int(1);
+    let my_if = tif(
+        ttrue(),
+        add(shared_expr.clone(), shared_expr.clone()),
+        add(shared_expr.clone(), int(10)),
+    );
+    let outside_computation = add(int(3), int(4));
+    let root = add(my_if.clone(), outside_computation.clone());
+    let rgraph = region_graph(&root);
+    let expected = rcexpr_set(vec![shared_expr.clone()]);
+    assert_eq!(rgraph.branch_inputs(&my_if, 0), expected);
+    assert_eq!(rgraph.branch_inputs(&my_if, 1), expected);
+}
+
+
+#[test]
+fn test_simple_branch_share_outside() {
+  use tree_in_context::ast::*;
+  let shared_expr = int(1);
+  let my_if = tif(
+      ttrue(),
+      add(shared_expr.clone(), int(9)),
+      add(int(10), int(11)),
+  );
+  let outside_computation = add(shared_expr.clone(), int(4));
+  let root = add(my_if.clone(), outside_computation.clone());
+  let rgraph = region_graph(&root);
+  let expected = rcexpr_set(vec![shared_expr.clone()]);
+  assert_eq!(rgraph.branch_inputs(&my_if, 0), expected);
+  assert_eq!(rgraph.branch_inputs(&my_if, 1), expected);
 }

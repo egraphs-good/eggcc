@@ -184,7 +184,7 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=238cf7e#238cf7e6c52966c5d096979b13ae178380e7645c"
+source = "git+https://github.com/sampsyo/bril?rev=b20cc2d#b20cc2d797943aee0ec91f9bff562ad26162da99"
 dependencies = [
  "serde",
  "serde_json",
@@ -194,7 +194,7 @@ dependencies = [
 [[package]]
 name = "bril2json"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=238cf7e#238cf7e6c52966c5d096979b13ae178380e7645c"
+source = "git+https://github.com/sampsyo/bril?rev=b20cc2d#b20cc2d797943aee0ec91f9bff562ad26162da99"
 dependencies = [
  "bril-rs",
  "clap",
@@ -206,7 +206,7 @@ dependencies = [
 [[package]]
 name = "brilift"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=238cf7e#238cf7e6c52966c5d096979b13ae178380e7645c"
+source = "git+https://github.com/sampsyo/bril?rev=b20cc2d#b20cc2d797943aee0ec91f9bff562ad26162da99"
 dependencies = [
  "argh",
  "bril-rs",
@@ -223,7 +223,7 @@ dependencies = [
 [[package]]
 name = "brilirs"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=238cf7e#238cf7e6c52966c5d096979b13ae178380e7645c"
+source = "git+https://github.com/sampsyo/bril?rev=b20cc2d#b20cc2d797943aee0ec91f9bff562ad26162da99"
 dependencies = [
  "bril-rs",
  "bril2json",

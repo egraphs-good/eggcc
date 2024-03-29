@@ -344,18 +344,17 @@ impl Run {
 
     // give a unique name for this run configuration
     pub fn name(&self) -> String {
-        let mut name = if self.test_type == RunType::CompileBrilift {
-            match (self.optimize_egglog, self.optimize_brilift) {
-                (false, false) => format!("{}-{}-none", self.prog_with_args.name, self.test_type),
-                (true, false) => format!("{}-{}-egglog", self.prog_with_args.name, self.test_type),
-                (false, true) => format!("{}-{}-brilift", self.prog_with_args.name, self.test_type),
-                (true, true) => format!("{}-{}-both", self.prog_with_args.name, self.test_type),
-            }
-        } else {
-            format!("{}-{}", self.prog_with_args.name, self.test_type)
-        };
+        let mut name = format!("{}-{}", self.prog_with_args.name, self.test_type);
+        if self.test_type == RunType::CompileBrilift {
+            name += match (self.optimize_egglog, self.optimize_brilift) {
+                (false, false) => "-opt_none",
+                (true, false) => "-opt_egglog",
+                (false, true) => "-opt_brilift",
+                (true, true) => "-opt_both",
+            };
+        }
         if self.interp {
-            name = format!("{}-interp", name);
+            name += "-interp";
         }
         name
     }
@@ -582,6 +581,7 @@ impl Run {
             self.prog_with_args.program.clone()
         };
 
+        // Compile the input bril file
         // options are "none", "speed", and "speed_and_size"
         let opt_level = if self.optimize_brilift {
             "speed"
@@ -591,10 +591,23 @@ impl Run {
         let object = self.name() + ".o";
         brilift::compile(&program, None, &object, opt_level, false);
 
+        // Compile runtime C library
+        // We use unique names so that tests can run in parallel
+        let library_c = self.name() + "-library.c";
+        let library_o = self.name() + "-library.o";
+        std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
+        std::process::Command::new("cc")
+            .arg(library_c.clone())
+            .arg("-c") // create object file instead of executable
+            .arg("-o")
+            .arg(library_o.clone())
+            .status()
+            .unwrap();
+
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
         std::process::Command::new("cc")
             .arg(object.clone())
-            .arg("infra/brilift.o")
+            .arg(library_o.clone())
             .arg("-o")
             .arg(executable.clone())
             .status()
@@ -602,6 +615,8 @@ impl Run {
 
         std::process::Command::new("rm")
             .arg(object)
+            .arg(library_o)
+            .arg(library_c)
             .status()
             .unwrap();
 

@@ -178,6 +178,7 @@ impl RegionGraph {
     }
 }
 
+#[cfg(test)]
 fn rcexpr_set(iterator: impl IntoIterator<Item = RcExpr>) -> HashMap<*const Expr, RcExpr> {
     iterator.into_iter().map(|e| (Rc::as_ptr(&e), e)).collect()
 }
@@ -223,20 +224,20 @@ fn test_simple_branch_inputs_share_between_branches2() {
     assert_eq!(rgraph.branch_inputs(&my_if, 1), expected);
 }
 
-
 #[test]
 fn test_simple_branch_share_outside() {
-  use tree_in_context::ast::*;
-  let shared_expr = int(1);
-  let my_if = tif(
-      ttrue(),
-      add(shared_expr.clone(), int(9)),
-      add(int(10), int(11)),
-  );
-  let outside_computation = add(shared_expr.clone(), int(4));
-  let root = add(my_if.clone(), outside_computation.clone());
-  let rgraph = region_graph(&root);
-  let expected = rcexpr_set(vec![shared_expr.clone()]);
-  assert_eq!(rgraph.branch_inputs(&my_if, 0), expected);
-  assert_eq!(rgraph.branch_inputs(&my_if, 1), expected);
+    use tree_in_context::ast::*;
+    let shared_expr = int(1);
+    let my_if = tif(
+        ttrue(),
+        add(shared_expr.clone(), int(9)),
+        add(int(10), int(11)),
+    );
+    let outside_computation = add(shared_expr.clone(), int(4));
+    let root = add(my_if.clone(), outside_computation.clone());
+    let rgraph = region_graph(&root);
+    let expected = rcexpr_set(vec![shared_expr.clone()]);
+    let expected2 = rcexpr_set(vec![]);
+    assert_eq!(rgraph.branch_inputs(&my_if, 0), expected);
+    assert_eq!(rgraph.branch_inputs(&my_if, 1), expected2);
 }

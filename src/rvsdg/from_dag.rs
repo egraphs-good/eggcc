@@ -4,7 +4,6 @@ use std::rc::Rc;
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
-use petgraph::{algo::dominators::Dominators, graph::NodeIndex};
 use tree_in_context::{
     schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
@@ -30,7 +29,7 @@ struct TreeToRvsdg<'a> {
     nodes: &'a mut Vec<RvsdgBody>,
     /// The current region's graph.
     /// Allows us to query the dominance fronteir of a branch.
-    current_region_graph: RegionGraph,
+    current_region_graph: &'a RegionGraph,
     /// The current arguments to the tree program
     /// as RVSDG operands.
     current_args: Vec<Operand>,
@@ -117,7 +116,7 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
         type_cache: &type_cache,
         translation_cache: HashMap::new(),
         nodes: &mut nodes,
-        current_region_graph: region_graph(typechecked_func),
+        current_region_graph: &region_graph(typechecked_func),
         // initial arguments are the first n arguments
         current_args: (0..input_types.len()).map(Operand::Arg).collect(),
     };
@@ -198,14 +197,16 @@ impl<'a> TreeToRvsdg<'a> {
         expr: RcExpr,
         current_args: Vec<Operand>,
         initial_translation_cache: HashMap<*const Expr, Operands>,
+        region_graph: &RegionGraph,
     ) -> Vec<Operand> {
+        // TODO fix bug here, region graph needs to take the whole region as input
         let mut translator = TreeToRvsdg {
             program: self.program,
             nodes: self.nodes,
             type_cache: self.type_cache,
             translation_cache: initial_translation_cache,
             current_args,
-            current_region_graph: region_graph(&expr),
+            current_region_graph: region_graph,
         };
         translator.convert_expr(expr)
     }
@@ -388,11 +389,13 @@ impl<'a> TreeToRvsdg<'a> {
                     then_branch.clone(),
                     new_inputs.clone(),
                     new_expr_cache.clone(),
+                    self.current_region_graph,
                 );
                 let else_region = self.translate_subregion(
                     else_branch.clone(),
                     new_inputs.clone(),
                     new_expr_cache,
+                    self.current_region_graph,
                 );
 
                 let new_id = self.nodes.len();
@@ -444,8 +447,13 @@ impl<'a> TreeToRvsdg<'a> {
                 let new_args = (0..inputs_converted.len())
                     .map(|i| Operand::Arg(i))
                     .collect();
-                let pred_and_body =
-                    self.translate_subregion(body.clone(), new_args, HashMap::new());
+                let loop_region_graph = region_graph(body);
+                let pred_and_body = self.translate_subregion(
+                    body.clone(),
+                    new_args,
+                    HashMap::new(),
+                    &loop_region_graph,
+                );
                 assert_eq!(
                     inputs_converted.len(),
                     pred_and_body.len() - 1,

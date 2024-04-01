@@ -28,6 +28,7 @@ pub(crate) struct RegionGraph {
 
 /// In the DAG IR, there are two nodes that create new "regions"
 /// by binding an argument: Function and DoWhile.
+/// region_expr should be the body of the function or the loop body.
 /// This function creates a dependency graph of all the computations for a given region
 /// (it doesn't traverse into nested regions).
 pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
@@ -132,6 +133,7 @@ impl RegionGraph {
     /// Expressions that have a child that is not in the set
     /// are along the dominance frontier.
     fn dominated_by(&self, expr: &RcExpr, branch: usize) -> HashMap<*const Expr, RcExpr> {
+        eprintln!("dominated_by, expr: {:?}, branch: {:?}", expr, branch);
         let branch_node = self.expr_branch_node[&(Rc::as_ptr(expr), branch)];
         let mut result = HashMap::new();
         let mut todo = vec![branch_node];

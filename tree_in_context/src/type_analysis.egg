@@ -40,12 +40,6 @@
       ((panic "arg type mismatch"))
       :ruleset type-analysis)
 
-(rule ((= lhs (Let in out))
-       (HasArgType out ty)
-       (HasArgType out ty2)
-       (!= ty ty2))
-      ((panic "arg type mismatch in let"))
-      :ruleset type-analysis)
 (rule ((= lhs (Function name in out body))
        (HasArgType body ty)
        (HasArgType body ty2)
@@ -468,21 +462,6 @@
         (!= tya tyb)
       )
       ((panic "switch branches had different types"))
-      :ruleset type-analysis)
-
-(rule (
-        (= lhs (Let inp out))
-        (HasType inp ty-in)
-      )
-      ((HasArgType out ty-in)) ; Track what type we expect the arg to have
-      :ruleset type-analysis)
-
-(rule (
-        (= lhs (Let inp out))
-        (HasType inp ty-in)
-        (HasType out ty-out)
-      )
-      ((HasType lhs ty-out))
       :ruleset type-analysis)
 
 (rule ((Arg ty))

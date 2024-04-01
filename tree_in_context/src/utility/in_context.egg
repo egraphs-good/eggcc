@@ -202,17 +202,6 @@
        :ruleset context)
 
 
-(rule ((= lhs (DoAddContext seen ctx scope (Let in out)))
-       (!= scope (StopAtLoopOrLet)))
-      ((let new-inputs
-         (DoAddContext seen ctx scope in))
-       (let newpath
-          (PathCons (Let in out) lhs seen))
-       (union lhs
-         (Let new-inputs
-           (DoAddContext newpath (InLet new-inputs) scope out))))
-       :ruleset context)
-
 (rule ((= lhs (DoAddContext seen ctx scope (DoWhile inputs outputs)))
        (= scope (Full)))
       ((let new-inputs

@@ -98,9 +98,6 @@ impl FromEgglog {
     fn assumption_from_egglog(&mut self, assumption: Term) -> Assumption {
         match_term_app!(assumption.clone();
         {
-          ("InLet", [expr]) => {
-            Assumption::InLet(self.expr_from_egglog(self.termdag.get(*expr)))
-          }
           ("InLoop", [lhs, rhs]) => {
             Assumption::InLoop(
               self.expr_from_egglog(self.termdag.get(*lhs)),
@@ -274,14 +271,6 @@ impl FromEgglog {
               self.expr_from_egglog(cond),
               self.expr_from_egglog(then_),
               self.expr_from_egglog(else_),
-            ))
-          }
-          ("Let", [lhs, rhs]) => {
-            let lhs = self.termdag.get(*lhs);
-            let rhs = self.termdag.get(*rhs);
-            Rc::new(Expr::Let(
-              self.expr_from_egglog(lhs),
-              self.expr_from_egglog(rhs),
             ))
           }
           ("DoWhile", [cond, body]) => {

@@ -92,7 +92,6 @@ impl Expr {
             Expr::Switch(..) => Constructor::Switch,
             Expr::If(..) => Constructor::If,
             Expr::DoWhile(..) => Constructor::DoWhile,
-            Expr::Let(..) => Constructor::Let,
             Expr::Arg(..) => Constructor::Arg,
             Expr::Call(..) => Constructor::Call,
             Expr::Empty(..) => Constructor::Empty,
@@ -269,7 +268,6 @@ pub enum Constructor {
     Switch,
     If,
     DoWhile,
-    Let,
     Arg,
     Call,
     Empty,
@@ -327,7 +325,6 @@ impl Constructor {
             Constructor::Switch => "Switch",
             Constructor::If => "If",
             Constructor::DoWhile => "DoWhile",
-            Constructor::Let => "Let",
             Constructor::Arg => "Arg",
             Constructor::Call => "Call",
             Constructor::Empty => "Empty",
@@ -388,7 +385,6 @@ impl Constructor {
             Constructor::DoWhile => {
                 vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")]
             }
-            Constructor::Let => vec![f(SubExpr, "in"), f(CapturedExpr, "out")],
             Constructor::Arg => vec![f(Static(Sort::Type), "ty")],
             Constructor::Call => {
                 vec![f(Static(Sort::String), "func"), f(SubExpr, "arg")]
@@ -438,7 +434,6 @@ impl Constructor {
             Constructor::Switch => ESort::Expr,
             Constructor::If => ESort::Expr,
             Constructor::DoWhile => ESort::Expr,
-            Constructor::Let => ESort::Expr,
             Constructor::Arg => ESort::Expr,
             Constructor::Call => ESort::Expr,
             Constructor::Empty => ESort::Expr,

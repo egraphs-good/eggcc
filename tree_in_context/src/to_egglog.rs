@@ -97,10 +97,6 @@ impl Type {
 impl Assumption {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
         match self {
-            Assumption::InLet(expr) => {
-                let expr = expr.to_egglog_internal(term_dag);
-                term_dag.app("InLet".into(), vec![expr])
-            }
             Assumption::InLoop(lhs, rhs) => {
                 let lhs = lhs.to_egglog_internal(term_dag);
                 let rhs = rhs.to_egglog_internal(term_dag);
@@ -225,11 +221,6 @@ impl Expr {
                 let then = then.to_egglog_internal(term_dag);
                 let els = els.to_egglog_internal(term_dag);
                 term_dag.app("If".into(), vec![cond, then, els])
-            }
-            Expr::Let(lhs, rhs) => {
-                let lhs = lhs.to_egglog_internal(term_dag);
-                let rhs = rhs.to_egglog_internal(term_dag);
-                term_dag.app("Let".into(), vec![lhs, rhs])
             }
             Expr::DoWhile(cond, body) => {
                 let cond = cond.to_egglog_internal(term_dag);

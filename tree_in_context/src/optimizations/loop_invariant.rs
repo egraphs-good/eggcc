@@ -56,7 +56,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                 })
                 .join(" ");
             let is_pure = match ctor {
-                Constructor::Call | Constructor::Let | Constructor::DoWhile => "(ExprIsPure expr)",
+                Constructor::Call | Constructor::DoWhile => "(ExprIsPure expr)",
                 _ => "",
             };
 

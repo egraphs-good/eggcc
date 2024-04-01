@@ -38,7 +38,7 @@ use crate::Value;
 #[test]
 fn test_is_valid() -> crate::Result {
     let myloop = dowhile(
-        in_context(inlet(int_ty(2, emptyt())), single(int(1))),
+        single(int(1)),
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)

@@ -357,11 +357,6 @@ impl<'a> TypeChecker<'a> {
                 );
                 (tty, RcExpr::new(Expr::If(new_pred, new_then, new_else)))
             }
-            Expr::Let(input, body) => {
-                let (ity, new_input) = self.add_arg_types_to_expr(input.clone(), arg_ty);
-                let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), &ity);
-                (bty, RcExpr::new(Expr::Let(new_input, new_body)))
-            }
             Expr::DoWhile(inputs, pred_and_outputs) => {
                 let (ity, new_inputs) = self.add_arg_types_to_expr(inputs.clone(), arg_ty);
                 let Type::TupleT(in_tys) = ity.clone() else {

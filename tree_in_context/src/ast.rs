@@ -244,9 +244,6 @@ pub fn parallel_vec(es: impl IntoIterator<Item = RcExpr>) -> RcExpr {
     }
 }
 
-pub fn tlet(lhs: RcExpr, rhs: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Let(lhs, rhs))
-}
 
 pub fn arg_ty(ty: Type) -> RcExpr {
     RcExpr::new(Expr::Arg(ty))
@@ -313,9 +310,6 @@ pub fn int_ty(i: i64, ty: Type) -> RcExpr {
     RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), ty))
 }
 
-pub fn inlet(e: RcExpr) -> Assumption {
-    Assumption::InLet(e)
-}
 
 pub fn inloop(e1: RcExpr, e2: RcExpr) -> Assumption {
     Assumption::InLoop(e1, e2)

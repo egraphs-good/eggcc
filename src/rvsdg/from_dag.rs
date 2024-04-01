@@ -339,11 +339,6 @@ impl<'a> TreeToRvsdg<'a> {
             Expr::Empty(_ty) => {
                 vec![]
             }
-            Expr::Let(input, body) => {
-                let input = self.convert_expr(input.clone());
-                self.current_args = input.clone();
-                self.convert_expr(body.clone())
-            }
             Expr::InContext(_assum, body) => self.convert_expr(body.clone()),
             Expr::Concat(_order, left, right) => {
                 let left = self.convert_expr(left.clone());

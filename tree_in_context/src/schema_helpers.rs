@@ -187,7 +187,6 @@ impl Expr {
             }
             Expr::If(x, y, z) => vec![x.clone(), y.clone(), z.clone()],
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
-            Expr::Let(x, y) => vec![x.clone(), y.clone()],
             Expr::Arg(_) => vec![],
             Expr::InContext(_, x) => vec![x.clone()],
         }

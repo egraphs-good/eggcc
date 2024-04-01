@@ -19,8 +19,9 @@ pub(crate) struct RegionGraph {
     graph: DiGraph<(), ()>,
     expr_to_node: HashMap<*const Expr, NodeIndex>,
     node_to_expr: HashMap<NodeIndex, Rc<Expr>>,
-    /// For each branch node, we need an extra node in the graph.
-    /// This allows us to query for the nodes dominated by the branch.
+    /// For each branch node, we add root node for the branch to the graph.
+    /// This handles the edge case where two branches share a common subexpression, and so
+    /// the dominance frontier contains just that subexpression.
     expr_branch_node: HashMap<(*const Expr, usize), NodeIndex>,
     /// Dominators for the graph. This is None until the graph is fully constructed.
     dominators: Option<Dominators<NodeIndex>>,
@@ -28,11 +29,11 @@ pub(crate) struct RegionGraph {
 
 /// In the DAG IR, there are two nodes that create new "regions"
 /// by binding an argument: Function and DoWhile.
-/// region_expr should be the body of the function or the loop body.
+/// `expr`` should be the body of the function or the loop body.
 /// This function creates a dependency graph of all the computations for a given region
 /// (it doesn't traverse into nested regions).
 pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
-    let mut todo = vec![expr.clone()];
+    let mut dfs_stack = vec![expr.clone()];
     let mut processed = HashSet::<*const Expr>::new();
     let mut rgraph = RegionGraph {
         graph: DiGraph::new(),
@@ -42,21 +43,21 @@ pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
         // dummy dominators, will be replaced later
         dominators: None,
     };
-    while let Some(expr) = todo.pop() {
+    while let Some(expr) = dfs_stack.pop() {
         if !processed.insert(Rc::as_ptr(&expr)) {
             continue;
         }
-        // for if or switch statements, we need to create branch nodes
+        // for `If` or `Switch`` statements, we need to create branch nodes
         match expr.as_ref() {
             Expr::If(inputs, then_branch, else_branch) => {
-                let then_branch_node = rgraph.graph.add_node(());
+                let then_root_node = rgraph.graph.add_node(());
                 rgraph
                     .expr_branch_node
-                    .insert((Rc::as_ptr(&expr), 0), then_branch_node);
-                let else_branch_node = rgraph.graph.add_node(());
+                    .insert((Rc::as_ptr(&expr), 0), then_root_node);
+                let else_root_node = rgraph.graph.add_node(());
                 rgraph
                     .expr_branch_node
-                    .insert((Rc::as_ptr(&expr), 1), else_branch_node);
+                    .insert((Rc::as_ptr(&expr), 1), else_root_node);
                 let expr_node = rgraph.node(&expr);
                 let inputs_node = rgraph.node(inputs);
                 let then_node = rgraph.node(then_branch);
@@ -65,31 +66,31 @@ pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
                 // direct edge to inputs
                 rgraph.graph.add_edge(expr_node, inputs_node, ());
                 // edges to newly made branch nodes
-                rgraph.graph.add_edge(expr_node, then_branch_node, ());
-                rgraph.graph.add_edge(expr_node, else_branch_node, ());
+                rgraph.graph.add_edge(expr_node, then_root_node, ());
+                rgraph.graph.add_edge(expr_node, else_root_node, ());
                 // branch nodes point to actual branch expressions
-                rgraph.graph.add_edge(then_branch_node, then_node, ());
-                rgraph.graph.add_edge(else_branch_node, else_node, ());
+                rgraph.graph.add_edge(then_root_node, then_node, ());
+                rgraph.graph.add_edge(else_root_node, else_node, ());
 
-                todo.push(else_branch.clone());
-                todo.push(then_branch.clone());
-                todo.push(inputs.clone());
+                dfs_stack.push(else_branch.clone());
+                dfs_stack.push(then_branch.clone());
+                dfs_stack.push(inputs.clone());
             }
             Expr::Switch(inputs, branches) => {
                 let expr_node = rgraph.node(&expr);
                 for (i, branch) in branches.iter().enumerate() {
-                    let branch_intermediate = rgraph.graph.add_node(());
+                    let branch_root = rgraph.graph.add_node(());
                     rgraph
                         .expr_branch_node
-                        .insert((Rc::as_ptr(&expr), i), branch_intermediate);
+                        .insert((Rc::as_ptr(&expr), i), branch_root);
                     let branch_node = rgraph.node(branch);
-                    rgraph.graph.add_edge(expr_node, branch_intermediate, ());
-                    rgraph.graph.add_edge(branch_intermediate, branch_node, ());
-                    todo.push(branch.clone());
+                    rgraph.graph.add_edge(expr_node, branch_root, ());
+                    rgraph.graph.add_edge(branch_root, branch_node, ());
+                    dfs_stack.push(branch.clone());
                 }
                 let inputs_node = rgraph.node(inputs);
                 rgraph.graph.add_edge(expr_node, inputs_node, ());
-                todo.push(inputs.clone());
+                dfs_stack.push(inputs.clone());
             }
             _ => {
                 // for loops, don't recur into subregions
@@ -99,7 +100,7 @@ pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
                 for child in children {
                     let child_node = rgraph.node(&child);
                     rgraph.graph.add_edge(expr_node, child_node, ());
-                    todo.push(child);
+                    dfs_stack.push(child);
                 }
             }
         }

@@ -1,23 +1,38 @@
-/* TODO fix with dag semantics
 #[test]
 fn test_subst_nested() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
     let twoint = tuplet!(intt(), intt());
-    let expr = tlet(
-        parallel!(int(1), get(arg(), 1), tlet(int(2), arg())),
-        int(0),
+    let expr = get(
+        dowhile(
+            parallel!(
+                int(1),
+                get(arg(), 1),
+                get(
+                    dowhile(single(get(arg(), 0)), parallel!(tfalse(), get(arg(), 0))),
+                    0
+                )
+            ),
+            parallel!(tfalse(), int(0), int(1), int(2)),
+        ),
+        0,
     )
     .with_arg_types(twoint.clone(), base(intt()));
     let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone());
     let replacement = in_context(infunc("main"), replace_with.clone());
-    let expected = tlet(
-        parallel!(
-            in_context(infunc("main"), int(1)),
-            get(replacement.clone(), 1),
-            tlet(in_context(infunc("main"), int(2)), arg())
+    let expected = get(
+        dowhile(
+            parallel!(
+                in_context(infunc("main"), int(1)),
+                get(replacement.clone(), 1),
+                get(
+                    dowhile(single(get(replacement.clone(), 0)), parallel!(tfalse(), get(arg(), 0))),
+                    0
+                )
+            ),
+            parallel!(tfalse(), int(0), int(1), int(2)),
         ),
-        int(0),
+        0,
     )
     .with_arg_types(twoint.clone(), base(intt()));
 
@@ -108,4 +123,3 @@ fn test_subst_arg_type_changes() -> crate::Result {
         vec![],
     )
 }
-*/

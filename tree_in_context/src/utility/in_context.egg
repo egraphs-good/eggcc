@@ -75,8 +75,8 @@
 ;; ################################ saturation
 
 ;; Outer context nodes are more specific by our semantics
-(rewrite (InContext ctx-outer (InContext ctx-inner expr))
-         (InContext ctx-outer expr)
+(rewrite (InContext ctx (InContext ctx expr))
+         (InContext ctx expr)
          :ruleset context-helpers)
 
 

@@ -145,7 +145,6 @@ fn check_program_gets_type(program: TreeProgram) -> Result {
         bodies.join("\n"),
         checks.join("\n")
     );
-    println!("{}", s);
 
     egglog::EGraph::default()
         .parse_and_run_program(&s)
@@ -200,6 +199,7 @@ pub fn egglog_test(
         include_str!("schedule.egg"),
     );
 
+
     let res = egglog::EGraph::default()
         .parse_and_run_program(&program)
         .map(|lines| {
@@ -207,6 +207,7 @@ pub fn egglog_test(
                 println!("{}", line);
             }
         });
+
 
     if res.is_err() {
         println!("{}", program);

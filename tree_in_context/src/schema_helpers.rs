@@ -128,6 +128,22 @@ impl Expr {
         }
     }
 
+    pub fn func_to_program(&self) -> TreeProgram {
+        match self {
+            Expr::Function(name, input_ty, output_ty, body) => TreeProgram {
+                entry: RcExpr::new(Expr::Function(
+                    name.clone(),
+                    input_ty.clone(),
+                    output_ty.clone(),
+                    body.clone(),
+                )),
+                functions: vec![],
+            },
+            _ => panic!("Expected function"),
+        }
+        .with_arg_types()
+    }
+
     /// Converts this expression to a program, and ensures arguments
     /// have the correct type by calling `with_arg_types`.
     pub fn to_program(self: &RcExpr, input_ty: Type, output_ty: Type) -> TreeProgram {

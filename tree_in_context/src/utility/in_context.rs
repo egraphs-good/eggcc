@@ -1,56 +1,48 @@
-/* TODO fix in context with DAG semantics
-
 #[cfg(test)]
 use crate::{egglog_test, interpreter::Value, schema::Constant};
 
 #[test]
-fn test_in_context_two_lets() -> crate::Result {
+fn test_in_context_two_loops() -> crate::Result {
     use crate::ast::*;
+
+    let loop1_body = parallel!(
+        tfalse(),
+        get(dowhile(
+            single(add(getat(0), getat(0))),
+            parallel!(tfalse(), mul(getat(0), int(2)))
+        ), 0)
+    );
+
     let expr = function(
         "main",
         base(intt()),
-        base(intt()),
-        tlet(int(1), tlet(add(arg(), arg()), mul(arg(), int(2)))),
-    )
-    .func_with_arg_types();
-    let int1 = in_context(infunc("main"), int_ty(1, base(intt())));
-    let arg1 = in_context(inlet(int1.clone()), arg_ty(base(intt())));
-    let addarg1 = add(arg1.clone(), arg1.clone());
-    let int2 = in_context(inlet(addarg1.clone()), int(2));
-    let arg2 = in_context(inlet(addarg1.clone()), arg());
-    let expr2 = function(
-        "main",
-        base(intt()),
-        base(intt()),
-        tlet(
-            int1.clone(),
-            tlet(
-                add(arg1.clone(), arg1.clone()),
-                mul(arg2.clone(), int2.clone()),
-            ),
+        tuplet!(intt()),
+        dowhile(
+            single(int(1)),
+            loop1_body
         ),
     )
     .func_with_arg_types();
+
+    let with_context = expr.clone().func_add_context();
 
     egglog_test(
         &format!("(AddFuncContext {expr})"),
         &format!(
             "
-(check (Let (Const (Int 1) (Base (IntT))) whatever))
-(check (DoAddContext something (InFunc \"main\") (Full) (Let (Const (Int 1) (Base (IntT))) bsdfody)))
-(check (DoAddContext somethingelse (InFunc \"main\") (Full) (Const (Int 1) (Base (IntT)))))
-(check (= {expr} {expr2}))"
+(check (= {expr} {with_context}))"
         ),
         vec![
-            expr.to_program(emptyt(), base(intt())),
-            expr2.to_program(emptyt(), base(intt())),
+            expr.func_to_program(),
+            with_context.func_to_program(),
         ],
         Value::Tuple(vec![]),
-        Value::Const(Constant::Int(4)),
+        tuplev!(val_int(4)),
         vec![],
     )
 }
 
+/*
 #[test]
 fn test_if_contexts() -> crate::Result {
     use crate::ast::*;
@@ -195,4 +187,4 @@ fn simple_context() -> crate::Result {
         vec![],
     )
 }
- */
+*/

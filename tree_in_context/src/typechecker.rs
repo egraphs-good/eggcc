@@ -189,8 +189,8 @@ impl<'a> TypeChecker<'a> {
                 );
                 assert_eq!(
                     rty, right_expected,
-                    "Expected right type to be {:?}. Got {:?}",
-                    right_expected, rty
+                    "Expected right type to be {:?} in {:?}. Got {:?}",
+                    right_expected, expr, rty
                 );
                 (
                     out_expected,

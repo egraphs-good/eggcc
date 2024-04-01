@@ -66,14 +66,14 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
         vec![],
     )?;
 
-    let impure =
-        get(parallel!(tprint(int(1), arg()), ttrue()), 1).with_arg_types(base(statet()), base(boolt()));
+    let impure = get(parallel!(tprint(int(1), arg()), ttrue()), 1)
+        .with_arg_types(base(statet()), base(boolt()));
 
-    let build =
-        tif(and(tfalse(), impure.clone()), int(1), int(2)).with_arg_types(base(statet()), base(intt()));
+    let build = tif(and(tfalse(), impure.clone()), int(1), int(2))
+        .with_arg_types(base(statet()), base(intt()));
 
-    let check =
-        tif(tfalse(), tif(impure, int(1), int(2)), int(2)).with_arg_types(base(statet()), base(intt()));
+    let check = tif(tfalse(), tif(impure, int(1), int(2)), int(2))
+        .with_arg_types(base(statet()), base(intt()));
 
     egglog_test(
         &format!("{build}"),

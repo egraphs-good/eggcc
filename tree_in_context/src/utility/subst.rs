@@ -26,7 +26,10 @@ fn test_subst_nested() -> crate::Result {
                 in_context(infunc("main"), int(1)),
                 get(replacement.clone(), 1),
                 get(
-                    dowhile(single(get(replacement.clone(), 0)), parallel!(tfalse(), get(arg(), 0))),
+                    dowhile(
+                        single(get(replacement.clone(), 0)),
+                        parallel!(tfalse(), get(arg(), 0))
+                    ),
                     0
                 )
             ),

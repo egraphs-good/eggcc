@@ -17,7 +17,7 @@ use bril_rs::{EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_in_context::{
     ast::{add, call, dowhile, function, int, less_than, parallel_vec, program_vec, tfalse, ttrue},
-    schema::{RcExpr, TreeProgram, Type as TreeType},
+    schema::{RcExpr, TreeProgram, Type},
 };
 
 use super::RvsdgType;
@@ -288,7 +288,7 @@ impl<'a> DagTranslator<'a> {
                         alloc(
                             a.clone(),
                             b.clone(),
-                            TreeType::Base(RvsdgType::Bril(ty).to_tree_type().unwrap()),
+                            Type::Base(RvsdgType::Bril(ty).to_tree_type().unwrap()),
                         )
                     }
                     _ => todo!("handle {} op", op),
@@ -386,7 +386,7 @@ impl RvsdgFunction {
 
         function(
             self.name.as_str(),
-            TreeType::TupleT(
+            Type::TupleT(
                 self.args
                     .iter()
                     .filter_map(|ty| ty.to_tree_type())
@@ -480,7 +480,7 @@ fn simple_translation_dag() {
   "#,
         program!(function(
             "add",
-            TreeType::TupleT(vec![statet()]),
+            Type::TupleT(vec![statet()]),
             tuplet!(intt(), statet()),
             parallel!(add(int(1), int(1)), getat(0)),
         ),),

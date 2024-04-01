@@ -7,20 +7,20 @@ fn test_in_context_two_loops() -> crate::Result {
 
     let loop1_body = parallel!(
         tfalse(),
-        get(dowhile(
-            single(add(getat(0), getat(0))),
-            parallel!(tfalse(), mul(getat(0), int(2)))
-        ), 0)
+        get(
+            dowhile(
+                single(add(getat(0), getat(0))),
+                parallel!(tfalse(), mul(getat(0), int(2)))
+            ),
+            0
+        )
     );
 
     let expr = function(
         "main",
         base(intt()),
         tuplet!(intt()),
-        dowhile(
-            single(int(1)),
-            loop1_body
-        ),
+        dowhile(single(int(1)), loop1_body),
     )
     .func_with_arg_types();
 
@@ -30,12 +30,11 @@ fn test_in_context_two_loops() -> crate::Result {
         &format!("(AddFuncContext {expr})"),
         &format!(
             "
-(check (= {expr} {with_context}))"
+(let original {expr})
+(let with-context {with_context})
+(check (= original with-context))"
         ),
-        vec![
-            expr.func_to_program(),
-            with_context.func_to_program(),
-        ],
+        vec![expr.func_to_program(), with_context.func_to_program()],
         Value::Tuple(vec![]),
         tuplev!(val_int(4)),
         vec![],

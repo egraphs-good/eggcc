@@ -45,7 +45,6 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
     )
 }
 
-/* TODO fix switch tests after DAG semantics
 #[test]
 fn switch_rewrite_three_quarters_purity() -> crate::Result {
     use crate::ast::*;
@@ -68,21 +67,20 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
     )?;
 
     let impure =
-        get(concat_par(tprint(int(1)), single(ttrue())), 0).with_arg_types(emptyt(), base(boolt()));
+        get(parallel!(tprint(int(1), arg()), ttrue()), 1).with_arg_types(base(statet()), base(boolt()));
 
     let build =
-        tif(and(tfalse(), impure.clone()), int(1), int(2)).with_arg_types(emptyt(), base(intt()));
+        tif(and(tfalse(), impure.clone()), int(1), int(2)).with_arg_types(base(statet()), base(intt()));
 
     let check =
-        tif(tfalse(), tif(impure, int(1), int(2)), int(2)).with_arg_types(emptyt(), base(intt()));
+        tif(tfalse(), tif(impure, int(1), int(2)), int(2)).with_arg_types(base(statet()), base(intt()));
 
     egglog_test(
         &format!("{build}"),
         &format!("(fail (check (= {build} {check})))"),
-        vec![build.to_program(emptyt(), base(intt()))],
-        val_empty(),
+        vec![build.to_program(base(statet()), base(intt()))],
+        val_state(),
         val_int(2),
         vec!["1".to_string()],
     )
 }
- */

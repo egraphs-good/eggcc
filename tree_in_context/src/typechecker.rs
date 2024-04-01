@@ -149,7 +149,7 @@ impl<'a> TypeChecker<'a> {
                     panic!("Expected pointer type. Got {:?}", lty)
                 };
                 let Type::Base(baset) = &rty else {
-                    todo!("Support pointers to pointers");
+                    panic!("Expected base type. Got {:?}", rty);
                 };
                 assert_eq!(
                     *innert,

@@ -1,7 +1,7 @@
 //! Converts from an egglog AST directly to the rust representation of that AST.
 //! Common subexpressions (common terms) must be converted to the same RcExpr (pointer equality).
 
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 use egglog::{ast::Literal, match_term_app, Term};
 
@@ -12,10 +12,11 @@ use crate::schema::{
 
 pub struct FromEgglog {
     pub termdag: egglog::TermDag,
+    pub conversion_cache: HashMap<Term, RcExpr>,
 }
 
 impl FromEgglog {
-    fn const_from_egglog(&self, constant: Term) -> Constant {
+    fn const_from_egglog(&mut self, constant: Term) -> Constant {
         match_term_app!(constant.clone(); {
           ("Int", [lit]) => {
             let Term::Lit(Literal::Int(integer)) = self.termdag.get(*lit) else {
@@ -33,7 +34,7 @@ impl FromEgglog {
         })
     }
 
-    fn basetype_from_egglog(&self, basetype: Term) -> BaseType {
+    fn basetype_from_egglog(&mut self, basetype: Term) -> BaseType {
         match_term_app!(basetype.clone(); {
           ("IntT", []) => BaseType::IntT,
           ("BoolT", []) => BaseType::BoolT,
@@ -43,7 +44,7 @@ impl FromEgglog {
         })
     }
 
-    fn vec_from_tlistexpr_helper(&self, tlistexpr: Term, acc: &mut Vec<BaseType>) {
+    fn vec_from_tlistexpr_helper(&mut self, tlistexpr: Term, acc: &mut Vec<BaseType>) {
         match_term_app!(tlistexpr.clone();
         {
           ("TNil", []) => (),
@@ -57,13 +58,13 @@ impl FromEgglog {
         })
     }
 
-    fn vec_from_tlistexpr(&self, tlistexpr: Term) -> Vec<BaseType> {
+    fn vec_from_tlistexpr(&mut self, tlistexpr: Term) -> Vec<BaseType> {
         let mut types = vec![];
         self.vec_from_tlistexpr_helper(tlistexpr, &mut types);
         types
     }
 
-    fn vec_from_listexpr_helper(&self, listexpr: Term, acc: &mut Vec<RcExpr>) {
+    fn vec_from_listexpr_helper(&mut self, listexpr: Term, acc: &mut Vec<RcExpr>) {
         match_term_app!(listexpr.clone();
         {
           ("Nil", []) => (),
@@ -77,13 +78,13 @@ impl FromEgglog {
         })
     }
 
-    fn vec_from_listexpr(&self, listexpr: Term) -> Vec<RcExpr> {
+    fn vec_from_listexpr(&mut self, listexpr: Term) -> Vec<RcExpr> {
         let mut exprs = vec![];
         self.vec_from_listexpr_helper(listexpr, &mut exprs);
         exprs
     }
 
-    fn type_from_egglog(&self, type_: Term) -> Type {
+    fn type_from_egglog(&mut self, type_: Term) -> Type {
         match_term_app!(type_.clone(); {
           ("Base", [basetype]) => Type::Base(self.basetype_from_egglog(self.termdag.get(*basetype))),
           ("TupleT", [types]) => {
@@ -94,7 +95,7 @@ impl FromEgglog {
         })
     }
 
-    fn assumption_from_egglog(&self, assumption: Term) -> Assumption {
+    fn assumption_from_egglog(&mut self, assumption: Term) -> Assumption {
         match_term_app!(assumption.clone();
         {
           ("InLet", [expr]) => {
@@ -123,7 +124,7 @@ impl FromEgglog {
         })
     }
 
-    fn order_from_egglog(&self, order: Term) -> Order {
+    fn order_from_egglog(&mut self, order: Term) -> Order {
         match_term_app!(order.clone();
         {
           ("Parallel", []) => Order::Parallel,
@@ -133,7 +134,7 @@ impl FromEgglog {
         })
     }
 
-    fn top_from_egglog(&self, top: Term) -> TernaryOp {
+    fn top_from_egglog(&mut self, top: Term) -> TernaryOp {
         match_term_app!(top.clone();
         {
           ("Write", []) => TernaryOp::Write,
@@ -141,7 +142,7 @@ impl FromEgglog {
         })
     }
 
-    fn binop_from_egglog(&self, op: Term) -> BinaryOp {
+    fn binop_from_egglog(&mut self, op: Term) -> BinaryOp {
         match_term_app!(op.clone();
         {
           ("Add", []) => BinaryOp::Add,
@@ -163,7 +164,7 @@ impl FromEgglog {
         })
     }
 
-    fn uop_from_egglog(&self, uop: Term) -> UnaryOp {
+    fn uop_from_egglog(&mut self, uop: Term) -> UnaryOp {
         match_term_app!(uop.clone();
         {
           ("Not", []) => UnaryOp::Not,
@@ -171,8 +172,11 @@ impl FromEgglog {
         })
     }
 
-    fn expr_from_egglog(&self, expr: Term) -> RcExpr {
-        match_term_app!(expr.clone();
+    fn expr_from_egglog(&mut self, expr: Term) -> RcExpr {
+        if let Some(expr) = self.conversion_cache.get(&expr) {
+            return expr.clone();
+        }
+        let res = match_term_app!(expr.clone();
         {
           ("Const", [constant, ty]) => {
             let constant = self.termdag.get(*constant);
@@ -315,10 +319,13 @@ impl FromEgglog {
             ))
           }
           _ => panic!("Invalid expr: {:?}", expr),
-        })
+        });
+
+        self.conversion_cache.insert(expr, res.clone());
+        res
     }
 
-    pub fn program_from_egglog(&self, program: Term) -> TreeProgram {
+    pub fn program_from_egglog(&mut self, program: Term) -> TreeProgram {
         match_term_app!(program.clone();
         {
           ("Program", [entry, functions]) => {

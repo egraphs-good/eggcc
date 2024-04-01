@@ -255,19 +255,15 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Get(new_child, *index)),
                 )
             }
-            Expr::Alloc(amount, state, ty) => {
+            Expr::Alloc(amount, state, baset) => {
                 let (aty, new_amount) = self.add_arg_types_to_expr(amount.clone(), arg_ty);
                 let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_ty);
                 let Type::Base(BaseType::IntT) = aty else {
                     panic!("Expected int type. Got {:?}", aty)
                 };
-                let Type::Base(baset) = ty else {
-                    panic!("Expected base type. Got {:?}", ty)
-                };
-
                 (
                     tuplet!(baset.clone(), statet()),
-                    RcExpr::new(Expr::Alloc(new_amount, new_state, ty.clone())),
+                    RcExpr::new(Expr::Alloc(new_amount, new_state, baset.clone())),
                 )
             }
             Expr::Call(string, arg) => {

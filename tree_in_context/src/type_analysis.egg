@@ -159,7 +159,7 @@
         (= lhs (Bop (Print) e state))
         (HasType e _ty)             ; just make sure it has some type.
       )
-      ((HasType lhs (TupleT (TNil))))
+      ((HasType lhs (Base (StateT))))
       :ruleset type-analysis)
 
 (rule (
@@ -172,7 +172,7 @@
 
 (rule ((= lhs (Bop (Free) e s))
        (HasType e (Base (PointerT _ty))))
-      ((HasType lhs (TupleT (TNil))))
+      ((HasType lhs (Base (StateT))))
       :ruleset type-analysis)
 (rule ((= lhs (Bop (Free) e s))
        (HasType e (Base (IntT))))
@@ -187,7 +187,7 @@
         (= lhs (Bop (Load) e state))
         (HasType e (Base (PointerT ty)))
       )
-      ((HasType lhs (Base ty)))
+      ((HasType lhs (TupleT (TCons ty (TCons (StateT) (TNil))))))
       :ruleset type-analysis)
 (rule (
         (= lhs (Bop (Load) e state))
@@ -338,7 +338,7 @@
         (HasType ptr (Base (PointerT ty)))
         (HasType val (Base t)) ; TODO need to support pointers to pointers
       )
-      ((HasType lhs (TupleT (TNil)))) ; Write returns ()
+      ((HasType lhs (Base (StateT)))) ; Write returns ()
       :ruleset type-analysis)
 
 (rule (
@@ -366,7 +366,7 @@
         (= lhs (Alloc amt state ty))
         (HasType amt (Base (IntT)))
       )
-      ((HasType lhs ty))
+      ((HasType lhs (TupleT (TCons ty (TCons (StateT) (TNil))))))
       :ruleset type-analysis)
 
 (rule (

@@ -14,7 +14,8 @@
   (IntT)
   (BoolT)
   ; a pointer to a memory region with a particular type
-  (PointerT BaseType))
+  (PointerT BaseType)
+  (StateT))
 
 
 (datatype Type
@@ -23,7 +24,6 @@
   ; a typed tuple. Use an empty tuple as a unit type.
   ; state edge also has unit type
   (TupleT TypeList)
-  (StateT)
 )
 
 (function TNil () TypeList)
@@ -101,7 +101,7 @@
 ; (Alloc amount state_edge pointer_type)
 ; allocate an integer amount of memory for a particular type
 ; returns a pointer to the allocated memory
-(function Alloc (Expr Expr Type)      Expr)
+(function Alloc (Expr Expr BaseType)      Expr)
 ;               name of func   arg
 (function Call (String         Expr) Expr)
 

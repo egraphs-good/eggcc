@@ -35,6 +35,7 @@ impl FromEgglog {
           ("IntT", []) => BaseType::IntT,
           ("BoolT", []) => BaseType::BoolT,
           ("PointerT", [basetype]) => BaseType::PointerT(Box::new(self.basetype_from_egglog(self.termdag.get(*basetype)))),
+          ("StateT", []) => BaseType::StateT,
           _ => panic!("Invalid basetype: {:?}", basetype),
         })
     }
@@ -217,12 +218,12 @@ impl FromEgglog {
           }
           ("Alloc", [expr, state, type_]) => {
             let expr = self.termdag.get(*expr);
-            let type_ = self.termdag.get(*type_);
+            let basetype = self.termdag.get(*type_);
             let state = self.termdag.get(*state);
             Rc::new(Expr::Alloc(
               self.expr_from_egglog(expr),
               self.expr_from_egglog(state),
-              self.type_from_egglog(type_),
+              self.basetype_from_egglog(basetype),
             ))
           }
           ("Call", [lit, expr]) => {

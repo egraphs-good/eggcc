@@ -34,8 +34,8 @@ pub fn tuplev_vec(types: Vec<Value>) -> Value {
     Value::Tuple(types)
 }
 
-pub fn pointert(t: BaseType) -> Type {
-    Type::Base(BaseType::PointerT(Box::new(t)))
+pub fn pointert(t: BaseType) -> BaseType {
+    BaseType::PointerT(Box::new(t))
 }
 
 pub fn val_int(i: i64) -> Value {
@@ -121,7 +121,7 @@ pub fn not(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Not, e))
 }
 
-pub fn alloc(amount: RcExpr, state: RcExpr, value_ty: Type) -> RcExpr {
+pub fn alloc(amount: RcExpr, state: RcExpr, value_ty: BaseType) -> RcExpr {
     RcExpr::new(Expr::Alloc(amount, state, value_ty))
 }
 

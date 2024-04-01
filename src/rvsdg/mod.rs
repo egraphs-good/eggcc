@@ -28,14 +28,14 @@
 //!
 //! In addition to those papers, the Jamey Sharp's
 //! [optir](https://github.com/jameysharp/optir) project is a major inspiration.
+pub(crate) mod dag_to_graph;
 pub(crate) mod from_cfg;
+pub(crate) mod from_dag;
 pub(crate) mod live_variables;
 pub(crate) mod optimize_direct_jumps;
 pub(crate) mod restructure;
-pub(crate) mod from_dag;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
-pub(crate) mod dag_to_graph;
 mod to_dag;
 
 use std::fmt;

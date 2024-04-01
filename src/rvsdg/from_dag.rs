@@ -5,7 +5,7 @@ use std::rc::Rc;
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
 use hashbrown::HashMap;
 use tree_in_context::{
-    schema::{BaseType, BinaryOp, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
+    schema::{BaseType, BinaryOp, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
 };
 
@@ -116,7 +116,7 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
         type_cache: &type_cache,
         translation_cache: HashMap::new(),
         nodes: &mut nodes,
-        current_region_graph: &region_graph(typechecked_func),
+        current_region_graph: &region_graph(typechecked_func.func_body().unwrap()),
         // initial arguments are the first n arguments
         current_args: (0..input_types.len()).map(Operand::Arg).collect(),
     };
@@ -244,6 +244,7 @@ impl<'a> TreeToRvsdg<'a> {
         if let Some(operands) = self.translation_cache.get(&Rc::as_ptr(&expr)) {
             return operands.clone();
         }
+
         let res = match expr.as_ref() {
             Expr::Function(_name, _inty, _outty, expr) => self.convert_expr(expr.clone()),
             Expr::Const(constant, _ty) => match constant {
@@ -347,18 +348,11 @@ impl<'a> TreeToRvsdg<'a> {
                 self.convert_expr(body.clone())
             }
             Expr::InContext(_assum, body) => self.convert_expr(body.clone()),
-            Expr::Concat(order, left, right) => match order {
-                Order::Parallel | Order::Sequential => {
-                    let left = self.convert_expr(left.clone());
-                    let right = self.convert_expr(right.clone());
-                    left.into_iter().chain(right).collect()
-                }
-                Order::Reversed => {
-                    let left = self.convert_expr(left.clone());
-                    let right = self.convert_expr(right.clone());
-                    right.into_iter().chain(left).collect()
-                }
-            },
+            Expr::Concat(_order, left, right) => {
+                let left = self.convert_expr(left.clone());
+                let right = self.convert_expr(right.clone());
+                left.into_iter().chain(right).collect()
+            }
             Expr::If(pred, then_branch, else_branch) => {
                 // first convert the predicate
                 let pred = self.convert_expr(pred.clone());
@@ -444,9 +438,7 @@ impl<'a> TreeToRvsdg<'a> {
             }
             Expr::DoWhile(inputs, body) => {
                 let inputs_converted = self.convert_expr(inputs.clone());
-                let new_args = (0..inputs_converted.len())
-                    .map(|i| Operand::Arg(i))
-                    .collect();
+                let new_args = (0..inputs_converted.len()).map(Operand::Arg).collect();
                 let loop_region_graph = region_graph(body);
                 let pred_and_body = self.translate_subregion(
                     body.clone(),

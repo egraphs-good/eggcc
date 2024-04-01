@@ -70,9 +70,10 @@ pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
                 // branch nodes point to actual branch expressions
                 rgraph.graph.add_edge(then_branch_node, then_node, ());
                 rgraph.graph.add_edge(else_branch_node, else_node, ());
-                todo.push(inputs.clone());
-                todo.push(then_branch.clone());
+
                 todo.push(else_branch.clone());
+                todo.push(then_branch.clone());
+                todo.push(inputs.clone());
             }
             Expr::Switch(inputs, branches) => {
                 let expr_node = rgraph.node(&expr);
@@ -92,12 +93,7 @@ pub(crate) fn region_graph(expr: &RcExpr) -> RegionGraph {
             }
             _ => {
                 // for loops, don't recur into subregions
-                let children = match expr.as_ref() {
-                    Expr::DoWhile(inputs, _body) => {
-                        vec![inputs.clone()]
-                    }
-                    _ => expr.children(),
-                };
+                let children = expr.children_same_scope();
 
                 let expr_node = rgraph.node(&expr);
                 for child in children {
@@ -133,15 +129,15 @@ impl RegionGraph {
     /// Expressions that have a child that is not in the set
     /// are along the dominance frontier.
     fn dominated_by(&self, expr: &RcExpr, branch: usize) -> HashMap<*const Expr, RcExpr> {
-        eprintln!("dominated_by, expr: {:?}, branch: {:?}", expr, branch);
         let branch_node = self.expr_branch_node[&(Rc::as_ptr(expr), branch)];
         let mut result = HashMap::new();
         let mut todo = vec![branch_node];
         while let Some(node) = todo.pop() {
-            if node != branch_node {
-                let expr = self.node_to_expr[&node].clone();
-                result.insert(Rc::as_ptr(&expr), expr);
+            // if this node is not a branch node, it corresponds to an expression
+            if let Some(expr) = self.node_to_expr.get(&node) {
+                result.insert(Rc::as_ptr(expr), expr.clone());
             }
+
             for child in self
                 .dominators
                 .as_ref()
@@ -177,7 +173,7 @@ impl RegionGraph {
         }
 
         for (_expr_ptr, expr) in dominated_exprs.iter() {
-            for child in expr.children() {
+            for child in expr.children_same_scope() {
                 // if the child is not dominated by the branch, it needs to be passed through
                 if dominated_exprs.get(&Rc::as_ptr(&child)).is_none() {
                     match child.as_ref() {

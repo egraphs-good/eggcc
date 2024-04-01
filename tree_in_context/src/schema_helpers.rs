@@ -150,9 +150,9 @@ impl Expr {
         .with_arg_types()
     }
 
-    /// Get the children of this expression.
+    /// Get the children of this expression that are still in the same scope
     /// For context nodes, doesn't include the context (which is an assumption)
-    pub fn children(self: &RcExpr) -> Vec<RcExpr> {
+    pub fn children_same_scope(self: &RcExpr) -> Vec<RcExpr> {
         match self.as_ref() {
             Expr::Function(_, _, _, body) => vec![body.clone()],
             Expr::Const(..) => vec![],
@@ -171,7 +171,7 @@ impl Expr {
                 children
             }
             Expr::If(x, y, z) => vec![x.clone(), y.clone(), z.clone()],
-            Expr::DoWhile(x, y) => vec![x.clone(), y.clone()],
+            Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
             Expr::Let(x, y) => vec![x.clone(), y.clone()],
             Expr::Arg(_) => vec![],
             Expr::InContext(_, x) => vec![x.clone()],

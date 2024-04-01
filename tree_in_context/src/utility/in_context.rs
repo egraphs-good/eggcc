@@ -41,42 +41,6 @@ fn test_in_context_two_loops() -> crate::Result {
     )
 }
 
-/*
-#[test]
-fn test_if_contexts() -> crate::Result {
-    use crate::ast::*;
-    let expr = function(
-        "main",
-        base(intt()),
-        base(intt()),
-        tif(ttrue(), int(1), int(2)),
-    )
-    .func_with_arg_types();
-    let pred = in_context(infunc("main"), ttrue_ty(base(intt())));
-    let expr2 = function(
-        "main",
-        base(intt()),
-        base(intt()),
-        tif(
-            pred.clone(),
-            in_context(inif(true, pred.clone()), int(1)),
-            in_context(inif(false, pred.clone()), int(2)),
-        ),
-    )
-    .func_with_arg_types();
-    egglog_test(
-        &format!("(AddFuncContext {expr})"),
-        &format!("(check (= {expr} {expr2}))"),
-        vec![
-            expr.to_program(emptyt(), base(intt())),
-            expr2.to_program(emptyt(), base(intt())),
-        ],
-        Value::Tuple(vec![]),
-        Value::Const(Constant::Int(1)),
-        vec![],
-    )
-}
-
 #[test]
 fn test_simple_context_cycle() -> crate::Result {
     use crate::ast::*;
@@ -186,4 +150,3 @@ fn simple_context() -> crate::Result {
         vec![],
     )
 }
-*/

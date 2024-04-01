@@ -411,30 +411,54 @@ impl<'a> TreeToRvsdg<'a> {
 
                 res
             }
-            Expr::Switch(_pred, _cases) => {
-                panic!("fix switch translation");
-                /*let pred = self.convert_expr(pred.clone());
+            Expr::Switch(pred, cases) => {
+                // first convert the predicate
+                let pred = self.convert_expr(pred.clone());
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
-                let outputs: Vec<Vec<Operand>> = cases
-                    .iter()
-                    .map(|case| self.translate_subregion(case.clone(), self.current_args.len()))
-                    .collect();
-                assert!(
-                    !outputs.is_empty(),
-                    "Expected at least one case for switch statement"
-                );
+
+                // find the branch inputs for each case
+                let mut branch_inputs: HashMap<*const Expr, Rc<Expr>> = Default::default();
+                for case_expr in cases {
+                    let case_inputs = self.current_region_graph.branch_inputs(case_expr, 0);
+                    branch_inputs.extend(case_inputs);
+                }
+
+                let mut new_inputs: Vec<Operand> =
+                    (0..self.current_args.len()).map(Operand::Arg).collect();
+                let mut new_expr_cache = HashMap::new();
+                for (_pointer, input_expr) in branch_inputs {
+                    let input = self.convert_expr(input_expr.clone());
+                    let cached_input = input
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _operand)| Operand::Arg(i + new_inputs.len()))
+                        .collect();
+                    new_expr_cache.insert(Rc::as_ptr(&input_expr), cached_input);
+                    new_inputs.extend(input);
+                }
+
+                let mut case_regions = vec![];
+                for case_expr in cases {
+                    let case_region = self.translate_subregion(
+                        case_expr.clone(),
+                        new_inputs.clone(),
+                        new_expr_cache.clone(),
+                        self.current_region_graph,
+                    );
+                    case_regions.push(case_region);
+                }
+
                 let new_id = self.nodes.len();
-                let res: Vec<Operand> = (0..outputs[0].len())
+                let res: Vec<Operand> = (0..case_regions[0].len())
                     .map(|i| Operand::Project(i, new_id))
                     .collect();
-
                 self.nodes.push(RvsdgBody::Gamma {
                     pred: pred[0],
-                    // inputs to the Gamma node are the current arguments and state edge
-                    inputs: self.current_args.clone(),
-                    outputs,
+                    inputs: new_inputs,
+                    outputs: case_regions,
                 });
-                res*/
+
+                res
             }
             Expr::DoWhile(inputs, body) => {
                 let inputs_converted = self.convert_expr(inputs.clone());

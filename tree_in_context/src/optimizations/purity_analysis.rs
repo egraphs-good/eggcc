@@ -96,28 +96,32 @@ pub(crate) fn rules() -> Vec<String> {
     .collect::<Vec<String>>()
 }
 
-/* TODO fix purity test after move to dag semantics
 #[test]
 fn test_purity_analysis() -> crate::Result {
+    use crate::ast::*;
     let pureloop = dowhile(
-        in_context(inlet(int_ty(2, emptyt())), single(int(1))),
+        single(int(1)),
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     )
     .with_arg_types(emptyt(), tuplet!(intt()));
+    let inneralloc = alloc(int(0), getat(1), pointert(intt()));
+    let innerload = load(get(inneralloc.clone(), 0), get(inneralloc.clone(), 1));
+
     let impureloop = dowhile(
-        in_context(inlet(int_ty(2, emptyt())), single(int(1))),
+        parallel!(int(1), arg()),
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(
-                switch!(load(alloc(int(0), pointert(intt()))); parallel!(int(4), int(5))),
+                switch!(get(innerload.clone(), 0); parallel!(int(4), int(5))),
                 0
-            )
+            ),
+            get(innerload.clone(), 1),
         ),
     )
-    .with_arg_types(emptyt(), tuplet!(intt()));
+    .with_arg_types(base(statet()), tuplet!(intt(), statet()));
     let build = format!("{pureloop} {impureloop}");
     let check = format!(
         "
@@ -129,9 +133,8 @@ fn test_purity_analysis() -> crate::Result {
         &build,
         &check,
         vec![pureloop.to_program(emptyt(), tuplet!(intt()))],
-        Value::Tuple(vec![]),
-        Value::Tuple(vec![Value::Const(Constant::Int(4))]),
+        tuplev!(),
+        tuplev!(val_int(4)),
         vec![],
     )
 }
- */

@@ -301,6 +301,7 @@ impl Run {
             RunType::OptimizeDirectJumps,
             RunType::RvsdgToCfg,
             RunType::DagConversion,
+            RunType::DagOptimize,
             //RunType::TreeOptimize,
             RunType::DagRoundTrip,
             //RunType::TreeOptimize,

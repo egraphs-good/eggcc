@@ -1,3 +1,6 @@
+//! Converts from an egglog AST directly to the rust representation of that AST.
+//! Common subexpressions (common terms) must be converted to the same RcExpr (pointer equality).
+
 use std::rc::Rc;
 
 use egglog::{ast::Literal, match_term_app, Term};

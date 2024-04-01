@@ -258,7 +258,6 @@ impl ESort {
 
 #[derive(Clone, Debug, EnumIter, PartialEq)]
 pub enum Constructor {
-    FakeState,
     Function,
     Const,
     Top,
@@ -318,7 +317,6 @@ impl Field {
 impl Constructor {
     pub(crate) fn name(&self) -> &'static str {
         match self {
-            Constructor::FakeState => "FakeState",
             Constructor::Function => "Function",
             Constructor::Const => "Const",
             Constructor::Bop => "Bop",
@@ -345,7 +343,6 @@ impl Constructor {
         use Purpose::{CapturedExpr, Static, SubExpr, SubListExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
-            Constructor::FakeState => vec![],
             Constructor::Function => {
                 vec![
                     f(Static(Sort::String), "name"),
@@ -430,7 +427,6 @@ impl Constructor {
 
     pub(crate) fn sort(&self) -> ESort {
         match self {
-            Constructor::FakeState => ESort::Expr,
             Constructor::Function => ESort::Expr,
             Constructor::Const => ESort::Expr,
             Constructor::Top => ESort::Expr,

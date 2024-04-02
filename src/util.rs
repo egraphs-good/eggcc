@@ -152,7 +152,7 @@ pub enum RunType {
     /// Convert the input bril program to a tree-encoded expression.
     DagConversion,
     /// Convert the input bril program to tree-encoded expression and optimize it with egglog.
-    TreeOptimize,
+    DagOptimize,
     /// Convert the input bril program to a tree-encoded expression and optimize it with egglog,
     /// outputting the resulting RVSDG
     OptimizedRvsdg,
@@ -210,7 +210,7 @@ impl RunType {
             RunType::OptimizeDirectJumps => true,
             RunType::RvsdgToCfg => true,
             RunType::DagConversion => true,
-            RunType::TreeOptimize => true,
+            RunType::DagOptimize => true,
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
             RunType::CompileBrilift => true,
@@ -301,6 +301,7 @@ impl Run {
             RunType::OptimizeDirectJumps,
             RunType::RvsdgToCfg,
             RunType::DagConversion,
+            RunType::DagOptimize,
             //RunType::TreeOptimize,
             RunType::DagRoundTrip,
             //RunType::TreeOptimize,
@@ -488,10 +489,9 @@ impl Run {
                     Some(Interpretable::TreeProgram(tree)),
                 )
             }
-            RunType::TreeOptimize => {
-                todo!();
-                /*let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
+            RunType::DagOptimize => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_dag_encoding();
                 let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
@@ -500,7 +500,7 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::TreeProgram(optimized)),
-                )*/
+                )
             }
             RunType::OptimizedRvsdg => {
                 todo!();

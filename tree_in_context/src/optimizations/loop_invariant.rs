@@ -2,6 +2,9 @@ use crate::schema_helpers::{Constructor, Purpose};
 use std::iter;
 use strum::IntoEnumIterator;
 
+#[cfg(test)]
+use crate::{egglog_test, interpreter::Value};
+
 fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
     let ruleset = " :ruleset always-run";
 
@@ -56,7 +59,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                 })
                 .join(" ");
             let is_pure = match ctor {
-                Constructor::Call | Constructor::Let | Constructor::DoWhile => "(ExprIsPure expr)",
+                Constructor::Call | Constructor::DoWhile => "(ExprIsPure expr)",
                 _ => "",
             };
 
@@ -86,30 +89,29 @@ pub(crate) fn rules() -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
-/* TODO fix loop invariant test after DAG semantics
 #[test]
 fn test_invariant_detect_simple() -> crate::Result {
+    use crate::ast::*;
     let output_ty = tuplet!(intt(), intt(), intt(), intt());
     let inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
     let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), base(boolt()));
     let not_inv = add(getat(0), inv.clone()).with_arg_types(output_ty.clone(), base(intt()));
-    let inv_in_print = add(inv.clone(), int(4)).with_arg_types(output_ty.clone(), base(intt()));
+    let add_inv = add(inv.clone(), int(4)).with_arg_types(output_ty.clone(), base(intt()));
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4)),
         concat_par(
             parallel!(pred.clone(), not_inv.clone(), getat(1),),
-            concat_par(tprint(inv_in_print.clone()), parallel!(getat(2), getat(3),)),
+            parallel!(getat(2), get(parallel!(add_inv.clone(), getat(3)), 1),),
         ),
     )
     .with_arg_types(emptyt(), output_ty.clone());
 
     let build = format!("(let loop {})", my_loop);
     let check = format!(
-        "(check (= true (is-inv-Expr loop {})))
-        (check (= true (is-inv-Expr loop {})))
-        (check (= false (is-inv-Expr loop {})))
-        (check (= false (is-inv-Expr loop {})))",
-        inv, inv_in_print, pred, not_inv
+        "(check (= true (is-inv-Expr loop {inv})))
+        (check (= true (is-inv-Expr loop {add_inv})))
+        (check (= false (is-inv-Expr loop {pred})))
+        (check (= false (is-inv-Expr loop {not_inv})))",
     );
 
     egglog_test(
@@ -121,4 +123,3 @@ fn test_invariant_detect_simple() -> crate::Result {
         vec![],
     )
 }
- */

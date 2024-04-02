@@ -92,7 +92,6 @@ impl Expr {
             Expr::Switch(..) => Constructor::Switch,
             Expr::If(..) => Constructor::If,
             Expr::DoWhile(..) => Constructor::DoWhile,
-            Expr::Let(..) => Constructor::Let,
             Expr::Arg(..) => Constructor::Arg,
             Expr::Call(..) => Constructor::Call,
             Expr::Empty(..) => Constructor::Empty,
@@ -127,6 +126,22 @@ impl Expr {
             Expr::Function(_, _, _, body) => Some(body),
             _ => None,
         }
+    }
+
+    pub fn func_to_program(&self) -> TreeProgram {
+        match self {
+            Expr::Function(name, input_ty, output_ty, body) => TreeProgram {
+                entry: RcExpr::new(Expr::Function(
+                    name.clone(),
+                    input_ty.clone(),
+                    output_ty.clone(),
+                    body.clone(),
+                )),
+                functions: vec![],
+            },
+            _ => panic!("Expected function"),
+        }
+        .with_arg_types()
     }
 
     /// Converts this expression to a program, and ensures arguments
@@ -172,7 +187,6 @@ impl Expr {
             }
             Expr::If(x, y, z) => vec![x.clone(), y.clone(), z.clone()],
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
-            Expr::Let(x, y) => vec![x.clone(), y.clone()],
             Expr::Arg(_) => vec![],
             Expr::InContext(_, x) => vec![x.clone()],
         }
@@ -258,7 +272,6 @@ impl ESort {
 
 #[derive(Clone, Debug, EnumIter, PartialEq)]
 pub enum Constructor {
-    FakeState,
     Function,
     Const,
     Top,
@@ -270,7 +283,6 @@ pub enum Constructor {
     Switch,
     If,
     DoWhile,
-    Let,
     Arg,
     Call,
     Empty,
@@ -318,7 +330,6 @@ impl Field {
 impl Constructor {
     pub(crate) fn name(&self) -> &'static str {
         match self {
-            Constructor::FakeState => "FakeState",
             Constructor::Function => "Function",
             Constructor::Const => "Const",
             Constructor::Bop => "Bop",
@@ -329,7 +340,6 @@ impl Constructor {
             Constructor::Switch => "Switch",
             Constructor::If => "If",
             Constructor::DoWhile => "DoWhile",
-            Constructor::Let => "Let",
             Constructor::Arg => "Arg",
             Constructor::Call => "Call",
             Constructor::Empty => "Empty",
@@ -345,7 +355,6 @@ impl Constructor {
         use Purpose::{CapturedExpr, Static, SubExpr, SubListExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
-            Constructor::FakeState => vec![],
             Constructor::Function => {
                 vec![
                     f(Static(Sort::String), "name"),
@@ -391,7 +400,6 @@ impl Constructor {
             Constructor::DoWhile => {
                 vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")]
             }
-            Constructor::Let => vec![f(SubExpr, "in"), f(CapturedExpr, "out")],
             Constructor::Arg => vec![f(Static(Sort::Type), "ty")],
             Constructor::Call => {
                 vec![f(Static(Sort::String), "func"), f(SubExpr, "arg")]
@@ -430,7 +438,6 @@ impl Constructor {
 
     pub(crate) fn sort(&self) -> ESort {
         match self {
-            Constructor::FakeState => ESort::Expr,
             Constructor::Function => ESort::Expr,
             Constructor::Const => ESort::Expr,
             Constructor::Top => ESort::Expr,
@@ -442,7 +449,6 @@ impl Constructor {
             Constructor::Switch => ESort::Expr,
             Constructor::If => ESort::Expr,
             Constructor::DoWhile => ESort::Expr,
-            Constructor::Let => ESort::Expr,
             Constructor::Arg => ESort::Expr,
             Constructor::Call => ESort::Expr,
             Constructor::Empty => ESort::Expr,

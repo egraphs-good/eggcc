@@ -385,9 +385,6 @@ impl<'a> VirtualMachine<'a> {
                 }
                 Tuple(vals)
             }
-            Expr::Let(_input, _output) => {
-                panic!("let bindings should be removed for dag");
-            }
             Expr::Arg(_ty) => arg.clone(),
             Expr::Function(..) => panic!("Function should not be interpreted as an expression"),
             Expr::Call(func_name, e) => {

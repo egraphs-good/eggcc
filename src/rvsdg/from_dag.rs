@@ -317,14 +317,11 @@ impl<'a> TreeToRvsdg<'a> {
                 );
                 vec![child[*index]]
             }
-            Expr::Alloc(size, state, ty) => {
+            Expr::Alloc(size, state, basety) => {
                 let size = self.convert_expr(size.clone());
                 assert_eq!(size.len(), 1, "Expected exactly one result for size");
                 let state = self.convert_expr(state.clone());
                 assert_eq!(state.len(), 1, "Expected exactly one result for state");
-                let Type::Base(basety) = ty else {
-                    panic!("Expected base type for alloc. Got: {:?}", ty)
-                };
                 self.push_basic(BasicExpr::Op(
                     ValueOps::Alloc,
                     vec![size[0], state[0]],
@@ -341,11 +338,6 @@ impl<'a> TreeToRvsdg<'a> {
             }
             Expr::Empty(_ty) => {
                 vec![]
-            }
-            Expr::Let(input, body) => {
-                let input = self.convert_expr(input.clone());
-                self.current_args = input.clone();
-                self.convert_expr(body.clone())
             }
             Expr::InContext(_assum, body) => self.convert_expr(body.clone()),
             Expr::Concat(_order, left, right) => {

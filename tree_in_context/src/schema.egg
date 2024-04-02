@@ -14,7 +14,8 @@
   (IntT)
   (BoolT)
   ; a pointer to a memory region with a particular type
-  (PointerT BaseType))
+  (PointerT BaseType)
+  (StateT))
 
 
 (datatype Type
@@ -23,7 +24,6 @@
   ; a typed tuple. Use an empty tuple as a unit type.
   ; state edge also has unit type
   (TupleT TypeList)
-  (StateT)
 )
 
 (function TNil () TypeList)
@@ -34,10 +34,6 @@
 ; Leaf nodes
 ; Constants, argument, and empty tuple
 ; =================================
-
-;; when tree semantics are enabled, no state edges
-;; are required and this is used
-(function FakeState () Expr)
 
 ; Only a single argument is bound- if multiple values are needed, arg will be a tuple.
 ; e.g. `(Get (Arg tuple_type) 1)` gets the second value in the argument with some tuple_type.
@@ -101,7 +97,7 @@
 ; (Alloc amount state_edge pointer_type)
 ; allocate an integer amount of memory for a particular type
 ; returns a pointer to the allocated memory
-(function Alloc (Expr Expr Type)      Expr)
+(function Alloc (Expr Expr BaseType)      Expr)
 ;               name of func   arg
 (function Call (String         Expr) Expr)
 
@@ -159,14 +155,6 @@
 (function If (Expr Expr Expr) Expr)
 
 
-; Creates a region, binding the input to `Arg`.
-; e.g. `(Let (Concat (Parallel) (Arg ...) new_tuple) output)`
-; binds argument to the old argument plus some new values `new_tuple`.
-; 
-;              input    output
-(function Let (Expr     Expr)    Expr)
-
-
 ; A do-while loop.
 ; Evaluates the input, then evaluates the body.
 ; Keeps looping while the predicate is true.
@@ -186,11 +174,6 @@
 ; =================================
 
 (datatype Assumption
-  ; The argument is bound to `expr`.
-  ; The argument cannot be unioned with `expr` because `expr`
-  ; is evaluated once at the nearest enclosing `Let`.
-  ;      expr
-  (InLet Expr)
   ; The term is in a loop with `input` and `pred_output`.
   ;      input    pred_output
   (InLoop Expr     Expr)
@@ -208,8 +191,6 @@
 )
 
 ; InContext allows creating context-specific terms.
-; e.g. (InContext (InLet (Const (Int 2))) (LetArg)) is equal to
-; (InContext (IntLet (Const (Int 2))) (Const (Int 2)))
 (function InContext (Assumption Expr) Expr)
 
 

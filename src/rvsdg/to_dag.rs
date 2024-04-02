@@ -288,7 +288,7 @@ impl<'a> DagTranslator<'a> {
                         alloc(
                             a.clone(),
                             b.clone(),
-                            Type::Base(RvsdgType::Bril(ty).to_tree_type().unwrap()),
+                            RvsdgType::Bril(ty).to_tree_type().unwrap(),
                         )
                     }
                     _ => todo!("handle {} op", op),

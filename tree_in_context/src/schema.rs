@@ -78,7 +78,6 @@ pub type RcExpr = Rc<Expr>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Assumption {
-    InLet(RcExpr),
     InLoop(RcExpr, RcExpr),
     InFunc(String),
     InIf(bool, RcExpr),
@@ -91,14 +90,13 @@ pub enum Expr {
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
     Get(RcExpr, usize),
-    Alloc(RcExpr, RcExpr, Type),
+    Alloc(RcExpr, RcExpr, BaseType),
     Call(String, RcExpr),
     Empty(Type),
     Single(RcExpr),
     Concat(Order, RcExpr, RcExpr),
     Switch(RcExpr, Vec<RcExpr>),
     If(RcExpr, RcExpr, RcExpr),
-    Let(RcExpr, RcExpr),
     DoWhile(RcExpr, RcExpr),
     Arg(Type),
     InContext(Assumption, RcExpr),

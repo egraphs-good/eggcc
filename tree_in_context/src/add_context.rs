@@ -49,11 +49,6 @@ impl Expr {
                     pred_and_body.add_context(new_ctx),
                 ))
             }
-            Expr::Let(inputs, body) => {
-                let new_inputs = inputs.add_context(current_ctx.clone());
-                let new_ctx = Assumption::InLet(new_inputs.clone());
-                RcExpr::new(Expr::Let(new_inputs, body.add_context(new_ctx)))
-            }
             Expr::If(pred, then_case, else_calse) => {
                 let new_pred = pred.add_context(current_ctx.clone());
                 let then_ctx = Assumption::InIf(true, new_pred.clone());

@@ -301,7 +301,7 @@ impl Run {
             RunType::DagConversion,
             RunType::DagOptimize,
             RunType::DagRoundTrip,
-            //RunType::Optimize,
+            RunType::Optimize,
             RunType::CheckTreeIdentical,
         ] {
             let default = Run {
@@ -446,11 +446,10 @@ impl Run {
                 (vec![], None)
             }
             RunType::Optimize => {
-                todo!();
-                /*let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
-                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
-                let rvsdg2 = tree_to_rvsdg(&optimized);
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let dag = rvsdg.to_dag_encoding();
+                let optimized = tree_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
+                let rvsdg2 = dag_to_rvsdg(&optimized);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
                 (
@@ -460,7 +459,7 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::Bril(bril)),
-                )*/
+                )
             }
             RunType::DagConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;

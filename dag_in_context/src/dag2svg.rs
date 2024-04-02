@@ -16,13 +16,13 @@ struct DotConverter {
 impl DotConverter {
     pub fn graphviz_id(&mut self, expr: &RcExpr) -> Id {
       if let Some(name) = self.get_name.get(&Rc::as_ptr(expr)) {
-        return Id::Plain(name.clone());
+        Id::Plain(name.clone())
       }
       else {
         let name = format!("{}{}", expr.constructor().name(), self.name_counter);
         self.name_counter += 1;
         self.get_name.insert(Rc::as_ptr(expr), name.clone());
-        return Id::Plain(name);
+        Id::Plain(name)
       }
     }
 

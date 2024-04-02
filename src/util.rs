@@ -7,7 +7,7 @@ use dag_in_context::from_egglog::FromEgglog;
 use dag_in_context::schema::TreeProgram;
 use graphviz_rust::cmd::Format;
 use graphviz_rust::exec;
-use graphviz_rust::printer::{DotPrinter, PrinterContext};
+use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
 use std::{
     ffi::OsStr,

@@ -232,7 +232,7 @@ expression: rvsdg.to_svg()
 										text-anchor="middle"
 										x="50"
 										y="62.5">
-										false
+										true
 									</text>
 								</g>
 								<circle
@@ -351,7 +351,7 @@ expression: rvsdg.to_svg()
 										text-anchor="middle"
 										x="50"
 										y="62.5">
-										true
+										false
 									</text>
 								</g>
 								<circle
@@ -573,177 +573,6 @@ expression: rvsdg.to_svg()
 							<g>
 								<g
 									transform="translate(25, 125)">
-									<rect
-										fill="white"
-										height="200"
-										rx="10"
-										stroke="black"
-										stroke-width="2"
-										width="350">
-									</rect>
-									<g>
-										<path
-											d="M 87.5 0V 156Q 87.5 166 78.75 166H 78.75Q 70 166 70 176V 200"
-											fill="transparent"
-											stroke="black"
-											stroke-linecap="round"
-											stroke-width="2">
-										</path>
-										<path
-											d="M 175 0V 162Q 175 172 165 172H 150Q 140 172 140 182V 200"
-											fill="transparent"
-											stroke="black"
-											stroke-linecap="round"
-											stroke-width="2">
-										</path>
-										<path
-											d="M 100 150V 174Q 100 184 110 184H 270Q 280 184 280 194V 200"
-											fill="transparent"
-											stroke="black"
-											stroke-linecap="round"
-											stroke-width="2">
-										</path>
-										<path
-											d="M 250 150V 168Q 250 178 240 178H 220Q 210 178 210 188V 200"
-											fill="transparent"
-											stroke="black"
-											stroke-linecap="round"
-											stroke-width="2">
-										</path>
-									</g>
-									<g>
-										<g
-											transform="translate(50, 50)">
-											<g>
-												<rect
-													fill="#FFFF80"
-													height="100"
-													rx="10"
-													stroke="black"
-													stroke-width="2"
-													width="100">
-												</rect>
-												<text
-													fill="black"
-													font-size="50"
-													text-anchor="middle"
-													x="50"
-													y="62.5">
-													false
-												</text>
-											</g>
-											<circle
-												cx="50"
-												cy="100"
-												fill="white"
-												r="4"
-												stroke="black"
-												stroke-width="2">
-											</circle>
-										</g>
-										<g
-											transform="translate(200, 50)">
-											<g>
-												<rect
-													fill="#FFFF80"
-													height="100"
-													rx="10"
-													stroke="black"
-													stroke-width="2"
-													width="100">
-												</rect>
-												<text
-													fill="black"
-													font-size="50"
-													text-anchor="middle"
-													x="50"
-													y="62.5">
-													true
-												</text>
-											</g>
-											<circle
-												cx="50"
-												cy="100"
-												fill="white"
-												r="4"
-												stroke="black"
-												stroke-width="2">
-											</circle>
-										</g>
-									</g>
-									<g>
-										<circle
-											cx="87.5"
-											cy="0"
-											fill="white"
-											r="4"
-											stroke="black"
-											stroke-width="2">
-										</circle>
-										<circle
-											cx="175"
-											cy="0"
-											fill="white"
-											r="4"
-											stroke="black"
-											stroke-width="2">
-										</circle>
-										<circle
-											cx="262.5"
-											cy="0"
-											fill="white"
-											r="4"
-											stroke="black"
-											stroke-width="2">
-										</circle>
-									</g>
-									<g>
-										<circle
-											cx="70"
-											cy="200"
-											fill="white"
-											r="4"
-											stroke="black"
-											stroke-width="2">
-										</circle>
-										<circle
-											cx="140"
-											cy="200"
-											fill="white"
-											r="4"
-											stroke="black"
-											stroke-width="2">
-										</circle>
-										<circle
-											cx="210"
-											cy="200"
-											fill="white"
-											r="4"
-											stroke="black"
-											stroke-width="2">
-										</circle>
-										<circle
-											cx="280"
-											cy="200"
-											fill="white"
-											r="4"
-											stroke="black"
-											stroke-width="2">
-										</circle>
-									</g>
-								</g>
-								<text
-									fill="black"
-									font-size="50"
-									text-anchor="middle"
-									x="200"
-									y="100">
-									true
-								</text>
-							</g>
-							<g>
-								<g
-									transform="translate(400, 125)">
 									<rect
 										fill="white"
 										height="750"
@@ -1034,7 +863,7 @@ expression: rvsdg.to_svg()
 																	text-anchor="middle"
 																	x="50"
 																	y="62.5">
-																	true
+																	false
 																</text>
 															</g>
 															<circle
@@ -1419,7 +1248,178 @@ expression: rvsdg.to_svg()
 									fill="black"
 									font-size="50"
 									text-anchor="middle"
-									x="987.5"
+									x="612.5"
+									y="100">
+									true
+								</text>
+							</g>
+							<g>
+								<g
+									transform="translate(1225, 125)">
+									<rect
+										fill="white"
+										height="200"
+										rx="10"
+										stroke="black"
+										stroke-width="2"
+										width="350">
+									</rect>
+									<g>
+										<path
+											d="M 87.5 0V 156Q 87.5 166 78.75 166H 78.75Q 70 166 70 176V 200"
+											fill="transparent"
+											stroke="black"
+											stroke-linecap="round"
+											stroke-width="2">
+										</path>
+										<path
+											d="M 175 0V 162Q 175 172 165 172H 150Q 140 172 140 182V 200"
+											fill="transparent"
+											stroke="black"
+											stroke-linecap="round"
+											stroke-width="2">
+										</path>
+										<path
+											d="M 100 150V 174Q 100 184 110 184H 270Q 280 184 280 194V 200"
+											fill="transparent"
+											stroke="black"
+											stroke-linecap="round"
+											stroke-width="2">
+										</path>
+										<path
+											d="M 250 150V 168Q 250 178 240 178H 220Q 210 178 210 188V 200"
+											fill="transparent"
+											stroke="black"
+											stroke-linecap="round"
+											stroke-width="2">
+										</path>
+									</g>
+									<g>
+										<g
+											transform="translate(50, 50)">
+											<g>
+												<rect
+													fill="#FFFF80"
+													height="100"
+													rx="10"
+													stroke="black"
+													stroke-width="2"
+													width="100">
+												</rect>
+												<text
+													fill="black"
+													font-size="50"
+													text-anchor="middle"
+													x="50"
+													y="62.5">
+													true
+												</text>
+											</g>
+											<circle
+												cx="50"
+												cy="100"
+												fill="white"
+												r="4"
+												stroke="black"
+												stroke-width="2">
+											</circle>
+										</g>
+										<g
+											transform="translate(200, 50)">
+											<g>
+												<rect
+													fill="#FFFF80"
+													height="100"
+													rx="10"
+													stroke="black"
+													stroke-width="2"
+													width="100">
+												</rect>
+												<text
+													fill="black"
+													font-size="50"
+													text-anchor="middle"
+													x="50"
+													y="62.5">
+													true
+												</text>
+											</g>
+											<circle
+												cx="50"
+												cy="100"
+												fill="white"
+												r="4"
+												stroke="black"
+												stroke-width="2">
+											</circle>
+										</g>
+									</g>
+									<g>
+										<circle
+											cx="87.5"
+											cy="0"
+											fill="white"
+											r="4"
+											stroke="black"
+											stroke-width="2">
+										</circle>
+										<circle
+											cx="175"
+											cy="0"
+											fill="white"
+											r="4"
+											stroke="black"
+											stroke-width="2">
+										</circle>
+										<circle
+											cx="262.5"
+											cy="0"
+											fill="white"
+											r="4"
+											stroke="black"
+											stroke-width="2">
+										</circle>
+									</g>
+									<g>
+										<circle
+											cx="70"
+											cy="200"
+											fill="white"
+											r="4"
+											stroke="black"
+											stroke-width="2">
+										</circle>
+										<circle
+											cx="140"
+											cy="200"
+											fill="white"
+											r="4"
+											stroke="black"
+											stroke-width="2">
+										</circle>
+										<circle
+											cx="210"
+											cy="200"
+											fill="white"
+											r="4"
+											stroke="black"
+											stroke-width="2">
+										</circle>
+										<circle
+											cx="280"
+											cy="200"
+											fill="white"
+											r="4"
+											stroke="black"
+											stroke-width="2">
+										</circle>
+									</g>
+								</g>
+								<text
+									fill="black"
+									font-size="50"
+									text-anchor="middle"
+									x="1400"
 									y="100">
 									false
 								</text>
@@ -1631,4 +1631,3 @@ expression: rvsdg.to_svg()
 		</g>
 	</g>
 </svg>
-

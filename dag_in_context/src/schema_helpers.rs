@@ -1,5 +1,4 @@
-use std::{fmt::{Display, Formatter}, rc::Rc};
-use dot_structures::{Id, NodeId, Vertex};
+use std::fmt::{Display, Formatter};
 use strum_macros::EnumIter;
 
 use crate::{
@@ -192,8 +191,6 @@ impl Expr {
             Expr::InContext(_, x) => vec![x.clone()],
         }
     }
-
-    
 }
 
 impl TreeProgram {

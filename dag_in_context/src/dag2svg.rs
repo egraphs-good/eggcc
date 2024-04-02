@@ -15,23 +15,22 @@ struct DotConverter {
 
 impl DotConverter {
     pub fn graphviz_id(&mut self, expr: &RcExpr) -> Id {
-      if let Some(name) = self.get_name.get(&Rc::as_ptr(expr)) {
-        Id::Plain(name.clone())
-      }
-      else {
-        let name = format!("{}{}", expr.constructor().name(), self.name_counter);
-        self.name_counter += 1;
-        self.get_name.insert(Rc::as_ptr(expr), name.clone());
-        Id::Plain(name)
-      }
+        if let Some(name) = self.get_name.get(&Rc::as_ptr(expr)) {
+            Id::Plain(name.clone())
+        } else {
+            let name = format!("{}{}", expr.constructor().name(), self.name_counter);
+            self.name_counter += 1;
+            self.get_name.insert(Rc::as_ptr(expr), name.clone());
+            Id::Plain(name)
+        }
     }
 
     pub fn graphviz_nodeid(&mut self, expr: &RcExpr) -> NodeId {
-      NodeId(self.graphviz_id(expr), None)
+        NodeId(self.graphviz_id(expr), None)
     }
 
     pub fn graphviz_vertex(&mut self, expr: &RcExpr) -> Vertex {
-      Vertex::N(self.graphviz_nodeid(expr))
+        Vertex::N(self.graphviz_nodeid(expr))
     }
 }
 

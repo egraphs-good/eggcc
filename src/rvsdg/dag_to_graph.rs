@@ -8,12 +8,12 @@
 
 use std::rc::Rc;
 
+use dag_in_context::schema::{Expr, RcExpr};
 use hashbrown::{HashMap, HashSet};
 use petgraph::{
     algo::dominators::{self, Dominators},
     graph::{DiGraph, NodeIndex},
 };
-use tree_in_context::schema::{Expr, RcExpr};
 
 pub(crate) struct RegionGraph {
     graph: DiGraph<(), ()>,
@@ -199,7 +199,7 @@ fn rcexpr_set(iterator: impl IntoIterator<Item = RcExpr>) -> HashMap<*const Expr
 
 #[test]
 fn test_simple_branch_inputs() {
-    use tree_in_context::ast::*;
+    use dag_in_context::ast::*;
     let my_if = tif(ttrue(), int(1), int(2));
     let outside_computation = add(int(3), int(4));
     let root = add(my_if.clone(), outside_computation.clone());
@@ -210,7 +210,7 @@ fn test_simple_branch_inputs() {
 
 #[test]
 fn test_simple_branch_inputs_share_between_branches() {
-    use tree_in_context::ast::*;
+    use dag_in_context::ast::*;
     let shared_expr = int(1);
     let my_if = tif(ttrue(), shared_expr.clone(), shared_expr.clone());
     let outside_computation = add(int(3), int(4));
@@ -223,7 +223,7 @@ fn test_simple_branch_inputs_share_between_branches() {
 
 #[test]
 fn test_simple_branch_inputs_share_between_branches2() {
-    use tree_in_context::ast::*;
+    use dag_in_context::ast::*;
     let shared_expr = int(1);
     let my_if = tif(
         ttrue(),
@@ -240,7 +240,7 @@ fn test_simple_branch_inputs_share_between_branches2() {
 
 #[test]
 fn test_simple_branch_share_outside() {
-    use tree_in_context::ast::*;
+    use dag_in_context::ast::*;
     let shared_expr = int(1);
     let my_if = tif(
         ttrue(),
@@ -258,7 +258,7 @@ fn test_simple_branch_share_outside() {
 
 #[test]
 fn test_branch_share_effects() {
-    use tree_in_context::ast::*;
+    use dag_in_context::ast::*;
     let addr = alloc(int(10), arg(), pointert(intt()));
     let shared_read = load(get(addr.clone(), 0), get(addr.clone(), 1));
     let shared_write = write(get(addr.clone(), 0), int(20), get(shared_read.clone(), 1));

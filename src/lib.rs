@@ -3,10 +3,10 @@ use bril_rs::Program;
 
 use cfg::{program_to_cfg, SimpleCfgProgram};
 use conversions::check_for_uninitialized_vars;
+use dag_in_context::interpreter::{interpret_tree_prog, Value};
+use dag_in_context::schema::Constant;
 use rvsdg::{RvsdgError, RvsdgProgram};
 use std::path::PathBuf;
-use tree_in_context::interpreter::{interpret_tree_prog, Value};
-use tree_in_context::schema::Constant;
 
 use util::Interpretable;
 

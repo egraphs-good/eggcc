@@ -27,7 +27,7 @@ brilift = { git = "https://github.com/sampsyo/bril", rev = "b20cc2d" }
 ordered-float = { version = "3.7" }
 serde_json = "1.0.103"
 
-tree_in_context = { path = "tree_in_context" }
+dag_in_context = { path = "dag_in_context" }
 
 # binary dependencies
 clap = { version = "4.4.7", features = ["derive"] }

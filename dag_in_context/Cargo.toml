@@ -1,5 +1,5 @@
 [package]
-name = "tree_in_context"
+name = "dag_in_context"
 version = "0.1.0"
 edition = "2021"
 

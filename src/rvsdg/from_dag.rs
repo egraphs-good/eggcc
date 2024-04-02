@@ -3,11 +3,11 @@
 use std::rc::Rc;
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
-use hashbrown::HashMap;
-use tree_in_context::{
+use dag_in_context::{
     schema::{BaseType, BinaryOp, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
 };
+use hashbrown::HashMap;
 
 use super::{
     dag_to_graph::{region_graph, RegionGraph},
@@ -248,10 +248,10 @@ impl<'a> TreeToRvsdg<'a> {
         let res = match expr.as_ref() {
             Expr::Function(_name, _inty, _outty, expr) => self.convert_expr(expr.clone()),
             Expr::Const(constant, _ty) => match constant {
-                tree_in_context::schema::Constant::Int(integer) => self.push_basic(
+                dag_in_context::schema::Constant::Int(integer) => self.push_basic(
                     BasicExpr::Const(ConstOps::Const, Literal::Int(*integer), bril_rs::Type::Int),
                 ),
-                tree_in_context::schema::Constant::Bool(boolean) => {
+                dag_in_context::schema::Constant::Bool(boolean) => {
                     self.push_basic(BasicExpr::Const(
                         ConstOps::Const,
                         Literal::Bool(*boolean),

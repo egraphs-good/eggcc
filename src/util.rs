@@ -2,6 +2,9 @@ use crate::rvsdg::from_dag::dag_to_rvsdg;
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
+use dag_in_context::build_program;
+use dag_in_context::from_egglog::FromEgglog;
+use dag_in_context::schema::TreeProgram;
 use std::fmt::Debug;
 use std::{
     ffi::OsStr,
@@ -9,9 +12,6 @@ use std::{
     io,
     path::PathBuf,
 };
-use tree_in_context::build_program;
-use tree_in_context::from_egglog::FromEgglog;
-use tree_in_context::schema::TreeProgram;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -448,7 +448,7 @@ impl Run {
             RunType::Optimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding();
-                let optimized = tree_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
+                let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
                 let rvsdg2 = dag_to_rvsdg(&optimized);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
@@ -476,7 +476,7 @@ impl Run {
             RunType::DagOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding();
-                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                let optimized = dag_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
                         result: optimized.pretty(),
@@ -489,7 +489,7 @@ impl Run {
             RunType::OptimizedRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding();
-                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                let optimized = dag_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 let rvsdg = dag_to_rvsdg(&optimized);
                 (
                     vec![Visualization {

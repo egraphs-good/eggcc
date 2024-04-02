@@ -42,8 +42,8 @@ use std::fmt;
 
 use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 
+use dag_in_context::schema::BaseType;
 use thiserror::Error;
-use tree_in_context::schema::BaseType;
 
 use crate::{
     cfg::{Identifier, SimpleCfgProgram},

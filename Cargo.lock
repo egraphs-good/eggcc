@@ -489,6 +489,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dag_in_context"
+version = "0.1.0"
+dependencies = [
+ "bril-rs",
+ "egglog",
+ "main_error",
+ "strum",
+ "strum_macros",
+ "thiserror",
+]
+
+[[package]]
 name = "deranged"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -558,6 +570,7 @@ dependencies = [
  "brilift",
  "brilirs",
  "clap",
+ "dag_in_context",
  "egglog",
  "egraph-serialize",
  "fixedbitset",
@@ -573,7 +586,6 @@ dependencies = [
  "serde_json",
  "smallvec",
  "thiserror",
- "tree_in_context",
 ]
 
 [[package]]
@@ -1687,18 +1699,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
 dependencies = [
  "crunchy",
-]
-
-[[package]]
-name = "tree_in_context"
-version = "0.1.0"
-dependencies = [
- "bril-rs",
- "egglog",
- "main_error",
- "strum",
- "strum_macros",
- "thiserror",
 ]
 
 [[package]]

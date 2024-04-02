@@ -6,19 +6,19 @@ use std::iter;
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use tree_in_context::ast::*;
+use dag_in_context::ast::*;
 #[cfg(test)]
-use tree_in_context::interpreter::Value;
+use dag_in_context::interpreter::Value;
 #[cfg(test)]
-use tree_in_context::schema::Constant;
+use dag_in_context::schema::Constant;
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
-use hashbrown::HashMap;
-use tree_in_context::{
+use dag_in_context::{
     ast::{add, call, dowhile, function, int, less_than, parallel_vec, program_vec, tfalse, ttrue},
     schema::{RcExpr, TreeProgram, Type},
 };
+use hashbrown::HashMap;
 
 use super::RvsdgType;
 

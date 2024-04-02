@@ -74,11 +74,10 @@ fn test_tuple_ith() -> crate::Result {
     ;; with print
     (let tup2 (Concat par
                 (Concat par 
-                    (Uop (Print) (Const (Int 0) {emptyt})) 
+                    (Single (Bop (Print) (Const (Int 0) {emptyt}) (Arg (Base (StateT)))))
                     (Concat par (Single (Const (Int 1) {emptyt})) 
-                                (Concat par (Uop (Print) (Const (Int 0) {emptyt})) 
-                                            (Single (Const (Int 2) {emptyt})))))
-                (Concat par (Single (Const (Int 3) {emptyt})) (Uop (Print) (Const (Int 0) {emptyt})))))
+                                (Single (Const (Int 2) {emptyt}))))
+                (Single (Const (Int 3) {emptyt}))))
     ");
 
     let check = format!(
@@ -90,11 +89,12 @@ fn test_tuple_ith() -> crate::Result {
     (check (= 4 (tuple-length tup)))
     (fail (check (tuple-ith tup 4)))
 
-    (check (= (tuple-ith tup2 0) (Const (Int 1) {emptyt})))
-    (check (= (tuple-ith tup2 1) (Const (Int 2) {emptyt})))
-    (check (= (tuple-ith tup2 2) (Const (Int 3) {emptyt})))
-    (check (= 3 (tuple-length tup2)))
-    (fail (check (tuple-ith tup2 3)))
+    (check (= (tuple-ith tup2 0) (Bop (Print) (Const (Int 0) {emptyt}) (Arg (Base (StateT))))))
+    (check (= (tuple-ith tup2 1) (Const (Int 1) {emptyt})))
+    (check (= (tuple-ith tup2 2) (Const (Int 2) {emptyt})))
+    (check (= (tuple-ith tup2 3) (Const (Int 3) {emptyt})))
+    (check (= 4 (tuple-length tup2)))
+    (fail (check (tuple-ith tup2 4)))
     "
     );
     egglog_test(

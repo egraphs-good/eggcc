@@ -1,14 +1,20 @@
-use crate::schema::{BinaryOp, UnaryOp};
+use crate::schema::{BinaryOp, TernaryOp, UnaryOp};
 use crate::schema_helpers::{Constructor, Purpose, Sort};
 use std::iter;
 use strum::IntoEnumIterator;
+
+fn top_is_pure(top: &TernaryOp) -> bool {
+    match top {
+        TernaryOp::Write => false,
+    }
+}
 
 fn bop_is_pure(bop: &BinaryOp) -> bool {
     use BinaryOp::*;
     match bop {
         Add | Sub | Mul | LessThan | And | Or | Div | PtrAdd | Eq | GreaterThan | LessEq
         | GreaterEq => true,
-        Write => false,
+        Load | Print | Free => false,
     }
 }
 
@@ -16,7 +22,6 @@ fn uop_is_pure(uop: &UnaryOp) -> bool {
     use UnaryOp::*;
     match uop {
         Not => true,
-        Print | Load | Free => false,
     }
 }
 
@@ -27,8 +32,8 @@ fn uop_is_pure(uop: &UnaryOp) -> bool {
 fn purity_rules_for_ctor(ctor: Constructor) -> String {
     use Constructor::*;
     match ctor {
-        Function | Const | Get | Concat | Single | Switch | If | DoWhile | Let | Arg | Empty
-        | Cons | Nil | InContext | Bop | Uop => {
+        Function | Const | Get | Concat | Single | Switch | If | DoWhile | Arg | Empty | Cons
+        | Nil | InContext | Bop | Uop | Top => {
             // e.g. ["(ExprIsPure x)", "(ExprIsPure y)"]
             let children_pure_queries = ctor.filter_map_fields(|field| match field.purpose {
                 Purpose::Static(Sort::BinaryOp)
@@ -78,6 +83,9 @@ pub(crate) fn rules() -> Vec<String> {
         (relation UnaryOpIsPure (UnaryOp))"
             .to_string(),
     )
+    .chain(TernaryOp::iter().filter_map(|top| {
+        top_is_pure(&top).then(|| format!("(TopIsPure ({name}))", name = top.name()))
+    }))
     .chain(BinaryOp::iter().filter_map(|bop| {
         bop_is_pure(&bop).then(|| format!("(BinaryOpIsPure ({name}))", name = bop.name()))
     }))
@@ -88,34 +96,32 @@ pub(crate) fn rules() -> Vec<String> {
     .collect::<Vec<String>>()
 }
 
-#[cfg(test)]
-use crate::ast::*;
-#[cfg(test)]
-use crate::schema::Constant;
-#[cfg(test)]
-use crate::Value;
-
 #[test]
 fn test_purity_analysis() -> crate::Result {
+    use crate::ast::*;
     let pureloop = dowhile(
-        in_context(inlet(int_ty(2, emptyt())), single(int(1))),
+        single(int(1)),
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(switch!(int(0); parallel!(int(4), int(5))), 0)
         ),
     )
     .with_arg_types(emptyt(), tuplet!(intt()));
+    let inneralloc = alloc(int(0), getat(1), pointert(intt()));
+    let innerload = load(get(inneralloc.clone(), 0), get(inneralloc.clone(), 1));
+
     let impureloop = dowhile(
-        in_context(inlet(int_ty(2, emptyt())), single(int(1))),
+        parallel!(int(1), arg()),
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(
-                switch!(load(alloc(int(0), pointert(intt()))); parallel!(int(4), int(5))),
+                switch!(get(innerload.clone(), 0); parallel!(int(4), int(5))),
                 0
-            )
+            ),
+            get(innerload.clone(), 1),
         ),
     )
-    .with_arg_types(emptyt(), tuplet!(intt()));
+    .with_arg_types(base(statet()), tuplet!(intt(), statet()));
     let build = format!("{pureloop} {impureloop}");
     let check = format!(
         "
@@ -127,8 +133,8 @@ fn test_purity_analysis() -> crate::Result {
         &build,
         &check,
         vec![pureloop.to_program(emptyt(), tuplet!(intt()))],
-        Value::Tuple(vec![]),
-        Value::Tuple(vec![Value::Const(Constant::Int(4))]),
+        tuplev!(),
+        tuplev!(val_int(4)),
         vec![],
     )
 }

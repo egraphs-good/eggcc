@@ -1,4 +1,4 @@
-use crate::rvsdg::from_tree::tree_to_rvsdg;
+use crate::rvsdg::from_dag::dag_to_rvsdg;
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
@@ -138,8 +138,7 @@ where
     }
 }
 
-/// Different ways to run eggcc- the default is TreeConversion,
-/// but these others are useful for testing and debugging.
+/// Different ways to run eggcc
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ValueEnum, Debug)]
 pub enum RunType {
     /// Do nothing to the input bril program besides parse it.
@@ -152,12 +151,9 @@ pub enum RunType {
     /// Convert the input bril program to an RVSDG and output it as an SVG.
     RvsdgConversion,
     /// Convert the input bril program to a tree-encoded expression.
-    TreeConversion,
-    /// Convert the input bril program to a tree-encoded expression without
-    /// trying to prevent generating unnecessary let bindings
-    TreeConversionVerboseLets,
+    DagConversion,
     /// Convert the input bril program to tree-encoded expression and optimize it with egglog.
-    TreeOptimize,
+    DagOptimize,
     /// Convert the input bril program to a tree-encoded expression and optimize it with egglog,
     /// outputting the resulting RVSDG
     OptimizedRvsdg,
@@ -169,11 +165,11 @@ pub enum RunType {
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
-    /// Convert to tree encoding and back to RVSDG again.
-    TreeToRvsdg,
     /// Convert to Tree Encoding and back to Bril again,
     /// outputting the bril program.
-    TreeRoundTrip,
+    DagRoundTrip,
+    /// Convert the program to a DAG reprensentation then back to an RVSDG.
+    DagToRvsdg,
     /// Convert the original program to a CFG and output it as one SVG per function.
     ToCfg,
     /// Convert the original program to a CFG and back to Bril again.
@@ -185,6 +181,8 @@ pub enum RunType {
     OptimizeDirectJumps,
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
+    /// Converts to an executable using brilift
+    CompileBrilift,
 }
 
 impl Display for RunType {
@@ -202,18 +200,18 @@ impl RunType {
             RunType::Optimize => true,
             RunType::RvsdgConversion => false,
             RunType::RvsdgRoundTrip => true,
-            RunType::TreeToRvsdg => false,
+            RunType::DagToRvsdg => false,
             RunType::OptimizedRvsdg => false,
-            RunType::TreeRoundTrip => true,
+            RunType::DagRoundTrip => true,
             RunType::ToCfg => true,
             RunType::CfgRoundTrip => true,
             RunType::OptimizeDirectJumps => true,
             RunType::RvsdgToCfg => true,
-            RunType::TreeConversion => true,
-            RunType::TreeConversionVerboseLets => true,
-            RunType::TreeOptimize => true,
+            RunType::DagConversion => true,
+            RunType::DagOptimize => true,
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
+            RunType::CompileBrilift => true,
         }
     }
 }
@@ -258,12 +256,17 @@ pub struct Run {
     // Also interpret the resulting program
     pub interp: bool,
     pub profile_out: Option<PathBuf>,
+    pub output_path: Option<String>,
+    pub in_test: bool,
+    pub optimize_egglog: bool,
+    pub optimize_brilift: bool,
 }
 
 /// an enum of IRs that can be interpreted
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
+    Executable { executable: String, in_test: bool },
 }
 
 /// Some sort of visualization of the result, with a name
@@ -295,17 +298,21 @@ impl Run {
             RunType::CfgRoundTrip,
             RunType::OptimizeDirectJumps,
             RunType::RvsdgToCfg,
-            RunType::TreeConversion,
-            RunType::TreeOptimize,
-            RunType::TreeRoundTrip,
-            RunType::TreeOptimize,
+            RunType::DagConversion,
+            RunType::DagOptimize,
+            RunType::DagRoundTrip,
             RunType::Optimize,
+            RunType::CheckTreeIdentical,
         ] {
             let default = Run {
                 test_type,
                 interp: false,
                 prog_with_args: prog.clone(),
                 profile_out: None,
+                output_path: None,
+                in_test: true,
+                optimize_egglog: false,
+                optimize_brilift: false,
             };
             res.push(default.clone());
             if test_type.produces_interpretable() {
@@ -316,14 +323,41 @@ impl Run {
                 res.push(interp);
             }
         }
+
+        // TODO: uncomment `true` once the optimizer works
+        for optimize_egglog in [/*true, */ false] {
+            for optimize_brilift in [true, false] {
+                for interp in [true, false] {
+                    res.push(Run {
+                        test_type: RunType::CompileBrilift,
+                        interp,
+                        prog_with_args: prog.clone(),
+                        profile_out: None,
+                        output_path: None,
+                        in_test: true,
+                        optimize_egglog,
+                        optimize_brilift,
+                    });
+                }
+            }
+        }
+
         res
     }
 
     // give a unique name for this run configuration
     pub fn name(&self) -> String {
         let mut name = format!("{}-{}", self.prog_with_args.name, self.test_type);
+        if self.test_type == RunType::CompileBrilift {
+            name += match (self.optimize_egglog, self.optimize_brilift) {
+                (false, false) => "-opt_none",
+                (true, false) => "-opt_egglog",
+                (false, true) => "-opt_brilift",
+                (true, true) => "-opt_both",
+            };
+        }
         if self.interp {
-            name = format!("{}-interp", name);
+            name += "-interp";
         }
         name
     }
@@ -369,10 +403,23 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::TreeRoundTrip => {
+            RunType::DagToRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
-                let rvsdg2 = tree_to_rvsdg(&tree);
+                let tree = rvsdg.to_dag_encoding();
+                let rvsdg2 = dag_to_rvsdg(&tree);
+                (
+                    vec![Visualization {
+                        result: rvsdg2.to_svg(),
+                        file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
+            }
+            RunType::DagRoundTrip => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let tree = rvsdg.to_dag_encoding();
+                let rvsdg2 = dag_to_rvsdg(&tree);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
                 (
@@ -386,33 +433,23 @@ impl Run {
             }
             RunType::CheckTreeIdentical => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
+                let tree = rvsdg.to_dag_encoding();
                 let (term, termdag) = tree.to_egglog();
-                let from_egglog = FromEgglog { termdag };
+                let mut from_egglog = FromEgglog {
+                    termdag,
+                    conversion_cache: Default::default(),
+                };
                 let res_term = from_egglog.program_from_egglog(term);
                 if tree != res_term {
                     panic!("Check failed: terms should be equal after conversion to and from egglog. Got:\n{}\nExpected:\n{}", res_term.pretty(), tree.pretty());
                 }
                 (vec![], None)
             }
-            RunType::TreeToRvsdg => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
-                let rvsdg2 = tree_to_rvsdg(&tree);
-                (
-                    vec![Visualization {
-                        result: rvsdg2.to_svg(),
-                        file_extension: ".svg".to_string(),
-                        name: "".to_string(),
-                    }],
-                    None,
-                )
-            }
             RunType::Optimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
-                let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
-                let rvsdg2 = tree_to_rvsdg(&optimized);
+                let dag = rvsdg.to_dag_encoding();
+                let optimized = tree_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
+                let rvsdg2 = dag_to_rvsdg(&optimized);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
                 (
@@ -424,9 +461,9 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::TreeConversion => {
+            RunType::DagConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
+                let tree = rvsdg.to_dag_encoding();
                 (
                     vec![Visualization {
                         result: tree.pretty(),
@@ -436,21 +473,9 @@ impl Run {
                     Some(Interpretable::TreeProgram(tree)),
                 )
             }
-            RunType::TreeConversionVerboseLets => {
+            RunType::DagOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(false);
-                (
-                    vec![Visualization {
-                        result: tree.pretty(),
-                        file_extension: ".egg".to_string(),
-                        name: "".to_string(),
-                    }],
-                    Some(Interpretable::TreeProgram(tree)),
-                )
-            }
-            RunType::TreeOptimize => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
+                let tree = rvsdg.to_dag_encoding();
                 let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
@@ -463,9 +488,9 @@ impl Run {
             }
             RunType::OptimizedRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
+                let tree = rvsdg.to_dag_encoding();
                 let optimized = tree_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
-                let rvsdg = tree_to_rvsdg(&optimized);
+                let rvsdg = dag_to_rvsdg(&optimized);
                 (
                     vec![Visualization {
                         result: rvsdg.to_svg(),
@@ -477,7 +502,7 @@ impl Run {
             }
             RunType::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_tree_encoding(true);
+                let tree = rvsdg.to_dag_encoding();
                 let egglog = build_program(&tree);
                 (
                     vec![Visualization {
@@ -522,6 +547,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
+            RunType::CompileBrilift => self.run_brilift(),
         };
 
         let result_interpreted = if !self.interp {
@@ -545,6 +571,68 @@ impl Run {
             result_interpreted,
             original_interpreted,
         })
+    }
+
+    fn run_brilift(&self) -> (Vec<Visualization>, Option<Interpretable>) {
+        let program = if self.optimize_egglog {
+            Optimizer::program_to_cfg(&self.prog_with_args.program).to_bril()
+        } else {
+            self.prog_with_args.program.clone()
+        };
+
+        // Compile the input bril file
+        // options are "none", "speed", and "speed_and_size"
+        let opt_level = if self.optimize_brilift {
+            "speed"
+        } else {
+            "none"
+        };
+        let object = self.name() + ".o";
+        brilift::compile(&program, None, &object, opt_level, false);
+
+        // Compile runtime C library
+        // We use unique names so that tests can run in parallel
+        let library_c = self.name() + "-library.c";
+        let library_o = self.name() + "-library.o";
+        std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
+        std::process::Command::new("cc")
+            .arg(library_c.clone())
+            .arg("-c") // create object file instead of executable
+            .arg("-o")
+            .arg(library_o.clone())
+            .status()
+            .unwrap();
+
+        let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+        std::process::Command::new("cc")
+            .arg(object.clone())
+            .arg(library_o.clone())
+            .arg("-o")
+            .arg(executable.clone())
+            .status()
+            .unwrap();
+
+        std::process::Command::new("rm")
+            .arg(object)
+            .arg(library_o)
+            .arg(library_c)
+            .status()
+            .unwrap();
+
+        if self.in_test && !self.interp {
+            std::process::Command::new("rm")
+                .arg(executable.clone())
+                .status()
+                .unwrap();
+        }
+
+        (
+            vec![],
+            Some(Interpretable::Executable {
+                executable,
+                in_test: self.in_test,
+            }),
+        )
     }
 }
 

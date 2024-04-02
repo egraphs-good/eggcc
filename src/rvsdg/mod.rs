@@ -28,14 +28,15 @@
 //!
 //! In addition to those papers, the Jamey Sharp's
 //! [optir](https://github.com/jameysharp/optir) project is a major inspiration.
+pub(crate) mod dag_to_graph;
 pub(crate) mod from_cfg;
-pub(crate) mod from_tree;
+pub(crate) mod from_dag;
 pub(crate) mod live_variables;
 pub(crate) mod optimize_direct_jumps;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod to_cfg;
-mod to_tree;
+mod to_dag;
 
 use std::fmt;
 
@@ -121,6 +122,7 @@ impl<Op> BasicExpr<Op> {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn push_operand(&mut self, op: Op) {
         match self {
             BasicExpr::Op(_, operands, _) => operands.push(op),
@@ -194,7 +196,7 @@ impl RvsdgType {
     pub(crate) fn to_tree_type(&self) -> Option<BaseType> {
         match self {
             RvsdgType::Bril(ty) => Some(type_to_treetype_base(ty)),
-            RvsdgType::PrintState => None,
+            RvsdgType::PrintState => Some(BaseType::StateT),
         }
     }
 }

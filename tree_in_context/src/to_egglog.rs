@@ -6,7 +6,7 @@ use egglog::{
 };
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TreeProgram, Type, UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TernaryOp, TreeProgram, Type, UnaryOp,
 };
 
 pub(crate) struct TreeToEgglog {
@@ -58,6 +58,7 @@ impl BaseType {
                 let inner = inner.to_egglog_internal(state);
                 state.app("PointerT".into(), vec![inner])
             }
+            BaseType::StateT => state.app("StateT".into(), vec![]),
         }
     }
 }
@@ -96,10 +97,6 @@ impl Type {
 impl Assumption {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
         match self {
-            Assumption::InLet(expr) => {
-                let expr = expr.to_egglog_internal(term_dag);
-                term_dag.app("InLet".into(), vec![expr])
-            }
             Assumption::InLoop(lhs, rhs) => {
                 let lhs = lhs.to_egglog_internal(term_dag);
                 let rhs = rhs.to_egglog_internal(term_dag);
@@ -125,6 +122,12 @@ impl Order {
 }
 
 impl BinaryOp {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
+        term_dag.app(format!("{:?}", self).into(), vec![])
+    }
+}
+
+impl TernaryOp {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
         term_dag.app(format!("{:?}", self).into(), vec![])
     }
@@ -162,6 +165,13 @@ impl Expr {
                 let op = op.to_egglog_internal(term_dag);
                 term_dag.app("Bop".into(), vec![op, lhs, rhs])
             }
+            Expr::Top(op, x, y, z) => {
+                let x = x.to_egglog_internal(term_dag);
+                let y = y.to_egglog_internal(term_dag);
+                let z = z.to_egglog_internal(term_dag);
+                let op = op.to_egglog_internal(term_dag);
+                term_dag.app("Top".into(), vec![op, x, y, z])
+            }
             Expr::Uop(op, expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 let op = op.to_egglog_internal(term_dag);
@@ -172,10 +182,11 @@ impl Expr {
                 let lit_index = term_dag.lit(Literal::Int(*index as i64));
                 term_dag.app("Get".into(), vec![expr, lit_index])
             }
-            Expr::Alloc(expr, ty) => {
+            Expr::Alloc(expr, state, ty) => {
                 let expr = expr.to_egglog_internal(term_dag);
                 let ty = ty.to_egglog_internal(term_dag);
-                term_dag.app("Alloc".into(), vec![expr, ty])
+                let state = state.to_egglog_internal(term_dag);
+                term_dag.app("Alloc".into(), vec![expr, state, ty])
             }
             Expr::Call(name, arg) => {
                 let arg = arg.to_egglog_internal(term_dag);
@@ -210,11 +221,6 @@ impl Expr {
                 let then = then.to_egglog_internal(term_dag);
                 let els = els.to_egglog_internal(term_dag);
                 term_dag.app("If".into(), vec![cond, then, els])
-            }
-            Expr::Let(lhs, rhs) => {
-                let lhs = lhs.to_egglog_internal(term_dag);
-                let rhs = rhs.to_egglog_internal(term_dag);
-                term_dag.app("Let".into(), vec![lhs, rhs])
             }
             Expr::DoWhile(cond, body) => {
                 let cond = cond.to_egglog_internal(term_dag);

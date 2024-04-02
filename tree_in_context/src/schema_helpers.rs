@@ -3,7 +3,7 @@ use strum_macros::EnumIter;
 
 use crate::{
     ast::{base, boolt, intt},
-    schema::{BinaryOp, Constant, Expr, RcExpr, TreeProgram, Type, UnaryOp},
+    schema::{BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
 };
 
 /// Display for Constant implements a
@@ -31,6 +31,15 @@ impl Display for Expr {
     }
 }
 
+impl TernaryOp {
+    pub(crate) fn name(&self) -> &'static str {
+        use TernaryOp::*;
+        match self {
+            Write => "Write",
+        }
+    }
+}
+
 impl BinaryOp {
     pub(crate) fn name(&self) -> &'static str {
         use BinaryOp::*;
@@ -46,7 +55,9 @@ impl BinaryOp {
             LessEq => "LessEq",
             And => "And",
             Or => "Or",
-            Write => "Write",
+            Load => "Load",
+            Free => "Free",
+            Print => "Print",
             PtrAdd => "PtrAdd",
         }
     }
@@ -57,9 +68,6 @@ impl UnaryOp {
         use UnaryOp::*;
         match self {
             Not => "Not",
-            Print => "Print",
-            Load => "Load",
-            Free => "Free",
         }
     }
 }
@@ -84,12 +92,12 @@ impl Expr {
             Expr::Switch(..) => Constructor::Switch,
             Expr::If(..) => Constructor::If,
             Expr::DoWhile(..) => Constructor::DoWhile,
-            Expr::Let(..) => Constructor::Let,
             Expr::Arg(..) => Constructor::Arg,
             Expr::Call(..) => Constructor::Call,
             Expr::Empty(..) => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,
             Expr::InContext(..) => Constructor::InContext,
+            Expr::Top(..) => Constructor::Top,
         }
     }
     pub fn func_name(&self) -> Option<String> {
@@ -120,6 +128,22 @@ impl Expr {
         }
     }
 
+    pub fn func_to_program(&self) -> TreeProgram {
+        match self {
+            Expr::Function(name, input_ty, output_ty, body) => TreeProgram {
+                entry: RcExpr::new(Expr::Function(
+                    name.clone(),
+                    input_ty.clone(),
+                    output_ty.clone(),
+                    body.clone(),
+                )),
+                functions: vec![],
+            },
+            _ => panic!("Expected function"),
+        }
+        .with_arg_types()
+    }
+
     /// Converts this expression to a program, and ensures arguments
     /// have the correct type by calling `with_arg_types`.
     pub fn to_program(self: &RcExpr, input_ty: Type, output_ty: Type) -> TreeProgram {
@@ -139,6 +163,33 @@ impl Expr {
             },
         }
         .with_arg_types()
+    }
+
+    /// Get the children of this expression that are still in the same scope
+    /// For context nodes, doesn't include the context (which is an assumption)
+    pub fn children_same_scope(self: &RcExpr) -> Vec<RcExpr> {
+        match self.as_ref() {
+            Expr::Function(_, _, _, body) => vec![body.clone()],
+            Expr::Const(..) => vec![],
+            Expr::Top(_, x, y, z) => vec![x.clone(), y.clone(), z.clone()],
+            Expr::Bop(_, x, y) => vec![x.clone(), y.clone()],
+            Expr::Uop(_, x) => vec![x.clone()],
+            Expr::Get(x, _) => vec![x.clone()],
+            Expr::Alloc(x, y, _) => vec![x.clone(), y.clone()],
+            Expr::Call(_, x) => vec![x.clone()],
+            Expr::Empty(_) => vec![],
+            Expr::Single(x) => vec![x.clone()],
+            Expr::Concat(_, x, y) => vec![x.clone(), y.clone()],
+            Expr::Switch(x, branches) => {
+                let mut children = vec![x.clone()];
+                children.extend(branches.clone());
+                children
+            }
+            Expr::If(x, y, z) => vec![x.clone(), y.clone(), z.clone()],
+            Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
+            Expr::Arg(_) => vec![],
+            Expr::InContext(_, x) => vec![x.clone()],
+        }
     }
 }
 
@@ -168,6 +219,7 @@ pub(crate) enum Sort {
     Order,
     BinaryOp,
     UnaryOp,
+    TernaryOp,
     I64,
     Type,
     String,
@@ -186,6 +238,7 @@ impl Sort {
             Sort::Type => "Type",
             Sort::BinaryOp => "BinaryOp",
             Sort::UnaryOp => "UnaryOp",
+            Sort::TernaryOp => "TernaryOp",
             Sort::Constant => "Constant",
             Sort::Assumption => "Assumption",
         }
@@ -221,6 +274,7 @@ impl ESort {
 pub enum Constructor {
     Function,
     Const,
+    Top,
     Bop,
     Uop,
     Get,
@@ -229,7 +283,6 @@ pub enum Constructor {
     Switch,
     If,
     DoWhile,
-    Let,
     Arg,
     Call,
     Empty,
@@ -287,7 +340,6 @@ impl Constructor {
             Constructor::Switch => "Switch",
             Constructor::If => "If",
             Constructor::DoWhile => "DoWhile",
-            Constructor::Let => "Let",
             Constructor::Arg => "Arg",
             Constructor::Call => "Call",
             Constructor::Empty => "Empty",
@@ -295,6 +347,7 @@ impl Constructor {
             Constructor::InContext => "InContext",
             Constructor::Cons => "Cons",
             Constructor::Nil => "Nil",
+            Constructor::Top => "Top",
         }
     }
 
@@ -313,6 +366,12 @@ impl Constructor {
             Constructor::Const => {
                 vec![f(Static(Sort::Constant), "n"), f(Static(Sort::Type), "ty")]
             }
+            Constructor::Top => vec![
+                f(Static(Sort::TernaryOp), "op"),
+                f(SubExpr, "x"),
+                f(SubExpr, "y"),
+                f(SubExpr, "z"),
+            ],
             Constructor::Bop => vec![
                 f(Static(Sort::BinaryOp), "op"),
                 f(SubExpr, "x"),
@@ -341,7 +400,6 @@ impl Constructor {
             Constructor::DoWhile => {
                 vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")]
             }
-            Constructor::Let => vec![f(SubExpr, "in"), f(CapturedExpr, "out")],
             Constructor::Arg => vec![f(Static(Sort::Type), "ty")],
             Constructor::Call => {
                 vec![f(Static(Sort::String), "func"), f(SubExpr, "arg")]
@@ -349,7 +407,11 @@ impl Constructor {
             Constructor::Empty => vec![f(Static(Sort::Type), "ty")],
             Constructor::Cons => vec![f(SubExpr, "hd"), f(SubListExpr, "tl")],
             Constructor::Nil => vec![],
-            Constructor::Alloc => vec![f(SubExpr, "e"), f(Static(Sort::Type), "ty")],
+            Constructor::Alloc => vec![
+                f(SubExpr, "e"),
+                f(SubExpr, "state"),
+                f(Static(Sort::Type), "ty"),
+            ],
             Constructor::InContext => {
                 vec![f(Static(Sort::Assumption), "assumption"), f(SubExpr, "e")]
             }
@@ -378,6 +440,7 @@ impl Constructor {
         match self {
             Constructor::Function => ESort::Expr,
             Constructor::Const => ESort::Expr,
+            Constructor::Top => ESort::Expr,
             Constructor::Bop => ESort::Expr,
             Constructor::Uop => ESort::Expr,
             Constructor::Get => ESort::Expr,
@@ -386,7 +449,6 @@ impl Constructor {
             Constructor::Switch => ESort::Expr,
             Constructor::If => ESort::Expr,
             Constructor::DoWhile => ESort::Expr,
-            Constructor::Let => ESort::Expr,
             Constructor::Arg => ESort::Expr,
             Constructor::Call => ESort::Expr,
             Constructor::Empty => ESort::Expr,
@@ -411,7 +473,9 @@ impl BinaryOp {
             | BinaryOp::GreaterEq
             | BinaryOp::LessEq
             | BinaryOp::Eq => Some((base(intt()), base(intt()), base(boolt()))),
-            BinaryOp::Write => None,
+            BinaryOp::Load => None,
+            BinaryOp::Free => None,
+            BinaryOp::Print => None,
             BinaryOp::PtrAdd => None,
         }
     }
@@ -421,9 +485,6 @@ impl UnaryOp {
     pub(crate) fn types(&self) -> Option<(Type, Type)> {
         match self {
             UnaryOp::Not => Some((base(boolt()), base(boolt()))),
-            UnaryOp::Print => None,
-            UnaryOp::Load => None,
-            UnaryOp::Free => None,
         }
     }
 }

@@ -4,7 +4,7 @@ use strum::IntoEnumIterator;
 
 fn rules_for_ctor(ctor: Constructor) -> Option<String> {
     use Constructor::*;
-    if [DoWhile, Let, InContext].contains(&ctor) || ctor.sort() != ESort::Expr {
+    if [DoWhile, InContext].contains(&ctor) || ctor.sort() != ESort::Expr {
         return None;
     }
     Some(ctor.filter_map_fields(|varying_field| match varying_field.purpose {

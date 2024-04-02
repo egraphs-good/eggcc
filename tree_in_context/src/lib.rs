@@ -9,6 +9,7 @@ use std::fmt::Write;
 use crate::interpreter::interpret_tree_prog;
 
 pub mod ast;
+pub mod dag_typechecker;
 pub mod from_egglog;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
@@ -69,7 +70,7 @@ fn print_with_intermediate_helper(
                 .collect::<Vec<String>>()
                 .join(" ");
             let fresh_var = format!("__tmp{}", cache.len());
-            write!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
+            writeln!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
             cache.insert(term, fresh_var.clone());
             fresh_var
         }
@@ -101,7 +102,10 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let (sort, value) = egraph.eval_expr(&egglog::ast::Expr::Var((), "PROG".into()))?;
     let mut termdag = egglog::TermDag::default();
     let extracted = egraph.extract(value, &mut termdag, &sort);
-    let from_egglog = FromEgglog { termdag };
+    let mut from_egglog = FromEgglog {
+        termdag,
+        conversion_cache: Default::default(),
+    };
     Ok(from_egglog.program_from_egglog(extracted.1))
 }
 
@@ -141,7 +145,6 @@ fn check_program_gets_type(program: TreeProgram) -> Result {
         bodies.join("\n"),
         checks.join("\n")
     );
-    println!("{}", s);
 
     egglog::EGraph::default()
         .parse_and_run_program(&s)

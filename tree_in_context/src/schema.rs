@@ -11,6 +11,7 @@ pub enum BaseType {
     IntT,
     BoolT,
     PointerT(Box<BaseType>),
+    StateT,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +29,11 @@ pub enum Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
+pub enum TernaryOp {
+    Write,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -40,16 +46,15 @@ pub enum BinaryOp {
     GreaterEq,
     And,
     Or,
-    Write,
     PtrAdd,
+    Load,
+    Print,
+    Free,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
 pub enum UnaryOp {
     Not,
-    Print,
-    Load,
-    Free,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,13 +71,13 @@ pub enum Order {
 }
 
 /// A reference counted expression.
-/// We want sharing between sub-expressions, so we
-/// use Rc instead of Box.
+/// We want sharing between sub-expressions, so we use Rc instead of Box.
+/// Invariant: Every shared sub-expression is re-used by the same Rc<Expr> (pointer equality).
+/// This is important for the correctness of the interpreter, which makes this assumption.
 pub type RcExpr = Rc<Expr>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Assumption {
-    InLet(RcExpr),
     InLoop(RcExpr, RcExpr),
     InFunc(String),
     InIf(bool, RcExpr),
@@ -81,17 +86,17 @@ pub enum Assumption {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Const(Constant, Type),
+    Top(TernaryOp, RcExpr, RcExpr, RcExpr),
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
     Get(RcExpr, usize),
-    Alloc(RcExpr, Type),
+    Alloc(RcExpr, RcExpr, BaseType),
     Call(String, RcExpr),
     Empty(Type),
     Single(RcExpr),
     Concat(Order, RcExpr, RcExpr),
     Switch(RcExpr, Vec<RcExpr>),
     If(RcExpr, RcExpr, RcExpr),
-    Let(RcExpr, RcExpr),
     DoWhile(RcExpr, RcExpr),
     Arg(Type),
     InContext(Assumption, RcExpr),

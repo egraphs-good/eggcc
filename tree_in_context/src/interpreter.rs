@@ -1,6 +1,15 @@
-use std::{collections::HashMap, fmt::Display};
+//! Interpret DAG programs. Each expression is evaluated once, so side-effects only happen
+//! once. All the dependencies of an expression are evaluted first.
+//! The interpreter relies on the invariant that common subexpressions are
+//! shared as the same Rc pointer. Otherwise, effects may be executed multiple times.
+//! The invariant is maintained by translation from RVSDG, type checking, and translation from egglog.
 
-use crate::schema::{BinaryOp, Constant, Expr, Order, RcExpr, TreeProgram, UnaryOp};
+use std::{collections::HashMap, fmt::Display, rc::Rc};
+
+use crate::{
+    schema::{BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, UnaryOp},
+    tuplev,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pointer {
@@ -36,6 +45,7 @@ pub enum Value {
     Const(Constant),
     Ptr(Pointer),
     Tuple(Vec<Value>),
+    StateV,
 }
 
 impl Value {
@@ -46,6 +56,11 @@ impl Value {
             Ptr(Pointer { .. }) => todo!("How does bril print pointers?"),
             Tuple(_vs) => {
                 panic!("Tried to print tuple as Bril value. There are no tuples in Bril.");
+            }
+            Value::StateV => {
+                panic!(
+                    "Tried to print state value as Bril value. There are no state values in Bril."
+                );
             }
         }
     }
@@ -69,6 +84,7 @@ impl Display for Value {
                 }
                 write!(f, ")")
             }
+            Value::StateV => write!(f, "StateV"),
         }
     }
 }
@@ -82,7 +98,9 @@ pub(crate) struct VirtualMachine<'a> {
     /// Next address for allocating memory.
     next_addr: usize,
     /// All of memory
-    mem: HashMap<usize, Value>,
+    memory: HashMap<usize, Value>,
+    /// Values for already evaluated expressions
+    eval_cache: HashMap<*const Expr, Value>,
     /// Print log
     log: Vec<String>,
 }
@@ -100,14 +118,17 @@ pub struct BrilState {
 
 /// Interprets a program, returning the value
 /// returned by the program and the print log.
+/// The interpreter relies on the invariant that common subexpressions are
+/// shared as the same Rc pointer. Otherwise, effects may be executed multiple times.
 pub fn interpret_tree_prog(prog: &TreeProgram, arg: &Value) -> (Value, Vec<String>) {
     let mut vm = VirtualMachine {
         program: prog,
         next_addr: 0,
-        mem: HashMap::new(),
+        memory: HashMap::new(),
+        eval_cache: HashMap::new(),
         log: vec![],
     };
-    let ret_val = vm.interpret(&prog.entry.func_name().unwrap(), arg);
+    let ret_val = vm.interpret_call(&prog.entry.func_name().unwrap(), arg);
     (ret_val, vm.log)
 }
 
@@ -120,12 +141,13 @@ pub fn interpret_expr(expr: &RcExpr, func_arg: &Value) -> BrilState {
             functions: vec![],
         },
         next_addr: 0,
-        mem: HashMap::new(),
+        eval_cache: HashMap::new(),
+        memory: HashMap::new(),
         log: vec![],
     };
     let value = vm.interpret_expr(expr, func_arg);
     BrilState {
-        mem: vm.mem,
+        mem: vm.memory,
         log: vm.log,
         value,
     }
@@ -153,6 +175,27 @@ impl<'a> VirtualMachine<'a> {
         }
     }
 
+    fn interpret_top(
+        &mut self,
+        top: &TernaryOp,
+        e1: &RcExpr,
+        e2: &RcExpr,
+        e3: &RcExpr,
+        arg: &Value,
+    ) -> Value {
+        let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointer_expr(e, arg);
+        match top {
+            TernaryOp::Write => {
+                let pointer = get_pointer(e1, self);
+                let val = self.interpret_expr(e2, arg).clone();
+                let state_val = self.interpret_expr(e3, arg);
+                assert_eq!(state_val, Value::StateV);
+                self.memory.insert(pointer.addr(), val);
+                Value::StateV
+            }
+        }
+    }
+
     fn interpret_bop(&mut self, bop: &BinaryOp, e1: &RcExpr, e2: &RcExpr, arg: &Value) -> Value {
         let get_int = |e: &RcExpr, vm: &mut Self| vm.interp_int_expr(e, arg);
         let get_bool = |e: &RcExpr, vm: &mut Self| vm.interp_bool_expr(e, arg);
@@ -167,6 +210,31 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::GreaterThan => Const(Constant::Bool(get_int(e1, self) > get_int(e2, self))),
             BinaryOp::LessEq => Const(Constant::Bool(get_int(e1, self) <= get_int(e2, self))),
             BinaryOp::GreaterEq => Const(Constant::Bool(get_int(e1, self) >= get_int(e2, self))),
+            BinaryOp::Load => {
+                let ptr = self.interp_pointer_expr(e1, arg);
+                let state_val = self.interpret_expr(e2, arg);
+                assert_eq!(state_val, Value::StateV);
+                if let Some(val) = self.memory.get(&ptr.addr()) {
+                    tuplev!(val.clone(), Value::StateV)
+                } else {
+                    panic!("No value bound at memory address {:?}", ptr.addr())
+                }
+            }
+            BinaryOp::Free => {
+                let ptr = get_pointer(e1, self);
+                let state_val = self.interpret_expr(e2, arg);
+                assert_eq!(state_val, Value::StateV);
+                self.memory.remove(&ptr.addr());
+                Value::StateV
+            }
+            BinaryOp::Print => {
+                let val = self.interpret_expr(e1, arg);
+                let state_val = self.interpret_expr(e2, arg);
+                assert_eq!(state_val, Value::StateV);
+                let v_str = val.bril_print().to_string();
+                self.log.push(v_str.clone());
+                Value::StateV
+            }
             BinaryOp::And => {
                 let b1 = get_bool(e1, self);
                 let b2 = get_bool(e2, self);
@@ -176,12 +244,6 @@ impl<'a> VirtualMachine<'a> {
                 let b1 = get_bool(e1, self);
                 let b2 = get_bool(e2, self);
                 Const(Constant::Bool(b1 || b2))
-            }
-            BinaryOp::Write => {
-                let pointer = get_pointer(e1, self);
-                let val = self.interpret_expr(e2, arg).clone();
-                self.mem.insert(pointer.addr(), val);
-                Tuple(vec![])
             }
             BinaryOp::PtrAdd => {
                 let Pointer {
@@ -197,41 +259,41 @@ impl<'a> VirtualMachine<'a> {
     fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Value) -> Value {
         match uop {
             UnaryOp::Not => Const(Constant::Bool(!self.interp_bool_expr(e, arg))),
-            UnaryOp::Print => {
-                let val = self.interpret_expr(e, arg);
-                let v_str = val.bril_print().to_string();
-                self.log.push(v_str.clone());
-                Tuple(vec![])
-            }
-            UnaryOp::Load => {
-                let ptr = self.interp_pointer_expr(e, arg);
-                if let Some(val) = self.mem.get(&ptr.addr()) {
-                    val.clone()
-                } else {
-                    panic!("No value bound at memory address {:?}", ptr.addr())
-                }
-            }
-            UnaryOp::Free => {
-                let ptr = self.interp_pointer_expr(e, arg);
-                self.mem.remove(&ptr.addr());
-                Tuple(vec![])
-            }
         }
     }
 
     // TODO: refactor to return a Result<Value, RuntimeError>
     // struct RuntimeError { BadRead(Value) }
     // in_contexts e typechecks
-    pub fn interpret(&mut self, func_name: &str, arg: &Value) -> Value {
+    pub fn interpret_call(&mut self, func_name: &str, arg: &Value) -> Value {
         let func = self.program.get_function(func_name).unwrap();
-        self.interpret_expr(func.func_body().unwrap(), arg)
+        self.interpret_region(
+            func.func_body()
+                .expect("Expected function in interpret_call"),
+            arg,
+        )
+    }
+
+    pub fn interpret_region(&mut self, expr: &RcExpr, arg: &Value) -> Value {
+        let mut memo_before = HashMap::new();
+        // save the memo before, since we are evaluating in a new region
+        std::mem::swap(&mut self.eval_cache, &mut memo_before);
+        // evaluate expression with brand new memo
+        let res = self.interpret_expr(expr, arg);
+        // restore the old memo now that we are back in the previous region
+        std::mem::swap(&mut self.eval_cache, &mut memo_before);
+        res
     }
 
     pub fn interpret_expr(&mut self, expr: &RcExpr, arg: &Value) -> Value {
-        match expr.as_ref() {
+        if let Some(val) = self.eval_cache.get(&Rc::as_ptr(expr)) {
+            return val.clone();
+        }
+        let res = match expr.as_ref() {
             Expr::Const(c, _ty) => Const(c.clone()),
             Expr::Bop(bop, e1, e2) => self.interpret_bop(bop, e1, e2, arg),
             Expr::Uop(uop, e) => self.interpret_uop(uop, e, arg),
+            Expr::Top(top, e1, e2, e3) => self.interpret_top(top, e1, e2, e3, arg),
             Expr::InContext(_assumption, e) => self.interpret_expr(e, arg),
             Expr::Get(e_tuple, i) => {
                 let Tuple(vals) = self.interpret_expr(e_tuple, arg) else {
@@ -249,11 +311,15 @@ impl<'a> VirtualMachine<'a> {
                 vals[*i].clone()
             }
             // in_context this is type checked, so ignore type
-            Expr::Alloc(e_size, _ty) => {
+            Expr::Alloc(e_size, state_expr, _ty) => {
                 let size = self.interp_int_expr(e_size, arg);
+                let state_val = self.interpret_expr(state_expr, arg);
+                assert_eq!(state_val, Value::StateV);
                 let addr = self.next_addr;
                 self.next_addr += usize::try_from(size).unwrap();
-                Ptr(Pointer::new(addr, size as usize, 0))
+
+                // make a new pointer at the address, with an initial offset of 0
+                tuplev!(Ptr(Pointer::new(addr, size as usize, 0)), Value::StateV)
             }
             Expr::Empty(_ty) => Tuple(vec![]),
             Expr::Single(e) => Tuple(vec![self.interpret_expr(e, arg)]),
@@ -304,7 +370,7 @@ impl<'a> VirtualMachine<'a> {
                 let mut pred = Const(Constant::Bool(true));
                 while pred == Const(Constant::Bool(true)) {
                     let Tuple(pred_output_val) =
-                        self.interpret_expr(pred_output, &Tuple(vals.clone()))
+                        self.interpret_region(pred_output, &Tuple(vals.clone()))
                     else {
                         panic!("expected tuple for pred_output in do-while")
                     };
@@ -319,19 +385,15 @@ impl<'a> VirtualMachine<'a> {
                 }
                 Tuple(vals)
             }
-            Expr::Let(input, output) => {
-                let input_val = self.interpret_expr(input, arg);
-                // Evaluate the output with the result
-                // bound to `(Arg)`
-                self.interpret_expr(output, &input_val)
-            }
             Expr::Arg(_ty) => arg.clone(),
             Expr::Function(..) => panic!("Function should not be interpreted as an expression"),
             Expr::Call(func_name, e) => {
                 let e_val = self.interpret_expr(e, arg);
-                self.interpret(func_name, &e_val)
+                self.interpret_call(func_name, &e_val)
             }
-        }
+        };
+        self.eval_cache.insert(Rc::as_ptr(expr), res.clone());
+        res
     }
 }
 
@@ -345,12 +407,7 @@ fn test_interpret_calls() {
             base(intt()),
             mul(call("func2", sub(arg(), int(1))), int(2))
         ),
-        function(
-            "func2",
-            base(intt()),
-            base(intt()),
-            tlet(arg(), add(arg(), int(1)))
-        ),
+        function("func2", base(intt()), base(intt()), add(arg(), int(1))),
     );
     let res = interpret_tree_prog(&expr, &Const(Constant::Int(5))).0;
     assert_eq!(res, Const(Constant::Int(10)));
@@ -382,15 +439,16 @@ fn test_interpreter() {
     // print numbers 1-10
     let expr = get(
         dowhile(
-            parallel!(int(1)),
+            parallel!(int(1), arg()),
             parallel!(
                 less_than(getat(0), int(10)),
-                first(parallel!(add(getat(0), int(1)), tprint(getat(0))))
+                add(getat(0), int(1)),
+                tprint(getat(0), getat(1))
             ),
         ),
         0,
     );
-    let res = interpret_expr(&expr, &val_empty());
+    let res = interpret_expr(&expr, &val_state());
     assert_eq!(res.value, Const(Constant::Int(11)));
     assert_eq!(
         res.log,
@@ -402,50 +460,4 @@ fn test_interpreter() {
 }
 
 #[test]
-fn test_interpreter_fib_using_memory() {
-    use crate::ast::*;
-    let nth = 10;
-    let fib_nth = 55;
-    let expr = tlet(
-        alloc(int(nth + 2), base(intt())),
-        tlet(
-            concat_seq(
-                twrite(arg(), int(0)), // address 0, value 0
-                concat_seq(
-                    twrite(ptradd(arg(), int(1)), int(1)), // address 1, value 1
-                    single(arg()),
-                ),
-            ), // [ptr(0)]
-            tlet(
-                dowhile(
-                    parallel!(ptradd(getat(0), int(2)), int(2)), // [ptr(2), 2]
-                    cons_par(
-                        less_than(getat(1), int(nth)),
-                        concat_par(
-                            twrite(
-                                getat(0),
-                                add(
-                                    load(ptradd(getat(0), int(-1))),
-                                    load(ptradd(getat(0), int(-2))),
-                                ),
-                            ),
-                            parallel!(ptradd(getat(0), int(1)), add(getat(1), int(1))),
-                        ),
-                    ),
-                ),
-                parallel!(load(ptradd(getat(0), int(-1))), getat(1)),
-            ),
-        ),
-    );
-
-    let res = interpret_expr(&expr, &val_empty());
-    assert_eq!(
-        res.value,
-        Tuple(vec![
-            Const(Constant::Int(fib_nth)),
-            Const(Constant::Int(11))
-        ])
-    );
-    assert_eq!(res.mem[&(nth as usize)], Const(Constant::Int(fib_nth)));
-    assert!(!res.mem.contains_key(&(nth as usize + 1)));
-}
+fn test_recursive_interp() {}

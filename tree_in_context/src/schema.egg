@@ -14,14 +14,16 @@
   (IntT)
   (BoolT)
   ; a pointer to a memory region with a particular type
-  (PointerT BaseType))
+  (PointerT BaseType)
+  (StateT))
 
 
 (datatype Type
   ; a primitive type
   (Base BaseType)
   ; a typed tuple. Use an empty tuple as a unit type.
-  (TupleT TypeList) 
+  ; state edge also has unit type
+  (TupleT TypeList)
 )
 
 (function TNil () TypeList)
@@ -53,6 +55,12 @@
 ; =================================
 ; Operators
 ; =================================
+
+(datatype TernaryOp
+  ; given a pointer, value, and a state edge
+  ; writes the value to the pointer and returns
+  ; the resulting state edge
+  (Write))
 (datatype BinaryOp
   (Add)
   (Sub)
@@ -65,30 +73,31 @@
   (Eq)
   (And)
   (Or)
-  ; given a pointer and a value, writes
-  ; the value to the pointer
-  (Write)
+  ; given a pointer and a state edge
+  ; loads the value at the pointer and returns (value, state edge)
+  (Load)
   ; Takes a pointer and an integer, and offsets
   ; the pointer by the integer
-  (PtrAdd))
-(datatype UnaryOp
-  (Not)
-  ; prints any non-tuple value
+  (PtrAdd)
+  ; given and value and a state edge, prints the value as a side-effect
+  ; the value must be a base value, not a tuple
   ; returns an empty tuple
   (Print)
-  ; given a pointer, loads the value at the pointer
-  (Load)
-  ; given a pointer, frees the whole memory region at the pointer
+  ; given a pointer and state edge, frees the whole memory region at the pointer
   (Free))
+(datatype UnaryOp
+  (Not))
 
 ; Operators
+(function Top   (TernaryOp Expr Expr Expr) Expr)
 (function Bop   (BinaryOp Expr Expr) Expr)
 (function Uop   (UnaryOp Expr) Expr)
 ; gets from a tuple. static index
 (function Get   (Expr i64) Expr)
+; (Alloc amount state_edge pointer_type)
 ; allocate an integer amount of memory for a particular type
 ; returns a pointer to the allocated memory
-(function Alloc (Expr Type)      Expr)
+(function Alloc (Expr Expr BaseType)      Expr)
 ;               name of func   arg
 (function Call (String         Expr) Expr)
 
@@ -146,14 +155,6 @@
 (function If (Expr Expr Expr) Expr)
 
 
-; Creates a region, binding the input to `Arg`.
-; e.g. `(Let (Concat (Parallel) (Arg ...) new_tuple) output)`
-; binds argument to the old argument plus some new values `new_tuple`.
-; 
-;              input    output
-(function Let (Expr     Expr)    Expr)
-
-
 ; A do-while loop.
 ; Evaluates the input, then evaluates the body.
 ; Keeps looping while the predicate is true.
@@ -173,11 +174,6 @@
 ; =================================
 
 (datatype Assumption
-  ; The argument is bound to `expr`.
-  ; The argument cannot be unioned with `expr` because `expr`
-  ; is evaluated once at the nearest enclosing `Let`.
-  ;      expr
-  (InLet Expr)
   ; The term is in a loop with `input` and `pred_output`.
   ;      input    pred_output
   (InLoop Expr     Expr)
@@ -195,8 +191,6 @@
 )
 
 ; InContext allows creating context-specific terms.
-; e.g. (InContext (InLet (Const (Int 2))) (LetArg)) is equal to
-; (InContext (IntLet (Const (Int 2))) (Const (Int 2)))
 (function InContext (Assumption Expr) Expr)
 
 

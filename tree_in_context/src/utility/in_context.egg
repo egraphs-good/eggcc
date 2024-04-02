@@ -75,8 +75,8 @@
 ;; ################################ saturation
 
 ;; Outer context nodes are more specific by our semantics
-(rewrite (InContext ctx-outer (InContext ctx-inner expr))
-         (InContext ctx-outer expr)
+(rewrite (InContext ctx (InContext ctx expr))
+         (InContext ctx expr)
          :ruleset context-helpers)
 
 
@@ -148,8 +148,8 @@
 (rewrite (DoAddContext seen ctx scope (Get c1 index))
          (Get (DoAddContext seen ctx scope c1) index)
                :ruleset context-helpers)
-(rewrite (DoAddContext seen ctx scope (Alloc c1 ty))
-         (Alloc (DoAddContext seen ctx scope c1) ty)
+(rewrite (DoAddContext seen ctx scope (Alloc c1 state ty))
+         (Alloc (DoAddContext seen ctx scope c1) (DoAddContext seen ctx scope state) ty)
          :ruleset context-helpers)
 (rewrite (DoAddContext seen ctx scope (Call name c1))
          (Call name (DoAddContext seen ctx scope c1))
@@ -201,17 +201,6 @@
            (DoAddContext newpath (InIf false newpred) scope c2))))
        :ruleset context)
 
-
-(rule ((= lhs (DoAddContext seen ctx scope (Let in out)))
-       (!= scope (StopAtLoopOrLet)))
-      ((let new-inputs
-         (DoAddContext seen ctx scope in))
-       (let newpath
-          (PathCons (Let in out) lhs seen))
-       (union lhs
-         (Let new-inputs
-           (DoAddContext newpath (InLet new-inputs) scope out))))
-       :ruleset context)
 
 (rule ((= lhs (DoAddContext seen ctx scope (DoWhile inputs outputs)))
        (= scope (Full)))

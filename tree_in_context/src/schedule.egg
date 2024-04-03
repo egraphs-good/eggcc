@@ -16,4 +16,6 @@
     conditional-invariant-code-motion
     switch_rewrite
     loop-simplify
-    (saturate boundary-analysis)))
+    (saturate boundary-analysis)
+    loop-inv-hoist
+    ))

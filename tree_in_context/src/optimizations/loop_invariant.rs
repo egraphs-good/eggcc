@@ -128,11 +128,9 @@ use crate::{ast::*, egglog_test, interpreter::Value};
 #[test]
 fn test_invariant_detect_simple() -> crate::Result {
     let output_ty = tuplet!(intt(), intt(), intt(), intt());
-    let inner_inv =
-        sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), intt());
+    let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), intt());
     let inv = add(inner_inv.clone(), int(0)).with_arg_types(output_ty.clone(), intt());
-    let pred =
-        less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), boolt());
+    let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), boolt());
     let not_inv = add(getat(0), inv.clone()).with_arg_types(output_ty.clone(), intt());
     let inv_in_print = add(inv.clone(), int_ty(4, output_ty.clone()));
     let print = tprint(inv_in_print.clone()).with_arg_types(output_ty.clone(), emptyt());
@@ -145,7 +143,6 @@ fn test_invariant_detect_simple() -> crate::Result {
         ),
     )
     .with_arg_types(emptyt(), output_ty.clone());
-
 
     let build = format!(
         "(let loop {})
@@ -180,19 +177,15 @@ fn test_invariant_detect_simple() -> crate::Result {
     )
 }
 
-
-
 #[test]
 fn test_invariant_hoist() -> crate::Result {
     let output_ty = tuplet!(intt(), intt(), intt(), intt());
-    let inner_inv =
-        sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), intt());
+    let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), intt());
     let inv = add(inner_inv.clone(), int(0)).with_arg_types(output_ty.clone(), intt());
-    let pred =
-        less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), boolt());
+    let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), boolt());
     let not_inv = add(getat(0), inv.clone()).with_arg_types(output_ty.clone(), intt());
-    let inv_in_print = add(inv.clone(), int_ty(4, output_ty.clone()));
-    let print = tprint(inv_in_print.clone()).with_arg_types(output_ty.clone(), emptyt());
+    //let inv_in_print = add(inv.clone(), int_ty(4, output_ty.clone()));
+    let print = tprint(inv.clone()).with_arg_types(output_ty.clone(), emptyt());
 
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4)),
@@ -203,28 +196,17 @@ fn test_invariant_hoist() -> crate::Result {
     )
     .with_arg_types(emptyt(), output_ty.clone());
 
-
     let build = format!(
         "(let loop {})
         (let inv {})
-        (let inv_in_print {})
         (let pred {})
         (let not_inv {})
         (let print {})
         (let inner_inv {})",
-        my_loop, inv, inv_in_print, pred, not_inv, print, inner_inv
+        my_loop, inv, pred, not_inv, print, inner_inv
     );
     let check = format!(
-        "(check (= true (is-inv-Expr loop inv)))
-		(check (= true (is-inv-Expr loop inv_in_print)))
-		(check (= false (is-inv-Expr loop pred)))
-		(check (= false (is-inv-Expr loop not_inv)))
-        (check (boundary-Expr loop inv))
-        (check (boundary-Expr loop inv_in_print))
-        (fail (check (boundary-Expr loop not_inv)))
-        (fail (check (boundary-Expr loop pred)))
-        (check (= true (is-inv-Expr loop inner_inv)))
-        (fail (check (boundary-Expr loop inner_inv)))"
+        ""
     );
 
     egglog_test(

@@ -108,13 +108,12 @@
       ((set (Expr-size expr) sum)) :ruleset always-run)
 
 
-(function tuple-of-get-arg (Type i64) Expr :unextractable)
-(function tuple-of-get-arg-helper (Type i64 i64) Expr :unextractable)
-
-(rewrite (tuple-of-get-arg ty n) (tuple-of-get-arg-helper ty n 0) :ruleset always-run)
-(rewrite (tuple-of-get-arg-helper ty 1 x) (Single (Get (Arg ty) x)) :ruleset always-run)
-(rule ((= f (tuple-of-get-arg-helper ty a b)) (> a 1))
+;;                tuple start len
+(function SubTuple (Expr i64 i64) Expr :unextractable)
+(rewrite (SubTuple expr x 1)
+         (Single (Get expr x)) :ruleset always-run)
+(rule ((= f (SubTuple expr a b)) (> b 1))
       ((union f 
          (Concat par ;; just make it parallel here
-               (Get (Arg ty) b) 
-               (tuple-of-get-arg-helper ty (- a 1) (+ b 1))))) :ruleset always-run)
+               (Single (Get expr a))
+               (SubTuple expr (+ a 1) (- b 1))))) :ruleset always-run)

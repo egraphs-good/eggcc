@@ -117,12 +117,34 @@ fn test_expr_size() -> crate::Result {
         ),
     )
     .with_arg_types(emptyt(), tuplet!(intt()));
-    let build = format!("(let loop {})", pureloop);
+    let build: String = format!("(let loop {})", pureloop);
 
     let check = "(check (= 9 (Expr-size loop)))";
     egglog_test(
         build.as_str(),
         check,
+        vec![],
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![]),
+        vec![],
+    )
+}
+
+#[test]
+fn test_sub_tuple() -> crate::Result {
+    let ty = tuplet!(intt(), intt(), intt());
+    let arg = arg().with_arg_types(ty.clone(), ty.clone());
+    let build = format!("(let expr (SubTuple {} 0 3))", arg);
+    let out = concat_par(
+        single(getat(0)),
+        concat_par(single(getat(1)), single(getat(2))),
+    )
+    .with_arg_types(ty.clone(), ty);
+
+    let check = format!("(check (= expr {}))", out);
+    egglog_test(
+        build.as_str(),
+        &check,
         vec![],
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),

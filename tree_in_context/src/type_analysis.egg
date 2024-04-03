@@ -329,7 +329,8 @@
         (= lhs (Single e))
         (HasType e (TupleT tylist))
       )
-      ((panic "don't nest tuples"))
+      ((extract e)
+       (panic "don't nest tuples"))
       :ruleset type-analysis)
 
 (rule (

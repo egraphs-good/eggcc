@@ -19,6 +19,7 @@ hashbrown = "0.14"
 indexmap = "2.0"
 fixedbitset = "0.4.2"
 smallvec = "1.11.1"
+rpds = "1.1.0"
 
 syn = {version = "2.0", features = ["full", "extra-traits"]}
 bril2json = { git = "https://github.com/ajpal/bril", rev = "af21f1c" }

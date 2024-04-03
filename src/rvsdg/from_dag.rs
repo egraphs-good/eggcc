@@ -9,6 +9,8 @@ use dag_in_context::{
 };
 use hashbrown::HashMap;
 
+use crate::Optimizer;
+
 use super::{
     dag_to_graph::{region_graph, RegionGraph},
     BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType,
@@ -495,4 +497,49 @@ impl<'a> TreeToRvsdg<'a> {
             .insert(Rc::as_ptr(&expr), res.clone());
         res
     }
+}
+
+#[test]
+fn test_ifs_share_across_branches() {
+    use dag_in_context::ast::*;
+    use dag_in_context::interpreter::interpret_dag_prog;
+    // a test with a nested if statement
+    // (if pred (if pred2 then else) else)
+    // the two else branches share the same effect, but it should still be duplicated
+    // this is similar to the if-conversion-region.bril file, but directly written
+    let one = int(1);
+    let two = int(2);
+    let three = int(3);
+    let arg = get(arg_ty(tuplet!(statet())), 0);
+    let mut state_edge = arg.clone();
+    let mut mem1 = alloc(two.clone(), arg, pointert(intt()));
+    state_edge = get(mem1.clone(), 1);
+    mem1 = get(mem1, 0);
+
+    let mem2 = ptradd(mem1.clone(), one.clone());
+    state_edge = write(mem2.clone(), two.clone(), state_edge.clone());
+    let shared_else = write(mem2.clone(), three.clone(), state_edge.clone());
+
+    let innerif = tif(
+        ttrue(),
+        twrite(mem1.clone(), one.clone(), state_edge.clone()),
+        shared_else.clone(),
+    );
+    let outerif = tif(ttrue(), innerif, shared_else.clone());
+
+    let load2 = load(mem2.clone(), outerif);
+    let free = free(mem1.clone(), get(load2.clone(), 1));
+    let print2 = parallel!(tprint(get(load2.clone(), 0), free));
+    let program = print2.to_program(tuplet!(statet()), tuplet!(statet()));
+
+    let interpreted = interpret_dag_prog(&program, &tuplev!(statev()));
+    assert_eq!(interpreted.0, tuplev!(statev()));
+    assert_eq!(interpreted.1, vec!["2".to_string()]);
+
+    let converted_to_rvsdg = dag_to_rvsdg(&program);
+    let cfg = converted_to_rvsdg.to_cfg();
+    let bril = cfg.to_bril();
+    let bril_interpreted = Optimizer::interp_bril(&bril, vec![], None);
+    assert_eq!(bril_interpreted, "2".to_string());
+
 }

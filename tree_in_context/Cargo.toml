@@ -12,3 +12,4 @@ strum_macros = "0.25"
 main_error = "0.1.2"
 thiserror = "1.0"
 bril-rs = { git = "https://github.com/sampsyo/bril", rev = "daaff28" }
+egraph-serialize = "0.1.0"

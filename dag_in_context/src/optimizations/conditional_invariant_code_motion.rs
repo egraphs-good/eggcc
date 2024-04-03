@@ -23,6 +23,7 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
             let ctor_pattern1 = mk_pattern("e1".to_string());
             let ctor_pattern2 = mk_pattern("e2".to_string());
             let resulting_switch = mk_pattern(format!("(Switch pred (Map-{ctor_name}-{varying_field_name} exprs))"));
+            let resulting_if = mk_pattern("(If c e1 e2)".to_string());
             Some(format!(
                 "
                 ; Compute {relation}, which detects opportunities for lifting
@@ -51,7 +52,12 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
                        (= list (Cons {ctor_pattern1} rest)))
                       ((union (Switch pred exprs)
                               {resulting_switch}))
-                      :ruleset conditional-invariant-code-motion)"
+                      :ruleset conditional-invariant-code-motion)
+                
+                (rewrite (If c {ctor_pattern1} {ctor_pattern2})
+                         {resulting_if}
+                         :when ((ExprIsValid (If c {ctor_pattern1} {ctor_pattern2})))
+                         :ruleset conditional-invariant-code-motion)"
             ))
         }
     })
@@ -107,6 +113,35 @@ fn test_lift_switch() -> crate::Result {
         Value::Tuple(vec![
             Value::Const(Constant::Int(6)),
             Value::Const(Constant::Int(8)),
+        ]),
+        Value::Const(Constant::Bool(false)),
+        vec![],
+    )
+}
+
+#[test]
+fn test_lift_if() -> crate::Result {
+    let if_ = tif(
+        getat(2),
+        less_than(getat(0), int(7)),
+        less_than(getat(1), int(7)),
+    )
+    .with_arg_types(tuplet!(intt(), intt(), boolt()), base(boolt()));
+    let lifted = less_than(tif(getat(2), getat(0), getat(1)), int(7))
+        .with_arg_types(tuplet!(intt(), intt(), boolt()), base(boolt()));
+    let build = format!("(ExprIsValid {if_})");
+    let check = format!("(check (= {if_} {lifted}))");
+    crate::egglog_test(
+        &build,
+        &check,
+        vec![
+            if_.to_program(tuplet!(intt(), intt(), boolt()), base(boolt())),
+            lifted.to_program(tuplet!(intt(), intt(), boolt()), base(boolt())),
+        ],
+        Value::Tuple(vec![
+            Value::Const(Constant::Int(6)),
+            Value::Const(Constant::Int(8)),
+            Value::Const(Constant::Bool(false)),
         ]),
         Value::Const(Constant::Bool(false)),
         vec![],

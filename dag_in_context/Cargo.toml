@@ -16,3 +16,5 @@ bril-rs = { git = "https://github.com/sampsyo/bril", rev = "b20cc2d" }
 indexmap = "2.0.0"
 rustc-hash = "1.1.0"
 ordered-float = "3"
+graphviz-rust = "0.8.0"
+dot-structures = "0.1.1"

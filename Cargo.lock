@@ -185,6 +185,16 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
+source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "bril-rs"
+version = "0.1.0"
 source = "git+https://github.com/sampsyo/bril?rev=b20cc2d#b20cc2d797943aee0ec91f9bff562ad26162da99"
 dependencies = [
  "serde",
@@ -195,9 +205,9 @@ dependencies = [
 [[package]]
 name = "bril2json"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=b20cc2d#b20cc2d797943aee0ec91f9bff562ad26162da99"
+source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
 dependencies = [
- "bril-rs",
+ "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
  "clap",
  "lalrpop",
  "lalrpop-util",
@@ -207,10 +217,10 @@ dependencies = [
 [[package]]
 name = "brilift"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=b20cc2d#b20cc2d797943aee0ec91f9bff562ad26162da99"
+source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
 dependencies = [
  "argh",
- "bril-rs",
+ "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
  "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-jit",
@@ -224,9 +234,9 @@ dependencies = [
 [[package]]
 name = "brilirs"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=b20cc2d#b20cc2d797943aee0ec91f9bff562ad26162da99"
+source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
 dependencies = [
- "bril-rs",
+ "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
  "bril2json",
  "clap",
  "fxhash",
@@ -490,9 +500,11 @@ dependencies = [
 name = "dag_in_context"
 version = "0.1.0"
 dependencies = [
- "bril-rs",
+ "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=b20cc2d)",
+ "dot-structures",
  "egglog",
  "egraph-serialize",
+ "graphviz-rust 0.8.0",
  "indexmap",
  "main_error",
  "ordered-float",
@@ -561,16 +573,18 @@ checksum = "675e35c02a51bb4d4618cb4885b3839ce6d1787c97b664474d9208d074742e20"
 name = "eggcc"
 version = "0.1.0"
 dependencies = [
- "bril-rs",
+ "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
  "bril2json",
  "brilift",
  "brilirs",
  "clap",
  "dag_in_context",
+ "dot-structures",
  "egglog",
  "egraph-serialize",
  "fixedbitset",
  "glob",
+ "graphviz-rust 0.8.0",
  "hashbrown 0.14.3",
  "indexmap",
  "insta",
@@ -579,8 +593,10 @@ dependencies = [
  "log",
  "ordered-float",
  "petgraph",
+ "rs2bril",
  "serde_json",
  "smallvec",
+ "syn 2.0.58",
  "thiserror",
 ]
 
@@ -618,7 +634,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a41150f383849cfc16ae6230f592112b3c0a2c0e3ec43eb0b09db037bfcce703"
 dependencies = [
- "graphviz-rust",
+ "graphviz-rust 0.6.6",
  "indexmap",
  "once_cell",
  "ordered-float",
@@ -771,6 +787,22 @@ name = "graphviz-rust"
 version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "27dafd1ac303e0dfb347a3861d9ac440859bab26ec2f534bbceb262ea492a1e0"
+dependencies = [
+ "dot-generator",
+ "dot-structures",
+ "into-attr",
+ "into-attr-derive",
+ "pest",
+ "pest_derive",
+ "rand",
+ "tempfile",
+]
+
+[[package]]
+name = "graphviz-rust"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d3adbad2800805b14170067aee88336e12838823086b6a4f70ca8dfb5d971f3"
 dependencies = [
  "dot-generator",
  "dot-structures",
@@ -1381,6 +1413,17 @@ dependencies = [
  "libc",
  "mach",
  "winapi",
+]
+
+[[package]]
+name = "rs2bril"
+version = "0.1.0"
+source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
+dependencies = [
+ "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
+ "clap",
+ "proc-macro2",
+ "syn 2.0.58",
 ]
 
 [[package]]

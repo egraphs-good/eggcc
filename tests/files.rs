@@ -49,7 +49,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
 
         let snapshot = f.to_str().unwrap().contains("small");
 
-        for run in Run::all_configurations_for(TestProgram::File(f)) {
+        for run in Run::all_configurations_for(TestProgram::BrilFile(f)) {
             mk_trial(run, snapshot);
         }
     }

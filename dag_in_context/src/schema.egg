@@ -1,0 +1,211 @@
+; Every term is an `Expr` or a `ListExpr`.
+(datatype Expr)
+; Used for constructing a list of branches for `Switch`es
+; or a list of functions in a `Program`.
+(datatype ListExpr (Cons Expr ListExpr) (Nil))
+
+; =================================
+; Types
+; =================================
+
+(sort TypeList)
+
+(datatype BaseType
+  (IntT)
+  (BoolT)
+  ; a pointer to a memory region with a particular type
+  (PointerT BaseType)
+  (StateT))
+
+
+(datatype Type
+  ; a primitive type
+  (Base BaseType)
+  ; a typed tuple. Use an empty tuple as a unit type.
+  ; state edge also has unit type
+  (TupleT TypeList)
+)
+
+(function TNil () TypeList)
+(function TCons (BaseType TypeList) TypeList) ; Head element should never be a tuple
+
+
+; =================================
+; Leaf nodes
+; Constants, argument, and empty tuple
+; =================================
+
+; Only a single argument is bound- if multiple values are needed, arg will be a tuple.
+; e.g. `(Get (Arg tuple_type) 1)` gets the second value in the argument with some tuple_type.
+(function Arg (Type) Expr)
+
+; Constants
+(datatype Constant
+  (Int i64)
+  (Bool bool))
+; All leaf nodes need the type of the argument
+; Type is the type of the bound argument in scope
+(function Const (Constant Type) Expr)
+
+; An empty tuple.
+; Type is the type of the bound argument in scope
+(function Empty (Type) Expr)
+
+
+; =================================
+; Operators
+; =================================
+
+(datatype TernaryOp
+  ; given a pointer, value, and a state edge
+  ; writes the value to the pointer and returns
+  ; the resulting state edge
+  (Write))
+(datatype BinaryOp
+  (Add)
+  (Sub)
+  (Div)
+  (Mul)
+  (LessThan)
+  (GreaterThan)
+  (LessEq)
+  (GreaterEq)
+  (Eq)
+  (And)
+  (Or)
+  ; given a pointer and a state edge
+  ; loads the value at the pointer and returns (value, state edge)
+  (Load)
+  ; Takes a pointer and an integer, and offsets
+  ; the pointer by the integer
+  (PtrAdd)
+  ; given and value and a state edge, prints the value as a side-effect
+  ; the value must be a base value, not a tuple
+  ; returns an empty tuple
+  (Print)
+  ; given a pointer and state edge, frees the whole memory region at the pointer
+  (Free))
+(datatype UnaryOp
+  (Not))
+
+; Operators
+(function Top   (TernaryOp Expr Expr Expr) Expr)
+(function Bop   (BinaryOp Expr Expr) Expr)
+(function Uop   (UnaryOp Expr) Expr)
+; gets from a tuple. static index
+(function Get   (Expr i64) Expr)
+; (Alloc amount state_edge pointer_type)
+; allocate an integer amount of memory for a particular type
+; returns a pointer to the allocated memory
+(function Alloc (Expr Expr BaseType)      Expr)
+;               name of func   arg
+(function Call (String         Expr) Expr)
+
+
+
+; =================================
+; Tuple operations
+; =================================
+
+; `Empty`, `Single` and `Concat` create tuples.
+; 1. Use `Empty` for an empty tuple.
+; 2. Use `Single` for a tuple with one element.
+; 3. Use `Concat` to append the elements from two tuples together.
+; Nested tuples are not allowed.
+
+
+; Defines the order of evaluating a `Concat` term.
+(datatype Order
+  ; Either argument may be evaluated first.
+  ; Either way, the program should reach an equivalent state.
+  (Parallel)
+  ; Evaluate the first argument first.
+  (Sequential)
+  ; Evaluate the second argument first.
+  (Reversed))
+
+; global short hands for orders
+(let par (Parallel))
+; seq is reserved by egglog, so sequ it is
+(let sequ (Sequential))
+(let rev (Reversed))
+
+; A tuple with a single element.
+; Necessary because we only use `Concat` to add to tuples.
+(function Single (Expr) Expr)
+; Concat appends the elemnts from two tuples together
+; e.g. (Concat (Parallel) (Concat (Sequential) (Single a) (Single b))
+;                         (Concat (Sequential) (Single c) (Single d))) = (a, b, c, d)
+;                 order   expr1       expr2
+(function Concat (Order   Expr        Expr)       Expr)
+
+
+
+; =================================
+; Control flow
+; =================================
+
+; Switch on a list of lazily-evaluated branches.
+; Does not create a region.
+; pred must be an integer
+;                 pred     branches     chosen
+(function Switch (Expr     ListExpr)    Expr)
+; If is like switch, but with a boolean predicate
+;             pred then else
+(function If (Expr Expr Expr) Expr)
+
+
+; A do-while loop.
+; Evaluates the input, then evaluates the body.
+; Keeps looping while the predicate is true.
+; input must have the same type as (output1, output2, ..., outputi)
+; input must be a tuple 
+; pred must be a boolean
+; pred-and-body must be a flat tuple (pred, out1, out2, ..., outi)
+; input must be the same type as (out1, out2, ..., outi)
+;                  input   pred-and-body
+(function DoWhile (Expr    Expr)                   Expr)
+
+
+
+
+; =================================
+; InContext
+; =================================
+
+(datatype Assumption
+  ; The term is in a loop with `input` and `pred_output`.
+  ;      input    pred_output
+  (InLoop Expr     Expr)
+  ; name of the function
+  (InFunc String)
+  ; Branch of the switch and what the predicate is
+  (InSwitch i64 Expr)
+  ; If the predicate was true, and what the predicate is
+  (InIf bool Expr)
+  ; Other assumptions are possible, but not supported yet.
+  ; For example:
+  ;      A boolean predicate is true.
+  ;      e.g. (> (FuncArg) (Const (Int 2)))
+  ; (IsTrue Expr))
+)
+
+; InContext allows creating context-specific terms.
+(function InContext (Assumption Expr) Expr)
+
+
+; =================================
+; Top-level expressions
+; =================================
+(sort ProgramType)
+; An entry function and a list of additional functions.
+;                      entry function     other functions
+(function Program     (Expr               ListExpr) ProgramType)
+;                   name   input ty  output ty  output
+(function Function (String Type      Type       Expr)      Expr)
+
+
+
+; Rulesets
+(ruleset always-run)
+(ruleset error-checking)

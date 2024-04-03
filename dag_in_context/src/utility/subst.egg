@@ -1,0 +1,85 @@
+(ruleset subst)
+
+;; (Subst assumption to in) substitutes 
+;; (InContext assumption to) for `(Arg ty)` in `in`
+;; It also replaces `(Asuume anything (Arg ty))` with `(InContext assumption to)`
+(function Subst (Assumption Expr Expr) Expr :unextractable)
+(function SubstList (Assumption Expr ListExpr) ListExpr :unextractable)
+
+
+;; Base case- leaf nodes
+(rewrite (Subst assum to (Arg ty))
+         (InContext assum to)
+         :ruleset subst)
+(rewrite (Subst assum to (InContext assum2 (Arg ty)))
+         (InContext assum to)
+         :ruleset subst)
+(rewrite (Subst assum to (Const constant ty))
+         (InContext assum (Const constant ty2))
+         :when ((HasArgType to ty2))
+         :ruleset subst)
+(rewrite (Subst assum to (InContext assum2 (Const constant ty)))
+         (InContext assum (Const constant ty2))
+         :when ((HasArgType to ty2))
+         :ruleset subst)
+(rewrite (Subst assum to (Empty ty))
+         (InContext assum (Empty ty2))
+         :when ((HasArgType to ty2))
+          :ruleset subst)
+(rewrite (Subst assum to (InContext assum2 (Empty ty)))
+         (InContext assum (Empty ty2))
+         :when ((HasArgType to ty2))
+         :ruleset subst)
+
+
+;; Operators
+(rewrite (Subst assum to (Bop op c1 c2))
+         (Bop op (Subst assum to c1)
+                 (Subst assum to c2))
+         :ruleset subst)
+(rewrite (Subst assum to (Uop op c1))
+         (Uop op (Subst assum to c1))
+         :ruleset subst)
+(rewrite (Subst assum to (Get c1 index))
+         (Get (Subst assum to c1) index)
+         :ruleset subst)
+(rewrite (Subst assum to (Alloc c1 state ty))
+         (Alloc (Subst assum to c1) (Subst assum to state) ty)
+         :ruleset subst)
+(rewrite (Subst assum to (Call name c1))
+         (Call name (Subst assum to c1))
+         :ruleset subst)
+
+
+;; Tuple operators
+(rewrite (Subst assum to (Single c1))
+         (Single (Subst assum to c1))
+         :ruleset subst)
+(rewrite (Subst assum to (Concat order c1 c2))
+         (Concat order (Subst assum to c1) (Subst assum to c2))
+         :ruleset subst)
+
+
+;; Control flow
+(rewrite (Subst assum to (Switch pred branches))
+         (Switch (Subst assum to pred)
+                 (SubstList assum to branches))
+         :ruleset subst)
+(rewrite (Subst assum to (If pred c1 c2))
+         (If (Subst assum to pred)
+             (Subst assum to c1)
+             (Subst assum to c2))
+         :ruleset subst)
+(rewrite (Subst assum to (DoWhile in out))
+         (DoWhile (Subst assum to in)
+                  out)
+         :ruleset subst)
+
+;; List operators
+(rewrite (SubstList assum to (Cons c1 c2))
+         (Cons (Subst assum to c1)
+               (SubstList assum to c2))
+         :ruleset subst)
+(rewrite (SubstList assum to (Nil))
+         (Nil)
+         :ruleset subst)

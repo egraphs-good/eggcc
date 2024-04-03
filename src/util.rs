@@ -5,6 +5,9 @@ use clap::ValueEnum;
 use dag_in_context::build_program;
 use dag_in_context::from_egglog::FromEgglog;
 use dag_in_context::schema::TreeProgram;
+use graphviz_rust::cmd::Format;
+use graphviz_rust::exec;
+use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
 use std::{
     ffi::OsStr,
@@ -100,6 +103,19 @@ pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
     }
 
     Ok(())
+}
+
+pub fn tree_to_svg(prog: &TreeProgram) -> String {
+    let dot_code = prog.to_dot();
+    String::from_utf8(
+        exec(
+            dot_code,
+            &mut PrinterContext::default(),
+            vec![Format::Svg.into()],
+        )
+        .unwrap(),
+    )
+    .unwrap()
 }
 
 /// Invokes some program with the given arguments, piping the given input to the program.
@@ -466,8 +482,8 @@ impl Run {
                 let tree = rvsdg.to_dag_encoding();
                 (
                     vec![Visualization {
-                        result: tree.pretty(),
-                        file_extension: ".egg".to_string(),
+                        result: tree_to_svg(&tree),
+                        file_extension: ".svg".to_string(),
                         name: "".to_string(),
                     }],
                     Some(Interpretable::TreeProgram(tree)),
@@ -479,8 +495,8 @@ impl Run {
                 let optimized = dag_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
-                        result: optimized.pretty(),
-                        file_extension: ".egg".to_string(),
+                        result: tree_to_svg(&tree),
+                        file_extension: ".svg".to_string(),
                         name: "".to_string(),
                     }],
                     Some(Interpretable::TreeProgram(optimized)),

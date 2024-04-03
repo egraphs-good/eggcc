@@ -22,6 +22,7 @@ pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
 pub(crate) mod add_context;
+pub mod dag2svg;
 
 pub type Result = std::result::Result<(), MainError>;
 

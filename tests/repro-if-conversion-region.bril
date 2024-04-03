@@ -1,0 +1,30 @@
+@main {
+  size: int = const 10;
+  mem1: ptr<int> = alloc size;
+  one: int = const 1;
+  two: int = const 2;
+  three: int = const 3;
+  mem2: ptr<int> = ptradd mem1 one;
+  store mem2 two;
+  cond: bool = const true;
+  br cond .outerthen .outerelse;
+.outerthen:
+  br cond .thenbranch .elsebranch;
+# else shares same effect as elsebranch
+.outerelse:
+  store mem2 three;
+  jmp .end;
+.thenbranch:
+  store mem1 one;
+  jmp .end;
+.elsebranch:
+  store mem2 three;
+  jmp .end;
+.end:
+  atmem1: int = load mem1;
+  atmem2: int = load mem2;
+  print atmem1;
+  print atmem2;
+  free mem1;
+  ret;
+}

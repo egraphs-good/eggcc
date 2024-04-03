@@ -1,0 +1,575 @@
+(ruleset type-analysis)
+(ruleset type-helpers)       ;; these rules need to saturate between every iter of type-analysis rules
+
+(function TLConcat (TypeList TypeList) TypeList :unextractable)
+(rewrite (TLConcat (TNil) r) r :ruleset type-helpers)
+(rewrite (TLConcat (TCons hd tl) r)
+         (TCons hd (TLConcat tl r))
+         :ruleset type-helpers)
+
+(function TypeList-length (TypeList) i64)
+(function TypeList-ith (TypeList i64) BaseType :unextractable)
+(function TypeList-suffix (TypeList i64) TypeList :unextractable)
+
+(rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset type-helpers)
+
+(rule ((= (TypeList-suffix top n) (TCons hd tl)))
+    ((union (TypeList-ith top n) hd)
+     (union (TypeList-suffix top (+ n 1)) tl)) :ruleset type-helpers)
+
+(rule ((= (TypeList-suffix list n) (TNil)))
+    ((set (TypeList-length list) n)) :ruleset type-helpers)
+
+
+(relation HasType (Expr Type))
+
+;; Keep track of type expectations for error messages
+(relation ExpectType (Expr Type String))
+(rule (
+        (ExpectType e expected msg)
+        (HasType e actual)
+        (!= expected actual) ;; OKAY to compare types for equality because we never union types.
+      )
+      ((panic "type mismatch, better error message later :(")) ; once egglog allows non-literal panics
+      :ruleset type-analysis)
+
+(relation HasArgType (Expr Type))
+
+(rule ((HasArgType (Arg t1) t2)
+       (!= t1 t2))
+      ((panic "arg type mismatch"))
+      :ruleset type-analysis)
+
+(rule ((= lhs (Function name in out body))
+       (HasArgType body ty)
+       (HasArgType body ty2)
+       (!= ty ty2))
+      ((panic "arg type mismatch in function"))
+      :ruleset type-analysis)
+
+; Propagate arg types up
+(rule ((= lhs (Uop _ e))
+       (HasArgType e ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop _ a b))
+       (HasArgType a ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop _ a b))
+       (HasArgType b ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Get e _))
+       (HasArgType e ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Alloc e state _))
+       (HasArgType e ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Call _ e))
+       (HasArgType e ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Single e))
+       (HasArgType e ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Concat _ e1 e2))
+       (HasArgType e1 ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Concat _ e1 e2))
+       (HasArgType e2 ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((HasArgType (Switch pred (Cons branch (Nil))) ty))
+      (
+        (HasArgType pred ty)
+        (HasArgType branch ty)
+      )
+      :ruleset type-analysis)
+(rule ((= lhs (Switch pred (Cons branch rest)))
+       (HasArgType pred ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Switch pred (Cons branch rest)))
+       (HasArgType branch ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+;; demand with one fewer branches
+(rule ((= lhs (Switch pred (Cons branch rest))))
+      ((Switch pred rest))
+      :ruleset type-analysis)
+(rule ((= lhs (Switch pred (Cons branch rest)))
+       (HasArgType (Switch pred rest) ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (If c t e))
+       (HasArgType c ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (If c t e))
+       (HasArgType t ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (If c t e))
+       (HasArgType e ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+; Don't push arg types through Program, Function, DoWhile, Let exprs because
+; these create new arg contexts.
+
+; Primitives
+(rule ((= lhs (Const (Int i) ty)))
+      ((HasType lhs (Base (IntT)))
+       (HasArgType lhs ty))
+      :ruleset type-analysis)
+
+(rule ((= lhs (Const (Bool b) ty)))
+      ((HasType lhs (Base (BoolT)))
+       (HasArgType lhs ty))
+      :ruleset type-analysis)
+
+(rule ((= lhs (Empty ty)))
+      ((HasType lhs (TupleT (TNil)))
+       (HasArgType lhs ty))
+      :ruleset type-analysis)
+
+; Unary Ops
+(rule (
+        (= lhs (Uop (Not) e))
+        (HasType e (Base (BoolT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Uop (Not) e)))
+      ((ExpectType e (Base (BoolT)) "(Not) expected bool, received {?}"))
+      :ruleset type-analysis)
+
+
+(rule (
+        (= lhs (Bop (Print) e state))
+        (HasType e _ty)             ; just make sure it has some type.
+      )
+      ((HasType lhs (Base (StateT))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (Print) e state))
+        (HasType e (TupleT ty))
+      )
+      ((panic "Don't print a tuple"))
+      :ruleset type-analysis)
+
+
+(rule ((= lhs (Bop (Free) e s))
+       (HasType e (Base (PointerT _ty))))
+      ((HasType lhs (Base (StateT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Free) e s))
+       (HasType e (Base (IntT))))
+      ((panic "Free expected pointer, received integer"))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Free) e s))
+       (HasType e (TupleT _ty)))
+      ((panic "Free expected pointer, received tuple"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (Load) e state))
+        (HasType e (Base (PointerT ty)))
+      )
+      ((HasType lhs (TupleT (TCons ty (TCons (StateT) (TNil))))))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (Bop (Load) e state))
+        (HasType e ty)
+        (= ty (Base (IntT)))
+      )
+      ((panic "(Load) expected pointer, received int"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (Bop (Load) e state))
+        (HasType e ty)
+        (= ty (TupleT x))
+      )
+      ((panic "(Load) expected pointer, received tuple"))
+      :ruleset type-analysis)
+
+; Binary ops
+(rule (
+        (= lhs (Bop (Add) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Add) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(Add) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(Add) expected int, received {?}")
+      )
+      :ruleset type-analysis)  
+
+(rule (
+        (= lhs (Bop (Sub) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Sub) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(Sub) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(Sub) expected int, received {?}")
+      )
+      :ruleset type-analysis)  
+
+(rule (
+        (= lhs (Bop (Mul) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Mul) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(Mul) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(Mul) expected int, received {?}")
+      )
+      :ruleset type-analysis)  
+
+(rule (
+        (= lhs (Bop (LessThan) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (LessThan) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(LessThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(LessThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)  
+
+
+(rule (
+        (= lhs (Bop (LessEq) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (LessEq) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(LessThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(LessThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)
+
+
+(rule (
+        (= lhs (Bop (GreaterEq) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (GreaterEq) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(LessThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(LessThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (GreaterThan) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (GreaterThan) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(GreaterThan) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(GreaterThan) expected int, received {?}")
+      )
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (And) e1 e2))
+        (HasType e1 (Base (BoolT)))
+        (HasType e2 (Base (BoolT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (And) e1 e2)))
+      (
+        (ExpectType e1 (Base (BoolT)) "(And) expected bool, received {?}")
+        (ExpectType e2 (Base (BoolT)) "(And) expected bool, received {?}")
+      )
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Bop (Or) e1 e2))
+        (HasType e1 (Base (BoolT)))
+        (HasType e2 (Base (BoolT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Or) e1 e2)))
+      (
+        (ExpectType e1 (Base (BoolT)) "(Or) expected bool, received {?}")
+        (ExpectType e2 (Base (BoolT)) "(Or) expected bool, received {?}")
+      )
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Top (Write) ptr val state))
+        (HasType ptr (Base (PointerT ty)))
+        (HasType val (Base t)) ; TODO need to support pointers to pointers
+      )
+      ((HasType lhs (Base (StateT)))) ; Write returns ()
+      :ruleset type-analysis)
+
+(rule (
+       (= lhs (Top (Write) ptr val state))
+       (HasType ptr (Base (PointerT ty))))
+      ((ExpectType val (Base ty) "(Write) type mismatch, received {?}"))
+      :ruleset type-analysis)
+      
+       
+
+(rule (
+        (= lhs (Bop (PtrAdd) ptr n))
+        (HasType ptr (Base (PointerT ty)))
+        (HasType n (Base (IntT)))
+      )
+      ((HasType lhs (Base (PointerT ty))))
+      :ruleset type-analysis)
+
+; Other ops
+(rule ((= lhs (Alloc amt state ty))) 
+      ((ExpectType amt (Base (IntT)) "(Alloc) expected int, got {?}"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Alloc amt state ty))
+        (HasType amt (Base (IntT)))
+      )
+      ((HasType lhs (TupleT (TCons ty (TCons (StateT) (TNil))))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Get e i))
+        (HasType e (TupleT tylist))
+      )
+      ; TypeList-ith needs to compute immediately, so we need to saturate type-helpers
+      ; rules between every iter of type-analysis rules.
+      ((HasType lhs (Base (TypeList-ith tylist i)))) 
+      :ruleset type-analysis)
+
+; =================================
+; Tuple operations
+; =================================
+
+(rule (
+        (= lhs (Single e))
+        (HasType e (TupleT tylist))
+      )
+      ((panic "don't nest tuples"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Single e))
+        (HasType e (Base basety))
+      )
+      ((HasType lhs (TupleT (TCons basety (TNil)))))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Concat ord e1 e2))
+        (HasType e1 (TupleT tylist1))
+        (HasType e2 (TupleT tylist2))
+      )
+      ; TLConcat needs to compute immediately, so we need to saturate type-helpers
+      ; rules between every iter of type-analysis rules.
+      ((HasType lhs (TupleT (TLConcat tylist1 tylist2))))
+      :ruleset type-analysis)
+
+; =================================
+; Control flow
+; =================================
+(rule ((= lhs (If pred then else)))
+      ((ExpectType pred (Base (BoolT)) "If predicate must be boolean"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (If pred then else))
+        (HasType pred (Base (BoolT)))
+        (HasType then ty)
+        (HasType else ty)
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (If pred then else))
+        (HasType pred (Base (BoolT)))
+        (HasType then tya)
+        (HasType else tyb)
+        (!= tya tyb)
+      )
+      ((panic "if branches had different types"))
+      :ruleset type-analysis)
+
+
+
+(rule ((= lhs (Switch pred branches)))
+      ((ExpectType pred (Base (IntT)) "Switch predicate must be integer"))
+      :ruleset type-analysis)
+
+; base case: single branch switch has type of branch
+(rule (
+        (= lhs (Switch pred (Cons branch (Nil))))
+        (HasType pred (Base (IntT)))
+        (HasType branch ty)
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+
+; recursive case: peel off a layer
+(rule ((Switch pred (Cons branch rest)))
+      ((Switch pred rest))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Switch pred (Cons branch rest)))
+        (HasType pred (Base (IntT)))
+        (HasType branch ty)
+        (HasType (Switch pred rest) ty) ; rest of the branches also have type ty
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Switch pred (Cons branch rest)))
+        (HasType pred (Base (IntT)))
+        (HasType branch tya)
+        (HasType (Switch pred rest) tyb)
+        (!= tya tyb)
+      )
+      ((panic "switch branches had different types"))
+      :ruleset type-analysis)
+
+(rule ((Arg ty))
+      (
+        (HasType (Arg ty) ty)
+        (HasArgType (Arg ty) ty)
+      )
+      :ruleset type-analysis)
+
+
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (Base ty))
+      )
+      ((panic "loop input must be tuple"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (Base (PointerT ty)))
+      )
+      ((panic "loop input must be tuple"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType pred-body (Base ty))
+      )
+      ((panic "loop pred-body must be tuple"))
+      :ruleset type-analysis)
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType pred-body (Base (PointerT ty)))
+      )
+      ((panic "loop pred-body must be tuple"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (TupleT tylist))
+      )
+      ((HasArgType pred-body (TupleT tylist)))
+      :ruleset type-analysis)
+
+(rule ((= lhs (DoWhile inp pred-body)))
+      ((ExpectType (Get pred-body 0) (Base (BoolT)) "loop pred must be bool"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (TupleT tylist)) ; input is a tuple
+        ; pred-body is a tuple where the first elt is a bool
+        ; and the rest of the list matches the input type
+        (HasType pred-body (TupleT (TCons (BoolT) tylist)))
+      )
+      ((HasType lhs (TupleT tylist))) ; whole thing has type of inputs/outputs
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (DoWhile inp pred-body))
+        (HasType inp (TupleT in-tys))
+        (HasType pred-body (TupleT (TCons (BoolT) out-tys)))
+        (!= in-tys out-tys)
+      )
+      ((panic "input types and output types don't match"))
+      :ruleset type-analysis)
+
+; =================================
+; Functions
+; =================================
+
+(rule ((= lhs (Function name in-ty out-ty body)))
+      (
+        ; Arg should have the specified type in the body
+        (HasArgType body in-ty)
+        ; Expect the body to have the specified output type
+        (ExpectType body out-ty "Function body had wrong type")
+      )
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Call name arg))
+        (Function name in-ty out-ty body)
+      )
+      ; Expect the arg to have the right type for the function
+      ((ExpectType arg in-ty "function called with wrong arg type"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Call name arg))
+        (Function name in-ty out-ty body)
+        (HasType arg in-ty)
+        ; We don't need to check the type of the function body, it will
+        ; be checked elsewhere. If we did require (HasType body out-ty),
+        ; recursive functions would not get assigned a type.
+      )
+      ((HasType lhs out-ty))
+      :ruleset type-analysis)
+
+; =================================
+; InContext
+; =================================
+(rule (
+        (= lhs (InContext ass expr))
+        (HasType expr ty)
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+
+(rule ((= lhs (InContext ass expr))
+       (HasArgType expr argtype))
+      ((HasArgType lhs argtype))
+      :ruleset type-analysis)

@@ -11,33 +11,27 @@ trap cleanup EXIT
 # TODO: take in file glob as command line argument
 PROFILES=(tests/*.bril tests/small/*.bril tests/brils/passing/**/*.bril)
 
-RUNMODES=("parse" "rvsdg-round-trip" "optimize")
-
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench
 
-# bench will benchmark a single bril file, outputting hyperfine contents to ./tmp/bench/<PROFILE_NAME>.json
-# and will output the number of instructions it executed to ./tmp/bench/<PROFILE_NAME>.profile
+# Benchmark a single bril file
+# Use Brilift to compile to an executable, then use hyperfine to benchmark the runtime
+# Outputs the hyperfine results to "tmp/bench/<BRIL_NAME>/brilift.json"
 bench() {
-    # strip the file path down to just the file name
-    # TODO: profile name is not unique, generate a unique output path (it will be aggregated anyway)
-    PROFILE_FILE=$(basename -- "$1")
-    PROFILE_NAME="${PROFILE_FILE%.*}"
+  # strip the file path down to just the file name
+  # TODO: profile name is not unique, generate a unique output path (it will be aggregated anyway)
+  PROFILE_FILE=$(basename -- "$1")
+  PROFILE_NAME="${PROFILE_FILE%.*}"
 
-    PROFILE_DIR=./tmp/bench/"$PROFILE_NAME"
-    mkdir "$PROFILE_DIR"
+  PROFILE_DIR=./tmp/bench/"$PROFILE_NAME"
+  mkdir "$PROFILE_DIR"
 
-    # loop over RUNMODES and generate a profile for each, leaving it in PROFILE_DIR
-    for mode in "${RUNMODES[@]}"
-    do
-      echo "profiling $mode"
-      
-      # generate the instruction count profile by interp'ing
-      cargo run --release "$1" --interp --profile-out="$PROFILE_DIR/$mode.profile" --run-mode "$mode"
-      
-      # run hyperfine with a warmup
-      hyperfine --warmup 2 --export-json "$PROFILE_DIR/$mode.json" "cargo run --release $1 --interp --run-mode $mode"
-    done
+  # Run eggcc in compile-brilift mode, which just shells out to brilift to compile the bril file
+  cargo run --release "$1" --run-mode compile-brilift -o "$PROFILE_DIR/brilift"
+  
+  # TODO: Some of the brils result in executables that seg fault, need to figure out why
+  # For now, though, we just silently ignore them
+  hyperfine --warmup 2 --export-json "$PROFILE_DIR"/brilift.json "$PROFILE_DIR/brilift" || echo "[BRILIFT] could not run $PROFILE_NAME"
 }
 
 for p in "${PROFILES[@]}"
@@ -45,5 +39,4 @@ do
   bench "$p"
 done
 
-# aggregate all profile data into a single JSON array
 python3 infra/aggregate.py > nightly/data/profile.json

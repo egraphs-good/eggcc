@@ -244,7 +244,7 @@ pub struct ProgWithArguments {
 pub enum TestProgram {
     Prog(ProgWithArguments),
     BrilFile(PathBuf),
-    RustFile(PathBuf)
+    RustFile(PathBuf),
 }
 
 impl TestProgram {
@@ -275,7 +275,7 @@ impl TestProgram {
                 ProgWithArguments {
                     program,
                     name,
-                    args: vec![]
+                    args: vec![],
                 }
             }
         }

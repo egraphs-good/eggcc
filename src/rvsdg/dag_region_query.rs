@@ -1,47 +1,18 @@
 //! This file is a helper for translation from the dag IR to RVSDGs.
-//! It contains the `RegionGraph` struct, which is used to create a dependency graph
-//! for a region (a loop or a function body).
-//! Using the graph, we can compute a dominance frontier for if and switch statement
-//! branches.
-//! Using the dominance frontier, we decide which nodes need to be computed
-//! in the resulting region for a branch.
+//! It contains the `AlwaysExecutedCache` struct, which is used to
+//! query nodes that are guaranteed to be executed given that a particular node is executed.
+//! This information is used by `from_dag.rs` to compute the input nodes to branch regions.
 
 use std::rc::Rc;
 
 use dag_in_context::schema::{Expr, RcExpr};
 use hashbrown::{HashMap, HashSet};
 
-use rpds::HashTrieSet;
-
-fn set_intersect(
-    a: &HashTrieSet<*const Expr>,
-    b: &HashTrieSet<*const Expr>,
-) -> HashTrieSet<*const Expr> {
-    let mut res = HashTrieSet::new();
-    for e in a.iter() {
-        if b.contains(e) {
-            res = res.insert(*e);
-        }
-    }
-    res
-}
-
-fn set_union(
-    a: &HashTrieSet<*const Expr>,
-    b: &HashTrieSet<*const Expr>,
-) -> HashTrieSet<*const Expr> {
-    let mut res = a.clone();
-    for e in b.iter() {
-        res = res.insert(*e);
-    }
-    res
-}
-
 #[derive(Debug, Default)]
 pub(crate) struct AlwaysExecutedCache {
     // for a given expression e, a set nodes that are always executed
     // regardless of branching
-    always_executed: HashMap<*const Expr, HashTrieSet<*const Expr>>,
+    always_executed: HashMap<*const Expr, HashSet<*const Expr>>,
 }
 
 impl AlwaysExecutedCache {
@@ -60,13 +31,13 @@ impl AlwaysExecutedCache {
             _ => unreachable!(),
         };
 
-        let mut to_execute = HashTrieSet::new();
+        let mut to_execute = self.get(&children[0]);
         // We execute anything executed in all branches
         for child in &children {
-            to_execute = set_intersect(&to_execute, &self.get(child));
+            to_execute = to_execute.intersection(&self.get(child)).cloned().collect();
         }
         // Also anything definitely executed by the root node
-        to_execute = set_union(&to_execute, &self.get(region_root));
+        to_execute.extend(&self.get(region_root));
 
         let mut stack = children;
         let mut result = HashMap::new();
@@ -89,38 +60,47 @@ impl AlwaysExecutedCache {
         result
     }
 
-    pub(crate) fn get(&self, expr: &RcExpr) -> HashTrieSet<*const Expr> {
+    pub(crate) fn get(&self, expr: &RcExpr) -> HashSet<*const Expr> {
         if let Some(set) = self.always_executed.get(&Rc::as_ptr(expr)) {
             set.clone()
         } else {
             match expr.as_ref() {
                 Expr::If(pred, then_branch, else_branc) => {
-                    let mut res = self.get(pred).insert(Rc::as_ptr(expr));
+                    let mut res = self.get(pred);
+                    res.insert(Rc::as_ptr(expr));
                     let then_set = self.get(then_branch);
                     let else_set = self.get(else_branc);
-                    let intersection = set_intersect(&then_set, &else_set);
-                    res = set_union(&res, &intersection);
+                    let intersection = then_set.intersection(&else_set);
+                    res.extend(intersection);
                     res
                 }
                 Expr::Switch(pred, branches) => {
-                    let mut res = self.get(pred).insert(Rc::as_ptr(expr));
-                    let branch_sets = branches.iter().map(|e| self.get(e));
-                    let branches_intersection =
-                        branch_sets.fold(HashTrieSet::new(), |acc, x| set_intersect(&acc, &x));
-                    res = set_union(&res, &branches_intersection);
+                    let mut res = self.get(pred);
+                    res.insert(Rc::as_ptr(expr));
+                    let branch_sets: Vec<HashSet<*const Expr>> =
+                        branches.iter().map(|e| self.get(e)).collect();
+                    let mut branches_intersection = branch_sets[0].clone();
+                    for branch in &branch_sets[1..] {
+                        branches_intersection = branches_intersection
+                            .intersection(branch)
+                            .cloned()
+                            .collect();
+                    }
+
+                    res.extend(branches_intersection);
                     res
                 }
                 _ => {
                     let children = expr.children_same_scope();
-                    let mut res = HashTrieSet::new();
+                    let mut res = HashSet::new();
                     for (i, child) in children.iter().enumerate() {
                         if i == 0 {
                             res = self.get(child);
                         } else {
-                            res = set_union(&res, &self.get(child));
+                            res.extend(&self.get(child));
                         }
                     }
-                    res = res.insert(Rc::as_ptr(expr));
+                    res.insert(Rc::as_ptr(expr));
                     res
                 }
             }

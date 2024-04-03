@@ -25,3 +25,21 @@
 (rule ((is-inv-ListExpr-helper loop list i)
        (= i (ListExpr-length list)))
     ((set (is-inv-ListExpr loop list) true)) :ruleset always-run)
+
+
+(ruleset boundary-analysis)
+;; An Expr is on boundary when it is invariant and its parent is not
+;                       loop invariant-expr
+(relation boundary-Expr (Expr Expr))
+
+;; boundary for ListExpr's children
+(rule ((= true (is-inv-Expr loop expr))
+       (= false (is-inv-ListExpr loop list))
+       (= expr (ListExpr-ith list i)))
+      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+
+;; if a output branch/pred is invariant, it's also boundary-Expr
+(rule ((= true (is-inv-Expr loop expr))
+       (= loop (DoWhile in pred_out))
+       (= expr (tuple-ith pred_out i))) 
+      ((boundary-Expr loop expr)) :ruleset boundary-analysis)

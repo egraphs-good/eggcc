@@ -325,10 +325,12 @@ impl Run {
     fn optimize_bril(program: &Program) -> Result<Program, EggCCError> {
         let rvsdg = Optimizer::program_to_rvsdg(program)?;
         let dag = rvsdg.to_dag_encoding();
-        let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
+        let with_context = dag.add_context();
+        let optimized = dag_in_context::optimize(&with_context).map_err(EggCCError::EggLog)?;
         let rvsdg2 = dag_to_rvsdg(&optimized);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
+
         Ok(bril)
     }
 

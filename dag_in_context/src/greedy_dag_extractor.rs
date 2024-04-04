@@ -1,8 +1,8 @@
-use egglog::{ast::Symbol, *};
-use egraph_serialize::{Class, ClassId, NodeId};
+use egglog::*;
+use egraph_serialize::{ClassId, NodeId};
 use indexmap::*;
 use ordered_float::NotNan;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet};
 
 pub fn serialized_egraph(egraph: egglog::EGraph) -> egraph_serialize::EGraph {
@@ -64,8 +64,6 @@ fn get_node_cost(
     op: &str,
     // Node E-class Id
     cid: &ClassId,
-    // children E-class Ids
-    children_classes: &[ClassId],
     child_cost_sets: &[&CostSet],
     cm: &CostModel,
     termdag: &mut TermDag,
@@ -112,7 +110,7 @@ fn calculate_cost_set(
 
     // early return
     if node.children.is_empty() || cm.ignored.contains(node.op.as_str()) {
-        return get_node_cost(&node.op, cid, &[], &[], cm, termdag);
+        return get_node_cost(&node.op, cid, &[], cm, termdag);
     }
 
     let children_classes = node
@@ -146,16 +144,19 @@ fn calculate_cost_set(
         };
     }
 
-    let cost_set = get_node_cost(&node.op, &cid, &children_classes, &cost_sets, cm, termdag);
+    let cost_set = get_node_cost(&node.op, &cid, &cost_sets, cm, termdag);
 
     cost_set
 }
 
-pub fn extract(egraph: &egraph_serialize::EGraph, cm: &CostModel) -> HashMap<ClassId, CostSet> {
+pub fn extract(
+    egraph: &egraph_serialize::EGraph,
+    termdag: &mut TermDag,
+    cm: &CostModel,
+) -> HashMap<ClassId, CostSet> {
     let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
     let parents = build_parent_index(&egraph);
     let mut worklist = initialize_worklist(&egraph);
-    let mut termdag = TermDag::default();
     let mut costs = FxHashMap::<ClassId, CostSet>::with_capacity_and_hasher(
         egraph.classes().len(),
         Default::default(),
@@ -171,7 +172,7 @@ pub fn extract(egraph: &egraph_serialize::EGraph, cm: &CostModel) -> HashMap<Cla
                 prev_cost = lookup.unwrap().total;
             }
 
-            let cost_set = calculate_cost_set(egraph, node_id.clone(), &costs, &mut termdag, cm);
+            let cost_set = calculate_cost_set(egraph, node_id.clone(), &costs, termdag, cm);
             if cost_set.total < prev_cost {
                 costs.insert(class_id.clone(), cost_set);
                 worklist.extend(parents[class_id].iter().cloned());
@@ -189,14 +190,14 @@ pub fn extract(egraph: &egraph_serialize::EGraph, cm: &CostModel) -> HashMap<Cla
         .collect()
 }
 
-struct CostModel {
+pub struct CostModel {
     ops: HashMap<&'static str, Cost>,
     // Children of these constructors are ignored
     ignored: HashSet<&'static str>,
 }
 
 impl CostModel {
-    fn simple_cost_model() -> CostModel {
+    pub fn simple_cost_model() -> CostModel {
         let ops = vec![
             // ========== Leaf operators ==========
             // Bop

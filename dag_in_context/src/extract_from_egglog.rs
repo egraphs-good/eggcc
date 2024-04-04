@@ -1,5 +1,5 @@
 use egglog::{ast::Symbol, *};
-use egraph_serialize::{ClassId, NodeId};
+use egraph_serialize::{Class, ClassId, NodeId};
 use indexmap::*;
 use ordered_float::NotNan;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -60,37 +60,68 @@ fn initialize_worklist(egraph: &egraph_serialize::EGraph) -> UniqueQueue<NodeId>
     analysis_pending
 }
 
-fn get_node_cost(node: &egraph_serialize::Node) -> Cost {
-    todo!()
+fn get_node_cost(
+    op: &str,
+    // Node E-class Id
+    cid: &ClassId,
+    // children E-class Ids
+    children_classes: &[ClassId],
+    child_cost_sets: &[&CostSet],
+    cm: &CostModel,
+    termdag: &mut TermDag,
+) -> CostSet {
+    // cost is 0 unless otherwise specified
+    let op_cost = cm.ops.get(op).copied().unwrap_or(NotNan::new(0.).unwrap());
+    let term = termdag.app(
+        op.into(),
+        child_cost_sets.iter().map(|cs| cs.term.clone()).collect(),
+    );
+    if cm.ignored.contains(op) {
+        return CostSet {
+            total: op_cost,
+            costs: [(cid.clone(), op_cost)].into(),
+            term,
+        };
+    }
+
+    let total = op_cost
+        + child_cost_sets
+            .iter()
+            .map(|cs| cs.total)
+            .sum::<NotNan<f64>>();
+
+    let mut costs: HashMap<ClassId, Cost> = Default::default();
+    for c in child_cost_sets.iter().map(|cs| &cs.costs) {
+        for (cid, cost) in c.iter() {
+            costs.insert(cid.clone(), *cost);
+        }
+    }
+
+    CostSet { total, costs, term }
 }
 
 fn calculate_cost_set(
     egraph: &egraph_serialize::EGraph,
     node_id: NodeId,
     costs: &FxHashMap<ClassId, CostSet>,
-    best_cost: Cost,
     termdag: &mut TermDag,
     cm: &CostModel,
 ) -> CostSet {
     let node = &egraph[&node_id];
     let cid = egraph.nid_to_cid(&node_id);
 
+    // early return
     if node.children.is_empty() || cm.ignored.contains(node.op.as_str()) {
-        let cost = get_node_cost(node);
-        return CostSet {
-            costs: HashMap::from([(cid.clone(), cost)]),
-            total: cost,
-            term: termdag.app(node.op.as_str().into(), vec![]),
-        };
+        return get_node_cost(&node.op, cid, &[], &[], cm, termdag);
     }
 
-    let childrens_classes = node
+    let children_classes = node
         .children
         .iter()
         .map(|c| egraph.nid_to_cid(&c).clone())
         .collect::<Vec<ClassId>>();
 
-    if childrens_classes.contains(cid) {
+    if children_classes.contains(cid) {
         // Shortcut. Can't be cheaper so return junk.
         return CostSet {
             costs: Default::default(),
@@ -100,44 +131,24 @@ fn calculate_cost_set(
         };
     }
 
-    // Clone the biggest set and insert the others into it.
-    let id_of_biggest = childrens_classes
+    let cost_sets: Vec<_> = children_classes
         .iter()
-        .max_by_key(|s| costs.get(s).unwrap().costs.len())
-        .unwrap();
-    let mut result = costs.get(&id_of_biggest).unwrap().costs.clone();
-    for child_cid in &childrens_classes {
-        if child_cid == id_of_biggest {
-            continue;
-        }
+        .map(|c| costs.get(c).unwrap())
+        .collect();
 
-        let next_cost = &costs.get(child_cid).unwrap().costs;
-        for (key, value) in next_cost.iter() {
-            result.insert(key.clone(), value.clone());
-        }
+    // cycle detection
+    if cost_sets.iter().any(|cs| cs.costs.contains_key(&cid)) {
+        return CostSet {
+            costs: Default::default(),
+            total: std::f64::INFINITY.try_into().unwrap(),
+            // returns junk children since this cost set is guaranteed to not be selected.
+            term: termdag.app(node.op.as_str().into(), vec![]),
+        };
     }
 
-    let contains = result.contains_key(&cid);
-    result.insert(cid.clone(), node.cost);
+    let cost_set = get_node_cost(&node.op, &cid, &children_classes, &cost_sets, cm, termdag);
 
-    let result_cost = if contains {
-        std::f64::INFINITY.try_into().unwrap()
-    } else {
-        // TODO: result values
-        // TODO: move the cost aggregation part to calculate_cost_set
-        result.values().sum()
-    };
-
-    let child_terms = childrens_classes
-        .iter()
-        .map(|c| costs.get(c).unwrap().term.clone())
-        .collect::<Vec<Term>>();
-
-    return CostSet {
-        costs: result,
-        total: result_cost,
-        term: termdag.app(node.op.as_str().into(), child_terms),
-    };
+    cost_set
 }
 
 pub fn extract(egraph: &egraph_serialize::EGraph, cm: &CostModel) -> HashMap<ClassId, CostSet> {
@@ -160,8 +171,7 @@ pub fn extract(egraph: &egraph_serialize::EGraph, cm: &CostModel) -> HashMap<Cla
                 prev_cost = lookup.unwrap().total;
             }
 
-            let cost_set =
-                calculate_cost_set(egraph, node_id.clone(), &costs, prev_cost, &mut termdag, cm);
+            let cost_set = calculate_cost_set(egraph, node_id.clone(), &costs, &mut termdag, cm);
             if cost_set.total < prev_cost {
                 costs.insert(class_id.clone(), cost_set);
                 worklist.extend(parents[class_id].iter().cloned());

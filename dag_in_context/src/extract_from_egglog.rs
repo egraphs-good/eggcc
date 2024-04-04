@@ -70,32 +70,27 @@ fn calculate_cost_set(
     costs: &FxHashMap<ClassId, CostSet>,
     best_cost: Cost,
     termdag: &mut TermDag,
+    cm: &CostModel,
 ) -> CostSet {
     let node = &egraph[&node_id];
     let cid = egraph.nid_to_cid(&node_id);
 
-    if node.children.is_empty() {
+    if node.children.is_empty() || cm.ignored.contains(node.op.as_str()) {
+        let cost = get_node_cost(node);
         return CostSet {
-            costs: HashMap::from([(cid.clone(), node.cost)]),
-            total: get_node_cost(node),
+            costs: HashMap::from([(cid.clone(), cost)]),
+            total: cost,
             term: termdag.app(node.op.as_str().into(), vec![]),
         };
     }
 
-    // Get unique classes of children.
-    let mut childrens_classes = node
+    let childrens_classes = node
         .children
         .iter()
         .map(|c| egraph.nid_to_cid(&c).clone())
         .collect::<Vec<ClassId>>();
-    childrens_classes.sort();
-    childrens_classes.dedup();
 
-    let first_cost = costs.get(&childrens_classes[0]).unwrap();
-
-    if childrens_classes.contains(cid)
-        || (childrens_classes.len() == 1 && (node.cost + first_cost.total > best_cost))
-    {
+    if childrens_classes.contains(cid) {
         // Shortcut. Can't be cheaper so return junk.
         return CostSet {
             costs: Default::default(),
@@ -128,6 +123,8 @@ fn calculate_cost_set(
     let result_cost = if contains {
         std::f64::INFINITY.try_into().unwrap()
     } else {
+        // TODO: result values
+        // TODO: move the cost aggregation part to calculate_cost_set
         result.values().sum()
     };
 
@@ -143,7 +140,7 @@ fn calculate_cost_set(
     };
 }
 
-pub fn extract(egraph: &egraph_serialize::EGraph) -> HashMap<ClassId, CostSet> {
+pub fn extract(egraph: &egraph_serialize::EGraph, cm: &CostModel) -> HashMap<ClassId, CostSet> {
     let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
     let parents = build_parent_index(&egraph);
     let mut worklist = initialize_worklist(&egraph);
@@ -164,7 +161,7 @@ pub fn extract(egraph: &egraph_serialize::EGraph) -> HashMap<ClassId, CostSet> {
             }
 
             let cost_set =
-                calculate_cost_set(egraph, node_id.clone(), &costs, prev_cost, &mut termdag);
+                calculate_cost_set(egraph, node_id.clone(), &costs, prev_cost, &mut termdag, cm);
             if cost_set.total < prev_cost {
                 costs.insert(class_id.clone(), cost_set);
                 worklist.extend(parents[class_id].iter().cloned());

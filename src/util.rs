@@ -336,6 +336,7 @@ impl Run {
             RunType::DagRoundTrip,
             RunType::Optimize,
             RunType::CheckTreeIdentical,
+            RunType::CompileBrilLLVM,
         ] {
             let default = Run {
                 test_type,
@@ -701,6 +702,13 @@ impl Run {
             .arg(executable.clone())
             .status()
             .unwrap();
+
+        if self.in_test && !self.interp {
+            std::process::Command::new("rm")
+                .arg(executable.clone())
+                .status()
+                .unwrap();
+        }
 
         (
             vec![],

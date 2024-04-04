@@ -314,7 +314,7 @@ impl FromEgglog {
         res
     }
 
-    pub fn program_from_egglog(&mut self, program: Term) -> TreeProgram {
+    fn program_from_egglog_preserve_ctx_nodes(&mut self, program: Term) -> TreeProgram {
         match_term_app!(program.clone();
         {
           ("Program", [entry, functions]) => {
@@ -326,5 +326,34 @@ impl FromEgglog {
           }
           _ => panic!("Invalid program: {:?}", program),
         })
+    }
+
+    /// Converts a term back into a TreeProgram, but removes context nodes along the way.
+    /// This is crutial for the correctness of this conversion, since context nodes can break sharing
+    /// of the state edge.
+    /// TODO make extraction itself remove context nodes, solving this problem
+    pub fn program_from_egglog(&mut self, program: Term) -> TreeProgram {
+        let new_term = self.without_ctx_nodes(program);
+        self.program_from_egglog_preserve_ctx_nodes(new_term)
+    }
+
+    fn without_ctx_nodes(&mut self, expr: Term) -> Term {
+        match expr {
+            Term::App(head, children) => match (head.to_string().as_str(), children.as_slice()) {
+                ("InContext", [_assumption, expr]) => {
+                    self.without_ctx_nodes(self.termdag.get(*expr))
+                }
+                _ => {
+                    let mut new_children = vec![];
+                    for child in children {
+                        let term = self.without_ctx_nodes(self.termdag.get(child));
+                        new_children.push(term)
+                    }
+                    self.termdag.app(head, new_children)
+                }
+            },
+            Term::Var(_) => expr,
+            Term::Lit(_) => expr,
+        }
     }
 }

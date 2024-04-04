@@ -1,13 +1,12 @@
 //! Convert tree programs to RVSDGs
 
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
 use dag_in_context::{
     schema::{BaseType, BinaryOp, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
 };
-use hashbrown::HashMap;
 
 use super::{
     dag_region_query::AlwaysExecutedCache, BasicExpr, Operand, RvsdgBody, RvsdgFunction,
@@ -356,7 +355,7 @@ impl<'a> TreeToRvsdg<'a> {
                 // find the branch inputs for then and else branches
                 let branch_inputs = self
                     .always_executed_cache
-                    .always_executed(&expr, &self.current_region_root);
+                    .get_without_subchildren_for_branch(&expr, &self.current_region_root);
 
                 // new inputs always start with current arguments
                 let mut new_inputs: Vec<Operand> =
@@ -412,7 +411,7 @@ impl<'a> TreeToRvsdg<'a> {
                 // find the branch inputs for each case
                 let branch_inputs: HashMap<*const Expr, Rc<Expr>> = self
                     .always_executed_cache
-                    .always_executed(&expr, &self.current_region_root);
+                    .get_without_subchildren_for_branch(&expr, &self.current_region_root);
 
                 let mut new_inputs: Vec<Operand> =
                     (0..self.current_args.len()).map(Operand::Arg).collect();

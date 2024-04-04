@@ -3,14 +3,16 @@
 //! query nodes that are guaranteed to be executed given that a particular node is executed.
 //! This information is used by `from_dag.rs` to compute the input nodes to branch regions.
 
-use std::rc::Rc;
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use dag_in_context::schema::{Expr, RcExpr};
-use hashbrown::{HashMap, HashSet};
 
 #[derive(Debug, Default)]
 pub(crate) struct AlwaysExecutedCache {
-    // for a given expression e, a set nodes that are always executed
+    // for a given expression e, a set of nodes that are always executed
     // regardless of branching
     always_executed: HashMap<*const Expr, HashSet<*const Expr>>,
 }
@@ -20,7 +22,7 @@ impl AlwaysExecutedCache {
     /// the branch taken.
     /// Once a node is added to the result, children of that node are not added (since any node it
     /// depends on will be executed).
-    pub(crate) fn always_executed(
+    pub(crate) fn get_without_subchildren_for_branch(
         &mut self,
         conditional_expr: &RcExpr,
         region_root: &RcExpr,
@@ -39,6 +41,7 @@ impl AlwaysExecutedCache {
         // Also anything definitely executed by the root node
         to_execute.extend(&self.get(region_root));
 
+        // Now we want to find the subset of to_execute without any subchildren.
         let mut stack = children;
         let mut result = HashMap::new();
         let mut processed = HashSet::new();
@@ -48,6 +51,7 @@ impl AlwaysExecutedCache {
             }
             processed.insert(Rc::as_ptr(&expr));
             if to_execute.contains(&Rc::as_ptr(&expr)) {
+                // don't recur into children
                 result.insert(Rc::as_ptr(&expr), expr.clone());
             } else {
                 let children = expr.children_same_scope();
@@ -60,6 +64,8 @@ impl AlwaysExecutedCache {
         result
     }
 
+    /// Get the set of expressions that are always executed given this expression
+    /// is executed, including itself.
     pub(crate) fn get(&self, expr: &RcExpr) -> HashSet<*const Expr> {
         if let Some(set) = self.always_executed.get(&Rc::as_ptr(expr)) {
             set.clone()
@@ -95,6 +101,7 @@ impl AlwaysExecutedCache {
                     let mut res = HashSet::new();
                     for (i, child) in children.iter().enumerate() {
                         if i == 0 {
+                            // replace set for first iteration, which is more efficient
                             res = self.get(child);
                         } else {
                             res.extend(&self.get(child));
@@ -124,7 +131,7 @@ fn test_simple_branch_inputs() {
     let root = add(my_if.clone(), outside_computation.clone());
     let mut always_cache = AlwaysExecutedCache::default();
     assert_eq!(
-        always_cache.always_executed(&my_if, &root),
+        always_cache.get_without_subchildren_for_branch(&my_if, &root),
         rcexpr_set(vec![])
     );
 }
@@ -138,7 +145,10 @@ fn test_simple_branch_inputs_share_between_branches() {
     let root = add(my_if.clone(), outside_computation.clone());
     let mut always_cache = AlwaysExecutedCache::default();
     let expected = rcexpr_set(vec![shared_expr.clone()]);
-    assert_eq!(always_cache.always_executed(&my_if, &root), expected);
+    assert_eq!(
+        always_cache.get_without_subchildren_for_branch(&my_if, &root),
+        expected
+    );
 }
 
 #[test]
@@ -154,7 +164,10 @@ fn test_simple_branch_inputs_share_between_branches2() {
     let root = add(my_if.clone(), outside_computation.clone());
     let mut always_cache = AlwaysExecutedCache::default();
     let expected = rcexpr_set(vec![shared_expr.clone()]);
-    assert_eq!(always_cache.always_executed(&my_if, &root), expected);
+    assert_eq!(
+        always_cache.get_without_subchildren_for_branch(&my_if, &root),
+        expected
+    );
 }
 
 #[test]
@@ -170,7 +183,10 @@ fn test_simple_branch_share_outside() {
     let root = add(my_if.clone(), outside_computation.clone());
     let mut always_cache = AlwaysExecutedCache::default();
     let expected = rcexpr_set(vec![shared_expr]);
-    assert_eq!(always_cache.always_executed(&my_if, &root), expected);
+    assert_eq!(
+        always_cache.get_without_subchildren_for_branch(&my_if, &root),
+        expected
+    );
 }
 
 #[test]
@@ -191,5 +207,8 @@ fn test_branch_share_effects() {
 
     let expected = rcexpr_set(vec![addr.clone(), shared_write.clone()]);
 
-    assert_eq!(always_cache.always_executed(&root, &root), expected);
+    assert_eq!(
+        always_cache.get_without_subchildren_for_branch(&root, &root),
+        expected
+    );
 }

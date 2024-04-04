@@ -9,6 +9,7 @@ use graphviz_rust::cmd::Format;
 use graphviz_rust::exec;
 use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
+use std::fs::File;
 use std::io::{Read, Write};
 use std::{
     ffi::OsStr,
@@ -16,9 +17,7 @@ use std::{
     io,
     path::PathBuf,
 };
-use std::fs::File;
 use tempfile::tempdir;
-
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -63,9 +62,6 @@ pub(crate) fn parse_from_string(input: &str) -> bril_rs::Program {
 /// Like other utilities related to `DebugVisualizations`, this method is
 /// only intended for debugging eggcc.
 pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
-    use std::fs::File;
-    use std::io::Write;
-
     // make the directory if it doesn't exist
     if !output_dir.exists() {
         std::fs::create_dir_all(&output_dir)?;
@@ -131,7 +127,6 @@ where
     S2: AsRef<OsStr>,
     I: IntoIterator<Item = S2>,
 {
-    use std::io::Write;
     use std::process::{Command, Stdio};
     let mut child = Command::new(program)
         .args(args)
@@ -689,12 +684,14 @@ impl Run {
         let llvm_ir = run_cmd_line(
             "./bril-llvm/brilc",
             Vec::<String>::new(),
-            String::from_utf8(buf).unwrap().as_str())
-            .expect("unable to compile bril!");
+            String::from_utf8(buf).unwrap().as_str(),
+        )
+        .expect("unable to compile bril!");
 
         let file_path = dir.path().join("compile.ll");
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
-        file.write_all(llvm_ir.as_bytes()).expect("unable to write to temp file");
+        file.write_all(llvm_ir.as_bytes())
+            .expect("unable to write to temp file");
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
 

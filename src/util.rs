@@ -17,9 +17,7 @@ use std::{
     path::PathBuf,
 };
 use std::fs::File;
-use std::thread::sleep;
-use std::time::Duration;
-use tempfile::{NamedTempFile, tempdir, tempfile};
+use tempfile::tempdir;
 
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);

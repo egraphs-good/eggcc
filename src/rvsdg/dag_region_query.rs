@@ -33,12 +33,16 @@ impl AlwaysExecutedCache {
             _ => unreachable!(),
         };
 
+        // Find all nodes that are executed in all branches
+        // It's important that this is done before removing subchildren, since we are intersecting
+        // sets of nodes.
         let mut to_execute = self.get(&children[0]);
-        // We execute anything executed in all branches
+        // We execute anything executed in all branches, so perform set intersection
         for child in &children {
             to_execute = to_execute.intersection(&self.get(child)).cloned().collect();
         }
-        // Also anything definitely executed by the root node
+
+        // Optimization: also, always execute anything executed by the root node
         to_execute.extend(&self.get(region_root));
 
         // Now we want to find the subset of to_execute without any subchildren.

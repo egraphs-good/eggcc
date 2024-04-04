@@ -9,13 +9,18 @@ use graphviz_rust::cmd::Format;
 use graphviz_rust::exec;
 use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
     io,
     path::PathBuf,
 };
+use std::fs::File;
+use std::thread::sleep;
+use std::time::Duration;
+use tempfile::{NamedTempFile, tempdir, tempfile};
+
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -200,6 +205,7 @@ pub enum RunType {
     RvsdgToCfg,
     /// Converts to an executable using brilift
     CompileBrilift,
+    CompileBrilLLVM,
 }
 
 impl Display for RunType {
@@ -229,6 +235,7 @@ impl RunType {
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
             RunType::CompileBrilift => true,
+            RunType::CompileBrilLLVM => true,
         }
     }
 }
@@ -581,6 +588,7 @@ impl Run {
                 )
             }
             RunType::CompileBrilift => self.run_brilift(),
+            RunType::CompileBrilLLVM => self.run_bril_llvm(),
         };
 
         let result_interpreted = if !self.interp {
@@ -658,6 +666,46 @@ impl Run {
                 .status()
                 .unwrap();
         }
+
+        (
+            vec![],
+            Some(Interpretable::Executable {
+                executable,
+                in_test: self.in_test,
+            }),
+        )
+    }
+
+    fn run_bril_llvm(&self) -> (Vec<Visualization>, Option<Interpretable>) {
+        let program = if self.optimize_egglog {
+            Optimizer::program_to_cfg(&self.prog_with_args.program).to_bril()
+        } else {
+            self.prog_with_args.program.clone()
+        };
+
+        let mut buf = Vec::new();
+        serde_json::to_writer_pretty(&mut buf, &program).expect("failed to deserialize");
+
+        let dir = tempdir().expect("couldn't create temp dir");
+
+        let llvm_ir = run_cmd_line(
+            "./bril-llvm/brilc",
+            Vec::<String>::new(),
+            String::from_utf8(buf).unwrap().as_str())
+            .expect("unable to compile bril!");
+
+        let file_path = dir.path().join("compile.ll");
+        let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
+        file.write_all(llvm_ir.as_bytes()).expect("unable to write to temp file");
+
+        let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+
+        std::process::Command::new("clang")
+            .arg(file_path.clone())
+            .arg("-o")
+            .arg(executable.clone())
+            .status()
+            .unwrap();
 
         (
             vec![],

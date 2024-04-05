@@ -44,7 +44,7 @@
          (Get (Subst assum to c1) index)
          :ruleset subst)
 (rewrite (Subst assum to (Alloc id c1 state ty))
-         (Alloc (i64-fresh!) (Subst assum to c1) (Subst assum to state) ty)
+         (Alloc id (Subst assum to c1) (Subst assum to state) ty)
          :ruleset subst)
 (rewrite (Subst assum to (Call name c1))
          (Call name (Subst assum to c1))

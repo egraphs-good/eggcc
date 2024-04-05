@@ -149,7 +149,7 @@
          (Get (DoAddContext seen ctx scope c1) index)
                :ruleset context-helpers)
 (rewrite (DoAddContext seen ctx scope (Alloc id c1 state ty))
-         (Alloc (i64-fresh!) (DoAddContext seen ctx scope c1) (DoAddContext seen ctx scope state) ty)
+         (Alloc id (DoAddContext seen ctx scope c1) (DoAddContext seen ctx scope state) ty)
          :ruleset context-helpers)
 (rewrite (DoAddContext seen ctx scope (Call name c1))
          (Call name (DoAddContext seen ctx scope c1))

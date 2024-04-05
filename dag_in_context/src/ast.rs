@@ -125,10 +125,6 @@ pub fn alloc(id: i64, amount: RcExpr, state: RcExpr, value_ty: BaseType) -> RcEx
     RcExpr::new(Expr::Alloc(id, amount, state, value_ty))
 }
 
-pub fn alloc_fresh(amount: RcExpr, state: RcExpr, value_ty: BaseType) -> RcExpr {
-    alloc(-1, amount, state, value_ty)
-}
-
 pub fn free(ptr: RcExpr, state: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Free, ptr, state))
 }

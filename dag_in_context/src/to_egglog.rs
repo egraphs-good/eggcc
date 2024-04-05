@@ -183,11 +183,7 @@ impl Expr {
                 term_dag.app("Get".into(), vec![expr, lit_index])
             }
             Expr::Alloc(id, expr, state, ty) => {
-                let id = if *id == -1 {
-                    term_dag.lit(Literal::Int(*id))
-                } else {
-                    term_dag.app("i64-fresh!".into(), vec![])
-                };
+                let id = term_dag.lit(Literal::Int(*id));
                 let expr = expr.to_egglog_internal(term_dag);
                 let ty = ty.to_egglog_internal(term_dag);
                 let state = state.to_egglog_internal(term_dag);

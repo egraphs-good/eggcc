@@ -220,15 +220,16 @@ impl FromEgglog {
               index.try_into().unwrap(),
             ))
           }
-          ("Alloc", [id, expr, state, type_]) => {
-            let Term::Lit(Literal::Int(integer)) = self.termdag.get(*id) else {
-              panic!("Invalid integer: {:?}", id)
+          ("Alloc", [alloc_id, expr, state, type_]) => {
+            let alloc_id = self.termdag.get(*alloc_id);
+            let Term::Lit(Literal::Int(alloc_id)) = alloc_id else {
+              panic!("Invalid alloc_id: {:?}", alloc_id)
             };
             let expr = self.termdag.get(*expr);
             let basetype = self.termdag.get(*type_);
             let state = self.termdag.get(*state);
             Rc::new(Expr::Alloc(
-              integer,
+              alloc_id,
               self.expr_from_egglog(expr),
               self.expr_from_egglog(state),
               self.basetype_from_egglog(basetype),

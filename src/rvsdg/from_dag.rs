@@ -503,7 +503,7 @@ fn test_ifs_share_across_branches() {
     let three = int(3);
     let arg = get(arg_ty(tuplet!(statet())), 0);
     let mut state_edge = arg.clone();
-    let mut mem1 = alloc_fresh(two.clone(), state_edge, pointert(intt()));
+    let mut mem1 = alloc(0, two.clone(), state_edge, pointert(intt()));
     state_edge = get(mem1.clone(), 1);
     mem1 = get(mem1, 0);
 

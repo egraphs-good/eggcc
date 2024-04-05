@@ -25,6 +25,7 @@ use super::RvsdgType;
 impl RvsdgProgram {
     /// Converts an RVSDG program to the dag encoding.
     /// Common subexpressions are shared by the same Rc<Expr> in the dag encoding.
+    /// This invariant is mainted by restore_sharing_invariant.
     pub fn to_dag_encoding(&self) -> TreeProgram {
         let last_function = self.functions.last().unwrap();
         let rest_functions = self.functions.iter().take(self.functions.len() - 1);
@@ -34,6 +35,7 @@ impl RvsdgProgram {
                 .map(|f| f.to_dag_encoding())
                 .collect::<Vec<_>>(),
         )
+        .restore_sharing_invariant()
     }
 }
 

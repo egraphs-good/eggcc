@@ -56,7 +56,7 @@ impl Expr {
 /// Typechecking produces new, typed expressions.
 /// This map is used to memoize the results of typechecking.
 /// It maps the old untyped expression to the new typed expression
-pub type TypedExprCache = HashMap<*const Expr, RcExpr>;
+pub type TypedExprCache = HashMap<(*const Expr, Type), RcExpr>;
 
 /// We also need to keep track of the type of the newly typed expression.
 /// This maps the newly instrumented expression to its type.
@@ -114,7 +114,7 @@ impl<'a> TypeChecker<'a> {
         assert!(arg_ty != &Type::Unknown, "Expected known argument type");
         let old_expr_ptr = Rc::as_ptr(&expr);
 
-        if let Some(updated_expr) = self.type_expr_cache.get(&old_expr_ptr) {
+        if let Some(updated_expr) = self.type_expr_cache.get(&(old_expr_ptr, arg_ty.clone())) {
             let new_expr_ptr = Rc::as_ptr(updated_expr);
             let ty = self.type_cache.get(&new_expr_ptr).unwrap();
             return (ty.clone(), updated_expr.clone());
@@ -405,7 +405,8 @@ impl<'a> TypeChecker<'a> {
             _ => panic!("Unexpected expression {:?}", expr),
         };
         let new_expr_ptr = Rc::as_ptr(&res_expr);
-        self.type_expr_cache.insert(old_expr_ptr, res_expr.clone());
+        self.type_expr_cache
+            .insert((old_expr_ptr, arg_ty.clone()), res_expr.clone());
         self.type_cache.insert(new_expr_ptr, res_ty.clone());
 
         (res_ty, res_expr)

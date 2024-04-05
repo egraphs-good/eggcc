@@ -200,6 +200,8 @@ pub enum RunType {
     RvsdgToCfg,
     /// Converts to an executable using brilift
     CompileBrilift,
+    /// Convert Rust to bril
+    RustToBril,
 }
 
 impl Display for RunType {
@@ -229,6 +231,7 @@ impl RunType {
             RunType::Egglog => true,
             RunType::CheckTreeIdentical => false,
             RunType::CompileBrilift => true,
+            RunType::RustToBril => true,
         }
     }
 }
@@ -588,6 +591,17 @@ impl Run {
             RunType::CompileBrilift => {
                 let interpretable = self.run_brilift()?;
                 (vec![], interpretable)
+            }
+            RunType::RustToBril => {
+                let bril = &self.prog_with_args.program;
+                (
+                    vec![Visualization {
+                        result: bril.to_string(),
+                        file_extension: ".bril".to_string(),
+                        name: self.prog_with_args.name.clone(),
+                    }],
+                    Some(Interpretable::Bril(bril.clone())),
+                )
             }
         };
 

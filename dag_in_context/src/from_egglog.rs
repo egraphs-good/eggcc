@@ -15,6 +15,14 @@ pub struct FromEgglog {
     pub conversion_cache: HashMap<Term, RcExpr>,
 }
 
+pub fn program_from_egglog(program: Term, termdag: egglog::TermDag) -> TreeProgram {
+    let mut converter = FromEgglog {
+        termdag,
+        conversion_cache: HashMap::new(),
+    };
+    converter.program_from_egglog(program)
+}
+
 impl FromEgglog {
     fn const_from_egglog(&mut self, constant: Term) -> Constant {
         match_term_app!(constant.clone(); {

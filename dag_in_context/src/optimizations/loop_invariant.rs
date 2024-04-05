@@ -207,7 +207,9 @@ fn test_invariant_hoist() -> crate::Result {
         my_loop, inv, pred, not_inv, print, inner_inv
     );
     let check = format!(
-        ""
+        "(let new_input (Concat par (SubTuple (Arg (TupleT (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (StateT) (TNil)))))))) 0 5) (Single inv)))
+        (let new_in_type  (TupleT (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (StateT) (TNil))))))) )
+        (check (= loop (SubTuple (DoWhile new_input new_pred_out) 0 5)))"
     );
 
     egglog_test(

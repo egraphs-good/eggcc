@@ -81,12 +81,11 @@
        (let new_loop (DoWhile new_input new_pred_out))
        (union (InContext (InLoop new_input new_pred_out) inv_in_new_loop) 
               (InContext (InLoop new_input new_pred_out) new_out_branch))
-       (let wrapper (SubTuple (Arg new_in_type) 0 len))
+       (let wrapper (SubTuple new_loop 0 len))
        (union loop wrapper)
-       (union assum (InLoop new_input new_pred_out))
+       (union assum (InLoop new_input new_pred_out)) ;; this one have cycle, awful
+       (subsume (DoWhile in pred_out)) 
        ;; don't hoist same loop again
        (set (hoisted-loop in pred_out) true)
       )
        :ruleset loop-inv-motion)
-
-

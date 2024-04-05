@@ -5,8 +5,12 @@ use egglog::{
     Term, TermDag,
 };
 
-use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TernaryOp, TreeProgram, Type, UnaryOp,
+use crate::{
+    from_egglog::program_from_egglog,
+    schema::{
+        Assumption, BaseType, BinaryOp, Constant, Expr, Order, TernaryOp, TreeProgram, Type,
+        UnaryOp,
+    },
 };
 
 pub(crate) struct TreeToEgglog {
@@ -253,6 +257,14 @@ impl Expr {
 }
 
 impl TreeProgram {
+    /// DAG programs should share common subexpressions whenever possible.
+    /// Otherwise, effects may happen multiple times.
+    /// This function restores this invariant by converting to a Term and back again.
+    pub fn restore_sharing_invariant(&self) -> TreeProgram {
+        let (term, termdag) = self.to_egglog();
+        program_from_egglog(term, termdag)
+    }
+
     /// Translates an the program to an egglog term
     /// encoded with respect to `schema.egg`.
     /// Shares common subexpressions.

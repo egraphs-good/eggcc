@@ -647,7 +647,10 @@ impl Run {
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
 
-        let _ = fs::write(executable.clone() + "-args", &self.prog_with_args.args.join(" "));
+        let _ = fs::write(
+            executable.clone() + "-args",
+            &self.prog_with_args.args.join(" "),
+        );
 
         std::process::Command::new("cc")
             .arg(object.clone())
@@ -671,10 +674,10 @@ impl Run {
                 .unwrap();
             if !self.interp {
                 std::process::Command::new("rm")
-                .arg(executable.clone())
-                .status()
-                .unwrap();
-            }   
+                    .arg(executable.clone())
+                    .status()
+                    .unwrap();
+            }
         }
 
         Ok(Some(Interpretable::Executable {

@@ -73,7 +73,6 @@ fn main() {
         interp: args.interp,
         profile_out: args.profile_out,
         output_path: args.output_path,
-        in_test: false,
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
     };

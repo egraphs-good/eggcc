@@ -291,7 +291,6 @@ pub struct Run {
     pub interp: bool,
     pub profile_out: Option<PathBuf>,
     pub output_path: Option<String>,
-    pub in_test: bool,
     pub optimize_egglog: bool,
     pub optimize_brilift: bool,
 }
@@ -300,7 +299,7 @@ pub struct Run {
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
-    Executable { executable: String, in_test: bool },
+    Executable { executable: String },
 }
 
 /// Some sort of visualization of the result, with a name
@@ -356,7 +355,6 @@ impl Run {
                 prog_with_args: prog.clone(),
                 profile_out: None,
                 output_path: None,
-                in_test: true,
                 optimize_egglog: false,
                 optimize_brilift: false,
             };
@@ -370,7 +368,6 @@ impl Run {
             }
         }
 
-        // TODO: uncomment `true` once the optimizer works
         for optimize_egglog in [true, false] {
             for optimize_brilift in [true, false] {
                 for interp in [true, false] {
@@ -380,7 +377,6 @@ impl Run {
                         prog_with_args: prog.clone(),
                         profile_out: None,
                         output_path: None,
-                        in_test: true,
                         optimize_egglog,
                         optimize_brilift,
                     });
@@ -669,23 +665,7 @@ impl Run {
             .status()
             .unwrap();
 
-        if self.in_test {
-            std::process::Command::new("rm")
-                .arg(executable.clone() + "-args")
-                .status()
-                .unwrap();
-            if !self.interp {
-                std::process::Command::new("rm")
-                    .arg(executable.clone())
-                    .status()
-                    .unwrap();
-            }
-        }
-
-        Ok(Some(Interpretable::Executable {
-            executable,
-            in_test: self.in_test,
-        }))
+        Ok(Some(Interpretable::Executable { executable }))
     }
 }
 

@@ -9,6 +9,7 @@ use graphviz_rust::cmd::Format;
 use graphviz_rust::exec;
 use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
+use std::fs;
 use std::io::Read;
 use std::{
     ffi::OsStr,
@@ -645,6 +646,12 @@ impl Run {
             .unwrap();
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+
+        let _ = fs::write(
+            executable.clone() + "-args",
+            self.prog_with_args.args.join(" "),
+        );
+
         std::process::Command::new("cc")
             .arg(object.clone())
             .arg(library_o.clone())
@@ -660,11 +667,17 @@ impl Run {
             .status()
             .unwrap();
 
-        if self.in_test && !self.interp {
+        if self.in_test {
             std::process::Command::new("rm")
-                .arg(executable.clone())
+                .arg(executable.clone() + "-args")
                 .status()
                 .unwrap();
+            if !self.interp {
+                std::process::Command::new("rm")
+                    .arg(executable.clone())
+                    .status()
+                    .unwrap();
+            }
         }
 
         Ok(Some(Interpretable::Executable {

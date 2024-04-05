@@ -60,6 +60,27 @@ fn initialize_worklist(egraph: &egraph_serialize::EGraph) -> UniqueQueue<NodeId>
     analysis_pending
 }
 
+fn get_term(op: &str, cost_sets: &[&CostSet], termdag: &mut TermDag) -> Term {
+    if cost_sets.is_empty() {
+        if op.starts_with('\"') {
+            return termdag.lit(ast::Literal::String(op[1..op.len() - 1].into()));
+        }
+        if let Ok(n) = op.parse::<i64>() {
+            return termdag.lit(ast::Literal::Int(n));
+        }
+        if op == "true" {
+            return termdag.lit(ast::Literal::Bool(true));
+        }
+        if op == "false" {
+            return termdag.lit(ast::Literal::Bool(false));
+        }
+    }
+    termdag.app(
+        op.into(),
+        cost_sets.iter().map(|cs| cs.term.clone()).collect(),
+    )
+}
+
 fn get_node_cost(
     op: &str,
     // Node E-class Id
@@ -70,10 +91,7 @@ fn get_node_cost(
 ) -> CostSet {
     // cost is 0 unless otherwise specified
     let op_cost = cm.ops.get(op).copied().unwrap_or(NotNan::new(0.).unwrap());
-    let term = termdag.app(
-        op.into(),
-        child_cost_sets.iter().map(|cs| cs.term.clone()).collect(),
-    );
+    let term = get_term(op, child_cost_sets, termdag);
     if cm.ignored.contains(op) {
         return CostSet {
             total: op_cost,

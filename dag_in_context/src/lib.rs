@@ -102,14 +102,6 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let program = build_program(program);
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&program)?;
-    // let (sort, value) = egraph.eval_expr(&egglog::ast::Expr::Var((), "PROG".into()))?;
-    // let mut termdag = egglog::TermDag::default();
-    // let extracted = egraph.extract(value, &mut termdag, &sort);
-    // let mut from_egglog = FromEgglog {
-    //     termdag,
-    //     conversion_cache: Default::default(),
-    // };
-    // Ok(from_egglog.program_from_egglog(extracted.1))
 
     let serialized = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();

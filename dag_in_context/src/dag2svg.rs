@@ -46,14 +46,10 @@ impl DotConverter {
                 Expr::Function(name, ..) => {
                     format!("cluster_fn{}{}", name, self.name_counter)
                 }
-                Expr::Const(c, _) => {
-                    let name = match c {
-                        Constant::Int(i) => format!("Const{}_{}", i, self.name_counter),
-                        Constant::Bool(b) => format!("Const{}_{}", b, self.name_counter),
-                    };
-
-                    name
-                }
+                Expr::Const(c, _) => match c {
+                    Constant::Int(i) => format!("Const{}_{}", i, self.name_counter),
+                    Constant::Bool(b) => format!("Const{}_{}", b, self.name_counter),
+                },
                 Expr::Bop(op, ..) => {
                     format!("{}{}", op.name(), self.name_counter)
                 }
@@ -98,13 +94,11 @@ impl TreeProgram {
             Id::Plain("ordering".to_string()),
             Id::Plain("in".to_string()),
         )));
-        let res = Graph::DiGraph {
+        Graph::DiGraph {
             id: Id::Plain("myprog".to_string()),
             strict: true,
             stmts,
-        };
-
-        res
+        }
     }
 
     fn to_dot_with(&self, dot_converter: &mut DotConverter) -> Vec<Stmt> {

@@ -3,6 +3,7 @@ use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
 use std::fmt::Debug;
+use std::fs;
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
@@ -604,6 +605,9 @@ impl Run {
             .unwrap();
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+
+        let _ = fs::write(executable.clone() + "-args", &self.prog_with_args.args.join(" "));
+
         std::process::Command::new("cc")
             .arg(object.clone())
             .arg(library_o.clone())
@@ -619,11 +623,17 @@ impl Run {
             .status()
             .unwrap();
 
-        if self.in_test && !self.interp {
+        if self.in_test {
             std::process::Command::new("rm")
+                .arg(executable.clone() + "-args")
+                .status()
+                .unwrap();
+            if !self.interp {
+                std::process::Command::new("rm")
                 .arg(executable.clone())
                 .status()
                 .unwrap();
+            }   
         }
 
         (

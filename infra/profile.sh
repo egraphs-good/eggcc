@@ -27,11 +27,13 @@ bench() {
   mkdir "$PROFILE_DIR"
 
   # Run eggcc in compile-brilift mode, which just shells out to brilift to compile the bril file
+  # Also writes the args to the executable to a file
   cargo run --release "$1" --run-mode compile-brilift -o "$PROFILE_DIR/brilift"
-  
-  # TODO: Some of the brils result in executables that seg fault, need to figure out why
-  # For now, though, we just silently ignore them
-  hyperfine --warmup 2 --export-json "$PROFILE_DIR"/brilift.json "$PROFILE_DIR/brilift" || echo "[BRILIFT] could not run $PROFILE_NAME"
+
+  # Read the args from the file
+  ARGS=$(cat $PROFILE_DIR/brilift-args)
+
+  hyperfine --warmup 2 --export-json $PROFILE_DIR/brilift.json "$PROFILE_DIR/brilift $ARGS"
 }
 
 for p in "${PROFILES[@]}"

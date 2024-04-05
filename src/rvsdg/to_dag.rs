@@ -280,7 +280,7 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::Eq, [a, b]) => eq(a.clone(), b.clone()),
                     (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
                     (ValueOps::Ge, [a, b]) => greater_eq(a.clone(), b.clone()),
-                    (ValueOps::Le, [a, b]) => less_eq(b.clone(), a.clone()),
+                    (ValueOps::Le, [a, b]) => less_eq(a.clone(), b.clone()),
                     (ValueOps::Not, [a]) => not(a.clone()),
                     (ValueOps::PtrAdd, [a, b]) => ptradd(a.clone(), b.clone()),
                     (ValueOps::Load, [a, b]) => load(a.clone(), b.clone()),

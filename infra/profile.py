@@ -11,6 +11,13 @@ profiles = (
   glob("tests/brils/passing/**/*.bril")
 )
 
+modes = [
+  ("no_optimize", "--optimize-egglog false", "--optimize-brilift false"),
+  ("brilift_only", "--optimize-egglog false", "--optimize-brilift true"),
+  ("egglog_only", "--optimize-egglog true", "--optimize-brilift false"),
+  ("optimize_both", "--optimize-egglog true", "--optimize-brilift true")
+]
+
 def bench(profile):
   # strip the path to just the file name
   profile_file = profile.split("/")[-1]
@@ -21,12 +28,14 @@ def bench(profile):
   profile_dir = f'./tmp/bench/{profile_name}'
   os.mkdir(profile_dir)
 
-  os.system(f'cargo run --release {profile} --run-mode compile-brilift --optimize-egglog false --optimize-brilift false -o {profile_dir}/brilift')
+  for mode in modes:
+    (name, opt_egglog, opt_brilift) = mode
+    os.system(f'cargo run --release {profile} --run-mode compile-brilift {opt_egglog} {opt_brilift} -o {profile_dir}/{name}')
 
-  with open(f'{profile_dir}/brilift-args') as f:
-    args = f.read().rstrip()
-  
-  os.system(f'hyperfine --warmup 2 --export-json {profile_dir}/brilift.json "{profile_dir}/brilift {args}"')
+    with open(f'{profile_dir}/{name}-args') as f:
+      args = f.read().rstrip()
+    
+    os.system(f'hyperfine --warmup 2 --export-json {profile_dir}/brilift.json "{profile_dir}/{name} {args}"')
 
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:

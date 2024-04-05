@@ -196,7 +196,7 @@ fn test_simple_branch_share_outside() {
 #[test]
 fn test_branch_share_effects() {
     use dag_in_context::ast::*;
-    let addr = alloc(0, int(10), arg(), pointert(intt()));
+    let addr = alloc_fresh(int(10), arg(), pointert(intt()));
     let shared_read = load(get(addr.clone(), 0), get(addr.clone(), 1));
     let shared_write = write(get(addr.clone(), 0), int(20), get(shared_read.clone(), 1));
 

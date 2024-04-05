@@ -107,7 +107,7 @@ fn test_purity_analysis() -> crate::Result {
         ),
     )
     .with_arg_types(emptyt(), tuplet!(intt()));
-    let inneralloc = alloc(0, int(0), getat(1), pointert(intt()));
+    let inneralloc = alloc_fresh(int(0), getat(1), pointert(intt()));
     let innerload = load(get(inneralloc.clone(), 0), get(inneralloc.clone(), 1));
 
     let impureloop = dowhile(

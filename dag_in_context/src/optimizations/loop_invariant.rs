@@ -175,3 +175,47 @@ fn test_invariant_detect() -> crate::Result {
         vec![],
     )
 }
+
+
+#[test]
+fn test_invariant_hoist() -> crate::Result {
+    use crate::ast::*;
+    let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
+    let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
+    let inv = add(inner_inv.clone(), int(0)).with_arg_types(output_ty.clone(), base(intt()));
+    let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), base(boolt()));
+    let not_inv = add(getat(0), inv.clone()).with_arg_types(output_ty.clone(), base(intt()));
+    let print =
+        tprint(inv.clone(), getat(4)).with_arg_types(output_ty.clone(), base(statet()));
+
+    let my_loop = dowhile(
+        parallel!(int(1), int(2), int(3), int(4), getat(0)),
+        concat_par(
+            parallel!(pred.clone(), not_inv.clone(), getat(1)),
+            concat_par(parallel!(getat(2), getat(3)), single(print.clone())),
+        ),
+    )
+    .with_arg_types(tuplet!(statet()), output_ty.clone());
+
+    let build = format!(
+        "(let loop {})
+        (let inv {})
+        (let pred {})
+        (let not_inv {})
+        (let print {})
+        (let inner_inv {})",
+        my_loop, inv, pred, not_inv, print, inner_inv
+    );
+    let check = format!(
+        ""
+    );
+
+    egglog_test(
+        &build,
+        &check,
+        vec![],
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![]),
+        vec![],
+    )
+}

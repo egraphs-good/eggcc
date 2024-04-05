@@ -147,3 +147,19 @@ fn nested_if() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn context_if() -> crate::Result {
+    let cond = less_eq(int_ty(0, base(intt())), iarg());
+
+    let y = tif(cond, iarg(), mul(iarg(), int_ty(-1, base(intt()))));
+
+    let z = less_eq(int_ty(0, base(intt())), y);
+
+    let f = function("main", base(intt()), base(boolt()), z.clone()).func_with_arg_types();
+
+    egglog_test(
+        &format!("{f}"), 
+        &format!("(print-function ival 100)"), 
+        vec![f.to_program(base(intt()), base(boolt()))], val_int(4), val_bool(true), vec![])
+}

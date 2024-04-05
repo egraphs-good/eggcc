@@ -35,7 +35,7 @@ def bench(profile):
     with open(f'{profile_dir}/{name}-args') as f:
       args = f.read().rstrip()
     
-    os.system(f'hyperfine --warmup 2 --export-json {profile_dir}/brilift.json "{profile_dir}/{name} {args}"')
+    os.system(f'hyperfine --warmup 2 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"')
 
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:
@@ -51,7 +51,8 @@ def aggregate():
         if os.stat(file_path).st_size == 0:
             continue
         name = file_path.split("/")[-2]
-        result = {"runMethod": "brilift", "benchmark": name}
+        runMethod = file_path.split("/")[-1][:-len(".json")]
+        result = {"runMethod": runMethod, "benchmark": name}
         with open(file_path) as f:
             result["hyperfine"] = json.load(f)
         res.append(result)

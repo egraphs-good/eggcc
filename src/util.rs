@@ -9,6 +9,7 @@ use graphviz_rust::cmd::Format;
 use graphviz_rust::exec;
 use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
+use std::fs;
 use std::io::Read;
 use std::{
     ffi::OsStr,
@@ -290,7 +291,6 @@ pub struct Run {
     pub interp: bool,
     pub profile_out: Option<PathBuf>,
     pub output_path: Option<String>,
-    pub in_test: bool,
     pub optimize_egglog: bool,
     pub optimize_brilift: bool,
 }
@@ -299,7 +299,7 @@ pub struct Run {
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
-    Executable { executable: String, in_test: bool },
+    Executable { executable: String },
 }
 
 /// Some sort of visualization of the result, with a name
@@ -322,6 +322,18 @@ pub struct RunOutput {
 }
 
 impl Run {
+    fn optimize_bril(program: &Program) -> Result<Program, EggCCError> {
+        let rvsdg = Optimizer::program_to_rvsdg(program)?;
+        let dag = rvsdg.to_dag_encoding();
+        let with_context = dag.add_context();
+        let optimized = dag_in_context::optimize(&with_context).map_err(EggCCError::EggLog)?;
+        let rvsdg2 = dag_to_rvsdg(&optimized);
+        let cfg = rvsdg2.to_cfg();
+        let bril = cfg.to_bril();
+
+        Ok(bril)
+    }
+
     pub fn all_configurations_for(test: TestProgram) -> Vec<Run> {
         let prog = test.read_program();
         let mut res = vec![];
@@ -343,7 +355,6 @@ impl Run {
                 prog_with_args: prog.clone(),
                 profile_out: None,
                 output_path: None,
-                in_test: true,
                 optimize_egglog: false,
                 optimize_brilift: false,
             };
@@ -357,8 +368,7 @@ impl Run {
             }
         }
 
-        // TODO: uncomment `true` once the optimizer works
-        for optimize_egglog in [/*true, */ false] {
+        for optimize_egglog in [true, false] {
             for optimize_brilift in [true, false] {
                 for interp in [true, false] {
                     res.push(Run {
@@ -367,7 +377,6 @@ impl Run {
                         prog_with_args: prog.clone(),
                         profile_out: None,
                         output_path: None,
-                        in_test: true,
                         optimize_egglog,
                         optimize_brilift,
                     });
@@ -479,12 +488,7 @@ impl Run {
                 (vec![], None)
             }
             RunType::Optimize => {
-                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let dag = rvsdg.to_dag_encoding();
-                let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
-                let rvsdg2 = dag_to_rvsdg(&optimized);
-                let cfg = rvsdg2.to_cfg();
-                let bril = cfg.to_bril();
+                let bril = Run::optimize_bril(&self.prog_with_args.program)?;
                 (
                     vec![Visualization {
                         result: bril.to_string(),
@@ -580,7 +584,10 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::CompileBrilift => self.run_brilift(),
+            RunType::CompileBrilift => {
+                let interpretable = self.run_brilift()?;
+                (vec![], interpretable)
+            }
         };
 
         let result_interpreted = if !self.interp {
@@ -606,9 +613,9 @@ impl Run {
         })
     }
 
-    fn run_brilift(&self) -> (Vec<Visualization>, Option<Interpretable>) {
+    fn run_brilift(&self) -> Result<Option<Interpretable>, EggCCError> {
         let program = if self.optimize_egglog {
-            Optimizer::program_to_cfg(&self.prog_with_args.program).to_bril()
+            Run::optimize_bril(&self.prog_with_args.program)?
         } else {
             self.prog_with_args.program.clone()
         };
@@ -637,6 +644,12 @@ impl Run {
             .unwrap();
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+
+        let _ = fs::write(
+            executable.clone() + "-args",
+            self.prog_with_args.args.join(" "),
+        );
+
         std::process::Command::new("cc")
             .arg(object.clone())
             .arg(library_o.clone())
@@ -652,20 +665,7 @@ impl Run {
             .status()
             .unwrap();
 
-        if self.in_test && !self.interp {
-            std::process::Command::new("rm")
-                .arg(executable.clone())
-                .status()
-                .unwrap();
-        }
-
-        (
-            vec![],
-            Some(Interpretable::Executable {
-                executable,
-                in_test: self.in_test,
-            }),
-        )
+        Ok(Some(Interpretable::Executable { executable }))
     }
 }
 

@@ -15,6 +15,14 @@ pub struct FromEgglog {
     pub conversion_cache: HashMap<Term, RcExpr>,
 }
 
+pub fn program_from_egglog(program: Term, termdag: egglog::TermDag) -> TreeProgram {
+    let mut converter = FromEgglog {
+        termdag,
+        conversion_cache: HashMap::new(),
+    };
+    converter.program_from_egglog(program)
+}
+
 impl FromEgglog {
     fn const_from_egglog(&mut self, constant: Term) -> Constant {
         match_term_app!(constant.clone(); {
@@ -220,11 +228,16 @@ impl FromEgglog {
               index.try_into().unwrap(),
             ))
           }
-          ("Alloc", [expr, state, type_]) => {
+          ("Alloc", [alloc_id, expr, state, type_]) => {
+            let alloc_id = self.termdag.get(*alloc_id);
+            let Term::Lit(Literal::Int(alloc_id)) = alloc_id else {
+              panic!("Invalid alloc_id: {:?}", alloc_id)
+            };
             let expr = self.termdag.get(*expr);
             let basetype = self.termdag.get(*type_);
             let state = self.termdag.get(*state);
             Rc::new(Expr::Alloc(
+              alloc_id,
               self.expr_from_egglog(expr),
               self.expr_from_egglog(state),
               self.basetype_from_egglog(basetype),
@@ -314,7 +327,7 @@ impl FromEgglog {
         res
     }
 
-    pub fn program_from_egglog(&mut self, program: Term) -> TreeProgram {
+    fn program_from_egglog_preserve_ctx_nodes(&mut self, program: Term) -> TreeProgram {
         match_term_app!(program.clone();
         {
           ("Program", [entry, functions]) => {
@@ -326,5 +339,34 @@ impl FromEgglog {
           }
           _ => panic!("Invalid program: {:?}", program),
         })
+    }
+
+    /// Converts a term back into a TreeProgram, but removes context nodes along the way.
+    /// This is crutial for the correctness of this conversion, since context nodes can break sharing
+    /// of the state edge.
+    /// TODO make extraction itself remove context nodes, solving this problem
+    pub fn program_from_egglog(&mut self, program: Term) -> TreeProgram {
+        let new_term = self.without_ctx_nodes(program);
+        self.program_from_egglog_preserve_ctx_nodes(new_term)
+    }
+
+    fn without_ctx_nodes(&mut self, expr: Term) -> Term {
+        match expr {
+            Term::App(head, children) => match (head.to_string().as_str(), children.as_slice()) {
+                ("InContext", [_assumption, expr]) => {
+                    self.without_ctx_nodes(self.termdag.get(*expr))
+                }
+                _ => {
+                    let mut new_children = vec![];
+                    for child in children {
+                        let term = self.without_ctx_nodes(self.termdag.get(child));
+                        new_children.push(term)
+                    }
+                    self.termdag.app(head, new_children)
+                }
+            },
+            Term::Var(_) => expr,
+            Term::Lit(_) => expr,
+        }
     }
 }

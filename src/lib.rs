@@ -3,7 +3,7 @@ use bril_rs::Program;
 
 use cfg::{program_to_cfg, SimpleCfgProgram};
 use conversions::check_for_uninitialized_vars;
-use dag_in_context::interpreter::{interpret_tree_prog, Value};
+use dag_in_context::interpreter::{interpret_dag_prog, Value};
 use dag_in_context::schema::Constant;
 use rvsdg::{RvsdgError, RvsdgProgram};
 use std::path::PathBuf;
@@ -97,7 +97,7 @@ impl Optimizer {
                 let mut parsed = Self::parse_arguments(args);
                 // add the state value to the end
                 parsed.push(Value::StateV);
-                let (val, mut printed) = interpret_tree_prog(program, &Value::Tuple(parsed));
+                let (val, mut printed) = interpret_dag_prog(program, &Value::Tuple(parsed));
                 assert_eq!(val, Value::Tuple(vec![Value::StateV]));
                 // add new line to the end of each line in printed
                 for line in printed.iter_mut() {
@@ -105,10 +105,7 @@ impl Optimizer {
                 }
                 printed.join("")
             }
-            Interpretable::Executable {
-                executable,
-                in_test,
-            } => {
+            Interpretable::Executable { executable } => {
                 let output = std::process::Command::new(
                     std::path::Path::new(executable).canonicalize().unwrap(),
                 )
@@ -116,13 +113,6 @@ impl Optimizer {
                 .output()
                 .unwrap()
                 .stdout;
-
-                if *in_test {
-                    std::process::Command::new("rm")
-                        .arg(executable)
-                        .status()
-                        .unwrap();
-                }
 
                 String::from_utf8(output).unwrap()
             }

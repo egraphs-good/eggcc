@@ -85,6 +85,8 @@ struct DagTranslator<'a> {
     stored_node: HashMap<Id, StoredValue>,
     /// A reference to the nodes in the RVSDG.
     nodes: &'a [RvsdgBody],
+    /// The next id to assign to an alloc.
+    next_alloc_id: i64,
 }
 
 impl<'a> DagTranslator<'a> {
@@ -116,6 +118,7 @@ impl<'a> DagTranslator<'a> {
             stored_node: HashMap::new(),
             argument_values,
             nodes,
+            next_alloc_id: 0,
         }
     }
 
@@ -285,7 +288,10 @@ impl<'a> DagTranslator<'a> {
                         let bril_rs::Type::Pointer(_inner) = &ty else {
                             panic!("Alloc should return a pointer type, found {:?}", ty);
                         };
+                        let alloc_id = self.next_alloc_id;
+                        self.next_alloc_id += 1;
                         alloc(
+                            alloc_id,
                             a.clone(),
                             b.clone(),
                             RvsdgType::Bril(ty).to_tree_type().unwrap(),

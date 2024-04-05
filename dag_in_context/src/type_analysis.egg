@@ -64,7 +64,7 @@
        (HasArgType e ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (Alloc e state _))
+(rule ((= lhs (Alloc _id e state _))
        (HasArgType e ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
@@ -352,12 +352,12 @@
       :ruleset type-analysis)
 
 ; Other ops
-(rule ((= lhs (Alloc amt state ty))) 
+(rule ((= lhs (Alloc _id amt state ty))) 
       ((ExpectType amt (Base (IntT)) "(Alloc) expected int, got {?}"))
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Alloc amt state ty))
+        (= lhs (Alloc _id amt state ty))
         (HasType amt (Base (IntT)))
       )
       ((HasType lhs (TupleT (TCons ty (TCons (StateT) (TNil))))))

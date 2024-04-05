@@ -255,7 +255,7 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Get(new_child, *index)),
                 )
             }
-            Expr::Alloc(amount, state, baset) => {
+            Expr::Alloc(id, amount, state, baset) => {
                 let (aty, new_amount) = self.add_arg_types_to_expr(amount.clone(), arg_ty);
                 let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_ty);
                 let Type::Base(BaseType::IntT) = aty else {
@@ -263,7 +263,7 @@ impl<'a> TypeChecker<'a> {
                 };
                 (
                     tuplet!(baset.clone(), statet()),
-                    RcExpr::new(Expr::Alloc(new_amount, new_state, baset.clone())),
+                    RcExpr::new(Expr::Alloc(*id, new_amount, new_state, baset.clone())),
                 )
             }
             Expr::Call(string, arg) => {

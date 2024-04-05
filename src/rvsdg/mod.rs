@@ -28,7 +28,7 @@
 //!
 //! In addition to those papers, the Jamey Sharp's
 //! [optir](https://github.com/jameysharp/optir) project is a major inspiration.
-pub(crate) mod dag_to_graph;
+pub(crate) mod dag_region_query;
 pub(crate) mod from_cfg;
 pub(crate) mod from_dag;
 pub(crate) mod live_variables;
@@ -42,8 +42,8 @@ use std::fmt;
 
 use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 
+use dag_in_context::schema::BaseType;
 use thiserror::Error;
-use tree_in_context::schema::BaseType;
 
 use crate::{
     cfg::{Identifier, SimpleCfgProgram},

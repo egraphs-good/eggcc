@@ -20,14 +20,18 @@ indexmap = "2.0"
 fixedbitset = "0.4.2"
 smallvec = "1.11.1"
 
-bril2json = { git = "https://github.com/sampsyo/bril", rev = "b20cc2d" }
-brilirs = { git = "https://github.com/sampsyo/bril", rev = "b20cc2d" }
-bril-rs = { git = "https://github.com/sampsyo/bril", rev = "b20cc2d" }
-brilift = { git = "https://github.com/sampsyo/bril", rev = "b20cc2d" }
+syn = {version = "2.0", features = ["full", "extra-traits"]}
+bril2json = { git = "https://github.com/ajpal/bril", rev = "af21f1c" }
+brilirs = { git = "https://github.com/ajpal/bril", rev = "af21f1c" }
+bril-rs = { git = "https://github.com/ajpal/bril", rev = "af21f1c" }
+brilift = { git = "https://github.com/ajpal/bril", rev = "af21f1c" }
+rs2bril = { git = "https://github.com/ajpal/bril", rev = "af21f1c", features = ["import"]}
 ordered-float = { version = "3.7" }
 serde_json = "1.0.103"
+dot-structures = "0.1.1"
+graphviz-rust = "0.8.0"
 
-tree_in_context = { path = "tree_in_context" }
+dag_in_context = { path = "dag_in_context" }
 
 # binary dependencies
 clap = { version = "4.4.7", features = ["derive"] }

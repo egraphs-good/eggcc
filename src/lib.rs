@@ -3,10 +3,10 @@ use bril_rs::Program;
 
 use cfg::{program_to_cfg, SimpleCfgProgram};
 use conversions::check_for_uninitialized_vars;
+use dag_in_context::interpreter::{interpret_dag_prog, Value};
+use dag_in_context::schema::Constant;
 use rvsdg::{RvsdgError, RvsdgProgram};
 use std::path::PathBuf;
-use tree_in_context::interpreter::{interpret_tree_prog, Value};
-use tree_in_context::schema::Constant;
 
 use util::Interpretable;
 
@@ -97,7 +97,7 @@ impl Optimizer {
                 let mut parsed = Self::parse_arguments(args);
                 // add the state value to the end
                 parsed.push(Value::StateV);
-                let (val, mut printed) = interpret_tree_prog(program, &Value::Tuple(parsed));
+                let (val, mut printed) = interpret_dag_prog(program, &Value::Tuple(parsed));
                 assert_eq!(val, Value::Tuple(vec![Value::StateV]));
                 // add new line to the end of each line in printed
                 for line in printed.iter_mut() {

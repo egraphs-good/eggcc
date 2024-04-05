@@ -6,7 +6,7 @@ use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
 
-use crate::interpreter::interpret_tree_prog;
+use crate::interpreter::interpret_dag_prog;
 
 pub mod ast;
 pub mod dag_typechecker;
@@ -22,6 +22,7 @@ pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
 pub(crate) mod add_context;
+pub mod dag2svg;
 
 pub type Result = std::result::Result<(), MainError>;
 
@@ -171,7 +172,7 @@ pub fn egglog_test(
 ) -> Result {
     // first interpret the programs on the value
     for prog in progs {
-        let (result_val, print_log) = interpret_tree_prog(&prog, &input);
+        let (result_val, print_log) = interpret_dag_prog(&prog, &input);
         assert_eq!(
             result_val, expected,
             "Program {:?}\nproduced:\n{}\ninstead of expected:\n{}",

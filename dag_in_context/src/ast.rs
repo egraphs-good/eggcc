@@ -42,7 +42,7 @@ pub fn val_int(i: i64) -> Value {
     Value::Const(Constant::Int(i))
 }
 
-pub fn val_state() -> Value {
+pub fn statev() -> Value {
     Value::StateV
 }
 

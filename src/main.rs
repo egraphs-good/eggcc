@@ -1,6 +1,6 @@
 use clap::Parser;
 use eggcc::util::{visualize, Run, RunType, TestProgram};
-use std::path::PathBuf;
+use std::{ffi::OsStr, path::PathBuf};
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -33,10 +33,12 @@ struct Args {
     #[clap(short)]
     output_path: Option<String>,
     /// Run the eggcc optimizer (only for the CompileBrilfit run mode)
-    #[clap(long)]
+    /// Defaults to true.
+    #[clap(long, default_value = "true")]
     optimize_egglog: bool,
     /// Run the brilift optimizer (only for the CompileBrilfit run mode)
-    #[clap(long)]
+    /// Defaults to false.
+    #[clap(long, default_value = "false")]
     optimize_brilift: bool,
 }
 
@@ -44,7 +46,7 @@ fn main() {
     let args = Args::parse();
 
     if let Some(debug_dir) = args.debug_dir {
-        if let Result::Err(error) = visualize(TestProgram::File(args.file.clone()), debug_dir) {
+        if let Result::Err(error) = visualize(TestProgram::BrilFile(args.file.clone()), debug_dir) {
             eprintln!("{}", error);
             return;
         }
@@ -58,8 +60,15 @@ fn main() {
         return;
     }
 
+    let file = match args.file.extension().and_then(OsStr::to_str) {
+        Some("rs") => TestProgram::RustFile(args.file.clone()),
+        Some("bril") => TestProgram::BrilFile(args.file.clone()),
+        Some(x) => panic!("unexpected file extension {x}"),
+        None => panic!("could not parse file extension"),
+    };
+
     let run = Run {
-        prog_with_args: TestProgram::File(args.file.clone()).read_program(),
+        prog_with_args: file.read_program(),
         test_type: args.run_mode,
         interp: args.interp,
         profile_out: args.profile_out,

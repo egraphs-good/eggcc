@@ -1,17 +1,16 @@
 //! Convert tree programs to RVSDGs
 
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
-use hashbrown::HashMap;
-use tree_in_context::{
+use dag_in_context::{
     schema::{BaseType, BinaryOp, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
 };
 
 use super::{
-    dag_to_graph::{region_graph, RegionGraph},
-    BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType,
+    dag_region_query::AlwaysExecutedCache, BasicExpr, Operand, RvsdgBody, RvsdgFunction,
+    RvsdgProgram, RvsdgType,
 };
 
 type Operands = Vec<Operand>;
@@ -27,9 +26,11 @@ struct TreeToRvsdg<'a> {
     /// For branches, this can be pre-propulated with the arguments passed to the branch.
     translation_cache: HashMap<*const Expr, Operands>,
     nodes: &'a mut Vec<RvsdgBody>,
-    /// The current region's graph.
-    /// Allows us to query the dominance fronteir of a branch.
-    current_region_graph: &'a RegionGraph,
+    /// Allows for querying which nodes (in the same region)
+    /// are always executed from a given node
+    always_executed_cache: &'a mut AlwaysExecutedCache,
+    /// The root of the region currently being translated
+    current_region_root: RcExpr,
     /// The current arguments to the tree program
     /// as RVSDG operands.
     current_args: Vec<Operand>,
@@ -116,9 +117,10 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
         type_cache: &type_cache,
         translation_cache: HashMap::new(),
         nodes: &mut nodes,
-        current_region_graph: &region_graph(typechecked_func.func_body().unwrap()),
+        always_executed_cache: &mut AlwaysExecutedCache::default(),
         // initial arguments are the first n arguments
         current_args: (0..input_types.len()).map(Operand::Arg).collect(),
+        current_region_root: typechecked_func.clone(),
     };
 
     let converted = converter.convert_expr(typechecked_func.clone());
@@ -197,7 +199,6 @@ impl<'a> TreeToRvsdg<'a> {
         expr: RcExpr,
         current_args: Vec<Operand>,
         initial_translation_cache: HashMap<*const Expr, Operands>,
-        region_graph: &RegionGraph,
     ) -> Vec<Operand> {
         // TODO fix bug here, region graph needs to take the whole region as input
         let mut translator = TreeToRvsdg {
@@ -206,7 +207,8 @@ impl<'a> TreeToRvsdg<'a> {
             type_cache: self.type_cache,
             translation_cache: initial_translation_cache,
             current_args,
-            current_region_graph: region_graph,
+            always_executed_cache: self.always_executed_cache,
+            current_region_root: expr.clone(),
         };
         translator.convert_expr(expr)
     }
@@ -248,10 +250,10 @@ impl<'a> TreeToRvsdg<'a> {
         let res = match expr.as_ref() {
             Expr::Function(_name, _inty, _outty, expr) => self.convert_expr(expr.clone()),
             Expr::Const(constant, _ty) => match constant {
-                tree_in_context::schema::Constant::Int(integer) => self.push_basic(
+                dag_in_context::schema::Constant::Int(integer) => self.push_basic(
                     BasicExpr::Const(ConstOps::Const, Literal::Int(*integer), bril_rs::Type::Int),
                 ),
-                tree_in_context::schema::Constant::Bool(boolean) => {
+                dag_in_context::schema::Constant::Bool(boolean) => {
                     self.push_basic(BasicExpr::Const(
                         ConstOps::Const,
                         Literal::Bool(*boolean),
@@ -351,9 +353,9 @@ impl<'a> TreeToRvsdg<'a> {
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
 
                 // find the branch inputs for then and else branches
-                let mut branch_inputs = self.current_region_graph.branch_inputs(&expr, 0);
-                let else_branch_inputs = self.current_region_graph.branch_inputs(&expr, 1);
-                branch_inputs.extend(else_branch_inputs);
+                let branch_inputs = self
+                    .always_executed_cache
+                    .get_without_subchildren_for_branch(&expr, &self.current_region_root);
 
                 // new inputs always start with current arguments
                 let mut new_inputs: Vec<Operand> =
@@ -375,13 +377,11 @@ impl<'a> TreeToRvsdg<'a> {
                     then_branch.clone(),
                     new_inputs.clone(),
                     new_expr_cache.clone(),
-                    self.current_region_graph,
                 );
                 let else_region = self.translate_subregion(
                     else_branch.clone(),
                     new_inputs.clone(),
                     new_expr_cache,
-                    self.current_region_graph,
                 );
 
                 let new_id = self.nodes.len();
@@ -409,11 +409,9 @@ impl<'a> TreeToRvsdg<'a> {
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
 
                 // find the branch inputs for each case
-                let mut branch_inputs: HashMap<*const Expr, Rc<Expr>> = Default::default();
-                for case_expr in cases {
-                    let case_inputs = self.current_region_graph.branch_inputs(case_expr, 0);
-                    branch_inputs.extend(case_inputs);
-                }
+                let branch_inputs: HashMap<*const Expr, Rc<Expr>> = self
+                    .always_executed_cache
+                    .get_without_subchildren_for_branch(&expr, &self.current_region_root);
 
                 let mut new_inputs: Vec<Operand> =
                     (0..self.current_args.len()).map(Operand::Arg).collect();
@@ -435,7 +433,6 @@ impl<'a> TreeToRvsdg<'a> {
                         case_expr.clone(),
                         new_inputs.clone(),
                         new_expr_cache.clone(),
-                        self.current_region_graph,
                     );
                     case_regions.push(case_region);
                 }
@@ -455,13 +452,8 @@ impl<'a> TreeToRvsdg<'a> {
             Expr::DoWhile(inputs, body) => {
                 let inputs_converted = self.convert_expr(inputs.clone());
                 let new_args = (0..inputs_converted.len()).map(Operand::Arg).collect();
-                let loop_region_graph = region_graph(body);
-                let pred_and_body = self.translate_subregion(
-                    body.clone(),
-                    new_args,
-                    HashMap::new(),
-                    &loop_region_graph,
-                );
+                let pred_and_body =
+                    self.translate_subregion(body.clone(), new_args, HashMap::new());
                 assert_eq!(
                     inputs_converted.len(),
                     pred_and_body.len() - 1,
@@ -495,4 +487,49 @@ impl<'a> TreeToRvsdg<'a> {
             .insert(Rc::as_ptr(&expr), res.clone());
         res
     }
+}
+
+#[test]
+fn test_ifs_share_across_branches() {
+    use crate::Optimizer;
+    use dag_in_context::ast::*;
+    use dag_in_context::interpreter::interpret_dag_prog;
+    // a test with a nested if statement
+    // (if pred (if pred2 then else) else)
+    // the two else branches share the same effect, but it should still be duplicated
+    // this is similar to the if-conversion-region.bril file, but directly written
+    let one = int(1);
+    let two = int(2);
+    let three = int(3);
+    let arg = get(arg_ty(tuplet!(statet())), 0);
+    let mut state_edge = arg.clone();
+    let mut mem1 = alloc(two.clone(), state_edge, pointert(intt()));
+    state_edge = get(mem1.clone(), 1);
+    mem1 = get(mem1, 0);
+
+    let mem2 = ptradd(mem1.clone(), one.clone());
+    state_edge = write(mem2.clone(), two.clone(), state_edge.clone());
+    let shared_else = write(mem2.clone(), three.clone(), state_edge.clone());
+
+    let innerif = tif(
+        ttrue(),
+        twrite(mem1.clone(), one.clone(), state_edge.clone()),
+        shared_else.clone(),
+    );
+    let outerif = tif(ttrue(), innerif, shared_else.clone());
+
+    let load2 = load(mem2.clone(), outerif);
+    let free = free(mem1.clone(), get(load2.clone(), 1));
+    let print2 = parallel!(tprint(get(load2.clone(), 0), free));
+    let program = print2.to_program(tuplet!(statet()), tuplet!(statet()));
+
+    let interpreted = interpret_dag_prog(&program, &tuplev!(statev()));
+    assert_eq!(interpreted.0, tuplev!(statev()));
+    assert_eq!(interpreted.1, vec!["2".to_string()]);
+
+    let converted_to_rvsdg = dag_to_rvsdg(&program);
+    let cfg = converted_to_rvsdg.to_cfg();
+    let bril = cfg.to_bril();
+    let bril_interpreted = Optimizer::interp_bril(&bril, vec![], None);
+    assert_eq!(bril_interpreted, "2\n".to_string());
 }

@@ -1,0 +1,82 @@
+(datatype Cell (CellOf i64))
+
+(sort ExprSet (Set Expr))
+(sort CellSet (Set Cell))
+
+(ruleset memory)
+
+;                       program point, cell
+(function CellHasValues (Expr Cell) ExprSet :merge (set-intersect old new))
+;                       program point, pointer-typed expression
+(function PointsToCells (Expr Expr) CellSet :merge (set-intersect old new))
+
+; ============================
+; Update PointsToCells
+; ============================
+
+(function StateOf (Expr) Expr)
+(rewrite (StateOf e) (Get e 1) :ruleset always-run)
+(function AddrOf (Expr) Expr)
+(rewrite (AddrOf e) (Get e 0) :ruleset always-run)
+
+(rule ((= e (Alloc id sz state ty)))
+      ((set (PointsToCells (StateOf e) (AddrOf e)) (set-of (CellOf id))))
+      :ruleset memory)
+
+; Offsets refer to the same cell, for now
+(rule ((= e (Bop (PtrAdd) x y))
+       (= xcells (PointsToCells state x))
+       (= ycells (PointsToCells state y)))
+      ((set (PointsToCells state e) (set-union xcells ycells)))
+      :ruleset memory)
+
+; Move down the state path
+(rule ((= e (Bop (Load) any-ptr state))
+       (= xcells (PointsToCells state x)))
+      ((set (PointsToCells (StateOf e) x) xcells))
+      :ruleset memory)
+
+; Move down the state path
+(rule ((= e (Bop (Print) any-val state))
+       (= xcells (PointsToCells state x)))
+      ((set (PointsToCells (StateOf e) x) xcells))
+      :ruleset memory)
+
+; Move down the state path
+(rule ((= e (Top (Write) any-addr any-val state))
+       (= xcells (PointsToCells state x)))
+      ((set (PointsToCells (StateOf e) x) xcells))
+      :ruleset memory)
+
+(rule ((= e (If pred t f))
+       (= tcells (PointsToCells (Get t i) (Get t j)))
+       (= fcells (PointsToCells (Get f i) (Get f j))))
+      ((set (PointsToCells (Get e i) (Get e j)) (set-union tcells fcells)))
+      :ruleset memory)
+
+; ============================
+; Update CellHasValues
+; ============================
+
+; TODO: add loop rules
+
+; note: We could have a specialized rule for (set-len cells 1) where we overwrite instead of union
+(rule ((= e (Top (Write) ptr val state))
+       (= cells (PointsToCells state ptr))
+       (set-contains cells cell)
+       (= vals (CellHasValues state cell)))
+      ((set (CellHasValues e cell) (set-insert vals val)))
+      :ruleset memory)
+
+; ============================
+; Update PointsTo
+; ============================
+
+;                   outer, pointer
+(function PointsTo (Expr Expr)  ExprSet :merge (set-intersect old new))
+
+
+; (rule ((Write state addr data)
+       ; (PointsTo otheraddr otherdata)
+       ; (Dontalias addr otheraddr))
+      ; ((set (PointsTo (Write state addr data)) otherdata)))

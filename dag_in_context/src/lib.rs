@@ -40,6 +40,7 @@ pub fn prologue() -> String {
         include_str!("utility/subst.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("optimizations/function_inlining.egg"),
+        include_str!("optimizations/memory.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
     ]

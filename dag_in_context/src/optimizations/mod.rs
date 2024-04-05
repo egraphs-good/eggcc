@@ -4,5 +4,6 @@ mod constant_fold;
 mod function_inlining;
 pub mod is_valid;
 pub mod loop_invariant;
+mod memory;
 pub mod purity_analysis;
 mod switch_rewrites;

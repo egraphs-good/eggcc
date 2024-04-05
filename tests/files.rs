@@ -17,6 +17,14 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
                 }
                 Ok(res) => res,
             };
+            if run.test_type == RunType::CompileBrilift {
+                let executable = run.output_path.clone().unwrap_or_else(|| run.name());
+                std::process::Command::new("rm")
+                    .arg(&executable)
+                    .arg(executable + "-args")
+                    .status()
+                    .unwrap();
+            }
 
             if result.result_interpreted.is_some() {
                 if result.original_interpreted != result.result_interpreted {

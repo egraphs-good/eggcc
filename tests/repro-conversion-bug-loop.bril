@@ -1,0 +1,29 @@
+
+@main() {
+  i: int = const 6;
+
+.top:
+  c: int = const 9;
+  
+
+  b: int = const 9;
+  if_cond: bool = le i b;
+  br if_cond .then_if .else_if;
+.then_if:
+  one: int = const 1;
+  print one;
+  jmp .end_if;
+.else_if:
+  two: int = const 2;
+  print two;
+.end_if:
+
+  one: int = const 1;
+  i: int = add i one;
+
+  loop_cond: bool = lt i c;
+  br loop_cond .top .end;
+.end:
+
+  print i;
+}

@@ -282,13 +282,13 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::PtrAdd, [a, b]) => ptradd(a.clone(), b.clone()),
                     (ValueOps::Load, [a, b]) => load(a.clone(), b.clone()),
                     (ValueOps::Alloc, [a, b]) => {
-                        let bril_rs::Type::Pointer(_inner) = &ty else {
+                        let bril_rs::Type::Pointer(inner) = &ty else {
                             panic!("Alloc should return a pointer type, found {:?}", ty);
                         };
                         alloc(
                             a.clone(),
                             b.clone(),
-                            RvsdgType::Bril(ty).to_tree_type().unwrap(),
+                            RvsdgType::Bril(*inner.clone()).to_tree_type().unwrap(),
                         )
                     }
                     _ => todo!("handle {} op", op),

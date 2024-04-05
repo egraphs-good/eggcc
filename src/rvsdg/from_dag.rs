@@ -327,7 +327,7 @@ impl<'a> TreeToRvsdg<'a> {
                 self.push_basic(BasicExpr::Op(
                     ValueOps::Alloc,
                     vec![size[0], state[0]],
-                    basetype_to_bril_type(basety.clone()),
+                    basetype_to_bril_type(BaseType::PointerT(Box::new(basety.clone()))),
                 ))
             }
             Expr::Arg(_ty) => self.current_args.clone(),

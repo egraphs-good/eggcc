@@ -292,7 +292,7 @@ fn rvsdg_state_mem() {
     let mut expected = RvsdgTest::default();
     let x = expected.lit_int(1);
     let ten = expected.lit_int(10);
-    let p = expected.alloc(x, Operand::Arg(0), Type::Pointer(Box::new(Type::Int)));
+    let p = expected.alloc(x, Operand::Arg(0), Type::Int);
     let stored = expected.store(Operand::Project(0, p), ten, Operand::Project(1, p));
     let loaded = expected.load(Operand::Project(0, p), stored, Type::Int);
     let printed = expected.print(Operand::Project(0, loaded), Operand::Project(1, loaded));

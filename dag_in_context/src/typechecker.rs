@@ -262,7 +262,7 @@ impl<'a> TypeChecker<'a> {
                     panic!("Expected int type. Got {:?}", aty)
                 };
                 (
-                    tuplet!(baset.clone(), statet()),
+                    tuplet!(BaseType::PointerT(Box::new(baset.clone())), statet()),
                     RcExpr::new(Expr::Alloc(new_amount, new_state, baset.clone())),
                 )
             }

@@ -94,7 +94,7 @@
 (function Uop   (UnaryOp Expr) Expr)
 ; gets from a tuple. static index
 (function Get   (Expr i64) Expr)
-; (Alloc amount state_edge pointer_type)
+; (Alloc amount state_edge type)
 ; allocate an integer amount of memory for a particular type
 ; returns a pointer to the allocated memory
 (function Alloc (Expr Expr BaseType)      Expr)

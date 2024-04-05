@@ -285,7 +285,7 @@ impl<'a> DagTranslator<'a> {
                         let bril_rs::Type::Pointer(_inner) = &ty else {
                             panic!("Alloc should return a pointer type, found {:?}", ty);
                         };
-                        alloc(
+                        alloc_fresh(
                             a.clone(),
                             b.clone(),
                             RvsdgType::Bril(ty).to_tree_type().unwrap(),

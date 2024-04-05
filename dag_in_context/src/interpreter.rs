@@ -311,7 +311,7 @@ impl<'a> VirtualMachine<'a> {
                 vals[*i].clone()
             }
             // in_context this is type checked, so ignore type
-            Expr::Alloc(e_size, state_expr, _ty) => {
+            Expr::Alloc(_id, e_size, state_expr, _ty) => {
                 let size = self.interp_int_expr(e_size, arg);
                 let state_val = self.interpret_expr(state_expr, arg);
                 assert_eq!(state_val, Value::StateV);

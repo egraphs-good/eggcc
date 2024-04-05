@@ -121,8 +121,12 @@ pub fn not(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Not, e))
 }
 
-pub fn alloc(amount: RcExpr, state: RcExpr, value_ty: BaseType) -> RcExpr {
-    RcExpr::new(Expr::Alloc(amount, state, value_ty))
+pub fn alloc(id: i64, amount: RcExpr, state: RcExpr, value_ty: BaseType) -> RcExpr {
+    RcExpr::new(Expr::Alloc(id, amount, state, value_ty))
+}
+
+pub fn alloc_fresh(amount: RcExpr, state: RcExpr, value_ty: BaseType) -> RcExpr {
+    alloc(-1, amount, state, value_ty)
 }
 
 pub fn free(ptr: RcExpr, state: RcExpr) -> RcExpr {

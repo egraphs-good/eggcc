@@ -182,11 +182,16 @@ impl Expr {
                 let lit_index = term_dag.lit(Literal::Int(*index as i64));
                 term_dag.app("Get".into(), vec![expr, lit_index])
             }
-            Expr::Alloc(expr, state, ty) => {
+            Expr::Alloc(id, expr, state, ty) => {
+                let id = if *id == -1 {
+                    term_dag.lit(Literal::Int(*id))
+                } else {
+                    term_dag.app("i64-fresh!".into(), vec![])
+                };
                 let expr = expr.to_egglog_internal(term_dag);
                 let ty = ty.to_egglog_internal(term_dag);
                 let state = state.to_egglog_internal(term_dag);
-                term_dag.app("Alloc".into(), vec![expr, state, ty])
+                term_dag.app("Alloc".into(), vec![id, expr, state, ty])
             }
             Expr::Call(name, arg) => {
                 let arg = arg.to_egglog_internal(term_dag);

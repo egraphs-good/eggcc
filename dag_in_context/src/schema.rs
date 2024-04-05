@@ -90,7 +90,7 @@ pub enum Expr {
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
     Get(RcExpr, usize),
-    Alloc(RcExpr, RcExpr, BaseType),
+    Alloc(i64, RcExpr, RcExpr, BaseType),
     Call(String, RcExpr),
     Empty(Type),
     Single(RcExpr),

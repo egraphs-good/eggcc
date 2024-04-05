@@ -649,7 +649,7 @@ impl Run {
 
         let _ = fs::write(
             executable.clone() + "-args",
-            &self.prog_with_args.args.join(" "),
+            self.prog_with_args.args.join(" "),
         );
 
         std::process::Command::new("cc")

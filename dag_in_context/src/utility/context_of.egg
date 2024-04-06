@@ -6,15 +6,14 @@
     ((ContextOf (InContext ctx e) ctx)) :ruleset always-run)
 
 ; Error checking - each expr should only have a single context
-; (function TwoContexts (Expr Assumption Assumption) Expr)
-(rule ((ContextOf x ctx1)
-        (ContextOf x ctx2)
-        (!= ctx1 ctx2))
-    (
-        ; (union x (TwoContexts x ctx1 ctx2))
-        (panic "Equivalent expressions have nonequivalent context")
-    )
-    :ruleset error-checking)
+; TODO: this may not be true
+; (rule ((ContextOf x ctx1)
+;         (ContextOf x ctx2)
+;         (!= ctx1 ctx2))
+;     (
+;         (panic "Equivalent expressions have nonequivalent context")
+;     )
+;     :ruleset error-checking)
 
 
 (rule ((Top _op _x _y _z) (ContextOf _x ctx))

@@ -43,24 +43,26 @@ fn test_context_of_base_case() -> crate::Result {
     )
 }
 
-#[test]
-#[should_panic]
-fn test_context_of_panics_if_two() {
-    let build = "
-        (let ctx1 (InFunc \"main\"))
-        (let ctx2 (InFunc \"notmain\"))
-        (let conflict-expr (Bop (And) (InContext ctx1 (Const (Bool false) (Base (BoolT)))) (InContext ctx2 (Const (Bool true) (Base (BoolT))))))";
-    let check = "";
+// TODO: we may need this test if it's decided each expr should
+// only have one context
+// #[test]
+// #[should_panic]
+// fn test_context_of_panics_if_two() {
+//     let build = "
+//         (let ctx1 (InFunc \"main\"))
+//         (let ctx2 (InFunc \"notmain\"))
+//         (let conflict-expr (Bop (And) (InContext ctx1 (Const (Bool false) (Base (BoolT)))) (InContext ctx2 (Const (Bool true) (Base (BoolT))))))";
+//     let check = "";
 
-    let _ = crate::egglog_test(
-        build,
-        check,
-        vec![],
-        crate::ast::val_empty(),
-        crate::ast::val_empty(),
-        vec![],
-    );
-}
+//     let _ = crate::egglog_test(
+//         build,
+//         check,
+//         vec![],
+//         crate::ast::val_empty(),
+//         crate::ast::val_empty(),
+//         vec![],
+//     );
+// }
 
 // Functions should not have a context
 #[test]

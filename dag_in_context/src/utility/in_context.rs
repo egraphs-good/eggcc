@@ -57,6 +57,8 @@ fn test_simple_context_cycle() -> crate::Result {
         ),
         &format!(
             "
+(query-extract :variants 3 (AddContext (InFunc \"main\") (Full) {expr}))
+(query-extract :variants 3 {inner})
 (check (= {expr} {inner}))
 "
         ),

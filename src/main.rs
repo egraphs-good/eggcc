@@ -34,12 +34,12 @@ struct Args {
     output_path: Option<String>,
     /// Run the eggcc optimizer (only for the CompileBrilfit run mode)
     /// Defaults to true.
-    #[clap(long, default_value = "true")]
-    optimize_egglog: bool,
+    #[clap(long)]
+    optimize_egglog: Option<bool>,
     /// Run the brilift optimizer (only for the CompileBrilfit run mode)
     /// Defaults to false.
-    #[clap(long, default_value = "false")]
-    optimize_brilift: bool,
+    #[clap(long)]
+    optimize_brilift: Option<bool>,
 }
 
 fn main() {

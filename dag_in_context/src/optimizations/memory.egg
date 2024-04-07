@@ -20,8 +20,9 @@
 (rewrite (AddrOf e) (Get e 0) :ruleset always-run)
 
 (rule ((= e (Alloc id sz state ty)))
-      ((set (PointsToCells (StateOf e) (AddrOf e)) (set-of (CellOf id))))
+      ((set (PointsToCells (Get e 1) (Get e 0)) (set-of (CellOf id))))
       :ruleset memory)
+
 
 ; Offsets refer to the same cell, for now
 (rule ((= e (Bop (PtrAdd) x y))
@@ -31,21 +32,27 @@
       :ruleset memory)
 
 ; Move down the state path
+(rule ((= e (Alloc id sz state ty))
+       (= xcells (PointsToCells state x)))
+      ((set (PointsToCells (Get e 1) x) xcells))
+      :ruleset memory)
+
+; Move down the state path
 (rule ((= e (Bop (Load) any-ptr state))
        (= xcells (PointsToCells state x)))
-      ((set (PointsToCells (StateOf e) x) xcells))
+      ((set (PointsToCells (Get e 1) x) xcells))
       :ruleset memory)
 
 ; Move down the state path
 (rule ((= e (Bop (Print) any-val state))
        (= xcells (PointsToCells state x)))
-      ((set (PointsToCells (StateOf e) x) xcells))
+      ((set (PointsToCells e x) xcells))
       :ruleset memory)
 
 ; Move down the state path
 (rule ((= e (Top (Write) any-addr any-val state))
        (= xcells (PointsToCells state x)))
-      ((set (PointsToCells (StateOf e) x) xcells))
+      ((set (PointsToCells e x) xcells))
       :ruleset memory)
 
 (rule ((= e (If pred t f))
@@ -72,11 +79,35 @@
 ; Update PointsTo
 ; ============================
 
+;                    outer, pointer, pointer
+(relation Dontalias (Expr Expr Expr))
 ;                   outer, pointer
-(function PointsTo (Expr Expr)  ExprSet :merge (set-intersect old new))
+; merge function???
+(function PointsTo (Expr Expr)  Expr)
 
+(rule ((= cs1 (PointsToCells outer ptr1))
+       (= cs2 (PointsToCells outer ptr2))
+       (= 0 (set-length (set-intersect cs1 cs2))))
+      ((Dontalias outer ptr1 ptr2)) :ruleset memory)
 
-; (rule ((Write state addr data)
-       ; (PointsTo otheraddr otherdata)
-       ; (Dontalias addr otheraddr))
-      ; ((set (PointsTo (Write state addr data)) otherdata)))
+; For a write, mark the given expression as containing `data`.
+; Propagate the previous values of any expression that definitely does not alias `addr`.
+(rule ((= e (Top (Write) addr data state)))
+      ((set (PointsTo e addr) data)) :ruleset memory)
+(rule ((= e (Top (Write) addr data state))
+       (= otherdata (PointsTo state otheraddr))
+       (Dontalias state addr otheraddr))
+      ((set (PointsTo e otheraddr) otherdata)) :ruleset memory)
+
+; Special-case: no intervening effects between load and write, elide the write
+; entirely (if write isn't otherwise used).
+; TODO: This is a general problem. Loads that get removed shouldn't really
+; have a state edge, but they need one to feed into further effects.
+; (rule ((= e (Bop (Load) addr (Top (Write) addr v state))))
+;       ((union (Get e 0) v)
+;        (union (Get e 1) state)) :ruleset memory)
+
+(rule ((= e (Bop (Load) addr state))
+       (= v (PointsTo state addr)))
+      ((union (Get e 0) v)
+       (union (Get e 1) state)) :ruleset memory)

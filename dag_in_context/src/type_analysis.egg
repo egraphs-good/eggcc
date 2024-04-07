@@ -360,7 +360,7 @@
         (= lhs (Alloc _id amt state ty))
         (HasType amt (Base (IntT)))
       )
-      ((HasType lhs (TupleT (TCons ty (TCons (StateT) (TNil))))))
+      ((HasType lhs (TupleT (TCons (PointerT ty) (TCons (StateT) (TNil))))))
       :ruleset type-analysis)
 
 (rule (

@@ -74,12 +74,6 @@
 
 ;; ################################ saturation
 
-;; Outer context nodes are more specific by our semantics
-(rewrite (InContext ctx (InContext ctx expr))
-         (InContext ctx expr)
-         :ruleset context-helpers)
-
-
 ;; Adding context a second time does nothing, so union
 (rule
   ((= lhs (DoAddContext seen ctx (Full) inner))
@@ -99,8 +93,8 @@
 ;; values is the same.
 (rule ((= body_with_context
           (DoAddContext seen  (InLoop inputs outputs) (Full) outputs)) ;; a loop body with context
-       (DoAddContext    seen2 (InLoop inputs body_with_context) ;; same inputs
-                    (Full) body_with_context) ;; a loop body whose context already has context
+          (DoAddContext seen2 (InLoop inputs body_with_context) ;; same inputs
+                              (Full) body_with_context) ;; a loop body whose context already has context
        )
       ((union (InLoop inputs outputs) (InLoop inputs body_with_context)))
       :ruleset context-helpers)

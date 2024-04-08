@@ -185,7 +185,7 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
-source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
+source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
 dependencies = [
  "serde",
  "serde_json",
@@ -205,9 +205,9 @@ dependencies = [
 [[package]]
 name = "bril2json"
 version = "0.1.0"
-source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
+source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
+ "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
  "clap",
  "lalrpop",
  "lalrpop-util",
@@ -217,10 +217,10 @@ dependencies = [
 [[package]]
 name = "brilift"
 version = "0.1.0"
-source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
+source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
 dependencies = [
  "argh",
- "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
+ "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
  "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-jit",
@@ -234,9 +234,9 @@ dependencies = [
 [[package]]
 name = "brilirs"
 version = "0.1.0"
-source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
+source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
+ "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
  "bril2json",
  "clap",
  "fxhash",
@@ -574,7 +574,7 @@ checksum = "675e35c02a51bb4d4618cb4885b3839ce6d1787c97b664474d9208d074742e20"
 name = "eggcc"
 version = "0.1.0"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
+ "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
  "bril2json",
  "brilift",
  "brilirs",
@@ -1446,9 +1446,9 @@ dependencies = [
 [[package]]
 name = "rs2bril"
 version = "0.1.0"
-source = "git+https://github.com/ajpal/bril?rev=af21f1c#af21f1cf91e833522420e09302b79d23bc75fc9c"
+source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/ajpal/bril?rev=af21f1c)",
+ "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
  "clap",
  "proc-macro2",
  "syn 2.0.58",

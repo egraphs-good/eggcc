@@ -129,10 +129,53 @@ fn test_subst_arg_type_changes() -> crate::Result {
 }
 
 #[test]
+fn test_subst_identity() -> crate::Result {
+    use crate::ast::*;
+
+    let expression = function(
+        "main",
+        base(intt()),
+        base(intt()),
+        tif(ttrue(), int(1), int(1)),
+    )
+    .func_with_arg_types();
+
+    let with_context = function(
+        "main",
+        base(intt()),
+        base(intt()),
+        tif(
+            in_context(infunc("main"), ttrue()),
+            in_context(infunc("main"), int(1)),
+            in_context(infunc("main"), int(1)),
+        ),
+    )
+    .func_with_arg_types();
+
+    let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
+
+    let build = format!(
+        "
+(let substituted (Subst (InFunc \"main\")
+                        {replace_with}
+                        {expression}))"
+    );
+    let check = format!("(check (= substituted {with_context}))");
+    crate::egglog_test(
+        &build.to_string(),
+        &check.to_string(),
+        vec![expression.func_to_program()],
+        intv(5),
+        intv(1),
+        vec![],
+    )
+}
+
+#[test]
 fn test_subst_preserves_context() -> crate::Result {
     use crate::ast::*;
 
-    let outer_if = tif(ttrue(), tif(tfalse(), int(1), arg()), arg());
+    let outer_if = tif(less_than(arg(), int(5)), arg(), int(1));
     let expression = function("main", base(intt()), base(intt()), outer_if)
         .func_with_arg_types()
         .func_add_context();
@@ -143,7 +186,7 @@ fn test_subst_preserves_context() -> crate::Result {
         "main",
         base(intt()),
         base(intt()),
-        tif(ttrue(), tif(tfalse(), int(1), int(5)), int(5)),
+        tif(less_than(int(5), int(5)), int(5), int(1)),
     )
     .func_with_arg_types()
     .func_add_context();
@@ -158,9 +201,9 @@ fn test_subst_preserves_context() -> crate::Result {
     crate::egglog_test(
         &build.to_string(),
         &check.to_string(),
-        vec![expression.func_to_program(), expected.func_to_program()],
+        vec![expression.func_to_program()],
         intv(5),
-        intv(5),
+        intv(1),
         vec![],
     )
 }

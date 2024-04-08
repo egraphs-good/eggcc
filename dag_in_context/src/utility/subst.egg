@@ -105,3 +105,8 @@
 (rewrite (SubstList assum to (Nil))
          (Nil)
          :ruleset subst)
+
+;; substitute into function (convenience)
+(rewrite (Subst assum to (Function name inty outty body))
+         (Function name inty outty (Subst assum to body))
+         :ruleset subst)

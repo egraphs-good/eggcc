@@ -5,9 +5,9 @@ use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet};
 
-pub fn serialized_egraph(egraph: egglog::EGraph) -> egraph_serialize::EGraph {
+pub fn serialized_egraph(egglog_egraph: egglog::EGraph) -> egraph_serialize::EGraph {
     let config = SerializeConfig::default();
-    let mut egraph = egraph.serialize(config);
+    let mut egraph = egglog_egraph.serialize(config);
     let root_nodes = egraph
         .nodes
         .iter()
@@ -15,6 +15,15 @@ pub fn serialized_egraph(egraph: egglog::EGraph) -> egraph_serialize::EGraph {
     for (nid, _n) in root_nodes {
         egraph.root_eclasses.push(egraph.nid_to_cid(nid).clone());
     }
+    egraph.nodes.retain(|_nid, node| {
+        let Some(func) = egglog_egraph
+            .functions
+            .get(&symbol_table::GlobalSymbol::from(node.op.clone()))
+        else {
+            return true;
+        };
+        func.is_extractable()
+    });
     egraph
 }
 

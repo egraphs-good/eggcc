@@ -502,7 +502,7 @@ version = "0.1.0"
 dependencies = [
  "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=b20cc2d)",
  "dot-structures",
- "egglog",
+ "egglog 0.1.0",
  "egraph-serialize",
  "graphviz-rust 0.8.0",
  "indexmap",
@@ -511,6 +511,7 @@ dependencies = [
  "rustc-hash",
  "strum",
  "strum_macros",
+ "symbol_table",
  "thiserror",
 ]
 
@@ -580,7 +581,7 @@ dependencies = [
  "clap",
  "dag_in_context",
  "dot-structures",
- "egglog",
+ "egglog 0.1.0 (git+https://github.com/egraphs-good/egglog?rev=77ffa1f)",
  "egraph-serialize",
  "fixedbitset",
  "glob",
@@ -597,6 +598,33 @@ dependencies = [
  "serde_json",
  "smallvec",
  "syn 2.0.58",
+ "thiserror",
+]
+
+[[package]]
+name = "egglog"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "egraph-serialize",
+ "env_logger",
+ "generic_symbolic_expressions",
+ "hashbrown 0.14.3",
+ "indexmap",
+ "instant",
+ "lalrpop",
+ "lalrpop-util",
+ "lazy_static",
+ "log",
+ "num-integer",
+ "num-rational",
+ "num-traits",
+ "ordered-float",
+ "regex",
+ "rustc-hash",
+ "serde_json",
+ "smallvec",
+ "symbol_table",
  "thiserror",
 ]
 

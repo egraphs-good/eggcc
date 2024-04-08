@@ -105,10 +105,7 @@ impl Optimizer {
                 }
                 printed.join("")
             }
-            Interpretable::Executable {
-                executable,
-                in_test,
-            } => {
+            Interpretable::Executable { executable } => {
                 let output = std::process::Command::new(
                     std::path::Path::new(executable).canonicalize().unwrap(),
                 )
@@ -116,13 +113,6 @@ impl Optimizer {
                 .output()
                 .unwrap()
                 .stdout;
-
-                if *in_test {
-                    std::process::Command::new("rm")
-                        .arg(executable)
-                        .status()
-                        .unwrap();
-                }
 
                 String::from_utf8(output).unwrap()
             }

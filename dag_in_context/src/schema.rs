@@ -6,7 +6,7 @@
 use std::rc::Rc;
 use strum_macros::EnumIter;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BaseType {
     IntT,
     BoolT,
@@ -14,7 +14,7 @@ pub enum BaseType {
     StateT,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     Base(BaseType),
     /// Nested tuple types are not allowed.
@@ -90,7 +90,7 @@ pub enum Expr {
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
     Get(RcExpr, usize),
-    Alloc(RcExpr, RcExpr, BaseType),
+    Alloc(i64, RcExpr, RcExpr, BaseType),
     Call(String, RcExpr),
     Empty(Type),
     Single(RcExpr),

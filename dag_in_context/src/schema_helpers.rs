@@ -175,7 +175,7 @@ impl Expr {
             Expr::Bop(_, x, y) => vec![x.clone(), y.clone()],
             Expr::Uop(_, x) => vec![x.clone()],
             Expr::Get(x, _) => vec![x.clone()],
-            Expr::Alloc(x, y, _) => vec![x.clone(), y.clone()],
+            Expr::Alloc(_, x, y, _) => vec![x.clone(), y.clone()],
             Expr::Call(_, x) => vec![x.clone()],
             Expr::Empty(_) => vec![],
             Expr::Single(x) => vec![x.clone()],
@@ -408,6 +408,7 @@ impl Constructor {
             Constructor::Cons => vec![f(SubExpr, "hd"), f(SubListExpr, "tl")],
             Constructor::Nil => vec![],
             Constructor::Alloc => vec![
+                f(Static(Sort::I64), "id"),
                 f(SubExpr, "e"),
                 f(SubExpr, "state"),
                 f(Static(Sort::Type), "ty"),

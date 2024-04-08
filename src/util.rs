@@ -9,6 +9,7 @@ use graphviz_rust::cmd::Format;
 use graphviz_rust::exec;
 use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
+use std::fs;
 use std::io::Read;
 use std::{
     ffi::OsStr,
@@ -293,16 +294,15 @@ pub struct Run {
     pub interp: bool,
     pub profile_out: Option<PathBuf>,
     pub output_path: Option<String>,
-    pub in_test: bool,
-    pub optimize_egglog: bool,
-    pub optimize_brilift: bool,
+    pub optimize_egglog: Option<bool>,
+    pub optimize_brilift: Option<bool>,
 }
 
 /// an enum of IRs that can be interpreted
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
-    Executable { executable: String, in_test: bool },
+    Executable { executable: String },
 }
 
 /// Some sort of visualization of the result, with a name
@@ -328,10 +328,12 @@ impl Run {
     fn optimize_bril(program: &Program) -> Result<Program, EggCCError> {
         let rvsdg = Optimizer::program_to_rvsdg(program)?;
         let dag = rvsdg.to_dag_encoding();
-        let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
+        let with_context = dag.add_context();
+        let optimized = dag_in_context::optimize(&with_context).map_err(EggCCError::EggLog)?;
         let rvsdg2 = dag_to_rvsdg(&optimized);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
+
         Ok(bril)
     }
 
@@ -356,9 +358,8 @@ impl Run {
                 prog_with_args: prog.clone(),
                 profile_out: None,
                 output_path: None,
-                in_test: true,
-                optimize_egglog: false,
-                optimize_brilift: false,
+                optimize_egglog: None,
+                optimize_brilift: None,
             };
             res.push(default.clone());
             if test_type.produces_interpretable() {
@@ -370,7 +371,6 @@ impl Run {
             }
         }
 
-        // TODO: uncomment `true` once the optimizer works
         for optimize_egglog in [true, false] {
             for optimize_brilift in [true, false] {
                 for interp in [true, false] {
@@ -380,9 +380,8 @@ impl Run {
                         prog_with_args: prog.clone(),
                         profile_out: None,
                         output_path: None,
-                        in_test: true,
-                        optimize_egglog,
-                        optimize_brilift,
+                        optimize_egglog: Some(optimize_egglog),
+                        optimize_brilift: Some(optimize_brilift),
                     });
                 }
             }
@@ -395,7 +394,10 @@ impl Run {
     pub fn name(&self) -> String {
         let mut name = format!("{}-{}", self.prog_with_args.name, self.test_type);
         if self.test_type == RunType::CompileBrilift {
-            name += match (self.optimize_egglog, self.optimize_brilift) {
+            name += match (
+                self.optimize_egglog.unwrap(),
+                self.optimize_brilift.unwrap(),
+            ) {
                 (false, false) => "-opt_none",
                 (true, false) => "-opt_egglog",
                 (false, true) => "-opt_brilift",
@@ -629,7 +631,13 @@ impl Run {
     }
 
     fn run_brilift(&self) -> Result<Option<Interpretable>, EggCCError> {
-        let program = if self.optimize_egglog {
+        let optimize_egglog = self
+            .optimize_egglog
+            .expect("optimize_egglog is a required flag when running RunMode::CompileBrilift");
+        let optimize_brilift = self
+            .optimize_brilift
+            .expect("optimize_brilift is a required flag when running RunMode::CompileBrilift");
+        let program = if optimize_egglog {
             Run::optimize_bril(&self.prog_with_args.program)?
         } else {
             self.prog_with_args.program.clone()
@@ -637,11 +645,7 @@ impl Run {
 
         // Compile the input bril file
         // options are "none", "speed", and "speed_and_size"
-        let opt_level = if self.optimize_brilift {
-            "speed"
-        } else {
-            "none"
-        };
+        let opt_level = if optimize_brilift { "speed" } else { "none" };
         let object = self.name() + ".o";
         brilift::compile(&program, None, &object, opt_level, false);
 
@@ -659,6 +663,12 @@ impl Run {
             .unwrap();
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+
+        let _ = fs::write(
+            executable.clone() + "-args",
+            self.prog_with_args.args.join(" "),
+        );
+
         std::process::Command::new("cc")
             .arg(object.clone())
             .arg(library_o.clone())
@@ -674,17 +684,7 @@ impl Run {
             .status()
             .unwrap();
 
-        if self.in_test && !self.interp {
-            std::process::Command::new("rm")
-                .arg(executable.clone())
-                .status()
-                .unwrap();
-        }
-
-        Ok(Some(Interpretable::Executable {
-            executable,
-            in_test: self.in_test,
-        }))
+        Ok(Some(Interpretable::Executable { executable }))
     }
 }
 

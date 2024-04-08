@@ -81,7 +81,8 @@ impl Expr {
             )),
             Expr::Uop(op, x) => RcExpr::new(Expr::Uop(op.clone(), x.add_context(current_ctx))),
             Expr::Get(e, i) => RcExpr::new(Expr::Get(e.add_context(current_ctx), *i)),
-            Expr::Alloc(e, state, ty) => RcExpr::new(Expr::Alloc(
+            Expr::Alloc(id, e, state, ty) => RcExpr::new(Expr::Alloc(
+                *id,
                 e.add_context(current_ctx.clone()),
                 state.add_context(current_ctx),
                 ty.clone(),

@@ -104,12 +104,14 @@ fn test_subst_arg_type_changes() -> crate::Result {
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(iarg(), iarg());
     let tupletype = tuplet!(intt(), intt());
+    let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), base(intt()));
+
+
     let expected = add(
         in_context(infunc("main"), get(arg(), 0)),
         in_context(infunc("main"), get(arg(), 0)),
     )
     .with_arg_types(tupletype.clone(), base(intt()));
-    let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), base(intt()));
     let build = format!(
         "
 (let substituted (Subst (InFunc \"main\")

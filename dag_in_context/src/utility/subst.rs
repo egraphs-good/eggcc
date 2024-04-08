@@ -106,7 +106,6 @@ fn test_subst_arg_type_changes() -> crate::Result {
     let tupletype = tuplet!(intt(), intt());
     let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), base(intt()));
 
-
     let expected = add(
         in_context(infunc("main"), get(arg(), 0)),
         in_context(infunc("main"), get(arg(), 0)),
@@ -125,6 +124,43 @@ fn test_subst_arg_type_changes() -> crate::Result {
         vec![expr.to_program(base(intt()), base(intt()))],
         Value::Const(Constant::Int(2)),
         Value::Const(Constant::Int(4)),
+        vec![],
+    )
+}
+
+#[test]
+fn test_subst_preserves_context() -> crate::Result {
+    use crate::ast::*;
+
+    let outer_if = tif(ttrue(), tif(tfalse(), int(1), arg()), arg());
+    let expression = function("main", base(intt()), base(intt()), outer_if)
+        .func_with_arg_types()
+        .func_add_context();
+
+    let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
+
+    let expected = function(
+        "main",
+        base(intt()),
+        base(intt()),
+        tif(ttrue(), tif(tfalse(), int(1), int(5)), int(5)),
+    )
+    .func_with_arg_types()
+    .func_add_context();
+
+    let build = format!(
+        "
+(let substituted (Subst (InFunc \"main\")
+                        {replace_with}
+                        {expression}))"
+    );
+    let check = format!("(check (= substituted {expected}))");
+    crate::egglog_test(
+        &build.to_string(),
+        &check.to_string(),
+        vec![expression.func_to_program(), expected.func_to_program()],
+        intv(5),
+        intv(5),
         vec![],
     )
 }

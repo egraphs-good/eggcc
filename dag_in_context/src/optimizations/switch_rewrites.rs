@@ -18,7 +18,7 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
             check.to_program(emptyt(), base(intt())),
         ],
         val_empty(),
-        val_int(2),
+        intv(2),
         vec![],
     )
 }
@@ -40,7 +40,7 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
             check.to_program(emptyt(), base(intt())),
         ],
         val_empty(),
-        val_int(1),
+        intv(1),
         vec![],
     )
 }
@@ -62,7 +62,7 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
         &format!("(check (= {build} {check}))"),
         vec![build.to_program(emptyt(), base(intt()))],
         val_empty(),
-        val_int(2),
+        intv(2),
         vec![],
     )?;
 
@@ -80,7 +80,7 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
         &format!("(fail (check (= {build} {check})))"),
         vec![build.to_program(base(statet()), base(intt()))],
         statev(),
-        val_int(2),
+        intv(2),
         vec!["1".to_string()],
     )
 }

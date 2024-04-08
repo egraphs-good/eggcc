@@ -36,7 +36,7 @@ fn test_in_context_two_loops() -> crate::Result {
         ),
         vec![expr.func_to_program(), with_context.func_to_program()],
         Value::Tuple(vec![]),
-        tuplev!(val_int(4)),
+        tuplev!(intv(4)),
         vec![],
     )
 }

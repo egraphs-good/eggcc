@@ -16,50 +16,50 @@
 ;     :ruleset error-checking)
 
 
-(rule ((Top _op _x _y _z) (ContextOf _x ctx))
-    ((ContextOf (Top _op _x _y _z) ctx)) :ruleset always-run)
+(rule ((Top op x y z) (ContextOf x ctx))
+    ((ContextOf (Top op x y z) ctx)) :ruleset always-run)
 
-(rule ((Top _op _x _y _z) (ContextOf _y ctx))
-    ((ContextOf (Top _op _x _y _z) ctx)) :ruleset always-run)
+(rule ((Top op x y z) (ContextOf y ctx))
+    ((ContextOf (Top op x y z) ctx)) :ruleset always-run)
 
-(rule ((Top _op _x _y _z) (ContextOf _z ctx))
-    ((ContextOf (Top _op _x _y _z) ctx)) :ruleset always-run)
+(rule ((Top op x y z) (ContextOf z ctx))
+    ((ContextOf (Top op x y z) ctx)) :ruleset always-run)
 
-(rule ((Bop _op _x _y) (ContextOf _x ctx))
-    ((ContextOf (Bop _op _x _y) ctx)) :ruleset always-run)
+(rule ((Bop op x y) (ContextOf x ctx))
+    ((ContextOf (Bop op x y) ctx)) :ruleset always-run)
 
-(rule ((Bop _op _x _y) (ContextOf _y ctx))
-    ((ContextOf (Bop _op _x _y) ctx)) :ruleset always-run)
+(rule ((Bop op x y) (ContextOf y ctx))
+    ((ContextOf (Bop op x y) ctx)) :ruleset always-run)
 
-(rule ((Uop _op _x) (ContextOf _x ctx))
-    ((ContextOf (Uop _op _x) ctx)) :ruleset always-run)
+(rule ((Uop op x) (ContextOf x ctx))
+    ((ContextOf (Uop op x) ctx)) :ruleset always-run)
 
-(rule ((Get _tup _i) (ContextOf _tup ctx))
-    ((ContextOf (Get _tup _i) ctx)) :ruleset always-run)
+(rule ((Get tup i) (ContextOf tup ctx))
+    ((ContextOf (Get tup i) ctx)) :ruleset always-run)
 
-(rule ((Concat _order _x _y) (ContextOf _x ctx))
-    ((ContextOf (Concat _order _x _y) ctx)) :ruleset always-run)
+(rule ((Concat order x y) (ContextOf x ctx))
+    ((ContextOf (Concat order x y) ctx)) :ruleset always-run)
 
-(rule ((Concat _order _x _y) (ContextOf _y ctx))
-    ((ContextOf (Concat _order _x _y) ctx)) :ruleset always-run)
+(rule ((Concat order x y) (ContextOf y ctx))
+    ((ContextOf (Concat order x y) ctx)) :ruleset always-run)
 
-(rule ((Single _x) (ContextOf _x ctx))
-    ((ContextOf (Single _x) ctx)) :ruleset always-run)
+(rule ((Single x) (ContextOf x ctx))
+    ((ContextOf (Single x) ctx)) :ruleset always-run)
 
-(rule ((Switch _pred _branches) (ContextOf _pred ctx))
-    ((ContextOf (Switch _pred _branches) ctx)) :ruleset always-run)
+(rule ((Switch pred branches) (ContextOf pred ctx))
+    ((ContextOf (Switch pred branches) ctx)) :ruleset always-run)
 
-(rule ((If _pred _then _else) (ContextOf _pred ctx))
-    ((ContextOf (If _pred _then _else) ctx)) :ruleset always-run) 
+(rule ((If pred then else) (ContextOf pred ctx))
+    ((ContextOf (If pred then else) ctx)) :ruleset always-run) 
 
-(rule ((DoWhile _in _pred-and-output) (ContextOf _in ctx))
-    ((ContextOf (DoWhile _in _pred-and-output) ctx)) :ruleset always-run)
+(rule ((DoWhile in pred-and-output) (ContextOf in ctx))
+    ((ContextOf (DoWhile in pred-and-output) ctx)) :ruleset always-run)
 
-(rule ((Call _func _arg) (ContextOf _arg ctx))
-    ((ContextOf (Call _func _arg) ctx)) :ruleset always-run)
+(rule ((Call func arg) (ContextOf arg ctx))
+    ((ContextOf (Call func arg) ctx)) :ruleset always-run)
 
-(rule ((Alloc _e _state _ty) (ContextOf _e ctx))
-    ((ContextOf (Alloc _e _state _ty) ctx)) :ruleset always-run)
+(rule ((Alloc e state ty) (ContextOf e ctx))
+    ((ContextOf (Alloc e state ty) ctx)) :ruleset always-run)
 
-(rule ((Alloc _e _state _ty) (ContextOf _state ctx))
-    ((ContextOf (Alloc _e _state _ty) ctx)) :ruleset always-run)
+(rule ((Alloc e state ty) (ContextOf state ctx))
+    ((ContextOf (Alloc e state ty) ctx)) :ruleset always-run)

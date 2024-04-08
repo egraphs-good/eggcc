@@ -2,10 +2,12 @@
 fn test_context_of() -> crate::Result {
     use crate::ast::*;
 
-    // fn main(x): if x > 3 then x else 4
-    let pred = eq(arg(), int(5)).with_arg_types(base(intt()), base(boolt()));
-    let body = tif(pred.clone(), arg(), int(4)).with_arg_types(base(intt()), base(intt()));
-    let build = function("main", base(intt()), base(intt()), body.clone()).func_add_context();
+    // fn main(x): if x = 5 then x else 4
+    let pred = eq(arg(), int(5));
+    let body = tif(pred, arg(), int(4)).with_arg_types(base(intt()), base(intt()));
+    let build = function("main", base(intt()), base(intt()), body.clone())
+        .func_with_arg_types()
+        .func_add_context();
 
     // If statement should have the context of its predicate
     let check = "
@@ -19,7 +21,6 @@ fn test_context_of() -> crate::Result {
         (check (ContextOf if pred-ctx))
         ".to_string();
 
-    // Don't pass in any programs, just want build/check to be checked
     crate::egglog_test(
         &format!("(let build {build})"),
         &check,
@@ -76,11 +77,15 @@ fn test_context_of_no_func_context() -> crate::Result {
         "main",
         emptyt(),
         base(intt()),
-        dowhile(
-            single(int_ty(5, base(intt()))),
-            add(get(arg_ty(base(intt())), 0), int_ty(4, base(intt()))),
+        get(
+            dowhile(
+                single(int(5)),
+                concat_seq(single(tfalse()), single(add(get(arg(), 0), int(4)))),
+            ),
+            0,
         ),
     )
+    .func_with_arg_types()
     .func_add_context();
 
     let check = format!("(fail (check (ContextOf {} ctx)))", build.clone());
@@ -88,9 +93,9 @@ fn test_context_of_no_func_context() -> crate::Result {
     crate::egglog_test(
         &build.to_string(),
         &check,
-        vec![],
+        vec![build.to_program(base(intt()), base(intt()))],
         val_empty(),
-        val_empty(),
+        val_int(9),
         vec![],
     )
 }

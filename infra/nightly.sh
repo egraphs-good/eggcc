@@ -46,7 +46,11 @@ RUST_TEST_THREADS=1 cargo test --release -- --nocapture > log.txt
 cp log.txt "$NIGHTLY_DIR/output"
 
 # Run profiler.
-$MYDIR/profile.sh
+# create temporary directory structure necessary for bench runs
+mkdir -p ./tmp/bench
+./infra/profile.py
+
+rm -r ./tmp/
 
 popd
 

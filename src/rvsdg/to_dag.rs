@@ -25,6 +25,7 @@ use super::RvsdgType;
 impl RvsdgProgram {
     /// Converts an RVSDG program to the dag encoding.
     /// Common subexpressions are shared by the same Rc<Expr> in the dag encoding.
+    /// This invariant is mainted by restore_sharing_invariant.
     pub fn to_dag_encoding(&self) -> TreeProgram {
         let last_function = self.functions.last().unwrap();
         let rest_functions = self.functions.iter().take(self.functions.len() - 1);
@@ -34,6 +35,7 @@ impl RvsdgProgram {
                 .map(|f| f.to_dag_encoding())
                 .collect::<Vec<_>>(),
         )
+        .restore_sharing_invariant()
     }
 }
 
@@ -85,6 +87,8 @@ struct DagTranslator<'a> {
     stored_node: HashMap<Id, StoredValue>,
     /// A reference to the nodes in the RVSDG.
     nodes: &'a [RvsdgBody],
+    /// The next id to assign to an alloc.
+    next_alloc_id: i64,
 }
 
 impl<'a> DagTranslator<'a> {
@@ -116,6 +120,7 @@ impl<'a> DagTranslator<'a> {
             stored_node: HashMap::new(),
             argument_values,
             nodes,
+            next_alloc_id: 0,
         }
     }
 
@@ -277,7 +282,7 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::Eq, [a, b]) => eq(a.clone(), b.clone()),
                     (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
                     (ValueOps::Ge, [a, b]) => greater_eq(a.clone(), b.clone()),
-                    (ValueOps::Le, [a, b]) => less_eq(b.clone(), a.clone()),
+                    (ValueOps::Le, [a, b]) => less_eq(a.clone(), b.clone()),
                     (ValueOps::Not, [a]) => not(a.clone()),
                     (ValueOps::PtrAdd, [a, b]) => ptradd(a.clone(), b.clone()),
                     (ValueOps::Load, [a, b]) => load(a.clone(), b.clone()),
@@ -285,7 +290,10 @@ impl<'a> DagTranslator<'a> {
                         let bril_rs::Type::Pointer(_inner) = &ty else {
                             panic!("Alloc should return a pointer type, found {:?}", ty);
                         };
+                        let alloc_id = self.next_alloc_id;
+                        self.next_alloc_id += 1;
                         alloc(
+                            alloc_id,
                             a.clone(),
                             b.clone(),
                             RvsdgType::Bril(ty).to_tree_type().unwrap(),

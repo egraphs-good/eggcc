@@ -79,7 +79,7 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
         &format!("{build}"),
         &format!("(fail (check (= {build} {check})))"),
         vec![build.to_program(base(statet()), base(intt()))],
-        val_state(),
+        statev(),
         val_int(2),
         vec!["1".to_string()],
     )

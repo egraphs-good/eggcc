@@ -33,11 +33,13 @@ struct Args {
     #[clap(short)]
     output_path: Option<String>,
     /// Run the eggcc optimizer (only for the CompileBrilfit run mode)
+    /// Defaults to true.
     #[clap(long)]
-    optimize_egglog: bool,
+    optimize_egglog: Option<bool>,
     /// Run the brilift optimizer (only for the CompileBrilfit run mode)
+    /// Defaults to false.
     #[clap(long)]
-    optimize_brilift: bool,
+    optimize_brilift: Option<bool>,
 }
 
 fn main() {
@@ -71,7 +73,6 @@ fn main() {
         interp: args.interp,
         profile_out: args.profile_out,
         output_path: args.output_path,
-        in_test: false,
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
     };

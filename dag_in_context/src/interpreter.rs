@@ -120,7 +120,7 @@ pub struct BrilState {
 /// returned by the program and the print log.
 /// The interpreter relies on the invariant that common subexpressions are
 /// shared as the same Rc pointer. Otherwise, effects may be executed multiple times.
-pub fn interpret_tree_prog(prog: &TreeProgram, arg: &Value) -> (Value, Vec<String>) {
+pub fn interpret_dag_prog(prog: &TreeProgram, arg: &Value) -> (Value, Vec<String>) {
     let mut vm = VirtualMachine {
         program: prog,
         next_addr: 0,
@@ -311,7 +311,7 @@ impl<'a> VirtualMachine<'a> {
                 vals[*i].clone()
             }
             // in_context this is type checked, so ignore type
-            Expr::Alloc(e_size, state_expr, _ty) => {
+            Expr::Alloc(_id, e_size, state_expr, _ty) => {
                 let size = self.interp_int_expr(e_size, arg);
                 let state_val = self.interpret_expr(state_expr, arg);
                 assert_eq!(state_val, Value::StateV);
@@ -409,7 +409,7 @@ fn test_interpret_calls() {
         ),
         function("func2", base(intt()), base(intt()), add(arg(), int(1))),
     );
-    let res = interpret_tree_prog(&expr, &Const(Constant::Int(5))).0;
+    let res = interpret_dag_prog(&expr, &Const(Constant::Int(5))).0;
     assert_eq!(res, Const(Constant::Int(10)));
 }
 
@@ -429,7 +429,7 @@ fn test_interpret_recursive() {
             )
         )
     ),);
-    let res = interpret_tree_prog(&expr, &Const(Constant::Int(10))).0;
+    let res = interpret_dag_prog(&expr, &Const(Constant::Int(10))).0;
     assert_eq!(res, Const(Constant::Int(55)));
 }
 
@@ -448,7 +448,7 @@ fn test_interpreter() {
         ),
         0,
     );
-    let res = interpret_expr(&expr, &val_state());
+    let res = interpret_expr(&expr, &statev());
     assert_eq!(res.value, Const(Constant::Int(11)));
     assert_eq!(
         res.log,

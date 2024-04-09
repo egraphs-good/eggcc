@@ -5,8 +5,12 @@ use egglog::{
     Term, TermDag,
 };
 
-use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TernaryOp, TreeProgram, Type, UnaryOp,
+use crate::{
+    from_egglog::program_from_egglog,
+    schema::{
+        Assumption, BaseType, BinaryOp, Constant, Expr, Order, TernaryOp, TreeProgram, Type,
+        UnaryOp,
+    },
 };
 
 pub(crate) struct TreeToEgglog {
@@ -182,11 +186,12 @@ impl Expr {
                 let lit_index = term_dag.lit(Literal::Int(*index as i64));
                 term_dag.app("Get".into(), vec![expr, lit_index])
             }
-            Expr::Alloc(expr, state, ty) => {
+            Expr::Alloc(id, expr, state, ty) => {
+                let id = term_dag.lit(Literal::Int(*id));
                 let expr = expr.to_egglog_internal(term_dag);
                 let ty = ty.to_egglog_internal(term_dag);
                 let state = state.to_egglog_internal(term_dag);
-                term_dag.app("Alloc".into(), vec![expr, state, ty])
+                term_dag.app("Alloc".into(), vec![id, expr, state, ty])
             }
             Expr::Call(name, arg) => {
                 let arg = arg.to_egglog_internal(term_dag);
@@ -253,6 +258,14 @@ impl Expr {
 }
 
 impl TreeProgram {
+    /// DAG programs should share common subexpressions whenever possible.
+    /// Otherwise, effects may happen multiple times.
+    /// This function restores this invariant by converting to a Term and back again.
+    pub fn restore_sharing_invariant(&self) -> TreeProgram {
+        let (term, termdag) = self.to_egglog();
+        program_from_egglog(term, termdag)
+    }
+
     /// Translates an the program to an egglog term
     /// encoded with respect to `schema.egg`.
     /// Shares common subexpressions.

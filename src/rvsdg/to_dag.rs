@@ -79,10 +79,6 @@ impl StoredValue {
 struct DagTranslator<'a> {
     /// The values of the RVSDG arguments to this region.
     argument_values: Vec<StoredValue>,
-    /// The number of tree arguments in the current environment.
-    /// This is not equal to the length of `argument_values` because it refers to
-    /// translated tree arguments, not the original RVSDG arguments.
-    current_num_let_bound: usize,
     /// `stored_node` is a cache of already translated rvsdg nodes.
     stored_node: HashMap<Id, StoredValue>,
     /// A reference to the nodes in the RVSDG.
@@ -110,13 +106,8 @@ impl<'a> DagTranslator<'a> {
 
     /// Make a new translator for a region with
     /// num_args and the given nodes.
-    fn new(
-        nodes: &'a [RvsdgBody],
-        argument_values: Vec<StoredValue>,
-        args_let_bound: usize,
-    ) -> DagTranslator {
+    fn new(nodes: &'a [RvsdgBody], argument_values: Vec<StoredValue>) -> DagTranslator {
         DagTranslator {
-            current_num_let_bound: args_let_bound,
             stored_node: HashMap::new(),
             argument_values,
             nodes,
@@ -134,10 +125,9 @@ impl<'a> DagTranslator<'a> {
     fn translate_subregion(
         &mut self,
         argument_values: Vec<StoredValue>,
-        num_let_bound: usize,
         operands: impl Iterator<Item = Operand> + DoubleEndedIterator,
     ) -> RcExpr {
-        let mut translator = DagTranslator::new(self.nodes, argument_values, num_let_bound);
+        let mut translator = DagTranslator::new(self.nodes, argument_values);
         let resulting_exprs = operands.map(|operand| {
             let res = translator.translate_operand(operand);
             res.to_single_expr()
@@ -190,16 +180,10 @@ impl<'a> DagTranslator<'a> {
                         input_values.push(self.translate_operand(*input));
                     }
                     let pred = self.translate_operand(*pred).to_single_expr();
-                    let then_translated = self.translate_subregion(
-                        input_values.clone(),
-                        self.current_num_let_bound,
-                        then_branch.iter().copied(),
-                    );
-                    let else_translated = self.translate_subregion(
-                        input_values.clone(),
-                        self.current_num_let_bound,
-                        else_branch.iter().copied(),
-                    );
+                    let then_translated =
+                        self.translate_subregion(input_values.clone(), then_branch.iter().copied());
+                    let else_translated =
+                        self.translate_subregion(input_values.clone(), else_branch.iter().copied());
 
                     let expr = tif(pred, then_translated, else_translated);
                     self.cache_tuple_res(expr, id)
@@ -220,7 +204,6 @@ impl<'a> DagTranslator<'a> {
                     for output_vec in outputs.iter().enumerate() {
                         let translated = self.translate_subregion(
                             inputs_values.clone(),
-                            self.current_num_let_bound,
                             output_vec.1.iter().copied(),
                         );
                         branches.push(translated);
@@ -249,7 +232,6 @@ impl<'a> DagTranslator<'a> {
                     // We then put the whole loop in a let binding and move on.
                     let loop_translated = self.translate_subregion(
                         inner_inputs.collect(),
-                        input_index,
                         iter::once(pred).chain(outputs.iter()).copied(),
                     );
 
@@ -379,8 +361,7 @@ impl RvsdgFunction {
             .enumerate()
             .map(|(i, _ty)| StoredValue::Arg(i))
             .collect();
-        let mut translator =
-            DagTranslator::new(&self.nodes, argument_values.clone(), argument_values.len());
+        let mut translator = DagTranslator::new(&self.nodes, argument_values.clone());
         let translated_results = self
             .results
             .iter()

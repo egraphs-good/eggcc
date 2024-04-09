@@ -75,6 +75,7 @@ fn main() {
         output_path: args.output_path,
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
+        optimize_brillvm: args.optimize_brilift,
     };
 
     let result = match run.run() {

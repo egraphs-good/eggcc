@@ -292,6 +292,7 @@ pub struct Run {
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
     pub optimize_brilift: Option<bool>,
+    pub optimize_brillvm: Option<bool>,
 }
 
 /// an enum of IRs that can be interpreted
@@ -347,7 +348,6 @@ impl Run {
             RunType::DagRoundTrip,
             RunType::Optimize,
             RunType::CheckTreeIdentical,
-            RunType::CompileBrilLLVM,
         ] {
             let default = Run {
                 test_type,
@@ -357,6 +357,7 @@ impl Run {
                 output_path: None,
                 optimize_egglog: None,
                 optimize_brilift: None,
+                optimize_brillvm: None,
             };
             res.push(default.clone());
             if test_type.produces_interpretable() {
@@ -379,6 +380,24 @@ impl Run {
                         output_path: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: Some(optimize_brilift),
+                        optimize_brillvm: None,
+                    });
+                }
+            }
+        }
+
+        for optimize_egglog in [true, false] {
+            for optimize_brillvm in [true, false] {
+                for interp in [true, false] {
+                    res.push(Run {
+                        test_type: RunType::CompileBrilLLVM,
+                        interp,
+                        prog_with_args: prog.clone(),
+                        profile_out: None,
+                        output_path: None,
+                        optimize_egglog: Some(optimize_egglog),
+                        optimize_brilift: None,
+                        optimize_brillvm: Some(optimize_brillvm),
                     });
                 }
             }
@@ -398,6 +417,17 @@ impl Run {
                 (false, false) => "-opt_none",
                 (true, false) => "-opt_egglog",
                 (false, true) => "-opt_brilift",
+                (true, true) => "-opt_both",
+            };
+        }
+        if self.test_type == RunType::CompileBrilLLVM {
+            name += match (
+                self.optimize_egglog.unwrap(),
+                self.optimize_brillvm.unwrap(),
+            ) {
+                (false, false) => "-opt_none",
+                (true, false) => "-opt_egglog",
+                (false, true) => "-opt_brillvm",
                 (true, true) => "-opt_both",
             };
         }
@@ -681,8 +711,8 @@ impl Run {
         let optimize_egglog = self
             .optimize_egglog
             .expect("optimize_egglog is a required flag when running RunMode::CompileBrilift");
-        let optimize_brilift = self
-            .optimize_brilift
+        let optimize_brillvm = self
+            .optimize_brillvm
             .expect("optimize_brilift is a required flag when running RunMode::CompileBrilift");
         let program = if optimize_egglog {
             Run::optimize_bril(&self.prog_with_args.program)?
@@ -708,16 +738,16 @@ impl Run {
             .expect("unable to write to temp file");
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
-
+        let opt_level = if optimize_brillvm { "-O3" } else { "-O1" };
         std::process::Command::new("clang")
             .arg(file_path.clone())
+            .arg(opt_level)
             .arg("-o")
             .arg(executable.clone())
             .status()
             .unwrap();
 
-
-        Ok(Some(Interpretable::Executable{executable}))
+        Ok(Some(Interpretable::Executable { executable }))
     }
 }
 

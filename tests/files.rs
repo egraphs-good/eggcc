@@ -26,6 +26,14 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
                     .unwrap();
             }
 
+            if run.test_type == RunType::CompileBrilLLVM {
+                let executable = run.output_path.clone().unwrap_or_else(|| run.name());
+                std::process::Command::new("rm")
+                    .arg(&executable)
+                    .status()
+                    .unwrap();
+            }
+
             if result.result_interpreted.is_some() {
                 if result.original_interpreted != result.result_interpreted {
                     panic!(

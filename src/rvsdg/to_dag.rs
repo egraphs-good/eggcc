@@ -452,15 +452,12 @@ impl RvsdgFunction {
 
     /// Translates an RVSDG function to the
     /// tree encoding.
-    /// It generates one let binding per
-    /// node in the RVSDG, adding the value
-    /// for that node to the end of the argument
-    /// using the `concat` constructor.
-    /// In the inner-most scope, the value of
-    /// all nodes is available.
     pub fn to_dag_encoding(&self, add_context: bool) -> RcExpr {
+        // Get the expression translated without context nodes.
         let (without_ctx, expr) = self.to_dag_encoding_helper(None, None);
         if add_context {
+            // Now add context
+            // InLoop contexts will use the version without context nodes
             let (_with_ctx, expr_with_ctx) = self.to_dag_encoding_helper(
                 Some(Assumption::InFunc(self.name.clone())),
                 Some(Box::new(without_ctx)),

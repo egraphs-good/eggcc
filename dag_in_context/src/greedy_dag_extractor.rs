@@ -5,7 +5,9 @@ use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet};
 
-pub fn serialized_egraph(egglog_egraph: egglog::EGraph) -> egraph_serialize::EGraph {
+pub fn serialized_egraph(
+    egglog_egraph: egglog::EGraph,
+) -> (egraph_serialize::EGraph, HashSet<String>) {
     let config = SerializeConfig::default();
     let mut egraph = egglog_egraph.serialize(config);
     let root_nodes = egraph
@@ -15,16 +17,18 @@ pub fn serialized_egraph(egglog_egraph: egglog::EGraph) -> egraph_serialize::EGr
     for (nid, _n) in root_nodes {
         egraph.root_eclasses.push(egraph.nid_to_cid(nid).clone());
     }
-    egraph.nodes.retain(|_nid, node| {
-        let Some(func) = egglog_egraph
-            .functions
-            .get(&symbol_table::GlobalSymbol::from(node.op.clone()))
-        else {
-            return true;
-        };
-        func.is_extractable()
-    });
-    egraph
+    let unextractables = egglog_egraph
+        .functions
+        .iter()
+        .filter_map(|(name, func)| {
+            if func.is_extractable() {
+                None
+            } else {
+                Some(name.to_string())
+            }
+        })
+        .collect();
+    (egraph, unextractables)
 }
 
 type Cost = NotNan<f64>;
@@ -178,6 +182,10 @@ fn calculate_cost_set(
 
 pub fn extract(
     egraph: &egraph_serialize::EGraph,
+    // TODO: once our egglog program uses `subsume` actions,
+    // unextractables will be more complex, as right now
+    // it only checks unextractable at the function level.
+    unextractables: HashSet<String>,
     termdag: &mut TermDag,
     cm: &CostModel,
 ) -> HashMap<ClassId, CostSet> {
@@ -192,6 +200,9 @@ pub fn extract(
     while let Some(node_id) = worklist.pop() {
         let class_id = n2c(&node_id);
         let node = &egraph[&node_id];
+        if unextractables.contains(&node.op) {
+            continue;
+        }
         if node.children.iter().all(|c| costs.contains_key(n2c(c))) {
             let lookup = costs.get(class_id);
             let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();

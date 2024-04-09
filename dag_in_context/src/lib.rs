@@ -103,9 +103,14 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&program)?;
 
-    let serialized = serialized_egraph(egraph);
+    let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
-    let results = extract(&serialized, &mut termdag, &CostModel::simple_cost_model());
+    let results = extract(
+        &serialized,
+        unextractables,
+        &mut termdag,
+        &CostModel::simple_cost_model(),
+    );
     assert_eq!(results.len(), 1);
     let (_cid, costset) = results.into_iter().next().unwrap();
     let mut from_egglog = FromEgglog {

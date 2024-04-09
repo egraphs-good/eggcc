@@ -184,6 +184,9 @@ pub enum RunType {
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
+    /// Convert to RVSDG and back to Bril again
+    /// Then convert to an executable using brilift, without doing any optimization.
+    RvsdgRoundTripToExecutable,
     /// Convert to Tree Encoding and back to Bril again,
     /// outputting the bril program.
     DagRoundTrip,
@@ -215,22 +218,23 @@ impl RunType {
     /// that can be interpreted.
     pub fn produces_interpretable(&self) -> bool {
         match self {
-            RunType::Parse => true,
-            RunType::Optimize => true,
-            RunType::RvsdgConversion => false,
-            RunType::RvsdgRoundTrip => true,
-            RunType::DagToRvsdg => false,
-            RunType::OptimizedRvsdg => false,
-            RunType::DagRoundTrip => true,
-            RunType::ToCfg => true,
-            RunType::CfgRoundTrip => true,
-            RunType::OptimizeDirectJumps => true,
-            RunType::RvsdgToCfg => true,
-            RunType::DagConversion => true,
-            RunType::DagOptimize => true,
-            RunType::Egglog => true,
-            RunType::CheckTreeIdentical => false,
-            RunType::CompileBrilift => true,
+            RunType::Parse
+            | RunType::Optimize
+            | RunType::RvsdgRoundTrip
+            | RunType::RvsdgRoundTripToExecutable
+            | RunType::DagRoundTrip
+            | RunType::ToCfg
+            | RunType::CfgRoundTrip
+            | RunType::OptimizeDirectJumps
+            | RunType::RvsdgToCfg
+            | RunType::DagConversion
+            | RunType::DagOptimize
+            | RunType::Egglog
+            | RunType::CompileBrilift => true,
+            RunType::RvsdgConversion
+            | RunType::DagToRvsdg
+            | RunType::OptimizedRvsdg
+            | RunType::CheckTreeIdentical => false,
         }
     }
 }
@@ -449,6 +453,13 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
+            RunType::RvsdgRoundTripToExecutable => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let cfg = rvsdg.to_cfg();
+                let bril = cfg.to_bril();
+                let interpretable = self.run_brilift(bril, false, false)?;
+                (vec![], interpretable)
+            }
             RunType::DagToRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding();
@@ -589,7 +600,17 @@ impl Run {
                 )
             }
             RunType::CompileBrilift => {
-                let interpretable = self.run_brilift()?;
+                let optimize_egglog = self.optimize_egglog.expect(
+                    "optimize_egglog is a required flag when running RunMode::CompileBrilift",
+                );
+                let optimize_brilift = self.optimize_brilift.expect(
+                    "optimize_brilift is a required flag when running RunMode::CompileBrilift",
+                );
+                let interpretable = self.run_brilift(
+                    self.prog_with_args.program.clone(),
+                    optimize_egglog,
+                    optimize_brilift,
+                )?;
                 (vec![], interpretable)
             }
         };
@@ -617,17 +638,16 @@ impl Run {
         })
     }
 
-    fn run_brilift(&self) -> Result<Option<Interpretable>, EggCCError> {
-        let optimize_egglog = self
-            .optimize_egglog
-            .expect("optimize_egglog is a required flag when running RunMode::CompileBrilift");
-        let optimize_brilift = self
-            .optimize_brilift
-            .expect("optimize_brilift is a required flag when running RunMode::CompileBrilift");
+    fn run_brilift(
+        &self,
+        bril: Program,
+        optimize_egglog: bool,
+        optimize_brilift: bool,
+    ) -> Result<Option<Interpretable>, EggCCError> {
         let program = if optimize_egglog {
-            Run::optimize_bril(&self.prog_with_args.program)?
+            Run::optimize_bril(&bril)?
         } else {
-            self.prog_with_args.program.clone()
+            bril
         };
 
         // Compile the input bril file

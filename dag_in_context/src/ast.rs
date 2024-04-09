@@ -1,8 +1,8 @@
 use crate::{
     interpreter::Value,
     schema::{
-        Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram,
-        Type, UnaryOp,
+        Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
+        UnaryOp,
     },
 };
 
@@ -199,20 +199,19 @@ pub fn single(e: RcExpr) -> RcExpr {
 }
 
 pub fn cons_par(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Parallel, single(l), r))
+    RcExpr::new(Expr::Concat(single(l), r))
 }
 
 pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Parallel, r, single(l)))
+    RcExpr::new(Expr::Concat(r, single(l)))
 }
 
 pub fn concat_par(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Parallel, tuple, tuple2))
+    RcExpr::new(Expr::Concat(tuple, tuple2))
 }
 
-/// Create a tuple where each element can be executed in any order.
-/// in any order.
-/// e.g. `parallel!(e1, e2, e3)` becomes `Concat(Order::Parallel, Concat(Order::Parallel, e1, e2), e3)`
+/// Create a tuple of elements.
+/// e.g. `parallel!(e1, e2, e3)` becomes `Concat(Single(e1), Concat(Single(e2), Single(e3)))`
 #[macro_export]
 macro_rules! parallel {
     ($($x:expr),* $(,)?) => ($crate::ast::parallel_vec(vec![$($x),*]))

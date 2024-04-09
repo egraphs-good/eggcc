@@ -68,15 +68,15 @@ fn test_tuple_ith() -> crate::Result {
     let emptyt = emptyt();
     let build = format!(
         "
-    (let tup (Concat par 
-                  (Concat par (Single (Const (Int 0) {emptyt})) (Single (Const (Int 1) {emptyt})))
-                  (Concat par (Single (Const (Int 2) {emptyt})) (Single (Const (Int 3) {emptyt})))))
+    (let tup (Concat
+                  (Concat (Single (Const (Int 0) {emptyt})) (Single (Const (Int 1) {emptyt})))
+                  (Concat (Single (Const (Int 2) {emptyt})) (Single (Const (Int 3) {emptyt})))))
     
     ;; with print
-    (let tup2 (Concat par
-                (Concat par 
+    (let tup2 (Concat 
+                (Concat 
                     (Single (Bop (Print) (Const (Int 0) {emptyt}) (Arg (Base (StateT)))))
-                    (Concat par (Single (Const (Int 1) {emptyt})) 
+                    (Concat (Single (Const (Int 1) {emptyt})) 
                                 (Single (Const (Int 2) {emptyt}))))
                 (Single (Const (Int 3) {emptyt}))))
     "

@@ -152,8 +152,8 @@
 (rewrite (DoAddContext seen ctx scope (Single c1))
          (Single (DoAddContext seen ctx scope c1))
          :ruleset context-helpers)
-(rewrite (DoAddContext seen ctx scope (Concat order c1 c2))
-         (Concat order
+(rewrite (DoAddContext seen ctx scope (Concat c1 c2))
+         (Concat
            (DoAddContext seen ctx scope c1)
            (DoAddContext seen ctx scope c2))
          :ruleset context-helpers)

@@ -76,11 +76,11 @@
        (HasArgType e ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (Concat _ e1 e2))
+(rule ((= lhs (Concat e1 e2))
        (HasArgType e1 ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (Concat _ e1 e2))
+(rule ((= lhs (Concat e1 e2))
        (HasArgType e2 ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
@@ -405,7 +405,7 @@
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Concat ord e1 e2))
+        (= lhs (Concat e1 e2))
         (HasType e1 (TupleT tylist1))
         (HasType e2 (TupleT tylist2))
       )

@@ -33,8 +33,8 @@
          (Single (InContext ctx expr))
          :ruleset context-prop)
 
-(rewrite (InContext ctx (Concat order e1 e2))
-         (Concat order (InContext ctx e1) (InContext ctx e2))
+(rewrite (InContext ctx (Concat e1 e2))
+         (Concat (InContext ctx e1) (InContext ctx e2))
          :ruleset context-prop)
 
 (rewrite (InContext ctx (If cond then else))

@@ -6,8 +6,7 @@ use std::{collections::HashMap, rc::Rc};
 use egglog::{ast::Literal, match_term_app, Term};
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type,
-    UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp,
 };
 
 pub struct FromEgglog {
@@ -141,14 +140,6 @@ impl FromEgglog {
         })
     }
 
-    fn order_from_egglog(&mut self, order: Term) -> Order {
-        match_term_app!(order.clone();
-        {
-          ("Parallel", []) => Order::Parallel,
-          _ => panic!("Invalid order: {:?}", order),
-        })
-    }
-
     fn top_from_egglog(&mut self, top: Term) -> TernaryOp {
         match_term_app!(top.clone();
         {
@@ -268,12 +259,10 @@ impl FromEgglog {
             let expr = self.termdag.get(*expr);
             Rc::new(Expr::Single(self.expr_from_egglog(expr)))
           }
-          ("Concat", [order, lhs, rhs]) => {
-            let order = self.termdag.get(*order);
+          ("Concat", [lhs, rhs]) => {
             let lhs = self.termdag.get(*lhs);
             let rhs = self.termdag.get(*rhs);
             Rc::new(Expr::Concat(
-              self.order_from_egglog(order),
               self.expr_from_egglog(lhs),
               self.expr_from_egglog(rhs),
             ))

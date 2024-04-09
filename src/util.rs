@@ -671,7 +671,7 @@ impl Run {
             //
             // This is either a bug, or a difference in the way symbols are
             // handled, or a bit of both (chatter online differs), but for now,
-            // we just rety with the ld_classic flag.
+            // we just retry with the ld_classic flag.
             if !cmd
                 .stderr(Stdio::null())
                 .status()

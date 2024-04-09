@@ -233,7 +233,10 @@ where
 
 /// When ctx is Some and es is empty, returns an empty expression wrapped
 /// in the given context. This allows us to ensure all leaf nodes have context.
-pub fn parallel_vec_with_ctx<I: IntoIterator<Item = RcExpr>(es: I, ctx: Option<Assumption>) -> RcExpr
+pub fn parallel_vec_with_ctx<I: IntoIterator<Item = RcExpr>>(
+    es: I,
+    ctx: Option<Assumption>,
+) -> RcExpr
 where
     <I as IntoIterator>::IntoIter: DoubleEndedIterator,
 {

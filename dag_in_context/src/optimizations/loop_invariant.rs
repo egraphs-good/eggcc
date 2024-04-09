@@ -99,7 +99,7 @@ fn test_invariant_detect_simple() -> crate::Result {
     let add_inv = add(inv.clone(), int(4)).with_arg_types(output_ty.clone(), base(intt()));
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4)),
-        concat_par(
+        concat(
             parallel!(pred.clone(), not_inv.clone(), getat(1),),
             parallel!(getat(2), get(parallel!(add_inv.clone(), getat(3)), 1),),
         ),

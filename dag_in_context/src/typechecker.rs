@@ -365,7 +365,7 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Single(new_arg)),
                 )
             }
-            Expr::Concat(order, left, right) => {
+            Expr::Concat(left, right) => {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_tys);
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_tys);
                 let Type::TupleT(ltypes) = lty else {
@@ -377,7 +377,7 @@ impl<'a> TypeChecker<'a> {
                 let result_types = ltypes.into_iter().chain(rtypes).collect();
                 (
                     Type::TupleT(result_types),
-                    RcExpr::new(Expr::Concat(order.clone(), new_left, new_right)),
+                    RcExpr::new(Expr::Concat(new_left, new_right)),
                 )
             }
             Expr::Switch(integer, branches) => {

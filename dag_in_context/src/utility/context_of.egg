@@ -37,11 +37,11 @@
 (rule ((Get tup i) (ContextOf tup ctx))
     ((ContextOf (Get tup i) ctx)) :ruleset always-run)
 
-(rule ((Concat order x y) (ContextOf x ctx))
-    ((ContextOf (Concat order x y) ctx)) :ruleset always-run)
+(rule ((Concat x y) (ContextOf x ctx))
+    ((ContextOf (Concat x y) ctx)) :ruleset always-run)
 
-(rule ((Concat order x y) (ContextOf y ctx))
-    ((ContextOf (Concat order x y) ctx)) :ruleset always-run)
+(rule ((Concat x y) (ContextOf y ctx))
+    ((ContextOf (Concat x y) ctx)) :ruleset always-run)
 
 (rule ((Single x) (ContextOf x ctx))
     ((ContextOf (Single x) ctx)) :ruleset always-run)

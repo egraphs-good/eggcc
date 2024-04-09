@@ -3,7 +3,7 @@
 
 (rewrite
  (DoWhile (Arg ty)
-  (Concat (Parallel) (Single (Const (Bool false) ty))
+  (Concat (Single (Const (Bool false) ty))
     (Single (Const constant ty))))
  (Single (Const constant ty))
  :ruleset loop-simplify)

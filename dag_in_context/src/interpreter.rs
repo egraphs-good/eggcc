@@ -7,7 +7,7 @@
 use std::{collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::{
-    schema::{BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, UnaryOp},
+    schema::{BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, UnaryOp},
     tuplev,
 };
 
@@ -323,16 +323,11 @@ impl<'a> VirtualMachine<'a> {
             }
             Expr::Empty(_ty) => Tuple(vec![]),
             Expr::Single(e) => Tuple(vec![self.interpret_expr(e, arg)]),
-            Expr::Concat(order, e1, e2) => {
-                let (v1_tuple, v2_tuple) = match order {
-                    // Always execute sequentially
-                    // We could also test other orders for parallel tuples
-                    Order::Parallel => (self.interpret_expr(e1, arg), self.interpret_expr(e2, arg)),
-                };
-                let Tuple(mut v1) = v1_tuple else {
+            Expr::Concat(e1, e2) => {
+                let Tuple(mut v1) = self.interpret_expr(e1, arg) else {
                     panic!("expected tuple in extend's first argument in: {:?}", e1)
                 };
-                let Tuple(v2) = v2_tuple else {
+                let Tuple(v2) = self.interpret_expr(e2, arg) else {
                     panic!("expected tuple in extend's second argument in {:?}", e2)
                 };
                 v1.extend(v2);

@@ -8,8 +8,7 @@ use egglog::{
 use crate::{
     from_egglog::program_from_egglog_preserve_ctx_nodes,
     schema::{
-        Assumption, BaseType, BinaryOp, Constant, Expr, Order, TernaryOp, TreeProgram, Type,
-        UnaryOp,
+        Assumption, BaseType, BinaryOp, Constant, Expr, TernaryOp, TreeProgram, Type, UnaryOp,
     },
 };
 
@@ -119,12 +118,6 @@ impl Assumption {
     }
 }
 
-impl Order {
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
-        term_dag.app(format!("{:?}", self).into(), vec![])
-    }
-}
-
 impl BinaryOp {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
         term_dag.app(format!("{:?}", self).into(), vec![])
@@ -206,11 +199,10 @@ impl Expr {
                 let expr = expr.to_egglog_internal(term_dag);
                 term_dag.app("Single".into(), vec![expr])
             }
-            Expr::Concat(order, lhs, rhs) => {
+            Expr::Concat(lhs, rhs) => {
                 let lhs = lhs.to_egglog_internal(term_dag);
                 let rhs = rhs.to_egglog_internal(term_dag);
-                let order = order.to_egglog_internal(term_dag);
-                term_dag.app("Concat".into(), vec![order, lhs, rhs])
+                term_dag.app("Concat".into(), vec![lhs, rhs])
             }
             Expr::Switch(expr, cases) => {
                 let expr = expr.to_egglog_internal(term_dag);
@@ -345,14 +337,14 @@ fn convert_to_egglog_simple_arithmetic() {
 #[test]
 fn convert_to_egglog_switch() {
     use crate::ast::*;
-    let expr = switch!(int(1); concat_par(single(int(1)), single(int(2))), concat_par(single(int(3)), single(int(4)))).with_arg_types(base(intt()), tuplet!(intt(), intt()));
+    let expr = switch!(int(1); concat(single(int(1)), single(int(2))), concat(single(int(3)), single(int(4)))).with_arg_types(base(intt()), tuplet!(intt(), intt()));
     test_expr_parses_to(
         expr,
         "(Switch (Const (Int 1) (Base (IntT)))
                  (Cons 
-                  (Concat (Parallel) (Single (Const (Int 1) (Base (IntT)))) (Single (Const (Int 2) (Base (IntT)))))
+                  (Concat (Single (Const (Int 1) (Base (IntT)))) (Single (Const (Int 2) (Base (IntT)))))
                   (Cons 
-                   (Concat (Parallel) (Single (Const (Int 3) (Base (IntT)))) (Single (Const (Int 4) (Base (IntT)))))
+                   (Concat (Single (Const (Int 3) (Base (IntT)))) (Single (Const (Int 4) (Base (IntT)))))
                    (Nil))))",
     );
 }
@@ -374,7 +366,7 @@ fn convert_whole_program() {
             get(
                 dowhile(
                     single(arg()),
-                    push_par(add(getat(0), int(1)), single(less_than(getat(0), int(10))))
+                    push(add(getat(0), int(1)), single(less_than(getat(0), int(10))))
                 ),
                 0
             )
@@ -389,7 +381,7 @@ fn convert_whole_program() {
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (Get
                         (DoWhile (Single (Arg (Base (IntT))))
-                        (Concat (Parallel) 
+                        (Concat 
                             (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (IntT) (TNil)))) 0) (Const (Int 10) (TupleT (TCons (IntT) (TNil))))))
                             (Single (Bop (Add) (Get (Arg (TupleT (TCons (IntT) (TNil)))) 0) (Const (Int 1) (TupleT (TCons (IntT) (TNil))))))))
                         0)) 

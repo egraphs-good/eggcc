@@ -94,8 +94,7 @@ impl Expr {
                 RcExpr::new(Expr::Call(f.clone(), arg.add_context(current_ctx.clone())))
             }
             Expr::Single(e) => RcExpr::new(Expr::Single(e.add_context(current_ctx))),
-            Expr::Concat(order, x, y) => RcExpr::new(Expr::Concat(
-                order.clone(),
+            Expr::Concat(x, y) => RcExpr::new(Expr::Concat(
                 x.add_context(current_ctx.clone()),
                 y.add_context(current_ctx),
             )),

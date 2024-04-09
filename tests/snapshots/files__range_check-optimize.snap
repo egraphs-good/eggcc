@@ -16,18 +16,18 @@ expression: visualization.result
 .__30__:
   v31: int = const 6;
   v33: bool = lt v23 v31;
-  v41: int = add v23 v14;
+  v40: int = add v23 v14;
   br v33 .__50__ .__43__;
 .__50__:
   v52: bool = const true;
-  v47: int = id v41;
+  v47: int = id v40;
   v48: bool = id v52;
 .__55__:
   v4: int = id v47;
   br v48 .__6__ .__60__;
 .__43__:
   v45: bool = const false;
-  v47: int = id v41;
+  v47: int = id v40;
   v48: bool = id v45;
   jmp .__55__;
 .__19__:

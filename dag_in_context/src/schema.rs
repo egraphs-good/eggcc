@@ -66,8 +66,6 @@ pub enum Constant {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Order {
     Parallel,
-    Sequential,
-    Reversed,
 }
 
 /// A reference counted expression.

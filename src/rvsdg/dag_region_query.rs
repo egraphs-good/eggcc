@@ -206,8 +206,6 @@ fn test_branch_share_effects() {
     );
     let mut always_cache = AlwaysExecutedCache::default();
 
-    eprintln!("{:?}", always_cache.get(&root).iter().collect::<Vec<_>>());
-
     let expected = rcexpr_set(vec![addr.clone(), shared_write.clone()]);
 
     assert_eq!(

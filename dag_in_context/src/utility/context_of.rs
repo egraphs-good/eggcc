@@ -80,7 +80,7 @@ fn test_context_of_no_func_context() -> crate::Result {
         get(
             dowhile(
                 single(int(5)),
-                concat_seq(single(tfalse()), single(add(get(arg(), 0), int(4)))),
+                parallel!(tfalse(), add(get(arg(), 0), int(4))),
             ),
             0,
         ),

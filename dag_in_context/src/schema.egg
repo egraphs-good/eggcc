@@ -118,17 +118,10 @@
 (datatype Order
   ; Either argument may be evaluated first.
   ; Either way, the program should reach an equivalent state.
-  (Parallel)
-  ; Evaluate the first argument first.
-  (Sequential)
-  ; Evaluate the second argument first.
-  (Reversed))
+  (Parallel))
 
 ; global short hands for orders
 (let par (Parallel))
-; seq is reserved by egglog, so sequ it is
-(let sequ (Sequential))
-(let rev (Reversed))
 
 ; A tuple with a single element.
 ; Necessary because we only use `Concat` to add to tuples.

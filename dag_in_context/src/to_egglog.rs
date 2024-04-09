@@ -6,7 +6,7 @@ use egglog::{
 };
 
 use crate::{
-    from_egglog::program_from_egglog,
+    from_egglog::program_from_egglog_preserve_ctx_nodes,
     schema::{
         Assumption, BaseType, BinaryOp, Constant, Expr, Order, TernaryOp, TreeProgram, Type,
         UnaryOp,
@@ -263,7 +263,7 @@ impl TreeProgram {
     /// This function restores this invariant by converting to a Term and back again.
     pub fn restore_sharing_invariant(&self) -> TreeProgram {
         let (term, termdag) = self.to_egglog();
-        program_from_egglog(term, termdag)
+        program_from_egglog_preserve_ctx_nodes(term, termdag)
     }
 
     /// Translates an the program to an egglog term

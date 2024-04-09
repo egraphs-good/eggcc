@@ -206,27 +206,13 @@ pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Concat(Order::Parallel, r, single(l)))
 }
 
-pub fn push_seq(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Sequential, r, single(l)))
-}
-
-pub fn push_rev(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Reversed, r, single(l)))
-}
-
 pub fn concat_par(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Concat(Order::Parallel, tuple, tuple2))
 }
 
-pub fn concat_seq(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Sequential, tuple, tuple2))
-}
-
-pub fn concat_rev(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Reversed, tuple, tuple2))
-}
-
 /// Create a tuple where each element can be executed in any order.
+/// in any order.
+/// e.g. `parallel!(e1, e2, e3)` becomes `Concat(Order::Parallel, Concat(Order::Parallel, e1, e2), e3)`
 #[macro_export]
 macro_rules! parallel {
     ($($x:expr),* $(,)?) => ($crate::ast::parallel_vec(vec![$($x),*]))
@@ -242,6 +228,20 @@ where
         iter.fold(single(e), |acc, x| cons_par(x, acc))
     } else {
         empty()
+    }
+}
+
+/// A helper for ensuring the list of expressions is non-empty.
+/// This prevents missing adding context to a leaf node (e.g. empty).
+pub fn parallel_vec_nonempty<I: IntoIterator<Item = RcExpr>>(es: I) -> RcExpr
+where
+    <I as IntoIterator>::IntoIter: DoubleEndedIterator,
+{
+    let es_vec = es.into_iter().collect::<Vec<_>>();
+    if es_vec.is_empty() {
+        panic!("Expected non-empty list of expressions in parallel_vec_nonempty");
+    } else {
+        parallel_vec(es_vec)
     }
 }
 

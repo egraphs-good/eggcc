@@ -9,7 +9,9 @@ use std::fmt::Write;
 
 use crate::interpreter::interpret_dag_prog;
 
+pub(crate) mod add_context;
 pub mod ast;
+pub mod dag2svg;
 pub mod dag_typechecker;
 pub mod from_egglog;
 mod greedy_dag_extractor;
@@ -23,8 +25,6 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
-pub(crate) mod add_context;
-pub mod dag2svg;
 
 pub type Result = std::result::Result<(), MainError>;
 

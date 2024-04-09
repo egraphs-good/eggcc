@@ -1,54 +1,60 @@
 (ruleset interval-analysis)
 
+(datatype Bound
+  (IntB i64)
+  (BoolB bool)
+  (bound-max Bound Bound)
+  (bound-min Bound Bound))
 
+; bound tables
+(function lo-bound (Expr) Bound :merge (bound-max old new))
+(function hi-bound (Expr) Bound :merge (bound-min old new))
 
-(datatype Interval
-  (BoolI bool bool)
-  (IntI i64 i64)
-  (interval-intersect Interval Interval)
-  (interval-union Interval Interval))
-
-; Interval combinators
-(rewrite (interval-intersect (IntI la ha) (IntI lb hb))
-         (IntI (max la lb) (min ha hb))
+; combinators
+(rewrite (bound-max (IntB x) (IntB y))
+         (IntB (max x y))
          :ruleset interval-analysis)
-(rewrite (interval-union (IntI la ha) (IntI lb hb))
-         (IntI (min la lb) (max ha hb))
+(rewrite (bound-min (IntB x) (IntB y))
+         (IntB (min x y))
          :ruleset interval-analysis)
-(rewrite (interval-intersect (BoolI la ha) (BoolI lb hb))
-         (BoolI (or la lb) (and ha hb))
+(rewrite (bound-max (BoolB x) (BoolB y))
+         (BoolB (or x y))
          :ruleset interval-analysis)
-(rewrite (interval-union (BoolI la ha) (BoolI lb hb))
-         (BoolI (and la lb) (or ha hb))
+(rewrite (bound-min (BoolB x) (BoolB y))
+         (BoolB (and x y))
          :ruleset interval-analysis)
-
-; Interval Table
-(function ival (Expr) Interval
-  :merge (interval-intersect old new))
 
 ; =================================
 ; Constants
 ; =================================
 (rule ((= lhs (Const (Int x) ty)))
-      ((set (ival lhs) (IntI x x)))
+      (
+        (set (lo-bound lhs) (IntB x))
+        (set (hi-bound lhs) (IntB x))
+      )
       :ruleset interval-analysis)
 
 (rule ((= lhs (Const (Bool x) ty)))
-      ((set (ival lhs) (BoolI x x)))
+      (
+        (set (lo-bound lhs) (BoolB x))
+        (set (hi-bound lhs) (BoolB x))
+      )
       :ruleset interval-analysis)
 
 ; =================================
 ; Constant Folding
 ; =================================
 (rule (
-       (= (IntI x x) (ival expr))
+       (= (IntB x) (lo-bound expr))
+       (= (IntB x) (hi-bound expr))
        (HasArgType expr ty)
       )
       ((union expr (Const (Int x) ty)))
       :ruleset interval-analysis)
 
 (rule (
-       (= (BoolI x x) (ival expr))
+       (= (BoolB x) (lo-bound expr))
+       (= (BoolB x) (hi-bound expr))
        (HasArgType expr ty)
       )
       ((union expr (Const (Bool x) ty)))
@@ -59,29 +65,58 @@
 ; =================================
 ; + a b interval is (+ la lb) (+ ha hb)
 (rule (
-       (= lhs (Bop (Add) x y))
-       (= (ival x) (IntI la ha))
-       (= (ival y) (IntI lb hb))
+       (= lhs (Bop (Add) a b))
+       (= (IntB la) (lo-bound a))
+       (= (IntB lb) (lo-bound b))
       )
-      ((set (ival lhs) (IntI (+ la hb) (+ ha hb))))
+      (
+       (set (lo-bound lhs) (IntB (+ la lb)))
+      )
       :ruleset interval-analysis)
+(rule (
+       (= lhs (Bop (Add) a b))
+       (= (IntB ha) (hi-bound a))
+       (= (IntB hb) (hi-bound b))
+      )
+      (
+       (set (hi-bound lhs) (IntB (+ ha hb)))
+      )
+      :ruleset interval-analysis)
+
 
 ; < a b interval is (< ha lb) (< la hb)
 (rule (
-        (= lhs (Bop (LessThan) a b))
-        (= (IntI la ha) (ival a))
-        (= (IntI lb hb) (ival b))
+       (= lhs (Bop (LessThan) a b))
+       (= (IntB ha) (hi-bound a))
+       (= (IntB lb) (lo-bound b))
       )
-      ((set (ival lhs) (BoolI (bool-< ha lb) (bool-< la hb))))
+      (
+       (set (lo-bound lhs) (BoolB (bool-< ha lb)))
+      )
       :ruleset interval-analysis)
-
+(rule (
+       (= lhs (Bop (LessThan) a b))
+       (= (IntB la) (lo-bound a))
+       (= (IntB hb) (hi-bound b))
+      )
+      (
+       (set (hi-bound lhs) (BoolB (bool-< la hb)))
+      )
+      :ruleset interval-analysis)
 ; =================================
 ; Conditionals
 ; =================================
 (rule (
-        (= lhs (If cond thn els))
-        (= thn-ival (ival thn))
-        (= els-ival (ival els))
+       (= lhs (If cond thn els))
+       (= lo-thn (lo-bound thn))
+       (= lo-els (lo-bound els))
       )
-      ((set (ival lhs) (interval-union thn-ival els-ival)))
+      ((set (lo-bound lhs) (bound-min lo-thn lo-els)))
+      :ruleset interval-analysis)
+(rule (
+       (= lhs (If cond thn els))
+       (= hi-thn (hi-bound thn))
+       (= hi-els (hi-bound els))
+      )
+      ((set (hi-bound lhs) (bound-max hi-thn hi-els)))
       :ruleset interval-analysis)

@@ -11,7 +11,10 @@ fn int_interval_test(
     hi: i64,
 ) -> crate::Result {
     let with_arg_types = inp.clone().with_arg_types(emptyt(), expected_ty.clone());
-    let check = format!("(check (ival {with_arg_types}) (IntI {lo} {hi}))");
+    let check = format!("
+    (check (lo-bound {with_arg_types}) (IntB {lo}))
+    (check (hi-bound {with_arg_types}) (IntB {hi}))
+    ");
     interval_test(with_arg_types, expected_ty, arg, expected_val, check)
 }
 
@@ -25,7 +28,10 @@ fn bool_interval_test(
     hi: bool,
 ) -> crate::Result {
     let with_arg_types = inp.clone().with_arg_types(emptyt(), expected_ty.clone());
-    let check = format!("(check (ival {with_arg_types}) (BoolI {lo} {hi}))");
+    let check = format!("
+    (check (lo-bound {with_arg_types}) (BoolB {lo}))
+    (check (hi-bound {with_arg_types}) (BoolB {hi}))
+    ");
     interval_test(with_arg_types, expected_ty, arg, expected_val, check)
 }
 
@@ -116,7 +122,10 @@ fn if_interval() -> crate::Result {
 
     egglog_test(
         &format!("{f}"),
-        &format!("(check (ival {e}) (IntI 4 5))"),
+        &format!("
+        (check (lo-bound {e}) (IntB 4))
+        (check (hi-bound {e}) (IntB 5))
+        "),
         vec![f.to_program(base(intt()), base(intt()))],
         intv(1),
         intv(4),
@@ -140,7 +149,11 @@ fn nested_if() -> crate::Result {
 
     egglog_test(
         &format!("{f}"),
-        &format!("(check (ival {inner}) (IntI 4 5)) (check (ival {outer}) (IntI 20 20))"),
+        &format!("
+        (check (lo-bound {inner}) (IntB 4))
+        (check (hi-bound {inner}) (IntB 5))
+        (check (lo-bound {outer}) (IntB 20))
+        (check (hi-bound {outer}) (IntB 20))"),
         vec![f.to_program(base(intt()), base(intt()))],
         intv(2),
         intv(20),

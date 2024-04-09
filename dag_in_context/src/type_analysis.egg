@@ -286,6 +286,20 @@
       :ruleset type-analysis)
 
 (rule (
+        (= lhs (Bop (Eq) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Eq) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(Eq) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(Eq) expected int, received {?}")
+      )
+      :ruleset type-analysis)
+
+(rule (
         (= lhs (Bop (GreaterThan) e1 e2))
         (HasType e1 (Base (IntT)))
         (HasType e2 (Base (IntT)))

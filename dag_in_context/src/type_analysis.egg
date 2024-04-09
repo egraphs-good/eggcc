@@ -390,6 +390,20 @@
       ((HasType lhs (Base (TypeList-ith tylist i)))) 
       :ruleset type-analysis)
 
+(rule (
+       (HasType (Get expr i) (TupleT tl))
+       (= (TypeList-length tl) len)
+       (>= i len))
+      ((panic "index out of bounds"))
+      :ruleset type-analysis)
+(rule (
+      (HasType (Get expr i) (TupleT tl))
+       (= (TypeList-length tl) len)
+        (< i 0)
+      )
+      ((panic "negative index"))
+      :ruleset type-analysis)
+
 ; =================================
 ; Tuple operations
 ; =================================

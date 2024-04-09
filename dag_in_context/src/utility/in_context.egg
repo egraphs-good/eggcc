@@ -6,6 +6,10 @@
 (ruleset context)
 (ruleset context-helpers)
 
+;; We don't want to keep adding context to things that already
+;; have context. This ruleset allows us to run a helper just once at the beginning of the schedule.
+(ruleset test-helpers)
+
 
 ;; ################################ datatypes
 ;; A context path is a list of (eclass, eclass) pairs.
@@ -63,7 +67,7 @@
       ((union (Function name inty outty body)
          (Function name inty outty
            (AddContext (InFunc name) (Full) body))))
-       :ruleset context-helpers)
+       :ruleset test-helpers)
 
 
 ;; AddContext is sugar for DoAddContext
@@ -93,8 +97,9 @@
 ;; values is the same.
 (rule ((= body_with_context
           (DoAddContext seen  (InLoop inputs outputs) (Full) outputs)) ;; a loop body with context
+       (= lhs 
           (DoAddContext seen2 (InLoop inputs body_with_context) ;; same inputs
-                              (Full) body_with_context) ;; a loop body whose context already has context
+                           (Full) body_with_context)) ;; a loop body whose context already has context
        )
       ((union (InLoop inputs outputs) (InLoop inputs body_with_context)))
       :ruleset context-helpers)

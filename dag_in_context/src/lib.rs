@@ -211,6 +211,7 @@ pub fn egglog_test(
         prologue(),
         include_str!("schedule.egg"),
     );
+    eprintln!("{}", program);
 
     let res = egglog::EGraph::default()
         .parse_and_run_program(&program)

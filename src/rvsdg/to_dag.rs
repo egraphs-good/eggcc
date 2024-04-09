@@ -1,7 +1,8 @@
 //! Convert RVSDG programs to the dag encoding.
 //! This is a fairly direct translation, with a minor difference being
 //! that if nodes do not create a region.
-//! Generating no let bindings since they are unecessary for dag semantics.
+//! When we translate if nodes, we add context nodes at the inputs to the region.
+//! Common sub-expressions can still be shared across branches, avoiding blowup from context nodes.
 use std::iter;
 
 #[cfg(test)]
@@ -39,39 +40,41 @@ impl RvsdgProgram {
     }
 }
 
-/// Stores the location of a single value of an RVSDG node.
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum StoredValue {
-    /// The value is stored at get(arg(), usize)
-    Arg(usize),
-    /// ValueExpr can be used directly without a get.
-    ValExpr(RcExpr),
-    /// Tuple expressions, which can be projected using get.
-    TupleExpr(RcExpr),
+/// We cache a stored value for each node in the RVSDG, representing the corresponding
+/// expression in the dag encoding.
+/// These can either be tuple typed or single typed, and we need to track this to properly translate projects.
+/// We also need to track if the value already has context, since we want to add context only once
+/// and at leaf nodes.
+#[derive(Clone, Debug)]
+struct StoredValue {
+    is_tuple: bool,
+    has_context: bool,
+    expr: RcExpr,
 }
 
 impl StoredValue {
     fn to_single_expr(&self) -> RcExpr {
-        match self {
-            StoredValue::Arg(index) => getat(*index),
-            StoredValue::ValExpr(expr) => expr.clone(),
-            StoredValue::TupleExpr(expr) => {
-                panic!("Cannot convert tuple to single expr. Got {:?}", expr)
-            }
+        if self.is_tuple {
+            panic!("Cannot convert tuple to single expr. Got {:?}", self)
+        } else {
+            self.expr.clone()
         }
     }
 
-    fn get_at(&self, index: usize) -> RcExpr {
-        match self {
-            StoredValue::Arg(argindex) => {
-                assert_eq!(index, 0, "Arg can only be indexed by 0");
-                getat(*argindex)
+    fn project(&self, index: usize) -> StoredValue {
+        if self.is_tuple {
+            StoredValue {
+                is_tuple: false,
+                has_context: self.has_context,
+                expr: get(self.expr.clone(), index),
             }
-            StoredValue::ValExpr(expr) => {
-                assert_eq!(index, 0, "ValExpr can only be indexed by 0");
-                expr.clone()
-            }
-            StoredValue::TupleExpr(expr) => get(expr.clone(), index),
+        } else {
+            assert_eq!(
+                index, 0,
+                "Tried to access index {} of non-tuple value",
+                index
+            );
+            self.clone()
         }
     }
 }
@@ -93,13 +96,21 @@ impl<'a> DagTranslator<'a> {
     /// Importantly, on translation back to RVSDG we should ensure that pure
     /// common subexpressions are not duplicated.
     fn cache_single_res(&mut self, expr: RcExpr, id: Id) -> StoredValue {
-        let res = StoredValue::ValExpr(expr.clone());
+        let res = StoredValue {
+            is_tuple: false,
+            has_context: false,
+            expr: expr.clone(),
+        };
         self.stored_node.insert(id, res.clone());
         res
     }
 
     fn cache_tuple_res(&mut self, expr: RcExpr, id: Id) -> StoredValue {
-        let res = StoredValue::TupleExpr(expr.clone());
+        let res = StoredValue {
+            is_tuple: true,
+            has_context: false,
+            expr: expr.clone(),
+        };
         self.stored_node.insert(id, res.clone());
         res
     }
@@ -145,15 +156,8 @@ impl<'a> DagTranslator<'a> {
     fn translate_operand(&mut self, operand: Operand) -> StoredValue {
         match operand {
             Operand::Arg(index) => self.argument_values[index].clone(),
-            Operand::Id(id) => match self.translate_node(id) {
-                StoredValue::ValExpr(expr) => StoredValue::ValExpr(expr),
-                StoredValue::TupleExpr(expr) => StoredValue::ValExpr(get(expr, 0)),
-                StoredValue::Arg(argindex) => StoredValue::Arg(argindex),
-            },
-            Operand::Project(p_index, id) => {
-                let values = self.translate_node(id);
-                StoredValue::ValExpr(values.get_at(p_index))
-            }
+            Operand::Id(id) => self.translate_node(id).project(0),
+            Operand::Project(p_index, id) => self.translate_node(id).project(p_index),
         }
     }
 
@@ -224,7 +228,11 @@ impl<'a> DagTranslator<'a> {
                     let mut input_index = 0;
                     let inner_inputs = input_values.iter().map(|_val| {
                         input_index += 1;
-                        StoredValue::Arg(input_index - 1)
+                        StoredValue {
+                            is_tuple: false,
+                            has_context: false,
+                            expr: getat(input_index - 1),
+                        }
                     });
 
                     // For the sub-region, we need a new region translator
@@ -351,15 +359,16 @@ impl RvsdgFunction {
     /// using the `concat` constructor.
     /// In the inner-most scope, the value of
     /// all nodes is available.
-    ///
-    /// When `optimize_lets` is true, the conversion will also
-    /// try to prevent adding unnecessary let bindings.
     pub fn to_dag_encoding(&self) -> RcExpr {
         let argument_values: Vec<StoredValue> = self
             .args
             .iter()
             .enumerate()
-            .map(|(i, _ty)| StoredValue::Arg(i))
+            .map(|(i, _ty)| StoredValue {
+                is_tuple: false,
+                expr: getat(i),
+                has_context: false,
+            })
             .collect();
         let mut translator = DagTranslator::new(&self.nodes, argument_values.clone());
         let translated_results = self

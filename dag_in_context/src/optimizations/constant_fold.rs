@@ -15,7 +15,7 @@ fn test_add_constant_fold() -> crate::Result {
             expr2.to_program(emptyt(), base(intt())),
         ],
         val_empty(),
-        val_int(3),
+        intv(3),
         vec![],
     )
 }

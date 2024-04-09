@@ -1,35 +1,57 @@
+;; Substitution rules allow for substituting some new expression for the argument
+;; in some new context.
+;; It performs the substitution, copying over the equalities from the original eclass.
+;; It only places context on the leaf nodes.
+
 (ruleset subst)
 
 ;; (Subst assumption to in) substitutes 
 ;; (InContext assumption to) for `(Arg ty)` in `in`
 ;; It also replaces `(Asuume anything (Arg ty))` with `(InContext assumption to)`
 (function Subst (Assumption Expr Expr) Expr :unextractable)
+;; (SubstLeaf to in) substitutes `to` for `in` in a leaf node `in`
+;; SubstLeaf assumes context has already been added
+(function SubstLeaf (Expr Expr) Expr :unextractable)
 (function SubstList (Assumption Expr ListExpr) ListExpr :unextractable)
 
 
 ;; Base case- leaf nodes
-(rewrite (Subst assum to (Arg ty))
-         (InContext assum to)
+;; leaf node without context
+(rule ((= lhs (Subst assum to leaf))
+       (IsLeaf leaf))
+      ((union lhs (InContext assum (SubstLeaf to leaf))))
+      :ruleset subst)
+;; leaf node with context
+;; replace infunc context
+(rule ((= lhs (Subst assum to (InContext (InFunc name) leaf)))
+       (IsLeaf leaf))
+      ((union lhs (InContext assum (SubstLeaf to leaf))))
+      :ruleset subst)
+(rule ((= lhs (Subst assum to (InContext (InLoop inputs body) leaf)))
+       (IsLeaf leaf))
+      ((union lhs (InContext assum (SubstLeaf to leaf))))
+      :ruleset subst)
+;; modify inif context
+(rule ((= lhs (Subst assum to (InContext (InIf branch pred) leaf)))
+       (IsLeaf leaf))
+      ((union lhs
+        (InContext
+          (InIf branch (Subst assum to pred))
+          (SubstLeaf to leaf))))
+      :ruleset subst)
+
+
+(rewrite (SubstLeaf to (Arg ty))
+         to
          :ruleset subst)
-(rewrite (Subst assum to (InContext assum2 (Arg ty)))
-         (InContext assum to)
-         :ruleset subst)
-(rewrite (Subst assum to (Const constant ty))
-         (InContext assum (Const constant ty2))
+(rewrite (SubstLeaf to (Const constant ty))
+         (Const constant ty2)
          :when ((HasArgType to ty2))
          :ruleset subst)
-(rewrite (Subst assum to (InContext assum2 (Const constant ty)))
-         (InContext assum (Const constant ty2))
-         :when ((HasArgType to ty2))
-         :ruleset subst)
-(rewrite (Subst assum to (Empty ty))
-         (InContext assum (Empty ty2))
+(rewrite (SubstLeaf to (Empty ty))
+         (Empty ty2)
          :when ((HasArgType to ty2))
           :ruleset subst)
-(rewrite (Subst assum to (InContext assum2 (Empty ty)))
-         (InContext assum (Empty ty2))
-         :when ((HasArgType to ty2))
-         :ruleset subst)
 
 
 ;; Operators
@@ -82,4 +104,9 @@
          :ruleset subst)
 (rewrite (SubstList assum to (Nil))
          (Nil)
+         :ruleset subst)
+
+;; substitute into function (convenience)
+(rewrite (Subst assum to (Function name inty outty body))
+         (Function name inty outty (Subst assum to body))
          :ruleset subst)

@@ -51,7 +51,7 @@ fn interval_test(
 #[test]
 fn constant_interval_test() -> crate::Result {
     let e = int(3);
-    int_interval_test(e, base(intt()), val_empty(), val_int(3), 3, 3)
+    int_interval_test(e, base(intt()), val_empty(), intv(3), 3, 3)
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn constant_interval_test2() -> crate::Result {
 #[test]
 fn constant_fold() -> crate::Result {
     let e = add(int(3), int(2));
-    int_interval_test(e, base(intt()), val_empty(), val_int(5), 5, 5)
+    int_interval_test(e, base(intt()), val_empty(), intv(5), 5, 5)
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn test_add_constant_fold() -> crate::Result {
             expr2.to_program(emptyt(), base(intt())),
         ],
         val_empty(),
-        val_int(3),
+        intv(3),
         vec![],
     )
 }
@@ -88,7 +88,7 @@ fn test_add_constant_fold() -> crate::Result {
 #[test]
 fn test_add_interval() -> crate::Result {
     let e = add(int(3), int(4)).with_arg_types(emptyt(), base(intt()));
-    int_interval_test(e, base(intt()), val_empty(), val_int(7), 7, 7)
+    int_interval_test(e, base(intt()), val_empty(), intv(7), 7, 7)
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn test_if_constant_fold() -> crate::Result {
     let c = less_than(int(2), int(3)).with_arg_types(emptyt(), base(boolt()));
     let e = tif(c, int_ty(3, emptyt()), int_ty(4, emptyt()));
 
-    int_interval_test(e, base(intt()), val_empty(), val_int(3), 3, 3)
+    int_interval_test(e, base(intt()), val_empty(), intv(3), 3, 3)
 }
 
 #[test]
@@ -118,8 +118,8 @@ fn if_interval() -> crate::Result {
         &format!("{f}"),
         &format!("(check (ival {e}) (IntI 4 5))"),
         vec![f.to_program(base(intt()), base(intt()))],
-        val_int(1),
-        val_int(4),
+        intv(1),
+        intv(4),
         vec![],
     )
 }
@@ -142,8 +142,8 @@ fn nested_if() -> crate::Result {
         &format!("{f}"),
         &format!("(check (ival {inner}) (IntI 4 5)) (check (ival {outer}) (IntI 20 20))"),
         vec![f.to_program(base(intt()), base(intt()))],
-        val_int(2),
-        val_int(20),
+        intv(2),
+        intv(20),
         vec![],
     )
 }

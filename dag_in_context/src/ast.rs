@@ -38,7 +38,7 @@ pub fn pointert(t: BaseType) -> BaseType {
     BaseType::PointerT(Box::new(t))
 }
 
-pub fn val_int(i: i64) -> Value {
+pub fn intv(i: i64) -> Value {
     Value::Const(Constant::Int(i))
 }
 

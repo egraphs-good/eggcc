@@ -38,12 +38,12 @@ expression: visualization.result
   v49: int = mul v46 v17;
   v51: int = sub v14 v49;
   v54: bool = eq v51 v18;
+  v79: bool = const true;
   print v14;
-  v87: bool = const true;
   br v54 .__111__ .__89__;
 .__111__:
   v103: int = id v13;
-  v104: bool = id v87;
+  v104: bool = id v79;
   v105: int = id v46;
   v106: int = id v15;
   v107: int = id v16;
@@ -62,7 +62,7 @@ expression: visualization.result
   v95: int = mul v16 v14;
   v97: int = add v15 v95;
   v103: int = id v13;
-  v104: bool = id v87;
+  v104: bool = id v79;
   v105: int = id v97;
   v106: int = id v15;
   v107: int = id v16;

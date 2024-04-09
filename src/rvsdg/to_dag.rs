@@ -135,7 +135,7 @@ impl<'a> DagTranslator<'a> {
         &mut self,
         argument_values: Vec<StoredValue>,
         num_let_bound: usize,
-        operands: impl Iterator<Item = Operand>,
+        operands: impl Iterator<Item = Operand> + DoubleEndedIterator,
     ) -> RcExpr {
         let mut translator = DagTranslator::new(self.nodes, argument_values, num_let_bound);
         let resulting_exprs = operands.map(|operand| {

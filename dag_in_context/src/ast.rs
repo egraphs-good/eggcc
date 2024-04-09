@@ -226,19 +226,20 @@ pub fn concat_rev(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Concat(Order::Reversed, tuple, tuple2))
 }
 
-/// Create a tuple where each element can be executed
-/// in any order.
-/// e.g. `parallel!(e1, e2, e3)` becomes `Concat(Order::Parallel, Concat(Order::Parallel, e1, e2), e3)`
+/// Create a tuple where each element can be executed in any order.
 #[macro_export]
 macro_rules! parallel {
     ($($x:expr),* $(,)?) => ($crate::ast::parallel_vec(vec![$($x),*]))
 }
 pub use parallel;
 
-pub fn parallel_vec(es: impl IntoIterator<Item = RcExpr>) -> RcExpr {
-    let mut iter = es.into_iter();
+pub fn parallel_vec<I: IntoIterator<Item = RcExpr>>(es: I) -> RcExpr
+where
+    <I as IntoIterator>::IntoIter: DoubleEndedIterator,
+{
+    let mut iter = es.into_iter().rev();
     if let Some(e) = iter.next() {
-        iter.fold(single(e), |acc, x| push_par(x, acc))
+        iter.fold(single(e), |acc, x| cons_par(x, acc))
     } else {
         empty()
     }

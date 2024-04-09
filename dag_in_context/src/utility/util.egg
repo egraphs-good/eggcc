@@ -36,9 +36,11 @@
        (= ith (tuple-ith expr2 i)))
        ((union (tuple-ith (Concat ord expr1 expr2) (+ len1 i)) ith)) :ruleset always-run)
 
-
 (relation IsLeaf (Expr))
-
 (rule ((Arg ty)) ((IsLeaf (Arg ty))) :ruleset always-run)
 (rule ((Const val ty)) ((IsLeaf (Const val ty))) :ruleset always-run)
 (rule ((Empty ty)) ((IsLeaf (Empty ty))) :ruleset always-run)
+
+(rewrite (Concat order (Concat order a b) c)
+         (Concat order a (Concat order b c))
+         :ruleset always-run)

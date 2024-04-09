@@ -27,22 +27,28 @@
 
 ;; Create a Get for every index, and rewrite it to see through Concat
 (rule ((Single expr)) ((union (Get (Single expr) 0) expr)) :ruleset always-run)
-(rule ((Concat expr1 expr2))
-      ((Get (Concat expr1 expr2) 0))
-      :ruleset always-run)
+;; initial get
 (rule ((Concat expr1 expr2)
-       (= len1 (tuple-length expr1))
-       (= ith (Get expr2 i))
-       (< (+ i 1) len1)
+       (> (tuple-length (Concat ord expr1 expr2)) 0))
+      ((Get (Concat ord expr1 expr2) 0))
+      :ruleset always-run)
+;; next get
+(rule ((= concat (Concat expr1 expr2))
+       (= len (tuple-length concat))
+       (= ith (Get concat i))
+       (< (+ i 1) len)
        )
-       ((Get (Concat expr1 expr2) (+ len1 i)))
+       ((Get (Concat expr1 expr2) (+ 1 i)))
        :ruleset always-run)
-(rule ((Get (Concat expr1 expr2) i)
+
+;; descend left
+(rule ((Get (Concat ord expr1 expr2) i)
        (= (tuple-length expr1) len1)
        (< i len1))
       ((union (Get (Concat expr1 expr2) i)
               (Get expr1 i)))
        :ruleset always-run)
+;; descend right
 (rule ((Get (Concat expr1 expr2) i)
        (= (tuple-length expr1) len1)
        (>= i len1))

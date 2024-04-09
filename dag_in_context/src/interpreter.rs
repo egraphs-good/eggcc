@@ -327,14 +327,7 @@ impl<'a> VirtualMachine<'a> {
                 let (v1_tuple, v2_tuple) = match order {
                     // Always execute sequentially
                     // We could also test other orders for parallel tuples
-                    Order::Sequential | Order::Parallel => {
-                        (self.interpret_expr(e1, arg), self.interpret_expr(e2, arg))
-                    }
-                    Order::Reversed => {
-                        let v2 = self.interpret_expr(e2, arg);
-                        let v1 = self.interpret_expr(e1, arg);
-                        (v1, v2)
-                    }
+                    Order::Parallel => (self.interpret_expr(e1, arg), self.interpret_expr(e2, arg)),
                 };
                 let Tuple(mut v1) = v1_tuple else {
                     panic!("expected tuple in extend's first argument in: {:?}", e1)

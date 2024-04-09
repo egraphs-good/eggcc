@@ -23,6 +23,17 @@ pub fn program_from_egglog(program: Term, termdag: egglog::TermDag) -> TreeProgr
     converter.program_from_egglog(program)
 }
 
+pub fn program_from_egglog_preserve_ctx_nodes(
+    program: Term,
+    termdag: egglog::TermDag,
+) -> TreeProgram {
+    let mut converter = FromEgglog {
+        termdag,
+        conversion_cache: HashMap::new(),
+    };
+    converter.program_from_egglog_preserve_ctx_nodes(program)
+}
+
 impl FromEgglog {
     fn const_from_egglog(&mut self, constant: Term) -> Constant {
         match_term_app!(constant.clone(); {
@@ -133,8 +144,6 @@ impl FromEgglog {
         match_term_app!(order.clone();
         {
           ("Parallel", []) => Order::Parallel,
-          ("Sequential", []) => Order::Sequential,
-          ("Reversed", []) => Order::Reversed,
           _ => panic!("Invalid order: {:?}", order),
         })
     }

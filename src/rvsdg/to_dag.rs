@@ -1,17 +1,18 @@
-//! Convert RVSDG programs to the dag encoding.
+//! Convert RVSDG programs to the dag encoding, adding context nodes as we go.
 //! This is a fairly direct translation, with a minor difference being
 //! that if nodes do not create a region.
 //! When we translate if nodes, we add context nodes at the inputs to the region.
 //! Common sub-expressions can still be shared across branches, avoiding blowup from context nodes.
+//! We are careful to add context to every leaf node (Empty, Arg, and Const)
 use std::iter;
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
-use dag_in_context::ast::*;
 #[cfg(test)]
 use dag_in_context::interpreter::Value;
 #[cfg(test)]
 use dag_in_context::schema::Constant;
+use dag_in_context::{ast::*, schema::Assumption};
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
@@ -27,13 +28,13 @@ impl RvsdgProgram {
     /// Converts an RVSDG program to the dag encoding.
     /// Common subexpressions are shared by the same Rc<Expr> in the dag encoding.
     /// This invariant is mainted by restore_sharing_invariant.
-    pub fn to_dag_encoding(&self) -> TreeProgram {
+    pub fn to_dag_encoding(&self, add_context: bool) -> TreeProgram {
         let last_function = self.functions.last().unwrap();
         let rest_functions = self.functions.iter().take(self.functions.len() - 1);
         program_vec(
-            last_function.to_dag_encoding(),
+            last_function.to_dag_encoding(add_context),
             rest_functions
-                .map(|f| f.to_dag_encoding())
+                .map(|f| f.to_dag_encoding(add_context))
                 .collect::<Vec<_>>(),
         )
         .restore_sharing_invariant()
@@ -43,12 +44,9 @@ impl RvsdgProgram {
 /// We cache a stored value for each node in the RVSDG, representing the corresponding
 /// expression in the dag encoding.
 /// These can either be tuple typed or single typed, and we need to track this to properly translate projects.
-/// We also need to track if the value already has context, since we want to add context only once
-/// and at leaf nodes.
 #[derive(Clone, Debug)]
 struct StoredValue {
     is_tuple: bool,
-    has_context: bool,
     expr: RcExpr,
 }
 
@@ -65,7 +63,6 @@ impl StoredValue {
         if self.is_tuple {
             StoredValue {
                 is_tuple: false,
-                has_context: self.has_context,
                 expr: get(self.expr.clone(), index),
             }
         } else {
@@ -88,6 +85,10 @@ struct DagTranslator<'a> {
     nodes: &'a [RvsdgBody],
     /// The next id to assign to an alloc.
     next_alloc_id: i64,
+    /// The current context of the translation. None if we are not adding context.
+    current_ctx: Option<Assumption>,
+    /// The translator without context, used to reference the translated code for loop bodies.
+    without_context: Option<Box<DagTranslator<'a>>>,
 }
 
 impl<'a> DagTranslator<'a> {
@@ -98,7 +99,6 @@ impl<'a> DagTranslator<'a> {
     fn cache_single_res(&mut self, expr: RcExpr, id: Id) -> StoredValue {
         let res = StoredValue {
             is_tuple: false,
-            has_context: false,
             expr: expr.clone(),
         };
         self.stored_node.insert(id, res.clone());
@@ -108,22 +108,10 @@ impl<'a> DagTranslator<'a> {
     fn cache_tuple_res(&mut self, expr: RcExpr, id: Id) -> StoredValue {
         let res = StoredValue {
             is_tuple: true,
-            has_context: false,
             expr: expr.clone(),
         };
         self.stored_node.insert(id, res.clone());
         res
-    }
-
-    /// Make a new translator for a region with
-    /// num_args and the given nodes.
-    fn new(nodes: &'a [RvsdgBody], argument_values: Vec<StoredValue>) -> DagTranslator {
-        DagTranslator {
-            stored_node: HashMap::new(),
-            argument_values,
-            nodes,
-            next_alloc_id: 0,
-        }
     }
 
     /// Translate a sub-region by creating a new region
@@ -136,21 +124,24 @@ impl<'a> DagTranslator<'a> {
     fn translate_subregion(
         &mut self,
         argument_values: Vec<StoredValue>,
+
         operands: impl Iterator<Item = Operand> + DoubleEndedIterator,
+        new_context: Option<Assumption>,
     ) -> RcExpr {
-        let mut translator = DagTranslator::new(self.nodes, argument_values);
+        let old_argument_values = std::mem::replace(&mut self.argument_values, argument_values);
+        let old_context = std::mem::replace(&mut self.current_ctx, new_context);
+        let ctx = self.current_ctx.clone();
         let resulting_exprs = operands.map(|operand| {
-            let res = translator.translate_operand(operand);
+            let res = self.translate_operand(operand);
             res.to_single_expr()
         });
-        let expr = parallel_vec(resulting_exprs);
-        translator.build_translation(expr)
-    }
+        let expr = parallel_vec_with_ctx(resulting_exprs, ctx);
 
-    /// Wrap the given expression in all the
-    /// bindings that have been generated.
-    fn build_translation(&self, inner: RcExpr) -> RcExpr {
-        inner
+        // restore argument values
+        self.argument_values = old_argument_values;
+        // restore context
+        self.current_ctx = old_context;
+        expr
     }
 
     fn translate_operand(&mut self, operand: Operand) -> StoredValue {
@@ -184,10 +175,27 @@ impl<'a> DagTranslator<'a> {
                         input_values.push(self.translate_operand(*input));
                     }
                     let pred = self.translate_operand(*pred).to_single_expr();
-                    let then_translated =
-                        self.translate_subregion(input_values.clone(), then_branch.iter().copied());
-                    let else_translated =
-                        self.translate_subregion(input_values.clone(), else_branch.iter().copied());
+                    let then_context = if self.current_ctx.is_some() {
+                        Some(Assumption::InIf(true, pred.clone()))
+                    } else {
+                        None
+                    };
+                    let then_translated = self.translate_subregion(
+                        input_values.clone(),
+                        then_branch.iter().copied(),
+                        then_context,
+                    );
+                    let else_context = if self.current_ctx.is_some() {
+                        Some(Assumption::InIf(false, pred.clone()))
+                    } else {
+                        None
+                    };
+
+                    let else_translated = self.translate_subregion(
+                        input_values.clone(),
+                        else_branch.iter().copied(),
+                        else_context,
+                    );
 
                     let expr = tif(pred, then_translated, else_translated);
                     self.cache_tuple_res(expr, id)
@@ -209,6 +217,7 @@ impl<'a> DagTranslator<'a> {
                         let translated = self.translate_subregion(
                             inputs_values.clone(),
                             output_vec.1.iter().copied(),
+                            self.current_ctx.clone(),
                         );
                         branches.push(translated);
                     }
@@ -225,13 +234,40 @@ impl<'a> DagTranslator<'a> {
                         input_values.push(self.translate_operand(*input));
                     }
 
+                    let inputs_translated = parallel_vec_with_ctx(
+                        input_values.iter().map(|val| val.to_single_expr()),
+                        self.current_ctx.clone(),
+                    );
+
+                    let loop_ctx = if self.current_ctx.is_some() {
+                        let already_translated_outputs =
+                            parallel_vec(outputs.iter().map(|output| {
+                                self.without_context
+                                    .as_mut()
+                                    .unwrap()
+                                    .translate_operand(*output)
+                                    .to_single_expr()
+                            }));
+                        Some(Assumption::InLoop(
+                            inputs_translated.clone(),
+                            already_translated_outputs,
+                        ))
+                    } else {
+                        None
+                    };
+
                     let mut input_index = 0;
+
                     let inner_inputs = input_values.iter().map(|_val| {
                         input_index += 1;
                         StoredValue {
                             is_tuple: false,
-                            has_context: false,
-                            expr: getat(input_index - 1),
+                            // add context to inner inputs
+                            expr: if let Some(inner_ctx) = &loop_ctx {
+                                get(in_context(inner_ctx.clone(), arg()), input_index - 1)
+                            } else {
+                                get(arg(), input_index - 1)
+                            },
                         }
                     });
 
@@ -241,12 +277,10 @@ impl<'a> DagTranslator<'a> {
                     let loop_translated = self.translate_subregion(
                         inner_inputs.collect(),
                         iter::once(pred).chain(outputs.iter()).copied(),
+                        loop_ctx,
                     );
 
-                    let loop_expr = dowhile(
-                        parallel_vec(input_values.into_iter().map(|val| val.to_single_expr())),
-                        loop_translated,
-                    );
+                    let loop_expr = dowhile(inputs_translated, loop_translated);
 
                     self.cache_tuple_res(loop_expr, id)
                 }
@@ -303,21 +337,32 @@ impl<'a> DagTranslator<'a> {
                 }
                 let expr = call(
                     name.as_str(),
-                    parallel_vec(input_values.into_iter().map(|val| val.to_single_expr())),
+                    parallel_vec_with_ctx(
+                        input_values.into_iter().map(|val| val.to_single_expr()),
+                        self.current_ctx.clone(),
+                    ),
                 );
                 self.cache_tuple_res(expr, id)
             }
-            BasicExpr::Const(_op, literal, _ty) => match literal {
-                Literal::Int(n) => {
-                    let expr = int(n);
-                    self.cache_single_res(expr, id)
-                }
-                Literal::Bool(b) => {
-                    let expr = if b { ttrue() } else { tfalse() };
-                    self.cache_single_res(expr, id)
-                }
-                _ => todo!("handle other literals"),
-            },
+            BasicExpr::Const(_op, literal, _ty) => {
+                let lit_expr = match literal {
+                    Literal::Int(n) => int(n),
+                    Literal::Bool(b) => {
+                        if b {
+                            ttrue()
+                        } else {
+                            tfalse()
+                        }
+                    }
+                    _ => todo!("handle other literals"),
+                };
+                let with_ctx = if let Some(ctx) = &self.current_ctx {
+                    in_context(ctx.clone(), lit_expr)
+                } else {
+                    lit_expr
+                };
+                self.cache_single_res(with_ctx, id)
+            }
             BasicExpr::Effect(EffectOps::Print, args) => {
                 assert!(args.len() == 2, "print should have 2 arguments");
                 let translated = self.translate_operand(args[0]);
@@ -351,26 +396,33 @@ impl<'a> DagTranslator<'a> {
 }
 
 impl RvsdgFunction {
-    /// Translates an RVSDG function to the
-    /// tree encoding.
-    /// It generates one let binding per
-    /// node in the RVSDG, adding the value
-    /// for that node to the end of the argument
-    /// using the `concat` constructor.
-    /// In the inner-most scope, the value of
-    /// all nodes is available.
-    pub fn to_dag_encoding(&self) -> RcExpr {
+    fn to_dag_encoding_helper<'a>(
+        &'a self,
+        ctx: Option<Assumption>,
+        without_context: Option<Box<DagTranslator<'a>>>,
+    ) -> (DagTranslator<'a>, RcExpr) {
         let argument_values: Vec<StoredValue> = self
             .args
             .iter()
             .enumerate()
             .map(|(i, _ty)| StoredValue {
                 is_tuple: false,
-                expr: getat(i),
-                has_context: false,
+                expr: if let Some(ctx) = &ctx {
+                    get(in_context(ctx.clone(), arg()), i)
+                } else {
+                    get(arg(), i)
+                },
             })
             .collect();
-        let mut translator = DagTranslator::new(&self.nodes, argument_values.clone());
+        let mut translator = DagTranslator {
+            argument_values: argument_values.clone(),
+            stored_node: HashMap::new(),
+            nodes: &self.nodes,
+            next_alloc_id: 0,
+            current_ctx: ctx.clone(),
+            without_context,
+        };
+
         let translated_results = self
             .results
             .iter()
@@ -382,17 +434,41 @@ impl RvsdgFunction {
             .filter_map(|r| r.0.to_tree_type())
             .collect::<Vec<_>>();
 
-        function(
-            self.name.as_str(),
-            Type::TupleT(
-                self.args
-                    .iter()
-                    .filter_map(|ty| ty.to_tree_type())
-                    .collect(),
+        (
+            translator,
+            function(
+                self.name.as_str(),
+                Type::TupleT(
+                    self.args
+                        .iter()
+                        .filter_map(|ty| ty.to_tree_type())
+                        .collect(),
+                ),
+                tuplet_vec(result_types),
+                parallel_vec_with_ctx(translated_results, ctx),
             ),
-            tuplet_vec(result_types),
-            translator.build_translation(parallel_vec(translated_results)),
         )
+    }
+
+    /// Translates an RVSDG function to the
+    /// tree encoding.
+    /// It generates one let binding per
+    /// node in the RVSDG, adding the value
+    /// for that node to the end of the argument
+    /// using the `concat` constructor.
+    /// In the inner-most scope, the value of
+    /// all nodes is available.
+    pub fn to_dag_encoding(&self, add_context: bool) -> RcExpr {
+        let (without_ctx, expr) = self.to_dag_encoding_helper(None, None);
+        if add_context {
+            let (_with_ctx, expr_with_ctx) = self.to_dag_encoding_helper(
+                Some(Assumption::InFunc(self.name.clone())),
+                Some(Box::new(without_ctx)),
+            );
+            expr_with_ctx
+        } else {
+            expr
+        }
     }
 }
 
@@ -413,17 +489,19 @@ fn assert_progs_eq(prog1: &TreeProgram, expected: &TreeProgram, error_msg: &str)
 fn dag_translation_test(
     program: &str,
     expected: TreeProgram,
-    _input_val: Value,
-    _expected_val: Value,
-    _expected_printlog: Vec<String>,
+    input_val: Value,
+    expected_val: Value,
+    expected_printlog: Vec<String>,
+    add_context: bool,
 ) {
+    use dag_in_context::interpreter::interpret_dag_prog;
+
     let prog = parse_from_string(program);
     let cfg = program_to_cfg(&prog);
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
-    let result = rvsdg.to_dag_encoding();
+    let result = rvsdg.to_dag_encoding(add_context);
 
-    /* TODO check values once dag interpreter works
-    let (found_val, found_printlog) = interpret_tree_prog(&expected, &input_val);
+    let (found_val, found_printlog) = interpret_dag_prog(&expected, &input_val);
     assert_eq!(
         expected_val, found_val,
         "Reference program produced incorrect result. Expected {:?}, found {:?}",
@@ -440,7 +518,7 @@ fn dag_translation_test(
         expected_printlog, found_printlog
     );
 
-    let (found_val, found_printlog) = interpret_tree_prog(&result, &input_val);
+    let (found_val, found_printlog) = interpret_dag_prog(&result, &input_val);
     assert_eq!(
         expected_val, found_val,
         "Resulting program produced incorrect result. Expected {:?}, found {:?}",
@@ -461,30 +539,52 @@ fn dag_translation_test(
         expected_printlog, found_printlog,
         "Resulting optimized program produced incorrect print log. Expected {:?}, found {:?}",
         expected_printlog, found_printlog
-    );*/
+    );
 
     assert_progs_eq(&result, &expected, "Resulting program is incorrect");
 }
 
 #[test]
 fn simple_translation_dag() {
+    let simple_add = r#"
+    @add(): int {
+      v0: int = const 1;
+      res: int = add v0 v0;
+      ret res;
+    }
+    "#;
     dag_translation_test(
-        r#"
-  @add(): int {
-    v0: int = const 1;
-    res: int = add v0 v0;
-    ret res;
-  }
-  "#,
+        simple_add,
         program!(function(
             "add",
             Type::TupleT(vec![statet()]),
             tuplet!(intt(), statet()),
             parallel!(add(int(1), int(1)), getat(0)),
         ),),
-        Value::Tuple(vec![]),
-        Value::Const(Constant::Int(2)),
+        tuplev!(statev()),
+        tuplev!(intv(2), statev()),
         vec![],
+        false,
+    );
+
+    dag_translation_test(
+        simple_add,
+        program!(function(
+            "add",
+            Type::TupleT(vec![statet()]),
+            tuplet!(intt(), statet()),
+            parallel!(
+                add(
+                    in_context(infunc("add"), int(1)),
+                    in_context(infunc("add"), int(1))
+                ),
+                get(in_context(infunc("add"), arg()), 0)
+            ),
+        ),),
+        tuplev!(statev()),
+        tuplev!(intv(2), statev()),
+        vec![],
+        true,
     );
 }
 
@@ -517,6 +617,7 @@ fn dag_translate_simple_loop() {
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(1)),
         vec![],
+        false,
     );
 }
 
@@ -557,6 +658,7 @@ fn dag_translate_loop() {
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),
         vec!["10".to_string()],
+        false,
     );
 }
 
@@ -588,9 +690,10 @@ fn dag_if_translation() {
             tuplet!(intt(), statet()),
             parallel!(get(myif.clone(), 1), get(myif, 0)),
         ),),
-        Value::Tuple(vec![]),
-        Value::Const(Constant::Int(2)),
+        Value::Tuple(vec![statev()]),
+        tuplev!(intv(2), statev()),
         vec![],
+        false,
     );
 }
 
@@ -615,9 +718,10 @@ fn dag_print_translation() {
             tuplet!(statet()),
             parallel!(second_print),
         ),),
-        Value::Tuple(vec![]),
-        Value::Tuple(vec![]),
+        tuplev!(statev()),
+        tuplev!(statev()),
         vec!["3".to_string(), "2".to_string()],
+        false,
     );
 }
 
@@ -653,8 +757,9 @@ fn dag_multi_function_translation() {
                 parallel!(add(int(1), int(1)), getat(0)),
             ),
         ),
-        Value::Tuple(vec![]),
-        Value::Tuple(vec![]),
+        tuplev!(statev()),
+        tuplev!(statev()),
         vec!["2".to_string()],
+        false,
     );
 }

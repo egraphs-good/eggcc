@@ -206,27 +206,13 @@ pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Concat(Order::Parallel, r, single(l)))
 }
 
-pub fn push_seq(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Sequential, r, single(l)))
-}
-
-pub fn push_rev(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Reversed, r, single(l)))
-}
-
 pub fn concat_par(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Concat(Order::Parallel, tuple, tuple2))
 }
 
-pub fn concat_seq(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Sequential, tuple, tuple2))
-}
-
-pub fn concat_rev(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Reversed, tuple, tuple2))
-}
-
 /// Create a tuple where each element can be executed in any order.
+/// in any order.
+/// e.g. `parallel!(e1, e2, e3)` becomes `Concat(Order::Parallel, Concat(Order::Parallel, e1, e2), e3)`
 #[macro_export]
 macro_rules! parallel {
     ($($x:expr),* $(,)?) => ($crate::ast::parallel_vec(vec![$($x),*]))
@@ -242,6 +228,25 @@ where
         iter.fold(single(e), |acc, x| cons_par(x, acc))
     } else {
         empty()
+    }
+}
+
+/// When ctx is Some and es is empty, returns an empty expression wrapped
+/// in the given context. This allows us to ensure all leaf nodes have context.
+pub fn parallel_vec_with_ctx<I: IntoIterator<Item = RcExpr>(es: I, ctx: Option<Assumption>) -> RcExpr
+where
+    <I as IntoIterator>::IntoIter: DoubleEndedIterator,
+{
+    match ctx {
+        Some(ctx) => {
+            let es_vec = es.into_iter().collect::<Vec<_>>();
+            if es_vec.is_empty() {
+                in_context(ctx, empty())
+            } else {
+                parallel_vec(es_vec)
+            }
+        }
+        _ => parallel_vec(es),
     }
 }
 

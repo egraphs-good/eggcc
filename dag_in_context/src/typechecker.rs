@@ -159,7 +159,6 @@ impl<'a> TypeChecker<'a> {
         expr: RcExpr,
         arg_tys: &TypeStack,
     ) -> (Type, RcExpr) {
-        eprintln!("Adding types to {}", expr);
         assert!(
             arg_tys.get() != &Type::Unknown,
             "Expected known argument type"

@@ -474,7 +474,7 @@ impl Run {
             }
             RunType::DagRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding(false);
+                let tree = rvsdg.to_dag_encoding(true);
                 let rvsdg2 = dag_to_rvsdg(&tree);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();

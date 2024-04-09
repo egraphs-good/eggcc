@@ -17,7 +17,7 @@ use dag_in_context::{ast::*, schema::Assumption};
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
 use dag_in_context::{
-    ast::{add, call, dowhile, function, int, less_than, parallel_vec, program_vec, tfalse, ttrue},
+    ast::{add, call, dowhile, function, int, less_than, program_vec, tfalse, ttrue},
     schema::{RcExpr, TreeProgram, Type},
 };
 use hashbrown::HashMap;
@@ -80,7 +80,7 @@ struct DagTranslator<'a> {
     /// The values of the RVSDG arguments to this region.
     argument_values: Vec<StoredValue>,
     /// `stored_node` is a cache of already translated rvsdg nodes.
-    stored_node: HashMap<Operand, StoredValue>,
+    stored_node: HashMap<Id, StoredValue>,
     /// A reference to the nodes in the RVSDG.
     nodes: &'a [RvsdgBody],
     /// The next id to assign to an alloc.
@@ -89,6 +89,8 @@ struct DagTranslator<'a> {
     current_ctx: Option<Assumption>,
     /// The translator without context, used to reference the translated code for loop bodies.
     without_context: Option<Box<DagTranslator<'a>>>,
+    /// cache loop body for use in contexts
+    loop_body_cache: HashMap<Id, RcExpr>,
 }
 
 impl<'a> DagTranslator<'a> {
@@ -96,18 +98,22 @@ impl<'a> DagTranslator<'a> {
     /// Essentially inlines all references to this expression instead of binding it.
     /// Importantly, on translation back to RVSDG we should ensure that pure
     /// common subexpressions are not duplicated.
-    fn simple_res(&mut self, expr: RcExpr) -> StoredValue {
-        StoredValue {
+    fn cache_single(&mut self, expr: RcExpr, id: Id) -> StoredValue {
+        let res = StoredValue {
             is_tuple: false,
             expr: expr.clone(),
-        }
+        };
+        self.stored_node.insert(id, res.clone());
+        res
     }
 
-    fn tuple_res(&mut self, expr: RcExpr) -> StoredValue {
-        StoredValue {
+    fn tuple_res(&mut self, expr: RcExpr, id: Id) -> StoredValue {
+        let res = StoredValue {
             is_tuple: true,
             expr: expr.clone(),
-        }
+        };
+        self.stored_node.insert(id, res.clone());
+        res
     }
 
     /// Translate a sub-region by creating a new region
@@ -141,17 +147,11 @@ impl<'a> DagTranslator<'a> {
     }
 
     fn translate_operand(&mut self, operand: Operand) -> StoredValue {
-        if let Some(stored) = self.stored_node.get(&operand) {
-            return stored.clone();
-        }
-        let res = match operand {
+        match operand {
             Operand::Arg(index) => self.argument_values[index].clone(),
             Operand::Id(id) => self.translate_node(id).project(0),
             Operand::Project(p_index, id) => self.translate_node(id).project(p_index),
-        };
-
-        self.stored_node.insert(operand, res.clone());
-        res
+        }
     }
 
     /// Translate a node or return the index of the already-translated node.
@@ -162,7 +162,7 @@ impl<'a> DagTranslator<'a> {
     fn translate_node(&mut self, id: Id) -> StoredValue {
         let node = &self.nodes[id];
         match node {
-            RvsdgBody::BasicOp(expr) => self.translate_basic_expr(expr.clone()),
+            RvsdgBody::BasicOp(expr) => self.translate_basic_expr(expr.clone(), id),
             RvsdgBody::If {
                 pred,
                 inputs,
@@ -197,7 +197,7 @@ impl<'a> DagTranslator<'a> {
                 );
 
                 let expr = tif(pred, then_translated, else_translated);
-                self.tuple_res(expr)
+                self.tuple_res(expr, id)
             }
             RvsdgBody::Gamma {
                 pred,
@@ -221,7 +221,7 @@ impl<'a> DagTranslator<'a> {
                     branches.push(translated);
                 }
                 let expr = switch_vec(pred, branches);
-                self.tuple_res(expr)
+                self.tuple_res(expr, id)
             }
             RvsdgBody::Theta {
                 pred,
@@ -239,16 +239,16 @@ impl<'a> DagTranslator<'a> {
                 );
 
                 let loop_ctx = if self.current_ctx.is_some() {
-                    let already_translated_outputs = parallel_vec(outputs.iter().map(|output| {
-                        self.without_context
-                            .as_mut()
-                            .unwrap()
-                            .translate_operand(*output)
-                            .to_single_expr()
-                    }));
+                    let already_translated_outputs = self
+                        .without_context
+                        .as_ref()
+                        .unwrap()
+                        .loop_body_cache
+                        .get(&id)
+                        .unwrap();
                     Some(Assumption::InLoop(
                         inputs_translated.clone(),
-                        already_translated_outputs,
+                        already_translated_outputs.clone(),
                     ))
                 } else {
                     None
@@ -272,22 +272,30 @@ impl<'a> DagTranslator<'a> {
                 // For the sub-region, we need a new region translator
                 // with its own arguments and bindings.
                 // We then put the whole loop in a let binding and move on.
-                let loop_translated = self.translate_subregion(
+                let loop_body_translated = self.translate_subregion(
                     inner_inputs.collect(),
                     iter::once(pred).chain(outputs.iter()).copied(),
                     loop_ctx,
                 );
 
-                let loop_expr = dowhile(inputs_translated, loop_translated);
+                // cache the loop body for use in contexts
+                self.loop_body_cache
+                    .insert(id, loop_body_translated.clone());
 
-                self.tuple_res(loop_expr)
+                let loop_expr = dowhile(inputs_translated, loop_body_translated);
+
+                self.tuple_res(loop_expr, id)
             }
         }
     }
 
     /// Translate this expression at the given id,
     /// return the newly created index.
-    fn translate_basic_expr(&mut self, expr: BasicExpr<Operand>) -> StoredValue {
+    fn translate_basic_expr(&mut self, expr: BasicExpr<Operand>, id: Id) -> StoredValue {
+        if let Some(cached) = self.stored_node.get(&id) {
+            return cached.clone();
+        }
+
         match expr {
             BasicExpr::Op(op, children, ty) => {
                 let children = children
@@ -323,8 +331,8 @@ impl<'a> DagTranslator<'a> {
                     _ => todo!("handle {} op", op),
                 };
                 match op {
-                    ValueOps::Alloc | ValueOps::Load => self.tuple_res(expr),
-                    _ => self.simple_res(expr),
+                    ValueOps::Alloc | ValueOps::Load => self.tuple_res(expr, id),
+                    _ => self.cache_single(expr, id),
                 }
             }
             BasicExpr::Call(name, inputs, _num_ret_values, _output_type) => {
@@ -339,7 +347,7 @@ impl<'a> DagTranslator<'a> {
                         self.current_ctx.clone(),
                     ),
                 );
-                self.tuple_res(expr)
+                self.tuple_res(expr, id)
             }
             BasicExpr::Const(_op, literal, _ty) => {
                 let lit_expr = match literal {
@@ -358,7 +366,7 @@ impl<'a> DagTranslator<'a> {
                 } else {
                     lit_expr
                 };
-                self.simple_res(with_ctx)
+                self.cache_single(with_ctx, id)
             }
             BasicExpr::Effect(EffectOps::Print, args) => {
                 assert!(args.len() == 2, "print should have 2 arguments");
@@ -368,7 +376,7 @@ impl<'a> DagTranslator<'a> {
 
                 // print outputs a new unit value
                 let expr = tprint(arg1, arg2);
-                self.simple_res(expr)
+                self.cache_single(expr, id)
             }
             BasicExpr::Effect(EffectOps::Store, args) => {
                 assert!(args.len() == 3, "store should have 3 arguments");
@@ -376,14 +384,14 @@ impl<'a> DagTranslator<'a> {
                 let arg2 = self.translate_operand(args[1]).to_single_expr();
                 let arg3 = self.translate_operand(args[2]).to_single_expr();
                 let expr = twrite(arg1, arg2, arg3);
-                self.simple_res(expr)
+                self.cache_single(expr, id)
             }
             BasicExpr::Effect(EffectOps::Free, args) => {
                 assert!(args.len() == 2, "free should have 2 arguments");
                 let arg1 = self.translate_operand(args[0]).to_single_expr();
                 let arg2 = self.translate_operand(args[1]).to_single_expr();
                 let expr = free(arg1, arg2);
-                self.simple_res(expr)
+                self.cache_single(expr, id)
             }
             BasicExpr::Effect(effect_op, _args) => {
                 panic!("Unrecognized effect op {:?}", effect_op)
@@ -414,6 +422,7 @@ impl RvsdgFunction {
         let mut translator = DagTranslator {
             argument_values: argument_values.clone(),
             stored_node: HashMap::new(),
+            loop_body_cache: HashMap::new(),
             nodes: &self.nodes,
             next_alloc_id: 0,
             current_ctx: ctx.clone(),
@@ -498,7 +507,6 @@ fn dag_translation_test(
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
     let result = rvsdg.to_dag_encoding(add_context);
 
-    eprintln!("resulting program:\n{}", result.pretty());
     assert_progs_eq(&result, &expected, "Resulting program is incorrect");
 
     let (found_val, found_printlog) = interpret_dag_prog(&expected, &input_val);

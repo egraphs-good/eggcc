@@ -11,7 +11,8 @@ fn int_interval_test(
     hi: i64,
 ) -> crate::Result {
     let with_arg_types = inp.clone().with_arg_types(emptyt(), expected_ty.clone());
-    let check = format!("(check (ival {with_arg_types}) (IntI {lo} {hi}))");
+    let check = format!("(check (ival {with_arg_types}) (IntI (V {lo}) (V {hi})))");
+    // let check = format!("(print-function ival 100)");
     interval_test(with_arg_types, expected_ty, arg, expected_val, check)
 }
 
@@ -116,7 +117,7 @@ fn if_interval() -> crate::Result {
 
     egglog_test(
         &format!("{f}"),
-        &format!("(check (ival {e}) (IntI 4 5))"),
+        &format!("(check (ival {e}) (IntI (V 4) (V 5)))"),
         vec![f.to_program(base(intt()), base(intt()))],
         val_int(1),
         val_int(4),
@@ -140,7 +141,12 @@ fn nested_if() -> crate::Result {
 
     egglog_test(
         &format!("{f}"),
-        &format!("(check (ival {inner}) (IntI 4 5)) (check (ival {outer}) (IntI 20 20))"),
+        &format!(
+            "
+        (check (ival {inner}) (IntI (V 4) (V 5)))
+        (check (ival {outer}) (IntI (V 20) (V 20)))
+        "
+        ),
         vec![f.to_program(base(intt()), base(intt()))],
         val_int(2),
         val_int(20),
@@ -157,9 +163,17 @@ fn context_if() -> crate::Result {
     let z = less_eq(int_ty(0, base(intt())), y);
 
     let f = function("main", base(intt()), base(boolt()), z.clone()).func_with_arg_types();
+    let prog = f.to_program(base(intt()), base(boolt()));
+    let with_context = prog.add_context();
 
     egglog_test(
-        &format!("{f}"), 
-        &format!("(print-function ival 100)"), 
-        vec![f.to_program(base(intt()), base(boolt()))], val_int(4), val_bool(true), vec![])
+        &format!("{with_context}"),
+        &format!(
+            "(print-function ival 100)(print-function InContext 100)(print-function Debug 100)"
+        ),
+        vec![with_context],
+        val_int(4),
+        val_bool(true),
+        vec![],
+    )
 }

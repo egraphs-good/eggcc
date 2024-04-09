@@ -1,19 +1,102 @@
 (ruleset interval-analysis)
 
+(datatype Bound
+  (PosInf)
+  (NegInf)
+  (V i64))
+
+(function bound-max (Bound Bound) Bound)
+(rule (
+        (= x (V v-x))
+        (= y (V v-y))
+      )
+      ((set (bound-max x y) (V (max v-x v-y))))
+      :ruleset interval-analysis)
+(rule (
+        (= x (V v-x))
+        (= y (PosInf))
+      )
+      ((set (bound-max x y) (PosInf)))
+      :ruleset interval-analysis)
+(rule (
+        (= x (V v-x))
+        (= y (NegInf))
+      )
+      ((set (bound-max x y) (V v-x)))
+      :ruleset interval-analysis)
+(rule (
+        (= x (PosInf))
+        (= y (NegInf))
+      )
+      ((set (bound-max x y) (PosInf)))
+      :ruleset interval-analysis)
+(rule (
+        (= x (PosInf))
+        (= y (PosInf))
+      )
+      ((set (bound-max x y) (PosInf)))
+      :ruleset interval-analysis)
+(rule (
+        (= x (NegInf))
+        (= y (NegInf))
+      )
+      ((set (bound-max x y) (NegInf)))
+      :ruleset interval-analysis)
+(rule ((bound-max x y)) ((set (bound-max y x) (bound-max x y))) :ruleset interval-analysis)
+
+(function bound-min (Bound Bound) Bound)
+(rule (
+        (= x (V v-x))
+        (= y (V v-y))
+      )
+      ((set (bound-min x y) (V (min v-x v-y))))
+      :ruleset interval-analysis)
+(rule (
+        (= x (V v-x))
+        (= y (PosInf))
+      )
+      ((set (bound-min x y) (V v-x)))
+      :ruleset interval-analysis)
+(rule (
+        (= x (V v-x))
+        (= y (NegInf))
+      )
+      ((set (bound-min x y) (NegInf)))
+      :ruleset interval-analysis)
+(rule (
+        (= x (PosInf))
+        (= y (NegInf))
+      )
+      ((set (bound-min x y) (NegInf)))
+      :ruleset interval-analysis)
+(rule (
+        (= x (PosInf))
+        (= y (PosInf))
+      )
+      ((set (bound-min x y) (PosInf)))
+      :ruleset interval-analysis)
+(rule (
+        (= x (NegInf))
+        (= y (NegInf))
+      )
+      ((set (bound-min x y) (NegInf)))
+      :ruleset interval-analysis)
+(rule ((bound-min x y)) ((set (bound-min y x) (bound-min x y))) :ruleset interval-analysis)
+
 
 
 (datatype Interval
   (BoolI bool bool)
-  (IntI i64 i64)
+  (IntI Bound Bound)
   (interval-intersect Interval Interval)
   (interval-union Interval Interval))
 
 ; Interval combinators
 (rewrite (interval-intersect (IntI la ha) (IntI lb hb))
-         (IntI (max la lb) (min ha hb))
+         (IntI (bound-max la lb) (bound-min ha hb))
          :ruleset interval-analysis)
 (rewrite (interval-union (IntI la ha) (IntI lb hb))
-         (IntI (min la lb) (max ha hb))
+         (IntI (bound-min la lb) (bound-max ha hb))
          :ruleset interval-analysis)
 (rewrite (interval-intersect (BoolI la ha) (BoolI lb hb))
          (BoolI (or la lb) (and ha hb))
@@ -30,7 +113,7 @@
 ; Constants
 ; =================================
 (rule ((= lhs (Const (Int x) ty)))
-      ((set (ival lhs) (IntI x x)))
+      ((set (ival lhs) (IntI (V x) (V x))))
       :ruleset interval-analysis)
 
 (rule ((= lhs (Const (Bool x) ty)))
@@ -41,7 +124,7 @@
 ; Constant Folding
 ; =================================
 (rule (
-       (= (IntI x x) (ival expr))
+       (= (IntI (V x) (V x)) (ival expr))
        (HasArgType expr ty)
       )
       ((union expr (Const (Int x) ty)))
@@ -60,17 +143,17 @@
 ; + a b interval is (+ la lb) (+ ha hb)
 (rule (
        (= lhs (Bop (Add) x y))
-       (= (ival x) (IntI la ha))
-       (= (ival y) (IntI lb hb))
+       (= (ival x) (IntI (V la) (V ha)))
+       (= (ival y) (IntI (V lb) (V hb)))
       )
-      ((set (ival lhs) (IntI (+ la hb) (+ ha hb))))
+      ((set (ival lhs) (IntI (V (+ la hb)) (V (+ ha hb)))))
       :ruleset interval-analysis)
 
 ; < a b interval is (< ha lb) (< la hb)
 (rule (
         (= lhs (Bop (LessThan) a b))
-        (= (IntI la ha) (ival a))
-        (= (IntI lb hb) (ival b))
+        (= (IntI (V la) (V ha)) (ival a))
+        (= (IntI (V lb) (V hb)) (ival b))
       )
       ((set (ival lhs) (BoolI (bool-< ha lb) (bool-< la hb))))
       :ruleset interval-analysis)
@@ -84,4 +167,31 @@
         (= els-ival (ival els))
       )
       ((set (ival lhs) (interval-union thn-ival els-ival)))
+      :ruleset interval-analysis)
+
+; (rule (
+;        (If pred thn els)
+;        (= ctx (InContext (InIf true p)))
+;       )
+;       ((set (ival ctx) (BoolI true true) x))
+;       :ruleset interval-analysis)
+
+; (rule (
+;        (If pred thn els)
+;        (= ctx (InContext (InIf false p) x))
+;       )
+;       ((set (ival ctx) (BoolI false false)))
+;       :ruleset interval-analysis)
+
+(rule (
+        (= lhs (InContext ctx expr))
+        (= interval (ival expr))
+      )
+      ((set (ival lhs) interval))
+      :ruleset interval-analysis)
+
+(relation Debug (Expr Expr))
+
+(rule ((Bop (Mul) x y))
+      ((Debug x y))
       :ruleset interval-analysis)

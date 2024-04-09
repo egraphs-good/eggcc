@@ -118,6 +118,10 @@
        (HasArgType e ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
+(rule ((= lhs (DoWhile ins body))
+       (HasArgType ins ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
 ; Don't push arg types through Program, Function, DoWhile, Let exprs because
 ; these create new arg contexts.
 

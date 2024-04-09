@@ -17,7 +17,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
        (= loop (DoWhile in out)) 
        (= expr (Get (Arg ty) i)) 
        (= loop (DoWhile in pred_out))
-       (= expr (tuple-ith pred_out (+ i 1)))) 
+       (= expr (Get pred_out (+ i 1)))) 
       ((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
         Constructor::Const => {

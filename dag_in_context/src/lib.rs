@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use egglog::{Term, TermDag};
 use from_egglog::FromEgglog;
+use greedy_dag_extractor::{extract, serialized_egraph, CostModel};
 use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
@@ -11,6 +12,7 @@ use crate::interpreter::interpret_dag_prog;
 pub mod ast;
 pub mod dag_typechecker;
 pub mod from_egglog;
+mod greedy_dag_extractor;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
 mod optimizations;
@@ -101,14 +103,22 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let program = build_program(program);
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&program)?;
-    let (sort, value) = egraph.eval_expr(&egglog::ast::Expr::Var((), "PROG".into()))?;
+
+    let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
-    let extracted = egraph.extract(value, &mut termdag, &sort);
+    let results = extract(
+        &serialized,
+        unextractables,
+        &mut termdag,
+        &CostModel::simple_cost_model(),
+    );
+    assert_eq!(results.len(), 1);
+    let (_cid, costset) = results.into_iter().next().unwrap();
     let mut from_egglog = FromEgglog {
         termdag,
         conversion_cache: Default::default(),
     };
-    Ok(from_egglog.program_from_egglog(extracted.1))
+    Ok(from_egglog.program_from_egglog(costset.term))
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

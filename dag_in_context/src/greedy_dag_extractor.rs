@@ -147,7 +147,7 @@ fn calculate_cost_set(
     let children_classes = node
         .children
         .iter()
-        .map(|c| egraph.nid_to_cid(&c).clone())
+        .map(|c| egraph.nid_to_cid(c).clone())
         .collect::<Vec<ClassId>>();
 
     if children_classes.contains(cid) {
@@ -166,7 +166,7 @@ fn calculate_cost_set(
         .collect();
 
     // cycle detection
-    if cost_sets.iter().any(|cs| cs.costs.contains_key(&cid)) {
+    if cost_sets.iter().any(|cs| cs.costs.contains_key(cid)) {
         return CostSet {
             costs: Default::default(),
             total: std::f64::INFINITY.try_into().unwrap(),
@@ -175,9 +175,7 @@ fn calculate_cost_set(
         };
     }
 
-    let cost_set = get_node_cost(&node.op, &cid, &cost_sets, cm, termdag);
-
-    cost_set
+    get_node_cost(&node.op, cid, &cost_sets, cm, termdag)
 }
 
 pub fn extract(
@@ -190,8 +188,8 @@ pub fn extract(
     cm: &CostModel,
 ) -> HashMap<ClassId, CostSet> {
     let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
-    let parents = build_parent_index(&egraph);
-    let mut worklist = initialize_worklist(&egraph);
+    let parents = build_parent_index(egraph);
+    let mut worklist = initialize_worklist(egraph);
     let mut costs = FxHashMap::<ClassId, CostSet>::with_capacity_and_hasher(
         egraph.classes().len(),
         Default::default(),

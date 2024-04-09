@@ -1,0 +1,33 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int) {
+  v3: int = const 10;
+  v5: bool = lt v0 v3;
+  v10: int = const 5;
+  br v5 .__24__ .__14__;
+.__24__:
+  v25: int = const 2;
+  v28: int = add v25 v10;
+  v21: int = id v28;
+  v22: int = id v10;
+.__32__:
+  v34: bool = lt v21 v22;
+  br v34 .__46__ .__41__;
+.__46__:
+  v45: int = const 1;
+  print v45;
+  jmp .__50__;
+.__41__:
+  v40: int = const 2;
+  print v40;
+  jmp .__50__;
+.__14__:
+  v15: int = const 3;
+  v18: int = add v15 v10;
+  v21: int = id v18;
+  v22: int = id v10;
+  jmp .__32__;
+.__50__:
+}

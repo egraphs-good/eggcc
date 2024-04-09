@@ -1,0 +1,46 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@pow(v0: int, v1: int) {
+  v5: int = const 0;
+  v9: int = id v0;
+  v10: int = id v5;
+  v11: int = id v0;
+  v12: int = id v1;
+.__14__:
+  v16: int = const 1;
+  v18: int = sub v12 v16;
+  v20: bool = lt v10 v18;
+  br v20 .__48__ .__35__;
+.__48__:
+  v51: int = mul v9 v11;
+  v53: bool = const true;
+  v57: int = add v10 v16;
+  v42: int = id v51;
+  v43: bool = id v53;
+  v44: int = id v57;
+  v45: int = id v11;
+  v46: int = id v12;
+.__62__:
+  v9: int = id v42;
+  v10: int = id v44;
+  v11: int = id v45;
+  v12: int = id v46;
+  br v43 .__14__ .__70__;
+.__35__:
+  v37: bool = const false;
+  v42: int = id v9;
+  v43: bool = id v37;
+  v44: int = id v10;
+  v45: int = id v11;
+  v46: int = id v12;
+  jmp .__62__;
+.__70__:
+  print v9;
+}
+@main {
+  v1: int = const 4;
+  v3: int = const 15;
+  call @pow v1 v3;
+}

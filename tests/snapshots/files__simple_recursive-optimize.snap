@@ -1,0 +1,25 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@inc(v0: int): int {
+  v3: int = const 2;
+  v5: bool = lt v0 v3;
+  br v5 .__17__ .__12__;
+.__17__:
+  v16: int = const 1;
+  v19: int = add v16 v0;
+  print v19;
+  v24: int = call @inc v19;
+  v14: int = id v24;
+  jmp .__28__;
+.__12__:
+  v14: int = id v0;
+.__28__:
+  ret v14;
+}
+@main {
+  v1: int = const 0;
+  v4: int = call @inc v1;
+  print v4;
+}

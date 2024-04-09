@@ -141,10 +141,11 @@ impl<'a> TypeChecker<'a> {
     ) -> Assumption {
         match assumption {
             Assumption::InLoop(inputs, body) => {
-                let body_with_types = self.add_arg_types_to_expr(body.clone(), arg_tys);
+                let (_ty, body_with_types) = self.add_arg_types_to_expr(body.clone(), arg_tys);
                 let outer_types = arg_tys.popped();
-                let inputs_with_types = self.add_arg_types_to_expr(inputs.clone(), &outer_types);
-                inloop(inputs_with_types.1, body_with_types.1)
+                let (_ty, inputs_with_types) =
+                    self.add_arg_types_to_expr(inputs.clone(), &outer_types);
+                inloop(inputs_with_types, body_with_types)
             }
             Assumption::InFunc(name) => infunc(&name),
             Assumption::InIf(branch, pred) => {

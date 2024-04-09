@@ -11,6 +11,7 @@ use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
 use std::fs;
 use std::io::Read;
+use std::process::Stdio;
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
@@ -130,7 +131,7 @@ where
     I: IntoIterator<Item = S2>,
 {
     use std::io::Write;
-    use std::process::{Command, Stdio};
+    use std::process::Command;
     let mut child = Command::new(program)
         .args(args)
         .stdin(Stdio::piped())
@@ -655,13 +656,47 @@ impl Run {
             self.prog_with_args.args.join(" "),
         );
 
-        std::process::Command::new("cc")
-            .arg(object.clone())
-            .arg(library_o.clone())
-            .arg("-o")
-            .arg(executable.clone())
-            .status()
-            .unwrap();
+        #[cfg(target_os = "macos")]
+        {
+            // Workaround on new macos linkers:
+            //
+            // On linkers shipped past XCode 15, we see a bug around symbol
+            // relocations with an error along the lines of:
+            // ld: Assertion failed: (pattern[0].addrMode == addr_other), function addFixupFromRelocations, file Relocations.cpp, line 701.
+            //
+            // This is either a bug, or a difference in the way symbols are
+            // handled, or a bit of both (chatter online differs), but for now,
+            // we just rety with the ld_classic flag.
+            if !std::process::Command::new("cc")
+                .arg(object.clone())
+                .arg(library_o.clone())
+                .arg("-o")
+                .arg(executable.clone())
+                .stderr(Stdio::null())
+                .status()
+                .map(|x| x.success())
+                .unwrap_or(false)
+            {
+                std::process::Command::new("cc")
+                    .arg(object.clone())
+                    .arg(library_o.clone())
+                    .arg("-o")
+                    .arg(executable.clone())
+                    .arg("-Wl,-ld_classic")
+                    .status()
+                    .unwrap();
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            std::process::Command::new("cc")
+                .arg(object.clone())
+                .arg(library_o.clone())
+                .arg("-o")
+                .arg(executable.clone())
+                .status()
+                .unwrap();
+        }
 
         std::process::Command::new("rm")
             .arg(object)

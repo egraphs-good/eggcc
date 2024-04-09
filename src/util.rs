@@ -655,6 +655,11 @@ impl Run {
             executable.clone() + "-args",
             self.prog_with_args.args.join(" "),
         );
+        let mut cmd = std::process::Command::new("cc");
+        cmd.arg(object.clone())
+            .arg(library_o.clone())
+            .arg("-o")
+            .arg(executable.clone());
 
         #[cfg(target_os = "macos")]
         {
@@ -667,21 +672,14 @@ impl Run {
             // This is either a bug, or a difference in the way symbols are
             // handled, or a bit of both (chatter online differs), but for now,
             // we just rety with the ld_classic flag.
-            if !std::process::Command::new("cc")
-                .arg(object.clone())
-                .arg(library_o.clone())
-                .arg("-o")
-                .arg(executable.clone())
+            if !cmd
                 .stderr(Stdio::null())
                 .status()
                 .map(|x| x.success())
                 .unwrap_or(false)
             {
-                std::process::Command::new("cc")
-                    .arg(object.clone())
-                    .arg(library_o.clone())
-                    .arg("-o")
-                    .arg(executable.clone())
+                // reset stderr to surface other errors.
+                cmd.stderr(Stdio::inherit())
                     .arg("-Wl,-ld_classic")
                     .status()
                     .unwrap();
@@ -689,13 +687,7 @@ impl Run {
         }
         #[cfg(not(target_os = "macos"))]
         {
-            std::process::Command::new("cc")
-                .arg(object.clone())
-                .arg(library_o.clone())
-                .arg("-o")
-                .arg(executable.clone())
-                .status()
-                .unwrap();
+            cmd.status().unwrap();
         }
 
         std::process::Command::new("rm")

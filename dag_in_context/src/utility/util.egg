@@ -29,8 +29,8 @@
 (rule ((Single expr)) ((union (Get (Single expr) 0) expr)) :ruleset always-run)
 ;; initial get
 (rule ((Concat expr1 expr2)
-       (> (tuple-length (Concat ord expr1 expr2)) 0))
-      ((Get (Concat ord expr1 expr2) 0))
+       (> (tuple-length (Concat expr1 expr2)) 0))
+      ((Get (Concat expr1 expr2) 0))
       :ruleset always-run)
 ;; next get
 (rule ((= concat (Concat expr1 expr2))
@@ -42,7 +42,7 @@
        :ruleset always-run)
 
 ;; descend left
-(rule ((Get (Concat ord expr1 expr2) i)
+(rule ((Get (Concat expr1 expr2) i)
        (= (tuple-length expr1) len1)
        (< i len1))
       ((union (Get (Concat expr1 expr2) i)

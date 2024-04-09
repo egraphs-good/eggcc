@@ -1,0 +1,18 @@
+@main(v0: int) {
+  v3: int = const 0;
+  v5: bool = ge v0 v3;
+  br v5 .__23__ .__13__;
+.__23__:
+  v20: int = id v0;
+  v21: int = id v3;
+  jmp .__27__;
+.__13__:
+  v15: int = const -1;
+  v17: int = mul v0 v15;
+  v20: int = id v17;
+  v21: int = id v3;
+.__27__:
+  v29: bool = ge v20 v21;
+  print v29;
+}
+

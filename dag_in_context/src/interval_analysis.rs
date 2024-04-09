@@ -158,7 +158,7 @@ fn nested_if() -> crate::Result {
 fn context_if() -> crate::Result {
     let cond = less_eq(int_ty(0, base(intt())), iarg());
 
-    let y = tif(cond, iarg(), mul(iarg(), int_ty(-1, base(intt()))));
+    let y = tif(cond, mul(iarg(), int_ty(-1, base(intt()))), iarg());
 
     let z = less_eq(int_ty(0, base(intt())), y);
 
@@ -169,11 +169,11 @@ fn context_if() -> crate::Result {
     egglog_test(
         &format!("{with_context}"),
         &format!(
-            "(print-function ival 100)(print-function InContext 100)(print-function Debug 100)"
+            "(print-function ival 100)(print-function InContext 100)(print-function Debug 100) (print-function bound-max 100)"
         ),
         vec![with_context],
         val_int(4),
-        val_bool(true),
+        val_bool(false),
         vec![],
     )
 }

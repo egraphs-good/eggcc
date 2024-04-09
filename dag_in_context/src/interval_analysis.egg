@@ -1,88 +1,90 @@
 (ruleset interval-analysis)
 
+(relation Debug (Expr Expr))
+
 (datatype Bound
   (PosInf)
   (NegInf)
   (V i64))
 
+; max
 (function bound-max (Bound Bound) Bound)
-(rule (
-        (= x (V v-x))
-        (= y (V v-y))
-      )
-      ((set (bound-max x y) (V (max v-x v-y))))
+(rule ((bound-max (V x) (V y)))
+      ((set (bound-max (V x) (V y)) (V (max x y))))
       :ruleset interval-analysis)
-(rule (
-        (= x (V v-x))
-        (= y (PosInf))
-      )
-      ((set (bound-max x y) (PosInf)))
+(rule ((bound-max (V x) (PosInf)))
+      ((set (bound-max (V x) (PosInf)) (PosInf)))
       :ruleset interval-analysis)
-(rule (
-        (= x (V v-x))
-        (= y (NegInf))
-      )
-      ((set (bound-max x y) (V v-x)))
+(rule ((bound-max (V x) (NegInf)))
+      ((set (bound-max (V x) (NegInf)) (V x)))
       :ruleset interval-analysis)
-(rule (
-        (= x (PosInf))
-        (= y (NegInf))
-      )
-      ((set (bound-max x y) (PosInf)))
+(rule ((bound-max (PosInf) (NegInf)))
+      ((set (bound-max (PosInf) (NegInf)) (PosInf)))
       :ruleset interval-analysis)
-(rule (
-        (= x (PosInf))
-        (= y (PosInf))
-      )
-      ((set (bound-max x y) (PosInf)))
+(rule ((bound-max (PosInf) (PosInf)))
+      ((set (bound-max (PosInf) (PosInf)) (PosInf)))
       :ruleset interval-analysis)
-(rule (
-        (= x (NegInf))
-        (= y (NegInf))
-      )
-      ((set (bound-max x y) (NegInf)))
+(rule ((bound-max (NegInf) (NegInf)))
+      ((set (bound-max (NegInf) (NegInf)) (NegInf)))
       :ruleset interval-analysis)
-(rule ((bound-max x y)) ((set (bound-max y x) (bound-max x y))) :ruleset interval-analysis)
+(rule ((bound-max x y))
+      ((set (bound-max y x) (bound-max x y)))
+      :ruleset interval-analysis)
 
+; min
 (function bound-min (Bound Bound) Bound)
-(rule (
-        (= x (V v-x))
-        (= y (V v-y))
-      )
-      ((set (bound-min x y) (V (min v-x v-y))))
+(rule ((bound-min (V x) (V y)))
+      ((set (bound-min (V x) (V y)) (V (min x y))))
       :ruleset interval-analysis)
-(rule (
-        (= x (V v-x))
-        (= y (PosInf))
-      )
-      ((set (bound-min x y) (V v-x)))
+(rule ((bound-min (V x) (PosInf)))
+      ((set (bound-min (V x) (PosInf)) (V x)))
       :ruleset interval-analysis)
-(rule (
-        (= x (V v-x))
-        (= y (NegInf))
-      )
-      ((set (bound-min x y) (NegInf)))
+(rule ((bound-min (V x) (NegInf)))
+      ((set (bound-min (V x) (NegInf)) (NegInf)))
       :ruleset interval-analysis)
-(rule (
-        (= x (PosInf))
-        (= y (NegInf))
-      )
-      ((set (bound-min x y) (NegInf)))
+(rule ((bound-min (PosInf) (NegInf)))
+      ((set (bound-min (PosInf) (NegInf)) (NegInf)))
       :ruleset interval-analysis)
-(rule (
-        (= x (PosInf))
-        (= y (PosInf))
-      )
-      ((set (bound-min x y) (PosInf)))
+(rule ((bound-min (PosInf) (PosInf)))
+      ((set (bound-min (PosInf) (PosInf)) (PosInf)))
       :ruleset interval-analysis)
-(rule (
-        (= x (NegInf))
-        (= y (NegInf))
-      )
-      ((set (bound-min x y) (NegInf)))
+(rule ((bound-min (NegInf) (NegInf)))
+      ((set (bound-min (NegInf) (NegInf)) (NegInf)))
       :ruleset interval-analysis)
-(rule ((bound-min x y)) ((set (bound-min y x) (bound-min x y))) :ruleset interval-analysis)
+(rule ((bound-min x y))
+      ((set (bound-min y x) (bound-min x y)))
+      :ruleset interval-analysis)
 
+; +
+(function bound-+ (Bound Bound) Bound)
+(rule ((bound-+ (V x) (V y)))
+      ((set (bound-+ (V x) (V y)) (V (+ x y))))
+      :ruleset interval-analysis)
+(rule ((bound-+ (V x) (PosInf)))
+      ((set (bound-+ (V x) (PosInf)) (PosInf)))
+      :ruleset interval-analysis)
+(rule ((bound-+ (V x) (NegInf)))
+      ((set (bound-+ (V x) (NegInf)) (NegInf)))
+      :ruleset interval-analysis)
+(rule ((bound-+ (PosInf) (NegInf)))
+      ((panic "can't add PosInf and NegInf"))
+      :ruleset interval-analysis)
+(rule ((bound-+ (PosInf) (PosInf)))
+      ((set (bound-+ (PosInf) (PosInf)) (PosInf)))
+      :ruleset interval-analysis)
+(rule ((bound-+ (NegInf) (NegInf)))
+      ((set (bound-+ (NegInf) (NegInf)) (NegInf)))
+      :ruleset interval-analysis)
+(rule ((bound-+ x y))
+      ((set (bound-+ y x) (bound-+ x y)))
+      :ruleset interval-analysis)
+
+; (function bound-< (Bound Bound) Bound)
+; (rule (
+;         (= x )
+;       )
+;       ()
+;       :ruleset interval-analysis)
 
 
 (datatype Interval
@@ -149,6 +151,25 @@
       ((set (ival lhs) (IntI (V (+ la hb)) (V (+ ha hb)))))
       :ruleset interval-analysis)
 
+; negative number * -1 is positive (TODO: Make this way more general)
+(rule (
+        (= lhs (Bop (Mul) x y))
+        (= (ival x) (IntI (NegInf) (V 0)))
+        (= (ival y) (IntI (V -1) (V -1)))
+      )
+      (
+        (set (ival lhs) (IntI (V 0) (PosInf)))
+      )
+      :ruleset interval-analysis)
+
+(rule (
+        (= lhs (Bop (LessEq) a b))
+        (= a-ival (ival a))
+        (= b-ival (ival b))
+      )
+      ((Debug a b))
+      :ruleset interval-analysis)
+
 ; < a b interval is (< ha lb) (< la hb)
 (rule (
         (= lhs (Bop (LessThan) a b))
@@ -156,6 +177,11 @@
         (= (IntI (V lb) (V hb)) (ival b))
       )
       ((set (ival lhs) (BoolI (bool-< ha lb) (bool-< la hb))))
+      :ruleset interval-analysis)
+
+; <= a b interval is (<= ha lb) (<= la hb)
+(rule ()
+      ()
       :ruleset interval-analysis)
 
 ; =================================
@@ -183,6 +209,7 @@
 ;       ((set (ival ctx) (BoolI false false)))
 ;       :ruleset interval-analysis)
 
+; Things with intervals still have that interval when in a context
 (rule (
         (= lhs (InContext ctx expr))
         (= interval (ival expr))
@@ -190,8 +217,26 @@
       ((set (ival lhs) interval))
       :ruleset interval-analysis)
 
-(relation Debug (Expr Expr))
-
-(rule ((Bop (Mul) x y))
-      ((Debug x y))
+(rule (
+        (= lhs (InContext (InIf true (Bop (LessEq) v (InContext ctx expr))) expr))
+        (= (ival v) (IntI (V x) (V y)))
+      )
+      (
+        (set (ival lhs) (IntI (NegInf) (V y)))
+        ;(set (ival expr) (IntI (NegInf) (V y)))
+      )
       :ruleset interval-analysis)
+
+(rule (
+        (= lhs (InContext (InIf false (Bop (LessEq) v (InContext ctx expr))) expr))
+        (= (ival v) (IntI (V x) (V y)))
+      )
+      (
+        (set (ival lhs) (IntI (V y) (PosInf)))
+      )
+      :ruleset interval-analysis)
+
+
+; (rule ((Bop (Mul) x y))
+;       ((Debug x y))
+;       :ruleset interval-analysis)

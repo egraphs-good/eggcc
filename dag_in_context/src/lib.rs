@@ -9,6 +9,7 @@ use std::fmt::Write;
 
 use crate::interpreter::interpret_dag_prog;
 
+pub(crate) mod add_context;
 pub mod ast;
 pub mod dag2svg;
 pub mod dag_typechecker;

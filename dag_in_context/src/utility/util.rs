@@ -66,10 +66,11 @@ fn append_test() -> crate::Result {
 fn test_tuple_ith() -> crate::Result {
     use crate::ast::emptyt;
     let emptyt = emptyt();
-    let build = format!("
+    let build = format!(
+        "
     (let tup (Concat par 
-                  (Concat sequ (Single (Const (Int 0) {emptyt})) (Single (Const (Int 1) {emptyt})))
-                  (Concat sequ (Single (Const (Int 2) {emptyt})) (Single (Const (Int 3) {emptyt})))))
+                  (Concat par (Single (Const (Int 0) {emptyt})) (Single (Const (Int 1) {emptyt})))
+                  (Concat par (Single (Const (Int 2) {emptyt})) (Single (Const (Int 3) {emptyt})))))
     
     ;; with print
     (let tup2 (Concat par
@@ -78,7 +79,8 @@ fn test_tuple_ith() -> crate::Result {
                     (Concat par (Single (Const (Int 1) {emptyt})) 
                                 (Single (Const (Int 2) {emptyt}))))
                 (Single (Const (Int 3) {emptyt}))))
-    ");
+    "
+    );
 
     let check = format!(
         "

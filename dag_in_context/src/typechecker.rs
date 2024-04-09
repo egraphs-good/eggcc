@@ -11,7 +11,7 @@ use crate::{
 pub(crate) struct TypeStack(Vec<Type>);
 
 impl TypeStack {
-    pub(crate) fn get<'a>(&'a self) -> &'a Type {
+    pub(crate) fn get(&self) -> &Type {
         self.0.last().unwrap()
     }
 

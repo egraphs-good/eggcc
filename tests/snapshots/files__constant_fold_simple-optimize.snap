@@ -1,0 +1,12 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main {
+  v1: int = const 1;
+  v3: int = const 2;
+  v5: int = add v1 v3;
+  v9: int = mul v1 v3;
+  v11: int = div v5 v9;
+  print v11;
+}

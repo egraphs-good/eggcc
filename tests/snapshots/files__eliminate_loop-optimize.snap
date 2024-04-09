@@ -1,0 +1,14 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main {
+  v1: int = const 1;
+.__5__:
+  v6: int = const 3;
+  v8: int = const 1;
+  v10: bool = lt v6 v8;
+  br v10 .__5__ .__14__;
+.__14__:
+  print v1;
+}

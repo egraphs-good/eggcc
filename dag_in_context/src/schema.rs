@@ -6,7 +6,7 @@
 use std::rc::Rc;
 use strum_macros::EnumIter;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BaseType {
     IntT,
     BoolT,
@@ -14,7 +14,7 @@ pub enum BaseType {
     StateT,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Type {
     Base(BaseType),
     /// Nested tuple types are not allowed.
@@ -28,12 +28,12 @@ pub enum Type {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum TernaryOp {
     Write,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -52,18 +52,18 @@ pub enum BinaryOp {
     Free,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum UnaryOp {
     Not,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Constant {
     Int(i64),
     Bool(bool),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Order {
     Parallel,
     Sequential,
@@ -76,14 +76,14 @@ pub enum Order {
 /// This is important for the correctness of the interpreter, which makes this assumption.
 pub type RcExpr = Rc<Expr>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
     InFunc(String),
     InIf(bool, RcExpr),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Expr {
     Const(Constant, Type),
     Top(TernaryOp, RcExpr, RcExpr, RcExpr),

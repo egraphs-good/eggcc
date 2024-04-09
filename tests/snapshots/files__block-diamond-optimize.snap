@@ -1,0 +1,56 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int) {
+  v3: int = const 2;
+  v5: bool = lt v0 v3;
+  v10: int = const 0;
+  v12: int = const 1;
+  br v5 .__33__ .__19__;
+.__33__:
+  v35: bool = lt v3 v0;
+  v50: int = add v10 v3;
+  br v35 .__66__ .__55__;
+.__66__:
+  v69: int = add v50 v3;
+  v73: bool = const true;
+  v61: int = id v69;
+  v62: int = id v12;
+  v63: int = id v3;
+  v64: bool = id v73;
+.__76__:
+  v28: int = id v61;
+  v29: int = id v62;
+  v30: int = id v63;
+  v31: bool = id v64;
+.__82__:
+  br v31 .__103__ .__94__;
+.__103__:
+  v100: int = id v28;
+  v101: int = id v29;
+  jmp .__107__;
+.__94__:
+  v97: int = add v28 v30;
+  v100: int = id v97;
+  v101: int = id v29;
+  jmp .__107__;
+.__55__:
+  v59: bool = const false;
+  v61: int = id v50;
+  v62: int = id v12;
+  v63: int = id v3;
+  v64: bool = id v59;
+  jmp .__76__;
+.__19__:
+  v22: int = add v10 v12;
+  v26: bool = const false;
+  v28: int = id v22;
+  v29: int = id v12;
+  v30: int = id v3;
+  v31: bool = id v26;
+  jmp .__82__;
+.__107__:
+  v109: int = add v100 v101;
+  print v109;
+}

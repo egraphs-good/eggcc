@@ -474,7 +474,7 @@ impl Run {
             }
             RunType::DagRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding(true);
+                let tree = rvsdg.to_dag_encoding(false);
                 let rvsdg2 = dag_to_rvsdg(&tree);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
@@ -495,7 +495,7 @@ impl Run {
                     termdag,
                     conversion_cache: Default::default(),
                 };
-                let res_term = from_egglog.program_from_egglog(term);
+                let res_term = from_egglog.program_from_egglog_preserve_ctx_nodes(term);
                 if tree != res_term {
                     panic!("Check failed: terms should be equal after conversion to and from egglog. Got:\n{}\nExpected:\n{}", res_term.pretty(), tree.pretty());
                 }

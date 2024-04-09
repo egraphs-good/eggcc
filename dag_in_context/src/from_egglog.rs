@@ -110,6 +110,7 @@ impl FromEgglog {
             let types = self.termdag.get(*types);
             Type::TupleT(self.vec_from_tlistexpr(types))
           }
+          ("Unknown", []) => Type::Unknown,
           _ => panic!("Invalid type: {:?}", type_),
         })
     }
@@ -336,7 +337,7 @@ impl FromEgglog {
         res
     }
 
-    fn program_from_egglog_preserve_ctx_nodes(&mut self, program: Term) -> TreeProgram {
+    pub fn program_from_egglog_preserve_ctx_nodes(&mut self, program: Term) -> TreeProgram {
         match_term_app!(program.clone();
         {
           ("Program", [entry, functions]) => {

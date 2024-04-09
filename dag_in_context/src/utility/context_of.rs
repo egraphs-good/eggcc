@@ -24,9 +24,9 @@ fn test_context_of() -> crate::Result {
     crate::egglog_test(
         &format!("(let build {build})"),
         &check,
-        vec![],
-        val_empty(),
-        val_empty(),
+        vec![build.func_to_program()],
+        val_int(5),
+        val_int(5),
         vec![],
     )
 }

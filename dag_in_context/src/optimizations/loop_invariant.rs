@@ -109,9 +109,9 @@ fn test_invariant_detect_simple() -> crate::Result {
     let build = format!("(let loop {})", my_loop);
     let check = format!(
         "(check (= true (is-inv-Expr loop {inv})))
-        (check (= true (is-inv-Expr loop {add_inv})))
-        (check (= false (is-inv-Expr loop {pred})))
-        (check (= false (is-inv-Expr loop {not_inv})))",
+         (check (= true (is-inv-Expr loop {add_inv})))
+         (check (= false (is-inv-Expr loop {pred})))
+         (check (= false (is-inv-Expr loop {not_inv})))",
     );
 
     egglog_test(

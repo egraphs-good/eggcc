@@ -25,8 +25,8 @@ fn test_context_of() -> crate::Result {
         &format!("(let build {build})"),
         &check,
         vec![build.func_to_program()],
-        val_int(5),
-        val_int(5),
+        intv(5),
+        intv(5),
         vec![],
     )
 }
@@ -95,7 +95,7 @@ fn test_context_of_no_func_context() -> crate::Result {
         &check,
         vec![build.to_program(base(intt()), base(intt()))],
         val_empty(),
-        val_int(9),
+        intv(9),
         vec![],
     )
 }

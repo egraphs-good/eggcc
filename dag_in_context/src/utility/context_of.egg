@@ -58,8 +58,8 @@
 (rule ((Call func arg) (ContextOf arg ctx))
     ((ContextOf (Call func arg) ctx)) :ruleset always-run)
 
-(rule ((Alloc e state ty) (ContextOf e ctx))
-    ((ContextOf (Alloc e state ty) ctx)) :ruleset always-run)
+(rule ((Alloc amt e state ty) (ContextOf e ctx))
+    ((ContextOf (Alloc amt e state ty) ctx)) :ruleset always-run)
 
-(rule ((Alloc e state ty) (ContextOf state ctx))
-    ((ContextOf (Alloc e state ty) ctx)) :ruleset always-run)
+(rule ((Alloc amt e state ty) (ContextOf state ctx))
+    ((ContextOf (Alloc amt e state ty) ctx)) :ruleset always-run)

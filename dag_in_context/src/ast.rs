@@ -231,25 +231,17 @@ where
     }
 }
 
-/// When ctx is Some and es is empty, returns an empty expression wrapped
-/// in the given context. This allows us to ensure all leaf nodes have context.
-pub fn parallel_vec_with_ctx<I: IntoIterator<Item = RcExpr>>(
-    es: I,
-    ctx: Option<Assumption>,
-) -> RcExpr
+/// A helper for ensuring the list of expressions is non-empty.
+/// This prevents missing adding context to a leaf node (e.g. empty).
+pub fn parallel_vec_nonempty<I: IntoIterator<Item = RcExpr>>(es: I) -> RcExpr
 where
     <I as IntoIterator>::IntoIter: DoubleEndedIterator,
 {
-    match ctx {
-        Some(ctx) => {
-            let es_vec = es.into_iter().collect::<Vec<_>>();
-            if es_vec.is_empty() {
-                in_context(ctx, empty())
-            } else {
-                parallel_vec(es_vec)
-            }
-        }
-        _ => parallel_vec(es),
+    let es_vec = es.into_iter().collect::<Vec<_>>();
+    if es_vec.is_empty() {
+        panic!("Expected non-empty list of expressions in parallel_vec_nonempty");
+    } else {
+        parallel_vec(es_vec)
     }
 }
 

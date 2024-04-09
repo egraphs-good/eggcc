@@ -132,12 +132,11 @@ impl<'a> DagTranslator<'a> {
     ) -> RcExpr {
         let old_argument_values = std::mem::replace(&mut self.argument_values, argument_values);
         let old_context = std::mem::replace(&mut self.current_ctx, new_context);
-        let ctx = self.current_ctx.clone();
         let resulting_exprs = operands.map(|operand| {
             let res = self.translate_operand(operand);
             res.to_single_expr()
         });
-        let expr = parallel_vec_with_ctx(resulting_exprs, ctx);
+        let expr = parallel_vec_nonempty(resulting_exprs);
 
         // restore argument values
         self.argument_values = old_argument_values;
@@ -233,10 +232,8 @@ impl<'a> DagTranslator<'a> {
                     input_values.push(self.translate_operand(*input));
                 }
 
-                let inputs_translated = parallel_vec_with_ctx(
-                    input_values.iter().map(|val| val.to_single_expr()),
-                    self.current_ctx.clone(),
-                );
+                let inputs_translated =
+                    parallel_vec_nonempty(input_values.iter().map(|val| val.to_single_expr()));
 
                 let loop_ctx = if self.current_ctx.is_some() {
                     let already_translated_outputs = self
@@ -342,10 +339,7 @@ impl<'a> DagTranslator<'a> {
                 }
                 let expr = call(
                     name.as_str(),
-                    parallel_vec_with_ctx(
-                        input_values.into_iter().map(|val| val.to_single_expr()),
-                        self.current_ctx.clone(),
-                    ),
+                    parallel_vec_nonempty(input_values.into_iter().map(|val| val.to_single_expr())),
                 );
                 self.tuple_res(expr, id)
             }
@@ -451,7 +445,7 @@ impl RvsdgFunction {
                         .collect(),
                 ),
                 tuplet_vec(result_types),
-                parallel_vec_with_ctx(translated_results, ctx),
+                parallel_vec_nonempty(translated_results),
             ),
         )
     }

@@ -337,7 +337,7 @@ fn convert_to_egglog_simple_arithmetic() {
 #[test]
 fn convert_to_egglog_switch() {
     use crate::ast::*;
-    let expr = switch!(int(1); concat_par(single(int(1)), single(int(2))), concat_par(single(int(3)), single(int(4)))).with_arg_types(base(intt()), tuplet!(intt(), intt()));
+    let expr = switch!(int(1); concat(single(int(1)), single(int(2))), concat(single(int(3)), single(int(4)))).with_arg_types(base(intt()), tuplet!(intt(), intt()));
     test_expr_parses_to(
         expr,
         "(Switch (Const (Int 1) (Base (IntT)))
@@ -366,7 +366,7 @@ fn convert_whole_program() {
             get(
                 dowhile(
                     single(arg()),
-                    push_par(add(getat(0), int(1)), single(less_than(getat(0), int(10))))
+                    push(add(getat(0), int(1)), single(less_than(getat(0), int(10))))
                 ),
                 0
             )

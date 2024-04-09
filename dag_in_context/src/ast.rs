@@ -198,15 +198,15 @@ pub fn single(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Single(e))
 }
 
-pub fn cons_par(l: RcExpr, r: RcExpr) -> RcExpr {
+pub fn cons(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Concat(single(l), r))
 }
 
-pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
+pub fn push(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Concat(r, single(l)))
 }
 
-pub fn concat_par(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
+pub fn concat(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Concat(tuple, tuple2))
 }
 
@@ -224,7 +224,7 @@ where
 {
     let mut iter = es.into_iter().rev();
     if let Some(e) = iter.next() {
-        iter.fold(single(e), |acc, x| cons_par(x, acc))
+        iter.fold(single(e), |acc, x| cons(x, acc))
     } else {
         empty()
     }

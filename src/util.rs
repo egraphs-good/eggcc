@@ -9,8 +9,8 @@ use graphviz_rust::cmd::Format;
 use graphviz_rust::exec;
 use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
-use std::fs;
-use std::io::Read;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::process::Stdio;
 use std::{
     ffi::OsStr,
@@ -18,6 +18,7 @@ use std::{
     io,
     path::PathBuf,
 };
+use tempfile::tempdir;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -62,9 +63,6 @@ pub(crate) fn parse_from_string(input: &str) -> bril_rs::Program {
 /// Like other utilities related to `DebugVisualizations`, this method is
 /// only intended for debugging eggcc.
 pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
-    use std::fs::File;
-    use std::io::Write;
-
     // make the directory if it doesn't exist
     if !output_dir.exists() {
         std::fs::create_dir_all(&output_dir)?;
@@ -130,7 +128,6 @@ where
     S2: AsRef<OsStr>,
     I: IntoIterator<Item = S2>,
 {
-    use std::io::Write;
     use std::process::Command;
     let mut child = Command::new(program)
         .args(args)
@@ -205,6 +202,7 @@ pub enum RunType {
     RvsdgToCfg,
     /// Converts to an executable using brilift
     CompileBrilift,
+    CompileBrilLLVM,
 }
 
 impl Display for RunType {
@@ -230,7 +228,8 @@ impl RunType {
             | RunType::DagConversion
             | RunType::DagOptimize
             | RunType::Egglog
-            | RunType::CompileBrilift => true,
+            | RunType::CompileBrilift
+            | RunType::CompileBrilLLVM => true,
             RunType::RvsdgConversion
             | RunType::DagToRvsdg
             | RunType::OptimizedRvsdg
@@ -298,6 +297,7 @@ pub struct Run {
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
     pub optimize_brilift: Option<bool>,
+    pub optimize_bril_llvm: Option<bool>,
 }
 
 /// an enum of IRs that can be interpreted
@@ -361,6 +361,7 @@ impl Run {
                 output_path: None,
                 optimize_egglog: None,
                 optimize_brilift: None,
+                optimize_bril_llvm: None,
             };
             res.push(default.clone());
             if test_type.produces_interpretable() {
@@ -383,6 +384,24 @@ impl Run {
                         output_path: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: Some(optimize_brilift),
+                        optimize_bril_llvm: None,
+                    });
+                }
+            }
+        }
+
+        for optimize_egglog in [true, false] {
+            for optimize_brillvm in [true, false] {
+                for interp in [true, false] {
+                    res.push(Run {
+                        test_type: RunType::CompileBrilLLVM,
+                        interp,
+                        prog_with_args: prog.clone(),
+                        profile_out: None,
+                        output_path: None,
+                        optimize_egglog: Some(optimize_egglog),
+                        optimize_brilift: None,
+                        optimize_bril_llvm: Some(optimize_brillvm),
                     });
                 }
             }
@@ -402,6 +421,17 @@ impl Run {
                 (false, false) => "-opt_none",
                 (true, false) => "-opt_egglog",
                 (false, true) => "-opt_brilift",
+                (true, true) => "-opt_both",
+            };
+        }
+        if self.test_type == RunType::CompileBrilLLVM {
+            name += match (
+                self.optimize_egglog.unwrap(),
+                self.optimize_bril_llvm.unwrap(),
+            ) {
+                (false, false) => "-opt_none",
+                (true, false) => "-opt_egglog",
+                (false, true) => "-opt_brillvm",
                 (true, true) => "-opt_both",
             };
         }
@@ -612,6 +642,10 @@ impl Run {
                 )?;
                 (vec![], interpretable)
             }
+            RunType::CompileBrilLLVM => {
+                let interpretable = self.run_bril_llvm()?;
+                (vec![], interpretable)
+            }
         };
 
         let result_interpreted = if !self.interp {
@@ -670,7 +704,7 @@ impl Run {
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
 
-        let _ = fs::write(
+        let _ = std::fs::write(
             executable.clone() + "-args",
             self.prog_with_args.args.join(" "),
         );
@@ -713,6 +747,49 @@ impl Run {
             .arg(object)
             .arg(library_o)
             .arg(library_c)
+            .status()
+            .unwrap();
+
+        Ok(Some(Interpretable::Executable { executable }))
+    }
+
+    fn run_bril_llvm(&self) -> Result<Option<Interpretable>, EggCCError> {
+        let optimize_egglog = self
+            .optimize_egglog
+            .expect("optimize_egglog is a required flag when running RunMode::CompileBrilift");
+        let optimize_brillvm = self
+            .optimize_bril_llvm
+            .expect("optimize_brilift is a required flag when running RunMode::CompileBrilift");
+        let program = if optimize_egglog {
+            Run::optimize_bril(&self.prog_with_args.program)?
+        } else {
+            self.prog_with_args.program.clone()
+        };
+
+        let mut buf = Vec::new();
+        serde_json::to_writer_pretty(&mut buf, &program).expect("failed to deserialize");
+
+        let dir = tempdir().expect("couldn't create temp dir");
+
+        let llvm_ir = run_cmd_line(
+            "./bril-llvm/brilc",
+            Vec::<String>::new(),
+            String::from_utf8(buf).unwrap().as_str(),
+        )
+        .expect("unable to compile bril!");
+
+        let file_path = dir.path().join("compile.ll");
+        let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
+        file.write_all(llvm_ir.as_bytes())
+            .expect("unable to write to temp file");
+
+        let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+        let opt_level = if optimize_brillvm { "-O3" } else { "-O1" };
+        std::process::Command::new("clang")
+            .arg(file_path.clone())
+            .arg(opt_level)
+            .arg("-o")
+            .arg(executable.clone())
             .status()
             .unwrap();
 

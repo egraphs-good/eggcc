@@ -598,6 +598,7 @@ dependencies = [
  "serde_json",
  "smallvec",
  "syn 2.0.58",
+ "tempfile",
  "thiserror",
 ]
 

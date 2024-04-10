@@ -4,15 +4,15 @@
  
 (ruleset context-prop)
 
-;; A leaf context is either a InLoop or a InFunc context.
+;; A leaf context is either a InLoop or a NoContext.
 ;; We maintain the invariant that there is only one such context per region, and it can be pushed down to
 ;; leaf nodes.
 (relation ScopeContext (Assumption))
 (rule ((InLoop pred body))
       ((ScopeContext (InLoop pred body)))
       :ruleset context-prop)
-(rule ((InFunc name))
-      ((ScopeContext (InFunc name)))
+(rule ((NoContext))
+      ((ScopeContext (NoContext)))
       :ruleset context-prop)
 
 (rewrite (InContext ctx (Top op a b c))

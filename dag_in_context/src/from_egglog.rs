@@ -123,11 +123,8 @@ impl FromEgglog {
               self.expr_from_egglog(self.termdag.get(*rhs)),
             )
           }
-          ("InFunc", [lit]) => {
-            let Term::Lit(Literal::String(string)) = self.termdag.get(*lit) else {
-              panic!("Invalid string: {:?}", lit)
-            };
-            Assumption::InFunc(string.to_string())
+          ("NoContext", []) => {
+            Assumption::NoContext
           }
           ("InIf", [is_then, expr]) => {
             let Term::Lit(Literal::Bool(boolean)) = self.termdag.get(*is_then)

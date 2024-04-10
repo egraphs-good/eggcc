@@ -23,8 +23,8 @@
       ((union lhs (InContext assum (SubstLeaf to leaf))))
       :ruleset subst)
 ;; leaf node with context
-;; replace infunc context
-(rule ((= lhs (Subst assum to (InContext (InFunc name) leaf)))
+;; replace NoContext
+(rule ((= lhs (Subst assum to (InContext (NoContext) leaf)))
        (IsLeaf leaf))
       ((union lhs (InContext assum (SubstLeaf to leaf))))
       :ruleset subst)

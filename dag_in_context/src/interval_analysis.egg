@@ -83,6 +83,16 @@
       )
       :ruleset interval-analysis)
 
+; negative number * negative number is positive
+(rule (
+        (= lhs (Bop (Mul) x y))
+        (= (IntB hi-x) (hi-bound x))
+        (= (IntB hi-y) (hi-bound y))
+        (<= hi-x 0)
+        (<= hi-y 0) 
+      )
+      ((set (lo-bound lhs) (IntB 0)))
+      :ruleset interval-analysis)
 
 ; < a b interval is (< ha lb) (< la hb)
 (rule (
@@ -106,6 +116,8 @@
 ; =================================
 ; Conditionals
 ; =================================
+; lo-bound of If is the min of the lower bounds
+; hi-bound of If is the max of the upper bounds
 (rule (
        (= lhs (If cond thn els))
        (= lo-thn (lo-bound thn))
@@ -119,4 +131,35 @@
        (= hi-els (hi-bound els))
       )
       ((set (hi-bound lhs) (bound-max hi-thn hi-els)))
+      :ruleset interval-analysis)
+
+; Things with bounds still have those bounds when in a context
+(rule (
+        (= lhs (InContext ctx expr))
+        (= lo (lo-bound expr))
+      )
+      ((set (lo-bound lhs) lo))
+      :ruleset interval-analysis)
+(rule (
+        (= lhs (InContext ctx expr))
+        (= hi (hi-bound expr))
+      )
+      ((set (hi-bound lhs) hi))
+      :ruleset interval-analysis)
+
+; Set bounds on the Context node if the If predicate is <= some value for which we know an upper bound
+(rule (
+       (= lhs (InContext (InIf true (Bop (LessEq) v (InContext ctx expr))) expr))
+       (= (IntB hi) (hi-bound v))
+      )
+      ((set (hi-bound lhs) (IntB hi)))
+      :ruleset interval-analysis)
+
+(rule (
+       (= lhs (InContext (InIf false (Bop (LessEq) v (InContext ctx expr))) expr))
+       (= (IntB hi) (hi-bound v))
+      )
+      (
+       (set (lo-bound lhs) (IntB hi))
+      )
       :ruleset interval-analysis)

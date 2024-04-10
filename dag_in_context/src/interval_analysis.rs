@@ -160,3 +160,32 @@ fn nested_if() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn context_if() -> crate::Result {
+    let cond = less_eq(int_ty(0, base(intt())), iarg());
+
+    let y = tif(cond, mul(iarg(), int_ty(-1, base(intt()))), iarg());
+
+    let z = less_eq(int_ty(0, base(intt())), y);
+
+    let f = function("main", base(intt()), base(boolt()), z.clone()).func_with_arg_types();
+    let prog = f.to_program(base(intt()), base(boolt()));
+    let with_context = prog.add_context();
+
+    egglog_test(
+        &format!("{with_context}"),
+        &format!("
+        (print-function lo-bound 100)
+        (print-function hi-bound 100)
+        (print-function InContext 100)
+        (print-function DebugE 100)
+        (print-function DebugB 100)
+        "
+        ),
+        vec![with_context],
+        intv(4),
+        val_bool(false),
+        vec![],
+    )
+}

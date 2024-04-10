@@ -651,6 +651,7 @@ impl Run {
         let result_interpreted = if !self.interp {
             None
         } else {
+            dbg!(self.test_type);
             match interpretable_out {
                 Some(program) if self.interp => {
                     assert!(self.test_type.produces_interpretable());
@@ -785,7 +786,7 @@ impl Run {
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
         let opt_level = if optimize_brillvm { "-O3" } else { "-O1" };
-        std::process::Command::new("clang")
+        std::process::Command::new("cc")
             .arg(file_path.clone())
             .arg(opt_level)
             .arg("-o")

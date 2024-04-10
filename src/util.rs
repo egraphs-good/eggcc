@@ -292,7 +292,7 @@ pub struct Run {
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
     pub optimize_brilift: Option<bool>,
-    pub optimize_brillvm: Option<bool>,
+    pub optimize_bril_llvm: Option<bool>,
 }
 
 /// an enum of IRs that can be interpreted
@@ -357,7 +357,7 @@ impl Run {
                 output_path: None,
                 optimize_egglog: None,
                 optimize_brilift: None,
-                optimize_brillvm: None,
+                optimize_bril_llvm: None,
             };
             res.push(default.clone());
             if test_type.produces_interpretable() {
@@ -380,7 +380,7 @@ impl Run {
                         output_path: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: Some(optimize_brilift),
-                        optimize_brillvm: None,
+                        optimize_bril_llvm: None,
                     });
                 }
             }
@@ -397,7 +397,7 @@ impl Run {
                         output_path: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: None,
-                        optimize_brillvm: Some(optimize_brillvm),
+                        optimize_bril_llvm: Some(optimize_brillvm),
                     });
                 }
             }
@@ -423,7 +423,7 @@ impl Run {
         if self.test_type == RunType::CompileBrilLLVM {
             name += match (
                 self.optimize_egglog.unwrap(),
-                self.optimize_brillvm.unwrap(),
+                self.optimize_bril_llvm.unwrap(),
             ) {
                 (false, false) => "-opt_none",
                 (true, false) => "-opt_egglog",
@@ -712,7 +712,7 @@ impl Run {
             .optimize_egglog
             .expect("optimize_egglog is a required flag when running RunMode::CompileBrilift");
         let optimize_brillvm = self
-            .optimize_brillvm
+            .optimize_bril_llvm
             .expect("optimize_brilift is a required flag when running RunMode::CompileBrilift");
         let program = if optimize_egglog {
             Run::optimize_bril(&self.prog_with_args.program)?

@@ -84,19 +84,19 @@ fn test_tuple_ith() -> crate::Result {
 
     let check = format!(
         "
-    (check (= (tuple-ith tup 0) (Const (Int 0) {emptyt})))
-    (check (= (tuple-ith tup 1) (Const (Int 1) {emptyt})))
-    (check (= (tuple-ith tup 2) (Const (Int 2) {emptyt})))
-    (check (= (tuple-ith tup 3) (Const (Int 3) {emptyt})))
+    (check (= (Get tup 0) (Const (Int 0) {emptyt})))
+    (check (= (Get tup 1) (Const (Int 1) {emptyt})))
+    (check (= (Get tup 2) (Const (Int 2) {emptyt})))
+    (check (= (Get tup 3) (Const (Int 3) {emptyt})))
     (check (= 4 (tuple-length tup)))
-    (fail (check (tuple-ith tup 4)))
+    (fail (check (Get tup 4)))
 
-    (check (= (tuple-ith tup2 0) (Bop (Print) (Const (Int 0) {emptyt}) (Arg (Base (StateT))))))
-    (check (= (tuple-ith tup2 1) (Const (Int 1) {emptyt})))
-    (check (= (tuple-ith tup2 2) (Const (Int 2) {emptyt})))
-    (check (= (tuple-ith tup2 3) (Const (Int 3) {emptyt})))
+    (check (= (Get tup2 0) (Bop (Print) (Const (Int 0) {emptyt}) (Arg (Base (StateT))))))
+    (check (= (Get tup2 1) (Const (Int 1) {emptyt})))
+    (check (= (Get tup2 2) (Const (Int 2) {emptyt})))
+    (check (= (Get tup2 3) (Const (Int 3) {emptyt})))
     (check (= 4 (tuple-length tup2)))
-    (fail (check (tuple-ith tup2 4)))
+    (fail (check (Get tup2 4)))
     "
     );
     egglog_test(

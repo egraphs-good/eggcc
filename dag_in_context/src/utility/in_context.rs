@@ -30,7 +30,7 @@ fn test_in_context_two_loops() -> crate::Result {
         &format!("(AddFuncContext {expr})"),
         &format!(
             "
-(let original {expr})
+(let original (AddFuncContext {expr}))
 (let with-context {with_context})
 (check (= original with-context))"
         ),
@@ -109,7 +109,7 @@ fn test_harder_context_cycle() -> crate::Result {
         ),
         &format!(
             "
-(check (= {expr} {expr2}))
+(check (= (AddFuncContext {expr}) {expr2}))
 (check (= {expr} {int3func}))"
         ),
         vec![
@@ -139,7 +139,7 @@ fn simple_context() -> crate::Result {
         &format!("(AddFuncContext {expr})"),
         &format!(
             "
-(check (= {expr} {expected}))",
+(check (= (AddFuncContext {expr}) {expected}))",
         ),
         vec![
             expr.to_program(emptyt(), base(intt())),

@@ -118,6 +118,10 @@
        (HasArgType e ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
+(rule ((= lhs (DoWhile ins body))
+       (HasArgType ins ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
 ; Don't push arg types through Program, Function, DoWhile, Let exprs because
 ; these create new arg contexts.
 
@@ -384,6 +388,20 @@
       ; TypeList-ith needs to compute immediately, so we need to saturate type-helpers
       ; rules between every iter of type-analysis rules.
       ((HasType lhs (Base (TypeList-ith tylist i)))) 
+      :ruleset type-analysis)
+
+(rule (
+       (HasType (Get expr i) (TupleT tl))
+       (= (TypeList-length tl) len)
+       (>= i len))
+      ((panic "index out of bounds"))
+      :ruleset type-analysis)
+(rule (
+      (HasType (Get expr i) (TupleT tl))
+       (= (TypeList-length tl) len)
+        (< i 0)
+      )
+      ((panic "negative index"))
       :ruleset type-analysis)
 
 ; =================================

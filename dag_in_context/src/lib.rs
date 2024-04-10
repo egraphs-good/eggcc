@@ -169,11 +169,17 @@ fn check_program_gets_type(program: TreeProgram) -> Result {
     Ok(())
 }
 
-/// Runs an egglog test.
-/// `build` is egglog code that runs before the running rules.
-/// `check` is egglog code that runs after the running rules.
-/// It is highly reccomended to also provide the programs used in the egglog code
-/// so that they can be interpreted on the given value.
+pub fn egglog_test_and_print_program(
+    build: &str,
+    check: &str,
+    progs: Vec<TreeProgram>,
+    input: Value,
+    expected: Value,
+    expected_log: Vec<String>,
+) -> Result {
+    egglog_test_internal(build, check, progs, input, expected, expected_log, true)
+}
+
 pub fn egglog_test(
     build: &str,
     check: &str,
@@ -181,6 +187,23 @@ pub fn egglog_test(
     input: Value,
     expected: Value,
     expected_log: Vec<String>,
+) -> Result {
+    egglog_test_internal(build, check, progs, input, expected, expected_log, false)
+}
+
+/// Runs an egglog test.
+/// `build` is egglog code that runs before the running rules.
+/// `check` is egglog code that runs after the running rules.
+/// It is highly reccomended to also provide the programs used in the egglog code
+/// so that they can be interpreted on the given value.
+fn egglog_test_internal(
+    build: &str,
+    check: &str,
+    progs: Vec<TreeProgram>,
+    input: Value,
+    expected: Value,
+    expected_log: Vec<String>,
+    print_program: bool,
 ) -> Result {
     // first interpret the programs on the value
     for prog in progs {
@@ -212,6 +235,10 @@ pub fn egglog_test(
         include_str!("schedule.egg"),
     );
 
+    if print_program {
+        eprintln!("{}", program);
+    }
+
     let res = egglog::EGraph::default()
         .parse_and_run_program(&program)
         .map(|lines| {
@@ -221,8 +248,7 @@ pub fn egglog_test(
         });
 
     if res.is_err() {
-        println!("{}", program);
-        println!("{:?}", res);
+        eprintln!("{:?}", res);
     }
 
     Ok(res?)

@@ -6,7 +6,6 @@
 (ruleset context)
 (ruleset context-helpers)
 
-
 ;; ################################ datatypes
 ;; A context path is a list of (eclass, eclass) pairs.
 ;; In substitution, the path is used to store every context-related eclass we have visited, 
@@ -60,7 +59,7 @@
 
 ;; desugar add func context
 (rule ((= lhs (AddFuncContext (Function name inty outty body))))
-      ((union (Function name inty outty body)
+      ((union lhs
          (Function name inty outty
            (AddContext (InFunc name) (Full) body))))
        :ruleset context-helpers)
@@ -81,23 +80,6 @@
   ((union lhs inner))
   :ruleset context-helpers)
 
-
-;; Adding context may not saturate for loops.
-;; This is because a loop (DoWhile inputs outputs)
-;; can become equal to
-;; (DoWhile inputs ctx1)
-;; where ctx1 = (InContext (InLoop inputs outputs) outputs)
-;; Which we can add context to again:
-;; (DoWhile inputs (InContext (InLoop inputs ctx1) ctx1))
-;; These two contexts are equal, since the set of reachable
-;; values is the same.
-(rule ((= body_with_context
-          (DoAddContext seen  (InLoop inputs outputs) (Full) outputs)) ;; a loop body with context
-          (DoAddContext seen2 (InLoop inputs body_with_context) ;; same inputs
-                              (Full) body_with_context) ;; a loop body whose context already has context
-       )
-      ((union (InLoop inputs outputs) (InLoop inputs body_with_context)))
-      :ruleset context-helpers)
 
 ;; key rule that detects cycles
 ;; It finds that we have already seen the eclass we are adding context to.

@@ -19,22 +19,43 @@
    (Cons e (Nil))
    :ruleset always-run)
 
-(function tuple-ith (Expr i64) Expr :unextractable)
 (function tuple-length (Expr) i64 :unextractable)
 
 (rule ((HasType expr (TupleT tl))
        (= len (TypeList-length tl)))
       ((set (tuple-length expr) len)) :ruleset always-run)
 
-(rule ((Single expr)) ((union (tuple-ith (Single expr) 0) expr)) :ruleset always-run)
+;; Create a Get for every index, and rewrite it to see through Concat
+(rule ((Single expr)) ((union (Get (Single expr) 0) expr)) :ruleset always-run)
+;; initial get
 (rule ((Concat expr1 expr2)
-       (= ith (tuple-ith expr1 i)))
-       ((union (tuple-ith (Concat expr1 expr2) i) ith)) :ruleset always-run)
+       (> (tuple-length (Concat expr1 expr2)) 0))
+      ((Get (Concat expr1 expr2) 0))
+      :ruleset always-run)
+;; next get
+(rule ((= concat (Concat expr1 expr2))
+       (= len (tuple-length concat))
+       (= ith (Get concat i))
+       (< (+ i 1) len)
+       )
+       ((Get (Concat expr1 expr2) (+ 1 i)))
+       :ruleset always-run)
 
-(rule ((Concat expr1 expr2)
-       (= len1 (tuple-length expr1))
-       (= ith (tuple-ith expr2 i)))
-       ((union (tuple-ith (Concat expr1 expr2) (+ len1 i)) ith)) :ruleset always-run)
+;; descend left
+(rule ((Get (Concat expr1 expr2) i)
+       (= (tuple-length expr1) len1)
+       (< i len1))
+      ((union (Get (Concat expr1 expr2) i)
+              (Get expr1 i)))
+       :ruleset always-run)
+;; descend right
+(rule ((Get (Concat expr1 expr2) i)
+       (= (tuple-length expr1) len1)
+       (>= i len1))
+      ((union (Get (Concat expr1 expr2) i)
+              (Get expr2 (- i len1))))
+       :ruleset always-run)
+
 
 (relation IsLeaf (Expr))
 (rule ((Arg ty)) ((IsLeaf (Arg ty))) :ruleset always-run)

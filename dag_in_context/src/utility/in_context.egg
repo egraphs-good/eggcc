@@ -37,16 +37,11 @@
 
 
 (datatype ContextDepth
-  ;; Keep making new contexts for the entire reachable egraph
+  ;; Keep making new contexts for the entire reachable egraph,
+  ;; But don't make new contexts for every If encountered (this causes exponential blowup)
   (Full)
   ;; Don't make new contexts for sub-loops
-  (StopAtLoop)
-  ;; Don't make any new contextx for loops or lets (still make new ones for if statements)
-  (StopAtLoopOrLet))
-;; we need to add these to the database so we can match on them
-(Full)
-(StopAtLoop)
-(StopAtLoopOrLet)
+  (StopAtLoop))
 
 ;; AddFuncContext is a helper for tests, it adds full context to everything in a function.
 (function AddFuncContext (Expr) Expr :unextractable)

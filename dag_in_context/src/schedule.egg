@@ -10,7 +10,6 @@
       (saturate subst) ;; subst depends on type information for the argument
       (saturate interval-analysis)
       (saturate
-        (saturate context-prop)
         (saturate context-helpers)
         context))
     conditional-invariant-code-motion

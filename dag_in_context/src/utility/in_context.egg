@@ -6,11 +6,6 @@
 (ruleset context)
 (ruleset context-helpers)
 
-;; We don't want to keep adding context to things that already
-;; have context. This ruleset allows us to run a helper just once at the beginning of the schedule.
-(ruleset test-helpers)
-
-
 ;; ################################ datatypes
 ;; A context path is a list of (eclass, eclass) pairs.
 ;; In substitution, the path is used to store every context-related eclass we have visited, 
@@ -64,10 +59,10 @@
 
 ;; desugar add func context
 (rule ((= lhs (AddFuncContext (Function name inty outty body))))
-      ((union (Function name inty outty body)
+      ((union lhs
          (Function name inty outty
            (AddContext (InFunc name) (Full) body))))
-       :ruleset test-helpers)
+       :ruleset context-helpers)
 
 
 ;; AddContext is sugar for DoAddContext

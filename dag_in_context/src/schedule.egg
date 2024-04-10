@@ -1,5 +1,4 @@
 (run-schedule
-  test-helpers
   (repeat 6
     (saturate ;; saturate rulesets that we run to saturation
       (saturate always-run)

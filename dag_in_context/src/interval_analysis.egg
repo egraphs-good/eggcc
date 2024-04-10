@@ -60,6 +60,22 @@
       ((union expr (Const (Bool x) ty)))
       :ruleset interval-analysis)
 
+; lower bound being true means the bool must be true
+(rule (
+       (= (BoolB true) (lo-bound expr))
+       (HasArgType expr ty)
+      )
+      ((union expr (Const (Bool true) ty)))
+      :ruleset interval-analysis)
+
+; upper bound being false means the bool must be false
+(rule (
+       (= (BoolB false) (hi-bound expr))
+       (HasArgType expr ty)
+      )
+      ((union expr (Const (Bool false) ty)))
+      :ruleset interval-analysis)
+
 ; =================================
 ; Arithmetic
 ; =================================
@@ -83,6 +99,9 @@
       )
       :ruleset interval-analysis)
 
+; mul commutes
+(rewrite (Bop (Mul) x y) (Bop (Mul) y x) :ruleset interval-analysis)
+
 ; negative number * negative number is positive
 (rule (
         (= lhs (Bop (Mul) x y))
@@ -92,6 +111,17 @@
         (<= hi-y 0) 
       )
       ((set (lo-bound lhs) (IntB 0)))
+      :ruleset interval-analysis)
+
+; negative number * positive number is negative
+(rule (
+        (= lhs (Bop (Mul) x y))
+        (= (IntB hi-x) (hi-bound x))
+        (= (IntB lo-y) (lo-bound y))
+        (<= hi-x 0) ; x <= 0 (x is negative)
+        (>= lo-y 0) ; y >= 0 (y is positive)
+      )
+      ((set (hi-bound lhs) (IntB 0)))
       :ruleset interval-analysis)
 
 ; < a b interval is (< ha lb) (< la hb)
@@ -111,6 +141,26 @@
       )
       (
        (set (hi-bound lhs) (BoolB (bool-< la hb)))
+      )
+      :ruleset interval-analysis)
+
+; <= a b interval is (<= ha lb) (<= la hb)
+(rule (
+       (= lhs (Bop (LessEq) a b))
+       (= (IntB ha) (hi-bound a))
+       (= (IntB lb) (lo-bound b))
+      )
+      (
+       (set (lo-bound lhs) (BoolB (bool-<= ha lb)))
+      )
+      :ruleset interval-analysis)
+(rule (
+       (= lhs (Bop (LessEq) a b))
+       (= (IntB la) (lo-bound a))
+       (= (IntB hb) (hi-bound b))
+      )
+      (
+       (set (hi-bound lhs) (BoolB (bool-<= la hb)))
       )
       :ruleset interval-analysis)
 ; =================================
@@ -147,19 +197,37 @@
       ((set (hi-bound lhs) hi))
       :ruleset interval-analysis)
 
-; Set bounds on the Context node if the If predicate is <= some value for which we know an upper bound
+; if e <= v is true, then e is at most the upper bound of v
 (rule (
-       (= lhs (InContext (InIf true (Bop (LessEq) v (InContext ctx expr))) expr))
+       (= lhs (InContext (InIf true (Bop (LessEq) (InContext ctx expr) v)) expr))
        (= (IntB hi) (hi-bound v))
       )
       ((set (hi-bound lhs) (IntB hi)))
       :ruleset interval-analysis)
 
+; if e <= v is false, then e is at least the lower bound of v + 1
+(rule (
+       (= lhs (InContext (InIf false (Bop (LessEq) (InContext ctx expr) v)) expr))
+       (= (IntB lo) (lo-bound v))
+      )
+      ((set (lo-bound lhs) (IntB (+ lo 1))))
+      :ruleset interval-analysis)
+
+
+; if v <= e is true, then e is at least the lower bound of v
+(rule (
+       (= lhs (InContext (InIf true (Bop (LessEq) v (InContext ctx expr))) expr))
+       (= (IntB lo) (lo-bound v))
+      )
+      ((set (lo-bound lhs) (IntB lo)))
+      :ruleset interval-analysis)
+
+; if v <= e is false, then e is at most the upper bound of v - 1
 (rule (
        (= lhs (InContext (InIf false (Bop (LessEq) v (InContext ctx expr))) expr))
        (= (IntB hi) (hi-bound v))
       )
       (
-       (set (lo-bound lhs) (IntB hi))
+       (set (hi-bound lhs) (IntB (- hi 1)))
       )
       :ruleset interval-analysis)

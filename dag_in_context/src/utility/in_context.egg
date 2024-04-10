@@ -1,6 +1,8 @@
 ; This file provides AddContext, a helpers that copies a sub-egraph into
-; a new one with context.
+; a new one with a new context.
 ; Users of AddContext can specify how deeply to do this copy.
+; However, these rules do not recursivly add new InIf contexts as they go,
+; since these can blow up exponentially. 
 
 
 (ruleset context)
@@ -8,10 +10,10 @@
 
 ;; ################################ datatypes
 ;; A context path is a list of (eclass, eclass) pairs.
-;; In substitution, the path is used to store every context-related eclass we have visited, 
+;; In substitution, the path is used to store every loop eclass we have visited, 
 ;; and the corresponding expression at that point.
 ;; When we visit an eclass for the second time, we have found a cycle in the egraph.
-;; Then the corresponding eclasses are made equivalent.
+;; Then the corresponding contexts are made equivalent.
 (datatype ContextPath
   (PathNil)
   (PathCons Expr Expr ContextPath))
@@ -37,16 +39,12 @@
 
 
 (datatype ContextDepth
-  ;; Keep making new contexts for the entire reachable egraph
+  ;; Make new InLoop contexts for the full reachable subgraph
   (Full)
   ;; Don't make new contexts for sub-loops
-  (StopAtLoop)
-  ;; Don't make any new contextx for loops or lets (still make new ones for if statements)
-  (StopAtLoopOrLet))
-;; we need to add these to the database so we can match on them
+  (StopAtLoop))
 (Full)
 (StopAtLoop)
-(StopAtLoopOrLet)
 
 ;; AddFuncContext is a helper for tests, it adds full context to everything in a function.
 (function AddFuncContext (Expr) Expr :unextractable)

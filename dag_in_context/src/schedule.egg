@@ -2,6 +2,7 @@
   (repeat 6
     (saturate ;; saturate rulesets that we run to saturation
       (saturate always-run)
+      (saturate canon)
       (saturate error-checking)
       (saturate
         (saturate type-helpers)

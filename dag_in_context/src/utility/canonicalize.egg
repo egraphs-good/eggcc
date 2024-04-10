@@ -1,0 +1,26 @@
+(ruleset canon)
+
+; Commutativity
+(rewrite (Bop (Add) x y) (Bop (Add) y x) :ruleset canon)
+(rewrite (Bop (Mul) x y) (Bop (Mul) y x) :ruleset canon)
+(rewrite (Bop (Eq) x y) (Bop (Eq) y x) :ruleset canon)
+(rewrite (Bop (And) x y) (Bop (And) y x) :ruleset canon)
+(rewrite (Bop (Or) x y) (Bop (Or) y x) :ruleset canon)
+
+; Canonicalize to <
+; x > y ==> y < x
+(rewrite (Bop (GreaterThan) x y) (Bop (LessThan) y x) :ruleset canon)
+; x >= y ==> y < x + 1
+(rule (
+        (= lhs (Bop (GreaterEq) x y))
+        (HasArgType x ty)
+      )
+      ((union lhs (Bop (LessThan) y (Bop (Add) x (Const (Int 1) ty)))))
+      :ruleset canon)
+; x <= y ==> x < y + 1
+(rule (
+        (= lhs (Bop (LessEq) x y))
+        (HasArgType y ty)
+      )
+      ((union lhs (Bop (LessThan) x (Bop (Add) y (Const (Int 1) ty)))))
+      :ruleset canon)

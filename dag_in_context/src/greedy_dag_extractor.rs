@@ -120,9 +120,12 @@ fn get_node_cost(
             .sum::<NotNan<f64>>();
 
     let mut costs: HashMap<ClassId, Cost> = Default::default();
-    for c in child_cost_sets.iter().map(|cs| &cs.costs) {
-        for (cid, cost) in c.iter() {
-            costs.insert(cid.clone(), *cost);
+    // children of region nodes are not shared
+    if !cm.regions.contains(op) {
+        for c in child_cost_sets.iter().map(|cs| &cs.costs) {
+            for (cid, cost) in c.iter() {
+                costs.insert(cid.clone(), *cost);
+            }
         }
     }
 
@@ -230,6 +233,8 @@ pub struct CostModel {
     ops: HashMap<&'static str, Cost>,
     // Children of these constructors are ignored
     ignored: HashSet<&'static str>,
+    // Children of regions are not shared outside of the region
+    regions: HashSet<&'static str>,
 }
 
 impl CostModel {
@@ -273,7 +278,12 @@ impl CostModel {
             .into_iter()
             .map(|(op, cost)| (op, NotNan::new(cost).unwrap()))
             .collect();
-        CostModel { ops, ignored }
+        let regions = HashSet::from(["DoWhile", "Function"]);
+        CostModel {
+            ops,
+            ignored,
+            regions,
+        }
     }
 }
 

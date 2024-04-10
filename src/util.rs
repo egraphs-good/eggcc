@@ -651,7 +651,6 @@ impl Run {
         let result_interpreted = if !self.interp {
             None
         } else {
-            dbg!(self.test_type);
             match interpretable_out {
                 Some(program) if self.interp => {
                     assert!(self.test_type.produces_interpretable());

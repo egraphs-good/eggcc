@@ -120,8 +120,8 @@ fn get_node_cost(
             .sum::<NotNan<f64>>();
 
     let mut costs: HashMap<ClassId, Cost> = Default::default();
-    // children of region nodes are not shared
 
+    // children of region nodes are not shared
     let unshared_default = vec![];
     let unshared = cm.regions.get(op).unwrap_or(&unshared_default);
     for (i, c) in child_cost_sets.iter().map(|cs| &cs.costs).enumerate() {

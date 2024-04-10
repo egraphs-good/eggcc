@@ -1,78 +1,299 @@
-(datatype Cell (CellOf i64))
-
-(sort ExprSet (Set Expr))
-(sort CellSet (Set Cell))
+; Recommended VSCode setting:
 
 (ruleset memory)
 
-;                       program point, cell
-(function CellHasValues (Expr Cell) ExprSet :merge (set-intersect old new))
+(datatype Cell (CellOf i64))
+
+(sort ExprSetPrim (Set Expr))
+(sort CellSetPrim (Set Cell))
+(sort I64SetPrim (Set i64))
+
+(datatype ExprSet (ES ExprSetPrim))
+(datatype CellSet (CS CellSetPrim))
+(datatype I64Set (IS I64SetPrim))
+
+(function ExprSet-intersect (ExprSet ExprSet) ExprSet)
+(rewrite (ExprSet-intersect (ES set1) (ES set2)) (ES (set-intersect set1 set2))
+         :ruleset always-run)
+(function ExprSet-union (ExprSet ExprSet) ExprSet)
+(rewrite (ExprSet-union (ES set1) (ES set2)) (ES (set-union set1 set2))
+         :ruleset always-run)
+(relation ExprSet-contains (ExprSet Expr))
+(rule ((ES set1) (set-contains set1 x))
+      ((ExprSet-contains (ES set1) x))
+      :ruleset always-run)
+(function ExprSet-insert (ExprSet Expr) ExprSet)
+(rewrite (ExprSet-insert (ES set1) x)
+         (ES (set-insert set1 x))
+         :ruleset always-run)
+(function ExprSet-length (ExprSet) i64)
+(rewrite (ExprSet-length (ES set1)) (set-length set1) :ruleset always-run)
+
+(function CellSet-intersect (CellSet CellSet) CellSet)
+(rewrite (CellSet-intersect (CS set1) (CS set2)) (CS (set-intersect set1 set2))
+         :ruleset always-run)
+(function CellSet-union (CellSet CellSet) CellSet)
+(rewrite (CellSet-union (CS set1) (CS set2)) (CS (set-union set1 set2))
+         :ruleset always-run)
+; (relation CellSet-contains (CellSet Cell))
+; (rule ((CS set1) (set-contains set1 x))
+      ; ((CellSet-contains (CS set1) x))
+      ; :ruleset always-run)
+(function CellSet-insert (CellSet Cell) CellSet)
+(rewrite (CellSet-insert (CS set1) x)
+         (CS (set-insert set1 x))
+         :ruleset always-run)
+(function CellSet-length (CellSet) i64)
+(rewrite (CellSet-length (CS set1)) (set-length set1) :ruleset always-run)
+
+(function I64Set-intersect (I64Set I64Set) I64Set)
+(rewrite (I64Set-intersect (IS set1) (IS set2)) (IS (set-intersect set1 set2))
+         :ruleset always-run)
+(function I64Set-union (I64Set I64Set) I64Set)
+(rewrite (I64Set-union (IS set1) (IS set2)) (IS (set-union set1 set2))
+         :ruleset always-run)
+; (relation I64Set-contains (I64Set i64))
+; (rule ((IS set1) (set-contains set1 x))
+      ; ((I64Set-contains (IS set1) x))
+      ; :ruleset always-run)
+(function I64Set-insert (I64Set i64) I64Set)
+(rewrite (I64Set-insert (IS set1) x)
+         (IS (set-insert set1 x))
+         :ruleset always-run)
+(function I64Set-length (I64Set) i64)
+(rewrite (I64Set-length (IS set1)) (set-length set1) :ruleset always-run)
+
+(datatype CellSetList
+      (CellSetCons CellSet CellSetList)
+      (CellSetNil))
+
+; include length for convenience
+(datatype I64SetList
+      (I64SetCons I64Set I64SetList)
+      (I64SetNil))
+
+(function I64SetList-length (I64SetList) i64)
+(rule ((I64SetNil))
+      ((set (I64SetList-length (I64SetNil)) 0))
+      :ruleset always-run)
+(rule ((= l (I64SetCons hd tl))
+       (= len (I64SetList-length tl)))
+      ((set (I64SetList-length l) (+ len 1)))
+      :ruleset always-run)
+
+(function I64SetList-get (I64SetList i64) I64Set)
+(rewrite (I64SetList-get (I64SetCons hd tl) 0)
+         hd
+         :ruleset always-run)
+(rewrite (I64SetList-get (I64SetCons hd tl) i)
+         (I64SetList-get tl (- i 1))
+         :when ((> i 0))
+         :ruleset always-run)
+
+(function I64SetList-rev-concat (I64SetList I64SetList) I64SetList)
+(rewrite (I64SetList-rev-concat (I64SetNil) l) l :ruleset always-run)
+(rewrite (I64SetList-rev-concat (I64SetCons hd tl) l)
+         (I64SetList-rev-concat tl (I64SetCons hd l)) :ruleset always-run)
+
+(function I64SetList-rev (I64SetList) I64SetList)
+(rewrite
+  (I64SetList-rev l)
+  (I64SetList-rev-concat l (I64SetNil))
+  :ruleset always-run)
+
+(function I64SetList-concat (I64SetList I64SetList) I64SetList)
+(rewrite (I64SetList-concat l1 l2)
+         (I64SetList-rev-concat (I64SetList-rev l1) l2)
+         :ruleset always-run)
+
+(function I64SetList-zip-set-intersect (I64SetList I64SetList) I64SetList)
+  (rewrite
+    (I64SetList-zip-set-intersect (I64SetCons xhd xtl) (I64SetCons yhd ytl))
+    (I64SetCons (I64Set-intersect xhd yhd) (I64SetList-zip-set-intersect xtl ytl))
+    :ruleset always-run)
+  (rewrite
+    (I64SetList-zip-set-intersect (I64SetNil) (I64SetNil))
+    (I64SetNil)
+    :ruleset always-run)
+
+(relation SequentialStates (Expr Expr))
+(rule ((= e (Alloc id sz state ty)))
+      ((SequentialStates state (Get e 1)))
+      :ruleset always-run)
+(rule ((= e (Bop (Load) any-ptr state)))
+      ((SequentialStates state (Get e 1)))
+      :ruleset always-run)
+(rule ((= e (Bop (Print) any-val state)))
+      ((SequentialStates state e))
+      :ruleset always-run)
+(rule ((= e (Top (Write) any-addr any-val state)))
+      ((SequentialStates state e))
+      :ruleset always-run)
+
+; point * ptr tuple -> index set list
+(function TuplePointsToArgs (Expr Expr) I64SetList :merge (I64SetList-zip-set-intersect old new))
+
+; point * ptr tuple -> index set list
+(function TuplePointsToArgsAtIter0 (Expr Expr) I64SetList :merge (I64SetList-zip-set-intersect old new))
+; point * ptr -> index set
+(function PointsToArgsAtIter0 (Expr Expr) I64Set :merge (I64Set-intersect old new))
+  ; TuplePointsToArgsAtIter0 for Arg
+    ; PointsToArgsSuffix = {
+    ;    tl, [(if tl[i] == (PointerT _) then {i} else {}) for i in 1:n]
+    ;    | n <= length(tl)
+    ;  }
+    (relation PointsToArgsSuffix (TypeList I64SetList))
+      ; SetOfIfPointer(ty, i) = if ty == (PointerT _) then {i} else {}
+      (function SetOfIfPointer (BaseType i64) I64Set)
+        (rewrite (SetOfIfPointer (PointerT _) i) (IS (set-of i)) :ruleset always-run)
+        (rewrite (SetOfIfPointer (IntT) i) (IS (set-empty)) :ruleset always-run)
+        (rewrite (SetOfIfPointer (BoolT) i) (IS (set-empty)) :ruleset always-run)
+        (rewrite (SetOfIfPointer (StateT) i) (IS (set-empty)) :ruleset always-run)
+      (rule ((= arg (Arg (TupleT tylist))))
+            ((PointsToArgsSuffix tylist (I64SetNil)))
+            :ruleset always-run)
+      (rule ((= arg (Arg (TupleT tylist)))
+             (PointsToArgsSuffix tylist l)
+             (= next-idx-from-back (- (- (TypeList-length tylist) (I64SetList-length l)) 1))
+             (= (TypeList-ith tylist next-idx-from-back) ty))
+            ((PointsToArgsSuffix tylist
+               (I64SetCons
+                 (SetOfIfPointer ty next-idx-from-back)
+                 l)))
+            :ruleset always-run)
+
+    (rule ((= arg (Arg (TupleT tylist)))
+           (PointsToArgsSuffix tylist l)
+           (= (TypeList-length tylist) (I64SetList-length l))
+           (= (StateT) (TypeList-ith tylist state-i)))
+          ((set (TuplePointsToArgsAtIter0 (Get arg state-i) arg) l))
+          :ruleset always-run)
+
+  ; TuplePointsToArgsAtIter0 for Concat
+  (rule ((= sets1 (TuplePointsToArgsAtIter0 point tup1))
+         (= sets2 (TuplePointsToArgsAtIter0 point tup2))
+         (= concat (Concat order tup1 tup2)))
+        ((set
+          (TuplePointsToArgsAtIter0 point concat)
+          (I64SetList-concat sets1 sets2)))
+        :ruleset always-run)
+        
+  ; PointsToArgsAtIter0 for Get
+  (rule ((= sets (TuplePointsToArgsAtIter0 point tup))
+         (= get (Get tup i)))
+        ((set
+          (PointsToArgsAtIter0 point get)
+          (I64SetList-get sets i)))
+        :ruleset always-run)
+
+  ; PointsToArgsAtIter0 for Single
+  (rule ((= args (PointsToArgsAtIter0 point x))
+         (= single (Single x)))
+        ((set
+          (TuplePointsToArgsAtIter0 point single)
+          (I64SetCons args (I64SetNil))))
+        :ruleset always-run)
+
+  ; PointsToArgsAtIter0 for PtrAdd
+  ; Offsets refer to the same cell, for now
+  (rule ((= e (Bop (PtrAdd) x y))
+         (= xargs (PointsToArgsAtIter0 point x))
+         (= yargs (PointsToArgsAtIter0 point y)))
+        ((set (PointsToArgsAtIter0 point e) (I64Set-union xargs yargs)))
+        :ruleset always-run)
+
+  ; PointsToArgsAtIter0 for If
+  (rule ((= e (If c x y))
+         (= xargs (PointsToArgsAtIter0 point x))
+         (= yargs (PointsToArgsAtIter0 point y)))
+        ((set (PointsToArgsAtIter0 point e) (I64Set-union xargs yargs)))
+        :ruleset always-run)
+
+  ; TuplePointsToArgsAtIter0: move down state path
+  (rule ((= sets (TuplePointsToArgsAtIter0 point x))
+         (SequentialStates point point2))
+        ((set (TuplePointsToArgsAtIter0 point2 x) sets))
+        :ruleset always-run)
+
+  ; PointsToArgsAtIter0: move down state path
+  (rule ((= args (PointsToArgsAtIter0 point x))
+         (SequentialStates point point2))
+        ((set (PointsToArgsAtIter0 point2 x) args))
+        :ruleset always-run)
+
+; ptr tuple * iteration -> index set list
+; (function TuplePointsToArgsAtIter (Expr i64) I64SetList :merge (I64SetList-zip-set-intersect old new))
+; (rule ((TuplePointsToArgsAtIter0 )))
+
+; ============================
+; PointsToCells
+; ============================
+
 ;                       program point, pointer-typed expression
-(function PointsToCells (Expr Expr) CellSet :merge (set-intersect old new))
-
-; ============================
-; Update PointsToCells
-; ============================
-
-(function StateOf (Expr) Expr)
-(rewrite (StateOf e) (Get e 1) :ruleset always-run)
-(function AddrOf (Expr) Expr)
-(rewrite (AddrOf e) (Get e 0) :ruleset always-run)
+(function PointsToCells (Expr Expr) CellSet :merge (CellSet-intersect old new))
 
 (rule ((= e (Alloc id sz state ty)))
-      ((set (PointsToCells (Get e 1) (Get e 0)) (set-of (CellOf id))))
+      ((set (PointsToCells (Get e 1) (Get e 0)) (CS (set-of (CellOf id)))))
       :ruleset memory)
-
 
 ; Offsets refer to the same cell, for now
 (rule ((= e (Bop (PtrAdd) x y))
        (= xcells (PointsToCells state x))
        (= ycells (PointsToCells state y)))
-      ((set (PointsToCells state e) (set-union xcells ycells)))
+      ((set (PointsToCells state e) (CellSet-union xcells ycells)))
       :ruleset memory)
 
-; Move down the state path
-(rule ((= e (Alloc id sz state ty))
-       (= xcells (PointsToCells state x)))
-      ((set (PointsToCells (Get e 1) x) xcells))
-      :ruleset memory)
-
-; Move down the state path
-(rule ((= e (Bop (Load) any-ptr state))
-       (= xcells (PointsToCells state x)))
-      ((set (PointsToCells (Get e 1) x) xcells))
-      :ruleset memory)
-
-; Move down the state path
-(rule ((= e (Bop (Print) any-val state))
-       (= xcells (PointsToCells state x)))
-      ((set (PointsToCells e x) xcells))
-      :ruleset memory)
-
-; Move down the state path
-(rule ((= e (Top (Write) any-addr any-val state))
-       (= xcells (PointsToCells state x)))
-      ((set (PointsToCells e x) xcells))
-      :ruleset memory)
+(rule ((= sets (PointsToCells point x))
+       (SequentialStates point point2))
+      ((set (PointsToCells point2 x) sets))
+      :ruleset always-run)
 
 (rule ((= e (If pred t f))
        (= tcells (PointsToCells (Get t i) (Get t j)))
        (= fcells (PointsToCells (Get f i) (Get f j))))
-      ((set (PointsToCells (Get e i) (Get e j)) (set-union tcells fcells)))
+      ((set (PointsToCells (Get e i) (Get e j)) (CellSet-union tcells fcells)))
       :ruleset memory)
+
+; (= loop inputs outputs)
+; (PointsToCellsAtIter loop i in_pts) out_pts
+; ----
+; ; To get: (PointsToCellsAtIter loop (+ i 1) in_puts)
+; (PointsToCells outputs out_pts) ; demand
+
+; (= loop inputs outputs)
+; (PointsToCellsAtIter loop i in_pts) out_pts
+; (= out_pts2 (PointsToCell))
+; (!= out_pts2 out_pts) ; so we don't count to infin
+; ----
+; (set
+  ; (PointsToCellsAtIter loop (+ i 1) inputs)
+  ; out_pts
+  ; )
+
+; (rule ((= loop (Loop inputs outputs))
+       ; (= (PointsToCellsAtIter loop i       in_pts:vec<set<cell,offset>>)    out_pts=vec<set<cell,offset>>)
+       ; (PointsToCellsAtIter loop (+ i 1)    in_pts:vec<set<cell,offset>>    vec<set<cell,offset>>))
+      ; ((set (PointsToCells))
+
+
+      
+      ; ))
 
 ; ============================
 ; Update CellHasValues
 ; ============================
 
+;                       program point, cell
+(function CellHasValues (Expr Cell) ExprSet :merge (ExprSet-intersect old new))
+
 ; TODO: add loop rules
 
 ; note: We could have a specialized rule for (set-len cells 1) where we overwrite instead of union
 (rule ((= e (Top (Write) ptr val state))
-       (= cells (PointsToCells state ptr))
+       (= (CS cells) (PointsToCells state ptr))
        (set-contains cells cell)
        (= vals (CellHasValues state cell)))
-      ((set (CellHasValues e cell) (set-insert vals val)))
+      ((set (CellHasValues e cell) (ExprSet-insert vals val)))
       :ruleset memory)
 
 ; ============================
@@ -85,8 +306,8 @@
 ; merge function???
 (function PointsTo (Expr Expr)  Expr)
 
-(rule ((= cs1 (PointsToCells outer ptr1))
-       (= cs2 (PointsToCells outer ptr2))
+(rule ((= (CS cs1) (PointsToCells outer ptr1))
+       (= (CS cs2) (PointsToCells outer ptr2))
        (= 0 (set-length (set-intersect cs1 cs2))))
       ((Dontalias outer ptr1 ptr2)) :ruleset memory)
 

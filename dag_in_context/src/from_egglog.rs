@@ -6,8 +6,7 @@ use std::{collections::HashMap, rc::Rc};
 use egglog::{ast::Literal, match_term_app, Term};
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type,
-    UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp,
 };
 
 pub struct FromEgglog {
@@ -21,6 +20,18 @@ pub fn program_from_egglog(program: Term, termdag: egglog::TermDag) -> TreeProgr
         conversion_cache: HashMap::new(),
     };
     converter.program_from_egglog(program)
+}
+
+/// TODO make default when extractor removes ctx nodes
+pub fn program_from_egglog_preserve_ctx_nodes(
+    program: Term,
+    termdag: egglog::TermDag,
+) -> TreeProgram {
+    let mut converter = FromEgglog {
+        termdag,
+        conversion_cache: HashMap::new(),
+    };
+    converter.program_from_egglog_preserve_ctx_nodes(program)
 }
 
 impl FromEgglog {
@@ -126,16 +137,6 @@ impl FromEgglog {
             Assumption::InIf(boolean, self.expr_from_egglog(self.termdag.get(*expr)))
           }
           _ => panic!("Invalid assumption: {:?}", assumption),
-        })
-    }
-
-    fn order_from_egglog(&mut self, order: Term) -> Order {
-        match_term_app!(order.clone();
-        {
-          ("Parallel", []) => Order::Parallel,
-          ("Sequential", []) => Order::Sequential,
-          ("Reversed", []) => Order::Reversed,
-          _ => panic!("Invalid order: {:?}", order),
         })
     }
 
@@ -258,12 +259,10 @@ impl FromEgglog {
             let expr = self.termdag.get(*expr);
             Rc::new(Expr::Single(self.expr_from_egglog(expr)))
           }
-          ("Concat", [order, lhs, rhs]) => {
-            let order = self.termdag.get(*order);
+          ("Concat", [lhs, rhs]) => {
             let lhs = self.termdag.get(*lhs);
             let rhs = self.termdag.get(*rhs);
             Rc::new(Expr::Concat(
-              self.order_from_egglog(order),
               self.expr_from_egglog(lhs),
               self.expr_from_egglog(rhs),
             ))
@@ -327,7 +326,8 @@ impl FromEgglog {
         res
     }
 
-    fn program_from_egglog_preserve_ctx_nodes(&mut self, program: Term) -> TreeProgram {
+    /// TODO make default when extractor removes ctx nodes
+    pub fn program_from_egglog_preserve_ctx_nodes(&mut self, program: Term) -> TreeProgram {
         match_term_app!(program.clone();
         {
           ("Program", [entry, functions]) => {

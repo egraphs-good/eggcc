@@ -1,0 +1,16 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int) {
+  v2: int = const 4;
+  v5: bool = lt v2 v0;
+  br v5 .__16__ .__12__;
+.__16__:
+  v14: int = id v2;
+  jmp .__19__;
+.__12__:
+  v14: int = id v2;
+.__19__:
+  print v14;
+}

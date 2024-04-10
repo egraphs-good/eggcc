@@ -503,10 +503,15 @@ dependencies = [
  "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=b20cc2d)",
  "dot-structures",
  "egglog",
+ "egraph-serialize",
  "graphviz-rust 0.8.0",
+ "indexmap",
  "main_error",
+ "ordered-float",
+ "rustc-hash",
  "strum",
  "strum_macros",
+ "symbol_table",
  "thiserror",
 ]
 
@@ -600,7 +605,7 @@ dependencies = [
 [[package]]
 name = "egglog"
 version = "0.1.0"
-source = "git+https://github.com/egraphs-good/egglog?rev=77ffa1f#77ffa1f7599b5e2d8936a5b78fa89bfa563bf2bc"
+source = "git+https://github.com/egraphs-good/egglog?rev=2d2c60917599c90e9d765968d76f1343e1647808#2d2c60917599c90e9d765968d76f1343e1647808"
 dependencies = [
  "clap",
  "egraph-serialize",

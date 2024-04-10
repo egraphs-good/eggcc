@@ -76,11 +76,11 @@
        (HasArgType e ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (Concat _ e1 e2))
+(rule ((= lhs (Concat e1 e2))
        (HasArgType e1 ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (Concat _ e1 e2))
+(rule ((= lhs (Concat e1 e2))
        (HasArgType e2 ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
@@ -286,6 +286,20 @@
       :ruleset type-analysis)
 
 (rule (
+        (= lhs (Bop (Eq) e1 e2))
+        (HasType e1 (Base (IntT)))
+        (HasType e2 (Base (IntT)))
+      )
+      ((HasType lhs (Base (BoolT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Bop (Eq) e1 e2)))
+      (
+        (ExpectType e1 (Base (IntT)) "(Eq) expected int, received {?}")
+        (ExpectType e2 (Base (IntT)) "(Eq) expected int, received {?}")
+      )
+      :ruleset type-analysis)
+
+(rule (
         (= lhs (Bop (GreaterThan) e1 e2))
         (HasType e1 (Base (IntT)))
         (HasType e2 (Base (IntT)))
@@ -391,7 +405,7 @@
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Concat ord e1 e2))
+        (= lhs (Concat e1 e2))
         (HasType e1 (TupleT tylist1))
         (HasType e2 (TupleT tylist2))
       )

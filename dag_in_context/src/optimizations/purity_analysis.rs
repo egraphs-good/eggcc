@@ -134,7 +134,7 @@ fn test_purity_analysis() -> crate::Result {
         &check,
         vec![pureloop.to_program(emptyt(), tuplet!(intt()))],
         tuplev!(),
-        tuplev!(val_int(4)),
+        tuplev!(intv(4)),
         vec![],
     )
 }

@@ -8,7 +8,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
-        let snapshot_configurations: HashSet<RunType> = [].into_iter().collect();
+        let snapshot_configurations: HashSet<RunType> = [RunType::Optimize].into_iter().collect();
 
         trials.push(Trial::test(run.name(), move || {
             let result = match run.run() {

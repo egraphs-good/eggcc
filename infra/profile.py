@@ -12,10 +12,12 @@ profiles = (
 )
 
 modes = [
-  ("no_optimize", "--optimize-egglog false", "--optimize-brilift false"),
-  ("brilift_only", "--optimize-egglog false", "--optimize-brilift true"),
-  ("egglog_only", "--optimize-egglog true", "--optimize-brilift false"),
-  ("optimize_both", "--optimize-egglog true", "--optimize-brilift true")
+  # (name, runmode, options)
+  ("rvsdg_roundtrip", "rvsdg-round-trip-to-executable", ""),
+  ("no_optimize", "compile-brilift", "--optimize-egglog false --optimize-brilift false"),
+  ("brilift_only", "compile-brilift", "--optimize-egglog false --optimize-brilift true"),
+  ("egglog_only", "compile-brilift", "--optimize-egglog true --optimize-brilift false"),
+  ("optimize_both", "compile-brilift", "--optimize-egglog true --optimize-brilift true")
 ]
 
 def bench(profile):
@@ -29,8 +31,8 @@ def bench(profile):
   os.mkdir(profile_dir)
 
   for mode in modes:
-    (name, opt_egglog, opt_brilift) = mode
-    os.system(f'cargo run --release {profile} --run-mode compile-brilift {opt_egglog} {opt_brilift} -o {profile_dir}/{name}')
+    (name, runmode, options) = mode
+    os.system(f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}')
 
     with open(f'{profile_dir}/{name}-args') as f:
       args = f.read().rstrip()

@@ -1,0 +1,65 @@
+; We only have context for Exprs, not ListExprs.
+(relation ContextOf (Expr Assumption))
+
+; Base case: InContext means ContextOf
+(rule ((InContext ctx e))
+    ((ContextOf (InContext ctx e) ctx)) :ruleset always-run)
+
+; Error checking - each expr should only have a single context
+; TODO: this may not be true
+; (rule ((ContextOf x ctx1)
+;         (ContextOf x ctx2)
+;         (!= ctx1 ctx2))
+;     (
+;         (panic "Equivalent expressions have nonequivalent context")
+;     )
+;     :ruleset error-checking)
+
+
+(rule ((Top op x y z) (ContextOf x ctx))
+    ((ContextOf (Top op x y z) ctx)) :ruleset always-run)
+
+(rule ((Top op x y z) (ContextOf y ctx))
+    ((ContextOf (Top op x y z) ctx)) :ruleset always-run)
+
+(rule ((Top op x y z) (ContextOf z ctx))
+    ((ContextOf (Top op x y z) ctx)) :ruleset always-run)
+
+(rule ((Bop op x y) (ContextOf x ctx))
+    ((ContextOf (Bop op x y) ctx)) :ruleset always-run)
+
+(rule ((Bop op x y) (ContextOf y ctx))
+    ((ContextOf (Bop op x y) ctx)) :ruleset always-run)
+
+(rule ((Uop op x) (ContextOf x ctx))
+    ((ContextOf (Uop op x) ctx)) :ruleset always-run)
+
+(rule ((Get tup i) (ContextOf tup ctx))
+    ((ContextOf (Get tup i) ctx)) :ruleset always-run)
+
+(rule ((Concat x y) (ContextOf x ctx))
+    ((ContextOf (Concat x y) ctx)) :ruleset always-run)
+
+(rule ((Concat x y) (ContextOf y ctx))
+    ((ContextOf (Concat x y) ctx)) :ruleset always-run)
+
+(rule ((Single x) (ContextOf x ctx))
+    ((ContextOf (Single x) ctx)) :ruleset always-run)
+
+(rule ((Switch pred branches) (ContextOf pred ctx))
+    ((ContextOf (Switch pred branches) ctx)) :ruleset always-run)
+
+(rule ((If pred then else) (ContextOf pred ctx))
+    ((ContextOf (If pred then else) ctx)) :ruleset always-run) 
+
+(rule ((DoWhile in pred-and-output) (ContextOf in ctx))
+    ((ContextOf (DoWhile in pred-and-output) ctx)) :ruleset always-run)
+
+(rule ((Call func arg) (ContextOf arg ctx))
+    ((ContextOf (Call func arg) ctx)) :ruleset always-run)
+
+(rule ((Alloc amt e state ty) (ContextOf e ctx))
+    ((ContextOf (Alloc amt e state ty) ctx)) :ruleset always-run)
+
+(rule ((Alloc amt e state ty) (ContextOf state ctx))
+    ((ContextOf (Alloc amt e state ty) ctx)) :ruleset always-run)

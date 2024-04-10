@@ -26,7 +26,7 @@ impl AlwaysExecutedCache {
         &mut self,
         conditional_expr: &RcExpr,
         region_root: &RcExpr,
-    ) -> HashMap<*const Expr, RcExpr> {
+    ) -> Vec<RcExpr> {
         let children = match conditional_expr.as_ref() {
             Expr::If(_, then_branch, else_branch) => vec![then_branch.clone(), else_branch.clone()],
             Expr::Switch(_, branches) => branches.clone(),
@@ -65,7 +65,7 @@ impl AlwaysExecutedCache {
             }
         }
 
-        result
+        rcexpr_set(result.values().cloned())
     }
 
     /// Get the set of expressions that are always executed given this expression
@@ -119,12 +119,11 @@ impl AlwaysExecutedCache {
     }
 }
 
-#[cfg(test)]
-fn rcexpr_set(iterator: impl IntoIterator<Item = RcExpr>) -> HashMap<*const Expr, RcExpr> {
-    iterator
-        .into_iter()
-        .map(|e| (Rc::as_ptr(&e), e.clone()))
-        .collect()
+fn rcexpr_set(iterator: impl IntoIterator<Item = RcExpr>) -> Vec<RcExpr> {
+    let mut vec: Vec<RcExpr> = iterator.into_iter().collect();
+    vec.sort();
+    vec.dedup();
+    vec
 }
 
 #[test]
@@ -206,8 +205,6 @@ fn test_branch_share_effects() {
         write(get(addr.clone(), 0), int(40), shared_write.clone()),
     );
     let mut always_cache = AlwaysExecutedCache::default();
-
-    eprintln!("{:?}", always_cache.get(&root).iter().collect::<Vec<_>>());
 
     let expected = rcexpr_set(vec![addr.clone(), shared_write.clone()]);
 

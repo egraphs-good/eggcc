@@ -1,6 +1,9 @@
 //! Adds context to the tree program.
 //! The `add_context` method recursively adds context to all of the nodes in the tree program
-//! by remembering the most recent context (ex. Let or If).
+//! by remembering the most recent context (ex. DoWhile or If).
+//! This should be used for testing only- the RVSDG to DAG translation already adds
+//! context nodes in a more precise way. This pass, on the other hand, can blow up
+//! the size of the program exponentially due to the number of contexts added.
 
 use crate::{
     ast::{in_context, infunc},
@@ -91,8 +94,7 @@ impl Expr {
                 RcExpr::new(Expr::Call(f.clone(), arg.add_context(current_ctx.clone())))
             }
             Expr::Single(e) => RcExpr::new(Expr::Single(e.add_context(current_ctx))),
-            Expr::Concat(order, x, y) => RcExpr::new(Expr::Concat(
-                order.clone(),
+            Expr::Concat(x, y) => RcExpr::new(Expr::Concat(
                 x.add_context(current_ctx.clone()),
                 y.add_context(current_ctx),
             )),

@@ -342,7 +342,7 @@ impl<'a> TreeToRvsdg<'a> {
                 vec![]
             }
             Expr::InContext(_assum, body) => self.convert_expr(body.clone()),
-            Expr::Concat(_order, left, right) => {
+            Expr::Concat(left, right) => {
                 let left = self.convert_expr(left.clone());
                 let right = self.convert_expr(right.clone());
                 left.into_iter().chain(right).collect()
@@ -362,7 +362,7 @@ impl<'a> TreeToRvsdg<'a> {
                     (0..self.current_args.len()).map(Operand::Arg).collect();
                 // branch inputs are added to this cache
                 let mut new_expr_cache = HashMap::new();
-                for (_pointer, input_expr) in branch_inputs {
+                for input_expr in branch_inputs {
                     let input = self.convert_expr(input_expr.clone());
                     let cached_input = input
                         .iter()
@@ -409,14 +409,14 @@ impl<'a> TreeToRvsdg<'a> {
                 assert_eq!(pred.len(), 1, "Expected exactly one result for predicate");
 
                 // find the branch inputs for each case
-                let branch_inputs: HashMap<*const Expr, Rc<Expr>> = self
+                let branch_inputs = self
                     .always_executed_cache
                     .get_without_subchildren_for_branch(&expr, &self.current_region_root);
 
                 let mut new_inputs: Vec<Operand> =
                     (0..self.current_args.len()).map(Operand::Arg).collect();
                 let mut new_expr_cache = HashMap::new();
-                for (_pointer, input_expr) in branch_inputs {
+                for input_expr in branch_inputs {
                     let input = self.convert_expr(input_expr.clone());
                     let cached_input = input
                         .iter()

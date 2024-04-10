@@ -11,6 +11,7 @@ use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::process::Stdio;
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
@@ -127,7 +128,7 @@ where
     S2: AsRef<OsStr>,
     I: IntoIterator<Item = S2>,
 {
-    use std::process::{Command, Stdio};
+    use std::process::Command;
     let mut child = Command::new(program)
         .args(args)
         .stdin(Stdio::piped())
@@ -180,6 +181,9 @@ pub enum RunType {
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
+    /// Convert to RVSDG and back to Bril again
+    /// Then convert to an executable using brilift, without doing any optimization.
+    RvsdgRoundTripToExecutable,
     /// Convert to Tree Encoding and back to Bril again,
     /// outputting the bril program.
     DagRoundTrip,
@@ -212,23 +216,24 @@ impl RunType {
     /// that can be interpreted.
     pub fn produces_interpretable(&self) -> bool {
         match self {
-            RunType::Parse => true,
-            RunType::Optimize => true,
-            RunType::RvsdgConversion => false,
-            RunType::RvsdgRoundTrip => true,
-            RunType::DagToRvsdg => false,
-            RunType::OptimizedRvsdg => false,
-            RunType::DagRoundTrip => true,
-            RunType::ToCfg => true,
-            RunType::CfgRoundTrip => true,
-            RunType::OptimizeDirectJumps => true,
-            RunType::RvsdgToCfg => true,
-            RunType::DagConversion => true,
-            RunType::DagOptimize => true,
-            RunType::Egglog => true,
-            RunType::CheckTreeIdentical => false,
-            RunType::CompileBrilift => true,
-            RunType::CompileBrilLLVM => true,
+            RunType::Parse
+            | RunType::Optimize
+            | RunType::RvsdgRoundTrip
+            | RunType::RvsdgRoundTripToExecutable
+            | RunType::DagRoundTrip
+            | RunType::ToCfg
+            | RunType::CfgRoundTrip
+            | RunType::OptimizeDirectJumps
+            | RunType::RvsdgToCfg
+            | RunType::DagConversion
+            | RunType::DagOptimize
+            | RunType::Egglog
+            | RunType::CompileBrilift
+            | RunType::CompileBrilLLVM => true,
+            RunType::RvsdgConversion
+            | RunType::DagToRvsdg
+            | RunType::OptimizedRvsdg
+            | RunType::CheckTreeIdentical => false,
         }
     }
 }
@@ -324,9 +329,8 @@ pub struct RunOutput {
 impl Run {
     fn optimize_bril(program: &Program) -> Result<Program, EggCCError> {
         let rvsdg = Optimizer::program_to_rvsdg(program)?;
-        let dag = rvsdg.to_dag_encoding();
-        let with_context = dag.add_context();
-        let optimized = dag_in_context::optimize(&with_context).map_err(EggCCError::EggLog)?;
+        let dag = rvsdg.to_dag_encoding(true);
+        let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
         let rvsdg2 = dag_to_rvsdg(&optimized);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
@@ -478,9 +482,16 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
+            RunType::RvsdgRoundTripToExecutable => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let cfg = rvsdg.to_cfg();
+                let bril = cfg.to_bril();
+                let interpretable = self.run_brilift(bril, false, false)?;
+                (vec![], interpretable)
+            }
             RunType::DagToRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding();
+                let tree = rvsdg.to_dag_encoding(true);
                 let rvsdg2 = dag_to_rvsdg(&tree);
                 (
                     vec![Visualization {
@@ -493,7 +504,7 @@ impl Run {
             }
             RunType::DagRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding();
+                let tree = rvsdg.to_dag_encoding(true);
                 let rvsdg2 = dag_to_rvsdg(&tree);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
@@ -508,13 +519,13 @@ impl Run {
             }
             RunType::CheckTreeIdentical => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding();
+                let tree = rvsdg.to_dag_encoding(true);
                 let (term, termdag) = tree.to_egglog();
                 let mut from_egglog = FromEgglog {
                     termdag,
                     conversion_cache: Default::default(),
                 };
-                let res_term = from_egglog.program_from_egglog(term);
+                let res_term = from_egglog.program_from_egglog_preserve_ctx_nodes(term);
                 if tree != res_term {
                     panic!("Check failed: terms should be equal after conversion to and from egglog. Got:\n{}\nExpected:\n{}", res_term.pretty(), tree.pretty());
                 }
@@ -533,7 +544,7 @@ impl Run {
             }
             RunType::DagConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding();
+                let tree = rvsdg.to_dag_encoding(true);
                 (
                     vec![Visualization {
                         result: tree_to_svg(&tree),
@@ -545,7 +556,7 @@ impl Run {
             }
             RunType::DagOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding();
+                let tree = rvsdg.to_dag_encoding(true);
                 let optimized = dag_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
@@ -558,7 +569,7 @@ impl Run {
             }
             RunType::OptimizedRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding();
+                let tree = rvsdg.to_dag_encoding(true);
                 let optimized = dag_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 let rvsdg = dag_to_rvsdg(&optimized);
                 (
@@ -572,7 +583,7 @@ impl Run {
             }
             RunType::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding();
+                let tree = rvsdg.to_dag_encoding(true);
                 let egglog = build_program(&tree);
                 (
                     vec![Visualization {
@@ -618,7 +629,17 @@ impl Run {
                 )
             }
             RunType::CompileBrilift => {
-                let interpretable = self.run_brilift()?;
+                let optimize_egglog = self.optimize_egglog.expect(
+                    "optimize_egglog is a required flag when running RunMode::CompileBrilift",
+                );
+                let optimize_brilift = self.optimize_brilift.expect(
+                    "optimize_brilift is a required flag when running RunMode::CompileBrilift",
+                );
+                let interpretable = self.run_brilift(
+                    self.prog_with_args.program.clone(),
+                    optimize_egglog,
+                    optimize_brilift,
+                )?;
                 (vec![], interpretable)
             }
             RunType::CompileBrilLLVM => {
@@ -650,17 +671,16 @@ impl Run {
         })
     }
 
-    fn run_brilift(&self) -> Result<Option<Interpretable>, EggCCError> {
-        let optimize_egglog = self
-            .optimize_egglog
-            .expect("optimize_egglog is a required flag when running RunMode::CompileBrilift");
-        let optimize_brilift = self
-            .optimize_brilift
-            .expect("optimize_brilift is a required flag when running RunMode::CompileBrilift");
+    fn run_brilift(
+        &self,
+        bril: Program,
+        optimize_egglog: bool,
+        optimize_brilift: bool,
+    ) -> Result<Option<Interpretable>, EggCCError> {
         let program = if optimize_egglog {
-            Run::optimize_bril(&self.prog_with_args.program)?
+            Run::optimize_bril(&bril)?
         } else {
-            self.prog_with_args.program.clone()
+            bril
         };
 
         // Compile the input bril file
@@ -688,14 +708,40 @@ impl Run {
             executable.clone() + "-args",
             self.prog_with_args.args.join(" "),
         );
-
-        std::process::Command::new("cc")
-            .arg(object.clone())
+        let mut cmd = std::process::Command::new("cc");
+        cmd.arg(object.clone())
             .arg(library_o.clone())
             .arg("-o")
-            .arg(executable.clone())
-            .status()
-            .unwrap();
+            .arg(executable.clone());
+
+        #[cfg(target_os = "macos")]
+        {
+            // Workaround on new macos linkers:
+            //
+            // On linkers shipped past XCode 15, we see a bug around symbol
+            // relocations with an error along the lines of:
+            // ld: Assertion failed: (pattern[0].addrMode == addr_other), function addFixupFromRelocations, file Relocations.cpp, line 701.
+            //
+            // This is either a bug, or a difference in the way symbols are
+            // handled, or a bit of both (chatter online differs), but for now,
+            // we just retry with the ld_classic flag.
+            if !cmd
+                .stderr(Stdio::null())
+                .status()
+                .map(|x| x.success())
+                .unwrap_or(false)
+            {
+                // reset stderr to surface other errors.
+                cmd.stderr(Stdio::inherit())
+                    .arg("-Wl,-ld_classic")
+                    .status()
+                    .unwrap();
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            cmd.status().unwrap();
+        }
 
         std::process::Command::new("rm")
             .arg(object)

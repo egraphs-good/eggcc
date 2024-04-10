@@ -2,15 +2,19 @@ use std::collections::HashMap;
 
 use egglog::{Term, TermDag};
 use from_egglog::FromEgglog;
+use greedy_dag_extractor::{extract, serialized_egraph, CostModel};
 use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
 
 use crate::interpreter::interpret_dag_prog;
 
+pub(crate) mod add_context;
 pub mod ast;
+pub mod dag2svg;
 pub mod dag_typechecker;
 pub mod from_egglog;
+mod greedy_dag_extractor;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
 mod optimizations;
@@ -21,8 +25,6 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
-pub(crate) mod add_context;
-pub mod dag2svg;
 
 pub type Result = std::result::Result<(), MainError>;
 
@@ -37,7 +39,9 @@ pub fn prologue() -> String {
         &optimizations::purity_analysis::rules().join("\n"),
         &optimizations::conditional_invariant_code_motion::rules().join("\n"),
         include_str!("utility/in_context.egg"),
+        include_str!("utility/context-prop.egg"),
         include_str!("utility/subst.egg"),
+        include_str!("utility/context_of.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("optimizations/function_inlining.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
@@ -100,14 +104,22 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let program = build_program(program);
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&program)?;
-    let (sort, value) = egraph.eval_expr(&egglog::ast::Expr::Var((), "PROG".into()))?;
+
+    let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
-    let extracted = egraph.extract(value, &mut termdag, &sort);
+    let results = extract(
+        &serialized,
+        unextractables,
+        &mut termdag,
+        &CostModel::simple_cost_model(),
+    );
+    assert_eq!(results.len(), 1);
+    let (_cid, costset) = results.into_iter().next().unwrap();
     let mut from_egglog = FromEgglog {
         termdag,
         conversion_cache: Default::default(),
     };
-    Ok(from_egglog.program_from_egglog(extracted.1))
+    Ok(from_egglog.program_from_egglog(costset.term))
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

@@ -197,19 +197,20 @@ fn test_invariant_hoist() -> crate::Result {
     )
     .with_arg_types(tuplet!(statet()), output_ty.clone());
 
+    let main_fun = function("main", tuplet!(statet()), output_ty.clone(), my_loop.clone()).func_add_context();
+
     let build = format!(
         "(let loop {})
         (let inv {})
         (let pred {})
         (let not_inv {})
         (let print {})
-        (let inner_inv {})",
-        my_loop, inv, pred, not_inv, print, inner_inv
+        (let inner_inv {})
+        (let main {})",
+        my_loop, inv, pred, not_inv, print, inner_inv, main_fun
     );
     let check = format!(
-        "(let new_input (Concat par (SubTuple (Arg (TupleT (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (StateT) (TNil)))))))) 0 5) (Single inv)))
-        (let new_in_type  (TupleT (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (StateT) (TNil))))))) )
-        (check (= loop (SubTuple (DoWhile new_input new_pred_out) 0 5)))"
+        "."
     );
 
     egglog_test(

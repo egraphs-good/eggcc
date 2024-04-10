@@ -49,7 +49,10 @@
 (rule ((= loop (DoWhile in pred_out)))
       ((set (hoisted-loop in pred_out) false)) :ruleset always-run)
 
-(function InExtendedLoop (Expr Expr Expr) Assumption :unextractable)
+(function InExtendedLoop (Expr Expr Expr) Assumption)
+
+;; mock function
+(relation MOCKContextOf (Expr Assumption))
 
 (ruleset loop-inv-motion)
 
@@ -58,26 +61,29 @@
 ;; The way to fix was to restrict the unrolling number
 (rule ((boundary-Expr loop inv)
        (> (Expr-size inv) 1)
-       ;; TODO: replace Expr-size after cost model is ready
+       ;; TODO: replace Expr-size when cost model is ready
        (= loop (DoWhile in pred_out))
+       ;; the outter assumption of the loop 
+       ;; Question: what if there are multiple loop_assumption?
+       (MOCKContextOf loop loop_ctx)
        (HasType in in_type)
        (HasType inv inv_type)
        (= inv_type (Base base_inv_ty))
        (= in_type (TupleT tylist))
        (= false (hoisted-loop in pred_out))
        (= len (tuple-length in)))
-      (;; create a list of [(Get (Arg in_type) 0) ... hoisted_term]
-      ;(let new_input in)
-      ;(let new_input (Concat par (SubTuple (Arg in_type) 0 len) (Single inv)))
-       (let new_input (Concat par (SubTuple (Arg in_type) 0 len) (Single inv)))
+      (;; create a list of [(Get (old input) 0) ... hoisted_term]
+       (let new_input (Concat par (SubTuple in 0 len) (Single (Subst loop_ctx in inv))))
        ;; append (Get (Arg id) len+1) to end of output
        (let new_in_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
        (let new_out_branch (Get (Arg new_in_type) len))
        ;; create an virtual assume node, union it with actuall InLoop later
        (let assum (InExtendedLoop in pred_out new_input))
+       ;; this two subst only change arg to arg with new type
        (let substed_pred_out (Subst assum (Arg new_in_type) pred_out))
-       (let new_pred_out (Concat par substed_pred_out (Single new_out_branch)))
        (let inv_in_new_loop (Subst assum (Arg new_in_type) inv))
+       (let new_pred_out (Concat par substed_pred_out (Single new_out_branch)))
+       
        (let new_loop (DoWhile new_input new_pred_out))
        (union (InContext (InLoop new_input new_pred_out) inv_in_new_loop) 
               (InContext (InLoop new_input new_pred_out) new_out_branch))

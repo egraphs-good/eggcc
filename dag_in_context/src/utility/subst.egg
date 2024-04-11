@@ -81,7 +81,7 @@
          :when ((> fuel 0))
          :ruleset subst)
 (rewrite (Subst fuel assum to (Alloc id c1 state ty))
-         (Alloc id (Subst (- fuel 1) assum to c1) (Subst fuel assum to state) ty)
+         (Alloc id (Subst (- fuel 1) assum to c1) (Subst (- fuel 1) assum to state) ty)
          :when ((> fuel 0))
          :ruleset subst)
 (rewrite (Subst fuel assum to (Call name c1))

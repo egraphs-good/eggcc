@@ -33,7 +33,7 @@ fn load_after_write() -> crate::Result {
     let one = int_ty(1, Type::Base(BaseType::IntT));
     let two = int_ty(2, Type::Base(BaseType::IntT));
     let orig_state = get(arg_ty(tuplet!(statet())), 0);
-    let ptr_and_state = alloc(0, one, orig_state.clone(), intt());
+    let ptr_and_state = alloc(0, one, orig_state.clone(), pointert(intt()));
     let ptr = get(ptr_and_state.clone(), 0);
     let state = get(ptr_and_state, 1);
     let state = write(ptr.clone(), two.clone(), state);
@@ -70,10 +70,10 @@ fn load_after_write_without_alias() -> crate::Result {
     let two = int_ty(2, Type::Base(BaseType::IntT));
     let three = int_ty(3, Type::Base(BaseType::IntT));
     let orig_state = get(arg_ty(tuplet!(statet())), 0);
-    let ptr_and_state = alloc(0, one.clone(), orig_state.clone(), intt());
+    let ptr_and_state = alloc(0, one.clone(), orig_state.clone(), pointert(intt()));
     let ptr1 = get(ptr_and_state.clone(), 0);
     let state = get(ptr_and_state, 1);
-    let ptr_and_state = alloc(1, one, state, intt());
+    let ptr_and_state = alloc(1, one, state, pointert(intt()));
     let ptr2 = get(ptr_and_state.clone(), 0);
     let state = get(ptr_and_state, 1);
     let state = write(ptr1.clone(), two.clone(), state);

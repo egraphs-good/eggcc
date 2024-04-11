@@ -55,10 +55,10 @@
          :when ((ScopeContext ctx))
          :ruleset context-prop)
 
-(rewrite (InContext ctx (If cond then else))
-         (If (InContext ctx cond) (InContext ctx then) (InContext ctx else))
-         :when ((ScopeContext ctx))
-         :ruleset context-prop)
+;; then and else are new regions
+(rewrite (InContext ctx (If cond inputs then else))
+          (If (InContext ctx cond) (InContext ctx inputs) then else)
+          :ruleset context-prop)
 
 
 ;; don't add context to body, since it's a new region

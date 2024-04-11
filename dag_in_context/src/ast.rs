@@ -182,12 +182,12 @@ pub fn program_vec(entry: RcExpr, functions: Vec<RcExpr>) -> TreeProgram {
 /// e.g. `switch!(cond; case1, case2, case3)` becomes `switch_vec(cond, vec![case1, case2, case3])`
 #[macro_export]
 macro_rules! switch {
-    ($arg:expr; $($x:expr),* $(,)?) => ($crate::ast::switch_vec($arg, vec![$($x),*]))
+    ($arg:expr, $input:expr; $($x:expr),* $(,)?) => ($crate::ast::switch_vec($arg, $input, vec![$($x),*]))
 }
 pub use switch;
 
-pub fn switch_vec(cond: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
-    RcExpr::new(Expr::Switch(cond, cases))
+pub fn switch_vec(cond: RcExpr, input: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
+    RcExpr::new(Expr::Switch(cond, input, cases))
 }
 
 pub fn empty() -> RcExpr {
@@ -267,8 +267,8 @@ pub fn getat(index: usize) -> RcExpr {
     get(arg(), index)
 }
 
-pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::If(cond, then_case, else_case))
+pub fn tif(cond: RcExpr, input: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::If(cond, input, then_case, else_case))
 }
 
 pub fn dowhile(inputs: RcExpr, pred_and_body: RcExpr) -> RcExpr {
@@ -313,14 +313,14 @@ pub fn inloop(e1: RcExpr, e2: RcExpr) -> Assumption {
     Assumption::InLoop(e1, e2)
 }
 
-pub fn inif(is_then: bool, pred: RcExpr) -> Assumption {
-    Assumption::InIf(is_then, pred)
+pub fn inif(is_then: bool, pred: RcExpr, input: RcExpr) -> Assumption {
+    Assumption::InIf(is_then, pred, input)
 }
 
 pub fn nocontext() -> Assumption {
     Assumption::NoContext
 }
 
-pub fn in_context(assumption: Assumption, body: RcExpr) -> RcExpr {
+pub fn inctx(assumption: Assumption, body: RcExpr) -> RcExpr {
     RcExpr::new(Expr::InContext(assumption, body))
 }

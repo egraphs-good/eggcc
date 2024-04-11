@@ -4,5 +4,19 @@ expression: visualization.result
 ---
 @main {
   v1: int = const 1;
+<<<<<<< HEAD
   print v1;
+=======
+  v3: int = const 2;
+  v5: bool = lt v1 v3;
+  br v5 .__15__ .__10__;
+.__15__:
+  v14: int = const 1;
+  print v14;
+  jmp .__19__;
+.__10__:
+  v9: int = const 2;
+  print v9;
+.__19__:
+>>>>>>> c0b24fb (rust side make if and switch regions)
 }

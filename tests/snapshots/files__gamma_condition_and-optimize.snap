@@ -5,6 +5,7 @@ expression: visualization.result
 @main(v0: int) {
   v3: int = const 2;
   v5: bool = lt v0 v3;
+<<<<<<< HEAD
   v13: int = const 3;
   br v5 .__21__ .__15__;
 .__21__:
@@ -16,4 +17,19 @@ expression: visualization.result
   v19: int = id v13;
 .__26__:
   print v19;
+=======
+  v8: int = const 3;
+  v10: bool = lt v3 v8;
+  v12: bool = and v5 v10;
+  br v12 .__25__ .__19__;
+.__25__:
+  print v0;
+  v23: int = id v8;
+  jmp .__30__;
+.__19__:
+  print v3;
+  v23: int = id v8;
+.__30__:
+  print v23;
+>>>>>>> c0b24fb (rust side make if and switch regions)
 }

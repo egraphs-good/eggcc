@@ -148,9 +148,12 @@ impl<'a> TypeChecker<'a> {
                 inloop(inputs_with_types, body_with_types)
             }
             Assumption::NoContext => nocontext(),
-            Assumption::InIf(branch, pred) => {
-                let pred_with_types = self.add_arg_types_to_expr(pred.clone(), arg_tys);
-                inif(branch, pred_with_types.1)
+            Assumption::InIf(branch, pred, input) => {
+                let outer_types = arg_tys.popped();
+                let pred_with_types = self.add_arg_types_to_expr(pred.clone(), &outer_types);
+                let input_with_types = self.add_arg_types_to_expr(input.clone(), &outer_types);
+
+                inif(branch, pred_with_types.1, input_with_types.1)
             }
         }
     }
@@ -380,15 +383,17 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Concat(new_left, new_right)),
                 )
             }
-            Expr::Switch(integer, branches) => {
+            Expr::Switch(integer, input, branches) => {
                 let (ity, new_integer) = self.add_arg_types_to_expr(integer.clone(), arg_tys);
+                let (inputty, new_input) = self.add_arg_types_to_expr(input.clone(), arg_tys);
                 let Type::Base(BaseType::IntT) = ity else {
                     panic!("Expected int type. Got {:?}", ity)
                 };
                 let mut new_branches = vec![];
                 let mut res_type = None;
                 for branch in branches {
-                    let (bty, new_branch) = self.add_arg_types_to_expr(branch.clone(), arg_tys);
+                    let (bty, new_branch) = self
+                        .add_arg_types_to_expr(branch.clone(), &arg_tys.pushed(inputty.clone()));
                     new_branches.push(new_branch);
                     res_type = match res_type {
                         Some(t) => {
@@ -400,22 +405,28 @@ impl<'a> TypeChecker<'a> {
                 }
                 (
                     res_type.unwrap(),
-                    RcExpr::new(Expr::Switch(new_integer, new_branches)),
+                    RcExpr::new(Expr::Switch(new_integer, new_input, new_branches)),
                 )
             }
-            Expr::If(pred, then, else_branch) => {
+            Expr::If(pred, input, then, else_branch) => {
                 let (pty, new_pred) = self.add_arg_types_to_expr(pred.clone(), arg_tys);
+                let (ity, new_input) = self.add_arg_types_to_expr(input.clone(), arg_tys);
                 let Type::Base(BaseType::BoolT) = pty else {
                     panic!("Expected bool type. Got {:?}", pty)
                 };
-                let (tty, new_then) = self.add_arg_types_to_expr(then.clone(), arg_tys);
-                let (ety, new_else) = self.add_arg_types_to_expr(else_branch.clone(), arg_tys);
+                let (tty, new_then) =
+                    self.add_arg_types_to_expr(then.clone(), &arg_tys.pushed(ity.clone()));
+                let (ety, new_else) =
+                    self.add_arg_types_to_expr(else_branch.clone(), &arg_tys.pushed(ity));
                 assert_eq!(
                     tty, ety,
                     "Expected then and else types to be the same. Got {:?} and {:?}",
                     tty, ety
                 );
-                (tty, RcExpr::new(Expr::If(new_pred, new_then, new_else)))
+                (
+                    tty,
+                    RcExpr::new(Expr::If(new_pred, new_input, new_then, new_else)),
+                )
             }
             Expr::DoWhile(inputs, pred_and_outputs) => {
                 let (ity, new_inputs) = self.add_arg_types_to_expr(inputs.clone(), arg_tys);

@@ -132,11 +132,11 @@
 ; Switch on a list of lazily-evaluated branches.
 ; Does not create a region.
 ; pred must be an integer
-;                 pred     branches     chosen
-(function Switch (Expr     ListExpr)    Expr)
+;                 pred  Expr   branches     chosen
+(function Switch (Expr  Expr   ListExpr)    Expr)
 ; If is like switch, but with a boolean predicate
-;             pred then else
-(function If (Expr Expr Expr) Expr)
+;             pred inputs   then else
+(function If (Expr Expr     Expr Expr) Expr)
 
 
 ; A do-while loop.
@@ -164,8 +164,15 @@
   ; InLoop is a special context because it describes the argument of the loop. It is a *scope context*.
   ;      input    pred_output
   (InLoop Expr     Expr)
-  ; Assume that the expression matches the boolean
-  (InIf bool Expr)
+  ; Branch of the switch and what the predicate is
+  (InSwitch i64 Expr)
+  ; If the predicate was true, and what the predicate is, and what the input is
+  (InIf bool Expr Expr)
+  ; Other assumptions are possible, but not supported yet.
+  ; For example:
+  ;      A boolean predicate is true.
+  ;      e.g. (> (FuncArg) (Const (Int 2)))
+  ; (IsTrue Expr))
 )
 
 ; InContext allows creating context-specific terms.

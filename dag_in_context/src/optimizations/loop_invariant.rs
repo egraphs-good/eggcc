@@ -51,7 +51,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
             let is_inv_ctor = ctor
                 .filter_map_fields(|field| match field.purpose {
                     Purpose::Static(_) | Purpose::CapturedExpr => None,
-                    Purpose::SubExpr | Purpose::SubListExpr => {
+                    Purpose::SubExpr | Purpose::CapturedSubListExpr => {
                         let var = field.var();
                         let sort = field.sort().name();
                         Some(format!("(= true (is-inv-{sort} loop {var}))"))

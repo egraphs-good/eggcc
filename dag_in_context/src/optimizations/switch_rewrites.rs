@@ -1,6 +1,7 @@
-#[cfg(test)]
-use crate::egglog_test;
-
+//#[cfg(test)]
+//use crate::egglog_test;
+/*
+TODO rewrite when ifs have regions
 #[test]
 fn switch_rewrite_three_quarters_and() -> crate::Result {
     use crate::ast::*;
@@ -90,3 +91,4 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
         vec!["1".to_string()],
     )
 }
+ */

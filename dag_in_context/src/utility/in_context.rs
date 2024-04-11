@@ -24,7 +24,7 @@ fn test_in_context_two_loops() -> crate::Result {
     )
     .func_with_arg_types();
 
-    let with_context = expr.clone().func_add_context();
+    let with_context = expr.clone().func_add_ctx();
 
     egglog_test(
         &format!("(AddFuncContext {expr})"),
@@ -93,8 +93,8 @@ fn test_harder_context_cycle() -> crate::Result {
         dowhile(
             fargincontext.clone(),
             parallel!(
-                in_context(inner_in_context.clone(), tfalse()), // false gets the loop context
-                in_context(nocontext(), int(3)) // 3 is equal to the loop, which is equal to 3 in the outer context
+                inctx(inner_in_context.clone(), tfalse()), // false gets the loop context
+                inctx(nocontext(), int(3)) // 3 is equal to the loop, which is equal to 3 in the outer context
             ),
         ),
     )

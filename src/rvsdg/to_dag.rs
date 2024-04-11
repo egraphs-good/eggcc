@@ -458,10 +458,8 @@ impl RvsdgFunction {
         if add_context {
             // Now add context
             // InLoop contexts will use the version without context nodes
-            let (_with_ctx, expr_with_ctx) = self.to_dag_encoding_helper(
-                Some(Assumption::NoContext(self.name.clone())),
-                Some(Box::new(without_ctx)),
-            );
+            let (_with_ctx, expr_with_ctx) = self
+                .to_dag_encoding_helper(Some(Assumption::NoContext), Some(Box::new(without_ctx)));
             expr_with_ctx
         } else {
             expr

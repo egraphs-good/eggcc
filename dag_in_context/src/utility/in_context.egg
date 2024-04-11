@@ -102,11 +102,9 @@
        (subsume (DoAddContext seen ctx scope in)))
       :ruleset context-helpers)
 
-;; Get rid of NoContext wrappers
-;; TODO why doesn't this saturate?
 (rewrite (InContext (NoContext) expr)
          expr
-         :ruleset context)
+         :ruleset context-helpers)
 
 
 ;; ############################################### Existing contexts

@@ -207,3 +207,87 @@ fn test_subst_preserves_context() -> crate::Result {
         vec![],
     )
 }
+
+// replace with, original expression, and expected for the two fuel tests
+// to show that not enough fuel causes substitution to not propagate fully,
+// but enough fuel causes substitution to replace the desired arg.
+// For these tests, only the build/check are different but the setup is the same.
+fn fuel_test_replacewith_expression_expected() -> (
+    std::rc::Rc<crate::schema::Expr>,
+    std::rc::Rc<crate::schema::Expr>,
+    std::rc::Rc<crate::schema::Expr>,
+) {
+    use crate::ast::*;
+
+    let expression = function(
+        "main",
+        base(intt()),
+        base(intt()),
+        get(
+            dowhile(
+                single(arg()),
+                parallel!(less_than(get(arg(), 0), int(0)), int(3)),
+            ),
+            0,
+        ),
+    )
+    .func_with_arg_types();
+
+    let expected = function(
+        "main",
+        base(intt()),
+        base(intt()),
+        get(
+            dowhile(
+                single(in_context(nocontext(), int(4))),
+                parallel!(less_than(get(arg(), 0), int(0)), int(3)),
+            ),
+            0,
+        ),
+    )
+    .func_with_arg_types();
+
+    let replace_with = int(4).with_arg_types(base(intt()), base(intt()));
+
+    (replace_with, expression, expected)
+}
+
+#[test]
+fn test_subst_with_enough_fuel_goes() -> crate::Result {
+    use crate::ast::*;
+
+    let (replace_with, expression, expected) = fuel_test_replacewith_expression_expected();
+
+    let build =
+        format!("(let substituted (Subst 3 (NoContext) {replace_with} {expression})) (let expected {expected})");
+    let check = format!("(check (= substituted {expected}))");
+
+    crate::egglog_test(
+        &build,
+        &check,
+        vec![expression.func_to_program()],
+        intv(0),
+        intv(3),
+        vec![],
+    )
+}
+
+#[test]
+fn test_subst_with_little_fuel_stops() -> crate::Result {
+    use crate::ast::*;
+
+    let (replace_with, expression, expected) = fuel_test_replacewith_expression_expected();
+
+    let build =
+        format!("(let substituted (Subst 2 (NoContext) {replace_with} {expression})) (let expected {expected})");
+    let check = format!("(fail (check (= substituted {expected})))");
+
+    crate::egglog_test(
+        &build,
+        &check,
+        vec![expression.func_to_program()],
+        intv(0),
+        intv(3),
+        vec![],
+    )
+}

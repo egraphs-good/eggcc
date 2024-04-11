@@ -212,6 +212,7 @@ fn test_subst_preserves_context() -> crate::Result {
 // to show that not enough fuel causes substitution to not propagate fully,
 // but enough fuel causes substitution to replace the desired arg.
 // For these tests, only the build/check are different but the setup is the same.
+#[cfg(test)]
 fn fuel_test_replacewith_expression_expected() -> (
     std::rc::Rc<crate::schema::Expr>,
     std::rc::Rc<crate::schema::Expr>,

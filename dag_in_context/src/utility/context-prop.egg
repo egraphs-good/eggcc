@@ -1,49 +1,69 @@
 ;; Besides the in_context rules that add fresh contexts to everything,
-;; we normalize terms to keep contexts in the leaf nodes.
-;; This file contains the rules that move contexts to leaf nodes
-
+;; we normalize terms by pushing loop and func contexts to leaf nodes.
+;; Pushing InIf contexts down to leaves causes exponential blowup, so we avoid this.
+ 
 (ruleset context-prop)
 
+;; A leaf context is either a InLoop or a NoContext.
+;; We maintain the invariant that there is only one such context per region, and it can be pushed down to
+;; leaf nodes.
+(relation ScopeContext (Assumption))
+(rule ((InLoop pred body))
+      ((ScopeContext (InLoop pred body)))
+      :ruleset context-prop)
+(rule ((NoContext))
+      ((ScopeContext (NoContext)))
+      :ruleset context-prop)
 
 (rewrite (InContext ctx (Top op a b c))
          (Top op (InContext ctx a) (InContext ctx b) (InContext ctx c))
+         :when ((ScopeContext ctx))
          :ruleset context-prop)
 
 (rewrite (InContext ctx (Bop op a b))
          (Bop op (InContext ctx a) (InContext ctx b))
+         :when ((ScopeContext ctx))
          :ruleset context-prop)
 
 (rewrite (InContext ctx (Uop op a))
          (Uop op (InContext ctx a))
+         :when ((ScopeContext ctx))
          :ruleset context-prop)
 
 (rewrite (InContext ctx (Get expr ith))
          (Get (InContext ctx expr) ith)
+         :when ((ScopeContext ctx))
          :ruleset context-prop)
 
 (rewrite (InContext ctx (Alloc i amount state_edge ty))
          (Alloc i (InContext ctx amount) (InContext ctx state_edge) ty)
+         :when ((ScopeContext ctx))
          :ruleset context-prop)
 
 (rewrite (InContext ctx (Call name arg))
          (Call name (InContext ctx arg))
+         :when ((ScopeContext ctx))
          :ruleset context-prop)
 
 (rewrite (InContext ctx (Single expr))
          (Single (InContext ctx expr))
+         :when ((ScopeContext ctx))
          :ruleset context-prop)
 
 (rewrite (InContext ctx (Concat e1 e2))
          (Concat (InContext ctx e1) (InContext ctx e2))
+         :when ((ScopeContext ctx))
          :ruleset context-prop)
 
 (rewrite (InContext ctx (If cond then else))
-          (If (InContext ctx cond) (InContext ctx then) (InContext ctx else))
-          :ruleset context-prop)
+         (If (InContext ctx cond) (InContext ctx then) (InContext ctx else))
+         :when ((ScopeContext ctx))
+         :ruleset context-prop)
 
 
 ;; don't add context to body, since it's a new region
 (rewrite (InContext ctx (DoWhile inputs body))
          (DoWhile (InContext ctx inputs) body)
+         :when ((ScopeContext ctx))
          :ruleset context-prop)
 

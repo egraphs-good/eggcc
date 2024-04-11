@@ -22,26 +22,22 @@
        (IsLeaf leaf))
       ((union lhs (InContext assum (SubstLeaf to leaf))))
       :ruleset subst)
-;; leaf node with context
-;; replace infunc context
-(rule ((= lhs (Subst assum to (InContext (InFunc name) leaf)))
-       (IsLeaf leaf))
-      ((union lhs (InContext assum (SubstLeaf to leaf))))
-      :ruleset subst)
+;; leaf node with loop context
 (rule ((= lhs (Subst assum to (InContext (InLoop inputs body) leaf)))
        (IsLeaf leaf))
       ((union lhs (InContext assum (SubstLeaf to leaf))))
       :ruleset subst)
-;; modify inif context
-(rule ((= lhs (Subst assum to (InContext (InIf branch pred) leaf)))
-       (IsLeaf leaf))
+
+;; modify inif context, doesn't need to be on a leaf
+(rule ((= lhs (Subst assum to (InContext (InIf branch pred) expr))))
       ((union lhs
         (InContext
           (InIf branch (Subst assum to pred))
-          (SubstLeaf to leaf))))
+          (Subst assum to expr))))
       :ruleset subst)
 
 
+;; substitute for a leaf node- interested case is (Arg ty)
 (rewrite (SubstLeaf to (Arg ty))
          to
          :ruleset subst)

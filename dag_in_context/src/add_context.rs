@@ -6,7 +6,7 @@
 //! the size of the program exponentially due to the number of contexts added.
 
 use crate::{
-    ast::{in_context, infunc},
+    ast::{in_context, nocontext},
     schema::{Assumption, Expr, RcExpr, TreeProgram},
 };
 
@@ -28,7 +28,7 @@ impl Expr {
         let Expr::Function(name, arg_ty, ret_ty, body) = &self.as_ref() else {
             panic!("Expected Function, got {:?}", self);
         };
-        let current_ctx = infunc(name);
+        let current_ctx = nocontext();
         RcExpr::new(Expr::Function(
             name.clone(),
             arg_ty.clone(),

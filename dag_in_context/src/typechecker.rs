@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::{base, emptyt, infunc, inif, inloop, statet},
+    ast::{base, emptyt, inif, inloop, nocontext, statet},
     schema::{
         Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
     },
@@ -147,7 +147,7 @@ impl<'a> TypeChecker<'a> {
                     self.add_arg_types_to_expr(inputs.clone(), &outer_types);
                 inloop(inputs_with_types, body_with_types)
             }
-            Assumption::InFunc(name) => infunc(&name),
+            Assumption::NoContext => nocontext(),
             Assumption::InIf(branch, pred) => {
                 let pred_with_types = self.add_arg_types_to_expr(pred.clone(), arg_tys);
                 inif(branch, pred_with_types.1)

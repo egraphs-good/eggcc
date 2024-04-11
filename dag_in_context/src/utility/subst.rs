@@ -19,11 +19,11 @@ fn test_subst_nested() -> crate::Result {
     )
     .with_arg_types(twoint.clone(), base(intt()));
     let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone());
-    let replacement = in_context(infunc("main"), replace_with.clone());
+    let replacement = in_context(nocontext(), replace_with.clone());
     let expected = get(
         dowhile(
             parallel!(
-                in_context(infunc("main"), int(1)),
+                in_context(nocontext(), int(1)),
                 get(replacement.clone(), 1),
                 get(
                     dowhile(
@@ -41,7 +41,7 @@ fn test_subst_nested() -> crate::Result {
 
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expr}))"
     );
@@ -68,18 +68,18 @@ fn test_subst_makes_new_context() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(
-        in_context(infunc("otherfunc"), int_ty(1, base(intt()))),
-        in_context(infunc("otherfunc"), iarg()),
+        in_context(nocontext(), int_ty(1, base(intt()))),
+        in_context(nocontext(), iarg()),
     );
     let replace_with = int_ty(2, base(intt()));
     let expected = add(
-        in_context(infunc("main"), int(1)),
-        in_context(infunc("main"), int(2)),
+        in_context(nocontext(), int(1)),
+        in_context(nocontext(), int(2)),
     )
     .with_arg_types(base(intt()), base(intt()));
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expr}))"
     );
@@ -107,13 +107,13 @@ fn test_subst_arg_type_changes() -> crate::Result {
     let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), base(intt()));
 
     let expected = add(
-        in_context(infunc("main"), get(arg(), 0)),
-        in_context(infunc("main"), get(arg(), 0)),
+        in_context(nocontext(), get(arg(), 0)),
+        in_context(nocontext(), get(arg(), 0)),
     )
     .with_arg_types(tupletype.clone(), base(intt()));
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expr}))"
     );
@@ -145,9 +145,9 @@ fn test_subst_identity() -> crate::Result {
         base(intt()),
         base(intt()),
         tif(
-            in_context(infunc("main"), ttrue()),
-            in_context(infunc("main"), int(1)),
-            in_context(infunc("main"), int(1)),
+            in_context(nocontext(), ttrue()),
+            in_context(nocontext(), int(1)),
+            in_context(nocontext(), int(1)),
         ),
     )
     .func_with_arg_types();
@@ -156,7 +156,7 @@ fn test_subst_identity() -> crate::Result {
 
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expression}))"
     );
@@ -193,7 +193,7 @@ fn test_subst_preserves_context() -> crate::Result {
 
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expression}))"
     );

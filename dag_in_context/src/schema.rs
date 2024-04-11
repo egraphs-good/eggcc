@@ -72,7 +72,7 @@ pub type RcExpr = Rc<Expr>;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
-    InFunc(String),
+    NoContext,
     InIf(bool, RcExpr),
 }
 

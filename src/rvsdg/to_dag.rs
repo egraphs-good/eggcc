@@ -458,10 +458,8 @@ impl RvsdgFunction {
         if add_context {
             // Now add context
             // InLoop contexts will use the version without context nodes
-            let (_with_ctx, expr_with_ctx) = self.to_dag_encoding_helper(
-                Some(Assumption::InFunc(self.name.clone())),
-                Some(Box::new(without_ctx)),
-            );
+            let (_with_ctx, expr_with_ctx) = self
+                .to_dag_encoding_helper(Some(Assumption::NoContext), Some(Box::new(without_ctx)));
             expr_with_ctx
         } else {
             expr
@@ -556,10 +554,10 @@ fn simple_translation_dag() {
             tuplet!(intt(), statet()),
             parallel!(
                 add(
-                    in_context(infunc("add"), int(1)),
-                    in_context(infunc("add"), int(1))
+                    in_context(nocontext(), int(1)),
+                    in_context(nocontext(), int(1))
                 ),
-                get(in_context(infunc("add"), arg()), 0)
+                get(in_context(nocontext(), arg()), 0)
             ),
         ),),
         tuplev!(statev()),

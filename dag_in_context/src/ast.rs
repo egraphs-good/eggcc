@@ -317,8 +317,8 @@ pub fn inif(is_then: bool, pred: RcExpr) -> Assumption {
     Assumption::InIf(is_then, pred)
 }
 
-pub fn infunc(name: &str) -> Assumption {
-    Assumption::InFunc(name.to_string())
+pub fn nocontext() -> Assumption {
+    Assumption::NoContext
 }
 
 pub fn in_context(assumption: Assumption, body: RcExpr) -> RcExpr {

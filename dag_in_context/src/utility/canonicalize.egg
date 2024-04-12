@@ -10,17 +10,27 @@
 ; Canonicalize to <
 ; x > y ==> y < x
 (rewrite (Bop (GreaterThan) x y) (Bop (LessThan) y x) :ruleset canon)
+
 ; x >= y ==> y < x + 1
+; x >= y ==> y - 1 < x
 (rule (
         (= lhs (Bop (GreaterEq) x y))
         (HasArgType x ty)
       )
-      ((union lhs (Bop (LessThan) y (Bop (Add) x (Const (Int 1) ty)))))
+      (
+        (union lhs (Bop (LessThan) y (Bop (Add) x (Const (Int 1) ty))))
+        (union lhs (Bop (LessThan) (Bop (Sub) y (Const (Int 1) ty)) x))
+      )
       :ruleset canon)
+
 ; x <= y ==> x < y + 1
+; x <= y ==> x - 1 < y
 (rule (
         (= lhs (Bop (LessEq) x y))
         (HasArgType y ty)
       )
-      ((union lhs (Bop (LessThan) x (Bop (Add) y (Const (Int 1) ty)))))
+      (
+        (union lhs (Bop (LessThan) x (Bop (Add) y (Const (Int 1) ty))))
+        (union lhs (Bop (LessThan) (Bop (Sub) x (Const (Int 1) ty)) y))
+      )
       :ruleset canon)

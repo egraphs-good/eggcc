@@ -100,18 +100,30 @@
        (= (IntB la) (lo-bound a))
        (= (IntB lb) (lo-bound b))
       )
-      (
-       (set (lo-bound lhs) (IntB (+ la lb)))
-      )
+      ((set (lo-bound lhs) (IntB (+ la lb))))
       :ruleset interval-analysis)
 (rule (
        (= lhs (Bop (Add) a b))
        (= (IntB ha) (hi-bound a))
        (= (IntB hb) (hi-bound b))
       )
-      (
-       (set (hi-bound lhs) (IntB (+ ha hb)))
+      ((set (hi-bound lhs) (IntB (+ ha hb))))
+      :ruleset interval-analysis)
+
+; - a b interval is (- la hb) (- ha lb)
+(rule (
+       (= lhs (Bop (Sub) a b))
+       (= (IntB la) (lo-bound a))
+       (= (IntB hb) (hi-bound b))
       )
+      ((set (lo-bound lhs) (IntB (- la hb))))
+      :ruleset interval-analysis)
+(rule (
+       (= lhs (Bop (Sub) a b))
+       (= (IntB ha) (hi-bound a))
+       (= (IntB lb) (lo-bound b))
+      )
+      ((set (hi-bound lhs) (IntB (- ha lb))))
       :ruleset interval-analysis)
 
 ; negative * negative is positive
@@ -174,13 +186,13 @@
 ; hi-bound of If is the max of the upper bounds
 (rule (
         (= lhs (If cond inputs thn els))
-        (= thn-ival (ival thn))
-        (= els-ival (ival els))
+        (= lo-thn (lo-bound thn))
+        (= lo-els (lo-bound els))
       )
       ((set (lo-bound lhs) (bound-min lo-thn lo-els)))
       :ruleset interval-analysis)
 (rule (
-       (= lhs (If cond thn els))
+       (= lhs (If cond inputs thn els))
        (= hi-thn (hi-bound thn))
        (= hi-els (hi-bound els))
       )
@@ -201,37 +213,36 @@
       ((set (hi-bound lhs) hi))
       :ruleset interval-analysis)
 
-; if e < v is true, then e is at most the upper bound of v - 1
+; TODO: Generalize these?
+
+; If input < v is true, then upper bound of input is upper bound of v - 1
 (rule (
-       (= lhs (InContext (InIf true (Bop (LessThan) (InContext ctx expr) v)) expr))
+       (= lhs (InContext (InIf true (Bop (LessThan) inp v) inp) inp))
        (= (IntB hi) (hi-bound v))
       )
       ((set (hi-bound lhs) (IntB (- hi 1))))
       :ruleset interval-analysis)
 
-; if e < v is false, then e is at least the lower bound of v
+; If input < v is false, then lower bound of input is lower bound of v
 (rule (
-       (= lhs (InContext (InIf false (Bop (LessThan) (InContext ctx expr) v)) expr))
+       (= lhs (InContext (InIf false (Bop (LessThan) inp v) inp) inp))
        (= (IntB lo) (lo-bound v))
       )
       ((set (lo-bound lhs) (IntB lo)))
       :ruleset interval-analysis)
 
-
-; if v < e is true, then e is at least the lower bound of v + 1
+; If v < input is true, then lower bound of input is lower bound of v + 1
 (rule (
-       (= lhs (InContext (InIf true (Bop (LessThan) v (InContext ctx expr))) expr))
+       (= lhs (InContext (InIf true (Bop (LessThan) v inp) inp) inp))
        (= (IntB lo) (lo-bound v))
       )
       ((set (lo-bound lhs) (IntB (+ lo 1))))
       :ruleset interval-analysis)
 
-; if v < e is false, then e is at most the upper bound of v
+; If v < input is false, then upper bound of input is upper bound of v
 (rule (
-       (= lhs (InContext (InIf false (Bop (LessThan) v (InContext ctx expr))) expr))
+       (= lhs (InContext (InIf false (Bop (LessThan) v inp) inp) inp))
        (= (IntB hi) (hi-bound v))
       )
-      (
-       (set (hi-bound lhs) (IntB hi))
-      )
+      ((set (hi-bound lhs) (IntB  hi)))
       :ruleset interval-analysis)

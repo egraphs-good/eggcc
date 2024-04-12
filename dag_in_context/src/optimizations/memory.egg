@@ -130,13 +130,13 @@
       ((SequentialStates state e))
       :ruleset always-run)
 
-; point * ptr tuple -> index set list
-(function TuplePointsToArgs (Expr Expr) I64SetList :merge (I64SetList-zip-set-intersect old new))
+; ptr tuple -> index set list
+(function TuplePointsToArgs (Expr) I64SetList :merge (I64SetList-zip-set-intersect old new))
 
-; point * ptr tuple -> index set list
-(function TuplePointsToArgsAtIter0 (Expr Expr) I64SetList :merge (I64SetList-zip-set-intersect old new))
-; point * ptr -> index set
-(function PointsToArgsAtIter0 (Expr Expr) I64Set :merge (I64Set-intersect old new))
+; ptr tuple -> index set list
+(function TuplePointsToArgsAtIter0 (Expr) I64SetList :merge (I64SetList-zip-set-intersect old new))
+; ptr -> index set
+(function PointsToArgsAtIter0 (Expr) I64Set :merge (I64Set-intersect old new))
   ; TuplePointsToArgsAtIter0 for Arg
     ; PointsToArgsSuffix = {
     ;    tl, [(if tl[i] == (PointerT _) then {i} else {}) for i in 1:n]
@@ -164,61 +164,48 @@
 
     (rule ((= arg (Arg (TupleT tylist)))
            (PointsToArgsSuffix tylist l)
-           (= (TypeList-length tylist) (I64SetList-length l))
-           (= (StateT) (TypeList-ith tylist state-i)))
-          ((set (TuplePointsToArgsAtIter0 (Get arg state-i) arg) l))
+           (= (TypeList-length tylist) (I64SetList-length l)))
+          ((set (TuplePointsToArgsAtIter0 arg) l))
           :ruleset always-run)
 
   ; TuplePointsToArgsAtIter0 for Concat
-  (rule ((= sets1 (TuplePointsToArgsAtIter0 point tup1))
-         (= sets2 (TuplePointsToArgsAtIter0 point tup2))
+  (rule ((= sets1 (TuplePointsToArgsAtIter0 tup1))
+         (= sets2 (TuplePointsToArgsAtIter0 tup2))
          (= concat (Concat order tup1 tup2)))
         ((set
-          (TuplePointsToArgsAtIter0 point concat)
+          (TuplePointsToArgsAtIter0 concat)
           (I64SetList-concat sets1 sets2)))
         :ruleset always-run)
-        
+
   ; PointsToArgsAtIter0 for Get
-  (rule ((= sets (TuplePointsToArgsAtIter0 point tup))
+  (rule ((= sets (TuplePointsToArgsAtIter0 tup))
          (= get (Get tup i)))
         ((set
-          (PointsToArgsAtIter0 point get)
+          (PointsToArgsAtIter0 get)
           (I64SetList-get sets i)))
         :ruleset always-run)
 
   ; PointsToArgsAtIter0 for Single
-  (rule ((= args (PointsToArgsAtIter0 point x))
+  (rule ((= args (PointsToArgsAtIter0 x))
          (= single (Single x)))
         ((set
-          (TuplePointsToArgsAtIter0 point single)
+          (TuplePointsToArgsAtIter0 single)
           (I64SetCons args (I64SetNil))))
         :ruleset always-run)
 
   ; PointsToArgsAtIter0 for PtrAdd
   ; Offsets refer to the same cell, for now
   (rule ((= e (Bop (PtrAdd) x y))
-         (= xargs (PointsToArgsAtIter0 point x))
-         (= yargs (PointsToArgsAtIter0 point y)))
-        ((set (PointsToArgsAtIter0 point e) (I64Set-union xargs yargs)))
+         (= xargs (PointsToArgsAtIter0 x))
+         (= yargs (PointsToArgsAtIter0 y)))
+        ((set (PointsToArgsAtIter0 e) (I64Set-union xargs yargs)))
         :ruleset always-run)
 
   ; PointsToArgsAtIter0 for If
   (rule ((= e (If c x y))
-         (= xargs (PointsToArgsAtIter0 point x))
-         (= yargs (PointsToArgsAtIter0 point y)))
-        ((set (PointsToArgsAtIter0 point e) (I64Set-union xargs yargs)))
-        :ruleset always-run)
-
-  ; TuplePointsToArgsAtIter0: move down state path
-  (rule ((= sets (TuplePointsToArgsAtIter0 point x))
-         (SequentialStates point point2))
-        ((set (TuplePointsToArgsAtIter0 point2 x) sets))
-        :ruleset always-run)
-
-  ; PointsToArgsAtIter0: move down state path
-  (rule ((= args (PointsToArgsAtIter0 point x))
-         (SequentialStates point point2))
-        ((set (PointsToArgsAtIter0 point2 x) args))
+         (= xargs (PointsToArgsAtIter0 x))
+         (= yargs (PointsToArgsAtIter0 y)))
+        ((set (PointsToArgsAtIter0 e) (I64Set-union xargs yargs)))
         :ruleset always-run)
 
 ; ptr tuple * iteration -> index set list
@@ -229,29 +216,24 @@
 ; PointsToCells
 ; ============================
 
-;                       program point, pointer-typed expression
-(function PointsToCells (Expr Expr) CellSet :merge (CellSet-intersect old new))
+;                       pointer-typed expression
+(function PointsToCells (Expr) CellSet :merge (CellSet-intersect old new))
 
 (rule ((= e (Alloc id sz state ty)))
-      ((set (PointsToCells (Get e 1) (Get e 0)) (CS (set-of (CellOf id)))))
+      ((set (PointsToCells (Get e 0)) (CS (set-of (CellOf id)))))
       :ruleset memory)
 
 ; Offsets refer to the same cell, for now
 (rule ((= e (Bop (PtrAdd) x y))
-       (= xcells (PointsToCells state x))
-       (= ycells (PointsToCells state y)))
-      ((set (PointsToCells state e) (CellSet-union xcells ycells)))
+       (= xcells (PointsToCells x))
+       (= ycells (PointsToCells y)))
+      ((set (PointsToCells e) (CellSet-union xcells ycells)))
       :ruleset memory)
 
-(rule ((= sets (PointsToCells point x))
-       (SequentialStates point point2))
-      ((set (PointsToCells point2 x) sets))
-      :ruleset always-run)
-
 (rule ((= e (If pred t f))
-       (= tcells (PointsToCells (Get t i) (Get t j)))
-       (= fcells (PointsToCells (Get f i) (Get f j))))
-      ((set (PointsToCells (Get e i) (Get e j)) (CellSet-union tcells fcells)))
+       (= tcells (PointsToCells (Get t j)))
+       (= fcells (PointsToCells (Get f j))))
+      ((set (PointsToCells (Get e j)) (CellSet-union tcells fcells)))
       :ruleset memory)
 
 ; (= loop inputs outputs)
@@ -290,7 +272,7 @@
 
 ; note: We could have a specialized rule for (set-len cells 1) where we overwrite instead of union
 (rule ((= e (Top (Write) ptr val state))
-       (= (CS cells) (PointsToCells state ptr))
+       (= (CS cells) (PointsToCells ptr))
        (set-contains cells cell)
        (= vals (CellHasValues state cell)))
       ((set (CellHasValues e cell) (ExprSet-insert vals val)))
@@ -300,16 +282,16 @@
 ; Update PointsTo
 ; ============================
 
-;                    outer, pointer, pointer
-(relation Dontalias (Expr Expr Expr))
+;                    pointer, pointer
+(relation Dontalias (Expr Expr))
 ;                   outer, pointer
 ; merge function???
 (function PointsTo (Expr Expr)  Expr)
 
-(rule ((= (CS cs1) (PointsToCells outer ptr1))
-       (= (CS cs2) (PointsToCells outer ptr2))
+(rule ((= (CS cs1) (PointsToCells ptr1))
+       (= (CS cs2) (PointsToCells ptr2))
        (= 0 (set-length (set-intersect cs1 cs2))))
-      ((Dontalias outer ptr1 ptr2)) :ruleset memory)
+      ((Dontalias ptr1 ptr2)) :ruleset memory)
 
 ; For a write, mark the given expression as containing `data`.
 ; Propagate the previous values of any expression that definitely does not alias `addr`.
@@ -317,7 +299,7 @@
       ((set (PointsTo e addr) data)) :ruleset memory)
 (rule ((= e (Top (Write) addr data state))
        (= otherdata (PointsTo state otheraddr))
-       (Dontalias state addr otheraddr))
+       (Dontalias addr otheraddr))
       ((set (PointsTo e otheraddr) otherdata)) :ruleset memory)
 
 ; Special-case: no intervening effects between load and write, elide the write

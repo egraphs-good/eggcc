@@ -292,7 +292,13 @@ impl CostModel {
             .into_iter()
             .map(|(op, cost)| (op, NotNan::new(cost).unwrap()))
             .collect();
-        let regions = HashMap::from([("DoWhile", vec![1]), ("Function", vec![3])]);
+        let regions = HashMap::from([
+            ("DoWhile", vec![1]),
+            ("Function", vec![3]),
+            ("If", vec![2, 3]),
+            // TODO this doesn't support Switch properly- branches share nodes
+            ("Switch", vec![2]),
+        ]);
         CostModel {
             ops,
             ignored,

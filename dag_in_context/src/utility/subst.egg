@@ -100,7 +100,7 @@
                  branches)
          :when ((> fuel 0))
          :ruleset subst)
-(rewrite (Subst assum to (If pred inputs c1 c2))
+(rewrite (Subst fuel assum to (If pred inputs c1 c2))
          (If (Subst (- fuel 1) assum to pred)
              (Subst (- fuel 1) assum to inputs)
              c1

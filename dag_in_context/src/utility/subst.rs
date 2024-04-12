@@ -230,7 +230,7 @@ fn fuel_test_replacewith_expression_expected() -> (
         base(intt()),
         get(
             dowhile(
-                single(in_context(nocontext(), int(4))),
+                single(inctx(noctx(), int(4))),
                 parallel!(less_than(get(arg(), 0), int(0)), int(3)),
             ),
             0,

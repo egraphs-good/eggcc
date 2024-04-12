@@ -63,32 +63,36 @@
        (= (IntB x) (lo-bound expr))
        (= (IntB x) (hi-bound expr))
        (HasArgType expr ty)
+       (ContextOf expr ctx)
       )
-      ((union expr (Const (Int x) ty)))
+      ((union expr (InContext ctx (Const (Int x) ty))))
       :ruleset interval-analysis)
 
 (rule (
        (= (BoolB x) (lo-bound expr))
        (= (BoolB x) (hi-bound expr))
        (HasArgType expr ty)
+       (ContextOf expr ctx)
       )
-      ((union expr (Const (Bool x) ty)))
+      ((union expr (InContext ctx (Const (Bool x) ty))))
       :ruleset interval-analysis)
 
 ; lower bound being true means the bool must be true
 (rule (
        (= (BoolB true) (lo-bound expr))
        (HasArgType expr ty)
+       (ContextOf expr ctx)
       )
-      ((union expr (Const (Bool true) ty)))
+      ((union expr (InContext ctx (Const (Bool true) ty))))
       :ruleset interval-analysis)
 
 ; upper bound being false means the bool must be false
 (rule (
        (= (BoolB false) (hi-bound expr))
        (HasArgType expr ty)
+       (ContextOf expr ctx)
       )
-      ((union expr (Const (Bool false) ty)))
+      ((union expr (InContext ctx (Const (Bool false) ty))))
       :ruleset interval-analysis)
 
 ; =================================

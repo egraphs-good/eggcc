@@ -694,7 +694,7 @@ impl Run {
         let library_c = self.name() + "-library.c";
         let library_o = self.name() + "-library.o";
         std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
-        std::process::Command::new("cc")
+        std::process::Command::new("clang")
             .arg(library_c.clone())
             .arg("-c") // create object file instead of executable
             .arg("-o")

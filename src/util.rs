@@ -694,7 +694,7 @@ impl Run {
         let library_c = self.name() + "-library.c";
         let library_o = self.name() + "-library.o";
         std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
-        std::process::Command::new("clang")
+        std::process::Command::new("cc")
             .arg(library_c.clone())
             .arg("-c") // create object file instead of executable
             .arg("-o")
@@ -785,7 +785,7 @@ impl Run {
 
         let executable = self.output_path.clone().unwrap_or_else(|| self.name());
         let opt_level = if optimize_brillvm { "-O3" } else { "-O1" };
-        std::process::Command::new("cc")
+        std::process::Command::new("clang")
             .arg(file_path.clone())
             .arg(opt_level)
             .arg("-o")

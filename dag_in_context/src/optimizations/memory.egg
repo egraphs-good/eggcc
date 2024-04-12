@@ -196,9 +196,8 @@
   ; PointsToArgsAtIter0 for PtrAdd
   ; Offsets refer to the same cell, for now
   (rule ((= e (Bop (PtrAdd) x y))
-         (= xargs (PointsToArgsAtIter0 x))
-         (= yargs (PointsToArgsAtIter0 y)))
-        ((set (PointsToArgsAtIter0 e) (I64Set-union xargs yargs)))
+         (= xargs (PointsToArgsAtIter0 x)))
+        ((set (PointsToArgsAtIter0 e) xargs))
         :ruleset always-run)
 
   ; PointsToArgsAtIter0 for If
@@ -225,9 +224,8 @@
 
 ; Offsets refer to the same cell, for now
 (rule ((= e (Bop (PtrAdd) x y))
-       (= xcells (PointsToCells x))
-       (= ycells (PointsToCells y)))
-      ((set (PointsToCells e) (CellSet-union xcells ycells)))
+       (= xcells (PointsToCells x)))
+      ((set (PointsToCells e) xcells))
       :ruleset memory)
 
 (rule ((= e (If pred t f))

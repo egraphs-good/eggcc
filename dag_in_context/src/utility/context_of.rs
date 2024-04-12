@@ -7,15 +7,15 @@ fn test_context_of() -> crate::Result {
     let body = tif(pred, arg(), arg(), int(4))
         .with_arg_types(base(intt()), base(intt()))
         .with_arg_types(base(intt()), base(intt()));
-    let body_with_context = body.clone().add_ctx(infunc("main"));
+    let body_with_context = body.clone().add_ctx(noctx());
     let build = function("main", base(intt()), base(intt()), body.clone())
         .func_with_arg_types()
         .func_add_ctx();
 
     // If statement should have the context of its predicate
     let check = format!("
-        (let pred-ctx (InFunc \"main\"))
-        (let pred (Bop (Eq) (InContext (InFunc \"main\") (Arg (Base (IntT)))) (InContext (InFunc \"main\") (Const (Int 5) (Base (IntT))))))
+        (let pred-ctx (NoContext))
+        (let pred (Bop (Eq) (InContext (NoContext) (Arg (Base (IntT)))) (InContext (NoContext) (Const (Int 5) (Base (IntT))))))
         (check (ContextOf pred pred-ctx))
         (let if {body_with_context})
         (check (ContextOf if pred-ctx))

@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::{inctx, nocontext},
+    ast::{inctx, noctx},
     schema::{Assumption, Expr, RcExpr, TreeProgram},
     schema_helpers::AssumptionRef,
 };
@@ -33,7 +33,7 @@ impl Expr {
         let Expr::Function(name, arg_ty, ret_ty, body) = &self.as_ref() else {
             panic!("Expected Function, got {:?}", self);
         };
-        let current_ctx = nocontext();
+        let current_ctx = noctx();
         RcExpr::new(Expr::Function(
             name.clone(),
             arg_ty.clone(),

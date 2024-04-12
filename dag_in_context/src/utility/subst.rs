@@ -19,11 +19,11 @@ fn test_subst_nested() -> crate::Result {
     )
     .with_arg_types(twoint.clone(), base(intt()));
     let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone());
-    let replacement = inctx(nocontext(), replace_with.clone());
+    let replacement = inctx(noctx(), replace_with.clone());
     let expected = get(
         dowhile(
             parallel!(
-                inctx(nocontext(), int(1)),
+                inctx(noctx(), int(1)),
                 get(replacement.clone(), 1),
                 get(
                     dowhile(
@@ -68,11 +68,11 @@ fn test_subst_makes_new_context() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(
-        inctx(nocontext(), int_ty(1, base(intt()))),
-        inctx(nocontext(), iarg()),
+        inctx(noctx(), int_ty(1, base(intt()))),
+        inctx(noctx(), iarg()),
     );
     let replace_with = int_ty(2, base(intt()));
-    let expected = add(inctx(infunc("main"), int(1)), inctx(infunc("main"), int(2)))
+    let expected = add(inctx(noctx(), int(1)), inctx(noctx(), int(2)))
         .with_arg_types(base(intt()), base(intt()));
     let build = format!(
         "
@@ -103,11 +103,8 @@ fn test_subst_arg_type_changes() -> crate::Result {
     let tupletype = tuplet!(intt(), intt());
     let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), base(intt()));
 
-    let expected = add(
-        inctx(nocontext(), get(arg(), 0)),
-        inctx(nocontext(), get(arg(), 0)),
-    )
-    .with_arg_types(tupletype.clone(), base(intt()));
+    let expected = add(inctx(noctx(), get(arg(), 0)), inctx(noctx(), get(arg(), 0)))
+        .with_arg_types(tupletype.clone(), base(intt()));
     let build = format!(
         "
 (let substituted (Subst (NoContext)
@@ -142,8 +139,8 @@ fn test_subst_identity() -> crate::Result {
         base(intt()),
         base(intt()),
         tif(
-            inctx(nocontext(), ttrue()),
-            inctx(nocontext(), int(5)),
+            inctx(noctx(), ttrue()),
+            inctx(noctx(), int(5)),
             int(1),
             int(2),
         ),

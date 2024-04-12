@@ -78,8 +78,8 @@ fn test_harder_context_cycle() -> crate::Result {
     let int3func =
         function("main", tuplet!(intt()), tuplet!(intt()), single(int(3))).func_with_arg_types();
 
-    let fargincontext = in_context(
-        nocontext(),
+    let fargincontext = inctx(
+        noctx(),
         arg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
     );
     let inner_in_context = inloop(
@@ -94,7 +94,7 @@ fn test_harder_context_cycle() -> crate::Result {
             fargincontext.clone(),
             parallel!(
                 inctx(inner_in_context.clone(), tfalse()), // false gets the loop context
-                inctx(nocontext(), int(3)) // 3 is equal to the loop, which is equal to 3 in the outer context
+                inctx(noctx(), int(3)) // 3 is equal to the loop, which is equal to 3 in the outer context
             ),
         ),
     )
@@ -128,13 +128,8 @@ fn simple_context() -> crate::Result {
     use crate::egglog_test;
     use crate::{interpreter::Value, schema::Constant};
     let expr = function("main", base(intt()), base(intt()), int(2)).func_with_arg_types();
-    let expected = function(
-        "main",
-        base(intt()),
-        base(intt()),
-        in_context(nocontext(), int(2)),
-    )
-    .func_with_arg_types();
+    let expected =
+        function("main", base(intt()), base(intt()), inctx(noctx(), int(2))).func_with_arg_types();
     egglog_test(
         &format!("(AddFuncContext {expr})"),
         &format!(

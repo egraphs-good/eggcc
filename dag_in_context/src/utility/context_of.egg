@@ -46,11 +46,14 @@
 (rule ((Single x) (ContextOf x ctx))
     ((ContextOf (Single x) ctx)) :ruleset always-run)
 
-(rule ((Switch pred branches) (ContextOf pred ctx))
-    ((ContextOf (Switch pred branches) ctx)) :ruleset always-run)
+(rule ((Switch pred inputs branches) (ContextOf pred ctx))
+    ((ContextOf (Switch pred inputs branches) ctx)) :ruleset always-run)
 
-(rule ((If pred then else) (ContextOf pred ctx))
-    ((ContextOf (If pred then else) ctx)) :ruleset always-run) 
+(rule ((If pred inputs then else) (ContextOf pred ctx))
+    ((ContextOf (If pred inputs then else) ctx)) :ruleset always-run) 
+
+(rule ((If pred inputs then else) (ContextOf inputs ctx))
+    ((ContextOf (If pred inputs then else) ctx)) :ruleset always-run) 
 
 (rule ((DoWhile in pred-and-output) (ContextOf in ctx))
     ((ContextOf (DoWhile in pred-and-output) ctx)) :ruleset always-run)

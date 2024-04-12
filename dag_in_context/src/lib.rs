@@ -38,7 +38,8 @@ pub fn prologue() -> String {
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
         &optimizations::purity_analysis::rules().join("\n"),
-        &optimizations::conditional_invariant_code_motion::rules().join("\n"),
+        // TODO cond inv code motion with regions
+        //&optimizations::conditional_invariant_code_motion::rules().join("\n"),
         include_str!("utility/in_context.egg"),
         include_str!("utility/context-prop.egg"),
         include_str!("utility/subst.egg"),

@@ -15,7 +15,8 @@
         (saturate context-helpers)
         context
         context-prop))
-    conditional-invariant-code-motion
+    ;; TODO enable this ruleset again after fixing for regions
+    ;;conditional-invariant-code-motion
     switch_rewrite
     loop-simplify
     ))

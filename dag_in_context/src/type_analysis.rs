@@ -500,7 +500,7 @@ fn repro_argtype_bug() -> crate::Result {
 fn incontext() -> crate::Result {
     let body = tlet(
         int(1),
-        in_context(inlet(int_ty(1, emptyt())), add(iarg(), iarg())),
+        inctx(inlet(int_ty(1, emptyt())), add(iarg(), iarg())),
     )
     .with_arg_types(emptyt(), base(intt()));
     type_test(body, base(intt()), val_int(0), val_int(2))

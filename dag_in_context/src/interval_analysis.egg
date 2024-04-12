@@ -173,9 +173,9 @@
 ; lo-bound of If is the min of the lower bounds
 ; hi-bound of If is the max of the upper bounds
 (rule (
-       (= lhs (If cond thn els))
-       (= lo-thn (lo-bound thn))
-       (= lo-els (lo-bound els))
+        (= lhs (If cond inputs thn els))
+        (= thn-ival (ival thn))
+        (= els-ival (ival els))
       )
       ((set (lo-bound lhs) (bound-min lo-thn lo-els)))
       :ruleset interval-analysis)

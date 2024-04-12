@@ -11,7 +11,7 @@ use crate::{
     tuplev,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pointer {
     // start address of this pointer
     start_addr: usize,
@@ -40,7 +40,7 @@ impl Pointer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
     Const(Constant),
     Ptr(Pointer),
@@ -333,20 +333,22 @@ impl<'a> VirtualMachine<'a> {
                 v1.extend(v2);
                 Tuple(v1)
             }
-            Expr::Switch(pred, branches) => {
+            Expr::Switch(pred, input, branches) => {
                 let index = self.interp_int_expr(pred, arg);
                 if index < 0 || index as usize >= branches.len() {
                     // TODO refactor to return a Result
                     panic!("switch index out of bounds")
                 }
-                self.interpret_expr(&branches[index as usize], arg)
+                let input_val = self.interpret_expr(input, arg);
+                self.interpret_region(&branches[index as usize], &input_val)
             }
-            Expr::If(pred, then, els) => {
+            Expr::If(pred, input, then, els) => {
                 let pred_evaluated = self.interp_bool_expr(pred, arg);
+                let input_evaluated = self.interpret_expr(input, arg);
                 if pred_evaluated {
-                    self.interpret_expr(then, arg)
+                    self.interpret_region(then, &input_evaluated)
                 } else {
-                    self.interpret_expr(els, arg)
+                    self.interpret_region(els, &input_evaluated)
                 }
             }
             Expr::DoWhile(input, pred_output) => {
@@ -410,6 +412,7 @@ fn test_interpret_recursive() {
         base(intt()),
         tif(
             less_than(arg(), int(2)),
+            arg(),
             arg(),
             add(
                 call("fib", sub(arg(), int(1))),

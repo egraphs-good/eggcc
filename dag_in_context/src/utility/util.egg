@@ -3,7 +3,7 @@
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (function Append (ListExpr Expr) ListExpr :unextractable)
 
-(rule ((Switch pred branch)) ((union (ListExpr-suffix branch 0) branch)) :ruleset always-run)
+(rule ((Switch pred inputs branch)) ((union (ListExpr-suffix branch 0) branch)) :ruleset always-run)
 
 (rule ((= (ListExpr-suffix top n) (Cons hd tl)))
     ((union (ListExpr-ith top n) hd)

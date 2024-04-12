@@ -63,13 +63,6 @@ pub enum Constant {
     Bool(bool),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Order {
-    Parallel,
-    Sequential,
-    Reversed,
-}
-
 /// A reference counted expression.
 /// We want sharing between sub-expressions, so we use Rc instead of Box.
 /// Invariant: Every shared sub-expression is re-used by the same Rc<Expr> (pointer equality).
@@ -79,7 +72,7 @@ pub type RcExpr = Rc<Expr>;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
-    InFunc(String),
+    NoContext,
     InIf(bool, RcExpr),
 }
 
@@ -94,7 +87,7 @@ pub enum Expr {
     Call(String, RcExpr),
     Empty(Type),
     Single(RcExpr),
-    Concat(Order, RcExpr, RcExpr),
+    Concat(RcExpr, RcExpr),
     Switch(RcExpr, Vec<RcExpr>),
     If(RcExpr, RcExpr, RcExpr),
     DoWhile(RcExpr, RcExpr),

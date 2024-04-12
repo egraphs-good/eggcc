@@ -342,7 +342,7 @@ impl<'a> TreeToRvsdg<'a> {
                 vec![]
             }
             Expr::InContext(_assum, body) => self.convert_expr(body.clone()),
-            Expr::Concat(_order, left, right) => {
+            Expr::Concat(left, right) => {
                 let left = self.convert_expr(left.clone());
                 let right = self.convert_expr(right.clone());
                 left.into_iter().chain(right).collect()

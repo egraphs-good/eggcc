@@ -114,30 +114,14 @@
 ; Nested tuples are not allowed.
 
 
-; Defines the order of evaluating a `Concat` term.
-(datatype Order
-  ; Either argument may be evaluated first.
-  ; Either way, the program should reach an equivalent state.
-  (Parallel)
-  ; Evaluate the first argument first.
-  (Sequential)
-  ; Evaluate the second argument first.
-  (Reversed))
-
-; global short hands for orders
-(let par (Parallel))
-; seq is reserved by egglog, so sequ it is
-(let sequ (Sequential))
-(let rev (Reversed))
-
 ; A tuple with a single element.
 ; Necessary because we only use `Concat` to add to tuples.
 (function Single (Expr) Expr)
 ; Concat appends the elemnts from two tuples together
-; e.g. (Concat (Parallel) (Concat (Sequential) (Single a) (Single b))
-;                         (Concat (Sequential) (Single c) (Single d))) = (a, b, c, d)
+; e.g. (Concat (Concat (Single a) (Single b))
+;              (Concat (Single c) (Single d))) = (a, b, c, d)
 ;                 order   expr1       expr2
-(function Concat (Order   Expr        Expr)       Expr)
+(function Concat (Expr        Expr)       Expr)
 
 
 
@@ -174,20 +158,14 @@
 ; =================================
 
 (datatype Assumption
+  ; Assume nothing
+  (NoContext)
   ; The term is in a loop with `input` and `pred_output`.
+  ; InLoop is a special context because it describes the argument of the loop. It is a *scope context*.
   ;      input    pred_output
   (InLoop Expr     Expr)
-  ; name of the function
-  (InFunc String)
-  ; Branch of the switch and what the predicate is
-  (InSwitch i64 Expr)
-  ; If the predicate was true, and what the predicate is
+  ; Assume that the expression matches the boolean
   (InIf bool Expr)
-  ; Other assumptions are possible, but not supported yet.
-  ; For example:
-  ;      A boolean predicate is true.
-  ;      e.g. (> (FuncArg) (Const (Int 2)))
-  ; (IsTrue Expr))
 )
 
 ; InContext allows creating context-specific terms.

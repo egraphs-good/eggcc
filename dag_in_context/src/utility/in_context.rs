@@ -30,7 +30,7 @@ fn test_in_context_two_loops() -> crate::Result {
         &format!("(AddFuncContext {expr})"),
         &format!(
             "
-(let original {expr})
+(let original (AddFuncContext {expr}))
 (let with-context {with_context})
 (check (= original with-context))"
         ),
@@ -52,7 +52,7 @@ fn test_simple_context_cycle() -> crate::Result {
         &format!(
             "
 (union {expr} {inner})
-(AddContext (InFunc \"main\") (Full) {expr})
+(AddContext (NoContext) (Full) {expr})
 ",
         ),
         &format!(
@@ -79,7 +79,7 @@ fn test_harder_context_cycle() -> crate::Result {
         function("main", tuplet!(intt()), tuplet!(intt()), single(int(3))).func_with_arg_types();
 
     let fargincontext = in_context(
-        infunc("main"),
+        nocontext(),
         arg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
     );
     let inner_in_context = inloop(
@@ -94,7 +94,7 @@ fn test_harder_context_cycle() -> crate::Result {
             fargincontext.clone(),
             parallel!(
                 in_context(inner_in_context.clone(), tfalse()), // false gets the loop context
-                in_context(infunc("main"), int(3)) // 3 is equal to the loop, which is equal to 3 in the outer context
+                in_context(nocontext(), int(3)) // 3 is equal to the loop, which is equal to 3 in the outer context
             ),
         ),
     )
@@ -109,7 +109,7 @@ fn test_harder_context_cycle() -> crate::Result {
         ),
         &format!(
             "
-(check (= {expr} {expr2}))
+(check (= (AddFuncContext {expr}) {expr2}))
 (check (= {expr} {int3func}))"
         ),
         vec![
@@ -132,14 +132,14 @@ fn simple_context() -> crate::Result {
         "main",
         base(intt()),
         base(intt()),
-        in_context(infunc("main"), int(2)),
+        in_context(nocontext(), int(2)),
     )
     .func_with_arg_types();
     egglog_test(
         &format!("(AddFuncContext {expr})"),
         &format!(
             "
-(check (= {expr} {expected}))",
+(check (= (AddFuncContext {expr}) {expected}))",
         ),
         vec![
             expr.to_program(emptyt(), base(intt())),

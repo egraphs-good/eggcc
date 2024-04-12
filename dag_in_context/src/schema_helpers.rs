@@ -179,7 +179,7 @@ impl Expr {
             Expr::Call(_, x) => vec![x.clone()],
             Expr::Empty(_) => vec![],
             Expr::Single(x) => vec![x.clone()],
-            Expr::Concat(_, x, y) => vec![x.clone(), y.clone()],
+            Expr::Concat(x, y) => vec![x.clone(), y.clone()],
             Expr::Switch(x, branches) => {
                 let mut children = vec![x.clone()];
                 children.extend(branches.clone());
@@ -216,7 +216,6 @@ use std::iter;
 pub(crate) enum Sort {
     Expr,
     ListExpr,
-    Order,
     BinaryOp,
     UnaryOp,
     TernaryOp,
@@ -232,7 +231,6 @@ impl Sort {
         match self {
             Sort::Expr => "Expr",
             Sort::ListExpr => "ListExpr",
-            Sort::Order => "Order",
             Sort::I64 => "i64",
             Sort::String => "String",
             Sort::Type => "Type",
@@ -382,11 +380,7 @@ impl Constructor {
             }
             Constructor::Get => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
             Constructor::Concat => {
-                vec![
-                    f(Static(Sort::Order), "order"),
-                    f(SubExpr, "x"),
-                    f(SubExpr, "y"),
-                ]
+                vec![f(SubExpr, "x"), f(SubExpr, "y")]
             }
             Constructor::Single => {
                 vec![f(SubExpr, "x")]

@@ -5,52 +5,49 @@ expression: visualization.result
 @main(v0: int) {
   v3: int = const 2;
   v5: bool = lt v0 v3;
-  v10: int = const 0;
   v12: int = const 1;
-  br v5 .__33__ .__19__;
-.__33__:
-  v35: bool = lt v3 v0;
-  v50: int = add v10 v3;
-  br v35 .__66__ .__55__;
-.__66__:
-  v69: int = add v50 v3;
-  v73: bool = const true;
-  v61: int = id v69;
-  v62: int = id v12;
-  v63: int = id v3;
-  v64: bool = id v73;
-.__76__:
-  v28: int = id v61;
-  v29: int = id v62;
-  v30: int = id v63;
-  v31: bool = id v64;
-.__82__:
-  br v31 .__103__ .__94__;
-.__103__:
-  v100: int = id v28;
-  v101: int = id v29;
-  jmp .__107__;
-.__94__:
-  v97: int = add v28 v30;
-  v100: int = id v97;
-  v101: int = id v29;
-  jmp .__107__;
-.__55__:
-  v59: bool = const false;
-  v61: int = id v50;
-  v62: int = id v12;
-  v63: int = id v3;
-  v64: bool = id v59;
-  jmp .__76__;
-.__19__:
-  v22: int = add v10 v12;
-  v26: bool = const false;
-  v28: int = id v22;
-  v29: int = id v12;
-  v30: int = id v3;
-  v31: bool = id v26;
-  jmp .__82__;
-.__107__:
-  v109: int = add v100 v101;
-  print v109;
+  br v5 .__27__ .__16__;
+.__27__:
+  v29: bool = lt v3 v0;
+  br v29 .__53__ .__42__;
+.__53__:
+  v54: int = const 4;
+  v58: bool = const true;
+  v48: int = id v54;
+  v49: int = id v12;
+  v50: int = id v3;
+  v51: bool = id v58;
+.__61__:
+  v22: int = id v48;
+  v23: int = id v49;
+  v24: int = id v50;
+  v25: bool = id v51;
+.__67__:
+  br v25 .__88__ .__79__;
+.__88__:
+  v85: int = id v22;
+  v86: int = id v23;
+  jmp .__92__;
+.__79__:
+  v82: int = add v22 v24;
+  v85: int = id v82;
+  v86: int = id v23;
+  jmp .__92__;
+.__42__:
+  v46: bool = const false;
+  v48: int = id v3;
+  v49: int = id v12;
+  v50: int = id v3;
+  v51: bool = id v46;
+  jmp .__61__;
+.__16__:
+  v20: bool = const false;
+  v22: int = id v12;
+  v23: int = id v12;
+  v24: int = id v3;
+  v25: bool = id v20;
+  jmp .__67__;
+.__92__:
+  v94: int = add v85 v86;
+  print v94;
 }

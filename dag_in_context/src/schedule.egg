@@ -11,9 +11,10 @@
       (saturate subst) ;; subst depends on type information for the argument
       (saturate interval-analysis)
       (saturate
-        (saturate context-prop)
+        ;; make sure to saturate context-helpers, since they ensure the other rules saturate
         (saturate context-helpers)
-        context))
+        context
+        context-prop))
     conditional-invariant-code-motion
     switch_rewrite
     loop-simplify

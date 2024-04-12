@@ -40,6 +40,10 @@ struct Args {
     /// Defaults to false.
     #[clap(long)]
     optimize_brilift: Option<bool>,
+    /// Run the LLVM optimizer (only for the CompileBrilLLVM run mode)
+    /// Defaults to false.
+    #[clap(long)]
+    optimize_bril_llvm: Option<bool>,
 }
 
 fn main() {
@@ -75,6 +79,7 @@ fn main() {
         output_path: args.output_path,
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
+        optimize_bril_llvm: args.optimize_bril_llvm,
     };
 
     let result = match run.run() {

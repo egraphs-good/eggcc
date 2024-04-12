@@ -123,9 +123,15 @@ fn get_node_cost(
     }
 
     let mut costs: HashMap<ClassId, Cost> = Default::default();
-    for c in child_cost_sets.iter().map(|cs| &cs.costs) {
-        for (cid, cost) in c.iter() {
-            costs.insert(cid.clone(), *cost);
+
+    // children of region nodes are not shared
+    let unshared_default = vec![];
+    let unshared = cm.regions.get(op).unwrap_or(&unshared_default);
+    for (i, c) in child_cost_sets.iter().map(|cs| &cs.costs).enumerate() {
+        if !unshared.contains(&i) {
+            for (cid, cost) in c.iter() {
+                costs.insert(cid.clone(), *cost);
+            }
         }
     }
 
@@ -233,6 +239,9 @@ pub struct CostModel {
     ops: HashMap<&'static str, Cost>,
     // Children of these constructors are ignored
     ignored: HashSet<&'static str>,
+    // for each regon nodes, regions[region] is a list of
+    // children that should not be shared.
+    regions: HashMap<&'static str, Vec<usize>>,
 }
 
 impl CostModel {
@@ -261,10 +270,6 @@ impl CostModel {
             ("Not", 1.),
             // Top
             ("Write", 1.),
-            // Order
-            ("Parallel", 0.),
-            ("Sequential", 0.),
-            ("Reversed", 0.),
             // ========== Non-leaf operators ==========
             ("Alloc", 100.),
             // TODO: The cost of Call is more complicated than that.
@@ -276,7 +281,12 @@ impl CostModel {
             .into_iter()
             .map(|(op, cost)| (op, NotNan::new(cost).unwrap()))
             .collect();
-        CostModel { ops, ignored }
+        let regions = HashMap::from([("DoWhile", vec![1]), ("Function", vec![3])]);
+        CostModel {
+            ops,
+            ignored,
+            regions,
+        }
     }
 }
 

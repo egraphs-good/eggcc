@@ -47,6 +47,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/function_inlining.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
+        include_str!("optimizations/passthrough.egg"),
     ]
     .join("\n")
 }

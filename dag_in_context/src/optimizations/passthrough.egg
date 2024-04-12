@@ -1,0 +1,47 @@
+;; Pass through thetas
+(rule ((= lhs (Get loop i))
+       (= loop (DoWhile inputs pred-outputs))
+       (= (Get pred-outputs (+ i 1)) (Get (Arg _) i))
+       (= passed-through (Get inputs i)))
+      ((union lhs passed-through))
+      :ruleset always-run)
+
+;; Pass through switch arguments
+(rule ((= lhs (Get switch i))
+       (= switch (Switch pred inputs branches))
+       (= (ListExpr-length branches) 2)
+       (= branch0 (ListExpr-ith branches 0))
+       (= branch1 (ListExpr-ith branches 1))
+       (= (Get branch0 i) (Get (Arg _) j))
+       (= (Get branch1 i) (Get (Arg _) j))
+       (= passed-through (Get inputs j)))
+      ((union lhs passed-through))
+      :ruleset always-run)
+
+;; Pass through switch predicate
+(rule ((= lhs (Get switch i))
+       (= switch (Switch pred inputs branches))
+       (= (ListExpr-length branches) 2)
+       (= branch0 (ListExpr-ith branches 0))
+       (= branch1 (ListExpr-ith branches 1))
+       (= (Get branch0 i) (Const (Bool false) _))
+       (= (Get branch1 i) (Const (Bool true) _)))
+      ((union lhs pred))
+      :ruleset always-run)
+
+;; Pass through if arguments
+(rule ((= lhs (Get if i))
+       (= if (If pred inputs then_ else_))
+       (= (Get else_ i) (Get (Arg _) j))
+       (= (Get then_ i) (Get (Arg _) j))
+       (= passed-through (Get inputs j)))
+      ((union lhs passed-through))
+      :ruleset always-run)
+
+;; Pass through if predicate
+(rule ((= lhs (Get if i))
+       (= if (If pred inputs then_ else_))
+       (= (Get else_ i) (Const (Bool false) _))
+       (= (Get then_ i) (Const (Bool true) _)))
+      ((union lhs pred))
+      :ruleset always-run)

@@ -37,20 +37,12 @@
        (IsLeaf leaf))
       ((union lhs (InContext assum (SubstLeaf to leaf))))
       :ruleset subst)
-;; leaf node with loop context
-(rule ((= lhs (Subst fuel assum to (InContext (InLoop inputs body) leaf)))
+;; leaf node with context
+;; replace this context- subst assumes the context is more specific
+(rule ((= lhs (Subst fuel assum to (InContext oldctx leaf)))
        (IsLeaf leaf))
       ((union lhs (InContext assum (SubstLeaf to leaf))))
       :ruleset subst)
-
-;; modify inif context, doesn't need to be on a leaf
-(rule ((= lhs (Subst fuel assum to (InContext (InIf branch pred) expr))) (> fuel 0))
-      ((union lhs
-        (InContext
-          (InIf branch (Subst (- fuel 1) assum to pred))
-          (Subst (- fuel 1) assum to expr))))
-      :ruleset subst)
-
 
 ;; substitute for a leaf node- interested case is (Arg ty)
 (rewrite (SubstLeaf to (Arg ty))
@@ -102,15 +94,17 @@
 
 
 ;; Control flow
-(rewrite (Subst fuel assum to (Switch pred branches))
+(rewrite (Subst fuel assum to (Switch pred inputs branches))
          (Switch (Subst (- fuel 1) assum to pred)
-                 (SubstList (- fuel 1) assum to branches))
+                 (Subst (- fuel 1) assum to inputs)
+                 branches)
          :when ((> fuel 0))
          :ruleset subst)
-(rewrite (Subst fuel assum to (If pred c1 c2))
+(rewrite (Subst assum to (If pred inputs c1 c2))
          (If (Subst (- fuel 1) assum to pred)
-             (Subst (- fuel 1) assum to c1)
-             (Subst (- fuel 1) assum to c2))
+             (Subst (- fuel 1) assum to inputs)
+             c1
+             c2)
          :when ((> fuel 0))
          :ruleset subst)
 (rewrite (Subst fuel assum to (DoWhile in out))

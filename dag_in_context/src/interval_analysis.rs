@@ -100,7 +100,7 @@ fn test_lt_interval() -> crate::Result {
 #[test]
 fn test_if_constant_fold() -> crate::Result {
     let c = less_than(int(2), int(3)).with_arg_types(emptyt(), base(boolt()));
-    let e = tif(c, int_ty(3, emptyt()), int_ty(4, emptyt()));
+    let e = tif(c, arg(), int_ty(3, emptyt()), int_ty(4, emptyt()));
 
     int_interval_test(e, base(intt()), val_empty(), intv(3), 3, 3)
 }
@@ -109,9 +109,11 @@ fn test_if_constant_fold() -> crate::Result {
 fn if_interval() -> crate::Result {
     let e = tif(
         less_than(iarg(), int_ty(3, base(intt()))),
-        int_ty(4, base(intt())),
+        arg(),
+        int(4),
         int_ty(5, base(intt())),
-    );
+    )
+    .with_arg_types(base(intt()), base(intt()));
     let f = function("main", base(intt()), base(intt()), e.clone()).func_with_arg_types();
 
     egglog_test(
@@ -128,14 +130,18 @@ fn if_interval() -> crate::Result {
 fn nested_if() -> crate::Result {
     let inner = tif(
         less_than(iarg(), int_ty(3, base(intt()))),
+        arg(),
         int_ty(4, base(intt())),
         int_ty(5, base(intt())),
-    );
+    )
+    .with_arg_types(base(intt()), base(intt()));
     let outer = tif(
         less_eq(inner.clone(), int_ty(10, base(intt()))),
+        arg(),
         int_ty(20, base(intt())),
         int_ty(30, base(intt())),
-    );
+    )
+    .with_arg_types(base(intt()), base(intt()));
     let f = function("main", base(intt()), base(intt()), outer.clone()).func_with_arg_types();
 
     egglog_test(

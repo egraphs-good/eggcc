@@ -19,11 +19,11 @@ fn test_subst_nested() -> crate::Result {
     )
     .with_arg_types(twoint.clone(), base(intt()));
     let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone());
-    let replacement = in_context(nocontext(), replace_with.clone());
+    let replacement = inctx(noctx(), replace_with.clone());
     let expected = get(
         dowhile(
             parallel!(
-                in_context(nocontext(), int(1)),
+                inctx(noctx(), int(1)),
                 get(replacement.clone(), 1),
                 get(
                     dowhile(
@@ -68,15 +68,12 @@ fn test_subst_makes_new_context() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(
-        in_context(nocontext(), int_ty(1, base(intt()))),
-        in_context(nocontext(), iarg()),
+        inctx(noctx(), int_ty(1, base(intt()))),
+        inctx(noctx(), iarg()),
     );
     let replace_with = int_ty(2, base(intt()));
-    let expected = add(
-        in_context(nocontext(), int(1)),
-        in_context(nocontext(), int(2)),
-    )
-    .with_arg_types(base(intt()), base(intt()));
+    let expected = add(inctx(noctx(), int(1)), inctx(noctx(), int(2)))
+        .with_arg_types(base(intt()), base(intt()));
     let build = format!(
         "
 (let substituted (Subst inf-fuel (NoContext)
@@ -106,11 +103,8 @@ fn test_subst_arg_type_changes() -> crate::Result {
     let tupletype = tuplet!(intt(), intt());
     let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), base(intt()));
 
-    let expected = add(
-        in_context(nocontext(), get(arg(), 0)),
-        in_context(nocontext(), get(arg(), 0)),
-    )
-    .with_arg_types(tupletype.clone(), base(intt()));
+    let expected = add(inctx(noctx(), get(arg(), 0)), inctx(noctx(), get(arg(), 0)))
+        .with_arg_types(tupletype.clone(), base(intt()));
     let build = format!(
         "
 (let substituted (Subst inf-fuel (NoContext)
@@ -136,7 +130,7 @@ fn test_subst_identity() -> crate::Result {
         "main",
         base(intt()),
         base(intt()),
-        tif(ttrue(), int(1), int(1)),
+        tif(ttrue(), arg(), int(1), int(2)),
     )
     .func_with_arg_types();
 
@@ -145,9 +139,10 @@ fn test_subst_identity() -> crate::Result {
         base(intt()),
         base(intt()),
         tif(
-            in_context(nocontext(), ttrue()),
-            in_context(nocontext(), int(1)),
-            in_context(nocontext(), int(1)),
+            inctx(noctx(), ttrue()),
+            inctx(noctx(), int(5)),
+            int(1),
+            int(2),
         ),
     )
     .func_with_arg_types();
@@ -175,21 +170,16 @@ fn test_subst_identity() -> crate::Result {
 fn test_subst_preserves_context() -> crate::Result {
     use crate::ast::*;
 
-    let outer_if = tif(less_than(arg(), int(5)), arg(), int(1));
+    let outer_if = add(int(5), arg());
     let expression = function("main", base(intt()), base(intt()), outer_if)
         .func_with_arg_types()
-        .func_add_context();
+        .func_add_ctx();
 
     let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
 
-    let expected = function(
-        "main",
-        base(intt()),
-        base(intt()),
-        tif(less_than(int(5), int(5)), int(5), int(1)),
-    )
-    .func_with_arg_types()
-    .func_add_context();
+    let expected = function("main", base(intt()), base(intt()), add(int(5), int(5)))
+        .func_with_arg_types()
+        .func_add_ctx();
 
     let build = format!(
         "
@@ -203,7 +193,7 @@ fn test_subst_preserves_context() -> crate::Result {
         &check.to_string(),
         vec![expression.func_to_program()],
         intv(5),
-        intv(1),
+        intv(10),
         vec![],
     )
 }

@@ -12,7 +12,7 @@ fn test_list_util() -> crate::Result {
                   (Cons (Const (Int 2) {emptyt})
                   (Cons (Const (Int 3) {emptyt})
                   (Cons (Const (Int 4) {emptyt}) (Nil)))))))
-		(let expr (Switch (Const (Int 1) {emptyt}) list))
+		(let expr (Switch (Const (Int 1) {emptyt}) (Empty {emptyt}) list))
 	"
     );
     let check = format!(

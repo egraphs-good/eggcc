@@ -79,7 +79,7 @@
 ; Conditionals
 ; =================================
 (rule (
-        (= lhs (If cond thn els))
+        (= lhs (If cond inputs thn els))
         (= thn-ival (ival thn))
         (= els-ival (ival els))
       )

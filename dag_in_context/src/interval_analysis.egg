@@ -10,6 +10,21 @@
 (function lo-bound (Expr) Bound :merge (bound-max old new))
 (function hi-bound (Expr) Bound :merge (bound-min old new))
 
+; if lo > hi, panic
+(rule (
+        (= (IntB lo) (lo-bound expr))
+        (= (IntB hi) (hi-bound expr))
+        (> lo hi)
+      ) 
+      ((panic "lo bound greater than hi bound"))
+      :ruleset interval-analysis)
+(rule (
+        (= (BoolB true) (lo-bound expr))
+        (= (BoolB false) (hi-bound expr))
+      ) 
+      ((panic "lo bound greater than hi bound"))
+      :ruleset interval-analysis)
+
 ; combinators
 (rewrite (bound-max (IntB x) (IntB y))
          (IntB (max x y))

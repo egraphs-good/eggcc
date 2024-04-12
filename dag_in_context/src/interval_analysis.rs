@@ -224,3 +224,58 @@ fn context_if_rev() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn diamond() -> crate::Result {
+    let input_type = tuplet_vec(vec![intt(), statet()]);
+    let output_type = tuplet_vec(vec![statet()]);
+    let arg0 = get(arg_ty(input_type.clone()), 0);
+    let single_arg1 = single(get(arg_ty(input_type.clone()), 1));
+
+    let zero = int_ty(0, input_type.clone());
+    let one = int_ty(1, input_type.clone());
+    let two = int_ty(2, input_type.clone());
+
+    let add_01 = single(add(zero.clone(), one.clone()));
+    let add_02 = single(add(zero.clone(), two.clone()));
+
+    let inner_if = tif(
+        less_than(two.clone(), arg0.clone()),
+        concat_par(single_arg1.clone(), add_01.clone()),
+        concat_par(single_arg1.clone(), add_02.clone()),
+    );
+    let inner_if_0 = single(get(inner_if.clone(), 0));
+    let inner_if_1 = single(get(inner_if.clone(), 1));
+
+    let outer_if = tif(
+        less_than(arg0.clone(), two.clone()),
+        concat_par(inner_if_0, inner_if_1),
+        concat_par(single_arg1, add_01),
+    );
+
+    let body = single(tprint(get(outer_if.clone(), 1), get(outer_if.clone(), 0)));
+
+    let f = function(
+        "main",
+        input_type.clone(),
+        output_type.clone(),
+        body.clone(),
+    )
+    .func_with_arg_types();
+    let prog = f.to_program(input_type.clone(), output_type.clone());
+    let with_context = prog.add_context();
+    let term = with_context.entry.func_body().unwrap();
+
+    egglog_test(
+        &format!("{with_context}"),
+        &format!("
+        (print-function lo-bound 100)
+        (print-function hi-bound 100)
+        (print-function InContext 100)
+        "),
+        vec![with_context],
+        tuplev_vec(vec![intv(4), statev()]),
+        tuplev_vec(vec![statev()]),
+        vec!["1".to_string()],
+    )
+}

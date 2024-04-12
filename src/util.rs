@@ -543,7 +543,7 @@ impl Run {
             }
             RunType::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding();
+                let tree = rvsdg.to_dag_encoding().add_context();
                 let egglog = build_program(&tree);
                 (
                     vec![Visualization {

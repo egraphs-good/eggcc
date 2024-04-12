@@ -57,7 +57,7 @@ pub enum UnaryOp {
     Not,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Constant {
     Int(i64),
     Bool(bool),
@@ -73,7 +73,7 @@ pub type RcExpr = Rc<Expr>;
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
     NoContext,
-    InIf(bool, RcExpr),
+    InIf(bool, RcExpr, RcExpr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -88,8 +88,8 @@ pub enum Expr {
     Empty(Type),
     Single(RcExpr),
     Concat(RcExpr, RcExpr),
-    Switch(RcExpr, Vec<RcExpr>),
-    If(RcExpr, RcExpr, RcExpr),
+    If(RcExpr, RcExpr, RcExpr, RcExpr),
+    Switch(RcExpr, RcExpr, Vec<RcExpr>),
     DoWhile(RcExpr, RcExpr),
     Arg(Type),
     InContext(Assumption, RcExpr),

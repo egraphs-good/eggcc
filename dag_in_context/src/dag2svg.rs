@@ -43,6 +43,9 @@ impl DotConverter {
                 Expr::DoWhile(_, _) => {
                     format!("cluster_{}{}", expr.constructor().name(), self.name_counter)
                 }
+                Expr::If(_, _, _, _) => {
+                    format!("cluster_{}{}", expr.constructor().name(), self.name_counter)
+                }
                 Expr::Function(name, ..) => {
                     format!("cluster_fn{}{}", name, self.name_counter)
                 }
@@ -152,6 +155,41 @@ impl Expr {
                     ty: EdgeTy::Pair(vertex_outside, conv.graphviz_vertex(body)),
                     attributes: vec![],
                 }));
+                // restore scope of the dowhile
+                conv.current_scope = scope_before;
+                stmts
+            }
+            Expr::If(pred, inputs, then_case, else_case) => {
+                let mut stmts = inputs.to_dot_with(conv);
+                stmts.extend(pred.to_dot_with(conv));
+                let vertex_outside = conv.graphviz_vertex(self);
+                let id_outside = conv.graphviz_id(self);
+                stmts.push(Stmt::Edge(Edge {
+                    ty: EdgeTy::Pair(vertex_outside.clone(), conv.graphviz_vertex(inputs)),
+                    attributes: vec![],
+                }));
+
+                let scope_before = conv.current_scope;
+                conv.current_scope = id;
+                stmts.push(Stmt::Subgraph(Subgraph {
+                    stmts: then_case.to_dot_with(conv),
+                    id: id_outside.clone(),
+                }));
+                stmts.push(Stmt::Edge(Edge {
+                    ty: EdgeTy::Pair(vertex_outside.clone(), conv.graphviz_vertex(then_case)),
+                    attributes: vec![],
+                }));
+
+                conv.current_scope = id;
+                stmts.push(Stmt::Subgraph(Subgraph {
+                    stmts: else_case.to_dot_with(conv),
+                    id: id_outside,
+                }));
+                stmts.push(Stmt::Edge(Edge {
+                    ty: EdgeTy::Pair(vertex_outside, conv.graphviz_vertex(else_case)),
+                    attributes: vec![],
+                }));
+
                 // restore scope of the dowhile
                 conv.current_scope = scope_before;
                 stmts

@@ -22,20 +22,12 @@
        (IsLeaf leaf))
       ((union lhs (InContext assum (SubstLeaf to leaf))))
       :ruleset subst)
-;; leaf node with loop context
-(rule ((= lhs (Subst assum to (InContext (InLoop inputs body) leaf)))
+;; leaf node with context
+;; replace this context- subst assumes the context is more specific
+(rule ((= lhs (Subst assum to (InContext oldctx leaf)))
        (IsLeaf leaf))
       ((union lhs (InContext assum (SubstLeaf to leaf))))
       :ruleset subst)
-
-;; modify inif context, doesn't need to be on a leaf
-(rule ((= lhs (Subst assum to (InContext (InIf branch pred) expr))))
-      ((union lhs
-        (InContext
-          (InIf branch (Subst assum to pred))
-          (Subst assum to expr))))
-      :ruleset subst)
-
 
 ;; substitute for a leaf node- interested case is (Arg ty)
 (rewrite (SubstLeaf to (Arg ty))
@@ -80,14 +72,16 @@
 
 
 ;; Control flow
-(rewrite (Subst assum to (Switch pred branches))
+(rewrite (Subst assum to (Switch pred inputs branches))
          (Switch (Subst assum to pred)
-                 (SubstList assum to branches))
+                 (Subst assum to inputs)
+                 branches)
          :ruleset subst)
-(rewrite (Subst assum to (If pred c1 c2))
+(rewrite (Subst assum to (If pred inputs c1 c2))
          (If (Subst assum to pred)
-             (Subst assum to c1)
-             (Subst assum to c2))
+             (Subst assum to inputs)
+             c1
+             c2)
          :ruleset subst)
 (rewrite (Subst assum to (DoWhile in out))
          (DoWhile (Subst assum to in)

@@ -10,26 +10,26 @@ expression: visualization.result
   v10: int = id v0;
 .__12__:
   v14: bool = lt v8 v10;
-  br v14 .__37__ .__26__;
-.__37__:
-  v40: int = add v8 v9;
-  v42: bool = const true;
-  v32: int = id v40;
-  v33: bool = id v42;
-  v34: int = id v9;
-  v35: int = id v10;
-.__47__:
-  v8: int = id v32;
-  v9: int = id v34;
-  v10: int = id v35;
-  br v33 .__12__ .__54__;
-.__26__:
-  v28: bool = const false;
-  v32: int = id v8;
-  v33: bool = id v28;
-  v34: int = id v9;
-  v35: int = id v10;
-  jmp .__47__;
-.__54__:
+  br v14 .__32__ .__21__;
+.__32__:
+  v35: int = add v8 v9;
+  v37: bool = const true;
+  v27: int = id v35;
+  v28: bool = id v37;
+  v29: int = id v9;
+  v30: int = id v10;
+.__42__:
+  v8: int = id v27;
+  v9: int = id v29;
+  v10: int = id v30;
+  br v28 .__12__ .__49__;
+.__21__:
+  v23: bool = const false;
+  v27: int = id v8;
+  v28: bool = id v23;
+  v29: int = id v9;
+  v30: int = id v10;
+  jmp .__42__;
+.__49__:
   print v8;
 }

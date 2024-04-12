@@ -525,9 +525,12 @@ impl Run {
                     termdag,
                     conversion_cache: Default::default(),
                 };
-                let res_term = from_egglog.program_from_egglog_preserve_ctx_nodes(term);
-                if tree != res_term {
-                    panic!("Check failed: terms should be equal after conversion to and from egglog. Got:\n{}\nExpected:\n{}", res_term.pretty(), tree.pretty());
+                let res_term = from_egglog.program_from_egglog(term.clone());
+                let (otherterm, _termdag) = res_term.to_egglog_with_termdag(from_egglog.termdag);
+                if otherterm != term {
+                    panic!(
+                        "Check failed: terms should be equal after conversion to and from egglog.",
+                    );
                 }
                 (vec![], None)
             }
@@ -569,8 +572,8 @@ impl Run {
             }
             RunType::OptimizedRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding(true);
-                let optimized = dag_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                let dag = rvsdg.to_dag_encoding(true);
+                let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
                 let rvsdg = dag_to_rvsdg(&optimized);
                 (
                     vec![Visualization {
@@ -583,8 +586,8 @@ impl Run {
             }
             RunType::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let tree = rvsdg.to_dag_encoding(true);
-                let egglog = build_program(&tree);
+                let dag = rvsdg.to_dag_encoding(true);
+                let egglog = build_program(&dag);
                 (
                     vec![Visualization {
                         result: egglog,

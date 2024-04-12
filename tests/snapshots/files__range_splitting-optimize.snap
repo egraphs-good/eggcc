@@ -8,32 +8,33 @@ expression: visualization.result
 .__6__:
   v7: int = const 5;
   v9: bool = lt v4 v7;
-  v14: int = const 1;
-  br v9 .__25__ .__19__;
-.__25__:
+  br v9 .__22__ .__15__;
+.__22__:
+  v21: int = const 1;
+  print v21;
+  v19: int = id v4;
+.__27__:
+  v28: int = const 1;
+  v30: int = add v19 v28;
+  v33: bool = lt v30 v7;
+  br v33 .__45__ .__38__;
+.__45__:
+  v47: bool = const true;
+  v42: int = id v30;
+  v43: bool = id v47;
+.__50__:
+  v4: int = id v42;
+  br v43 .__6__ .__55__;
+.__38__:
+  v40: bool = const false;
+  v42: int = id v30;
+  v43: bool = id v40;
+  jmp .__50__;
+.__15__:
+  v14: int = const 2;
   print v14;
-  v23: int = id v4;
-.__30__:
-  v32: int = add v23 v14;
-  v35: bool = lt v32 v7;
-  br v35 .__49__ .__42__;
-.__49__:
-  v51: bool = const true;
-  v46: int = id v32;
-  v47: bool = id v51;
-.__54__:
-  v4: int = id v46;
-  br v47 .__6__ .__59__;
-.__42__:
-  v44: bool = const false;
-  v46: int = id v32;
-  v47: bool = id v44;
-  jmp .__54__;
-.__19__:
-  v18: int = const 2;
-  print v18;
-  v23: int = id v4;
-  jmp .__30__;
-.__59__:
+  v19: int = id v4;
+  jmp .__27__;
+.__55__:
   print v4;
 }

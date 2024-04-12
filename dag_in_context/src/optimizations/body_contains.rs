@@ -31,13 +31,15 @@ fn captured_expr_rule_for_ctor(ctor: Constructor) -> Option<String> {
 fn subexpr_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let pat = ctor.construct(|field| field.var());
     let actions = ctor.filter_map_fields(|field| {
-        (field.purpose == Purpose::SubExpr || field.purpose == Purpose::SubListExpr).then(|| {
-            format!(
-                "(BodyContains{sort} body {e})",
-                sort = field.sort().name(),
-                e = field.var()
-            )
-        })
+        (field.purpose == Purpose::SubExpr || field.purpose == Purpose::CapturedSubListExpr).then(
+            || {
+                format!(
+                    "(BodyContains{sort} body {e})",
+                    sort = field.sort().name(),
+                    e = field.var()
+                )
+            },
+        )
     });
     (!actions.is_empty()).then(|| {
         format!(
@@ -69,7 +71,7 @@ fn test_body_contains() -> crate::Result {
         single(int(1)),
         parallel!(
             greater_than(get(arg(), 0), get(arg(), 0),),
-            switch!(int(0); 
+            switch!(int(0), arg(); 
                 // subloop
                 get(dowhile(single(int(10)), parallel!(tfalse(), int(20))), 0)
                 , int(5)),

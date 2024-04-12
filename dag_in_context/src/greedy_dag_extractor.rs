@@ -113,11 +113,14 @@ fn get_node_cost(
         };
     }
 
-    let total = op_cost
+    let mut total = op_cost
         + child_cost_sets
             .iter()
             .map(|cs| cs.total)
             .sum::<NotNan<f64>>();
+    if cm.ignored.contains(op) {
+        total = NotNan::new(0.).unwrap();
+    }
 
     let mut costs: HashMap<ClassId, Cost> = Default::default();
     for c in child_cost_sets.iter().map(|cs| &cs.costs) {
@@ -140,7 +143,7 @@ fn calculate_cost_set(
     let cid = egraph.nid_to_cid(&node_id);
 
     // early return
-    if node.children.is_empty() || cm.ignored.contains(node.op.as_str()) {
+    if node.children.is_empty() {
         return get_node_cost(&node.op, cid, &[], cm, termdag);
     }
 

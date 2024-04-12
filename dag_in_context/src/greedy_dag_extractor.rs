@@ -35,8 +35,8 @@ type Cost = NotNan<f64>;
 
 pub struct CostSet {
     pub total: Cost,
-    // TODO this would be more efficient as a
-    // persistent data structure
+    // TODO perhaps more efficient as
+    // persistent data structure?
     pub costs: HashMap<ClassId, Cost>,
     pub term: Term,
 }
@@ -94,10 +94,13 @@ fn get_term(op: &str, cost_sets: &[&CostSet], termdag: &mut TermDag) -> Term {
     )
 }
 
+/// Given an operator, eclass, and cost sets for children eclasses,
+/// calculate the new cost set for this operator.
+/// This is done by unioning the child costs sets and summing them up, except for special cases like regions.
 fn get_node_cost(
     op: &str,
-    // Node E-class Id
     cid: &ClassId,
+    // non-empty cost sets for children eclasses
     child_cost_sets: &[&CostSet],
     cm: &CostModel,
     termdag: &mut TermDag,
@@ -113,29 +116,37 @@ fn get_node_cost(
         };
     }
 
-    let mut total = op_cost
-        + child_cost_sets
-            .iter()
-            .map(|cs| cs.total)
-            .sum::<NotNan<f64>>();
-    if cm.ignored.contains(op) {
-        total = NotNan::new(0.).unwrap();
-    }
+    let mut resulting_set = HashMap::<ClassId, Cost>::new();
+    let mut resulting_total = NotNan::new(0.).unwrap();
 
-    let mut costs: HashMap<ClassId, Cost> = Default::default();
-
-    // children of region nodes are not shared
     let unshared_default = vec![];
-    let unshared = cm.regions.get(op).unwrap_or(&unshared_default);
-    for (i, c) in child_cost_sets.iter().map(|cs| &cs.costs).enumerate() {
-        if !unshared.contains(&i) {
-            for (cid, cost) in c.iter() {
-                costs.insert(cid.clone(), *cost);
+    let unshared_children = cm.regions.get(op).unwrap_or(&unshared_default);
+    if !cm.ignored.contains(op) {
+        for (i, child_set) in child_cost_sets.iter().enumerate() {
+            if unshared_children.contains(&i) {
+                // don't add to the cost set, but do add to the total
+                resulting_total += child_set.total;
+            } else {
+                for (child_cid, child_cost) in &child_set.costs {
+                    // it was already present in the set
+                    if let Some(existing) = resulting_set.insert(child_cid.clone(), *child_cost) {
+                        assert_eq!(
+                            existing, *child_cost,
+                            "Two different costs found for the same child enode!"
+                        );
+                    } else {
+                        resulting_total += child_cost;
+                    }
+                }
             }
         }
     }
 
-    CostSet { total, costs, term }
+    CostSet {
+        total: resulting_total,
+        costs: resulting_set,
+        term,
+    }
 }
 
 fn calculate_cost_set(

@@ -96,7 +96,8 @@ fn get_term(op: &str, cost_sets: &[&CostSet], termdag: &mut TermDag) -> Term {
 
 /// Given an operator, eclass, and cost sets for children eclasses,
 /// calculate the new cost set for this operator.
-/// This is done by unioning the child costs sets and summing them up, except for special cases like regions.
+/// This is done by unioning the child costs sets and summing them up,
+/// except for special cases like regions.
 fn get_node_cost(
     op: &str,
     cid: &ClassId,
@@ -105,48 +106,34 @@ fn get_node_cost(
     cm: &CostModel,
     termdag: &mut TermDag,
 ) -> CostSet {
-    // cost is 0 unless otherwise specified
-    let op_cost = cm.ops.get(op).copied().unwrap_or(NotNan::new(0.).unwrap());
+    let mut total = cm.ops.get(op).copied().unwrap_or(NotNan::new(1.).unwrap());
+    let mut costs = HashMap::from([(cid.clone(), total)]);
     let term = get_term(op, child_cost_sets, termdag);
-    if cm.ignored.contains(op) {
-        return CostSet {
-            total: op_cost,
-            costs: [(cid.clone(), op_cost)].into(),
-            term,
-        };
-    }
 
-    let mut resulting_set = HashMap::<ClassId, Cost>::new();
-    let mut resulting_total = NotNan::new(0.).unwrap();
-
-    let unshared_default = vec![];
+    let unshared_default: &[usize] = &[];
     let unshared_children = cm.regions.get(op).unwrap_or(&unshared_default);
     if !cm.ignored.contains(op) {
         for (i, child_set) in child_cost_sets.iter().enumerate() {
             if unshared_children.contains(&i) {
                 // don't add to the cost set, but do add to the total
-                resulting_total += child_set.total;
+                total += child_set.total;
             } else {
                 for (child_cid, child_cost) in &child_set.costs {
                     // it was already present in the set
-                    if let Some(existing) = resulting_set.insert(child_cid.clone(), *child_cost) {
+                    if let Some(existing) = costs.insert(child_cid.clone(), *child_cost) {
                         assert_eq!(
                             existing, *child_cost,
                             "Two different costs found for the same child enode!"
                         );
                     } else {
-                        resulting_total += child_cost;
+                        total += child_cost;
                     }
                 }
             }
         }
     }
 
-    CostSet {
-        total: resulting_total,
-        costs: resulting_set,
-        term,
-    }
+    CostSet { total, costs, term }
 }
 
 fn calculate_cost_set(
@@ -252,7 +239,7 @@ pub struct CostModel {
     ignored: HashSet<&'static str>,
     // for each regon nodes, regions[region] is a list of
     // children that should not be shared.
-    regions: HashMap<&'static str, Vec<usize>>,
+    regions: HashMap<&'static str, &'static [usize]>,
 }
 
 impl CostModel {
@@ -287,18 +274,22 @@ impl CostModel {
             // Call
             ("Call", 10.),
         ];
-        let ignored = HashSet::from(["InLoop", "InFunc", "InSwitch", "InIf"]);
         let ops: HashMap<_, _> = ops
             .into_iter()
             .map(|(op, cost)| (op, NotNan::new(cost).unwrap()))
             .collect();
+
+        let ignored = HashSet::from(["InLoop", "InFunc", "InSwitch", "InIf"]);
+
+        let do_while_regions: &[usize] = &[1]; // needed for type inference
         let regions = HashMap::from([
-            ("DoWhile", vec![1]),
-            ("Function", vec![3]),
-            ("If", vec![2, 3]),
+            ("DoWhile", do_while_regions),
+            ("Function", &[3]),
+            ("If", &[2, 3]),
             // TODO this doesn't support Switch properly- branches share nodes
-            ("Switch", vec![2]),
+            ("Switch", &[2]),
         ]);
+
         CostModel {
             ops,
             ignored,

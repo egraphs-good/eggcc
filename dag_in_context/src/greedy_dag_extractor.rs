@@ -3,7 +3,7 @@ use egraph_serialize::{ClassId, NodeId};
 use indexmap::*;
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 pub fn serialized_egraph(
     egglog_egraph: egglog::EGraph,
@@ -319,7 +319,7 @@ where
     T: Eq + std::hash::Hash + Clone,
 {
     set: HashSet<T>,
-    queue: std::collections::VecDeque<T>,
+    queue: VecDeque<T>,
 }
 
 impl<T> Default for UniqueQueue<T>
@@ -329,7 +329,7 @@ where
     fn default() -> Self {
         UniqueQueue {
             set: Default::default(),
-            queue: std::collections::VecDeque::new(),
+            queue: Default::default(),
         }
     }
 }

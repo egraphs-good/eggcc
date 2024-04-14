@@ -103,16 +103,15 @@ fn get_node_cost(
     cid: &ClassId,
     // non-empty cost sets for children eclasses
     child_cost_sets: &[&CostSet],
-    cm: &CostModel,
+    cm: &impl CostModel,
     termdag: &mut TermDag,
 ) -> CostSet {
-    let mut total = cm.ops.get(op).copied().unwrap_or(NotNan::new(1.).unwrap());
+    let mut total = cm.get_op_cost(op);
     let mut costs = HashMap::from([(cid.clone(), total)]);
     let term = get_term(op, child_cost_sets, termdag);
 
-    let unshared_default: &[usize] = &[];
-    let unshared_children = cm.regions.get(op).unwrap_or(&unshared_default);
-    if !cm.ignored.contains(op) {
+    let unshared_children = cm.unshared_children(op);
+    if !cm.ignore_children(op) {
         for (i, child_set) in child_cost_sets.iter().enumerate() {
             if unshared_children.contains(&i) {
                 // don't add to the cost set, but do add to the total
@@ -141,7 +140,7 @@ fn calculate_cost_set(
     node_id: NodeId,
     costs: &FxHashMap<ClassId, CostSet>,
     termdag: &mut TermDag,
-    cm: &CostModel,
+    cm: &impl CostModel,
 ) -> CostSet {
     let node = &egraph[&node_id];
     let cid = egraph.nid_to_cid(&node_id);
@@ -192,7 +191,7 @@ pub fn extract(
     // it only checks unextractable at the function level.
     unextractables: HashSet<String>,
     termdag: &mut TermDag,
-    cm: &CostModel,
+    cm: impl CostModel,
 ) -> HashMap<ClassId, CostSet> {
     let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
     let parents = build_parent_index(egraph);
@@ -215,7 +214,7 @@ pub fn extract(
                 prev_cost = lookup.unwrap().total;
             }
 
-            let cost_set = calculate_cost_set(egraph, node_id.clone(), &costs, termdag, cm);
+            let cost_set = calculate_cost_set(egraph, node_id.clone(), &costs, termdag, &cm);
             if cost_set.total < prev_cost {
                 costs.insert(class_id.clone(), cost_set);
                 worklist.extend(parents[class_id].iter().cloned());
@@ -233,67 +232,73 @@ pub fn extract(
         .collect()
 }
 
-pub struct CostModel {
-    ops: HashMap<&'static str, Cost>,
-    // Children of these constructors are ignored
-    ignored: HashSet<&'static str>,
-    // for each regon nodes, regions[region] is a list of
-    // children that should not be shared.
-    regions: HashMap<&'static str, &'static [usize]>,
+pub trait CostModel {
+    // TODO: we could do better with type info
+    fn get_op_cost(&self, op: &str) -> Cost;
+
+    // if true, the op's children are ignored
+    fn ignore_children(&self, op: &str) -> bool;
+
+    // returns a slice of indices into the children vec
+    fn unshared_children(&self, op: &str) -> &'static [usize];
 }
 
-impl CostModel {
-    pub fn simple_cost_model() -> CostModel {
-        let ops = vec![
-            // ========== Leaf operators ==========
-            // Bop
-            // TODO: actually we also need type info
-            // to figure out the cost
-            ("Add", 1.),
-            ("Sub", 1.),
-            ("Mul", 1.),
-            ("Div", 1.),
-            ("Eq", 1.),
-            ("LessThan", 1.),
-            ("GreaterThan", 1.),
-            ("LessEq", 1.),
-            ("GreaterEq", 1.),
-            ("And", 1.),
-            ("Or", 1.),
-            ("PtrAdd", 1.),
-            ("Print", 1.),
-            ("Load", 1.),
-            ("Free", 1.),
-            // Uop
-            ("Not", 1.),
-            // Top
-            ("Write", 1.),
-            // ========== Non-leaf operators ==========
-            ("Alloc", 100.),
-            // TODO: The cost of Call is more complicated than that.
-            // Call
-            ("Call", 10.),
-        ];
-        let ops: HashMap<_, _> = ops
-            .into_iter()
-            .map(|(op, cost)| (op, NotNan::new(cost).unwrap()))
-            .collect();
+pub struct DefaultCostModel;
 
-        let ignored = HashSet::from(["InLoop", "InFunc", "InSwitch", "InIf"]);
+impl CostModel for DefaultCostModel {
+    fn get_op_cost(&self, op: &str) -> Cost {
+        match op {
+            // Leaves
+            "Const" => 1.,
+            "Arg" => 0.,
+            _ if op.parse::<i64>().is_ok() || op.starts_with('"') => 0.,
+            "true" | "false" | "()" => 0.,
+            // Lists
+            "Empty" | "Single" | "Concat" | "Get" | "Nil" | "Cons" => 0.,
+            // Types
+            "IntT" | "BoolT" | "PointerT" | "StateT" => 0.,
+            "Base" | "TupleT" | "TNil" | "TCons" => 0.,
+            "Int" | "Bool" => 0.,
+            // Algebra
+            "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" => 10.,
+            "Mul" => 30.,
+            "Div" => 50.,
+            // Comparisons
+            "Eq" | "LessThan" | "GreaterThan" | "LessEq" | "GreaterEq" => 10.,
+            // Effects
+            "Print" | "Write" | "Load" => 50.,
+            "Alloc" | "Free" => 100.,
+            "Call" => 1000., // TODO: we could make this more accurate
+            // Control
+            "Program" | "Function" => 1.,
+            "DoWhile" => 100., // TODO: we could make this more accurate
+            "If" | "Switch" => 50.,
+            // Unreachable
+            "HasType" | "HasArgType" | "ContextOf" | "NoContext" | "ExpectType" => 0.,
+            "ExprIsPure" | "ListExprIsPure" | "BinaryOpIsPure" | "UnaryOpIsPure" => 0.,
+            "IsLeaf" | "BodyContainsExpr" | "ScopeContext" => 0.,
+            "Region" | "Full" | "IntI" | "BoolI" => 0.,
+            // Schema
+            "Bop" | "Uop" | "Top" => 0.,
+            "InContext" => 0.,
+            _ if self.ignore_children(op) => 0.,
+            _ => panic!("no cost for {op}"),
+        }
+        .try_into()
+        .unwrap()
+    }
 
-        let do_while_regions: &[usize] = &[1]; // needed for type inference
-        let regions = HashMap::from([
-            ("DoWhile", do_while_regions),
-            ("Function", &[3]),
-            ("If", &[2, 3]),
-            // TODO this doesn't support Switch properly- branches share nodes
-            ("Switch", &[2]),
-        ]);
+    fn ignore_children(&self, op: &str) -> bool {
+        matches!(op, "InLoop" | "NoContext" | "InSwitch" | "InIf")
+    }
 
-        CostModel {
-            ops,
-            ignored,
-            regions,
+    fn unshared_children(&self, op: &str) -> &'static [usize] {
+        match op {
+            "DoWhile" => &[1],
+            "Function" => &[3],
+            "If" => &[2, 3],
+            "Switch" => &[2], // TODO: Switch branches can share nodes
+            _ => &[],
         }
     }
 }

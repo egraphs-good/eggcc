@@ -5,21 +5,27 @@ use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use crate::{from_egglog::FromEgglog, schema::Type};
 
-struct Extractor<'a> {
-    cm: &'a dyn CostModel,
-    termdag: &'a mut TermDag,
+pub(crate) struct Extractor<'a> {
+    pub(crate) cm: &'a dyn CostModel,
+    pub(crate) termdag: &'a mut TermDag,
     #[allow(dead_code)]
-    correspondence: HashMap<Term, NodeId>,
-    types: HashMap<ClassId, Type>,
-    egraph: &'a EGraph,
+    pub(crate) correspondence: HashMap<Term, NodeId>,
+    pub(crate) egraph: &'a EGraph,
     costs: FxHashMap<ClassId, CostSet>,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
 }
 
 impl<'a> Extractor<'a> {
+    pub(crate) fn eclass_of(&self, term: Term) -> ClassId {
+        let term_enode = self
+            .correspondence
+            .get(&term)
+            .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term));
+        self.egraph.nodes.get(term_enode).unwrap().eclass.clone()
+    }
+
     pub(crate) fn new(
         cm: &'a dyn CostModel,
         termdag: &'a mut TermDag,
@@ -32,41 +38,11 @@ impl<'a> Extractor<'a> {
             termdag,
             correspondence,
             egraph,
-            types: HashMap::new(),
             costs: FxHashMap::<ClassId, CostSet>::with_capacity_and_hasher(
                 egraph.classes().len(),
                 Default::default(),
             ),
             unextractables,
-        }
-    }
-
-    pub(crate) fn add_types(&mut self) {
-        let mut fromegglog = FromEgglog {
-            termdag: self.termdag,
-            conversion_cache: Default::default(),
-        };
-
-        for (_nodeid, node) in &self.egraph.nodes {
-            if node.op == "HasType" {
-                let eclass = self
-                    .egraph
-                    .nodes
-                    .get(&node.children[0])
-                    .unwrap()
-                    .eclass
-                    .clone();
-                let type_eclass = self
-                    .egraph
-                    .nodes
-                    .get(&node.children[1])
-                    .unwrap()
-                    .eclass
-                    .clone();
-                let extracted_type = self.costs.get(&type_eclass).unwrap().term.clone();
-                let converted_type = fromegglog.type_from_egglog(extracted_type);
-                self.types.insert(eclass, converted_type);
-            }
         }
     }
 }
@@ -286,9 +262,6 @@ pub fn extract_without_linearity(
         .iter()
         .map(|cid| (cid.clone(), extractor.costs.remove(cid).unwrap()))
         .collect();
-
-    // don't forget to add types to the extractor
-    extractor.add_types();
 
     extracted
 }

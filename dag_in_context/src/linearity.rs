@@ -1,99 +1,137 @@
 //! This file contains helpers for making the extracted
 //! program use memory linearly.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use egglog::{match_term_app, Term, TermDag};
 use egraph_serialize::{ClassId, EGraph};
 
-use crate::schema::{Expr, Type, *};
+use crate::{
+    from_egglog::FromEgglog,
+    greedy_dag_extractor::Extractor,
+    schema::{Expr, Type, *},
+    typechecker::TypeCache,
+};
 
-type EffectfulNode = Term;
-type EffectfulNodes = Vec<EffectfulNode>;
+type EffectfulNodes = Vec<*const Expr>;
 
-/// Finds all the effectful nodes along the state
-/// edge path (the path of the state edge from the argument to the return value).
-/// Input: a term representing the program
-/// Output: a vector of terms representing the effectful nodes along the state edge path
-pub fn find_all_effectful_nodes_in_program(termdag: &mut TermDag, term: &Term, egraph: &EGraph) {
-    match_term_app!(term.clone(); {
-        ("Program", [main, functions]) => {
-
-        },
-        _ => panic!("Expected a Program term")
-    });
-
-    todo!()
+struct Linearity {
+    expr_types: TypeCache,
+    effectful_nodes: EffectfulNodes,
 }
 
-fn find_effectul_in_function(fun_body: Expr, pos: usize) -> EffectfulNodes {
-    match fun_body {
-        Expr::Const(_, _) => todo!(),
-        Expr::Top(_, _, _, _) => todo!(),
-        Expr::Bop(_, _, _) => todo!(),
-        Expr::Uop(_, _) => todo!(),
-        Expr::Get(_, _) => todo!(),
-        Expr::Alloc(_, _, _, _) => todo!(),
-        Expr::Call(_, _) => todo!(),
-        Expr::Empty(_) => todo!(),
-        Expr::Single(_) => todo!(),
-        Expr::Concat(e1, e2) => {
-            let ty1: Type =  todo!("give me the type of e1");
-            let Type::TupleT(typs1) = ty1 else {panic!("Expected a Tuple type")};
-            if typs1.len() > pos {
-                find_effectul_in_function(*e1, pos)
-            } else {
-                find_effectul_in_function(*e2, pos - typs1.len())
-            }
-        },
-        Expr::If(pred, inps, _, _) => todo!(),
-        Expr::Switch(_, _, _) => todo!(),
-        Expr::DoWhile(_, _) => todo!(),
-        Expr::Arg(_) => todo!(),
-        Expr::InContext(_, _) => todo!(),
-        Expr::Function(_, _, _, _) => todo!(),
+impl Linearity {
+    fn expr_has_state_edge(&self, expr: &RcExpr) -> bool {
+        self.expr_types
+            .get(&Rc::as_ptr(expr))
+            .unwrap()
+            .contains_state()
     }
 }
 
-fn get_function(term: Term, termdag: &TermDag) -> EffectfulNodes {
-    match_term_app!(term; {
-    ("Function", [name, np_ty, out_ty, body]) => {
-        let inp_ty: Type = todo!();
-        let Type::TupleT(inp_tys) = inp_ty else {panic!("Expected a Tuple type")};
+impl<'a> Extractor<'a> {
+    /// Finds all the effectful nodes along the state
+    /// edge path (the path of the state edge from the argument to the return value).
+    /// Input: a term representing the program
+    /// Output: a vector of terms representing the effectful nodes along the state edge path
+    pub fn find_effectful_nodes_in_program(&mut self, term: &Term) {
+        let mut converter = FromEgglog {
+            termdag: self.termdag,
+            conversion_cache: HashMap::new(),
+        };
+        let prog = converter.program_from_egglog(term.clone());
+        let mut expr_to_term = HashMap::new();
+        for (term, expr) in converter.conversion_cache {
+            expr_to_term.insert(Rc::as_ptr(&expr), term);
+        }
 
-        // Step 1: get where the state edge is
-        let mut state_type = vec![];
-        for (i, ty) in inp_tys.iter().enumerate() {
-            if matches!(ty, BaseType::StateT) {
-                state_type.push(i);
+        let type_cache = prog.typecheck();
+        let mut linearity = Linearity {
+            expr_types: type_cache,
+            effectful_nodes: vec![],
+        };
+
+        self.find_effectful_nodes_in_expr(&prog.entry, &mut linearity);
+        for function in prog.functions {
+            self.find_effectful_nodes_in_expr(&function, &mut linearity);
+        }
+
+        todo!()
+    }
+
+    fn find_effectful_nodes_in_expr(&mut self, expr: &RcExpr, linearity: &mut Linearity) {
+        linearity.effectful_nodes.push(Rc::as_ptr(expr));
+        match expr.as_ref() {
+            Expr::Top(op, _c1, _c2, c3) => match op {
+                TernaryOp::Write => {
+                    // c3 is the state edge
+                    self.find_effectful_nodes_in_expr(c3, linearity)
+                }
+            },
+            Expr::Bop(op, _c1, c2) => {
+                match op {
+                    BinaryOp::Load | BinaryOp::Print | BinaryOp::Free => {
+                        // c2 is the state edge
+                        self.find_effectful_nodes_in_expr(c2, linearity)
+                    }
+                    _ => {
+                        panic!("BinaryOp {:?} is not effectful", op)
+                    }
+                }
             }
-        }
-        if state_type.len() == 0 {
-            return vec![];
-        }
-        assert_eq!(state_type.len(), 1);
-        let state_type_pos = state_type[0];
+            Expr::Uop(op, _) => {
+                panic!("UnaryOp {:?} is not effectful", op)
+            }
+            Expr::Get(child, _index) => self.find_effectful_nodes_in_expr(child, linearity),
+            Expr::Alloc(_id, _amt, state, _ty) => {
+                self.find_effectful_nodes_in_expr(state, linearity)
+            }
+            Expr::Call(_name, input) => self.find_effectful_nodes_in_expr(input, linearity),
+            Expr::Empty(_) => {
+                panic!("Empty has no effect")
+            }
+            Expr::Single(expr) => self.find_effectful_nodes_in_expr(expr, linearity),
+            Expr::Concat(c1, c2) => {
+                let left_contains_state = linearity.expr_has_state_edge(c1);
+                let right_contains_state = linearity.expr_has_state_edge(c2);
+                assert!(left_contains_state || right_contains_state);
+                assert!(!(left_contains_state && right_contains_state));
+                if left_contains_state {
+                    self.find_effectful_nodes_in_expr(c1, linearity)
+                } else {
+                    self.find_effectful_nodes_in_expr(c2, linearity)
+                }
+            }
+            Expr::If(_pred, input, then_branch, else_branch) => {
+                let input_contains_state = linearity.expr_has_state_edge(input);
+                assert!(input_contains_state);
 
-        let body: Expr = todo!("{:?}", termdag.get(*body));
-        find_effectul_in_function(body, state_type_pos)
-    },
-    _ => panic!("Expected a Function term")
-    })
-}
+                self.find_effectful_nodes_in_expr(input, linearity);
+                self.find_effectful_nodes_in_expr(then_branch, linearity);
+                self.find_effectful_nodes_in_expr(else_branch, linearity);
+            }
+            Expr::Switch(_pred, input, branches) => {
+                let input_contains_state = linearity.expr_has_state_edge(input);
+                assert!(input_contains_state);
 
-fn get_all_functions(term: Term, termdag: &TermDag) -> Vec<EffectfulNodes> {
-    match_term_app!(term; {
-        ("Cons", [x, xs]) => {
-            let x = termdag.get(*x);
-            let xs = termdag.get(*xs);
-            let function = get_function(x, termdag);
-            let mut rest = get_all_functions(xs, termdag);
-            rest.insert(0, function);
-            rest
-        },
-        ("Nil", []) => {
-            vec![]
-        },
-        _ => panic!("Expected a List term")
-    })
+                self.find_effectful_nodes_in_expr(input, linearity);
+                for branch in branches {
+                    self.find_effectful_nodes_in_expr(branch, linearity);
+                }
+            }
+            Expr::DoWhile(input, body) => {
+                let input_contains_state = linearity.expr_has_state_edge(input);
+                assert!(input_contains_state);
+
+                self.find_effectful_nodes_in_expr(input, linearity);
+                self.find_effectful_nodes_in_expr(body, linearity);
+            }
+            Expr::Arg(ty) => {
+                assert!(ty.contains_state());
+            }
+            Expr::InContext(_ctx, body) => self.find_effectful_nodes_in_expr(body, linearity),
+            Expr::Function(_, _, _, body) => self.find_effectful_nodes_in_expr(body, linearity),
+            Expr::Const(_, _) => panic!("Const has no effect"),
+        }
+    }
 }

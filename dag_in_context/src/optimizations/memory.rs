@@ -91,3 +91,62 @@ fn load_after_write_without_alias() -> crate::Result {
         vec![],
     )
 }
+
+// #[test]
+fn pqrs_loop_swap() -> crate::Result {
+    use crate::ast::*;
+    let concat_par3 = |x, y, z| concat_par(x, concat_par(y, z));
+    let alloc_id = 1;
+    let state = get(arg_ty(tuplet!(statet())), 0);
+    let p_and_state = alloc(alloc_id, int(4), state, pointert(intt()));
+    let p = get(p_and_state.clone(), 0);
+    let state = get(p_and_state, 1);
+    let loop1 = dowhile(
+        parallel!(
+            state,                     // state
+            p.clone(),                 // p
+            ptradd(p.clone(), int(1)), // q
+            ptradd(p.clone(), int(2)), // r
+            ptradd(p.clone(), int(3)), // s
+        ),
+        concat_par3(
+            // single(call("f", getat(0))), // pred
+            single(ttrue()), // pred
+            dowhile(
+                parallel!(
+                    getat(0), // state
+                    getat(1), // p
+                    getat(2), // q
+                ),
+                parallel!(
+                    // call("g", getat(0)), // pred
+                    ttrue(),  // pred
+                    getat(0), // state
+                    getat(2), // q
+                    getat(1), // p
+                ),
+            ),
+            parallel!(
+                getat(4), // s
+                getat(3)  // r
+            ),
+        ),
+    );
+    let state = get(loop1.clone(), 0);
+    let p = get(loop1.clone(), 1);
+    let r = get(loop1.clone(), 3);
+    let state = write(p.clone(), int(10), state);
+    let state = write(r.clone(), int(20), state);
+    let val_and_state = load(p, state);
+    let val = get(val_and_state.clone(), 0);
+    let state = get(val_and_state, 1);
+    let res = tprint(val, state).with_arg_types(tuplet!(statet()), Type::Base(statet()));
+    egglog_test(
+        &format!("{res}"),
+        &format!("(check (= {res} (Bop (Print) (Const (Int 10) (Base (IntT))) rest)))"),
+        vec![],
+        val_empty(),
+        val_empty(),
+        vec![],
+    )
+}

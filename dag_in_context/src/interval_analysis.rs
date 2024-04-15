@@ -11,7 +11,12 @@ fn int_interval_test(
     hi: i64,
 ) -> crate::Result {
     let with_arg_types = inp.clone().with_arg_types(emptyt(), expected_ty.clone());
-    let check = format!("(check (ival {with_arg_types}) (IntI {lo} {hi}))");
+    let check = format!(
+        "
+    (check (lo-bound {with_arg_types}) (IntB {lo}))
+    (check (hi-bound {with_arg_types}) (IntB {hi}))
+    "
+    );
     interval_test(with_arg_types, expected_ty, arg, expected_val, check)
 }
 
@@ -25,7 +30,12 @@ fn bool_interval_test(
     hi: bool,
 ) -> crate::Result {
     let with_arg_types = inp.clone().with_arg_types(emptyt(), expected_ty.clone());
-    let check = format!("(check (ival {with_arg_types}) (BoolI {lo} {hi}))");
+    let check = format!(
+        "
+    (check (lo-bound {with_arg_types}) (BoolB {lo}))
+    (check (hi-bound {with_arg_types}) (BoolB {hi}))
+    "
+    );
     interval_test(with_arg_types, expected_ty, arg, expected_val, check)
 }
 
@@ -69,8 +79,10 @@ fn constant_fold() -> crate::Result {
 #[test]
 fn test_add_constant_fold() -> crate::Result {
     use crate::ast::*;
-    let expr = add(int(1), int(2)).with_arg_types(emptyt(), base(intt()));
-    let expr2 = int_ty(3, emptyt());
+    let expr = add(int(1), int(2))
+        .with_arg_types(emptyt(), base(intt()))
+        .add_ctx(noctx());
+    let expr2 = int_ty(3, emptyt()).add_ctx(noctx());
 
     egglog_test(
         &format!("{expr}"),
@@ -118,7 +130,12 @@ fn if_interval() -> crate::Result {
 
     egglog_test(
         &format!("{f}"),
-        &format!("(check (ival {e}) (IntI 4 5))"),
+        &format!(
+            "
+        (check (lo-bound {e}) (IntB 4))
+        (check (hi-bound {e}) (IntB 5))
+        "
+        ),
         vec![f.to_program(base(intt()), base(intt()))],
         intv(1),
         intv(4),
@@ -146,10 +163,72 @@ fn nested_if() -> crate::Result {
 
     egglog_test(
         &format!("{f}"),
-        &format!("(check (ival {inner}) (IntI 4 5)) (check (ival {outer}) (IntI 20 20))"),
+        &format!(
+            "
+        (check (lo-bound {inner}) (IntB 4))
+        (check (hi-bound {inner}) (IntB 5))
+        (check (lo-bound {outer}) (IntB 20))
+        (check (hi-bound {outer}) (IntB 20))"
+        ),
         vec![f.to_program(base(intt()), base(intt()))],
         intv(2),
         intv(20),
+        vec![],
+    )
+}
+
+#[test]
+fn context_if() -> crate::Result {
+    // input <= 0
+    let cond = less_eq(iarg(), int_ty(0, base(intt())));
+
+    // y = if cond {-1 * input} else {input}
+    // interval analysis should tell us that y is always positive (= (lo-bound y) (IntB 0))
+    let y = tif(cond, iarg(), mul(iarg(), int_ty(-1, base(intt()))), iarg());
+
+    // z = y < 0
+    // interval analysis should tell us that z is false
+    let z = less_than(y.clone(), int_ty(0, base(intt())));
+
+    let f = function("main", base(intt()), base(boolt()), z.clone()).func_with_arg_types();
+    let prog = f.to_program(base(intt()), base(boolt()));
+    let with_context = prog.add_context();
+    let term = with_context.entry.func_body().unwrap();
+
+    egglog_test(
+        &format!("{with_context}"),
+        &format!("(check (= {term} (Const (Bool false) (Base (IntT)))))"),
+        vec![with_context],
+        intv(4),
+        val_bool(false),
+        vec![],
+    )
+}
+
+#[test]
+fn context_if_rev() -> crate::Result {
+    // 0 <= input
+    let cond = less_eq(int_ty(0, base(intt())), iarg());
+
+    // y = if cond {-1 * input} else {input}
+    // interval analysis should tell us that y is always negative (= (hi-bound y) (IntB 0))
+    let y = tif(cond, iarg(), mul(iarg(), int_ty(-1, base(intt()))), iarg());
+
+    // z = 0 < y
+    // interval analysis should tell us that z is false
+    let z = less_than(int_ty(0, base(intt())), y.clone());
+
+    let f = function("main", base(intt()), base(boolt()), z.clone()).func_with_arg_types();
+    let prog = f.to_program(base(intt()), base(boolt()));
+    let with_context = prog.add_context();
+    let term = with_context.entry.func_body().unwrap();
+
+    egglog_test(
+        &format!("{with_context}"),
+        &format!("(check (= {term} (Const (Bool false) (Base (IntT)))))"),
+        vec![with_context],
+        intv(4),
+        val_bool(false),
         vec![],
     )
 }

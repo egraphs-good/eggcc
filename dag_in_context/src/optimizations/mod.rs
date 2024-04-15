@@ -1,6 +1,5 @@
 pub mod body_contains;
 pub mod conditional_invariant_code_motion;
-pub mod constant_fold;
 pub mod function_inlining;
 pub mod is_valid;
 pub mod loop_invariant;

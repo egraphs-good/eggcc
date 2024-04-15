@@ -8,8 +8,8 @@ expression: visualization.result
   v9: int = const 5;
   br v5 .__21__ .__11__;
 .__21__:
-  v22: int = const 2;
-  v25: int = add v22 v9;
+  v23: int = const 2;
+  v25: int = add v9 v23;
   v18: int = id v25;
   v19: int = id v9;
 .__29__:
@@ -24,8 +24,8 @@ expression: visualization.result
   print v35;
   jmp .__45__;
 .__11__:
-  v12: int = const 3;
-  v15: int = add v12 v9;
+  v13: int = const 3;
+  v15: int = add v9 v13;
   v18: int = id v15;
   v19: int = id v9;
   jmp .__29__;

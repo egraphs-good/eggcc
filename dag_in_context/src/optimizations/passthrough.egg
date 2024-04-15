@@ -1,10 +1,11 @@
-;; Pass through thetas
-(rule ((= lhs (Get loop i))
-       (= loop (DoWhile inputs pred-outputs))
-       (= (Get pred-outputs (+ i 1)) (Get (Arg _) i))
-       (= passed-through (Get inputs i)))
-      ((union lhs passed-through))
-      :ruleset always-run)
+; TODO: this is unsound because some loops don't terminate
+; ;; Pass through thetas
+; (rule ((= lhs (Get loop i))
+;        (= loop (DoWhile inputs pred-outputs))
+;        (= (Get pred-outputs (+ i 1)) (Get (Arg _) i))
+;        (= passed-through (Get inputs i)))
+;       ((union lhs passed-through))
+;       :ruleset always-run)
 
 ;; Pass through switch arguments
 (rule ((= lhs (Get switch i))

@@ -1,5 +1,5 @@
 use egglog::*;
-use egraph_serialize::{ClassId, EGraph, NodeId};
+use egraph_serialize::{ClassId, EGraph, Node, NodeId};
 use indexmap::*;
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
@@ -119,25 +119,34 @@ fn initialize_worklist(egraph: &egraph_serialize::EGraph) -> UniqueQueue<NodeId>
     analysis_pending
 }
 
-fn get_term(op: &str, cost_sets: &[&CostSet], termdag: &mut TermDag) -> Term {
-    if cost_sets.is_empty() {
-        if op.starts_with('\"') {
-            return termdag.lit(ast::Literal::String(op[1..op.len() - 1].into()));
-        }
-        if let Ok(n) = op.parse::<i64>() {
-            return termdag.lit(ast::Literal::Int(n));
-        }
-        if op == "true" {
-            return termdag.lit(ast::Literal::Bool(true));
-        }
-        if op == "false" {
-            return termdag.lit(ast::Literal::Bool(false));
-        }
+impl<'a> Extractor<'a> {
+    /// Construct a term for this operator with subterms from the cost sets
+    /// We also need to add this term to the correspondence map so we can
+    /// find its enode id later.
+    fn get_term(&mut self, node_id: NodeId, children: Vec<Term>) -> Term {
+        let node = &self.egraph[&node_id];
+        let op = &node.op;
+        let term = if children.is_empty() {
+            if op.starts_with('\"') {
+                self.termdag
+                    .lit(ast::Literal::String(op[1..op.len() - 1].into()))
+            } else if let Ok(n) = op.parse::<i64>() {
+                self.termdag.lit(ast::Literal::Int(n))
+            } else if op == "true" {
+                self.termdag.lit(ast::Literal::Bool(true))
+            } else if op == "false" {
+                self.termdag.lit(ast::Literal::Bool(false))
+            } else {
+                self.termdag.app(op.into(), children)
+            }
+        } else {
+            self.termdag.app(op.into(), children)
+        };
+
+        self.correspondence.insert(term.clone(), node_id);
+
+        term
     }
-    termdag.app(
-        op.into(),
-        cost_sets.iter().map(|cs| cs.term.clone()).collect(),
-    )
 }
 
 /// Handles the edge case of cycles, then calls get_node_cost
@@ -172,7 +181,6 @@ fn calculate_cost_set(
 
     let mut total = extractor.cm.get_op_cost(&node.op);
     let mut costs = HashMap::from([(cid.clone(), total)]);
-    let term = get_term(&node.op, &child_cost_sets, extractor.termdag);
 
     let unshared_children = extractor.cm.unshared_children(&node.op);
     if !extractor.cm.ignore_children(&node.op) {
@@ -195,6 +203,9 @@ fn calculate_cost_set(
             }
         }
     }
+    let sub_terms = child_cost_sets.iter().map(|cs| cs.term.clone()).collect();
+
+    let term = extractor.get_term(node_id, sub_terms);
 
     CostSet { total, costs, term }
 }

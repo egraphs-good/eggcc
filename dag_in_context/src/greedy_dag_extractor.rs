@@ -245,7 +245,13 @@ pub fn extract_without_linearity(
     let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
     let parents = build_parent_index(egraph);
     let mut worklist = initialize_worklist(egraph);
-    let extractor = &mut Extractor::new(&cost_model, termdag, Default::default(), egraph, unextractables);
+    let extractor = &mut Extractor::new(
+        &cost_model,
+        termdag,
+        Default::default(),
+        egraph,
+        unextractables,
+    );
 
     while let Some(node_id) = worklist.pop() {
         let class_id = n2c(&node_id);

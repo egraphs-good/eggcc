@@ -24,7 +24,8 @@
 
 ; Interval Table
 (function ival (Expr) Interval
-  :merge (interval-intersect old new))
+    :unextractable
+    :merge (interval-intersect old new))
 
 ; =================================
 ; Constants

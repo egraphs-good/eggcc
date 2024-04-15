@@ -8,7 +8,7 @@ use petgraph::{
     algo::{dominators, tarjan_scc},
     graph::NodeIndex,
     stable_graph::EdgeIndex,
-    visit::{EdgeRef, NodeFiltered, VisitMap},
+    visit::{EdgeRef, IntoEdgeReferences, NodeFiltered, VisitMap},
     Direction,
 };
 
@@ -479,8 +479,17 @@ impl SwitchCfgFunction {
         }
     }
 
-    fn restructure_branches(&mut self, state: &mut RestructureState) {
-        // Credit to optir for structuring the loop in this way; this is pretty different than the paper.
+    fn extract_edge(&mut self, edge: EdgeIndex) -> EdgeData {
+        let (src, dst) = self.graph.edge_endpoints(edge).unwrap();
+        let branch = self.graph.remove_edge(edge).unwrap();
+        EdgeData { src, dst, branch }
+    }
+
+    fn insert_edge(&mut self, data: EdgeData) {
+        self.graph.add_edge(data.src, data.dst, data.branch);
+    }
+
+    fn remove_cycles(&mut self) -> Vec<EdgeData> {
         let dom = dominators::simple_fast(&self.graph, self.entry);
         let dominates = |x: NodeIndex, y| {
             dom.dominators(y)
@@ -488,80 +497,27 @@ impl SwitchCfgFunction {
                 .unwrap_or(false)
         };
 
-        // The "Perfect Reconstructability" paper uses "continuation point" to
-        // refer to the targets of a branch _not_ part of a structured region.
-        //
-        // We want to group these continuations by their immediate dominators
-        // (called the "Head" in the paper), then add a mux node in front of the
-        // continuations if there is more than one.
-
-        let mut tail_continuations = HashMap::<NodeIndex, Vec<NodeIndex>>::new();
-
-        for ix in self.graph.node_indices() {
-            if let Some(idom) = dom.immediate_dominator(ix) {
-                // Continuations have more than one non-loop incoming edge
-                if self
-                    .graph
-                    .neighbors_directed(ix, Direction::Incoming)
-                    .filter(|pred| !dominates(ix, *pred))
-                    .nth(1)
-                    .is_some()
-                {
-                    tail_continuations.entry(idom).or_default().push(ix);
+        let to_remove: Vec<_> = self
+            .graph
+            .edge_references()
+            .filter_map(|edge| {
+                if dominates(edge.target(), edge.source()) {
+                    Some(edge.id())
+                } else {
+                    None
                 }
-            }
-        }
+            })
+            .collect();
+        to_remove
+            .into_iter()
+            .map(|x| self.extract_edge(x))
+            .collect()
+    }
 
-        for (idom, conts) in tail_continuations.into_iter() {
-            // Split any direct edges from the idom to the continuation. If we
-            // have more than one continuation then split _all_ edges.
-            for cont in &conts {
-                let mut walker = self
-                    .graph
-                    .neighbors_directed(*cont, Direction::Incoming)
-                    .detach();
-                while let Some((e, src)) = walker.next(&self.graph) {
-                    if src == idom && conts.len() == 1 {
-                        self.split_arc(e);
-                    } else if conts.len() > 1 {
-                        self.split_edges(src);
-                    }
-                }
-            }
-
-            // The rest of this loop is focused on mux/demux for multiple
-            // continuations. If we only have one, we are done.
-            if conts.len() == 1 {
-                continue;
-            }
-            let mux = self.fresh_block();
-            let (preds, cond_var) = self.make_demux_node(mux, conts.iter().copied(), state);
-
-            for cont in &conts {
-                let mut walker = self
-                    .graph
-                    .neighbors_directed(*cont, Direction::Incoming)
-                    .detach();
-
-                // NB: there's some extra filtering that happens here in optir, do we need it?
-                while let Some((edge, src)) = walker.next(&self.graph) {
-                    if src == mux {
-                        continue;
-                    }
-
-                    // TODO this is O(n), replace with a HashSet
-                    if conts.iter().any(|&c| c == src) {
-                        continue;
-                    }
-                    let branch = self.graph.remove_edge(edge).unwrap();
-                    self.graph.add_edge(src, mux, branch);
-                    self.graph[src].footer.push(Annotation::AssignCond {
-                        dst: cond_var.clone(),
-                        cond: preds[cont],
-                    });
-                }
-            }
-        }
+    fn restructure_branches(&mut self, state: &mut RestructureState) {
+        let tails = self.remove_cycles();
+        self.restructure_branches_inner(self.entry, self.exit, state);
+        tails.into_iter().for_each(|e| self.insert_edge(e))
     }
 }
 
@@ -576,4 +532,10 @@ struct Continuation {
     reentry_nodes: HashSet<NodeIndex>,
     // A mapping from branch edge, to edges back to nodes not dominated by that edge.
     exit_arcs: HashMap<EdgeIndex, HashSet<EdgeIndex>>,
+}
+
+struct EdgeData {
+    src: NodeIndex,
+    dst: NodeIndex,
+    branch: Branch,
 }

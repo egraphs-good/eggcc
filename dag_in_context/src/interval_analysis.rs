@@ -79,8 +79,8 @@ fn constant_fold() -> crate::Result {
 #[test]
 fn test_add_constant_fold() -> crate::Result {
     use crate::ast::*;
-    let expr = add(int(1), int(2)).with_arg_types(emptyt(), base(intt()));
-    let expr2 = int_ty(3, emptyt());
+    let expr = add(int(1), int(2)).with_arg_types(emptyt(), base(intt())).add_ctx(noctx());
+    let expr2 = int_ty(3, emptyt()).add_ctx(noctx());
 
     egglog_test(
         &format!("{expr}"),

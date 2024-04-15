@@ -11,12 +11,12 @@
       (saturate 
         (saturate subst-helpers)
         subst) ;; subst depends on type information for the argument
-      (saturate interval-analysis)
       (saturate
         ;; make sure to saturate context-helpers, since they ensure the other rules saturate
         (saturate context-helpers)
         context
-        context-prop))
+        context-prop)
+      (saturate interval-analysis))
     ;; TODO enable this ruleset again after fixing for regions
     ;;conditional-invariant-code-motion
     switch_rewrite

@@ -277,7 +277,7 @@ impl CostModel for DefaultCostModel {
             "HasType" | "HasArgType" | "ContextOf" | "NoContext" | "ExpectType" => 0.,
             "ExprIsPure" | "ListExprIsPure" | "BinaryOpIsPure" | "UnaryOpIsPure" => 0.,
             "IsLeaf" | "BodyContainsExpr" | "ScopeContext" => 0.,
-            "Region" | "Full" | "IntI" | "BoolI" => 0.,
+            "Region" | "Full" | "IntB" | "BoolB" => 0.,
             // Schema
             "Bop" | "Uop" | "Top" => 0.,
             "InContext" => 0.,

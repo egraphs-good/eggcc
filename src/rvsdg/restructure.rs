@@ -1,5 +1,7 @@
 //! Convert a potentially irreducible CFG to a reducible one.
 
+use std::collections::VecDeque;
+
 use bril_rs::Type;
 use hashbrown::{HashMap, HashSet};
 use petgraph::{
@@ -306,6 +308,177 @@ impl SwitchCfgFunction {
         (blocks, cond)
     }
 
+    fn dominator_graph(&self, edge: EdgeIndex) -> HashSet<NodeIndex> {
+        let mut nodes = HashSet::new();
+        let mut edges = HashSet::new();
+        edges.insert(edge);
+        let mut frontier = VecDeque::with_capacity(1);
+        let (_, target) = self.graph.edge_endpoints(edge).unwrap();
+        frontier.push_back(target);
+        while let Some(node) = frontier.pop_front() {
+            if nodes.contains(&node) {
+                continue;
+            }
+            let all_known = self
+                .graph
+                .edges_directed(node, Direction::Incoming)
+                .all(|e| edges.contains(&e.id()));
+            if all_known {
+                nodes.insert(node);
+                for edge_ref in self.graph.edges_directed(node, Direction::Outgoing) {
+                    edges.insert(edge_ref.id());
+                    frontier.push_back(edge_ref.target());
+                }
+            }
+        }
+        nodes
+    }
+
+    fn get_continuation(&self, branch: NodeIndex) -> Continuation {
+        let mut cont = Continuation::default();
+        for (edge_ref, dgraph) in self
+            .graph
+            .edges_directed(branch, Direction::Outgoing)
+            .map(|edge_ref| (edge_ref, self.dominator_graph(edge_ref.id())))
+        {
+            if dgraph.is_empty() {
+                cont.exit_arcs
+                    .entry(edge_ref.id())
+                    .or_default()
+                    .insert(edge_ref.id());
+                cont.reentry_nodes.insert(edge_ref.target());
+                continue;
+            }
+
+            for node in &dgraph {
+                for exit_edge in self
+                    .graph
+                    .edges_directed(*node, Direction::Outgoing)
+                    .filter(|x| !dgraph.contains(&x.target()))
+                {
+                    cont.exit_arcs
+                        .entry(edge_ref.id())
+                        .or_default()
+                        .insert(exit_edge.id());
+                    cont.reentry_nodes.insert(exit_edge.target());
+                }
+            }
+        }
+        cont
+    }
+    fn traverse_linear_region(&self, mut cur: NodeIndex, exit: NodeIndex) -> NodeIndex {
+        while cur != exit {
+            let mut neighbors = self.graph.neighbors_directed(cur, Direction::Outgoing);
+            let Some(next) = neighbors.next() else {
+                break;
+            };
+            if neighbors.next().is_some() {
+                break;
+            }
+            cur = next;
+        }
+        cur
+    }
+    fn divert_edge(&mut self, edge: EdgeIndex, new_target: NodeIndex) -> EdgeIndex {
+        let (src, target) = self.graph.edge_endpoints(edge).unwrap();
+        if target == new_target {
+            return edge;
+        }
+        let weight = self.graph.remove_edge(edge).unwrap();
+        self.graph.add_edge(src, new_target, weight)
+    }
+    fn restructure_branches_inner(
+        &mut self,
+        entry: NodeIndex,
+        exit: NodeIndex,
+        state: &mut RestructureState,
+    ) {
+        // Use the original algorithm (RVSDG Paper, including the accompanying JLM code).
+        let start = self.traverse_linear_region(entry, exit);
+        if start == exit {
+            return;
+        }
+        let cont = self.get_continuation(start);
+        assert!(!cont.reentry_nodes.is_empty());
+
+        if cont.reentry_nodes.len() == 1 {
+            // There are multiple branches that all converge to a single "tail"
+            // node. This is _almost_ the structure that we want, but we need to
+            // add empty placeholder blocks and a few other things.
+            let tail = *cont.reentry_nodes.iter().next().unwrap();
+            for (edge, target) in self
+                .graph
+                .edges_directed(start, Direction::Outgoing)
+                .map(|x| (x.id(), x.target()))
+                // We make recursive calls to this method in this loop, so need
+                // to copy edge information out in this frame.
+                .collect::<Vec<_>>()
+            {
+                let reentry_edges = &cont.exit_arcs[&edge];
+                // This edge goes directly to the tail. Create an empty basic
+                // block (this will make our CFG look like a diamond rather than
+                // a triangle, which in turn makes it easier for us to generate
+                // a 'passthrough region' for this branch in the RVSDG).
+                if target == tail {
+                    self.split_arc(edge);
+                    continue;
+                }
+
+                if reentry_edges.len() == 1 {
+                    // We don't go directly to the tail, but there is at least a
+                    // single exit from the subgraph pointed to by `edge`.
+                    //
+                    // Restructure this subgraph (recursively).
+                    let next_edge = *reentry_edges.iter().next().unwrap();
+                    debug_assert_ne!(next_edge, edge);
+                    let branch_end = self.graph.edge_endpoints(next_edge).unwrap().0;
+                    self.restructure_branches_inner(target, branch_end, state);
+                    continue;
+                }
+                // There are multiple exit edges to the tail. Have them all join
+                // into an intermediate block.
+                let inter = self.fresh_block();
+                self.graph.add_edge(inter, tail, JMP);
+                for e in reentry_edges {
+                    self.divert_edge(*e, inter);
+                }
+                self.restructure_branches_inner(target, inter, state);
+            }
+            self.restructure_branches_inner(tail, exit, state);
+        } else {
+            // We have multiple potential continuation points. Create a new node
+            // and a variable to demux them.
+            let demux = self.fresh_block();
+            let (conds, pred) =
+                self.make_demux_node(demux, cont.reentry_nodes.iter().copied(), state);
+            for (edge, target) in self
+                .graph
+                .edges_directed(start, Direction::Outgoing)
+                .map(|x| (x.id(), x.target()))
+                .collect::<Vec<_>>()
+            {
+                // Fan all outgoing edges from this branch subgraph into an
+                // intermediate node.
+                //
+                // Then ahead of this branch, assign `pred` to the correct
+                // value.
+                let reentry_edges = &cont.exit_arcs[&edge];
+                let inter = self.fresh_block();
+                self.graph.add_edge(inter, demux, JMP);
+                for edge in reentry_edges {
+                    let (src, target) = self.graph.edge_endpoints(*edge).unwrap();
+                    self.graph[src].footer.push(Annotation::AssignCond {
+                        dst: pred.clone(),
+                        cond: conds[&target],
+                    });
+                    self.divert_edge(*edge, inter);
+                }
+                self.restructure_branches_inner(target, inter, state);
+            }
+            self.restructure_branches_inner(demux, exit, state);
+        }
+    }
+
     fn restructure_branches(&mut self, state: &mut RestructureState) {
         // Credit to optir for structuring the loop in this way; this is pretty different than the paper.
         let dom = dominators::simple_fast(&self.graph, self.entry);
@@ -396,3 +569,11 @@ const JMP: Branch = Branch {
     op: BranchOp::Jmp,
     pos: None,
 };
+
+#[derive(Default)]
+struct Continuation {
+    // Nodes in the "tail" that are targetted by an edge out of the given branch node.
+    reentry_nodes: HashSet<NodeIndex>,
+    // A mapping from branch edge, to edges back to nodes not dominated by that edge.
+    exit_arcs: HashMap<EdgeIndex, HashSet<EdgeIndex>>,
+}

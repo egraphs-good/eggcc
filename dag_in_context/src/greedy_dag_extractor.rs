@@ -3,7 +3,7 @@ use egraph_serialize::{ClassId, NodeId};
 use indexmap::*;
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 pub fn serialized_egraph(
     egglog_egraph: egglog::EGraph,
@@ -96,57 +96,43 @@ fn get_term(op: &str, cost_sets: &[&CostSet], termdag: &mut TermDag) -> Term {
 
 /// Given an operator, eclass, and cost sets for children eclasses,
 /// calculate the new cost set for this operator.
-/// This is done by unioning the child costs sets and summing them up, except for special cases like regions.
+/// This is done by unioning the child costs sets and summing them up,
+/// except for special cases like regions.
 fn get_node_cost(
     op: &str,
     cid: &ClassId,
     // non-empty cost sets for children eclasses
     child_cost_sets: &[&CostSet],
-    cm: &CostModel,
+    cm: &impl CostModel,
     termdag: &mut TermDag,
 ) -> CostSet {
-    // cost is 0 unless otherwise specified
-    let op_cost = cm.ops.get(op).copied().unwrap_or(NotNan::new(0.).unwrap());
+    let mut total = cm.get_op_cost(op);
+    let mut costs = HashMap::from([(cid.clone(), total)]);
     let term = get_term(op, child_cost_sets, termdag);
-    if cm.ignored.contains(op) {
-        return CostSet {
-            total: op_cost,
-            costs: [(cid.clone(), op_cost)].into(),
-            term,
-        };
-    }
 
-    let mut resulting_set = HashMap::<ClassId, Cost>::new();
-    let mut resulting_total = NotNan::new(0.).unwrap();
-
-    let unshared_default = vec![];
-    let unshared_children = cm.regions.get(op).unwrap_or(&unshared_default);
-    if !cm.ignored.contains(op) {
+    let unshared_children = cm.unshared_children(op);
+    if !cm.ignore_children(op) {
         for (i, child_set) in child_cost_sets.iter().enumerate() {
             if unshared_children.contains(&i) {
                 // don't add to the cost set, but do add to the total
-                resulting_total += child_set.total;
+                total += child_set.total;
             } else {
                 for (child_cid, child_cost) in &child_set.costs {
                     // it was already present in the set
-                    if let Some(existing) = resulting_set.insert(child_cid.clone(), *child_cost) {
+                    if let Some(existing) = costs.insert(child_cid.clone(), *child_cost) {
                         assert_eq!(
                             existing, *child_cost,
                             "Two different costs found for the same child enode!"
                         );
                     } else {
-                        resulting_total += child_cost;
+                        total += child_cost;
                     }
                 }
             }
         }
     }
 
-    CostSet {
-        total: resulting_total,
-        costs: resulting_set,
-        term,
-    }
+    CostSet { total, costs, term }
 }
 
 fn calculate_cost_set(
@@ -154,7 +140,7 @@ fn calculate_cost_set(
     node_id: NodeId,
     costs: &FxHashMap<ClassId, CostSet>,
     termdag: &mut TermDag,
-    cm: &CostModel,
+    cm: &impl CostModel,
 ) -> CostSet {
     let node = &egraph[&node_id];
     let cid = egraph.nid_to_cid(&node_id);
@@ -205,7 +191,7 @@ pub fn extract(
     // it only checks unextractable at the function level.
     unextractables: HashSet<String>,
     termdag: &mut TermDag,
-    cm: &CostModel,
+    cm: impl CostModel,
 ) -> HashMap<ClassId, CostSet> {
     let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
     let parents = build_parent_index(egraph);
@@ -228,7 +214,7 @@ pub fn extract(
                 prev_cost = lookup.unwrap().total;
             }
 
-            let cost_set = calculate_cost_set(egraph, node_id.clone(), &costs, termdag, cm);
+            let cost_set = calculate_cost_set(egraph, node_id.clone(), &costs, termdag, &cm);
             if cost_set.total < prev_cost {
                 costs.insert(class_id.clone(), cost_set);
                 worklist.extend(parents[class_id].iter().cloned());
@@ -246,63 +232,73 @@ pub fn extract(
         .collect()
 }
 
-pub struct CostModel {
-    ops: HashMap<&'static str, Cost>,
-    // Children of these constructors are ignored
-    ignored: HashSet<&'static str>,
-    // for each regon nodes, regions[region] is a list of
-    // children that should not be shared.
-    regions: HashMap<&'static str, Vec<usize>>,
+pub trait CostModel {
+    // TODO: we could do better with type info
+    fn get_op_cost(&self, op: &str) -> Cost;
+
+    // if true, the op's children are ignored
+    fn ignore_children(&self, op: &str) -> bool;
+
+    // returns a slice of indices into the children vec
+    fn unshared_children(&self, op: &str) -> &'static [usize];
 }
 
-impl CostModel {
-    pub fn simple_cost_model() -> CostModel {
-        let ops = vec![
-            // ========== Leaf operators ==========
-            // Bop
-            // TODO: actually we also need type info
-            // to figure out the cost
-            ("Add", 1.),
-            ("Sub", 1.),
-            ("Mul", 1.),
-            ("Div", 1.),
-            ("Eq", 1.),
-            ("LessThan", 1.),
-            ("GreaterThan", 1.),
-            ("LessEq", 1.),
-            ("GreaterEq", 1.),
-            ("And", 1.),
-            ("Or", 1.),
-            ("PtrAdd", 1.),
-            ("Print", 1.),
-            ("Load", 1.),
-            ("Free", 1.),
-            // Uop
-            ("Not", 1.),
-            // Top
-            ("Write", 1.),
-            // ========== Non-leaf operators ==========
-            ("Alloc", 100.),
-            // TODO: The cost of Call is more complicated than that.
-            // Call
-            ("Call", 10.),
-        ];
-        let ignored = HashSet::from(["InLoop", "InFunc", "InSwitch", "InIf"]);
-        let ops: HashMap<_, _> = ops
-            .into_iter()
-            .map(|(op, cost)| (op, NotNan::new(cost).unwrap()))
-            .collect();
-        let regions = HashMap::from([
-            ("DoWhile", vec![1]),
-            ("Function", vec![3]),
-            ("If", vec![2, 3]),
-            // TODO this doesn't support Switch properly- branches share nodes
-            ("Switch", vec![2]),
-        ]);
-        CostModel {
-            ops,
-            ignored,
-            regions,
+pub struct DefaultCostModel;
+
+impl CostModel for DefaultCostModel {
+    fn get_op_cost(&self, op: &str) -> Cost {
+        match op {
+            // Leaves
+            "Const" => 1.,
+            "Arg" => 0.,
+            _ if op.parse::<i64>().is_ok() || op.starts_with('"') => 0.,
+            "true" | "false" | "()" => 0.,
+            // Lists
+            "Empty" | "Single" | "Concat" | "Get" | "Nil" | "Cons" => 0.,
+            // Types
+            "IntT" | "BoolT" | "PointerT" | "StateT" => 0.,
+            "Base" | "TupleT" | "TNil" | "TCons" => 0.,
+            "Int" | "Bool" => 0.,
+            // Algebra
+            "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" => 10.,
+            "Mul" => 30.,
+            "Div" => 50.,
+            // Comparisons
+            "Eq" | "LessThan" | "GreaterThan" | "LessEq" | "GreaterEq" => 10.,
+            // Effects
+            "Print" | "Write" | "Load" => 50.,
+            "Alloc" | "Free" => 100.,
+            "Call" => 1000., // TODO: we could make this more accurate
+            // Control
+            "Program" | "Function" => 1.,
+            "DoWhile" => 100., // TODO: we could make this more accurate
+            "If" | "Switch" => 50.,
+            // Unreachable
+            "HasType" | "HasArgType" | "ContextOf" | "NoContext" | "ExpectType" => 0.,
+            "ExprIsPure" | "ListExprIsPure" | "BinaryOpIsPure" | "UnaryOpIsPure" => 0.,
+            "IsLeaf" | "BodyContainsExpr" | "ScopeContext" => 0.,
+            "Region" | "Full" | "IntI" | "BoolI" => 0.,
+            // Schema
+            "Bop" | "Uop" | "Top" => 0.,
+            "InContext" => 0.,
+            _ if self.ignore_children(op) => 0.,
+            _ => panic!("no cost for {op}"),
+        }
+        .try_into()
+        .unwrap()
+    }
+
+    fn ignore_children(&self, op: &str) -> bool {
+        matches!(op, "InLoop" | "NoContext" | "InSwitch" | "InIf")
+    }
+
+    fn unshared_children(&self, op: &str) -> &'static [usize] {
+        match op {
+            "DoWhile" => &[1],
+            "Function" => &[3],
+            "If" => &[2, 3],
+            "Switch" => &[2], // TODO: Switch branches can share nodes
+            _ => &[],
         }
     }
 }
@@ -319,7 +315,7 @@ where
     T: Eq + std::hash::Hash + Clone,
 {
     set: HashSet<T>,
-    queue: std::collections::VecDeque<T>,
+    queue: VecDeque<T>,
 }
 
 impl<T> Default for UniqueQueue<T>
@@ -329,7 +325,7 @@ where
     fn default() -> Self {
         UniqueQueue {
             set: Default::default(),
-            queue: std::collections::VecDeque::new(),
+            queue: Default::default(),
         }
     }
 }

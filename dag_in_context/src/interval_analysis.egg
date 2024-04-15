@@ -7,8 +7,8 @@
   (bound-min Bound Bound))
 
 ; bound tables
-(function lo-bound (Expr) Bound :merge (bound-max old new))
-(function hi-bound (Expr) Bound :merge (bound-min old new))
+(function lo-bound (Expr) Bound :unextractable :merge (bound-max old new))
+(function hi-bound (Expr) Bound :unextractable :merge (bound-min old new))
 
 ; if lo > hi, panic
 (rule (

@@ -41,6 +41,8 @@
   (Full)
   ;; Don't make new contexts for sub-regions
   (Region))
+
+;; Add these to the egraph so we can match on them
 (Full)
 (Region)
 

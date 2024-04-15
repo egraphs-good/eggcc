@@ -130,10 +130,9 @@
 ; =================================
 
 ; Switch on a list of lazily-evaluated branches.
-; Does not create a region.
 ; pred must be an integer
-;                 pred  Expr   branches     chosen
-(function Switch (Expr  Expr   ListExpr)    Expr)
+;                 pred  inputs   branches     chosen
+(function Switch (Expr  Expr     ListExpr)    Expr)
 ; If is like switch, but with a boolean predicate
 ;             pred inputs   then else
 (function If (Expr Expr     Expr Expr) Expr)

@@ -29,6 +29,7 @@ impl TypeStack {
 }
 
 impl TreeProgram {
+    #[allow(dead_code)]
     pub(crate) fn typecheck(&self) -> TypeCache {
         let mut checker = TypeChecker::new(self, true);
         checker.add_arg_types();
@@ -55,6 +56,7 @@ impl Expr {
     /// Performs type checking, and also replaces any `Unknown` types
     /// in arguments with the correct types.
     /// TODO remove dead code after use in translation
+    #[allow(dead_code)]
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
         let prog = self.to_program(input_ty.clone(), output_ty.clone());
         let mut checker = TypeChecker::new(&prog, false);
@@ -97,6 +99,7 @@ pub(crate) struct TypeChecker<'a> {
     type_expr_cache: TypedExprCache,
     /// When this is true, the type checker does not perform any inference.
     /// As a result, the type_expr_cache contains expressions from the original program.
+    #[allow(dead_code)]
     expect_fully_typed: bool,
 }
 

@@ -7,7 +7,7 @@ use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
 
-use crate::{greedy_dag_extractor::extract_without_linearity, interpreter::interpret_dag_prog};
+use crate::interpreter::interpret_dag_prog;
 
 pub(crate) mod add_context;
 pub mod ast;
@@ -17,7 +17,7 @@ pub mod from_egglog;
 mod greedy_dag_extractor;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
-mod linearity;
+//mod linearity;
 mod optimizations;
 pub mod schema;
 pub mod schema_helpers;
@@ -111,8 +111,7 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
     // TODO use extract instead of extract_without_linearity when it is implemented
-    let result =
-        extract(&serialized, unextractables, &mut termdag, DefaultCostModel);
+    let result = extract(&serialized, unextractables, &mut termdag, DefaultCostModel);
     let mut from_egglog = FromEgglog {
         termdag: &mut termdag,
         conversion_cache: Default::default(),

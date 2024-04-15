@@ -1,5 +1,5 @@
 use egglog::*;
-use egraph_serialize::{ClassId, EGraph, Node, NodeId};
+use egraph_serialize::{ClassId, EGraph, NodeId};
 use indexmap::*;
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
@@ -17,6 +17,7 @@ pub(crate) struct Extractor<'a> {
 }
 
 impl<'a> Extractor<'a> {
+    #[allow(dead_code)]
     pub(crate) fn eclass_of(&self, term: &Term) -> ClassId {
         let term_enode = self
             .correspondence
@@ -224,11 +225,10 @@ pub fn extract(
         unextractables,
     );
 
-    let res = extract_without_linearity(extractor_not_linear);
     // TODO use effectul regions to extract maintaining linearity
-    let _effectful_regions = extractor_not_linear.find_effectful_nodes_in_program(&res.term);
+    //let _effectful_regions = extractor_not_linear.find_effectful_nodes_in_program(&res.term);
 
-    res
+    extract_without_linearity(extractor_not_linear)
 }
 
 /// Perform a greedy extraction of the DAG, without considering linearity.
@@ -268,7 +268,7 @@ pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
     root_eclasses.dedup();
 
     let root = get_root(extractor.egraph);
-    extractor.costs.get(&n2c(&root)).unwrap().clone()
+    extractor.costs.get(n2c(&root)).unwrap().clone()
 }
 
 pub trait CostModel {

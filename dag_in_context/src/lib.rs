@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use egglog::{Term, TermDag};
 use from_egglog::FromEgglog;
-use greedy_dag_extractor::{serialized_egraph, DefaultCostModel};
+use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
@@ -111,15 +111,13 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
     // TODO use extract instead of extract_without_linearity when it is implemented
-    let results =
-        extract_without_linearity(&serialized, unextractables, &mut termdag, DefaultCostModel);
-    assert_eq!(results.len(), 1);
-    let (_cid, costset) = results.into_iter().next().unwrap();
+    let result =
+        extract(&serialized, unextractables, &mut termdag, DefaultCostModel);
     let mut from_egglog = FromEgglog {
         termdag: &mut termdag,
         conversion_cache: Default::default(),
     };
-    Ok(from_egglog.program_from_egglog(costset.term))
+    Ok(from_egglog.program_from_egglog(result.term))
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

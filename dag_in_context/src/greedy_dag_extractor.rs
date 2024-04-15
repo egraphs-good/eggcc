@@ -5,7 +5,6 @@ use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 
-
 pub(crate) struct Extractor<'a> {
     pub(crate) cm: &'a dyn CostModel,
     pub(crate) termdag: &'a mut TermDag,
@@ -18,10 +17,10 @@ pub(crate) struct Extractor<'a> {
 }
 
 impl<'a> Extractor<'a> {
-    pub(crate) fn eclass_of(&self, term: Term) -> ClassId {
+    pub(crate) fn eclass_of(&self, term: &Term) -> ClassId {
         let term_enode = self
             .correspondence
-            .get(&term)
+            .get(term)
             .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term));
         self.egraph.nodes.get(term_enode).unwrap().eclass.clone()
     }
@@ -47,18 +46,22 @@ impl<'a> Extractor<'a> {
     }
 }
 
+fn get_root(egraph: &egraph_serialize::EGraph) -> NodeId {
+    let mut root_nodes = egraph
+        .nodes
+        .iter()
+        .filter(|(_nid, node)| node.op == "Program");
+    let res = root_nodes.next().unwrap();
+    assert!(root_nodes.next().is_none());
+    res.0.clone()
+}
+
 pub fn serialized_egraph(
     egglog_egraph: egglog::EGraph,
 ) -> (egraph_serialize::EGraph, HashSet<String>) {
     let config = SerializeConfig::default();
-    let mut egraph = egglog_egraph.serialize(config);
-    let root_nodes = egraph
-        .nodes
-        .iter()
-        .filter(|(_nid, node)| node.op == "Program");
-    for (nid, _n) in root_nodes {
-        egraph.root_eclasses.push(egraph.nid_to_cid(nid).clone());
-    }
+    let egraph = egglog_egraph.serialize(config);
+
     let unextractables = egglog_egraph
         .functions
         .iter()
@@ -75,6 +78,7 @@ pub fn serialized_egraph(
 
 type Cost = NotNan<f64>;
 
+#[derive(Clone)]
 pub struct CostSet {
     pub total: Cost,
     // TODO perhaps more efficient as
@@ -195,33 +199,13 @@ fn calculate_cost_set(
     CostSet { total, costs, term }
 }
 
-/* TODO implement extractor that preserves linearity
 pub fn extract(
     egraph: &egraph_serialize::EGraph,
     unextractables: HashSet<String>,
-    extractor: &mut Extractor,
-) -> HashMap<ClassId, CostSet> {
-    let (initial_term, correspondence) =
-        extract_without_linearity(egraph, unextractables, extractor);
-    let effectful_regions = todo!();
-
-    todo!()
-}
- */
-
-pub fn extract_without_linearity(
-    egraph: &egraph_serialize::EGraph,
-    // TODO: once our egglog program uses `subsume` actions,
-    // unextractables will be more complex, as right now
-    // it only checks unextractable at the function level.
-    unextractables: HashSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
-) -> HashMap<ClassId, CostSet> {
-    let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
-    let parents = build_parent_index(egraph);
-    let mut worklist = initialize_worklist(egraph);
-    let extractor = &mut Extractor::new(
+) -> CostSet {
+    let extractor_not_linear = &mut Extractor::new(
         &cost_model,
         termdag,
         Default::default(),
@@ -229,9 +213,23 @@ pub fn extract_without_linearity(
         unextractables,
     );
 
+    let res = extract_without_linearity(extractor_not_linear);
+    // TODO use effectul regions to extract maintaining linearity
+    let _effectful_regions = extractor_not_linear.find_effectful_nodes_in_program(&res.term);
+
+    res
+}
+
+/// Perform a greedy extraction of the DAG, without considering linearity.
+/// This uses the "fast_greedy_dag" algorithm from the extraction gym.
+pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
+    let n2c = |nid: &NodeId| extractor.egraph.nid_to_cid(nid);
+    let parents = build_parent_index(extractor.egraph);
+    let mut worklist = initialize_worklist(extractor.egraph);
+
     while let Some(node_id) = worklist.pop() {
         let class_id = n2c(&node_id);
-        let node = &egraph[&node_id];
+        let node = &extractor.egraph[&node_id];
         if extractor.unextractables.contains(&node.op) {
             continue;
         }
@@ -246,7 +244,7 @@ pub fn extract_without_linearity(
                 prev_cost = lookup.unwrap().total;
             }
 
-            let cost_set = calculate_cost_set(egraph, node_id.clone(), extractor);
+            let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
             if cost_set.total < prev_cost {
                 extractor.costs.insert(class_id.clone(), cost_set);
                 worklist.extend(parents[class_id].iter().cloned());
@@ -254,16 +252,12 @@ pub fn extract_without_linearity(
         }
     }
 
-    let mut root_eclasses = egraph.root_eclasses.clone();
+    let mut root_eclasses = extractor.egraph.root_eclasses.clone();
     root_eclasses.sort();
     root_eclasses.dedup();
 
-    let extracted = root_eclasses
-        .iter()
-        .map(|cid| (cid.clone(), extractor.costs.remove(cid).unwrap()))
-        .collect();
-
-    extracted
+    let root = get_root(extractor.egraph);
+    extractor.costs.get(&n2c(&root)).unwrap().clone()
 }
 
 pub trait CostModel {

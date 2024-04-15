@@ -1,7 +1,7 @@
 //! This file contains helpers for making the extracted
 //! program use memory linearly.
 
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::{HashMap, HashSet}, rc::Rc};
 
 use egglog::{match_term_app, Term, TermDag};
 use egraph_serialize::{ClassId, EGraph};
@@ -34,7 +34,7 @@ impl<'a> Extractor<'a> {
     /// edge path (the path of the state edge from the argument to the return value).
     /// Input: a term representing the program
     /// Output: a vector of terms representing the effectful nodes along the state edge path
-    pub fn find_effectful_nodes_in_program(&mut self, term: &Term) {
+    pub fn find_effectful_nodes_in_program(&mut self, term: &Term) -> HashSet<ClassId> {
         let mut converter = FromEgglog {
             termdag: self.termdag,
             conversion_cache: HashMap::new(),
@@ -56,7 +56,13 @@ impl<'a> Extractor<'a> {
             self.find_effectful_nodes_in_expr(&function, &mut linearity);
         }
 
-        todo!()
+        let mut effectful_classes = HashSet::new();
+        for expr in linearity.effectful_nodes {
+            let term = expr_to_term.get(&expr).unwrap();
+            effectful_classes.insert(self.eclass_of(term));
+        }
+
+        effectful_classes
     }
 
     fn find_effectful_nodes_in_expr(&mut self, expr: &RcExpr, linearity: &mut Linearity) {

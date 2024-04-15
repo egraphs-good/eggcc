@@ -15,6 +15,8 @@ struct Extractor<'a> {
     types: HashMap<ClassId, Type>,
     egraph: &'a EGraph,
     costs: FxHashMap<ClassId, CostSet>,
+    /// A set of names of functions that are unextractable
+    unextractables: HashSet<String>,
 }
 
 impl<'a> Extractor<'a> {
@@ -23,6 +25,7 @@ impl<'a> Extractor<'a> {
         termdag: &'a mut TermDag,
         correspondence: HashMap<Term, NodeId>,
         egraph: &'a EGraph,
+        unextractables: HashSet<String>,
     ) -> Self {
         Extractor {
             cm,
@@ -34,6 +37,7 @@ impl<'a> Extractor<'a> {
                 egraph.classes().len(),
                 Default::default(),
             ),
+            unextractables,
         }
     }
 
@@ -241,12 +245,12 @@ pub fn extract_without_linearity(
     let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
     let parents = build_parent_index(egraph);
     let mut worklist = initialize_worklist(egraph);
-    let extractor = &mut Extractor::new(&cost_model, termdag, Default::default(), egraph);
+    let extractor = &mut Extractor::new(&cost_model, termdag, Default::default(), egraph, unextractables);
 
     while let Some(node_id) = worklist.pop() {
         let class_id = n2c(&node_id);
         let node = &egraph[&node_id];
-        if unextractables.contains(&node.op) {
+        if extractor.unextractables.contains(&node.op) {
             continue;
         }
         if node

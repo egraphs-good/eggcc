@@ -19,17 +19,7 @@ use crate::{
 type EffectfulNodes = Vec<*const Expr>;
 
 struct Linearity {
-    expr_types: TypeCache,
     effectful_nodes: EffectfulNodes,
-}
-
-impl Linearity {
-    fn expr_has_state_edge(&self, expr: &RcExpr) -> bool {
-        self.expr_types
-            .get(&Rc::as_ptr(expr))
-            .unwrap()
-            .contains_state()
-    }
 }
 
 impl<'a> Extractor<'a> {
@@ -38,19 +28,13 @@ impl<'a> Extractor<'a> {
     /// Input: a term representing the program
     /// Output: a vector of terms representing the effectful nodes along the state edge path
     pub fn find_effectful_nodes_in_program(&mut self, term: &Term) -> HashSet<NodeId> {
-        let mut converter = FromEgglog {
-            termdag: self.termdag,
-            conversion_cache: HashMap::new(),
-        };
-        let prog = converter.program_from_egglog(term.clone());
+        let prog = self.term_to_prog(term);
         let mut expr_to_term = HashMap::new();
-        for (term, expr) in converter.conversion_cache {
-            expr_to_term.insert(Rc::as_ptr(&expr), term);
+        for (term, expr) in &self.term_to_expr {
+            expr_to_term.insert(Rc::as_ptr(&expr), term.clone());
         }
 
-        let type_cache = prog.typecheck();
         let mut linearity = Linearity {
-            expr_types: type_cache,
             effectful_nodes: vec![],
         };
 
@@ -101,8 +85,8 @@ impl<'a> Extractor<'a> {
             }
             Expr::Single(expr) => self.find_effectful_nodes_in_expr(expr, linearity),
             Expr::Concat(c1, c2) => {
-                let left_contains_state = linearity.expr_has_state_edge(c1);
-                let right_contains_state = linearity.expr_has_state_edge(c2);
+                let left_contains_state = self.expr_has_state_edge(c1);
+                let right_contains_state = self.expr_has_state_edge(c2);
                 assert!(left_contains_state || right_contains_state);
                 assert!(!(left_contains_state && right_contains_state));
                 if left_contains_state {
@@ -112,7 +96,7 @@ impl<'a> Extractor<'a> {
                 }
             }
             Expr::If(_pred, input, then_branch, else_branch) => {
-                let input_contains_state = linearity.expr_has_state_edge(input);
+                let input_contains_state = self.expr_has_state_edge(input);
                 assert!(input_contains_state);
 
                 self.find_effectful_nodes_in_expr(input, linearity);
@@ -120,7 +104,7 @@ impl<'a> Extractor<'a> {
                 self.find_effectful_nodes_in_expr(else_branch, linearity);
             }
             Expr::Switch(_pred, input, branches) => {
-                let input_contains_state = linearity.expr_has_state_edge(input);
+                let input_contains_state = self.expr_has_state_edge(input);
                 assert!(input_contains_state);
 
                 self.find_effectful_nodes_in_expr(input, linearity);
@@ -129,7 +113,7 @@ impl<'a> Extractor<'a> {
                 }
             }
             Expr::DoWhile(input, body) => {
-                let input_contains_state = linearity.expr_has_state_edge(input);
+                let input_contains_state = self.expr_has_state_edge(input);
                 assert!(input_contains_state);
 
                 self.find_effectful_nodes_in_expr(input, linearity);

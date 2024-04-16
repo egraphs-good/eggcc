@@ -105,14 +105,20 @@ pub fn build_program(program: &TreeProgram) -> String {
 }
 
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
-    let program = build_program(program);
+    let egglog_prog = build_program(program);
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&program)?;
+    egraph.parse_and_run_program(&egglog_prog)?;
 
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
     // TODO use extract instead of extract_without_linearity when it is implemented
-    let result = extract(&serialized, unextractables, &mut termdag, DefaultCostModel);
+    let result = extract(
+        program,
+        &serialized,
+        unextractables,
+        &mut termdag,
+        DefaultCostModel,
+    );
     let mut from_egglog = FromEgglog {
         termdag: &mut termdag,
         conversion_cache: Default::default(),

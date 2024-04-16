@@ -5,13 +5,22 @@ use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use crate::linearity::remove_invalid_effectful_nodes;
+use crate::{
+    from_egglog::FromEgglog,
+    linearity::remove_invalid_effectful_nodes,
+    schema::{RcExpr, TreeProgram, Type},
+    typechecker::TypeChecker,
+};
 
 pub(crate) struct Extractor<'a> {
     pub(crate) cm: &'a dyn CostModel,
     pub(crate) termdag: &'a mut TermDag,
     #[allow(dead_code)]
     pub(crate) correspondence: HashMap<Term, NodeId>,
+    // use to get the expression corresponding to the term
+    pub(crate) term_to_expr: HashMap<Term, RcExpr>,
+    // use to get the type of an expression
+    pub(crate) typechecker: TypeChecker<'a>,
     pub(crate) egraph: &'a EGraph,
     costs: FxHashMap<ClassId, CostSet>,
     /// A set of names of functions that are unextractable
@@ -19,10 +28,55 @@ pub(crate) struct Extractor<'a> {
 }
 
 impl<'a> Extractor<'a> {
-    #[allow(dead_code)]
+    pub(crate) fn term_to_prog(&mut self, term: &Term) -> TreeProgram {
+        let mut temp_term_to_expr = Default::default();
+        let current_correspondance = std::mem::swap(&mut self.term_to_expr, &mut temp_term_to_expr);
+        // convert the term to an expression using a converter
+        // converter has to own the termdag, so we swap it with the current one
+        let mut converter = FromEgglog {
+            termdag: self.termdag,
+            conversion_cache: temp_term_to_expr,
+        };
+
+        let expr = converter.program_from_egglog(term.clone());
+        self.term_to_expr = converter.conversion_cache;
+        expr
+    }
+
+    pub(crate) fn term_to_expr(&mut self, term: &Term) -> RcExpr {
+        let mut temp_term_to_expr = Default::default();
+        let current_correspondance = std::mem::swap(&mut self.term_to_expr, &mut temp_term_to_expr);
+        // convert the term to an expression using a converter
+        // converter has to own the termdag, so we swap it with the current one
+        let mut converter = FromEgglog {
+            termdag: self.termdag,
+            conversion_cache: temp_term_to_expr,
+        };
+
+        let expr = converter.expr_from_egglog(term.clone());
+        self.term_to_expr = converter.conversion_cache;
+        expr
+    }
+
+    pub(crate) fn term_to_type(&mut self, term: &Term) -> Type {
+        let expr = self.term_to_expr(term);
+        self.typechecker.add_arg_types_to_expr(expr, &None).0
+    }
+
+    pub(crate) fn expr_to_type(&mut self, expr: &RcExpr) -> Type {
+        self.typechecker
+            .add_arg_types_to_expr(expr.clone(), &None)
+            .0
+    }
+
     pub(crate) fn eclass_of(&self, term: &Term) -> ClassId {
         let term_enode = self.node_of(term);
         self.egraph.nodes.get(&term_enode).unwrap().eclass.clone()
+    }
+
+    pub(crate) fn expr_has_state_edge(&mut self, expr: &RcExpr) -> bool {
+        let ty = self.expr_to_type(expr);
+        ty.contains_state()
     }
 
     pub(crate) fn node_of(&self, term: &Term) -> NodeId {
@@ -33,6 +87,7 @@ impl<'a> Extractor<'a> {
     }
 
     pub(crate) fn new(
+        original_prog: &'a TreeProgram,
         cm: &'a dyn CostModel,
         termdag: &'a mut TermDag,
         correspondence: HashMap<Term, NodeId>,
@@ -49,6 +104,8 @@ impl<'a> Extractor<'a> {
                 Default::default(),
             ),
             unextractables,
+            term_to_expr: Default::default(),
+            typechecker: TypeChecker::new(original_prog, true),
         }
     }
 }
@@ -225,12 +282,14 @@ fn calculate_cost_set(
 }
 
 pub fn extract(
+    original_prog: &TreeProgram,
     egraph: &egraph_serialize::EGraph,
     unextractables: HashSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
 ) -> CostSet {
     let extractor_not_linear = &mut Extractor::new(
+        original_prog,
         &cost_model,
         termdag,
         Default::default(),
@@ -239,8 +298,10 @@ pub fn extract(
     );
 
     let res = extract_without_linearity(extractor_not_linear);
+    // TODO implement linearity
     let effectful_regions = extractor_not_linear.find_effectful_nodes_in_program(&res.term);
-    let mut linear_egraph = egraph.clone();
+
+    /*let mut linear_egraph = egraph.clone();
     remove_invalid_effectful_nodes(&mut linear_egraph, &effectful_regions, todo!());
 
     let extract = &mut Extractor::new(
@@ -250,7 +311,7 @@ pub fn extract(
         &linear_egraph,
         unextractables,
     );
-    let res = extract_without_linearity(extractor_not_linear);
+    let res = extract_without_linearity(extractor_not_linear);*/
 
     extract_without_linearity(extractor_not_linear)
 }

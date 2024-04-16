@@ -7,11 +7,18 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
     from_egglog::FromEgglog,
-    schema::{Expr, RcExpr, TreeProgram, Type},
+    schema::{RcExpr, TreeProgram, Type},
     typechecker::TypeChecker,
 };
 
 pub(crate) struct Extractor<'a> {
+    pub(crate) egraph: &'a EGraph,
+    // For a particular region root, find the set of reachable nodes
+    #[allow(dead_code)]
+    pub(crate) reachable_from: HashMap<ClassId, HashSet<ClassId>>,
+    // For a particular region root, we are done extracting the region
+    #[allow(dead_code)]
+    pub(crate) done: HashSet<NodeId>,
     pub(crate) cm: &'a dyn CostModel,
     pub(crate) termdag: &'a mut TermDag,
     #[allow(dead_code)]
@@ -20,7 +27,6 @@ pub(crate) struct Extractor<'a> {
     pub(crate) term_to_expr: HashMap<Term, RcExpr>,
     // use to get the type of an expression
     pub(crate) typechecker: TypeChecker<'a>,
-    pub(crate) egraph: &'a EGraph,
     costs: FxHashMap<ClassId, CostSet>,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
@@ -32,6 +38,7 @@ impl<'a> Extractor<'a> {
         matches!(node.op.as_str(), "DoWhile" | "If" | "Switch")
     }
 
+    #[allow(dead_code)]
     fn node_to_eclass(&self, node_id: NodeId) -> ClassId {
         self.egraph.nid_to_cid(&node_id).clone()
     }
@@ -111,6 +118,20 @@ impl<'a> Extractor<'a> {
         egraph: &'a EGraph,
         unextractables: HashSet<String>,
     ) -> Self {
+        let mut region_roots = HashSet::new();
+        for node in egraph.classes().values().flat_map(|c| &c.nodes) {
+            if let Some(regions) = enode_regions(egraph, &egraph[node]) {
+                for root in regions {
+                    region_roots.insert(root);
+                }
+            }
+        }
+
+        let reachable_from = region_roots
+            .iter()
+            .map(|root| (root.clone(), reachable_classes(egraph, root.clone())))
+            .collect();
+
         Extractor {
             cm,
             termdag,
@@ -123,6 +144,8 @@ impl<'a> Extractor<'a> {
             unextractables,
             term_to_expr: Default::default(),
             typechecker: TypeChecker::new(original_prog, true),
+            reachable_from,
+            done: Default::default(),
         }
     }
 }
@@ -318,7 +341,7 @@ pub fn extract(
     // TODO implement linearity
     let effectful_nodes_along_path =
         extractor_not_linear.find_effectful_nodes_in_program(&res.term);
-    let effectful_regions_along_path = effectful_nodes_along_path
+    let _effectful_regions_along_path = effectful_nodes_along_path
         .into_iter()
         .filter(|nid| extractor_not_linear.is_region_node(nid.clone()))
         .collect::<HashSet<NodeId>>();
@@ -563,25 +586,25 @@ fn test_dag_extract() {
         )
     );
 
-    let prog = {
+    let string_prog = {
         let (term, termdag) = prog.to_egglog();
         let printed = print_with_intermediate_vars(&termdag, term);
         format!("{}\n{printed}\n", prologue(),)
     };
 
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&prog).unwrap();
+    egraph.parse_and_run_program(&string_prog).unwrap();
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
     let cost_model = DefaultCostModel;
-    let mut extractor = Extractor::new(
-        &cost_model,
-        &mut termdag,
-        Default::default(),
+
+    let cost_set = extract(
+        &prog,
         &serialized_egraph,
         unextractables,
+        &mut termdag,
+        DefaultCostModel,
     );
-    let cost_set = extract_without_linearity(&mut extractor);
     eprintln!("{}", termdag.to_string(&cost_set.term));
 
     let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
@@ -594,4 +617,63 @@ fn test_dag_extract() {
         + cost_model.get_op_cost("Program");
 
     assert_eq!(cost_set.total, expected_cost);
+}
+// For a given enode, if it creates sub-regions
+// return the roots for these sub-regions
+fn enode_regions(
+    egraph: &egraph_serialize::EGraph,
+    enode: &egraph_serialize::Node,
+) -> Option<Vec<ClassId>> {
+    match (enode.op.as_str(), enode.children.as_slice()) {
+        ("DoWhile", [_input, body]) => Some(vec![egraph.nid_to_cid(body).clone()]),
+        ("If", [_pred, _input, then_branch, else_branch]) => Some(vec![
+            egraph.nid_to_cid(then_branch).clone(),
+            egraph.nid_to_cid(else_branch).clone(),
+        ]),
+        ("Switch", [_input, _default, branchlist]) => Some(get_conslist_children(
+            egraph,
+            egraph.nid_to_cid(branchlist).clone(),
+        )),
+        _ => None,
+    }
+}
+
+fn get_conslist_children(egraph: &egraph_serialize::EGraph, class_id: ClassId) -> Vec<ClassId> {
+    // assert that there is only one e-node in the eclass
+    let class = egraph.classes()[&class_id].clone();
+    assert_eq!(class.nodes.len(), 1);
+    let node = egraph[&class.nodes[0]].clone();
+    match node.op.as_str() {
+        "Nil" => vec![],
+        "Cons" => {
+            let mut children = vec![egraph.nid_to_cid(&node.children[0]).clone()];
+            children.extend(get_conslist_children(
+                egraph,
+                egraph.nid_to_cid(&node.children[1]).clone(),
+            ));
+            children
+        }
+        _ => panic!("Expected Cons or Nil, found {:?}", node.op),
+    }
+}
+
+fn reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) -> HashSet<ClassId> {
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::new();
+    queue.push_back(root);
+
+    while let Some(eclass) = queue.pop_front() {
+        if visited.contains(&eclass) {
+            continue;
+        }
+        visited.insert(eclass.clone());
+
+        for node in &egraph.classes()[&eclass].nodes {
+            for children in &egraph[node].children {
+                queue.push_back(egraph.nid_to_cid(children).clone());
+            }
+        }
+    }
+
+    visited
 }

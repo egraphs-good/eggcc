@@ -7,14 +7,12 @@ use std::{
     rc::Rc,
 };
 
-use egglog::{match_term_app, Term, TermDag};
-use egraph_serialize::{ClassId, EGraph, Node, NodeId};
+use egglog::Term;
+use egraph_serialize::NodeId;
 
 use crate::{
-    from_egglog::FromEgglog,
     greedy_dag_extractor::Extractor,
-    schema::{Expr, Type, *},
-    typechecker::TypeCache,
+    schema::{Expr, *},
 };
 
 type EffectfulNodes = Vec<*const Expr>;
@@ -55,6 +53,7 @@ impl<'a> Extractor<'a> {
         effectful_classes
     }
 
+    #[allow(dead_code)]
     pub fn find_effectful_nodes_in_region(&mut self, term: &Term) -> HashSet<NodeId> {
         let expr = self.term_to_expr(term);
         let mut expr_to_term = HashMap::new();

@@ -554,12 +554,39 @@ fn enode_regions(
             egraph.nid_to_cid(then_branch).clone(),
             egraph.nid_to_cid(else_branch).clone(),
         ]),
-        ("Switch", [_input, _default, branchlist]) => Some(get_conslist_children(
+        ("Switch", [_pred, _input, branchlist]) => Some(get_conslist_children(
             egraph,
             egraph.nid_to_cid(branchlist).clone(),
         )),
         ("Function", [_name, _args, _ret, body]) => Some(vec![egraph.nid_to_cid(body).clone()]),
         _ => None,
+    }
+}
+
+// For a given enode, if it creates sub-regions
+// return the roots for these sub-regions
+fn enode_nonregions(
+    egraph: &egraph_serialize::EGraph,
+    enode: &egraph_serialize::Node,
+) -> Vec<ClassId> {
+    match (enode.op.as_str(), enode.children.as_slice()) {
+        ("DoWhile", [input, _body]) => vec![egraph.nid_to_cid(input).clone()],
+        ("If", [pred, input, _then_branch, _else_branch]) => vec![
+            egraph.nid_to_cid(pred).clone(),
+            egraph.nid_to_cid(input).clone(),
+        ],
+        ("Switch", [pred, input, _branchlist]) => vec![
+            egraph.nid_to_cid(pred).clone(),
+            egraph.nid_to_cid(input).clone(),
+        ],
+        ("Function", [_name, _args, _ret, _body]) => vec![],
+        _ => {
+            let mut children = vec![];
+            for child in &enode.children {
+                children.push(egraph.nid_to_cid(child).clone());
+            }
+            children
+        },
     }
 }
 
@@ -584,18 +611,18 @@ fn get_conslist_children(egraph: &egraph_serialize::EGraph, class_id: ClassId) -
 
 fn reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) -> HashSet<ClassId> {
     let mut visited = HashSet::new();
-    let mut queue = VecDeque::new();
-    queue.push_back(root);
+    let mut queue = UniqueQueue::default();
+    queue.insert(root);
 
-    while let Some(eclass) = queue.pop_front() {
+    while let Some(eclass) = queue.pop() {
         if visited.contains(&eclass) {
             continue;
         }
         visited.insert(eclass.clone());
 
         for node in &egraph.classes()[&eclass].nodes {
-            for children in &egraph[node].children {
-                queue.push_back(egraph.nid_to_cid(children).clone());
+            for child in enode_nonregions(egraph, &egraph[node]) {
+                queue.insert(child);
             }
         }
     }

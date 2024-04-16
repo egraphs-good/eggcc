@@ -31,12 +31,15 @@
       :ruleset always-run)
 
 ;; Pass through if arguments
-(rule ((= lhs (Get if i))
+(rule ((= if_get (Get if i))
        (= if (If pred inputs then_ else_))
-       (= (Get else_ i) (Get (Arg _) j))
-       (= (Get then_ i) (Get (Arg _) j))
-       (= passed-through (Get inputs j)))
-      ((union lhs passed-through))
+       (= (Get then_ i) (Get (InContext (InIf true pred inputs) (Arg ty)) j))
+       (= (Get else_ i) (Get (InContext (InIf false pred inputs) (Arg ty)) j))
+       (= passed-through (Get inputs j))
+)
+      (
+       (union if_get passed-through)
+       )
       :ruleset always-run)
 
 ;; Pass through if predicate

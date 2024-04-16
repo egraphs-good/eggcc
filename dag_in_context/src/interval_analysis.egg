@@ -178,9 +178,24 @@
        (= (IntB la) (lo-bound a))
        (= (IntB hb) (hi-bound b))
       )
-      (
-       (set (hi-bound lhs) (BoolB (bool-< la hb)))
+      ((set (hi-bound lhs) (BoolB (bool-< la hb))))
+      :ruleset interval-analysis)
+
+; =================================
+; Context
+; =================================
+; Things with bounds still have those bounds when in a context
+(rule (
+        (= lhs (InContext ctx expr))
+        (= lo (lo-bound expr))
       )
+      ((set (lo-bound lhs) lo))
+      :ruleset interval-analysis)
+(rule (
+        (= lhs (InContext ctx expr))
+        (= hi (hi-bound expr))
+      )
+      ((set (hi-bound lhs) hi))
       :ruleset interval-analysis)
 
 ; =================================
@@ -203,50 +218,84 @@
       ((set (hi-bound lhs) (bound-max hi-thn hi-els)))
       :ruleset interval-analysis)
 
-; Things with bounds still have those bounds when in a context
+; Same rules, but for Ifs that have multiple outputs
 (rule (
-        (= lhs (InContext ctx expr))
-        (= lo (lo-bound expr))
+        (= lhs (Get (If pred inputs thn els) i))
+        (= lo-thn (lo-bound (Get thn i)))
+        (= lo-els (lo-bound (Get els i)))
       )
-      ((set (lo-bound lhs) lo))
+      ((set (lo-bound lhs) (bound-min lo-thn lo-els)))
       :ruleset interval-analysis)
 (rule (
-        (= lhs (InContext ctx expr))
-        (= hi (hi-bound expr))
+       (= lhs (Get (If cond inputs thn els) i))
+       (= hi-thn (hi-bound (Get thn i)))
+       (= hi-els (hi-bound (Get els i)))
       )
-      ((set (hi-bound lhs) hi))
+      ((set (hi-bound lhs) (bound-max hi-thn hi-els)))
       :ruleset interval-analysis)
 
-; TODO: Generalize these?
-
-; If input < v is true, then upper bound of input is upper bound of v - 1
 (rule (
-       (= lhs (InContext (InIf true (Bop (LessThan) inp v) inp) inp))
-       (= (IntB hi) (hi-bound v))
+        ; expr < value
+        (= pred (Bop (LessThan) expr value))
+        (= if_e (If pred inputs then else))
+        ; the left operand of the < is an input to the if region
+        (= expr (Get inputs i))
+        ; the right operand of the < has an upper bound
+        (= (IntB v) (hi-bound value))
+        ; context node inside the if region
+        (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+        (HasType inputs ty)
+        ; usage of the value x inside the if region
+        (Get ctx i)
       )
-      ((set (hi-bound lhs) (IntB (- hi 1))))
+      ((set (hi-bound (Get ctx i)) (IntB (- v 1)))) ; expr < value was true, so we know expr < (hi-bound value) - 1
+      :ruleset interval-analysis)
+(rule (
+        ; expr < value
+        (= pred (Bop (LessThan) expr value))
+        (= if_e (If pred inputs then else))
+        ; the left operand of the < is an input to the if region
+        (= expr (Get inputs i))
+        ; the right operand of the < has a lower bound
+        (= (IntB v) (lo-bound value))
+        ; context node inside the if region
+        (= ctx (InContext (InIf false pred inputs) (Arg ty)))
+        (HasType inputs ty)
+        ; usage of the value x inside the if region
+        (Get ctx i)
+      )
+      ((set (lo-bound (Get ctx i)) (IntB v))) ; x < y was false, so we know expr >= (lo-bound value)
       :ruleset interval-analysis)
 
-; If input < v is false, then lower bound of input is lower bound of v
 (rule (
-       (= lhs (InContext (InIf false (Bop (LessThan) inp v) inp) inp))
-       (= (IntB lo) (lo-bound v))
+        ; value < expr
+        (= pred (Bop (LessThan) value expr))
+        (= if_e (If pred inputs then else))
+        ; the right operand of the < is an input to the if region
+        (= expr (Get inputs i))
+        ; the left operand of the < has a lower bound
+        (= (IntB v) (lo-bound value))
+        ; context node inside the if region
+        (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+        (HasType inputs ty)
+        ; usage of the value x inside the if region
+        (Get ctx i)
       )
-      ((set (lo-bound lhs) (IntB lo)))
+      ((set (lo-bound (Get ctx i)) (IntB (+ v 1)))) ; value < expr was true, so we know expr >= (lo-bound value) + 1
       :ruleset interval-analysis)
-
-; If v < input is true, then lower bound of input is lower bound of v + 1
 (rule (
-       (= lhs (InContext (InIf true (Bop (LessThan) v inp) inp) inp))
-       (= (IntB lo) (lo-bound v))
+        ; value < expr
+        (= pred (Bop (LessThan) value expr))
+        (= if_e (If pred inputs then else))
+        ; the right operand of the < is an input to the if region
+        (= expr (Get inputs i))
+        ; the left operand of the < has an upper bound
+        (= (IntB v) (hi-bound value))
+        ; context node inside the if region
+        (= ctx (InContext (InIf false pred inputs) (Arg ty)))
+        (HasType inputs ty)
+        ; usage of the value x inside the if region
+        (Get ctx i)
       )
-      ((set (lo-bound lhs) (IntB (+ lo 1))))
-      :ruleset interval-analysis)
-
-; If v < input is false, then upper bound of input is upper bound of v
-(rule (
-       (= lhs (InContext (InIf false (Bop (LessThan) v inp) inp) inp))
-       (= (IntB hi) (hi-bound v))
-      )
-      ((set (hi-bound lhs) (IntB  hi)))
+      ((set (hi-bound (Get ctx i)) (IntB v))) ; value < expr was false, so we know expr <= (hi-bound value)
       :ruleset interval-analysis)

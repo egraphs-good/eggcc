@@ -245,38 +245,6 @@ impl SwitchCfgFunction {
         middle
     }
 
-    fn split_edges(&mut self, node: NodeIndex) {
-        let mut has_jmp = false;
-        let mut walker = self
-            .graph
-            .neighbors_directed(node, Direction::Outgoing)
-            .detach();
-        while let Some((edge, other)) = walker.next(&self.graph) {
-            assert!(!has_jmp);
-            match &self.graph.edge_weight(edge).unwrap().op {
-                BranchOp::Jmp
-                | BranchOp::Cond {
-                    val: CondVal { of: 1, .. },
-                    ..
-                } => {
-                    has_jmp = true;
-                    continue;
-                }
-                BranchOp::Cond { .. } => {}
-            }
-
-            // We have a conditional branch. Reroute through a placeholder.
-            let weight = self.graph.remove_edge(edge).unwrap();
-            let placeholder = self.fresh_block();
-
-            // We had  node => other
-            // We want node => placeholder => other
-            assert_ne!(other, self.entry);
-            self.graph.add_edge(node, placeholder, weight);
-            self.graph.add_edge(placeholder, other, JMP);
-        }
-    }
-
     fn make_demux_node(
         &mut self,
         node: NodeIndex,

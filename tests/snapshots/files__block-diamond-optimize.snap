@@ -5,36 +5,52 @@ expression: visualization.result
 @main(v0: int) {
   v3: int = const 2;
   v5: bool = lt v0 v3;
-  v12: int = const 0;
-  v14: int = const 1;
-  v18: int = const 5;
-  br v5 .__31__ .__20__;
-.__31__:
-  v32: int = const 4;
-  v36: bool = const true;
-  v26: int = id v32;
-  v27: int = id v14;
-  v28: int = id v3;
-  v29: bool = id v36;
-.__39__:
-  br v5 .__51__ .__42__;
-.__51__:
-  v48: int = id v26;
-  v49: int = id v14;
-  jmp .__55__;
-.__42__:
-  v45: int = add v26 v3;
-  v48: int = id v45;
-  v49: int = id v14;
-  jmp .__55__;
-.__20__:
-  v24: bool = const false;
-  v26: int = id v14;
-  v27: int = id v14;
-  v28: int = id v3;
-  v29: bool = id v24;
-  jmp .__39__;
-.__55__:
-  v57: int = add v48 v14;
-  print v57;
+  v9: int = const 0;
+  v11: int = const 1;
+  br v5 .__29__ .__15__;
+.__29__:
+  v31: bool = lt v3 v0;
+  v37: int = add v9 v3;
+  v41: bool = const true;
+  br v31 .__53__ .__43__;
+.__53__:
+  v56: int = add v37 v3;
+  v60: bool = const false;
+  v48: int = id v56;
+  v49: int = id v11;
+  v50: int = id v3;
+  v51: bool = id v60;
+.__63__:
+  v24: int = id v48;
+  v25: int = id v49;
+  v26: int = id v50;
+  v27: bool = id v51;
+.__69__:
+  br v27 .__81__ .__75__;
+.__81__:
+  v84: int = add v24 v26;
+  v78: int = id v84;
+  v79: int = id v25;
+  jmp .__88__;
+.__75__:
+  v78: int = id v24;
+  v79: int = id v25;
+  jmp .__88__;
+.__43__:
+  v48: int = id v37;
+  v49: int = id v11;
+  v50: int = id v3;
+  v51: bool = id v41;
+  jmp .__63__;
+.__15__:
+  v18: int = add v9 v11;
+  v22: bool = const true;
+  v24: int = id v18;
+  v25: int = id v11;
+  v26: int = id v3;
+  v27: bool = id v22;
+  jmp .__69__;
+.__88__:
+  v90: int = add v78 v79;
+  print v90;
 }

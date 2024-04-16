@@ -586,7 +586,7 @@ fn enode_nonregions(
                 children.push(egraph.nid_to_cid(child).clone());
             }
             children
-        },
+        }
     }
 }
 

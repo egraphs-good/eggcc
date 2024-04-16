@@ -27,7 +27,7 @@ pub(crate) struct Extractor<'a> {
     pub(crate) term_to_expr: HashMap<Term, RcExpr>,
     // use to get the type of an expression
     pub(crate) typechecker: TypeChecker<'a>,
-    costs: FxHashMap<ClassId, CostSet>,
+    costs: FxHashMap<ClassId, FxHashMap<ClassId, CostSet>>,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
 }
@@ -259,6 +259,7 @@ impl<'a> Extractor<'a> {
 /// Handles the edge case of cycles, then calls get_node_cost
 fn calculate_cost_set(
     egraph: &egraph_serialize::EGraph,
+    rootid: ClassId,
     node_id: NodeId,
     extractor: &mut Extractor,
 ) -> CostSet {
@@ -271,9 +272,10 @@ fn calculate_cost_set(
         .map(|c| egraph.nid_to_cid(c).clone())
         .collect::<Vec<ClassId>>();
 
+    let region_costs = extractor.costs.get(&rootid).unwrap();
     let child_cost_sets: Vec<_> = children_classes
         .iter()
-        .map(|c| extractor.costs.get(c).unwrap())
+        .map(|c| region_costs.get(c).unwrap())
         .collect();
 
     // cycle detection
@@ -372,8 +374,78 @@ pub fn extract(
 
 /// Perform a greedy extraction of the DAG, without considering linearity.
 /// This uses the "fast_greedy_dag" algorithm from the extraction gym.
+// pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
+//     let n2c = |nid: &NodeId| extractor.egraph.nid_to_cid(nid);
+//     let parents = build_parent_index(extractor.egraph);
+//     let mut worklist = initialize_worklist(extractor.egraph);
+
+//     while let Some(node_id) = worklist.pop() {
+//         let class_id = n2c(&node_id);
+//         let node = &extractor.egraph[&node_id];
+//         if extractor.unextractables.contains(&node.op) {
+//             continue;
+//         }
+//         if node
+//             .children
+//             .iter()
+//             .all(|c| extractor.costs.contains_key(n2c(c)))
+//         {
+//             let lookup = extractor.costs.get(class_id);
+//             let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
+//             if lookup.is_some() {
+//                 prev_cost = lookup.unwrap().total;
+//             }
+
+//             let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
+//             if cost_set.total < prev_cost {
+//                 extractor.costs.insert(class_id.clone(), cost_set);
+//                 worklist.extend(parents[class_id].iter().cloned());
+//             }
+//         }
+//     }
+
+//     let mut root_eclasses = extractor.egraph.root_eclasses.clone();
+//     root_eclasses.sort();
+//     root_eclasses.dedup();
+
+//     let root = get_root(extractor.egraph);
+//     extractor.costs.get(n2c(&root)).unwrap().clone()
+// }
+
 pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
     let n2c = |nid: &NodeId| extractor.egraph.nid_to_cid(nid);
+
+    for (rootid, reachable) in extractor.reachable_from.iter() {
+        let region_costs = extractor.costs.get(rootid).unwrap();
+        for reached in reachable {
+            for nodeid in &extractor.egraph.classes().get(reached).unwrap().nodes {
+                let node = extractor.egraph.nodes.get(nodeid).unwrap();
+                if extractor.unextractables.contains(&node.op) {
+                    continue;
+                }
+
+                if node
+                    .children
+                    .iter()
+                    .all(|c| extractor.costs.contains_key(n2c(c)))
+                {
+                    // TODO: 
+                    let lookup = costs.get(class_id);
+                    let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
+                    if lookup.is_some() {
+                        prev_cost = lookup.unwrap().total;
+                    }
+
+                    let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
+                    if cost_set.total < prev_cost {
+                        extractor.costs.insert(class_id.clone(), cost_set);
+                        worklist.extend(parents[class_id].iter().cloned());
+                    }
+                }
+            }
+        }
+        todo!()
+    }
     let parents = build_parent_index(extractor.egraph);
     let mut worklist = initialize_worklist(extractor.egraph);
 

@@ -367,7 +367,15 @@ impl SwitchCfgFunction {
             return;
         }
         let cont = self.get_continuation(start);
-        assert!(!cont.reentry_nodes.is_empty());
+
+        if cont.reentry_nodes.is_empty() {
+            // Nothing to do.
+            return;
+        }
+        // assert!(
+        //     !cont.reentry_nodes.is_empty(),
+        //     "No reentry nodes found [start: {start:?}, entry: {entry:?}, exit: {exit:?}]"
+        // );
 
         if cont.reentry_nodes.len() == 1 {
             // There are multiple branches that all converge to a single "tail"

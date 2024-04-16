@@ -41,7 +41,10 @@ pub(crate) fn cfg_func_to_rvsdg(
     if WRITE_INTERMEDIATES {
         File::create("/tmp/cfg-unstructured.dot")
             .unwrap()
-            .write_fmt(format_args!("{:#?}", Dot::new(&cfg.graph)))
+            .write_fmt(format_args!(
+                "{:#?}",
+                Dot::new(&cfg.graph.map(|ni, n| (ni, n.clone()), |_, e| e.clone()))
+            ))
             .unwrap();
         Command::new("dot")
             .arg("-Tpng")

@@ -28,9 +28,13 @@ pub(crate) struct Extractor<'a> {
 }
 
 impl<'a> Extractor<'a> {
+    fn node_to_eclass(&self, node_id: NodeId) -> ClassId {
+        self.egraph.nid_to_cid(&node_id).clone()
+    }
+
     pub(crate) fn term_to_prog(&mut self, term: &Term) -> TreeProgram {
         let mut temp_term_to_expr = Default::default();
-        let current_correspondance = std::mem::swap(&mut self.term_to_expr, &mut temp_term_to_expr);
+        std::mem::swap(&mut self.term_to_expr, &mut temp_term_to_expr);
         // convert the term to an expression using a converter
         // converter has to own the termdag, so we swap it with the current one
         let mut converter = FromEgglog {
@@ -45,7 +49,7 @@ impl<'a> Extractor<'a> {
 
     pub(crate) fn term_to_expr(&mut self, term: &Term) -> RcExpr {
         let mut temp_term_to_expr = Default::default();
-        let current_correspondance = std::mem::swap(&mut self.term_to_expr, &mut temp_term_to_expr);
+        std::mem::swap(&mut self.term_to_expr, &mut temp_term_to_expr);
         // convert the term to an expression using a converter
         // converter has to own the termdag, so we swap it with the current one
         let mut converter = FromEgglog {
@@ -74,9 +78,18 @@ impl<'a> Extractor<'a> {
         self.egraph.nodes.get(&term_enode).unwrap().eclass.clone()
     }
 
-    pub(crate) fn expr_has_state_edge(&mut self, expr: &RcExpr) -> bool {
+    /// Checks if an expressions is effectful by checking if it returns something of type state.
+    pub(crate) fn is_effectful(&mut self, expr: &RcExpr) -> bool {
         let ty = self.expr_to_type(expr);
         ty.contains_state()
+    }
+
+    /// Checks if an already extracted node is effectful.
+    pub(crate) fn is_node_effectful(&mut self, node_id: NodeId) -> bool {
+        let eclass = self.node_to_eclass(node_id);
+        let term = self.costs.get(&eclass).unwrap().term.clone();
+        let expr = self.term_to_expr(&term);
+        self.is_effectful(&expr)
     }
 
     pub(crate) fn node_of(&self, term: &Term) -> NodeId {

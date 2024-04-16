@@ -85,8 +85,8 @@ impl<'a> Extractor<'a> {
             }
             Expr::Single(expr) => self.find_effectful_nodes_in_expr(expr, linearity),
             Expr::Concat(c1, c2) => {
-                let left_contains_state = self.expr_has_state_edge(c1);
-                let right_contains_state = self.expr_has_state_edge(c2);
+                let left_contains_state = self.is_effectful(c1);
+                let right_contains_state = self.is_effectful(c2);
                 assert!(left_contains_state || right_contains_state);
                 assert!(!(left_contains_state && right_contains_state));
                 if left_contains_state {
@@ -96,7 +96,7 @@ impl<'a> Extractor<'a> {
                 }
             }
             Expr::If(_pred, input, then_branch, else_branch) => {
-                let input_contains_state = self.expr_has_state_edge(input);
+                let input_contains_state = self.is_effectful(input);
                 assert!(input_contains_state);
 
                 self.find_effectful_nodes_in_expr(input, linearity);
@@ -104,7 +104,7 @@ impl<'a> Extractor<'a> {
                 self.find_effectful_nodes_in_expr(else_branch, linearity);
             }
             Expr::Switch(_pred, input, branches) => {
-                let input_contains_state = self.expr_has_state_edge(input);
+                let input_contains_state = self.is_effectful(input);
                 assert!(input_contains_state);
 
                 self.find_effectful_nodes_in_expr(input, linearity);
@@ -113,7 +113,7 @@ impl<'a> Extractor<'a> {
                 }
             }
             Expr::DoWhile(input, body) => {
-                let input_contains_state = self.expr_has_state_edge(input);
+                let input_contains_state = self.is_effectful(input);
                 assert!(input_contains_state);
 
                 self.find_effectful_nodes_in_expr(input, linearity);

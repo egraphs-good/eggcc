@@ -1,5 +1,6 @@
 //! This file contains helpers for making the extracted
 //! program use memory linearly.
+//! In particular, it finds all the effectful e-nodes in an extracted term that are along the state edge path.
 
 use std::{
     collections::{HashMap, HashSet},

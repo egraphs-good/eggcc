@@ -7,7 +7,6 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
     from_egglog::FromEgglog,
-    linearity::remove_invalid_effectful_nodes,
     schema::{Expr, RcExpr, TreeProgram, Type},
     typechecker::TypeChecker,
 };
@@ -325,8 +324,10 @@ pub fn extract(
         .collect::<HashSet<NodeId>>();
 
     // TODO loop over effectful regions
-    // 1) extract effectful sub-regions
-    // 2) extract current region from scratch, sub-regions get cost from previous extraction
+    // 1) Find reachable nodes in this region
+    // 2) Extract sub-regions
+    // 3) Extract this region, banning all nodes in effectful regions not on the state edge path
+    // 4) extract current region from scratch, sub-regions get cost from previous extraction
     //    a) mark effectful nodes along the path as extractable (just for this region)
     //    b) extract the region
 

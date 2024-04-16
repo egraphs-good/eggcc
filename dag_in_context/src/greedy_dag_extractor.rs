@@ -1,22 +1,68 @@
 use egglog::*;
-use egraph_serialize::{ClassId, NodeId};
+use egraph_serialize::{ClassId, EGraph, NodeId};
 use indexmap::*;
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 
+pub(crate) struct Extractor<'a> {
+    pub(crate) cm: &'a dyn CostModel,
+    pub(crate) termdag: &'a mut TermDag,
+    #[allow(dead_code)]
+    pub(crate) correspondence: HashMap<Term, NodeId>,
+    pub(crate) egraph: &'a EGraph,
+    costs: FxHashMap<ClassId, CostSet>,
+    /// A set of names of functions that are unextractable
+    unextractables: HashSet<String>,
+}
+
+impl<'a> Extractor<'a> {
+    #[allow(dead_code)]
+    pub(crate) fn eclass_of(&self, term: &Term) -> ClassId {
+        let term_enode = self
+            .correspondence
+            .get(term)
+            .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term));
+        self.egraph.nodes.get(term_enode).unwrap().eclass.clone()
+    }
+
+    pub(crate) fn new(
+        cm: &'a dyn CostModel,
+        termdag: &'a mut TermDag,
+        correspondence: HashMap<Term, NodeId>,
+        egraph: &'a EGraph,
+        unextractables: HashSet<String>,
+    ) -> Self {
+        Extractor {
+            cm,
+            termdag,
+            correspondence,
+            egraph,
+            costs: FxHashMap::<ClassId, CostSet>::with_capacity_and_hasher(
+                egraph.classes().len(),
+                Default::default(),
+            ),
+            unextractables,
+        }
+    }
+}
+
+fn get_root(egraph: &egraph_serialize::EGraph) -> NodeId {
+    let mut root_nodes = egraph
+        .nodes
+        .iter()
+        .filter(|(_nid, node)| node.op == "Program");
+    let res = root_nodes.next().unwrap();
+    assert!(root_nodes.next().is_none());
+    res.0.clone()
+}
+
 pub fn serialized_egraph(
     egglog_egraph: egglog::EGraph,
 ) -> (egraph_serialize::EGraph, HashSet<String>) {
     let config = SerializeConfig::default();
-    let mut egraph = egglog_egraph.serialize(config);
-    let root_nodes = egraph
-        .nodes
-        .iter()
-        .filter(|(_nid, node)| node.op == "Program");
-    for (nid, _n) in root_nodes {
-        egraph.root_eclasses.push(egraph.nid_to_cid(nid).clone());
-    }
+    let egraph = egglog_egraph.serialize(config);
+
     let unextractables = egglog_egraph
         .functions
         .iter()
@@ -33,6 +79,7 @@ pub fn serialized_egraph(
 
 type Cost = NotNan<f64>;
 
+#[derive(Clone)]
 pub struct CostSet {
     pub total: Cost,
     // TODO perhaps more efficient as
@@ -73,45 +120,71 @@ fn initialize_worklist(egraph: &egraph_serialize::EGraph) -> UniqueQueue<NodeId>
     analysis_pending
 }
 
-fn get_term(op: &str, cost_sets: &[&CostSet], termdag: &mut TermDag) -> Term {
-    if cost_sets.is_empty() {
-        if op.starts_with('\"') {
-            return termdag.lit(ast::Literal::String(op[1..op.len() - 1].into()));
-        }
-        if let Ok(n) = op.parse::<i64>() {
-            return termdag.lit(ast::Literal::Int(n));
-        }
-        if op == "true" {
-            return termdag.lit(ast::Literal::Bool(true));
-        }
-        if op == "false" {
-            return termdag.lit(ast::Literal::Bool(false));
-        }
+impl<'a> Extractor<'a> {
+    /// Construct a term for this operator with subterms from the cost sets
+    /// We also need to add this term to the correspondence map so we can
+    /// find its enode id later.
+    fn get_term(&mut self, node_id: NodeId, children: Vec<Term>) -> Term {
+        let node = &self.egraph[&node_id];
+        let op = &node.op;
+        let term = if children.is_empty() {
+            if op.starts_with('\"') {
+                self.termdag
+                    .lit(ast::Literal::String(op[1..op.len() - 1].into()))
+            } else if let Ok(n) = op.parse::<i64>() {
+                self.termdag.lit(ast::Literal::Int(n))
+            } else if op == "true" {
+                self.termdag.lit(ast::Literal::Bool(true))
+            } else if op == "false" {
+                self.termdag.lit(ast::Literal::Bool(false))
+            } else {
+                self.termdag.app(op.into(), children)
+            }
+        } else {
+            self.termdag.app(op.into(), children)
+        };
+
+        self.correspondence.insert(term.clone(), node_id);
+
+        term
     }
-    termdag.app(
-        op.into(),
-        cost_sets.iter().map(|cs| cs.term.clone()).collect(),
-    )
 }
 
-/// Given an operator, eclass, and cost sets for children eclasses,
-/// calculate the new cost set for this operator.
-/// This is done by unioning the child costs sets and summing them up,
-/// except for special cases like regions.
-fn get_node_cost(
-    op: &str,
-    cid: &ClassId,
-    // non-empty cost sets for children eclasses
-    child_cost_sets: &[&CostSet],
-    cm: &impl CostModel,
-    termdag: &mut TermDag,
+/// Handles the edge case of cycles, then calls get_node_cost
+fn calculate_cost_set(
+    egraph: &egraph_serialize::EGraph,
+    node_id: NodeId,
+    extractor: &mut Extractor,
 ) -> CostSet {
-    let mut total = cm.get_op_cost(op);
-    let mut costs = HashMap::from([(cid.clone(), total)]);
-    let term = get_term(op, child_cost_sets, termdag);
+    let node = &egraph[&node_id];
+    let cid = egraph.nid_to_cid(&node_id);
 
-    let unshared_children = cm.unshared_children(op);
-    if !cm.ignore_children(op) {
+    let children_classes = node
+        .children
+        .iter()
+        .map(|c| egraph.nid_to_cid(c).clone())
+        .collect::<Vec<ClassId>>();
+
+    let child_cost_sets: Vec<_> = children_classes
+        .iter()
+        .map(|c| extractor.costs.get(c).unwrap())
+        .collect();
+
+    // cycle detection
+    if child_cost_sets.iter().any(|cs| cs.costs.contains_key(cid)) {
+        return CostSet {
+            costs: Default::default(),
+            total: std::f64::INFINITY.try_into().unwrap(),
+            // returns junk children since this cost set is guaranteed to not be selected.
+            term: extractor.termdag.app(node.op.as_str().into(), vec![]),
+        };
+    }
+
+    let mut total = extractor.cm.get_op_cost(&node.op);
+    let mut costs = HashMap::from([(cid.clone(), total)]);
+
+    let unshared_children = extractor.cm.unshared_children(&node.op);
+    if !extractor.cm.ignore_children(&node.op) {
         for (i, child_set) in child_cost_sets.iter().enumerate() {
             if unshared_children.contains(&i) {
                 // don't add to the cost set, but do add to the total
@@ -131,115 +204,82 @@ fn get_node_cost(
             }
         }
     }
+    let sub_terms = child_cost_sets.iter().map(|cs| cs.term.clone()).collect();
+
+    let term = extractor.get_term(node_id, sub_terms);
 
     CostSet { total, costs, term }
 }
 
-fn calculate_cost_set(
-    egraph: &egraph_serialize::EGraph,
-    node_id: NodeId,
-    costs: &FxHashMap<ClassId, CostSet>,
-    termdag: &mut TermDag,
-    cm: &impl CostModel,
-) -> CostSet {
-    let node = &egraph[&node_id];
-    let cid = egraph.nid_to_cid(&node_id);
-
-    // early return
-    if node.children.is_empty() {
-        return get_node_cost(&node.op, cid, &[], cm, termdag);
-    }
-
-    let children_classes = node
-        .children
-        .iter()
-        .map(|c| egraph.nid_to_cid(c).clone())
-        .collect::<Vec<ClassId>>();
-
-    if children_classes.contains(cid) {
-        // Shortcut. Can't be cheaper so return junk.
-        return CostSet {
-            costs: Default::default(),
-            total: std::f64::INFINITY.try_into().unwrap(),
-            // returns junk children since this cost set is guaranteed to not be selected.
-            term: termdag.app(node.op.as_str().into(), vec![]),
-        };
-    }
-
-    let cost_sets: Vec<_> = children_classes
-        .iter()
-        .map(|c| costs.get(c).unwrap())
-        .collect();
-
-    // cycle detection
-    if cost_sets.iter().any(|cs| cs.costs.contains_key(cid)) {
-        return CostSet {
-            costs: Default::default(),
-            total: std::f64::INFINITY.try_into().unwrap(),
-            // returns junk children since this cost set is guaranteed to not be selected.
-            term: termdag.app(node.op.as_str().into(), vec![]),
-        };
-    }
-
-    get_node_cost(&node.op, cid, &cost_sets, cm, termdag)
-}
-
 pub fn extract(
     egraph: &egraph_serialize::EGraph,
-    // TODO: once our egglog program uses `subsume` actions,
-    // unextractables will be more complex, as right now
-    // it only checks unextractable at the function level.
     unextractables: HashSet<String>,
     termdag: &mut TermDag,
-    cm: impl CostModel,
-) -> HashMap<ClassId, CostSet> {
-    let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
-    let parents = build_parent_index(egraph);
-    let mut worklist = initialize_worklist(egraph);
-    let mut costs = FxHashMap::<ClassId, CostSet>::with_capacity_and_hasher(
-        egraph.classes().len(),
+    cost_model: impl CostModel,
+) -> CostSet {
+    let extractor_not_linear = &mut Extractor::new(
+        &cost_model,
+        termdag,
         Default::default(),
+        egraph,
+        unextractables,
     );
+
+    // TODO use effectul regions to extract maintaining linearity
+    //let _effectful_regions = extractor_not_linear.find_effectful_nodes_in_program(&res.term);
+
+    extract_without_linearity(extractor_not_linear)
+}
+
+/// Perform a greedy extraction of the DAG, without considering linearity.
+/// This uses the "fast_greedy_dag" algorithm from the extraction gym.
+pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
+    let n2c = |nid: &NodeId| extractor.egraph.nid_to_cid(nid);
+    let parents = build_parent_index(extractor.egraph);
+    let mut worklist = initialize_worklist(extractor.egraph);
 
     while let Some(node_id) = worklist.pop() {
         let class_id = n2c(&node_id);
-        let node = &egraph[&node_id];
-        if unextractables.contains(&node.op) {
+        let node = &extractor.egraph[&node_id];
+        if extractor.unextractables.contains(&node.op) {
             continue;
         }
-        if node.children.iter().all(|c| costs.contains_key(n2c(c))) {
-            let lookup = costs.get(class_id);
+        if node
+            .children
+            .iter()
+            .all(|c| extractor.costs.contains_key(n2c(c)))
+        {
+            let lookup = extractor.costs.get(class_id);
             let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
             if lookup.is_some() {
                 prev_cost = lookup.unwrap().total;
             }
 
-            let cost_set = calculate_cost_set(egraph, node_id.clone(), &costs, termdag, &cm);
+            let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
             if cost_set.total < prev_cost {
-                costs.insert(class_id.clone(), cost_set);
+                extractor.costs.insert(class_id.clone(), cost_set);
                 worklist.extend(parents[class_id].iter().cloned());
             }
         }
     }
 
-    let mut root_eclasses = egraph.root_eclasses.clone();
+    let mut root_eclasses = extractor.egraph.root_eclasses.clone();
     root_eclasses.sort();
     root_eclasses.dedup();
 
-    root_eclasses
-        .iter()
-        .map(|cid| (cid.clone(), costs.remove(cid).unwrap()))
-        .collect()
+    let root = get_root(extractor.egraph);
+    extractor.costs.get(n2c(&root)).unwrap().clone()
 }
 
 pub trait CostModel {
-    // TODO: we could do better with type info
+    /// TODO: we could do better with type info
     fn get_op_cost(&self, op: &str) -> Cost;
 
-    // if true, the op's children are ignored
+    /// if true, the op's children are ignored in calculating the cost
     fn ignore_children(&self, op: &str) -> bool;
 
-    // returns a slice of indices into the children vec
+    /// returns a slice of indices into the children vec
+    /// count the cost of these children, but don't add the nodes they depend on to the set
     fn unshared_children(&self, op: &str) -> &'static [usize];
 }
 

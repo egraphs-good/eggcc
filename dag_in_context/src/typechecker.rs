@@ -29,17 +29,24 @@ impl TypeStack {
 }
 
 impl TreeProgram {
+    #[allow(dead_code)]
+    pub(crate) fn typecheck(&self) -> TypeCache {
+        let mut checker = TypeChecker::new(self, true);
+        checker.add_arg_types();
+        checker.type_cache
+    }
+
     /// Adds correct types to arguments in the program
     /// and performs type checking.
     /// Maintains the invariant that common subexpressions are shared using
     /// the same Rc<Expr> pointer.
     pub(crate) fn with_arg_types(&self) -> TreeProgram {
-        let mut checker = TypeChecker::new(self);
+        let mut checker = TypeChecker::new(self, false);
         checker.add_arg_types()
     }
 
     pub fn with_arg_types_and_cache(&self) -> (TreeProgram, TypeCache) {
-        let mut checker = TypeChecker::new(self);
+        let mut checker = TypeChecker::new(self, false);
         let prog = checker.add_arg_types();
         (prog, checker.type_cache)
     }
@@ -52,7 +59,7 @@ impl Expr {
     #[allow(dead_code)]
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
         let prog = self.to_program(input_ty.clone(), output_ty.clone());
-        let mut checker = TypeChecker::new(&prog);
+        let mut checker = TypeChecker::new(&prog, false);
         let (ty, new_expr) =
             checker.add_arg_types_to_expr(self.clone(), &TypeStack(vec![input_ty]));
         assert_eq!(
@@ -90,14 +97,19 @@ pub(crate) struct TypeChecker<'a> {
     program: &'a TreeProgram,
     type_cache: TypeCache,
     type_expr_cache: TypedExprCache,
+    /// When this is true, the type checker does not perform any inference.
+    /// As a result, the type_expr_cache contains expressions from the original program.
+    #[allow(dead_code)]
+    expect_fully_typed: bool,
 }
 
 impl<'a> TypeChecker<'a> {
-    pub(crate) fn new(prog: &'a TreeProgram) -> Self {
+    pub(crate) fn new(prog: &'a TreeProgram, expect_fully_typed: bool) -> Self {
         TypeChecker {
             program: prog,
             type_cache: HashMap::new(),
             type_expr_cache: HashMap::new(),
+            expect_fully_typed,
         }
     }
 

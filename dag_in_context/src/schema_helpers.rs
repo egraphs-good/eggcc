@@ -6,7 +6,10 @@ use strum_macros::EnumIter;
 
 use crate::{
     ast::{base, boolt, intt},
-    schema::{Assumption, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
+    schema::{
+        Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
+        UnaryOp,
+    },
 };
 
 /// Display for Constant implements a
@@ -516,6 +519,30 @@ impl Assumption {
             Assumption::InIf(b, pred, input) => {
                 AssumptionRef::InIf(*b, Rc::as_ptr(pred), Rc::as_ptr(input))
             }
+        }
+    }
+}
+
+impl BaseType {
+    pub fn contains_state(&self) -> bool {
+        match self {
+            BaseType::IntT => false,
+            BaseType::BoolT => false,
+            BaseType::PointerT(inner) => {
+                assert!(!inner.contains_state(), "Pointers can't contain state");
+                false
+            }
+            BaseType::StateT => true,
+        }
+    }
+}
+
+impl Type {
+    pub fn contains_state(&self) -> bool {
+        match self {
+            Type::Base(basety) => basety.contains_state(),
+            Type::TupleT(types) => types.iter().any(|ty| ty.contains_state()),
+            Type::Unknown => panic!("Unknown type"),
         }
     }
 }

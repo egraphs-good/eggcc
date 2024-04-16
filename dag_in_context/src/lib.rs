@@ -17,6 +17,7 @@ pub mod from_egglog;
 mod greedy_dag_extractor;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
+//mod linearity;
 mod optimizations;
 pub mod schema;
 pub mod schema_helpers;
@@ -110,14 +111,13 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
 
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
-    let results = extract(&serialized, unextractables, &mut termdag, DefaultCostModel);
-    assert_eq!(results.len(), 1);
-    let (_cid, costset) = results.into_iter().next().unwrap();
+    // TODO use extract instead of extract_without_linearity when it is implemented
+    let result = extract(&serialized, unextractables, &mut termdag, DefaultCostModel);
     let mut from_egglog = FromEgglog {
-        termdag,
+        termdag: &mut termdag,
         conversion_cache: Default::default(),
     };
-    Ok(from_egglog.program_from_egglog(costset.term))
+    Ok(from_egglog.program_from_egglog(result.term))
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

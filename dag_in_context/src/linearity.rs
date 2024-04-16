@@ -20,6 +20,7 @@ type EffectfulNodes = Vec<*const Expr>;
 
 struct Linearity {
     effectful_nodes: EffectfulNodes,
+    recur_subregions: bool,
 }
 
 impl<'a> Extractor<'a> {
@@ -31,11 +32,12 @@ impl<'a> Extractor<'a> {
         let prog = self.term_to_prog(term);
         let mut expr_to_term = HashMap::new();
         for (term, expr) in &self.term_to_expr {
-            expr_to_term.insert(Rc::as_ptr(&expr), term.clone());
+            expr_to_term.insert(Rc::as_ptr(expr), term.clone());
         }
 
         let mut linearity = Linearity {
             effectful_nodes: vec![],
+            recur_subregions: true,
         };
 
         self.find_effectful_nodes_in_expr(&prog.entry, &mut linearity);
@@ -52,6 +54,31 @@ impl<'a> Extractor<'a> {
         effectful_classes
     }
 
+    pub fn find_effectful_nodes_in_region(&mut self, term: &Term) -> HashSet<NodeId> {
+        let expr = self.term_to_expr(term);
+        let mut expr_to_term = HashMap::new();
+        for (term, expr) in &self.term_to_expr {
+            expr_to_term.insert(Rc::as_ptr(expr), term.clone());
+        }
+
+        let mut linearity = Linearity {
+            effectful_nodes: vec![],
+            recur_subregions: true,
+        };
+
+        self.find_effectful_nodes_in_expr(&expr, &mut linearity);
+
+        let mut effectful_classes = HashSet::new();
+        for expr in linearity.effectful_nodes {
+            let term = expr_to_term.get(&expr).unwrap();
+            effectful_classes.insert(self.node_of(term));
+        }
+
+        effectful_classes
+    }
+
+    /// Finds all the effectful nodes along the state edge.
+    /// When `recur_subregions` is true, it also finds effectful nodes in subregions.
     fn find_effectful_nodes_in_expr(&mut self, expr: &RcExpr, linearity: &mut Linearity) {
         linearity.effectful_nodes.push(Rc::as_ptr(expr));
         match expr.as_ref() {
@@ -100,16 +127,20 @@ impl<'a> Extractor<'a> {
                 assert!(input_contains_state);
 
                 self.find_effectful_nodes_in_expr(input, linearity);
-                self.find_effectful_nodes_in_expr(then_branch, linearity);
-                self.find_effectful_nodes_in_expr(else_branch, linearity);
+                if linearity.recur_subregions {
+                    self.find_effectful_nodes_in_expr(then_branch, linearity);
+                    self.find_effectful_nodes_in_expr(else_branch, linearity);
+                }
             }
             Expr::Switch(_pred, input, branches) => {
                 let input_contains_state = self.is_effectful(input);
                 assert!(input_contains_state);
 
                 self.find_effectful_nodes_in_expr(input, linearity);
-                for branch in branches {
-                    self.find_effectful_nodes_in_expr(branch, linearity);
+                if linearity.recur_subregions {
+                    for branch in branches {
+                        self.find_effectful_nodes_in_expr(branch, linearity);
+                    }
                 }
             }
             Expr::DoWhile(input, body) => {
@@ -117,7 +148,9 @@ impl<'a> Extractor<'a> {
                 assert!(input_contains_state);
 
                 self.find_effectful_nodes_in_expr(input, linearity);
-                self.find_effectful_nodes_in_expr(body, linearity);
+                if linearity.recur_subregions {
+                    self.find_effectful_nodes_in_expr(body, linearity);
+                }
             }
             Expr::Arg(ty) => {
                 assert!(ty.contains_state());

@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use crate::{
     from_egglog::FromEgglog,
     linearity::remove_invalid_effectful_nodes,
-    schema::{RcExpr, TreeProgram, Type},
+    schema::{Expr, RcExpr, TreeProgram, Type},
     typechecker::TypeChecker,
 };
 
@@ -28,6 +28,11 @@ pub(crate) struct Extractor<'a> {
 }
 
 impl<'a> Extractor<'a> {
+    fn is_region_node(&self, node_id: NodeId) -> bool {
+        let node = &self.egraph[&node_id];
+        matches!(node.op.as_str(), "DoWhile" | "If" | "Switch")
+    }
+
     fn node_to_eclass(&self, node_id: NodeId) -> ClassId {
         self.egraph.nid_to_cid(&node_id).clone()
     }
@@ -312,9 +317,14 @@ pub fn extract(
 
     let res = extract_without_linearity(extractor_not_linear);
     // TODO implement linearity
-    let effectful_regions = extractor_not_linear.find_effectful_nodes_in_program(&res.term);
+    let effectful_nodes_along_path =
+        extractor_not_linear.find_effectful_nodes_in_program(&res.term);
+    let effectful_regions_along_path = effectful_nodes_along_path
+        .into_iter()
+        .filter(|nid| extractor_not_linear.is_region_node(nid.clone()))
+        .collect::<HashSet<NodeId>>();
 
-    // TODO loop over effetful regions
+    // TODO loop over effectful regions
     // 1) extract effectful sub-regions
     // 2) extract current region from scratch, sub-regions get cost from previous extraction
     //    a) mark effectful nodes along the path as extractable (just for this region)

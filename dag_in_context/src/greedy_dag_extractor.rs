@@ -314,6 +314,14 @@ pub fn extract(
     // TODO implement linearity
     let effectful_regions = extractor_not_linear.find_effectful_nodes_in_program(&res.term);
 
+    // TODO loop over effetful regions
+    // 1) extract effectful sub-regions
+    // 2) extract current region from scratch, sub-regions get cost from previous extraction
+    //    a) mark effectful nodes along the path as extractable (just for this region)
+    //    b) extract the region
+
+    // To get the type of an e-node, we use the old extractor and query its type
+
     /*let mut linear_egraph = egraph.clone();
     remove_invalid_effectful_nodes(&mut linear_egraph, &effectful_regions, todo!());
 

@@ -156,7 +156,12 @@ impl<'a> Extractor<'a> {
                 assert!(ty.contains_state());
             }
             Expr::InContext(_ctx, body) => self.find_effectful_nodes_in_expr(body, linearity),
-            Expr::Function(_, _, _, body) => self.find_effectful_nodes_in_expr(body, linearity),
+            Expr::Function(_name, _inty, outty, body) => {
+                if !outty.contains_state() {
+                    panic!("Function output does not contain state");
+                }
+                self.find_effectful_nodes_in_expr(body, linearity)
+            }
             Expr::Const(_, _) => panic!("Const has no effect"),
         }
     }

@@ -543,81 +543,6 @@ where
     }
 }
 
-#[test]
-fn test_dag_extract() {
-    use crate::ast::*;
-    use crate::{print_with_intermediate_vars, prologue};
-    let prog = program!(
-        function(
-            "main",
-            tuplet!(intt()),
-            base(intt()),
-            add(
-                int(10),
-                get(
-                    dowhile(
-                        arg(),
-                        push(
-                            add(getat(0), int(10)),
-                            single(less_than(add(getat(0), int(10)), int(10)))
-                        )
-                    ),
-                    0
-                )
-            )
-        ),
-        function(
-            "niam",
-            tuplet!(intt()),
-            base(intt()),
-            add(
-                int(10),
-                get(
-                    dowhile(
-                        arg(),
-                        push(
-                            add(getat(0), int(10)),
-                            single(less_than(add(getat(0), int(10)), int(10)))
-                        )
-                    ),
-                    0
-                )
-            )
-        )
-    );
-
-    let string_prog = {
-        let (term, termdag) = prog.to_egglog();
-        let printed = print_with_intermediate_vars(&termdag, term);
-        format!("{}\n{printed}\n", prologue(),)
-    };
-
-    let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&string_prog).unwrap();
-    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
-    let mut termdag = TermDag::default();
-    let cost_model = DefaultCostModel;
-
-    let cost_set = extract(
-        &prog,
-        &serialized_egraph,
-        unextractables,
-        &mut termdag,
-        DefaultCostModel,
-    );
-    eprintln!("{}", termdag.to_string(&cost_set.term));
-
-    let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
-        + cost_model.get_op_cost("DoWhile")
-        + cost_model.get_op_cost("LessThan")
-        // while the same const is used three times, it is only counted twice
-        + cost_model.get_op_cost("Const") * 2.;
-    let expected_cost = cost_of_one_func * 2.
-        + cost_model.get_op_cost("Function") * 2.
-        + cost_model.get_op_cost("Program");
-
-    assert_eq!(cost_set.total, expected_cost);
-}
 // For a given enode, if it creates sub-regions
 // return the roots for these sub-regions
 fn enode_regions(
@@ -676,4 +601,86 @@ fn reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) -> HashSe
     }
 
     visited
+}
+
+#[test]
+fn test_dag_extract() {
+    use crate::ast::*;
+    use crate::{print_with_intermediate_vars, prologue};
+    let prog = program!(
+        function(
+            "main",
+            tuplet!(intt(), statet()),
+            tuplet!(intt(), statet()),
+            parallel!(
+                add(
+                    int(10),
+                    get(
+                        dowhile(
+                            parallel!(getat(0)),
+                            push(
+                                add(getat(0), int(10)),
+                                single(less_than(add(getat(0), int(10)), int(10)))
+                            )
+                        ),
+                        0
+                    )
+                ),
+                getat(1)
+            )
+        ),
+        function(
+            "niam",
+            tuplet!(intt(), statet()),
+            tuplet!(intt(), statet()),
+            parallel!(
+                add(
+                    int(10),
+                    get(
+                        dowhile(
+                            parallel!(get(arg(), 0)),
+                            push(
+                                add(getat(0), int(10)),
+                                single(less_than(add(getat(0), int(10)), int(10)))
+                            )
+                        ),
+                        0
+                    )
+                ),
+                getat(1)
+            )
+        )
+    );
+
+    let string_prog = {
+        let (term, termdag) = prog.to_egglog();
+        let printed = print_with_intermediate_vars(&termdag, term);
+        format!("{}\n{printed}\n", prologue(),)
+    };
+
+    let mut egraph = egglog::EGraph::default();
+    egraph.parse_and_run_program(&string_prog).unwrap();
+    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let mut termdag = TermDag::default();
+    let cost_model = DefaultCostModel;
+
+    let cost_set = extract(
+        &prog,
+        &serialized_egraph,
+        unextractables,
+        &mut termdag,
+        DefaultCostModel,
+    );
+    eprintln!("{}", termdag.to_string(&cost_set.term));
+
+    let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
+        + cost_model.get_op_cost("DoWhile")
+        + cost_model.get_op_cost("LessThan")
+        // while the same const is used three times, it is only counted twice
+        + cost_model.get_op_cost("Const") * 2.;
+    let expected_cost = cost_of_one_func * 2.
+        + cost_model.get_op_cost("Function") * 2.
+        + cost_model.get_op_cost("Program");
+
+    assert_eq!(cost_set.total, expected_cost);
 }

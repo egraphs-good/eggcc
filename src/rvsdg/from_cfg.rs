@@ -378,7 +378,6 @@ impl<'a> RvsdgBuilder<'a> {
             input_vars.push(var);
         }
 
-        let mut next = None;
         for (_, succ) in succs {
             // First, make sure that all inputs are correctly bound to inputs to the block.
             for (i, var) in input_vars.iter().copied().enumerate() {
@@ -387,23 +386,6 @@ impl<'a> RvsdgBuilder<'a> {
             // Loop until we reach a join point.
             let mut curr = succ;
             while curr != join_point {
-                // Join points are nodes with more than one predecessor
-                // (excluding loop back-edges).
-                // if self
-                //     .cfg
-                //     .graph
-                //     .neighbors_directed(curr, Direction::Incoming)
-                //     .filter(|neigh| {
-                //         let Some(mut dom) = self.dom.dominators(*neigh) else {
-                //             return true;
-                //         };
-                //         !dom.any(|n| n == curr)
-                //     })
-                //     .nth(1)
-                //     .is_some()
-                // {
-                //     break;
-                // }
                 curr = self.try_loop(curr)?.unwrap();
             }
 
@@ -421,14 +403,8 @@ impl<'a> RvsdgBuilder<'a> {
                 }
             }
             outputs.push(output_vec);
-            if let Some(next) = next {
-                assert_eq!(next, curr, "branch_info={:?}", self.join_point);
-            } else {
-                next = Some(curr);
-            }
         }
 
-        let next = next.unwrap();
         let pred = pred_op;
         let gamma_node = match bril_type {
             Type::Bool => {
@@ -469,7 +445,7 @@ impl<'a> RvsdgBuilder<'a> {
             self.store.insert(var, Operand::Project(i, gamma_node));
         }
 
-        Ok(Some(next))
+        Ok(Some(join_point))
     }
 
     fn translate_block(&mut self, block: NodeIndex) -> Result<()> {

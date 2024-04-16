@@ -34,8 +34,7 @@ pub(crate) struct Extractor<'a> {
 
 impl<'a> Extractor<'a> {
     fn is_region_node(&self, node_id: NodeId) -> bool {
-        let node = &self.egraph[&node_id];
-        matches!(node.op.as_str(), "DoWhile" | "If" | "Switch")
+        enode_regions(self.egraph, &self.egraph[&node_id]).is_some()
     }
 
     #[allow(dead_code)]

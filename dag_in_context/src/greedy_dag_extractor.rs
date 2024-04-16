@@ -21,7 +21,7 @@ pub(crate) struct Extractor<'a> {
     pub(crate) done: HashSet<NodeId>,
     pub(crate) cm: &'a dyn CostModel,
     pub(crate) termdag: &'a mut TermDag,
-    #[allow(dead_code)]
+    // Each term must correspond to a node in the egraph. We store that here
     pub(crate) correspondence: HashMap<Term, NodeId>,
     // use to get the expression corresponding to the term
     pub(crate) term_to_expr: HashMap<Term, RcExpr>,

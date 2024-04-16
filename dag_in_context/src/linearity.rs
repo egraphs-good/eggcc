@@ -161,22 +161,3 @@ impl<'a> Extractor<'a> {
         }
     }
 }
-
-pub(crate) fn is_effectful(node: &Node, egraph: &EGraph, type_cache: &TypeCache) -> bool {
-    let ty: Type = todo!("get type");
-    ty.contains_state()
-}
-
-/// Remove every node that is effectful but not in `effectful_nodes`
-pub(crate) fn remove_invalid_effectful_nodes(
-    egraph: &mut EGraph,
-    effectful_nodes: &HashSet<NodeId>,
-    type_cache: &TypeCache,
-) {
-    // TODO: in case is_effectful also takes egraph as an argument, we make a copy first.
-    let mut nodes = egraph.nodes.clone();
-    nodes.retain(|nodeid, node| {
-        effectful_nodes.contains(nodeid) || !is_effectful(node, egraph, type_cache)
-    });
-    egraph.nodes = nodes;
-}

@@ -558,6 +558,7 @@ fn enode_regions(
             egraph,
             egraph.nid_to_cid(branchlist).clone(),
         )),
+        ("Function", [_name, _args, _ret, body]) => Some(vec![egraph.nid_to_cid(body).clone()]),
         _ => None,
     }
 }

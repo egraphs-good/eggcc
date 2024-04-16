@@ -26,7 +26,7 @@ macro_rules! cfg_test_function_to_cfg {
 
 cfg_test_function_to_cfg!(
     fib_cfg,
-    include_str!("../../tests/brils/failing/mem/fib.bril"),
+    include_str!("../../tests/failing/brils/mem/fib.bril"),
     [
         ENTRY  = (Jmp) => "loop",
         "loop" = (true_cond("cond")) => "body",
@@ -38,7 +38,7 @@ cfg_test_function_to_cfg!(
 
 cfg_test_function_to_cfg!(
     queen,
-    include_str!("../../tests/small/failing/queens-func.bril"),
+    include_str!("../../tests/failing/small/queens-func.bril"),
     [
         ENTRY = (Cond { arg: "ret_cond".into(), val: true.into(), bril_type: Type::Bool  }) => "main.next.ret",
         ENTRY = (Cond { arg: "ret_cond".into(), val: false.into(), bril_type: Type::Bool  }) => "main.for.cond",
@@ -56,7 +56,7 @@ cfg_test_function_to_cfg!(
 
 cfg_test_function_to_cfg!(
     implicit_return,
-    include_str!("../../tests/small/implicit-return.bril"),
+    include_str!("../../tests/passing/small/implicit-return.bril"),
     [
         ENTRY = (Jmp) => EXIT,
     ]
@@ -64,7 +64,7 @@ cfg_test_function_to_cfg!(
 
 cfg_test_function_to_cfg!(
     diamond,
-    include_str!("../../tests/small/diamond.bril"),
+    include_str!("../../tests/passing/small/diamond.bril"),
     [
         ENTRY = (Cond { arg: "cond".into(), val: true.into(), bril_type: Type::Bool  }) => "B",
         ENTRY = (Cond { arg: "cond".into(), val: false.into(), bril_type: Type::Bool  }) => "C",
@@ -76,7 +76,7 @@ cfg_test_function_to_cfg!(
 
 cfg_test_function_to_cfg!(
     block_diamond,
-    include_str!("../../tests/small/block-diamond.bril"),
+    include_str!("../../tests/passing/small/block-diamond.bril"),
     [
         ENTRY = (true_cond("a_cond")) => "B",
         ENTRY = (false_cond("a_cond")) => "D",
@@ -91,7 +91,7 @@ cfg_test_function_to_cfg!(
 
 cfg_test_function_to_cfg!(
     unstructured,
-    include_str!("../../tests/small/should_fail/unstructured.bril"),
+    include_str!("../../tests/failing/small/unstructured.bril"),
     [
         ENTRY = (true_cond("a_cond")) => "B",
         ENTRY = (false_cond("a_cond")) => "C",
@@ -104,7 +104,7 @@ cfg_test_function_to_cfg!(
 
 cfg_test_function_to_cfg!(
     fib_shape_cfg,
-    include_str!("../../tests/small/fib_shape.bril"),
+    include_str!("../../tests/passing/small/fib_shape.bril"),
     [
         ENTRY = (Jmp) => "loop",
         "loop" = (true_cond("cond")) => "body",

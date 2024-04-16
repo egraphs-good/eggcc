@@ -6,9 +6,7 @@ from glob import glob
 from sys import stdout
 
 profiles = (
-  glob("tests/*.bril") +
-  glob("tests/small/*.bril") +
-  glob("tests/brils/passing/**/*.bril")
+  glob("tests/passing/**/*.bril")
 )
 
 modes = [

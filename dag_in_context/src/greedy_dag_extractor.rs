@@ -57,13 +57,8 @@ fn get_root(egraph: &egraph_serialize::EGraph) -> NodeId {
     res.0.clone()
 }
 
-pub fn serialized_egraph(
-    egglog_egraph: egglog::EGraph,
-) -> (egraph_serialize::EGraph, HashSet<String>) {
-    let config = SerializeConfig::default();
-    let egraph = egglog_egraph.serialize(config);
-
-    let unextractables = egglog_egraph
+pub fn get_unextractables(egraph: &egglog::EGraph) -> HashSet<String> {
+    let unextractables = egraph
         .functions
         .iter()
         .filter_map(|(name, func)| {
@@ -74,7 +69,16 @@ pub fn serialized_egraph(
             }
         })
         .collect();
-    (egraph, unextractables)
+    unextractables
+}
+
+pub fn serialized_egraph(
+    egglog_egraph: egglog::EGraph,
+) -> (egraph_serialize::EGraph, HashSet<String>) {
+    let config = SerializeConfig::default();
+    let egraph = egglog_egraph.serialize(config);
+
+    (egraph, get_unextractables(&egglog_egraph))
 }
 
 type Cost = NotNan<f64>;
@@ -180,15 +184,15 @@ fn calculate_cost_set(
         };
     }
 
-    let mut total = extractor.cm.get_op_cost(&node.op);
-    let mut costs = HashMap::from([(cid.clone(), total)]);
+    let mut shared_total = NotNan::new(0.).unwrap();
+    let mut unshared_total = extractor.cm.get_op_cost(&node.op);
+    let mut costs = HashMap::default();
 
     let unshared_children = extractor.cm.unshared_children(&node.op);
     if !extractor.cm.ignore_children(&node.op) {
         for (i, child_set) in child_cost_sets.iter().enumerate() {
             if unshared_children.contains(&i) {
-                // don't add to the cost set, but do add to the total
-                total += child_set.total;
+                unshared_total += child_set.total;
             } else {
                 for (child_cid, child_cost) in &child_set.costs {
                     // it was already present in the set
@@ -198,12 +202,15 @@ fn calculate_cost_set(
                             "Two different costs found for the same child enode!"
                         );
                     } else {
-                        total += child_cost;
+                        shared_total += child_cost;
                     }
                 }
             }
         }
     }
+    costs.insert(cid.clone(), unshared_total);
+    let total = unshared_total + shared_total;
+
     let sub_terms = child_cost_sets.iter().map(|cs| cs.term.clone()).collect();
 
     let term = extractor.get_term(node_id, sub_terms);
@@ -401,4 +408,80 @@ where
         debug_assert_eq!(r, self.set.is_empty());
         r
     }
+}
+
+#[test]
+fn test_dag_extract() {
+    use crate::ast::*;
+    use crate::{print_with_intermediate_vars, prologue};
+    let prog = program!(
+        function(
+            "main",
+            tuplet!(intt()),
+            base(intt()),
+            add(
+                int(10),
+                get(
+                    dowhile(
+                        arg(),
+                        push(
+                            add(getat(0), int(10)),
+                            single(less_than(add(getat(0), int(10)), int(10)))
+                        )
+                    ),
+                    0
+                )
+            )
+        ),
+        function(
+            "niam",
+            tuplet!(intt()),
+            base(intt()),
+            add(
+                int(10),
+                get(
+                    dowhile(
+                        arg(),
+                        push(
+                            add(getat(0), int(10)),
+                            single(less_than(add(getat(0), int(10)), int(10)))
+                        )
+                    ),
+                    0
+                )
+            )
+        )
+    );
+
+    let prog = {
+        let (term, termdag) = prog.to_egglog();
+        let printed = print_with_intermediate_vars(&termdag, term);
+        format!("{}\n{printed}\n", prologue(),)
+    };
+
+    let mut egraph = egglog::EGraph::default();
+    egraph.parse_and_run_program(&prog).unwrap();
+    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let mut termdag = TermDag::default();
+    let cost_model = DefaultCostModel;
+    let mut extractor = Extractor::new(
+        &cost_model,
+        &mut termdag,
+        Default::default(),
+        &serialized_egraph,
+        unextractables,
+    );
+    let cost_set = extract_without_linearity(&mut extractor);
+    eprintln!("{}", termdag.to_string(&cost_set.term));
+
+    let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
+        + cost_model.get_op_cost("DoWhile")
+        + cost_model.get_op_cost("LessThan")
+        // while the same const is used three times, it is only counted twice
+        + cost_model.get_op_cost("Const") * 2.;
+    let expected_cost = cost_of_one_func * 2.
+        + cost_model.get_op_cost("Function") * 2.
+        + cost_model.get_op_cost("Program");
+
+    assert_eq!(cost_set.total, expected_cost);
 }

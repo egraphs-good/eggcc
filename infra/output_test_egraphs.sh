@@ -1,5 +1,5 @@
 # TODO: take in file glob as command line argument
-PROFILES=(tests/passing/**/*.bril)
+PROFILES=(tests/passing/**/*.bril benchmarks/passing/**/*.bril)
 
 # exit script if serialized directory already exists
 if [ -d "./serialized" ]; then

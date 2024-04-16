@@ -5,6 +5,8 @@ use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use crate::linearity::remove_invalid_effectful_nodes;
+
 pub(crate) struct Extractor<'a> {
     pub(crate) cm: &'a dyn CostModel,
     pub(crate) termdag: &'a mut TermDag,
@@ -19,11 +21,15 @@ pub(crate) struct Extractor<'a> {
 impl<'a> Extractor<'a> {
     #[allow(dead_code)]
     pub(crate) fn eclass_of(&self, term: &Term) -> ClassId {
-        let term_enode = self
-            .correspondence
+        let term_enode = self.node_of(term);
+        self.egraph.nodes.get(&term_enode).unwrap().eclass.clone()
+    }
+
+    pub(crate) fn node_of(&self, term: &Term) -> NodeId {
+        self.correspondence
             .get(term)
-            .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term));
-        self.egraph.nodes.get(term_enode).unwrap().eclass.clone()
+            .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term))
+            .clone()
     }
 
     pub(crate) fn new(
@@ -232,8 +238,19 @@ pub fn extract(
         unextractables,
     );
 
-    // TODO use effectul regions to extract maintaining linearity
-    //let _effectful_regions = extractor_not_linear.find_effectful_nodes_in_program(&res.term);
+    let res = extract_without_linearity(extractor_not_linear);
+    let effectful_regions = extractor_not_linear.find_effectful_nodes_in_program(&res.term);
+    let mut linear_egraph = egraph.clone();
+    remove_invalid_effectful_nodes(&mut linear_egraph, &effectful_regions, todo!());
+
+    let extract = &mut Extractor::new(
+        &cost_model,
+        termdag,
+        Default::default(),
+        &linear_egraph,
+        unextractables,
+    );
+    let res = extract_without_linearity(extractor_not_linear);
 
     extract_without_linearity(extractor_not_linear)
 }

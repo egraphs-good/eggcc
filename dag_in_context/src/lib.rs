@@ -17,7 +17,7 @@ pub mod from_egglog;
 mod greedy_dag_extractor;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
-//mod linearity;
+mod linearity;
 mod optimizations;
 pub mod schema;
 pub mod schema_helpers;

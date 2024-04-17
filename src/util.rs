@@ -563,7 +563,7 @@ impl Run {
                 let optimized = dag_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
-                        result: tree_to_svg(&tree),
+                        result: tree_to_svg(&optimized),
                         file_extension: ".svg".to_string(),
                         name: "".to_string(),
                     }],

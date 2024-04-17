@@ -2,7 +2,7 @@
 
 DIRS = . dag_in_context
 
-all: test nits
+all: nits test
 
 test:
 	$(foreach dir,$(DIRS),(cd $(dir) && cargo insta test --release --unreferenced=reject) &&) :

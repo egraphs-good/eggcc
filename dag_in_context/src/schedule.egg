@@ -19,4 +19,5 @@
     ;;conditional-invariant-code-motion
     switch_rewrite
     loop-simplify
+    loop-splitting
     ))

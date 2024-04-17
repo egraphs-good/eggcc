@@ -13,7 +13,7 @@ expression: visualization.result
   v18: int = id v25;
   v19: int = id v9;
 .__29__:
-  v31: bool = lt v18 v19;
+  v31: bool = lt v18 v9;
   br v31 .__41__ .__36__;
 .__41__:
   v40: int = const 1;

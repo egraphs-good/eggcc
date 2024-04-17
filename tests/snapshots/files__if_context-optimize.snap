@@ -16,6 +16,6 @@ expression: visualization.result
   v18: int = id v15;
   v19: int = id v3;
 .__25__:
-  v27: bool = lt v18 v19;
+  v27: bool = lt v18 v3;
   print v27;
 }

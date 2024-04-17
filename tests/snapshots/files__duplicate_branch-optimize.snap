@@ -4,13 +4,5 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v2: int = const 4;
-  v5: bool = lt v2 v0;
-  br v5 .__14__ .__10__;
-.__14__:
-  v12: int = id v2;
-  jmp .__17__;
-.__10__:
-  v12: int = id v2;
-.__17__:
-  print v12;
+  print v2;
 }

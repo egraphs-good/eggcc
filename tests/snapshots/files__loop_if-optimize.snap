@@ -7,37 +7,37 @@ expression: visualization.result
   v5: int = id v2;
   v6: int = id v2;
 .__8__:
-  v10: bool = eq v6 v5;
-  br v10 .__32__ .__17__;
-.__32__:
-  v28: int = id v5;
-  v29: bool = id v10;
-  v30: int = id v6;
-.__37__:
-  br v29 .__51__ .__42__;
-.__51__:
-  v53: bool = const false;
-  v47: int = id v28;
-  v48: bool = id v53;
-  v49: int = id v30;
-.__57__:
-  v5: int = id v47;
-  v6: int = id v49;
-  br v48 .__8__ .__63__;
-.__42__:
-  v44: bool = const true;
-  v47: int = id v28;
-  v48: bool = id v44;
-  v49: int = id v30;
-  jmp .__57__;
-.__17__:
-  v19: int = const 1;
-  v21: int = add v5 v19;
-  v26: int = add v6 v19;
-  v28: int = id v21;
-  v29: bool = id v10;
-  v30: int = id v26;
-  jmp .__37__;
+  v11: bool = eq v6 v5;
+  br v11 .__33__ .__18__;
+.__33__:
+  v29: int = id v5;
+  v30: bool = id v11;
+  v31: int = id v6;
+.__38__:
+  br v11 .__54__ .__45__;
+.__54__:
+  v56: bool = const false;
+  v50: int = id v29;
+  v51: bool = id v56;
+  v52: int = id v31;
+.__60__:
+  v5: int = id v29;
+  v6: int = id v31;
+  br v51 .__8__ .__63__;
+.__45__:
+  v47: bool = const true;
+  v50: int = id v29;
+  v51: bool = id v47;
+  v52: int = id v31;
+  jmp .__60__;
+.__18__:
+  v20: int = const 1;
+  v22: int = add v5 v20;
+  v27: int = add v6 v20;
+  v29: int = id v22;
+  v30: bool = id v11;
+  v31: int = id v27;
+  jmp .__38__;
 .__63__:
   print v5;
 }

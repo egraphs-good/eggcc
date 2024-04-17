@@ -13,6 +13,7 @@ use std::io::Write;
 use std::process::Command;
 
 use bril_rs::{ConstOps, EffectOps, Instruction, Literal, Position, Type, ValueOps};
+use egglog::Value;
 use hashbrown::HashMap;
 use petgraph::algo::dominators;
 
@@ -25,7 +26,7 @@ use smallvec::SmallVec;
 use crate::cfg::{ret_id, Annotation, BranchOp, CondVal, SwitchCfgFunction};
 use crate::rvsdg::Result;
 
-use super::live_variables::{live_variables, Names};
+use super::live_variables::{live_variables, Names, VarType};
 use super::{
     live_variables::{LiveVariableAnalysis, VarId},
     BasicExpr, Id, Operand, RvsdgBody, RvsdgError,
@@ -80,6 +81,7 @@ pub(crate) fn cfg_func_to_rvsdg(
         analysis,
         dom,
         store: Default::default(),
+        var_types: Default::default(),
         join_point: Default::default(),
         function_types: function_types.clone(),
     };
@@ -146,6 +148,7 @@ pub(crate) struct RvsdgBuilder<'a> {
     analysis: LiveVariableAnalysis,
     dom: Dominators<NodeIndex>,
     store: HashMap<VarId, Operand>,
+    var_types: HashMap<VarId, Type>,
     function_types: FunctionTypes,
 }
 
@@ -397,9 +400,37 @@ impl<'a> RvsdgBuilder<'a> {
             let mut output_vec = Vec::new();
             let fill_output = output_vars.is_empty();
             for var in live_vars.live_in.iter() {
-                let Some(op) = self.store.get(&var).copied() else {
-                    continue;
-                };
+                let op = self.store.get(&var).copied().unwrap_or_else(|| {
+                    // We have a live variable input to the join point, but it's not bound in this branch.
+                    // We need to bind it to some value; that value won't be
+                    // reachable in the actual program so we could do anything.
+                    let Some(ty) = self.analysis.var_types.get_type(var) else {
+                        panic!(
+                            "unknown type for variable {var:?} (name {:?}, join point {join_point:?})",
+                            self.analysis.intern.get_var(var)
+                        );
+                    };
+                    match ty {
+                        VarType::Bril(Type::Pointer(_)) => {
+                            todo!()
+                        }
+                        VarType::Bril(bril_ty) => {
+                            let lit = match bril_ty {
+                                Type::Int => Literal::Int(0),
+                                Type::Bool => Literal::Bool(false),
+                                Type::Float => Literal::Float(0.0),
+                                Type::Char => Literal::Char('x'),
+                                Type::Pointer(_) => unreachable!(),
+                            };
+                            let op = get_id(
+                                &mut self.expr,
+                                RvsdgBody::BasicOp(BasicExpr::Const(ConstOps::Const, lit, bril_ty)),
+                            );
+                            Operand::Project(0, op)
+                        }
+                        VarType::State => todo!(),
+                    }
+                });
                 output_vec.push(op);
                 if fill_output {
                     output_vars.push(var);

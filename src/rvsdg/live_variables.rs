@@ -4,9 +4,9 @@
 //! optimized) variant of the live variable analysis described in "Iterative
 //! Data-flow Analysis, Revisited", by Keith D. Cooper, Timothy J. Harvey, and
 //! Ken Kennedy.
-use std::fmt;
+use std::{fmt, mem};
 
-use bril_rs::{EffectOps, Instruction, ValueOps};
+use bril_rs::{self, EffectOps, Instruction, ValueOps};
 use fixedbitset::FixedBitSet;
 use hashbrown::HashMap;
 use indexmap::IndexSet;
@@ -25,6 +25,7 @@ use crate::{
 
 pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
     let mut analysis = LiveVariableAnalysis::default();
+    let mut types = mem::take(&mut analysis.var_types);
     let mut names = Names::default();
     let mut dfs = DfsPostOrder::new(&cfg.graph, cfg.entry);
     let mut worklist = WorkList::new(cfg);
@@ -51,11 +52,13 @@ pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
             if let BranchOp::Cond {
                 arg,
                 val: CondVal { val: _, of },
-                bril_type: _,
+                bril_type,
             } = &edge.weight().op
             {
+                let var = names.intern(arg.clone());
+                types.set_var_type(var, VarType::Bril(bril_type.clone()));
                 if *of > 1 {
-                    state.gen.insert(names.intern(arg.clone()));
+                    state.gen.insert(var);
                 }
                 // of == 1 is an unconditional jump.
             }
@@ -72,6 +75,7 @@ pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
                 }
                 Annotation::AssignRet { src } => {
                     state.gen.insert(names.intern(src.clone()));
+                    state.kills.insert(names.intern(ret_id()));
                 }
             }
         }
@@ -79,13 +83,23 @@ pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
         // Finally the instructions themselves.
         for instr in weight.instrs.iter().rev() {
             match instr {
-                Instruction::Constant { dest, .. } => {
+                Instruction::Constant {
+                    dest, const_type, ..
+                } => {
                     let var = names.intern(dest);
+                    types.set_var_type(var, VarType::Bril(const_type.clone()));
                     state.kills.insert(var);
                     state.gen.remove(var);
                 }
-                Instruction::Value { args, dest, op, .. } => {
+                Instruction::Value {
+                    args,
+                    dest,
+                    op,
+                    op_type,
+                    ..
+                } => {
                     let dest = names.intern(dest);
+                    types.set_var_type(dest, VarType::Bril(op_type.clone()));
                     state.kills.insert(dest);
                     state.gen.remove(dest);
                     for arg in args {
@@ -132,6 +146,7 @@ pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
     }
 
     analysis.intern = names;
+    analysis.var_types = types;
     analysis
 }
 
@@ -213,6 +228,12 @@ impl VarSet {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub(crate) enum VarType {
+    Bril(bril_rs::Type),
+    State,
+}
+
 /// The per-basic block state associated with the live variable analysis.
 #[derive(Debug)]
 pub(crate) struct LiveVariableState {
@@ -226,11 +247,27 @@ pub(crate) struct LiveVariableState {
     gen: VarSet,
 }
 
+#[derive(Default)]
+pub(crate) struct VarTypes {
+    data: HashMap<VarId, VarType>,
+}
+
+impl VarTypes {
+    fn set_var_type(&mut self, var: VarId, ty: VarType) {
+        assert_eq!(*self.data.entry(var).or_insert(ty.clone()), ty);
+    }
+
+    pub(crate) fn get_type(&self, var: VarId) -> Option<VarType> {
+        self.data.get(&var).cloned()
+    }
+}
+
 pub(crate) struct LiveVariableAnalysis {
     pub(crate) intern: Names,
     /// The variable associated with [`state_id`].
     pub(crate) state_var: VarId,
     analysis: HashMap<NodeIndex, LiveVariableState>,
+    pub(crate) var_types: VarTypes,
 }
 
 impl Default for LiveVariableAnalysis {
@@ -239,9 +276,11 @@ impl Default for LiveVariableAnalysis {
             intern: Names::default(),
             state_var: VarId(0),
             analysis: HashMap::default(),
+            var_types: Default::default(),
         };
         let state_var = result.intern.intern(state_id());
         result.state_var = state_var;
+        result.var_types.set_var_type(state_var, VarType::State);
         result
     }
 }

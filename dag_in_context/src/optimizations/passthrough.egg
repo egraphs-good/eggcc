@@ -8,6 +8,7 @@
 ;       :ruleset always-run)
 
 ;; Pass through switch arguments
+;; TODO: Similar fix as below with InContext nodes
 (rule ((= lhs (Get switch i))
        (= switch (Switch pred inputs branches))
        (= (ListExpr-length branches) 2)

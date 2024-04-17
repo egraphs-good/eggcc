@@ -11,6 +11,6 @@
     y: int = mul input neg;
     jmp .end;
   .end:
-    z: bool = lt y zero;
+    z: bool = le y zero;
     print z;
 }

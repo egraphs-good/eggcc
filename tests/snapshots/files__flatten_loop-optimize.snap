@@ -35,12 +35,12 @@ expression: visualization.result
   v74: int = id v48;
   v75: int = id v49;
 .__97__:
-  v45: int = id v70;
-  v46: int = id v71;
+  v45: int = id v45;
+  v46: int = id v46;
   v47: int = id v73;
-  v48: int = id v74;
-  v49: int = id v75;
-  br v72 .__51__ .__106__;
+  v48: int = id v48;
+  v49: int = id v49;
+  br v53 .__51__ .__106__;
 .__106__:
   v109: int = add v45 v46;
   v111: bool = const true;
@@ -54,7 +54,7 @@ expression: visualization.result
   v11: int = id v34;
   v12: int = id v35;
   v13: int = id v36;
-  br v33 .__15__ .__125__;
+  br v17 .__15__ .__125__;
 .__62__:
   v65: bool = const false;
   v70: int = id v45;

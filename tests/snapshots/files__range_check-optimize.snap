@@ -14,28 +14,17 @@ expression: visualization.result
   print v21;
   v19: int = id v4;
 .__27__:
-  v28: int = const 6;
-  v30: bool = lt v19 v28;
-  v35: int = const 1;
-  v37: int = add v19 v35;
-  br v30 .__46__ .__39__;
-.__46__:
-  v48: bool = const true;
-  v43: int = id v37;
-  v44: bool = id v48;
-.__51__:
-  v4: int = id v43;
-  br v44 .__6__ .__56__;
-.__39__:
-  v41: bool = const false;
-  v43: int = id v37;
-  v44: bool = id v41;
-  jmp .__51__;
+  v29: int = const 1;
+  v31: int = add v4 v29;
+  v34: int = const 6;
+  v36: bool = lt v4 v34;
+  v4: int = id v31;
+  br v36 .__6__ .__40__;
 .__15__:
   v14: int = const 2;
   print v14;
   v19: int = id v4;
   jmp .__27__;
-.__56__:
+.__40__:
   print v4;
 }

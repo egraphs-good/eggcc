@@ -284,7 +284,8 @@
         ; usage of the value x inside the if region
         (Get ctx i)
       )
-      ((set (hi-bound (Get ctx i)) (IntB (- v 1)))) ; expr < value was true, so we know expr < (hi-bound value) - 1
+      ; expr < value was true, so we know expr is at most (hi-bound value) - 1
+      ((set (hi-bound (Get ctx i)) (IntB (- v 1)))) 
       :ruleset interval-analysis)
 (rule (
         ; expr < value
@@ -300,7 +301,8 @@
         ; usage of the value x inside the if region
         (Get ctx i)
       )
-      ((set (lo-bound (Get ctx i)) (IntB v))) ; x < y was false, so we know expr >= (lo-bound value)
+      ; expr < value was false, so we know expr is at least (lo-bound value)
+      ((set (lo-bound (Get ctx i)) (IntB v))) 
       :ruleset interval-analysis)
 
 (rule (
@@ -317,7 +319,8 @@
         ; usage of the value x inside the if region
         (Get ctx i)
       )
-      ((set (lo-bound (Get ctx i)) (IntB (+ v 1)))) ; value < expr was true, so we know expr >= (lo-bound value) + 1
+      ; value < expr was true, so we know expr is at least (lo-bound value) + 1
+      ((set (lo-bound (Get ctx i)) (IntB (+ v 1)))) 
       :ruleset interval-analysis)
 (rule (
         ; value < expr
@@ -333,5 +336,6 @@
         ; usage of the value x inside the if region
         (Get ctx i)
       )
-      ((set (hi-bound (Get ctx i)) (IntB v))) ; value < expr was false, so we know expr <= (hi-bound value)
+      ; value < expr was false, so we know expr is at most (hi-bound value)
+      ((set (hi-bound (Get ctx i)) (IntB v))) 
       :ruleset interval-analysis)

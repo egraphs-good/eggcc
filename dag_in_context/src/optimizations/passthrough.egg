@@ -34,8 +34,8 @@
 ;; Pass through if arguments
 (rule ((= if_get (Get if i))
        (= if (If pred inputs then_ else_))
-       (= (Get then_ i) (Get (InContext (InIf true pred inputs) (Arg ty)) j))
-       (= (Get else_ i) (Get (InContext (InIf false pred inputs) (Arg ty)) j))
+       (= (Get then_ i) (Get (InContext thn_ctx_ (Arg ty)) j))
+       (= (Get else_ i) (Get (InContext else_ctx_ (Arg ty)) j))
        (= passed-through (Get inputs j))
 )
       (

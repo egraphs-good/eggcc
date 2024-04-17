@@ -18,55 +18,54 @@
 ;         if_else
 ;         i += 1
 
-;; TODO: if regions
-; (rule ((= do_while (DoWhile inputs pred_and_body))
-;        (HasArgType do_while do_while_arg_type)
+(rule ((= do_while (DoWhile inputs pred_and_body))
+       (HasArgType do_while do_while_arg_type)
 
-;        (= a (Get inputs 1))
-;        (= 2 (tuple-length inputs))
+       (= a (Get inputs 1))
+       (= 2 (tuple-length inputs))
 
-;        (= i (Get (Arg inner_arg_type) 1))
-;        (= one (Const (Int 1) inner_arg_type))
+       (= i (Get (Arg inner_arg_type) 1))
+       (= one (Const (Int 1) inner_arg_type))
 
-;        (= loop_pred (Get pred_and_body 0))
-;        (= if_node (Get pred_and_body 1))
-;        (= i_plus_one (Get pred_and_body 2))
-;        (= 3 (tuple-length pred_and_body))
+       (= loop_pred (Get pred_and_body 0))
+       (= if_node (Get pred_and_body 1))
+       (= i_plus_one (Get pred_and_body 2))
+       (= 3 (tuple-length pred_and_body))
 
-;        (= loop_pred (Bop (LessThan) i c))
-;        (= i_plus_one (Bop (Add) i one))
-;        (= if_node (If if_pred if_then if_else))
-;        (= if_pred (Bop (LessEq) i b))
+       (= loop_pred (Bop (LessThan) i c))
+       (= i_plus_one (Bop (Add) i one))
+       (= if_node (If if_pred if_then if_else))
+       (= if_pred (Bop (LessEq) i b))
 
-;        (= (ival a) (IntI a1 a2))
-;        (= (ival b) (IntI b1 b2))
-;        (= (ival c) (IntI c1 c2))
-;        (< a2 b1)
-;        (<= b2 c1)
+       (= (ival a) (IntI a1 a2))
+       (= (ival b) (IntI b1 b2))
+       (= (ival c) (IntI c1 c2))
+       (< a2 b1)
+       (<= b2 c1)
 
-;        (= b (Const b_const inner_arg_type))
-;        (= c (Const c_const inner_arg_type)))
+       (= b (Const b_const inner_arg_type))
+       (= c (Const c_const inner_arg_type)))
 
-;       ((let a_to_b (DoWhile inputs (Concat
-;             (Single (Bop (LessThan) i b))
-;             (Concat
-;                 (Single if_then)
-;                 (Single i_plus_one)
-;             )
-;         )))
-;        (let b_to_c (DoWhile a_to_b (Concat
-;             (Single (Bop (LessThan) i c))
-;             (Concat
-;                 (Single if_else)
-;                 (Single i_plus_one)
-;             )
-;         )))
+      ((let a_to_b (DoWhile inputs (Concat
+            (Single (Bop (LessThan) i b))
+            (Concat
+                (Single if_then)
+                (Single i_plus_one)
+            )
+        )))
+       (let b_to_c (DoWhile a_to_b (Concat
+            (Single (Bop (LessThan) i c))
+            (Concat
+                (Single if_else)
+                (Single i_plus_one)
+            )
+        )))
 
-;        (let b_to_c_if (If
-;             (Bop (LessThan) (Const b_const do_while_arg_type) (Const c_const do_while_arg_type))
-;             b_to_c
-;             a_to_b))
+       (let b_to_c_if (If
+            (Bop (LessThan) (Const b_const do_while_arg_type) (Const c_const do_while_arg_type))
+            b_to_c
+            a_to_b))
 
-;        (union do_while b_to_c_if))
+       (union do_while b_to_c_if))
 
-;       :ruleset loop-splitting)
+      :ruleset loop-splitting)

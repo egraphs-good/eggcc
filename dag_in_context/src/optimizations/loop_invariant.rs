@@ -136,9 +136,9 @@ fn test_invariant_detect() -> crate::Result {
 
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4), getat(0)),
-        concat_par(
+        concat(
             parallel!(pred.clone(), not_inv.clone(), getat(1)),
-            concat_par(parallel!(getat(2), getat(3)), single(print.clone())),
+            concat(parallel!(getat(2), getat(3)), single(print.clone())),
         ),
     )
     .with_arg_types(tuplet!(statet()), output_ty.clone());
@@ -190,15 +190,15 @@ fn test_invariant_hoist() -> crate::Result {
 
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4), getat(0)),
-        concat_par(
+        concat(
             parallel!(pred.clone(), not_inv.clone(), getat(1)),
-            concat_par(parallel!(getat(2), getat(3)), single(print.clone())),
+            concat(parallel!(getat(2), getat(3)), single(print.clone())),
         ),
     )
     .with_arg_types(tuplet!(statet()), output_ty.clone());
 
     let main_fun = function("main", tuplet!(statet()), output_ty.clone(), my_loop.clone()).func_add_context();
-
+    // print!("\n\n{}\n\n", main_fun.clone());
     let build = format!(
         "(let loop {})
         (let inv {})
@@ -206,11 +206,16 @@ fn test_invariant_hoist() -> crate::Result {
         (let not_inv {})
         (let print {})
         (let inner_inv {})
-        (let main {})",
+        (let main {})
+        (let new_input)",
         my_loop, inv, pred, not_inv, print, inner_inv, main_fun
     );
+
+    print!("{}\n\n", build.clone());
+
+
     let check = format!(
-        "."
+        "(check )"
     );
 
     egglog_test(

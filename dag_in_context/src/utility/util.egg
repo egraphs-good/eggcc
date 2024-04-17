@@ -39,10 +39,31 @@
        ((Get tuple (+ 1 i)))
        :ruleset always-run)
 
-(rule ((Concat ord expr1 expr2)
-       (= len1 (tuple-length expr1))
-       (= ith (tuple-ith expr2 i)))
-       ((union (tuple-ith (Concat ord expr1 expr2) (+ len1 i)) ith)) :ruleset always-run)
+;; descend left
+(rule ((Get (Concat expr1 expr2) i)
+       (= (tuple-length expr1) len1)
+       (< i len1))
+      ((union (Get (Concat expr1 expr2) i)
+              (Get expr1 i)))
+       :ruleset always-run)
+;; descend right
+(rule ((Get (Concat expr1 expr2) i)
+       (= (tuple-length expr1) len1)
+       (>= i len1))
+      ((union (Get (Concat expr1 expr2) i)
+              (Get expr2 (- i len1))))
+       :ruleset always-run)
+
+
+(relation IsLeaf (Expr))
+(rule ((Arg ty)) ((IsLeaf (Arg ty))) :ruleset always-run)
+(rule ((Const val ty)) ((IsLeaf (Const val ty))) :ruleset always-run)
+(rule ((Empty ty)) ((IsLeaf (Empty ty))) :ruleset always-run)
+
+(rewrite (Concat (Concat a b) c)
+         (Concat a (Concat b c))
+         :ruleset always-run)
+
 
 
 ;; This Expr size actually do the same thing as cost function.
@@ -68,7 +89,7 @@
        (= sum (Expr-size tup))) 
       ((set (Expr-size expr) sum)) :ruleset always-run)
 
-(rule ((= expr (Concat order x y)) 
+(rule ((= expr (Concat x y)) 
        (= sum (+ (Expr-size y) (Expr-size x)))) 
       ((set (Expr-size expr) sum)) :ruleset always-run)
 
@@ -104,7 +125,7 @@
 (rule ((Nil)) 
       ((set (ListExpr-size (Nil)) 0))  :ruleset always-run)
 
-(rule ((= expr (Alloc e state ty)) ;; do state edge's expr should be counted?
+(rule ((= expr (Alloc id e state ty)) ;; do state edge's expr should be counted?
         (= sum (Expr-size e))) 
         ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
 
@@ -119,6 +140,5 @@
          (Single (Get expr x)) :ruleset always-run)
 (rule ((= f (SubTuple expr a b)) (> b 1))
       ((union f 
-         (Concat par ;; just make it parallel here
-               (Single (Get expr a))
-               (SubTuple expr (+ a 1) (- b 1))))) :ruleset always-run)
+         (Concat (Single (Get expr a))
+                 (SubTuple expr (+ a 1) (- b 1))))) :ruleset always-run)

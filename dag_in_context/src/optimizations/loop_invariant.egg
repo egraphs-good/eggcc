@@ -41,7 +41,7 @@
 ;; if a output branch/pred is invariant, it's also boundary-Expr
 (rule ((= true (is-inv-Expr loop expr))
        (= loop (DoWhile in pred_out))
-       (= expr (tuple-ith pred_out i))) 
+       (= expr (Get pred_out i))) 
       ((boundary-Expr loop expr)) :ruleset boundary-analysis)
 
 
@@ -52,8 +52,6 @@
 (function InExtendedLoop (Expr Expr Expr) Assumption)
 
 ;; mock function
-(relation MOCKContextOf (Expr Assumption))
-
 (ruleset loop-inv-motion)
 
 ;; This rule allow hoist the generated new loop again
@@ -65,7 +63,7 @@
        (= loop (DoWhile in pred_out))
        ;; the outter assumption of the loop 
        ;; Question: what if there are multiple loop_assumption?
-       (MOCKContextOf loop loop_ctx)
+       (ContextOf loop loop_ctx)
        (HasType in in_type)
        (HasType inv inv_type)
        (= inv_type (Base base_inv_ty))
@@ -73,7 +71,7 @@
        (= false (hoisted-loop in pred_out))
        (= len (tuple-length in)))
       (;; create a list of [(Get (old input) 0) ... hoisted_term]
-       (let new_input (Concat par (SubTuple in 0 len) (Single (Subst loop_ctx in inv))))
+       (let new_input (Concat (SubTuple in 0 len) (Single (Subst loop_ctx in inv))))
        ;; append (Get (Arg id) len+1) to end of output
        (let new_in_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
        (let new_out_branch (Get (Arg new_in_type) len))
@@ -82,7 +80,7 @@
        ;; this two subst only change arg to arg with new type
        (let substed_pred_out (Subst assum (Arg new_in_type) pred_out))
        (let inv_in_new_loop (Subst assum (Arg new_in_type) inv))
-       (let new_pred_out (Concat par substed_pred_out (Single new_out_branch)))
+       (let new_pred_out (Concat substed_pred_out (Single new_out_branch)))
        
        (let new_loop (DoWhile new_input new_pred_out))
        (union (InContext (InLoop new_input new_pred_out) inv_in_new_loop) 

@@ -139,9 +139,9 @@ fn test_sub_tuple() -> crate::Result {
     let ty = tuplet!(intt(), intt(), intt());
     let arg = arg().with_arg_types(ty.clone(), ty.clone());
     let build = format!("(let expr (SubTuple {} 0 3))", arg);
-    let out = concat_par(
+    let out = concat(
         single(getat(0)),
-        concat_par(single(getat(1)), single(getat(2))),
+        concat(single(getat(1)), single(getat(2))),
     )
     .with_arg_types(ty.clone(), ty);
 

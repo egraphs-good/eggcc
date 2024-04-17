@@ -1,0 +1,16 @@
+# ARGS: 1
+@main(input: int) {
+  zero: int = const 0;
+  cond: bool = le input zero;
+  br cond .then .else;
+  .then:
+    x: int = id zero;
+    jmp .end;
+  .else:
+    x: int = const 3;
+    jmp .end;
+  .end:
+    ten: int = const 10;
+    z: bool = lt x ten;
+    print z;
+}

@@ -267,8 +267,6 @@
       ((set (hi-bound lhs) (IntB  hi)))
       :ruleset interval-analysis)
 
-
-
 ; If the If takes a tuple
 (rule (
         ; expr < value
@@ -338,4 +336,24 @@
       )
       ; value < expr was false, so we know expr is at most (hi-bound value)
       ((set (hi-bound (Get ctx i)) (IntB v))) 
+      :ruleset interval-analysis)
+
+;; Push intervals for inputs into if region
+(rule (
+       (= if (If pred inputs then_ else_))
+       (= ctx (InContext (InIf b pred inputs) (Arg ty)))
+       (HasType inputs ty)
+       (= lo (lo-bound (Get inputs i)))
+
+      )
+      ((set (lo-bound (Get ctx i)) lo))
+      :ruleset interval-analysis)
+(rule (
+       (= if (If pred inputs then_ else_))
+       (= ctx (InContext (InIf b pred inputs) (Arg ty)))
+       (HasType inputs ty)
+       (= hi (hi-bound (Get inputs i)))
+
+      )
+      ((set (hi-bound (Get ctx i)) hi))
       :ruleset interval-analysis)

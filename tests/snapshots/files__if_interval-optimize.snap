@@ -3,6 +3,6 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v2: bool = const false;
+  v2: bool = const true;
   print v2;
 }

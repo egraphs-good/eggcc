@@ -21,6 +21,8 @@
 ;   2. count loop bodies as higher cost, so moving a multiplication outside
 ;       the loop reduces the overall cost of the program
 
+(ruleset loop-strength-reduction)
+
 
 ; Finds invariants/constants within a body.
 ; Columns: body; value of invariant in inputs; value of invariant in outputs
@@ -29,60 +31,58 @@
 ;; TODO (start by doing constant only)
 ;;             loop in   out
 (relation inv (Expr Expr Expr))
-(relation inv (Body Operand Operand))
 (rule (
-    (= theta (Theta pred inputs outputs))
-    (= (VecOperand-get outputs i) (Arg i)))
-    ((inv theta (VecOperand-get inputs i) (Arg i))))
+    (= loop (DoWhile inputs pred-and-body))
+    (= (Get outputs (+ i 1)) (Get (Arg arg-type) i)))
+    ((inv loop (Get inputs (+ i 1)) (Get (Arg arg-type) i))) :ruleset always-run)
 (rule (
-    (= c (Node (PureOp (Const (IntT) (const) num))))
-    (= theta (Theta pred inputs outputs))
-    (Body-contains-Operand theta contains-i c)
+    (= constant (Const c out-type))
+    (= loop (DoWhile inputs pred-and-body))
+    (ContextOf constant (InLoop inputs pred-and-body))
+    (HasType inputs in-type)
     )
-    ((inv theta c c)))
+    ((inv loop (Const c in-type) constant)) :ruleset always-run)
 
 (rule 
     (
-        ;; Find theta
-        (= old-theta (Theta pred (VO inputs) (VO outputs)))
+        ;; Find loop
+        (= old-loop (DoWhile inputs pred-and-outputs))
 
         ; Find loop variable (argument that gets incremented with an invariant)
-        (inv old-theta loop-incr-input loop-incr-output)
-        (= (VecOperand-get (VO outputs) i) (Node (PureOp (badd (IntT) (Arg i) loop-incr-output))))
+        (inv old-loop loop-incr-in loop-incr-out)
+        ; Since the first el of pred-and-outputs is the pred, we need to offset i
+        (= (Get pred-and-outputs (+ i 1)) (Bop (Add) (Get (Arg arg-type) i) loop-incr-out))
 
         ; Find invariant where input is same as output, or constant
-        (inv old-theta c-input c-output)
+        (inv old-loop c-in c-out)
 
         ; Find multiplication of loop variable and invariant
-        (= old-exp (Node (PureOp (bmul (IntT) c-output (Arg i)))))
-        (Body-contains-Operand old-theta contains-i old-exp)
+        (= old-mul (Bop (Mul) c-out (Get (Arg arg-type) i)))
+        (ContextOf old-mul (InLoop inputs pred-and-outputs))
     )
     (
         ; Each time we need to update d by the product of the multiplied constant and the loop increment
-        (let addend (Node (PureOp (bmul (IntT) c-output loop-incr-output))))
+        (let addend (Bop (Mul) c-out loop-incr-out))
+
         ; n is index of our new, temporary variable d
-        (let n (vec-length inputs))
+        (let n (tuple-length inputs))
 
         ; Initial value of d is i * c
-        (let d-init (Node (PureOp (bmul (IntT) c-input (VecOperand-get (VO inputs) i)))))
+        (let d-init (Bop (Mul) c-in (Get inputs i)))
 
         ; Value of d in loop
-        (let d-out (Node (PureOp (badd (IntT) (Arg n) addend))))
+        (let d-out (Bop (Add) (Get (Arg arg-type) i) addend))
 
         ; Construct optimized theta
-        (let new-inputs (VO (vec-push inputs d-init)))
-        (let new-theta 
-            (Theta pred new-inputs (VO (vec-push outputs d-out)))
-        )
+        (let new-inputs (Concat inputs (Single d-init)))
+        (let new-pred-and-outputs (Concat pred-and-outputs (Single d-out)))
+        (let new-loop (DoWhile new-inputs new-pred-and-outputs))
 
         ; Substitute d for the *i expression
-        (can-subst-Operand-beneath (ThetaCtx new-inputs) old-exp (Arg n))
+        (Subst inf-fuel (InLoop new-inputs new-pred-and-outputs) (Get (Arg arg-type) n) old-mul)
 
         ; Project all but last
-        (union old-theta
-            (OperandGroup
-                (BodyToVecOperand n new-theta)
-            )
-        )
+        (union old-loop (SubTuple new-loop 0 n))
     )
+    :ruleset loop-strength-reduction
 )

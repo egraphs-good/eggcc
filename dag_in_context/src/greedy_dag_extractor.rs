@@ -128,7 +128,7 @@ impl<'a> Extractor<'a> {
 
         let reachable_from = region_roots
             .iter()
-            .map(|root| (root.clone(), reachable_classes(egraph, root.clone())))
+            .map(|root| (root.clone(), region_reachable_classes(egraph, root.clone())))
             .collect();
 
         Extractor {
@@ -136,10 +136,7 @@ impl<'a> Extractor<'a> {
             termdag,
             correspondence,
             egraph,
-            costs: FxHashMap::<ClassId, CostSet>::with_capacity_and_hasher(
-                egraph.classes().len(),
-                Default::default(),
-            ),
+            costs: Default::default(),
             unextractables,
             term_to_expr: Default::default(),
             typechecker: TypeChecker::new(original_prog, true),
@@ -256,46 +253,59 @@ impl<'a> Extractor<'a> {
     }
 }
 
-/// Handles the edge case of cycles, then calls get_node_cost
+/// Calculates the cost set of a node based on cost sets of children.
+/// Handles cycles by returning a cost set with infinite cost.
+/// Returns None when costs for children are not yet available.
 fn calculate_cost_set(
     egraph: &egraph_serialize::EGraph,
     rootid: ClassId,
     node_id: NodeId,
     extractor: &mut Extractor,
-) -> CostSet {
+) -> Option<CostSet> {
     let node = &egraph[&node_id];
     let cid = egraph.nid_to_cid(&node_id);
 
-    let children_classes = node
-        .children
-        .iter()
-        .map(|c| egraph.nid_to_cid(c).clone())
-        .collect::<Vec<ClassId>>();
-
     let region_costs = extractor.costs.get(&rootid).unwrap();
-    let child_cost_sets: Vec<_> = children_classes
+    // get the cost sets for the children
+    let child_cost_sets = enode_children(egraph, node)
         .iter()
-        .map(|c| region_costs.get(c).unwrap())
-        .collect();
+        .filter_map(|(cid, is_region_root)| {
+            if *is_region_root {
+                Some((extractor.costs.get(cid)?.get(cid)?, *is_region_root))
+            } else {
+                if let Some(cost_set) = region_costs.get(cid) {
+                    Some((cost_set, *is_region_root))
+                } else {
+                    None
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+    // if any are unavailable, we return none from this whole function
+    if child_cost_sets.len() < node.children.len() {
+        return None;
+    }
 
     // cycle detection
-    if child_cost_sets.iter().any(|cs| cs.costs.contains_key(cid)) {
-        return CostSet {
+    if child_cost_sets
+        .iter()
+        .any(|(cs, _is_region_root)| cs.costs.contains_key(cid))
+    {
+        return Some(CostSet {
             costs: Default::default(),
             total: std::f64::INFINITY.try_into().unwrap(),
             // returns junk children since this cost set is guaranteed to not be selected.
             term: extractor.termdag.app(node.op.as_str().into(), vec![]),
-        };
+        });
     }
 
     let mut shared_total = NotNan::new(0.).unwrap();
     let mut unshared_total = extractor.cm.get_op_cost(&node.op);
     let mut costs = HashMap::default();
 
-    let unshared_children = extractor.cm.unshared_children(&node.op);
     if !extractor.cm.ignore_children(&node.op) {
-        for (i, child_set) in child_cost_sets.iter().enumerate() {
-            if unshared_children.contains(&i) {
+        for (child_set, is_region_root) in child_cost_sets.iter() {
+            if *is_region_root {
                 unshared_total += child_set.total;
             } else {
                 for (child_cid, child_cost) in &child_set.costs {
@@ -315,11 +325,14 @@ fn calculate_cost_set(
     costs.insert(cid.clone(), unshared_total);
     let total = unshared_total + shared_total;
 
-    let sub_terms = child_cost_sets.iter().map(|cs| cs.term.clone()).collect();
+    let sub_terms = child_cost_sets
+        .iter()
+        .map(|(cs, _is_region_root)| cs.term.clone())
+        .collect();
 
     let term = extractor.get_term(node_id, sub_terms);
 
-    CostSet { total, costs, term }
+    Some(CostSet { total, costs, term })
 }
 
 pub fn extract(
@@ -414,72 +427,76 @@ pub fn extract(
 
 pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
     let n2c = |nid: &NodeId| extractor.egraph.nid_to_cid(nid);
+    let mut updated_cost = true;
 
-    for (rootid, reachable) in extractor.reachable_from.iter() {
-        let region_costs = extractor.costs.get(rootid).unwrap();
-        for reached in reachable {
-            for nodeid in &extractor.egraph.classes().get(reached).unwrap().nodes {
-                let node = extractor.egraph.nodes.get(nodeid).unwrap();
-                if extractor.unextractables.contains(&node.op) {
-                    continue;
-                }
+    while updated_cost {
+        updated_cost = false;
+        for (rootid, reachable) in extractor.reachable_from.iter() {
+            let region_costs = extractor.costs.get_mut(rootid).unwrap();
+            for class_id in reachable {
+                for node_id in &extractor.egraph.classes().get(class_id).unwrap().nodes {
+                    let node = extractor.egraph.nodes.get(node_id).unwrap();
+                    if extractor.unextractables.contains(&node.op) {
+                        continue;
+                    }
 
-                if node
-                    .children
-                    .iter()
-                    .all(|c| extractor.costs.contains_key(n2c(c)))
-                {
-                    // TODO: 
-                    let lookup = costs.get(class_id);
+                    let lookup = region_costs.get(class_id);
                     let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
                     if lookup.is_some() {
                         prev_cost = lookup.unwrap().total;
                     }
 
-                    let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
-                    if cost_set.total < prev_cost {
-                        extractor.costs.insert(class_id.clone(), cost_set);
-                        worklist.extend(parents[class_id].iter().cloned());
+                    if let Some(cost_set) = calculate_cost_set(
+                        extractor.egraph,
+                        rootid.clone(),
+                        node_id.clone(),
+                        extractor,
+                    ) {
+                        if cost_set.total < prev_cost {
+                            region_costs.insert(class_id.clone(), cost_set);
+                            updated_cost = true;
+                        }
                     }
                 }
             }
-        }
-        todo!()
-    }
-    let parents = build_parent_index(extractor.egraph);
-    let mut worklist = initialize_worklist(extractor.egraph);
-
-    while let Some(node_id) = worklist.pop() {
-        let class_id = n2c(&node_id);
-        let node = &extractor.egraph[&node_id];
-        if extractor.unextractables.contains(&node.op) {
-            continue;
-        }
-        if node
-            .children
-            .iter()
-            .all(|c| extractor.costs.contains_key(n2c(c)))
-        {
-            let lookup = extractor.costs.get(class_id);
-            let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
-            if lookup.is_some() {
-                prev_cost = lookup.unwrap().total;
-            }
-
-            let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
-            if cost_set.total < prev_cost {
-                extractor.costs.insert(class_id.clone(), cost_set);
-                worklist.extend(parents[class_id].iter().cloned());
-            }
+            todo!()
         }
     }
+    todo!()
+    // let parents = build_parent_index(extractor.egraph);
+    // let mut worklist = initialize_worklist(extractor.egraph);
 
-    let mut root_eclasses = extractor.egraph.root_eclasses.clone();
-    root_eclasses.sort();
-    root_eclasses.dedup();
+    // while let Some(node_id) = worklist.pop() {
+    //     let class_id = n2c(&node_id);
+    //     let node = &extractor.egraph[&node_id];
+    //     if extractor.unextractables.contains(&node.op) {
+    //         continue;
+    //     }
+    //     if node
+    //         .children
+    //         .iter()
+    //         .all(|c| extractor.costs.contains_key(n2c(c)))
+    //     {
+    //         let lookup = extractor.costs.get(class_id);
+    //         let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
+    //         if lookup.is_some() {
+    //             prev_cost = lookup.unwrap().total;
+    //         }
 
-    let root = get_root(extractor.egraph);
-    extractor.costs.get(n2c(&root)).unwrap().clone()
+    //         let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
+    //         if cost_set.total < prev_cost {
+    //             extractor.costs.insert(class_id.clone(), cost_set);
+    //             worklist.extend(parents[class_id].iter().cloned());
+    //         }
+    //     }
+    // }
+
+    // let mut root_eclasses = extractor.egraph.root_eclasses.clone();
+    // root_eclasses.sort();
+    // root_eclasses.dedup();
+
+    // let root = get_root(extractor.egraph);
+    // extractor.costs.get(n2c(&root)).unwrap().clone()
 }
 
 pub trait CostModel {
@@ -488,10 +505,6 @@ pub trait CostModel {
 
     /// if true, the op's children are ignored in calculating the cost
     fn ignore_children(&self, op: &str) -> bool;
-
-    /// returns a slice of indices into the children vec
-    /// count the cost of these children, but don't add the nodes they depend on to the set
-    fn unshared_children(&self, op: &str) -> &'static [usize];
 }
 
 pub struct DefaultCostModel;
@@ -541,16 +554,6 @@ impl CostModel for DefaultCostModel {
 
     fn ignore_children(&self, op: &str) -> bool {
         matches!(op, "InLoop" | "NoContext" | "InSwitch" | "InIf")
-    }
-
-    fn unshared_children(&self, op: &str) -> &'static [usize] {
-        match op {
-            "DoWhile" => &[1],
-            "Function" => &[3],
-            "If" => &[2, 3],
-            "Switch" => &[2], // TODO: Switch branches can share nodes
-            _ => &[],
-        }
     }
 }
 
@@ -635,27 +638,42 @@ fn enode_regions(
     }
 }
 
-// For a given enode, if it creates sub-regions
-// return the roots for these sub-regions
-fn enode_nonregions(
+/// For a given enode, returns a vector of children eclasses.
+/// Also, for each child returns if the child is a region root.
+fn enode_children(
     egraph: &egraph_serialize::EGraph,
     enode: &egraph_serialize::Node,
-) -> Vec<ClassId> {
+) -> Vec<(ClassId, bool)> {
     match (enode.op.as_str(), enode.children.as_slice()) {
-        ("DoWhile", [input, _body]) => vec![egraph.nid_to_cid(input).clone()],
-        ("If", [pred, input, _then_branch, _else_branch]) => vec![
-            egraph.nid_to_cid(pred).clone(),
-            egraph.nid_to_cid(input).clone(),
+        ("DoWhile", [input, body]) => vec![
+            (egraph.nid_to_cid(input).clone(), false),
+            (egraph.nid_to_cid(body).clone(), true),
         ],
-        ("Switch", [pred, input, _branchlist]) => vec![
-            egraph.nid_to_cid(pred).clone(),
-            egraph.nid_to_cid(input).clone(),
+        ("If", [pred, input, then_branch, else_branch]) => vec![
+            (egraph.nid_to_cid(pred).clone(), false),
+            (egraph.nid_to_cid(input).clone(), false),
+            (egraph.nid_to_cid(then_branch).clone(), true),
+            (egraph.nid_to_cid(else_branch).clone(), true),
         ],
-        ("Function", [_name, _args, _ret, _body]) => vec![],
+        ("Switch", [pred, input, branchlist]) => {
+            let mut res = vec![
+                (egraph.nid_to_cid(pred).clone(), false),
+                (egraph.nid_to_cid(input).clone(), false),
+            ];
+            res.extend(
+                get_conslist_children(egraph, egraph.nid_to_cid(branchlist).clone())
+                    .into_iter()
+                    .map(|cid| (cid, true)),
+            );
+            res
+        }
+        ("Function", [_name, _args, _ret, body]) => {
+            vec![(egraph.nid_to_cid(body).clone(), true)]
+        }
         _ => {
             let mut children = vec![];
             for child in &enode.children {
-                children.push(egraph.nid_to_cid(child).clone());
+                children.push((egraph.nid_to_cid(child).clone(), false));
             }
             children
         }
@@ -681,7 +699,7 @@ fn get_conslist_children(egraph: &egraph_serialize::EGraph, class_id: ClassId) -
     }
 }
 
-fn reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) -> HashSet<ClassId> {
+fn region_reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) -> HashSet<ClassId> {
     let mut visited = HashSet::new();
     let mut queue = UniqueQueue::default();
     queue.insert(root);
@@ -693,8 +711,10 @@ fn reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) -> HashSe
         visited.insert(eclass.clone());
 
         for node in &egraph.classes()[&eclass].nodes {
-            for child in enode_nonregions(egraph, &egraph[node]) {
-                queue.insert(child);
+            for (child, is_subregion) in enode_children(egraph, &egraph[node]) {
+                if !is_subregion {
+                    queue.insert(child);
+                }
             }
         }
     }

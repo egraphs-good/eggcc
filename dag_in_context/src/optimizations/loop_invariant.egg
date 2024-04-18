@@ -45,7 +45,7 @@
       ((boundary-Expr loop expr)) :ruleset boundary-analysis)
 
 
-(function hoisted-loop (Expr Expr) bool :merge (or old new))
+(function hoisted-loop (Expr Expr) bool :unextractable :merge (or old new) )
 (rule ((= loop (DoWhile in pred_out)))
       ((set (hoisted-loop in pred_out) false)) :ruleset always-run)
 
@@ -71,15 +71,15 @@
        (= false (hoisted-loop in pred_out))
        (= len (tuple-length in)))
       (;; create a list of [(Get (old input) 0) ... hoisted_term]
-       (let new_input (Concat (SubTuple in 0 len) (Single (Subst loop_ctx in inv))))
+       (let new_input (Concat in (Single (Subst 10 loop_ctx in inv))))
        ;; append (Get (Arg id) len+1) to end of output
        (let new_in_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
        (let new_out_branch (Get (Arg new_in_type) len))
        ;; create an virtual assume node, union it with actuall InLoop later
        (let assum (InExtendedLoop in pred_out new_input))
        ;; this two subst only change arg to arg with new type
-       (let substed_pred_out (Subst assum (Arg new_in_type) pred_out))
-       (let inv_in_new_loop (Subst assum (Arg new_in_type) inv))
+       (let substed_pred_out (Subst 10 assum (Arg new_in_type) pred_out))
+       (let inv_in_new_loop (Subst 10 assum (Arg new_in_type) inv))
        (let new_pred_out (Concat substed_pred_out (Single new_out_branch)))
        
        (let new_loop (DoWhile new_input new_pred_out))
@@ -88,7 +88,7 @@
        (let wrapper (SubTuple new_loop 0 len))
        (union loop wrapper)
        (union assum (InLoop new_input new_pred_out)) ;; this one have cycle, awful
-       (subsume (DoWhile in pred_out)) 
+       (delete (DoWhile in pred_out)) 
        ;; don't hoist same loop again
        (set (hoisted-loop in pred_out) true)
       )

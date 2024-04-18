@@ -1,4 +1,4 @@
-use crate::schema_helpers::{Constructor, Purpose};
+use crate::{optimize, schema_helpers::{Constructor, Purpose}};
 use std::iter;
 use strum::IntoEnumIterator;
 
@@ -197,8 +197,12 @@ fn test_invariant_hoist() -> crate::Result {
     )
     .with_arg_types(tuplet!(statet()), output_ty.clone());
 
-    let main_fun = function("main", tuplet!(statet()), output_ty.clone(), my_loop.clone()).func_add_context();
-    // print!("\n\n{}\n\n", main_fun.clone());
+    let main_fun = function("main", tuplet!(statet()), output_ty.clone(), my_loop.clone()).func_add_ctx();
+
+    //let prog = program!(main_fun.clone(),);
+    //let res = optimize(&prog).unwrap();
+    //dbg!(res);
+     print!("\n\n{}\n\n", main_fun.clone());
     let build = format!(
         "(let loop {})
         (let inv {})
@@ -211,11 +215,11 @@ fn test_invariant_hoist() -> crate::Result {
         my_loop, inv, pred, not_inv, print, inner_inv, main_fun
     );
 
-    print!("{}\n\n", build.clone());
+    //print!("{}\n\n", build.clone());
 
 
     let check = format!(
-        "(check )"
+        ""
     );
 
     egglog_test(

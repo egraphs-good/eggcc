@@ -1,0 +1,16 @@
+# ARGS: 1
+@main(input: int) {
+  zero: int = const 0;
+  cond: bool = le input zero;
+  br cond .then .else;
+  .then:
+    y: int = id input;
+    jmp .end;
+  .else:
+    neg: int = const -1;
+    y: int = mul input neg;
+    jmp .end;
+  .end:
+    z: bool = le y zero;
+    print z;
+}

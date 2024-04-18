@@ -17,7 +17,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
        (= loop (DoWhile in out)) 
        (= expr (Get (Arg ty) i)) 
        (= loop (DoWhile in pred_out))
-       (= expr (tuple-ith pred_out (+ i 1)))) 
+       (= expr (Get pred_out (+ i 1)))) 
       ((set (is-inv-Expr loop expr) true)){ruleset})"
         )),
         Constructor::Const => {
@@ -51,7 +51,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
             let is_inv_ctor = ctor
                 .filter_map_fields(|field| match field.purpose {
                     Purpose::Static(_) | Purpose::CapturedExpr => None,
-                    Purpose::SubExpr | Purpose::SubListExpr => {
+                    Purpose::SubExpr | Purpose::CapturedSubListExpr => {
                         let var = field.var();
                         let sort = field.sort().name();
                         Some(format!("(= true (is-inv-{sort} loop {var}))"))
@@ -99,7 +99,7 @@ fn test_invariant_detect_simple() -> crate::Result {
     let add_inv = add(inv.clone(), int(4)).with_arg_types(output_ty.clone(), base(intt()));
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4)),
-        concat_par(
+        concat(
             parallel!(pred.clone(), not_inv.clone(), getat(1),),
             parallel!(getat(2), get(parallel!(add_inv.clone(), getat(3)), 1),),
         ),
@@ -109,9 +109,9 @@ fn test_invariant_detect_simple() -> crate::Result {
     let build = format!("(let loop {})", my_loop);
     let check = format!(
         "(check (= true (is-inv-Expr loop {inv})))
-        (check (= true (is-inv-Expr loop {add_inv})))
-        (check (= false (is-inv-Expr loop {pred})))
-        (check (= false (is-inv-Expr loop {not_inv})))",
+         (check (= true (is-inv-Expr loop {add_inv})))
+         (check (= false (is-inv-Expr loop {pred})))
+         (check (= false (is-inv-Expr loop {not_inv})))",
     );
 
     egglog_test(

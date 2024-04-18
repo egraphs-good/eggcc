@@ -34,12 +34,16 @@ struct Args {
     output_path: Option<String>,
     /// Run the eggcc optimizer (only for the CompileBrilfit run mode)
     /// Defaults to true.
-    #[clap(long, default_value = "true")]
-    optimize_egglog: bool,
+    #[clap(long)]
+    optimize_egglog: Option<bool>,
     /// Run the brilift optimizer (only for the CompileBrilfit run mode)
     /// Defaults to false.
-    #[clap(long, default_value = "false")]
-    optimize_brilift: bool,
+    #[clap(long)]
+    optimize_brilift: Option<bool>,
+    /// Run the LLVM optimizer (only for the CompileBrilLLVM run mode)
+    /// Defaults to false.
+    #[clap(long)]
+    optimize_bril_llvm: Option<bool>,
 }
 
 fn main() {
@@ -73,9 +77,9 @@ fn main() {
         interp: args.interp,
         profile_out: args.profile_out,
         output_path: args.output_path,
-        in_test: false,
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
+        optimize_bril_llvm: args.optimize_bril_llvm,
     };
 
     let result = match run.run() {

@@ -59,11 +59,11 @@ fn _debug(inp: RcExpr, after: &str) -> crate::Result {
 
 #[test]
 fn primitives() -> crate::Result {
-    type_test(int(3), base(intt()), val_int(0), val_int(3))?;
-    type_test(int(12), base(intt()), val_int(0), val_int(12))?;
-    type_test(ttrue(), base(boolt()), val_int(0), val_bool(true))?;
-    type_test(tfalse(), base(boolt()), val_int(0), val_bool(false))?;
-    type_test(empty(), emptyt(), val_int(0), val_empty())
+    type_test(int(3), base(intt()), intv(0), intv(3))?;
+    type_test(int(12), base(intt()), intv(0), intv(12))?;
+    type_test(ttrue(), base(boolt()), intv(0), val_bool(true))?;
+    type_test(tfalse(), base(boolt()), intv(0), val_bool(false))?;
+    type_test(empty(), emptyt(), intv(0), val_empty())
 }
 
 /* Fix type tests after dag semantics
@@ -500,7 +500,7 @@ fn repro_argtype_bug() -> crate::Result {
 fn incontext() -> crate::Result {
     let body = tlet(
         int(1),
-        in_context(inlet(int_ty(1, emptyt())), add(iarg(), iarg())),
+        inctx(inlet(int_ty(1, emptyt())), add(iarg(), iarg())),
     )
     .with_arg_types(emptyt(), base(intt()));
     type_test(body, base(intt()), val_int(0), val_int(2))

@@ -39,7 +39,7 @@ fn purity_rules_for_ctor(ctor: Constructor) -> String {
                 Purpose::Static(Sort::BinaryOp)
                 | Purpose::Static(Sort::UnaryOp)
                 | Purpose::SubExpr
-                | Purpose::SubListExpr
+                | Purpose::CapturedSubListExpr
                 | Purpose::CapturedExpr => Some(format!(
                     "({sort}IsPure {var})",
                     sort = field.sort().name(),
@@ -103,7 +103,7 @@ fn test_purity_analysis() -> crate::Result {
         single(int(1)),
         parallel!(
             less_than(get(arg(), 0), int(3)),
-            get(switch!(int(0); parallel!(int(4), int(5))), 0)
+            get(switch!(int(0), arg(); parallel!(int(4), int(5))), 0)
         ),
     )
     .with_arg_types(emptyt(), tuplet!(intt()));
@@ -115,7 +115,7 @@ fn test_purity_analysis() -> crate::Result {
         parallel!(
             less_than(get(arg(), 0), int(3)),
             get(
-                switch!(get(innerload.clone(), 0); parallel!(int(4), int(5))),
+                switch!(get(innerload.clone(), 0), arg(); parallel!(int(4), int(5))),
                 0
             ),
             get(innerload.clone(), 1),
@@ -134,7 +134,7 @@ fn test_purity_analysis() -> crate::Result {
         &check,
         vec![pureloop.to_program(emptyt(), tuplet!(intt()))],
         tuplev!(),
-        tuplev!(val_int(4)),
+        tuplev!(intv(4)),
         vec![],
     )
 }

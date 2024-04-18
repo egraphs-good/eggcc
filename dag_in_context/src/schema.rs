@@ -6,7 +6,7 @@
 use std::rc::Rc;
 use strum_macros::EnumIter;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BaseType {
     IntT,
     BoolT,
@@ -14,7 +14,7 @@ pub enum BaseType {
     StateT,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Type {
     Base(BaseType),
     /// Nested tuple types are not allowed.
@@ -28,12 +28,12 @@ pub enum Type {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum TernaryOp {
     Write,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -52,22 +52,15 @@ pub enum BinaryOp {
     Free,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum UnaryOp {
     Not,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Constant {
     Int(i64),
     Bool(bool),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Order {
-    Parallel,
-    Sequential,
-    Reversed,
 }
 
 /// A reference counted expression.
@@ -76,14 +69,14 @@ pub enum Order {
 /// This is important for the correctness of the interpreter, which makes this assumption.
 pub type RcExpr = Rc<Expr>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
-    InFunc(String),
-    InIf(bool, RcExpr),
+    NoContext,
+    InIf(bool, RcExpr, RcExpr),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Expr {
     Const(Constant, Type),
     Top(TernaryOp, RcExpr, RcExpr, RcExpr),
@@ -94,9 +87,9 @@ pub enum Expr {
     Call(String, RcExpr),
     Empty(Type),
     Single(RcExpr),
-    Concat(Order, RcExpr, RcExpr),
-    Switch(RcExpr, Vec<RcExpr>),
-    If(RcExpr, RcExpr, RcExpr),
+    Concat(RcExpr, RcExpr),
+    If(RcExpr, RcExpr, RcExpr, RcExpr),
+    Switch(RcExpr, RcExpr, Vec<RcExpr>),
     DoWhile(RcExpr, RcExpr),
     Arg(Type),
     InContext(Assumption, RcExpr),

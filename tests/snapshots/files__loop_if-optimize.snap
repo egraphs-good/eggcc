@@ -1,0 +1,43 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main {
+  v2: int = const 0;
+  v5: int = id v2;
+  v6: int = id v2;
+.__8__:
+  v11: bool = eq v6 v5;
+  br v11 .__33__ .__18__;
+.__33__:
+  v29: int = id v5;
+  v30: bool = id v11;
+  v31: int = id v6;
+.__38__:
+  br v11 .__54__ .__45__;
+.__54__:
+  v56: bool = const false;
+  v50: int = id v29;
+  v51: bool = id v56;
+  v52: int = id v31;
+.__60__:
+  v5: int = id v29;
+  v6: int = id v31;
+  br v51 .__8__ .__63__;
+.__45__:
+  v47: bool = const true;
+  v50: int = id v29;
+  v51: bool = id v47;
+  v52: int = id v31;
+  jmp .__60__;
+.__18__:
+  v20: int = const 1;
+  v22: int = add v5 v20;
+  v27: int = add v6 v20;
+  v29: int = id v22;
+  v30: bool = id v11;
+  v31: int = id v27;
+  jmp .__38__;
+.__63__:
+  print v5;
+}

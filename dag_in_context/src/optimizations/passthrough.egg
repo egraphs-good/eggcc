@@ -1,0 +1,48 @@
+; TODO: this is unsound because some loops don't terminate
+; ;; Pass through thetas
+; (rule ((= lhs (Get loop i))
+;        (= loop (DoWhile inputs pred-outputs))
+;        (= (Get pred-outputs (+ i 1)) (Get (Arg _) i))
+;        (= passed-through (Get inputs i)))
+;       ((union lhs passed-through))
+;       :ruleset always-run)
+
+;; Pass through switch arguments
+(rule ((= lhs (Get switch i))
+       (= switch (Switch pred inputs branches))
+       (= (ListExpr-length branches) 2)
+       (= branch0 (ListExpr-ith branches 0))
+       (= branch1 (ListExpr-ith branches 1))
+       (= (Get branch0 i) (Get (InContext _ctx0 (Arg _)) j))
+       (= (Get branch1 i) (Get (InContext _ctx1 (Arg _)) j))
+       (= passed-through (Get inputs j)))
+      ((union lhs passed-through))
+      :ruleset always-run)
+
+;; Pass through switch predicate
+(rule ((= lhs (Get switch i))
+       (= switch (Switch pred inputs branches))
+       (= (ListExpr-length branches) 2)
+       (= branch0 (ListExpr-ith branches 0))
+       (= branch1 (ListExpr-ith branches 1))
+       (= (Get branch0 i) (InContext _ctx0 (Const (Bool false) _)))
+       (= (Get branch1 i) (InContext _ctx1 (Const (Bool true) _))))
+      ((union lhs pred))
+      :ruleset always-run)
+
+;; Pass through if arguments
+(rule ((= lhs (Get if i))
+       (= if (If pred inputs then_ else_))
+       (= (Get then_ i) (Get (InContext _then_ctx (Arg _)) j))
+       (= (Get else_ i) (Get (InContext _else_ctx (Arg _)) j))
+       (= passed-through (Get inputs j)))
+      ((union lhs passed-through))
+      :ruleset always-run)
+
+;; Pass through if predicate
+(rule ((= lhs (Get if i))
+       (= if (If pred inputs then_ else_))
+       (= (Get then_ i) (InContext _then_ctx (Const (Bool true) _)))
+       (= (Get else_ i) (InContext _else_ctx (Const (Bool false) _))))
+      ((union lhs pred))
+      :ruleset always-run)

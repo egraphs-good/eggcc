@@ -1,8 +1,8 @@
 use crate::{
     interpreter::Value,
     schema::{
-        Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram,
-        Type, UnaryOp,
+        Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
+        UnaryOp,
     },
 };
 
@@ -38,7 +38,7 @@ pub fn pointert(t: BaseType) -> BaseType {
     BaseType::PointerT(Box::new(t))
 }
 
-pub fn val_int(i: i64) -> Value {
+pub fn intv(i: i64) -> Value {
     Value::Const(Constant::Int(i))
 }
 
@@ -182,12 +182,12 @@ pub fn program_vec(entry: RcExpr, functions: Vec<RcExpr>) -> TreeProgram {
 /// e.g. `switch!(cond; case1, case2, case3)` becomes `switch_vec(cond, vec![case1, case2, case3])`
 #[macro_export]
 macro_rules! switch {
-    ($arg:expr; $($x:expr),* $(,)?) => ($crate::ast::switch_vec($arg, vec![$($x),*]))
+    ($arg:expr, $input:expr; $($x:expr),* $(,)?) => ($crate::ast::switch_vec($arg, $input, vec![$($x),*]))
 }
 pub use switch;
 
-pub fn switch_vec(cond: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
-    RcExpr::new(Expr::Switch(cond, cases))
+pub fn switch_vec(cond: RcExpr, input: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
+    RcExpr::new(Expr::Switch(cond, input, cases))
 }
 
 pub fn empty() -> RcExpr {
@@ -198,49 +198,49 @@ pub fn single(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Single(e))
 }
 
-pub fn cons_par(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Parallel, single(l), r))
+pub fn cons(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Concat(single(l), r))
 }
 
-pub fn push_par(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Parallel, r, single(l)))
+pub fn push(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Concat(r, single(l)))
 }
 
-pub fn push_seq(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Sequential, r, single(l)))
+pub fn concat(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Concat(tuple, tuple2))
 }
 
-pub fn push_rev(l: RcExpr, r: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Reversed, r, single(l)))
-}
-
-pub fn concat_par(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Parallel, tuple, tuple2))
-}
-
-pub fn concat_seq(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Sequential, tuple, tuple2))
-}
-
-pub fn concat_rev(tuple: RcExpr, tuple2: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::Concat(Order::Reversed, tuple, tuple2))
-}
-
-/// Create a tuple where each element can be executed
-/// in any order.
-/// e.g. `parallel!(e1, e2, e3)` becomes `Concat(Order::Parallel, Concat(Order::Parallel, e1, e2), e3)`
+/// Create a tuple of elements.
+/// e.g. `parallel!(e1, e2, e3)` becomes `Concat(Single(e1), Concat(Single(e2), Single(e3)))`
 #[macro_export]
 macro_rules! parallel {
     ($($x:expr),* $(,)?) => ($crate::ast::parallel_vec(vec![$($x),*]))
 }
 pub use parallel;
 
-pub fn parallel_vec(es: impl IntoIterator<Item = RcExpr>) -> RcExpr {
-    let mut iter = es.into_iter();
+pub fn parallel_vec<I: IntoIterator<Item = RcExpr>>(es: I) -> RcExpr
+where
+    <I as IntoIterator>::IntoIter: DoubleEndedIterator,
+{
+    let mut iter = es.into_iter().rev();
     if let Some(e) = iter.next() {
-        iter.fold(single(e), |acc, x| push_par(x, acc))
+        iter.fold(single(e), |acc, x| cons(x, acc))
     } else {
         empty()
+    }
+}
+
+/// A helper for ensuring the list of expressions is non-empty.
+/// This prevents missing adding context to a leaf node (e.g. empty).
+pub fn parallel_vec_nonempty<I: IntoIterator<Item = RcExpr>>(es: I) -> RcExpr
+where
+    <I as IntoIterator>::IntoIter: DoubleEndedIterator,
+{
+    let es_vec = es.into_iter().collect::<Vec<_>>();
+    if es_vec.is_empty() {
+        panic!("Expected non-empty list of expressions in parallel_vec_nonempty");
+    } else {
+        parallel_vec(es_vec)
     }
 }
 
@@ -267,8 +267,8 @@ pub fn getat(index: usize) -> RcExpr {
     get(arg(), index)
 }
 
-pub fn tif(cond: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::If(cond, then_case, else_case))
+pub fn tif(cond: RcExpr, input: RcExpr, then_case: RcExpr, else_case: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::If(cond, input, then_case, else_case))
 }
 
 pub fn dowhile(inputs: RcExpr, pred_and_body: RcExpr) -> RcExpr {
@@ -313,14 +313,14 @@ pub fn inloop(e1: RcExpr, e2: RcExpr) -> Assumption {
     Assumption::InLoop(e1, e2)
 }
 
-pub fn inif(is_then: bool, pred: RcExpr) -> Assumption {
-    Assumption::InIf(is_then, pred)
+pub fn inif(is_then: bool, pred: RcExpr, input: RcExpr) -> Assumption {
+    Assumption::InIf(is_then, pred, input)
 }
 
-pub fn infunc(name: &str) -> Assumption {
-    Assumption::InFunc(name.to_string())
+pub fn noctx() -> Assumption {
+    Assumption::NoContext
 }
 
-pub fn in_context(assumption: Assumption, body: RcExpr) -> RcExpr {
+pub fn inctx(assumption: Assumption, body: RcExpr) -> RcExpr {
     RcExpr::new(Expr::InContext(assumption, body))
 }

@@ -6,16 +6,34 @@ use std::{collections::HashMap, rc::Rc};
 use egglog::{ast::Literal, match_term_app, Term};
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, Type,
-    UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp,
 };
 
-pub struct FromEgglog {
-    pub termdag: egglog::TermDag,
+pub struct FromEgglog<'a> {
+    pub termdag: &'a egglog::TermDag,
     pub conversion_cache: HashMap<Term, RcExpr>,
 }
 
-impl FromEgglog {
+pub fn program_from_egglog(program: Term, termdag: &egglog::TermDag) -> TreeProgram {
+    let mut converter = FromEgglog {
+        termdag,
+        conversion_cache: HashMap::new(),
+    };
+    converter.program_from_egglog(program)
+}
+
+pub fn program_from_egglog_preserve_ctx_nodes(
+    program: Term,
+    termdag: &mut egglog::TermDag,
+) -> TreeProgram {
+    let mut converter = FromEgglog {
+        termdag,
+        conversion_cache: HashMap::new(),
+    };
+    converter.program_from_egglog(program)
+}
+
+impl<'a> FromEgglog<'a> {
     fn const_from_egglog(&mut self, constant: Term) -> Constant {
         match_term_app!(constant.clone(); {
           ("Int", [lit]) => {
@@ -84,7 +102,7 @@ impl FromEgglog {
         exprs
     }
 
-    fn type_from_egglog(&mut self, type_: Term) -> Type {
+    pub(crate) fn type_from_egglog(&mut self, type_: Term) -> Type {
         match_term_app!(type_.clone(); {
           ("Base", [basetype]) => Type::Base(self.basetype_from_egglog(self.termdag.get(*basetype))),
           ("TupleT", [types]) => {
@@ -104,30 +122,17 @@ impl FromEgglog {
               self.expr_from_egglog(self.termdag.get(*rhs)),
             )
           }
-          ("InFunc", [lit]) => {
-            let Term::Lit(Literal::String(string)) = self.termdag.get(*lit) else {
-              panic!("Invalid string: {:?}", lit)
-            };
-            Assumption::InFunc(string.to_string())
+          ("NoContext", []) => {
+            Assumption::NoContext
           }
-          ("InIf", [is_then, expr]) => {
+          ("InIf", [is_then, pred_expr, input_expr]) => {
             let Term::Lit(Literal::Bool(boolean)) = self.termdag.get(*is_then)
             else {
               panic!("Invalid boolean: {:?}", is_then)
             };
-            Assumption::InIf(boolean, self.expr_from_egglog(self.termdag.get(*expr)))
+            Assumption::InIf(boolean, self.expr_from_egglog(self.termdag.get(*pred_expr)), self.expr_from_egglog(self.termdag.get(*input_expr)))
           }
           _ => panic!("Invalid assumption: {:?}", assumption),
-        })
-    }
-
-    fn order_from_egglog(&mut self, order: Term) -> Order {
-        match_term_app!(order.clone();
-        {
-          ("Parallel", []) => Order::Parallel,
-          ("Sequential", []) => Order::Sequential,
-          ("Reversed", []) => Order::Reversed,
-          _ => panic!("Invalid order: {:?}", order),
         })
     }
 
@@ -169,7 +174,7 @@ impl FromEgglog {
         })
     }
 
-    fn expr_from_egglog(&mut self, expr: Term) -> RcExpr {
+    pub(crate) fn expr_from_egglog(&mut self, expr: Term) -> RcExpr {
         if let Some(expr) = self.conversion_cache.get(&expr) {
             return expr.clone();
         }
@@ -250,30 +255,32 @@ impl FromEgglog {
             let expr = self.termdag.get(*expr);
             Rc::new(Expr::Single(self.expr_from_egglog(expr)))
           }
-          ("Concat", [order, lhs, rhs]) => {
-            let order = self.termdag.get(*order);
+          ("Concat", [lhs, rhs]) => {
             let lhs = self.termdag.get(*lhs);
             let rhs = self.termdag.get(*rhs);
             Rc::new(Expr::Concat(
-              self.order_from_egglog(order),
               self.expr_from_egglog(lhs),
               self.expr_from_egglog(rhs),
             ))
           }
-          ("Switch", [expr, exprs]) => {
+          ("Switch", [expr, expr2, exprs]) => {
             let expr = self.termdag.get(*expr);
+            let expr2 = self.termdag.get(*expr2);
             let exprs = self.termdag.get(*exprs);
             Rc::new(Expr::Switch(
               self.expr_from_egglog(expr),
+              self.expr_from_egglog(expr2),
               self.vec_from_listexpr(exprs),
             ))
           }
-          ("If", [cond, then_, else_]) => {
+          ("If", [cond, input, then_, else_]) => {
             let cond = self.termdag.get(*cond);
+            let input = self.termdag.get(*input);
             let then_ = self.termdag.get(*then_);
             let else_ = self.termdag.get(*else_);
             Rc::new(Expr::If(
               self.expr_from_egglog(cond),
+              self.expr_from_egglog(input),
               self.expr_from_egglog(then_),
               self.expr_from_egglog(else_),
             ))
@@ -319,6 +326,9 @@ impl FromEgglog {
         res
     }
 
+    /// Converts a term back into a TreeProgram, but removes context nodes along the way.
+    /// This is crutial for the correctness of this conversion, since context nodes can break sharing
+    /// of the state edge.
     pub fn program_from_egglog(&mut self, program: Term) -> TreeProgram {
         match_term_app!(program.clone();
         {

@@ -1,18 +1,22 @@
 use std::collections::HashMap;
 
 use egglog::{Term, TermDag};
-use from_egglog::FromEgglog;
+use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
 
 use crate::interpreter::interpret_dag_prog;
 
+pub(crate) mod add_context;
 pub mod ast;
+pub mod dag2svg;
 pub mod dag_typechecker;
 pub mod from_egglog;
+mod greedy_dag_extractor;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
+mod linearity;
 mod optimizations;
 pub mod schema;
 pub mod schema_helpers;
@@ -21,8 +25,6 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
-pub(crate) mod add_context;
-pub mod dag2svg;
 
 pub type Result = std::result::Result<(), MainError>;
 
@@ -30,20 +32,25 @@ pub fn prologue() -> String {
     [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
-        include_str!("interval_analysis.egg"),
+        include_str!("utility/canonicalize.egg"),
         include_str!("utility/util.egg"),
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
         &optimizations::purity_analysis::rules().join("\n"),
-        &optimizations::conditional_invariant_code_motion::rules().join("\n"),
+        // TODO cond inv code motion with regions
+        //&optimizations::conditional_invariant_code_motion::rules().join("\n"),
         include_str!("utility/in_context.egg"),
+        include_str!("utility/context-prop.egg"),
         include_str!("utility/subst.egg"),
+        include_str!("utility/context_of.egg"),
+        include_str!("interval_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("optimizations/function_inlining.egg"),
         &optimizations::memory::rules(),
         include_str!("optimizations/memory.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
+        include_str!("optimizations/passthrough.egg"),
     ]
     .join("\n")
 }
@@ -80,7 +87,7 @@ fn print_with_intermediate_helper(
     }
 }
 
-fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
+pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
     let mut printed = String::new();
     let mut cache = HashMap::<Term, String>::new();
     let res = print_with_intermediate_helper(termdag, term, &mut cache, &mut printed);
@@ -99,17 +106,21 @@ pub fn build_program(program: &TreeProgram) -> String {
 }
 
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
-    let program = build_program(program);
+    let egglog_prog = build_program(program);
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&program)?;
-    let (sort, value) = egraph.eval_expr(&egglog::ast::Expr::Var((), "PROG".into()))?;
+    egraph.parse_and_run_program(&egglog_prog)?;
+
+    let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
-    let extracted = egraph.extract(value, &mut termdag, &sort);
-    let mut from_egglog = FromEgglog {
-        termdag,
-        conversion_cache: Default::default(),
-    };
-    Ok(from_egglog.program_from_egglog(extracted.1))
+    // TODO use extract instead of extract_without_linearity when it is implemented
+    let (_res_cost, res) = extract(
+        program,
+        &serialized,
+        unextractables,
+        &mut termdag,
+        DefaultCostModel,
+    );
+    Ok(res)
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {
@@ -159,11 +170,17 @@ fn check_program_gets_type(program: TreeProgram) -> Result {
     Ok(())
 }
 
-/// Runs an egglog test.
-/// `build` is egglog code that runs before the running rules.
-/// `check` is egglog code that runs after the running rules.
-/// It is highly reccomended to also provide the programs used in the egglog code
-/// so that they can be interpreted on the given value.
+pub fn egglog_test_and_print_program(
+    build: &str,
+    check: &str,
+    progs: Vec<TreeProgram>,
+    input: Value,
+    expected: Value,
+    expected_log: Vec<String>,
+) -> Result {
+    egglog_test_internal(build, check, progs, input, expected, expected_log, true)
+}
+
 pub fn egglog_test(
     build: &str,
     check: &str,
@@ -171,6 +188,23 @@ pub fn egglog_test(
     input: Value,
     expected: Value,
     expected_log: Vec<String>,
+) -> Result {
+    egglog_test_internal(build, check, progs, input, expected, expected_log, false)
+}
+
+/// Runs an egglog test.
+/// `build` is egglog code that runs before the running rules.
+/// `check` is egglog code that runs after the running rules.
+/// It is highly reccomended to also provide the programs used in the egglog code
+/// so that they can be interpreted on the given value.
+fn egglog_test_internal(
+    build: &str,
+    check: &str,
+    progs: Vec<TreeProgram>,
+    input: Value,
+    expected: Value,
+    expected_log: Vec<String>,
+    print_program: bool,
 ) -> Result {
     // first interpret the programs on the value
     for prog in progs {
@@ -202,6 +236,10 @@ pub fn egglog_test(
         include_str!("schedule.egg"),
     );
 
+    if print_program {
+        eprintln!("{}", program);
+    }
+
     let res = egglog::EGraph::default()
         .parse_and_run_program(&program)
         .map(|lines| {
@@ -211,8 +249,7 @@ pub fn egglog_test(
         });
 
     if res.is_err() {
-        println!("{}", program);
-        println!("{:?}", res);
+        eprintln!("{:?}", res);
     }
 
     Ok(res?)

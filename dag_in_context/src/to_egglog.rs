@@ -5,8 +5,11 @@ use egglog::{
     Term, TermDag,
 };
 
-use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, Order, TernaryOp, TreeProgram, Type, UnaryOp,
+use crate::{
+    from_egglog::program_from_egglog_preserve_ctx_nodes,
+    schema::{
+        Assumption, BaseType, BinaryOp, Constant, Expr, TernaryOp, TreeProgram, Type, UnaryOp,
+    },
 };
 
 pub(crate) struct TreeToEgglog {
@@ -102,22 +105,14 @@ impl Assumption {
                 let rhs = rhs.to_egglog_internal(term_dag);
                 term_dag.app("InLoop".into(), vec![lhs, rhs])
             }
-            Assumption::InFunc(name) => {
-                let name_lit = term_dag.lit(Literal::String(name.into()));
-                term_dag.app("InFunc".into(), vec![name_lit])
-            }
-            Assumption::InIf(is_then, pred) => {
+            Assumption::NoContext => term_dag.app("NoContext".into(), vec![]),
+            Assumption::InIf(is_then, pred, input) => {
                 let pred = pred.to_egglog_internal(term_dag);
                 let is_then = term_dag.lit(Literal::Bool(*is_then));
-                term_dag.app("InIf".into(), vec![is_then, pred])
+                let input = input.to_egglog_internal(term_dag);
+                term_dag.app("InIf".into(), vec![is_then, pred, input])
             }
         }
-    }
-}
-
-impl Order {
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
-        term_dag.app(format!("{:?}", self).into(), vec![])
     }
 }
 
@@ -202,26 +197,27 @@ impl Expr {
                 let expr = expr.to_egglog_internal(term_dag);
                 term_dag.app("Single".into(), vec![expr])
             }
-            Expr::Concat(order, lhs, rhs) => {
+            Expr::Concat(lhs, rhs) => {
                 let lhs = lhs.to_egglog_internal(term_dag);
                 let rhs = rhs.to_egglog_internal(term_dag);
-                let order = order.to_egglog_internal(term_dag);
-                term_dag.app("Concat".into(), vec![order, lhs, rhs])
+                term_dag.app("Concat".into(), vec![lhs, rhs])
             }
-            Expr::Switch(expr, cases) => {
+            Expr::Switch(expr, inputs, cases) => {
                 let expr = expr.to_egglog_internal(term_dag);
+                let inputs = inputs.to_egglog_internal(term_dag);
                 let cases = cases
                     .iter()
                     .map(|c| c.to_egglog_internal(term_dag))
                     .collect();
                 let cases = to_listexpr(cases, term_dag);
-                term_dag.app("Switch".into(), vec![expr, cases])
+                term_dag.app("Switch".into(), vec![expr, inputs, cases])
             }
-            Expr::If(cond, then, els) => {
+            Expr::If(cond, input, then, els) => {
                 let cond = cond.to_egglog_internal(term_dag);
                 let then = then.to_egglog_internal(term_dag);
+                let inputs = input.to_egglog_internal(term_dag);
                 let els = els.to_egglog_internal(term_dag);
-                term_dag.app("If".into(), vec![cond, then, els])
+                term_dag.app("If".into(), vec![cond, inputs, then, els])
             }
             Expr::DoWhile(cond, body) => {
                 let cond = cond.to_egglog_internal(term_dag);
@@ -254,16 +250,27 @@ impl Expr {
 }
 
 impl TreeProgram {
+    /// DAG programs should share common subexpressions whenever possible.
+    /// Otherwise, effects may happen multiple times.
+    /// This function restores this invariant by converting to a Term and back again.
+    pub fn restore_sharing_invariant(&self) -> TreeProgram {
+        let (term, mut termdag) = self.to_egglog();
+        program_from_egglog_preserve_ctx_nodes(term, &mut termdag)
+    }
+
     /// Translates an the program to an egglog term
     /// encoded with respect to `schema.egg`.
     /// Shares common subexpressions.
     pub fn to_egglog(&self) -> (Term, TermDag) {
+        self.to_egglog_with_termdag(TermDag::default())
+    }
+
+    pub fn to_egglog_with_termdag(&self, termdag: TermDag) -> (Term, TermDag) {
         let mut state = TreeToEgglog {
-            termdag: TermDag::default(),
+            termdag,
             converted_cache: HashMap::new(),
         };
-        let term = self.to_egglog_internal(&mut state);
-        (term, state.termdag)
+        (self.to_egglog_internal(&mut state), state.termdag)
     }
 
     // TODO Implement sharing of common subexpressions using
@@ -333,14 +340,15 @@ fn convert_to_egglog_simple_arithmetic() {
 #[test]
 fn convert_to_egglog_switch() {
     use crate::ast::*;
-    let expr = switch!(int(1); concat_par(single(int(1)), single(int(2))), concat_par(single(int(3)), single(int(4)))).with_arg_types(base(intt()), tuplet!(intt(), intt()));
+    let expr = switch!(int(1), int(4); concat(single(int(1)), single(int(2))), concat(single(int(3)), single(int(4)))).with_arg_types(base(intt()), tuplet!(intt(), intt()));
     test_expr_parses_to(
         expr,
         "(Switch (Const (Int 1) (Base (IntT)))
+                 (Const (Int 4) (Base (IntT)))
                  (Cons 
-                  (Concat (Parallel) (Single (Const (Int 1) (Base (IntT)))) (Single (Const (Int 2) (Base (IntT)))))
+                  (Concat (Single (Const (Int 1) (Base (IntT)))) (Single (Const (Int 2) (Base (IntT)))))
                   (Cons 
-                   (Concat (Parallel) (Single (Const (Int 3) (Base (IntT)))) (Single (Const (Int 4) (Base (IntT)))))
+                   (Concat (Single (Const (Int 3) (Base (IntT)))) (Single (Const (Int 4) (Base (IntT)))))
                    (Nil))))",
     );
 }
@@ -362,7 +370,7 @@ fn convert_whole_program() {
             get(
                 dowhile(
                     single(arg()),
-                    push_par(add(getat(0), int(1)), single(less_than(getat(0), int(10))))
+                    push(add(getat(0), int(1)), single(less_than(getat(0), int(10))))
                 ),
                 0
             )
@@ -377,7 +385,7 @@ fn convert_whole_program() {
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (Get
                         (DoWhile (Single (Arg (Base (IntT))))
-                        (Concat (Parallel) 
+                        (Concat 
                             (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (IntT) (TNil)))) 0) (Const (Int 10) (TupleT (TCons (IntT) (TNil))))))
                             (Single (Bop (Add) (Get (Arg (TupleT (TCons (IntT) (TNil)))) 0) (Const (Int 1) (TupleT (TCons (IntT) (TNil))))))))
                         0)) 

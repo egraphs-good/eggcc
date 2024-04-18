@@ -8,7 +8,7 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
-        let snapshot_configurations: HashSet<RunType> = [].into_iter().collect();
+        let snapshot_configurations: HashSet<RunType> = [RunType::Optimize].into_iter().collect();
 
         trials.push(Trial::test(run.name(), move || {
             let result = match run.run() {
@@ -17,6 +17,21 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
                 }
                 Ok(res) => res,
             };
+            if run.test_type == RunType::CompileBrilift || run.test_type == RunType::CompileBrilLLVM
+            {
+                let executable = run.output_path.clone().unwrap_or_else(|| run.name());
+
+                let args = if run.test_type == RunType::CompileBrilLLVM {
+                    vec![executable]
+                } else {
+                    vec![executable.clone(), executable + "-args"]
+                };
+
+                std::process::Command::new("rm")
+                    .args(args)
+                    .status()
+                    .unwrap();
+            }
 
             if result.result_interpreted.is_some() {
                 if result.original_interpreted != result.result_interpreted {

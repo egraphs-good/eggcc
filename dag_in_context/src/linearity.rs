@@ -40,7 +40,7 @@ impl<'a> Extractor<'a> {
 
         self.find_effectful_nodes_in_expr(&prog.entry, &mut linearity);
         for function in &prog.functions {
-            self.find_effectful_nodes_in_expr(&function, &mut linearity);
+            self.find_effectful_nodes_in_expr(function, &mut linearity);
         }
 
         let mut effectful_classes = HashSet::new();

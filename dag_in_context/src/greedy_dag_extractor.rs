@@ -2,10 +2,7 @@ use egglog::*;
 use egraph_serialize::{ClassId, EGraph, NodeId};
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    path,
-};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
     from_egglog::FromEgglog,
@@ -40,7 +37,7 @@ pub(crate) struct Extractor<'a> {
 
 impl<'a> EgraphInfo<'a> {
     fn is_region_node(&self, node_id: NodeId) -> bool {
-        enode_regions(self.egraph, &self.egraph[&node_id]).len() > 0
+        !enode_regions(self.egraph, &self.egraph[&node_id]).is_empty()
     }
 
     pub(crate) fn new(
@@ -693,7 +690,6 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
     egraph.parse_and_run_program(&string_prog).unwrap();
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
-    let cost_model = DefaultCostModel;
 
     let cost_set = extract(
         prog,

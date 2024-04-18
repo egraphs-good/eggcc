@@ -1,6 +1,5 @@
 use egglog::*;
 use egraph_serialize::{ClassId, EGraph, NodeId};
-use indexmap::*;
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -11,109 +10,38 @@ use crate::{
     typechecker::TypeChecker,
 };
 
-pub(crate) struct Extractor<'a> {
+pub(crate) struct EgraphInfo<'a> {
     pub(crate) egraph: &'a EGraph,
     // For a particular region root, find the set of reachable nodes
     #[allow(dead_code)]
     pub(crate) reachable_from: HashMap<ClassId, HashSet<ClassId>>,
-    // For a particular region root, we are done extracting the region
-    #[allow(dead_code)]
-    pub(crate) done: HashSet<NodeId>,
     pub(crate) cm: &'a dyn CostModel,
-    pub(crate) termdag: &'a mut TermDag,
-    // Each term must correspond to a node in the egraph. We store that here
-    pub(crate) correspondence: HashMap<Term, NodeId>,
-    // use to get the expression corresponding to the term
-    pub(crate) term_to_expr: HashMap<Term, RcExpr>,
-    // use to get the type of an expression
-    pub(crate) typechecker: TypeChecker<'a>,
-    costs: FxHashMap<ClassId, FxHashMap<ClassId, CostSet>>,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
 }
 
-impl<'a> Extractor<'a> {
+pub(crate) struct Extractor<'a> {
+    pub(crate) termdag: &'a mut TermDag,
+    costs: FxHashMap<ClassId, FxHashMap<ClassId, CostSet>>,
+
+    // use to get the type of an expression
+    pub(crate) typechecker: TypeChecker<'a>,
+
+    // Each term must correspond to a node in the egraph. We store that here
+    pub(crate) correspondence: HashMap<Term, NodeId>,
+    // Get the expression corresponding to a term.
+    // This is computed after the extraction is done.
+    pub(crate) term_to_expr: Option<HashMap<Term, RcExpr>>,
+    pub(crate) node_to_type: Option<HashMap<NodeId, Type>>,
+}
+
+impl<'a> EgraphInfo<'a> {
     fn is_region_node(&self, node_id: NodeId) -> bool {
         enode_regions(self.egraph, &self.egraph[&node_id]).is_some()
     }
 
-    #[allow(dead_code)]
-    fn node_to_eclass(&self, node_id: NodeId) -> ClassId {
-        self.egraph.nid_to_cid(&node_id).clone()
-    }
-
-    pub(crate) fn term_to_prog(&mut self, term: &Term) -> TreeProgram {
-        let mut temp_term_to_expr = Default::default();
-        std::mem::swap(&mut self.term_to_expr, &mut temp_term_to_expr);
-        // convert the term to an expression using a converter
-        // converter has to own the termdag, so we swap it with the current one
-        let mut converter = FromEgglog {
-            termdag: self.termdag,
-            conversion_cache: temp_term_to_expr,
-        };
-
-        let expr = converter.program_from_egglog(term.clone());
-        self.term_to_expr = converter.conversion_cache;
-        expr
-    }
-
-    pub(crate) fn term_to_expr(&mut self, term: &Term) -> RcExpr {
-        let mut temp_term_to_expr = Default::default();
-        std::mem::swap(&mut self.term_to_expr, &mut temp_term_to_expr);
-        // convert the term to an expression using a converter
-        // converter has to own the termdag, so we swap it with the current one
-        let mut converter = FromEgglog {
-            termdag: self.termdag,
-            conversion_cache: temp_term_to_expr,
-        };
-
-        let expr = converter.expr_from_egglog(term.clone());
-        self.term_to_expr = converter.conversion_cache;
-        expr
-    }
-
-    pub(crate) fn term_to_type(&mut self, term: &Term) -> Type {
-        let expr = self.term_to_expr(term);
-        self.typechecker.add_arg_types_to_expr(expr, &None).0
-    }
-
-    pub(crate) fn expr_to_type(&mut self, expr: &RcExpr) -> Type {
-        self.typechecker
-            .add_arg_types_to_expr(expr.clone(), &None)
-            .0
-    }
-
-    pub(crate) fn eclass_of(&self, term: &Term) -> ClassId {
-        let term_enode = self.node_of(term);
-        self.egraph.nodes.get(&term_enode).unwrap().eclass.clone()
-    }
-
-    /// Checks if an expressions is effectful by checking if it returns something of type state.
-    pub(crate) fn is_effectful(&mut self, expr: &RcExpr) -> bool {
-        let ty = self.expr_to_type(expr);
-        ty.contains_state()
-    }
-
-    /// Checks if an already extracted node is effectful.
-    pub(crate) fn is_node_effectful(&mut self, node_id: NodeId) -> bool {
-        let eclass = self.node_to_eclass(node_id);
-        let term = self.costs.get(&eclass).unwrap().term.clone();
-        let expr = self.term_to_expr(&term);
-        self.is_effectful(&expr)
-    }
-
-    pub(crate) fn node_of(&self, term: &Term) -> NodeId {
-        self.correspondence
-            .get(term)
-            .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term))
-            .clone()
-    }
-
     pub(crate) fn new(
-        original_prog: &'a TreeProgram,
         cm: &'a dyn CostModel,
-        termdag: &'a mut TermDag,
-        correspondence: HashMap<Term, NodeId>,
         egraph: &'a EGraph,
         unextractables: HashSet<String>,
     ) -> Self {
@@ -126,22 +54,103 @@ impl<'a> Extractor<'a> {
             }
         }
 
+        // also add the root of the egraph to region_roots
+        region_roots.insert(egraph.nid_to_cid(&get_root(egraph)).clone());
+
         let reachable_from = region_roots
             .iter()
             .map(|root| (root.clone(), region_reachable_classes(egraph, root.clone())))
             .collect();
 
-        Extractor {
+        EgraphInfo {
             cm,
-            termdag,
-            correspondence,
             egraph,
-            costs: Default::default(),
             unextractables,
+            reachable_from,
+        }
+    }
+}
+
+impl<'a> Extractor<'a> {
+    pub(crate) fn term_to_expr(&mut self, term: &Term) -> RcExpr {
+        self.term_to_expr
+            .as_ref()
+            .unwrap()
+            .get(term)
+            .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term))
+            .clone()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn term_to_type(&mut self, term: &Term) -> Type {
+        let expr = self.term_to_expr(term);
+        self.typechecker.add_arg_types_to_expr(expr, &None).0
+    }
+
+    pub(crate) fn expr_to_type(&mut self, expr: &RcExpr) -> Type {
+        self.typechecker
+            .add_arg_types_to_expr(expr.clone(), &None)
+            .0
+    }
+
+    /// Checks if an expressions is effectful by checking if it returns something of type state.
+    pub(crate) fn is_effectful(&mut self, expr: &RcExpr) -> bool {
+        let ty = self.expr_to_type(expr);
+        ty.contains_state()
+    }
+
+    /// Checks if an already extracted node is effectful.
+    pub(crate) fn is_node_effectful(&mut self, node_id: NodeId) -> bool {
+        let node_type = self.node_to_type.as_ref().unwrap().get(&node_id).unwrap();
+        node_type.contains_state()
+    }
+
+    /// Convert the extracted terms to expressions, and also
+    /// store their types.
+    fn terms_to_expressions(&mut self, prog: Term) -> TreeProgram {
+        let mut converter = FromEgglog {
+            termdag: self.termdag,
+            conversion_cache: Default::default(),
+        };
+        let mut node_to_type: HashMap<NodeId, Type> = Default::default();
+
+        for (term, node_id) in &self.correspondence {
+            if term == &prog {
+                // skip the program here
+            } else {
+                let expr = converter.expr_from_egglog(term.clone());
+                let ty = self
+                    .typechecker
+                    .add_arg_types_to_expr(expr.clone(), &None)
+                    .0;
+                node_to_type.insert(node_id.clone(), ty);
+            }
+        }
+
+        let converted_prog = converter.program_from_egglog(prog);
+
+        self.node_to_type = Some(node_to_type);
+        self.term_to_expr = Some(converter.conversion_cache);
+
+        // return the converted program
+        converted_prog
+    }
+
+    pub(crate) fn node_of(&self, term: &Term) -> NodeId {
+        self.correspondence
+            .get(term)
+            .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term))
+            .clone()
+    }
+
+    pub(crate) fn new(original_prog: &'a TreeProgram, termdag: &'a mut TermDag) -> Self {
+        Extractor {
+            termdag,
+            correspondence: Default::default(),
+            costs: Default::default(),
             term_to_expr: Default::default(),
             typechecker: TypeChecker::new(original_prog, true),
-            reachable_from,
-            done: Default::default(),
+            node_to_type: Default::default(),
         }
     }
 }
@@ -191,44 +200,12 @@ pub struct CostSet {
     pub term: Term,
 }
 
-fn build_parent_index(egraph: &egraph_serialize::EGraph) -> IndexMap<ClassId, Vec<NodeId>> {
-    let mut parents = IndexMap::<ClassId, Vec<NodeId>>::with_capacity(egraph.classes().len());
-    let n2c = |nid: &NodeId| egraph.nid_to_cid(nid);
-
-    for class in egraph.classes().values() {
-        parents.insert(class.id.clone(), Vec::new());
-    }
-
-    for class in egraph.classes().values() {
-        for node in &class.nodes {
-            for c in &egraph[node].children {
-                // compute parents of this enode
-                parents[n2c(c)].push(node.clone());
-            }
-        }
-    }
-    parents
-}
-
-fn initialize_worklist(egraph: &egraph_serialize::EGraph) -> UniqueQueue<NodeId> {
-    let mut analysis_pending = UniqueQueue::default();
-    for class in egraph.classes().values() {
-        for node in &class.nodes {
-            // start the analysis from leaves
-            if egraph[node].is_leaf() {
-                analysis_pending.insert(node.clone());
-            }
-        }
-    }
-    analysis_pending
-}
-
 impl<'a> Extractor<'a> {
     /// Construct a term for this operator with subterms from the cost sets
     /// We also need to add this term to the correspondence map so we can
     /// find its enode id later.
-    fn get_term(&mut self, node_id: NodeId, children: Vec<Term>) -> Term {
-        let node = &self.egraph[&node_id];
+    fn get_term(&mut self, info: &EgraphInfo, node_id: NodeId, children: Vec<Term>) -> Term {
+        let node = &info.egraph[&node_id];
         let op = &node.op;
         let term = if children.is_empty() {
             if op.starts_with('\"') {
@@ -257,17 +234,17 @@ impl<'a> Extractor<'a> {
 /// Handles cycles by returning a cost set with infinite cost.
 /// Returns None when costs for children are not yet available.
 fn calculate_cost_set(
-    egraph: &egraph_serialize::EGraph,
     rootid: ClassId,
     node_id: NodeId,
     extractor: &mut Extractor,
+    info: &EgraphInfo,
 ) -> Option<CostSet> {
-    let node = &egraph[&node_id];
-    let cid = egraph.nid_to_cid(&node_id);
+    let node = &info.egraph[&node_id];
+    let cid = info.egraph.nid_to_cid(&node_id);
 
     let region_costs = extractor.costs.get(&rootid).unwrap();
     // get the cost sets for the children
-    let child_cost_sets = enode_children(egraph, node)
+    let child_cost_sets = enode_children(info.egraph, node)
         .iter()
         .filter_map(|(cid, is_region_root)| {
             if *is_region_root {
@@ -300,10 +277,10 @@ fn calculate_cost_set(
     }
 
     let mut shared_total = NotNan::new(0.).unwrap();
-    let mut unshared_total = extractor.cm.get_op_cost(&node.op);
+    let mut unshared_total = info.cm.get_op_cost(&node.op);
     let mut costs = HashMap::default();
 
-    if !extractor.cm.ignore_children(&node.op) {
+    if !info.cm.ignore_children(&node.op) {
         for (child_set, is_region_root) in child_cost_sets.iter() {
             if *is_region_root {
                 unshared_total += child_set.total;
@@ -330,7 +307,7 @@ fn calculate_cost_set(
         .map(|(cs, _is_region_root)| cs.term.clone())
         .collect();
 
-    let term = extractor.get_term(node_id, sub_terms);
+    let term = extractor.get_term(info, node_id, sub_terms);
 
     Some(CostSet { total, costs, term })
 }
@@ -341,23 +318,16 @@ pub fn extract(
     unextractables: HashSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
-) -> CostSet {
-    let extractor_not_linear = &mut Extractor::new(
-        original_prog,
-        &cost_model,
-        termdag,
-        Default::default(),
-        egraph,
-        unextractables,
-    );
+) -> TreeProgram {
+    let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
+    let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let res = extract_without_linearity(extractor_not_linear);
+    let res = extract_without_linearity(extractor_not_linear, &egraph_info);
     // TODO implement linearity
-    let effectful_nodes_along_path =
-        extractor_not_linear.find_effectful_nodes_in_program(&res.term);
+    let effectful_nodes_along_path = extractor_not_linear.find_effectful_nodes_in_program(&res);
     let _effectful_regions_along_path = effectful_nodes_along_path
         .into_iter()
-        .filter(|nid| extractor_not_linear.is_region_node(nid.clone()))
+        .filter(|nid| egraph_info.is_region_node(nid.clone()))
         .collect::<HashSet<NodeId>>();
 
     // TODO loop over effectful regions
@@ -382,7 +352,7 @@ pub fn extract(
     );
     let res = extract_without_linearity(extractor_not_linear);*/
 
-    extract_without_linearity(extractor_not_linear)
+    res
 }
 
 /// Perform a greedy extraction of the DAG, without considering linearity.
@@ -425,33 +395,31 @@ pub fn extract(
 //     extractor.costs.get(n2c(&root)).unwrap().clone()
 // }
 
-pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
-    let n2c = |nid: &NodeId| extractor.egraph.nid_to_cid(nid);
+pub fn extract_without_linearity(extractor: &mut Extractor, info: &EgraphInfo) -> TreeProgram {
+    let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
     let mut updated_cost = true;
 
     while updated_cost {
         updated_cost = false;
-        for (rootid, reachable) in extractor.reachable_from.iter() {
-            let region_costs = extractor.costs.get_mut(rootid).unwrap();
+        for (rootid, reachable) in info.reachable_from.iter() {
             for class_id in reachable {
-                for node_id in &extractor.egraph.classes().get(class_id).unwrap().nodes {
-                    let node = extractor.egraph.nodes.get(node_id).unwrap();
-                    if extractor.unextractables.contains(&node.op) {
+                for node_id in &info.egraph.classes().get(class_id).unwrap().nodes {
+                    let node = info.egraph.nodes.get(node_id).unwrap();
+                    if info.unextractables.contains(&node.op) {
                         continue;
                     }
 
+                    let region_costs = extractor.costs.get_mut(rootid).unwrap();
                     let lookup = region_costs.get(class_id);
                     let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
                     if lookup.is_some() {
                         prev_cost = lookup.unwrap().total;
                     }
 
-                    if let Some(cost_set) = calculate_cost_set(
-                        extractor.egraph,
-                        rootid.clone(),
-                        node_id.clone(),
-                        extractor,
-                    ) {
+                    if let Some(cost_set) =
+                        calculate_cost_set(rootid.clone(), node_id.clone(), extractor, info)
+                    {
+                        let region_costs = extractor.costs.get_mut(rootid).unwrap();
                         if cost_set.total < prev_cost {
                             region_costs.insert(class_id.clone(), cost_set);
                             updated_cost = true;
@@ -459,44 +427,22 @@ pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
                     }
                 }
             }
-            todo!()
         }
     }
-    todo!()
-    // let parents = build_parent_index(extractor.egraph);
-    // let mut worklist = initialize_worklist(extractor.egraph);
 
-    // while let Some(node_id) = worklist.pop() {
-    //     let class_id = n2c(&node_id);
-    //     let node = &extractor.egraph[&node_id];
-    //     if extractor.unextractables.contains(&node.op) {
-    //         continue;
-    //     }
-    //     if node
-    //         .children
-    //         .iter()
-    //         .all(|c| extractor.costs.contains_key(n2c(c)))
-    //     {
-    //         let lookup = extractor.costs.get(class_id);
-    //         let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
-    //         if lookup.is_some() {
-    //             prev_cost = lookup.unwrap().total;
-    //         }
+    let root_eclass = n2c(&get_root(info.egraph));
+    let root_term = extractor
+        .costs
+        .get(&root_eclass)
+        .unwrap()
+        .get(&root_eclass)
+        .unwrap()
+        .clone();
 
-    //         let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
-    //         if cost_set.total < prev_cost {
-    //             extractor.costs.insert(class_id.clone(), cost_set);
-    //             worklist.extend(parents[class_id].iter().cloned());
-    //         }
-    //     }
-    // }
+    // now run translation to expressions
+    let resulting_prog = extractor.terms_to_expressions(root_term.term.clone());
 
-    // let mut root_eclasses = extractor.egraph.root_eclasses.clone();
-    // root_eclasses.sort();
-    // root_eclasses.dedup();
-
-    // let root = get_root(extractor.egraph);
-    // extractor.costs.get(n2c(&root)).unwrap().clone()
+    resulting_prog
 }
 
 pub trait CostModel {
@@ -594,6 +540,7 @@ where
         }
     }
 
+    #[allow(dead_code)]
     pub fn extend<I>(&mut self, iter: I)
     where
         I: IntoIterator<Item = T>,

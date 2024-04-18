@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use egglog::{Term, TermDag};
-use from_egglog::FromEgglog;
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
 use schema::TreeProgram;
@@ -119,11 +118,7 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
         &mut termdag,
         DefaultCostModel,
     );
-    let mut from_egglog = FromEgglog {
-        termdag: &mut termdag,
-        conversion_cache: Default::default(),
-    };
-    Ok(from_egglog.program_from_egglog(result.term))
+    Ok(result)
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

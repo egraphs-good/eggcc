@@ -6,23 +6,14 @@ expression: visualization.result
   v2: int = const 1;
   v5: int = const 2;
   v7: bool = lt v0 v5;
-  br v7 .__21__ .__14__;
-.__21__:
-  v20: bool = const true;
-  br v20 .__32__ .__26__;
-.__32__:
+  br v7 .__20__ .__14__;
+.__20__:
   print v2;
-  v30: int = id v2;
-.__37__:
   v18: int = id v2;
-  jmp .__40__;
-.__26__:
-  print v5;
-  v30: int = id v2;
-  jmp .__37__;
+  jmp .__25__;
 .__14__:
   print v2;
   v18: int = id v2;
-.__40__:
+.__25__:
   print v2;
 }

@@ -207,8 +207,7 @@
 (rule (
        (= lhs (If cond inputs thn els))
        (ContextOf lhs if_ctx)
-       (HasArgType lhs ty)
-       (= cond (Const (Bool true) ty))
+       (= (BoolB true) (lo-bound cond))
       )
       ((union lhs (Subst inf-fuel if_ctx inputs thn)))
       :ruleset interval-analysis)
@@ -217,8 +216,7 @@
 (rule (
        (= lhs (If cond inputs thn els))
        (ContextOf lhs if_ctx)
-       (HasArgType lhs ty)
-       (= cond (Const (Bool false) ty))
+       (= (BoolB false) (hi-bound cond))
       )
       ((union lhs (Subst inf-fuel if_ctx inputs els)))
       :ruleset interval-analysis)

@@ -11,19 +11,21 @@
 (function hi-bound (Expr) Bound :unextractable :merge (bound-min old new))
 
 ; if lo > hi, panic
-(rule (
-        (= (IntB lo) (lo-bound expr))
-        (= (IntB hi) (hi-bound expr))
-        (> lo hi)
-      ) 
-      ((panic "lo bound greater than hi bound"))
-      :ruleset interval-analysis)
-(rule (
-        (= (BoolB true) (lo-bound expr))
-        (= (BoolB false) (hi-bound expr))
-      ) 
-      ((panic "lo bound greater than hi bound"))
-      :ruleset interval-analysis)
+; We can't run these rules because unreachable branches may have impossible intervals
+; Consider re-enabling these rules if we implement an is-reachable analysis
+; (rule (
+;         (= (IntB lo) (lo-bound expr))
+;         (= (IntB hi) (hi-bound expr))
+;         (> lo hi)
+;       ) 
+;       ((panic "lo bound greater than hi bound"))
+;       :ruleset interval-analysis)
+; (rule (
+;         (= (BoolB true) (lo-bound expr))
+;         (= (BoolB false) (hi-bound expr))
+;       ) 
+;       ((panic "lo bound greater than hi bound"))
+;       :ruleset interval-analysis)
 
 ; combinators
 (rewrite (bound-max (IntB x) (IntB y))
@@ -201,6 +203,26 @@
 ; =================================
 ; Conditionals
 ; =================================
+; if the predicate is true, merge with then branch
+(rule (
+       (= lhs (If cond inputs thn els))
+       (ContextOf lhs if_ctx)
+       (HasArgType lhs ty)
+       (= cond (Const (Bool true) ty))
+      )
+      ((union lhs (Subst inf-fuel if_ctx inputs thn)))
+      :ruleset interval-analysis)
+
+; if the predicate is false, merge with else branch
+(rule (
+       (= lhs (If cond inputs thn els))
+       (ContextOf lhs if_ctx)
+       (HasArgType lhs ty)
+       (= cond (Const (Bool false) ty))
+      )
+      ((union lhs (Subst inf-fuel if_ctx inputs els)))
+      :ruleset interval-analysis)
+
 ; lo-bound of If is the min of the lower bounds
 ; hi-bound of If is the max of the upper bounds
 (rule (

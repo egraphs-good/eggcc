@@ -50,6 +50,8 @@ cp log.txt "$NIGHTLY_DIR/output"
 mkdir -p ./tmp/bench
 ./infra/profile.py
 
+gzip ./tmp/bench/**/*.json
+
 rm -r ./tmp/
 
 popd

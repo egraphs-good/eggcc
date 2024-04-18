@@ -486,6 +486,8 @@ impl<'a> TypeChecker<'a> {
                 }
                 (found_ty.clone(), expr.clone())
             }
+            // context assumptions are not typechecked,
+            // so tests need to add types to the context manually
             Expr::InContext(assumption, body) => {
                 let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), arg_tys);
                 (

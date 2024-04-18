@@ -13,7 +13,6 @@ use std::io::Write;
 use std::process::Command;
 
 use bril_rs::{ConstOps, EffectOps, Instruction, Literal, Position, Type, ValueOps};
-use egglog::Value;
 use hashbrown::HashMap;
 use petgraph::algo::dominators;
 
@@ -81,7 +80,6 @@ pub(crate) fn cfg_func_to_rvsdg(
         analysis,
         dom,
         store: Default::default(),
-        var_types: Default::default(),
         join_point: Default::default(),
         function_types: function_types.clone(),
     };
@@ -148,7 +146,6 @@ pub(crate) struct RvsdgBuilder<'a> {
     analysis: LiveVariableAnalysis,
     dom: Dominators<NodeIndex>,
     store: HashMap<VarId, Operand>,
-    var_types: HashMap<VarId, Type>,
     function_types: FunctionTypes,
 }
 
@@ -411,16 +408,13 @@ impl<'a> RvsdgBuilder<'a> {
                         );
                     };
                     match ty {
-                        VarType::Bril(Type::Pointer(_)) => {
-                            todo!()
-                        }
                         VarType::Bril(bril_ty) => {
                             let lit = match bril_ty {
                                 Type::Int => Literal::Int(0),
                                 Type::Bool => Literal::Bool(false),
                                 Type::Float => Literal::Float(0.0),
                                 Type::Char => Literal::Char('x'),
-                                Type::Pointer(_) => unreachable!(),
+                                Type::Pointer(_) => panic!("pointer-valued placeholders are not currently supported"),
                             };
                             let op = get_id(
                                 &mut self.expr,
@@ -428,7 +422,7 @@ impl<'a> RvsdgBuilder<'a> {
                             );
                             Operand::Project(0, op)
                         }
-                        VarType::State => todo!(),
+                        VarType::State => panic!("state variable unbound"),
                     }
                 });
                 output_vec.push(op);

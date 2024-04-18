@@ -50,8 +50,6 @@ cp log.txt "$NIGHTLY_DIR/output"
 mkdir -p ./tmp/bench
 ./infra/profile.py
 
-gzip ./tmp/bench/**/*.json
-
 rm -r ./tmp/
 
 popd
@@ -62,6 +60,9 @@ cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"
 
 # Copy json directory to the artifact
 cp -r "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output/data"
+
+# gzip all JSON in the nightly dir
+gzip "$NIGHTLY_DIR/output/data/profile.json"
 
 # This is the uploading part, copied directly from Herbie's nightly script.
 DIR="$NIGHTLY_DIR/output"

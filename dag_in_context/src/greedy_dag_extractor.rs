@@ -2,7 +2,10 @@ use egglog::*;
 use egraph_serialize::{ClassId, EGraph, NodeId};
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    path,
+};
 
 use crate::{
     from_egglog::FromEgglog,
@@ -37,7 +40,7 @@ pub(crate) struct Extractor<'a> {
 
 impl<'a> EgraphInfo<'a> {
     fn is_region_node(&self, node_id: NodeId) -> bool {
-        enode_regions(self.egraph, &self.egraph[&node_id]).is_some()
+        enode_regions(self.egraph, &self.egraph[&node_id]).len() > 0
     }
 
     pub(crate) fn new(
@@ -47,10 +50,8 @@ impl<'a> EgraphInfo<'a> {
     ) -> Self {
         let mut region_roots = HashSet::new();
         for node in egraph.classes().values().flat_map(|c| &c.nodes) {
-            if let Some(regions) = enode_regions(egraph, &egraph[node]) {
-                for root in regions {
-                    region_roots.insert(root);
-                }
+            for root in enode_regions(egraph, &egraph[node]) {
+                region_roots.insert(root);
             }
         }
 
@@ -191,7 +192,7 @@ pub fn serialized_egraph(
 
 type Cost = NotNan<f64>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CostSet {
     pub total: Cost,
     // TODO perhaps more efficient as
@@ -318,11 +319,11 @@ pub fn extract(
     unextractables: HashSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
-) -> TreeProgram {
+) -> (CostSet, TreeProgram) {
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let res = extract_without_linearity(extractor_not_linear, &egraph_info);
+    let (cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info);
     // TODO implement linearity
     let effectful_nodes_along_path = extractor_not_linear.find_effectful_nodes_in_program(&res);
     let _effectful_regions_along_path = effectful_nodes_along_path
@@ -352,7 +353,7 @@ pub fn extract(
     );
     let res = extract_without_linearity(extractor_not_linear);*/
 
-    res
+    (cost_res, res)
 }
 
 /// Perform a greedy extraction of the DAG, without considering linearity.
@@ -395,7 +396,10 @@ pub fn extract(
 //     extractor.costs.get(n2c(&root)).unwrap().clone()
 // }
 
-pub fn extract_without_linearity(extractor: &mut Extractor, info: &EgraphInfo) -> TreeProgram {
+pub fn extract_without_linearity(
+    extractor: &mut Extractor,
+    info: &EgraphInfo,
+) -> (CostSet, TreeProgram) {
     let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
     let mut updated_cost = true;
 
@@ -435,7 +439,7 @@ pub fn extract_without_linearity(extractor: &mut Extractor, info: &EgraphInfo) -
     }
 
     let root_eclass = n2c(&get_root(info.egraph));
-    let root_term = extractor
+    let root_costset = extractor
         .costs
         .get(&root_eclass)
         .unwrap()
@@ -444,9 +448,9 @@ pub fn extract_without_linearity(extractor: &mut Extractor, info: &EgraphInfo) -
         .clone();
 
     // now run translation to expressions
-    let resulting_prog = extractor.terms_to_expressions(root_term.term.clone());
+    let resulting_prog = extractor.terms_to_expressions(root_costset.term.clone());
 
-    resulting_prog
+    (root_costset, resulting_prog)
 }
 
 pub trait CostModel {
@@ -568,25 +572,22 @@ where
     }
 }
 
-// For a given enode, if it creates sub-regions
-// return the roots for these sub-regions
+// For a given enode,
+// return the roots for sub-regions
 fn enode_regions(
     egraph: &egraph_serialize::EGraph,
     enode: &egraph_serialize::Node,
-) -> Option<Vec<ClassId>> {
-    match (enode.op.as_str(), enode.children.as_slice()) {
-        ("DoWhile", [_input, body]) => Some(vec![egraph.nid_to_cid(body).clone()]),
-        ("If", [_pred, _input, then_branch, else_branch]) => Some(vec![
-            egraph.nid_to_cid(then_branch).clone(),
-            egraph.nid_to_cid(else_branch).clone(),
-        ]),
-        ("Switch", [_pred, _input, branchlist]) => Some(get_conslist_children(
-            egraph,
-            egraph.nid_to_cid(branchlist).clone(),
-        )),
-        ("Function", [_name, _args, _ret, body]) => Some(vec![egraph.nid_to_cid(body).clone()]),
-        _ => None,
-    }
+) -> Vec<ClassId> {
+    enode_children(egraph, enode)
+        .iter()
+        .filter_map(|(cid, is_region_root)| {
+            if *is_region_root {
+                Some(cid.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 /// For a given enode, returns a vector of children eclasses.
@@ -618,8 +619,13 @@ fn enode_children(
             );
             res
         }
-        ("Function", [_name, _args, _ret, body]) => {
-            vec![(egraph.nid_to_cid(body).clone(), true)]
+        ("Function", [name, args, ret, body]) => {
+            vec![
+                (egraph.nid_to_cid(name).clone(), false),
+                (egraph.nid_to_cid(args).clone(), false),
+                (egraph.nid_to_cid(ret).clone(), false),
+                (egraph.nid_to_cid(body).clone(), true),
+            ]
         }
         _ => {
             let mut children = vec![];
@@ -656,15 +662,12 @@ fn region_reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) ->
     queue.insert(root);
 
     while let Some(eclass) = queue.pop() {
-        if visited.contains(&eclass) {
-            continue;
-        }
-        visited.insert(eclass.clone());
-
-        for node in &egraph.classes()[&eclass].nodes {
-            for (child, is_subregion) in enode_children(egraph, &egraph[node]) {
-                if !is_subregion {
-                    queue.insert(child);
+        if visited.insert(eclass.clone()) {
+            for node in &egraph.classes()[&eclass].nodes {
+                for (child, is_subregion) in enode_children(egraph, &egraph[node]) {
+                    if !is_subregion {
+                        queue.insert(child);
+                    }
                 }
             }
         }
@@ -673,10 +676,36 @@ fn region_reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) ->
     visited
 }
 
+#[cfg(test)]
+fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
+    use crate::{print_with_intermediate_vars, prologue};
+    let string_prog = {
+        let (term, termdag) = prog.to_egglog();
+        let printed = print_with_intermediate_vars(&termdag, term);
+        format!("{}\n{printed}\n", prologue(),)
+    };
+
+    let mut egraph = egglog::EGraph::default();
+    egraph.parse_and_run_program(&string_prog).unwrap();
+    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let mut termdag = TermDag::default();
+    let cost_model = DefaultCostModel;
+
+    let cost_set = extract(
+        prog,
+        &serialized_egraph,
+        unextractables,
+        &mut termdag,
+        DefaultCostModel,
+    );
+
+    assert_eq!(cost_set.0.total, expected_cost);
+}
+
 #[test]
 fn test_dag_extract() {
     use crate::ast::*;
-    use crate::{print_with_intermediate_vars, prologue};
+
     let prog = program!(
         function(
             "main",
@@ -721,27 +750,7 @@ fn test_dag_extract() {
             )
         )
     );
-
-    let string_prog = {
-        let (term, termdag) = prog.to_egglog();
-        let printed = print_with_intermediate_vars(&termdag, term);
-        format!("{}\n{printed}\n", prologue(),)
-    };
-
-    let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&string_prog).unwrap();
-    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
-    let mut termdag = TermDag::default();
     let cost_model = DefaultCostModel;
-
-    let cost_set = extract(
-        &prog,
-        &serialized_egraph,
-        unextractables,
-        &mut termdag,
-        DefaultCostModel,
-    );
-    eprintln!("{}", termdag.to_string(&cost_set.term));
 
     let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
         + cost_model.get_op_cost("DoWhile")
@@ -751,6 +760,20 @@ fn test_dag_extract() {
     let expected_cost = cost_of_one_func * 2.
         + cost_model.get_op_cost("Function") * 2.
         + cost_model.get_op_cost("Program");
+    dag_extraction_test(&prog, expected_cost);
+}
 
-    assert_eq!(cost_set.total, expected_cost);
+#[test]
+fn simple_dag_extract() {
+    use crate::ast::*;
+    let prog = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(int(10), getat(1))
+    ),);
+    let cost_model = DefaultCostModel;
+
+    let expected_cost = cost_model.get_op_cost("Const");
+    dag_extraction_test(&prog, expected_cost);
 }

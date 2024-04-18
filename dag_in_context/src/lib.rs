@@ -111,14 +111,14 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
     // TODO use extract instead of extract_without_linearity when it is implemented
-    let result = extract(
+    let (res_cost, res) = extract(
         program,
         &serialized,
         unextractables,
         &mut termdag,
         DefaultCostModel,
     );
-    Ok(result)
+    Ok(res)
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

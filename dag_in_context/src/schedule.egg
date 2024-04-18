@@ -20,4 +20,24 @@
     switch_rewrite
     loop-simplify
     loop-unroll
-    ))
+    )
+    
+  ;; Run substitution and other helpers at the end
+  (saturate ;; saturate rulesets that we run to saturation
+      (saturate always-run)
+      (saturate canon)
+      (saturate error-checking)
+      (saturate
+        (saturate type-helpers)
+        type-analysis
+      )
+      (saturate 
+        (saturate subst-helpers)
+        subst) ;; subst depends on type information for the argument
+      (saturate
+        ;; make sure to saturate context-helpers, since they ensure the other rules saturate
+        (saturate context-helpers)
+        context
+        context-prop)
+      (saturate interval-analysis))
+  )

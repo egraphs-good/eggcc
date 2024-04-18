@@ -279,8 +279,6 @@
         ; context node inside the if region
         (= ctx (InContext (InIf true pred inputs) (Arg ty)))
         (HasType inputs ty)
-        ; usage of the value x inside the if region
-        (Get ctx i)
       )
       ; expr < value was true, so we know expr is at most (hi-bound value) - 1
       ((set (hi-bound (Get ctx i)) (IntB (- v 1)))) 
@@ -296,8 +294,6 @@
         ; context node inside the if region
         (= ctx (InContext (InIf false pred inputs) (Arg ty)))
         (HasType inputs ty)
-        ; usage of the value x inside the if region
-        (Get ctx i)
       )
       ; expr < value was false, so we know expr is at least (lo-bound value)
       ((set (lo-bound (Get ctx i)) (IntB v))) 
@@ -314,8 +310,6 @@
         ; context node inside the if region
         (= ctx (InContext (InIf true pred inputs) (Arg ty)))
         (HasType inputs ty)
-        ; usage of the value x inside the if region
-        (Get ctx i)
       )
       ; value < expr was true, so we know expr is at least (lo-bound value) + 1
       ((set (lo-bound (Get ctx i)) (IntB (+ v 1)))) 
@@ -331,8 +325,6 @@
         ; context node inside the if region
         (= ctx (InContext (InIf false pred inputs) (Arg ty)))
         (HasType inputs ty)
-        ; usage of the value x inside the if region
-        (Get ctx i)
       )
       ; value < expr was false, so we know expr is at most (hi-bound value)
       ((set (hi-bound (Get ctx i)) (IntB v))) 

@@ -108,7 +108,7 @@ impl<'a> Extractor<'a> {
 
     /// Convert the extracted terms to expressions, and also
     /// store their types.
-    fn terms_to_expressions(&mut self, prog: Term) -> TreeProgram {
+    fn terms_to_expressions(&mut self, info: &EgraphInfo, prog: Term) -> TreeProgram {
         let mut converter = FromEgglog {
             termdag: self.termdag,
             conversion_cache: Default::default(),
@@ -116,9 +116,18 @@ impl<'a> Extractor<'a> {
         let mut node_to_type: HashMap<NodeId, Type> = Default::default();
 
         for (term, node_id) in &self.correspondence {
-            if term == &prog {
-                // skip the program here
-            } else {
+            let node = info.egraph.nodes.get(node_id).unwrap();
+            let eclass = info.egraph.nid_to_cid(node_id);
+            let type_of_eclass = info
+                .egraph
+                .class_data
+                .get(eclass)
+                .unwrap()
+                .typ
+                .as_ref()
+                .unwrap();
+            // only convert expressions (that are not functions)
+            if type_of_eclass == "Expr" && node.op != "Function" {
                 let expr = converter.expr_from_egglog(term.clone());
                 let ty = self
                     .typechecker
@@ -251,11 +260,9 @@ fn calculate_cost_set(
             if *is_region_root {
                 Some((extractor.costs.get(cid)?.get(cid)?, *is_region_root))
             } else {
-                if let Some(cost_set) = region_costs.get(cid) {
-                    Some((cost_set, *is_region_root))
-                } else {
-                    None
-                }
+                region_costs
+                    .get(cid)
+                    .map(|cost_set| (cost_set, *is_region_root))
             }
         })
         .collect::<Vec<_>>();
@@ -414,10 +421,7 @@ pub fn extract_without_linearity(
                     }
 
                     // create a new region_costs map if it doesn't exist
-                    let region_costs = extractor
-                        .costs
-                        .entry(rootid.clone())
-                        .or_insert_with(Default::default);
+                    let region_costs = extractor.costs.entry(rootid.clone()).or_default();
                     let lookup = region_costs.get(class_id);
                     let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
                     if lookup.is_some() {
@@ -441,14 +445,14 @@ pub fn extract_without_linearity(
     let root_eclass = n2c(&get_root(info.egraph));
     let root_costset = extractor
         .costs
-        .get(&root_eclass)
+        .get(root_eclass)
         .unwrap()
-        .get(&root_eclass)
+        .get(root_eclass)
         .unwrap()
         .clone();
 
     // now run translation to expressions
-    let resulting_prog = extractor.terms_to_expressions(root_costset.term.clone());
+    let resulting_prog = extractor.terms_to_expressions(info, root_costset.term.clone());
 
     (root_costset, resulting_prog)
 }
@@ -488,7 +492,7 @@ impl CostModel for DefaultCostModel {
             "Alloc" | "Free" => 100.,
             "Call" => 1000., // TODO: we could make this more accurate
             // Control
-            "Program" | "Function" => 1.,
+            "Program" | "Function" => 0.,
             "DoWhile" => 100., // TODO: we could make this more accurate
             "If" | "Switch" => 50.,
             // Unreachable
@@ -757,9 +761,7 @@ fn test_dag_extract() {
         + cost_model.get_op_cost("LessThan")
         // while the same const is used three times, it is only counted twice
         + cost_model.get_op_cost("Const") * 2.;
-    let expected_cost = cost_of_one_func * 2.
-        + cost_model.get_op_cost("Function") * 2.
-        + cost_model.get_op_cost("Program");
+    let expected_cost = cost_of_one_func * 2.;
     dag_extraction_test(&prog, expected_cost);
 }
 

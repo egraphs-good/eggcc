@@ -25,11 +25,15 @@
 ; Pointees
 ; ============================
 
-; [ {0->[4,5], 1->[0,0]}, {0->[0,0]}]
-
 ; List<i64+IntInterval> is used as an association list; the i64 keys
 ; (corresponding to alloc ids) are always unique and sorted, the IntInterval
 ; values correspond to offset ranges.
+;
+; (TuplePointees [{0->[4,5], 1->[0,0]}, {0->[0,0]}])
+; indicates a tuple with two components.
+; - The first component might point to Alloc 0 at offsets 4 or 5,
+;   or Alloc 1 at offset 0
+; - The second component points to Alloc 0 at offset 0
 (datatype Pointees
           (TuplePointees List<List<i64+IntInterval>>)
           (PtrPointees List<i64+IntInterval>)

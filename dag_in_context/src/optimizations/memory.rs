@@ -6,12 +6,7 @@ use crate::schema_helpers::{Constructor, ESort, Purpose};
 use crate::{egglog_test, prologue};
 use strum::IntoEnumIterator;
 
-struct AssociationListImpl {
-    key_lessthan: String,
-    val_intersect: String,
-    val_union: String,
-}
-
+// Signature of an egglog function, for metaprogramming
 struct FnImpl {
     name: String,
     arg_tys: Vec<String>,
@@ -23,7 +18,6 @@ fn listlike(
     el_functions: Vec<FnImpl>,
     el_relations: Vec<&str>,
     el_binops: Vec<FnImpl>,
-    alist_impl: Option<AssociationListImpl>,
 ) -> String {
     assert!(!el_tys.is_empty());
     for f in el_functions {
@@ -135,139 +129,12 @@ fn listlike(
             "
         ))
     }
-
-    if let Some(AssociationListImpl {
-        key_lessthan,
-        val_intersect,
-        val_union,
-    }) = alist_impl
-    {
-        assert!(el_tys.len() <= 2);
-        let val1 = (1..el_tys.len())
-            .map(|i| format!("a{i}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        let val2 = (1..el_tys.len())
-            .map(|i| format!("b{i}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        res.push(format!(
-            "
-; (function Union-{datatype} ({datatype} {datatype}) {datatype})
-  ; ; The third argument of the helper is a WIP result map.
-  ; ; Invariant: keys of the result map are not present in the first two and are in descending order
-  ; (function UnionHelper-{datatype} ({datatype} {datatype} {datatype}) {datatype})
-  ; (rewrite (Union-{datatype} m1 m2)
-           ; (Rev-{datatype} (UnionHelper-{datatype} m1 m2 (Nil-{datatype})))
-           ; :ruleset always-run)
-
-  ; ; both m1 and m2 empty
-  ; (rewrite (UnionHelper-{datatype} (Nil-{datatype}) (Nil-{datatype}) res)
-           ; res
-           ; :ruleset always-run)
-  ; ; take from m1 when m2 empty and vice versa
-  ; (rewrite
-    ; (UnionHelper-{datatype}
-      ; (Nil-{datatype})
-      ; (Cons-{datatype} {el} tl)
-      ; res)
-    ; (UnionHelper-{datatype}
-      ; (Nil-{datatype})
-      ; tl
-      ; (Cons-{datatype} {el} res))
-    ; :ruleset always-run)
-  ; (rewrite
-    ; (UnionHelper-{datatype}
-      ; (Cons-{datatype} {el} tl)
-      ; (Nil-{datatype})
-      ; res)
-    ; (UnionHelper-{datatype}
-      ; tl
-      ; (Nil-{datatype})
-      ; (Cons-{datatype} {el} res))
-    ; :ruleset always-run)
-
-  ; ; when both nonempty and smallest key different, take smaller key
-  ; (rule ((= f (UnionHelper-{datatype} l1 l2 res))
-         ; (= l1 (Cons-{datatype} k1 {val1} tl1))
-         ; (= l2 (Cons-{datatype} k2 {val2} tl2))
-         ; ({key_lessthan} k1 k2))
-        ; ((union f
-           ; (UnionHelper-{datatype} tl1 l2 (Cons-{datatype} k1 {val1} res))))
-        ; :ruleset always-run)
-  ; (rule ((= f (UnionHelper-{datatype} l1 l2 res))
-         ; (= l1 (Cons-{datatype} k1 {val1} tl1))
-         ; (= l2 (Cons-{datatype} k2 {val2} tl2))
-         ; ({key_lessthan} k2 k1))
-        ; ((union f
-           ; (UnionHelper-{datatype} l1 tl2 (Cons-{datatype} k2 {val2} res))))
-        ; :ruleset always-run)
-
-  ; ; when shared smallest key, union interval
-  ; (rule ((= f (UnionHelper-{datatype} l1 l2 res))
-         ; (= l1 (Cons-{datatype} k {val1} tl1))
-         ; (= l2 (Cons-{datatype} k {val2} tl2)))
-        ; ((union f
-           ; (UnionHelper-{datatype} tl1 tl2
-             ; (Cons-{datatype} k ({val_union} {val1} {val2}) res))))
-        ; :ruleset always-run)
-
-; (function Intersect-{datatype} ({datatype} {datatype}) {datatype})
-  ; ; The third argument of the helper is a WIP result map.
-  ; ; Invariant: keys of the result map are not present in the first two and are in descending order
-  ; (function IntersectHelper-{datatype} ({datatype} {datatype} {datatype}) {datatype})
-  ; (rewrite (Intersect-{datatype} m1 m2)
-           ; (Rev-{datatype} (IntersectHelper-{datatype} m1 m2 (Nil-{datatype})))
-           ; :ruleset always-run)
-
-  ; ; m1 or m2 empty
-  ; (rewrite (IntersectHelper-{datatype} (Nil-{datatype}) m2 res)
-           ; res
-           ; :ruleset always-run)
-  ; (rewrite (IntersectHelper-{datatype} m1 (Nil-{datatype}) res)
-           ; res
-           ; :ruleset always-run)
-
-  ; ; when both nonempty and smallest key different, drop smaller key
-  ; (rule ((= f (IntersectHelper-{datatype} l1 l2 res))
-         ; (= l1 (Cons-{datatype} k1 {val1} tl1))
-         ; (= l2 (Cons-{datatype} k2 {val2} tl2))
-         ; ({key_lessthan} k1 k2))
-        ; ((union f (IntersectHelper-{datatype} tl1 l2 res)))
-        ; :ruleset always-run)
-  ; (rule ((= f (IntersectHelper-{datatype} l1 l2 res))
-         ; (= l1 (Cons-{datatype} k1 {val1} tl1))
-         ; (= l2 (Cons-{datatype} k2 {val2} tl2))
-         ; ({key_lessthan} k2 k1))
-        ; ((union f (IntersectHelper-{datatype} tl1 l2 res)))
-        ; :ruleset always-run)
-
-  ; ; when shared smallest key, intersect interval
-  ; (rule ((= f (IntersectHelper-{datatype} l1 l2 res))
-         ; (= l1 (Cons-{datatype} k {val1} tl1))
-         ; (= l2 (Cons-{datatype} k {val2} tl2)))
-        ; ((union f
-           ; (IntersectHelper-{datatype} tl1 tl2
-             ; (Cons-{datatype} k ({val_intersect} {val1} {val2}) res))))
-        ; :ruleset always-run)"
-        ));
-    }
     res.join("\n")
 }
 
 #[allow(non_snake_case)]
 pub(crate) fn rules() -> String {
-    let Listi64IntInterval = listlike(
-        vec!["i64", "IntInterval"],
-        vec![],
-        vec![],
-        vec![],
-        Some(AssociationListImpl {
-            key_lessthan: "<".to_string(),
-            val_intersect: "IntersectIntInterval".to_string(),
-            val_union: "UnionIntInterval".to_string(),
-        }),
-    );
+    let Listi64IntInterval = listlike(vec!["i64", "IntInterval"], vec![], vec![], vec![]);
     let ListListi64IntInterval = listlike(
         vec!["List<i64+IntInterval>"],
         vec![],
@@ -290,7 +157,6 @@ pub(crate) fn rules() -> String {
                 resultty: "List<i64+IntInterval>".to_string(),
             },
         ],
-        None,
     );
     format!(
         "
@@ -565,6 +431,14 @@ fn load_after_write_without_alias() -> crate::Result {
 
 #[test]
 fn simple_loop_swap() -> crate::Result {
+    // p = alloc(alloc_id, 4, int*)
+    // q = ptradd(p, 1)
+    // r = ptradd(p, 2)
+    // // (p, r) don't alias
+    // do {
+    //   p, q = q, p
+    // } while true;
+    // // (p, r) still shouldn't alias
     use crate::ast::*;
     let alloc_id = 1;
     let state = get(arg_ty(tuplet!(statet())), 0);
@@ -640,6 +514,18 @@ fn simple_loop_swap() -> crate::Result {
 
 // #[test]
 fn pqrs_deep_loop_swap() -> crate::Result {
+    // p = alloc(alloc_id, 4, int*)
+    // q = ptradd(p, 1)
+    // r = ptradd(p, 2)
+    // s = ptradd(p, 3)
+    // // (p, r), (p, s), (q, r), (q, s) don't alias
+    // do {
+    //   do {
+    //     p, q = q, p
+    //   } while true;
+    //   r, s = r, s
+    // } while true;
+    // // (p, r), (p, s), (q, r), (q, s) still shouldn't alias
     use crate::ast::*;
     let concat_par3 = |x, y, z| concat_par(x, concat_par(y, z));
     let alloc_id = 1;

@@ -1,8 +1,4 @@
-; Recommended VSCode setting:
-
 (ruleset memory)
-
-(datatype Cell (CellOf i64))
 
 (sort ExprSetPrim (Set Expr))
 
@@ -26,45 +22,27 @@
 (rewrite (ExprSet-length (ES set1)) (set-length set1) :ruleset always-run)
 
 ; ============================
-; PointsToCells
+; Pointees
 ; ============================
 
 ; [ {0->[4,5], 1->[0,0]}, {0->[0,0]}]
 
-(function Map<Union-List<i64+IntInterval>> (List<List<i64+IntInterval>> List<List<i64+IntInterval>>) List<List<i64+IntInterval>>)
-(rewrite (Map<Union-List<i64+IntInterval>> (Nil-List<List<i64+IntInterval>>) (Nil-List<List<i64+IntInterval>>))
-         (Nil-List<List<i64+IntInterval>>)
-         :ruleset always-run)
-(rewrite
-  (Map<Union-List<i64+IntInterval>> (Cons-List<List<i64+IntInterval>> hd1 tl1) (Cons-List<List<i64+IntInterval>> hd2 tl2))
-  (Cons-List<List<i64+IntInterval>> (Union-List<i64+IntInterval> hd1 hd2) (Map<Union-List<i64+IntInterval>> tl1 tl2))
-  :ruleset always-run
-)
-
-(function Map<Intersect-List<i64+IntInterval>> (List<List<i64+IntInterval>> List<List<i64+IntInterval>>) List<List<i64+IntInterval>>)
-(rewrite (Map<Intersect-List<i64+IntInterval>> (Nil-List<List<i64+IntInterval>>) (Nil-List<List<i64+IntInterval>>))
-         (Nil-List<List<i64+IntInterval>>)
-         :ruleset always-run)
-(rewrite
-  (Map<Intersect-List<i64+IntInterval>> (Cons-List<List<i64+IntInterval>> hd1 tl1) (Cons-List<List<i64+IntInterval>> hd2 tl2))
-  (Cons-List<List<i64+IntInterval>> (Intersect-List<i64+IntInterval> hd1 hd2) (Map<Intersect-List<i64+IntInterval>> tl1 tl2))
-  :ruleset always-run
-)
-
-(relation LMIIPointsNowhere (List<List<i64+IntInterval>>))
-(rule ((= l (Nil-List<List<i64+IntInterval>>)))
-      ((LMIIPointsNowhere l))
-      :ruleset always-run)
-(rule ((= l (Cons-List<List<i64+IntInterval>> hd tl))
-       (LMIIPointsNowhere tl)
-       (= (Nil-List<i64+IntInterval>) hd))
-      ((LMIIPointsNowhere l))
-      :ruleset always-run)
-
+; List<i64+IntInterval> is used as an association list; the i64 keys
+; (corresponding to alloc ids) are always unique and sorted, the IntInterval
+; values correspond to offset ranges.
 (datatype Pointees
           (TuplePointees List<List<i64+IntInterval>>)
           (PtrPointees List<i64+IntInterval>)
           (PointsAnywhere))
+
+(function UnwrapPtrPointees (Pointees) List<i64+IntInterval>)
+(rewrite (UnwrapPtrPointees (PtrPointees x))
+         x
+         :ruleset always-run)
+(function UnwrapTuplePointees (Pointees) List<List<i64+IntInterval>>)
+(rewrite (UnwrapTuplePointees (TuplePointees x))
+         x
+         :ruleset always-run)
 
 (function UnionPointees (Pointees Pointees) Pointees)
 (rewrite (UnionPointees (PointsAnywhere) _)
@@ -77,37 +55,110 @@
          (PtrPointees (Union-List<i64+IntInterval> mii1 mii2))
          :ruleset always-run)
 (rewrite (UnionPointees (TuplePointees l1) (TuplePointees l2))
-         (TuplePointees (Map<Union-List<i64+IntInterval>> l1 l2))
+         (TuplePointees (Zip<Union-List<i64+IntInterval>> l1 l2))
          :ruleset always-run)
 
 (function IntersectPointees (Pointees Pointees) Pointees)
-(rewrite (IntersectPointees (PointsAnywhere) _)
-         (PointsAnywhere)
+(rewrite (IntersectPointees (PointsAnywhere) x)
+         x
          :ruleset always-run)
-(rewrite (IntersectPointees _ (PointsAnywhere))
-         (PointsAnywhere)
+(rewrite (IntersectPointees x (PointsAnywhere))
+         x
          :ruleset always-run)
 (rewrite (IntersectPointees (PtrPointees mii1) (PtrPointees mii2))
          (PtrPointees (Intersect-List<i64+IntInterval> mii1 mii2))
          :ruleset always-run)
 (rewrite (IntersectPointees (TuplePointees l1) (TuplePointees l2))
-         (TuplePointees (Map<Intersect-List<i64+IntInterval>> l1 l2))
+         (TuplePointees (Zip<Intersect-List<i64+IntInterval>> l1 l2))
          :ruleset always-run)
 
 (function ConcatPointees (Pointees Pointees) Pointees)
+(rewrite (ConcatPointees (TuplePointees l1) (TuplePointees l2))
+         (TuplePointees (Concat-List<List<i64+IntInterval>> l1 l2))
+         :ruleset always-run)
 
 (relation PointsNowhere (Pointees))
-(rule ((= pointees (PtrPointees m))
-       (= (Nil-List<i64+IntInterval>) m))
+(rule ((= pointees (PtrPointees l))
+       (IsEmpty-List<i64+IntInterval> l))
       ((PointsNowhere pointees))
       :ruleset always-run)
 (rule ((= pointees (TuplePointees l))
-       (LMIIPointsNowhere l))
+       (All<IsEmpty-List<i64+IntInterval>> l))
       ((PointsNowhere pointees))
       :ruleset always-run)
 
+; TODO: allow GetPointees to look through concats (in case one half is
+; incomputable due to a (PointsAnywhere))
+; OR, instead of (PointsAnywhere), have PtrPointees be a Opt<List<i64+IntInterval>>
+(function GetPointees (Pointees i64) Pointees)
+(rule ((= f (GetPointees (TuplePointees l) i))
+       (At-List<List<i64+IntInterval>> l i x))
+      ((union f (PtrPointees x)))
+      :ruleset always-run)
+
+; ============================
+; Resolved
+; ============================
+
+; Resolved checks if an e-class contains a term containing only constructors and
+; primitives; i.e. whether equality is decideable
+(relation Resolved-IntOrInfinity (IntOrInfinity))
+(rule ((= f (I _)))
+      ((Resolved-IntOrInfinity f))
+      :ruleset always-run)
+(rule ((= f (Infinity)))
+      ((Resolved-IntOrInfinity f))
+      :ruleset always-run)
+(rule ((= f (NegInfinity)))
+      ((Resolved-IntOrInfinity f))
+      :ruleset always-run)
+
+(relation Resolved-IntInterval (IntInterval))
+(rule ((= f (MkIntInterval lo hi))
+       (Resolved-IntOrInfinity lo)
+       (Resolved-IntOrInfinity hi))
+      ((Resolved-IntInterval f))
+      :ruleset always-run)
+
+(relation Resolved-List<i64+IntInterval> (List<i64+IntInterval>))
+(rule ((= f (Nil-List<i64+IntInterval>)))
+      ((Resolved-List<i64+IntInterval> f))
+      :ruleset always-run)
+(rule ((= f (Cons-List<i64+IntInterval> allocid offsets tl))
+       (Resolved-List<i64+IntInterval> tl)
+       (Resolved-IntInterval offsets))
+      ((Resolved-List<i64+IntInterval> f))
+      :ruleset always-run)
+
+(relation Resolved-List<List<i64+IntInterval>> (List<List<i64+IntInterval>>))
+(rule ((= f (Nil-List<List<i64+IntInterval>>)))
+      ((Resolved-List<List<i64+IntInterval>> f))
+      :ruleset always-run)
+(rule ((= f (Cons-List<List<i64+IntInterval>> hd tl))
+       (Resolved-List<List<i64+IntInterval>> tl)
+       (Resolved-List<i64+IntInterval> hd))
+      ((Resolved-List<List<i64+IntInterval>> f))
+      :ruleset always-run)
+
+(relation Resolved-Pointees (Pointees))
+(rule ((= f (PointsAnywhere)))
+      ((Resolved-Pointees f))
+      :ruleset always-run)
+(rule ((= f (TuplePointees x))
+       (Resolved-List<List<i64+IntInterval>> x))
+      ((Resolved-Pointees f))
+      :ruleset always-run)
+(rule ((= f (PtrPointees x))
+       (Resolved-List<i64+IntInterval> x))
+      ((Resolved-Pointees f))
+      :ruleset always-run)
+
+; ============================
+; Update PointsToCells
+; ============================
+
 ;                             arg pointees  result pointees
-(function PointsToCells (Expr Pointees)     Pointees) 
+(function PointsToCells (Expr Pointees)     Pointees :cost 999999) 
 
 ; Top-level demand
 (rule ((Function name in-ty out-ty body))
@@ -119,111 +170,108 @@
       ((PointsToCells e (PointsAnywhere)))
       :ruleset always-run)
 
-; Concat get single ptradd if
-; aps = "arg pointees"
-; (rewrite
-  ; (PointsToCells (Concat x y) aps)
-  ; (ConcatPointees (PointsToCells x aps) (PointsToCells y aps))
-  ; :ruleset always-run)
+; Demand PointsToCells along state edge and pointer-typed values
+(rule ((PointsToCells (Bop (Print) e state) ap))
+      ((PointsToCells state ap))
+      :ruleset always-run)
+(rule ((PointsToCells (Bop (Load) e state) ap))
+      ((PointsToCells e ap)
+       (PointsToCells state ap))
+      :ruleset always-run)
+(rule ((PointsToCells (Top (Write) ptr val state) ap))
+      ((PointsToCells ptr ap)
+       (PointsToCells state ap))
+      :ruleset always-run)
+(rule ((PointsToCells (Alloc id sz state ty) ap))
+      ((PointsToCells state ap))
+      :ruleset always-run)
 
+(rewrite (PointsToCells (Concat order x y) aps)
+         (ConcatPointees (PointsToCells x aps) (PointsToCells y aps))
+         :ruleset always-run)
 
-      ; (
+(rewrite (PointsToCells (Get x i) aps)
+         (GetPointees (PointsToCells x aps) i)
+         :ruleset always-run)
 
-      ; ))
+(rewrite (PointsToCells (Single x) aps)
+         (TuplePointees
+           (Cons-List<List<i64+IntInterval>>
+             (UnwrapPtrPointees (PointsToCells x aps))
+             (Nil-List<List<i64+IntInterval>>)))
+         :ruleset always-run)
 
-; (Alloc 0 amt)
-; (Interval amt 0 7)
+(rewrite (PointsToCells (Arg ty) aps)
+         aps
+         :ruleset always-run)
 
+; TODO: use interval analysis for y instead of only matching on constants
+(rewrite (PointsToCells (Bop (PtrAdd) x (Const (Int y) ty)) aps)
+         (PtrPointees
+           (AddIntIntervalToAll
+             (MkIntInterval (I y) (I y))
+             (UnwrapPtrPointees (PointsToCells x aps))))
+         :ruleset always-run)
 
-;   (PtrPointees {0->[0,0]}))
-;   (PtrPointees {0->[0,1]}))
-;   (PtrPointees {0->[0,2]}))
-;   (PtrPointees {0->[0,4))
-;   (PtrPointees {0->[0,7]}))
-;   (PtrPointees {0->[0,7]}))
+(rewrite (PointsToCells (If c t e) aps)
+         (UnionPointees (PointsToCells t aps) (PointsToCells e aps))
+         :ruleset always-run)
 
-; (PointsToCells
-;   (Concat (Arg int*) (PtrAdd (Arg int*) 1))
-;   (PtrPointees {0->[0,0]}))
-; = (TuplePointees)
+(rewrite (PointsToCells (Alloc id sz state ty) aps)
+         (TuplePointees
+           (Cons-List<List<i64+IntInterval>>
+             (Cons-List<i64+IntInterval>
+               id (MkIntInterval (I 0) (I 0))
+               (Nil-List<i64+IntInterval>))
+             (Cons-List<List<i64+IntInterval>>
+               (Nil-List<i64+IntInterval>)
+               (Nil-List<List<i64+IntInterval>>))))
+         :ruleset always-run)
+
+(function PointeesDropFirst (Pointees) Pointees)
+(rewrite (PointeesDropFirst (TuplePointees (Cons-List<List<i64+IntInterval>> hd tl)))
+         (TuplePointees tl)
+         :ruleset always-run)
 
 ; arg pointees * loop in * loop out * i64 -> result pointees
-; (function PointsToCellsAtIter (Expr Expr))
+(function PointsToCellsAtIter (Pointees Expr Expr i64) Pointees)
 
-; (PointsToCells loopin arg-pointees) = pointees
-; (Loop loopin loopout)
-; ---
-; (set (PointsToCellsAtIter arg-pointees loopin loopout 0))
+; compute first two
+(rule ((PointsToCells (DoWhile inputs pred-body) aps))
+      ((set (PointsToCellsAtIter aps inputs pred-body 0)
+            (PointsToCells inputs aps))
+       (set (PointsToCellsAtIter aps inputs pred-body 1)
+            (UnionPointees
+              (PointsToCellsAtIter aps inputs pred-body 0)
+              (PointeesDropFirst
+                (PointsToCells pred-body (PointsToCellsAtIter aps inputs pred-body 0))))))
+      :ruleset always-run)
 
-; (PointsToCellsAtIter arg-pointees loopin loopout i) = pointees
-; -----
-; set PointsToCellsAtIter i + 1 to (PointToCells pointees loopout)
+; Note that this rule is bounded by ruleset memory
+(rule ((= pointees0 (PointsToCellsAtIter aps inputs pred-body i))
+       (= pointees1 (PointsToCellsAtIter aps inputs pred-body (+ i 1)))
+       (Resolved-Pointees pointees0)
+       (Resolved-Pointees pointees1)
+       (!= pointees0 pointees1))
+      ((set (PointsToCellsAtIter aps inputs pred-body (+ i 2))
+            (UnionPointees
+              pointees1
+              (PointeesDropFirst
+                (PointsToCells pred-body pointees1)))))
+      :ruleset memory)
 
-; (PointsToCellsAtIter arg-pointees loopin loopout i) = pointees1
-; (PointsToCellsAtIter arg-pointees loopin loopout (- i 1) = pointees2
-; (IsResolved pointees1)
-; (IsResolved pointees2)
-; ---
-; if pointees1 == pointees2
-
-
-
-
-
-
-
-;                       pointer-typed expression
-; (function PointsToCells (Expr) CellSet :merge (CellSet-intersect old new))
-
-; (rule ((= e (Alloc id sz state ty)))
-;       ((set (PointsToCells (Get e 0)) (CS (set-of (CellOf id)))))
-;       :ruleset memory)
-
-; ; Offsets refer to the same cell, for now
-; (rule ((= e (Bop (PtrAdd) x y))
-;        (= xcells (PointsToCells x)))
-;       ((set (PointsToCells e) xcells))
-;       :ruleset memory)
-
-; (rule ((= e (If pred t f))
-;        (= tcells (PointsToCells (Get t j)))
-;        (= fcells (PointsToCells (Get f j))))
-;       ((set (PointsToCells (Get e j)) (CellSet-union tcells fcells)))
-;       :ruleset memory)
-
-; (= loop inputs outputs)
-; (PointsToCellsAtIter loop i in_pts) out_pts
-; ----
-; ; To get: (PointsToCellsAtIter loop (+ i 1) in_puts)
-; (PointsToCells outputs out_pts) ; demand
-
-; (= loop inputs outputs)
-; (PointsToCellsAtIter loop i in_pts) out_pts
-; (= out_pts2 (PointsToCell))
-; (!= out_pts2 out_pts) ; so we don't count to infin
-; ----
-; (set
-  ; (PointsToCellsAtIter loop (+ i 1) inputs)
-  ; out_pts
-  ; )
-
-; (rule ((= loop (Loop inputs outputs))
-       ; (= (PointsToCellsAtIter loop i       in_pts:vec<set<cell,offset>>)    out_pts=vec<set<cell,offset>>)
-       ; (PointsToCellsAtIter loop (+ i 1)    in_pts:vec<set<cell,offset>>    vec<set<cell,offset>>))
-      ; ((set (PointsToCells))
-
-
-      
-      ; ))
+(rule ((= pointees (PointsToCellsAtIter aps inputs pred-body i))
+       (= pointees (PointsToCellsAtIter aps inputs pred-body (+ i 1))))
+      ((set (PointsToCells (DoWhile inputs pred-body) aps)
+            pointees))
+      :ruleset always-run)
 
 ; ============================
 ; Update CellHasValues
 ; ============================
 
 ;                       program point, cell
-(function CellHasValues (Expr Cell) ExprSet :merge (ExprSet-intersect old new))
-
-; TODO: add loop rules
+(function CellHasValues (Expr i64) ExprSet :merge (ExprSet-intersect old new))
 
 ; note: We could have a specialized rule for (set-len cells 1) where we overwrite instead of union
 ; (rule ((= e (Top (Write) ptr val state))
@@ -231,28 +279,31 @@
        ; (PointeesC)
       ; (()))
 
+(rule ((PtrPointees l))
+      ((DemandAt-List<i64+IntInterval> l))
+      :ruleset always-run)
+(rule ((TuplePointees l))
+      ((DemandAt-List<List<i64+IntInterval>> l))
+      :ruleset always-run)
+
 ; TODO: make sensitive to offsets
 (rule ((= e (Top (Write) ptr val state))
        (= (PtrPointees cells) (PointsToCells ptr (PointsAnywhere)))
        (At-List<i64+IntInterval> cells any-idx alloc-id offsets)
        (= vals (CellHasValues state cell)))
       ((set (CellHasValues e cell) (ExprSet-insert vals val)))
-      :ruleset memory)
+      :ruleset always-run)
 
 ; ============================
-; Update PointsTo
+; Update DontAlias
 ; ============================
 
 ;                    pointer, pointer
-(relation Dontalias (Expr Expr Pointees))
-;                   outer, pointer
-; merge function???
-(function PointsTo (Expr Expr)  Expr)
+(relation DontAlias (Expr Expr Pointees))
 
-; TODO: gate with body-contains and type
-(rule (
-      ;  (HasType ptr1 (PointerT ty))
-      ;  (HasType ptr2 (PointerT ty))
+; TODO: ptr1 and ptr2 should be in the same body (requires updating tests)
+(rule ((HasType ptr1 (Base (PointerT ty)))
+       (HasType ptr2 (Base (PointerT ty)))
        (= pointees1 (PointsToCells ptr1 arg-pointees))
        (= pointees2 (PointsToCells ptr2 arg-pointees)))
       ((IntersectPointees pointees1 pointees2))
@@ -262,17 +313,40 @@
          (IntersectPointees
            (PointsToCells ptr1 arg-pointees)
            (PointsToCells ptr2 arg-pointees))))
-      ((Dontalias ptr1 ptr2 arg-pointees))
+      ((DontAlias ptr1 ptr2 arg-pointees))
       :ruleset always-run)
+
+; ============================
+; Update PointsTo
+; ============================
+
+;                   program point, pointer
+; merge function???
+; TODO: should this be exprset?
+(function PointsTo (Expr Expr)  Expr)
 
 ; For a write, mark the given expression as containing `data`.
 ; Propagate the previous values of any expression that definitely does not alias `addr`.
 (rule ((= e (Top (Write) addr data state)))
-      ((set (PointsTo e addr) data)) :ruleset memory)
+      ((set (PointsTo e addr) data))
+      :ruleset always-run)
 (rule ((= e (Top (Write) addr data state))
        (= otherdata (PointsTo state otheraddr))
-       (Dontalias addr otheraddr (PointsAnywhere)))
-      ((set (PointsTo e otheraddr) otherdata)) :ruleset memory)
+       (DontAlias addr otheraddr (PointsAnywhere)))
+      ((set (PointsTo e otheraddr) otherdata))
+      :ruleset always-run)
+
+(rule ((= f (PointsTo e state))
+       (Bop (Load) ptr state2))
+      ((set (PointsTo e state2) f))
+      :ruleset always-run)
+
+(rule ((= f (PointsTo e state))
+       (Bop (Load) e state))
+      ((union (Bop (Load) e state)
+              (Concat (Parallel) (Single f) (Single state)))
+       (union (Get (Bop (Load) e state) 0) f))
+      :ruleset always-run)
 
 ; Special-case: no intervening effects between load and write, elide the write
 ; entirely (if write isn't otherwise used).
@@ -285,6 +359,5 @@
 (rule ((= e (Bop (Load) addr state))
        (= v (PointsTo state addr)))
       ((union (Get e 0) v)
-       (union (Get e 1) state)) :ruleset memory)
-
-; (function PointsTOCells )
+       (union (Get e 1) state))
+       :ruleset always-run)

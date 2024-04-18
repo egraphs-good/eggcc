@@ -409,7 +409,11 @@ pub fn extract_without_linearity(extractor: &mut Extractor, info: &EgraphInfo) -
                         continue;
                     }
 
-                    let region_costs = extractor.costs.get_mut(rootid).unwrap();
+                    // create a new region_costs map if it doesn't exist
+                    let region_costs = extractor
+                        .costs
+                        .entry(rootid.clone())
+                        .or_insert_with(Default::default);
                     let lookup = region_costs.get(class_id);
                     let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
                     if lookup.is_some() {

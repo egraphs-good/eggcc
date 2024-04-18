@@ -1,10 +1,8 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::{base, emptyt, inif, inloop, noctx, statet},
-    schema::{
-        Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
-    },
+    ast::{base, emptyt, statet},
+    schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type},
     tuplet,
 };
 
@@ -18,12 +16,6 @@ impl TypeStack {
     pub(crate) fn pushed(&self, ty: Type) -> TypeStack {
         let mut new_stack = self.0.clone();
         new_stack.push(ty);
-        TypeStack(new_stack)
-    }
-
-    pub(crate) fn popped(&self) -> TypeStack {
-        let mut new_stack = self.0.clone();
-        new_stack.pop();
         TypeStack(new_stack)
     }
 }
@@ -144,30 +136,6 @@ impl<'a> TypeChecker<'a> {
                 ))
             }
             _ => panic!("Expected function, got {:?}", func),
-        }
-    }
-
-    pub(crate) fn typecheck_assumption(
-        &mut self,
-        assumption: Assumption,
-        arg_tys: &Option<TypeStack>,
-    ) -> Assumption {
-        match assumption {
-            Assumption::InLoop(inputs, body) => {
-                let (_ty, body_with_types) = self.add_arg_types_to_expr(body.clone(), arg_tys);
-                let outer_types = arg_tys.as_ref().map(|inner| inner.popped());
-                let (_ty, inputs_with_types) =
-                    self.add_arg_types_to_expr(inputs.clone(), &outer_types);
-                inloop(inputs_with_types, body_with_types)
-            }
-            Assumption::NoContext => noctx(),
-            Assumption::InIf(branch, pred, input) => {
-                let outer_types = arg_tys.as_ref().map(|inner| inner.popped());
-                let pred_with_types = self.add_arg_types_to_expr(pred.clone(), &outer_types);
-                let input_with_types = self.add_arg_types_to_expr(input.clone(), &outer_types);
-
-                inif(branch, pred_with_types.1, input_with_types.1)
-            }
         }
     }
 
@@ -518,10 +486,14 @@ impl<'a> TypeChecker<'a> {
                 }
                 (found_ty.clone(), expr.clone())
             }
+            // context assumptions are not typechecked,
+            // so tests need to add types to the context manually
             Expr::InContext(assumption, body) => {
-                let new_assumtion = self.typecheck_assumption(assumption.clone(), arg_tys);
                 let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), arg_tys);
-                (bty, RcExpr::new(Expr::InContext(new_assumtion, new_body)))
+                (
+                    bty,
+                    RcExpr::new(Expr::InContext(assumption.clone(), new_body)),
+                )
             }
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
             // should have covered all cases, but rust can't prove it

@@ -283,7 +283,7 @@ fn calculate_cost_set(
 
     let mut shared_total = NotNan::new(0.).unwrap();
     let mut unshared_total = info.cm.get_op_cost(&node.op);
-    let mut costs = HashMap::default();
+    let mut costs: HashMap<ClassId, NotNan<f64>> = HashMap::default();
 
     if !info.cm.ignore_children(&node.op) {
         for (child_set, is_region_root) in child_cost_sets.iter() {
@@ -292,12 +292,14 @@ fn calculate_cost_set(
             } else {
                 for (child_cid, child_cost) in &child_set.costs {
                     // it was already present in the set
-                    if let Some(existing) = costs.insert(child_cid.clone(), *child_cost) {
-                        assert_eq!(
-                            existing, *child_cost,
-                            "Two different costs found for the same child enode!"
-                        );
+                    if let Some(existing) = costs.get(child_cid) {
+                        if existing > child_cost {
+                            // if we found a lower-cost alternative for this child, use that and decrease cost
+                            shared_total -= existing - *child_cost;
+                        }
+                        costs.insert(child_cid.clone(), *existing.min(child_cost));
                     } else {
+                        costs.insert(child_cid.clone(), *child_cost);
                         shared_total += child_cost;
                     }
                 }

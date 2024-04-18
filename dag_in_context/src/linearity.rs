@@ -27,10 +27,9 @@ impl<'a> Extractor<'a> {
     /// edge path (the path of the state edge from the argument to the return value).
     /// Input: a term representing the program
     /// Output: a vector of terms representing the effectful nodes along the state edge path
-    pub fn find_effectful_nodes_in_program(&mut self, term: &Term) -> HashSet<NodeId> {
-        let prog = self.term_to_prog(term);
+    pub fn find_effectful_nodes_in_program(&mut self, prog: &TreeProgram) -> HashSet<NodeId> {
         let mut expr_to_term = HashMap::new();
-        for (term, expr) in &self.term_to_expr {
+        for (term, expr) in self.term_to_expr.as_ref().unwrap() {
             expr_to_term.insert(Rc::as_ptr(expr), term.clone());
         }
 
@@ -40,8 +39,8 @@ impl<'a> Extractor<'a> {
         };
 
         self.find_effectful_nodes_in_expr(&prog.entry, &mut linearity);
-        for function in prog.functions {
-            self.find_effectful_nodes_in_expr(&function, &mut linearity);
+        for function in &prog.functions {
+            self.find_effectful_nodes_in_expr(function, &mut linearity);
         }
 
         let mut effectful_classes = HashSet::new();
@@ -57,7 +56,7 @@ impl<'a> Extractor<'a> {
     pub fn find_effectful_nodes_in_region(&mut self, term: &Term) -> HashSet<NodeId> {
         let expr = self.term_to_expr(term);
         let mut expr_to_term = HashMap::new();
-        for (term, expr) in &self.term_to_expr {
+        for (term, expr) in self.term_to_expr.as_ref().unwrap() {
             expr_to_term.insert(Rc::as_ptr(expr), term.clone());
         }
 

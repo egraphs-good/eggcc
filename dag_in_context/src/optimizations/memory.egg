@@ -5,12 +5,8 @@
 (datatype Cell (CellOf i64))
 
 (sort ExprSetPrim (Set Expr))
-(sort CellSetPrim (Set Cell))
-(sort I64SetPrim (Set i64))
 
 (datatype ExprSet (ES ExprSetPrim))
-(datatype CellSet (CS CellSetPrim))
-(datatype I64Set (IS I64SetPrim))
 
 (function ExprSet-intersect (ExprSet ExprSet) ExprSet)
 (rewrite (ExprSet-intersect (ES set1) (ES set2)) (ES (set-intersect set1 set2))
@@ -29,338 +25,45 @@
 (function ExprSet-length (ExprSet) i64)
 (rewrite (ExprSet-length (ES set1)) (set-length set1) :ruleset always-run)
 
-(function CellSet-intersect (CellSet CellSet) CellSet)
-(rewrite (CellSet-intersect (CS set1) (CS set2)) (CS (set-intersect set1 set2))
-         :ruleset always-run)
-(function CellSet-union (CellSet CellSet) CellSet)
-(rewrite (CellSet-union (CS set1) (CS set2)) (CS (set-union set1 set2))
-         :ruleset always-run)
-; (relation CellSet-contains (CellSet Cell))
-; (rule ((CS set1) (set-contains set1 x))
-      ; ((CellSet-contains (CS set1) x))
-      ; :ruleset always-run)
-(function CellSet-insert (CellSet Cell) CellSet)
-(rewrite (CellSet-insert (CS set1) x)
-         (CS (set-insert set1 x))
-         :ruleset always-run)
-(function CellSet-length (CellSet) i64)
-(rewrite (CellSet-length (CS set1)) (set-length set1) :ruleset always-run)
-
-(function I64Set-intersect (I64Set I64Set) I64Set)
-(rewrite (I64Set-intersect (IS set1) (IS set2)) (IS (set-intersect set1 set2))
-         :ruleset always-run)
-(function I64Set-union (I64Set I64Set) I64Set)
-(rewrite (I64Set-union (IS set1) (IS set2)) (IS (set-union set1 set2))
-         :ruleset always-run)
-; (relation I64Set-contains (I64Set i64))
-; (rule ((IS set1) (set-contains set1 x))
-      ; ((I64Set-contains (IS set1) x))
-      ; :ruleset always-run)
-(function I64Set-insert (I64Set i64) I64Set)
-(rewrite (I64Set-insert (IS set1) x)
-         (IS (set-insert set1 x))
-         :ruleset always-run)
-(function I64Set-length (I64Set) i64)
-(rewrite (I64Set-length (IS set1)) (set-length set1) :ruleset always-run)
-
-(datatype CellSetList
-      (CellSetCons CellSet CellSetList)
-      (CellSetNil))
-
-; include length for convenience
-(datatype I64SetList
-      (I64SetCons I64Set I64SetList)
-      (I64SetNil))
-
-(function I64SetList-length (I64SetList) i64)
-(rule ((I64SetNil))
-      ((set (I64SetList-length (I64SetNil)) 0))
-      :ruleset always-run)
-(rule ((= l (I64SetCons hd tl))
-       (= len (I64SetList-length tl)))
-      ((set (I64SetList-length l) (+ len 1)))
-      :ruleset always-run)
-
-(function I64SetList-get (I64SetList i64) I64Set)
-(rewrite (I64SetList-get (I64SetCons hd tl) 0)
-         hd
-         :ruleset always-run)
-(rewrite (I64SetList-get (I64SetCons hd tl) i)
-         (I64SetList-get tl (- i 1))
-         :when ((> i 0))
-         :ruleset always-run)
-
-(function I64SetList-rev-concat (I64SetList I64SetList) I64SetList)
-(rewrite (I64SetList-rev-concat (I64SetNil) l) l :ruleset always-run)
-(rewrite (I64SetList-rev-concat (I64SetCons hd tl) l)
-         (I64SetList-rev-concat tl (I64SetCons hd l)) :ruleset always-run)
-
-(function I64SetList-rev (I64SetList) I64SetList)
-(rewrite
-  (I64SetList-rev l)
-  (I64SetList-rev-concat l (I64SetNil))
-  :ruleset always-run)
-
-(function I64SetList-concat (I64SetList I64SetList) I64SetList)
-(rewrite (I64SetList-concat l1 l2)
-         (I64SetList-rev-concat (I64SetList-rev l1) l2)
-         :ruleset always-run)
-
-(function I64SetList-zip-set-intersect (I64SetList I64SetList) I64SetList)
-  (rewrite
-    (I64SetList-zip-set-intersect (I64SetCons xhd xtl) (I64SetCons yhd ytl))
-    (I64SetCons (I64Set-intersect xhd yhd) (I64SetList-zip-set-intersect xtl ytl))
-    :ruleset always-run)
-  (rewrite
-    (I64SetList-zip-set-intersect (I64SetNil) (I64SetNil))
-    (I64SetNil)
-    :ruleset always-run)
-
 ; ============================
 ; PointsToCells
 ; ============================
 
-(datatype IntOrInfinity
-      (Infinity)
-      (NegInfinity)
-      (I i64))
-
-(function MaxIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
-(rewrite (MaxIntOrInfinity (Infinity) _) (Infinity) :ruleset always-run)
-(rewrite (MaxIntOrInfinity _ (Infinity)) (Infinity) :ruleset always-run)
-(rewrite (MaxIntOrInfinity (NegInfinity) x) x :ruleset always-run)
-(rewrite (MaxIntOrInfinity x (NegInfinity)) x :ruleset always-run)
-(rewrite (MaxIntOrInfinity (I x) (I y)) (I (max x y)) :ruleset always-run)
-
-(function MinIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
-(rewrite (MinIntOrInfinity (NegInfinity) _) (NegInfinity) :ruleset always-run)
-(rewrite (MinIntOrInfinity _ (NegInfinity)) (NegInfinity) :ruleset always-run)
-(rewrite (MinIntOrInfinity (Infinity) x) x :ruleset always-run)
-(rewrite (MinIntOrInfinity x (Infinity)) x :ruleset always-run)
-(rewrite (MinIntOrInfinity (I x) (I y)) (I (min x y)) :ruleset always-run)
-
-(datatype IntInterval (MkIntInterval IntOrInfinity IntOrInfinity))
-
-(function UnionIntInterval (IntInterval IntInterval) IntInterval)
-(rewrite (UnionIntInterval (MkIntInterval lo1 hi1) (MkIntInterval lo2 hi2))
-         (MkIntInterval (MinIntOrInfinity lo1 lo2) (MaxIntOrInfinity hi1 hi2))
-         :ruleset always-run)
-
-(function IntersectIntInterval (IntInterval IntInterval) IntInterval)
-(rewrite (IntersectIntInterval (MkIntInterval lo1 hi1) (MkIntInterval lo2 hi2))
-         (MkIntInterval (MaxIntOrInfinity lo1 lo2) (MinIntOrInfinity hi1 hi2))
-         :ruleset always-run)
-
-; maps alloc id -> int interval
-; always sorted by alloc id
-(datatype MapIntInterval
-  (EmptyMapIntInterval)
-  (ConsMapIntInterval i64 IntInterval MapIntInterval))
-
-; this is O(N^2) to eagerly build. TODO: demand only when appropriate
-(relation MapIntIntervalHasSuffix (MapIntInterval MapIntInterval))
-; (rule ((= m m))
-      ; ((MapIntIntervalHasSuffix m m))
-      ; :ruleset always-run)
-(rule ((MapIntIntervalHasSuffix m (ConsMapIntInterval allocid offsets tl)))
-      ((MapIntIntervalHasSuffix m tl))
-      :ruleset always-run)
-
-(function MapIntIntervalGet (MapIntInterval i64) IntInterval)
-(rule ((MapIntIntervalHasSuffix m (ConsMapIntInterval allocid offsets tl)))
-      ((set (MapIntIntervalGet m allocid) offsets))
-      :ruleset always-run)
-
-(function RevConcatMapIntInterval (MapIntInterval MapIntInterval) MapIntInterval)
-(rewrite (RevConcatMapIntInterval (EmptyMapIntInterval) m) m :ruleset always-run)
-(rewrite (RevConcatMapIntInterval (ConsMapIntInterval allocid range tl) l)
-         (RevConcatMapIntInterval tl (ConsMapIntInterval allocid range l))
-         :ruleset always-run)
-
-(function RevMapIntInterval (MapIntInterval) MapIntInterval)
-(rewrite (RevMapIntInterval m)
-         (RevConcatMapIntInterval m (EmptyMapIntInterval))
-         :ruleset always-run)
-
-(function UnionMapIntInterval (MapIntInterval MapIntInterval) MapIntInterval)
-  ; 3rd argument is WIP result map.
-  ; Invariant: keys of the result map are not present in the first two and are in descending order
-  (function UnionMapIntIntervalHelper (MapIntInterval MapIntInterval MapIntInterval) MapIntInterval)
-  (rewrite (UnionMapIntInterval m1 m2)
-           (RevMapIntInterval (UnionMapIntIntervalHelper m1 m2 (EmptyMapIntInterval)))
-           :ruleset always-run)
-
-  ; both m1 and m2 empty
-  (rewrite (UnionMapIntIntervalHelper (EmptyMapIntInterval) (EmptyMapIntInterval) res)
-           res
-           :ruleset always-run)
-  ; take from m1 when m2 empty and vice versa
-  (rewrite
-    (UnionMapIntIntervalHelper
-      (EmptyMapIntInterval)
-      (ConsMapIntInterval allocid offset tl)
-      res)
-    (UnionMapIntIntervalHelper
-      (EmptyMapIntInterval)
-      tl
-      (ConsMapIntInterval allocid offset res))
-    :ruleset always-run)
-  (rewrite
-    (UnionMapIntIntervalHelper
-      (ConsMapIntInterval allocid offset tl)
-      (EmptyMapIntInterval)
-      res)
-    (UnionMapIntIntervalHelper
-      tl
-      (EmptyMapIntInterval)
-      (ConsMapIntInterval allocid offset res))
-    :ruleset always-run)
-
-  ; when both nonempty and smallest key different, take smaller key
-  (rewrite
-    (UnionMapIntIntervalHelper
-      (ConsMapIntInterval allocid1 offset1 tl1)
-      (ConsMapIntInterval allocid2 offset2 tl2)
-      res)
-    (UnionMapIntIntervalHelper
-      tl1
-      (ConsMapIntInterval allocid2 offset2 tl2)
-      (ConsMapIntInterval allocid1 offset1 res))
-    :when ((< allocid1 allocid2))
-    :ruleset always-run)
-  (rewrite
-    (UnionMapIntIntervalHelper
-      (ConsMapIntInterval allocid1 offset1 tl1)
-      (ConsMapIntInterval allocid2 offset2 tl2)
-      res)
-    (UnionMapIntIntervalHelper
-      (ConsMapIntInterval allocid1 offset1 tl1)
-      tl2
-      (ConsMapIntInterval allocid2 offset2 res))
-    :when ((> allocid1 allocid2))
-    :ruleset always-run)
-
-  ; when shared smallest key, union intervals
-  (rewrite
-    (UnionMapIntIntervalHelper
-      (ConsMapIntInterval allocid offset1 tl1)
-      (ConsMapIntInterval allocid offset2 tl2)
-      res)
-    (UnionMapIntIntervalHelper
-      tl1
-      tl2
-      (ConsMapIntInterval allocid (UnionIntInterval offset1 offset2) res))
-    :ruleset always-run)
-
-(function IntersectMapIntInterval (MapIntInterval MapIntInterval) MapIntInterval)
-  ; 3rd argument is WIP result map.
-  ; Invariant: keys of the result map are not present in the first two and are in descending order
-  (function IntersectMapIntIntervalHelper (MapIntInterval MapIntInterval MapIntInterval) MapIntInterval)
-  (rewrite (IntersectMapIntInterval m1 m2)
-           (RevMapIntInterval (IntersectMapIntIntervalHelper m1 m2 (EmptyMapIntInterval)))
-           :ruleset always-run)
-
-  ; both m1 and m2 empty
-  (rewrite (IntersectMapIntIntervalHelper (EmptyMapIntInterval) (EmptyMapIntInterval) res)
-           res
-           :ruleset always-run)
-  ; take from m1 when m2 empty and vice versa
-  (rewrite
-    (IntersectMapIntIntervalHelper
-      (EmptyMapIntInterval)
-      (ConsMapIntInterval allocid offset tl)
-      res)
-    (IntersectMapIntIntervalHelper
-      (EmptyMapIntInterval)
-      tl
-      (ConsMapIntInterval allocid offset res))
-    :ruleset always-run)
-  (rewrite
-    (IntersectMapIntIntervalHelper
-      (ConsMapIntInterval allocid offset tl)
-      (EmptyMapIntInterval)
-      res)
-    (IntersectMapIntIntervalHelper
-      tl
-      (EmptyMapIntInterval)
-      (ConsMapIntInterval allocid offset res))
-    :ruleset always-run)
-
-  ; when both nonempty and smallest key different, take smaller key
-  (rewrite
-    (IntersectMapIntIntervalHelper
-      (ConsMapIntInterval allocid1 offset1 tl1)
-      (ConsMapIntInterval allocid2 offset2 tl2)
-      res)
-    (IntersectMapIntIntervalHelper
-      tl1
-      (ConsMapIntInterval allocid2 offset2 tl2)
-      (ConsMapIntInterval allocid1 offset1 res))
-    :when ((< allocid1 allocid2))
-    :ruleset always-run)
-  (rewrite
-    (IntersectMapIntIntervalHelper
-      (ConsMapIntInterval allocid1 offset1 tl1)
-      (ConsMapIntInterval allocid2 offset2 tl2)
-      res)
-    (IntersectMapIntIntervalHelper
-      (ConsMapIntInterval allocid1 offset1 tl1)
-      tl2
-      (ConsMapIntInterval allocid2 offset2 res))
-    :when ((> allocid1 allocid2))
-    :ruleset always-run)
-
-  ; when shared smallest key, union intervals
-  (rewrite
-    (IntersectMapIntIntervalHelper
-      (ConsMapIntInterval allocid offset1 tl1)
-      (ConsMapIntInterval allocid offset2 tl2)
-      res)
-    (IntersectMapIntIntervalHelper
-      tl1
-      tl2
-      (ConsMapIntInterval allocid (IntersectIntInterval offset1 offset2) res))
-    :ruleset always-run)
-
-
 ; [ {0->[4,5], 1->[0,0]}, {0->[0,0]}]
-(datatype ListMapIntInterval
-      (ConsListMapIntInterval MapIntInterval ListMapIntInterval)
-      (NilListMapIntInterval))
 
-(function UnionListMapIntInterval (ListMapIntInterval ListMapIntInterval) ListMapIntInterval)
-(rewrite (UnionListMapIntInterval (NilListMapIntInterval) (NilListMapIntInterval))
-         (NilListMapIntInterval)
+(function Map<Union-List<i64+IntInterval>> (List<List<i64+IntInterval>> List<List<i64+IntInterval>>) List<List<i64+IntInterval>>)
+(rewrite (Map<Union-List<i64+IntInterval>> (Nil-List<List<i64+IntInterval>>) (Nil-List<List<i64+IntInterval>>))
+         (Nil-List<List<i64+IntInterval>>)
          :ruleset always-run)
 (rewrite
-  (UnionListMapIntInterval (ConsListMapIntInterval hd1 tl1) (ConsListMapIntInterval hd2 tl2))
-  (ConsListMapIntInterval (UnionMapIntInterval hd1 hd2) (UnionListMapIntInterval tl1 tl2))
+  (Map<Union-List<i64+IntInterval>> (Cons-List<List<i64+IntInterval>> hd1 tl1) (Cons-List<List<i64+IntInterval>> hd2 tl2))
+  (Cons-List<List<i64+IntInterval>> (Union-List<i64+IntInterval> hd1 hd2) (Map<Union-List<i64+IntInterval>> tl1 tl2))
   :ruleset always-run
 )
 
-(function IntersectListMapIntInterval (ListMapIntInterval ListMapIntInterval) ListMapIntInterval)
-(rewrite (IntersectListMapIntInterval (NilListMapIntInterval) (NilListMapIntInterval))
-         (NilListMapIntInterval)
+(function Map<Intersect-List<i64+IntInterval>> (List<List<i64+IntInterval>> List<List<i64+IntInterval>>) List<List<i64+IntInterval>>)
+(rewrite (Map<Intersect-List<i64+IntInterval>> (Nil-List<List<i64+IntInterval>>) (Nil-List<List<i64+IntInterval>>))
+         (Nil-List<List<i64+IntInterval>>)
          :ruleset always-run)
 (rewrite
-  (IntersectListMapIntInterval (ConsListMapIntInterval hd1 tl1) (ConsListMapIntInterval hd2 tl2))
-  (ConsListMapIntInterval (IntersectMapIntInterval hd1 hd2) (IntersectListMapIntInterval tl1 tl2))
+  (Map<Intersect-List<i64+IntInterval>> (Cons-List<List<i64+IntInterval>> hd1 tl1) (Cons-List<List<i64+IntInterval>> hd2 tl2))
+  (Cons-List<List<i64+IntInterval>> (Intersect-List<i64+IntInterval> hd1 hd2) (Map<Intersect-List<i64+IntInterval>> tl1 tl2))
   :ruleset always-run
 )
 
-(relation LMIIPointsNowhere (ListMapIntInterval))
-(rule ((= l (NilListMapIntInterval)))
+(relation LMIIPointsNowhere (List<List<i64+IntInterval>>))
+(rule ((= l (Nil-List<List<i64+IntInterval>>)))
       ((LMIIPointsNowhere l))
       :ruleset always-run)
-(rule ((= l (ConsListMapIntInterval hd tl))
+(rule ((= l (Cons-List<List<i64+IntInterval>> hd tl))
        (LMIIPointsNowhere tl)
-       (= (EmptyMapIntInterval) hd))
+       (= (Nil-List<i64+IntInterval>) hd))
       ((LMIIPointsNowhere l))
       :ruleset always-run)
 
 (datatype Pointees
-          (TuplePointees ListMapIntInterval)
-          (PtrPointees MapIntInterval)
+          (TuplePointees List<List<i64+IntInterval>>)
+          (PtrPointees List<i64+IntInterval>)
           (PointsAnywhere))
 
 (function UnionPointees (Pointees Pointees) Pointees)
@@ -371,10 +74,10 @@
          (PointsAnywhere)
          :ruleset always-run)
 (rewrite (UnionPointees (PtrPointees mii1) (PtrPointees mii2))
-         (PtrPointees (UnionMapIntInterval mii1 mii2))
+         (PtrPointees (Union-List<i64+IntInterval> mii1 mii2))
          :ruleset always-run)
 (rewrite (UnionPointees (TuplePointees l1) (TuplePointees l2))
-         (TuplePointees (UnionListMapIntInterval l1 l2))
+         (TuplePointees (Map<Union-List<i64+IntInterval>> l1 l2))
          :ruleset always-run)
 
 (function IntersectPointees (Pointees Pointees) Pointees)
@@ -385,17 +88,17 @@
          (PointsAnywhere)
          :ruleset always-run)
 (rewrite (IntersectPointees (PtrPointees mii1) (PtrPointees mii2))
-         (PtrPointees (IntersectMapIntInterval mii1 mii2))
+         (PtrPointees (Intersect-List<i64+IntInterval> mii1 mii2))
          :ruleset always-run)
 (rewrite (IntersectPointees (TuplePointees l1) (TuplePointees l2))
-         (TuplePointees (IntersectListMapIntInterval l1 l2))
+         (TuplePointees (Map<Intersect-List<i64+IntInterval>> l1 l2))
          :ruleset always-run)
 
 (function ConcatPointees (Pointees Pointees) Pointees)
 
 (relation PointsNowhere (Pointees))
 (rule ((= pointees (PtrPointees m))
-       (= (EmptyMapIntInterval) m))
+       (= (Nil-List<i64+IntInterval>) m))
       ((PointsNowhere pointees))
       :ruleset always-run)
 (rule ((= pointees (TuplePointees l))
@@ -418,15 +121,15 @@
 
 ; Concat get single ptradd if
 ; aps = "arg pointees"
-(rewrite
-  (PointsToCells (Concat x y) aps)
-  (ConcatPointees (PointsToCells x aps) (PointsToCells y aps))
-  :ruleset always-run)
+; (rewrite
+  ; (PointsToCells (Concat x y) aps)
+  ; (ConcatPointees (PointsToCells x aps) (PointsToCells y aps))
+  ; :ruleset always-run)
 
 
-      (
+      ; (
 
-      ))
+      ; ))
 
 ; (Alloc 0 amt)
 ; (Interval amt 0 7)
@@ -531,7 +234,7 @@
 ; TODO: make sensitive to offsets
 (rule ((= e (Top (Write) ptr val state))
        (= (PtrPointees cells) (PointsToCells ptr (PointsAnywhere)))
-       (= offsets (MapIntIntervalGet cells alloc-id))
+       (At-List<i64+IntInterval> cells any-idx alloc-id offsets)
        (= vals (CellHasValues state cell)))
       ((set (CellHasValues e cell) (ExprSet-insert vals val)))
       :ruleset memory)

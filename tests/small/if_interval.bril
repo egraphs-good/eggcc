@@ -4,13 +4,13 @@
   cond: bool = le input zero;
   br cond .then .else;
   .then:
-    y: int = id input;
+    x: int = id zero;
     jmp .end;
   .else:
-    neg: int = const -1;
-    y: int = mul input neg;
+    x: int = const 3;
     jmp .end;
   .end:
-    z: bool = le y zero;
+    ten: int = const 10;
+    z: bool = lt x ten;
     print z;
 }

@@ -1,27 +1,18 @@
 # ARGS: 1
 @main(input: int) {
-  ten: int = const 10;
+  ten: int = const 10;  
   five: int = const 5;
   cond1: bool = lt input ten;
   br cond1 .then .else;
   .then:
     x: int = const 2;
     y: int = add x five;
-    jmp .second;
+    jmp .end;
   .else:
     x: int = const 3;
-    y: int = add x five;
-    jmp .second;
-  .second:
-    condition: bool = lt y five;
-    br condition .then2 .else2;
-    .then2:
-      thenval: int = const 1;
-      print thenval;
-      jmp .end;
-    .else2:
-      elseval: int = const 2;
-      print elseval;
-      jmp .end;
+    y: int = const 3;
+    jmp .end;
   .end:
+    z: bool = lt ten y;
+    print z;
 }

@@ -232,3 +232,79 @@ fn context_if_rev() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn context_if_with_state() -> crate::Result {
+    let input_type = tuplet_vec(vec![intt(), statet()]);
+    let output_type = tuplet_vec(vec![statet()]);
+    let input_arg = arg_ty(input_type.clone());
+    let no_ctx = inctx(noctx(), input_arg.clone());
+    let pred = less_eq(
+        get(no_ctx.clone(), 0),
+        inctx(noctx(), int_ty(0, input_type.clone())),
+    );
+    let inputs = concat(
+        single(get(no_ctx.clone(), 1)),
+        concat(
+            single(inctx(noctx(), int_ty(0, input_type.clone()))),
+            single(get(no_ctx.clone(), 0)),
+        ),
+    );
+    let arg = arg_ty(tuplet_vec(vec![statet(), intt(), intt()]));
+
+    let ctx_true = inctx(inif(true, pred.clone(), inputs.clone()), arg.clone());
+    let then = concat(
+        single(get(ctx_true.clone(), 0)),
+        concat(
+            single(get(ctx_true.clone(), 2)),
+            single(get(ctx_true.clone(), 1)),
+        ),
+    );
+
+    let ctx_false = inctx(inif(false, pred.clone(), inputs.clone()), arg.clone());
+    let els = concat(
+        single(get(ctx_false.clone(), 0)),
+        concat(
+            single(mul(
+                get(ctx_false.clone(), 2),
+                inctx(
+                    inif(false, pred.clone(), inputs.clone()),
+                    int_ty(-1, tuplet_vec(vec![statet(), intt(), intt()])),
+                ),
+            )),
+            single(get(ctx_false.clone(), 1)),
+        ),
+    );
+
+    let body = single(tprint(
+        less_eq(
+            get(tif(pred.clone(), inputs.clone(), then, els), 1),
+            int_ty(0, input_type.clone()),
+        ),
+        get(input_arg.clone(), 1),
+    ));
+
+    let f = function(
+        "main",
+        input_type.clone(),
+        output_type.clone(),
+        body.clone(),
+    )
+    .func_with_arg_types();
+    let prog = f.to_program(input_type.clone(), output_type.clone());
+    println!("{prog}");
+
+    let expected = single(tprint(
+        ttrue_ty(input_type.clone()),
+        get(input_arg.clone(), 1),
+    ));
+
+    egglog_test(
+        &format!("{prog}"),
+        &format!("(check (= {expected} {body}))"),
+        vec![prog],
+        val_vec(vec![intv(4), statev()]),
+        val_vec(vec![statev()]),
+        vec!["true".to_string()],
+    )
+}

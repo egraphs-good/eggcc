@@ -224,7 +224,7 @@
        (ContextOf lhs if_ctx)
        (= (BoolB true) (lo-bound cond))
       )
-      ((union lhs (Subst inf-fuel if_ctx inputs thn)))
+      ((union lhs (Subst if_ctx inputs thn)))
       :ruleset interval-analysis)
 
 ; if the predicate is false, merge with else branch
@@ -233,7 +233,7 @@
        (ContextOf lhs if_ctx)
        (= (BoolB false) (hi-bound cond))
       )
-      ((union lhs (Subst inf-fuel if_ctx inputs els)))
+      ((union lhs (Subst if_ctx inputs els)))
       :ruleset interval-analysis)
 
 ; lo-bound of If is the min of the lower bounds

@@ -114,6 +114,8 @@
        (!= ty ty2))
       ((panic "if branches else branch has incorrect input type"))
       :ruleset type-analysis)
+
+
 (rule ((= lhs (DoWhile ins body))
        (HasArgType ins ty))
       ((HasArgType lhs ty))

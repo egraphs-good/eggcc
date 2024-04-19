@@ -16,10 +16,11 @@
 (rule (
         (= lhs (Bop (GreaterEq) x y))
         (HasArgType x ty)
+        (ContextOf lhs ctx)
       )
       (
-        (union lhs (Bop (LessThan) y (Bop (Add) x (Const (Int 1) ty))))
-        (union lhs (Bop (LessThan) (Bop (Sub) y (Const (Int 1) ty)) x))
+        (union lhs (Bop (LessThan) y (Bop (Add) x (InContext ctx (Const (Int 1) ty)))))
+        (union lhs (Bop (LessThan) (Bop (Sub) y (InContext ctx (Const (Int 1) ty))) x))
       )
       :ruleset canon)
 
@@ -28,9 +29,10 @@
 (rule (
         (= lhs (Bop (LessEq) x y))
         (HasArgType y ty)
+        (ContextOf lhs ctx)
       )
       (
-        (union lhs (Bop (LessThan) x (Bop (Add) y (Const (Int 1) ty))))
-        (union lhs (Bop (LessThan) (Bop (Sub) x (Const (Int 1) ty)) y))
+        (union lhs (Bop (LessThan) x (Bop (Add) y (InContext ctx (Const (Int 1) ty)))))
+        (union lhs (Bop (LessThan) (Bop (Sub) x (InContext ctx (Const (Int 1) ty))) y))
       )
       :ruleset canon)

@@ -796,6 +796,11 @@ impl Run {
             .status()
             .unwrap();
 
+        let _ = std::fs::write(
+            executable.clone() + "-args",
+            self.prog_with_args.args.join(" "),
+        );
+
         Ok(Some(Interpretable::Executable { executable }))
     }
 }

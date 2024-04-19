@@ -114,7 +114,6 @@ function buildEntry(run) {
     const results = run.hyperfine.results[0];
     return {
         name: run.runMethod,
-        "# Instructions": run.total_dyn_inst,
         min: tryRound(results.min),
         max: tryRound(results.max),
         mean: tryRound(results.mean),
@@ -123,22 +122,12 @@ function buildEntry(run) {
     }
 }
 
+// TODO (@ryan-berger) decide how to compare to prevRun now there are no instruction count metrics
 function buildTableText(prevRun, run) {
     const entry = buildEntry(run)
     if (!prevRun) {
         return entry;
     }
-
-    const prevEntry = buildEntry(prevRun);
-    compareKeys.forEach((key) => {
-        const diff = Math.abs(entry[key] - prevEntry[key]);
-        if (diff === 0) {
-            return;
-        }
-
-        const sign = entry[key] < prevEntry[key] ? "-" : "+"
-        entry[key] = `${entry[key]} (${sign}${diff})`
-    })
     return entry;
 }
 

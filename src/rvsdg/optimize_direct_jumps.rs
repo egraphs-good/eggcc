@@ -184,7 +184,7 @@ fn loops_to_self() {
 
 #[test]
 fn add_block_ind_test() {
-    let prog = include_str!("../../tests/small/add_block_indirection.bril");
+    let prog = include_str!("../../tests/passing/small/add_block_indirection.bril");
     let cfg = Optimizer::program_to_cfg(&Optimizer::parse_bril(prog).unwrap());
     insta::assert_snapshot!(cfg.optimize_jumps().to_bril().to_string());
 }

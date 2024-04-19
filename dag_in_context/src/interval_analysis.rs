@@ -184,7 +184,7 @@ fn context_if() -> crate::Result {
 
     // y = if cond {-1 * input} else {input}
     // interval analysis should tell us that y is always positive (= (lo-bound y) (IntB 0))
-    let y = tif(cond, iarg(), mul(iarg(), int_ty(-1, base(intt()))), iarg());
+    let y = tif(cond, parallel!(arg()), mul(getat(0), int(-1)), getat(0));
 
     // z = y < 0
     // interval analysis should tell us that z is false
@@ -197,7 +197,25 @@ fn context_if() -> crate::Result {
 
     egglog_test(
         &format!("{with_context}"),
-        &format!("(check (= {term} (Const (Bool false) (Base (IntT)))))"),
+        &format!("(check (= {term} (InContext somectx (Const (Bool false) (Base (IntT))))))"),
+        vec![with_context],
+        intv(4),
+        val_bool(false),
+        vec![],
+    )
+}
+
+#[test]
+fn simple_less_than() -> crate::Result {
+    // 0 <= input
+    let cond = less_eq(int_ty(0, base(intt())), int(-1));
+    let prog = program!(function("main", base(intt()), base(boolt()), cond.clone()),);
+    let with_context = prog.add_context();
+    let term = with_context.entry.func_body().unwrap();
+
+    egglog_test(
+        &format!("{with_context}"),
+        &format!("(check (= {term} (InContext some_ctx (Const (Bool false) (Base (IntT))))))"),
         vec![with_context],
         intv(4),
         val_bool(false),
@@ -212,7 +230,7 @@ fn context_if_rev() -> crate::Result {
 
     // y = if cond {-1 * input} else {input}
     // interval analysis should tell us that y is always negative (= (hi-bound y) (IntB 0))
-    let y = tif(cond, iarg(), mul(iarg(), int_ty(-1, base(intt()))), iarg());
+    let y = tif(cond, parallel!(iarg()), mul(getat(0), int(-1)), getat(0));
 
     // z = 0 < y
     // interval analysis should tell us that z is false
@@ -225,7 +243,10 @@ fn context_if_rev() -> crate::Result {
 
     egglog_test(
         &format!("{with_context}"),
-        &format!("(check (= {term} (Const (Bool false) (Base (IntT)))))"),
+        &format!(
+            "
+(check (= {term} (InContext (NoContext) (Const (Bool false) (Base (IntT))))))"
+        ),
         vec![with_context],
         intv(4),
         val_bool(false),
@@ -238,41 +259,25 @@ fn context_if_with_state() -> crate::Result {
     let input_type = tuplet_vec(vec![intt(), statet()]);
     let output_type = tuplet_vec(vec![statet()]);
     let input_arg = arg_ty(input_type.clone());
-    let no_ctx = inctx(noctx(), input_arg.clone());
-    let pred = less_eq(
-        get(no_ctx.clone(), 0),
-        inctx(noctx(), int_ty(0, input_type.clone())),
-    );
+    let pred = less_eq(get(input_arg.clone(), 0), int_ty(0, input_type.clone()));
     let inputs = concat(
-        single(get(no_ctx.clone(), 1)),
+        single(get(input_arg.clone(), 1)),
         concat(
-            single(inctx(noctx(), int_ty(0, input_type.clone()))),
-            single(get(no_ctx.clone(), 0)),
-        ),
-    );
-    let arg = arg_ty(tuplet_vec(vec![statet(), intt(), intt()]));
-
-    let ctx_true = inctx(inif(true, pred.clone(), inputs.clone()), arg.clone());
-    let then = concat(
-        single(get(ctx_true.clone(), 0)),
-        concat(
-            single(get(ctx_true.clone(), 2)),
-            single(get(ctx_true.clone(), 1)),
+            single(int_ty(0, input_type.clone())),
+            single(get(input_arg.clone(), 0)),
         ),
     );
 
-    let ctx_false = inctx(inif(false, pred.clone(), inputs.clone()), arg.clone());
+    let then = concat(single(getat(0)), concat(single(getat(2)), single(getat(1))));
+
     let els = concat(
-        single(get(ctx_false.clone(), 0)),
+        single(getat(0)),
         concat(
             single(mul(
-                get(ctx_false.clone(), 2),
-                inctx(
-                    inif(false, pred.clone(), inputs.clone()),
-                    int_ty(-1, tuplet_vec(vec![statet(), intt(), intt()])),
-                ),
+                getat(2),
+                int_ty(-1, tuplet_vec(vec![statet(), intt(), intt()])),
             )),
-            single(get(ctx_false.clone(), 1)),
+            single(getat(1)),
         ),
     );
 
@@ -282,7 +287,8 @@ fn context_if_with_state() -> crate::Result {
             int_ty(0, input_type.clone()),
         ),
         get(input_arg.clone(), 1),
-    ));
+    ))
+    .with_arg_types(input_type.clone(), output_type.clone());
 
     let f = function(
         "main",
@@ -291,17 +297,26 @@ fn context_if_with_state() -> crate::Result {
         body.clone(),
     )
     .func_with_arg_types();
-    let prog = f.to_program(input_type.clone(), output_type.clone());
+    let prog = f
+        .to_program(input_type.clone(), output_type.clone())
+        .with_arg_types()
+        .add_context();
     println!("{prog}");
 
+    let body_with_ctx = prog.entry.func_body().unwrap();
+
     let expected = single(tprint(
-        ttrue_ty(input_type.clone()),
-        get(input_arg.clone(), 1),
+        inctx(noctx(), ttrue_ty(input_type.clone())),
+        get(inctx(noctx(), input_arg.clone()), 1),
     ));
 
     egglog_test(
         &format!("{prog}"),
-        &format!("(check (= {expected} {body}))"),
+        &format!(
+            "
+(check (= {expected} {body_with_ctx}))
+"
+        ),
         vec![prog],
         val_vec(vec![intv(4), statev()]),
         val_vec(vec![statev()]),

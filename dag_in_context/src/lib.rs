@@ -32,7 +32,6 @@ pub fn prologue() -> String {
     [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
-        include_str!("utility/canonicalize.egg"),
         include_str!("utility/util.egg"),
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
@@ -43,6 +42,7 @@ pub fn prologue() -> String {
         include_str!("utility/context-prop.egg"),
         include_str!("utility/subst.egg"),
         include_str!("utility/context_of.egg"),
+        include_str!("utility/canonicalize.egg"),
         include_str!("interval_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("optimizations/function_inlining.egg"),

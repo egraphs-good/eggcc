@@ -1,0 +1,22 @@
+# ARGS: 1
+@main(arg: int) {
+  one: int = const 1;
+  two: int = const 2;
+  outer_cond: bool = lt arg two;
+  br outer_cond .THEN .ELSE;
+  .THEN:
+    inner_cond: bool = lt arg two;
+    br inner_cond .A .B;
+  .A:
+    print one;
+    jmp .END;
+  .B:
+    print two;
+    jmp .END;
+  .ELSE:
+    print one;
+    jmp .END;
+  .END: 
+    print one;
+    ret;
+}

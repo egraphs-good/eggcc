@@ -327,10 +327,15 @@ pub fn extract(
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let (cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info);
+    let (_cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
     // TODO implement linearity
     let effectful_nodes_along_path =
         extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
+    let (cost_res, res) = extract_without_linearity(
+        extractor_not_linear,
+        &egraph_info,
+        Some(&effectful_nodes_along_path),
+    );
     // let _effectful_regions_along_path = effectful_nodes_along_path
     //     .into_iter()
     //     .filter(|nid| egraph_info.is_region_node(nid.clone()))
@@ -404,6 +409,10 @@ pub fn extract(
 pub fn extract_without_linearity(
     extractor: &mut Extractor,
     info: &EgraphInfo,
+    // If effectful paths are present,
+    // for each region we will only consider
+    // effectful nodes that are in effectful_path[rootid]
+    effectful_paths: Option<&HashMap<ClassId, HashSet<NodeId>>>,
 ) -> (CostSet, TreeProgram) {
     let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
     let mut updated_cost = true;
@@ -411,10 +420,29 @@ pub fn extract_without_linearity(
     while updated_cost {
         updated_cost = false;
         for (rootid, reachable) in info.reachable_from.iter() {
+            // If (1) effectful_path is present, (2) the class of root id
+            // is stateful, (3) effectful_path[rootid] does not exist,
+            // then we should not extract this region.
+            // if effectful_paths.is_some()
+            //     && effectful_paths.unwrap().contains_key(rootid)
+            //     && ((todo!("get type of eclass rootid")) as Type).contains_state()
+            // {
+            //     continue;
+            // }
+
             // TODO: We need to saturate the extraction of an individual region,
             // assuming its children region's cost has been computed
             for class_id in reachable {
                 for node_id in &info.egraph.classes().get(class_id).unwrap().nodes {
+                    if effectful_paths.is_some() && effectful_paths.unwrap().contains_key(rootid) {
+                        let effectful_nodes =
+                            effectful_paths.as_ref().unwrap().get(rootid).unwrap();
+                        let is_stateful = extractor.is_node_effectful(node_id.clone());
+                        if is_stateful && !effectful_nodes.contains(node_id) {
+                            continue;
+                        }
+                    }
+
                     let node = info.egraph.nodes.get(node_id).unwrap();
                     if info.unextractables.contains(&node.op) {
                         continue;

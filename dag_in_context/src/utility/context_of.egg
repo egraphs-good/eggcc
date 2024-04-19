@@ -7,11 +7,9 @@
 
 ; Error checking - each expr should only have a single context
 (rule ((ContextOf x ctx1)
-         (ContextOf x ctx2)
-         (!= ctx1 ctx2))
-     (
-         (panic "Equivalent expressions have nonequivalent context, breaking the single context invariant.")
-     )
+       (ContextOf x ctx2)
+       (!= ctx1 ctx2))
+      ((panic "Equivalent expressions have nonequivalent context, breaking the single context invariant."))
      :ruleset error-checking)
 
 

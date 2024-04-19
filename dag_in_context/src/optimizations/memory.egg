@@ -361,7 +361,7 @@
 ;                   program point, pointer
 ; merge function???
 ; TODO: should the output of this be exprset?
-(function PointsToExpr (Expr Expr)  Expr)
+(function PointsToExpr (Expr Expr) Expr :unextractable)
 
 ; For a write, mark the given expression as containing `data`.
 ; Propagate the previous values of any expression that definitely does not alias `addr`.

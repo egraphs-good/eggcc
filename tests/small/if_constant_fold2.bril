@@ -1,0 +1,23 @@
+# ARGS: 1
+@main(arg: int) {
+  four: int = const 4;
+  twenty: int = const 20;
+  five: int = const 5;
+  cond1: bool = eq arg five;
+  br cond1 .then1 .else1;
+  .then1:
+    z: int = mul four arg;
+    jmp .end;
+  .else1:
+    cond2: bool = eq arg four;
+    br cond2 .then2 .else2;
+  .then2:
+    z: int = mul five arg;
+    jmp .end;
+  .else2:
+    z: int = id twenty;
+    jmp .end;
+  .end:
+    print z;
+    ret;
+}

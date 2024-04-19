@@ -220,3 +220,7 @@
           outputs))
        :ruleset context)
 
+
+(rule ((InContext ctx1 (InContext ctx2 expr)))
+      ((panic "Nested contexts are disallowed for performance."))
+      :ruleset context)

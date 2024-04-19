@@ -421,10 +421,7 @@ fn load_after_write_without_alias() -> crate::Result {
     let res = tprint(val, state);
     egglog_test(
         &format!("(DemandPointsToCells {res})"),
-        &format!(
-            "
-        (check (= {res} (Bop (Print) (Const (Int 2) (Base (IntT))) rest)))"
-        ),
+        &format!("(check (= {res} (Bop (Print) (Const (Int 2) (Base (IntT))) rest)))"),
         vec![],
         val_empty(),
         val_empty(),
@@ -475,36 +472,23 @@ fn simple_loop_swap() -> crate::Result {
     let state = get(loop1.clone(), 0);
     let p = get(loop1.clone(), 1);
     let r = get(loop1.clone(), 3);
-    let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
-    // let twenty = int(20).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let state = write(p.clone(), int(10), state);
-    // let state_after_pwrite = state
-    //     .clone()
-    //     .with_arg_types(tuplet!(statet()), Type::Base(statet()));
     let state = write(r.clone(), int(20), state);
     let state_after_rwrite = state
         .clone()
         .with_arg_types(tuplet!(statet()), Type::Base(statet()));
     let val_and_state = load(p.clone(), state);
     let val = get(val_and_state.clone(), 0).with_arg_types(tuplet!(statet()), Type::Base(intt()));
-    // let state = get(val_and_state, 1);
-    // let res = tprint(val, state).with_arg_types(tuplet!(statet()), Type::Base(statet()));
+    let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     egglog_test(
         &format!("(DemandPointsToCells {val})"),
         &format!(
             "
-; (extract (PointsToCells {loop1} (PointsAnywhere)))
-; (extract (PointsToCells {p} (PointsAnywhere)))
-; (extract (PointsToCells {r} (PointsAnywhere)))
-; (extract (IntersectPointees (PointsToCells {p} (PointsAnywhere))
-                            ; (PointsToCells {r} (PointsAnywhere))))
 (check (PointsNowhere
          (IntersectPointees (PointsToCells {p} (PointsAnywhere))
                             (PointsToCells {r} (PointsAnywhere)))))
-
 (check (DontAlias {p} {r} (PointsAnywhere)))
 (check (= (PointsTo {state_after_rwrite} {p}) {ten}))
-
 (check (= {val} {ten}))
 "
         ),
@@ -545,7 +529,6 @@ fn pqrs_deep_loop_swap() -> crate::Result {
             ptradd(p.clone(), int(3)), // s
         ),
         concat3(
-            // single(call("f", getat(0))), // pred
             single(ttrue()), // pred
             dowhile(
                 parallel!(
@@ -554,7 +537,6 @@ fn pqrs_deep_loop_swap() -> crate::Result {
                     getat(2), // q
                 ),
                 parallel!(
-                    // call("g", getat(0)), // pred
                     ttrue(),  // pred
                     getat(0), // state
                     getat(2), // q
@@ -587,9 +569,7 @@ fn pqrs_deep_loop_swap() -> crate::Result {
         .with_arg_types(tuplet!(statet()), Type::Base(statet()));
     let val_and_state = load(p.clone(), state);
     let val = get(val_and_state.clone(), 0).with_arg_types(tuplet!(statet()), Type::Base(intt()));
-    // let state = get(val_and_state, 1);
     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
-    // let res = tprint(val, state).with_arg_types(tuplet!(statet()), Type::Base(statet()));
     egglog_test(
         &format!("(DemandPointsToCells {val})"),
         &format!(
@@ -597,7 +577,6 @@ fn pqrs_deep_loop_swap() -> crate::Result {
 (check (PointsNowhere
          (IntersectPointees (PointsToCells {p} (PointsAnywhere))
                             (PointsToCells {r} (PointsAnywhere)))))
-
 (check (DontAlias {p} {r} (PointsAnywhere)))
 (check (= (PointsTo {state_after_rwrite} {p}) {ten}))
 (check (= {val} {ten}))

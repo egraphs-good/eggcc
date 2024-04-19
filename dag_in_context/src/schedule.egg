@@ -21,5 +21,6 @@
     ;;conditional-invariant-code-motion
     switch_rewrite
     loop-simplify
-    (saturate memory)
+    ; Controls how many loop iters we do
+    memory
     ))

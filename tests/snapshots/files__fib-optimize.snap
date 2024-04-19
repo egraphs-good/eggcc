@@ -5,46 +5,46 @@ expression: visualization.result
 @main(v0: int) {
   v3: int = const 0;
   v5: bool = eq v0 v3;
-  v10: int = const 1;
-  print v10;
-  br v5 .__84__ .__16__;
-.__84__:
-  jmp .__86__;
+  v8: int = const 1;
+  print v8;
+  br v5 .__78__ .__16__;
+.__78__:
+  jmp .__80__;
 .__16__:
-  print v10;
-  v23: int = id v10;
-  v24: int = id v10;
-  v25: int = id v10;
+  print v8;
+  v23: int = id v8;
+  v24: int = id v8;
+  v25: int = id v8;
   v26: int = id v0;
 .__28__:
   v30: bool = lt v23 v26;
-  br v30 .__57__ .__44__;
-.__57__:
-  v59: int = add v24 v25;
-  print v59;
-  v63: bool = const true;
-  v66: int = const 1;
-  v68: int = add v23 v66;
-  v51: bool = id v63;
-  v52: int = id v68;
-  v53: int = id v59;
-  v54: int = id v24;
-  v55: int = id v26;
-.__74__:
-  v23: int = id v52;
-  v24: int = id v53;
-  v25: int = id v54;
-  v26: int = id v55;
-  br v51 .__28__ .__82__;
-.__82__:
-  jmp .__86__;
-.__44__:
-  v45: bool = const false;
-  v51: bool = id v45;
-  v52: int = id v23;
-  v53: int = id v24;
-  v54: int = id v25;
-  v55: int = id v26;
-  jmp .__74__;
-.__86__:
+  br v30 .__51__ .__38__;
+.__51__:
+  v53: int = add v24 v25;
+  print v53;
+  v57: bool = const true;
+  v60: int = const 1;
+  v62: int = add v23 v60;
+  v45: bool = id v57;
+  v46: int = id v62;
+  v47: int = id v53;
+  v48: int = id v24;
+  v49: int = id v26;
+.__68__:
+  v23: int = id v46;
+  v24: int = id v47;
+  v25: int = id v48;
+  v26: int = id v49;
+  br v45 .__28__ .__76__;
+.__76__:
+  jmp .__80__;
+.__38__:
+  v39: bool = const false;
+  v45: bool = id v39;
+  v46: int = id v23;
+  v47: int = id v24;
+  v48: int = id v25;
+  v49: int = id v26;
+  jmp .__68__;
+.__80__:
 }

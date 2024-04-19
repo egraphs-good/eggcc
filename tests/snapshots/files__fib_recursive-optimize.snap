@@ -5,31 +5,30 @@ expression: visualization.result
 @fac(v0: int): int {
   v3: int = const 0;
   v5: bool = eq v0 v3;
-  v11: int = const 1;
-  br v5 .__59__ .__15__;
-.__59__:
-  v57: int = id v11;
-  jmp .__62__;
-.__15__:
-  v17: bool = eq v0 v11;
-  br v17 .__49__ .__29__;
-.__49__:
-  v48: int = const 0;
-  v51: int = call @fac v48;
-  v46: int = id v11;
-.__55__:
-  v57: int = id v46;
-  jmp .__62__;
-.__29__:
-  v31: int = sub v0 v11;
-  v34: int = sub v31 v11;
-  v38: int = call @fac v31;
-  v40: int = call @fac v34;
-  v44: int = add v38 v40;
-  v46: int = id v44;
-  jmp .__55__;
-.__62__:
-  ret v57;
+  v9: int = const 1;
+  br v5 .__51__ .__13__;
+.__51__:
+  v49: int = id v9;
+  jmp .__54__;
+.__13__:
+  v15: bool = eq v0 v9;
+  br v15 .__41__ .__22__;
+.__41__:
+  v43: int = call @fac v3;
+  v39: int = id v9;
+.__47__:
+  v49: int = id v39;
+  jmp .__54__;
+.__22__:
+  v24: int = sub v0 v9;
+  v27: int = sub v24 v9;
+  v31: int = call @fac v24;
+  v33: int = call @fac v27;
+  v37: int = add v31 v33;
+  v39: int = id v37;
+  jmp .__47__;
+.__54__:
+  ret v49;
 }
 @main {
   v1: int = const 2;

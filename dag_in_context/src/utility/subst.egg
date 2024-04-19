@@ -17,11 +17,6 @@
 
 
 ;; Base case- leaf nodes
-;; leaf node without context
-(rule ((= lhs (Subst assum to leaf))
-       (IsLeaf leaf))
-      ((union lhs (InContext assum (SubstLeaf to leaf))))
-      :ruleset subst)
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
 (rule ((= lhs (Subst assum to (InContext oldctx leaf)))

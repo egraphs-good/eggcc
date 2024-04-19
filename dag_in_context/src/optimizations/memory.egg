@@ -242,12 +242,13 @@
       ((union f pointees))
       :ruleset always-run)
 
-; TODO: use interval analysis for y instead of only matching on constants
-(rewrite (PointsToCells (Bop (PtrAdd) x (Const (Int y) ty)) aps)
+(rewrite (PointsToCells (Bop (PtrAdd) x e) aps)
          (PtrPointsTo
            (AddIntIntervalToPtrPointees
-             (MkIntInterval (I y) (I y))
+             (MkIntInterval (I lo) (I hi))
              (UnwrapPtrPointsTo (PointsToCells x aps))))
+         :when ((= (IntB lo) (lo-bound e))
+                (= (IntB hi) (hi-bound e)))
          :ruleset memory)
 
 (rewrite (PointsToCells (If inputs c t e) aps)

@@ -47,3 +47,7 @@
          (DoWhile (InContext ctx inputs) body)
          :ruleset context-prop)
 
+;; tie up cycles
+(rewrite (InContext ctx (InContext ctx expr))
+         (InContext ctx expr)
+         :ruleset context-prop)

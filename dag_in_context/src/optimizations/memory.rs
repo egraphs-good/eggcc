@@ -3,7 +3,7 @@
 
 use crate::schema::{BaseType, Type};
 use crate::schema_helpers::{Constructor, ESort, Purpose};
-use crate::{egglog_test, prologue};
+use crate::{egglog_test, egglog_test_and_print_program, prologue};
 use strum::IntoEnumIterator;
 
 // Signature of an egglog function, for metaprogramming
@@ -403,10 +403,10 @@ fn load_after_write_without_alias() -> crate::Result {
     // print 2;
     //
     // This relies on the alias analysis to work.
-    let one = int_ty(1, Type::Base(BaseType::IntT));
-    let two = int_ty(2, Type::Base(BaseType::IntT));
-    let three = int_ty(3, Type::Base(BaseType::IntT));
-    let orig_state = get(arg_ty(tuplet!(statet())), 0);
+    let one = int(1);
+    let two = int(2);
+    let three = int(3);
+    let orig_state = getat(0);
     let ptr_and_state = alloc(0, one.clone(), orig_state.clone(), pointert(intt()));
     let ptr1 = get(ptr_and_state.clone(), 0);
     let state = get(ptr_and_state, 1);
@@ -418,10 +418,12 @@ fn load_after_write_without_alias() -> crate::Result {
     let val_and_state = load(ptr1, state);
     let val = get(val_and_state.clone(), 0);
     let state = get(val_and_state, 1);
-    let res = tprint(val, state);
+    let res = tprint(val, state).with_arg_types(tuplet!(statet()), Type::Base(statet()));
+    let f = function("main", tuplet!(statet()), Type::Base(statet()), res.clone())
+        .func_with_arg_types();
     egglog_test(
-        &format!("(DemandPointsToCells {res})"),
-        &format!("(check (= {res} (Bop (Print) (Const (Int 2) (Base (IntT))) rest)))"),
+        &format!("{f}"),
+        &format!("(check (= {res} (Bop (Print) (Const (Int 2) argty) rest)))"),
         vec![],
         val_empty(),
         val_empty(),
@@ -441,7 +443,7 @@ fn simple_loop_swap() -> crate::Result {
     // // (p, r) still shouldn't alias
     use crate::ast::*;
     let alloc_id = 1;
-    let state = get(arg_ty(tuplet!(statet())), 0);
+    let state = getat(0);
     let p_and_state = alloc(alloc_id, int(4), state, pointert(intt()));
     let p = get(p_and_state.clone(), 0);
     let state = get(p_and_state, 1);
@@ -480,8 +482,10 @@ fn simple_loop_swap() -> crate::Result {
     let val_and_state = load(p.clone(), state);
     let val = get(val_and_state.clone(), 0).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
+    let f =
+        function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
     egglog_test(
-        &format!("(DemandPointsToCells {val})"),
+        &format!("{f}"),
         &format!(
             "
 (check (PointsNowhere
@@ -499,7 +503,7 @@ fn simple_loop_swap() -> crate::Result {
     )
 }
 
-// #[test]
+#[test]
 fn pqrs_deep_loop_swap() -> crate::Result {
     // p = alloc(alloc_id, 4, int*)
     // q = ptradd(p, 1)
@@ -570,17 +574,22 @@ fn pqrs_deep_loop_swap() -> crate::Result {
     let val_and_state = load(p.clone(), state);
     let val = get(val_and_state.clone(), 0).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
-    egglog_test(
-        &format!("(DemandPointsToCells {val})"),
+    let f =
+        function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
+    egglog_test_and_print_program(
+        &format!("{f}"),
         &format!(
             "
+(extract
+         (IntersectPointees (PointsToCells {p} (PointsAnywhere))
+                            (PointsToCells {r} (PointsAnywhere))))
 (check (PointsNowhere
          (IntersectPointees (PointsToCells {p} (PointsAnywhere))
                             (PointsToCells {r} (PointsAnywhere)))))
 (check (DontAlias {p} {r} (PointsAnywhere)))
 (check (= (PointsTo {state_after_rwrite} {p}) {ten}))
 (check (= {val} {ten}))
-            "
+"
         ),
         vec![],
         val_empty(),

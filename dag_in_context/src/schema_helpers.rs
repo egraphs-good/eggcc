@@ -366,7 +366,7 @@ impl Constructor {
                     f(Static(Sort::String), "name"),
                     f(Static(Sort::Type), "tyin"),
                     f(Static(Sort::Type), "tyout"),
-                    f(SubExpr, "out"),
+                    f(CapturedExpr, "out"),
                 ]
             }
             Constructor::Const => {

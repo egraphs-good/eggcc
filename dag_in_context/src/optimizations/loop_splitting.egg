@@ -24,8 +24,8 @@
        (= a (Get inputs 1))
        (= 2 (tuple-length inputs))
 
-       (= i (Get (Arg inner_arg_type) 1))
-       (= one (Const (Int 1) inner_arg_type))
+       (= i (Get (InContext do_while_ctx (Arg inner_arg_type)) 1))
+       (= one (InContext do_while_ctx (Const (Int 1) inner_arg_type)))
 
        (= loop_pred (Get pred_and_body 0))
        (= if_node (Get pred_and_body 1))

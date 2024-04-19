@@ -40,6 +40,16 @@ impl<'a> EgraphInfo<'a> {
         !enode_regions(self.egraph, &self.egraph[&node_id]).is_empty()
     }
 
+    pub(crate) fn get_sort_of_eclass(&self, eclass: &ClassId) -> &String {
+        self.egraph
+            .class_data
+            .get(eclass)
+            .unwrap()
+            .typ
+            .as_ref()
+            .unwrap()
+    }
+
     pub(crate) fn new(
         cm: &'a dyn CostModel,
         egraph: &'a EGraph,
@@ -97,10 +107,11 @@ impl<'a> Extractor<'a> {
         ty.contains_state()
     }
 
-    /// Checks if an already extracted node is effectful.
-    pub(crate) fn is_node_effectful(&mut self, node_id: NodeId) -> bool {
-        let node_type = self.node_to_type.as_ref().unwrap().get(&node_id).unwrap();
-        node_type.contains_state()
+    /// If the type of the node is known, checks if an already extracted node is effectful.
+    /// There are cases where the type of the node is not known, for reasons unknown to us.
+    pub(crate) fn is_node_effectful(&mut self, node_id: NodeId) -> Option<bool> {
+        let node_type = self.node_to_type.as_ref().unwrap().get(&node_id)?;
+        Some(node_type.contains_state())
     }
 
     /// Convert the extracted terms to expressions, and also
@@ -115,16 +126,9 @@ impl<'a> Extractor<'a> {
         for (term, node_id) in &self.correspondence {
             let node = info.egraph.nodes.get(node_id).unwrap();
             let eclass = info.egraph.nid_to_cid(node_id);
-            let type_of_eclass = info
-                .egraph
-                .class_data
-                .get(eclass)
-                .unwrap()
-                .typ
-                .as_ref()
-                .unwrap();
+            let sort_of_eclass = info.get_sort_of_eclass(eclass);
             // only convert expressions (that are not functions)
-            if type_of_eclass == "Expr" && node.op != "Function" {
+            if sort_of_eclass == "Expr" && node.op != "Function" {
                 let expr = converter.expr_from_egglog(term.clone());
                 let ty = self
                     .typechecker
@@ -328,9 +332,9 @@ pub fn extract(
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
     let (_cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
-    // TODO implement linearity
     let effectful_nodes_along_path =
         extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
+    extractor_not_linear.costs.clear();
     let (cost_res, res) = extract_without_linearity(
         extractor_not_linear,
         &egraph_info,
@@ -434,12 +438,17 @@ pub fn extract_without_linearity(
             // assuming its children region's cost has been computed
             for class_id in reachable {
                 for node_id in &info.egraph.classes().get(class_id).unwrap().nodes {
-                    if effectful_paths.is_some() && effectful_paths.unwrap().contains_key(rootid) {
+                    let sort_of_node = info.get_sort_of_eclass(class_id);
+                    if sort_of_node == "Expr"
+                        && effectful_paths.is_some()
+                        && effectful_paths.unwrap().contains_key(rootid)
+                    {
                         let effectful_nodes =
                             effectful_paths.as_ref().unwrap().get(rootid).unwrap();
-                        let is_stateful = extractor.is_node_effectful(node_id.clone());
-                        if is_stateful && !effectful_nodes.contains(node_id) {
-                            continue;
+                        if let Some(is_stateful) = extractor.is_node_effectful(node_id.clone()) {
+                            if is_stateful && !effectful_nodes.contains(node_id) {
+                                continue;
+                            }
                         }
                     }
 

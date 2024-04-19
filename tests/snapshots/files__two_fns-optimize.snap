@@ -9,8 +9,6 @@ expression: visualization.result
   ret v5;
 }
 @main {
-  v1: int = const 1;
-  v3: int = const 2;
-  v5: int = add v1 v3;
-  print v5;
+  v1: int = const 3;
+  print v1;
 }

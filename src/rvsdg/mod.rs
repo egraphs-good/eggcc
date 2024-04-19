@@ -28,7 +28,6 @@
 //!
 //! In addition to those papers, the Jamey Sharp's
 //! [optir](https://github.com/jameysharp/optir) project is a major inspiration.
-pub(crate) mod dag_region_query;
 pub(crate) mod from_cfg;
 pub(crate) mod from_dag;
 pub(crate) mod live_variables;

@@ -37,20 +37,23 @@
 (rule ((Get tup i) (ContextOf tup ctx))
     ((ContextOf (Get tup i) ctx)) :ruleset always-run)
 
-(rule ((Concat order x y) (ContextOf x ctx))
-    ((ContextOf (Concat order x y) ctx)) :ruleset always-run)
+(rule ((Concat x y) (ContextOf x ctx))
+    ((ContextOf (Concat x y) ctx)) :ruleset always-run)
 
-(rule ((Concat order x y) (ContextOf y ctx))
-    ((ContextOf (Concat order x y) ctx)) :ruleset always-run)
+(rule ((Concat x y) (ContextOf y ctx))
+    ((ContextOf (Concat x y) ctx)) :ruleset always-run)
 
 (rule ((Single x) (ContextOf x ctx))
     ((ContextOf (Single x) ctx)) :ruleset always-run)
 
-(rule ((Switch pred branches) (ContextOf pred ctx))
-    ((ContextOf (Switch pred branches) ctx)) :ruleset always-run)
+(rule ((Switch pred inputs branches) (ContextOf pred ctx))
+    ((ContextOf (Switch pred inputs branches) ctx)) :ruleset always-run)
 
-(rule ((If pred then else) (ContextOf pred ctx))
-    ((ContextOf (If pred then else) ctx)) :ruleset always-run) 
+(rule ((If pred inputs then else) (ContextOf pred ctx))
+    ((ContextOf (If pred inputs then else) ctx)) :ruleset always-run) 
+
+(rule ((If pred inputs then else) (ContextOf inputs ctx))
+    ((ContextOf (If pred inputs then else) ctx)) :ruleset always-run) 
 
 (rule ((DoWhile in pred-and-output) (ContextOf in ctx))
     ((ContextOf (DoWhile in pred-and-output) ctx)) :ruleset always-run)

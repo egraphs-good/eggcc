@@ -7,13 +7,17 @@
         (saturate type-helpers)
         type-analysis
       )
-      (saturate subst) ;; subst depends on type information for the argument
+      (saturate 
+        (saturate subst-helpers)
+        subst) ;; subst depends on type information for the argument
       (saturate interval-analysis)
       (saturate
-        (saturate context-prop)
+        ;; make sure to saturate context-helpers, since they ensure the other rules saturate
         (saturate context-helpers)
-        context))
-    conditional-invariant-code-motion
+        context
+        context-prop))
+    ;; TODO enable this ruleset again after fixing for regions
+    ;;conditional-invariant-code-motion
     switch_rewrite
     loop-simplify
     ))

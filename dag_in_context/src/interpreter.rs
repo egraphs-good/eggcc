@@ -7,11 +7,11 @@
 use std::{collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::{
-    schema::{BinaryOp, Constant, Expr, Order, RcExpr, TernaryOp, TreeProgram, UnaryOp},
+    schema::{BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, UnaryOp},
     tuplev,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pointer {
     // start address of this pointer
     start_addr: usize,
@@ -40,7 +40,7 @@ impl Pointer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
     Const(Constant),
     Ptr(Pointer),
@@ -323,42 +323,32 @@ impl<'a> VirtualMachine<'a> {
             }
             Expr::Empty(_ty) => Tuple(vec![]),
             Expr::Single(e) => Tuple(vec![self.interpret_expr(e, arg)]),
-            Expr::Concat(order, e1, e2) => {
-                let (v1_tuple, v2_tuple) = match order {
-                    // Always execute sequentially
-                    // We could also test other orders for parallel tuples
-                    Order::Sequential | Order::Parallel => {
-                        (self.interpret_expr(e1, arg), self.interpret_expr(e2, arg))
-                    }
-                    Order::Reversed => {
-                        let v2 = self.interpret_expr(e2, arg);
-                        let v1 = self.interpret_expr(e1, arg);
-                        (v1, v2)
-                    }
-                };
-                let Tuple(mut v1) = v1_tuple else {
+            Expr::Concat(e1, e2) => {
+                let Tuple(mut v1) = self.interpret_expr(e1, arg) else {
                     panic!("expected tuple in extend's first argument in: {:?}", e1)
                 };
-                let Tuple(v2) = v2_tuple else {
+                let Tuple(v2) = self.interpret_expr(e2, arg) else {
                     panic!("expected tuple in extend's second argument in {:?}", e2)
                 };
                 v1.extend(v2);
                 Tuple(v1)
             }
-            Expr::Switch(pred, branches) => {
+            Expr::Switch(pred, input, branches) => {
                 let index = self.interp_int_expr(pred, arg);
                 if index < 0 || index as usize >= branches.len() {
                     // TODO refactor to return a Result
                     panic!("switch index out of bounds")
                 }
-                self.interpret_expr(&branches[index as usize], arg)
+                let input_val = self.interpret_expr(input, arg);
+                self.interpret_region(&branches[index as usize], &input_val)
             }
-            Expr::If(pred, then, els) => {
+            Expr::If(pred, input, then, els) => {
                 let pred_evaluated = self.interp_bool_expr(pred, arg);
+                let input_evaluated = self.interpret_expr(input, arg);
                 if pred_evaluated {
-                    self.interpret_expr(then, arg)
+                    self.interpret_region(then, &input_evaluated)
                 } else {
-                    self.interpret_expr(els, arg)
+                    self.interpret_region(els, &input_evaluated)
                 }
             }
             Expr::DoWhile(input, pred_output) => {
@@ -422,6 +412,7 @@ fn test_interpret_recursive() {
         base(intt()),
         tif(
             less_than(arg(), int(2)),
+            arg(),
             arg(),
             add(
                 call("fib", sub(arg(), int(1))),

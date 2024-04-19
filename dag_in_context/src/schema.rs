@@ -57,17 +57,10 @@ pub enum UnaryOp {
     Not,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Constant {
     Int(i64),
     Bool(bool),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Order {
-    Parallel,
-    Sequential,
-    Reversed,
 }
 
 /// A reference counted expression.
@@ -79,8 +72,8 @@ pub type RcExpr = Rc<Expr>;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
-    InFunc(String),
-    InIf(bool, RcExpr),
+    NoContext,
+    InIf(bool, RcExpr, RcExpr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -94,9 +87,9 @@ pub enum Expr {
     Call(String, RcExpr),
     Empty(Type),
     Single(RcExpr),
-    Concat(Order, RcExpr, RcExpr),
-    Switch(RcExpr, Vec<RcExpr>),
-    If(RcExpr, RcExpr, RcExpr),
+    Concat(RcExpr, RcExpr),
+    If(RcExpr, RcExpr, RcExpr, RcExpr),
+    Switch(RcExpr, RcExpr, Vec<RcExpr>),
     DoWhile(RcExpr, RcExpr),
     Arg(Type),
     InContext(Assumption, RcExpr),

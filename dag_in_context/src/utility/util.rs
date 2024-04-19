@@ -12,7 +12,7 @@ fn test_list_util() -> crate::Result {
                   (Cons (Const (Int 2) {emptyt})
                   (Cons (Const (Int 3) {emptyt})
                   (Cons (Const (Int 4) {emptyt}) (Nil)))))))
-		(let expr (Switch (Const (Int 1) {emptyt}) list))
+		(let expr (Switch (Const (Int 1) {emptyt}) (Empty {emptyt}) list))
 	"
     );
     let check = format!(
@@ -66,35 +66,37 @@ fn append_test() -> crate::Result {
 fn test_tuple_ith() -> crate::Result {
     use crate::ast::emptyt;
     let emptyt = emptyt();
-    let build = format!("
-    (let tup (Concat par 
-                  (Concat sequ (Single (Const (Int 0) {emptyt})) (Single (Const (Int 1) {emptyt})))
-                  (Concat sequ (Single (Const (Int 2) {emptyt})) (Single (Const (Int 3) {emptyt})))))
+    let build = format!(
+        "
+    (let tup (Concat
+                  (Concat (Single (Const (Int 0) {emptyt})) (Single (Const (Int 1) {emptyt})))
+                  (Concat (Single (Const (Int 2) {emptyt})) (Single (Const (Int 3) {emptyt})))))
     
     ;; with print
-    (let tup2 (Concat par
-                (Concat par 
+    (let tup2 (Concat 
+                (Concat 
                     (Single (Bop (Print) (Const (Int 0) {emptyt}) (Arg (Base (StateT)))))
-                    (Concat par (Single (Const (Int 1) {emptyt})) 
+                    (Concat (Single (Const (Int 1) {emptyt})) 
                                 (Single (Const (Int 2) {emptyt}))))
                 (Single (Const (Int 3) {emptyt}))))
-    ");
+    "
+    );
 
     let check = format!(
         "
-    (check (= (tuple-ith tup 0) (Const (Int 0) {emptyt})))
-    (check (= (tuple-ith tup 1) (Const (Int 1) {emptyt})))
-    (check (= (tuple-ith tup 2) (Const (Int 2) {emptyt})))
-    (check (= (tuple-ith tup 3) (Const (Int 3) {emptyt})))
+    (check (= (Get tup 0) (Const (Int 0) {emptyt})))
+    (check (= (Get tup 1) (Const (Int 1) {emptyt})))
+    (check (= (Get tup 2) (Const (Int 2) {emptyt})))
+    (check (= (Get tup 3) (Const (Int 3) {emptyt})))
     (check (= 4 (tuple-length tup)))
-    (fail (check (tuple-ith tup 4)))
+    (fail (check (Get tup 4)))
 
-    (check (= (tuple-ith tup2 0) (Bop (Print) (Const (Int 0) {emptyt}) (Arg (Base (StateT))))))
-    (check (= (tuple-ith tup2 1) (Const (Int 1) {emptyt})))
-    (check (= (tuple-ith tup2 2) (Const (Int 2) {emptyt})))
-    (check (= (tuple-ith tup2 3) (Const (Int 3) {emptyt})))
+    (check (= (Get tup2 0) (Bop (Print) (Const (Int 0) {emptyt}) (Arg (Base (StateT))))))
+    (check (= (Get tup2 1) (Const (Int 1) {emptyt})))
+    (check (= (Get tup2 2) (Const (Int 2) {emptyt})))
+    (check (= (Get tup2 3) (Const (Int 3) {emptyt})))
     (check (= 4 (tuple-length tup2)))
-    (fail (check (tuple-ith tup2 4)))
+    (fail (check (Get tup2 4)))
     "
     );
     egglog_test(

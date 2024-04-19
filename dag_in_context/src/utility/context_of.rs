@@ -4,22 +4,22 @@ fn test_context_of() -> crate::Result {
 
     // fn main(x): if x = 5 then x else 4
     let pred = eq(arg(), int(5));
-    let body = tif(pred, arg(), int(4)).with_arg_types(base(intt()), base(intt()));
+    let body = tif(pred, arg(), arg(), int(4))
+        .with_arg_types(base(intt()), base(intt()))
+        .with_arg_types(base(intt()), base(intt()));
+    let body_with_context = body.clone().add_ctx(noctx());
     let build = function("main", base(intt()), base(intt()), body.clone())
         .func_with_arg_types()
-        .func_add_context();
+        .func_add_ctx();
 
     // If statement should have the context of its predicate
-    let check = "
-        (let pred-ctx (InFunc \"main\"))
-        (let pred (Bop (Eq) (InContext (InFunc \"main\") (Arg (Base (IntT)))) (InContext (InFunc \"main\") (Const (Int 5) (Base (IntT))))))
+    let check = format!("
+        (let pred-ctx (NoContext))
+        (let pred (Bop (Eq) (InContext (NoContext) (Arg (Base (IntT)))) (InContext (NoContext) (Const (Int 5) (Base (IntT))))))
         (check (ContextOf pred pred-ctx))
-        (let if
-                (If pred
-                    (InContext (InIf true (Bop (Eq) (InContext (InFunc \"main\") (Arg (Base (IntT)))) (InContext (InFunc \"main\") (Const (Int 5) (Base (IntT)))))) (Arg (Base (IntT))))
-                    (InContext (InIf false (Bop (Eq) (InContext (InFunc \"main\") (Arg (Base (IntT)))) (InContext (InFunc \"main\") (Const (Int 5) (Base (IntT)))))) (Const (Int 4) (Base (IntT))))))
+        (let if {body_with_context})
         (check (ContextOf if pred-ctx))
-        ".to_string();
+        ");
 
     crate::egglog_test(
         &format!("(let build {build})"),
@@ -34,8 +34,8 @@ fn test_context_of() -> crate::Result {
 // Check that InContext means ContextOf
 #[test]
 fn test_context_of_base_case() -> crate::Result {
-    let build = "(InContext (InFunc \"somefunc\") (Const (Int 5) (Base (IntT))))";
-    let check = "(ContextOf (InContext (InFunc \"somefunc\") (Const (Int 5) (Base (IntT)))) (InFunc \"somefunc\"))";
+    let build = "(InContext (NoContext) (Const (Int 5) (Base (IntT))))";
+    let check = "(ContextOf (InContext (NoContext) (Const (Int 5) (Base (IntT)))) (NoContext))";
 
     crate::egglog_test(
         &format!("(let build {build})"),
@@ -53,8 +53,8 @@ fn test_context_of_base_case() -> crate::Result {
 // #[should_panic]
 // fn test_context_of_panics_if_two() {
 //     let build = "
-//         (let ctx1 (InFunc \"main\"))
-//         (let ctx2 (InFunc \"notmain\"))
+//         (let ctx1 (NoContext))
+//         (let ctx2 (NoContext))
 //         (let conflict-expr (Bop (And) (InContext ctx1 (Const (Bool false) (Base (BoolT)))) (InContext ctx2 (Const (Bool true) (Base (BoolT))))))";
 //     let check = "";
 
@@ -80,13 +80,13 @@ fn test_context_of_no_func_context() -> crate::Result {
         get(
             dowhile(
                 single(int(5)),
-                concat_seq(single(tfalse()), single(add(get(arg(), 0), int(4)))),
+                parallel!(tfalse(), add(get(arg(), 0), int(4))),
             ),
             0,
         ),
     )
     .func_with_arg_types()
-    .func_add_context();
+    .func_add_ctx();
 
     let check = format!("(fail (check (ContextOf {} ctx)))", build.clone());
 

@@ -76,46 +76,46 @@
        (HasArgType e ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (Concat _ e1 e2))
+(rule ((= lhs (Concat e1 e2))
        (HasArgType e1 ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (Concat _ e1 e2))
+(rule ((= lhs (Concat e1 e2))
        (HasArgType e2 ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((HasArgType (Switch pred (Cons branch (Nil))) ty))
-      (
-        (HasArgType pred ty)
-        (HasArgType branch ty)
-      )
-      :ruleset type-analysis)
-(rule ((= lhs (Switch pred (Cons branch rest)))
+(rule ((= lhs (Switch pred inputs (Cons branch rest)))
        (HasArgType pred ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (Switch pred (Cons branch rest)))
-       (HasArgType branch ty))
-      ((HasArgType lhs ty))
+(rule ((= lhs (Switch pred inputs (Cons branch rest)))
+       (HasArgType branch ty)
+       (HasType inputs ty2)
+       (!= ty ty2))
+      ((panic "switch branches then branch has incorrect input type"))
       :ruleset type-analysis)
 ;; demand with one fewer branches
-(rule ((= lhs (Switch pred (Cons branch rest))))
-      ((Switch pred rest))
+(rule ((= lhs (Switch pred inputs (Cons branch rest))))
+      ((Switch pred inputs rest))
       :ruleset type-analysis)
-(rule ((= lhs (Switch pred (Cons branch rest)))
-       (HasArgType (Switch pred rest) ty))
-      ((HasArgType lhs ty))
-      :ruleset type-analysis)
-(rule ((= lhs (If c t e))
+(rule ((= lhs (If c i t e))
        (HasArgType c ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
-(rule ((= lhs (If c t e))
-       (HasArgType t ty))
-      ((HasArgType lhs ty))
+(rule ((= lhs (If c i t e))
+       (HasType i ty)
+       (HasArgType t ty2)
+       (!= ty ty2))
+      ((panic "if branches then branch has incorrect input type"))
       :ruleset type-analysis)
-(rule ((= lhs (If c t e))
-       (HasArgType e ty))
+(rule ((= lhs (If c i t e))
+       (HasType i ty)
+       (HasArgType e ty2)
+       (!= ty ty2))
+      ((panic "if branches else branch has incorrect input type"))
+      :ruleset type-analysis)
+(rule ((= lhs (DoWhile ins body))
+       (HasArgType ins ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
 ; Don't push arg types through Program, Function, DoWhile, Let exprs because
@@ -386,6 +386,20 @@
       ((HasType lhs (Base (TypeList-ith tylist i)))) 
       :ruleset type-analysis)
 
+(rule (
+       (HasType (Get expr i) (TupleT tl))
+       (= (TypeList-length tl) len)
+       (>= i len))
+      ((panic "index out of bounds"))
+      :ruleset type-analysis)
+(rule (
+      (HasType (Get expr i) (TupleT tl))
+       (= (TypeList-length tl) len)
+        (< i 0)
+      )
+      ((panic "negative index"))
+      :ruleset type-analysis)
+
 ; =================================
 ; Tuple operations
 ; =================================
@@ -405,7 +419,7 @@
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Concat ord e1 e2))
+        (= lhs (Concat e1 e2))
         (HasType e1 (TupleT tylist1))
         (HasType e2 (TupleT tylist2))
       )
@@ -417,11 +431,11 @@
 ; =================================
 ; Control flow
 ; =================================
-(rule ((= lhs (If pred then else)))
+(rule ((= lhs (If pred inputs then else)))
       ((ExpectType pred (Base (BoolT)) "If predicate must be boolean"))
       :ruleset type-analysis)
 (rule (
-        (= lhs (If pred then else))
+        (= lhs (If pred inputs then else))
         (HasType pred (Base (BoolT)))
         (HasType then ty)
         (HasType else ty)
@@ -430,7 +444,7 @@
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (If pred then else))
+        (= lhs (If pred inputs then else))
         (HasType pred (Base (BoolT)))
         (HasType then tya)
         (HasType else tyb)
@@ -441,13 +455,13 @@
 
 
 
-(rule ((= lhs (Switch pred branches)))
+(rule ((= lhs (Switch pred inputs branches)))
       ((ExpectType pred (Base (IntT)) "Switch predicate must be integer"))
       :ruleset type-analysis)
 
 ; base case: single branch switch has type of branch
 (rule (
-        (= lhs (Switch pred (Cons branch (Nil))))
+        (= lhs (Switch pred inputs (Cons branch (Nil))))
         (HasType pred (Base (IntT)))
         (HasType branch ty)
       )
@@ -455,24 +469,24 @@
       :ruleset type-analysis)
 
 ; recursive case: peel off a layer
-(rule ((Switch pred (Cons branch rest)))
-      ((Switch pred rest))
+(rule ((Switch pred inputs (Cons branch rest)))
+      ((Switch pred inputs rest))
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Switch pred (Cons branch rest)))
+        (= lhs (Switch pred inputs (Cons branch rest)))
         (HasType pred (Base (IntT)))
         (HasType branch ty)
-        (HasType (Switch pred rest) ty) ; rest of the branches also have type ty
+        (HasType (Switch pred inputs rest) ty) ; rest of the branches also have type ty
       )
       ((HasType lhs ty))
       :ruleset type-analysis)
 
 (rule (
-        (= lhs (Switch pred (Cons branch rest)))
+        (= lhs (Switch pred inputs (Cons branch rest)))
         (HasType pred (Base (IntT)))
         (HasType branch tya)
-        (HasType (Switch pred rest) tyb)
+        (HasType (Switch pred inputs rest) tyb)
         (!= tya tyb)
       )
       ((panic "switch branches had different types"))

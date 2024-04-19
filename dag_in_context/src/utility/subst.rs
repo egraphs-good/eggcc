@@ -19,11 +19,11 @@ fn test_subst_nested() -> crate::Result {
     )
     .with_arg_types(twoint.clone(), base(intt()));
     let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone());
-    let replacement = in_context(infunc("main"), replace_with.clone());
+    let replacement = inctx(noctx(), replace_with.clone());
     let expected = get(
         dowhile(
             parallel!(
-                in_context(infunc("main"), int(1)),
+                inctx(noctx(), int(1)),
                 get(replacement.clone(), 1),
                 get(
                     dowhile(
@@ -41,7 +41,7 @@ fn test_subst_nested() -> crate::Result {
 
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst inf-fuel (NoContext)
                         {replace_with}
                         {expr}))"
     );
@@ -68,18 +68,15 @@ fn test_subst_makes_new_context() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(
-        in_context(infunc("otherfunc"), int_ty(1, base(intt()))),
-        in_context(infunc("otherfunc"), iarg()),
+        inctx(noctx(), int_ty(1, base(intt()))),
+        inctx(noctx(), iarg()),
     );
     let replace_with = int_ty(2, base(intt()));
-    let expected = add(
-        in_context(infunc("main"), int(1)),
-        in_context(infunc("main"), int(2)),
-    )
-    .with_arg_types(base(intt()), base(intt()));
+    let expected = add(inctx(noctx(), int(1)), inctx(noctx(), int(2)))
+        .with_arg_types(base(intt()), base(intt()));
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst inf-fuel (NoContext)
                         {replace_with}
                         {expr}))"
     );
@@ -106,14 +103,11 @@ fn test_subst_arg_type_changes() -> crate::Result {
     let tupletype = tuplet!(intt(), intt());
     let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), base(intt()));
 
-    let expected = add(
-        in_context(infunc("main"), get(arg(), 0)),
-        in_context(infunc("main"), get(arg(), 0)),
-    )
-    .with_arg_types(tupletype.clone(), base(intt()));
+    let expected = add(inctx(noctx(), get(arg(), 0)), inctx(noctx(), get(arg(), 0)))
+        .with_arg_types(tupletype.clone(), base(intt()));
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst inf-fuel (NoContext)
                         {replace_with}
                         {expr}))"
     );
@@ -136,7 +130,7 @@ fn test_subst_identity() -> crate::Result {
         "main",
         base(intt()),
         base(intt()),
-        tif(ttrue(), int(1), int(1)),
+        tif(ttrue(), arg(), int(1), int(2)),
     )
     .func_with_arg_types();
 
@@ -145,9 +139,10 @@ fn test_subst_identity() -> crate::Result {
         base(intt()),
         base(intt()),
         tif(
-            in_context(infunc("main"), ttrue()),
-            in_context(infunc("main"), int(1)),
-            in_context(infunc("main"), int(1)),
+            inctx(noctx(), ttrue()),
+            inctx(noctx(), int(5)),
+            int(1),
+            int(2),
         ),
     )
     .func_with_arg_types();
@@ -156,7 +151,7 @@ fn test_subst_identity() -> crate::Result {
 
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst inf-fuel (NoContext)
                         {replace_with}
                         {expression}))"
     );
@@ -175,25 +170,20 @@ fn test_subst_identity() -> crate::Result {
 fn test_subst_preserves_context() -> crate::Result {
     use crate::ast::*;
 
-    let outer_if = tif(less_than(arg(), int(5)), arg(), int(1));
+    let outer_if = add(int(5), arg());
     let expression = function("main", base(intt()), base(intt()), outer_if)
         .func_with_arg_types()
-        .func_add_context();
+        .func_add_ctx();
 
     let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
 
-    let expected = function(
-        "main",
-        base(intt()),
-        base(intt()),
-        tif(less_than(int(5), int(5)), int(5), int(1)),
-    )
-    .func_with_arg_types()
-    .func_add_context();
+    let expected = function("main", base(intt()), base(intt()), add(int(5), int(5)))
+        .func_with_arg_types()
+        .func_add_ctx();
 
     let build = format!(
         "
-(let substituted (Subst (InFunc \"main\")
+(let substituted (Subst inf-fuel (NoContext)
                         {replace_with}
                         {expression}))"
     );
@@ -203,7 +193,92 @@ fn test_subst_preserves_context() -> crate::Result {
         &check.to_string(),
         vec![expression.func_to_program()],
         intv(5),
-        intv(1),
+        intv(10),
+        vec![],
+    )
+}
+
+// replace with, original expression, and expected for the two fuel tests
+// to show that not enough fuel causes substitution to not propagate fully,
+// but enough fuel causes substitution to replace the desired arg.
+// For these tests, only the build/check are different but the setup is the same.
+#[cfg(test)]
+fn fuel_test_replacewith_expression_expected() -> (
+    std::rc::Rc<crate::schema::Expr>,
+    std::rc::Rc<crate::schema::Expr>,
+    std::rc::Rc<crate::schema::Expr>,
+) {
+    use crate::ast::*;
+
+    let expression = function(
+        "main",
+        base(intt()),
+        base(intt()),
+        get(
+            dowhile(
+                single(arg()),
+                parallel!(less_than(get(arg(), 0), int(0)), int(3)),
+            ),
+            0,
+        ),
+    )
+    .func_with_arg_types();
+
+    let expected = function(
+        "main",
+        base(intt()),
+        base(intt()),
+        get(
+            dowhile(
+                single(inctx(noctx(), int(4))),
+                parallel!(less_than(get(arg(), 0), int(0)), int(3)),
+            ),
+            0,
+        ),
+    )
+    .func_with_arg_types();
+
+    let replace_with = int(4).with_arg_types(base(intt()), base(intt()));
+
+    (replace_with, expression, expected)
+}
+
+#[test]
+fn test_subst_with_enough_fuel_goes() -> crate::Result {
+    use crate::ast::*;
+
+    let (replace_with, expression, expected) = fuel_test_replacewith_expression_expected();
+
+    let build =
+        format!("(let substituted (Subst 3 (NoContext) {replace_with} {expression})) (let expected {expected})");
+    let check = format!("(check (= substituted {expected}))");
+
+    crate::egglog_test(
+        &build,
+        &check,
+        vec![expression.func_to_program()],
+        intv(0),
+        intv(3),
+        vec![],
+    )
+}
+
+#[test]
+fn test_subst_with_little_fuel_stops() -> crate::Result {
+    use crate::ast::*;
+
+    let (replace_with, expression, expected) = fuel_test_replacewith_expression_expected();
+
+    let build =
+        format!("(let substituted (Subst 2 (NoContext) {replace_with} {expression})) (let expected {expected})");
+    let check = format!("(fail (check (= substituted {expected})))");
+
+    crate::egglog_test(
+        &build,
+        &check,
+        vec![expression.func_to_program()],
+        intv(0),
+        intv(3),
         vec![],
     )
 }

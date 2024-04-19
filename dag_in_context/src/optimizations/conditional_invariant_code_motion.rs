@@ -1,6 +1,8 @@
-use crate::schema_helpers::{Constructor, ESort, Purpose};
+/*use crate::schema_helpers::{Constructor, ESort, Purpose};
 use std::iter;
 use strum::IntoEnumIterator;
+
+// TODO implement now that we have if regions
 
 fn rules_for_ctor(ctor: Constructor) -> Option<String> {
     use Constructor::*;
@@ -53,7 +55,7 @@ fn rules_for_ctor(ctor: Constructor) -> Option<String> {
                       ((union (Switch pred exprs)
                               {resulting_switch}))
                       :ruleset conditional-invariant-code-motion)
-                
+
                 (rewrite (If c {ctor_pattern1} {ctor_pattern2})
                          {resulting_if}
                          :when ((ExprIsValid (If c {ctor_pattern1} {ctor_pattern2})))
@@ -147,3 +149,4 @@ fn test_lift_if() -> crate::Result {
         vec![],
     )
 }
+*/

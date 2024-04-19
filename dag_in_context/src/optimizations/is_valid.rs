@@ -4,7 +4,7 @@ use strum::IntoEnumIterator;
 fn rule_for_ctor(ctor: Constructor) -> Option<String> {
     let actions = ctor.filter_map_fields(|field| match field.purpose {
         Purpose::Static(_) => None,
-        Purpose::CapturedExpr | Purpose::SubExpr | Purpose::SubListExpr => Some(format!(
+        Purpose::CapturedExpr | Purpose::SubExpr | Purpose::CapturedSubListExpr => Some(format!(
             "({sort}IsValid {var})",
             sort = field.sort().name(),
             var = field.var()
@@ -41,7 +41,7 @@ fn test_is_valid() -> crate::Result {
         single(int(1)),
         parallel!(
             less_than(get(arg(), 0), int(3)),
-            get(switch!(int(0); parallel!(int(4), int(5))), 0)
+            get(switch!(int(0), arg(); parallel!(int(4), int(5))), 0)
         ),
     )
     .with_arg_types(emptyt(), tuplet!(intt()));

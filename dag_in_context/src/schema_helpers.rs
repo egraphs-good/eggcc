@@ -1,9 +1,12 @@
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    rc::Rc,
+};
 use strum_macros::EnumIter;
 
 use crate::{
     ast::{base, boolt, intt},
-    schema::{BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
+    schema::{Assumption, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
 };
 
 /// Display for Constant implements a
@@ -179,13 +182,15 @@ impl Expr {
             Expr::Call(_, x) => vec![x.clone()],
             Expr::Empty(_) => vec![],
             Expr::Single(x) => vec![x.clone()],
-            Expr::Concat(_, x, y) => vec![x.clone(), y.clone()],
-            Expr::Switch(x, branches) => {
-                let mut children = vec![x.clone()];
-                children.extend(branches.clone());
+            Expr::Concat(x, y) => vec![x.clone(), y.clone()],
+            Expr::Switch(x, inputs, _branches) => {
+                let children = vec![x.clone(), inputs.clone()];
                 children
             }
-            Expr::If(x, y, z) => vec![x.clone(), y.clone(), z.clone()],
+            Expr::If(x, inputs, _y, _z) => {
+                let children = vec![x.clone(), inputs.clone()];
+                children
+            }
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
             Expr::Arg(_) => vec![],
             Expr::InContext(_, x) => vec![x.clone()],
@@ -216,7 +221,6 @@ use std::iter;
 pub(crate) enum Sort {
     Expr,
     ListExpr,
-    Order,
     BinaryOp,
     UnaryOp,
     TernaryOp,
@@ -232,7 +236,6 @@ impl Sort {
         match self {
             Sort::Expr => "Expr",
             Sort::ListExpr => "ListExpr",
-            Sort::Order => "Order",
             Sort::I64 => "i64",
             Sort::String => "String",
             Sort::Type => "Type",
@@ -294,10 +297,10 @@ pub enum Constructor {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Purpose {
-    Static(Sort), // some int, bool, order that parameterizes constructor
-    SubExpr,      // subexpression, e.g. Add's summand
-    SubListExpr,  // sublistexpr, e.g. Switch's branch lsit
-    CapturedExpr, // a body's outputs
+    Static(Sort),        // some int, bool, order that parameterizes constructor
+    SubExpr,             // subexpression, e.g. Add's summand
+    CapturedSubListExpr, // a swtich's branches
+    CapturedExpr,        // a body's outputs
 }
 
 impl Purpose {
@@ -305,7 +308,7 @@ impl Purpose {
         match self {
             Purpose::SubExpr => Sort::Expr,
             Purpose::CapturedExpr => Sort::Expr,
-            Purpose::SubListExpr => Sort::ListExpr,
+            Purpose::CapturedSubListExpr => Sort::ListExpr,
             Purpose::Static(sort) => sort,
         }
     }
@@ -352,7 +355,7 @@ impl Constructor {
     }
 
     pub(crate) fn fields(&self) -> Vec<Field> {
-        use Purpose::{CapturedExpr, Static, SubExpr, SubListExpr};
+        use Purpose::{CapturedExpr, CapturedSubListExpr, Static, SubExpr};
         let f = |purpose, name| Field { purpose, name };
         match self {
             Constructor::Function => {
@@ -382,20 +385,25 @@ impl Constructor {
             }
             Constructor::Get => vec![f(SubExpr, "tup"), f(Static(Sort::I64), "i")],
             Constructor::Concat => {
-                vec![
-                    f(Static(Sort::Order), "order"),
-                    f(SubExpr, "x"),
-                    f(SubExpr, "y"),
-                ]
+                vec![f(SubExpr, "x"), f(SubExpr, "y")]
             }
             Constructor::Single => {
                 vec![f(SubExpr, "x")]
             }
             Constructor::Switch => {
-                vec![f(SubExpr, "pred"), f(SubListExpr, "branches")]
+                vec![
+                    f(SubExpr, "pred"),
+                    f(SubExpr, "inputs"),
+                    f(CapturedSubListExpr, "branches"),
+                ]
             }
             Constructor::If => {
-                vec![f(SubExpr, "pred"), f(SubExpr, "then"), f(SubExpr, "else")]
+                vec![
+                    f(SubExpr, "pred"),
+                    f(SubExpr, "input"),
+                    f(CapturedExpr, "then"),
+                    f(CapturedExpr, "else"),
+                ]
             }
             Constructor::DoWhile => {
                 vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")]
@@ -405,7 +413,7 @@ impl Constructor {
                 vec![f(Static(Sort::String), "func"), f(SubExpr, "arg")]
             }
             Constructor::Empty => vec![f(Static(Sort::Type), "ty")],
-            Constructor::Cons => vec![f(SubExpr, "hd"), f(SubListExpr, "tl")],
+            Constructor::Cons => vec![f(SubExpr, "hd"), f(CapturedSubListExpr, "tl")],
             Constructor::Nil => vec![],
             Constructor::Alloc => vec![
                 f(Static(Sort::I64), "id"),
@@ -486,6 +494,28 @@ impl UnaryOp {
     pub(crate) fn types(&self) -> Option<(Type, Type)> {
         match self {
             UnaryOp::Not => Some((base(boolt()), base(boolt()))),
+        }
+    }
+}
+
+/// used to hash an assumption
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum AssumptionRef {
+    InLoop(*const Expr, *const Expr),
+    NoContext,
+    InIf(bool, *const Expr, *const Expr),
+}
+
+impl Assumption {
+    pub fn to_ref(&self) -> AssumptionRef {
+        match self {
+            Assumption::InLoop(inputs, pred_and_body) => {
+                AssumptionRef::InLoop(Rc::as_ptr(inputs), Rc::as_ptr(pred_and_body))
+            }
+            Assumption::NoContext => AssumptionRef::NoContext,
+            Assumption::InIf(b, pred, input) => {
+                AssumptionRef::InIf(*b, Rc::as_ptr(pred), Rc::as_ptr(input))
+            }
         }
     }
 }

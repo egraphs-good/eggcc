@@ -195,7 +195,7 @@ impl<'a> FromEgglog<'a> {
         })
     }
 
-    pub(crate) fn expr_from_egglog(&mut self, expr: Term) -> RcExpr {
+    pub fn expr_from_egglog(&mut self, expr: Term) -> RcExpr {
         if let Some(expr) = self.conversion_cache.get(&expr) {
             return expr.clone();
         }

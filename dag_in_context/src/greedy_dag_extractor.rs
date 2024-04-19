@@ -162,7 +162,7 @@ impl<'a> Extractor<'a> {
     }
 }
 
-fn get_root(egraph: &egraph_serialize::EGraph) -> NodeId {
+pub(crate) fn get_root(egraph: &egraph_serialize::EGraph) -> NodeId {
     let mut root_nodes = egraph
         .nodes
         .iter()
@@ -329,11 +329,12 @@ pub fn extract(
 
     let (cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info);
     // TODO implement linearity
-    let effectful_nodes_along_path = extractor_not_linear.find_effectful_nodes_in_program(&res);
-    let _effectful_regions_along_path = effectful_nodes_along_path
-        .into_iter()
-        .filter(|nid| egraph_info.is_region_node(nid.clone()))
-        .collect::<HashSet<NodeId>>();
+    let effectful_nodes_along_path =
+        extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
+    // let _effectful_regions_along_path = effectful_nodes_along_path
+    //     .into_iter()
+    //     .filter(|nid| egraph_info.is_region_node(nid.clone()))
+    //     .collect::<HashSet<NodeId>>();
 
     // TODO loop over effectful regions
     // 1) Find reachable nodes in this region
@@ -410,6 +411,8 @@ pub fn extract_without_linearity(
     while updated_cost {
         updated_cost = false;
         for (rootid, reachable) in info.reachable_from.iter() {
+            // TODO: We need to saturate the extraction of an individual region,
+            // assuming its children region's cost has been computed
             for class_id in reachable {
                 for node_id in &info.egraph.classes().get(class_id).unwrap().nodes {
                     let node = info.egraph.nodes.get(node_id).unwrap();

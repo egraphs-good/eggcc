@@ -18,8 +18,14 @@
 ;         if_else
 ;         i += 1
 
+;; Fake contexts that we make to create cyclic terms
+;                        DoWhile If
+(function SplitLoopAtoB (Expr    Expr) Assumption :unextractable)
+(function SplitLoopBtoC (Expr    Expr) Assumption :unextractable)
+
 (rule ((= do_while (DoWhile inputs pred_and_body))
        (HasArgType do_while do_while_arg_type)
+       (ContextOf do_while outer_ctx)
 
        (= a (Get inputs 1))
        (= 2 (tuple-length inputs))
@@ -34,7 +40,7 @@
 
        (= loop_pred (Bop (LessThan) i c))
        (= i_plus_one (Bop (Add) i one))
-       (= if_node (Get (If if_pred if_then if_else) 0))
+       (= if_node (Get (If if_pred if_inputs if_then if_else) 0))
        (= if_pred (Bop (LessEq) i b))
 
        (= (lo-bound a) (IntB a1)) (= (hi-bound a) (IntB a2))
@@ -46,26 +52,44 @@
        (= b (InContext do_while_ctx (Const b_const inner_arg_type)))
        (= c (InContext do_while_ctx (Const c_const inner_arg_type))))
 
-      ((let a_to_b (DoWhile inputs (Concat
+      ((let a_to_b_ctx (SplitLoopAtoB do_while if_node))
+       (let a_to_b_body (Concat
             (Single (Bop (LessThan) i b))
             (Concat
-                (Single (Get if_then 0))
+                (Single (Get (Subst inf-fuel a_to_b_ctx if_inputs if_then) 0))
                 (Single i_plus_one)
             )
-        )))
-       (let b_to_c (DoWhile a_to_b (Concat
+        ))
+       (let a_to_b (DoWhile inputs a_to_b_body))
+       (union       (InLoop inputs a_to_b_body) a_to_b_ctx)
+
+       (let b_to_c_ctx (SplitLoopBtoC do_while if_node))
+       (let b_to_c_body (Concat
             (Single (Bop (LessThan) i c))
             (Concat
-                (Single (Get if_else 0))
+                (Single (Get (Subst inf-fuel b_to_c_ctx if_inputs if_else) 0))
                 (Single i_plus_one)
             )
-        )))
+        ))
+       (let b_to_c (DoWhile a_to_b b_to_c_body))
+       (union       (InLoop a_to_b b_to_c_body) b_to_c_ctx)
+
+       (let if_arg_type (TupleT (TCons (StateT)
+                                       (TCons (IntT)
+                                              (TCons (StateT)
+                                                     (TCons (IntT)
+                                                            (TNil)))))))
+
+       (let outer_b (InContext do_while_ctx (Const b_const do_while_arg_type)))
+       (let outer_c (InContext do_while_ctx (Const c_const do_while_arg_type)))
 
        (let b_to_c_if (If
-            (Bop (LessThan) (Const b_const do_while_arg_type) (Const c_const do_while_arg_type))
-            b_to_c
-            a_to_b))
+            (Bop (LessThan) outer_b outer_c)
+            (Concat b_to_c a_to_b)
+            (Concat (Single (Get (Arg if_arg_type) 0)) (Single (Get (Arg if_arg_type) 1)))
+            (Concat (Single (Get (Arg if_arg_type) 2)) (Single (Get (Arg if_arg_type) 3)))))
 
-       (union do_while b_to_c_if))
+       (union do_while b_to_c_if)
+       )
 
       :ruleset loop-splitting)

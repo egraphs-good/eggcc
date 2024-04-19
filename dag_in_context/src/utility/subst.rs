@@ -64,7 +64,7 @@ fn test_subst_nested() -> crate::Result {
 
     let build = format!(
         "
-(let substituted (Subst inf-fuel (NoContext)
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expr}))"
     );
@@ -103,7 +103,7 @@ fn test_subst_makes_new_context() -> crate::Result {
         .with_arg_types(base(intt()), base(intt()));
     let build = format!(
         "
-(let substituted (Subst inf-fuel (NoContext)
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expr}))"
     );
@@ -134,7 +134,7 @@ fn test_subst_arg_type_changes() -> crate::Result {
         .with_arg_types(tupletype.clone(), base(intt()));
     let build = format!(
         "
-(let substituted (Subst inf-fuel (NoContext)
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expr}))"
     );
@@ -166,7 +166,7 @@ fn test_subst_identity() -> crate::Result {
 
     let build = format!(
         "
-(let substituted (Subst inf-fuel (NoContext)
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expression}))"
     );
@@ -198,7 +198,7 @@ fn test_subst_preserves_context() -> crate::Result {
 
     let build = format!(
         "
-(let substituted (Subst inf-fuel (NoContext)
+(let substituted (Subst (NoContext)
                         {replace_with}
                         {expression}))"
     );

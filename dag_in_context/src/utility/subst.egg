@@ -3,37 +3,22 @@
 ;; It performs the substitution, copying over the equalities from the original eclass.
 ;; It only places context on the leaf nodes.
 
-(ruleset subst-helpers)
 (ruleset subst)
 
-(let inf-fuel 1000000)
-
-;; (Subst fuel assumption to in) substitutes `to` for `(Arg ty)` in `in`.
+;; (Subst assumption to in) substitutes `to` for `(Arg ty)` in `in`.
 ;; It also replaces any contexts found by updating them to `assumption`.
 ;; `assumption` *justifies* this substitution, as the context that the result is used in.
 ;; In other words, it must refine the equivalence relation of `in` with `to` as the argument.
-;; Subst rules always saturate, even when the fuel is infinite. The fuel is there to control
-;; exponential substitution for optimizations like function inlining.
-;; Fuel is decreased every time the Subst propagates to a child node. Subst does not continue
-;; to propagate if fuel reaches 0.
-(function Subst (i64 Assumption Expr Expr) Expr :unextractable)
+(function Subst (Assumption Expr Expr) Expr :unextractable)
 ;; (SubstLeaf to in) substitutes `to` for `in` in a leaf node `in`
 ;; SubstLeaf assumes context has already been added
 (function SubstLeaf (Expr Expr) Expr :unextractable)
-(function SubstList (i64 Assumption Expr ListExpr) ListExpr :unextractable)
+(function SubstList (Assumption Expr ListExpr) ListExpr :unextractable)
 
-
-;; if you find a subst with a higher fuel than yours, subsume this one
-(rule ((= lower (Subst fuel1 assum to in))
-       (= higher (Subst fuel2 assum to in))
-       (> fuel2 fuel1))
-      ((union lower higher)
-       (subsume (Subst fuel1 assum to in)))
-      :ruleset subst-helpers)
 
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
-(rule ((= lhs (Subst fuel assum to (InContext oldctx leaf)))
+(rule ((= lhs (Subst assum to (InContext oldctx leaf)))
        (IsLeaf leaf))
       ((union lhs (InContext assum (SubstLeaf to leaf))))
       :ruleset subst)
@@ -53,72 +38,60 @@
 
 
 ;; Operators
-(rewrite (Subst fuel assum to (Bop op c1 c2))
-         (Bop op (Subst (- fuel 1) assum to c1)
-                 (Subst (- fuel 1) assum to c2))
-         :when ((> fuel 0))
+(rewrite (Subst assum to (Bop op c1 c2))
+         (Bop op (Subst assum to c1)
+                 (Subst assum to c2))
          :ruleset subst)
-(rewrite (Subst fuel assum to (Uop op c1))
-         (Uop op (Subst (- fuel 1) assum to c1))
-         :when ((> fuel 0))
+(rewrite (Subst assum to (Uop op c1))
+         (Uop op (Subst assum to c1))
          :ruleset subst)
-(rewrite (Subst fuel assum to (Get c1 index))
-         (Get (Subst (- fuel 1) assum to c1) index)
-         :when ((> fuel 0))
+(rewrite (Subst assum to (Get c1 index))
+         (Get (Subst assum to c1) index)
          :ruleset subst)
-(rewrite (Subst fuel assum to (Alloc id c1 state ty))
-         (Alloc id (Subst (- fuel 1) assum to c1) (Subst (- fuel 1) assum to state) ty)
-         :when ((> fuel 0))
+(rewrite (Subst assum to (Alloc id c1 state ty))
+         (Alloc id (Subst assum to c1) (Subst assum to state) ty)
          :ruleset subst)
-(rewrite (Subst fuel assum to (Call name c1))
-         (Call name (Subst (- fuel 1) assum to c1))
-         :when ((> fuel 0))
+(rewrite (Subst assum to (Call name c1))
+         (Call name (Subst assum to c1))
          :ruleset subst)
 
 
 ;; Tuple operators
-(rewrite (Subst fuel assum to (Single c1))
-         (Single (Subst (- fuel 1) assum to c1))
-         :when ((> fuel 0))
+(rewrite (Subst assum to (Single c1))
+         (Single (Subst assum to c1))
          :ruleset subst)
-(rewrite (Subst fuel assum to (Concat c1 c2))
-         (Concat (Subst (- fuel 1) assum to c1) (Subst (- fuel 1) assum to c2))
-         :when ((> fuel 0))
+(rewrite (Subst assum to (Concat c1 c2))
+         (Concat (Subst assum to c1) (Subst assum to c2))
          :ruleset subst)
 
 
 ;; Control flow
-(rewrite (Subst fuel assum to (Switch pred inputs branches))
-         (Switch (Subst (- fuel 1) assum to pred)
-                 (Subst (- fuel 1) assum to inputs)
+(rewrite (Subst assum to (Switch pred inputs branches))
+         (Switch (Subst assum to pred)
+                 (Subst assum to inputs)
                  branches)
-         :when ((> fuel 0))
          :ruleset subst)
-(rewrite (Subst fuel assum to (If pred inputs c1 c2))
-         (If (Subst (- fuel 1) assum to pred)
-             (Subst (- fuel 1) assum to inputs)
+(rewrite (Subst assum to (If pred inputs c1 c2))
+         (If (Subst assum to pred)
+             (Subst assum to inputs)
              c1
              c2)
-         :when ((> fuel 0))
          :ruleset subst)
-(rewrite (Subst fuel assum to (DoWhile in out))
-         (DoWhile (Subst (- fuel 1) assum to in)
+(rewrite (Subst assum to (DoWhile in out))
+         (DoWhile (Subst assum to in)
                   out)
-         :when ((> fuel 0))
          :ruleset subst)
 
 ;; List operators
-(rewrite (SubstList fuel assum to (Cons c1 c2))
-         (Cons (Subst fuel assum to c1)
-               (SubstList fuel assum to c2))
-         :when ((> fuel 0))
+(rewrite (SubstList assum to (Cons c1 c2))
+         (Cons (Subst assum to c1)
+               (SubstList assum to c2))
          :ruleset subst)
-(rewrite (SubstList fuel assum to (Nil))
+(rewrite (SubstList assum to (Nil))
          (Nil)
-         :when ((> fuel 0))
          :ruleset subst)
 
 ;; substitute into function (convenience)
-(rewrite (Subst fuel assum to (Function name inty outty body))
-         (Function name inty outty (Subst fuel assum to body))
+(rewrite (Subst assum to (Function name inty outty body))
+         (Function name inty outty (Subst assum to body))
          :ruleset subst)

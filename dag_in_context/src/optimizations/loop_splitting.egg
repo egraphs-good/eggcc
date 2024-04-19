@@ -34,7 +34,7 @@
 
        (= loop_pred (Bop (LessThan) i c))
        (= i_plus_one (Bop (Add) i one))
-       (= if_node (If if_pred if_then if_else))
+       (= if_node (Get (If if_pred if_then if_else) 0))
        (= if_pred (Bop (LessEq) i b))
 
        (= (lo-bound a) (IntB a1)) (= (hi-bound a) (IntB a2))
@@ -49,14 +49,14 @@
       ((let a_to_b (DoWhile inputs (Concat
             (Single (Bop (LessThan) i b))
             (Concat
-                (Single if_then)
+                (Single (Get if_then 0))
                 (Single i_plus_one)
             )
         )))
        (let b_to_c (DoWhile a_to_b (Concat
             (Single (Bop (LessThan) i c))
             (Concat
-                (Single if_else)
+                (Single (Get if_else 0))
                 (Single i_plus_one)
             )
         )))

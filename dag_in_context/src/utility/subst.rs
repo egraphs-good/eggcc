@@ -68,9 +68,11 @@ fn test_subst_nested() -> crate::Result {
                         {replace_with}
                         {expr}))"
     );
-    let check = format!("
+    let check = format!(
+        "
 (let expected {expected})
-(check (= substituted expected))");
+(check (= substituted expected))"
+    );
 
     crate::egglog_test(
         &build.to_string(),

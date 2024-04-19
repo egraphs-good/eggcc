@@ -49,12 +49,6 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
     for entry in glob::glob(glob).unwrap() {
         let f = entry.unwrap();
 
-        if f.iter().any(|folder| folder == "should_fail")
-            || f.iter().any(|folder| folder == "failing")
-        {
-            continue;
-        }
-
         let snapshot = f.to_str().unwrap().contains("small");
 
         for run in Run::all_configurations_for(TestProgram::BrilFile(f)) {
@@ -67,6 +61,6 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
 
 fn main() {
     let args = libtest_mimic::Arguments::from_args();
-    let tests = generate_tests("tests/**/*.bril");
+    let tests = generate_tests("tests/passing/**/*.bril");
     libtest_mimic::run(&args, tests).exit();
 }

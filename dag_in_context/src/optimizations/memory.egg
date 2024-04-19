@@ -55,8 +55,8 @@
 (rewrite (UnionPointees _ (PointsAnywhere))
          (PointsAnywhere)
          :ruleset always-run)
-(rewrite (UnionPointees (PtrPointees mii1) (PtrPointees mii2))
-         (PtrPointees (Union-List<i64+IntInterval> mii1 mii2))
+(rewrite (UnionPointees (PtrPointees l1) (PtrPointees l2))
+         (PtrPointees (Union-List<i64+IntInterval> l1 l2))
          :ruleset always-run)
 (rewrite (UnionPointees (TuplePointees l1) (TuplePointees l2))
          (TuplePointees (Zip<Union-List<i64+IntInterval>> l1 l2))
@@ -69,8 +69,8 @@
 (rewrite (IntersectPointees x (PointsAnywhere))
          x
          :ruleset always-run)
-(rewrite (IntersectPointees (PtrPointees mii1) (PtrPointees mii2))
-         (PtrPointees (Intersect-List<i64+IntInterval> mii1 mii2))
+(rewrite (IntersectPointees (PtrPointees l1) (PtrPointees l2))
+         (PtrPointees (Intersect-List<i64+IntInterval> l1 l2))
          :ruleset always-run)
 (rewrite (IntersectPointees (TuplePointees l1) (TuplePointees l2))
          (TuplePointees (Zip<Intersect-List<i64+IntInterval>> l1 l2))
@@ -190,7 +190,7 @@
       ((PointsToCells state ap))
       :ruleset always-run)
 
-(rewrite (PointsToCells (Concat order x y) aps)
+(rewrite (PointsToCells (Concat x y) aps)
          (ConcatPointees (PointsToCells x aps) (PointsToCells y aps))
          :ruleset always-run)
 
@@ -217,8 +217,10 @@
              (UnwrapPtrPointees (PointsToCells x aps))))
          :ruleset always-run)
 
-(rewrite (PointsToCells (If c t e) aps)
-         (UnionPointees (PointsToCells t aps) (PointsToCells e aps))
+(rewrite (PointsToCells (If inputs c t e) aps)
+         (UnionPointees
+           (PointsToCells t (PointsToCells inputs aps))
+           (PointsToCells e (PointsToCells inputs aps)))
          :ruleset always-run)
 
 (rewrite (PointsToCells (Alloc id sz state ty) aps)
@@ -341,14 +343,14 @@
       :ruleset always-run)
 
 (rule ((= f (PointsTo e state))
-       (Bop (Load) ptr state2))
-      ((set (PointsTo e state2) f))
+       (= e (Bop (Load) ptr state2)))
+      ((set (PointsTo (Get e 1) state2) f))
       :ruleset always-run)
 
 (rule ((= f (PointsTo e state))
        (Bop (Load) e state))
       ((union (Bop (Load) e state)
-              (Concat (Parallel) (Single f) (Single state)))
+              (Concat (Single f) (Single state)))
        (union (Get (Bop (Load) e state) 0) f))
       :ruleset always-run)
 

@@ -421,7 +421,10 @@ fn load_after_write_without_alias() -> crate::Result {
     let res = tprint(val, state);
     egglog_test(
         &format!("(DemandPointsToCells {res})"),
-        &format!("(check (= {res} (Bop (Print) (Const (Int 2) (Base (IntT))) rest)))"),
+        &format!(
+            "
+        (check (= {res} (Bop (Print) (Const (Int 2) (Base (IntT))) rest)))"
+        ),
         vec![],
         val_empty(),
         val_empty(),
@@ -527,7 +530,7 @@ fn pqrs_deep_loop_swap() -> crate::Result {
     // } while true;
     // // (p, r), (p, s), (q, r), (q, s) still shouldn't alias
     use crate::ast::*;
-    let concat_par3 = |x, y, z| concat_par(x, concat_par(y, z));
+    let concat3 = |x, y, z| concat(x, concat(y, z));
     let alloc_id = 1;
     let state = get(arg_ty(tuplet!(statet())), 0);
     let p_and_state = alloc(alloc_id, int(4), state, pointert(intt()));
@@ -541,7 +544,7 @@ fn pqrs_deep_loop_swap() -> crate::Result {
             ptradd(p.clone(), int(2)), // r
             ptradd(p.clone(), int(3)), // s
         ),
-        concat_par3(
+        concat3(
             // single(call("f", getat(0))), // pred
             single(ttrue()), // pred
             dowhile(

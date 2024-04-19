@@ -132,6 +132,21 @@
       ((set (hi-bound lhs) (IntB (- ha lb))))
       :ruleset interval-analysis)
 
+; Multiplication for two constants
+; TODO: Make fancier interval analysis
+(rule (
+       (= lhs (Bop (Mul) a b))
+       (= (IntB x) (lo-bound a))
+       (= (IntB x) (hi-bound a))
+       (= (IntB y) (lo-bound b))
+       (= (IntB y) (hi-bound b))
+      )
+      (
+       (set (lo-bound lhs) (IntB (* x y)))
+       (set (hi-bound lhs) (IntB (* x y)))
+      )
+      :ruleset interval-analysis)
+
 ; negative * negative is positive
 (rule (
         (= lhs (Bop (Mul) x y))
@@ -368,4 +383,29 @@
 
       )
       ((set (hi-bound (Get ctx i)) hi))
+      :ruleset interval-analysis)
+
+; (if (a == b) thn els)
+; in the thn branch, we know that a has the same bounds as b
+(rule (
+       (= pred (Bop (Eq) expr val))
+       (= if_e (If pred inputs thn els))
+       ; the left operand of the == is an input to the if region
+       (= expr (Get inputs i))
+       (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+       (HasType inputs ty)
+       (= (IntB lo) (lo-bound val))
+      )
+      ((set (lo-bound (Get ctx i)) (IntB lo)))
+      :ruleset interval-analysis)
+(rule (
+       (= pred (Bop (Eq) expr val))
+       (= if_e (If pred inputs thn els))
+       ; the left operand of the == is an input to the if region
+       (= expr (Get inputs i))
+       (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+       (HasType inputs ty)
+       (= (IntB hi) (hi-bound val))
+      )
+      ((set (hi-bound (Get ctx i)) (IntB hi)))
       :ruleset interval-analysis)

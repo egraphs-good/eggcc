@@ -522,11 +522,11 @@ impl Run {
                 let tree = rvsdg.to_dag_encoding(true);
                 let (term, termdag) = tree.to_egglog();
                 let mut from_egglog = FromEgglog {
-                    termdag,
+                    termdag: &termdag,
                     conversion_cache: Default::default(),
                 };
                 let res_term = from_egglog.program_from_egglog(term.clone());
-                let (otherterm, _termdag) = res_term.to_egglog_with_termdag(from_egglog.termdag);
+                let (otherterm, _termdag) = res_term.to_egglog_with_termdag(termdag);
                 if otherterm != term {
                     panic!(
                         "Check failed: terms should be equal after conversion to and from egglog.",
@@ -795,6 +795,11 @@ impl Run {
             .arg(executable.clone())
             .status()
             .unwrap();
+
+        let _ = std::fs::write(
+            executable.clone() + "-args",
+            self.prog_with_args.args.join(" "),
+        );
 
         Ok(Some(Interpretable::Executable { executable }))
     }

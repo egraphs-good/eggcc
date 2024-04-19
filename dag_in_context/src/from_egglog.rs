@@ -9,12 +9,12 @@ use crate::schema::{
     Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp,
 };
 
-pub struct FromEgglog {
-    pub termdag: egglog::TermDag,
+pub struct FromEgglog<'a> {
+    pub termdag: &'a egglog::TermDag,
     pub conversion_cache: HashMap<Term, RcExpr>,
 }
 
-pub fn program_from_egglog(program: Term, termdag: egglog::TermDag) -> TreeProgram {
+pub fn program_from_egglog(program: Term, termdag: &egglog::TermDag) -> TreeProgram {
     let mut converter = FromEgglog {
         termdag,
         conversion_cache: HashMap::new(),
@@ -22,10 +22,9 @@ pub fn program_from_egglog(program: Term, termdag: egglog::TermDag) -> TreeProgr
     converter.program_from_egglog(program)
 }
 
-/// TODO make default when extractor removes ctx nodes
 pub fn program_from_egglog_preserve_ctx_nodes(
     program: Term,
-    termdag: egglog::TermDag,
+    termdag: &mut egglog::TermDag,
 ) -> TreeProgram {
     let mut converter = FromEgglog {
         termdag,
@@ -34,7 +33,7 @@ pub fn program_from_egglog_preserve_ctx_nodes(
     converter.program_from_egglog(program)
 }
 
-impl FromEgglog {
+impl<'a> FromEgglog<'a> {
     fn const_from_egglog(&mut self, constant: Term) -> Constant {
         match_term_app!(constant.clone(); {
           ("Int", [lit]) => {
@@ -103,7 +102,7 @@ impl FromEgglog {
         exprs
     }
 
-    fn type_from_egglog(&mut self, type_: Term) -> Type {
+    pub(crate) fn type_from_egglog(&mut self, type_: Term) -> Type {
         match_term_app!(type_.clone(); {
           ("Base", [basetype]) => Type::Base(self.basetype_from_egglog(self.termdag.get(*basetype))),
           ("TupleT", [types]) => {
@@ -175,7 +174,7 @@ impl FromEgglog {
         })
     }
 
-    fn expr_from_egglog(&mut self, expr: Term) -> RcExpr {
+    pub(crate) fn expr_from_egglog(&mut self, expr: Term) -> RcExpr {
         if let Some(expr) = self.conversion_cache.get(&expr) {
             return expr.clone();
         }

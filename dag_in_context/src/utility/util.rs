@@ -108,3 +108,23 @@ fn test_tuple_ith() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn test_sub_tuple() -> crate::Result {
+    use crate::ast::*;
+    let ty = tuplet!(intt(), intt(), intt());
+    let arg = arg().with_arg_types(ty.clone(), ty.clone());
+    let build = format!("(let expr (SubTuple {} 0 3))", arg);
+    let out = concat(single(getat(0)), concat(single(getat(1)), single(getat(2))))
+        .with_arg_types(ty.clone(), ty);
+
+    let check = format!("(check (= expr {}))", out);
+    egglog_test(
+        build.as_str(),
+        &check,
+        vec![],
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![]),
+        vec![],
+    )
+}

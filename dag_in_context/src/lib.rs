@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use egglog::{Term, TermDag};
-use from_egglog::FromEgglog;
-use greedy_dag_extractor::{extract, serialized_egraph, CostModel};
+use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
@@ -17,6 +16,7 @@ pub mod from_egglog;
 mod greedy_dag_extractor;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
+mod linearity;
 mod optimizations;
 pub mod schema;
 pub mod schema_helpers;
@@ -32,7 +32,7 @@ pub fn prologue() -> String {
     [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
-        include_str!("interval_analysis.egg"),
+        include_str!("utility/canonicalize.egg"),
         include_str!("utility/util.egg"),
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
@@ -43,10 +43,12 @@ pub fn prologue() -> String {
         include_str!("utility/context-prop.egg"),
         include_str!("utility/subst.egg"),
         include_str!("utility/context_of.egg"),
+        include_str!("interval_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("optimizations/function_inlining.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
+        include_str!("optimizations/passthrough.egg"),
     ]
     .join("\n")
 }
@@ -83,7 +85,7 @@ fn print_with_intermediate_helper(
     }
 }
 
-fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
+pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
     let mut printed = String::new();
     let mut cache = HashMap::<Term, String>::new();
     let res = print_with_intermediate_helper(termdag, term, &mut cache, &mut printed);
@@ -102,25 +104,21 @@ pub fn build_program(program: &TreeProgram) -> String {
 }
 
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
-    let program = build_program(program);
+    let egglog_prog = build_program(program);
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&program)?;
+    egraph.parse_and_run_program(&egglog_prog)?;
 
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
-    let results = extract(
+    // TODO use extract instead of extract_without_linearity when it is implemented
+    let (_res_cost, res) = extract(
+        program,
         &serialized,
         unextractables,
         &mut termdag,
-        &CostModel::simple_cost_model(),
+        DefaultCostModel,
     );
-    assert_eq!(results.len(), 1);
-    let (_cid, costset) = results.into_iter().next().unwrap();
-    let mut from_egglog = FromEgglog {
-        termdag,
-        conversion_cache: Default::default(),
-    };
-    Ok(from_egglog.program_from_egglog(costset.term))
+    Ok(res)
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

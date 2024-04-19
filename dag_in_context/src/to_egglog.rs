@@ -254,8 +254,8 @@ impl TreeProgram {
     /// Otherwise, effects may happen multiple times.
     /// This function restores this invariant by converting to a Term and back again.
     pub fn restore_sharing_invariant(&self) -> TreeProgram {
-        let (term, termdag) = self.to_egglog();
-        program_from_egglog_preserve_ctx_nodes(term, termdag)
+        let (term, mut termdag) = self.to_egglog();
+        program_from_egglog_preserve_ctx_nodes(term, &mut termdag)
     }
 
     /// Translates an the program to an egglog term

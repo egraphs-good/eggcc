@@ -22,5 +22,5 @@
     switch_rewrite
     loop-simplify
     ; Controls how many loop iters we do
-    (saturate memory)
+    (saturate always-run memory)
     ))

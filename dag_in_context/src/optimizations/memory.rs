@@ -48,7 +48,7 @@ fn listlike(
       ((IsNonEmpty-{datatype} x))
       :ruleset always-run)
 
-(function RevConcat-{datatype} ({datatype} {datatype}) {datatype})
+(function RevConcat-{datatype} ({datatype} {datatype}) {datatype} :cost 1000)
 (rewrite (RevConcat-{datatype} (Nil-{datatype}) l)
          l
          :ruleset always-run)
@@ -56,12 +56,12 @@ fn listlike(
          (RevConcat-{datatype} tl (Cons-{datatype} {el} l))
          :ruleset always-run)
 
-(function Rev-{datatype} ({datatype}) {datatype})
+(function Rev-{datatype} ({datatype}) {datatype} :cost 1000)
 (rewrite (Rev-{datatype} m)
          (RevConcat-{datatype} m (Nil-{datatype}))
          :ruleset always-run)
 
-(function Concat-{datatype} ({datatype} {datatype}) {datatype})
+(function Concat-{datatype} ({datatype} {datatype}) {datatype} :cost 1000)
 (rewrite (Concat-{datatype} x y)
          (RevConcat-{datatype} (Rev-{datatype} x) y)
          :ruleset always-run)
@@ -115,7 +115,7 @@ fn listlike(
         let zipresultty = format!("List<{resultty}>");
         res.push(format!(
             "
-(function Zip<{name}> ({datatype} {datatype}) {zipresultty})
+(function Zip<{name}> ({datatype} {datatype}) {zipresultty} :cost 1000)
 (rewrite (Zip<{name}> (Nil-{datatype}) (Nil-{datatype}))
          (Nil-{zipresultty})
          :ruleset always-run)
@@ -135,26 +135,20 @@ fn listlike(
 #[allow(non_snake_case)]
 pub(crate) fn rules() -> String {
     let Listi64IntInterval = listlike(vec!["i64", "IntInterval"], vec![], vec![], vec![]);
-    let ListListi64IntInterval = listlike(
-        vec!["List<i64+IntInterval>"],
+    let ListPointees = listlike(
+        vec!["PtrPointees"],
         vec![],
-        vec!["IsEmpty-List<i64+IntInterval>"],
+        vec!["PointsNowhere-PtrPointees"],
         vec![
             FnImpl {
-                name: "Union-List<i64+IntInterval>".to_string(),
-                arg_tys: vec![
-                    "List<i64+IntInterval>".to_string(),
-                    "List<i64+IntInterval>".to_string(),
-                ],
-                resultty: "List<i64+IntInterval>".to_string(),
+                name: "Union-PtrPointees".to_string(),
+                arg_tys: vec!["PtrPointees".to_string(), "PtrPointees".to_string()],
+                resultty: "PtrPointees".to_string(),
             },
             FnImpl {
-                name: "Intersect-List<i64+IntInterval>".to_string(),
-                arg_tys: vec![
-                    "List<i64+IntInterval>".to_string(),
-                    "List<i64+IntInterval>".to_string(),
-                ],
-                resultty: "List<i64+IntInterval>".to_string(),
+                name: "Intersect-PtrPointees".to_string(),
+                arg_tys: vec!["PtrPointees".to_string(), "PtrPointees".to_string()],
+                resultty: "PtrPointees".to_string(),
             },
         ],
     );
@@ -348,7 +342,46 @@ pub(crate) fn rules() -> String {
            (AddIntIntervalToAll x tl))
          :ruleset always-run)
 
-{ListListi64IntInterval}"
+(datatype PtrPointees
+  (PointsTo List<i64+IntInterval>)
+  (PointsAnywhere))
+
+(function AddIntIntervalToPtrPointees (IntInterval PtrPointees) PtrPointees)
+(rewrite (AddIntIntervalToPtrPointees interval (PointsAnywhere))
+         (PointsAnywhere)
+         :ruleset always-run)
+(rewrite (AddIntIntervalToPtrPointees interval (PointsTo l))
+         (PointsTo (AddIntIntervalToAll interval l))
+         :ruleset always-run)
+
+(function Union-PtrPointees (PtrPointees PtrPointees) PtrPointees)
+(rewrite (Union-PtrPointees (PointsAnywhere) _)
+         (PointsAnywhere)
+         :ruleset always-run)
+(rewrite (Union-PtrPointees _ (PointsAnywhere))
+         (PointsAnywhere)
+         :ruleset always-run)
+(rewrite (Union-PtrPointees (PointsTo x) (PointsTo y))
+         (PointsTo (Union-List<i64+IntInterval> x y))
+         :ruleset always-run)
+(function Intersect-PtrPointees (PtrPointees PtrPointees) PtrPointees)
+(rewrite (Intersect-PtrPointees (PointsAnywhere) x)
+         x
+         :ruleset always-run)
+(rewrite (Intersect-PtrPointees x (PointsAnywhere))
+         x
+         :ruleset always-run)
+(rewrite (Intersect-PtrPointees (PointsTo x) (PointsTo y))
+         (PointsTo (Intersect-List<i64+IntInterval> x y))
+         :ruleset always-run)
+
+(relation PointsNowhere-PtrPointees (PtrPointees))
+(rule ((= f (PointsTo x))
+       (IsEmpty-List<i64+IntInterval> x))
+      ((PointsNowhere-PtrPointees f))
+      :ruleset always-run)
+
+{ListPointees}"
     )
 }
 
@@ -476,9 +509,6 @@ fn simple_loop_swap() -> crate::Result {
     let r = get(loop1.clone(), 3);
     let state = write(p.clone(), int(10), state);
     let state = write(r.clone(), int(20), state);
-    let state_after_rwrite = state
-        .clone()
-        .with_arg_types(tuplet!(statet()), Type::Base(statet()));
     let val_and_state = load(p.clone(), state);
     let val = get(val_and_state.clone(), 0).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
@@ -486,16 +516,7 @@ fn simple_loop_swap() -> crate::Result {
         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
     egglog_test(
         &format!("{f}"),
-        &format!(
-            "
-(check (PointsNowhere
-         (IntersectPointees (PointsToCells {p} (PointsAnywhere))
-                            (PointsToCells {r} (PointsAnywhere)))))
-(check (DontAlias {p} {r} (PointsAnywhere)))
-(check (= (PointsTo {state_after_rwrite} {p}) {ten}))
-(check (= {val} {ten}))
-"
-        ),
+        &format!("(check (= {val} {ten}))"),
         vec![],
         val_empty(),
         val_empty(),
@@ -568,9 +589,6 @@ fn pqrs_deep_loop_swap() -> crate::Result {
     let r = get(loop1.clone(), 3);
     let state = write(p.clone(), int(10), state);
     let state = write(r.clone(), int(20), state);
-    let state_after_rwrite = state
-        .clone()
-        .with_arg_types(tuplet!(statet()), Type::Base(statet()));
     let val_and_state = load(p.clone(), state);
     let val = get(val_and_state.clone(), 0).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
@@ -578,19 +596,7 @@ fn pqrs_deep_loop_swap() -> crate::Result {
         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
     egglog_test_and_print_program(
         &format!("{f}"),
-        &format!(
-            "
-(extract
-         (IntersectPointees (PointsToCells {p} (PointsAnywhere))
-                            (PointsToCells {r} (PointsAnywhere))))
-(check (PointsNowhere
-         (IntersectPointees (PointsToCells {p} (PointsAnywhere))
-                            (PointsToCells {r} (PointsAnywhere)))))
-(check (DontAlias {p} {r} (PointsAnywhere)))
-(check (= (PointsTo {state_after_rwrite} {p}) {ten}))
-(check (= {val} {ten}))
-"
-        ),
+        &format!("(let ten {ten}) (let val {val}) (check (= val ten))"),
         vec![],
         val_empty(),
         val_empty(),

@@ -32,7 +32,16 @@ use super::{
 };
 use super::{RvsdgFunction, RvsdgType};
 
+// When this value is true, we write out intermediate visualizations of the
+// program. This is very helpful when debugging.
+//
+// We use a normal boolean here so as to not confuse various lints around unused
+// imports, dead code, etc.
+
+#[cfg(feature = "write-intermediates")]
 const WRITE_INTERMEDIATES: bool = true;
+#[cfg(not(feature = "write-intermediates"))]
+const WRITE_INTERMEDIATES: bool = false;
 
 pub(crate) fn cfg_func_to_rvsdg(
     cfg: &mut SwitchCfgFunction,

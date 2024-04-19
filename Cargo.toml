@@ -48,3 +48,10 @@ opt-level = 3
 
 [profile.dev.package.similar]
 opt-level = 3
+
+[features]
+# Writes intermediate graphs and SVGs to /tmp
+write-intermediates = []
+# Runs tests relying on LLVM. This may not be available on all systems.
+llvm = []
+default = ["llvm"]

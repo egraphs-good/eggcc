@@ -390,22 +390,25 @@ impl Run {
             }
         }
 
-        // for optimize_egglog in [true, false] {
-        //     for optimize_brillvm in [true, false] {
-        //         for interp in [true, false] {
-        //             res.push(Run {
-        //                 test_type: RunType::CompileBrilLLVM,
-        //                 interp,
-        //                 prog_with_args: prog.clone(),
-        //                 profile_out: None,
-        //                 output_path: None,
-        //                 optimize_egglog: Some(optimize_egglog),
-        //                 optimize_brilift: None,
-        //                 optimize_bril_llvm: Some(optimize_brillvm),
-        //             });
-        //         }
-        //     }
-        // }
+        #[cfg(feature = "llvm")]
+        {
+            for optimize_egglog in [true, false] {
+                for optimize_brillvm in [true, false] {
+                    for interp in [true, false] {
+                        res.push(Run {
+                            test_type: RunType::CompileBrilLLVM,
+                            interp,
+                            prog_with_args: prog.clone(),
+                            profile_out: None,
+                            output_path: None,
+                            optimize_egglog: Some(optimize_egglog),
+                            optimize_brilift: None,
+                            optimize_bril_llvm: Some(optimize_brillvm),
+                        });
+                    }
+                }
+            }
+        }
 
         res
     }

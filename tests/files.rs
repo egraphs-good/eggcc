@@ -20,15 +20,8 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
             if run.test_type == RunType::CompileBrilift || run.test_type == RunType::CompileBrilLLVM
             {
                 let executable = run.output_path.clone().unwrap_or_else(|| run.name());
-
-                let args = if run.test_type == RunType::CompileBrilLLVM {
-                    vec![executable]
-                } else {
-                    vec![executable.clone(), executable + "-args"]
-                };
-
                 std::process::Command::new("rm")
-                    .args(args)
+                    .args(vec![executable.clone(), executable + "-args"])
                     .status()
                     .unwrap();
             }

@@ -14,10 +14,16 @@ profiles = (
 modes = [
   # (name, runmode, options)
   ("rvsdg_roundtrip", "rvsdg-round-trip-to-executable", ""),
-  ("no_optimize", "compile-brilift", "--optimize-egglog false --optimize-brilift false"),
-  ("brilift_only", "compile-brilift", "--optimize-egglog false --optimize-brilift true"),
-  ("egglog_only", "compile-brilift", "--optimize-egglog true --optimize-brilift false"),
-  ("optimize_both", "compile-brilift", "--optimize-egglog true --optimize-brilift true")
+
+  ("egglog_noopt_brilift_noopt", "compile-brilift", "--optimize-egglog false --optimize-brilift false"),
+  ("egglog_noopt_brilift_opt", "compile-brilift", "--optimize-egglog false --optimize-brilift true"),
+  ("egglog_opt_brilift_noopt", "compile-brilift", "--optimize-egglog true --optimize-brilift false"),
+  ("egglog_opt_brilift_opt", "compile-brilift", "--optimize-egglog true --optimize-brilift true"),
+
+  ("egglog_noopt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm false"),
+  ("egglog_noopt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm true"),
+  ("egglog_opt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm false"),
+  ("egglog_opt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm true")
 ]
 
 def bench(profile):

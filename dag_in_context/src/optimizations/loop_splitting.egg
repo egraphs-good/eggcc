@@ -37,9 +37,9 @@
        (= if_node (If if_pred if_then if_else))
        (= if_pred (Bop (LessEq) i b))
 
-       (= (ival a) (IntI a1 a2))
-       (= (ival b) (IntI b1 b2))
-       (= (ival c) (IntI c1 c2))
+       (= (lo-bound a) (IntB a1)) (= (hi-bound a) (IntB a2))
+       (= (lo-bound b) (IntB b1)) (= (hi-bound b) (IntB b2))
+       (= (lo-bound c) (IntB c1)) (= (hi-bound c) (IntB c2))
        (< a2 b1)
        (<= b2 c1)
 

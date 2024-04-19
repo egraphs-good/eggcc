@@ -96,10 +96,6 @@
        (subsume (DoAddContext seen ctx scope in)))
       :ruleset context-helpers)
 
-(rewrite (InContext (NoContext) expr)
-         expr
-         :ruleset context-helpers)
-
 
 ;; Replace existing contexts.
 ;; This relies on the fact that new contexts for DoAddContext 

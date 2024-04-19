@@ -399,7 +399,7 @@ impl<'a> RvsdgBuilder<'a> {
             input_vars.push(var);
         }
 
-        for (_, succ) in succs.into_iter() {
+        for (_, succ) in succs {
             // First, make sure that all inputs are correctly bound to inputs to the block.
             for (i, var) in input_vars.iter().copied().enumerate() {
                 self.store.insert(var, Operand::Arg(i));

@@ -228,6 +228,7 @@ impl VarSet {
     }
 }
 
+/// The type of a variable, as computed during live variable analysis.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub(crate) enum VarType {
     Bril(bril_rs::Type),
@@ -247,6 +248,7 @@ pub(crate) struct LiveVariableState {
     gen: VarSet,
 }
 
+/// Type information recorded during live variable analysis.
 #[derive(Default)]
 pub(crate) struct VarTypes {
     data: HashMap<VarId, VarType>,
@@ -267,6 +269,9 @@ pub(crate) struct LiveVariableAnalysis {
     /// The variable associated with [`state_id`].
     pub(crate) state_var: VarId,
     analysis: HashMap<NodeIndex, LiveVariableState>,
+    /// Live variable analysis computes the type of each variable while
+    /// iterating through the CFG. We use this to instantiate placeholder values
+    /// during RVSDG construction.
     pub(crate) var_types: VarTypes,
 }
 

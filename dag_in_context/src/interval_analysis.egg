@@ -269,39 +269,6 @@
       ((set (hi-bound lhs) (bound-max hi-thn hi-els)))
       :ruleset interval-analysis)
 
-; If the If takes a single value
-; If input < v is true, then upper bound of input is upper bound of v - 1
-(rule (
-       (= lhs (InContext (InIf true (Bop (LessThan) inp v) inp) inp))
-       (= (IntB hi) (hi-bound v))
-      )
-      ((set (hi-bound lhs) (IntB (- hi 1))))
-      :ruleset interval-analysis)
-
-; If input < v is false, then lower bound of input is lower bound of v
-(rule (
-       (= lhs (InContext (InIf false (Bop (LessThan) inp v) inp) inp))
-       (= (IntB lo) (lo-bound v))
-      )
-      ((set (lo-bound lhs) (IntB lo)))
-      :ruleset interval-analysis)
-
-; If v < input is true, then lower bound of input is lower bound of v + 1
-(rule (
-       (= lhs (InContext (InIf true (Bop (LessThan) v inp) inp) inp))
-       (= (IntB lo) (lo-bound v))
-      )
-      ((set (lo-bound lhs) (IntB (+ lo 1))))
-      :ruleset interval-analysis)
-
-; If v < input is false, then upper bound of input is upper bound of v
-(rule (
-       (= lhs (InContext (InIf false (Bop (LessThan) v inp) inp) inp))
-       (= (IntB hi) (hi-bound v))
-      )
-      ((set (hi-bound lhs) (IntB  hi)))
-      :ruleset interval-analysis)
-
 ; If the If takes a tuple
 (rule (
         ; expr < value

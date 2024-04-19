@@ -6,14 +6,13 @@
     ((ContextOf (InContext ctx e) ctx)) :ruleset always-run)
 
 ; Error checking - each expr should only have a single context
-; TODO: this may not be true
-; (rule ((ContextOf x ctx1)
-;         (ContextOf x ctx2)
-;         (!= ctx1 ctx2))
-;     (
-;         (panic "Equivalent expressions have nonequivalent context")
-;     )
-;     :ruleset error-checking)
+(rule ((ContextOf x ctx1)
+         (ContextOf x ctx2)
+         (!= ctx1 ctx2))
+     (
+         (panic "Equivalent expressions have nonequivalent context, breaking the single context invariant.")
+     )
+     :ruleset error-checking)
 
 
 (rule ((Top op x y z) (ContextOf x ctx))

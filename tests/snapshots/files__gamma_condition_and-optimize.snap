@@ -4,17 +4,17 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v2: int = const 3;
-  v4: bool = const true;
-  v7: int = const 2;
-  v9: bool = lt v0 v7;
-  v11: bool = and v4 v9;
+  v5: int = const 2;
+  v7: bool = lt v0 v5;
+  v9: bool = const true;
+  v11: bool = and v7 v9;
   br v11 .__24__ .__18__;
 .__24__:
   print v0;
   v22: int = id v2;
   jmp .__29__;
 .__18__:
-  print v7;
+  print v5;
   v22: int = id v2;
 .__29__:
   print v2;

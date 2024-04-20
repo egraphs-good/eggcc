@@ -50,7 +50,7 @@
       ((let a_to_b (DoWhile inputs (Concat
             (Single (Bop (LessThan) i b))
             (Concat
-                (Single (Get (Subst inf-fuel do_while_ctx if_inputs if_then) 0))
+                (Single (Get (Subst do_while_ctx if_inputs if_then) 0))
                 (Single i_plus_one)
             )
         )))
@@ -58,7 +58,7 @@
        (let b_to_c (DoWhile a_to_b (Concat
             (Single (Bop (LessThan) i c))
             (Concat
-                (Single (Get (Subst inf-fuel do_while_ctx if_inputs if_else) 0))
+                (Single (Get (Subst do_while_ctx if_inputs if_else) 0))
                 (Single i_plus_one)
             )
         )))

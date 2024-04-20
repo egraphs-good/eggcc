@@ -1,0 +1,240 @@
+## This benchmark is a translation of 2mm.c from Polybench.
+## 2mm computes D := alpha * A * B * C + beta * D
+## for some procedurally generated matrices A, B, C, D
+##
+## The int version replaces floating point division in
+## generating A, B, C, D with integer division.
+
+@main {
+    # constants
+    # matrix size - corresponds to Polybench SMALL_DATASET
+    # (STANDARD_DATASET = 1024 takes a long time to run)
+    
+    N: int = const 128;
+
+    zero: int = const 0;
+    one: int = const 1;
+    two: int = const 2;
+    three: int = const 3;
+
+    # initialize arrays
+    A: ptr<int> = call @matrix_new N;
+    B: ptr<int> = call @matrix_new N;
+    C: ptr<int> = call @matrix_new N;
+    D: ptr<int> = call @matrix_new N;
+    alpha: int = const 32412;
+    beta: int = const 2123;
+
+    i: int = const 0;
+.init_A_i:
+    j: int = const 0;
+    cond: bool = lt i N;
+    br cond .init_A_j .init_A_i_done;
+.init_A_j:
+    cond: bool = lt j N;
+    br cond .init_A_body .init_A_j_done;
+.init_A_body:
+    val: int = mul i j;
+    val: int = div val N;
+    call @matrix_set A i j N val;
+    j: int = add j one;
+    jmp .init_A_j;
+.init_A_j_done:
+    i: int = add i one;
+    jmp .init_A_i;
+.init_A_i_done:
+
+    i: int = const 0;
+.init_B_i:
+    j: int = const 0;
+    cond: bool = lt i N;
+    br cond .init_B_j .init_B_i_done;
+.init_B_j:
+    cond: bool = lt j N;
+    br cond .init_B_body .init_B_j_done;
+.init_B_body:
+    val: int = add j one;
+    val: int = mul i val;
+    val: int = div val N;
+    call @matrix_set B i j N val;
+    j: int = add j one;
+    jmp .init_B_j;
+.init_B_j_done:
+    i: int = add i one;
+    jmp .init_B_i;
+.init_B_i_done:
+    
+    i: int = const 0;
+.init_C_i:
+    j: int = const 0;
+    cond: bool = lt i N;
+    br cond .init_C_j .init_C_i_done;
+.init_C_j:
+    cond: bool = lt j N;
+    br cond .init_C_body .init_C_j_done;
+.init_C_body:
+    val: int = add j three;
+    val: int = mul i val;
+    val: int = div val N;
+    call @matrix_set C i j N val;
+    j: int = add j one;
+    jmp .init_C_j;
+.init_C_j_done:
+    i: int = add i one;
+    jmp .init_C_i;
+.init_C_i_done:
+
+    i: int = const 0;
+.init_D_i:
+    j: int = const 0;
+    cond: bool = lt i N;
+    br cond .init_D_j .init_D_i_done;
+.init_D_j:
+    cond: bool = lt j N;
+    br cond .init_D_body .init_D_j_done;
+.init_D_body:
+    val: int = add j two;
+    val: int = mul i val;
+    val: int = div val N;
+    call @matrix_set D i j N val;
+    j: int = add j one;
+    jmp .init_D_j;
+.init_D_j_done:
+    i: int = add i one;
+    jmp .init_D_i;
+.init_D_i_done:
+
+    # main computation
+    # computes D := alpha * A * B * C + beta * D
+
+    # first compute tmp := alpha * A * B 
+    tmp: ptr<int> = call @matrix_new N;
+
+    i: int = const 0;
+.part1_i:
+    j: int = const 0;
+    cond: bool = lt i N;
+    br cond .part1_j .part1_i_done;
+.part1_j:
+    k: int = const 0;
+    cond: bool = lt j N;
+    br cond .part1_j_body .part1_j_done;
+.part1_j_body:
+    call @matrix_set tmp i j N zero;
+    jmp .part1_k;
+.part1_k:
+    cond: bool = lt k N;
+    br cond .part1_k_body .part1_k_done;
+.part1_k_body:
+    Aik: int = call @matrix_get A i k N;
+    Bkj: int = call @matrix_get B k j N;
+    incr: int = mul alpha Aik;
+    incr: int = mul incr Bkj;
+    call @matrix_incr tmp i j N incr;
+    k: int = add k one;
+    jmp .part1_k;
+.part1_k_done:
+    j: int = add j one;
+    jmp .part1_j;
+.part1_j_done:
+    i: int = add i one;
+    jmp .part1_i;
+.part1_i_done:
+    
+    # now compute D := tmp * C + beta * D
+
+    i: int = const 0;
+.part2_i:
+    j: int = const 0;
+    cond: bool = lt i N;
+    br cond .part2_j .part2_i_done;
+.part2_j:
+    k: int = const 0;
+    cond: bool = lt j N;
+    br cond .part2_j_body .part2_j_done;
+.part2_j_body:
+    call @matrix_scale D i j N beta;
+    jmp .part2_k;
+.part2_k:
+    cond: bool = lt k N;
+    br cond .part2_k_body .part2_k_done;
+.part2_k_body:
+    tmpik: int = call @matrix_get tmp i k N;
+    Ckj: int = call @matrix_get C k j N;
+    incr: int = mul tmpik Ckj;
+    call @matrix_incr D i j N incr;
+    k: int = add k one;
+    jmp .part2_k;
+.part2_k_done:
+    j: int = add j one;
+    jmp .part2_j;
+.part2_j_done:
+    i: int = add i one;
+    jmp .part2_i;
+.part2_i_done:
+
+    call @matrix_print D N;
+
+    free A;
+    free B;
+    free C;
+    free D;
+    free tmp;
+}
+
+
+
+@matrix_new(N: int): ptr<int> {
+    sq: int = mul N N;
+    ptr: ptr<int> = alloc sq;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<int>, row: int, col: int, N: int): ptr<int> {
+    row_offset: int = mul row N;
+    offset: int = add row_offset col;
+    new_ptr: ptr<int> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+@matrix_get(mtx: ptr<int>, row: int, col: int, N: int): int {
+    ptr: ptr<int> = call @matrix_loc mtx row col N;
+    val: int = load ptr;
+    ret val;
+}
+
+@matrix_set(mtx: ptr<int>, row: int, col: int, N: int, val: int) {
+    ptr: ptr<int> = call @matrix_loc mtx row col N;
+    store ptr val;
+}
+
+@matrix_incr(mtx: ptr<int>, row: int, col: int, N: int, incr: int) {
+    ptr: ptr<int> = call @matrix_loc mtx row col N;
+    val: int = load ptr;
+    new_val: int = add val incr;
+    store ptr new_val;
+}
+
+@matrix_scale(mtx: ptr<int>, row: int, col: int, N: int, scale: int) {
+    ptr: ptr<int> = call @matrix_loc mtx row col N;
+    val: int = load ptr;
+    new_val: int = mul val scale;
+    store ptr new_val;
+}
+
+@matrix_print(mtx: ptr<int>, N: int) {
+    i: int = const 0;
+    one: int = const 1;
+    sq: int = mul N N;
+.while:
+    cond: bool = lt i sq;
+    br cond .body .done;
+.body:
+    mtx_loc: ptr<int> = ptradd mtx i;
+    val: int = load mtx_loc;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+    nop;
+}

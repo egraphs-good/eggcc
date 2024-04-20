@@ -1,5 +1,11 @@
 //! Convert a potentially irreducible CFG to a reducible one.
-
+//! Important resources for the implementation here are Optir[^1], and the relevant RVSDG paper[^2].
+//!
+//! [^1]: <https://github.com/jameysharp/optir>
+//!
+//! [^2]: ["Perfect Reconstructability of Control Flow from Demand Dependence
+//! Graphs"](https://dl.acm.org/doi/10.1145/2693261). See also the accompanying
+//! jlm repo.
 use std::collections::VecDeque;
 
 use bril_rs::Type;
@@ -276,6 +282,7 @@ impl SwitchCfgFunction {
         (blocks, cond)
     }
 
+    /// Compute the subgraph of the CFG dominated by the given edge.
     fn dominator_graph(&self, edge: EdgeIndex) -> HashSet<NodeIndex> {
         let mut nodes = HashSet::new();
         let mut edges = HashSet::new();
@@ -347,7 +354,8 @@ impl SwitchCfgFunction {
         }
         cur
     }
-    fn divert_edge(&mut self, edge: EdgeIndex, new_target: NodeIndex) -> EdgeIndex {
+    /// Reassigns an edge to a new target destination, but the same source.
+    fn retarget(&mut self, edge: EdgeIndex, new_target: NodeIndex) -> EdgeIndex {
         let (src, target) = self.graph.edge_endpoints(edge).unwrap();
         if target == new_target {
             return edge;
@@ -372,11 +380,9 @@ impl SwitchCfgFunction {
             // Nothing to do.
             return;
         }
-        // assert!(
-        //     !cont.reentry_nodes.is_empty(),
-        //     "No reentry nodes found [start: {start:?}, entry: {entry:?}, exit: {exit:?}]"
-        // );
 
+        // First, some special cases that allow us to avoid creating auxiliary
+        // predicates / nodes when the CFG already has the desired structure.
         if cont.reentry_nodes.len() == 1 {
             // There are multiple branches that all converge to a single "tail"
             // node. This is _almost_ the structure that we want, but we need to
@@ -416,12 +422,13 @@ impl SwitchCfgFunction {
                 let inter = self.fresh_block();
                 self.graph.add_edge(inter, tail, JMP);
                 for e in reentry_edges {
-                    self.divert_edge(*e, inter);
+                    self.retarget(*e, inter);
                 }
                 self.restructure_branches_inner(target, inter, state);
             }
             self.restructure_branches_inner(tail, exit, state);
         } else {
+            // The general case:
             // We have multiple potential continuation points. Create a new node
             // and a variable to demux them.
             let demux = self.fresh_block();
@@ -447,7 +454,7 @@ impl SwitchCfgFunction {
                         dst: pred.clone(),
                         cond: conds[&target],
                     });
-                    self.divert_edge(*edge, inter);
+                    self.retarget(*edge, inter);
                 }
                 self.restructure_branches_inner(target, inter, state);
             }
@@ -502,11 +509,41 @@ const JMP: Branch = Branch {
     pos: None,
 };
 
+/// A "Continuation" (in the parlance of the "Perfect Reconstructability" paper)
+/// is the set of points where a branch subgraph rejoins the main flow of control.
+///
+/// The game for branch restructuring is to take a potentially unstructured,
+/// acylclic CFG and translate it into one that is structured. The algorithm
+/// traverses from the entry node to a CFG and waits until it finds a branch:
+/// ```ignore
+///    [ b1 ] --> ...
+///   /
+///  * -- [ b2 ] --> ...
+///   \
+///    [ b3 ] --> ...
+/// ```
+/// To decompose this graph into something useful, we compute the (potentially
+/// empty!) subgraphs dominated by each edge. We eventually need these subgraphs
+/// to join back at some "tail" node:
+///
+/// ```ignore
+///    [ b1 ] --- B1 ----*
+///   /                    \?
+///  * -- [ b2 ] --- B2 ---? T
+///   \                    /?
+///    [ b3 ] --- B3 ----*
+/// ```
+///
+/// These `Bi` subgraphs need to meet back at `T`, but initially they may
+/// have quite a lot of outgoing edges, rather than just one. Continuations
+/// track these edges/nodes so that we can clean them up before recurring on
+/// each `Bi` and `T`.
 #[derive(Default)]
 struct Continuation {
-    // Nodes in the "tail" that are targetted by an edge out of the given branch node.
+    /// Nodes in the "tail" (`T` above) that are targetted by an edge out of the
+    /// given branch node.
     reentry_nodes: HashSet<NodeIndex>,
-    // A mapping from branch edge, to edges back to nodes not dominated by that edge.
+    /// A mapping from branch edge, to edges back to nodes not dominated by that edge.
     exit_arcs: HashMap<EdgeIndex, HashSet<EdgeIndex>>,
 }
 

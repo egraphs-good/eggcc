@@ -14,7 +14,7 @@ pub(crate) struct EgraphInfo<'a> {
     pub(crate) egraph: &'a EGraph,
     // For a particular region root, find the set of reachable nodes
     #[allow(dead_code)]
-    pub(crate) reachable_from: HashMap<ClassId, HashSet<ClassId>>,
+    pub(crate) reachable_from: Vec<(ClassId, Vec<ClassId>)>,
     pub(crate) cm: &'a dyn CostModel,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
@@ -55,11 +55,18 @@ impl<'a> EgraphInfo<'a> {
         // also add the root of the egraph to region_roots
         region_roots.insert(egraph.nid_to_cid(&get_root(egraph)).clone());
 
-        let reachable_from = region_roots
+        let mut reachable_from = region_roots
             .iter()
-            .map(|root| (root.clone(), region_reachable_classes(egraph, root.clone())))
-            .collect();
-
+            .map(|root| {
+                let mut reachable: Vec<ClassId> = region_reachable_classes(egraph, root.clone())
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>();
+                reachable.sort();
+                (root.clone(), reachable)
+            })
+            .collect::<Vec<_>>();
+        reachable_from.sort();
         EgraphInfo {
             cm,
             egraph,

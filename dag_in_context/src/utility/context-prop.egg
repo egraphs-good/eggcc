@@ -51,3 +51,8 @@
 (rewrite (InContext ctx (InContext ctx expr))
          (InContext ctx expr)
          :ruleset context-prop)
+
+(rule ((InContext ctx1 (InContext ctx2 expr))
+       (!= ctx1 ctx2))
+      ((panic "Found nested InContext nodes"))
+      :ruleset context-prop)

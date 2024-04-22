@@ -14,7 +14,12 @@ fn test_in_context_two_loops() -> crate::Result {
             ),
             0
         )
-    );
+    )
+    .with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt()));
+
+    let outer_inputs = single(int(1)).with_arg_types(base(intt()), tuplet!(intt()));
+
+    let inner_ctx = inloop(outer_inputs.clone(), loop1_body.add_ctx(noctx()));
 
     let expr = function(
         "main",
@@ -127,19 +132,16 @@ fn simple_context() -> crate::Result {
     use crate::ast::*;
     use crate::egglog_test;
     use crate::{interpreter::Value, schema::Constant};
-    let expr = function("main", base(intt()), base(intt()), int(2)).func_with_arg_types();
-    let expected =
+    let expr =
         function("main", base(intt()), base(intt()), inctx(noctx(), int(2))).func_with_arg_types();
+
     egglog_test(
         &format!("(AddFuncContext {expr})"),
         &format!(
             "
-(check (= (AddFuncContext {expr}) {expected}))",
+(check (= (AddFuncContext {expr}) {expr}))",
         ),
-        vec![
-            expr.to_program(emptyt(), base(intt())),
-            expected.to_program(emptyt(), base(intt())),
-        ],
+        vec![expr.to_program(emptyt(), base(intt()))],
         Value::Tuple(vec![]),
         Value::Const(Constant::Int(2)),
         vec![],

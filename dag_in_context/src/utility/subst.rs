@@ -24,7 +24,9 @@ fn test_subst_nested() -> crate::Result {
 
     let old_loop_ctx = inloop(inputs.add_ctx(noctx()), body.clone());
 
-    let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone());
+    let replace_with = parallel!(int(3), int(4))
+        .with_arg_types(twoint.clone(), twoint.clone())
+        .add_ctx(noctx());
 
     let old_second_loop_ctx = inloop(
         single(get(arg(), 0))
@@ -128,10 +130,13 @@ fn test_subst_arg_type_changes() -> crate::Result {
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(iarg(), iarg()).add_ctx(noctx());
     let tupletype = tuplet!(intt(), intt());
-    let replace_with = get(arg(), 0).with_arg_types(tupletype.clone(), base(intt()));
+    let replace_with = get(arg(), 0)
+        .with_arg_types(tupletype.clone(), base(intt()))
+        .add_ctx(noctx());
 
-    let expected = add(inctx(noctx(), get(arg(), 0)), inctx(noctx(), get(arg(), 0)))
-        .with_arg_types(tupletype.clone(), base(intt()));
+    let expected = add(get(arg(), 0), get(arg(), 0))
+        .with_arg_types(tupletype.clone(), base(intt()))
+        .add_ctx(noctx());
     let build = format!(
         "
 (let substituted (Subst (NoContext)
@@ -162,7 +167,7 @@ fn test_subst_identity() -> crate::Result {
     .func_with_arg_types()
     .func_add_ctx();
 
-    let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
+    let replace_with = inctx(noctx(), int(5).with_arg_types(base(intt()), base(intt())));
 
     let build = format!(
         "

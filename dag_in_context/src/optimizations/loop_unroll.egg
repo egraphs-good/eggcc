@@ -7,7 +7,7 @@
   (HasType inputs inputs-ty)
   (= outputs-len (tuple-length outputs)))
  ((let executed-once
-    (Subst inf-fuel ctx inputs outputs))
+    (Subst ctx inputs outputs))
   (let executed-once-body
      (SubTuple executed-once 1 (- outputs-len 1)))
   (union lhs

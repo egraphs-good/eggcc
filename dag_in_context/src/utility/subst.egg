@@ -6,7 +6,7 @@
 (ruleset subst)
 
 ;; (Subst assumption to in) substitutes `to` for `(Arg ty)` in `in`.
-;; It also replaces any contexts found by updating them to `assumption`.
+;; It also replaces the leaf context in `to` with `assumption` using `AddContext`.
 ;; `assumption` *justifies* this substitution, as the context that the result is used in.
 ;; In other words, it must refine the equivalence relation of `in` with `to` as the argument.
 (function Subst (Assumption Expr Expr) Expr :unextractable)
@@ -18,23 +18,22 @@
 
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
-(rule ((= lhs (Subst assum to (InContext oldctx leaf)))
+(rule ((= lhs (Subst assum to (InContext oldctx (Arg ty))))
        (IsLeaf leaf))
-      ((union lhs (InContext assum (SubstLeaf to leaf))))
+      ;; add the assumption `to`
+      ((union lhs (InContext assum (AddContext assum (Region) to))))
+      :ruleset subst)
+(rule ((= lhs (Subst assum to (InContext oldctx (Const c ty))))
+       (IsLeaf leaf)
+       (HasArgType to newty))
+      ((union lhs (InContext assum (Const c newty))))
+      :ruleset subst)
+(rule ((= lhs (Subst assum to (InContext oldctx (Empty ty))))
+       (IsLeaf leaf)
+       (HasArgType to newty))
+      ((union lhs (InContext assum (Empty newty))))
       :ruleset subst)
 
-;; substitute for a leaf node- interested case is (Arg ty)
-(rewrite (SubstLeaf to (Arg ty))
-         to
-         :ruleset subst)
-(rewrite (SubstLeaf to (Const constant ty))
-         (Const constant ty2)
-         :when ((HasArgType to ty2))
-         :ruleset subst)
-(rewrite (SubstLeaf to (Empty ty))
-         (Empty ty2)
-         :when ((HasArgType to ty2))
-          :ruleset subst)
 
 
 ;; Operators

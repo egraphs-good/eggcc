@@ -1,0 +1,208 @@
+; This file provides AddContext, a helpers that copies a sub-egraph into
+; a new one with a new context.
+; Users of AddContext can specify how deeply to do this copy.
+
+
+(ruleset context)
+(ruleset context-helpers)
+
+;; ################################ datatypes
+;; A context path is a list of (DoAddContext ... (DoWhile ...)) nodes that we have already visited.
+;; In substitution, the path is used to store every loop eclass we have visited, 
+;; and the corresponding expression at that point.
+;; When we visit an eclass for the second time, we have found a cycle in the egraph.
+;; Then the corresponding contexts are made equivalent.
+(datatype ContextPath
+  (PathNil)
+  (PathCons Expr ContextPath))
+
+
+;; For every path P in the database,
+;; we add a (Path-contains P S)
+;; for every subpath S with the same endpoint.
+;; We also include the empty path.
+;; Ex: for path P = (PathCons a (PathCons b (PathCons c (PathNil))))
+;; we have (Path-contains P P),
+;; (Path-contains P (PathCons b (PathCons c (PathNil)))),
+;; (Path-contains P (PathCons c (PathNil))),
+;; and (Path-contains P (PathNil)).
+(relation Path-contains (ContextPath ContextPath))
+
+(rule ((= lhs (PathCons hd1 tl)))
+      ((Path-contains lhs lhs))
+      :ruleset context-helpers)
+(rule ((Path-contains top (PathCons hd1 tl)))
+      ((Path-contains top tl))
+      :ruleset context-helpers)
+
+
+(datatype ContextDepth
+  ;; Make new InLoop contexts for the full reachable subgraph
+  (Full)
+  ;; Don't make new contexts for sub-regions
+  (Region))
+
+;; Add these to the egraph so we can match on them
+(Full)
+(Region)
+
+;; AddFuncContext is a helper for tests, it adds full context to everything in a function.
+(function AddFuncContext (Expr) Expr :unextractable)
+(function AddContext (Assumption ContextDepth Expr) Expr :unextractable)
+(function DoAddContext (ContextPath Assumption ContextDepth Expr) Expr :unextractable)
+(function DoAddContextList (ContextPath Assumption ContextDepth ListExpr) ListExpr :unextractable)
+
+;; ###################### sugar
+
+
+;; desugar add func context
+(rule ((= lhs (AddFuncContext (Function name inty outty body))))
+      ((union lhs
+         (Function name inty outty
+           (AddContext (NoContext) (Full) body))))
+       :ruleset context-helpers)
+
+
+;; AddContext is sugar for DoAddContext
+(rewrite (AddContext ctx depth expr)
+         (DoAddContext (PathNil) ctx depth expr)
+         :ruleset context-helpers)
+
+
+;; ################################ saturation
+
+;; Adding context a second time does nothing, so union
+(rule
+  ((= lhs (DoAddContext seen ctx (Full) inner))
+   (= inner (DoAddContext seen2 ctx (Full) expr)))
+  ((union lhs inner))
+  :ruleset context-helpers)
+
+
+;; key rule that detects cycles
+;; It finds that we have already seen the eclass we are adding context to.
+;; The corresponding eclasses are unioned, and the cyclic
+;; substitution is subsumed to ensure saturation.
+(rule ((= lhs (DoAddContext seen ctx scope in))
+       (Path-contains seen
+         (PathCons original rest))
+       (= original (DoAddContext oldseen oldctx oldscope in))
+       )
+      (;; contexts are equal
+       (union ctx oldctx)
+       ;; therefore adding context the first time is also equal to this time
+       (union lhs original)
+       ;; subsume the one with a cycle in the path
+       (subsume (DoAddContext seen ctx scope in)))
+      :ruleset context-helpers)
+
+;; ############################## Base cases- leaf nodes
+
+;; replace existing contexts that are around leaf nodes
+;; DoAddContext assumes the new context is more specific than the old one
+(rule ((= lhs (DoAddContext seen ctx scope (InContext oldctx expr)))
+       (IsLeaf expr))
+      ((union lhs (InContext ctx expr)))
+      :ruleset context)
+
+
+
+;; ######################################### Operators
+(rewrite (DoAddContext seen ctx scope (Bop op c1 c2))
+         (Bop op
+           (DoAddContext seen ctx scope c1)
+           (DoAddContext seen ctx scope c2))
+               :ruleset context)
+(rewrite (DoAddContext seen ctx scope (Uop op c1))
+         (Uop op (DoAddContext seen ctx scope c1))
+         :ruleset context)
+(rewrite (DoAddContext seen ctx scope (Get c1 index))
+         (Get (DoAddContext seen ctx scope c1) index)
+               :ruleset context)
+(rewrite (DoAddContext seen ctx scope (Alloc id c1 state ty))
+         (Alloc id (DoAddContext seen ctx scope c1) (DoAddContext seen ctx scope state) ty)
+         :ruleset context)
+(rewrite (DoAddContext seen ctx scope (Call name c1))
+         (Call name (DoAddContext seen ctx scope c1))
+         :ruleset context)
+
+(rewrite (DoAddContext seen ctx scope (Single c1))
+         (Single (DoAddContext seen ctx scope c1))
+         :ruleset context)
+(rewrite (DoAddContext seen ctx scope (Concat c1 c2))
+         (Concat
+           (DoAddContext seen ctx scope c1)
+           (DoAddContext seen ctx scope c2))
+         :ruleset context)
+
+;; ################################### List operators
+
+(rewrite (DoAddContextList seen ctx scope (Nil))
+         (Nil)
+         :ruleset context)
+
+(rewrite (DoAddContextList seen ctx scope (Cons c1 rest))
+         (Cons (DoAddContext seen ctx scope c1)
+               (DoAddContextList seen ctx scope rest))
+               :ruleset context)
+
+
+;; ########################################## Control flow
+;; TODO when scope is full, add more context to the switch
+(rewrite (DoAddContext seen ctx scope (Switch pred inputs branches))
+         (Switch (DoAddContext seen ctx scope pred)
+                 (DoAddContext seen ctx scope inputs)
+                 branches)
+         :ruleset context-helpers)
+
+;; full context adds context to sub-branches
+(rule ((= lhs (DoAddContext seen ctx scope (If pred inputs c1 c2)))
+       (= scope (Full)))
+      ((let newpred
+         (DoAddContext seen ctx scope pred))
+       (let new-inputs
+         (DoAddContext seen ctx scope inputs))
+       (let new-ctx-then
+         (InIf true newpred new-inputs))
+       (let new-ctx-else
+         (InIf false newpred new-inputs))
+       (let newpath
+         (PathCons lhs seen))
+      (union lhs
+         (If newpred
+             new-inputs
+             (DoAddContext newpath new-ctx-then scope c1)
+             (DoAddContext newpath new-ctx-else scope c2))))
+       :ruleset context)
+
+;; For stop at region, still add context to inputs
+(rule ((= lhs (DoAddContext seen ctx scope (If pred inputs c1 c2)))
+       (= scope (Region)))
+      ((union lhs
+         (If (DoAddContext seen ctx scope pred)
+             (DoAddContext seen ctx scope inputs)
+             c1
+             c2)))
+       :ruleset context)
+
+
+;; full context adds context to sub-loops
+(rule ((= lhs (DoAddContext seen ctx scope (DoWhile inputs outputs)))
+       (= scope (Full)))
+      ((let new-inputs
+         (DoAddContext seen ctx scope inputs))
+       (let newpath
+         (PathCons lhs seen))
+       (union lhs
+         (DoWhile new-inputs
+           (DoAddContext newpath (InLoop new-inputs outputs) scope outputs))))
+       :ruleset context)
+
+
+;; For stop at loop, still add context to inputs
+(rule ((= lhs (DoAddContext seen ctx scope (DoWhile inputs outputs)))
+       (= scope (Region)))
+      ((DoWhile
+          (DoAddContext seen ctx scope inputs)
+          outputs))
+       :ruleset context)

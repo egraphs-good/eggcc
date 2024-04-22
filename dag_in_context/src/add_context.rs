@@ -13,6 +13,7 @@ use crate::{
 
 struct ContextCache {
     with_ctx: HashMap<(*const Expr, AssumptionRef), RcExpr>,
+    initialize: bool,
 }
 
 impl TreeProgram {
@@ -42,11 +43,26 @@ impl Expr {
         ))
     }
 
-    pub(crate) fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> RcExpr {
+    /// Add NoContext wrappers for all leaf nodes in this expression
+    pub(crate) fn initialize_ctx(self: &RcExpr) -> RcExpr {
         let mut cache = ContextCache {
             with_ctx: HashMap::new(),
+            initialize: true,
+        };
+        self.add_ctx_with_cache(noctx(), &mut cache)
+    }
+
+    pub(crate) fn replace_ctx(self: &RcExpr, current_ctx: Assumption) -> RcExpr {
+        let mut cache = ContextCache {
+            with_ctx: HashMap::new(),
+            initialize: false,
         };
         self.add_ctx_with_cache(current_ctx, &mut cache)
+    }
+
+    pub(crate) fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> RcExpr {
+        let initialized = self.initialize_ctx();
+        initialized.replace_ctx(current_ctx)
     }
 
     fn add_ctx_with_cache(
@@ -54,6 +70,11 @@ impl Expr {
         current_ctx: Assumption,
         cache: &mut ContextCache,
     ) -> RcExpr {
+        // if we're initializing, we should not have a context
+        if cache.initialize {
+            assert_eq!(current_ctx, noctx());
+        }
+
         let ctx_ref = current_ctx.to_ref();
         if let Some(expr) = cache
             .with_ctx
@@ -63,11 +84,21 @@ impl Expr {
         }
         let res = match self.as_ref() {
             // leaf nodes are constant, empty, and arg
-            Expr::Const(..) | Expr::Empty(..) | Expr::Arg(..) => inctx(current_ctx, self.clone()),
+            // we just wrap them in the current context
+            Expr::Const(..) | Expr::Empty(..) | Expr::Arg(..) => {
+                if !cache.initialize {
+                    panic!("Found leaf node while replacing contexts");
+                }
+                inctx(current_ctx, self.clone())
+            }
             // create new contexts for let, loop, and if
             Expr::DoWhile(inputs, pred_and_body) => {
                 let new_inputs = inputs.add_ctx_with_cache(current_ctx.clone(), cache);
-                let new_ctx = Assumption::InLoop(new_inputs.clone(), pred_and_body.clone());
+                let new_ctx = if cache.initialize {
+                    current_ctx.clone()
+                } else {
+                    Assumption::InLoop(new_inputs.clone(), pred_and_body.clone())
+                };
                 RcExpr::new(Expr::DoWhile(
                     new_inputs,
                     pred_and_body.add_ctx_with_cache(new_ctx, cache),
@@ -76,8 +107,16 @@ impl Expr {
             Expr::If(pred, input, then_case, else_calse) => {
                 let new_pred = pred.add_ctx_with_cache(current_ctx.clone(), cache);
                 let new_input = input.add_ctx_with_cache(current_ctx.clone(), cache);
-                let then_ctx = Assumption::InIf(true, new_pred.clone(), new_input.clone());
-                let else_ctx = Assumption::InIf(false, new_pred.clone(), new_input.clone());
+                let then_ctx = if cache.initialize {
+                    current_ctx.clone()
+                } else {
+                    Assumption::InIf(true, new_pred.clone(), new_input.clone())
+                };
+                let else_ctx = if cache.initialize {
+                    current_ctx.clone()
+                } else {
+                    Assumption::InIf(false, new_pred.clone(), new_input.clone())
+                };
                 RcExpr::new(Expr::If(
                     new_pred,
                     new_input,
@@ -88,6 +127,7 @@ impl Expr {
             Expr::Switch(case_num, input, branches) => {
                 let new_case_num = case_num.add_ctx_with_cache(current_ctx.clone(), cache);
                 let new_input = input.add_ctx_with_cache(current_ctx.clone(), cache);
+                // TODO add switch ctx
                 let new_branches = branches
                     .iter()
                     .map(|b| b.add_ctx_with_cache(current_ctx.clone(), cache))
@@ -126,10 +166,19 @@ impl Expr {
                 x.add_ctx_with_cache(current_ctx.clone(), cache),
                 y.add_ctx_with_cache(current_ctx, cache),
             )),
-            Expr::InContext(..) => {
-                panic!("add_context expects a term without context")
+            // if we find a context node, replace it with more specific context
+            Expr::InContext(_oldctx, inner) => {
+                if cache.initialize {
+                    panic!("Found InContext node while initializing");
+                }
+                inctx(current_ctx, inner.clone())
             }
-            Expr::Function(..) => panic!("Function should have been handled in func_add_context"),
+            Expr::Function(name, in_ty, out_ty, body) => RcExpr::new(Expr::Function(
+                name.clone(),
+                in_ty.clone(),
+                out_ty.clone(),
+                body.add_ctx_with_cache(current_ctx, cache),
+            )),
         };
         cache
             .with_ctx

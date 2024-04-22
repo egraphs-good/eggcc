@@ -37,6 +37,13 @@ impl Display for Expr {
     }
 }
 
+impl Display for Assumption {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let (term, termdag) = self.to_egglog();
+        write!(f, "{}", termdag.to_string(&term))
+    }
+}
+
 impl TernaryOp {
     pub(crate) fn name(&self) -> &'static str {
         use TernaryOp::*;

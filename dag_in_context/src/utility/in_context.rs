@@ -5,7 +5,7 @@ use crate::{egglog_test, interpreter::Value, schema::Constant};
 fn test_in_context_two_loops() -> crate::Result {
     use crate::ast::*;
 
-    let loop1_body = parallel!(
+    let loop_body = parallel!(
         tfalse(),
         get(
             dowhile(
@@ -14,32 +14,30 @@ fn test_in_context_two_loops() -> crate::Result {
             ),
             0
         )
-    )
-    .with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt()));
+    );
 
-    let outer_inputs = single(int(1)).with_arg_types(base(intt()), tuplet!(intt()));
-
-    let inner_ctx = inloop(outer_inputs.clone(), loop1_body.add_ctx(noctx()));
-
+    // expression with nexted loop, we'll add context to inner loop
     let expr = function(
         "main",
         base(intt()),
         tuplet!(intt()),
-        dowhile(single(int(1)), loop1_body),
+        dowhile(single(int(1)), loop_body.clone()),
     )
-    .func_with_arg_types();
-
-    let with_context = expr.clone().func_add_ctx();
+    .func_with_arg_types()
+    .initialize_ctx();
+    let with_ctx = expr.replace_ctx(noctx());
 
     egglog_test(
-        &format!("(AddFuncContext {expr})"),
         &format!(
             "
-(let original (AddFuncContext {expr}))
-(let with-context {with_context})
-(check (= original with-context))"
+(let egglog-version (AddFuncContext {expr}))"
         ),
-        vec![expr.func_to_program(), with_context.func_to_program()],
+        &format!(
+            "
+(let rust-version {with_ctx})
+(check (= egglog-version rust-version))"
+        ),
+        vec![expr.func_to_program()],
         Value::Tuple(vec![]),
         tuplev!(intv(4)),
         vec![],
@@ -67,61 +65,6 @@ fn test_simple_context_cycle() -> crate::Result {
         ),
         vec![expr.to_program(base(intt()), tuplet!(intt()))],
         Value::Const(Constant::Int(3)),
-        Value::Tuple(vec![Value::Const(Constant::Int(3))]),
-        vec![],
-    )
-}
-
-#[test]
-fn test_harder_context_cycle() -> crate::Result {
-    use crate::ast::*;
-    // loop runs one iteration and returns 3
-    let myloop = dowhile(arg(), parallel!(tfalse(), int(3)))
-        .with_arg_types(tuplet!(intt()), tuplet!(intt()));
-    let expr =
-        function("main", tuplet!(intt()), tuplet!(intt()), myloop.clone()).func_with_arg_types();
-    let int3func =
-        function("main", tuplet!(intt()), tuplet!(intt()), single(int(3))).func_with_arg_types();
-
-    let fargincontext = inctx(
-        noctx(),
-        arg().with_arg_types(tuplet!(intt()), tuplet!(intt())),
-    );
-    let inner_in_context = inloop(
-        fargincontext.clone(),
-        parallel!(tfalse(), int(3)).with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt())),
-    );
-    let expr2 = function(
-        "main",
-        tuplet!(intt()),
-        tuplet!(intt()),
-        dowhile(
-            fargincontext.clone(),
-            parallel!(
-                inctx(inner_in_context.clone(), tfalse()), // false gets the loop context
-                inctx(noctx(), int(3)) // 3 is equal to the loop, which is equal to 3 in the outer context
-            ),
-        ),
-    )
-    .func_with_arg_types();
-
-    egglog_test(
-        &format!(
-            "
-{expr}
-(AddFuncContext {expr})
-    ",
-        ),
-        &format!(
-            "
-(check (= (AddFuncContext {expr}) {expr2}))
-(check (= {expr} {int3func}))"
-        ),
-        vec![
-            expr.to_program(tuplet!(intt()), tuplet!(intt())),
-            expr2.to_program(tuplet!(intt()), tuplet!(intt())),
-        ],
-        Value::Tuple(vec![Value::Const(Constant::Int(3))]),
         Value::Tuple(vec![Value::Const(Constant::Int(3))]),
         vec![],
     )

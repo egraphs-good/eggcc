@@ -491,7 +491,6 @@ impl Region {
 }
 
 impl Region {
-    #[cfg(test)]
     fn to_svg(&self) -> String {
         let (size, xml) = self.to_xml(false);
         let svg = Xml::new(
@@ -682,7 +681,6 @@ impl RvsdgProgram {
 }
 
 impl RvsdgFunction {
-    #[cfg(test)]
     pub(crate) fn to_svg(&self) -> String {
         self.to_region().to_svg()
     }

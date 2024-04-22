@@ -32,7 +32,7 @@ use super::{
 };
 use super::{RvsdgFunction, RvsdgType};
 
-const WRITE_INTERMEDIATES: bool = false;
+const WRITE_INTERMEDIATES: bool = true;
 
 pub(crate) fn cfg_func_to_rvsdg(
     cfg: &mut SwitchCfgFunction,
@@ -124,12 +124,21 @@ pub(crate) fn cfg_func_to_rvsdg(
         .collect();
     args.push(RvsdgType::PrintState);
 
-    Ok(RvsdgFunction {
+    let res = RvsdgFunction {
         name,
         args,
         nodes: builder.expr,
         results,
-    })
+    };
+
+    if WRITE_INTERMEDIATES {
+        File::create("/tmp/rvsdg.svg")
+            .unwrap()
+            .write_all(res.to_svg().as_bytes())
+            .unwrap();
+    }
+
+    Ok(res)
 }
 
 /// FunctionTypes is a map from the name of the function
@@ -381,7 +390,7 @@ impl<'a> RvsdgBuilder<'a> {
             input_vars.push(var);
         }
 
-        for (_, succ) in succs {
+        for (_, succ) in succs.into_iter() {
             // First, make sure that all inputs are correctly bound to inputs to the block.
             for (i, var) in input_vars.iter().copied().enumerate() {
                 self.store.insert(var, Operand::Arg(i));
@@ -414,7 +423,9 @@ impl<'a> RvsdgBuilder<'a> {
                                 Type::Bool => Literal::Bool(false),
                                 Type::Float => Literal::Float(0.0),
                                 Type::Char => Literal::Char('x'),
-                                Type::Pointer(_) => panic!("pointer-valued placeholders are not currently supported"),
+                                Type::Pointer(_) => {
+                                    unimplemented!("placeholder values for pointers aren't yet implemented")
+                                },
                             };
                             let op = get_id(
                                 &mut self.expr,

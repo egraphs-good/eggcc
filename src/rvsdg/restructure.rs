@@ -396,7 +396,6 @@ impl SwitchCfgFunction {
                 // to copy edge information out in this frame.
                 .collect::<Vec<_>>()
             {
-                let reentry_edges = &cont.exit_arcs[&edge];
                 // This edge goes directly to the tail. Create an empty basic
                 // block (this will make our CFG look like a diamond rather than
                 // a triangle, which in turn makes it easier for us to generate
@@ -406,6 +405,7 @@ impl SwitchCfgFunction {
                     continue;
                 }
 
+                let reentry_edges = &cont.exit_arcs[&edge];
                 if reentry_edges.len() == 1 {
                     // We don't go directly to the tail, but there is at least a
                     // single exit from the subgraph pointed to by `edge`.

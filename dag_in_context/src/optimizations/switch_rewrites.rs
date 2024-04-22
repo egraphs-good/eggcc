@@ -5,24 +5,23 @@ use crate::egglog_test;
 fn switch_rewrite_three_quarters_and() -> crate::Result {
     use crate::ast::*;
 
-    let build =
-        tif(and(tfalse(), ttrue()), empty(), int(1), int(2)).with_arg_types(emptyt(), base(intt()));
+    let build = tif(and(tfalse(), ttrue()), empty(), int(1), int(2))
+        .to_program(emptyt(), base(intt()))
+        .add_context();
 
     let check = tif(
         tfalse(),
-        empty(),
-        tif(ttrue(), empty(), int(1), int(2)),
+        parallel!(ttrue()),
+        tif(get(arg(), 0), empty(), int(1), int(2)),
         int(2),
     )
-    .with_arg_types(emptyt(), base(intt()));
+    .to_program(emptyt(), base(intt()))
+    .add_context();
 
     egglog_test(
-        &format!("{build}"),
-        &format!("(check (= {build} {check}))"),
-        vec![
-            build.to_program(emptyt(), base(intt())),
-            check.to_program(emptyt(), base(intt())),
-        ],
+        &format!("(let b {build})"),
+        &format!("(let c {check}) (check (= b c))"),
+        vec![build, check],
         val_empty(),
         intv(2),
         vec![],
@@ -33,8 +32,9 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
 fn switch_rewrite_three_quarters_or() -> crate::Result {
     use crate::ast::*;
 
-    let build =
-        tif(or(tfalse(), ttrue()), empty(), int(1), int(2)).with_arg_types(emptyt(), base(intt()));
+    let build = tif(or(tfalse(), ttrue()), empty(), int(1), int(2))
+        .to_program(emptyt(), base(intt()))
+        .add_context();
 
     let check = tif(
         tfalse(),
@@ -42,15 +42,13 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
         int(1),
         tif(ttrue(), empty(), int(1), int(2)),
     )
-    .with_arg_types(emptyt(), base(intt()));
+    .to_program(emptyt(), base(intt()))
+    .add_context();
 
     egglog_test(
-        &format!("{build}"),
-        &format!("(check (= {build} {check}))"),
-        vec![
-            build.to_program(emptyt(), base(intt())),
-            check.to_program(emptyt(), base(intt())),
-        ],
+        &format!("(let b {build})"),
+        &format!("(let c {check}) (check (= b c))"),
+        vec![build, check],
         val_empty(),
         intv(1),
         vec![],
@@ -61,10 +59,11 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
 fn switch_rewrite_three_quarters_purity() -> crate::Result {
     use crate::ast::*;
 
-    let pure = get(single(ttrue()), 0).with_arg_types(emptyt(), base(boolt()));
+    let pure = get(single(ttrue()), 0);
 
     let build = tif(and(tfalse(), pure.clone()), empty(), int(1), int(2))
-        .with_arg_types(emptyt(), base(intt()));
+        .to_program(emptyt(), base(intt()))
+        .add_context();
 
     let check = tif(
         tfalse(),
@@ -72,12 +71,13 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
         tif(pure, empty(), int(1), int(2)),
         int(2),
     )
-    .with_arg_types(emptyt(), base(intt()));
+    .to_program(emptyt(), base(intt()))
+    .add_context();
 
     egglog_test(
-        &format!("{build}"),
-        &format!("(check (= {build} {check}))"),
-        vec![build.to_program(emptyt(), base(intt()))],
+        &format!("(let b {build})"),
+        &format!("(let c {check}) (check (= b c))"),
+        vec![build, check],
         val_empty(),
         intv(2),
         vec![],
@@ -89,11 +89,10 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
             parallel![tfalse(), tprint(int(1), getat(0)), ttrue(),],
         ),
         1,
-    )
-    .with_arg_types(base(statet()), base(boolt()));
+    );
 
     let build = tif(and(tfalse(), impure.clone()), empty(), int(1), int(2))
-        .with_arg_types(base(statet()), base(intt()));
+        .to_program(base(statet()), base(intt()));
 
     let check = tif(
         tfalse(),
@@ -101,12 +100,12 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
         tif(impure, empty(), int(1), int(2)),
         int(2),
     )
-    .with_arg_types(base(statet()), base(intt()));
+    .to_program(base(statet()), base(intt()));
 
     egglog_test(
-        &format!("{build}"),
-        &format!("(fail (check (= {build} {check})))"),
-        vec![build.to_program(base(statet()), base(intt()))],
+        &format!("(let b {build})"),
+        &format!("(let c {check}) (fail (check (= b c)))"),
+        vec![build],
         statev(),
         intv(2),
         vec!["1".to_string()],

@@ -11,11 +11,11 @@
 ;;         (If a X (If b X Y)) 
 ;;         :when ((ExprIsPure b))
 ;;         :ruleset switch_rewrite)
-;;
-;;(rewrite (If (Const (Bool true) ty) thn els)
-;;         thn
-;;         :ruleset switch_rewrite)
-;;
-;;(rewrite (If (Const (Bool false) ty) thn els)
-;;         els
-;;         :ruleset switch_rewrite)
+
+(rewrite (If (Const (Bool true) ty) thn els)
+        thn
+        :ruleset switch_rewrite)
+
+(rewrite (If (Const (Bool false) ty) thn els)
+        els
+        :ruleset switch_rewrite)

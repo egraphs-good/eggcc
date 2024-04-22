@@ -10,11 +10,14 @@ use crate::{
     typechecker::TypeChecker,
 };
 
+type RootId = ClassId;
+
 pub(crate) struct EgraphInfo<'a> {
     pub(crate) egraph: &'a EGraph,
-    // For a particular region root, find the set of reachable nodes
-    #[allow(dead_code)]
-    pub(crate) reachable_from: Vec<(ClassId, Vec<ClassId>)>,
+    // For every (root, eclass) pair, store the parent
+    // (root, enode) pairs that may depend on it.
+    pub(crate) parents: HashMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
+    pub(crate) roots: Vec<(RootId, NodeId)>,
     pub(crate) cm: &'a dyn CostModel,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
@@ -45,33 +48,67 @@ impl<'a> EgraphInfo<'a> {
         egraph: &'a EGraph,
         unextractables: HashSet<String>,
     ) -> Self {
+        // get all the roots needed
         let mut region_roots = HashSet::new();
         for node in egraph.classes().values().flat_map(|c| &c.nodes) {
             for root in enode_regions(egraph, &egraph[node]) {
                 region_roots.insert(root);
             }
         }
-
         // also add the root of the egraph to region_roots
         region_roots.insert(egraph.nid_to_cid(&get_root(egraph)).clone());
 
-        let mut reachable_from = region_roots
-            .iter()
-            .map(|root| {
-                let mut reachable: Vec<ClassId> = region_reachable_classes(egraph, root.clone())
-                    .iter()
-                    .cloned()
-                    .collect::<Vec<_>>();
-                reachable.sort();
-                (root.clone(), reachable)
-            })
-            .collect::<Vec<_>>();
-        reachable_from.sort();
+        // find all the (root, child) pairs that are important
+        let mut relavent_nodes: Vec<(ClassId, ClassId)> = vec![];
+        for root in &region_roots {
+            let reachable = region_reachable_classes(egraph, root.clone());
+            for eclass in reachable {
+                relavent_nodes.push((root.clone(), eclass));
+            }
+        }
+
+        let mut roots = vec![];
+        // find all the (root, enode) pairs that are root nodes (no children)
+        for (root, eclass) in &relavent_nodes {
+            for enode in egraph.classes()[eclass].nodes.iter() {
+                if enode_children(egraph, &egraph[enode]).is_empty() {
+                    roots.push((root.clone(), enode.clone()));
+                }
+            }
+        }
+
+        let mut parents: HashMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = HashMap::new();
+        for (root, eclass) in relavent_nodes {
+            // iterate over every root, enode pair
+            for enode in egraph.classes()[&eclass].nodes.iter() {
+                // add to the parents table
+                for (child, isregion) in enode_children(egraph, &egraph[enode]) {
+                    let child_region = if isregion {
+                        child.clone()
+                    } else {
+                        root.clone()
+                    };
+                    parents
+                        .entry((child_region, child.clone()))
+                        .or_default()
+                        .insert((root.clone(), enode.clone()));
+                }
+            }
+        }
+
+        let mut parents_sorted = HashMap::new();
+        for (key, parents) in parents {
+            let mut parents_vec = parents.into_iter().collect::<Vec<_>>();
+            parents_vec.sort();
+            parents_sorted.insert(key, parents_vec);
+        }
+
         EgraphInfo {
             cm,
             egraph,
             unextractables,
-            reachable_from,
+            parents: parents_sorted,
+            roots,
         }
     }
 }
@@ -414,34 +451,38 @@ pub fn extract_without_linearity(
     info: &EgraphInfo,
 ) -> (CostSet, TreeProgram) {
     let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
-    let mut updated_cost = true;
+    let mut worklist = UniqueQueue::default();
 
-    while updated_cost {
-        updated_cost = false;
-        for (rootid, reachable) in info.reachable_from.iter() {
-            for class_id in reachable {
-                for node_id in &info.egraph.classes().get(class_id).unwrap().nodes {
-                    let node = info.egraph.nodes.get(node_id).unwrap();
-                    if info.unextractables.contains(&node.op) {
-                        continue;
-                    }
+    // first, add all the roots to the worklist
+    for (root, nodeid) in &info.roots {
+        worklist.insert((root.clone(), nodeid.clone()));
+    }
 
-                    // create a new region_costs map if it doesn't exist
-                    let region_costs = extractor.costs.entry(rootid.clone()).or_default();
-                    let lookup = region_costs.get(class_id);
-                    let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
-                    if lookup.is_some() {
-                        prev_cost = lookup.unwrap().total;
-                    }
+    while let Some((rootid, nodeid)) = worklist.pop() {
+        let classid = n2c(&nodeid);
+        let node = info.egraph.nodes.get(&nodeid).unwrap();
+        if info.unextractables.contains(&node.op) {
+            continue;
+        }
 
-                    if let Some(cost_set) =
-                        calculate_cost_set(rootid.clone(), node_id.clone(), extractor, info)
-                    {
-                        let region_costs = extractor.costs.get_mut(rootid).unwrap();
-                        if cost_set.total < prev_cost {
-                            region_costs.insert(class_id.clone(), cost_set);
-                            updated_cost = true;
-                        }
+        // create a new region_costs map if it doesn't exist
+        let region_costs = extractor.costs.entry(rootid.clone()).or_default();
+        let lookup = region_costs.get(classid);
+        let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
+        if lookup.is_some() {
+            prev_cost = lookup.unwrap().total;
+        }
+
+        if let Some(cost_set) = calculate_cost_set(rootid.clone(), nodeid.clone(), extractor, info)
+        {
+            let region_costs = extractor.costs.get_mut(&rootid).unwrap();
+            if cost_set.total < prev_cost {
+                region_costs.insert(classid.clone(), cost_set);
+
+                // we updated this eclass's cost, so we need to update its parents
+                if let Some(parents) = info.parents.get(&(rootid.clone(), classid.clone())) {
+                    for parent in parents {
+                        worklist.insert(parent.clone());
                     }
                 }
             }

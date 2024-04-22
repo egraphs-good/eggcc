@@ -35,8 +35,6 @@
       ((union lhs (InContext assum (Empty newty))))
       :ruleset subst)
 
-
-
 ;; Operators
 (rewrite (Subst assum to (Bop op c1 c2))
          (Bop op (Subst assum to c1)

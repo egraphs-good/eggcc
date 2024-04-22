@@ -692,13 +692,13 @@ impl Run {
         // Compile the input bril file
         // options are "none", "speed", and "speed_and_size"
         let opt_level = if optimize_brilift { "speed" } else { "none" };
-        let object = self.name() + ".o";
+        let object = format!("/tmp/{}.o", self.name());
         brilift::compile(&program, None, &object, opt_level, false);
 
         // Compile runtime C library
         // We use unique names so that tests can run in parallel
-        let library_c = self.name() + "-library.c";
-        let library_o = self.name() + "-library.o";
+        let library_c = format!("/tmp/{}-library.c", self.name());
+        let library_o = format!("/tmp/{}-library.o", self.name());
         std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
         std::process::Command::new("cc")
             .arg(library_c.clone())
@@ -708,7 +708,10 @@ impl Run {
             .status()
             .unwrap();
 
-        let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+        let executable = self
+            .output_path
+            .clone()
+            .unwrap_or_else(|| format!("/tmp/{}", self.name()));
 
         let _ = std::fs::write(
             executable.clone() + "-args",
@@ -762,10 +765,11 @@ impl Run {
     fn run_bril_llvm(&self) -> Result<Option<Interpretable>, EggCCError> {
         let optimize_egglog = self
             .optimize_egglog
-            .expect("optimize_egglog is a required flag when running RunMode::CompileBrilift");
+            .expect("optimize_egglog is a required flag when running RunMode::CompileBrilLLVM");
         let optimize_brillvm = self
             .optimize_bril_llvm
-            .expect("optimize_brilift is a required flag when running RunMode::CompileBrilift");
+            .expect("optimize_bril_llvm is a required flag when running RunMode::CompileBrilLLVM");
+
         let program = if optimize_egglog {
             Run::optimize_bril(&self.prog_with_args.program)?
         } else {
@@ -789,7 +793,10 @@ impl Run {
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
 
-        let executable = self.output_path.clone().unwrap_or_else(|| self.name());
+        let executable = self
+            .output_path
+            .clone()
+            .unwrap_or_else(|| format!("/tmp/{}", self.name()));
         let opt_level = if optimize_brillvm { "-O3" } else { "-O1" };
         std::process::Command::new("clang")
             .arg(file_path.clone())

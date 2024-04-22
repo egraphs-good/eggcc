@@ -12,12 +12,10 @@
 ;;         :when ((ExprIsPure b))
 ;;         :ruleset switch_rewrite)
 
-(rule ((= lhs (If (Const (Bool true) ty) ins thn els))
-       (ContextOf lhs ctx))
-      ((union lhs (Subst ctx ins thn)))
-      :ruleset switch_rewrite)
+(rewrite (If (InContext ctx (Const (Bool true) ty)) ins thn els)
+         (Subst ctx ins thn)
+         :ruleset switch_rewrite)
 
-(rule ((= lhs (If (Const (Bool false) ty) ins thn els))
-       (ContextOf lhs ctx))
-      ((union lhs (Subst ctx ins els)))
-      :ruleset switch_rewrite)
+(rewrite (If (InContext ctx (Const (Bool false) ty)) ins thn els)
+         (Subst ctx ins els)
+         :ruleset switch_rewrite)

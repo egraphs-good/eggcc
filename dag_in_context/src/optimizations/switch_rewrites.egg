@@ -9,8 +9,9 @@
       ((let outer_ins (Concat (Single b) ins))
        (let outer_ins_ty (TupleT (TCons (BoolT) ins_ty)))
 
-       (let inner_pred (Get (Arg outer_ins_ty) 0))
-       (let inner_ins (SubTuple (Arg outer_ins_ty) 1 len))
+       (let inner_ctx (InIf true a outer_ins))
+       (let inner_pred (Get (InContext inner_ctx (Arg outer_ins_ty)) 0))
+       (let inner_ins (SubTuple (InContext inner_ctx (Arg outer_ins_ty)) 1 len))
 
        (let inner_Y (Subst (InIf false inner_pred inner_ins) (Arg (TupleT ins_ty)) Y))
        (let outer_Y (Subst (InIf false a outer_ins) inner_ins Y))

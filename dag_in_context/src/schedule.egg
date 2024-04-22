@@ -14,12 +14,11 @@
         (saturate context-helpers)
         context
         context-prop)
-      )
+      (saturate interval-analysis))
     ;; TODO enable this ruleset again after fixing for regions
     ;;conditional-invariant-code-motion
-    ;switch_rewrite
-    ;loop-simplify
+    switch_rewrite
+    loop-simplify
     ;loop-unroll
     )
-    
   )

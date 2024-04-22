@@ -1,15 +1,20 @@
-//#[cfg(test)]
-//use crate::egglog_test;
-/*
-TODO rewrite when ifs have regions
+#[cfg(test)]
+use crate::egglog_test;
+
 #[test]
 fn switch_rewrite_three_quarters_and() -> crate::Result {
     use crate::ast::*;
 
-    let build = tif(and(tfalse(), ttrue()), int(1), int(2)).with_arg_types(emptyt(), base(intt()));
+    let build =
+        tif(and(tfalse(), ttrue()), empty(), int(1), int(2)).with_arg_types(emptyt(), base(intt()));
 
-    let check =
-        tif(tfalse(), tif(ttrue(), int(1), int(2)), int(2)).with_arg_types(emptyt(), base(intt()));
+    let check = tif(
+        tfalse(),
+        empty(),
+        tif(ttrue(), empty(), int(1), int(2)),
+        int(2),
+    )
+    .with_arg_types(emptyt(), base(intt()));
 
     egglog_test(
         &format!("{build}"),
@@ -28,10 +33,16 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
 fn switch_rewrite_three_quarters_or() -> crate::Result {
     use crate::ast::*;
 
-    let build = tif(or(tfalse(), ttrue()), int(1), int(2)).with_arg_types(emptyt(), base(intt()));
+    let build =
+        tif(or(tfalse(), ttrue()), empty(), int(1), int(2)).with_arg_types(emptyt(), base(intt()));
 
-    let check =
-        tif(tfalse(), int(1), tif(ttrue(), int(1), int(2))).with_arg_types(emptyt(), base(intt()));
+    let check = tif(
+        tfalse(),
+        empty(),
+        int(1),
+        tif(ttrue(), empty(), int(1), int(2)),
+    )
+    .with_arg_types(emptyt(), base(intt()));
 
     egglog_test(
         &format!("{build}"),
@@ -52,11 +63,16 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
 
     let pure = get(single(ttrue()), 0).with_arg_types(emptyt(), base(boolt()));
 
-    let build =
-        tif(and(tfalse(), pure.clone()), int(1), int(2)).with_arg_types(emptyt(), base(intt()));
+    let build = tif(and(tfalse(), pure.clone()), empty(), int(1), int(2))
+        .with_arg_types(emptyt(), base(intt()));
 
-    let check =
-        tif(tfalse(), tif(pure, int(1), int(2)), int(2)).with_arg_types(emptyt(), base(intt()));
+    let check = tif(
+        tfalse(),
+        empty(),
+        tif(pure, empty(), int(1), int(2)),
+        int(2),
+    )
+    .with_arg_types(emptyt(), base(intt()));
 
     egglog_test(
         &format!("{build}"),
@@ -76,11 +92,16 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
     )
     .with_arg_types(base(statet()), base(boolt()));
 
-    let build = tif(and(tfalse(), impure.clone()), int(1), int(2))
+    let build = tif(and(tfalse(), impure.clone()), empty(), int(1), int(2))
         .with_arg_types(base(statet()), base(intt()));
 
-    let check = tif(tfalse(), tif(impure, int(1), int(2)), int(2))
-        .with_arg_types(base(statet()), base(intt()));
+    let check = tif(
+        tfalse(),
+        empty(),
+        tif(impure, empty(), int(1), int(2)),
+        int(2),
+    )
+    .with_arg_types(base(statet()), base(intt()));
 
     egglog_test(
         &format!("{build}"),
@@ -91,4 +112,3 @@ fn switch_rewrite_three_quarters_purity() -> crate::Result {
         vec!["1".to_string()],
     )
 }
- */

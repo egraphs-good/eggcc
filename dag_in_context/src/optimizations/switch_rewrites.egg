@@ -1,16 +1,24 @@
 (ruleset switch_rewrite)
 
+; if (a and b) X Y ~~> if a (if b X Y) Y
+(rule ((= lhs (If (Bop (And) a b) ins X Y))
+       (ExprIsPure b)
+       (HasType ins (TupleT ins_ty))
+       (= len (tuple-length ins)))
 
-;; TODO rewrite for if regions
-;;(rewrite (If (Bop (And) a b) X Y)
-;;         (If a (If b X Y) Y)
-;;         :when ((ExprIsPure b))
-;;         :ruleset switch_rewrite)
-;;
-;;(rewrite (If (Bop (Or) a b) X Y)
-;;         (If a X (If b X Y)) 
-;;         :when ((ExprIsPure b))
-;;         :ruleset switch_rewrite)
+      ((let outer_ins (Concat (Single b) ins))
+       (let outer_ins_ty (TupleT (TCons (BoolT) ins_ty)))
+
+       (let inner_pred (Get (Arg outer_ins_ty) 0))
+       (let inner_ins (SubTuple (Arg outer_ins_ty) 1 len))
+
+       (let inner_Y (Subst (InIf false inner_pred inner_ins) (Arg (TupleT ins_ty)) Y))
+       (let outer_Y (Subst (InIf false a outer_ins) inner_ins Y))
+
+       (let inner (If inner_pred inner_ins X inner_Y))
+       (union lhs (If a outer_ins inner outer_Y)))
+
+       :ruleset switch_rewrite)
 
 (rewrite (If (InContext ctx (Const (Bool true) ty)) ins thn els)
          (Subst ctx ins thn)

@@ -61,11 +61,19 @@
          (Concat a (Concat b c))
          :ruleset always-run)
 
-;;                tuple start len
-(function SubTuple (Expr i64 i64) Expr :unextractable)
+;;                  tuple start len
+(function SubTuple (Expr  i64   i64) Expr :unextractable)
+
+(rewrite (SubTuple expr x 0)
+         (Empty ty)
+         :when ((HasArgType expr ty))
+         :ruleset always-run)
+
 (rewrite (SubTuple expr x 1)
-         (Single (Get expr x)) :ruleset always-run)
-(rule ((= f (SubTuple expr a b)) (> b 1))
-      ((union f 
-         (Concat (Single (Get expr a))
-                 (SubTuple expr (+ a 1) (- b 1))))) :ruleset always-run)
+         (Single (Get expr x))
+         :ruleset always-run)
+
+(rewrite (SubTuple expr a b)
+         (Concat (Single (Get expr a)) (SubTuple expr (+ a 1) (- b 1)))
+         :when ((> b 1))
+         :ruleset always-run)

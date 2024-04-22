@@ -20,45 +20,28 @@ fn test_subst_nested() -> crate::Result {
 
     let expr = get(dowhile(inputs.clone(), body.clone()), 0)
         .with_arg_types(twoint.clone(), base(intt()))
-        .add_ctx(noctx());
+        .initialize_ctx();
 
-    let old_loop_ctx = inloop(inputs.add_ctx(noctx()), body.clone());
-
-    let replace_with = parallel!(int(3), int(4))
-        .with_arg_types(twoint.clone(), twoint.clone())
-        .add_ctx(noctx());
-
-    let old_second_loop_ctx = inloop(
-        single(get(arg(), 0))
-            .with_arg_types(twoint.clone(), tuplet!(intt()))
-            .add_ctx(noctx()),
-        parallel!(tfalse(), get(arg(), 0))
-            .with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt())),
-    );
+    let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone()).initialize_ctx();
 
     // add context manually because inner loop uses old context still
     let expected = get(
         dowhile(
             parallel!(
                 inctx(noctx(), int(1)),
-                get(inctx(noctx(), replace_with.clone()), 1),
+                get(replace_with.clone(), 1),
                 get(
                     dowhile(
-                        single(get(inctx(noctx(), replace_with.clone()), 0)),
+                        single(get(replace_with.clone(), 0)),
                         parallel!(
-                            inctx(old_second_loop_ctx.clone(), tfalse()),
-                            get(inctx(old_second_loop_ctx, arg()), 0)
+                            inctx(noctx(), tfalse()),
+                            get(inctx(noctx(), arg()), 0)
                         )
                     ),
                     0
                 )
             ),
-            parallel!(
-                inctx(old_loop_ctx.clone(), tfalse()),
-                inctx(old_loop_ctx.clone(), int(20)),
-                inctx(old_loop_ctx.clone(), int(30)),
-                inctx(old_loop_ctx.clone(), int(40))
-            ),
+            parallel!(tfalse(), int(20), int(30), int(40)).initialize_ctx(),
         ),
         0,
     )
@@ -76,7 +59,7 @@ fn test_subst_nested() -> crate::Result {
 (check (= substituted expected))"
     );
 
-    crate::egglog_test(
+    crate::egglog_test_and_print_program(
         &build.to_string(),
         &check.to_string(),
         vec![
@@ -100,7 +83,7 @@ fn test_subst_makes_new_context() -> crate::Result {
         inctx(noctx(), int_ty(1, base(intt()))),
         inctx(noctx(), iarg()),
     );
-    let replace_with = int_ty(2, base(intt()));
+    let replace_with = int_ty(2, base(intt())).initialize_ctx();
     let expected = add(inctx(noctx(), int(1)), inctx(noctx(), int(2)))
         .with_arg_types(base(intt()), base(intt()));
     let build = format!(
@@ -187,7 +170,7 @@ fn test_subst_identity() -> crate::Result {
 }
 
 #[test]
-fn test_subst_preserves_context() -> crate::Result {
+fn test_subst_if() -> crate::Result {
     use crate::ast::*;
 
     let outer_if = add(int(5), arg());
@@ -195,7 +178,9 @@ fn test_subst_preserves_context() -> crate::Result {
         .func_with_arg_types()
         .func_add_ctx();
 
-    let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
+    let replace_with = int(5)
+        .with_arg_types(base(intt()), base(intt()))
+        .initialize_ctx();
 
     let expected = function("main", base(intt()), base(intt()), add(int(5), int(5)))
         .func_with_arg_types()

@@ -2,6 +2,38 @@
 use crate::{egglog_test, interpreter::Value, schema::Constant};
 
 #[test]
+fn test_in_context_tuple() -> crate::Result {
+    use crate::ast::*;
+    use crate::{interpreter::Value, schema::Constant};
+
+    let tuple = parallel!(int(3), int(4))
+        .with_arg_types(tuplet!(intt(), intt()), tuplet!(intt(), intt()))
+        .initialize_ctx();
+
+    let build = format!(
+        "
+(let substituted (AddContext (NoContext) (Region) {tuple}))"
+    );
+    let check = format!(
+        "
+(check (= substituted {tuple}))
+        "
+    );
+
+    crate::egglog_test_and_print_program(
+        &build.to_string(),
+        &check.to_string(),
+        vec![],
+        Value::Tuple(vec![
+            Value::Const(Constant::Int(10)),
+            Value::Const(Constant::Int(10)),
+        ]),
+        Value::Const(Constant::Int(20)),
+        vec![],
+    )
+}
+
+#[test]
 fn test_in_context_two_loops() -> crate::Result {
     use crate::ast::*;
 
@@ -48,8 +80,11 @@ fn test_in_context_two_loops() -> crate::Result {
 fn test_simple_context_cycle() -> crate::Result {
     use crate::ast::*;
     let expr = dowhile(single(arg()), parallel!(tfalse(), int(3)))
-        .with_arg_types(base(intt()), tuplet!(intt()));
-    let inner = single(int(3)).with_arg_types(tuplet!(intt()), tuplet!(intt()));
+        .with_arg_types(base(intt()), tuplet!(intt()))
+        .initialize_ctx();
+    let inner = single(int(3))
+        .with_arg_types(tuplet!(intt()), tuplet!(intt()))
+        .initialize_ctx();
 
     egglog_test(
         &format!(

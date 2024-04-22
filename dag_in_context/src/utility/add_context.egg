@@ -105,6 +105,10 @@
       ((union lhs (InContext ctx expr)))
       :ruleset context)
 
+(rule ((= lhs (DoAddContext seen ctx scope expr))
+       (IsLeaf expr))
+      ((panic "Found expression without context!"))
+      :ruleset context-helpers)
 
 
 ;; ######################################### Operators

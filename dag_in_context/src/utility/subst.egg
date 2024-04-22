@@ -19,9 +19,10 @@
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
 (rule ((= lhs (Subst assum to (InContext oldctx (Arg ty))))
-       (IsLeaf leaf))
+       (IsLeaf leaf)
+       )
       ;; add the assumption `to`
-      ((union lhs (InContext assum (AddContext assum (Region) to))))
+      ((union lhs (AddContext assum (Region) to)))
       :ruleset subst)
 (rule ((= lhs (Subst assum to (InContext oldctx (Const c ty))))
        (IsLeaf leaf)

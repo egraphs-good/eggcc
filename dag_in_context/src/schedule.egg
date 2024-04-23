@@ -12,7 +12,7 @@
     (saturate apply-subst-unions)
     (saturate cleanup-subst)
 
-    (repeat 1 ;; saturate rulesets that we run to saturation
+    (saturate ;; saturate rulesets that we run to saturation
       (saturate always-run)
       (saturate canon)
       (saturate error-checking)
@@ -20,9 +20,9 @@
         (saturate type-helpers)
         type-analysis
       )
-      (repeat 2
+      (saturate
         ;; make sure to saturate context-helpers, since they ensure the other rules saturate
-        (repeat 1 context-helpers)
+        (saturate context-helpers)
         context
         context-prop)
       (saturate interval-analysis))

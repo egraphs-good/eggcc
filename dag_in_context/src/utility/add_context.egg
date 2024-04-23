@@ -73,8 +73,8 @@
 
 ;; Adding context a second time does nothing, so union
 (rule
-  ((= lhs (DoAddContext seen ctx (Full) inner))
-   (= inner (DoAddContext seen2 ctx (Full) expr)))
+  ((= lhs (DoAddContext seen ctx depth inner))
+   (= inner (DoAddContext seen2 ctx depth expr)))
   ((union lhs inner))
   :ruleset context-helpers)
 

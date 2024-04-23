@@ -1,0 +1,27 @@
+@main() {
+  one: int = const 1;
+  three: int = const 3;
+  four: int = const 4;
+  six: int = const 6;
+  seven: int = const 7;
+
+  in1: ptr<int> = alloc one;
+  in2: ptr<int> = alloc one;
+  store in1 six;
+  store in2 seven;
+  a: bool = lt three four;
+  br a .N .B;
+.N:
+  br a .A .B;
+.A:
+  y: ptr<int> = id in1;
+  jmp .end;
+.B:
+  y: ptr<int> = id in2;
+  jmp .end;
+.end:
+  x: int = load y;
+  free in1;
+  free in2;
+  print x;
+}

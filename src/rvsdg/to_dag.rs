@@ -147,10 +147,12 @@ impl<'a> DagTranslator<'a> {
     /// Translate a node or return the index of the already-translated node.
     /// For regions, translates the region and returns the index of the
     /// tuple containing the results.
-    /// It's important not to evaluate a node twice, instead using the cached index
-    /// in `self.stored_node`
     fn translate_node(&mut self, id: Id) -> StoredValue {
         let node = &self.nodes[id];
+
+        if let Some(cached) = self.stored_node.get(&id) {
+            return cached.clone();
+        }
         match node {
             RvsdgBody::BasicOp(expr) => self.translate_basic_expr(expr.clone(), id),
             RvsdgBody::If {

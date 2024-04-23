@@ -1,4 +1,12 @@
 //! Convert a potentially irreducible CFG to a reducible one.
+//! Important resources for the implementation here are Optir[^1], and the relevant RVSDG paper[^2].
+//!
+//! [^1]: <https://github.com/jameysharp/optir>
+//!
+//! [^2]: ["Perfect Reconstructability of Control Flow from Demand Dependence
+//! Graphs"](https://dl.acm.org/doi/10.1145/2693261). See also the accompanying
+//! jlm repo.
+use std::collections::VecDeque;
 
 use bril_rs::Type;
 use hashbrown::{HashMap, HashSet};
@@ -6,7 +14,7 @@ use petgraph::{
     algo::{dominators, tarjan_scc},
     graph::NodeIndex,
     stable_graph::EdgeIndex,
-    visit::{EdgeRef, NodeFiltered, VisitMap},
+    visit::{EdgeRef, IntoEdgeReferences, NodeFiltered, VisitMap},
     Direction,
 };
 
@@ -243,38 +251,6 @@ impl SwitchCfgFunction {
         middle
     }
 
-    fn split_edges(&mut self, node: NodeIndex) {
-        let mut has_jmp = false;
-        let mut walker = self
-            .graph
-            .neighbors_directed(node, Direction::Outgoing)
-            .detach();
-        while let Some((edge, other)) = walker.next(&self.graph) {
-            assert!(!has_jmp);
-            match &self.graph.edge_weight(edge).unwrap().op {
-                BranchOp::Jmp
-                | BranchOp::Cond {
-                    val: CondVal { of: 1, .. },
-                    ..
-                } => {
-                    has_jmp = true;
-                    continue;
-                }
-                BranchOp::Cond { .. } => {}
-            }
-
-            // We have a conditional branch. Reroute through a placeholder.
-            let weight = self.graph.remove_edge(edge).unwrap();
-            let placeholder = self.fresh_block();
-
-            // We had  node => other
-            // We want node => placeholder => other
-            assert_ne!(other, self.entry);
-            self.graph.add_edge(node, placeholder, weight);
-            self.graph.add_edge(placeholder, other, JMP);
-        }
-    }
-
     fn make_demux_node(
         &mut self,
         node: NodeIndex,
@@ -306,8 +282,197 @@ impl SwitchCfgFunction {
         (blocks, cond)
     }
 
-    fn restructure_branches(&mut self, state: &mut RestructureState) {
-        // Credit to optir for structuring the loop in this way; this is pretty different than the paper.
+    /// Compute the subgraph of the CFG dominated by the given edge.
+    fn dominator_graph(&self, edge: EdgeIndex) -> HashSet<NodeIndex> {
+        let mut nodes = HashSet::new();
+        let mut edges = HashSet::new();
+        edges.insert(edge);
+        let mut frontier = VecDeque::with_capacity(1);
+        let (_, target) = self.graph.edge_endpoints(edge).unwrap();
+        frontier.push_back(target);
+        while let Some(node) = frontier.pop_front() {
+            if nodes.contains(&node) {
+                continue;
+            }
+            let all_known = self
+                .graph
+                .edges_directed(node, Direction::Incoming)
+                .all(|e| edges.contains(&e.id()));
+            if all_known {
+                nodes.insert(node);
+                for edge_ref in self.graph.edges_directed(node, Direction::Outgoing) {
+                    edges.insert(edge_ref.id());
+                    frontier.push_back(edge_ref.target());
+                }
+            }
+        }
+        nodes
+    }
+
+    fn get_continuation(&self, branch: NodeIndex) -> Continuation {
+        let mut cont = Continuation::default();
+        for (edge_ref, dgraph) in self
+            .graph
+            .edges_directed(branch, Direction::Outgoing)
+            .map(|edge_ref| (edge_ref, self.dominator_graph(edge_ref.id())))
+        {
+            if dgraph.is_empty() {
+                cont.exit_arcs
+                    .entry(edge_ref.id())
+                    .or_default()
+                    .insert(edge_ref.id());
+                cont.reentry_nodes.insert(edge_ref.target());
+                continue;
+            }
+
+            for node in &dgraph {
+                for exit_edge in self
+                    .graph
+                    .edges_directed(*node, Direction::Outgoing)
+                    .filter(|x| !dgraph.contains(&x.target()))
+                {
+                    cont.exit_arcs
+                        .entry(edge_ref.id())
+                        .or_default()
+                        .insert(exit_edge.id());
+                    cont.reentry_nodes.insert(exit_edge.target());
+                }
+            }
+        }
+        cont
+    }
+    fn traverse_linear_region(&self, mut cur: NodeIndex, exit: NodeIndex) -> NodeIndex {
+        while cur != exit {
+            let mut neighbors = self.graph.neighbors_directed(cur, Direction::Outgoing);
+            let Some(next) = neighbors.next() else {
+                break;
+            };
+            if neighbors.next().is_some() {
+                break;
+            }
+            cur = next;
+        }
+        cur
+    }
+    /// Reassigns an edge to a new target destination, but the same source.
+    fn retarget(&mut self, edge: EdgeIndex, new_target: NodeIndex) -> EdgeIndex {
+        let (src, target) = self.graph.edge_endpoints(edge).unwrap();
+        if target == new_target {
+            return edge;
+        }
+        let weight = self.graph.remove_edge(edge).unwrap();
+        self.graph.add_edge(src, new_target, weight)
+    }
+    fn restructure_branches_inner(
+        &mut self,
+        entry: NodeIndex,
+        exit: NodeIndex,
+        state: &mut RestructureState,
+    ) {
+        // Use the original algorithm (RVSDG Paper, including the accompanying JLM code).
+        let start = self.traverse_linear_region(entry, exit);
+        if start == exit {
+            return;
+        }
+        let cont = self.get_continuation(start);
+
+        if cont.reentry_nodes.is_empty() {
+            // Nothing to do.
+            return;
+        }
+
+        // First, some special cases that allow us to avoid creating auxiliary
+        // predicates / nodes when the CFG already has the desired structure.
+        if cont.reentry_nodes.len() == 1 {
+            // There are multiple branches that all converge to a single "tail"
+            // node. This is _almost_ the structure that we want, but we need to
+            // add empty placeholder blocks and a few other things.
+            let tail = *cont.reentry_nodes.iter().next().unwrap();
+            for (edge, target) in self
+                .graph
+                .edges_directed(start, Direction::Outgoing)
+                .map(|x| (x.id(), x.target()))
+                // We make recursive calls to this method in this loop, so need
+                // to copy edge information out in this frame.
+                .collect::<Vec<_>>()
+            {
+                // This edge goes directly to the tail. Create an empty basic
+                // block (this will make our CFG look like a diamond rather than
+                // a triangle, which in turn makes it easier for us to generate
+                // a 'passthrough region' for this branch in the RVSDG).
+                if target == tail {
+                    self.split_arc(edge);
+                    continue;
+                }
+
+                let reentry_edges = &cont.exit_arcs[&edge];
+                if reentry_edges.len() == 1 {
+                    // We don't go directly to the tail, but there is at least a
+                    // single exit from the subgraph pointed to by `edge`.
+                    //
+                    // Restructure this subgraph (recursively).
+                    let next_edge = *reentry_edges.iter().next().unwrap();
+                    debug_assert_ne!(next_edge, edge);
+                    let branch_end = self.graph.edge_endpoints(next_edge).unwrap().0;
+                    self.restructure_branches_inner(target, branch_end, state);
+                    continue;
+                }
+                // There are multiple exit edges to the tail. Have them all join
+                // into an intermediate block.
+                let inter = self.fresh_block();
+                self.graph.add_edge(inter, tail, JMP);
+                for e in reentry_edges {
+                    self.retarget(*e, inter);
+                }
+                self.restructure_branches_inner(target, inter, state);
+            }
+            self.restructure_branches_inner(tail, exit, state);
+        } else {
+            // The general case:
+            // We have multiple potential continuation points. Create a new node
+            // and a variable to demux them.
+            let demux = self.fresh_block();
+            let (conds, pred) =
+                self.make_demux_node(demux, cont.reentry_nodes.iter().copied(), state);
+            for (edge, target) in self
+                .graph
+                .edges_directed(start, Direction::Outgoing)
+                .map(|x| (x.id(), x.target()))
+                .collect::<Vec<_>>()
+            {
+                // Fan all outgoing edges from this branch subgraph into an
+                // intermediate node.
+                //
+                // Then ahead of this branch, assign `pred` to the correct
+                // value.
+                let reentry_edges = &cont.exit_arcs[&edge];
+                let inter = self.fresh_block();
+                self.graph.add_edge(inter, demux, JMP);
+                for edge in reentry_edges {
+                    let (src, target) = self.graph.edge_endpoints(*edge).unwrap();
+                    self.graph[src].footer.push(Annotation::AssignCond {
+                        dst: pred.clone(),
+                        cond: conds[&target],
+                    });
+                    self.retarget(*edge, inter);
+                }
+                self.restructure_branches_inner(target, inter, state);
+            }
+            self.restructure_branches_inner(demux, exit, state);
+        }
+    }
+
+    fn extract_edge(&mut self, edge: EdgeIndex) -> EdgeData {
+        let (src, dst) = self.graph.edge_endpoints(edge).unwrap();
+        let branch = self.graph.remove_edge(edge).unwrap();
+        EdgeData { src, dst, branch }
+    }
+
+    fn insert_edge(&mut self, data: EdgeData) {
+        self.graph.add_edge(data.src, data.dst, data.branch);
+    }
+
+    fn remove_cycles(&mut self) -> Vec<EdgeData> {
         let dom = dominators::simple_fast(&self.graph, self.entry);
         let dominates = |x: NodeIndex, y| {
             dom.dominators(y)
@@ -315,80 +480,27 @@ impl SwitchCfgFunction {
                 .unwrap_or(false)
         };
 
-        // The "Perfect Reconstructability" paper uses "continuation point" to
-        // refer to the targets of a branch _not_ part of a structured region.
-        //
-        // We want to group these continuations by their immediate dominators
-        // (called the "Head" in the paper), then add a mux node in front of the
-        // continuations if there is more than one.
-
-        let mut tail_continuations = HashMap::<NodeIndex, Vec<NodeIndex>>::new();
-
-        for ix in self.graph.node_indices() {
-            if let Some(idom) = dom.immediate_dominator(ix) {
-                // Continuations have more than one non-loop incoming edge
-                if self
-                    .graph
-                    .neighbors_directed(ix, Direction::Incoming)
-                    .filter(|pred| !dominates(ix, *pred))
-                    .nth(1)
-                    .is_some()
-                {
-                    tail_continuations.entry(idom).or_default().push(ix);
+        let to_remove: Vec<_> = self
+            .graph
+            .edge_references()
+            .filter_map(|edge| {
+                if dominates(edge.target(), edge.source()) {
+                    Some(edge.id())
+                } else {
+                    None
                 }
-            }
-        }
+            })
+            .collect();
+        to_remove
+            .into_iter()
+            .map(|x| self.extract_edge(x))
+            .collect()
+    }
 
-        for (idom, conts) in tail_continuations.into_iter() {
-            // Split any direct edges from the idom to the continuation. If we
-            // have more than one continuation then split _all_ edges.
-            for cont in &conts {
-                let mut walker = self
-                    .graph
-                    .neighbors_directed(*cont, Direction::Incoming)
-                    .detach();
-                while let Some((e, src)) = walker.next(&self.graph) {
-                    if src == idom && conts.len() == 1 {
-                        self.split_arc(e);
-                    } else if conts.len() > 1 {
-                        self.split_edges(src);
-                    }
-                }
-            }
-
-            // The rest of this loop is focused on mux/demux for multiple
-            // continuations. If we only have one, we are done.
-            if conts.len() == 1 {
-                continue;
-            }
-            let mux = self.fresh_block();
-            let (preds, cond_var) = self.make_demux_node(mux, conts.iter().copied(), state);
-
-            for cont in &conts {
-                let mut walker = self
-                    .graph
-                    .neighbors_directed(*cont, Direction::Incoming)
-                    .detach();
-
-                // NB: there's some extra filtering that happens here in optir, do we need it?
-                while let Some((edge, src)) = walker.next(&self.graph) {
-                    if src == mux {
-                        continue;
-                    }
-
-                    // TODO this is O(n), replace with a HashSet
-                    if conts.iter().any(|&c| c == src) {
-                        continue;
-                    }
-                    let branch = self.graph.remove_edge(edge).unwrap();
-                    self.graph.add_edge(src, mux, branch);
-                    self.graph[src].footer.push(Annotation::AssignCond {
-                        dst: cond_var.clone(),
-                        cond: preds[cont],
-                    });
-                }
-            }
-        }
+    fn restructure_branches(&mut self, state: &mut RestructureState) {
+        let tails = self.remove_cycles();
+        self.restructure_branches_inner(self.entry, self.exit, state);
+        tails.into_iter().for_each(|e| self.insert_edge(e))
     }
 }
 
@@ -396,3 +508,47 @@ const JMP: Branch = Branch {
     op: BranchOp::Jmp,
     pos: None,
 };
+
+/// A "Continuation" (in the parlance of the "Perfect Reconstructability" paper)
+/// is the set of points where a branch subgraph rejoins the main flow of control.
+///
+/// The game for branch restructuring is to take a potentially unstructured,
+/// acylclic CFG and translate it into one that is structured. The algorithm
+/// traverses from the entry node to a CFG and waits until it finds a branch:
+/// ```ignore
+///    [ b1 ] --> ...
+///   /
+///  * -- [ b2 ] --> ...
+///   \
+///    [ b3 ] --> ...
+/// ```
+/// To decompose this graph into something useful, we compute the (potentially
+/// empty!) subgraphs dominated by each edge. We eventually need these subgraphs
+/// to join back at some "tail" node:
+///
+/// ```ignore
+///    [ b1 ] --- B1 ----*
+///   /                    \?
+///  * -- [ b2 ] --- B2 ---? T
+///   \                    /?
+///    [ b3 ] --- B3 ----*
+/// ```
+///
+/// These `Bi` subgraphs need to meet back at `T`, but initially they may
+/// have quite a lot of outgoing edges, rather than just one. Continuations
+/// track these edges/nodes so that we can clean them up before recurring on
+/// each `Bi` and `T`.
+#[derive(Default)]
+struct Continuation {
+    /// Nodes in the "tail" (`T` above) that are targetted by an edge out of the
+    /// given branch node.
+    reentry_nodes: HashSet<NodeIndex>,
+    /// A mapping from branch edge, to edges back to nodes not dominated by that edge.
+    exit_arcs: HashMap<EdgeIndex, HashSet<EdgeIndex>>,
+}
+
+struct EdgeData {
+    src: NodeIndex,
+    dst: NodeIndex,
+    branch: Branch,
+}

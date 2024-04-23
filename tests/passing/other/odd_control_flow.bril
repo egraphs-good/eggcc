@@ -1,0 +1,17 @@
+@main() {
+  in1: int = const 1;
+  in2: int = const 2;
+  four: int = const 4;
+  a: bool = lt in1 four;
+  br a .N .B;
+.N:
+  br a .A .B;
+.A:
+  y: int = const 6;
+  jmp .end;
+.B:
+  y: int = const 7;
+  jmp .end;
+.end:
+  print y;
+}

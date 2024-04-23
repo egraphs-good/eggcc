@@ -584,7 +584,13 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
                     _ => panic!("unexpected format to return instruction"),
                 }
             }
-            Code::Instruction(i) => block.push(i.clone()),
+            Code::Instruction(i) => {
+                // If we have already hit a branch in this block,
+                // avoid emitting any further instructions.
+                if !had_branch {
+                    block.push(i.clone())
+                }
+            }
         }
     }
     builder.finish_block(current, block, anns);

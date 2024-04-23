@@ -550,11 +550,12 @@ impl CostModel for DefaultCostModel {
             "ExprIsPure" | "ListExprIsPure" | "BinaryOpIsPure" | "UnaryOpIsPure" => 0.,
             "IsLeaf" | "BodyContainsExpr" | "ScopeContext" => 0.,
             "Region" | "Full" | "IntB" | "BoolB" => 0.,
+            "PathNil" | "PathCons" => 0.,
             // Schema
             "Bop" | "Uop" | "Top" => 0.,
             "InContext" => 0.,
             _ if self.ignore_children(op) => 0.,
-            _ => panic!("no cost for {op}"),
+            _ => panic!("Please provide a cost for {op}"),
         }
         .try_into()
         .unwrap()

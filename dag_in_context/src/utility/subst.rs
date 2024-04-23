@@ -21,11 +21,10 @@ fn test_subst_cycle() -> crate::Result {
                         {replace_with}
                         {expr}))"
     );
-    let check = format!("");
 
     crate::egglog_test_and_print_program(
         &build.to_string(),
-        &check.to_string(),
+        "",
         vec![],
         Value::Const(Constant::Int(10)),
         Value::Const(Constant::Int(10)),

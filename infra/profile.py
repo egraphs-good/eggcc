@@ -33,8 +33,11 @@ def bench(profile):
   profile_name = profile_file[:-len(".bril")]
 
   profile_dir = f'./tmp/bench/{profile_name}'
-  os.mkdir(profile_dir)
-
+  try:
+    os.mkdir(profile_dir)
+  except FileExistsError:
+    print(f'{profile_dir} exists, overwriting contents')
+    
   for mode in modes:
     (name, runmode, options) = mode
     os.system(f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}')

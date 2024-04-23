@@ -215,7 +215,7 @@ fn test_invariant_hoist() -> crate::Result {
         my_loop, inv, pred, not_inv, print, inner_inv, main_fun
     );
 
-    //print!("{}\n\n", build.clone());
+    print!("{}\n\n", build.clone());
 
 
     let check = format!(

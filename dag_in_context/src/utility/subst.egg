@@ -4,17 +4,28 @@
 ;; It only places context on the leaf nodes.
 
 (ruleset subst)
+(ruleset apply-subst-unions)
+(ruleset cleanup-subst)
 
 ;; (Subst assumption to in) substitutes `to` for `(Arg ty)` in `in`.
 ;; It also replaces the leaf context in `to` with `assumption` using `AddContext`.
 ;; `assumption` *justifies* this substitution, as the context that the result is used in.
 ;; In other words, it must refine the equivalence relation of `in` with `to` as the argument.
 (function Subst (Assumption Expr Expr) Expr :unextractable)
-;; (SubstLeaf to in) substitutes `to` for `in` in a leaf node `in`
-;; SubstLeaf assumes context has already been added
-(function SubstLeaf (Expr Expr) Expr :unextractable)
-(function SubstList (Assumption Expr ListExpr) ListExpr :unextractable)
 
+;; Used to delay unions for the subst ruleset.
+;; This is necessary because substitution may not terminate if it can
+;; observe its own results- it may create infinitly large terms.
+;; Instead, we phase substitution by delaying resulting unions in this table.
+;; After applying this table, substitutions and this table are cleared.
+(function DelayedSubstUnion (Expr Expr) Expr :unextractable)
+
+;; add a type rule to get the arg type of a substitution
+;; this enables nested substitutions
+(rule ((= lhs (Subst assum to in))
+       (HasArgType to ty))
+      ((HasArgType lhs ty))
+      :ruleset subst)
 
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
@@ -22,74 +33,96 @@
        (IsLeaf leaf)
        )
       ;; add the assumption `to`
-      ((union lhs (AddContext assum (Region) to)))
+      ((DelayedSubstUnion lhs (AddContext assum (Region) to)))
       :ruleset subst)
 (rule ((= lhs (Subst assum to (InContext oldctx (Const c ty))))
        (IsLeaf leaf)
        (HasArgType to newty))
-      ((union lhs (InContext assum (Const c newty))))
+      ((DelayedSubstUnion lhs (InContext assum (Const c newty))))
       :ruleset subst)
 (rule ((= lhs (Subst assum to (InContext oldctx (Empty ty))))
        (IsLeaf leaf)
        (HasArgType to newty))
-      ((union lhs (InContext assum (Empty newty))))
+      ((DelayedSubstUnion lhs (InContext assum (Empty newty))))
       :ruleset subst)
 
 ;; Operators
-(rewrite (Subst assum to (Bop op c1 c2))
+(rule ((= lhs (Subst assum to (Bop op c1 c2))))
+      ((DelayedSubstUnion lhs
          (Bop op (Subst assum to c1)
-                 (Subst assum to c2))
+                 (Subst assum to c2))))
          :ruleset subst)
-(rewrite (Subst assum to (Uop op c1))
-         (Uop op (Subst assum to c1))
+(rule ((= lhs (Subst assum to (Uop op c1))))
+      ((DelayedSubstUnion lhs
+         (Uop op (Subst assum to c1))))
          :ruleset subst)
-(rewrite (Subst assum to (Get c1 index))
-         (Get (Subst assum to c1) index)
+
+(rule ((= lhs (Subst assum to (Get c1 index))))
+      ((DelayedSubstUnion lhs
+         (Get (Subst assum to c1) index)))
          :ruleset subst)
-(rewrite (Subst assum to (Alloc id c1 state ty))
-         (Alloc id (Subst assum to c1) (Subst assum to state) ty)
+(rule ((= lhs (Subst assum to (Alloc id c1 c2 ty))))
+      ((DelayedSubstUnion lhs
+         (Alloc id (Subst assum to c1)
+                   (Subst assum to c2)
+                   ty)))
          :ruleset subst)
-(rewrite (Subst assum to (Call name c1))
-         (Call name (Subst assum to c1))
+(rule ((= lhs (Subst assum to (Call name c1))))
+      ((DelayedSubstUnion lhs
+         (Call name (Subst assum to c1))))
          :ruleset subst)
 
 
 ;; Tuple operators
-(rewrite (Subst assum to (Single c1))
-         (Single (Subst assum to c1))
+(rule ((= lhs (Subst assum to (Single c1))))
+      ((DelayedSubstUnion lhs
+         (Single (Subst assum to c1))))
          :ruleset subst)
-(rewrite (Subst assum to (Concat c1 c2))
-         (Concat (Subst assum to c1) (Subst assum to c2))
+(rule ((= lhs (Subst assum to (Concat c1 c2))))
+      ((DelayedSubstUnion lhs
+         (Concat (Subst assum to c1)
+                 (Subst assum to c2))))
          :ruleset subst)
-
 
 ;; Control flow
-(rewrite (Subst assum to (Switch pred inputs branches))
+(rule ((= lhs (Subst assum to (Switch pred inputs c1))))
+      ((DelayedSubstUnion lhs
          (Switch (Subst assum to pred)
                  (Subst assum to inputs)
-                 branches)
+                 c1)))
          :ruleset subst)
-(rewrite (Subst assum to (If pred inputs c1 c2))
+(rule ((= lhs (Subst assum to (If pred inputs c1 c2))))
+      ((DelayedSubstUnion lhs
          (If (Subst assum to pred)
              (Subst assum to inputs)
              c1
-             c2)
+             c2)))
          :ruleset subst)
-(rewrite (Subst assum to (DoWhile in out))
+(rule ((= lhs (Subst assum to (DoWhile in out))))
+      ((DelayedSubstUnion lhs
          (DoWhile (Subst assum to in)
-                  out)
+                  out)))
          :ruleset subst)
 
-;; List operators
-(rewrite (SubstList assum to (Cons c1 c2))
-         (Cons (Subst assum to c1)
-               (SubstList assum to c2))
-         :ruleset subst)
-(rewrite (SubstList assum to (Nil))
-         (Nil)
-         :ruleset subst)
-
-;; substitute into function (convenience)
+;; substitute into function (convenience for testing)
 (rewrite (Subst assum to (Function name inty outty body))
          (Function name inty outty (Subst assum to body))
          :ruleset subst)
+
+
+
+;; ########################### Apply subst unions
+
+(rule ((DelayedSubstUnion lhs rhs))
+      ((union lhs rhs))
+      :ruleset apply-subst-unions)
+
+
+;; ########################### Cleanup subst and DelayedSubstUnion
+
+(rule ((DelayedSubstUnion lhs rhs))
+      ((delete (DelayedSubstUnion lhs rhs)))
+      :ruleset cleanup-subst)
+(rule ((Subst assum to in))
+      ((delete (Subst assum to in)))
+      :ruleset cleanup-subst)

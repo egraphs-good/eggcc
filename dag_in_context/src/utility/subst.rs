@@ -1,4 +1,39 @@
 #[test]
+fn test_subst_cycle() -> crate::Result {
+    use crate::ast::*;
+    use crate::{interpreter::Value, schema::Constant};
+    let twoint = tuplet!(intt(), intt());
+
+    let expr = parallel!(getat(0), int(0)) // saturates if both getat(0) or both int(0)!
+        .with_arg_types(
+            tuplet!(intt(), intt()), // tuplet!(intt()) saturates!
+            tuplet!(intt(), intt()),
+        )
+        .initialize_ctx();
+
+    let replace_with = parallel!(int(3), int(4))
+        .with_arg_types(twoint.clone(), twoint.clone())
+        .initialize_ctx();
+
+    let build = format!(
+        "
+(let substituted (Subst (NoContext)
+                        {replace_with}
+                        {expr}))"
+    );
+    let check = format!("");
+
+    crate::egglog_test_and_print_program(
+        &build.to_string(),
+        &check.to_string(),
+        vec![],
+        Value::Const(Constant::Int(10)),
+        Value::Const(Constant::Int(10)),
+        vec![],
+    )
+}
+
+#[test]
 fn test_subst_nested() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
@@ -22,7 +57,9 @@ fn test_subst_nested() -> crate::Result {
         .with_arg_types(twoint.clone(), base(intt()))
         .initialize_ctx();
 
-    let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone()).initialize_ctx();
+    let replace_with = parallel!(int(3), int(4))
+        .with_arg_types(twoint.clone(), twoint.clone())
+        .initialize_ctx();
 
     // add context manually because inner loop uses old context still
     let expected = get(
@@ -33,10 +70,7 @@ fn test_subst_nested() -> crate::Result {
                 get(
                     dowhile(
                         single(get(replace_with.clone(), 0)),
-                        parallel!(
-                            inctx(noctx(), tfalse()),
-                            get(inctx(noctx(), arg()), 0)
-                        )
+                        parallel!(inctx(noctx(), tfalse()), get(inctx(noctx(), arg()), 0))
                     ),
                     0
                 )

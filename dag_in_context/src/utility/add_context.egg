@@ -105,6 +105,7 @@
       ((union lhs (InContext ctx expr)))
       :ruleset context)
 
+;; check that we haven't found a leaf without context
 (rule ((= lhs (DoAddContext seen ctx scope expr))
        (IsLeaf expr))
       ((panic "Found expression without context!"))

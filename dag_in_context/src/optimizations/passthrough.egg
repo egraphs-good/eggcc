@@ -15,7 +15,9 @@
        (= branch1 (ListExpr-ith branches 1))
        (= (Get branch0 i) (Get (InContext _ctx0 (Arg _)) j))
        (= (Get branch1 i) (Get (InContext _ctx1 (Arg _)) j))
-       (= passed-through (Get inputs j)))
+       (= passed-through (Get inputs j))
+       (HasType lhs lhs_ty)
+       (!= lhs_ty (Base (StateT))))
       ((union lhs passed-through))
       :ruleset always-run)
 
@@ -35,7 +37,9 @@
        (= if (If pred inputs then_ else_))
        (= (Get then_ i) (Get (InContext _then_ctx (Arg _)) j))
        (= (Get else_ i) (Get (InContext _else_ctx (Arg _)) j))
-       (= passed-through (Get inputs j)))
+       (= passed-through (Get inputs j))
+       (HasType lhs lhs_ty)
+       (!= lhs_ty (Base (StateT))))
       ((union lhs passed-through))
       :ruleset always-run)
 

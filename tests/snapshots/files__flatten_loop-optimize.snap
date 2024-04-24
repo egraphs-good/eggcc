@@ -42,7 +42,7 @@ expression: visualization.result
   v49: int = id v49;
   br v53 .__51__ .__106__;
 .__106__:
-  v109: int = add v45 v46;
+  v109: int = add v46 v45;
   v111: bool = const true;
   v32: int = id v109;
   v33: bool = id v111;

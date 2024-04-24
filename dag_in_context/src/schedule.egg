@@ -1,5 +1,4 @@
 (run-schedule
-  loop-unroll
   (repeat 6
     (saturate always-run) ;; subst and type-helpers depend on always-run
     (saturate ;; subst depends on type information for the argument
@@ -29,7 +28,7 @@
     ;;conditional-invariant-code-motion
     switch_rewrite
     loop-simplify
-    ;loop-unroll
+    loop-unroll
     )
   )
 

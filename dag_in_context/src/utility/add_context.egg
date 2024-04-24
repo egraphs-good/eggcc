@@ -93,7 +93,8 @@
 
 ;; For stop at loop, still add context to inputs
 (rule ((= lhs (AddContext ctx (DoWhile inputs outputs))))
-      ((DoWhile
+      ((union lhs
+        (DoWhile
           (AddContext ctx inputs)
-          outputs))
+          outputs)))
        :ruleset context)

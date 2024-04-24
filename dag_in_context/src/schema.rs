@@ -28,12 +28,12 @@ pub enum Type {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord, Hash)]
 pub enum TernaryOp {
     Write,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord, Hash)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -52,7 +52,7 @@ pub enum BinaryOp {
     Free,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord, Hash)]
 pub enum UnaryOp {
     Not,
 }
@@ -69,7 +69,7 @@ pub enum Constant {
 /// This is important for the correctness of the interpreter, which makes this assumption.
 pub type RcExpr = Rc<Expr>;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
     NoContext,
@@ -77,7 +77,7 @@ pub enum Assumption {
     InSwitch(i64, RcExpr, RcExpr),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Expr {
     Const(Constant, Type),
     Top(TernaryOp, RcExpr, RcExpr, RcExpr),

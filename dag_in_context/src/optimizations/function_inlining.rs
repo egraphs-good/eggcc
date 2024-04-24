@@ -1,8 +1,11 @@
-use std::{collections::HashMap, vec};
+use std::{
+    collections::{HashMap, HashSet},
+    vec,
+};
 
 use crate::schema::{Expr, RcExpr, TreeProgram};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct CallBody {
     pub call: RcExpr,
     pub body: RcExpr,
@@ -10,15 +13,20 @@ pub struct CallBody {
 
 // Gets a list of all the calls in the program
 // and pairs them with an inlined body
-fn get_calls_and_subst(expr: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> Vec<CallBody> {
+// TODO: maybe I should add a cache for this
+// Somehow, it must be made faster
+fn get_calls_and_subst(
+    expr: &RcExpr,
+    func_to_body: &HashMap<String, &RcExpr>,
+) -> HashSet<CallBody> {
     // Get calls from children
     let mut calls = if !expr.children_exprs().is_empty() {
         expr.children_exprs()
             .iter()
             .flat_map(|child| get_calls_and_subst(child, func_to_body))
-            .collect::<Vec<_>>()
+            .collect::<HashSet<_>>()
     } else {
-        vec![]
+        HashSet::new()
     };
 
     // Inline this call
@@ -26,10 +34,10 @@ fn get_calls_and_subst(expr: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -
         let substituted = Expr::subst(args, func_to_body[func_name]);
 
         // Substitute args into the body
-        calls.push(CallBody {
+        calls.insert(CallBody {
             call: expr.clone(),
             body: substituted,
-        })
+        });
     };
 
     calls
@@ -57,7 +65,7 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<Ca
         .iter()
         // Find calls and their inlined version within each function
         .flat_map(|func| get_calls_and_subst(func, &func_name_to_body))
-        .collect::<Vec<_>>();
+        .collect::<HashSet<_>>();
 
     let mut all_inlining = one_inlining.clone();
 
@@ -66,9 +74,13 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<Ca
         let one_inlining = one_inlining
             .iter()
             .flat_map(|call_body| get_calls_and_subst(&call_body.body, &func_name_to_body))
-            .collect::<Vec<_>>();
+            .collect::<HashSet<_>>();
         all_inlining.extend(one_inlining)
     }
+
+    let mut all_inlining = all_inlining.drain().collect::<Vec<_>>();
+    // Sort to not rely on hash ordering
+    all_inlining.sort();
 
     all_inlining
 }

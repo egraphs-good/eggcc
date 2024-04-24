@@ -48,7 +48,7 @@ fn test_in_context_two_loops() -> crate::Result {
         )
     );
 
-    // expression with nexted loop, we'll add context to inner loop
+    // expression with nested loop, we'll add context to inner loop
     let expr = function(
         "main",
         base(intt()),
@@ -79,8 +79,14 @@ fn test_in_context_two_loops() -> crate::Result {
 #[test]
 fn test_simple_context_cycle() -> crate::Result {
     use crate::ast::*;
-    let expr = dowhile(single(arg()), parallel!(tfalse(), int(3)))
+    let inputs = single(arg())
         .with_arg_types(base(intt()), tuplet!(intt()))
+        .initialize_ctx();
+    let outputs = parallel!(tfalse(), int(3))
+        .with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt()))
+        .initialize_ctx();
+    let expr = dowhile(arg(), parallel!(tfalse(), int(3)))
+        .with_arg_types(tuplet!(intt()), tuplet!(intt()))
         .initialize_ctx();
     let inner = single(int(3))
         .with_arg_types(tuplet!(intt()), tuplet!(intt()))
@@ -90,6 +96,7 @@ fn test_simple_context_cycle() -> crate::Result {
         &format!(
             "
 (union {expr} {inner})
+(Subst (NoContext) {inputs} {outputs})
 (AddContext (NoContext) (Full) {expr})
 ",
         ),
@@ -98,8 +105,8 @@ fn test_simple_context_cycle() -> crate::Result {
 (check (= {expr} {inner}))
 "
         ),
-        vec![expr.to_program(base(intt()), tuplet!(intt()))],
-        Value::Const(Constant::Int(3)),
+        vec![expr.to_program(tuplet!(intt()), tuplet!(intt()))],
+        tuplev!(intv(3)),
         Value::Tuple(vec![Value::Const(Constant::Int(3))]),
         vec![],
     )

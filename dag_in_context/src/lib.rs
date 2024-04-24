@@ -6,7 +6,7 @@ use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
 
-use crate::interpreter::interpret_dag_prog;
+use crate::{interpreter::interpret_dag_prog, schedule::mk_schedule};
 
 pub(crate) mod add_context;
 pub mod ast;
@@ -25,6 +25,7 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
+pub(crate) mod schedule;
 
 pub type Result = std::result::Result<(), MainError>;
 
@@ -97,11 +98,7 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
 pub fn build_program(program: &TreeProgram) -> String {
     let (term, termdag) = program.to_egglog();
     let printed = print_with_intermediate_vars(&termdag, term);
-    format!(
-        "{}\n{printed}\n{}\n",
-        prologue(),
-        include_str!("schedule.egg"),
-    )
+    format!("{}\n{printed}\n{}\n", prologue(), mk_schedule(),)
 }
 
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
@@ -231,11 +228,7 @@ fn egglog_test_internal(
         }
     }
 
-    let program = format!(
-        "{}\n{build}\n{}\n{check}\n",
-        prologue(),
-        include_str!("schedule.egg"),
-    );
+    let program = format!("{}\n{build}\n{}\n{check}\n", prologue(), mk_schedule(),);
 
     if print_program {
         eprintln!("{}\n{}", program, include_str!("utility/debug-helper.egg"));

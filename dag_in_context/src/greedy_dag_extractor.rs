@@ -503,9 +503,9 @@ pub fn extract_without_linearity(
     let root_costset = extractor
         .costs
         .get(root_eclass)
-        .unwrap()
+        .expect("Failed to extract program! Also failed to extract any functions in program.")
         .get(root_eclass)
-        .unwrap()
+        .expect("Failed to extract program!")
         .clone();
 
     // now run translation to expressions

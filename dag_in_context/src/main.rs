@@ -1,5 +1,5 @@
 use dag_in_context::prologue;
 
 fn main() {
-    println!("{}\n{}", prologue(), include_str!("schedule.egg"));
+    println!("{}", prologue());
 }

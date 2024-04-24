@@ -127,10 +127,21 @@ impl Expr {
             Expr::Switch(case_num, input, branches) => {
                 let new_case_num = case_num.add_ctx_with_cache(current_ctx.clone(), cache);
                 let new_input = input.add_ctx_with_cache(current_ctx.clone(), cache);
-                // TODO add switch ctx
                 let new_branches = branches
                     .iter()
-                    .map(|b| b.add_ctx_with_cache(current_ctx.clone(), cache))
+                    .enumerate()
+                    .map(|(i, b)| {
+                        let b_ctx = if cache.initialize {
+                            current_ctx.clone()
+                        } else {
+                            Assumption::InSwitch(
+                                i.try_into().unwrap(),
+                                new_case_num.clone(),
+                                new_input.clone(),
+                            )
+                        };
+                        b.add_ctx_with_cache(b_ctx, cache)
+                    })
                     .collect();
                 RcExpr::new(Expr::Switch(new_case_num, new_input, new_branches))
             }

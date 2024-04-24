@@ -74,6 +74,7 @@ pub enum Assumption {
     InLoop(RcExpr, RcExpr),
     NoContext,
     InIf(bool, RcExpr, RcExpr),
+    InSwitch(i64, RcExpr, RcExpr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

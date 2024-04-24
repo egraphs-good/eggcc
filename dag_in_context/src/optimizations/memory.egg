@@ -288,9 +288,15 @@
                 (PointsToCells pred-body (PointsToCellsAtIter aps inputs pred-body 0))))))
       :ruleset always-run)
 
+; avoid quadratic query
+(function succ (i64) i64)
+(rule ((PointsToCellsAtIter aps inputs pred-body i))
+      ((set (succ i) (+ i 1)))
+      :ruleset always-run)
+
 ; Note that this rule is bounded by ruleset memory
 (rule ((= pointees0 (PointsToCellsAtIter aps inputs pred-body i))
-       (= pointees1 (PointsToCellsAtIter aps inputs pred-body (+ i 1)))
+       (= pointees1 (PointsToCellsAtIter aps inputs pred-body (succ i)))
        (Resolved-Pointees pointees0)
        (Resolved-Pointees pointees1)
        (!= pointees0 pointees1))
@@ -302,7 +308,7 @@
       :ruleset always-run)
 
 (rule ((= pointees (PointsToCellsAtIter aps inputs pred-body i))
-       (= pointees (PointsToCellsAtIter aps inputs pred-body (+ i 1))))
+       (= pointees (PointsToCellsAtIter aps inputs pred-body (succ i))))
       ((set (PointsToCells (DoWhile inputs pred-body) aps)
             pointees))
       :ruleset always-run)

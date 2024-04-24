@@ -1,5 +1,5 @@
 (run-schedule
-  (repeat 6
+  (repeat 1
     (saturate always-run) ;; subst and type-helpers depend on always-run
     (saturate ;; subst depends on type information for the argument
       (saturate type-helpers)
@@ -30,6 +30,42 @@
     ;;conditional-invariant-code-motion
     switch_rewrite
     loop-simplify
+    loop-unroll
+    )
+
+  (repeat 5
+    (saturate always-run) ;; subst and type-helpers depend on always-run
+    (saturate ;; subst depends on type information for the argument
+      (saturate type-helpers)
+      type-analysis)
+    
+    ;; run substitution in a phased way, avoiding
+    ;; saturation issues when substitution observes its
+    ;; own equalities.
+    (saturate subst)
+    (saturate apply-subst-unions)
+    (saturate cleanup-subst)
+
+    (saturate ;; saturate rulesets that we run to saturation
+      (saturate always-run)
+      (saturate canon)
+      (saturate error-checking)
+      (saturate
+        (saturate type-helpers)
+        type-analysis
+      )
+      (saturate
+        ;; make sure to saturate context-helpers, since they ensure the other rules saturate
+        (saturate context-helpers)
+        context
+        context-prop)
+      (saturate interval-analysis))
+    ;; TODO enable this ruleset again after fixing for regions
+    ;;conditional-invariant-code-motion
+    switch_rewrite
+    loop-simplify
+    ;loop-unroll
     )
   )
+
 

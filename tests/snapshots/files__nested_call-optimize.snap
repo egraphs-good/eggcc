@@ -4,8 +4,8 @@ expression: visualization.result
 ---
 @inc(v0: int): int {
   v2: int = const 2;
-  v4: int = const 1;
-  v7: int = add v4 v0;
+  v5: int = const 1;
+  v7: int = add v0 v5;
   v9: int = mul v2 v7;
   ret v9;
 }

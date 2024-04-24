@@ -6,7 +6,7 @@ use std::{
 use strum_macros::EnumIter;
 
 use crate::{
-    ast::{base, boolt, inif, intt},
+    ast::{base, boolt, inif, inloop, inswitch, intt},
     schema::{
         Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
         UnaryOp,
@@ -344,19 +344,41 @@ impl Expr {
                 Rc::new(Expr::If(
                     new_pred.clone(),
                     new_input.clone(),
-                    // TODO: use replace_ctx instead
-                    then.add_ctx(inif(true, new_pred.clone(), new_input.clone())),
-                    els.add_ctx(inif(false, new_pred, new_input)),
+                    then.replace_ctx(inif(true, new_pred.clone(), new_input.clone())),
+                    els.replace_ctx(inif(false, new_pred, new_input)),
                 ))
             }
-            Expr::Switch(x, y, branches) => Rc::new(Expr::Switch(
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache),
-                branches.clone(), // TODO: add ctx
-            )),
-            Expr::DoWhile(x, body) => Rc::new(Expr::DoWhile(
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
-                body.clone(), // TODO: add ctx
+            Expr::Switch(pred, input, branches) => {
+                let new_pred = Self::subst_with_cache(arg, arg_ty, arg_ctx, pred, subst_cache);
+                let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
+                let new_branches = branches
+                    .iter()
+                    .enumerate()
+                    .map(|(i, branch)| {
+                        branch.replace_ctx(inswitch(
+                            i.try_into().unwrap(),
+                            new_pred.clone(),
+                            new_input.clone(),
+                        ))
+                    })
+                    .collect();
+                Rc::new(Expr::Switch(new_pred, new_input, new_branches))
+            }
+            Expr::DoWhile(input, body) => {
+                let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
+                Rc::new(Expr::DoWhile(
+                    new_input.clone(),
+                    // It feels a bit odd to add new context with the old body, but this seems to be
+                    // what add_ctx_with_cache does when it reaches a loop. Otherwise, we'd need
+                    // some infinite cycle.
+                    body.replace_ctx(inloop(new_input, body.clone())),
+                ))
+            }
+            Expr::Function(x, y, z, body) => Rc::new(Expr::Function(
+                x.clone(),
+                y.clone(),
+                z.clone(),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, body, subst_cache),
             )),
 
             // Substitute new context

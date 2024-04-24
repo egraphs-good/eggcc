@@ -1,4 +1,4 @@
-use egglog::*;
+use egglog::{util::IndexMap, *};
 use egraph_serialize::{ClassId, EGraph, NodeId};
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
@@ -31,7 +31,8 @@ pub(crate) struct Extractor<'a> {
     pub(crate) typechecker: TypeChecker<'a>,
 
     // Each term must correspond to a node in the egraph. We store that here
-    pub(crate) correspondence: HashMap<Term, NodeId>,
+    // Use an indexmap for deterministic order of iteration
+    pub(crate) correspondence: IndexMap<Term, NodeId>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
     pub(crate) term_to_expr: Option<HashMap<Term, RcExpr>>,

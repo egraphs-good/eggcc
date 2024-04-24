@@ -33,7 +33,7 @@
        (IsLeaf leaf)
        )
       ;; add the assumption `to`
-      ((DelayedSubstUnion lhs (AddContext assum (Region) to)))
+      ((DelayedSubstUnion lhs (AddContext assum to)))
       :ruleset subst)
 (rule ((= lhs (Subst assum to (InContext oldctx (Const c ty))))
        (IsLeaf leaf)
@@ -124,5 +124,5 @@
       ((delete (DelayedSubstUnion lhs rhs)))
       :ruleset cleanup-subst)
 (rule ((Subst assum to in))
-      ((delete (Subst assum to in)))
+      ((subsume (Subst assum to in)))
       :ruleset cleanup-subst)

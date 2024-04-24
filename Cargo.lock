@@ -605,7 +605,6 @@ dependencies = [
 [[package]]
 name = "egglog"
 version = "0.1.0"
-source = "git+https://github.com/oflatt/egglog?rev=3eb6a91583f54d70d64d5933beac551f61b44be0#3eb6a91583f54d70d64d5933beac551f61b44be0"
 dependencies = [
  "clap",
  "egraph-serialize",

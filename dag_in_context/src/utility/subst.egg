@@ -124,5 +124,5 @@
       ((delete (DelayedSubstUnion lhs rhs)))
       :ruleset cleanup-subst)
 (rule ((Subst assum to in))
-      ((delete (Subst assum to in)))
+      ((subsume (Subst assum to in)))
       :ruleset cleanup-subst)

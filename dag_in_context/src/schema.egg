@@ -163,8 +163,8 @@
   ; InLoop is a special context because it describes the argument of the loop. It is a *scope context*.
   ;      input    pred_output
   (InLoop Expr     Expr)
-  ; Branch of the switch and what the predicate is
-  (InSwitch i64 Expr)
+  ; Branch of the switch, and what the predicate is, and what the input is
+  (InSwitch i64 Expr Expr)
   ; If the predicate was true, and what the predicate is, and what the input is
   (InIf bool Expr Expr)
   ; Other assumptions are possible, but not supported yet.

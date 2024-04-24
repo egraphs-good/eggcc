@@ -317,6 +317,10 @@ pub fn inif(is_then: bool, pred: RcExpr, input: RcExpr) -> Assumption {
     Assumption::InIf(is_then, pred, input)
 }
 
+pub fn inswitch(branch: i64, pred: RcExpr, input: RcExpr) -> Assumption {
+    Assumption::InSwitch(branch, pred, input)
+}
+
 pub fn noctx() -> Assumption {
     Assumption::NoContext
 }

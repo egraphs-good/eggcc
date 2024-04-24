@@ -362,11 +362,6 @@ fn calculate_cost_set(
         .map(|(cs, _is_region_root)| cs.term.clone())
         .collect();
 
-    if node.op == "Bop" && sub_terms.len() < 3 {
-        eprintln!("Node: {:?}", node);
-        panic!("Expected 3 children for BOp, found {:?}", sub_terms.len());
-    }
-
     let term = extractor.get_term(info, node_id, sub_terms);
 
     Some(CostSet { total, costs, term })
@@ -379,7 +374,6 @@ pub fn extract(
     termdag: &mut TermDag,
     cost_model: impl CostModel,
 ) -> (CostSet, TreeProgram) {
-    eprintln!("Extracting");
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 

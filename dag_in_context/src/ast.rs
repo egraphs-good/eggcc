@@ -42,6 +42,14 @@ pub fn intv(i: i64) -> Value {
     Value::Const(Constant::Int(i))
 }
 
+pub fn falsev() -> Value {
+    Value::Const(Constant::Bool(false))
+}
+
+pub fn truev() -> Value {
+    Value::Const(Constant::Bool(true))
+}
+
 pub fn statev() -> Value {
     Value::StateV
 }

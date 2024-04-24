@@ -14,8 +14,8 @@ expression: visualization.result
   print v21;
   v19: int = id v4;
 .__27__:
-  v29: int = const 1;
-  v31: int = add v4 v29;
+  v28: int = const 1;
+  v31: int = add v28 v4;
   v35: bool = lt v31 v7;
   v4: int = id v31;
   br v35 .__6__ .__39__;

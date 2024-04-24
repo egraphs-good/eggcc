@@ -12,7 +12,7 @@ fn test_in_context_tuple() -> crate::Result {
 
     let build = format!(
         "
-(let substituted (AddContext (NoContext) (Region) {tuple}))"
+(let substituted (AddContext (NoContext) {tuple}))"
     );
     let check = format!(
         "
@@ -36,6 +36,7 @@ fn test_in_context_tuple() -> crate::Result {
 #[test]
 fn test_in_context_two_loops() -> crate::Result {
     use crate::ast::*;
+    use crate::egglog_test_and_print_program;
 
     let loop_body = parallel!(
         tfalse(),
@@ -48,28 +49,21 @@ fn test_in_context_two_loops() -> crate::Result {
         )
     );
 
-    // expression with nexted loop, we'll add context to inner loop
-    let expr = function(
-        "main",
-        base(intt()),
-        tuplet!(intt()),
-        dowhile(single(int(1)), loop_body.clone()),
-    )
-    .func_with_arg_types()
-    .initialize_ctx();
-    let with_ctx = expr.replace_ctx(noctx());
+    // expression with nested loop, we'll add context to inner loop
+    let expr = dowhile(single(int(1)), loop_body.clone())
+        .with_arg_types(emptyt(), tuplet!(intt()))
+        .initialize_ctx();
 
-    egglog_test(
+    egglog_test_and_print_program(
         &format!(
             "
-(let egglog-version (AddFuncContext {expr}))"
+(let egglog-version (AddContext (NoContext) {expr}))"
         ),
         &format!(
             "
-(let rust-version {with_ctx})
-(check (= egglog-version rust-version))"
+(check (= egglog-version {expr}))"
         ),
-        vec![expr.func_to_program()],
+        vec![expr.to_program(emptyt(), tuplet!(intt()))],
         Value::Tuple(vec![]),
         tuplev!(intv(4)),
         vec![],
@@ -79,8 +73,14 @@ fn test_in_context_two_loops() -> crate::Result {
 #[test]
 fn test_simple_context_cycle() -> crate::Result {
     use crate::ast::*;
-    let expr = dowhile(single(arg()), parallel!(tfalse(), int(3)))
+    let inputs = single(arg())
         .with_arg_types(base(intt()), tuplet!(intt()))
+        .initialize_ctx();
+    let outputs = parallel!(tfalse(), int(3))
+        .with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt()))
+        .initialize_ctx();
+    let expr = dowhile(arg(), parallel!(tfalse(), int(3)))
+        .with_arg_types(tuplet!(intt()), tuplet!(intt()))
         .initialize_ctx();
     let inner = single(int(3))
         .with_arg_types(tuplet!(intt()), tuplet!(intt()))
@@ -90,7 +90,8 @@ fn test_simple_context_cycle() -> crate::Result {
         &format!(
             "
 (union {expr} {inner})
-(AddContext (NoContext) (Full) {expr})
+(Subst (NoContext) {inputs} {outputs})
+(AddContext (NoContext) {expr})
 ",
         ),
         &format!(
@@ -98,8 +99,8 @@ fn test_simple_context_cycle() -> crate::Result {
 (check (= {expr} {inner}))
 "
         ),
-        vec![expr.to_program(base(intt()), tuplet!(intt()))],
-        Value::Const(Constant::Int(3)),
+        vec![expr.to_program(tuplet!(intt()), tuplet!(intt()))],
+        tuplev!(intv(3)),
         Value::Tuple(vec![Value::Const(Constant::Int(3))]),
         vec![],
     )
@@ -110,14 +111,21 @@ fn simple_context() -> crate::Result {
     use crate::ast::*;
     use crate::egglog_test;
     use crate::{interpreter::Value, schema::Constant};
-    let expr =
-        function("main", base(intt()), base(intt()), inctx(noctx(), int(2))).func_with_arg_types();
+    let expr = int(2)
+        .with_arg_types(emptyt(), base(intt()))
+        .initialize_ctx();
+    let context_to_add = inif(
+        true,
+        ttrue().with_arg_types(emptyt(), base(boolt())),
+        parallel!().with_arg_types(emptyt(), emptyt()),
+    );
+    let expected = expr.replace_ctx(context_to_add.clone());
 
     egglog_test(
-        &format!("(AddFuncContext {expr})"),
+        &format!("(let egglog (AddContext {context_to_add} {expr}))"),
         &format!(
             "
-(check (= (AddFuncContext {expr}) {expr}))",
+(check (= egglog {expected}))",
         ),
         vec![expr.to_program(emptyt(), base(intt()))],
         Value::Tuple(vec![]),

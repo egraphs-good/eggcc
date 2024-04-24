@@ -8,7 +8,6 @@ expression: visualization.result
   ret v5;
 }
 @main {
-  v1: int = const 0;
-  v4: int = call @inc v1;
-  print v4;
+  v1: int = const 1;
+  print v1;
 }

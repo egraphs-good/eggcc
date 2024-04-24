@@ -215,6 +215,8 @@ impl<'a> Extractor<'a> {
     /// Construct a term for this operator with subterms from the cost sets
     /// We also need to add this term to the correspondence map so we can
     /// find its enode id later.
+    /// NB: Don't use this method if the node has the form InContext(assum, body),
+    /// in which case we should just skip assum and return the term for body.
     fn get_term(&mut self, info: &EgraphInfo, node_id: NodeId, children: Vec<Term>) -> Term {
         let node = &info.egraph[&node_id];
         let op = &node.op;
@@ -252,8 +254,17 @@ fn calculate_cost_set(
 ) -> Option<CostSet> {
     let node = &info.egraph[&node_id];
     let cid = info.egraph.nid_to_cid(&node_id);
-
     let region_costs = extractor.costs.get(&rootid).unwrap();
+
+    if node.op == "InContext" {
+        // We skip InContext and only extract its body
+        return Some(
+            region_costs
+                .get(info.egraph.nid_to_cid(&node.children[1]))?
+                .clone(),
+        );
+    }
+
     // get the cost sets for the children
     let child_cost_sets = enode_children(info.egraph, node)
         .iter()

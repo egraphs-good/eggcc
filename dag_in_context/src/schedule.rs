@@ -1,31 +1,26 @@
-pub(crate) fn run_optimizations(optimization_set_name: String) -> String {
-    format!(
-        "
-  (repeat 3
-    ;; saturate helpers first
-    (saturate
-      (saturate saturating-helpers)
-      saturating)
-    
-    ;; run substitution in a phased way, avoiding
-    ;; saturation issues when substitution observes its
-    ;; own equalities.
-    (saturate subst)
-    (saturate apply-subst-unions)
-    (saturate cleanup-subst)
+pub(crate) fn helpers() -> String {
+    "
+;; saturate all helpers first
+(saturate
+  (saturate saturating-helpers)
+  saturating)
 
-    (saturate
-      (saturate saturating-helpers)
-      saturating)
-    ;; TODO enable this ruleset again after fixing for regions
-    ;;conditional-invariant-code-motion
-    {optimization_set_name})"
-    )
+;; run substitution in a phased way, avoiding
+;; saturation issues when substitution observes its
+;; own equalities.
+(saturate subst)
+(saturate apply-subst-unions)
+(saturate cleanup-subst)
+
+;; saturate all helpers again for new substitutions
+(saturate
+  (saturate saturating-helpers)
+  saturating)"
+        .to_string()
 }
 
 pub(crate) fn mk_schedule() -> String {
-    let first_three_iterations = run_optimizations("expensive-optimizations".to_string());
-    let second_three_iterations = run_optimizations("optimizations".to_string());
+    let helpers = helpers();
     format!(
         "
   ;; soundness of typechecking depends on saturating 
@@ -47,13 +42,13 @@ pub(crate) fn mk_schedule() -> String {
     switch_rewrite
     loop-simplify)
   
-  (unstable-combined-ruleset expensive-optimizations
-    optimizations
-    loop-unroll)
-  
   (run-schedule
-    {first_three_iterations}
-    {second_three_iterations})
+    {helpers}
+    loop-unroll
+    (repeat 6
+      {helpers}
+      optimizations)
+    {helpers})
   "
     )
 }

@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
+use ast::val_empty;
 use egglog::{Term, TermDag};
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
-use schema::TreeProgram;
+use schema::{RcExpr, TreeProgram};
 use std::fmt::Write;
 
-use crate::{interpreter::interpret_dag_prog, schedule::mk_schedule};
+use crate::{
+    interpreter::interpret_dag_prog, optimizations::function_inlining, schedule::mk_schedule,
+};
 
 pub(crate) mod add_context;
 pub mod ast;
@@ -46,7 +49,6 @@ pub fn prologue() -> String {
         include_str!("utility/canonicalize.egg"),
         include_str!("interval_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
-        include_str!("optimizations/function_inlining.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
         include_str!("optimizations/loop_unroll.egg"),
@@ -57,12 +59,19 @@ pub fn prologue() -> String {
 
 /// Adds an egglog program to `res` that adds the given term
 /// to the database.
-/// Returns a fresh variable referring to the program.
+/// Returns a fresh variable referring to the program and
+/// the variable count.
+/// Note that because the cache caches based on a term, which
+/// references the termdag, this cache **cannot** be reused
+/// across different TermDags. To allow use for multiple term
+/// dags, use the returned var count as the start for the next
+/// term dag.
 fn print_with_intermediate_helper(
     termdag: &TermDag,
     term: Term,
     cache: &mut HashMap<Term, String>,
     res: &mut String,
+    var_count: &mut i32,
 ) -> String {
     if let Some(var) = cache.get(&term) {
         return var.clone();
@@ -75,13 +84,21 @@ fn print_with_intermediate_helper(
             let child_vars = children
                 .iter()
                 .map(|child| {
-                    print_with_intermediate_helper(termdag, termdag.get(*child), cache, res)
+                    let var = print_with_intermediate_helper(
+                        termdag,
+                        termdag.get(*child),
+                        cache,
+                        res,
+                        var_count,
+                    );
+                    var
                 })
                 .collect::<Vec<String>>()
                 .join(" ");
-            let fresh_var = format!("__tmp{}", cache.len());
+            let fresh_var = format!("__tmp{}", var_count);
             writeln!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
             cache.insert(term, fresh_var.clone());
+            *var_count += 1;
             fresh_var
         }
     }
@@ -90,18 +107,74 @@ fn print_with_intermediate_helper(
 pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
     let mut printed = String::new();
     let mut cache = HashMap::<Term, String>::new();
-    let res = print_with_intermediate_helper(termdag, term, &mut cache, &mut printed);
+    // TODO: will need to use the term in the union and then actually
+    // generate the function inlining unions
+    let mut var_count = 0;
+    let res =
+        print_with_intermediate_helper(termdag, term, &mut cache, &mut printed, &mut var_count);
     printed.push_str(&format!("(let PROG {res})\n"));
     printed
 }
 
+fn print_expr_with_intermediate_helper(
+    expr: &RcExpr,
+    printed: &mut String,
+    var_count: &mut i32,
+) -> String {
+    // NOTE: I believe that the cache only works within a term and term dag
+    let mut cache = HashMap::<Term, String>::new();
+    let (term, term_dag) = expr.to_egglog();
+    print_with_intermediate_helper(&term_dag, term, &mut cache, printed, var_count)
+}
+
+// Returns a pair of (formatted unions, variable count)
+// The variable count is for incrementing the number for intermediate variables
+fn print_function_inlining_pairs(
+    function_inlining_pairs: Vec<function_inlining::CallBody>,
+    printed: &mut String,
+    var_count: &mut i32,
+) -> String {
+    // Get unions
+    let unions = function_inlining_pairs
+        .iter()
+        .map(|cb| {
+            format!(
+                "(union {} {})",
+                print_expr_with_intermediate_helper(&cb.call, printed, var_count),
+                print_expr_with_intermediate_helper(&cb.body, printed, var_count),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    unions
+}
+
+// TODO: It is expected that program has context added
 pub fn build_program(program: &TreeProgram) -> String {
+    let mut printed = String::new();
+    let program = program.add_context();
+
+    let mut var_count = 0;
+    let function_inlining = print_function_inlining_pairs(
+        function_inlining::function_inlining_pairs(&program, 2),
+        &mut printed,
+        &mut var_count,
+    );
+
+    let mut cache = HashMap::<Term, String>::new();
     let (term, termdag) = program.to_egglog();
-    let printed = print_with_intermediate_vars(&termdag, term);
-    format!("{}\n{printed}\n{}\n", prologue(), mk_schedule(),)
+    let res =
+        print_with_intermediate_helper(&termdag, term, &mut cache, &mut printed, &mut var_count);
+
+    format!(
+        "{}\n{printed}\n(let PROG {res})\n\n{function_inlining}\n{}\n",
+        prologue(),
+        mk_schedule()
+    )
 }
 
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
+    // TODO: add context like before?
     let egglog_prog = build_program(program);
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&egglog_prog)?;
@@ -188,6 +261,19 @@ pub fn egglog_test(
     expected_log: Vec<String>,
 ) -> Result {
     egglog_test_internal(build, check, progs, input, expected, expected_log, false)
+}
+
+// Runs an egglog test without interpretation.
+pub fn egglog_test_no_interp(build: &str, check: &str) -> Result {
+    egglog_test_internal(
+        build,
+        check,
+        vec![],
+        val_empty(),
+        val_empty(),
+        vec![],
+        false,
+    )
 }
 
 /// Runs an egglog test.

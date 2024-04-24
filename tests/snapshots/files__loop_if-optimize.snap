@@ -7,7 +7,7 @@ expression: visualization.result
   v5: int = id v2;
   v6: int = id v2;
 .__8__:
-  v11: bool = eq v6 v5;
+  v11: bool = eq v5 v6;
   br v11 .__33__ .__18__;
 .__33__:
   v29: int = id v5;
@@ -33,7 +33,7 @@ expression: visualization.result
 .__18__:
   v20: int = const 1;
   v22: int = add v5 v20;
-  v27: int = add v6 v20;
+  v27: int = add v20 v6;
   v29: int = id v22;
   v30: bool = id v11;
   v31: int = id v27;

@@ -27,7 +27,7 @@ expression: visualization.result
   v82: int = add v79 v47;
   print v82;
   v88: bool = const true;
-  v92: int = add v47 v46;
+  v92: int = add v46 v47;
   v70: int = id v45;
   v71: int = id v46;
   v72: bool = id v88;

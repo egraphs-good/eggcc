@@ -3,8 +3,8 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @inc(v0: int) {
-  v2: int = const 1;
-  v5: int = add v2 v0;
+  v3: int = const 1;
+  v5: int = add v0 v3;
   print v5;
 }
 @main {

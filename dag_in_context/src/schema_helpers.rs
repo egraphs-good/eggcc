@@ -37,6 +37,13 @@ impl Display for Expr {
     }
 }
 
+impl Display for Assumption {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let (term, termdag) = self.to_egglog();
+        write!(f, "{}", termdag.to_string(&term))
+    }
+}
+
 impl TernaryOp {
     pub(crate) fn name(&self) -> &'static str {
         use TernaryOp::*;
@@ -507,6 +514,7 @@ pub enum AssumptionRef {
     InLoop(*const Expr, *const Expr),
     NoContext,
     InIf(bool, *const Expr, *const Expr),
+    InSwitch(i64, *const Expr, *const Expr),
 }
 
 impl Assumption {
@@ -518,6 +526,9 @@ impl Assumption {
             Assumption::NoContext => AssumptionRef::NoContext,
             Assumption::InIf(b, pred, input) => {
                 AssumptionRef::InIf(*b, Rc::as_ptr(pred), Rc::as_ptr(input))
+            }
+            Assumption::InSwitch(branch, pred, input) => {
+                AssumptionRef::InSwitch(*branch, Rc::as_ptr(pred), Rc::as_ptr(input))
             }
         }
     }

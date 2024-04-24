@@ -1,0 +1,25 @@
+;; use these rules to clean up the database, removing helpers
+;; this makes the visualization easier to read
+
+
+(rule ((HasType a b))
+      ((delete (HasType a b))))
+(rule ((BodyContainsExpr a b))
+      ((delete (BodyContainsExpr a b))))
+(rule ((ExprIsPure e))
+      ((delete (ExprIsPure e))))
+(rule ((HasArgType e ty))
+      ((delete (HasArgType e ty))))
+(rule ((is-inv-Expr e ty))
+      ((delete (is-inv-Expr e ty))))
+(rule ((IsLeaf e))
+      ((delete (IsLeaf e))))
+(rule ((tuple-length e))
+      ((delete (tuple-length e))))
+(rule ((BinaryOpIsPure e))
+      ((delete (BinaryOpIsPure e))))
+(rule ((TypeList-suffix e a))
+      ((delete (TypeList-suffix e a))))
+(rule ((ContextOf e a))
+      ((delete (ContextOf e a))))
+(run-schedule (saturate (run)))

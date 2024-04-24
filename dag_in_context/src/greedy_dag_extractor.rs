@@ -401,75 +401,8 @@ pub fn extract(
         &egraph_info,
         Some(&effectful_nodes_along_path),
     );
-    // let _effectful_regions_along_path = effectful_nodes_along_path
-    //     .into_iter()
-    //     .filter(|nid| egraph_info.is_region_node(nid.clone()))
-    //     .collect::<HashSet<NodeId>>();
-
-    // TODO loop over effectful regions
-    // 1) Find reachable nodes in this region
-    // 2) Extract sub-regions
-    // 3) Extract this region, banning all nodes in effectful regions not on the state edge path
-    // 4) extract current region from scratch, sub-regions get cost from previous extraction
-    //    a) mark effectful nodes along the path as extractable (just for this region)
-    //    b) extract the region
-
-    // To get the type of an e-node, we use the old extractor and query its type
-
-    /*let mut linear_egraph = egraph.clone();
-    remove_invalid_effectful_nodes(&mut linear_egraph, &effectful_regions, todo!());
-
-    let extract = &mut Extractor::new(
-        &cost_model,
-        termdag,
-        Default::default(),
-        &linear_egraph,
-        unextractables,
-    );
-    let res = extract_without_linearity(extractor_not_linear);*/
-
     (cost_res, res)
 }
-
-/// Perform a greedy extraction of the DAG, without considering linearity.
-/// This uses the "fast_greedy_dag" algorithm from the extraction gym.
-// pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
-//     let n2c = |nid: &NodeId| extractor.egraph.nid_to_cid(nid);
-//     let parents = build_parent_index(extractor.egraph);
-//     let mut worklist = initialize_worklist(extractor.egraph);
-
-//     while let Some(node_id) = worklist.pop() {
-//         let class_id = n2c(&node_id);
-//         let node = &extractor.egraph[&node_id];
-//         if extractor.unextractables.contains(&node.op) {
-//             continue;
-//         }
-//         if node
-//             .children
-//             .iter()
-//             .all(|c| extractor.costs.contains_key(n2c(c)))
-//         {
-//             let lookup = extractor.costs.get(class_id);
-//             let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
-//             if lookup.is_some() {
-//                 prev_cost = lookup.unwrap().total;
-//             }
-
-//             let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
-//             if cost_set.total < prev_cost {
-//                 extractor.costs.insert(class_id.clone(), cost_set);
-//                 worklist.extend(parents[class_id].iter().cloned());
-//             }
-//         }
-//     }
-
-//     let mut root_eclasses = extractor.egraph.root_eclasses.clone();
-//     root_eclasses.sort();
-//     root_eclasses.dedup();
-
-//     let root = get_root(extractor.egraph);
-//     extractor.costs.get(n2c(&root)).unwrap().clone()
-// }
 
 pub fn extract_without_linearity(
     extractor: &mut Extractor,

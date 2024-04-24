@@ -11,7 +11,7 @@ expression: visualization.result
   v49: int = id v9;
   jmp .__54__;
 .__13__:
-  v15: bool = eq v0 v9;
+  v15: bool = eq v9 v0;
   br v15 .__41__ .__22__;
 .__41__:
   v43: int = call @fac v3;

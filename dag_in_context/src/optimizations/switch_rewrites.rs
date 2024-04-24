@@ -6,8 +6,8 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
     use crate::ast::*;
 
     let build = tif(and(tfalse(), ttrue()), empty(), int(1), int(2))
-        .to_program(emptyt(), base(intt()))
-        .add_context();
+        .with_arg_types(emptyt(), base(intt()))
+        .add_ctx(noctx());
 
     let check = tif(
         tfalse(),
@@ -15,13 +15,20 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
         tif(get(arg(), 0), empty(), int(1), int(2)),
         int(2),
     )
-    .to_program(emptyt(), base(intt()))
-    .add_context();
+    .with_arg_types(emptyt(), base(intt()))
+    .add_ctx(noctx());
 
-    egglog_test(
+    crate::egglog_test_and_print_program(
         &format!("(let b {build})"),
-        &format!("(let c {check}) (check (= b c))"),
-        vec![build, check],
+        &format!("(let c {check}) (check (= b
+; (If pred ins thn els)
+(If (InContext (NoContext) (Const (Bool false) (TupleT (TNil))))
+    ins ; (Single (InContext (NoContext) (Const (Bool true) (TupleT (TNil)))))
+    thn ; (If (Get (InContext ctx_outer_true (Arg inner_arg_ty)) 0) (InContext ctx_outer_true_2 (Empty inner_arg_ty_3)) (InContext one_ctx (Const (Int 1) (TupleT (TNil)))) (InContext two_ctx (Const (Int 2) (TupleT (TNil)))))
+    (InContext ctx_outer_false (Const (Int 2) inner_arg_ty_2))
+)
+            ))"), // incommenting ins causes the test to fail
+        vec![],
         val_empty(),
         intv(2),
         vec![],

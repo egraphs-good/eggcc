@@ -344,8 +344,9 @@ impl Expr {
                 Rc::new(Expr::If(
                     new_pred.clone(),
                     new_input.clone(),
-                    then.replace_ctx(inif(true, new_pred.clone(), new_input.clone())),
-                    els.replace_ctx(inif(false, new_pred, new_input)),
+                    then.clone(),
+                    els.clone(), // then.replace_ctx(inif(true, new_pred.clone(), new_input.clone())),
+                                 // els.replace_ctx(inif(false, new_pred, new_input)),
                 ))
             }
             Expr::Switch(pred, input, branches) => {
@@ -355,11 +356,12 @@ impl Expr {
                     .iter()
                     .enumerate()
                     .map(|(i, branch)| {
-                        branch.replace_ctx(inswitch(
-                            i.try_into().unwrap(),
-                            new_pred.clone(),
-                            new_input.clone(),
-                        ))
+                        branch.clone()
+                        // branch.replace_ctx(inswitch(
+                        //     i.try_into().unwrap(),
+                        //     new_pred.clone(),
+                        //     new_input.clone(),
+                        // ))
                     })
                     .collect();
                 Rc::new(Expr::Switch(new_pred, new_input, new_branches))
@@ -371,7 +373,8 @@ impl Expr {
                     // It feels a bit odd to add new context with the old body, but this seems to be
                     // what add_ctx_with_cache does when it reaches a loop. Otherwise, we'd need
                     // some infinite cycle.
-                    body.replace_ctx(inloop(new_input, body.clone())),
+                    body.clone(),
+                    // body.replace_ctx(inloop(new_input, body.clone())),
                 ))
             }
             Expr::Function(x, y, z, body) => Rc::new(Expr::Function(

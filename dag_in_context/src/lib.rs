@@ -154,7 +154,7 @@ pub fn build_program(program: &TreeProgram) -> String {
 
     let mut var_count = 0;
     let function_inlining = print_function_inlining_pairs(
-        function_inlining::function_inlining_pairs(&program, 2),
+        function_inlining::function_inlining_pairs(program, 1),
         &mut printed,
         &mut var_count,
     );

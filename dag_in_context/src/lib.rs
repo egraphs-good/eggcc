@@ -169,6 +169,8 @@ fn check_program_gets_type(program: TreeProgram) -> Result {
     Ok(())
 }
 
+/// Run the egglog test and print the program for debugging.
+/// Also add the debug_helper.egg file to the end
 pub fn egglog_test_and_print_program(
     build: &str,
     check: &str,
@@ -236,7 +238,7 @@ fn egglog_test_internal(
     );
 
     if print_program {
-        eprintln!("{}", program);
+        eprintln!("{}\n{}", program, include_str!("utility/debug-helper.egg"));
     }
 
     let res = egglog::EGraph::default()

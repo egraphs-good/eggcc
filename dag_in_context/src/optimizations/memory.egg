@@ -207,6 +207,10 @@
 (rule ((PointsToCells (Alloc id sz state ty) ap))
       ((PointsToCells state ap))
       :ruleset always-run)
+(rule ((PointsToCells (Bop (Free) ptr state) ap))
+      ((PointsToCells ptr ap)
+       (PointsToCells state ap))
+      :ruleset always-run)
 
 ; Compute and propagate PointsToCells
 (rewrite (PointsToCells (Concat x y) aps)

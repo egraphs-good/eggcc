@@ -255,7 +255,7 @@ impl Expr {
         }
     }
 
-    // TODO: change this to an Option<Assumption>
+    // Some(assum) if a context is found at leaves, None otherwise
     pub fn get_ctx(&self) -> Option<&Assumption> {
         match self {
             Expr::Const(_, _) => None,

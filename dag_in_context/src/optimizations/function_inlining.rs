@@ -38,7 +38,6 @@ fn get_calls_and_subst(
 }
 
 // Generates a ruleset with pairs of (call, inlined body) to union
-// Inlines
 pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<CallBody> {
     // Find all Calls in the program
     let mut all_funcs = vec![program.entry.clone()];

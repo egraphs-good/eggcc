@@ -1,3 +1,4 @@
+use core::panic;
 use std::{collections::HashMap, rc::Rc};
 
 use egglog::{
@@ -126,6 +127,9 @@ impl Assumption {
                 let branch = term_dag.lit(Literal::Int(*branch));
                 let input = input.to_egglog_internal(term_dag);
                 term_dag.app("InSwitch".into(), vec![branch, pred, input])
+            }
+            Assumption::WildCard(_) => {
+                panic!("Wildcard should only use for query");
             }
         }
     }

@@ -530,6 +530,9 @@ impl Assumption {
             Assumption::InSwitch(branch, pred, input) => {
                 AssumptionRef::InSwitch(*branch, Rc::as_ptr(pred), Rc::as_ptr(input))
             }
+            Assumption::WildCard(_) => {
+                panic!("Wildcard should only use for query");
+            }
         }
     }
 }

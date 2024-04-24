@@ -40,10 +40,6 @@ pub(crate) struct Extractor<'a> {
 }
 
 impl<'a> EgraphInfo<'a> {
-    fn is_region_node(&self, node_id: NodeId) -> bool {
-        !enode_regions(self.egraph, &self.egraph[&node_id]).is_empty()
-    }
-
     pub(crate) fn get_sort_of_eclass(&self, eclass: &ClassId) -> &String {
         self.egraph
             .class_data

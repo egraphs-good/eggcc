@@ -4,13 +4,11 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    hash::Hash,
     rc::Rc,
 };
 
 use egglog::Term;
-use egraph_serialize::{Class, ClassId, NodeId};
-use graphviz_rust::attributes::root;
+use egraph_serialize::{ClassId, NodeId};
 
 use crate::{
     greedy_dag_extractor::{get_root, EgraphInfo, Extractor},

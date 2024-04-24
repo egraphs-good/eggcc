@@ -1,9 +1,35 @@
+
+;; soundness of typechecking depends on saturating 
+;; type-helpers first
+(unstable-combined-ruleset saturating-helpers
+  type-helpers)
+
+(unstable-combined-ruleset saturating
+  always-run
+  canon
+  error-checking
+  type-analysis
+  context
+  context-prop
+  interval-analysis)
+
+
+
+
+(unstable-combined-ruleset optimizations
+  switch_rewrite
+  loop-simplify)
+
+(unstable-combined-ruleset expensive-optimizations
+  optimizations
+  loop-unroll)
+
 (run-schedule
-  (repeat 6
-    (saturate always-run) ;; subst and type-helpers depend on always-run
-    (saturate ;; subst depends on type information for the argument
-      (saturate type-helpers)
-      type-analysis)
+  (repeat 3
+    ;; saturate helpers first
+    (saturate
+      (saturate saturating-helpers)
+      saturating)
     
     ;; run substitution in a phased way, avoiding
     ;; saturation issues when substitution observes its
@@ -12,24 +38,31 @@
     (saturate apply-subst-unions)
     (saturate cleanup-subst)
 
-    (saturate ;; saturate rulesets that we run to saturation
-      (saturate always-run)
-      (saturate canon)
-      (saturate error-checking)
-      (saturate
-        (saturate type-helpers)
-        type-analysis
-      )
-      (saturate
-        context
-        context-prop)
-      (saturate interval-analysis))
+    (saturate
+      (saturate saturating-helpers)
+      saturating)
     ;; TODO enable this ruleset again after fixing for regions
     ;;conditional-invariant-code-motion
-    switch_rewrite
-    loop-simplify
-    loop-unroll
-    )
-  )
+    expensive-optimizations)
+  
+  (repeat 3
+    ;; saturate helpers first
+    (saturate
+      (saturate saturating-helpers)
+      saturating)
+    
+    ;; run substitution in a phased way, avoiding
+    ;; saturation issues when substitution observes its
+    ;; own equalities.
+    (saturate subst)
+    (saturate apply-subst-unions)
+    (saturate cleanup-subst)
+
+    (saturate
+      (saturate saturating-helpers)
+      saturating)
+    ;; TODO enable this ruleset again after fixing for regions
+    ;;conditional-invariant-code-motion
+    optimizations))
 
 

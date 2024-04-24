@@ -503,7 +503,7 @@ dependencies = [
  "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=b20cc2d)",
  "dot-structures",
  "egglog",
- "egraph-serialize 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "egraph-serialize",
  "graphviz-rust 0.8.0",
  "indexmap",
  "main_error",
@@ -511,7 +511,7 @@ dependencies = [
  "rustc-hash",
  "strum",
  "strum_macros",
- "symbol_table 0.3.0",
+ "symbol_table",
  "thiserror",
 ]
 
@@ -582,7 +582,7 @@ dependencies = [
  "dag_in_context",
  "dot-structures",
  "egglog",
- "egraph-serialize 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "egraph-serialize",
  "fixedbitset",
  "glob",
  "graphviz-rust 0.8.0",
@@ -608,8 +608,9 @@ version = "0.1.0"
 source = "git+https://github.com/oflatt/egglog?rev=3eb6a91583f54d70d64d5933beac551f61b44be0#3eb6a91583f54d70d64d5933beac551f61b44be0"
 dependencies = [
  "clap",
- "egraph-serialize 0.1.0 (git+https://github.com/egraphs-good/egraph-serialize?rev=e406ffcec8c6e841089fd3e4f9b76c35ce448950)",
+ "egraph-serialize",
  "env_logger",
+ "generic_symbolic_expressions",
  "hashbrown 0.14.3",
  "indexmap",
  "instant",
@@ -625,8 +626,7 @@ dependencies = [
  "rustc-hash",
  "serde_json",
  "smallvec",
- "symbol_table 0.2.0",
- "symbolic_expressions",
+ "symbol_table",
  "thiserror",
 ]
 
@@ -635,18 +635,6 @@ name = "egraph-serialize"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a41150f383849cfc16ae6230f592112b3c0a2c0e3ec43eb0b09db037bfcce703"
-dependencies = [
- "indexmap",
- "once_cell",
- "ordered-float",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "egraph-serialize"
-version = "0.1.0"
-source = "git+https://github.com/egraphs-good/egraph-serialize?rev=e406ffcec8c6e841089fd3e4f9b76c35ce448950#e406ffcec8c6e841089fd3e4f9b76c35ce448950"
 dependencies = [
  "graphviz-rust 0.6.6",
  "indexmap",
@@ -762,6 +750,11 @@ dependencies = [
  "typenum",
  "version_check",
 ]
+
+[[package]]
+name = "generic_symbolic_expressions"
+version = "5.0.3"
+source = "git+https://github.com/oflatt/symbolic-expressions?rev=655b6a4c06b4b3d3b2300e17779860b4abe440f0#655b6a4c06b4b3d3b2300e17779860b4abe440f0"
 
 [[package]]
 name = "getrandom"
@@ -1605,15 +1598,6 @@ dependencies = [
 
 [[package]]
 name = "symbol_table"
-version = "0.2.0"
-source = "git+https://github.com/mwillsey/symbol_table?rev=acddcf8938d1b4ed2fce048c9d83c30203d404b9#acddcf8938d1b4ed2fce048c9d83c30203d404b9"
-dependencies = [
- "ahash 0.7.8",
- "hashbrown 0.12.3",
-]
-
-[[package]]
-name = "symbol_table"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "828f672b631c220bf6ea8a1d3b82c7d0fc998e5ba8373383d8604bc1e2a6245a"
@@ -1621,11 +1605,6 @@ dependencies = [
  "ahash 0.7.8",
  "hashbrown 0.12.3",
 ]
-
-[[package]]
-name = "symbolic_expressions"
-version = "5.0.3"
-source = "git+https://github.com/oflatt/symbolic-expressions?rev=4c0ea5ca008f972450b2af72387e64d2c1c6a791#4c0ea5ca008f972450b2af72387e64d2c1c6a791"
 
 [[package]]
 name = "syn"

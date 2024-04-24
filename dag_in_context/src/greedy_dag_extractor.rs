@@ -1,4 +1,4 @@
-use egglog::*;
+use egglog::{util::IndexMap, *};
 use egraph_serialize::{ClassId, EGraph, NodeId};
 use ordered_float::NotNan;
 use rustc_hash::FxHashMap;
@@ -31,7 +31,8 @@ pub(crate) struct Extractor<'a> {
     pub(crate) typechecker: TypeChecker<'a>,
 
     // Each term must correspond to a node in the egraph. We store that here
-    pub(crate) correspondence: HashMap<Term, NodeId>,
+    // Use an indexmap for deterministic order of iteration
+    pub(crate) correspondence: IndexMap<Term, NodeId>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
     pub(crate) term_to_expr: Option<HashMap<Term, RcExpr>>,
@@ -356,7 +357,7 @@ fn calculate_cost_set(
     costs.insert(cid.clone(), unshared_total);
     let total = unshared_total + shared_total;
 
-    let sub_terms = child_cost_sets
+    let sub_terms: Vec<Term> = child_cost_sets
         .iter()
         .map(|(cs, _is_region_root)| cs.term.clone())
         .collect();
@@ -496,9 +497,9 @@ pub fn extract_without_linearity(
     let root_costset = extractor
         .costs
         .get(root_eclass)
-        .unwrap()
+        .expect("Failed to extract program! Also failed to extract any functions in program.")
         .get(root_eclass)
-        .unwrap()
+        .expect("Failed to extract program!")
         .clone();
 
     // now run translation to expressions

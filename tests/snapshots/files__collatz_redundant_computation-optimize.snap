@@ -14,7 +14,7 @@ expression: visualization.result
   v17: int = id v9;
   v18: int = id v11;
 .__20__:
-  v22: bool = eq v14 v15;
+  v22: bool = eq v15 v14;
   br v22 .__106__ .__32__;
 .__106__:
   v108: bool = const false;
@@ -34,19 +34,19 @@ expression: visualization.result
   v18: int = id v104;
   br v99 .__20__ .__126__;
 .__32__:
-  v35: int = div v14 v17;
-  v38: int = mul v35 v17;
-  v40: int = sub v14 v38;
-  v43: bool = eq v40 v18;
+  v37: int = div v14 v17;
+  v39: int = mul v17 v37;
+  v41: int = sub v14 v39;
+  v43: bool = eq v18 v41;
   print v14;
-  v54: int = mul v14 v16;
+  v54: int = mul v16 v14;
   v56: int = add v15 v54;
   br v43 .__79__ .__62__;
 .__79__:
   v81: bool = const true;
   v71: int = id v13;
   v72: bool = id v81;
-  v73: int = id v35;
+  v73: int = id v37;
   v74: int = id v15;
   v75: int = id v16;
   v76: int = id v17;

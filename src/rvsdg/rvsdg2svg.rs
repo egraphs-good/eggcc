@@ -491,7 +491,6 @@ impl Region {
 }
 
 impl Region {
-    #[cfg(test)]
     fn to_svg(&self) -> String {
         let (size, xml) = self.to_xml(false);
         let svg = Xml::new(
@@ -682,7 +681,6 @@ impl RvsdgProgram {
 }
 
 impl RvsdgFunction {
-    #[cfg(test)]
     pub(crate) fn to_svg(&self) -> String {
         self.to_region().to_svg()
     }
@@ -777,8 +775,11 @@ mod tests {
 use crate::test_util::rvsdg_svg_test;
 
 #[cfg(test)]
-rvsdg_svg_test!(add_rvsdg_svg, "../../tests/small/add.bril");
+rvsdg_svg_test!(add_rvsdg_svg, "../../tests/passing/small/add.bril");
 #[cfg(test)]
-rvsdg_svg_test!(fib_shape_rvsdg_svg, "../../tests/small/fib_shape.bril");
+rvsdg_svg_test!(
+    fib_shape_rvsdg_svg,
+    "../../tests/passing/small/fib_shape.bril"
+);
 #[cfg(test)]
-rvsdg_svg_test!(diamond_rvsdg_svg, "../../tests/small/diamond.bril");
+rvsdg_svg_test!(diamond_rvsdg_svg, "../../tests/passing/small/diamond.bril");

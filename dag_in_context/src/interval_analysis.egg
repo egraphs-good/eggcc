@@ -11,19 +11,21 @@
 (function hi-bound (Expr) Bound :unextractable :merge (bound-min old new))
 
 ; if lo > hi, panic
-(rule (
-        (= (IntB lo) (lo-bound expr))
-        (= (IntB hi) (hi-bound expr))
-        (> lo hi)
-      ) 
-      ((panic "lo bound greater than hi bound"))
-      :ruleset interval-analysis)
-(rule (
-        (= (BoolB true) (lo-bound expr))
-        (= (BoolB false) (hi-bound expr))
-      ) 
-      ((panic "lo bound greater than hi bound"))
-      :ruleset interval-analysis)
+; We can't run these rules because unreachable branches may have impossible intervals
+; Consider re-enabling these rules if we implement an is-reachable analysis
+; (rule (
+;         (= (IntB lo) (lo-bound expr))
+;         (= (IntB hi) (hi-bound expr))
+;         (> lo hi)
+;       ) 
+;       ((panic "lo bound greater than hi bound"))
+;       :ruleset interval-analysis)
+; (rule (
+;         (= (BoolB true) (lo-bound expr))
+;         (= (BoolB false) (hi-bound expr))
+;       ) 
+;       ((panic "lo bound greater than hi bound"))
+;       :ruleset interval-analysis)
 
 ; combinators
 (rewrite (bound-max (IntB x) (IntB y))
@@ -130,6 +132,21 @@
       ((set (hi-bound lhs) (IntB (- ha lb))))
       :ruleset interval-analysis)
 
+; Multiplication for two constants
+; TODO: Make fancier interval analysis
+(rule (
+       (= lhs (Bop (Mul) a b))
+       (= (IntB x) (lo-bound a))
+       (= (IntB x) (hi-bound a))
+       (= (IntB y) (lo-bound b))
+       (= (IntB y) (hi-bound b))
+      )
+      (
+       (set (lo-bound lhs) (IntB (* x y)))
+       (set (hi-bound lhs) (IntB (* x y)))
+      )
+      :ruleset interval-analysis)
+
 ; negative * negative is positive
 (rule (
         (= lhs (Bop (Mul) x y))
@@ -201,6 +218,24 @@
 ; =================================
 ; Conditionals
 ; =================================
+; if the predicate is true, merge with then branch
+(rule (
+       (= lhs (If cond inputs thn els))
+       (ContextOf lhs if_ctx)
+       (= (BoolB true) (lo-bound cond))
+      )
+      ((union lhs (Subst if_ctx inputs thn)))
+      :ruleset interval-analysis)
+
+; if the predicate is false, merge with else branch
+(rule (
+       (= lhs (If cond inputs thn els))
+       (ContextOf lhs if_ctx)
+       (= (BoolB false) (hi-bound cond))
+      )
+      ((union lhs (Subst if_ctx inputs els)))
+      :ruleset interval-analysis)
+
 ; lo-bound of If is the min of the lower bounds
 ; hi-bound of If is the max of the upper bounds
 (rule (
@@ -232,39 +267,6 @@
        (= hi-els (hi-bound (Get els i)))
       )
       ((set (hi-bound lhs) (bound-max hi-thn hi-els)))
-      :ruleset interval-analysis)
-
-; If the If takes a single value
-; If input < v is true, then upper bound of input is upper bound of v - 1
-(rule (
-       (= lhs (InContext (InIf true (Bop (LessThan) inp v) inp) inp))
-       (= (IntB hi) (hi-bound v))
-      )
-      ((set (hi-bound lhs) (IntB (- hi 1))))
-      :ruleset interval-analysis)
-
-; If input < v is false, then lower bound of input is lower bound of v
-(rule (
-       (= lhs (InContext (InIf false (Bop (LessThan) inp v) inp) inp))
-       (= (IntB lo) (lo-bound v))
-      )
-      ((set (lo-bound lhs) (IntB lo)))
-      :ruleset interval-analysis)
-
-; If v < input is true, then lower bound of input is lower bound of v + 1
-(rule (
-       (= lhs (InContext (InIf true (Bop (LessThan) v inp) inp) inp))
-       (= (IntB lo) (lo-bound v))
-      )
-      ((set (lo-bound lhs) (IntB (+ lo 1))))
-      :ruleset interval-analysis)
-
-; If v < input is false, then upper bound of input is upper bound of v
-(rule (
-       (= lhs (InContext (InIf false (Bop (LessThan) v inp) inp) inp))
-       (= (IntB hi) (hi-bound v))
-      )
-      ((set (hi-bound lhs) (IntB  hi)))
       :ruleset interval-analysis)
 
 ; If the If takes a tuple
@@ -348,4 +350,29 @@
 
       )
       ((set (hi-bound (Get ctx i)) hi))
+      :ruleset interval-analysis)
+
+; (if (a == b) thn els)
+; in the thn branch, we know that a has the same bounds as b
+(rule (
+       (= pred (Bop (Eq) expr val))
+       (= if_e (If pred inputs thn els))
+       ; the left operand of the == is an input to the if region
+       (= expr (Get inputs i))
+       (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+       (HasType inputs ty)
+       (= (IntB lo) (lo-bound val))
+      )
+      ((set (lo-bound (Get ctx i)) (IntB lo)))
+      :ruleset interval-analysis)
+(rule (
+       (= pred (Bop (Eq) expr val))
+       (= if_e (If pred inputs thn els))
+       ; the left operand of the == is an input to the if region
+       (= expr (Get inputs i))
+       (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+       (HasType inputs ty)
+       (= (IntB hi) (hi-bound val))
+      )
+      ((set (hi-bound (Get ctx i)) (IntB hi)))
       :ruleset interval-analysis)

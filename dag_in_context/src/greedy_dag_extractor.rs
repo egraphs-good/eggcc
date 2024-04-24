@@ -10,11 +10,14 @@ use crate::{
     typechecker::TypeChecker,
 };
 
+type RootId = ClassId;
+
 pub(crate) struct EgraphInfo<'a> {
     pub(crate) egraph: &'a EGraph,
-    // For a particular region root, find the set of reachable nodes
-    #[allow(dead_code)]
-    pub(crate) reachable_from: HashMap<ClassId, HashSet<ClassId>>,
+    // For every (root, eclass) pair, store the parent
+    // (root, enode) pairs that may depend on it.
+    pub(crate) parents: HashMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
+    pub(crate) roots: Vec<(RootId, NodeId)>,
     pub(crate) cm: &'a dyn CostModel,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
@@ -55,26 +58,70 @@ impl<'a> EgraphInfo<'a> {
         egraph: &'a EGraph,
         unextractables: HashSet<String>,
     ) -> Self {
+        // get all the roots needed
         let mut region_roots = HashSet::new();
         for node in egraph.classes().values().flat_map(|c| &c.nodes) {
             for root in enode_regions(egraph, &egraph[node]) {
                 region_roots.insert(root);
             }
         }
-
         // also add the root of the egraph to region_roots
         region_roots.insert(egraph.nid_to_cid(&get_root(egraph)).clone());
 
-        let reachable_from = region_roots
-            .iter()
-            .map(|root| (root.clone(), region_reachable_classes(egraph, root.clone())))
-            .collect();
+        // find all the (root, child) pairs that are important
+        let mut relavent_nodes: Vec<(ClassId, ClassId)> = vec![];
+        for root in &region_roots {
+            let reachable = region_reachable_classes(egraph, root.clone());
+            for eclass in reachable {
+                relavent_nodes.push((root.clone(), eclass));
+            }
+        }
+
+        let mut roots = vec![];
+        // find all the (root, enode) pairs that are root nodes (no children)
+        for (root, eclass) in &relavent_nodes {
+            for enode in egraph.classes()[eclass].nodes.iter() {
+                if enode_children(egraph, &egraph[enode]).is_empty() {
+                    roots.push((root.clone(), enode.clone()));
+                }
+            }
+        }
+
+        // sort roots for determinism
+        roots.sort();
+
+        let mut parents: HashMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = HashMap::new();
+        for (root, eclass) in relavent_nodes {
+            // iterate over every root, enode pair
+            for enode in egraph.classes()[&eclass].nodes.iter() {
+                // add to the parents table
+                for (child, isregion) in enode_children(egraph, &egraph[enode]) {
+                    let child_region = if isregion {
+                        child.clone()
+                    } else {
+                        root.clone()
+                    };
+                    parents
+                        .entry((child_region, child.clone()))
+                        .or_default()
+                        .insert((root.clone(), enode.clone()));
+                }
+            }
+        }
+
+        let mut parents_sorted = HashMap::new();
+        for (key, parents) in parents {
+            let mut parents_vec = parents.into_iter().collect::<Vec<_>>();
+            parents_vec.sort();
+            parents_sorted.insert(key, parents_vec);
+        }
 
         EgraphInfo {
             cm,
             egraph,
             unextractables,
-            reachable_from,
+            parents: parents_sorted,
+            roots,
         }
     }
 }
@@ -298,7 +345,7 @@ fn calculate_cost_set(
 
     let mut shared_total = NotNan::new(0.).unwrap();
     let mut unshared_total = info.cm.get_op_cost(&node.op);
-    let mut costs = HashMap::default();
+    let mut costs: HashMap<ClassId, NotNan<f64>> = HashMap::default();
 
     if !info.cm.ignore_children(&node.op) {
         for (child_set, is_region_root) in child_cost_sets.iter() {
@@ -307,12 +354,14 @@ fn calculate_cost_set(
             } else {
                 for (child_cid, child_cost) in &child_set.costs {
                     // it was already present in the set
-                    if let Some(existing) = costs.insert(child_cid.clone(), *child_cost) {
-                        assert_eq!(
-                            existing, *child_cost,
-                            "Two different costs found for the same child enode!"
-                        );
+                    if let Some(existing) = costs.get(child_cid) {
+                        if existing > child_cost {
+                            // if we found a lower-cost alternative for this child, use that and decrease cost
+                            shared_total -= existing - *child_cost;
+                        }
+                        costs.insert(child_cid.clone(), *existing.min(child_cost));
                     } else {
+                        costs.insert(child_cid.clone(), *child_cost);
                         shared_total += child_cost;
                     }
                 }
@@ -430,60 +479,51 @@ pub fn extract_without_linearity(
     effectful_paths: Option<&HashMap<ClassId, HashSet<NodeId>>>,
 ) -> (CostSet, TreeProgram) {
     let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
-    let mut updated_cost = true;
+    let mut worklist = UniqueQueue::default();
 
-    while updated_cost {
-        updated_cost = false;
-        for (rootid, reachable) in info.reachable_from.iter() {
-            // If (1) effectful_path is present, (2) the class of root id
-            // is stateful, (3) effectful_path[rootid] does not exist,
-            // then we should not extract this region.
-            // if effectful_paths.is_some()
-            //     && effectful_paths.unwrap().contains_key(rootid)
-            //     && ((todo!("get type of eclass rootid")) as Type).contains_state()
-            // {
-            //     continue;
-            // }
+    // first, add all the roots to the worklist
+    for (root, nodeid) in &info.roots {
+        worklist.insert((root.clone(), nodeid.clone()));
+    }
 
-            // TODO: We need to saturate the extraction of an individual region,
-            // assuming its children region's cost has been computed
-            for class_id in reachable {
-                for node_id in &info.egraph.classes().get(class_id).unwrap().nodes {
-                    let sort_of_node = info.get_sort_of_eclass(class_id);
-                    if sort_of_node == "Expr"
-                        && effectful_paths.is_some()
-                        && effectful_paths.unwrap().contains_key(rootid)
-                    {
-                        let effectful_nodes =
-                            effectful_paths.as_ref().unwrap().get(rootid).unwrap();
-                        if let Some(is_stateful) = extractor.is_node_effectful(node_id.clone()) {
-                            if is_stateful && !effectful_nodes.contains(node_id) {
-                                continue;
-                            }
-                        }
-                    }
+    while let Some((rootid, nodeid)) = worklist.pop() {
+        let classid = n2c(&nodeid);
+        let node = info.egraph.nodes.get(&nodeid).unwrap();
+        if info.unextractables.contains(&node.op) {
+            continue;
+        }
 
-                    let node = info.egraph.nodes.get(node_id).unwrap();
-                    if info.unextractables.contains(&node.op) {
-                        continue;
-                    }
+        let sort_of_node = info.get_sort_of_eclass(classid);
+        if sort_of_node == "Expr"
+            && effectful_paths.is_some()
+            && effectful_paths.unwrap().contains_key(&rootid)
+        {
+            let effectful_nodes = effectful_paths.as_ref().unwrap().get(&rootid).unwrap();
+            if let Some(is_stateful) = extractor.is_node_effectful(nodeid.clone()) {
+                if is_stateful && !effectful_nodes.contains(&nodeid) {
+                    continue;
+                }
+            }
+        }
 
-                    // create a new region_costs map if it doesn't exist
-                    let region_costs = extractor.costs.entry(rootid.clone()).or_default();
-                    let lookup = region_costs.get(class_id);
-                    let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
-                    if lookup.is_some() {
-                        prev_cost = lookup.unwrap().total;
-                    }
+        // create a new region_costs map if it doesn't exist
+        let region_costs = extractor.costs.entry(rootid.clone()).or_default();
+        let lookup = region_costs.get(classid);
+        let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
+        if lookup.is_some() {
+            prev_cost = lookup.unwrap().total;
+        }
 
-                    if let Some(cost_set) =
-                        calculate_cost_set(rootid.clone(), node_id.clone(), extractor, info)
-                    {
-                        let region_costs = extractor.costs.get_mut(rootid).unwrap();
-                        if cost_set.total < prev_cost {
-                            region_costs.insert(class_id.clone(), cost_set);
-                            updated_cost = true;
-                        }
+        if let Some(cost_set) = calculate_cost_set(rootid.clone(), nodeid.clone(), extractor, info)
+        {
+            let region_costs = extractor.costs.get_mut(&rootid).unwrap();
+            if cost_set.total < prev_cost {
+                region_costs.insert(classid.clone(), cost_set);
+
+                // we updated this eclass's cost, so we need to update its parents
+                if let Some(parents) = info.parents.get(&(rootid.clone(), classid.clone())) {
+                    for parent in parents {
+                        worklist.insert(parent.clone());
                     }
                 }
             }
@@ -491,6 +531,7 @@ pub fn extract_without_linearity(
     }
 
     let root_eclass = n2c(&get_root(info.egraph));
+
     let root_costset = extractor
         .costs
         .get(root_eclass)
@@ -548,11 +589,12 @@ impl CostModel for DefaultCostModel {
             "ExprIsPure" | "ListExprIsPure" | "BinaryOpIsPure" | "UnaryOpIsPure" => 0.,
             "IsLeaf" | "BodyContainsExpr" | "ScopeContext" => 0.,
             "Region" | "Full" | "IntB" | "BoolB" => 0.,
+            "PathNil" | "PathCons" => 0.,
             // Schema
             "Bop" | "Uop" | "Top" => 0.,
             "InContext" => 0.,
             _ if self.ignore_children(op) => 0.,
-            _ => panic!("no cost for {op}"),
+            _ => panic!("Please provide a cost for {op}"),
         }
         .try_into()
         .unwrap()

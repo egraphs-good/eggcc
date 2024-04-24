@@ -8,29 +8,78 @@
 //! look for back-edges dominated by the current node. To detect the start of
 //! branch regions, we look for nodes with more than one successor.
 
+use std::fs::File;
+use std::io::Write;
+use std::process::Command;
+
 use bril_rs::{ConstOps, EffectOps, Instruction, Literal, Position, Type, ValueOps};
 use hashbrown::HashMap;
 use petgraph::algo::dominators;
 
+use petgraph::dot::Dot;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use petgraph::{algo::dominators::Dominators, stable_graph::NodeIndex};
+use smallvec::SmallVec;
 
 use crate::cfg::{ret_id, Annotation, BranchOp, CondVal, SwitchCfgFunction};
 use crate::rvsdg::Result;
 
-use super::live_variables::{live_variables, Names};
+use super::live_variables::{live_variables, Names, VarType};
 use super::{
     live_variables::{LiveVariableAnalysis, VarId},
     BasicExpr, Id, Operand, RvsdgBody, RvsdgError,
 };
 use super::{RvsdgFunction, RvsdgType};
 
+// When this value is true, we write out intermediate visualizations of the
+// program. This is very helpful when debugging.
+//
+// We use a normal boolean here so as to not confuse various lints around unused
+// imports, dead code, etc.
+
+#[cfg(feature = "write-intermediates")]
+const WRITE_INTERMEDIATES: bool = true;
+#[cfg(not(feature = "write-intermediates"))]
+const WRITE_INTERMEDIATES: bool = false;
+
 pub(crate) fn cfg_func_to_rvsdg(
     cfg: &mut SwitchCfgFunction,
     function_types: &FunctionTypes,
 ) -> Result<RvsdgFunction> {
+    if WRITE_INTERMEDIATES {
+        File::create("/tmp/cfg-unstructured.dot")
+            .unwrap()
+            .write_fmt(format_args!(
+                "{:#?}",
+                Dot::new(&cfg.graph.map(|ni, n| (ni, n.clone()), |_, e| e.clone()))
+            ))
+            .unwrap();
+        Command::new("dot")
+            .arg("-Tpng")
+            .arg("/tmp/cfg-unstructured.dot")
+            .arg("-o")
+            .arg("/tmp/cfg-unstructured.png")
+            .output()
+            .expect("failed to execute process");
+    }
     cfg.restructure();
+    if WRITE_INTERMEDIATES {
+        File::create("/tmp/cfg-structured.dot")
+            .unwrap()
+            .write_fmt(format_args!(
+                "{:#?}",
+                Dot::new(&cfg.graph.map(|ni, n| (ni, n.clone()), |_, e| e.clone()))
+            ))
+            .unwrap();
+        Command::new("dot")
+            .arg("-Tpng")
+            .arg("/tmp/cfg-structured.dot")
+            .arg("-o")
+            .arg("/tmp/cfg-structured.png")
+            .output()
+            .expect("failed to execute process");
+    }
     let analysis = live_variables(cfg);
     let dom = dominators::simple_fast(&cfg.graph, cfg.entry);
     let name = cfg.name.clone();
@@ -40,8 +89,12 @@ pub(crate) fn cfg_func_to_rvsdg(
         analysis,
         dom,
         store: Default::default(),
+        join_point: Default::default(),
         function_types: function_types.clone(),
     };
+
+    let start = builder.cfg.entry;
+    builder.compute_branch_info(vec![], start);
 
     let state_var = builder.analysis.state_var;
 
@@ -80,12 +133,21 @@ pub(crate) fn cfg_func_to_rvsdg(
         .collect();
     args.push(RvsdgType::PrintState);
 
-    Ok(RvsdgFunction {
+    let res = RvsdgFunction {
         name,
         args,
         nodes: builder.expr,
         results,
-    })
+    };
+
+    if WRITE_INTERMEDIATES {
+        File::create("/tmp/rvsdg.svg")
+            .unwrap()
+            .write_all(res.to_svg().as_bytes())
+            .unwrap();
+    }
+
+    Ok(res)
 }
 
 /// FunctionTypes is a map from the name of the function
@@ -97,6 +159,8 @@ pub(crate) type FunctionTypes = HashMap<String, Option<Type>>;
 pub(crate) struct RvsdgBuilder<'a> {
     cfg: &'a mut SwitchCfgFunction,
     expr: Vec<RvsdgBody>,
+    // Maps from branch node to join point.
+    join_point: HashMap<NodeIndex, NodeIndex>,
     analysis: LiveVariableAnalysis,
     dom: Dominators<NodeIndex>,
     store: HashMap<VarId, Operand>,
@@ -266,6 +330,10 @@ impl<'a> RvsdgBuilder<'a> {
                 .next());
         }
 
+        let Some(join_point) = self.join_point.get(&block).copied() else {
+            panic!("No join point for block {block:?}")
+        };
+
         let mut succs_iter = self.cfg.graph.edges_directed(block, Direction::Outgoing);
         let mut succs = vec![];
         let first_e = succs_iter.next();
@@ -331,7 +399,6 @@ impl<'a> RvsdgBuilder<'a> {
             input_vars.push(var);
         }
 
-        let mut next = None;
         for (_, succ) in succs {
             // First, make sure that all inputs are correctly bound to inputs to the block.
             for (i, var) in input_vars.iter().copied().enumerate() {
@@ -339,24 +406,7 @@ impl<'a> RvsdgBuilder<'a> {
             }
             // Loop until we reach a join point.
             let mut curr = succ;
-            loop {
-                // Join points are nodes with more than one predecessor
-                // (excluding loop back-edges).
-                if self
-                    .cfg
-                    .graph
-                    .neighbors_directed(curr, Direction::Incoming)
-                    .filter(|neigh| {
-                        let Some(mut dom) = self.dom.dominators(*neigh) else {
-                            return true;
-                        };
-                        !dom.any(|n| n == curr)
-                    })
-                    .nth(1)
-                    .is_some()
-                {
-                    break;
-                }
+            while curr != join_point {
                 curr = self.try_loop(curr)?.unwrap();
             }
 
@@ -365,23 +415,44 @@ impl<'a> RvsdgBuilder<'a> {
             let mut output_vec = Vec::new();
             let fill_output = output_vars.is_empty();
             for var in live_vars.live_in.iter() {
-                let Some(op) = self.store.get(&var).copied() else {
-                    continue;
-                };
+                let op = self.store.get(&var).copied().unwrap_or_else(|| {
+                    // We have a live variable input to the join point, but it's not bound in this branch.
+                    // We need to bind it to some value; that value won't be
+                    // reachable in the actual program so we could do anything.
+                    let Some(ty) = self.analysis.var_types.get_type(var) else {
+                        panic!(
+                            "unknown type for variable {var:?} (name {:?}, join point {join_point:?})",
+                            self.analysis.intern.get_var(var)
+                        );
+                    };
+                    match ty {
+                        VarType::Bril(bril_ty) => {
+                            let lit = match bril_ty {
+                                Type::Int => Literal::Int(0),
+                                Type::Bool => Literal::Bool(false),
+                                Type::Float => Literal::Float(0.0),
+                                Type::Char => Literal::Char('x'),
+                                Type::Pointer(_) => {
+                                    unimplemented!("placeholder values for pointers aren't yet implemented")
+                                },
+                            };
+                            let op = get_id(
+                                &mut self.expr,
+                                RvsdgBody::BasicOp(BasicExpr::Const(ConstOps::Const, lit, bril_ty)),
+                            );
+                            Operand::Project(0, op)
+                        }
+                        VarType::State => panic!("state variable unbound"),
+                    }
+                });
                 output_vec.push(op);
                 if fill_output {
                     output_vars.push(var);
                 }
             }
             outputs.push(output_vec);
-            if let Some(next) = next {
-                assert_eq!(next, curr);
-            } else {
-                next = Some(curr);
-            }
         }
 
-        let next = next.unwrap();
         let pred = pred_op;
         let gamma_node = match bril_type {
             Type::Bool => {
@@ -422,7 +493,7 @@ impl<'a> RvsdgBuilder<'a> {
             self.store.insert(var, Operand::Project(i, gamma_node));
         }
 
-        Ok(Some(next))
+        Ok(Some(join_point))
     }
 
     fn translate_block(&mut self, block: NodeIndex) -> Result<()> {
@@ -604,6 +675,62 @@ impl<'a> RvsdgBuilder<'a> {
             }
         }
         Ok(())
+    }
+
+    fn non_loop_neighbors(
+        &self,
+        cur: NodeIndex,
+    ) -> (SmallVec<[NodeIndex; 2]>, SmallVec<[NodeIndex; 2]>) {
+        let ins: SmallVec<[NodeIndex; 2]> = self
+            .cfg
+            .graph
+            .neighbors_directed(cur, Direction::Incoming)
+            .filter(|neigh| {
+                !self
+                    .dom
+                    .dominators(*neigh)
+                    .map(|mut doms| doms.any(|n| n == cur))
+                    .unwrap_or(false)
+            })
+            .collect();
+        let outs: SmallVec<[NodeIndex; 2]> = self
+            .cfg
+            .graph
+            .neighbors_directed(cur, Direction::Outgoing)
+            .filter(|neigh| {
+                // Ignore back-edges: edges whose target dominates 'start'
+                !self
+                    .dom
+                    .dominators(cur)
+                    .map(|mut doms| doms.any(|n| n == *neigh))
+                    .unwrap_or(false)
+            })
+            .collect();
+        (ins, outs)
+    }
+
+    fn compute_branch_info(&mut self, mut last_branch: Vec<NodeIndex>, cur: NodeIndex) {
+        // NB: we could get a big-O improvement by using a cons list. We could
+        // even allocate nodes in an arena!
+        let (ins, outs) = self.non_loop_neighbors(cur);
+        if ins.len() > 1 {
+            let branch = last_branch.pop().unwrap();
+            assert_eq!(
+                *self.join_point.entry(branch).or_insert(cur),
+                cur,
+                "Join point mismatch, branch={branch:?}"
+            );
+        }
+        match outs.as_slice() {
+            [] => {}
+            [x] => self.compute_branch_info(last_branch, *x),
+            rest => {
+                last_branch.push(cur);
+                for n in rest {
+                    self.compute_branch_info(last_branch.clone(), *n)
+                }
+            }
+        }
     }
 }
 

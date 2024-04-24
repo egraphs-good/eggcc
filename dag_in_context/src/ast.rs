@@ -309,12 +309,16 @@ pub fn int_ty(i: i64, ty: Type) -> RcExpr {
     RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), ty))
 }
 
-pub fn inloop(e1: RcExpr, e2: RcExpr) -> Assumption {
-    Assumption::InLoop(e1, e2)
+pub fn inloop(input: RcExpr, pred_output: RcExpr) -> Assumption {
+    Assumption::InLoop(input, pred_output)
 }
 
 pub fn inif(is_then: bool, pred: RcExpr, input: RcExpr) -> Assumption {
     Assumption::InIf(is_then, pred, input)
+}
+
+pub fn inswitch(branch: i64, pred: RcExpr, input: RcExpr) -> Assumption {
+    Assumption::InSwitch(branch, pred, input)
 }
 
 pub fn noctx() -> Assumption {

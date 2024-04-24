@@ -32,22 +32,23 @@ pub fn prologue() -> String {
     [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
-        include_str!("utility/canonicalize.egg"),
         include_str!("utility/util.egg"),
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
         &optimizations::purity_analysis::rules().join("\n"),
         // TODO cond inv code motion with regions
         //&optimizations::conditional_invariant_code_motion::rules().join("\n"),
-        include_str!("utility/in_context.egg"),
+        include_str!("utility/add_context.egg"),
         include_str!("utility/context-prop.egg"),
         include_str!("utility/subst.egg"),
         include_str!("utility/context_of.egg"),
+        include_str!("utility/canonicalize.egg"),
         include_str!("interval_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("optimizations/function_inlining.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
+        include_str!("optimizations/loop_unroll.egg"),
         include_str!("optimizations/passthrough.egg"),
     ]
     .join("\n")

@@ -147,10 +147,12 @@ impl<'a> DagTranslator<'a> {
     /// Translate a node or return the index of the already-translated node.
     /// For regions, translates the region and returns the index of the
     /// tuple containing the results.
-    /// It's important not to evaluate a node twice, instead using the cached index
-    /// in `self.stored_node`
     fn translate_node(&mut self, id: Id) -> StoredValue {
         let node = &self.nodes[id];
+
+        if let Some(cached) = self.stored_node.get(&id) {
+            return cached.clone();
+        }
         match node {
             RvsdgBody::BasicOp(expr) => self.translate_basic_expr(expr.clone(), id),
             RvsdgBody::If {
@@ -235,15 +237,20 @@ impl<'a> DagTranslator<'a> {
                     .collect::<Vec<_>>();
                 let expr = match (op, children.as_slice()) {
                     (ValueOps::Add, [a, b]) => add(a.clone(), b.clone()),
-                    (ValueOps::Lt, [a, b]) => less_than(a.clone(), b.clone()),
                     (ValueOps::Mul, [a, b]) => mul(a.clone(), b.clone()),
                     (ValueOps::Sub, [a, b]) => sub(a.clone(), b.clone()),
                     (ValueOps::Div, [a, b]) => div(a.clone(), b.clone()),
+
                     (ValueOps::Eq, [a, b]) => eq(a.clone(), b.clone()),
-                    (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
+                    (ValueOps::Gt, [a, b]) => greater_than(a.clone(), b.clone()),
+                    (ValueOps::Lt, [a, b]) => less_than(a.clone(), b.clone()),
                     (ValueOps::Ge, [a, b]) => greater_eq(a.clone(), b.clone()),
                     (ValueOps::Le, [a, b]) => less_eq(a.clone(), b.clone()),
+
+                    (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
+                    (ValueOps::Or, [a, b]) => or(a.clone(), b.clone()),
                     (ValueOps::Not, [a]) => not(a.clone()),
+
                     (ValueOps::PtrAdd, [a, b]) => ptradd(a.clone(), b.clone()),
                     (ValueOps::Load, [a, b]) => load(a.clone(), b.clone()),
                     (ValueOps::Alloc, [a, b]) => {

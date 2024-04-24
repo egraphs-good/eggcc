@@ -201,10 +201,18 @@ impl<'a> VirtualMachine<'a> {
         let get_bool = |e: &RcExpr, vm: &mut Self| vm.interp_bool_expr(e, arg);
         let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointer_expr(e, arg);
         match bop {
-            BinaryOp::Add => Const(Constant::Int(get_int(e1, self) + get_int(e2, self))),
-            BinaryOp::Sub => Const(Constant::Int(get_int(e1, self) - get_int(e2, self))),
-            BinaryOp::Mul => Const(Constant::Int(get_int(e1, self) * get_int(e2, self))),
-            BinaryOp::Div => Const(Constant::Int(get_int(e1, self) / get_int(e2, self))),
+            BinaryOp::Add => Const(Constant::Int(
+                get_int(e1, self).wrapping_add(get_int(e2, self)),
+            )),
+            BinaryOp::Sub => Const(Constant::Int(
+                get_int(e1, self).wrapping_sub(get_int(e2, self)),
+            )),
+            BinaryOp::Mul => Const(Constant::Int(
+                get_int(e1, self).wrapping_mul(get_int(e2, self)),
+            )),
+            BinaryOp::Div => Const(Constant::Int(
+                get_int(e1, self).wrapping_div(get_int(e2, self)),
+            )),
             BinaryOp::Eq => Const(Constant::Bool(get_int(e1, self) == get_int(e2, self))),
             BinaryOp::LessThan => Const(Constant::Bool(get_int(e1, self) < get_int(e2, self))),
             BinaryOp::GreaterThan => Const(Constant::Bool(get_int(e1, self) > get_int(e2, self))),

@@ -98,6 +98,15 @@ impl Type {
 }
 
 impl Assumption {
+    pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
+        let mut state = TreeToEgglog {
+            termdag: TermDag::default(),
+            converted_cache: HashMap::new(),
+        };
+        let term = self.to_egglog_internal(&mut state);
+        (term, state.termdag)
+    }
+
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
         match self {
             Assumption::InLoop(lhs, rhs) => {
@@ -111,6 +120,12 @@ impl Assumption {
                 let is_then = term_dag.lit(Literal::Bool(*is_then));
                 let input = input.to_egglog_internal(term_dag);
                 term_dag.app("InIf".into(), vec![is_then, pred, input])
+            }
+            Assumption::InSwitch(branch, pred, input) => {
+                let pred = pred.to_egglog_internal(term_dag);
+                let branch = term_dag.lit(Literal::Int(*branch));
+                let input = input.to_egglog_internal(term_dag);
+                term_dag.app("InSwitch".into(), vec![branch, pred, input])
             }
         }
     }

@@ -83,14 +83,13 @@ fn print_with_intermediate_helper(
             let child_vars = children
                 .iter()
                 .map(|child| {
-                    let var = print_with_intermediate_helper(
+                    print_with_intermediate_helper(
                         termdag,
                         termdag.get(*child),
                         cache,
                         res,
                         var_count,
-                    );
-                    var
+                    )
                 })
                 .collect::<Vec<String>>()
                 .join(" ");
@@ -106,8 +105,6 @@ fn print_with_intermediate_helper(
 pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
     let mut printed = String::new();
     let mut cache = HashMap::<Term, String>::new();
-    // TODO: will need to use the term in the union and then actually
-    // generate the function inlining unions
     let mut var_count = 0;
     let res =
         print_with_intermediate_helper(termdag, term, &mut cache, &mut printed, &mut var_count);
@@ -173,7 +170,7 @@ pub fn build_program(program: &TreeProgram) -> String {
 
 // It is expected that program has context added
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
-    let egglog_prog = build_program(&program);
+    let egglog_prog = build_program(program);
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&egglog_prog)?;
 
@@ -181,7 +178,7 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let mut termdag = egglog::TermDag::default();
     // TODO use extract instead of extract_without_linearity when it is implemented
     let (_res_cost, res) = extract(
-        &program,
+        program,
         &serialized,
         unextractables,
         &mut termdag,

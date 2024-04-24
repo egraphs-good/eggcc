@@ -23,11 +23,11 @@ expression: visualization.result
   v53: bool = lt v47 v48;
   br v53 .__77__ .__62__;
 .__77__:
-  v80: int = mul v48 v45;
-  v82: int = add v47 v80;
+  v79: int = mul v45 v48;
+  v82: int = add v79 v47;
   print v82;
   v88: bool = const true;
-  v92: int = add v47 v46;
+  v92: int = add v46 v47;
   v70: int = id v45;
   v71: int = id v46;
   v72: bool = id v88;
@@ -42,7 +42,7 @@ expression: visualization.result
   v49: int = id v49;
   br v53 .__51__ .__106__;
 .__106__:
-  v109: int = add v46 v45;
+  v109: int = add v45 v46;
   v111: bool = const true;
   v32: int = id v109;
   v33: bool = id v111;

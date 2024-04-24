@@ -73,8 +73,8 @@
 
 ;; Adding context a second time does nothing, so union
 (rule
-  ((= lhs (DoAddContext seen ctx (Full) inner))
-   (= inner (DoAddContext seen2 ctx (Full) expr)))
+  ((= lhs (DoAddContext seen ctx depth inner))
+   (= inner (DoAddContext seen2 ctx depth expr)))
   ((union lhs inner))
   :ruleset context-helpers)
 
@@ -96,28 +96,20 @@
        (subsume (DoAddContext seen ctx scope in)))
       :ruleset context-helpers)
 
-
-;; Replace existing contexts.
-;; This relies on the fact that new contexts for DoAddContext 
-;; must be more specific than old ones.
-(rewrite (DoAddContext seen ctx scope
-            (InContext (InLoop oldpred oldbody)  expr))
-         (DoAddContext seen ctx scope expr)
-         :ruleset context)
-
 ;; ############################## Base cases- leaf nodes
-
-(rule ((= lhs (DoAddContext seen ctx scope leaf))
-       (IsLeaf leaf))
-      ((union lhs (InContext ctx leaf)))
-         :ruleset context)
 
 ;; replace existing contexts that are around leaf nodes
 ;; DoAddContext assumes the new context is more specific than the old one
-(rule ((DoAddContext seen ctx scope (InContext oldctx expr))
+(rule ((= lhs (DoAddContext seen ctx scope (InContext oldctx expr)))
        (IsLeaf expr))
-      ((InContext ctx expr)))
+      ((union lhs (InContext ctx expr)))
+      :ruleset context)
 
+;; check that we haven't found a leaf without context
+(rule ((= lhs (DoAddContext seen ctx scope expr))
+       (IsLeaf expr))
+      ((panic "Found expression without context!"))
+      :ruleset context-helpers)
 
 
 ;; ######################################### Operators

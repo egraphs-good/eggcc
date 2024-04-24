@@ -10,19 +10,19 @@ expression: visualization.result
   v13: int = id v7;
   v14: int = id v9;
   v15: int = id v0;
-.__18__:
-  v17: int = const 7;
-  v20: int = mul v17 v12;
+.__17__:
+  v18: int = const 7;
+  v20: int = mul v12 v18;
   print v20;
   v24: int = const 2;
   v27: int = add v24 v12;
-  v32: int = add v20 v14;
+  v32: int = add v14 v20;
   v37: bool = lt v12 v15;
   v12: int = id v27;
   v13: int = id v13;
   v14: int = id v32;
   v15: int = id v15;
-  br v37 .__18__ .__41__;
+  br v37 .__17__ .__41__;
 .__41__:
   print v14;
   print v13;

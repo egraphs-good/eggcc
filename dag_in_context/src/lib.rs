@@ -38,7 +38,7 @@ pub fn prologue() -> String {
         &optimizations::purity_analysis::rules().join("\n"),
         // TODO cond inv code motion with regions
         //&optimizations::conditional_invariant_code_motion::rules().join("\n"),
-        include_str!("utility/in_context.egg"),
+        include_str!("utility/add_context.egg"),
         include_str!("utility/context-prop.egg"),
         include_str!("utility/subst.egg"),
         include_str!("utility/context_of.egg"),
@@ -50,6 +50,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/memory.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
+        include_str!("optimizations/loop_unroll.egg"),
         include_str!("optimizations/passthrough.egg"),
     ]
     .join("\n")

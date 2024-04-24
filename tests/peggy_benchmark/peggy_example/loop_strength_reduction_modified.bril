@@ -1,0 +1,31 @@
+@main {
+    i: int = const 0;
+    d: int = const 0;
+    three_hundred: int = const 300;
+    three: int = const 3;
+    five: int = const 5;
+    one: int = const 1;
+    one_hundred_fifty: int = const 150;
+
+.loop_test:
+    cond: bool = lt d three_hundred;
+    br cond .loop_body .loop_end;
+
+.loop_body:
+    out: int = mul i five;
+    print out;
+
+    i: int = add i one;
+    if_cond: bool = eq d one_hundred_fifty;
+    br if_cond .if_then .end_if;
+
+.if_then:
+    i: int = add i three;
+
+.end_if:
+    d: int = add d one;
+    
+    jmp .loop_test;
+
+.loop_end:
+}

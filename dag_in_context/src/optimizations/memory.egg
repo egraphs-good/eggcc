@@ -289,7 +289,7 @@
       :ruleset always-run)
 
 ; avoid quadratic query
-(function succ (i64) i64)
+(function succ (i64) i64 :unextractable)
 (rule ((PointsToCellsAtIter aps inputs pred-body i))
       ((set (succ i) (+ i 1)))
       :ruleset always-run)

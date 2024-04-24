@@ -1,11 +1,3 @@
-#![allow(unused_imports)]
-#![allow(dead_code)]
-
-use crate::schema::{BaseType, Type};
-use crate::schema_helpers::{Constructor, ESort, Purpose};
-use crate::{egglog_test, egglog_test_and_print_program, prologue};
-use strum::IntoEnumIterator;
-
 // Signature of an egglog function, for metaprogramming
 struct FnImpl {
     name: String,
@@ -386,9 +378,9 @@ pub(crate) fn rules() -> String {
 }
 
 #[cfg(test)]
-use crate::schema::Constant;
+use crate::egglog_test;
 #[cfg(test)]
-use crate::Value;
+use crate::schema::{BaseType, Type};
 
 #[test]
 fn load_after_write() -> crate::Result {
@@ -594,7 +586,7 @@ fn pqrs_deep_loop_swap() -> crate::Result {
     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let f =
         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
-    egglog_test_and_print_program(
+    egglog_test(
         &format!("{f}"),
         &format!("(let ten {ten}) (let val {val}) (check (= val ten))"),
         vec![],

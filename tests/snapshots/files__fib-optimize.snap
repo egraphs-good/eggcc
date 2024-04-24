@@ -3,8 +3,8 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v2: int = const 0;
-  v5: bool = eq v2 v0;
+  v3: int = const 0;
+  v5: bool = eq v0 v3;
   v8: int = const 1;
   print v8;
   br v5 .__78__ .__16__;

@@ -98,6 +98,15 @@ impl Type {
 }
 
 impl Assumption {
+    pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
+        let mut state = TreeToEgglog {
+            termdag: TermDag::default(),
+            converted_cache: HashMap::new(),
+        };
+        let term = self.to_egglog_internal(&mut state);
+        (term, state.termdag)
+    }
+
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
         match self {
             Assumption::InLoop(lhs, rhs) => {

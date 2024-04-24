@@ -33,7 +33,7 @@ expression: visualization.result
 .__18__:
   v20: int = const 1;
   v22: int = add v5 v20;
-  v27: int = add v6 v20;
+  v27: int = add v20 v6;
   v29: int = id v22;
   v30: bool = id v11;
   v31: int = id v27;

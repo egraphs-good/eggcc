@@ -1,0 +1,16 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main {
+  v1: int = const 2;
+  v4: ptr<int> = alloc v1;
+  v6: int = const 10;
+  v9: int = const 1;
+  v11: ptr<int> = ptradd v4 v9;
+  v13: int = const 20;
+  store v4 v6;
+  store v11 v13;
+  print v6;
+  free v4;
+}

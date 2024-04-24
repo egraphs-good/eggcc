@@ -121,6 +121,12 @@ impl Assumption {
                 let input = input.to_egglog_internal(term_dag);
                 term_dag.app("InIf".into(), vec![is_then, pred, input])
             }
+            Assumption::InSwitch(branch, pred, input) => {
+                let pred = pred.to_egglog_internal(term_dag);
+                let branch = term_dag.lit(Literal::Int(*branch));
+                let input = input.to_egglog_internal(term_dag);
+                term_dag.app("InSwitch".into(), vec![branch, pred, input])
+            }
         }
     }
 }

@@ -6,8 +6,7 @@ from glob import glob
 from sys import stdout
 
 profiles = (
-  glob("tests/passing/**/*.bril") +
-  glob("benchmarks/passing/**/*.bril")
+  glob("benchmarks/passing/**/*.bril", recursive=True)
 )
 
 modes = [
@@ -33,8 +32,11 @@ def bench(profile):
   profile_name = profile_file[:-len(".bril")]
 
   profile_dir = f'./tmp/bench/{profile_name}'
-  os.mkdir(profile_dir)
-
+  try:
+    os.mkdir(profile_dir)
+  except FileExistsError:
+    print(f'{profile_dir} exists, overwriting contents')
+    
   for mode in modes:
     (name, runmode, options) = mode
     os.system(f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}')
@@ -42,7 +44,7 @@ def bench(profile):
     with open(f'{profile_dir}/{name}-args') as f:
       args = f.read().rstrip()
     
-    os.system(f'hyperfine --warmup 2 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"')
+    os.system(f'hyperfine --warmup 2 --max-runs 100 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"')
 
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:

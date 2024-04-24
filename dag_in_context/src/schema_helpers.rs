@@ -344,8 +344,7 @@ impl Expr {
                 Rc::new(Expr::If(
                     new_pred.clone(),
                     new_input.clone(),
-                    // then.clone(),
-                    // els.clone(),
+                    // TODO: use replace_ctx instead
                     then.add_ctx(inif(true, new_pred.clone(), new_input.clone())),
                     els.add_ctx(inif(false, new_pred, new_input)),
                 ))
@@ -358,12 +357,6 @@ impl Expr {
             Expr::DoWhile(x, body) => Rc::new(Expr::DoWhile(
                 Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
                 body.clone(), // TODO: add ctx
-            )),
-            Expr::Function(name, inp, out, x) => Rc::new(Expr::Function(
-                name.clone(),
-                inp.clone(),
-                out.clone(),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
             )),
 
             // Substitute new context

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use ast::val_empty;
 use egglog::{Term, TermDag};
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
@@ -149,10 +148,9 @@ fn print_function_inlining_pairs(
     unions
 }
 
-// TODO: It is expected that program has context added
+// It is expected that program has context added
 pub fn build_program(program: &TreeProgram) -> String {
     let mut printed = String::new();
-    let program = program.add_context();
 
     let mut var_count = 0;
     let function_inlining = print_function_inlining_pairs(
@@ -173,9 +171,9 @@ pub fn build_program(program: &TreeProgram) -> String {
     )
 }
 
+// It is expected that program has context added
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
-    // TODO: add context like before?
-    let egglog_prog = build_program(program);
+    let egglog_prog = build_program(&program);
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&egglog_prog)?;
 
@@ -183,7 +181,7 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let mut termdag = egglog::TermDag::default();
     // TODO use extract instead of extract_without_linearity when it is implemented
     let (_res_cost, res) = extract(
-        program,
+        &program,
         &serialized,
         unextractables,
         &mut termdag,
@@ -261,19 +259,6 @@ pub fn egglog_test(
     expected_log: Vec<String>,
 ) -> Result {
     egglog_test_internal(build, check, progs, input, expected, expected_log, false)
-}
-
-// Runs an egglog test without interpretation.
-pub fn egglog_test_no_interp(build: &str, check: &str) -> Result {
-    egglog_test_internal(
-        build,
-        check,
-        vec![],
-        val_empty(),
-        val_empty(),
-        vec![],
-        false,
-    )
 }
 
 /// Runs an egglog test.

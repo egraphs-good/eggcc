@@ -13,21 +13,33 @@ fn passthrough_if_arg() -> crate::Result {
     let input = concat(single(get(arg_ty(ty.clone()), 1)), single(zero.clone()));
     let then = concat(
         single(get(
-            arg_ty_ctx(tuplet!(statet(), intt()), inif(true, pred.clone(), input.clone())),
+            arg_ty_ctx(
+                tuplet!(statet(), intt()),
+                inif(true, pred.clone(), input.clone()),
+            ),
             0,
         )),
         single(get(
-            arg_ty_ctx(tuplet!(statet(), intt()), inif(true, pred.clone(), input.clone())),
+            arg_ty_ctx(
+                tuplet!(statet(), intt()),
+                inif(true, pred.clone(), input.clone()),
+            ),
             1,
         )),
     );
     let els = concat(
         single(get(
-            arg_ty_ctx(tuplet!(statet(), intt()), inif(false, pred.clone(), input.clone())),
+            arg_ty_ctx(
+                tuplet!(statet(), intt()),
+                inif(false, pred.clone(), input.clone()),
+            ),
             0,
         )),
         single(get(
-            arg_ty_ctx(tuplet!(statet(), intt()), inif(false, pred.clone(), input.clone())),
+            arg_ty_ctx(
+                tuplet!(statet(), intt()),
+                inif(false, pred.clone(), input.clone()),
+            ),
             1,
         )),
     );

@@ -345,7 +345,10 @@ impl<'a> TypeChecker<'a> {
                     }
                     (
                         emptyt(),
-                        RcExpr::new(Expr::Empty(arg_tys.as_ref().unwrap().get().clone(), ctx.clone())),
+                        RcExpr::new(Expr::Empty(
+                            arg_tys.as_ref().unwrap().get().clone(),
+                            ctx.clone(),
+                        )),
                     )
                 }
                 _ => {
@@ -472,7 +475,10 @@ impl<'a> TypeChecker<'a> {
                 }
                 (
                     arg_tys.as_ref().unwrap().get().clone(),
-                    Rc::new(Expr::Arg(arg_tys.as_ref().unwrap().get().clone(), ctx.clone())),
+                    Rc::new(Expr::Arg(
+                        arg_tys.as_ref().unwrap().get().clone(),
+                        ctx.clone(),
+                    )),
                 )
             }
             Expr::Arg(found_ty, _ctx) => {

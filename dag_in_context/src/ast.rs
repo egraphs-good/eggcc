@@ -300,7 +300,11 @@ pub fn ttrue() -> RcExpr {
 }
 
 pub fn ttrue_ty(ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(true), ty, Assumption::NoContext))
+    RcExpr::new(Expr::Const(
+        crate::schema::Constant::Bool(true),
+        ty,
+        Assumption::NoContext,
+    ))
 }
 
 pub fn tfalse() -> RcExpr {
@@ -312,15 +316,27 @@ pub fn tfalse() -> RcExpr {
 }
 
 pub fn tfalse_ty(ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(false), ty, Assumption::NoContext))
+    RcExpr::new(Expr::Const(
+        crate::schema::Constant::Bool(false),
+        ty,
+        Assumption::NoContext,
+    ))
 }
 
 pub fn int(i: i64) -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), Type::Unknown, Assumption::NoContext))
+    RcExpr::new(Expr::Const(
+        crate::schema::Constant::Int(i),
+        Type::Unknown,
+        Assumption::NoContext,
+    ))
 }
 
 pub fn int_ty(i: i64, ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), ty, Assumption::NoContext))
+    RcExpr::new(Expr::Const(
+        crate::schema::Constant::Int(i),
+        ty,
+        Assumption::NoContext,
+    ))
 }
 
 pub fn inloop(input: RcExpr, pred_output: RcExpr) -> Assumption {

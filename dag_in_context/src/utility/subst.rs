@@ -112,13 +112,9 @@ fn test_subst_nested() -> crate::Result {
 fn test_subst_makes_new_context() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
-    let expr = add(
-        int_ty(1, base(intt())),
-        iarg(),
-    );
+    let expr = add(int_ty(1, base(intt())), iarg());
     let replace_with = int_ty(2, base(intt())).initialize_ctx();
-    let expected = add(int(1), int(2))
-        .with_arg_types(base(intt()), base(intt()));
+    let expected = add(int(1), int(2)).with_arg_types(base(intt()), base(intt()));
     let build = format!(
         "
 (let substituted (Subst (NoContext)

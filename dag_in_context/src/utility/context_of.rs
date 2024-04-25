@@ -50,14 +50,20 @@ fn test_context_of_base_case() -> crate::Result {
 #[test]
 #[should_panic]
 fn test_context_of_panics_if_two() {
-    let build = "
+    use crate::ast::*;
+    let ctx2 = inif(
+        true,
+        ttrue().with_arg_types(tuplet!(), base(boolt())),
+        arg_ty(tuplet!()),
+    );
+    let build = format!("
         (let ctx1 (NoContext))
-        (let ctx2 (NoContext))
-        (let conflict-expr (Bop (And) (Const (Bool false) (Base (BoolT)) ctx1) (Const (Bool true) (Base (BoolT)) ctx2)))";
+        (let ctx2 {ctx2})
+        (let conflict-expr (Bop (And) (Const (Bool false) (Base (BoolT)) ctx1) (Const (Bool true) (Base (BoolT)) ctx2)))");
     let check = "";
 
     let _ = crate::egglog_test(
-        build,
+        &build,
         check,
         vec![],
         crate::ast::val_empty(),

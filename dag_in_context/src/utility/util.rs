@@ -75,7 +75,7 @@ fn test_tuple_ith() -> crate::Result {
     ;; with print
     (let tup2 (Concat 
                 (Concat 
-                    (Single (Bop (Print) (Const (Int 0) {emptyt} (NoContext)) (Arg (Base (StateT)))))
+                    (Single (Bop (Print) (Const (Int 0) {emptyt} (NoContext)) (Arg (Base (StateT)) (NoContext))))
                     (Concat (Single (Const (Int 1) {emptyt} (NoContext))) 
                                 (Single (Const (Int 2) {emptyt} (NoContext)))))
                 (Single (Const (Int 3) {emptyt} (NoContext)))))
@@ -91,7 +91,7 @@ fn test_tuple_ith() -> crate::Result {
     (check (= 4 (tuple-length tup)))
     (fail (check (Get tup 4)))
 
-    (check (= (Get tup2 0) (Bop (Print) (Const (Int 0) {emptyt} (NoContext)) (Arg (Base (StateT))))))
+    (check (= (Get tup2 0) (Bop (Print) (Const (Int 0) {emptyt} (NoContext)) (Arg (Base (StateT)) (NoContext)))))
     (check (= (Get tup2 1) (Const (Int 1) {emptyt} (NoContext))))
     (check (= (Get tup2 2) (Const (Int 2) {emptyt} (NoContext))))
     (check (= (Get tup2 3) (Const (Int 3) {emptyt} (NoContext))))

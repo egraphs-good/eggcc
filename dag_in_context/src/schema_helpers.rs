@@ -376,7 +376,7 @@ impl Constructor {
                 vec![
                     f(Static(Sort::Constant), "n"),
                     f(Static(Sort::Type), "ty"),
-                    f(SubExpr(Sort::Assumption), "ctx"),
+                    f(Static(Sort::Assumption), "ctx"),
                 ]
             }
             Constructor::Top => vec![

@@ -16,8 +16,8 @@ expression: visualization.result
 .__41__:
   v44: int = mul v11 v9;
   v46: bool = const true;
-  v48: int = const 1;
-  v51: int = add v48 v10;
+  v49: int = const 1;
+  v51: int = add v10 v49;
   v35: int = id v44;
   v36: bool = id v46;
   v37: int = id v51;

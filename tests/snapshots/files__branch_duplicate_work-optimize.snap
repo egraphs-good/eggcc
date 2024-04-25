@@ -11,8 +11,8 @@ expression: visualization.result
   v19: int = id v24;
   jmp .__27__;
 .__11__:
-  v14: int = add v0 v0;
-  v17: int = mul v14 v3;
+  v15: int = add v0 v0;
+  v17: int = mul v3 v15;
   v19: int = id v17;
 .__27__:
   print v19;

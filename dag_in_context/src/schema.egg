@@ -31,13 +31,32 @@
 
 
 ; =================================
+; Assumptions
+; =================================
+
+(datatype Assumption
+  ; Assume nothing
+  (NoContext)
+  ; The term is in a loop with `input` and `pred_output`.
+  ; InLoop is a special context because it describes the argument of the loop. It is a *scope context*.
+  ;      input    pred_output
+  (InLoop Expr     Expr)
+  ; Branch of the switch, and what the predicate is, and what the input is
+  (InSwitch i64 Expr Expr)
+  ; If the predicate was true, and what the predicate is, and what the input is
+  (InIf bool Expr Expr)
+)
+
+
+
+; =================================
 ; Leaf nodes
 ; Constants, argument, and empty tuple
 ; =================================
 
 ; Only a single argument is bound- if multiple values are needed, arg will be a tuple.
 ; e.g. `(Get (Arg tuple_type) 1)` gets the second value in the argument with some tuple_type.
-(function Arg (Type) Expr)
+(function Arg (Type Assumption) Expr)
 
 ; Constants
 (datatype Constant
@@ -45,11 +64,11 @@
   (Bool bool))
 ; All leaf nodes need the type of the argument
 ; Type is the type of the bound argument in scope
-(function Const (Constant Type) Expr)
+(function Const (Constant Type Assumption) Expr)
 
 ; An empty tuple.
 ; Type is the type of the bound argument in scope
-(function Empty (Type) Expr)
+(function Empty (Type Assumption) Expr)
 
 
 ; =================================
@@ -148,34 +167,6 @@
 ; input must be the same type as (out1, out2, ..., outi)
 ;                  input   pred-and-body
 (function DoWhile (Expr    Expr)                   Expr)
-
-
-
-
-; =================================
-; InContext
-; =================================
-
-(datatype Assumption
-  ; Assume nothing
-  (NoContext)
-  ; The term is in a loop with `input` and `pred_output`.
-  ; InLoop is a special context because it describes the argument of the loop. It is a *scope context*.
-  ;      input    pred_output
-  (InLoop Expr     Expr)
-  ; Branch of the switch, and what the predicate is, and what the input is
-  (InSwitch i64 Expr Expr)
-  ; If the predicate was true, and what the predicate is, and what the input is
-  (InIf bool Expr Expr)
-  ; Other assumptions are possible, but not supported yet.
-  ; For example:
-  ;      A boolean predicate is true.
-  ;      e.g. (> (FuncArg) (Const (Int 2)))
-  ; (IsTrue Expr))
-)
-
-; InContext allows creating context-specific terms.
-(function InContext (Assumption Expr) Expr)
 
 
 ; =================================

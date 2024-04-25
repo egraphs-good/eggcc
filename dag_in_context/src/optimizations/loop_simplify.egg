@@ -2,8 +2,8 @@
 (ruleset loop-simplify)
 
 (rewrite
- (DoWhile (Arg ty)
-  (Concat (Single (Const (Bool false) ty))
-    (Single (Const constant ty))))
- (Single (Const constant ty))
+ (DoWhile (Arg ty ctx)
+  (Concat (Single (Const (Bool false) ty ctx2))
+    (Single (Const constant ty ctx2))))
+ (Single (Const constant ty ctx))
  :ruleset loop-simplify)

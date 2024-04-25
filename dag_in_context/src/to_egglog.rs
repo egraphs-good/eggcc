@@ -169,10 +169,11 @@ impl Expr {
             return term.clone();
         }
         let res = match self.as_ref() {
-            Expr::Const(c, ty) => {
+            Expr::Const(c, ty, ctx) => {
                 let child = c.to_egglog_internal(term_dag);
                 let ty = ty.to_egglog_internal(term_dag);
-                term_dag.app("Const".into(), vec![child, ty])
+                let ctx = ctx.to_egglog_internal(term_dag);
+                term_dag.app("Const".into(), vec![child, ty, ctx])
             }
             Expr::Bop(op, lhs, rhs) => {
                 let lhs = lhs.to_egglog_internal(term_dag);
@@ -209,9 +210,10 @@ impl Expr {
                 let name_lit = term_dag.lit(Literal::String(name.into()));
                 term_dag.app("Call".into(), vec![name_lit, arg])
             }
-            Expr::Empty(ty) => {
+            Expr::Empty(ty, ctx) => {
                 let ty = ty.to_egglog_internal(term_dag);
-                term_dag.app("Empty".into(), vec![ty])
+                let ctx = ctx.to_egglog_internal(term_dag);
+                term_dag.app("Empty".into(), vec![ty, ctx])
             }
             Expr::Single(expr) => {
                 let expr = expr.to_egglog_internal(term_dag);
@@ -244,14 +246,10 @@ impl Expr {
                 let body = body.to_egglog_internal(term_dag);
                 term_dag.app("DoWhile".into(), vec![cond, body])
             }
-            Expr::Arg(ty) => {
+            Expr::Arg(ty, ctx) => {
                 let ty = ty.to_egglog_internal(term_dag);
-                term_dag.app("Arg".into(), vec![ty])
-            }
-            Expr::InContext(assumption, expr) => {
-                let expr = expr.to_egglog_internal(term_dag);
-                let assumption = assumption.to_egglog_internal(term_dag);
-                term_dag.app("InContext".into(), vec![assumption, expr])
+                let ctx = ctx.to_egglog_internal(term_dag);
+                term_dag.app("Arg".into(), vec![ty, ctx])
             }
             Expr::Function(name, ty_in, ty_out, body) => {
                 let body = body.to_egglog_internal(term_dag);
@@ -353,7 +351,7 @@ fn convert_to_egglog_simple_arithmetic() {
     let expr = add(int(1), iarg()).with_arg_types(base(intt()), base(intt()));
     test_expr_parses_to(
         expr,
-        "(Bop (Add) (Const (Int 1) (Base (IntT))) (Arg (Base (IntT))))",
+        "(Bop (Add) (Const (Int 1) (Base (IntT)) (NoContext)) (Arg (Base (IntT)) (NoContext)))",
     );
 }
 
@@ -363,12 +361,12 @@ fn convert_to_egglog_switch() {
     let expr = switch!(int(1), int(4); concat(single(int(1)), single(int(2))), concat(single(int(3)), single(int(4)))).with_arg_types(base(intt()), tuplet!(intt(), intt()));
     test_expr_parses_to(
         expr,
-        "(Switch (Const (Int 1) (Base (IntT)))
-                 (Const (Int 4) (Base (IntT)))
+        "(Switch (Const (Int 1) (Base (IntT)) (NoContext))
+                 (Const (Int 4) (Base (IntT)) (NoContext))
                  (Cons 
-                  (Concat (Single (Const (Int 1) (Base (IntT)))) (Single (Const (Int 2) (Base (IntT)))))
+                  (Concat (Single (Const (Int 1) (Base (IntT)) (NoContext))) (Single (Const (Int 2) (Base (IntT)) (NoContext))))
                   (Cons 
-                   (Concat (Single (Const (Int 3) (Base (IntT)))) (Single (Const (Int 4) (Base (IntT)))))
+                   (Concat (Single (Const (Int 3) (Base (IntT)) (NoContext))) (Single (Const (Int 4) (Base (IntT)) (NoContext))))
                    (Nil))))",
     );
 }
@@ -400,14 +398,14 @@ fn convert_whole_program() {
         expr,
         "(Program 
             (Function \"main\" (Base (IntT)) (Base (IntT)) 
-                (Bop (Add) (Const (Int 1) (Base (IntT))) (Call \"f\" (Const (Int 2) (Base (IntT)))))) 
+                (Bop (Add) (Const (Int 1) (Base (IntT)) (NoContext)) (Call \"f\" (Const (Int 2) (Base (IntT) (NoContext)))))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (Get
-                        (DoWhile (Single (Arg (Base (IntT))))
+                        (DoWhile (Single (Arg (Base (IntT)) (NoContext)))
                         (Concat 
-                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (IntT) (TNil)))) 0) (Const (Int 10) (TupleT (TCons (IntT) (TNil))))))
-                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (IntT) (TNil)))) 0) (Const (Int 1) (TupleT (TCons (IntT) (TNil))))))))
+                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (IntT) (TNil))) (NoContext)) 0) (Const (Int 10) (TupleT (TCons (IntT) (TNil))) (NoContext))))
+                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (IntT) (TNil))) (NoContext)) 0) (Const (Int 1) (TupleT (TCons (IntT) (TNil))) (NoContext))))))
                         0)) 
                 (Nil)))",
     );

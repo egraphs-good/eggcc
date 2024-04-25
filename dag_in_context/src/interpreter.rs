@@ -298,11 +298,10 @@ impl<'a> VirtualMachine<'a> {
             return val.clone();
         }
         let res = match expr.as_ref() {
-            Expr::Const(c, _ty) => Const(c.clone()),
+            Expr::Const(c, _ty, _ctx) => Const(c.clone()),
             Expr::Bop(bop, e1, e2) => self.interpret_bop(bop, e1, e2, arg),
             Expr::Uop(uop, e) => self.interpret_uop(uop, e, arg),
             Expr::Top(top, e1, e2, e3) => self.interpret_top(top, e1, e2, e3, arg),
-            Expr::InContext(_assumption, e) => self.interpret_expr(e, arg),
             Expr::Get(e_tuple, i) => {
                 let Tuple(vals) = self.interpret_expr(e_tuple, arg) else {
                     panic!(
@@ -329,7 +328,7 @@ impl<'a> VirtualMachine<'a> {
                 // make a new pointer at the address, with an initial offset of 0
                 tuplev!(Ptr(Pointer::new(addr, size as usize, 0)), Value::StateV)
             }
-            Expr::Empty(_ty) => Tuple(vec![]),
+            Expr::Empty(_ty, _ctx) => Tuple(vec![]),
             Expr::Single(e) => Tuple(vec![self.interpret_expr(e, arg)]),
             Expr::Concat(e1, e2) => {
                 let Tuple(mut v1) = self.interpret_expr(e1, arg) else {
@@ -383,7 +382,7 @@ impl<'a> VirtualMachine<'a> {
                 }
                 Tuple(vals)
             }
-            Expr::Arg(_ty) => arg.clone(),
+            Expr::Arg(_ty, _ctx) => arg.clone(),
             Expr::Function(..) => panic!("Function should not be interpreted as an expression"),
             Expr::Call(func_name, e) => {
                 let e_val = self.interpret_expr(e, arg);

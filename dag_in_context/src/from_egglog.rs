@@ -180,9 +180,9 @@ impl<'a> FromEgglog<'a> {
         }
         let res = match_term_app!(expr.clone();
         {
-          ("Const", [constant, ty]) => {
+          ("Const", [constant, ty, ctx]) => {
             let constant = self.termdag.get(*constant);
-            Rc::new(Expr::Const(self.const_from_egglog(constant), self.type_from_egglog(self.termdag.get(*ty))))
+            Rc::new(Expr::Const(self.const_from_egglog(constant), self.type_from_egglog(self.termdag.get(*ty)), self.assumption_from_egglog(self.termdag.get(*ctx))))
           }
           ("Top", [op, lhs, mid, rhs]) => {
             let op = self.termdag.get(*op);
@@ -250,7 +250,7 @@ impl<'a> FromEgglog<'a> {
               self.expr_from_egglog(expr),
             ))
           }
-          ("Empty", [ty]) => Rc::new(Expr::Empty(self.type_from_egglog(self.termdag.get(*ty)))),
+          ("Empty", [ty, ctx]) => Rc::new(Expr::Empty(self.type_from_egglog(self.termdag.get(*ty)), self.assumption_from_egglog(self.termdag.get(*ctx)))),
           ("Single", [expr]) => {
             let expr = self.termdag.get(*expr);
             Rc::new(Expr::Single(self.expr_from_egglog(expr)))
@@ -293,17 +293,9 @@ impl<'a> FromEgglog<'a> {
               self.expr_from_egglog(body),
             ))
           }
-          ("Arg", [ty]) => {
+          ("Arg", [ty, ctx]) => {
             let type_ = self.termdag.get(*ty);
-            Rc::new(Expr::Arg(self.type_from_egglog(type_)))
-          }
-          ("InContext", [assumption, expr]) => {
-            let assumption = self.termdag.get(*assumption);
-            let expr = self.termdag.get(*expr);
-            Rc::new(Expr::InContext(
-              self.assumption_from_egglog(assumption),
-              self.expr_from_egglog(expr),
-            ))
+            Rc::new(Expr::Arg(self.type_from_egglog(type_), self.assumption_from_egglog(self.termdag.get(*ctx))))
           }
           ("Function", [lit, type1, type2, expr]) => {
             let Term::Lit(Literal::String(string)) = self.termdag.get(*lit) else {

@@ -9,13 +9,11 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
     let ruleset = " :ruleset always-run";
 
     match ctor {
-        // I assume input is tuple here
-        // TODO InContext Node
         Constructor::Get => Some(format!(
             "
 (rule ((BodyContainsExpr loop expr) 
        (= loop (DoWhile in out)) 
-       (= expr (Get (Arg ty) i)) 
+       (= expr (Get (Arg ty ctx) i)) 
        (= loop (DoWhile in pred_out))
        (= expr (Get pred_out (+ i 1)))) 
       ((set (is-inv-Expr loop expr) true)){ruleset})"

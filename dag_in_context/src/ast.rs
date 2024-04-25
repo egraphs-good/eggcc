@@ -199,7 +199,7 @@ pub fn switch_vec(cond: RcExpr, input: RcExpr, cases: Vec<RcExpr>) -> RcExpr {
 }
 
 pub fn empty() -> RcExpr {
-    RcExpr::new(Expr::Empty(Type::Unknown))
+    RcExpr::new(Expr::Empty(Type::Unknown, Assumption::NoContext))
 }
 
 pub fn single(e: RcExpr) -> RcExpr {
@@ -252,23 +252,27 @@ where
     }
 }
 
+pub fn arg_ty_ctx(ty: Type, ctx: Assumption) -> RcExpr {
+    RcExpr::new(Expr::Arg(ty, ctx))
+}
+
 pub fn arg_ty(ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Arg(ty))
+    RcExpr::new(Expr::Arg(ty, Assumption::NoContext))
 }
 
 /// Returns an argument with an unknown type.
 /// Use `with_arg_types` to fill in the correct type.
 pub fn arg() -> RcExpr {
-    RcExpr::new(Expr::Arg(Type::Unknown))
+    RcExpr::new(Expr::Arg(Type::Unknown, Assumption::NoContext))
 }
 
 /// An argument with an integer type.
 pub fn iarg() -> RcExpr {
-    RcExpr::new(Expr::Arg(base(intt())))
+    RcExpr::new(Expr::Arg(base(intt()), Assumption::NoContext))
 }
 
 pub fn barg() -> RcExpr {
-    RcExpr::new(Expr::Arg(base(boolt())))
+    RcExpr::new(Expr::Arg(base(boolt()), Assumption::NoContext))
 }
 
 pub fn getat(index: usize) -> RcExpr {
@@ -291,30 +295,32 @@ pub fn ttrue() -> RcExpr {
     RcExpr::new(Expr::Const(
         crate::schema::Constant::Bool(true),
         Type::Unknown,
+        Assumption::NoContext,
     ))
 }
 
 pub fn ttrue_ty(ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(true), ty))
+    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(true), ty, Assumption::NoContext))
 }
 
 pub fn tfalse() -> RcExpr {
     RcExpr::new(Expr::Const(
         crate::schema::Constant::Bool(false),
         Type::Unknown,
+        Assumption::NoContext,
     ))
 }
 
 pub fn tfalse_ty(ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(false), ty))
+    RcExpr::new(Expr::Const(crate::schema::Constant::Bool(false), ty, Assumption::NoContext))
 }
 
 pub fn int(i: i64) -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), Type::Unknown))
+    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), Type::Unknown, Assumption::NoContext))
 }
 
 pub fn int_ty(i: i64, ty: Type) -> RcExpr {
-    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), ty))
+    RcExpr::new(Expr::Const(crate::schema::Constant::Int(i), ty, Assumption::NoContext))
 }
 
 pub fn inloop(input: RcExpr, pred_output: RcExpr) -> Assumption {
@@ -335,8 +341,4 @@ pub fn noctx() -> Assumption {
 
 pub fn wildcardctx(str: String) -> Assumption {
     Assumption::WildCard(str)
-}
-
-pub fn inctx(assumption: Assumption, body: RcExpr) -> RcExpr {
-    RcExpr::new(Expr::InContext(assumption, body))
 }

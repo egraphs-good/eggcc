@@ -11,24 +11,23 @@ fn passthrough_if_arg() -> crate::Result {
     let pred = less_eq(get(arg_ty(ty.clone()), 0), int_ty(0, ty.clone()));
     let zero = int_ty(0, ty.clone());
     let input = concat(single(get(arg_ty(ty.clone()), 1)), single(zero.clone()));
-    let arg = arg_ty(tuplet_vec(vec![statet(), intt()]));
     let then = concat(
         single(get(
-            inctx(inif(true, pred.clone(), input.clone()), arg.clone()),
+            arg_ty_ctx(tuplet!(statet(), intt()), inif(true, pred.clone(), input.clone())),
             0,
         )),
         single(get(
-            inctx(inif(true, pred.clone(), input.clone()), arg.clone()),
+            arg_ty_ctx(tuplet!(statet(), intt()), inif(true, pred.clone(), input.clone())),
             1,
         )),
     );
     let els = concat(
         single(get(
-            inctx(inif(false, pred.clone(), input.clone()), arg.clone()),
+            arg_ty_ctx(tuplet!(statet(), intt()), inif(false, pred.clone(), input.clone())),
             0,
         )),
         single(get(
-            inctx(inif(false, pred.clone(), input.clone()), arg.clone()),
+            arg_ty_ctx(tuplet!(statet(), intt()), inif(false, pred.clone(), input.clone())),
             1,
         )),
     );

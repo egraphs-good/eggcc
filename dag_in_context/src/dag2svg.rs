@@ -49,7 +49,7 @@ impl DotConverter {
                 Expr::Function(name, ..) => {
                     format!("cluster_fn{}{}", name, self.name_counter)
                 }
-                Expr::Const(c, _) => match c {
+                Expr::Const(c, _, _ctx) => match c {
                     Constant::Int(i) => format!("Const{}_{}", i, self.name_counter),
                     Constant::Bool(b) => format!("Const{}_{}", b, self.name_counter),
                 },

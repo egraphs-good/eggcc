@@ -111,7 +111,7 @@ impl<'a> Extractor<'a> {
                 self.find_effectful_nodes_in_expr(state, linearity, rootid)
             }
             Expr::Call(_name, input) => self.find_effectful_nodes_in_expr(input, linearity, rootid),
-            Expr::Empty(_) => {
+            Expr::Empty(_, _ctx) => {
                 panic!("Empty has no effect")
             }
             Expr::Single(expr) => self.find_effectful_nodes_in_expr(expr, linearity, rootid),
@@ -154,11 +154,8 @@ impl<'a> Extractor<'a> {
                 let body_root_id = class_of_expr(body, linearity, self);
                 self.find_effectful_nodes_in_expr(body, linearity, &body_root_id);
             }
-            Expr::Arg(ty) => {
+            Expr::Arg(ty, _ctx) => {
                 assert!(ty.contains_state());
-            }
-            Expr::InContext(_ctx, body) => {
-                self.find_effectful_nodes_in_expr(body, linearity, rootid)
             }
             Expr::Function(_name, _inty, outty, body) => {
                 if !outty.contains_state() {
@@ -167,7 +164,7 @@ impl<'a> Extractor<'a> {
                 let body_root_id = class_of_expr(body, linearity, self);
                 self.find_effectful_nodes_in_expr(body, linearity, &body_root_id)
             }
-            Expr::Const(_, _) => panic!("Const has no effect"),
+            Expr::Const(_, _, _) => panic!("Const has no effect"),
         }
     }
 }

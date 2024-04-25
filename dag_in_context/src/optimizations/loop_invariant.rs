@@ -1,4 +1,4 @@
-use crate::{optimize, schema_helpers::{Constructor, Purpose}};
+use crate::schema_helpers::{Constructor, Purpose};
 use std::iter;
 use strum::IntoEnumIterator;
 
@@ -13,7 +13,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
             "
 (rule ((BodyContainsExpr loop expr) 
        (= loop (DoWhile in out)) 
-       (= expr (Get (Arg ty ctx) i)) 
+       (= expr (Get (InContext ctx (Arg ty)) i))
        (= loop (DoWhile in pred_out))
        (= expr (Get pred_out (+ i 1)))) 
       ((set (is-inv-Expr loop expr) true)){ruleset})"
@@ -24,7 +24,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
                 "
 (rule ((BodyContainsExpr loop expr) 
        (= loop (DoWhile in out)) 
-       (= expr {ctor_pattern})) 
+       (= expr (InContext ctx {ctor_pattern})))
       ((set (is-inv-Expr loop expr) true)){ruleset})"
             ))
         }
@@ -141,7 +141,30 @@ fn test_invariant_detect() -> crate::Result {
             concat(parallel!(getat(2), getat(3)), single(print.clone())),
         ),
     )
-    .with_arg_types(tuplet!(statet()), output_ty.clone());
+    .with_arg_types(tuplet!(statet()), output_ty.clone())
+    .add_ctx(noctx());
+
+    let my_loop_ctx = inloop(
+        parallel!(int(1), int(2), int(3), int(4), getat(0))
+            .with_arg_types(tuplet!(statet()), output_ty.clone())
+            .add_ctx(noctx()),
+        concat(
+            parallel!(pred.clone(), not_inv.clone(), getat(1)),
+            concat(parallel!(getat(2), getat(3)), single(print.clone())),
+        )
+        .with_arg_types(
+            output_ty.clone(),
+            tuplet!(boolt(), intt(), intt(), intt(), intt(), statet()),
+        )
+        .add_ctx(noctx()),
+    );
+
+    let inv = inv.add_ctx(my_loop_ctx.clone());
+    let inv_in_print = inv_in_print.add_ctx(my_loop_ctx.clone());
+    let pred = pred.add_ctx(my_loop_ctx.clone());
+    let not_inv = not_inv.add_ctx(my_loop_ctx.clone());
+    let print = print.add_ctx(my_loop_ctx.clone());
+    let inner_inv = inner_inv.add_ctx(my_loop_ctx.clone());
 
     let build = format!(
         "(let loop {})
@@ -154,7 +177,8 @@ fn test_invariant_detect() -> crate::Result {
         my_loop, inv, inv_in_print, pred, not_inv, print, inner_inv
     );
     let check = format!(
-        "(check (= true (is-inv-Expr loop inv)))
+        "
+        (check (= true (is-inv-Expr loop inv)))
 		(check (= true (is-inv-Expr loop inv_in_print)))
 		(check (= false (is-inv-Expr loop pred)))
 		(check (= false (is-inv-Expr loop not_inv)))
@@ -166,6 +190,8 @@ fn test_invariant_detect() -> crate::Result {
         (fail (check (boundary-Expr loop inner_inv)))"
     );
 
+    //println!("{}", build);
+
     egglog_test(
         &build,
         &check,
@@ -176,17 +202,15 @@ fn test_invariant_detect() -> crate::Result {
     )
 }
 
-
 #[test]
 fn test_invariant_hoist() -> crate::Result {
     use crate::ast::*;
     let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
-    let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
-    let inv = add(inner_inv.clone(), int(0)).with_arg_types(output_ty.clone(), base(intt()));
-    let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), base(boolt()));
-    let not_inv = add(getat(0), inv.clone()).with_arg_types(output_ty.clone(), base(intt()));
-    let print =
-        tprint(inv.clone(), getat(4)).with_arg_types(output_ty.clone(), base(statet()));
+    let inner_inv = sub(getat(2), getat(1));
+    let inv = add(inner_inv.clone(), int(0));
+    let pred = less_than(getat(0), getat(3));
+    let not_inv = add(getat(0), inv.clone());
+    let print = tprint(inv.clone(), getat(4));
 
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4), getat(0)),
@@ -195,31 +219,40 @@ fn test_invariant_hoist() -> crate::Result {
             concat(parallel!(getat(2), getat(3)), single(print.clone())),
         ),
     )
-    .with_arg_types(tuplet!(statet()), output_ty.clone());
+    .with_arg_types(tuplet!(statet()), output_ty.clone())
+    .add_ctx(noctx());
 
-    let main_fun = function("main", tuplet!(statet()), output_ty.clone(), my_loop.clone()).func_add_ctx();
+    let new_out_ty = tuplet!(intt(), intt(), intt(), intt(), statet(), intt());
+    let new_input = parallel!(int(1), int(2), int(3), int(4), getat(0), int(1));
+    let ctx_wildcard = wildcardctx("IN_EXTENDED_LOOP".to_string());
+    let new_print = tprint(getat(5), getat(4));
 
-    //let prog = program!(main_fun.clone(),);
-    //let res = optimize(&prog).unwrap();
-    //dbg!(res);
-     print!("\n\n{}\n\n", main_fun.clone());
-    let build = format!(
-        "(let loop {})
-        (let inv {})
-        (let pred {})
-        (let not_inv {})
-        (let print {})
-        (let inner_inv {})
-        (let main {})
-        (let new_input)",
-        my_loop, inv, pred, not_inv, print, inner_inv, main_fun
-    );
+    let hoisted_loop = dowhile(
+        new_input.clone().add_ctx(noctx()),
+        parallel!(
+            pred.clone(),
+            not_inv.clone(),
+            getat(1),
+            getat(2),
+            getat(3),
+            new_print,
+            getat(5)
+        )
+        .with_arg_types(
+            new_out_ty.clone(),
+            tuplet!(boolt(), intt(), intt(), intt(), intt(), statet(), intt()),
+        )
+        .add_ctx(ctx_wildcard.clone()),
+    )
+    .with_arg_types(tuplet!(statet()), new_out_ty);
 
-    print!("{}\n\n", build.clone());
-
+    let build = format!("(let loop {}) \n", my_loop);
 
     let check = format!(
-        ""
+        "(check {})
+        (check (= loop (SubTuple {} 0 5)))",
+        hoisted_loop.clone(),
+        hoisted_loop
     );
 
     egglog_test(

@@ -32,7 +32,11 @@
       ((union lhs (Empty ty ctx)))
       :ruleset context)
 
-
+;; check that we haven't found a leaf without context
+(rule ((= lhs (DoAddContext seen ctx scope expr))
+       (IsLeaf expr))
+      ((extract expr) (panic "Found expression without context!"))
+      :ruleset context-helpers)
 
 
 ;; ######################################### Operators

@@ -54,51 +54,12 @@
 ;; mock function
 (ruleset loop-inv-motion)
 
-;; This rule allow hoist the generated new loop again
-;; which cause trouble when interleaves with loop unrolling in milestone
-;; The way to fix was to restrict the unrolling number
-; (rule ((boundary-Expr loop inv)
-;        (> (Expr-size inv) 1)
-;        ;; TODO: replace Expr-size when cost model is ready
-;        (= loop (DoWhile in pred_out))
-;        ;; the outter assumption of the loop 
-;        ;; Question: what if there are multiple loop_assumption?
-;        (ContextOf loop loop_ctx)
-;        (HasType in in_type)
-;        (HasType inv inv_type)
-;        (= inv_type (Base base_inv_ty))
-;        (= in_type (TupleT tylist))
-;        (= false (hoisted-loop in pred_out))
-;        (= len (tuple-length in)))
-;       (;; create a list of [(Get (old input) 0) ... hoisted_term]
-;        (let new_input (Concat in (Single (Subst loop_ctx in inv))))
-;        ;; append (Get (Arg id) len+1) to end of output
-;        (let new_in_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
-;        (let new_out_branch (Get (Arg new_in_type) len))
-;        ;; create an virtual assume node, union it with actuall InLoop later
-;        (let assum (InExtendedLoop in pred_out new_input))
-;        ;; this two subst only change arg to arg with new type
-;        (let substed_pred_out (Subst assum (Arg new_in_type) pred_out))
-;        (let inv_in_new_loop (Subst assum (Arg new_in_type) inv))
-;        (let new_pred_out (Concat substed_pred_out (Single new_out_branch)))
-       
-;        (let new_loop (DoWhile new_input new_pred_out))
-;        (union (InContext (InLoop new_input new_pred_out) inv_in_new_loop) 
-;               (InContext (InLoop new_input new_pred_out) new_out_branch))
-;        (let wrapper (SubTuple new_loop 0 len))
-;        (union loop wrapper)
-;        (union assum (InLoop new_input new_pred_out)) ;; this one have cycle, awful
-;        (delete (DoWhile in pred_out)) 
-;        ;; don't hoist same loop again
-;        (set (hoisted-loop in pred_out) true)
-;       )
-;        :ruleset loop-inv-motion)
 (rule ((boundary-Expr loop inv)
        (> (Expr-size inv) 1)
        ;; TODO: replace Expr-size when cost model is ready
        (= loop (DoWhile in pred_out))
        ;; the outter assumption of the loop 
-       ;; Question: what if there are multiple loop_assumption?
+       ;; Question: what if there are multiple loop_ctx?
        (ContextOf loop loop_ctx)
        (HasType in in_type)
        (HasType inv inv_type)
@@ -106,25 +67,21 @@
        (= in_type (TupleT tylist))
        (= false (hoisted-loop in pred_out))
        (= len (tuple-length in)))
-      (;; create a list of [(Get (old input) 0) ... hoisted_term]
-       (let new_input (Concat in (Single (Subst 10 loop_ctx in inv))))
-       ;; append (Get (Arg id) len+1) to end of output
-       (let new_in_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
-       (let new_out_branch (Get (Arg new_in_type) len))
+      ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
+       (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
        ;; create an virtual assume node, union it with actuall InLoop later
        (let assum (InExtendedLoop in pred_out new_input))
+       (let new_out_branch (Get (InContext assum (Arg new_input_type)) len))
        ;; this two subst only change arg to arg with new type
-       (let substed_pred_out (Subst 10 assum (Arg new_in_type) pred_out))
-       (let inv_in_new_loop (Subst 10 assum (Arg new_in_type) inv))
+       (let substed_pred_out (Subst assum (InContext (NoContext) (Arg new_input_type)) pred_out))
+       (let inv_in_new_loop (Subst assum (InContext (NoContext) (Arg new_input_type)) inv))
        (let new_pred_out (Concat substed_pred_out (Single new_out_branch)))
        
        (let new_loop (DoWhile new_input new_pred_out))
-       (union inv_in_new_loop
-              (InContext assum new_out_branch))
+       (union inv_in_new_loop new_out_branch)
        (let wrapper (SubTuple new_loop 0 len))
        (union loop wrapper)
-      ;  (union assum (InLoop new_input new_pred_out)) ;; this one have cycle, awful
-       (delete (DoWhile in pred_out)) 
+       (subsume (DoWhile in pred_out)) 
        ;; don't hoist same loop again
        (set (hoisted-loop in pred_out) true)
       )

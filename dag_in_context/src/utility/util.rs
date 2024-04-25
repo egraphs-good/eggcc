@@ -113,7 +113,7 @@ fn test_tuple_ith() -> crate::Result {
 fn test_expr_size() -> crate::Result {
     use crate::ast::*;
     let pureloop = dowhile(
-         single(int(1)),
+        single(int(1)),
         parallel!(
             less_than(getat(0), int(3)),
             get(switch!(int(2); parallel!(int(4), int(5))), 0)

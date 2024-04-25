@@ -92,8 +92,16 @@ impl<'a> EgraphInfo<'a> {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {
                 // add to the parents table
-                for (child, isregion) in enode_children(egraph, &egraph[enode]) {
-                    let child_region = if isregion {
+                for EnodeChild {
+                    child,
+                    is_subregion,
+                    is_assumption,
+                } in enode_children(egraph, &egraph[enode])
+                {
+                    if is_assumption {
+                        continue;
+                    }
+                    let child_region = if is_subregion {
                         child.clone()
                     } else {
                         root.clone()
@@ -298,30 +306,36 @@ fn calculate_cost_set(
     let cid = info.egraph.nid_to_cid(&node_id);
     let region_costs = extractor.costs.get(&rootid).unwrap();
 
-    let eclass_type = info.get_sort_of_eclass(cid);
-
-    // Don't extract assumptions- use NoContext always
-    if eclass_type == "Assumption" {
-        // always return NoContext
-        return Some(CostSet {
-            costs: Default::default(),
-            total: 0.0.try_into().unwrap(),
-            term: extractor.termdag.app("NoContext".into(), vec![]),
-        });
-    }
+    let noctx = CostSet {
+        costs: Default::default(),
+        total: 0.0.try_into().unwrap(),
+        term: extractor.termdag.app("NoContext".into(), vec![]),
+    };
 
     // get the cost sets for the children
     let child_cost_sets = enode_children(info.egraph, node)
         .iter()
-        .filter_map(|(cid, is_region_root)| {
-            if *is_region_root {
-                Some((extractor.costs.get(cid)?.get(cid)?, *is_region_root))
-            } else {
-                region_costs
-                    .get(cid)
-                    .map(|cost_set| (cost_set, *is_region_root))
-            }
-        })
+        .filter_map(
+            |EnodeChild {
+                 child,
+                 is_subregion,
+                 is_assumption,
+             }| {
+                // for assumptions, just return (NoContext) every time
+                if *is_assumption {
+                    Some((
+                        &noctx,
+                        *is_subregion,
+                    ))
+                } else if *is_subregion {
+                    Some((extractor.costs.get(child)?.get(child)?, *is_subregion))
+                } else {
+                    region_costs
+                        .get(child)
+                        .map(|cost_set| (cost_set, *is_subregion))
+                }
+            },
+        )
         .collect::<Vec<_>>();
     // if any are unavailable, we return none from this whole function
     if child_cost_sets.len() < node.children.len() {
@@ -468,7 +482,13 @@ pub fn extract_without_linearity(
         .get(root_eclass)
         .expect("Failed to extract program! Also failed to extract any functions in program.")
         .get(root_eclass)
-        .expect("Failed to extract program!")
+        .unwrap_or_else(|| {
+            if effectful_paths.is_some() {
+                panic!("Failed to extract program after linear path is found!");
+            } else {
+                panic!("Failed to extract program during initial extraction!");
+            }
+        })
         .clone();
 
     // now run translation to expressions
@@ -604,14 +624,36 @@ fn enode_regions(
 ) -> Vec<ClassId> {
     enode_children(egraph, enode)
         .iter()
-        .filter_map(|(cid, is_region_root)| {
-            if *is_region_root {
-                Some(cid.clone())
-            } else {
-                None
-            }
-        })
+        .filter_map(
+            |EnodeChild {
+                 child,
+                 is_subregion,
+                 ..
+             }| {
+                if *is_subregion {
+                    Some(child.clone())
+                } else {
+                    None
+                }
+            },
+        )
         .collect()
+}
+
+struct EnodeChild {
+    child: ClassId,
+    is_subregion: bool,
+    is_assumption: bool,
+}
+
+impl EnodeChild {
+    fn new(child: ClassId, is_subregion: bool, is_assumption: bool) -> Self {
+        EnodeChild {
+            child,
+            is_subregion,
+            is_assumption,
+        }
+    }
 }
 
 /// For a given enode, returns a vector of children eclasses.
@@ -619,42 +661,65 @@ fn enode_regions(
 fn enode_children(
     egraph: &egraph_serialize::EGraph,
     enode: &egraph_serialize::Node,
-) -> Vec<(ClassId, bool)> {
+) -> Vec<EnodeChild> {
     match (enode.op.as_str(), enode.children.as_slice()) {
         ("DoWhile", [input, body]) => vec![
-            (egraph.nid_to_cid(input).clone(), false),
-            (egraph.nid_to_cid(body).clone(), true),
+            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
+            EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
         ],
         ("If", [pred, input, then_branch, else_branch]) => vec![
-            (egraph.nid_to_cid(pred).clone(), false),
-            (egraph.nid_to_cid(input).clone(), false),
-            (egraph.nid_to_cid(then_branch).clone(), true),
-            (egraph.nid_to_cid(else_branch).clone(), true),
+            EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
+            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
+            EnodeChild::new(egraph.nid_to_cid(then_branch).clone(), true, false),
+            EnodeChild::new(egraph.nid_to_cid(else_branch).clone(), true, false),
         ],
         ("Switch", [pred, input, branchlist]) => {
             let mut res = vec![
-                (egraph.nid_to_cid(pred).clone(), false),
-                (egraph.nid_to_cid(input).clone(), false),
+                EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
             ];
             res.extend(
                 get_conslist_children(egraph, egraph.nid_to_cid(branchlist).clone())
                     .into_iter()
-                    .map(|cid| (cid, true)),
+                    .map(|cid| EnodeChild::new(cid, true, false)),
             );
             res
         }
         ("Function", [name, args, ret, body]) => {
             vec![
-                (egraph.nid_to_cid(name).clone(), false),
-                (egraph.nid_to_cid(args).clone(), false),
-                (egraph.nid_to_cid(ret).clone(), false),
-                (egraph.nid_to_cid(body).clone(), true),
+                EnodeChild::new(egraph.nid_to_cid(name).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(args).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ret).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
+            ]
+        }
+        ("Arg", [ty, ctx]) => {
+            vec![
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+            ]
+        }
+        ("Const", [c, ty, ctx]) => {
+            vec![
+                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+            ]
+        }
+        ("Empty", [ty, ctx]) => {
+            vec![
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
             ]
         }
         _ => {
             let mut children = vec![];
             for child in &enode.children {
-                children.push((egraph.nid_to_cid(child).clone(), false));
+                children.push(EnodeChild::new(
+                    egraph.nid_to_cid(child).clone(),
+                    false,
+                    false,
+                ));
             }
             children
         }
@@ -688,8 +753,13 @@ fn region_reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) ->
     while let Some(eclass) = queue.pop() {
         if visited.insert(eclass.clone()) {
             for node in &egraph.classes()[&eclass].nodes {
-                for (child, is_subregion) in enode_children(egraph, &egraph[node]) {
-                    if !is_subregion {
+                for EnodeChild {
+                    child,
+                    is_subregion,
+                    is_assumption,
+                } in enode_children(egraph, &egraph[node])
+                {
+                    if !is_subregion && !is_assumption {
                         queue.insert(child);
                     }
                 }

@@ -17,8 +17,7 @@ pub(crate) struct EgraphInfo<'a> {
     // For every (root, eclass) pair, store the parent
     // (root, enode) pairs that may depend on it.
     pub(crate) parents: HashMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
-    /// Nodes that have no children, so we seed the extraction from these nodes
-    pub(crate) root_nodes: Vec<(RootId, NodeId)>,
+    pub(crate) roots: Vec<(RootId, NodeId)>,
     pub(crate) cm: &'a dyn CostModel,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
@@ -75,35 +74,26 @@ impl<'a> EgraphInfo<'a> {
             }
         }
 
-        let mut root_nodes = vec![];
+        let mut roots = vec![];
         // find all the (root, enode) pairs that are root nodes (no children)
         for (root, eclass) in &relavent_nodes {
             for enode in egraph.classes()[eclass].nodes.iter() {
-                let children = enode_children(egraph, &egraph[enode]);
-                if children.is_empty() {
-                    root_nodes.push((root.clone(), enode.clone()));
+                if enode_children(egraph, &egraph[enode]).is_empty() {
+                    roots.push((root.clone(), enode.clone()));
                 }
             }
         }
 
         // sort roots for determinism
-        root_nodes.sort();
+        roots.sort();
 
         let mut parents: HashMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = HashMap::new();
         for (root, eclass) in relavent_nodes {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {
                 // add to the parents table
-                for EnodeChild {
-                    cid: child,
-                    is_region_root,
-                    is_assumption,
-                } in enode_children(egraph, &egraph[enode])
-                {
-                    if is_assumption {
-                        continue;
-                    }
-                    let child_region = if is_region_root {
+                for (child, isregion) in enode_children(egraph, &egraph[enode]) {
+                    let child_region = if isregion {
                         child.clone()
                     } else {
                         root.clone()
@@ -128,7 +118,7 @@ impl<'a> EgraphInfo<'a> {
             egraph,
             unextractables,
             parents: parents_sorted,
-            root_nodes,
+            roots,
         }
     }
 }
@@ -162,7 +152,7 @@ impl<'a> Extractor<'a> {
     }
 
     /// If the type of the node is known, checks if an already extracted node is effectful.
-    /// There are cases where the type of the node is not known if it couldn't be extracted the first time.
+    /// There are cases where the type of the node is not known, for reasons unknown to us.
     pub(crate) fn is_node_effectful(&mut self, node_id: NodeId) -> Option<bool> {
         let node_type = self.node_to_type.as_ref().unwrap().get(&node_id)?;
         Some(node_type.contains_state())
@@ -320,26 +310,16 @@ fn calculate_cost_set(
         });
     }
 
-    let noctx = CostSet {
-        costs: Default::default(),
-        total: 0.0.try_into().unwrap(),
-        term: extractor.termdag.app("NoContext".into(), vec![]),
-    };
     // get the cost sets for the children
     let child_cost_sets = enode_children(info.egraph, node)
         .iter()
-        .filter_map(|enode_child| {
-            if enode_child.is_assumption {
-                Some((&noctx, false))
-            } else if enode_child.is_region_root {
-                Some((
-                    extractor.costs.get(cid)?.get(cid)?,
-                    enode_child.is_region_root,
-                ))
+        .filter_map(|(cid, is_region_root)| {
+            if *is_region_root {
+                Some((extractor.costs.get(cid)?.get(cid)?, *is_region_root))
             } else {
                 region_costs
                     .get(cid)
-                    .map(|cost_set| (cost_set, enode_child.is_region_root))
+                    .map(|cost_set| (cost_set, *is_region_root))
             }
         })
         .collect::<Vec<_>>();
@@ -412,9 +392,7 @@ pub fn extract(
     let (_cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
     let effectful_nodes_along_path =
         extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
-    return (_cost_res, res);
     extractor_not_linear.costs.clear();
-    eprintln!("second pass");
     let (cost_res, res) = extract_without_linearity(
         extractor_not_linear,
         &egraph_info,
@@ -435,7 +413,7 @@ pub fn extract_without_linearity(
     let mut worklist = UniqueQueue::default();
 
     // first, add all the roots to the worklist
-    for (root, nodeid) in &info.root_nodes {
+    for (root, nodeid) in &info.roots {
         worklist.insert((root.clone(), nodeid.clone()));
     }
 
@@ -471,12 +449,6 @@ pub fn extract_without_linearity(
         {
             let region_costs = extractor.costs.get_mut(&rootid).unwrap();
             if cost_set.total < prev_cost {
-                if node.op == "Arg" {
-                    eprintln!(
-                        "extracting {:?} with cost {} root {}",
-                        node, cost_set.total, rootid
-                    );
-                }
                 region_costs.insert(classid.clone(), cost_set);
 
                 // we updated this eclass's cost, so we need to update its parents
@@ -632,9 +604,9 @@ fn enode_regions(
 ) -> Vec<ClassId> {
     enode_children(egraph, enode)
         .iter()
-        .filter_map(|enode_child| {
-            if enode_child.is_region_root {
-                Some(enode_child.cid.clone())
+        .filter_map(|(cid, is_region_root)| {
+            if *is_region_root {
+                Some(cid.clone())
             } else {
                 None
             }
@@ -642,85 +614,47 @@ fn enode_regions(
         .collect()
 }
 
-struct EnodeChild {
-    cid: ClassId,
-    is_region_root: bool,
-    is_assumption: bool,
-}
-
-impl EnodeChild {
-    fn new(cid: ClassId, is_region_root: bool, is_assumption: bool) -> Self {
-        EnodeChild {
-            cid,
-            is_region_root,
-            is_assumption,
-        }
-    }
-}
-
 /// For a given enode, returns a vector of children eclasses.
+/// Also, for each child returns if the child is a region root.
 fn enode_children(
     egraph: &egraph_serialize::EGraph,
     enode: &egraph_serialize::Node,
-) -> Vec<EnodeChild> {
+) -> Vec<(ClassId, bool)> {
     match (enode.op.as_str(), enode.children.as_slice()) {
         ("DoWhile", [input, body]) => vec![
-            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
-            EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
+            (egraph.nid_to_cid(input).clone(), false),
+            (egraph.nid_to_cid(body).clone(), true),
         ],
         ("If", [pred, input, then_branch, else_branch]) => vec![
-            EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
-            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
-            EnodeChild::new(egraph.nid_to_cid(then_branch).clone(), true, false),
-            EnodeChild::new(egraph.nid_to_cid(else_branch).clone(), true, false),
+            (egraph.nid_to_cid(pred).clone(), false),
+            (egraph.nid_to_cid(input).clone(), false),
+            (egraph.nid_to_cid(then_branch).clone(), true),
+            (egraph.nid_to_cid(else_branch).clone(), true),
         ],
         ("Switch", [pred, input, branchlist]) => {
             let mut res = vec![
-                EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
+                (egraph.nid_to_cid(pred).clone(), false),
+                (egraph.nid_to_cid(input).clone(), false),
             ];
             res.extend(
                 get_conslist_children(egraph, egraph.nid_to_cid(branchlist).clone())
                     .into_iter()
-                    .map(|cid| EnodeChild::new(cid, true, false)),
+                    .map(|cid| (cid, true)),
             );
             res
         }
         ("Function", [name, args, ret, body]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(name).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(args).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ret).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
-            ]
-        }
-        ("Arg", [ty, ctx]) => {
-            vec![
-                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
-            ]
-        }
-        ("Const", [c, ty, ctx]) => {
-            vec![
-                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
-            ]
-        }
-        ("Empty", [ty, ctx]) => {
-            vec![
-                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+                (egraph.nid_to_cid(name).clone(), false),
+                (egraph.nid_to_cid(args).clone(), false),
+                (egraph.nid_to_cid(ret).clone(), false),
+                (egraph.nid_to_cid(body).clone(), true),
             ]
         }
         _ => {
             let mut children = vec![];
             for child in &enode.children {
-                children.push(EnodeChild::new(
-                    egraph.nid_to_cid(child).clone(),
-                    false,
-                    false,
-                ));
+                children.push((egraph.nid_to_cid(child).clone(), false));
             }
             children
         }
@@ -754,13 +688,8 @@ fn region_reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) ->
     while let Some(eclass) = queue.pop() {
         if visited.insert(eclass.clone()) {
             for node in &egraph.classes()[&eclass].nodes {
-                for EnodeChild {
-                    cid: child,
-                    is_region_root,
-                    is_assumption,
-                } in enode_children(egraph, &egraph[node])
-                {
-                    if !is_region_root && !is_assumption {
+                for (child, is_subregion) in enode_children(egraph, &egraph[node]) {
+                    if !is_subregion {
                         queue.insert(child);
                     }
                 }

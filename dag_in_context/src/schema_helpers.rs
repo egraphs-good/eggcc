@@ -515,6 +515,7 @@ pub enum AssumptionRef {
     NoContext,
     InIf(bool, *const Expr, *const Expr),
     InSwitch(i64, *const Expr, *const Expr),
+    WildCard(String),
 }
 
 impl Assumption {
@@ -530,9 +531,7 @@ impl Assumption {
             Assumption::InSwitch(branch, pred, input) => {
                 AssumptionRef::InSwitch(*branch, Rc::as_ptr(pred), Rc::as_ptr(input))
             }
-            Assumption::WildCard(_) => {
-                panic!("Wildcard should only use for query");
-            }
+            Assumption::WildCard(str) => AssumptionRef::WildCard(str.clone()),
         }
     }
 }

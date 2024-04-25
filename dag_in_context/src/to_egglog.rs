@@ -1,4 +1,3 @@
-use core::panic;
 use std::{collections::HashMap, rc::Rc};
 
 use egglog::{
@@ -22,6 +21,10 @@ pub(crate) struct TreeToEgglog {
 impl TreeToEgglog {
     fn app(&mut self, f: Symbol, args: Vec<Term>) -> Term {
         self.termdag.app(f, args)
+    }
+
+    fn var(&mut self, f: Symbol) -> Term {
+        self.termdag.var(f)
     }
 
     fn lit(&mut self, lit: Literal) -> Term {
@@ -128,9 +131,7 @@ impl Assumption {
                 let input = input.to_egglog_internal(term_dag);
                 term_dag.app("InSwitch".into(), vec![branch, pred, input])
             }
-            Assumption::WildCard(_) => {
-                panic!("Wildcard should only use for query");
-            }
+            Assumption::WildCard(str) => term_dag.var(str.into()),
         }
     }
 }

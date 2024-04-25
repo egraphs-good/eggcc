@@ -325,6 +325,10 @@ pub fn noctx() -> Assumption {
     Assumption::NoContext
 }
 
+pub fn wildcardctx(str: String) -> Assumption {
+    Assumption::WildCard(str)
+}
+
 pub fn inctx(assumption: Assumption, body: RcExpr) -> RcExpr {
     RcExpr::new(Expr::InContext(assumption, body))
 }

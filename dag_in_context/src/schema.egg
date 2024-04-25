@@ -194,3 +194,4 @@
 (ruleset always-run)
 (ruleset error-checking)
 (ruleset memory)
+(ruleset memory-helpers)

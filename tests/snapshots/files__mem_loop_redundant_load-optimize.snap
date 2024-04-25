@@ -1,0 +1,34 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: bool) {
+  v2: int = const 3;
+  v5: ptr<int> = alloc v2;
+  v8: int = const 1;
+  v10: ptr<int> = ptradd v5 v8;
+  v14: int = const 2;
+  v16: ptr<int> = ptradd v5 v14;
+  v18: int = const 20;
+  v20: int = const 10;
+  v23: ptr<int> = id v10;
+  v24: ptr<int> = id v5;
+  v25: ptr<int> = id v16;
+  v26: int = id v18;
+  v27: int = id v20;
+  v28: bool = id v0;
+.__30__:
+  v23: ptr<int> = id v24;
+  v24: ptr<int> = id v23;
+  v25: ptr<int> = id v25;
+  v26: int = id v26;
+  v27: int = id v27;
+  v28: bool = id v28;
+  br v28 .__30__ .__40__;
+.__40__:
+  store v24 v27;
+  store v25 v26;
+  v49: int = load v24;
+  print v49;
+  free v23;
+}

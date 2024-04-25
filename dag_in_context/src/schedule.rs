@@ -35,12 +35,16 @@ pub(crate) fn mk_schedule() -> String {
     type-analysis
     context
     context-prop
-    interval-analysis)
+    interval-analysis
+    memory-helpers
+  )
   
     
   (unstable-combined-ruleset optimizations
     switch_rewrite
-    loop-simplify)
+    loop-simplify
+    memory
+  )
   
   (run-schedule
     {helpers}

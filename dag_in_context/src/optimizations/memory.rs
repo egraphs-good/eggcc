@@ -302,7 +302,8 @@ pub(crate) fn rules() -> String {
          :ruleset always-run)
 
 (function ConsIfNonEmpty (i64 IntInterval List<i64+IntInterval>)
-          List<i64+IntInterval>)
+          List<i64+IntInterval>
+          :cost 100)
 (rule ((ConsIfNonEmpty k v tl))
       ((IntIntervalValid v))
       :ruleset always-run)

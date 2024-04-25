@@ -1,4 +1,7 @@
-use std::{collections::HashMap, vec};
+use std::{
+    collections::{HashMap, HashSet},
+    vec,
+};
 
 use crate::schema::{Expr, RcExpr, TreeProgram};
 
@@ -8,36 +11,40 @@ pub struct CallBody {
     pub body: RcExpr,
 }
 
-// Gets a list of all the calls in the program
-// and pairs them with an inlined body
-fn get_calls_and_subst(
-    expr: &RcExpr,
-    func_to_body: &HashMap<String, &RcExpr>,
-) -> HashMap<RcExpr, RcExpr> {
+// Gets a set of all the calls in the program
+fn get_calls(expr: &RcExpr) -> HashSet<RcExpr> {
     // Get calls from children
     let mut calls = if !expr.children_exprs().is_empty() {
         expr.children_exprs()
             .iter()
-            .flat_map(|child| get_calls_and_subst(child, func_to_body))
-            .collect::<HashMap<RcExpr, RcExpr>>()
+            .flat_map(get_calls)
+            .collect::<HashSet<_>>()
     } else {
-        HashMap::new()
+        HashSet::new()
     };
 
-    // Inline this call
-    if let Expr::Call(func_name, args) = expr.as_ref() {
-        if !calls.contains_key(expr) {
-            let substituted = Expr::subst(args, func_to_body[func_name]);
-
-            // Substitute args into the body
-            calls.insert(expr.clone(), substituted);
-        }
-    };
+    // Add to set if this is a call
+    if let Expr::Call(_, _) = expr.as_ref() {
+        calls.insert(expr.clone());
+    }
 
     calls
 }
 
-// Generates a ruleset with pairs of (call, inlined body) to union
+// Pairs a call with its equivalent inlined body, using the passed-in function -> body map
+// to look up the body
+fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBody {
+    if let Expr::Call(func_name, args) = call.as_ref() {
+        CallBody {
+            call: call.clone(),
+            body: Expr::subst(args, func_to_body[func_name]),
+        }
+    } else {
+        panic!("Tried to substitute non-calls.")
+    }
+}
+
+// Generates a list of (call, body) pairs (in a CallBody) that can be unioned
 pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<CallBody> {
     // Find all Calls in the program
     let mut all_funcs = vec![program.entry.clone()];
@@ -56,9 +63,10 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<Ca
 
     let one_inlining = all_funcs
         .iter()
+        .flat_map(get_calls)
         // Find calls and their inlined version within each function
-        .flat_map(|func| get_calls_and_subst(func, &func_name_to_body))
-        .collect::<HashMap<RcExpr, RcExpr>>();
+        .map(|call| subst_call(&call, &func_name_to_body))
+        .collect::<HashSet<CallBody>>();
 
     let mut all_inlining = one_inlining.clone();
 
@@ -66,15 +74,13 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<Ca
     for _ in 1..iterations {
         let one_inlining = one_inlining
             .iter()
-            .flat_map(|(_, body)| get_calls_and_subst(body, &func_name_to_body))
-            .collect::<HashMap<RcExpr, RcExpr>>();
+            .flat_map(|cb| get_calls(&cb.body))
+            .map(|call| subst_call(&call, &func_name_to_body))
+            .collect::<HashSet<CallBody>>();
         all_inlining.extend(one_inlining)
     }
 
-    let mut all_inlining = all_inlining
-        .drain()
-        .map(|(call, body)| CallBody { call, body })
-        .collect::<Vec<_>>();
+    let mut all_inlining = all_inlining.drain().collect::<Vec<_>>();
 
     // Sort to not rely on hash ordering
     all_inlining.sort();

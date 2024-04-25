@@ -117,7 +117,8 @@ fn print_expr_with_intermediate_helper(
     printed: &mut String,
     var_count: &mut i32,
 ) -> String {
-    // NOTE: I believe that the cache only works within a term and term dag
+    // NOTE: The cache only works within a single term and term dag, so we cannot share across
+    // different exprs.
     let mut cache = HashMap::<Term, String>::new();
     let (term, term_dag) = expr.to_egglog();
     print_with_intermediate_helper(&term_dag, term, &mut cache, printed, var_count)

@@ -323,10 +323,7 @@ fn calculate_cost_set(
              }| {
                 // for assumptions, just return (NoContext) every time
                 if *is_assumption {
-                    Some((
-                        &noctx,
-                        *is_subregion,
-                    ))
+                    Some((&noctx, *is_subregion))
                 } else if *is_subregion {
                     Some((extractor.costs.get(child)?.get(child)?, *is_subregion))
                 } else {

@@ -398,7 +398,7 @@ fn convert_whole_program() {
         expr,
         "(Program 
             (Function \"main\" (Base (IntT)) (Base (IntT)) 
-                (Bop (Add) (Const (Int 1) (Base (IntT)) (NoContext)) (Call \"f\" (Const (Int 2) (Base (IntT) (NoContext)))))) 
+                (Bop (Add) (Const (Int 1) (Base (IntT)) (NoContext)) (Call \"f\" (Const (Int 2) (Base (IntT)) (NoContext))))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (Get

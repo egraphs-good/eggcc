@@ -373,7 +373,11 @@ impl Constructor {
                 ]
             }
             Constructor::Const => {
-                vec![f(Static(Sort::Constant), "n"), f(Static(Sort::Type), "ty"), f(Static(Sort::Assumption), "ctx")]
+                vec![
+                    f(Static(Sort::Constant), "n"),
+                    f(Static(Sort::Type), "ty"),
+                    f(SubExpr(Sort::Assumption), "ctx"),
+                ]
             }
             Constructor::Top => vec![
                 f(Static(Sort::TernaryOp), "op"),
@@ -414,11 +418,17 @@ impl Constructor {
             Constructor::DoWhile => {
                 vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")]
             }
-            Constructor::Arg => vec![f(Static(Sort::Type), "ty"), f(Static(Sort::Assumption), "ctx")],
+            Constructor::Arg => vec![
+                f(Static(Sort::Type), "ty"),
+                f(Static(Sort::Assumption), "ctx"),
+            ],
             Constructor::Call => {
                 vec![f(Static(Sort::String), "func"), f(SubExpr, "arg")]
             }
-            Constructor::Empty => vec![f(Static(Sort::Type), "ty"), f(Static(Sort::Assumption), "ctx")],
+            Constructor::Empty => vec![
+                f(Static(Sort::Type), "ty"),
+                f(Static(Sort::Assumption), "ctx"),
+            ],
             Constructor::Cons => vec![f(SubExpr, "hd"), f(CapturedSubListExpr, "tl")],
             Constructor::Nil => vec![],
             Constructor::Alloc => vec![

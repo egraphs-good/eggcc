@@ -23,6 +23,10 @@ impl TreeToEgglog {
         self.termdag.app(f, args)
     }
 
+    fn var(&mut self, f: Symbol) -> Term {
+        self.termdag.var(f)
+    }
+
     fn lit(&mut self, lit: Literal) -> Term {
         self.termdag.lit(lit)
     }
@@ -127,6 +131,7 @@ impl Assumption {
                 let input = input.to_egglog_internal(term_dag);
                 term_dag.app("InSwitch".into(), vec![branch, pred, input])
             }
+            Assumption::WildCard(str) => term_dag.var(str.into()),
         }
     }
 }

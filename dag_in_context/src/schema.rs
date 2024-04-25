@@ -75,6 +75,7 @@ pub enum Assumption {
     NoContext,
     InIf(bool, RcExpr, RcExpr),
     InSwitch(i64, RcExpr, RcExpr),
+    WildCard(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

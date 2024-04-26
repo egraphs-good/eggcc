@@ -6,7 +6,7 @@ use std::{
 use strum_macros::EnumIter;
 
 use crate::{
-    ast::{base, boolt, intt},
+    ast::{base, boolt, inif, inloop, inswitch, intt},
     schema::{
         Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
         UnaryOp,
@@ -348,19 +348,34 @@ impl Expr {
                 Rc::new(Expr::If(
                     new_pred.clone(),
                     new_input.clone(),
-                    then.clone(),
-                    els.clone(),
+                    then.replace_ctx(inif(true, new_pred.clone(), new_input.clone())),
+                    els.replace_ctx(inif(false, new_pred, new_input)),
                 ))
             }
             Expr::Switch(pred, input, branches) => {
                 let new_pred = Self::subst_with_cache(arg, arg_ty, arg_ctx, pred, subst_cache);
                 let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
-                let new_branches = branches.clone();
+                let new_branches = branches
+                    .iter()
+                    .enumerate()
+                    .map(|(i, branch)| {
+                        branch.replace_ctx(inswitch(
+                            i.try_into().unwrap(),
+                            new_pred.clone(),
+                            new_input.clone(),
+                        ))
+                    })
+                    .collect();
                 Rc::new(Expr::Switch(new_pred, new_input, new_branches))
             }
             Expr::DoWhile(input, body) => {
                 let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
-                Rc::new(Expr::DoWhile(new_input.clone(), body.clone()))
+                Rc::new(Expr::DoWhile(
+                    new_input.clone(),
+                    // It may seem odd to use the old body in the new context, but this is how
+                    // it's done in add_ctx.
+                    body.replace_ctx(inloop(new_input, body.clone())),
+                ))
             }
             Expr::Function(x, y, z, body) => Rc::new(Expr::Function(
                 x.clone(),

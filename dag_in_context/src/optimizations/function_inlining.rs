@@ -61,26 +61,25 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<Ca
         })
         .collect::<HashMap<String, &RcExpr>>();
 
-    let one_inlining = all_funcs
+    let mut prev_inlining = all_funcs
         .iter()
         .flat_map(get_calls)
         // Find calls and their inlined version within each function
         .map(|call| subst_call(&call, &func_name_to_body))
-        .collect::<HashSet<CallBody>>();
+        .collect::<Vec<_>>();
 
-    let mut all_inlining = one_inlining.clone();
+    let mut all_inlining = prev_inlining.clone();
 
     // Repeat! Get calls and subst for each new substituted body.
     for _ in 1..iterations {
-        let one_inlining = one_inlining
+        let next_inlining = prev_inlining
             .iter()
             .flat_map(|cb| get_calls(&cb.body))
             .map(|call| subst_call(&call, &func_name_to_body))
-            .collect::<HashSet<CallBody>>();
-        all_inlining.extend(one_inlining)
+            .collect::<Vec<_>>();
+        all_inlining.extend(next_inlining.clone());
+        prev_inlining = next_inlining;
     }
-
-    let mut all_inlining = all_inlining.drain().collect::<Vec<_>>();
 
     // Sort to not rely on hash ordering
     all_inlining.sort();

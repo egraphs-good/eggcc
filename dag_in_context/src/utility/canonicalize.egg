@@ -36,3 +36,34 @@
         (union lhs (Bop (LessThan) (Bop (Sub) x (Const (Int 1) ty ctx)) y))
       )
       :ruleset canon)
+
+
+; Make Concats right-deep
+(rewrite (Concat (Concat a b) c)
+         (Concat a (Concat b c))
+         :ruleset always-run)
+; Simplify Concat's with empty
+(rewrite (Concat (Empty ty ctx) x)
+         x
+         :ruleset always-run)
+(rewrite (Concat x (Empty ty ctx))
+         x
+         :ruleset always-run)
+
+; Make a tuple that is a sub-range of another tuple
+;                   tuple start len
+(function SubTuple (Expr  i64   i64) Expr :unextractable)
+
+(rewrite (SubTuple expr x 0)
+         (Empty ty ctx)
+         :when ((HasArgType expr ty) (ContextOf expr ctx))
+         :ruleset always-run)
+
+(rewrite (SubTuple expr x 1)
+         (Single (Get expr x))
+         :ruleset always-run)
+
+(rewrite (SubTuple expr a b)
+         (Concat (Single (Get expr a)) (SubTuple expr (+ a 1) (- b 1)))
+         :when ((> b 1))
+         :ruleset always-run)

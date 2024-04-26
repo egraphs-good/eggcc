@@ -5,6 +5,7 @@ use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
 use schema::{RcExpr, TreeProgram};
 use std::fmt::Write;
+use to_egglog::TreeToEgglog;
 
 use crate::{
     interpreter::interpret_dag_prog, optimizations::function_inlining, schedule::mk_schedule,
@@ -112,16 +113,16 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
     printed
 }
 
-fn print_expr_with_intermediate_helper(
+// Takes in a termdag and a shared cache referencing the termdag, which can be re-used for multiple exprs
+fn global_cached_print_expr_with_intermediate_helper(
     expr: &RcExpr,
     printed: &mut String,
     var_count: &mut i32,
+    tree_state: &mut TreeToEgglog,
+    term_cache: &mut HashMap<Term, String>,
 ) -> String {
-    // NOTE: The cache only works within a single term and term dag, so we cannot share across
-    // different exprs.
-    let mut cache = HashMap::<Term, String>::new();
-    let (term, term_dag) = expr.to_egglog();
-    print_with_intermediate_helper(&term_dag, term, &mut cache, printed, var_count)
+    let term = expr.to_egglog_internal(tree_state);
+    print_with_intermediate_helper(&tree_state.termdag, term, term_cache, printed, var_count)
 }
 
 // Returns a pair of (formatted unions, variable count)
@@ -131,14 +132,30 @@ fn print_function_inlining_pairs(
     printed: &mut String,
     var_count: &mut i32,
 ) -> String {
+    // Create a global cache
+    let mut tree_state = TreeToEgglog::new();
+    let mut term_cache = HashMap::<Term, String>::new();
+
     // Get unions
     let unions = function_inlining_pairs
         .iter()
         .map(|cb| {
             format!(
                 "(union {} {})",
-                print_expr_with_intermediate_helper(&cb.call, printed, var_count),
-                print_expr_with_intermediate_helper(&cb.body, printed, var_count),
+                global_cached_print_expr_with_intermediate_helper(
+                    &cb.call,
+                    printed,
+                    var_count,
+                    &mut tree_state,
+                    &mut term_cache
+                ),
+                global_cached_print_expr_with_intermediate_helper(
+                    &cb.body,
+                    printed,
+                    var_count,
+                    &mut tree_state,
+                    &mut term_cache
+                ),
             )
         })
         .collect::<Vec<_>>()

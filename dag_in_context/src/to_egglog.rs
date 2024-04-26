@@ -13,12 +13,20 @@ use crate::{
 };
 
 pub(crate) struct TreeToEgglog {
-    termdag: TermDag,
+    pub termdag: TermDag,
     // Cache for shared subexpressions
     converted_cache: HashMap<*const Expr, Term>,
 }
 
 impl TreeToEgglog {
+    // Creates a default tree to egglog
+    pub fn new() -> TreeToEgglog {
+        TreeToEgglog {
+            termdag: TermDag::default(),
+            converted_cache: HashMap::new(),
+        }
+    }
+
     fn app(&mut self, f: Symbol, args: Vec<Term>) -> Term {
         self.termdag.app(f, args)
     }
@@ -43,10 +51,7 @@ impl Constant {
     }
 
     pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
-        let mut state = TreeToEgglog {
-            termdag: TermDag::default(),
-            converted_cache: HashMap::new(),
-        };
+        let mut state = TreeToEgglog::new();
         let term = self.to_egglog_internal(&mut state);
         (term, state.termdag)
     }
@@ -68,10 +73,7 @@ impl BaseType {
 
 impl Type {
     pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
-        let mut state = TreeToEgglog {
-            termdag: TermDag::default(),
-            converted_cache: HashMap::new(),
-        };
+        let mut state = TreeToEgglog::new();
         let term = self.to_egglog_internal(&mut state);
         (term, state.termdag)
     }
@@ -99,10 +101,7 @@ impl Type {
 
 impl Assumption {
     pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
-        let mut state = TreeToEgglog {
-            termdag: TermDag::default(),
-            converted_cache: HashMap::new(),
-        };
+        let mut state = TreeToEgglog::new();
         let term = self.to_egglog_internal(&mut state);
         (term, state.termdag)
     }
@@ -151,10 +150,7 @@ impl UnaryOp {
 
 impl Expr {
     pub fn to_egglog(self: &RcExpr) -> (Term, TermDag) {
-        let mut state = TreeToEgglog {
-            termdag: TermDag::default(),
-            converted_cache: HashMap::new(),
-        };
+        let mut state = TreeToEgglog::new();
         let term = self.to_egglog_internal(&mut state);
         (term, state.termdag)
     }

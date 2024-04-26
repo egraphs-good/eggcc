@@ -394,7 +394,7 @@ fn load_after_write() -> crate::Result {
     // <some effects, but no load>
     // print 2;
     let one = int_ty(1, Type::Base(BaseType::IntT));
-    let two = int_ty(2, Type::Base(BaseType::IntT));
+    let two = int(2).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let orig_state = get(arg_ty(tuplet!(statet())), 0);
     let ptr_and_state = alloc(0, one, orig_state.clone(), pointert(intt()));
     let ptr = get(ptr_and_state.clone(), 0);
@@ -407,7 +407,7 @@ fn load_after_write() -> crate::Result {
 
     egglog_test(
         &format!("{res}"),
-        &format!("(check (= {res} (Bop (Print) (Const (Int 2) (Base (IntT))) rest)))"),
+        &format!("(check (= {res} (Bop (Print) {two} rest)))"),
         vec![],
         val_empty(),
         val_empty(),
@@ -430,7 +430,7 @@ fn load_after_write_without_alias() -> crate::Result {
     //
     // This relies on the alias analysis to work.
     let one = int(1);
-    let two = int(2);
+    let two = int(2).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let three = int(3);
     let orig_state = getat(0);
     let ptr_and_state = alloc(0, one.clone(), orig_state.clone(), pointert(intt()));
@@ -449,7 +449,7 @@ fn load_after_write_without_alias() -> crate::Result {
         .func_with_arg_types();
     egglog_test(
         &format!("{f}"),
-        &format!("(check (= {res} (Bop (Print) (Const (Int 2) argty) rest)))"),
+        &format!("(check (= {res} (Bop (Print) {two} rest)))"),
         vec![],
         val_empty(),
         val_empty(),
@@ -509,7 +509,7 @@ fn simple_loop_swap() -> crate::Result {
         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
     egglog_test(
         &format!("{f}"),
-        &format!("(check (= {val} {ten}))"),
+        &format!("(let ten {ten}) (let val {val}) (check (= val ten))"),
         vec![],
         val_empty(),
         val_empty(),

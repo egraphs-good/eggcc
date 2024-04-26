@@ -230,14 +230,9 @@
              (Nil-List<PtrPointees>)))
          :ruleset memory-helpers) 
 
-(rewrite (PointsToCells (Arg ty) aps)
+(rewrite (PointsToCells (Arg ty ctx) aps)
          aps
          :ruleset memory-helpers)
-
-(rewrite (PointsToCells (InContext assum x) aps)
-         (PointsToCells x aps)
-         :ruleset memory-helpers)
-
 
 ; Allow non-pointer types to resolve
 (rule ((PointsToCells x aps)

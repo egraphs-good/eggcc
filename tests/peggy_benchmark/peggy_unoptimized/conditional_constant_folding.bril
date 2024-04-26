@@ -1,0 +1,22 @@
+@main(x: int): int {
+    five: int = const 5;
+    four: int = const 4;
+    twenty: int = const 20;
+    cond: bool = eq x five;
+    br cond .if .else_if_check;
+
+.if:
+    res: int = mul four x;
+    ret res;
+
+.else_if_check:
+    cond: bool = eq x four;
+    br cond .else_if .else;
+
+.else_if:
+    res: int = mul five x;
+    ret res;
+    
+.else:
+    ret twenty;
+}

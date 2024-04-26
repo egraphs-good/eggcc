@@ -13,6 +13,8 @@ fn captured_expr_rule_for_ctor(ctor: Constructor) -> Option<String> {
         (field.purpose == Purpose::CapturedExpr)
             .then(|| format!("(BodyContainsExpr {pat} {e})", e = field.var()))
     });
+    // TODO body contains for switches
+
     if actions.is_empty() {
         None
     } else {
@@ -31,15 +33,13 @@ fn captured_expr_rule_for_ctor(ctor: Constructor) -> Option<String> {
 fn subexpr_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let pat = ctor.construct(|field| field.var());
     let actions = ctor.filter_map_fields(|field| {
-        (field.purpose == Purpose::SubExpr || field.purpose == Purpose::CapturedSubListExpr).then(
-            || {
-                format!(
-                    "(BodyContains{sort} body {e})",
-                    sort = field.sort().name(),
-                    e = field.var()
-                )
-            },
-        )
+        (field.purpose == Purpose::SubExpr).then(|| {
+            format!(
+                "(BodyContains{sort} body {e})",
+                sort = field.sort().name(),
+                e = field.var()
+            )
+        })
     });
     (!actions.is_empty()).then(|| {
         format!(
@@ -71,10 +71,17 @@ fn test_body_contains() -> crate::Result {
         single(int(1)),
         parallel!(
             greater_than(get(arg(), 0), get(arg(), 0),),
-            switch!(int(0), arg(); 
-                // subloop
-                get(dowhile(single(int(10)), parallel!(tfalse(), int(20))), 0)
-                , int(5)),
+            // subloop
+            add(
+                get(
+                    dowhile(
+                        single(int(10)),
+                        parallel!(tfalse(), get(parallel!(int(20), int(30)), 0))
+                    ),
+                    0
+                ),
+                int(1)
+            )
         ),
     )
     .with_arg_types(emptyt(), tuplet!(intt()));
@@ -82,23 +89,19 @@ fn test_body_contains() -> crate::Result {
     let check = format!(
         "
 (fail (check (BodyContainsExpr {myloop} {num1})))
-(fail (check (BodyContainsExpr {myloop} {num1inside})))
-(fail (check (BodyContainsExpr {myloop} {num20subloop})))
-(check (BodyContainsExpr {myloop} {num5}))
+(check (BodyContainsExpr {myloop} {num1inside}))
 (check (BodyContainsExpr {myloop} {num10inside}))
     ",
         num1 = int_ty(1, emptyt()),
         num1inside = int_ty(1, tuplet!(intt())),
-        num5 = int_ty(5, tuplet!(intt())),
         num10inside = int_ty(10, tuplet!(intt())),
-        num20subloop = int_ty(20, tuplet!(intt())),
     );
     crate::egglog_test(
         &build,
         &check,
         vec![myloop.to_program(emptyt(), tuplet!(intt()))],
         Value::Tuple(vec![]),
-        Value::Tuple(vec![Value::Const(Constant::Int(20))]),
+        Value::Tuple(vec![Value::Const(Constant::Int(21))]),
         vec![],
     )
 }

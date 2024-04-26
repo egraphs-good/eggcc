@@ -197,7 +197,7 @@ fn context_if() -> crate::Result {
 
     egglog_test(
         &format!("{with_context}"),
-        &format!("(check (= {term} (InContext somectx (Const (Bool false) (Base (IntT))))))"),
+        &format!("(check (= {term} (Const (Bool false) (Base (IntT)) somectx)))"),
         vec![with_context],
         intv(4),
         val_bool(false),
@@ -215,7 +215,7 @@ fn simple_less_than() -> crate::Result {
 
     egglog_test(
         &format!("{with_context}"),
-        &format!("(check (= {term} (InContext some_ctx (Const (Bool false) (Base (IntT))))))"),
+        &format!("(check (= {term} (Const (Bool false) (Base (IntT)) somectx)))"),
         vec![with_context],
         intv(4),
         val_bool(false),
@@ -245,7 +245,7 @@ fn context_if_rev() -> crate::Result {
         &format!("{with_context}"),
         &format!(
             "
-(check (= {term} (InContext (NoContext) (Const (Bool false) (Base (IntT))))))"
+(check (= {term} (Const (Bool false) (Base (IntT)) (NoContext))))"
         ),
         vec![with_context],
         intv(4),
@@ -306,8 +306,8 @@ fn context_if_with_state() -> crate::Result {
     let body_with_ctx = prog.entry.func_body().unwrap();
 
     let expected = single(tprint(
-        inctx(noctx(), ttrue_ty(input_type.clone())),
-        get(inctx(noctx(), input_arg.clone()), 1),
+        ttrue_ty(input_type.clone()),
+        get(input_arg.clone(), 1),
     ));
 
     egglog_test(

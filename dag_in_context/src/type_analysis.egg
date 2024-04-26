@@ -35,7 +35,7 @@
 
 (relation HasArgType (Expr Type))
 
-(rule ((HasArgType (Arg t1) t2)
+(rule ((HasArgType (Arg t1 ctx) t2)
        (!= t1 t2))
       ((panic "arg type mismatch"))
       :ruleset type-analysis)
@@ -124,17 +124,17 @@
 ; these create new arg contexts.
 
 ; Primitives
-(rule ((= lhs (Const (Int i) ty)))
+(rule ((= lhs (Const (Int i) ty ctx)))
       ((HasType lhs (Base (IntT)))
        (HasArgType lhs ty))
       :ruleset type-analysis)
 
-(rule ((= lhs (Const (Bool b) ty)))
+(rule ((= lhs (Const (Bool b) ty ctx)))
       ((HasType lhs (Base (BoolT)))
        (HasArgType lhs ty))
       :ruleset type-analysis)
 
-(rule ((= lhs (Empty ty)))
+(rule ((= lhs (Empty ty ctx)))
       ((HasType lhs (TupleT (TNil)))
        (HasArgType lhs ty))
       :ruleset type-analysis)
@@ -494,10 +494,10 @@
       ((panic "switch branches had different types"))
       :ruleset type-analysis)
 
-(rule ((Arg ty))
+(rule ((Arg ty ctx))
       (
-        (HasType (Arg ty) ty)
-        (HasArgType (Arg ty) ty)
+        (HasType (Arg ty ctx) ty)
+        (HasArgType (Arg ty ctx) ty)
       )
       :ruleset type-analysis)
 
@@ -587,19 +587,4 @@
         ; recursive functions would not get assigned a type.
       )
       ((HasType lhs out-ty))
-      :ruleset type-analysis)
-
-; =================================
-; InContext
-; =================================
-(rule (
-        (= lhs (InContext ass expr))
-        (HasType expr ty)
-      )
-      ((HasType lhs ty))
-      :ruleset type-analysis)
-
-(rule ((= lhs (InContext ass expr))
-       (HasArgType expr argtype))
-      ((HasArgType lhs argtype))
       :ruleset type-analysis)

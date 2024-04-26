@@ -34,9 +34,8 @@ pub(crate) fn mk_schedule() -> String {
     error-checking
     type-analysis
     context
-    context-prop
     interval-analysis
-    memory-helpers
+    ; memory-helpers
   )
   
     

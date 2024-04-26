@@ -64,12 +64,12 @@ fn test_subst_nested() -> crate::Result {
     let expected = get(
         dowhile(
             parallel!(
-                inctx(noctx(), int(1)),
+                int(1),
                 get(replace_with.clone(), 1),
                 get(
                     dowhile(
                         single(get(replace_with.clone(), 0)),
-                        parallel!(inctx(noctx(), tfalse()), get(inctx(noctx(), arg()), 0))
+                        parallel!(tfalse(), get(arg(), 0))
                     ),
                     0
                 )
@@ -112,13 +112,9 @@ fn test_subst_nested() -> crate::Result {
 fn test_subst_makes_new_context() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
-    let expr = add(
-        inctx(noctx(), int_ty(1, base(intt()))),
-        inctx(noctx(), iarg()),
-    );
+    let expr = add(int_ty(1, base(intt())), iarg());
     let replace_with = int_ty(2, base(intt())).initialize_ctx();
-    let expected = add(inctx(noctx(), int(1)), inctx(noctx(), int(2)))
-        .with_arg_types(base(intt()), base(intt()));
+    let expected = add(int(1), int(2)).with_arg_types(base(intt()), base(intt()));
     let build = format!(
         "
 (let substituted (Subst (NoContext)
@@ -183,7 +179,7 @@ fn test_subst_identity() -> crate::Result {
     .func_with_arg_types()
     .func_add_ctx();
 
-    let replace_with = inctx(noctx(), int(5).with_arg_types(base(intt()), base(intt())));
+    let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
 
     let build = format!(
         "

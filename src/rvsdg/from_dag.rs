@@ -234,7 +234,7 @@ impl<'a> TreeToRvsdg<'a> {
 
         let res = match expr.as_ref() {
             Expr::Function(_name, _inty, _outty, expr) => self.convert_expr(expr.clone()),
-            Expr::Const(constant, _ty) => match constant {
+            Expr::Const(constant, _ty, _ctx) => match constant {
                 dag_in_context::schema::Constant::Int(integer) => self.push_basic(
                     BasicExpr::Const(ConstOps::Const, Literal::Int(*integer), bril_rs::Type::Int),
                 ),
@@ -315,7 +315,7 @@ impl<'a> TreeToRvsdg<'a> {
                     basetype_to_bril_type(basety.clone()),
                 ))
             }
-            Expr::Arg(_ty) => self.current_args.clone(),
+            Expr::Arg(_ty, _ctx) => self.current_args.clone(),
             Expr::Call(name, args) => {
                 let func = self.program.get_function(name).expect("Function not found");
                 let (func_ty, has_state_edge) = convert_func_type(func.func_output_ty().unwrap());
@@ -323,10 +323,9 @@ impl<'a> TreeToRvsdg<'a> {
                 let num_results = func_ty.is_some() as usize + has_state_edge as usize;
                 self.push_basic(BasicExpr::Call(name.clone(), args, num_results, func_ty))
             }
-            Expr::Empty(_ty) => {
+            Expr::Empty(_ty, _ctx) => {
                 vec![]
             }
-            Expr::InContext(_assum, body) => self.convert_expr(body.clone()),
             Expr::Concat(left, right) => {
                 let left = self.convert_expr(left.clone());
                 let right = self.convert_expr(right.clone());

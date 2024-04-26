@@ -22,16 +22,17 @@
 
 ;; replace existing contexts that are around leaf nodes
 ;; AddContext assumes the new context is more specific than the old one
-(rule ((= lhs (AddContext ctx (InContext oldctx expr)))
-       (IsLeaf expr))
-      ((union lhs (InContext ctx expr)))
+(rule ((= lhs (AddContext ctx (Arg ty oldctx))))
+      ((union lhs (Arg ty ctx)))
+      :ruleset context)
+(rule ((= lhs (AddContext ctx (Const c ty oldctx))))
+      ((union lhs (Const c ty ctx)))
+      :ruleset context)
+(rule ((= lhs (AddContext ctx (Empty ty oldctx))))
+      ((union lhs (Empty ty ctx)))
       :ruleset context)
 
-;; check that we haven't found a leaf without context
-(rule ((= lhs (AddContext ctx expr))
-       (IsLeaf expr))
-      ((panic "Found expression without context!"))
-      :ruleset context)
+
 
 
 ;; ######################################### Operators

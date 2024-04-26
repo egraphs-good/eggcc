@@ -29,21 +29,18 @@
 
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
-(rule ((= lhs (Subst assum to (InContext oldctx (Arg ty))))
-       (IsLeaf leaf)
+(rule ((= lhs (Subst assum to (Arg ty oldctx)))
        )
       ;; add the assumption `to`
       ((DelayedSubstUnion lhs (AddContext assum to)))
       :ruleset subst)
-(rule ((= lhs (Subst assum to (InContext oldctx (Const c ty))))
-       (IsLeaf leaf)
+(rule ((= lhs (Subst assum to (Const c ty oldctx)))
        (HasArgType to newty))
-      ((DelayedSubstUnion lhs (InContext assum (Const c newty))))
+      ((DelayedSubstUnion lhs (Const c newty assum)))
       :ruleset subst)
-(rule ((= lhs (Subst assum to (InContext oldctx (Empty ty))))
-       (IsLeaf leaf)
+(rule ((= lhs (Subst assum to (Empty ty oldctx)))
        (HasArgType to newty))
-      ((DelayedSubstUnion lhs (InContext assum (Empty newty))))
+      ((DelayedSubstUnion lhs (Empty newty assum)))
       :ruleset subst)
 
 ;; Operators

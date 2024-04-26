@@ -4,6 +4,7 @@ import json
 import os
 from glob import glob
 from sys import stdout
+import subprocess
 
 profiles = (
   glob("benchmarks/passing/**/*.bril", recursive=True)
@@ -39,12 +40,12 @@ def bench(profile):
     
   for mode in modes:
     (name, runmode, options) = mode
-    os.system(f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}')
+    subprocess.call(f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}', shell=True)
 
     with open(f'{profile_dir}/{name}-args') as f:
       args = f.read().rstrip()
     
-    os.system(f'hyperfine --warmup 2 --max-runs 100 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"')
+    subprocess.call(f'hyperfine --warmup 2 --max-runs 100 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
 
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:

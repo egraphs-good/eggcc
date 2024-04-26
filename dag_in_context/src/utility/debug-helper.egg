@@ -12,8 +12,6 @@
       ((delete (HasArgType e ty))))
 (rule ((is-inv-Expr e ty))
       ((delete (is-inv-Expr e ty))))
-(rule ((IsLeaf e))
-      ((delete (IsLeaf e))))
 (rule ((tuple-length e))
       ((delete (tuple-length e))))
 (rule ((BinaryOpIsPure e))

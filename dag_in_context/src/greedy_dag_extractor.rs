@@ -40,8 +40,14 @@ pub(crate) struct Extractor<'a> {
 }
 
 impl<'a> EgraphInfo<'a> {
-    fn is_region_node(&self, node_id: NodeId) -> bool {
-        !enode_regions(self.egraph, &self.egraph[&node_id]).is_empty()
+    pub(crate) fn get_sort_of_eclass(&self, eclass: &ClassId) -> &String {
+        self.egraph
+            .class_data
+            .get(eclass)
+            .unwrap()
+            .typ
+            .as_ref()
+            .unwrap()
     }
 
     pub(crate) fn new(
@@ -86,8 +92,16 @@ impl<'a> EgraphInfo<'a> {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {
                 // add to the parents table
-                for (child, isregion) in enode_children(egraph, &egraph[enode]) {
-                    let child_region = if isregion {
+                for EnodeChild {
+                    child,
+                    is_subregion,
+                    is_assumption,
+                } in enode_children(egraph, &egraph[enode])
+                {
+                    if is_assumption {
+                        continue;
+                    }
+                    let child_region = if is_subregion {
                         child.clone()
                     } else {
                         root.clone()
@@ -145,10 +159,11 @@ impl<'a> Extractor<'a> {
         ty.contains_state()
     }
 
-    /// Checks if an already extracted node is effectful.
-    pub(crate) fn is_node_effectful(&mut self, node_id: NodeId) -> bool {
-        let node_type = self.node_to_type.as_ref().unwrap().get(&node_id).unwrap();
-        node_type.contains_state()
+    /// If the type of the node is known, checks if an already extracted node is effectful.
+    /// There are cases where the type of the node is not known, for reasons unknown to us.
+    pub(crate) fn is_node_effectful(&mut self, node_id: NodeId) -> Option<bool> {
+        let node_type = self.node_to_type.as_ref().unwrap().get(&node_id)?;
+        Some(node_type.contains_state())
     }
 
     /// Convert the extracted terms to expressions, and also
@@ -163,16 +178,9 @@ impl<'a> Extractor<'a> {
         for (term, node_id) in &self.correspondence {
             let node = info.egraph.nodes.get(node_id).unwrap();
             let eclass = info.egraph.nid_to_cid(node_id);
-            let type_of_eclass = info
-                .egraph
-                .class_data
-                .get(eclass)
-                .unwrap()
-                .typ
-                .as_ref()
-                .unwrap();
+            let sort_of_eclass = info.get_sort_of_eclass(eclass);
             // only convert expressions (that are not functions)
-            if type_of_eclass == "Expr" && node.op != "Function" {
+            if sort_of_eclass == "Expr" && node.op != "Function" {
                 let expr = converter.expr_from_egglog(term.clone());
                 let ty = self
                     .typechecker
@@ -210,7 +218,7 @@ impl<'a> Extractor<'a> {
     }
 }
 
-fn get_root(egraph: &egraph_serialize::EGraph) -> NodeId {
+pub(crate) fn get_root(egraph: &egraph_serialize::EGraph) -> NodeId {
     let mut root_nodes = egraph
         .nodes
         .iter()
@@ -296,20 +304,35 @@ fn calculate_cost_set(
 ) -> Option<CostSet> {
     let node = &info.egraph[&node_id];
     let cid = info.egraph.nid_to_cid(&node_id);
-
     let region_costs = extractor.costs.get(&rootid).unwrap();
+
+    let noctx = CostSet {
+        costs: Default::default(),
+        total: 0.0.try_into().unwrap(),
+        term: extractor.termdag.app("NoContext".into(), vec![]),
+    };
+
     // get the cost sets for the children
     let child_cost_sets = enode_children(info.egraph, node)
         .iter()
-        .filter_map(|(cid, is_region_root)| {
-            if *is_region_root {
-                Some((extractor.costs.get(cid)?.get(cid)?, *is_region_root))
-            } else {
-                region_costs
-                    .get(cid)
-                    .map(|cost_set| (cost_set, *is_region_root))
-            }
-        })
+        .filter_map(
+            |EnodeChild {
+                 child,
+                 is_subregion,
+                 is_assumption,
+             }| {
+                // for assumptions, just return (NoContext) every time
+                if *is_assumption {
+                    Some((&noctx, *is_subregion))
+                } else if *is_subregion {
+                    Some((extractor.costs.get(child)?.get(child)?, *is_subregion))
+                } else {
+                    region_costs
+                        .get(child)
+                        .map(|cost_set| (cost_set, *is_subregion))
+                }
+            },
+        )
         .collect::<Vec<_>>();
     // if any are unavailable, we return none from this whole function
     if child_cost_sets.len() < node.children.len() {
@@ -377,82 +400,25 @@ pub fn extract(
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let (cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info);
-    // TODO implement linearity
-    let effectful_nodes_along_path = extractor_not_linear.find_effectful_nodes_in_program(&res);
-    let _effectful_regions_along_path = effectful_nodes_along_path
-        .into_iter()
-        .filter(|nid| egraph_info.is_region_node(nid.clone()))
-        .collect::<HashSet<NodeId>>();
-
-    // TODO loop over effectful regions
-    // 1) Find reachable nodes in this region
-    // 2) Extract sub-regions
-    // 3) Extract this region, banning all nodes in effectful regions not on the state edge path
-    // 4) extract current region from scratch, sub-regions get cost from previous extraction
-    //    a) mark effectful nodes along the path as extractable (just for this region)
-    //    b) extract the region
-
-    // To get the type of an e-node, we use the old extractor and query its type
-
-    /*let mut linear_egraph = egraph.clone();
-    remove_invalid_effectful_nodes(&mut linear_egraph, &effectful_regions, todo!());
-
-    let extract = &mut Extractor::new(
-        &cost_model,
-        termdag,
-        Default::default(),
-        &linear_egraph,
-        unextractables,
+    let (_cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    let effectful_nodes_along_path =
+        extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
+    extractor_not_linear.costs.clear();
+    let (cost_res, res) = extract_without_linearity(
+        extractor_not_linear,
+        &egraph_info,
+        Some(&effectful_nodes_along_path),
     );
-    let res = extract_without_linearity(extractor_not_linear);*/
-
     (cost_res, res)
 }
-
-/// Perform a greedy extraction of the DAG, without considering linearity.
-/// This uses the "fast_greedy_dag" algorithm from the extraction gym.
-// pub fn extract_without_linearity(extractor: &mut Extractor) -> CostSet {
-//     let n2c = |nid: &NodeId| extractor.egraph.nid_to_cid(nid);
-//     let parents = build_parent_index(extractor.egraph);
-//     let mut worklist = initialize_worklist(extractor.egraph);
-
-//     while let Some(node_id) = worklist.pop() {
-//         let class_id = n2c(&node_id);
-//         let node = &extractor.egraph[&node_id];
-//         if extractor.unextractables.contains(&node.op) {
-//             continue;
-//         }
-//         if node
-//             .children
-//             .iter()
-//             .all(|c| extractor.costs.contains_key(n2c(c)))
-//         {
-//             let lookup = extractor.costs.get(class_id);
-//             let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
-//             if lookup.is_some() {
-//                 prev_cost = lookup.unwrap().total;
-//             }
-
-//             let cost_set = calculate_cost_set(extractor.egraph, node_id.clone(), extractor);
-//             if cost_set.total < prev_cost {
-//                 extractor.costs.insert(class_id.clone(), cost_set);
-//                 worklist.extend(parents[class_id].iter().cloned());
-//             }
-//         }
-//     }
-
-//     let mut root_eclasses = extractor.egraph.root_eclasses.clone();
-//     root_eclasses.sort();
-//     root_eclasses.dedup();
-
-//     let root = get_root(extractor.egraph);
-//     extractor.costs.get(n2c(&root)).unwrap().clone()
-// }
 
 pub fn extract_without_linearity(
     extractor: &mut Extractor,
     info: &EgraphInfo,
+    // If effectful paths are present,
+    // for each region we will only consider
+    // effectful nodes that are in effectful_path[rootid]
+    effectful_paths: Option<&HashMap<ClassId, HashSet<NodeId>>>,
 ) -> (CostSet, TreeProgram) {
     let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
     let mut worklist = UniqueQueue::default();
@@ -467,6 +433,19 @@ pub fn extract_without_linearity(
         let node = info.egraph.nodes.get(&nodeid).unwrap();
         if info.unextractables.contains(&node.op) {
             continue;
+        }
+
+        let sort_of_node = info.get_sort_of_eclass(classid);
+        if sort_of_node == "Expr"
+            && effectful_paths.is_some()
+            && effectful_paths.unwrap().contains_key(&rootid)
+        {
+            let effectful_nodes = effectful_paths.as_ref().unwrap().get(&rootid).unwrap();
+            if let Some(is_stateful) = extractor.is_node_effectful(nodeid.clone()) {
+                if is_stateful && !effectful_nodes.contains(&nodeid) {
+                    continue;
+                }
+            }
         }
 
         // create a new region_costs map if it doesn't exist
@@ -494,12 +473,19 @@ pub fn extract_without_linearity(
     }
 
     let root_eclass = n2c(&get_root(info.egraph));
+
     let root_costset = extractor
         .costs
         .get(root_eclass)
         .expect("Failed to extract program! Also failed to extract any functions in program.")
         .get(root_eclass)
-        .expect("Failed to extract program!")
+        .unwrap_or_else(|| {
+            if effectful_paths.is_some() {
+                panic!("Failed to extract program after linear path is found!");
+            } else {
+                panic!("Failed to extract program during initial extraction!");
+            }
+        })
         .clone();
 
     // now run translation to expressions
@@ -549,12 +535,11 @@ impl CostModel for DefaultCostModel {
             // Unreachable
             "HasType" | "HasArgType" | "ContextOf" | "NoContext" | "ExpectType" => 0.,
             "ExprIsPure" | "ListExprIsPure" | "BinaryOpIsPure" | "UnaryOpIsPure" => 0.,
-            "IsLeaf" | "BodyContainsExpr" | "ScopeContext" => 0.,
+            "BodyContainsExpr" | "ScopeContext" => 0.,
             "Region" | "Full" | "IntB" | "BoolB" => 0.,
             "PathNil" | "PathCons" => 0.,
             // Schema
             "Bop" | "Uop" | "Top" => 0.,
-            "InContext" => 0.,
             _ if self.ignore_children(op) => 0.,
             _ => panic!("Please provide a cost for {op}"),
         }
@@ -636,14 +621,36 @@ fn enode_regions(
 ) -> Vec<ClassId> {
     enode_children(egraph, enode)
         .iter()
-        .filter_map(|(cid, is_region_root)| {
-            if *is_region_root {
-                Some(cid.clone())
-            } else {
-                None
-            }
-        })
+        .filter_map(
+            |EnodeChild {
+                 child,
+                 is_subregion,
+                 ..
+             }| {
+                if *is_subregion {
+                    Some(child.clone())
+                } else {
+                    None
+                }
+            },
+        )
         .collect()
+}
+
+struct EnodeChild {
+    child: ClassId,
+    is_subregion: bool,
+    is_assumption: bool,
+}
+
+impl EnodeChild {
+    fn new(child: ClassId, is_subregion: bool, is_assumption: bool) -> Self {
+        EnodeChild {
+            child,
+            is_subregion,
+            is_assumption,
+        }
+    }
 }
 
 /// For a given enode, returns a vector of children eclasses.
@@ -651,42 +658,65 @@ fn enode_regions(
 fn enode_children(
     egraph: &egraph_serialize::EGraph,
     enode: &egraph_serialize::Node,
-) -> Vec<(ClassId, bool)> {
+) -> Vec<EnodeChild> {
     match (enode.op.as_str(), enode.children.as_slice()) {
         ("DoWhile", [input, body]) => vec![
-            (egraph.nid_to_cid(input).clone(), false),
-            (egraph.nid_to_cid(body).clone(), true),
+            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
+            EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
         ],
         ("If", [pred, input, then_branch, else_branch]) => vec![
-            (egraph.nid_to_cid(pred).clone(), false),
-            (egraph.nid_to_cid(input).clone(), false),
-            (egraph.nid_to_cid(then_branch).clone(), true),
-            (egraph.nid_to_cid(else_branch).clone(), true),
+            EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
+            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
+            EnodeChild::new(egraph.nid_to_cid(then_branch).clone(), true, false),
+            EnodeChild::new(egraph.nid_to_cid(else_branch).clone(), true, false),
         ],
         ("Switch", [pred, input, branchlist]) => {
             let mut res = vec![
-                (egraph.nid_to_cid(pred).clone(), false),
-                (egraph.nid_to_cid(input).clone(), false),
+                EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
             ];
             res.extend(
                 get_conslist_children(egraph, egraph.nid_to_cid(branchlist).clone())
                     .into_iter()
-                    .map(|cid| (cid, true)),
+                    .map(|cid| EnodeChild::new(cid, true, false)),
             );
             res
         }
         ("Function", [name, args, ret, body]) => {
             vec![
-                (egraph.nid_to_cid(name).clone(), false),
-                (egraph.nid_to_cid(args).clone(), false),
-                (egraph.nid_to_cid(ret).clone(), false),
-                (egraph.nid_to_cid(body).clone(), true),
+                EnodeChild::new(egraph.nid_to_cid(name).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(args).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ret).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
+            ]
+        }
+        ("Arg", [ty, ctx]) => {
+            vec![
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+            ]
+        }
+        ("Const", [c, ty, ctx]) => {
+            vec![
+                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+            ]
+        }
+        ("Empty", [ty, ctx]) => {
+            vec![
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
             ]
         }
         _ => {
             let mut children = vec![];
             for child in &enode.children {
-                children.push((egraph.nid_to_cid(child).clone(), false));
+                children.push(EnodeChild::new(
+                    egraph.nid_to_cid(child).clone(),
+                    false,
+                    false,
+                ));
             }
             children
         }
@@ -720,8 +750,13 @@ fn region_reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) ->
     while let Some(eclass) = queue.pop() {
         if visited.insert(eclass.clone()) {
             for node in &egraph.classes()[&eclass].nodes {
-                for (child, is_subregion) in enode_children(egraph, &egraph[node]) {
-                    if !is_subregion {
+                for EnodeChild {
+                    child,
+                    is_subregion,
+                    is_assumption,
+                } in enode_children(egraph, &egraph[node])
+                {
+                    if !is_subregion && !is_assumption {
                         queue.insert(child);
                     }
                 }

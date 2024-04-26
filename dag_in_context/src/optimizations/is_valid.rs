@@ -1,3 +1,7 @@
+//! ExprIsValid is a helper that marks expressions that have at least one grounded expression.
+//! For example, (Add (Subst ...) (Int 2)) is not valid because it usees the helper Subst
+//! Substitution uses ExprIsValid to know when sub-substitutions have finished
+
 use crate::schema_helpers::{Constructor, ESort, Purpose};
 use strum::IntoEnumIterator;
 

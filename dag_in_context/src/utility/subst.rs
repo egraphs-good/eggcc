@@ -53,7 +53,7 @@ fn test_subst_ten_times() -> crate::Result {
         &check,
         vec![expected.to_program(base(intt()), base(intt()))],
         intv(1),
-        intv(3),
+        intv(11),
         vec![],
     )
 }

@@ -4,19 +4,8 @@ pub(crate) fn helpers() -> String {
 (saturate
   (saturate saturating-helpers)
   saturating)
-
-;; run substitution in a phased way, avoiding
-;; saturation issues when substitution observes its
-;; own equalities.
-(saturate subst)
-(saturate apply-subst-unions)
-(saturate cleanup-subst)
-
-;; saturate all helpers again for new substitutions
-(saturate
-  (saturate saturating-helpers)
-  saturating)"
-        .to_string()
+"
+    .to_string()
 }
 
 pub(crate) fn mk_schedule() -> String {
@@ -34,7 +23,10 @@ pub(crate) fn mk_schedule() -> String {
     error-checking
     type-analysis
     context
-    interval-analysis)
+    interval-analysis
+    subst
+    apply-subst-unions
+    cleanup-subst)
   
     
   (unstable-combined-ruleset optimizations

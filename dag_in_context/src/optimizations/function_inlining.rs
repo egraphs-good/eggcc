@@ -43,7 +43,7 @@ fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBod
 }
 
 // Generates a list of (call, body) pairs (in a CallBody) that can be unioned
-pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<CallBody> {
+pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<CallBody> {
     // Find all Calls in the program
     let mut all_funcs = vec![program.entry.clone()];
     all_funcs.extend(program.functions.clone());

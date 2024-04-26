@@ -13,6 +13,7 @@ use crate::{
 
 pub(crate) mod add_context;
 pub mod ast;
+mod config;
 pub mod dag2svg;
 pub mod dag_typechecker;
 pub mod from_egglog;
@@ -150,7 +151,7 @@ pub fn build_program(program: &TreeProgram) -> String {
     let mut term_cache = HashMap::<Term, String>::new();
 
     let function_inlining = print_function_inlining_pairs(
-        function_inlining::function_inlining_pairs(program, 2),
+        function_inlining::function_inlining_pairs(program, config::FUNCTION_INLINING_ITERATIONS),
         &mut printed,
         &mut tree_state,
         &mut term_cache,

@@ -1,5 +1,8 @@
-use egglog::util::IndexMap;
-use std::{collections::HashMap, rc::Rc, vec};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+    vec,
+};
 
 use crate::schema::{Expr, RcExpr, TreeProgram};
 
@@ -44,7 +47,6 @@ fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBod
 
 // Generates a list of (call, body) pairs (in a CallBody) that can be unioned
 pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<CallBody> {
-    // Find all Calls in the program
     let mut all_funcs = vec![program.entry.clone()];
     all_funcs.extend(program.functions.clone());
 
@@ -59,15 +61,16 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
         })
         .collect::<HashMap<String, &RcExpr>>();
 
+    // Inline once
+    // Keep track of all calls we've seen so far to avoid duplication
+    let mut prev_calls: HashSet<*const Expr> = HashSet::new();
     let mut prev_inlining = all_funcs
         .iter()
         .flat_map(get_calls)
         // Deduplicate calls before substitution
+        .filter(|call| prev_calls.insert(Rc::as_ptr(call)))
         // We cannot hash RcExprs because it is too slow
-        .map(|call| (Rc::as_ptr(&call), call))
-        .collect::<IndexMap<*const Expr, RcExpr>>()
-        .iter()
-        .map(|(_, call)| subst_call(call, &func_name_to_body))
+        .map(|call| subst_call(&call, &func_name_to_body))
         .collect::<Vec<_>>();
 
     let mut all_inlining = prev_inlining.clone();
@@ -77,16 +80,12 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
         let next_inlining = prev_inlining
             .iter()
             .flat_map(|cb| get_calls(&cb.body))
-            .map(|call| (Rc::as_ptr(&call), call))
-            .collect::<IndexMap<*const Expr, RcExpr>>()
-            .iter()
-            .map(|(_, call)| subst_call(call, &func_name_to_body))
+            .filter(|call| prev_calls.insert(Rc::as_ptr(call)))
+            .map(|call| subst_call(&call, &func_name_to_body))
             .collect::<Vec<_>>();
         all_inlining.extend(next_inlining.clone());
         prev_inlining = next_inlining;
     }
-
-    // TODO: need to dedup all_inlining as well (for code size)
 
     all_inlining
 }

@@ -115,8 +115,7 @@ fn global_cached_print_expr_with_intermediate_helper(
     print_with_intermediate_helper(&tree_state.termdag, term, term_cache, printed)
 }
 
-// Returns a pair of (formatted unions, variable count)
-// The variable count is for incrementing the number for intermediate variables
+// Returns a formatted string of (union call body) for each pair
 fn print_function_inlining_pairs(
     function_inlining_pairs: Vec<function_inlining::CallBody>,
     printed: &mut String,
@@ -146,10 +145,11 @@ fn print_function_inlining_pairs(
 pub fn build_program(program: &TreeProgram) -> String {
     let mut printed = String::new();
 
-    // Create a global cache
+    // Create a global cache for generating intermediate variables
     let mut tree_state = TreeToEgglog::new();
     let mut term_cache = HashMap::<Term, String>::new();
 
+    // Generate function inlining egglog
     let function_inlining = print_function_inlining_pairs(
         function_inlining::function_inlining_pairs(program, config::FUNCTION_INLINING_ITERATIONS),
         &mut printed,
@@ -157,6 +157,7 @@ pub fn build_program(program: &TreeProgram) -> String {
         &mut term_cache,
     );
 
+    // Generate program egglog
     let term = program.to_egglog_internal(&mut tree_state);
     let res =
         print_with_intermediate_helper(&tree_state.termdag, term, &mut term_cache, &mut printed);

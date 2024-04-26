@@ -277,6 +277,7 @@ impl Expr {
         }
     }
 
+    // Substitute "arg" for Arg() in within. Also replaces context with "arg"'s context.
     pub fn subst(arg: &RcExpr, within: &RcExpr) -> RcExpr {
         let mut subst_cache: HashMap<*const Expr, RcExpr> = HashMap::new();
 

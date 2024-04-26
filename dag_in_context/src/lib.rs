@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use egglog::{Term, TermDag};
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
-use schema::{RcExpr, TreeProgram};
+use schema::TreeProgram;
 use std::fmt::Write;
 use to_egglog::TreeToEgglog;
 
@@ -104,17 +104,6 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
     printed
 }
 
-// Takes in a termdag and a shared cache referencing the termdag, which can be re-used for multiple exprs
-fn global_cached_print_expr_with_intermediate_helper(
-    expr: &RcExpr,
-    printed: &mut String,
-    tree_state: &mut TreeToEgglog,
-    term_cache: &mut HashMap<Term, String>,
-) -> String {
-    let term = expr.to_egglog_internal(tree_state);
-    print_with_intermediate_helper(&tree_state.termdag, term, term_cache, printed)
-}
-
 // Returns a formatted string of (union call body) for each pair
 fn print_function_inlining_pairs(
     function_inlining_pairs: Vec<function_inlining::CallBody>,
@@ -126,14 +115,12 @@ fn print_function_inlining_pairs(
     let unions = function_inlining_pairs
         .iter()
         .map(|cb| {
+            let call_term = cb.call.to_egglog_internal(tree_state);
+            let body_term = cb.body.to_egglog_internal(tree_state);
             format!(
                 "(union {} {})",
-                global_cached_print_expr_with_intermediate_helper(
-                    &cb.call, printed, tree_state, term_cache
-                ),
-                global_cached_print_expr_with_intermediate_helper(
-                    &cb.body, printed, tree_state, term_cache
-                ),
+                print_with_intermediate_helper(&tree_state.termdag, call_term, term_cache, printed),
+                print_with_intermediate_helper(&tree_state.termdag, body_term, term_cache, printed)
             )
         })
         .collect::<Vec<_>>()

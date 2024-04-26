@@ -44,14 +44,14 @@
 ; =================================
 ; Constants
 ; =================================
-(rule ((= lhs (Const (Int x) ty)))
+(rule ((= lhs (Const (Int x) ty ctx)))
       (
         (set (lo-bound lhs) (IntB x))
         (set (hi-bound lhs) (IntB x))
       )
       :ruleset interval-analysis)
 
-(rule ((= lhs (Const (Bool x) ty)))
+(rule ((= lhs (Const (Bool x) ty ctx)))
       (
         (set (lo-bound lhs) (BoolB x))
         (set (hi-bound lhs) (BoolB x))
@@ -67,7 +67,7 @@
        (HasArgType expr ty)
        (ContextOf expr ctx)
       )
-      ((union expr (InContext ctx (Const (Int x) ty))))
+      ((union expr (Const (Int x) ty ctx)))
       :ruleset interval-analysis)
 
 (rule (
@@ -76,7 +76,7 @@
        (HasArgType expr ty)
        (ContextOf expr ctx)
       )
-      ((union expr (InContext ctx (Const (Bool x) ty))))
+      ((union expr (Const (Bool x) ty ctx)))
       :ruleset interval-analysis)
 
 ; lower bound being true means the bool must be true
@@ -85,7 +85,7 @@
        (HasArgType expr ty)
        (ContextOf expr ctx)
       )
-      ((union expr (InContext ctx (Const (Bool true) ty))))
+      ((union expr (Const (Bool true) ty ctx)))
       :ruleset interval-analysis)
 
 ; upper bound being false means the bool must be false
@@ -94,7 +94,7 @@
        (HasArgType expr ty)
        (ContextOf expr ctx)
       )
-      ((union expr (InContext ctx (Const (Bool false) ty))))
+      ((union expr (Const (Bool false) ty ctx)))
       :ruleset interval-analysis)
 
 ; =================================
@@ -199,23 +199,6 @@
       :ruleset interval-analysis)
 
 ; =================================
-; Context
-; =================================
-; Things with bounds still have those bounds when in a context
-(rule (
-        (= lhs (InContext ctx expr))
-        (= lo (lo-bound expr))
-      )
-      ((set (lo-bound lhs) lo))
-      :ruleset interval-analysis)
-(rule (
-        (= lhs (InContext ctx expr))
-        (= hi (hi-bound expr))
-      )
-      ((set (hi-bound lhs) hi))
-      :ruleset interval-analysis)
-
-; =================================
 ; Conditionals
 ; =================================
 ; if the predicate is true, merge with then branch
@@ -279,7 +262,7 @@
         ; the right operand of the < has an upper bound
         (= (IntB v) (hi-bound value))
         ; context node inside the if region
-        (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+        (= ctx (Arg ty (InIf true pred inputs)))
         (HasType inputs ty)
       )
       ; expr < value was true, so we know expr is at most (hi-bound value) - 1
@@ -294,7 +277,7 @@
         ; the right operand of the < has a lower bound
         (= (IntB v) (lo-bound value))
         ; context node inside the if region
-        (= ctx (InContext (InIf false pred inputs) (Arg ty)))
+        (= ctx (Arg ty (InIf false pred inputs)))
         (HasType inputs ty)
       )
       ; expr < value was false, so we know expr is at least (lo-bound value)
@@ -310,7 +293,7 @@
         ; the left operand of the < has a lower bound
         (= (IntB v) (lo-bound value))
         ; context node inside the if region
-        (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+        (= ctx (Arg ty (InIf true pred inputs)))
         (HasType inputs ty)
       )
       ; value < expr was true, so we know expr is at least (lo-bound value) + 1
@@ -325,7 +308,7 @@
         ; the left operand of the < has an upper bound
         (= (IntB v) (hi-bound value))
         ; context node inside the if region
-        (= ctx (InContext (InIf false pred inputs) (Arg ty)))
+        (= ctx (Arg ty (InIf false pred inputs)))
         (HasType inputs ty)
       )
       ; value < expr was false, so we know expr is at most (hi-bound value)
@@ -335,7 +318,7 @@
 ;; Push intervals for inputs into if region
 (rule (
        (= if (If pred inputs then_ else_))
-       (= ctx (InContext (InIf b pred inputs) (Arg ty)))
+       (= ctx (Arg ty (InIf b pred inputs)))
        (HasType inputs ty)
        (= lo (lo-bound (Get inputs i)))
 
@@ -344,7 +327,7 @@
       :ruleset interval-analysis)
 (rule (
        (= if (If pred inputs then_ else_))
-       (= ctx (InContext (InIf b pred inputs) (Arg ty)))
+       (= ctx (Arg ty (InIf b pred inputs)))
        (HasType inputs ty)
        (= hi (hi-bound (Get inputs i)))
 
@@ -359,7 +342,7 @@
        (= if_e (If pred inputs thn els))
        ; the left operand of the == is an input to the if region
        (= expr (Get inputs i))
-       (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+       (= ctx  (Arg ty (InIf true pred inputs)))
        (HasType inputs ty)
        (= (IntB lo) (lo-bound val))
       )
@@ -370,7 +353,7 @@
        (= if_e (If pred inputs thn els))
        ; the left operand of the == is an input to the if region
        (= expr (Get inputs i))
-       (= ctx (InContext (InIf true pred inputs) (Arg ty)))
+       (= ctx (Arg ty (InIf true pred inputs)))
        (HasType inputs ty)
        (= (IntB hi) (hi-bound val))
       )

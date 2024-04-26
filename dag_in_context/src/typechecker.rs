@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::{base, emptyt, statet},
+    ast::{base, empty, emptyt, function, program, statet},
     schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type},
     tuplet,
 };
@@ -47,10 +47,11 @@ impl TreeProgram {
 impl Expr {
     /// Performs type checking, and also replaces any `Unknown` types
     /// in arguments with the correct types.
-    /// TODO remove dead code after use in translation
+    /// Expects an expression without any call statements.
     #[allow(dead_code)]
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
-        let prog = self.to_program(input_ty.clone(), output_ty.clone());
+        // we need a dummy program, since there are no calls in self
+        let prog = program!(function("dummy", tuplet!(), tuplet!(), empty()),);
         let mut checker = TypeChecker::new(&prog, false);
         let (ty, new_expr) =
             checker.add_arg_types_to_expr(self.clone(), &Some(TypeStack(vec![input_ty])));
@@ -59,6 +60,16 @@ impl Expr {
             "Expected return type to be {:?}. Got {:?}",
             output_ty, ty
         );
+        new_expr
+    }
+
+    /// Adds argument types to the expression.
+    pub(crate) fn add_arg_type(self: RcExpr, input_ty: Type) -> RcExpr {
+        // we need a dummy program, since there are no calls in self
+        let prog = program!(function("dummy", tuplet!(), tuplet!(), empty()),);
+        let mut checker = TypeChecker::new(&prog, false);
+        let (_ty, new_expr) =
+            checker.add_arg_types_to_expr(self.clone(), &Some(TypeStack(vec![input_ty])));
         new_expr
     }
 
@@ -162,7 +173,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         let (res_ty, mut res_expr) = match expr.as_ref() {
-            Expr::Const(constant, ty) => {
+            Expr::Const(constant, ty, ctx) => {
                 let cty = match constant {
                     Constant::Int(_) => Type::Base(BaseType::IntT),
                     Constant::Bool(_) => Type::Base(BaseType::BoolT),
@@ -177,6 +188,7 @@ impl<'a> TypeChecker<'a> {
                             RcExpr::new(Expr::Const(
                                 constant.clone(),
                                 arg_tys.as_ref().unwrap().get().clone(),
+                                ctx.clone(),
                             )),
                         )
                     }
@@ -337,14 +349,17 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Call(string.clone(), new_arg)),
                 )
             }
-            Expr::Empty(ty) => match ty {
+            Expr::Empty(ty, ctx) => match ty {
                 Type::Unknown => {
                     if self.expect_fully_typed {
                         panic!("Expected type to be known in empty")
                     }
                     (
                         emptyt(),
-                        RcExpr::new(Expr::Empty(arg_tys.as_ref().unwrap().get().clone())),
+                        RcExpr::new(Expr::Empty(
+                            arg_tys.as_ref().unwrap().get().clone(),
+                            ctx.clone(),
+                        )),
                     )
                 }
                 _ => {
@@ -465,16 +480,19 @@ impl<'a> TypeChecker<'a> {
                 )
             }
             // Replace the argument type with the new type
-            Expr::Arg(Type::Unknown) => {
+            Expr::Arg(Type::Unknown, ctx) => {
                 if self.expect_fully_typed {
                     panic!("Expected type to be known in arg")
                 }
                 (
                     arg_tys.as_ref().unwrap().get().clone(),
-                    Rc::new(Expr::Arg(arg_tys.as_ref().unwrap().get().clone())),
+                    Rc::new(Expr::Arg(
+                        arg_tys.as_ref().unwrap().get().clone(),
+                        ctx.clone(),
+                    )),
                 )
             }
-            Expr::Arg(found_ty) => {
+            Expr::Arg(found_ty, _ctx) => {
                 if let Some(arg_tys) = arg_tys {
                     assert_eq!(
                         &found_ty,
@@ -485,15 +503,6 @@ impl<'a> TypeChecker<'a> {
                     );
                 }
                 (found_ty.clone(), expr.clone())
-            }
-            // context assumptions are not typechecked,
-            // so tests need to add types to the context manually
-            Expr::InContext(assumption, body) => {
-                let (bty, new_body) = self.add_arg_types_to_expr(body.clone(), arg_tys);
-                (
-                    bty,
-                    RcExpr::new(Expr::InContext(assumption.clone(), new_body)),
-                )
             }
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
             // should have covered all cases, but rust can't prove it

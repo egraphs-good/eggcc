@@ -1,14 +1,20 @@
 ; We only have context for Exprs, not ListExprs.
 (relation ContextOf (Expr Assumption))
 
-; Base case: InContext means ContextOf
-(rule ((InContext ctx e))
-    ((ContextOf (InContext ctx e) ctx)) :ruleset always-run)
+(rule ((Arg ty ctx))
+      ((ContextOf (Arg ty ctx) ctx))
+      :ruleset always-run)
+(rule ((Const c ty ctx))
+      ((ContextOf (Const c ty ctx) ctx))
+      :ruleset always-run)
+(rule ((Empty ty ctx))
+      ((ContextOf (Empty ty ctx) ctx))
+        :ruleset always-run)
 
 ; Error checking - each expr should only have a single context
 (rule ((ContextOf x ctx1)
-         (ContextOf x ctx2)
-         (!= ctx1 ctx2))
+       (ContextOf x ctx2)
+       (!= ctx1 ctx2))
      (
          (panic "Equivalent expressions have nonequivalent context, breaking the single context invariant.")
      )

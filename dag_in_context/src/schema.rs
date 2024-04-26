@@ -77,25 +77,25 @@ pub enum Assumption {
     NoContext,
     InIf(bool, RcExpr, RcExpr),
     InSwitch(i64, RcExpr, RcExpr),
+    WildCard(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Expr {
-    Const(Constant, Type),
+    Const(Constant, Type, Assumption),
     Top(TernaryOp, RcExpr, RcExpr, RcExpr),
     Bop(BinaryOp, RcExpr, RcExpr),
     Uop(UnaryOp, RcExpr),
     Get(RcExpr, usize),
     Alloc(i64, RcExpr, RcExpr, BaseType),
     Call(String, RcExpr),
-    Empty(Type),
+    Empty(Type, Assumption),
     Single(RcExpr),
     Concat(RcExpr, RcExpr),
     If(RcExpr, RcExpr, RcExpr, RcExpr),
     Switch(RcExpr, RcExpr, Vec<RcExpr>),
     DoWhile(RcExpr, RcExpr),
-    Arg(Type),
-    InContext(Assumption, RcExpr),
+    Arg(Type, Assumption),
     Function(String, Type, Type, RcExpr),
 }
 

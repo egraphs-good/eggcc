@@ -29,7 +29,7 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
-pub(crate) mod schedule;
+pub mod schedule;
 
 pub type Result = std::result::Result<(), MainError>;
 
@@ -39,6 +39,7 @@ pub fn prologue() -> String {
         include_str!("type_analysis.egg"),
         include_str!("utility/util.egg"),
         &optimizations::is_valid::rules().join("\n"),
+        &optimizations::is_resolved::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
         &optimizations::purity_analysis::rules().join("\n"),
         // TODO cond inv code motion with regions

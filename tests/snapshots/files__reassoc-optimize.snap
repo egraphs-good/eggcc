@@ -6,8 +6,8 @@ expression: visualization.result
   v3: int = const 1;
   v5: int = const 3;
   v8: int = add v5 v0;
-  v10: int = const 4;
-  v13: int = add v10 v1;
+  v11: int = const 4;
+  v13: int = add v1 v11;
   v15: int = add v8 v13;
   v17: int = add v3 v15;
   print v17;

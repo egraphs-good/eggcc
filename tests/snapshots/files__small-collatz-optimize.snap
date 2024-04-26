@@ -34,8 +34,8 @@ expression: visualization.result
   v18: int = id v106;
   br v101 .__20__ .__128__;
 .__32__:
-  v35: int = div v14 v15;
-  v38: int = mul v35 v15;
+  v36: int = div v14 v15;
+  v38: int = mul v15 v36;
   v40: int = sub v14 v38;
   v43: bool = eq v40 v18;
   v49: int = add v16 v13;

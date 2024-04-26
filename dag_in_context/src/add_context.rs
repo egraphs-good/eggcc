@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::{inctx, noctx},
+    ast::noctx,
     schema::{Assumption, Expr, RcExpr, TreeProgram},
     schema_helpers::AssumptionRef,
 };
@@ -83,14 +83,12 @@ impl Expr {
             return expr.clone();
         }
         let res = match self.as_ref() {
-            // leaf nodes are constant, empty, and arg
-            // we just wrap them in the current context
-            Expr::Const(..) | Expr::Empty(..) | Expr::Arg(..) => {
-                if !cache.initialize {
-                    panic!("Found leaf node while replacing contexts");
-                }
-                inctx(current_ctx, self.clone())
+            // replace the context of leaf nodes
+            Expr::Const(c, ty, _oldctx) => {
+                RcExpr::new(Expr::Const(c.clone(), ty.clone(), current_ctx.clone()))
             }
+            Expr::Empty(ty, _oldctx) => RcExpr::new(Expr::Empty(ty.clone(), current_ctx.clone())),
+            Expr::Arg(ty, _oldctx) => RcExpr::new(Expr::Arg(ty.clone(), current_ctx.clone())),
             // create new contexts for let, loop, and if
             Expr::DoWhile(inputs, pred_and_body) => {
                 let new_inputs = inputs.add_ctx_with_cache(current_ctx.clone(), cache);
@@ -177,13 +175,6 @@ impl Expr {
                 x.add_ctx_with_cache(current_ctx.clone(), cache),
                 y.add_ctx_with_cache(current_ctx, cache),
             )),
-            // if we find a context node, replace it with more specific context
-            Expr::InContext(_oldctx, inner) => {
-                if cache.initialize {
-                    panic!("Found InContext node while initializing");
-                }
-                inctx(current_ctx, inner.clone())
-            }
             Expr::Function(name, in_ty, out_ty, body) => RcExpr::new(Expr::Function(
                 name.clone(),
                 in_ty.clone(),

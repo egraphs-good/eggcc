@@ -29,84 +29,94 @@
 
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
-(rule ((= lhs (Subst assum to (InContext oldctx (Arg ty))))
-       (IsLeaf leaf)
+(rule ((= lhs (Subst assum to (Arg ty oldctx)))
        )
       ;; add the assumption `to`
       ((DelayedSubstUnion lhs (AddContext assum to)))
       :ruleset subst)
-(rule ((= lhs (Subst assum to (InContext oldctx (Const c ty))))
-       (IsLeaf leaf)
+(rule ((= lhs (Subst assum to (Const c ty oldctx)))
        (HasArgType to newty))
-      ((DelayedSubstUnion lhs (InContext assum (Const c newty))))
+      ((DelayedSubstUnion lhs (Const c newty assum)))
       :ruleset subst)
-(rule ((= lhs (Subst assum to (InContext oldctx (Empty ty))))
-       (IsLeaf leaf)
+(rule ((= lhs (Subst assum to (Empty ty oldctx)))
        (HasArgType to newty))
-      ((DelayedSubstUnion lhs (InContext assum (Empty newty))))
+      ((DelayedSubstUnion lhs (Empty newty assum)))
       :ruleset subst)
 
 ;; Operators
-(rule ((= lhs (Subst assum to (Bop op c1 c2))))
+(rule ((= lhs (Subst assum to (Bop op c1 c2)))
+       (ExprIsResolved (Bop op c1 c2)))
       ((DelayedSubstUnion lhs
          (Bop op (Subst assum to c1)
                  (Subst assum to c2))))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (Uop op c1))))
+(rule ((= lhs (Subst assum to (Uop op c1)))
+       (ExprIsResolved (Uop op c1)))
       ((DelayedSubstUnion lhs
          (Uop op (Subst assum to c1))))
          :ruleset subst)
 
-(rule ((= lhs (Subst assum to (Get c1 index))))
+(rule ((= lhs (Subst assum to (Get c1 index)))
+       (ExprIsResolved (Get c1 index)))
       ((DelayedSubstUnion lhs
          (Get (Subst assum to c1) index)))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (Alloc id c1 c2 ty))))
+(rule ((= lhs (Subst assum to (Alloc id c1 c2 ty)))
+       (ExprIsResolved (Alloc id c1 c2 ty)))
       ((DelayedSubstUnion lhs
          (Alloc id (Subst assum to c1)
                    (Subst assum to c2)
                    ty)))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (Call name c1))))
+(rule ((= lhs (Subst assum to (Call name c1)))
+       (ExprIsResolved (Call name c1)))
       ((DelayedSubstUnion lhs
          (Call name (Subst assum to c1))))
          :ruleset subst)
 
 
 ;; Tuple operators
-(rule ((= lhs (Subst assum to (Single c1))))
+(rule ((= lhs (Subst assum to (Single c1)))
+       (ExprIsResolved (Single c1)))
       ((DelayedSubstUnion lhs
          (Single (Subst assum to c1))))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (Concat c1 c2))))
+(rule ((= lhs (Subst assum to (Concat c1 c2)))
+       (ExprIsResolved (Concat c1 c2)))
       ((DelayedSubstUnion lhs
          (Concat (Subst assum to c1)
                  (Subst assum to c2))))
          :ruleset subst)
 
 ;; Control flow
-(rule ((= lhs (Subst assum to (Switch pred inputs c1))))
+(rule ((= lhs (Subst assum to inner))
+       (= inner (Switch pred inputs c1))
+       (ExprIsResolved inner))
       ((DelayedSubstUnion lhs
          (Switch (Subst assum to pred)
                  (Subst assum to inputs)
                  c1)))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (If pred inputs c1 c2))))
+(rule ((= lhs (Subst assum to inner))
+       (= inner (If pred inputs c1 c2))
+       (ExprIsResolved inner))
       ((DelayedSubstUnion lhs
          (If (Subst assum to pred)
              (Subst assum to inputs)
              c1
              c2)))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (DoWhile in out))))
+(rule ((= lhs (Subst assum to (DoWhile in out)))
+       (ExprIsResolved (DoWhile in out)))
       ((DelayedSubstUnion lhs
          (DoWhile (Subst assum to in)
                   out)))
-         :ruleset subst)
+      :ruleset subst)
 
 ;; substitute into function (convenience for testing)
 (rewrite (Subst assum to (Function name inty outty body))
          (Function name inty outty (Subst assum to body))
+         :when ((ExprIsResolved body))
          :ruleset subst)
 
 
@@ -123,6 +133,12 @@
 (rule ((DelayedSubstUnion lhs rhs))
       ((delete (DelayedSubstUnion lhs rhs)))
       :ruleset cleanup-subst)
-(rule ((Subst assum to in))
+
+; this cleanup is important- if we don't subsume these substitutions, they
+; may oberve their own results and create infinitely sized terms.
+; ex: get(parallel!(arg(), int(2)), 0) ignores the first element of the tuple
+; so it's equivalent to infinite other times with any other value as the first element of the tuple.
+; Check ExprIsResolved to confirm that the substitution finished (all sub-substitutions are done).
+(rule ((ExprIsResolved (Subst assum to in)))
       ((subsume (Subst assum to in)))
       :ruleset cleanup-subst)

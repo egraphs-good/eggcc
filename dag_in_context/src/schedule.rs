@@ -19,7 +19,7 @@ pub(crate) fn helpers() -> String {
         .to_string()
 }
 
-pub(crate) fn mk_schedule() -> String {
+pub fn mk_schedule() -> String {
     let helpers = helpers();
     format!(
         "

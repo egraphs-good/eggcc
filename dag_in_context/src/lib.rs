@@ -119,11 +119,9 @@ fn global_cached_print_expr_with_intermediate_helper(
 fn print_function_inlining_pairs(
     function_inlining_pairs: Vec<function_inlining::CallBody>,
     printed: &mut String,
+    tree_state: &mut TreeToEgglog,
+    term_cache: &mut HashMap<Term, String>,
 ) -> String {
-    // Create a global cache
-    let mut tree_state = TreeToEgglog::new();
-    let mut term_cache = HashMap::<Term, String>::new();
-
     // Get unions
     let unions = function_inlining_pairs
         .iter()
@@ -131,16 +129,10 @@ fn print_function_inlining_pairs(
             format!(
                 "(union {} {})",
                 global_cached_print_expr_with_intermediate_helper(
-                    &cb.call,
-                    printed,
-                    &mut tree_state,
-                    &mut term_cache
+                    &cb.call, printed, tree_state, term_cache
                 ),
                 global_cached_print_expr_with_intermediate_helper(
-                    &cb.body,
-                    printed,
-                    &mut tree_state,
-                    &mut term_cache
+                    &cb.body, printed, tree_state, term_cache
                 ),
             )
         })
@@ -153,14 +145,20 @@ fn print_function_inlining_pairs(
 pub fn build_program(program: &TreeProgram) -> String {
     let mut printed = String::new();
 
+    // Create a global cache
+    let mut tree_state = TreeToEgglog::new();
+    let mut term_cache = HashMap::<Term, String>::new();
+
     let function_inlining = print_function_inlining_pairs(
         function_inlining::function_inlining_pairs(program, 3),
         &mut printed,
+        &mut tree_state,
+        &mut term_cache,
     );
 
-    let mut cache = HashMap::<Term, String>::new();
-    let (term, termdag) = program.to_egglog();
-    let res = print_with_intermediate_helper(&termdag, term, &mut cache, &mut printed);
+    let term = program.to_egglog_internal(&mut tree_state);
+    let res =
+        print_with_intermediate_helper(&tree_state.termdag, term, &mut term_cache, &mut printed);
 
     format!(
         "{}\n{printed}\n(let PROG {res})\n\n{function_inlining}\n{}\n",

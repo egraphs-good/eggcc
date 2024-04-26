@@ -59,19 +59,17 @@ pub fn prologue() -> String {
 
 /// Adds an egglog program to `res` that adds the given term
 /// to the database.
-/// Returns a fresh variable referring to the program and
-/// the variable count.
+/// Returns a fresh variable referring to the program.
 /// Note that because the cache caches based on a term, which
 /// references the termdag, this cache **cannot** be reused
-/// across different TermDags. To allow use for multiple term
-/// dags, use the returned var count as the start for the next
-/// term dag.
+/// across different TermDags. Make sure to update the term dag
+/// for a new term (using TreeToEgglog), rather than creating a
+/// new term dag.
 fn print_with_intermediate_helper(
     termdag: &TermDag,
     term: Term,
     cache: &mut HashMap<Term, String>,
     res: &mut String,
-    var_count: &mut i32,
 ) -> String {
     if let Some(var) = cache.get(&term) {
         return var.clone();
@@ -84,20 +82,14 @@ fn print_with_intermediate_helper(
             let child_vars = children
                 .iter()
                 .map(|child| {
-                    print_with_intermediate_helper(
-                        termdag,
-                        termdag.get(*child),
-                        cache,
-                        res,
-                        var_count,
-                    )
+                    print_with_intermediate_helper(termdag, termdag.get(*child), cache, res)
                 })
                 .collect::<Vec<String>>()
                 .join(" ");
-            let fresh_var = format!("__tmp{}", var_count);
+            let fresh_var = format!("__tmp{}", cache.len());
             writeln!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
             cache.insert(term, fresh_var.clone());
-            *var_count += 1;
+
             fresh_var
         }
     }
@@ -106,9 +98,7 @@ fn print_with_intermediate_helper(
 pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
     let mut printed = String::new();
     let mut cache = HashMap::<Term, String>::new();
-    let mut var_count = 0;
-    let res =
-        print_with_intermediate_helper(termdag, term, &mut cache, &mut printed, &mut var_count);
+    let res = print_with_intermediate_helper(termdag, term, &mut cache, &mut printed);
     printed.push_str(&format!("(let PROG {res})\n"));
     printed
 }
@@ -117,12 +107,11 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
 fn global_cached_print_expr_with_intermediate_helper(
     expr: &RcExpr,
     printed: &mut String,
-    var_count: &mut i32,
     tree_state: &mut TreeToEgglog,
     term_cache: &mut HashMap<Term, String>,
 ) -> String {
     let term = expr.to_egglog_internal(tree_state);
-    print_with_intermediate_helper(&tree_state.termdag, term, term_cache, printed, var_count)
+    print_with_intermediate_helper(&tree_state.termdag, term, term_cache, printed)
 }
 
 // Returns a pair of (formatted unions, variable count)
@@ -130,7 +119,6 @@ fn global_cached_print_expr_with_intermediate_helper(
 fn print_function_inlining_pairs(
     function_inlining_pairs: Vec<function_inlining::CallBody>,
     printed: &mut String,
-    var_count: &mut i32,
 ) -> String {
     // Create a global cache
     let mut tree_state = TreeToEgglog::new();
@@ -145,14 +133,12 @@ fn print_function_inlining_pairs(
                 global_cached_print_expr_with_intermediate_helper(
                     &cb.call,
                     printed,
-                    var_count,
                     &mut tree_state,
                     &mut term_cache
                 ),
                 global_cached_print_expr_with_intermediate_helper(
                     &cb.body,
                     printed,
-                    var_count,
                     &mut tree_state,
                     &mut term_cache
                 ),
@@ -167,17 +153,14 @@ fn print_function_inlining_pairs(
 pub fn build_program(program: &TreeProgram) -> String {
     let mut printed = String::new();
 
-    let mut var_count = 0;
     let function_inlining = print_function_inlining_pairs(
         function_inlining::function_inlining_pairs(program, 3),
         &mut printed,
-        &mut var_count,
     );
 
     let mut cache = HashMap::<Term, String>::new();
     let (term, termdag) = program.to_egglog();
-    let res =
-        print_with_intermediate_helper(&termdag, term, &mut cache, &mut printed, &mut var_count);
+    let res = print_with_intermediate_helper(&termdag, term, &mut cache, &mut printed);
 
     format!(
         "{}\n{printed}\n(let PROG {res})\n\n{function_inlining}\n{}\n",

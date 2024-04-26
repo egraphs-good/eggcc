@@ -67,7 +67,7 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<Ca
         .map(|call| (Rc::as_ptr(&call), call))
         .collect::<IndexMap<*const Expr, RcExpr>>()
         .iter()
-        .map(|(_, call)| subst_call(&call, &func_name_to_body))
+        .map(|(_, call)| subst_call(call, &func_name_to_body))
         .collect::<Vec<_>>();
 
     let mut all_inlining = prev_inlining.clone();
@@ -80,7 +80,7 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<Ca
             .map(|call| (Rc::as_ptr(&call), call))
             .collect::<IndexMap<*const Expr, RcExpr>>()
             .iter()
-            .map(|(_, call)| subst_call(&call, &func_name_to_body))
+            .map(|(_, call)| subst_call(call, &func_name_to_body))
             .collect::<Vec<_>>();
         all_inlining.extend(next_inlining.clone());
         prev_inlining = next_inlining;

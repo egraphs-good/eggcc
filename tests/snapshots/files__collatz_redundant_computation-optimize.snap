@@ -34,17 +34,10 @@ expression: visualization.result
   v18: int = id v104;
   br v99 .__20__ .__126__;
 .__32__:
-<<<<<<< HEAD
-  v36: int = div v14 v17;
-  v39: int = mul v36 v17;
-  v41: int = sub v14 v39;
-  v43: bool = eq v18 v41;
-=======
   v35: int = div v14 v17;
   v38: int = mul v35 v17;
   v40: int = sub v14 v38;
   v43: bool = eq v40 v18;
->>>>>>> main
   print v14;
   v53: int = mul v16 v14;
   v56: int = add v53 v15;
@@ -53,7 +46,7 @@ expression: visualization.result
   v81: bool = const true;
   v71: int = id v13;
   v72: bool = id v81;
-  v73: int = id v36;
+  v73: int = id v35;
   v74: int = id v15;
   v75: int = id v16;
   v76: int = id v17;

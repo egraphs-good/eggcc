@@ -195,12 +195,11 @@ impl Expr {
                 res
             }
             Expr::DoWhile(x, y) => vec![x.clone(), y.clone()],
-            Expr::InContext(_, x) => vec![x.clone()],
             Expr::Function(_, _, _, x) => vec![x.clone()],
             Expr::Get(x, _) => vec![x.clone()],
-            Expr::Const(_, _) => vec![],
-            Expr::Empty(_) => vec![],
-            Expr::Arg(_) => vec![],
+            Expr::Const(_, _, _) => vec![],
+            Expr::Empty(_, _) => vec![],
+            Expr::Arg(_, _) => vec![],
         }
     }
 
@@ -234,43 +233,40 @@ impl Expr {
 
     pub fn get_arg_type(&self) -> Type {
         match self {
-            Expr::Const(_, ty) => ty.clone(),
+            Expr::Const(_, ty, _) => ty.clone(),
             Expr::Top(_, x, _, _) => x.get_arg_type(),
             Expr::Bop(_, x, _) => x.get_arg_type(),
             Expr::Uop(_, x) => x.get_arg_type(),
             Expr::Get(x, _) => x.get_arg_type(),
             Expr::Alloc(_, x, _, _) => x.get_arg_type(),
             Expr::Call(_, x) => x.get_arg_type(),
-            Expr::Empty(ty) => ty.clone(),
+            Expr::Empty(ty, _) => ty.clone(),
             Expr::Single(x) => x.get_arg_type(),
             Expr::Concat(x, _) => x.get_arg_type(),
             Expr::If(x, _, _, _) => x.get_arg_type(),
             Expr::Switch(x, _, _) => x.get_arg_type(),
             Expr::DoWhile(x, _) => x.get_arg_type(),
-            Expr::Arg(ty) => ty.clone(),
-            Expr::InContext(_, x) => x.get_arg_type(),
+            Expr::Arg(ty, _) => ty.clone(),
             Expr::Function(_, ty, _, _) => ty.clone(),
         }
     }
 
-    // Some(assum) if a context is found at leaves, None otherwise
-    pub fn get_ctx(&self) -> Option<&Assumption> {
+    pub fn get_ctx(&self) -> &Assumption {
         match self {
-            Expr::Const(_, _) => None,
+            Expr::Const(_, _, ctx) => ctx,
             Expr::Top(_, x, _, _) => x.get_ctx(),
             Expr::Bop(_, x, _) => x.get_ctx(),
             Expr::Uop(_, x) => x.get_ctx(),
             Expr::Get(x, _) => x.get_ctx(),
             Expr::Alloc(_, x, _, _) => x.get_ctx(),
             Expr::Call(_, x) => x.get_ctx(),
-            Expr::Empty(_) => None,
+            Expr::Empty(_, ctx) => ctx,
             Expr::Single(x) => x.get_ctx(),
             Expr::Concat(x, _) => x.get_ctx(),
             Expr::If(x, _, _, _) => x.get_ctx(),
             Expr::Switch(x, _, _) => x.get_ctx(),
             Expr::DoWhile(x, _) => x.get_ctx(),
-            Expr::Arg(_) => None,
-            Expr::InContext(assumption, _) => Some(assumption),
+            Expr::Arg(_, ctx) => ctx,
             Expr::Function(_, _, _, x) => x.get_ctx(),
         }
     }
@@ -284,11 +280,10 @@ impl Expr {
         Self::subst_with_cache(arg, &arg_ty, arg_ctx, within, &mut subst_cache)
     }
 
-    // If arg_ctx exists, will also substitute context. Otherwise, old context is maintained.
     fn subst_with_cache(
         arg: &RcExpr,
         arg_ty: &Type,
-        arg_ctx: Option<&Assumption>,
+        arg_ctx: &Assumption,
         within: &RcExpr,
         subst_cache: &mut HashMap<*const Expr, RcExpr>,
     ) -> RcExpr {
@@ -298,7 +293,7 @@ impl Expr {
 
         let substed = match within.as_ref() {
             // Substitute!
-            Expr::Arg(_) => arg.clone(),
+            Expr::Arg(_, _) => arg.clone(),
 
             // Propagate through current scope
             Expr::Top(op, x, y, z) => Rc::new(Expr::Top(
@@ -383,24 +378,11 @@ impl Expr {
                 Self::subst_with_cache(arg, arg_ty, arg_ctx, body, subst_cache),
             )),
 
-            // Substitute new context
-            Expr::InContext(assum, x) => {
-                if let Some(arg_assum) = arg_ctx {
-                    Rc::new(Expr::InContext(
-                        arg_assum.clone(),
-                        Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
-                    ))
-                } else {
-                    Rc::new(Expr::InContext(
-                        assum.clone(),
-                        Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
-                    ))
-                }
+            // For leaves, replace the type and context
+            Expr::Const(c, _, _) => {
+                Rc::new(Expr::Const(c.clone(), arg_ty.clone(), arg_ctx.clone()))
             }
-
-            // For leaves, replace the type
-            Expr::Const(c, _) => Rc::new(Expr::Const(c.clone(), arg_ty.clone())),
-            Expr::Empty(_) => Rc::new(Expr::Empty(arg_ty.clone())),
+            Expr::Empty(_, _) => Rc::new(Expr::Empty(arg_ty.clone(), arg_ctx.clone())),
         };
 
         // Add the substituted to cache

@@ -33,22 +33,22 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
     use crate::ast::*;
 
     let build = tif(or(tfalse(), ttrue()), empty(), int(1), int(2))
-        .to_program(emptyt(), base(intt()))
-        .add_context();
+        .with_arg_types(emptyt(), base(intt()))
+        .add_ctx(noctx());
 
     let check = tif(
         tfalse(),
-        empty(),
+        parallel!(ttrue()),
         int(1),
-        tif(ttrue(), empty(), int(1), int(2)),
+        tif(get(arg(), 0), empty(), int(1), int(2)),
     )
-    .to_program(emptyt(), base(intt()))
-    .add_context();
+    .with_arg_types(emptyt(), base(intt()))
+    .add_ctx(noctx());
 
     egglog_test(
-        &format!("(let b {build})"),
-        &format!("(let c {check}) (check (= b c))"),
-        vec![build, check],
+        &format!("(let build_ {build})"),
+        &format!("(let check_ {check}) (check (= build_ check_))"),
+        vec![],
         val_empty(),
         intv(1),
         vec![],

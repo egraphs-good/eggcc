@@ -8,23 +8,23 @@
       ((let outer_ins (Concat (Single b) ins))
        (let outer_ins_ty (TupleT (TCons (BoolT) ins_ty)))
 
-       (let inner_pred    (Get      (InContext (InIf true  a outer_ins) (Arg outer_ins_ty)) 0))
-       (let sub_arg_true  (SubTuple (InContext (InIf true  a outer_ins) (Arg outer_ins_ty)) 1 len))
-       (let sub_arg_false (SubTuple (InContext (InIf false a outer_ins) (Arg outer_ins_ty)) 1 len))
+       (let inner_pred    (Get      (Arg outer_ins_ty (InIf true  a outer_ins)) 0))
+       (let sub_arg_true  (SubTuple (Arg outer_ins_ty (InIf true  a outer_ins)) 1 len))
+       (let sub_arg_false (SubTuple (Arg outer_ins_ty (InIf false a outer_ins)) 1 len))
 
-       (let inner_X (Subst (InIf true  inner_pred sub_arg_true) (Arg (TupleT ins_ty)) X))
-       (let inner_Y (Subst (InIf false inner_pred sub_arg_true) (Arg (TupleT ins_ty)) Y))
-       (let outer_Y (Subst (InIf false a          outer_ins)    sub_arg_false         Y))
+       (let inner_X (AddContext (InIf true  inner_pred sub_arg_true) X))
+       (let inner_Y (AddContext (InIf false inner_pred sub_arg_true) Y))
+       (let outer_Y (Subst      (InIf false a          outer_ins) sub_arg_false Y))
 
        (let inner (If inner_pred sub_arg_true inner_X inner_Y))
        (union lhs (If a          outer_ins    inner   outer_Y)))
 
        :ruleset switch_rewrite)
 
-(rewrite (If (InContext ctx (Const (Bool true) ty)) ins thn els)
+(rewrite (If (Const (Bool true)  ty ctx) ins thn els)
          (Subst ctx ins thn)
          :ruleset switch_rewrite)
 
-(rewrite (If (InContext ctx (Const (Bool false) ty)) ins thn els)
+(rewrite (If (Const (Bool false) ty ctx) ins thn els)
          (Subst ctx ins els)
          :ruleset switch_rewrite)

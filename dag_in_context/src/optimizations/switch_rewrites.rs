@@ -18,16 +18,9 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
     .with_arg_types(emptyt(), base(intt()))
     .add_ctx(noctx());
 
-    crate::egglog_test_and_print_program(
-        &format!("(let b {build})"),
-        &format!("(let c {check}) (check (= b
-; (If pred ins thn els)
-(If (InContext (NoContext) (Const (Bool false) (TupleT (TNil))))
-    ins ; (Single (InContext (NoContext) (Const (Bool true) (TupleT (TNil)))))
-    thn ; (If (Get (InContext ctx_outer_true (Arg inner_arg_ty)) 0) (InContext ctx_outer_true_2 (Empty inner_arg_ty_3)) (InContext one_ctx (Const (Int 1) (TupleT (TNil)))) (InContext two_ctx (Const (Int 2) (TupleT (TNil)))))
-    (InContext ctx_outer_false (Const (Int 2) inner_arg_ty_2))
-)
-            ))"), // incommenting ins causes the test to fail
+    egglog_test(
+        &format!("(let build_ {build})"),
+        &format!("(let check_ {check}) (check (= build_ check_))"),
         vec![],
         val_empty(),
         intv(2),

@@ -2,8 +2,12 @@ pub(crate) fn helpers() -> String {
     "
 ;; saturate all helpers first
 (saturate
-  (saturate saturating-helpers)
-  saturating)
+  (saturate saturating)
+  (saturate error-checking) ;; check for errors, relies on type-helpers saturating
+  (saturate subst) ;; do e-substitution
+  apply-subst-unions ;; apply the unions from substitution
+  cleanup-subst ;; clean up substitutions that are done
+)
 "
     .to_string()
 }
@@ -12,21 +16,13 @@ pub(crate) fn mk_schedule() -> String {
     let helpers = helpers();
     format!(
         "
-  ;; soundness of typechecking depends on saturating 
-  ;; type-helpers first
-  (unstable-combined-ruleset saturating-helpers
-    type-helpers)
-  
   (unstable-combined-ruleset saturating
     always-run
     canon
-    error-checking
+    type-helpers
     type-analysis
     context
-    interval-analysis
-    subst
-    apply-subst-unions
-    cleanup-subst)
+    interval-analysis)
   
     
   (unstable-combined-ruleset optimizations

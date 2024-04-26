@@ -109,7 +109,6 @@ impl Expr {
             Expr::Call(..) => Constructor::Call,
             Expr::Empty(..) => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,
-            Expr::InContext(..) => Constructor::InContext,
             Expr::Top(..) => Constructor::Top,
         }
     }
@@ -190,7 +189,7 @@ impl Expr {
             Expr::Get(x, _) => vec![x.clone()],
             Expr::Alloc(_, x, y, _) => vec![x.clone(), y.clone()],
             Expr::Call(_, x) => vec![x.clone()],
-            Expr::Empty(_) => vec![],
+            Expr::Empty(_, _) => vec![],
             Expr::Single(x) => vec![x.clone()],
             Expr::Concat(x, y) => vec![x.clone(), y.clone()],
             Expr::Switch(x, inputs, _branches) => {
@@ -202,8 +201,7 @@ impl Expr {
                 children
             }
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
-            Expr::Arg(_) => vec![],
-            Expr::InContext(_, x) => vec![x.clone()],
+            Expr::Arg(_, _) => vec![],
         }
     }
 }
@@ -302,7 +300,6 @@ pub enum Constructor {
     Cons,
     Nil,
     Alloc,
-    InContext,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -357,7 +354,6 @@ impl Constructor {
             Constructor::Call => "Call",
             Constructor::Empty => "Empty",
             Constructor::Alloc => "Alloc",
-            Constructor::InContext => "InContext",
             Constructor::Cons => "Cons",
             Constructor::Nil => "Nil",
             Constructor::Top => "Top",
@@ -377,7 +373,11 @@ impl Constructor {
                 ]
             }
             Constructor::Const => {
-                vec![f(Static(Sort::Constant), "n"), f(Static(Sort::Type), "ty")]
+                vec![
+                    f(Static(Sort::Constant), "n"),
+                    f(Static(Sort::Type), "ty"),
+                    f(Static(Sort::Assumption), "ctx"),
+                ]
             }
             Constructor::Top => vec![
                 f(Static(Sort::TernaryOp), "op"),
@@ -418,11 +418,17 @@ impl Constructor {
             Constructor::DoWhile => {
                 vec![f(SubExpr, "in"), f(CapturedExpr, "pred-and-output")]
             }
-            Constructor::Arg => vec![f(Static(Sort::Type), "ty")],
+            Constructor::Arg => vec![
+                f(Static(Sort::Type), "ty"),
+                f(Static(Sort::Assumption), "ctx"),
+            ],
             Constructor::Call => {
                 vec![f(Static(Sort::String), "func"), f(SubExpr, "arg")]
             }
-            Constructor::Empty => vec![f(Static(Sort::Type), "ty")],
+            Constructor::Empty => vec![
+                f(Static(Sort::Type), "ty"),
+                f(Static(Sort::Assumption), "ctx"),
+            ],
             Constructor::Cons => vec![f(SubExpr, "hd"), f(CapturedSubListExpr, "tl")],
             Constructor::Nil => vec![],
             Constructor::Alloc => vec![
@@ -431,9 +437,6 @@ impl Constructor {
                 f(SubExpr, "state"),
                 f(Static(Sort::Type), "ty"),
             ],
-            Constructor::InContext => {
-                vec![f(Static(Sort::Assumption), "assumption"), f(SubExpr, "e")]
-            }
         }
     }
 
@@ -472,7 +475,6 @@ impl Constructor {
             Constructor::Call => ESort::Expr,
             Constructor::Empty => ESort::Expr,
             Constructor::Alloc => ESort::Expr,
-            Constructor::InContext => ESort::Expr,
             Constructor::Cons => ESort::ListExpr,
             Constructor::Nil => ESort::ListExpr,
         }

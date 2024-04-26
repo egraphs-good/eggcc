@@ -33,7 +33,7 @@ fn purity_rules_for_ctor(ctor: Constructor) -> String {
     use Constructor::*;
     match ctor {
         Function | Const | Get | Concat | Single | Switch | If | DoWhile | Arg | Empty | Cons
-        | Nil | InContext | Bop | Uop | Top => {
+        | Nil | Bop | Uop | Top => {
             // e.g. ["(ExprIsPure x)", "(ExprIsPure y)"]
             let children_pure_queries = ctor.filter_map_fields(|field| match field.purpose {
                 Purpose::Static(Sort::BinaryOp)

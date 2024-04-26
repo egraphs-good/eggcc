@@ -57,11 +57,6 @@
        :ruleset always-run)
 
 
-(relation IsLeaf (Expr))
-(rule ((Arg ty)) ((IsLeaf (Arg ty))) :ruleset always-run)
-(rule ((Const val ty)) ((IsLeaf (Const val ty))) :ruleset always-run)
-(rule ((Empty ty)) ((IsLeaf (Empty ty))) :ruleset always-run)
-
 (rewrite (Concat (Concat a b) c)
          (Concat a (Concat b c))
          :ruleset always-run)

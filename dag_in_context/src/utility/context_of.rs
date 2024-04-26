@@ -15,7 +15,7 @@ fn test_context_of() -> crate::Result {
     // If statement should have the context of its predicate
     let check = format!("
         (let pred-ctx (NoContext))
-        (let pred (Bop (Eq) (InContext (NoContext) (Arg (Base (IntT)))) (InContext (NoContext) (Const (Int 5) (Base (IntT))))))
+        (let pred (Bop (Eq) (Arg (Base (IntT)) (NoContext)) (Const (Int 5) (Base (IntT)) (NoContext))))
         (check (ContextOf pred pred-ctx))
         (let if {body_with_context})
         (check (ContextOf if pred-ctx))
@@ -31,11 +31,11 @@ fn test_context_of() -> crate::Result {
     )
 }
 
-// Check that InContext means ContextOf
+// Check that a constant has ContextOf
 #[test]
 fn test_context_of_base_case() -> crate::Result {
-    let build = "(InContext (NoContext) (Const (Int 5) (Base (IntT))))";
-    let check = "(ContextOf (InContext (NoContext) (Const (Int 5) (Base (IntT)))) (NoContext))";
+    let build = "(Const (Int 5) (Base (IntT)) (NoContext))";
+    let check = "(ContextOf (Const (Int 5) (Base (IntT)) (NoContext)) (NoContext))";
 
     crate::egglog_test(
         &format!("(let build {build})"),
@@ -47,26 +47,30 @@ fn test_context_of_base_case() -> crate::Result {
     )
 }
 
-// TODO: we may need this test if it's decided each expr should
-// only have one context
-// #[test]
-// #[should_panic]
-// fn test_context_of_panics_if_two() {
-//     let build = "
-//         (let ctx1 (NoContext))
-//         (let ctx2 (NoContext))
-//         (let conflict-expr (Bop (And) (InContext ctx1 (Const (Bool false) (Base (BoolT)))) (InContext ctx2 (Const (Bool true) (Base (BoolT))))))";
-//     let check = "";
+#[test]
+#[should_panic]
+fn test_context_of_panics_if_two() {
+    use crate::ast::*;
+    let ctx2 = inif(
+        true,
+        ttrue().with_arg_types(tuplet!(), base(boolt())),
+        arg_ty(tuplet!()),
+    );
+    let build = format!("
+        (let ctx1 (NoContext))
+        (let ctx2 {ctx2})
+        (let conflict-expr (Bop (And) (Const (Bool false) (Base (BoolT)) ctx1) (Const (Bool true) (Base (BoolT)) ctx2)))");
+    let check = "";
 
-//     let _ = crate::egglog_test(
-//         build,
-//         check,
-//         vec![],
-//         crate::ast::val_empty(),
-//         crate::ast::val_empty(),
-//         vec![],
-//     );
-// }
+    let _ = crate::egglog_test(
+        &build,
+        check,
+        vec![],
+        crate::ast::val_empty(),
+        crate::ast::val_empty(),
+        vec![],
+    );
+}
 
 // Functions should not have a context
 #[test]

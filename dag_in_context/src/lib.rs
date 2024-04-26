@@ -25,7 +25,7 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
-pub(crate) mod schedule;
+pub mod schedule;
 
 pub type Result = std::result::Result<(), MainError>;
 

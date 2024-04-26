@@ -150,7 +150,7 @@ pub fn build_program(program: &TreeProgram) -> String {
     let mut term_cache = HashMap::<Term, String>::new();
 
     let function_inlining = print_function_inlining_pairs(
-        function_inlining::function_inlining_pairs(program, 3),
+        function_inlining::function_inlining_pairs(program, 2),
         &mut printed,
         &mut tree_state,
         &mut term_cache,

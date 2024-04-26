@@ -3,8 +3,8 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v3: int = const 0;
-  v5: bool = eq v0 v3;
+  v2: int = const 0;
+  v5: bool = eq v2 v0;
   v8: int = const 1;
   print v8;
   br v5 .__78__ .__16__;
@@ -20,7 +20,7 @@ expression: visualization.result
   v30: bool = lt v23 v26;
   br v30 .__51__ .__38__;
 .__51__:
-  v53: int = add v24 v25;
+  v53: int = add v25 v24;
   print v53;
   v57: bool = const true;
   v60: int = const 1;

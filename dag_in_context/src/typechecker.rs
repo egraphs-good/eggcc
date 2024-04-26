@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::{base, emptyt, statet},
+    ast::{base, empty, emptyt, function, program, statet},
     schema::{BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type},
     tuplet,
 };
@@ -47,10 +47,11 @@ impl TreeProgram {
 impl Expr {
     /// Performs type checking, and also replaces any `Unknown` types
     /// in arguments with the correct types.
-    /// TODO remove dead code after use in translation
+    /// Expects an expression without any call statements.
     #[allow(dead_code)]
     pub(crate) fn with_arg_types(self: RcExpr, input_ty: Type, output_ty: Type) -> RcExpr {
-        let prog = self.to_program(input_ty.clone(), output_ty.clone());
+        // we need a dummy program, since there are no calls in self
+        let prog = program!(function("dummy", tuplet!(), tuplet!(), empty()),);
         let mut checker = TypeChecker::new(&prog, false);
         let (ty, new_expr) =
             checker.add_arg_types_to_expr(self.clone(), &Some(TypeStack(vec![input_ty])));
@@ -59,6 +60,16 @@ impl Expr {
             "Expected return type to be {:?}. Got {:?}",
             output_ty, ty
         );
+        new_expr
+    }
+
+    /// Adds argument types to the expression.
+    pub(crate) fn add_arg_type(self: RcExpr, input_ty: Type) -> RcExpr {
+        // we need a dummy program, since there are no calls in self
+        let prog = program!(function("dummy", tuplet!(), tuplet!(), empty()),);
+        let mut checker = TypeChecker::new(&prog, false);
+        let (_ty, new_expr) =
+            checker.add_arg_types_to_expr(self.clone(), &Some(TypeStack(vec![input_ty])));
         new_expr
     }
 

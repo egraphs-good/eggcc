@@ -31,21 +31,21 @@
         (!= expected actual) ;; OKAY to compare types for equality because we never union types.
       )
       ((panic "type mismatch, better error message later :(")) ; once egglog allows non-literal panics
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 (relation HasArgType (Expr Type))
 
 (rule ((HasArgType (Arg t1 ctx) t2)
        (!= t1 t2))
       ((panic "arg type mismatch"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 (rule ((= lhs (Function name in out body))
        (HasArgType body ty)
        (HasArgType body ty2)
        (!= ty ty2))
       ((panic "arg type mismatch in function"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 ; Propagate arg types up
 (rule ((= lhs (Uop _ e))
@@ -93,7 +93,7 @@
        (HasType inputs ty2)
        (!= ty ty2))
       ((panic "switch branches then branch has incorrect input type"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 ;; demand with one fewer branches
 (rule ((= lhs (Switch pred inputs (Cons branch rest))))
       ((Switch pred inputs rest))
@@ -107,13 +107,13 @@
        (HasArgType t ty2)
        (!= ty ty2))
       ((panic "if branches then branch has incorrect input type"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 (rule ((= lhs (If c i t e))
        (HasType i ty)
        (HasArgType e ty2)
        (!= ty ty2))
       ((panic "if branches else branch has incorrect input type"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 
 (rule ((= lhs (DoWhile ins body))
@@ -163,7 +163,7 @@
         (HasType e (TupleT ty))
       )
       ((panic "Don't print a tuple"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 
 (rule ((= lhs (Bop (Free) e s))
@@ -173,11 +173,11 @@
 (rule ((= lhs (Bop (Free) e s))
        (HasType e (Base (IntT))))
       ((panic "Free expected pointer, received integer"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 (rule ((= lhs (Bop (Free) e s))
        (HasType e (TupleT _ty)))
       ((panic "Free expected pointer, received tuple"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 (rule (
         (= lhs (Bop (Load) e state))
@@ -191,14 +191,14 @@
         (= ty (Base (IntT)))
       )
       ((panic "(Load) expected pointer, received int"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 (rule (
         (= lhs (Bop (Load) e state))
         (HasType e ty)
         (= ty (TupleT x))
       )
       ((panic "(Load) expected pointer, received tuple"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 ; Binary ops
 (rule (
@@ -393,14 +393,14 @@
        (= (TypeList-length tl) len)
        (>= i len))
       ((panic "index out of bounds"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 (rule (
       (HasType (Get expr i) (TupleT tl))
        (= (TypeList-length tl) len)
         (< i 0)
       )
       ((panic "negative index"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 ; =================================
 ; Tuple operations
@@ -411,7 +411,7 @@
         (HasType e (TupleT tylist))
       )
       ((panic "don't nest tuples"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 (rule (
         (= lhs (Single e))
@@ -453,7 +453,7 @@
         (!= tya tyb)
       )
       ((panic "if branches had different types"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 
 
@@ -492,7 +492,7 @@
         (!= tya tyb)
       )
       ((panic "switch branches had different types"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 (rule ((Arg ty ctx))
       (
@@ -507,25 +507,25 @@
         (HasType inp (Base ty))
       )
       ((panic "loop input must be tuple"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 (rule (
         (= lhs (DoWhile inp pred-body))
         (HasType inp (Base (PointerT ty)))
       )
       ((panic "loop input must be tuple"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 (rule (
         (= lhs (DoWhile inp pred-body))
         (HasType pred-body (Base ty))
       )
       ((panic "loop pred-body must be tuple"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 (rule (
         (= lhs (DoWhile inp pred-body))
         (HasType pred-body (Base (PointerT ty)))
       )
       ((panic "loop pred-body must be tuple"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 (rule (
         (= lhs (DoWhile inp pred-body))
@@ -555,7 +555,7 @@
         (!= in-tys out-tys)
       )
       ((panic "input types and output types don't match"))
-      :ruleset type-analysis)
+      :ruleset error-checking)
 
 ; =================================
 ; Functions

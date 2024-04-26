@@ -3,18 +3,18 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @fac(v0: int): int {
-  v2: int = const 0;
-  v5: bool = eq v2 v0;
+  v3: int = const 0;
+  v5: bool = eq v0 v3;
   v9: int = const 1;
   br v5 .__51__ .__13__;
 .__51__:
   v49: int = id v9;
   jmp .__54__;
 .__13__:
-  v15: bool = eq v0 v9;
+  v15: bool = eq v9 v0;
   br v15 .__41__ .__22__;
 .__41__:
-  v43: int = call @fac v2;
+  v43: int = call @fac v3;
   v39: int = id v9;
 .__47__:
   v49: int = id v39;
@@ -24,7 +24,7 @@ expression: visualization.result
   v27: int = sub v24 v9;
   v31: int = call @fac v24;
   v33: int = call @fac v27;
-  v37: int = add v33 v31;
+  v37: int = add v31 v33;
   v39: int = id v37;
   jmp .__47__;
 .__54__:

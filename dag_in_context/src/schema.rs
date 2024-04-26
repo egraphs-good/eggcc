@@ -28,12 +28,12 @@ pub enum Type {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum TernaryOp {
     Write,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -52,7 +52,7 @@ pub enum BinaryOp {
     Free,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum UnaryOp {
     Not,
 }
@@ -67,9 +67,11 @@ pub enum Constant {
 /// We want sharing between sub-expressions, so we use Rc instead of Box.
 /// Invariant: Every shared sub-expression is re-used by the same Rc<Expr> (pointer equality).
 /// This is important for the correctness of the interpreter, which makes this assumption.
+/// NOTE: Please do not hash this. Hash a *const Expr instead. The hash function for RcExpr
+/// is very slow due to sharing of subexpressions.
 pub type RcExpr = Rc<Expr>;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
     NoContext,
@@ -77,7 +79,7 @@ pub enum Assumption {
     InSwitch(i64, RcExpr, RcExpr),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Expr {
     Const(Constant, Type),
     Top(TernaryOp, RcExpr, RcExpr, RcExpr),

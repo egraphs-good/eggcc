@@ -1,31 +1,29 @@
-use std::{
-    collections::{HashMap, HashSet},
-    vec,
-};
+use egglog::util::IndexMap;
+use std::{collections::HashMap, rc::Rc, vec};
 
 use crate::schema::{Expr, RcExpr, TreeProgram};
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct CallBody {
     pub call: RcExpr,
     pub body: RcExpr,
 }
 
 // Gets a set of all the calls in the program
-fn get_calls(expr: &RcExpr) -> HashSet<RcExpr> {
+fn get_calls(expr: &RcExpr) -> Vec<RcExpr> {
     // Get calls from children
     let mut calls = if !expr.children_exprs().is_empty() {
         expr.children_exprs()
             .iter()
             .flat_map(get_calls)
-            .collect::<HashSet<_>>()
+            .collect::<Vec<_>>()
     } else {
-        HashSet::new()
+        Vec::new()
     };
 
     // Add to set if this is a call
     if let Expr::Call(_, _) = expr.as_ref() {
-        calls.insert(expr.clone());
+        calls.push(expr.clone());
     }
 
     calls
@@ -64,8 +62,12 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<Ca
     let mut prev_inlining = all_funcs
         .iter()
         .flat_map(get_calls)
-        // Find calls and their inlined version within each function
-        .map(|call| subst_call(&call, &func_name_to_body))
+        // Deduplicate calls before substitution
+        // We cannot hash RcExprs because it is too slow
+        .map(|call| (Rc::as_ptr(&call), call))
+        .collect::<IndexMap<*const Expr, RcExpr>>()
+        .iter()
+        .map(|(_, call)| subst_call(&call, &func_name_to_body))
         .collect::<Vec<_>>();
 
     let mut all_inlining = prev_inlining.clone();
@@ -75,14 +77,16 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: i32) -> Vec<Ca
         let next_inlining = prev_inlining
             .iter()
             .flat_map(|cb| get_calls(&cb.body))
-            .map(|call| subst_call(&call, &func_name_to_body))
+            .map(|call| (Rc::as_ptr(&call), call))
+            .collect::<IndexMap<*const Expr, RcExpr>>()
+            .iter()
+            .map(|(_, call)| subst_call(&call, &func_name_to_body))
             .collect::<Vec<_>>();
         all_inlining.extend(next_inlining.clone());
         prev_inlining = next_inlining;
     }
 
-    // Sort to not rely on hash ordering
-    all_inlining.sort();
+    // TODO: need to dedup all_inlining as well (for code size)
 
     all_inlining
 }

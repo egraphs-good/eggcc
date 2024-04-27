@@ -347,7 +347,10 @@ impl<'a> RvsdgBuilder<'a> {
             bril_type,
         }) = first_e.map(|e| e.weight().op.clone())
         else {
-            panic!("Couldn't find a branch in block {block:?}");
+            panic!(
+                "Couldn't find a branch in block {block:?} (e={first_e:?}, rest={:?})",
+                succs_iter.collect::<Vec<_>>()
+            );
         };
         succs.push((first_val, first_e.unwrap().target()));
         // for the rest of the edges, make sure pred and bril_type match up

@@ -26,9 +26,13 @@ use crate::{
 pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
     let mut analysis = LiveVariableAnalysis::default();
     let mut types = mem::take(&mut analysis.var_types);
-    let mut names = Names::default();
+    let mut names = mem::take(&mut analysis.intern);
     let mut dfs = DfsPostOrder::new(&cfg.graph, cfg.entry);
     let mut worklist = WorkList::new(cfg);
+    if let Some(ty) = cfg.return_ty.clone().map(VarType::Bril) {
+        let ret_var = names.intern(ret_id());
+        types.set_var_type(ret_var, ty);
+    }
     while let Some(block) = dfs.next(&cfg.graph) {
         let state = analysis.var_state_mut(block);
         let weight = &cfg.graph[block];

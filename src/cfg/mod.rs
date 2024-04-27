@@ -500,7 +500,7 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
                 labels,
                 op: EffectOps::Branch,
                 pos,
-            }) => {
+            }) if !had_branch => {
                 had_branch = true;
                 assert_eq!(labels.len(), 2, "unexpected format to branch instruction");
                 assert_eq!(args.len(), 1, "unexpected format to branch instruction");
@@ -538,7 +538,7 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
                 labels,
                 op: EffectOps::Jump,
                 pos,
-            }) => {
+            }) if !had_branch => {
                 had_branch = true;
                 assert_eq!(labels.len(), 1, "unexpected format to jump instruction");
                 let dest_block = builder.get_index(&labels[0]);
@@ -557,7 +557,7 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
                 labels: _,
                 op: EffectOps::Return,
                 pos,
-            }) => {
+            }) if !had_branch => {
                 had_branch = true;
                 match args.as_slice() {
                     [] => {
@@ -584,13 +584,10 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
                     _ => panic!("unexpected format to return instruction"),
                 }
             }
-            Code::Instruction(i) => {
-                // If we have already hit a branch in this block,
-                // avoid emitting any further instructions.
-                if !had_branch {
-                    block.push(i.clone())
-                }
-            }
+            Code::Instruction(i) if !had_branch => block.push(i.clone()),
+            // If we have already hit a branch in this block,
+            // avoid emitting any further instructions.
+            _ => {}
         }
     }
     builder.finish_block(current, block, anns);

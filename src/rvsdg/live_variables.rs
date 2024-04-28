@@ -4,11 +4,11 @@
 //! optimized) variant of the live variable analysis described in "Iterative
 //! Data-flow Analysis, Revisited", by Keith D. Cooper, Timothy J. Harvey, and
 //! Ken Kennedy.
-use std::{fmt, mem};
+use std::{collections::HashMap, fmt, mem};
 
 use bril_rs::{self, EffectOps, Instruction, ValueOps};
+use egglog::util::IndexMap;
 use fixedbitset::FixedBitSet;
-use hashbrown::HashMap;
 use indexmap::IndexSet;
 use petgraph::{
     stable_graph::NodeIndex,
@@ -255,7 +255,7 @@ pub(crate) struct LiveVariableState {
 /// Type information recorded during live variable analysis.
 #[derive(Default)]
 pub(crate) struct VarTypes {
-    data: HashMap<VarId, VarType>,
+    data: IndexMap<VarId, VarType>,
 }
 
 impl VarTypes {

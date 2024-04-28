@@ -1,9 +1,10 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     rc::Rc,
 };
 
 use dot_structures::{Attribute, Edge, EdgeTy, Graph, Id, Node, NodeId, Stmt, Subgraph, Vertex};
+use egglog::util::IndexMap;
 
 use crate::schema::{Constant, Expr, RcExpr, TreeProgram};
 
@@ -27,7 +28,7 @@ impl UniqueExpr {
 struct DotConverter {
     pub current_scope: *const Expr,
     pub done: HashSet<UniqueExpr>,
-    pub get_name: HashMap<UniqueExpr, String>,
+    pub get_name: IndexMap<UniqueExpr, String>,
     pub name_counter: usize,
 }
 
@@ -86,7 +87,7 @@ impl TreeProgram {
     pub fn to_dot(&self) -> Graph {
         let mut dot_converter = DotConverter {
             done: HashSet::new(),
-            get_name: HashMap::new(),
+            get_name: IndexMap::default(),
             name_counter: 0,
             current_scope: std::ptr::null(),
         };
@@ -118,7 +119,7 @@ impl Expr {
     pub fn to_dot(self: &RcExpr) -> Graph {
         let mut dot_converter = DotConverter {
             done: HashSet::new(),
-            get_name: HashMap::new(),
+            get_name: IndexMap::default(),
             name_counter: 0,
             current_scope: Rc::as_ptr(self),
         };

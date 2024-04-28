@@ -4,7 +4,7 @@
 //! This is used by `to_cfg` to clean up
 //! the output.
 
-use hashbrown::HashMap;
+use hashbrown::IndexMap;
 use petgraph::{
     stable_graph::{NodeIndex, StableDiGraph, StableGraph},
     visit::Bfs,
@@ -29,7 +29,7 @@ impl<'a> JumpOptimizer<'a> {
         // new graph
         // if a node was fused into another node,
         // it points to the new, fused node
-        let mut node_mapping: HashMap<NodeIndex, NodeIndex> = HashMap::new();
+        let mut node_mapping: IndexMap<NodeIndex, NodeIndex> = IndexMap::default();
 
         // we use a bfs so that previous nodes are mapped to new nodes
         // before their children.

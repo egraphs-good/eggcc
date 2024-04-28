@@ -1,8 +1,7 @@
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
 use egglog::{
-    ast::{Literal, Symbol},
-    Term, TermDag,
+    ast::{Literal, Symbol}, util::IndexMap, Term, TermDag
 };
 
 use crate::{
@@ -15,7 +14,7 @@ use crate::{
 pub(crate) struct TreeToEgglog {
     pub termdag: TermDag,
     // Cache for shared subexpressions
-    converted_cache: HashMap<*const Expr, Term>,
+    converted_cache: IndexMap<*const Expr, Term>,
 }
 
 impl TreeToEgglog {
@@ -23,7 +22,7 @@ impl TreeToEgglog {
     pub fn new() -> TreeToEgglog {
         TreeToEgglog {
             termdag: TermDag::default(),
-            converted_cache: HashMap::new(),
+            converted_cache: IndexMap::default(),
         }
     }
 
@@ -282,7 +281,7 @@ impl TreeProgram {
     pub fn to_egglog_with_termdag(&self, termdag: TermDag) -> (Term, TermDag) {
         let mut state = TreeToEgglog {
             termdag,
-            converted_cache: HashMap::new(),
+            converted_cache: IndexMap::default(),
         };
         (self.to_egglog_internal(&mut state), state.termdag)
     }

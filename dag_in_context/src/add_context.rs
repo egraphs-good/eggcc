@@ -3,7 +3,7 @@
 //! by remembering the most recent context (ex. DoWhile or If).
 //! Mantains the sharing invariant (see restore_sharing_invariant) by using a cache.
 
-use std::collections::HashMap;
+use egglog::util::IndexMap;
 
 use crate::{
     ast::noctx,
@@ -12,7 +12,7 @@ use crate::{
 };
 
 struct ContextCache {
-    with_ctx: HashMap<(*const Expr, AssumptionRef), RcExpr>,
+    with_ctx: IndexMap<(*const Expr, AssumptionRef), RcExpr>,
     initialize: bool,
 }
 
@@ -46,7 +46,7 @@ impl Expr {
     /// Add NoContext wrappers for all leaf nodes in this expression
     pub(crate) fn initialize_ctx(self: &RcExpr) -> RcExpr {
         let mut cache = ContextCache {
-            with_ctx: HashMap::new(),
+            with_ctx: IndexMap::default(),
             initialize: true,
         };
         self.add_ctx_with_cache(noctx(), &mut cache)
@@ -54,7 +54,7 @@ impl Expr {
 
     pub(crate) fn replace_ctx(self: &RcExpr, current_ctx: Assumption) -> RcExpr {
         let mut cache = ContextCache {
-            with_ctx: HashMap::new(),
+            with_ctx: IndexMap::default(),
             initialize: false,
         };
         self.add_ctx_with_cache(current_ctx, &mut cache)

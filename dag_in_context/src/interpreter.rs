@@ -89,6 +89,7 @@ impl Display for Value {
     }
 }
 
+use egglog::util::IndexMap;
 use Value::{Const, Ptr, Tuple};
 
 /// Keeps track of state while running
@@ -100,7 +101,7 @@ pub(crate) struct VirtualMachine<'a> {
     /// All of memory
     memory: HashMap<usize, Value>,
     /// Values for already evaluated expressions
-    eval_cache: HashMap<*const Expr, Value>,
+    eval_cache: IndexMap<*const Expr, Value>,
     /// Print log
     log: Vec<String>,
 }
@@ -124,8 +125,8 @@ pub fn interpret_dag_prog(prog: &TreeProgram, arg: &Value) -> (Value, Vec<String
     let mut vm = VirtualMachine {
         program: prog,
         next_addr: 0,
-        memory: HashMap::new(),
-        eval_cache: HashMap::new(),
+        memory: HashMap::default(),
+        eval_cache: IndexMap::default(),
         log: vec![],
     };
     let ret_val = vm.interpret_call(&prog.entry.func_name().unwrap(), arg);
@@ -141,8 +142,8 @@ pub fn interpret_expr(expr: &RcExpr, func_arg: &Value) -> BrilState {
             functions: vec![],
         },
         next_addr: 0,
-        eval_cache: HashMap::new(),
-        memory: HashMap::new(),
+        eval_cache: IndexMap::default(),
+        memory: HashMap::default(),
         log: vec![],
     };
     let value = vm.interpret_expr(expr, func_arg);
@@ -283,7 +284,7 @@ impl<'a> VirtualMachine<'a> {
     }
 
     pub fn interpret_region(&mut self, expr: &RcExpr, arg: &Value) -> Value {
-        let mut memo_before = HashMap::new();
+        let mut memo_before = IndexMap::default();
         // save the memo before, since we are evaluating in a new region
         std::mem::swap(&mut self.eval_cache, &mut memo_before);
         // evaluate expression with brand new memo

@@ -1,8 +1,10 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     rc::Rc,
     vec,
 };
+
+use egglog::util::IndexMap;
 
 use crate::schema::{Expr, RcExpr, TreeProgram};
 
@@ -34,7 +36,7 @@ fn get_calls(expr: &RcExpr) -> Vec<RcExpr> {
 
 // Pairs a call with its equivalent inlined body, using the passed-in function -> body map
 // to look up the body
-fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBody {
+fn subst_call(call: &RcExpr, func_to_body: &IndexMap<String, &RcExpr>) -> CallBody {
     if let Expr::Call(func_name, args) = call.as_ref() {
         CallBody {
             call: call.clone(),
@@ -59,7 +61,7 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
                 func.func_body().expect("Func has body"),
             )
         })
-        .collect::<HashMap<String, &RcExpr>>();
+        .collect::<IndexMap<String, &RcExpr>>();
 
     // Inline once
     // Keep track of all calls we've seen so far to avoid duplication

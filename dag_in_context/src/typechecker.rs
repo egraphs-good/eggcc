@@ -1,4 +1,6 @@
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
+
+use egglog::util::IndexMap;
 
 use crate::{
     ast::{base, empty, emptyt, function, program, statet},
@@ -90,11 +92,11 @@ impl Expr {
 /// This map is used to memoize the results of typechecking.
 /// It maps the old untyped expression to the new typed expression
 /// The type can be None when `expect_fully_typed` is true.
-pub type TypedExprCache = HashMap<(*const Expr, Option<Type>), RcExpr>;
+pub type TypedExprCache = IndexMap<(*const Expr, Option<Type>), RcExpr>;
 
 /// We also need to keep track of the type of the newly typed expression.
 /// This maps the newly instrumented expression to its type.
-pub type TypeCache = HashMap<*const Expr, Type>;
+pub type TypeCache = IndexMap<*const Expr, Type>;
 /// Type checks program fragments.
 /// Uses the program to look up function types.
 pub(crate) struct TypeChecker<'a> {
@@ -111,8 +113,8 @@ impl<'a> TypeChecker<'a> {
     pub(crate) fn new(prog: &'a TreeProgram, expect_fully_typed: bool) -> Self {
         TypeChecker {
             program: prog,
-            type_cache: HashMap::new(),
-            type_expr_cache: HashMap::new(),
+            type_cache: IndexMap::default(),
+            type_expr_cache: IndexMap::default(),
             expect_fully_typed,
         }
     }

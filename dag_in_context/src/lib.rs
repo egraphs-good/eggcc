@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 
-use egglog::{Term, TermDag};
+use egglog::{util::IndexMap, Term, TermDag};
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
 use schema::TreeProgram;
@@ -70,7 +69,7 @@ pub fn prologue() -> String {
 fn print_with_intermediate_helper(
     termdag: &TermDag,
     term: Term,
-    cache: &mut HashMap<Term, String>,
+    cache: &mut IndexMap<Term, String>,
     res: &mut String,
 ) -> String {
     if let Some(var) = cache.get(&term) {
@@ -99,7 +98,7 @@ fn print_with_intermediate_helper(
 
 pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
     let mut printed = String::new();
-    let mut cache = HashMap::<Term, String>::new();
+    let mut cache = IndexMap::<Term, String>::default();
     let res = print_with_intermediate_helper(termdag, term, &mut cache, &mut printed);
     printed.push_str(&format!("(let PROG {res})\n"));
     printed
@@ -110,7 +109,7 @@ fn print_function_inlining_pairs(
     function_inlining_pairs: Vec<function_inlining::CallBody>,
     printed: &mut String,
     tree_state: &mut TreeToEgglog,
-    term_cache: &mut HashMap<Term, String>,
+    term_cache: &mut IndexMap<Term, String>,
 ) -> String {
     // Get unions
     let unions = function_inlining_pairs
@@ -135,7 +134,7 @@ pub fn build_program(program: &TreeProgram) -> String {
 
     // Create a global cache for generating intermediate variables
     let mut tree_state = TreeToEgglog::new();
-    let mut term_cache = HashMap::<Term, String>::new();
+    let mut term_cache = IndexMap::<Term, String>::default();
 
     // Generate function inlining egglog
     #[allow(unused)]

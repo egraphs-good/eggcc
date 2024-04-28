@@ -935,8 +935,5 @@ fn test_linearity_check_2() {
             getat(0)
         ))
     ),);
-    dag_extraction_linearity_check(
-        &bad_program_2,
-        "The region operator is either consumed or not effectful.",
-    );
+    dag_extraction_linearity_check(&bad_program_2, "There are unconsumed effectful operators");
 }

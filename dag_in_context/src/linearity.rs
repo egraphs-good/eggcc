@@ -226,10 +226,8 @@ impl<'a> Extractor<'a> {
                         }
                     }
                 }
-                if !dangling_effectful.remove(&region) {
-                    return Err(
-                        "The region operator is either consumed or not effectful.".to_string()
-                    );
+                if get_if_effectful(self, region).is_some() && !dangling_effectful.remove(&region) {
+                    panic!("The region operator is either consumed or not effectful.");
                 }
                 if !dangling_effectful.is_empty() {
                     return Err("There are unconsumed effectful operators".to_string());

@@ -5,11 +5,59 @@ expression: visualization.result
 @main(v0: int) {
   v1_: int = const 2;
   v2_: bool = lt v0 v1_;
+<<<<<<< HEAD
   v3_: bool = not v2_;
   v4_: int = const 0;
   v5_: int = const 1;
   v6_: int = const 5;
   br v2_ .v7_ .v8_;
+||||||| parent of ddc7dac1 (Update some snapshots)
+  v3_: int = const 0;
+  v4_: int = const 1;
+  v5_: int = const 5;
+  br v2_ .v6_ .v7_;
+.v6_:
+  v8_: int = const 4;
+  v9_: bool = const false;
+  v10_: int = id v8_;
+  v11_: int = id v4_;
+  v12_: int = id v1_;
+  v13_: bool = id v9_;
+.v14_:
+  br v13_ .v15_ .v16_;
+.v15_:
+  v17_: int = add v10_ v1_;
+  v18_: int = id v17_;
+  v19_: int = id v4_;
+  jmp .v20_;
+.v16_:
+  v18_: int = id v10_;
+  v19_: int = id v4_;
+  jmp .v20_;
+=======
+  v3_: int = const 0;
+  v4_: int = const 1;
+  v5_: int = const 5;
+  br v2_ .v6_ .v7_;
+.v6_:
+  v8_: int = const 4;
+  v9_: bool = const false;
+  v10_: int = id v8_;
+  v11_: int = id v4_;
+  v12_: int = id v1_;
+  v13_: bool = id v9_;
+.v14_:
+  br v13_ .v15_ .v16_;
+.v15_:
+  v17_: int = add v1_ v10_;
+  v18_: int = id v17_;
+  v19_: int = id v4_;
+  jmp .v20_;
+.v16_:
+  v18_: int = id v10_;
+  v19_: int = id v4_;
+  jmp .v20_;
+>>>>>>> ddc7dac1 (Update some snapshots)
 .v7_:
   v9_: int = const 4;
   v10_: bool = const false;

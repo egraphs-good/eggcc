@@ -138,6 +138,7 @@ pub fn build_program(program: &TreeProgram) -> String {
     let mut term_cache = HashMap::<Term, String>::new();
 
     // Generate function inlining egglog
+    #[allow(unused)]
     let function_inlining = print_function_inlining_pairs(
         function_inlining::function_inlining_pairs(program, config::FUNCTION_INLINING_ITERATIONS),
         &mut printed,
@@ -150,8 +151,10 @@ pub fn build_program(program: &TreeProgram) -> String {
     let res =
         print_with_intermediate_helper(&tree_state.termdag, term, &mut term_cache, &mut printed);
 
+    // TODO add function_inlining back when bug
+    // is fixed
     format!(
-        "{}\n{printed}\n(let PROG {res})\n\n{function_inlining}\n{}\n",
+        "{}\n{printed}\n(let PROG {res})\n\n{}\n",
         prologue(),
         mk_schedule()
     )

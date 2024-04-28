@@ -1,0 +1,137 @@
+;; Like Subst but for dropping inputs to a region
+;; See subst.egg for more implementation documentation
+
+(ruleset drop)
+(ruleset apply-drop-unions)
+(ruleset cleanup-drop)
+
+;; (DropAt ctx idx in) removes all references to `(Get (Arg ...) idx)` in `in`.
+;; It also replaces the leaf contexts with `ctx` and fixes up argument types,
+;; as well as updating `(Get (Arg ...) j)` to `(Get (Arg ...) (- j 1))` for j > idx.
+(function DropAt (Assumption i64 Expr) Expr :unextractable)
+(function DelayedDropUnion (Expr i64) Expr :unextractable)
+
+;; Helper that precomputes the arg type that we need
+(function DropAtInternal (Type Assumption i64 Expr) Expr :unextractable)
+(rule ((= lhs (DropAt ctx idx in))
+       (HasArgType in oldty))
+
+      ((let newty (TupleT (TypeListMinusOne oldty idx)))
+       (union lhs (DropAtInternal newty ctx idx in)))
+      :ruleset drop)
+
+;; Leaves
+(rule ((= lhs (DropAtInternal newty newctx idx (Const c oldty oldctx))))
+      ((DelayedDropUnion lhs (Const c newty newctx)))
+      :ruleset drop)
+(rule ((= lhs (DropAtInternal newty newctx idx (Empty oldty oldctx))))
+      ((DelayedDropUnion lhs (Empty newty newctx)))
+      :ruleset drop)
+; get stuck on purpose if `i = idx` or if we find a bare `Arg`
+(rule ((= lhs (DropAtInternal newty newctx idx (Get (Arg oldty oldctx) i)))
+       (< i idx))
+      ((DelayedDropUnion lhs (Get (Arg newty newctx) i)))
+      :ruleset drop)
+(rule ((= lhs (DropAtInternal newty newctx idx (Get (Arg oldty oldctx) i)))
+       (> i idx))
+      ((DelayedDropUnion lhs (Get (Arg newty newctx) (- i 1))))
+      :ruleset drop)
+
+;; Operators
+(rule ((= lhs (DropAtInternal newty newctx idx (Bop op c1 c2)))
+       (ExprIsResolved (Bop op c1 c2)))
+      ((DelayedDropUnion lhs (Bop op
+            (DropAtInternal newty newctx idx c1)
+            (DropAtInternal newty newctx idx c2))))
+      :ruleset drop)
+
+(rule ((= lhs (DropAtInternal newty newctx idx (Uop op c1)))
+       (ExprIsResolved (Uop op c1)))
+      ((DelayedDropUnion lhs (Uop op
+            (DropAtInternal newty newctx idx c1))))
+      :ruleset drop)
+
+;; this is okay because we get stuck at `Arg`s
+(rule ((= lhs (DropAtInternal newty newctx idx (Get c1 index)))
+       (ExprIsResolved (Get c1 index)))
+      ((DelayedDropUnion lhs (Get
+            (DropAtInternal newty newctx idx c1)
+            index)))
+      :ruleset drop)
+
+(rule ((= lhs (DropAtInternal newty newctx idx (Alloc id c1 c2 ty)))
+       (ExprIsResolved (Alloc id c1 c2 ty)))
+      ((DelayedDropUnion lhs (Alloc id
+            (DropAtInternal newty newctx idx c1)
+            (DropAtInternal newty newctx idx c2)
+            ty)))
+      :ruleset drop)
+
+(rule ((= lhs (DropAtInternal newty newctx idx (Call name c1)))
+       (ExprIsResolved (Call name c1)))
+      ((DelayedDropUnion lhs (Call name
+            (DropAtInternal newty newctx idx c1))))
+      :ruleset drop)
+
+;; Tuple operators
+(rule ((= lhs (DropAtInternal newty newctx idx (Single c1)))
+       (ExprIsResolved (Single c1)))
+      ((DelayedDropUnion lhs (Single
+            (DropAtInternal newty newctx idx c1))))
+      :ruleset drop)
+
+(rule ((= lhs (DropAtInternal newty newctx idx (Concat c1 c2)))
+       (ExprIsResolved (Concat c1 c2)))
+      ((DelayedDropUnion lhs (Concat
+            (DropAtInternal newty newctx idx c1)
+            (DropAtInternal newty newctx idx c2))))
+      :ruleset drop)
+
+;; Control flow
+(rule ((= lhs (DropAtInternal newty newctx idx (Switch pred inputs c1)))
+       (ExprIsResolved (Switch pred inputs c1)))
+      ((DelayedDropUnion lhs (Switch
+            (DropAtInternal newty newctx idx pred)
+            (DropAtInternal newty newctx idx inputs)
+            c1)))
+      :ruleset drop)
+
+(rule ((= lhs (DropAtInternal newty newctx idx (If pred inputs c1 c2)))
+       (ExprIsResolved (If pred inputs c1 c2)))
+      ((DelayedDropUnion lhs (If
+            (DropAtInternal newty newctx idx pred)
+            (DropAtInternal newty newctx idx inputs)
+            c1
+            c2)))
+      :ruleset drop)
+
+(rule ((= lhs (DropAtInternal newty newctx idx (DoWhile in out)))
+       (ExprIsResolved (DoWhile in out)))
+      ((DelayedDropUnion lhs (DoWhile
+            (DropAtInternal newty newctx idx in)
+            out)))
+      :ruleset drop)
+
+;; substitute into function (convenience for testing)
+(rewrite (DropAtInternal newty newctx idx (Function name inty outty body))
+         (Function name inty outty (DropAtInternal newty newctx idx body))
+         :when ((ExprIsResolved body))
+         :ruleset drop)
+
+
+
+;; ########################### Apply subst unions
+
+(rule ((DelayedDropUnion lhs rhs))
+      ((union lhs rhs))
+      :ruleset apply-drop-unions)
+
+;; ########################### Cleanup subst and DelayedSubstUnion
+
+(rule ((DelayedDropUnion lhs rhs))
+      ((delete (DelayedDropUnion lhs rhs)))
+      :ruleset cleanup-drop)
+
+(rule ((ExprIsResolved (DropAtInternal newty newctx idx in)))
+      ((subsume (DropAtInternal newty newctx idx in)))
+      :ruleset cleanup-drop)

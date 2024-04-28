@@ -67,3 +67,21 @@
          (Concat (Single (Get expr a)) (SubTuple expr (+ a 1) (- b 1)))
          :when ((> b 1))
          :ruleset always-run)
+
+; Helper functions to remove one element from a tuple or type list
+;                           tuple    idx
+(function TupleMinusOne    (Expr     i64) Expr     :unextractable)
+(function TypeListMinusOne (TypeList i64) TypeList :unextractable)
+
+(rewrite (TupleMinusOne tuple idx)
+         (Concat (SubTuple tuple 0 idx)
+                 (SubTuple tuple (+ idx 1) (- len (+ idx 1))))
+         :when ((= len (tuple-length tuple)))
+         :ruleset always-run)
+
+(rewrite (TypeListMinusOne (TNil)       _idx) (TNil) :ruleset always-run)
+(rewrite (TypeListMinusOne (TCons x xs) 0   ) xs     :ruleset always-run)
+(rewrite (TypeListMinusOne (TCons x xs) idx)
+         (TCons x (TypeListMinusOne xs (- idx 1)))
+         :when ((> idx 0))
+         :ruleset always-run)

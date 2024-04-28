@@ -67,6 +67,8 @@ pub enum Constant {
 /// We want sharing between sub-expressions, so we use Rc instead of Box.
 /// Invariant: Every shared sub-expression is re-used by the same Rc<Expr> (pointer equality).
 /// This is important for the correctness of the interpreter, which makes this assumption.
+/// NOTE: Please do not hash this. Hash a *const Expr instead. The hash function for RcExpr
+/// is very slow due to sharing of subexpressions.
 pub type RcExpr = Rc<Expr>;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

@@ -11,7 +11,7 @@ expression: visualization.result
   v49: int = id v9;
   jmp .__54__;
 .__13__:
-  v15: bool = eq v9 v0;
+  v15: bool = eq v0 v9;
   br v15 .__41__ .__22__;
 .__41__:
   v43: int = call @fac v2;
@@ -24,7 +24,7 @@ expression: visualization.result
   v27: int = sub v24 v9;
   v31: int = call @fac v24;
   v33: int = call @fac v27;
-  v37: int = add v33 v31;
+  v37: int = add v31 v33;
   v39: int = id v37;
   jmp .__47__;
 .__54__:

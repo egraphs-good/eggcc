@@ -5,11 +5,15 @@ use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
+use to_egglog::TreeToEgglog;
 
-use crate::{interpreter::interpret_dag_prog, schedule::mk_schedule};
+use crate::{
+    interpreter::interpret_dag_prog, optimizations::function_inlining, schedule::mk_schedule,
+};
 
 pub(crate) mod add_context;
 pub mod ast;
+mod config;
 pub mod dag2svg;
 pub mod dag_typechecker;
 pub mod from_egglog;
@@ -25,7 +29,7 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
-pub(crate) mod schedule;
+pub mod schedule;
 
 pub type Result = std::result::Result<(), MainError>;
 
@@ -35,6 +39,7 @@ pub fn prologue() -> String {
         include_str!("type_analysis.egg"),
         include_str!("utility/util.egg"),
         &optimizations::is_valid::rules().join("\n"),
+        &optimizations::is_resolved::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
         &optimizations::purity_analysis::rules().join("\n"),
         // TODO cond inv code motion with regions
@@ -46,7 +51,6 @@ pub fn prologue() -> String {
         include_str!("utility/canonicalize.egg"),
         include_str!("interval_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
-        include_str!("optimizations/function_inlining.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
         include_str!("optimizations/loop_unroll.egg"),
@@ -58,6 +62,11 @@ pub fn prologue() -> String {
 /// Adds an egglog program to `res` that adds the given term
 /// to the database.
 /// Returns a fresh variable referring to the program.
+/// Note that because the cache caches based on a term, which
+/// references the termdag, this cache **cannot** be reused
+/// across different TermDags. Make sure to update the term dag
+/// for a new term (using TreeToEgglog), rather than creating a
+/// new term dag.
 fn print_with_intermediate_helper(
     termdag: &TermDag,
     term: Term,
@@ -82,6 +91,7 @@ fn print_with_intermediate_helper(
             let fresh_var = format!("__tmp{}", cache.len());
             writeln!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
             cache.insert(term, fresh_var.clone());
+
             fresh_var
         }
     }
@@ -95,12 +105,62 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
     printed
 }
 
-pub fn build_program(program: &TreeProgram) -> String {
-    let (term, termdag) = program.to_egglog();
-    let printed = print_with_intermediate_vars(&termdag, term);
-    format!("{}\n{printed}\n{}\n", prologue(), mk_schedule(),)
+// Returns a formatted string of (union call body) for each pair
+fn print_function_inlining_pairs(
+    function_inlining_pairs: Vec<function_inlining::CallBody>,
+    printed: &mut String,
+    tree_state: &mut TreeToEgglog,
+    term_cache: &mut HashMap<Term, String>,
+) -> String {
+    // Get unions
+    let unions = function_inlining_pairs
+        .iter()
+        .map(|cb| {
+            let call_term = cb.call.to_egglog_internal(tree_state);
+            let body_term = cb.body.to_egglog_internal(tree_state);
+            format!(
+                "(union {} {})",
+                print_with_intermediate_helper(&tree_state.termdag, call_term, term_cache, printed),
+                print_with_intermediate_helper(&tree_state.termdag, body_term, term_cache, printed)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    unions
 }
 
+// It is expected that program has context added
+pub fn build_program(program: &TreeProgram) -> String {
+    let mut printed = String::new();
+
+    // Create a global cache for generating intermediate variables
+    let mut tree_state = TreeToEgglog::new();
+    let mut term_cache = HashMap::<Term, String>::new();
+
+    // Generate function inlining egglog
+    #[allow(unused)]
+    let function_inlining = print_function_inlining_pairs(
+        function_inlining::function_inlining_pairs(program, config::FUNCTION_INLINING_ITERATIONS),
+        &mut printed,
+        &mut tree_state,
+        &mut term_cache,
+    );
+
+    // Generate program egglog
+    let term = program.to_egglog_internal(&mut tree_state);
+    let res =
+        print_with_intermediate_helper(&tree_state.termdag, term, &mut term_cache, &mut printed);
+
+    // TODO add function_inlining back when bug
+    // is fixed
+    format!(
+        "{}\n{printed}\n(let PROG {res})\n\n{}\n",
+        prologue(),
+        mk_schedule()
+    )
+}
+
+// It is expected that program has context added
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
     let egglog_prog = build_program(program);
     let mut egraph = egglog::EGraph::default();

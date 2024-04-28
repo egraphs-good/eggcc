@@ -420,6 +420,11 @@ pub fn extract_without_linearity(
     // effectful nodes that are in effectful_path[rootid]
     effectful_paths: Option<&HashMap<ClassId, HashSet<NodeId>>>,
 ) -> (CostSet, TreeProgram) {
+    if effectful_paths.is_some() {
+        println!("Re-extracting program after linear path is found.");
+    } else {
+        println!("Extracting program for the first time.");
+    }
     let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
     let mut worklist = UniqueQueue::default();
 

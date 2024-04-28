@@ -11,7 +11,6 @@ use std::{
 use egglog::Term;
 use egraph_serialize::{ClassId, NodeId};
 use indexmap::{IndexMap, IndexSet};
-use ordered_float::NotNan;
 
 use crate::{
     greedy_dag_extractor::{get_root, EgraphInfo, Extractor},
@@ -187,10 +186,8 @@ impl<'a> Extractor<'a> {
                     if this.is_effectful(body) {
                         return Some(rcexpr);
                     }
-                } else {
-                    if this.is_effectful(&rcexpr) {
-                        return Some(rcexpr);
-                    }
+                } else if this.is_effectful(&rcexpr) {
+                    return Some(rcexpr);
                 }
                 None
             };
@@ -219,7 +216,7 @@ impl<'a> Extractor<'a> {
                         // and only need to consider children that are in the same scope
                         let children = expr.children_same_scope();
                         let mut effectful_child_iter =
-                            children.iter().filter(|child| self.is_effectful(&child));
+                            children.iter().filter(|child| self.is_effectful(child));
                         let effectful_child = effectful_child_iter
                             .next()
                             .expect("Expect one effectful child from an effectful operator");
@@ -234,7 +231,7 @@ impl<'a> Extractor<'a> {
                         "The region operator is either consumed or not effectful.".to_string()
                     );
                 }
-                if dangling_effectful.len() > 0 {
+                if !dangling_effectful.is_empty() {
                     return Err("There are unconsumed effectful operators".to_string());
                 }
             }
@@ -262,22 +259,22 @@ impl Expr {
                 pred.collect_reachable(root, reachable_from);
                 input.collect_reachable(root, reachable_from);
                 let root = t1;
-                t1.collect_reachable(&root, reachable_from);
+                t1.collect_reachable(root, reachable_from);
                 let root = t2;
-                t2.collect_reachable(&root, reachable_from);
+                t2.collect_reachable(root, reachable_from);
             }
             Expr::Switch(pred, inputs, branches) => {
                 pred.collect_reachable(root, reachable_from);
                 inputs.collect_reachable(root, reachable_from);
                 for branch in branches {
-                    let root = &branch;
+                    let root = branch;
                     branch.collect_reachable(root, reachable_from);
                 }
             }
             Expr::DoWhile(input, body) => {
                 input.collect_reachable(root, reachable_from);
                 let root = body;
-                body.collect_reachable(&root, reachable_from);
+                body.collect_reachable(root, reachable_from);
             }
             _ => {
                 for child in self.children_same_scope() {

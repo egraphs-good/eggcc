@@ -894,7 +894,6 @@ fn simple_dag_extract() {
 #[test]
 fn test_linearity_check_1() {
     use crate::ast::*;
-    use crate::check_program_gets_type;
 
     let bad_program_1 = program!(function(
         "main",
@@ -918,14 +917,12 @@ fn test_linearity_check_1() {
             getat(1)
         )
     ),);
-    let bad_program =
-        dag_extraction_linearity_check(&bad_program_1, &"An effectful operator is used twice");
+    dag_extraction_linearity_check(&bad_program_1, "An effectful operator is used twice");
 }
 
 #[test]
 fn test_linearity_check_2() {
     use crate::ast::*;
-    use crate::check_program_gets_type;
 
     let bad_program_2 = program!(function(
         "main",
@@ -938,8 +935,8 @@ fn test_linearity_check_2() {
             getat(0)
         ))
     ),);
-    let bad_program = dag_extraction_linearity_check(
+    dag_extraction_linearity_check(
         &bad_program_2,
-        &"The region operator is either consumed or not effectful.",
+        "The region operator is either consumed or not effectful.",
     );
 }

@@ -9,12 +9,12 @@
 ;; It also replaces the leaf contexts with `ctx` and fixes up argument types,
 ;; as well as updating `(Get (Arg ...) j)` to `(Get (Arg ...) (- j 1))` for j > idx.
 (function DropAt (Assumption i64 Expr) Expr :unextractable)
-(function DelayedDropUnion (Expr i64) Expr :unextractable)
+(function DelayedDropUnion (Expr Expr) Expr :unextractable)
 
 ;; Helper that precomputes the arg type that we need
 (function DropAtInternal (Type Assumption i64 Expr) Expr :unextractable)
 (rule ((= lhs (DropAt ctx idx in))
-       (HasArgType in oldty))
+       (HasArgType in (TupleT oldty)))
 
       ((let newty (TupleT (TypeListMinusOne oldty idx)))
        (union lhs (DropAtInternal newty ctx idx in)))

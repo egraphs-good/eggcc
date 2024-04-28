@@ -54,7 +54,7 @@ macro_rules! cfg_test_equiv {
   ($cfg:expr,  [ $($src:tt = ($($edge:tt)*)=> $dst:tt,)* ]) => {
       use $crate::cfg::BranchOp::{*};
       let mut mentioned = std::collections::HashSet::new();
-          let mut block = std::collections::HashMap::new();
+          let mut block = std::::default();
           $(
               mentioned.insert(to_block!($src));
               mentioned.insert(to_block!($dst));

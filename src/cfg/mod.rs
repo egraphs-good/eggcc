@@ -4,9 +4,9 @@
 //! look for here are instructions that may break up basic blocks (`jmp`, `br`,
 //! `ret`), and labels. All other instructions are copied into the CFG.
 use core::fmt::Debug;
-use std::fmt::Display;
 use std::fmt::Formatter;
 use std::str::FromStr;
+use std::fmt::Display;
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};

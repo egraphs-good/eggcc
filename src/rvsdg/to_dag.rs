@@ -13,7 +13,6 @@ use dag_in_context::ast::*;
 use dag_in_context::interpreter::Value;
 #[cfg(test)]
 use dag_in_context::schema::Constant;
-use egglog::util::IndexMap;
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
@@ -21,6 +20,7 @@ use dag_in_context::{
     ast::{add, call, dowhile, function, int, less_than, program_vec, tfalse, ttrue},
     schema::{RcExpr, TreeProgram, Type},
 };
+use hashbrown::IndexMap;
 
 use super::RvsdgType;
 

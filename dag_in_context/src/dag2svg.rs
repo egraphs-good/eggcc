@@ -1,4 +1,7 @@
-use std::{collections::HashSet, rc::Rc};
+use std::{
+    collections::HashSet,
+    rc::Rc,
+};
 
 use dot_structures::{Attribute, Edge, EdgeTy, Graph, Id, Node, NodeId, Stmt, Subgraph, Vertex};
 use egglog::util::IndexMap;

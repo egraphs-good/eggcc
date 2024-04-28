@@ -13,7 +13,7 @@
 
 use bril_rs::{Argument, ConstOps, EffectOps, Instruction, Literal, Type, ValueOps};
 
-use indexmap::IndexMap;
+use hashbrown::IndexMap;
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableDiGraph;
 

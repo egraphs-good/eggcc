@@ -1,8 +1,8 @@
-use egglog::util::IndexMap;
 use std::{
     fmt::{Display, Formatter},
     rc::Rc,
 };
+use egglog::util::IndexMap;
 use strum_macros::EnumIter;
 
 use crate::{

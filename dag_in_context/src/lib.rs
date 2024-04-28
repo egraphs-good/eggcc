@@ -1,3 +1,4 @@
+
 use egglog::{util::IndexMap, Term, TermDag};
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;

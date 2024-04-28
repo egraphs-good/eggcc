@@ -9,8 +9,7 @@
 use std::collections::VecDeque;
 
 use bril_rs::Type;
-use egglog::util::IndexMap;
-use hashbrown::HashSet;
+use hashbrown::{HashSet, IndexMap};
 use petgraph::{
     algo::{dominators, tarjan_scc},
     graph::NodeIndex,

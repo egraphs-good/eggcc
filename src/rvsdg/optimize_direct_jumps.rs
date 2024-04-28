@@ -4,7 +4,7 @@
 //! This is used by `to_cfg` to clean up
 //! the output.
 
-use egglog::util::IndexMap;
+use hashbrown::IndexMap;
 use petgraph::{
     stable_graph::{NodeIndex, StableDiGraph, StableGraph},
     visit::Bfs,

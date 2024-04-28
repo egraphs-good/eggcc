@@ -62,7 +62,10 @@ cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"
 cp -r "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output/data"
 
 # gzip all JSON in the nightly dir
-gzip "$NIGHTLY_DIR/output/data/profile.json"
+if [ "$LOCAL" == "" ]; then
+  gzip "$NIGHTLY_DIR/output/data/profile.json"
+fi
+
 
 # This is the uploading part, copied directly from Herbie's nightly script.
 DIR="$NIGHTLY_DIR/output"
@@ -71,4 +74,6 @@ C=$(git rev-parse HEAD | sed 's/\(..........\).*/\1/')
 RDIR="$(date +%s):$(hostname):$B:$C"
 
 # Upload the artifact!
-nightly-results publish --name "$RDIR" "$DIR"
+if [ "$LOCAL" == "" ]; then
+  nightly-results publish --name "$RDIR" "$DIR"
+fi

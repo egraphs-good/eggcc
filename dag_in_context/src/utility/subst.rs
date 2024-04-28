@@ -1,4 +1,64 @@
 #[test]
+fn test_subst_twice() -> crate::Result {
+    use crate::ast::*;
+    let arg_plus_one = add(arg(), int(1)).add_arg_type(base(intt()));
+    let original = arg().add_arg_type(base(intt()));
+    let expected = add(add(arg(), int(1)), int(1)).add_arg_type(base(intt()));
+
+    let build = format!(
+        "
+(let substituted (Subst (NoContext) {arg_plus_one} (Subst (NoContext) {arg_plus_one} {original})))
+"
+    );
+    let check = format!("(check (= substituted {expected}))");
+    crate::egglog_test(
+        &build,
+        &check,
+        vec![expected.to_program(base(intt()), base(intt()))],
+        intv(1),
+        intv(3),
+        vec![],
+    )
+}
+
+#[test]
+fn test_subst_ten_times() -> crate::Result {
+    use crate::ast::*;
+    let arg_plus_one = add(arg(), int(1)).add_arg_type(base(intt()));
+    let original = arg().add_arg_type(base(intt()));
+    let mut expected = arg();
+    for _ in 0..10 {
+        expected = add(expected, int(1));
+    }
+    expected = expected.add_arg_type(base(intt()));
+
+    let build = format!(
+        "
+(let substituted
+    (Subst (NoContext) {arg_plus_one}
+    (Subst (NoContext) {arg_plus_one}
+    (Subst (NoContext) {arg_plus_one}
+    (Subst (NoContext) {arg_plus_one}
+    (Subst (NoContext) {arg_plus_one}
+    (Subst (NoContext) {arg_plus_one}
+    (Subst (NoContext) {arg_plus_one}
+    (Subst (NoContext) {arg_plus_one}
+    (Subst (NoContext) {arg_plus_one}
+    (Subst (NoContext) {arg_plus_one} {original})))))))))))
+"
+    );
+    let check = format!("(check (= substituted {expected}))");
+    crate::egglog_test(
+        &build,
+        &check,
+        vec![expected.to_program(base(intt()), base(intt()))],
+        intv(1),
+        intv(11),
+        vec![],
+    )
+}
+
+#[test]
 fn test_subst_cycle() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};

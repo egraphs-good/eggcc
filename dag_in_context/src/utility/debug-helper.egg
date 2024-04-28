@@ -20,4 +20,6 @@
       ((delete (TypeList-suffix e a))))
 (rule ((ContextOf e a))
       ((delete (ContextOf e a))))
+(rule ((ExprIsResolved e))
+      ((delete (ExprIsResolved e))))
 (run-schedule (saturate (run)))

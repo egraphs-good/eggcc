@@ -1,5 +1,5 @@
-use dag_in_context::prologue;
+use dag_in_context::{prologue, schedule::mk_schedule};
 
 fn main() {
-    println!("{}", prologue());
+    println!("{} \n {}", prologue(), mk_schedule());
 }

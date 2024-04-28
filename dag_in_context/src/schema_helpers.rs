@@ -1,11 +1,12 @@
 use std::{
+    collections::HashMap,
     fmt::{Display, Formatter},
     rc::Rc,
 };
 use strum_macros::EnumIter;
 
 use crate::{
-    ast::{base, boolt, intt},
+    ast::{base, boolt, inif, inloop, inswitch, intt},
     schema::{
         Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
         UnaryOp,
@@ -177,6 +178,31 @@ impl Expr {
         .with_arg_types()
     }
 
+    // Get all the Expr children of this expression
+    pub fn children_exprs(self: &RcExpr) -> Vec<RcExpr> {
+        match self.as_ref() {
+            Expr::Top(_, x, y, z) => vec![x.clone(), y.clone(), z.clone()],
+            Expr::Bop(_, x, y) => vec![x.clone(), y.clone()],
+            Expr::Uop(_, x) => vec![x.clone()],
+            Expr::Alloc(_, x, y, _) => vec![x.clone(), y.clone()],
+            Expr::Call(_, x) => vec![x.clone()],
+            Expr::Single(x) => vec![x.clone()],
+            Expr::Concat(x, y) => vec![x.clone(), y.clone()],
+            Expr::If(x, y, z, w) => vec![x.clone(), y.clone(), z.clone(), w.clone()],
+            Expr::Switch(x, y, cases) => {
+                let mut res = vec![x.clone(), y.clone()];
+                res.extend(cases.clone());
+                res
+            }
+            Expr::DoWhile(x, y) => vec![x.clone(), y.clone()],
+            Expr::Function(_, _, _, x) => vec![x.clone()],
+            Expr::Get(x, _) => vec![x.clone()],
+            Expr::Const(_, _, _) => vec![],
+            Expr::Empty(_, _) => vec![],
+            Expr::Arg(_, _) => vec![],
+        }
+    }
+
     /// Get the children of this expression that are still in the same scope
     /// For context nodes, doesn't include the context (which is an assumption)
     pub fn children_same_scope(self: &RcExpr) -> Vec<RcExpr> {
@@ -203,6 +229,165 @@ impl Expr {
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
             Expr::Arg(_, _) => vec![],
         }
+    }
+
+    pub fn get_arg_type(&self) -> Type {
+        match self {
+            Expr::Const(_, ty, _) => ty.clone(),
+            Expr::Top(_, x, _, _) => x.get_arg_type(),
+            Expr::Bop(_, x, _) => x.get_arg_type(),
+            Expr::Uop(_, x) => x.get_arg_type(),
+            Expr::Get(x, _) => x.get_arg_type(),
+            Expr::Alloc(_, x, _, _) => x.get_arg_type(),
+            Expr::Call(_, x) => x.get_arg_type(),
+            Expr::Empty(ty, _) => ty.clone(),
+            Expr::Single(x) => x.get_arg_type(),
+            Expr::Concat(x, _) => x.get_arg_type(),
+            Expr::If(x, _, _, _) => x.get_arg_type(),
+            Expr::Switch(x, _, _) => x.get_arg_type(),
+            Expr::DoWhile(x, _) => x.get_arg_type(),
+            Expr::Arg(ty, _) => ty.clone(),
+            Expr::Function(_, ty, _, _) => ty.clone(),
+        }
+    }
+
+    pub fn get_ctx(&self) -> &Assumption {
+        match self {
+            Expr::Const(_, _, ctx) => ctx,
+            Expr::Top(_, x, _, _) => x.get_ctx(),
+            Expr::Bop(_, x, _) => x.get_ctx(),
+            Expr::Uop(_, x) => x.get_ctx(),
+            Expr::Get(x, _) => x.get_ctx(),
+            Expr::Alloc(_, x, _, _) => x.get_ctx(),
+            Expr::Call(_, x) => x.get_ctx(),
+            Expr::Empty(_, ctx) => ctx,
+            Expr::Single(x) => x.get_ctx(),
+            Expr::Concat(x, _) => x.get_ctx(),
+            Expr::If(x, _, _, _) => x.get_ctx(),
+            Expr::Switch(x, _, _) => x.get_ctx(),
+            Expr::DoWhile(x, _) => x.get_ctx(),
+            Expr::Arg(_, ctx) => ctx,
+            Expr::Function(_, _, _, x) => x.get_ctx(),
+        }
+    }
+
+    // Substitute "arg" for Arg() in within. Also replaces context with "arg"'s context.
+    pub fn subst(arg: &RcExpr, within: &RcExpr) -> RcExpr {
+        let mut subst_cache: HashMap<*const Expr, RcExpr> = HashMap::new();
+
+        let arg_ty = arg.get_arg_type();
+        let arg_ctx = arg.get_ctx();
+        Self::subst_with_cache(arg, &arg_ty, arg_ctx, within, &mut subst_cache)
+    }
+
+    fn subst_with_cache(
+        arg: &RcExpr,
+        arg_ty: &Type,
+        arg_ctx: &Assumption,
+        within: &RcExpr,
+        subst_cache: &mut HashMap<*const Expr, RcExpr>,
+    ) -> RcExpr {
+        if let Some(substed) = subst_cache.get(&Rc::as_ptr(within)) {
+            return substed.clone();
+        }
+
+        let substed = match within.as_ref() {
+            // Substitute!
+            Expr::Arg(_, _) => arg.clone(),
+
+            // Propagate through current scope
+            Expr::Top(op, x, y, z) => Rc::new(Expr::Top(
+                op.clone(),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, z, subst_cache),
+            )),
+            Expr::Bop(op, x, y) => Rc::new(Expr::Bop(
+                op.clone(),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache),
+            )),
+            Expr::Uop(op, x) => Rc::new(Expr::Uop(
+                op.clone(),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+            )),
+            Expr::Get(x, i) => Rc::new(Expr::Get(
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+                *i,
+            )),
+            Expr::Alloc(amt, x, y, ty) => Rc::new(Expr::Alloc(
+                *amt,
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache),
+                ty.clone(),
+            )),
+            Expr::Call(name, x) => Rc::new(Expr::Call(
+                name.clone(),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+            )),
+            Expr::Single(x) => Rc::new(Expr::Single(Self::subst_with_cache(
+                arg,
+                arg_ty,
+                arg_ctx,
+                x,
+                subst_cache,
+            ))),
+            Expr::Concat(x, y) => Rc::new(Expr::Concat(
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache),
+            )),
+            Expr::If(pred, input, then, els) => {
+                let new_pred = Self::subst_with_cache(arg, arg_ty, arg_ctx, pred, subst_cache);
+                let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
+                Rc::new(Expr::If(
+                    new_pred.clone(),
+                    new_input.clone(),
+                    then.replace_ctx(inif(true, new_pred.clone(), new_input.clone())),
+                    els.replace_ctx(inif(false, new_pred, new_input)),
+                ))
+            }
+            Expr::Switch(pred, input, branches) => {
+                let new_pred = Self::subst_with_cache(arg, arg_ty, arg_ctx, pred, subst_cache);
+                let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
+                let new_branches = branches
+                    .iter()
+                    .enumerate()
+                    .map(|(i, branch)| {
+                        branch.replace_ctx(inswitch(
+                            i.try_into().unwrap(),
+                            new_pred.clone(),
+                            new_input.clone(),
+                        ))
+                    })
+                    .collect();
+                Rc::new(Expr::Switch(new_pred, new_input, new_branches))
+            }
+            Expr::DoWhile(input, body) => {
+                let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
+                Rc::new(Expr::DoWhile(
+                    new_input.clone(),
+                    // It may seem odd to use the old body in the new context, but this is how
+                    // it's done in add_ctx.
+                    body.replace_ctx(inloop(new_input, body.clone())),
+                ))
+            }
+            Expr::Function(x, y, z, body) => Rc::new(Expr::Function(
+                x.clone(),
+                y.clone(),
+                z.clone(),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, body, subst_cache),
+            )),
+
+            // For leaves, replace the type and context
+            Expr::Const(c, _, _) => {
+                Rc::new(Expr::Const(c.clone(), arg_ty.clone(), arg_ctx.clone()))
+            }
+            Expr::Empty(_, _) => Rc::new(Expr::Empty(arg_ty.clone(), arg_ctx.clone())),
+        };
+
+        // Add the substituted to cache
+        subst_cache.insert(Rc::as_ptr(within), substed.clone());
+        substed
     }
 }
 

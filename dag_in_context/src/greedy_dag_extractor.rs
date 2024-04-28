@@ -409,6 +409,7 @@ pub fn extract(
         &egraph_info,
         Some(&effectful_nodes_along_path),
     );
+    extractor_not_linear.check_program_is_linear(&res).unwrap();
     (cost_res, res)
 }
 
@@ -792,6 +793,30 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
     assert_eq!(cost_set.0.total, expected_cost);
 }
 
+/// This only runs extract_without_linearity once
+/// and check if the extracted program violates linearity.
+#[cfg(test)]
+fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
+    use crate::{print_with_intermediate_vars, prologue};
+    let string_prog = {
+        let (term, termdag) = prog.to_egglog();
+        let printed = print_with_intermediate_vars(&termdag, term);
+        format!("{}\n{printed}\n", prologue(),)
+    };
+
+    let mut egraph = egglog::EGraph::default();
+    egraph.parse_and_run_program(&string_prog).unwrap();
+    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let mut termdag = TermDag::default();
+
+    let egraph_info = EgraphInfo::new(&DefaultCostModel, &serialized_egraph, unextractables);
+    let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
+
+    let (_cost_res, prog) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    let res = extractor_not_linear.check_program_is_linear(&prog);
+    assert_eq!(res, Result::Err(error_message.to_string()));
+}
+
 #[test]
 fn test_dag_extract() {
     use crate::ast::*;
@@ -864,4 +889,57 @@ fn simple_dag_extract() {
 
     let expected_cost = cost_model.get_op_cost("Const");
     dag_extraction_test(&prog, expected_cost);
+}
+
+#[test]
+fn test_linearity_check_1() {
+    use crate::ast::*;
+    use crate::check_program_gets_type;
+
+    let bad_program_1 = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(
+            add(
+                int(10),
+                get(
+                    dowhile(
+                        parallel!(getat(0), getat(1)),
+                        parallel!(
+                            less_than(add(getat(0), int(10)), int(10)),
+                            add(getat(0), int(10)),
+                            getat(1),
+                        )
+                    ),
+                    0
+                )
+            ),
+            getat(1)
+        )
+    ),);
+    let bad_program =
+        dag_extraction_linearity_check(&bad_program_1, &"An effectful operator is used twice");
+}
+
+#[test]
+fn test_linearity_check_2() {
+    use crate::ast::*;
+    use crate::check_program_gets_type;
+
+    let bad_program_2 = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt()),
+        parallel!(tif(
+            ttrue(),
+            parallel!(getat(0), getat(1)),
+            getat(0),
+            getat(0)
+        ))
+    ),);
+    let bad_program = dag_extraction_linearity_check(
+        &bad_program_2,
+        &"The region operator is either consumed or not effectful.",
+    );
 }

@@ -1,7 +1,8 @@
 use egglog::{util::IndexMap, *};
 use egraph_serialize::{ClassId, EGraph, NodeId};
 use ordered_float::NotNan;
-use std::collections::{HashSet, VecDeque};
+use rustc_hash::FxHashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
     from_egglog::FromEgglog,
@@ -15,7 +16,7 @@ pub(crate) struct EgraphInfo<'a> {
     pub(crate) egraph: &'a EGraph,
     // For every (root, eclass) pair, store the parent
     // (root, enode) pairs that may depend on it.
-    pub(crate) parents: IndexMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
+    pub(crate) parents: HashMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
     pub(crate) roots: Vec<(RootId, NodeId)>,
     pub(crate) cm: &'a dyn CostModel,
     /// A set of names of functions that are unextractable
@@ -24,7 +25,7 @@ pub(crate) struct EgraphInfo<'a> {
 
 pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
-    costs: IndexMap<ClassId, IndexMap<ClassId, CostSet>>,
+    costs: FxHashMap<ClassId, FxHashMap<ClassId, CostSet>>,
 
     // use to get the type of an expression
     pub(crate) typechecker: TypeChecker<'a>,
@@ -34,8 +35,8 @@ pub(crate) struct Extractor<'a> {
     pub(crate) correspondence: IndexMap<Term, NodeId>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
-    pub(crate) term_to_expr: Option<IndexMap<Term, RcExpr>>,
-    pub(crate) node_to_type: Option<IndexMap<NodeId, Type>>,
+    pub(crate) term_to_expr: Option<HashMap<Term, RcExpr>>,
+    pub(crate) node_to_type: Option<HashMap<NodeId, Type>>,
 }
 
 impl<'a> EgraphInfo<'a> {
@@ -86,7 +87,7 @@ impl<'a> EgraphInfo<'a> {
         // sort roots for determinism
         roots.sort();
 
-        let mut parents: IndexMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = IndexMap::default();
+        let mut parents: HashMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = HashMap::new();
         for (root, eclass) in relavent_nodes {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {
@@ -113,7 +114,7 @@ impl<'a> EgraphInfo<'a> {
             }
         }
 
-        let mut parents_sorted = IndexMap::default();
+        let mut parents_sorted = HashMap::new();
         for (key, parents) in parents {
             let mut parents_vec = parents.into_iter().collect::<Vec<_>>();
             parents_vec.sort();
@@ -172,7 +173,7 @@ impl<'a> Extractor<'a> {
             termdag: self.termdag,
             conversion_cache: Default::default(),
         };
-        let mut node_to_type: IndexMap<NodeId, Type> = Default::default();
+        let mut node_to_type: HashMap<NodeId, Type> = Default::default();
 
         for (term, node_id) in &self.correspondence {
             let node = info.egraph.nodes.get(node_id).unwrap();
@@ -258,7 +259,7 @@ pub struct CostSet {
     pub total: Cost,
     // TODO perhaps more efficient as
     // persistent data structure?
-    pub costs: IndexMap<ClassId, Cost>,
+    pub costs: HashMap<ClassId, Cost>,
     pub term: Term,
 }
 
@@ -353,7 +354,7 @@ fn calculate_cost_set(
 
     let mut shared_total = NotNan::new(0.).unwrap();
     let mut unshared_total = info.cm.get_op_cost(&node.op);
-    let mut costs: IndexMap<ClassId, NotNan<f64>> = IndexMap::default();
+    let mut costs: HashMap<ClassId, NotNan<f64>> = HashMap::default();
 
     if !info.cm.ignore_children(&node.op) {
         for (child_set, is_region_root) in child_cost_sets.iter() {
@@ -417,7 +418,7 @@ pub fn extract_without_linearity(
     // If effectful paths are present,
     // for each region we will only consider
     // effectful nodes that are in effectful_path[rootid]
-    effectful_paths: Option<&IndexMap<ClassId, HashSet<NodeId>>>,
+    effectful_paths: Option<&HashMap<ClassId, HashSet<NodeId>>>,
 ) -> (CostSet, TreeProgram) {
     if effectful_paths.is_some() {
         println!("Re-extracting program after linear path is found.");

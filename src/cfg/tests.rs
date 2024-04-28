@@ -1,7 +1,7 @@
-use crate::cfg::function_to_cfg;
+use crate::cfg::{function_to_cfg, BlockName};
 use crate::test_util::*;
 use bril2json::parse_abstract_program_from_read;
-use bril_rs::{load_program_from_read, Program};
+use bril_rs::{load_program_from_read, Program, Type};
 
 fn parse_from_string(input: &str) -> Program {
     let abs_program = parse_abstract_program_from_read(input.as_bytes(), true, false, None);

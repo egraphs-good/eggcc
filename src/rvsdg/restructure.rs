@@ -9,7 +9,7 @@
 use std::collections::VecDeque;
 
 use bril_rs::Type;
-use hashbrown::{HashSet, IndexMap};
+use hashbrown::{HashMap, HashSet};
 use petgraph::{
     algo::{dominators, tarjan_scc},
     graph::NodeIndex,
@@ -256,8 +256,8 @@ impl SwitchCfgFunction {
         node: NodeIndex,
         targets: impl IntoIterator<Item = NodeIndex>,
         state: &mut RestructureState,
-    ) -> (IndexMap<NodeIndex, u32>, Identifier) {
-        let mut blocks = IndexMap::default();
+    ) -> (HashMap<NodeIndex, u32>, Identifier) {
+        let mut blocks = HashMap::new();
         for node in targets {
             let cur_len = u32::try_from(blocks.len()).unwrap();
             blocks.entry(node).or_insert(cur_len);
@@ -544,7 +544,7 @@ struct Continuation {
     /// given branch node.
     reentry_nodes: HashSet<NodeIndex>,
     /// A mapping from branch edge, to edges back to nodes not dominated by that edge.
-    exit_arcs: IndexMap<EdgeIndex, HashSet<EdgeIndex>>,
+    exit_arcs: HashMap<EdgeIndex, HashSet<EdgeIndex>>,
 }
 
 struct EdgeData {

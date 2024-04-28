@@ -3,11 +3,11 @@
 //! In particular, it finds all the effectful e-nodes in an extracted term that are along the state edge path.
 
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     rc::Rc,
 };
 
-use egglog::{util::IndexMap, Term};
+use egglog::Term;
 use egraph_serialize::{ClassId, NodeId};
 
 use crate::{
@@ -19,8 +19,8 @@ type EffectfulNodes = Vec<(ClassId, *const Expr)>;
 
 struct Linearity {
     effectful_nodes: EffectfulNodes,
-    expr_to_term: IndexMap<*const Expr, Term>,
-    n2c: IndexMap<NodeId, ClassId>,
+    expr_to_term: HashMap<*const Expr, Term>,
+    n2c: HashMap<NodeId, ClassId>,
 }
 
 impl<'a> Extractor<'a> {
@@ -32,8 +32,8 @@ impl<'a> Extractor<'a> {
         &mut self,
         prog: &TreeProgram,
         egraph_info: &EgraphInfo,
-    ) -> IndexMap<ClassId, HashSet<NodeId>> {
-        let mut expr_to_term = IndexMap::default();
+    ) -> HashMap<ClassId, HashSet<NodeId>> {
+        let mut expr_to_term = HashMap::new();
         for (term, expr) in self.term_to_expr.as_ref().unwrap() {
             expr_to_term.insert(Rc::as_ptr(expr), term.clone());
         }
@@ -57,7 +57,7 @@ impl<'a> Extractor<'a> {
             self.find_effectful_nodes_in_expr(function, &mut linearity, prog_root_id);
         }
 
-        let mut effectful_classes: IndexMap<ClassId, HashSet<NodeId>> = Default::default();
+        let mut effectful_classes: HashMap<ClassId, HashSet<NodeId>> = Default::default();
         for (rootid, expr) in linearity.effectful_nodes {
             let term = linearity.expr_to_term.get(&expr).unwrap();
             effectful_classes

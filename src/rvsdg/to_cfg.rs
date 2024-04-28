@@ -13,7 +13,7 @@
 
 use bril_rs::{Argument, ConstOps, EffectOps, Instruction, Literal, Type, ValueOps};
 
-use hashbrown::IndexMap;
+use hashbrown::HashMap;
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableDiGraph;
 
@@ -92,8 +92,8 @@ struct RvsdgToCfg<'a> {
     /// the Option<Id> is the context, which is important becuase
     /// arguments are different in different contexts
     /// The context is none at the top level
-    operand_cache: IndexMap<(RvsdgContext, Operand), Vec<RvsdgValue>>,
-    body_cache: IndexMap<(RvsdgContext, Id), Vec<RvsdgValue>>,
+    operand_cache: HashMap<(RvsdgContext, Operand), Vec<RvsdgValue>>,
+    body_cache: HashMap<(RvsdgContext, Id), Vec<RvsdgValue>>,
 }
 
 impl RvsdgProgram {

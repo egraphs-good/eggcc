@@ -2,14 +2,13 @@
 //! This is a strait-forward translation, since DAG programs are like RVSDGs
 //! but with tuple constructs such as Concat.
 
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 use bril_rs::{ConstOps, EffectOps, Literal, ValueOps};
 use dag_in_context::{
     schema::{BaseType, BinaryOp, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp},
     typechecker::TypeCache,
 };
-use egglog::util::IndexMap;
 
 use super::{BasicExpr, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram, RvsdgType};
 
@@ -24,7 +23,7 @@ struct TreeToRvsdg<'a> {
     /// A cache of already converted expressions.
     /// Shared expressions must be converted to the same RVSDG nodes.
     /// For branches, this can be pre-propulated with the arguments passed to the branch.
-    translation_cache: IndexMap<*const Expr, Operands>,
+    translation_cache: HashMap<*const Expr, Operands>,
     nodes: &'a mut Vec<RvsdgBody>,
     /// The current arguments to the tree program
     /// as RVSDG operands.
@@ -110,7 +109,7 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
     let mut converter = TreeToRvsdg {
         program: &typechecked_program,
         type_cache: &type_cache,
-        translation_cache: IndexMap::default(),
+        translation_cache: HashMap::new(),
         nodes: &mut nodes,
         // initial arguments are the first n arguments
         current_args: (0..input_types.len()).map(Operand::Arg).collect(),
@@ -193,7 +192,7 @@ impl<'a> TreeToRvsdg<'a> {
             program: self.program,
             nodes: self.nodes,
             type_cache: self.type_cache,
-            translation_cache: IndexMap::default(),
+            translation_cache: HashMap::new(),
             current_args: args,
         };
         translator.convert_expr(expr)

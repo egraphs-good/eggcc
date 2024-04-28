@@ -1,8 +1,8 @@
 use std::{
+    collections::HashMap,
     fmt::{Display, Formatter},
     rc::Rc,
 };
-use egglog::util::IndexMap;
 use strum_macros::EnumIter;
 
 use crate::{
@@ -273,7 +273,7 @@ impl Expr {
 
     // Substitute "arg" for Arg() in within. Also replaces context with "arg"'s context.
     pub fn subst(arg: &RcExpr, within: &RcExpr) -> RcExpr {
-        let mut subst_cache: IndexMap<*const Expr, RcExpr> = IndexMap::default();
+        let mut subst_cache: HashMap<*const Expr, RcExpr> = HashMap::new();
 
         let arg_ty = arg.get_arg_type();
         let arg_ctx = arg.get_ctx();
@@ -285,7 +285,7 @@ impl Expr {
         arg_ty: &Type,
         arg_ctx: &Assumption,
         within: &RcExpr,
-        subst_cache: &mut IndexMap<*const Expr, RcExpr>,
+        subst_cache: &mut HashMap<*const Expr, RcExpr>,
     ) -> RcExpr {
         if let Some(substed) = subst_cache.get(&Rc::as_ptr(within)) {
             return substed.clone();

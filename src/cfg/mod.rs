@@ -6,11 +6,10 @@
 use core::fmt::Debug;
 use std::fmt::Formatter;
 use std::str::FromStr;
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};
-use egglog::util::IndexMap;
 use hashbrown::HashSet;
 use petgraph::dot::Dot;
 
@@ -612,7 +611,7 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
 
 struct CfgBuilder {
     cfg: SimpleCfgFunction,
-    label_to_block: IndexMap<String, NodeIndex>,
+    label_to_block: HashMap<String, NodeIndex>,
 }
 
 impl CfgBuilder {
@@ -630,7 +629,7 @@ impl CfgBuilder {
                 return_ty: func.return_type.clone(),
                 _phantom: Simple,
             },
-            label_to_block: IndexMap::default(),
+            label_to_block: HashMap::new(),
         }
     }
 

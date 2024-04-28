@@ -13,7 +13,7 @@ use std::io::Write;
 use std::process::Command;
 
 use bril_rs::{ConstOps, EffectOps, Instruction, Literal, Position, Type, ValueOps};
-use egglog::util::IndexMap;
+use hashbrown::HashMap;
 use petgraph::algo::dominators;
 
 use petgraph::dot::Dot;
@@ -154,16 +154,16 @@ pub(crate) fn cfg_func_to_rvsdg(
 /// to the type of the function.
 /// Bril doesn't have a void type, so this
 /// is `None` when the function returns nothing.
-pub(crate) type FunctionTypes = IndexMap<String, Option<Type>>;
+pub(crate) type FunctionTypes = HashMap<String, Option<Type>>;
 
 pub(crate) struct RvsdgBuilder<'a> {
     cfg: &'a mut SwitchCfgFunction,
     expr: Vec<RvsdgBody>,
     // Maps from branch node to join point.
-    join_point: IndexMap<NodeIndex, NodeIndex>,
+    join_point: HashMap<NodeIndex, NodeIndex>,
     analysis: LiveVariableAnalysis,
     dom: Dominators<NodeIndex>,
-    store: IndexMap<VarId, Operand>,
+    store: HashMap<VarId, Operand>,
     function_types: FunctionTypes,
 }
 
@@ -505,7 +505,7 @@ impl<'a> RvsdgBuilder<'a> {
         fn convert_args(
             args: &[String],
             analysis: &mut LiveVariableAnalysis,
-            env: &mut IndexMap<VarId, Operand>,
+            env: &mut HashMap<VarId, Operand>,
             pos: &Option<Position>,
         ) -> Result<Vec<Operand>> {
             let mut ops = Vec::with_capacity(args.len());
@@ -746,7 +746,7 @@ fn get_id(exprs: &mut Vec<RvsdgBody>, body: RvsdgBody) -> Id {
 fn get_op(
     var: VarId,
     pos: &Option<Position>,
-    env: &IndexMap<VarId, Operand>,
+    env: &HashMap<VarId, Operand>,
     intern: &Names,
 ) -> Result<Operand> {
     match env.get(&var) {

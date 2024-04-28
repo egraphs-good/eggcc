@@ -1,8 +1,4 @@
-use std::{
-    collections::HashSet,
-    rc::Rc,
-    vec,
-};
+use std::{collections::HashSet, rc::Rc, vec};
 
 use egglog::util::IndexMap;
 

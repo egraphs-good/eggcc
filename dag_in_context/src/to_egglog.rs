@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
 use egglog::{
-    ast::{Literal, Symbol}, util::IndexMap, Term, TermDag
+    ast::{Literal, Symbol},
+    util::IndexMap,
+    Term, TermDag,
 };
 
 use crate::{

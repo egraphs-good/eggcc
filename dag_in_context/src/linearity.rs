@@ -2,10 +2,7 @@
 //! program use memory linearly.
 //! In particular, it finds all the effectful e-nodes in an extracted term that are along the state edge path.
 
-use std::{
-    collections::HashSet,
-    rc::Rc,
-};
+use std::{collections::HashSet, rc::Rc};
 
 use egglog::{util::IndexMap, Term};
 use egraph_serialize::{ClassId, NodeId};

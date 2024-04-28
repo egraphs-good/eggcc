@@ -86,7 +86,8 @@ impl<'a> EgraphInfo<'a> {
         // sort roots for determinism
         roots.sort();
 
-        let mut parents: IndexMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = IndexMap::default();
+        let mut parents: IndexMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> =
+            IndexMap::default();
         for (root, eclass) in relavent_nodes {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {

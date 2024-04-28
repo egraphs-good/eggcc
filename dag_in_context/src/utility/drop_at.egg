@@ -112,7 +112,6 @@
             out)))
       :ruleset drop)
 
-;; substitute into function (convenience for testing)
 (rewrite (DropAtInternal newty newctx idx (Function name inty outty body))
          (Function name inty outty (DropAtInternal newty newctx idx body))
          :when ((ExprIsResolved body))
@@ -120,18 +119,22 @@
 
 
 
-;; ########################### Apply subst unions
+;; ########################### Apply drop unions
 
 (rule ((DelayedDropUnion lhs rhs))
       ((union lhs rhs))
       :ruleset apply-drop-unions)
 
-;; ########################### Cleanup subst and DelayedSubstUnion
+;; ########################### Cleanup Dropat, DropAtInternal and DelayedDropUnion
 
-(rule ((DelayedDropUnion lhs rhs))
-      ((delete (DelayedDropUnion lhs rhs)))
+(rule ((ExprIsResolved (DropAt newctx idx in)))
+      ((subsume (DropAt newctx idx in)))
       :ruleset cleanup-drop)
 
 (rule ((ExprIsResolved (DropAtInternal newty newctx idx in)))
       ((subsume (DropAtInternal newty newctx idx in)))
+      :ruleset cleanup-drop)
+
+(rule ((DelayedDropUnion lhs rhs))
+      ((delete (DelayedDropUnion lhs rhs)))
       :ruleset cleanup-drop)

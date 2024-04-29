@@ -464,9 +464,6 @@ impl Run {
                 (true, true) => "-opt_both",
             };
         }
-        if self.interp.should_interp() {
-            name += "-interp";
-        }
         name
     }
 

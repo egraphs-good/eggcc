@@ -16,7 +16,21 @@
   ret answer;
 }
 
-@main {
+@main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 1000000;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  call @orig_main loop_counter;
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
+
+@orig_main(x: int) {
   a: int = const 25;
   b: int = const 50;
   c: int = const 100;
@@ -58,6 +72,7 @@
   store indexPtr j;
 
   val: int = call @dot_product vectorA vectorB size;
+  val: int = add val x;
   print val;
 
   free vectorA;

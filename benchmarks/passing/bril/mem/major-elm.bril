@@ -4,10 +4,30 @@
 # Not a big example in terms of the array size and the total dynamic instructions; but I found Boyer-Moore voting algorithm very interesting!
 # Acknowledgement: brought idea from the pack function in Pat-Lafon's binary-search.bril to my create_arr.
 @main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 1000;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  loop2_counter: int = const 10;
+.loop2_cond:
+  loop2_cond: bool = lt loop2_counter loop_bound;
+  br loop2_cond .loop2_body .loop2_done;
+.loop2_body:
+  call @orig_main loop_counter loop2_counter loop_counter;
+  loop2_counter: int = add loop2_counter loop_incr;
+  jmp .loop2_cond;
+.loop2_done:
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
+
+@orig_main(e1: int, e2: int, e3: int) {
   arr_size: int = const 3;
-  e1: int = const 3;
-  e2: int = const 2;
-  e3: int = const 3;
+
   nums: ptr<int> = call @create_arr arr_size e1 e2 e3;
 
   zero: int = const 0;

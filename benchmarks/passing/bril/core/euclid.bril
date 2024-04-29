@@ -1,7 +1,27 @@
-@main {
-  v0: int = const 23789216;
+@main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 1000;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  inner_counter: int = const 10;
+.inner_cond:
+  inner_cond: bool = lt inner_counter loop_bound;
+  br inner_cond .inner_body .inner_done;
+.inner_body:
+  call @orig_main loop_counter inner_counter;
+  inner_counter: int = add inner_counter loop_incr;
+  jmp .inner_cond;
+.inner_done:
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
+
+@orig_main(v0 : int, v1 : int ) {
   x: int = id v0;
-  v1: int = const 1748698766;
   y: int = id v1;
   v2: int = id x;
   v3: int = id y;

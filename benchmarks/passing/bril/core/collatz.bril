@@ -1,10 +1,22 @@
-# ARGS: 7
 
 # Compute the Collatz sequence from *n*. This may not terminate for all *n*, but
 # it is at least known to terminate for all *n* up to a large value.
 # see https://en.wikipedia.org/wiki/Collatz_conjecture
+@main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 10000;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  call @orig_main loop_counter;
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
 
-@main(x: int) {
+@orig_main(x : int) {
   one: int = const 1;
   two: int = const 2;
   three: int = const 3;

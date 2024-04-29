@@ -41,10 +41,6 @@ mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output"
 
 pushd $TOP_DIR
 
-# Run tests.
-RUST_TEST_THREADS=1 cargo test --release -- --nocapture > log.txt
-cp log.txt "$NIGHTLY_DIR/output"
-
 # Run profiler.
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench

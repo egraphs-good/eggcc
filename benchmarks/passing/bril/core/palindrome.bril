@@ -1,5 +1,18 @@
-# ARGS: 12321
-@main(in: int) {
+@main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 1000000;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  call @orig_main loop_counter;
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
+
+@orig_main(in : int) {
 #in: int = const 2343553432;
 ten: int = const 10;
 zero: int = const 0;

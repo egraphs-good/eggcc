@@ -3,42 +3,44 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @pow(v0: int, v1: int) {
-  v2_: int = const 0;
-  v3_: int = id v0;
-  v4_: int = id v2_;
-  v5_: int = id v0;
-  v6_: int = id v1;
-.v7_:
-  v8_: int = const 1;
-  v9_: int = sub v6_ v8_;
-  v10_: bool = lt v4_ v9_;
-  br v10_ .v11_ .v12_;
-.v11_:
-  v13_: int = mul v5_ v3_;
-  v14_: bool = const true;
-  v15_: int = const 1;
-  v16_: int = add v4_ v15_;
-  v17_: int = id v13_;
-  v18_: bool = id v14_;
-  v19_: int = id v16_;
-  v20_: int = id v5_;
-  v21_: int = id v6_;
-.v22_:
-  v3_: int = id v17_;
-  v4_: int = id v19_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  br v10_ .v7_ .v23_;
-.v12_:
-  v24_: bool = const false;
-  v17_: int = id v3_;
-  v18_: bool = id v24_;
-  v19_: int = id v4_;
-  v20_: int = id v5_;
-  v21_: int = id v6_;
-  jmp .v22_;
-.v23_:
-  print v3_;
+  v5: int = const 0;
+  v10: int = const 1;
+  v12: int = sub v1 v10;
+  v14: int = id v0;
+  v15: int = id v5;
+  v16: int = id v0;
+  v17: int = id v1;
+  v18: int = id v12;
+.__20__:
+  v22: bool = lt v15 v18;
+  br v22 .__43__ .__30__;
+.__43__:
+  v46: int = mul v14 v16;
+  v48: bool = const true;
+  v50: int = const 1;
+  v53: int = add v50 v15;
+  v37: int = id v46;
+  v38: bool = id v48;
+  v39: int = id v53;
+  v40: int = id v16;
+  v41: int = id v17;
+.__58__:
+  v14: int = id v37;
+  v15: int = id v39;
+  v16: int = id v16;
+  v17: int = id v17;
+  v18: int = id v18;
+  br v22 .__20__ .__67__;
+.__30__:
+  v32: bool = const false;
+  v37: int = id v14;
+  v38: bool = id v32;
+  v39: int = id v15;
+  v40: int = id v16;
+  v41: int = id v17;
+  jmp .__58__;
+.__67__:
+  print v14;
 }
 @main {
   v0_: int = const 4;

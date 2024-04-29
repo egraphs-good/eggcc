@@ -1,6 +1,7 @@
 use egglog::{util::IndexMap, *};
 use egraph_serialize::{ClassId, EGraph, NodeId};
 use ordered_float::NotNan;
+use rpds::HashTrieMap;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -259,7 +260,7 @@ pub struct CostSet {
     pub total: Cost,
     // TODO perhaps more efficient as
     // persistent data structure?
-    pub costs: HashMap<ClassId, Cost>,
+    pub costs: HashTrieMap<ClassId, Cost>,
     pub term: Term,
 }
 
@@ -354,30 +355,59 @@ fn calculate_cost_set(
 
     let mut shared_total = NotNan::new(0.).unwrap();
     let mut unshared_total = info.cm.get_op_cost(&node.op);
-    let mut costs: HashMap<ClassId, NotNan<f64>> = HashMap::default();
+    let mut costs: HashTrieMap<ClassId, NotNan<f64>> = Default::default();
+    let index_of_biggest_child = child_cost_sets
+        .iter()
+        .enumerate()
+        .max_by_key(
+            |(_idx, (cs, is_region_root))| {
+                if *is_region_root {
+                    0
+                } else {
+                    cs.costs.size()
+                }
+            },
+        )
+        .map(|(idx, _)| idx);
+    if let Some(index_of_biggest_child) = index_of_biggest_child {
+        let (biggest_child_set, is_region_root) = &child_cost_sets[index_of_biggest_child];
+        if !*is_region_root {
+            costs = biggest_child_set.costs.clone();
+            shared_total = biggest_child_set.total;
+        }
+    }
 
     if !info.cm.ignore_children(&node.op) {
-        for (child_set, is_region_root) in child_cost_sets.iter() {
+        for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
             if *is_region_root {
                 unshared_total += child_set.total;
             } else {
-                for (child_cid, child_cost) in &child_set.costs {
-                    // it was already present in the set
-                    if let Some(existing) = costs.get(child_cid) {
-                        if existing > child_cost {
-                            // if we found a lower-cost alternative for this child, use that and decrease cost
-                            shared_total -= existing - *child_cost;
+                // costs is empty, replace it with the child one
+                if Some(index) == index_of_biggest_child {
+                    // skip the biggest child
+                } else {
+                    for (child_cid, child_cost) in &child_set.costs {
+                        // it was already present in the set
+                        if let Some(existing) = costs.get(child_cid) {
+                            if existing > child_cost {
+                                // if we found a lower-cost alternative for this child, use that and decrease cost
+                                shared_total -= existing - *child_cost;
+                                costs = costs.insert(child_cid.clone(), *existing.min(child_cost));
+                            }
+                        } else {
+                            costs = costs.insert(child_cid.clone(), *child_cost);
+                            shared_total += child_cost;
                         }
-                        costs.insert(child_cid.clone(), *existing.min(child_cost));
-                    } else {
-                        costs.insert(child_cid.clone(), *child_cost);
-                        shared_total += child_cost;
                     }
                 }
             }
         }
     }
-    costs.insert(cid.clone(), unshared_total);
+
+    // no need to add something that costs 0 to the set
+    if unshared_total > NotNan::new(0.).unwrap() {
+        costs = costs.insert(cid.clone(), unshared_total);
+    }
     let total = unshared_total + shared_total;
 
     let sub_terms: Vec<Term> = child_cost_sets
@@ -409,6 +439,7 @@ pub fn extract(
         &egraph_info,
         Some(&effectful_nodes_along_path),
     );
+    extractor_not_linear.check_program_is_linear(&res).unwrap();
     (cost_res, res)
 }
 
@@ -421,9 +452,9 @@ pub fn extract_without_linearity(
     effectful_paths: Option<&HashMap<ClassId, HashSet<NodeId>>>,
 ) -> (CostSet, TreeProgram) {
     if effectful_paths.is_some() {
-        println!("Re-extracting program after linear path is found.");
+        log::info!("Re-extracting program after linear path is found.");
     } else {
-        println!("Extracting program for the first time.");
+        log::info!("Extracting program for the first time.");
     }
     let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
     let mut worklist = UniqueQueue::default();
@@ -840,6 +871,30 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
     assert_eq!(cost_set.0.total, expected_cost);
 }
 
+/// This only runs extract_without_linearity once
+/// and check if the extracted program violates linearity.
+#[cfg(test)]
+fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
+    use crate::{print_with_intermediate_vars, prologue};
+    let string_prog = {
+        let (term, termdag) = prog.to_egglog();
+        let printed = print_with_intermediate_vars(&termdag, term);
+        format!("{}\n{printed}\n", prologue(),)
+    };
+
+    let mut egraph = egglog::EGraph::default();
+    egraph.parse_and_run_program(&string_prog).unwrap();
+    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let mut termdag = TermDag::default();
+
+    let egraph_info = EgraphInfo::new(&DefaultCostModel, &serialized_egraph, unextractables);
+    let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
+
+    let (_cost_res, prog) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    let res = extractor_not_linear.check_program_is_linear(&prog);
+    assert_eq!(res, Result::Err(error_message.to_string()));
+}
+
 #[test]
 fn test_dag_extract() {
     use crate::ast::*;
@@ -912,4 +967,51 @@ fn simple_dag_extract() {
 
     let expected_cost = cost_model.get_op_cost("Const");
     dag_extraction_test(&prog, expected_cost);
+}
+
+#[test]
+fn test_linearity_check_1() {
+    use crate::ast::*;
+
+    let bad_program_1 = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(
+            add(
+                int(10),
+                get(
+                    dowhile(
+                        parallel!(getat(0), getat(1)),
+                        parallel!(
+                            less_than(add(getat(0), int(10)), int(10)),
+                            add(getat(0), int(10)),
+                            getat(1),
+                        )
+                    ),
+                    0
+                )
+            ),
+            getat(1)
+        )
+    ),);
+    dag_extraction_linearity_check(&bad_program_1, "An effectful operator is used twice");
+}
+
+#[test]
+fn test_linearity_check_2() {
+    use crate::ast::*;
+
+    let bad_program_2 = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt()),
+        parallel!(tif(
+            ttrue(),
+            parallel!(getat(0), getat(1)),
+            getat(0),
+            getat(0)
+        ))
+    ),);
+    dag_extraction_linearity_check(&bad_program_2, "There are unconsumed effectful operators");
 }

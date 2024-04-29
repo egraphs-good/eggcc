@@ -3,12 +3,12 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int, v1: int) {
-  v3: int = const 1;
-  v5: int = const 3;
-  v8: int = add v5 v0;
-  v11: int = const 4;
-  v13: int = add v1 v11;
-  v15: int = add v8 v13;
-  v17: int = add v3 v15;
-  print v17;
+  v2_: int = const 1;
+  v3_: int = const 3;
+  v4_: int = add v3_ v0;
+  v5_: int = const 4;
+  v6_: int = add v1 v5_;
+  v7_: int = add v4_ v6_;
+  v8_: int = add v2_ v7_;
+  print v8_;
 }

@@ -3,48 +3,48 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v2: int = const 0;
-  v5: bool = eq v2 v0;
-  v8: int = const 1;
-  print v8;
-  br v5 .__78__ .__16__;
-.__78__:
-  jmp .__80__;
-.__16__:
-  print v8;
-  v23: int = id v8;
-  v24: int = id v8;
-  v25: int = id v8;
-  v26: int = id v0;
-.__28__:
-  v30: bool = lt v23 v26;
-  br v30 .__51__ .__38__;
-.__51__:
-  v53: int = add v24 v25;
-  print v53;
-  v57: bool = const true;
-  v60: int = const 1;
-  v62: int = add v23 v60;
-  v45: bool = id v57;
-  v46: int = id v62;
-  v47: int = id v53;
-  v48: int = id v24;
-  v49: int = id v26;
-.__68__:
-  v23: int = id v46;
-  v24: int = id v47;
-  v25: int = id v48;
-  v26: int = id v26;
-  br v30 .__28__ .__76__;
-.__76__:
-  jmp .__80__;
-.__38__:
-  v39: bool = const false;
-  v45: bool = id v39;
-  v46: int = id v23;
-  v47: int = id v24;
-  v48: int = id v25;
-  v49: int = id v26;
-  jmp .__68__;
-.__80__:
+  v1_: int = const 0;
+  v2_: bool = eq v1_ v0;
+  v3_: int = const 1;
+  print v3_;
+  br v2_ .v4_ .v5_;
+.v4_:
+  jmp .v6_;
+.v5_:
+  print v3_;
+  v7_: int = id v3_;
+  v8_: int = id v3_;
+  v9_: int = id v3_;
+  v10_: int = id v0;
+.v11_:
+  v12_: bool = lt v7_ v10_;
+  br v12_ .v13_ .v14_;
+.v13_:
+  v15_: int = add v9_ v8_;
+  print v15_;
+  v16_: bool = const true;
+  v17_: int = const 1;
+  v18_: int = add v7_ v17_;
+  v19_: bool = id v16_;
+  v20_: int = id v18_;
+  v21_: int = id v15_;
+  v22_: int = id v8_;
+  v23_: int = id v10_;
+.v24_:
+  v7_: int = id v20_;
+  v8_: int = id v21_;
+  v9_: int = id v22_;
+  v10_: int = id v10_;
+  br v12_ .v11_ .v25_;
+.v25_:
+  jmp .v6_;
+.v14_:
+  v26_: bool = const false;
+  v19_: bool = id v26_;
+  v20_: int = id v7_;
+  v21_: int = id v8_;
+  v22_: int = id v9_;
+  v23_: int = id v10_;
+  jmp .v24_;
+.v6_:
 }

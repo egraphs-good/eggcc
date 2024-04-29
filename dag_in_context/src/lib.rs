@@ -108,6 +108,7 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
 }
 
 // Returns a formatted string of (union call body) for each pair
+#[allow(dead_code)]
 fn print_function_inlining_pairs(
     function_inlining_pairs: Vec<function_inlining::CallBody>,
     printed: &mut String,
@@ -140,13 +141,13 @@ pub fn build_program(program: &TreeProgram) -> String {
     let mut term_cache = HashMap::<Term, String>::new();
 
     // Generate function inlining egglog
-    #[allow(unused)]
-    let function_inlining = print_function_inlining_pairs(
+    // TODO function inlining disabled due to performance bug
+    /*let function_inlining = print_function_inlining_pairs(
         function_inlining::function_inlining_pairs(program, config::FUNCTION_INLINING_ITERATIONS),
         &mut printed,
         &mut tree_state,
         &mut term_cache,
-    );
+    );*/
 
     // Generate program egglog
     let term = program.to_egglog_internal(&mut tree_state);
@@ -165,13 +166,12 @@ pub fn build_program(program: &TreeProgram) -> String {
 // It is expected that program has context added
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
     let egglog_prog = build_program(program);
-    println!("Running egglog program...");
+    log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&egglog_prog)?;
 
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
-    // TODO use extract instead of extract_without_linearity when it is implemented
     let (_res_cost, res) = extract(
         program,
         &serialized,

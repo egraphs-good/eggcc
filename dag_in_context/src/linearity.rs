@@ -191,11 +191,11 @@ impl<'a> Extractor<'a> {
             };
 
             for (region, exprs) in reachables {
+                // get all effectful operators in the region,
+                // and check if they are used exactly once.
                 let mut dangling_effectful: HashSet<*const Expr> = exprs
                     .iter()
                     .filter_map(|&expr| {
-                        // This is because from_raw creates a new Rc
-                        // whose drop will decrement strong count.
                         if get_if_effectful(self, expr).is_some() {
                             Some(expr)
                         } else {
@@ -237,6 +237,9 @@ impl<'a> Extractor<'a> {
 }
 
 impl Expr {
+    /// Populates the reachable_from table, which is a map from the root of the region
+    /// to the set of reachable nodes, stored as raw pointers.
+    /// Additionally return a map from raw pointers to RcExpr.
     pub fn collect_reachable(
         self: &RcExpr,
         root: &RcExpr,

@@ -1,0 +1,341 @@
+## Reference translations for common C expressions.
+## Array functions can be copied directly and called.
+## Loops should be copied and edited as necessary.
+## Use find/replace to update labels in loops.
+##
+## Arrays are floats. For integer arrays, or to otherwise
+## translate from float to int, use find/replace.
+## Casting between float and int is not supported by Bril,
+## so float programs may need to maintain additional 
+## float indices in loops, etc., as necessary.
+
+# FOR COPY-PASTE, DO NOT CALL
+# EXPECTS:
+#   N: int = const <bound>;
+#   one: int = const 1;
+@single_for() {
+    i: int = const 0;
+.label_i:
+    cond: bool = lt i N;
+    br cond .label_i_body .label_i_done;
+.label_i_body:
+    i: int = add i one;
+    jmp .label_i;
+.label_i_done:
+}
+
+# FOR COPY-PASTE, DO NOT CALL
+# EXPECTS:
+#   N: int = const <bound>;
+#   one: int = const 1;
+@two_nested_for() {
+    i: int = const 0;
+.label_i:
+    cond: bool = lt i N;
+    br cond .label_i_body .label_i_done;
+.label_i_body:
+    j: int = const 0;
+.label_j:
+    cond: bool = lt j N;
+    br cond .label_j_body .label_j_done;
+.label_j_body:
+    j: int = add j one;
+    jmp .label_j;
+.label_j_done:
+    i: int = add i one;
+    jmp .label_i;
+.label_i_done:
+}
+
+# FOR COPY-PASTE, DO NOT CALL
+# EXPECTS:
+#   N: int = const <bound>;
+#   one: int = const 1;
+@three_nested_for() {
+    i: int = const 0;
+.label_i:
+    cond: bool = lt i N;
+    br cond .label_i_body .label_i_done;
+.label_i_body:
+    j: int = const 0;
+.label_j:
+    cond: bool = lt j N;
+    br cond .label_j_body .label_j_done;
+.label_j_body:
+    k: int = const 0;
+.label_k:
+    cond: bool = lt k N;
+    br cond .label_k_body .label_k_done;
+.label_k_body:
+    k: int = add k one;
+    jmp .label_k;
+.label_k_done:
+    j: int = add j one;
+    jmp .label_j;
+.label_j_done:
+    i: int = add i one;
+    jmp .label_i;
+.label_i_done:
+}
+
+@matrix_new(Nrow: int, Ncol: int): ptr<float> {
+    total: int = mul Nrow Ncol;
+    ptr: ptr<float> = alloc total;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<float>, row: int, col: int, Ncol: int): ptr<float> {
+    row_offset: int = mul row Ncol;
+    offset: int = add row_offset col;
+    new_ptr: ptr<float> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_get(mtx: ptr<float>, row: int, col: int, Ncol: int): float {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_set(mtx: ptr<float>, row: int, col: int, Ncol: int, val: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    store ptr val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_incr(mtx: ptr<float>, row: int, col: int, Ncol: int, incr: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    new_val: float = fadd val incr;
+    store ptr new_val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_scale(mtx: ptr<float>, row: int, col: int, Ncol: int, scale: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    new_val: float = fmul val scale;
+    store ptr new_val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_decr(mtx: ptr<float>, row: int, col: int, Ncol: int, decr: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    new_val: float = fsub val decr;
+    store ptr new_val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_div(mtx: ptr<float>, row: int, col: int, Ncol: int, div: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    new_val: float = fdiv val div;
+    store ptr new_val;
+}
+
+@matrix_print(mtx: ptr<float>, Nrow: int, Ncol: int) {
+    i: int = const 0;
+    one: int = const 1;
+    total: int = mul Nrow Ncol;
+.while:
+    cond: bool = lt i total;
+    br cond .body .done;
+.body:
+    mtx_loc: ptr<float> = ptradd mtx i;
+    val: float = load mtx_loc;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+@vector_new(N: int): ptr<float> {
+    ptr: ptr<float> = alloc N;
+    ret ptr;
+}
+
+@vector_get(vec: ptr<float>, i: int): float {
+    ptr: ptr<float> = ptradd vec i;
+    val: float = load ptr;
+    ret val;
+}
+
+@vector_set(vec: ptr<float>, i: int, val: float) {
+    ptr: ptr<float> = ptradd vec i;
+    store ptr val;
+}
+
+@vector_incr(vec: ptr<float>, i: int, incr: float) {
+    ptr: ptr<float> = ptradd vec i;
+    val: float = load ptr;
+    new_val: float = fadd val incr;
+    store ptr new_val;
+}
+
+@vector_decr(vec: ptr<float>, i: int, decr: float) {
+    ptr: ptr<float> = ptradd vec i;
+    val: float = load ptr;
+    new_val: float = fsub val decr;
+    store ptr new_val;
+}
+
+# EXPECTS:
+#   @vector_get defined
+@vector_print(vec: ptr<float>, N: int) {
+    i: int = const 0;
+    one: int = const 1;
+.while:
+    cond: bool = lt i N;
+    br cond .body .done;
+.body:
+    val: float = call @vector_get vec i;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+@tensor_new(Ni: int, Nj: int, Nk: int): ptr<float> {
+    total: int = mul Ni Nj;
+    total: int = mul total Nk;
+    ptr: ptr<float> = alloc total;
+    ret ptr;
+}
+
+@tensor_loc(tsr: ptr<float>, i: int, j: int, k: int, Nj: int, Nk: int): ptr<float> {
+    offset: int = mul i Nj;
+    offset: int = add offset j;
+    offset: int = mul offset Nk;
+    offset: int = add offset k;
+    new_ptr: ptr<float> = ptradd tsr offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @tensor_loc defined
+@tensor_get(tsr: ptr<float>, i: int, j: int, k: int, Nj: int, Nk: int): float {
+    ptr: ptr<float> = call @tensor_loc tsr i j k Nj Nk;
+    val: float = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @tensor_loc defined
+@tensor_set(tsr: ptr<float>, i: int, j: int, k: int, Nj: int, Nk: int, val: float) {
+    ptr: ptr<float> = call @tensor_loc tsr i j k Nj Nk;
+    store ptr val;
+}
+
+# EXPECTS:
+#   @tensor_loc defined
+@tensor_incr(tsr: ptr<float>, i: int, j: int, k: int, Nj: int, Nk: int, incr: float) {
+    ptr: ptr<float> = call @tensor_loc tsr i j k Nj Nk;
+    val: float = load ptr;
+    new_val: float = fadd val incr;
+    store ptr new_val;
+}
+
+@tensor_print(tsr: ptr<float>, Ni: int, Nj: int, Nk: int) {
+    i: int = const 0;
+    one: int = const 1;
+    total: int = mul Ni Nj;
+    total: int = mul total Nk;
+.while:
+    cond: bool = lt i total;
+    br cond .body .done;
+.body:
+    tsr_loc: ptr<float> = ptradd tsr i;
+    val: float = load tsr_loc;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+# Search for n % m where n and m are floats by
+# iteratively subtracting the largest m*2^k that
+# fits inside n. 
+# Takes O((log n/m)^2) time.
+# NOTE: In C, this can be done with a built in 
+# function, but this is the best we can do.
+@fmod(n: float, m: float): float {
+    zero: float = const 0;
+    two: float = const 2;
+    rem: float = id n;
+.while:
+    cond: bool = fge rem m;
+    br cond .body .done;
+.body:
+    decr: float = id m;
+.while_inner:
+    diff: float = fsub rem decr;
+    cond: bool = fge diff zero;
+    br cond .body_inner .done_inner;
+.body_inner:
+    decr: float = fmul decr two;
+    jmp .while_inner;
+.done_inner:
+    decr: float = fdiv decr two;
+    rem: float = fsub rem decr;
+    jmp .while;
+.done:
+    ret rem;
+}
+
+# Loop Newton's method until convergence within a
+# multiplicative 1 +/- 1e-10 factor. That is,
+#         x_(i+1) = 1/2 (x_i + n / x_i).
+# 
+# Takes O(log n) iterations.
+# NOTE: C uses a hardware instruction to compute 
+# sqrt, but this is the best we can do.
+@sqrt(n: float): float {
+    # handle zero
+    zero: float = const 0;
+    is_zero: bool = feq n zero;
+    br is_zero .ret_zero .continue_zero;
+.ret_zero:
+    ret zero;
+.continue_zero:
+
+    # handle nan
+    is_not_nan: bool = feq n n;
+    br is_not_nan .continue_nan .ret_nan;
+.ret_nan:
+    nan: float = fdiv zero zero;
+    ret nan;
+.continue_nan:
+
+    # handle negative
+    is_negative: bool = flt n zero;
+    br is_negative .ret_nan .continue_neg;
+.continue_neg:
+
+    # main case
+    two: float = const 2;
+    oneminuseps: float = const 0.9999999999;
+    onepluseps: float = const 1.0000000001;
+    ans: float = const 1;
+.do:
+    next: float = fdiv n ans;
+    next: float = fadd ans next;
+    next: float = fdiv next two;
+.while:
+    quot: float = fdiv next ans;
+    ans: float = id next;
+    big_enough: bool = fge quot oneminuseps;
+    small_enough: bool = fle quot onepluseps;
+    good: bool = and big_enough small_enough;
+    br good .done .do;
+.done:
+    ret ans;
+}

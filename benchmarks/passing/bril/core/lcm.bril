@@ -1,0 +1,55 @@
+@main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 250;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  inner_counter: int = const 10;
+.inner_cond:
+  inner_cond: bool = lt inner_counter loop_bound;
+  br inner_cond .inner_body .inner_done;
+.inner_body:
+  call @orig_main loop_counter inner_counter;
+  inner_counter: int = add inner_counter loop_incr;
+  jmp .inner_cond;
+.inner_done:
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
+
+@orig_main(x : int, y : int ) {
+  greater: int = id y;
+  v4: bool = gt x y;
+  br v4 .then.1 .else.1;
+.then.1:
+  greater: int = id x;
+  jmp .endif.1;
+.else.1:
+.endif.1:
+.foreverloop:
+  modX : int = call @getMod greater x;
+  modY : int = call @getMod greater y;
+  zero: int = const 0;
+  xZero : bool = eq modX zero;
+  yZero : bool = eq modY zero;
+  bothZero : bool = and xZero yZero;
+  br bothZero .then.2 .else.2;
+.then.2:
+  print greater;
+  jmp .loopend;
+.else.2:
+  one: int = const 1;
+  greater:int = add greater one;
+  jmp .foreverloop;
+.loopend:
+}
+
+@getMod(val: int, mod: int): int{
+  divisor: int = div val mod;
+  multiple: int = mul divisor mod;
+  rem: int = sub val multiple;
+  ret rem;
+}

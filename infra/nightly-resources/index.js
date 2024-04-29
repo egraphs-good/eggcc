@@ -1,3 +1,21 @@
+
+
+// copied from profile.py
+const allmodes = [["rvsdg_roundtrip", "rvsdg-round-trip-to-executable", ""],
+
+["egglog_noopt_brilift_noopt", "compile-brilift", "--optimize-egglog false --optimize-brilift false"],
+["egglog_noopt_brilift_opt", "compile-brilift", "--optimize-egglog false --optimize-brilift true"],
+["egglog_opt_brilift_noopt", "compile-brilift", "--optimize-egglog true --optimize-brilift false"],
+["egglog_opt_brilift_opt", "compile-brilift", "--optimize-egglog true --optimize-brilift true"],
+
+["egglog_noopt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm false"],
+["egglog_noopt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm true"],
+["egglog_opt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm false"],
+["egglog_opt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm true"]]
+
+
+var enabledModes = new Set();
+
 async function getPreviousRuns() {
     const req = await fetch("https://nightly.cs.washington.edu/reports-json/eggcc/");
     const files = await req.json();
@@ -114,9 +132,9 @@ function buildEntry(run) {
     const results = run.hyperfine.results[0];
     return {
         name: run.runMethod,
+        mean: tryRound(results.mean),
         min: tryRound(results.min),
         max: tryRound(results.max),
-        mean: tryRound(results.mean),
         median: tryRound(results.median),
         stddev: tryRound(results.stddev),
     }
@@ -147,11 +165,16 @@ async function loadBenchmarks(compareTo) {
                 data: Object
                     .keys(currentRun[benchName])
                     .map((runMethod) => {
+                        // if the mode is not enabled, skip it
+                        if (!enabledModes.has(runMethod)) {
+                            return undefined;
+                        }
                         const prevBenchmark = previousRun ? previousRun[benchName] : undefined;
                         const prevRun = prevBenchmark ? prevBenchmark[runMethod] : undefined;
                         
                         return buildTableText(prevRun, currentRun[benchName][runMethod]) 
                     })
+                    .filter((entry) => entry !== undefined)
             }
         }
     });
@@ -166,8 +189,47 @@ async function loadBenchmarks(compareTo) {
     container.innerHTML = ConvertJsonToTable(parsed);
 }
 
+function makecheckbox(parent, mode) {
+    // make a check box for enabling this mode
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = mode;
+    checkbox.checked = true;
+    checkbox.onchange = () => {
+        // if the checkbox is checked, add the mode to the set of enabled modes
+        if (checkbox.checked) {
+            enabledModes.add(mode);
+        } else {
+            // if the checkbox is unchecked, remove the mode from the set of enabled modes
+            enabledModes.delete(mode);
+        }
+        // load everything again
+        loadBenchmarks();
+    }
+    parent.appendChild(checkbox);
+    // make a label for the checkbox
+    const label = document.createElement("label");
+    label.htmlFor = mode;
+    label.innerText = mode;
+    parent.appendChild(label);
+    // make a line break
+    parent.appendChild(document.createElement("br"));
+
+    // add this to the set of enabled modes
+    enabledModes.add(mode);
+}
+
 // Top-level load function for the main index page.
 async function load() {
+    // for each mode in allmodes, make a box to enable or disable it
+    // put them in the div with id modeselections
+    const modeSelections = document.getElementById("modeselections");
+    allmodes.forEach((mode) => {
+        makecheckbox(modeSelections, mode[0])
+    })
+
+
+
     const previousRuns = await getPreviousRuns();
     const initialRunIdx = findBenchToCompareIdx(previousRuns);
     

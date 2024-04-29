@@ -1,5 +1,44 @@
-# ARGS: 12 4 5 13
-@main (width1:int, height1:int, width2:int, height2:int){
+
+@main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 40;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  loop2_counter: int = const 10;
+.loop2_cond:
+  loop2_cond: bool = lt loop2_counter loop_bound;
+  br loop2_cond .loop2_body .loop2_done;
+.loop2_body:
+  loop3_counter: int = const 10;
+.loop3_cond:
+  loop3_cond: bool = lt loop3_counter loop_bound;
+  br loop3_cond .loop3_body .loop3_done;
+.loop3_body:
+  loop4_counter: int = const 10;
+.loop4_cond:
+  loop4_cond: bool = lt loop4_counter loop_bound;
+  br loop4_cond .loop4_body .loop4_done;
+.loop4_body:
+  call @orig_main loop_counter loop2_counter loop3_counter loop4_counter;
+  loop4_counter: int = add loop4_counter loop_incr;
+  jmp .loop4_cond;
+.loop4_done:  
+  loop3_counter: int = add loop3_counter loop_incr;
+  jmp .loop3_cond;
+.loop3_done:  
+  loop2_counter: int = add loop2_counter loop_incr;
+  jmp .loop2_cond;
+.loop2_done:
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
+
+
+@orig_main (width1:int, height1:int, width2:int, height2:int){
   output: bool = call @fitsInside width1 height1 width2 height2;
   print output;
 }

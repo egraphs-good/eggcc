@@ -1,39 +1,33 @@
 # ARGS: 1
 @main(x: int) {
-  y: int = const 2;
-  z: int = const 3;
-  a: bool = lt x y;
-  b: bool = lt y z;
+  zero: int = const 0;
+  one: int = const 1;
 
+  a: bool = lt x zero;
+  b: bool = gt x zero;
   c: bool = and a b;
   br c .A .B;
-.A:
-  print x;
-  jmp .C;
-.B:
-  print y;
-.C:
-  print z;
-}
 
-# want to "simplify" to:
-# @main(x: int) {
-#   y: int = const 2;
-#   z: int = const 3;
-#   a: bool = lt x y;
-#   b: bool = lt y z;
-# 
-#   br a .A .B;
-# .A:
-#   br b .A1 .A2;
-# .A1:
-#   print x;
-#   jmp .C;
-# .A2:
-#   print y;
-#   jmp .C;
-# .B:
-#   print y;
-# .C:
-#   print z;
-# }
+.A:
+  x: int = const 1;
+  jmp .C;
+
+.B:
+  d: bool = lt x zero;
+  e: bool = gt x zero;
+  f: bool = and d e;
+  br f .X .Y;
+
+.X:
+  x: int = const 2;
+.top:
+  x: int = add x one;
+  g: bool = gt x zero;
+  br g .C .top;
+
+.Y:
+  x: int = const 3;
+
+.C:
+  print x;
+}

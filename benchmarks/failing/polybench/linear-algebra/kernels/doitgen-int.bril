@@ -1,0 +1,288 @@
+## doitgen is a kernel for the MADNESS framework for 
+## adaptive multiresolution methods in multiwavelet bases,
+## a topic in quantum chemistry.
+
+@main {
+    # constants
+    # dimensions correspond to Polybench MEDIUM_DATASET
+
+    NQ: int = const 40;
+    fNQ: int = const 40;
+    NR: int = const 50;
+    fNR: int = const 50;
+    NP: int = const 60;
+    fNP: int = const 60;
+
+    zero: int = const 0;
+    one: int = const 1;
+    fzero: int = const 0;
+
+    # initialize arrays
+    A: ptr<int> = call @tensor_new NR NQ NP;
+    C4: ptr<int> = call @matrix_new NP NP;
+
+    call @init A C4 NQ fNQ NR fNR NP fNP;
+
+    # main computation
+    sum: ptr<int> = call @vector_new NP;
+
+    r: int = const 0;
+.main_r:
+    cond: bool = lt r NR;
+    br cond .main_r_body .main_r_done;
+.main_r_body:
+    q: int = const 0;
+.main_q:
+    cond: bool = lt q NQ;
+    br cond .main_q_body .main_q_done;
+.main_q_body:
+    p: int = const 0;
+.main_p1:
+    cond: bool = lt p NP;
+    br cond .main_p1_body .main_p1_done;
+.main_p1_body:
+    call @vector_set sum p fzero;
+    s: int = const 0;
+.main_s:
+    cond: bool = lt s NP;
+    br cond .main_s_body .main_s_done;
+.main_s_body:
+    Arqs: int = call @tensor_get A r q s NQ NP;
+    C4sp: int = call @matrix_get C4 s p NP;
+    incr: int = mul Arqs C4sp;
+    call @vector_incr sum p incr;
+    s: int = add s one;
+    jmp .main_s;
+.main_s_done:
+    p: int = add p one;
+    jmp .main_p1;
+.main_p1_done:
+    p: int = const 0;
+.main_p2:
+    cond: bool = lt p NP;
+    br cond .main_p2_body .main_p2_done;
+.main_p2_body:
+    sump: int = call @vector_get sum p;
+    call @tensor_set A r q p NQ NP sump;
+    p: int = add p one;
+    jmp .main_p2;
+.main_p2_done:
+    q: int = add q one;
+    jmp .main_q;
+.main_q_done:
+    r: int = add r one;
+    jmp .main_r;
+.main_r_done:
+
+    call @tensor_print A NR NQ NP;
+
+    free A;
+    free sum;
+    free C4;
+}
+
+
+@init(A: ptr<int>, C4: ptr<int>,
+      NQ: int, fNQ: int, NR: int, fNR: int, NP: int, fNP: int) {
+    one: int = const 1;
+    fone: int = const 1;
+
+    i: int = const 0;
+    fi: int = const 0;
+.init_A_i:
+    cond: bool = lt i NR;
+    br cond .init_A_i_body .init_A_i_done;
+.init_A_i_body:
+    j: int = const 0;
+    fj: int = const 0;
+.init_A_j:
+    cond: bool = lt j NQ;
+    br cond .init_A_j_body .init_A_j_done;
+.init_A_j_body:
+    k: int = const 0;
+    fk: int = const 0;
+.init_A_k:
+    cond: bool = lt k NP;
+    br cond .init_A_k_body .init_A_k_done;
+.init_A_k_body:
+    val: int = mul fi fj;
+    val: int = add val fk;
+    val: int = call @fmod val fNP;
+    val: int = div val fNP;
+    call @tensor_set A i j k NQ NP val; 
+    k: int = add k one;
+    fk: int = add fk fone;
+    jmp .init_A_k;
+.init_A_k_done:
+    j: int = add j one;
+    fj: int = add fj fone;
+    jmp .init_A_j;
+.init_A_j_done:
+    i: int = add i one;
+    fi: int = add fi fone;
+    jmp .init_A_i;
+.init_A_i_done:
+
+    i: int = const 0;
+    fi: int = const 0;
+.init_C4_i:
+    cond: bool = lt i NP;
+    br cond .init_C4_i_body .init_C4_i_done;
+.init_C4_i_body:
+    j: int = const 0;
+    fj: int = const 0;
+.init_C4_j:
+    cond: bool = lt j NP;
+    br cond .init_C4_j_body .init_C4_j_done;
+.init_C4_j_body:
+    val: int = mul fi fj;
+    val: int = call @fmod val fNP;
+    val: int = div val fNP;
+    call @matrix_set C4 i j NP val; 
+    j: int = add j one;
+    fj: int = add fj fone;
+    jmp .init_C4_j;
+.init_C4_j_done:
+    i: int = add i one;
+    fi: int = add fi fone;
+    jmp .init_C4_i;
+.init_C4_i_done:
+}
+
+@matrix_new(Nrow: int, Ncol: int): ptr<int> {
+    total: int = mul Nrow Ncol;
+    ptr: ptr<int> = alloc total;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<int>, row: int, col: int, Ncol: int): ptr<int> {
+    row_offset: int = mul row Ncol;
+    offset: int = add row_offset col;
+    new_ptr: ptr<int> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_get(mtx: ptr<int>, row: int, col: int, Ncol: int): int {
+    ptr: ptr<int> = call @matrix_loc mtx row col Ncol;
+    val: int = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_set(mtx: ptr<int>, row: int, col: int, Ncol: int, val: int) {
+    ptr: ptr<int> = call @matrix_loc mtx row col Ncol;
+    store ptr val;
+}
+
+@tensor_new(Ni: int, Nj: int, Nk: int): ptr<int> {
+    total: int = mul Ni Nj;
+    total: int = mul total Nk;
+    ptr: ptr<int> = alloc total;
+    ret ptr;
+}
+
+@tensor_loc(tsr: ptr<int>, i: int, j: int, k: int, Nj: int, Nk: int): ptr<int> {
+    offset: int = mul i Nj;
+    offset: int = add offset j;
+    offset: int = mul offset Nk;
+    offset: int = add offset k;
+    new_ptr: ptr<int> = ptradd tsr offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @tensor_loc defined
+@tensor_get(tsr: ptr<int>, i: int, j: int, k: int, Nj: int, Nk: int): int {
+    ptr: ptr<int> = call @tensor_loc tsr i j k Nj Nk;
+    val: int = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @tensor_loc defined
+@tensor_set(tsr: ptr<int>, i: int, j: int, k: int, Nj: int, Nk: int, val: int) {
+    ptr: ptr<int> = call @tensor_loc tsr i j k Nj Nk;
+    store ptr val;
+}
+
+# EXPECTS:
+#   @tensor_loc defined
+@tensor_incr(tsr: ptr<int>, i: int, j: int, k: int, Nj: int, Nk: int, incr: int) {
+    ptr: ptr<int> = call @tensor_loc tsr i j k Nj Nk;
+    val: int = load ptr;
+    new_val: int = add val incr;
+    store ptr new_val;
+}
+
+@tensor_print(tsr: ptr<int>, Ni: int, Nj: int, Nk: int) {
+    i: int = const 0;
+    one: int = const 1;
+    total: int = mul Ni Nj;
+    total: int = mul total Nk;
+.while:
+    cond: bool = lt i total;
+    br cond .body .done;
+.body:
+    tsr_loc: ptr<int> = ptradd tsr i;
+    val: int = load tsr_loc;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+@vector_new(N: int): ptr<int> {
+    ptr: ptr<int> = alloc N;
+    ret ptr;
+}
+
+@vector_get(vec: ptr<int>, i: int): int {
+    ptr: ptr<int> = ptradd vec i;
+    val: int = load ptr;
+    ret val;
+}
+
+@vector_set(vec: ptr<int>, i: int, val: int) {
+    ptr: ptr<int> = ptradd vec i;
+    store ptr val;
+}
+
+@vector_incr(vec: ptr<int>, i: int, incr: int) {
+    ptr: ptr<int> = ptradd vec i;
+    val: int = load ptr;
+    new_val: int = add val incr;
+    store ptr new_val;
+}
+
+# Search for n % m where n and m are ints by
+# iteratively subtracting the largest m*2^k that
+# fits inside n. 
+# Takes O((log n/m)^2) time.
+# NOTE: In C, this can be done with a built in 
+# function, but this is the best we can do.
+@fmod(n: int, m: int): int {
+    zero: int = const 0;
+    two: int = const 2;
+    rem: int = id n;
+.while:
+    cond: bool = ge rem m;
+    br cond .body .done;
+.body:
+    decr: int = id m;
+.while_inner:
+    diff: int = sub rem decr;
+    cond: bool = ge diff zero;
+    br cond .body_inner .done_inner;
+.body_inner:
+    decr: int = mul decr two;
+    jmp .while_inner;
+.done_inner:
+    decr: int = div decr two;
+    rem: int = sub rem decr;
+    jmp .while;
+.done:
+    ret rem;
+}

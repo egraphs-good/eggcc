@@ -91,7 +91,7 @@ cfg_test_function_to_cfg!(
 
 cfg_test_function_to_cfg!(
     unstructured,
-    include_str!("../../tests/passing/small/unstructured.bril"),
+    include_str!("../../tests/passing/other/unstructured.bril"),
     [
         ENTRY = (true_cond("a_cond")) => "B",
         ENTRY = (false_cond("a_cond")) => "C",

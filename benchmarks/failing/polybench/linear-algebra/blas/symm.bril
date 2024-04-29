@@ -1,0 +1,240 @@
+## symm computes matrix multiplication for a
+## symmetric matrix.
+
+@main {
+    # constants
+    # dimensions correspond to Polybench MEDIUM_DATASET
+
+    M: int = const 200;
+    fM: float = const 200;
+    N: int = const 240;
+    fN: float = const 240;
+
+    one: int = const 1;
+    fzero: float = const 0;
+
+    # initialize arrays
+    C: ptr<float> = call @matrix_new M N;
+    A: ptr<float> = call @matrix_new M M;
+    B: ptr<float> = call @matrix_new M N;
+    alpha: float = const 1.5;
+    beta: float = const 1.2;
+    call @init C A B M fM N fN;
+
+    # main computation
+
+    i: int = const 0;
+.main_i:
+    cond: bool = lt i M;
+    br cond .main_i_body .main_i_done;
+.main_i_body:
+    j: int = const 0;
+.main_j:
+    cond: bool = lt j N;
+    br cond .main_j_body .main_j_done;
+.main_j_body:
+    temp2: float = const 0;
+    k: int = const 0;
+.main_k:
+    cond: bool = lt k i;
+    br cond .main_k_body .main_k_done;
+.main_k_body:
+    Bij: float = call @matrix_get B i j N;
+    Aik: float = call @matrix_get A i k M;
+    incr: float = fmul alpha Bij;
+    incr: float = fmul incr Aik;
+    call @matrix_incr C k j N incr;
+
+    Bkj: float = call @matrix_get B k j N;
+    Aik: float = call @matrix_get A i k M;
+    incr: float = fmul Bkj Aik;
+
+    temp2: float = fadd temp2 incr;
+
+    k: int = add k one;
+    jmp .main_k;
+.main_k_done:
+    Cij: float = call @matrix_get C i j N;
+    Bij: float = call @matrix_get B i j N;
+    Aii: float = call @matrix_get A i i M;
+
+    val1: float = fmul beta Cij;
+    val2: float = fmul alpha Bij;
+
+    val2: float = fmul val2 Aii;
+    val3: float = fmul alpha temp2;
+
+    val: float = fadd val1 val2;
+    val: float = fadd val val3;
+    call @matrix_set C i j N val;
+    j: int = add j one;
+    jmp .main_j;
+.main_j_done:
+    i: int = add i one;
+    jmp .main_i;
+.main_i_done:
+
+    call @matrix_print C M N;
+
+    free C;
+    free A;
+    free B;
+}
+
+@init(C: ptr<float>, A: ptr<float>, B: ptr<float>,
+      M: int, fM: float, N: int, fN: float) {
+    one: int = const 1;
+    fone: float = const 1;
+    hundred: float = const 100;
+    invalid: float = const -999;
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_CB_i:
+    cond: bool = lt i M;
+    br cond .init_CB_i_body .init_CB_i_done;
+.init_CB_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_CB_j:
+    cond: bool = lt j N;
+    br cond .init_CB_j_body .init_CB_j_done;
+.init_CB_j_body:
+    val: float = fadd fi fj;
+    val: float = call @fmod val hundred;
+    val: float = fdiv val fM;
+    call @matrix_set C i j N val;
+
+    val: float = fadd fN fi;
+    val: float = fsub val fj;
+    val: float = call @fmod val hundred;
+    val: float = fdiv val fM;
+    call @matrix_set B i j N val;
+
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_CB_j;
+.init_CB_j_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_CB_i;
+.init_CB_i_done:
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_A_i:
+    cond: bool = lt i M;
+    br cond .init_A_i_body .init_A_i_done;
+.init_A_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_A_j1:
+    cond: bool = le j i;
+    br cond .init_A_j1_body .init_A_j1_done;
+.init_A_j1_body:
+    val: float = fadd fi fj;
+    val: float = call @fmod val hundred;
+    val: float = fdiv val fM;
+    call @matrix_set A i j M val;
+
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_A_j1;
+.init_A_j1_done:
+    j: int = add i one;
+.init_A_j2:
+    cond: bool = lt j M;
+    br cond .init_A_j2_body .init_A_j2_done;
+.init_A_j2_body:
+    call @matrix_set A i j M invalid;
+    j: int = add j one;
+    jmp .init_A_j2;
+.init_A_j2_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_A_i;
+.init_A_i_done:
+}
+
+@matrix_new(Nrow: int, Ncol: int): ptr<float> {
+    total: int = mul Nrow Ncol;
+    ptr: ptr<float> = alloc total;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<float>, row: int, col: int, Ncol: int): ptr<float> {
+    row_offset: int = mul row Ncol;
+    offset: int = add row_offset col;
+    new_ptr: ptr<float> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_get(mtx: ptr<float>, row: int, col: int, Ncol: int): float {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_set(mtx: ptr<float>, row: int, col: int, Ncol: int, val: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    store ptr val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_incr(mtx: ptr<float>, row: int, col: int, Ncol: int, incr: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    new_val: float = fadd val incr;
+    store ptr new_val;
+}
+
+@matrix_print(mtx: ptr<float>, Nrow: int, Ncol: int) {
+    i: int = const 0;
+    one: int = const 1;
+    total: int = mul Nrow Ncol;
+.while:
+    cond: bool = lt i total;
+    br cond .body .done;
+.body:
+    mtx_loc: ptr<float> = ptradd mtx i;
+    val: float = load mtx_loc;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+# Search for n % m where n and m are floats by
+# iteratively subtracting the largest m*2^k that
+# fits inside n. 
+# Takes O((log n/m)^2) time.
+# NOTE: In C, this can be done with a built in 
+# function, but this is the best we can do.
+@fmod(n: float, m: float): float {
+    zero: float = const 0;
+    two: float = const 2;
+    rem: float = id n;
+.while:
+    cond: bool = fge rem m;
+    br cond .body .done;
+.body:
+    decr: float = id m;
+.while_inner:
+    diff: float = fsub rem decr;
+    cond: bool = fge diff zero;
+    br cond .body_inner .done_inner;
+.body_inner:
+    decr: float = fmul decr two;
+    jmp .while_inner;
+.done_inner:
+    decr: float = fdiv decr two;
+    rem: float = fsub rem decr;
+    jmp .while;
+.done:
+    ret rem;
+}

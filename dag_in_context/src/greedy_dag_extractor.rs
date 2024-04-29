@@ -539,6 +539,9 @@ impl CostModel for DefaultCostModel {
             "If" | "Switch" => 50.,
             // Unreachable
             "Nil-List<PtrPointees>"
+            | "I"
+            | "Infinity"
+            | "NegInfinity"
             | "PointsAnywhere"
             | "Cons-List<PtrPointees>"
             | "UnwrapPtrPointsTo"

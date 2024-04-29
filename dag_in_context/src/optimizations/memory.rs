@@ -1,20 +1,6 @@
 // Signature of an egglog function, for metaprogramming
-struct FnImpl {
-    name: String,
-    arg_tys: Vec<String>,
-    resultty: String,
-}
-
-fn listlike(
-    el_tys: Vec<&str>,
-    el_functions: Vec<FnImpl>,
-    el_relations: Vec<&str>,
-    el_binops: Vec<FnImpl>,
-) -> String {
+fn listlike(el_tys: Vec<&str>, el_relations: Vec<&str>) -> String {
     assert!(!el_tys.is_empty());
-    for f in el_functions {
-        assert!(f.arg_tys == el_tys);
-    }
     let datatype = format!("List<{}>", el_tys.join("+"));
     let tys_s = el_tys.join(" ");
     let el = (0..el_tys.len())
@@ -38,6 +24,13 @@ fn listlike(
        (= l (Length-{datatype} tl)))
       ((set (Length-{datatype} x) (+ l 1)))
       :ruleset always-run)
+(rule ((= x (Nil-{datatype})))
+      ((set (Length-{datatype} x) 0))
+      :ruleset memory-helpers)
+(rule ((= x (Cons-{datatype} {el} tl))
+       (= l (Length-{datatype} tl)))
+      ((set (Length-{datatype} x) (+ l 1)))
+      :ruleset memory-helpers)
 
 (relation IsEmpty-{datatype} ({datatype}))
 (rule ((= x (Nil-{datatype})))
@@ -95,64 +88,13 @@ fn listlike(
         "
         ));
     }
-
-    for FnImpl {
-        name,
-        arg_tys,
-        resultty,
-    } in el_binops
-    {
-        let mut expected_tys = el_tys.clone();
-        expected_tys.extend(el_tys.iter());
-        assert!(arg_tys == expected_tys);
-        let args1 = (0..el_tys.len())
-            .map(|i| format!("x{i}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        let args2 = (0..el_tys.len())
-            .map(|i| format!("y{i}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        let zipresultty = format!("List<{resultty}>");
-        res.push(format!(
-            "
-(function Zip<{name}> ({datatype} {datatype}) {zipresultty} :cost 1000)
-(rewrite (Zip<{name}> (Nil-{datatype}) (Nil-{datatype}))
-         (Nil-{zipresultty})
-         :ruleset always-run)
-(rewrite (Zip<{name}>
-           (Cons-{datatype} {args1} tl1)
-           (Cons-{datatype} {args2} tl2))
-         (Cons-{zipresultty}
-            ({name} {args1} {args2})
-            (Zip<{name}> tl1 tl2))
-         :ruleset always-run)
-            "
-        ))
-    }
     res.join("\n")
 }
 
 #[allow(non_snake_case)]
 pub(crate) fn rules() -> String {
-    let Listi64IntInterval = listlike(vec!["i64", "IntInterval"], vec![], vec![], vec![]);
-    let ListPointees = listlike(
-        vec!["PtrPointees"],
-        vec![],
-        vec!["PointsNowhere-PtrPointees"],
-        vec![
-            FnImpl {
-                name: "Union-PtrPointees".to_string(),
-                arg_tys: vec!["PtrPointees".to_string(), "PtrPointees".to_string()],
-                resultty: "PtrPointees".to_string(),
-            },
-            FnImpl {
-                name: "Intersect-PtrPointees".to_string(),
-                arg_tys: vec!["PtrPointees".to_string(), "PtrPointees".to_string()],
-                resultty: "PtrPointees".to_string(),
-            },
-        ],
-    );
+    let Listi64IntInterval = listlike(vec!["i64", "IntInterval"], vec![]);
+    let ListPointees = listlike(vec!["PtrPointees"], vec!["PointsNowhere-PtrPointees"]);
     format!(
         "
 (datatype IntOrInfinity
@@ -383,7 +325,35 @@ pub(crate) fn rules() -> String {
       ((PointsNowhere-PtrPointees f))
       :ruleset always-run)
 
-{ListPointees}"
+{ListPointees}
+
+
+(function Zip<Union-PtrPointees> (List<PtrPointees> List<PtrPointees>) List<PtrPointees> :cost 1000)
+(rewrite (Zip<Union-PtrPointees> (Nil-List<PtrPointees>) (Nil-List<PtrPointees>))
+         (Nil-List<PtrPointees>)
+         :ruleset always-run)
+(rewrite (Zip<Union-PtrPointees>
+           (Cons-List<PtrPointees> x0 tl1)
+           (Cons-List<PtrPointees> y0 tl2))
+         (Cons-List<PtrPointees>
+            (Union-PtrPointees x0 y0)
+            (Zip<Union-PtrPointees> tl1 tl2))
+         :when ((= (Length-List<PtrPointees> tl1) (Length-List<PtrPointees> tl2)))
+         :ruleset always-run)
+
+(function Zip<Intersect-PtrPointees> (List<PtrPointees> List<PtrPointees>) List<PtrPointees> :cost 1000)
+(rewrite (Zip<Intersect-PtrPointees> (Nil-List<PtrPointees>) (Nil-List<PtrPointees>))
+         (Nil-List<PtrPointees>)
+         :ruleset always-run)
+(rewrite (Zip<Intersect-PtrPointees>
+           (Cons-List<PtrPointees> x0 tl1)
+           (Cons-List<PtrPointees> y0 tl2))
+         (Cons-List<PtrPointees>
+            (Intersect-PtrPointees x0 y0)
+            (Zip<Intersect-PtrPointees> tl1 tl2))
+         :ruleset always-run)
+
+"
     )
 }
 

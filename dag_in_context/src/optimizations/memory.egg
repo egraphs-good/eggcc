@@ -62,6 +62,7 @@
          :ruleset memory-helpers)
 (rewrite (UnionPointees (TuplePointsTo x) (TuplePointsTo y))
          (TuplePointsTo (Zip<Union-PtrPointees> x y))
+         :when ((= (Length-List<PtrPointees> x) (Length-List<PtrPointees> y)))
          :ruleset memory-helpers)
 (function IntersectPointees (Pointees Pointees) Pointees)
 (rewrite (IntersectPointees (PtrPointsTo x) (PtrPointsTo y))

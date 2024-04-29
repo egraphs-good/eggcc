@@ -29,6 +29,7 @@ pub fn mk_schedule() -> String {
     
   (unstable-combined-ruleset optimizations
     loop-simplify
+    memory
   )
 
   (unstable-combined-ruleset expensive-optimizations

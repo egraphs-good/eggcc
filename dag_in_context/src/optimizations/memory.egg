@@ -185,66 +185,66 @@
 ; ============================
 
 ;                             arg pointees  result pointees
-(function PointsToCells (Expr Pointees)     Pointees :cost 999999) 
+(function PointsToCells (Expr Pointees)     Pointees :unextractable) 
 
 ; Top-level demand
 (rule ((Function name in-ty out-ty body))
       ((PointsToCells body (TypeToPointees in-ty)))
-      :ruleset memory-helpers)
+      :ruleset memory)
 
 ; Demand PointsToCells along state edge and pointer-typed values
 (rule ((PointsToCells (Bop (Print) e state) ap))
       ((PointsToCells state ap))
-      :ruleset memory-helpers)
+      :ruleset memory)
 (rule ((PointsToCells (Bop (Load) e state) ap))
       ((PointsToCells e ap)
        (PointsToCells state ap))
-      :ruleset memory-helpers)
+      :ruleset memory)
 (rule ((PointsToCells (Top (Write) ptr val state) ap))
       ((PointsToCells ptr ap)
        (PointsToCells state ap))
-      :ruleset memory-helpers)
+      :ruleset memory)
 (rule ((PointsToCells (Alloc id sz state ty) ap))
       ((PointsToCells state ap))
-      :ruleset memory-helpers)
+      :ruleset memory)
 (rule ((PointsToCells (Bop (Free) ptr state) ap))
       ((PointsToCells ptr ap)
        (PointsToCells state ap))
-      :ruleset memory-helpers)
+      :ruleset memory)
 
 ; Compute and propagate PointsToCells
 (rewrite (PointsToCells (Concat x y) aps)
          (TuplePointsTo (Concat-List<PtrPointees>
            (UnwrapTuplePointsTo (PointsToCells x aps))
            (UnwrapTuplePointsTo (PointsToCells y aps))))
-         :ruleset memory-helpers)
+         :ruleset memory)
 
 (rewrite (PointsToCells (Get x i) aps)
          (GetPointees (PointsToCells x aps) i)
-         :ruleset memory-helpers)
+         :ruleset memory)
 
 (rewrite (PointsToCells (Single x) aps)
          (TuplePointsTo
            (Cons-List<PtrPointees>
              (UnwrapPtrPointsTo (PointsToCells x aps))
              (Nil-List<PtrPointees>)))
-         :ruleset memory-helpers) 
+         :ruleset memory) 
 
 (rewrite (PointsToCells (Arg ty ctx) aps)
          aps
-         :ruleset memory-helpers)
+         :ruleset memory)
 
 ; Allow non-pointer types to resolve
 (rule ((PointsToCells x aps)
        (HasType x ty))
       ((TypeToPointees ty))
-      :ruleset memory-helpers)
+      :ruleset memory)
 (rule ((= f (PointsToCells x aps))
        (HasType x ty)
        (= pointees (TypeToPointees ty))
        (PointsNowhere pointees))
       ((union f pointees))
-      :ruleset memory-helpers)
+      :ruleset memory)
 
 (rewrite (PointsToCells (Bop (PtrAdd) x e) aps)
          (PtrPointsTo
@@ -253,13 +253,14 @@
              (UnwrapPtrPointsTo (PointsToCells x aps))))
          :when ((= (IntB lo) (lo-bound e))
                 (= (IntB hi) (hi-bound e)))
-         :ruleset memory-helpers)
+         :ruleset memory)
 
-(rewrite (PointsToCells (If inputs c t e) aps)
+; (rewrite (PointsToCells (If inputs c t e) aps)
+(rewrite (PointsToCells (If c inputs t e) aps)
          (UnionPointees
            (PointsToCells t (PointsToCells inputs aps))
            (PointsToCells e (PointsToCells inputs aps)))
-         :ruleset memory-helpers)
+         :ruleset memory)
 
 (rewrite (PointsToCells (Alloc id sz state ty) aps)
          (TuplePointsTo
@@ -272,7 +273,7 @@
              (Cons-List<PtrPointees>
                (PointsTo (Nil-List<i64+IntInterval>)) ; state output points to nothing
                (Nil-List<PtrPointees>))))
-         :ruleset memory-helpers)
+         :ruleset memory)
 
 ; arg pointees * loop in * loop out * i64 -> result pointees
 (function PointsToCellsAtIter (Pointees Expr Expr i64) Pointees)
@@ -286,7 +287,7 @@
               (PointsToCellsAtIter aps inputs pred-body 0)
               (PointeesDropFirst
                 (PointsToCells pred-body (PointsToCellsAtIter aps inputs pred-body 0))))))
-      :ruleset memory-helpers)
+      :ruleset memory)
 
 ; avoid quadratic query
 (function succ (i64) i64 :unextractable)
@@ -305,13 +306,13 @@
               pointees1
               (PointeesDropFirst
                 (PointsToCells pred-body pointees1)))))
-      :ruleset memory-helpers)
+      :ruleset memory)
 
 (rule ((= pointees (PointsToCellsAtIter aps inputs pred-body i))
        (= pointees (PointsToCellsAtIter aps inputs pred-body (succ i))))
       ((set (PointsToCells (DoWhile inputs pred-body) aps)
             pointees))
-      :ruleset memory-helpers)
+      :ruleset memory)
 
 ; ============================
 ; Update CellHasValues

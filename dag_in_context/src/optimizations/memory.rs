@@ -30,6 +30,15 @@ fn listlike(
   (Nil-{datatype})
   (Cons-{datatype} {tys_s} {datatype}))
 
+(function Length-{datatype} ({datatype}) i64)
+(rule ((= x (Nil-{datatype})))
+      ((set (Length-{datatype} x) 0))
+      :ruleset always-run)
+(rule ((= x (Cons-{datatype} {el} tl))
+       (= l (Length-{datatype} tl)))
+      ((set (Length-{datatype} x) (+ l 1)))
+      :ruleset always-run)
+
 (relation IsEmpty-{datatype} ({datatype}))
 (rule ((= x (Nil-{datatype})))
       ((IsEmpty-{datatype} x))

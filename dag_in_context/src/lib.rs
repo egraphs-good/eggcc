@@ -106,6 +106,7 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
 }
 
 // Returns a formatted string of (union call body) for each pair
+#[allow(dead_code)]
 fn print_function_inlining_pairs(
     function_inlining_pairs: Vec<function_inlining::CallBody>,
     printed: &mut String,
@@ -138,13 +139,13 @@ pub fn build_program(program: &TreeProgram) -> String {
     let mut term_cache = HashMap::<Term, String>::new();
 
     // Generate function inlining egglog
-    #[allow(unused)]
-    let function_inlining = print_function_inlining_pairs(
+    // TODO function inlining disabled due to performance bug
+    /*let function_inlining = print_function_inlining_pairs(
         function_inlining::function_inlining_pairs(program, config::FUNCTION_INLINING_ITERATIONS),
         &mut printed,
         &mut tree_state,
         &mut term_cache,
-    );
+    );*/
 
     // Generate program egglog
     let term = program.to_egglog_internal(&mut tree_state);

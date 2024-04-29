@@ -1,0 +1,46 @@
+# Compute the Ackermann function recursively.
+# WARNING: Will quickly exceed stack size
+# ARGS: 3 6
+@ack(m: int, n: int): int {
+  zero: int = const 0;
+  one: int = const 1;
+  cond_m: bool = eq m zero;
+  br cond_m .m_zero .m_nonzero;
+.m_zero:
+  tmp: int = add n one;
+  ret tmp;
+.m_nonzero:
+  cond_n: bool = eq n zero;
+  br cond_n .n_zero .n_nonzero;
+.n_zero:
+  m1: int = sub m one;
+  tmp: int = call @ack m1 one;
+  ret tmp;
+.n_nonzero:
+  m1: int = sub m one;
+  n1: int = sub n one;
+  t1: int = call @ack m n1;
+  t2: int = call @ack m1 t1;
+  ret t2;
+}
+
+@main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 1000;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  call @orig_main loop_counter;
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
+
+@orig_main(n: int) {
+  m: int = const 2;
+  tmp: int = call @ack m n;
+  print tmp;
+}
+

@@ -1,0 +1,144 @@
+# Bubble Sort for a list containing 5 elements. It is sorted in ascending order. 
+# It can be easily extended to list with any other length. 
+
+# input: size (5) and elements
+# output: sorted elements in ascending order
+
+@pack(size: int, n1: int, n2: int, n3: int, n4: int, n5: int) : ptr<int> {
+    one: int = const 1;
+    i: int = const 0;
+    array: ptr<int> = alloc size;
+# Pack data into array manually. Cannot use loop because of the different var name.     
+    loc: ptr<int> = ptradd array i;
+    store loc n1;
+    i: int = add i one;
+    loc: ptr<int> = ptradd array i;
+    store loc n2;
+    i: int = add i one;        
+    loc: ptr<int> = ptradd array i;
+    store loc n3;
+    i: int = add i one;        
+    loc: ptr<int> = ptradd array i;
+    store loc n4;
+    i: int = add i one;        
+    loc: ptr<int> = ptradd array i;
+    store loc n5;
+    ret array;
+}
+
+@print_array(array: ptr<int>, size: int) {
+    i: int = const 0;
+    one: int = const 1;
+.loop:
+    cond: bool = lt i size;
+    br cond .body .done;
+.body:
+    loc: ptr<int> = ptradd array i;
+    val: int = load loc;
+    print val;
+.loop_end:
+    i: int = add i one;
+    jmp .loop;
+.done:
+    ret;
+}
+
+@swap_cond(array: ptr<int>, j: int) {
+    one: int = const 1;
+    j_add_1: int = add j one;
+    loc: ptr<int> = ptradd array j;
+    loc_next: ptr<int> = ptradd array j_add_1;
+    elem_a: int = load loc;
+    elem_b: int = load loc_next;
+    
+    cond: bool = gt elem_a elem_b;
+    br cond .swap .done;
+.swap:
+    store loc elem_b;
+    store loc_next elem_a;
+.done:
+    ret;
+}
+
+@main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 25;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  loop2_counter: int = const 10;
+.loop2_cond:
+  loop2_cond: bool = lt loop2_counter loop_bound;
+  br loop2_cond .loop2_body .loop2_done;
+.loop2_body:
+  loop3_counter: int = const 10;
+.loop3_cond:
+  loop3_cond: bool = lt loop3_counter loop_bound;
+  br loop3_cond .loop3_body .loop3_done;
+.loop3_body:
+  loop4_counter: int = const 10;
+.loop4_cond:
+  loop4_cond: bool = lt loop4_counter loop_bound;
+  br loop4_cond .loop4_body .loop4_done;
+.loop4_body:
+  loop5_counter: int = const 10;
+.loop5_cond:
+  loop5_cond: bool = lt loop5_counter loop_bound;
+  br loop5_cond .loop5_body .loop5_done;
+.loop5_body:
+  call @orig_main loop_counter loop2_counter loop3_counter loop4_counter loop5_counter;
+  loop5_counter: int = add loop5_counter loop_incr;
+  jmp .loop5_cond;
+.loop5_done:  
+  loop4_counter: int = add loop4_counter loop_incr;
+  jmp .loop4_cond;
+.loop4_done:  
+  loop3_counter: int = add loop3_counter loop_incr;
+  jmp .loop3_cond;
+.loop3_done:  
+  loop2_counter: int = add loop2_counter loop_incr;
+  jmp .loop2_cond;
+.loop2_done:
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
+
+@orig_main(n1: int, n2: int, n3: int, n4: int, n5: int) {
+# Pack the input elements into an array with a starting pointer
+    size: int = const 5;
+    array: ptr<int> = call @pack size n1 n2 n3 n4 n5;
+
+# Bubble Sort
+one: int = const 1;
+i: int = const 0;
+j: int = const 0;
+sizei: int = sub size one;
+.loopi:
+    condi: bool = lt i sizei;
+    br condi .bodyi .donei;
+.bodyi:
+    sizej: int = sub size i;
+    sizej: int = sub sizej one;
+.loopj:
+    condj: bool = lt j sizej;
+    br condj .bodyj .donej;
+.bodyj:
+    call @swap_cond array j;
+.loop_endj:
+    j: int = add j one;
+    jmp .loopj;
+.donej:
+    j: int = const 0;
+.loopi_end:
+    i: int = add i one;
+    jmp .loopi;
+.donei:
+
+# Print array
+    call @print_array array size;
+
+    free array;
+}

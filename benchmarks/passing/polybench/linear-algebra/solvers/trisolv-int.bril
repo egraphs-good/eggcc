@@ -1,0 +1,157 @@
+## trisolv is a triangular solver.
+
+@main {
+    # constants
+    # dimensions correspond to Polybench MEDIUM_DATASET
+
+    N: int = const 400;
+    fN: int = const 400;
+
+    one: int = const 1;
+    zero: int = const 0;
+
+    # initialize arrays
+    L: ptr<int> = call @matrix_new N N;
+    b: ptr<int> = call @vector_new N;
+    x: ptr<int> = call @vector_new N;
+    call @init L b x N fN;
+
+    # main computation
+    i: int = const 0;
+.main_i:
+    cond: bool = lt i N;
+    br cond .main_i_body .main_i_done;
+.main_i_body:
+    bi: int = call @vector_get b i;
+    call @vector_set x i bi;
+    j: int = const 0;
+.main_j:
+    cond: bool = lt j i;
+    br cond .main_j_body .main_j_done;
+.main_j_body:
+    Lij: int = call @matrix_get L i j N;
+    xj: int = call @vector_get x j;
+    val: int = mul Lij xj;
+    call @vector_decr x i val;
+    j: int = add j one;
+    jmp .main_j;
+.main_j_done:
+    xi: int = call @vector_get x i;
+    Lii: int = call @matrix_get L i i N;
+    val: int = div xi Lii;
+    call @vector_set x i val;
+    i: int = add i one;
+    jmp .main_i;
+.main_i_done:
+
+    call @vector_print x N;
+
+    free L;
+    free x;
+    free b;
+}
+
+@init(L: ptr<int>, b: ptr<int>, x: ptr<int>,
+      N: int, fN: int) {
+    one: int = const 1;
+    fone: int = const 1;
+    ftwo: int = const 2;
+    finvalid: int = const -999;
+
+    i: int = const 0;
+    fi: int = const 0;
+.init_i:
+    cond: bool = lt i N;
+    br cond .init_i_body .init_i_done;
+.init_i_body:
+    call @vector_set x i finvalid;
+    call @vector_set b i fi;
+    j: int = const 0;
+    fj: int = const 0;
+.init_j:
+    cond: bool = le j i;
+    br cond .init_j_body .init_j_done;
+.init_j_body:
+    val: int = add fi fN;
+    val: int = sub val fj;
+    val: int = add val fone;
+    val: int = mul val ftwo;
+    val: int = div val fN;
+    call @matrix_set L i j N val;
+
+    j: int = add j one;
+    fj: int = add fj fone;
+    jmp .init_j;
+.init_j_done:
+    i: int = add i one;
+    fi: int = add fi fone;
+    jmp .init_i;
+.init_i_done:
+}
+
+@matrix_new(Nrow: int, Ncol: int): ptr<int> {
+    total: int = mul Nrow Ncol;
+    ptr: ptr<int> = alloc total;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<int>, row: int, col: int, Ncol: int): ptr<int> {
+    row_offset: int = mul row Ncol;
+    offset: int = add row_offset col;
+    new_ptr: ptr<int> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_get(mtx: ptr<int>, row: int, col: int, Ncol: int): int {
+    ptr: ptr<int> = call @matrix_loc mtx row col Ncol;
+    val: int = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_set(mtx: ptr<int>, row: int, col: int, Ncol: int, val: int) {
+    ptr: ptr<int> = call @matrix_loc mtx row col Ncol;
+    store ptr val;
+}
+
+@vector_new(N: int): ptr<int> {
+    ptr: ptr<int> = alloc N;
+    ret ptr;
+}
+
+@vector_get(vec: ptr<int>, i: int): int {
+    ptr: ptr<int> = ptradd vec i;
+    val: int = load ptr;
+    ret val;
+}
+
+@vector_set(vec: ptr<int>, i: int, val: int) {
+    ptr: ptr<int> = ptradd vec i;
+    store ptr val;
+}
+
+@vector_decr(vec: ptr<int>, i: int, decr: int) {
+    ptr: ptr<int> = ptradd vec i;
+    val: int = load ptr;
+    new_val: int = sub val decr;
+    store ptr new_val;
+}
+
+# EXPECTS:
+#   @vector_get defined
+@vector_print(vec: ptr<int>, N: int) {
+    i: int = const 0;
+    one: int = const 1;
+.while:
+    cond: bool = lt i N;
+    br cond .body .done;
+.body:
+    val: int = call @vector_get vec i;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}

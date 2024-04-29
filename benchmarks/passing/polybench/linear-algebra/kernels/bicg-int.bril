@@ -1,0 +1,216 @@
+## bicg computes the BiCG Sub Kernel of BiCGStab Linear Solver
+## for some procedurally generated inputs
+
+@main {
+    # constants
+    # dimensions correspond to Polybench MEDIUM_DATASET
+
+    M: int = const 390;
+    fM: int = const 390;
+    N: int = const 410;
+    fN: int = const 410;
+
+    one: int = const 1;
+    fzero: int = const 0;
+
+    # initialize arrays
+    p: ptr<int> = call @vector_new M;
+    r: ptr<int> = call @vector_new N;
+    A: ptr<int> = call @matrix_new N M;
+    call @init p r A N fN M fM;
+    
+    # main computation
+    s: ptr<int> = call @vector_new M;
+    q: ptr<int> = call @vector_new N;
+
+    i: int = const 0;
+.init_s_i:
+    cond: bool = lt i M;
+    br cond .init_s_i_body .init_s_i_done;
+.init_s_i_body:
+    call @vector_set s i fzero;
+    i: int = add i one;
+    jmp .init_s_i;
+.init_s_i_done:
+
+    i: int = const 0;
+.main_i:
+    cond: bool = lt i N;
+    br cond .main_i_body .main_i_done;
+.main_i_body:
+    call @vector_set q i fzero;
+    j: int = const 0;
+.main_j:
+    cond: bool = lt j M;
+    br cond .main_j_body .main_j_done;
+.main_j_body:
+    ri: int = call @vector_get r i;
+    Aij: int = call @matrix_get A i j M;
+    sj: int = call @vector_get s j;
+    new_sj: int = mul ri Aij;
+    new_sj: int = add sj new_sj;
+    call @vector_set s j new_sj;
+
+    Aij: int = call @matrix_get A i j M;
+    pj: int = call @vector_get p j;
+    qi: int = call @vector_get q i;
+    new_qi: int = mul Aij pj;
+    new_qi: int = add qi new_qi;
+    call @vector_set q i new_qi;
+
+    j: int = add j one;
+    jmp .main_j;
+.main_j_done:
+    i: int = add i one;
+    jmp .main_i;
+.main_i_done:
+
+    call @vector_print s M;
+    call @vector_print q N;
+
+    free A;
+    free s;
+    free q;
+    free p;
+    free r;
+}
+
+@init(p: ptr<int>, r: ptr<int>, A: ptr<int>, 
+      N: int, fN: int, M: int, fM: int) {
+    one: int = const 1;
+    fzero: int = const 0;
+    fone: int = const 1;
+
+    i: int = const 0;
+    fi: int = const 0;
+.init_p_i:
+    cond: bool = lt i M;
+    br cond .init_p_i_body .init_p_i_done;
+.init_p_i_body:
+    val: int = call @fmod fi fM;
+    val: int = div val fM;
+    call @vector_set p i val;
+    i: int = add i one;
+    fi: int = add fi fone;
+    jmp .init_p_i;
+.init_p_i_done:
+
+    i: int = const 0;
+    fi: int = const 0;
+.init_Ar_i:
+    cond: bool = lt i N;
+    br cond .init_Ar_i_body .init_Ar_i_done;
+.init_Ar_i_body:
+    val: int = call @fmod fi fN;
+    val: int = div val fN;
+    call @vector_set r i val;
+    j: int = const 0;
+    fj: int = const 0;
+.init_Ar_j:
+    cond: bool = lt j N;
+    br cond .init_Ar_j_body .init_Ar_j_done;
+.init_Ar_j_body:
+    val: int = add fj fone;
+    val: int = mul val fi;
+    val: int = call @fmod val fN;
+    val: int = div val fN;
+    call @matrix_set A i j M val;
+    j: int = add j one;
+    fj: int = add fj fone;
+    jmp .init_Ar_j;
+.init_Ar_j_done:
+    i: int = add i one;
+    fi: int = add fi fone;
+    jmp .init_Ar_i;
+.init_Ar_i_done:
+}
+
+@matrix_new(Nrow: int, Ncol: int): ptr<int> {
+    total: int = mul Nrow Ncol;
+    ptr: ptr<int> = alloc total;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<int>, row: int, col: int, Ncol: int): ptr<int> {
+    row_offset: int = mul row Ncol;
+    offset: int = add row_offset col;
+    new_ptr: ptr<int> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_get(mtx: ptr<int>, row: int, col: int, Ncol: int): int {
+    ptr: ptr<int> = call @matrix_loc mtx row col Ncol;
+    val: int = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_set(mtx: ptr<int>, row: int, col: int, Ncol: int, val: int) {
+    ptr: ptr<int> = call @matrix_loc mtx row col Ncol;
+    store ptr val;
+}
+
+@vector_new(N: int): ptr<int> {
+    ptr: ptr<int> = alloc N;
+    ret ptr;
+}
+
+@vector_get(vec: ptr<int>, i: int): int {
+    ptr: ptr<int> = ptradd vec i;
+    val: int = load ptr;
+    ret val;
+}
+
+@vector_set(vec: ptr<int>, i: int, val: int) {
+    ptr: ptr<int> = ptradd vec i;
+    store ptr val;
+}
+
+# EXPECTS:
+#   @vector_get defined
+@vector_print(vec: ptr<int>, N: int) {
+    i: int = const 0;
+    one: int = const 1;
+.while:
+    cond: bool = lt i N;
+    br cond .body .done;
+.body:
+    val: int = call @vector_get vec i;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+# Search for n % m where n and m are ints by
+# iteratively subtracting the largest m*2^k that
+# fits inside n. 
+# Takes O((log n/m)^2) time.
+# NOTE: In C, this can be done with a built in 
+# function, but this is the best we can do.
+@fmod(n: int, m: int): int {
+    zero: int = const 0;
+    two: int = const 2;
+    rem: int = id n;
+.while:
+    cond: bool = ge rem m;
+    br cond .body .done;
+.body:
+    decr: int = id m;
+.while_inner:
+    diff: int = sub rem decr;
+    cond: bool = ge diff zero;
+    br cond .body_inner .done_inner;
+.body_inner:
+    decr: int = mul decr two;
+    jmp .while_inner;
+.done_inner:
+    decr: int = div decr two;
+    rem: int = sub rem decr;
+    jmp .while;
+.done:
+    ret rem;
+}

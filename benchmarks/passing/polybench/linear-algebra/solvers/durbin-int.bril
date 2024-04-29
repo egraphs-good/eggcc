@@ -1,0 +1,156 @@
+## durbin is a Toeplitz system solver.
+
+@main {
+    # constants
+    # dimensions correspond to Polybench MEDIUM_DATASET
+
+    N: int = const 400;
+    fN: int = const 400;
+
+    one: int = const 1;
+    zero: int = const 0;
+
+    fone: int = const 1;
+    fminusone: int = const -1;
+
+    r: ptr<int> = call @vector_new N;
+    call @init r N fN;
+
+    # main computation
+
+    y: ptr<int> = call @vector_new N;
+    z: ptr<int> = call @vector_new N;
+
+    r0: int = call @vector_get r zero;
+    val: int = mul fminusone r0;
+    call @vector_set y zero val;
+
+    beta: int = const 1;
+    r0: int = call @vector_get r zero;
+    alpha: int = mul fminusone r0;
+    
+    k: int = const 1;
+.main_k:
+    cond: bool = lt k N;
+    br cond .main_k_body .main_k_done;
+.main_k_body:
+    val: int = mul alpha alpha;
+    val: int = sub fone val;
+    beta: int = mul val beta;
+    sum: int = const 0;
+    i: int = const 0;
+.compute_sum_i:
+    cond: bool = lt i k;
+    br cond .compute_sum_i_body .compute_sum_i_done;
+.compute_sum_i_body:
+    index: int = sub k i;
+    index: int = sub index one;
+    rx: int = call @vector_get r index;
+    yi: int = call @vector_get y i;
+    incr: int = mul rx yi;
+    sum: int = add sum incr;
+    i: int = add i one;
+    jmp .compute_sum_i;
+.compute_sum_i_done:
+
+    rk: int = call @vector_get r k;
+    val: int = add rk sum;
+    val: int = div val beta;
+    alpha: int = mul fminusone val;
+
+    i: int = const 0;
+.compute_z_i:
+    cond: bool = lt i k;
+    br cond .compute_z_i_body .compute_z_i_done;
+.compute_z_i_body:
+    yi: int = call @vector_get y i;
+    index: int = sub k i;
+    index: int = sub index one;
+    yx: int = call @vector_get y index;
+    val: int = mul alpha yx;
+    val: int = add yi val;
+    call @vector_set z i val;
+    i: int = add i one;
+    jmp .compute_z_i;
+.compute_z_i_done:
+
+    i: int = const 0;
+.set_y_i:
+    cond: bool = lt i k;
+    br cond .set_y_i_body .set_y_i_done;
+.set_y_i_body:
+    zi: int = call @vector_get z i;
+    call @vector_set y i zi;
+    i: int = add i one;
+    jmp .set_y_i;
+.set_y_i_done:
+    call @vector_set y k alpha;
+
+    k: int = add k one;
+    jmp .main_k;
+.main_k_done:
+
+    call @vector_print y N;
+
+    free r;
+    free y;
+    free z;
+}
+
+@init(r: ptr<int>, N: int, fN: int) {
+    one: int = const 1;
+    fone: int = const 1;
+
+    i: int = const 0;
+    fi: int = const 0;
+.main_i:
+    cond: bool = lt i N;
+    br cond .main_i_body .main_i_done;
+.main_i_body:
+    val: int = add fN fone;
+    val: int = sub val fi;
+    call @vector_set r i val;
+    i: int = add i one;
+    fi: int = add fi fone;
+    jmp .main_i;
+.main_i_done:
+}
+
+@vector_new(N: int): ptr<int> {
+    ptr: ptr<int> = alloc N;
+    ret ptr;
+}
+
+@vector_get(vec: ptr<int>, i: int): int {
+    ptr: ptr<int> = ptradd vec i;
+    val: int = load ptr;
+    ret val;
+}
+
+@vector_set(vec: ptr<int>, i: int, val: int) {
+    ptr: ptr<int> = ptradd vec i;
+    store ptr val;
+}
+
+@vector_incr(vec: ptr<int>, i: int, incr: int) {
+    ptr: ptr<int> = ptradd vec i;
+    val: int = load ptr;
+    new_val: int = add val incr;
+    store ptr new_val;
+}
+
+# EXPECTS:
+#   @vector_get defined
+@vector_print(vec: ptr<int>, N: int) {
+    i: int = const 0;
+    one: int = const 1;
+.while:
+    cond: bool = lt i N;
+    br cond .body .done;
+.body:
+    val: int = call @vector_get vec i;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}

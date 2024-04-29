@@ -1,5 +1,6 @@
 ;; Some simple simplifications of loops
 (ruleset loop-unroll)
+(ruleset loop-peel)
 
 
 ;; loop peeling rule
@@ -18,49 +19,51 @@
     ;; check if we need to continue executing the loop
     (If (Get executed-once 0)
         executed-once-body ;; inputs are the body executed once
-        (DoWhile (InContext then-ctx (Arg inputs-ty))
-          outputs) ;; right now, loop unrolling shares the same outputs, but we could add more context here
-        (InContext (NoContext) (Arg inputs-ty)))))
- :ruleset loop-unroll)
-
-
-;; N / 4
-
-
-(rule
-  ((= lhs (DoWhile inputs outputs))
-   (= pred (Get outputs 0))
-   ;; iteration counter starts at start_const
-   (= (Const (Int start_const)) (Get inputs counter_i))
-   ;; increments by one each loop
-   (= next_counter (Get outputs counter_i))
-   (= next_counter (Add (Get (InContext ctx (Arg ty)) (+ 1 counter_i))
-                        (Const (Int 1))))
-   ;; while less than end_constant
-   (= pred (Bop (LessThan) next_counter
-                           (Const (Int end_constant))))
-   ;; end_constant
-                           )
-  
-
-
-;; loop unroll by factor of 4
-(rule
- ((= lhs (DoWhile inputs outputs))
-  (ContextOf lhs ctx)
-  (HasType inputs inputs-ty)
-  (= outputs-len (tuple-length outputs)))
- ((let executed-once
-    (Subst ctx inputs outputs))
-  (let executed-once-body
-     (SubTuple executed-once 1 (- outputs-len 1)))
-  (let then-ctx
-    (InIf true (Get executed-once 0) executed-once-body))
-  (union lhs
-    ;; check if we need to continue executing the loop
-    (If (Get executed-once 0)
-        executed-once-body ;; inputs are the body executed once
         (DoWhile (Arg inputs-ty then-ctx)
           outputs) ;; right now, loop unrolling shares the same outputs, but we could add more context here
         (Arg inputs-ty (NoContext)))))
- :ruleset loop-unroll)
+ :ruleset loop-peel)
+
+
+(function UnrollCtx (Expr Expr) Assumption)
+
+;; unroll a loop with constant bounds and initial value
+(rule
+  ((= lhs (DoWhile inputs outputs))
+   (= num-inputs (tuple-length inputs))
+   (= pred (Get outputs 0))
+   ;; iteration counter starts at start_const
+   (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))
+   ;; updated counter at counter_i
+   (= next_counter (Get outputs counter_i))
+   ;; increments by one each loop
+   (= next_counter (Bop (Add) (Get (Arg _ty _ctx) (- counter_i 1))
+                              (Const (Int 1) _ty2 _ctx2)))
+   ;; while less than end_constant
+   (= pred (Bop (LessThan) next_counter
+                           (Const (Int end_constant) _ty3 _ctx3)))
+   ;; start and end constant is a multiple of 4 and greater than start_const
+   (> end_constant start_const)
+   (= (% start_const 4) 0)
+   (= (% end_constant 4) 0))
+  (
+    (panic "good")
+    (let tmp_context (UnrollCtx inputs outputs))
+    (let one-iter (SubTuple outputs 1 num-inputs))
+    (let two-iter
+         (Subst tmp_context one-iter one-iter))
+    (let unrolled
+        (Subst tmp_context one-iter
+          (Subst tmp_context one-iter
+            (Subst tmp_context one-iter
+               outputs))))
+    (union lhs
+      (DoWhile inputs
+        unrolled))
+    (let actual-ctx (InLoop inputs unrolled))
+    (union tmp_context actual-ctx)
+    (delete (UnrollCtx inputs outputs))
+  )
+  :ruleset loop-unroll)
+  
+

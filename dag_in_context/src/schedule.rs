@@ -30,6 +30,7 @@ pub fn mk_schedule() -> String {
   (unstable-combined-ruleset optimizations
     loop-simplify
     memory
+    loop-unroll
   )
 
   (unstable-combined-ruleset expensive-optimizations
@@ -40,7 +41,7 @@ pub fn mk_schedule() -> String {
   
   (run-schedule
     {helpers}
-    loop-unroll
+    loop-peel
     (repeat 2
       {helpers}
       expensive-optimizations)

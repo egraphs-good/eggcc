@@ -291,8 +291,11 @@ impl TestProgram {
 pub struct Run {
     pub prog_with_args: ProgWithArguments,
     pub test_type: RunType,
-    // Also interpret the resulting program
+    /// Also interpret the original and resulting program
     pub interp: bool,
+    /// Interpret the original program with a fast binary
+    /// and interpret the resulting program
+    pub interp_fast: bool,
     pub profile_out: Option<PathBuf>,
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
@@ -343,10 +346,12 @@ impl Run {
         optimize_egglog: bool,
         optimize_brilift: bool,
         interp: bool,
+        interp_fast: bool,
     ) -> Run {
         Run {
             test_type: RunType::CompileBrilift,
             interp,
+            interp_fast,
             prog_with_args: test.read_program(),
             profile_out: None,
             output_path: None,
@@ -374,6 +379,7 @@ impl Run {
             let default = Run {
                 test_type,
                 interp: false,
+                interp_fast: false,
                 prog_with_args: prog.clone(),
                 profile_out: None,
                 output_path: None,
@@ -399,6 +405,7 @@ impl Run {
                         optimize_egglog,
                         optimize_brilift,
                         interp,
+                        false,
                     ));
                 }
             }
@@ -418,6 +425,7 @@ impl Run {
                             optimize_egglog: Some(optimize_egglog),
                             optimize_brilift: None,
                             optimize_bril_llvm: Some(optimize_brillvm),
+                            interp_fast: false,
                         });
                     }
                 }
@@ -452,7 +460,7 @@ impl Run {
                 (true, true) => "-opt_both",
             };
         }
-        if self.interp {
+        if self.interp || self.interp_fast {
             name += "-interp";
         }
         name
@@ -462,6 +470,15 @@ impl Run {
         let original_interpreted = if self.interp {
             Some(Optimizer::interp_bril(
                 &self.prog_with_args.program,
+                self.prog_with_args.args.clone(),
+                None,
+            ))
+        } else if self.interp_fast {
+            Some(Optimizer::interp(
+                &self
+                    .run_brilift(self.prog_with_args.program.clone(), false, true)
+                    .unwrap()
+                    .unwrap(),
                 self.prog_with_args.args.clone(),
                 None,
             ))

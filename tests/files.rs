@@ -59,7 +59,7 @@ fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
 
         if just_brilift {
             mk_trial(
-                Run::compile_brilift_config(TestProgram::BrilFile(f), true, true, true),
+                Run::compile_brilift_config(TestProgram::BrilFile(f), true, true, false, true),
                 snapshot,
             );
         } else {

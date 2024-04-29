@@ -80,6 +80,7 @@ fn main() {
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
         optimize_bril_llvm: args.optimize_bril_llvm,
+        interp_fast: false,
     };
 
     let result = match run.run() {

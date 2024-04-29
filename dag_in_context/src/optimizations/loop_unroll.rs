@@ -6,12 +6,9 @@ fn loop_peel_once() -> crate::Result {
         parallel!(int(1)),
         parallel!(tfalse(), add(getat(0), int(1))),
     )
-    .with_arg_types(base(intt()), tuplet!(intt()))
-    .initialize_ctx();
+    .with_arg_types(base(intt()), tuplet!(intt()));
 
-    let expected = parallel!(int(2))
-        .with_arg_types(base(intt()), tuplet!(intt()))
-        .initialize_ctx();
+    let expected = parallel!(int(2)).with_arg_types(base(intt()), tuplet!(intt()));
 
     egglog_test(
         &format!("{prog}"),
@@ -48,17 +45,14 @@ fn loop_unroll_simple() -> crate::Result {
             less_than(add(getat(0), int(4)), int(8)),
             add(getat(0), int(4))
         ),
-    ).add_arg_type(base(intt()));
+    )
+    .add_arg_type(base(intt()))
+    .add_symbolic_ctx();
 
     egglog_test(
         &format!("{prog}"),
-        &format!(
-            "(check (= {prog} {expected}))"
-        ),
-        vec![
-            prog.to_program(base(intt()), tuplet!(intt())),
-            expected.to_program(base(intt()), tuplet!(intt())),
-        ],
+        &format!("(check (= {prog} {expected}))"),
+        vec![prog.to_program(base(intt()), tuplet!(intt()))],
         intv(0),
         tuplev!(intv(8)),
         vec![],

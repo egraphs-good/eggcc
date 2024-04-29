@@ -35,9 +35,9 @@
    ;; iteration counter starts at start_const
    (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))
    ;; updated counter at counter_i
-   (= next_counter (Get outputs counter_i))
+   (= next_counter (Get outputs (+ counter_i 1)))
    ;; increments by one each loop
-   (= next_counter (Bop (Add) (Get (Arg _ty _ctx) (- counter_i 1))
+   (= next_counter (Bop (Add) (Get (Arg _ty _ctx) counter_i)
                               (Const (Int 1) _ty2 _ctx2)))
    ;; while less than end_constant
    (= pred (Bop (LessThan) next_counter
@@ -45,18 +45,17 @@
    ;; start and end constant is a multiple of 4 and greater than start_const
    (> end_constant start_const)
    (= (% start_const 4) 0)
-   (= (% end_constant 4) 0))
+   (= (% end_constant 4) 0)
+  )
   (
-    (panic "good")
     (let tmp_context (UnrollCtx inputs outputs))
     (let one-iter (SubTuple outputs 1 num-inputs))
-    (let two-iter
-         (Subst tmp_context one-iter one-iter))
+    ;; TODO make unroll 4 times instead of 2
     (let unrolled
         (Subst tmp_context one-iter
-          (Subst tmp_context one-iter
-            (Subst tmp_context one-iter
-               outputs))))
+          ;(Subst tmp_context one-iter
+           ; (Subst tmp_context one-iter
+               outputs))
     (union lhs
       (DoWhile inputs
         unrolled))

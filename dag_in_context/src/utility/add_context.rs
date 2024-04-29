@@ -6,9 +6,8 @@ fn test_in_context_tuple() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
 
-    let tuple = parallel!(int(3), int(4))
-        .with_arg_types(tuplet!(intt(), intt()), tuplet!(intt(), intt()))
-        .initialize_ctx();
+    let tuple =
+        parallel!(int(3), int(4)).with_arg_types(tuplet!(intt(), intt()), tuplet!(intt(), intt()));
 
     let build = format!(
         "
@@ -50,9 +49,7 @@ fn test_in_context_two_loops() -> crate::Result {
     );
 
     // expression with nested loop, we'll add context to inner loop
-    let expr = dowhile(single(int(1)), loop_body.clone())
-        .with_arg_types(emptyt(), tuplet!(intt()))
-        .initialize_ctx();
+    let expr = dowhile(single(int(1)), loop_body.clone()).with_arg_types(emptyt(), tuplet!(intt()));
 
     egglog_test_and_print_program(
         &format!(
@@ -73,18 +70,12 @@ fn test_in_context_two_loops() -> crate::Result {
 #[test]
 fn test_simple_context_cycle() -> crate::Result {
     use crate::ast::*;
-    let inputs = single(arg())
-        .with_arg_types(base(intt()), tuplet!(intt()))
-        .initialize_ctx();
-    let outputs = parallel!(tfalse(), int(3))
-        .with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt()))
-        .initialize_ctx();
+    let inputs = single(arg()).with_arg_types(base(intt()), tuplet!(intt()));
+    let outputs =
+        parallel!(tfalse(), int(3)).with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt()));
     let expr = dowhile(arg(), parallel!(tfalse(), int(3)))
-        .with_arg_types(tuplet!(intt()), tuplet!(intt()))
-        .initialize_ctx();
-    let inner = single(int(3))
-        .with_arg_types(tuplet!(intt()), tuplet!(intt()))
-        .initialize_ctx();
+        .with_arg_types(tuplet!(intt()), tuplet!(intt()));
+    let inner = single(int(3)).with_arg_types(tuplet!(intt()), tuplet!(intt()));
 
     egglog_test(
         &format!(
@@ -111,15 +102,13 @@ fn simple_context() -> crate::Result {
     use crate::ast::*;
     use crate::egglog_test;
     use crate::{interpreter::Value, schema::Constant};
-    let expr = int(2)
-        .with_arg_types(emptyt(), base(intt()))
-        .initialize_ctx();
+    let expr = int(2).with_arg_types(emptyt(), base(intt()));
     let context_to_add = inif(
         true,
         ttrue().with_arg_types(emptyt(), base(boolt())),
         parallel!().with_arg_types(emptyt(), emptyt()),
     );
-    let expected = expr.replace_ctx(context_to_add.clone());
+    let expected = expr.add_ctx(context_to_add.clone());
 
     egglog_test(
         &format!("(let egglog (AddContext {context_to_add} {expr}))"),

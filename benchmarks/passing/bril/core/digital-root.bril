@@ -1,11 +1,24 @@
-# ARGS: 645634654
 
 # Computes the digital root of the given argument. This is done by iteratively
 # adding each digit together until the result is a single number.
 # This is equivalent to the input mod 9 except if that value would be zero
 # in which case the digital root is nine.
 
-@main(input: int) {
+@main() {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  loop_bound: int = const 100000;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  call @orig_main loop_counter;
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+}
+
+@orig_main(input : int) {
     zero: int = const 0;
     ten: int = const 10;
     result: int = const 0;

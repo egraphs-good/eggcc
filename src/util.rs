@@ -394,12 +394,12 @@ impl Run {
         for optimize_egglog in [true, false] {
             for optimize_brilift in [true, false] {
                 for interp in [true, false] {
-                    Run::compile_brilift_config(
+                    res.push(Run::compile_brilift_config(
                         test.clone(),
                         optimize_egglog,
                         optimize_brilift,
                         interp,
-                    );
+                    ));
                 }
             }
         }

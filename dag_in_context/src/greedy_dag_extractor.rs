@@ -1,6 +1,7 @@
 use egglog::{util::IndexMap, *};
 use egraph_serialize::{ClassId, EGraph, NodeId};
 use ordered_float::NotNan;
+use rpds::HashTrieMap;
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -259,7 +260,7 @@ pub struct CostSet {
     pub total: Cost,
     // TODO perhaps more efficient as
     // persistent data structure?
-    pub costs: HashMap<ClassId, Cost>,
+    pub costs: HashTrieMap<ClassId, Cost>,
     pub term: Term,
 }
 
@@ -354,30 +355,59 @@ fn calculate_cost_set(
 
     let mut shared_total = NotNan::new(0.).unwrap();
     let mut unshared_total = info.cm.get_op_cost(&node.op);
-    let mut costs: HashMap<ClassId, NotNan<f64>> = HashMap::default();
+    let mut costs: HashTrieMap<ClassId, NotNan<f64>> = Default::default();
+    let index_of_biggest_child = child_cost_sets
+        .iter()
+        .enumerate()
+        .max_by_key(
+            |(_idx, (cs, is_region_root))| {
+                if *is_region_root {
+                    0
+                } else {
+                    cs.costs.size()
+                }
+            },
+        )
+        .map(|(idx, _)| idx);
+    if let Some(index_of_biggest_child) = index_of_biggest_child {
+        let (biggest_child_set, is_region_root) = &child_cost_sets[index_of_biggest_child];
+        if !*is_region_root {
+            costs = biggest_child_set.costs.clone();
+            shared_total = biggest_child_set.total;
+        }
+    }
 
     if !info.cm.ignore_children(&node.op) {
-        for (child_set, is_region_root) in child_cost_sets.iter() {
+        for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
             if *is_region_root {
                 unshared_total += child_set.total;
             } else {
-                for (child_cid, child_cost) in &child_set.costs {
-                    // it was already present in the set
-                    if let Some(existing) = costs.get(child_cid) {
-                        if existing > child_cost {
-                            // if we found a lower-cost alternative for this child, use that and decrease cost
-                            shared_total -= existing - *child_cost;
+                // costs is empty, replace it with the child one
+                if Some(index) == index_of_biggest_child {
+                    // skip the biggest child
+                } else {
+                    for (child_cid, child_cost) in &child_set.costs {
+                        // it was already present in the set
+                        if let Some(existing) = costs.get(child_cid) {
+                            if existing > child_cost {
+                                // if we found a lower-cost alternative for this child, use that and decrease cost
+                                shared_total -= existing - *child_cost;
+                                costs = costs.insert(child_cid.clone(), *existing.min(child_cost));
+                            }
+                        } else {
+                            costs = costs.insert(child_cid.clone(), *child_cost);
+                            shared_total += child_cost;
                         }
-                        costs.insert(child_cid.clone(), *existing.min(child_cost));
-                    } else {
-                        costs.insert(child_cid.clone(), *child_cost);
-                        shared_total += child_cost;
                     }
                 }
             }
         }
     }
-    costs.insert(cid.clone(), unshared_total);
+
+    // no need to add something that costs 0 to the set
+    if unshared_total > NotNan::new(0.).unwrap() {
+        costs = costs.insert(cid.clone(), unshared_total);
+    }
     let total = unshared_total + shared_total;
 
     let sub_terms: Vec<Term> = child_cost_sets
@@ -421,9 +451,9 @@ pub fn extract_without_linearity(
     effectful_paths: Option<&HashMap<ClassId, HashSet<NodeId>>>,
 ) -> (CostSet, TreeProgram) {
     if effectful_paths.is_some() {
-        println!("Re-extracting program after linear path is found.");
+        log::info!("Re-extracting program after linear path is found.");
     } else {
-        println!("Extracting program for the first time.");
+        log::info!("Extracting program for the first time.");
     }
     let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
     let mut worklist = UniqueQueue::default();

@@ -49,6 +49,9 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
+    // enable logging
+    env_logger::init();
+
     if let Some(debug_dir) = args.debug_dir {
         if let Result::Err(error) = visualize(TestProgram::BrilFile(args.file.clone()), debug_dir) {
             eprintln!("{}", error);

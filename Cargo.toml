@@ -39,11 +39,12 @@ dag_in_context = { path = "dag_in_context" }
 clap = { version = "4.4.7", features = ["derive"] }
 tempfile = "3.10.1"
 
+env_logger = "0.11.3"
+
 [dev-dependencies]
 glob = "0.3.1"
 libtest-mimic = "0.6.1"
 insta = { version = "1.31.0", features = ["yaml"] }
-
 
 [profile.dev.package.insta]
 opt-level = 3

@@ -34,11 +34,11 @@ expression: visualization.result
   v18: int = id v106;
   br v101 .__20__ .__128__;
 .__32__:
-  v36: int = div v14 v15;
-  v38: int = mul v15 v36;
-  v40: int = sub v14 v38;
-  v43: bool = eq v40 v18;
-  v49: int = add v16 v13;
+  v37: int = div v14 v15;
+  v39: int = mul v15 v37;
+  v41: int = sub v14 v39;
+  v43: bool = eq v18 v41;
+  v49: int = add v13 v16;
   br v43 .__79__ .__56__;
 .__79__:
   v81: bool = const true;

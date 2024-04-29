@@ -1,3 +1,4 @@
+use crate::canonicalize_names::canonicalize_bril;
 use crate::rvsdg::from_dag::dag_to_rvsdg;
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
@@ -351,6 +352,8 @@ impl Run {
         let rvsdg2 = dag_to_rvsdg(&optimized);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
+        // re-name variables in the bril, hiding our nondeterminism bug ):
+        let bril = canonicalize_bril(&bril);
 
         Ok(bril)
     }

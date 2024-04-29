@@ -3,35 +3,35 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @fac(v0: int): int {
-  v2: int = const 0;
-  v5: bool = eq v2 v0;
-  v9: int = const 1;
-  br v5 .__51__ .__13__;
-.__51__:
-  v49: int = id v9;
-  jmp .__54__;
-.__13__:
-  v15: bool = eq v0 v9;
-  br v15 .__41__ .__22__;
-.__41__:
-  v43: int = call @fac v2;
-  v39: int = id v9;
-.__47__:
-  v49: int = id v39;
-  jmp .__54__;
-.__22__:
-  v24: int = sub v0 v9;
-  v27: int = sub v24 v9;
-  v31: int = call @fac v24;
-  v33: int = call @fac v27;
-  v37: int = add v33 v31;
-  v39: int = id v37;
-  jmp .__47__;
-.__54__:
-  ret v49;
+  v1_: int = const 0;
+  v2_: bool = eq v1_ v0;
+  v3_: int = const 1;
+  br v2_ .v4_ .v5_;
+.v4_:
+  v6_: int = id v3_;
+  jmp .v7_;
+.v5_:
+  v8_: bool = eq v0 v3_;
+  br v8_ .v9_ .v10_;
+.v9_:
+  v11_: int = call @fac v1_;
+  v12_: int = id v3_;
+.v13_:
+  v6_: int = id v12_;
+  jmp .v7_;
+.v10_:
+  v14_: int = sub v0 v3_;
+  v15_: int = sub v14_ v3_;
+  v16_: int = call @fac v14_;
+  v17_: int = call @fac v15_;
+  v18_: int = add v17_ v16_;
+  v12_: int = id v18_;
+  jmp .v13_;
+.v7_:
+  ret v6_;
 }
 @main {
-  v1: int = const 2;
-  v4: int = call @fac v1;
-  print v4;
+  v0_: int = const 2;
+  v1_: int = call @fac v0_;
+  print v1_;
 }

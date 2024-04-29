@@ -57,13 +57,13 @@
        (= inputs_len  (tuple-length inputs))
        (= outputs_len (tuple-length outputs)))
 
-      ((let new_inputs         (TupleMinusOne    inputs j))
+      ((let new_inputs (TupleMinusOne inputs j))
 
        (let new_then_ctx (InIf true  pred new_inputs))
        (let new_else_ctx (InIf false pred new_inputs))
 
-       (let old_then    (TupleMinusOne then_   i))
-       (let old_else    (TupleMinusOne else_   i))
+       (let old_then (TupleMinusOne then_ i))
+       (let old_else (TupleMinusOne else_ i))
 
        (let new_then (DropAt new_then_ctx j old_then))
        (let new_else (DropAt new_else_ctx j old_else))

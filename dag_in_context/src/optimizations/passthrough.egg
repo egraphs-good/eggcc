@@ -71,13 +71,9 @@
        (= outputs_len (tuple-length outputs)))
 
       ((let new_inputs         (TupleMinusOne    inputs j))
-       (let new_arg_ty (TupleT (TypeListMinusOne arg_ty j)))
-       
+
        (let new_then_ctx (InIf true  pred new_inputs))
        (let new_else_ctx (InIf false pred new_inputs))
-
-       (let new_then_args (TupleMinusOne (Arg new_arg_ty new_then_ctx) j)) ; THIS IS WRONG
-       (let new_else_args (TupleMinusOne (Arg new_arg_ty new_else_ctx) j)) ; THIS IS WRONG
 
        (let old_then    (TupleMinusOne then_   i))
        (let old_else    (TupleMinusOne else_   i))

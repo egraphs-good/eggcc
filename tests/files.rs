@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use eggcc::util::{Run, RunType, TestProgram};
+use eggcc::util::{InterpMode, Run, RunType, TestProgram};
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
@@ -32,20 +32,20 @@ fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
                     .unwrap();
             }
 
-            if result.result_interpreted.is_some() {
-                if result.original_interpreted != result.result_interpreted {
-                    panic!(
-                        "Interpreted result does not match expected:\nExpected: {}\nGot: {}",
-                        result.original_interpreted.unwrap(),
-                        result.result_interpreted.unwrap()
-                    );
-                }
-            } else {
-                // only assert a snapshot if we are in the "small" folder
-                if snapshot && snapshot_configurations.contains(&run.test_type) {
-                    for visualization in result.visualizations {
-                        assert_snapshot!(run.name() + &visualization.name, visualization.result);
-                    }
+            if run.interp.should_interp()
+                && result.original_interpreted.as_ref().unwrap()
+                    != result.result_interpreted.as_ref().unwrap()
+            {
+                panic!(
+                    "Interpreted result does not match expected:\nExpected: {}\nGot: {}",
+                    result.original_interpreted.unwrap(),
+                    result.result_interpreted.unwrap()
+                );
+            }
+            // only assert a snapshot if we are in the "small" folder
+            if snapshot && snapshot_configurations.contains(&run.test_type) {
+                for visualization in result.visualizations {
+                    assert_snapshot!(run.name() + &visualization.name, visualization.result);
                 }
             }
             Ok(())
@@ -59,7 +59,12 @@ fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
 
         if just_brilift {
             mk_trial(
-                Run::compile_brilift_config(TestProgram::BrilFile(f), true, true, true),
+                Run::compile_brilift_config(
+                    TestProgram::BrilFile(f),
+                    true,
+                    true,
+                    InterpMode::InterpFast, // for just_brilift, use fast interp because benchmarks are slow
+                ),
                 snapshot,
             );
         } else {

@@ -1,5 +1,5 @@
 use clap::Parser;
-use eggcc::util::{visualize, Run, RunType, TestProgram};
+use eggcc::util::{visualize, InterpMode, Run, RunType, TestProgram};
 use std::{ffi::OsStr, path::PathBuf};
 
 #[derive(Debug, Parser)]
@@ -74,7 +74,11 @@ fn main() {
     let run = Run {
         prog_with_args: file.read_program(),
         test_type: args.run_mode,
-        interp: args.interp,
+        interp: if args.interp {
+            InterpMode::Interp
+        } else {
+            InterpMode::None
+        },
         profile_out: args.profile_out,
         output_path: args.output_path,
         optimize_egglog: args.optimize_egglog,

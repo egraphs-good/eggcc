@@ -221,19 +221,19 @@ impl RunType {
             | RunType::RvsdgRoundTrip
             | RunType::RvsdgRoundTripToExecutable
             | RunType::DagRoundTrip
-            | RunType::ToCfg
             | RunType::CfgRoundTrip
             | RunType::OptimizeDirectJumps
-            | RunType::RvsdgToCfg
             | RunType::DagConversion
             | RunType::DagOptimize
-            | RunType::Egglog
             | RunType::CompileBrilift
             | RunType::CompileBrilLLVM => true,
             RunType::RvsdgConversion
+            | RunType::RvsdgToCfg
+            | RunType::Egglog
             | RunType::DagToRvsdg
             | RunType::OptimizedRvsdg
-            | RunType::CheckTreeIdentical => false,
+            | RunType::CheckTreeIdentical
+            | RunType::ToCfg => false,
         }
     }
 }
@@ -287,12 +287,29 @@ impl TestProgram {
     }
 }
 
+#[derive(Clone, Eq, PartialEq)]
+pub enum InterpMode {
+    /// Interpret the original program and the result
+    Interp,
+    /// Interpret the original program as a brilift binary and the result
+    InterpFast,
+    None,
+}
+
+impl InterpMode {
+    pub fn should_interp(&self) -> bool {
+        match self {
+            InterpMode::Interp | InterpMode::InterpFast => true,
+            InterpMode::None => false,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Run {
     pub prog_with_args: ProgWithArguments,
     pub test_type: RunType,
-    // Also interpret the resulting program
-    pub interp: bool,
+    pub interp: InterpMode,
     pub profile_out: Option<PathBuf>,
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
@@ -342,7 +359,7 @@ impl Run {
         test: TestProgram,
         optimize_egglog: bool,
         optimize_brilift: bool,
-        interp: bool,
+        interp: InterpMode,
     ) -> Run {
         Run {
             test_type: RunType::CompileBrilift,
@@ -373,7 +390,7 @@ impl Run {
         ] {
             let default = Run {
                 test_type,
-                interp: false,
+                interp: InterpMode::None,
                 prog_with_args: prog.clone(),
                 profile_out: None,
                 output_path: None,
@@ -381,10 +398,9 @@ impl Run {
                 optimize_brilift: None,
                 optimize_bril_llvm: None,
             };
-            res.push(default.clone());
             if test_type.produces_interpretable() {
                 let interp = Run {
-                    interp: true,
+                    interp: InterpMode::Interp,
                     ..default
                 };
                 res.push(interp);
@@ -393,14 +409,12 @@ impl Run {
 
         for optimize_egglog in [true, false] {
             for optimize_brilift in [true, false] {
-                for interp in [true, false] {
-                    res.push(Run::compile_brilift_config(
-                        test.clone(),
-                        optimize_egglog,
-                        optimize_brilift,
-                        interp,
-                    ));
-                }
+                res.push(Run::compile_brilift_config(
+                    test.clone(),
+                    optimize_egglog,
+                    optimize_brilift,
+                    InterpMode::Interp,
+                ));
             }
         }
 
@@ -408,18 +422,16 @@ impl Run {
         {
             for optimize_egglog in [true, false] {
                 for optimize_brillvm in [true, false] {
-                    for interp in [true, false] {
-                        res.push(Run {
-                            test_type: RunType::CompileBrilLLVM,
-                            interp,
-                            prog_with_args: prog.clone(),
-                            profile_out: None,
-                            output_path: None,
-                            optimize_egglog: Some(optimize_egglog),
-                            optimize_brilift: None,
-                            optimize_bril_llvm: Some(optimize_brillvm),
-                        });
-                    }
+                    res.push(Run {
+                        test_type: RunType::CompileBrilLLVM,
+                        interp: InterpMode::Interp,
+                        prog_with_args: prog.clone(),
+                        profile_out: None,
+                        output_path: None,
+                        optimize_egglog: Some(optimize_egglog),
+                        optimize_brilift: None,
+                        optimize_bril_llvm: Some(optimize_brillvm),
+                    });
                 }
             }
         }
@@ -452,16 +464,22 @@ impl Run {
                 (true, true) => "-opt_both",
             };
         }
-        if self.interp {
-            name += "-interp";
-        }
         name
     }
 
     pub fn run(&self) -> Result<RunOutput, EggCCError> {
-        let original_interpreted = if self.interp {
+        let original_interpreted = if self.interp == InterpMode::Interp {
             Some(Optimizer::interp_bril(
                 &self.prog_with_args.program,
+                self.prog_with_args.args.clone(),
+                None,
+            ))
+        } else if self.interp == InterpMode::InterpFast {
+            Some(Optimizer::interp(
+                &self
+                    .run_brilift(self.prog_with_args.program.clone(), false, true)
+                    .unwrap()
+                    .unwrap(),
                 self.prog_with_args.args.clone(),
                 None,
             ))
@@ -668,21 +686,29 @@ impl Run {
             }
         };
 
-        let result_interpreted = if !self.interp {
+        let result_interpreted = if !(self.interp.should_interp()) {
+            assert!(
+                interpretable_out.is_none(),
+                "Found interpretable for {}",
+                self.name()
+            );
             None
         } else {
-            match interpretable_out {
-                Some(program) if self.interp => {
-                    assert!(self.test_type.produces_interpretable());
-                    Some(Optimizer::interp(
-                        &program,
-                        self.prog_with_args.args.clone(),
-                        self.profile_out.clone(),
-                    ))
-                }
-                _ => None,
-            }
+            let Some(interpretable_out) = interpretable_out else {
+                panic!(
+                    "Interpretable output should be Some if interpret is set for {}.",
+                    self.name()
+                );
+            };
+            assert!(self.test_type.produces_interpretable());
+            Some(Optimizer::interp(
+                &interpretable_out,
+                self.prog_with_args.args.clone(),
+                self.profile_out.clone(),
+            ))
         };
+
+        assert_eq!(result_interpreted.is_some(), result_interpreted.is_some());
 
         Ok(RunOutput {
             visualizations,

@@ -1,5 +1,3 @@
-;; in-loop
-;;
 ;; ORIGINAL
 ;; a = 0
 ;; c = 3
@@ -13,28 +11,17 @@
 ;; for i = 0 to n:
 ;;     a += d
 ;;     d += c
-
-; TODO: this optimization does not get extracted if the multiplications
-; for the initial value of d and the update to d do not get constant folded.
-; To fix this, we would need to:
-;   1. move the multiplication in the update to d outside the loop
-;   2. count loop bodies as higher cost, so moving a multiplication outside
-;       the loop reduces the overall cost of the program
-
 (ruleset loop-strength-reduction)
-
 
 ; Finds invariants/constants within a body.
 ; Columns: body; value of invariant in inputs; value of invariant in outputs
-
 ;; Get the input and output value of an invariant, or constant int, within the loop
-;; TODO (start by doing constant only)
 ;;             loop in   out
 (relation inv (Expr Expr Expr))
-; (rule (
-;     (= loop (DoWhile inputs pred-and-body))
-;     (= (Get outputs (+ i 1)) (Get (Arg arg-type assm) i)))
-;     ((inv loop (Get inputs (+ i 1)) (Get (Arg arg-type assm) i))) :ruleset always-run)
+(rule (
+    (= loop (DoWhile inputs pred-and-body))
+    (= (Get outputs (+ i 1)) (Get (Arg arg-type assm) i)))
+    ((inv loop (Get inputs (+ i 1)) (Get (Arg arg-type assm) i))) :ruleset always-run)
 (rule (
     (= loop (DoWhile inputs pred-and-body))
     (ContextOf inputs loop-input-ctx)
@@ -105,8 +92,20 @@
         (union tmp-ctx (InLoop new-inputs new-body))
 
         ; Substitute d for the *i expression
-        (let new-old-mul (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) old-mul))
-        (union (Get (Arg new-arg-ty tmp-ctx) n) new-old-mul)
+        (let new-mul
+            (Bop
+                (Mul)
+                (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) c-out)
+                (Get (Arg new-arg-ty tmp-ctx) i)))
+        (union (Get (Arg new-arg-ty tmp-ctx) n) new-mul)
+
+        ; Subsume the multiplication in the new loop to prevent
+        ; from firing loop strength reduction again on the new loop
+        (subsume
+            (Bop
+                (Mul)
+                (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) c-out)
+                (Get (Arg new-arg-ty tmp-ctx) i)))
 
         ; Project all but last
         (union old-loop (SubTuple new-loop 0 n))

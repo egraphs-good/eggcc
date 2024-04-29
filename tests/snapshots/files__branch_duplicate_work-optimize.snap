@@ -3,17 +3,17 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v3: int = const 2;
-  v5: bool = lt v0 v3;
-  br v5 .__21__ .__11__;
-.__21__:
-  v24: int = add v0 v0;
-  v19: int = id v24;
-  jmp .__27__;
-.__11__:
-  v15: int = add v0 v0;
-  v17: int = mul v3 v15;
-  v19: int = id v17;
-.__27__:
-  print v19;
+  v1_: int = const 2;
+  v2_: bool = lt v0 v1_;
+  br v2_ .v3_ .v4_;
+.v3_:
+  v5_: int = add v0 v0;
+  v6_: int = id v5_;
+  jmp .v7_;
+.v4_:
+  v8_: int = add v0 v0;
+  v9_: int = mul v1_ v8_;
+  v6_: int = id v9_;
+.v7_:
+  print v6_;
 }

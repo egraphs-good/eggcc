@@ -3,45 +3,45 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @pow(v0: int, v1: int) {
-  v5: int = const 0;
-  v9: int = id v0;
-  v10: int = id v5;
-  v11: int = id v0;
-  v12: int = id v1;
-.__14__:
-  v16: int = const 1;
-  v18: int = sub v12 v16;
-  v20: bool = lt v10 v18;
-  br v20 .__41__ .__28__;
-.__41__:
-  v44: int = mul v11 v9;
-  v46: bool = const true;
-  v49: int = const 1;
-  v51: int = add v10 v49;
-  v35: int = id v44;
-  v36: bool = id v46;
-  v37: int = id v51;
-  v38: int = id v11;
-  v39: int = id v12;
-.__56__:
-  v9: int = id v35;
-  v10: int = id v37;
-  v11: int = id v11;
-  v12: int = id v12;
-  br v20 .__14__ .__64__;
-.__28__:
-  v30: bool = const false;
-  v35: int = id v9;
-  v36: bool = id v30;
-  v37: int = id v10;
-  v38: int = id v11;
-  v39: int = id v12;
-  jmp .__56__;
-.__64__:
-  print v9;
+  v2_: int = const 0;
+  v3_: int = id v0;
+  v4_: int = id v2_;
+  v5_: int = id v0;
+  v6_: int = id v1;
+.v7_:
+  v8_: int = const 1;
+  v9_: int = sub v6_ v8_;
+  v10_: bool = lt v4_ v9_;
+  br v10_ .v11_ .v12_;
+.v11_:
+  v13_: int = mul v5_ v3_;
+  v14_: bool = const true;
+  v15_: int = const 1;
+  v16_: int = add v4_ v15_;
+  v17_: int = id v13_;
+  v18_: bool = id v14_;
+  v19_: int = id v16_;
+  v20_: int = id v5_;
+  v21_: int = id v6_;
+.v22_:
+  v3_: int = id v17_;
+  v4_: int = id v19_;
+  v5_: int = id v5_;
+  v6_: int = id v6_;
+  br v10_ .v7_ .v23_;
+.v12_:
+  v24_: bool = const false;
+  v17_: int = id v3_;
+  v18_: bool = id v24_;
+  v19_: int = id v4_;
+  v20_: int = id v5_;
+  v21_: int = id v6_;
+  jmp .v22_;
+.v23_:
+  print v3_;
 }
 @main {
-  v1: int = const 4;
-  v3: int = const 15;
-  call @pow v1 v3;
+  v0_: int = const 4;
+  v1_: int = const 15;
+  call @pow v0_ v1_;
 }

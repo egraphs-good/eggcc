@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use eggcc::util::{Run, RunType, TestProgram};
+use eggcc::util::{InterpMode, Run, RunType, TestProgram};
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
@@ -59,7 +59,12 @@ fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
 
         if just_brilift {
             mk_trial(
-                Run::compile_brilift_config(TestProgram::BrilFile(f), true, true, false, true),
+                Run::compile_brilift_config(
+                    TestProgram::BrilFile(f),
+                    true,
+                    true,
+                    InterpMode::InterpFast, // for just_brilift, use fast interp because benchmarks are slow
+                ),
                 snapshot,
             );
         } else {

@@ -5,13 +5,12 @@ expression: visualization.result
 @main {
   v1: int = const 2;
   v4: ptr<int> = alloc v1;
-  v8: int = const 1;
-  v10: ptr<int> = ptradd v4 v8;
-  v12: int = const 20;
-  v15: int = const 10;
-  store v4 v15;
-  store v10 v12;
-  v20: int = load v4;
-  print v20;
+  v6: int = const 10;
+  v9: int = const 1;
+  v11: ptr<int> = ptradd v4 v9;
+  v13: int = const 20;
+  store v4 v6;
+  store v11 v13;
+  print v6;
   free v4;
 }

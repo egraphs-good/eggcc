@@ -20,11 +20,10 @@ expression: visualization.result
   v22: bool = id v22;
   br v22 .__24__ .__32__;
 .__32__:
-  v35: int = const 20;
-  v38: int = const 10;
-  store v20 v38;
-  store v21 v35;
-  v43: int = load v20;
-  print v43;
+  v33: int = const 10;
+  v36: int = const 20;
+  store v20 v33;
+  store v21 v36;
+  print v33;
   free v19;
 }

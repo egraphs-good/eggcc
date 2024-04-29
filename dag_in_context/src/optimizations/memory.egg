@@ -244,6 +244,9 @@
       ((PointsToCells x ap)
        (PointsToCells y ap))
       :ruleset memory-helpers)
+(rule ((PointsToCells (Single x) ap))
+      ((PointsToCells x ap))
+      :ruleset memory-helpers)
 
 ; Compute and propagate PointsToCells
 (rewrite (PointsToCells (Concat x y) aps)

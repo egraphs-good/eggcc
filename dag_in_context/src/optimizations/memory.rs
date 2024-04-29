@@ -389,6 +389,7 @@ pub(crate) fn rules() -> String {
 
 #[cfg(test)]
 use crate::egglog_test;
+#[cfg(test)]
 use crate::egglog_test_and_print_program;
 #[cfg(test)]
 use crate::schema::{BaseType, Type};

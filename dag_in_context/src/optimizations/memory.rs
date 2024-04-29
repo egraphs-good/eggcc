@@ -389,6 +389,7 @@ pub(crate) fn rules() -> String {
 
 #[cfg(test)]
 use crate::egglog_test;
+use crate::egglog_test_and_print_program;
 #[cfg(test)]
 use crate::schema::{BaseType, Type};
 
@@ -516,7 +517,7 @@ fn simple_loop_swap() -> crate::Result {
     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let f =
         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
-    egglog_test(
+    egglog_test_and_print_program(
         &format!("{f}"),
         &format!("(let ten {ten}) (let val {val}) (check (= val ten))"),
         vec![],

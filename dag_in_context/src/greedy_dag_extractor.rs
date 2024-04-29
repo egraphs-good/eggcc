@@ -533,7 +533,29 @@ impl CostModel for DefaultCostModel {
             "DoWhile" => 100., // TODO: we could make this more accurate
             "If" | "Switch" => 50.,
             // Unreachable
-            "HasType" | "HasArgType" | "ContextOf" | "NoContext" | "ExpectType" => 0.,
+            "Nil-List<PtrPointees>"
+            | "PointsAnywhere"
+            | "Cons-List<PtrPointees>"
+            | "UnwrapPtrPointsTo"
+            | "PointeesDropFirst"
+            | "PointsToCellsAtIter"
+            | "Concat-List<PtrPointees>"
+            | "RevConcat-List<PtrPointees>"
+            | "PtrPointsTo"
+            | "GetPointees"
+            | "TuplePointsTo"
+            | "TypeToPointees"
+            | "Length-List<PtrPointees>"
+            | "PointsTo"
+            | "BaseTypeToPtrPointees"
+            | "TypeListToList<PtrPointees>"
+            | "Nil-List<i64+IntInterval>"
+            | "Length-List<i64+IntInterval>"
+            | "HasType"
+            | "HasArgType"
+            | "ContextOf"
+            | "NoContext"
+            | "ExpectType" => 0.,
             "ExprIsPure" | "ListExprIsPure" | "BinaryOpIsPure" | "UnaryOpIsPure" => 0.,
             "BodyContainsExpr" | "ScopeContext" => 0.,
             "Region" | "Full" | "IntB" | "BoolB" => 0.,

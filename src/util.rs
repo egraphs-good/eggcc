@@ -338,8 +338,26 @@ impl Run {
         Ok(bril)
     }
 
+    pub fn compile_brilift_config(
+        test: TestProgram,
+        optimize_egglog: bool,
+        optimize_brilift: bool,
+        interp: bool,
+    ) -> Run {
+        Run {
+            test_type: RunType::CompileBrilift,
+            interp,
+            prog_with_args: test.read_program(),
+            profile_out: None,
+            output_path: None,
+            optimize_egglog: Some(optimize_egglog),
+            optimize_brilift: Some(optimize_brilift),
+            optimize_bril_llvm: None,
+        }
+    }
+
     pub fn all_configurations_for(test: TestProgram) -> Vec<Run> {
-        let prog = test.read_program();
+        let prog = test.clone().read_program();
         let mut res = vec![];
         for test_type in [
             RunType::RvsdgConversion,
@@ -376,16 +394,12 @@ impl Run {
         for optimize_egglog in [true, false] {
             for optimize_brilift in [true, false] {
                 for interp in [true, false] {
-                    res.push(Run {
-                        test_type: RunType::CompileBrilift,
+                    res.push(Run::compile_brilift_config(
+                        test.clone(),
+                        optimize_egglog,
+                        optimize_brilift,
                         interp,
-                        prog_with_args: prog.clone(),
-                        profile_out: None,
-                        output_path: None,
-                        optimize_egglog: Some(optimize_egglog),
-                        optimize_brilift: Some(optimize_brilift),
-                        optimize_bril_llvm: None,
-                    });
+                    ));
                 }
             }
         }

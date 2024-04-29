@@ -4,7 +4,10 @@ use eggcc::util::{Run, RunType, TestProgram};
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
-fn generate_tests(glob: &str) -> Vec<Trial> {
+/// Generate tests for all configurations of a given file
+/// If `just_brilift` is true, only generate tests that
+/// run the full pipeline with brilift
+fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
@@ -54,8 +57,15 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
 
         let snapshot = f.to_str().unwrap().contains("small");
 
-        for run in Run::all_configurations_for(TestProgram::BrilFile(f)) {
-            mk_trial(run, snapshot);
+        if just_brilift {
+            mk_trial(
+                Run::compile_brilift_config(TestProgram::BrilFile(f), true, true, true),
+                snapshot,
+            );
+        } else {
+            for run in Run::all_configurations_for(TestProgram::BrilFile(f)) {
+                mk_trial(run, snapshot);
+            }
         }
     }
 
@@ -64,6 +74,9 @@ fn generate_tests(glob: &str) -> Vec<Trial> {
 
 fn main() {
     let args = libtest_mimic::Arguments::from_args();
-    let tests = generate_tests("tests/passing/**/*.bril");
+    let mut tests = generate_tests("tests/passing/**/*.bril", false);
+    // also generate tests for benchmarks
+    tests.extend(generate_tests("benchmarks/passing/**/*.bril", true));
+
     libtest_mimic::run(&args, tests).exit();
 }

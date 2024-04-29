@@ -196,7 +196,6 @@ function makeCheckbox(parent, mode) {
     checkbox.id = mode;
     checkbox.checked = true;
     checkbox.onchange = (e) => {
-        console.log(e);
         // if the checkbox is checked, add the mode to the set of enabled modes
         if (checkbox.checked) {
             enabledModes.add(mode);

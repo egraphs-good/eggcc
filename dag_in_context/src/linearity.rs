@@ -173,20 +173,18 @@ impl<'a> Extractor<'a> {
     pub fn check_program_is_linear(&mut self, prog: &TreeProgram) -> Result<(), String> {
         for fun in iter::once(&prog.entry).chain(prog.functions.iter()) {
             let mut reachables = Default::default();
-            fun.collect_reachable(fun, &mut reachables);
+            let mut raw_to_rc = Default::default();
+            fun.collect_reachable(fun, &mut reachables, &mut raw_to_rc);
 
             // if the raw pointer is effectful, then return its RcExpr, otherwise None.
             // Gracefully handles `Function` which is not supported by Extractor::is_effectful.
             let get_if_effectful = |this: &mut Extractor<'a>, expr: *const Expr| {
-                let rcexpr = unsafe {
-                    Rc::increment_strong_count(expr);
-                    Rc::from_raw(expr)
-                };
+                let rcexpr = raw_to_rc.get(&expr).unwrap();
                 if let Expr::Function(_name, _inp, _out, body) = rcexpr.as_ref() {
                     if this.is_effectful(body) {
                         return Some(rcexpr);
                     }
-                } else if this.is_effectful(&rcexpr) {
+                } else if this.is_effectful(rcexpr) {
                     return Some(rcexpr);
                 }
                 None
@@ -243,7 +241,11 @@ impl Expr {
         self: &RcExpr,
         root: &RcExpr,
         reachable_from: &mut IndexMap<*const Expr, IndexSet<*const Expr>>,
+        raw_to_rc: &mut HashMap<*const Expr, RcExpr>,
     ) {
+        raw_to_rc
+            .entry(Rc::as_ptr(self))
+            .or_insert_with(|| self.clone());
         if !reachable_from
             .entry(Rc::as_ptr(root))
             .or_default()
@@ -254,29 +256,29 @@ impl Expr {
 
         match self.as_ref() {
             Expr::If(pred, input, t1, t2) => {
-                pred.collect_reachable(root, reachable_from);
-                input.collect_reachable(root, reachable_from);
+                pred.collect_reachable(root, reachable_from, raw_to_rc);
+                input.collect_reachable(root, reachable_from, raw_to_rc);
                 let root = t1;
-                t1.collect_reachable(root, reachable_from);
+                t1.collect_reachable(root, reachable_from, raw_to_rc);
                 let root = t2;
-                t2.collect_reachable(root, reachable_from);
+                t2.collect_reachable(root, reachable_from, raw_to_rc);
             }
             Expr::Switch(pred, inputs, branches) => {
-                pred.collect_reachable(root, reachable_from);
-                inputs.collect_reachable(root, reachable_from);
+                pred.collect_reachable(root, reachable_from, raw_to_rc);
+                inputs.collect_reachable(root, reachable_from, raw_to_rc);
                 for branch in branches {
                     let root = branch;
-                    branch.collect_reachable(root, reachable_from);
+                    branch.collect_reachable(root, reachable_from, raw_to_rc);
                 }
             }
             Expr::DoWhile(input, body) => {
-                input.collect_reachable(root, reachable_from);
+                input.collect_reachable(root, reachable_from, raw_to_rc);
                 let root = body;
-                body.collect_reachable(root, reachable_from);
+                body.collect_reachable(root, reachable_from, raw_to_rc);
             }
             _ => {
                 for child in self.children_same_scope() {
-                    child.collect_reachable(root, reachable_from);
+                    child.collect_reachable(root, reachable_from, raw_to_rc);
                 }
             }
         }

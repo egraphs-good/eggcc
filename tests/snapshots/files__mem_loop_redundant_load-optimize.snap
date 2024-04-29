@@ -3,27 +3,27 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: bool) {
-  v2: int = const 3;
-  v5: ptr<int> = alloc v2;
-  v8: int = const 1;
-  v10: ptr<int> = ptradd v5 v8;
-  v14: int = const 2;
-  v16: ptr<int> = ptradd v5 v14;
-  v19: ptr<int> = id v10;
-  v20: ptr<int> = id v5;
-  v21: ptr<int> = id v16;
-  v22: bool = id v0;
-.__24__:
-  v19: ptr<int> = id v20;
-  v20: ptr<int> = id v19;
-  v21: ptr<int> = id v21;
-  v22: bool = id v22;
-  br v22 .__24__ .__32__;
-.__32__:
-  v33: int = const 10;
-  v36: int = const 20;
-  store v20 v33;
-  store v21 v36;
-  print v33;
-  free v19;
+  v1_: int = const 3;
+  v2_: ptr<int> = alloc v1_;
+  v3_: int = const 1;
+  v4_: ptr<int> = ptradd v2_ v3_;
+  v5_: int = const 2;
+  v6_: ptr<int> = ptradd v2_ v5_;
+  v7_: ptr<int> = id v4_;
+  v8_: ptr<int> = id v2_;
+  v9_: ptr<int> = id v6_;
+  v10_: bool = id v0;
+.v11_:
+  v7_: ptr<int> = id v8_;
+  v8_: ptr<int> = id v7_;
+  v9_: ptr<int> = id v9_;
+  v10_: bool = id v10_;
+  br v10_ .v11_ .v12_;
+.v12_:
+  v13_: int = const 10;
+  v14_: int = const 20;
+  store v8_ v13_;
+  store v9_ v14_;
+  print v13_;
+  free v7_;
 }

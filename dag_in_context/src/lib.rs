@@ -164,7 +164,7 @@ pub fn build_program(program: &TreeProgram) -> String {
 // It is expected that program has context added
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
     let egglog_prog = build_program(program);
-    println!("Running egglog program...");
+    log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&egglog_prog)?;
 

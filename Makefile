@@ -17,3 +17,7 @@ nits:
 
 nightly:
 	bash infra/nightly.sh
+
+
+localnightly:
+	LOCAL=1 bash infra/nightly.sh

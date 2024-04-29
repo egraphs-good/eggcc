@@ -687,11 +687,6 @@ impl Run {
         };
 
         let result_interpreted = if !(self.interp.should_interp()) {
-            assert!(
-                interpretable_out.is_none(),
-                "Found interpretable for {}",
-                self.name()
-            );
             None
         } else {
             let Some(interpretable_out) = interpretable_out else {

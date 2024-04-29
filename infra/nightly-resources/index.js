@@ -189,13 +189,14 @@ async function loadBenchmarks(compareTo) {
     container.innerHTML = ConvertJsonToTable(parsed);
 }
 
-function makecheckbox(parent, mode) {
+function makeCheckbox(parent, mode) {
     // make a check box for enabling this mode
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.id = mode;
     checkbox.checked = true;
-    checkbox.onchange = () => {
+    checkbox.onchange = (e) => {
+        console.log(e);
         // if the checkbox is checked, add the mode to the set of enabled modes
         if (checkbox.checked) {
             enabledModes.add(mode);
@@ -219,16 +220,47 @@ function makecheckbox(parent, mode) {
     enabledModes.add(mode);
 }
 
-// Top-level load function for the main index page.
-async function load() {
+function makeModeSelectors() {
+    const modeSelections = document.getElementById("modeselections");
+    const checkboxContainer = document.createElement("div");
     // for each mode in allmodes, make a box to enable or disable it
     // put them in the div with id modeselections
-    const modeSelections = document.getElementById("modeselections");
     allmodes.forEach((mode) => {
-        makecheckbox(modeSelections, mode[0])
+        makeCheckbox(checkboxContainer, mode[0])
     })
+    
+    // Convenience buttons to select all / none
+    const buttonContainer = document.createElement("div");
+    const all = document.createElement("button");
+    all.innerText = "Select All";
+    all.onclick = (e) => {
+        checkboxContainer.childNodes.forEach(checkbox => {
+            checkbox.checked = true;
+            enabledModes.add(checkbox.id);
+        })
+        // reload everything
+        loadBenchmarks();
+    }
 
+    const none = document.createElement("button");
+    none.innerText = "Select None";
+    none.onclick = (e) => {
+        checkboxContainer.childNodes.forEach(checkbox => {
+            checkbox.checked = false;
+            enabledModes.delete(checkbox.id);
+        })
+        // reload everything
+        loadBenchmarks();
+    }
+    buttonContainer.appendChild(all);
+    buttonContainer.appendChild(none);
+    modeSelections.appendChild(buttonContainer);
+    modeSelections.appendChild(checkboxContainer);
+}
 
+// Top-level load function for the main index page.
+async function load() {
+    makeModeSelectors();
 
     const previousRuns = await getPreviousRuns();
     const initialRunIdx = findBenchToCompareIdx(previousRuns);

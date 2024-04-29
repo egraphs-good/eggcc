@@ -51,6 +51,8 @@ pub fn prologue() -> String {
         include_str!("utility/canonicalize.egg"),
         include_str!("interval_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
+        &optimizations::memory::rules(),
+        include_str!("optimizations/memory.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
         include_str!("optimizations/loop_unroll.egg"),

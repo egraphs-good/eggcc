@@ -5,6 +5,7 @@ pub mod is_resolved;
 pub mod is_valid;
 pub mod loop_invariant;
 pub mod loop_unroll;
+pub mod memory;
 pub mod passthrough;
 pub mod purity_analysis;
 pub mod switch_rewrites;

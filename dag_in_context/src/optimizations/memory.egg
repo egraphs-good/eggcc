@@ -1,0 +1,454 @@
+(sort ExprSetPrim (Set Expr))
+
+(datatype ExprSet (ES ExprSetPrim))
+
+(function ExprSet-intersect (ExprSet ExprSet) ExprSet)
+(rewrite (ExprSet-intersect (ES set1) (ES set2)) (ES (set-intersect set1 set2))
+         :ruleset memory-helpers)
+(function ExprSet-union (ExprSet ExprSet) ExprSet)
+(rewrite (ExprSet-union (ES set1) (ES set2)) (ES (set-union set1 set2))
+         :ruleset memory-helpers)
+(relation ExprSet-contains (ExprSet Expr))
+(rule ((ES set1) (set-contains set1 x))
+      ((ExprSet-contains (ES set1) x))
+      :ruleset memory-helpers)
+(function ExprSet-insert (ExprSet Expr) ExprSet)
+(rewrite (ExprSet-insert (ES set1) x)
+         (ES (set-insert set1 x))
+         :ruleset memory-helpers)
+(function ExprSet-length (ExprSet) i64)
+(rewrite (ExprSet-length (ES set1)) (set-length set1) :ruleset memory-helpers)
+
+; ============================
+; Pointees
+; ============================
+
+
+; List<i64+IntInterval> is used as an association list; the i64 keys
+; (corresponding to alloc ids) are always unique and sorted, the IntInterval
+; values correspond to offset ranges.
+;
+; (TuplePointsTo [{0->[4,5], 1->[0,0]}, {0->[0,0]}])
+; indicates a tuple with two components.
+; - The first component might point to Alloc 0 at offsets 4 or 5,
+;   or Alloc 1 at offset 0
+; - The second component points to Alloc 0 at offset 0
+(datatype Pointees
+          (TuplePointsTo List<PtrPointees>)
+          (PtrPointsTo PtrPointees))
+
+(function UnwrapPtrPointsTo (Pointees) PtrPointees)
+(rewrite (UnwrapPtrPointsTo (PtrPointsTo x))
+         x
+         :ruleset memory-helpers)
+(function UnwrapTuplePointsTo (Pointees) List<PtrPointees>)
+(rewrite (UnwrapTuplePointsTo (TuplePointsTo x))
+         x
+         :ruleset memory-helpers)
+
+(relation PointsNowhere (Pointees))
+(rule ((= f (PtrPointsTo x))
+       (PointsNowhere-PtrPointees x))
+      ((PointsNowhere f))
+      :ruleset memory-helpers)
+(rule ((= f (TuplePointsTo l))
+       (All<PointsNowhere-PtrPointees> l))
+      ((PointsNowhere f))
+      :ruleset memory-helpers)
+
+(function UnionPointees (Pointees Pointees) Pointees)
+(rewrite (UnionPointees (PtrPointsTo x) (PtrPointsTo y))
+         (PtrPointsTo (Union-PtrPointees x y))
+         :ruleset memory-helpers)
+(rewrite (UnionPointees (TuplePointsTo x) (TuplePointsTo y))
+         (TuplePointsTo (Zip<Union-PtrPointees> x y))
+         :when ((= (Length-List<PtrPointees> x) (Length-List<PtrPointees> y)))
+         :ruleset memory-helpers)
+(function IntersectPointees (Pointees Pointees) Pointees)
+(rewrite (IntersectPointees (PtrPointsTo x) (PtrPointsTo y))
+         (PtrPointsTo (Intersect-PtrPointees x y))
+         :ruleset memory-helpers)
+(rewrite (IntersectPointees (TuplePointsTo x) (TuplePointsTo y))
+         (TuplePointsTo (Zip<Intersect-PtrPointees> x y))
+         :ruleset memory-helpers)
+
+(function GetPointees (Pointees i64) Pointees)
+(rule ((= f (GetPointees (TuplePointsTo l) i))
+       (At-List<PtrPointees> l i x))
+      ((union f (PtrPointsTo x)))
+      :ruleset memory-helpers)
+
+(function PointeesDropFirst (Pointees) Pointees)
+(rewrite (PointeesDropFirst (TuplePointsTo (Cons-List<PtrPointees> hd tl)))
+         (TuplePointsTo tl)
+         :ruleset memory-helpers)
+
+; ============================
+; Resolved
+; ============================
+
+; Resolved checks if an e-class contains a term containing only constructors and
+; primitives; i.e. whether equality is decideable
+(relation Resolved-IntOrInfinity (IntOrInfinity))
+(rule ((= f (I _)))
+      ((Resolved-IntOrInfinity f))
+      :ruleset memory-helpers)
+(rule ((= f (Infinity)))
+      ((Resolved-IntOrInfinity f))
+      :ruleset memory-helpers)
+(rule ((= f (NegInfinity)))
+      ((Resolved-IntOrInfinity f))
+      :ruleset memory-helpers)
+
+(relation Resolved-IntInterval (IntInterval))
+(rule ((= f (MkIntInterval lo hi))
+       (Resolved-IntOrInfinity lo)
+       (Resolved-IntOrInfinity hi))
+      ((Resolved-IntInterval f))
+      :ruleset memory-helpers)
+
+(relation Resolved-List<i64+IntInterval> (List<i64+IntInterval>))
+(rule ((= f (Nil-List<i64+IntInterval>)))
+      ((Resolved-List<i64+IntInterval> f))
+      :ruleset memory-helpers)
+(rule ((= f (Cons-List<i64+IntInterval> allocid offsets tl))
+       (Resolved-List<i64+IntInterval> tl)
+       (Resolved-IntInterval offsets))
+      ((Resolved-List<i64+IntInterval> f))
+      :ruleset memory-helpers)
+
+(relation Resolved-PtrPointees (PtrPointees))
+(rule ((= f (PointsAnywhere)))
+      ((Resolved-PtrPointees f))
+      :ruleset memory-helpers)
+(rule ((= f (PointsTo x))
+       (Resolved-List<i64+IntInterval> x))
+      ((Resolved-PtrPointees f))
+      :ruleset memory-helpers)
+
+(relation Resolved-List<PtrPointees> (List<PtrPointees>))
+(rule ((= f (Nil-List<PtrPointees>)))
+      ((Resolved-List<PtrPointees> f))
+      :ruleset memory-helpers)
+(rule ((= f (Cons-List<PtrPointees> hd tl))
+       (Resolved-List<PtrPointees> tl)
+       (Resolved-PtrPointees hd))
+      ((Resolved-List<PtrPointees> f))
+      :ruleset memory-helpers)
+
+(relation Resolved-Pointees (Pointees))
+(rule ((= f (TuplePointsTo x))
+       (Resolved-List<PtrPointees> x))
+      ((Resolved-Pointees f))
+      :ruleset memory-helpers)
+(rule ((= f (PtrPointsTo x))
+       (Resolved-PtrPointees x))
+      ((Resolved-Pointees f))
+      :ruleset memory-helpers)
+
+
+;;;;;
+
+(function BaseTypeToPtrPointees (BaseType) PtrPointees :cost 100)
+(rewrite (BaseTypeToPtrPointees (PointerT _))
+         (PointsAnywhere)
+         :ruleset memory-helpers)
+(rewrite (BaseTypeToPtrPointees (IntT))
+         (PointsTo (Nil-List<i64+IntInterval>))
+         :ruleset memory-helpers)
+(rewrite (BaseTypeToPtrPointees (StateT))
+         (PointsTo (Nil-List<i64+IntInterval>))
+         :ruleset memory-helpers)
+(rewrite (BaseTypeToPtrPointees (BoolT))
+         (PointsTo (Nil-List<i64+IntInterval>))
+         :ruleset memory-helpers)
+
+(function TypeListToList<PtrPointees> (TypeList) List<PtrPointees> :cost 1000)
+(rewrite (TypeListToList<PtrPointees> (TNil))
+         (Nil-List<PtrPointees>)
+         :ruleset memory-helpers)
+(rewrite (TypeListToList<PtrPointees> (TCons hd tl))
+         (Cons-List<PtrPointees>
+            (BaseTypeToPtrPointees hd)
+            (TypeListToList<PtrPointees> tl))
+         :ruleset memory-helpers)
+
+(function TypeToPointees (Type) Pointees :cost 1000)
+(rewrite (TypeToPointees (TupleT tylist))
+         (TuplePointsTo (TypeListToList<PtrPointees> tylist))
+         :ruleset memory-helpers)
+(rewrite (TypeToPointees (Base basety))
+         (PtrPointsTo (BaseTypeToPtrPointees basety))
+         :ruleset memory-helpers)
+
+; ============================
+; Update PointerishType
+; ============================
+
+(relation PointerishType (Type))
+(relation PointerishTypeList (TypeList))
+
+(rule ((= f (Base (PointerT ty))))
+      ((PointerishType f))
+      :ruleset always-run)
+
+(rule ((= f (TCons (PointerT ty) tl)))
+      ((PointerishTypeList f))
+      :ruleset always-run)
+
+(rule ((= f (TCons hd tl))
+       (PointerishTypeList tl))
+      ((PointerishTypeList f))
+      :ruleset always-run)
+
+(rule ((= f (TupleT l))
+       (PointerishTypeList l))
+      ((PointerishType f))
+      :ruleset always-run)
+
+; ============================
+; Update PointsToCells
+; ============================
+
+;                             arg pointees  result pointees
+(function PointsToCells (Expr Pointees)     Pointees :unextractable) 
+
+; Top-level demand
+(rule ((Function name in-ty out-ty body))
+      ((PointsToCells body (TypeToPointees in-ty)))
+      :ruleset memory-helpers)
+
+; Demand PointsToCells along state edge and pointer-typed values
+(rule ((PointsToCells (Bop (Print) e state) ap))
+      ((PointsToCells state ap))
+      :ruleset memory-helpers)
+(rule ((PointsToCells (Bop (Load) e state) ap))
+      ((PointsToCells e ap)
+       (PointsToCells state ap))
+      :ruleset memory-helpers)
+(rule ((PointsToCells (Top (Write) ptr val state) ap))
+      ((PointsToCells ptr ap)
+       (PointsToCells state ap))
+      :ruleset memory-helpers)
+(rule ((PointsToCells (Alloc id sz state ty) ap))
+      ((PointsToCells state ap))
+      :ruleset memory-helpers)
+(rule ((PointsToCells (Bop (Free) ptr state) ap))
+      ((PointsToCells ptr ap)
+       (PointsToCells state ap))
+      :ruleset memory-helpers)
+(rule ((PointsToCells (Get x i) ap))
+      ((PointsToCells x ap))
+      :ruleset memory-helpers)
+(rule ((PointsToCells (Concat x y) ap))
+      ((PointsToCells x ap)
+       (PointsToCells y ap))
+      :ruleset memory-helpers)
+(rule ((PointsToCells (Single x) ap))
+      ((PointsToCells x ap))
+      :ruleset memory-helpers)
+
+; Compute and propagate PointsToCells
+(rewrite (PointsToCells (Concat x y) aps)
+         (TuplePointsTo (Concat-List<PtrPointees>
+           (UnwrapTuplePointsTo (PointsToCells x aps))
+           (UnwrapTuplePointsTo (PointsToCells y aps))))
+         :when ((HasType (Concat x y) ty) (PointerishType ty))
+         :ruleset memory-helpers)
+
+(rewrite (PointsToCells (Get x i) aps)
+         (GetPointees (PointsToCells x aps) i)
+         :when ((HasType (Get x i) ty) (PointerishType ty))
+         :ruleset memory-helpers)
+
+(rewrite (PointsToCells (Single x) aps)
+         (TuplePointsTo
+           (Cons-List<PtrPointees>
+             (UnwrapPtrPointsTo (PointsToCells x aps))
+             (Nil-List<PtrPointees>)))
+         :when ((HasType (Single x) ty) (PointerishType ty))
+         :ruleset memory-helpers) 
+
+(rewrite (PointsToCells (Arg ty_ ctx) aps)
+         aps
+         :when ((HasType (Arg ty_ ctx) ty) (PointerishType ty))
+         :ruleset memory-helpers)
+
+; Allow non-pointer types to resolve
+(rule ((PointsToCells x aps)
+       (HasType x ty))
+      ((TypeToPointees ty))
+      :ruleset memory-helpers)
+(rule ((= f (PointsToCells x aps))
+       (HasType x ty)
+       (= pointees (TypeToPointees ty))
+       (PointsNowhere pointees))
+      ((union f pointees))
+      :ruleset memory-helpers)
+
+(rewrite (PointsToCells (Bop (PtrAdd) x e) aps)
+         (PtrPointsTo
+           (AddIntIntervalToPtrPointees
+             (MkIntInterval (I lo) (I hi))
+             (UnwrapPtrPointsTo (PointsToCells x aps))))
+         :when ((= (IntB lo) (lo-bound e))
+                (= (IntB hi) (hi-bound e)))
+         :ruleset memory-helpers)
+
+(rewrite (PointsToCells (If c inputs t e) aps)
+         (UnionPointees
+           (PointsToCells t (PointsToCells inputs aps))
+           (PointsToCells e (PointsToCells inputs aps)))
+         :when ((HasType (If c inputs t e) ty) (PointerishType ty))
+         :ruleset memory)
+
+(rewrite (PointsToCells (Alloc id sz state ty) aps)
+         (TuplePointsTo
+           (Cons-List<PtrPointees>
+             (PointsTo
+               (Cons-List<i64+IntInterval>
+                 id
+                 (MkIntInterval (I 0) (I 0))
+                 (Nil-List<i64+IntInterval>)))
+             (Cons-List<PtrPointees>
+               (PointsTo (Nil-List<i64+IntInterval>)) ; state output points to nothing
+               (Nil-List<PtrPointees>))))
+         :ruleset memory-helpers)
+
+; arg pointees * loop in * loop out * i64 -> result pointees
+(function PointsToCellsAtIter (Pointees Expr Expr i64) Pointees)
+
+; compute first two
+(rule ((= e (DoWhile inputs pred-body))
+       (PointsToCells e aps))
+      ((set (PointsToCellsAtIter aps inputs pred-body 0)
+            (PointsToCells inputs aps))
+       (set (PointsToCellsAtIter aps inputs pred-body 1)
+            (UnionPointees
+              (PointsToCellsAtIter aps inputs pred-body 0)
+              (PointeesDropFirst
+                (PointsToCells pred-body (PointsToCellsAtIter aps inputs pred-body 0))))))
+      :ruleset memory-helpers)
+
+; avoid quadratic query
+(function succ (i64) i64 :unextractable)
+(rule ((PointsToCellsAtIter aps inputs pred-body i))
+      ((set (succ i) (+ i 1)))
+      :ruleset memory-helpers)
+
+; Note that this rule is bounded by ruleset memory
+(rule ((= pointees0 (PointsToCellsAtIter aps inputs pred-body i))
+       (= pointees1 (PointsToCellsAtIter aps inputs pred-body (succ i)))
+       (Resolved-Pointees pointees0)
+       (Resolved-Pointees pointees1)
+       (!= pointees0 pointees1))
+      ((set (PointsToCellsAtIter aps inputs pred-body (+ i 2))
+            (UnionPointees
+              pointees1
+              (PointeesDropFirst
+                (PointsToCells pred-body pointees1)))))
+      :ruleset memory)
+
+(rule ((= pointees (PointsToCellsAtIter aps inputs pred-body i))
+       (= pointees (PointsToCellsAtIter aps inputs pred-body (succ i))))
+      ((set (PointsToCells (DoWhile inputs pred-body) aps)
+            pointees))
+      :ruleset memory)
+
+; ============================
+; Update CellHasValues
+; ============================
+
+;                       program point, cell
+(function CellHasValues (Expr i64) ExprSet :merge (ExprSet-intersect old new))
+
+(rule ((PtrPointsTo (PointsTo l)))
+      ((DemandAt-List<i64+IntInterval> l))
+      :ruleset memory-helpers)
+(rule ((TuplePointsTo l))
+      ((DemandAt-List<PtrPointees> l))
+      :ruleset memory-helpers)
+
+; TODO: make sensitive to offsets
+(rule ((= e (Top (Write) ptr val state))
+       (HasArgType ptr argty))
+      ((TypeToPointees argty))
+      :ruleset memory-helpers)
+
+(rule ((= e (Top (Write) ptr val state))
+       (HasArgType ptr argty)
+       (= (PtrPointsTo (PointsTo cells)) (PointsToCells ptr (TypeToPointees argty)))
+       (At-List<i64+IntInterval> cells any-idx alloc-id offsets)
+       (= vals (CellHasValues state cell)))
+      ((set (CellHasValues e cell) (ExprSet-insert vals val)))
+      :ruleset memory-helpers)
+
+; ============================
+; Update DontAlias
+; ============================
+
+;                    pointer, pointer
+(relation DontAlias (Expr Expr Pointees))
+
+(rule ((BodyContainsExpr body ptr1)
+       (BodyContainsExpr body ptr2)
+       (HasType ptr1 (Base (PointerT ty)))
+       (HasType ptr2 (Base (PointerT ty)))
+       (= pointees1 (PointsToCells ptr1 arg-pointees))
+       (= pointees2 (PointsToCells ptr2 arg-pointees)))
+      ((IntersectPointees pointees1 pointees2))
+      :ruleset memory-helpers)
+
+(rule ((PointsNowhere
+         (IntersectPointees
+           (PointsToCells ptr1 arg-pointees)
+           (PointsToCells ptr2 arg-pointees))))
+      ((DontAlias ptr1 ptr2 arg-pointees))
+      :ruleset memory-helpers)
+
+; ============================
+; Update PointsToExpr
+; ============================
+
+;                   program point, pointer
+; merge function???
+; TODO: should the output of this be exprset?
+(function PointsToExpr (Expr Expr) Expr :unextractable)
+
+; For a write, mark the given expression as containing `data`.
+; Propagate the previous values of any expression that definitely does not alias `addr`.
+(rule ((= e (Top (Write) addr data state)))
+      ((set (PointsToExpr e addr) data))
+      :ruleset memory-helpers)
+(rule ((= e (Top (Write) addr data state))
+       (HasArgType addr argty)
+       (= otherdata (PointsToExpr state otheraddr))
+       (DontAlias addr otheraddr (TypeToPointees argty)))
+      ((set (PointsToExpr e otheraddr) otherdata))
+      :ruleset memory-helpers)
+
+(rule ((= f (PointsToExpr e state))
+       (= e (Bop (Load) ptr state2)))
+      ((set (PointsToExpr (Get e 1) state2) f))
+      :ruleset memory-helpers)
+
+(rule ((= f (PointsToExpr e state))
+       (Bop (Load) e state))
+      ((union (Bop (Load) e state)
+              (Concat (Single f) (Single state)))
+       (union (Get (Bop (Load) e state) 0) f))
+      :ruleset memory-helpers)
+
+; Special-case: no intervening effects between load and write, elide the write
+; entirely (if write isn't otherwise used).
+; TODO: This is a general problem. Loads that get removed shouldn't really
+; have a state edge, but they need one to feed into further effects.
+; (rule ((= e (Bop (Load) addr (Top (Write) addr v state))))
+;       ((union (Get e 0) v)
+;        (union (Get e 1) state)) :ruleset memory-helpers)
+
+(rule ((= e (Bop (Load) addr state))
+       (= v (PointsToExpr state addr)))
+      ((union (Get e 0) v)
+       (union (Get e 1) state))
+       :ruleset memory-helpers)

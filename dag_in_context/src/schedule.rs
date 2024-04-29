@@ -22,11 +22,14 @@ pub fn mk_schedule() -> String {
     type-helpers
     type-analysis
     context
-    interval-analysis)
+    interval-analysis
+    memory-helpers
+  )
   
     
   (unstable-combined-ruleset optimizations
     loop-simplify
+    memory
   )
 
   (unstable-combined-ruleset expensive-optimizations

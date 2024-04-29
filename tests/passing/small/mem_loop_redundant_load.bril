@@ -1,0 +1,24 @@
+# ARGS: false
+@main(cond: bool) {
+    one: int = const 1;
+    two: int = const 2;
+    three: int = const 3;
+    p: ptr<int> = alloc three;
+    q: ptr<int> = ptradd p one;
+    r: ptr<int> = ptradd p two;
+    jmp .loop;
+.loop:
+    tmp: ptr<int> = id p;
+    p: ptr<int> = id q;
+    q: ptr<int> = id tmp;
+    br cond .loop .done;
+.done:
+    ten: int = const 10;
+    twenty: int = const 20;
+    store p ten;
+    store r twenty;
+    res: int = load p;
+    print res;
+    free q;
+    ret;
+}

@@ -31,34 +31,44 @@
 ;; TODO (start by doing constant only)
 ;;             loop in   out
 (relation inv (Expr Expr Expr))
+; (rule (
+;     (= loop (DoWhile inputs pred-and-body))
+;     (= (Get outputs (+ i 1)) (Get (Arg arg-type assm) i)))
+;     ((inv loop (Get inputs (+ i 1)) (Get (Arg arg-type assm) i))) :ruleset always-run)
 (rule (
     (= loop (DoWhile inputs pred-and-body))
-    (= (Get outputs (+ i 1)) (Get (Arg arg-type) i)))
-    ((inv loop (Get inputs (+ i 1)) (Get (Arg arg-type) i))) :ruleset always-run)
-(rule (
-    (= constant (Const c out-type))
-    (= loop (DoWhile inputs pred-and-body))
-    (ContextOf constant (InLoop inputs pred-and-body))
-    (HasType inputs in-type)
+    (ContextOf inputs loop-input-ctx)
+    (ContextOf pred-and-body loop-output-ctx)
+    (= constant (Const c out-type loop-output-ctx))
+    (HasArgType inputs in-type)
     )
-    ((inv loop (Const c in-type) constant)) :ruleset always-run)
+    ((inv loop (Const c in-type loop-input-ctx) constant)) :ruleset always-run)
+
+;; Temporary context for modified loops
+;; contains the new input (with correct context) and the new pred-output (with old context)
+(function InExtendedLoop (Expr Expr) Assumption :unextractable)
+
+(relation debug (Type Type))
 
 (rule 
     (
         ;; Find loop
         (= old-loop (DoWhile inputs pred-and-outputs))
+        (ContextOf pred-and-outputs loop-ctx)
 
         ; Find loop variable (argument that gets incremented with an invariant)
         (inv old-loop loop-incr-in loop-incr-out)
         ; Since the first el of pred-and-outputs is the pred, we need to offset i
-        (= (Get pred-and-outputs (+ i 1)) (Bop (Add) (Get (Arg arg-type) i) loop-incr-out))
+        (= (Get pred-and-outputs (+ i 1)) (Bop (Add) (Get (Arg arg-type assm) i) loop-incr-out))
 
         ; Find invariant where input is same as output, or constant
         (inv old-loop c-in c-out)
 
         ; Find multiplication of loop variable and invariant
-        (= old-mul (Bop (Mul) c-out (Get (Arg arg-type) i)))
-        (ContextOf old-mul (InLoop inputs pred-and-outputs))
+        (= old-mul (Bop (Mul) c-out (Get (Arg arg-type assm) i)))
+        (ContextOf old-mul loop-ctx)
+
+        (= arg-type (TupleT ty-list))
     )
     (
         ; Each time we need to update d by the product of the multiplied constant and the loop increment
@@ -71,15 +81,32 @@
         (let d-init (Bop (Mul) c-in (Get inputs i)))
 
         ; Value of d in loop
-        (let d-out (Bop (Add) (Get (Arg arg-type) i) addend))
+        (let d-out (Bop (Add) (Get (Arg arg-type assm) i) addend))
 
         ; Construct optimized theta
+        ; new-inputs already has the correct context
         (let new-inputs (Concat inputs (Single d-init)))
-        (let new-pred-and-outputs (Concat pred-and-outputs (Single d-out)))
-        (let new-loop (DoWhile new-inputs new-pred-and-outputs))
+
+        ; new pred and outputs contains the old loop context
+        (let new-body-old-ctx (Concat pred-and-outputs (Single d-out)))
+
+        ; We need to add a temporary context, then create the cycle later
+        (let tmp-ctx (InExtendedLoop new-inputs new-body-old-ctx))
+
+        ; We need to create a new type, with one more input
+        (let new-arg-ty (TupleT (AppendType ty-list (IntT))))
+
+        ; Now substitute the new type and temp context into the new body
+        (let new-body (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) new-body-old-ctx))
+
+        (let new-loop (DoWhile new-inputs new-body))
+
+        ; Now that we have the new loop, union the temporary context with the actual ctx
+        (union tmp-ctx (InLoop new-inputs new-body))
 
         ; Substitute d for the *i expression
-        (Subst inf-fuel (InLoop new-inputs new-pred-and-outputs) (Get (Arg arg-type) n) old-mul)
+        (let new-old-mul (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) old-mul))
+        (union (Get (Arg new-arg-ty tmp-ctx) n) new-old-mul)
 
         ; Project all but last
         (union old-loop (SubTuple new-loop 0 n))

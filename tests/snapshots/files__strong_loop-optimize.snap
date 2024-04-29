@@ -3,6 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
+<<<<<<< HEAD
   v1_: int = const 3;
   v2_: int = add v0 v1_;
   v3_: int = const 0;
@@ -27,4 +28,35 @@ expression: visualization.result
   print v6_;
   print v5_;
   print v4_;
+=======
+  v3: int = const 3;
+  v7: int = add v0 v3;
+  v9: int = const 0;
+  v12: int = const 21;
+  v15: int = id v3;
+  v16: int = id v7;
+  v17: int = id v9;
+  v18: int = id v0;
+  v19: int = id v12;
+  v20: int = id v12;
+.__22__:
+  print v19;
+  v25: int = const 2;
+  v28: int = add v25 v15;
+  v33: int = add v19 v17;
+  v36: int = const 14;
+  v39: int = add v36 v15;
+  v44: bool = lt v15 v18;
+  v15: int = id v28;
+  v16: int = id v16;
+  v17: int = id v33;
+  v18: int = id v18;
+  v19: int = id v39;
+  v20: int = id v39;
+  br v44 .__22__ .__48__;
+.__48__:
+  print v17;
+  print v16;
+  print v15;
+>>>>>>> 61fb605e (Loop strength reduction working)
 }

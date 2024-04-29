@@ -3,6 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @pow(v0: int, v1: int) {
+<<<<<<< HEAD
   v2_: int = const 0;
   v3_: int = const 1;
   v4_: int = sub v1 v3_;
@@ -25,6 +26,7 @@ expression: visualization.result
   v21_: int = id v7_;
   v22_: int = id v8_;
 .v23_:
+<<<<<<< HEAD
   v5_: int = id v18_;
   v6_: int = id v20_;
   v7_: int = id v7_;
@@ -41,6 +43,47 @@ expression: visualization.result
   jmp .v23_;
 .v24_:
   print v5_;
+=======
+  print v3_;
+=======
+  v5: int = const 0;
+  v9: int = id v0;
+  v10: int = id v5;
+  v11: int = id v0;
+  v12: int = id v1;
+.__14__:
+  v16: int = const 1;
+  v18: int = sub v12 v16;
+  v20: bool = lt v10 v18;
+  br v20 .__41__ .__28__;
+.__41__:
+  v44: int = mul v9 v11;
+  v46: bool = const true;
+  v49: int = const 1;
+  v51: int = add v10 v49;
+  v35: int = id v44;
+  v36: bool = id v46;
+  v37: int = id v51;
+  v38: int = id v11;
+  v39: int = id v12;
+.__56__:
+  v9: int = id v35;
+  v10: int = id v37;
+  v11: int = id v11;
+  v12: int = id v12;
+  br v20 .__14__ .__64__;
+.__28__:
+  v30: bool = const false;
+  v35: int = id v9;
+  v36: bool = id v30;
+  v37: int = id v10;
+  v38: int = id v11;
+  v39: int = id v12;
+  jmp .__56__;
+.__64__:
+  print v9;
+>>>>>>> 61fb605e (Loop strength reduction working)
+>>>>>>> f885687d (Loop strength reduction working)
 }
 @main {
   v0_: int = const 4;

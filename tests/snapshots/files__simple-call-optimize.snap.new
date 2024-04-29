@@ -1,0 +1,14 @@
+---
+source: tests/files.rs
+assertion_line: 48
+expression: visualization.result
+---
+@inc(v0: int): int {
+  v1_: int = const 1;
+  v2_: int = add v1_ v0;
+  ret v2_;
+}
+@main {
+  v0_: int = const 1;
+  print v0_;
+}

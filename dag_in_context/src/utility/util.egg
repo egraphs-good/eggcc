@@ -2,6 +2,7 @@
 (function ListExpr-ith (ListExpr i64) Expr :unextractable)
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (function Append (ListExpr Expr) ListExpr :unextractable)
+(function AppendType (TypeList BaseType) TypeList :unextractable)
 
 (rule ((Switch pred inputs branch)) ((union (ListExpr-suffix branch 0) branch)) :ruleset always-run)
 
@@ -52,4 +53,11 @@
        (>= i len1))
       ((union (Get (Concat expr1 expr2) i)
               (Get expr2 (- i len1))))
+       :ruleset always-run)
+
+(rewrite (AppendType (TCons ty list) e)
+       (TCons ty (AppendType list e))
+       :ruleset always-run)
+(rewrite (AppendType (TNil) e)
+       (TCons e (TNil))
        :ruleset always-run)

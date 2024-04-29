@@ -14,7 +14,7 @@ expression: visualization.result
   v20: bool = lt v10 v18;
   br v20 .__41__ .__28__;
 .__41__:
-  v44: int = mul v9 v11;
+  v44: int = mul v11 v9;
   v46: bool = const true;
   v48: int = const 1;
   v51: int = add v48 v10;

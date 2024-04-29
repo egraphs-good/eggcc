@@ -20,7 +20,7 @@ expression: visualization.result
   v30: bool = lt v23 v26;
   br v30 .__51__ .__38__;
 .__51__:
-  v53: int = add v25 v24;
+  v53: int = add v24 v25;
   print v53;
   v57: bool = const true;
   v60: int = const 1;

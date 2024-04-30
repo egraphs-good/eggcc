@@ -4,6 +4,7 @@ pub mod function_inlining;
 pub mod is_resolved;
 pub mod is_valid;
 pub mod loop_invariant;
+pub mod loop_strength_reduction;
 pub mod loop_unroll;
 pub mod memory;
 pub mod passthrough;

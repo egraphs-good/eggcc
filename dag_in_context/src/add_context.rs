@@ -13,7 +13,23 @@ use crate::{
 
 struct ContextCache {
     with_ctx: HashMap<(*const Expr, AssumptionRef), RcExpr>,
-    initialize: bool,
+    symbol_gen: HashMap<(*const Expr, AssumptionRef), String>,
+    /// When true, don't add context- instead, make fresh query variables
+    /// and put these in place of context
+    symbolic_ctx: bool,
+}
+
+impl ContextCache {
+    pub(crate) fn get_symbolic_ctx(&mut self, expr: &RcExpr, ctx: &Assumption) -> Assumption {
+        let ctx_ref = ctx.to_ref();
+        let key = (expr.as_ref() as *const Expr, ctx_ref.clone());
+        if let Some(sym) = self.symbol_gen.get(&key) {
+            return Assumption::WildCard(sym.clone());
+        }
+        let sym = format!("ctx__{}", self.symbol_gen.len());
+        self.symbol_gen.insert(key, sym.clone());
+        Assumption::WildCard(sym)
+    }
 }
 
 impl TreeProgram {
@@ -25,6 +41,20 @@ impl TreeProgram {
                 .map(|f| f.clone().func_add_ctx())
                 .collect(),
             entry: self.entry.clone().func_add_ctx(),
+        }
+    }
+
+    /// add stand-in variables for all the contexts in the program
+    /// useful for testing if you don't care about context in the test
+    #[allow(dead_code)]
+    pub(crate) fn add_symbolic_ctx(&self) -> TreeProgram {
+        TreeProgram {
+            functions: self
+                .functions
+                .iter()
+                .map(|f| f.clone().add_symbolic_ctx())
+                .collect(),
+            entry: self.entry.clone().add_symbolic_ctx(),
         }
     }
 }
@@ -43,26 +73,22 @@ impl Expr {
         ))
     }
 
-    /// Add NoContext wrappers for all leaf nodes in this expression
-    pub(crate) fn initialize_ctx(self: &RcExpr) -> RcExpr {
+    pub(crate) fn add_symbolic_ctx(self: RcExpr) -> RcExpr {
         let mut cache = ContextCache {
             with_ctx: HashMap::new(),
-            initialize: true,
+            symbol_gen: HashMap::new(),
+            symbolic_ctx: true,
         };
         self.add_ctx_with_cache(noctx(), &mut cache)
     }
 
-    pub(crate) fn replace_ctx(self: &RcExpr, current_ctx: Assumption) -> RcExpr {
+    pub(crate) fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> RcExpr {
         let mut cache = ContextCache {
             with_ctx: HashMap::new(),
-            initialize: false,
+            symbol_gen: HashMap::new(),
+            symbolic_ctx: false,
         };
         self.add_ctx_with_cache(current_ctx, &mut cache)
-    }
-
-    pub(crate) fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> RcExpr {
-        let initialized = self.initialize_ctx();
-        initialized.replace_ctx(current_ctx)
     }
 
     fn add_ctx_with_cache(
@@ -70,11 +96,6 @@ impl Expr {
         current_ctx: Assumption,
         cache: &mut ContextCache,
     ) -> RcExpr {
-        // if we're initializing, we should not have a context
-        if cache.initialize {
-            assert_eq!(current_ctx, noctx());
-        }
-
         let ctx_ref = current_ctx.to_ref();
         if let Some(expr) = cache
             .with_ctx
@@ -82,21 +103,22 @@ impl Expr {
         {
             return expr.clone();
         }
+        let context_to_add = if cache.symbolic_ctx {
+            cache.get_symbolic_ctx(self, &current_ctx)
+        } else {
+            current_ctx.clone()
+        };
         let res = match self.as_ref() {
             // replace the context of leaf nodes
             Expr::Const(c, ty, _oldctx) => {
-                RcExpr::new(Expr::Const(c.clone(), ty.clone(), current_ctx.clone()))
+                RcExpr::new(Expr::Const(c.clone(), ty.clone(), context_to_add))
             }
-            Expr::Empty(ty, _oldctx) => RcExpr::new(Expr::Empty(ty.clone(), current_ctx.clone())),
-            Expr::Arg(ty, _oldctx) => RcExpr::new(Expr::Arg(ty.clone(), current_ctx.clone())),
+            Expr::Empty(ty, _oldctx) => RcExpr::new(Expr::Empty(ty.clone(), context_to_add)),
+            Expr::Arg(ty, _oldctx) => RcExpr::new(Expr::Arg(ty.clone(), context_to_add)),
             // create new contexts for let, loop, and if
             Expr::DoWhile(inputs, pred_and_body) => {
                 let new_inputs = inputs.add_ctx_with_cache(current_ctx.clone(), cache);
-                let new_ctx = if cache.initialize {
-                    current_ctx.clone()
-                } else {
-                    Assumption::InLoop(new_inputs.clone(), pred_and_body.clone())
-                };
+                let new_ctx = Assumption::InLoop(new_inputs.clone(), pred_and_body.clone());
                 RcExpr::new(Expr::DoWhile(
                     new_inputs,
                     pred_and_body.add_ctx_with_cache(new_ctx, cache),
@@ -105,16 +127,8 @@ impl Expr {
             Expr::If(pred, input, then_case, else_calse) => {
                 let new_pred = pred.add_ctx_with_cache(current_ctx.clone(), cache);
                 let new_input = input.add_ctx_with_cache(current_ctx.clone(), cache);
-                let then_ctx = if cache.initialize {
-                    current_ctx.clone()
-                } else {
-                    Assumption::InIf(true, new_pred.clone(), new_input.clone())
-                };
-                let else_ctx = if cache.initialize {
-                    current_ctx.clone()
-                } else {
-                    Assumption::InIf(false, new_pred.clone(), new_input.clone())
-                };
+                let then_ctx = Assumption::InIf(true, new_pred.clone(), new_input.clone());
+                let else_ctx = Assumption::InIf(false, new_pred.clone(), new_input.clone());
                 RcExpr::new(Expr::If(
                     new_pred,
                     new_input,
@@ -129,15 +143,11 @@ impl Expr {
                     .iter()
                     .enumerate()
                     .map(|(i, b)| {
-                        let b_ctx = if cache.initialize {
-                            current_ctx.clone()
-                        } else {
-                            Assumption::InSwitch(
-                                i.try_into().unwrap(),
-                                new_case_num.clone(),
-                                new_input.clone(),
-                            )
-                        };
+                        let b_ctx = Assumption::InSwitch(
+                            i.try_into().unwrap(),
+                            new_case_num.clone(),
+                            new_input.clone(),
+                        );
                         b.add_ctx_with_cache(b_ctx, cache)
                     })
                     .collect();

@@ -1,6 +1,9 @@
 ;; Some simple simplifications of loops
 (ruleset loop-unroll)
+(ruleset loop-peel)
 
+
+;; loop peeling rule
 (rule
  ((= lhs (DoWhile inputs outputs))
   (ContextOf lhs ctx)
@@ -19,4 +22,4 @@
         (DoWhile (Arg inputs-ty then-ctx)
           outputs) ;; right now, loop unrolling shares the same outputs, but we could add more context here
         (Arg inputs-ty (NoContext)))))
- :ruleset loop-unroll)
+ :ruleset loop-peel)

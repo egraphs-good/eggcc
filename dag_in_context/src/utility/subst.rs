@@ -68,12 +68,9 @@ fn test_subst_cycle() -> crate::Result {
         .with_arg_types(
             tuplet!(intt(), intt()), // tuplet!(intt()) saturates!
             tuplet!(intt(), intt()),
-        )
-        .initialize_ctx();
+        );
 
-    let replace_with = parallel!(int(3), int(4))
-        .with_arg_types(twoint.clone(), twoint.clone())
-        .initialize_ctx();
+    let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone());
 
     let build = format!(
         "
@@ -112,13 +109,10 @@ fn test_subst_nested() -> crate::Result {
         tuplet!(boolt(), intt(), intt(), intt()),
     );
 
-    let expr = get(dowhile(inputs.clone(), body.clone()), 0)
-        .with_arg_types(twoint.clone(), base(intt()))
-        .initialize_ctx();
+    let expr =
+        get(dowhile(inputs.clone(), body.clone()), 0).with_arg_types(twoint.clone(), base(intt()));
 
-    let replace_with = parallel!(int(3), int(4))
-        .with_arg_types(twoint.clone(), twoint.clone())
-        .initialize_ctx();
+    let replace_with = parallel!(int(3), int(4)).with_arg_types(twoint.clone(), twoint.clone());
 
     // add context manually because inner loop uses old context still
     let expected = get(
@@ -134,7 +128,7 @@ fn test_subst_nested() -> crate::Result {
                     0
                 )
             ),
-            parallel!(tfalse(), int(20), int(30), int(40)).initialize_ctx(),
+            parallel!(tfalse(), int(20), int(30), int(40)),
         ),
         0,
     )
@@ -169,11 +163,55 @@ fn test_subst_nested() -> crate::Result {
 }
 
 #[test]
+fn test_subst_if() -> crate::Result {
+    use crate::ast::*;
+    use crate::interpreter::Value;
+    let expr = tif(
+        getat(0),
+        add(getat(1), int(1)),
+        add(arg(), int(1)),
+        sub(arg(), int(1)),
+    )
+    .add_arg_type(tuplet!(boolt(), intt()));
+
+    let replace_with = parallel!(ttrue(), int(5)).add_arg_type(emptyt());
+
+    let expected = tif(
+        ttrue(),
+        add(int(5), int(1)),
+        add(arg(), int(1)),
+        sub(arg(), int(1)),
+    )
+    .add_arg_type(emptyt())
+    .add_symbolic_ctx();
+
+    let build = format!(
+        "
+(let substituted (Subst (NoContext)
+                        {replace_with}
+                        {expr}))"
+    );
+    let check = format!(
+        "
+(check (= substituted {expected}))"
+    );
+
+    crate::egglog_test_and_print_program(
+        &build.to_string(),
+        &check.to_string(),
+        vec![expr.to_program(tuplet!(boolt(), intt()), base(intt()))],
+        Value::Tuple(vec![truev(), intv(5)]),
+        intv(7),
+        vec![],
+    )
+}
+
+#[test]
 fn test_subst_makes_new_context() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(int_ty(1, base(intt())), iarg());
-    let replace_with = int_ty(2, base(intt())).initialize_ctx();
+    let replace_with = int_ty(2, base(intt()));
     let expected = add(int(1), int(2)).with_arg_types(base(intt()), base(intt()));
     let build = format!(
         "
@@ -259,7 +297,7 @@ fn test_subst_identity() -> crate::Result {
 }
 
 #[test]
-fn test_subst_if() -> crate::Result {
+fn test_subst_add() -> crate::Result {
     use crate::ast::*;
 
     let outer_if = add(int(5), arg());
@@ -267,9 +305,7 @@ fn test_subst_if() -> crate::Result {
         .func_with_arg_types()
         .func_add_ctx();
 
-    let replace_with = int(5)
-        .with_arg_types(base(intt()), base(intt()))
-        .initialize_ctx();
+    let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
 
     let expected = function("main", base(intt()), base(intt()), add(int(5), int(5)))
         .func_with_arg_types()

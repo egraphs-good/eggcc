@@ -342,8 +342,8 @@ impl Expr {
                 Rc::new(Expr::If(
                     new_pred.clone(),
                     new_input.clone(),
-                    then.replace_ctx(inif(true, new_pred.clone(), new_input.clone())),
-                    els.replace_ctx(inif(false, new_pred, new_input)),
+                    then.add_ctx(inif(true, new_pred.clone(), new_input.clone())),
+                    els.add_ctx(inif(false, new_pred, new_input)),
                 ))
             }
             Expr::Switch(pred, input, branches) => {
@@ -353,7 +353,7 @@ impl Expr {
                     .iter()
                     .enumerate()
                     .map(|(i, branch)| {
-                        branch.replace_ctx(inswitch(
+                        branch.add_ctx(inswitch(
                             i.try_into().unwrap(),
                             new_pred.clone(),
                             new_input.clone(),
@@ -368,7 +368,7 @@ impl Expr {
                     new_input.clone(),
                     // It may seem odd to use the old body in the new context, but this is how
                     // it's done in add_ctx.
-                    body.replace_ctx(inloop(new_input, body.clone())),
+                    body.add_ctx(inloop(new_input, body.clone())),
                 ))
             }
             Expr::Function(x, y, z, body) => Rc::new(Expr::Function(

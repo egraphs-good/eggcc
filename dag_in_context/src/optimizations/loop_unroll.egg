@@ -62,7 +62,6 @@
         unrolled))
     (let actual-ctx (InLoop inputs unrolled))
     (union tmp_context actual-ctx)
-    (delete (UnrollCtx inputs outputs))
   )
   :ruleset loop-unroll)
 

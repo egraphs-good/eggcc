@@ -126,6 +126,7 @@ function groupByBenchmark(benchList) {
     return groupedBy;
 }
 
+// b may be undefined
 function compareTo(a, b) {
     // if b is undefined, return a
     if (b === undefined) {
@@ -145,6 +146,7 @@ function compareAttribute(results, prevResults, attribute) {
 }
 
 const compareKeys = ["# Instructions"];
+// prevRun may be undefined
 function buildEntry(prevRun, run) {
     const results = run.hyperfine.results[0];
     const prevResults = prevRun ? prevRun.hyperfine.results[0] : undefined;

@@ -569,7 +569,6 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
             (
                 match x {
                     Operand::Arg(i) => (None, *i),
-                    Operand::Id(id) => (Some(*id), 0),
                     Operand::Project(i, id) => (Some(*id), *i),
                 },
                 (Some(index), j),
@@ -581,10 +580,8 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
 
 // returns only nodes in the same REGION as `output`
 fn reachable_nodes(reachable: &mut BTreeSet<Id>, all: &[RvsdgBody], output: Operand) {
-    let id = match output {
-        Operand::Arg(..) => return,
-        Operand::Id(id) => id,
-        Operand::Project(_, id) => id,
+    let Operand::Project(_, id) = output else {
+        return;
     };
     if reachable.insert(id) {
         let inputs = match &all[id] {
@@ -626,7 +623,6 @@ fn mk_region(srcs: usize, dsts: &[Operand], nodes: &[RvsdgBody]) -> Region {
         (
             match x {
                 Operand::Arg(i) => (None, *i),
-                Operand::Id(id) => (Some(*id), 0),
                 Operand::Project(i, id) => (Some(*id), *i),
             },
             (None, j),
@@ -717,11 +713,11 @@ mod tests {
                 RvsdgBody::Gamma {
                     pred: Operand::Arg(0),
                     inputs: vec![Operand::Arg(0), Operand::Arg(1)],
-                    outputs: vec![vec![Operand::Id(0)], vec![Operand::Id(1)]],
+                    outputs: vec![vec![Operand::Project(0, 0)], vec![Operand::Project(0, 1)]],
                 },
                 RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Add,
-                    vec![Operand::Arg(0), Operand::Id(4)],
+                    vec![Operand::Arg(0), Operand::Project(0, 4)],
                     Type::Int,
                 )),
                 RvsdgBody::BasicOp(BasicExpr::Const(
@@ -736,32 +732,36 @@ mod tests {
                 )),
                 RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Mul,
-                    vec![Operand::Arg(0), Operand::Id(5)],
+                    vec![Operand::Arg(0), Operand::Project(0, 5)],
                     Type::Int,
                 )),
                 RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Add,
-                    vec![Operand::Id(5), Operand::Arg(2)],
+                    vec![Operand::Project(0, 5), Operand::Arg(2)],
                     Type::Int,
                 )),
                 RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Eq,
-                    vec![Operand::Id(3), Operand::Id(5)],
+                    vec![Operand::Project(0, 3), Operand::Project(0, 5)],
                     Type::Bool,
                 )),
                 RvsdgBody::Theta {
-                    pred: Operand::Id(8),
+                    pred: Operand::Project(0, 8),
                     inputs: vec![Operand::Arg(0), Operand::Arg(1), Operand::Arg(0)],
-                    outputs: vec![Operand::Id(3), Operand::Id(6), Operand::Id(7)],
+                    outputs: vec![
+                        Operand::Project(0, 3),
+                        Operand::Project(0, 6),
+                        Operand::Project(0, 7),
+                    ],
                 },
                 RvsdgBody::BasicOp(BasicExpr::Op(
                     ValueOps::Add,
-                    vec![Operand::Id(2), Operand::Project(1, 9)],
+                    vec![Operand::Project(0, 2), Operand::Project(1, 9)],
                     Type::Int,
                 )),
             ],
             results: vec![
-                (RvsdgType::Bril(Type::Int), Operand::Id(10)),
+                (RvsdgType::Bril(Type::Int), Operand::Project(0, 10)),
                 (RvsdgType::PrintState, Operand::Arg(2)),
             ],
         }

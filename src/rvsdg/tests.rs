@@ -594,7 +594,7 @@ fn search_for(f: &RvsdgFunction, mut pred: impl FnMut(&RvsdgBody) -> bool) -> bo
     ) -> bool {
         match op {
             Operand::Arg(_) => false,
-            Operand::Id(x) | Operand::Project(_, x) => search_node(f, &f.nodes[*x], pred),
+            Operand::Project(_, x) => search_node(f, &f.nodes[*x], pred),
         }
     }
     fn search_node(
@@ -663,15 +663,8 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
             (Operand::Project(p1, l), Operand::Project(p2, r)) => {
                 p1 == p2 && ids_equal(*l, *r, f1, f2)
             }
-            (Operand::Id(l), Operand::Id(r))
-            | (Operand::Project(0, l), Operand::Id(r))
-            | (Operand::Id(l), Operand::Project(0, r)) => ids_equal(*l, *r, f1, f2),
-            (Operand::Arg(_), Operand::Id(_))
-            | (Operand::Arg(_), Operand::Project(_, _))
-            | (Operand::Id(_), Operand::Arg(_))
-            | (Operand::Project(_, _), Operand::Arg(_))
-            | (Operand::Project(_, _), Operand::Id(_))
-            | (Operand::Id(_), Operand::Project(_, _)) => false,
+            (Operand::Arg(_), Operand::Project(_, _))
+            | (Operand::Project(_, _), Operand::Arg(_)) => false,
         }
     }
 

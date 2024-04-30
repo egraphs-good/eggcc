@@ -257,14 +257,17 @@ impl<'a> RvsdgBuilder<'a> {
                 ..
             } => {
                 // Predicate is just "true"
-                Operand::Id(get_id(
-                    &mut self.expr,
-                    RvsdgBody::BasicOp(BasicExpr::Const(
-                        ConstOps::Const,
-                        Literal::Bool(true),
-                        Type::Bool,
-                    )),
-                ))
+                Operand::Project(
+                    0,
+                    get_id(
+                        &mut self.expr,
+                        RvsdgBody::BasicOp(BasicExpr::Const(
+                            ConstOps::Const,
+                            Literal::Bool(true),
+                            Type::Bool,
+                        )),
+                    ),
+                )
             }
             BranchOp::Cond {
                 arg,
@@ -284,10 +287,13 @@ impl<'a> RvsdgBuilder<'a> {
                 let op = get_op(var, &None, &self.store, &self.analysis.intern)?;
                 if val == 0 {
                     // We need to negate the operand
-                    Operand::Id(get_id(
-                        &mut self.expr,
-                        RvsdgBody::BasicOp(BasicExpr::Op(ValueOps::Not, vec![op], Type::Bool)),
-                    ))
+                    Operand::Project(
+                        0,
+                        get_id(
+                            &mut self.expr,
+                            RvsdgBody::BasicOp(BasicExpr::Op(ValueOps::Not, vec![op], Type::Bool)),
+                        ),
+                    )
                 } else {
                     op
                 }
@@ -540,7 +546,7 @@ impl<'a> RvsdgBuilder<'a> {
                             const_type.clone(),
                         )),
                     );
-                    self.store.insert(dest_var, Operand::Id(const_id));
+                    self.store.insert(dest_var, Operand::Project(0, const_id));
                 }
                 Instruction::Value {
                     args,
@@ -593,7 +599,7 @@ impl<'a> RvsdgBuilder<'a> {
                         let ops = convert_args(args, &mut self.analysis, &mut self.store, pos)?;
                         let expr = BasicExpr::Op(*op, ops, op_type.clone());
                         let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
-                        self.store.insert(dest_var, Operand::Id(expr_id));
+                        self.store.insert(dest_var, Operand::Project(0, expr_id));
                     }
                 },
                 Instruction::Effect {
@@ -619,7 +625,7 @@ impl<'a> RvsdgBuilder<'a> {
                     );
                     let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                     self.store
-                        .insert(self.analysis.state_var, Operand::Id(expr_id));
+                        .insert(self.analysis.state_var, Operand::Project(0, expr_id));
                     debug_assert_eq!(funcs.len(), 1);
                 }
                 Instruction::Effect {
@@ -633,7 +639,7 @@ impl<'a> RvsdgBuilder<'a> {
                     let expr = BasicExpr::Effect(*op, ops);
                     let expr_id = get_id(&mut self.expr, RvsdgBody::BasicOp(expr));
                     self.store
-                        .insert(self.analysis.state_var, Operand::Id(expr_id));
+                        .insert(self.analysis.state_var, Operand::Project(0, expr_id));
                 }
                 Instruction::Effect { op, pos, .. } => {
                     // Note: Control flow like Return and Jmp _are_ supported,
@@ -665,7 +671,7 @@ impl<'a> RvsdgBuilder<'a> {
                         )),
                     );
                     let dest_var = self.analysis.intern.intern(dst.clone());
-                    self.store.insert(dest_var, Operand::Id(id));
+                    self.store.insert(dest_var, Operand::Project(0, id));
                 }
                 Annotation::AssignRet { src } => {
                     let src_var = self.analysis.intern.intern(src.clone());

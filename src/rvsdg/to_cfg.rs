@@ -269,14 +269,6 @@ impl<'a> RvsdgToCfg<'a> {
         }
 
         let res = match operand {
-            Operand::Id(id) => {
-                let res = self.body_to_bril(id, current_args, context);
-                TranslationResult {
-                    start: res.start,
-                    end: res.end,
-                    values: vec![res.values[0].clone()],
-                }
-            }
             Operand::Arg(index) => {
                 let new_block = self.make_block(vec![]);
                 TranslationResult {

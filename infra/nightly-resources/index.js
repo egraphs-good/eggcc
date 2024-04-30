@@ -15,6 +15,12 @@ const allmodes = [["rvsdg_roundtrip", "rvsdg-round-trip-to-executable", ""],
 
 
 var enabledModes = new Set();
+// a list of warnings
+var warnings = [];
+
+function addWarning(warning) {
+    warnings.push(warning);
+}
 
 async function getPreviousRuns() {
     const req = await fetch("https://nightly.cs.washington.edu/reports-json/eggcc/");
@@ -167,7 +173,9 @@ async function loadBenchmarks(compareTo) {
     let previousRun = undefined;
     try {
         previousRun = await getBench(compareTo.url+"/");
-    } catch (e) {}
+    } catch (e) {
+        addWarning("Couldn't find a previous run to compare to");
+    }
 
     const benchmarkNames = Object.keys(currentRun);
 
@@ -179,10 +187,17 @@ async function loadBenchmarks(compareTo) {
             if (!enabledModes.has(runMethod)) {
                 return undefined;
             }
+            // prevRun may be undefined
             const prevBenchmark = previousRun ? previousRun[benchName] : undefined;
-            const prevRun = prevBenchmark ? prevBenchmark[runMethod] : undefined;
+            if (prevBenchmark === undefined) {
+                addWarning(`Couldn't find a previous benchmark for ${benchName}`);
+            }   
+            const prevRunForMethod = prevBenchmark ? prevBenchmark[runMethod] : undefined;
+            if (prevBenchmark && prevRunForMethod === undefined) {
+                addWarning(`Couldn't find a previous run for ${runMethod}`);
+            }
             
-            return buildEntry(prevRun, currentRun[benchName][runMethod]) 
+            return buildEntry(prevRunForMethod, currentRun[benchName][runMethod]) 
         })
         .filter((entry) => entry !== undefined);
 
@@ -210,6 +225,16 @@ async function loadBenchmarks(compareTo) {
         }
     });
 
+    // also add warnings if the previous run had a benchmark that the current run doesn't
+    if (previousRun) {
+        const prevBenchNames = Object.keys(previousRun);
+        prevBenchNames.forEach((benchName) => {
+            if (!benchmarkNames.includes(benchName)) {
+                addWarning(`Previous run had benchmark ${benchName} that the current run doesn't`);
+            }
+        });
+    }
+
     parsed.sort((l, r) => {
         if (l.name < r.name) { return -1; }
         if (l.name > r.name) { return 1; }
@@ -218,6 +243,17 @@ async function loadBenchmarks(compareTo) {
 
     let container = document.getElementById("profile");
     container.innerHTML = ConvertJsonToTable(parsed);
+
+    // Add warnings
+    let warningContainer = document.getElementById("warnings");
+    warningContainer.innerHTML = "";
+    warnings.forEach((warning) => {
+        // make warnings red
+        let warningElement = document.createElement("p");
+        warningElement.style.color = "red";
+        warningElement.innerText = warning;
+        warningContainer.appendChild(warningElement);
+    });
 }
 
 function makeCheckbox(parent, mode) {

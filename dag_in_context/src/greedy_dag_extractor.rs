@@ -402,7 +402,7 @@ pub fn extract(
 
     let (mut cost_res, mut res) =
         extract_without_linearity(extractor_not_linear, &egraph_info, None);
-    if !extractor_not_linear.check_program_is_linear(&res).is_ok() {
+    if extractor_not_linear.check_program_is_linear(&res).is_err() {
         let effectful_nodes_along_path =
             extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
         extractor_not_linear.costs.clear();

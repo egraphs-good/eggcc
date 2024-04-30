@@ -387,10 +387,13 @@
 ; Update DontAlias
 ; ============================
 
-;                    pointer, pointer
+(relation DemandDontAlias (Expr Expr Pointees))
+;                    pointer, pointer, arg pointees
 (relation DontAlias (Expr Expr Pointees))
 
-(rule ((BodyContainsExpr body ptr1)
+
+(rule ((DemandDontAlias ptr1 ptr2 arg-pointees)
+       (BodyContainsExpr body ptr1)
        (BodyContainsExpr body ptr2)
        (HasType ptr1 (Base (PointerT ty)))
        (HasType ptr2 (Base (PointerT ty)))
@@ -420,6 +423,13 @@
 (rule ((= e (Top (Write) addr data state)))
       ((set (PointsToExpr e addr) data))
       :ruleset memory-helpers)
+; demand DontAlias
+(rule ((= e (Top (Write) addr data state))
+       (HasArgType addr argty)
+       (= otherdata (PointsToExpr state otheraddr)))
+      ((DemandDontAlias addr otheraddr (TypeToPointees argty)))
+      :ruleset memory-helpers)
+; propagate memory information when a write doesn't alias that memory
 (rule ((= e (Top (Write) addr data state))
        (HasArgType addr argty)
        (= otherdata (PointsToExpr state otheraddr))

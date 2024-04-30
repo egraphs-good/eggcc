@@ -1,4 +1,4 @@
-;; This Expr size actually do the same thing as cost function.
+;; Compute the tree size of program, not dag size
 (function Expr-size (Expr) i64 :unextractable :merge (min old new) )
 (function ListExpr-size (ListExpr) i64 :unextractable :merge (min old new))
 

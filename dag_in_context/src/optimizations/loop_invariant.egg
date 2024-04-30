@@ -59,7 +59,6 @@
        ;; TODO: replace Expr-size when cost model is ready
        (= loop (DoWhile in pred_out))
        ;; the outter assumption of the loop 
-       ;; Question: what if there are multiple loop_ctx?
        (ContextOf loop loop_ctx)
        (HasType in in_type)
        (HasType inv inv_type)

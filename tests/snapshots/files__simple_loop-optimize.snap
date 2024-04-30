@@ -3,6 +3,6 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main {
-  v1: int = const 0;
-  print v1;
+  v0_: int = const 0;
+  print v0_;
 }

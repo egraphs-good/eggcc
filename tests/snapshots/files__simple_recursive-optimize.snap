@@ -3,23 +3,23 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @inc(v0: int): int {
-  v3: int = const 2;
-  v5: bool = lt v0 v3;
-  br v5 .__15__ .__10__;
-.__15__:
-  v14: int = const 1;
-  v17: int = add v14 v0;
-  print v17;
-  v22: int = call @inc v17;
-  v12: int = id v22;
-  jmp .__26__;
-.__10__:
-  v12: int = id v0;
-.__26__:
-  ret v12;
+  v1_: int = const 2;
+  v2_: bool = lt v0 v1_;
+  br v2_ .v3_ .v4_;
+.v3_:
+  v5_: int = const 1;
+  v6_: int = add v0 v5_;
+  print v6_;
+  v7_: int = call @inc v6_;
+  v8_: int = id v7_;
+  jmp .v9_;
+.v4_:
+  v8_: int = id v0;
+.v9_:
+  ret v8_;
 }
 @main {
-  v1: int = const 0;
-  v4: int = call @inc v1;
-  print v4;
+  v0_: int = const 0;
+  v1_: int = call @inc v0_;
+  print v1_;
 }

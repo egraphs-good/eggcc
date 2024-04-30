@@ -1,0 +1,14 @@
+@main() {
+    one: int = const 1;
+    two: int = const 2;
+    ten: int = const 10;
+    twenty: int = const 20;
+    p: ptr<int> = alloc two;
+    q: ptr<int> = ptradd p one;
+    store p ten;
+    store q twenty;
+    res: int = load p;
+    print res;
+    free p;
+    ret;
+}

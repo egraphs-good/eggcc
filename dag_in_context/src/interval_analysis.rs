@@ -301,7 +301,6 @@ fn context_if_with_state() -> crate::Result {
         .to_program(input_type.clone(), output_type.clone())
         .with_arg_types()
         .add_context();
-    println!("{prog}");
 
     let body_with_ctx = prog.entry.func_body().unwrap();
 

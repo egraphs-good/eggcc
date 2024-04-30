@@ -32,6 +32,9 @@ struct Args {
     /// then the executable will be in `abc`.
     #[clap(short)]
     output_path: Option<String>,
+    /// Where to put intermediary files (only for OptimizeBrilLLVM mode)
+    #[clap(long)]
+    llvm_output_dir: Option<String>,
     /// Run the eggcc optimizer (only for the CompileBrilfit run mode)
     /// Defaults to true.
     #[clap(long)]
@@ -48,6 +51,9 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
+
+    // enable logging
+    env_logger::init();
 
     if let Some(debug_dir) = args.debug_dir {
         if let Result::Err(error) = visualize(TestProgram::BrilFile(args.file.clone()), debug_dir) {
@@ -81,6 +87,7 @@ fn main() {
         },
         profile_out: args.profile_out,
         output_path: args.output_path,
+        llvm_output_dir: args.llvm_output_dir,
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
         optimize_bril_llvm: args.optimize_bril_llvm,

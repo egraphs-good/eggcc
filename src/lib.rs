@@ -12,6 +12,7 @@ use util::Interpretable;
 
 use thiserror::Error;
 
+pub mod canonicalize_names;
 pub(crate) mod cfg;
 mod conversions;
 pub(crate) mod rvsdg;

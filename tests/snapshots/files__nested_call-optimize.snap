@@ -3,21 +3,21 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @inc(v0: int): int {
-  v3: int = const 1;
-  v5: int = add v0 v3;
-  v8: int = call @double v5;
-  ret v8;
+  v1_: int = const 1;
+  v2_: int = add v0 v1_;
+  v3_: int = call @double v2_;
+  ret v3_;
 }
 @double(v0: int): int {
-  v3: int = const 2;
-  v5: int = mul v0 v3;
-  ret v5;
+  v1_: int = const 2;
+  v2_: int = mul v0 v1_;
+  ret v2_;
 }
 @main {
-  v1: int = const 1;
-  v3: int = const 0;
-  v6: int = call @inc v3;
-  print v6;
-  v10: int = call @double v1;
-  print v10;
+  v0_: int = const 1;
+  v1_: int = const 0;
+  v2_: int = call @inc v1_;
+  print v2_;
+  v3_: int = call @double v0_;
+  print v3_;
 }

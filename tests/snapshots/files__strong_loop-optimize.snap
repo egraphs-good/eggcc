@@ -3,28 +3,28 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v3: int = const 3;
-  v7: int = add v0 v3;
-  v9: int = const 0;
-  v12: int = id v3;
-  v13: int = id v7;
-  v14: int = id v9;
-  v15: int = id v0;
-.__18__:
-  v17: int = const 7;
-  v20: int = mul v17 v12;
-  print v20;
-  v24: int = const 2;
-  v27: int = add v24 v12;
-  v32: int = add v14 v20;
-  v37: bool = lt v12 v15;
-  v12: int = id v27;
-  v13: int = id v13;
-  v14: int = id v32;
-  v15: int = id v15;
-  br v37 .__18__ .__41__;
-.__41__:
-  print v14;
-  print v13;
-  print v12;
+  v1_: int = const 3;
+  v2_: int = add v0 v1_;
+  v3_: int = const 0;
+  v4_: int = id v1_;
+  v5_: int = id v2_;
+  v6_: int = id v3_;
+  v7_: int = id v0;
+.v8_:
+  v9_: int = const 7;
+  v10_: int = mul v9_ v4_;
+  print v10_;
+  v11_: int = const 2;
+  v12_: int = add v11_ v4_;
+  v13_: int = add v6_ v10_;
+  v14_: bool = lt v4_ v7_;
+  v4_: int = id v12_;
+  v5_: int = id v5_;
+  v6_: int = id v13_;
+  v7_: int = id v7_;
+  br v14_ .v8_ .v15_;
+.v15_:
+  print v6_;
+  print v5_;
+  print v4_;
 }

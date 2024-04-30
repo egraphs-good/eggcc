@@ -1,3 +1,4 @@
+use crate::canonicalize_names::canonicalize_bril;
 use crate::rvsdg::from_dag::dag_to_rvsdg;
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
@@ -11,6 +12,7 @@ use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::mem;
 use std::process::Stdio;
 use std::{
     ffi::OsStr,
@@ -311,6 +313,7 @@ pub struct Run {
     pub test_type: RunType,
     pub interp: InterpMode,
     pub profile_out: Option<PathBuf>,
+    pub llvm_output_dir: Option<String>,
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
     pub optimize_brilift: Option<bool>,
@@ -351,6 +354,8 @@ impl Run {
         let rvsdg2 = dag_to_rvsdg(&optimized);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
+        // re-name variables in the bril, hiding our nondeterminism bug ):
+        let bril = canonicalize_bril(&bril);
 
         Ok(bril)
     }
@@ -367,6 +372,7 @@ impl Run {
             prog_with_args: test.read_program(),
             profile_out: None,
             output_path: None,
+            llvm_output_dir: None,
             optimize_egglog: Some(optimize_egglog),
             optimize_brilift: Some(optimize_brilift),
             optimize_bril_llvm: None,
@@ -394,6 +400,7 @@ impl Run {
                 prog_with_args: prog.clone(),
                 profile_out: None,
                 output_path: None,
+                llvm_output_dir: None,
                 optimize_egglog: None,
                 optimize_brilift: None,
                 optimize_bril_llvm: None,
@@ -428,6 +435,7 @@ impl Run {
                         prog_with_args: prog.clone(),
                         profile_out: None,
                         output_path: None,
+                        llvm_output_dir: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: None,
                         optimize_bril_llvm: Some(optimize_brillvm),
@@ -824,6 +832,7 @@ impl Run {
         .expect("unable to compile bril!");
 
         let file_path = dir.path().join("compile.ll");
+        mem::forget(dir);
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
@@ -832,7 +841,7 @@ impl Run {
             .output_path
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", self.name()));
-        let opt_level = if optimize_brillvm { "-O3" } else { "-O1" };
+        let opt_level = if optimize_brillvm { "-O3" } else { "-O0" };
         std::process::Command::new("clang")
             .arg(file_path.clone())
             .arg(opt_level)
@@ -840,6 +849,24 @@ impl Run {
             .arg(executable.clone())
             .status()
             .unwrap();
+
+        if let Some(output_dir) = &self.llvm_output_dir {
+            std::fs::create_dir_all(output_dir)
+                .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
+            std::process::Command::new("clang")
+                .current_dir(output_dir)
+                .arg(file_path.clone())
+                .arg(opt_level)
+                .arg("-emit-llvm")
+                .arg("-S")
+                .status()
+                .unwrap();
+            std::process::Command::new("cp")
+                .arg(file_path)
+                .arg(format!("{}/compile-unopt.ll", output_dir))
+                .status()
+                .unwrap();
+        }
 
         let _ = std::fs::write(
             executable.clone() + "-args",

@@ -4,11 +4,13 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    iter,
     rc::Rc,
 };
 
 use egglog::Term;
 use egraph_serialize::{ClassId, NodeId};
+use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     greedy_dag_extractor::{get_root, EgraphInfo, Extractor},
@@ -165,6 +167,123 @@ impl<'a> Extractor<'a> {
                 self.find_effectful_nodes_in_expr(body, linearity, &body_root_id)
             }
             Expr::Const(_, _, _) => panic!("Const has no effect"),
+        }
+    }
+
+    pub fn check_program_is_linear(&mut self, prog: &TreeProgram) -> Result<(), String> {
+        for fun in iter::once(&prog.entry).chain(prog.functions.iter()) {
+            let mut reachables = Default::default();
+            let mut raw_to_rc = Default::default();
+            fun.collect_reachable(fun, &mut reachables, &mut raw_to_rc);
+
+            // if the raw pointer is effectful, then return its RcExpr, otherwise None.
+            // Gracefully handles `Function` which is not supported by Extractor::is_effectful.
+            let get_if_effectful = |this: &mut Extractor<'a>, expr: *const Expr| {
+                let rcexpr = raw_to_rc.get(&expr).unwrap();
+                if let Expr::Function(_name, _inp, _out, body) = rcexpr.as_ref() {
+                    if this.is_effectful(body) {
+                        return Some(rcexpr);
+                    }
+                } else if this.is_effectful(rcexpr) {
+                    return Some(rcexpr);
+                }
+                None
+            };
+
+            for (region, exprs) in reachables {
+                // get all effectful operators in the region,
+                // and check if they are used exactly once.
+                let mut dangling_effectful: HashSet<*const Expr> = exprs
+                    .iter()
+                    .filter_map(|&expr| {
+                        if get_if_effectful(self, expr).is_some() {
+                            Some(expr)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                for expr in exprs {
+                    let Some(expr) = get_if_effectful(self, expr) else {
+                        continue;
+                    };
+                    // Arg is a leaf and does not have effectful children.
+                    if !matches!(expr.as_ref(), Expr::Arg(..)) {
+                        // We can view region nodes as a giant opaque operator
+                        // and only need to consider children that are in the same scope
+                        let children = expr.children_same_scope();
+                        let mut effectful_child_iter =
+                            children.iter().filter(|child| self.is_effectful(child));
+                        let effectful_child = effectful_child_iter
+                            .next()
+                            .expect("Expect one effectful child from an effectful operator");
+                        assert!(effectful_child_iter.next().is_none());
+                        if !dangling_effectful.remove(&Rc::as_ptr(effectful_child)) {
+                            return Err("An effectful operator is used twice".to_string());
+                        }
+                    }
+                }
+                if get_if_effectful(self, region).is_some() && !dangling_effectful.remove(&region) {
+                    panic!("The region operator is either consumed or not effectful.");
+                }
+                if !dangling_effectful.is_empty() {
+                    return Err("There are unconsumed effectful operators".to_string());
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Expr {
+    /// Populates the reachable_from table, which is a map from the root of the region
+    /// to the set of reachable nodes, stored as raw pointers.
+    /// Additionally return a map from raw pointers to RcExpr.
+    pub fn collect_reachable(
+        self: &RcExpr,
+        root: &RcExpr,
+        reachable_from: &mut IndexMap<*const Expr, IndexSet<*const Expr>>,
+        raw_to_rc: &mut HashMap<*const Expr, RcExpr>,
+    ) {
+        raw_to_rc
+            .entry(Rc::as_ptr(self))
+            .or_insert_with(|| self.clone());
+        if !reachable_from
+            .entry(Rc::as_ptr(root))
+            .or_default()
+            .insert(Rc::as_ptr(self))
+        {
+            return;
+        }
+
+        match self.as_ref() {
+            Expr::If(pred, input, t1, t2) => {
+                pred.collect_reachable(root, reachable_from, raw_to_rc);
+                input.collect_reachable(root, reachable_from, raw_to_rc);
+                let root = t1;
+                t1.collect_reachable(root, reachable_from, raw_to_rc);
+                let root = t2;
+                t2.collect_reachable(root, reachable_from, raw_to_rc);
+            }
+            Expr::Switch(pred, inputs, branches) => {
+                pred.collect_reachable(root, reachable_from, raw_to_rc);
+                inputs.collect_reachable(root, reachable_from, raw_to_rc);
+                for branch in branches {
+                    let root = branch;
+                    branch.collect_reachable(root, reachable_from, raw_to_rc);
+                }
+            }
+            Expr::DoWhile(input, body) => {
+                input.collect_reachable(root, reachable_from, raw_to_rc);
+                let root = body;
+                body.collect_reachable(root, reachable_from, raw_to_rc);
+            }
+            _ => {
+                for child in self.children_same_scope() {
+                    child.collect_reachable(root, reachable_from, raw_to_rc);
+                }
+            }
         }
     }
 }

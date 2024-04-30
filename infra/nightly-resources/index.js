@@ -132,47 +132,59 @@ function groupByBenchmark(benchList) {
     return groupedBy;
 }
 
-// b may be undefined
-function compareTo(a, b) {
+// Outputs current_number - baseline_number in a human-readable format
+// If baseline_number is undefined, it will return N/A
+function getDifference(current, baseline) {
     // if b is undefined, return a
-    if (b === undefined) {
-        return tryRound(a);
+    if (baseline === undefined) {
+        return { class: "max", value: "N/A" };
     } else {
-        var difference = a - b;
+        var difference = current - baseline;
+        // if the difference is negative it will already have a "-"
         var sign = difference < 0 ? "" : "+";
+        var color = "";
+        if (difference < 0) {
+            color = "min";
+        } else if (difference > 0) {
+            color = "max";
+        }
         // put the difference in parens after a
-        return tryRound(a) + " (" + sign + tryRound(difference) + ")";
+        return { class: color, value: sign + tryRound(difference) };
     }
 }
 
-function compareAttribute(results, prevResults, attribute) {
-    const a = results[attribute];
-    const b = prevResults ? prevResults[attribute] : undefined;
-    return { class: "", value: compareTo(a, b)};
+// compare two objects at a particular attribute
+function diffAttribute(results, baseline, attribute) {
+    const current = results[attribute];
+    const baselineNum = baseline?.[attribute];
+    return getDifference(current, baselineNum);
 }
 
 const compareKeys = ["# Instructions"];
-// prevRun may be undefined
-function buildEntry(prevRun, run) {
+// baselineRun may be undefined
+function buildEntry(baselineRun, run) {
     const results = run.hyperfine.results[0];
-    const prevResults = prevRun ? prevRun.hyperfine.results[0] : undefined;
+    const baselineResults = baselineRun?.hyperfine.results[0];
 
     return {
         name: run.runMethod,
-        mean: compareAttribute(results, prevResults, "mean"),
-        min: compareAttribute(results, prevResults, "min"),
-        max: compareAttribute(results, prevResults, "max"),
-        median: compareAttribute(results, prevResults, "median"),
-        stddev: compareAttribute(results, prevResults, "stddev"),
-        
+        mean: { class: "", value: tryRound(results.mean) },
+        meanVsBaseline: diffAttribute(results, baselineResults, "mean"),
+        min: { class: "", value: tryRound(results.min) },
+        minVsBaseline: diffAttribute(results, baselineResults, "min"),
+        max: { class: "", value: tryRound(results.max) },
+        maxVsBaseline: diffAttribute(results, baselineResults, "max"),
+        median: { class: "", value: tryRound(results.median) },
+        medianVsBaseline: diffAttribute(results, baselineResults, "median"),
+        stddev: { class: "", value: tryRound(results.stddev) },
     }
 }
 
 async function loadBenchmarks(compareTo) {
     const currentRun = await getBench("./");
-    let previousRun = undefined;
+    let baselineRun = undefined;
     try {
-        previousRun = await getBench(compareTo.url+"/");
+        baselineRun = await getBench(compareTo.url+"/");
     } catch (e) {
         addWarning("Couldn't find a previous run to compare to");
     }
@@ -188,16 +200,16 @@ async function loadBenchmarks(compareTo) {
                 return undefined;
             }
             // prevRun may be undefined
-            const prevBenchmark = previousRun ? previousRun[benchName] : undefined;
-            if (prevBenchmark === undefined) {
+            const baselineBench = baselineRun?.[benchName];
+            if (baselineBench === undefined) {
                 addWarning(`Couldn't find a previous benchmark for ${benchName}`);
             }   
-            const prevRunForMethod = prevBenchmark ? prevBenchmark[runMethod] : undefined;
-            if (prevBenchmark && prevRunForMethod === undefined) {
+            const baselineRunForMethod = baselineBench?.[runMethod];
+            if (baselineBench && baselineRunForMethod === undefined) {
                 addWarning(`Couldn't find a previous run for ${runMethod}`);
             }
             
-            return buildEntry(prevRunForMethod, currentRun[benchName][runMethod]) 
+            return buildEntry(baselineRunForMethod, currentRun[benchName][runMethod]) 
         })
         .filter((entry) => entry !== undefined);
 
@@ -226,8 +238,8 @@ async function loadBenchmarks(compareTo) {
     });
 
     // also add warnings if the previous run had a benchmark that the current run doesn't
-    if (previousRun) {
-        const prevBenchNames = Object.keys(previousRun);
+    if (baselineRun) {
+        const prevBenchNames = Object.keys(baselineRun);
         prevBenchNames.forEach((benchName) => {
             if (!benchmarkNames.includes(benchName)) {
                 addWarning(`Previous run had benchmark ${benchName} that the current run doesn't`);

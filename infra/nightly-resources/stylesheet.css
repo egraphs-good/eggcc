@@ -10,6 +10,6 @@ body {
   background-color: lightpink;
 }
 
-.warning {
+#warnings {
   background-color: red;
 }

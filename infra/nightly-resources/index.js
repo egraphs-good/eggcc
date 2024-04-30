@@ -149,7 +149,7 @@ function getDifference(current, baseline) {
             cssClass = "bad";
         }
         // put the difference in parens after a
-        return { class: cssClass, value: sign + tryRound(difference) };
+        return { class: cssClass, value: `${sign}${tryRound(difference)}` };
     }
 }
 
@@ -205,7 +205,7 @@ async function loadBenchmarks(compareTo) {
                 addWarning(`Couldn't find a previous benchmark for ${benchName}`);
             }   
             const baselineRunForMethod = baselineBench?.[runMethod];
-            if (baselineBench && baselineRunForMethod === undefined) {
+            if (baselineBench !== undefined && baselineRunForMethod === undefined) {
                 addWarning(`Couldn't find a previous run for ${runMethod}`);
             }
             
@@ -262,8 +262,6 @@ async function loadBenchmarks(compareTo) {
     warningContainer.innerHTML = "";
     warnings.forEach((warning) => {
         let warningElement = document.createElement("p");
-        // make warning red with warning class
-        warningElement.classList.add("warning");
         warningElement.innerText = warning;
         warningContainer.appendChild(warningElement);
     });

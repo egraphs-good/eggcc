@@ -172,20 +172,23 @@ async function loadBenchmarks(compareTo) {
         })
         .filter((entry) => entry !== undefined);
 
-        const cols = ["mean", "min", "max", "median", "stddev" ];
-        cols.forEach(col => {
-            const sorted = executions.map(e => e[col]).sort((a,b) => a.value - b.value);
-            const min = sorted[0].value;
-            const max = sorted[sorted.length - 1].value;
-            sorted.forEach(item => {
-                if (item.value === min) {
-                    item.class = "min";
-                }
-                if (item.value === max) {
-                    item.class = "max";
-                }
+        
+        if (executions.length > 1) {
+            const cols = ["mean", "min", "max", "median" ];
+            cols.forEach(col => {
+                const sorted = executions.map(e => e[col]).sort((a,b) => a.value - b.value);
+                const min = sorted[0].value;
+                const max = sorted[sorted.length - 1].value;
+                sorted.forEach(item => {
+                    if (item.value === min) {
+                        item.class = "min";
+                    }
+                    if (item.value === max) {
+                        item.class = "max";
+                    }
+                })
             })
-        })
+        }
 
         return {
             name: benchName,

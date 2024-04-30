@@ -20,6 +20,7 @@ use std::{
     path::PathBuf,
 };
 use tempfile::tempdir;
+use std::mem;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -312,6 +313,7 @@ pub struct Run {
     pub test_type: RunType,
     pub interp: InterpMode,
     pub profile_out: Option<PathBuf>,
+    pub output_dir: Option<String>,
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
     pub optimize_brilift: Option<bool>,
@@ -370,6 +372,7 @@ impl Run {
             prog_with_args: test.read_program(),
             profile_out: None,
             output_path: None,
+            output_dir: None,
             optimize_egglog: Some(optimize_egglog),
             optimize_brilift: Some(optimize_brilift),
             optimize_bril_llvm: None,
@@ -397,6 +400,7 @@ impl Run {
                 prog_with_args: prog.clone(),
                 profile_out: None,
                 output_path: None,
+                output_dir: None,
                 optimize_egglog: None,
                 optimize_brilift: None,
                 optimize_bril_llvm: None,
@@ -431,6 +435,7 @@ impl Run {
                         prog_with_args: prog.clone(),
                         profile_out: None,
                         output_path: None,
+                        output_dir: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: None,
                         optimize_bril_llvm: Some(optimize_brillvm),
@@ -827,6 +832,7 @@ impl Run {
         .expect("unable to compile bril!");
 
         let file_path = dir.path().join("compile.ll");
+        mem::forget(dir);
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
@@ -843,6 +849,22 @@ impl Run {
             .arg(executable.clone())
             .status()
             .unwrap();
+
+        if let Some(output_dir) = &self.output_dir {
+            std::fs::create_dir_all(output_dir).unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
+            std::process::Command::new("clang")
+                .current_dir(output_dir)
+                .arg(file_path.clone())
+                .arg(opt_level)
+                .arg("-emit-llvm")
+                .arg("-S")
+                .status()
+                .unwrap();
+            std::process::Command::new("cp")
+            .arg(file_path)
+            .arg(format!("{}/compile-unopt.ll", output_dir))
+            .status().unwrap();
+        }
 
         let _ = std::fs::write(
             executable.clone() + "-args",

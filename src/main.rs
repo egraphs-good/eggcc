@@ -32,6 +32,9 @@ struct Args {
     /// then the executable will be in `abc`.
     #[clap(short)]
     output_path: Option<String>,
+    /// Where to put intermediary files (only for OptimizeBrilLLVM mode)
+    #[clap(long)]
+    output_dir: Option<String>,
     /// Run the eggcc optimizer (only for the CompileBrilfit run mode)
     /// Defaults to true.
     #[clap(long)]
@@ -84,6 +87,7 @@ fn main() {
         },
         profile_out: args.profile_out,
         output_path: args.output_path,
+        output_dir: args.output_dir,
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
         optimize_bril_llvm: args.optimize_bril_llvm,

@@ -12,6 +12,7 @@ use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::mem;
 use std::process::Stdio;
 use std::{
     ffi::OsStr,
@@ -20,7 +21,6 @@ use std::{
     path::PathBuf,
 };
 use tempfile::tempdir;
-use std::mem;
 
 pub(crate) struct ListDisplay<'a, TS>(pub TS, pub &'a str);
 
@@ -851,7 +851,8 @@ impl Run {
             .unwrap();
 
         if let Some(output_dir) = &self.output_dir {
-            std::fs::create_dir_all(output_dir).unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
+            std::fs::create_dir_all(output_dir)
+                .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
             std::process::Command::new("clang")
                 .current_dir(output_dir)
                 .arg(file_path.clone())
@@ -861,9 +862,10 @@ impl Run {
                 .status()
                 .unwrap();
             std::process::Command::new("cp")
-            .arg(file_path)
-            .arg(format!("{}/compile-unopt.ll", output_dir))
-            .status().unwrap();
+                .arg(file_path)
+                .arg(format!("{}/compile-unopt.ll", output_dir))
+                .status()
+                .unwrap();
         }
 
         let _ = std::fs::write(

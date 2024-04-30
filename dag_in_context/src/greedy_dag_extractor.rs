@@ -400,16 +400,19 @@ pub fn extract(
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let (_cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
-    let effectful_nodes_along_path =
-        extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
-    extractor_not_linear.costs.clear();
-    let (cost_res, res) = extract_without_linearity(
-        extractor_not_linear,
-        &egraph_info,
-        Some(&effectful_nodes_along_path),
-    );
-    extractor_not_linear.check_program_is_linear(&res).unwrap();
+    let (mut cost_res, mut res) =
+        extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    if !extractor_not_linear.check_program_is_linear(&res).is_ok() {
+        let effectful_nodes_along_path =
+            extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
+        extractor_not_linear.costs.clear();
+        (cost_res, res) = extract_without_linearity(
+            extractor_not_linear,
+            &egraph_info,
+            Some(&effectful_nodes_along_path),
+        );
+        extractor_not_linear.check_program_is_linear(&res).unwrap();
+    }
     (cost_res, res)
 }
 
@@ -936,4 +939,102 @@ fn test_linearity_check_2() {
         ))
     ),);
     dag_extraction_linearity_check(&bad_program_2, "There are unconsumed effectful operators");
+}
+
+///                                                    
+///         val1  state1     val2  state2              
+///           │       │        │      │                
+///          c│      e│       e│     c│                
+///          h│      x│       x│     h│                
+///          e│      p│       p│     e│                
+///          a│       │        │     a│                
+///          p│       │        │     p│                
+///       ┌───┴───────┴──┐ ┌───┴──────┴───┐            
+///       │              │ │              │            
+///       │              │ │              │            
+///       │              │ │              │            
+///       │  region1     │ │    region2   │            
+///       │              │ │              │            
+///       │              │ │              │            
+///       │              │ │              │            
+///       │              │ │              │            
+///       └──────────────┘ └──────────────┘            
+/// where val1 = val2, state1 = state2, cost(region1) = cost(region2)
+#[test]
+fn test_validity_of_extraction() {
+    use crate::ast::*;
+    use crate::{print_with_intermediate_vars, prologue};
+
+    let region_1 = tif(
+        ttrue(),
+        parallel!(getat(0)),
+        parallel!(int(0), getat(0)),
+        parallel!(int(0), getat(0)),
+    )
+    .with_arg_types(tuplet!(statet()), tuplet!(intt(), statet()));
+    let cheap_value_path = get(region_1.clone(), 0).with_arg_types(tuplet!(statet()), base(intt()));
+    let expensive_state_path = {
+        let alloc_expr = alloc(1, int(1000), get(region_1, 1), pointert(intt()));
+        free(get(alloc_expr.clone(), 0), get(alloc_expr, 1))
+            .with_arg_types(tuplet!(statet()), base(statet()))
+    };
+    let region_2 = tif(
+        tfalse(),
+        parallel!(getat(0)),
+        parallel!(int(0), getat(0)),
+        parallel!(int(0), getat(0)),
+    )
+    .with_arg_types(tuplet!(statet()), tuplet!(intt(), statet()));
+
+    let expensive_value_path = div(mul(get(region_2.clone(), 0), int(10)), int(10))
+        .with_arg_types(tuplet!(statet()), base(intt()));
+    let cheap_state_path = get(region_2, 1).with_arg_types(tuplet!(statet()), base(statet()));
+
+    let decl = format!(
+        "(let cheap-value-path {})
+         (let expensive-state-path {})
+         (let expensive-value-path {})
+         (let cheap-state-path {})
+         (union cheap-value-path expensive-value-path)
+         (union expensive-state-path cheap-state-path)",
+        cheap_value_path, expensive_state_path, expensive_value_path, cheap_state_path,
+    );
+
+    let prog = program!(function(
+        "main",
+        tuplet!(statet()),
+        tuplet!(intt(), statet()),
+        parallel!(expensive_value_path, cheap_state_path,)
+    ),);
+
+    let string_prog = {
+        let (term, termdag) = prog.to_egglog();
+        let printed = print_with_intermediate_vars(&termdag, term);
+        format!("{}\n{}\n{}", prologue(), decl, printed)
+    };
+
+    let mut egraph = egglog::EGraph::default();
+    egraph.parse_and_run_program(&string_prog).unwrap();
+    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let mut termdag = TermDag::default();
+
+    let egraph_info = EgraphInfo::new(
+        &DefaultCostModel,
+        &serialized_egraph,
+        unextractables.clone(),
+    );
+    let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);
+
+    let (_cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    // first extraction should fail linearity check
+    assert!(extractor_not_linear.check_program_is_linear(&res).is_err());
+
+    // second extraction should succeed
+    extract(
+        &prog,
+        &serialized_egraph,
+        unextractables,
+        &mut termdag,
+        DefaultCostModel,
+    );
 }

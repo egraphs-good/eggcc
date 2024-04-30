@@ -137,19 +137,19 @@ function groupByBenchmark(benchList) {
 function getDifference(current, baseline) {
     // if b is undefined, return a
     if (baseline === undefined) {
-        return { class: "max", value: "N/A" };
+        return { class: "bad", value: "N/A" };
     } else {
         var difference = current - baseline;
         // if the difference is negative it will already have a "-"
         var sign = difference < 0 ? "" : "+";
-        var color = "";
+        var cssClass = "";
         if (difference < 0) {
-            color = "min";
+            cssClass = "good";
         } else if (difference > 0) {
-            color = "max";
+            cssClass = "bad";
         }
         // put the difference in parens after a
-        return { class: color, value: sign + tryRound(difference) };
+        return { class: cssClass, value: sign + tryRound(difference) };
     }
 }
 
@@ -222,10 +222,10 @@ async function loadBenchmarks(compareTo) {
                 const max = sorted[sorted.length - 1].value;
                 sorted.forEach(item => {
                     if (item.value === min) {
-                        item.class = "min";
+                        item.class = "good";
                     }
                     if (item.value === max) {
-                        item.class = "max";
+                        item.class = "bad";
                     }
                 })
             })
@@ -258,12 +258,12 @@ async function loadBenchmarks(compareTo) {
 
     // Add warnings
     let warningContainer = document.getElementById("warnings");
-    // make warning red
-    warningContainer.style.color = "red";
+    
     warningContainer.innerHTML = "";
     warnings.forEach((warning) => {
-        // make warnings red
         let warningElement = document.createElement("p");
+        // make warning red with warning class
+        warningElement.classList.add("warning");
         warningElement.innerText = warning;
         warningContainer.appendChild(warningElement);
     });

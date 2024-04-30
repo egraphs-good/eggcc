@@ -2,11 +2,14 @@ body {
   font-family: monospace;
 }
 
-.min {
+.good {
   background-color: lightgreen;
 }
 
-.max {
+.bad {
   background-color: lightpink;
 }
 
+.warning {
+  background-color: red;
+}

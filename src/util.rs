@@ -841,7 +841,7 @@ impl Run {
             .output_path
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", self.name()));
-        let opt_level = if optimize_brillvm { "-O3" } else { "-O1" };
+        let opt_level = if optimize_brillvm { "-O3" } else { "-O0" };
         std::process::Command::new("clang")
             .arg(file_path.clone())
             .arg(opt_level)

@@ -258,11 +258,12 @@ async function loadBenchmarks(compareTo) {
 
     // Add warnings
     let warningContainer = document.getElementById("warnings");
+    // make warning red
+    warningContainer.style.color = "red";
     warningContainer.innerHTML = "";
     warnings.forEach((warning) => {
         // make warnings red
         let warningElement = document.createElement("p");
-        warningElement.style.color = "red";
         warningElement.innerText = warning;
         warningContainer.appendChild(warningElement);
     });

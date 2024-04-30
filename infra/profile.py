@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
+# this script takes a single argument: a path to
+# a directory or file containing bril programs.
+
 import json
 import os
 from glob import glob
 from sys import stdout
 import subprocess
 
-profiles = (
-    glob("benchmarks/passing/**/*.bril", recursive=True)
-)
 
 modes = [
     # (name, runmode, options)
@@ -84,7 +84,21 @@ def aggregate():
 
 
 if __name__ == '__main__':
-    for p in profiles:
+    # expect a single command-line argument
+    # that is a directory or file containing bril programs
+    if len(os.sys.argv) != 2:
+        print("Usage: profile.py <path>")
+        os.sys.exit(1)
+    arg = os.sys.argv[1]
+
+    # if this is a folder, get all the bril files recursively
+    files = []
+    if os.path.isdir(arg):
+        files = glob(f"{arg}/**/*.bril", recursive=True)
+    else:
+        files = [arg]
+
+    for p in files:
         bench(p)
 
     aggregate()

@@ -16,9 +16,4 @@ nits:
 	$(foreach dir,$(DIRS),(cd $(dir) && cargo clippy --tests -- -D warnings && cargo fmt --check) &&) :
 
 nightly:
-	bash infra/nightly.sh
-
-
-localnightly:
-	LOCAL=1 bash infra/nightly.sh
-	cd nightly/output && python3 -m http.server
+	bash infra/nightly.sh "benchmarks/passing"

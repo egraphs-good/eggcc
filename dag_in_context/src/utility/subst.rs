@@ -163,6 +163,50 @@ fn test_subst_nested() -> crate::Result {
 }
 
 #[test]
+fn test_subst_if() -> crate::Result {
+    use crate::ast::*;
+    use crate::interpreter::Value;
+    let expr = tif(
+        getat(0),
+        add(getat(1), int(1)),
+        add(arg(), int(1)),
+        sub(arg(), int(1)),
+    )
+    .add_arg_type(tuplet!(boolt(), intt()));
+
+    let replace_with = parallel!(ttrue(), int(5)).add_arg_type(emptyt());
+
+    let expected = tif(
+        ttrue(),
+        add(int(5), int(1)),
+        add(arg(), int(1)),
+        sub(arg(), int(1)),
+    )
+    .add_arg_type(emptyt())
+    .add_symbolic_ctx();
+
+    let build = format!(
+        "
+(let substituted (Subst (NoContext)
+                        {replace_with}
+                        {expr}))"
+    );
+    let check = format!(
+        "
+(check (= substituted {expected}))"
+    );
+
+    crate::egglog_test_and_print_program(
+        &build.to_string(),
+        &check.to_string(),
+        vec![expr.to_program(tuplet!(boolt(), intt()), base(intt()))],
+        Value::Tuple(vec![truev(), intv(5)]),
+        intv(7),
+        vec![],
+    )
+}
+
+#[test]
 fn test_subst_makes_new_context() -> crate::Result {
     use crate::ast::*;
     use crate::{interpreter::Value, schema::Constant};
@@ -253,7 +297,7 @@ fn test_subst_identity() -> crate::Result {
 }
 
 #[test]
-fn test_subst_if() -> crate::Result {
+fn test_subst_add() -> crate::Result {
     use crate::ast::*;
 
     let outer_if = add(int(5), arg());

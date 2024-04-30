@@ -139,7 +139,6 @@ impl<'a> DagTranslator<'a> {
                 is_tuple: false,
                 expr: get(arg(), index),
             },
-            Operand::Id(id) => self.translate_node(id).project(0),
             Operand::Project(p_index, id) => self.translate_node(id).project(p_index),
         }
     }

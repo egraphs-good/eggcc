@@ -127,15 +127,23 @@ function ConvertJsonToTable(
             else {
               if (value) {
                 if (typeof value == "object") {
-                  //for supporting nested tables
-                  tbCon += tdRow.format(
-                    ConvertJsonToTable(
-                      eval(value.data),
-                      value.tableId,
-                      value.tableClassName,
-                      value.linkText
-                    )
-                  );
+                  // special case for adding class to <td> elts:
+                  // if the value has exactly the form {class: ..., value: ...}
+                  // treat it as just value.value, and set the class of the <td> element to value.class
+                  if (Object.keys(value).length === 2 && value.hasOwnProperty('value') && value.hasOwnProperty("class")) {
+                    tbCon += "<td class=\"{0}\">{1}</td>".format(value.class, value.value)
+                  } else {
+                    //for supporting nested tables
+                    tbCon += tdRow.format(
+                      ConvertJsonToTable(
+                        eval(value.data),
+                        value.tableId,
+                        value.tableClassName,
+                        value.linkText
+                      )
+                    );
+                  }
+                  
                 } else {
                   tbCon += tdRow.format(value);
                 }

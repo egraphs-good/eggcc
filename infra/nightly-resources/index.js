@@ -59,7 +59,6 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
     
     
     previousRuns.forEach((nightly) => {
-        console.log(nightly);
 
         const option = document.createElement("option");
         option.innerText = formatRun(nightly);
@@ -132,11 +131,11 @@ function buildEntry(run) {
     const results = run.hyperfine.results[0];
     return {
         name: run.runMethod,
-        mean: tryRound(results.mean),
-        min: tryRound(results.min),
-        max: tryRound(results.max),
-        median: tryRound(results.median),
-        stddev: tryRound(results.stddev),
+        mean:   {class: "", value: tryRound(results.mean)},
+        min:    {class: "", value: tryRound(results.min)},
+        max:    {class: "", value: tryRound(results.max)},
+        median: {class: "", value: tryRound(results.median)},
+        stddev: {class: "", value: tryRound(results.stddev)},
     }
 }
 
@@ -159,23 +158,41 @@ async function loadBenchmarks(compareTo) {
     const benchmarkNames = Object.keys(currentRun);
 
     const parsed = benchmarkNames.map((benchName) => {
+        const executions = Object
+        .keys(currentRun[benchName])
+        .map((runMethod) => {
+            // if the mode is not enabled, skip it
+            if (!enabledModes.has(runMethod)) {
+                return undefined;
+            }
+            const prevBenchmark = previousRun ? previousRun[benchName] : undefined;
+            const prevRun = prevBenchmark ? prevBenchmark[runMethod] : undefined;
+            
+            return buildTableText(prevRun, currentRun[benchName][runMethod]) 
+        })
+        .filter((entry) => entry !== undefined);
+
+        
+        if (executions.length > 1) {
+            const cols = ["mean", "min", "max", "median" ];
+            cols.forEach(col => {
+                const sorted = executions.map(e => e[col]).sort((a,b) => a.value - b.value);
+                const min = sorted[0].value;
+                const max = sorted[sorted.length - 1].value;
+                sorted.forEach(item => {
+                    if (item.value === min) {
+                        item.class = "min";
+                    }
+                    if (item.value === max) {
+                        item.class = "max";
+                    }
+                })
+            })
+        }
+
         return {
             name: benchName,
-            "Executions ": {
-                data: Object
-                    .keys(currentRun[benchName])
-                    .map((runMethod) => {
-                        // if the mode is not enabled, skip it
-                        if (!enabledModes.has(runMethod)) {
-                            return undefined;
-                        }
-                        const prevBenchmark = previousRun ? previousRun[benchName] : undefined;
-                        const prevRun = prevBenchmark ? prevBenchmark[runMethod] : undefined;
-                        
-                        return buildTableText(prevRun, currentRun[benchName][runMethod]) 
-                    })
-                    .filter((entry) => entry !== undefined)
-            }
+            "Executions ": {data: executions} 
         }
     });
 

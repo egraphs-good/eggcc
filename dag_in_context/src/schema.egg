@@ -115,7 +115,7 @@
 (function Get   (Expr i64) Expr)
 ; (Alloc amount state_edge pointer_type)
 ; allocate an integer amount of memory for a particular type
-; returns a pointer to the allocated memory
+; returns (pointer to the allocated memory, state edge)
 (function Alloc (i64 Expr Expr BaseType)      Expr)
 ;               name of func   arg
 (function Call (String         Expr) Expr)

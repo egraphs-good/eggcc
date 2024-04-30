@@ -850,7 +850,7 @@ impl Run {
             .status()
             .unwrap();
 
-        if let Some(output_dir) = &self.output_dir {
+        if let Some(output_dir) = &self.llvm_output_dir {
             std::fs::create_dir_all(output_dir)
                 .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
             std::process::Command::new("clang")

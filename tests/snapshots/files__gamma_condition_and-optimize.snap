@@ -4,7 +4,7 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v1_: int = const 0;
-  v2_: bool = gt v0 v1_;
+  v2_: bool = lt v1_ v0;
   v3_: bool = lt v0 v1_;
   v4_: int = const 1;
   br v2_ .v5_ .v6_;

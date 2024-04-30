@@ -1,0 +1,62 @@
+;; This Expr size actually do the same thing as cost function.
+(function Expr-size (Expr) i64 :unextractable :merge (min old new) )
+(function ListExpr-size (ListExpr) i64 :unextractable :merge (min old new))
+
+(rule ((= expr (Function name tyin tyout out)) 
+       (= sum (Expr-size out))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (Const n ty assum))) 
+      ((set (Expr-size expr) 1))  :ruleset always-run)
+
+(rule ((= expr (Bop op x y)) 
+       (= sum (+ (Expr-size y) (Expr-size x)))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (Uop op x)) 
+       (= sum (Expr-size x))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (Get tup i)) 
+       (= sum (Expr-size tup))) 
+      ((set (Expr-size expr) sum)) :ruleset always-run)
+
+(rule ((= expr (Concat x y)) 
+       (= sum (+ (Expr-size y) (Expr-size x)))) 
+      ((set (Expr-size expr) sum)) :ruleset always-run)
+
+(rule ((= expr (Single x)) 
+       (= sum (Expr-size x))) 
+      ((set (Expr-size expr) sum)) :ruleset always-run)
+
+(rule ((= expr (Switch pred inputs branches)) 
+       (= sum  (+ (Expr-size inputs) (+ (ListExpr-size branches) (Expr-size pred)))))
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (If pred inputs then else)) 
+       (= sum (+ (Expr-size inputs) (+ (Expr-size else) (+ (Expr-size then) (Expr-size pred))))))
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (DoWhile in pred-and-output)) 
+       (= sum (+ (Expr-size pred-and-output) (Expr-size in)))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((= expr (Arg ty assum))) 
+      ((set (Expr-size expr) 1)) :ruleset always-run)
+
+(rule ((= expr (Call func arg)) 
+       (= sum (Expr-size arg))) 
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
+(rule ((Empty ty assum)) ((set (Expr-size (Empty ty assum)) 0))  :ruleset always-run)
+
+(rule ((= expr (Cons hd tl)) 
+       (= sum (+ (ListExpr-size tl) (Expr-size hd)))) 
+      ((set (ListExpr-size expr) sum)) :ruleset always-run)
+
+(rule ((Nil)) 
+      ((set (ListExpr-size (Nil)) 0))  :ruleset always-run)
+
+(rule ((= expr (Alloc id e state ty)) ;; do state edge's expr should be counted?
+        (= sum (Expr-size e))) 
+        ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)

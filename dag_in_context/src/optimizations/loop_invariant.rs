@@ -13,7 +13,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
             "
 (rule ((BodyContainsExpr loop expr) 
        (= loop (DoWhile in out)) 
-       (= expr (Get (InContext ctx (Arg ty)) i))
+       (= expr (Get (Arg ty ctx) i)) 
        (= loop (DoWhile in pred_out))
        (= expr (Get pred_out (+ i 1)))) 
       ((set (is-inv-Expr loop expr) true)){ruleset})"
@@ -24,7 +24,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
                 "
 (rule ((BodyContainsExpr loop expr) 
        (= loop (DoWhile in out)) 
-       (= expr (InContext ctx {ctor_pattern})))
+       (= expr {ctor_pattern}))
       ((set (is-inv-Expr loop expr) true)){ruleset})"
             ))
         }
@@ -176,9 +176,7 @@ fn test_invariant_detect() -> crate::Result {
         (let inner_inv {})",
         my_loop, inv, inv_in_print, pred, not_inv, print, inner_inv
     );
-    let check = format!(
-        "
-        (check (= true (is-inv-Expr loop inv)))
+    let check = "(check (= true (is-inv-Expr loop inv)))
 		(check (= true (is-inv-Expr loop inv_in_print)))
 		(check (= false (is-inv-Expr loop pred)))
 		(check (= false (is-inv-Expr loop not_inv)))
@@ -187,14 +185,11 @@ fn test_invariant_detect() -> crate::Result {
         (fail (check (boundary-Expr loop not_inv)))
         (fail (check (boundary-Expr loop pred)))
         (check (= true (is-inv-Expr loop inner_inv)))
-        (fail (check (boundary-Expr loop inner_inv)))"
-    );
-
-    //println!("{}", build);
+        (fail (check (boundary-Expr loop inner_inv)))";
 
     egglog_test(
         &build,
-        &check,
+        check,
         vec![],
         Value::Tuple(vec![]),
         Value::Tuple(vec![]),

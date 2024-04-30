@@ -40,7 +40,7 @@ expression: visualization.result
   v28_: bool = eq v27_ v10_;
   print v6_;
   v29_: int = mul v8_ v6_;
-  v30_: int = add v7_ v29_;
+  v30_: int = add v29_ v7_;
   br v28_ .v31_ .v32_;
 .v31_:
   v33_: bool = const true;

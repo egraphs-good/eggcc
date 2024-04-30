@@ -39,12 +39,10 @@ fn loop_unroll_simple() -> crate::Result {
     )
     .add_arg_type(base(intt()));
 
+    let unrolled_add = add(add(add(add(getat(0), int(1)), int(1)), int(1)), int(1));
     let expected = dowhile(
         parallel!(int(0)),
-        parallel!(
-            less_than(add(getat(0), int(4)), int(8)),
-            add(getat(0), int(4))
-        ),
+        parallel!(less_than(unrolled_add.clone(), int(8)), unrolled_add),
     )
     .add_arg_type(base(intt()))
     .add_symbolic_ctx();

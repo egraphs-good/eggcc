@@ -50,12 +50,11 @@
   (
     (let tmp_context (UnrollCtx inputs outputs))
     (let one-iter (SubTuple outputs 1 num-inputs))
-    ;; TODO make unroll 4 times instead of 2
     (let unrolled
         (Subst tmp_context one-iter
-          ;(Subst tmp_context one-iter
-           ; (Subst tmp_context one-iter
-               outputs))
+          (Subst tmp_context one-iter
+            (Subst tmp_context one-iter
+               outputs))))
     (union lhs
       (DoWhile inputs
         unrolled))
@@ -64,5 +63,5 @@
     (delete (UnrollCtx inputs outputs))
   )
   :ruleset loop-unroll)
-  
+
 

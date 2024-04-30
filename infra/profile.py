@@ -7,45 +7,56 @@ from sys import stdout
 import subprocess
 
 profiles = (
-  glob("benchmarks/passing/**/*.bril", recursive=True)
+    glob("benchmarks/passing/**/*.bril", recursive=True)
 )
 
 modes = [
-  # (name, runmode, options)
-  ("rvsdg_roundtrip", "rvsdg-round-trip-to-executable", ""),
+    # (name, runmode, options)
+    ("rvsdg_roundtrip", "rvsdg-round-trip-to-executable", ""),
 
-  ("egglog_noopt_brilift_noopt", "compile-brilift", "--optimize-egglog false --optimize-brilift false"),
-  ("egglog_noopt_brilift_opt", "compile-brilift", "--optimize-egglog false --optimize-brilift true"),
-  ("egglog_opt_brilift_noopt", "compile-brilift", "--optimize-egglog true --optimize-brilift false"),
-  ("egglog_opt_brilift_opt", "compile-brilift", "--optimize-egglog true --optimize-brilift true"),
+    ("egglog_noopt_brilift_noopt", "compile-brilift",
+        "--optimize-egglog false --optimize-brilift false"),
+    ("egglog_noopt_brilift_opt", "compile-brilift",
+        "--optimize-egglog false --optimize-brilift true"),
+    ("egglog_opt_brilift_noopt", "compile-brilift",
+        "--optimize-egglog true --optimize-brilift false"),
+    ("egglog_opt_brilift_opt", "compile-brilift",
+        "--optimize-egglog true --optimize-brilift true"),
 
-  ("egglog_noopt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm false"),
-  ("egglog_noopt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm true"),
-  ("egglog_opt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm false"),
-  ("egglog_opt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm true")
+    ("egglog_noopt_bril_llvm_noopt", "compile-bril-llvm",
+        "--optimize-egglog false --optimize-bril-llvm false"),
+    ("egglog_noopt_bril_llvm_opt", "compile-bril-llvm",
+        "--optimize-egglog false --optimize-bril-llvm true"),
+    ("egglog_opt_bril_llvm_noopt", "compile-bril-llvm",
+        "--optimize-egglog true --optimize-bril-llvm false"),
+    ("egglog_opt_bril_llvm_opt", "compile-bril-llvm",
+        "--optimize-egglog true --optimize-bril-llvm true")
 ]
 
+
 def bench(profile):
-  # strip the path to just the file name
-  profile_file = profile.split("/")[-1]
+    # strip the path to just the file name
+    profile_file = profile.split("/")[-1]
 
-  # strip off the .bril to get just the profile name
-  profile_name = profile_file[:-len(".bril")]
+    # strip off the .bril to get just the profile name
+    profile_name = profile_file[:-len(".bril")]
 
-  profile_dir = f'./tmp/bench/{profile_name}'
-  try:
-    os.mkdir(profile_dir)
-  except FileExistsError:
-    print(f'{profile_dir} exists, overwriting contents')
-    
-  for mode in modes:
-    (name, runmode, options) = mode
-    subprocess.call(f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}', shell=True)
+    profile_dir = f'./tmp/bench/{profile_name}'
+    try:
+        os.mkdir(profile_dir)
+    except FileExistsError:
+        print(f'{profile_dir} exists, overwriting contents')
 
-    with open(f'{profile_dir}/{name}-args') as f:
-      args = f.read().rstrip()
-    
-    subprocess.call(f'hyperfine --warmup 2 --max-runs 100 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
+    for mode in modes:
+        (name, runmode, options) = mode
+        subprocess.call(
+            f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}', shell=True)
+
+        with open(f'{profile_dir}/{name}-args') as f:
+            args = f.read().rstrip()
+
+        subprocess.call(
+            f'hyperfine --warmup 2 --max-runs 100 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
 
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:
@@ -54,6 +65,8 @@ def bench(profile):
 # -- <benchmark name>
 # ---- run_method.json
 # ---- run_method.profile
+
+
 def aggregate():
     res = []
     jsons = glob("./tmp/bench/*/*.json")
@@ -67,11 +80,11 @@ def aggregate():
             result["hyperfine"] = json.load(f)
         res.append(result)
     with open("nightly/data/profile.json", "w") as f:
-      json.dump(res, f, indent=2)
+        json.dump(res, f, indent=2)
 
 
 if __name__ == '__main__':
-  for p in profiles:
-    bench(p)
+    for p in profiles:
+        bench(p)
 
-  aggregate()
+    aggregate()

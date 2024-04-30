@@ -126,26 +126,38 @@ function groupByBenchmark(benchList) {
     return groupedBy;
 }
 
-const compareKeys = ["# Instructions"];
-function buildEntry(run) {
-    const results = run.hyperfine.results[0];
-    return {
-        name: run.runMethod,
-        mean:   {class: "", value: tryRound(results.mean)},
-        min:    {class: "", value: tryRound(results.min)},
-        max:    {class: "", value: tryRound(results.max)},
-        median: {class: "", value: tryRound(results.median)},
-        stddev: {class: "", value: tryRound(results.stddev)},
+function compareTo(a, b) {
+    // if b is undefined, return a
+    if (b === undefined) {
+        return tryRound(a);
+    } else {
+        var difference = a - b;
+        var sign = difference < 0 ? "" : "+";
+        // put the difference in parens after a
+        return tryRound(a) + " (" + sign + tryRound(difference) + ")";
     }
 }
 
-// TODO (@ryan-berger) decide how to compare to prevRun now there are no instruction count metrics
-function buildTableText(prevRun, run) {
-    const entry = buildEntry(run)
-    if (!prevRun) {
-        return entry;
+function compareAttribute(results, prevResults, attribute) {
+    const a = results[attribute];
+    const b = prevResults ? prevResults[attribute] : undefined;
+    return { class: "", value: compareTo(a, b)};
+}
+
+const compareKeys = ["# Instructions"];
+function buildEntry(prevRun, run) {
+    const results = run.hyperfine.results[0];
+    const prevResults = prevRun ? prevRun.hyperfine.results[0] : undefined;
+
+    return {
+        name: run.runMethod,
+        mean: compareAttribute(results, prevResults, "mean"),
+        min: compareAttribute(results, prevResults, "min"),
+        max: compareAttribute(results, prevResults, "max"),
+        median: compareAttribute(results, prevResults, "median"),
+        stddev: compareAttribute(results, prevResults, "stddev"),
+        
     }
-    return entry;
 }
 
 async function loadBenchmarks(compareTo) {
@@ -168,7 +180,7 @@ async function loadBenchmarks(compareTo) {
             const prevBenchmark = previousRun ? previousRun[benchName] : undefined;
             const prevRun = prevBenchmark ? prevBenchmark[runMethod] : undefined;
             
-            return buildTableText(prevRun, currentRun[benchName][runMethod]) 
+            return buildEntry(prevRun, currentRun[benchName][runMethod]) 
         })
         .filter((entry) => entry !== undefined);
 

@@ -10,7 +10,7 @@ expression: visualization.result
 }
 @double(v0: int): int {
   v1_: int = const 2;
-  v2_: int = mul v0 v1_;
+  v2_: int = mul v1_ v0;
   ret v2_;
 }
 @main {

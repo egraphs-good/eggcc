@@ -4,7 +4,7 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v1_: int = const 3;
-  v2_: int = add v0 v1_;
+  v2_: int = add v1_ v0;
   v3_: int = const 0;
   v4_: int = id v1_;
   v5_: int = id v2_;
@@ -12,11 +12,11 @@ expression: visualization.result
   v7_: int = id v0;
 .v8_:
   v9_: int = const 7;
-  v10_: int = mul v9_ v4_;
+  v10_: int = mul v4_ v9_;
   print v10_;
   v11_: int = const 2;
   v12_: int = add v11_ v4_;
-  v13_: int = add v6_ v10_;
+  v13_: int = add v10_ v6_;
   v14_: bool = lt v4_ v7_;
   v4_: int = id v12_;
   v5_: int = id v5_;

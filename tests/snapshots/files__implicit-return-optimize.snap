@@ -14,10 +14,10 @@ expression: visualization.result
   v10_: bool = lt v4_ v9_;
   br v10_ .v11_ .v12_;
 .v11_:
-  v13_: int = mul v5_ v3_;
+  v13_: int = mul v3_ v5_;
   v14_: bool = const true;
   v15_: int = const 1;
-  v16_: int = add v4_ v15_;
+  v16_: int = add v15_ v4_;
   v17_: int = id v13_;
   v18_: bool = id v14_;
   v19_: int = id v16_;

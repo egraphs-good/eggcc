@@ -32,8 +32,8 @@ expression: visualization.result
   jmp .v17_;
 .v6_:
   v20_: int = const 1;
-  v21_: int = add v1_ v20_;
-  v22_: int = add v20_ v2_;
+  v21_: int = add v20_ v1_;
+  v22_: int = add v2_ v20_;
   v7_: int = id v21_;
   v8_: bool = id v4_;
   v9_: int = id v22_;

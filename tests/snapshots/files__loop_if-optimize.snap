@@ -21,23 +21,24 @@ expression: visualization.result
   v15_: bool = id v13_;
   v16_: int = id v9_;
 .v17_:
+  v18_: bool = not v4_;
   v1_: int = id v7_;
   v2_: int = id v9_;
-  br v15_ .v3_ .v18_;
+  br v18_ .v3_ .v19_;
 .v12_:
-  v19_: bool = const true;
+  v20_: bool = const true;
   v14_: int = id v7_;
-  v15_: bool = id v19_;
+  v15_: bool = id v20_;
   v16_: int = id v9_;
   jmp .v17_;
 .v6_:
-  v20_: int = const 1;
-  v21_: int = add v20_ v1_;
-  v22_: int = add v2_ v20_;
-  v7_: int = id v21_;
+  v21_: int = const 1;
+  v22_: int = add v1_ v21_;
+  v23_: int = add v21_ v2_;
+  v7_: int = id v22_;
   v8_: bool = id v4_;
-  v9_: int = id v22_;
+  v9_: int = id v23_;
   jmp .v10_;
-.v18_:
+.v19_:
   print v1_;
 }

@@ -1,0 +1,24 @@
+; Simple rewrites that don't do a ton with control flow.
+
+(ruleset peepholes)
+
+; Contexts?
+
+(rewrite (Bop (Mul) (Const (Int 0) ty ctx) e) (Const (Int 0) ty ctx) :ruleset peepholes)
+(rewrite (Bop (Mul) e (Const (Int 0) ty ctx)) (Const (Int 0) ty ctx) :ruleset peepholes)
+(rewrite (Bop (Mul) (Const (Int 1) ty ctx) e) e :ruleset peepholes)
+(rewrite (Bop (Mul) e (Const (Int 1) ty ctx) ) e :ruleset peepholes)
+(rewrite (Bop (Add) (Const (Int 0) ty ctx) e) e :ruleset peepholes)
+(rewrite (Bop (Add) e (Const (Int 0) ty ctx) ) e :ruleset peepholes)
+
+(rewrite (Bop (Mul) (Const (Int j) ty ctx) (Const (Int i) ty ctx)) (Const (Int (* i j)) ty ctx) :ruleset peepholes)
+(rewrite (Bop (Add) (Const (Int j) ty ctx) (Const (Int i) ty ctx)) (Const (Int (+ i j)) ty ctx) :ruleset peepholes)
+
+(rewrite (Bop (And) (Const (Bool true) ty ctx) e) e :ruleset peepholes)
+(rewrite (Bop (And) e (Const (Bool true) ty ctx)) e :ruleset peepholes)
+(rewrite (Bop (And) (Const (Bool false) ty ctx) e) (Const (Bool false) ty ctx) :ruleset peepholes)
+(rewrite (Bop (And) e (Const (Bool false) ty ctx)) (Const (Bool false) ty ctx) :ruleset peepholes)
+(rewrite (Bop (Or) (Const (Bool false) ty ctx) e) e :ruleset peepholes)
+(rewrite (Bop (Or) e (Const (Bool false) ty ctx)) e :ruleset peepholes)
+(rewrite (Bop (Or) (Const (Bool true) ty ctx) e) (Const (Bool true) ty ctx) :ruleset peepholes)
+(rewrite (Bop (Or) e (Const (Bool true) ty ctx)) (Const (Bool true) ty ctx) :ruleset peepholes)

@@ -25,6 +25,7 @@ pub fn mk_schedule() -> String {
     context
     interval-analysis
     memory-helpers
+    peepholes
   )
   
     

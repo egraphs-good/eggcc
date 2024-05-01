@@ -10,16 +10,19 @@ async function load() {
   buildNightlyDropdown("comparison", previousRuns, initialRunIdx);
 
   refreshView();
+  initializeChart();
 }
 
 function selectAllModes(enabled) {
   const checkboxContainer = document.getElementById("modeCheckboxes");
-  checkboxContainer.childNodes.forEach((checkbox) => {
-    checkbox.checked = enabled;
-    enabled
-      ? GLOBAL_DATA.enabledModes.add(checkbox.id)
-      : GLOBAL_DATA.enabledModes.delete(checkbox.id);
-  });
+  Array.from(checkboxContainer.getElementsByTagName("input")).forEach(
+    (checkbox) => {
+      checkbox.checked = enabled;
+      enabled
+        ? GLOBAL_DATA.enabledModes.add(checkbox.id)
+        : GLOBAL_DATA.enabledModes.delete(checkbox.id);
+    },
+  );
   refreshView();
 }
 

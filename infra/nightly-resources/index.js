@@ -16,6 +16,7 @@ const GLOBAL_DATA = {
   warnings: new Set(),
   currentRun: {},
   baselineRun: undefined,
+  chart: undefined,
 };
 
 function addWarning(warning) {
@@ -270,6 +271,7 @@ function refreshView() {
   container.innerHTML = ConvertJsonToTable(parsed);
 
   renderWarnings();
+  refreshChart();
 }
 
 function renderWarnings() {

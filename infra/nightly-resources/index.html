@@ -3,6 +3,9 @@
 <html>
 
 <head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.min.js"></script>
+  <script src="./Plugin.Errorbars.js"></script>
+  <script src="chart.js"></script>
   <script src="index.js"></script>
   <script src="handlers.js"></script>
   <script src="table.js"></script>
@@ -15,6 +18,11 @@
 <body onload="load()">
   <h2>Nightlies</h2>
   <h2>Profile</h2>
+
+  <div>
+    <canvas id="chart"></canvas>
+  </div>
+
   <div>
     <label for="comparison">Compare To:</label>
     <select id="comparison"></select>    

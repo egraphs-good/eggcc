@@ -542,7 +542,7 @@ pub fn extract_with_paths(
     // now run translation to expressions
     let resulting_prog = extractor.terms_to_expressions(info, root_costset.term.clone());
 
-    let root_cost = root_costset.costs.get(root_eclass).unwrap();
+    let root_cost = root_costset.total;
     if root_cost.is_infinite() {
         panic!("Failed to extract program! Found infinite cost on result node.");
     }

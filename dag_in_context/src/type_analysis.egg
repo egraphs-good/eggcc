@@ -20,6 +20,10 @@
 (rule ((= (TypeList-suffix list n) (TNil)))
     ((set (TypeList-length list) n)) :ruleset type-helpers)
 
+(rule ((TypeList-ith list i)
+       (= (TypeList-length list) n)
+       (>= i n))
+      ((panic "TypeList-ith out of bounds")) :ruleset type-helpers)
 
 (relation HasType (Expr Type))
 

@@ -12,4 +12,5 @@ body {
 
 #warnings {
   color: red;
+  display: none;
 }

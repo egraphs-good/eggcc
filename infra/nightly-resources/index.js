@@ -29,7 +29,12 @@ async function getPreviousRuns() {
     const files = await req.json();
     
     // map files into objects of the shape:
-    // {branch: <git branch:string>, commit: <git commit:string>, date: <unix timestamp:int>, url: <absolute url to nightly page:string>}
+    // {
+    //   branch: <git branch:string>, 
+    //   commit: <git commit:string>, 
+    //   date: <unix timestamp:int>, 
+    //   url: <absolute url to nightly page:string>
+    // }
     const comparisons = [];
     // start at i=1 because / is the first file
     for (let i = 1; i < files.length; i++) {
@@ -272,17 +277,7 @@ function makeCheckbox(parent, mode) {
     checkbox.type = "checkbox";
     checkbox.id = mode;
     checkbox.checked = true;
-    checkbox.onchange = (e) => {
-        // if the checkbox is checked, add the mode to the set of enabled modes
-        if (checkbox.checked) {
-            GLOBAL_DATA.enabledModes.add(mode);
-        } else {
-            // if the checkbox is unchecked, remove the mode from the set of enabled modes
-            GLOBAL_DATA.enabledModes.delete(mode);
-        }
-        // load everything again
-        refreshView();
-    }
+    checkbox.onchange = () => toggleCheckbox(mode);
     parent.appendChild(checkbox);
     // make a label for the checkbox
     const label = document.createElement("label");
@@ -297,51 +292,9 @@ function makeCheckbox(parent, mode) {
 }
 
 function makeModeSelectors() {
-    const modeSelections = document.getElementById("modeselections");
-    const checkboxContainer = document.createElement("div");
-    // for each mode in allmodes, make a box to enable or disable it
-    // put them in the div with id modeselections
+    const checkboxContainer = document.getElementById("modeCheckboxes");
     allModes.forEach((mode) => {
         makeCheckbox(checkboxContainer, mode)
     })
     
-    // Convenience buttons to select all / none
-    const buttonContainer = document.createElement("div");
-    const all = document.createElement("button");
-    all.innerText = "Select All";
-    all.onclick = (e) => {
-        checkboxContainer.childNodes.forEach(checkbox => {
-            checkbox.checked = true;
-            GLOBAL_DATA.enabledModes.add(checkbox.id);
-        })
-        refreshView();
-    }
-
-    const none = document.createElement("button");
-    none.innerText = "Select None";
-    none.onclick = (e) => {
-        checkboxContainer.childNodes.forEach(checkbox => {
-            checkbox.checked = false;
-            GLOBAL_DATA.enabledModes.delete(checkbox.id);
-        })
-        refreshView();
-    }
-    buttonContainer.appendChild(all);
-    buttonContainer.appendChild(none);
-    modeSelections.appendChild(buttonContainer);
-    modeSelections.appendChild(checkboxContainer);
-}
-
-// Top-level load function for the main index page.
-async function load() {
-    GLOBAL_DATA.currentRun = await getBench("./");
-    makeModeSelectors();
-
-    const previousRuns = await getPreviousRuns();
-    const initialRunIdx = findBenchToCompareIdx(previousRuns);
-    GLOBAL_DATA.baselineRun = await getBench(previousRuns[initialRunIdx].url + "/");
-    
-    buildNightlyDropdown("comparison", previousRuns, initialRunIdx);
-
-    refreshView();
 }

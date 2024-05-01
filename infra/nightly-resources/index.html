@@ -4,6 +4,7 @@
 
 <head>
   <script src="index.js"></script>
+  <script src="handlers.js"></script>
   <script src="table.js"></script>
   <script src="utils.js"></script>
   <script src="data/profile.json"></script>
@@ -19,9 +20,15 @@
     <select id="comparison"></select>    
   </div>
 
-  <div id="warnings"></div>
+  <button type="button" class="collapsible" id="warnings-toggle" onclick="toggleWarnings()"></button>
+  <div class="content" id="warnings"></div>
 
-  <div id="modeselections">
+  <div>
+    <div>
+      <button onclick="selectAllModes(true)">Select All</button>
+      <button onclick="selectAllModes(false)">Select None</button>
+    </div>
+    <div id="modeCheckboxes"></div>
   </div>
   
   <div id="profile"></div>

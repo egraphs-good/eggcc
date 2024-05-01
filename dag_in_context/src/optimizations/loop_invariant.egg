@@ -77,6 +77,7 @@
        (let new_pred_out (Concat substed_pred_out (Single new_out_branch)))
        
        (let new_loop (DoWhile new_input new_pred_out))
+       (union assum (InLoop new_input new_pred_out))
        (union inv_in_new_loop new_out_branch)
        (let wrapper (SubTuple new_loop 0 len))
        (union loop wrapper)

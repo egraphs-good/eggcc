@@ -9,7 +9,10 @@ expression: visualization.result
   print v3_;
   br v2_ .v4_ .v5_;
 .v5_:
+  v7_: bool = const true;
+  v8_: int = const 2;
   print v3_;
+<<<<<<< HEAD
   v6_: int = id v3_;
   v7_: int = id v3_;
   v8_: int = id v3_;
@@ -28,6 +31,27 @@ expression: visualization.result
   v20_: int = id v9_;
 .v21_:
   v6_: int = id v17_;
+=======
+<<<<<<< HEAD
+  v7_: int = id v3_;
+  v8_: int = id v3_;
+  v9_: int = id v3_;
+  v10_: int = id v0;
+.v11_:
+  v12_: bool = lt v7_ v10_;
+  br v12_ .v13_ .v14_;
+.v13_:
+  v15_: int = add v8_ v9_;
+  print v15_;
+<<<<<<< HEAD
+  v16_: int = const 1;
+  v17_: int = add v16_ v7_;
+  v18_: int = id v17_;
+  v19_: int = id v15_;
+  v20_: int = id v8_;
+  v21_: int = id v10_;
+.v22_:
+>>>>>>> 4488cb7f (some snapshots)
   v7_: int = id v18_;
   v8_: int = id v19_;
   v9_: int = id v20_;
@@ -37,6 +61,79 @@ expression: visualization.result
   v18_: int = id v7_;
   v19_: int = id v8_;
   v20_: int = id v9_;
+<<<<<<< HEAD
   jmp .v21_;
 .v4_:
+=======
+  v21_: int = id v10_;
+  jmp .v22_;
+=======
+  v16_: bool = const true;
+  v17_: int = const 1;
+  v18_: int = add v17_ v7_;
+  v19_: bool = id v16_;
+  v20_: int = id v18_;
+  v21_: int = id v15_;
+  v22_: int = id v8_;
+  v23_: int = id v10_;
+.v24_:
+  v7_: int = id v20_;
+  v8_: int = id v21_;
+  v9_: int = id v22_;
+  v10_: int = id v10_;
+  br v12_ .v11_ .v25_;
+.v25_:
+=======
+  print v8_;
+  br v7_ .v9_ .v10_;
+.v9_:
+  v11_: int = id v8_;
+  v12_: int = id v8_;
+  v13_: int = id v3_;
+  v14_: int = id v0;
+.v15_:
+  v16_: bool = lt v11_ v14_;
+  br v16_ .v17_ .v18_;
+.v17_:
+  v19_: int = add v12_ v13_;
+  print v19_;
+  v20_: bool = const true;
+  v21_: int = const 1;
+  v22_: int = add v11_ v21_;
+  v23_: bool = id v20_;
+  v24_: int = id v22_;
+  v25_: int = id v19_;
+  v26_: int = id v12_;
+  v27_: int = id v14_;
+.v28_:
+  v11_: int = id v24_;
+  v12_: int = id v25_;
+  v13_: int = id v26_;
+  v14_: int = id v14_;
+  br v16_ .v15_ .v29_;
+.v29_:
+  v30_: int = id v11_;
+  v31_: int = id v12_;
+  v32_: int = id v13_;
+  v33_: int = id v14_;
+.v34_:
+>>>>>>> 691fa0b6 (some snapshots)
+  jmp .v6_;
+.v18_:
+  v35_: bool = const false;
+  v23_: bool = id v35_;
+  v24_: int = id v11_;
+  v25_: int = id v12_;
+  v26_: int = id v13_;
+  v27_: int = id v14_;
+  jmp .v28_;
+.v10_:
+  v30_: int = id v8_;
+  v31_: int = id v8_;
+  v32_: int = id v3_;
+  v33_: int = id v0;
+  jmp .v34_;
+>>>>>>> 9c49ef40 (some snapshots)
+.v6_:
+>>>>>>> 4488cb7f (some snapshots)
 }

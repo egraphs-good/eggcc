@@ -3,16 +3,17 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v1_: int = const 0;
+  v1_: bool = const true;
   v2_: int = const 1;
-  v3_: int = id v1_;
-  v4_: int = id v2_;
-  v5_: int = id v0;
-.v6_:
-  v7_: bool = lt v3_ v5_;
-  br v7_ .v8_ .v9_;
+  br v1_ .v3_ .v4_;
+.v3_:
+  v5_: int = id v2_;
+  v6_: int = id v2_;
+  v7_: int = id v0;
 .v8_:
+<<<<<<< HEAD
   v10_: int = add v3_ v4_;
+<<<<<<< HEAD
   v11_: int = id v10_;
   v12_: int = id v4_;
   v13_: int = id v5_;
@@ -21,6 +22,26 @@ expression: visualization.result
   v4_: int = id v12_;
   v5_: int = id v13_;
   br v7_ .v6_ .v15_;
+=======
+=======
+<<<<<<< HEAD
+  v10_: int = add v4_ v3_;
+=======
+<<<<<<< HEAD
+  v10_: int = add v3_ v4_;
+>>>>>>> 0089cf68 (some snapshots)
+>>>>>>> e87ec5b4 (some snapshots)
+  v11_: bool = const true;
+  v12_: int = id v10_;
+  v13_: bool = id v11_;
+  v14_: int = id v4_;
+  v15_: int = id v5_;
+.v16_:
+  v3_: int = id v12_;
+  v4_: int = id v4_;
+  v5_: int = id v5_;
+  br v7_ .v6_ .v17_;
+>>>>>>> 9c49ef40 (some snapshots)
 .v9_:
   v11_: int = id v3_;
   v12_: int = id v4_;
@@ -28,4 +49,38 @@ expression: visualization.result
   jmp .v14_;
 .v15_:
   print v3_;
+=======
+  v9_: bool = lt v5_ v7_;
+  br v9_ .v10_ .v11_;
+.v10_:
+  v12_: int = add v6_ v5_;
+  v13_: bool = const true;
+  v14_: int = id v12_;
+  v15_: bool = id v13_;
+  v16_: int = id v6_;
+  v17_: int = id v7_;
+.v18_:
+  v5_: int = id v14_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
+  br v9_ .v8_ .v19_;
+.v19_:
+  v20_: int = id v5_;
+  v21_: int = id v6_;
+  v22_: int = id v7_;
+  jmp .v23_;
+.v11_:
+  v24_: bool = const false;
+  v14_: int = id v5_;
+  v15_: bool = id v24_;
+  v16_: int = id v6_;
+  v17_: int = id v7_;
+  jmp .v18_;
+.v4_:
+  v20_: int = id v2_;
+  v21_: int = id v2_;
+  v22_: int = id v0;
+.v23_:
+  print v20_;
+>>>>>>> 691fa0b6 (some snapshots)
 }

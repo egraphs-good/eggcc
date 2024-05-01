@@ -11,7 +11,7 @@ const COLORS = {
 };
 
 function parseDataForChart() {
-  const benchmarks = Object.keys(GLOBAL_DATA.currentRun);
+  const benchmarks = Array.from(GLOBAL_DATA.enabledBenchmarks);
   const runModes = GLOBAL_DATA.enabledModes;
   const datasets = {};
   runModes.forEach((mode) => {
@@ -36,18 +36,17 @@ function parseDataForChart() {
       }
     });
   });
-  return Object.values(datasets);
+  return { labels: benchmarks, datasets: Object.values(datasets) };
 }
 
 function initializeChart() {
   const ctx = document.getElementById("chart");
 
+  const chartData = parseDataForChart();
+
   GLOBAL_DATA.chart = new Chart(ctx, {
     type: "bar",
-    data: {
-      labels: Object.keys(GLOBAL_DATA.currentRun),
-      datasets: parseDataForChart(),
-    },
+    data: chartData,
     options: {
       scales: {
         y: {
@@ -69,6 +68,6 @@ function refreshChart() {
   if (!GLOBAL_DATA.chart) {
     return;
   }
-  GLOBAL_DATA.chart.data.datasets = parseDataForChart();
+  GLOBAL_DATA.chart.data = parseDataForChart();
   GLOBAL_DATA.chart.update();
 }

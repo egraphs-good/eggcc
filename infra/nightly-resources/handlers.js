@@ -1,7 +1,11 @@
 // Top-level load function for the main index page.
 async function load() {
   GLOBAL_DATA.currentRun = await getBench("./");
-  makeModeSelectors();
+  makeSelectors();
+
+  // Everything selected by default
+  selectAllModes(true);
+  selectAllBenchmarks(true);
 
   const previousRuns = await getPreviousRuns();
   const initialRunIdx = findBenchToCompareIdx(previousRuns);
@@ -26,11 +30,24 @@ function selectAllModes(enabled) {
   refreshView();
 }
 
-function toggleCheckbox(mode) {
-  if (GLOBAL_DATA.enabledModes.has(mode)) {
-    GLOBAL_DATA.enabledModes.delete(mode);
+function selectAllBenchmarks(enabled) {
+  const checkboxContainer = document.getElementById("benchmarkCheckboxes");
+  Array.from(checkboxContainer.getElementsByTagName("input")).forEach(
+    (checkbox) => {
+      checkbox.checked = enabled;
+      enabled
+        ? GLOBAL_DATA.enabledBenchmarks.add(checkbox.id)
+        : GLOBAL_DATA.enabledBenchmarks.delete(checkbox.id);
+    },
+  );
+  refreshView();
+}
+
+function toggleCheckbox(mode, set) {
+  if (set.has(mode)) {
+    set.delete(mode);
   } else {
-    GLOBAL_DATA.enabledModes.add(mode);
+    set.add(mode);
   }
   refreshView();
 }

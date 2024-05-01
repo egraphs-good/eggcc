@@ -32,12 +32,23 @@
   <button type="button" class="collapsible" id="warnings-toggle" onclick="toggleWarnings()"></button>
   <div class="content" id="warnings"></div>
 
-  <div>
-    <div>
-      <button onclick="selectAllModes(true)">Select All</button>
-      <button onclick="selectAllModes(false)">Select None</button>
+  <div style="width: 75%;">
+    <div style="float: left;">
+      <div>
+        <p>Run Modes</p>
+        <button onclick="selectAllModes(true)">Select All</button>
+        <button onclick="selectAllModes(false)">Select None</button>
+      </div>
+      <div id="modeCheckboxes"></div>
     </div>
-    <div id="modeCheckboxes"></div>
+    <div style="float: right;">
+      <div>
+        <p>Benchmarks</p>
+        <button onclick="selectAllBenchmarks(true)">Select All</button>
+        <button onclick="selectAllBenchmarks(false)">Select None</button>
+      </div>
+      <div id="benchmarkCheckboxes"></div>
+    </div>
   </div>
   
   <div id="profile"></div>

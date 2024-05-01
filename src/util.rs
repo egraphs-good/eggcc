@@ -3,8 +3,8 @@ use crate::rvsdg::from_dag::dag_to_rvsdg;
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
-use dag_in_context::build_program;
-use dag_in_context::from_egglog::FromEgglog;
+use dag_in_context::{build_program, check_roundtrip_egraph};
+
 use dag_in_context::schema::TreeProgram;
 use graphviz_rust::cmd::Format;
 use graphviz_rust::exec;
@@ -179,7 +179,7 @@ pub enum RunType {
     Egglog,
     /// Check that converting the tree program to egglog
     /// and back again results in an identical program.
-    CheckTreeIdentical,
+    CheckExtractIdentical,
     /// Convert to RVSDG and back to Bril again,
     /// outputting the bril program.
     RvsdgRoundTrip,
@@ -234,7 +234,7 @@ impl RunType {
             | RunType::Egglog
             | RunType::DagToRvsdg
             | RunType::OptimizedRvsdg
-            | RunType::CheckTreeIdentical
+            | RunType::CheckExtractIdentical
             | RunType::ToCfg => false,
         }
     }
@@ -392,7 +392,7 @@ impl Run {
             RunType::DagOptimize,
             RunType::DagRoundTrip,
             RunType::Optimize,
-            RunType::CheckTreeIdentical,
+            RunType::CheckExtractIdentical,
         ] {
             let default = Run {
                 test_type,
@@ -560,21 +560,10 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::CheckTreeIdentical => {
+            RunType::CheckExtractIdentical => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding(true);
-                let (term, termdag) = tree.to_egglog();
-                let mut from_egglog = FromEgglog {
-                    termdag: &termdag,
-                    conversion_cache: Default::default(),
-                };
-                let res_term = from_egglog.program_from_egglog(term.clone());
-                let (otherterm, _termdag) = res_term.to_egglog_with_termdag(termdag);
-                if otherterm != term {
-                    panic!(
-                        "Check failed: terms should be equal after conversion to and from egglog.",
-                    );
-                }
+                check_roundtrip_egraph(&tree);
                 (vec![], None)
             }
             RunType::Optimize => {
@@ -630,7 +619,7 @@ impl Run {
             RunType::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding(true);
-                let egglog = build_program(&dag);
+                let egglog = build_program(&dag, true);
                 (
                     vec![Visualization {
                         result: egglog,

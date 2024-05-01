@@ -3,7 +3,10 @@ use egraph_serialize::{ClassId, EGraph, NodeId};
 use ordered_float::NotNan;
 use rpds::HashTrieMap;
 use rustc_hash::FxHashMap;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    f64::INFINITY,
+};
 
 use crate::{
     from_egglog::FromEgglog,
@@ -79,7 +82,10 @@ impl<'a> EgraphInfo<'a> {
         // find all the (root, enode) pairs that are root nodes (no children)
         for (root, eclass) in &relavent_nodes {
             for enode in egraph.classes()[eclass].nodes.iter() {
-                if enode_children(egraph, &egraph[enode]).is_empty() {
+                // skip if cost is infinite
+                if enode_children(egraph, &egraph[enode]).is_empty()
+                    && cm.get_op_cost(&egraph[enode].op) != INFINITY
+                {
                     roots.push((root.clone(), enode.clone()));
                 }
             }
@@ -92,12 +98,17 @@ impl<'a> EgraphInfo<'a> {
         for (root, eclass) in relavent_nodes {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {
+                let node = &egraph[enode];
+                // skip if cost is infinite
+                if cm.get_op_cost(&node.op) == INFINITY {
+                    continue;
+                }
                 // add to the parents table
                 for EnodeChild {
                     child,
                     is_subregion,
                     is_assumption,
-                } in enode_children(egraph, &egraph[enode])
+                } in enode_children(egraph, node)
                 {
                     if is_assumption {
                         continue;
@@ -304,6 +315,7 @@ fn calculate_cost_set(
     info: &EgraphInfo,
 ) -> Option<CostSet> {
     let node = &info.egraph[&node_id];
+
     let cid = info.egraph.nid_to_cid(&node_id);
     let region_costs = extractor.costs.get(&rootid).unwrap();
 
@@ -430,23 +442,23 @@ pub fn extract(
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let (mut cost_res, mut res) =
-        extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    let (mut cost_res, mut res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
     if extractor_not_linear.check_program_is_linear(&res).is_err() {
         let effectful_nodes_along_path =
             extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
         extractor_not_linear.costs.clear();
-        (cost_res, res) = extract_without_linearity(
+        (cost_res, res) = extract_with_paths(
             extractor_not_linear,
             &egraph_info,
             Some(&effectful_nodes_along_path),
         );
         extractor_not_linear.check_program_is_linear(&res).unwrap();
     }
+
     (cost_res, res)
 }
 
-pub fn extract_without_linearity(
+pub fn extract_with_paths(
     extractor: &mut Extractor,
     info: &EgraphInfo,
     // If effectful paths are present,
@@ -530,6 +542,14 @@ pub fn extract_without_linearity(
     // now run translation to expressions
     let resulting_prog = extractor.terms_to_expressions(info, root_costset.term.clone());
 
+    let root_cost = root_costset.total;
+    if root_cost.is_infinite() {
+        panic!("Failed to extract program! Found infinite cost on result node.");
+    }
+    if root_cost.is_sign_negative() {
+        panic!("Failed to extract program! Found negative cost on result node.");
+    }
+
     (root_costset, resulting_prog)
 }
 
@@ -571,69 +591,10 @@ impl CostModel for DefaultCostModel {
             "Program" | "Function" => 0.,
             "DoWhile" => 100., // TODO: we could make this more accurate
             "If" | "Switch" => 50.,
-            // Unreachable
-            "I"
-            | "Infinity"
-            | "NegInfinity"
-            | "AddIntOrInfinity"
-            | "MaxIntOrInfinity"
-            | "MinIntOrInfinity"
-            | "MkIntInterval"
-            | "IntersectIntInterval"
-            | "UnionIntInterval"
-            | "AddIntIntervalToAll"
-            | "AddIntInterval"
-            | "AddIntIntervalToPtrPointees"
-            | "Intersect-PtrPointees"
-            | "PointsAnywhere"
-            | "ConsIfNonEmpty"
-            | "Cons-List<i64+IntInterval>"
-            | "Nil-List<i64+IntInterval>"
-            | "Length-List<i64+IntInterval>"
-            | "Concat-List<i64+IntInterval>"
-            | "RevConcat-List<i64+IntInterval>"
-            | "Rev-List<i64+IntInterval>"
-            | "UnionHelper-List<i64+IntInterval>"
-            | "Union-List<i64+IntInterval>"
-            | "IntersectHelper-List<i64+IntInterval>"
-            | "Intersect-List<i64+IntInterval>"
-            | "Cons-List<PtrPointees>"
-            | "Nil-List<PtrPointees>"
-            | "Length-List<PtrPointees>"
-            | "Concat-List<PtrPointees>"
-            | "RevConcat-List<PtrPointees>"
-            | "Rev-List<PtrPointees>"
-            | "Union-PtrPointees"
-            | "Zip<Union-PtrPointees>"
-            | "Zip<Intersect-PtrPointees>"
-            | "UnionPointees"
-            | "IntersectPointees"
-            | "UnwrapTuplePointsTo"
-            | "UnwrapPtrPointsTo"
-            | "PointeesDropFirst"
-            | "PointsToCellsAtIter"
-            | "PtrPointsTo"
-            | "TuplePointsTo"
-            | "GetPointees"
-            | "TypeToPointees"
-            | "PointsTo"
-            | "BaseTypeToPtrPointees"
-            | "TypeListToList<PtrPointees>"
-            | "HasType"
-            | "HasArgType"
-            | "ContextOf"
-            | "NoContext"
-            | "CellHasValues"
-            | "PointsToExpr"
-            | "ExpectType" => 0.,
-            "ExprIsPure" | "ListExprIsPure" | "BinaryOpIsPure" | "UnaryOpIsPure" => 0.,
-            "BodyContainsExpr" | "ScopeContext" => 0.,
-            "Region" | "Full" | "IntB" | "BoolB" => 0.,
-            "PathNil" | "PathCons" => 0.,
             // Schema
             "Bop" | "Uop" | "Top" => 0.,
             _ if self.ignore_children(op) => 0.,
-            _ => panic!("Please provide a cost for {op}"),
+            _ => INFINITY,
         }
         .try_into()
         .unwrap()
@@ -897,13 +858,14 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
 
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&string_prog).unwrap();
-    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let (mut serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
-    let egraph_info = EgraphInfo::new(&DefaultCostModel, &serialized_egraph, unextractables);
+    let egraph = &mut serialized_egraph;
+    let egraph_info = EgraphInfo::new(&DefaultCostModel, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
-    let (_cost_res, prog) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    let (_cost_res, prog) = extract_with_paths(extractor_not_linear, &egraph_info, None);
     let res = extractor_not_linear.check_program_is_linear(&prog);
     assert_eq!(res, Result::Err(error_message.to_string()));
 }
@@ -1113,7 +1075,7 @@ fn test_validity_of_extraction() {
     );
     let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);
 
-    let (_cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    let (_cost_res, res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
     // first extraction should fail linearity check
     assert!(extractor_not_linear.check_program_is_linear(&res).is_err());
 

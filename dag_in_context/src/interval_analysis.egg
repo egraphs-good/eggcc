@@ -359,3 +359,22 @@
       )
       ((set (hi-bound (Get ctx i)) (IntB hi)))
       :ruleset interval-analysis)
+
+
+;; set output and inner interval for values that are passed through loops
+(rule (
+       (= loop (DoWhile inputs outputs))
+       (= (Get (Arg ty loop_ctx) ith) (Get outputs (+ 1 ith)))
+       (= bound (lo-bound (Get inputs ith)))
+      )
+      ((set (lo-bound (Get loop ith)) bound)
+       (set (lo-bound (Get (Arg ty loop_ctx) ith)) bound))
+      :ruleset interval-analysis)
+(rule (
+       (= loop (DoWhile inputs outputs))
+       (= (Get (Arg ty loop_ctx) ith) (Get outputs (+ 1 ith)))
+       (= bound (hi-bound (Get inputs ith)))
+      )
+      ((set (hi-bound (Get loop ith)) bound)
+       (set (hi-bound (Get (Arg ty loop_ctx) ith)) bound))
+      :ruleset interval-analysis)

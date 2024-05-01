@@ -287,12 +287,12 @@ impl TreeProgram {
             termdag,
             converted_cache: HashMap::new(),
         };
-        (self.to_egglog_internal(&mut state), state.termdag)
+        (self.to_egglog_with(&mut state), state.termdag)
     }
 
     // TODO Implement sharing of common subexpressions using
     // a cache and the Rc's pointer.
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
+    pub(crate) fn to_egglog_with(&self, term_dag: &mut TreeToEgglog) -> Term {
         let entry_term = self.entry.to_egglog_internal(term_dag);
         let functions_terms = self
             .functions

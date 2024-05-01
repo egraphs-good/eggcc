@@ -21,10 +21,10 @@
 
 ; TODO: there may be a bug with finding the invariant, or it just may not be extracted.
 ; Can make this work on loop_with_mul_by_inv and a rust test later.
-(rule (
-    (= loop (DoWhile inputs pred-and-body))
-    (= (Get outputs (+ i 1)) (Get (Arg arg-type assm) i)))
-    ((inv loop (Get inputs i) (Get (Arg arg-type assm) i))) :ruleset always-run)
+; (rule (
+;     (= loop (DoWhile inputs pred-and-body))
+;     (= (Get outputs (+ i 1)) (Get (Arg arg-type assm) i)))
+;     ((inv loop (Get inputs i) (Get (Arg arg-type assm) i))) :ruleset always-run)
 (rule (
     (= loop (DoWhile inputs pred-and-body))
     (ContextOf inputs loop-input-ctx)

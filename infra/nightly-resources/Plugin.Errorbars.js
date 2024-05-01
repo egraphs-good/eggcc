@@ -1,3 +1,5 @@
+// Copied from https://github.com/HandsOnDataViz/chartjs-error-bars
+
 (function (global, factory) {
   typeof exports === "object" && typeof module !== "undefined"
     ? (module.exports = factory(require("chart.js")))

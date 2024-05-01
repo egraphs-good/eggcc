@@ -1,9 +1,8 @@
-#! /bin/python3
+#!/usr/bin/env python3
 
 import subprocess
 import json
 import glob
-import shutil
 
 def get_generated_egg():
     program = subprocess.run(["cargo", "run", "--quiet"], cwd="../dag_in_context", capture_output=True)
@@ -19,8 +18,8 @@ def get_written_egg():
     return total_lines
 
 def get_rust_lines():
-    rust_lines_output = subprocess.run(["scc", "--format", "json", "../../"], capture_output=True)
-    return next(filter(lambda lang: lang["Name"] == "Rust", json.loads(rust_lines_output.stdout)))["Code"]
+    rust_lines_output = subprocess.run(["tokei", "--output", "json", "../../"], capture_output=True)
+    return json.loads(rust_lines_output.stdout)["Rust"]["code"]
 
 def replace_in_text(file_path, replacements):
     with open(file_path, 'r') as file:
@@ -38,8 +37,18 @@ def main():
     written_egg = str(get_written_egg())
     generated_egg = str(get_generated_egg())
 
-    shutil.copy('tmpls/linecount.tex', 'linecount.tex')
-    replace_in_text('linecount.tex', {'RUSTLINES': rust_lines, 'WRITTEN_EGG': written_egg, 'GENERATED_EGG': generated_egg})
+    fmt = """\\begin{tabular}{ |s|p{2cm}| }
+\hline
+\multicolumn{2}{|c|}{Line Counts} \\\
+\hline
+Language & \# Lines  \\\\
+\hline
+Rust & %s \\\\
+Written Egg & %s \\\\
+Generated EGG & %s \\\\
+\hline
+\end{tabular}""" % (rust_lines, written_egg, generated_egg)
+    print(fmt)
 
 
 main()

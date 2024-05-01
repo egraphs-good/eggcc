@@ -12,9 +12,8 @@ const COLORS = {
 
 function parseDataForChart() {
   const benchmarks = Array.from(GLOBAL_DATA.enabledBenchmarks);
-  const runModes = GLOBAL_DATA.enabledModes;
   const datasets = {};
-  runModes.forEach((mode) => {
+  GLOBAL_DATA.enabledModes.forEach((mode) => {
     datasets[mode] = {
       label: mode,
       backgroundColor: COLORS[mode],
@@ -24,7 +23,7 @@ function parseDataForChart() {
     };
   });
   benchmarks.forEach((benchName, idx) => {
-    runModes.forEach((mode) => {
+    GLOBAL_DATA.enabledModes.forEach((mode) => {
       const benchDataForMode = GLOBAL_DATA.currentRun[benchName][mode];
       if (benchDataForMode) {
         const mean = benchDataForMode.hyperfine.results[0].mean;

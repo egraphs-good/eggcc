@@ -25,7 +25,7 @@ function addWarning(warning) {
 }
 
 function clearWarnings() {
-  GLOBAL_DATA.warnings = new Set();
+  GLOBAL_DATA.warnings.clear();
 }
 
 async function getPreviousRuns() {
@@ -267,8 +267,7 @@ function refreshView() {
     return 0;
   });
 
-  let container = document.getElementById("profile");
-  container.innerHTML = ConvertJsonToTable(parsed);
+  document.getElementById("profile").innerHTML = ConvertJsonToTable(parsed);
 
   renderWarnings();
   refreshChart();
@@ -278,10 +277,10 @@ function renderWarnings() {
   const toggle = document.getElementById("warnings-toggle");
   toggle.innerText = `Show ${GLOBAL_DATA.warnings.size} Warnings`;
 
-  let warningContainer = document.getElementById("warnings");
+  const warningContainer = document.getElementById("warnings");
   warningContainer.innerHTML = "";
   GLOBAL_DATA.warnings.forEach((warning) => {
-    let warningElement = document.createElement("p");
+    const warningElement = document.createElement("p");
     warningElement.innerText = warning;
     warningContainer.appendChild(warningElement);
   });

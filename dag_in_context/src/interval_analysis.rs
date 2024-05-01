@@ -81,8 +81,8 @@ fn test_add_constant_fold() -> crate::Result {
     use crate::ast::*;
     let expr = add(int(1), int(2))
         .with_arg_types(emptyt(), base(intt()))
-        .add_ctx(noctx());
-    let expr2 = int_ty(3, emptyt()).add_ctx(noctx());
+        .add_ctx(Assumption::dummy());
+    let expr2 = int_ty(3, emptyt()).add_ctx(Assumption::dummy());
 
     egglog_test(
         &format!("{expr}"),
@@ -245,7 +245,7 @@ fn context_if_rev() -> crate::Result {
         &format!("{with_context}"),
         &format!(
             "
-(check (= {term} (Const (Bool false) (Base (IntT)) (NoContext))))"
+        (check (= {term} (Const (Bool false) (Base (IntT)) (InFunc \"main\"))))"
         ),
         vec![with_context],
         intv(4),

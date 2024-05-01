@@ -131,6 +131,10 @@ impl Assumption {
                 term_dag.app("InSwitch".into(), vec![branch, pred, input])
             }
             Assumption::WildCard(str) => term_dag.var(str.into()),
+            Assumption::InFunc(name) => {
+                let name = term_dag.lit(Literal::String(name.into()));
+                term_dag.app("InFunc".into(), vec![name])
+            }
         }
     }
 }
@@ -345,9 +349,10 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
     let expr = add(int(1), iarg()).with_arg_types(base(intt()), base(intt()));
+    let ctx = Assumption::dummy();
     test_expr_parses_to(
         expr,
-        "(Bop (Add) (Const (Int 1) (Base (IntT)) (NoContext)) (Arg (Base (IntT)) (NoContext)))",
+        "(Bop (Add) (Const (Int 1) (Base (IntT)) {ctx}) (Arg (Base (IntT)) {ctx}))",
     );
 }
 
@@ -355,14 +360,15 @@ fn convert_to_egglog_simple_arithmetic() {
 fn convert_to_egglog_switch() {
     use crate::ast::*;
     let expr = switch!(int(1), int(4); concat(single(int(1)), single(int(2))), concat(single(int(3)), single(int(4)))).with_arg_types(base(intt()), tuplet!(intt(), intt()));
+    let ctx = Assumption::dummy();
     test_expr_parses_to(
         expr,
-        "(Switch (Const (Int 1) (Base (IntT)) (NoContext))
-                 (Const (Int 4) (Base (IntT)) (NoContext))
+        "(Switch (Const (Int 1) (Base (IntT)) {ctx})
+                 (Const (Int 4) (Base (IntT)) {ctx})
                  (Cons 
-                  (Concat (Single (Const (Int 1) (Base (IntT)) (NoContext))) (Single (Const (Int 2) (Base (IntT)) (NoContext))))
+                  (Concat (Single (Const (Int 1) (Base (IntT)) {ctx})) (Single (Const (Int 2) (Base (IntT)) {ctx})))
                   (Cons 
-                   (Concat (Single (Const (Int 3) (Base (IntT)) (NoContext))) (Single (Const (Int 4) (Base (IntT)) (NoContext))))
+                   (Concat (Single (Const (Int 3) (Base (IntT)) {ctx})) (Single (Const (Int 4) (Base (IntT)) {ctx})))
                    (Nil))))",
     );
 }
@@ -390,18 +396,19 @@ fn convert_whole_program() {
             )
         )
     );
+    let ctx = Assumption::dummy();
     test_program_parses_to(
         expr,
         "(Program 
             (Function \"main\" (Base (IntT)) (Base (IntT)) 
-                (Bop (Add) (Const (Int 1) (Base (IntT)) (NoContext)) (Call \"f\" (Const (Int 2) (Base (IntT)) (NoContext))))) 
+                (Bop (Add) (Const (Int 1) (Base (IntT)) {ctx}) (Call \"f\" (Const (Int 2) (Base (IntT)) {ctx})))) 
             (Cons 
                 (Function \"f\" (Base (IntT)) (Base (IntT)) 
                     (Get
-                        (DoWhile (Single (Arg (Base (IntT)) (NoContext)))
+                        (DoWhile (Single (Arg (Base (IntT)) {ctx}))
                         (Concat 
-                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (IntT) (TNil))) (NoContext)) 0) (Const (Int 10) (TupleT (TCons (IntT) (TNil))) (NoContext))))
-                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (IntT) (TNil))) (NoContext)) 0) (Const (Int 1) (TupleT (TCons (IntT) (TNil))) (NoContext))))))
+                            (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (IntT) (TNil))) {ctx}) 0) (Const (Int 10) (TupleT (TCons (IntT) (TNil))) {ctx})))
+                            (Single (Bop (Add) (Get (Arg (TupleT (TCons (IntT) (TNil))) {ctx}) 0) (Const (Int 1) (TupleT (TCons (IntT) (TNil))) {ctx})))))
                         0)) 
                 (Nil)))",
     );

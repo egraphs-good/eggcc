@@ -7,7 +7,7 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
 
     let build = tif(and(tfalse(), ttrue()), empty(), int(1), int(2))
         .with_arg_types(emptyt(), base(intt()))
-        .add_ctx(noctx());
+        .add_ctx(Assumption::dummy());
 
     let check = tif(
         tfalse(),
@@ -16,7 +16,7 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
         int(2),
     )
     .with_arg_types(emptyt(), base(intt()))
-    .add_ctx(noctx());
+    .add_ctx(Assumption::dummy());
 
     egglog_test(
         &format!("(let build_ {build})"),
@@ -34,7 +34,7 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
 
     let build = tif(or(tfalse(), ttrue()), empty(), int(1), int(2))
         .with_arg_types(emptyt(), base(intt()))
-        .add_ctx(noctx());
+        .add_ctx(Assumption::dummy());
 
     let check = tif(
         tfalse(),
@@ -43,7 +43,7 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
         tif(get(arg(), 0), empty(), int(1), int(2)),
     )
     .with_arg_types(emptyt(), base(intt()))
-    .add_ctx(noctx());
+    .add_ctx(Assumption::dummy());
 
     egglog_test(
         &format!("(let build_ {build})"),

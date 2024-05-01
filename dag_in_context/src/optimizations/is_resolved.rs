@@ -52,11 +52,12 @@ fn test_is_resolved() -> crate::Result {
     let add1 = add(arg(), int(1)).add_arg_type(base(intt()));
     let helpers = helpers();
     let build = format!("{myloop}");
+    let ctx = Assumption::dummy();
     let check = format!(
         "
 (check (ExprIsResolved myloop))
 
-(let substituted (Subst (NoContext) {add1} {myloop}))
+(let substituted (Subst {ctx} {add1} {myloop}))
 ;; run the IsResolved rules
 (run-schedule (saturate always-run))
 

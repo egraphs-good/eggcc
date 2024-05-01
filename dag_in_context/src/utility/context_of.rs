@@ -1,25 +1,28 @@
 #[test]
 fn test_context_of() -> crate::Result {
     use crate::ast::*;
+    let ctx = Assumption::dummy();
 
     // fn main(x): if x = 5 then x else 4
     let pred = eq(arg(), int(5));
     let body = tif(pred, arg(), arg(), int(4))
         .with_arg_types(base(intt()), base(intt()))
         .with_arg_types(base(intt()), base(intt()));
-    let body_with_context = body.clone().add_ctx(noctx());
+    let body_with_context = body.clone().add_ctx(ctx);
     let build = function("main", base(intt()), base(intt()), body.clone())
         .func_with_arg_types()
         .func_add_ctx();
 
     // If statement should have the context of its predicate
-    let check = format!("
-        (let pred-ctx (NoContext))
-        (let pred (Bop (Eq) (Arg (Base (IntT)) (NoContext)) (Const (Int 5) (Base (IntT)) (NoContext))))
+    let check = format!(
+        "
+        (let pred-ctx {ctx})
+        (let pred (Bop (Eq) (Arg (Base (IntT)) {ctx}) (Const (Int 5) (Base (IntT)) {ctx})))
         (check (ContextOf pred pred-ctx))
         (let if {body_with_context})
         (check (ContextOf if pred-ctx))
-        ");
+        "
+    );
 
     crate::egglog_test(
         &format!("(let build {build})"),
@@ -34,8 +37,9 @@ fn test_context_of() -> crate::Result {
 // Check that a constant has ContextOf
 #[test]
 fn test_context_of_base_case() -> crate::Result {
-    let build = "(Const (Int 5) (Base (IntT)) (NoContext))";
-    let check = "(ContextOf (Const (Int 5) (Base (IntT)) (NoContext)) (NoContext))";
+    let ctx = Assumption::dummy();
+    let build = "(Const (Int 5) (Base (IntT)) {ctx})";
+    let check = "(ContextOf (Const (Int 5) (Base (IntT)) {ctx}) {ctx})";
 
     crate::egglog_test(
         &format!("(let build {build})"),
@@ -51,13 +55,14 @@ fn test_context_of_base_case() -> crate::Result {
 #[should_panic]
 fn test_context_of_panics_if_two() {
     use crate::ast::*;
+    let ctx1 = Assumption::dummy();
     let ctx2 = inif(
         true,
         ttrue().with_arg_types(tuplet!(), base(boolt())),
         arg_ty(tuplet!()),
     );
     let build = format!("
-        (let ctx1 (NoContext))
+        (let ctx1 {ctx1})
         (let ctx2 {ctx2})
         (let conflict-expr (Bop (And) (Const (Bool false) (Base (BoolT)) ctx1) (Const (Bool true) (Base (BoolT)) ctx2)))");
     let check = "";

@@ -74,10 +74,17 @@ pub type RcExpr = Rc<Expr>;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
+    InFunc(String),
     NoContext,
     InIf(bool, RcExpr, RcExpr),
     InSwitch(i64, RcExpr, RcExpr),
     WildCard(String),
+}
+
+impl Assumption {
+    pub fn dummy() -> Assumption {
+        Assumption::InFunc("dummy".to_string())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

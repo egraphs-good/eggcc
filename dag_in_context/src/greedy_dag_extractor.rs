@@ -640,7 +640,7 @@ impl CostModel for DefaultCostModel {
     }
 
     fn ignore_children(&self, op: &str) -> bool {
-        matches!(op, "InLoop" | "NoContext" | "InSwitch" | "InIf")
+        matches!(op, "InLoop" | "NoContext" | "InSwitch" | "InIf" | "InFunc")
     }
 }
 

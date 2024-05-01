@@ -75,7 +75,6 @@ pub type RcExpr = Rc<Expr>;
 pub enum Assumption {
     InLoop(RcExpr, RcExpr),
     InFunc(String),
-    NoContext,
     InIf(bool, RcExpr, RcExpr),
     InSwitch(i64, RcExpr, RcExpr),
     WildCard(String),

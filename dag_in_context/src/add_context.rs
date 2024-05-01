@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::noctx,
     schema::{Assumption, Expr, RcExpr, TreeProgram},
     schema_helpers::AssumptionRef,
 };

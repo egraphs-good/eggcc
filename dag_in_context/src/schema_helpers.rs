@@ -700,7 +700,6 @@ impl UnaryOp {
 pub enum AssumptionRef {
     InLoop(*const Expr, *const Expr),
     InFunc(String),
-    NoContext,
     InIf(bool, *const Expr, *const Expr),
     InSwitch(i64, *const Expr, *const Expr),
     WildCard(String),
@@ -713,7 +712,6 @@ impl Assumption {
                 AssumptionRef::InLoop(Rc::as_ptr(inputs), Rc::as_ptr(pred_and_body))
             }
             Assumption::InFunc(name) => AssumptionRef::InFunc(name.clone()),
-            Assumption::NoContext => AssumptionRef::NoContext,
             Assumption::InIf(b, pred, input) => {
                 AssumptionRef::InIf(*b, Rc::as_ptr(pred), Rc::as_ptr(input))
             }

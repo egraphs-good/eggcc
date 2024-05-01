@@ -351,10 +351,6 @@ pub fn inswitch(branch: i64, pred: RcExpr, input: RcExpr) -> Assumption {
     Assumption::InSwitch(branch, pred, input)
 }
 
-pub fn noctx() -> Assumption {
-    Assumption::NoContext
-}
-
 pub fn infunc(str: impl Into<String>) -> Assumption {
     Assumption::InFunc(str.into())
 }

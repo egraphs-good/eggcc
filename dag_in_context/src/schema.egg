@@ -37,7 +37,6 @@
 (datatype Assumption
   ; Assume nothing
   (InFunc String)
-  (NoContext)
   ; The term is in a loop with `input` and `pred_output`.
   ; InLoop is a special context because it describes the argument of the loop. It is a *scope context*.
   ;      input    pred_output

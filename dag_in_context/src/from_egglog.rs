@@ -122,7 +122,6 @@ impl<'a> FromEgglog<'a> {
               self.expr_from_egglog(self.termdag.get(*rhs)),
             )
           }
-          ("NoContext", []) => Assumption::NoContext,
           ("InFunc", [str]) => {
             let Term::Lit(Literal::String(name)) = self.termdag.get(*str)
             else {

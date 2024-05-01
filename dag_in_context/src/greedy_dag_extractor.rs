@@ -1,4 +1,4 @@
-use egglog::{util::IndexMap, *};
+use egglog::{ast::Literal, util::IndexMap, *};
 use egraph_serialize::{ClassId, EGraph, NodeId};
 use ordered_float::NotNan;
 use rpds::HashTrieMap;
@@ -307,10 +307,13 @@ fn calculate_cost_set(
     let cid = info.egraph.nid_to_cid(&node_id);
     let region_costs = extractor.costs.get(&rootid).unwrap();
 
-    let noctx = CostSet {
+    let dummy_ctx = CostSet {
         costs: Default::default(),
         total: 0.0.try_into().unwrap(),
-        term: extractor.termdag.app("NoContext".into(), vec![]),
+        term: extractor.termdag.app(
+            "InFunc".into(),
+            vec![Term::Lit(Literal::String("dummy".into()))],
+        ),
     };
 
     // get the cost sets for the children
@@ -322,9 +325,9 @@ fn calculate_cost_set(
                  is_subregion,
                  is_assumption,
              }| {
-                // for assumptions, just return (NoContext) every time
+                // for assumptions, just return a dummy context every time
                 if *is_assumption {
-                    Some((&noctx, *is_subregion))
+                    Some((&dummy_ctx, *is_subregion))
                 } else if *is_subregion {
                     Some((extractor.costs.get(child)?.get(child)?, *is_subregion))
                 } else {
@@ -622,7 +625,6 @@ impl CostModel for DefaultCostModel {
             | "HasType"
             | "HasArgType"
             | "ContextOf"
-            | "NoContext"
             | "CellHasValues"
             | "PointsToExpr"
             | "ExpectType" => 0.,
@@ -640,7 +642,7 @@ impl CostModel for DefaultCostModel {
     }
 
     fn ignore_children(&self, op: &str) -> bool {
-        matches!(op, "InLoop" | "NoContext" | "InSwitch" | "InIf" | "InFunc")
+        matches!(op, "InLoop" | "InSwitch" | "InIf" | "InFunc")
     }
 }
 

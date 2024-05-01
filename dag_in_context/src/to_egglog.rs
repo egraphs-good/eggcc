@@ -117,7 +117,6 @@ impl Assumption {
                 let rhs = rhs.to_egglog_internal(term_dag);
                 term_dag.app("InLoop".into(), vec![lhs, rhs])
             }
-            Assumption::NoContext => term_dag.app("NoContext".into(), vec![]),
             Assumption::InIf(is_then, pred, input) => {
                 let pred = pred.to_egglog_internal(term_dag);
                 let is_then = term_dag.lit(Literal::Bool(*is_then));

@@ -14,7 +14,7 @@ expression: visualization.result
   v9_: int = id v3_;
   v10_: int = id v4_;
 .v11_:
-  v12_: bool = eq v6_ v7_;
+  v12_: bool = eq v7_ v6_;
   br v12_ .v13_ .v14_;
 .v13_:
   v15_: bool = const false;

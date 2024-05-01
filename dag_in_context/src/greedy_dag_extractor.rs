@@ -442,23 +442,23 @@ pub fn extract(
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let (mut cost_res, mut res) =
-        extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    let (mut cost_res, mut res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
     if extractor_not_linear.check_program_is_linear(&res).is_err() {
         let effectful_nodes_along_path =
             extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
         extractor_not_linear.costs.clear();
-        (cost_res, res) = extract_without_linearity(
+        (cost_res, res) = extract_with_paths(
             extractor_not_linear,
             &egraph_info,
             Some(&effectful_nodes_along_path),
         );
         extractor_not_linear.check_program_is_linear(&res).unwrap();
     }
+
     (cost_res, res)
 }
 
-pub fn extract_without_linearity(
+pub fn extract_with_paths(
     extractor: &mut Extractor,
     info: &EgraphInfo,
     // If effectful paths are present,
@@ -541,6 +541,14 @@ pub fn extract_without_linearity(
 
     // now run translation to expressions
     let resulting_prog = extractor.terms_to_expressions(info, root_costset.term.clone());
+
+    let root_cost = root_costset.costs.get(root_eclass).unwrap();
+    if root_cost.is_infinite() {
+        panic!("Failed to extract program! Found infinite cost on result node.");
+    }
+    if root_cost.is_sign_negative() {
+        panic!("Failed to extract program! Found negative cost on result node.");
+    }
 
     (root_costset, resulting_prog)
 }
@@ -857,7 +865,7 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
     let egraph_info = EgraphInfo::new(&DefaultCostModel, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
-    let (_cost_res, prog) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    let (_cost_res, prog) = extract_with_paths(extractor_not_linear, &egraph_info, None);
     let res = extractor_not_linear.check_program_is_linear(&prog);
     assert_eq!(res, Result::Err(error_message.to_string()));
 }
@@ -1067,7 +1075,7 @@ fn test_validity_of_extraction() {
     );
     let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);
 
-    let (_cost_res, res) = extract_without_linearity(extractor_not_linear, &egraph_info, None);
+    let (_cost_res, res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
     // first extraction should fail linearity check
     assert!(extractor_not_linear.check_program_is_linear(&res).is_err());
 

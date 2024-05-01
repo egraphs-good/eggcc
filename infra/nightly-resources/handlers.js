@@ -63,3 +63,16 @@ function toggleWarnings() {
     content.style.display = "block";
   }
 }
+
+function toggleChart() {
+  const elt = document.getElementById("chart-toggle");
+  elt.classList.toggle("active");
+  const content = elt.nextElementSibling;
+  if (content.style.display === "block") {
+    elt.innerText = "Show Chart";
+    content.style.display = "none";
+  } else {
+    elt.innerText = "Hide Chart";
+    content.style.display = "block";
+  }
+}

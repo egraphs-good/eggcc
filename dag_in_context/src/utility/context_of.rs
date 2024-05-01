@@ -1,17 +1,19 @@
 #[test]
 fn test_context_of() -> crate::Result {
     use crate::ast::*;
-    let ctx = Assumption::dummy();
+    use crate::schema::Assumption;
+    let ctx = Assumption::InFunc("main".to_string());
 
     // fn main(x): if x = 5 then x else 4
     let pred = eq(arg(), int(5));
     let body = tif(pred, arg(), arg(), int(4))
         .with_arg_types(base(intt()), base(intt()))
         .with_arg_types(base(intt()), base(intt()));
-    let body_with_context = body.clone().add_ctx(ctx);
+    let body_with_context = body.clone().add_ctx(ctx.clone());
     let build = function("main", base(intt()), base(intt()), body.clone())
         .func_with_arg_types()
         .func_add_ctx();
+    let ctx = format!("{}", ctx);
 
     // If statement should have the context of its predicate
     let check = format!(
@@ -37,13 +39,14 @@ fn test_context_of() -> crate::Result {
 // Check that a constant has ContextOf
 #[test]
 fn test_context_of_base_case() -> crate::Result {
-    let ctx = Assumption::dummy();
-    let build = "(Const (Int 5) (Base (IntT)) {ctx})";
-    let check = "(ContextOf (Const (Int 5) (Base (IntT)) {ctx}) {ctx})";
+    use crate::schema::Assumption;
+    let ctx = format!("{}", Assumption::dummy());
+    let build = format!("(Const (Int 5) (Base (IntT)) {ctx})");
+    let check = format!("(ContextOf (Const (Int 5) (Base (IntT)) {ctx}) {ctx})");
 
     crate::egglog_test(
         &format!("(let build {build})"),
-        check,
+        &check,
         vec![],
         crate::ast::val_empty(),
         crate::ast::val_empty(),
@@ -55,7 +58,8 @@ fn test_context_of_base_case() -> crate::Result {
 #[should_panic]
 fn test_context_of_panics_if_two() {
     use crate::ast::*;
-    let ctx1 = Assumption::dummy();
+    use crate::schema::Assumption;
+    let ctx1 = format!("{}", Assumption::dummy());
     let ctx2 = inif(
         true,
         ttrue().with_arg_types(tuplet!(), base(boolt())),

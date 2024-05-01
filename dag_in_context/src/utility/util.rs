@@ -4,6 +4,7 @@ use crate::{egglog_test, interpreter::Value};
 #[test]
 fn test_list_util() -> crate::Result {
     use crate::ast::emptyt;
+    use crate::schema::Assumption;
     let emptyt = emptyt();
     let ctx = Assumption::dummy();
     let build = format!(
@@ -36,6 +37,7 @@ fn test_list_util() -> crate::Result {
 #[test]
 fn append_test() -> crate::Result {
     use crate::ast::emptyt;
+    use crate::schema::Assumption;
     let emptyt = emptyt();
     let ctx = Assumption::dummy();
     let build = format!(
@@ -67,6 +69,7 @@ fn append_test() -> crate::Result {
 #[test]
 fn test_tuple_ith() -> crate::Result {
     use crate::ast::emptyt;
+    use crate::schema::Assumption;
     let emptyt = emptyt();
     let ctx = Assumption::dummy();
     let build = format!(

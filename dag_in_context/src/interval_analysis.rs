@@ -307,7 +307,8 @@ fn context_if_with_state() -> crate::Result {
     let expected = single(tprint(
         ttrue_ty(input_type.clone()),
         get(input_arg.clone(), 1),
-    ));
+    ))
+    .add_ctx(Assumption::InFunc("main".to_string()));
 
     egglog_test(
         &format!("{prog}"),

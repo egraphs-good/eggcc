@@ -4,6 +4,7 @@ use crate::egglog_test;
 #[test]
 fn switch_rewrite_three_quarters_and() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
 
     let build = tif(and(tfalse(), ttrue()), empty(), int(1), int(2))
         .with_arg_types(emptyt(), base(intt()))
@@ -31,6 +32,7 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
 #[test]
 fn switch_rewrite_three_quarters_or() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
 
     let build = tif(or(tfalse(), ttrue()), empty(), int(1), int(2))
         .with_arg_types(emptyt(), base(intt()))

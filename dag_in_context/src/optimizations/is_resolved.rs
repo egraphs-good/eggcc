@@ -41,6 +41,7 @@ use crate::Value;
 #[test]
 fn test_is_resolved() -> crate::Result {
     use crate::schedule::helpers;
+    use crate::schema::Assumption;
     let myloop = dowhile(
         single(int(1)),
         parallel!(

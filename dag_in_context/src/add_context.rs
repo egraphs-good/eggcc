@@ -63,7 +63,7 @@ impl Expr {
         let Expr::Function(name, arg_ty, ret_ty, body) = &self.as_ref() else {
             panic!("Expected Function, got {:?}", self);
         };
-        let current_ctx = Assumption::dummy();
+        let current_ctx = Assumption::InFunc(name.clone());
         RcExpr::new(Expr::Function(
             name.clone(),
             arg_ty.clone(),

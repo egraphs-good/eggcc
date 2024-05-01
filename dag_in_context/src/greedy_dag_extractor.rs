@@ -310,10 +310,10 @@ fn calculate_cost_set(
     let dummy_ctx = CostSet {
         costs: Default::default(),
         total: 0.0.try_into().unwrap(),
-        term: extractor.termdag.app(
-            "InFunc".into(),
-            vec![Term::Lit(Literal::String("dummy".into()))],
-        ),
+        term: {
+            let dummy = extractor.termdag.lit(Literal::String("dummy".into()));
+            extractor.termdag.app("InFunc".into(), vec![dummy])
+        },
     };
 
     // get the cost sets for the children

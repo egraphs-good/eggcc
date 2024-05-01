@@ -347,34 +347,37 @@ fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
 #[test]
 fn convert_to_egglog_simple_arithmetic() {
     use crate::ast::*;
+    use crate::schema::Assumption;
     let expr = add(int(1), iarg()).with_arg_types(base(intt()), base(intt()));
     let ctx = Assumption::dummy();
     test_expr_parses_to(
         expr,
-        "(Bop (Add) (Const (Int 1) (Base (IntT)) {ctx}) (Arg (Base (IntT)) {ctx}))",
+        &format!("(Bop (Add) (Const (Int 1) (Base (IntT)) {ctx}) (Arg (Base (IntT)) {ctx}))"),
     );
 }
 
 #[test]
 fn convert_to_egglog_switch() {
     use crate::ast::*;
+    use crate::schema::Assumption;
     let expr = switch!(int(1), int(4); concat(single(int(1)), single(int(2))), concat(single(int(3)), single(int(4)))).with_arg_types(base(intt()), tuplet!(intt(), intt()));
-    let ctx = Assumption::dummy();
+    let ctx = format!("{}", Assumption::dummy());
     test_expr_parses_to(
         expr,
-        "(Switch (Const (Int 1) (Base (IntT)) {ctx})
+        &format!("(Switch (Const (Int 1) (Base (IntT)) {ctx})
                  (Const (Int 4) (Base (IntT)) {ctx})
                  (Cons 
                   (Concat (Single (Const (Int 1) (Base (IntT)) {ctx})) (Single (Const (Int 2) (Base (IntT)) {ctx})))
                   (Cons 
                    (Concat (Single (Const (Int 3) (Base (IntT)) {ctx})) (Single (Const (Int 4) (Base (IntT)) {ctx})))
-                   (Nil))))",
+                   (Nil))))"),
     );
 }
 
 #[test]
 fn convert_whole_program() {
     use crate::ast::*;
+    use crate::schema::Assumption;
     let expr = program!(
         function(
             "main",
@@ -395,10 +398,10 @@ fn convert_whole_program() {
             )
         )
     );
-    let ctx = Assumption::dummy();
+    let ctx = format!("{}", Assumption::dummy());
     test_program_parses_to(
         expr,
-        "(Program 
+        &format!("(Program 
             (Function \"main\" (Base (IntT)) (Base (IntT)) 
                 (Bop (Add) (Const (Int 1) (Base (IntT)) {ctx}) (Call \"f\" (Const (Int 2) (Base (IntT)) {ctx})))) 
             (Cons 
@@ -409,6 +412,6 @@ fn convert_whole_program() {
                             (Single (Bop (LessThan) (Get (Arg (TupleT (TCons (IntT) (TNil))) {ctx}) 0) (Const (Int 10) (TupleT (TCons (IntT) (TNil))) {ctx})))
                             (Single (Bop (Add) (Get (Arg (TupleT (TCons (IntT) (TNil))) {ctx}) 0) (Const (Int 1) (TupleT (TCons (IntT) (TNil))) {ctx})))))
                         0)) 
-                (Nil)))",
+                (Nil)))"),
     );
 }

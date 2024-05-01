@@ -1,6 +1,7 @@
 #[test]
 fn test_subst_twice() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
     let arg_plus_one = add(arg(), int(1)).add_arg_type(base(intt()));
     let original = arg().add_arg_type(base(intt()));
     let expected = add(add(arg(), int(1)), int(1)).add_arg_type(base(intt()));
@@ -25,6 +26,7 @@ fn test_subst_twice() -> crate::Result {
 #[test]
 fn test_subst_ten_times() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
     let arg_plus_one = add(arg(), int(1)).add_arg_type(base(intt()));
     let original = arg().add_arg_type(base(intt()));
     let mut expected = arg();
@@ -63,6 +65,7 @@ fn test_subst_ten_times() -> crate::Result {
 #[test]
 fn test_subst_cycle() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
     use crate::{interpreter::Value, schema::Constant};
     let twoint = tuplet!(intt(), intt());
 
@@ -95,6 +98,7 @@ fn test_subst_cycle() -> crate::Result {
 #[test]
 fn test_subst_nested() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
     use crate::{interpreter::Value, schema::Constant};
     let twoint = tuplet!(intt(), intt());
     let inputs = parallel!(
@@ -170,6 +174,7 @@ fn test_subst_nested() -> crate::Result {
 fn test_subst_if() -> crate::Result {
     use crate::ast::*;
     use crate::interpreter::Value;
+    use crate::schema::Assumption;
     let expr = tif(
         getat(0),
         add(getat(1), int(1)),
@@ -214,6 +219,7 @@ fn test_subst_if() -> crate::Result {
 #[test]
 fn test_subst_makes_new_context() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(int_ty(1, base(intt())), iarg());
     let replace_with = int_ty(2, base(intt()));
@@ -243,6 +249,7 @@ fn test_subst_makes_new_context() -> crate::Result {
 #[test]
 fn test_subst_arg_type_changes() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
     use crate::{interpreter::Value, schema::Constant};
     let expr = add(iarg(), iarg()).add_ctx(Assumption::dummy());
     let tupletype = tuplet!(intt(), intt());
@@ -274,6 +281,7 @@ fn test_subst_arg_type_changes() -> crate::Result {
 #[test]
 fn test_subst_identity() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
 
     let expression = function(
         "main",
@@ -285,7 +293,7 @@ fn test_subst_identity() -> crate::Result {
     .func_add_ctx();
 
     let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
-    let ctx = Assumption::dummy();
+    let ctx = Assumption::InFunc("main".to_string());
 
     let build = format!(
         "
@@ -307,6 +315,7 @@ fn test_subst_identity() -> crate::Result {
 #[test]
 fn test_subst_add() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
 
     let outer_if = add(int(5), arg());
     let expression = function("main", base(intt()), base(intt()), outer_if)
@@ -318,7 +327,7 @@ fn test_subst_add() -> crate::Result {
     let expected = function("main", base(intt()), base(intt()), add(int(5), int(5)))
         .func_with_arg_types()
         .func_add_ctx();
-    let ctx = Assumption::dummy();
+    let ctx = Assumption::InFunc("main".to_string());
 
     let build = format!(
         "

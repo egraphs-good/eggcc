@@ -4,6 +4,7 @@ use crate::{egglog_test, interpreter::Value, schema::Constant};
 #[test]
 fn test_in_context_tuple() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
     use crate::{interpreter::Value, schema::Constant};
 
     let tuple =
@@ -37,6 +38,7 @@ fn test_in_context_tuple() -> crate::Result {
 fn test_in_context_two_loops() -> crate::Result {
     use crate::ast::*;
     use crate::egglog_test_and_print_program;
+    use crate::schema::Assumption;
 
     let loop_body = parallel!(
         tfalse(),
@@ -72,6 +74,7 @@ fn test_in_context_two_loops() -> crate::Result {
 #[test]
 fn test_simple_context_cycle() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
     let inputs = single(arg()).with_arg_types(base(intt()), tuplet!(intt()));
     let outputs =
         parallel!(tfalse(), int(3)).with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt()));

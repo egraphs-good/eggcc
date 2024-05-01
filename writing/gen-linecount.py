@@ -21,17 +21,6 @@ def get_rust_lines():
     rust_lines_output = subprocess.run(["tokei", "--output", "json", "../../"], capture_output=True)
     return json.loads(rust_lines_output.stdout)["Rust"]["code"]
 
-def replace_in_text(file_path, replacements):
-    with open(file_path, 'r') as file:
-        text = file.read()
-
-    for key, value in replacements.items():
-        text = text.replace(key, value)
-
-    with open(file_path, 'w') as file:
-        file.write(text)
-
-
 def main():
     rust_lines = str(get_rust_lines())
     written_egg = str(get_written_egg())

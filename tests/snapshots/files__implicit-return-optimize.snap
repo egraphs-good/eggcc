@@ -3,7 +3,6 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @pow(v0: int, v1: int) {
-<<<<<<< HEAD
   v2_: int = const 0;
   v3_: int = const 1;
   v4_: int = sub v1 v3_;
@@ -45,6 +44,7 @@ expression: visualization.result
   print v5_;
 =======
   print v3_;
+<<<<<<< HEAD
 =======
   v5: int = const 0;
   v9: int = id v0;
@@ -84,6 +84,8 @@ expression: visualization.result
   print v9;
 >>>>>>> 61fb605e (Loop strength reduction working)
 >>>>>>> f885687d (Loop strength reduction working)
+=======
+>>>>>>> 39410618 (Update snapshots)
 }
 @main {
   v0_: int = const 4;

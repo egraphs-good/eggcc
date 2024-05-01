@@ -1,3 +1,4 @@
+# ARGS: 5
 @main (n: int) {
     one: int = const 1;
     three: int = const 3;

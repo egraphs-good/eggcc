@@ -1,3 +1,4 @@
+# ARGS: 4
 @main (n: int) {
     accum: int = const 0;
     x: int = const 5;

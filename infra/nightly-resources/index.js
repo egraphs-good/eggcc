@@ -1,25 +1,27 @@
 
 
 // copied from profile.py
-const allmodes = [["rvsdg_roundtrip", "rvsdg-round-trip-to-executable", ""],
+const allModes = [
+    "rvsdg_roundtrip",
+    "egglog_noopt_brilift_noopt",
+    "egglog_noopt_brilift_opt",
+    "egglog_opt_brilift_noopt",
+    "egglog_opt_brilift_opt",
+    "egglog_noopt_bril_llvm_noopt",
+    "egglog_noopt_bril_llvm_opt",
+    "egglog_opt_bril_llvm_noopt",
+    "egglog_opt_bril_llvm_opt"
+];
 
-["egglog_noopt_brilift_noopt", "compile-brilift", "--optimize-egglog false --optimize-brilift false"],
-["egglog_noopt_brilift_opt", "compile-brilift", "--optimize-egglog false --optimize-brilift true"],
-["egglog_opt_brilift_noopt", "compile-brilift", "--optimize-egglog true --optimize-brilift false"],
-["egglog_opt_brilift_opt", "compile-brilift", "--optimize-egglog true --optimize-brilift true"],
-
-["egglog_noopt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm false"],
-["egglog_noopt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm true"],
-["egglog_opt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm false"],
-["egglog_opt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm true"]]
-
-
-var enabledModes = new Set();
-// a list of warnings
-var warnings = [];
+const GLOBAL_DATA = {
+    enabledModes: new Set(),
+    warnings: [],
+    currentRun: {},
+    baselineRun: undefined
+}
 
 function addWarning(warning) {
-    warnings.push(warning);
+    GLOBAL_DATA.warnings.push(warning);
 }
 
 async function getPreviousRuns() {
@@ -72,13 +74,16 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
     });
     
     select.onchange = () => {
-        const compareTo = previousRuns[select.selectedIndex];
-        loadBenchmarks(compareTo);
+        getBench(previousRuns[select.selectedIndex].url + "/").then(data => {
+            GLOBAL_DATA.baselineRun = data;
+            refreshView();
+        }).catch(e => {
+            console.warn(e);
+        })
     }
 
     select.selectedIndex = initialIdx;
     select.value = formatRun(previousRuns[initialIdx]);
-    select.onchange();
 }
 
 // findBenchToCompare will find the last benchmark run on the main branch that is not itself
@@ -120,7 +125,13 @@ async function getBench(url) {
     return groupByBenchmark(benchData)
 }
 
-// benchList should be in the format of Array<{runMethod: String, benchmark: String, total_dyn_inst: Int, hyperfine: Array<{results: **hyperfine `--json` results**}>}>
+// benchList should be in the format of
+// Array<{
+//     runMethod: String,
+//     benchmark: String,
+//     total_dyn_inst: Int,
+//     hyperfine: Array<{results: **hyperfine `--json` results**}>
+// }>
 function groupByBenchmark(benchList) {
     const groupedBy = {};
     benchList.forEach((obj) => {
@@ -160,14 +171,13 @@ function diffAttribute(results, baseline, attribute) {
     return getDifference(current, baselineNum);
 }
 
-const compareKeys = ["# Instructions"];
-// baselineRun may be undefined
-function buildEntry(baselineRun, run) {
-    const results = run.hyperfine.results[0];
-    const baselineResults = baselineRun?.hyperfine.results[0];
+// baseline may be undefined
+function buildEntry(baseline, current) {
+    const results = current.hyperfine.results[0];
+    const baselineResults = baseline?.hyperfine.results[0];
 
     return {
-        name: run.runMethod,
+        name: current.runMethod,
         mean: { class: "", value: tryRound(results.mean) },
         meanVsBaseline: diffAttribute(results, baselineResults, "mean"),
         min: { class: "", value: tryRound(results.min) },
@@ -180,40 +190,29 @@ function buildEntry(baselineRun, run) {
     }
 }
 
-async function loadBenchmarks(compareTo) {
-    const currentRun = await getBench("./");
-    let baselineRun = undefined;
-    try {
-        baselineRun = await getBench(compareTo.url+"/");
-    } catch (e) {
-        addWarning("Couldn't find a previous run to compare to");
-    }
+function refreshView() {
+    const benchmarkNames = Object.keys(GLOBAL_DATA.currentRun);
+    const parsed = benchmarkNames.map(benchName => {
+        const executions =
+            Object.keys(GLOBAL_DATA.currentRun[benchName])
+                .map(runMode => {
+                    // if the mode is not enabled, skip it
+                    if (!GLOBAL_DATA.enabledModes.has(runMode)) {
+                        return undefined;
+                    }
+                    // prevRun may be undefined
+                    const baselineBench = GLOBAL_DATA.baselineRun?.[benchName];
+                    if (baselineBench === undefined) {
+                        addWarning(`Couldn't find a previous benchmark for ${benchName}`);
+                    }   
+                    const baselineRunForMethod = baselineBench?.[runMode];
+                    if (baselineBench !== undefined && baselineRunForMethod === undefined) {
+                        addWarning(`Couldn't find a previous run for ${runMode}`);
+                    }
 
-    const benchmarkNames = Object.keys(currentRun);
-
-    const parsed = benchmarkNames.map((benchName) => {
-        const executions = Object
-        .keys(currentRun[benchName])
-        .map((runMethod) => {
-            // if the mode is not enabled, skip it
-            if (!enabledModes.has(runMethod)) {
-                return undefined;
-            }
-            // prevRun may be undefined
-            const baselineBench = baselineRun?.[benchName];
-            if (baselineBench === undefined) {
-                addWarning(`Couldn't find a previous benchmark for ${benchName}`);
-            }   
-            const baselineRunForMethod = baselineBench?.[runMethod];
-            if (baselineBench !== undefined && baselineRunForMethod === undefined) {
-                addWarning(`Couldn't find a previous run for ${runMethod}`);
-            }
-            
-            return buildEntry(baselineRunForMethod, currentRun[benchName][runMethod]) 
-        })
-        .filter((entry) => entry !== undefined);
-
-        
+                    return buildEntry(baselineRunForMethod, GLOBAL_DATA.currentRun[benchName][runMode]) 
+                })
+                .filter(e => e !== undefined);
         if (executions.length > 1) {
             const cols = ["mean", "min", "max", "median" ];
             cols.forEach(col => {
@@ -233,13 +232,13 @@ async function loadBenchmarks(compareTo) {
 
         return {
             name: benchName,
-            "Executions ": {data: executions} 
+            executions: {data: executions} 
         }
     });
 
     // also add warnings if the previous run had a benchmark that the current run doesn't
-    if (baselineRun) {
-        const prevBenchNames = Object.keys(baselineRun);
+    if (GLOBAL_DATA.baselineRun) {
+        const prevBenchNames = Object.keys(GLOBAL_DATA.baselineRun);
         prevBenchNames.forEach((benchName) => {
             if (!benchmarkNames.includes(benchName)) {
                 addWarning(`Previous run had benchmark ${benchName} that the current run doesn't`);
@@ -260,7 +259,7 @@ async function loadBenchmarks(compareTo) {
     let warningContainer = document.getElementById("warnings");
     
     warningContainer.innerHTML = "";
-    warnings.forEach((warning) => {
+    GLOBAL_DATA.warnings.forEach((warning) => {
         let warningElement = document.createElement("p");
         warningElement.innerText = warning;
         warningContainer.appendChild(warningElement);
@@ -276,13 +275,13 @@ function makeCheckbox(parent, mode) {
     checkbox.onchange = (e) => {
         // if the checkbox is checked, add the mode to the set of enabled modes
         if (checkbox.checked) {
-            enabledModes.add(mode);
+            GLOBAL_DATA.enabledModes.add(mode);
         } else {
             // if the checkbox is unchecked, remove the mode from the set of enabled modes
-            enabledModes.delete(mode);
+            GLOBAL_DATA.enabledModes.delete(mode);
         }
         // load everything again
-        loadBenchmarks();
+        refreshView();
     }
     parent.appendChild(checkbox);
     // make a label for the checkbox
@@ -294,7 +293,7 @@ function makeCheckbox(parent, mode) {
     parent.appendChild(document.createElement("br"));
 
     // add this to the set of enabled modes
-    enabledModes.add(mode);
+    GLOBAL_DATA.enabledModes.add(mode);
 }
 
 function makeModeSelectors() {
@@ -302,8 +301,8 @@ function makeModeSelectors() {
     const checkboxContainer = document.createElement("div");
     // for each mode in allmodes, make a box to enable or disable it
     // put them in the div with id modeselections
-    allmodes.forEach((mode) => {
-        makeCheckbox(checkboxContainer, mode[0])
+    allModes.forEach((mode) => {
+        makeCheckbox(checkboxContainer, mode)
     })
     
     // Convenience buttons to select all / none
@@ -313,10 +312,9 @@ function makeModeSelectors() {
     all.onclick = (e) => {
         checkboxContainer.childNodes.forEach(checkbox => {
             checkbox.checked = true;
-            enabledModes.add(checkbox.id);
+            GLOBAL_DATA.enabledModes.add(checkbox.id);
         })
-        // reload everything
-        loadBenchmarks();
+        refreshView();
     }
 
     const none = document.createElement("button");
@@ -324,10 +322,9 @@ function makeModeSelectors() {
     none.onclick = (e) => {
         checkboxContainer.childNodes.forEach(checkbox => {
             checkbox.checked = false;
-            enabledModes.delete(checkbox.id);
+            GLOBAL_DATA.enabledModes.delete(checkbox.id);
         })
-        // reload everything
-        loadBenchmarks();
+        refreshView();
     }
     buttonContainer.appendChild(all);
     buttonContainer.appendChild(none);
@@ -337,10 +334,14 @@ function makeModeSelectors() {
 
 // Top-level load function for the main index page.
 async function load() {
+    GLOBAL_DATA.currentRun = await getBench("./");
     makeModeSelectors();
 
     const previousRuns = await getPreviousRuns();
     const initialRunIdx = findBenchToCompareIdx(previousRuns);
+    GLOBAL_DATA.baselineRun = await getBench(previousRuns[initialRunIdx].url + "/");
     
-    buildNightlyDropdown("comparison", previousRuns, initialRunIdx)
+    buildNightlyDropdown("comparison", previousRuns, initialRunIdx);
+
+    refreshView();
 }

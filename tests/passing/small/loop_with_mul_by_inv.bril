@@ -1,15 +1,16 @@
 @main (n: int) {
-    one: int = const 1;
     accum: int = const 0;
     x: int = const 5;
     i: int = const 0;
 
 .loop:
-    i: int = add one i;
+    one: int = const 1;
+
+    cond: bool = lt i n;
     g: int = mul i x;
     accum: int = add g accum;
 
-    cond: bool = lt i n;
+    i: int = add one i;
     br cond .loop .end;
 
 .end:

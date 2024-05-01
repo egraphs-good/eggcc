@@ -2,7 +2,6 @@
 (function ListExpr-ith (ListExpr i64) Expr :unextractable)
 (function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (function Append (ListExpr Expr) ListExpr :unextractable)
-(function AppendType (TypeList BaseType) TypeList :unextractable)
 
 (rule ((Switch pred inputs branch)) ((union (ListExpr-suffix branch 0) branch)) :ruleset always-run)
 

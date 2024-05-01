@@ -15,6 +15,12 @@ const allmodes = [["rvsdg_roundtrip", "rvsdg-round-trip-to-executable", ""],
 
 
 var enabledModes = new Set();
+// a list of warnings
+var warnings = [];
+
+function addWarning(warning) {
+    warnings.push(warning);
+}
 
 async function getPreviousRuns() {
     const req = await fetch("https://nightly.cs.washington.edu/reports-json/eggcc/");
@@ -126,34 +132,62 @@ function groupByBenchmark(benchList) {
     return groupedBy;
 }
 
-const compareKeys = ["# Instructions"];
-function buildEntry(run) {
-    const results = run.hyperfine.results[0];
-    return {
-        name: run.runMethod,
-        mean:   {class: "", value: tryRound(results.mean)},
-        min:    {class: "", value: tryRound(results.min)},
-        max:    {class: "", value: tryRound(results.max)},
-        median: {class: "", value: tryRound(results.median)},
-        stddev: {class: "", value: tryRound(results.stddev)},
+// Outputs current_number - baseline_number in a human-readable format
+// If baseline_number is undefined, it will return N/A
+function getDifference(current, baseline) {
+    // if b is undefined, return a
+    if (baseline === undefined) {
+        return { class: "bad", value: "N/A" };
+    } else {
+        var difference = current - baseline;
+        // if the difference is negative it will already have a "-"
+        var sign = difference < 0 ? "" : "+";
+        var cssClass = "";
+        if (difference < 0) {
+            cssClass = "good";
+        } else if (difference > 0) {
+            cssClass = "bad";
+        }
+        // put the difference in parens after a
+        return { class: cssClass, value: `${sign}${tryRound(difference)}` };
     }
 }
 
-// TODO (@ryan-berger) decide how to compare to prevRun now there are no instruction count metrics
-function buildTableText(prevRun, run) {
-    const entry = buildEntry(run)
-    if (!prevRun) {
-        return entry;
+// compare two objects at a particular attribute
+function diffAttribute(results, baseline, attribute) {
+    const current = results[attribute];
+    const baselineNum = baseline?.[attribute];
+    return getDifference(current, baselineNum);
+}
+
+const compareKeys = ["# Instructions"];
+// baselineRun may be undefined
+function buildEntry(baselineRun, run) {
+    const results = run.hyperfine.results[0];
+    const baselineResults = baselineRun?.hyperfine.results[0];
+
+    return {
+        name: run.runMethod,
+        mean: { class: "", value: tryRound(results.mean) },
+        meanVsBaseline: diffAttribute(results, baselineResults, "mean"),
+        min: { class: "", value: tryRound(results.min) },
+        minVsBaseline: diffAttribute(results, baselineResults, "min"),
+        max: { class: "", value: tryRound(results.max) },
+        maxVsBaseline: diffAttribute(results, baselineResults, "max"),
+        median: { class: "", value: tryRound(results.median) },
+        medianVsBaseline: diffAttribute(results, baselineResults, "median"),
+        stddev: { class: "", value: tryRound(results.stddev) },
     }
-    return entry;
 }
 
 async function loadBenchmarks(compareTo) {
     const currentRun = await getBench("./");
-    let previousRun = undefined;
+    let baselineRun = undefined;
     try {
-        previousRun = await getBench(compareTo.url+"/");
-    } catch (e) {}
+        baselineRun = await getBench(compareTo.url+"/");
+    } catch (e) {
+        addWarning("Couldn't find a previous run to compare to");
+    }
 
     const benchmarkNames = Object.keys(currentRun);
 
@@ -165,10 +199,17 @@ async function loadBenchmarks(compareTo) {
             if (!enabledModes.has(runMethod)) {
                 return undefined;
             }
-            const prevBenchmark = previousRun ? previousRun[benchName] : undefined;
-            const prevRun = prevBenchmark ? prevBenchmark[runMethod] : undefined;
+            // prevRun may be undefined
+            const baselineBench = baselineRun?.[benchName];
+            if (baselineBench === undefined) {
+                addWarning(`Couldn't find a previous benchmark for ${benchName}`);
+            }   
+            const baselineRunForMethod = baselineBench?.[runMethod];
+            if (baselineBench !== undefined && baselineRunForMethod === undefined) {
+                addWarning(`Couldn't find a previous run for ${runMethod}`);
+            }
             
-            return buildTableText(prevRun, currentRun[benchName][runMethod]) 
+            return buildEntry(baselineRunForMethod, currentRun[benchName][runMethod]) 
         })
         .filter((entry) => entry !== undefined);
 
@@ -181,10 +222,10 @@ async function loadBenchmarks(compareTo) {
                 const max = sorted[sorted.length - 1].value;
                 sorted.forEach(item => {
                     if (item.value === min) {
-                        item.class = "min";
+                        item.class = "good";
                     }
                     if (item.value === max) {
-                        item.class = "max";
+                        item.class = "bad";
                     }
                 })
             })
@@ -196,6 +237,16 @@ async function loadBenchmarks(compareTo) {
         }
     });
 
+    // also add warnings if the previous run had a benchmark that the current run doesn't
+    if (baselineRun) {
+        const prevBenchNames = Object.keys(baselineRun);
+        prevBenchNames.forEach((benchName) => {
+            if (!benchmarkNames.includes(benchName)) {
+                addWarning(`Previous run had benchmark ${benchName} that the current run doesn't`);
+            }
+        });
+    }
+
     parsed.sort((l, r) => {
         if (l.name < r.name) { return -1; }
         if (l.name > r.name) { return 1; }
@@ -204,6 +255,16 @@ async function loadBenchmarks(compareTo) {
 
     let container = document.getElementById("profile");
     container.innerHTML = ConvertJsonToTable(parsed);
+
+    // Add warnings
+    let warningContainer = document.getElementById("warnings");
+    
+    warningContainer.innerHTML = "";
+    warnings.forEach((warning) => {
+        let warningElement = document.createElement("p");
+        warningElement.innerText = warning;
+        warningContainer.appendChild(warningElement);
+    });
 }
 
 function makeCheckbox(parent, mode) {

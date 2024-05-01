@@ -6,9 +6,6 @@ from glob import glob
 from sys import stdout
 import subprocess
 
-profiles = (
-  glob("benchmarks/passing/**/*.bril", recursive=True)
-)
 
 modes = [
   # (name, runmode, options)
@@ -71,6 +68,19 @@ def aggregate():
 
 
 if __name__ == '__main__':
+  # expect a single argument
+  if len(os.sys.argv) != 2:
+    print("Usage: profile.py <bril_directory>")
+    exit(1)
+
+  arg = os.sys.argv[1]
+  profiles = []
+  # if it is a directory get all files
+  if os.path.isdir(arg):
+    profiles = glob(f'{arg}/**/*.bril', recursive=True)
+  else:
+    profiles = [arg]
+
   for p in profiles:
     bench(p)
 

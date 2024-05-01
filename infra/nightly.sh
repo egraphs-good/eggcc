@@ -3,6 +3,9 @@
 # the results to the nightly-results server. It also generates some HTML
 # to display the equiderivability tests in a nicely-formatted way.
 
+# Takes a single argument- the directory of bril files
+# to test (or a single bril file)
+
 echo "Beginning eggcc nightly script..."
 
 # -x: before executing each command, print it
@@ -44,7 +47,7 @@ pushd $TOP_DIR
 # Run profiler.
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench
-./infra/profile.py
+./infra/profile.py "$@"
 
 rm -r ./tmp/
 

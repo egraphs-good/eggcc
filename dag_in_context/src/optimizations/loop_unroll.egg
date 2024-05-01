@@ -15,11 +15,13 @@
      (SubTuple executed-once 1 (- outputs-len 1)))
   (let then-ctx
     (InIf true (Get executed-once 0) executed-once-body))
+  (let else-ctx
+    (InIf false (Get executed-once 0) executed-once-body))
   (union lhs
     ;; check if we need to continue executing the loop
     (If (Get executed-once 0)
         executed-once-body ;; inputs are the body executed once
         (DoWhile (Arg inputs-ty then-ctx)
           outputs) ;; right now, loop unrolling shares the same outputs, but we could add more context here
-        (Arg inputs-ty (NoContext)))))
+        (Arg inputs-ty else-ctx))))
  :ruleset loop-peel)

@@ -6,7 +6,7 @@ async function load() {
   const previousRuns = await getPreviousRuns();
   const initialRunIdx = findBenchToCompareIdx(previousRuns);
   GLOBAL_DATA.baselineRun = await getBench(
-    previousRuns[initialRunIdx].url + "/"
+    previousRuns[initialRunIdx].url + "/",
   );
 
   buildNightlyDropdown("comparison", previousRuns, initialRunIdx);

@@ -51,7 +51,7 @@ function ConvertJsonToTable(
   stringArrayDescriptor,
   tableId,
   tableClassName,
-  linkText
+  linkText,
 ) {
   //Patterns for links and NULL value
   var italic = "<i>{0}</i>";
@@ -112,7 +112,7 @@ function ConvertJsonToTable(
     } else {
       if (headers) {
         var urlRegExp = new RegExp(
-          /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi
+          /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi,
         );
         var javascriptRegExp = new RegExp(/(^javascript:[\s\S]*;$)/gi);
 
@@ -130,8 +130,15 @@ function ConvertJsonToTable(
                   // special case for adding class to <td> elts:
                   // if the value has exactly the form {class: ..., value: ...}
                   // treat it as just value.value, and set the class of the <td> element to value.class
-                  if (Object.keys(value).length === 2 && value.hasOwnProperty('value') && value.hasOwnProperty("class")) {
-                    tbCon += "<td class=\"{0}\">{1}</td>".format(value.class, value.value)
+                  if (
+                    Object.keys(value).length === 2 &&
+                    value.hasOwnProperty("value") &&
+                    value.hasOwnProperty("class")
+                  ) {
+                    tbCon += '<td class="{0}">{1}</td>'.format(
+                      value.class,
+                      value.value,
+                    );
                   } else {
                     //for supporting nested tables
                     tbCon += tdRow.format(
@@ -139,11 +146,10 @@ function ConvertJsonToTable(
                         eval(value.data),
                         value.tableId,
                         value.tableClassName,
-                        value.linkText
-                      )
+                        value.linkText,
+                      ),
                     );
                   }
-                  
                 } else {
                   tbCon += tdRow.format(value);
                 }

@@ -1,10 +1,9 @@
-use std::{collections::HashMap, convert, fmt::Error, rc::Rc};
+use std::collections::HashMap;
 
-use egglog::{ast::Expr, Term, TermDag};
-use from_egglog::{program_from_egglog, FromEgglog};
+use egglog::{Term, TermDag};
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use interpreter::Value;
-use schema::{RcExpr, TreeProgram};
+use schema::TreeProgram;
 use std::fmt::Write;
 use to_egglog::TreeToEgglog;
 
@@ -31,6 +30,7 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
+pub mod pretty_print;
 pub mod schedule;
 
 pub type Result = std::result::Result<(), MainError>;
@@ -361,72 +361,4 @@ fn egglog_test_internal(
     }
 
     Ok(res?)
-}
-
-pub fn pretty_print(str_expr: String) -> std::result::Result<RcExpr, egglog::Error> {
-    let bounded_expr = format!("(let EXPR___ {})", str_expr);
-    let prog = prologue().to_owned() + &bounded_expr;
-    let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&prog).unwrap();
-    let mut termdag = TermDag::default();
-    let (sort, value) = egraph
-        .eval_expr(&egglog::ast::Expr::Var((), "EXPR___".into()))
-        .unwrap();
-    let (_, extracted) = egraph.extract(value, &mut termdag, &sort);
-    let mut converter = FromEgglog {
-        termdag: &termdag,
-        conversion_cache: HashMap::new(),
-    };
-    let expr = converter.expr_from_egglog(extracted);
-    Ok(expr)
-}
-
-fn pretty_print_helper(expr:RcExpr, cash: HashMap<RcExpr, String>) -> String {
-    use schema::Expr;
-    match expr.as_ref() {
-        Expr::Function(name, inty, outty, body) => {""}
-            Expr::Const(c, ty) => {""}
-            // Expr::Top(_, x, y, z) => 
-            // Expr::Bop(_, x, y) => 
-            // Expr::Uop(_, x) => 
-            // Expr::Get(x, _) => 
-            // Expr::Alloc(_, x, y, _) => 
-            // Expr::Call(_, x) =>
-            // Expr::Empty(_) => 
-            // Expr::Single(x) => 
-            // Expr::Concat(x, y) => 
-            // Expr::Switch(x, inputs, _branches) => {
-                
-            // }
-            // Expr::If(x, inputs, _y, _z) => {
-               
-            // }
-            // Expr::DoWhile(inputs, _body) =>
-            // Expr::Arg(_) => 
-            // Expr::InContext(_, x) => 
-    }
-}
-
-#[test]
-fn test_pretty_print() {
-    use crate::ast::*;
-    let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
-    let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
-    let inv = add(inner_inv.clone(), int(0)).with_arg_types(output_ty.clone(), base(intt()));
-    let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), base(boolt()));
-    let not_inv = add(getat(0), inv.clone()).with_arg_types(output_ty.clone(), base(intt()));
-    let print = tprint(inv.clone(), getat(4)).with_arg_types(output_ty.clone(), base(statet()));
-
-    let my_loop = dowhile(
-        parallel!(int(1), int(2), int(3), int(4), getat(0)),
-        concat(
-            parallel!(pred.clone(), not_inv.clone(), getat(1)),
-            concat(parallel!(getat(2), getat(3)), single(print.clone())),
-        ),
-    )
-    .with_arg_types(tuplet!(statet()), output_ty.clone());
-
-    let expr_str = my_loop.to_string();
-    let expr = pretty_print(expr_str).unwrap();
-    print!("{}", expr);
 }

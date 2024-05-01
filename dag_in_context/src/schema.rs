@@ -5,9 +5,9 @@
 
 use ordered_float::OrderedFloat;
 use std::rc::Rc;
-use strum_macros::EnumIter;
+use strum_macros::{Display, EnumIter};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Display)]
 pub enum BaseType {
     IntT,
     FloatT,

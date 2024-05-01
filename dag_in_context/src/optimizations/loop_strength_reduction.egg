@@ -35,8 +35,6 @@
 ;; contains the new input (with correct context) and the new pred-output (with old context)
 (function InExtendedLoop (Expr Expr) Assumption :unextractable)
 
-(relation debug (Type Type))
-
 (rule 
     (
         ;; Find loop
@@ -81,7 +79,7 @@
         (let tmp-ctx (InExtendedLoop new-inputs new-body-old-ctx))
 
         ; We need to create a new type, with one more input
-        (let new-arg-ty (TupleT (AppendType ty-list (IntT))))
+        (let new-arg-ty (TupleT (TLConcat ty-list (TCons (IntT) (TNil)))))
 
         ; Now substitute the new type and temp context into the new body
         (let new-body (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) new-body-old-ctx))

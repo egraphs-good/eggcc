@@ -1,0 +1,16 @@
+@main() {
+    arg1: int = const 1;
+	arg2: int = const 2;
+	arg3: int = const 3;
+	arg4: int = const 4;
+.entry:
+    zero: int = const 0;
+    sub: int = sub arg3 arg2;
+    inv: int = add sub zero;
+    arg1: int = add arg1 inv;
+    print inv;
+    pred : bool = lt arg1 arg4;
+    br pred .done .entry;
+.done:
+    print arg1;
+}

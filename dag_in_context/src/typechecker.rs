@@ -390,7 +390,10 @@ impl<'a> TypeChecker<'a> {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_tys);
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_tys);
                 let Type::TupleT(ltypes) = lty else {
-                    panic!("Expected tuple type. Got {:?}", lty)
+                    panic!(
+                        "Expected tuple type. Got {:?}. Left Expr:{} Right Expr: {}",
+                        lty, left, right
+                    )
                 };
                 let Type::TupleT(rtypes) = rty else {
                     panic!("Expected tuple type. Got {:?}", rty)

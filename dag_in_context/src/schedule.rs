@@ -7,6 +7,7 @@ pub(crate) fn helpers() -> String {
   (saturate subst) ;; do e-substitution
   apply-subst-unions ;; apply the unions from substitution
   cleanup-subst ;; clean up substitutions that are done
+  (saturate boundary-analysis)
 )
 "
     .to_string()
@@ -37,6 +38,7 @@ pub fn mk_schedule() -> String {
     optimizations
     ;; TODO why is this expensive? On `adler32.bril` it blows up with 3 iterations
     switch_rewrite
+    loop-inv-motion
   )
   
   (run-schedule

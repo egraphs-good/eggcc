@@ -646,7 +646,7 @@ impl CostModel for DefaultCostModel {
             | "CellHasValues"
             | "PointsToExpr"
             | "ExpectType" => 0.,
-            | "boundary-Expr" => 0.,
+            "boundary-Expr" => 0.,
             "ExprIsPure" | "ListExprIsPure" | "BinaryOpIsPure" | "UnaryOpIsPure" => 0.,
             "BodyContainsExpr" | "ScopeContext" => 0.,
             "Region" | "Full" | "IntB" | "BoolB" => 0.,

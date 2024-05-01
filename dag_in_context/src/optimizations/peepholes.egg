@@ -2,12 +2,10 @@
 
 (ruleset peepholes)
 
-; Contexts?
-
 (rewrite (Bop (Mul) (Const (Int 0) ty ctx) e) (Const (Int 0) ty ctx) :ruleset peepholes)
 (rewrite (Bop (Mul) e (Const (Int 0) ty ctx)) (Const (Int 0) ty ctx) :ruleset peepholes)
 (rewrite (Bop (Mul) (Const (Int 1) ty ctx) e) e :ruleset peepholes)
-(rewrite (Bop (Mul) e (Const (Int 1) ty ctx) ) e :ruleset peepholes)
+(rewrite (Bop (Mul) e (Const (Int 1) ty ctx)) e :ruleset peepholes)
 (rewrite (Bop (Add) (Const (Int 0) ty ctx) e) e :ruleset peepholes)
 (rewrite (Bop (Add) e (Const (Int 0) ty ctx) ) e :ruleset peepholes)
 

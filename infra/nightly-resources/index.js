@@ -13,13 +13,17 @@ const allModes = [
 
 const GLOBAL_DATA = {
   enabledModes: new Set(),
-  warnings: [],
+  warnings: new Set(),
   currentRun: {},
   baselineRun: undefined,
 };
 
 function addWarning(warning) {
-  GLOBAL_DATA.warnings.push(warning);
+  GLOBAL_DATA.warnings.add(warning);
+}
+
+function clearWarnings() {
+  GLOBAL_DATA.warnings = new Set();
 }
 
 async function getPreviousRuns() {
@@ -76,7 +80,9 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
   const select = document.getElementById(element);
 
   const formatRun = (run) =>
-    `${run.branch} - ${run.commit} - ${new Date(run.date * 1000).toDateString()}`;
+    `${run.branch} - ${run.commit} - ${new Date(
+      run.date * 1000,
+    ).toDateString()}`;
 
   previousRuns.forEach((nightly) => {
     const option = document.createElement("option");
@@ -84,16 +90,7 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
     select.appendChild(option);
   });
 
-  select.onchange = () => {
-    getBench(previousRuns[select.selectedIndex].url + "/")
-      .then((data) => {
-        GLOBAL_DATA.baselineRun = data;
-        refreshView();
-      })
-      .catch((e) => {
-        console.warn(e);
-      });
-  };
+  select.onchange = () => loadBaseline(previousRuns[select.selectedIndex].url);
 
   select.selectedIndex = initialIdx;
   select.value = formatRun(previousRuns[initialIdx]);
@@ -207,6 +204,9 @@ function buildEntry(baseline, current) {
 function refreshView() {
   const benchmarkNames = Object.keys(GLOBAL_DATA.currentRun);
   const parsed = benchmarkNames.map((benchName) => {
+    if (!GLOBAL_DATA.baselineRun) {
+      addWarning("no baseline to compare to");
+    }
     const executions = Object.keys(GLOBAL_DATA.currentRun[benchName])
       .map((runMode) => {
         // if the mode is not enabled, skip it
@@ -215,12 +215,14 @@ function refreshView() {
         }
         // prevRun may be undefined
         const baselineBench = GLOBAL_DATA.baselineRun?.[benchName];
-        if (baselineBench === undefined) {
-          addWarning(`Couldn't find a previous benchmark for ${benchName}`);
+        if (GLOBAL_DATA.baselineRun && !baselineBench) {
+          addWarning(`Baseline doesn't have ${benchName} benchmark`);
         }
         const baselineRunForMethod = baselineBench?.[runMode];
-        if (baselineBench !== undefined && baselineRunForMethod === undefined) {
-          addWarning(`Couldn't find a previous run for ${runMode}`);
+        if (baselineBench && !baselineRunForMethod) {
+          addWarning(
+            `Baseline doesn't have run mode ${runMode} for ${benchName}`,
+          );
         }
 
         return buildEntry(
@@ -254,18 +256,6 @@ function refreshView() {
     };
   });
 
-  // also add warnings if the previous run had a benchmark that the current run doesn't
-  if (GLOBAL_DATA.baselineRun) {
-    const prevBenchNames = Object.keys(GLOBAL_DATA.baselineRun);
-    prevBenchNames.forEach((benchName) => {
-      if (!benchmarkNames.includes(benchName)) {
-        addWarning(
-          `Previous run had benchmark ${benchName} that the current run doesn't`,
-        );
-      }
-    });
-  }
-
   parsed.sort((l, r) => {
     if (l.name < r.name) {
       return -1;
@@ -279,9 +269,14 @@ function refreshView() {
   let container = document.getElementById("profile");
   container.innerHTML = ConvertJsonToTable(parsed);
 
-  // Add warnings
-  let warningContainer = document.getElementById("warnings");
+  renderWarnings();
+}
 
+function renderWarnings() {
+  const toggle = document.getElementById("warnings-toggle");
+  toggle.innerText = `Show ${GLOBAL_DATA.warnings.size} Warnings`;
+
+  let warningContainer = document.getElementById("warnings");
   warningContainer.innerHTML = "";
   GLOBAL_DATA.warnings.forEach((warning) => {
     let warningElement = document.createElement("p");

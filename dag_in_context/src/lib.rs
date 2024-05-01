@@ -133,7 +133,7 @@ fn print_function_inlining_pairs(
 }
 
 // It is expected that program has context added
-pub fn build_program(program: &TreeProgram) -> String {
+pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let mut printed = String::new();
 
     // Create a global cache for generating intermediate variables
@@ -150,7 +150,7 @@ pub fn build_program(program: &TreeProgram) -> String {
     );*/
 
     // Generate program egglog
-    let term = program.to_egglog_internal(&mut tree_state);
+    let term = program.to_egglog_with(&mut tree_state);
     let res =
         print_with_intermediate_helper(&tree_state.termdag, term, &mut term_cache, &mut printed);
 
@@ -159,13 +159,47 @@ pub fn build_program(program: &TreeProgram) -> String {
     format!(
         "{}\n{printed}\n(let PROG {res})\n\n{}\n",
         prologue(),
-        mk_schedule()
+        if optimize {
+            mk_schedule()
+        } else {
+            "".to_string()
+        }
     )
+}
+
+pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
+    let mut converter = TreeToEgglog::new();
+    let term1 = program1.to_egglog_with(&mut converter);
+    let term2 = program2.to_egglog_with(&mut converter);
+    term1 == term2
+}
+
+/// Adds the program to the egraph and extracts it.
+/// Checks that the extracted program is the same as the input program.
+pub fn check_roundtrip_egraph(program: &TreeProgram) {
+    let mut termdag = egglog::TermDag::default();
+    let egglog_prog = build_program(program, false);
+    log::info!("Running egglog program...");
+    let mut egraph = egglog::EGraph::default();
+    egraph.parse_and_run_program(&egglog_prog).unwrap();
+
+    let (serialized, unextractables) = serialized_egraph(egraph);
+    let (_res_cost, res) = extract(
+        program,
+        &serialized,
+        unextractables,
+        &mut termdag,
+        DefaultCostModel,
+    );
+
+    if !are_progs_eq(program.clone(), res.clone()) {
+        panic!("Check failed. Programs should be equal before and after roundtrip to egraph.");
+    }
 }
 
 // It is expected that program has context added
 pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
-    let egglog_prog = build_program(program);
+    let egglog_prog = build_program(program, true);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&egglog_prog)?;

@@ -362,18 +362,27 @@
 
 
 (rule (
-       (= loop_ctx (InLoop inputs outputs))
-       (= (Get (Arg ty loop_ctx) ith) (Get outputs (+ 1 ith)))
+       ;; argument has loop context
+       (Arg ty (InLoop inputs outputs))
+       ;; in the loop, the argument is passed through
+       (= (Get (Arg ty some_ctx) ith) (Get outputs (+ 1 ith)))
+       ;; input has some bound
        (= bound (lo-bound (Get inputs ith)))
       )
-      ((set (lo-bound (Get (Arg ty loop_ctx) ith)) bound))
+      (
+       (set (lo-bound (Get (Arg ty (InLoop inputs outputs)) ith)) bound)
+      )
       :ruleset interval-analysis)
-;; set hi-bound inside a loop for passed-through arguments
 (rule (
-       (= loop_ctx (InLoop inputs outputs))
-       (= (Get (Arg ty loop_ctx) ith) (Get outputs (+ 1 ith)))
+       ;; argument has loop context
+       (Arg ty (InLoop inputs outputs))
+       ;; in the loop, the argument is passed through
+       (= (Get (Arg ty some_ctx) ith) (Get outputs (+ 1 ith)))
+       ;; input has some bound
        (= bound (hi-bound (Get inputs ith)))
       )
-      ((set (hi-bound (Get (Arg ty loop_ctx) ith)) bound))
+      (
+       (set (hi-bound (Get (Arg ty (InLoop inputs outputs)) ith)) bound)
+      )
       :ruleset interval-analysis)
 

@@ -179,6 +179,8 @@ pub enum RunType {
     ToCfg,
     /// Convert the original program to a CFG and back to Bril again.
     CfgRoundTrip,
+    /// Optimize the original program, then stop on the way back at CFG
+    OptimizedCfg,
     /// Removes unecessary direct
     /// jumps from the input program by
     /// converting it to a CFG, calling
@@ -219,7 +221,8 @@ impl RunType {
             | RunType::DagToRvsdg
             | RunType::OptimizedRvsdg
             | RunType::CheckExtractIdentical
-            | RunType::ToCfg => false,
+            | RunType::ToCfg
+            | RunType::OptimizedCfg => false,
         }
     }
 }
@@ -493,6 +496,18 @@ impl Run {
                     vec![Visualization {
                         result: svg,
                         file_extension: ".svg".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
+            }
+            RunType::OptimizedCfg => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let cfg = rvsdg.to_cfg();
+                (
+                    vec![Visualization {
+                        result: format!("{:#?}", cfg),
+                        file_extension: ".txt".to_string(),
                         name: "".to_string(),
                     }],
                     None,

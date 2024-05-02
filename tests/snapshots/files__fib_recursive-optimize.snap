@@ -4,7 +4,7 @@ expression: visualization.result
 ---
 @fac(v0: int): int {
   v1_: int = const 0;
-  v2_: bool = eq v0 v1_;
+  v2_: bool = eq v1_ v0;
   v3_: int = const 1;
   br v2_ .v4_ .v5_;
 .v4_:

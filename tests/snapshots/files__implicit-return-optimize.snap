@@ -4,43 +4,41 @@ expression: visualization.result
 ---
 @pow(v0: int, v1: int) {
   v2_: int = const 0;
-  v3_: int = const 1;
-  v4_: int = sub v1 v3_;
+  v3_: int = id v0;
+  v4_: int = id v2_;
   v5_: int = id v0;
-  v6_: int = id v2_;
-  v7_: int = id v0;
-  v8_: int = id v1;
-  v9_: int = id v4_;
-.v10_:
-  v11_: bool = lt v6_ v9_;
-  br v11_ .v12_ .v13_;
+  v6_: int = id v1;
+.v7_:
+  v8_: int = const 1;
+  v9_: int = sub v6_ v8_;
+  v10_: bool = lt v4_ v9_;
+  br v10_ .v11_ .v12_;
+.v11_:
+  v13_: int = mul v5_ v3_;
+  v14_: bool = const true;
+  v15_: int = const 1;
+  v16_: int = add v4_ v15_;
+  v17_: int = id v13_;
+  v18_: bool = id v14_;
+  v19_: int = id v16_;
+  v20_: int = id v5_;
+  v21_: int = id v6_;
+.v22_:
+  v3_: int = id v17_;
+  v4_: int = id v19_;
+  v5_: int = id v5_;
+  v6_: int = id v6_;
+  br v10_ .v7_ .v23_;
 .v12_:
-  v14_: int = mul v7_ v5_;
-  v15_: bool = const true;
-  v16_: int = const 1;
-  v17_: int = add v16_ v6_;
-  v18_: int = id v14_;
-  v19_: bool = id v15_;
-  v20_: int = id v17_;
-  v21_: int = id v7_;
-  v22_: int = id v8_;
+  v24_: bool = const false;
+  v17_: int = id v3_;
+  v18_: bool = id v24_;
+  v19_: int = id v4_;
+  v20_: int = id v5_;
+  v21_: int = id v6_;
+  jmp .v22_;
 .v23_:
-  v5_: int = id v18_;
-  v6_: int = id v20_;
-  v7_: int = id v7_;
-  v8_: int = id v8_;
-  v9_: int = id v9_;
-  br v11_ .v10_ .v24_;
-.v13_:
-  v25_: bool = const false;
-  v18_: int = id v5_;
-  v19_: bool = id v25_;
-  v20_: int = id v6_;
-  v21_: int = id v7_;
-  v22_: int = id v8_;
-  jmp .v23_;
-.v24_:
-  print v5_;
+  print v3_;
 }
 @main {
   v0_: int = const 4;

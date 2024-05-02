@@ -221,9 +221,10 @@ impl<'a> RvsdgToCfg<'a> {
             );
         }
         if results.is_empty() {
+            let new_block = self.make_block(vec![]);
             TranslationResult {
-                start: self.make_block(vec![]),
-                end: self.make_block(vec![]),
+                start: new_block,
+                end: new_block,
                 values: vec![],
             }
         } else {

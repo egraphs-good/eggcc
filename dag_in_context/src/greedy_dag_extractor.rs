@@ -488,6 +488,9 @@ impl<'a> Extractor<'a> {
         }
     }
 
+    /// Given a node and cost sets for children, calculate the cost set for the node.
+    /// This function is cached so that we don't re-calculate cost sets.
+    /// If a cycle is detected, we return None.
     fn calculate_cost_set(
         &mut self,
         nodeid: NodeId,
@@ -602,10 +605,10 @@ impl<'a> Extractor<'a> {
     }
 }
 
-/// Calculates the cost set of a node based on cost sets of children.
-/// Handles cycles by returning a cost set with infinite cost.
-/// Returns None when costs for children are not yet available.
-fn calculate_node_cost_set(
+/// This function handles finding children cost sets for a node in a particular region.
+/// It then calculates the resulting cost set using `calculate_cost_set`.
+/// Returns `None` when a cycle is found.
+fn node_cost_in_region(
     rootid: ClassId,
     node_id: NodeId,
     extractor: &mut Extractor,
@@ -730,7 +733,7 @@ pub fn extract_with_paths(
         }
 
         if let Some(cost_set_index) =
-            calculate_node_cost_set(rootid.clone(), nodeid.clone(), extractor, info)
+            node_cost_in_region(rootid.clone(), nodeid.clone(), extractor, info)
         {
             let cost_set = &extractor.costsets[cost_set_index];
             let region_costs = extractor.costs.get_mut(&rootid).unwrap();

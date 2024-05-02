@@ -370,6 +370,7 @@
       ((set (lo-bound (Get loop ith)) bound)
        (set (lo-bound (Get (Arg ty loop_ctx) ith)) bound))
       :ruleset interval-analysis)
+
 (rule (
        (= loop (DoWhile inputs outputs))
        (= (Get (Arg ty loop_ctx) ith) (Get outputs (+ 1 ith)))
@@ -378,3 +379,5 @@
       ((set (hi-bound (Get loop ith)) bound)
        (set (hi-bound (Get (Arg ty loop_ctx) ith)) bound))
       :ruleset interval-analysis)
+
+;; TODO above rule unsound when sharing ctxs

@@ -25,3 +25,64 @@
 (rule ((is-inv-ListExpr-helper loop list i)
        (= i (ListExpr-length list)))
     ((set (is-inv-ListExpr loop list) true)) :ruleset always-run)
+
+
+(ruleset boundary-analysis)
+;; An Expr is on boundary when it is invariant and its parent is not
+;                       loop invariant-expr
+(relation boundary-Expr (Expr Expr))
+
+;; boundary for ListExpr's children
+(rule ((= true (is-inv-Expr loop expr))
+       (= false (is-inv-ListExpr loop list))
+       (= expr (ListExpr-ith list i)))
+      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+
+;; if a output branch/pred is invariant, it's also boundary-Expr
+(rule ((= true (is-inv-Expr loop expr))
+       (= loop (DoWhile in pred_out))
+       (= expr (Get pred_out i))) 
+      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+
+
+(function hoisted-loop (Expr Expr) bool :unextractable :merge (or old new) )
+(rule ((= loop (DoWhile in pred_out)))
+      ((set (hoisted-loop in pred_out) false)) :ruleset always-run)
+
+(function InExtendedLoop (Expr Expr Expr) Assumption)
+
+;; mock function
+(ruleset loop-inv-motion)
+
+(rule ((boundary-Expr loop inv)
+       (> (Expr-size inv) 1)
+       ;; TODO: replace Expr-size when cost model is ready
+       (= loop (DoWhile in pred_out))
+       ;; the outter assumption of the loop 
+       (ContextOf loop loop_ctx)
+       (HasType in in_type)
+       (HasType inv inv_type)
+       (= inv_type (Base base_inv_ty))
+       (= in_type (TupleT tylist))
+       (= false (hoisted-loop in pred_out))
+       (= len (tuple-length in)))
+      ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
+       (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
+       ;; create an virtual assume node, union it with actuall InLoop later
+       (let assum (InExtendedLoop in pred_out new_input))
+       (let new_out_branch (Get (Arg new_input_type assum) len))
+       ;; this two subst only change arg to arg with new type
+       (let substed_pred_out (Subst assum (Arg new_input_type (NoContext)) pred_out))
+       (let inv_in_new_loop (Subst assum (Arg new_input_type (NoContext)) inv))
+       (let new_pred_out (Concat substed_pred_out (Single new_out_branch)))
+       
+       (let new_loop (DoWhile new_input new_pred_out))
+       (union assum (InLoop new_input new_pred_out))
+       (union inv_in_new_loop new_out_branch)
+       (let wrapper (SubTuple new_loop 0 len))
+       (union loop wrapper)
+       (subsume (DoWhile in pred_out)) 
+       ;; don't hoist same loop again
+       (set (hoisted-loop in pred_out) true)
+      )
+       :ruleset loop-inv-motion)

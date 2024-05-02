@@ -113,7 +113,7 @@
 (function Uop   (UnaryOp Expr) Expr)
 ; gets from a tuple. static index
 (function Get   (Expr i64) Expr)
-; (Alloc amount state_edge pointer_type)
+; (Alloc id amount state_edge pointer_type)
 ; allocate an integer amount of memory for a particular type
 ; returns (pointer to the allocated memory, state edge)
 (function Alloc (i64 Expr Expr BaseType)      Expr)
@@ -139,7 +139,7 @@
 ; Concat appends the elemnts from two tuples together
 ; e.g. (Concat (Concat (Single a) (Single b))
 ;              (Concat (Single c) (Single d))) = (a, b, c, d)
-;                 order   expr1       expr2
+;                 expr1       expr2
 (function Concat (Expr        Expr)       Expr)
 
 

@@ -3,6 +3,9 @@
 <html>
 
 <head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.min.js"></script>
+  <script src="./Plugin.Errorbars.js"></script>
+  <script src="chart.js"></script>
   <script src="index.js"></script>
   <script src="handlers.js"></script>
   <script src="table.js"></script>
@@ -15,6 +18,12 @@
 <body onload="load()">
   <h2>Nightlies</h2>
   <h2>Profile</h2>
+
+  <div>
+    <button type="button" class="collapsible" id="chart-toggle" onclick="toggleChart()">Hide Chart</button>
+    <canvas class="content" id="chart"></canvas>
+  </div>
+
   <div>
     <label for="comparison">Compare To:</label>
     <select id="comparison"></select>    
@@ -23,12 +32,23 @@
   <button type="button" class="collapsible" id="warnings-toggle" onclick="toggleWarnings()"></button>
   <div class="content" id="warnings"></div>
 
-  <div>
-    <div>
-      <button onclick="selectAllModes(true)">Select All</button>
-      <button onclick="selectAllModes(false)">Select None</button>
+  <div style="width: 75%;">
+    <div style="float: left;">
+      <div>
+        <p>Run Modes</p>
+        <button onclick="selectAllModes(true)">Select All</button>
+        <button onclick="selectAllModes(false)">Select None</button>
+      </div>
+      <div id="modeCheckboxes"></div>
     </div>
-    <div id="modeCheckboxes"></div>
+    <div style="float: right;">
+      <div>
+        <p>Benchmarks</p>
+        <button onclick="selectAllBenchmarks(true)">Select All</button>
+        <button onclick="selectAllBenchmarks(false)">Select None</button>
+      </div>
+      <div id="benchmarkCheckboxes"></div>
+    </div>
   </div>
   
   <div id="profile"></div>

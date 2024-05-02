@@ -1,7 +1,11 @@
 // Top-level load function for the main index page.
 async function load() {
   GLOBAL_DATA.currentRun = await getBench("./");
-  makeModeSelectors();
+  makeSelectors();
+
+  // Everything selected by default
+  selectAllModes(true);
+  selectAllBenchmarks(true);
 
   const previousRuns = await getPreviousRuns();
   const initialRunIdx = findBenchToCompareIdx(previousRuns);
@@ -10,24 +14,40 @@ async function load() {
   buildNightlyDropdown("comparison", previousRuns, initialRunIdx);
 
   refreshView();
+  initializeChart();
 }
 
 function selectAllModes(enabled) {
   const checkboxContainer = document.getElementById("modeCheckboxes");
-  checkboxContainer.childNodes.forEach((checkbox) => {
-    checkbox.checked = enabled;
-    enabled
-      ? GLOBAL_DATA.enabledModes.add(checkbox.id)
-      : GLOBAL_DATA.enabledModes.delete(checkbox.id);
-  });
+  Array.from(checkboxContainer.getElementsByTagName("input")).forEach(
+    (checkbox) => {
+      checkbox.checked = enabled;
+      enabled
+        ? GLOBAL_DATA.enabledModes.add(checkbox.id)
+        : GLOBAL_DATA.enabledModes.delete(checkbox.id);
+    },
+  );
   refreshView();
 }
 
-function toggleCheckbox(mode) {
-  if (GLOBAL_DATA.enabledModes.has(mode)) {
-    GLOBAL_DATA.enabledModes.delete(mode);
+function selectAllBenchmarks(enabled) {
+  const checkboxContainer = document.getElementById("benchmarkCheckboxes");
+  Array.from(checkboxContainer.getElementsByTagName("input")).forEach(
+    (checkbox) => {
+      checkbox.checked = enabled;
+      enabled
+        ? GLOBAL_DATA.enabledBenchmarks.add(checkbox.id)
+        : GLOBAL_DATA.enabledBenchmarks.delete(checkbox.id);
+    },
+  );
+  refreshView();
+}
+
+function toggleCheckbox(mode, set) {
+  if (set.has(mode)) {
+    set.delete(mode);
   } else {
-    GLOBAL_DATA.enabledModes.add(mode);
+    set.add(mode);
   }
   refreshView();
 }
@@ -57,6 +77,19 @@ function toggleWarnings() {
     content.style.display = "none";
   } else {
     elt.innerText = `Hide ${GLOBAL_DATA.warnings.size} Warnings`;
+    content.style.display = "block";
+  }
+}
+
+function toggleChart() {
+  const elt = document.getElementById("chart-toggle");
+  elt.classList.toggle("active");
+  const content = elt.nextElementSibling;
+  if (content.style.display === "block") {
+    elt.innerText = "Show Chart";
+    content.style.display = "none";
+  } else {
+    elt.innerText = "Hide Chart";
     content.style.display = "block";
   }
 }

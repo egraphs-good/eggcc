@@ -13,9 +13,11 @@ const allModes = [
 
 const GLOBAL_DATA = {
   enabledModes: new Set(),
+  enabledBenchmarks: new Set(),
   warnings: new Set(),
   currentRun: {},
   baselineRun: undefined,
+  chart: undefined,
 };
 
 function addWarning(warning) {
@@ -23,7 +25,7 @@ function addWarning(warning) {
 }
 
 function clearWarnings() {
-  GLOBAL_DATA.warnings = new Set();
+  GLOBAL_DATA.warnings.clear();
 }
 
 async function getPreviousRuns() {
@@ -202,8 +204,7 @@ function buildEntry(baseline, current) {
 }
 
 function refreshView() {
-  const benchmarkNames = Object.keys(GLOBAL_DATA.currentRun);
-  const parsed = benchmarkNames.map((benchName) => {
+  const parsed = Array.from(GLOBAL_DATA.enabledBenchmarks).map((benchName) => {
     if (!GLOBAL_DATA.baselineRun) {
       addWarning("no baseline to compare to");
     }
@@ -266,20 +267,20 @@ function refreshView() {
     return 0;
   });
 
-  let container = document.getElementById("profile");
-  container.innerHTML = ConvertJsonToTable(parsed);
+  document.getElementById("profile").innerHTML = ConvertJsonToTable(parsed);
 
   renderWarnings();
+  refreshChart();
 }
 
 function renderWarnings() {
   const toggle = document.getElementById("warnings-toggle");
   toggle.innerText = `Show ${GLOBAL_DATA.warnings.size} Warnings`;
 
-  let warningContainer = document.getElementById("warnings");
+  const warningContainer = document.getElementById("warnings");
   warningContainer.innerHTML = "";
   GLOBAL_DATA.warnings.forEach((warning) => {
-    let warningElement = document.createElement("p");
+    const warningElement = document.createElement("p");
     warningElement.innerText = warning;
     warningContainer.appendChild(warningElement);
   });
@@ -291,7 +292,6 @@ function makeCheckbox(parent, mode) {
   checkbox.type = "checkbox";
   checkbox.id = mode;
   checkbox.checked = true;
-  checkbox.onchange = () => toggleCheckbox(mode);
   parent.appendChild(checkbox);
   // make a label for the checkbox
   const label = document.createElement("label");
@@ -300,14 +300,25 @@ function makeCheckbox(parent, mode) {
   parent.appendChild(label);
   // make a line break
   parent.appendChild(document.createElement("br"));
-
-  // add this to the set of enabled modes
-  GLOBAL_DATA.enabledModes.add(mode);
+  return checkbox;
 }
 
-function makeModeSelectors() {
-  const checkboxContainer = document.getElementById("modeCheckboxes");
+function makeSelectors() {
   allModes.forEach((mode) => {
-    makeCheckbox(checkboxContainer, mode);
+    const checkbox = makeCheckbox(
+      document.getElementById("modeCheckboxes"),
+      mode,
+    );
+    checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.enabledModes);
+  });
+
+  const benchmarks = Object.keys(GLOBAL_DATA.currentRun);
+  benchmarks.forEach((benchmark) => {
+    const checkbox = makeCheckbox(
+      document.getElementById("benchmarkCheckboxes"),
+      benchmark,
+    );
+    checkbox.onchange = () =>
+      toggleCheckbox(benchmark, GLOBAL_DATA.enabledBenchmarks);
   });
 }

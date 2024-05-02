@@ -125,6 +125,8 @@ pub(crate) fn rules() -> Vec<String> {
 #[test]
 fn test_invariant_detect() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
+
     let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
     let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
     let inv = add(inner_inv.clone(), int(0)).with_arg_types(output_ty.clone(), base(intt()));
@@ -142,12 +144,12 @@ fn test_invariant_detect() -> crate::Result {
         ),
     )
     .with_arg_types(tuplet!(statet()), output_ty.clone())
-    .add_ctx(noctx());
+    .add_ctx(Assumption::dummy());
 
     let my_loop_ctx = inloop(
         parallel!(int(1), int(2), int(3), int(4), getat(0))
             .with_arg_types(tuplet!(statet()), output_ty.clone())
-            .add_ctx(noctx()),
+            .add_ctx(Assumption::dummy()),
         concat(
             parallel!(pred.clone(), not_inv.clone(), getat(1)),
             concat(parallel!(getat(2), getat(3)), single(print.clone())),
@@ -156,7 +158,7 @@ fn test_invariant_detect() -> crate::Result {
             output_ty.clone(),
             tuplet!(boolt(), intt(), intt(), intt(), intt(), statet()),
         )
-        .add_ctx(noctx()),
+        .add_ctx(Assumption::dummy()),
     );
 
     let inv = inv.add_ctx(my_loop_ctx.clone());
@@ -200,6 +202,8 @@ fn test_invariant_detect() -> crate::Result {
 #[test]
 fn test_invariant_hoist() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
+
     let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
     let inner_inv = sub(getat(2), getat(1));
     let inv = add(inner_inv.clone(), int(0));
@@ -215,7 +219,7 @@ fn test_invariant_hoist() -> crate::Result {
         ),
     )
     .with_arg_types(tuplet!(statet()), output_ty.clone())
-    .add_ctx(noctx());
+    .add_ctx(Assumption::dummy());
 
     let new_out_ty = tuplet!(intt(), intt(), intt(), intt(), statet(), intt());
     let new_input = parallel!(int(1), int(2), int(3), int(4), getat(0), int(1));
@@ -223,7 +227,7 @@ fn test_invariant_hoist() -> crate::Result {
     let new_print = tprint(getat(5), getat(4));
 
     let hoisted_loop = dowhile(
-        new_input.clone().add_ctx(noctx()),
+        new_input.clone().add_ctx(Assumption::dummy()),
         parallel!(
             pred.clone(),
             not_inv.clone(),

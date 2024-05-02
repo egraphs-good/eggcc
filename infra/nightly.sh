@@ -59,6 +59,9 @@ fi
 
 rm -r ./tmp/
 
+./infra/gen_linecount.py > "$NIGHTLY_DIR/data/linecount.tex"
+./infra/nightly_table.py "$NIGHTLY_DIR/data/profile.json" > "$NIGHTLY_DIR/data/nightlytable.tex"
+
 popd
 
 

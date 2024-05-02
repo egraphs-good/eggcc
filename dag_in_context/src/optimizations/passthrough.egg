@@ -72,7 +72,8 @@
        (let new_if (If pred new_inputs new_then new_else))
        (union new_if old_outputs)
 
-       (union lhs passed-through))
+       (union lhs passed-through)
+       (subsume (If pred inputs then_ else_)))
       :ruleset always-run)
 
 ;; Pass through if predicate

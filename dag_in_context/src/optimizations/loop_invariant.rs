@@ -129,7 +129,7 @@ fn test_invariant_detect() -> crate::Result {
 
     let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
     let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
-    let inv = add(inner_inv.clone(), int(0)).with_arg_types(output_ty.clone(), base(intt()));
+    let inv = add(inner_inv.clone(), int(3)).with_arg_types(output_ty.clone(), base(intt()));
     let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), base(boolt()));
     let not_inv = add(getat(0), inv.clone()).with_arg_types(output_ty.clone(), base(intt()));
     let inv_in_print = add(inv.clone(), int_ty(4, output_ty.clone()));

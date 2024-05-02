@@ -3,7 +3,6 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-<<<<<<< HEAD
   v1_: int = const 2;
   v2_: bool = lt v0 v1_;
 <<<<<<< HEAD
@@ -50,7 +49,7 @@ expression: visualization.result
 .v14_:
   br v13_ .v15_ .v16_;
 .v15_:
-  v17_: int = add v1_ v10_;
+  v17_: int = add v10_ v1_;
   v18_: int = id v17_;
   v19_: int = id v4_;
   jmp .v20_;
@@ -108,6 +107,7 @@ expression: visualization.result
 .v20_:
   v22_: int = add v18_ v4_;
   print v22_;
+<<<<<<< HEAD
 ||||||| parent of 60b5671 (Delete TODO switch rule)
   v3: int = const 2;
   v5: bool = lt v0 v3;
@@ -180,4 +180,78 @@ expression: visualization.result
   print v51;
 >>>>>>> 60b5671 (Delete TODO switch rule)
 >>>>>>> 5abe4a04 (Delete TODO switch rule)
+||||||| parent of 4a17d535 (Snapshots)
+||||||| parent of 60b5671 (Delete TODO switch rule)
+  v3: int = const 2;
+  v5: bool = lt v0 v3;
+  v8: int = const 0;
+  v10: int = const 1;
+  v14: int = const 5;
+  br v5 .__27__ .__16__;
+.__27__:
+  v26: int = const 4;
+  v30: bool = const false;
+  v21: int = id v26;
+  v22: int = id v10;
+  v23: int = id v3;
+  v24: bool = id v30;
+.__33__:
+  br v24 .__43__ .__38__;
+.__43__:
+  v45: int = add v21 v3;
+  v40: int = id v45;
+  v41: int = id v10;
+  jmp .__49__;
+.__38__:
+  v40: int = id v21;
+  v41: int = id v10;
+  jmp .__49__;
+.__16__:
+  v19: bool = const true;
+  v21: int = id v10;
+  v22: int = id v10;
+  v23: int = id v3;
+  v24: bool = id v19;
+  jmp .__33__;
+.__49__:
+  v51: int = add v40 v10;
+  print v51;
+=======
+  v2: int = const 1;
+  v5: int = const 2;
+  v7: bool = lt v0 v5;
+  v10: int = const 0;
+  v15: int = const 5;
+  br v7 .__28__ .__17__;
+.__28__:
+  v27: int = const 4;
+  v31: bool = const false;
+  v22: int = id v27;
+  v23: int = id v2;
+  v24: int = id v5;
+  v25: bool = id v31;
+.__34__:
+  br v25 .__44__ .__39__;
+.__44__:
+  v46: int = add v5 v22;
+  v41: int = id v46;
+  v42: int = id v2;
+  jmp .__50__;
+.__39__:
+  v41: int = id v22;
+  v42: int = id v2;
+  jmp .__50__;
+.__17__:
+  v20: bool = const true;
+  v22: int = id v2;
+  v23: int = id v2;
+  v24: int = id v5;
+  v25: bool = id v20;
+  jmp .__34__;
+.__50__:
+  v51: int = add v2 v41;
+  print v51;
+>>>>>>> 60b5671 (Delete TODO switch rule)
+=======
+>>>>>>> 4a17d535 (Snapshots)
 }

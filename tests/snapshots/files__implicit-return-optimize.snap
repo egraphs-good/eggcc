@@ -7,6 +7,7 @@ expression: visualization.result
   v3_: int = const 1;
   v4_: int = sub v1 v3_;
   v5_: int = id v0;
+<<<<<<< HEAD
   v6_: int = id v2_;
   v7_: int = id v0;
   v8_: int = id v1;
@@ -14,6 +15,53 @@ expression: visualization.result
 .v10_:
   v11_: bool = lt v6_ v9_;
   br v11_ .v12_ .v13_;
+||||||| parent of 5bac80ef (Snapshots)
+  v6_: int = id v1;
+.v7_:
+  v8_: int = const 1;
+  v9_: int = sub v6_ v8_;
+  v10_: bool = lt v4_ v9_;
+  br v10_ .v11_ .v12_;
+.v11_:
+  v13_: int = mul v5_ v3_;
+  v14_: bool = const true;
+  v15_: int = const 1;
+  v16_: int = add v4_ v15_;
+  v17_: int = id v13_;
+  v18_: bool = id v14_;
+  v19_: int = id v16_;
+  v20_: int = id v5_;
+  v21_: int = id v6_;
+.v22_:
+  v3_: int = id v17_;
+  v4_: int = id v19_;
+  v5_: int = id v5_;
+  v6_: int = id v6_;
+  br v10_ .v7_ .v23_;
+=======
+  v6_: int = id v1;
+.v7_:
+  v8_: int = const 1;
+  v9_: int = sub v6_ v8_;
+  v10_: bool = lt v4_ v9_;
+  br v10_ .v11_ .v12_;
+.v11_:
+  v13_: int = mul v5_ v3_;
+  v14_: bool = const true;
+  v15_: int = const 1;
+  v16_: int = add v15_ v4_;
+  v17_: int = id v13_;
+  v18_: bool = id v14_;
+  v19_: int = id v16_;
+  v20_: int = id v5_;
+  v21_: int = id v6_;
+.v22_:
+  v3_: int = id v17_;
+  v4_: int = id v19_;
+  v5_: int = id v5_;
+  v6_: int = id v6_;
+  br v10_ .v7_ .v23_;
+>>>>>>> 5bac80ef (Snapshots)
 .v12_:
   v14_: int = mul v5_ v7_;
   v15_: bool = const true;

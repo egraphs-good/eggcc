@@ -37,8 +37,21 @@ expression: visualization.result
   v25_: int = div v6_ v7_;
   v26_: int = mul v25_ v7_;
   v27_: int = sub v6_ v26_;
+<<<<<<< HEAD
   v28_: bool = eq v10_ v27_;
+||||||| parent of 6820de9a (Snapshots)
+  v28_: bool = eq v27_ v10_;
+=======
+  v28_: bool = eq v27_ v10_;
+<<<<<<< HEAD
+>>>>>>> 6820de9a (Snapshots)
   v29_: int = add v5_ v8_;
+||||||| parent of 5bac80ef (Snapshots)
+  v28_: bool = eq v10_ v27_;
+  v29_: int = add v8_ v5_;
+=======
+  v29_: int = add v8_ v5_;
+>>>>>>> 5bac80ef (Snapshots)
   br v28_ .v30_ .v31_;
 .v30_:
   v32_: bool = const true;

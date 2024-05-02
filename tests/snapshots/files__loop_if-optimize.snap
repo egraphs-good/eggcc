@@ -7,7 +7,7 @@ expression: visualization.result
   v1_: int = id v0_;
   v2_: int = id v0_;
 .v3_:
-  v4_: bool = eq v1_ v2_;
+  v4_: bool = eq v2_ v1_;
   br v4_ .v5_ .v6_;
 .v5_:
   v7_: int = id v1_;

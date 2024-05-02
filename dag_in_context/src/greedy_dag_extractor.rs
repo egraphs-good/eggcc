@@ -7,10 +7,12 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     f64::INFINITY,
 };
+use strum::IntoEnumIterator;
 
 use crate::{
     from_egglog::FromEgglog,
     schema::{RcExpr, TreeProgram, Type},
+    schema_helpers::Sort,
     typechecker::TypeChecker,
 };
 
@@ -838,12 +840,27 @@ fn get_conslist_children(egraph: &egraph_serialize::EGraph, class_id: ClassId) -
     }
 }
 
+fn type_is_part_of_ast(ty: &str) -> bool {
+    for sort in Sort::iter() {
+        if sort.name() == ty {
+            return true;
+        }
+    }
+    false
+}
+
+/// Reachable eclasses in the same region as the root.
+/// Does not include subregions, assumptions, or anything that does not have the correct type.
 fn region_reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) -> HashSet<ClassId> {
     let mut visited = HashSet::new();
     let mut queue = UniqueQueue::default();
     queue.insert(root);
 
     while let Some(eclass) = queue.pop() {
+        let eclass_type = egraph.class_data[&eclass].typ.as_ref().unwrap();
+        if !type_is_part_of_ast(eclass_type) {
+            continue;
+        }
         if visited.insert(eclass.clone()) {
             for node in &egraph.classes()[&eclass].nodes {
                 for EnodeChild {

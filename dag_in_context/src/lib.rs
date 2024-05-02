@@ -187,7 +187,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let (serialized, unextractables) = serialized_egraph(egraph);
     let (_res_cost, res) = extract(
         program,
-        &serialized,
+        serialized,
         unextractables,
         &mut termdag,
         DefaultCostModel,
@@ -209,7 +209,7 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
     let mut termdag = egglog::TermDag::default();
     let (_res_cost, res) = extract(
         program,
-        &serialized,
+        serialized,
         unextractables,
         &mut termdag,
         DefaultCostModel,

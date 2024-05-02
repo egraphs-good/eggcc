@@ -19,7 +19,7 @@ use crate::{
 type RootId = ClassId;
 
 pub(crate) struct EgraphInfo<'a> {
-    pub(crate) egraph: &'a EGraph,
+    pub(crate) egraph: EGraph,
     // For every (root, eclass) pair, store the parent
     // (root, enode) pairs that may depend on it.
     pub(crate) parents: HashMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
@@ -60,40 +60,42 @@ impl<'a> EgraphInfo<'a> {
 
     pub(crate) fn new(
         cm: &'a dyn CostModel,
-        egraph: &'a EGraph,
+        egraph: EGraph,
         unextractables: HashSet<String>,
     ) -> Self {
         // get all the roots needed
         let mut region_roots = HashSet::new();
         for node in egraph.classes().values().flat_map(|c| &c.nodes) {
-            for root in enode_regions(egraph, &egraph[node]) {
+            for root in enode_regions(&egraph, &egraph[node]) {
                 region_roots.insert(root);
             }
         }
         // also add the root of the egraph to region_roots
-        region_roots.insert(egraph.nid_to_cid(&get_root(egraph)).clone());
+        region_roots.insert(egraph.nid_to_cid(&get_root(&egraph)).clone());
 
+        let mut num_not_expr = 0;
         // find all the (root, child) pairs that are important
         let mut relavent_nodes: Vec<(ClassId, ClassId)> = vec![];
         for root in &region_roots {
-            let reachable = region_reachable_classes(egraph, root.clone());
+            let reachable = region_reachable_classes(&egraph, root.clone(), cm);
             for eclass in reachable {
+                // if type is not expr add to count
+                if egraph.class_data[&eclass].typ.as_ref().unwrap() != "Expr" {
+                    num_not_expr += 1;
+                }
                 relavent_nodes.push((root.clone(), eclass));
             }
         }
 
         if relavent_nodes.len() > egraph.classes().len() * 3 {
-            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclasses: {}. (Root, eclass) pairs: {}. Region roots: {}", relavent_nodes.len() / egraph.classes().len(), egraph.classes().len(), relavent_nodes.len(), region_roots.len());
+            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclasses: {}. (Root, eclass) pairs: {}. Region roots: {}. Non-Expr: {}", relavent_nodes.len() / egraph.classes().len(), egraph.classes().len(), relavent_nodes.len(), region_roots.len(), num_not_expr);
         }
 
         let mut roots = vec![];
         // find all the (root, enode) pairs that are root nodes (no children)
         for (root, eclass) in &relavent_nodes {
             for enode in egraph.classes()[eclass].nodes.iter() {
-                // skip if cost is infinite
-                if enode_children(egraph, &egraph[enode]).is_empty()
-                    && cm.get_op_cost(&egraph[enode].op) != INFINITY
-                {
+                if enode_children(&egraph, &egraph[enode]).is_empty() {
                     roots.push((root.clone(), enode.clone()));
                 }
             }
@@ -107,16 +109,18 @@ impl<'a> EgraphInfo<'a> {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {
                 let node = &egraph[enode];
-                // skip if cost is infinite
-                if cm.get_op_cost(&node.op) == INFINITY {
+
+                // skip nodes with infinite cost
+                if cm.get_op_cost(&node.op).is_infinite() {
                     continue;
                 }
+
                 // add to the parents table
                 for EnodeChild {
                     child,
                     is_subregion,
                     is_assumption,
-                } in enode_children(egraph, node)
+                } in enode_children(&egraph, node)
                 {
                     if is_assumption {
                         continue;
@@ -232,8 +236,8 @@ impl<'a> Extractor<'a> {
             costs: Default::default(),
             total: 0.0.try_into().unwrap(),
             term: {
-                let dummy = extractor.termdag.lit(Literal::String("dummy".into()));
-                extractor.termdag.app("InFunc".into(), vec![dummy])
+                let dummy = termdag.lit(Literal::String("dummy".into()));
+                termdag.app("InFunc".into(), vec![dummy])
             },
         }];
 
@@ -344,7 +348,7 @@ impl<'a> Extractor<'a> {
             .iter()
             .map(|idx| &self.costsets[*idx])
             .zip(
-                enode_children(info.egraph, node)
+                enode_children(&info.egraph, node)
                     .iter()
                     .map(|c| c.is_subregion),
             )
@@ -448,7 +452,7 @@ fn calculate_node_cost_set(
     let region_costs = extractor.costs.get(&rootid).unwrap();
 
     // get the cost sets for the children
-    let child_cost_sets = enode_children(info.egraph, node)
+    let child_cost_sets = enode_children(&info.egraph, node)
         .iter()
         .filter_map(
             |EnodeChild {
@@ -477,7 +481,7 @@ fn calculate_node_cost_set(
 
 pub fn extract(
     original_prog: &TreeProgram,
-    egraph: &egraph_serialize::EGraph,
+    egraph: egraph_serialize::EGraph,
     unextractables: HashSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
@@ -572,7 +576,7 @@ pub fn extract_with_paths(
         }
     }
 
-    let root_eclass = n2c(&get_root(info.egraph));
+    let root_eclass = n2c(&get_root(&info.egraph));
 
     let root_costset_index = *extractor
         .costs
@@ -642,7 +646,6 @@ impl CostModel for DefaultCostModel {
             "If" | "Switch" => 50.,
             // Schema
             "Bop" | "Uop" | "Top" => 0.,
-            _ if self.ignore_children(op) => 0.,
             _ => INFINITY,
         }
         .try_into()
@@ -855,18 +858,31 @@ fn type_is_part_of_ast(ty: &str) -> bool {
 
 /// Reachable eclasses in the same region as the root.
 /// Does not include subregions, assumptions, or anything that does not have the correct type.
-fn region_reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) -> HashSet<ClassId> {
+fn region_reachable_classes(
+    egraph: &egraph_serialize::EGraph,
+    root: ClassId,
+    cm: &dyn CostModel,
+) -> HashSet<ClassId> {
     let mut visited = HashSet::new();
     let mut queue = UniqueQueue::default();
     queue.insert(root);
 
     while let Some(eclass) = queue.pop() {
         let eclass_type = egraph.class_data[&eclass].typ.as_ref().unwrap();
+        if eclass_type == "Assumption" {
+            panic!("Found assumption in region reachable classes");
+        }
+
         if !type_is_part_of_ast(eclass_type) {
             continue;
         }
         if visited.insert(eclass.clone()) {
             for node in &egraph.classes()[&eclass].nodes {
+                // skip nodes with infinite cost
+                if cm.get_op_cost(&egraph[node].op).is_infinite() {
+                    continue;
+                }
+
                 for EnodeChild {
                     child,
                     is_subregion,
@@ -900,7 +916,7 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
 
     let cost_set = extract(
         prog,
-        &serialized_egraph,
+        serialized_egraph,
         unextractables,
         &mut termdag,
         DefaultCostModel,
@@ -922,11 +938,10 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
 
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&string_prog).unwrap();
-    let (mut serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
-    let egraph = &mut serialized_egraph;
-    let egraph_info = EgraphInfo::new(&DefaultCostModel, egraph, unextractables);
+    let egraph_info = EgraphInfo::new(&DefaultCostModel, serialized_egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
     let (_cost_res, prog) = extract_with_paths(extractor_not_linear, &egraph_info, None);
@@ -1134,7 +1149,7 @@ fn test_validity_of_extraction() {
 
     let egraph_info = EgraphInfo::new(
         &DefaultCostModel,
-        &serialized_egraph,
+        serialized_egraph.clone(),
         unextractables.clone(),
     );
     let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);
@@ -1146,7 +1161,7 @@ fn test_validity_of_extraction() {
     // second extraction should succeed
     extract(
         &prog,
-        &serialized_egraph,
+        serialized_egraph,
         unextractables,
         &mut termdag,
         DefaultCostModel,

@@ -46,7 +46,7 @@ impl<'a> Extractor<'a> {
             .map(|(node_id, node)| (node_id.clone(), node.eclass.clone()))
             .collect();
 
-        let prog_root_id = get_root(egraph_info.egraph); // should be the id of prog
+        let prog_root_id = get_root(&egraph_info.egraph); // should be the id of prog
         let prog_root_id = egraph_info.egraph.nid_to_cid(&prog_root_id);
         let mut linearity = Linearity {
             effectful_nodes: vec![],

@@ -7,17 +7,19 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     f64::INFINITY,
 };
+use strum::IntoEnumIterator;
 
 use crate::{
     from_egglog::FromEgglog,
     schema::{RcExpr, TreeProgram, Type},
+    schema_helpers::Sort,
     typechecker::TypeChecker,
 };
 
 type RootId = ClassId;
 
 pub(crate) struct EgraphInfo<'a> {
-    pub(crate) egraph: &'a EGraph,
+    pub(crate) egraph: EGraph,
     // For every (root, eclass) pair, store the parent
     // (root, enode) pairs that may depend on it.
     pub(crate) parents: HashMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
@@ -29,7 +31,9 @@ pub(crate) struct EgraphInfo<'a> {
 
 pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
-    costs: FxHashMap<ClassId, FxHashMap<ClassId, CostSet>>,
+    costsets: Vec<CostSet>,
+    costsetmemo: FxHashMap<(NodeId, Vec<CostSetIndex>), CostSetIndex>,
+    costs: FxHashMap<ClassId, FxHashMap<ClassId, CostSetIndex>>,
 
     // use to get the type of an expression
     pub(crate) typechecker: TypeChecker<'a>,
@@ -56,36 +60,42 @@ impl<'a> EgraphInfo<'a> {
 
     pub(crate) fn new(
         cm: &'a dyn CostModel,
-        egraph: &'a EGraph,
+        egraph: EGraph,
         unextractables: HashSet<String>,
     ) -> Self {
         // get all the roots needed
         let mut region_roots = HashSet::new();
         for node in egraph.classes().values().flat_map(|c| &c.nodes) {
-            for root in enode_regions(egraph, &egraph[node]) {
+            for root in enode_regions(&egraph, &egraph[node]) {
                 region_roots.insert(root);
             }
         }
         // also add the root of the egraph to region_roots
-        region_roots.insert(egraph.nid_to_cid(&get_root(egraph)).clone());
+        region_roots.insert(egraph.nid_to_cid(&get_root(&egraph)).clone());
 
+        let mut num_not_expr = 0;
         // find all the (root, child) pairs that are important
         let mut relavent_nodes: Vec<(ClassId, ClassId)> = vec![];
         for root in &region_roots {
-            let reachable = region_reachable_classes(egraph, root.clone());
+            let reachable = region_reachable_classes(&egraph, root.clone(), cm);
             for eclass in reachable {
+                // if type is not expr add to count
+                if egraph.class_data[&eclass].typ.as_ref().unwrap() != "Expr" {
+                    num_not_expr += 1;
+                }
                 relavent_nodes.push((root.clone(), eclass));
             }
+        }
+
+        if relavent_nodes.len() > egraph.classes().len() * 3 {
+            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclasses: {}. (Root, eclass) pairs: {}. Region roots: {}. Non-Expr: {}", relavent_nodes.len() / egraph.classes().len(), egraph.classes().len(), relavent_nodes.len(), region_roots.len(), num_not_expr);
         }
 
         let mut roots = vec![];
         // find all the (root, enode) pairs that are root nodes (no children)
         for (root, eclass) in &relavent_nodes {
             for enode in egraph.classes()[eclass].nodes.iter() {
-                // skip if cost is infinite
-                if enode_children(egraph, &egraph[enode]).is_empty()
-                    && cm.get_op_cost(&egraph[enode].op) != INFINITY
-                {
+                if enode_children(&egraph, &egraph[enode]).is_empty() {
                     roots.push((root.clone(), enode.clone()));
                 }
             }
@@ -99,16 +109,18 @@ impl<'a> EgraphInfo<'a> {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {
                 let node = &egraph[enode];
-                // skip if cost is infinite
-                if cm.get_op_cost(&node.op) == INFINITY {
+
+                // skip nodes with infinite cost
+                if cm.get_op_cost(&node.op).is_infinite() {
                     continue;
                 }
+
                 // add to the parents table
                 for EnodeChild {
                     child,
                     is_subregion,
                     is_assumption,
-                } in enode_children(egraph, node)
+                } in enode_children(&egraph, node)
                 {
                     if is_assumption {
                         continue;
@@ -219,8 +231,20 @@ impl<'a> Extractor<'a> {
     }
 
     pub(crate) fn new(original_prog: &'a TreeProgram, termdag: &'a mut TermDag) -> Self {
+        // first element is always a dummy costset
+        let costsets = vec![CostSet {
+            costs: Default::default(),
+            total: 0.0.try_into().unwrap(),
+            term: {
+                let dummy = termdag.lit(Literal::String("dummy".into()));
+                termdag.app("InFunc".into(), vec![dummy])
+            },
+        }];
+
         Extractor {
             termdag,
+            costsets,
+            costsetmemo: Default::default(),
             correspondence: Default::default(),
             costs: Default::default(),
             term_to_expr: Default::default(),
@@ -265,6 +289,7 @@ pub fn serialized_egraph(
 }
 
 type Cost = NotNan<f64>;
+type CostSetIndex = usize;
 
 #[derive(Clone, Debug)]
 pub struct CostSet {
@@ -303,33 +328,131 @@ impl<'a> Extractor<'a> {
 
         term
     }
+
+    fn calculate_cost_set(
+        &mut self,
+        nodeid: NodeId,
+        child_cost_set_indecies: Vec<CostSetIndex>,
+        info: &EgraphInfo,
+    ) -> Option<CostSetIndex> {
+        if let Some(&idx) = self
+            .costsetmemo
+            .get(&(nodeid.clone(), child_cost_set_indecies.clone()))
+        {
+            return Some(idx);
+        }
+        let cid = info.egraph.nid_to_cid(&nodeid);
+        let node = &info.egraph[&nodeid];
+
+        let child_cost_sets = child_cost_set_indecies
+            .iter()
+            .map(|idx| &self.costsets[*idx])
+            .zip(
+                enode_children(&info.egraph, node)
+                    .iter()
+                    .map(|c| c.is_subregion),
+            )
+            .collect::<Vec<_>>();
+        // cycle detection
+        if child_cost_sets
+            .iter()
+            .any(|(cs, _)| cs.costs.contains_key(cid))
+        {
+            return None;
+        }
+
+        let mut shared_total = NotNan::new(0.).unwrap();
+        let mut unshared_total = info.cm.get_op_cost(&node.op);
+        let mut costs: HashTrieMap<ClassId, NotNan<f64>> = Default::default();
+        let index_of_biggest_child = child_cost_sets
+            .iter()
+            .enumerate()
+            .max_by_key(
+                |(_idx, (cs, is_region_root))| {
+                    if *is_region_root {
+                        0
+                    } else {
+                        cs.costs.size()
+                    }
+                },
+            )
+            .map(|(idx, _)| idx);
+        if let Some(index_of_biggest_child) = index_of_biggest_child {
+            let (biggest_child_set, is_region_root) = &child_cost_sets[index_of_biggest_child];
+            if !is_region_root {
+                costs = biggest_child_set.costs.clone();
+                shared_total = biggest_child_set.total;
+            }
+        }
+
+        if !info.cm.ignore_children(&node.op) {
+            for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
+                if *is_region_root {
+                    unshared_total += child_set.total;
+                } else {
+                    // costs is empty, replace it with the child one
+                    if Some(index) == index_of_biggest_child {
+                        // skip the biggest child
+                    } else {
+                        for (child_cid, child_cost) in &child_set.costs {
+                            // it was already present in the set
+                            if let Some(existing) = costs.get(child_cid) {
+                                if existing > child_cost {
+                                    // if we found a lower-cost alternative for this child, use that and decrease cost
+                                    shared_total -= existing - *child_cost;
+                                    costs =
+                                        costs.insert(child_cid.clone(), *existing.min(child_cost));
+                                }
+                            } else {
+                                costs = costs.insert(child_cid.clone(), *child_cost);
+                                shared_total += child_cost;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // no need to add something that costs 0 to the set
+        if unshared_total > NotNan::new(0.).unwrap() {
+            costs = costs.insert(cid.clone(), unshared_total);
+        }
+        let total = unshared_total + shared_total;
+
+        let sub_terms: Vec<Term> = child_cost_sets
+            .iter()
+            .map(|(cs, _)| cs.term.clone())
+            .collect();
+
+        let term = self.get_term(info, nodeid.clone(), sub_terms);
+        self.costsets.push(CostSet { total, costs, term });
+        let index = self.costsets.len() - 1;
+        self.costsetmemo
+            .insert((nodeid, child_cost_set_indecies), index);
+
+        Some(index)
+    }
+
+    pub(crate) fn dummy_costset(&self) -> CostSetIndex {
+        0
+    }
 }
 
 /// Calculates the cost set of a node based on cost sets of children.
 /// Handles cycles by returning a cost set with infinite cost.
 /// Returns None when costs for children are not yet available.
-fn calculate_cost_set(
+fn calculate_node_cost_set(
     rootid: ClassId,
     node_id: NodeId,
     extractor: &mut Extractor,
     info: &EgraphInfo,
-) -> Option<CostSet> {
+) -> Option<CostSetIndex> {
     let node = &info.egraph[&node_id];
 
-    let cid = info.egraph.nid_to_cid(&node_id);
     let region_costs = extractor.costs.get(&rootid).unwrap();
 
-    let dummy_ctx = CostSet {
-        costs: Default::default(),
-        total: 0.0.try_into().unwrap(),
-        term: {
-            let dummy = extractor.termdag.lit(Literal::String("dummy".into()));
-            extractor.termdag.app("InFunc".into(), vec![dummy])
-        },
-    };
-
     // get the cost sets for the children
-    let child_cost_sets = enode_children(info.egraph, node)
+    let child_cost_sets = enode_children(&info.egraph, node)
         .iter()
         .filter_map(
             |EnodeChild {
@@ -339,13 +462,11 @@ fn calculate_cost_set(
              }| {
                 // for assumptions, just return a dummy context every time
                 if *is_assumption {
-                    Some((&dummy_ctx, *is_subregion))
+                    Some(extractor.dummy_costset())
                 } else if *is_subregion {
-                    Some((extractor.costs.get(child)?.get(child)?, *is_subregion))
+                    extractor.costs.get(child)?.get(child).copied()
                 } else {
-                    region_costs
-                        .get(child)
-                        .map(|cost_set| (cost_set, *is_subregion))
+                    region_costs.get(child).copied()
                 }
             },
         )
@@ -355,89 +476,12 @@ fn calculate_cost_set(
         return None;
     }
 
-    // cycle detection
-    if child_cost_sets
-        .iter()
-        .any(|(cs, _is_region_root)| cs.costs.contains_key(cid))
-    {
-        return Some(CostSet {
-            costs: Default::default(),
-            total: std::f64::INFINITY.try_into().unwrap(),
-            // returns junk children since this cost set is guaranteed to not be selected.
-            term: extractor.termdag.app(node.op.as_str().into(), vec![]),
-        });
-    }
-
-    let mut shared_total = NotNan::new(0.).unwrap();
-    let mut unshared_total = info.cm.get_op_cost(&node.op);
-    let mut costs: HashTrieMap<ClassId, NotNan<f64>> = Default::default();
-    let index_of_biggest_child = child_cost_sets
-        .iter()
-        .enumerate()
-        .max_by_key(
-            |(_idx, (cs, is_region_root))| {
-                if *is_region_root {
-                    0
-                } else {
-                    cs.costs.size()
-                }
-            },
-        )
-        .map(|(idx, _)| idx);
-    if let Some(index_of_biggest_child) = index_of_biggest_child {
-        let (biggest_child_set, is_region_root) = &child_cost_sets[index_of_biggest_child];
-        if !*is_region_root {
-            costs = biggest_child_set.costs.clone();
-            shared_total = biggest_child_set.total;
-        }
-    }
-
-    if !info.cm.ignore_children(&node.op) {
-        for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
-            if *is_region_root {
-                unshared_total += child_set.total;
-            } else {
-                // costs is empty, replace it with the child one
-                if Some(index) == index_of_biggest_child {
-                    // skip the biggest child
-                } else {
-                    for (child_cid, child_cost) in &child_set.costs {
-                        // it was already present in the set
-                        if let Some(existing) = costs.get(child_cid) {
-                            if existing > child_cost {
-                                // if we found a lower-cost alternative for this child, use that and decrease cost
-                                shared_total -= existing - *child_cost;
-                                costs = costs.insert(child_cid.clone(), *existing.min(child_cost));
-                            }
-                        } else {
-                            costs = costs.insert(child_cid.clone(), *child_cost);
-                            shared_total += child_cost;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // no need to add something that costs 0 to the set
-    if unshared_total > NotNan::new(0.).unwrap() {
-        costs = costs.insert(cid.clone(), unshared_total);
-    }
-    let total = unshared_total + shared_total;
-
-    let sub_terms: Vec<Term> = child_cost_sets
-        .iter()
-        .map(|(cs, _is_region_root)| cs.term.clone())
-        .collect();
-
-    let term = extractor.get_term(info, node_id, sub_terms);
-
-    Some(CostSet { total, costs, term })
+    extractor.calculate_cost_set(node_id, child_cost_sets, info)
 }
 
 pub fn extract(
     original_prog: &TreeProgram,
-    egraph: &egraph_serialize::EGraph,
+    egraph: egraph_serialize::EGraph,
     unextractables: HashSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
@@ -457,6 +501,9 @@ pub fn extract(
         );
         extractor_not_linear.check_program_is_linear(&res).unwrap();
     }
+
+    log::info!("Extracted program with cost {}", cost_res.total);
+    log::info!("Created {} cost sets", extractor_not_linear.costsets.len());
 
     (cost_res, res)
 }
@@ -506,15 +553,18 @@ pub fn extract_with_paths(
         let region_costs = extractor.costs.entry(rootid.clone()).or_default();
         let lookup = region_costs.get(classid);
         let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
-        if lookup.is_some() {
-            prev_cost = lookup.unwrap().total;
+        if let Some(lookup) = lookup {
+            let costset = extractor.costsets.get(*lookup).unwrap();
+            prev_cost = costset.total;
         }
 
-        if let Some(cost_set) = calculate_cost_set(rootid.clone(), nodeid.clone(), extractor, info)
+        if let Some(cost_set_index) =
+            calculate_node_cost_set(rootid.clone(), nodeid.clone(), extractor, info)
         {
+            let cost_set = &extractor.costsets[cost_set_index];
             let region_costs = extractor.costs.get_mut(&rootid).unwrap();
             if cost_set.total < prev_cost {
-                region_costs.insert(classid.clone(), cost_set);
+                region_costs.insert(classid.clone(), cost_set_index);
 
                 // we updated this eclass's cost, so we need to update its parents
                 if let Some(parents) = info.parents.get(&(rootid.clone(), classid.clone())) {
@@ -526,9 +576,9 @@ pub fn extract_with_paths(
         }
     }
 
-    let root_eclass = n2c(&get_root(info.egraph));
+    let root_eclass = n2c(&get_root(&info.egraph));
 
-    let root_costset = extractor
+    let root_costset_index = *extractor
         .costs
         .get(root_eclass)
         .expect("Failed to extract program! Also failed to extract any functions in program.")
@@ -539,8 +589,8 @@ pub fn extract_with_paths(
             } else {
                 panic!("Failed to extract program during initial extraction!");
             }
-        })
-        .clone();
+        });
+    let root_costset = extractor.costsets[root_costset_index].clone();
 
     // now run translation to expressions
     let resulting_prog = extractor.terms_to_expressions(info, root_costset.term.clone());
@@ -596,7 +646,6 @@ impl CostModel for DefaultCostModel {
             "If" | "Switch" => 50.,
             // Schema
             "Bop" | "Uop" | "Top" => 0.,
-            _ if self.ignore_children(op) => 0.,
             _ => INFINITY,
         }
         .try_into()
@@ -798,14 +847,42 @@ fn get_conslist_children(egraph: &egraph_serialize::EGraph, class_id: ClassId) -
     }
 }
 
-fn region_reachable_classes(egraph: &egraph_serialize::EGraph, root: ClassId) -> HashSet<ClassId> {
+fn type_is_part_of_ast(ty: &str) -> bool {
+    for sort in Sort::iter() {
+        if sort.name() == ty {
+            return true;
+        }
+    }
+    false
+}
+
+/// Reachable eclasses in the same region as the root.
+/// Does not include subregions, assumptions, or anything that does not have the correct type.
+fn region_reachable_classes(
+    egraph: &egraph_serialize::EGraph,
+    root: ClassId,
+    cm: &dyn CostModel,
+) -> HashSet<ClassId> {
     let mut visited = HashSet::new();
     let mut queue = UniqueQueue::default();
     queue.insert(root);
 
     while let Some(eclass) = queue.pop() {
+        let eclass_type = egraph.class_data[&eclass].typ.as_ref().unwrap();
+        if eclass_type == "Assumption" {
+            panic!("Found assumption in region reachable classes");
+        }
+
+        if !type_is_part_of_ast(eclass_type) {
+            continue;
+        }
         if visited.insert(eclass.clone()) {
             for node in &egraph.classes()[&eclass].nodes {
+                // skip nodes with infinite cost
+                if cm.get_op_cost(&egraph[node].op).is_infinite() {
+                    continue;
+                }
+
                 for EnodeChild {
                     child,
                     is_subregion,
@@ -839,7 +916,7 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
 
     let cost_set = extract(
         prog,
-        &serialized_egraph,
+        serialized_egraph,
         unextractables,
         &mut termdag,
         DefaultCostModel,
@@ -861,11 +938,10 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
 
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&string_prog).unwrap();
-    let (mut serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
-    let egraph = &mut serialized_egraph;
-    let egraph_info = EgraphInfo::new(&DefaultCostModel, egraph, unextractables);
+    let egraph_info = EgraphInfo::new(&DefaultCostModel, serialized_egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
     let (_cost_res, prog) = extract_with_paths(extractor_not_linear, &egraph_info, None);
@@ -1073,7 +1149,7 @@ fn test_validity_of_extraction() {
 
     let egraph_info = EgraphInfo::new(
         &DefaultCostModel,
-        &serialized_egraph,
+        serialized_egraph.clone(),
         unextractables.clone(),
     );
     let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);
@@ -1085,7 +1161,7 @@ fn test_validity_of_extraction() {
     // second extraction should succeed
     extract(
         &prog,
-        &serialized_egraph,
+        serialized_egraph,
         unextractables,
         &mut termdag,
         DefaultCostModel,

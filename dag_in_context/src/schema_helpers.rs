@@ -410,7 +410,7 @@ impl TreeProgram {
 
 use std::iter;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, EnumIter)]
 pub(crate) enum Sort {
     Expr,
     ListExpr,
@@ -418,10 +418,14 @@ pub(crate) enum Sort {
     UnaryOp,
     TernaryOp,
     I64,
+    Bool,
     Type,
     String,
     Constant,
     Assumption,
+    BaseType,
+    TypeList,
+    ProgramType,
 }
 
 impl Sort {
@@ -430,6 +434,7 @@ impl Sort {
             Sort::Expr => "Expr",
             Sort::ListExpr => "ListExpr",
             Sort::I64 => "i64",
+            Sort::Bool => "bool",
             Sort::String => "String",
             Sort::Type => "Type",
             Sort::BinaryOp => "BinaryOp",
@@ -437,6 +442,9 @@ impl Sort {
             Sort::TernaryOp => "TernaryOp",
             Sort::Constant => "Constant",
             Sort::Assumption => "Assumption",
+            Sort::BaseType => "BaseType",
+            Sort::TypeList => "TypeList",
+            Sort::ProgramType => "ProgramType",
         }
     }
 }

@@ -24,10 +24,10 @@ expression: visualization.result
   br v19_ .v20_ .v21_;
 .v20_:
   v22_: int = mul v16_ v13_;
-  v23_: int = add v15_ v22_;
+  v23_: int = add v22_ v15_;
   print v23_;
   v24_: bool = const true;
-  v25_: int = add v14_ v15_;
+  v25_: int = add v15_ v14_;
   v26_: int = id v13_;
   v27_: int = id v14_;
   v28_: bool = id v24_;
@@ -42,7 +42,7 @@ expression: visualization.result
   v17_: int = id v17_;
   br v19_ .v18_ .v33_;
 .v33_:
-  v34_: int = add v14_ v13_;
+  v34_: int = add v13_ v14_;
   v35_: bool = const true;
   v36_: int = id v34_;
   v37_: bool = id v35_;

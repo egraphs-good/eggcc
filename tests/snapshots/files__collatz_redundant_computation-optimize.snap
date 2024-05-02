@@ -39,7 +39,7 @@ expression: visualization.result
   v27_: int = sub v6_ v26_;
   v28_: bool = eq v27_ v10_;
   print v6_;
-  v29_: int = mul v8_ v6_;
+  v29_: int = mul v6_ v8_;
   v30_: int = add v29_ v7_;
   br v28_ .v31_ .v32_;
 .v31_:

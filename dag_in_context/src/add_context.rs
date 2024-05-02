@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::noctx,
     schema::{Assumption, Expr, RcExpr, TreeProgram},
     schema_helpers::AssumptionRef,
 };
@@ -64,7 +63,7 @@ impl Expr {
         let Expr::Function(name, arg_ty, ret_ty, body) = &self.as_ref() else {
             panic!("Expected Function, got {:?}", self);
         };
-        let current_ctx = noctx();
+        let current_ctx = Assumption::InFunc(name.clone());
         RcExpr::new(Expr::Function(
             name.clone(),
             arg_ty.clone(),
@@ -79,7 +78,7 @@ impl Expr {
             symbol_gen: HashMap::new(),
             symbolic_ctx: true,
         };
-        self.add_ctx_with_cache(noctx(), &mut cache)
+        self.add_ctx_with_cache(Assumption::dummy(), &mut cache)
     }
 
     pub(crate) fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> RcExpr {

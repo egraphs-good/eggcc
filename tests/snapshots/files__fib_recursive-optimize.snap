@@ -4,7 +4,7 @@ expression: visualization.result
 ---
 @fac(v0: int): int {
   v1_: int = const 0;
-  v2_: bool = eq v0 v1_;
+  v2_: bool = eq v1_ v0;
   v3_: int = const 1;
   br v2_ .v4_ .v5_;
 .v4_:
@@ -15,7 +15,7 @@ expression: visualization.result
   br v8_ .v9_ .v10_;
 .v9_:
   v11_: int = call @fac v1_;
-  v12_: int = id v3_;
+  v12_: int = id v0;
 .v13_:
   v6_: int = id v12_;
   jmp .v7_;
@@ -24,7 +24,7 @@ expression: visualization.result
   v15_: int = sub v14_ v3_;
   v16_: int = call @fac v14_;
   v17_: int = call @fac v15_;
-  v18_: int = add v17_ v16_;
+  v18_: int = add v16_ v17_;
   v12_: int = id v18_;
   jmp .v13_;
 .v7_:

@@ -82,6 +82,10 @@ impl<'a> EgraphInfo<'a> {
             }
         }
 
+        if relavent_nodes.len() > egraph.classes().len() * 3 {
+            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclasses: {}. (Root, eclass) pairs: {}. Region roots: {}", relavent_nodes.len() / egraph.classes().len(), egraph.classes().len(), relavent_nodes.len(), region_roots.len());
+        }
+
         let mut roots = vec![];
         // find all the (root, enode) pairs that are root nodes (no children)
         for (root, eclass) in &relavent_nodes {

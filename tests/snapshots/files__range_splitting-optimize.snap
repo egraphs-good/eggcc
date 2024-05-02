@@ -4,6 +4,7 @@ expression: visualization.result
 ---
 @main {
 <<<<<<< HEAD
+<<<<<<< HEAD
   v0_: int = const 0;
   v1_: int = id v0_;
 .v2_:
@@ -38,6 +39,10 @@ expression: visualization.result
   v1_: int = const 1;
 >>>>>>> 691fa0b6 (some snapshots)
 >>>>>>> e87ec5b4 (some snapshots)
+=======
+  v0_: bool = const true;
+  v1_: int = const 1;
+>>>>>>> 68dd6525 (snapshots)
   print v1_;
   br v0_ .v2_ .v3_;
 .v2_:

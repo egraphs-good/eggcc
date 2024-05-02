@@ -4,8 +4,9 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v1_: int = const 3;
-  v2_: int = add v0 v1_;
+  v2_: int = add v1_ v0;
   v3_: int = const 0;
+<<<<<<< HEAD
   v4_: int = const 21;
   v5_: int = id v1_;
   v6_: int = id v2_;
@@ -30,4 +31,27 @@ expression: visualization.result
   print v7_;
   print v6_;
   print v5_;
+=======
+  v4_: int = id v1_;
+  v5_: int = id v2_;
+  v6_: int = id v3_;
+  v7_: int = id v0;
+.v8_:
+  v9_: int = const 7;
+  v10_: int = mul v9_ v4_;
+  print v10_;
+  v11_: int = const 2;
+  v12_: int = add v11_ v4_;
+  v13_: int = add v10_ v6_;
+  v14_: bool = lt v4_ v7_;
+  v4_: int = id v12_;
+  v5_: int = id v5_;
+  v6_: int = id v13_;
+  v7_: int = id v7_;
+  br v14_ .v8_ .v15_;
+.v15_:
+  print v6_;
+  print v2_;
+  print v4_;
+>>>>>>> 72387c3b (snapshots)
 }

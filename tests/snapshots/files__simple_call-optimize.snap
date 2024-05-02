@@ -4,7 +4,7 @@ expression: visualization.result
 ---
 @inc(v0: int) {
   v1_: int = const 1;
-  v2_: int = add v0 v1_;
+  v2_: int = add v1_ v0;
   print v2_;
 }
 @main {

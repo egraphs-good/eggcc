@@ -26,7 +26,7 @@ expression: visualization.result
 .v14_:
   br v13_ .v15_ .v16_;
 .v15_:
-  v17_: int = add v10_ v1_;
+  v17_: int = add v1_ v10_;
   v18_: int = id v17_;
   v19_: int = id v4_;
   jmp .v20_;

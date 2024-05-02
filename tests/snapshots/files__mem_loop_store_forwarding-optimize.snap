@@ -9,6 +9,7 @@ expression: visualization.result
   v4_: ptr<int> = ptradd v2_ v3_;
   v5_: int = const 2;
   v6_: ptr<int> = ptradd v2_ v5_;
+<<<<<<< HEAD
   v7_: ptr<int> = id v4_;
   v8_: ptr<int> = id v2_;
   v9_: ptr<int> = id v6_;
@@ -27,4 +28,90 @@ expression: visualization.result
   v15_: int = load v8_;
   print v13_;
   free v7_;
+||||||| parent of 8486d06c (Snapshots)
+  br v0 .v7_ .v8_;
+.v7_:
+  v9_: ptr<int> = id v2_;
+  v10_: ptr<int> = id v4_;
+  v11_: ptr<int> = id v6_;
+  v12_: bool = id v0;
+.v13_:
+  v9_: ptr<int> = id v10_;
+  v10_: ptr<int> = id v9_;
+  v11_: ptr<int> = id v11_;
+  v12_: bool = id v12_;
+  br v12_ .v13_ .v14_;
+.v14_:
+  v15_: ptr<int> = id v9_;
+  v16_: ptr<int> = id v10_;
+  v17_: ptr<int> = id v11_;
+  v18_: bool = id v12_;
+  jmp .v19_;
+.v8_:
+  v15_: ptr<int> = id v2_;
+  v16_: ptr<int> = id v4_;
+  v17_: ptr<int> = id v6_;
+  v18_: bool = id v0;
+.v19_:
+  v20_: int = const 10;
+  v21_: int = const 20;
+  store v16_ v20_;
+  store v17_ v21_;
+  v22_: int = load v16_;
+  print v20_;
+  free v15_;
+=======
+  br v0 .v7_ .v8_;
+.v7_:
+  v9_: ptr<int> = id v2_;
+  v10_: ptr<int> = id v4_;
+  v11_: ptr<int> = id v6_;
+  v12_: bool = id v0;
+.v13_:
+  v9_: ptr<int> = id v10_;
+  v10_: ptr<int> = id v9_;
+  v11_: ptr<int> = id v11_;
+  v12_: bool = id v12_;
+  br v12_ .v13_ .v14_;
+.v14_:
+  v15_: ptr<int> = id v9_;
+  v16_: ptr<int> = id v10_;
+  v17_: ptr<int> = id v11_;
+  v18_: bool = id v12_;
+  jmp .v19_;
+.v8_:
+  v15_: ptr<int> = id v2_;
+  v16_: ptr<int> = id v4_;
+  v17_: ptr<int> = id v6_;
+  v18_: bool = id v0;
+.v19_:
+  v20_: int = const 10;
+  v21_: int = const 20;
+  store v16_ v20_;
+  store v17_ v21_;
+<<<<<<< HEAD
+  v22_: int = load v16_;
+||||||| parent of ba246eb6 (Snapshots)
+  v7_: ptr<int> = id v4_;
+  v8_: ptr<int> = id v2_;
+  v9_: ptr<int> = id v6_;
+  v10_: bool = id v0;
+.v11_:
+  v7_: ptr<int> = id v8_;
+  v8_: ptr<int> = id v7_;
+  v9_: ptr<int> = id v9_;
+  v10_: bool = id v10_;
+  br v10_ .v11_ .v12_;
+.v12_:
+  v13_: int = const 10;
+  v14_: int = const 20;
+  store v8_ v13_;
+  store v9_ v14_;
+  print v13_;
+  free v7_;
+=======
+>>>>>>> ba246eb6 (Snapshots)
+  print v20_;
+  free v15_;
+>>>>>>> 8486d06c (Snapshots)
 }

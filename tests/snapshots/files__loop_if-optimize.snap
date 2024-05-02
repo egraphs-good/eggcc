@@ -7,7 +7,7 @@ expression: visualization.result
   v1_: int = id v0_;
   v2_: int = id v0_;
 .v3_:
-  v4_: bool = eq v2_ v1_;
+  v4_: bool = eq v1_ v2_;
   br v4_ .v5_ .v6_;
 .v5_:
   v7_: int = id v1_;
@@ -32,10 +32,22 @@ expression: visualization.result
   v16_: int = id v9_;
   jmp .v17_;
 .v6_:
+<<<<<<< HEAD
   v21_: int = const 1;
   v22_: int = add v1_ v21_;
   v23_: int = add v21_ v2_;
   v7_: int = id v22_;
+||||||| parent of ba246eb6 (Snapshots)
+  v20_: int = const 1;
+  v21_: int = add v20_ v1_;
+  v22_: int = add v2_ v20_;
+  v7_: int = id v21_;
+=======
+  v20_: int = const 1;
+  v21_: int = add v1_ v20_;
+  v22_: int = add v2_ v20_;
+  v7_: int = id v21_;
+>>>>>>> ba246eb6 (Snapshots)
   v8_: bool = id v4_;
   v9_: int = id v23_;
   jmp .v10_;

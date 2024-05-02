@@ -577,3 +577,47 @@ fn pqrs_deep_loop_swap() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn redundant_load_elim() -> crate::Result {
+    use crate::ast::*;
+    let alloc_id = 1;
+    let state = getat(0);
+    let p_and_state = alloc(alloc_id, int(4), state, pointert(intt()));
+    let p = get(p_and_state.clone(), 0);
+    // if (Arg 1) { *p = 2 } else { *p = 3 }
+    let state = tif(
+        getat(1),
+        p_and_state,
+        write(getat(0), int(2), getat(1)),
+        write(getat(0), int(3), getat(1)),
+    );
+    // load p
+    let val_and_state = load(p.clone(), state);
+    let load1_val = get(val_and_state.clone(), 0)
+        .with_arg_types(tuplet!(statet(), boolt()), Type::Base(intt()));
+    let state = get(val_and_state, 1);
+    // load p again and print
+    let val_and_state = load(p.clone(), state);
+    let val = get(val_and_state.clone(), 0);
+    let state = get(val_and_state, 1);
+    let res = tprint(val, state).with_arg_types(tuplet!(statet(), boolt()), Type::Base(statet()));
+    let f = function(
+        "main",
+        tuplet!(statet(), boolt()),
+        Type::Base(statet()),
+        res.clone(),
+    )
+    .func_with_arg_types();
+    egglog_test_and_print_program(
+        &format!("{f}"),
+        &format!(
+            "(print-function PointsToExpr 1000)
+        (check (= {res} (Bop (Print) {load1_val} rest)))"
+        ),
+        vec![],
+        val_empty(),
+        val_empty(),
+        vec![],
+    )
+}

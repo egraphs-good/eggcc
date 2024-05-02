@@ -1,14 +1,19 @@
-@main() {
+# ARGS: false
+@main(cond: bool) {
     one: int = const 1;
+    p: ptr<int> = alloc one;
+    br cond .t .f;
+.t:
     two: int = const 2;
-    ten: int = const 10;
-    twenty: int = const 20;
-    p: ptr<int> = alloc two;
-    q: ptr<int> = ptradd p one;
-    store p ten;
-    store q twenty;
-    res: int = load p;
-    print res;
+    store p two;
+    jmp .done;
+.f:
+    three: int = const 3;
+    store p three;
+.done:
+    load1: int = load p;
+    load2: int = load p;
+    print load2;
     free p;
     ret;
 }

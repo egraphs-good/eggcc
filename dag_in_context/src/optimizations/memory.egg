@@ -355,32 +355,11 @@
             pointees))
       :ruleset memory)
 
-; ============================
-; Update CellHasValues
-; ============================
-
-;                       program point, cell
-(function CellHasValues (Expr i64) ExprSet :merge (ExprSet-intersect old new))
-
 (rule ((PtrPointsTo (PointsTo l)))
       ((DemandAt-List<i64+IntInterval> l))
       :ruleset memory-helpers)
 (rule ((TuplePointsTo l))
       ((DemandAt-List<PtrPointees> l))
-      :ruleset memory-helpers)
-
-; TODO: make sensitive to offsets
-(rule ((= e (Top (Write) ptr val state))
-       (HasArgType ptr argty))
-      ((TypeToPointees argty))
-      :ruleset memory-helpers)
-
-(rule ((= e (Top (Write) ptr val state))
-       (HasArgType ptr argty)
-       (= (PtrPointsTo (PointsTo cells)) (PointsToCells ptr (TypeToPointees argty)))
-       (At-List<i64+IntInterval> cells any-idx alloc-id offsets)
-       (= vals (CellHasValues state cell)))
-      ((set (CellHasValues e cell) (ExprSet-insert vals val)))
       :ruleset memory-helpers)
 
 ; ============================
@@ -413,23 +392,40 @@
 ; Update PointsToExpr
 ; ============================
 
-;                   program point, pointer
-; merge function???
-; TODO: should the output of this be exprset?
-(function PointsToExpr (Expr Expr) Expr :unextractable)
+;                       program point, pointer
+(function PointsToExpr (Expr           Expr) Expr :unextractable)
 
-; For a write, mark the given expression as containing `data`.
-; Propagate the previous values of any expression that definitely does not alias `addr`.
-(rule ((= e (Top (Write) addr data state)))
-      ((set (PointsToExpr e addr) data))
+; After a load, the ptr points to the loaded value
+(rule ((= f (Bop (Load) ptr state)))
+      ((set (PointsToExpr (Get f 1) ptr) (Get f 0)))
       :ruleset memory-helpers)
-; demand DontAlias
+
+; If we load and we already know what the pointer points to
+(rule ((= e (Bop (Load) addr state))
+       (= v (PointsToExpr state addr)))
+      ((union (Get e 0) v)
+       (union (Get e 1) state))
+       :ruleset memory-helpers)
+
+; Loads and prints don't affect what what pointers already point to
+(rule ((= f (PointsToExpr state addr))
+       (= e (Bop (Load) any-addr state)))
+      ((let new-state (Get e 1))
+       (union (PointsToExpr new-state addr) f))
+      :ruleset memory-helpers)
+(rule ((= f (PointsToExpr state addr))
+       (= e (Bop (Print) any-val state)))
+      ((let new-state e)
+       (union (PointsToExpr new-state addr) f))
+      :ruleset memory-helpers)
+
+; Writes don't affect what a pointer points to if it writes to another pointer
+; guaranteed to not alias.
 (rule ((= e (Top (Write) addr data state))
        (HasArgType addr argty)
        (= otherdata (PointsToExpr state otheraddr)))
       ((DemandDontAlias addr otheraddr (TypeToPointees argty)))
       :ruleset memory-helpers)
-; propagate memory information when a write doesn't alias that memory
 (rule ((= e (Top (Write) addr data state))
        (HasArgType addr argty)
        (= otherdata (PointsToExpr state otheraddr))
@@ -437,28 +433,34 @@
       ((set (PointsToExpr e otheraddr) otherdata))
       :ruleset memory-helpers)
 
-(rule ((= f (PointsToExpr e state))
-       (= e (Bop (Load) ptr state2)))
-      ((set (PointsToExpr (Get e 1) state2) f))
+; For a write, mark the given expression as containing `data`.
+(rule ((= e (Top (Write) addr data state)))
+      ((union (PointsToExpr e addr) data))
       :ruleset memory-helpers)
 
-(rule ((= f (PointsToExpr e state))
-       (Bop (Load) e state))
-      ((union (Bop (Load) e state)
-              (Concat (Single f) (Single state)))
-       (union (Get (Bop (Load) e state) 0) f))
-      :ruleset memory-helpers)
+; ============================
+; Update CellHasValues (currently unused)
+; ============================
 
-; Special-case: no intervening effects between load and write, elide the write
-; entirely (if write isn't otherwise used).
-; TODO: This is a general problem. Loads that get removed shouldn't really
-; have a state edge, but they need one to feed into further effects.
-; (rule ((= e (Bop (Load) addr (Top (Write) addr v state))))
-;       ((union (Get e 0) v)
-;        (union (Get e 1) state)) :ruleset memory-helpers)
+; ;                       program point, cell
+; (function CellHasValues (Expr i64) ExprSet :merge (ExprSet-intersect old new))
 
-(rule ((= e (Bop (Load) addr state))
-       (= v (PointsToExpr state addr)))
-      ((union (Get e 0) v)
-       (union (Get e 1) state))
-       :ruleset memory-helpers)
+; ; At the time of an alloc, a cell doesn't contain any values
+; (rule ((= f (Alloc id amt state ty)))
+      ; ((set (CellHasValues (Get f 1) id) (ES (set-empty))))
+      ; :ruleset memory-helpers)
+
+; ; These two rules find (Write ptr val state) where 
+; ; ptr points to cells given no assumptions about where (Arg) points.
+; ; TODO: make sensitive to offsets
+; (rule ((= e (Top (Write) ptr val state))
+       ; (HasArgType ptr argty))
+      ; ((TypeToPointees argty))
+      ; :ruleset memory-helpers)
+; (rule ((= e (Top (Write) ptr val state))
+       ; (HasArgType ptr argty)
+       ; (= (PtrPointsTo (PointsTo cells)) (PointsToCells ptr (TypeToPointees argty)))
+       ; (At-List<i64+IntInterval> cells any-idx alloc-id offsets)
+       ; (= vals (CellHasValues state cell)))
+      ; ((set (CellHasValues e cell) (ExprSet-insert vals val)))
+      ; :ruleset memory-helpers)

@@ -2,13 +2,22 @@
 (ruleset loop-unroll)
 (ruleset loop-peel)
 
+;;                      inputs, outputs -> number of iterations
+(function LoopNumItersGuess (Expr Expr) i64 :merge (max 1 (min old new)))
+
+;; by default, guess that all loops run 1000 times
+(rule ((DoWhile inputs outputs))
+      ((set (LoopNumItersGuess inputs outputs) 1000))
+      :ruleset always-run)
+
 
 ;; loop peeling rule
 (rule
  ((= lhs (DoWhile inputs outputs))
   (ContextOf lhs ctx)
   (HasType inputs inputs-ty)
-  (= outputs-len (tuple-length outputs)))
+  (= outputs-len (tuple-length outputs))
+  (= old_cost (LoopNumItersGuess inputs outputs)))
  ((let executed-once
     (Subst ctx inputs outputs))
   (let executed-once-body
@@ -23,7 +32,9 @@
         executed-once-body ;; inputs are the body executed once
         (DoWhile (Arg inputs-ty then-ctx)
           outputs) ;; right now, loop unrolling shares the same outputs, but we could add more context here
-        (Arg inputs-ty else-ctx))))
+        (Arg inputs-ty else-ctx)))
+   (set (LoopNumItersGuess (Arg inputs-ty then-ctx) outputs) (- old_cost 1))
+    )
  :ruleset loop-peel)
 
 
@@ -48,6 +59,7 @@
    (> end_constant start_const)
    (= (% start_const 4) 0)
    (= (% end_constant 4) 0)
+   (= old_cost (LoopNumItersGuess inputs outputs))
   )
   (
     (let tmp_context (UnrollCtx inputs outputs))
@@ -62,6 +74,8 @@
         unrolled))
     (let actual-ctx (InLoop inputs unrolled))
     (union tmp_context actual-ctx)
+
+    (set (LoopNumItersGuess inputs unrolled) (/ old_cost 4))
   )
   :ruleset loop-unroll)
 

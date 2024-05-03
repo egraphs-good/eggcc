@@ -555,7 +555,7 @@ pub fn extract_with_paths(
                             continue;
                         }
                     } else {
-                        eprintln!("Root {:?} not found in effectful_paths", rootid);
+                        //eprintln!("Root {:?} not found in effectful_paths", rootid);
                         // continue when this root isn't in effectful_paths
                         continue;
                     }
@@ -563,7 +563,7 @@ pub fn extract_with_paths(
             } else {
                 // if the op is "Function" we don't need a type
                 if node.op != "Function" {
-                    // eprintln!("Failed to get type of node {:?}", node);
+                    eprintln!("Failed to get type of node {:?}", node);
                     // skip when type is unknown
                     continue;
                 }

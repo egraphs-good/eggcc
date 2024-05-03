@@ -411,6 +411,8 @@ impl Run {
                     ..default
                 };
                 res.push(interp);
+            } else {
+                res.push(default);
             }
         }
 

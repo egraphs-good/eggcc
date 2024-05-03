@@ -44,7 +44,7 @@ pub(crate) struct Extractor<'a> {
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
     pub(crate) term_to_expr: Option<HashMap<Term, RcExpr>>,
-    pub(crate) node_to_type: Option<HashMap<NodeId, Type>>,
+    pub(crate) eclass_type: Option<HashMap<ClassId, Type>>,
 }
 
 impl<'a> EgraphInfo<'a> {
@@ -185,8 +185,8 @@ impl<'a> Extractor<'a> {
 
     /// If the type of the node is known, checks if an already extracted node is effectful.
     /// There are cases where the type of the node is not known, for reasons unknown to us.
-    pub(crate) fn is_node_effectful(&mut self, node_id: NodeId) -> Option<bool> {
-        let node_type = self.node_to_type.as_ref().unwrap().get(&node_id)?;
+    pub(crate) fn is_eclass_effectful(&mut self, class_id: ClassId) -> Option<bool> {
+        let node_type = self.eclass_type.as_ref().unwrap().get(&class_id)?;
         Some(node_type.contains_state())
     }
 
@@ -197,7 +197,7 @@ impl<'a> Extractor<'a> {
             termdag: self.termdag,
             conversion_cache: Default::default(),
         };
-        let mut node_to_type: HashMap<NodeId, Type> = Default::default();
+        let mut node_to_type: HashMap<ClassId, Type> = Default::default();
 
         for (term, node_id) in &self.correspondence {
             let node = info.egraph.nodes.get(node_id).unwrap();
@@ -210,13 +210,13 @@ impl<'a> Extractor<'a> {
                     .typechecker
                     .add_arg_types_to_expr(expr.clone(), &None)
                     .0;
-                node_to_type.insert(node_id.clone(), ty);
+                node_to_type.insert(eclass.clone(), ty);
             }
         }
 
         let converted_prog = converter.program_from_egglog(prog);
 
-        self.node_to_type = Some(node_to_type);
+        self.eclass_type = Some(node_to_type);
         self.term_to_expr = Some(converter.conversion_cache);
 
         // return the converted program
@@ -249,7 +249,7 @@ impl<'a> Extractor<'a> {
             costs: Default::default(),
             term_to_expr: Default::default(),
             typechecker: TypeChecker::new(original_prog, true),
-            node_to_type: Default::default(),
+            eclass_type: Default::default(),
         }
     }
 }
@@ -489,18 +489,17 @@ pub fn extract(
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let (mut cost_res, mut res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
-    if extractor_not_linear.check_program_is_linear(&res).is_err() {
-        let effectful_nodes_along_path =
-            extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
-        extractor_not_linear.costs.clear();
-        (cost_res, res) = extract_with_paths(
-            extractor_not_linear,
-            &egraph_info,
-            Some(&effectful_nodes_along_path),
-        );
-        extractor_not_linear.check_program_is_linear(&res).unwrap();
-    }
+    let (_cost_res, res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
+
+    let effectful_nodes_along_path =
+        extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
+    extractor_not_linear.costs.clear();
+    let (cost_res, res) = extract_with_paths(
+        extractor_not_linear,
+        &egraph_info,
+        Some(&effectful_nodes_along_path),
+    );
+    extractor_not_linear.check_program_is_linear(&res).unwrap();
 
     log::info!("Extracted program with cost {}", cost_res.total);
     log::info!("Created {} cost sets", extractor_not_linear.costsets.len());
@@ -537,13 +536,27 @@ pub fn extract_with_paths(
         }
 
         let sort_of_node = info.get_sort_of_eclass(classid);
-        if sort_of_node == "Expr"
-            && effectful_paths.is_some()
-            && effectful_paths.unwrap().contains_key(&rootid)
-        {
-            let effectful_nodes = effectful_paths.as_ref().unwrap().get(&rootid).unwrap();
-            if let Some(is_stateful) = extractor.is_node_effectful(nodeid.clone()) {
-                if is_stateful && !effectful_nodes.contains(&nodeid) {
+        // if node is effectful, we only consider it if it is in the effectful path
+        if sort_of_node == "Expr" && effectful_paths.is_some() {
+            if let Some(is_stateful) = extractor.is_eclass_effectful(classid.clone()) {
+                if is_stateful {
+                    if let Some(effectful_nodes) = effectful_paths.as_ref().unwrap().get(&rootid) {
+                        if is_stateful && !effectful_nodes.contains(&nodeid) {
+                            eprintln!("Node {:?} not found in effectful_paths", node);
+                            // skip nodes not on the path
+                            continue;
+                        }
+                    } else {
+                        eprintln!("Root {:?} not found in effectful_paths", rootid);
+                        // continue when this root isn't in effectful_paths
+                        continue;
+                    }
+                }
+            } else {
+                // if the op is "Function" we don't need a type
+                if node.op != "Function" {
+                    eprintln!("Failed to get type of node {:?}", node);
+                    // skip when type is unknown
                     continue;
                 }
             }

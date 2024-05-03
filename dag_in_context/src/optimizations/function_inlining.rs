@@ -6,7 +6,7 @@ use std::{
 
 use crate::schema::{Expr, RcExpr, TreeProgram};
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct CallBody {
     pub call: RcExpr,
     pub body: RcExpr,
@@ -163,7 +163,7 @@ fn test_inf_recursion_function_inlining_pairs() {
     )
     .to_program(base(intt()), base(intt()));
 
-    for iterations in 1..10 {
+    for iterations in 0..10 {
         let pairs = function_inlining_pairs(&program, iterations);
         assert_eq!(pairs.len(), iterations);
     }

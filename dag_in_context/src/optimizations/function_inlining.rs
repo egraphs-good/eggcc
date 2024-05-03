@@ -13,7 +13,6 @@ pub struct CallBody {
 }
 
 // Gets a set of all the calls in the program
-#[allow(dead_code)]
 fn get_calls_with_cache(
     expr: &RcExpr,
     calls: &mut Vec<RcExpr>,
@@ -40,7 +39,6 @@ fn get_calls_with_cache(
 
 // Pairs a call with its equivalent inlined body, using the passed-in function -> body map
 // to look up the body
-#[allow(dead_code)]
 fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBody {
     if let Expr::Call(func_name, args) = call.as_ref() {
         CallBody {
@@ -53,7 +51,6 @@ fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBod
 }
 
 // Generates a list of (call, body) pairs (in a CallBody) that can be unioned
-#[allow(dead_code)]
 pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<CallBody> {
     if iterations == 0 {
         return vec![];

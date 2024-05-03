@@ -40,7 +40,7 @@ pub(crate) struct Extractor<'a> {
 
     // Each term must correspond to a node in the egraph. We store that here
     // Use an indexmap for deterministic order of iteration
-    pub(crate) correspondence: IndexMap<Term, NodeId>,
+    pub(crate) correspondence: IndexMap<Term, HashSet<NodeId>>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
     pub(crate) term_to_expr: Option<HashMap<Term, RcExpr>>,
@@ -199,18 +199,20 @@ impl<'a> Extractor<'a> {
         };
         let mut node_to_type: HashMap<ClassId, Type> = Default::default();
 
-        for (term, node_id) in &self.correspondence {
-            let node = info.egraph.nodes.get(node_id).unwrap();
-            let eclass = info.egraph.nid_to_cid(node_id);
-            let sort_of_eclass = info.get_sort_of_eclass(eclass);
-            // only convert expressions (that are not functions)
-            if sort_of_eclass == "Expr" && node.op != "Function" {
-                let expr = converter.expr_from_egglog(term.clone());
-                let ty = self
-                    .typechecker
-                    .add_arg_types_to_expr(expr.clone(), &None)
-                    .0;
-                node_to_type.insert(eclass.clone(), ty);
+        for (term, nodes) in &self.correspondence {
+            for node_id in nodes {
+                let node = info.egraph.nodes.get(node_id).unwrap();
+                let eclass = info.egraph.nid_to_cid(node_id);
+                let sort_of_eclass = info.get_sort_of_eclass(eclass);
+                // only convert expressions (that are not functions)
+                if sort_of_eclass == "Expr" && node.op != "Function" {
+                    let expr = converter.expr_from_egglog(term.clone());
+                    let ty = self
+                        .typechecker
+                        .add_arg_types_to_expr(expr.clone(), &None)
+                        .0;
+                    node_to_type.insert(eclass.clone(), ty);
+                }
             }
         }
 
@@ -223,7 +225,10 @@ impl<'a> Extractor<'a> {
         converted_prog
     }
 
-    pub(crate) fn node_of(&self, term: &Term) -> NodeId {
+    /// A term can correspond to multiple nodes in the egraph.
+    /// This is because we forget the context when building the term, so
+    /// multiple nodes in different context are the same as far as the term is concerned.
+    pub(crate) fn term_nodes(&self, term: &Term) -> HashSet<NodeId> {
         self.correspondence
             .get(term)
             .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term))
@@ -324,7 +329,10 @@ impl<'a> Extractor<'a> {
             self.termdag.app(op.into(), children)
         };
 
-        self.correspondence.insert(term.clone(), node_id);
+        self.correspondence
+            .entry(term.clone())
+            .or_default()
+            .insert(node_id);
 
         term
     }
@@ -542,7 +550,7 @@ pub fn extract_with_paths(
                 if is_stateful {
                     if let Some(effectful_nodes) = effectful_paths.as_ref().unwrap().get(&rootid) {
                         if is_stateful && !effectful_nodes.contains(&nodeid) {
-                            eprintln!("Node {:?} not found in effectful_paths", node);
+                            //eprintln!("Node {:?} not found in effectful_paths", node);
                             // skip nodes not on the path
                             continue;
                         }
@@ -555,7 +563,7 @@ pub fn extract_with_paths(
             } else {
                 // if the op is "Function" we don't need a type
                 if node.op != "Function" {
-                    eprintln!("Failed to get type of node {:?}", node);
+                    // eprintln!("Failed to get type of node {:?}", node);
                     // skip when type is unknown
                     continue;
                 }

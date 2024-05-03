@@ -8,7 +8,8 @@ use std::fmt::Write;
 use to_egglog::TreeToEgglog;
 
 use crate::{
-    interpreter::interpret_dag_prog, optimizations::function_inlining, schedule::mk_schedule,
+    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
+    schedule::mk_schedule,
 };
 
 pub(crate) mod add_context;
@@ -144,12 +145,19 @@ pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let mut term_cache = HashMap::<Term, String>::new();
 
     // Generate function inlining egglog
-    let function_inlining = print_function_inlining_pairs(
-        function_inlining::function_inlining_pairs(program, config::FUNCTION_INLINING_ITERATIONS),
-        &mut printed,
-        &mut tree_state,
-        &mut term_cache,
-    );
+    let function_inlining = if !optimize {
+        "".to_string()
+    } else {
+        print_function_inlining_pairs(
+            function_inlining::function_inlining_pairs(
+                program,
+                config::FUNCTION_INLINING_ITERATIONS,
+            ),
+            &mut printed,
+            &mut tree_state,
+            &mut term_cache,
+        )
+    };
 
     // Generate program egglog
     let term = program.to_egglog_with(&mut tree_state);
@@ -192,7 +200,12 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
         DefaultCostModel,
     );
 
-    if !are_progs_eq(program.clone(), res.clone()) {
+    let original_with_ctx = program.add_dummy_ctx();
+    let res_with_ctx = res.add_dummy_ctx();
+
+    if !are_progs_eq(original_with_ctx.clone(), res_with_ctx.clone()) {
+        eprintln!("Original program: {}", tree_to_svg(&original_with_ctx));
+        eprintln!("Result program: {}", tree_to_svg(&res_with_ctx));
         panic!("Check failed. Programs should be equal before and after roundtrip to egraph.");
     }
 }

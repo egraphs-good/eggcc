@@ -6,6 +6,7 @@ use std::{
 use dot_structures::{Attribute, Edge, EdgeTy, Graph, Id, Node, NodeId, Stmt, Subgraph, Vertex};
 
 use crate::schema::{Constant, Expr, RcExpr, TreeProgram};
+use graphviz_rust::{cmd::Format, exec, printer::PrinterContext};
 
 // We need one node for every unique expression, scope pair
 // Expressions may be shared across scopes but should be shown multiple times
@@ -80,6 +81,19 @@ impl DotConverter {
     pub fn graphviz_vertex(&mut self, expr: &RcExpr) -> Vertex {
         Vertex::N(self.graphviz_nodeid(expr))
     }
+}
+
+pub fn tree_to_svg(prog: &TreeProgram) -> String {
+    let dot_code = prog.to_dot();
+    String::from_utf8(
+        exec(
+            dot_code,
+            &mut PrinterContext::default(),
+            vec![Format::Svg.into()],
+        )
+        .unwrap(),
+    )
+    .unwrap()
 }
 
 impl TreeProgram {

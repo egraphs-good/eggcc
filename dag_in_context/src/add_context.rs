@@ -16,6 +16,8 @@ struct ContextCache {
     /// When true, don't add context- instead, make fresh query variables
     /// and put these in place of context
     symbolic_ctx: bool,
+    /// Replace all context with (InFunc "dummy")
+    dummy_ctx: bool,
 }
 
 impl ContextCache {
@@ -56,6 +58,17 @@ impl TreeProgram {
             entry: self.entry.clone().add_symbolic_ctx(),
         }
     }
+
+    pub(crate) fn add_dummy_ctx(&self) -> TreeProgram {
+        TreeProgram {
+            functions: self
+                .functions
+                .iter()
+                .map(|f| f.clone().add_dummy_ctx())
+                .collect(),
+            entry: self.entry.clone().add_dummy_ctx(),
+        }
+    }
 }
 
 impl Expr {
@@ -72,11 +85,22 @@ impl Expr {
         ))
     }
 
+    pub(crate) fn add_dummy_ctx(self: RcExpr) -> RcExpr {
+        let mut cache = ContextCache {
+            with_ctx: HashMap::new(),
+            symbol_gen: HashMap::new(),
+            symbolic_ctx: false,
+            dummy_ctx: true,
+        };
+        self.add_ctx_with_cache(Assumption::dummy(), &mut cache)
+    }
+
     pub(crate) fn add_symbolic_ctx(self: RcExpr) -> RcExpr {
         let mut cache = ContextCache {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),
             symbolic_ctx: true,
+            dummy_ctx: false,
         };
         self.add_ctx_with_cache(Assumption::dummy(), &mut cache)
     }
@@ -86,6 +110,7 @@ impl Expr {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),
             symbolic_ctx: false,
+            dummy_ctx: false,
         };
         self.add_ctx_with_cache(current_ctx, &mut cache)
     }
@@ -102,7 +127,9 @@ impl Expr {
         {
             return expr.clone();
         }
-        let context_to_add = if cache.symbolic_ctx {
+        let context_to_add = if cache.dummy_ctx {
+            Assumption::dummy()
+        } else if cache.symbolic_ctx {
             cache.get_symbolic_ctx(self, &current_ctx)
         } else {
             current_ctx.clone()

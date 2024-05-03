@@ -16,11 +16,11 @@ expression: visualization.result
   v11_: bool = lt v5_ v9_;
   br v11_ .v12_ .v13_;
 .v12_:
-  v14_: int = add v5_ v8_;
-  v15_: bool = eq v14_ v7_;
+  v14_: int = add v8_ v5_;
+  v15_: bool = eq v7_ v14_;
   br v15_ .v16_ .v17_;
 .v16_:
-  v18_: int = add v14_ v6_;
+  v18_: int = add v6_ v14_;
   v19_: int = id v18_;
   v20_: int = id v6_;
   v21_: int = id v7_;

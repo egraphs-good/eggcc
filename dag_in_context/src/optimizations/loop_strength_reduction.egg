@@ -36,7 +36,7 @@
 
 ;; Temporary context for modified loops
 ;; contains the new input (with correct context) and the new pred-output (with old context)
-(function InExtendedLoop (Expr Expr) Assumption :unextractable)
+(function InReducedLoop (Expr Expr) Assumption :unextractable)
 
 (rule 
     (
@@ -79,7 +79,7 @@
         (let new-body-old-ctx (Concat pred-and-outputs (Single d-out)))
 
         ; We need to add a temporary context, then create the cycle later
-        (let tmp-ctx (InExtendedLoop new-inputs new-body-old-ctx))
+        (let tmp-ctx (InReducedLoop new-inputs new-body-old-ctx))
 
         ; We need to create a new type, with one more input
         (let new-arg-ty (TupleT (TLConcat ty-list (TCons (IntT) (TNil)))))

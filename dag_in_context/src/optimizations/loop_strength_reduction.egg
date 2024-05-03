@@ -1,0 +1,115 @@
+;; ORIGINAL
+;; a = 0
+;; c = 3
+;; for  i = 0 to n:
+;;     a = i * c
+;;
+;; OPTIMIZED
+;; a = 0
+;; c = 3
+;; d = 0
+;; for i = 0 to n:
+;;     a += d
+;;     d += c
+(ruleset loop-strength-reduction)
+
+; Finds invariants/constants within a body.
+; Columns: body; value of invariant in inputs; value of invariant in outputs
+;; Get the input and output value of an invariant, or constant int, within the loop
+;;             loop in   out
+(relation lsr-inv (Expr Expr Expr))
+
+; TODO: there may be a bug with finding the invariant, or it just may not be extracted.
+; Can make this work on loop_with_mul_by_inv and a rust test later.
+; (rule (
+;     (= loop (DoWhile inputs pred-and-body))
+;     (= (Get outputs (+ i 1)) (Get (Arg arg-type assm) i)))
+;     ((inv loop (Get inputs i) (Get (Arg arg-type assm) i))) :ruleset always-run)
+(rule (
+    (= loop (DoWhile inputs pred-and-body))
+    (ContextOf inputs loop-input-ctx)
+    (ContextOf pred-and-body loop-output-ctx)
+    (= constant (Const c out-type loop-output-ctx))
+    (HasArgType inputs in-type)
+    )
+    ((lsr-inv loop (Const c in-type loop-input-ctx) constant)) :ruleset always-run)
+
+;; Temporary context for modified loops
+;; contains the new input (with correct context) and the new pred-output (with old context)
+(function InReducedLoop (Expr Expr) Assumption :unextractable)
+
+(rule 
+    (
+        ;; Find loop
+        (= old-loop (DoWhile inputs pred-and-outputs))
+        (ContextOf pred-and-outputs loop-ctx)
+
+        ; Find loop variable (argument that gets incremented with an invariant)
+        (lsr-inv old-loop loop-incr-in loop-incr-out)
+        ; Since the first el of pred-and-outputs is the pred, we need to offset i
+        (= (Get pred-and-outputs (+ i 1)) (Bop (Add) (Get (Arg arg-type assm) i) loop-incr-out))
+
+        ; Find invariant where input is same as output, or constant
+        (lsr-inv old-loop c-in c-out)
+
+        ; Find multiplication of loop variable and invariant
+        (= old-mul (Bop (Mul) c-out (Get (Arg arg-type assm) i)))
+        (ContextOf old-mul loop-ctx)
+
+        (= arg-type (TupleT ty-list))
+    )
+    (
+        ; Each time we need to update d by the product of the multiplied constant and the loop increment
+        (let addend (Bop (Mul) c-out loop-incr-out))
+
+        ; n is index of our new, temporary variable d
+        (let n (tuple-length inputs))
+
+        ; Initial value of d is i * c
+        (let d-init (Bop (Mul) c-in (Get inputs i)))
+
+        ; Value of d in loop
+        (let d-out (Bop (Add) (Get (Arg arg-type assm) i) addend))
+
+        ; Construct optimized theta
+        ; new-inputs already has the correct context
+        (let new-inputs (Concat inputs (Single d-init)))
+
+        ; new pred and outputs contains the old loop context
+        (let new-body-old-ctx (Concat pred-and-outputs (Single d-out)))
+
+        ; We need to add a temporary context, then create the cycle later
+        (let tmp-ctx (InReducedLoop new-inputs new-body-old-ctx))
+
+        ; We need to create a new type, with one more input
+        (let new-arg-ty (TupleT (TLConcat ty-list (TCons (IntT) (TNil)))))
+
+        ; Now substitute the new type and temp context into the new body
+        (let new-body (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) new-body-old-ctx))
+
+        (let new-loop (DoWhile new-inputs new-body))
+
+        ; Now that we have the new loop, union the temporary context with the actual ctx
+        (union tmp-ctx (InLoop new-inputs new-body))
+
+        ; Substitute d for the *i expression
+        (let new-mul
+            (Bop
+                (Mul)
+                (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) c-out)
+                (Get (Arg new-arg-ty tmp-ctx) i)))
+        (union (Get (Arg new-arg-ty tmp-ctx) n) new-mul)
+
+        ; Subsume the multiplication in the new loop to prevent
+        ; from firing loop strength reduction again on the new loop
+        (subsume
+            (Bop
+                (Mul)
+                (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) c-out)
+                (Get (Arg new-arg-ty tmp-ctx) i)))
+
+        ; Project all but last
+        (union old-loop (SubTuple new-loop 0 n))
+    )
+    :ruleset loop-strength-reduction
+)

@@ -23,11 +23,11 @@ expression: visualization.result
   v19_: bool = lt v15_ v16_;
   br v19_ .v20_ .v21_;
 .v20_:
-  v22_: int = mul v13_ v16_;
+  v22_: int = mul v16_ v13_;
   v23_: int = add v22_ v15_;
   print v23_;
   v24_: bool = const true;
-  v25_: int = add v14_ v15_;
+  v25_: int = add v15_ v14_;
   v26_: int = id v13_;
   v27_: int = id v14_;
   v28_: bool = id v24_;

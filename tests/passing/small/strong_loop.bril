@@ -5,7 +5,7 @@
     total: int = const 0;
 .loop:
     c: int = const 7;
-    one: int = const 2;
+    one: int = const 1;
 
     cond: bool = lt i n;
     y: int = mul c i;

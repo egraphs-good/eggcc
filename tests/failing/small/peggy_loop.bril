@@ -1,0 +1,26 @@
+# ARGS: 5
+@main (n: int) {
+    one: int = const 1;
+    three: int = const 3;
+    five: int = const 5;
+    i: int = const 0;
+    
+.loop_test:
+    cond: bool = lt i n;
+    br cond .loop_body .loop_end;
+
+.loop_body:
+    out: int = mul i five;
+    i: int = add i one;
+    cond: bool = eq i five;
+    br cond .if_then .if_end;
+
+.if_then:
+    i: int = add i three;
+
+.if_end:
+    jmp .loop_test;
+
+.loop_end:
+
+}

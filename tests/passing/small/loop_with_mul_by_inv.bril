@@ -1,0 +1,19 @@
+# ARGS: 4
+@main (n: int) {
+    accum: int = const 0;
+    x: int = const 5;
+    i: int = const 0;
+
+.loop:
+    one: int = const 1;
+
+    cond: bool = lt i n;
+    g: int = mul i x;
+    accum: int = add g accum;
+
+    i: int = add one i;
+    br cond .loop .end;
+
+.end:
+    print accum;
+}

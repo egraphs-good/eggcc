@@ -142,23 +142,20 @@ pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let mut term_cache = HashMap::<Term, String>::new();
 
     // Generate function inlining egglog
-    // TODO function inlining disabled due to performance bug
-    /*let function_inlining = print_function_inlining_pairs(
+    let function_inlining = print_function_inlining_pairs(
         function_inlining::function_inlining_pairs(program, config::FUNCTION_INLINING_ITERATIONS),
         &mut printed,
         &mut tree_state,
         &mut term_cache,
-    );*/
+    );
 
     // Generate program egglog
     let term = program.to_egglog_with(&mut tree_state);
     let res =
         print_with_intermediate_helper(&tree_state.termdag, term, &mut term_cache, &mut printed);
 
-    // TODO add function_inlining back when bug
-    // is fixed
     format!(
-        "{}\n{printed}\n(let PROG {res})\n\n{}\n",
+        "{}\n{printed}\n(let PROG {res})\n{function_inlining}\n{}\n",
         prologue(),
         if optimize {
             mk_schedule()

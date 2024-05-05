@@ -49,3 +49,13 @@
 (rewrite (If (Const (Bool false) ty ctx) ins thn els)
          (Subst ctx ins els)
          :ruleset switch_rewrite)
+
+(rule ((= lhs (If pred ins thn els))
+       (= (Get thn i) (Const (Bool true) ty ctx1))
+       (= (Get els i) (Const (Bool false) ty ctx2)))
+      ((union (Get lhs i) pred)) :ruleset switch_rewrite)
+
+(rule ((= lhs (If pred ins thn els))
+       (= (Get thn i) (Const (Bool false) ty ctx1))
+       (= (Get els i) (Const (Bool true) ty ctx2)))
+      ((union (Get lhs i) (Uop (Not) pred))) :ruleset switch_rewrite)

@@ -32,6 +32,7 @@ pub fn mk_schedule() -> String {
     loop-simplify
     memory
     loop-unroll
+    peepholes
   )
 
   (unstable-combined-ruleset expensive-optimizations

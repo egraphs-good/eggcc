@@ -14,7 +14,7 @@ expression: visualization.result
   v8_: int = id v0_;
 .v9_:
   print v8_;
-  v10_: int = add v4_ v8_;
+  v10_: int = add v8_ v4_;
   v11_: bool = lt v10_ v5_;
   v12_: bool = not v11_;
   v4_: int = id v10_;

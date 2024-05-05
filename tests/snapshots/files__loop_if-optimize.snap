@@ -7,7 +7,7 @@ expression: visualization.result
   v1_: int = id v0_;
   v2_: int = id v0_;
 .v3_:
-  v4_: bool = eq v1_ v2_;
+  v4_: bool = eq v2_ v1_;
   br v4_ .v5_ .v6_;
 .v5_:
   v7_: int = id v1_;
@@ -33,8 +33,8 @@ expression: visualization.result
   jmp .v17_;
 .v6_:
   v21_: int = const 1;
-  v22_: int = add v1_ v21_;
-  v23_: int = add v21_ v2_;
+  v22_: int = add v21_ v1_;
+  v23_: int = add v2_ v21_;
   v7_: int = id v22_;
   v8_: bool = id v4_;
   v9_: int = id v23_;

@@ -10,7 +10,7 @@ expression: visualization.result
   v5_: int = id v2_;
   v6_: int = id v0;
 .v7_:
-  v8_: int = mul v5_ v4_;
+  v8_: int = mul v4_ v5_;
   v9_: int = add v3_ v8_;
   v10_: int = const 1;
   v11_: int = add v10_ v4_;

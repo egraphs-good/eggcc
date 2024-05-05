@@ -60,6 +60,7 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
 #[test]
 fn switch_rewrite_forward_pred() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
 
     let ctx_ty = tuplet!(boolt());
 
@@ -68,7 +69,7 @@ fn switch_rewrite_forward_pred() -> crate::Result {
     let build = get(
         tif(arg.clone(), empty(), single(ttrue()), single(tfalse()))
             .add_arg_type(ctx_ty.clone())
-            .add_ctx(noctx()),
+            .add_ctx(Assumption::dummy()),
         0,
     );
 
@@ -87,6 +88,7 @@ fn switch_rewrite_forward_pred() -> crate::Result {
 #[test]
 fn switch_rewrite_negate_pred() -> crate::Result {
     use crate::ast::*;
+    use crate::schema::Assumption;
 
     let ctx_ty = tuplet!(boolt());
 
@@ -95,7 +97,7 @@ fn switch_rewrite_negate_pred() -> crate::Result {
     let build = get(
         tif(arg.clone(), empty(), single(tfalse()), single(ttrue()))
             .add_arg_type(ctx_ty.clone())
-            .add_ctx(noctx()),
+            .add_ctx(Assumption::dummy()),
         0,
     );
 

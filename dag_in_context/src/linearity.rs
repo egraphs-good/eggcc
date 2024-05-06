@@ -58,7 +58,7 @@ impl<'a> Extractor<'a> {
             self.find_effectful_nodes_in_region(function.func_body().unwrap(), &mut linearity);
         }
 
-        let effectful_nodes = linearity
+        let effectful_nodes: HashMap<ClassId, HashSet<NodeId>> = linearity
             .effectful_nodes
             .into_iter()
             .map(|(k, v)| {
@@ -71,7 +71,7 @@ impl<'a> Extractor<'a> {
             .collect();
 
         // assert that we only find one node per eclass
-        for (_root, nodes) in &effectful_nodes {
+        for nodes in effectful_nodes.values() {
             let mut eclasses = HashSet::new();
             for node in nodes {
                 assert!(eclasses.insert(egraph_info.egraph.nid_to_cid(node)));
@@ -86,7 +86,7 @@ impl<'a> Extractor<'a> {
         let nodeids = self.term_nodes(term);
         nodeids
             .iter()
-            .map(|nodeid| linearity.n2c.get(&nodeid).unwrap().clone())
+            .map(|nodeid| linearity.n2c.get(nodeid).unwrap().clone())
             .collect()
     }
 

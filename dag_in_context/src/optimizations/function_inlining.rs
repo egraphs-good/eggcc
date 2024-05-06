@@ -13,12 +13,13 @@ pub struct CallBody {
 }
 
 // Gets a set of all the calls in the program
+#[allow(dead_code)]
 fn get_calls_with_cache(
     expr: &RcExpr,
     calls: &mut Vec<RcExpr>,
     seen_exprs: &mut HashSet<*const Expr>,
 ) {
-    if let Some(_) = seen_exprs.get(&Rc::as_ptr(expr)) {
+    if seen_exprs.get(&Rc::as_ptr(expr)).is_some() {
         return;
     };
 
@@ -39,6 +40,7 @@ fn get_calls_with_cache(
 
 // Pairs a call with its equivalent inlined body, using the passed-in function -> body map
 // to look up the body
+#[allow(dead_code)]
 fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBody {
     if let Expr::Call(func_name, args) = call.as_ref() {
         CallBody {
@@ -51,6 +53,7 @@ fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBod
 }
 
 // Generates a list of (call, body) pairs (in a CallBody) that can be unioned
+#[allow(dead_code)]
 pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<CallBody> {
     if iterations == 0 {
         return vec![];
@@ -79,7 +82,7 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
 
     let mut inlined_calls = calls
         .iter()
-        .map(|call| subst_call(&call, &func_name_to_body))
+        .map(|call| subst_call(call, &func_name_to_body))
         .collect::<Vec<_>>();
 
     // Repeat! Get calls and subst for each new substituted body.
@@ -99,7 +102,7 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
         // Only work on new calls, added from the new inlines
         new_inlines = new_calls
             .iter()
-            .map(|call| subst_call(&call, &func_name_to_body))
+            .map(|call| subst_call(call, &func_name_to_body))
             .collect::<Vec<CallBody>>();
         inlined_calls.extend(new_inlines.clone());
     }

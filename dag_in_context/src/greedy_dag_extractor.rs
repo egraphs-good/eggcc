@@ -546,21 +546,22 @@ pub fn extract_with_paths(
         let sort_of_node = info.get_sort_of_eclass(classid);
         // if node is effectful, we only consider it if it is in the effectful path
         if sort_of_node == "Expr" && effectful_paths.is_some() {
-            let is_effectful = extractor.is_eclass_effectful(classid.clone());
-            if is_effectful.is_none() && node.op != "Function" {
+            let effectful_lookup = extractor.is_eclass_effectful(classid.clone());
+            if effectful_lookup.is_none() && node.op != "Function" {
                 // skip when type is unknown
                 continue;
             }
+            if let Some(true) = effectful_lookup {
+                let effectful_nodes = effectful_paths.unwrap().get(&rootid);
+                if effectful_nodes.is_none() {
+                    // continue when this root isn't in effectful_paths
+                    continue;
+                }
 
-            let effectful_nodes = effectful_paths.unwrap().get(&rootid);
-            if effectful_nodes.is_none() {
-                // continue when this root isn't in effectful_paths
-                continue;
-            }
-
-            // skip nodes not on the path
-            if is_effectful.unwrap() && !effectful_nodes.unwrap().contains(&nodeid) {
-                continue;
+                // skip nodes not on the path
+                if !effectful_nodes.unwrap().contains(&nodeid) {
+                    continue;
+                }
             }
         }
 

@@ -7,7 +7,7 @@ use libtest_mimic::Trial;
 /// Generate tests for all configurations of a given file
 /// If `just_brilift` is true, only generate tests that
 /// run the full pipeline with brilift
-fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
+fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
@@ -57,20 +57,37 @@ fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
 
         let snapshot = f.to_str().unwrap().contains("small");
 
-        if just_brilift {
-            mk_trial(
+        // in benchmark mode, run fewer tests and use binaries to interpret
+        let configurations = if benchmark_mode {
+            // use InterpFast, which runs brilift
+            // with optimization but without egglog optimization
+            vec![
                 Run::compile_brilift_config(
-                    TestProgram::BrilFile(f),
+                    TestProgram::BrilFile(f.clone()),
                     true,
                     true,
-                    InterpMode::InterpFast, // for just_brilift, use fast interp because benchmarks are slow
+                    InterpMode::InterpFast,
                 ),
-                snapshot,
-            );
+                Run::compile_llvm_config(
+                    TestProgram::BrilFile(f.clone()),
+                    true,
+                    true,
+                    InterpMode::InterpFast,
+                ),
+                // TODO enable after fixing Bril LLVM bug
+                /*Run::compile_llvm_config(
+                    TestProgram::BrilFile(f),
+                    false,
+                    true,
+                    InterpMode::InterpFast,
+                ),*/
+            ]
         } else {
-            for run in Run::all_configurations_for(TestProgram::BrilFile(f)) {
-                mk_trial(run, snapshot);
-            }
+            Run::all_configurations_for(TestProgram::BrilFile(f))
+        };
+
+        for run in configurations {
+            mk_trial(run, snapshot);
         }
     }
 

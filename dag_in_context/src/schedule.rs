@@ -10,7 +10,10 @@ pub(crate) fn helpers() -> String {
   (saturate subst) ;; do e-substitution
   apply-subst-unions ;; apply the unions from substitution
   cleanup-subst ;; clean up substitutions that are done
+
+  (saturate boundary-analysis) ;; find boundaries of invariants
 )
+
 "
     .to_string()
 }
@@ -26,7 +29,6 @@ pub fn mk_schedule() -> String {
     context
     interval-analysis
     memory-helpers
-    boundary-analysis
   )
   
     

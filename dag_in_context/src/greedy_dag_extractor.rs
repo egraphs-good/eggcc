@@ -966,7 +966,10 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
 
     let (_cost_res, prog) = extract_with_paths(extractor_not_linear, &egraph_info, None);
     let res = extractor_not_linear.check_program_is_linear(&prog);
-    assert_eq!(res, Result::Err(error_message.to_string()));
+    match res {
+        Ok(_) => panic!("Expected program to be non-linear!"),
+        Err(e) => assert!(e.starts_with(error_message)),
+    }
 }
 
 #[test]
@@ -1069,7 +1072,10 @@ fn test_linearity_check_1() {
             getat(1)
         )
     ),);
-    dag_extraction_linearity_check(&bad_program_1, "An effectful operator is used twice");
+    dag_extraction_linearity_check(
+        &bad_program_1,
+        "Resulting program violated linearity! Effectful",
+    );
 }
 
 #[test]
@@ -1087,7 +1093,10 @@ fn test_linearity_check_2() {
             getat(0)
         ))
     ),);
-    dag_extraction_linearity_check(&bad_program_2, "There are unconsumed effectful operators");
+    dag_extraction_linearity_check(
+        &bad_program_2,
+        "Resulting program violated linearity! There are unconsumed effectful operators.",
+    );
 }
 
 ///                                                    

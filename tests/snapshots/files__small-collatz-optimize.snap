@@ -38,6 +38,7 @@ expression: visualization.result
   v26_: int = mul v25_ v7_;
   v27_: int = sub v6_ v26_;
 <<<<<<< HEAD
+<<<<<<< HEAD
   v28_: bool = eq v10_ v27_;
 ||||||| parent of 6820de9a (Snapshots)
   v28_: bool = eq v27_ v10_;
@@ -50,6 +51,11 @@ expression: visualization.result
 <<<<<<< HEAD
 =======
 >>>>>>> 8486d06c (Snapshots)
+||||||| parent of b4f12302 (Snapshots)
+  v28_: bool = eq v27_ v10_;
+=======
+  v28_: bool = eq v10_ v27_;
+>>>>>>> b4f12302 (Snapshots)
   v29_: int = add v5_ v8_;
   br v28_ .v30_ .v31_;
 .v30_:

@@ -12,7 +12,7 @@ expression: visualization.result
   jmp .v7_;
 .v4_:
   v8_: int = add v0 v0;
-  v9_: int = mul v8_ v1_;
+  v9_: int = mul v1_ v8_;
   v6_: int = id v9_;
 .v7_:
   print v6_;

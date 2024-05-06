@@ -41,6 +41,7 @@ expression: visualization.result
   print v6_;
   v29_: int = mul v6_ v8_;
 <<<<<<< HEAD
+<<<<<<< HEAD
   v30_: int = add v29_ v7_;
 ||||||| parent of 4cedc736 (Update some snapshots)
   v30_: int = add v7_ v29_;
@@ -65,6 +66,11 @@ expression: visualization.result
 >>>>>>> 07c77158 (Update some snapshots)
 =======
 >>>>>>> 8486d06c (Snapshots)
+||||||| parent of b4f12302 (Snapshots)
+  v30_: int = add v7_ v29_;
+=======
+  v30_: int = add v29_ v7_;
+>>>>>>> b4f12302 (Snapshots)
   br v28_ .v31_ .v32_;
 .v31_:
   v33_: bool = const true;

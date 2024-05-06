@@ -40,7 +40,7 @@ expression: visualization.result
   v8_: int = id v1_;
 .v9_:
   v10_: int = const 1;
-  v11_: int = add v1_ v10_;
+  v11_: int = add v10_ v1_;
   v12_: int = const 6;
   v13_: bool = lt v1_ v12_;
   v1_: int = id v11_;

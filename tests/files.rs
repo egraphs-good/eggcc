@@ -11,7 +11,6 @@ fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
-        eprintln!("Adding test for {}", run.test_type);
         let snapshot_configurations: HashSet<RunType> = [RunType::Optimize].into_iter().collect();
 
         trials.push(Trial::test(run.name(), move || {

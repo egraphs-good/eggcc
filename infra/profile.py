@@ -42,6 +42,7 @@ def bench(profile):
     with open(f'{profile_dir}/{name}-args') as f:
       args = f.read().rstrip()
     
+    # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
     subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
 
 # aggregate all profile info into a single json array.

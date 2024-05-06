@@ -5,13 +5,13 @@ expression: visualization.result
 @inc(v0: int): int {
   v1_: int = const 2;
   v2_: int = const 1;
-  v3_: int = add v2_ v0;
+  v3_: int = add v0 v2_;
   v4_: int = mul v1_ v3_;
   ret v4_;
 }
 @double(v0: int): int {
   v1_: int = const 2;
-  v2_: int = mul v1_ v0;
+  v2_: int = mul v0 v1_;
   ret v2_;
 }
 @main {

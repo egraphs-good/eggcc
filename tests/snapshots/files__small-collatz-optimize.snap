@@ -14,7 +14,7 @@ expression: visualization.result
   v9_: int = id v4_;
   v10_: int = id v1_;
 .v11_:
-  v12_: bool = eq v8_ v6_;
+  v12_: bool = eq v6_ v8_;
   br v12_ .v13_ .v14_;
 .v13_:
   v15_: bool = const false;
@@ -35,9 +35,9 @@ expression: visualization.result
   br v17_ .v11_ .v24_;
 .v14_:
   v25_: int = div v6_ v7_;
-  v26_: int = mul v7_ v25_;
+  v26_: int = mul v25_ v7_;
   v27_: int = sub v6_ v26_;
-  v28_: bool = eq v27_ v10_;
+  v28_: bool = eq v10_ v27_;
   v29_: int = add v5_ v8_;
   br v28_ .v30_ .v31_;
 .v30_:
@@ -62,7 +62,7 @@ expression: visualization.result
 .v31_:
   v42_: bool = const true;
   v43_: int = mul v6_ v9_;
-  v44_: int = add v8_ v43_;
+  v44_: int = add v43_ v8_;
   v34_: int = id v29_;
   v35_: bool = id v42_;
   v36_: int = id v44_;

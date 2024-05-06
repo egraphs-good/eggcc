@@ -12,7 +12,7 @@ expression: visualization.result
   v7_: bool = lt v3_ v5_;
   br v7_ .v8_ .v9_;
 .v8_:
-  v10_: int = add v4_ v3_;
+  v10_: int = add v3_ v4_;
   v11_: bool = const true;
   v12_: int = id v10_;
   v13_: bool = id v11_;

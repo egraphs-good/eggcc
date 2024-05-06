@@ -88,7 +88,14 @@ impl Renamer {
                 pos,
                 op_type,
             } => Instruction::Value {
-                args: args.iter().map(|arg| self.get_name(arg)).collect(),
+                args: {
+                    let mut args: Vec<_> = args.iter().map(|arg| self.get_name(arg)).collect();
+                    use bril_rs::ValueOps::*;
+                    if matches!(op, Add | Mul | Eq | And | Or) {
+                        args.sort();
+                    }
+                    args
+                },
                 dest: self.get_name(dest),
                 funcs: funcs.clone(),
                 labels: labels.iter().map(|label| self.get_name(label)).collect(),

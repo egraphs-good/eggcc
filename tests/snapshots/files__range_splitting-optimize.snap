@@ -7,7 +7,7 @@ expression: visualization.result
   v1_: int = id v0_;
 .v2_:
   v3_: int = const 1;
-  v4_: int = add v3_ v1_;
+  v4_: int = add v1_ v3_;
   v5_: int = const 5;
   v6_: bool = lt v4_ v5_;
   v7_: bool = lt v1_ v5_;

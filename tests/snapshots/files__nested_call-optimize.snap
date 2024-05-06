@@ -3,10 +3,11 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @inc(v0: int): int {
-  v1_: int = const 1;
-  v2_: int = add v0 v1_;
-  v3_: int = call @double v2_;
-  ret v3_;
+  v1_: int = const 2;
+  v2_: int = const 1;
+  v3_: int = add v2_ v0;
+  v4_: int = mul v1_ v3_;
+  ret v4_;
 }
 @double(v0: int): int {
   v1_: int = const 2;
@@ -14,10 +15,7 @@ expression: visualization.result
   ret v2_;
 }
 @main {
-  v0_: int = const 1;
-  v1_: int = const 0;
-  v2_: int = call @inc v1_;
-  print v2_;
-  v3_: int = call @double v0_;
-  print v3_;
+  v0_: int = const 2;
+  print v0_;
+  print v0_;
 }

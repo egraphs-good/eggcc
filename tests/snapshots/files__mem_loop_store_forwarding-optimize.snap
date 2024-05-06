@@ -37,6 +37,7 @@ expression: visualization.result
   v21_: int = const 20;
   store v16_ v20_;
   store v17_ v21_;
+  v22_: int = load v16_;
   print v20_;
   free v15_;
 }

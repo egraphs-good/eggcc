@@ -11,6 +11,7 @@ expression: visualization.result
   v5_: int = const 20;
   store v1_ v2_;
   store v4_ v5_;
+  v6_: int = load v1_;
   print v2_;
   free v1_;
 }

@@ -3,12 +3,10 @@ use crate::rvsdg::from_dag::dag_to_rvsdg;
 use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
+use dag_in_context::dag2svg::tree_to_svg;
 use dag_in_context::{build_program, check_roundtrip_egraph};
 
 use dag_in_context::schema::TreeProgram;
-use graphviz_rust::cmd::Format;
-use graphviz_rust::exec;
-use graphviz_rust::printer::PrinterContext;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -106,19 +104,6 @@ pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
     }
 
     Ok(())
-}
-
-pub fn tree_to_svg(prog: &TreeProgram) -> String {
-    let dot_code = prog.to_dot();
-    String::from_utf8(
-        exec(
-            dot_code,
-            &mut PrinterContext::default(),
-            vec![Format::Svg.into()],
-        )
-        .unwrap(),
-    )
-    .unwrap()
 }
 
 /// Invokes some program with the given arguments, piping the given input to the program.
@@ -411,6 +396,8 @@ impl Run {
                     ..default
                 };
                 res.push(interp);
+            } else {
+                res.push(default);
             }
         }
 

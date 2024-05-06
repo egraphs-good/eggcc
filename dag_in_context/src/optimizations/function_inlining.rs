@@ -14,23 +14,28 @@ pub struct CallBody {
 
 // Gets a set of all the calls in the program
 #[allow(dead_code)]
-fn get_calls(expr: &RcExpr) -> Vec<RcExpr> {
+fn get_calls_with_cache(
+    expr: &RcExpr,
+    calls: &mut Vec<RcExpr>,
+    seen_exprs: &mut HashSet<*const Expr>,
+) {
+    if seen_exprs.get(&Rc::as_ptr(expr)).is_some() {
+        return;
+    };
+
     // Get calls from children
-    let mut calls = if !expr.children_exprs().is_empty() {
+    if !expr.children_exprs().is_empty() {
         expr.children_exprs()
             .iter()
-            .flat_map(get_calls)
-            .collect::<Vec<_>>()
-    } else {
-        Vec::new()
-    };
+            .for_each(|child| get_calls_with_cache(child, calls, seen_exprs));
+    }
 
     // Add to set if this is a call
     if let Expr::Call(_, _) = expr.as_ref() {
         calls.push(expr.clone());
     }
 
-    calls
+    seen_exprs.insert(Rc::as_ptr(expr));
 }
 
 // Pairs a call with its equivalent inlined body, using the passed-in function -> body map
@@ -50,6 +55,10 @@ fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBod
 // Generates a list of (call, body) pairs (in a CallBody) that can be unioned
 #[allow(dead_code)]
 pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<CallBody> {
+    if iterations == 0 {
+        return vec![];
+    }
+
     let mut all_funcs = vec![program.entry.clone()];
     all_funcs.extend(program.functions.clone());
 
@@ -65,30 +74,100 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
         .collect::<HashMap<String, &RcExpr>>();
 
     // Inline once
-    // Keep track of all calls we've seen so far to avoid duplication
-    let mut prev_calls: HashSet<*const Expr> = HashSet::new();
-    let mut prev_inlining = all_funcs
+    let mut seen_exprs: HashSet<*const Expr> = HashSet::new();
+    let mut calls: Vec<RcExpr> = Vec::new();
+    all_funcs
         .iter()
-        .flat_map(get_calls)
-        // Deduplicate calls before substitution
-        .filter(|call| prev_calls.insert(Rc::as_ptr(call)))
-        // We cannot hash RcExprs because it is too slow
-        .map(|call| subst_call(&call, &func_name_to_body))
+        .for_each(|func| get_calls_with_cache(func, &mut calls, &mut seen_exprs));
+
+    let mut inlined_calls = calls
+        .iter()
+        .map(|call| subst_call(call, &func_name_to_body))
         .collect::<Vec<_>>();
 
-    let mut all_inlining = prev_inlining.clone();
-
     // Repeat! Get calls and subst for each new substituted body.
+    let mut new_inlines = inlined_calls.clone();
     for _ in 1..iterations {
-        let next_inlining = prev_inlining
+        // Only repeat on new inlines
+        let mut new_calls: Vec<RcExpr> = Vec::new();
+        new_inlines
             .iter()
-            .flat_map(|cb| get_calls(&cb.body))
-            .filter(|call| prev_calls.insert(Rc::as_ptr(call)))
-            .map(|call| subst_call(&call, &func_name_to_body))
-            .collect::<Vec<_>>();
-        all_inlining.extend(next_inlining.clone());
-        prev_inlining = next_inlining;
+            .for_each(|cb| get_calls_with_cache(&cb.body, &mut new_calls, &mut seen_exprs));
+
+        // No more new calls to discover
+        if new_calls.is_empty() {
+            break;
+        }
+
+        // Only work on new calls, added from the new inlines
+        new_inlines = new_calls
+            .iter()
+            .map(|call| subst_call(call, &func_name_to_body))
+            .collect::<Vec<CallBody>>();
+        inlined_calls.extend(new_inlines.clone());
     }
 
-    all_inlining
+    inlined_calls
+}
+
+// Check that function inling pairs produces the right number of pairs for
+// a simple, non-cyclic call graph
+#[test]
+fn test_function_inlining_pairs() {
+    use crate::ast::*;
+
+    let iterations = 10;
+
+    let main = function(
+        "main",
+        emptyt(),
+        base(intt()),
+        add(call("inc_twice", int(1)), call("inc", int(5))),
+    );
+
+    let inc_twice = function(
+        "inc_twice",
+        base(intt()),
+        base(intt()),
+        call("inc", call("inc", arg())),
+    );
+
+    let inc = function("inc", base(intt()), base(intt()), add(int(1), arg()));
+
+    let program = program!(main, inc_twice, inc);
+
+    let pairs = function_inlining_pairs(&program, iterations);
+
+    // First iteration:
+    // call inc_twice 1 --> call inc (call inc 1) ... so the new calls are call inc (call inc 1), call inc 1
+    // call inc 5 --> add 1 5
+    // call inc arg --> add 1 arg
+    // call inc (call inc arg) --> add 1 (call inc arg)
+
+    // Second iteration
+    // call inc (call inc 1) --> add 1 (call inc 1)
+    // call inc 1 --> add 1 1
+
+    // No more iterations!
+
+    assert_eq!(pairs.len(), 6)
+}
+
+// Infinite recursion should produce as many pairs as iterations
+#[test]
+fn test_inf_recursion_function_inlining_pairs() {
+    use crate::ast::*;
+
+    let program = function(
+        "inf_rec",
+        base(intt()),
+        base(intt()),
+        call("inf_rec", add(int(1), arg())),
+    )
+    .to_program(base(intt()), base(intt()));
+
+    for iterations in 0..10 {
+        let pairs = function_inlining_pairs(&program, iterations);
+        assert_eq!(pairs.len(), iterations);
+    }
 }

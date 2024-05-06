@@ -13,11 +13,11 @@ use egraph_serialize::{ClassId, NodeId};
 use indexmap::{IndexMap, IndexSet};
 
 use crate::{
-    greedy_dag_extractor::{get_root, EgraphInfo, Extractor},
+    greedy_dag_extractor::{EgraphInfo, Extractor},
     schema::{Expr, *},
 };
 
-type EffectfulNodes = Vec<(ClassId, *const Expr)>;
+type EffectfulNodes = IndexMap<ClassId, IndexSet<*const Expr>>;
 
 struct Linearity {
     effectful_nodes: EffectfulNodes,
@@ -46,59 +46,94 @@ impl<'a> Extractor<'a> {
             .map(|(node_id, node)| (node_id.clone(), node.eclass.clone()))
             .collect();
 
-        let prog_root_id = get_root(&egraph_info.egraph); // should be the id of prog
-        let prog_root_id = egraph_info.egraph.nid_to_cid(&prog_root_id);
         let mut linearity = Linearity {
-            effectful_nodes: vec![],
+            effectful_nodes: Default::default(),
             expr_to_term,
             n2c,
         };
 
-        self.find_effectful_nodes_in_expr(&prog.entry, &mut linearity, prog_root_id);
+        self.find_effectful_nodes_in_region(prog.entry.func_body().unwrap(), &mut linearity);
         for function in &prog.functions {
-            self.find_effectful_nodes_in_expr(function, &mut linearity, prog_root_id);
+            // root of the function is the body of the function
+            self.find_effectful_nodes_in_region(function.func_body().unwrap(), &mut linearity);
         }
 
-        let mut effectful_classes: HashMap<ClassId, HashSet<NodeId>> = Default::default();
-        for (rootid, expr) in linearity.effectful_nodes {
-            let term = linearity.expr_to_term.get(&expr).unwrap();
-            effectful_classes
-                .entry(rootid.clone())
-                .or_default()
-                .insert(self.node_of(term));
+        let effectful_nodes: HashMap<ClassId, HashSet<NodeId>> = linearity
+            .effectful_nodes
+            .into_iter()
+            .map(|(k, v)| {
+                let v = v
+                    .into_iter()
+                    .flat_map(|expr| self.term_nodes(linearity.expr_to_term.get(&expr).unwrap()))
+                    .collect();
+                (k, v)
+            })
+            .collect();
+
+        // assert that we only find one node per eclass
+        for nodes in effectful_nodes.values() {
+            let mut eclasses = HashSet::new();
+            for node in nodes {
+                assert!(eclasses.insert(egraph_info.egraph.nid_to_cid(node)));
+            }
         }
 
-        effectful_classes
+        effectful_nodes
     }
 
-    /// Finds all the effectful nodes along the state edge.
-    /// When `recur_subregions` is true, it also finds effectful nodes in subregions.
+    fn classes_of_expr(&self, linearity: &Linearity, expr: &RcExpr) -> HashSet<ClassId> {
+        let term = linearity.expr_to_term.get(&Rc::as_ptr(expr)).unwrap();
+        let nodeids = self.term_nodes(term);
+        nodeids
+            .iter()
+            .map(|nodeid| linearity.n2c.get(nodeid).unwrap().clone())
+            .collect()
+    }
+
+    /// Start finding effectful nodes from the root of the region
+    /// If we've already visited this region, we should not visit again
+    /// (otherwise, we may pick two paths to the same region, which is unsound)
+    fn find_effectful_nodes_in_region(&mut self, expr: &RcExpr, linearity: &mut Linearity) {
+        let rootids = self.classes_of_expr(linearity, expr);
+        for rootid in rootids {
+            // if we have already visited this region, we should not visit again
+            if linearity.effectful_nodes.contains_key(&rootid) {
+                continue;
+            }
+            let mut res = Default::default();
+            self.find_effectful_nodes_in_expr(expr, linearity, &mut res);
+
+            if linearity.effectful_nodes.contains_key(&rootid) {
+                panic!("The same region was visited twice before being set by `find_effectful_nodes_in_region`");
+            }
+
+            linearity.effectful_nodes.insert(rootid.clone(), res);
+        }
+    }
+
+    /// Finds all the effectful nodes along the state edge
+    /// in the same region
     fn find_effectful_nodes_in_expr(
         &mut self,
         expr: &RcExpr,
         linearity: &mut Linearity,
-        rootid: &ClassId,
+        res: &mut IndexSet<*const Expr>,
     ) {
-        let class_of_expr = |expr: &RcExpr, linearity: &Linearity, ext: &Extractor| {
-            let term = linearity.expr_to_term.get(&Rc::as_ptr(expr)).unwrap();
-            let nodeid = ext.node_of(term);
-            linearity.n2c.get(&nodeid).unwrap().clone()
-        };
-        linearity
-            .effectful_nodes
-            .push((rootid.clone(), Rc::as_ptr(expr)));
+        if !res.insert(Rc::as_ptr(expr)) {
+            panic!("The same expression was visited twice by `find_effectful_nodes_in_expr`");
+        }
         match expr.as_ref() {
             Expr::Top(op, _c1, _c2, c3) => match op {
                 TernaryOp::Write => {
                     // c3 is the state edge
-                    self.find_effectful_nodes_in_expr(c3, linearity, rootid)
+                    self.find_effectful_nodes_in_expr(c3, linearity, res)
                 }
             },
             Expr::Bop(op, _c1, c2) => {
                 match op {
                     BinaryOp::Load | BinaryOp::Print | BinaryOp::Free => {
                         // c2 is the state edge
-                        self.find_effectful_nodes_in_expr(c2, linearity, rootid)
+                        self.find_effectful_nodes_in_expr(c2, linearity, res)
                     }
                     _ => {
                         panic!("BinaryOp {:?} is not effectful", op)
@@ -108,53 +143,49 @@ impl<'a> Extractor<'a> {
             Expr::Uop(op, _) => {
                 panic!("UnaryOp {:?} is not effectful", op)
             }
-            Expr::Get(child, _index) => self.find_effectful_nodes_in_expr(child, linearity, rootid),
+            Expr::Get(child, _index) => self.find_effectful_nodes_in_expr(child, linearity, res),
             Expr::Alloc(_id, _amt, state, _ty) => {
-                self.find_effectful_nodes_in_expr(state, linearity, rootid)
+                self.find_effectful_nodes_in_expr(state, linearity, res)
             }
-            Expr::Call(_name, input) => self.find_effectful_nodes_in_expr(input, linearity, rootid),
+            Expr::Call(_name, input) => self.find_effectful_nodes_in_expr(input, linearity, res),
             Expr::Empty(_, _ctx) => {
                 panic!("Empty has no effect")
             }
-            Expr::Single(expr) => self.find_effectful_nodes_in_expr(expr, linearity, rootid),
+            Expr::Single(expr) => self.find_effectful_nodes_in_expr(expr, linearity, res),
             Expr::Concat(c1, c2) => {
                 let left_contains_state = self.is_effectful(c1);
                 let right_contains_state = self.is_effectful(c2);
                 assert!(left_contains_state || right_contains_state);
                 assert!(!(left_contains_state && right_contains_state));
                 if left_contains_state {
-                    self.find_effectful_nodes_in_expr(c1, linearity, rootid)
+                    self.find_effectful_nodes_in_expr(c1, linearity, res)
                 } else {
-                    self.find_effectful_nodes_in_expr(c2, linearity, rootid)
+                    self.find_effectful_nodes_in_expr(c2, linearity, res)
                 }
             }
             Expr::If(_pred, input, then_branch, else_branch) => {
                 let input_contains_state = self.is_effectful(input);
                 assert!(input_contains_state);
 
-                self.find_effectful_nodes_in_expr(input, linearity, rootid);
-                let then_root_id = class_of_expr(then_branch, linearity, self);
-                let else_root_id = class_of_expr(else_branch, linearity, self);
-                self.find_effectful_nodes_in_expr(then_branch, linearity, &then_root_id);
-                self.find_effectful_nodes_in_expr(else_branch, linearity, &else_root_id);
+                self.find_effectful_nodes_in_expr(input, linearity, res);
+                self.find_effectful_nodes_in_region(then_branch, linearity);
+                self.find_effectful_nodes_in_region(else_branch, linearity);
             }
             Expr::Switch(_pred, input, branches) => {
                 let input_contains_state = self.is_effectful(input);
                 assert!(input_contains_state);
 
-                self.find_effectful_nodes_in_expr(input, linearity, rootid);
+                self.find_effectful_nodes_in_expr(input, linearity, res);
                 for branch in branches {
-                    let branch_root_id = class_of_expr(branch, linearity, self);
-                    self.find_effectful_nodes_in_expr(branch, linearity, &branch_root_id);
+                    self.find_effectful_nodes_in_region(branch, linearity);
                 }
             }
             Expr::DoWhile(input, body) => {
                 let input_contains_state = self.is_effectful(input);
                 assert!(input_contains_state);
 
-                self.find_effectful_nodes_in_expr(input, linearity, rootid);
-                let body_root_id = class_of_expr(body, linearity, self);
-                self.find_effectful_nodes_in_expr(body, linearity, &body_root_id);
+                self.find_effectful_nodes_in_expr(input, linearity, res);
+                self.find_effectful_nodes_in_region(body, linearity);
             }
             Expr::Arg(ty, _ctx) => {
                 assert!(ty.contains_state());
@@ -163,8 +194,7 @@ impl<'a> Extractor<'a> {
                 if !outty.contains_state() {
                     panic!("Function output does not contain state");
                 }
-                let body_root_id = class_of_expr(body, linearity, self);
-                self.find_effectful_nodes_in_expr(body, linearity, &body_root_id)
+                self.find_effectful_nodes_in_region(body, linearity)
             }
             Expr::Const(_, _, _) => panic!("Const has no effect"),
         }
@@ -174,7 +204,8 @@ impl<'a> Extractor<'a> {
         for fun in iter::once(&prog.entry).chain(prog.functions.iter()) {
             let mut reachables = Default::default();
             let mut raw_to_rc = Default::default();
-            fun.collect_reachable(fun, &mut reachables, &mut raw_to_rc);
+            let fun_body = fun.func_body().unwrap();
+            fun_body.collect_reachable(fun_body, &mut reachables, &mut raw_to_rc);
 
             // if the raw pointer is effectful, then return its RcExpr, otherwise None.
             // Gracefully handles `Function` which is not supported by Extractor::is_effectful.
@@ -204,6 +235,8 @@ impl<'a> Extractor<'a> {
                     })
                     .collect();
 
+                let mut effectful_parent: HashMap<*const Expr, RcExpr> = Default::default();
+
                 for expr in exprs {
                     let Some(expr) = get_if_effectful(self, expr) else {
                         continue;
@@ -220,15 +253,18 @@ impl<'a> Extractor<'a> {
                             .expect("Expect one effectful child from an effectful operator");
                         assert!(effectful_child_iter.next().is_none());
                         if !dangling_effectful.remove(&Rc::as_ptr(effectful_child)) {
-                            return Err("An effectful operator is used twice".to_string());
+                            return Err(
+                                format!("Resulting program violated linearity! Effectful expression's state edge was referenced twice. Parent 1: {}\n\n Parent 2: {}\n\n Child referenced twice: {}", effectful_parent.get(&Rc::as_ptr(effectful_child)).unwrap(), expr, effectful_child),
+                            );
                         }
+                        effectful_parent.insert(Rc::as_ptr(effectful_child), expr.clone());
                     }
                 }
                 if get_if_effectful(self, region).is_some() && !dangling_effectful.remove(&region) {
                     panic!("The region operator is either consumed or not effectful.");
                 }
                 if !dangling_effectful.is_empty() {
-                    return Err("There are unconsumed effectful operators".to_string());
+                    return Err("Resulting program violated linearity! There are unconsumed effectful operators.".to_string());
                 }
             }
         }

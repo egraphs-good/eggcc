@@ -42,7 +42,8 @@ def bench(profile):
     with open(f'{profile_dir}/{name}-args') as f:
       args = f.read().rstrip()
     
-    subprocess.call(f'hyperfine --warmup 2 --max-runs 100 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
+    # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
+    subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
 
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:
@@ -77,11 +78,15 @@ if __name__ == '__main__':
   profiles = []
   # if it is a directory get all files
   if os.path.isdir(arg):
+    print(f'Running all bril files in {arg}')
     profiles = glob(f'{arg}/**/*.bril', recursive=True)
   else:
     profiles = [arg]
 
+  iter = 0
   for p in profiles:
+    print(f'Benchmark {iter} of {len(profiles)} on all treatments')
+    iter += 1
     bench(p)
 
   aggregate()

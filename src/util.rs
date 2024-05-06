@@ -364,6 +364,25 @@ impl Run {
         }
     }
 
+    pub fn compile_llvm_config(
+        test: TestProgram,
+        optimize_egglog: bool,
+        optimize_bril_llvm: bool,
+        interp: InterpMode,
+    ) -> Run {
+        Run {
+            test_type: RunType::CompileBrilLLVM,
+            interp,
+            prog_with_args: test.read_program(),
+            profile_out: None,
+            output_path: None,
+            llvm_output_dir: None,
+            optimize_egglog: Some(optimize_egglog),
+            optimize_brilift: None,
+            optimize_bril_llvm: Some(optimize_bril_llvm),
+        }
+    }
+
     pub fn all_configurations_for(test: TestProgram) -> Vec<Run> {
         let prog = test.clone().read_program();
         let mut res = vec![];

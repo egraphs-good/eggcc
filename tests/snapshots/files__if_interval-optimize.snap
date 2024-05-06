@@ -4,30 +4,5 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v1_: bool = const true;
-<<<<<<< HEAD
-  v2_: int = const 0;
-  v3_: bool = le v0 v2_;
-  br v3_ .v4_ .v5_;
-.v4_:
-  v6_: int = id v2_;
-  jmp .v7_;
-.v5_:
-  v8_: int = const 3;
-  v6_: int = id v8_;
-.v7_:
-||||||| parent of 4a17d535 (Snapshots)
-  v2_: int = const 1;
-  v3_: bool = lt v0 v2_;
-  v4_: int = const 0;
-  br v3_ .v5_ .v6_;
-.v5_:
-  v7_: int = id v4_;
-  jmp .v8_;
-.v6_:
-  v9_: int = const 3;
-  v7_: int = id v9_;
-.v8_:
-=======
->>>>>>> 4a17d535 (Snapshots)
   print v1_;
 }

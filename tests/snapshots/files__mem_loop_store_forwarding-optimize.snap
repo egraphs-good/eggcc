@@ -89,28 +89,7 @@ expression: visualization.result
   v21_: int = const 20;
   store v16_ v20_;
   store v17_ v21_;
-<<<<<<< HEAD
   v22_: int = load v16_;
-||||||| parent of ba246eb6 (Snapshots)
-  v7_: ptr<int> = id v4_;
-  v8_: ptr<int> = id v2_;
-  v9_: ptr<int> = id v6_;
-  v10_: bool = id v0;
-.v11_:
-  v7_: ptr<int> = id v8_;
-  v8_: ptr<int> = id v7_;
-  v9_: ptr<int> = id v9_;
-  v10_: bool = id v10_;
-  br v10_ .v11_ .v12_;
-.v12_:
-  v13_: int = const 10;
-  v14_: int = const 20;
-  store v8_ v13_;
-  store v9_ v14_;
-  print v13_;
-  free v7_;
-=======
->>>>>>> ba246eb6 (Snapshots)
   print v20_;
   free v15_;
 >>>>>>> 8486d06c (Snapshots)

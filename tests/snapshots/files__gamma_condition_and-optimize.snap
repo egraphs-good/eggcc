@@ -4,40 +4,8 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v1_: int = const 0;
-<<<<<<< HEAD
-<<<<<<< HEAD
   v2_: bool = gt v0 v1_;
   v3_: bool = lt v0 v1_;
-||||||| parent of 4a17d535 (Snapshots)
-  v2_: bool = lt v0 v1_;
-  v3_: bool = gt v0 v1_;
-=======
-<<<<<<< HEAD
-  v2_: bool = lt v0 v1_;
-  v3_: bool = gt v0 v1_;
-||||||| parent of 5bac80ef (Snapshots)
-||||||| parent of ba246eb6 (Snapshots)
-<<<<<<< HEAD
-  v2_: bool = lt v0 v1_;
-  v3_: bool = gt v0 v1_;
-||||||| parent of 5bac80ef (Snapshots)
-=======
->>>>>>> ba246eb6 (Snapshots)
-  v2_: bool = gt v0 v1_;
-  v3_: bool = lt v0 v1_;
-<<<<<<< HEAD
-=======
-  v2_: bool = lt v1_ v0;
-  v3_: bool = lt v0 v1_;
->>>>>>> 5bac80ef (Snapshots)
->>>>>>> 4a17d535 (Snapshots)
-||||||| parent of ba246eb6 (Snapshots)
-=======
-  v2_: bool = lt v1_ v0;
-  v3_: bool = lt v0 v1_;
->>>>>>> 5bac80ef (Snapshots)
-=======
->>>>>>> ba246eb6 (Snapshots)
   v4_: int = const 1;
   br v2_ .v5_ .v6_;
 .v5_:

@@ -264,7 +264,7 @@ impl<'a> Extractor<'a> {
                     panic!("The region operator is either consumed or not effectful.");
                 }
                 if !dangling_effectful.is_empty() {
-                    return Err("There are unconsumed effectful operators".to_string());
+                    return Err("Resulting program violated linearity! There are unconsumed effectful operators.".to_string());
                 }
             }
         }

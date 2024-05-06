@@ -98,7 +98,7 @@ impl<'a> Extractor<'a> {
         for rootid in rootids {
             // if we have already visited this region, we should not visit again
             if linearity.effectful_nodes.contains_key(&rootid) {
-                return;
+                continue;
             }
             let mut res = Default::default();
             self.find_effectful_nodes_in_expr(expr, linearity, &mut res);

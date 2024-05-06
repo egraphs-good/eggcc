@@ -84,7 +84,7 @@ if __name__ == '__main__':
 
   iter = 0
   for p in profiles:
-    print("Benchmarking #{iter} of {len(profiles)} on all treatments")
+    print(f'Benchmark {iter} of {len(profiles)} on all treatments')
     iter += 1
     bench(p)
 

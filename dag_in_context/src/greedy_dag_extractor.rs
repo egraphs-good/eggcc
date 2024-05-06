@@ -546,26 +546,21 @@ pub fn extract_with_paths(
         let sort_of_node = info.get_sort_of_eclass(classid);
         // if node is effectful, we only consider it if it is in the effectful path
         if sort_of_node == "Expr" && effectful_paths.is_some() {
-            if let Some(is_stateful) = extractor.is_eclass_effectful(classid.clone()) {
-                if is_stateful {
-                    if let Some(effectful_nodes) = effectful_paths.as_ref().unwrap().get(&rootid) {
-                        if is_stateful && !effectful_nodes.contains(&nodeid) {
-                            //eprintln!("Node {:?} not found in effectful_paths", node);
-                            // skip nodes not on the path
-                            continue;
-                        }
-                    } else {
-                        //eprintln!("Root {:?} not found in effectful_paths", rootid);
-                        // continue when this root isn't in effectful_paths
-                        continue;
-                    }
-                }
-            } else {
-                // if the op is "Function" we don't need a type
-                if node.op != "Function" {
-                    // skip when type is unknown
-                    continue;
-                }
+            let is_effectful = extractor.is_eclass_effectful(classid.clone());
+            if is_effectful.is_none() && node.op != "Function" {
+                // skip when type is unknown
+                continue;
+            }
+
+            let effectful_nodes = effectful_paths.unwrap().get(&rootid);
+            if effectful_nodes.is_none() {
+                // continue when this root isn't in effectful_paths
+                continue;
+            }
+
+            // skip nodes not on the path
+            if is_effectful.unwrap() && !effectful_nodes.unwrap().contains(&nodeid) {
+                continue;
             }
         }
 

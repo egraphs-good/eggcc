@@ -47,7 +47,15 @@ pushd $TOP_DIR
 # Run profiler.
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench
-./infra/profile.py "$@"
+
+# locally, run on argument
+if [ "$LOCAL" != "" ]; then
+  ./infra/profile.py "$@"
+else
+  # run on all benchmarks in nightly
+  ./infra/profile.py benchmarks/passing
+fi
+
 
 rm -r ./tmp/
 

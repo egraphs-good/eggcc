@@ -147,7 +147,9 @@ pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let function_inlining = if !optimize {
         "".to_string()
     } else {
-        print_function_inlining_pairs(
+        // TODO enable function inlining and identity
+        // performance problem
+        /*print_function_inlining_pairs(
             function_inlining::function_inlining_pairs(
                 program,
                 config::FUNCTION_INLINING_ITERATIONS,
@@ -155,7 +157,8 @@ pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
             &mut printed,
             &mut tree_state,
             &mut term_cache,
-        )
+        )*/
+        "".to_string()
     };
 
     // Generate program egglog

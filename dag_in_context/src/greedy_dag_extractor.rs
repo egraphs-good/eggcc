@@ -563,7 +563,6 @@ pub fn extract_with_paths(
             } else {
                 // if the op is "Function" we don't need a type
                 if node.op != "Function" {
-                    eprintln!("Failed to get type of node {:?}", node);
                     // skip when type is unknown
                     continue;
                 }

@@ -401,11 +401,13 @@
       :ruleset memory-helpers)
 
 ; If we load and we already know what the pointer points to
-(rule ((= e (Bop (Load) addr state))
-       (= v (PointsToExpr state addr)))
-      ((union (Get e 0) v)
-       (union (Get e 1) state))
-       :ruleset memory-helpers)
+; TODO this rule breaks the weakly linear invariant
+; when a previous load may not be on the path
+;(rule ((= e (Bop (Load) addr state))
+;       (= v (PointsToExpr state addr)))
+;      ((union (Get e 0) v)
+;       (union (Get e 1) state))
+;       :ruleset memory-helpers)
 
 ; Loads and prints don't affect what what pointers already point to
 (rule ((= f (PointsToExpr state addr))

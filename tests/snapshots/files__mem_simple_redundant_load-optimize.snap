@@ -17,6 +17,7 @@ expression: visualization.result
   v6_: ptr<int> = id v2_;
 .v7_:
   v9_: int = load v2_;
+  v10_: int = load v2_;
   print v9_;
   free v2_;
 }

@@ -156,10 +156,7 @@ pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
             &mut printed,
             &mut tree_state,
             &mut term_cache,
-        );
-        // TODO enable function inlining and identity
-        // performance problem
-        "".to_string()
+        )
     };
 
     // Generate program egglog

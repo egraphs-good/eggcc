@@ -374,8 +374,8 @@ impl<'a> Extractor<'a> {
     ) -> (Term, Cost) {
         let nodeid = &self.term_node(&term);
         let eclass = info.egraph.nid_to_cid(nodeid);
-        if let Some(existing) = current_costs.get(eclass) {
-            existing.clone()
+        if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
+            (existing_term.clone(), NotNan::new(0.).unwrap())
         } else {
             let unshared_cost = match other_costs.get(eclass) {
                 Some((_, cost)) => *cost,
@@ -1097,8 +1097,9 @@ fn test_dag_extract() {
     let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
         + cost_model.get_op_cost("DoWhile")
         + cost_model.get_op_cost("LessThan")
-        // while the same const is used three times, it is only counted twice
+        // while the same const is used several times, it is only counted twice
         + cost_model.get_op_cost("Const") * 2.;
+    // two of the same function
     let expected_cost = cost_of_one_func * 2.;
     dag_extraction_test(&prog, expected_cost);
 }

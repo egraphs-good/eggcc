@@ -34,12 +34,6 @@
     )
     ((lsr-inv loop (Const c in-type loop-input-ctx) constant)) :ruleset always-run)
 
-
-;; A temporary context.
-;; Be sure to delete at the end of all actions or else!!!
-;; This is safer than using a persistant context, since we may miss an important part of the query.
-(function TmpCtx () Assumption)
-
 (rule 
     (
         ;; Find loop

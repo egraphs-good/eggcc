@@ -147,6 +147,8 @@ pub enum RunType {
     /// Do nothing to the input bril program besides parse it.
     /// Output the original program.
     Parse,
+    /// Convert a Bril file to the JSON representation
+    BrilToJson,
     /// Convert the input bril program to the tree encoding, optimize the program
     /// using egglog, and output the resulting bril program.
     /// The default way to run this tool.
@@ -220,7 +222,8 @@ impl RunType {
             | RunType::DagToRvsdg
             | RunType::OptimizedRvsdg
             | RunType::CheckExtractIdentical
-            | RunType::ToCfg => false,
+            | RunType::ToCfg
+            | RunType::BrilToJson => false,
         }
     }
 }
@@ -506,6 +509,17 @@ impl Run {
                 vec![],
                 Some(Interpretable::Bril(self.prog_with_args.program.clone())),
             ),
+            RunType::BrilToJson => {
+                let json = serde_json::to_string_pretty(&self.prog_with_args.program).unwrap();
+                (
+                    vec![Visualization {
+                        result: json,
+                        file_extension: ".json".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
+            }
             RunType::RvsdgConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let svg = rvsdg.to_svg();

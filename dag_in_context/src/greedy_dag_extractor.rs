@@ -244,6 +244,7 @@ impl<'a> Extractor<'a> {
             let dummy = self
                 .termdag
                 .lit(Literal::String(format!("dummy{}", node_id).into()));
+            Self::add_correspondence(&mut self.correspondence, dummy.clone(), node_id.clone());
             let term = self.termdag.app("InFunc".into(), vec![dummy]);
             Self::add_correspondence(&mut self.correspondence, term.clone(), node_id.clone());
             let costset = CostSet {
@@ -327,10 +328,6 @@ impl<'a> Extractor<'a> {
     /// We also need to add this term to the correspondence map so we can
     /// find its enode id later.
     fn get_term(&mut self, info: &EgraphInfo, node_id: NodeId, children: Vec<Term>) -> Term {
-        eprintln!(
-            "Getting term for node {:?} with children {:?}",
-            node_id, children
-        );
         let node = &info.egraph[&node_id];
         let op = &node.op;
         let term = if children.is_empty() {
@@ -360,7 +357,6 @@ impl<'a> Extractor<'a> {
         term: Term,
         node_id: NodeId,
     ) {
-        eprintln!("Adding correspondence for {:?}", term);
         if let Some(existing) = correspondence.insert(term.clone(), node_id.clone()) {
             assert_eq!(existing, node_id);
         }
@@ -475,14 +471,14 @@ impl<'a> Extractor<'a> {
 
         let mut children_terms = vec![];
         let mut termdag_tmp = TermDag::default();
-        let mut correspondance_tmp = IndexMap::default();
+        let mut new_correspondence = IndexMap::default();
         // swap out the termdag and correspondance for the temporary one
         std::mem::swap(self.termdag, &mut termdag_tmp);
-        std::mem::swap(&mut self.correspondence, &mut correspondance_tmp);
 
         if !info.cm.ignore_children(&node.op) {
             for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
                 if *is_region_root {
+                    children_terms.push(child_set.term.clone());
                     unshared_total += child_set.total;
                 } else {
                     // costs is empty, replace it with the child one
@@ -490,10 +486,9 @@ impl<'a> Extractor<'a> {
                         // skip the biggest child's cost
                         children_terms.push(child_set.term.clone());
                     } else {
-                        eprintln!("Adding child cost set for {:?}", child_set.term);
                         let (child_term, net_cost) = self.add_term_to_cost_set(
                             info,
-                            &mut correspondance_tmp,
+                            &mut new_correspondence,
                             &mut termdag_tmp,
                             &mut costs,
                             child_set.term.clone(),
@@ -508,7 +503,11 @@ impl<'a> Extractor<'a> {
 
         // swap back the termdag and correspondance
         std::mem::swap(self.termdag, &mut termdag_tmp);
-        std::mem::swap(&mut self.correspondence, &mut correspondance_tmp);
+
+        // add the new correspondence to the main correspondence
+        for (term, nodeid) in new_correspondence {
+            Self::add_correspondence(&mut self.correspondence, term, nodeid);
+        }
 
         let term = self.get_term(info, nodeid.clone(), children_terms);
 

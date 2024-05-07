@@ -42,7 +42,7 @@ def bench(profile):
     with open(f'{profile_dir}/{name}-args') as f:
       args = f.read().rstrip()
     
-    subprocess.call(f'hyperfine --warmup 2 --max-runs 100 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
+    subprocess.call(f'hyperfine --max-runs 3 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
 
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:

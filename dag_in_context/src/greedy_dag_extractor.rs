@@ -33,7 +33,6 @@ pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
     costsets: Vec<CostSet>,
     costsetmemo: FxHashMap<(NodeId, Vec<CostSetIndex>), CostSetIndex>,
-    dummy_contexts: FxHashMap<ClassId, CostSetIndex>,
     costs: FxHashMap<ClassId, FxHashMap<ClassId, CostSetIndex>>,
 
     // use to get the type of an expression
@@ -252,10 +251,9 @@ impl<'a> Extractor<'a> {
                 total: 0.0.try_into().unwrap(),
                 term,
             };
-            let classid = info.egraph.nid_to_cid(node_id);
             self.costsets.push(costset);
-            self.dummy_contexts
-                .insert(classid.clone(), self.costsets.len() - 1);
+            self.costsetmemo
+                .insert((node_id.clone(), vec![]), self.costsets.len() - 1);
             self.costsets.len() - 1
         }
     }
@@ -265,7 +263,6 @@ impl<'a> Extractor<'a> {
             termdag,
             costsets: Default::default(),
             costsetmemo: Default::default(),
-            dummy_contexts: Default::default(),
             correspondence: Default::default(),
             costs: Default::default(),
             term_to_expr: Default::default(),

@@ -13,7 +13,7 @@ expression: visualization.result
   jmp .v8_;
 .v5_:
   v9_: int = const -1;
-  v10_: int = mul v9_ v0;
+  v10_: int = mul v0 v9_;
   v6_: int = id v10_;
   v7_: int = id v2_;
 .v8_:

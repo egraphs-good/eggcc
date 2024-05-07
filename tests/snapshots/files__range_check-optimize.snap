@@ -17,7 +17,7 @@ expression: visualization.result
   v10_: int = id v1_;
 .v11_:
   v12_: int = const 1;
-  v13_: int = add v1_ v12_;
+  v13_: int = add v12_ v1_;
   br v4_ .v14_ .v15_;
 .v14_:
   v16_: bool = const true;

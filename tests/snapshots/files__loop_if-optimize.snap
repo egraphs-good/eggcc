@@ -33,8 +33,8 @@ expression: visualization.result
   jmp .v17_;
 .v6_:
   v21_: int = const 1;
-  v22_: int = add v21_ v1_;
-  v23_: int = add v2_ v21_;
+  v22_: int = add v1_ v21_;
+  v23_: int = add v21_ v2_;
   v7_: int = id v22_;
   v8_: bool = id v4_;
   v9_: int = id v23_;

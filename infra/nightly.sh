@@ -15,6 +15,7 @@ set -x -e
 export PATH=~/.cargo/bin:$PATH
 
 rustup update
+cargo install tokei
 
 # determine physical directory of this script
 src="${BASH_SOURCE[0]}"
@@ -50,17 +51,13 @@ mkdir -p ./tmp/bench
 
 # locally, run on argument
 if [ "$LOCAL" != "" ]; then
-  ./infra/profile.py "$@"
+  ./infra/profile.py "$@" "$NIGHTLY_DIR"
 else
   # run on all benchmarks in nightly
-  ./infra/profile.py benchmarks/passing
+  ./infra/profile.py benchmarks/passing "$NIGHTLY_DIR"
 fi
 
-
 rm -r ./tmp/
-
-./infra/gen_linecount.py > "$NIGHTLY_DIR/data/linecount.tex"
-./infra/nightly_table.py "$NIGHTLY_DIR/data/profile.json" > "$NIGHTLY_DIR/data/nightlytable.tex"
 
 popd
 

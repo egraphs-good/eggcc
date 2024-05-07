@@ -5,6 +5,8 @@ import os
 from glob import glob
 from sys import stdout
 import subprocess
+from nightly_table import gen_nightly_table
+from gen_linecount import gen_linecount_table
 
 
 modes = [
@@ -70,18 +72,18 @@ def aggregate():
 
 if __name__ == '__main__':
   # expect a single argument
-  if len(os.sys.argv) != 2:
-    print("Usage: profile.py <bril_directory>")
+  if len(os.sys.argv) != 3:
+    print("Usage: profile.py <bril_directory> <output_directory>")
     exit(1)
 
-  arg = os.sys.argv[1]
+  profile_path, output_path = os.sys.argv[1:]
   profiles = []
   # if it is a directory get all files
-  if os.path.isdir(arg):
-    print(f'Running all bril files in {arg}')
-    profiles = glob(f'{arg}/**/*.bril', recursive=True)
+  if os.path.isdir(profile_path):
+    print(f'Running all bril files in {profile_path}')
+    profiles = glob(f'{profile_path}/**/*.bril', recursive=True)
   else:
-    profiles = [arg]
+    profiles = [profile_path]
 
   iter = 0
   for p in profiles:
@@ -90,3 +92,9 @@ if __name__ == '__main__':
     bench(p)
 
   aggregate()
+
+  with open(f"{output_path}/data/linecount.tex", "w") as linecount:
+      linecount.write(gen_linecount_table())
+
+  with open(f"{output_path}/data/nightlytable.tex", "w") as nightly_table:
+      nightly_table.write(gen_nightly_table(f"{output_path}/data/profile.json"))

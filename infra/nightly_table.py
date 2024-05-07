@@ -3,7 +3,7 @@ import json
 import os
 from collections import defaultdict
 
-def build_benchtable(profiles):
+def _build_benchtable(profiles):
     keys = ["name", "mean", "max", "min", "stddev"]
 
     sizing = "|".join(list(map(lambda k: "p{4.5cm}", keys)))
@@ -21,7 +21,7 @@ def build_benchtable(profiles):
     preamble += "\end{tabular}\n"
     return preamble
 
-def main():
+def gen_nightly_table(input_path):
     preamble = """\\begin{tabular}{ |p{4cm}|p{20cm}| }
 \hline
 \multicolumn{2}{|c|}{Benchmarks} \\\\
@@ -29,7 +29,7 @@ def main():
 Name & Executions\\\\
 \hline"""
 
-    with open(os.sys.argv[1], mode='r') as f:
+    with open(input_path, mode='r') as f:
         benches = defaultdict(list)
 
 
@@ -37,8 +37,6 @@ Name & Executions\\\\
             benches[profile["benchmark"]].append(profile)
 
         for profile_key in sorted(benches.keys())[:1]:
-            preamble += ("\hline\n%s & %s \\\\\n" % (profile_key, build_benchtable(benches[profile_key])))
+            preamble += ("\hline\n%s & %s \\\\\n" % (profile_key, _build_benchtable(benches[profile_key])))
     preamble += "\\end{tabular}"
-    print(preamble)
-
-main()
+    return preamble

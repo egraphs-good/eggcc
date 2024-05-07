@@ -21,7 +21,7 @@ def get_rust_lines():
     rust_lines_output = subprocess.run(["tokei", "--output", "json", "./"], capture_output=True)
     return json.loads(rust_lines_output.stdout)["Rust"]["code"]
 
-def main():
+def gen_linecount_table():
     rust_lines = str(get_rust_lines())
     written_egg = str(get_written_egg())
     generated_egg = str(get_generated_egg())
@@ -37,9 +37,5 @@ Written Egg & %s \\\\
 Generated EGG & %s \\\\
 \hline
 \end{tabular}""" % (rust_lines, written_egg, generated_egg)
-    print(fmt)
-
-
-main()
-
+    return fmt
 

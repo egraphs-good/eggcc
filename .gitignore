@@ -29,3 +29,4 @@ profile.json
 test.egg
 
 bril-llvm/__pycache__/
+infra/__pycache__/

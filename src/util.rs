@@ -140,6 +140,12 @@ where
     }
 }
 
+// Get the eggcc repo root directory. Set by $EGGCC_ROOT, defaults to current
+// directory.
+fn get_eggcc_root() -> String {
+    std::env::var("EGGCC_ROOT").unwrap_or(".".to_string())
+}
+
 /// Different ways to run eggcc
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ValueEnum, Debug)]
 pub enum RunType {
@@ -799,7 +805,7 @@ impl Run {
         let dir = tempdir().expect("couldn't create temp dir");
 
         let llvm_ir = run_cmd_line(
-            "./bril-llvm/brilc",
+            format!("{}/bril-llvm/brilc", get_eggcc_root()),
             Vec::<String>::new(),
             String::from_utf8(buf).unwrap().as_str(),
         )

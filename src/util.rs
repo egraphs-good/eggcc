@@ -826,7 +826,14 @@ impl Run {
         )
         .expect("unable to compile bril!");
 
-        let file_path = dir.path().join(format!("compile-{}.ll", self.name()));
+        let name = if optimize_egglog {
+            format!("{}_egglog_opt", self.prog_with_args.name)
+        } else {
+            self.prog_with_args.name.to_string()
+        };
+
+        let init_ll_name = format!("{}-init.ll", name);
+        let file_path = dir.path().join(init_ll_name.clone());
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
@@ -836,31 +843,39 @@ impl Run {
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", self.name()));
 
+        // Copy init file to $output_dir
         if let Some(output_dir) = &self.llvm_output_dir {
             std::fs::create_dir_all(output_dir)
                 .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
+            std::process::Command::new("cp")
+                .arg(file_path.clone())
+                .arg(output_dir)
+                .status()
+                .unwrap();
         }
+
         if optimize_brillvm {
+            let opt_level_no_dash = "O3";
+            let opt_level = format!("-{opt_level_no_dash}");
+
             std::process::Command::new("clang")
                 .arg(file_path.clone())
-                .arg("-O3")
+                .arg(opt_level.clone())
                 .arg("-o")
                 .arg(executable.clone())
                 .status()
                 .unwrap();
 
             if let Some(output_dir) = &self.llvm_output_dir {
+                // Emit optimized LLVM IR
                 std::process::Command::new("clang")
                     .current_dir(output_dir)
                     .arg(file_path.clone())
-                    .arg("-O3")
+                    .arg(opt_level)
                     .arg("-emit-llvm")
                     .arg("-S")
-                    .status()
-                    .unwrap();
-                std::process::Command::new("cp")
-                    .arg(file_path)
-                    .arg(format!("{output_dir}/compile-unopt.ll"))
+                    .arg("-o")
+                    .arg(format!("{}-bril_llvm_{}.ll", name, opt_level_no_dash))
                     .status()
                     .unwrap();
             }
@@ -890,9 +905,14 @@ impl Run {
                 .status()
                 .unwrap();
             if let Some(output_dir) = &self.llvm_output_dir {
-                std::process::Command::new("cp")
+                std::process::Command::new("clang")
+                    .current_dir(output_dir)
                     .arg(processed)
-                    .arg(format!("{output_dir}/compile-unopt.ll"))
+                    .arg("-O0")
+                    .arg("-emit-llvm")
+                    .arg("-S")
+                    .arg("-o")
+                    .arg(format!("{}-preprocessed_bril_llvm_O0.ll", name))
                     .status()
                     .unwrap();
             }

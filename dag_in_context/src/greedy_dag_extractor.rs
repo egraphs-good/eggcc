@@ -4,6 +4,7 @@ use ordered_float::NotNan;
 use rpds::HashTrieMap;
 use rustc_hash::FxHashMap;
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet, VecDeque},
     f64::INFINITY,
 };
@@ -255,6 +256,7 @@ impl<'a> Extractor<'a> {
                 costs: Default::default(),
                 total: 0.0.try_into().unwrap(),
                 term,
+                // total_subregion_size: 0,
             };
             self.costsets.push(costset);
             self.costsetmemo
@@ -311,6 +313,7 @@ pub fn serialized_egraph(
     (egraph, get_unextractables(&egglog_egraph))
 }
 
+// TODO: add an expression size here
 type Cost = NotNan<f64>;
 type CostSetIndex = usize;
 
@@ -388,8 +391,13 @@ impl<'a> Extractor<'a> {
         let nodeid = &self.term_node(&term);
         let eclass = info.egraph.nid_to_cid(nodeid);
         if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
+            // If a term already exists, no need to count it again (due to DAG extraction)
+            // TODO: put an expression size of 0 into the cost
             (existing_term.clone(), NotNan::new(0.).unwrap())
         } else {
+            // If the term to add already contains itself in its cost set, still add this to the
+            // cost set? TODO I don't know how this will relate to expression size, but revisit later
+            // What is other_costs? It is the OG costs? So, only update if it's not already included?
             let unshared_cost = match other_costs.get(eclass) {
                 Some((_, cost)) => *cost,
                 None => NotNan::new(0.).unwrap(),
@@ -409,6 +417,7 @@ impl<'a> Extractor<'a> {
                             other_costs,
                         );
                         new_children.push(new_child);
+                        // TODO: can I implement addition for the costs? then this just works
                         cost += child_cost;
                     }
                     termdag.app(head, new_children)
@@ -455,7 +464,9 @@ impl<'a> Extractor<'a> {
             return None;
         }
 
+        // TODO: shared total expression size starts at 0
         let mut shared_total = NotNan::new(0.).unwrap();
+        // TODO: unshared total expression size is just 1
         let mut unshared_total = info.cm.get_op_cost(&node.op);
         let mut costs: HashTrieMap<ClassId, (Term, Cost)> = Default::default();
         let index_of_biggest_child = child_cost_sets
@@ -505,6 +516,7 @@ impl<'a> Extractor<'a> {
                             child_set.term.clone(),
                             &child_set.costs,
                         );
+                        // TODO: why is this called net cost? It is always positive, right?
                         shared_total += net_cost;
                         children_terms.push(child_term);
                     }
@@ -523,6 +535,8 @@ impl<'a> Extractor<'a> {
         let term = self.get_term(info, nodeid.clone(), children_terms);
 
         // no need to add something that costs 0 to the set
+        // TODO: modify this to check if the cost is 0
+        // We won't count any op that has an exec cost of 0 as having an expression size?
         if unshared_total > NotNan::new(0.).unwrap() {
             costs = costs.insert(cid.clone(), (term.clone(), unshared_total));
         }
@@ -658,6 +672,8 @@ pub fn extract_with_paths(
         // create a new region_costs map if it doesn't exist
         let region_costs = extractor.costs.entry(rootid.clone()).or_default();
         let lookup = region_costs.get(classid);
+        // TODO: don't use infinity, just check if the previous cost exists or not
+        // and always update if there was no previous cost
         let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
         if let Some(lookup) = lookup {
             let costset = extractor.costsets.get(*lookup).unwrap();
@@ -669,6 +685,7 @@ pub fn extract_with_paths(
         {
             let cost_set = &extractor.costsets[cost_set_index];
             let region_costs = extractor.costs.get_mut(&rootid).unwrap();
+            // TODO: replace this with info.cm.compare(prev_cost, new_cost)
             if cost_set.total < prev_cost {
                 region_costs.insert(classid.clone(), cost_set_index);
 
@@ -714,10 +731,15 @@ pub fn extract_with_paths(
 
 pub trait CostModel {
     /// TODO: we could do better with type info
+    /// Note that the expression size of an op is considered to be 0
+    /// if its op cost is 0.
     fn get_op_cost(&self, op: &str) -> Cost;
 
     /// if true, the op's children are ignored in calculating the cost
     fn ignore_children(&self, op: &str) -> bool;
+
+    // Compares two cost sets
+    fn compare(&self, costset1: &CostSet, costset2: &CostSet) -> Ordering;
 }
 
 pub struct DefaultCostModel;
@@ -760,6 +782,10 @@ impl CostModel for DefaultCostModel {
 
     fn ignore_children(&self, op: &str) -> bool {
         matches!(op, "InLoop" | "InSwitch" | "InIf" | "InFunc")
+    }
+
+    fn compare(&self, costset1: &CostSet, costset2: &CostSet) -> Ordering {
+        return costset1.total.cmp(&costset2.total);
     }
 }
 

@@ -10,7 +10,6 @@ use dag_in_context::schema::TreeProgram;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::mem;
 use std::process::Stdio;
 use std::{
     ffi::OsStr,
@@ -813,8 +812,7 @@ impl Run {
         )
         .expect("unable to compile bril!");
 
-        let file_path = dir.path().join("compile.ll");
-        mem::forget(dir);
+        let file_path: PathBuf = dir.path().join("compile.ll");
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
@@ -823,18 +821,25 @@ impl Run {
             .output_path
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", self.name()));
-        let opt_level = if optimize_brillvm { "-O3" } else { "-O0" };
+        let opt_level_no_dash = if optimize_brillvm { "O3" } else { "O0" };
+        let opt_level = format!("-{opt_level_no_dash}");
         std::process::Command::new("clang")
             .arg(file_path.clone())
-            .arg(opt_level)
+            .arg(opt_level.clone())
             .arg("-o")
             .arg(executable.clone())
             .status()
             .unwrap();
 
         if let Some(output_dir) = &self.llvm_output_dir {
+            let pre_llvm_name = if optimize_egglog {
+                format!("{}_egglog_opt", self.prog_with_args.name)
+            } else {
+                self.prog_with_args.name.to_string()
+            };
             std::fs::create_dir_all(output_dir)
                 .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
+            // Emit optimized LLVM IR to $output_dir/compile.ll
             std::process::Command::new("clang")
                 .current_dir(output_dir)
                 .arg(file_path.clone())
@@ -843,9 +848,20 @@ impl Run {
                 .arg("-S")
                 .status()
                 .unwrap();
+            // rename $output_dir/compile.ll to state optimizations
+            std::process::Command::new("mv")
+                .current_dir(output_dir)
+                .arg("compile.ll")
+                .arg(format!(
+                    "{}_bril_llvm_{}.ll",
+                    pre_llvm_name, opt_level_no_dash
+                ))
+                .status()
+                .unwrap();
             std::process::Command::new("cp")
+                .current_dir(output_dir)
                 .arg(file_path)
-                .arg(format!("{}/compile-unopt.ll", output_dir))
+                .arg(format!("{}.ll", pre_llvm_name))
                 .status()
                 .unwrap();
         }

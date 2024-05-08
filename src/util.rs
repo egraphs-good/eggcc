@@ -801,8 +801,8 @@ impl Run {
         let dir = tempdir().expect("couldn't create temp dir");
 
         let llvm_ir = run_cmd_line(
-            "./brillvm",
-            Vec::<String>::new(),
+            "./brillvm/brilc",
+            vec!["-r", "./brillvm/rt.bc"],
             String::from_utf8(buf).unwrap().as_str(),
         )
         .expect("unable to compile bril!");
@@ -818,7 +818,7 @@ impl Run {
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", self.name()));
         let opt_level = if optimize_brillvm { "-O3" } else { "-O0" };
-        std::process::Command::new("clang")
+        std::process::Command::new("clang-18")
             .arg(file_path.clone())
             .arg(opt_level)
             .arg("-o")
@@ -829,7 +829,7 @@ impl Run {
         if let Some(output_dir) = &self.llvm_output_dir {
             std::fs::create_dir_all(output_dir)
                 .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
-            std::process::Command::new("clang")
+            std::process::Command::new("clang-18")
                 .current_dir(output_dir)
                 .arg(file_path.clone())
                 .arg(opt_level)

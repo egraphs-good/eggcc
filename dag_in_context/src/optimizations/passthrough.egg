@@ -42,6 +42,40 @@
       ((union (Get if i) (Get inputs j)))
       :ruleset always-run)
 
+; Pass through if state edge arguments
+; To maintain the invariant, we have to union the other outputs with a pure if statement
+(rule ((= lhs (Get outputs i))
+       (= outputs (If pred inputs then_ else_))
+
+       (= (Get then_ i) (Get (Arg (TupleT arg_ty) then_ctx) j))
+       (= (Get else_ i) (Get (Arg (TupleT arg_ty) else_ctx) j))
+       (= passed-through (Get inputs j))
+
+       (HasType lhs lhs_ty)
+       (= lhs_ty (Base (StateT)))
+
+       (= inputs_len  (tuple-length inputs))
+       (= outputs_len (tuple-length outputs)))
+
+      ((let new_inputs (TupleRemoveAt inputs j))
+
+       (let new_then_ctx (InIf true  pred new_inputs))
+       (let new_else_ctx (InIf false pred new_inputs))
+
+       (let old_then (TupleRemoveAt then_ i))
+       (let old_else (TupleRemoveAt else_ i))
+
+       (let new_then (DropAt new_then_ctx j old_then))
+       (let new_else (DropAt new_else_ctx j old_else))
+
+       (let old_outputs (TupleRemoveAt outputs i))
+       (let new_if (If pred new_inputs new_then new_else))
+       (union new_if old_outputs)
+
+       (union lhs passed-through)
+       (subsume (If pred inputs then_ else_)))
+      :ruleset always-run)
+
 ;; Pass through if predicate
 (rule ((= if (If pred inputs then_ else_))
        (= (Get then_ i) (Const (Bool true) _ _thenctx))

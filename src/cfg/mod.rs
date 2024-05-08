@@ -42,7 +42,7 @@ pub(crate) fn program_to_cfg(program: &Program) -> SimpleCfgProgram {
     CfgProgram { functions }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CfgProgram<CfgType> {
     /// A list of functions in the program.
     /// The last entry of this list is the entry point.

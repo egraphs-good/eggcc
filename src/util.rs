@@ -913,8 +913,7 @@ impl Run {
         } else {
             let processed = dir.path().join("postprocessed.ll");
             let res = Command::new("opt")
-                .arg("-disable-verify")
-                .arg("-passes=sroa,instsimplify,instcombine,dce")
+                .arg("-passes=sroa,instsimplify,instcombine,adce")
                 .arg("-S")
                 .arg(file_path.clone())
                 .arg("-o")

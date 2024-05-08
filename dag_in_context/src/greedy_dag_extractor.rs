@@ -40,7 +40,7 @@ pub(crate) struct Extractor<'a> {
 
     // Each term must correspond to a node in the egraph. We store that here
     // Use an indexmap for deterministic order of iteration
-    pub(crate) correspondence: IndexMap<Term, HashSet<NodeId>>,
+    pub(crate) correspondence: IndexMap<Term, NodeId>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
     pub(crate) term_to_expr: Option<HashMap<Term, RcExpr>>,
@@ -199,20 +199,18 @@ impl<'a> Extractor<'a> {
         };
         let mut node_to_type: HashMap<ClassId, Type> = Default::default();
 
-        for (term, nodes) in &self.correspondence {
-            for node_id in nodes {
-                let node = info.egraph.nodes.get(node_id).unwrap();
-                let eclass = info.egraph.nid_to_cid(node_id);
-                let sort_of_eclass = info.get_sort_of_eclass(eclass);
-                // only convert expressions (that are not functions)
-                if sort_of_eclass == "Expr" && node.op != "Function" {
-                    let expr = converter.expr_from_egglog(term.clone());
-                    let ty = self
-                        .typechecker
-                        .add_arg_types_to_expr(expr.clone(), &None)
-                        .0;
-                    node_to_type.insert(eclass.clone(), ty);
-                }
+        for (term, node_id) in &self.correspondence {
+            let node = info.egraph.nodes.get(node_id).unwrap();
+            let eclass = info.egraph.nid_to_cid(node_id);
+            let sort_of_eclass = info.get_sort_of_eclass(eclass);
+            // only convert expressions (that are not functions)
+            if sort_of_eclass == "Expr" && node.op != "Function" {
+                let expr = converter.expr_from_egglog(term.clone());
+                let ty = self
+                    .typechecker
+                    .add_arg_types_to_expr(expr.clone(), &None)
+                    .0;
+                node_to_type.insert(eclass.clone(), ty);
             }
         }
 
@@ -225,30 +223,50 @@ impl<'a> Extractor<'a> {
         converted_prog
     }
 
-    /// A term can correspond to multiple nodes in the egraph.
-    /// This is because we forget the context when building the term, so
-    /// multiple nodes in different context are the same as far as the term is concerned.
-    pub(crate) fn term_nodes(&self, term: &Term) -> HashSet<NodeId> {
+    pub(crate) fn term_node(&self, term: &Term) -> NodeId {
         self.correspondence
             .get(term)
             .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term))
             .clone()
     }
 
-    pub(crate) fn new(original_prog: &'a TreeProgram, termdag: &'a mut TermDag) -> Self {
-        // first element is always a dummy costset
-        let costsets = vec![CostSet {
-            costs: Default::default(),
-            total: 0.0.try_into().unwrap(),
-            term: {
-                let dummy = termdag.lit(Literal::String("dummy".into()));
-                termdag.app("InFunc".into(), vec![dummy])
-            },
-        }];
+    /// A method for getting a dummy context nodes.
+    /// Contexts create cycles, but we don't need to extract them, so we invent an imaginary term here.
+    pub(crate) fn get_dummy_context(
+        &mut self,
+        info: &EgraphInfo,
+        class_id: ClassId,
+    ) -> CostSetIndex {
+        // get any node in the class
+        let node_id = info.egraph.classes()[&class_id].nodes.first().unwrap();
+        if let Some(existing) = self.costsetmemo.get(&(node_id.clone(), vec![])) {
+            *existing
+        } else {
+            // HACK: this term gets a context (InFunc "dummy_{class_id}").
+            // The class id allows terms to correspond one to one with nodes (we don't want the same dummy node
+            // for two different contexts).
+            let dummy = self
+                .termdag
+                .lit(Literal::String(format!("dummy_{class_id}").into()));
+            Self::add_correspondence(&mut self.correspondence, dummy.clone(), node_id.clone());
+            let term = self.termdag.app("InFunc".into(), vec![dummy]);
+            Self::add_correspondence(&mut self.correspondence, term.clone(), node_id.clone());
+            let costset = CostSet {
+                costs: Default::default(),
+                total: 0.0.try_into().unwrap(),
+                term,
+            };
+            self.costsets.push(costset);
+            self.costsetmemo
+                .insert((node_id.clone(), vec![]), self.costsets.len() - 1);
+            self.costsets.len() - 1
+        }
+    }
 
+    pub(crate) fn new(original_prog: &'a TreeProgram, termdag: &'a mut TermDag) -> Self {
         Extractor {
             termdag,
-            costsets,
+            costsets: Default::default(),
             costsetmemo: Default::default(),
             correspondence: Default::default(),
             costs: Default::default(),
@@ -298,10 +316,12 @@ type CostSetIndex = usize;
 
 #[derive(Clone, Debug)]
 pub struct CostSet {
+    /// Total cost of this term, taking sharing into account
     pub total: Cost,
-    // TODO perhaps more efficient as
-    // persistent data structure?
-    pub costs: HashTrieMap<ClassId, Cost>,
+    /// Maps classes to the chosen term for the eclass,
+    /// along with the cost for that term (excluding child costs).
+    pub costs: HashTrieMap<ClassId, (Term, Cost)>,
+    /// The resulting term
     pub term: Term,
 }
 
@@ -329,12 +349,78 @@ impl<'a> Extractor<'a> {
             self.termdag.app(op.into(), children)
         };
 
-        self.correspondence
-            .entry(term.clone())
-            .or_default()
-            .insert(node_id);
+        Self::add_correspondence(&mut self.correspondence, term.clone(), node_id.clone());
 
         term
+    }
+
+    fn add_correspondence(
+        correspondence: &mut IndexMap<Term, NodeId>,
+        term: Term,
+        node_id: NodeId,
+    ) {
+        if let Some(existing) = correspondence.insert(term.clone(), node_id.clone()) {
+            assert_eq!(existing, node_id);
+        }
+    }
+
+    /// Add `term` to `current_costs`, returning
+    /// 1) a new term that takes advantage of sharing
+    /// with respect to `current_costs` and
+    /// 2) the net cost of adding the new term
+    ///
+    /// Ex:
+    /// Suppose we are extracting a term `Add(a, Neg(b))` where
+    /// a and Neg(b) were extracted from sub-eclasses separately.
+    /// However, a and b could have the same eclass if they are equal, but we chose different terms,
+    /// violating the invariant that we only extract one term per eclass.
+    /// This function would be called with `Neg(b)` as `term`, and would return `Neg(a)` as the new term.
+    /// This restores the invariant that we only extract one term per eclass.
+    fn add_term_to_cost_set(
+        &self,
+        info: &EgraphInfo,
+        correspondance: &mut IndexMap<Term, NodeId>,
+        termdag: &mut TermDag,
+        current_costs: &mut HashTrieMap<ClassId, (Term, Cost)>,
+        term: Term,
+        other_costs: &HashTrieMap<ClassId, (Term, Cost)>,
+    ) -> (Term, Cost) {
+        let nodeid = &self.term_node(&term);
+        let eclass = info.egraph.nid_to_cid(nodeid);
+        if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
+            (existing_term.clone(), NotNan::new(0.).unwrap())
+        } else {
+            let unshared_cost = match other_costs.get(eclass) {
+                Some((_, cost)) => *cost,
+                None => NotNan::new(0.).unwrap(),
+            };
+            let mut cost = unshared_cost;
+            let new_term = match term {
+                Term::App(head, children) => {
+                    let mut new_children = vec![];
+                    for child in children {
+                        let child = termdag.get(child);
+                        let (new_child, child_cost) = self.add_term_to_cost_set(
+                            info,
+                            correspondance,
+                            termdag,
+                            current_costs,
+                            child,
+                            other_costs,
+                        );
+                        new_children.push(new_child);
+                        cost += child_cost;
+                    }
+                    termdag.app(head, new_children)
+                }
+                _ => term,
+            };
+            Self::add_correspondence(correspondance, new_term.clone(), nodeid.clone());
+            *current_costs =
+                current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
+
+            (new_term, cost)
+        }
     }
 
     fn calculate_cost_set(
@@ -371,7 +457,7 @@ impl<'a> Extractor<'a> {
 
         let mut shared_total = NotNan::new(0.).unwrap();
         let mut unshared_total = info.cm.get_op_cost(&node.op);
-        let mut costs: HashTrieMap<ClassId, NotNan<f64>> = Default::default();
+        let mut costs: HashTrieMap<ClassId, (Term, Cost)> = Default::default();
         let index_of_biggest_child = child_cost_sets
             .iter()
             .enumerate()
@@ -393,56 +479,61 @@ impl<'a> Extractor<'a> {
             }
         }
 
+        let mut children_terms = vec![];
+        let mut termdag_tmp = TermDag::default();
+        let mut new_correspondence = IndexMap::default();
+        // swap out the termdag and correspondance for the temporary one
+        // necessary because we have already borrowed the costsets of self, so self can't be borrowed mutably
+        std::mem::swap(self.termdag, &mut termdag_tmp);
+
         if !info.cm.ignore_children(&node.op) {
             for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
                 if *is_region_root {
+                    children_terms.push(child_set.term.clone());
                     unshared_total += child_set.total;
                 } else {
                     // costs is empty, replace it with the child one
                     if Some(index) == index_of_biggest_child {
-                        // skip the biggest child
+                        // skip the biggest child's cost
+                        children_terms.push(child_set.term.clone());
                     } else {
-                        for (child_cid, child_cost) in &child_set.costs {
-                            // it was already present in the set
-                            if let Some(existing) = costs.get(child_cid) {
-                                if existing > child_cost {
-                                    // if we found a lower-cost alternative for this child, use that and decrease cost
-                                    shared_total -= existing - *child_cost;
-                                    costs =
-                                        costs.insert(child_cid.clone(), *existing.min(child_cost));
-                                }
-                            } else {
-                                costs = costs.insert(child_cid.clone(), *child_cost);
-                                shared_total += child_cost;
-                            }
-                        }
+                        let (child_term, net_cost) = self.add_term_to_cost_set(
+                            info,
+                            &mut new_correspondence,
+                            &mut termdag_tmp,
+                            &mut costs,
+                            child_set.term.clone(),
+                            &child_set.costs,
+                        );
+                        shared_total += net_cost;
+                        children_terms.push(child_term);
                     }
                 }
             }
         }
 
+        // swap back the termdag and correspondance
+        std::mem::swap(self.termdag, &mut termdag_tmp);
+
+        // add the new correspondence to the main correspondence
+        for (term, nodeid) in new_correspondence {
+            Self::add_correspondence(&mut self.correspondence, term, nodeid);
+        }
+
+        let term = self.get_term(info, nodeid.clone(), children_terms);
+
         // no need to add something that costs 0 to the set
         if unshared_total > NotNan::new(0.).unwrap() {
-            costs = costs.insert(cid.clone(), unshared_total);
+            costs = costs.insert(cid.clone(), (term.clone(), unshared_total));
         }
         let total = unshared_total + shared_total;
 
-        let sub_terms: Vec<Term> = child_cost_sets
-            .iter()
-            .map(|(cs, _)| cs.term.clone())
-            .collect();
-
-        let term = self.get_term(info, nodeid.clone(), sub_terms);
         self.costsets.push(CostSet { total, costs, term });
         let index = self.costsets.len() - 1;
         self.costsetmemo
             .insert((nodeid, child_cost_set_indecies), index);
 
         Some(index)
-    }
-
-    pub(crate) fn dummy_costset(&self) -> CostSetIndex {
-        0
     }
 }
 
@@ -457,8 +548,6 @@ fn calculate_node_cost_set(
 ) -> Option<CostSetIndex> {
     let node = &info.egraph[&node_id];
 
-    let region_costs = extractor.costs.get(&rootid).unwrap();
-
     // get the cost sets for the children
     let child_cost_sets = enode_children(&info.egraph, node)
         .iter()
@@ -470,10 +559,11 @@ fn calculate_node_cost_set(
              }| {
                 // for assumptions, just return a dummy context every time
                 if *is_assumption {
-                    Some(extractor.dummy_costset())
+                    Some(extractor.get_dummy_context(info, child.clone()))
                 } else if *is_subregion {
                     extractor.costs.get(child)?.get(child).copied()
                 } else {
+                    let region_costs = extractor.costs.get(&rootid).unwrap();
                     region_costs.get(child).copied()
                 }
             },
@@ -1021,8 +1111,9 @@ fn test_dag_extract() {
     let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
         + cost_model.get_op_cost("DoWhile")
         + cost_model.get_op_cost("LessThan")
-        // while the same const is used three times, it is only counted twice
+        // while the same const is used several times, it is only counted twice
         + cost_model.get_op_cost("Const") * 2.;
+    // two of the same function
     let expected_cost = cost_of_one_func * 2.;
     dag_extraction_test(&prog, expected_cost);
 }

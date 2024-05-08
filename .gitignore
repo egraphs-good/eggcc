@@ -28,4 +28,6 @@ profile.json
 # commonly used test file
 test.egg
 
-bril-llvm/__pycache__/
+brillvm/brilc
+brillvm/rt.bc
+

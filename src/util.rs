@@ -801,7 +801,7 @@ impl Run {
         let dir = tempdir().expect("couldn't create temp dir");
 
         let llvm_ir = run_cmd_line(
-            "./bril-llvm/brilc",
+            "./brillvm",
             Vec::<String>::new(),
             String::from_utf8(buf).unwrap().as_str(),
         )

@@ -1,4 +1,4 @@
-.PHONY: test test-clean nits nightly
+.PHONY: test test-clean nits nightly brillvm
 
 DIRS = . dag_in_context
 
@@ -15,6 +15,11 @@ nits:
 	@rustup component add clippy
 	@rustup component add rustfmt
 	$(foreach dir,$(DIRS),(cd $(dir) && cargo clippy --tests -- -D warnings && cargo fmt --check) &&) :
+
+
+
+brillvm:
+	cd brillvm && ./install.sh
 
 nightly:
 	bash infra/nightly.sh "benchmarks/passing"

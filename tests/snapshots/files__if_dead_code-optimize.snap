@@ -7,17 +7,13 @@ expression: visualization.result
   v2_: bool = lt v0 v1_;
   br v2_ .v3_ .v4_;
 .v3_:
-  v5_: bool = const true;
-  v6_: int = const 1;
-  v7_: bool = id v5_;
-  v8_: int = id v6_;
-  jmp .v9_;
+  v5_: int = const 1;
+  v6_: int = id v5_;
+  jmp .v7_;
 .v4_:
-  v10_: bool = const false;
-  v11_: int = const 0;
-  v7_: bool = id v10_;
-  v8_: int = id v11_;
-.v9_:
-  print v8_;
+  v8_: int = const 0;
+  v6_: int = id v8_;
+.v7_:
+  print v6_;
   print v2_;
 }

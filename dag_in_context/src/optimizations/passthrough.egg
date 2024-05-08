@@ -1,12 +1,3 @@
-; TODO: this is unsound because some loops don't terminate
-; ;; Pass through thetas
-; (rule ((= lhs (Get loop i))
-;        (= loop (DoWhile inputs pred-outputs))
-;        (= (Get pred-outputs (+ i 1)) (Get (Arg _) i))
-;        (= passed-through (Get inputs i)))
-;       ((union lhs passed-through))
-;       :ruleset always-run)
-
 ;; Pass through switch arguments
 (rule ((= lhs (Get switch i))
        (= switch (Switch pred inputs branches))
@@ -80,5 +71,11 @@
 (rule ((= if (If pred inputs then_ else_))
        (= (Get then_ i) (Const (Bool true) _ _thenctx))
        (= (Get else_ i) (Const (Bool false) _ _elsectx)))
-      ((union (Get if i) pred))
+
+      ((let new_then (TupleRemoveAt then_ i))
+       (let new_else (TupleRemoveAt else_ i))
+       (let new_if (If pred inputs new_then new_else))
+
+       (union (Get           if i) pred)
+       (union (TupleRemoveAt if i) new_if))
       :ruleset always-run)

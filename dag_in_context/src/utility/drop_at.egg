@@ -16,7 +16,7 @@
 (rule ((= lhs (DropAt ctx idx in))
        (HasArgType in (TupleT oldty)))
 
-      ((let newty (TupleT (TypeListMinusOne oldty idx)))
+      ((let newty (TupleT (TypeListRemoveAt oldty idx)))
        (union lhs (DropAtInternal newty ctx idx in)))
       :ruleset drop)
 

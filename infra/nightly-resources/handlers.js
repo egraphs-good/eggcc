@@ -8,6 +8,8 @@ async function load_index() {
   await loadCommonData();
   makeSelectors();
 
+  GLOBAL_DATA.errors = new Set(await getErrors());
+
   // Everything selected by default
   selectAllModes(true);
   selectAllBenchmarks(true);

@@ -14,6 +14,7 @@ const allModes = [
 const GLOBAL_DATA = {
   enabledModes: new Set(),
   enabledBenchmarks: new Set(),
+  errors: new Set(),
   warnings: new Set(),
   currentRun: {},
   baselineRun: undefined,
@@ -130,6 +131,12 @@ function findBenchToCompareIdx(benchRuns) {
     }
   }
   throw new Error("Couldn't find a benchmark run from main for comparison");
+}
+
+async function getErrors() {
+  const req = await fetch("./data/errors.txt");
+  const text = await req.text();
+  return text.split("\n");
 }
 
 async function getBench(url) {
@@ -283,8 +290,19 @@ function refreshView() {
 
   document.getElementById("profile").innerHTML = ConvertJsonToTable(parsed);
 
+  renderErrors();
   renderWarnings();
   refreshChart();
+}
+
+function renderErrors() {
+  const errorContainer = document.getElementById("errors");
+  errorContainer.innerHTML = "";
+  GLOBAL_DATA.errors.forEach((error) => {
+    const errorElement = document.createElement("p");
+    errorElement.innerText = error;
+    errorContainer.appendChild(errorElement);
+  });
 }
 
 function renderWarnings() {
@@ -293,7 +311,10 @@ function renderWarnings() {
 
   const warningContainer = document.getElementById("warnings");
   warningContainer.innerHTML = "";
-  GLOBAL_DATA.warnings.forEach((warning) => {
+  const warnings_and_errors = Array.from(GLOBAL_DATA.warnings).concat(
+    Array.from(GLOBAL_DATA.errors),
+  );
+  warnings_and_errors.forEach((warning) => {
     const warningElement = document.createElement("p");
     warningElement.innerText = warning;
     warningContainer.appendChild(warningElement);

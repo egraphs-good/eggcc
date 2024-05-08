@@ -312,7 +312,7 @@ function makeSelectors() {
     checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.enabledModes);
   });
 
-  const benchmarks = Object.keys(GLOBAL_DATA.currentRun);
+  const benchmarks = Object.keys(GLOBAL_DATA.currentRun).sort();
   benchmarks.forEach((benchmark) => {
     const checkbox = makeCheckbox(
       document.getElementById("benchmarkCheckboxes"),

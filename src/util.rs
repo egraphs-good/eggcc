@@ -829,7 +829,7 @@ impl Run {
         }
         #[cfg(not(target_os = "macos"))]
         {
-            expect_command_success(cmd, "failed to compile brilift");
+            expect_command_success(&mut cmd, "failed to compile brilift");
         }
 
         std::process::Command::new("rm")

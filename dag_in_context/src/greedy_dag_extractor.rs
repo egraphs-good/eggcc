@@ -230,6 +230,8 @@ impl<'a> Extractor<'a> {
             .clone()
     }
 
+    /// A method for getting a dummy context nodes.
+    /// Contexts create cycles, but we don't need to extract them, so we invent an imaginary term here.
     pub(crate) fn get_dummy_context(
         &mut self,
         info: &EgraphInfo,
@@ -240,9 +242,12 @@ impl<'a> Extractor<'a> {
         if let Some(existing) = self.costsetmemo.get(&(node_id.clone(), vec![])) {
             *existing
         } else {
+            // HACK: this term gets a context (InFunc "dummy_{class_id}").
+            // The class id allows terms to correspond one to one with nodes (we don't want the same dummy node
+            // for two different contexts).
             let dummy = self
                 .termdag
-                .lit(Literal::String(format!("dummy{}", node_id).into()));
+                .lit(Literal::String(format!("dummy_{class_id}").into()));
             Self::add_correspondence(&mut self.correspondence, dummy.clone(), node_id.clone());
             let term = self.termdag.app("InFunc".into(), vec![dummy]);
             Self::add_correspondence(&mut self.correspondence, term.clone(), node_id.clone());
@@ -363,6 +368,14 @@ impl<'a> Extractor<'a> {
     /// 1) a new term that takes advantage of sharing
     /// with respect to `current_costs` and
     /// 2) the net cost of adding the new term
+    ///
+    /// Ex:
+    /// Suppose we are extracting a term `Add(a, Neg(b))` where
+    /// a and Neg(b) were extracted from sub-eclasses separately.
+    /// However, a and b could have the same eclass if they are equal, but we chose different terms,
+    /// violating the invariant that we only extract one term per eclass.
+    /// This function would be called with `Neg(b)` as `term`, and would return `Neg(a)` as the new term.
+    /// This restores the invariant that we only extract one term per eclass.
     fn add_term_to_cost_set(
         &self,
         info: &EgraphInfo,
@@ -470,6 +483,7 @@ impl<'a> Extractor<'a> {
         let mut termdag_tmp = TermDag::default();
         let mut new_correspondence = IndexMap::default();
         // swap out the termdag and correspondance for the temporary one
+        // necessary because we have already borrowed the costsets of self, so self can't be borrowed mutably
         std::mem::swap(self.termdag, &mut termdag_tmp);
 
         if !info.cm.ignore_children(&node.op) {

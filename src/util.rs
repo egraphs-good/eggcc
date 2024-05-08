@@ -10,7 +10,6 @@ use dag_in_context::schema::TreeProgram;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::mem;
 use std::process::Stdio;
 use std::{
     ffi::OsStr,
@@ -797,7 +796,6 @@ impl Run {
 
         let mut buf = Vec::new();
         serde_json::to_writer_pretty(&mut buf, &program).expect("failed to deserialize");
-
         let dir = tempdir().expect("couldn't create temp dir");
 
         let llvm_ir = run_cmd_line(
@@ -807,8 +805,7 @@ impl Run {
         )
         .expect("unable to compile bril!");
 
-        let file_path = dir.path().join("compile.ll");
-        mem::forget(dir);
+        let file_path = dir.path().join(format!("compile-{}.ll", self.name()));
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
@@ -817,33 +814,68 @@ impl Run {
             .output_path
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", self.name()));
-        let opt_level = if optimize_brillvm { "-O3" } else { "-O0" };
-        std::process::Command::new("clang")
-            .arg(file_path.clone())
-            .arg(opt_level)
-            .arg("-o")
-            .arg(executable.clone())
-            .status()
-            .unwrap();
 
         if let Some(output_dir) = &self.llvm_output_dir {
             std::fs::create_dir_all(output_dir)
                 .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
-            std::process::Command::new("clang")
-                .current_dir(output_dir)
-                .arg(file_path.clone())
-                .arg(opt_level)
-                .arg("-emit-llvm")
-                .arg("-S")
-                .status()
-                .unwrap();
-            std::process::Command::new("cp")
-                .arg(file_path)
-                .arg(format!("{}/compile-unopt.ll", output_dir))
-                .status()
-                .unwrap();
         }
+        if optimize_brillvm {
+            std::process::Command::new("clang")
+                .arg(file_path.clone())
+                .arg("-O3")
+                .arg("-o")
+                .arg(executable.clone())
+                .status()
+                .unwrap();
 
+            if let Some(output_dir) = &self.llvm_output_dir {
+                std::process::Command::new("clang")
+                    .current_dir(output_dir)
+                    .arg(file_path.clone())
+                    .arg("-O3")
+                    .arg("-emit-llvm")
+                    .arg("-S")
+                    .status()
+                    .unwrap();
+                std::process::Command::new("cp")
+                    .arg(file_path)
+                    .arg(format!("{output_dir}/compile-unopt.ll"))
+                    .status()
+                    .unwrap();
+            }
+        } else {
+            let processed = dir.path().join("postprocessed.ll");
+            let res = std::process::Command::new("opt")
+                .arg("-disable-verify")
+                .arg("-sroa")
+                .arg("-instsimplify")
+                .arg("-instcombine")
+                .arg("-adce")
+                .arg("-S")
+                .arg(file_path.clone())
+                .arg("-o")
+                .arg(processed.clone())
+                .status()
+                .unwrap();
+            if !res.success() {
+                let p1_string = std::fs::read_to_string(file_path.clone()).unwrap();
+                eprintln!("Opt failed on following input:\n{p1_string}");
+            }
+            std::process::Command::new("clang")
+                .arg(processed.clone())
+                .arg("-O0")
+                .arg("-o")
+                .arg(executable.clone())
+                .status()
+                .unwrap();
+            if let Some(output_dir) = &self.llvm_output_dir {
+                std::process::Command::new("cp")
+                    .arg(processed)
+                    .arg(format!("{output_dir}/compile-unopt.ll"))
+                    .status()
+                    .unwrap();
+            }
+        }
         let _ = std::fs::write(
             executable.clone() + "-args",
             self.prog_with_args.args.join(" "),

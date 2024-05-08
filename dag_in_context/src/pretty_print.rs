@@ -39,15 +39,8 @@ impl PrettyPrinter {
         let mut log = String::new();
         let mut cache: HashMap<*const schema::Expr, String> = HashMap::new();
         let mut symbols: HashMap<String, String> = HashMap::new();
-        let res = Self::to_egglog_helper(
-            &self.expr,
-            &mut cache,
-            &mut symbols,
-            &mut log,
-            fold_when,
-        );
-        let log = log + &format!("(let EXPR___ {res})");
-        log
+        let res = Self::to_egglog_helper(&self.expr, &mut cache, &mut symbols, &mut log, fold_when);
+        log + &format!("(let EXPR___ {res})")
     }
 
     // turn the Expr to a rust ast macro string.
@@ -58,8 +51,7 @@ impl PrettyPrinter {
         let mut cache: HashMap<*const schema::Expr, String> = HashMap::new();
         let mut symbols: HashMap<String, String> = HashMap::new();
         let res = Self::to_ast(&self.expr, &mut cache, &mut symbols, &mut log, fold_when);
-        let log = log + &format!("let EXPR___ = {res}; \n");
-        log
+        log + &format!("let expr___ = {res}; \n")
     }
 
     pub fn to_rust_default(&self) -> String {
@@ -79,7 +71,7 @@ impl PrettyPrinter {
                               info: String,
                               str_builder: &mut String,
                               symbols: &mut HashMap<String, String>| {
-            let fresh_var = format!("{}__{}", info, symbols.len());
+            let fresh_var = format!("{}_{}", info, symbols.len());
             symbols
                 .entry(var.clone())
                 .or_insert_with(|| {
@@ -96,7 +88,7 @@ impl PrettyPrinter {
              cache: &mut HashMap<*const schema::Expr, String>| {
                 let rc = Rc::strong_count(expr);
                 if fold_when(rc, egglog_str.len()) {
-                    let fresh_var = format!("{}__{}", info, cache.len());
+                    let fresh_var = format!("{}_{}", info, cache.len());
                     cache
                         .entry(Rc::as_ptr(expr))
                         .or_insert_with(|| {
@@ -248,6 +240,28 @@ impl PrettyPrinter {
         }
     }
 
+    fn concat_helper(
+        expr: &RcExpr,
+        cache: &mut HashMap<*const schema::Expr, String>,
+        symbols: &mut HashMap<String, String>,
+        log: &mut String,
+        fold_when: &dyn Fn(usize, usize) -> bool,
+    ) -> Vec<String> {
+        match expr.as_ref() {
+            Expr::Concat(lhs, rhs) => {
+                let mut lhs = Self::concat_helper(lhs, cache, symbols, log, fold_when);
+                let mut rhs = Self::concat_helper(rhs, cache, symbols, log, fold_when);
+                lhs.append(&mut rhs);
+                lhs
+            }
+            Expr::Single(expr) => {
+                let expr = Self::to_ast(expr, cache, symbols, log, fold_when);
+                vec![expr]
+            }
+            _ => panic!("not well formed Concat, expr not wrapped with Single"),
+        }
+    }
+
     fn to_ast(
         expr: &RcExpr,
         cache: &mut HashMap<*const schema::Expr, String>,
@@ -259,7 +273,7 @@ impl PrettyPrinter {
                               info: String,
                               str_builder: &mut String,
                               symbols: &mut HashMap<String, String>| {
-            let fresh_var = format!("{}__{}", info, symbols.len());
+            let fresh_var = format!("{}_{}", info, symbols.len());
             symbols
                 .entry(var.clone())
                 .or_insert_with(|| {
@@ -276,8 +290,8 @@ impl PrettyPrinter {
              cache: &mut HashMap<*const schema::Expr, String>| {
                 let rc = Rc::strong_count(expr);
                 if fold_when(rc, ast_str.len()) {
-                    let fresh_var = format!("{}__{}", info, cache.len());
-                    cache
+                    let fresh_var = format!("{}_{}", info, cache.len());
+                    let lookup = cache
                         .entry(Rc::as_ptr(expr))
                         .or_insert_with(|| {
                             str_builder.push_str(&format!(
@@ -285,21 +299,23 @@ impl PrettyPrinter {
                                 fresh_var.clone(),
                                 ast_str
                             ));
-                            format!("{}.clone()", fresh_var)
+                            fresh_var
                         })
-                        .clone()
+                        .clone();
+                    format!("{lookup}.clone()")
                 } else {
                     ast_str
                 }
             };
+
         match cache.get(&Rc::as_ptr(expr)) {
             Some(str) => format!("{}.clone()", str),
             None => {
                 match expr.as_ref() {
                     // just don't fold simple things like expr, getat anyway
                     Expr::Const(c, _, _) => match c {
-                        schema::Constant::Bool(true) => format!("ttrue()"),
-                        schema::Constant::Bool(false) => format!("tfalse()"),
+                        schema::Constant::Bool(true) => "ttrue()".into(),
+                        schema::Constant::Bool(false) => "tfalse()".into(),
                         schema::Constant::Int(n) => format!("int({})", n),
                     },
                     Expr::Bop(op, lhs, rhs) => {
@@ -346,10 +362,10 @@ impl PrettyPrinter {
                         let expr = Self::to_ast(expr, cache, symbols, log, fold_when);
                         format!("single({expr})")
                     }
-                    Expr::Concat(lhs, rhs) => {
-                        let lhs = Self::to_ast(lhs, cache, symbols, log, fold_when);
-                        let rhs = Self::to_ast(rhs, cache, symbols, log, fold_when);
-                        format!("concat({lhs}, {rhs})")
+                    Expr::Concat(..) => {
+                        let vec = Self::concat_helper(expr, cache, symbols, log, fold_when);
+                        let inside = vec.join(", ");
+                        format!("parallel!({inside})")
                     }
                     Expr::Switch(cond, inputs, cases) => {
                         let cond = Self::to_ast(cond, cache, symbols, log, fold_when);
@@ -384,7 +400,7 @@ impl PrettyPrinter {
                         let ty_out_binding =
                             find_or_insert(ty_out_str, ty_out.abbrev(), log, symbols);
                         let body = Self::to_ast(body, cache, symbols, log, fold_when);
-                        format!("function({name}, {ty_in_binding}, {ty_out_binding}, {body})")
+                        format!("function(\"{name}\", {ty_in_binding}, {ty_out_binding}, {body})")
                     }
                 }
             }
@@ -453,7 +469,7 @@ impl BaseType {
             BaseType::IntT => "intt()".into(),
             BaseType::BoolT => "boolt()".into(),
             BaseType::StateT => "statet()".into(),
-            BaseType::PointerT(ptr) => format!("pointert({})", BaseType::to_ast(&ptr)),
+            BaseType::PointerT(ptr) => format!("pointert({})", BaseType::to_ast(ptr)),
         }
     }
 
@@ -470,14 +486,14 @@ impl BaseType {
 impl Type {
     pub fn to_ast(&self) -> String {
         match self {
-            Type::Base(t) => format!("base({})", BaseType::to_ast(&t)),
+            Type::Base(t) => format!("base({})", BaseType::to_ast(t)),
             Type::TupleT(vec_ty) => {
-                if vec_ty.len() == 0 {
-                    return format!("emptyt()");
+                if vec_ty.is_empty() {
+                    return "emptyt()".into();
                 }
                 let vec_ty_str = vec_ty
                     .iter()
-                    .map(|bt| BaseType::to_ast(bt))
+                    .map(BaseType::to_ast)
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("tuplet!({vec_ty_str})")
@@ -495,7 +511,7 @@ impl Type {
                     .iter()
                     .map(|bt| bt.abbrev())
                     .collect::<Vec<_>>()
-                    .join("");
+                    .join("_");
                 format!("tpl_{}", vec_ty_str)
             }
             Type::Unknown => "unknown".into(),

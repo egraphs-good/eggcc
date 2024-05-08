@@ -882,11 +882,12 @@ impl Run {
         } else {
             let processed = dir.path().join("postprocessed.ll");
             let res = std::process::Command::new("opt")
-                .arg("-disable-verify")
-                .arg("-sroa")
-                .arg("-instsimplify")
-                .arg("-instcombine")
-                .arg("-adce")
+                .arg("-passes=sroa,instsimplify,instcombine,adce")
+                // .arg("-disable-verify")
+                // .arg("-sroa")
+                // .arg("-instsimplify")
+                // .arg("-instcombine")
+                // .arg("-adce")
                 .arg("-S")
                 .arg(file_path.clone())
                 .arg("-o")

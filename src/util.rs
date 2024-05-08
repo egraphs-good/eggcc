@@ -901,10 +901,7 @@ impl Run {
             let processed = dir.path().join("postprocessed.ll");
             let res = std::process::Command::new("opt")
                 .arg("-disable-verify")
-                .arg("-sroa")
-                .arg("-instsimplify")
-                .arg("-instcombine")
-                .arg("-adce")
+                .arg("-passes=sroa,instsimplify,instcombine,dce")
                 .arg("-S")
                 .arg(file_path.clone())
                 .arg("-o")

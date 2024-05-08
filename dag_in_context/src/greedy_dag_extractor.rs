@@ -12,6 +12,7 @@ use std::{
 use strum::IntoEnumIterator;
 
 use crate::{
+    config::INLINING_SIZE_THRESHOLD,
     from_egglog::FromEgglog,
     schema::{RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
@@ -688,8 +689,6 @@ pub fn extract_with_paths(
         let region_costs = extractor.costs.entry(rootid.clone()).or_default();
         let lookup = region_costs.get(classid);
 
-        // TODO: don't use infinity, just check if the previous cost exists or not
-        // and always update if there was no previous cost
         let prev_cost = if let Some(lookup) = lookup {
             Some(extractor.costsets.get(*lookup).unwrap().total)
         } else {
@@ -701,7 +700,6 @@ pub fn extract_with_paths(
         {
             let cost_set = &extractor.costsets[cost_set_index];
             let region_costs = extractor.costs.get_mut(&rootid).unwrap();
-            // TODO: get the op from previous cost set's term
             if prev_cost.is_none()
                 || info
                     .cm
@@ -810,7 +808,15 @@ impl CostModel for DefaultCostModel {
     }
 
     fn compare(&self, op1: &str, cost1: &Cost, op2: &str, cost2: &Cost) -> Ordering {
-        return cost1.exec_cost.cmp(&cost2.exec_cost);
+        if op1 == "Call" && op2 != "Call" {
+            // Comparison is based on whether op2 is less than the threshold
+            // If threshold < cost2, then cost1 < cost2
+            INLINING_SIZE_THRESHOLD.cmp(&cost1.expr_size)
+        } else if op2 == "Call" && op1 != "Call" {
+            cost1.expr_size.cmp(&INLINING_SIZE_THRESHOLD)
+        } else {
+            cost1.exec_cost.cmp(&cost2.exec_cost)
+        }
     }
 }
 

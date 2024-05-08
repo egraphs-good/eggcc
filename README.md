@@ -12,6 +12,7 @@
 ## Installation- Mac
 - Install llvm 18 with `brew install llvm@18`
 - Add llvm to PATH in your `.zshrc` file: `export PATH="/opt/homebrew/Cellar/llvm/18.1.5/bin/:$PATH"`
+- Run `make brillvm` to install the bril to llvm compiler locally.
 - You may need to add LSystem to your path: `export LIBRARY_PATH="$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"`
 - Run the tests with `make` and ensure things build and run without errors.
 

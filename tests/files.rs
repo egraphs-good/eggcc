@@ -74,13 +74,12 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
                     true,
                     InterpMode::InterpFast,
                 ),
-                // TODO enable after fixing Bril LLVM bug
-                /*Run::compile_llvm_config(
+                Run::compile_llvm_config(
                     TestProgram::BrilFile(f),
                     false,
                     true,
                     InterpMode::InterpFast,
-                ),*/
+                ),
             ]
         } else {
             Run::all_configurations_for(TestProgram::BrilFile(f))

@@ -30,27 +30,6 @@ expression: visualization.result
   v6_: int = id v6_;
   br v10_ .v7_ .v23_;
 .v12_:
-<<<<<<< HEAD
-  v14_: int = mul v7_ v5_;
-  v15_: bool = const true;
-  v16_: int = const 1;
-  v17_: int = add v16_ v6_;
-  v18_: int = id v14_;
-  v19_: bool = id v15_;
-  v20_: int = id v17_;
-  v21_: int = id v7_;
-  v22_: int = id v8_;
-||||||| parent of 6210161c (Snapshots)
-  v14_: int = mul v7_ v5_;
-  v15_: bool = const true;
-  v16_: int = const 1;
-  v17_: int = add v6_ v16_;
-  v18_: int = id v14_;
-  v19_: bool = id v15_;
-  v20_: int = id v17_;
-  v21_: int = id v7_;
-  v22_: int = id v8_;
-=======
   v24_: bool = const false;
   v17_: int = id v3_;
   v18_: bool = id v24_;
@@ -58,7 +37,6 @@ expression: visualization.result
   v20_: int = id v5_;
   v21_: int = id v6_;
   jmp .v22_;
->>>>>>> 6210161c (Snapshots)
 .v23_:
   print v3_;
 }

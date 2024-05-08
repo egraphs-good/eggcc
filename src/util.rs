@@ -10,7 +10,7 @@ use dag_in_context::schema::TreeProgram;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::process::Stdio;
+use std::process::{Command, Stdio};
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
@@ -114,7 +114,6 @@ where
     S2: AsRef<OsStr>,
     I: IntoIterator<Item = S2>,
 {
-    use std::process::Command;
     let mut child = Command::new(program)
         .args(args)
         .stdin(Stdio::piped())
@@ -780,13 +779,14 @@ impl Run {
         let library_c = format!("/tmp/{}-library.c", unique_name);
         let library_o = format!("/tmp/{}-library.o", unique_name);
         std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
-        std::process::Command::new("cc")
-            .arg(library_c.clone())
-            .arg("-c") // create object file instead of executable
-            .arg("-o")
-            .arg(library_o.clone())
-            .status()
-            .unwrap();
+        expect_command_success(
+            Command::new("cc")
+                .arg(library_c.clone())
+                .arg("-c") // create object file instead of executable
+                .arg("-o")
+                .arg(library_o.clone()),
+            "failed to compile runtime C library",
+        );
 
         let executable = self
             .output_path
@@ -821,15 +821,15 @@ impl Run {
                 .unwrap_or(false)
             {
                 // reset stderr to surface other errors.
-                cmd.stderr(Stdio::inherit())
-                    .arg("-Wl,-ld_classic")
-                    .status()
-                    .unwrap();
+                expect_command_success(
+                    cmd.stderr(Stdio::inherit()).arg("-Wl,-ld_classic"),
+                    "failed to compile brilift with ld_classic flag",
+                );
             }
         }
         #[cfg(not(target_os = "macos"))]
         {
-            cmd.status().unwrap();
+            expect_command_success(cmd, "failed to compile brilift");
         }
 
         std::process::Command::new("rm")
@@ -884,32 +884,35 @@ impl Run {
                 .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
         }
         if optimize_brillvm {
-            std::process::Command::new("clang-18")
-                .arg(file_path.clone())
-                .arg("-O3")
-                .arg("-o")
-                .arg(executable.clone())
-                .status()
-                .unwrap();
-
-            if let Some(output_dir) = &self.llvm_output_dir {
-                std::process::Command::new("clang-18")
-                    .current_dir(output_dir)
+            expect_command_success(
+                Command::new("clang-18")
                     .arg(file_path.clone())
                     .arg("-O3")
-                    .arg("-emit-llvm")
-                    .arg("-S")
-                    .status()
-                    .unwrap();
-                std::process::Command::new("cp")
-                    .arg(file_path)
-                    .arg(format!("{output_dir}/compile-unopt.ll"))
-                    .status()
-                    .unwrap();
+                    .arg("-o")
+                    .arg(executable.clone()),
+                "failed to compile llvm ir",
+            );
+
+            if let Some(output_dir) = &self.llvm_output_dir {
+                expect_command_success(
+                    Command::new("clang-18")
+                        .current_dir(output_dir)
+                        .arg(file_path.clone())
+                        .arg("-O3")
+                        .arg("-emit-llvm")
+                        .arg("-S"),
+                    "failed to compile llvm ir and emit llvm ir",
+                );
+                expect_command_success(
+                    Command::new("cp")
+                        .arg(file_path)
+                        .arg(format!("{output_dir}/compile-unopt.ll")),
+                    "failed to copy optimized llvm ir",
+                );
             }
         } else {
             let processed = dir.path().join("postprocessed.ll");
-            let res = std::process::Command::new("opt")
+            let res = Command::new("opt")
                 .arg("-disable-verify")
                 .arg("-passes=sroa,instsimplify,instcombine,dce")
                 .arg("-S")
@@ -920,21 +923,23 @@ impl Run {
                 .unwrap();
             if !res.success() {
                 let p1_string = std::fs::read_to_string(file_path.clone()).unwrap();
-                eprintln!("Opt failed on following input:\n{p1_string}");
+                panic!("Opt failed on following input:\n{p1_string}");
             }
-            std::process::Command::new("clang-18")
-                .arg(processed.clone())
-                .arg("-O0")
-                .arg("-o")
-                .arg(executable.clone())
-                .status()
-                .unwrap();
+            expect_command_success(
+                Command::new("clang-18")
+                    .arg(processed.clone())
+                    .arg("-O0")
+                    .arg("-o")
+                    .arg(executable.clone()),
+                "failed to compile llvm ir",
+            );
             if let Some(output_dir) = &self.llvm_output_dir {
-                std::process::Command::new("cp")
-                    .arg(processed)
-                    .arg(format!("{output_dir}/compile-unopt.ll"))
-                    .status()
-                    .unwrap();
+                expect_command_success(
+                    Command::new("cp")
+                        .arg(processed)
+                        .arg(format!("{output_dir}/compile-unopt.ll")),
+                    "failed to copy unoptimized llvm ir",
+                );
             }
         }
         let _ = std::fs::write(
@@ -943,6 +948,13 @@ impl Run {
         );
 
         Ok(Interpretable::Executable { executable })
+    }
+}
+
+fn expect_command_success(cmd: &mut std::process::Command, message: &str) {
+    let status = cmd.status().unwrap();
+    if !status.success() {
+        panic!("Command failed: {}", message);
     }
 }
 

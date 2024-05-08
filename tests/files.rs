@@ -61,26 +61,24 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
         let configurations = if benchmark_mode {
             // use InterpFast, which runs brilift
             // with optimization but without egglog optimization
-            vec![
-                Run::compile_brilift_config(
-                    TestProgram::BrilFile(f.clone()),
-                    true,
-                    true,
-                    InterpMode::InterpFast,
-                ),
-                Run::compile_llvm_config(
-                    TestProgram::BrilFile(f.clone()),
-                    true,
-                    true,
-                    InterpMode::InterpFast,
-                ),
-                Run::compile_llvm_config(
-                    TestProgram::BrilFile(f),
-                    false,
-                    true,
-                    InterpMode::InterpFast,
-                ),
-            ]
+            let mut res = vec![Run::compile_brilift_config(
+                TestProgram::BrilFile(f.clone()),
+                true,
+                true,
+                InterpMode::InterpFast,
+            )];
+            for optimize_egglog in [true, false].iter() {
+                for optimize_llvm in [true, false].iter() {
+                    res.push(Run::compile_llvm_config(
+                        TestProgram::BrilFile(f.clone()),
+                        *optimize_egglog,
+                        *optimize_llvm,
+                        InterpMode::InterpFast,
+                    ));
+                }
+            }
+
+            res
         } else {
             Run::all_configurations_for(TestProgram::BrilFile(f))
         };

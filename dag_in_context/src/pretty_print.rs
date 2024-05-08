@@ -585,9 +585,7 @@ fn test_pretty_print() {
 
     let expr_str = my_loop.to_string();
 
-    let res = PrettyPrinter::new(expr_str.clone())
+    PrettyPrinter::new(expr_str.clone())
         .unwrap()
         .to_rust_default();
-
-    print!("{}", res);
 }

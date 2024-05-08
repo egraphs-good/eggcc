@@ -719,7 +719,7 @@ impl Run {
             }
             RunType::CompileBrilLLVM => {
                 let interpretable = self.run_bril_llvm()?;
-                (vec![], interpretable)
+                (vec![], Some(interpretable))
             }
         };
 
@@ -755,6 +755,14 @@ impl Run {
         optimize_egglog: bool,
         optimize_brilift: bool,
     ) -> Result<Option<Interpretable>, EggCCError> {
+        // For fast testing modes, we may run brilift to compare against
+        // therefore we need a unique name based on this test's name and brilift options
+        let unique_name = format!(
+            "{}_brilift_{}_{}",
+            self.name(),
+            optimize_egglog,
+            optimize_brilift
+        );
         let program = if optimize_egglog {
             Run::optimize_bril(&bril)?
         } else {
@@ -764,13 +772,13 @@ impl Run {
         // Compile the input bril file
         // options are "none", "speed", and "speed_and_size"
         let opt_level = if optimize_brilift { "speed" } else { "none" };
-        let object = format!("/tmp/{}.o", self.name());
+        let object = format!("/tmp/{}.o", unique_name);
         brilift::compile(&program, None, &object, opt_level, false);
 
         // Compile runtime C library
         // We use unique names so that tests can run in parallel
-        let library_c = format!("/tmp/{}-library.c", self.name());
-        let library_o = format!("/tmp/{}-library.o", self.name());
+        let library_c = format!("/tmp/{}-library.c", unique_name);
+        let library_o = format!("/tmp/{}-library.o", unique_name);
         std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
         std::process::Command::new("cc")
             .arg(library_c.clone())
@@ -783,7 +791,7 @@ impl Run {
         let executable = self
             .output_path
             .clone()
-            .unwrap_or_else(|| format!("/tmp/{}", self.name()));
+            .unwrap_or_else(|| format!("/tmp/{}", unique_name));
 
         let _ = std::fs::write(
             executable.clone() + "-args",
@@ -834,7 +842,9 @@ impl Run {
         Ok(Some(Interpretable::Executable { executable }))
     }
 
-    fn run_bril_llvm(&self) -> Result<Option<Interpretable>, EggCCError> {
+    fn run_bril_llvm(&self) -> Result<Interpretable, EggCCError> {
+        // This test's name is unique
+        let unique_name = self.name().to_string();
         let optimize_egglog = self
             .optimize_egglog
             .expect("optimize_egglog is a required flag when running RunMode::CompileBrilLLVM");
@@ -859,7 +869,7 @@ impl Run {
         )
         .expect("unable to compile bril!");
 
-        let file_path = dir.path().join(format!("compile-{}.ll", self.name()));
+        let file_path = dir.path().join(format!("compile-{}.ll", unique_name));
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
@@ -867,7 +877,7 @@ impl Run {
         let executable = self
             .output_path
             .clone()
-            .unwrap_or_else(|| format!("/tmp/{}", self.name()));
+            .unwrap_or_else(|| format!("/tmp/{}", unique_name));
 
         if let Some(output_dir) = &self.llvm_output_dir {
             std::fs::create_dir_all(output_dir)
@@ -932,7 +942,7 @@ impl Run {
             self.prog_with_args.args.join(" "),
         );
 
-        Ok(Some(Interpretable::Executable { executable }))
+        Ok(Interpretable::Executable { executable })
     }
 }
 

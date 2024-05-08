@@ -10,7 +10,7 @@ jobs:
       with:
         submodules: 'true'
     - uses: Swatinem/rust-cache@v2
-    - run: sudo apt install graphviz && cargo install cargo-insta && make test
+    - run: sudo apt install graphviz llvm && cargo install cargo-insta && make test
   nits:
     runs-on: ubuntu-latest
     steps:

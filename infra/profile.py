@@ -5,8 +5,9 @@ import os
 from glob import glob
 from sys import stdout
 import subprocess
+import concurrent.futures
 
-modes = [
+treatments = [
   "rvsdg_roundtrip",
 
   "egglog_noopt_brilift_noopt",
@@ -44,33 +45,49 @@ def get_eggcc_options(name, profile_dir):
       raise Exception("Unexpected run mode: " + name)
     
 
-def bench(profile):
-  # strip the path to just the file name
-  profile_file = profile.split("/")[-1]
+class Benchmark:
+  def __init__(self, path, treatment, index, total):
+    self.path = path
+    self.treatment = treatment
+    self.index = index
+    self.total = total
 
+def benchmark_name(benchmark_path):
+  return benchmark_path.split("/")[-1][:-len(".bril")]
+
+def benchmark_profile_dir(benchmark_path):
+  return f'./tmp/bench/{benchmark_name(benchmark_path)}'
+
+def setup_benchmark(benchmark_path):
   # strip off the .bril to get just the profile name
-  profile_name = profile_file[:-len(".bril")]
-
-  profile_dir = f'./tmp/bench/{profile_name}'
+  profile_dir = benchmark_profile_dir(benchmark_path)
   try:
     os.mkdir(profile_dir)
   except FileExistsError:
     print(f'{profile_dir} exists, overwriting contents')
 
-  for mode in modes:
-    subprocess.call(f'cargo run --release {profile} {get_eggcc_options(mode, profile_dir)} -o {profile_dir}/{mode}', shell=True)
+def optimize(benchmark):
+  print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.path} with {benchmark.treatment}')
+  profile_dir = benchmark_profile_dir(benchmark.path)
+  subprocess.call(f'cargo run --release {benchmark.path} {get_eggcc_options(benchmark.treatment, profile_dir)} -o {profile_dir}/{benchmark.treatment}', shell=True)
 
-    with open(f'{profile_dir}/{mode}-args') as f:
-      args = f.read().rstrip()
-    
+  
+
+def bench(benchmark):
+  print(f'[{benchmark.index}/{benchmark.total}] Benchmarking {benchmark.path} with {benchmark.treatment}')
+  profile_dir = benchmark_profile_dir(benchmark.path)
+
+  with open(f'{profile_dir}/{benchmark.treatment}-args') as f:
+    args = f.read().rstrip()
     # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
-    subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{mode}.json "{profile_dir}/{mode} {args}"', shell=True)
+    subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{benchmark.treatment}.json "{profile_dir}/{benchmark.treatment} {args}"', shell=True)
 
 def get_llvm(runMethod, benchmark):
   path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}_{runMethod}.ll'
 
   with open(path) as f:
     return f.read()
+
 
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:
@@ -112,10 +129,25 @@ if __name__ == '__main__':
   else:
     profiles = [arg]
 
-  iter = 0
-  for p in profiles:
-    print(f'Benchmark {iter} of {len(profiles)} on all treatments')
-    iter += 1
-    bench(p)
+  for benchmark_path in profiles:
+    setup_benchmark(benchmark_path)
+
+  to_run = []
+  index = 0
+  total = len(profiles) * len(treatments)
+  for benchmark_path in profiles:
+    for treatment in treatments:
+      to_run.append(Benchmark(benchmark_path, treatment, index, total))
+      index += 1
+  
+
+  # create a thread pool for running optimization
+  with concurrent.futures.ThreadPoolExecutor(max_workers = 6) as executor:
+    futures = {executor.submit(optimize, benchmark) for benchmark in to_run}
+    for future in concurrent.futures.as_completed(futures):
+      continue
+  
+  for benchmark in to_run:
+    bench(benchmark)
 
   aggregate()

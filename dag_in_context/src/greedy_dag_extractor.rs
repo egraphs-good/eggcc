@@ -1064,7 +1064,7 @@ fn region_reachable_classes(
 }
 
 #[cfg(test)]
-fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
+fn dag_extraction_test(prog: &TreeProgram, expected_cost: Cost) {
     use crate::{print_with_intermediate_vars, prologue};
     let string_prog = {
         let (term, termdag) = prog.to_egglog();
@@ -1085,8 +1085,8 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
         DefaultCostModel,
     );
 
-    // TODO: also check expression size
-    assert_eq!(cost_set.0.total.exec_cost, expected_cost);
+    assert_eq!(cost_set.0.total.exec_cost, expected_cost.exec_cost);
+    assert_eq!(cost_set.0.total.expr_size, expected_cost.expr_size);
 }
 
 /// This only runs extract_without_linearity once
@@ -1172,9 +1172,87 @@ fn test_dag_extract() {
         + cost_model.get_op_cost("LessThan").exec_cost
         // while the same const is used several times, it is only counted twice
         + cost_model.get_op_cost("Const").exec_cost * 2.;
+    let expected_size = 12;
     // two of the same function
     let expected_cost = cost_of_one_func * 2.;
-    dag_extraction_test(&prog, expected_cost);
+    dag_extraction_test(
+        &prog,
+        Cost {
+            exec_cost: expected_cost,
+            expr_size: expected_size,
+        },
+    );
+}
+
+#[test]
+fn unshareable_dag_extract() {
+    use crate::ast::*;
+
+    let prog = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(add(int(10), int(4)), getat(1))
+    ),);
+    let costmodel = DefaultCostModel;
+
+    let expected_cost = Cost {
+        exec_cost: costmodel.get_op_cost("Add").exec_cost
+            + costmodel.get_op_cost("Const").exec_cost * 2.,
+        expr_size: 3,
+    };
+    dag_extraction_test(&prog, expected_cost)
+}
+
+#[test]
+fn simple_shared_dag_extract() {
+    use crate::ast::*;
+
+    let prog = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(mul(add(int(10), int(4)), add(int(10), int(4))), getat(1))
+    ),);
+    let costmodel = DefaultCostModel;
+
+    let expected_cost = Cost {
+        exec_cost: costmodel.get_op_cost("Mul").exec_cost
+            + costmodel.get_op_cost("Add").exec_cost
+            + costmodel.get_op_cost("Const").exec_cost * 2.,
+        expr_size: 4,
+    };
+    dag_extraction_test(&prog, expected_cost)
+}
+
+#[test]
+fn simple_regionful_dag_extract() {
+    use crate::ast::*;
+
+    let prog = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(
+            mul(
+                add(int(10), int(4)),
+                tif(ttrue(), empty(), add(int(10), int(4)), add(int(10), int(4)))
+            ),
+            getat(1)
+        )
+    ),);
+    let costmodel = DefaultCostModel;
+
+    let add_cost =
+        costmodel.get_op_cost("Add").exec_cost + costmodel.get_op_cost("Const").exec_cost * 2.;
+    let expected_cost = Cost {
+        exec_cost: costmodel.get_op_cost("Mul").exec_cost
+            + add_cost * 3. // Three adds, all in different contexts
+            + costmodel.get_op_cost("If").exec_cost
+            + costmodel.get_op_cost("Const").exec_cost, // For the boolean true
+        expr_size: 12,
+    };
+    dag_extraction_test(&prog, expected_cost)
 }
 
 #[test]
@@ -1188,7 +1266,10 @@ fn simple_dag_extract() {
     ),);
     let cost_model = DefaultCostModel;
 
-    let expected_cost = cost_model.get_op_cost("Const").exec_cost;
+    let expected_cost = Cost {
+        exec_cost: cost_model.get_op_cost("Const").exec_cost,
+        expr_size: 1,
+    };
     dag_extraction_test(&prog, expected_cost);
 }
 

@@ -7,6 +7,7 @@ use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet, VecDeque},
     f64::INFINITY,
+    ops::Add,
 };
 use strum::IntoEnumIterator;
 
@@ -111,8 +112,8 @@ impl<'a> EgraphInfo<'a> {
             for enode in egraph.classes()[&eclass].nodes.iter() {
                 let node = &egraph[enode];
 
-                // skip nodes with infinite cost
-                if cm.get_op_cost(&node.op).is_infinite() {
+                // skip nodes with infinite exec cost
+                if cm.get_op_cost(&node.op).exec_cost.is_infinite() {
                     continue;
                 }
 
@@ -254,9 +255,8 @@ impl<'a> Extractor<'a> {
             Self::add_correspondence(&mut self.correspondence, term.clone(), node_id.clone());
             let costset = CostSet {
                 costs: Default::default(),
-                total: 0.0.try_into().unwrap(),
+                total: Cost::zero_cost(),
                 term,
-                // total_subregion_size: 0,
             };
             self.costsets.push(costset);
             self.costsetmemo
@@ -313,8 +313,30 @@ pub fn serialized_egraph(
     (egraph, get_unextractables(&egglog_egraph))
 }
 
-// TODO: add an expression size here
-type Cost = NotNan<f64>;
+#[derive(Clone, Debug, Copy)]
+pub struct Cost {
+    exec_cost: NotNan<f64>,
+    expr_size: usize,
+}
+
+impl Cost {
+    fn zero_cost() -> Cost {
+        Cost {
+            exec_cost: NotNan::new(0.).unwrap(),
+            expr_size: 0,
+        }
+    }
+}
+
+impl Add for Cost {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        Self {
+            exec_cost: self.exec_cost + rhs.exec_cost,
+            expr_size: self.expr_size + rhs.expr_size,
+        }
+    }
+}
 type CostSetIndex = usize;
 
 #[derive(Clone, Debug)]
@@ -392,15 +414,13 @@ impl<'a> Extractor<'a> {
         let eclass = info.egraph.nid_to_cid(nodeid);
         if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
             // If a term already exists, no need to count it again (due to DAG extraction)
-            // TODO: put an expression size of 0 into the cost
-            (existing_term.clone(), NotNan::new(0.).unwrap())
+            (existing_term.clone(), Cost::zero_cost())
         } else {
-            // If the term to add already contains itself in its cost set, still add this to the
-            // cost set? TODO I don't know how this will relate to expression size, but revisit later
-            // What is other_costs? It is the OG costs? So, only update if it's not already included?
+            // If we have already found the cost of this term, re-use the result
+            // TODO: What is other_costs?
             let unshared_cost = match other_costs.get(eclass) {
                 Some((_, cost)) => *cost,
-                None => NotNan::new(0.).unwrap(),
+                None => Cost::zero_cost(),
             };
             let mut cost = unshared_cost;
             let new_term = match term {
@@ -417,8 +437,7 @@ impl<'a> Extractor<'a> {
                             other_costs,
                         );
                         new_children.push(new_child);
-                        // TODO: can I implement addition for the costs? then this just works
-                        cost += child_cost;
+                        cost = cost + child_cost;
                     }
                     termdag.app(head, new_children)
                 }
@@ -464,9 +483,7 @@ impl<'a> Extractor<'a> {
             return None;
         }
 
-        // TODO: shared total expression size starts at 0
-        let mut shared_total = NotNan::new(0.).unwrap();
-        // TODO: unshared total expression size is just 1
+        let mut shared_total = Cost::zero_cost();
         let mut unshared_total = info.cm.get_op_cost(&node.op);
         let mut costs: HashTrieMap<ClassId, (Term, Cost)> = Default::default();
         let index_of_biggest_child = child_cost_sets
@@ -501,7 +518,7 @@ impl<'a> Extractor<'a> {
             for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
                 if *is_region_root {
                     children_terms.push(child_set.term.clone());
-                    unshared_total += child_set.total;
+                    unshared_total = unshared_total + child_set.total;
                 } else {
                     // costs is empty, replace it with the child one
                     if Some(index) == index_of_biggest_child {
@@ -517,7 +534,7 @@ impl<'a> Extractor<'a> {
                             &child_set.costs,
                         );
                         // TODO: why is this called net cost? It is always positive, right?
-                        shared_total += net_cost;
+                        shared_total = shared_total + net_cost;
                         children_terms.push(child_term);
                     }
                 }
@@ -535,9 +552,7 @@ impl<'a> Extractor<'a> {
         let term = self.get_term(info, nodeid.clone(), children_terms);
 
         // no need to add something that costs 0 to the set
-        // TODO: modify this to check if the cost is 0
-        // We won't count any op that has an exec cost of 0 as having an expression size?
-        if unshared_total > NotNan::new(0.).unwrap() {
+        if unshared_total.exec_cost > NotNan::new(0.).unwrap() {
             costs = costs.insert(cid.clone(), (term.clone(), unshared_total));
         }
         let total = unshared_total + shared_total;
@@ -613,7 +628,7 @@ pub fn extract(
     );
     extractor_not_linear.check_program_is_linear(&res).unwrap();
 
-    log::info!("Extracted program with cost {}", cost_res.total);
+    log::info!("Extracted program with cost {}", cost_res.total.exec_cost);
     log::info!("Created {} cost sets", extractor_not_linear.costsets.len());
 
     (cost_res, res)
@@ -672,21 +687,27 @@ pub fn extract_with_paths(
         // create a new region_costs map if it doesn't exist
         let region_costs = extractor.costs.entry(rootid.clone()).or_default();
         let lookup = region_costs.get(classid);
+
         // TODO: don't use infinity, just check if the previous cost exists or not
         // and always update if there was no previous cost
-        let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
-        if let Some(lookup) = lookup {
-            let costset = extractor.costsets.get(*lookup).unwrap();
-            prev_cost = costset.total;
-        }
+        let prev_cost = if let Some(lookup) = lookup {
+            Some(extractor.costsets.get(*lookup).unwrap().total)
+        } else {
+            None
+        };
 
         if let Some(cost_set_index) =
             calculate_node_cost_set(rootid.clone(), nodeid.clone(), extractor, info)
         {
             let cost_set = &extractor.costsets[cost_set_index];
             let region_costs = extractor.costs.get_mut(&rootid).unwrap();
-            // TODO: replace this with info.cm.compare(prev_cost, new_cost)
-            if cost_set.total < prev_cost {
+            // TODO: get the op from previous cost set's term
+            if prev_cost.is_none()
+                || info
+                    .cm
+                    .compare(&node.op, &cost_set.total, &node.op, &prev_cost.unwrap())
+                    == Ordering::Less
+            {
                 region_costs.insert(classid.clone(), cost_set_index);
 
                 // we updated this eclass's cost, so we need to update its parents
@@ -719,10 +740,10 @@ pub fn extract_with_paths(
     let resulting_prog = extractor.terms_to_expressions(info, root_costset.term.clone());
 
     let root_cost = root_costset.total;
-    if root_cost.is_infinite() {
+    if root_cost.exec_cost.is_infinite() {
         panic!("Failed to extract program! Found infinite cost on result node.");
     }
-    if root_cost.is_sign_negative() {
+    if root_cost.exec_cost.is_sign_negative() {
         panic!("Failed to extract program! Found negative cost on result node.");
     }
 
@@ -731,22 +752,22 @@ pub fn extract_with_paths(
 
 pub trait CostModel {
     /// TODO: we could do better with type info
-    /// Note that the expression size of an op is considered to be 0
-    /// if its op cost is 0.
     fn get_op_cost(&self, op: &str) -> Cost;
 
     /// if true, the op's children are ignored in calculating the cost
     fn ignore_children(&self, op: &str) -> bool;
 
-    // Compares two cost sets
-    fn compare(&self, costset1: &CostSet, costset2: &CostSet) -> Ordering;
+    // Compares two costs
+    fn compare(&self, op1: &str, cost1: &Cost, op2: &str, cost2: &Cost) -> Ordering;
 }
 
 pub struct DefaultCostModel;
 
 impl CostModel for DefaultCostModel {
+    /// Note that the expression size of an op is considered to be 0
+    /// if its op cost is 0.
     fn get_op_cost(&self, op: &str) -> Cost {
-        match op {
+        let exec_cost = match op {
             // Leaves
             "Const" => 1.,
             "Arg" => 0.,
@@ -777,15 +798,19 @@ impl CostModel for DefaultCostModel {
             _ => INFINITY,
         }
         .try_into()
-        .unwrap()
+        .unwrap();
+        Cost {
+            exec_cost,
+            expr_size: if exec_cost == 0. { 0 } else { 1 },
+        }
     }
 
     fn ignore_children(&self, op: &str) -> bool {
         matches!(op, "InLoop" | "InSwitch" | "InIf" | "InFunc")
     }
 
-    fn compare(&self, costset1: &CostSet, costset2: &CostSet) -> Ordering {
-        return costset1.total.cmp(&costset2.total);
+    fn compare(&self, op1: &str, cost1: &Cost, op2: &str, cost2: &Cost) -> Ordering {
+        return cost1.exec_cost.cmp(&cost2.exec_cost);
     }
 }
 
@@ -1010,8 +1035,8 @@ fn region_reachable_classes(
         }
         if visited.insert(eclass.clone()) {
             for node in &egraph.classes()[&eclass].nodes {
-                // skip nodes with infinite cost
-                if cm.get_op_cost(&egraph[node].op).is_infinite() {
+                // skip nodes with infinite execution cost
+                if cm.get_op_cost(&egraph[node].op).exec_cost.is_infinite() {
                     continue;
                 }
 
@@ -1054,7 +1079,8 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
         DefaultCostModel,
     );
 
-    assert_eq!(cost_set.0.total, expected_cost);
+    // TODO: also check expression size
+    assert_eq!(cost_set.0.total.exec_cost, expected_cost);
 }
 
 /// This only runs extract_without_linearity once
@@ -1134,11 +1160,12 @@ fn test_dag_extract() {
     );
     let cost_model = DefaultCostModel;
 
-    let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
-        + cost_model.get_op_cost("DoWhile")
-        + cost_model.get_op_cost("LessThan")
+    // TODO: also check expr size
+    let cost_of_one_func = cost_model.get_op_cost("Add").exec_cost * 2.
+        + cost_model.get_op_cost("DoWhile").exec_cost
+        + cost_model.get_op_cost("LessThan").exec_cost
         // while the same const is used several times, it is only counted twice
-        + cost_model.get_op_cost("Const") * 2.;
+        + cost_model.get_op_cost("Const").exec_cost * 2.;
     // two of the same function
     let expected_cost = cost_of_one_func * 2.;
     dag_extraction_test(&prog, expected_cost);
@@ -1155,7 +1182,7 @@ fn simple_dag_extract() {
     ),);
     let cost_model = DefaultCostModel;
 
-    let expected_cost = cost_model.get_op_cost("Const");
+    let expected_cost = cost_model.get_op_cost("Const").exec_cost;
     dag_extraction_test(&prog, expected_cost);
 }
 

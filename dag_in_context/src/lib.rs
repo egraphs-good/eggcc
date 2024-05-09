@@ -8,8 +8,8 @@ use std::fmt::Write;
 use to_egglog::TreeToEgglog;
 
 use crate::{
-    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    schedule::mk_schedule,
+    config::INLINING_SIZE_THRESHOLD, dag2svg::tree_to_svg, interpreter::interpret_dag_prog,
+    optimizations::function_inlining, schedule::mk_schedule,
 };
 
 pub(crate) mod add_context;
@@ -198,7 +198,9 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
         serialized,
         unextractables,
         &mut termdag,
-        DefaultCostModel,
+        DefaultCostModel {
+            inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+        },
     );
 
     let original_with_ctx = program.add_dummy_ctx();
@@ -225,7 +227,9 @@ pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglo
         serialized,
         unextractables,
         &mut termdag,
-        DefaultCostModel,
+        DefaultCostModel {
+            inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+        },
     );
     Ok(res)
 }

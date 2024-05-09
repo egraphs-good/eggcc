@@ -11,8 +11,10 @@ use std::{
 };
 use strum::IntoEnumIterator;
 
+#[cfg(test)]
+use crate::config::INLINING_SIZE_THRESHOLD;
+
 use crate::{
-    config::INLINING_SIZE_THRESHOLD,
     from_egglog::FromEgglog,
     schema::{RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
@@ -689,10 +691,15 @@ pub fn extract_with_paths(
         let region_costs = extractor.costs.entry(rootid.clone()).or_default();
         let lookup = region_costs.get(classid);
 
-        let prev_cost = if let Some(lookup) = lookup {
-            Some(extractor.costsets.get(*lookup).unwrap().total)
+        let (prev_cost, prev_op) = if let Some(lookup) = lookup {
+            let costset = extractor.costsets.get(*lookup).unwrap();
+            if let Term::App(prev_op, _) = costset.term {
+                (Some(costset.total), Some(prev_op.as_str()))
+            } else {
+                panic!("Trying to compare a wrong thing")
+            }
         } else {
-            None
+            (None, None)
         };
 
         if let Some(cost_set_index) =
@@ -701,11 +708,17 @@ pub fn extract_with_paths(
             let cost_set = &extractor.costsets[cost_set_index];
             let region_costs = extractor.costs.get_mut(&rootid).unwrap();
             if prev_cost.is_none()
-                || info
-                    .cm
-                    .compare(&node.op, &cost_set.total, &node.op, &prev_cost.unwrap())
-                    == Ordering::Less
+                || info.cm.compare(
+                    &node.op,
+                    &cost_set.total,
+                    &prev_op.unwrap(),
+                    &prev_cost.unwrap(),
+                ) == Ordering::Less
             {
+                println!("{cost_set_index}");
+                if !prev_cost.is_none() {
+                    println!("Replace class {} with {}", &prev_op.unwrap(), &node.op);
+                }
                 region_costs.insert(classid.clone(), cost_set_index);
 
                 // we updated this eclass's cost, so we need to update its parents
@@ -717,6 +730,12 @@ pub fn extract_with_paths(
             }
         }
     }
+
+    // TODO: do some little pre-traversal and then get a set of classes with calls in them
+    // all calls have inlining_threshold cost
+    // if the class id is in the call set, then check to decide whether to extract
+    // if we reach a call and it should stay extracted, then do it
+    // I don't think this would actually work?
 
     let root_eclass = n2c(&get_root(&info.egraph));
 
@@ -759,7 +778,9 @@ pub trait CostModel {
     fn compare(&self, op1: &str, cost1: &Cost, op2: &str, cost2: &Cost) -> Ordering;
 }
 
-pub struct DefaultCostModel;
+pub struct DefaultCostModel {
+    pub inlining_size_threshold: usize,
+}
 
 impl CostModel for DefaultCostModel {
     /// Note that the expression size of an op is considered to be 0
@@ -808,12 +829,13 @@ impl CostModel for DefaultCostModel {
     }
 
     fn compare(&self, op1: &str, cost1: &Cost, op2: &str, cost2: &Cost) -> Ordering {
+        println!("Compare {op1} with {op2}");
         if op1 == "Call" && op2 != "Call" {
             // Comparison is based on whether op2 is less than the threshold
             // If threshold < cost2, then cost1 < cost2
-            INLINING_SIZE_THRESHOLD.cmp(&cost1.expr_size)
+            self.inlining_size_threshold.cmp(&cost1.expr_size)
         } else if op2 == "Call" && op1 != "Call" {
-            cost1.expr_size.cmp(&INLINING_SIZE_THRESHOLD)
+            cost1.expr_size.cmp(&self.inlining_size_threshold)
         } else {
             cost1.exec_cost.cmp(&cost2.exec_cost)
         }
@@ -1082,7 +1104,9 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: Cost) {
         serialized_egraph,
         unextractables,
         &mut termdag,
-        DefaultCostModel,
+        DefaultCostModel {
+            inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+        },
     );
 
     assert_eq!(cost_set.0.total.exec_cost, expected_cost.exec_cost);
@@ -1105,7 +1129,13 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
-    let egraph_info = EgraphInfo::new(&DefaultCostModel, serialized_egraph, unextractables);
+    let egraph_info = EgraphInfo::new(
+        &DefaultCostModel {
+            inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+        },
+        serialized_egraph,
+        unextractables,
+    );
     let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
     let (_cost_res, prog) = extract_with_paths(extractor_not_linear, &egraph_info, None);
@@ -1164,7 +1194,9 @@ fn test_dag_extract() {
             )
         )
     );
-    let cost_model = DefaultCostModel;
+    let cost_model = DefaultCostModel {
+        inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+    };
 
     // TODO: also check expr size
     let cost_of_one_func = cost_model.get_op_cost("Add").exec_cost * 2.
@@ -1194,7 +1226,9 @@ fn unshareable_dag_extract() {
         tuplet!(intt(), statet()),
         parallel!(add(int(10), int(4)), getat(1))
     ),);
-    let costmodel = DefaultCostModel;
+    let costmodel = DefaultCostModel {
+        inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+    };
 
     let expected_cost = Cost {
         exec_cost: costmodel.get_op_cost("Add").exec_cost
@@ -1214,7 +1248,9 @@ fn simple_shared_dag_extract() {
         tuplet!(intt(), statet()),
         parallel!(mul(add(int(10), int(4)), add(int(10), int(4))), getat(1))
     ),);
-    let costmodel = DefaultCostModel;
+    let costmodel = DefaultCostModel {
+        inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+    };
 
     let expected_cost = Cost {
         exec_cost: costmodel.get_op_cost("Mul").exec_cost
@@ -1241,7 +1277,9 @@ fn simple_regionful_dag_extract() {
             getat(1)
         )
     ),);
-    let costmodel = DefaultCostModel;
+    let costmodel = DefaultCostModel {
+        inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+    };
 
     let add_cost =
         costmodel.get_op_cost("Add").exec_cost + costmodel.get_op_cost("Const").exec_cost * 2.;
@@ -1264,7 +1302,9 @@ fn simple_dag_extract() {
         tuplet!(intt(), statet()),
         parallel!(int(10), getat(1))
     ),);
-    let cost_model = DefaultCostModel;
+    let cost_model = DefaultCostModel {
+        inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+    };
 
     let expected_cost = Cost {
         exec_cost: cost_model.get_op_cost("Const").exec_cost,
@@ -1404,7 +1444,9 @@ fn test_validity_of_extraction() {
     let mut termdag = TermDag::default();
 
     let egraph_info = EgraphInfo::new(
-        &DefaultCostModel,
+        &DefaultCostModel {
+            inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+        },
         serialized_egraph.clone(),
         unextractables.clone(),
     );
@@ -1420,6 +1462,77 @@ fn test_validity_of_extraction() {
         serialized_egraph,
         unextractables,
         &mut termdag,
-        DefaultCostModel,
+        DefaultCostModel {
+            inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+        },
     );
+}
+
+#[test]
+fn test_inlining_size_threshold() {
+    use crate::ast::*;
+    let prog = function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(int(10), getat(1)),
+    );
+
+    let callee = function(
+        "callee",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(
+            add(
+                int(10),
+                get(
+                    dowhile(
+                        parallel!(getat(0), getat(1)),
+                        parallel!(
+                            less_than(add(getat(0), int(10)), int(10)),
+                            add(getat(0), int(1)),
+                            getat(1),
+                        )
+                    ),
+                    0
+                )
+            ),
+            getat(1)
+        ),
+    );
+    let cost_model = DefaultCostModel {
+        inlining_size_threshold: 2,
+    };
+
+    let expected_cost = Cost {
+        exec_cost: cost_model.get_op_cost("Const").exec_cost,
+        expr_size: 1,
+    };
+
+    // TODO: actually add the schedule in
+    dag_extraction_test(&prog, expected_cost);
+    use crate::{print_with_intermediate_vars, prologue};
+    let string_prog = {
+        let (term, termdag) = prog.to_egglog();
+        let printed = print_with_intermediate_vars(&termdag, term);
+        format!("{}\n{printed}\n", prologue(),)
+    };
+
+    let mut egraph = egglog::EGraph::default();
+    egraph.parse_and_run_program(&string_prog).unwrap();
+    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
+    let mut termdag = TermDag::default();
+
+    let cost_set = extract(
+        prog,
+        serialized_egraph,
+        unextractables,
+        &mut termdag,
+        DefaultCostModel {
+            inlining_size_threshold: INLINING_SIZE_THRESHOLD,
+        },
+    );
+
+    assert_eq!(cost_set.0.total.exec_cost, expected_cost.exec_cost);
+    assert_eq!(cost_set.0.total.expr_size, expected_cost.expr_size);
 }

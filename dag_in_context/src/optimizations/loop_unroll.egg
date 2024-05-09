@@ -37,9 +37,6 @@
     )
  :ruleset loop-peel)
 
-
-(function UnrollCtx (Expr Expr) Assumption)
-
 ;; unroll a loop with constant bounds and initial value
 (rule
   ((= lhs (DoWhile inputs outputs))
@@ -62,20 +59,20 @@
    (= old_cost (LoopNumItersGuess inputs outputs))
   )
   (
-    (let tmp_context (UnrollCtx inputs outputs))
     (let one-iter (SubTuple outputs 1 num-inputs))
     (let unrolled
-        (Subst tmp_context one-iter
-          (Subst tmp_context one-iter
-            (Subst tmp_context one-iter
+        (Subst (TmpCtx) one-iter
+          (Subst (TmpCtx) one-iter
+            (Subst (TmpCtx) one-iter
                outputs))))
     (union lhs
       (DoWhile inputs
         unrolled))
     (let actual-ctx (InLoop inputs unrolled))
-    (union tmp_context actual-ctx)
+    (union (TmpCtx) actual-ctx)
 
     (set (LoopNumItersGuess inputs unrolled) (/ old_cost 4))
+    (delete (TmpCtx))
   )
   :ruleset loop-unroll)
 

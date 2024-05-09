@@ -1,4 +1,4 @@
-; ModuleID = '/var/folders/jw/f07sz9zx0wqck930wjllkpyr0000gn/T/.tmpbrdsAi/postprocessed.ll'
+; ModuleID = '/var/folders/jw/f07sz9zx0wqck930wjllkpyr0000gn/T/.tmp4TAm6x/postprocessed.ll'
 source_filename = "runtime.c754f3aa9d510c22-cgu.0"
 target datalayout = "e-m:o-i64:64-i128:128-n32:64-S128"
 target triple = "arm64-apple-macosx13.0.0"
@@ -9483,60 +9483,75 @@ define internal noundef zeroext i1 @"_ZN69_$LT$core..str..error..ParseBoolError$
 ; Function Attrs: nofree nounwind
 declare noundef i64 @write(i32 noundef, ptr nocapture noundef readonly, i64 noundef) unnamed_addr #0
 
-define i64 @ack(i64 %m, i64 %n) {
+define i64 @ack(i64 %v0, i64 %v1) {
 label0:
-  %var3 = icmp eq i64 %m, 0
-  br i1 %var3, label %m_zero, label %m_nonzero
+  %var3 = icmp eq i64 %v0, 0
+  br i1 %var3, label %v5_, label %v6_
 
-m_zero:                                           ; preds = %label0
-  %var7 = add i64 %n, 1
-  ret i64 %var7
+v5_:                                              ; preds = %label0
+  %var7 = add i64 %v1, 1
+  br label %v9_
 
-m_nonzero:                                        ; preds = %label0
-  %var11 = icmp eq i64 %n, 0
-  br i1 %var11, label %n_zero, label %n_nonzero
+v6_:                                              ; preds = %label0
+  %var11 = icmp eq i64 %v1, 0
+  br i1 %var11, label %v11_, label %v12_
 
-n_zero:                                           ; preds = %m_nonzero
-  %var15 = add i64 %m, -1
+v9_:                                              ; preds = %v16_, %v5_
+  %v8_.0 = phi i64 [ %var7, %v5_ ], [ %v15_.0, %v16_ ]
+  ret i64 %v8_.0
+
+v11_:                                             ; preds = %v6_
+  %var15 = add i64 %v0, -1
   %var18 = call i64 @ack(i64 %var15, i64 1)
-  ret i64 %var18
+  br label %v16_
 
-n_nonzero:                                        ; preds = %m_nonzero
-  %var22 = add i64 %m, -1
-  %var25 = add i64 %n, -1
-  %var28 = call i64 @ack(i64 %m, i64 %var25)
-  %var31 = call i64 @ack(i64 %var22, i64 %var28)
-  ret i64 %var31
+v12_:                                             ; preds = %v6_
+  %var23 = add i64 %v0, -1
+  %var26 = add i64 %v1, -1
+  %var29 = call i64 @ack(i64 %v0, i64 %var26)
+  %var32 = call i64 @ack(i64 %var23, i64 %var29)
+  br label %v16_
+
+v16_:                                             ; preds = %v12_, %v11_
+  %v15_.0 = phi i64 [ %var18, %v11_ ], [ %var32, %v12_ ]
+  br label %v9_
 }
 
-define void @_main() {
+define void @orig_main(i64 %v0) {
 label1:
-  br label %loop_cond1
-
-loop_cond1:                                       ; preds = %loop_body, %label1
-  %loop_counter.0 = phi i64 [ 10, %label1 ], [ %var41, %loop_body ]
-  %var35 = icmp slt i64 %loop_counter.0, 1000
-  br i1 %var35, label %loop_body, label %loop_done
-
-loop_body:                                        ; preds = %loop_cond1
-  call void @orig_main(i64 %loop_counter.0)
-  %var41 = add i64 %loop_counter.0, 1
-  br label %loop_cond1
-
-loop_done:                                        ; preds = %loop_cond1
-  ret void
-}
-
-define void @orig_main(i64 %n) {
-label2:
-  %var44 = call i64 @ack(i64 2, i64 %n)
-  call void @_bril_print_int(i64 %var44)
+  %var37 = call i64 @ack(i64 2, i64 %v0)
+  call void @_bril_print_int(i64 %var37)
   call void @_bril_print_end()
   ret void
 }
 
+define void @_main() {
+label2:
+  br label %v6_
+
+v6_:                                              ; preds = %v14_, %label2
+  %v3_.0 = phi i64 [ 10, %label2 ], [ %v11_.0, %v14_ ]
+  %var44 = icmp slt i64 %v3_.0, 1000
+  br i1 %var44, label %v8_, label %v9_
+
+v8_:                                              ; preds = %v6_
+  call void @orig_main(i64 %v3_.0)
+  %var50 = add i64 %v3_.0, 1
+  br label %v14_
+
+v9_:                                              ; preds = %v6_
+  br label %v14_
+
+v14_:                                             ; preds = %v9_, %v8_
+  %v11_.0 = phi i64 [ %var50, %v8_ ], [ %v3_.0, %v9_ ]
+  br i1 %var44, label %v6_, label %v15_
+
+v15_:                                             ; preds = %v14_
+  ret void
+}
+
 define i32 @main(i32 %argc, ptr %argv) {
-label48:
+label63:
   call void @_main()
   ret i32 0
 }

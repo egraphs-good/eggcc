@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use eggcc::util::{InterpMode, Run, RunType, TestProgram};
+use eggcc::util::{Run, RunType, TestProgram};
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
@@ -47,28 +47,10 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
 
         let snapshot = f.to_str().unwrap().contains("small");
 
-        // in benchmark mode, run fewer tests and use binaries to interpret
         let configurations = if benchmark_mode {
-            // use InterpFast, which runs brilift
-            // with optimization but without egglog optimization
-            let mut res = vec![Run::compile_brilift_config(
-                TestProgram::BrilFile(f.clone()),
-                true,
-                true,
-                InterpMode::InterpFast,
-            )];
-            for optimize_egglog in [true, false].iter() {
-                for optimize_llvm in [true, false].iter() {
-                    res.push(Run::compile_llvm_config(
-                        TestProgram::BrilFile(f.clone()),
-                        *optimize_egglog,
-                        *optimize_llvm,
-                        InterpMode::InterpFast,
-                    ));
-                }
-            }
-
-            res
+            // in benchmark mode, run a special test pipeline that only runs
+            // a few modes, and shares intermediate results
+            vec![Run::test_benchmark_config(TestProgram::BrilFile(f.clone()))]
         } else {
             Run::all_configurations_for(TestProgram::BrilFile(f))
         };

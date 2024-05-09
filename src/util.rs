@@ -921,7 +921,7 @@ impl Run {
             }
         } else {
             let processed = dir.path().join("postprocessed.ll");
-            let res = Command::new("opt")
+            let res = Command::new("opt-18")
                 .arg("-passes=sroa,instsimplify,instcombine<no-verify-fixpoint>,adce")
                 .arg("-S")
                 .arg(file_path.clone())

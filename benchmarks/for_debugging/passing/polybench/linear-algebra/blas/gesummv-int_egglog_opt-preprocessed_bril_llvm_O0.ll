@@ -1,4 +1,4 @@
-; ModuleID = '/var/folders/jw/f07sz9zx0wqck930wjllkpyr0000gn/T/.tmpPyfYDQ/postprocessed.ll'
+; ModuleID = '/var/folders/jw/f07sz9zx0wqck930wjllkpyr0000gn/T/.tmpa894Xm/postprocessed.ll'
 source_filename = "runtime.c754f3aa9d510c22-cgu.0"
 target datalayout = "e-m:o-i64:64-i128:128-n32:64-S128"
 target triple = "arm64-apple-macosx13.0.0"
@@ -9483,225 +9483,440 @@ define internal noundef zeroext i1 @"_ZN69_$LT$core..str..error..ParseBoolError$
 ; Function Attrs: nofree nounwind
 declare noundef i64 @write(i32 noundef, ptr nocapture noundef readonly, i64 noundef) unnamed_addr #0
 
-define void @_main() {
+define void @init(ptr %v0, ptr %v1, ptr %v2, i64 %v3, i64 %v4) {
 label0:
-  %var11 = call ptr @matrix_new(i64 250, i64 250)
-  %var14 = call ptr @matrix_new(i64 250, i64 250)
-  %var17 = call ptr @vector_new(i64 250)
-  call void @init(ptr %var11, ptr %var14, ptr %var17, i64 250, i64 250)
-  %var25 = call ptr @vector_new(i64 250)
-  %var27 = call ptr @vector_new(i64 250)
-  br label %main_i
+  br label %v18_
 
-main_i:                                           ; preds = %main_j_done, %label0
-  %i.0 = phi i64 [ 0, %label0 ], [ %var109, %main_j_done ]
-  %var29 = icmp slt i64 %i.0, 250
-  br i1 %var29, label %main_i_body, label %main_i_done
+v18_:                                             ; preds = %v193_, %label0
+  %v10_.0 = phi i64 [ 0, %label0 ], [ %v185_.0, %v193_ ]
+  %v8_.0 = phi i64 [ 0, %label0 ], [ %v183_.0, %v193_ ]
+  %var21 = icmp slt i64 %v10_.0, %v3
+  br i1 %var21, label %v20_, label %v21_
 
-main_i_body:                                      ; preds = %main_i
-  call void @vector_set(ptr %var25, i64 %i.0, i64 0)
-  call void @vector_set(ptr %var27, i64 %i.0, i64 0)
-  br label %main_j
+v20_:                                             ; preds = %v18_
+  %var25 = getelementptr i64, ptr %v2, i64 %v10_.0
+  br label %v29_
 
-main_i_done:                                      ; preds = %main_i
-  call void @vector_print(ptr %var27, i64 250)
-  tail call void @free(ptr %var11)
-  tail call void @free(ptr %var14)
-  tail call void @free(ptr %var25)
-  tail call void @free(ptr %var17)
-  tail call void @free(ptr %var27)
+v21_:                                             ; preds = %v18_
+  br label %v193_
+
+v29_:                                             ; preds = %v59_, %v20_
+  %v25_.0 = phi i64 [ %v8_.0, %v20_ ], [ %v54_.0, %v59_ ]
+  %var32.not.not = icmp slt i64 %v25_.0, %v4
+  br i1 %var32.not.not, label %v32_, label %v31_
+
+v31_:                                             ; preds = %v29_
+  br label %v38_
+
+v32_:                                             ; preds = %v29_
+  br label %v59_
+
+v38_:                                             ; preds = %v49_, %v31_
+  %v34_.0 = phi i64 [ %v4, %v31_ ], [ %v45_.0, %v49_ ]
+  %var41 = sub i64 %v25_.0, %v34_.0
+  %var44 = icmp sgt i64 %var41, -1
+  br i1 %var44, label %v41_, label %v42_
+
+v41_:                                             ; preds = %v38_
+  %var48 = shl i64 %v34_.0, 1
+  br label %v49_
+
+v42_:                                             ; preds = %v38_
+  br label %v49_
+
+v49_:                                             ; preds = %v42_, %v41_
+  %v45_.0 = phi i64 [ %var48, %v41_ ], [ %v34_.0, %v42_ ]
+  br i1 %var44, label %v38_, label %v50_
+
+v50_:                                             ; preds = %v49_
+  %v45_.0.lcssa = phi i64 [ %v45_.0, %v49_ ]
+  %var62.neg = sdiv i64 %v45_.0.lcssa, -2
+  %var65 = add i64 %var62.neg, %v25_.0
+  br label %v59_
+
+v59_:                                             ; preds = %v50_, %v32_
+  %v54_.0 = phi i64 [ %var65, %v50_ ], [ %v25_.0, %v32_ ]
+  br i1 %var32.not.not, label %v60_, label %v29_
+
+v60_:                                             ; preds = %v59_
+  %v54_.0.lcssa = phi i64 [ %v54_.0, %v59_ ]
+  %var78 = sdiv i64 %v54_.0.lcssa, %v4
+  store i64 %var78, ptr %var25, align 8
+  br label %v74_
+
+v74_:                                             ; preds = %v177_, %v60_
+  %v67_.0 = phi i64 [ 0, %v60_ ], [ %v170_.0, %v177_ ]
+  %v66_.0 = phi i64 [ 0, %v60_ ], [ %v169_.0, %v177_ ]
+  %var95 = icmp slt i64 %v67_.0, %v3
+  br i1 %var95, label %v76_, label %v77_
+
+v76_:                                             ; preds = %v74_
+  %var99 = mul i64 %v10_.0, %v3
+  %var102 = add i64 %v67_.0, %var99
+  %var105 = getelementptr i64, ptr %v1, i64 %var102
+  %var108 = getelementptr i64, ptr %v0, i64 %var102
+  %var111 = mul i64 %v8_.0, %v66_.0
+  %var114 = add i64 %var111, 1
+  br label %v90_
+
+v77_:                                             ; preds = %v74_
+  br label %v177_
+
+v90_:                                             ; preds = %v120_, %v76_
+  %v86_.0 = phi i64 [ %var114, %v76_ ], [ %v115_.0, %v120_ ]
+  %var121.not.not = icmp slt i64 %v86_.0, %v4
+  br i1 %var121.not.not, label %v93_, label %v92_
+
+v92_:                                             ; preds = %v90_
+  br label %v99_
+
+v93_:                                             ; preds = %v90_
+  br label %v120_
+
+v99_:                                             ; preds = %v110_, %v92_
+  %v95_.0 = phi i64 [ %v4, %v92_ ], [ %v106_.0, %v110_ ]
+  %var130 = sub i64 %v86_.0, %v95_.0
+  %var133 = icmp sgt i64 %var130, -1
+  br i1 %var133, label %v102_, label %v103_
+
+v102_:                                            ; preds = %v99_
+  %var137 = shl i64 %v95_.0, 1
+  br label %v110_
+
+v103_:                                            ; preds = %v99_
+  br label %v110_
+
+v110_:                                            ; preds = %v103_, %v102_
+  %v106_.0 = phi i64 [ %var137, %v102_ ], [ %v95_.0, %v103_ ]
+  br i1 %var133, label %v99_, label %v111_
+
+v111_:                                            ; preds = %v110_
+  %v106_.0.lcssa = phi i64 [ %v106_.0, %v110_ ]
+  %var151.neg = sdiv i64 %v106_.0.lcssa, -2
+  %var154 = add i64 %var151.neg, %v86_.0
+  br label %v120_
+
+v120_:                                            ; preds = %v111_, %v93_
+  %v115_.0 = phi i64 [ %var154, %v111_ ], [ %v86_.0, %v93_ ]
+  br i1 %var121.not.not, label %v121_, label %v90_
+
+v121_:                                            ; preds = %v120_
+  %v115_.0.lcssa = phi i64 [ %v115_.0, %v120_ ]
+  %var167 = sdiv i64 %v115_.0.lcssa, %v4
+  store i64 %var167, ptr %var108, align 8
+  %var172 = add i64 %var111, 2
+  br label %v128_
+
+v128_:                                            ; preds = %v158_, %v121_
+  %v124_.0 = phi i64 [ %var172, %v121_ ], [ %v153_.0, %v158_ ]
+  %var179.not.not = icmp slt i64 %v124_.0, %v4
+  br i1 %var179.not.not, label %v131_, label %v130_
+
+v130_:                                            ; preds = %v128_
+  br label %v137_
+
+v131_:                                            ; preds = %v128_
+  br label %v158_
+
+v137_:                                            ; preds = %v148_, %v130_
+  %v133_.0 = phi i64 [ %v4, %v130_ ], [ %v144_.0, %v148_ ]
+  %var188 = sub i64 %v124_.0, %v133_.0
+  %var191 = icmp sgt i64 %var188, -1
+  br i1 %var191, label %v140_, label %v141_
+
+v140_:                                            ; preds = %v137_
+  %var195 = shl i64 %v133_.0, 1
+  br label %v148_
+
+v141_:                                            ; preds = %v137_
+  br label %v148_
+
+v148_:                                            ; preds = %v141_, %v140_
+  %v144_.0 = phi i64 [ %var195, %v140_ ], [ %v133_.0, %v141_ ]
+  br i1 %var191, label %v137_, label %v149_
+
+v149_:                                            ; preds = %v148_
+  %v144_.0.lcssa = phi i64 [ %v144_.0, %v148_ ]
+  %var209.neg = sdiv i64 %v144_.0.lcssa, -2
+  %var212 = add i64 %var209.neg, %v124_.0
+  br label %v158_
+
+v158_:                                            ; preds = %v149_, %v131_
+  %v153_.0 = phi i64 [ %var212, %v149_ ], [ %v124_.0, %v131_ ]
+  br i1 %var179.not.not, label %v159_, label %v128_
+
+v159_:                                            ; preds = %v158_
+  %v153_.0.lcssa = phi i64 [ %v153_.0, %v158_ ]
+  %var225 = sdiv i64 %v153_.0.lcssa, %v4
+  store i64 %var225, ptr %var105, align 8
+  %var230 = add i64 %v66_.0, 1
+  %var233 = add i64 %v67_.0, 1
+  br label %v177_
+
+v177_:                                            ; preds = %v159_, %v77_
+  %v169_.0 = phi i64 [ %var230, %v159_ ], [ %v66_.0, %v77_ ]
+  %v170_.0 = phi i64 [ %var233, %v159_ ], [ %v67_.0, %v77_ ]
+  br i1 %var95, label %v74_, label %v178_
+
+v178_:                                            ; preds = %v177_
+  %var262 = add i64 %v8_.0, 1
+  %var265 = add i64 %v10_.0, 1
+  br label %v193_
+
+v193_:                                            ; preds = %v178_, %v21_
+  %v183_.0 = phi i64 [ %var262, %v178_ ], [ %v8_.0, %v21_ ]
+  %v185_.0 = phi i64 [ %var265, %v178_ ], [ %v10_.0, %v21_ ]
+  br i1 %var21, label %v18_, label %v194_
+
+v194_:                                            ; preds = %v193_
   ret void
-
-main_j:                                           ; preds = %main_j_body, %main_i_body
-  %j.0 = phi i64 [ 0, %main_i_body ], [ %var87, %main_j_body ]
-  %var41 = icmp slt i64 %j.0, 250
-  br i1 %var41, label %main_j_body, label %main_j_done
-
-main_j_body:                                      ; preds = %main_j
-  %var45 = call i64 @matrix_get(ptr %var11, i64 %i.0, i64 %j.0, i64 250)
-  %var50 = call i64 @vector_get(ptr %var17, i64 %j.0)
-  %var53 = call i64 @vector_get(ptr %var25, i64 %i.0)
-  %var56 = mul i64 %var45, %var50
-  %var59 = add i64 %var56, %var53
-  call void @vector_set(ptr %var25, i64 %i.0, i64 %var59)
-  %var66 = call i64 @matrix_get(ptr %var14, i64 %i.0, i64 %j.0, i64 250)
-  %var71 = call i64 @vector_get(ptr %var17, i64 %j.0)
-  %var74 = call i64 @vector_get(ptr %var27, i64 %i.0)
-  %var77 = mul i64 %var66, %var71
-  %var80 = add i64 %var77, %var74
-  call void @vector_set(ptr %var27, i64 %i.0, i64 %var80)
-  %var87 = add i64 %j.0, 1
-  br label %main_j
-
-main_j_done:                                      ; preds = %main_j
-  %var90 = call i64 @vector_get(ptr %var25, i64 %i.0)
-  %var93 = call i64 @vector_get(ptr %var27, i64 %i.0)
-  %var96 = mul i64 %var90, 3
-  %var99 = shl i64 %var93, 1
-  %var102 = add i64 %var96, %var99
-  call void @vector_set(ptr %var27, i64 %i.0, i64 %var102)
-  %var109 = add i64 %i.0, 1
-  br label %main_i
 }
 
-define void @init(ptr %A, ptr %B, ptr %x, i64 %N, i64 %fN) {
+define ptr @matrix_new(i64 %v0, i64 %v1) {
 label1:
-  br label %init_i
-
-init_i:                                           ; preds = %init_j_done, %label1
-  %i.0 = phi i64 [ 0, %label1 ], [ %var180, %init_j_done ]
-  %fi.0 = phi i64 [ 0, %label1 ], [ %var183, %init_j_done ]
-  %var120 = icmp slt i64 %i.0, %N
-  br i1 %var120, label %init_i_body, label %init_i_done
-
-init_i_body:                                      ; preds = %init_i
-  %var124 = call i64 @fmod(i64 %fi.0, i64 %fN)
-  %var127 = sdiv i64 %var124, %fN
-  call void @vector_set(ptr %x, i64 %i.0, i64 %var127)
-  br label %init_j
-
-init_i_done:                                      ; preds = %init_i
-  ret void
-
-init_j:                                           ; preds = %init_j_body, %init_i_body
-  %j.0 = phi i64 [ 0, %init_i_body ], [ %var174, %init_j_body ]
-  %fj.0 = phi i64 [ 0, %init_i_body ], [ %var177, %init_j_body ]
-  %var134 = icmp slt i64 %j.0, %N
-  br i1 %var134, label %init_j_body, label %init_j_done
-
-init_j_body:                                      ; preds = %init_j
-  %var138 = mul i64 %fi.0, %fj.0
-  %var141 = add i64 %var138, 1
-  %var144 = call i64 @fmod(i64 %var141, i64 %fN)
-  %var147 = sdiv i64 %var144, %fN
-  call void @matrix_set(ptr %A, i64 %i.0, i64 %j.0, i64 %N, i64 %var147)
-  %var156 = mul i64 %fi.0, %fj.0
-  %var159 = add i64 %var156, 2
-  %var162 = call i64 @fmod(i64 %var159, i64 %fN)
-  %var165 = sdiv i64 %var162, %fN
-  call void @matrix_set(ptr %B, i64 %i.0, i64 %j.0, i64 %N, i64 %var165)
-  %var174 = add i64 %j.0, 1
-  %var177 = add i64 %fj.0, 1
-  br label %init_j
-
-init_j_done:                                      ; preds = %init_j
-  %var180 = add i64 %i.0, 1
-  %var183 = add i64 %fi.0, 1
-  br label %init_i
+  %var344 = mul i64 %v0, %v1
+  %0 = trunc i64 %var344 to i32
+  %mallocsize = shl i32 %0, 3
+  %var347 = tail call ptr @malloc(i32 %mallocsize)
+  ret ptr %var347
 }
 
-define ptr @matrix_new(i64 %Nrow, i64 %Ncol) {
+define ptr @matrix_loc(ptr %v0, i64 %v1, i64 %v2, i64 %v3) {
 label2:
-  %var186 = mul i64 %Nrow, %Ncol
-  %0 = trunc i64 %var186 to i32
-  %mallocsize = shl i32 %0, 3
-  %var189 = tail call ptr @malloc(i32 %mallocsize)
-  ret ptr %var189
+  %var350 = mul i64 %v1, %v3
+  %0 = getelementptr i64, ptr %v0, i64 %var350
+  %var356 = getelementptr i64, ptr %0, i64 %v2
+  ret ptr %var356
 }
 
-define ptr @matrix_loc(ptr %mtx, i64 %row, i64 %col, i64 %Ncol) {
+define i64 @matrix_get(ptr %v0, i64 %v1, i64 %v2, i64 %v3) {
 label3:
-  %var192 = mul i64 %row, %Ncol
-  %0 = getelementptr i64, ptr %mtx, i64 %var192
-  %var198 = getelementptr i64, ptr %0, i64 %col
-  ret ptr %var198
+  %var360 = mul i64 %v1, %v3
+  %0 = getelementptr i64, ptr %v0, i64 %var360
+  %var366 = getelementptr i64, ptr %0, i64 %v2
+  %var369 = load i64, ptr %var366, align 8
+  ret i64 %var369
 }
 
-define i64 @matrix_get(ptr %mtx, i64 %row, i64 %col, i64 %Ncol) {
+define void @matrix_set(ptr %v0, i64 %v1, i64 %v2, i64 %v3, i64 %v4) {
 label4:
-  %var202 = call ptr @matrix_loc(ptr %mtx, i64 %row, i64 %col, i64 %Ncol)
-  %var207 = load i64, ptr %var202, align 8
-  ret i64 %var207
+  %var372 = mul i64 %v1, %v3
+  %0 = getelementptr i64, ptr %v0, i64 %var372
+  %var378 = getelementptr i64, ptr %0, i64 %v2
+  store i64 %v4, ptr %var378, align 8
+  ret void
 }
 
-define void @matrix_set(ptr %mtx, i64 %row, i64 %col, i64 %Ncol, i64 %val) {
+define ptr @vector_new(i64 %v0) {
 label5:
-  %var210 = call ptr @matrix_loc(ptr %mtx, i64 %row, i64 %col, i64 %Ncol)
-  store i64 %val, ptr %var210, align 8
-  ret void
-}
-
-define ptr @vector_new(i64 %N) {
-label6:
-  %0 = trunc i64 %N to i32
+  %0 = trunc i64 %v0 to i32
   %mallocsize = shl i32 %0, 3
-  %var217 = tail call ptr @malloc(i32 %mallocsize)
-  ret ptr %var217
+  %var383 = tail call ptr @malloc(i32 %mallocsize)
+  ret ptr %var383
 }
 
-define i64 @vector_get(ptr %vec, i64 %i) {
+define i64 @vector_get(ptr %v0, i64 %v1) {
+label6:
+  %var386 = getelementptr i64, ptr %v0, i64 %v1
+  %var389 = load i64, ptr %var386, align 8
+  ret i64 %var389
+}
+
+define void @vector_set(ptr %v0, i64 %v1, i64 %v2) {
 label7:
-  %var220 = getelementptr i64, ptr %vec, i64 %i
-  %var223 = load i64, ptr %var220, align 8
-  ret i64 %var223
+  %var392 = getelementptr i64, ptr %v0, i64 %v1
+  store i64 %v2, ptr %var392, align 8
+  ret void
 }
 
-define void @vector_set(ptr %vec, i64 %i, i64 %val) {
+define void @vector_print(ptr %v0, i64 %v1) {
 label8:
-  %var226 = getelementptr i64, ptr %vec, i64 %i
-  store i64 %val, ptr %var226, align 8
-  ret void
-}
+  br label %v8_
 
-define void @vector_print(ptr %vec, i64 %N) {
-label9:
-  br label %while
+v8_:                                              ; preds = %v19_, %label8
+  %v4_.0 = phi i64 [ 0, %label8 ], [ %v15_.0, %v19_ ]
+  %var401 = icmp slt i64 %v4_.0, %v1
+  br i1 %var401, label %v10_, label %v11_
 
-while:                                            ; preds = %body, %label9
-  %i.0 = phi i64 [ 0, %label9 ], [ %var239, %body ]
-  %var231 = icmp slt i64 %i.0, %N
-  br i1 %var231, label %body, label %done
-
-body:                                             ; preds = %while
-  %var235 = call i64 @vector_get(ptr %vec, i64 %i.0)
-  call void @_bril_print_int(i64 %var235)
+v10_:                                             ; preds = %v8_
+  %var405 = getelementptr i64, ptr %v0, i64 %v4_.0
+  %var408 = load i64, ptr %var405, align 8
+  call void @_bril_print_int(i64 %var408)
   call void @_bril_print_end()
-  %var239 = add i64 %i.0, 1
-  br label %while
+  %var411 = add i64 %v4_.0, 1
+  br label %v19_
 
-done:                                             ; preds = %while
+v11_:                                             ; preds = %v8_
+  br label %v19_
+
+v19_:                                             ; preds = %v11_, %v10_
+  %v15_.0 = phi i64 [ %var411, %v10_ ], [ %v4_.0, %v11_ ]
+  br i1 %var401, label %v8_, label %v20_
+
+v20_:                                             ; preds = %v19_
   ret void
 }
 
-define i64 @fmod(i64 %n, i64 %m) {
-label10:
-  br label %while
+define i64 @fmod(i64 %v0, i64 %v1) {
+label9:
+  br label %v8_
 
-while:                                            ; preds = %done_inner, %label10
-  %rem.0 = phi i64 [ %n, %label10 ], [ %var261, %done_inner ]
-  %var243.not = icmp slt i64 %rem.0, %m
-  br i1 %var243.not, label %done, label %body
+v8_:                                              ; preds = %v38_, %label9
+  %v4_.0 = phi i64 [ %v0, %label9 ], [ %v33_.0, %v38_ ]
+  %var431.not.not = icmp slt i64 %v4_.0, %v1
+  br i1 %var431.not.not, label %v11_, label %v10_
 
-body:                                             ; preds = %while
-  br label %while_inner
+v10_:                                             ; preds = %v8_
+  br label %v17_
 
-done:                                             ; preds = %while
-  %rem.0.lcssa = phi i64 [ %rem.0, %while ]
-  ret i64 %rem.0.lcssa
+v11_:                                             ; preds = %v8_
+  br label %v38_
 
-while_inner:                                      ; preds = %body_inner, %body
-  %decr.0 = phi i64 [ %m, %body ], [ %var255, %body_inner ]
-  %var248 = sub i64 %rem.0, %decr.0
-  %var251 = icmp sgt i64 %var248, -1
-  br i1 %var251, label %body_inner, label %done_inner
+v17_:                                             ; preds = %v28_, %v10_
+  %v13_.0 = phi i64 [ %v1, %v10_ ], [ %v24_.0, %v28_ ]
+  %var440 = sub i64 %v4_.0, %v13_.0
+  %var443 = icmp sgt i64 %var440, -1
+  br i1 %var443, label %v20_, label %v21_
 
-body_inner:                                       ; preds = %while_inner
-  %var255 = shl i64 %decr.0, 1
-  br label %while_inner
+v20_:                                             ; preds = %v17_
+  %var447 = shl i64 %v13_.0, 1
+  br label %v28_
 
-done_inner:                                       ; preds = %while_inner
-  %decr.0.lcssa = phi i64 [ %decr.0, %while_inner ]
-  %var258.neg = sdiv i64 %decr.0.lcssa, -2
-  %var261 = add i64 %var258.neg, %rem.0
-  br label %while
+v21_:                                             ; preds = %v17_
+  br label %v28_
+
+v28_:                                             ; preds = %v21_, %v20_
+  %v24_.0 = phi i64 [ %var447, %v20_ ], [ %v13_.0, %v21_ ]
+  br i1 %var443, label %v17_, label %v29_
+
+v29_:                                             ; preds = %v28_
+  %v24_.0.lcssa = phi i64 [ %v24_.0, %v28_ ]
+  %var461.neg = sdiv i64 %v24_.0.lcssa, -2
+  %var464 = add i64 %var461.neg, %v4_.0
+  br label %v38_
+
+v38_:                                             ; preds = %v29_, %v11_
+  %v33_.0 = phi i64 [ %var464, %v29_ ], [ %v4_.0, %v11_ ]
+  br i1 %var431.not.not, label %v39_, label %v8_
+
+v39_:                                             ; preds = %v38_
+  %v33_.0.lcssa = phi i64 [ %v33_.0, %v38_ ]
+  ret i64 %v33_.0.lcssa
 }
 
-declare void @free(ptr)
+define void @_main() {
+label10:
+  %var488 = tail call ptr @malloc(i32 500000)
+  %var490 = tail call ptr @malloc(i32 500000)
+  %var492 = tail call ptr @malloc(i32 2000)
+  call void @init(ptr %var488, ptr %var490, ptr %var492, i64 250, i64 250)
+  %var500 = tail call ptr @malloc(i32 2000)
+  %var502 = tail call ptr @malloc(i32 2000)
+  br label %v22_
+
+v22_:                                             ; preds = %v96_, %label10
+  %v17_.0 = phi i64 [ 0, %label10 ], [ %v91_.0, %v96_ ]
+  %var515 = icmp slt i64 %v17_.0, 250
+  br i1 %var515, label %v24_, label %v25_
+
+v24_:                                             ; preds = %v22_
+  %var519 = getelementptr i64, ptr %var502, i64 %v17_.0
+  %var522 = getelementptr i64, ptr %var500, i64 %v17_.0
+  store i64 0, ptr %var522, align 8
+  store i64 0, ptr %var519, align 8
+  br label %v41_
+
+v25_:                                             ; preds = %v22_
+  br label %v96_
+
+v41_:                                             ; preds = %v75_, %v24_
+  %v39_.0 = phi i64 [ 0, %v24_ ], [ %v73_.0, %v75_ ]
+  %var541 = icmp slt i64 %v39_.0, 250
+  br i1 %var541, label %v43_, label %v44_
+
+v43_:                                             ; preds = %v41_
+  %var545 = getelementptr i64, ptr %var502, i64 %v17_.0
+  %var548 = getelementptr i64, ptr %var492, i64 %v39_.0
+  %var551 = mul i64 %v17_.0, 250
+  %var554 = add i64 %v39_.0, %var551
+  %var557 = getelementptr i64, ptr %var490, i64 %var554
+  %var560 = getelementptr i64, ptr %var500, i64 %v17_.0
+  %var563 = getelementptr i64, ptr %var488, i64 %var554
+  %var566 = load i64, ptr %var563, align 8
+  %var568 = load i64, ptr %var548, align 8
+  %var570 = load i64, ptr %var560, align 8
+  %var572 = mul i64 %var566, %var568
+  %var575 = add i64 %var570, %var572
+  store i64 %var575, ptr %var560, align 8
+  %var580 = load i64, ptr %var557, align 8
+  %var584 = mul i64 %var580, %var568
+  %var587 = load i64, ptr %var545, align 8
+  %var589 = add i64 %var584, %var587
+  store i64 %var589, ptr %var545, align 8
+  %var594 = add i64 %v39_.0, 1
+  br label %v75_
+
+v44_:                                             ; preds = %v41_
+  br label %v75_
+
+v75_:                                             ; preds = %v44_, %v43_
+  %v73_.0 = phi i64 [ %var594, %v43_ ], [ %v39_.0, %v44_ ]
+  br i1 %var541, label %v41_, label %v76_
+
+v76_:                                             ; preds = %v75_
+  %var622 = getelementptr i64, ptr %var502, i64 %v17_.0
+  %var625 = getelementptr i64, ptr %var500, i64 %v17_.0
+  %var628 = load i64, ptr %var625, align 8
+  %var630 = load i64, ptr %var622, align 8
+  %var632 = shl i64 %var630, 1
+  %var635 = mul i64 %var628, 3
+  %var638 = add i64 %var632, %var635
+  store i64 %var638, ptr %var622, align 8
+  %var643 = add i64 %v17_.0, 1
+  br label %v96_
+
+v96_:                                             ; preds = %v76_, %v25_
+  %v91_.0 = phi i64 [ %var643, %v76_ ], [ %v17_.0, %v25_ ]
+  br i1 %var515, label %v22_, label %v97_
+
+v97_:                                             ; preds = %v96_
+  br label %v102_
+
+v102_:                                            ; preds = %v113_, %v97_
+  %v98_.0 = phi i64 [ 0, %v97_ ], [ %v109_.0, %v113_ ]
+  %var673 = icmp slt i64 %v98_.0, 250
+  br i1 %var673, label %v104_, label %v105_
+
+v104_:                                            ; preds = %v102_
+  %var677 = getelementptr i64, ptr %var502, i64 %v98_.0
+  %var680 = load i64, ptr %var677, align 8
+  call void @_bril_print_int(i64 %var680)
+  call void @_bril_print_end()
+  %var683 = add i64 %v98_.0, 1
+  br label %v113_
+
+v105_:                                            ; preds = %v102_
+  br label %v113_
+
+v113_:                                            ; preds = %v105_, %v104_
+  %v109_.0 = phi i64 [ %var683, %v104_ ], [ %v98_.0, %v105_ ]
+  br i1 %var673, label %v102_, label %v114_
+
+v114_:                                            ; preds = %v113_
+  tail call void @free(ptr %var488)
+  tail call void @free(ptr %var490)
+  tail call void @free(ptr %var500)
+  tail call void @free(ptr %var492)
+  tail call void @free(ptr %var502)
+  ret void
+}
 
 declare noalias ptr @malloc(i32)
 
+declare void @free(ptr)
+
 define i32 @main(i32 %argc, ptr %argv) {
-label265:
+label727:
   call void @_main()
   ret i32 0
 }

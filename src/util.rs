@@ -230,7 +230,7 @@ impl RunType {
             | RunType::CheckExtractIdentical
             | RunType::ToCfg
             | RunType::OptimizedCfg => false,
-            | RunType::BrilToJson => false,
+            RunType::BrilToJson => false,
         }
     }
 }
@@ -499,14 +499,18 @@ impl Run {
                 None,
             ))
         } else if self.interp == InterpMode::InterpFast {
-            Some(Optimizer::interp(
-                &self
-                    .run_brilift(self.prog_with_args.program.clone(), false, true)
-                    .unwrap()
-                    .unwrap(),
+            let interpretable = self.run_brilift(self.prog_with_args.program.clone(), false, true);
+            let res = Some(Optimizer::interp(
+                interpretable.as_ref().unwrap().as_ref().unwrap(),
                 self.prog_with_args.args.clone(),
                 None,
-            ))
+            ));
+
+            // clean up binary
+            if let Interpretable::Executable { executable } = interpretable.unwrap().unwrap() {
+                std::fs::remove_file(executable).unwrap();
+            }
+            res
         } else {
             None
         };
@@ -732,11 +736,18 @@ impl Run {
                 );
             };
             assert!(self.test_type.produces_interpretable());
-            Some(Optimizer::interp(
+            let res = Some(Optimizer::interp(
                 &interpretable_out,
                 self.prog_with_args.args.clone(),
                 self.profile_out.clone(),
-            ))
+            ));
+
+            // clean up binary
+            if let Interpretable::Executable { executable } = interpretable_out {
+                std::fs::remove_file(executable).unwrap();
+            }
+
+            res
         };
 
         assert_eq!(result_interpreted.is_some(), result_interpreted.is_some());
@@ -832,12 +843,10 @@ impl Run {
             expect_command_success(&mut cmd, "failed to compile brilift");
         }
 
-        std::process::Command::new("rm")
-            .arg(object)
-            .arg(library_o)
-            .arg(library_c)
-            .status()
-            .unwrap();
+        expect_command_success(
+            Command::new("rm").arg(object).arg(library_o).arg(library_c),
+            "failed to clean up object files",
+        );
 
         Ok(Some(Interpretable::Executable { executable }))
     }
@@ -863,7 +872,7 @@ impl Run {
         let dir = tempdir().expect("couldn't create temp dir");
 
         let llvm_ir = run_cmd_line(
-            format!("{}/bril-llvm/brilc", get_eggcc_root()),
+            format!("{}/brillvm/brilc", get_eggcc_root()),
             vec!["-r", "./brillvm/rt.bc"],
             String::from_utf8(buf).unwrap().as_str(),
         )
@@ -913,7 +922,7 @@ impl Run {
         } else {
             let processed = dir.path().join("postprocessed.ll");
             let res = Command::new("opt")
-                .arg("-passes=sroa,instsimplify,instcombine,adce")
+                .arg("-passes=sroa,instsimplify,instcombine<no-verify-fixpoint>,adce")
                 .arg("-S")
                 .arg(file_path.clone())
                 .arg("-o")

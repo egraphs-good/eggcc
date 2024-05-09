@@ -924,7 +924,8 @@ impl Run {
             // HACK: check if opt-18 exists
             // otherwise use opt
             // On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
-            let opt_cmd = if Command::new("opt-18").status().is_ok() {
+            // Also, on some machines, just running `opt-18` hangs, so we pass the version flag
+            let opt_cmd = if Command::new("opt-18").arg("--version").status().is_ok() {
                 "opt-18"
             } else {
                 "opt"

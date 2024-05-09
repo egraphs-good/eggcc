@@ -921,7 +921,16 @@ impl Run {
             }
         } else {
             let processed = dir.path().join("postprocessed.ll");
-            let res = Command::new("opt-18")
+            // HACK: check if opt-18 exists
+            // otherwise use opt
+            // On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
+            let opt_cmd = if Command::new("opt-18").status().is_ok() {
+                "opt-18"
+            } else {
+                "opt"
+            };
+
+            let res = Command::new(opt_cmd)
                 .arg("-passes=sroa,instsimplify,instcombine<no-verify-fixpoint>,adce")
                 .arg("-S")
                 .arg(file_path.clone())

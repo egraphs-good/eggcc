@@ -10,7 +10,7 @@ use dag_in_context::schema::TreeProgram;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::process::Stdio;
+use std::process::{Command, Stdio};
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
@@ -114,7 +114,6 @@ where
     S2: AsRef<OsStr>,
     I: IntoIterator<Item = S2>,
 {
-    use std::process::Command;
     let mut child = Command::new(program)
         .args(args)
         .stdin(Stdio::piped())
@@ -152,6 +151,8 @@ pub enum RunType {
     /// Do nothing to the input bril program besides parse it.
     /// Output the original program.
     Parse,
+    /// Convert a Bril file to the JSON representation
+    BrilToJson,
     /// Convert the input bril program to the tree encoding, optimize the program
     /// using egglog, and output the resulting bril program.
     /// The default way to run this tool.
@@ -229,6 +230,7 @@ impl RunType {
             | RunType::CheckExtractIdentical
             | RunType::ToCfg
             | RunType::OptimizedCfg => false,
+            RunType::BrilToJson => false,
         }
     }
 }
@@ -372,6 +374,25 @@ impl Run {
         }
     }
 
+    pub fn compile_llvm_config(
+        test: TestProgram,
+        optimize_egglog: bool,
+        optimize_bril_llvm: bool,
+        interp: InterpMode,
+    ) -> Run {
+        Run {
+            test_type: RunType::CompileBrilLLVM,
+            interp,
+            prog_with_args: test.read_program(),
+            profile_out: None,
+            output_path: None,
+            llvm_output_dir: None,
+            optimize_egglog: Some(optimize_egglog),
+            optimize_brilift: None,
+            optimize_bril_llvm: Some(optimize_bril_llvm),
+        }
+    }
+
     pub fn all_configurations_for(test: TestProgram) -> Vec<Run> {
         let prog = test.clone().read_program();
         let mut res = vec![];
@@ -478,14 +499,18 @@ impl Run {
                 None,
             ))
         } else if self.interp == InterpMode::InterpFast {
-            Some(Optimizer::interp(
-                &self
-                    .run_brilift(self.prog_with_args.program.clone(), false, true)
-                    .unwrap()
-                    .unwrap(),
+            let interpretable = self.run_brilift(self.prog_with_args.program.clone(), false, true);
+            let res = Some(Optimizer::interp(
+                interpretable.as_ref().unwrap().as_ref().unwrap(),
                 self.prog_with_args.args.clone(),
                 None,
-            ))
+            ));
+
+            // clean up binary
+            if let Interpretable::Executable { executable } = interpretable.unwrap().unwrap() {
+                std::fs::remove_file(executable).unwrap();
+            }
+            res
         } else {
             None
         };
@@ -495,6 +520,17 @@ impl Run {
                 vec![],
                 Some(Interpretable::Bril(self.prog_with_args.program.clone())),
             ),
+            RunType::BrilToJson => {
+                let json = serde_json::to_string_pretty(&self.prog_with_args.program).unwrap();
+                (
+                    vec![Visualization {
+                        result: json,
+                        file_extension: ".json".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
+            }
             RunType::RvsdgConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let svg = rvsdg.to_svg();
@@ -686,7 +722,7 @@ impl Run {
             }
             RunType::CompileBrilLLVM => {
                 let interpretable = self.run_bril_llvm()?;
-                (vec![], interpretable)
+                (vec![], Some(interpretable))
             }
         };
 
@@ -700,11 +736,18 @@ impl Run {
                 );
             };
             assert!(self.test_type.produces_interpretable());
-            Some(Optimizer::interp(
+            let res = Some(Optimizer::interp(
                 &interpretable_out,
                 self.prog_with_args.args.clone(),
                 self.profile_out.clone(),
-            ))
+            ));
+
+            // clean up binary
+            if let Interpretable::Executable { executable } = interpretable_out {
+                std::fs::remove_file(executable).unwrap();
+            }
+
+            res
         };
 
         assert_eq!(result_interpreted.is_some(), result_interpreted.is_some());
@@ -722,6 +765,14 @@ impl Run {
         optimize_egglog: bool,
         optimize_brilift: bool,
     ) -> Result<Option<Interpretable>, EggCCError> {
+        // For fast testing modes, we may run brilift to compare against
+        // therefore we need a unique name based on this test's name and brilift options
+        let unique_name = format!(
+            "{}_brilift_{}_{}",
+            self.name(),
+            optimize_egglog,
+            optimize_brilift
+        );
         let program = if optimize_egglog {
             Run::optimize_bril(&bril)?
         } else {
@@ -731,26 +782,27 @@ impl Run {
         // Compile the input bril file
         // options are "none", "speed", and "speed_and_size"
         let opt_level = if optimize_brilift { "speed" } else { "none" };
-        let object = format!("/tmp/{}.o", self.name());
+        let object = format!("/tmp/{}.o", unique_name);
         brilift::compile(&program, None, &object, opt_level, false);
 
         // Compile runtime C library
         // We use unique names so that tests can run in parallel
-        let library_c = format!("/tmp/{}-library.c", self.name());
-        let library_o = format!("/tmp/{}-library.o", self.name());
+        let library_c = format!("/tmp/{}-library.c", unique_name);
+        let library_o = format!("/tmp/{}-library.o", unique_name);
         std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
-        std::process::Command::new("cc")
-            .arg(library_c.clone())
-            .arg("-c") // create object file instead of executable
-            .arg("-o")
-            .arg(library_o.clone())
-            .status()
-            .unwrap();
+        expect_command_success(
+            Command::new("cc")
+                .arg(library_c.clone())
+                .arg("-c") // create object file instead of executable
+                .arg("-o")
+                .arg(library_o.clone()),
+            "failed to compile runtime C library",
+        );
 
         let executable = self
             .output_path
             .clone()
-            .unwrap_or_else(|| format!("/tmp/{}", self.name()));
+            .unwrap_or_else(|| format!("/tmp/{}", unique_name));
 
         let _ = std::fs::write(
             executable.clone() + "-args",
@@ -780,28 +832,28 @@ impl Run {
                 .unwrap_or(false)
             {
                 // reset stderr to surface other errors.
-                cmd.stderr(Stdio::inherit())
-                    .arg("-Wl,-ld_classic")
-                    .status()
-                    .unwrap();
+                expect_command_success(
+                    cmd.stderr(Stdio::inherit()).arg("-Wl,-ld_classic"),
+                    "failed to compile brilift with ld_classic flag",
+                );
             }
         }
         #[cfg(not(target_os = "macos"))]
         {
-            cmd.status().unwrap();
+            expect_command_success(&mut cmd, "failed to compile brilift");
         }
 
-        std::process::Command::new("rm")
-            .arg(object)
-            .arg(library_o)
-            .arg(library_c)
-            .status()
-            .unwrap();
+        expect_command_success(
+            Command::new("rm").arg(object).arg(library_o).arg(library_c),
+            "failed to clean up object files",
+        );
 
         Ok(Some(Interpretable::Executable { executable }))
     }
 
-    fn run_bril_llvm(&self) -> Result<Option<Interpretable>, EggCCError> {
+    fn run_bril_llvm(&self) -> Result<Interpretable, EggCCError> {
+        // This test's name is unique
+        let unique_name = self.name().to_string();
         let optimize_egglog = self
             .optimize_egglog
             .expect("optimize_egglog is a required flag when running RunMode::CompileBrilLLVM");
@@ -820,13 +872,13 @@ impl Run {
         let dir = tempdir().expect("couldn't create temp dir");
 
         let llvm_ir = run_cmd_line(
-            format!("{}/bril-llvm/brilc", get_eggcc_root()),
-            Vec::<String>::new(),
+            format!("{}/brillvm/brilc", get_eggcc_root()),
+            vec!["-r", "./brillvm/rt.bc"],
             String::from_utf8(buf).unwrap().as_str(),
         )
         .expect("unable to compile bril!");
 
-        let file_path = dir.path().join(format!("compile-{}.ll", self.name()));
+        let file_path = dir.path().join(format!("compile-{}.ll", unique_name));
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
@@ -834,44 +886,52 @@ impl Run {
         let executable = self
             .output_path
             .clone()
-            .unwrap_or_else(|| format!("/tmp/{}", self.name()));
+            .unwrap_or_else(|| format!("/tmp/{}", unique_name));
 
         if let Some(output_dir) = &self.llvm_output_dir {
             std::fs::create_dir_all(output_dir)
                 .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
         }
         if optimize_brillvm {
-            std::process::Command::new("clang")
-                .arg(file_path.clone())
-                .arg("-O3")
-                .arg("-o")
-                .arg(executable.clone())
-                .status()
-                .unwrap();
-
-            if let Some(output_dir) = &self.llvm_output_dir {
-                std::process::Command::new("clang")
-                    .current_dir(output_dir)
+            expect_command_success(
+                Command::new("clang-18")
                     .arg(file_path.clone())
                     .arg("-O3")
-                    .arg("-emit-llvm")
-                    .arg("-S")
-                    .status()
-                    .unwrap();
-                std::process::Command::new("cp")
-                    .arg(file_path)
-                    .arg(format!("{output_dir}/compile-unopt.ll"))
-                    .status()
-                    .unwrap();
+                    .arg("-o")
+                    .arg(executable.clone()),
+                "failed to compile llvm ir",
+            );
+
+            if let Some(output_dir) = &self.llvm_output_dir {
+                expect_command_success(
+                    Command::new("clang-18")
+                        .current_dir(output_dir)
+                        .arg(file_path.clone())
+                        .arg("-O3")
+                        .arg("-emit-llvm")
+                        .arg("-S"),
+                    "failed to compile llvm ir and emit llvm ir",
+                );
+                expect_command_success(
+                    Command::new("cp")
+                        .arg(file_path)
+                        .arg(format!("{output_dir}/compile-unopt.ll")),
+                    "failed to copy optimized llvm ir",
+                );
             }
         } else {
             let processed = dir.path().join("postprocessed.ll");
-            let res = std::process::Command::new("opt")
-                .arg("-disable-verify")
-                .arg("-sroa")
-                .arg("-instsimplify")
-                .arg("-instcombine")
-                .arg("-adce")
+            // HACK: check if opt-18 exists
+            // otherwise use opt
+            // On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
+            let opt_cmd = if Command::new("opt-18").status().is_ok() {
+                "opt-18"
+            } else {
+                "opt"
+            };
+
+            let res = Command::new(opt_cmd)
+                .arg("-passes=sroa,instsimplify,instcombine<no-verify-fixpoint>,adce")
                 .arg("-S")
                 .arg(file_path.clone())
                 .arg("-o")
@@ -880,21 +940,23 @@ impl Run {
                 .unwrap();
             if !res.success() {
                 let p1_string = std::fs::read_to_string(file_path.clone()).unwrap();
-                eprintln!("Opt failed on following input:\n{p1_string}");
+                panic!("Opt failed on following input:\n{p1_string}");
             }
-            std::process::Command::new("clang")
-                .arg(processed.clone())
-                .arg("-O0")
-                .arg("-o")
-                .arg(executable.clone())
-                .status()
-                .unwrap();
+            expect_command_success(
+                Command::new("clang-18")
+                    .arg(processed.clone())
+                    .arg("-O0")
+                    .arg("-o")
+                    .arg(executable.clone()),
+                "failed to compile llvm ir",
+            );
             if let Some(output_dir) = &self.llvm_output_dir {
-                std::process::Command::new("cp")
-                    .arg(processed)
-                    .arg(format!("{output_dir}/compile-unopt.ll"))
-                    .status()
-                    .unwrap();
+                expect_command_success(
+                    Command::new("cp")
+                        .arg(processed)
+                        .arg(format!("{output_dir}/compile-unopt.ll")),
+                    "failed to copy unoptimized llvm ir",
+                );
             }
         }
         let _ = std::fs::write(
@@ -902,7 +964,14 @@ impl Run {
             self.prog_with_args.args.join(" "),
         );
 
-        Ok(Some(Interpretable::Executable { executable }))
+        Ok(Interpretable::Executable { executable })
+    }
+}
+
+fn expect_command_success(cmd: &mut std::process::Command, message: &str) {
+    let status = cmd.status().unwrap();
+    if !status.success() {
+        panic!("Command failed: {}", message);
     }
 }
 

@@ -195,7 +195,7 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
+source = "git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c#67738d440d3516a99f9cdffb19c91540bfc66c8c"
 dependencies = [
  "serde",
  "serde_json",
@@ -215,9 +215,9 @@ dependencies = [
 [[package]]
 name = "bril2json"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
+source = "git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c#67738d440d3516a99f9cdffb19c91540bfc66c8c"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
+ "bril-rs 0.1.0 (git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c)",
  "clap",
  "lalrpop",
  "lalrpop-util",
@@ -227,10 +227,10 @@ dependencies = [
 [[package]]
 name = "brilift"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
+source = "git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c#67738d440d3516a99f9cdffb19c91540bfc66c8c"
 dependencies = [
  "argh",
- "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
+ "bril-rs 0.1.0 (git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c)",
  "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-jit",
@@ -244,9 +244,9 @@ dependencies = [
 [[package]]
 name = "brilirs"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
+source = "git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c#67738d440d3516a99f9cdffb19c91540bfc66c8c"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
+ "bril-rs 0.1.0 (git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c)",
  "bril2json",
  "clap",
  "fxhash",
@@ -587,7 +587,7 @@ checksum = "675e35c02a51bb4d4618cb4885b3839ce6d1787c97b664474d9208d074742e20"
 name = "eggcc"
 version = "0.1.0"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
+ "bril-rs 0.1.0 (git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c)",
  "bril2json",
  "brilift",
  "brilirs",
@@ -1466,9 +1466,9 @@ dependencies = [
 [[package]]
 name = "rs2bril"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=57877b1#57877b1ebcff5c704786199d7c8ee93a15933310"
+source = "git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c#67738d440d3516a99f9cdffb19c91540bfc66c8c"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=57877b1)",
+ "bril-rs 0.1.0 (git+https://github.com/Pat-Lafon/bril?rev=67738d440d3516a99f9cdffb19c91540bfc66c8c)",
  "clap",
  "proc-macro2",
  "syn 2.0.58",

@@ -7,7 +7,7 @@ use libtest_mimic::Trial;
 /// Generate tests for all configurations of a given file
 /// If `just_brilift` is true, only generate tests that
 /// run the full pipeline with brilift
-fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
+fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
@@ -20,17 +20,6 @@ fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
                 }
                 Ok(res) => res,
             };
-            if run.test_type == RunType::CompileBrilift || run.test_type == RunType::CompileBrilLLVM
-            {
-                let executable = run
-                    .output_path
-                    .clone()
-                    .unwrap_or_else(|| format!("/tmp/{}", run.name()));
-                std::process::Command::new("rm")
-                    .args(vec![executable.clone(), executable + "-args"])
-                    .status()
-                    .unwrap();
-            }
 
             if run.interp.should_interp()
                 && result.original_interpreted.as_ref().unwrap()
@@ -48,6 +37,7 @@ fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
                     assert_snapshot!(run.name() + &visualization.name, visualization.result);
                 }
             }
+
             Ok(())
         }))
     };
@@ -57,20 +47,34 @@ fn generate_tests(glob: &str, just_brilift: bool) -> Vec<Trial> {
 
         let snapshot = f.to_str().unwrap().contains("small");
 
-        if just_brilift {
-            mk_trial(
-                Run::compile_brilift_config(
-                    TestProgram::BrilFile(f),
-                    true,
-                    true,
-                    InterpMode::InterpFast, // for just_brilift, use fast interp because benchmarks are slow
-                ),
-                snapshot,
-            );
-        } else {
-            for run in Run::all_configurations_for(TestProgram::BrilFile(f)) {
-                mk_trial(run, snapshot);
+        // in benchmark mode, run fewer tests and use binaries to interpret
+        let configurations = if benchmark_mode {
+            // use InterpFast, which runs brilift
+            // with optimization but without egglog optimization
+            let mut res = vec![Run::compile_brilift_config(
+                TestProgram::BrilFile(f.clone()),
+                true,
+                true,
+                InterpMode::InterpFast,
+            )];
+            for optimize_egglog in [true, false].iter() {
+                for optimize_llvm in [true, false].iter() {
+                    res.push(Run::compile_llvm_config(
+                        TestProgram::BrilFile(f.clone()),
+                        *optimize_egglog,
+                        *optimize_llvm,
+                        InterpMode::InterpFast,
+                    ));
+                }
             }
+
+            res
+        } else {
+            Run::all_configurations_for(TestProgram::BrilFile(f))
+        };
+
+        for run in configurations {
+            mk_trial(run, snapshot);
         }
     }
 

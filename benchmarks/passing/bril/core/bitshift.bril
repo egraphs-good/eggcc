@@ -1,4 +1,3 @@
-# ARGS: 3 5 10000 4
 @pow(x: int, n: int): int {
   v1: int = id n;
   v2: int = const 1;

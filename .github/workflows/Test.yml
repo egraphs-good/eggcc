@@ -10,7 +10,13 @@ jobs:
       with:
         submodules: 'true'
     - uses: Swatinem/rust-cache@v2
-    - run: sudo apt install graphviz && ./brillvm/install_ubuntu.sh && cargo install cargo-insta && make test
+    - run: |
+        set -e
+        sudo apt install graphviz 
+        ./brillvm/install_ubuntu.sh
+        cargo install cargo-insta
+        make brillvm
+        make test
   nits:
     runs-on: ubuntu-latest
     steps:

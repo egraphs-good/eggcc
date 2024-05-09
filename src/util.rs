@@ -928,12 +928,18 @@ impl Run {
 
         let llvm_ir = run_cmd_line(
             format!("{}/brillvm/brilc", get_eggcc_root()),
-            vec!["-r", "./brillvm/rt.bc"],
+            vec!["-r", &format!("{}/brillvm/rt.bc", get_eggcc_root())],
             String::from_utf8(buf).unwrap().as_str(),
         )
         .expect("unable to compile bril!");
 
-        let file_path = dir.path().join(format!("compile-{}.ll", unique_name));
+        let name = if optimize_egglog {
+            format!("{}_egglog_opt", self.prog_with_args.name)
+        } else {
+            self.prog_with_args.name.to_string()
+        };
+        let init_ll_name = format!("{}-init.ll", name);
+        let file_path = dir.path().join(init_ll_name.clone());
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
@@ -943,9 +949,15 @@ impl Run {
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", unique_name));
 
+        // Copy init file to $output_dir
         if let Some(output_dir) = &self.llvm_output_dir {
             std::fs::create_dir_all(output_dir)
                 .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
+            std::process::Command::new("cp")
+                .arg(file_path.clone())
+                .arg(output_dir)
+                .status()
+                .unwrap();
         }
         if optimize_brillvm {
             expect_command_success(
@@ -958,20 +970,17 @@ impl Run {
             );
 
             if let Some(output_dir) = &self.llvm_output_dir {
+                // Emit optimized LLVM IR
                 expect_command_success(
                     Command::new("clang-18")
                         .current_dir(output_dir)
                         .arg(file_path.clone())
                         .arg("-O3")
                         .arg("-emit-llvm")
-                        .arg("-S"),
+                        .arg("-S")
+                        .arg("-o")
+                        .arg(format!("{}-bril_llvm_O3.ll", name)),
                     "failed to compile llvm ir and emit llvm ir",
-                );
-                expect_command_success(
-                    Command::new("cp")
-                        .arg(file_path)
-                        .arg(format!("{output_dir}/compile-unopt.ll")),
-                    "failed to copy optimized llvm ir",
                 );
             }
         } else {
@@ -1008,9 +1017,14 @@ impl Run {
             );
             if let Some(output_dir) = &self.llvm_output_dir {
                 expect_command_success(
-                    Command::new("cp")
+                    Command::new("clang-18")
+                        .current_dir(output_dir)
                         .arg(processed)
-                        .arg(format!("{output_dir}/compile-unopt.ll")),
+                        .arg("-O0")
+                        .arg("-emit-llvm")
+                        .arg("-S")
+                        .arg("-o")
+                        .arg(format!("{}-preprocessed_bril_llvm_O0.ll", name)),
                     "failed to copy unoptimized llvm ir",
                 );
             }

@@ -19,5 +19,6 @@ try() {
 base=$(basename $1 .bril) # bubblesort
 try "cargo run -r $1 --optimize-egglog=false --optimize-bril-llvm=true --run-mode=compile-bril-llvm --llvm-output-dir=$2"
 try "cargo run -r $1 --optimize-egglog=false --optimize-bril-llvm=false --run-mode=compile-bril-llvm --llvm-output-dir=$2"
+try "cargo run -r $1 --optimize-egglog=true --optimize-bril-llvm=false --run-mode=compile-bril-llvm --llvm-output-dir=$2"
 try "cargo run -r $1 --run-mode=dag-conversion > $2/$base.svg"
 try "cargo run -r $1 --run-mode=dag-optimize > $2/${base}_egglog_opt.svg"

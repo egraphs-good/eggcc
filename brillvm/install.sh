@@ -4,7 +4,8 @@ set -e
 
 git clone https://github.com/Pat-Lafon/bril
 cd bril/bril-rs/brillvm
-git checkout llvm-18
+# check out Pat's fix from the llvm-18 branch
+git checkout 67738d440d3516a99f9cdffb19c91540bfc66c8c
 
 make rt
 cargo build --release

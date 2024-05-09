@@ -77,5 +77,6 @@
        (let new_if (If pred inputs new_then new_else))
 
        (union (Get           if i) pred)
-       (union (TupleRemoveAt if i) new_if))
+       (union (TupleRemoveAt if i) new_if)
+       (subsume (If pred inputs then_ else_)))
       :ruleset always-run)

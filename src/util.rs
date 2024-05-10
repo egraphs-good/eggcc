@@ -10,7 +10,7 @@ use dag_in_context::schema::TreeProgram;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::{Component, Components};
+use std::path::Component;
 use std::process::{Command, Stdio};
 use std::{
     ffi::OsStr,
@@ -140,31 +140,20 @@ where
     }
 }
 
-fn pop_assert(components: &mut Components, allowed_values: Vec<&str>) -> Result<(), String> {
-    let back = components.next_back().unwrap();
-    if allowed_values
-        .iter()
-        .any(|allowed| Component::Normal(OsStr::new(allowed)) == back)
-    {
-        Ok(())
-    } else {
-        Err(format!(
-            "{:?} {:?} {:?}",
-            components.as_path().to_string_lossy(),
-            back,
-            allowed_values
-        ))
-    }
-}
-
 // Get the eggcc repo root directory
 fn get_eggcc_root() -> String {
     let p = std::env::current_exe().unwrap();
     let mut cs = p.components();
-    pop_assert(&mut cs, vec!["eggcc"]).unwrap();
-    pop_assert(&mut cs, vec!["release", "debug"]).unwrap();
-    pop_assert(&mut cs, vec!["target"]).unwrap();
-    cs.as_path().to_string_lossy().to_string()
+    // pop the file, which might be called "eggcc"
+    cs.next_back().unwrap();
+    // pop directories through the "eggcc" directory
+    loop {
+        let back = cs.next_back().unwrap();
+        if back == Component::Normal(OsStr::new("eggcc")) {
+            break;
+        }
+    }
+    format!("{}/eggcc", cs.as_path().to_string_lossy())
 }
 
 /// Different ways to run eggcc

@@ -709,7 +709,7 @@ pub fn extract_with_paths(
                 || info.cm.compare(
                     &node.op,
                     &cost_set.total,
-                    &prev_op.unwrap(),
+                    prev_op.unwrap(),
                     &prev_cost.unwrap(),
                 ) == Ordering::Less
             {

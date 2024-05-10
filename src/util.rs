@@ -447,7 +447,7 @@ impl Run {
         #[cfg(feature = "llvm")]
         {
             for optimize_egglog in [true, false] {
-                for optimize_brillvm in [true, false] {
+                for optimize_bril_llvm in [true, false] {
                     res.push(Run {
                         test_type: RunType::CompileBrilLLVM,
                         interp: InterpMode::Interp,
@@ -457,7 +457,7 @@ impl Run {
                         llvm_output_dir: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: None,
-                        optimize_bril_llvm: Some(optimize_brillvm),
+                        optimize_bril_llvm: Some(optimize_bril_llvm),
                     });
                 }
             }
@@ -724,7 +724,14 @@ impl Run {
                 (vec![], interpretable)
             }
             RunType::CompileBrilLLVM => {
-                let interpretable = self.run_bril_llvm()?;
+                let optimize_egglog = self.optimize_egglog.expect(
+                    "optimize_egglog is a required flag when running RunMode::CompipleBrilLLVM",
+                );
+                let optimize_bril_llvm = self.optimize_bril_llvm.expect(
+                    "optimize_bril_llvm is a required flag when running RunMode::CompipleBrilLLVM",
+                );
+
+                let interpretable = self.run_bril_llvm(optimize_egglog, optimize_bril_llvm)?;
                 (vec![], Some(interpretable))
             }
             RunType::TestBenchmark => {
@@ -757,7 +764,7 @@ impl Run {
                             optimize_bril_llvm: Some(optimize_llvm),
                         };
 
-                        let interpretable = test_run_mode.run_bril_llvm()?;
+                        let interpretable = test_run_mode.run_bril_llvm(optimize_egglog, optimize_llvm)?;
                         let new_interpreted = Optimizer::interp(
                             &interpretable,
                             self.prog_with_args.args.clone(),
@@ -906,16 +913,9 @@ impl Run {
         Ok(Some(Interpretable::Executable { executable }))
     }
 
-    fn run_bril_llvm(&self) -> Result<Interpretable, EggCCError> {
+    fn run_bril_llvm(&self, optimize_egglog: bool, optimize_bril_llvm: bool) -> Result<Interpretable, EggCCError> {
         // This test's name is unique
         let unique_name = self.name().to_string();
-        let optimize_egglog = self
-            .optimize_egglog
-            .expect("optimize_egglog is a required flag when running RunMode::CompileBrilLLVM");
-        let optimize_brillvm = self
-            .optimize_bril_llvm
-            .expect("optimize_bril_llvm is a required flag when running RunMode::CompileBrilLLVM");
-
         let program = if optimize_egglog {
             Run::optimize_bril(&self.prog_with_args.program)?
         } else {
@@ -959,7 +959,7 @@ impl Run {
                 .status()
                 .unwrap();
         }
-        if optimize_brillvm {
+        if optimize_bril_llvm {
             expect_command_success(
                 Command::new("clang-18")
                     .arg(file_path.clone())

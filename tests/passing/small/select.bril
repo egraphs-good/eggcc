@@ -3,8 +3,5 @@
   v0: int = const 1;
   v1: int = const 2;
   v2: int = select cond v0 v1;
-  ten: int = const 10;
-  p: ptr<int> = alloc v1;
-  store p ten;
   print v2;
 }

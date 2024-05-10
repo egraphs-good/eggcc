@@ -76,6 +76,7 @@ pub fn val_vec(vals: Vec<Value>) -> Value {
 macro_rules! tuplet {
     ($($x:expr),* $(,)?) => ($crate::ast::tuplet_vec(vec![$($x),*]))
 }
+use ordered_float::OrderedFloat;
 pub use tuplet;
 
 /// Construct a tuple value from the child values
@@ -101,6 +102,22 @@ pub fn div(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Div, l, r))
 }
 
+pub fn fadd(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::FAdd, l, r))
+}
+
+pub fn fsub(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::FSub, l, r))
+}
+
+pub fn fmul(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::FMul, l, r))
+}
+
+pub fn fdiv(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::FDiv, l, r))
+}
+
 pub fn less_than(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::LessThan, l, r))
 }
@@ -119,6 +136,26 @@ pub fn greater_than(l: RcExpr, r: RcExpr) -> RcExpr {
 
 pub fn eq(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Eq, l, r))
+}
+
+pub fn fless_than(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::FLessThan, l, r))
+}
+
+pub fn fless_eq(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::FLessEq, l, r))
+}
+
+pub fn fgreater_eq(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::FGreaterEq, l, r))
+}
+
+pub fn fgreater_than(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::FGreaterThan, l, r))
+}
+
+pub fn feq(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::FEq, l, r))
 }
 
 pub fn and(l: RcExpr, r: RcExpr) -> RcExpr {
@@ -330,6 +367,13 @@ pub fn tfalse_ty(ty: Type) -> RcExpr {
 pub fn int(i: i64) -> RcExpr {
     RcExpr::new(Expr::Const(
         crate::schema::Constant::Int(i),
+        Type::Unknown,
+        Assumption::dummy(),
+    ))
+}
+pub fn float(i: f64) -> RcExpr {
+    RcExpr::new(Expr::Const(
+        crate::schema::Constant::Float(OrderedFloat::from(i)),
         Type::Unknown,
         Assumption::dummy(),
     ))

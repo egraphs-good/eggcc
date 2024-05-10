@@ -72,9 +72,6 @@ pub enum UnaryOp {
 pub enum Constant {
     Int(i64),
     Bool(bool),
-    // Note: A NaN will be treated as an error.
-    // This may cause behaviors inconsistent with the program semantics
-    // in corner cases.
     Float(OrderedFloat<f64>),
 }
 

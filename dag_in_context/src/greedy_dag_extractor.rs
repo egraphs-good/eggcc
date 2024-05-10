@@ -1,6 +1,6 @@
 use egglog::{ast::Literal, util::IndexMap, *};
 use egraph_serialize::{ClassId, EGraph, NodeId};
-use ordered_float::NotNan;
+use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
 use rustc_hash::FxHashMap;
 use std::{
@@ -103,7 +103,7 @@ impl<'a> EgraphInfo<'a> {
 
         // sort roots for determinism
         roots.sort();
-
+        
         let mut parents: HashMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = HashMap::new();
         for (root, eclass) in relavent_nodes {
             // iterate over every root, enode pair
@@ -338,6 +338,8 @@ impl<'a> Extractor<'a> {
                     .lit(ast::Literal::String(op[1..op.len() - 1].into()))
             } else if let Ok(n) = op.parse::<i64>() {
                 self.termdag.lit(ast::Literal::Int(n))
+            } else if let Ok(f) = op.parse::<f64>() {
+                self.termdag.lit(ast::Literal::F64(OrderedFloat::from(f)))
             } else if op == "true" {
                 self.termdag.lit(ast::Literal::Bool(true))
             } else if op == "false" {
@@ -683,6 +685,7 @@ pub fn extract_with_paths(
     }
 
     let root_eclass = n2c(&get_root(&info.egraph));
+    dbg!(&extractor.costs);
 
     let root_costset_index = *extractor
         .costs
@@ -728,20 +731,27 @@ impl CostModel for DefaultCostModel {
             // Leaves
             "Const" => 1.,
             "Arg" => 0.,
-            _ if op.parse::<i64>().is_ok() || op.starts_with('"') => 0.,
+            _ if op.parse::<i64>().is_ok() || op.parse::<f64>().is_ok() || op.starts_with('"') => {
+                0.
+            }
             "true" | "false" | "()" => 0.,
             // Lists
             "Empty" | "Single" | "Concat" | "Get" | "Nil" | "Cons" => 0.,
             // Types
-            "IntT" | "BoolT" | "PointerT" | "StateT" => 0.,
+            "IntT" | "BoolT" | "FloatT" | "PointerT" | "StateT" => 0.,
             "Base" | "TupleT" | "TNil" | "TCons" => 0.,
-            "Int" | "Bool" => 0.,
+            "Int" | "Bool" | "Float" => 0.,
             // Algebra
             "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" => 10.,
+            "FAdd" | "FSub" => 50.,
             "Mul" => 30.,
+            "FMul" => 150.,
             "Div" => 50.,
+            "FDiv" => 250.,
             // Comparisons
             "Eq" | "LessThan" | "GreaterThan" | "LessEq" | "GreaterEq" => 10.,
+            "FEq" => 10.,
+            "FLessThan" | "FGreaterThan" | "FLessEq" | "FGreaterEq" => 100.,
             // Effects
             "Print" | "Write" | "Load" => 50.,
             "Alloc" | "Free" => 100.,

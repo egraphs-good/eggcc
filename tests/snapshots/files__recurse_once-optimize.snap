@@ -1,0 +1,23 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@to_zero(v0: int): int {
+  v1_: int = const 0;
+  v2_: bool = lt v1_ v0;
+  br v2_ .v3_ .v4_;
+.v3_:
+  v5_: int = const 1;
+  v6_: int = sub v0 v5_;
+  v7_: int = call @to_zero v6_;
+  v8_: int = id v7_;
+  jmp .v9_;
+.v4_:
+  v8_: int = id v0;
+.v9_:
+  ret v8_;
+}
+@main {
+  v0_: int = const 0;
+  print v0_;
+}

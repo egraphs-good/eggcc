@@ -14,6 +14,10 @@ pub fn intt() -> BaseType {
     BaseType::IntT
 }
 
+pub fn floatt() -> BaseType {
+    BaseType::FloatT
+}
+
 pub fn boolt() -> BaseType {
     BaseType::BoolT
 }

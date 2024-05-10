@@ -53,6 +53,7 @@ impl Value {
         match self {
             Const(Constant::Int(n)) => format!("{}", n),
             Const(Constant::Bool(b)) => format!("{}", b),
+            Const(Constant::Float(f)) => format!("{:.17}", f),
             Ptr(Pointer { .. }) => todo!("How does bril print pointers?"),
             Tuple(_vs) => {
                 panic!("Tried to print tuple as Bril value. There are no tuples in Bril.");
@@ -89,6 +90,7 @@ impl Display for Value {
     }
 }
 
+use ordered_float::OrderedFloat;
 use Value::{Const, Ptr, Tuple};
 
 /// Keeps track of state while running
@@ -161,6 +163,13 @@ impl<'a> VirtualMachine<'a> {
         }
     }
 
+    fn interp_float_expr(&mut self, e: &RcExpr, arg: &Value) -> OrderedFloat<f64> {
+        match self.interpret_expr(e, arg) {
+            Const(Constant::Float(n)) => n,
+            other => panic!("Expected integer. Got {:?} from expr {:?}", other, e),
+        }
+    }
+
     fn interp_bool_expr(&mut self, e: &RcExpr, arg: &Value) -> bool {
         match self.interpret_expr(e, arg) {
             Const(Constant::Bool(b)) => b,
@@ -198,6 +207,7 @@ impl<'a> VirtualMachine<'a> {
 
     fn interpret_bop(&mut self, bop: &BinaryOp, e1: &RcExpr, e2: &RcExpr, arg: &Value) -> Value {
         let get_int = |e: &RcExpr, vm: &mut Self| vm.interp_int_expr(e, arg);
+        let get_float = |e: &RcExpr, vm: &mut Self| vm.interp_float_expr(e, arg);
         let get_bool = |e: &RcExpr, vm: &mut Self| vm.interp_bool_expr(e, arg);
         let get_pointer = |e: &RcExpr, vm: &mut Self| vm.interp_pointer_expr(e, arg);
         match bop {
@@ -260,6 +270,19 @@ impl<'a> VirtualMachine<'a> {
                     offset,
                 } = get_pointer(e1, self);
                 Ptr(Pointer::new(addr, size, offset + get_int(e2, self)))
+            }
+            BinaryOp::FAdd => Const(Constant::Float(get_float(e1, self) + get_float(e2, self))),
+            BinaryOp::FSub => Const(Constant::Float(get_float(e1, self) - get_float(e2, self))),
+            BinaryOp::FMul => Const(Constant::Float(get_float(e1, self) * (get_float(e2, self)))),
+            BinaryOp::FDiv => Const(Constant::Float(get_float(e1, self) / (get_float(e2, self)))),
+            BinaryOp::FEq => Const(Constant::Bool(get_float(e1, self) == get_float(e2, self))),
+            BinaryOp::FLessThan => Const(Constant::Bool(get_float(e1, self) < get_float(e2, self))),
+            BinaryOp::FGreaterThan => {
+                Const(Constant::Bool(get_float(e1, self) > get_float(e2, self)))
+            }
+            BinaryOp::FLessEq => Const(Constant::Bool(get_float(e1, self) <= get_float(e2, self))),
+            BinaryOp::FGreaterEq => {
+                Const(Constant::Bool(get_float(e1, self) >= get_float(e2, self)))
             }
         }
     }

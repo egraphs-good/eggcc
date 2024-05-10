@@ -140,20 +140,30 @@ where
     }
 }
 
-fn pop_assert(components: &mut Components, allowed_values: Vec<&str>) {
+fn pop_assert(components: &mut Components, allowed_values: Vec<&str>) -> Result<(), String> {
     let back = components.next_back().unwrap();
-    assert!(allowed_values
+    if allowed_values
         .iter()
-        .any(|allowed| Component::Normal(OsStr::new(allowed)) == back));
+        .any(|allowed| Component::Normal(OsStr::new(allowed)) == back)
+    {
+        Ok(())
+    } else {
+        Err(format!(
+            "{:?} {:?} {:?}",
+            components.as_path().to_string_lossy(),
+            back,
+            allowed_values
+        ))
+    }
 }
 
 // Get the eggcc repo root directory
 fn get_eggcc_root() -> String {
     let p = std::env::current_exe().unwrap();
     let mut cs = p.components();
-    pop_assert(&mut cs, vec!["eggcc"]);
-    pop_assert(&mut cs, vec!["release", "debug"]);
-    pop_assert(&mut cs, vec!["target"]);
+    pop_assert(&mut cs, vec!["eggcc"]).unwrap();
+    pop_assert(&mut cs, vec!["release", "debug"]).unwrap();
+    pop_assert(&mut cs, vec!["target"]).unwrap();
     cs.as_path().to_string_lossy().to_string()
 }
 

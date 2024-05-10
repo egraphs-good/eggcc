@@ -13,9 +13,9 @@ jobs:
     - run: |
         set -e
         sudo apt install graphviz 
-        ./brillvm/install_ubuntu.sh
+        ./install_ubuntu.sh
         cargo install cargo-insta
-        make brillvm
+        make runtime
         make test
   nits:
     runs-on: ubuntu-latest

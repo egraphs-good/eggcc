@@ -28,6 +28,5 @@ profile.json
 # commonly used test file
 test.egg
 
-brillvm/brilc
-brillvm/rt.bc
+runtime/rt.bc
 

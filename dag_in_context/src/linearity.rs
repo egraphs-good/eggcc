@@ -122,6 +122,9 @@ impl<'a> Extractor<'a> {
                 TernaryOp::Write => {
                     // c3 is the state edge
                     self.find_effectful_nodes_in_expr(c3, linearity, res)
+                },
+                TernaryOp::Select => {
+                    panic!("Select is not effectful")
                 }
             },
             Expr::Bop(op, _c1, c2) => {

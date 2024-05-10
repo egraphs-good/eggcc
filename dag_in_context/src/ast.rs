@@ -129,6 +129,10 @@ pub fn not(e: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Uop(UnaryOp::Not, e))
 }
 
+pub fn select(cond: RcExpr, thn: RcExpr, els: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Top(TernaryOp::Select, cond, thn, els))
+}
+
 pub fn alloc(id: i64, amount: RcExpr, state: RcExpr, pointer_ty: BaseType) -> RcExpr {
     RcExpr::new(Expr::Alloc(id, amount, state, pointer_ty))
 }

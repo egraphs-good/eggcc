@@ -192,6 +192,14 @@ impl<'a> VirtualMachine<'a> {
                 assert_eq!(state_val, Value::StateV);
                 self.memory.insert(pointer.addr(), val);
                 Value::StateV
+            },
+            TernaryOp::Select =>{
+                let get_bool = |e: &RcExpr, vm: &mut Self| vm.interp_bool_expr(e, arg);
+                if get_bool(e1, self) {
+                    self.interpret_expr(e2, arg)
+                } else {
+                    self.interpret_expr(e3, arg)
+                }
             }
         }
     }

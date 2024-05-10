@@ -144,6 +144,7 @@ impl<'a> FromEgglog<'a> {
         match_term_app!(top.clone();
         {
           ("Write", []) => TernaryOp::Write,
+          ("Select", []) => TernaryOp::Select,
           _ => panic!("Invalid top: {:?}", top),
         })
     }

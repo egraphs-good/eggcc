@@ -742,6 +742,7 @@ impl CostModel for DefaultCostModel {
             "Div" => 50.,
             // Comparisons
             "Eq" | "LessThan" | "GreaterThan" | "LessEq" | "GreaterEq" => 10.,
+            "Select" => 10., // @oflatt is this a reasonable value? I made it up...
             // Effects
             "Print" | "Write" | "Load" => 50.,
             "Alloc" | "Free" => 100.,

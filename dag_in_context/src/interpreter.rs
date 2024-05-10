@@ -53,7 +53,18 @@ impl Value {
         match self {
             Const(Constant::Int(n)) => format!("{}", n),
             Const(Constant::Bool(b)) => format!("{}", b),
-            Const(Constant::Float(f)) => format!("{:.17}", f),
+            Const(Constant::Float(f)) => {
+                if f.is_infinite() {
+                    format!("{}Infinity", if f.is_sign_positive() { "" } else { "-" })
+                } else if f.is_nan() {
+                    "NaN".to_string()
+                } else if f.into_inner() == 0.0 {
+                    // handles +0.0 and -0.0 cases
+                    "0.00000000000000000".to_string()
+                } else {
+                    format!("{:.17}", f)
+                }
+            }
             Ptr(Pointer { .. }) => todo!("How does bril print pointers?"),
             Tuple(_vs) => {
                 panic!("Tried to print tuple as Bril value. There are no tuples in Bril.");

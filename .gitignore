@@ -29,4 +29,5 @@ profile.json
 test.egg
 
 runtime/rt.bc
+runtime/rt.o
 

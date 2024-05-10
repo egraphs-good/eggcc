@@ -103,7 +103,7 @@ impl<'a> EgraphInfo<'a> {
 
         // sort roots for determinism
         roots.sort();
-        
+
         let mut parents: HashMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = HashMap::new();
         for (root, eclass) in relavent_nodes {
             // iterate over every root, enode pair
@@ -685,7 +685,6 @@ pub fn extract_with_paths(
     }
 
     let root_eclass = n2c(&get_root(&info.egraph));
-    dbg!(&extractor.costs);
 
     let root_costset_index = *extractor
         .costs

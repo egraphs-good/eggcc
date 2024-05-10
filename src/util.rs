@@ -322,6 +322,7 @@ pub struct Run {
 }
 
 /// an enum of IRs that can be interpreted
+#[derive(Debug)]
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
@@ -805,8 +806,6 @@ impl Run {
             res
         };
 
-        assert_eq!(result_interpreted.is_some(), result_interpreted.is_some());
-
         Ok(RunOutput {
             visualizations,
             result_interpreted,
@@ -840,19 +839,7 @@ impl Run {
         let object = format!("/tmp/{}.o", unique_name);
         brilift::compile(&program, None, &object, opt_level, false);
 
-        // Compile runtime C library
-        // We use unique names so that tests can run in parallel
-        let library_c = format!("/tmp/{}-library.c", unique_name);
-        let library_o = format!("/tmp/{}-library.o", unique_name);
-        std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
-        expect_command_success(
-            Command::new("cc")
-                .arg(library_c.clone())
-                .arg("-c") // create object file instead of executable
-                .arg("-o")
-                .arg(library_o.clone()),
-            "failed to compile runtime C library",
-        );
+        let library_o = format!("{}/runtime/rt.o", get_eggcc_root());
 
         let executable = self
             .output_path
@@ -897,11 +884,6 @@ impl Run {
         {
             expect_command_success(&mut cmd, "failed to compile brilift");
         }
-
-        expect_command_success(
-            Command::new("rm").arg(object).arg(library_o).arg(library_c),
-            "failed to clean up object files",
-        );
 
         Ok(Some(Interpretable::Executable { executable }))
     }

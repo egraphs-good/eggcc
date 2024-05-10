@@ -1,12 +1,4 @@
 #!/bin/zsh
-try() {
-    echo $1
-    eval $1
-    st=$?
-    if [ $st -ne 0 ]; then
-        exit $st
-    fi
-}
 
 # Generate optimized and unoptimized LLVM IR for all passing tests & benchmarks
 for subdir in "tests" "benchmarks"; do

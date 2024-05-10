@@ -420,7 +420,6 @@ impl<'a> Extractor<'a> {
             (existing_term.clone(), Cost::zero_cost())
         } else {
             // If we have already found the cost of this term, re-use the result
-            // TODO: What is other_costs?
             let unshared_cost = match other_costs.get(eclass) {
                 Some((_, cost)) => *cost,
                 None => Cost::zero_cost(),
@@ -536,7 +535,6 @@ impl<'a> Extractor<'a> {
                             child_set.term.clone(),
                             &child_set.costs,
                         );
-                        // TODO: why is this called net cost? It is always positive, right?
                         shared_total = shared_total + net_cost;
                         children_terms.push(child_term);
                     }
@@ -727,12 +725,6 @@ pub fn extract_with_paths(
         }
     }
 
-    // TODO: do some little pre-traversal and then get a set of classes with calls in them
-    // all calls have inlining_threshold cost
-    // if the class id is in the call set, then check to decide whether to extract
-    // if we reach a call and it should stay extracted, then do it
-    // I don't think this would actually work?
-
     let root_eclass = n2c(&get_root(&info.egraph));
 
     let root_costset_index = *extractor
@@ -803,7 +795,7 @@ impl CostModel for DefaultCostModel {
             // Effects
             "Print" | "Write" | "Load" => 50.,
             "Alloc" | "Free" => 100.,
-            "Call" => self.inlining_size_threshold as f64, // TODO: we could make this more accurate
+            "Call" => self.inlining_size_threshold as f64,
             // Control
             "Program" | "Function" => 0.,
             "DoWhile" => 100., // TODO: we could make this more accurate
@@ -1193,7 +1185,6 @@ fn test_dag_extract() {
         inlining_size_threshold: INLINING_SIZE_THRESHOLD,
     };
 
-    // TODO: also check expr size
     let cost_of_one_func = cost_model.get_op_cost("Add").exec_cost * 2.
         + cost_model.get_op_cost("DoWhile").exec_cost
         + cost_model.get_op_cost("LessThan").exec_cost

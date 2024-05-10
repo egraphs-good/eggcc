@@ -149,20 +149,12 @@ fn pop_assert(components: &mut Components, allowed_values: Vec<&str>) {
 
 // Get the eggcc repo root directory
 fn get_eggcc_root() -> String {
-    match std::env::current_exe() {
-        Ok(p) => {
-            println!("{}", p.to_string_lossy());
-            let mut cs = p.components();
-            pop_assert(&mut cs, vec!["eggcc"]);
-            pop_assert(&mut cs, vec!["release", "debug"]);
-            pop_assert(&mut cs, vec!["target"]);
-            cs.as_path().to_string_lossy().to_string()
-        }
-        Err(e) => {
-            println!("Could not get current exe, defaulting to cwd. {}", e);
-            ".".to_string()
-        }
-    }
+    let p = std::env::current_exe().unwrap();
+    let mut cs = p.components();
+    pop_assert(&mut cs, vec!["eggcc"]);
+    pop_assert(&mut cs, vec!["release", "debug"]);
+    pop_assert(&mut cs, vec!["target"]);
+    cs.as_path().to_string_lossy().to_string()
 }
 
 /// Different ways to run eggcc

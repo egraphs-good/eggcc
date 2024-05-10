@@ -13,6 +13,7 @@ try() {
         exit $st
     fi
 }
+
 # argument 1 is input file, argument 2 is output directory
 # e.g. 1=../passing/bril/mem/bubblesort.bril
 #      2=passing/bril/mem

@@ -755,7 +755,7 @@ impl CostModel for DefaultCostModel {
             // Effects
             "Print" | "Write" | "Load" => 50.,
             "Alloc" | "Free" => 100.,
-            "Call" => 1000., // TODO: we could make this more accurate
+            "Call" => 1000000., // This (very roughly) bounds the size of an expression we inline
             // Control
             "Program" | "Function" => 0.,
             "DoWhile" => 100., // TODO: we could make this more accurate

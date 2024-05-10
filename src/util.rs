@@ -198,6 +198,11 @@ pub enum RunType {
     /// Converts to an executable using brilift
     CompileBrilift,
     CompileBrilLLVM,
+    /// Tests a benchmark by running several different configurations of CompileBrilLLVM
+    /// and comparing the results.
+    /// The different configurations are with and without egglog optimization, and with and without
+    /// llvm optimization.
+    TestBenchmark,
 }
 
 impl Display for RunType {
@@ -229,7 +234,8 @@ impl RunType {
             | RunType::OptimizedRvsdg
             | RunType::CheckExtractIdentical
             | RunType::ToCfg
-            | RunType::OptimizedCfg => false,
+            | RunType::OptimizedCfg
+            | RunType::TestBenchmark => false,
             RunType::BrilToJson => false,
         }
     }
@@ -374,22 +380,19 @@ impl Run {
         }
     }
 
-    pub fn compile_llvm_config(
-        test: TestProgram,
-        optimize_egglog: bool,
-        optimize_bril_llvm: bool,
-        interp: InterpMode,
-    ) -> Run {
+    pub fn test_benchmark_config(test: TestProgram) -> Run {
         Run {
-            test_type: RunType::CompileBrilLLVM,
-            interp,
+            test_type: RunType::TestBenchmark,
+            // testing does interpretation separately, ignoring this flag
+            interp: InterpMode::None,
             prog_with_args: test.read_program(),
             profile_out: None,
             output_path: None,
             llvm_output_dir: None,
-            optimize_egglog: Some(optimize_egglog),
+            // no need to set optimization flags, since all combinations are tested
+            optimize_egglog: None,
             optimize_brilift: None,
-            optimize_bril_llvm: Some(optimize_bril_llvm),
+            optimize_bril_llvm: None,
         }
     }
 
@@ -724,6 +727,58 @@ impl Run {
                 let interpretable = self.run_bril_llvm()?;
                 (vec![], Some(interpretable))
             }
+            RunType::TestBenchmark => {
+                // optimize_egglog and optimize_brilift should not be set
+                assert!(self.optimize_egglog.is_none());
+                assert!(self.optimize_brilift.is_none());
+                let mut interpreted = None;
+
+                for optimize_egglog in [true, false] {
+                    let resulting_bril = if optimize_egglog {
+                        Run::optimize_bril(&self.prog_with_args.program)?
+                    } else {
+                        self.prog_with_args.program.clone()
+                    };
+
+                    for optimize_llvm in [true, false] {
+                        let test_run_mode = Run {
+                            test_type: RunType::CompileBrilLLVM,
+                            interp: InterpMode::None,
+                            prog_with_args: ProgWithArguments {
+                                program: resulting_bril.clone(),
+                                name: self.prog_with_args.name.clone(),
+                                args: self.prog_with_args.args.clone(),
+                            },
+                            profile_out: None,
+                            output_path: None,
+                            llvm_output_dir: None,
+                            optimize_egglog: Some(false), // no need to optimize again
+                            optimize_brilift: None,
+                            optimize_bril_llvm: Some(optimize_llvm),
+                        };
+
+                        let interpretable = test_run_mode.run_bril_llvm()?;
+                        let new_interpreted = Optimizer::interp(
+                            &interpretable,
+                            self.prog_with_args.args.clone(),
+                            None,
+                        );
+                        if let Some(old_interpreted) = interpreted.clone() {
+                            if old_interpreted != new_interpreted {
+                                panic!(
+                                    "Interpreted outputs differ for {} with optimize_egglog={} and optimize_llvm={}.",
+                                    self.name(), optimize_egglog, optimize_llvm
+                                );
+                            }
+                            assert_eq!(old_interpreted, new_interpreted);
+                        } else {
+                            interpreted = Some(new_interpreted);
+                        }
+                    }
+                }
+
+                (vec![], None)
+            }
         };
 
         let result_interpreted = if !(self.interp.should_interp()) {
@@ -873,12 +928,18 @@ impl Run {
 
         let llvm_ir = run_cmd_line(
             format!("{}/brillvm/brilc", get_eggcc_root()),
-            vec!["-r", "./brillvm/rt.bc"],
+            vec!["-r", &format!("{}/brillvm/rt.bc", get_eggcc_root())],
             String::from_utf8(buf).unwrap().as_str(),
         )
         .expect("unable to compile bril!");
 
-        let file_path = dir.path().join(format!("compile-{}.ll", unique_name));
+        let name = if optimize_egglog {
+            format!("{}_egglog_opt", self.prog_with_args.name)
+        } else {
+            self.prog_with_args.name.to_string()
+        };
+        let init_ll_name = format!("{}-init.ll", name);
+        let file_path = dir.path().join(init_ll_name.clone());
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
             .expect("unable to write to temp file");
@@ -888,9 +949,15 @@ impl Run {
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", unique_name));
 
+        // Copy init file to $output_dir
         if let Some(output_dir) = &self.llvm_output_dir {
             std::fs::create_dir_all(output_dir)
                 .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
+            std::process::Command::new("cp")
+                .arg(file_path.clone())
+                .arg(output_dir)
+                .status()
+                .unwrap();
         }
         if optimize_brillvm {
             expect_command_success(
@@ -903,20 +970,17 @@ impl Run {
             );
 
             if let Some(output_dir) = &self.llvm_output_dir {
+                // Emit optimized LLVM IR
                 expect_command_success(
                     Command::new("clang-18")
                         .current_dir(output_dir)
                         .arg(file_path.clone())
                         .arg("-O3")
                         .arg("-emit-llvm")
-                        .arg("-S"),
+                        .arg("-S")
+                        .arg("-o")
+                        .arg(format!("{}-bril_llvm_O3.ll", name)),
                     "failed to compile llvm ir and emit llvm ir",
-                );
-                expect_command_success(
-                    Command::new("cp")
-                        .arg(file_path)
-                        .arg(format!("{output_dir}/compile-unopt.ll")),
-                    "failed to copy optimized llvm ir",
                 );
             }
         } else {
@@ -924,7 +988,8 @@ impl Run {
             // HACK: check if opt-18 exists
             // otherwise use opt
             // On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
-            let opt_cmd = if Command::new("opt-18").status().is_ok() {
+            // Also, on some machines, just running `opt-18` hangs, so we pass the version flag
+            let opt_cmd = if Command::new("opt-18").arg("--version").status().is_ok() {
                 "opt-18"
             } else {
                 "opt"
@@ -952,9 +1017,14 @@ impl Run {
             );
             if let Some(output_dir) = &self.llvm_output_dir {
                 expect_command_success(
-                    Command::new("cp")
+                    Command::new("clang-18")
+                        .current_dir(output_dir)
                         .arg(processed)
-                        .arg(format!("{output_dir}/compile-unopt.ll")),
+                        .arg("-O0")
+                        .arg("-emit-llvm")
+                        .arg("-S")
+                        .arg("-o")
+                        .arg(format!("{}-preprocessed_bril_llvm_O0.ll", name)),
                     "failed to copy unoptimized llvm ir",
                 );
             }

@@ -132,6 +132,11 @@ if __name__ == '__main__':
     os.remove('nightly/data/errors.txt')
   except FileNotFoundError:
     pass
+  
+  # make errors file
+  with open('nightly/data/errors.txt', 'w') as f:
+    f.write('')
+
 
   arg = os.sys.argv[1]
   profiles = []

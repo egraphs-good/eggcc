@@ -164,8 +164,19 @@ if __name__ == '__main__':
     futures = {executor.submit(optimize, benchmark) for benchmark in to_run}
     for future in concurrent.futures.as_completed(futures):
       continue
-  
-  for benchmark in to_run:
-    bench(benchmark)
+
+  # running benchmarks sequentially for more reliable results
+  # can set this to true for testing
+  isParallelBenchmark = False
+
+  if isParallelBenchmark:
+    # create a thread pool for running benchmarks
+    with concurrent.futures.ThreadPoolExecutor(max_workers = 6) as executor:
+      futures = {executor.submit(bench, benchmark) for benchmark in to_run}
+      for future in concurrent.futures.as_completed(futures):
+        continue
+  else:
+    for benchmark in to_run:
+      bench(benchmark)
 
   aggregate()

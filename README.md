@@ -19,6 +19,7 @@
 
 
 ## Installation- Linux
+- Install llvm 18. For Ubuntu users, we have a script for installation: `./install_ubuntu.sh`
 - Run `make runtime` to install the bril llvm runtime.
 - Run the tests with `make` and ensure things build and run without errors.
 

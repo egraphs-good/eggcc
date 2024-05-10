@@ -10,13 +10,11 @@ jobs:
       with:
         submodules: 'true'
     - uses: Swatinem/rust-cache@v2
-    - run: |
-        set -e
-        sudo apt install graphviz 
-        ./install_ubuntu.sh
-        cargo install cargo-insta
-        make runtime
-        make test
+    - run: sudo apt install graphviz 
+    - run: ./install_ubuntu.sh
+    - run: cargo install cargo-insta
+    - run: make runtime
+    - run: make test
   nits:
     runs-on: ubuntu-latest
     steps:
@@ -24,5 +22,6 @@ jobs:
       with:
         submodules: 'true'
     - uses: Swatinem/rust-cache@v2
+    - run: ./install_ubuntu.sh
     - run: make nits
   

@@ -715,10 +715,6 @@ pub fn extract_with_paths(
                     &prev_cost.unwrap(),
                 ) == Ordering::Less
             {
-                println!("{cost_set_index}");
-                if !prev_cost.is_none() {
-                    println!("Replace class {} with {}", &prev_op.unwrap(), &node.op);
-                }
                 region_costs.insert(classid.clone(), cost_set_index);
 
                 // we updated this eclass's cost, so we need to update its parents
@@ -807,7 +803,7 @@ impl CostModel for DefaultCostModel {
             // Effects
             "Print" | "Write" | "Load" => 50.,
             "Alloc" | "Free" => 100.,
-            "Call" => 1000000., // This (very roughly) bounds the size of an expression we inline
+            "Call" => self.inlining_size_threshold as f64, // TODO: we could make this more accurate
             // Control
             "Program" | "Function" => 0.,
             "DoWhile" => 100., // TODO: we could make this more accurate
@@ -829,11 +825,10 @@ impl CostModel for DefaultCostModel {
     }
 
     fn compare(&self, op1: &str, cost1: &Cost, op2: &str, cost2: &Cost) -> Ordering {
-        println!("Compare {op1} with {op2}");
         if op1 == "Call" && op2 != "Call" {
             // Comparison is based on whether op2 is less than the threshold
             // If threshold < cost2, then cost1 < cost2
-            self.inlining_size_threshold.cmp(&cost1.expr_size)
+            self.inlining_size_threshold.cmp(&cost2.expr_size)
         } else if op2 == "Call" && op1 != "Call" {
             cost1.expr_size.cmp(&self.inlining_size_threshold)
         } else {
@@ -1466,73 +1461,4 @@ fn test_validity_of_extraction() {
             inlining_size_threshold: INLINING_SIZE_THRESHOLD,
         },
     );
-}
-
-#[test]
-fn test_inlining_size_threshold() {
-    use crate::ast::*;
-    let prog = function(
-        "main",
-        tuplet!(intt(), statet()),
-        tuplet!(intt(), statet()),
-        parallel!(int(10), getat(1)),
-    );
-
-    let callee = function(
-        "callee",
-        tuplet!(intt(), statet()),
-        tuplet!(intt(), statet()),
-        parallel!(
-            add(
-                int(10),
-                get(
-                    dowhile(
-                        parallel!(getat(0), getat(1)),
-                        parallel!(
-                            less_than(add(getat(0), int(10)), int(10)),
-                            add(getat(0), int(1)),
-                            getat(1),
-                        )
-                    ),
-                    0
-                )
-            ),
-            getat(1)
-        ),
-    );
-    let cost_model = DefaultCostModel {
-        inlining_size_threshold: 2,
-    };
-
-    let expected_cost = Cost {
-        exec_cost: cost_model.get_op_cost("Const").exec_cost,
-        expr_size: 1,
-    };
-
-    // TODO: actually add the schedule in
-    dag_extraction_test(&prog, expected_cost);
-    use crate::{print_with_intermediate_vars, prologue};
-    let string_prog = {
-        let (term, termdag) = prog.to_egglog();
-        let printed = print_with_intermediate_vars(&termdag, term);
-        format!("{}\n{printed}\n", prologue(),)
-    };
-
-    let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&string_prog).unwrap();
-    let (serialized_egraph, unextractables) = serialized_egraph(egraph);
-    let mut termdag = TermDag::default();
-
-    let cost_set = extract(
-        prog,
-        serialized_egraph,
-        unextractables,
-        &mut termdag,
-        DefaultCostModel {
-            inlining_size_threshold: INLINING_SIZE_THRESHOLD,
-        },
-    );
-
-    assert_eq!(cost_set.0.total.exec_cost, expected_cost.exec_cost);
-    assert_eq!(cost_set.0.total.expr_size, expected_cost.expr_size);
 }

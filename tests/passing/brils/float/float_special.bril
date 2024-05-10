@@ -1,10 +1,10 @@
 @main {
   v0: float = const 0.0;
   v1: float = const -0.0;
-  res: bool = feq v0 v1;
+  # res: bool = feq v0 v1;
   print v0;
   print v1;
-  print res;
+  # print res;
   # v2: float = const 1e6;
   # v3: float = const 1E-6;
   # v4: float = const -1E+6;

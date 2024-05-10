@@ -764,7 +764,8 @@ impl Run {
                             optimize_bril_llvm: Some(optimize_llvm),
                         };
 
-                        let interpretable = test_run_mode.run_bril_llvm(optimize_egglog, optimize_llvm)?;
+                        let interpretable =
+                            test_run_mode.run_bril_llvm(optimize_egglog, optimize_llvm)?;
                         let new_interpreted = Optimizer::interp(
                             &interpretable,
                             self.prog_with_args.args.clone(),
@@ -913,7 +914,11 @@ impl Run {
         Ok(Some(Interpretable::Executable { executable }))
     }
 
-    fn run_bril_llvm(&self, optimize_egglog: bool, optimize_bril_llvm: bool) -> Result<Interpretable, EggCCError> {
+    fn run_bril_llvm(
+        &self,
+        optimize_egglog: bool,
+        optimize_bril_llvm: bool,
+    ) -> Result<Interpretable, EggCCError> {
         // This test's name is unique
         let unique_name = self.name().to_string();
         let program = if optimize_egglog {

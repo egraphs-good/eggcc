@@ -2,10 +2,9 @@
 
 set -e
 
-git clone https://github.com/Pat-Lafon/bril
+git clone https://github.com/uwplse/bril
 cd bril/bril-rs/brillvm
-# check out Pat's fix from the llvm-18 branch
-git checkout 67738d440d3516a99f9cdffb19c91540bfc66c8c
+git checkout 2a2e3329a6721c86ceee768f6dfea5c17fb14115
 
 make rt
 cargo build --release

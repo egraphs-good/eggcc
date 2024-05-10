@@ -23,11 +23,11 @@ smallvec = "1.11.1"
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 # currently using Pat-Lafon's fork of bril with brillvm fixes
 # on the llvm-18 branch
-bril2json = { path = "../bril/bril-rs/bril2json" }
-brilirs = { path = "../bril/brilirs" }
-bril-rs = { path = "../bril/bril-rs" }
-brilift = { path = "../bril/brilift" }
-rs2bril = { path = "../bril/bril-rs/rs2bril", features = [
+bril2json = { git = "https://github.com/uwplse/bril", rev = "2a2e3329a6721c86ceee768f6dfea5c17fb14115" }
+brilirs = { git = "https://github.com/uwplse/bril", rev = "2a2e3329a6721c86ceee768f6dfea5c17fb14115" }
+bril-rs = { git = "https://github.com/uwplse/bril", rev = "2a2e3329a6721c86ceee768f6dfea5c17fb14115" }
+brilift = { git = "https://github.com/uwplse/bril", rev = "2a2e3329a6721c86ceee768f6dfea5c17fb14115" }
+rs2bril = { git = "https://github.com/uwplse/bril", rev = "2a2e3329a6721c86ceee768f6dfea5c17fb14115" ,features = [
   "import",
 ] }
 ordered-float = { version = "3.7" }

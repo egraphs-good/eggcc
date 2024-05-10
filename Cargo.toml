@@ -21,15 +21,17 @@ fixedbitset = "0.4.2"
 smallvec = "1.11.1"
 
 syn = { version = "2.0", features = ["full", "extra-traits"] }
-# currently using Pat-Lafon's fork of bril with brillvm fixes
-# on the llvm-18 branch
-bril2json = { git = "https://github.com/Pat-Lafon/bril", rev = "67738d440d3516a99f9cdffb19c91540bfc66c8c" }
-brilirs = { git = "https://github.com/Pat-Lafon/bril", rev = "67738d440d3516a99f9cdffb19c91540bfc66c8c" }
-bril-rs = { git = "https://github.com/Pat-Lafon/bril", rev = "67738d440d3516a99f9cdffb19c91540bfc66c8c" }
-brilift = { git = "https://github.com/Pat-Lafon/bril", rev = "67738d440d3516a99f9cdffb19c91540bfc66c8c" }
-rs2bril = { git = "https://github.com/Pat-Lafon/bril", rev = "67738d440d3516a99f9cdffb19c91540bfc66c8c", features = [
+# currently using the uwplse/bril fork of bril, on eggcc-main
+bril2json = { git = "https://github.com/uwplse/bril", rev = "7f9f22784ec2685ee416d68a441a48d10c7f54f8" }
+brilirs = { git = "https://github.com/uwplse/bril", rev = "7f9f22784ec2685ee416d68a441a48d10c7f54f8" }
+bril-rs = { git = "https://github.com/uwplse/bril", rev = "7f9f22784ec2685ee416d68a441a48d10c7f54f8" }
+brilift = { git = "https://github.com/uwplse/bril", rev = "7f9f22784ec2685ee416d68a441a48d10c7f54f8" }
+rs2bril = { git = "https://github.com/uwplse/bril", rev = "7f9f22784ec2685ee416d68a441a48d10c7f54f8" ,features = [
   "import",
 ] }
+brillvm = { git = "https://github.com/uwplse/bril", rev = "7f9f22784ec2685ee416d68a441a48d10c7f54f8" }
+
+
 ordered-float = { version = "3.7" }
 serde_json = "1.0.103"
 dot-structures = "0.1.1"

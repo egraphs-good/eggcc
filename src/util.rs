@@ -926,12 +926,13 @@ impl Run {
         serde_json::to_writer_pretty(&mut buf, &program).expect("failed to deserialize");
         let dir = tempdir().expect("couldn't create temp dir");
 
-        let llvm_ir = run_cmd_line(
-            format!("{}/brillvm/brilc", get_eggcc_root()),
-            vec!["-r", &format!("{}/brillvm/rt.bc", get_eggcc_root())],
-            String::from_utf8(buf).unwrap().as_str(),
-        )
-        .expect("unable to compile bril!");
+        let llvm_ir = brillvm::cli::run(&brillvm::cli::Cli {
+            file: None,
+            runtime: Some(format!("{}/runtime/rt.bc", get_eggcc_root())),
+            args: vec![],
+            program: Some(String::from_utf8(buf).unwrap()),
+            interpreter: false,
+        });
 
         let name = if optimize_egglog {
             format!("{}_egglog_opt", self.prog_with_args.name)

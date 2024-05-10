@@ -265,7 +265,7 @@ impl<'a> DagTranslator<'a> {
                             RvsdgType::Bril(ty).to_tree_type().unwrap(),
                         )
                     }
-                    (ValueOps::Select, [a,b, c]) => select(a.clone(), b.clone(), c.clone()),
+                    (ValueOps::Select, [a, b, c]) => select(a.clone(), b.clone(), c.clone()),
                     _ => todo!("handle {} op", op),
                 };
                 match op {

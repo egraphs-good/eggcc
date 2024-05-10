@@ -242,7 +242,7 @@ impl<'a> TypeChecker<'a> {
                 );
                 (
                     tty,
-                    RcExpr::new(Expr::Top(TernaryOp::Select, new_cond, new_then, new_else))
+                    RcExpr::new(Expr::Top(TernaryOp::Select, new_cond, new_then, new_else)),
                 )
             }
             Expr::Bop(BinaryOp::PtrAdd, left, right) => {

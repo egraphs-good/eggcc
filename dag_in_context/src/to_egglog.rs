@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc, vec};
 
 use egglog::{
     ast::{Literal, Symbol},
@@ -104,6 +104,7 @@ impl Type {
             // Unknown shouldn't show up in the egglog file, but is useful for printing
             // before types are annotated.
             Type::Unknown => term_dag.app("Unknown".into(), vec![]),
+            Type::Symbolic(str) => term_dag.var(str.into()),
         }
     }
 }
@@ -262,6 +263,7 @@ impl Expr {
                 let name_lit = term_dag.lit(Literal::String(name.into()));
                 term_dag.app("Function".into(), vec![name_lit, ty_in, ty_out, body])
             }
+            Expr::Symbolic(name) => term_dag.var(name.into()),
         };
 
         term_dag

@@ -643,18 +643,16 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding(true);
                 let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
-                let res = std::iter::once(
-                    PrettyPrinter::from_expr(optimized.entry)
-                    .to_rust_default(),
-                )
-                .chain(
-                    optimized
-                        .functions
-                        .into_iter()
-                        .map(|expr| PrettyPrinter::from_expr(expr).to_rust_default()),
-                )
-                .collect::<Vec<_>>()
-                .join("\n\n");
+                let res =
+                    std::iter::once(PrettyPrinter::from_expr(optimized.entry).to_rust_default())
+                        .chain(
+                            optimized
+                                .functions
+                                .into_iter()
+                                .map(|expr| PrettyPrinter::from_expr(expr).to_rust_default()),
+                        )
+                        .collect::<Vec<_>>()
+                        .join("\n\n");
                 (
                     vec![Visualization {
                         result: res,

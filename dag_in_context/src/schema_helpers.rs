@@ -121,6 +121,7 @@ impl Expr {
             Expr::Empty(..) => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,
             Expr::Top(..) => Constructor::Top,
+            Expr::Symbolic(_) => panic!("found symbolic"),
         }
     }
     pub fn func_name(&self) -> Option<String> {
@@ -210,6 +211,7 @@ impl Expr {
             Expr::Const(_, _, _) => vec![],
             Expr::Empty(_, _) => vec![],
             Expr::Arg(_, _) => vec![],
+            Expr::Symbolic(_) => panic!("found symbolic"),
         }
     }
 
@@ -238,6 +240,7 @@ impl Expr {
             }
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
             Expr::Arg(_, _) => vec![],
+            Expr::Symbolic(_) => panic!("found symbolic"),
         }
     }
 
@@ -258,6 +261,7 @@ impl Expr {
             Expr::DoWhile(x, _) => x.get_arg_type(),
             Expr::Arg(ty, _) => ty.clone(),
             Expr::Function(_, ty, _, _) => ty.clone(),
+            Expr::Symbolic(_) => panic!("found symbolic"),
         }
     }
 
@@ -278,6 +282,7 @@ impl Expr {
             Expr::DoWhile(x, _) => x.get_ctx(),
             Expr::Arg(_, ctx) => ctx,
             Expr::Function(_, _, _, x) => x.get_ctx(),
+            Expr::Symbolic(_) => panic!("found symbolic"),
         }
     }
 
@@ -393,6 +398,7 @@ impl Expr {
                 Rc::new(Expr::Const(c.clone(), arg_ty.clone(), arg_ctx.clone()))
             }
             Expr::Empty(_, _) => Rc::new(Expr::Empty(arg_ty.clone(), arg_ctx.clone())),
+            Expr::Symbolic(_) => panic!("found symbolic"),
         };
 
         // Add the substituted to cache
@@ -772,6 +778,7 @@ impl Type {
             Type::Base(basety) => basety.contains_state(),
             Type::TupleT(types) => types.iter().any(|ty| ty.contains_state()),
             Type::Unknown => panic!("Unknown type"),
+            Type::Symbolic(_) => panic!("Symbolic type"),
         }
     }
 }

@@ -1,25 +1,20 @@
 use crate::{
-    from_egglog::FromEgglog, optimizations::body_contains, prologue, schema::{self, Assumption, BaseType, BinaryOp, Expr, RcExpr, TernaryOp, Type, UnaryOp}
+    from_egglog::FromEgglog,
+    prologue,
+    schema::{self, Assumption, BaseType, BinaryOp, Expr, RcExpr, TernaryOp, Type, UnaryOp},
+    to_egglog::TreeToEgglog,
 };
-use egglog::{util::IndexMap, TermDag};
+use egglog::{Term, TermDag};
 use indexmap::IndexMap;
 use std::{collections::HashMap, rc::Rc};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum Either3<A, B, C> {
-    Left(A),
-    Mid(B),
-    Right(C),
-}
-
 pub struct PrettyPrinter {
     pub expr: RcExpr,
-    pub cache: IndexMap<*const schema::Expr, String>,
-    pub symbols: IndexMap<Either3<Type, *const Assumption, BaseType>, String>,
-    // pub types: IndexMap<Type, String>,
-    // pub assums: IndexMap<Assumption, String>,
+    pub cache: indexmap::IndexMap<*const schema::Expr, String>,
+    // String of Type/Assumption/BaseType -> fresh variable binding
+    // no good way of make this polymorphic..
+    pub symbols: indexmap::IndexMap<String, String>,
 }
-
 
 impl PrettyPrinter {
     pub fn from_string(str_expr: String) -> std::result::Result<PrettyPrinter, egglog::Error> {
@@ -40,9 +35,8 @@ impl PrettyPrinter {
     }
 
     pub fn from_expr(expr: RcExpr) -> PrettyPrinter {
-        let mut cache = IndexMap::new();
-        let mut symbols = IndexMap::new();
-        Self::assign_fresh_var(&expr, &mut cache, &mut symbols);
+        let cache = indexmap::IndexMap::new();
+        let symbols = indexmap::IndexMap::new();
         PrettyPrinter {
             expr,
             cache,
@@ -50,13 +44,14 @@ impl PrettyPrinter {
         }
     }
 
-    pub fn to_egglog_default(&self) -> String {
+    pub fn to_egglog_default(&mut self) -> String {
         self.to_egglog(&|rc, len| (rc > 1 && len > 30) || len > 80)
     }
 
-    pub fn to_egglog(&self, fold_when: &dyn Fn(usize, usize) -> bool) -> String {
-        let mut log = IndexMap::new();
-        let res = self.to_nested_expr(&self.expr, &mut log, fold_when);
+    pub fn to_egglog(&mut self, fold_when: &dyn Fn(usize, usize) -> bool) -> String {
+        let mut log = indexmap::IndexMap::new();
+        Self::assign_fresh_var(&self.expr, &mut self.cache, &mut self.symbols, false);
+        let res = self.to_nested_expr(&self.expr, &mut log, fold_when, false);
         let log = self
             .symbols
             .iter()
@@ -71,47 +66,41 @@ impl PrettyPrinter {
         log + &format!("(let EXPR___\n{})", res.pretty())
     }
 
-    pub fn to_rust_default(&self) -> String {
+    pub fn to_rust_default(&mut self) -> String {
         self.to_rust(&|rc, len| (rc > 1 && len > 30) || rc > 4 || len > 80)
     }
 
     // turn the Expr to a rust ast macro string.
     // return a rust ast macro
     // fold_when: provide a function that decide when to fold the macro to a let binding
-    pub fn to_rust(&self, fold_when: &dyn Fn(usize, usize) -> bool) -> String {
-        let mut log = IndexMap::new();
-        let res = self.to_nested_expr(&self.expr, &mut log, fold_when);
+    pub fn to_rust(&mut self, fold_when: &dyn Fn(usize, usize) -> bool) -> String {
+        let mut log = indexmap::IndexMap::new();
+        Self::assign_fresh_var(&self.expr, &mut self.cache, &mut self.symbols, true);
+        let res = self.to_nested_expr(&self.expr, &mut log, fold_when, true);
         let log = self
             .symbols
             .iter()
             .map(|(expr, symbol)| format!("let {symbol} = {expr}; \n"))
             .chain(
                 log.iter()
-                    .map(|(var, expr)| format!("(let {var} \n{}) \n", expr.pretty()))
+                    .map(|(var, expr)| format!("let {var} = {}; \n", expr.to_ast()))
                     .collect::<Vec<_>>(),
             )
             .collect::<Vec<_>>()
             .join("");
-        log + &format!("(let EXPR___\n{})", res.pretty())
+        log + &format!("let expr___ = {};", res.to_ast())
     }
 
     fn assign_fresh_var(
         expr: &RcExpr,
         cache: &mut IndexMap<*const schema::Expr, String>,
-        // types: &mut IndexMap<Type, String>,
-        // assums: &mut IndexMap<*const Assumption, String>,
-        symbols : &mut IndexMap<Either3<Type, *const Assumption, BaseType>, String>
+        symbols: &mut IndexMap<String, String>,
+        to_rust: bool,
     ) {
         let len = cache.len();
         let make_fresh = |info: String| format!("{info}_{}", len);
-        // let try_insert_fresh =
-        //     |var: String, info: String, symbols: IndexMap<String, ?A>| {
-        //         if !symbols.contains_key(&var) {
-        //             let fresh_var = format!("{info}_{}", symbols.len());
-        //             symbols.insert(var, fresh_var);
-        //         }
-        //     };
-        fn try_insert_fresh<T: std::hash::Hash + std::cmp::Eq> (var : T, info: String, symbols: &mut IndexMap<T, String>) {
+
+        fn try_insert_fresh(var: String, info: String, symbols: &mut IndexMap<String, String>) {
             if !symbols.contains_key(&var) {
                 let fresh_var = format!("{info}_{}", symbols.len());
                 symbols.insert(var, fresh_var);
@@ -124,8 +113,15 @@ impl PrettyPrinter {
         if !cache.contains_key(&expr_ptr) {
             match expr.as_ref() {
                 Expr::Const(c, ty, assum) => {
-                    try_insert_fresh(ty.to_owned(), ty.abbrev(), types);
-                    try_insert_fresh( Rc::as_ptr(&Rc::new(assum.to_owned())) , assum.abbrev(), assums);
+                    // try_insert_fresh(ty.to_owned(), ty.abbrev(), types);
+                    // try_insert_fresh( Rc::as_ptr(&Rc::new(assum.to_owned())) , assum.abbrev(), assums);
+                    if to_rust {
+                        try_insert_fresh(ty.to_ast(), ty.abbrev(), symbols);
+                        try_insert_fresh(assum.to_ast(), assum.abbrev(), symbols);
+                    } else {
+                        try_insert_fresh(ty.pretty(), ty.abbrev(), symbols);
+                        try_insert_fresh(assum.pretty(), assum.abbrev(), symbols);
+                    }
                     let c = match c {
                         schema::Constant::Int(i) => format!("int{i}"),
                         schema::Constant::Bool(b) => format!("bool{b}"),
@@ -133,75 +129,94 @@ impl PrettyPrinter {
                     cache.insert(expr_ptr, make_fresh(c));
                 }
                 Expr::Top(op, lhs, mid, rhs) => {
-                    Self::assign_fresh_var(lhs, cache, types, assums);
-                    Self::assign_fresh_var(mid, cache, types, assums);
-                    Self::assign_fresh_var(rhs, cache, types, assums);
+                    Self::assign_fresh_var(lhs, cache, symbols, to_rust);
+                    Self::assign_fresh_var(mid, cache, symbols, to_rust);
+                    Self::assign_fresh_var(rhs, cache, symbols, to_rust);
                     cache.insert(expr_ptr, make_fresh(op.to_ast()));
                 }
                 Expr::Bop(op, lhs, rhs) => {
-                    Self::assign_fresh_var(lhs, cache, types, assums);
-                    Self::assign_fresh_var(rhs, cache, types, assums);
+                    Self::assign_fresh_var(lhs, cache, symbols, to_rust);
+                    Self::assign_fresh_var(rhs, cache, symbols, to_rust);
                     cache.insert(expr_ptr, make_fresh(op.to_ast()));
                 }
                 Expr::Uop(op, expr) => {
-                    Self::assign_fresh_var(expr, cache, types, assums);
+                    Self::assign_fresh_var(expr, cache, symbols, to_rust);
                     cache.insert(expr_ptr, make_fresh(op.to_ast()));
                 }
                 Expr::Get(expr, usize) => {
                     if let Expr::Arg(..) = expr.as_ref() {
                         cache.insert(expr_ptr, make_fresh(format!("get_at_{usize}")));
                     }
-                    Self::assign_fresh_var(expr, cache, types, assums);
+                    Self::assign_fresh_var(expr, cache, symbols, to_rust);
                 }
-                Expr::Alloc(id, x, y, ptrty) => {
-                    Self::assign_fresh_var(x, cache, types, assums);
-                    Self::assign_fresh_var(y, cache, types, assums);
-                    try_insert_fresh(ptrty.to_string(), ptrty.abbrev(), types, assums);
+                Expr::Alloc(id, x, y, ty) => {
+                    Self::assign_fresh_var(x, cache, symbols, to_rust);
+                    Self::assign_fresh_var(y, cache, symbols, to_rust);
+                    if to_rust {
+                        try_insert_fresh(ty.to_ast(), ty.abbrev(), symbols);
+                    } else {
+                        try_insert_fresh(ty.pretty(), ty.abbrev(), symbols);
+                    }
                     cache.insert(expr_ptr, expr.as_ref().abbrev() + &id.to_string());
                 }
                 Expr::Call(name, arg) => {
-                    Self::assign_fresh_var(arg, cache, types, assums);
+                    Self::assign_fresh_var(arg, cache, symbols, to_rust);
                     cache.insert(expr_ptr, make_fresh("call_".to_owned() + name));
                 }
                 Expr::Empty(ty, assum) => {
-                    try_insert_fresh(ty.pretty(), ty.abbrev(), types, assums);
-                    try_insert_fresh(assum.pretty(), assum.abbrev(), types, assums);
+                    if to_rust {
+                        try_insert_fresh(ty.to_ast(), ty.abbrev(), symbols);
+                        try_insert_fresh(assum.to_ast(), assum.abbrev(), symbols);
+                    } else {
+                        try_insert_fresh(ty.pretty(), ty.abbrev(), symbols);
+                        try_insert_fresh(assum.pretty(), assum.abbrev(), symbols);
+                    }
                 }
                 Expr::Single(expr) => {
-                    Self::assign_fresh_var(expr, cache, types, assums);
+                    Self::assign_fresh_var(expr, cache, symbols, to_rust);
                 }
                 Expr::Concat(lhs, rhs) => {
-                    Self::assign_fresh_var(lhs, cache, types, assums);
-                    Self::assign_fresh_var(rhs, cache, types, assums);
+                    Self::assign_fresh_var(lhs, cache, symbols, to_rust);
+                    Self::assign_fresh_var(rhs, cache, symbols, to_rust);
                 }
                 Expr::If(cond, input, then, els) => {
-                    Self::assign_fresh_var(cond, cache, types, assums);
-                    Self::assign_fresh_var(input, cache, types, assums);
-                    Self::assign_fresh_var(then, cache, types, assums);
-                    Self::assign_fresh_var(els, cache, types, assums);
+                    Self::assign_fresh_var(cond, cache, symbols, to_rust);
+                    Self::assign_fresh_var(input, cache, symbols, to_rust);
+                    Self::assign_fresh_var(then, cache, symbols, to_rust);
+                    Self::assign_fresh_var(els, cache, symbols, to_rust);
                     cache.insert(expr_ptr, make_fresh("if".into()));
                 }
                 Expr::Switch(cond, input, branch) => {
-                    Self::assign_fresh_var(cond, cache, types, assums);
-                    Self::assign_fresh_var(input, cache, types, assums);
+                    Self::assign_fresh_var(cond, cache, symbols, to_rust);
+                    Self::assign_fresh_var(input, cache, symbols, to_rust);
                     branch
                         .iter()
-                        .for_each(|expr| Self::assign_fresh_var(expr, cache, types, assums));
+                        .for_each(|expr| Self::assign_fresh_var(expr, cache, symbols, to_rust));
                     cache.insert(expr_ptr, make_fresh("switch".into()));
                 }
                 Expr::DoWhile(input, body) => {
-                    Self::assign_fresh_var(input, cache, types, assums);
-                    Self::assign_fresh_var(body, cache, types, assums);
+                    Self::assign_fresh_var(input, cache, symbols, to_rust);
+                    Self::assign_fresh_var(body, cache, symbols, to_rust);
                     cache.insert(expr_ptr, make_fresh("dowhile".into()));
                 }
                 Expr::Arg(ty, assum) => {
-                    try_insert_fresh(ty.pretty(), ty.abbrev(), types, assums);
-                    try_insert_fresh(assum.pretty(), assum.abbrev(), types, assums);
+                    if to_rust {
+                        try_insert_fresh(ty.to_ast(), ty.abbrev(), symbols);
+                        try_insert_fresh(assum.to_ast(), assum.abbrev(), symbols);
+                    } else {
+                        try_insert_fresh(ty.pretty(), ty.abbrev(), symbols);
+                        try_insert_fresh(assum.pretty(), assum.abbrev(), symbols);
+                    }
                 }
                 Expr::Function(_, tyin, tyout, body) => {
-                    try_insert_fresh(tyin.pretty(), tyin.abbrev(), types, assums);
-                    try_insert_fresh(tyout.pretty(), tyout.abbrev(), types, assums);
-                    Self::assign_fresh_var(body, cache, types, assums);
+                    if to_rust {
+                        try_insert_fresh(tyin.to_ast(), tyin.abbrev(), symbols);
+                        try_insert_fresh(tyout.to_ast(), tyout.abbrev(), symbols);
+                    } else {
+                        try_insert_fresh(tyin.pretty(), tyin.abbrev(), symbols);
+                        try_insert_fresh(tyout.pretty(), tyout.abbrev(), symbols);
+                    }
+                    Self::assign_fresh_var(body, cache, symbols, to_rust);
                 }
                 Expr::Symbolic(_) => panic!("no symbolic should occur here"),
             }
@@ -213,9 +228,10 @@ impl PrettyPrinter {
         expr: &RcExpr,
         log: &mut IndexMap<String, Expr>,
         fold_when: &dyn Fn(usize, usize) -> bool,
+        to_rust: bool,
     ) -> Expr {
         let fold = |egglog: Expr, log: &mut IndexMap<String, Expr>| {
-            let fresh_var = self.cache.get(&Rc::as_ptr(&expr)).unwrap();
+            let fresh_var = self.cache.get(&Rc::as_ptr(expr)).unwrap();
             if !log.contains_key(fresh_var) {
                 log.insert(fresh_var.into(), egglog);
             }
@@ -237,9 +253,17 @@ impl PrettyPrinter {
 
         match expr.as_ref() {
             Expr::Function(name, inty, outty, body) => {
-                let inty_str = self.symbols.get(&inty.pretty()).unwrap();
-                let outty_str = self.symbols.get(&outty.pretty()).unwrap();
-                let body = self.to_nested_expr(body, log, fold_when);
+                let inty_str: &String;
+                let outty_str: &String;
+                if to_rust {
+                    inty_str = self.symbols.get(&inty.to_ast()).unwrap();
+                    outty_str = self.symbols.get(&outty.to_ast()).unwrap();
+                } else {
+                    inty_str = self.symbols.get(&inty.pretty()).unwrap();
+                    outty_str = self.symbols.get(&outty.pretty()).unwrap();
+                }
+
+                let body = self.to_nested_expr(body, log, fold_when, to_rust);
                 Expr::Function(
                     name.into(),
                     Type::Symbolic(inty_str.into()),
@@ -248,88 +272,108 @@ impl PrettyPrinter {
                 )
             }
             Expr::Const(c, ty, assum) => {
-                let ty = self.symbols.get(&ty.pretty()).unwrap();
-                let assum = self.symbols.get(&assum.pretty()).unwrap();
+                let ty_str: &String;
+                let assum_str: &String;
+                if to_rust {
+                    ty_str = self.symbols.get(&ty.to_ast()).unwrap();
+                    assum_str = self.symbols.get(&assum.to_ast()).unwrap();
+                } else {
+                    ty_str = self.symbols.get(&ty.pretty()).unwrap();
+                    assum_str = self.symbols.get(&assum.pretty()).unwrap();
+                }
                 let c = Expr::Const(
                     c.clone(),
-                    Type::Symbolic(ty.into()),
-                    Assumption::WildCard(assum.into()),
+                    Type::Symbolic(ty_str.into()),
+                    Assumption::WildCard(assum_str.into()),
                 );
-                fold(c, log)
+
+                if to_rust {
+                    c
+                } else {
+                    fold(c, log)
+                }
             }
             Expr::Top(op, x, y, z) => {
-                let left = self.to_nested_expr(x, log, fold_when);
-                let mid = self.to_nested_expr(y, log, fold_when);
-                let right = self.to_nested_expr(z, log, fold_when);
+                let left = self.to_nested_expr(x, log, fold_when, to_rust);
+                let mid = self.to_nested_expr(y, log, fold_when, to_rust);
+                let right = self.to_nested_expr(z, log, fold_when, to_rust);
                 let top = Expr::Top(op.clone(), Rc::new(left), Rc::new(mid), Rc::new(right));
                 fold_or_plain(top, log)
             }
             Expr::Bop(op, x, y) => {
-                let left = self.to_nested_expr(x, log, fold_when);
-                let right = self.to_nested_expr(y, log, fold_when);
+                let left = self.to_nested_expr(x, log, fold_when, to_rust);
+                let right = self.to_nested_expr(y, log, fold_when, to_rust);
                 let bop = Expr::Bop(op.clone(), Rc::new(left), Rc::new(right));
                 fold_or_plain(bop, log)
             }
             Expr::Uop(op, x) => {
-                let sub_expr = self.to_nested_expr(x, log, fold_when);
+                let sub_expr = self.to_nested_expr(x, log, fold_when, to_rust);
                 let uop = Expr::Uop(op.clone(), Rc::new(sub_expr));
                 fold_or_plain(uop, log)
             }
             Expr::Get(x, pos) => {
-                let sub_expr = self.to_nested_expr(x, log, fold_when);
-                let get = Expr::Get(Rc::new(sub_expr), pos.clone());
+                let sub_expr = self.to_nested_expr(x, log, fold_when, to_rust);
+                let get = Expr::Get(Rc::new(sub_expr), *pos);
                 // fold Get Arg i anyway
                 if let Expr::Arg(_, _) = x.as_ref() {
-                    fold(get, log)
-                } else {
-                    get
+                    if !to_rust {
+                        return fold(get, log);
+                    }
                 }
+                get
             }
             Expr::Alloc(id, x, y, ty) => {
-                let amount = self.to_nested_expr(x, log, fold_when);
-                let state_edge = self.to_nested_expr(y, log, fold_when);
-                let alloc =
-                    Expr::Alloc(id.clone(), Rc::new(amount), Rc::new(state_edge), ty.clone());
+                let amount = self.to_nested_expr(x, log, fold_when, to_rust);
+                let state_edge = self.to_nested_expr(y, log, fold_when, to_rust);
+                let alloc = Expr::Alloc(*id, Rc::new(amount), Rc::new(state_edge), ty.clone());
                 fold_or_plain(alloc, log)
             }
             Expr::Call(name, x) => {
-                let sub_expr = self.to_nested_expr(x, log, fold_when);
+                let sub_expr = self.to_nested_expr(x, log, fold_when, to_rust);
                 let call = Expr::Call(name.into(), Rc::new(sub_expr));
                 fold_or_plain(call, log)
             }
             Expr::Empty(ty, assum) => {
-                let ty = self.symbols.get(&ty.pretty()).unwrap();
-                let assum = self.symbols.get(&assum.pretty()).unwrap();
+                let ty_str: &String;
+                let assum_str: &String;
+                if to_rust {
+                    ty_str = self.symbols.get(&ty.to_ast()).unwrap();
+                    assum_str = self.symbols.get(&assum.to_ast()).unwrap();
+                } else {
+                    ty_str = self.symbols.get(&ty.pretty()).unwrap();
+                    assum_str = self.symbols.get(&assum.pretty()).unwrap();
+                }
+
                 Expr::Empty(
-                    Type::Symbolic(ty.into()),
-                    Assumption::WildCard(assum.into()),
+                    Type::Symbolic(ty_str.into()),
+                    Assumption::WildCard(assum_str.into()),
                 )
             }
             // doesn't fold Tuple
             Expr::Single(x) => {
-                let sub_expr = self.to_nested_expr(x, log, fold_when);
+                let sub_expr = self.to_nested_expr(x, log, fold_when, to_rust);
                 Expr::Single(Rc::new(sub_expr))
             }
             Expr::Concat(x, y) => {
-                let left = self.to_nested_expr(x, log, fold_when);
-                let right = self.to_nested_expr(y, log, fold_when);
+                let left = self.to_nested_expr(x, log, fold_when, to_rust);
+                let right = self.to_nested_expr(y, log, fold_when, to_rust);
                 Expr::Concat(Rc::new(left), Rc::new(right))
             }
             Expr::Switch(x, inputs, _branches) => {
-                let cond = self.to_nested_expr(x, log, fold_when);
-                let inputs = self.to_nested_expr(inputs, log, fold_when);
+                let cond = self.to_nested_expr(x, log, fold_when, to_rust);
+                let inputs = self.to_nested_expr(inputs, log, fold_when, to_rust);
                 let branches = _branches
                     .iter()
-                    .map(|branch| Rc::new(self.to_nested_expr(branch, log, fold_when)))
+                    .map(|branch| Rc::new(self.to_nested_expr(branch, log, fold_when, to_rust)))
                     .collect::<Vec<_>>();
                 let switch = Expr::Switch(Rc::new(cond), Rc::new(inputs), branches);
                 fold_or_plain(switch, log)
             }
             Expr::If(x, inputs, y, z) => {
-                let pred = self.to_nested_expr(x, log, fold_when);
-                let inputs = self.to_nested_expr(inputs, log, fold_when);
-                let left = self.to_nested_expr(y, log, fold_when);
-                let right = self.to_nested_expr(z, log, fold_when);
+                let pred = self.to_nested_expr(x, log, fold_when, to_rust);
+                let inputs = self.to_nested_expr(inputs, log, fold_when, to_rust);
+                let left = self.to_nested_expr(y, log, fold_when, to_rust);
+                let right = self.to_nested_expr(z, log, fold_when, to_rust);
                 let if_expr = Expr::If(
                     Rc::new(pred),
                     Rc::new(inputs),
@@ -339,190 +383,29 @@ impl PrettyPrinter {
                 fold_or_plain(if_expr, log)
             }
             Expr::DoWhile(inputs, body) => {
-                let inputs = self.to_nested_expr(inputs, log, fold_when);
-                let body = self.to_nested_expr(body, log, fold_when);
+                let inputs = self.to_nested_expr(inputs, log, fold_when, to_rust);
+                let body = self.to_nested_expr(body, log, fold_when, to_rust);
                 let dowhile = Expr::DoWhile(Rc::new(inputs), Rc::new(body));
                 fold_or_plain(dowhile, log)
             }
             Expr::Arg(ty, assum) => {
-                let ty = self.symbols.get(&ty.pretty()).unwrap();
-                let assum = self.symbols.get(&assum.pretty()).unwrap();
+                let ty_str: &String;
+                let assum_str: &String;
+                if to_rust {
+                    ty_str = self.symbols.get(&ty.to_ast()).unwrap();
+                    assum_str = self.symbols.get(&assum.to_ast()).unwrap();
+                } else {
+                    ty_str = self.symbols.get(&ty.pretty()).unwrap();
+                    assum_str = self.symbols.get(&assum.pretty()).unwrap();
+                }
                 Expr::Arg(
-                    Type::Symbolic(ty.into()),
-                    Assumption::WildCard(assum.into()),
+                    Type::Symbolic(ty_str.into()),
+                    Assumption::WildCard(assum_str.into()),
                 )
             }
             Expr::Symbolic(_) => panic!("No symbolic should occur here"),
         }
     }
-
-    fn concat_helper(
-        expr: &RcExpr,
-        cache: &mut HashMap<*const schema::Expr, String>,
-        symbols: &mut HashMap<String, String>,
-        log: &mut String,
-        fold_when: &dyn Fn(usize, usize) -> bool,
-    ) -> Vec<String> {
-        match expr.as_ref() {
-            Expr::Concat(lhs, rhs) => {
-                let mut lhs = Self::concat_helper(lhs, cache, symbols, log, fold_when);
-                let mut rhs = Self::concat_helper(rhs, cache, symbols, log, fold_when);
-                lhs.append(&mut rhs);
-                lhs
-            }
-            Expr::Single(expr) => {
-                let expr = Self::to_ast(expr, cache, symbols, log, fold_when);
-                vec![expr]
-            }
-            _ => panic!("Not well formed Concat, expr not in Single"),
-        }
-    }
-
-    // fn to_ast(
-    //     expr: &RcExpr,
-    //     cache: &mut HashMap<*const schema::Expr, String>,
-    //     symbols: &mut HashMap<String, String>,
-    //     log: &mut String,
-    //     fold_when: &dyn Fn(usize, usize) -> bool,
-    // ) -> String {
-        // let find_or_insert = |var: String,
-        //                       info: String,
-        //                       str_builder: &mut String,
-        //                       symbols: &mut HashMap<String, String>| {
-        //     let fresh_var = format!("{}_{}", info, symbols.len());
-        //     symbols
-        //         .entry(var.clone())
-        //         .or_insert_with(|| {
-        //             str_builder.push_str(&format!("let {} = {}; \n", fresh_var.clone(), var));
-        //             fresh_var
-        //         })
-        //         .clone()
-        // };
-
-        // let fold_or_plain =
-        //     |ast_str: String,
-        //      info: String,
-        //      str_builder: &mut String,
-        //      cache: &mut HashMap<*const schema::Expr, String>| {
-        //         let rc = Rc::strong_count(expr);
-        //         if fold_when(rc, ast_str.len()) {
-        //             let fresh_var = format!("{}_{}", info, cache.len());
-        //             let lookup = cache
-        //                 .entry(Rc::as_ptr(expr))
-        //                 .or_insert_with(|| {
-        //                     str_builder.push_str(&format!(
-        //                         "let {} = {}; \n",
-        //                         fresh_var.clone(),
-        //                         ast_str
-        //                     ));
-        //                     fresh_var
-        //                 })
-        //                 .clone();
-        //             format!("{lookup}.clone()")
-        //         } else {
-        //             ast_str
-        //         }
-        //     };
-
-        // match cache.get(&Rc::as_ptr(expr)) {
-        //     Some(str) => format!("{}.clone()", str),
-        //     None => {
-        //         match expr.as_ref() {
-        //             // just don't fold simple things like expr, getat anyway
-        //             Expr::Const(c, _, _) => match c {
-        //                 schema::Constant::Bool(true) => "ttrue()".into(),
-        //                 schema::Constant::Bool(false) => "tfalse()".into(),
-        //                 schema::Constant::Int(n) => format!("int({})", n),
-        //             },
-        //             Expr::Bop(op, lhs, rhs) => {
-        //                 let left = Self::to_ast(lhs, cache, symbols, log, fold_when);
-        //                 let right = Self::to_ast(rhs, cache, symbols, log, fold_when);
-        //                 let ast_str = format!("{}({}, {})", op.to_ast(), left, right);
-        //                 fold_or_plain(ast_str, op.to_ast(), log, cache)
-        //             }
-        //             Expr::Top(op, x, y, z) => {
-        //                 let left = Self::to_ast(x, cache, symbols, log, fold_when);
-        //                 let mid = Self::to_ast(y, cache, symbols, log, fold_when);
-        //                 let right = Self::to_ast(z, cache, symbols, log, fold_when);
-        //                 let ast_str = format!("{}({}, {}, {})", op.to_ast(), left, mid, right);
-        //                 fold_or_plain(ast_str, op.to_ast(), log, cache)
-        //             }
-        //             Expr::Uop(op, expr) => {
-        //                 let expr = Self::to_ast(expr, cache, symbols, log, fold_when);
-        //                 let ast_str = format!("{}({})", op.to_ast(), expr);
-        //                 fold_or_plain(ast_str, op.to_ast(), log, cache)
-        //             }
-        //             Expr::Get(expr, index) => match expr.as_ref() {
-        //                 Expr::Arg(_, _) => {
-        //                     format!("getat({index})")
-        //                 }
-        //                 _ => {
-        //                     let expr = Self::to_ast(expr, cache, symbols, log, fold_when);
-        //                     format!("get({expr}, {index})")
-        //                 }
-        //             },
-        //             Expr::Alloc(id, expr, state, ty) => {
-        //                 let expr = Self::to_ast(expr, cache, symbols, log, fold_when);
-        //                 let state = Self::to_ast(state, cache, symbols, log, &fold_when);
-        //                 let ty_str = ty.to_ast();
-        //                 let ty_binding = find_or_insert(ty_str, ty.abbrev(), log, symbols);
-        //                 let ast_str = format!("alloc({id}, {expr}, {state}, {ty_binding})");
-        //                 fold_or_plain(ast_str, "alloc".into(), log, cache)
-        //             }
-        //             Expr::Call(name, arg) => {
-        //                 let arg = Self::to_ast(arg, cache, symbols, log, fold_when);
-        //                 format!("call({name}, {arg})")
-        //             }
-        //             Expr::Empty(..) => "empty()".into(),
-        //             Expr::Single(expr) => {
-        //                 let expr = Self::to_ast(expr, cache, symbols, log, fold_when);
-        //                 format!("single({expr})")
-        //             }
-        //             Expr::Concat(..) => {
-        //                 let vec = Self::concat_helper(expr, cache, symbols, log, fold_when);
-        //                 let inside = vec.join(", ");
-        //                 format!("parallel!({inside})")
-        //             }
-        //             Expr::Switch(cond, inputs, cases) => {
-        //                 let cond = Self::to_ast(cond, cache, symbols, log, fold_when);
-        //                 let inputs = Self::to_ast(inputs, cache, symbols, log, fold_when);
-        //                 let cases = cases
-        //                     .iter()
-        //                     .map(|expr| Self::to_ast(expr, cache, symbols, log, fold_when))
-        //                     .collect::<Vec<_>>()
-        //                     .join(", ");
-        //                 let ast_str = format!("switch!({cond}, {inputs}; parallel!({cases}))");
-        //                 fold_or_plain(ast_str, "switch".into(), log, cache)
-        //             }
-        //             Expr::If(cond, input, then, els) => {
-        //                 let cond = Self::to_ast(cond, cache, symbols, log, fold_when);
-        //                 let input = Self::to_ast(input, cache, symbols, log, fold_when);
-        //                 let then = Self::to_ast(then, cache, symbols, log, fold_when);
-        //                 let els = Self::to_ast(els, cache, symbols, log, fold_when);
-        //                 let ast_str = format!("tif({cond}, {input}, {then}, {els})");
-        //                 fold_or_plain(ast_str, "if".into(), log, cache)
-        //             }
-        //             Expr::DoWhile(input, body) => {
-        //                 let input = Self::to_ast(input, cache, symbols, log, fold_when);
-        //                 let body = Self::to_ast(body, cache, symbols, log, fold_when);
-        //                 let ast_str = format!("dowhile({input}, {body})");
-        //                 fold_or_plain(ast_str, "dowhile".into(), log, cache)
-        //             }
-        //             Expr::Arg(..) => "arg()".into(),
-        //             Expr::Function(name, ty_in, ty_out, body) => {
-        //                 let ty_in_str = ty_in.to_ast();
-        //                 let ty_in_binding = find_or_insert(ty_in_str, ty_in.abbrev(), log, symbols);
-        //                 let ty_out_str = ty_out.to_ast();
-        //                 let ty_out_binding =
-        //                     find_or_insert(ty_out_str, ty_out.abbrev(), log, symbols);
-        //                 let body = Self::to_ast(body, cache, symbols, log, fold_when);
-        //                 format!("function(\"{name}\", {ty_in_binding}, {ty_out_binding}, {body})")
-        //             }
-        //             Expr::Symbolic(_) => panic!("no symbolic should occur here"),
-        //         }
-        //     }
-        // }
-    //}
 }
 
 impl Expr {
@@ -536,29 +419,43 @@ impl Expr {
         expr.to_sexp().pretty()
     }
 
+    fn concat_helper(&self) -> Vec<String> {
+        match self {
+            Expr::Concat(lhs, rhs) => {
+                let mut lhs = lhs.as_ref().concat_helper();
+                let mut rhs = rhs.as_ref().concat_helper();
+                lhs.append(&mut rhs);
+                lhs
+            }
+            Expr::Single(expr) => {
+                let expr = Self::to_ast(expr.as_ref());
+                vec![expr]
+            }
+            _ => panic!("Not well formed Concat, expr not in Single"),
+        }
+    }
     pub fn to_ast(&self) -> String {
-        let e = String::new();
         match self {
             Expr::Const(c, ..) => match c {
                 schema::Constant::Bool(true) => "ttrue()".into(),
                 schema::Constant::Bool(false) => "tfalse()".into(),
                 schema::Constant::Int(n) => format!("int({})", n),
-            }
+            },
             Expr::Top(op, x, y, z) => {
                 let left = x.to_ast();
                 let mid = y.to_ast();
-                let right = x.to_ast();
+                let right = z.to_ast();
                 format!("{}({}, {}, {})", op.to_ast(), left, mid, right)
-            },
+            }
             Expr::Bop(op, x, y) => {
                 let left = x.to_ast();
                 let right = y.to_ast();
                 format!("{}({}, {})", op.to_ast(), left, right)
-            },
+            }
             Expr::Uop(op, x) => {
                 let expr = x.to_ast();
                 format!("{}({})", op.to_ast(), expr)
-            },
+            }
             Expr::Get(expr, index) => match expr.as_ref() {
                 Expr::Arg(_, _) => {
                     format!("getat({index})")
@@ -573,24 +470,28 @@ impl Expr {
                 let state = state.to_ast();
                 let ty_str = ty.to_ast();
                 format!("alloc({id}, {expr}, {state}, {ty_str})")
-            },
+            }
             Expr::Call(name, arg) => {
                 let arg = arg.to_ast();
                 format!("call({name}, {arg})")
-            },
+            }
             Expr::Empty(..) => "empty()".into(),
             Expr::Single(expr) => {
                 let expr = expr.to_ast();
                 format!("single({expr})")
-            },
-            Expr::Concat(..) => {e},
+            }
+            Expr::Concat(..) => {
+                let vec = Self::concat_helper(self);
+                let inside = vec.join(", ");
+                format!("parallel!({inside})")
+            }
             Expr::If(cond, inputs, x, y) => {
                 let cond = cond.to_ast();
                 let input = inputs.to_ast();
                 let then = x.to_ast();
                 let els = y.to_ast();
-                format!("tif({cond}, {input}, {then}, {els})")  
-            },
+                format!("tif({cond}, {input}, {then}, {els})")
+            }
             Expr::Switch(cond, inputs, cases) => {
                 let cond = cond.to_ast();
                 let inputs = inputs.to_ast();
@@ -600,19 +501,19 @@ impl Expr {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("switch!({cond}, {inputs}; parallel!({cases}))")
-            },
+            }
             Expr::DoWhile(inputs, body) => {
                 let inputs = inputs.to_ast();
                 let body = body.to_ast();
                 format!("dowhile({inputs}, {body})")
-            },
+            }
             Expr::Arg(..) => "arg()".into(),
             Expr::Function(name, inty, outty, body) => {
                 let inty = inty.to_ast();
                 let outty = outty.to_ast();
                 let body = body.to_ast();
                 format!("function(\"{name}\", {inty}, {outty}, {body})")
-            },
+            }
             Expr::Symbolic(str) => str.into(),
         }
     }
@@ -625,37 +526,19 @@ impl Assumption {
         expr.to_sexp().pretty()
     }
 
-    pub fn to_ast(
-        &self,
-        cache: &mut HashMap<*const schema::Expr, String>,
-        symbols: &mut HashMap<String, String>,
-        log: &mut String,
-        fold_when: &dyn Fn(usize, usize) -> bool,
-    ) -> String {
+    pub fn to_ast(&self) -> String {
         match self {
             Assumption::InFunc(fun_name) => {
                 format!("infunc(\"{fun_name}\".into())")
             }
             Assumption::InIf(is, pred, input) => {
-                format!(
-                    "inif({is}, {}, {})",
-                    PrettyPrinter::to_ast(pred, cache, symbols, log, fold_when),
-                    PrettyPrinter::to_ast(input, cache, symbols, log, fold_when)
-                )
+                format!("inif({is}, {}, {})", pred.to_ast(), input.to_ast())
             }
             Assumption::InLoop(input, output) => {
-                format!(
-                    "inloop({}, {})",
-                    PrettyPrinter::to_ast(input, cache, symbols, log, fold_when),
-                    PrettyPrinter::to_ast(output, cache, symbols, log, fold_when)
-                )
+                format!("inloop({}, {})", input.to_ast(), output.to_ast(),)
             }
             Assumption::InSwitch(is, pred, inputs) => {
-                format!(
-                    "inswitch({is}, {}, {})",
-                    PrettyPrinter::to_ast(pred, cache, symbols, log, fold_when),
-                    PrettyPrinter::to_ast(inputs, cache, symbols, log, fold_when)
-                )
+                format!("inswitch({is}, {}, {})", pred.to_ast(), inputs.to_ast(),)
             }
             Assumption::WildCard(_) => panic!("found wildcard"),
         }
@@ -674,6 +557,17 @@ impl Assumption {
 }
 
 impl BaseType {
+    pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
+        let mut state = TreeToEgglog::new();
+        let term = self.to_egglog_internal(&mut state);
+        (term, state.termdag)
+    }
+    pub fn pretty(&self) -> String {
+        let (term, termdag) = self.to_egglog();
+        let expr = termdag.term_to_expr(&term);
+        expr.to_sexp().pretty()
+    }
+
     pub fn to_ast(&self) -> String {
         match self {
             BaseType::IntT => "intt()".into(),
@@ -805,7 +699,6 @@ fn test_pretty_print() {
 
     let res = PrettyPrinter::from_string(expr_str.clone())
         .unwrap()
-        .to_egglog_default();
-
+        .to_rust_default();
     println!("{res}")
 }

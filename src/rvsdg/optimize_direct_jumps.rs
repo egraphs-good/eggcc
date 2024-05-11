@@ -17,12 +17,12 @@ use crate::cfg::{BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram
 #[cfg(test)]
 use crate::Optimizer;
 
-struct JumpOptimizer<'a> {
-    simple_func: &'a SimpleCfgFunction,
-}
+impl SimpleCfgFunction {
+    pub fn optimize_jumps(&self) -> Self {
+        self.single_in_single_out_block()
+    }
 
-impl<'a> JumpOptimizer<'a> {
-    fn optimized(&mut self) -> SimpleCfgFunction {
+    fn single_in_single_out_block(&self) -> SimpleCfgFunction {
         let mut resulting_graph: StableGraph<BasicBlock, Branch> = StableDiGraph::new();
 
         // a map from nodes in the old graph to nodes in the
@@ -34,17 +34,16 @@ impl<'a> JumpOptimizer<'a> {
         // we use a bfs so that previous nodes are mapped to new nodes
         // before their children.
         // This ensures that `node_mapping[&previous]` succeeds.
-        let mut bfs = Bfs::new(&self.simple_func.graph, self.simple_func.entry);
+        let mut bfs = Bfs::new(&self.graph, self.entry);
 
         let mut edges_to_add = vec![];
 
         // copy the graph without the edges
         // also choose which nodes get fused to which
         // by re-assigning in the node map
-        while let Some(node) = bfs.next(&self.simple_func.graph) {
+        while let Some(node) = bfs.next(&self.graph) {
             let mut collapse_node = false;
             let edges = self
-                .simple_func
                 .graph
                 .edges_directed(node, Direction::Incoming)
                 .collect::<Vec<_>>();
@@ -52,7 +51,6 @@ impl<'a> JumpOptimizer<'a> {
             if let &[single_edge] = edges.as_slice() {
                 let previous = single_edge.source();
                 let previous_outgoing = self
-                    .simple_func
                     .graph
                     .edges_directed(previous, Direction::Outgoing)
                     .collect::<Vec<_>>();
@@ -67,10 +65,10 @@ impl<'a> JumpOptimizer<'a> {
                     // add instructions to the end of the previous node
                     resulting_graph[previous_new]
                         .instrs
-                        .extend(self.simple_func.graph[node].instrs.to_vec());
+                        .extend(self.graph[node].instrs.to_vec());
                     resulting_graph[previous_new]
                         .footer
-                        .extend(self.simple_func.graph[node].footer.to_vec());
+                        .extend(self.graph[node].footer.to_vec());
 
                     collapse_node = true;
                 }
@@ -78,14 +76,10 @@ impl<'a> JumpOptimizer<'a> {
 
             if !collapse_node {
                 // add the node
-                let new_node = resulting_graph.add_node(self.simple_func.graph[node].clone());
+                let new_node = resulting_graph.add_node(self.graph[node].clone());
                 node_mapping.insert(node, new_node);
 
-                edges_to_add.extend(
-                    self.simple_func
-                        .graph
-                        .edges_directed(node, Direction::Incoming),
-                );
+                edges_to_add.extend(self.graph.edges_directed(node, Direction::Incoming));
             }
         }
 
@@ -96,20 +90,14 @@ impl<'a> JumpOptimizer<'a> {
         }
 
         SimpleCfgFunction {
-            name: self.simple_func.name.clone(),
-            args: self.simple_func.args.clone(),
+            name: self.name.clone(),
+            args: self.args.clone(),
             graph: resulting_graph,
-            entry: node_mapping[&self.simple_func.entry],
-            exit: node_mapping[&self.simple_func.exit],
+            entry: node_mapping[&self.entry],
+            exit: node_mapping[&self.exit],
             _phantom: Simple,
-            return_ty: self.simple_func.return_ty.clone(),
+            return_ty: self.return_ty.clone(),
         }
-    }
-}
-
-impl SimpleCfgFunction {
-    pub fn optimize_jumps(&self) -> Self {
-        JumpOptimizer { simple_func: self }.optimized()
     }
 }
 

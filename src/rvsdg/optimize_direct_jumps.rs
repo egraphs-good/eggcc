@@ -20,6 +20,7 @@ use crate::Optimizer;
 impl SimpleCfgFunction {
     pub fn optimize_jumps(&self) -> Self {
         self.single_in_single_out_block()
+            .single_in_single_out_edge()
     }
 
     fn single_in_single_out_block(&self) -> SimpleCfgFunction {
@@ -98,6 +99,45 @@ impl SimpleCfgFunction {
             _phantom: Simple,
             return_ty: self.return_ty.clone(),
         }
+    }
+
+    fn single_in_single_out_edge(&self) -> SimpleCfgFunction {
+        let edges: Vec<(NodeIndex, NodeIndex)> = self
+            .graph
+            .node_indices()
+            .filter_map(|source| {
+                let outgoing: Vec<_> = self
+                    .graph
+                    .edges_directed(source, Direction::Outgoing)
+                    .collect();
+
+                match outgoing.as_slice() {
+                    [edge] => Some(*edge),
+                    _ => None,
+                }
+            })
+            .filter_map(|edge| {
+                let incoming: Vec<_> = self
+                    .graph
+                    .edges_directed(edge.target(), Direction::Incoming)
+                    .collect();
+
+                match incoming.as_slice() {
+                    [edge2] => {
+                        assert_eq!(edge.source(), edge2.source());
+                        assert_eq!(edge.target(), edge2.target());
+                        Some((edge.source(), edge.target()))
+                    }
+                    _ => None,
+                }
+            })
+            .collect();
+
+        if edges.is_empty() {
+            return self.clone();
+        }
+
+        todo!("collapse all edges in {edges:?}")
     }
 }
 

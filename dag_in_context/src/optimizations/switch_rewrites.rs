@@ -112,3 +112,33 @@ fn switch_rewrite_negate_pred() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn single_branch_switch() -> crate::Result {
+    use crate::ast::*;
+    use crate::schema::Assumption;
+
+    let build = switch_vec(
+        int(1),
+        empty(),
+        vec![
+            switch!(int(0), empty(); int(12)),
+            switch!(int(0), empty(); int(12)),
+        ],
+    )
+    .with_arg_types(emptyt(), base(intt()))
+    .add_ctx(Assumption::dummy());
+
+    let check = int(1)
+        .with_arg_types(emptyt(), base(intt()))
+        .add_ctx(Assumption::dummy());
+
+    egglog_test(
+        &format!("(let build_ {build})"),
+        &format!("(let check_ {check}) (check (!= build_ check_))"),
+        vec![],
+        val_empty(),
+        intv(1),
+        vec![],
+    )
+}

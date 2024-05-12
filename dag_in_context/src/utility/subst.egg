@@ -131,7 +131,7 @@
 ;; ########################### Cleanup subst and DelayedSubstUnion
 
 (rule ((DelayedSubstUnion lhs rhs))
-      ((delete (DelayedSubstUnion lhs rhs)))
+      ((subsume (DelayedSubstUnion lhs rhs)))
       :ruleset cleanup-subst)
 
 ; this cleanup is important- if we don't subsume these substitutions, they

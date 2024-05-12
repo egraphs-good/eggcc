@@ -4,7 +4,7 @@ expression: visualization.result
 ---
 @main(v0: int) {
   v1_: int = const 0;
-  v2_: bool = eq v1_ v0;
+  v2_: bool = eq v0 v1_;
   v3_: int = const 1;
   print v3_;
   br v2_ .v4_ .v5_;
@@ -20,31 +20,27 @@ expression: visualization.result
   v12_: bool = lt v7_ v10_;
   br v12_ .v13_ .v14_;
 .v13_:
-  v15_: int = add v9_ v8_;
+  v15_: int = add v8_ v9_;
   print v15_;
-  v16_: bool = const true;
-  v17_: int = const 1;
-  v18_: int = add v7_ v17_;
-  v19_: bool = id v16_;
-  v20_: int = id v18_;
-  v21_: int = id v15_;
-  v22_: int = id v8_;
-  v23_: int = id v10_;
-.v24_:
-  v7_: int = id v20_;
-  v8_: int = id v21_;
-  v9_: int = id v22_;
-  v10_: int = id v10_;
-  br v12_ .v11_ .v25_;
-.v25_:
+  v16_: int = const 1;
+  v17_: int = add v16_ v7_;
+  v18_: int = id v17_;
+  v19_: int = id v15_;
+  v20_: int = id v8_;
+  v21_: int = id v10_;
+.v22_:
+  v7_: int = id v18_;
+  v8_: int = id v19_;
+  v9_: int = id v20_;
+  v10_: int = id v21_;
+  br v12_ .v11_ .v23_;
+.v23_:
   jmp .v6_;
 .v14_:
-  v26_: bool = const false;
-  v19_: bool = id v26_;
-  v20_: int = id v7_;
-  v21_: int = id v8_;
-  v22_: int = id v9_;
-  v23_: int = id v10_;
-  jmp .v24_;
+  v18_: int = id v7_;
+  v19_: int = id v8_;
+  v20_: int = id v9_;
+  v21_: int = id v10_;
+  jmp .v22_;
 .v6_:
 }

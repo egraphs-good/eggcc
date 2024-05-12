@@ -34,10 +34,6 @@
     )
     ((lsr-inv loop (Const c in-type loop-input-ctx) constant)) :ruleset always-run)
 
-;; Temporary context for modified loops
-;; contains the new input (with correct context) and the new pred-output (with old context)
-(function InReducedLoop (Expr Expr) Assumption :unextractable)
-
 (rule 
     (
         ;; Find loop
@@ -74,42 +70,41 @@
         ; Construct optimized theta
         ; new-inputs already has the correct context
         (let new-inputs (Concat inputs (Single d-init)))
+        
 
         ; new pred and outputs contains the old loop context
         (let new-body-old-ctx (Concat pred-and-outputs (Single d-out)))
-
-        ; We need to add a temporary context, then create the cycle later
-        (let tmp-ctx (InReducedLoop new-inputs new-body-old-ctx))
 
         ; We need to create a new type, with one more input
         (let new-arg-ty (TupleT (TLConcat ty-list (TCons (IntT) (TNil)))))
 
         ; Now substitute the new type and temp context into the new body
-        (let new-body (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) new-body-old-ctx))
+        (let new-body (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) new-body-old-ctx))
 
         (let new-loop (DoWhile new-inputs new-body))
 
         ; Now that we have the new loop, union the temporary context with the actual ctx
-        (union tmp-ctx (InLoop new-inputs new-body))
+        (union (TmpCtx) (InLoop new-inputs new-body))
 
         ; Substitute d for the *i expression
         (let new-mul
             (Bop
                 (Mul)
-                (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) c-out)
-                (Get (Arg new-arg-ty tmp-ctx) i)))
-        (union (Get (Arg new-arg-ty tmp-ctx) n) new-mul)
+                (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) c-out)
+                (Get (Arg new-arg-ty (TmpCtx)) i)))
+        (union (Get (Arg new-arg-ty (TmpCtx)) n) new-mul)
 
         ; Subsume the multiplication in the new loop to prevent
         ; from firing loop strength reduction again on the new loop
         (subsume
             (Bop
                 (Mul)
-                (Subst tmp-ctx (Arg new-arg-ty tmp-ctx) c-out)
-                (Get (Arg new-arg-ty tmp-ctx) i)))
+                (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) c-out)
+                (Get (Arg new-arg-ty (TmpCtx)) i)))
 
         ; Project all but last
         (union old-loop (SubTuple new-loop 0 n))
+        (delete (TmpCtx))
     )
     :ruleset loop-strength-reduction
 )

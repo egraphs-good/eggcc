@@ -3,10 +3,14 @@ pub(crate) fn helpers() -> String {
 ;; saturate all helpers first
 (saturate
   (saturate
-     (saturate type-helpers) ;; resolve type helpers, finding correct types
-     (saturate error-checking) ;; check for errors, relies on type-helpers saturating
+    (saturate type-helpers) ;; resolve type helpers, finding correct types
+    (saturate error-checking) ;; check for errors, relies on type-helpers saturating
       saturating)
-  
+
+  (saturate drop)
+  apply-drop-unions
+  cleanup-drop
+
   (saturate subst) ;; do e-substitution
   apply-subst-unions ;; apply the unions from substitution
   cleanup-subst ;; clean up substitutions that are done

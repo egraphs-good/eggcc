@@ -1,0 +1,16 @@
+# ARGS: 1
+@main(arg: int) {
+  zero: int = const 0;
+  isless: bool = lt arg zero;
+  br isless .less .greater;
+.less:
+  result: int = const 1;
+  result_predicate: bool = const true;
+  jmp .done;
+.greater:
+  result: int = const 0;
+  result_predicate: bool = const false;
+.done:
+  print result;
+  print result_predicate;
+}

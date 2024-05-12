@@ -11,7 +11,7 @@ const COLORS = {
 };
 
 function parseDataForChart() {
-  const benchmarks = Array.from(GLOBAL_DATA.enabledBenchmarks);
+  const benchmarks = Array.from(GLOBAL_DATA.enabledBenchmarks).sort();
   const datasets = {};
   GLOBAL_DATA.enabledModes.forEach((mode) => {
     datasets[mode] = {

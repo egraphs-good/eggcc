@@ -93,8 +93,13 @@ if __name__ == '__main__':
 
   aggregate()
 
+  (overview, detailed) = gen_linecount_table
+
   with open(f"{output_path}/data/linecount.tex", "w") as linecount:
-      linecount.write(gen_linecount_table())
+      linecount.write(overview)
+
+  with open(f"{output_path}/data/detailed-linecount.tex", "w") as linecount:
+      linecount.write(detailed)
 
   with open(f"{output_path}/data/nightlytable.tex", "w") as nightly_table:
       nightly_table.write(gen_nightly_table(f"{output_path}/data/profile.json"))

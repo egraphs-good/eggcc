@@ -19,11 +19,11 @@ use crate::Optimizer;
 
 impl SimpleCfgFunction {
     pub fn optimize_jumps(&self) -> Self {
-        self.single_in_single_out_block()
-            .single_in_single_out_edge()
+        self.single_in_single_out()
+            .collapse_empty_blocks()
     }
 
-    fn single_in_single_out_block(&self) -> SimpleCfgFunction {
+    fn single_in_single_out(&self) -> SimpleCfgFunction {
         let mut resulting_graph: StableGraph<BasicBlock, Branch> = StableDiGraph::new();
 
         // a map from nodes in the old graph to nodes in the
@@ -101,43 +101,33 @@ impl SimpleCfgFunction {
         }
     }
 
-    fn single_in_single_out_edge(&self) -> SimpleCfgFunction {
-        let edges: Vec<(NodeIndex, NodeIndex)> = self
+    fn collapse_empty_blocks(self) -> SimpleCfgFunction {
+        let empty_blocks: Vec<(NodeIndex, NodeIndex)> = self
             .graph
             .node_indices()
-            .filter_map(|source| {
+            .filter_map(|node| {
                 let outgoing: Vec<_> = self
                     .graph
-                    .edges_directed(source, Direction::Outgoing)
+                    .edges_directed(node, Direction::Outgoing)
                     .collect();
 
                 match outgoing.as_slice() {
-                    [edge] => Some(*edge),
-                    _ => None,
-                }
-            })
-            .filter_map(|edge| {
-                let incoming: Vec<_> = self
-                    .graph
-                    .edges_directed(edge.target(), Direction::Incoming)
-                    .collect();
-
-                match incoming.as_slice() {
-                    [edge2] => {
-                        assert_eq!(edge.source(), edge2.source());
-                        assert_eq!(edge.target(), edge2.target());
-                        Some((edge.source(), edge.target()))
+                    [edge]
+                        if self.graph[node].instrs.is_empty()
+                            && self.graph[node].footer.is_empty() =>
+                    {
+                        Some((node, edge.target()))
                     }
                     _ => None,
                 }
             })
             .collect();
 
-        if edges.is_empty() {
+        if empty_blocks.is_empty() {
             return self.clone();
         }
 
-        todo!("collapse all edges in {edges:?}")
+        todo!("collapse empty blocks")
     }
 }
 

@@ -33,7 +33,7 @@ def gen_detailed_table(line_counts):
 File & \# Lines  \\\\
 \hline"""
 
-    for key in sorted(line_counts.keys):
+    for key in sorted(line_counts.keys()):
         fmt += f"{key} & f{line_counts[key]} \\\\"
         fmt += "\\hline"
 
@@ -48,7 +48,8 @@ def gen_linecount_table():
 
     counts = get_written_egg()
     written_egg = 0
-    for _, v in counts:
+
+    for _, v in counts.items():
         written_egg += v
 
 

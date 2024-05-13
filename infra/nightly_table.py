@@ -21,7 +21,7 @@ def _build_benchtable(profiles):
     preamble += "\end{tabular}\n"
     return preamble
 
-def gen_nightly_table(input_path):
+def gen_nightly_table(nightly_data):
     preamble = """\\begin{tabular}{ |p{4cm}|p{20cm}| }
 \hline
 \multicolumn{2}{|c|}{Benchmarks} \\\\
@@ -29,14 +29,12 @@ def gen_nightly_table(input_path):
 Name & Executions\\\\
 \hline"""
 
-    with open(input_path, mode='r') as f:
-        benches = defaultdict(list)
+    benches = defaultdict(list)
 
+    for profile in nightly_data:
+        benches[profile["benchmark"]].append(profile)
 
-        for profile in json.loads(f.read()):
-            benches[profile["benchmark"]].append(profile)
-
-        for profile_key in sorted(benches.keys())[:1]:
-            preamble += ("\hline\n%s & %s \\\\\n" % (profile_key, _build_benchtable(benches[profile_key])))
+    for profile_key in sorted(benches.keys())[:1]:
+        preamble += ("\hline\n%s & %s \\\\\n" % (profile_key, _build_benchtable(benches[profile_key])))
     preamble += "\\end{tabular}"
     return preamble

@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from glob import glob
 from sys import stdout
 import subprocess
@@ -36,39 +37,31 @@ def bench(profile):
     os.mkdir(profile_dir)
   except FileExistsError:
     print(f'{profile_dir} exists, overwriting contents')
-    
+
+
+  res = []
+
   for mode in modes:
     (name, runmode, options) = mode
+
+    start = time.time()
     subprocess.call(f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}', shell=True)
+    end = time.time()
 
     with open(f'{profile_dir}/{name}-args') as f:
       args = f.read().rstrip()
     
     # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
-    subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
-
-# aggregate all profile info into a single json array.
-# It walks a file that looks like:
-# tmp
-# - bench
-# -- <benchmark name>
-# ---- run_method.json
-# ---- run_method.profile
-def aggregate():
-    res = []
-    jsons = glob("./tmp/bench/*/*.json")
-    for file_path in jsons:
-        if os.stat(file_path).st_size == 0:
-            continue
-        name = file_path.split("/")[-2]
-        runMethod = file_path.split("/")[-1][:-len(".json")]
-        result = {"runMethod": runMethod, "benchmark": name}
-        with open(file_path) as f:
-            result["hyperfine"] = json.load(f)
-        res.append(result)
-    with open("nightly/data/profile.json", "w") as f:
-      json.dump(res, f, indent=2)
-
+    result = subprocess.run([
+        'hyperfine',
+        '--style', 'none',
+        '--warmup', '1',
+        '--max-runs', '2',
+        '--export-json', '-',
+        f'"{profile_dir}/{name}{args if len(args) > 0 else ""}"',
+    ], capture_output=True)
+    res.append({"runMethod": runmode, "benchmark": name, "compileTime": end-start, "hyperfine": json.loads(result.stdout)})
+  return res
 
 if __name__ == '__main__':
   # expect a single argument
@@ -86,14 +79,17 @@ if __name__ == '__main__':
     profiles = [profile_path]
 
   iter = 0
+
+  out = []
   for p in profiles:
     print(f'Benchmark {iter} of {len(profiles)} on all treatments')
     iter += 1
-    bench(p)
+    out.extend(bench(p))
 
-  aggregate()
+  (overview, detailed) = gen_linecount_table()
 
-  (overview, detailed) = gen_linecount_table
+  with open(f"{output_path}/data/profile.json", "w") as data:
+      data.write(json.dumps(out))
 
   with open(f"{output_path}/data/linecount.tex", "w") as linecount:
       linecount.write(overview)
@@ -102,4 +98,4 @@ if __name__ == '__main__':
       linecount.write(detailed)
 
   with open(f"{output_path}/data/nightlytable.tex", "w") as nightly_table:
-      nightly_table.write(gen_nightly_table(f"{output_path}/data/profile.json"))
+      nightly_table.write(gen_nightly_table(out))

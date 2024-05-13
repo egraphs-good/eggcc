@@ -64,22 +64,22 @@
         ; Initial value of d is i * c
         (let d-init (Bop (Mul) c-in (Get inputs i)))
 
-        ; Value of d in loop
-        (let d-out (Bop (Add) (Get (Arg arg-type assm) i) addend))
-
         ; Construct optimized theta
         ; new-inputs already has the correct context
         (let new-inputs (Concat inputs (Single d-init)))
-        
-
-        ; new pred and outputs contains the old loop context
-        (let new-body-old-ctx (Concat pred-and-outputs (Single d-out)))
 
         ; We need to create a new type, with one more input
         (let new-arg-ty (TupleT (TLConcat ty-list (TCons (IntT) (TNil)))))
 
-        ; Now substitute the new type and temp context into the new body
-        (let new-body (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) new-body-old-ctx))
+        ; Value of d in loop. Add context to addend
+        (let d-out (Bop (Add) (Get (Arg new-arg-ty (TmpCtx)) n)
+                              (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) addend)))
+
+        ; build the old body, making sure to set the correct arg type and context
+        (let new-body
+          (Concat
+            (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) pred-and-outputs)
+            (Single d-out)))
 
         (let new-loop (DoWhile new-inputs new-body))
 

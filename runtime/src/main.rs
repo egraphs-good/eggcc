@@ -36,6 +36,8 @@ pub extern "C" fn _bril_print_float(f: f64) {
         }
     } else if f.is_nan() {
         print!("NaN");
+    } else if f == 0.0 {
+        print!("{:.17}", 0.0)
     } else {
         print!("{:.17}", f);
     }

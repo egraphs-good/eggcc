@@ -6,21 +6,43 @@ from glob import glob
 from sys import stdout
 import subprocess
 
-
 modes = [
-  # (name, runmode, options)
-  ("rvsdg_roundtrip", "rvsdg-round-trip-to-executable", ""),
+  "rvsdg_roundtrip",
 
-  ("egglog_noopt_brilift_noopt", "compile-brilift", "--optimize-egglog false --optimize-brilift false"),
-  ("egglog_noopt_brilift_opt", "compile-brilift", "--optimize-egglog false --optimize-brilift true"),
-  ("egglog_opt_brilift_noopt", "compile-brilift", "--optimize-egglog true --optimize-brilift false"),
-  ("egglog_opt_brilift_opt", "compile-brilift", "--optimize-egglog true --optimize-brilift true"),
+  "egglog_noopt_brilift_noopt",
+  "egglog_noopt_brilift_opt",
+  "egglog_opt_brilift_noopt",
+  "egglog_opt_brilift_opt",
 
-  ("egglog_noopt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm false"),
-  ("egglog_noopt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog false --optimize-bril-llvm true"),
-  ("egglog_opt_bril_llvm_noopt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm false"),
-  ("egglog_opt_bril_llvm_opt", "compile-bril-llvm", "--optimize-egglog true --optimize-bril-llvm true")
+  "egglog_noopt_bril_llvm_noopt",
+  "egglog_noopt_bril_llvm_opt",
+  "egglog_opt_bril_llvm_noopt",
+  "egglog_opt_bril_llvm_opt",
 ]
+
+def get_eggcc_options(name, profile_dir):
+  match name:
+    case "rvsdg_roundtrip":
+      return '--run-mode rvsdg-round-trip-to-executable'
+    case "egglog_noopt_brilift_noopt":
+      return '--run-mode compile-brilift --optimize-egglog false --optimize-brilift false'
+    case "egglog_noopt_brilift_opt":
+      return '--run-mode compile-brilift --optimize-egglog false --optimize-brilift true'
+    case "egglog_opt_brilift_noopt":
+      return '--run-mode compile-brilift --optimize-egglog true --optimize-brilift false'
+    case "egglog_opt_brilift_opt":
+      return '--run-mode compile-brilift --optimize-egglog true --optimize-brilift true'
+    case "egglog_noopt_bril_llvm_noopt":
+      return f'--run-mode compile-bril-llvm --optimize-egglog false --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
+    case "egglog_noopt_bril_llvm_opt":
+      return f'--run-mode compile-bril-llvm --optimize-egglog false --optimize-bril-llvm true --llvm-output-dir {profile_dir}/llvm-{name}'
+    case "egglog_opt_bril_llvm_noopt":
+      return f'--run-mode compile-bril-llvm --optimize-egglog true --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
+    case "egglog_opt_bril_llvm_opt":
+      return f'--run-mode compile-bril-llvm --optimize-egglog true --optimize-bril-llvm true --llvm-output-dir {profile_dir}/llvm-{name}'
+    case _:
+      raise Exception("Unexpected run mode: " + name)
+    
 
 def bench(profile):
   # strip the path to just the file name
@@ -34,16 +56,15 @@ def bench(profile):
     os.mkdir(profile_dir)
   except FileExistsError:
     print(f'{profile_dir} exists, overwriting contents')
-    
-  for mode in modes:
-    (name, runmode, options) = mode
-    subprocess.call(f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}', shell=True)
 
-    with open(f'{profile_dir}/{name}-args') as f:
+  for mode in modes:
+    subprocess.call(f'cargo run --release {profile} {get_eggcc_options(mode, profile_dir)} -o {profile_dir}/{mode}', shell=True)
+
+    with open(f'{profile_dir}/{mode}-args') as f:
       args = f.read().rstrip()
     
     # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
-    subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{name}.json "{profile_dir}/{name} {args}"', shell=True)
+    subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{mode}.json "{profile_dir}/{mode} {args}"', shell=True)
 
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:

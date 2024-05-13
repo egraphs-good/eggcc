@@ -19,8 +19,7 @@ use crate::Optimizer;
 
 impl SimpleCfgFunction {
     pub fn optimize_jumps(&self) -> Self {
-        self.single_in_single_out()
-            .collapse_empty_blocks()
+        self.single_in_single_out().collapse_empty_blocks()
     }
 
     fn single_in_single_out(&self) -> SimpleCfgFunction {

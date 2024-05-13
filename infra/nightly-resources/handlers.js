@@ -1,6 +1,11 @@
-// Top-level load function for the main index page.
-async function load() {
+// Load data that both the index page and llvm page need
+async function loadCommonData() {
   GLOBAL_DATA.currentRun = await getBench("./");
+}
+
+// Top-level load function for the main index page.
+async function load_index() {
+  await loadCommonData();
   makeSelectors();
 
   // Everything selected by default
@@ -19,7 +24,7 @@ async function load() {
 
 // Top-level load function for the llvm page
 async function load_llvm() {
-  GLOBAL_DATA.currentRun = await getBench("./");
+  await loadCommonData();
   const params = new URLSearchParams(window.location.search);
   const benchmark = params.get("benchmark");
   const runMode = params.get("runmode");

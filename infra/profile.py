@@ -14,10 +14,10 @@ modes = [
   "egglog_opt_brilift_noopt",
   "egglog_opt_brilift_opt",
 
-  "egglog_noopt_bril_llvm_noopt",
-  "egglog_noopt_bril_llvm_opt",
-  "egglog_opt_bril_llvm_noopt",
-  "egglog_opt_bril_llvm_opt",
+  "egglog_noopt_llvm_noopt",
+  "egglog_noopt_llvm_opt",
+  "egglog_opt_llvm_noopt",
+  "egglog_opt_llvm_opt",
 ]
 
 def get_eggcc_options(name, profile_dir):
@@ -32,13 +32,13 @@ def get_eggcc_options(name, profile_dir):
       return '--run-mode compile-brilift --optimize-egglog true --optimize-brilift false'
     case "egglog_opt_brilift_opt":
       return '--run-mode compile-brilift --optimize-egglog true --optimize-brilift true'
-    case "egglog_noopt_bril_llvm_noopt":
+    case "egglog_noopt_llvm_noopt":
       return f'--run-mode compile-bril-llvm --optimize-egglog false --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
-    case "egglog_noopt_bril_llvm_opt":
+    case "egglog_noopt_llvm_opt":
       return f'--run-mode compile-bril-llvm --optimize-egglog false --optimize-bril-llvm true --llvm-output-dir {profile_dir}/llvm-{name}'
-    case "egglog_opt_bril_llvm_noopt":
+    case "egglog_opt_llvm_noopt":
       return f'--run-mode compile-bril-llvm --optimize-egglog true --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
-    case "egglog_opt_bril_llvm_opt":
+    case "egglog_opt_llvm_opt":
       return f'--run-mode compile-bril-llvm --optimize-egglog true --optimize-bril-llvm true --llvm-output-dir {profile_dir}/llvm-{name}'
     case _:
       raise Exception("Unexpected run mode: " + name)
@@ -67,9 +67,9 @@ def bench(profile):
     subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{mode}.json "{profile_dir}/{mode} {args}"', shell=True)
 
 def get_llvm(runMethod, benchmark):
-  files = [f for f in glob(f'./tmp/bench/{benchmark}/llvm-{runMethod}/*') if "init" not in f]
-  assert(len(files) == 1)
-  with open(files[0]) as f:
+  path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}_{runMethod}.ll'
+
+  with open(path) as f:
     return f.read()
 
 # aggregate all profile info into a single json array.

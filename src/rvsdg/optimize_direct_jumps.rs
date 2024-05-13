@@ -6,9 +6,8 @@
 
 use hashbrown::HashMap;
 use petgraph::{
-    stable_graph::{NodeIndex, StableDiGraph, StableGraph},
-    visit::Bfs,
-    visit::EdgeRef,
+    stable_graph::{EdgeIndex, NodeIndex, StableDiGraph, StableGraph},
+    visit::{Bfs, EdgeRef},
     Direction,
 };
 
@@ -100,10 +99,17 @@ impl SimpleCfgFunction {
         }
     }
 
-    fn collapse_empty_blocks(self) -> SimpleCfgFunction {
-        let empty_blocks: Vec<(NodeIndex, NodeIndex)> = self
+    // this function looks for all CFG fragments of the form
+    // source node --(source edge)-> empty node --(target edge)-> target node
+    // (where there is only one target edge and the empty node has no instructions)
+    // and changes the source edge to point to the target node
+    fn collapse_empty_blocks(mut self) -> SimpleCfgFunction {
+        let target_edges: Vec<EdgeIndex> = self
             .graph
             .node_indices()
+            .filter(|node| {
+                self.graph[*node].instrs.is_empty() && self.graph[*node].footer.is_empty()
+            })
             .filter_map(|node| {
                 let outgoing: Vec<_> = self
                     .graph
@@ -111,22 +117,32 @@ impl SimpleCfgFunction {
                     .collect();
 
                 match outgoing.as_slice() {
-                    [edge]
-                        if self.graph[node].instrs.is_empty()
-                            && self.graph[node].footer.is_empty() =>
-                    {
-                        Some((node, edge.target()))
-                    }
+                    [edge] => Some(edge.id()),
                     _ => None,
                 }
             })
             .collect();
 
-        if empty_blocks.is_empty() {
-            return self.clone();
+        for target_edge in target_edges {
+            let (empty, target) = self.graph.edge_endpoints(target_edge).unwrap();
+
+            let source_edges: Vec<EdgeIndex> = self
+                .graph
+                .edges_directed(empty, Direction::Incoming)
+                .map(|edge| edge.id())
+                .collect();
+
+            for source_edge in source_edges {
+                let (source, empty_) = self.graph.edge_endpoints(source_edge).unwrap();
+                let weight = self.graph.edge_weight(source_edge).unwrap().clone();
+                assert_eq!(empty, empty_);
+
+                self.graph.remove_edge(source_edge);
+                self.graph.add_edge(source, target, weight);
+            }
         }
 
-        todo!("collapse empty blocks")
+        self
     }
 }
 

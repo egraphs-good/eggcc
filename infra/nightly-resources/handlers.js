@@ -17,6 +17,22 @@ async function load() {
   initializeChart();
 }
 
+// Top-level load function for the llvm page
+async function load_llvm() {
+  GLOBAL_DATA.currentRun = await getBench("./");
+  const params = new URLSearchParams(window.location.search);
+  const benchmark = params.get("benchmark");
+  const runMode = params.get("runmode");
+  if (!benchmark || !runMode) {
+    console.error("missing query params, this probably shouldn't happen");
+  }
+  const llvm = GLOBAL_DATA.currentRun[benchmark][runMode].llvm;
+  if (!llvm) {
+    console.error("missing llvm, this probably shouldn't happen");
+  }
+  document.getElementById("llvm").innerText = llvm;
+}
+
 function selectAllModes(enabled) {
   const checkboxContainer = document.getElementById("modeCheckboxes");
   Array.from(checkboxContainer.getElementsByTagName("input")).forEach(

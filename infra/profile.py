@@ -66,6 +66,12 @@ def bench(profile):
     # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
     subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{mode}.json "{profile_dir}/{mode} {args}"', shell=True)
 
+def get_llvm(runMethod, benchmark):
+  files = [f for f in glob(f'./tmp/bench/{benchmark}/llvm-{runMethod}/*') if "init" not in f]
+  assert(len(files) == 1)
+  with open(files[0]) as f:
+    return f.read()
+
 # aggregate all profile info into a single json array.
 # It walks a file that looks like:
 # tmp
@@ -82,6 +88,8 @@ def aggregate():
         name = file_path.split("/")[-2]
         runMethod = file_path.split("/")[-1][:-len(".json")]
         result = {"runMethod": runMethod, "benchmark": name}
+        if "llvm" in runMethod:
+          result["llvm"] = get_llvm(runMethod, name)
         with open(file_path) as f:
             result["hyperfine"] = json.load(f)
         res.append(result)

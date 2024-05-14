@@ -916,11 +916,12 @@ impl Run {
             interpreter: false,
         });
 
-        let name = if optimize_egglog {
-            format!("{}_egglog_opt", self.prog_with_args.name)
-        } else {
-            self.prog_with_args.name.to_string()
-        };
+        let name = format!(
+            "{}_egglog_{}opt",
+            self.prog_with_args.name,
+            if optimize_egglog { "" } else { "no" }
+        );
+
         let init_ll_name = format!("{}-init.ll", name);
         let file_path = dir.path().join(init_ll_name.clone());
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
@@ -962,7 +963,7 @@ impl Run {
                         .arg("-emit-llvm")
                         .arg("-S")
                         .arg("-o")
-                        .arg(format!("{}-bril_llvm_O3.ll", name)),
+                        .arg(format!("{}_llvm_opt.ll", name)),
                     "failed to compile llvm ir and emit llvm ir",
                 );
             }
@@ -1007,7 +1008,7 @@ impl Run {
                         .arg("-emit-llvm")
                         .arg("-S")
                         .arg("-o")
-                        .arg(format!("{}-preprocessed_bril_llvm_O0.ll", name)),
+                        .arg(format!("{}_llvm_noopt.ll", name)),
                     "failed to copy unoptimized llvm ir",
                 );
             }

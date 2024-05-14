@@ -189,7 +189,7 @@ function buildEntry(baseline, current) {
   const results = current.hyperfine.results[0];
   const baselineResults = baseline?.hyperfine.results[0];
 
-  return {
+  const result = {
     name: current.runMethod,
     mean: { class: "", value: tryRound(results.mean) },
     meanVsBaseline: diffAttribute(results, baselineResults, "mean"),
@@ -201,6 +201,12 @@ function buildEntry(baseline, current) {
     medianVsBaseline: diffAttribute(results, baselineResults, "median"),
     stddev: { class: "", value: tryRound(results.stddev) },
   };
+
+  if (current.llvm) {
+    result.llvm = current.llvm;
+  }
+
+  return result;
 }
 
 function refreshView() {
@@ -265,6 +271,14 @@ function refreshView() {
       return 1;
     }
     return 0;
+  });
+
+  parsed.forEach((benchmark) => {
+    benchmark.executions.data.forEach((run) => {
+      if (run.llvm) {
+        run.name = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark.name}&runmode=${run.name}">${run.name}</a>`;
+      }
+    });
   });
 
   document.getElementById("profile").innerHTML = ConvertJsonToTable(parsed);

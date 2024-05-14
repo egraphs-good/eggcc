@@ -1,6 +1,11 @@
-// Top-level load function for the main index page.
-async function load() {
+// Load data that both the index page and llvm page need
+async function loadCommonData() {
   GLOBAL_DATA.currentRun = await getBench("./");
+}
+
+// Top-level load function for the main index page.
+async function load_index() {
+  await loadCommonData();
   makeSelectors();
 
   // Everything selected by default
@@ -15,6 +20,22 @@ async function load() {
 
   refreshView();
   initializeChart();
+}
+
+// Top-level load function for the llvm page
+async function load_llvm() {
+  await loadCommonData();
+  const params = new URLSearchParams(window.location.search);
+  const benchmark = params.get("benchmark");
+  const runMode = params.get("runmode");
+  if (!benchmark || !runMode) {
+    console.error("missing query params, this probably shouldn't happen");
+  }
+  const llvm = GLOBAL_DATA.currentRun[benchmark][runMode].llvm;
+  if (!llvm) {
+    console.error("missing llvm, this probably shouldn't happen");
+  }
+  document.getElementById("llvm").innerText = llvm;
 }
 
 function selectAllModes(enabled) {

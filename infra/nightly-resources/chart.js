@@ -1,5 +1,5 @@
 const COLORS = {
-  "rvsdg_roundtrip": "red",
+  rvsdg_roundtrip: "red",
   "cranelift-O0": "orange",
   "cranelift-O0-eggcc": "yellow",
   "cranelift-O3": "green",
@@ -8,7 +8,6 @@ const COLORS = {
   "llvm-peep-eggcc": "pink",
   "llvm-O3": "gray",
   "llvm-O3-eggcc": "brown",
-  
 };
 
 function parseDataForChart() {

@@ -359,3 +359,31 @@
       )
       ((set (hi-bound (Get ctx i)) (IntB hi)))
       :ruleset interval-analysis)
+
+
+(rule (
+       ;; argument has loop context
+       (Arg ty (InLoop inputs outputs))
+       ;; in the loop, the argument is passed through
+       ;; note that some_ctx is not the same as (InLoop inputs outputs)
+       (= (Get (Arg ty some_ctx) ith) (Get outputs (+ 1 ith)))
+       ;; input has some bound
+       (= bound (lo-bound (Get inputs ith)))
+      )
+      (
+       (set (lo-bound (Get (Arg ty (InLoop inputs outputs)) ith)) bound)
+      )
+      :ruleset interval-analysis)
+(rule (
+       ;; argument has loop context
+       (Arg ty (InLoop inputs outputs))
+       ;; in the loop, the argument is passed through
+       (= (Get (Arg ty some_ctx) ith) (Get outputs (+ 1 ith)))
+       ;; input has some bound
+       (= bound (hi-bound (Get inputs ith)))
+      )
+      (
+       (set (hi-bound (Get (Arg ty (InLoop inputs outputs)) ith)) bound)
+      )
+      :ruleset interval-analysis)
+

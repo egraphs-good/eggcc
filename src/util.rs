@@ -492,6 +492,7 @@ impl Run {
                 (true, true) => "-O3-eggcc",
             };
         }
+
         name
     }
 

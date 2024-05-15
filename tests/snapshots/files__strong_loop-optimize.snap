@@ -28,6 +28,6 @@ expression: visualization.result
   br v16_ .v10_ .v17_;
 .v17_:
   print v7_;
-  print v6_;
+  print v2_;
   print v5_;
 }

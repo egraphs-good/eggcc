@@ -11,18 +11,17 @@ expression: visualization.result
   v5_: int = id v1_;
   v6_: int = id v2_;
   v7_: int = id v3_;
-  v8_: int = id v0_;
-.v9_:
-  print v8_;
-  v10_: int = add v4_ v8_;
+.v8_:
+  v9_: int = const 1;
+  print v9_;
+  v10_: int = add v4_ v9_;
   v11_: bool = lt v10_ v5_;
   v12_: bool = not v11_;
   v4_: int = id v10_;
   v5_: int = id v5_;
   v6_: int = id v6_;
   v7_: int = id v7_;
-  v8_: int = id v8_;
-  br v12_ .v9_ .v13_;
+  br v12_ .v8_ .v13_;
 .v13_:
   print v4_;
 }

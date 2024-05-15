@@ -40,11 +40,11 @@ expression: visualization.result
   v17_: int = id v29_;
   br v19_ .v18_ .v31_;
 .v31_:
-  v32_: int = add v13_ v14_;
+  v32_: int = add v4_ v5_;
   v33_: int = id v32_;
-  v34_: int = id v14_;
-  v35_: int = id v16_;
-  v36_: int = id v17_;
+  v34_: int = id v5_;
+  v35_: int = id v6_;
+  v36_: int = id v7_;
 .v37_:
   v4_: int = id v33_;
   v5_: int = id v34_;

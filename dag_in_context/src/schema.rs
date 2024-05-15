@@ -3,12 +3,14 @@
 //! be implemented in this file.
 //! Also see schema.egg for documentation
 
+use ordered_float::OrderedFloat;
 use std::rc::Rc;
 use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BaseType {
     IntT,
+    FloatT,
     BoolT,
     PointerT(Box<BaseType>),
     StateT,
@@ -45,6 +47,15 @@ pub enum BinaryOp {
     GreaterThan,
     LessEq,
     GreaterEq,
+    FAdd,
+    FSub,
+    FMul,
+    FDiv,
+    FEq,
+    FLessThan,
+    FGreaterThan,
+    FLessEq,
+    FGreaterEq,
     And,
     Or,
     PtrAdd,
@@ -62,6 +73,7 @@ pub enum UnaryOp {
 pub enum Constant {
     Int(i64),
     Bool(bool),
+    Float(OrderedFloat<f64>),
 }
 
 /// A reference counted expression.

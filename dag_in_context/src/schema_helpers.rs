@@ -6,7 +6,7 @@ use std::{
 use strum_macros::EnumIter;
 
 use crate::{
-    ast::{base, boolt, inif, inloop, inswitch, intt},
+    ast::{base, boolt, floatt, inif, inloop, inswitch, intt},
     schema::{
         Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
         UnaryOp,
@@ -68,6 +68,15 @@ impl BinaryOp {
             LessThan => "LessThan",
             GreaterEq => "GreaterEq",
             LessEq => "LessEq",
+            FAdd => "FAdd",
+            FSub => "FSub",
+            FMul => "FMul",
+            FDiv => "FDiv",
+            FEq => "FEq",
+            FGreaterThan => "FGreaterThan",
+            FLessThan => "FLessThan",
+            FGreaterEq => "FGreaterEq",
+            FLessEq => "FLessEq",
             And => "And",
             Or => "Or",
             Load => "Load",
@@ -419,6 +428,7 @@ pub(crate) enum Sort {
     UnaryOp,
     TernaryOp,
     I64,
+    F64,
     Bool,
     Type,
     String,
@@ -435,6 +445,7 @@ impl Sort {
             Sort::Expr => "Expr",
             Sort::ListExpr => "ListExpr",
             Sort::I64 => "i64",
+            Sort::F64 => "f64",
             Sort::Bool => "bool",
             Sort::String => "String",
             Sort::Type => "Type",
@@ -682,12 +693,20 @@ impl BinaryOp {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
                 Some((base(intt()), base(intt()), base(intt())))
             }
+            BinaryOp::FAdd | BinaryOp::FSub | BinaryOp::FMul | BinaryOp::FDiv => {
+                Some((base(floatt()), base(floatt()), base(floatt())))
+            }
             BinaryOp::And | BinaryOp::Or => Some((base(boolt()), base(boolt()), base(boolt()))),
             BinaryOp::LessThan
             | BinaryOp::GreaterThan
             | BinaryOp::GreaterEq
             | BinaryOp::LessEq
             | BinaryOp::Eq => Some((base(intt()), base(intt()), base(boolt()))),
+            BinaryOp::FLessThan
+            | BinaryOp::FGreaterThan
+            | BinaryOp::FGreaterEq
+            | BinaryOp::FLessEq
+            | BinaryOp::FEq => Some((base(floatt()), base(floatt()), base(boolt()))),
             BinaryOp::Load => None,
             BinaryOp::Free => None,
             BinaryOp::Print => None,
@@ -736,6 +755,7 @@ impl BaseType {
     pub fn contains_state(&self) -> bool {
         match self {
             BaseType::IntT => false,
+            BaseType::FloatT => false,
             BaseType::BoolT => false,
             BaseType::PointerT(inner) => {
                 assert!(!inner.contains_state(), "Pointers can't contain state");

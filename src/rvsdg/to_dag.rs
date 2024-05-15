@@ -240,11 +240,22 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::Sub, [a, b]) => sub(a.clone(), b.clone()),
                     (ValueOps::Div, [a, b]) => div(a.clone(), b.clone()),
 
+                    (ValueOps::Fadd, [a, b]) => fadd(a.clone(), b.clone()),
+                    (ValueOps::Fmul, [a, b]) => fmul(a.clone(), b.clone()),
+                    (ValueOps::Fsub, [a, b]) => fsub(a.clone(), b.clone()),
+                    (ValueOps::Fdiv, [a, b]) => fdiv(a.clone(), b.clone()),
+
                     (ValueOps::Eq, [a, b]) => eq(a.clone(), b.clone()),
                     (ValueOps::Gt, [a, b]) => greater_than(a.clone(), b.clone()),
                     (ValueOps::Lt, [a, b]) => less_than(a.clone(), b.clone()),
                     (ValueOps::Ge, [a, b]) => greater_eq(a.clone(), b.clone()),
                     (ValueOps::Le, [a, b]) => less_eq(a.clone(), b.clone()),
+
+                    (ValueOps::Feq, [a, b]) => feq(a.clone(), b.clone()),
+                    (ValueOps::Fgt, [a, b]) => fgreater_than(a.clone(), b.clone()),
+                    (ValueOps::Flt, [a, b]) => fless_than(a.clone(), b.clone()),
+                    (ValueOps::Fge, [a, b]) => fgreater_eq(a.clone(), b.clone()),
+                    (ValueOps::Fle, [a, b]) => fless_eq(a.clone(), b.clone()),
 
                     (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
                     (ValueOps::Or, [a, b]) => or(a.clone(), b.clone()),
@@ -294,6 +305,7 @@ impl<'a> DagTranslator<'a> {
                             tfalse()
                         }
                     }
+                    Literal::Float(f) => float(f),
                     _ => todo!("handle other literals"),
                 };
                 self.cache_single(lit_expr, id)

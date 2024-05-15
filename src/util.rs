@@ -322,6 +322,7 @@ pub struct Run {
 }
 
 /// an enum of IRs that can be interpreted
+#[derive(Debug)]
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
@@ -813,8 +814,6 @@ impl Run {
             res
         };
 
-        assert_eq!(result_interpreted.is_some(), result_interpreted.is_some());
-
         Ok(RunOutput {
             visualizations,
             result_interpreted,
@@ -848,19 +847,7 @@ impl Run {
         let object = format!("/tmp/{}.o", unique_name);
         brilift::compile(&program, None, &object, opt_level, false);
 
-        // Compile runtime C library
-        // We use unique names so that tests can run in parallel
-        let library_c = format!("/tmp/{}-library.c", unique_name);
-        let library_o = format!("/tmp/{}-library.o", unique_name);
-        std::fs::write(library_c.clone(), brilift::c_runtime()).unwrap();
-        expect_command_success(
-            Command::new("cc")
-                .arg(library_c.clone())
-                .arg("-c") // create object file instead of executable
-                .arg("-o")
-                .arg(library_o.clone()),
-            "failed to compile runtime C library",
-        );
+        let library_o = format!("{}/runtime/rt.o", get_eggcc_root());
 
         let executable = self
             .output_path
@@ -906,11 +893,6 @@ impl Run {
             expect_command_success(&mut cmd, "failed to compile brilift");
         }
 
-        expect_command_success(
-            Command::new("rm").arg(object).arg(library_o).arg(library_c),
-            "failed to clean up object files",
-        );
-
         Ok(Some(Interpretable::Executable { executable }))
     }
 
@@ -931,18 +913,20 @@ impl Run {
         serde_json::to_writer_pretty(&mut buf, &program).expect("failed to deserialize");
         let dir = tempdir().expect("couldn't create temp dir");
 
-        let llvm_ir = run_cmd_line(
-            format!("{}/brillvm/brilc", get_eggcc_root()),
-            vec!["-r", &format!("{}/brillvm/rt.bc", get_eggcc_root())],
-            String::from_utf8(buf).unwrap().as_str(),
-        )
-        .expect("unable to compile bril!");
+        let llvm_ir = brillvm::cli::run(&brillvm::cli::Cli {
+            file: None,
+            runtime: Some(format!("{}/runtime/rt.bc", get_eggcc_root())),
+            args: vec![],
+            program: Some(String::from_utf8(buf).unwrap()),
+            interpreter: false,
+        });
 
-        let name = if optimize_egglog {
-            format!("{}_egglog_opt", self.prog_with_args.name)
-        } else {
-            self.prog_with_args.name.to_string()
-        };
+        let name = format!(
+            "{}_egglog_{}opt",
+            self.prog_with_args.name,
+            if optimize_egglog { "" } else { "no" }
+        );
+
         let init_ll_name = format!("{}-init.ll", name);
         let file_path = dir.path().join(init_ll_name.clone());
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
@@ -984,7 +968,7 @@ impl Run {
                         .arg("-emit-llvm")
                         .arg("-S")
                         .arg("-o")
-                        .arg(format!("{}-bril_llvm_O3.ll", name)),
+                        .arg(format!("{}_llvm_opt.ll", name)),
                     "failed to compile llvm ir and emit llvm ir",
                 );
             }
@@ -1029,7 +1013,7 @@ impl Run {
                         .arg("-emit-llvm")
                         .arg("-S")
                         .arg("-o")
-                        .arg(format!("{}-preprocessed_bril_llvm_O0.ll", name)),
+                        .arg(format!("{}_llvm_noopt.ll", name)),
                     "failed to copy unoptimized llvm ir",
                 );
             }

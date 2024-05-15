@@ -1,4 +1,4 @@
-.PHONY: test test-clean nits nightly brillvm
+.PHONY: test test-clean nits nightly runtime
 
 DIRS = . dag_in_context
 
@@ -18,8 +18,10 @@ nits:
 
 
 
-brillvm:
-	cd brillvm && ./install.sh
+# build the llvm runtime for bril
+# if you edit the runtime crate, you must re-run this to rebuild rt.bc
+runtime:
+	bash runtime/install.sh
 
 nightly:
 	bash infra/nightly.sh "benchmarks/passing"

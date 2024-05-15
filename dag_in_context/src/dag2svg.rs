@@ -53,6 +53,7 @@ impl DotConverter {
                 Expr::Const(c, _, _ctx) => match c {
                     Constant::Int(i) => format!("Const{}_{}", i, self.name_counter),
                     Constant::Bool(b) => format!("Const{}_{}", b, self.name_counter),
+                    Constant::Float(f) => format!("Const{}_{}", f, self.name_counter),
                 },
                 Expr::Bop(op, ..) => {
                     format!("{}{}", op.name(), self.name_counter)

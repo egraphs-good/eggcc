@@ -195,7 +195,7 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115#2a2e3329a6721c86ceee768f6dfea5c17fb14115"
+source = "git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04#5652d6ac53d727c0901a53a0484e8241db887d04"
 dependencies = [
  "serde",
  "serde_json",
@@ -205,7 +205,17 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
-source = "git+https://github.com/sampsyo/bril?rev=b20cc2d#b20cc2d797943aee0ec91f9bff562ad26162da99"
+source = "git+https://github.com/uwplse/bril?rev=7f9f22784ec2685ee416d68a441a48d10c7f54f8#7f9f22784ec2685ee416d68a441a48d10c7f54f8"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "bril-rs"
+version = "0.1.0"
+source = "git+https://github.com/uwplse/bril#5652d6ac53d727c0901a53a0484e8241db887d04"
 dependencies = [
  "serde",
  "serde_json",
@@ -215,9 +225,9 @@ dependencies = [
 [[package]]
 name = "bril2json"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115#2a2e3329a6721c86ceee768f6dfea5c17fb14115"
+source = "git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04#5652d6ac53d727c0901a53a0484e8241db887d04"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04)",
  "clap",
  "lalrpop",
  "lalrpop-util",
@@ -227,10 +237,10 @@ dependencies = [
 [[package]]
 name = "brilift"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115#2a2e3329a6721c86ceee768f6dfea5c17fb14115"
+source = "git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04#5652d6ac53d727c0901a53a0484e8241db887d04"
 dependencies = [
  "argh",
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04)",
  "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-jit",
@@ -244,15 +254,25 @@ dependencies = [
 [[package]]
 name = "brilirs"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115#2a2e3329a6721c86ceee768f6dfea5c17fb14115"
+source = "git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04#5652d6ac53d727c0901a53a0484e8241db887d04"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04)",
  "bril2json",
  "clap",
  "fxhash",
  "itoa",
  "mimalloc",
  "thiserror",
+]
+
+[[package]]
+name = "brillvm"
+version = "0.1.0"
+source = "git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04#5652d6ac53d727c0901a53a0484e8241db887d04"
+dependencies = [
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril)",
+ "clap",
+ "inkwell",
 ]
 
 [[package]]
@@ -510,7 +530,7 @@ dependencies = [
 name = "dag_in_context"
 version = "0.1.0"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/sampsyo/bril?rev=b20cc2d)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=7f9f22784ec2685ee416d68a441a48d10c7f54f8)",
  "dot-structures",
  "egglog",
  "egraph-serialize",
@@ -587,10 +607,11 @@ checksum = "675e35c02a51bb4d4618cb4885b3839ce6d1787c97b664474d9208d074742e20"
 name = "eggcc"
 version = "0.1.0"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04)",
  "bril2json",
  "brilift",
  "brilirs",
+ "brillvm",
  "clap",
  "dag_in_context",
  "dot-structures",
@@ -917,6 +938,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "inkwell"
+version = "0.4.0"
+source = "git+https://github.com/TheDan64/inkwell.git#6c0fb56b3554e939f9ca61b465043d6a84fb7b95"
+dependencies = [
+ "either",
+ "inkwell_internals",
+ "libc",
+ "llvm-sys",
+ "once_cell",
+ "thiserror",
+]
+
+[[package]]
+name = "inkwell_internals"
+version = "0.9.0"
+source = "git+https://github.com/TheDan64/inkwell.git#6c0fb56b3554e939f9ca61b465043d6a84fb7b95"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.58",
+]
+
+[[package]]
 name = "insta"
 version = "1.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1071,6 +1115,20 @@ name = "linux-raw-sys"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
+
+[[package]]
+name = "llvm-sys"
+version = "180.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "778fa5fa02e32728e718f11eec147e6f134137399ab02fd2c13d32476337affa"
+dependencies = [
+ "anyhow",
+ "cc",
+ "lazy_static",
+ "libc",
+ "regex-lite",
+ "semver",
+]
 
 [[package]]
 name = "lock_api"
@@ -1437,6 +1495,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-lite"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30b661b2f27137bdbc16f00eda72866a92bb28af1753ffbd56744fb6e2e9cd8e"
+
+[[package]]
 name = "regex-syntax"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1466,9 +1530,9 @@ dependencies = [
 [[package]]
 name = "rs2bril"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115#2a2e3329a6721c86ceee768f6dfea5c17fb14115"
+source = "git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04#5652d6ac53d727c0901a53a0484e8241db887d04"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=2a2e3329a6721c86ceee768f6dfea5c17fb14115)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=5652d6ac53d727c0901a53a0484e8241db887d04)",
  "clap",
  "proc-macro2",
  "syn 2.0.58",
@@ -1519,6 +1583,12 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
+name = "semver"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61697e0a1c7e512e84a621326239844a24d8207b4669b41bc18b32ea5cbf988b"
 
 [[package]]
 name = "serde"

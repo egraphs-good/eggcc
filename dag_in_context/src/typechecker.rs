@@ -177,6 +177,7 @@ impl<'a> TypeChecker<'a> {
                 let cty = match constant {
                     Constant::Int(_) => Type::Base(BaseType::IntT),
                     Constant::Bool(_) => Type::Base(BaseType::BoolT),
+                    Constant::Float(_) => Type::Base(BaseType::FloatT),
                 };
                 match ty {
                     Type::Unknown => {

@@ -487,8 +487,8 @@ impl Run {
                 self.optimize_bril_llvm.unwrap(),
             ) {
                 (false, false) => "-peep",
-                (true, false) => "-O3",
-                (false, true) => "-peep-eggcc",
+                (true, false) => "-peep-eggcc",
+                (false, true) => "-O3",
                 (true, true) => "-O3-eggcc",
             };
         }

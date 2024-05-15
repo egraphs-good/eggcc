@@ -1,14 +1,16 @@
 // copied from profile.py
 const treatments = [
   "rvsdg_roundtrip",
-  "egglog_noopt_brilift_noopt",
-  "egglog_noopt_brilift_opt",
-  "egglog_opt_brilift_noopt",
-  "egglog_opt_brilift_opt",
-  "egglog_noopt_llvm_noopt",
-  "egglog_noopt_llvm_opt",
-  "egglog_opt_llvm_noopt",
-  "egglog_opt_llvm_opt",
+
+  "cranelift-O0",
+  "cranelift-O0-eggcc",
+  "cranelift-O3",
+  "cranelift-O3-eggcc",
+
+  "llvm-peep",
+  "llvm-peep-eggcc",
+  "llvm-O3",
+  "llvm-O3-eggcc",
 ];
 
 const GLOBAL_DATA = {

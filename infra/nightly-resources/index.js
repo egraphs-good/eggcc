@@ -187,12 +187,17 @@ function diffAttribute(results, baseline, attribute) {
 }
 
 // baseline may be undefined
-function buildEntry(baseline, current) {
+function buildEntry(benchName, baseline, current) {
   const results = current.hyperfine.results[0];
   const baselineResults = baseline?.hyperfine.results[0];
 
+  var name = current.runMethod;
+  if (current.llvm_ir) {
+    name = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchName}&runmode=${current.runMethod}">${current.runMethod}</a>`;
+  }
+
   const result = {
-    name: current.runMethod,
+    name: name,
     mean: { class: "", value: tryRound(results.mean) },
     meanVsBaseline: diffAttribute(results, baselineResults, "mean"),
     min: { class: "", value: tryRound(results.min) },
@@ -203,10 +208,6 @@ function buildEntry(baseline, current) {
     medianVsBaseline: diffAttribute(results, baselineResults, "median"),
     stddev: { class: "", value: tryRound(results.stddev) },
   };
-
-  if (current.llvm) {
-    result.llvm = current.llvm;
-  }
 
   return result;
 }
@@ -235,6 +236,7 @@ function refreshView() {
         }
 
         return buildEntry(
+          benchName,
           baselineRunForMethod,
           GLOBAL_DATA.currentRun[benchName][runMode],
         );
@@ -273,14 +275,6 @@ function refreshView() {
       return 1;
     }
     return 0;
-  });
-
-  parsed.forEach((benchmark) => {
-    benchmark.executions.data.forEach((run) => {
-      if (run.llvm) {
-        run.name = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark.name}&runmode=${run.name}">${run.name}</a>`;
-      }
-    });
   });
 
   document.getElementById("profile").innerHTML = ConvertJsonToTable(parsed);

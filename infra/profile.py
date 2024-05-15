@@ -118,7 +118,7 @@ def aggregate():
         runMethod = file_path.split("/")[-1][:-len(".json")]
         result = {"runMethod": runMethod, "benchmark": name}
         if "llvm" in runMethod:
-          result["llvm"] = get_llvm(runMethod, name)
+          result["llvm_ir"] = get_llvm(runMethod, name)
         with open(file_path) as f:
             result["hyperfine"] = json.load(f)
         res.append(result)

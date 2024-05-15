@@ -365,6 +365,7 @@
        ;; argument has loop context
        (Arg ty (InLoop inputs outputs))
        ;; in the loop, the argument is passed through
+       ;; note that some_ctx is not the same as (InLoop inputs outputs)
        (= (Get (Arg ty some_ctx) ith) (Get outputs (+ 1 ith)))
        ;; input has some bound
        (= bound (lo-bound (Get inputs ith)))

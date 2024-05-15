@@ -27,7 +27,6 @@ pub(crate) struct EgraphInfo<'a> {
     pub(crate) cm: &'a dyn CostModel,
     /// Optionally, a loop with (inputs, outputs) can have an estimated number of iterations.
     /// This is found by looking at LoopNumItersGuess in the database.
-    #[allow(dead_code)]
     pub(crate) loop_iteration_estimates: HashMap<(RootId, RootId), i64>,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,

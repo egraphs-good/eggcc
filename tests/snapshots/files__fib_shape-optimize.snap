@@ -12,10 +12,7 @@ expression: visualization.result
   v7_: bool = lt v3_ v5_;
   br v7_ .v8_ .v9_;
 .v8_:
-<<<<<<< HEAD
-<<<<<<< HEAD
   v10_: int = add v3_ v4_;
-<<<<<<< HEAD
   v11_: int = id v10_;
   v12_: int = id v4_;
   v13_: int = id v5_;
@@ -24,30 +21,6 @@ expression: visualization.result
   v4_: int = id v12_;
   v5_: int = id v13_;
   br v7_ .v6_ .v15_;
-=======
-=======
-=======
->>>>>>> 68dd6525 (snapshots)
-<<<<<<< HEAD
-  v10_: int = add v4_ v3_;
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 72387c3b (snapshots)
-  v10_: int = add v3_ v4_;
->>>>>>> 0089cf68 (some snapshots)
->>>>>>> e87ec5b4 (some snapshots)
-  v11_: bool = const true;
-  v12_: int = id v10_;
-  v13_: bool = id v11_;
-  v14_: int = id v4_;
-  v15_: int = id v5_;
-.v16_:
-  v3_: int = id v12_;
-  v4_: int = id v4_;
-  v5_: int = id v5_;
-  br v7_ .v6_ .v17_;
->>>>>>> 9c49ef40 (some snapshots)
 .v9_:
   v11_: int = id v3_;
   v12_: int = id v4_;

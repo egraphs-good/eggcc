@@ -8,7 +8,7 @@ expression: visualization.result
   br v2_ .v3_ .v4_;
 .v3_:
   v5_: int = const 1;
-  v6_: int = add v5_ v0;
+  v6_: int = add v0 v5_;
   print v6_;
   v7_: int = call @inc v6_;
   v8_: int = id v7_;

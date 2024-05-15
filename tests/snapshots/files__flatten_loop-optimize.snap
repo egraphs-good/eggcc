@@ -26,7 +26,6 @@ expression: visualization.result
   v22_: int = mul v13_ v16_;
   v23_: int = add v15_ v22_;
   print v23_;
-<<<<<<< HEAD
   v24_: int = add v14_ v15_;
   v25_: int = id v13_;
   v26_: int = id v14_;
@@ -41,50 +40,18 @@ expression: visualization.result
   v17_: int = id v29_;
   br v19_ .v18_ .v31_;
 .v31_:
-  v32_: int = add v13_ v14_;
+  v32_: int = add v4_ v5_;
   v33_: int = id v32_;
-  v34_: int = id v14_;
-  v35_: int = id v16_;
-  v36_: int = id v17_;
+  v34_: int = id v5_;
+  v35_: int = id v6_;
+  v36_: int = id v7_;
 .v37_:
   v4_: int = id v33_;
   v5_: int = id v34_;
   v6_: int = id v35_;
   v7_: int = id v36_;
   br v9_ .v8_ .v38_;
-=======
-  v24_: bool = const true;
-  v25_: int = add v14_ v15_;
-  v26_: int = id v13_;
-  v27_: int = id v14_;
-  v28_: bool = id v24_;
-  v29_: int = id v25_;
-  v30_: int = id v16_;
-  v31_: int = id v17_;
-.v32_:
-  v13_: int = id v13_;
-  v14_: int = id v14_;
-  v15_: int = id v29_;
-  v16_: int = id v16_;
-  v17_: int = id v17_;
-  br v19_ .v18_ .v33_;
-.v33_:
-  v34_: int = add v4_ v5_;
-  v35_: bool = const true;
-  v36_: int = id v34_;
-  v37_: bool = id v35_;
-  v38_: int = id v5_;
-  v39_: int = id v6_;
-  v40_: int = id v7_;
-.v41_:
-  v4_: int = id v36_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  v7_: int = id v7_;
-  br v9_ .v8_ .v42_;
->>>>>>> 851a26f2 (snapshots)
 .v21_:
-<<<<<<< HEAD
   v25_: int = id v13_;
   v26_: int = id v14_;
   v27_: int = id v15_;
@@ -98,35 +65,5 @@ expression: visualization.result
   v36_: int = id v7_;
   jmp .v37_;
 .v38_:
-=======
-  v43_: bool = const false;
-  v26_: int = id v13_;
-  v27_: int = id v14_;
-  v28_: bool = id v43_;
-  v29_: int = id v15_;
-  v30_: int = id v16_;
-  v31_: int = id v17_;
-  jmp .v32_;
-.v11_:
-<<<<<<< HEAD
-  v55_: bool = const false;
-  v47_: int = id v4_;
-  v48_: bool = id v55_;
-  v49_: int = id v5_;
-  v50_: int = id v6_;
-  v51_: int = id v7_;
-  jmp .v52_;
-.v53_:
->>>>>>> 9c49ef40 (some snapshots)
-=======
-  v44_: bool = const false;
-  v36_: int = id v4_;
-  v37_: bool = id v44_;
-  v38_: int = id v5_;
-  v39_: int = id v6_;
-  v40_: int = id v7_;
-  jmp .v41_;
-.v42_:
->>>>>>> 851a26f2 (snapshots)
   print v4_;
 }

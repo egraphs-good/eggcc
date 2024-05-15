@@ -61,11 +61,7 @@ expression: visualization.result
   jmp .v23_;
 .v31_:
   v42_: bool = const true;
-<<<<<<< HEAD
   v43_: int = mul v6_ v9_;
-=======
-  v43_: int = mul v9_ v6_;
->>>>>>> 68dd6525 (snapshots)
   v44_: int = add v43_ v8_;
   v34_: int = id v29_;
   v35_: bool = id v42_;

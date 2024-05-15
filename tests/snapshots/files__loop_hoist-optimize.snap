@@ -11,21 +11,10 @@ expression: visualization.result
   v5_: int = id v1_;
   v6_: int = id v2_;
   v7_: int = id v3_;
-<<<<<<< HEAD
-  v8_: int = id v0_;
-.v9_:
-  print v8_;
-<<<<<<< HEAD
-  v10_: int = add v4_ v8_;
-=======
-  v10_: int = add v8_ v4_;
-=======
 .v8_:
   v9_: int = const 1;
   print v9_;
   v10_: int = add v4_ v9_;
->>>>>>> 498e7d61 (snapshots)
->>>>>>> 68dd6525 (snapshots)
   v11_: bool = lt v10_ v5_;
   v12_: bool = not v11_;
   v4_: int = id v10_;

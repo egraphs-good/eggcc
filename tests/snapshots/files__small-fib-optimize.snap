@@ -44,7 +44,6 @@ expression: visualization.result
 .v13_:
   v15_: int = add v8_ v9_;
   print v15_;
-<<<<<<< HEAD
   v16_: int = const 1;
   v17_: int = add v16_ v7_;
   v18_: int = id v17_;
@@ -68,49 +67,6 @@ expression: visualization.result
 =======
   v21_: int = id v10_;
   jmp .v22_;
-=======
-  v16_: bool = const true;
-  v17_: int = const 1;
-  v18_: int = add v17_ v7_;
-  v19_: bool = id v16_;
-  v20_: int = id v18_;
-  v21_: int = id v15_;
-  v22_: int = id v8_;
-  v23_: int = id v10_;
-.v24_:
-  v7_: int = id v20_;
-  v8_: int = id v21_;
-  v9_: int = id v22_;
-  v10_: int = id v10_;
-  br v12_ .v11_ .v25_;
-.v25_:
-  jmp .v6_;
-<<<<<<< HEAD
-.v18_:
-  v35_: bool = const false;
-  v23_: bool = id v35_;
-  v24_: int = id v11_;
-  v25_: int = id v12_;
-  v26_: int = id v13_;
-  v27_: int = id v14_;
-  jmp .v28_;
-.v10_:
-  v30_: int = id v8_;
-  v31_: int = id v8_;
-  v32_: int = id v3_;
-  v33_: int = id v0;
-  jmp .v34_;
->>>>>>> 9c49ef40 (some snapshots)
-=======
-.v14_:
-  v26_: bool = const false;
-  v19_: bool = id v26_;
-  v20_: int = id v7_;
-  v21_: int = id v8_;
-  v22_: int = id v9_;
-  v23_: int = id v10_;
-  jmp .v24_;
->>>>>>> 851a26f2 (snapshots)
 .v6_:
 >>>>>>> 4488cb7f (some snapshots)
 }

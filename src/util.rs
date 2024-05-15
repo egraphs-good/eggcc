@@ -942,6 +942,8 @@ impl Run {
                 Command::new("clang-18")
                     .arg(file_path.clone())
                     .arg("-O3")
+                    .arg("-fno-vectorize")
+                    .arg("-fno-slp-vectorize")
                     .arg("-o")
                     .arg(executable.clone()),
                 "failed to compile llvm ir",
@@ -954,6 +956,8 @@ impl Run {
                         .current_dir(output_dir)
                         .arg(file_path.clone())
                         .arg("-O3")
+                        .arg("-fno-vectorize")
+                        .arg("-fno-slp-vectorize")
                         .arg("-emit-llvm")
                         .arg("-S")
                         .arg("-o")

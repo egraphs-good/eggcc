@@ -81,7 +81,7 @@ def bench(benchmark):
     args = f.read().rstrip()
 
     # check that we have a file for the benchmark
-    if not os.path.isfile(f'{profile_dir}/{name}'):
+    if not os.path.isfile(f'{profile_dir}/{benchmark.treatment}'):
       # TODO add an error to the errors file
       #with open('nightly/data/errors.txt', 'a') as f:
         #f.write(f'ERROR: No executable found for {name} in {benchmark.path}\n')

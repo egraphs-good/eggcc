@@ -4,10 +4,10 @@ const COLORS = {
   egglog_noopt_brilift_opt: "yellow",
   egglog_opt_brilift_noopt: "green",
   egglog_opt_brilift_opt: "blue",
-  egglog_noopt_bril_llvm_noopt: "purple",
-  egglog_noopt_bril_llvm_opt: "pink",
-  egglog_opt_bril_llvm_noopt: "gray",
-  egglog_opt_bril_llvm_opt: "brown",
+  egglog_noopt_llvm_noopt: "purple",
+  egglog_noopt_llvm_opt: "pink",
+  egglog_opt_llvm_noopt: "gray",
+  egglog_opt_llvm_opt: "brown",
 };
 
 function parseDataForChart() {

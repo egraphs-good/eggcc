@@ -1,14 +1,14 @@
 // copied from profile.py
-const allModes = [
+const treatments = [
   "rvsdg_roundtrip",
   "egglog_noopt_brilift_noopt",
   "egglog_noopt_brilift_opt",
   "egglog_opt_brilift_noopt",
   "egglog_opt_brilift_opt",
-  "egglog_noopt_bril_llvm_noopt",
-  "egglog_noopt_bril_llvm_opt",
-  "egglog_opt_bril_llvm_noopt",
-  "egglog_opt_bril_llvm_opt",
+  "egglog_noopt_llvm_noopt",
+  "egglog_noopt_llvm_opt",
+  "egglog_opt_llvm_noopt",
+  "egglog_opt_llvm_opt",
 ];
 
 const GLOBAL_DATA = {
@@ -318,7 +318,7 @@ function makeCheckbox(parent, mode) {
 }
 
 function makeSelectors() {
-  allModes.forEach((mode) => {
+  treatments.forEach((mode) => {
     const checkbox = makeCheckbox(
       document.getElementById("modeCheckboxes"),
       mode,

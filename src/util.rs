@@ -492,6 +492,7 @@ impl Run {
                 (true, true) => "-opt_both",
             };
         }
+
         name
     }
 

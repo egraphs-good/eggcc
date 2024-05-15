@@ -12,8 +12,9 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
 
     let mut mk_trial = |run: Run, snapshot: bool| {
         let snapshot_configurations: HashSet<RunType> = [RunType::Optimize].into_iter().collect();
+        let test_name = run.name() + if snapshot { "_snapshot" } else { "" };
 
-        trials.push(Trial::test(run.name(), move || {
+        trials.push(Trial::test(test_name, move || {
             let result = match run.run() {
                 Err(error) => {
                     panic!("{}", error);

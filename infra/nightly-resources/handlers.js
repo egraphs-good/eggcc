@@ -31,7 +31,7 @@ async function load_llvm() {
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");
   }
-  const llvm = GLOBAL_DATA.currentRun[benchmark][runMode].llvm;
+  const llvm = GLOBAL_DATA.currentRun[benchmark][runMode].llvm_ir;
   if (!llvm) {
     console.error("missing llvm, this probably shouldn't happen");
   }

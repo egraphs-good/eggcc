@@ -196,8 +196,8 @@ pub enum RunType {
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
     /// Converts to an executable using brilift
-    CompileBrilift,
-    CompileBrilLLVM,
+    Cranelift,
+    LLVM,
     /// Tests a benchmark by running several different configurations of CompileBrilLLVM
     /// and comparing the results.
     /// The different configurations are with and without egglog optimization, and with and without
@@ -225,8 +225,8 @@ impl RunType {
             | RunType::OptimizeDirectJumps
             | RunType::DagConversion
             | RunType::DagOptimize
-            | RunType::CompileBrilift
-            | RunType::CompileBrilLLVM => true,
+            | RunType::Cranelift
+            | RunType::LLVM => true,
             RunType::RvsdgConversion
             | RunType::RvsdgToCfg
             | RunType::Egglog
@@ -369,7 +369,7 @@ impl Run {
         interp: InterpMode,
     ) -> Run {
         Run {
-            test_type: RunType::CompileBrilift,
+            test_type: RunType::Cranelift,
             interp,
             prog_with_args: test.read_program(),
             profile_out: None,
@@ -450,7 +450,7 @@ impl Run {
             for optimize_egglog in [true, false] {
                 for optimize_bril_llvm in [true, false] {
                     res.push(Run {
-                        test_type: RunType::CompileBrilLLVM,
+                        test_type: RunType::LLVM,
                         interp: InterpMode::Interp,
                         prog_with_args: prog.clone(),
                         profile_out: None,
@@ -470,26 +470,26 @@ impl Run {
     // give a unique name for this run configuration
     pub fn name(&self) -> String {
         let mut name = format!("{}-{}", self.prog_with_args.name, self.test_type);
-        if self.test_type == RunType::CompileBrilift {
+        if self.test_type == RunType::Cranelift {
             name += match (
                 self.optimize_egglog.unwrap(),
                 self.optimize_brilift.unwrap(),
             ) {
-                (false, false) => "-opt_none",
-                (true, false) => "-opt_egglog",
-                (false, true) => "-opt_brilift",
-                (true, true) => "-opt_both",
+                (false, false) => "-O0",
+                (true, false) => "-O0-eggcc",
+                (false, true) => "-O3",
+                (true, true) => "-O3-eggcc",
             };
         }
-        if self.test_type == RunType::CompileBrilLLVM {
+        if self.test_type == RunType::LLVM {
             name += match (
                 self.optimize_egglog.unwrap(),
                 self.optimize_bril_llvm.unwrap(),
             ) {
-                (false, false) => "-opt_none",
-                (true, false) => "-opt_egglog",
-                (false, true) => "-opt_brillvm",
-                (true, true) => "-opt_both",
+                (false, false) => "-peep",
+                (true, false) => "-peep-eggcc",
+                (false, true) => "-O3",
+                (true, true) => "-O3-eggcc",
             };
         }
         name
@@ -710,7 +710,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::CompileBrilift => {
+            RunType::Cranelift => {
                 let optimize_egglog = self.optimize_egglog.expect(
                     "optimize_egglog is a required flag when running RunMode::CompileBrilift",
                 );
@@ -724,7 +724,7 @@ impl Run {
                 )?;
                 (vec![], interpretable)
             }
-            RunType::CompileBrilLLVM => {
+            RunType::LLVM => {
                 let optimize_egglog = self.optimize_egglog.expect(
                     "optimize_egglog is a required flag when running RunMode::CompipleBrilLLVM",
                 );
@@ -750,7 +750,7 @@ impl Run {
 
                     for optimize_llvm in [true, false] {
                         let test_run_mode = Run {
-                            test_type: RunType::CompileBrilLLVM,
+                            test_type: RunType::LLVM,
                             interp: InterpMode::None,
                             prog_with_args: ProgWithArguments {
                                 program: resulting_bril.clone(),
@@ -921,13 +921,7 @@ impl Run {
             interpreter: false,
         });
 
-        let name = format!(
-            "{}_egglog_{}opt",
-            self.prog_with_args.name,
-            if optimize_egglog { "" } else { "no" }
-        );
-
-        let init_ll_name = format!("{}-init.ll", name);
+        let init_ll_name = format!("{}-init.ll", unique_name);
         let file_path = dir.path().join(init_ll_name.clone());
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
@@ -968,7 +962,7 @@ impl Run {
                         .arg("-emit-llvm")
                         .arg("-S")
                         .arg("-o")
-                        .arg(format!("{}_llvm_opt.ll", name)),
+                        .arg(format!("{}.ll", unique_name)),
                     "failed to compile llvm ir and emit llvm ir",
                 );
             }
@@ -1013,7 +1007,7 @@ impl Run {
                         .arg("-emit-llvm")
                         .arg("-S")
                         .arg("-o")
-                        .arg(format!("{}_llvm_noopt.ll", name)),
+                        .arg(format!("{}.ll", unique_name)),
                     "failed to copy unoptimized llvm ir",
                 );
             }

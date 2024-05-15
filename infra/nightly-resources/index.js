@@ -293,7 +293,7 @@ function renderWarnings() {
 
   const warningContainer = document.getElementById("warnings");
   warningContainer.innerHTML = "";
-  Array.from(GLOBAL_DATA.warnings).forEach((warning) => {
+  GLOBAL_DATA.warnings.forEach((warning) => {
     const warningElement = document.createElement("p");
     warningElement.innerText = warning;
     warningContainer.appendChild(warningElement);

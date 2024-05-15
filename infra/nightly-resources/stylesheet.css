@@ -14,11 +14,6 @@ body {
   color: red;
 }
 
-#errors {
-  color: red;
-  font-size: 25px;
-}
-
 .collapsible {
   background-color: #777;
   color: white;

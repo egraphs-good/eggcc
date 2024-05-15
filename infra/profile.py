@@ -81,10 +81,11 @@ def bench(benchmark):
     args = f.read().rstrip()
 
     # check that we have a file for the benchmark
-    if not os.path.isfile(f'{profile_dir}/{benchmark.treatment}'):
-      # add an error to the errors file
-      with open('nightly/data/errors.txt', 'a') as f:
-        f.write(f'ERROR: No executable found for {benchmark.treatment} in {benchmark.path}\n')
+    if not os.path.isfile(f'{profile_dir}/{name}'):
+      # TODO add an error to the errors file
+      #with open('nightly/data/errors.txt', 'a') as f:
+        #f.write(f'ERROR: No executable found for {name} in {benchmark.path}\n')
+      pass
     else:
       # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
       subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{benchmark.treatment}.json "{profile_dir}/{benchmark.treatment} {args}"', shell=True)
@@ -126,17 +127,6 @@ if __name__ == '__main__':
   if len(os.sys.argv) != 2:
     print("Usage: profile.py <bril_directory>")
     exit(1)
-
-  # delete the errors file if it exists
-  try:
-    os.remove('nightly/data/errors.txt')
-  except FileNotFoundError:
-    pass
-  
-  # make errors file
-  with open('nightly/data/errors.txt', 'w') as f:
-    f.write('')
-
 
   arg = os.sys.argv[1]
   profiles = []

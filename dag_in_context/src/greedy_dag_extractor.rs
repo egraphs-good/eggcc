@@ -1182,12 +1182,15 @@ fn test_dag_extract() {
         )
     );
     let cost_model = DefaultCostModel;
+    let cost_inside_loop = cost_model.get_op_cost("LessThan")
+    // while the same const is used several times, it is only counted twice
+    + cost_model.get_op_cost("Const")
+    + cost_model.get_op_cost("Add");
 
-    let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
-        + cost_model.get_op_cost("DoWhile")
-        + cost_model.get_op_cost("LessThan")
-        // while the same const is used several times, it is only counted twice
-        + cost_model.get_op_cost("Const") * 2.;
+    let cost_of_one_func = cost_model.get_op_cost("DoWhile")
+        + NotNan::new(1000.).unwrap() * cost_inside_loop
+        + cost_model.get_op_cost("Const")
+        + cost_model.get_op_cost("Add");
     // two of the same function
     let expected_cost = cost_of_one_func * 2.;
     dag_extraction_test(&prog, expected_cost);

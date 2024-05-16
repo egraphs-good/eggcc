@@ -200,8 +200,7 @@ impl SimpleCfgFunction {
 
     fn get_parent_skipping_empty(&self, parent_block: NodeIndex) -> NodeIndex {
         if let Some((source_edge, _)) = self.get_single_in_single_out(parent_block) {
-            let source = self.graph.edge_endpoints(source_edge).unwrap().0;
-            source
+            self.graph.edge_endpoints(source_edge).unwrap().0
         } else {
             parent_block
         }

@@ -3,7 +3,12 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
+<<<<<<< HEAD
   v1_: int = const 2;
+=======
+<<<<<<< HEAD
+  v1_: int = const 1;
+>>>>>>> 71264d0b (working without collapse empty blocks)
   v2_: int = id v1_;
   v3_: int = id v0;
 .v4_:
@@ -16,4 +21,20 @@ expression: visualization.result
 .v8_:
   v9_: int = add v0 v2_;
   print v9_;
+=======
+.v1_:
+  v2_: int = const 2;
+  v3_: int = id v2_;
+  v4_: int = id v0;
+.v5_:
+  v6_: int = add v3_ v3_;
+  v7_: int = const 10;
+  v8_: bool = lt v3_ v7_;
+  v3_: int = id v6_;
+  v4_: int = id v4_;
+  br v8_ .v5_ .v9_;
+.v9_:
+  v10_: int = add v0 v3_;
+  print v10_;
+>>>>>>> 9c411b53 (working without collapse empty blocks)
 }

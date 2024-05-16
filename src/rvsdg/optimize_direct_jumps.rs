@@ -4,6 +4,7 @@
 //! This is used by `to_cfg` to clean up
 //! the output.
 
+use bril_rs::{Instruction, ValueOps};
 use hashbrown::HashMap;
 use petgraph::{
     stable_graph::{EdgeIndex, NodeIndex, StableDiGraph, StableGraph},
@@ -18,7 +19,7 @@ use crate::Optimizer;
 
 impl SimpleCfgFunction {
     pub fn optimize_jumps(&self) -> Self {
-        self.single_in_single_out().collapse_empty_blocks()
+        self.single_in_single_out() //.collapse_empty_blocks()
     }
 
     fn single_in_single_out(&self) -> SimpleCfgFunction {
@@ -88,6 +89,28 @@ impl SimpleCfgFunction {
             resulting_graph.add_edge(source, target, edge.weight().clone());
         }
 
+        let mut label_mapping = HashMap::<String, String>::new();
+        for (old, new) in node_mapping.iter() {
+            assert!(
+                label_mapping
+                    .insert(
+                        self.graph[*old].name.to_string(),
+                        resulting_graph[*new].name.to_string(),
+                    )
+                    .is_none(),
+                "Duplicate labels in graph"
+            );
+        }
+
+        // now fix up all Phi instructions based on the node mapping
+        for node in resulting_graph.node_indices().collect::<Vec<_>>() {
+            let mut instrs = resulting_graph[node].instrs.clone();
+            for instr in instrs.iter_mut() {
+                Self::fixup_phis(instr, &label_mapping);
+            }
+            resulting_graph[node].instrs = instrs;
+        }
+
         SimpleCfgFunction {
             name: self.name.clone(),
             args: self.args.clone(),
@@ -96,6 +119,21 @@ impl SimpleCfgFunction {
             exit: node_mapping[&self.exit],
             _phantom: Simple,
             return_ty: self.return_ty.clone(),
+        }
+    }
+
+    fn fixup_phis(instr: &mut Instruction, label_mapping: &HashMap<String, String>) {
+        if let Instruction::Value {
+            op: ValueOps::Phi,
+            ref mut labels,
+            ..
+        } = instr
+        {
+            labels.iter_mut().for_each(|node| {
+                if let Some(label) = label_mapping.get(node) {
+                    *node = label.to_string();
+                }
+            });
         }
     }
 
@@ -139,6 +177,17 @@ impl SimpleCfgFunction {
 
                 self.graph.remove_edge(source_edge);
                 self.graph.add_edge(source, target, weight);
+
+                // now need to fix up phi instructions
+                let node_mapping = [(
+                    self.graph[empty].name.to_string(),
+                    self.graph[source].name.to_string(),
+                )]
+                .into_iter()
+                .collect();
+                for instr in self.graph[target].instrs.iter_mut() {
+                    Self::fixup_phis(instr, &node_mapping);
+                }
             }
         }
 

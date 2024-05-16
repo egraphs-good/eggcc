@@ -3,39 +3,31 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v1_: int = const 2;
-  v2_: bool = lt v0 v1_;
-  v3_: bool = not v2_;
-  v4_: int = const 0;
-  v5_: int = const 1;
-  v6_: int = const 5;
-  br v2_ .v7_ .v8_;
-.v7_:
-  v9_: int = const 4;
-  v10_: bool = const false;
-  v11_: int = id v9_;
-  v12_: int = id v5_;
-  v13_: int = id v1_;
-  v14_: bool = id v10_;
-.v15_:
-  br v3_ .v16_ .v17_;
-.v16_:
-  v18_: int = add v11_ v1_;
-  v19_: int = id v18_;
-  v20_: int = id v5_;
-  jmp .v21_;
-.v17_:
-  v19_: int = id v11_;
-  v20_: int = id v5_;
-  jmp .v21_;
+.v1_:
+  v2_: int = const 2;
+  v3_: bool = lt v0 v2_;
+  v4_: bool = not v3_;
+  v5_: int = const 0;
+  v6_: int = const 1;
+  v7_: int = const 5;
+  br v3_ .v8_ .v9_;
 .v8_:
-  v22_: bool = const true;
-  v11_: int = id v5_;
-  v12_: int = id v5_;
-  v13_: int = id v1_;
-  v14_: bool = id v22_;
-  jmp .v15_;
-.v21_:
-  v23_: int = add v19_ v5_;
-  print v23_;
+  v10_: int = const 4;
+  v11_: bool = const false;
+.v12_:
+  v13_: int = phi v6_ v10_ .v9_ .v8_;
+  v15_: bool = phi v14_ v11_ .v9_ .v8_;
+  br v4_ .v16_ .v17_;
+.v16_:
+  v18_: int = add v13_ v2_;
+  jmp .v19_;
+.v17_:
+  jmp .v19_;
+.v9_:
+  v14_: bool = const true;
+  jmp .v12_;
+.v19_:
+  v20_: int = phi v13_ v18_ .v17_ .v16_;
+  v21_: int = add v20_ v6_;
+  print v21_;
 }

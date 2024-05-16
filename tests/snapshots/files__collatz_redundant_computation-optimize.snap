@@ -3,16 +3,17 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v1_: int = const 1;
-  v2_: int = const 3;
-  v3_: int = const 2;
-  v4_: int = const 0;
-  v5_: int = id v0;
+.v1_:
+  v2_: int = const 1;
+  v3_: int = const 3;
+  v4_: int = const 2;
+  v5_: int = const 0;
   v6_: int = id v0;
-  v7_: int = id v1_;
+  v7_: int = id v0;
   v8_: int = id v2_;
   v9_: int = id v3_;
   v10_: int = id v4_;
+<<<<<<< HEAD
 .v11_:
   v12_: bool = eq v6_ v7_;
   br v12_ .v13_ .v14_;
@@ -73,4 +74,43 @@ expression: visualization.result
   jmp .v42_;
 .v25_:
   print v0;
+=======
+  v11_: int = id v5_;
+.v12_:
+  v13_: bool = eq v7_ v8_;
+  br v13_ .v14_ .v15_;
+.v14_:
+  v16_: bool = const false;
+.v17_:
+  v19_: bool = phi v18_ v16_ .v20_ .v14_;
+  v22_: int = phi v21_ v7_ .v20_ .v14_;
+  v6_: int = id v6_;
+  v7_: int = id v22_;
+  v8_: int = id v8_;
+  v9_: int = id v9_;
+  v10_: int = id v10_;
+  v11_: int = id v11_;
+  br v19_ .v12_ .v23_;
+.v15_:
+  v24_: int = div v7_ v10_;
+  v25_: int = mul v10_ v24_;
+  v26_: int = sub v7_ v25_;
+  v27_: bool = eq v11_ v26_;
+  print v7_;
+  v28_: int = mul v7_ v9_;
+  v29_: int = add v28_ v8_;
+  br v27_ .v30_ .v31_;
+.v30_:
+  v32_: bool = const true;
+.v20_:
+  v34_: bool = phi v33_ v32_ .v31_ .v30_;
+  v21_: int = phi v29_ v24_ .v31_ .v30_;
+  v18_: bool = const true;
+  jmp .v17_;
+.v31_:
+  v33_: bool = const true;
+  jmp .v20_;
+.v23_:
+  print v6_;
+>>>>>>> 71264d0b (working without collapse empty blocks)
 }

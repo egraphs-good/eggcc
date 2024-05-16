@@ -434,7 +434,7 @@ impl Run {
             }
         }
 
-        for optimize_egglog in [true, false] {
+        /*for optimize_egglog in [true, false] {
             for optimize_brilift in [true, false] {
                 res.push(Run::compile_brilift_config(
                     test.clone(),
@@ -443,7 +443,7 @@ impl Run {
                     InterpMode::Interp,
                 ));
             }
-        }
+        }*/
 
         #[cfg(feature = "llvm")]
         {

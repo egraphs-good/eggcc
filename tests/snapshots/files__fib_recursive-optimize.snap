@@ -3,35 +3,42 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @fac(v0: int): int {
-  v1_: int = const 0;
-  v2_: bool = eq v0 v1_;
-  v3_: int = const 1;
-  br v2_ .v4_ .v5_;
-.v4_:
-  v6_: int = id v3_;
-  jmp .v7_;
+.v1_:
+  v2_: int = const 0;
+  v3_: bool = eq v0 v2_;
+  v4_: int = const 1;
+  br v3_ .v5_ .v6_;
 .v5_:
-  v8_: bool = eq v0 v3_;
+  jmp .v7_;
+.v6_:
+  v8_: bool = eq v0 v4_;
   br v8_ .v9_ .v10_;
 .v9_:
+<<<<<<< HEAD
   v11_: int = call @fac v1_;
   v12_: int = id v3_;
 .v13_:
   v6_: int = id v12_;
+=======
+  v11_: int = call @fac v2_;
+.v12_:
+  v14_: int = phi v13_ v0 .v10_ .v9_;
+>>>>>>> 9c411b53 (working without collapse empty blocks)
   jmp .v7_;
 .v10_:
-  v14_: int = sub v0 v3_;
-  v15_: int = sub v14_ v3_;
-  v16_: int = call @fac v14_;
+  v15_: int = sub v0 v4_;
+  v16_: int = sub v15_ v4_;
   v17_: int = call @fac v15_;
-  v18_: int = add v16_ v17_;
-  v12_: int = id v18_;
-  jmp .v13_;
+  v18_: int = call @fac v16_;
+  v13_: int = add v17_ v18_;
+  jmp .v12_;
 .v7_:
-  ret v6_;
+  v19_: int = phi v14_ v4_ .v12_ .v5_;
+  ret v19_;
 }
 @main {
-  v0_: int = const 2;
-  v1_: int = call @fac v0_;
-  print v1_;
+.v0_:
+  v1_: int = const 2;
+  v2_: int = call @fac v1_;
+  print v2_;
 }

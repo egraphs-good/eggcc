@@ -14,16 +14,9 @@ expression: visualization.result
   v8_: bool = eq v0 v4_;
   br v8_ .v9_ .v10_;
 .v9_:
-<<<<<<< HEAD
-  v11_: int = call @fac v1_;
-  v12_: int = id v3_;
-.v13_:
-  v6_: int = id v12_;
-=======
   v11_: int = call @fac v2_;
 .v12_:
-  v14_: int = phi v13_ v0 .v10_ .v9_;
->>>>>>> 9c411b53 (working without collapse empty blocks)
+  v14_: int = phi v13_ v4_ .v10_ .v9_;
   jmp .v7_;
 .v10_:
   v15_: int = sub v0 v4_;

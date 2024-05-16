@@ -4,6 +4,7 @@ expression: visualization.result
 ---
 @main(v0: int, v1: int) {
 <<<<<<< HEAD
+<<<<<<< HEAD
   v2_: int = const 1;
   v3_: int = const 4;
   v4_: int = add v1 v3_;
@@ -23,14 +24,15 @@ expression: visualization.result
 >>>>>>> 71264d0b (working without collapse empty blocks)
   print v8_;
 =======
+=======
+>>>>>>> 485da000 (snapshots)
 .v2_:
-  v3_: int = const 4;
-  v4_: int = add v1 v3_;
-  v5_: int = const 3;
-  v6_: int = add v0 v5_;
+  v3_: int = const 3;
+  v4_: int = add v0 v3_;
+  v5_: int = const 4;
+  v6_: int = add v1 v5_;
   v7_: int = add v4_ v6_;
   v8_: int = const 1;
   v9_: int = add v7_ v8_;
   print v9_;
->>>>>>> 9c411b53 (working without collapse empty blocks)
 }

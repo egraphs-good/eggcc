@@ -29,7 +29,7 @@ brilift = { git = "https://github.com/uwplse/bril", rev = "78881c45aa53231915f33
 rs2bril = { git = "https://github.com/uwplse/bril", rev = "78881c45aa53231915f333d1d6dcc26cedc63b57" ,features = [
   "import",
 ] }
-brillvm = { git = "https://github.com/uwplse/bril", rev = "5652d6ac53d727c0901a53a0484e8241db887d04" }
+brillvm = { git = "https://github.com/uwplse/bril", rev = "78881c45aa53231915f333d1d6dcc26cedc63b57" }
 
 
 ordered-float = { version = "3.7" }

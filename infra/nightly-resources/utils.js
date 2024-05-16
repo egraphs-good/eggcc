@@ -15,7 +15,7 @@ function tryRound(v, precision) {
 // Outputs current_number - baseline_number in a human-readable format
 // If baseline_number is undefined, it will return N/A
 function getDifference(current, baseline) {
-  const THRESHOLD = .01;
+  const THRESHOLD = 0.01;
   // if b is undefined, return a
   if (baseline === undefined) {
     return { class: "", value: "N/A" };

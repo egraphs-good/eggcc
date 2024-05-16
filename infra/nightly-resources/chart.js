@@ -11,11 +11,15 @@ const COLORS = {
 };
 
 function getDataForBenchmarkRunMode(benchmark, runMode) {
-  const entries = GLOBAL_DATA.currentRun.filter(entry => entry.benchmark === benchmark && entry.runMethod === runMode);
+  const entries = GLOBAL_DATA.currentRun.filter(
+    (entry) => entry.benchmark === benchmark && entry.runMethod === runMode,
+  );
   if (entries.length === 0) {
     console.warn(`no data for ${benchmark} ${runMode}`);
   } else if (entries.length > 1) {
-    throw new Error(`duplicate entries for ${benchmark} ${runMode} (this probably shouldn't happen)`)
+    throw new Error(
+      `duplicate entries for ${benchmark} ${runMode} (this probably shouldn't happen)`,
+    );
   } else {
     return entries[0];
   }

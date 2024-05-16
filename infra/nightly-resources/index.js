@@ -36,10 +36,13 @@ function refreshView() {
   }
 
   const byBench = {};
-  Array.from(GLOBAL_DATA.enabledBenchmarks).forEach(benchmark => {
-    byBench[benchmark] = getDataForBenchmark(benchmark)
+  Array.from(GLOBAL_DATA.enabledBenchmarks).forEach((benchmark) => {
+    byBench[benchmark] = getDataForBenchmark(benchmark);
   });
-  const tableData = Object.keys(byBench).map(bench => ({name: bench, executions: {data: byBench[bench]}}));
+  const tableData = Object.keys(byBench).map((bench) => ({
+    name: bench,
+    executions: { data: byBench[bench] },
+  }));
   tableData.sort((l, r) => l.name - r.name);
 
   document.getElementById("profile").innerHTML = ConvertJsonToTable(tableData);
@@ -89,7 +92,9 @@ function makeSelectors() {
     checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.enabledModes);
   });
 
-  const benchmarks = Array.from(new Set(GLOBAL_DATA.currentRun.map(o => o.benchmark))).sort();
+  const benchmarks = Array.from(
+    new Set(GLOBAL_DATA.currentRun.map((o) => o.benchmark)),
+  ).sort();
   benchmarks.forEach((benchmark) => {
     const checkbox = makeCheckbox(
       document.getElementById("benchmarkCheckboxes"),

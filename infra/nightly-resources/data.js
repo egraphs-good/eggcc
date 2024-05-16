@@ -5,15 +5,18 @@ async function fetchDataJson(url) {
 }
 
 function getBaselineHyperfine(benchmark, runMethod) {
-  const baselineData = GLOBAL_DATA.baselineRun?.filter(o => o.benchmark === benchmark) || [];
+  const baselineData =
+    GLOBAL_DATA.baselineRun?.filter((o) => o.benchmark === benchmark) || [];
   if (baselineData.length === 0) {
     addWarning(`Baseline doesn't have ${benchmark} benchmark`);
   } else {
-    const baseline = baselineData.filter(o => o.runMethod === runMethod);
+    const baseline = baselineData.filter((o) => o.runMethod === runMethod);
     if (baseline.length === 0) {
       addWarning(`No baseline data for ${benchmark} ${runMethod}`);
     } else if (baseline.length !== 1) {
-      throw new Error(`Baseline had multiple entries for ${benchmark} ${runMethod}`);
+      throw new Error(
+        `Baseline had multiple entries for ${benchmark} ${runMethod}`,
+      );
     } else {
       return baseline[0].hyperfine.results[0];
     }
@@ -21,27 +24,29 @@ function getBaselineHyperfine(benchmark, runMethod) {
 }
 
 function getDataForBenchmark(benchmark) {
-  const executions = GLOBAL_DATA.currentRun?.filter(o => o.benchmark === benchmark).map(o => {
-    const baselineHyperfine = getBaselineHyperfine(o.benchmark, o.runMethod);
-    const hyperfine = o.hyperfine.results[0];
-    const rowData = {
-      runMethod: o.runMethod,
-      mean: {class: "", value: tryRound(hyperfine.mean)},
-      meanVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "mean"),
-      min: {class: "", value: tryRound(hyperfine.min)},
-      minVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "min"),
-      max: {class: "", value: tryRound(hyperfine.max)},
-      maxVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "max"),
-      median: {class: "", value: tryRound(hyperfine.median)},
-      medianVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "median"),
-      stddev: {class: "", value: tryRound(hyperfine.stddev)},
-    }
-    if (o.llvm_ir) {
-      rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${o.runMethod}">${o.runMethod}</a>`;
-    }
-    return rowData;
-  });
-  
+  const executions = GLOBAL_DATA.currentRun
+    ?.filter((o) => o.benchmark === benchmark)
+    .map((o) => {
+      const baselineHyperfine = getBaselineHyperfine(o.benchmark, o.runMethod);
+      const hyperfine = o.hyperfine.results[0];
+      const rowData = {
+        runMethod: o.runMethod,
+        mean: { class: "", value: tryRound(hyperfine.mean) },
+        meanVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "mean"),
+        min: { class: "", value: tryRound(hyperfine.min) },
+        minVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "min"),
+        max: { class: "", value: tryRound(hyperfine.max) },
+        maxVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "max"),
+        median: { class: "", value: tryRound(hyperfine.median) },
+        medianVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "median"),
+        stddev: { class: "", value: tryRound(hyperfine.stddev) },
+      };
+      if (o.llvm_ir) {
+        rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${o.runMethod}">${o.runMethod}</a>`;
+      }
+      return rowData;
+    });
+
   if (executions.length > 1) {
     const cols = ["mean", "min", "max", "median"];
     cols.forEach((col) => {
@@ -60,6 +65,6 @@ function getDataForBenchmark(benchmark) {
       });
     });
   }
-  
+
   return executions;
 }

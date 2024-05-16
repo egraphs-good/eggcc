@@ -1,0 +1,24 @@
+# ARGS: 16
+@main(n: int) {
+   # handle zero
+   zero: int = const 0;
+   # handle nan
+   is_not_nan: bool = gt n zero;
+   br is_not_nan .continue_nan .ret_nan;
+ .ret_nan:
+   nan: int = div zero zero;
+   print nan;
+   ret;
+ .continue_nan:
+
+   ans: int = const 1;
+ .do:
+   next: int = const 1;
+ .while:
+   ans: int = id next;
+   good: bool = const true;
+   br good .done .do;
+ .done:
+   print ans;
+   ret;
+}

@@ -4,7 +4,7 @@
 //! optimized) variant of the live variable analysis described in "Iterative
 //! Data-flow Analysis, Revisited", by Keith D. Cooper, Timothy J. Harvey, and
 //! Ken Kennedy.
-use std::{fmt, mem};
+use std::{collections::BTreeMap, fmt, mem};
 
 use bril_rs::{self, EffectOps, Instruction, ValueOps};
 use fixedbitset::FixedBitSet;
@@ -297,7 +297,8 @@ impl Default for LiveVariableAnalysis {
 impl fmt::Debug for LiveVariableAnalysis {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut map = f.debug_map();
-        for (node, state) in &self.analysis {
+        // Write outpuut sorted.
+        for (node, state) in self.analysis.iter().collect::<BTreeMap<_, _>>() {
             map.entry(
                 &node.index(),
                 &format!(

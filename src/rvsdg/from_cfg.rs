@@ -201,13 +201,17 @@ impl<'a> RvsdgBuilder<'a> {
 
         // First, we need to record the live operands going into the loop. These
         // are the loop inputs.
-        let live_vars = self.analysis.var_state(block).unwrap();
+        let mut live_vars = self.analysis.var_state(block).unwrap().live_in.clone();
 
-        let mut input_vars = Vec::with_capacity(live_vars.live_in.len());
+        if let Some(tail) = loop_tail {
+            live_vars.merge(&self.analysis.var_state(tail).unwrap().live_out);
+        }
+
+        let mut input_vars = Vec::with_capacity(live_vars.len());
         let mut inputs = Vec::new();
         let pos = self.cfg.graph[block].pos.clone();
         let mut arg = 0;
-        for input in live_vars.live_in.iter() {
+        for input in live_vars.iter() {
             let Some(op) = self.store.get(&input).copied() else {
                 continue;
             };

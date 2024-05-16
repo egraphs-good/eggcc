@@ -1,0 +1,17 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int) {
+  v1_: int = const 0;
+  v2_: bool = lt v1_ v0;
+  br v2_ .v3_ .v4_;
+.v3_:
+  v5_: int = const 1;
+  print v5_;
+  jmp .v6_;
+.v4_:
+  v7_: int = div v1_ v1_;
+  print v7_;
+.v6_:
+}

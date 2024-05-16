@@ -50,6 +50,7 @@ impl TernaryOp {
         use TernaryOp::*;
         match self {
             Write => "Write",
+            Select => "Select",
         }
     }
 }

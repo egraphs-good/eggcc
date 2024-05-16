@@ -81,7 +81,8 @@
   ; given a pointer, value, and a state edge
   ; writes the value to the pointer and returns
   ; the resulting state edge
-  (Write))
+  (Write)
+  (Select))
 (datatype BinaryOp
   ;; integer operators
   (Add)

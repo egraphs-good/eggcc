@@ -182,6 +182,10 @@ pub fn twrite(addr: RcExpr, val: RcExpr, state: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Top(TernaryOp::Write, addr, val, state))
 }
 
+pub fn select(cond: RcExpr, thn: RcExpr, els: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Top(TernaryOp::Select, cond, thn, els))
+}
+
 pub fn tprint(e: RcExpr, state: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Print, e, state))
 }

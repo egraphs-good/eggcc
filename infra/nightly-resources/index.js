@@ -161,17 +161,18 @@ function groupByBenchmark(benchList) {
 // Outputs current_number - baseline_number in a human-readable format
 // If baseline_number is undefined, it will return N/A
 function getDifference(current, baseline) {
+  const THRESHOLD = .01;
   // if b is undefined, return a
   if (baseline === undefined) {
-    return { class: "bad", value: "N/A" };
+    return { class: "", value: "N/A" };
   } else {
     var difference = current - baseline;
     // if the difference is negative it will already have a "-"
     var sign = difference < 0 ? "" : "+";
     var cssClass = "";
-    if (difference < 0) {
+    if (difference < -THRESHOLD) {
       cssClass = "good";
-    } else if (difference > 0) {
+    } else if (difference > THRESHOLD) {
       cssClass = "bad";
     }
     // put the difference in parens after a

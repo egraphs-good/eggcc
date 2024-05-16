@@ -30,205 +30,6 @@ function clearWarnings() {
   GLOBAL_DATA.warnings.clear();
 }
 
-async function getPreviousRuns() {
-  const req = await fetch(
-    "https://nightly.cs.washington.edu/reports-json/eggcc/",
-  );
-  const files = await req.json();
-
-  // map files into objects of the shape:
-  // {
-  //   branch: <git branch:string>,
-  //   commit: <git commit:string>,
-  //   date: <unix timestamp:int>,
-  //   url: <absolute url to nightly page:string>
-  // }
-  const comparisons = [];
-  // start at i=1 because / is the first file
-  for (let i = 1; i < files.length; i++) {
-    // file name is of the format <date>:"nightly":<branch>:<commit>
-    const [date, _, branch, commit] = files[i].name.split(":");
-
-    const run = {
-      branch: branch,
-      commit: commit,
-      // type coerce a unix timestamp that is a string into an int with a `+`
-      date: +date,
-      // The file server only hands us back the directory names,
-      // but we want to make sure that we only use absolute URLs so that we can run this page
-      // in any environment (local or otherwise)
-      url: `https://nightly.cs.washington.edu/reports/eggcc/${files[i].name}`,
-    };
-
-    comparisons.push(run);
-  }
-
-  // sort runs in descending order
-  comparisons.sort((l, r) => {
-    if (l.date < r.date) {
-      return 1;
-    }
-    if (l.date > r.date) {
-      return -1;
-    }
-    return 0;
-  });
-
-  return comparisons.slice(
-    0,
-    comparisons.length < 30 ? comparisons.length : 30,
-  );
-}
-
-async function buildNightlyDropdown(element, previousRuns, initialIdx) {
-  const select = document.getElementById(element);
-
-  const formatRun = (run) =>
-    `${run.branch} - ${run.commit} - ${new Date(
-      run.date * 1000,
-    ).toDateString()}`;
-
-  previousRuns.forEach((nightly) => {
-    const option = document.createElement("option");
-    option.innerText = formatRun(nightly);
-    select.appendChild(option);
-  });
-
-  select.onchange = () => loadBaseline(previousRuns[select.selectedIndex].url);
-
-  select.selectedIndex = initialIdx;
-  select.value = formatRun(previousRuns[initialIdx]);
-}
-
-// findBenchToCompare will find the last benchmark run on the main branch that is not itself
-function findBenchToCompareIdx(benchRuns) {
-  // Determine what benchmark run we are based on the browser's URL
-  // This is likely the best way to do this without embedding a bunch of data into our profile.js file
-  // or our profile.json file, which although tempting, is not backwards compatible
-  const path = window.location.pathname;
-  const parts = path.split("/");
-
-  // URLs should have trailing slashes leaving `parts` with a blank last element,
-  // so we should index into `parts` at its length-2
-  // Just in case the URL somehow doesn't have a trailing slash and `parts` doesn't
-  // have a blank last element, do a quick check and adjust the index accordingly
-  const idx =
-    path[path.length - 1] === "/" ? parts.length - 2 : parts.length - 1;
-
-  const [date, _, branch, commit] = parts[idx].split("%3A");
-  for (let i = 0; i < benchRuns.length; i++) {
-    const run = benchRuns[i];
-    if (run.branch === "main") {
-      // If we are comparing a run on a main branch, to previous main branch we need to make sure
-      // it is not the same branch.
-      // I did mean `==` here, not `===`. `curComparison.date` is an int, and `date` is a string
-      if (branch === "main" && run.commit === commit && run.date == date) {
-        continue; // skip, we're on the same branch
-      }
-
-      // the branch is now either the latest main run, or if on main the previous main run
-      // return it
-      return i;
-    }
-  }
-  throw new Error("Couldn't find a benchmark run from main for comparison");
-}
-
-async function fetchDataJson(url) {
-  const resp = await fetch(`${url}/data/profile.json`);
-  const data = await resp.json();
-  return data;
-}
-
-// Outputs current_number - baseline_number in a human-readable format
-// If baseline_number is undefined, it will return N/A
-function getDifference(current, baseline) {
-  const THRESHOLD = .01;
-  // if b is undefined, return a
-  if (baseline === undefined) {
-    return { class: "", value: "N/A" };
-  } else {
-    var difference = current - baseline;
-    // if the difference is negative it will already have a "-"
-    var sign = difference < 0 ? "" : "+";
-    var cssClass = "";
-    if (difference < -THRESHOLD) {
-      cssClass = "good";
-    } else if (difference > THRESHOLD) {
-      cssClass = "bad";
-    }
-    // put the difference in parens after a
-    return { class: cssClass, value: `${sign}${tryRound(difference)}` };
-  }
-}
-
-// compare two objects at a particular attribute
-function diffAttribute(results, baseline, attribute) {
-  const current = results[attribute];
-  const baselineNum = baseline?.[attribute];
-  return getDifference(current, baselineNum);
-}
-
-function getBaselineHyperfine(benchmark, runMethod) {
-  const baselineData = GLOBAL_DATA.baselineRun?.filter(o => o.benchmark === benchmark) || [];
-  if (baselineData.length === 0) {
-    addWarning(`Baseline doesn't have ${benchmark} benchmark`);
-  } else {
-    const baseline = baselineData.filter(o => o.runMethod === runMethod);
-    if (baseline.length === 0) {
-      addWarning(`No baseline data for ${benchmark} ${runMethod}`);
-    } else if (baseline.length !== 1) {
-      throw new Error(`Baseline had multiple entries for ${benchmark} ${runMethod}`);
-    } else {
-      return baseline[0].hyperfine.results[0];
-    }
-  }
-}
-
-function getDataForBenchmark(benchmark) {
-  const executions = GLOBAL_DATA.currentRun?.filter(o => o.benchmark === benchmark).map(o => {
-    const baselineHyperfine = getBaselineHyperfine(o.benchmark, o.runMethod);
-    const hyperfine = o.hyperfine.results[0];
-    const rowData = {
-      runMethod: o.runMethod,
-      mean: {class: "", value: tryRound(hyperfine.mean)},
-      meanVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "mean"),
-      min: {class: "", value: tryRound(hyperfine.min)},
-      minVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "min"),
-      max: {class: "", value: tryRound(hyperfine.max)},
-      maxVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "max"),
-      median: {class: "", value: tryRound(hyperfine.median)},
-      medianVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "median"),
-      stddev: {class: "", value: tryRound(hyperfine.stddev)},
-    }
-    if (o.llvm_ir) {
-      rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${o.runMethod}">${o.runMethod}</a>`;
-    }
-    return rowData;
-  });
-  
-  if (executions.length > 1) {
-    const cols = ["mean", "min", "max", "median"];
-    cols.forEach((col) => {
-      const sorted = executions
-        .map((e) => e[col])
-        .sort((a, b) => a.value - b.value);
-      const min = sorted[0].value;
-      const max = sorted[sorted.length - 1].value;
-      sorted.forEach((item) => {
-        if (item.value === min) {
-          item.class = "good";
-        }
-        if (item.value === max) {
-          item.class = "bad";
-        }
-      });
-    });
-  }
-  
-  return executions;
-}
-
 function refreshView() {
   if (!GLOBAL_DATA.baselineRun) {
     addWarning("no baseline to compare to");
@@ -259,6 +60,8 @@ function renderWarnings() {
     warningContainer.appendChild(warningElement);
   });
 }
+
+/// Manipulating UI elements:
 
 function makeCheckbox(parent, mode) {
   // make a check box for enabling this mode
@@ -295,4 +98,24 @@ function makeSelectors() {
     checkbox.onchange = () =>
       toggleCheckbox(benchmark, GLOBAL_DATA.enabledBenchmarks);
   });
+}
+
+async function buildNightlyDropdown(element, previousRuns, initialIdx) {
+  const select = document.getElementById(element);
+
+  const formatRun = (run) =>
+    `${run.branch} - ${run.commit} - ${new Date(
+      run.date * 1000,
+    ).toDateString()}`;
+
+  previousRuns.forEach((nightly) => {
+    const option = document.createElement("option");
+    option.innerText = formatRun(nightly);
+    select.appendChild(option);
+  });
+
+  select.onchange = () => loadBaseline(previousRuns[select.selectedIndex].url);
+
+  select.selectedIndex = initialIdx;
+  select.value = formatRun(previousRuns[initialIdx]);
 }

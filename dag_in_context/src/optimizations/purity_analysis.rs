@@ -6,7 +6,7 @@ use strum::IntoEnumIterator;
 fn top_is_pure(top: &TernaryOp) -> bool {
     match top {
         TernaryOp::Write => false,
-        TernaryOp::Select => true
+        TernaryOp::Select => true,
     }
 }
 

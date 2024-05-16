@@ -282,7 +282,11 @@ impl<'a> TreeToRvsdg<'a> {
                 assert_eq!(c.len(), 1, "Expected exactly one result for cond operand");
                 assert_eq!(t.len(), 1, "Expected exactly one result for then operand");
                 assert_eq!(e.len(), 1, "Expected exactly one result for else operand");
-                self.push_basic(BasicExpr::Op(ValueOps::Select, vec![c[0], t[0], e[0]], bril_type))
+                self.push_basic(BasicExpr::Op(
+                    ValueOps::Select,
+                    vec![c[0], t[0], e[0]],
+                    bril_type,
+                ))
             }
             Expr::Bop(op, l, r) => {
                 let l = self.convert_expr(l.clone());

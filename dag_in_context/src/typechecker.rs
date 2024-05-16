@@ -236,10 +236,14 @@ impl<'a> TypeChecker<'a> {
                 let Type::Base(BaseType::BoolT) = cty else {
                     panic!("Expected base type. Got {:?}", cty)
                 };
-                assert_eq!(tty, ety, "Expected then and else types to be the same. Got {:?} and {:?}", tty, ety);
+                assert_eq!(
+                    tty, ety,
+                    "Expected then and else types to be the same. Got {:?} and {:?}",
+                    tty, ety
+                );
                 (
                     tty,
-                    RcExpr::new(Expr::Top(TernaryOp::Select, new_cond, new_then, new_else))
+                    RcExpr::new(Expr::Top(TernaryOp::Select, new_cond, new_then, new_else)),
                 )
             }
             Expr::Bop(BinaryOp::PtrAdd, left, right) => {

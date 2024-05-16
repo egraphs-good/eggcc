@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main {
+  v0_: bool = const true;
+  v1_: int = const 1;
+  v2_: int = const 2;
+  v3_: int = select v0_ v1_ v2_;
+  print v3_;
+}

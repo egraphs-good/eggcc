@@ -1,7 +1,6 @@
 // Load data that both the index page and llvm page need
 async function loadCommonData() {
-  GLOBAL_DATA.currentRun = await getBench("./");
-  GLOBAL_DATA.currentRunRaw = await getDataJson(".");
+  GLOBAL_DATA.currentRun = await getDataJson(".");
 }
 
 // Top-level load function for the main index page.
@@ -32,11 +31,11 @@ async function load_llvm() {
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");
   }
-  const llvm = GLOBAL_DATA.currentRun[benchmark][runMode].llvm_ir;
-  if (!llvm) {
-    console.error("missing llvm, this probably shouldn't happen");
+  const entry = GLOBAL_DATA.currentRun.filter(entry => entry.benchmark === benchmark && entry.runMethod === runMode);
+  if (entry.length !== 1) {
+    console.error(`missing or duplicate entries for ${benchmark} and ${runMode}, this probably shouldn't happen`);
   }
-  document.getElementById("llvm").innerText = llvm;
+  document.getElementById("llvm").innerText = entry[0].llvm_ir;
 }
 
 function selectAllModes(enabled) {
@@ -77,9 +76,8 @@ function toggleCheckbox(mode, set) {
 async function loadBaseline(url) {
   const data = await getBench(url + "/");
   clearWarnings();
-  GLOBAL_DATA.baselineRun = data;
-  GLOBAL_DATA.baselineRunRaw = await getDataJson(url);
-  const benchmarkNames = Object.keys(GLOBAL_DATA.currentRun);
+  GLOBAL_DATA.baselineRun = await getDataJson(url);
+  const benchmarkNames = Array.from(new Set(GLOBAL_DATA.currentRun.map(o => o.benchmark)));
   // Add warnings if the baseline run had a benchmark that the current run doesn't
   Object.keys(data).forEach((benchName) => {
     if (!benchmarkNames.includes(benchName)) {

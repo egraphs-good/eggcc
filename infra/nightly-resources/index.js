@@ -17,8 +17,8 @@ const GLOBAL_DATA = {
   enabledModes: new Set(),
   enabledBenchmarks: new Set(),
   warnings: new Set(),
-  currentRun: {},
-  baselineRun: undefined,
+  currentRun: [],
+  baselineRun: [],
   chart: undefined,
 };
 
@@ -220,7 +220,7 @@ function buildEntry(benchName, baseline, current) {
 }
 
 function getBaselineHyperfine(benchmark, runMethod) {
-  const baselineData = GLOBAL_DATA.baselineRunRaw?.filter(o => o.benchmark === benchmark) || [];
+  const baselineData = GLOBAL_DATA.baselineRun?.filter(o => o.benchmark === benchmark) || [];
   if (baselineData.length === 0) {
     addWarning(`Baseline doesn't have ${benchmark} benchmark`);
   } else {
@@ -236,7 +236,7 @@ function getBaselineHyperfine(benchmark, runMethod) {
 }
 
 function getDataForBenchmark(benchmark) {
-  const executions = GLOBAL_DATA.currentRunRaw?.filter(o => o.benchmark === benchmark).map(o => {
+  const executions = GLOBAL_DATA.currentRun?.filter(o => o.benchmark === benchmark).map(o => {
     const baselineHyperfine = getBaselineHyperfine(o.benchmark, o.runMethod);
     const hyperfine = o.hyperfine.results[0];
     const rowData = {
@@ -336,7 +336,7 @@ function makeSelectors() {
     checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.enabledModes);
   });
 
-  const benchmarks = Object.keys(GLOBAL_DATA.currentRun).sort();
+  const benchmarks = Array.from(new Set(GLOBAL_DATA.currentRun.map(o => o.benchmark))).sort();
   benchmarks.forEach((benchmark) => {
     const checkbox = makeCheckbox(
       document.getElementById("benchmarkCheckboxes"),

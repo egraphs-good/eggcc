@@ -36,7 +36,7 @@ function refreshView() {
   }
 
   const byBench = {};
-  Array.from(GLOBAL_DATA.enabledBenchmarks).forEach((benchmark) => {
+  GLOBAL_DATA.enabledBenchmarks.forEach((benchmark) => {
     byBench[benchmark] = getDataForBenchmark(benchmark);
   });
   const tableData = Object.keys(byBench).map((bench) => ({

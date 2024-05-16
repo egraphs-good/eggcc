@@ -81,13 +81,17 @@ async function loadBaseline(url) {
   clearWarnings();
   GLOBAL_DATA.baselineRun = await fetchDataJson(url);
 
-  const baselineBenchmarks = new Set(GLOBAL_DATA.baselineRun.map((o) => o.benchmark));
-  const currentBenchmarks = new Set(GLOBAL_DATA.currentRun.map((o) => o.benchmark));
-  baselineBenchmarks.difference(currentBenchmarks).forEach(benchmark => {
+  const baselineBenchmarks = new Set(
+    GLOBAL_DATA.baselineRun.map((o) => o.benchmark),
+  );
+  const currentBenchmarks = new Set(
+    GLOBAL_DATA.currentRun.map((o) => o.benchmark),
+  );
+  baselineBenchmarks.difference(currentBenchmarks).forEach((benchmark) => {
     addWarning(
       `Baseline run had benchmark ${benchmark} that the current run doesn't`,
     );
-  })
+  });
 
   refreshView();
 }

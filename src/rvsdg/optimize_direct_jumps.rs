@@ -5,9 +5,10 @@
 //! the output.
 
 use bril_rs::{Instruction, ValueOps};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use petgraph::{
-    stable_graph::{EdgeIndex, NodeIndex, StableDiGraph, StableGraph},
+    graph::EdgeIndex,
+    stable_graph::{NodeIndex, StableDiGraph, StableGraph},
     visit::{Bfs, EdgeRef},
     Direction,
 };
@@ -19,7 +20,7 @@ use crate::Optimizer;
 
 impl SimpleCfgFunction {
     pub fn optimize_jumps(&self) -> Self {
-        self.single_in_single_out() //.collapse_empty_blocks()
+        self.single_in_single_out().collapse_empty_blocks()
     }
 
     fn single_in_single_out(&self) -> SimpleCfgFunction {
@@ -104,11 +105,7 @@ impl SimpleCfgFunction {
 
         // now fix up all Phi instructions based on the node mapping
         for node in resulting_graph.node_indices().collect::<Vec<_>>() {
-            let mut instrs = resulting_graph[node].instrs.clone();
-            for instr in instrs.iter_mut() {
-                Self::fixup_phis(instr, &label_mapping);
-            }
-            resulting_graph[node].instrs = instrs;
+            Self::fixup_phis(&mut resulting_graph[node], &label_mapping);
         }
 
         SimpleCfgFunction {
@@ -122,18 +119,20 @@ impl SimpleCfgFunction {
         }
     }
 
-    fn fixup_phis(instr: &mut Instruction, label_mapping: &HashMap<String, String>) {
-        if let Instruction::Value {
-            op: ValueOps::Phi,
-            ref mut labels,
-            ..
-        } = instr
-        {
-            labels.iter_mut().for_each(|node| {
-                if let Some(label) = label_mapping.get(node) {
-                    *node = label.to_string();
-                }
-            });
+    fn fixup_phis(block: &mut BasicBlock, label_mapping: &HashMap<String, String>) {
+        for code in &mut block.instrs {
+            if let Instruction::Value {
+                op: ValueOps::Phi,
+                ref mut labels,
+                ..
+            } = code
+            {
+                labels.iter_mut().for_each(|node| {
+                    if let Some(label) = label_mapping.get(node) {
+                        *node = label.to_string();
+                    }
+                });
+            }
         }
     }
 
@@ -142,56 +141,82 @@ impl SimpleCfgFunction {
     // (where there is only one target edge and the empty node has no instructions)
     // and changes the source edge to point to the target node
     fn collapse_empty_blocks(mut self) -> SimpleCfgFunction {
-        let target_edges: Vec<EdgeIndex> = self
-            .graph
-            .node_indices()
-            .filter(|node| {
-                self.graph[*node].instrs.is_empty() && self.graph[*node].footer.is_empty()
-            })
-            .filter_map(|node| {
-                let outgoing: Vec<_> = self
-                    .graph
-                    .edges_directed(node, Direction::Outgoing)
-                    .collect();
-
-                match outgoing.as_slice() {
-                    [edge] => Some(edge.id()),
-                    _ => None,
-                }
-            })
-            .collect();
-
-        for target_edge in target_edges {
-            let (empty, target) = self.graph.edge_endpoints(target_edge).unwrap();
-
-            let source_edges: Vec<EdgeIndex> = self
+        // loop over every non-empty block, and look at its parents
+        for block in self.graph.node_indices().collect::<Vec<_>>() {
+            // find parents
+            let parents: Vec<NodeIndex> = self
                 .graph
-                .edges_directed(empty, Direction::Incoming)
-                .map(|edge| edge.id())
+                .edges_directed(block, Direction::Incoming)
+                .map(|edge| edge.source())
                 .collect();
-
-            for source_edge in source_edges {
-                let (source, empty_) = self.graph.edge_endpoints(source_edge).unwrap();
-                let weight = self.graph.edge_weight(source_edge).unwrap().clone();
-                assert_eq!(empty, empty_);
-
-                self.graph.remove_edge(source_edge);
-                self.graph.add_edge(source, target, weight);
-
-                // now need to fix up phi instructions
-                let node_mapping = [(
-                    self.graph[empty].name.to_string(),
-                    self.graph[source].name.to_string(),
-                )]
-                .into_iter()
-                .collect();
-                for instr in self.graph[target].instrs.iter_mut() {
-                    Self::fixup_phis(instr, &node_mapping);
+            let new_parents = parents
+                .iter()
+                .map(|parent| self.get_parent_skipping_empty(*parent))
+                .collect::<HashSet<_>>();
+            // if we have fewer parents, phi nodes may get messed up, so avoid the optimization
+            if new_parents.len() == parents.len() {
+                for parent in &parents {
+                    self.collapse_empty_block(*parent);
                 }
+
+                let parent_mapping = parents
+                    .iter()
+                    .map(|parent| {
+                        (
+                            self.graph[*parent].name.to_string(),
+                            self.graph[self.get_parent_skipping_empty(*parent)]
+                                .name
+                                .to_string(),
+                        )
+                    })
+                    .collect::<HashMap<_, _>>();
+                Self::fixup_phis(&mut self.graph[block], &parent_mapping);
             }
         }
 
         self
+    }
+
+    fn get_single_in_single_out(&self, parent_block: NodeIndex) -> Option<(EdgeIndex, EdgeIndex)> {
+        if !self.graph[parent_block].instrs.is_empty() || self.graph[parent_block].footer.is_empty()
+        {
+            return None;
+        }
+
+        let outgoing = self
+            .graph
+            .edges_directed(parent_block, Direction::Outgoing)
+            .collect::<Vec<_>>();
+        let incoming = self
+            .graph
+            .edges_directed(parent_block, Direction::Incoming)
+            .collect::<Vec<_>>();
+        if let ([source_edge], [outgoing]) = (incoming.as_slice(), outgoing.as_slice()) {
+            Some((source_edge.id(), outgoing.id()))
+        } else {
+            None
+        }
+    }
+
+    fn get_parent_skipping_empty(&self, parent_block: NodeIndex) -> NodeIndex {
+        if let Some((source_edge, _)) = self.get_single_in_single_out(parent_block) {
+            let source = self.graph.edge_endpoints(source_edge).unwrap().0;
+            source
+        } else {
+            parent_block
+        }
+    }
+
+    fn collapse_empty_block(&mut self, parent_block: NodeIndex) {
+        if let Some((source_edge, outgoing)) = self.get_single_in_single_out(parent_block) {
+            let weight = self.graph.edge_weight(source_edge).unwrap().clone();
+            let (source, empty) = self.graph.edge_endpoints(source_edge).unwrap();
+            let (empty_, target) = self.graph.edge_endpoints(outgoing).unwrap();
+            assert_eq!(empty, empty_);
+
+            self.graph.remove_edge(source_edge);
+            self.graph.add_edge(source, target, weight);
+        }
     }
 }
 

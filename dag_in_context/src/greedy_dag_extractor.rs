@@ -814,6 +814,7 @@ impl CostModel for DefaultCostModel {
             "FDiv" => 250.,
             // Comparisons
             "Eq" | "LessThan" | "GreaterThan" | "LessEq" | "GreaterEq" => 10.,
+            "Select" => 10.,
             "FEq" => 10.,
             "FLessThan" | "FGreaterThan" | "FLessEq" | "FGreaterEq" => 100.,
             // Effects

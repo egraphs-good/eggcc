@@ -274,6 +274,20 @@ impl<'a> TreeToRvsdg<'a> {
                     vec![c1[0], c2[0], c3[0]],
                 ))
             }
+            Expr::Top(TernaryOp::Select, c, t, e) => {
+                let c = self.convert_expr(c.clone());
+                let t = self.convert_expr(t.clone());
+                let e = self.convert_expr(e.clone());
+                let bril_type = self.get_basic_expr_type(expr.clone());
+                assert_eq!(c.len(), 1, "Expected exactly one result for cond operand");
+                assert_eq!(t.len(), 1, "Expected exactly one result for then operand");
+                assert_eq!(e.len(), 1, "Expected exactly one result for else operand");
+                self.push_basic(BasicExpr::Op(
+                    ValueOps::Select,
+                    vec![c[0], t[0], e[0]],
+                    bril_type,
+                ))
+            }
             Expr::Bop(op, l, r) => {
                 let l = self.convert_expr(l.clone());
                 let r = self.convert_expr(r.clone());

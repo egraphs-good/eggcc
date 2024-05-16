@@ -229,6 +229,23 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Top(TernaryOp::Write, new_left, new_right, new_state)),
                 )
             }
+            Expr::Top(TernaryOp::Select, c, t, e) => {
+                let (cty, new_cond) = self.add_arg_types_to_expr(c.clone(), arg_tys);
+                let (tty, new_then) = self.add_arg_types_to_expr(t.clone(), arg_tys);
+                let (ety, new_else) = self.add_arg_types_to_expr(e.clone(), arg_tys);
+                let Type::Base(BaseType::BoolT) = cty else {
+                    panic!("Expected base type. Got {:?}", cty)
+                };
+                assert_eq!(
+                    tty, ety,
+                    "Expected then and else types to be the same. Got {:?} and {:?}",
+                    tty, ety
+                );
+                (
+                    tty,
+                    RcExpr::new(Expr::Top(TernaryOp::Select, new_cond, new_then, new_else)),
+                )
+            }
             Expr::Bop(BinaryOp::PtrAdd, left, right) => {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_tys);
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_tys);

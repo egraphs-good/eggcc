@@ -12,13 +12,6 @@ from gen_linecount import gen_linecount_table
 import concurrent.futures
 
 treatments = [
-  "rvsdg_roundtrip",
-
-  "cranelift-O0",
-  "cranelift-O0-eggcc",
-  "cranelift-O3",
-  "cranelift-O3-eggcc",
-
   "llvm-peep",
   "llvm-peep-eggcc",
   "llvm-O3",
@@ -29,14 +22,6 @@ def get_eggcc_options(name, profile_dir):
   match name:
     case "rvsdg_roundtrip":
       return '--run-mode rvsdg-round-trip-to-executable'
-    case "cranelift-O0":
-      return '--run-mode cranelift --optimize-egglog false --optimize-brilift false'
-    case "cranelift-O3":
-      return '--run-mode cranelift --optimize-egglog false --optimize-brilift true'
-    case "cranelift-O0-eggcc":
-      return '--run-mode cranelift --optimize-egglog true --optimize-brilift false'
-    case "cranelift-O3-eggcc":
-      return '--run-mode cranelift --optimize-egglog true --optimize-brilift true'
     case "llvm-peep":
       return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
     case "llvm-O3":

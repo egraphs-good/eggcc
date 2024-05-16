@@ -2,11 +2,6 @@
 const treatments = [
   "rvsdg_roundtrip",
 
-  "cranelift-O0",
-  "cranelift-O0-eggcc",
-  "cranelift-O3",
-  "cranelift-O3-eggcc",
-
   "llvm-peep",
   "llvm-peep-eggcc",
   "llvm-O3",

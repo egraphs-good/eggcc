@@ -134,34 +134,10 @@ function findBenchToCompareIdx(benchRuns) {
   throw new Error("Couldn't find a benchmark run from main for comparison");
 }
 
-async function getBench(url) {
-  const resp = await fetch(url + "data/profile.json");
-  const benchData = await resp.json();
-  return groupByBenchmark(benchData);
-}
-
-async function getDataJson(url) {
+async function fetchDataJson(url) {
   const resp = await fetch(`${url}/data/profile.json`);
   const data = await resp.json();
   return data;
-}
-
-// benchList should be in the format of
-// Array<{
-//     runMethod: String,
-//     benchmark: String,
-//     total_dyn_inst: Int,
-//     hyperfine: Array<{results: **hyperfine `--json` results**}>
-// }>
-function groupByBenchmark(benchList) {
-  const groupedBy = {};
-  benchList.forEach((obj) => {
-    if (!groupedBy[obj.benchmark]) {
-      groupedBy[obj.benchmark] = {};
-    }
-    groupedBy[obj.benchmark][obj.runMethod] = obj;
-  });
-  return groupedBy;
 }
 
 // Outputs current_number - baseline_number in a human-readable format
@@ -191,32 +167,6 @@ function diffAttribute(results, baseline, attribute) {
   const current = results[attribute];
   const baselineNum = baseline?.[attribute];
   return getDifference(current, baselineNum);
-}
-
-// baseline may be undefined
-function buildEntry(benchName, baseline, current) {
-  const results = current.hyperfine.results[0];
-  const baselineResults = baseline?.hyperfine.results[0];
-
-  var name = current.runMethod;
-  if (current.llvm_ir) {
-    name = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchName}&runmode=${current.runMethod}">${current.runMethod}</a>`;
-  }
-
-  const result = {
-    name: name,
-    mean: { class: "", value: tryRound(results.mean) },
-    meanVsBaseline: diffAttribute(results, baselineResults, "mean"),
-    min: { class: "", value: tryRound(results.min) },
-    minVsBaseline: diffAttribute(results, baselineResults, "min"),
-    max: { class: "", value: tryRound(results.max) },
-    maxVsBaseline: diffAttribute(results, baselineResults, "max"),
-    median: { class: "", value: tryRound(results.median) },
-    medianVsBaseline: diffAttribute(results, baselineResults, "median"),
-    stddev: { class: "", value: tryRound(results.stddev) },
-  };
-
-  return result;
 }
 
 function getBaselineHyperfine(benchmark, runMethod) {

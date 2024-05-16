@@ -1,6 +1,6 @@
 // Load data that both the index page and llvm page need
 async function loadCommonData() {
-  GLOBAL_DATA.currentRun = await getDataJson(".");
+  GLOBAL_DATA.currentRun = await fetchDataJson(".");
 }
 
 // Top-level load function for the main index page.
@@ -74,18 +74,8 @@ function toggleCheckbox(mode, set) {
 }
 
 async function loadBaseline(url) {
-  const data = await getBench(url + "/");
   clearWarnings();
-  GLOBAL_DATA.baselineRun = await getDataJson(url);
-  const benchmarkNames = Array.from(new Set(GLOBAL_DATA.currentRun.map(o => o.benchmark)));
-  // Add warnings if the baseline run had a benchmark that the current run doesn't
-  Object.keys(data).forEach((benchName) => {
-    if (!benchmarkNames.includes(benchName)) {
-      addWarning(
-        `Baseline run had benchmark ${benchName} that the current run doesn't`,
-      );
-    }
-  });
+  GLOBAL_DATA.baselineRun = await fetchDataJson(url);
   refreshView();
 }
 

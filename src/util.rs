@@ -254,7 +254,7 @@ impl RunType {
 
 #[derive(Clone)]
 pub struct ProgWithArguments {
-    program: Program,
+    pub program: Program,
     name: String,
     args: Vec<String>,
 }

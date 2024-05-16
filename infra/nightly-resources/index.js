@@ -140,6 +140,12 @@ async function getBench(url) {
   return groupByBenchmark(benchData);
 }
 
+async function getDataJson(url) {
+  const resp = await fetch(`${url}/data/profile.json`);
+  const data = await resp.json();
+  return data;
+}
+
 // benchList should be in the format of
 // Array<{
 //     runMethod: String,
@@ -213,72 +219,79 @@ function buildEntry(benchName, baseline, current) {
   return result;
 }
 
-function refreshView() {
-  const parsed = Array.from(GLOBAL_DATA.enabledBenchmarks).map((benchName) => {
-    if (!GLOBAL_DATA.baselineRun) {
-      addWarning("no baseline to compare to");
+function getBaselineHyperfine(benchmark, runMethod) {
+  const baselineData = GLOBAL_DATA.baselineRunRaw?.filter(o => o.benchmark === benchmark) || [];
+  if (baselineData.length === 0) {
+    addWarning(`Baseline doesn't have ${benchmark} benchmark`);
+  } else {
+    const baseline = baselineData.filter(o => o.runMethod === runMethod);
+    if (baseline.length === 0) {
+      addWarning(`No baseline data for ${benchmark} ${runMethod}`);
+    } else if (baseline.length !== 1) {
+      throw new Error(`Baseline had multiple entries for ${benchmark} ${runMethod}`);
+    } else {
+      return baseline[0].hyperfine.results[0];
     }
-    const executions = Object.keys(GLOBAL_DATA.currentRun[benchName])
-      .map((runMode) => {
-        // if the mode is not enabled, skip it
-        if (!GLOBAL_DATA.enabledModes.has(runMode)) {
-          return undefined;
-        }
-        // prevRun may be undefined
-        const baselineBench = GLOBAL_DATA.baselineRun?.[benchName];
-        if (GLOBAL_DATA.baselineRun && !baselineBench) {
-          addWarning(`Baseline doesn't have ${benchName} benchmark`);
-        }
-        const baselineRunForMethod = baselineBench?.[runMode];
-        if (baselineBench && !baselineRunForMethod) {
-          addWarning(
-            `Baseline doesn't have run mode ${runMode} for ${benchName}`,
-          );
-        }
+  }
+}
 
-        return buildEntry(
-          benchName,
-          baselineRunForMethod,
-          GLOBAL_DATA.currentRun[benchName][runMode],
-        );
-      })
-      .filter((e) => e !== undefined);
-    if (executions.length > 1) {
-      const cols = ["mean", "min", "max", "median"];
-      cols.forEach((col) => {
-        const sorted = executions
-          .map((e) => e[col])
-          .sort((a, b) => a.value - b.value);
-        const min = sorted[0].value;
-        const max = sorted[sorted.length - 1].value;
-        sorted.forEach((item) => {
-          if (item.value === min) {
-            item.class = "good";
-          }
-          if (item.value === max) {
-            item.class = "bad";
-          }
-        });
+function getDataForBenchmark(benchmark) {
+  const executions = GLOBAL_DATA.currentRunRaw?.filter(o => o.benchmark === benchmark).map(o => {
+    const baselineHyperfine = getBaselineHyperfine(o.benchmark, o.runMethod);
+    const hyperfine = o.hyperfine.results[0];
+    const rowData = {
+      runMethod: o.runMethod,
+      mean: {class: "", value: tryRound(hyperfine.mean)},
+      meanVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "mean"),
+      min: {class: "", value: tryRound(hyperfine.min)},
+      minVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "min"),
+      max: {class: "", value: tryRound(hyperfine.max)},
+      maxVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "max"),
+      median: {class: "", value: tryRound(hyperfine.median)},
+      medianVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "median"),
+      stddev: {class: "", value: tryRound(hyperfine.stddev)},
+    }
+    if (o.llvm_ir) {
+      rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${o.runMethod}">${o.runMethod}</a>`;
+    }
+    return rowData;
+  });
+  
+  if (executions.length > 1) {
+    const cols = ["mean", "min", "max", "median"];
+    cols.forEach((col) => {
+      const sorted = executions
+        .map((e) => e[col])
+        .sort((a, b) => a.value - b.value);
+      const min = sorted[0].value;
+      const max = sorted[sorted.length - 1].value;
+      sorted.forEach((item) => {
+        if (item.value === min) {
+          item.class = "good";
+        }
+        if (item.value === max) {
+          item.class = "bad";
+        }
       });
-    }
+    });
+  }
+  
+  return executions;
+}
 
-    return {
-      name: benchName,
-      executions: { data: executions },
-    };
+function refreshView() {
+  if (!GLOBAL_DATA.baselineRun) {
+    addWarning("no baseline to compare to");
+  }
+
+  const byBench = {};
+  Array.from(GLOBAL_DATA.enabledBenchmarks).forEach(benchmark => {
+    byBench[benchmark] = getDataForBenchmark(benchmark)
   });
+  const tableData = Object.keys(byBench).map(bench => ({name: bench, executions: {data: byBench[bench]}}));
+  tableData.sort((l, r) => l.name - r.name);
 
-  parsed.sort((l, r) => {
-    if (l.name < r.name) {
-      return -1;
-    }
-    if (l.name > r.name) {
-      return 1;
-    }
-    return 0;
-  });
-
-  document.getElementById("profile").innerHTML = ConvertJsonToTable(parsed);
+  document.getElementById("profile").innerHTML = ConvertJsonToTable(tableData);
 
   renderWarnings();
   refreshChart();

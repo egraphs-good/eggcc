@@ -1,6 +1,7 @@
 // Load data that both the index page and llvm page need
 async function loadCommonData() {
   GLOBAL_DATA.currentRun = await getBench("./");
+  GLOBAL_DATA.currentRunRaw = await getDataJson(".");
 }
 
 // Top-level load function for the main index page.
@@ -77,6 +78,7 @@ async function loadBaseline(url) {
   const data = await getBench(url + "/");
   clearWarnings();
   GLOBAL_DATA.baselineRun = data;
+  GLOBAL_DATA.baselineRunRaw = await getDataJson(url);
   const benchmarkNames = Object.keys(GLOBAL_DATA.currentRun);
   // Add warnings if the baseline run had a benchmark that the current run doesn't
   Object.keys(data).forEach((benchName) => {

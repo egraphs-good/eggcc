@@ -10,10 +10,7 @@ macro_rules! to_block {
     };
 }
 
-use std::fs;
-
 use bril_rs::Type;
-use dag_in_context::print_with_intermediate_vars;
 pub(crate) use to_block;
 
 macro_rules! rvsdg_svg_test {
@@ -80,28 +77,6 @@ macro_rules! cfg_test_equiv {
               assert!(has_edge, "missing edge from {src_name:?} to {dst_name:?}");
           })*
   };
-}
-
-#[test]
-fn test_pretty_print_to_egglog() {
-    let schema = fs::read_to_string("./dag_in_context/src/schema.egg").unwrap();
-    let paths = std::fs::read_dir("./tests/passing/small").unwrap();
-    for path in paths {
-        let path = path.unwrap();
-        let program = crate::util::TestProgram::BrilFile(path.path()).read_program();
-        let rvsdg = crate::Optimizer::program_to_rvsdg(&program.program).unwrap();
-        let dag = rvsdg.to_dag_encoding(true);
-        let (term, termdag) = dag.entry.to_egglog();
-        let unfolded_program = print_with_intermediate_vars(&termdag, term);
-        let folded_program =
-            dag_in_context::pretty_print::PrettyPrinter::from_expr(dag.entry).to_egglog_default();
-        let program = format!(
-            "{schema}\n {unfolded_program} \n {folded_program} \n (check (= PROG EXPR___))"
-        );
-        egglog::EGraph::default()
-            .parse_and_run_program(&program)
-            .unwrap();
-    }
 }
 
 pub(crate) use cfg_test_equiv;

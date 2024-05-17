@@ -4,7 +4,6 @@ use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
 use dag_in_context::dag2svg::tree_to_svg;
-use dag_in_context::pretty_print::PrettyPrinter;
 use dag_in_context::{build_program, check_roundtrip_egraph};
 
 use dag_in_context::schema::TreeProgram;
@@ -212,6 +211,8 @@ pub enum RunType {
     /// The different configurations are with and without egglog optimization, and with and without
     /// llvm optimization.
     TestBenchmark,
+    // test the pretty printer
+    TestPrettyPrint,
 }
 
 impl Display for RunType {
@@ -246,6 +247,7 @@ impl RunType {
             | RunType::PrettyPrint
             | RunType::ToCfg
             | RunType::OptimizedCfg
+            | RunType::TestPrettyPrint
             | RunType::TestBenchmark => false,
             RunType::BrilToJson => false,
         }
@@ -421,6 +423,7 @@ impl Run {
             RunType::DagRoundTrip,
             RunType::Optimize,
             RunType::CheckExtractIdentical,
+            RunType::TestPrettyPrint,
         ] {
             let default = Run {
                 test_type,
@@ -622,14 +625,7 @@ impl Run {
             RunType::PrettyPrint => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding(true);
-                let res = std::iter::once(PrettyPrinter::from_expr(dag.entry).to_rust_default())
-                    .chain(
-                        dag.functions
-                            .into_iter()
-                            .map(|expr| PrettyPrinter::from_expr(expr).to_rust_default()),
-                    )
-                    .collect::<Vec<_>>()
-                    .join("\n\n");
+                let res = TreeProgram::pretty_print_to_rust(&dag);
                 (
                     vec![Visualization {
                         result: res,
@@ -643,16 +639,7 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding(true);
                 let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
-                let res =
-                    std::iter::once(PrettyPrinter::from_expr(optimized.entry).to_rust_default())
-                        .chain(
-                            optimized
-                                .functions
-                                .into_iter()
-                                .map(|expr| PrettyPrinter::from_expr(expr).to_rust_default()),
-                        )
-                        .collect::<Vec<_>>()
-                        .join("\n\n");
+                let res = TreeProgram::pretty_print_to_rust(&optimized);
                 (
                     vec![Visualization {
                         result: res,
@@ -661,6 +648,20 @@ impl Run {
                     }],
                     None,
                 )
+            }
+            RunType::TestPrettyPrint => {
+                let rvsdg =
+                    crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let tree = rvsdg.to_dag_encoding(true);
+                let unfolded_program = build_program(&tree, false);
+                let folded_program = tree.pretty_print_to_egglog();
+                let program =
+                    format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
+                //println!("{}", program);
+                egglog::EGraph::default()
+                    .parse_and_run_program(&program)
+                    .unwrap();
+                (vec![], None)
             }
             RunType::DagConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;

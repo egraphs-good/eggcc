@@ -1,0 +1,22 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@one {
+  call @four;
+}
+@two {
+  v0_: int = const 4;
+  print v0_;
+}
+@three {
+  v0_: int = const 4;
+  print v0_;
+}
+@four {
+  v0_: int = const 4;
+  print v0_;
+}
+@main {
+  call @three;
+}

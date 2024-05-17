@@ -728,13 +728,13 @@ pub fn extract_with_paths(
         }
 
         // Skip inlined calls
-        if node.op == "Call" {
-            if info.inlined_calls.contains(&(
+        if node.op == "Call"
+            && info.inlined_calls.contains(&(
                 n2c(&node.children[0]).clone(),
                 n2c(&node.children[1]).clone(),
-            )) {
-                continue;
-            }
+            ))
+        {
+            continue;
         }
 
         let sort_of_node = info.get_sort_of_eclass(classid);

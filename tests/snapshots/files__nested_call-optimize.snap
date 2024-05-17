@@ -3,19 +3,22 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @inc(v0: int): int {
-  v1_: int = const 1;
-  v2_: int = add v0 v1_;
-  v3_: int = const 2;
-  v4_: int = mul v2_ v3_;
-  ret v4_;
+.v1_:
+  v2_: int = const 1;
+  v3_: int = add v0 v2_;
+  v4_: int = const 2;
+  v5_: int = mul v3_ v4_;
+  ret v5_;
 }
 @double(v0: int): int {
-  v1_: int = const 2;
-  v2_: int = mul v0 v1_;
-  ret v2_;
+.v1_:
+  v2_: int = const 2;
+  v3_: int = mul v0 v2_;
+  ret v3_;
 }
 @main {
-  v0_: int = const 2;
-  print v0_;
-  print v0_;
+.v0_:
+  v1_: int = const 2;
+  print v1_;
+  print v1_;
 }

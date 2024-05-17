@@ -3,15 +3,16 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main {
-  v0_: int = const 2;
-  v1_: ptr<int> = alloc v0_;
-  v2_: int = const 10;
-  v3_: int = const 1;
-  v4_: ptr<int> = ptradd v1_ v3_;
-  v5_: int = const 20;
-  store v1_ v2_;
-  store v4_ v5_;
-  v6_: int = load v1_;
-  print v2_;
-  free v1_;
+.v0_:
+  v1_: int = const 2;
+  v2_: ptr<int> = alloc v1_;
+  v3_: int = const 10;
+  v4_: int = const 1;
+  v5_: ptr<int> = ptradd v2_ v4_;
+  v6_: int = const 20;
+  store v2_ v3_;
+  store v5_ v6_;
+  v7_: int = load v2_;
+  print v3_;
+  free v2_;
 }

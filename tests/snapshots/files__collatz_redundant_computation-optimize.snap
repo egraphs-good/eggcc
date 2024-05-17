@@ -3,74 +3,52 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v1_: int = const 1;
-  v2_: int = const 3;
-  v3_: int = const 2;
-  v4_: int = const 0;
-  v5_: int = id v0;
+.v1_:
+  v2_: int = const 1;
+  v3_: int = const 3;
+  v4_: int = const 2;
+  v5_: int = const 0;
   v6_: int = id v0;
-  v7_: int = id v1_;
+  v7_: int = id v0;
   v8_: int = id v2_;
   v9_: int = id v3_;
   v10_: int = id v4_;
-.v11_:
-  v12_: bool = eq v6_ v7_;
-  br v12_ .v13_ .v14_;
-.v13_:
-  v15_: bool = const false;
-  v16_: int = id v5_;
-  v17_: bool = id v15_;
-  v18_: int = id v6_;
-  v19_: int = id v6_;
-  v20_: int = id v8_;
-  v21_: int = id v9_;
-  v22_: int = id v10_;
-.v23_:
-  v24_: bool = not v12_;
-  v5_: int = id v5_;
-  v6_: int = id v18_;
-  v7_: int = id v7_;
+  v11_: int = id v5_;
+.v12_:
+  v13_: bool = eq v7_ v8_;
+  br v13_ .v14_ .v15_;
+.v14_:
+  v16_: bool = const false;
+.v17_:
+  v19_: bool = phi v18_ v16_ .v20_ .v14_;
+  v22_: int = phi v21_ v7_ .v20_ .v14_;
+  v23_: int = phi v8_ v7_ .v20_ .v14_;
+  v24_: bool = not v13_;
+  v6_: int = id v6_;
+  v7_: int = id v22_;
   v8_: int = id v8_;
   v9_: int = id v9_;
   v10_: int = id v10_;
-  br v24_ .v11_ .v25_;
-.v14_:
-  print v6_;
-  v26_: int = div v6_ v9_;
-  v27_: int = mul v26_ v9_;
-  v28_: int = sub v6_ v27_;
-  v29_: bool = eq v10_ v28_;
-  v30_: int = mul v6_ v8_;
-  v31_: int = add v30_ v7_;
+  v11_: int = id v11_;
+  br v24_ .v12_ .v25_;
+.v15_:
+  print v7_;
+  v26_: int = div v7_ v10_;
+  v27_: int = mul v10_ v26_;
+  v28_: int = sub v7_ v27_;
+  v29_: bool = eq v11_ v28_;
+  v30_: int = mul v7_ v9_;
+  v31_: int = add v30_ v8_;
   br v29_ .v32_ .v33_;
 .v32_:
   v34_: bool = const true;
-  v35_: int = id v5_;
-  v36_: bool = id v34_;
-  v37_: int = id v26_;
-  v38_: int = id v7_;
-  v39_: int = id v8_;
-  v40_: int = id v9_;
-  v41_: int = id v10_;
-.v42_:
-  v16_: int = id v35_;
-  v17_: bool = id v36_;
-  v18_: int = id v37_;
-  v19_: int = id v38_;
-  v20_: int = id v39_;
-  v21_: int = id v40_;
-  v22_: int = id v41_;
-  jmp .v23_;
+.v20_:
+  v18_: bool = phi v35_ v34_ .v33_ .v32_;
+  v21_: int = phi v31_ v26_ .v33_ .v32_;
+  jmp .v17_;
 .v33_:
-  v43_: bool = const true;
-  v35_: int = id v5_;
-  v36_: bool = id v43_;
-  v37_: int = id v31_;
-  v38_: int = id v7_;
-  v39_: int = id v8_;
-  v40_: int = id v9_;
-  v41_: int = id v10_;
-  jmp .v42_;
+  v35_: bool = const true;
+  jmp .v20_;
 .v25_:
   print v0;
 }

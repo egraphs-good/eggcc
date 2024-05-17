@@ -4,9 +4,11 @@
 //! This is used by `to_cfg` to clean up
 //! the output.
 
-use hashbrown::HashMap;
+use bril_rs::{Instruction, ValueOps};
+use hashbrown::{HashMap, HashSet};
 use petgraph::{
-    stable_graph::{EdgeIndex, NodeIndex, StableDiGraph, StableGraph},
+    graph::EdgeIndex,
+    stable_graph::{NodeIndex, StableDiGraph, StableGraph},
     visit::{Bfs, EdgeRef},
     Direction,
 };
@@ -88,6 +90,20 @@ impl SimpleCfgFunction {
             resulting_graph.add_edge(source, target, edge.weight().clone());
         }
 
+        let mut label_mapping = HashMap::<String, String>::new();
+        for (old, new) in node_mapping.iter() {
+            let old_entry = label_mapping.insert(
+                self.graph[*old].name.to_string(),
+                resulting_graph[*new].name.to_string(),
+            );
+            assert!(old_entry.is_none(), "Duplicate labels in graph");
+        }
+
+        // now fix up all Phi instructions based on the node mapping
+        for node in resulting_graph.node_indices().collect::<Vec<_>>() {
+            Self::fixup_phis(&mut resulting_graph[node], &label_mapping);
+        }
+
         SimpleCfgFunction {
             name: self.name.clone(),
             args: self.args.clone(),
@@ -99,50 +115,110 @@ impl SimpleCfgFunction {
         }
     }
 
+    fn fixup_phis(block: &mut BasicBlock, label_mapping: &HashMap<String, String>) {
+        for code in &mut block.instrs {
+            if let Instruction::Value {
+                op: ValueOps::Phi,
+                ref mut labels,
+                ..
+            } = code
+            {
+                labels.iter_mut().for_each(|node| {
+                    if let Some(label) = label_mapping.get(node) {
+                        *node = label.to_string();
+                    }
+                });
+            }
+        }
+    }
+
     // this function looks for all CFG fragments of the form
     // source node --(source edge)-> empty node --(target edge)-> target node
     // (where there is only one target edge and the empty node has no instructions)
     // and changes the source edge to point to the target node
     fn collapse_empty_blocks(mut self) -> SimpleCfgFunction {
-        let target_edges: Vec<EdgeIndex> = self
-            .graph
-            .node_indices()
-            .filter(|node| {
-                self.graph[*node].instrs.is_empty() && self.graph[*node].footer.is_empty()
-            })
-            .filter_map(|node| {
-                let outgoing: Vec<_> = self
-                    .graph
-                    .edges_directed(node, Direction::Outgoing)
-                    .collect();
-
-                match outgoing.as_slice() {
-                    [edge] => Some(edge.id()),
-                    _ => None,
-                }
-            })
-            .collect();
-
-        for target_edge in target_edges {
-            let (empty, target) = self.graph.edge_endpoints(target_edge).unwrap();
-
-            let source_edges: Vec<EdgeIndex> = self
+        // loop over every non-empty block, and look at its parents
+        for block in self.graph.node_indices().collect::<Vec<_>>() {
+            // find parents
+            let parents: Vec<NodeIndex> = self
                 .graph
-                .edges_directed(empty, Direction::Incoming)
-                .map(|edge| edge.id())
+                .edges_directed(block, Direction::Incoming)
+                .map(|edge| edge.source())
                 .collect();
+            let new_parents = parents
+                .iter()
+                .map(|parent| self.get_parent_after_collapse(*parent))
+                .collect::<HashSet<_>>();
+            let parent_mapping = parents
+                .iter()
+                .map(|parent| {
+                    (
+                        self.graph[*parent].name.to_string(),
+                        self.graph[self.get_parent_after_collapse(*parent)]
+                            .name
+                            .to_string(),
+                    )
+                })
+                .collect::<HashMap<_, _>>();
+            // if we have fewer parents, phi nodes may get messed up, so avoid the optimization
+            if new_parents.len() == parents.len() {
+                for parent in &parents {
+                    self.collapse_empty_block(*parent);
+                }
 
-            for source_edge in source_edges {
-                let (source, empty_) = self.graph.edge_endpoints(source_edge).unwrap();
-                let weight = self.graph.edge_weight(source_edge).unwrap().clone();
-                assert_eq!(empty, empty_);
-
-                self.graph.remove_edge(source_edge);
-                self.graph.add_edge(source, target, weight);
+                Self::fixup_phis(&mut self.graph[block], &parent_mapping);
             }
         }
 
         self
+    }
+
+    /// Detect the case where source -> empty -> target
+    /// The empty block should have a single incoming and single outgoing edge
+    fn get_single_in_single_out(&self, parent_block: NodeIndex) -> Option<(EdgeIndex, EdgeIndex)> {
+        if !self.graph[parent_block].instrs.is_empty()
+            || !self.graph[parent_block].footer.is_empty()
+        {
+            return None;
+        }
+
+        let outgoing = self
+            .graph
+            .edges_directed(parent_block, Direction::Outgoing)
+            .collect::<Vec<_>>();
+        let incoming = self
+            .graph
+            .edges_directed(parent_block, Direction::Incoming)
+            .collect::<Vec<_>>();
+        if let ([source_edge], [outgoing]) = (incoming.as_slice(), outgoing.as_slice()) {
+            Some((source_edge.id(), outgoing.id()))
+        } else {
+            None
+        }
+    }
+
+    /// Given a parent block, return the block that will be the new parent
+    /// after collapsing the empty block
+    fn get_parent_after_collapse(&self, parent_block: NodeIndex) -> NodeIndex {
+        if let Some((source_edge, _)) = self.get_single_in_single_out(parent_block) {
+            self.graph.edge_endpoints(source_edge).unwrap().0
+        } else {
+            parent_block
+        }
+    }
+
+    /// Detect the case when source -> empty -> target
+    /// and collapse it to source -> target
+    fn collapse_empty_block(&mut self, parent_block: NodeIndex) {
+        if let Some((source_edge, outgoing)) = self.get_single_in_single_out(parent_block) {
+            let weight = self.graph.edge_weight(source_edge).unwrap().clone();
+            let (source, empty) = self.graph.edge_endpoints(source_edge).unwrap();
+            let (empty_, target) = self.graph.edge_endpoints(outgoing).unwrap();
+            assert_eq!(empty, empty_);
+
+            self.graph.remove_edge(source_edge);
+            self.graph.add_edge(source, target, weight);
+        }
     }
 }
 

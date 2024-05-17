@@ -3,21 +3,20 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @to_zero(v0: int): int {
-  v1_: int = const 0;
-  v2_: bool = lt v1_ v0;
-  br v2_ .v3_ .v4_;
-.v3_:
-  v5_: int = const 1;
-  v6_: int = sub v0 v5_;
-  v7_: int = call @to_zero v6_;
-  v8_: int = id v7_;
-  jmp .v9_;
+.v1_:
+  v2_: int = const 0;
+  v3_: bool = lt v2_ v0;
+  br v3_ .v4_ .v5_;
 .v4_:
-  v8_: int = id v0;
-.v9_:
-  ret v8_;
+  v6_: int = const 1;
+  v7_: int = sub v0 v6_;
+  v8_: int = call @to_zero v7_;
+.v5_:
+  v9_: int = phi v0 v8_ .v1_ .v4_;
+  ret v9_;
 }
 @main {
-  v0_: int = const 0;
-  print v0_;
+.v0_:
+  v1_: int = const 0;
+  print v1_;
 }

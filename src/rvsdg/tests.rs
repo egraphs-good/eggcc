@@ -326,6 +326,7 @@ fn rvsdg_state_mem_to_cfg() {
         prog.to_string(),
         "\
 @main {
+.__0__:
   v1: int = const 1;
   v4: ptr<int> = alloc v1;
   v8: int = const 10;
@@ -371,27 +372,28 @@ fn rvsdg_state_mem_to_cfg_more_blocks() {
         prog.to_string(),
         "\
 @main {
+.__0__:
   v1: int = const 1;
   v4: ptr<int> = alloc v1;
   v7: int = const 10;
   store v4 v7;
   v11: int = load v4;
   v14: bool = lt v11 v7;
-  br v14 .__33__ .__22__;
-.__33__:
+  br v14 .__31__ .__22__;
+.__31__:
   print v11;
   free v4;
-  v31: int = id v7;
-  jmp .__40__;
+  jmp .__37__;
 .__22__:
   v24: int = add v11 v1;
   free v4;
   print v24;
-  v31: int = id v7;
-.__40__:
-  print v31;
+.__37__:
+  print v7;
 }
-"
+",
+        "Expected program to match, but got:\n{}",
+        prog
     );
 }
 

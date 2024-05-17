@@ -1,17 +1,17 @@
 const COLORS = {
   rvsdg_roundtrip: "red",
-  egglog_noopt_brilift_noopt: "orange",
-  egglog_noopt_brilift_opt: "yellow",
-  egglog_opt_brilift_noopt: "green",
-  egglog_opt_brilift_opt: "blue",
-  egglog_noopt_bril_llvm_noopt: "purple",
-  egglog_noopt_bril_llvm_opt: "pink",
-  egglog_opt_bril_llvm_noopt: "gray",
-  egglog_opt_bril_llvm_opt: "brown",
+  "cranelift-O0": "orange",
+  "cranelift-O0-eggcc": "yellow",
+  "cranelift-O3": "green",
+  "cranelift-O3-eggcc": "blue",
+  "llvm-peep": "purple",
+  "llvm-peep-eggcc": "pink",
+  "llvm-O3": "gray",
+  "llvm-O3-eggcc": "brown",
 };
 
 function parseDataForChart() {
-  const benchmarks = Array.from(GLOBAL_DATA.enabledBenchmarks);
+  const benchmarks = Array.from(GLOBAL_DATA.enabledBenchmarks).sort();
   const datasets = {};
   GLOBAL_DATA.enabledModes.forEach((mode) => {
     datasets[mode] = {

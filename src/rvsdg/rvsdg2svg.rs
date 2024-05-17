@@ -25,7 +25,7 @@ pub(crate) struct Region {
 enum Node {
     Unit(String, usize, usize),
     // vec must be nonempty
-    Match(Vec<(String, Region)>),
+    Match(String, Vec<(String, Region)>),
     Loop(Region),
 }
 
@@ -97,7 +97,7 @@ impl Node {
     fn inputs(&self, width: f32) -> Vec<f32> {
         match self {
             Node::Unit(_, inputs, _) => (0..*inputs).map(|p| blend(width, *inputs, p)).collect(),
-            Node::Match(branches) => {
+            Node::Match(_, branches) => {
                 let inputs = 1 + branches[0].1.srcs;
                 (0..inputs).map(|p| blend(width, inputs, p)).collect()
             }
@@ -110,7 +110,7 @@ impl Node {
     fn outputs(&self, width: f32) -> Vec<f32> {
         match self {
             Node::Unit(_, _, outputs) => (0..*outputs).map(|p| blend(width, *outputs, p)).collect(),
-            Node::Match(branches) => (0..branches[0].1.dsts)
+            Node::Match(_, branches) => (0..branches[0].1.dsts)
                 .map(|p| blend(width, branches[0].1.dsts, p))
                 .collect(),
             Node::Loop(region) => (1..region.dsts)
@@ -179,7 +179,7 @@ impl Node {
                 let group = Xml::group(once(node).chain(inputs).chain(outputs));
                 (size, group)
             }
-            Node::Match(branches) => {
+            Node::Match(name, branches) => {
                 let children: Vec<_> = branches.iter().map(|t| t.1.to_xml(false)).collect();
                 let size = Size {
                     width: REGION_SPACING * (children.len() + 1) as f32
@@ -213,7 +213,7 @@ impl Node {
                         ("y", &format!("{}", FONT_SIZE)),
                         ("font-size", &format!("{}", FONT_SIZE)),
                     ],
-                    "match",
+                    name,
                 );
 
                 let mut w = 0.0;
@@ -529,6 +529,7 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
             outputs,
         } => (
             Node::Match(
+                "switch".to_string(),
                 outputs
                     .iter()
                     .enumerate()
@@ -543,10 +544,13 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
             then_branch,
             else_branch,
         } => (
-            Node::Match(vec![
-                ("true".into(), mk_region(inputs.len(), then_branch, nodes)),
-                ("false".into(), mk_region(inputs.len(), else_branch, nodes)),
-            ]),
+            Node::Match(
+                "if".to_string(),
+                vec![
+                    ("true".into(), mk_region(inputs.len(), then_branch, nodes)),
+                    ("false".into(), mk_region(inputs.len(), else_branch, nodes)),
+                ],
+            ),
             once(pred).chain(inputs).copied().collect::<Vec<_>>(),
         ),
         RvsdgBody::Theta {

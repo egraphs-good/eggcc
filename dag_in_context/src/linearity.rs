@@ -64,13 +64,13 @@ impl<'a> Extractor<'a> {
             .map(|(k, v)| {
                 let v = v
                     .into_iter()
-                    .flat_map(|expr| self.term_nodes(linearity.expr_to_term.get(&expr).unwrap()))
+                    .map(|expr| self.term_node(linearity.expr_to_term.get(&expr).unwrap()))
                     .collect();
                 (k, v)
             })
             .collect();
 
-        // assert that we only find one node per eclass
+        // assert that we only find one node per eclass (otherwise the extractor is incorrect)
         for nodes in effectful_nodes.values() {
             let mut eclasses = HashSet::new();
             for node in nodes {
@@ -81,34 +81,29 @@ impl<'a> Extractor<'a> {
         effectful_nodes
     }
 
-    fn classes_of_expr(&self, linearity: &Linearity, expr: &RcExpr) -> HashSet<ClassId> {
+    fn class_of_expr(&self, linearity: &Linearity, expr: &RcExpr) -> ClassId {
         let term = linearity.expr_to_term.get(&Rc::as_ptr(expr)).unwrap();
-        let nodeids = self.term_nodes(term);
-        nodeids
-            .iter()
-            .map(|nodeid| linearity.n2c.get(nodeid).unwrap().clone())
-            .collect()
+        let nodeid = self.term_node(term);
+        linearity.n2c.get(&nodeid).unwrap().clone()
     }
 
     /// Start finding effectful nodes from the root of the region
     /// If we've already visited this region, we should not visit again
     /// (otherwise, we may pick two paths to the same region, which is unsound)
     fn find_effectful_nodes_in_region(&mut self, expr: &RcExpr, linearity: &mut Linearity) {
-        let rootids = self.classes_of_expr(linearity, expr);
-        for rootid in rootids {
-            // if we have already visited this region, we should not visit again
-            if linearity.effectful_nodes.contains_key(&rootid) {
-                continue;
-            }
-            let mut res = Default::default();
-            self.find_effectful_nodes_in_expr(expr, linearity, &mut res);
-
-            if linearity.effectful_nodes.contains_key(&rootid) {
-                panic!("The same region was visited twice before being set by `find_effectful_nodes_in_region`");
-            }
-
-            linearity.effectful_nodes.insert(rootid.clone(), res);
+        let rootid = self.class_of_expr(linearity, expr);
+        // if we have already visited this region, we should not visit again
+        if linearity.effectful_nodes.contains_key(&rootid) {
+            return;
         }
+        let mut res = Default::default();
+        self.find_effectful_nodes_in_expr(expr, linearity, &mut res);
+
+        if linearity.effectful_nodes.contains_key(&rootid) {
+            panic!("The same region was visited twice before being set by `find_effectful_nodes_in_region`");
+        }
+
+        linearity.effectful_nodes.insert(rootid.clone(), res);
     }
 
     /// Finds all the effectful nodes along the state edge
@@ -127,6 +122,9 @@ impl<'a> Extractor<'a> {
                 TernaryOp::Write => {
                     // c3 is the state edge
                     self.find_effectful_nodes_in_expr(c3, linearity, res)
+                }
+                TernaryOp::Select => {
+                    panic!("Select is not effectful")
                 }
             },
             Expr::Bop(op, _c1, c2) => {

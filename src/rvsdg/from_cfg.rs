@@ -538,6 +538,10 @@ impl<'a> RvsdgBuilder<'a> {
                     ..
                 } => {
                     let dest_var = self.analysis.intern.intern(dest);
+                    let value = match (const_type, value) {
+                        (Type::Float, Literal::Int(n)) => Literal::Float(*n as f64),
+                        (_, value) => value.clone(),
+                    };
                     let const_id = get_id(
                         &mut self.expr,
                         RvsdgBody::BasicOp(BasicExpr::Const(

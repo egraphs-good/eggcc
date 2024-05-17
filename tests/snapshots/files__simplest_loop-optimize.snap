@@ -9,7 +9,7 @@ expression: visualization.result
   v3_: int = id v1_;
   v4_: int = id v0_;
 .v5_:
-  v6_: int = add v4_ v2_;
+  v6_: int = add v2_ v4_;
   v7_: bool = lt v6_ v3_;
   v2_: int = id v6_;
   v3_: int = id v3_;

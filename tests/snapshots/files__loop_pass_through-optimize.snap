@@ -3,7 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v1_: int = const 2;
+  v1_: int = const 1;
   v2_: int = id v1_;
   v3_: int = id v0;
 .v4_:
@@ -14,6 +14,6 @@ expression: visualization.result
   v3_: int = id v3_;
   br v7_ .v4_ .v8_;
 .v8_:
-  v9_: int = add v2_ v3_;
+  v9_: int = add v0 v2_;
   print v9_;
 }

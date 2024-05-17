@@ -6,9 +6,8 @@
 
 use hashbrown::HashMap;
 use petgraph::{
-    stable_graph::{NodeIndex, StableDiGraph, StableGraph},
-    visit::Bfs,
-    visit::EdgeRef,
+    stable_graph::{EdgeIndex, NodeIndex, StableDiGraph, StableGraph},
+    visit::{Bfs, EdgeRef},
     Direction,
 };
 
@@ -17,12 +16,12 @@ use crate::cfg::{BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram
 #[cfg(test)]
 use crate::Optimizer;
 
-struct JumpOptimizer<'a> {
-    simple_func: &'a SimpleCfgFunction,
-}
+impl SimpleCfgFunction {
+    pub fn optimize_jumps(&self) -> Self {
+        self.single_in_single_out().collapse_empty_blocks()
+    }
 
-impl<'a> JumpOptimizer<'a> {
-    fn optimized(&mut self) -> SimpleCfgFunction {
+    fn single_in_single_out(&self) -> SimpleCfgFunction {
         let mut resulting_graph: StableGraph<BasicBlock, Branch> = StableDiGraph::new();
 
         // a map from nodes in the old graph to nodes in the
@@ -34,17 +33,16 @@ impl<'a> JumpOptimizer<'a> {
         // we use a bfs so that previous nodes are mapped to new nodes
         // before their children.
         // This ensures that `node_mapping[&previous]` succeeds.
-        let mut bfs = Bfs::new(&self.simple_func.graph, self.simple_func.entry);
+        let mut bfs = Bfs::new(&self.graph, self.entry);
 
         let mut edges_to_add = vec![];
 
         // copy the graph without the edges
         // also choose which nodes get fused to which
         // by re-assigning in the node map
-        while let Some(node) = bfs.next(&self.simple_func.graph) {
+        while let Some(node) = bfs.next(&self.graph) {
             let mut collapse_node = false;
             let edges = self
-                .simple_func
                 .graph
                 .edges_directed(node, Direction::Incoming)
                 .collect::<Vec<_>>();
@@ -52,7 +50,6 @@ impl<'a> JumpOptimizer<'a> {
             if let &[single_edge] = edges.as_slice() {
                 let previous = single_edge.source();
                 let previous_outgoing = self
-                    .simple_func
                     .graph
                     .edges_directed(previous, Direction::Outgoing)
                     .collect::<Vec<_>>();
@@ -67,10 +64,10 @@ impl<'a> JumpOptimizer<'a> {
                     // add instructions to the end of the previous node
                     resulting_graph[previous_new]
                         .instrs
-                        .extend(self.simple_func.graph[node].instrs.to_vec());
+                        .extend(self.graph[node].instrs.to_vec());
                     resulting_graph[previous_new]
                         .footer
-                        .extend(self.simple_func.graph[node].footer.to_vec());
+                        .extend(self.graph[node].footer.to_vec());
 
                     collapse_node = true;
                 }
@@ -78,14 +75,10 @@ impl<'a> JumpOptimizer<'a> {
 
             if !collapse_node {
                 // add the node
-                let new_node = resulting_graph.add_node(self.simple_func.graph[node].clone());
+                let new_node = resulting_graph.add_node(self.graph[node].clone());
                 node_mapping.insert(node, new_node);
 
-                edges_to_add.extend(
-                    self.simple_func
-                        .graph
-                        .edges_directed(node, Direction::Incoming),
-                );
+                edges_to_add.extend(self.graph.edges_directed(node, Direction::Incoming));
             }
         }
 
@@ -96,20 +89,60 @@ impl<'a> JumpOptimizer<'a> {
         }
 
         SimpleCfgFunction {
-            name: self.simple_func.name.clone(),
-            args: self.simple_func.args.clone(),
+            name: self.name.clone(),
+            args: self.args.clone(),
             graph: resulting_graph,
-            entry: node_mapping[&self.simple_func.entry],
-            exit: node_mapping[&self.simple_func.exit],
+            entry: node_mapping[&self.entry],
+            exit: node_mapping[&self.exit],
             _phantom: Simple,
-            return_ty: self.simple_func.return_ty.clone(),
+            return_ty: self.return_ty.clone(),
         }
     }
-}
 
-impl SimpleCfgFunction {
-    pub fn optimize_jumps(&self) -> Self {
-        JumpOptimizer { simple_func: self }.optimized()
+    // this function looks for all CFG fragments of the form
+    // source node --(source edge)-> empty node --(target edge)-> target node
+    // (where there is only one target edge and the empty node has no instructions)
+    // and changes the source edge to point to the target node
+    fn collapse_empty_blocks(mut self) -> SimpleCfgFunction {
+        let target_edges: Vec<EdgeIndex> = self
+            .graph
+            .node_indices()
+            .filter(|node| {
+                self.graph[*node].instrs.is_empty() && self.graph[*node].footer.is_empty()
+            })
+            .filter_map(|node| {
+                let outgoing: Vec<_> = self
+                    .graph
+                    .edges_directed(node, Direction::Outgoing)
+                    .collect();
+
+                match outgoing.as_slice() {
+                    [edge] => Some(edge.id()),
+                    _ => None,
+                }
+            })
+            .collect();
+
+        for target_edge in target_edges {
+            let (empty, target) = self.graph.edge_endpoints(target_edge).unwrap();
+
+            let source_edges: Vec<EdgeIndex> = self
+                .graph
+                .edges_directed(empty, Direction::Incoming)
+                .map(|edge| edge.id())
+                .collect();
+
+            for source_edge in source_edges {
+                let (source, empty_) = self.graph.edge_endpoints(source_edge).unwrap();
+                let weight = self.graph.edge_weight(source_edge).unwrap().clone();
+                assert_eq!(empty, empty_);
+
+                self.graph.remove_edge(source_edge);
+                self.graph.add_edge(source, target, weight);
+            }
+        }
+
+        self
     }
 }
 

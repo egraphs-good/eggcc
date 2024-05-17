@@ -51,6 +51,10 @@ impl Constant {
                 let b = term_dag.lit(Literal::Bool(*b));
                 term_dag.app("Bool".into(), vec![b])
             }
+            Constant::Float(f) => {
+                let b = term_dag.lit(Literal::F64(*f));
+                term_dag.app("Float".into(), vec![b])
+            }
         }
     }
 
@@ -65,6 +69,7 @@ impl BaseType {
     pub(crate) fn to_egglog_internal(&self, state: &mut TreeToEgglog) -> Term {
         match self {
             BaseType::IntT => state.app("IntT".into(), vec![]),
+            BaseType::FloatT => state.app("FloatT".into(), vec![]),
             BaseType::BoolT => state.app("BoolT".into(), vec![]),
             BaseType::PointerT(inner) => {
                 let inner = inner.to_egglog_internal(state);

@@ -5,6 +5,7 @@ use cfg::{program_to_cfg, SimpleCfgProgram};
 use conversions::check_for_uninitialized_vars;
 use dag_in_context::interpreter::{interpret_dag_prog, Value};
 use dag_in_context::schema::Constant;
+use ordered_float::OrderedFloat;
 use rvsdg::{RvsdgError, RvsdgProgram};
 use std::path::PathBuf;
 
@@ -73,6 +74,8 @@ impl Optimizer {
             .map(|arg| {
                 if let Ok(int) = arg.parse::<i64>() {
                     Value::Const(Constant::Int(int))
+                } else if let Ok(f) = arg.parse::<OrderedFloat<f64>>() {
+                    Value::Const(Constant::Float(f))
                 } else if arg == "true" {
                     Value::Const(Constant::Bool(true))
                 } else if arg == "false" {

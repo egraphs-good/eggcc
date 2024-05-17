@@ -51,6 +51,7 @@ pub fn prologue() -> String {
         include_str!("utility/context_of.egg"),
         include_str!("utility/canonicalize.egg"),
         include_str!("utility/expr_size.egg"),
+        include_str!("utility/drop_at.egg"),
         include_str!("interval_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("optimizations/peepholes.egg"),

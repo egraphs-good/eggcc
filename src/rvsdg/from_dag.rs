@@ -43,6 +43,7 @@ pub(crate) fn dag_to_rvsdg(tree: &TreeProgram) -> RvsdgProgram {
 fn basetype_to_bril_type(ty: BaseType) -> bril_rs::Type {
     match ty {
         BaseType::IntT => bril_rs::Type::Int,
+        BaseType::FloatT => bril_rs::Type::Float,
         BaseType::BoolT => bril_rs::Type::Bool,
         BaseType::PointerT(inner) => {
             bril_rs::Type::Pointer(Box::new(basetype_to_bril_type(*inner)))
@@ -142,17 +143,30 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
 
 fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
     match bop {
+        // integer operators
         BinaryOp::Add => Some(ValueOps::Add),
         BinaryOp::Sub => Some(ValueOps::Sub),
         BinaryOp::Mul => Some(ValueOps::Mul),
         BinaryOp::Div => Some(ValueOps::Div),
-        BinaryOp::And => Some(ValueOps::And),
-        BinaryOp::Or => Some(ValueOps::Or),
         BinaryOp::Eq => Some(ValueOps::Eq),
         BinaryOp::LessThan => Some(ValueOps::Lt),
         BinaryOp::GreaterThan => Some(ValueOps::Gt),
         BinaryOp::LessEq => Some(ValueOps::Le),
         BinaryOp::GreaterEq => Some(ValueOps::Ge),
+        // float operators
+        BinaryOp::FAdd => Some(ValueOps::Fadd),
+        BinaryOp::FSub => Some(ValueOps::Fsub),
+        BinaryOp::FMul => Some(ValueOps::Fmul),
+        BinaryOp::FDiv => Some(ValueOps::Fdiv),
+        BinaryOp::FEq => Some(ValueOps::Feq),
+        BinaryOp::FLessThan => Some(ValueOps::Flt),
+        BinaryOp::FGreaterThan => Some(ValueOps::Fgt),
+        BinaryOp::FLessEq => Some(ValueOps::Fle),
+        BinaryOp::FGreaterEq => Some(ValueOps::Fge),
+        // logical op
+        BinaryOp::And => Some(ValueOps::And),
+        BinaryOp::Or => Some(ValueOps::Or),
+        // pointer operators
         BinaryOp::PtrAdd => Some(ValueOps::PtrAdd),
         BinaryOp::Load => Some(ValueOps::Load),
         BinaryOp::Print => None,
@@ -245,6 +259,11 @@ impl<'a> TreeToRvsdg<'a> {
                         bril_rs::Type::Bool,
                     ))
                 }
+                dag_in_context::schema::Constant::Float(f) => self.push_basic(BasicExpr::Const(
+                    ConstOps::Const,
+                    Literal::Float(f.0),
+                    bril_rs::Type::Float,
+                )),
             },
             Expr::Top(TernaryOp::Write, c1, c2, c3) => {
                 let c1 = self.convert_expr(c1.clone());
@@ -253,6 +272,20 @@ impl<'a> TreeToRvsdg<'a> {
                 self.push_basic(BasicExpr::Effect(
                     EffectOps::Store,
                     vec![c1[0], c2[0], c3[0]],
+                ))
+            }
+            Expr::Top(TernaryOp::Select, c, t, e) => {
+                let c = self.convert_expr(c.clone());
+                let t = self.convert_expr(t.clone());
+                let e = self.convert_expr(e.clone());
+                let bril_type = self.get_basic_expr_type(expr.clone());
+                assert_eq!(c.len(), 1, "Expected exactly one result for cond operand");
+                assert_eq!(t.len(), 1, "Expected exactly one result for then operand");
+                assert_eq!(e.len(), 1, "Expected exactly one result for else operand");
+                self.push_basic(BasicExpr::Op(
+                    ValueOps::Select,
+                    vec![c[0], t[0], e[0]],
+                    bril_type,
                 ))
             }
             Expr::Bop(op, l, r) => {

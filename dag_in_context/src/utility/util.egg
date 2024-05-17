@@ -53,3 +53,13 @@
       ((union (Get (Concat expr1 expr2) i)
               (Get expr2 (- i len1))))
        :ruleset always-run)
+
+
+;; A temporary context.
+;; Be sure to delete at the end of all actions or else!!!
+;; This is safer than using a persistant context, since we may miss an important part of the query.
+(function TmpCtx () Assumption)
+
+(rule ((TmpCtx))
+  ((panic "TmpCtx should not exist outside rule body"))
+  :ruleset always-run)

@@ -180,7 +180,7 @@ fn type_to_treetype_base(ty: &Type) -> BaseType {
     match ty {
         Type::Int => BaseType::IntT,
         Type::Bool => BaseType::BoolT,
-        Type::Float => todo!("Floats not supported yet"),
+        Type::Float => BaseType::FloatT,
         Type::Char => todo!("Chars not supported yet"),
         Type::Pointer(inner) => BaseType::PointerT(Box::new(type_to_treetype_base(inner))),
     }

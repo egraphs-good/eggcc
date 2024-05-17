@@ -6,14 +6,17 @@ use strum::IntoEnumIterator;
 fn top_is_pure(top: &TernaryOp) -> bool {
     match top {
         TernaryOp::Write => false,
+        TernaryOp::Select => true,
     }
 }
 
 fn bop_is_pure(bop: &BinaryOp) -> bool {
     use BinaryOp::*;
     match bop {
-        Add | Sub | Mul | LessThan | And | Or | Div | PtrAdd | Eq | GreaterThan | LessEq
-        | GreaterEq => true,
+        Add | Sub | Mul | LessThan | Div | Eq | GreaterThan | LessEq | GreaterEq => true,
+        FAdd | FSub | FMul | FLessThan | FDiv | FEq | FGreaterThan | FLessEq | FGreaterEq => true,
+        PtrAdd => true,
+        And | Or => true,
         Load | Print | Free => false,
     }
 }
@@ -80,7 +83,8 @@ pub(crate) fn rules() -> Vec<String> {
         (relation ExprIsPure (Expr))
         (relation ListExprIsPure (ListExpr))
         (relation BinaryOpIsPure (BinaryOp))
-        (relation UnaryOpIsPure (UnaryOp))"
+        (relation UnaryOpIsPure (UnaryOp))
+        (relation TopIsPure (TernaryOp))"
             .to_string(),
     )
     .chain(TernaryOp::iter().filter_map(|top| {

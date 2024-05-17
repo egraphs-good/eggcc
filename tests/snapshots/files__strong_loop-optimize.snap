@@ -15,10 +15,10 @@ expression: visualization.result
 .v10_:
   print v9_;
   v11_: int = const 1;
-  v12_: int = add v5_ v11_;
+  v12_: int = add v11_ v5_;
   v13_: int = add v7_ v9_;
   v14_: int = const 7;
-  v15_: int = add v14_ v5_;
+  v15_: int = add v14_ v9_;
   v16_: bool = lt v5_ v8_;
   v5_: int = id v12_;
   v6_: int = id v6_;
@@ -28,6 +28,6 @@ expression: visualization.result
   br v16_ .v10_ .v17_;
 .v17_:
   print v7_;
-  print v6_;
+  print v2_;
   print v5_;
 }

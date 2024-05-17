@@ -27,6 +27,7 @@
 
 (relation HasType (Expr Type))
 
+
 ;; Keep track of type expectations for error messages
 (relation ExpectType (Expr Type String))
 (rule (
@@ -591,4 +592,28 @@
         ; recursive functions would not get assigned a type.
       )
       ((HasType lhs out-ty))
+      :ruleset type-analysis)
+
+; find which types are pure
+(relation PureBaseType (BaseType))
+(relation PureType (Type))
+(relation PureTypeList (TypeList))
+
+(PureBaseType (IntT))
+(PureBaseType (BoolT))
+(rule ((Base ty)
+       (PureBaseType ty))
+      ((PureType (Base ty)))
+      :ruleset type-analysis)
+(rule ((TupleT tylist)
+       (PureTypeList tylist))
+      ((PureType (TupleT tylist)))
+      :ruleset type-analysis)
+(rule ((TNil))
+      ((PureTypeList (TNil)))
+      :ruleset type-analysis)
+(rule ((TCons hd tl)
+       (PureBaseType hd)
+       (PureTypeList tl))
+      ((PureTypeList (TCons hd tl)))
       :ruleset type-analysis)

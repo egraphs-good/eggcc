@@ -48,6 +48,12 @@ impl<'a> FromEgglog<'a> {
             };
             Constant::Bool(boolean)
           }
+          ("Float", [lit]) => {
+            let Term::Lit(Literal::F64(f)) = self.termdag.get(*lit) else {
+              panic!("Invalid float: {:?}", lit)
+            };
+            Constant::Float(f)
+          }
           _ => panic!("Invalid constant: {:?}", constant),
         })
     }
@@ -55,6 +61,7 @@ impl<'a> FromEgglog<'a> {
     fn basetype_from_egglog(&mut self, basetype: Term) -> BaseType {
         match_term_app!(basetype.clone(); {
           ("IntT", []) => BaseType::IntT,
+          ("FloatT", []) => BaseType::FloatT,
           ("BoolT", []) => BaseType::BoolT,
           ("PointerT", [basetype]) => BaseType::PointerT(Box::new(self.basetype_from_egglog(self.termdag.get(*basetype)))),
           ("StateT", []) => BaseType::StateT,
@@ -144,6 +151,7 @@ impl<'a> FromEgglog<'a> {
         match_term_app!(top.clone();
         {
           ("Write", []) => TernaryOp::Write,
+          ("Select", []) => TernaryOp::Select,
           _ => panic!("Invalid top: {:?}", top),
         })
     }
@@ -156,14 +164,23 @@ impl<'a> FromEgglog<'a> {
           ("Mul", []) => BinaryOp::Mul,
           ("Div", []) => BinaryOp::Div,
           ("Eq", []) => BinaryOp::Eq,
-          ("Load", []) => BinaryOp::Load,
           ("LessThan", []) => BinaryOp::LessThan,
           ("GreaterThan", []) => BinaryOp::GreaterThan,
           ("LessEq", []) => BinaryOp::LessEq,
           ("GreaterEq", []) => BinaryOp::GreaterEq,
+          ("FAdd", []) => BinaryOp::FAdd,
+          ("FSub", []) => BinaryOp::FSub,
+          ("FMul", []) => BinaryOp::FMul,
+          ("FDiv", []) => BinaryOp::FDiv,
+          ("FEq", []) => BinaryOp::FEq,
+          ("FLessThan", []) => BinaryOp::FLessThan,
+          ("FGreaterThan", []) => BinaryOp::FGreaterThan,
+          ("FLessEq", []) => BinaryOp::FLessEq,
+          ("FGreaterEq", []) => BinaryOp::FGreaterEq,
           ("And", []) => BinaryOp::And,
           ("Or", []) => BinaryOp::Or,
           ("PtrAdd", []) => BinaryOp::PtrAdd,
+          ("Load", []) => BinaryOp::Load,
           ("Print", []) => BinaryOp::Print,
           ("Free", []) => BinaryOp::Free,
           _ => panic!("Invalid binary op: {:?}", op),

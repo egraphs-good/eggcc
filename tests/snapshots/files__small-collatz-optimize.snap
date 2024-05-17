@@ -20,57 +20,58 @@ expression: visualization.result
   v15_: bool = const false;
   v16_: int = id v5_;
   v17_: bool = id v15_;
-  v18_: int = id v6_;
+  v18_: int = id v8_;
   v19_: int = id v7_;
   v20_: int = id v8_;
   v21_: int = id v9_;
   v22_: int = id v10_;
 .v23_:
+  v24_: bool = not v12_;
   v5_: int = id v16_;
   v6_: int = id v18_;
-  v7_: int = id v19_;
-  v8_: int = id v20_;
-  v9_: int = id v21_;
-  v10_: int = id v22_;
-  br v17_ .v11_ .v24_;
+  v7_: int = id v7_;
+  v8_: int = id v8_;
+  v9_: int = id v9_;
+  v10_: int = id v10_;
+  br v24_ .v11_ .v25_;
 .v14_:
-  v25_: int = div v6_ v7_;
-  v26_: int = mul v25_ v7_;
-  v27_: int = sub v6_ v26_;
-  v28_: bool = eq v10_ v27_;
-  v29_: int = add v5_ v8_;
-  br v28_ .v30_ .v31_;
-.v30_:
-  v32_: bool = const true;
-  v33_: int = div v6_ v7_;
-  v34_: int = id v29_;
-  v35_: bool = id v32_;
-  v36_: int = id v33_;
-  v37_: int = id v7_;
-  v38_: int = id v8_;
-  v39_: int = id v9_;
-  v40_: int = id v10_;
-.v41_:
-  v16_: int = id v34_;
-  v17_: bool = id v35_;
-  v18_: int = id v36_;
-  v19_: int = id v37_;
-  v20_: int = id v38_;
-  v21_: int = id v39_;
-  v22_: int = id v40_;
-  jmp .v23_;
+  v26_: int = div v6_ v7_;
+  v27_: int = mul v26_ v7_;
+  v28_: int = sub v6_ v27_;
+  v29_: bool = eq v10_ v28_;
+  v30_: int = add v5_ v8_;
+  br v29_ .v31_ .v32_;
 .v31_:
-  v42_: bool = const true;
-  v43_: int = mul v6_ v9_;
-  v44_: int = add v43_ v8_;
-  v34_: int = id v29_;
-  v35_: bool = id v42_;
-  v36_: int = id v44_;
-  v37_: int = id v7_;
-  v38_: int = id v8_;
-  v39_: int = id v9_;
-  v40_: int = id v10_;
-  jmp .v41_;
-.v24_:
+  v33_: bool = const true;
+  v34_: int = div v6_ v7_;
+  v35_: int = id v30_;
+  v36_: bool = id v33_;
+  v37_: int = id v34_;
+  v38_: int = id v7_;
+  v39_: int = id v8_;
+  v40_: int = id v9_;
+  v41_: int = id v10_;
+.v42_:
+  v16_: int = id v35_;
+  v17_: bool = id v36_;
+  v18_: int = id v37_;
+  v19_: int = id v38_;
+  v20_: int = id v39_;
+  v21_: int = id v40_;
+  v22_: int = id v41_;
+  jmp .v23_;
+.v32_:
+  v43_: bool = const true;
+  v44_: int = mul v6_ v9_;
+  v45_: int = add v44_ v8_;
+  v35_: int = id v30_;
+  v36_: bool = id v43_;
+  v37_: int = id v45_;
+  v38_: int = id v7_;
+  v39_: int = id v8_;
+  v40_: int = id v9_;
+  v41_: int = id v10_;
+  jmp .v42_;
+.v25_:
   print v5_;
 }

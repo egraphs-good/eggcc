@@ -6,6 +6,7 @@ use strum::IntoEnumIterator;
 fn top_is_pure(top: &TernaryOp) -> bool {
     match top {
         TernaryOp::Write => false,
+        TernaryOp::Select => true,
     }
 }
 
@@ -82,7 +83,8 @@ pub(crate) fn rules() -> Vec<String> {
         (relation ExprIsPure (Expr))
         (relation ListExprIsPure (ListExpr))
         (relation BinaryOpIsPure (BinaryOp))
-        (relation UnaryOpIsPure (UnaryOp))"
+        (relation UnaryOpIsPure (UnaryOp))
+        (relation TopIsPure (TernaryOp))"
             .to_string(),
     )
     .chain(TernaryOp::iter().filter_map(|top| {

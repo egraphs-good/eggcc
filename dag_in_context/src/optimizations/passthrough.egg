@@ -1,3 +1,15 @@
+;; Pass through thetas
+(rule ((= lhs (Get loop i))
+        (= loop (DoWhile inputs pred-outputs))
+        (= (Get pred-outputs (+ i 1)) (Get (Arg _ty _ctx) i))
+        ;; only pass through pure types, since some loops don't terminate
+        ;; so the state edge must pass through them
+        (HasType (Get loop i) lhs_ty)
+        (PureType lhs_ty)
+        )
+       ((union lhs (Get inputs i)))
+       :ruleset always-run)
+
 ;; Pass through switch arguments
 (rule ((= lhs (Get switch i))
        (= switch (Switch pred inputs branches))

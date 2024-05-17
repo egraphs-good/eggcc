@@ -33,6 +33,7 @@ pub enum Type {
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum TernaryOp {
     Write,
+    Select,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]

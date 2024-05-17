@@ -14,6 +14,6 @@ expression: visualization.result
   v3_: int = id v3_;
   br v7_ .v4_ .v8_;
 .v8_:
-  v9_: int = add v2_ v3_;
+  v9_: int = add v0 v2_;
   print v9_;
 }

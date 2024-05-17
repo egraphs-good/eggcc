@@ -25,6 +25,9 @@ pub(crate) struct EgraphInfo<'a> {
     pub(crate) parents: HashMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
     pub(crate) roots: Vec<(RootId, NodeId)>,
     pub(crate) cm: &'a dyn CostModel,
+    /// Optionally, a loop with (inputs, outputs) can have an estimated number of iterations.
+    /// This is found by looking at LoopNumItersGuess in the database.
+    pub(crate) loop_iteration_estimates: HashMap<(RootId, RootId), i64>,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
 }
@@ -58,15 +61,52 @@ impl<'a> EgraphInfo<'a> {
             .unwrap()
     }
 
+    fn get_loop_iteration_estimates(egraph: &EGraph) -> HashMap<(ClassId, ClassId), i64> {
+        // for every eclass that represents a single i64 in the egraph,
+        // map the eclass to that integer
+        let mut integers = HashMap::new();
+        for (nodeid, node) in &egraph.nodes {
+            if let Ok(integer) = node.op.parse::<i64>() {
+                let eclass = egraph.nid_to_cid(nodeid);
+                integers.insert(eclass, integer);
+            }
+        }
+
+        let mut loop_iteration_estimates = HashMap::new();
+
+        // loop over all nodes, finding LoopNumItersGuess nodes
+        for (_nodeid, node) in &egraph.nodes {
+            if node.op == "LoopNumItersGuess" {
+                // assert it has three children
+                assert_eq!(
+                    node.children.len(),
+                    2,
+                    "LoopNumItersGuess node has wrong number of children. Node: {:?}",
+                    node
+                );
+                loop_iteration_estimates.insert(
+                    (
+                        egraph.nid_to_cid(&node.children[0]).clone(),
+                        egraph.nid_to_cid(&node.children[1]).clone(),
+                    ),
+                    integers[&node.eclass],
+                );
+            }
+        }
+        loop_iteration_estimates
+    }
+
     pub(crate) fn new(
         cm: &'a dyn CostModel,
         egraph: EGraph,
         unextractables: HashSet<String>,
     ) -> Self {
+        let loop_iteration_estimates = Self::get_loop_iteration_estimates(&egraph);
+
         // get all the roots needed
         let mut region_roots = HashSet::new();
-        for node in egraph.classes().values().flat_map(|c| &c.nodes) {
-            for root in enode_regions(&egraph, &egraph[node]) {
+        for (_nodeid, node) in &egraph.nodes {
+            for root in enode_regions(&egraph, node) {
                 region_roots.insert(root);
             }
         }
@@ -151,6 +191,7 @@ impl<'a> EgraphInfo<'a> {
             unextractables,
             parents: parents_sorted,
             roots,
+            loop_iteration_estimates,
         }
     }
 }
@@ -425,6 +466,30 @@ impl<'a> Extractor<'a> {
         }
     }
 
+    // Get the cost of a subregion
+    // For DoWhile nodes, use special logic to calculate the cost based on iteration count
+    fn subregion_cost(&self, info: &EgraphInfo, nodeid: NodeId, child_set: &CostSet) -> Cost {
+        let node = info.egraph.nodes.get(&nodeid).unwrap();
+
+        if node.op == "DoWhile" {
+            let inputs = info.egraph.nid_to_cid(&node.children[0]);
+            let outputs = info.egraph.nid_to_cid(&node.children[1]);
+
+            let loop_num_iters_guess = info
+                .loop_iteration_estimates
+                .get(&(inputs.clone(), outputs.clone()))
+                .cloned()
+                .unwrap_or(1000);
+
+            child_set.total * NotNan::new(loop_num_iters_guess as f64).unwrap()
+        } else {
+            child_set.total
+        }
+    }
+
+    /// Given a node and cost sets for children, calculate the cost set for the node.
+    /// This function is cached so that we don't re-calculate cost sets.
+    /// If a cycle is detected, we return None.
     fn calculate_cost_set(
         &mut self,
         nodeid: NodeId,
@@ -492,7 +557,7 @@ impl<'a> Extractor<'a> {
             for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
                 if *is_region_root {
                     children_terms.push(child_set.term.clone());
-                    unshared_total += child_set.total;
+                    unshared_total += self.subregion_cost(info, nodeid.clone(), child_set);
                 } else {
                     // costs is empty, replace it with the child one
                     if Some(index) == index_of_biggest_child {
@@ -539,10 +604,10 @@ impl<'a> Extractor<'a> {
     }
 }
 
-/// Calculates the cost set of a node based on cost sets of children.
-/// Handles cycles by returning a cost set with infinite cost.
-/// Returns None when costs for children are not yet available.
-fn calculate_node_cost_set(
+/// This function handles finding children cost sets for a node in a particular region.
+/// It then calculates the resulting cost set using `calculate_cost_set`.
+/// Returns `None` when a cycle is found.
+fn node_cost_in_region(
     rootid: ClassId,
     node_id: NodeId,
     extractor: &mut Extractor,
@@ -667,7 +732,7 @@ pub fn extract_with_paths(
         }
 
         if let Some(cost_set_index) =
-            calculate_node_cost_set(rootid.clone(), nodeid.clone(), extractor, info)
+            node_cost_in_region(rootid.clone(), nodeid.clone(), extractor, info)
         {
             let cost_set = &extractor.costsets[cost_set_index];
             let region_costs = extractor.costs.get_mut(&rootid).unwrap();
@@ -749,6 +814,7 @@ impl CostModel for DefaultCostModel {
             "FDiv" => 250.,
             // Comparisons
             "Eq" | "LessThan" | "GreaterThan" | "LessEq" | "GreaterEq" => 10.,
+            "Select" => 10.,
             "FEq" => 10.,
             "FLessThan" | "FGreaterThan" | "FLessEq" | "FGreaterEq" => 100.,
             // Effects
@@ -757,7 +823,8 @@ impl CostModel for DefaultCostModel {
             "Call" => 1000000., // This (very roughly) bounds the size of an expression we inline
             // Control
             "Program" | "Function" => 0.,
-            "DoWhile" => 100., // TODO: we could make this more accurate
+            // custom logic for DoWhile will multiply the body by the LoopNumItersGuess
+            "DoWhile" => 1.,
             "If" | "Switch" => 50.,
             // Schema
             "Bop" | "Uop" | "Top" => 0.,
@@ -1116,12 +1183,15 @@ fn test_dag_extract() {
         )
     );
     let cost_model = DefaultCostModel;
+    let cost_inside_loop = cost_model.get_op_cost("LessThan")
+    // while the same const is used several times, it is only counted twice
+    + cost_model.get_op_cost("Const")
+    + cost_model.get_op_cost("Add");
 
-    let cost_of_one_func = cost_model.get_op_cost("Add") * 2.
-        + cost_model.get_op_cost("DoWhile")
-        + cost_model.get_op_cost("LessThan")
-        // while the same const is used several times, it is only counted twice
-        + cost_model.get_op_cost("Const") * 2.;
+    let cost_of_one_func = cost_model.get_op_cost("DoWhile")
+        + NotNan::new(1000.).unwrap() * cost_inside_loop
+        + cost_model.get_op_cost("Const")
+        + cost_model.get_op_cost("Add");
     // two of the same function
     let expected_cost = cost_of_one_func * 2.;
     dag_extraction_test(&prog, expected_cost);

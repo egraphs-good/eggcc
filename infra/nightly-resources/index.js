@@ -1,14 +1,16 @@
 // copied from profile.py
-const allModes = [
+const treatments = [
   "rvsdg_roundtrip",
-  "egglog_noopt_brilift_noopt",
-  "egglog_noopt_brilift_opt",
-  "egglog_opt_brilift_noopt",
-  "egglog_opt_brilift_opt",
-  "egglog_noopt_bril_llvm_noopt",
-  "egglog_noopt_bril_llvm_opt",
-  "egglog_opt_bril_llvm_noopt",
-  "egglog_opt_bril_llvm_opt",
+
+  "cranelift-O0",
+  "cranelift-O0-eggcc",
+  "cranelift-O3",
+  "cranelift-O3-eggcc",
+
+  "llvm-peep",
+  "llvm-peep-eggcc",
+  "llvm-O3",
+  "llvm-O3-eggcc",
 ];
 
 const GLOBAL_DATA = {
@@ -185,12 +187,17 @@ function diffAttribute(results, baseline, attribute) {
 }
 
 // baseline may be undefined
-function buildEntry(baseline, current) {
+function buildEntry(benchName, baseline, current) {
   const results = current.hyperfine.results[0];
   const baselineResults = baseline?.hyperfine.results[0];
 
+  var name = current.runMethod;
+  if (current.llvm_ir) {
+    name = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchName}&runmode=${current.runMethod}">${current.runMethod}</a>`;
+  }
+
   const result = {
-    name: current.runMethod,
+    name: name,
     mean: { class: "", value: tryRound(results.mean) },
     meanVsBaseline: diffAttribute(results, baselineResults, "mean"),
     min: { class: "", value: tryRound(results.min) },
@@ -201,10 +208,6 @@ function buildEntry(baseline, current) {
     medianVsBaseline: diffAttribute(results, baselineResults, "median"),
     stddev: { class: "", value: tryRound(results.stddev) },
   };
-
-  if (current.llvm) {
-    result.llvm = current.llvm;
-  }
 
   return result;
 }
@@ -233,6 +236,7 @@ function refreshView() {
         }
 
         return buildEntry(
+          benchName,
           baselineRunForMethod,
           GLOBAL_DATA.currentRun[benchName][runMode],
         );
@@ -273,14 +277,6 @@ function refreshView() {
     return 0;
   });
 
-  parsed.forEach((benchmark) => {
-    benchmark.executions.data.forEach((run) => {
-      if (run.llvm) {
-        run.name = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark.name}&runmode=${run.name}">${run.name}</a>`;
-      }
-    });
-  });
-
   document.getElementById("profile").innerHTML = ConvertJsonToTable(parsed);
 
   renderWarnings();
@@ -318,7 +314,7 @@ function makeCheckbox(parent, mode) {
 }
 
 function makeSelectors() {
-  allModes.forEach((mode) => {
+  treatments.forEach((mode) => {
     const checkbox = makeCheckbox(
       document.getElementById("modeCheckboxes"),
       mode,

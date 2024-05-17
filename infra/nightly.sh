@@ -49,7 +49,7 @@ pushd $TOP_DIR
 mkdir -p ./tmp/bench
 
 export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
-make rt
+make runtime
 
 # locally, run on argument
 if [ "$LOCAL" != "" ]; then

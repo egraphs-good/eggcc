@@ -3,31 +3,10 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-  v1_: int = const 0;
-  v2_: bool = lt v0 v1_;
-  v3_: bool = lt v1_ v0;
-  v4_: int = const 1;
-  br v2_ .v5_ .v6_;
-.v5_:
-  br v3_ .v7_ .v8_;
-.v7_:
-  v9_: int = id v4_;
-.v10_:
-  v11_: int = id v9_;
-  jmp .v12_;
-.v8_:
-  v13_: int = const 3;
-  v9_: int = id v13_;
-  jmp .v10_;
-=======
-=======
->>>>>>> 485da000 (snapshots)
 .v1_:
   v2_: int = const 0;
-  v3_: bool = lt v2_ v0;
-  v4_: bool = lt v0 v2_;
+  v3_: bool = lt v0 v2_;
+  v4_: bool = lt v2_ v0;
   v5_: int = const 1;
   br v3_ .v6_ .v7_;
 .v6_:

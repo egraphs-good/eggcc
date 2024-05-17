@@ -3,68 +3,31 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @pow(v0: int, v1: int) {
-<<<<<<< HEAD
-  v2_: int = const 0;
-  v3_: int = id v0;
-  v4_: int = id v2_;
-  v5_: int = id v0;
-  v6_: int = id v1;
-.v7_:
-  v8_: int = const 1;
-  v9_: int = sub v6_ v8_;
-  v10_: bool = lt v4_ v9_;
-  br v10_ .v11_ .v12_;
-.v11_:
-  v13_: int = mul v3_ v5_;
-  v14_: int = const 1;
-  v15_: int = add v14_ v4_;
-  v16_: int = id v13_;
-  v17_: int = id v15_;
-  v18_: int = id v5_;
-  v19_: int = id v6_;
-.v20_:
-  v3_: int = id v16_;
-  v4_: int = id v17_;
-  v5_: int = id v18_;
-  v6_: int = id v19_;
-  br v10_ .v7_ .v21_;
-.v12_:
-  v16_: int = id v3_;
-  v17_: int = id v4_;
-  v18_: int = id v5_;
-  v19_: int = id v6_;
-  jmp .v20_;
-.v21_:
-  print v3_;
-=======
 .v2_:
   v3_: int = const 0;
-  v4_: int = const 1;
-  v5_: int = sub v1 v4_;
+  v4_: int = id v0;
+  v5_: int = id v3_;
   v6_: int = id v0;
-  v7_: int = id v3_;
-  v8_: int = id v0;
-  v9_: int = id v1;
-  v10_: int = id v5_;
-.v11_:
-  v12_: bool = lt v7_ v10_;
-  br v12_ .v13_ .v14_;
+  v7_: int = id v1;
+.v8_:
+  v9_: int = const 1;
+  v10_: int = sub v7_ v9_;
+  v11_: bool = lt v5_ v10_;
+  br v11_ .v12_ .v13_;
+.v12_:
+  v14_: int = mul v4_ v6_;
+  v15_: int = const 1;
+  v16_: int = add v15_ v5_;
 .v13_:
-  v15_: int = mul v6_ v8_;
-  v16_: int = const 1;
-  v17_: int = add v16_ v7_;
-.v14_:
-  v18_: int = phi v6_ v15_ .v11_ .v13_;
-  v19_: int = phi v7_ v17_ .v11_ .v13_;
-  v6_: int = id v18_;
-  v7_: int = id v19_;
-  v8_: int = id v8_;
-  v9_: int = id v9_;
-  v10_: int = id v10_;
-  br v12_ .v11_ .v20_;
-.v20_:
-  print v6_;
->>>>>>> 71264d0b (working without collapse empty blocks)
+  v17_: int = phi v4_ v14_ .v8_ .v12_;
+  v18_: int = phi v5_ v16_ .v8_ .v12_;
+  v4_: int = id v17_;
+  v5_: int = id v18_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
+  br v11_ .v8_ .v19_;
+.v19_:
+  print v4_;
 }
 @main {
 .v0_:

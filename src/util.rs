@@ -871,12 +871,7 @@ impl Run {
     ) -> Result<Interpretable, EggCCError> {
         // Make a unique name for this test running bril llvm
         // so we don't have conflicts in /tmp
-        let unique_name = format!(
-            "{}_{}_{}",
-            self.name().to_string(),
-            optimize_egglog,
-            optimize_llvm
-        );
+        let unique_name = format!("{}_{}_{}", self.name(), optimize_egglog, optimize_llvm);
 
         let program = if optimize_egglog {
             Run::optimize_bril(&input_prog)?

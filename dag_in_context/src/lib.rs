@@ -127,10 +127,18 @@ fn print_function_inlining_pairs(
             if let Expr::Call(callee, _) = cb.call.as_ref() {
                 let call_term = cb.call.to_egglog_internal(tree_state);
                 let call_args = cb.call.children_exprs()[0].to_egglog_internal(tree_state);
+                let intermed_call_args = print_with_intermediate_helper(
+                    &tree_state.termdag,
+                    call_args.clone(),
+                    term_cache,
+                    printed,
+                );
                 let body_term = cb.body.to_egglog_internal(tree_state);
                 format!(
-                    // (union call body) (InlinedCall "callee" args)
-                    "(union {} {}) (InlinedCall \"{}\" {})",
+                    // (union call body) (InlinedCall "callee" args) (subsume (Call "callee" args))
+                    // We need to subsume, otherwise the Call in the original program could get
+                    // substituted into another context during optimization and no longer match InlinedCall.
+                    "(union {} {})\n(InlinedCall \"{}\" {})\n(subsume (Call \"{}\" {}))\n",
                     print_with_intermediate_helper(
                         &tree_state.termdag,
                         call_term.clone(),
@@ -144,12 +152,9 @@ fn print_function_inlining_pairs(
                         printed
                     ),
                     callee,
-                    print_with_intermediate_helper(
-                        &tree_state.termdag,
-                        call_args,
-                        term_cache,
-                        printed
-                    ),
+                    intermed_call_args,
+                    callee,
+                    intermed_call_args,
                 )
             } else {
                 panic!("Tried to inline non-call")

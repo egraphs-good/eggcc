@@ -151,14 +151,14 @@ impl SimpleCfgFunction {
                 .collect();
             let new_parents = parents
                 .iter()
-                .map(|parent| self.get_parent_skipping_empty(*parent))
+                .map(|parent| self.get_parent_after_collapse(*parent))
                 .collect::<HashSet<_>>();
             let parent_mapping = parents
                 .iter()
                 .map(|parent| {
                     (
                         self.graph[*parent].name.to_string(),
-                        self.graph[self.get_parent_skipping_empty(*parent)]
+                        self.graph[self.get_parent_after_collapse(*parent)]
                             .name
                             .to_string(),
                     )
@@ -177,6 +177,8 @@ impl SimpleCfgFunction {
         self
     }
 
+    /// Detect the case where source -> empty -> target
+    /// The empty block should have a single incoming and single outgoing edge
     fn get_single_in_single_out(&self, parent_block: NodeIndex) -> Option<(EdgeIndex, EdgeIndex)> {
         if !self.graph[parent_block].instrs.is_empty()
             || !self.graph[parent_block].footer.is_empty()
@@ -199,7 +201,9 @@ impl SimpleCfgFunction {
         }
     }
 
-    fn get_parent_skipping_empty(&self, parent_block: NodeIndex) -> NodeIndex {
+    /// Given a parent block, return the block that will be the new parent
+    /// after collapsing the empty block
+    fn get_parent_after_collapse(&self, parent_block: NodeIndex) -> NodeIndex {
         if let Some((source_edge, _)) = self.get_single_in_single_out(parent_block) {
             self.graph.edge_endpoints(source_edge).unwrap().0
         } else {
@@ -207,6 +211,8 @@ impl SimpleCfgFunction {
         }
     }
 
+    /// Detect the case when source -> empty -> target
+    /// and collapse it to source -> target
     fn collapse_empty_block(&mut self, parent_block: NodeIndex) {
         if let Some((source_edge, outgoing)) = self.get_single_in_single_out(parent_block) {
             let weight = self.graph.edge_weight(source_edge).unwrap().clone();

@@ -33,3 +33,4 @@ infra/__pycache__/
 runtime/rt.bc
 runtime/rt.o
 
+.DS_Store

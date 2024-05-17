@@ -413,6 +413,9 @@ impl<'a> RvsdgBuilder<'a> {
         }
 
         for (_, succ) in succs {
+            // NB: for deeply-nested branches, an immutable hashmap would be
+            // more efficient here.
+            let old_store = self.store.clone();
             // First, make sure that all inputs are correctly bound to inputs to the block.
             for (i, var) in input_vars.iter().copied().enumerate() {
                 self.store.insert(var, Operand::Arg(i));
@@ -464,6 +467,7 @@ impl<'a> RvsdgBuilder<'a> {
                 }
             }
             outputs.push(output_vec);
+            self.store = old_store;
         }
 
         let pred = pred_op;

@@ -1,0 +1,45 @@
+# ARGS: 16.0
+@main(n: float) {
+    # handle zero
+    zero: float = const 0;
+    is_zero: bool = feq n zero;
+    br is_zero .ret_zero .continue_zero;
+.ret_zero:
+    print zero;
+    ret;
+.continue_zero:
+
+    # handle nan
+    is_not_nan: bool = feq n n;
+    br is_not_nan .continue_nan .ret_nan;
+.ret_nan:
+    nan: float = fdiv zero zero;
+    print nan;
+    ret;
+.continue_nan:
+
+    # handle negative
+    is_negative: bool = flt n zero;
+    br is_negative .ret_nan .continue_neg;
+.continue_neg:
+
+    # main case
+    two: float = const 2;
+    oneminuseps: float = const 0.9999999999;
+    onepluseps: float = const 1.0000000001;
+    ans: float = const 1;
+.do:
+    next: float = fdiv n ans;
+    next: float = fadd ans next;
+    next: float = fdiv next two;
+.while:
+    quot: float = fdiv next ans;
+    ans: float = id next;
+    big_enough: bool = fge quot oneminuseps;
+    small_enough: bool = fle quot onepluseps;
+    good: bool = and big_enough small_enough;
+    br good .done .do;
+.done:
+    print ans;
+    ret;
+}

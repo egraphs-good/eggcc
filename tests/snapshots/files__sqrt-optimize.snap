@@ -1,0 +1,90 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: float) {
+  v1_: float = const 0;
+  v2_: bool = feq v0 v1_;
+  br v2_ .v3_ .v4_;
+.v3_:
+  print v1_;
+  jmp .v5_;
+.v4_:
+  v6_: bool = feq v0 v0;
+  v7_: bool = const true;
+  br v6_ .v8_ .v9_;
+.v8_:
+  v10_: bool = flt v0 v1_;
+  br v10_ .v11_ .v12_;
+.v11_:
+  v13_: float = id v1_;
+  v14_: bool = id v7_;
+.v15_:
+  v16_: float = id v13_;
+  v17_: bool = id v14_;
+.v18_:
+  br v17_ .v19_ .v5_;
+.v19_:
+  v20_: float = fdiv v16_ v16_;
+  print v20_;
+  jmp .v5_;
+.v12_:
+  v21_: float = const 1;
+  v22_: float = const 1.0000000001;
+  v23_: float = const 0.9999999999;
+  v24_: float = const 2;
+  v25_: float = id v1_;
+  v26_: float = id v21_;
+  v27_: float = id v22_;
+  v28_: float = id v23_;
+  v29_: float = id v24_;
+  v30_: float = id v0;
+.v31_:
+  v32_: float = fdiv v30_ v26_;
+  v33_: float = fadd v26_ v32_;
+  v34_: float = fdiv v33_ v29_;
+  v35_: float = fdiv v34_ v26_;
+  v36_: bool = fge v35_ v28_;
+  v37_: bool = fle v35_ v27_;
+  v38_: bool = and v36_ v37_;
+  br v38_ .v39_ .v40_;
+.v39_:
+  v41_: bool = const false;
+  v42_: float = id v25_;
+  v43_: float = id v34_;
+  v44_: bool = id v41_;
+  v45_: float = id v27_;
+  v46_: float = id v28_;
+  v47_: float = id v29_;
+  v48_: float = id v30_;
+.v49_:
+  v50_: bool = not v38_;
+  v25_: float = id v25_;
+  v26_: float = id v34_;
+  v27_: float = id v27_;
+  v28_: float = id v28_;
+  v29_: float = id v29_;
+  v30_: float = id v30_;
+  br v50_ .v31_ .v51_;
+.v51_:
+  print v26_;
+  v52_: bool = const false;
+  v13_: float = id v25_;
+  v14_: bool = id v52_;
+  jmp .v15_;
+.v40_:
+  v53_: bool = const true;
+  v42_: float = id v25_;
+  v43_: float = id v34_;
+  v44_: bool = id v53_;
+  v45_: float = id v27_;
+  v46_: float = id v28_;
+  v47_: float = id v29_;
+  v48_: float = id v30_;
+  jmp .v49_;
+.v9_:
+  v16_: float = id v1_;
+  v17_: bool = id v7_;
+  jmp .v18_;
+.v5_:
+}

@@ -72,30 +72,6 @@ def setup_benchmark(benchmark_path):
   except FileExistsError:
     print(f'{profile_dir} exists, overwriting contents')
 
-  res = []
-
-  for mode in modes:
-    (name, runmode, options) = mode
-
-    start = time.time()
-    subprocess.call(f'cargo run --release {profile} --run-mode {runmode} {options} -o {profile_dir}/{name}', shell=True)
-    end = time.time()
-
-    with open(f'{profile_dir}/{name}-args') as f:
-      args = f.read().rstrip()
-    
-    # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
-    result = subprocess.run([
-        'hyperfine',
-        '--style', 'none',
-        '--warmup', '1',
-        '--max-runs', '2',
-        '--export-json', '-',
-        f'"{profile_dir}/{name}{args if len(args) > 0 else ""}"',
-    ], capture_output=True)
-    res.append({"runMethod": runmode, "benchmark": name, "compileTime": end-start, "hyperfine": json.loads(result.stdout)})
-  return res
-
 def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.path} with {benchmark.treatment}')
   profile_dir = benchmark_profile_dir(benchmark.path)
@@ -201,10 +177,9 @@ if __name__ == '__main__':
     for benchmark in to_run:
       bench(benchmark)
 
-  (overview, detailed) = gen_linecount_table()
+  aggregate()
 
-  with open(f"{output_path}/data/profile.json", "w") as data:
-      data.write(json.dumps(out))
+  (overview, detailed) = gen_linecount_table()
 
   with open(f"{output_path}/data/linecount.tex", "w") as linecount:
       linecount.write(overview)
@@ -213,4 +188,6 @@ if __name__ == '__main__':
       linecount.write(detailed)
 
   with open(f"{output_path}/data/nightlytable.tex", "w") as nightly_table:
-      nightly_table.write(gen_nightly_table(out))
+    with open(f"{output_path}/data/profile.json") as data_file:
+      data = json.loads(data_file.read())
+      nightly_table.write(gen_nightly_table(data))

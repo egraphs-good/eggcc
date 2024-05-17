@@ -50,16 +50,11 @@ function getError(entry) {
 }
 
 function parseDataForChart(sortByMode) {
-  let sortedModes = Array.from(GLOBAL_DATA.enabledModes).filter(
-    (x) => x !== BASELINE_MODE,
-  );
-  sortedModes.unshift(BASELINE_MODE);
-
   const benchmarks = GLOBAL_DATA.enabledBenchmarks;
   let sortedBenchmarks = Array.from(benchmarks).sort();
 
   const data = {};
-  sortedModes.forEach((mode) => {
+  GLOBAL_DATA.enabledModes.forEach((mode) => {
     data[mode] = {};
     benchmarks.forEach((benchmark) => {
       const entry = getEntry(benchmark, mode);

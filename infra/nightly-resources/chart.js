@@ -29,10 +29,10 @@ function parseDataForChart(sortByMode) {
   const modes = GLOBAL_DATA.enabledModes;
   const benchmarks = GLOBAL_DATA.enabledBenchmarks;
   let sortedBenchmarks = Array.from(benchmarks).sort();
-  const data = {}
-  modes.forEach(mode => {
+  const data = {};
+  modes.forEach((mode) => {
     data[mode] = {};
-    benchmarks.forEach(benchmark => {
+    benchmarks.forEach((benchmark) => {
       const entry = getDataForBenchmarkRunMode(benchmark, mode);
       if (entry) {
         data[mode][benchmark] = {
@@ -44,25 +44,33 @@ function parseDataForChart(sortByMode) {
       }
     });
     if (mode === sortByMode) {
-      sortedBenchmarks = Object.values(data[mode]).sort((a, b) => b.mean - a.mean).map(x => x.benchmark);
+      sortedBenchmarks = Object.values(data[mode])
+        .sort((a, b) => b.mean - a.mean)
+        .map((x) => x.benchmark);
     }
   });
   const datasets = {};
-  modes.forEach(mode => {
+  modes.forEach((mode) => {
     datasets[mode] = {
       label: mode,
       backgroundColor: COLORS[mode],
       data: Array(benchmarks.length).fill(0),
       borderWidth: 1,
-      errorBars: {}
-    }
-    Object.values(data[mode]).forEach(point => {
+      errorBars: {},
+    };
+    Object.values(data[mode]).forEach((point) => {
       const idx = sortedBenchmarks.indexOf(point.benchmark);
       datasets[mode].data[idx] = point.mean;
-      datasets[mode].errorBars[point.benchmark] = {plus: point.stddev, minus: point.stddev}
+      datasets[mode].errorBars[point.benchmark] = {
+        plus: point.stddev,
+        minus: point.stddev,
+      };
     });
-  })
-  return {labels: Array.from(sortedBenchmarks), datasets: Object.values(datasets)}
+  });
+  return {
+    labels: Array.from(sortedBenchmarks),
+    datasets: Object.values(datasets),
+  };
 }
 
 function initializeChart() {
@@ -80,10 +88,9 @@ function initializeChart() {
         },
       },
       legend: {
-        onClick: (_, item) => refreshChart(item.text)
+        onClick: (_, item) => refreshChart(item.text),
       },
       plugins: {
-        
         chartJsPluginErrorBars: {
           color: "black",
         },

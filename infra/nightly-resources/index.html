@@ -23,6 +23,10 @@
 
   <div>
     <button type="button" class="collapsible" id="chart-toggle" onclick="toggleChart()">Hide Chart</button>
+    <input onclick="onRadioClick(this);" checked type="radio" id="absolute" name="chart-type" value="absolute">
+    <label for="absolute">Absolute</label>
+    <input onclick="onRadioClick(this);" type="radio" id="speedup" name="chart-type" value="speedup">
+    <label for="speedup">Speedup</label><br>
     <canvas class="content" id="chart"></canvas>
   </div>
 

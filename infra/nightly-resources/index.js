@@ -20,6 +20,7 @@ const GLOBAL_DATA = {
   currentRun: [],
   baselineRun: [],
   chart: undefined,
+  chartMode: "absolute",
 };
 
 function addWarning(warning) {

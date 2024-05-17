@@ -10,12 +10,14 @@ const COLORS = {
   "llvm-O3-eggcc": "brown",
 };
 
-function getDataForBenchmarkRunMode(benchmark, runMode) {
+const BASELINE_MODE = "llvm-peep";
+
+function getEntry(benchmark, runMode) {
   const entries = GLOBAL_DATA.currentRun.filter(
     (entry) => entry.benchmark === benchmark && entry.runMethod === runMode,
   );
   if (entries.length === 0) {
-    console.warn(`no data for ${benchmark} ${runMode}`);
+    addWarning(`no data for ${benchmark} ${runMode}`);
   } else if (entries.length > 1) {
     throw new Error(
       `duplicate entries for ${benchmark} ${runMode} (this probably shouldn't happen)`,
@@ -25,32 +27,59 @@ function getDataForBenchmarkRunMode(benchmark, runMode) {
   }
 }
 
+function getValue(entry) {
+  if (GLOBAL_DATA.chartMode === "absolute") {
+    return entry.hyperfine.results[0].mean;
+  } else if (GLOBAL_DATA.chartMode === "speedup") {
+    const baseline = getEntry(entry.benchmark, BASELINE_MODE);
+    if (!baseline) {
+      addWarning(`No speedup baseline for ${benchmark}`);
+    }
+    return baseline.hyperfine.results[0].mean / entry.hyperfine.results[0].mean;
+  } else {
+    throw new Error(`unknown chart mode ${GLOBAL_DATA.chartMode}`);
+  }
+}
+
+function getError(entry) {
+  if (GLOBAL_DATA.chartMode === "absolute") {
+    return entry.hyperfine.results[0].stddev;
+  } else {
+    return undefined;
+  }
+}
+
 function parseDataForChart(sortByMode) {
-  const modes = GLOBAL_DATA.enabledModes;
   const benchmarks = GLOBAL_DATA.enabledBenchmarks;
   let sortedBenchmarks = Array.from(benchmarks).sort();
+
   const data = {};
-  modes.forEach((mode) => {
+  // First, compute value and error for each mode and benchmark
+  GLOBAL_DATA.enabledModes.forEach((mode) => {
     data[mode] = {};
     benchmarks.forEach((benchmark) => {
-      const entry = getDataForBenchmarkRunMode(benchmark, mode);
+      const entry = getEntry(benchmark, mode);
       if (entry) {
         data[mode][benchmark] = {
           mode: mode,
           benchmark: benchmark,
-          mean: entry.hyperfine.results[0].mean,
-          stddev: entry.hyperfine.results[0].stddev,
+          value: getValue(entry),
+          error: getError(entry),
         };
       }
     });
+    // Then, sort the benchmarks by the specified mode
     if (mode === sortByMode) {
       sortedBenchmarks = Object.values(data[mode])
-        .sort((a, b) => b.mean - a.mean)
+        .sort((a, b) => b.value - a.value)
         .map((x) => x.benchmark);
     }
   });
+
+  // ChartJS wants the data formatted so that there's an array of values for each mode
+  // and a corresponding array of labels (benchmarks)
   const datasets = {};
-  modes.forEach((mode) => {
+  GLOBAL_DATA.enabledModes.forEach((mode) => {
     datasets[mode] = {
       label: mode,
       backgroundColor: COLORS[mode],
@@ -60,11 +89,14 @@ function parseDataForChart(sortByMode) {
     };
     Object.values(data[mode]).forEach((point) => {
       const idx = sortedBenchmarks.indexOf(point.benchmark);
-      datasets[mode].data[idx] = point.mean;
-      datasets[mode].errorBars[point.benchmark] = {
-        plus: point.stddev,
-        minus: point.stddev,
-      };
+
+      datasets[mode].data[idx] = point.value;
+      if (point.error) {
+        datasets[mode].errorBars[point.benchmark] = {
+          plus: point.error,
+          minus: point.error,
+        };
+      }
     });
   });
   return {

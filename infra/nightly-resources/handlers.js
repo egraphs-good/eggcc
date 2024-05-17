@@ -121,3 +121,8 @@ function toggleChart() {
     content.style.display = "block";
   }
 }
+
+function onRadioClick(elt) {
+  GLOBAL_DATA.chartMode = elt.value;
+  refreshChart();
+}

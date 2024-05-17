@@ -92,15 +92,11 @@ impl SimpleCfgFunction {
 
         let mut label_mapping = HashMap::<String, String>::new();
         for (old, new) in node_mapping.iter() {
-            assert!(
-                label_mapping
-                    .insert(
-                        self.graph[*old].name.to_string(),
-                        resulting_graph[*new].name.to_string(),
-                    )
-                    .is_none(),
-                "Duplicate labels in graph"
+            let old_entry = label_mapping.insert(
+                self.graph[*old].name.to_string(),
+                resulting_graph[*new].name.to_string(),
             );
+            assert!(old_entry.is_none(), "Duplicate labels in graph");
         }
 
         // now fix up all Phi instructions based on the node mapping

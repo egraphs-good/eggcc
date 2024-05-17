@@ -8,8 +8,63 @@ expression: visualization.result
   v3_: bool = feq v0 v2_;
   br v3_ .v4_ .v5_;
 .v4_:
+<<<<<<< HEAD
   print v2_;
   jmp .v6_;
+=======
+  v6_: bool = feq v0 v0;
+  v7_: bool = const true;
+  br v6_ .v8_ .v9_;
+.v8_:
+  v10_: bool = flt v0 v1_;
+  br v10_ .v11_ .v12_;
+.v11_:
+  v13_: float = id v1_;
+.v14_:
+  v15_: float = id v13_;
+  v16_: bool = id v10_;
+.v17_:
+  br v16_ .v18_ .v5_;
+.v18_:
+  v19_: float = fdiv v15_ v15_;
+  print v19_;
+  jmp .v5_;
+.v12_:
+  v20_: float = const 1;
+  v21_: float = const 1.0000000001;
+  v22_: float = const 0.9999999999;
+  v23_: float = const 2;
+  v24_: float = id v1_;
+  v25_: float = id v20_;
+  v26_: float = id v21_;
+  v27_: float = id v22_;
+  v28_: float = id v23_;
+  v29_: float = id v0;
+.v30_:
+  v31_: float = fdiv v29_ v25_;
+  v32_: float = fadd v25_ v31_;
+  v33_: float = fdiv v32_ v28_;
+  v34_: float = fdiv v33_ v25_;
+  v35_: bool = fge v34_ v27_;
+  v36_: bool = fle v34_ v26_;
+  v37_: bool = and v35_ v36_;
+  v38_: bool = not v37_;
+  v24_: float = id v24_;
+  v25_: float = id v33_;
+  v26_: float = id v26_;
+  v27_: float = id v27_;
+  v28_: float = id v28_;
+  v29_: float = id v29_;
+  br v38_ .v30_ .v39_;
+.v39_:
+  print v25_;
+  v13_: float = id v24_;
+  jmp .v14_;
+.v9_:
+  v15_: float = id v1_;
+  v16_: bool = id v7_;
+  jmp .v17_;
+>>>>>>> 8aab9253 (snapshots)
 .v5_:
   v7_: bool = feq v0 v0;
   v8_: bool = const true;

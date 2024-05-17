@@ -63,3 +63,13 @@
 (rule ((TmpCtx))
   ((panic "TmpCtx should not exist outside rule body"))
   :ruleset always-run)
+
+
+(ruleset subsume-after-helpers)
+;; After running the `saturating` ruleset, these if statements can be subsumed
+(relation ToSubsumeIf (Expr Expr Expr Expr))
+(rule ((ToSubsumeIf a b c d))
+      ((subsume (If a b c d)))
+      :ruleset subsume-after-helpers)
+
+

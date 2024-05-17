@@ -1,5 +1,6 @@
 (ruleset passthrough)
 
+
 ;; Pass through thetas
 (rule ((= lhs (Get loop i))
         (= loop (DoWhile inputs pred-outputs))
@@ -52,7 +53,7 @@
 
        (= (Get then_ i) (Get (Arg arg_ty then_ctx) j))
        (= (Get else_ i) (Get (Arg arg_ty else_ctx) j))
-       
+
        (HasType (Get then_ i) (Base (StateT))))
 
       ((let lhs (Get outputs i))
@@ -72,8 +73,11 @@
        (union new_if old_outputs)
 
        (union lhs (Get inputs j))
-       (subsume (If pred inputs then_ else_)))
+       ;; Be careful not to subsume the original if statement immediately,
+       ;;  since TupleRemoveAt still needs to match on it
+       (ToSubsumeIf pred inputs then_ else_))
       :ruleset passthrough)
+
 
 ;; Pass through if predicate
 (rule ((= if (If pred inputs then_ else_))

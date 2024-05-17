@@ -7,6 +7,8 @@ pub(crate) fn helpers() -> String {
     (saturate error-checking) ;; check for errors, relies on type-helpers saturating
       saturating)
 
+  subsume-after-helpers
+
   (saturate drop)
   apply-drop-unions
   cleanup-drop

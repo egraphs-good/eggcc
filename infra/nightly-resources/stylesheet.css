@@ -37,3 +37,8 @@ body {
   overflow: hidden;
   background-color: #f1f1f1;
 }
+
+.filters {
+  width: 45%;
+  display: inline-block;
+}

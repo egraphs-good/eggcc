@@ -10,12 +10,14 @@ const COLORS = {
   "llvm-O3-eggcc": "brown",
 };
 
-function getDataForBenchmarkRunMode(benchmark, runMode) {
+const BASELINE_MODE = "llvm-peep";
+
+function getEntry(benchmark, runMode) {
   const entries = GLOBAL_DATA.currentRun.filter(
     (entry) => entry.benchmark === benchmark && entry.runMethod === runMode,
   );
   if (entries.length === 0) {
-    console.warn(`no data for ${benchmark} ${runMode}`);
+    addWarning(`no data for ${benchmark} ${runMode}`);
   } else if (entries.length > 1) {
     throw new Error(
       `duplicate entries for ${benchmark} ${runMode} (this probably shouldn't happen)`,
@@ -27,16 +29,27 @@ function getDataForBenchmarkRunMode(benchmark, runMode) {
 
 function getValue(entry) {
   if (GLOBAL_DATA.chartMode === "absolute") {
-    return entry.mean;
+    return entry.hyperfine.results[0].mean;
   } else if (GLOBAL_DATA.chartMode === "speedup") {
-    return entry.speedup;
+    const baseline = getEntry(entry.benchmark, BASELINE_MODE);
+    if (!baseline) {
+      addWarning(`No speedup baseline for ${benchmark}`);
+    }
+    return baseline.hyperfine.results[0].mean / entry.hyperfine.results[0].mean;
   } else {
     throw new Error(`unknown chart mode ${GLOBAL_DATA.chartMode}`);
   }
 }
 
+function getError(entry) {
+  if (GLOBAL_DATA.chartMode === "absolute") {
+    return entry.hyperfine.results[0].stddev;
+  } else {
+    return undefined;
+  }
+}
+
 function parseDataForChart(sortByMode) {
-  const BASELINE_MODE = "llvm-peep";
   let sortedModes = Array.from(GLOBAL_DATA.enabledModes).filter(
     (x) => x !== BASELINE_MODE,
   );
@@ -49,30 +62,19 @@ function parseDataForChart(sortByMode) {
   sortedModes.forEach((mode) => {
     data[mode] = {};
     benchmarks.forEach((benchmark) => {
-      const entry = getDataForBenchmarkRunMode(benchmark, mode);
+      const entry = getEntry(benchmark, mode);
       if (entry) {
         data[mode][benchmark] = {
           mode: mode,
           benchmark: benchmark,
-          mean: entry.hyperfine.results[0].mean,
-          stddev: entry.hyperfine.results[0].stddev,
+          value: getValue(entry),
+          error: getError(entry),
         };
-        if (mode === BASELINE_MODE) {
-          data[mode][benchmark].speedup = 1;
-        } else {
-          const baseline = data[BASELINE_MODE][benchmark];
-          if (baseline) {
-            data[mode][benchmark].speedup =
-              baseline.mean / data[mode][benchmark].mean;
-          } else {
-            console.warn(`No speedup baseline for ${benchmark}`);
-          }
-        }
       }
     });
     if (mode === sortByMode) {
       sortedBenchmarks = Object.values(data[mode])
-        .sort((a, b) => getValue(b) - getValue(a))
+        .sort((a, b) => b.value - a.value)
         .map((x) => x.benchmark);
     }
   });
@@ -88,11 +90,11 @@ function parseDataForChart(sortByMode) {
     Object.values(data[mode]).forEach((point) => {
       const idx = sortedBenchmarks.indexOf(point.benchmark);
 
-      datasets[mode].data[idx] = getValue(point);
-      if (GLOBAL_DATA.chartMode === "absolute") {
+      datasets[mode].data[idx] = point.value;
+      if (point.error) {
         datasets[mode].errorBars[point.benchmark] = {
-          plus: point.stddev,
-          minus: point.stddev,
+          plus: point.error,
+          minus: point.error,
         };
       }
     });

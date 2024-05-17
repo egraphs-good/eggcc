@@ -49,13 +49,12 @@ pushd $TOP_DIR
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench
 
-export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
-make runtime
-
 # locally, run on argument
 if [ "$LOCAL" != "" ]; then
   ./infra/profile.py "$@" "$NIGHTLY_DIR"
 else
+  export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
+  make runtime
   # run on all benchmarks in nightly
   ./infra/profile.py benchmarks/passing "$NIGHTLY_DIR"
 fi

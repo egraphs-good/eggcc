@@ -175,7 +175,7 @@ pub enum RunType {
     /// outputting the bril program.
     RvsdgRoundTrip,
     /// Convert to RVSDG and back to Bril again
-    /// Then convert to an executable using brilift, without doing any optimization.
+    /// Then convert to an executable using llvm-peep, without doing any optimization.
     RvsdgRoundTripToExecutable,
     /// Convert to Tree Encoding and back to Bril again,
     /// outputting the bril program.
@@ -567,7 +567,7 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
-                let interpretable = self.run_brilift(bril, false)?;
+                let interpretable = self.run_bril_llvm(bril, false, false)?;
                 (vec![], Some(interpretable))
             }
             RunType::DagToRvsdg => {
@@ -710,7 +710,17 @@ impl Run {
                 (vec![], Some(interpretable))
             }
             RunType::LLVM => {
-                let interpretable = self.run_bril_llvm()?;
+                let optimize_egglog = self.optimize_egglog.expect(
+                    "optimize_egglog is a required flag when running RunMode::CompileBrilLLVM",
+                );
+                let optimize_brillvm = self.optimize_bril_llvm.expect(
+                    "optimize_bril_llvm is a required flag when running RunMode::CompileBrilLLVM",
+                );
+                let interpretable = self.run_bril_llvm(
+                    self.prog_with_args.program.clone(),
+                    optimize_egglog,
+                    optimize_brillvm,
+                )?;
                 (vec![], Some(interpretable))
             }
             RunType::TestBenchmark => {
@@ -735,23 +745,8 @@ impl Run {
                     };
 
                     for optimize_llvm in [true, false] {
-                        let test_run_mode = Run {
-                            test_type: RunType::LLVM,
-                            interp: InterpMode::None,
-                            prog_with_args: ProgWithArguments {
-                                program: resulting_bril.clone(),
-                                name: self.prog_with_args.name.clone(),
-                                args: self.prog_with_args.args.clone(),
-                            },
-                            profile_out: None,
-                            output_path: None,
-                            llvm_output_dir: None,
-                            optimize_egglog: Some(false), // no need to optimize again
-                            optimize_brilift: None,
-                            optimize_bril_llvm: Some(optimize_llvm),
-                        };
-
-                        let interpretable = test_run_mode.run_bril_llvm()?;
+                        let interpretable =
+                            self.run_bril_llvm(resulting_bril.clone(), false, optimize_llvm)?;
                         let new_interpreted = Optimizer::interp(
                             &interpretable,
                             self.prog_with_args.args.clone(),
@@ -868,20 +863,25 @@ impl Run {
         Ok(Interpretable::Executable { executable })
     }
 
-    fn run_bril_llvm(&self) -> Result<Interpretable, EggCCError> {
-        // This test's name is unique
-        let unique_name = self.name().to_string();
-        let optimize_egglog = self
-            .optimize_egglog
-            .expect("optimize_egglog is a required flag when running RunMode::CompileBrilLLVM");
-        let optimize_brillvm = self
-            .optimize_bril_llvm
-            .expect("optimize_bril_llvm is a required flag when running RunMode::CompileBrilLLVM");
+    fn run_bril_llvm(
+        &self,
+        input_prog: Program,
+        optimize_egglog: bool,
+        optimize_llvm: bool,
+    ) -> Result<Interpretable, EggCCError> {
+        // Make a unique name for this test running bril llvm
+        // so we don't have conflicts in /tmp
+        let unique_name = format!(
+            "{}_{}_{}",
+            self.name().to_string(),
+            optimize_egglog,
+            optimize_llvm
+        );
 
         let program = if optimize_egglog {
-            Run::optimize_bril(&self.prog_with_args.program)?
+            Run::optimize_bril(&input_prog)?
         } else {
-            self.prog_with_args.program.clone()
+            input_prog
         };
 
         let mut buf = Vec::new();
@@ -896,7 +896,7 @@ impl Run {
             interpreter: false,
         });
 
-        let init_ll_name = format!("{}-init.ll", unique_name);
+        let init_ll_name = format!("{}-init.ll", self.name());
         let file_path = dir.path().join(init_ll_name.clone());
         let mut file = File::create(file_path.clone()).expect("couldn't create temp file");
         file.write_all(llvm_ir.as_bytes())
@@ -917,7 +917,7 @@ impl Run {
                 .status()
                 .unwrap();
         }
-        if optimize_brillvm {
+        if optimize_llvm {
             expect_command_success(
                 Command::new("clang-18")
                     .arg(file_path.clone())
@@ -941,7 +941,7 @@ impl Run {
                         .arg("-emit-llvm")
                         .arg("-S")
                         .arg("-o")
-                        .arg(format!("{}.ll", unique_name)),
+                        .arg(format!("{}.ll", self.name())),
                     "failed to compile llvm ir and emit llvm ir",
                 );
             }
@@ -986,7 +986,7 @@ impl Run {
                         .arg("-emit-llvm")
                         .arg("-S")
                         .arg("-o")
-                        .arg(format!("{}.ll", unique_name)),
+                        .arg(format!("{}.ll", self.name())),
                     "failed to copy unoptimized llvm ir",
                 );
             }

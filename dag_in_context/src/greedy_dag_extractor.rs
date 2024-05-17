@@ -102,7 +102,7 @@ impl<'a> EgraphInfo<'a> {
     fn get_inlined_calls(egraph: &EGraph) -> HashSet<(ClassId, ClassId)> {
         let mut inlined_calls = HashSet::new();
 
-        // loop over all nodes, finding DontExtract nodes
+        // loop over all nodes, finding InlinedCall nodes
         for (_nodeid, node) in &egraph.nodes {
             if node.op == "InlinedCall" {
                 assert_eq!(

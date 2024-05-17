@@ -1,3 +1,5 @@
+(ruleset passthrough)
+
 ;; Pass through thetas
 (rule ((= lhs (Get loop i))
         (= loop (DoWhile inputs pred-outputs))
@@ -8,7 +10,7 @@
         (PureType lhs_ty)
         )
        ((union lhs (Get inputs i)))
-       :ruleset always-run)
+       :ruleset passthrough)
 
 ;; Pass through switch arguments
 (rule ((= lhs (Get switch i))
@@ -22,7 +24,7 @@
        (HasType lhs lhs_ty)
        (!= lhs_ty (Base (StateT))))
       ((union lhs passed-through))
-      :ruleset always-run)
+      :ruleset passthrough)
 
 ;; Pass through switch predicate
 (rule ((= lhs (Get switch i))
@@ -33,34 +35,28 @@
        (= (Get branch0 i) (Const (Bool false) _ _ctx0))
        (= (Get branch1 i) (Const (Bool true) _ _ctx1)))
       ((union lhs pred))
-      :ruleset always-run)
+      :ruleset passthrough)
 
 ;; Pass through if arguments
 (rule ((= if (If pred inputs then_ else_))
-       (= jth-inside (Get (Arg _ _then_ctx) j))
-       (= (Get then_ i) jth-inside)
-       (= (Get else_ i) (Get (Arg _ _else_ctx) j))
-       (HasType jth-inside lhs_ty)
+       (= (Get then_ i) (Get (Arg arg_ty _then_ctx) j))
+       (= (Get else_ i) (Get (Arg arg_ty _else_ctx) j))
+       (HasType (Get then_ i) lhs_ty)
        (!= lhs_ty (Base (StateT))))
       ((union (Get if i) (Get inputs j)))
-      :ruleset always-run)
+      :ruleset passthrough)
 
 ; Pass through if state edge arguments
 ; To maintain the invariant, we have to union the other outputs with a pure if statement
-(rule ((= lhs (Get outputs i))
-       (= outputs (If pred inputs then_ else_))
+(rule ((= outputs (If pred inputs then_ else_))
 
-       (= (Get then_ i) (Get (Arg (TupleT arg_ty) then_ctx) j))
-       (= (Get else_ i) (Get (Arg (TupleT arg_ty) else_ctx) j))
-       (= passed-through (Get inputs j))
+       (= (Get then_ i) (Get (Arg arg_ty then_ctx) j))
+       (= (Get else_ i) (Get (Arg arg_ty else_ctx) j))
+       
+       (HasType (Get then_ i) (Base (StateT))))
 
-       (HasType lhs lhs_ty)
-       (= lhs_ty (Base (StateT)))
-
-       (= inputs_len  (tuple-length inputs))
-       (= outputs_len (tuple-length outputs)))
-
-      ((let new_inputs (TupleRemoveAt inputs j))
+      ((let lhs (Get outputs i))
+       (let new_inputs (TupleRemoveAt inputs j))
 
        (let new_then_ctx (InIf true  pred new_inputs))
        (let new_else_ctx (InIf false pred new_inputs))
@@ -75,9 +71,9 @@
        (let new_if (If pred new_inputs new_then new_else))
        (union new_if old_outputs)
 
-       (union lhs passed-through)
+       (union lhs (Get inputs j))
        (subsume (If pred inputs then_ else_)))
-      :ruleset always-run)
+      :ruleset passthrough)
 
 ;; Pass through if predicate
 (rule ((= if (If pred inputs then_ else_))
@@ -91,4 +87,4 @@
        (union (Get           if i) pred)
        (union (TupleRemoveAt if i) new_if)
        (subsume (If pred inputs then_ else_)))
-      :ruleset always-run)
+      :ruleset passthrough)

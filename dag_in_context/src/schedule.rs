@@ -28,6 +28,7 @@ pub fn mk_schedule() -> String {
         "
   (unstable-combined-ruleset saturating
     always-run
+    passthrough
     canon
     type-analysis
     context

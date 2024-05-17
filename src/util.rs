@@ -195,8 +195,11 @@ pub enum RunType {
     OptimizeDirectJumps,
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
-    /// Converts to an executable using brilift
+    /// Converts to an executable using brilift (not using eggcc).
+    /// Brilift does not support phi nodes right now, so we can't run the optimized program with it.
     Cranelift,
+    /// Converts to an executable using brillvm.
+    /// `optimize_egglog` and `optimize_bril_llvm` must be set.
     LLVM,
     /// Tests a benchmark by running several different configurations of CompileBrilLLVM
     /// and comparing the results.

@@ -35,16 +35,14 @@ struct Args {
     /// Where to put intermediary files (only for OptimizeBrilLLVM mode)
     #[clap(long)]
     llvm_output_dir: Option<String>,
-    /// Run the eggcc optimizer (only for the CompileBrilfit run mode)
-    /// Defaults to true.
+    /// For the LLVM run mode, choose whether to first run eggcc
+    /// to optimize the bril program before going to LLVM.
     #[clap(long)]
     optimize_egglog: Option<bool>,
-    /// Run the brilift optimizer (only for the CompileBrilfit run mode)
-    /// Defaults to false.
+    /// For the Cranelift run mode, choose between O0 optimization and O3.
     #[clap(long)]
     optimize_brilift: Option<bool>,
-    /// Run the LLVM optimizer (only for the CompileBrilLLVM run mode)
-    /// Defaults to false.
+    /// For the LLVM run mode, choose between peepholes only and O3.
     #[clap(long)]
     optimize_bril_llvm: Option<bool>,
 }

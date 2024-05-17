@@ -1,5 +1,6 @@
 const COLORS = {
-  rvsdg_roundtrip: "red",
+  "rvsdg_roundtrip": "red",
+  "cranelift-O3": "blue",
   "llvm-peep": "purple",
   "llvm-peep-eggcc": "pink",
   "llvm-O3": "gray",

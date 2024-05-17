@@ -364,7 +364,6 @@ impl Run {
 
     pub fn compile_brilift_config(
         test: TestProgram,
-        optimize_egglog: bool,
         optimize_brilift: bool,
         interp: InterpMode,
     ) -> Run {
@@ -375,7 +374,7 @@ impl Run {
             profile_out: None,
             output_path: None,
             llvm_output_dir: None,
-            optimize_egglog: Some(optimize_egglog),
+            optimize_egglog: None,
             optimize_brilift: Some(optimize_brilift),
             optimize_bril_llvm: None,
         }
@@ -434,16 +433,12 @@ impl Run {
             }
         }
 
-        /*for optimize_egglog in [true, false] {
-            for optimize_brilift in [true, false] {
-                res.push(Run::compile_brilift_config(
-                    test.clone(),
-                    optimize_egglog,
-                    optimize_brilift,
-                    InterpMode::Interp,
-                ));
-            }
-        }*/
+        // run a cranelift baseline
+        res.push(Run::compile_brilift_config(
+            test.clone(),
+            true,
+            InterpMode::Interp,
+        ));
 
         #[cfg(feature = "llvm")]
         {
@@ -471,14 +466,9 @@ impl Run {
     pub fn name(&self) -> String {
         let mut name = format!("{}-{}", self.prog_with_args.name, self.test_type);
         if self.test_type == RunType::Cranelift {
-            name += match (
-                self.optimize_egglog.unwrap(),
-                self.optimize_brilift.unwrap(),
-            ) {
-                (false, false) => "-O0",
-                (true, false) => "-O0-eggcc",
-                (false, true) => "-O3",
-                (true, true) => "-O3-eggcc",
+            name += match self.optimize_brilift.unwrap() {
+                false => "-O0",
+                true => "-O3",
             };
         }
         if self.test_type == RunType::LLVM {
@@ -504,15 +494,15 @@ impl Run {
                 None,
             ))
         } else if self.interp == InterpMode::InterpFast {
-            let interpretable = self.run_brilift(self.prog_with_args.program.clone(), false, true);
+            let interpretable = self.run_brilift(self.prog_with_args.program.clone(), true);
             let res = Some(Optimizer::interp(
-                interpretable.as_ref().unwrap().as_ref().unwrap(),
+                interpretable.as_ref().unwrap(),
                 self.prog_with_args.args.clone(),
                 None,
             ));
 
             // clean up binary
-            if let Interpretable::Executable { executable } = interpretable.unwrap().unwrap() {
+            if let Interpretable::Executable { executable } = interpretable.unwrap() {
                 std::fs::remove_file(executable).unwrap();
             }
             res
@@ -577,8 +567,8 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
-                let interpretable = self.run_brilift(bril, false, false)?;
-                (vec![], interpretable)
+                let interpretable = self.run_brilift(bril, false)?;
+                (vec![], Some(interpretable))
             }
             RunType::DagToRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
@@ -712,18 +702,12 @@ impl Run {
                 )
             }
             RunType::Cranelift => {
-                let optimize_egglog = self.optimize_egglog.expect(
-                    "optimize_egglog is a required flag when running RunMode::CompileBrilift",
-                );
                 let optimize_brilift = self.optimize_brilift.expect(
                     "optimize_brilift is a required flag when running RunMode::CompileBrilift",
                 );
-                let interpretable = self.run_brilift(
-                    self.prog_with_args.program.clone(),
-                    optimize_egglog,
-                    optimize_brilift,
-                )?;
-                (vec![], interpretable)
+                let interpretable =
+                    self.run_brilift(self.prog_with_args.program.clone(), optimize_brilift)?;
+                (vec![], Some(interpretable))
             }
             RunType::LLVM => {
                 let interpretable = self.run_bril_llvm()?;
@@ -733,7 +717,15 @@ impl Run {
                 // optimize_egglog and optimize_brilift should not be set
                 assert!(self.optimize_egglog.is_none());
                 assert!(self.optimize_brilift.is_none());
-                let mut interpreted = None;
+                let cranelift_interpretable =
+                    self.run_brilift(self.prog_with_args.program.clone(), true)?;
+
+                // cranelift run gets compared to llvm runs
+                let interpreted = Optimizer::interp(
+                    &cranelift_interpretable,
+                    self.prog_with_args.args.clone(),
+                    None,
+                );
 
                 for optimize_egglog in [true, false] {
                     let resulting_bril = if optimize_egglog {
@@ -765,16 +757,11 @@ impl Run {
                             self.prog_with_args.args.clone(),
                             None,
                         );
-                        if let Some(old_interpreted) = interpreted.clone() {
-                            if old_interpreted != new_interpreted {
-                                panic!(
+                        if interpreted != new_interpreted {
+                            panic!(
                                     "Interpreted outputs differ for {} with optimize_egglog={} and optimize_llvm={}.",
                                     self.name(), optimize_egglog, optimize_llvm
                                 );
-                            }
-                            assert_eq!(old_interpreted, new_interpreted);
-                        } else {
-                            interpreted = Some(new_interpreted);
                         }
                     }
                 }
@@ -814,25 +801,17 @@ impl Run {
         })
     }
 
+    /// Brillift does not support phi nodes, so we can't
+    /// run the optimized program with it.
+    /// However, we can get a baseline comparison by running against it.
     fn run_brilift(
         &self,
-        bril: Program,
-        optimize_egglog: bool,
+        program: Program,
         optimize_brilift: bool,
-    ) -> Result<Option<Interpretable>, EggCCError> {
+    ) -> Result<Interpretable, EggCCError> {
         // For fast testing modes, we may run brilift to compare against
         // therefore we need a unique name based on this test's name and brilift options
-        let unique_name = format!(
-            "{}_brilift_{}_{}",
-            self.name(),
-            optimize_egglog,
-            optimize_brilift
-        );
-        let program = if optimize_egglog {
-            Run::optimize_bril(&bril)?
-        } else {
-            bril
-        };
+        let unique_name = format!("{}_brilift_{}", self.name(), optimize_brilift);
 
         // Compile the input bril file
         // options are "none", "speed", and "speed_and_size"
@@ -886,7 +865,7 @@ impl Run {
             expect_command_success(&mut cmd, "failed to compile brilift");
         }
 
-        Ok(Some(Interpretable::Executable { executable }))
+        Ok(Interpretable::Executable { executable })
     }
 
     fn run_bril_llvm(&self) -> Result<Interpretable, EggCCError> {

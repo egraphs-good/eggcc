@@ -12,6 +12,8 @@ from gen_linecount import gen_linecount_table
 import concurrent.futures
 
 treatments = [
+  "rvsdg_roundtrip",
+  "cranelift-O3",
   "llvm-peep",
   "llvm-peep-eggcc",
   "llvm-O3",
@@ -22,6 +24,8 @@ def get_eggcc_options(name, profile_dir):
   match name:
     case "rvsdg_roundtrip":
       return '--run-mode rvsdg-round-trip-to-executable'
+    case "cranelift-O3":
+      return f'--run-mode cranelift --optimize-egglog false --optimize-brilift true'
     case "llvm-peep":
       return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
     case "llvm-O3":
@@ -60,8 +64,9 @@ def setup_benchmark(benchmark_path):
 def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.path} with {benchmark.treatment}')
   profile_dir = benchmark_profile_dir(benchmark.path)
-  print(f'Running: cargo run --release {benchmark.path} {get_eggcc_options(benchmark.treatment, profile_dir)} -o {profile_dir}/{benchmark.treatment}')
-  subprocess.call(f'cargo run --release {benchmark.path} {get_eggcc_options(benchmark.treatment, profile_dir)} -o {profile_dir}/{benchmark.treatment}', shell=True)
+  cmd = f'cargo run --release {benchmark.path} {get_eggcc_options(benchmark.treatment, profile_dir)} -o {profile_dir}/{benchmark.treatment}'
+  print(f'Running: {cmd}')
+  subprocess.call(cmd, shell=True)
 
 
 
@@ -80,8 +85,9 @@ def bench(benchmark):
       pass
     else:
       # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
-      print(f'Running: hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{benchmark.treatment}.json "{profile_dir}/{benchmark.treatment} {args}"')
-      subprocess.call(f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{benchmark.treatment}.json "{profile_dir}/{benchmark.treatment} {args}"', shell=True)
+      cmd = f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{benchmark.treatment}.json "{profile_dir}/{benchmark.treatment} {args}"'
+      print(f'Running: {cmd}')
+      subprocess.call(cmd, shell=True)
 
 def get_llvm(runMethod, benchmark):
   path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}-{runMethod}.ll'

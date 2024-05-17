@@ -54,6 +54,7 @@ function parseDataForChart(sortByMode) {
   let sortedBenchmarks = Array.from(benchmarks).sort();
 
   const data = {};
+  // First, compute value and error for each mode and benchmark
   GLOBAL_DATA.enabledModes.forEach((mode) => {
     data[mode] = {};
     benchmarks.forEach((benchmark) => {
@@ -67,12 +68,16 @@ function parseDataForChart(sortByMode) {
         };
       }
     });
+    // Then, sort the benchmarks by the specified mode
     if (mode === sortByMode) {
       sortedBenchmarks = Object.values(data[mode])
         .sort((a, b) => b.value - a.value)
         .map((x) => x.benchmark);
     }
   });
+
+  // ChartJS wants the data formatted so that there's an array of values for each mode
+  // and a corresponding array of labels (benchmarks)
   const datasets = {};
   GLOBAL_DATA.enabledModes.forEach((mode) => {
     datasets[mode] = {

@@ -1,22 +1,26 @@
-@main() {
+# ARGS: 3400
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 3000;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(v0 : int) {
+@orig_main(v0 : int): int {
   a: int = id v0;
   v1: int = id a;
-  call @relative_primes v1;
+  sum: int = call @relative_primes v1;
   v2: int = const 0;
+  ret sum;
 }
 @mod(a: int, b: int): int {
   v0: int = id a;
@@ -72,7 +76,8 @@
   v21: int = id g;
   ret v21;
 }
-@relative_primes(a: int) {
+@relative_primes(a: int): int {
+  sum: int = const 0;
   v1: int = id a;
   b: int = id v1;
 .for.cond.0:
@@ -91,7 +96,7 @@
   br v10 .then.7 .else.7;
 .then.7:
   v11: int = id b;
-  print v11;
+  sum: int = add sum v11;
   v12: int = const 0;
   jmp .endif.7;
 .else.7:
@@ -102,4 +107,5 @@
   b: int = id v15;
   jmp .for.cond.0;
 .for.end.0:
+  ret sum;
 }

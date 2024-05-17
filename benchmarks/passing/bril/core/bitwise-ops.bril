@@ -1,6 +1,7 @@
+# ARGS: 100
+
 # Bitwise Operator Library
 # Supports AND, OR, XOR. 0 for and, 1 for OR, 2+ for XOR
-# ARGS: 7 15 0
 
 @mod2(a: int): bool{ # if residue is 1 return true, else return false.
   two: int = const 2;
@@ -66,10 +67,10 @@
  ret ans;
 }
 
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 100;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
@@ -84,7 +85,8 @@
   loop3_cond: bool = lt loop3_counter loop_bound;
   br loop3_cond .loop3_body .loop3_done;
 .loop3_body:
-  call @orig_main loop_counter loop2_counter loop3_counter;
+  output: int = call @orig_main loop_counter loop2_counter loop3_counter;
+  final_output: int = add final_output output;
   loop3_counter: int = add loop3_counter loop_incr;
   jmp .loop3_cond;
 .loop3_done:  
@@ -94,9 +96,10 @@
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main (a : int, b: int, c: int) {
+@orig_main (a : int, b: int, c: int): int {
   one: int = const 1;
   zero: int = const 0; 
 
@@ -121,5 +124,5 @@
 .xor_op:
   ans: int = call @XOR a b;
 .end:  
-  print ans;
+  ret ans;
 }

@@ -1,8 +1,7 @@
-
-@main() {
-  n: int = const 2;
-  arrows: int = const 3;
-  repeats: int = const 4;
+# ARGS: 9
+@main(n: int) {
+  arrows: int = const 2;
+  repeats: int = const 3;
   ans: int = call @up_arrow n arrows repeats;
   print ans;
 }

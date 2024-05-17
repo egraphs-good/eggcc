@@ -1,3 +1,5 @@
+# ARGS: 34
+
 # A standard binary search, not super interesting
 # Inputs: An array of 5 elements (fixed), and a target
 # Output: Index of target, or -1 if not found
@@ -79,21 +81,21 @@
     ret output;
 }
 
-@orig_main(e1: int, e2: int, e3: int, e4: int, e5: int) {
+@orig_main(e1: int, e2: int, e3: int, e4: int, e5: int): int {
     target: int = const 7;
     size: int = const 5;
     zero: int = const 0;
     four: int = const 4;
     array: ptr<int> = call @pack size e1 e2 e3 e4 e5;
     output: int = call @binary_search array target zero four;
-    print output;
     free array;
+    ret output;
 }
 
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 25;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
@@ -118,7 +120,8 @@
   loop5_cond: bool = lt loop5_counter loop_bound;
   br loop5_cond .loop5_body .loop5_done;
 .loop5_body:
-  call @orig_main loop_counter loop2_counter loop3_counter loop4_counter loop5_counter;
+  output: int = call @orig_main loop_counter loop2_counter loop3_counter loop4_counter loop5_counter;
+  final_output: int = add final_output output;
   loop5_counter: int = add loop5_counter loop_incr;
   jmp .loop5_cond;
 .loop5_done:  
@@ -134,4 +137,5 @@
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }

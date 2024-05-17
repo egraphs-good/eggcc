@@ -1,3 +1,4 @@
+# ARGS: 31
 # Bubble Sort for a list containing 5 elements. It is sorted in ascending order. 
 # It can be easily extended to list with any other length. 
 
@@ -26,7 +27,8 @@
     ret array;
 }
 
-@print_array(array: ptr<int>, size: int) {
+@print_array(array: ptr<int>, size: int): int {
+    sum: int = const 0;
     i: int = const 0;
     one: int = const 1;
 .loop:
@@ -35,12 +37,13 @@
 .body:
     loc: ptr<int> = ptradd array i;
     val: int = load loc;
-    print val;
+    val: int = mul val i;
+    sum: int = add sum val;
 .loop_end:
     i: int = add i one;
     jmp .loop;
 .done:
-    ret;
+    ret sum;
 }
 
 @swap_cond(array: ptr<int>, j: int) {
@@ -60,10 +63,10 @@
     ret;
 }
 
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 25;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
@@ -88,7 +91,8 @@
   loop5_cond: bool = lt loop5_counter loop_bound;
   br loop5_cond .loop5_body .loop5_done;
 .loop5_body:
-  call @orig_main loop_counter loop2_counter loop3_counter loop4_counter loop5_counter;
+  output: int = call @orig_main loop_counter loop2_counter loop3_counter loop4_counter loop5_counter;
+  final_output: int = add final_output output;
   loop5_counter: int = add loop5_counter loop_incr;
   jmp .loop5_cond;
 .loop5_done:  
@@ -104,9 +108,10 @@
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(n1: int, n2: int, n3: int, n4: int, n5: int) {
+@orig_main(n1: int, n2: int, n3: int, n4: int, n5: int): int {
 # Pack the input elements into an array with a starting pointer
     size: int = const 5;
     array: ptr<int> = call @pack size n1 n2 n3 n4 n5;
@@ -138,7 +143,8 @@ sizei: int = sub size one;
 .donei:
 
 # Print array
-    call @print_array array size;
+    sum: int = call @print_array array size;
 
     free array;
+    ret sum;
 }

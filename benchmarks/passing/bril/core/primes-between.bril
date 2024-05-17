@@ -1,7 +1,8 @@
-@main() {
+# ARGS: 365
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 400;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
@@ -11,16 +12,19 @@
   inner_cond: bool = lt inner_counter loop_bound;
   br inner_cond .inner_body .inner_done;
 .inner_body:
-  call @orig_main loop_counter inner_counter;
+  output: int = call @orig_main loop_counter inner_counter;
+  final_output: int = add final_output output;
   inner_counter: int = add inner_counter loop_incr;
   jmp .inner_cond;
 .inner_done:
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(a : int, b: int ) {
+@orig_main(a : int, b: int ): int {
+  sum: int = const 0;
   .for.outer.init: # start at interval unless a < 2, then start at 2.
     t0 : int = const 2;
     t1 : bool = lt a t0;
@@ -62,12 +66,13 @@
     t6 : int = add t6 t16;
     br t5 .if.outer.body .if.outer.end;
   .if.outer.body:
-    print t2;
+    sum: int = add sum t2;
   .if.outer.end:
     t17 : int = const 1;
     t2 : int = add t2 t17;
     jmp .for.outer.cond;
   .for.outer.end:
+  ret sum;
 }
 
 @mod(a : int, b : int) : int {

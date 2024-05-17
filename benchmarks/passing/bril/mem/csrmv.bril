@@ -1,3 +1,4 @@
+# ARGS: 750
 # This benchmark multiplies a sparse matrix in Compressed Sparse Rows (CSR) format
 # with a dense vector.
 # The input matrix and vector are randomly generated.
@@ -218,7 +219,8 @@
     ret;
 }
 
-@print_arr(arr: ptr<int>, size: int) {
+@print_arr(arr: ptr<int>, size: int): int {
+    sum: int = const 0;
     one: int = const 1;
     i: int = const 0;
 .loop_cond:
@@ -227,28 +229,30 @@
 .loop_body:
     p: ptr<int> = ptradd arr i;
     v: int = load p;
-    print v;
+    sum: int = add sum v;
     i: int = add i one;
     jmp .loop_cond;
 .loop_exit:
-    ret;
+    ret sum;
 }
 
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 500;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(n: int) {
+@orig_main(n: int): int {
     rows: int = id n;
     cols: int = id n;
     degree: int = const 5;
@@ -260,21 +264,29 @@
     csr_values: ptr<int> = alloc nnz;
 
     call @gen_uniform_csr rows cols degree csr_rowptr csr_colidx csr_values;
-    call @print_arr csr_rowptr rptr_len;
-    call @print_arr csr_colidx nnz;
-    call @print_arr csr_values nnz;
+    a: int = call @print_arr csr_rowptr rptr_len;
+    b: int = call @print_arr csr_colidx nnz;
+    c: int = call @print_arr csr_values nnz;
 
     vec: ptr<int> = alloc cols;
     call @gen_vec cols vec;
-    call @print_arr vec cols;
+    d: int = call @print_arr vec cols;
 
     res: ptr<int> = alloc rows;
     call @csr_spmv rows cols csr_rowptr csr_colidx csr_values vec res;
-    call @print_arr res rows;
+    e: int = call @print_arr res rows;
 
     free csr_rowptr;
     free csr_colidx;
     free csr_values;
     free vec;
     free res;
+
+    sum: int = const 0;
+    sum: int = add a sum;
+    sum: int = add b sum;
+    sum: int = add c sum;
+    sum: int = add d sum;
+    sum: int = add e sum;
+    ret sum;
 }

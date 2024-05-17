@@ -1,5 +1,5 @@
-@main() {
-  starting_m: int = const 25;
+# ARGS: 21
+@main(starting_m: int) {
   call @orig_main starting_m;
 }
 

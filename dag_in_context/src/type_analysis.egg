@@ -250,7 +250,7 @@
       )
       :ruleset type-analysis)  
 
-;; Operators that have type Float -> Float -> Type
+;; Operators that have type Float -> Float -> Bool
 (relation bpred-of-type (BinaryOp Type))
 (bpred-of-type (FLessThan) (Base (FloatT)))
 (bpred-of-type (FLessEq) (Base (FloatT)))

@@ -156,8 +156,6 @@ impl PrettyPrinter {
         fold_when: &dyn Fn(usize, usize) -> bool,
         binding: String,
     ) -> String {
-        // let mut log = Vec::new();
-        // let mut table = std::collections::BTreeMap::<String, SymbolLog>::new();
         self.assign_fresh_var(&self.expr.clone());
         let res = self.fold_expr(&self.expr.clone(), fold_when, false);
         let log = self

@@ -48,6 +48,8 @@ pushd $TOP_DIR
 # create temporary directory structure necessary for bench runs
 mkdir -p ./tmp/bench
 
+export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
+
 # locally, run on argument
 if [ "$LOCAL" != "" ]; then
   ./infra/profile.py "$@"

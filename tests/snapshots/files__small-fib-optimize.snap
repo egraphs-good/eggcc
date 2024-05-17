@@ -9,34 +9,28 @@ expression: visualization.result
   v4_: int = const 1;
   print v4_;
   br v3_ .v5_ .v6_;
-.v5_:
-  jmp .v7_;
 .v6_:
   print v4_;
+  v7_: int = id v4_;
   v8_: int = id v4_;
   v9_: int = id v4_;
-  v10_: int = id v4_;
-  v11_: int = id v0;
-.v12_:
-  v13_: bool = lt v8_ v11_;
-  br v13_ .v14_ .v15_;
+  v10_: int = id v0;
+.v11_:
+  v12_: bool = lt v7_ v10_;
+  br v12_ .v13_ .v14_;
+.v13_:
+  v15_: int = add v8_ v9_;
+  print v15_;
+  v16_: int = const 1;
+  v17_: int = add v16_ v7_;
 .v14_:
-  v16_: int = add v10_ v9_;
-  print v16_;
-  v17_: int = const 1;
-  v18_: int = add v17_ v8_;
-.v19_:
-  v20_: int = phi v8_ v18_ .v15_ .v14_;
-  v21_: int = phi v9_ v16_ .v15_ .v14_;
-  v22_: int = phi v10_ v9_ .v15_ .v14_;
-  v8_: int = id v20_;
-  v9_: int = id v21_;
-  v10_: int = id v22_;
-  v11_: int = id v11_;
-  br v13_ .v12_ .v23_;
-.v23_:
-  jmp .v7_;
-.v15_:
-  jmp .v19_;
-.v7_:
+  v18_: int = phi v7_ v17_ .v11_ .v13_;
+  v19_: int = phi v8_ v15_ .v11_ .v13_;
+  v20_: int = phi v9_ v8_ .v11_ .v13_;
+  v7_: int = id v18_;
+  v8_: int = id v19_;
+  v9_: int = id v20_;
+  v10_: int = id v10_;
+  br v12_ .v11_ .v5_;
+.v5_:
 }

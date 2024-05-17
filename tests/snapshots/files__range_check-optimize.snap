@@ -23,15 +23,12 @@ expression: visualization.result
   v15_: int = const 6;
   v16_: bool = lt v5_ v15_;
   v5_: int = id v14_;
-  br v16_ .v6_ .v17_;
-.v17_:
-  jmp .v18_;
+  br v16_ .v6_ .v4_;
 .v10_:
-  v19_: int = const 2;
-  print v19_;
+  v17_: int = const 2;
+  print v17_;
   jmp .v12_;
 .v4_:
-.v18_:
-  v20_: int = phi v2_ v5_ .v4_ .v17_;
-  print v20_;
+  v18_: int = phi v2_ v5_ .v0_ .v12_;
+  print v18_;
 }

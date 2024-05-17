@@ -28,27 +28,23 @@ expression: visualization.result
   v24_: int = add v16_ v23_;
   print v24_;
   v25_: int = add v15_ v16_;
-.v26_:
-  v27_: int = phi v16_ v25_ .v22_ .v21_;
+.v22_:
+  v26_: int = phi v16_ v25_ .v19_ .v21_;
   v14_: int = id v14_;
   v15_: int = id v15_;
-  v16_: int = id v27_;
+  v16_: int = id v26_;
   v17_: int = id v17_;
   v18_: int = id v18_;
-  br v20_ .v19_ .v28_;
-.v28_:
-  v29_: int = add v5_ v6_;
-.v30_:
-  v31_: int = phi v5_ v29_ .v12_ .v28_;
-  v5_: int = id v31_;
+  br v20_ .v19_ .v27_;
+.v27_:
+  v28_: int = add v5_ v6_;
+.v12_:
+  v29_: int = phi v5_ v28_ .v9_ .v27_;
+  v5_: int = id v29_;
   v6_: int = id v6_;
   v7_: int = id v7_;
   v8_: int = id v8_;
-  br v10_ .v9_ .v32_;
-.v22_:
-  jmp .v26_;
-.v12_:
-  jmp .v30_;
-.v32_:
+  br v10_ .v9_ .v30_;
+.v30_:
   print v5_;
 }

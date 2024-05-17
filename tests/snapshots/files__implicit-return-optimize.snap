@@ -53,18 +53,16 @@ expression: visualization.result
   v15_: int = mul v6_ v8_;
   v16_: int = const 1;
   v17_: int = add v16_ v7_;
-.v18_:
-  v19_: int = phi v6_ v15_ .v14_ .v13_;
-  v20_: int = phi v7_ v17_ .v14_ .v13_;
-  v6_: int = id v19_;
-  v7_: int = id v20_;
+.v14_:
+  v18_: int = phi v6_ v15_ .v11_ .v13_;
+  v19_: int = phi v7_ v17_ .v11_ .v13_;
+  v6_: int = id v18_;
+  v7_: int = id v19_;
   v8_: int = id v8_;
   v9_: int = id v9_;
   v10_: int = id v10_;
-  br v12_ .v11_ .v21_;
-.v14_:
-  jmp .v18_;
-.v21_:
+  br v12_ .v11_ .v20_;
+.v20_:
   print v6_;
 >>>>>>> 71264d0b (working without collapse empty blocks)
 }
@@ -89,23 +87,18 @@ expression: visualization.result
   v17_: int = mul v10_ v8_;
   v18_: int = const 1;
   v19_: int = add v18_ v9_;
-.v20_:
-  v21_: int = phi v8_ v17_ .v16_ .v15_;
-  v22_: int = phi v9_ v19_ .v16_ .v15_;
-  v8_: int = id v21_;
-  v9_: int = id v22_;
+.v16_:
+  v20_: int = phi v8_ v17_ .v12_ .v15_;
+  v21_: int = phi v9_ v19_ .v12_ .v15_;
+  v8_: int = id v20_;
+  v9_: int = id v21_;
   v10_: int = id v10_;
   v11_: int = id v11_;
-  br v14_ .v12_ .v23_;
-.v23_:
-  jmp .v24_;
-.v16_:
-  jmp .v20_;
+  br v14_ .v12_ .v7_;
 .v7_:
-.v24_:
-  v25_: int = phi v2_ v8_ .v7_ .v23_;
-  v26_: int = phi v3_ v9_ .v7_ .v23_;
-  v27_: int = phi v4_ v10_ .v7_ .v23_;
-  v28_: int = phi v5_ v11_ .v7_ .v23_;
-  print v25_;
+  v22_: int = phi v2_ v8_ .v0_ .v16_;
+  v23_: int = phi v3_ v9_ .v0_ .v16_;
+  v24_: int = phi v4_ v10_ .v0_ .v16_;
+  v25_: int = phi v5_ v11_ .v0_ .v16_;
+  print v22_;
 }

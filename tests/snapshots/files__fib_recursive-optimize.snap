@@ -8,26 +8,24 @@ expression: visualization.result
   v3_: bool = eq v0 v2_;
   v4_: int = const 1;
   br v3_ .v5_ .v6_;
-.v5_:
-  jmp .v7_;
 .v6_:
-  v8_: bool = eq v0 v4_;
-  br v8_ .v9_ .v10_;
+  v7_: bool = eq v0 v4_;
+  br v7_ .v8_ .v9_;
+.v8_:
+  v10_: int = call @fac v2_;
+.v11_:
+  v13_: int = phi v12_ v4_ .v9_ .v8_;
+  jmp .v5_;
 .v9_:
-  v11_: int = call @fac v2_;
-.v12_:
-  v14_: int = phi v13_ v4_ .v10_ .v9_;
-  jmp .v7_;
-.v10_:
-  v15_: int = sub v0 v4_;
-  v16_: int = sub v15_ v4_;
+  v14_: int = sub v0 v4_;
+  v15_: int = sub v14_ v4_;
+  v16_: int = call @fac v14_;
   v17_: int = call @fac v15_;
-  v18_: int = call @fac v16_;
-  v13_: int = add v17_ v18_;
-  jmp .v12_;
-.v7_:
-  v19_: int = phi v14_ v4_ .v12_ .v5_;
-  ret v19_;
+  v12_: int = add v16_ v17_;
+  jmp .v11_;
+.v5_:
+  v18_: int = phi v13_ v4_ .v11_ .v1_;
+  ret v18_;
 }
 @main {
 .v0_:

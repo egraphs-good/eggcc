@@ -12,11 +12,9 @@ expression: visualization.result
   v7_: int = add v0 v6_;
   print v7_;
   v8_: int = call @inc v7_;
-  jmp .v9_;
 .v5_:
-.v9_:
-  v10_: int = phi v0 v8_ .v5_ .v4_;
-  ret v10_;
+  v9_: int = phi v0 v8_ .v1_ .v4_;
+  ret v9_;
 }
 @main {
 .v0_:

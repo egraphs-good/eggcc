@@ -20,14 +20,12 @@ expression: visualization.result
   br v4_ .v16_ .v17_;
 .v16_:
   v18_: int = add v13_ v2_;
-  jmp .v19_;
-.v17_:
-  jmp .v19_;
+  jmp .v17_;
 .v9_:
   v14_: bool = const true;
   jmp .v12_;
-.v19_:
-  v20_: int = phi v13_ v18_ .v17_ .v16_;
-  v21_: int = add v20_ v6_;
-  print v21_;
+.v17_:
+  v19_: int = phi v13_ v18_ .v12_ .v16_;
+  v20_: int = add v19_ v6_;
+  print v20_;
 }

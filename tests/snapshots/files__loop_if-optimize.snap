@@ -10,19 +10,17 @@ expression: visualization.result
 .v4_:
   v5_: bool = eq v2_ v3_;
   br v5_ .v6_ .v7_;
+.v7_:
+  v8_: int = const 1;
+  v9_: int = add v2_ v8_;
+  v10_: int = add v3_ v8_;
 .v6_:
-.v8_:
-  v10_: int = phi v9_ v2_ .v7_ .v6_;
-  v12_: int = phi v11_ v3_ .v7_ .v6_;
+  v11_: int = phi v9_ v2_ .v7_ .v4_;
+  v12_: int = phi v10_ v3_ .v7_ .v4_;
   v13_: bool = not v5_;
-  v2_: int = id v10_;
+  v2_: int = id v11_;
   v3_: int = id v12_;
   br v13_ .v4_ .v14_;
-.v7_:
-  v15_: int = const 1;
-  v9_: int = add v15_ v2_;
-  v11_: int = add v15_ v3_;
-  jmp .v8_;
 .v14_:
   print v2_;
 }

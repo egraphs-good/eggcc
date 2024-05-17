@@ -153,23 +153,23 @@ impl SimpleCfgFunction {
                 .iter()
                 .map(|parent| self.get_parent_skipping_empty(*parent))
                 .collect::<HashSet<_>>();
+            let parent_mapping = parents
+                .iter()
+                .map(|parent| {
+                    (
+                        self.graph[*parent].name.to_string(),
+                        self.graph[self.get_parent_skipping_empty(*parent)]
+                            .name
+                            .to_string(),
+                    )
+                })
+                .collect::<HashMap<_, _>>();
             // if we have fewer parents, phi nodes may get messed up, so avoid the optimization
             if new_parents.len() == parents.len() {
                 for parent in &parents {
                     self.collapse_empty_block(*parent);
                 }
 
-                let parent_mapping = parents
-                    .iter()
-                    .map(|parent| {
-                        (
-                            self.graph[*parent].name.to_string(),
-                            self.graph[self.get_parent_skipping_empty(*parent)]
-                                .name
-                                .to_string(),
-                        )
-                    })
-                    .collect::<HashMap<_, _>>();
                 Self::fixup_phis(&mut self.graph[block], &parent_mapping);
             }
         }
@@ -178,7 +178,8 @@ impl SimpleCfgFunction {
     }
 
     fn get_single_in_single_out(&self, parent_block: NodeIndex) -> Option<(EdgeIndex, EdgeIndex)> {
-        if !self.graph[parent_block].instrs.is_empty() || self.graph[parent_block].footer.is_empty()
+        if !self.graph[parent_block].instrs.is_empty()
+            || !self.graph[parent_block].footer.is_empty()
         {
             return None;
         }

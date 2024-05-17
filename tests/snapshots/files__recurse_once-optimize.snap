@@ -11,11 +11,9 @@ expression: visualization.result
   v6_: int = const 1;
   v7_: int = sub v0 v6_;
   v8_: int = call @to_zero v7_;
-  jmp .v9_;
 .v5_:
-.v9_:
-  v10_: int = phi v0 v8_ .v5_ .v4_;
-  ret v10_;
+  v9_: int = phi v0 v8_ .v1_ .v4_;
+  ret v9_;
 }
 @main {
 .v0_:

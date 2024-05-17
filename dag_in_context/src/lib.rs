@@ -9,7 +9,7 @@ use to_egglog::TreeToEgglog;
 
 use crate::{
     dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    schedule::mk_schedule, schema::Expr,
+    schedule::mk_schedule,
 };
 
 pub(crate) mod add_context;
@@ -112,59 +112,6 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
     printed
 }
 
-// Returns a formatted string of (union call body) for each pair
-fn print_function_inlining_pairs(
-    function_inlining_pairs: Vec<function_inlining::CallBody>,
-    printed: &mut String,
-    tree_state: &mut TreeToEgglog,
-    term_cache: &mut HashMap<Term, String>,
-) -> String {
-    // Get unions and mark each call as inlined for extraction purposes
-    let inlined_call = "(relation InlinedCall (String Expr))";
-    let unions = function_inlining_pairs
-        .iter()
-        .map(|cb| {
-            if let Expr::Call(callee, _) = cb.call.as_ref() {
-                let call_term = cb.call.to_egglog_internal(tree_state);
-                let call_args = cb.call.children_exprs()[0].to_egglog_internal(tree_state);
-                let intermed_call_args = print_with_intermediate_helper(
-                    &tree_state.termdag,
-                    call_args.clone(),
-                    term_cache,
-                    printed,
-                );
-                let body_term = cb.body.to_egglog_internal(tree_state);
-                format!(
-                    // (union call body) (InlinedCall "callee" args) (subsume (Call "callee" args))
-                    // We need to subsume, otherwise the Call in the original program could get
-                    // substituted into another context during optimization and no longer match InlinedCall.
-                    "(union {} {})\n(InlinedCall \"{}\" {})\n(subsume (Call \"{}\" {}))\n",
-                    print_with_intermediate_helper(
-                        &tree_state.termdag,
-                        call_term.clone(),
-                        term_cache,
-                        printed
-                    ),
-                    print_with_intermediate_helper(
-                        &tree_state.termdag,
-                        body_term,
-                        term_cache,
-                        printed
-                    ),
-                    callee,
-                    intermed_call_args,
-                    callee,
-                    intermed_call_args,
-                )
-            } else {
-                panic!("Tried to inline non-call")
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    format!("{inlined_call}\n\n{unions}")
-}
-
 // It is expected that program has context added
 pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let mut printed = String::new();
@@ -177,7 +124,7 @@ pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let function_inlining = if !optimize {
         "".to_string()
     } else {
-        print_function_inlining_pairs(
+        function_inlining::print_function_inlining_pairs(
             function_inlining::function_inlining_pairs(
                 program,
                 config::FUNCTION_INLINING_ITERATIONS,

@@ -9,7 +9,7 @@ use to_egglog::TreeToEgglog;
 
 use crate::{
     dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    schedule::mk_schedule,
+    schedule::mk_schedule, schema::Expr,
 };
 
 pub(crate) mod add_context;
@@ -113,28 +113,51 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
 }
 
 // Returns a formatted string of (union call body) for each pair
-#[allow(dead_code)]
 fn print_function_inlining_pairs(
     function_inlining_pairs: Vec<function_inlining::CallBody>,
     printed: &mut String,
     tree_state: &mut TreeToEgglog,
     term_cache: &mut HashMap<Term, String>,
 ) -> String {
-    // Get unions
+    // Get unions and mark each call as inlined for extraction purposes
+    let inlined_call = "(relation InlinedCall (String Expr))";
     let unions = function_inlining_pairs
         .iter()
         .map(|cb| {
-            let call_term = cb.call.to_egglog_internal(tree_state);
-            let body_term = cb.body.to_egglog_internal(tree_state);
-            format!(
-                "(union {} {})",
-                print_with_intermediate_helper(&tree_state.termdag, call_term, term_cache, printed),
-                print_with_intermediate_helper(&tree_state.termdag, body_term, term_cache, printed)
-            )
+            if let Expr::Call(callee, _) = cb.call.as_ref() {
+                let call_term = cb.call.to_egglog_internal(tree_state);
+                let call_args = cb.call.children_exprs()[0].to_egglog_internal(tree_state);
+                let body_term = cb.body.to_egglog_internal(tree_state);
+                format!(
+                    // (union call body) (InlinedCall "callee" args)
+                    "(union {} {}) (InlinedCall \"{}\" {})",
+                    print_with_intermediate_helper(
+                        &tree_state.termdag,
+                        call_term.clone(),
+                        term_cache,
+                        printed
+                    ),
+                    print_with_intermediate_helper(
+                        &tree_state.termdag,
+                        body_term,
+                        term_cache,
+                        printed
+                    ),
+                    callee,
+                    print_with_intermediate_helper(
+                        &tree_state.termdag,
+                        call_args,
+                        term_cache,
+                        printed
+                    ),
+                )
+            } else {
+                panic!("Tried to inline non-call")
+            }
         })
         .collect::<Vec<_>>()
         .join("\n");
-    unions
+    format!("{inlined_call}\n\n{unions}")
 }
 
 // It is expected that program has context added

@@ -6,8 +6,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.min.js"></script>
   <script src="./Plugin.Errorbars.js"></script>
   <script src="chart.js"></script>
+  <script src="data.js"></script>
   <script src="index.js"></script>
   <script src="handlers.js"></script>
+  <script src="previousRuns.js"></script>
   <script src="table.js"></script>
   <script src="utils.js"></script>
   <script src="data/profile.json"></script>
@@ -21,6 +23,10 @@
 
   <div>
     <button type="button" class="collapsible" id="chart-toggle" onclick="toggleChart()">Hide Chart</button>
+    <input onclick="onRadioClick(this);" checked type="radio" id="absolute" name="chart-type" value="absolute">
+    <label for="absolute">Absolute</label>
+    <input onclick="onRadioClick(this);" type="radio" id="speedup" name="chart-type" value="speedup">
+    <label for="speedup">Speedup</label><br>
     <canvas class="content" id="chart"></canvas>
   </div>
 
@@ -33,7 +39,7 @@
   <div class="content" id="warnings"></div>
 
   <div style="width: 75%;">
-    <div style="float: left;">
+    <div class="filters">
       <div>
         <p>Run Modes</p>
         <button onclick="selectAllModes(true)">Select All</button>
@@ -41,7 +47,7 @@
       </div>
       <div id="modeCheckboxes"></div>
     </div>
-    <div style="float: right;">
+    <div class="filters">
       <div>
         <p>Benchmarks</p>
         <button onclick="selectAllBenchmarks(true)">Select All</button>
@@ -55,6 +61,15 @@
   <h2>Raw</h2>
   <p>
     <a href="data/profile.json">Data</a>
+  </p>
+  <p>
+    <a href="data/linecount.tex">Line Count</a>
+  </p>
+  <p>
+    <a href="data/detailed-linecount.tex">Egg File Line Count</a>
+  </p>
+  <p>
+    <a href="data/nightlytable.tex">Nightly Table</a>
   </p>
   <p>
     <a href="log.txt">Log</a>

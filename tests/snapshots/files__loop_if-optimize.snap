@@ -3,29 +3,24 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main {
-  v0_: int = const 0;
-  v1_: int = id v0_;
-  v2_: int = id v0_;
-.v3_:
-  v4_: bool = eq v1_ v2_;
-  br v4_ .v5_ .v6_;
-.v5_:
-  v7_: int = id v1_;
-  v8_: bool = id v4_;
-  v9_: int = id v2_;
-.v10_:
-  v11_: bool = not v4_;
-  v1_: int = id v7_;
-  v2_: int = id v9_;
-  br v11_ .v3_ .v12_;
+.v0_:
+  v1_: int = const 0;
+  v2_: int = id v1_;
+  v3_: int = id v1_;
+.v4_:
+  v5_: bool = eq v2_ v3_;
+  br v5_ .v6_ .v7_;
+.v7_:
+  v8_: int = const 1;
+  v9_: int = add v2_ v8_;
+  v10_: int = add v3_ v8_;
 .v6_:
-  v13_: int = const 1;
-  v14_: int = add v13_ v1_;
-  v15_: int = add v13_ v2_;
-  v7_: int = id v14_;
-  v8_: bool = id v4_;
-  v9_: int = id v15_;
-  jmp .v10_;
-.v12_:
-  print v1_;
+  v11_: int = phi v9_ v2_ .v7_ .v4_;
+  v12_: int = phi v10_ v3_ .v7_ .v4_;
+  v13_: bool = not v5_;
+  v2_: int = id v11_;
+  v3_: int = id v12_;
+  br v13_ .v4_ .v14_;
+.v14_:
+  print v2_;
 }

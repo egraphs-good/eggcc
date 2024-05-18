@@ -3,8 +3,9 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main {
-  v0_: int = const 3;
-  v1_: int = const 2;
-  v2_: int = div v0_ v1_;
-  print v2_;
+.v0_:
+  v1_: int = const 3;
+  v2_: int = const 2;
+  v3_: int = div v1_ v2_;
+  print v3_;
 }

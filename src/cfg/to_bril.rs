@@ -55,10 +55,10 @@ impl SimpleCfgFunction {
                 "logic bug: DFS of graph visited node {node:?} twice"
             );
         }
+        self.push_label(&mut func, self.entry);
         self.node_to_bril(self.entry, &mut func, &node_order);
         Dfs::new(&self.graph, self.entry)
             .iter(&self.graph)
-            // don't do the exit or entry
             .filter(|node| node != &self.entry && node != &self.exit)
             .for_each(|node| {
                 // Add a label for the block

@@ -3,26 +3,20 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-  v1_: int = const 5;
-  v2_: bool = eq v0 v1_;
-  v3_: int = const 4;
-  v4_: int = const 20;
-  br v2_ .v5_ .v6_;
-.v5_:
-  v7_: int = id v4_;
-  jmp .v8_;
-.v6_:
-  v9_: bool = eq v0 v3_;
-  br v9_ .v10_ .v11_;
+.v1_:
+  v2_: int = const 5;
+  v3_: bool = eq v0 v2_;
+  v4_: int = const 4;
+  v5_: int = const 20;
+  br v3_ .v6_ .v7_;
+.v7_:
+  v8_: bool = eq v0 v4_;
+  br v8_ .v9_ .v10_;
+.v9_:
+  v11_: int = const 20;
 .v10_:
-  v12_: int = const 20;
-  v13_: int = id v12_;
-.v14_:
-  v7_: int = id v13_;
-  jmp .v8_;
-.v11_:
-  v13_: int = id v4_;
-  jmp .v14_;
-.v8_:
-  print v7_;
+  v12_: int = phi v5_ v11_ .v7_ .v9_;
+.v6_:
+  v13_: int = phi v12_ v5_ .v10_ .v1_;
+  print v13_;
 }

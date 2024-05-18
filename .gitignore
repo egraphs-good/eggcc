@@ -28,6 +28,9 @@ profile.json
 # commonly used test file
 test.egg
 
+infra/__pycache__/
+
 runtime/rt.bc
 runtime/rt.o
 
+.DS_Store

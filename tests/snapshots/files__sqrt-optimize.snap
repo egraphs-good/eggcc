@@ -1,0 +1,60 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: float) {
+.v1_:
+  v2_: float = const 0;
+  v3_: bool = feq v0 v2_;
+  br v3_ .v4_ .v5_;
+.v4_:
+  print v2_;
+  jmp .v6_;
+.v5_:
+  v7_: bool = feq v0 v0;
+  v8_: bool = const true;
+  br v7_ .v9_ .v10_;
+.v9_:
+  v11_: bool = flt v0 v2_;
+  br v11_ .v12_ .v13_;
+.v13_:
+  v14_: float = const 1;
+  v15_: float = const 1.0000000001;
+  v16_: float = const 0.9999999999;
+  v17_: float = const 2;
+  v18_: float = id v2_;
+  v19_: float = id v14_;
+  v20_: float = id v15_;
+  v21_: float = id v16_;
+  v22_: float = id v17_;
+  v23_: float = id v0;
+.v24_:
+  v25_: float = fdiv v23_ v19_;
+  v26_: float = fadd v19_ v25_;
+  v27_: float = fdiv v26_ v22_;
+  v28_: float = fdiv v27_ v19_;
+  v29_: bool = fle v28_ v20_;
+  v30_: bool = fge v28_ v21_;
+  v31_: bool = and v29_ v30_;
+  v32_: bool = not v31_;
+  v18_: float = id v18_;
+  v19_: float = id v27_;
+  v20_: float = id v20_;
+  v21_: float = id v21_;
+  v22_: float = id v22_;
+  v23_: float = id v23_;
+  br v32_ .v24_ .v33_;
+.v33_:
+  print v19_;
+.v12_:
+  v34_: float = phi v18_ v2_ .v33_ .v9_;
+.v10_:
+  v35_: float = phi v2_ v34_ .v5_ .v12_;
+  v36_: bool = phi v8_ v11_ .v5_ .v12_;
+  br v36_ .v37_ .v38_;
+.v37_:
+  v39_: float = fdiv v35_ v35_;
+  print v39_;
+.v38_:
+.v6_:
+}

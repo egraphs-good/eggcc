@@ -4,7 +4,7 @@
 //! optimized) variant of the live variable analysis described in "Iterative
 //! Data-flow Analysis, Revisited", by Keith D. Cooper, Timothy J. Harvey, and
 //! Ken Kennedy.
-use std::{fmt, mem};
+use std::{collections::BTreeMap, fmt, mem};
 
 use bril_rs::{self, EffectOps, Instruction, ValueOps};
 use fixedbitset::FixedBitSet;
@@ -110,6 +110,7 @@ pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
                         state.gen.insert(names.intern(arg));
                     }
                     if let ValueOps::Call = op {
+                        state.kills.insert(names.intern(state_id()));
                         state.gen.insert(names.intern(state_id()));
                     }
                 }
@@ -119,6 +120,7 @@ pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
                     }
 
                     if let EffectOps::Print | EffectOps::Call = op {
+                        state.kills.insert(names.intern(state_id()));
                         state.gen.insert(names.intern(state_id()));
                     }
                 }
@@ -129,16 +131,16 @@ pub(crate) fn live_variables(cfg: &SwitchCfgFunction) -> LiveVariableAnalysis {
 
     while let Some(block) = worklist.pop() {
         let mut changed = false;
+        // Update live_out
+        for succ in cfg.graph.neighbors(block) {
+            changed |= analysis.union_out_in(block, succ);
+        }
+
         // Update live_in
         let state = analysis.var_state_mut(block);
         changed |= state.live_in.merge(&state.gen);
         for x in state.live_out.vars.difference(&state.kills.vars) {
             changed |= state.live_in.insert(VarId(x as u32));
-        }
-
-        // Update live_out
-        for succ in cfg.graph.neighbors(block) {
-            changed |= analysis.union_out_in(block, succ);
         }
 
         if changed {
@@ -252,6 +254,19 @@ pub(crate) struct LiveVariableState {
     gen: VarSet,
 }
 
+struct StateAndNames<'a>(&'a LiveVariableState, &'a Names);
+
+impl<'a> fmt::Debug for StateAndNames<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("State")
+            .field("in", &self.0.live_in.render(self.1))
+            .field("out", &self.0.live_out.render(self.1))
+            .field("gen", &self.0.gen.render(self.1))
+            .field("kills", &self.0.kills.render(self.1))
+            .finish()
+    }
+}
+
 /// Type information recorded during live variable analysis.
 #[derive(Default)]
 pub(crate) struct VarTypes {
@@ -297,15 +312,9 @@ impl Default for LiveVariableAnalysis {
 impl fmt::Debug for LiveVariableAnalysis {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut map = f.debug_map();
-        for (node, state) in &self.analysis {
-            map.entry(
-                &node.index(),
-                &format!(
-                    "State {{ in: {}, out: {} }}",
-                    state.live_in.render(&self.intern),
-                    state.live_out.render(&self.intern)
-                ),
-            );
+        // Write output sorted.
+        for (node, state) in self.analysis.iter().collect::<BTreeMap<_, _>>() {
+            map.entry(&node.index(), &StateAndNames(state, &self.intern));
         }
         map.finish()?;
         Ok(())

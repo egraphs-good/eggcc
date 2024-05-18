@@ -1,3 +1,5 @@
+# Usage: python3 benchmarks/bench_one.py path/to/file.bril [-o]
+# If -o flag is used, the llvm-O3-eggcc binary is saved to tmp and can be run.
 import sys
 import subprocess
 

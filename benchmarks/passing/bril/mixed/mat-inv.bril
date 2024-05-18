@@ -1,3 +1,5 @@
+# ARGS: 1400000
+
 ## let's try to invert a 3x3 matrix lmao
 ## We'll keep an array of 9 integers
 ## so the first order of business is making a helper to index into it:
@@ -104,15 +106,23 @@
 }
 
 
-## [0 1 7]
-## [4 3 5]
-## [7 4 5]
+@main(loop_bound: float) {
+  loop_incr: float = const 1;
+  loop_counter: float = const 10;
+  final_output: float = const 0;
+.loop_cond:
+  loop_cond: bool = flt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  output: float = call @orig_main loop_counter;
+  final_output: float = fadd final_output output;
+  loop_counter: float = fadd loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+  print final_output;
+}
 
-##inverse:
-## [.25 -1.15 .8]
-## [-.75 2.45 -1.4]
-## [.25 -.35 .2]
-@main
+@orig_main(x: float): float 
 {
   nine :int = const 9;
   one :int = const 1;
@@ -142,17 +152,21 @@
   store ptr five;
 
   det :float = call @determinant matrix;
-  print det;
+  sum: float = id det;
   inv :ptr<float> = call @inverse matrix;
-  call @printarray nine inv;
+  arr: float = call @printarray nine inv;
   free inv;
   free matrix;
+  sum: float = fadd sum arr;
+  sum: float = fadd sum x;
+  ret sum;
 }
 
 
 # Prints an array
 ## borrowed with slight modification from mat-mul.bril
-@printarray(size: int, arr: ptr<float>) {
+@printarray(size: int, arr: ptr<float>): float {
+  sum: float = const 0;
   i: int = const 0;
   one: int = const 1;
 .loop:
@@ -161,10 +175,10 @@
 .body:
   loc: ptr<float> = ptradd arr i;
   val: float = load loc;
-  print val;
+  sum: float = fadd sum val;
 .loop_end:
   i: int = add i one;
   jmp .loop;
 .done:
-  ret;
+  ret sum;
 }

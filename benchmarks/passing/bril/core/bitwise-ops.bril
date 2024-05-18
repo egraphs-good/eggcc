@@ -1,4 +1,4 @@
-# ARGS: 100
+# ARGS: 84
 
 # Bitwise Operator Library
 # Supports AND, OR, XOR. 0 for and, 1 for OR, 2+ for XOR

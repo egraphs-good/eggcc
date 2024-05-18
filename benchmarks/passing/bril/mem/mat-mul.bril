@@ -1,4 +1,4 @@
-# ARGS: 150
+# ARGS: 135
 # Use a linear congruential generator to generate random numbers.
 # `seq` is the state of the random number generator.
 # Returns a value between 0 and max

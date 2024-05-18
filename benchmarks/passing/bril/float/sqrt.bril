@@ -1,5 +1,22 @@
-@main {
-  v0: float = const 327;
+# ARGS: 2000000
+
+@main(loop_bound: float) {
+  loop_incr: float = const 1;
+  loop_counter: float = const 10;
+  final_output: float = const 0;
+.loop_cond:
+  loop_cond: bool = flt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  output: float = call @orig_main loop_counter;
+  final_output: float = fadd final_output output;
+  loop_counter: float = fadd loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+  print final_output;
+}
+
+@orig_main(v0: float): float {
   n: float = id v0;
   v1: float = const 0.00001;
   precision: float = id v1;
@@ -54,6 +71,6 @@
   jmp .for.cond.4;
 .for.end.4:
   v31: float = id x;
-  print v31;
   v32: int = const 0;
+  ret v31;
 }

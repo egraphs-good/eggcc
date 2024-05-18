@@ -1,6 +1,7 @@
+# ARGS: 7700
+
 # Approximate Euler's number using the Taylor series
 
-# ARGS: 18
 @main(n: float) {
   v0: float = id n;
   e: float = call @taylor_series_euler v0;

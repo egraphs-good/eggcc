@@ -1,3 +1,4 @@
+# ARGS: 270000
 # Cholesky decomposition algorithm
 
 # Cholesky decomposition transforms a Hermitian,
@@ -85,7 +86,8 @@
 }
 
 # Prints an array
-@printarray(size: int, arr: ptr<float>) {
+@printarray(size: int, arr: ptr<float>): float {
+  sum: float = const 0;
   i: int = const 0;
   one: int = const 1;
 .loop:
@@ -94,12 +96,12 @@
 .body:
   loc: ptr<float> = ptradd arr i;
   val: float = load loc;
-  print val;
+  sum: float = fadd sum val;
 .loop_end:
   i: int = add i one;
   jmp .loop;
 .done:
-  ret;
+  ret sum;
 }
 
 # Naive matrix muliplication algorithm
@@ -315,7 +317,23 @@
   ret;
 }
 
-@main() {
+@main(loop_bound: float) {
+  loop_incr: float = const 1;
+  loop_counter: float = const 10;
+  final_output: float = const 0;
+.loop_cond:
+  loop_cond: bool = flt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  output: float = call @orig_main loop_counter;
+  final_output: float = fadd final_output output;
+  loop_counter: float = fadd loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+  print final_output;
+}
+
+@orig_main(x: float): float {
   one: int = const 1;
   size: int = const 4;
   sqsize: int = mul size size;
@@ -326,10 +344,11 @@
   call @transpose size arr1 arr1_transposed;
   call @matmul size arr1 arr1_transposed hermitian;
   call @cholesky size hermitian res;
-  call @printarray sqsize res;
+  sum: float = call @printarray sqsize res;
+  sum: float = fadd sum x;
   free arr1;
   free arr1_transposed;
   free hermitian;
   free res;
-  ret;
+  ret sum;
 }

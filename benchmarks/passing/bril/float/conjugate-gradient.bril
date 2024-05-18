@@ -1,8 +1,25 @@
+# ARGS: 165
+
 # Conjugate gradient method to solve Ax=b. Currently A is a 3x3 diagonal with 
 # incrementing values, but any arbitrary spd A can be used
 
-# ARGS: 3
-@main(n: int) {
+@main(loop_bound: int) {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  final_output: float = const 0;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  output: float = call @orig_main loop_counter;
+  final_output: float = fadd final_output output;
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+  print final_output;
+}
+
+@orig_main(n: int): float {
 	one: int = const 1;
 	fone: float = const 1;
 	a :ptr<float> = call @get_sym n;
@@ -28,12 +45,13 @@
 .for.set.end:
 
 	x_sol: ptr<float> = call @cg n a x0 b;
-	call @disp_vec n x_sol;
+	sum: float = call @disp_vec n x_sol;
 
 	free x_sol;
 	free x0;
 	free b;
 	free a;
+	ret sum;
 }
 
 # returns the scalar-vector product cv
@@ -235,7 +253,8 @@
 }
 
 
-@disp_vec(size: int, v: ptr<float>) {
+@disp_vec(size: int, v: ptr<float>): float {
+	sum: float = const 0;
 	i: int = const 0;
 	one: int = const 1;
 .for.cond:
@@ -244,12 +263,12 @@
 .for.body:
 	ptr: ptr<float> = ptradd v i;
 	val: float = load ptr;
-	print val;
+	sum: float = fadd sum val;
 
 	i: int = add i one;
 	jmp .for.cond;
 .for.end:
-	ret;
+	ret sum;
 }
 
 # conjugate gradient method for solving Ax=b (within 1/[inv_tol] tolerance)

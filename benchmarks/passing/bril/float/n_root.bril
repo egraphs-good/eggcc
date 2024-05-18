@@ -1,3 +1,5 @@
+# ARGS: 400000
+
 @pow(x:float, k:int):float
 {
     xx: float = const 1.0;
@@ -40,10 +42,24 @@
 }
 
 
-@main()
-{
-    x: float = const 8.0;
+@main(loop_bound: float) {
+  loop_incr: float = const 1;
+  loop_counter: float = const 10;
+  final_output: float = const 0;
+.loop_cond:
+  loop_cond: bool = flt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  output: float = call @orig_main loop_counter;
+  final_output: float = fadd final_output output;
+  loop_counter: float = fadd loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+  print final_output;
+}
+
+@orig_main(x: float): float {
     n: int = const 5;
     result: float = call @n_root x n;
-    print result;
+    ret result;
 }

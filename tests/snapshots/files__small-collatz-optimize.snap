@@ -40,6 +40,7 @@ expression: visualization.result
   br v30_ .v31_ .v32_;
 .v31_:
   v33_: bool = const true;
+<<<<<<< HEAD
   v34_: int = div v7_ v8_;
 .v20_:
   v21_: bool = phi v35_ v33_ .v32_ .v31_;
@@ -52,4 +53,38 @@ expression: visualization.result
   jmp .v20_;
 .v26_:
   print v6_;
+=======
+  v34_: int = div v6_ v7_;
+  v35_: int = id v30_;
+  v36_: bool = id v33_;
+  v37_: int = id v34_;
+  v38_: int = id v7_;
+  v39_: int = id v8_;
+  v40_: int = id v9_;
+  v41_: int = id v10_;
+.v42_:
+  v43_: bool = const true;
+  v16_: int = id v30_;
+  v17_: bool = id v43_;
+  v18_: int = id v37_;
+  v19_: int = id v7_;
+  v20_: int = id v8_;
+  v21_: int = id v9_;
+  v22_: int = id v10_;
+  jmp .v23_;
+.v32_:
+  v44_: bool = const true;
+  v45_: int = mul v6_ v9_;
+  v46_: int = add v45_ v8_;
+  v35_: int = id v30_;
+  v36_: bool = id v44_;
+  v37_: int = id v46_;
+  v38_: int = id v7_;
+  v39_: int = id v8_;
+  v40_: int = id v9_;
+  v41_: int = id v10_;
+  jmp .v42_;
+.v25_:
+  print v5_;
+>>>>>>> d0550d0d (disable passthrough state edge for now)
 }

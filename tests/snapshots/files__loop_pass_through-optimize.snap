@@ -3,6 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
+<<<<<<< HEAD
 .v1_:
   v2_: int = const 2;
   v3_: int = id v2_;
@@ -17,4 +18,19 @@ expression: visualization.result
 .v9_:
   v10_: int = add v0 v3_;
   print v10_;
+=======
+  v1_: int = const 1;
+  v2_: int = id v1_;
+  v3_: int = id v0;
+.v4_:
+  v5_: int = add v2_ v2_;
+  v6_: int = const 10;
+  v7_: bool = lt v2_ v6_;
+  v2_: int = id v5_;
+  v3_: int = id v3_;
+  br v7_ .v4_ .v8_;
+.v8_:
+  v9_: int = add v0 v2_;
+  print v9_;
+>>>>>>> d0550d0d (disable passthrough state edge for now)
 }

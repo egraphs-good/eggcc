@@ -3,6 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
+<<<<<<< HEAD
 .v1_:
   v2_: int = const 5;
   v3_: bool = eq v0 v2_;
@@ -19,4 +20,27 @@ expression: visualization.result
 .v6_:
   v13_: int = phi v12_ v5_ .v10_ .v1_;
   print v13_;
+=======
+  v1_: int = const 20;
+  v2_: int = const 5;
+  v3_: bool = eq v0 v2_;
+  v4_: int = const 4;
+  br v3_ .v5_ .v6_;
+.v5_:
+  v7_: int = id v1_;
+  jmp .v8_;
+.v6_:
+  v9_: bool = eq v0 v4_;
+  br v9_ .v10_ .v11_;
+.v10_:
+  v12_: int = id v1_;
+.v13_:
+  v7_: int = id v1_;
+  jmp .v8_;
+.v11_:
+  v12_: int = id v1_;
+  jmp .v13_;
+.v8_:
+  print v1_;
+>>>>>>> d0550d0d (disable passthrough state edge for now)
 }

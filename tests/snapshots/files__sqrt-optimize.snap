@@ -45,21 +45,42 @@ expression: visualization.result
   v32_: float = fadd v25_ v31_;
   v33_: float = fdiv v32_ v28_;
   v34_: float = fdiv v33_ v25_;
-  v35_: bool = fge v34_ v27_;
-  v36_: bool = fle v34_ v26_;
+  v35_: bool = fle v34_ v26_;
+  v36_: bool = fge v34_ v27_;
   v37_: bool = and v35_ v36_;
-  v38_: bool = not v37_;
+  br v37_ .v38_ .v39_;
+.v38_:
+  v40_: bool = const false;
+  v41_: float = id v24_;
+  v42_: float = id v33_;
+  v43_: bool = id v40_;
+  v44_: float = id v26_;
+  v45_: float = id v27_;
+  v46_: float = id v28_;
+  v47_: float = id v29_;
+.v48_:
+  v49_: bool = not v37_;
   v24_: float = id v24_;
   v25_: float = id v33_;
   v26_: float = id v26_;
   v27_: float = id v27_;
   v28_: float = id v28_;
   v29_: float = id v29_;
-  br v38_ .v30_ .v39_;
-.v39_:
+  br v49_ .v30_ .v50_;
+.v50_:
   print v25_;
   v13_: float = id v24_;
   jmp .v14_;
+.v39_:
+  v51_: bool = const true;
+  v41_: float = id v24_;
+  v42_: float = id v33_;
+  v43_: bool = id v51_;
+  v44_: float = id v26_;
+  v45_: float = id v27_;
+  v46_: float = id v28_;
+  v47_: float = id v29_;
+  jmp .v48_;
 .v9_:
   v15_: float = id v1_;
   v16_: bool = id v7_;

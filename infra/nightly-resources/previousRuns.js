@@ -43,8 +43,8 @@ async function getPreviousRuns() {
   });
 
   // Make sure we have at least one main run in the set of benchmarks we return.
-  const firstMainIdx = comparisons.findIndex(run => run.branch === "main");
-  
+  const firstMainIdx = comparisons.findIndex((run) => run.branch === "main");
+
   return comparisons.slice(0, Math.max(30, firstMainIdx + 1));
 }
 

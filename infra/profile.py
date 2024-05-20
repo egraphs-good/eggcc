@@ -92,8 +92,11 @@ def bench(benchmark):
 def get_llvm(runMethod, benchmark):
   path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}-{runMethod}.ll'
 
-  with open(path) as f:
-    return f.read()
+  try:
+    with open(path) as f:
+      return f.read()
+  except OSError:
+    return ""
 
 
 # aggregate all profile info into a single json array.

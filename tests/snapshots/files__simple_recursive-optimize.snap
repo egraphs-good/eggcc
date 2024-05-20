@@ -1,0 +1,45 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@inc(v0: int): int {
+.v1_:
+  v2_: int = const 2;
+  v3_: bool = lt v0 v2_;
+  br v3_ .v4_ .v5_;
+.v4_:
+  v6_: int = const 1;
+  v7_: int = add v0 v6_;
+  v8_: int = const 2;
+  v9_: bool = lt v7_ v8_;
+  print v7_;
+  br v9_ .v10_ .v11_;
+.v10_:
+  v12_: int = const 1;
+  v13_: int = add v12_ v7_;
+  v14_: int = const 2;
+  v15_: bool = lt v13_ v14_;
+  print v13_;
+  br v15_ .v16_ .v17_;
+.v16_:
+  v18_: int = const 1;
+  v19_: int = add v13_ v18_;
+  print v19_;
+  v20_: int = call @inc v19_;
+.v17_:
+  v21_: int = phi v13_ v20_ .v10_ .v16_;
+.v11_:
+  v22_: int = phi v7_ v21_ .v4_ .v17_;
+.v5_:
+  v23_: int = phi v0 v22_ .v1_ .v11_;
+  ret v23_;
+}
+@main {
+.v0_:
+  v1_: int = const 2;
+  v2_: int = const 1;
+  print v2_;
+  print v1_;
+  v3_: int = call @inc v1_;
+  print v3_;
+}

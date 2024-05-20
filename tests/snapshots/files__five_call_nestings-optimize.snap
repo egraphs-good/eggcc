@@ -3,20 +3,25 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @one {
+.v0_:
   call @four;
 }
 @two {
-  v0_: int = const 4;
-  print v0_;
+.v0_:
+  v1_: int = const 4;
+  print v1_;
 }
 @three {
-  v0_: int = const 4;
-  print v0_;
+.v0_:
+  v1_: int = const 4;
+  print v1_;
 }
 @four {
-  v0_: int = const 4;
-  print v0_;
+.v0_:
+  v1_: int = const 4;
+  print v1_;
 }
 @main {
+.v0_:
   call @three;
 }

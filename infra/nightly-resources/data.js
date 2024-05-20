@@ -41,7 +41,10 @@ function getDataForBenchmark(benchmark) {
         medianVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "median"),
         stddev: { class: "", value: tryRound(hyperfine.stddev) },
       };
-      if (o.llvm_ir) {
+      if (o.hasOwnProperty("llvm_ir")) {
+        if (o.llvm_ir === "") {
+          addWarning(`missing LLVM IR for ${o.benchmark} ${o.runMethod}`);
+        }
         rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${o.runMethod}">${o.runMethod}</a>`;
       }
       return rowData;

@@ -42,6 +42,15 @@ async function load_llvm() {
   document.getElementById("llvm").innerText = entry[0].llvm_ir;
 }
 
+async function load_table() {
+  await loadCommonData();
+  const params = new URLSearchParams(window.location.search);
+  const table = params.get("table");
+  const resp = await fetch(`./data/${table}.tex`);
+  const text = await resp.text();
+  document.getElementById("table").innerText = text;
+}
+
 function selectAllModes(enabled) {
   const checkboxContainer = document.getElementById("modeCheckboxes");
   Array.from(checkboxContainer.getElementsByTagName("input")).forEach(
@@ -125,4 +134,8 @@ function toggleChart() {
 function onRadioClick(elt) {
   GLOBAL_DATA.chartMode = elt.value;
   refreshChart();
+}
+
+function copyToClipboard(eltId) {
+  navigator.clipboard.writeText(document.getElementById(eltId).innerText);
 }

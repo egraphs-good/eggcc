@@ -238,18 +238,18 @@
 
 ; Same rules, but for Ifs that have multiple outputs
 (rule (
-        (= lhs (Get (If pred inputs thn els) i))
+        (= lhs (If pred inputs thn els))
         (= lo-thn (lo-bound (Get thn i)))
         (= lo-els (lo-bound (Get els i)))
       )
-      ((set (lo-bound lhs) (bound-min lo-thn lo-els)))
+      ((set (lo-bound (Get lhs i)) (bound-min lo-thn lo-els)))
       :ruleset interval-analysis)
 (rule (
-       (= lhs (Get (If cond inputs thn els) i))
+       (= lhs (If cond inputs thn els))
        (= hi-thn (hi-bound (Get thn i)))
        (= hi-els (hi-bound (Get els i)))
       )
-      ((set (hi-bound lhs) (bound-max hi-thn hi-els)))
+      ((set (hi-bound (Get lhs i)) (bound-max hi-thn hi-els)))
       :ruleset interval-analysis)
 
 ; If the If takes a tuple

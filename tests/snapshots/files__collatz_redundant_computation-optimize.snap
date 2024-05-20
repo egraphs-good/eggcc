@@ -32,19 +32,20 @@ expression: visualization.result
   v11_: int = id v11_;
   br v24_ .v12_ .v25_;
 .v15_:
-  print v7_;
   v26_: int = div v7_ v10_;
   v27_: int = mul v10_ v26_;
   v28_: int = sub v7_ v27_;
   v29_: bool = eq v11_ v28_;
+  print v7_;
   v30_: int = mul v7_ v9_;
   v31_: int = add v30_ v8_;
   br v29_ .v32_ .v33_;
 .v32_:
   v34_: bool = const true;
 .v20_:
-  v18_: bool = phi v35_ v34_ .v33_ .v32_;
+  v36_: bool = phi v35_ v34_ .v33_ .v32_;
   v21_: int = phi v31_ v26_ .v33_ .v32_;
+  v18_: bool = const true;
   jmp .v17_;
 .v33_:
   v35_: bool = const true;

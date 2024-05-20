@@ -139,27 +139,35 @@ impl<'a> EgraphInfo<'a> {
         // also add the root of the egraph to region_roots
         region_roots.insert(egraph.nid_to_cid(&get_root(&egraph)).clone());
 
+        log::info!("Found {} regions", region_roots.len());
+
         let mut num_not_expr = 0;
         // find all the (root, child) pairs that are important
-        let mut relavent_nodes: Vec<(ClassId, ClassId)> = vec![];
-        for root in &region_roots {
+        let mut relavent_eclasses: Vec<(ClassId, ClassId)> = vec![];
+        for (i, root) in region_roots.iter().enumerate() {
+            log::info!(
+                "Finding reachable classes for region {} of {}",
+                i,
+                region_roots.len()
+            );
             let reachable = region_reachable_classes(&egraph, root.clone(), cm);
             for eclass in reachable {
                 // if type is not expr add to count
                 if egraph.class_data[&eclass].typ.as_ref().unwrap() != "Expr" {
                     num_not_expr += 1;
                 }
-                relavent_nodes.push((root.clone(), eclass));
+                relavent_eclasses.push((root.clone(), eclass));
             }
         }
 
-        if relavent_nodes.len() > egraph.classes().len() * 3 {
-            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclasses: {}. (Root, eclass) pairs: {}. Region roots: {}. Non-Expr: {}", relavent_nodes.len() / egraph.classes().len(), egraph.classes().len(), relavent_nodes.len(), region_roots.len(), num_not_expr);
+        log::info!("Found {} relavent eclasses", relavent_eclasses.len());
+        if relavent_eclasses.len() > egraph.classes().len() * 3 {
+            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclasses: {}. (Root, eclass) pairs: {}. Region roots: {}. Non-Expr: {}", relavent_eclasses.len() / egraph.classes().len(), egraph.classes().len(), relavent_eclasses.len(), region_roots.len(), num_not_expr);
         }
 
         let mut roots = vec![];
         // find all the (root, enode) pairs that are root nodes (no children)
-        for (root, eclass) in &relavent_nodes {
+        for (root, eclass) in &relavent_eclasses {
             for enode in egraph.classes()[eclass].nodes.iter() {
                 if enode_children(&egraph, &egraph[enode]).is_empty() {
                     roots.push((root.clone(), enode.clone()));
@@ -169,9 +177,10 @@ impl<'a> EgraphInfo<'a> {
 
         // sort roots for determinism
         roots.sort();
+        log::info!("Found {} roots", roots.len());
 
         let mut parents: HashMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = HashMap::new();
-        for (root, eclass) in relavent_nodes {
+        for (root, eclass) in relavent_eclasses {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {
                 let node = &egraph[enode];
@@ -203,6 +212,10 @@ impl<'a> EgraphInfo<'a> {
                 }
             }
         }
+        log::info!(
+            "Found {} parents entries",
+            parents.values().map(|v| v.len()).sum::<usize>()
+        );
 
         let mut parents_sorted = HashMap::new();
         for (key, parents) in parents {
@@ -430,7 +443,7 @@ impl<'a> Extractor<'a> {
         node_id: NodeId,
     ) {
         if let Some(existing) = correspondence.insert(term.clone(), node_id.clone()) {
-            assert_eq!(existing, node_id);
+            assert_eq!(existing, node_id, "Congruence invariant violated! Found two different nodes for the same term. Perhaps we used delete in egglog, which could cause this problem.");
         }
     }
 
@@ -678,6 +691,7 @@ pub fn extract(
     termdag: &mut TermDag,
     cost_model: impl CostModel,
 ) -> (CostSet, TreeProgram) {
+    log::info!("Building extraction info");
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 

@@ -11,9 +11,12 @@ pub(crate) fn helpers() -> String {
   apply-drop-unions
   cleanup-drop
 
+  subsume-after-helpers
+
   (saturate subst) ;; do e-substitution
   apply-subst-unions ;; apply the unions from substitution
   cleanup-subst ;; clean up substitutions that are done
+
 
   (saturate boundary-analysis) ;; find boundaries of invariants
 )
@@ -28,6 +31,7 @@ pub fn mk_schedule() -> String {
         "
   (unstable-combined-ruleset saturating
     always-run
+    passthrough
     canon
     type-analysis
     context
@@ -45,7 +49,6 @@ pub fn mk_schedule() -> String {
 
   (unstable-combined-ruleset expensive-optimizations
     optimizations
-    ;; TODO why is this expensive? On `adler32.bril` it blows up with 3 iterations
     switch_rewrite
     ;loop-inv-motion
     loop-strength-reduction

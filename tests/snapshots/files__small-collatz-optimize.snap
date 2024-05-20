@@ -42,13 +42,14 @@ expression: visualization.result
   v33_: bool = const true;
   v34_: int = div v7_ v8_;
 .v20_:
-  v21_: bool = phi v35_ v33_ .v32_ .v31_;
-  v23_: int = phi v36_ v34_ .v32_ .v31_;
+  v36_: bool = phi v35_ v33_ .v32_ .v31_;
+  v23_: int = phi v37_ v34_ .v32_ .v31_;
+  v21_: bool = const true;
   jmp .v17_;
 .v32_:
   v35_: bool = const true;
-  v37_: int = mul v10_ v7_;
-  v36_: int = add v37_ v9_;
+  v38_: int = mul v10_ v7_;
+  v37_: int = add v38_ v9_;
   jmp .v20_;
 .v26_:
   print v6_;

@@ -5,5 +5,16 @@ expression: visualization.result
 @main(v0: int) {
 .v1_:
   v2_: bool = const false;
+  v3_: int = const 10;
+  v4_: bool = lt v0 v3_;
+  v5_: int = const 5;
+  br v4_ .v6_ .v7_;
+.v6_:
+  v8_: int = const 7;
+  jmp .v9_;
+.v7_:
+  v10_: int = const 3;
+.v9_:
+  v11_: int = phi v10_ v8_ .v7_ .v6_;
   print v2_;
 }

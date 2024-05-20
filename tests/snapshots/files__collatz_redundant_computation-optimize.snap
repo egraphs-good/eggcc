@@ -29,68 +29,27 @@ expression: visualization.result
   v8_: int = id v8_;
   v9_: int = id v9_;
   v10_: int = id v10_;
-<<<<<<< HEAD
   v11_: int = id v11_;
   br v24_ .v12_ .v25_;
 .v15_:
-  print v7_;
   v26_: int = div v7_ v10_;
   v27_: int = mul v10_ v26_;
   v28_: int = sub v7_ v27_;
   v29_: bool = eq v11_ v28_;
+  print v7_;
   v30_: int = mul v7_ v9_;
   v31_: int = add v30_ v8_;
   br v29_ .v32_ .v33_;
 .v32_:
   v34_: bool = const true;
 .v20_:
-  v18_: bool = phi v35_ v34_ .v33_ .v32_;
+  v36_: bool = phi v35_ v34_ .v33_ .v32_;
   v21_: int = phi v31_ v26_ .v33_ .v32_;
+  v18_: bool = const true;
   jmp .v17_;
 .v33_:
   v35_: bool = const true;
   jmp .v20_;
-=======
-  br v24_ .v11_ .v25_;
-.v14_:
-  v26_: int = div v6_ v9_;
-  v27_: int = mul v26_ v9_;
-  v28_: int = sub v6_ v27_;
-  v29_: bool = eq v10_ v28_;
-  print v6_;
-  v30_: int = mul v6_ v8_;
-  v31_: int = add v30_ v7_;
-  br v29_ .v32_ .v33_;
-.v32_:
-  v34_: bool = const true;
-  v35_: int = id v5_;
-  v36_: bool = id v34_;
-  v37_: int = id v26_;
-  v38_: int = id v7_;
-  v39_: int = id v8_;
-  v40_: int = id v9_;
-  v41_: int = id v10_;
-.v42_:
-  v43_: bool = const true;
-  v16_: int = id v5_;
-  v17_: bool = id v43_;
-  v18_: int = id v37_;
-  v19_: int = id v7_;
-  v20_: int = id v8_;
-  v21_: int = id v9_;
-  v22_: int = id v10_;
-  jmp .v23_;
-.v33_:
-  v44_: bool = const true;
-  v35_: int = id v5_;
-  v36_: bool = id v44_;
-  v37_: int = id v31_;
-  v38_: int = id v7_;
-  v39_: int = id v8_;
-  v40_: int = id v9_;
-  v41_: int = id v10_;
-  jmp .v42_;
->>>>>>> d0550d0d (disable passthrough state edge for now)
 .v25_:
   print v0;
 }

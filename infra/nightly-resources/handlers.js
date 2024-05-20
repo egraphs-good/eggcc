@@ -48,6 +48,7 @@ async function load_table() {
   const table = params.get("table");
   const resp = await fetch(`./data/${table}.tex`);
   const text = await resp.text();
+  document.getElementById("table-header").innerText = table;
   document.getElementById("table").innerText = text;
 }
 

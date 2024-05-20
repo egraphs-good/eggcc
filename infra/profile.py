@@ -66,7 +66,10 @@ def optimize(benchmark):
   profile_dir = benchmark_profile_dir(benchmark.path)
   cmd = f'cargo run --release {benchmark.path} {get_eggcc_options(benchmark.treatment, profile_dir)} -o {profile_dir}/{benchmark.treatment}'
   print(f'Running: {cmd}')
+  start = time.time()
   subprocess.call(cmd, shell=True)
+  end = time.time()
+  return (f"{profile_dir}/{benchmark.treatment}", end-start)
 
 
 
@@ -82,12 +85,12 @@ def bench(benchmark):
       # TODO add an error to the errors file
       #with open('nightly/data/errors.txt', 'a') as f:
         #f.write(f'ERROR: No executable found for {name} in {benchmark.path}\n')
-      pass
+      return None
     else:
       # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
-      cmd = f'hyperfine --warmup 1 --max-runs 2 --export-json {profile_dir}/{benchmark.treatment}.json "{profile_dir}/{benchmark.treatment} {args}"'
-      print(f'Running: {cmd}')
-      subprocess.call(cmd, shell=True)
+      cmd = f'hyperfine --style none --warmup 1 --max-runs 2 --export-json /dev/stdout "{profile_dir}/{benchmark.treatment}{" " + args if len(args) > 0 else ""}"'
+      result = subprocess.run(cmd, capture_output=True, shell=True)
+      return (f'{profile_dir}/{benchmark.treatment}', json.loads(result.stdout))
 
 def get_llvm(runMethod, benchmark):
   path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}-{runMethod}.ll'
@@ -100,28 +103,18 @@ def get_llvm(runMethod, benchmark):
 
 
 # aggregate all profile info into a single json array.
-# It walks a file that looks like:
-# tmp
-# - bench
-# -- <benchmark name>
-# ---- run_method.json
-# ---- run_method.profile
-def aggregate():
+def aggregate(compile_times, bench_times):
     res = []
-    jsons = glob("./tmp/bench/*/*.json")
-    for file_path in jsons:
-        if os.stat(file_path).st_size == 0:
-            continue
-        name = file_path.split("/")[-2]
-        runMethod = file_path.split("/")[-1][:-len(".json")]
-        result = {"runMethod": runMethod, "benchmark": name}
-        if "llvm" in runMethod:
-          result["llvm_ir"] = get_llvm(runMethod, name)
-        with open(file_path) as f:
-            result["hyperfine"] = json.load(f)
-        res.append(result)
-    with open("nightly/data/profile.json", "w") as f:
-      json.dump(res, f, indent=2)
+
+    for path in sorted(compile_times.keys()):
+      name = path.split("/")[-2]
+      runMethod = path.split("/")[-1]
+      result = {"runMethod": runMethod, "benchmark": name, "hyperfine": bench_times[path], "compileTime": compile_times[path]}
+      if "llvm" in runMethod:
+        result["llvm_ir"] = get_llvm(runMethod, name)
+
+      res.append(result)
+    return res
 
 
 if __name__ == '__main__':
@@ -151,27 +144,40 @@ if __name__ == '__main__':
       index += 1
   
 
+  compile_times = {}
   # create a thread pool for running optimization
   with concurrent.futures.ThreadPoolExecutor(max_workers = 6) as executor:
     futures = {executor.submit(optimize, benchmark) for benchmark in to_run}
     for future in concurrent.futures.as_completed(futures):
-      continue
+      (path, compile_time) = future.result()
+      compile_times[path] = compile_time
 
   # running benchmarks sequentially for more reliable results
   # can set this to true for testing
   isParallelBenchmark = False
 
+  bench_data = {}
   if isParallelBenchmark:
     # create a thread pool for running benchmarks
     with concurrent.futures.ThreadPoolExecutor(max_workers = 6) as executor:
       futures = {executor.submit(bench, benchmark) for benchmark in to_run}
       for future in concurrent.futures.as_completed(futures):
-        continue
+        res = future.result()
+        if res is None:
+          continue
+        (path, _bench_data) = res
+        bench_data[path] = _bench_data
   else:
     for benchmark in to_run:
-      bench(benchmark)
+      res = bench(benchmark)
+      if res is None:
+        continue
+      (path, _bench_data) = res
+      bench_data[path] = _bench_data
 
-  aggregate()
+  nightly_data = aggregate(compile_times, bench_data)
+  with open(f"{output_path}/data/profile.json", "w") as profile:
+    json.dump(nightly_data, profile, indent=2)
 
   (overview, detailed) = gen_linecount_table()
 
@@ -182,6 +188,4 @@ if __name__ == '__main__':
       linecount.write(detailed)
 
   with open(f"{output_path}/data/nightlytable.tex", "w") as nightly_table:
-    with open(f"{output_path}/data/profile.json") as data_file:
-      data = json.loads(data_file.read())
-      nightly_table.write(gen_nightly_table(data))
+      nightly_table.write(gen_nightly_table(nightly_data))

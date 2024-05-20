@@ -7,16 +7,22 @@
 
 .if:
     res: int = mul four x;
-    ret res;
+    jmp .end;
 
 .else_if_check:
     cond: bool = eq x four;
     br cond .else_if .else;
+    jmp .end;
 
 .else_if:
     res: int = mul five x;
-    ret res;
+    jmp .end;
     
 .else:
-    ret twenty;
+    res: int = id twenty;
+    jmp .end;
+
+.end:
+    print res;
+    ret res;
 }

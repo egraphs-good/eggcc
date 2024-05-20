@@ -1,6 +1,6 @@
 @main: int {
     j: int = const 3;
-    i: int = const 1;
+    i: int = const 5;
     four: int = const 4;
     one: int = const 1;
     

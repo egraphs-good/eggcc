@@ -42,10 +42,10 @@ async function getPreviousRuns() {
     return 0;
   });
 
-  return comparisons.slice(
-    0,
-    comparisons.length < 30 ? comparisons.length : 30,
-  );
+  // Make sure we have at least one main run in the set of benchmarks we return.
+  const firstMainIdx = comparisons.findIndex(run => run.branch === "main");
+  
+  return comparisons.slice(0, Math.max(30, firstMainIdx + 1));
 }
 
 // findBenchToCompare will find the last benchmark run on the main branch that is not itself

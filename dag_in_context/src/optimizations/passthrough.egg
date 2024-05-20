@@ -90,5 +90,5 @@
 
        (union (Get           if i) pred)
        (union (TupleRemoveAt if i) new_if)
-       (subsume (If pred inputs then_ else_)))
+       (ToSubsumeIf pred inputs then_ else_))
       :ruleset passthrough)

@@ -49,7 +49,6 @@ pub fn mk_schedule() -> String {
 
   (unstable-combined-ruleset expensive-optimizations
     optimizations
-    ;; TODO why is this expensive? On `adler32.bril` it blows up with 3 iterations
     switch_rewrite
     ;loop-inv-motion
     loop-strength-reduction

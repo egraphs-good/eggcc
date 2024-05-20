@@ -7,15 +7,16 @@ pub(crate) fn helpers() -> String {
     (saturate error-checking) ;; check for errors, relies on type-helpers saturating
       saturating)
 
-  subsume-after-helpers
-
   (saturate drop)
   apply-drop-unions
   cleanup-drop
 
+  subsume-after-helpers
+
   (saturate subst) ;; do e-substitution
   apply-subst-unions ;; apply the unions from substitution
   cleanup-subst ;; clean up substitutions that are done
+
 
   (saturate boundary-analysis) ;; find boundaries of invariants
 )

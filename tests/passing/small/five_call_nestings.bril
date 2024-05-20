@@ -1,0 +1,20 @@
+@main {
+    call @one;
+}
+
+@one {
+    call @two;
+}
+
+@two {
+    call @three;
+}
+
+@three {
+    call @four;
+}
+
+@four {
+    four: int = const 4;
+    print four;
+}

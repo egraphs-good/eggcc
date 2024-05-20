@@ -112,31 +112,6 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
     printed
 }
 
-// Returns a formatted string of (union call body) for each pair
-#[allow(dead_code)]
-fn print_function_inlining_pairs(
-    function_inlining_pairs: Vec<function_inlining::CallBody>,
-    printed: &mut String,
-    tree_state: &mut TreeToEgglog,
-    term_cache: &mut HashMap<Term, String>,
-) -> String {
-    // Get unions
-    let unions = function_inlining_pairs
-        .iter()
-        .map(|cb| {
-            let call_term = cb.call.to_egglog_internal(tree_state);
-            let body_term = cb.body.to_egglog_internal(tree_state);
-            format!(
-                "(union {} {})",
-                print_with_intermediate_helper(&tree_state.termdag, call_term, term_cache, printed),
-                print_with_intermediate_helper(&tree_state.termdag, body_term, term_cache, printed)
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    unions
-}
-
 // It is expected that program has context added
 pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let mut printed = String::new();
@@ -149,7 +124,7 @@ pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let function_inlining = if !optimize {
         "".to_string()
     } else {
-        print_function_inlining_pairs(
+        function_inlining::print_function_inlining_pairs(
             function_inlining::function_inlining_pairs(
                 program,
                 config::FUNCTION_INLINING_ITERATIONS,

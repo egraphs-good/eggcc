@@ -30,6 +30,9 @@ pub(crate) struct EgraphInfo<'a> {
     pub(crate) loop_iteration_estimates: HashMap<(RootId, RootId), i64>,
     /// A set of names of functions that are unextractable
     unextractables: HashSet<String>,
+    /// A set of (func args) of calls that have been inlined, to indicate we shouldn't
+    /// extract the corresponding (Call func args).
+    inlined_calls: HashSet<(ClassId, ClassId)>,
 }
 
 pub(crate) struct Extractor<'a> {
@@ -77,7 +80,7 @@ impl<'a> EgraphInfo<'a> {
         // loop over all nodes, finding LoopNumItersGuess nodes
         for (_nodeid, node) in &egraph.nodes {
             if node.op == "LoopNumItersGuess" {
-                // assert it has three children
+                // assert it has two children
                 assert_eq!(
                     node.children.len(),
                     2,
@@ -96,12 +99,35 @@ impl<'a> EgraphInfo<'a> {
         loop_iteration_estimates
     }
 
+    fn get_inlined_calls(egraph: &EGraph) -> HashSet<(ClassId, ClassId)> {
+        let mut inlined_calls = HashSet::new();
+
+        // loop over all nodes, finding InlinedCall nodes
+        for (_nodeid, node) in &egraph.nodes {
+            if node.op == "InlinedCall" {
+                assert_eq!(
+                    node.children.len(),
+                    2,
+                    "InlinedCall node has wrong number of children. Node: {:?}",
+                    node
+                );
+                inlined_calls.insert((
+                    egraph.nid_to_cid(&node.children[0]).clone(),
+                    egraph.nid_to_cid(&node.children[1]).clone(),
+                ));
+            }
+        }
+
+        inlined_calls
+    }
+
     pub(crate) fn new(
         cm: &'a dyn CostModel,
         egraph: EGraph,
         unextractables: HashSet<String>,
     ) -> Self {
         let loop_iteration_estimates = Self::get_loop_iteration_estimates(&egraph);
+        let inlined_calls = Self::get_inlined_calls(&egraph);
 
         // get all the roots needed
         let mut region_roots = HashSet::new();
@@ -192,6 +218,7 @@ impl<'a> EgraphInfo<'a> {
             parents: parents_sorted,
             roots,
             loop_iteration_estimates,
+            inlined_calls,
         }
     }
 }
@@ -697,6 +724,16 @@ pub fn extract_with_paths(
         let classid = n2c(&nodeid);
         let node = info.egraph.nodes.get(&nodeid).unwrap();
         if info.unextractables.contains(&node.op) {
+            continue;
+        }
+
+        // Skip inlined calls
+        if node.op == "Call"
+            && info.inlined_calls.contains(&(
+                n2c(&node.children[0]).clone(),
+                n2c(&node.children[1]).clone(),
+            ))
+        {
             continue;
         }
 

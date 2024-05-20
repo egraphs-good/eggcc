@@ -4,7 +4,13 @@ use std::{
     vec,
 };
 
-use crate::schema::{Expr, RcExpr, TreeProgram};
+use egglog::Term;
+
+use crate::{
+    print_with_intermediate_helper,
+    schema::{Expr, RcExpr, TreeProgram},
+    to_egglog::TreeToEgglog,
+};
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct CallBody {
@@ -105,6 +111,60 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
     }
 
     inlined_calls
+}
+
+// Returns a formatted string of (union call body) for each pair
+pub fn print_function_inlining_pairs(
+    function_inlining_pairs: Vec<CallBody>,
+    printed: &mut String,
+    tree_state: &mut TreeToEgglog,
+    term_cache: &mut HashMap<Term, String>,
+) -> String {
+    let inlined_calls = "(relation InlinedCall (String Expr))";
+    // Get unions and mark each call as inlined for extraction purposes
+    let printed_pairs = function_inlining_pairs
+        .iter()
+        .map(|cb| {
+            if let Expr::Call(callee, _) = cb.call.as_ref() {
+                let call_term = cb.call.to_egglog_internal(tree_state);
+                let call_with_intermed = print_with_intermediate_helper(
+                    &tree_state.termdag,
+                    call_term.clone(),
+                    term_cache,
+                    printed,
+                );
+
+                let body_term = cb.body.to_egglog_internal(tree_state);
+                let inlined_with_intermed = print_with_intermediate_helper(
+                    &tree_state.termdag,
+                    body_term,
+                    term_cache,
+                    printed,
+                );
+
+                let call_args = cb.call.children_exprs()[0].to_egglog_internal(tree_state);
+                let call_args_with_intermed = print_with_intermediate_helper(
+                    &tree_state.termdag,
+                    call_args.clone(),
+                    term_cache,
+                    printed,
+                );
+                format!(
+                    // We need to subsume, otherwise the Call in the original program could get
+                    // substituted into another context during optimization and no longer match InlinedCall.
+                    "
+(union {call_with_intermed} {inlined_with_intermed})
+(InlinedCall \"{callee}\" {call_args_with_intermed})
+(subsume (Call \"{callee}\" {call_args_with_intermed}))
+",
+                )
+            } else {
+                panic!("Tried to inline non-call")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("{inlined_calls} {printed_pairs}")
 }
 
 // Check that function inling pairs produces the right number of pairs for

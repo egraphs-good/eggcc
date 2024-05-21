@@ -956,7 +956,7 @@ impl Run {
             };
 
             let res = Command::new(opt_cmd)
-                .arg("-passes=sroa,instsimplify,instcombine<no-verify-fixpoint>,adce")
+                .arg("-passes=sroa")
                 .arg("-S")
                 .arg(file_path.clone())
                 .arg("-o")

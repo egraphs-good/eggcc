@@ -10,13 +10,15 @@ expression: visualization.result
 .v4_:
   v6_: int = const 2;
   store v3_ v6_;
-  jmp .v7_;
+  v7_: ptr<int> = id v3_;
+  jmp .v8_;
 .v5_:
-  v8_: int = const 3;
-  store v3_ v8_;
-.v7_:
-  v9_: int = load v3_;
+  v9_: int = const 3;
+  store v3_ v9_;
+  v7_: ptr<int> = id v3_;
+.v8_:
   v10_: int = load v3_;
-  print v9_;
+  v11_: int = load v3_;
+  print v10_;
   free v3_;
 }

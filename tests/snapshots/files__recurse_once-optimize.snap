@@ -23,13 +23,22 @@ expression: visualization.result
   v18_: int = const 1;
   v19_: int = sub v14_ v18_;
   v20_: int = call @to_zero v19_;
+  v21_: int = id v20_;
+.v22_:
+  v23_: int = id v21_;
+.v24_:
+  v25_: int = id v23_;
+  jmp .v26_;
 .v17_:
-  v21_: int = phi v14_ v20_ .v10_ .v16_;
+  v21_: int = id v14_;
+  jmp .v22_;
 .v11_:
-  v22_: int = phi v8_ v21_ .v4_ .v17_;
+  v23_: int = id v8_;
+  jmp .v24_;
 .v5_:
-  v23_: int = phi v0 v22_ .v1_ .v11_;
-  ret v23_;
+  v25_: int = id v0;
+.v26_:
+  ret v25_;
 }
 @main {
 .v0_:

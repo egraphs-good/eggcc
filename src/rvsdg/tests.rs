@@ -1,4 +1,5 @@
 use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
+use insta::assert_snapshot;
 
 use crate::{
     cfg::program_to_cfg,
@@ -304,7 +305,7 @@ fn rvsdg_state_mem() {
 }
 
 #[test]
-fn rvsdg_state_mem_to_cfg() {
+fn rvsdg_state_mem_to_cfg_snapshot() {
     const PROGRAM: &str = r#"
     @main() {
         x: int = const 1;
@@ -322,25 +323,11 @@ fn rvsdg_state_mem_to_cfg() {
     let prog = cfg_out.to_bril();
     // Up to renaming and reordering non-dependent ops, we get the same program
     // back.
-    assert_eq!(
-        prog.to_string(),
-        "\
-@main {
-.__0__:
-  v1: int = const 1;
-  v4: ptr<int> = alloc v1;
-  v8: int = const 10;
-  store v4 v8;
-  v12: int = load v4;
-  print v12;
-  free v4;
-}
-"
-    );
+    assert_snapshot!(prog.to_string())
 }
 
 #[test]
-fn rvsdg_state_mem_to_cfg_more_blocks() {
+fn rvsdg_state_mem_to_cfg_more_blocks_snapshot() {
     const PROGRAM: &str = r#"
     @main() {
         x: int = const 1;
@@ -366,35 +353,7 @@ fn rvsdg_state_mem_to_cfg_more_blocks() {
     let rvsdg = cfg_to_rvsdg(&cfg_in).unwrap();
     let cfg_out = rvsdg.to_cfg();
     let prog = cfg_out.to_bril();
-    // Key thing to look for here it that loads/stores/frees/prints are ordered
-    // the same before and after.
-    assert_eq!(
-        prog.to_string(),
-        "\
-@main {
-.__0__:
-  v1: int = const 1;
-  v4: ptr<int> = alloc v1;
-  v7: int = const 10;
-  store v4 v7;
-  v11: int = load v4;
-  v14: bool = lt v11 v7;
-  br v14 .__31__ .__22__;
-.__31__:
-  print v11;
-  free v4;
-  jmp .__37__;
-.__22__:
-  v24: int = add v11 v1;
-  free v4;
-  print v24;
-.__37__:
-  print v7;
-}
-",
-        "Expected program to match, but got:\n{}",
-        prog
-    );
+    assert_snapshot!(prog.to_string());
 }
 
 #[test]

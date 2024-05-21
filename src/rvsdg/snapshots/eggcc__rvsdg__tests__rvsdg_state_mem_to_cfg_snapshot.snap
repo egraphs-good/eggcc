@@ -1,0 +1,14 @@
+---
+source: src/rvsdg/tests.rs
+expression: prog.to_string()
+---
+@main {
+.__0__:
+  v1: int = const 1;
+  v4: ptr<int> = alloc v1;
+  v8: int = const 10;
+  store v4 v8;
+  v12: int = load v4;
+  print v12;
+  free v4;
+}

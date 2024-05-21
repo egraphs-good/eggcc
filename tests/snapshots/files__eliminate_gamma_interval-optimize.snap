@@ -11,10 +11,13 @@ expression: visualization.result
   br v4_ .v6_ .v7_;
 .v6_:
   v8_: int = const 7;
-  jmp .v9_;
+  v9_: int = id v3_;
+  v10_: int = id v8_;
+  jmp .v11_;
 .v7_:
-  v10_: int = const 3;
-.v9_:
-  v11_: int = phi v10_ v8_ .v7_ .v6_;
+  v12_: int = const 3;
+  v9_: int = id v3_;
+  v10_: int = id v12_;
+.v11_:
   print v2_;
 }

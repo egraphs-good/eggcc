@@ -10,9 +10,11 @@ expression: visualization.result
   br v4_ .v5_ .v6_;
 .v5_:
   print v2_;
-  jmp .v7_;
+  v7_: int = id v2_;
+  jmp .v8_;
 .v6_:
   print v2_;
-.v7_:
+  v7_: int = id v2_;
+.v8_:
   print v2_;
 }

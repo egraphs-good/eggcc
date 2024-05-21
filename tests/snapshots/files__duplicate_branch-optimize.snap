@@ -8,8 +8,10 @@ expression: visualization.result
   v3_: bool = lt v2_ v0;
   br v3_ .v4_ .v5_;
 .v4_:
-  jmp .v6_;
+  v6_: int = id v2_;
+  jmp .v7_;
 .v5_:
-.v6_:
+  v6_: int = id v2_;
+.v7_:
   print v2_;
 }

@@ -19,21 +19,29 @@ expression: visualization.result
 .v11_:
   v13_: int = const 1;
   print v13_;
-.v14_:
-  v15_: int = const 1;
-  v16_: int = add v15_ v5_;
-  br v8_ .v17_ .v18_;
-.v17_:
-.v19_:
-  v5_: int = id v16_;
-  br v8_ .v6_ .v4_;
+  v14_: int = id v5_;
+.v15_:
+  v16_: int = const 1;
+  v17_: int = add v16_ v5_;
+  br v8_ .v18_ .v19_;
 .v18_:
-  jmp .v19_;
+  v20_: int = id v17_;
+.v21_:
+  v5_: int = id v20_;
+  br v8_ .v6_ .v22_;
+.v22_:
+  v23_: int = id v5_;
+  jmp .v24_;
+.v19_:
+  v20_: int = id v17_;
+  jmp .v21_;
 .v12_:
-  v20_: int = const 2;
-  print v20_;
-  jmp .v14_;
+  v25_: int = const 2;
+  print v25_;
+  v14_: int = id v5_;
+  jmp .v15_;
 .v4_:
-  v21_: int = phi v2_ v5_ .v0_ .v19_;
-  print v21_;
+  v23_: int = id v2_;
+.v24_:
+  print v23_;
 }

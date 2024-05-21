@@ -25,29 +25,30 @@ function getEntry(benchmark, runMode) {
 }
 
 function getValue(entry) {
-  if (GLOBAL_DATA.chartMode === "absolute") {
+  if (GLOBAL_DATA.chart.mode === "absolute") {
     return entry.hyperfine.results[0].mean;
-  } else if (GLOBAL_DATA.chartMode === "speedup") {
+  } else if (GLOBAL_DATA.chart.mode === "speedup") {
     const baseline = getEntry(entry.benchmark, BASELINE_MODE);
     if (!baseline) {
       addWarning(`No speedup baseline for ${benchmark}`);
     }
     return baseline.hyperfine.results[0].mean / entry.hyperfine.results[0].mean;
   } else {
-    throw new Error(`unknown chart mode ${GLOBAL_DATA.chartMode}`);
+    throw new Error(`unknown chart mode ${GLOBAL_DATA.chart.mode}`);
   }
 }
 
 function getError(entry) {
-  if (GLOBAL_DATA.chartMode === "absolute") {
+  if (GLOBAL_DATA.chart.mode === "absolute") {
     return entry.hyperfine.results[0].stddev;
   } else {
     return undefined;
   }
 }
 
-function parseDataForChart(sortByMode) {
+function parseDataForChart() {
   const benchmarks = GLOBAL_DATA.enabledBenchmarks;
+  const sortByMode = GLOBAL_DATA.chart.sortBy;
   let sortedBenchmarks = Array.from(benchmarks).sort();
 
   const data = {};
@@ -107,7 +108,7 @@ function initializeChart() {
 
   const chartData = parseDataForChart();
 
-  GLOBAL_DATA.chart = new Chart(ctx, {
+  GLOBAL_DATA.chart.chart = new Chart(ctx, {
     type: "bar",
     data: chartData,
     options: {
@@ -117,7 +118,10 @@ function initializeChart() {
         },
       },
       legend: {
-        onClick: (_, item) => refreshChart(item.text),
+        onClick: (_, item) => {
+          GLOBAL_DATA.chart.sortBy = item.text;
+          refreshChart();
+        },
       },
       plugins: {
         chartJsPluginErrorBars: {
@@ -130,10 +134,10 @@ function initializeChart() {
 
 // Seems important for the charting library to change the data but not
 // create a new chart to avoid some weird rendering flicekrs.
-function refreshChart(sortByMode) {
-  if (!GLOBAL_DATA.chart) {
+function refreshChart() {
+  if (!GLOBAL_DATA.chart.chart) {
     return;
   }
-  GLOBAL_DATA.chart.data = parseDataForChart(sortByMode);
-  GLOBAL_DATA.chart.update();
+  GLOBAL_DATA.chart.chart.data = parseDataForChart();
+  GLOBAL_DATA.chart.chart.update();
 }

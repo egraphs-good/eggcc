@@ -1,11 +1,27 @@
-# ARGS: 23
-@main(n: float) {
+# ARGS: 9500
+@main(loop_bound: float) {
+  loop_incr: float = const 1;
+  loop_counter: float = const 10;
+  final_output: float = const 0.0;
+.loop_cond:
+  loop_cond: bool = flt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  output: float = call @orig_main loop_counter;
+  final_output: float = fadd final_output output;
+  loop_counter: float = fadd loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+  print final_output;
+}
+
+@orig_main(n: float): float {
   v0: float = id n;
   c: float = call @probability v0;
   c: float = id c;
   v1: float = id c;
-  print v1;
   v2: int = const 0;
+  ret v1;
 }
 @probability(n: float): float {
   v0: float = const 1;

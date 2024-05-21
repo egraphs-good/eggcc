@@ -1,3 +1,5 @@
+# ARGS: 9700
+
 @sumOfSquares(n: int): int {
   v0: int = const 0;
   res: int = id v0;
@@ -54,21 +56,23 @@
   v15: int = id square;
   ret v15;
 }
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 30000;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(n: int) {
+@orig_main(n: int): int {
   v0: int = id n;
   sum: int = call @sumOfSquares v0;
   sum: int = id sum;
@@ -80,7 +84,7 @@
   v4: int = sub v2 v3;
   diff: int = id v4;
   v5: int = id diff;
-  print v5;
   v6: int = const 0;
   v7: int = id diff;
+  ret v5;
 }

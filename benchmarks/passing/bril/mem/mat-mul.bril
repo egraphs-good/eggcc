@@ -1,3 +1,4 @@
+# ARGS: 135
 # Use a linear congruential generator to generate random numbers.
 # `seq` is the state of the random number generator.
 # Returns a value between 0 and max
@@ -39,7 +40,8 @@
 }
 
 # Prints an array
-@printarray(size: int, arr: ptr<int>) {
+@printarray(size: int, arr: ptr<int>): int {
+  sum: int = const 0;
   i: int = const 0;
   one: int = const 1;
 .loop:
@@ -48,12 +50,12 @@
 .body:
   loc: ptr<int> = ptradd arr i;
   val: int = load loc;
-  print val;
+  sum: int = add sum val;
 .loop_end:
   i: int = add i one;
   jmp .loop;
 .done:
-  ret;
+  ret sum;
 }
 
 # Naive matrix muliplication algorithm
@@ -106,21 +108,23 @@
   ret;
 }
 
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 130;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(size: int) {
+@orig_main(size: int): int {
   seed: int = const 109658;
   one: int = const 1;
   rng: ptr<int> = alloc one;
@@ -130,12 +134,16 @@
   arr2: ptr<int> = call @randarray sqsize rng;
   dest: ptr<int> = call @randarray sqsize rng;
   call @matmul size arr1 arr2 dest;
-  call @printarray sqsize arr1;
-  call @printarray sqsize arr2;
-  call @printarray sqsize dest;
+  a: int = call @printarray sqsize arr1;
+  b: int = call @printarray sqsize arr2;
+  c: int = call @printarray sqsize dest;
   free arr1;
   free arr2;
   free dest;
   free rng;
-  ret;
+  sum: int = const 0;
+  sum: int = add sum a;
+  sum: int = add sum b;
+  sum: int = add sum c;
+  ret sum;
 }

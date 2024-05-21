@@ -1,3 +1,5 @@
+# ARGS: 9200
+
 @rand(seq: ptr<int>, max: int) : int {
   a: int = const 25214903917;
   c: int = const 11;
@@ -35,10 +37,9 @@
   ret arr;
 }
 
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 20000;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;

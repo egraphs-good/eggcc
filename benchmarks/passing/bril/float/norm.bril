@@ -1,3 +1,5 @@
+# ARGS: 25
+
 @pow(x:float, k:int):float
 {
     xx: float = const 1.0;
@@ -99,16 +101,59 @@
     ret norm;
 }
 
-@main()
+@main(loop_bound: float) {
+  loop_incr: float = const 1;
+  loop_counter: float = const 10;
+  final_output: float = const 0;
+.loop_cond:
+  loop_cond: bool = flt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  loop2_counter: float = const 10;
+.loop2_cond:
+  loop2_cond: bool = flt loop2_counter loop_bound;
+  br loop2_cond .loop2_body .loop2_done;
+.loop2_body:
+  loop3_counter: float = const 10;
+.loop3_cond:
+  loop3_cond: bool = flt loop3_counter loop_bound;
+  br loop3_cond .loop3_body .loop3_done;
+.loop3_body:
+  loop4_counter: float = const 11;
+.loop4_cond:
+  loop4_cond: bool = flt loop4_counter loop_bound;
+  br loop4_cond .loop4_body .loop4_done;
+.loop4_body:
+  loop5_counter: float = const 11;
+.loop5_cond:
+  loop5_cond: bool = flt loop5_counter loop_bound;
+  br loop5_cond .loop5_body .loop5_done;
+.loop5_body:
+  output: float = call @orig_main loop_counter loop2_counter loop3_counter loop4_counter loop5_counter;
+  final_output: float = fadd final_output output;
+  loop5_counter: float = fadd loop5_counter loop_incr;
+  jmp .loop5_cond;
+.loop5_done:  
+  loop4_counter: float = fadd loop4_counter loop_incr;
+  jmp .loop4_cond;
+.loop4_done:  
+  loop3_counter: float = fadd loop3_counter loop_incr;
+  jmp .loop3_cond;
+.loop3_done:  
+  loop2_counter: float = fadd loop2_counter loop_incr;
+  jmp .loop2_cond;
+.loop2_done:
+  loop_counter: float = fadd loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+  print final_output;
+}
+
+@orig_main(n1: float, n2: float, n3: float, n4: float, n5: float) : float
 {
     size: int = const 5;
-    n1: float = const 3;
-    n2: float = const 10; 
-    n3: float = const 1;
-    n4: float = const 9; 
-    n5: float = const 7;
     array: ptr<float> = call @pack size n1 n2 n3 n4 n5;
     norm: float = call @euclidean_norm array size;
-    print norm;
     free array;
+    ret norm;
 }

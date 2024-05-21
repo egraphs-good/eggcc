@@ -1,28 +1,34 @@
-@main() {
+# ARGS: 12000
+
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 1000;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(v0 : int) {
+@orig_main(v0 : int): int {
   x: int = id v0;
   v1: int = id x;
-  call @generateNthRow v1;
+  sum: int = call @generateNthRow v1;
   v2: int = const 0;
+  ret sum;
 }
-@generateNthRow(x: int) {
+@generateNthRow(x: int): int {
+  sum: int = const 0;
   v0: int = const 1;
   prev: int = id v0;
   v1: int = id prev;
-  print v1;
+  sum: int = add sum v1;
   v2: int = const 0;
   v4: int = const 0;
   i: int = id v4;
@@ -45,7 +51,7 @@
   v16: int = mul v14 v15;
   curr: int = id v16;
   v17: int = id curr;
-  print v17;
+  sum: int = add sum v17;
   v18: int = const 0;
   v19: int = id curr;
   prev: int = id v19;
@@ -55,4 +61,5 @@
   i: int = id v22;
   jmp .for.cond.3;
 .for.end.3:
+  ret sum;
 }

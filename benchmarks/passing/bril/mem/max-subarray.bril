@@ -1,3 +1,4 @@
+# ARGS: 4600000
 # Max subarray problem
 
 @pack(size: int, n1: int, n2: int, n3: int, n4: int, n5: int, n6: int, n7: int, n8: int, n9: int, n10: int) : ptr<int> {
@@ -45,21 +46,23 @@
   ret n;
 }
 
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 1000000;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(x: int) {
+@orig_main(x: int): int {
     size: int = const 10;
     n1: int = const 1;
     n2: int = const 2;
@@ -101,7 +104,7 @@
   .done:
 
     val: int = add max_sum x;
-    print val;
 
     free array;
+    ret val;
 }

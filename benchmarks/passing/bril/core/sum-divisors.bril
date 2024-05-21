@@ -1,22 +1,26 @@
+# ARGS: 415000
 
 # Finds the sum of an integer input's positive divisors.
 # Prints the divisors as they are found, followed by the sum.
 
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 100000;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(n : int) {
+@orig_main(n : int): int {
+  sum: int = const 0;
   i   : int = const 0;
   res : int = const 0;
   one : int = const 1;
@@ -36,17 +40,17 @@
   eqz : bool = eq m zer;
   br eqz .body .begin;
 .body:
-  print i;
+  sum: int = add sum i;
   res  : int  = add res i;
   d    : int  = div n i;
   deqi : bool = eq d i;
   br deqi .begin .then;
 .then:
-  print d;
+  sum: int = add sum d;
   res : int = add res d;
   jmp .begin;
 .end:
-  print res;
+  ret res;
 }
 
 @mod(dividend: int, divisor: int) : int {

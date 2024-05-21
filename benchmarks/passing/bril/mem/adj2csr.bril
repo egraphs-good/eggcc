@@ -1,3 +1,4 @@
+# ARGS: 350
 # This benchmark convert a graph in adjacency matrix format to Compressed Sparse Row (CSR) format
 # The input graph is randomly generated using random matrix generator
 
@@ -51,7 +52,8 @@
 }
 
 # Prints an array
-@printarray(size: int, arr: ptr<int>) {
+@printarray(size: int, arr: ptr<int>): int {
+  sum: int = const 0;
   i: int = const 0;
   one: int = const 1;
 .loop:
@@ -60,12 +62,12 @@
 .body:
   loc: ptr<int> = ptradd arr i;
   val: int = load loc;
-  print val;
+  sum: int = add sum val;
 .loop_end:
   i: int = add i one;
   jmp .loop;
 .done:
-  ret;
+  ret sum;
 }
 
 @zeroarray(size: int) : ptr<int> {
@@ -128,21 +130,25 @@
   ret num_edges;
 }
 
-@main() {
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 150;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(num_nodes: int) {
+@orig_main(num_nodes: int): int {
+  sum: int = const 0;
+
   seed: int = const 2348512;
   one: int = const 1;
   rng: ptr<int> = alloc one;
@@ -156,16 +162,19 @@
 
   num_edges: int = call @adj2csr num_nodes adjmat csr_offset csr_edges;
 
-  print num_nodes;
-  print num_edges;
+  sum: int = add sum num_nodes;
+  sum: int = add sum num_edges;
 
-  call @printarray sqsize adjmat;
-  call @printarray num_nodes csr_offset;
-  call @printarray num_edges csr_edges;
+  a: int = call @printarray sqsize adjmat;
+  b: int = call @printarray num_nodes csr_offset;
+  c: int = call @printarray num_edges csr_edges;
+  sum: int = add sum a;
+  sum: int = add sum b;
+  sum: int = add sum c;
 
   free adjmat;
   free csr_offset;
   free csr_edges;
   free rng;
-  ret;
+  ret sum;
 }

@@ -1,4 +1,7 @@
-@main {
+# ARGS: 31000
+
+@main(lines: float) {
+  sum: int = const 0;
   v12: int = const 1;
   space: int = id v12;
   v13: int = const 8;
@@ -11,6 +14,9 @@
   v18: float = const 2;
   v19: float = fsub v17 v18;
   neg_2: float = id v19;
+
+  delta: float = fdiv v15 lines;
+
   v21: float = const 1;
   j: float = id v21;
 .for.cond.20:
@@ -73,14 +79,15 @@
   jmp .for.cond.27;
 .for.end.27:
   v57: int = id num;
-  print v57;
+  sum: int = add sum v57;
   v58: int = const 0;
   v59: float = id j;
-  v60: float = const 0.015;
+  v60: float = id delta;
   v61: float = fsub v59 v60;
   j: float = id v61;
   jmp .for.cond.20;
 .for.end.20:
+  print sum;
 }
 @f(X: float, Y: float, x: float, y: float, n: int): int {
   v0: float = id x;

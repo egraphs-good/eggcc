@@ -1,23 +1,27 @@
-@main() {
+# ARGS: 3500000
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 100000;
+  final_output: int = const 1;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(n : int) {
-
-	call @printBinary n;
+@orig_main(n : int): int {
+	zero: int = const 0;
+	output: int = call @printBinary n zero;
+	ret output;
 }
 
-@printBinary(n: int) {
+@printBinary(n: int, sum: int): int {
 	zero: int = const 0;
 	cond: bool = eq n zero;
 	br cond .end .rec;
@@ -25,9 +29,10 @@
 	two: int = const 2;
 	v0: int = call @mod n two;
 	v1: int = div n two;
-	call @printBinary v1;
-	print v0;
+	sum: int = call @printBinary v1 sum;
+	sum: int = add sum v0;
 .end:
+	ret sum;
 }
 
 @mod(a0: int, a1: int) : int {

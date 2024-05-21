@@ -1,18 +1,21 @@
-@main() {
+# ARGS: 3100000
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 1000000;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(input : int) {
+@orig_main(input : int): int {
   sum : int = const 0;
   two : int = const 2;
   zero : int = const 0;
@@ -25,8 +28,7 @@
   sum : int = add sum bit;
   jmp .loop;
 .done:
-  print sum;
-  ret;
+  ret sum;
 }
 
 @mod(dividend : int, divisor : int) : int {

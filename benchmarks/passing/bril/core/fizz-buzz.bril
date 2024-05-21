@@ -1,18 +1,22 @@
-@main() {
+# ARGS: 10300
+@main(loop_bound: int) {
   loop_incr: int = const 1;
   loop_counter: int = const 10;
-  loop_bound: int = const 3000;
+  final_output: int = const 0;
 .loop_cond:
   loop_cond: bool = lt loop_counter loop_bound;
   br loop_cond .loop_body .loop_done;
 .loop_body:
-  call @orig_main loop_counter;
+  output: int = call @orig_main loop_counter;
+  final_output: int = add final_output output;
   loop_counter: int = add loop_counter loop_incr;
   jmp .loop_cond;
 .loop_done:
+  print final_output;
 }
 
-@orig_main(input: int) {
+@orig_main(input: int): int {
+  sum: int = const 0;
   v1: int = const 1;
   index: int = id v1;
 .for.cond.0:
@@ -49,14 +53,14 @@
   v25: int = const 0;
   v26: int = const 1;
   v27: int = sub v25 v26;
-  print v27;
+  sum: int = add sum v27;
   v28: int = const 0;
   jmp .endif.23;
 .else.23:
   v29: int = const 0;
   v30: int = const 2;
   v31: int = sub v29 v30;
-  print v31;
+  sum: int = add sum v31;
   v32: int = const 0;
 .endif.23:
   jmp .endif.21;
@@ -67,12 +71,12 @@
   v35: int = const 0;
   v36: int = const 3;
   v37: int = sub v35 v36;
-  print v37;
+  sum: int = add sum v37;
   v38: int = const 0;
   jmp .endif.33;
 .else.33:
   v39: int = id index;
-  print v39;
+  sum: int = add sum v39;
   v40: int = const 0;
 .endif.33:
 .endif.21:
@@ -82,4 +86,5 @@
   index: int = id v43;
   jmp .for.cond.0;
 .for.end.0:
+  ret sum;
 }

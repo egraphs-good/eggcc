@@ -96,8 +96,8 @@ def bench(benchmark):
 def should_have_llvm_ir(runMethod):
   return runMethod in [
     "rvsdg-round-trip-to-executable",
-    "llvm-peep",
-    "llvm-peep-eggcc",
+    "llvm-O0",
+    "llvm-O0-eggcc",
     "llvm-O3",
     "llvm-O3-eggcc",
   ]

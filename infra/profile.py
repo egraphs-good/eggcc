@@ -14,8 +14,8 @@ import concurrent.futures
 treatments = [
   "rvsdg_roundtrip",
   "cranelift-O3",
-  "llvm-peep",
-  "llvm-peep-eggcc",
+  "llvm-O0",
+  "llvm-O0-eggcc",
   "llvm-O3",
   "llvm-O3-eggcc",
 ]
@@ -26,11 +26,11 @@ def get_eggcc_options(name, profile_dir):
       return '--run-mode rvsdg-round-trip-to-executable'
     case "cranelift-O3":
       return f'--run-mode cranelift --optimize-egglog false --optimize-brilift true'
-    case "llvm-peep":
+    case "llvm-O0":
       return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
     case "llvm-O3":
       return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm true --llvm-output-dir {profile_dir}/llvm-{name}'
-    case "llvm-peep-eggcc":
+    case "llvm-O0-eggcc":
       return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
     case "llvm-O3-eggcc":
       return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm true --llvm-output-dir {profile_dir}/llvm-{name}'

@@ -380,6 +380,18 @@ impl<'a> RvsdgToCfg<'a> {
         }
     }
 
+    /// Find a branch of a Gamma that simply passes through the inputs to the outputs,
+    /// possibly permuting them.
+    fn find_passthrough_case(&self, outputs: &[Vec<Operand>]) -> Option<usize> {
+        for (i, output) in outputs.iter().enumerate() {
+            // detect when all operands are a arg reference
+            if output.iter().all(|op| matches!(op, Operand::Arg(_))) {
+                return Some(i);
+            }
+        }
+        None
+    }
+
     /// Translates a body to bril.
     /// This is a helper for `body_to_bril`, which retrieves cached
     /// results when available and calls `rvsdg_body_to_bril` otherwise.
@@ -427,15 +439,41 @@ impl<'a> RvsdgToCfg<'a> {
                 let inputs_combined = self.combine_results(&input_vars);
 
                 // tranlation result for everything before the gamma
-                let pred_and_inputs = self.sequence_results(&[pred_res, inputs_combined.clone()]);
+                let mut before_if = self.sequence_results(&[pred_res, inputs_combined.clone()]);
 
                 let mut branch_blocks = vec![];
 
-                // shared vars will be created an the first iteraion
+                // shared vars will be created once something has been translated
                 let mut shared_vars = None;
+
+                let first_passthrough = self.find_passthrough_case(outputs);
+
+                // Optimization: if we have a passthrough case, assign to the shared vars
+                // immediately to avoid creating a block
+                if let Some(index) = first_passthrough {
+                    let translation_results = outputs
+                        .iter()
+                        .map(|operand| {
+                            self.operand_to_bril(
+                                operand[index],
+                                &inputs_combined.values,
+                                &RvsdgContext {
+                                    body: Some(id),
+                                    branch: 0,
+                                },
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    let ith_combined = self.combine_results(&translation_results);
+                    before_if = self.sequence_results(&[before_if, ith_combined]);
+                }
 
                 // for each set of outputs in outputs, make a new block for them
                 for (i, outputs) in outputs.iter().enumerate() {
+                    // skip if we already did this branch in the passthrough case
+                    if first_passthrough == Some(i) {
+                        continue;
+                    }
                     // evaluate this branch
                     let translation_results = outputs
                         .iter()
@@ -474,7 +512,7 @@ impl<'a> RvsdgToCfg<'a> {
 
                 // add a conditional jump from the previous block to the branch blocks
                 self.graph.add_edge(
-                    pred_and_inputs.end,
+                    before_if.end,
                     branch_blocks[0].start,
                     Branch {
                         op: BranchOp::Cond {
@@ -486,7 +524,7 @@ impl<'a> RvsdgToCfg<'a> {
                     },
                 );
                 self.graph.add_edge(
-                    pred_and_inputs.end,
+                    before_if.end,
                     branch_blocks[1].start,
                     Branch {
                         op: BranchOp::Cond {
@@ -514,7 +552,7 @@ impl<'a> RvsdgToCfg<'a> {
                 }
 
                 TranslationResult {
-                    start: pred_and_inputs.start,
+                    start: before_if.start,
                     end: end_block.end,
                     values: shared_vars.unwrap(),
                 }

@@ -4,8 +4,7 @@
 //! This is used by `to_cfg` to clean up
 //! the output.
 
-use bril_rs::{Instruction, ValueOps};
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
 use petgraph::{
     graph::EdgeIndex,
     stable_graph::{NodeIndex, StableDiGraph, StableGraph},
@@ -99,11 +98,6 @@ impl SimpleCfgFunction {
             assert!(old_entry.is_none(), "Duplicate labels in graph");
         }
 
-        // now fix up all Phi instructions based on the node mapping
-        for node in resulting_graph.node_indices().collect::<Vec<_>>() {
-            Self::fixup_phis(&mut resulting_graph[node], &label_mapping);
-        }
-
         SimpleCfgFunction {
             name: self.name.clone(),
             args: self.args.clone(),
@@ -112,23 +106,6 @@ impl SimpleCfgFunction {
             exit: node_mapping[&self.exit],
             _phantom: Simple,
             return_ty: self.return_ty.clone(),
-        }
-    }
-
-    fn fixup_phis(block: &mut BasicBlock, label_mapping: &HashMap<String, String>) {
-        for code in &mut block.instrs {
-            if let Instruction::Value {
-                op: ValueOps::Phi,
-                ref mut labels,
-                ..
-            } = code
-            {
-                labels.iter_mut().for_each(|node| {
-                    if let Some(label) = label_mapping.get(node) {
-                        *node = label.to_string();
-                    }
-                });
-            }
         }
     }
 
@@ -145,28 +122,9 @@ impl SimpleCfgFunction {
                 .edges_directed(block, Direction::Incoming)
                 .map(|edge| edge.source())
                 .collect();
-            let new_parents = parents
-                .iter()
-                .map(|parent| self.get_parent_after_collapse(*parent))
-                .collect::<HashSet<_>>();
-            let parent_mapping = parents
-                .iter()
-                .map(|parent| {
-                    (
-                        self.graph[*parent].name.to_string(),
-                        self.graph[self.get_parent_after_collapse(*parent)]
-                            .name
-                            .to_string(),
-                    )
-                })
-                .collect::<HashMap<_, _>>();
-            // if we have fewer parents, phi nodes may get messed up, so avoid the optimization
-            if new_parents.len() == parents.len() {
-                for parent in &parents {
-                    self.collapse_empty_block(*parent);
-                }
 
-                Self::fixup_phis(&mut self.graph[block], &parent_mapping);
+            for parent in &parents {
+                self.collapse_empty_block(*parent);
             }
         }
 
@@ -194,16 +152,6 @@ impl SimpleCfgFunction {
             Some((source_edge.id(), outgoing.id()))
         } else {
             None
-        }
-    }
-
-    /// Given a parent block, return the block that will be the new parent
-    /// after collapsing the empty block
-    fn get_parent_after_collapse(&self, parent_block: NodeIndex) -> NodeIndex {
-        if let Some((source_edge, _)) = self.get_single_in_single_out(parent_block) {
-            self.graph.edge_endpoints(source_edge).unwrap().0
-        } else {
-            parent_block
         }
     }
 

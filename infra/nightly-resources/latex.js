@@ -44,17 +44,22 @@ function generateDetailedLineCountTable(latexData) {
 }
 
 function generateRowsForBench(benchmark) {
-  const dataForBench = GLOBAL_DATA.currentRun.filter(x => x.benchmark === benchmark);
+  const dataForBench = GLOBAL_DATA.currentRun.filter(
+    (x) => x.benchmark === benchmark,
+  );
   const rows = dataForBench.map((entry, idx) => {
-    const {mean, max, min, stddev} = entry.hyperfine.results[0];
-    const fstCol = idx === 0 ? String.raw`\multirow{${dataForBench.length}}{*}{${benchmark}}` : '';
+    const { mean, max, min, stddev } = entry.hyperfine.results[0];
+    const fstCol =
+      idx === 0
+        ? String.raw`\multirow{${dataForBench.length}}{*}{${benchmark}}`
+        : "";
     return [
       String.raw`\multicolumn{1}{|l|}{${fstCol}} &`,
       String.raw`\multicolumn{1}{l|}{${entry.runMethod}}  &`,
       String.raw`\multicolumn{1}{l|}{${tryRound(mean)}} &`,
       String.raw`\multicolumn{1}{l|}{${tryRound(max)}} &`,
       String.raw`\multicolumn{1}{l|}{${tryRound(min)}} &`,
-      String.raw`${tryRound(stddev)} \\`
+      String.raw`${tryRound(stddev)} \\`,
     ].join(" ");
   });
   return construct("", rows, String.raw` \hline`);
@@ -68,14 +73,16 @@ function generateBenchmarksTable(latexData) {
   \hline
   \multicolumn{6}{|c|}{Benchmarks} \\ \hline
   \multicolumn{1}{|l|}{Name} & \multicolumn{5}{c|}{Executions} \\ \hline
-  \multicolumn{1}{|l|}{} & \multicolumn{1}{l|}{Run Method}  & \multicolumn{1}{l|}{Mean} & \multicolumn{1}{l|}{Max} & \multicolumn{1}{l|}{Min} & Std Dev \\ \hline`
+  \multicolumn{1}{|l|}{} & \multicolumn{1}{l|}{Run Method}  & \multicolumn{1}{l|}{Mean} & \multicolumn{1}{l|}{Max} & \multicolumn{1}{l|}{Min} & Std Dev \\ \hline`;
 
-  const benchmarks = [...new Set(GLOBAL_DATA.currentRun.map(x => x.benchmark))].sort();
-  const rows = benchmarks.map(bench => generateRowsForBench(bench));
+  const benchmarks = [
+    ...new Set(GLOBAL_DATA.currentRun.map((x) => x.benchmark)),
+  ].sort();
+  const rows = benchmarks.map((bench) => generateRowsForBench(bench));
 
   const post = String.raw`\end{tabular}%
   }
-  \end{table}`
+  \end{table}`;
   return construct(pre, rows, post);
 }
 

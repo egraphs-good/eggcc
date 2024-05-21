@@ -14,8 +14,11 @@ const GLOBAL_DATA = {
   warnings: new Set(),
   currentRun: [],
   baselineRun: [],
-  chart: undefined,
-  chartMode: "absolute",
+  chart: {
+    chart: undefined,
+    mode: "absolute",
+    sortBy: undefined,
+  },
 };
 
 function addWarning(warning) {

@@ -133,7 +133,7 @@ function toggleChart() {
 }
 
 function onRadioClick(elt) {
-  GLOBAL_DATA.chartMode = elt.value;
+  GLOBAL_DATA.chart.mode = elt.value;
   refreshChart();
 }
 

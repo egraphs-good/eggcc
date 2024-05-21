@@ -63,6 +63,7 @@ rm -r ./tmp/
 
 popd
 
+./infra/generate_line_counts.py "$NIGHTLY_DIR"
 
 # Update HTML index page.
 cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"

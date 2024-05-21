@@ -118,7 +118,7 @@ def aggregate(compile_times, bench_times):
 
 
 if __name__ == '__main__':
-  # expect a single argument
+  # expect two arguments
   if len(os.sys.argv) != 3:
     print("Usage: profile.py <bril_directory> <output_directory>")
     exit(1)

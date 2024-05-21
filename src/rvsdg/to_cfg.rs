@@ -384,8 +384,14 @@ impl<'a> RvsdgToCfg<'a> {
     /// possibly permuting them.
     fn find_passthrough_case(&self, outputs: &[Vec<Operand>]) -> Option<usize> {
         for (i, output) in outputs.iter().enumerate() {
-            // detect when all operands are a arg reference
-            if output.iter().all(|op| matches!(op, Operand::Arg(_))) {
+            // detect when all operands are either args or constants
+            if output.iter().all(|op| match op {
+                Operand::Arg(_) => true,
+                Operand::Project(_, id) => matches!(
+                    &self.function.nodes[*id],
+                    RvsdgBody::BasicOp(BasicExpr::Const(_, _, _))
+                ),
+            }) {
                 return Some(i);
             }
         }
@@ -477,7 +483,11 @@ impl<'a> RvsdgToCfg<'a> {
 
                     if first_passthrough == Some(i) {
                         // Optimization: if this is the passthrough block, run it first before all other branches
-                        before_if = self.sequence_results(&[before_if, output_assigned]);
+                        before_if = self.sequence_results(&[
+                            before_if,
+                            outputs_for_branch,
+                            output_assigned,
+                        ]);
                         branch_blocks.push(self.sequence_results(&[]));
                     } else {
                         branch_blocks

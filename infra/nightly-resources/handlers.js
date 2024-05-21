@@ -1,6 +1,6 @@
 // Load data that both the index page and llvm page need
 async function loadCommonData() {
-  GLOBAL_DATA.currentRun = await fetchDataJson(".");
+  GLOBAL_DATA.currentRun = await fetchJson("./data/profile.json");
 }
 
 // Top-level load function for the main index page.
@@ -44,12 +44,11 @@ async function load_llvm() {
 
 async function load_table() {
   await loadCommonData();
+  const latexData = await fetchJson("./data/latex.json");
   const params = new URLSearchParams(window.location.search);
   const table = params.get("table");
-  const resp = await fetch(`./data/${table}.tex`);
-  const text = await resp.text();
   document.getElementById("table-header").innerText = table;
-  document.getElementById("table").innerText = text;
+  document.getElementById("table").innerText = generateLatex(latexData[0], table);
 }
 
 function selectAllModes(enabled) {
@@ -89,7 +88,7 @@ function toggleCheckbox(mode, set) {
 
 async function loadBaseline(url) {
   clearWarnings();
-  GLOBAL_DATA.baselineRun = await fetchDataJson(url);
+  GLOBAL_DATA.baselineRun = await fetchJson(`${url}/data/profile.json`);
 
   const baselineBenchmarks = new Set(
     GLOBAL_DATA.baselineRun.map((o) => o.benchmark),

@@ -30,10 +30,10 @@ if __name__ == '__main__':
         exit(1)
     
     output_path = os.sys.argv[1]
-    data = {
+    data = [{
         "rust": get_rust_lines(),
         "gen_egg": get_generated_egg(),
         "written_egg": get_written_egg()
-    }
+    }]
     with open(f"{output_path}/data/latex.json", "w") as f:
         json.dump(data, f, indent=2)

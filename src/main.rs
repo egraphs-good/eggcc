@@ -42,7 +42,7 @@ struct Args {
     /// For the Cranelift run mode, choose between O0 optimization and O3.
     #[clap(long)]
     optimize_brilift: Option<bool>,
-    /// For the LLVM run mode, choose between peepholes only and O3.
+    /// For the LLVM run mode, choose between O0 and O3.
     #[clap(long)]
     optimize_bril_llvm: Option<bool>,
 }

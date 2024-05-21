@@ -175,7 +175,7 @@ pub enum RunType {
     /// outputting the bril program.
     RvsdgRoundTrip,
     /// Convert to RVSDG and back to Bril again
-    /// Then convert to an executable using llvm-peep, without doing any optimization.
+    /// Then convert to an executable using llvm-O0, without doing any optimization.
     RvsdgRoundTripToExecutable,
     /// Convert to Tree Encoding and back to Bril again,
     /// outputting the bril program.
@@ -479,8 +479,8 @@ impl Run {
                 self.optimize_egglog.unwrap(),
                 self.optimize_bril_llvm.unwrap(),
             ) {
-                (false, false) => "-peep",
-                (true, false) => "-peep-eggcc",
+                (false, false) => "-O0",
+                (true, false) => "-O0-eggcc",
                 (false, true) => "-O3",
                 (true, true) => "-O3-eggcc",
             };

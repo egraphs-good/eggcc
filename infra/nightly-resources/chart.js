@@ -1,13 +1,13 @@
 const COLORS = {
   rvsdg_roundtrip: "red",
   "cranelift-O3": "blue",
-  "llvm-peep": "purple",
-  "llvm-peep-eggcc": "pink",
+  "llvm-O0": "purple",
+  "llvm-O0-eggcc": "pink",
   "llvm-O3": "gray",
   "llvm-O3-eggcc": "brown",
 };
 
-const BASELINE_MODE = "llvm-peep";
+const BASELINE_MODE = "llvm-O0";
 
 function getEntry(benchmark, runMode) {
   const entries = GLOBAL_DATA.currentRun.filter(

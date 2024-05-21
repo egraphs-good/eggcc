@@ -48,7 +48,10 @@ async function load_table() {
   const params = new URLSearchParams(window.location.search);
   const table = params.get("table");
   document.getElementById("table-header").innerText = table;
-  document.getElementById("table").innerText = generateLatex(latexData[0], table);
+  document.getElementById("table").innerText = generateLatex(
+    latexData[0],
+    table,
+  );
 }
 
 function selectAllModes(enabled) {

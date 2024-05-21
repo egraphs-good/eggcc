@@ -5,20 +5,24 @@ expression: visualization.result
 @main(v0: int) {
 .v1_:
   v2_: int = const 0;
-  v3_: bool = lt v2_ v0;
+  v3_: bool = gt v0 v2_;
   v4_: bool = lt v0 v2_;
   v5_: int = const 1;
   br v3_ .v6_ .v7_;
 .v6_:
   br v4_ .v8_ .v9_;
-.v9_:
-  v10_: int = const 3;
 .v8_:
-  v11_: int = phi v10_ v5_ .v9_ .v6_;
-  jmp .v12_;
+  v10_: int = id v5_;
+.v11_:
+  v12_: int = id v10_;
+  jmp .v13_;
+.v9_:
+  v14_: int = const 3;
+  v10_: int = id v14_;
+  jmp .v11_;
 .v7_:
-  v13_: int = const 3;
-.v12_:
-  v14_: int = phi v13_ v11_ .v7_ .v8_;
-  print v14_;
+  v15_: int = const 3;
+  v12_: int = id v15_;
+.v13_:
+  print v12_;
 }

@@ -26,13 +26,22 @@ expression: visualization.result
   v19_: int = add v13_ v18_;
   print v19_;
   v20_: int = call @inc v19_;
+  v21_: int = id v20_;
+.v22_:
+  v23_: int = id v21_;
+.v24_:
+  v25_: int = id v23_;
+  jmp .v26_;
 .v17_:
-  v21_: int = phi v13_ v20_ .v10_ .v16_;
+  v21_: int = id v13_;
+  jmp .v22_;
 .v11_:
-  v22_: int = phi v7_ v21_ .v4_ .v17_;
+  v23_: int = id v7_;
+  jmp .v24_;
 .v5_:
-  v23_: int = phi v0 v22_ .v1_ .v11_;
-  ret v23_;
+  v25_: int = id v0;
+.v26_:
+  ret v25_;
 }
 @main {
 .v0_:

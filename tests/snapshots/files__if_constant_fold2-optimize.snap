@@ -9,14 +9,20 @@ expression: visualization.result
   v4_: bool = eq v0 v3_;
   v5_: int = const 4;
   br v4_ .v6_ .v7_;
-.v7_:
-  v8_: bool = eq v0 v5_;
-  br v8_ .v9_ .v10_;
-.v9_:
-.v11_:
-  jmp .v6_;
-.v10_:
-  jmp .v11_;
 .v6_:
+  v8_: int = id v2_;
+  jmp .v9_;
+.v7_:
+  v10_: bool = eq v0 v5_;
+  br v10_ .v11_ .v12_;
+.v11_:
+  v13_: int = id v2_;
+.v14_:
+  v8_: int = id v2_;
+  jmp .v9_;
+.v12_:
+  v13_: int = id v2_;
+  jmp .v14_;
+.v9_:
   print v2_;
 }

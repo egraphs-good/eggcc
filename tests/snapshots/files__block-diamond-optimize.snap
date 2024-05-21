@@ -14,18 +14,29 @@ expression: visualization.result
 .v8_:
   v10_: int = const 4;
   v11_: bool = const false;
-.v12_:
-  v13_: int = phi v6_ v10_ .v9_ .v8_;
-  v15_: bool = phi v14_ v11_ .v9_ .v8_;
-  br v4_ .v16_ .v17_;
+  v12_: int = id v10_;
+  v13_: int = id v6_;
+  v14_: int = id v2_;
+  v15_: bool = id v11_;
 .v16_:
-  v18_: int = add v13_ v2_;
-  jmp .v17_;
-.v9_:
-  v14_: bool = const true;
-  jmp .v12_;
+  br v4_ .v17_ .v18_;
 .v17_:
-  v19_: int = phi v13_ v18_ .v12_ .v16_;
-  v20_: int = add v19_ v6_;
-  print v20_;
+  v19_: int = add v12_ v2_;
+  v20_: int = id v19_;
+  v21_: int = id v6_;
+  jmp .v22_;
+.v18_:
+  v20_: int = id v12_;
+  v21_: int = id v6_;
+  jmp .v22_;
+.v9_:
+  v23_: bool = const true;
+  v12_: int = id v6_;
+  v13_: int = id v6_;
+  v14_: int = id v2_;
+  v15_: bool = id v23_;
+  jmp .v16_;
+.v22_:
+  v24_: int = add v20_ v6_;
+  print v24_;
 }

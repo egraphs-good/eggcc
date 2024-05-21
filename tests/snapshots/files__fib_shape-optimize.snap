@@ -14,12 +14,19 @@ expression: visualization.result
   br v8_ .v9_ .v10_;
 .v9_:
   v11_: int = add v4_ v5_;
-.v10_:
-  v12_: int = phi v4_ v11_ .v7_ .v9_;
+  v12_: int = id v11_;
+  v13_: int = id v5_;
+  v14_: int = id v6_;
+.v15_:
   v4_: int = id v12_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  br v8_ .v7_ .v13_;
-.v13_:
+  v5_: int = id v13_;
+  v6_: int = id v14_;
+  br v8_ .v7_ .v16_;
+.v10_:
+  v12_: int = id v4_;
+  v13_: int = id v5_;
+  v14_: int = id v6_;
+  jmp .v15_;
+.v16_:
   print v4_;
 }

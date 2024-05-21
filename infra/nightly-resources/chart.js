@@ -106,16 +106,15 @@ function parseDataForChart() {
     datasets[BASELINE_MODE] = {
       label: BASELINE_MODE,
       data: Array(benchmarks.size + 1).fill(1),
-      type: 'line',
+      type: "line",
       borderColor: "purple",
       fill: false,
       borderWidth: 5,
       borderDash: [5, 5],
       pointRadius: 0,
-      order: 1
-    }
+      order: 1,
+    };
   }
-
 
   return {
     labels: Array.from(sortedBenchmarks),

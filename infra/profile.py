@@ -12,7 +12,7 @@ from gen_linecount import gen_linecount_table
 import concurrent.futures
 
 treatments = [
-  "rvsdg_roundtrip",
+  "rvsdg-round-trip-to-executable",
   "cranelift-O3",
   "llvm-O0",
   "llvm-O0-eggcc",
@@ -22,8 +22,8 @@ treatments = [
 
 def get_eggcc_options(name, profile_dir):
   match name:
-    case "rvsdg_roundtrip":
-      return '--run-mode rvsdg-round-trip-to-executable'
+    case "rvsdg-round-trip-to-executable":
+      return f'--run-mode rvsdg-round-trip-to-executable --llvm-output-dir {profile_dir}/llvm-{name}'
     case "cranelift-O3":
       return f'--run-mode cranelift --optimize-egglog false --optimize-brilift true'
     case "llvm-O0":
@@ -92,7 +92,17 @@ def bench(benchmark):
       result = subprocess.run(cmd, capture_output=True, shell=True)
       return (f'{profile_dir}/{benchmark.treatment}', json.loads(result.stdout))
 
-def get_llvm(runMethod, benchmark):
+# Run modes that we expect to output llvm IR
+def should_have_llvm_ir(runMethod):
+  return runMethod in [
+    "rvsdg-round-trip-to-executable",
+    "llvm-peep",
+    "llvm-peep-eggcc",
+    "llvm-O3",
+    "llvm-O3-eggcc",
+  ]
+
+def get_llvm_ir(runMethod, benchmark):
   path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}-{runMethod}.ll'
 
   try:
@@ -110,8 +120,8 @@ def aggregate(compile_times, bench_times):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
       result = {"runMethod": runMethod, "benchmark": name, "hyperfine": bench_times[path], "compileTime": compile_times[path]}
-      if "llvm" in runMethod:
-        result["llvm_ir"] = get_llvm(runMethod, name)
+      if should_have_llvm_ir(runMethod):
+        result["llvm_ir"] = get_llvm_ir(runMethod, name)
 
       res.append(result)
     return res

@@ -10,19 +10,17 @@ expression: visualization.result
   v5_: int = const 1;
   br v3_ .v6_ .v7_;
 .v6_:
-  br v4_ .v8_ .v9_;
-.v8_:
-  v10_: int = id v5_;
-.v11_:
-  v12_: int = id v10_;
-  jmp .v13_;
+  v8_: int = id v5_;
+  br v4_ .v9_ .v10_;
+.v10_:
+  v11_: int = const 3;
+  v8_: int = id v11_;
 .v9_:
-  v14_: int = const 3;
-  v10_: int = id v14_;
-  jmp .v11_;
+  v12_: int = id v8_;
+  jmp .v13_;
 .v7_:
-  v15_: int = const 3;
-  v12_: int = id v15_;
+  v14_: int = const 3;
+  v12_: int = id v14_;
 .v13_:
   print v12_;
 }

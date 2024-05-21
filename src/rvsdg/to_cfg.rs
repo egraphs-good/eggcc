@@ -448,32 +448,8 @@ impl<'a> RvsdgToCfg<'a> {
 
                 let first_passthrough = self.find_passthrough_case(outputs);
 
-                // Optimization: if we have a passthrough case, assign to the shared vars
-                // immediately to avoid creating a block
-                if let Some(index) = first_passthrough {
-                    let translation_results = outputs
-                        .iter()
-                        .map(|operand| {
-                            self.operand_to_bril(
-                                operand[index],
-                                &inputs_combined.values,
-                                &RvsdgContext {
-                                    body: Some(id),
-                                    branch: 0,
-                                },
-                            )
-                        })
-                        .collect::<Vec<_>>();
-                    let ith_combined = self.combine_results(&translation_results);
-                    before_if = self.sequence_results(&[before_if, ith_combined]);
-                }
-
                 // for each set of outputs in outputs, make a new block for them
                 for (i, outputs) in outputs.iter().enumerate() {
-                    // skip if we already did this branch in the passthrough case
-                    if first_passthrough == Some(i) {
-                        continue;
-                    }
                     // evaluate this branch
                     let translation_results = outputs
                         .iter()
@@ -499,8 +475,14 @@ impl<'a> RvsdgToCfg<'a> {
                     let output_assigned = self
                         .assign_to_vars(&outputs_for_branch.values, shared_vars.as_ref().unwrap());
 
-                    branch_blocks
-                        .push(self.sequence_results(&[outputs_for_branch, output_assigned]));
+                    if first_passthrough == Some(i) {
+                        // Optimization: if this is the passthrough block, run it first before all other branches
+                        before_if = self.sequence_results(&[before_if, output_assigned]);
+                        branch_blocks.push(self.sequence_results(&[]));
+                    } else {
+                        branch_blocks
+                            .push(self.sequence_results(&[outputs_for_branch, output_assigned]));
+                    }
                 }
 
                 // we need to conditionally jump to each of the branch blocks

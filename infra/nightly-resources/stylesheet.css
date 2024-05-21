@@ -55,3 +55,7 @@ body {
   max-height: 175px;
   overflow: scroll;
 }
+
+#speedup-formula {
+  visibility: hidden;
+}

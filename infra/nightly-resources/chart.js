@@ -34,7 +34,7 @@ function getValue(entry) {
     }
     const baseV = baseline.hyperfine.results[0].mean;
     const expV = entry.hyperfine.results[0].mean;
-    // return (baseV - expV) / expV * 100;
+    // If you change this, also change the displayed formula in index.html
     return baseV / expV;
   } else {
     throw new Error(`unknown chart mode ${GLOBAL_DATA.chart.mode}`);
@@ -107,7 +107,7 @@ function parseDataForChart() {
       label: BASELINE_MODE,
       data: Array(benchmarks.size + 1).fill(1),
       type: "line",
-      borderColor: "purple",
+      borderColor: COLORS[BASELINE_MODE],
       fill: false,
       borderWidth: 5,
       borderDash: [5, 5],

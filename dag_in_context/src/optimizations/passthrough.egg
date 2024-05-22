@@ -49,9 +49,6 @@
 
 ; Pass through if state edge arguments
 ; To maintain the invariant, we have to union the other outputs with a pure if statement
-;; TODO This rule causes blowup in the egraph, unclear why
-;; disabled for now
-(ruleset pass-through-state-edge-if)
 (rule ((= outputs (If pred inputs then_ else_))
 
        (= (Get then_ i) (Get (Arg arg_ty then_ctx) j))
@@ -79,7 +76,7 @@
        ;; Be careful not to subsume the original if statement immediately,
        ;;  since TupleRemoveAt still needs to match on it
        (ToSubsumeIf pred inputs then_ else_))
-      :ruleset pass-through-state-edge-if)
+      :ruleset passthrough)
 
 
 ;; Pass through if predicate

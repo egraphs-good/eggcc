@@ -1,27 +1,29 @@
 pub(crate) fn helpers() -> String {
     "
-;; saturate all helpers first
 (saturate
-  (saturate
-    (saturate type-helpers) ;; resolve type helpers, finding correct types
-    (saturate error-checking) ;; check for errors, relies on type-helpers saturating
-      saturating)
 
-  (saturate drop)
-  apply-drop-unions
-  cleanup-drop
+    (saturate type-helpers)
+    (saturate error-checking)
+    passthrough
 
-  subsume-after-helpers
+    (saturate
+        (saturate type-helpers)
+        (saturate error-checking)
+        saturating
+    )
 
-  (saturate subst) ;; do e-substitution
-  apply-subst-unions ;; apply the unions from substitution
-  cleanup-subst ;; clean up substitutions that are done
+    (saturate drop)
+    apply-drop-unions
+    cleanup-drop
 
+    (saturate subst)
+    apply-subst-unions
+    cleanup-subst
 
-  (saturate boundary-analysis) ;; find boundaries of invariants
-)
+    subsume-after-helpers
 
-"
+    (saturate boundary-analysis)
+)"
     .to_string()
 }
 
@@ -31,7 +33,6 @@ pub fn mk_schedule() -> String {
         "
   (unstable-combined-ruleset saturating
     always-run
-    passthrough
     canon
     type-analysis
     context

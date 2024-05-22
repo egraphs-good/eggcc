@@ -16,40 +16,59 @@ expression: visualization.result
   v11_: int = id v5_;
 .v12_:
   v13_: bool = eq v7_ v8_;
-  br v13_ .v14_ .v15_;
-.v14_:
-  v16_: bool = const false;
-.v17_:
-  v19_: bool = phi v18_ v16_ .v20_ .v14_;
-  v22_: int = phi v21_ v7_ .v20_ .v14_;
-  v23_: int = phi v8_ v7_ .v20_ .v14_;
-  v24_: bool = not v13_;
+  v14_: bool = const false;
+  v15_: int = id v6_;
+  v16_: bool = id v14_;
+  v17_: int = id v7_;
+  v18_: int = id v7_;
+  v19_: int = id v9_;
+  v20_: int = id v10_;
+  v21_: int = id v11_;
+  br v13_ .v22_ .v23_;
+.v23_:
+  v24_: int = div v7_ v10_;
+  v25_: int = mul v10_ v24_;
+  v26_: int = sub v7_ v25_;
+  v27_: bool = eq v11_ v26_;
+  print v7_;
+  v28_: int = mul v7_ v9_;
+  v29_: int = add v28_ v8_;
+  v30_: bool = const true;
+  v31_: int = id v6_;
+  v32_: bool = id v30_;
+  v33_: int = id v29_;
+  v34_: int = id v8_;
+  v35_: int = id v9_;
+  v36_: int = id v10_;
+  v37_: int = id v11_;
+  br v27_ .v38_ .v39_;
+.v38_:
+  v40_: bool = const true;
+  v31_: int = id v6_;
+  v32_: bool = id v40_;
+  v33_: int = id v24_;
+  v34_: int = id v8_;
+  v35_: int = id v9_;
+  v36_: int = id v10_;
+  v37_: int = id v11_;
+.v39_:
+  v41_: bool = const true;
+  v15_: int = id v6_;
+  v16_: bool = id v41_;
+  v17_: int = id v33_;
+  v18_: int = id v8_;
+  v19_: int = id v9_;
+  v20_: int = id v10_;
+  v21_: int = id v11_;
+.v22_:
+  v42_: bool = not v13_;
   v6_: int = id v6_;
-  v7_: int = id v22_;
+  v7_: int = id v17_;
   v8_: int = id v8_;
   v9_: int = id v9_;
   v10_: int = id v10_;
   v11_: int = id v11_;
-  br v24_ .v12_ .v25_;
-.v15_:
-  v26_: int = div v7_ v10_;
-  v27_: int = mul v10_ v26_;
-  v28_: int = sub v7_ v27_;
-  v29_: bool = eq v11_ v28_;
-  print v7_;
-  v30_: int = mul v7_ v9_;
-  v31_: int = add v30_ v8_;
-  br v29_ .v32_ .v33_;
-.v32_:
-  v34_: bool = const true;
-.v20_:
-  v36_: bool = phi v35_ v34_ .v33_ .v32_;
-  v21_: int = phi v31_ v26_ .v33_ .v32_;
-  v18_: bool = const true;
-  jmp .v17_;
-.v33_:
-  v35_: bool = const true;
-  jmp .v20_;
-.v25_:
+  br v42_ .v12_ .v43_;
+.v43_:
   print v0;
 }

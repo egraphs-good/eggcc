@@ -136,6 +136,8 @@ function toggleChart() {
 
 function onRadioClick(elt) {
   GLOBAL_DATA.chart.mode = elt.value;
+  document.getElementById("speedup-formula").style.visibility =
+    elt.value === "speedup" ? "visible" : "hidden";
   refreshChart();
 }
 

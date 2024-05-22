@@ -334,51 +334,6 @@ impl<'a> RvsdgToCfg<'a> {
         }
     }
 
-    fn merge_vars(
-        &mut self,
-        branch1_vars: &[RvsdgValue],
-        branch2_vars: &[RvsdgValue],
-        branch1_label: String,
-        branch2_label: String,
-    ) -> TranslationResult {
-        let mut instructions = vec![];
-        assert_eq!(branch1_vars.len(), branch2_vars.len());
-
-        let mut resulting_vars = vec![];
-        for (b1, b2) in branch1_vars.iter().zip(branch2_vars.iter()) {
-            match (b1, b2) {
-                (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {
-                    resulting_vars.push(RvsdgValue::StateEdge);
-                }
-                (RvsdgValue::BrilValue(name1, ty1), RvsdgValue::BrilValue(name2, ty2)) => {
-                    assert_eq!(ty1, ty2);
-                    if name1 == name2 {
-                        resulting_vars.push(RvsdgValue::BrilValue(name1.clone(), ty1.clone()));
-                    } else {
-                        let new_name = self.get_fresh();
-                        instructions.push(Instruction::Value {
-                            dest: new_name.clone(),
-                            op: ValueOps::Phi,
-                            args: vec![name1.clone(), name2.clone()],
-                            funcs: vec![],
-                            labels: vec![branch1_label.clone(), branch2_label.clone()],
-                            pos: None,
-                            op_type: ty1.clone(),
-                        });
-                        resulting_vars.push(RvsdgValue::BrilValue(new_name, ty1.clone()));
-                    }
-                }
-                _ => panic!("Incompatible values in merge_vars: {:?} {:?}", b1, b2),
-            }
-        }
-        let block = self.make_block(instructions);
-        TranslationResult {
-            start: block,
-            end: block,
-            values: resulting_vars,
-        }
-    }
-
     fn fresh_variables_for(&mut self, values: &[RvsdgValue]) -> Vec<RvsdgValue> {
         values
             .iter()
@@ -425,8 +380,22 @@ impl<'a> RvsdgToCfg<'a> {
         }
     }
 
-    fn block_name(&self, node: NodeIndex) -> String {
-        self.graph[node].name.to_string()
+    /// Find a branch of a Gamma that simply passes through the inputs to the outputs,
+    /// possibly permuting them.
+    fn find_passthrough_case(&self, outputs: &[Vec<Operand>]) -> Option<usize> {
+        for (i, output) in outputs.iter().enumerate() {
+            // detect when all operands are either args or constants
+            if output.iter().all(|op| match op {
+                Operand::Arg(_) => true,
+                Operand::Project(_, id) => matches!(
+                    &self.function.nodes[*id],
+                    RvsdgBody::BasicOp(BasicExpr::Const(_, _, _))
+                ),
+            }) {
+                return Some(i);
+            }
+        }
+        None
     }
 
     /// Translates a body to bril.
@@ -476,9 +445,14 @@ impl<'a> RvsdgToCfg<'a> {
                 let inputs_combined = self.combine_results(&input_vars);
 
                 // tranlation result for everything before the gamma
-                let pred_and_inputs = self.sequence_results(&[pred_res, inputs_combined.clone()]);
+                let mut before_if = self.sequence_results(&[pred_res, inputs_combined.clone()]);
 
                 let mut branch_blocks = vec![];
+
+                // shared vars will be created once something has been translated
+                let mut shared_vars = None;
+
+                let first_passthrough = self.find_passthrough_case(outputs);
 
                 // for each set of outputs in outputs, make a new block for them
                 for (i, outputs) in outputs.iter().enumerate() {
@@ -496,9 +470,29 @@ impl<'a> RvsdgToCfg<'a> {
                             )
                         })
                         .collect::<Vec<_>>();
+
                     let outputs_for_branch = self.combine_results(&translation_results);
 
-                    branch_blocks.push(outputs_for_branch);
+                    // make the shared vars on the first iteration
+                    if shared_vars.is_none() {
+                        shared_vars = Some(self.fresh_variables_for(&outputs_for_branch.values));
+                    }
+                    // assign to the shared vars
+                    let output_assigned = self
+                        .assign_to_vars(&outputs_for_branch.values, shared_vars.as_ref().unwrap());
+
+                    if first_passthrough == Some(i) {
+                        // Optimization: if this is the passthrough block, run it first before all other branches
+                        before_if = self.sequence_results(&[
+                            before_if,
+                            outputs_for_branch,
+                            output_assigned,
+                        ]);
+                        branch_blocks.push(self.sequence_results(&[]));
+                    } else {
+                        branch_blocks
+                            .push(self.sequence_results(&[outputs_for_branch, output_assigned]));
+                    }
                 }
 
                 // we need to conditionally jump to each of the branch blocks
@@ -510,7 +504,7 @@ impl<'a> RvsdgToCfg<'a> {
 
                 // add a conditional jump from the previous block to the branch blocks
                 self.graph.add_edge(
-                    pred_and_inputs.end,
+                    before_if.end,
                     branch_blocks[0].start,
                     Branch {
                         op: BranchOp::Cond {
@@ -522,7 +516,7 @@ impl<'a> RvsdgToCfg<'a> {
                     },
                 );
                 self.graph.add_edge(
-                    pred_and_inputs.end,
+                    before_if.end,
                     branch_blocks[1].start,
                     Branch {
                         op: BranchOp::Cond {
@@ -535,12 +529,7 @@ impl<'a> RvsdgToCfg<'a> {
                 );
 
                 // now make a block at the end
-                let end_block = self.merge_vars(
-                    &branch_blocks[0].values,
-                    &branch_blocks[1].values,
-                    self.block_name(branch_blocks[0].end),
-                    self.block_name(branch_blocks[1].end),
-                );
+                let end_block = self.sequence_results(&[]);
 
                 // every branch jumps to the end block
                 for branch_block in branch_blocks {
@@ -555,9 +544,9 @@ impl<'a> RvsdgToCfg<'a> {
                 }
 
                 TranslationResult {
-                    start: pred_and_inputs.start,
+                    start: before_if.start,
                     end: end_block.end,
-                    values: end_block.values,
+                    values: shared_vars.unwrap(),
                 }
             }
             RvsdgBody::Theta {

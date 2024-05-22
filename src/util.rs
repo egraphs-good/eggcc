@@ -175,7 +175,7 @@ pub enum RunType {
     /// outputting the bril program.
     RvsdgRoundTrip,
     /// Convert to RVSDG and back to Bril again
-    /// Then convert to an executable using llvm-peep, without doing any optimization.
+    /// Then convert to an executable using llvm-O0, without doing any optimization.
     RvsdgRoundTripToExecutable,
     /// Convert to Tree Encoding and back to Bril again,
     /// outputting the bril program.
@@ -479,8 +479,8 @@ impl Run {
                 self.optimize_egglog.unwrap(),
                 self.optimize_bril_llvm.unwrap(),
             ) {
-                (false, false) => "-peep",
-                (true, false) => "-peep-eggcc",
+                (false, false) => "-O0",
+                (true, false) => "-O0-eggcc",
                 (false, true) => "-O3",
                 (true, true) => "-O3-eggcc",
             };
@@ -544,14 +544,7 @@ impl Run {
             RunType::OptimizedCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
-                (
-                    vec![Visualization {
-                        result: format!("{:#?}", cfg),
-                        file_extension: ".txt".to_string(),
-                        name: "".to_string(),
-                    }],
-                    None,
-                )
+                (cfg.visualizations(), None)
             }
             RunType::RvsdgRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
@@ -956,7 +949,7 @@ impl Run {
             };
 
             let res = Command::new(opt_cmd)
-                .arg("-passes=sroa,instsimplify,instcombine<no-verify-fixpoint>,adce")
+                .arg("-passes=sroa")
                 .arg("-S")
                 .arg(file_path.clone())
                 .arg("-o")

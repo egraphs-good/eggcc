@@ -6,10 +6,10 @@ expression: visualization.result
 .v1_:
   v2_: int = const 4;
   v3_: bool = lt v2_ v0;
-  br v3_ .v4_ .v5_;
-.v4_:
-  jmp .v6_;
+  v4_: int = id v2_;
+  br v3_ .v5_ .v6_;
 .v5_:
+  v4_: int = id v2_;
 .v6_:
   print v2_;
 }

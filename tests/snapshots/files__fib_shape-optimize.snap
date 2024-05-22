@@ -11,15 +11,20 @@ expression: visualization.result
   v6_: int = id v0;
 .v7_:
   v8_: bool = lt v4_ v6_;
-  br v8_ .v9_ .v10_;
-.v9_:
-  v11_: int = add v4_ v5_;
-.v10_:
-  v12_: int = phi v4_ v11_ .v7_ .v9_;
-  v4_: int = id v12_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  br v8_ .v7_ .v13_;
+  v9_: int = id v4_;
+  v10_: int = id v5_;
+  v11_: int = id v6_;
+  br v8_ .v12_ .v13_;
+.v12_:
+  v14_: int = add v4_ v5_;
+  v9_: int = id v14_;
+  v10_: int = id v5_;
+  v11_: int = id v6_;
 .v13_:
+  v4_: int = id v9_;
+  v5_: int = id v10_;
+  v6_: int = id v11_;
+  br v8_ .v7_ .v15_;
+.v15_:
   print v4_;
 }

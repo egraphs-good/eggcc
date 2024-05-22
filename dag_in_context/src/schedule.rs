@@ -52,11 +52,11 @@ pub fn mk_schedule() -> String {
     switch_rewrite
     ;loop-inv-motion
     loop-strength-reduction
+    loop-peel
   )
   
   (run-schedule
     {helpers}
-    loop-peel
     (repeat 2
       {helpers}
       expensive-optimizations)

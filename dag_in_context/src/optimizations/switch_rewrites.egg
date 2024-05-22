@@ -44,7 +44,7 @@
 
 (rewrite (If (Const (Bool true)  ty ctx) ins thn els)
          (Subst ctx ins thn)
-         :ruleset switch_rewrite)
+         :ruleset always-run)
 
 (rewrite (If (Const (Bool false) ty ctx) ins thn els)
          (Subst ctx ins els)

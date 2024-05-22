@@ -7,8 +7,8 @@
   <script src="./Plugin.Errorbars.js"></script>
   <script src="chart.js"></script>
   <script src="data.js"></script>
-  <script src="index.js"></script>
   <script src="handlers.js"></script>
+  <script src="index.js"></script>
   <script src="previousRuns.js"></script>
   <script src="table.js"></script>
   <script src="utils.js"></script>
@@ -19,8 +19,11 @@
 
 <body onload="load_table()">
   <h2 id="table-header"></h2>
+  <div>
+    <a id="table-pdf" href="">PDF</a>
+  </div>
+  <button class="btn" onclick="copyToClipboard('table')">Copy Tex</button>
   <div id="table"></div>
-  <button class="btn" onclick="copyToClipboard('table')">Copy</button>
 </body>
 
 </html>

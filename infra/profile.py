@@ -7,8 +7,6 @@ from glob import glob
 from sys import stdout
 import subprocess
 
-from nightly_table import gen_nightly_table
-from gen_linecount import gen_linecount_table
 import concurrent.futures
 
 treatments = [
@@ -128,7 +126,7 @@ def aggregate(compile_times, bench_times):
 
 
 if __name__ == '__main__':
-  # expect a single argument
+  # expect two arguments
   if len(os.sys.argv) != 3:
     print("Usage: profile.py <bril_directory> <output_directory>")
     exit(1)
@@ -188,14 +186,3 @@ if __name__ == '__main__':
   nightly_data = aggregate(compile_times, bench_data)
   with open(f"{output_path}/data/profile.json", "w") as profile:
     json.dump(nightly_data, profile, indent=2)
-
-  (overview, detailed) = gen_linecount_table()
-
-  with open(f"{output_path}/data/linecount.tex", "w") as linecount:
-      linecount.write(overview)
-
-  with open(f"{output_path}/data/detailed-linecount.tex", "w") as linecount:
-      linecount.write(detailed)
-
-  with open(f"{output_path}/data/nightlytable.tex", "w") as nightly_table:
-      nightly_table.write(gen_nightly_table(nightly_data))

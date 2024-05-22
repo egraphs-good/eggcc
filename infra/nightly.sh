@@ -59,10 +59,12 @@ else
   ./infra/profile.py benchmarks/passing "$NIGHTLY_DIR"
 fi
 
+# Generate latex after running the profiler (depends on profile.json)
+./infra/generate_line_counts.py "$NIGHTLY_DIR"
+
 rm -r ./tmp/
 
 popd
-
 
 # Update HTML index page.
 cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"

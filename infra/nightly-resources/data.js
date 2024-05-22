@@ -1,6 +1,12 @@
-async function fetchDataJson(url) {
-  const resp = await fetch(`${url}/data/profile.json`);
+async function fetchJson(url) {
+  const resp = await fetch(url);
   const data = await resp.json();
+  return data;
+}
+
+async function fetchText(url) {
+  const resp = await fetch(url);
+  const data = await resp.text();
   return data;
 }
 

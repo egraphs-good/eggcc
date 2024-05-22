@@ -35,7 +35,8 @@ pub(crate) fn helpers() -> String {
 
 pub fn mk_schedule() -> String {
     let helpers = helpers();
-    format!("
+    format!(
+        "
 (unstable-combined-ruleset saturating
     always-run
     canon
@@ -68,5 +69,6 @@ pub fn mk_schedule() -> String {
 ; TODO: add the optimizations back
 
 (run-schedule (saturate debug-deletes))
-")
+"
+    )
 }

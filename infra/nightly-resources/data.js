@@ -29,6 +29,16 @@ function getBaselineHyperfine(benchmark, runMethod) {
   }
 }
 
+function shouldHaveLlvm(runMethod) {
+  return [
+    "rvsdg-round-trip-to-executable",
+    "llvm-O0",
+    "llvm-O0-eggcc",
+    "llvm-O3",
+    "llvm-O3-eggcc",
+  ].includes(runMethod);
+}
+
 function getDataForBenchmark(benchmark) {
   const executions = GLOBAL_DATA.currentRun
     ?.filter((o) => o.benchmark === benchmark)
@@ -47,10 +57,7 @@ function getDataForBenchmark(benchmark) {
         medianVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "median"),
         stddev: { class: "", value: tryRound(hyperfine.stddev) },
       };
-      if (o.hasOwnProperty("llvm_ir")) {
-        if (o.llvm_ir === "") {
-          addWarning(`missing LLVM IR for ${o.benchmark} ${o.runMethod}`);
-        }
+      if (shouldHaveLlvm(o.runMethod)) {
         rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${o.runMethod}">${o.runMethod}</a>`;
       }
       return rowData;

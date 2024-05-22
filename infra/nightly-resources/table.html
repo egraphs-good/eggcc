@@ -9,19 +9,20 @@
   <script src="data.js"></script>
   <script src="handlers.js"></script>
   <script src="index.js"></script>
-  <script src="latex.js"></script>
   <script src="previousRuns.js"></script>
   <script src="table.js"></script>
   <script src="utils.js"></script>
   <script src="data/profile.json"></script>
-  <script src="data/latex.json"></script>
 </head>
 
 <title>TABLE</title>
 
 <body onload="load_table()">
   <h2 id="table-header"></h2>
-  <button class="btn" onclick="copyToClipboard('table')">Copy</button>
+  <div>
+    <a id="table-pdf" href="">PDF</a>
+  </div>
+  <button class="btn" onclick="copyToClipboard('table')">Copy Tex</button>
   <div id="table"></div>
 </body>
 

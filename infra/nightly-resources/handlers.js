@@ -44,14 +44,12 @@ async function load_llvm() {
 
 async function load_table() {
   await loadCommonData();
-  const latexData = await fetchJson("./data/latex.json");
   const params = new URLSearchParams(window.location.search);
   const table = params.get("table");
   document.getElementById("table-header").innerText = table;
-  document.getElementById("table").innerText = generateLatex(
-    latexData[0],
-    table,
-  );
+  const tex = await fetchText(`./data/${table}.tex`);
+  document.getElementById("table").innerText = tex;
+  document.getElementById("table-pdf").href = `./data/${table}.pdf`;
 }
 
 function selectAllModes(enabled) {

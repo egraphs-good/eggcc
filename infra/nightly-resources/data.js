@@ -4,6 +4,12 @@ async function fetchJson(url) {
   return data;
 }
 
+async function fetchText(url) {
+  const resp = await fetch(url);
+  const data = await resp.text();
+  return data;
+}
+
 function getBaselineHyperfine(benchmark, runMethod) {
   const baselineData =
     GLOBAL_DATA.baselineRun?.filter((o) => o.benchmark === benchmark) || [];

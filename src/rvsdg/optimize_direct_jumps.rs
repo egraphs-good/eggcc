@@ -8,7 +8,7 @@ use hashbrown::HashMap;
 use petgraph::{
     graph::EdgeIndex,
     stable_graph::{NodeIndex, StableDiGraph, StableGraph},
-    visit::{Bfs, EdgeRef},
+    visit::{DfsPostOrder, EdgeRef},
     Direction,
 };
 
@@ -19,10 +19,13 @@ use crate::Optimizer;
 
 impl SimpleCfgFunction {
     pub fn optimize_jumps(&self) -> Self {
-        self.single_in_single_out().collapse_empty_blocks()
+        self.fuse_down().collapse_empty_blocks()
     }
 
-    fn single_in_single_out(&self) -> SimpleCfgFunction {
+    /// Find cases where a block jumps directly to another block A -> B where B
+    /// A has only one outgoing edge and B has one incoming edge
+    /// Turn it into one block AB
+    fn fuse_down(&self) -> SimpleCfgFunction {
         let mut resulting_graph: StableGraph<BasicBlock, Branch> = StableDiGraph::new();
 
         // a map from nodes in the old graph to nodes in the
@@ -34,52 +37,53 @@ impl SimpleCfgFunction {
         // we use a bfs so that previous nodes are mapped to new nodes
         // before their children.
         // This ensures that `node_mapping[&previous]` succeeds.
-        let mut bfs = Bfs::new(&self.graph, self.entry);
+        let mut dfs = DfsPostOrder::new(&self.graph, self.entry);
 
         let mut edges_to_add = vec![];
 
         // copy the graph without the edges
         // also choose which nodes get fused to which
         // by re-assigning in the node map
-        while let Some(node) = bfs.next(&self.graph) {
-            let mut collapse_node = false;
-            let edges = self
+        while let Some(node) = dfs.next(&self.graph) {
+            let outgoing_from_node = self
                 .graph
-                .edges_directed(node, Direction::Incoming)
+                .edges_directed(node, Direction::Outgoing)
                 .collect::<Vec<_>>();
-            // single incoming edge to node
-            if let &[single_edge] = edges.as_slice() {
-                let previous = single_edge.source();
-                let previous_outgoing = self
+            let target = if let &[single_edge] = outgoing_from_node.as_slice() {
+                let target = single_edge.target();
+                let incoming_to_next = self
                     .graph
-                    .edges_directed(previous, Direction::Outgoing)
-                    .collect::<Vec<_>>();
-                // single outgoing edge from previous
-                // and two distinct nodes
-                if previous_outgoing.len() == 1 && previous != node {
-                    let previous_new = node_mapping[&previous];
-
-                    // this node will be mapped to the previous
-                    node_mapping.insert(node, previous_new);
-
-                    // add instructions to the end of the previous node
-                    resulting_graph[previous_new]
-                        .instrs
-                        .extend(self.graph[node].instrs.to_vec());
-                    resulting_graph[previous_new]
-                        .footer
-                        .extend(self.graph[node].footer.to_vec());
-
-                    collapse_node = true;
+                    .edges_directed(target, Direction::Incoming)
+                    .count();
+                if incoming_to_next == 1 {
+                    Some(target)
+                } else {
+                    None
                 }
-            }
+            } else {
+                None
+            };
+            // single outgoing edge
+            if let Some(next) = target {
+                let new_target = node_mapping[&next];
 
-            if !collapse_node {
+                // this node will be mapped to the previous
+                node_mapping.insert(node, new_target);
+
+                // add instructions to the beginning of the next node
+                let mut new_instrs = self.graph[node].instrs.to_vec();
+                let mut new_footer = self.graph[node].footer.to_vec();
+                new_instrs.extend(resulting_graph[new_target].instrs.to_vec());
+                new_footer.extend(resulting_graph[new_target].footer.to_vec());
+
+                resulting_graph[new_target].instrs = new_instrs;
+                resulting_graph[new_target].footer = new_footer;
+            } else {
                 // add the node
                 let new_node = resulting_graph.add_node(self.graph[node].clone());
                 node_mapping.insert(node, new_node);
 
-                edges_to_add.extend(self.graph.edges_directed(node, Direction::Incoming));
+                edges_to_add.extend(self.graph.edges_directed(node, Direction::Outgoing));
             }
         }
 
@@ -87,15 +91,6 @@ impl SimpleCfgFunction {
             let source = node_mapping[&edge.source()];
             let target = node_mapping[&edge.target()];
             resulting_graph.add_edge(source, target, edge.weight().clone());
-        }
-
-        let mut label_mapping = HashMap::<String, String>::new();
-        for (old, new) in node_mapping.iter() {
-            let old_entry = label_mapping.insert(
-                self.graph[*old].name.to_string(),
-                resulting_graph[*new].name.to_string(),
-            );
-            assert!(old_entry.is_none(), "Duplicate labels in graph");
         }
 
         SimpleCfgFunction {

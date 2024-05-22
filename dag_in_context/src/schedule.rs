@@ -1,6 +1,6 @@
 pub(crate) fn helpers() -> String {
     "
-(saturate
+(repeat 2
 
     (saturate type-helpers)
     (saturate error-checking)
@@ -20,7 +20,7 @@ pub(crate) fn helpers() -> String {
     apply-subst-unions
     cleanup-subst
 
-    subsume-after-helpers
+    ;subsume-after-helpers
 
     (saturate boundary-analysis)
 )"
@@ -60,6 +60,7 @@ pub fn mk_schedule() -> String {
   
   (run-schedule
     {helpers}
+    loop-peel
     (repeat 2
       {helpers}
       expensive-optimizations)

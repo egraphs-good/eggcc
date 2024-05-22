@@ -92,3 +92,18 @@
        (union (TupleRemoveAt if i) new_if)
        (ToSubsumeIf pred inputs then_ else_))
       :ruleset passthrough)
+
+;; Pass through inverted if predicate
+(rule ((= if (If pred inputs then_ else_))
+       (= (Get then_ i) (Const (Bool false) _ _thenctx))
+       (= (Get else_ i) (Const (Bool true) _ _elsectx)))
+
+      ((let new_then (TupleRemoveAt then_ i))
+       (let new_else (TupleRemoveAt else_ i))
+       (let new_if (If pred inputs new_then new_else))
+
+       (union (Get           if i) (Uop (Not) pred))
+       (union (TupleRemoveAt if i) new_if)
+       (ToSubsumeIf pred inputs then_ else_))
+      :ruleset passthrough)
+[]

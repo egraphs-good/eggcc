@@ -75,11 +75,58 @@ def detailed_linecount_table():
     rows += footer()
     return "\n".join(rows)
 
+def round_fmt(v):
+    return "{:.3f}".format(round(v, 3))
+
+def get_rows_for_benchmark(bench, profile_data):
+    data_for_bench = [x for x in profile_data if x["benchmark"] == bench]
+    rows = []
+    for (idx, entry) in enumerate(data_for_bench):
+        fst_col = r'\multirow{' + str(len(data_for_bench)) + r'}{*}{' + bench + r'}' if idx == 0 else ''
+        res = entry["hyperfine"]["results"][0]
+        row = " ".join([
+            r'\multicolumn{1}{|l|}{' + fst_col + r'} &',
+            r'\multicolumn{1}{l|}{' + entry["runMethod"] + r'}  &',
+            r'\multicolumn{1}{l|}{' + round_fmt(res["mean"]) + r'} &',
+            r'\multicolumn{1}{l|}{' + round_fmt(res["max"]) + r'} &',
+            r'\multicolumn{1}{l|}{' + round_fmt(res["min"]) + r'} &',
+            round_fmt(res["stddev"]) + r' \\',
+        ])
+        rows.append(row)
+    rows.append(r' \hline')
+    return rows
+
+
+def benchmarks_table():
+    profile_data = json.load(open(f'{output_path}/data/profile.json'))
+    benchmarks = set([x["benchmark"] for x in profile_data])
+    rows = header()
+    rows += [
+        r'\begin{table}[]',
+        r'\resizebox{\textwidth}{!}{%',
+        r'\begin{tabular}{|llllll|}',
+        r'\hline',
+        r'\multicolumn{6}{|c|}{Benchmarks} \\ \hline',
+        r'\multicolumn{1}{|l|}{Name} & \multicolumn{5}{c|}{Executions} \\ \hline',
+        r'\multicolumn{1}{|l|}{} & \multicolumn{1}{l|}{Run Method}  & \multicolumn{1}{l|}{Mean} & \multicolumn{1}{l|}{Max} & \multicolumn{1}{l|}{Min} & Std Dev \\ \hline',
+    ]
+    for bench in benchmarks:
+        rows += get_rows_for_benchmark(bench, profile_data)
+    rows += [
+        r'\end{tabular}%',
+        r'}',
+        r'\end{table}'
+    ]
+    rows += footer()
+    return "\n".join(rows)
+
 def generate_latex(output_path):
     with open(f'{output_path}/data/linecount.tex', "w") as f:
         f.write(linecount_table())
     with open(f'{output_path}/data/detailed-linecount.tex', "w") as f:
         f.write(detailed_linecount_table()) 
+    with open(f'{output_path}/data/benchmarks.tex', "w") as f:
+        f.write(benchmarks_table())
     tex_files = glob.glob(f"{output_path}/data/*.tex")
     for tex in tex_files:
         cmd = " ".join(["pdflatex", f"-output-directory {output_path}/data/", tex])

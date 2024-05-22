@@ -29,9 +29,8 @@ pub(crate) fn helpers() -> String {
 
 pub fn mk_schedule() -> String {
     let helpers = helpers();
-    format!(
-        "
-  (unstable-combined-ruleset saturating
+    format!("
+(unstable-combined-ruleset saturating
     always-run
     canon
     type-analysis
@@ -40,34 +39,34 @@ pub fn mk_schedule() -> String {
     memory-helpers
     always-switch-rewrite
     loop-iters-analysis
-  )
-  
-    
-  (unstable-combined-ruleset optimizations
+)
+
+
+(unstable-combined-ruleset optimizations
     loop-simplify
     memory
     loop-unroll
     peepholes
-  )
+)
 
-  (unstable-combined-ruleset expensive-optimizations
+(unstable-combined-ruleset expensive-optimizations
     optimizations
     switch_rewrite
     ;loop-inv-motion
     loop-strength-reduction
     loop-peel
-  )
-  
-  (run-schedule
+)
+
+(run-schedule
     {helpers}
     loop-peel
     (repeat 2
-      {helpers}
-      expensive-optimizations)
+        {helpers}
+        expensive-optimizations)
     (repeat 4
-      {helpers}
-      optimizations)
+        {helpers}
+        optimizations)
     {helpers})
-  "
+"
     )
 }

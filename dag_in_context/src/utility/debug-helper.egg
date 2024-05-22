@@ -1,25 +1,56 @@
 ;; use these rules to clean up the database, removing helpers
 ;; this makes the visualization easier to read
 
+(ruleset debug-deletes)
 
 (rule ((HasType a b))
-      ((delete (HasType a b))))
+      ((delete (HasType a b)))
+      :ruleset debug-deletes)
+
 (rule ((BodyContainsExpr a b))
-      ((delete (BodyContainsExpr a b))))
+      ((delete (BodyContainsExpr a b)))
+      :ruleset debug-deletes)
+
 (rule ((ExprIsPure e))
-      ((delete (ExprIsPure e))))
+      ((delete (ExprIsPure e)))
+      :ruleset debug-deletes)
+
 (rule ((HasArgType e ty))
-      ((delete (HasArgType e ty))))
+      ((delete (HasArgType e ty)))
+      :ruleset debug-deletes)
+
 (rule ((is-inv-Expr e ty))
-      ((delete (is-inv-Expr e ty))))
+      ((delete (is-inv-Expr e ty)))
+      :ruleset debug-deletes)
+
 (rule ((tuple-length e))
-      ((delete (tuple-length e))))
+      ((delete (tuple-length e)))
+      :ruleset debug-deletes)
+
 (rule ((BinaryOpIsPure e))
-      ((delete (BinaryOpIsPure e))))
+      ((delete (BinaryOpIsPure e)))
+      :ruleset debug-deletes)
+
 (rule ((TypeList-suffix e a))
-      ((delete (TypeList-suffix e a))))
+      ((delete (TypeList-suffix e a)))
+      :ruleset debug-deletes)
+
 (rule ((ContextOf e a))
-      ((delete (ContextOf e a))))
+      ((delete (ContextOf e a)))
+      :ruleset debug-deletes)
+
 (rule ((ExprIsResolved e))
-      ((delete (ExprIsResolved e))))
-(run-schedule (saturate (run)))
+      ((delete (ExprIsResolved e)))
+      :ruleset debug-deletes)
+
+(rule ((bop->string a b))
+      ((delete (bop->string a b)))
+      :ruleset debug-deletes)
+
+(rule ((bpred-of-type a b))
+      ((delete (bpred-of-type a b)))
+      :ruleset debug-deletes)
+
+(rule ((PureType e))
+      ((delete (PureType e)))
+      :ruleset debug-deletes)

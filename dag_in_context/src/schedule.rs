@@ -16,11 +16,17 @@ pub(crate) fn helpers() -> String {
     apply-drop-unions
     cleanup-drop
 
+    (saturate
+        (saturate type-helpers)
+        (saturate error-checking)
+        saturating
+    )
+
     (saturate subst)
     apply-subst-unions
     cleanup-subst
 
-    ;subsume-after-helpers
+    subsume-after-helpers
 
     (saturate boundary-analysis)
 )"
@@ -57,16 +63,10 @@ pub fn mk_schedule() -> String {
     loop-peel
 )
 
-(run-schedule
-    {helpers}
-    loop-peel
-    (repeat 2
-        {helpers}
-        expensive-optimizations)
-    (repeat 4
-        {helpers}
-        optimizations)
-    {helpers})
-"
-    )
+(run-schedule {helpers})
+
+; TODO: add the optimizations back
+
+(run-schedule (saturate debug-deletes))
+")
 }

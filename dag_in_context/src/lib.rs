@@ -62,6 +62,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/loop_unroll.egg"),
         include_str!("optimizations/passthrough.egg"),
         include_str!("optimizations/loop_strength_reduction.egg"),
+        include_str!("utility/debug-helper.egg"),
     ]
     .join("\n")
 }

@@ -55,7 +55,7 @@ impl SimpleCfgFunction {
                     .graph
                     .edges_directed(target, Direction::Incoming)
                     .count();
-                if incoming_to_next == 1 {
+                if incoming_to_next == 1 && target != node {
                     Some(target)
                 } else {
                     None

@@ -106,4 +106,3 @@
        (union (TupleRemoveAt if i) new_if)
        (ToSubsumeIf pred inputs then_ else_))
       :ruleset passthrough)
-[]

@@ -12,6 +12,21 @@
       ((set (LoopNumItersGuess inputs outputs) 1000))
       :ruleset always-run)
 
+;; For a loop that is false, its num iters is 1
+(rule 
+  ((= loop (DoWhile inputs outputs))
+   (= (Const (Bool false) ty ctx) (Get outputs 0)))
+  ((set (LoopNumItersGuess inputs outputs) 1))
+:ruleset always-run)
+
+;; For a loop that has only one iteration, union it with its body
+(rule
+  ((= loop (DoWhile inputs outputs))
+   (= 1 (LoopNumItersGuess inputs outputs))
+   (ContextOf inputs ctx))
+  ((union loop (Subst ctx inputs outputs)))
+:ruleset always-run)
+
 ;; Figure out number of iterations for a loop with constant bounds and initial value
 ;; and i is updated before checking pred
 ;; TODO: can make this work for increment by any constant
@@ -70,7 +85,7 @@
   (HasType inputs inputs-ty)
   (= outputs-len (tuple-length outputs))
   (= old_cost (LoopNumItersGuess inputs outputs))
-  ; (< old_cost 5)
+  (< old_cost 5)
   )
  (
   (let executed-once

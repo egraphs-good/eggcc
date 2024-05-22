@@ -82,7 +82,7 @@ def get_rows_for_benchmark(bench, profile_data):
     data_for_bench = [x for x in profile_data if x["benchmark"] == bench]
     rows = []
     for (idx, entry) in enumerate(data_for_bench):
-        fst_col = r'\multirow{' + str(len(data_for_bench)) + r'}{*}{' + bench + r'}' if idx == 0 else ''
+        fst_col = r'\multirow{' + str(len(data_for_bench)) + r'}{*}{' + bench.replace("_", r'\_') + r'}' if idx == 0 else ''
         res = entry["hyperfine"]["results"][0]
         row = " ".join([
             r'\multicolumn{1}{|l|}{' + fst_col + r'} &',

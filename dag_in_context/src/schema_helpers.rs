@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{Display, Formatter},
-    rc::Rc,
+    rc::Rc, vec,
 };
 use strum_macros::EnumIter;
 
@@ -218,7 +218,7 @@ impl Expr {
             Expr::Const(_, _, _) => vec![],
             Expr::Empty(_, _) => vec![],
             Expr::Arg(_, _) => vec![],
-            Expr::Symbolic(_) => panic!("found symbolic"),
+            Expr::Symbolic(_) => vec![],
         }
     }
 
@@ -247,7 +247,7 @@ impl Expr {
             }
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
             Expr::Arg(_, _) => vec![],
-            Expr::Symbolic(_) => panic!("found symbolic"),
+            Expr::Symbolic(_) => vec![],
         }
     }
 
@@ -270,6 +270,33 @@ impl Expr {
             Expr::Function(_, ty, _, _) => ty.clone(),
             Expr::Symbolic(_) => panic!("found symbolic"),
         }
+    }
+
+    pub fn map_children<F, T>(self: &RcExpr, fun: F) -> Vec<T>
+    where
+        F: FnMut(&RcExpr) -> T,
+    {
+        self.children_exprs().iter().map(fun).collect::<Vec<_>>()
+    }
+
+    pub fn map_types<F, T>(&self, mut fun: F) -> Vec<T>
+    where
+        F: FnMut(&Type) -> T,
+    {
+        match self {
+            Expr::Function(_, inty, outty, _) => vec![fun(inty), fun(outty)],
+            Expr::Const(_, ty, _) => vec![fun(ty)],
+            Expr::Empty(ty, _) => vec![fun(ty)],
+            Expr::Arg(ty, _) => vec![fun(ty)],
+            _ => vec![],
+        }
+    }
+
+    pub fn map_assumptions<F, T>(&self, mut fun: F) -> T
+    where
+        F: FnMut(&Assumption) -> T,
+    {
+        fun(self.get_ctx())
     }
 
     pub fn get_ctx(&self) -> &Assumption {

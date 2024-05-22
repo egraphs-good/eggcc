@@ -22,6 +22,7 @@ pub struct PrettyPrinter {
     symbols: HashMap<NodeRef, String>,
     // intermediate variable -> Type/Assum/BaseType lookup
     table: BTreeMap<String, AstNode>,
+    fresh_count: u64,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -111,20 +112,21 @@ impl PrettyPrinter {
         str_expr: String,
         to_rust: bool,
     ) -> std::result::Result<(String, String), egglog::Error> {
-        let bounded_expr = format!("(let EXPR___ {})", str_expr);
+        let mut pp = PrettyPrinter::default();
+        let binding = pp.mk_fresh("EXPR".into());
+        let bounded_expr = format!("(let {} {})", binding.clone(), str_expr);
         let prog = prologue().to_owned() + &bounded_expr;
         let mut egraph = egglog::EGraph::default();
         egraph.parse_and_run_program(&prog).unwrap();
         let mut termdag = TermDag::default();
         let (sort, value) = egraph
-            .eval_expr(&egglog::ast::Expr::Var((), "EXPR___".into()))
+            .eval_expr(&egglog::ast::Expr::Var((), binding.into()))
             .unwrap();
         let (_, extracted) = egraph.extract(value, &mut termdag, &sort);
         let mut converter = FromEgglog {
             termdag: &termdag,
             conversion_cache: HashMap::default(),
         };
-        let mut pp = PrettyPrinter::default();
         let expr = converter.expr_from_egglog(extracted);
         if to_rust {
             Ok(pp.to_rust_default(&expr))
@@ -158,7 +160,7 @@ impl PrettyPrinter {
             })
             .collect::<Vec<_>>()
             .join("");
-        let binding = format!("{}_", expr.abbrev());
+        let binding = self.mk_fresh(expr.abbrev());
         (
             log + &format!("\n(let {} \n{})\n", binding.clone(), res.pretty()),
             binding,
@@ -190,16 +192,22 @@ impl PrettyPrinter {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        let binding = format!("{}_", expr.abbrev());
+        let binding = self.mk_fresh(expr.abbrev());
         (
             log + &format!("\nlet {} = {};\n", binding.clone(), res.to_ast()),
             binding,
         )
     }
 
+    fn mk_fresh(&mut self, info: String) -> String {
+        let fresh_var = format!("{info}_v{}", self.fresh_count);
+        self.fresh_count += 1;
+        fresh_var
+    }
+
     fn try_insert_fresh(&mut self, var: NodeRef, info: String) -> String {
         if !self.symbols.contains_key(&var) {
-            let fresh_var = format!("{info}_v{}", self.symbols.len());
+            let fresh_var = self.mk_fresh(info);
             self.symbols.insert(var, fresh_var.clone());
             fresh_var
         } else {
@@ -213,7 +221,7 @@ impl PrettyPrinter {
         fold_when: &dyn Fn(usize, usize) -> bool,
         to_rust: bool,
         log: &mut Vec<String>,
-    ) -> String {
+    ) -> Assumption {
         let assum_ref = NodeRef::Assumption(assum.to_ref());
         if !self.symbols.contains_key(&assum_ref) {
             let new_assum = match assum {
@@ -239,9 +247,9 @@ impl PrettyPrinter {
             log.push(binding.clone());
             self.table
                 .insert(binding.clone(), AstNode::Assumption(new_assum));
-            binding
+            Assumption::WildCard(binding)
         } else {
-            self.symbols.get(&assum_ref).unwrap().into()
+            Assumption::WildCard(self.symbols.get(&assum_ref).unwrap().into())
         }
     }
 
@@ -277,7 +285,7 @@ impl PrettyPrinter {
         let fold_or_plain = |pp: &mut PrettyPrinter, new_expr: Expr, log: &mut Vec<String>| {
             let size = &new_expr
                 .to_string()
-                .replace(&['(', ')', ' ', ','][..], "") //don't count those char when computing size
+                .replace(&['(', ')', ' ', '\n', ','][..], "") //don't count those char when computing size
                 .len();
             if fold_when(num_shared, *size) {
                 fold(pp, new_expr, log)
@@ -286,114 +294,107 @@ impl PrettyPrinter {
             }
         };
 
+        let types = expr
+            .as_ref()
+            .map_types(|ty| self.refactor_shared_type(ty, log));
+        let assum = expr
+            .as_ref()
+            .map_assumptions(|assum| self.refactor_shared_assum(assum, fold_when, to_rust, log));
+        let children = expr.map_children(|e| self.refactor_shared_expr(e, fold_when, to_rust, log));
+
         match expr.as_ref() {
-            Expr::Function(name, inty, outty, body) => {
-                let inty = self.refactor_shared_type(inty, log);
-                let outty = self.refactor_shared_type(outty, log);
-                let body = self.refactor_shared_expr(body, fold_when, to_rust, log);
-                Expr::Function(name.into(), inty, outty, Rc::new(body))
-            }
-            Expr::Const(c, ty, assum) => {
-                let ty = self.refactor_shared_type(ty, log);
-                let old_assum_binding = self.refactor_shared_assum(assum, fold_when, to_rust, log);
-                let c = Expr::Const(c.clone(), ty, Assumption::WildCard(old_assum_binding));
+            Expr::Function(name, ..) => Expr::Function(
+                name.into(),
+                types[0].clone(),
+                types[1].clone(),
+                Rc::new(children[0].clone()),
+            ),
+            Expr::Const(c, ..) => {
+                let c = Expr::Const(c.clone(), types[0].clone(), assum);
                 if to_rust {
                     c
                 } else {
                     fold(self, c, log)
                 }
             }
-            Expr::Top(op, x, y, z) => {
-                let left = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                let mid = self.refactor_shared_expr(y, fold_when, to_rust, log);
-                let right = self.refactor_shared_expr(z, fold_when, to_rust, log);
-                let top = Expr::Top(op.clone(), Rc::new(left), Rc::new(mid), Rc::new(right));
+            Expr::Top(op, ..) => {
+                let top = Expr::Top(
+                    op.clone(),
+                    Rc::new(children[0].clone()),
+                    Rc::new(children[1].clone()),
+                    Rc::new(children[2].clone()),
+                );
                 fold_or_plain(self, top, log)
             }
-            Expr::Bop(op, x, y) => {
-                let left = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                let right = self.refactor_shared_expr(y, fold_when, to_rust, log);
-                let bop = Expr::Bop(op.clone(), Rc::new(left), Rc::new(right));
+            Expr::Bop(op, ..) => {
+                let bop = Expr::Bop(
+                    op.clone(),
+                    Rc::new(children[0].clone()),
+                    Rc::new(children[1].clone()),
+                );
                 fold_or_plain(self, bop, log)
             }
-            Expr::Uop(op, x) => {
-                let sub_expr = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                let uop = Expr::Uop(op.clone(), Rc::new(sub_expr));
+            Expr::Uop(op, _) => {
+                let uop = Expr::Uop(op.clone(), Rc::new(children[0].clone()));
                 fold_or_plain(self, uop, log)
             }
-            Expr::Get(x, pos) => {
-                let sub_expr = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                let get = Expr::Get(Rc::new(sub_expr), *pos);
+            Expr::Get(_, pos) => {
+                let get = Expr::Get(Rc::new(children[0].clone()), *pos);
                 // fold Get Arg i anyway
-                if let Expr::Arg(..) = x.as_ref() {
+                if let Expr::Arg(..) = expr.as_ref() {
                     if !to_rust {
                         return fold(self, get, log);
                     }
                 }
                 get
             }
-            Expr::Alloc(id, x, y, ty) => {
-                let amount = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                let state_edge = self.refactor_shared_expr(y, fold_when, to_rust, log);
-                let alloc = Expr::Alloc(*id, Rc::new(amount), Rc::new(state_edge), ty.clone());
+            Expr::Alloc(id, _, _, ty) => {
+                let alloc = Expr::Alloc(
+                    *id,
+                    Rc::new(children[0].clone()),
+                    Rc::new(children[1].clone()),
+                    ty.clone(),
+                );
                 fold_or_plain(self, alloc, log)
             }
-            Expr::Call(name, x) => {
-                let sub_expr = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                let call = Expr::Call(name.into(), Rc::new(sub_expr));
+            Expr::Call(name, ..) => {
+                let call = Expr::Call(name.into(), Rc::new(children[0].clone()));
                 fold_or_plain(self, call, log)
             }
-            Expr::Empty(ty, assum) => {
-                let ty = self.refactor_shared_type(ty, log);
-                let assum_str = self.refactor_shared_assum(assum, fold_when, to_rust, log);
-                Expr::Empty(ty, Assumption::WildCard(assum_str))
-            }
+            Expr::Empty(..) => Expr::Empty(types[0].clone(), assum),
             // doesn't fold Tuple
-            Expr::Single(x) => {
-                let sub_expr = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                Expr::Single(Rc::new(sub_expr))
+            Expr::Single(..) => Expr::Single(Rc::new(children[0].clone())),
+            Expr::Concat(..) => {
+                Expr::Concat(Rc::new(children[0].clone()), Rc::new(children[1].clone()))
             }
-            Expr::Concat(x, y) => {
-                let left = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                let right = self.refactor_shared_expr(y, fold_when, to_rust, log);
-                Expr::Concat(Rc::new(left), Rc::new(right))
-            }
-            Expr::Switch(x, inputs, _branches) => {
-                let cond = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                let inputs = self.refactor_shared_expr(inputs, fold_when, to_rust, log);
-                let branches = _branches
+            Expr::Switch(..) => {
+                let len = children.len();
+                let branches = children[2..len]
                     .iter()
-                    .map(|branch| {
-                        Rc::new(self.refactor_shared_expr(branch, fold_when, to_rust, log))
-                    })
+                    .map(|branch| Rc::new(branch.clone()))
                     .collect::<Vec<_>>();
-                let switch = Expr::Switch(Rc::new(cond), Rc::new(inputs), branches);
+                let switch = Expr::Switch(
+                    Rc::new(children[0].clone()),
+                    Rc::new(children[1].clone()),
+                    branches,
+                );
                 fold_or_plain(self, switch, log)
             }
-            Expr::If(x, inputs, y, z) => {
-                let pred = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                let inputs = self.refactor_shared_expr(inputs, fold_when, to_rust, log);
-                let left = self.refactor_shared_expr(y, fold_when, to_rust, log);
-                let right = self.refactor_shared_expr(z, fold_when, to_rust, log);
+            Expr::If(..) => {
                 let if_expr = Expr::If(
-                    Rc::new(pred),
-                    Rc::new(inputs),
-                    Rc::new(left),
-                    Rc::new(right),
+                    Rc::new(children[0].clone()),
+                    Rc::new(children[1].clone()),
+                    Rc::new(children[2].clone()),
+                    Rc::new(children[3].clone()),
                 );
                 fold_or_plain(self, if_expr, log)
             }
-            Expr::DoWhile(inputs, body) => {
-                let inputs = self.refactor_shared_expr(inputs, fold_when, to_rust, log);
-                let body = self.refactor_shared_expr(body, fold_when, to_rust, log);
-                let dowhile = Expr::DoWhile(Rc::new(inputs), Rc::new(body));
+            Expr::DoWhile(..) => {
+                let dowhile =
+                    Expr::DoWhile(Rc::new(children[0].clone()), Rc::new(children[1].clone()));
                 fold_or_plain(self, dowhile, log)
             }
-            Expr::Arg(ty, assum) => {
-                let ty = self.refactor_shared_type(ty, log);
-                let assum_str = self.refactor_shared_assum(assum, fold_when, to_rust, log);
-                Expr::Arg(ty, Assumption::WildCard(assum_str))
-            }
+            Expr::Arg(_, _) => Expr::Arg(types[0].clone(), assum),
             Expr::Symbolic(_) => panic!("No symbolic should occur here"),
         }
     }
@@ -415,10 +416,22 @@ impl Expr {
                 lhs
             }
             Expr::Single(expr) => {
-                let expr = Self::to_ast(expr.as_ref());
+                let expr = Self::to_ast(expr);
                 vec![expr]
             }
-            _ => vec![self.to_ast()],
+            _ => panic!("should be in gather concat"),
+        }
+    }
+
+    fn check_all_single(&self) -> bool {
+        match self {
+            Expr::Concat(lhs, rhs) => {
+                let lhs = lhs.as_ref().check_all_single();
+                let rhs = rhs.as_ref().check_all_single();
+                lhs && rhs
+            }
+            Expr::Single(_) => true,
+            _ => false,
         }
     }
 
@@ -453,6 +466,8 @@ impl Expr {
 
     pub fn to_ast(&self) -> String {
         use schema::Constant::*;
+        let children = Rc::new(self.clone()).map_children(|expr| expr.to_ast());
+        let types = self.map_types(|ty| ty.to_ast());
         match self {
             Expr::Const(c, ..) => match c {
                 Bool(true) => "ttrue()".into(),
@@ -460,78 +475,67 @@ impl Expr {
                 Int(n) => format!("int({})", n),
                 Float(f) => format!("float({})", f),
             },
-            Expr::Top(op, x, y, z) => {
-                let left = x.to_ast();
-                let mid = y.to_ast();
-                let right = z.to_ast();
-                format!("{}({}, {}, {})", op.to_ast(), left, mid, right)
+            Expr::Top(op, ..) => {
+                format!(
+                    "{}({}, \n{}, \n{})",
+                    op.to_ast(),
+                    children[0],
+                    children[1],
+                    children[2]
+                )
             }
-            Expr::Bop(op, x, y) => {
-                let left = x.to_ast();
-                let right = y.to_ast();
-                format!("{}({}, {})", op.to_ast(), left, right)
+            Expr::Bop(op, ..) => {
+                format!("{}({}, \n{})", op.to_ast(), children[0], children[1])
             }
-            Expr::Uop(op, x) => {
-                let expr = x.to_ast();
-                format!("{}({})", op.to_ast(), expr)
+            Expr::Uop(op, _) => {
+                format!("{}({})", op.to_ast(), children[0])
             }
             Expr::Get(expr, index) => match expr.as_ref() {
-                Expr::Arg(..) => {
-                    format!("getat({index})")
-                }
-                _ => {
-                    let expr = expr.to_ast();
-                    format!("get({expr}, {index})")
-                }
+                Expr::Arg(..) => format!("getat({index})"),
+                _ => format!("get({}, {index})", children[0]),
             },
-            Expr::Alloc(id, expr, state, ty) => {
-                let expr = expr.to_ast();
-                let state = state.to_ast();
-                let ty_str = ty.to_ast();
-                format!("alloc({id}, {expr}, {state}, {ty_str})")
+            Expr::Alloc(id, ..) => {
+                format!(
+                    "alloc({id}, {}, {}, {})",
+                    children[0], children[1], types[0]
+                )
             }
-            Expr::Call(name, arg) => {
-                let arg = arg.to_ast();
-                format!("call({name}, {arg})")
+            Expr::Call(name, _) => {
+                format!("call({name}, {})", children[0])
             }
             Expr::Empty(..) => "empty()".into(),
-            Expr::Single(expr) => {
-                let expr = expr.to_ast();
-                format!("single({expr})")
+            Expr::Single(_) => {
+                format!("single({})", children[0])
             }
             Expr::Concat(..) => {
-                let vec = Self::gather_concat_children(self);
-                let inside = vec.join(", ");
-                format!("parallel!({inside})")
+                if self.check_all_single() {
+                    let vec = Self::gather_concat_children(self);
+                    let inside = vec.join(", ");
+                    format!("parallel!({inside})")
+                } else {
+                    format!("concat({}, \n{})", children[0], children[1])
+                }
             }
-            Expr::If(cond, inputs, x, y) => {
-                let cond = cond.to_ast();
-                let input = inputs.to_ast();
-                let then = x.to_ast();
-                let els = y.to_ast();
-                format!("tif({cond}, {input}, {then}, {els})")
+            Expr::If(..) => {
+                format!(
+                    "tif({}, \n{}, \n{}, \n{})",
+                    children[0], children[1], children[2], children[3]
+                )
             }
-            Expr::Switch(cond, inputs, cases) => {
-                let cond = cond.to_ast();
-                let inputs = inputs.to_ast();
-                let cases = cases
-                    .iter()
-                    .map(|expr| expr.to_ast())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("switch!({cond}, {inputs}; parallel!({cases}))")
+            Expr::Switch(..) => {
+                let len = children.len();
+                let cases = children[2..len].to_vec().join(", ");
+                format!("switch!({}, {}; {})", children[0], children[1], cases)
             }
-            Expr::DoWhile(inputs, body) => {
-                let inputs = inputs.to_ast();
-                let body = body.to_ast();
-                format!("dowhile({inputs}, {body})")
+            Expr::DoWhile(..) => {
+                format!("dowhile({}, \n{})", children[0], children[1])
             }
             Expr::Arg(..) => "arg()".into(),
-            Expr::Function(name, inty, outty, body) => {
-                let inty = inty.to_ast();
-                let outty = outty.to_ast();
-                let body = body.to_ast();
-                format!("function(\"{name}\", {inty}, {outty}, {body})")
+            Expr::Function(name, ..) => {
+                format!(
+                    "function(\"{name}\", \n{}, \n{}, \n{})",
+                    types[0], types[1], children[0]
+                )
             }
             Expr::Symbolic(str) => format!("{str}.clone()"),
         }
@@ -549,13 +553,13 @@ impl Assumption {
         match self {
             Assumption::InFunc(fun_name) => format!("infunc(\"{fun_name}\")"),
             Assumption::InIf(is, pred, input) => {
-                format!("inif({is}, {}, {})", pred.to_ast(), input.to_ast())
+                format!("inif({is}, \n{}, \n{})", pred.to_ast(), input.to_ast())
             }
             Assumption::InLoop(input, output) => {
-                format!("inloop({}, {})", input.to_ast(), output.to_ast())
+                format!("inloop({}, \n{})", input.to_ast(), output.to_ast())
             }
             Assumption::InSwitch(is, pred, inputs) => {
-                format!("inswitch({is}, {}, {})", pred.to_ast(), inputs.to_ast())
+                format!("inswitch({is}, \n{}, \n{})", pred.to_ast(), inputs.to_ast())
             }
             Assumption::WildCard(str) => format!("{}.clone()", str),
         }
@@ -709,19 +713,16 @@ fn test_pretty_print() -> crate::Result {
     use crate::ast::*;
     use crate::egglog_test;
     use crate::Value;
+    use insta::assert_snapshot;
     let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
-    let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
-    let inv = add(inner_inv.clone(), int(0)).with_arg_types(output_ty.clone(), base(intt()));
+    let inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
     let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), base(boolt()));
-    let not_inv = add(getat(0), inv.clone()).with_arg_types(output_ty.clone(), base(intt()));
-    let inv_in_print = add(inv.clone(), int_ty(4, output_ty.clone()));
     let print =
-        tprint(inv_in_print.clone(), getat(4)).with_arg_types(output_ty.clone(), base(statet()));
-
+        tprint(inv, getat(4)).with_arg_types(output_ty.clone(), base(statet()));
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4), getat(0)),
         concat(
-            parallel!(pred.clone(), not_inv.clone(), getat(1)),
+            parallel!(pred.clone(), getat(0), getat(1)),
             concat(parallel!(getat(2), getat(3)), single(print.clone())),
         ),
     )
@@ -740,8 +741,11 @@ fn test_pretty_print() -> crate::Result {
 
     let concat_loop = concat(my_loop, pureloop);
     let expr_str = concat_loop.to_string();
-    let (res, binding) = PrettyPrinter::default().to_egglog_default(&concat_loop);
-    let check = format!("(let unfold {expr_str})\n {res} \n(check (= {binding} unfold))\n");
+    let (egglog, binding) = PrettyPrinter::default().to_egglog_default(&concat_loop);
+    let (ast, _) = PrettyPrinter::default().to_rust_default(&concat_loop);
+    assert_snapshot!(ast);
+    let check = format!("(let unfold {expr_str})\n {egglog} \n(check (= {binding} unfold))\n");
+
     egglog_test(
         "",
         &check,

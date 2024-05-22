@@ -40,7 +40,7 @@ echo "Switching to nighly script directory: $MYDIR"
 rm -rf $NIGHTLY_DIR
 
 # Prepare output directories
-mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output"
+mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$NIGHTLY_DIR/output"
 
 
 pushd $TOP_DIR

@@ -31,15 +31,8 @@ async function load_llvm() {
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");
   }
-  const entry = GLOBAL_DATA.currentRun.filter(
-    (entry) => entry.benchmark === benchmark && entry.runMethod === runMode,
-  );
-  if (entry.length !== 1) {
-    console.error(
-      `missing or duplicate entries for ${benchmark} and ${runMode}, this probably shouldn't happen`,
-    );
-  }
-  document.getElementById("llvm").innerText = entry[0].llvm_ir;
+  const llvm = await fetchText(`./data/llvm/${benchmark}-${runMode}.ll`);
+  document.getElementById("llvm").innerText = llvm;
 }
 
 async function load_table() {

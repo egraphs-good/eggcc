@@ -46,3 +46,16 @@ body {
   width: 45%;
   display: inline-block;
 }
+
+.filter-container {
+  display: flex;
+}
+
+#benchmarkCheckboxes {
+  max-height: 175px;
+  overflow: scroll;
+}
+
+#speedup-formula {
+  visibility: hidden;
+}

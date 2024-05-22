@@ -32,7 +32,10 @@ function getValue(entry) {
     if (!baseline) {
       addWarning(`No speedup baseline for ${benchmark}`);
     }
-    return baseline.hyperfine.results[0].mean / entry.hyperfine.results[0].mean;
+    const baseV = baseline.hyperfine.results[0].mean;
+    const expV = entry.hyperfine.results[0].mean;
+    // If you change this, also change the displayed formula in index.html
+    return baseV / expV;
   } else {
     throw new Error(`unknown chart mode ${GLOBAL_DATA.chart.mode}`);
   }
@@ -81,7 +84,7 @@ function parseDataForChart() {
     datasets[mode] = {
       label: mode,
       backgroundColor: COLORS[mode],
-      data: Array(benchmarks.length).fill(0),
+      data: Array(benchmarks.size).fill(0),
       borderWidth: 1,
       errorBars: {},
     };
@@ -97,6 +100,22 @@ function parseDataForChart() {
       }
     });
   });
+
+  // Show baseline as dotted line at 1x if speedup
+  if (GLOBAL_DATA.chart.mode === "speedup") {
+    datasets[BASELINE_MODE] = {
+      label: BASELINE_MODE,
+      data: Array(benchmarks.size + 1).fill(1),
+      type: "line",
+      borderColor: COLORS[BASELINE_MODE],
+      fill: false,
+      borderWidth: 5,
+      borderDash: [5, 5],
+      pointRadius: 0,
+      order: 1,
+    };
+  }
+
   return {
     labels: Array.from(sortedBenchmarks),
     datasets: Object.values(datasets),
@@ -112,11 +131,6 @@ function initializeChart() {
     type: "bar",
     data: chartData,
     options: {
-      scales: {
-        y: {
-          beginAtZero: true,
-        },
-      },
       legend: {
         onClick: (_, item) => {
           GLOBAL_DATA.chart.sortBy = item.text;

@@ -34,9 +34,9 @@ impl SimpleCfgFunction {
         // it points to the new, fused node
         let mut node_mapping: HashMap<NodeIndex, NodeIndex> = HashMap::new();
 
-        // we use a bfs so that previous nodes are mapped to new nodes
-        // before their children.
-        // This ensures that `node_mapping[&previous]` succeeds.
+        // we use a dfs post order
+        // so dependencies are visited before parents
+        // This ensures that `node_mapping[&next]` succeeds.
         let mut dfs = DfsPostOrder::new(&self.graph, self.entry);
 
         let mut edges_to_add = vec![];

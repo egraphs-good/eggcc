@@ -206,10 +206,10 @@ impl PrettyPrinter {
     }
 
     fn try_insert_fresh(&mut self, var: NodeRef, info: String) -> String {
-        if !self.symbols.contains_key(&var) {
-            let fresh_var = self.mk_fresh(info);
+        if self.symbols.get(&var).clone().is_none() {
+            let fresh_var = &self.mk_fresh(info);
             self.symbols.insert(var, fresh_var.clone());
-            fresh_var
+            fresh_var.to_owned()
         } else {
             self.symbols.get(&var).unwrap().into()
         }
@@ -717,8 +717,7 @@ fn test_pretty_print() -> crate::Result {
     let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
     let inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
     let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), base(boolt()));
-    let print =
-        tprint(inv, getat(4)).with_arg_types(output_ty.clone(), base(statet()));
+    let print = tprint(inv, getat(4)).with_arg_types(output_ty.clone(), base(statet()));
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4), getat(0)),
         concat(

@@ -1,7 +1,8 @@
 use std::{
     collections::HashMap,
     fmt::{Display, Formatter},
-    rc::Rc, vec,
+    rc::Rc,
+    vec,
 };
 use strum_macros::EnumIter;
 

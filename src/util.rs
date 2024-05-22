@@ -544,14 +544,7 @@ impl Run {
             RunType::OptimizedCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
-                (
-                    vec![Visualization {
-                        result: format!("{:#?}", cfg),
-                        file_extension: ".txt".to_string(),
-                        name: "".to_string(),
-                    }],
-                    None,
-                )
+                (cfg.visualizations(), None)
             }
             RunType::RvsdgRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;

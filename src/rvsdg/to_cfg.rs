@@ -380,6 +380,24 @@ impl<'a> RvsdgToCfg<'a> {
         }
     }
 
+    /// Find a branch of a Gamma that simply passes through the inputs to the outputs,
+    /// possibly permuting them.
+    fn find_passthrough_case(&self, outputs: &[Vec<Operand>]) -> Option<usize> {
+        for (i, output) in outputs.iter().enumerate() {
+            // detect when all operands are either args or constants
+            if output.iter().all(|op| match op {
+                Operand::Arg(_) => true,
+                Operand::Project(_, id) => matches!(
+                    &self.function.nodes[*id],
+                    RvsdgBody::BasicOp(BasicExpr::Const(_, _, _))
+                ),
+            }) {
+                return Some(i);
+            }
+        }
+        None
+    }
+
     /// Translates a body to bril.
     /// This is a helper for `body_to_bril`, which retrieves cached
     /// results when available and calls `rvsdg_body_to_bril` otherwise.
@@ -427,12 +445,14 @@ impl<'a> RvsdgToCfg<'a> {
                 let inputs_combined = self.combine_results(&input_vars);
 
                 // tranlation result for everything before the gamma
-                let pred_and_inputs = self.sequence_results(&[pred_res, inputs_combined.clone()]);
+                let mut before_if = self.sequence_results(&[pred_res, inputs_combined.clone()]);
 
                 let mut branch_blocks = vec![];
 
-                // shared vars will be created an the first iteraion
+                // shared vars will be created once something has been translated
                 let mut shared_vars = None;
+
+                let first_passthrough = self.find_passthrough_case(outputs);
 
                 // for each set of outputs in outputs, make a new block for them
                 for (i, outputs) in outputs.iter().enumerate() {
@@ -461,8 +481,18 @@ impl<'a> RvsdgToCfg<'a> {
                     let output_assigned = self
                         .assign_to_vars(&outputs_for_branch.values, shared_vars.as_ref().unwrap());
 
-                    branch_blocks
-                        .push(self.sequence_results(&[outputs_for_branch, output_assigned]));
+                    if first_passthrough == Some(i) {
+                        // Optimization: if this is the passthrough block, run it first before all other branches
+                        before_if = self.sequence_results(&[
+                            before_if,
+                            outputs_for_branch,
+                            output_assigned,
+                        ]);
+                        branch_blocks.push(self.sequence_results(&[]));
+                    } else {
+                        branch_blocks
+                            .push(self.sequence_results(&[outputs_for_branch, output_assigned]));
+                    }
                 }
 
                 // we need to conditionally jump to each of the branch blocks
@@ -474,7 +504,7 @@ impl<'a> RvsdgToCfg<'a> {
 
                 // add a conditional jump from the previous block to the branch blocks
                 self.graph.add_edge(
-                    pred_and_inputs.end,
+                    before_if.end,
                     branch_blocks[0].start,
                     Branch {
                         op: BranchOp::Cond {
@@ -486,7 +516,7 @@ impl<'a> RvsdgToCfg<'a> {
                     },
                 );
                 self.graph.add_edge(
-                    pred_and_inputs.end,
+                    before_if.end,
                     branch_blocks[1].start,
                     Branch {
                         op: BranchOp::Cond {
@@ -514,7 +544,7 @@ impl<'a> RvsdgToCfg<'a> {
                 }
 
                 TranslationResult {
-                    start: pred_and_inputs.start,
+                    start: before_if.start,
                     end: end_block.end,
                     values: shared_vars.unwrap(),
                 }

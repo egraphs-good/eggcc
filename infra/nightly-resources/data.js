@@ -36,7 +36,7 @@ function shouldHaveLlvm(runMethod) {
     "llvm-O0-eggcc",
     "llvm-O3",
     "llvm-O3-eggcc",
-  ].includes(runMethod)
+  ].includes(runMethod);
 }
 
 function getDataForBenchmark(benchmark) {

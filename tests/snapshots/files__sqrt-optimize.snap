@@ -39,17 +39,25 @@ expression: visualization.result
   v32_: bool = fle v31_ v23_;
   v33_: bool = fge v31_ v24_;
   v34_: bool = and v32_ v33_;
-  br v34_ .v35_ .v36_;
-.v35_:
-  v37_: bool = const false;
-  v38_: float = id v21_;
-  v39_: float = id v30_;
-  v40_: bool = id v37_;
-  v41_: float = id v23_;
-  v42_: float = id v24_;
-  v43_: float = id v25_;
-  v44_: float = id v26_;
-.v45_:
+  v35_: bool = const true;
+  v36_: float = id v21_;
+  v37_: float = id v30_;
+  v38_: bool = id v35_;
+  v39_: float = id v23_;
+  v40_: float = id v24_;
+  v41_: float = id v25_;
+  v42_: float = id v26_;
+  br v34_ .v43_ .v44_;
+.v43_:
+  v45_: bool = const false;
+  v36_: float = id v21_;
+  v37_: float = id v30_;
+  v38_: bool = id v45_;
+  v39_: float = id v23_;
+  v40_: float = id v24_;
+  v41_: float = id v25_;
+  v42_: float = id v26_;
+.v44_:
   v46_: bool = not v34_;
   v21_: float = id v21_;
   v22_: float = id v30_;
@@ -70,16 +78,5 @@ expression: visualization.result
   v50_: float = fdiv v9_ v9_;
   print v50_;
 .v49_:
-  jmp .v6_;
-.v36_:
-  v51_: bool = const true;
-  v38_: float = id v21_;
-  v39_: float = id v30_;
-  v40_: bool = id v51_;
-  v41_: float = id v23_;
-  v42_: float = id v24_;
-  v43_: float = id v25_;
-  v44_: float = id v26_;
-  jmp .v45_;
 .v6_:
 }

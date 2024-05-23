@@ -3,11 +3,9 @@ import glob
 import os
 
 def make_cfgs(bench, data_dir):
-  print(bench)
   cwd = os.getcwd()
   path = f"{data_dir}/{bench}"
   runmodes = os.listdir(path)
-  print(runmodes)
   for mode in runmodes:
     os.chdir(f"{path}/{mode}")
 
@@ -26,6 +24,7 @@ def make_cfgs(bench, data_dir):
       os.system(cmd)
 
     pngs = glob.glob("*.png")
+    print(f"Generated {len(pngs)} CFGs for {bench} {mode}")
     with open("png_names.txt", "w") as f:
       f.write("\n".join(pngs))
 
@@ -42,7 +41,6 @@ if __name__ == '__main__':
       print("Usage: generate_line_counts.py <data directory>")
       exit(1)
   data_dir = os.sys.argv[1]
-  print(data_dir)
   benchmarks = os.listdir(data_dir)
   for bench in benchmarks:
     make_cfgs(bench, data_dir)

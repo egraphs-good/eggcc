@@ -129,7 +129,7 @@ def generate_latex(output_path):
         f.write(benchmarks_table())
     tex_files = glob.glob(f"{output_path}/data/*.tex")
     for tex in tex_files:
-        cmd = " ".join(["pdflatex", f"-output-directory {output_path}/data/", tex])
+        cmd = " ".join(["pdflatex", f"-output-directory {output_path}/data/", tex, "> /dev/null 2>&1"])
         os.system(cmd)
 
 

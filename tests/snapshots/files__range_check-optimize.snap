@@ -33,7 +33,8 @@ expression: visualization.result
   br v9_ .v7_ .v22_;
 .v22_:
   v3_: int = id v6_;
-  jmp .v5_;
+  print v3_;
+  ret;
 .v13_:
   v23_: int = const 2;
   print v23_;

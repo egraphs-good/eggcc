@@ -11,14 +11,18 @@ expression: visualization.result
   v6_: int = const 2;
   store v3_ v6_;
   v7_: ptr<int> = id v3_;
-  jmp .v8_;
+  v8_: int = load v3_;
+  v9_: int = load v3_;
+  print v8_;
+  free v3_;
+  ret;
 .v5_:
-  v9_: int = const 3;
-  store v3_ v9_;
+  v10_: int = const 3;
+  store v3_ v10_;
   v7_: ptr<int> = id v3_;
-.v8_:
-  v10_: int = load v3_;
-  v11_: int = load v3_;
-  print v10_;
+.v11_:
+  v8_: int = load v3_;
+  v9_: int = load v3_;
+  print v8_;
   free v3_;
 }

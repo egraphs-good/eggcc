@@ -266,6 +266,74 @@ impl Expr {
         }
     }
 
+    pub fn map_expr<F1, F2, F3>(self: &RcExpr, map_type: F1, map_assum: F2, map_child: F3) -> Expr
+    where
+        F1: FnMut(&Type) -> Type,
+        F2: FnMut(&Assumption) -> Assumption,
+        F3: FnMut(&RcExpr) -> Expr,
+    {
+        let types = self.as_ref().map_types(map_type);
+        let assum = self.as_ref().map_assumptions(map_assum).clone();
+        let children = self.map_children(map_child);
+        match self.as_ref() {
+            Expr::Function(name, ..) => Expr::Function(
+                name.into(),
+                types[0].clone(),
+                types[1].clone(),
+                Rc::new(children[0].clone()),
+            ),
+            Expr::Const(c, ..) => Expr::Const(c.clone(), types[0].clone(), assum),
+            Expr::Top(op, ..) => Expr::Top(
+                op.clone(),
+                Rc::new(children[0].clone()),
+                Rc::new(children[1].clone()),
+                Rc::new(children[2].clone()),
+            ),
+            Expr::Bop(op, ..) => Expr::Bop(
+                op.clone(),
+                Rc::new(children[0].clone()),
+                Rc::new(children[1].clone()),
+            ),
+            Expr::Uop(op, _) => Expr::Uop(op.clone(), Rc::new(children[0].clone())),
+            Expr::Get(_, pos) => Expr::Get(Rc::new(children[0].clone()), *pos),
+            Expr::Alloc(id, _, _, ty) => Expr::Alloc(
+                *id,
+                Rc::new(children[0].clone()),
+                Rc::new(children[1].clone()),
+                ty.clone(),
+            ),
+            Expr::Call(name, ..) => Expr::Call(name.into(), Rc::new(children[0].clone())),
+            Expr::Empty(..) => Expr::Empty(types[0].clone(), assum),
+            Expr::Single(..) => Expr::Single(Rc::new(children[0].clone())),
+            Expr::Concat(..) => {
+                Expr::Concat(Rc::new(children[0].clone()), Rc::new(children[1].clone()))
+            }
+            Expr::Switch(..) => {
+                let len = children.len();
+                let branches = children[2..len]
+                    .iter()
+                    .map(|branch| Rc::new(branch.clone()))
+                    .collect::<Vec<_>>();
+                Expr::Switch(
+                    Rc::new(children[0].clone()),
+                    Rc::new(children[1].clone()),
+                    branches,
+                )
+            }
+            Expr::If(..) => Expr::If(
+                Rc::new(children[0].clone()),
+                Rc::new(children[1].clone()),
+                Rc::new(children[2].clone()),
+                Rc::new(children[3].clone()),
+            ),
+            Expr::DoWhile(..) => {
+                Expr::DoWhile(Rc::new(children[0].clone()), Rc::new(children[1].clone()))
+            }
+            Expr::Arg(_, _) => Expr::Arg(types[0].clone(), assum),
+            Expr::Symbolic(_) => panic!("No symbolic should occur here"),
+        }
+    }
+
     pub fn map_children<F, T>(self: &RcExpr, fun: F) -> Vec<T>
     where
         F: FnMut(&RcExpr) -> T,

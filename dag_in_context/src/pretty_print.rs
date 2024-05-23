@@ -11,6 +11,7 @@ use egglog::{Term, TermDag};
 
 use std::{
     collections::{BTreeMap, HashMap},
+    f32::consts::E,
     hash::Hash,
     rc::Rc,
     vec,
@@ -294,108 +295,35 @@ impl PrettyPrinter {
             }
         };
 
-        let types = expr
-            .as_ref()
-            .map_types(|ty| self.refactor_shared_type(ty, log));
-        let assum = expr
-            .as_ref()
-            .map_assumptions(|assum| self.refactor_shared_assum(assum, fold_when, to_rust, log));
-        let children = expr.map_children(|e| self.refactor_shared_expr(e, fold_when, to_rust, log));
+        // let rfc_types = |ty| self.refactor_shared_type(ty, log);
+        // let rfc_assum = |assum| self.refactor_shared_assum(assum, fold_when, to_rust, log);
+        // let rfc_children = |e| self.refactor_shared_expr(e, fold_when, to_rust, log);
+        let mapped_expr = expr.map_expr(
+            |ty| self.refactor_shared_type(ty, log),
+            |assum| self.refactor_shared_assum(assum, fold_when, to_rust, log),
+            |e| self.refactor_shared_expr(e, fold_when, to_rust, log),
+        );
 
         match expr.as_ref() {
-            Expr::Function(name, ..) => Expr::Function(
-                name.into(),
-                types[0].clone(),
-                types[1].clone(),
-                Rc::new(children[0].clone()),
-            ),
-            Expr::Const(c, ..) => {
-                let c = Expr::Const(c.clone(), types[0].clone(), assum);
+            Expr::Const(..) => {
                 if to_rust {
-                    c
+                    mapped_expr
                 } else {
-                    fold(self, c, log)
+                    fold(self, mapped_expr, log)
                 }
             }
-            Expr::Top(op, ..) => {
-                let top = Expr::Top(
-                    op.clone(),
-                    Rc::new(children[0].clone()),
-                    Rc::new(children[1].clone()),
-                    Rc::new(children[2].clone()),
-                );
-                fold_or_plain(self, top, log)
-            }
-            Expr::Bop(op, ..) => {
-                let bop = Expr::Bop(
-                    op.clone(),
-                    Rc::new(children[0].clone()),
-                    Rc::new(children[1].clone()),
-                );
-                fold_or_plain(self, bop, log)
-            }
-            Expr::Uop(op, _) => {
-                let uop = Expr::Uop(op.clone(), Rc::new(children[0].clone()));
-                fold_or_plain(self, uop, log)
-            }
-            Expr::Get(_, pos) => {
-                let get = Expr::Get(Rc::new(children[0].clone()), *pos);
+            Expr::Get(sub_expr, _) => {
                 // fold Get Arg i anyway
-                if let Expr::Arg(..) = expr.as_ref() {
+                if let Expr::Arg(..) = sub_expr.as_ref() {
                     if !to_rust {
-                        return fold(self, get, log);
+                        return fold(self, mapped_expr, log);
                     }
                 }
-                get
+                mapped_expr
             }
-            Expr::Alloc(id, _, _, ty) => {
-                let alloc = Expr::Alloc(
-                    *id,
-                    Rc::new(children[0].clone()),
-                    Rc::new(children[1].clone()),
-                    ty.clone(),
-                );
-                fold_or_plain(self, alloc, log)
-            }
-            Expr::Call(name, ..) => {
-                let call = Expr::Call(name.into(), Rc::new(children[0].clone()));
-                fold_or_plain(self, call, log)
-            }
-            Expr::Empty(..) => Expr::Empty(types[0].clone(), assum),
-            // doesn't fold Tuple
-            Expr::Single(..) => Expr::Single(Rc::new(children[0].clone())),
-            Expr::Concat(..) => {
-                Expr::Concat(Rc::new(children[0].clone()), Rc::new(children[1].clone()))
-            }
-            Expr::Switch(..) => {
-                let len = children.len();
-                let branches = children[2..len]
-                    .iter()
-                    .map(|branch| Rc::new(branch.clone()))
-                    .collect::<Vec<_>>();
-                let switch = Expr::Switch(
-                    Rc::new(children[0].clone()),
-                    Rc::new(children[1].clone()),
-                    branches,
-                );
-                fold_or_plain(self, switch, log)
-            }
-            Expr::If(..) => {
-                let if_expr = Expr::If(
-                    Rc::new(children[0].clone()),
-                    Rc::new(children[1].clone()),
-                    Rc::new(children[2].clone()),
-                    Rc::new(children[3].clone()),
-                );
-                fold_or_plain(self, if_expr, log)
-            }
-            Expr::DoWhile(..) => {
-                let dowhile =
-                    Expr::DoWhile(Rc::new(children[0].clone()), Rc::new(children[1].clone()));
-                fold_or_plain(self, dowhile, log)
-            }
-            Expr::Arg(_, _) => Expr::Arg(types[0].clone(), assum),
+            Expr::Empty(..) | Expr::Single(..) | Expr::Concat(..) | Expr::Arg(_, _) => mapped_expr,
             Expr::Symbolic(_) => panic!("No symbolic should occur here"),
+            _ => fold_or_plain(self, mapped_expr, log),
         }
     }
 }

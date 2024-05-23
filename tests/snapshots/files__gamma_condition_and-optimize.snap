@@ -5,7 +5,7 @@ expression: visualization.result
 @main(v0: int) {
 .v1_:
   v2_: int = const 0;
-  v3_: bool = gt v0 v2_;
+  v3_: bool = lt v2_ v0;
   v4_: bool = lt v0 v2_;
   v5_: int = const 1;
   v6_: int = const 3;

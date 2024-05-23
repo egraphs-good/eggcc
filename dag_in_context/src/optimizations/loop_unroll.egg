@@ -1,6 +1,7 @@
 ;; Some simple simplifications of loops
 (ruleset loop-unroll)
 (ruleset loop-peel)
+(ruleset loop-iters-analysis)
 
 ;;                      inputs, outputs -> number of iterations
 ;; The minimum possible guess is 1 because of do-while loops
@@ -10,14 +11,14 @@
 ;; by default, guess that all loops run 1000 times
 (rule ((DoWhile inputs outputs))
       ((set (LoopNumItersGuess inputs outputs) 1000))
-      :ruleset always-run)
+      :ruleset loop-iters-analysis)
 
 ;; For a loop that is false, its num iters is 1
 (rule 
   ((= loop (DoWhile inputs outputs))
    (= (Const (Bool false) ty ctx) (Get outputs 0)))
   ((set (LoopNumItersGuess inputs outputs) 1))
-:ruleset always-run)
+:ruleset loop-iters-analysis)
 
 ;; Figure out number of iterations for a loop with constant bounds and initial value
 ;; and i is updated before checking pred
@@ -43,7 +44,7 @@
   (
     (set (LoopNumItersGuess inputs outputs) (/ (- end_constant start_const) increment))
   )
-  :ruleset always-run)
+  :ruleset loop-iters-analysis)
 
 ;; Figure out number of iterations for a loop with constant bounds and initial value
 ;; and i is updated after checking pred
@@ -68,7 +69,7 @@
   (
     (set (LoopNumItersGuess inputs outputs) (+ (/ (- end_constant start_const) increment) 1))
   )
-  :ruleset always-run)
+  :ruleset loop-iters-analysis)
 
 ;; loop peeling rule
 ;; Only peel loops that we know iterate < 5 times

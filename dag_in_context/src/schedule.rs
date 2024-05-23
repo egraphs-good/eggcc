@@ -37,6 +37,8 @@ pub fn mk_schedule() -> String {
     context
     interval-analysis
     memory-helpers
+    always-switch-rewrite
+    loop-iters-analysis
   )
   
     

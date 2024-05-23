@@ -1,7 +1,8 @@
+;; Relies on loop iteration analysis
 (ruleset passthrough)
 
 
-;; Pass through thetas
+;; Pass through thetas: pure case
 (rule ((= lhs (Get loop i))
         (= loop (DoWhile inputs pred-outputs))
         (= (Get pred-outputs (+ i 1)) (Get (Arg _ty _ctx) i))
@@ -9,6 +10,16 @@
         ;; so the state edge must pass through them
         (HasType lhs lhs_ty)
         (PureType lhs_ty)
+        )
+       ((union lhs (Get inputs i)))
+       :ruleset passthrough)
+
+;; Pass through thetas: state edge case
+(rule ((= lhs (Get loop i))
+        (= loop (DoWhile inputs pred-outputs))
+        (= (Get pred-outputs (+ i 1)) (Get (Arg _ty _ctx) i))
+        ;; It is OK to pass through state edges as long as the loop terminates
+        (TerminatingLoop inputs pred-outputs)
         )
        ((union lhs (Get inputs i)))
        :ruleset passthrough)

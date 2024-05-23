@@ -72,14 +72,14 @@
   :ruleset loop-iters-analysis)
 
 ;; loop peeling rule
-;; Only peel loops that we know iterate < 5 times
+;; Only peel loops that we know iterate < 3 times
 (rule
  ((= lhs (DoWhile inputs outputs))
   (ContextOf lhs ctx)
   (HasType inputs inputs-ty)
   (= outputs-len (tuple-length outputs))
   (= old_cost (LoopNumItersGuess inputs outputs))
-  (< old_cost 5)
+  (< old_cost 3)
   )
  (
   (let executed-once

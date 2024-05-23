@@ -4,11 +4,11 @@ expression: visualization.result
 ---
 @main {
 .v0_:
-  v1_: int = const 16;
-  v2_: int = const 0;
+  v1_: int = const 0;
+  v2_: int = const 16;
   v3_: int = const 1;
-  v4_: int = id v2_;
-  v5_: int = id v1_;
+  v4_: int = id v1_;
+  v5_: int = id v2_;
   v6_: int = id v3_;
 .v7_:
   v8_: int = add v4_ v6_;
@@ -21,5 +21,5 @@ expression: visualization.result
   v6_: int = id v6_;
   br v12_ .v7_ .v13_;
 .v13_:
-  print v1_;
+  print v4_;
 }

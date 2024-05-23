@@ -11,7 +11,6 @@ use egglog::{Term, TermDag};
 
 use std::{
     collections::{BTreeMap, HashMap},
-    f32::consts::E,
     hash::Hash,
     rc::Rc,
     vec,
@@ -265,6 +264,7 @@ impl PrettyPrinter {
         Type::Symbolic(ty_binding)
     }
 
+
     fn refactor_shared_expr(
         &mut self,
         expr: &RcExpr,
@@ -298,11 +298,9 @@ impl PrettyPrinter {
         // let rfc_types = |ty| self.refactor_shared_type(ty, log);
         // let rfc_assum = |assum| self.refactor_shared_assum(assum, fold_when, to_rust, log);
         // let rfc_children = |e| self.refactor_shared_expr(e, fold_when, to_rust, log);
-        let mapped_expr = expr.map_expr(
-            |ty| self.refactor_shared_type(ty, log),
-            |assum| self.refactor_shared_assum(assum, fold_when, to_rust, log),
-            |e| self.refactor_shared_expr(e, fold_when, to_rust, log),
-        );
+        let _ = expr.map_expr_type(|ty| self.refactor_shared_type(ty, log));
+        let _ = expr.map_expr_assum(|assum| self.refactor_shared_assum(assum, fold_when, to_rust, log));
+        let mapped_expr = expr.map_expr_children(|e| self.refactor_shared_expr(e, fold_when, to_rust, log));
 
         match expr.as_ref() {
             Expr::Const(..) => {
@@ -394,8 +392,6 @@ impl Expr {
 
     pub fn to_ast(&self) -> String {
         use schema::Constant::*;
-        let children = Rc::new(self.clone()).map_children(|expr| expr.to_ast());
-        let types = self.map_types(|ty| ty.to_ast());
         match self {
             Expr::Const(c, ..) => match c {
                 Bool(true) => "ttrue()".into(),
@@ -403,66 +399,67 @@ impl Expr {
                 Int(n) => format!("int({})", n),
                 Float(f) => format!("float({})", f),
             },
-            Expr::Top(op, ..) => {
+            Expr::Top(op, x, y, z) => {
                 format!(
                     "{}({}, \n{}, \n{})",
                     op.to_ast(),
-                    children[0],
-                    children[1],
-                    children[2]
+                    x.to_ast(),
+                    y.to_ast(),
+                    z.to_ast(),
                 )
             }
-            Expr::Bop(op, ..) => {
-                format!("{}({}, \n{})", op.to_ast(), children[0], children[1])
+            Expr::Bop(op, x, y) => {
+                format!("{}({}, \n{})", op.to_ast(), x.to_ast(), y.to_ast())
             }
-            Expr::Uop(op, _) => {
-                format!("{}({})", op.to_ast(), children[0])
+            Expr::Uop(op, x) => {
+                format!("{}({})", op.to_ast(), x.to_ast())
             }
             Expr::Get(expr, index) => match expr.as_ref() {
                 Expr::Arg(..) => format!("getat({index})"),
-                _ => format!("get({}, {index})", children[0]),
+                _ => format!("get({}, {index})", expr.to_ast()),
             },
-            Expr::Alloc(id, ..) => {
+            Expr::Alloc(id, x, y, z) => {
                 format!(
                     "alloc({id}, {}, {}, {})",
-                    children[0], children[1], types[0]
+                    x.to_ast(),
+                    y.to_ast(),
+                    z.to_ast(),
                 )
             }
-            Expr::Call(name, _) => {
-                format!("call({name}, {})", children[0])
+            Expr::Call(name, arg) => {
+                format!("call({name}, {})", arg.to_ast())
             }
             Expr::Empty(..) => "empty()".into(),
-            Expr::Single(_) => {
-                format!("single({})", children[0])
+            Expr::Single(expr) => {
+                format!("single({})", expr.to_ast())
             }
-            Expr::Concat(..) => {
+            Expr::Concat(x, y) => {
                 if self.check_all_single() {
                     let vec = Self::gather_concat_children(self);
                     let inside = vec.join(", ");
                     format!("parallel!({inside})")
                 } else {
-                    format!("concat({}, \n{})", children[0], children[1])
+                    format!("concat({}, \n{})", x.to_ast(), y.to_ast())
                 }
             }
-            Expr::If(..) => {
+            Expr::If(cond, input, then, els) => {
                 format!(
                     "tif({}, \n{}, \n{}, \n{})",
-                    children[0], children[1], children[2], children[3]
+                    cond.to_ast(), input.to_ast(), then.to_ast(), els.to_ast(),
                 )
             }
-            Expr::Switch(..) => {
-                let len = children.len();
-                let cases = children[2..len].to_vec().join(", ");
-                format!("switch!({}, {}; {})", children[0], children[1], cases)
+            Expr::Switch(cond, input, branches) => {
+                let br = branches.iter().map(|e| e.to_ast()).collect::<Vec<_>>().join(", ");
+                format!("switch!({}, {}; {})", cond.to_ast(), input.to_ast(), br)
             }
-            Expr::DoWhile(..) => {
-                format!("dowhile({}, \n{})", children[0], children[1])
+            Expr::DoWhile(input, body) => {
+                format!("dowhile({}, \n{})", input.to_ast(), body.to_ast())
             }
             Expr::Arg(..) => "arg()".into(),
-            Expr::Function(name, ..) => {
+            Expr::Function(name, ty1, ty2, body) => {
                 format!(
                     "function(\"{name}\", \n{}, \n{}, \n{})",
-                    types[0], types[1], children[0]
+                    ty1.to_ast(), ty2.to_ast(), body.to_ast(),
                 )
             }
             Expr::Symbolic(str) => format!("{str}.clone()"),
@@ -670,6 +667,7 @@ fn test_pretty_print() -> crate::Result {
     let expr_str = concat_loop.to_string();
     let (egglog, binding) = PrettyPrinter::default().to_egglog_default(&concat_loop);
     let (ast, _) = PrettyPrinter::default().to_rust_default(&concat_loop);
+    //println!("{}", egglog.clone());
     assert_snapshot!(ast);
     let check = format!("(let unfold {expr_str})\n {egglog} \n(check (= {binding} unfold))\n");
 

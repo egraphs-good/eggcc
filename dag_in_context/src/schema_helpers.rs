@@ -4,14 +4,14 @@ use std::{
     rc::Rc,
     vec,
 };
+
 use strum_macros::EnumIter;
 
 use crate::{
-    ast::{base, boolt, floatt, inif, inloop, inswitch, intt},
-    schema::{
+    ast::{base, boolt, floatt, inif, inloop, inswitch, intt}, schema::{
         Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
         UnaryOp,
-    },
+    }
 };
 
 /// Display for Constant implements a
@@ -266,99 +266,95 @@ impl Expr {
         }
     }
 
-    pub fn map_expr<F1, F2, F3>(self: &RcExpr, map_type: F1, map_assum: F2, map_child: F3) -> Expr
+    pub fn map_expr_children<F>(self: &RcExpr, mut map_child: F) -> Expr
     where
-        F1: FnMut(&Type) -> Type,
-        F2: FnMut(&Assumption) -> Assumption,
-        F3: FnMut(&RcExpr) -> Expr,
+        F: FnMut(&RcExpr) -> Expr,
     {
-        let types = self.as_ref().map_types(map_type);
-        let assum = self.as_ref().map_assumptions(map_assum).clone();
-        let children = self.map_children(map_child);
         match self.as_ref() {
-            Expr::Function(name, ..) => Expr::Function(
+            Expr::Function(name, ty1, ty2, body) => Expr::Function(
                 name.into(),
-                types[0].clone(),
-                types[1].clone(),
-                Rc::new(children[0].clone()),
+                ty1.clone(),
+                ty2.clone(),
+                Rc::new(map_child(body)),
             ),
-            Expr::Const(c, ..) => Expr::Const(c.clone(), types[0].clone(), assum),
-            Expr::Top(op, ..) => Expr::Top(
+            Expr::Top(op, x, y, z) => Expr::Top(
                 op.clone(),
-                Rc::new(children[0].clone()),
-                Rc::new(children[1].clone()),
-                Rc::new(children[2].clone()),
+                Rc::new(map_child(x)),
+                Rc::new(map_child(y)),
+                Rc::new(map_child(z)),
             ),
-            Expr::Bop(op, ..) => Expr::Bop(
+            Expr::Bop(op, x, y) => Expr::Bop(
                 op.clone(),
-                Rc::new(children[0].clone()),
-                Rc::new(children[1].clone()),
+                Rc::new(map_child(x)),
+                Rc::new(map_child(y)),
             ),
-            Expr::Uop(op, _) => Expr::Uop(op.clone(), Rc::new(children[0].clone())),
-            Expr::Get(_, pos) => Expr::Get(Rc::new(children[0].clone()), *pos),
-            Expr::Alloc(id, _, _, ty) => Expr::Alloc(
+            Expr::Uop(op, x) => Expr::Uop(op.clone(), Rc::new(map_child(x))),
+            Expr::Get(x, pos) => Expr::Get(Rc::new(map_child(x)), *pos),
+            Expr::Alloc(id, x, y, ty) => Expr::Alloc(
                 *id,
-                Rc::new(children[0].clone()),
-                Rc::new(children[1].clone()),
+                Rc::new(map_child(x)),
+                Rc::new(map_child(y)),
                 ty.clone(),
             ),
-            Expr::Call(name, ..) => Expr::Call(name.into(), Rc::new(children[0].clone())),
-            Expr::Empty(..) => Expr::Empty(types[0].clone(), assum),
-            Expr::Single(..) => Expr::Single(Rc::new(children[0].clone())),
-            Expr::Concat(..) => {
-                Expr::Concat(Rc::new(children[0].clone()), Rc::new(children[1].clone()))
+            Expr::Call(name, x) => Expr::Call(name.into(), Rc::new(map_child(x))),
+            Expr::Single(x) => Expr::Single(Rc::new(map_child(x)),),
+            Expr::Concat(x, y) => {
+                Expr::Concat( Rc::new(map_child(x)),
+                                Rc::new(map_child(y)))
             }
-            Expr::Switch(..) => {
-                let len = children.len();
-                let branches = children[2..len]
+            Expr::Switch(cond, inputs, branches) => {
+                let br = branches
                     .iter()
-                    .map(|branch| Rc::new(branch.clone()))
+                    .map(|branch| Rc::new(map_child(branch)))
                     .collect::<Vec<_>>();
                 Expr::Switch(
-                    Rc::new(children[0].clone()),
-                    Rc::new(children[1].clone()),
-                    branches,
+                    Rc::new(map_child(cond)),
+                    Rc::new(map_child(inputs)),
+                    br,
                 )
             }
-            Expr::If(..) => Expr::If(
-                Rc::new(children[0].clone()),
-                Rc::new(children[1].clone()),
-                Rc::new(children[2].clone()),
-                Rc::new(children[3].clone()),
+            Expr::If(pred, input, then, els ) => Expr::If(
+                Rc::new(map_child(pred)),
+                Rc::new(map_child(input)),
+                Rc::new(map_child(then)),
+                Rc::new(map_child(els)),
             ),
-            Expr::DoWhile(..) => {
-                Expr::DoWhile(Rc::new(children[0].clone()), Rc::new(children[1].clone()))
+            Expr::DoWhile(input, body) => {
+                Expr::DoWhile(Rc::new(map_child(input)), Rc::new(map_child(body)))
             }
-            Expr::Arg(_, _) => Expr::Arg(types[0].clone(), assum),
             Expr::Symbolic(_) => panic!("No symbolic should occur here"),
+            _ => self.as_ref().clone(),
         }
     }
 
-    pub fn map_children<F, T>(self: &RcExpr, fun: F) -> Vec<T>
+    pub fn map_expr_type<F>(self: &RcExpr, mut map_type: F) -> Expr
     where
-        F: FnMut(&RcExpr) -> T,
+        F: FnMut(&Type) -> Type,
     {
-        self.children_exprs().iter().map(fun).collect::<Vec<_>>()
-    }
-
-    pub fn map_types<F, T>(&self, mut fun: F) -> Vec<T>
-    where
-        F: FnMut(&Type) -> T,
-    {
-        match self {
-            Expr::Function(_, inty, outty, _) => vec![fun(inty), fun(outty)],
-            Expr::Const(_, ty, _) => vec![fun(ty)],
-            Expr::Empty(ty, _) => vec![fun(ty)],
-            Expr::Arg(ty, _) => vec![fun(ty)],
-            _ => vec![],
+        match self.as_ref() {
+            Expr::Function(name, ty1, ty2, body) => Expr::Function(
+                name.into(),
+                map_type(ty1),
+                map_type(ty2),
+                body.clone(),
+            ),
+            Expr::Const(c, ty, assum) => Expr::Const(c.clone(), map_type(ty) , assum.clone()),
+            Expr::Empty(ty, assum) => Expr::Empty(map_type(ty), assum.clone()),
+            Expr::Arg(ty, assum) => Expr::Arg(map_type(ty), assum.clone()),
+            _ => self.as_ref().clone(),
         }
     }
 
-    pub fn map_assumptions<F, T>(&self, mut fun: F) -> T
+    pub fn map_expr_assum<F>(self: &RcExpr, mut map_assum: F) -> Expr
     where
-        F: FnMut(&Assumption) -> T,
+        F: FnMut(&Assumption) -> Assumption,
     {
-        fun(self.get_ctx())
+        match self.as_ref() {
+            Expr::Const(c, ty, assum) => Expr::Const(c.clone(), ty.clone(), map_assum(assum)),
+            Expr::Empty(ty, assum) => Expr::Empty(ty.clone(), map_assum(assum)),
+            Expr::Arg(ty, assum) => Expr::Arg(ty.clone(), map_assum(assum)),
+            _ => self.as_ref().clone(),
+        }
     }
 
     pub fn get_ctx(&self) -> &Assumption {

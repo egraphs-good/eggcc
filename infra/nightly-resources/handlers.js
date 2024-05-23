@@ -24,46 +24,16 @@ async function load_index() {
 
 // Top-level load function for the llvm page
 async function load_llvm() {
-  await loadCommonData();
   const params = new URLSearchParams(window.location.search);
   const benchmark = params.get("benchmark");
   const runMode = params.get("runmode");
+
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");
+    return;
   }
-  const llvm = await fetchText(`./data/llvm/${benchmark}/${runMode}/llvm.ll`);
-  document.getElementById("llvm-ir").innerText = llvm;
-  let pngs = (
-    await fetchText(`./data/llvm/${benchmark}/${runMode}/png_names.txt`)
-  ).split("\n");
-
-  // Move main.png and _main.png to top
-  const _main = "_main.png";
-  if (pngs.includes(_main)) {
-    pngs = pngs.filter((x) => x !== _main);
-    pngs.unshift(_main);
-  }
-  const main = "main.png";
-  if (pngs.includes(main)) {
-    pngs = pngs.filter((x) => x !== main);
-    pngs.unshift(main);
-  }
-
-  const pngContainer = document.getElementById("llvm-cfg");
-  pngs.forEach((png) => {
-    const elt = document.createElement("div");
-
-    const img = document.createElement("img");
-    img.className = "cfg";
-    img.src = `data/llvm/${benchmark}/${runMode}/${png}`;
-    elt.appendChild(img);
-
-    const p = document.createElement("p");
-    p.innerText = png;
-    elt.appendChild(p);
-
-    pngContainer.appendChild(elt);
-  });
+  showIR(benchmark, runMode);
+  showCFGs(benchmark, runMode);
 }
 
 async function load_table() {
@@ -130,32 +100,6 @@ async function loadBaseline(url) {
   refreshView();
 }
 
-function toggleWarnings() {
-  const elt = document.getElementById("warnings-toggle");
-  elt.classList.toggle("active");
-  const content = elt.nextElementSibling;
-  if (content.style.display === "block") {
-    elt.innerText = `Show ${GLOBAL_DATA.warnings.size} Warnings`;
-    content.style.display = "none";
-  } else {
-    elt.innerText = `Hide ${GLOBAL_DATA.warnings.size} Warnings`;
-    content.style.display = "block";
-  }
-}
-
-function toggleChart() {
-  const elt = document.getElementById("chart-toggle");
-  elt.classList.toggle("active");
-  const content = elt.nextElementSibling;
-  if (content.style.display === "block") {
-    elt.innerText = "Show Chart";
-    content.style.display = "none";
-  } else {
-    elt.innerText = "Hide Chart";
-    content.style.display = "block";
-  }
-}
-
 function onRadioClick(elt) {
   GLOBAL_DATA.chart.mode = elt.value;
   document.getElementById("speedup-formula").style.visibility =
@@ -165,4 +109,15 @@ function onRadioClick(elt) {
 
 function copyToClipboard(eltId) {
   navigator.clipboard.writeText(document.getElementById(eltId).innerText);
+}
+
+function toggle(elt, showText, hideText) {
+  const content = elt.nextElementSibling;
+  if (content.style.display === "block") {
+    elt.innerText = showText;
+    content.style.display = "none";
+  } else {
+    elt.innerText = hideText;
+    content.style.display = "block";
+  }
 }

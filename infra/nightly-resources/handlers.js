@@ -31,8 +31,39 @@ async function load_llvm() {
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");
   }
-  const llvm = await fetchText(`./data/llvm/${benchmark}-${runMode}.ll`);
-  document.getElementById("llvm").innerText = llvm;
+  const llvm = await fetchText(`./data/llvm/${benchmark}/${runMode}/llvm.ll`);
+  document.getElementById("llvm-ir").innerText = llvm;
+  let pngs = (
+    await fetchText(`./data/llvm/${benchmark}/${runMode}/png_names.txt`)
+  ).split("\n");
+
+  // Move main.png and _main.png to top
+  const _main = "_main.png";
+  if (pngs.includes(_main)) {
+    pngs = pngs.filter((x) => x !== _main);
+    pngs.unshift(_main);
+  }
+  const main = "main.png";
+  if (pngs.includes(main)) {
+    pngs = pngs.filter((x) => x !== main);
+    pngs.unshift(main);
+  }
+
+  const pngContainer = document.getElementById("llvm-cfg");
+  pngs.forEach((png) => {
+    const elt = document.createElement("div");
+
+    const img = document.createElement("img");
+    img.className = "cfg";
+    img.src = `data/llvm/${benchmark}/${runMode}/${png}`;
+    elt.appendChild(img);
+
+    const p = document.createElement("p");
+    p.innerText = png;
+    elt.appendChild(p);
+
+    pngContainer.appendChild(elt);
+  });
 }
 
 async function load_table() {

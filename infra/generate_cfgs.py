@@ -17,7 +17,7 @@ def make_cfgs(bench, data_dir):
 
     # Find all the dot files (can't use glob because it doesn't match hidden files)
     # There are also a bunch of files that start with ._Z that I don't think we care about?
-    dots = [f for f in os.listdir(".") if f.endswith(".dot") and not f.startswith("._Z")]
+    dots = [f for f in os.listdir(".") if f.endswith(".dot") and not f.startswith("._Z") and not f.startswith("._bril")]
     for dot in dots:
       name = dot.split(".")[1]
 

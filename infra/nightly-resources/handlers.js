@@ -121,3 +121,24 @@ function toggle(elt, showText, hideText) {
     content.style.display = "block";
   }
 }
+
+function toggleAllPngs(elt) {
+  const btns = Array.from(document.getElementsByTagName("button"));
+  btns.shift(); // Skip the first button (this element)
+
+  if (elt.innerText == "Expand All") {
+    elt.innerText = "Collapse All";
+    btns.forEach((btn) => {
+      btn.innerText = btn.innerText.replace("▶ Show", "▼ Hide");
+      const content = btn.nextElementSibling;
+      content.style.display = "block";
+    });
+  } else {
+    elt.innerText = "Expand All";
+    btns.forEach((btn) => {
+      btn.innerText = btn.innerText.replace("▼ Hide", "▶ Show");
+      const content = btn.nextElementSibling;
+      content.style.display = "none";
+    });
+  }
+}

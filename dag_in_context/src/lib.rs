@@ -53,6 +53,7 @@ pub fn prologue() -> String {
         include_str!("utility/expr_size.egg"),
         include_str!("utility/drop_at.egg"),
         include_str!("interval_analysis.egg"),
+        include_str!("loop_iteration_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
         include_str!("optimizations/peepholes.egg"),
         &optimizations::memory::rules(),

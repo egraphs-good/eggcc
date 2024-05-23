@@ -103,8 +103,9 @@ def should_have_llvm_ir(runMethod):
 def dump_llvm_ir(runMethod, benchmark, output_directory):
   from_path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}-{runMethod}.ll'
 
-  to_path = f'{output_directory}/data/llvm/{benchmark}-{runMethod}.ll'
+  to_path = f'{output_directory}/data/llvm/{benchmark}/{runMethod}/llvm.ll'
 
+  os.system(f'mkdir -p {output_directory}/data/llvm/{benchmark}/{runMethod}')
   os.system(f'cp {from_path} {to_path}')
 
 

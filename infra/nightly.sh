@@ -62,6 +62,9 @@ fi
 # Generate latex after running the profiler (depends on profile.json)
 ./infra/generate_line_counts.py "$NIGHTLY_DIR"
 
+# Generate CFGs for LLVM after running the profiler
+./infra/generate_cfgs.py "$NIGHTLY_DIR/data/llvm"
+
 rm -r ./tmp/
 
 popd

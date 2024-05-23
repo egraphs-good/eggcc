@@ -1,0 +1,9 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main {
+.v0_:
+  v1_: int = const 2;
+  print v1_;
+}

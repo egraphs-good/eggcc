@@ -19,17 +19,9 @@
   ((set (LoopNumItersGuess inputs outputs) 1))
 :ruleset always-run)
 
-;; For a loop that has only one iteration, union it with its body
-(rule
-  ((= loop (DoWhile inputs outputs))
-   (= 1 (LoopNumItersGuess inputs outputs))
-   (ContextOf inputs ctx))
-  ((union loop (Subst ctx inputs outputs)))
-:ruleset always-run)
-
 ;; Figure out number of iterations for a loop with constant bounds and initial value
 ;; and i is updated before checking pred
-;; TODO: can make this work for increment by any constant
+;; TODO: we could make it work for decrementing loops
 (rule
   ((= lhs (DoWhile inputs outputs))
    (= num-inputs (tuple-length inputs))
@@ -38,18 +30,18 @@
    (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))
    ;; updated counter at counter_i
    (= next_counter (Get outputs (+ counter_i 1)))
-   ;; increments by one each loop
+   ;; increments by some constant each loop
    (= next_counter (Bop (Add) (Get (Arg _ty _ctx) counter_i)
-                              ;; TODO: put c instead of (Int 1) and mul by c
-                              (Const (Int 1) _ty2 _ctx2)))
+                              (Const (Int increment) _ty2 _ctx2)))
+   (> increment 0)
    ;; while next_counter less than end_constant
    (= pred (Bop (LessThan) next_counter
                            (Const (Int end_constant) _ty3 _ctx3)))
-   ;; end constant is greater than start constant
-   (> end_constant start_const)
+   ;; end constant is at least start constant
+   (>= end_constant start_const)
   )
   (
-    (set (LoopNumItersGuess inputs outputs) (- end_constant start_const))
+    (set (LoopNumItersGuess inputs outputs) (/ (- end_constant start_const) increment))
   )
   :ruleset always-run)
 
@@ -63,17 +55,18 @@
    (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))
    ;; updated counter at counter_i
    (= next_counter (Get outputs (+ counter_i 1)))
-   ;; increments by one each loop
+   ;; increments by a constant each loop
    (= next_counter (Bop (Add) (Get (Arg _ty _ctx) counter_i)
-                              (Const (Int 1) _ty2 _ctx2)))
+                              (Const (Int increment) _ty2 _ctx2)))
+   (> increment 0)
    ;; while this counter less than end_constant
    (= pred (Bop (LessThan) (Get (Arg _ty _ctx) counter_i)
                            (Const (Int end_constant) _ty3 _ctx3)))
-   ;; end constant is greater than start constant
-   (> end_constant start_const)
+   ;; end constant is at least start constant
+   (>= end_constant start_const)
   )
   (
-    (set (LoopNumItersGuess inputs outputs) (+ (- end_constant start_const) 1))
+    (set (LoopNumItersGuess inputs outputs) (+ (/ (- end_constant start_const) increment) 1))
   )
   :ruleset always-run)
 

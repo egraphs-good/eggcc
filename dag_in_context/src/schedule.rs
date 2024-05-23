@@ -45,6 +45,7 @@ pub fn mk_schedule() -> String {
     memory
     loop-unroll
     peepholes
+    loop-peel
   )
 
   (unstable-combined-ruleset expensive-optimizations
@@ -52,7 +53,6 @@ pub fn mk_schedule() -> String {
     switch_rewrite
     ;loop-inv-motion
     loop-strength-reduction
-    loop-peel
   )
   
   (run-schedule

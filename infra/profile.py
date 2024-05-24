@@ -124,7 +124,10 @@ if __name__ == '__main__':
     exit(1)
 
   # Create tmp directory for intermediate files
-  os.mkdir(TMP_DIR)
+  try:
+    os.mkdir(TMP_DIR)
+  except FileExistsError:
+    print(f"{TMP_DIR} exits, overwriting contents")
 
   bril_dir, DATA_DIR = os.sys.argv[1:]
   profiles = []

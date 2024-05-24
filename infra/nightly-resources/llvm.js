@@ -36,9 +36,9 @@ async function showCFGs(benchmark, runMode) {
     elt.appendChild(btn);
 
     const img = document.createElement("img");
-    img.className = "cfg";
+    img.classList.add("cfg");
+    img.classList.add("collapsed");
     img.src = `data/llvm/${benchmark}/${runMode}/${png}`;
-    img.style.display = "none";
     elt.appendChild(img);
 
     pngContainer.appendChild(elt);

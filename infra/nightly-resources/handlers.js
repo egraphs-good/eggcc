@@ -111,14 +111,24 @@ function copyToClipboard(eltId) {
   navigator.clipboard.writeText(document.getElementById(eltId).innerText);
 }
 
+function expand(elt, labelElt, text) {
+  elt.classList.add("expanded");
+  elt.classList.remove("collapsed");
+  labelElt.innerText = text;
+}
+
+function collapse(elt, labelElt, text) {
+  elt.classList.add("collapsed");
+  elt.classList.remove("expanded");
+  labelElt.innerText = text;
+}
+
 function toggle(elt, showText, hideText) {
   const content = elt.nextElementSibling;
-  if (content.style.display === "block") {
-    elt.innerText = showText;
-    content.style.display = "none";
+  if (content.classList.contains("expanded")) {
+    collapse(content, elt, showText);
   } else {
-    elt.innerText = hideText;
-    content.style.display = "block";
+    expand(content, elt, hideText);
   }
 }
 
@@ -128,16 +138,16 @@ function toggleAllPngs(elt) {
   if (elt.innerText == "Expand All") {
     elt.innerText = "Collapse All";
     btns.forEach((btn) => {
-      btn.innerText = btn.innerText.replace("\u25B6 Show", "\u25BC Hide");
+      const txt = btn.innerText.replace("\u25B6 Show", "\u25BC Hide");
       const content = btn.nextElementSibling;
-      content.style.display = "block";
+      expand(content, btn, txt);
     });
   } else {
     elt.innerText = "Expand All";
     btns.forEach((btn) => {
-      btn.innerText = btn.innerText.replace("\u25BC Hide", "\u25B6 Show");
+      const txt = btn.innerText.replace("\u25BC Hide", "\u25B6 Show");
       const content = btn.nextElementSibling;
-      content.style.display = "none";
+      collapse(content, btn, txt);
     });
   }
 }

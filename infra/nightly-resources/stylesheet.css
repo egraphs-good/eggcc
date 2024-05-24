@@ -62,3 +62,11 @@ body {
   max-height: 600px;
   display: block;
 }
+
+.expanded {
+  display: block;
+}
+
+.collapsed {
+  display: none;
+}

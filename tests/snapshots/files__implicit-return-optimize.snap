@@ -26,46 +26,65 @@ expression: visualization.result
   v13_: int = id v20_;
   v14_: int = id v6_;
   v15_: int = id v7_;
-.b17_:
   v4_: int = id v12_;
   v5_: int = id v13_;
   v6_: int = id v14_;
   v7_: int = id v15_;
-  br v11_ .b8_ .b21_;
-.b21_:
+  jmp .v8_;
+.v17_:
+  v4_: int = id v12_;
+  v5_: int = id v13_;
+  v6_: int = id v14_;
+  v7_: int = id v15_;
   print v4_;
 }
 @main {
-.b0_:
-  c1_: int = const 4;
-  c2_: int = const 0;
-  c3_: int = const 15;
-  v4_: int = id c1_;
-  v5_: int = id c2_;
-  v6_: int = id c1_;
-  v7_: int = id c3_;
-.b8_:
-  c9_: int = const 14;
-  v10_: bool = lt v5_ c9_;
-  v11_: int = id v4_;
-  v12_: int = id v5_;
-  v13_: int = id v6_;
-  v14_: int = id v7_;
-  br v10_ .b15_ .b16_;
-.b15_:
-  v17_: int = mul v4_ v6_;
-  c18_: int = const 1;
-  v19_: int = add c18_ v5_;
-  v11_: int = id v17_;
+.v0_:
+  v1_: bool = const true;
+  v2_: int = const 16;
+  v3_: int = const 1;
+  v4_: int = const 4;
+  v5_: int = const 15;
+  v6_: int = id v2_;
+  v7_: int = id v3_;
+  v8_: int = id v4_;
+  v9_: int = id v5_;
+  br v1_ .v10_ .v11_;
+.v10_:
+  v12_: int = id v2_;
+  v13_: int = id v3_;
+  v14_: int = id v4_;
+  v15_: int = id v5_;
+.v16_:
+  v17_: int = const 14;
+  v18_: bool = lt v13_ v17_;
+  v19_: int = id v12_;
+  v20_: int = id v13_;
+  v21_: int = id v14_;
+  v22_: int = id v15_;
+  br v18_ .v23_ .v24_;
+.v23_:
+  v25_: int = mul v12_ v14_;
+  v26_: int = const 1;
+  v27_: int = add v13_ v26_;
+  v19_: int = id v25_;
+  v20_: int = id v27_;
+  v21_: int = id v14_;
+  v22_: int = id v15_;
   v12_: int = id v19_;
-  v13_: int = id v6_;
-  v14_: int = id v7_;
-.b16_:
-  v4_: int = id v11_;
-  v5_: int = id v12_;
-  v6_: int = id v13_;
-  v7_: int = id v14_;
-  br v10_ .b8_ .b20_;
-.b20_:
-  print v4_;
+  v13_: int = id v20_;
+  v14_: int = id v21_;
+  v15_: int = id v22_;
+  jmp .v16_;
+.v24_:
+  v12_: int = id v19_;
+  v13_: int = id v20_;
+  v14_: int = id v21_;
+  v15_: int = id v22_;
+  v6_: int = id v12_;
+  v7_: int = id v13_;
+  v8_: int = id v14_;
+  v9_: int = id v15_;
+.v11_:
+  print v6_;
 }

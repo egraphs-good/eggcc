@@ -38,8 +38,9 @@
 //!
 //! The algorithm code is fairly heavily commented.
 
+use std::mem;
+
 use bril_rs::{Instruction, Literal, ValueOps};
-use hashbrown::HashSet;
 use indexmap::{IndexMap, IndexSet};
 use petgraph::{
     algo::dominators,
@@ -52,7 +53,6 @@ use crate::cfg::{BasicBlock, BlockName, Branch, BranchOp, CondVal, Identifier, S
 
 impl SimpleCfgFunction {
     pub(crate) fn simplify_branches(&mut self) {
-        // TODO: "compatibility check" when predecessor is a conditional branch.
         // Step 1: compute some information about the CFG.
         // * Find "administrative" nodes.
         // * Find conditional branches.
@@ -69,14 +69,17 @@ impl SimpleCfgFunction {
             let Some(lit) = to_lit(val) else {
                 continue;
             };
-            let node_bound = self.graph.node_bound();
+            // Count downwards from usize::MAX to avoid collisions with other placeholders
+            let node_bound = usize::MAX - self.graph.node_bound();
             let (source, target) = self.graph.edge_endpoints(edge).unwrap();
             let weight = self.graph.remove_edge(edge).unwrap();
             let mid = self
                 .graph
                 .add_node(BasicBlock::empty(BlockName::Placeholder(node_bound)));
             self.graph.add_edge(source, mid, weight);
-            // NB: We rely on the optimize_direct_jumps pass to collapse this back down.
+            // NB: We rely on the optimize_direct_jumps pass to collapse this
+            // back down. See really high placeholders in the final output? It's
+            // probably a bug in one of these two.
             self.graph.add_edge(
                 mid,
                 target,
@@ -93,37 +96,37 @@ impl SimpleCfgFunction {
         let doms = dominators::simple_fast(&self.graph, self.entry);
 
         // Step 4: Propagate known values through `id` instructions in the CFG.
-        let mut worklist = vec![self.entry];
-        while let Some(node) = worklist.pop() {
-            let block = &self.graph[node];
-            for (dst, src) in block.instrs.iter().filter_map(id_assigned) {
-                let Some(cs) = branch_meta.constants_known.by_id.get(&src) else {
-                    continue;
-                };
-                // If we are dominated by a block with a known value for `src`,
-                // propagate that value to `dst`.
-                let mut to_assign = None;
-                for (assign_loc, val) in cs {
-                    if doms
-                        .dominators(node)
-                        .into_iter()
-                        .flatten()
-                        .any(|dom| &dom == assign_loc)
-                    {
-                        to_assign = Some((node, dst.clone(), val.clone()));
-                        break;
-                    }
-                }
-                let Some((node, dst, val)) = to_assign else {
-                    continue;
-                };
-                branch_meta.constants_known.add_constant(node, dst, val);
-            }
-            // Add all nodes one down the dom tree to the worklist.
-            doms.immediately_dominated_by(node)
-                .filter(|n| *n != node)
-                .for_each(|dom| worklist.push(dom));
-        }
+        // let mut worklist = vec![self.entry];
+        // while let Some(node) = worklist.pop() {
+        //     let block = &self.graph[node];
+        //     for (dst, src) in block.instrs.iter().filter_map(id_assigned) {
+        //         let Some(cs) = branch_meta.constants_known.by_id.get(&src) else {
+        //             continue;
+        //         };
+        //         // If we are dominated by a block with a known value for `src`,
+        //         // propagate that value to `dst`.
+        //         let mut to_assign = None;
+        //         for (assign_loc, val) in cs {
+        //             if doms
+        //                 .dominators(node)
+        //                 .into_iter()
+        //                 .flatten()
+        //                 .any(|dom| &dom == assign_loc)
+        //             {
+        //                 to_assign = Some((dst.clone(), val.clone()));
+        //                 break;
+        //             }
+        //         }
+        //         let Some((dst, val)) = to_assign else {
+        //             continue;
+        //         };
+        //         branch_meta.constants_known.add_constant(node, dst, val);
+        //     }
+        //     // Add all nodes one down the dom tree to the worklist.
+        //     doms.immediately_dominated_by(node)
+        //         .filter(|n| *n != node)
+        //         .for_each(|dom| worklist.push(dom));
+        // }
 
         // Step 5: Rewrite branches:
         // * For each administrative node...
@@ -131,7 +134,6 @@ impl SimpleCfgFunction {
         // * Check if a predecessor [via edge e2] node is dominated by a node that has `v` as a known value for `id`.
         // * If so, copy the contents of the admin node to that predecessor, and reroute e2 to the target of e1.
         let mut scratch = Vec::new();
-        let mut consumed = HashSet::new();
         for admin_node in &branch_meta.admin_nodes {
             let mut walker = self
                 .graph
@@ -150,31 +152,54 @@ impl SimpleCfgFunction {
                     .detach();
 
                 while let Some((incoming, pred)) = incoming_walker.next(&self.graph) {
-                    let can_reroute = !consumed.contains(&pred)
-                        && branch_meta
-                            .constants_known
-                            .by_id
-                            .get(&arg)
-                            .map(|cs| {
-                                cs.iter().any(|(node, lit)| {
-                                    doms.dominators(pred)
-                                        .into_iter()
-                                        .flatten()
-                                        .any(|dom| &dom == node && lit == &val)
-                                })
+                    let can_reroute = branch_meta
+                        .constants_known
+                        .by_id
+                        .get(&arg)
+                        .map(|cs| {
+                            cs.iter().any(|(node, lit)| {
+                                doms.dominators(pred)
+                                    .into_iter()
+                                    .flatten()
+                                    .any(|dom| &dom == node && lit == &val)
                             })
-                            .unwrap_or(false);
-                    if can_reroute {
-                        let weight = self.graph.remove_edge(incoming).unwrap();
-                        // We only have to worry about `instrs` because we
-                        // checked that the footer was empty when populated
-                        // admin_nodes. We do this because we more or less don't
-                        // use footers on our way back to bril.
-                        scratch.extend(self.graph[*admin_node].instrs.iter().cloned());
+                        })
+                        .unwrap_or(false);
+                    if !can_reroute {
+                        continue;
+                    }
+
+                    let weight = self.graph.remove_edge(incoming).unwrap();
+                    // We only have to worry about `instrs` because we
+                    // checked that the footer was empty when we populated
+                    // admin_nodes. We do this because we more or less don't
+                    // use footers on our way back to bril.
+                    scratch.extend(self.graph[*admin_node].instrs.iter().cloned());
+                    let (_, target) = self.graph.edge_endpoints(outgoing).unwrap();
+                    let target_incoming = self
+                        .graph
+                        .neighbors_directed(target, Direction::Incoming)
+                        .count();
+                    let is_jump = matches!(weight.op, BranchOp::Jmp);
+                    // Now it comes to move the block somewhere: if the
+                    // incoming edge is a jump, then we would run all of the
+                    // instructions in the current block anyway, we can just
+                    // move them up.
+                    if is_jump {
                         self.graph[pred].instrs.append(&mut scratch);
-                        let (_, target) = self.graph.edge_endpoints(outgoing).unwrap();
                         self.graph.add_edge(pred, target, weight);
-                        consumed.insert(pred);
+                    } else if target_incoming == 0 {
+                        // The next safe case is if we are replacing the targets
+                        // only incoming edge. In that case, we can move the
+                        // data down.
+                        let target_block = &mut self.graph[target];
+                        scratch.append(&mut target_block.instrs);
+                        mem::swap(&mut target_block.instrs, &mut scratch);
+                        self.graph.add_edge(pred, target, weight);
+                    } else {
+                        // Otherwise we may need some sort of compatibility check to
+                        // merge the block somewhere. Add the edge back for now:
+                        self.graph.add_edge(*admin_node, target, weight);
                     }
                 }
             }
@@ -221,7 +246,7 @@ impl SimpleCfgFunction {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct BranchMetadata {
     /// Nodes that only contain administrative instructions.
     admin_nodes: IndexSet<NodeIndex>,
@@ -235,7 +260,7 @@ struct BranchMetadata {
 ///
 /// For now, the constants are always booleans, but we keep arbitrary
 /// Literals around to make it easier to handle multi-way branches later.
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct ConstantInfo {
     by_node: IndexMap<NodeIndex, IndexMap<Identifier, Literal>>,
     by_id: IndexMap<Identifier, Vec<(NodeIndex, Literal)>>,

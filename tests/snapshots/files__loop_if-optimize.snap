@@ -20,22 +20,22 @@ expression: visualization.result
   v6_: int = id v12_;
   v7_: bool = id v5_;
   v8_: int = id v13_;
-.b9_:
-  c14_: bool = const true;
+.v9_:
+  v14_: bool = const true;
   v15_: int = id v6_;
   v16_: bool = id c14_;
   v17_: int = id v8_;
-  br v5_ .b18_ .b19_;
-.b18_:
-  c20_: bool = const false;
+  br v5_ .v18_ .v19_;
+.v18_:
+  v20_: bool = const false;
   v15_: int = id v6_;
-  v16_: bool = id c20_;
+  v16_: bool = id c21_;
   v17_: int = id v8_;
-.b19_:
+.v19_:
   v21_: bool = not v5_;
   v2_: int = id v6_;
   v3_: int = id v8_;
-  br v21_ .b4_ .b22_;
-.b22_:
+  br v21_ .v4_ .v22_;
+.v22_:
   print v2_;
 }

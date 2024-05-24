@@ -1,0 +1,31 @@
+# ARGS: 1
+@main(arg: int) {
+  minus_one: int = const -1;
+  zero:      int = const 0;
+  one:       int = const 1;
+  two:       int = const 2;
+  three:     int = const 3;
+  ten:       int = const 10;
+
+  i: int = id zero;
+.loop_top:
+  loop_pred: bool = lt i ten;
+
+  isless: bool = le arg zero;
+  br isless .less .greater;
+.less:
+  result: int = const 1;
+  result_predicate: bool = const true;
+  jmp .done;
+.greater:
+  result: int = const 0;
+  result_predicate: bool = const false;
+
+.done:
+  print result;
+  print result_predicate;
+
+  i: int = add i one;
+  br loop_pred .loop_top .loop_bottom;
+.loop_bottom:
+}

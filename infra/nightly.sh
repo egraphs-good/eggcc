@@ -30,6 +30,7 @@ MYDIR="$(cd -P "$(dirname "$src")" && pwd)"
 TOP_DIR="$MYDIR/.."
 RESOURCE_DIR="$MYDIR/nightly-resources"
 NIGHTLY_DIR="$TOP_DIR/nightly"
+DATA_DIR="$TOP_DIR/nightly/data"
 
 # Make sure we're in the right place
 cd $MYDIR
@@ -46,8 +47,6 @@ mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$NIGHTLY_DIR/output"
 pushd $TOP_DIR
 
 # Run profiler.
-# create temporary directory structure necessary for bench runs
-mkdir -p ./tmp/bench
 
 # locally, run on argument
 if [ "$LOCAL" != "" ]; then
@@ -56,16 +55,14 @@ else
   export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
   make runtime
   # run on all benchmarks in nightly
-  ./infra/profile.py benchmarks/passing "$NIGHTLY_DIR" >> $NIGHTLY_DIR/log.txt 2>&1
+  ./infra/profile.py benchmarks/passing "$DATA_DIR" >> $NIGHTLY_DIR/log.txt 2>&1
 fi
 
 # Generate latex after running the profiler (depends on profile.json)
-./infra/generate_line_counts.py "$NIGHTLY_DIR" >> $NIGHTLY_DIR/log.txt 2>&1
+./infra/generate_line_counts.py "$DATA_DIR" >> $NIGHTLY_DIR/log.txt 2>&1
 
 # Generate CFGs for LLVM after running the profiler
-./infra/generate_cfgs.py "$NIGHTLY_DIR/data/llvm" >> $NIGHTLY_DIR/log.txt 2>&1
-
-rm -r ./tmp/
+./infra/generate_cfgs.py "$DATA_DIR/llvm" >> $NIGHTLY_DIR/log.txt 2>&1
 
 popd
 

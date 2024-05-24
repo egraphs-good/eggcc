@@ -3,23 +3,20 @@
 <html>
 
 <head>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.min.js"></script>
-  <script src="./Plugin.Errorbars.js"></script>
-  <script src="chart.js"></script>
   <script src="data.js"></script>
-  <script src="index.js"></script>
   <script src="handlers.js"></script>
-  <script src="previousRuns.js"></script>
-  <script src="table.js"></script>
-  <script src="utils.js"></script>
-  <script src="data/profile.json"></script>
+  <script src="index.js"></script>
+  <script src="llvm.js"></script>
 </head>
 
 <title>LLVM</title>
 
 <body onload="load_llvm()">
   <h2>LLVM</h2>
-  <div id="llvm"></div>
+  <button class="collapsible" onclick="toggleAllPngs(this)">Expand All</button>
+  <div id="llvm-cfg"></div>
+  <button type="button" class="collapsible" onclick="toggle(this, '\u25B6 Show LLVM', '\u25BC Hide LLVM')">\u25BC Hide LLVM</button>
+  <div id="llvm-ir" style="display: block;"></div>
 </body>
 
 </html>

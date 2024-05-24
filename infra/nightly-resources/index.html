@@ -7,12 +7,11 @@
   <script src="./Plugin.Errorbars.js"></script>
   <script src="chart.js"></script>
   <script src="data.js"></script>
-  <script src="index.js"></script>
   <script src="handlers.js"></script>
+  <script src="index.js"></script>
   <script src="previousRuns.js"></script>
   <script src="table.js"></script>
   <script src="utils.js"></script>
-  <script src="data/profile.json"></script>
 </head>
 
 <title>Nightlies</title>
@@ -22,13 +21,15 @@
   <h2>Profile</h2>
 
   <div>
-    <button type="button" class="collapsible" id="chart-toggle" onclick="toggleChart()">Hide Chart</button>
-    <input onclick="onRadioClick(this);" checked type="radio" id="absolute" name="chart-type" value="absolute">
-    <label for="absolute">Absolute</label>
-    <input onclick="onRadioClick(this);" type="radio" id="speedup" name="chart-type" value="speedup">
-    <label for="speedup">Speedup</label><br>
-    <p id="speedup-formula">Speedup = (LLVM-O0 TIME / RUN MODE TIME)</p>
-    <canvas class="content" id="chart"></canvas>
+    <button type="button" class="collapsible" onclick="toggle(this, '\u25B6 Show Chart', '\u25BC Hide Chart')">&#x25BC; Hide Chart</button>
+    <div class="expanded">
+      <input onclick="onRadioClick(this);" checked type="radio" id="absolute" name="chart-type" value="absolute">
+      <label for="absolute">Absolute</label>
+      <input onclick="onRadioClick(this);" type="radio" id="speedup" name="chart-type" value="speedup">
+      <label for="speedup">Speedup</label><br>
+      <p id="speedup-formula">Speedup = (LLVM-O0 TIME / RUN MODE TIME)</p>
+      <canvas class="content" id="chart"></canvas>
+    </div>
   </div>
 
   <div>
@@ -36,8 +37,13 @@
     <select id="comparison"></select>    
   </div>
 
-  <button type="button" class="collapsible" id="warnings-toggle" onclick="toggleWarnings()"></button>
-  <div class="content" id="warnings"></div>
+  <button
+    type="button"
+    class="collapsible"
+    id="warnings-toggle"
+    onclick="toggle(this, `\u25B6 Show ${GLOBAL_DATA.warnings.size} Warnings`, `\u25BC Hide ${GLOBAL_DATA.warnings.size} Warnings`)">
+  </button>
+  <div class="content collapsed" id="warnings"></div>
 
   <div class="filter-container">
     <div class="filters">

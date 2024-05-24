@@ -24,15 +24,16 @@ async function load_index() {
 
 // Top-level load function for the llvm page
 async function load_llvm() {
-  await loadCommonData();
   const params = new URLSearchParams(window.location.search);
   const benchmark = params.get("benchmark");
   const runMode = params.get("runmode");
+
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");
+    return;
   }
-  const llvm = await fetchText(`./data/llvm/${benchmark}-${runMode}.ll`);
-  document.getElementById("llvm").innerText = llvm;
+  showIR(benchmark, runMode);
+  showCFGs(benchmark, runMode);
 }
 
 async function load_table() {
@@ -99,32 +100,6 @@ async function loadBaseline(url) {
   refreshView();
 }
 
-function toggleWarnings() {
-  const elt = document.getElementById("warnings-toggle");
-  elt.classList.toggle("active");
-  const content = elt.nextElementSibling;
-  if (content.style.display === "block") {
-    elt.innerText = `Show ${GLOBAL_DATA.warnings.size} Warnings`;
-    content.style.display = "none";
-  } else {
-    elt.innerText = `Hide ${GLOBAL_DATA.warnings.size} Warnings`;
-    content.style.display = "block";
-  }
-}
-
-function toggleChart() {
-  const elt = document.getElementById("chart-toggle");
-  elt.classList.toggle("active");
-  const content = elt.nextElementSibling;
-  if (content.style.display === "block") {
-    elt.innerText = "Show Chart";
-    content.style.display = "none";
-  } else {
-    elt.innerText = "Hide Chart";
-    content.style.display = "block";
-  }
-}
-
 function onRadioClick(elt) {
   GLOBAL_DATA.chart.mode = elt.value;
   document.getElementById("speedup-formula").style.visibility =
@@ -134,4 +109,45 @@ function onRadioClick(elt) {
 
 function copyToClipboard(eltId) {
   navigator.clipboard.writeText(document.getElementById(eltId).innerText);
+}
+
+function expand(elt, labelElt, text) {
+  elt.classList.add("expanded");
+  elt.classList.remove("collapsed");
+  labelElt.innerText = text;
+}
+
+function collapse(elt, labelElt, text) {
+  elt.classList.add("collapsed");
+  elt.classList.remove("expanded");
+  labelElt.innerText = text;
+}
+
+function toggle(elt, showText, hideText) {
+  const content = elt.nextElementSibling;
+  if (content.classList.contains("expanded")) {
+    collapse(content, elt, showText);
+  } else {
+    expand(content, elt, hideText);
+  }
+}
+
+function toggleAllPngs(elt) {
+  const btns = Array.from(document.getElementsByClassName("pngToggle"));
+
+  if (elt.innerText == "Expand All") {
+    elt.innerText = "Collapse All";
+    btns.forEach((btn) => {
+      const txt = btn.innerText.replace("\u25B6 Show", "\u25BC Hide");
+      const content = btn.nextElementSibling;
+      expand(content, btn, txt);
+    });
+  } else {
+    elt.innerText = "Expand All";
+    btns.forEach((btn) => {
+      const txt = btn.innerText.replace("\u25BC Hide", "\u25B6 Show");
+      const content = btn.nextElementSibling;
+      collapse(content, btn, txt);
+    });
+  }
 }

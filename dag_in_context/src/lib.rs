@@ -318,7 +318,7 @@ fn egglog_test_internal(
     let program = format!("{}\n{build}\n{}\n{check}\n", prologue(), mk_schedule(),);
 
     if print_program {
-        eprintln!("{}\n{}", program, include_str!("utility/debug-helper.egg"));
+        eprintln!("{program}");
     }
 
     let res = egglog::EGraph::default()

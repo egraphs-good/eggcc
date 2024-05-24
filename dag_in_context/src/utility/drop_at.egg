@@ -136,13 +136,13 @@
 ;; ########################### Cleanup Dropat, DropAtInternal and DelayedDropUnion
 
 (rule ((ExprIsResolved (DropAt newctx idx in)))
-      ((delete (DropAt newctx idx in)))
+      ((subsume (DropAt newctx idx in)))
       :ruleset cleanup-drop)
 
 (rule ((ExprIsResolved (DropAtInternal newty newctx idx in)))
-      ((delete (DropAtInternal newty newctx idx in)))
+      ((subsume (DropAtInternal newty newctx idx in)))
       :ruleset cleanup-drop)
 
 (rule ((DelayedDropUnion lhs rhs))
-      ((delete (DelayedDropUnion lhs rhs)))
+      ((subsume (DelayedDropUnion lhs rhs)))
       :ruleset cleanup-drop)

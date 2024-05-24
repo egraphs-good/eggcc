@@ -115,14 +115,6 @@
       ((delete (IsNonEmpty-List<i64+IntInterval> a)))
       :ruleset debug-deletes)
 
-(rule ((DropAt b c d))
-      ((delete (DropAt b c d)))
-      :ruleset debug-deletes)
-
-(rule ((DropAtInternal a b c d))
-      ((delete (DropAtInternal a b c d)))
-      :ruleset debug-deletes)
-
 (rule ((TypeList-ith a b))
       ((delete (TypeList-ith a b)))
       :ruleset debug-deletes)

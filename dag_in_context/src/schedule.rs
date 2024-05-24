@@ -1,17 +1,10 @@
 pub(crate) fn helpers() -> String {
-    // 0 -> 101
-    // 1 -> 101
-    // 2 -> 119
-    // 3 -> 139
-    // 4 -> 183
-    // 5 -> 299
-    // 6 -> 631
     "
-(repeat 2
+(repeat 3
 
     (saturate type-helpers)
     (saturate error-checking)
-    passthrough
+    state-edge-passthrough
 
     (saturate
         (saturate type-helpers)
@@ -76,6 +69,8 @@ pub fn mk_schedule() -> String {
 ; TODO: add the optimizations back
 
 (run-schedule (saturate debug-deletes))
+
+(print-size WeSubsumedThis)
 "
     )
 }

@@ -1,5 +1,5 @@
 async function showIR(benchmark, runMode) {
-  const llvm = await fetchText(`./data/llvm/${benchmark}/${runMode}/llvm.ll`);
+  const llvm = await fetchText(`./data/llvm/${benchmark}/${runMode}/${benchmark}-${runMode}.ll`);
   document.getElementById("llvm-ir").innerText = llvm;
 }
 
@@ -7,9 +7,6 @@ async function showCFGs(benchmark, runMode) {
   let pngs = (
     await fetchText(`./data/llvm/${benchmark}/${runMode}/png_names.txt`)
   ).split("\n");
-
-  let d = await fetchJson(`./data/llvm/${benchmark}/${runMode}/`);
-  debugger;
 
   // Move main.png and _main.png to top
   const _main = "_main.png";

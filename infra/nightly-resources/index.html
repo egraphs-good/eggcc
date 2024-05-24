@@ -21,7 +21,7 @@
   <h2>Profile</h2>
 
   <div>
-    <button type="button" class="collapsible" onclick="toggle(this, '▶ Show Chart', '▼ Hide Chart')">▼ Hide Chart</button>
+    <button type="button" class="collapsible" onclick="toggle(this, '\u25B6 Show Chart', 'V Hide Chart')">V Hide Chart</button>
     <div style="display: block;">
       <input onclick="onRadioClick(this);" checked type="radio" id="absolute" name="chart-type" value="absolute">
       <label for="absolute">Absolute</label>
@@ -41,7 +41,7 @@
     type="button"
     class="collapsible"
     id="warnings-toggle"
-    onclick="toggle(this, `▶ Show ${GLOBAL_DATA.warnings.size} Warnings`, `▼ Hide ${GLOBAL_DATA.warnings.size} Warnings`)">
+    onclick="toggle(this, `\u25B6 Show ${GLOBAL_DATA.warnings.size} Warnings`, `\u25BC Hide ${GLOBAL_DATA.warnings.size} Warnings`)">
   </button>
   <div class="content" id="warnings"></div>
 
@@ -79,7 +79,7 @@
     <a href="table.html?table=benchmarks">Nightly Table</a>
   </p>
   <p>
-    <a href="log.txt">Log</a>
+    <a href="data/log.txt">Log</a>
   </p>
 </body>
 

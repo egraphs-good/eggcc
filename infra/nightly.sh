@@ -51,19 +51,19 @@ mkdir -p ./tmp/bench
 
 # locally, run on argument
 if [ "$LOCAL" != "" ]; then
-  ./infra/profile.py "$@" "$NIGHTLY_DIR"
+  ./infra/profile.py "$@" "$NIGHTLY_DIR" >> $NIGHTLY_DIR/log.txt 2>&1
 else
   export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
   make runtime
   # run on all benchmarks in nightly
-  ./infra/profile.py benchmarks/passing "$NIGHTLY_DIR"
+  ./infra/profile.py benchmarks/passing "$NIGHTLY_DIR" >> $NIGHTLY_DIR/log.txt 2>&1
 fi
 
 # Generate latex after running the profiler (depends on profile.json)
-./infra/generate_line_counts.py "$NIGHTLY_DIR"
+./infra/generate_line_counts.py "$NIGHTLY_DIR" >> $NIGHTLY_DIR/log.txt 2>&1
 
 # Generate CFGs for LLVM after running the profiler
-./infra/generate_cfgs.py "$NIGHTLY_DIR/data/llvm"
+./infra/generate_cfgs.py "$NIGHTLY_DIR/data/llvm" >> $NIGHTLY_DIR/log.txt 2>&1
 
 rm -r ./tmp/
 

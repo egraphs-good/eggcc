@@ -9,8 +9,17 @@ def make_cfgs(bench, data_dir):
   for mode in runmodes:
     os.chdir(f"{path}/{mode}")
 
+    # HACK: check if opt-18 exists
+    # otherwise use opt
+    # On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
+    # Also, on some machines, just running `opt-18` hangs, so we pass the version flag
+    if os.system("opt-18 --version") == 0:
+      opt = "opt-18"
+    else:
+      opt = "opt"
+
     # https://llvm.org/docs/Passes.html#dot-cfg-print-cfg-of-function-to-dot-file
-    cmd = "opt -disable-output -passes=dot-cfg llvm.ll > /dev/null 2>&1"
+    cmd = f"{opt} -disable-output -passes=dot-cfg llvm.ll"
     os.system(cmd)
 
     # Find all the dot files (can't use glob because it doesn't match hidden files)

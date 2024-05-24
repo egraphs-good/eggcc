@@ -8,6 +8,9 @@ async function showCFGs(benchmark, runMode) {
     await fetchText(`./data/llvm/${benchmark}/${runMode}/png_names.txt`)
   ).split("\n");
 
+  let d = await fetchJson(`./data/llvm/${benchmark}/${runMode}/`);
+  debugger;
+
   // Move main.png and _main.png to top
   const _main = "_main.png";
   if (pngs.includes(_main)) {
@@ -25,10 +28,11 @@ async function showCFGs(benchmark, runMode) {
     const elt = document.createElement("div");
 
     const btn = document.createElement("button");
-    btn.innerText = `▶ Show ${png}`;
+    btn.innerText = `\u25B6 Show ${png}`;
     btn.classList.add("collapsible");
+    btn.classList.add("pngToggle");
     btn.onclick = (elt) =>
-      toggle(elt.target, `▶ Show ${png}`, `▼ Hide ${png}`);
+      toggle(elt.target, `\u25B6 Show ${png}`, `\u25BC Hide ${png}`);
 
     elt.appendChild(btn);
 

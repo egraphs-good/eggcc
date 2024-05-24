@@ -452,7 +452,8 @@ impl<'a> RvsdgToCfg<'a> {
                 // shared vars will be created once something has been translated
                 let mut shared_vars = None;
 
-                let first_passthrough = self.find_passthrough_case(outputs);
+                let please_clean_up = false;
+                let first_passthrough = None; // self.find_passthrough_case(outputs);
 
                 // for each set of outputs in outputs, make a new block for them
                 for (i, outputs) in outputs.iter().enumerate() {

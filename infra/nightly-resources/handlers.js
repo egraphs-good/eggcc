@@ -1,6 +1,6 @@
 // Load data that both the index page and llvm page need
 async function loadCommonData() {
-  GLOBAL_DATA.currentRun = await fetchDataJson(".");
+  GLOBAL_DATA.currentRun = await fetchJson("./data/profile.json");
 }
 
 // Top-level load function for the main index page.
@@ -31,25 +31,18 @@ async function load_llvm() {
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");
   }
-  const entry = GLOBAL_DATA.currentRun.filter(
-    (entry) => entry.benchmark === benchmark && entry.runMethod === runMode,
-  );
-  if (entry.length !== 1) {
-    console.error(
-      `missing or duplicate entries for ${benchmark} and ${runMode}, this probably shouldn't happen`,
-    );
-  }
-  document.getElementById("llvm").innerText = entry[0].llvm_ir;
+  const llvm = await fetchText(`./data/llvm/${benchmark}-${runMode}.ll`);
+  document.getElementById("llvm").innerText = llvm;
 }
 
 async function load_table() {
   await loadCommonData();
   const params = new URLSearchParams(window.location.search);
   const table = params.get("table");
-  const resp = await fetch(`./data/${table}.tex`);
-  const text = await resp.text();
   document.getElementById("table-header").innerText = table;
-  document.getElementById("table").innerText = text;
+  const tex = await fetchText(`./data/${table}.tex`);
+  document.getElementById("table").innerText = tex;
+  document.getElementById("table-pdf").href = `./data/${table}.pdf`;
 }
 
 function selectAllModes(enabled) {
@@ -89,7 +82,7 @@ function toggleCheckbox(mode, set) {
 
 async function loadBaseline(url) {
   clearWarnings();
-  GLOBAL_DATA.baselineRun = await fetchDataJson(url);
+  GLOBAL_DATA.baselineRun = await fetchJson(`${url}/data/profile.json`);
 
   const baselineBenchmarks = new Set(
     GLOBAL_DATA.baselineRun.map((o) => o.benchmark),
@@ -134,6 +127,8 @@ function toggleChart() {
 
 function onRadioClick(elt) {
   GLOBAL_DATA.chart.mode = elt.value;
+  document.getElementById("speedup-formula").style.visibility =
+    elt.value === "speedup" ? "visible" : "hidden";
   refreshChart();
 }
 

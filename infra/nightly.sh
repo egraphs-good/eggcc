@@ -40,7 +40,7 @@ echo "Switching to nighly script directory: $MYDIR"
 rm -rf $NIGHTLY_DIR
 
 # Prepare output directories
-mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output"
+mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$NIGHTLY_DIR/output"
 
 
 pushd $TOP_DIR
@@ -59,10 +59,12 @@ else
   ./infra/profile.py benchmarks/passing "$NIGHTLY_DIR"
 fi
 
+# Generate latex after running the profiler (depends on profile.json)
+./infra/generate_line_counts.py "$NIGHTLY_DIR"
+
 rm -r ./tmp/
 
 popd
-
 
 # Update HTML index page.
 cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"

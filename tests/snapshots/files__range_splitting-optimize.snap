@@ -31,5 +31,26 @@ expression: visualization.result
   v12_: int = id v2_;
   jmp .v13_;
 .v17_:
+<<<<<<< HEAD
   print v2_;
+=======
+  v18_: int = id v9_;
+  br v11_ .v19_ .v20_;
+.v19_:
+  v18_: int = id v9_;
+.v20_:
+  v6_: int = id v18_;
+  br v11_ .v7_ .v21_;
+.v21_:
+  v3_: int = id v6_;
+  print v3_;
+  ret;
+.v14_:
+  v22_: int = const 2;
+  print v22_;
+  v16_: int = id v6_;
+  jmp .v17_;
+.v5_:
+  print v3_;
+>>>>>>> main
 }

@@ -9,9 +9,9 @@ expression: visualization.result
 .v3_:
   v5_: int = const 1;
   print v5_;
-  jmp .v6_;
+  ret;
 .v4_:
-  v7_: int = const 2;
-  print v7_;
-.v6_:
+  v6_: int = const 2;
+  print v6_;
+.v7_:
 }

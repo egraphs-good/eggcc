@@ -39,7 +39,7 @@ expression: visualization.result
   v30_: int = id v4_;
 .v31_:
   v5_: int = id v30_;
-  jmp .v6_;
+  ret v5_;
 .v24_:
   v32_: int = const -1;
   v33_: int = sub v32_ v4_;
@@ -284,7 +284,8 @@ expression: visualization.result
   v21_: int = id v4_;
 .v22_:
   v5_: int = id v21_;
-  jmp .v6_;
+  print v5_;
+  ret;
 .v17_:
   v23_: int = const -1;
   v24_: int = sub v23_ v4_;

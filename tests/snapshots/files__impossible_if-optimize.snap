@@ -11,7 +11,8 @@ expression: visualization.result
 .v5_:
   print v2_;
   v7_: int = id v2_;
-  jmp .v8_;
+  print v2_;
+  ret;
 .v6_:
   print v2_;
   v7_: int = id v2_;

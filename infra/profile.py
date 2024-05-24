@@ -7,8 +7,6 @@ from glob import glob
 from sys import stdout
 import subprocess
 
-from nightly_table import gen_nightly_table
-from gen_linecount import gen_linecount_table
 import concurrent.futures
 
 treatments = [
@@ -102,18 +100,16 @@ def should_have_llvm_ir(runMethod):
     "llvm-O3-eggcc",
   ]
 
-def get_llvm_ir(runMethod, benchmark):
-  path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}-{runMethod}.ll'
+def dump_llvm_ir(runMethod, benchmark, output_directory):
+  from_path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}-{runMethod}.ll'
 
-  try:
-    with open(path) as f:
-      return f.read()
-  except OSError:
-    return ""
+  to_path = f'{output_directory}/data/llvm/{benchmark}-{runMethod}.ll'
+
+  os.system(f'cp {from_path} {to_path}')
 
 
 # aggregate all profile info into a single json array.
-def aggregate(compile_times, bench_times):
+def aggregate(compile_times, bench_times, output_directory):
     res = []
 
     for path in sorted(compile_times.keys()):
@@ -121,14 +117,14 @@ def aggregate(compile_times, bench_times):
       runMethod = path.split("/")[-1]
       result = {"runMethod": runMethod, "benchmark": name, "hyperfine": bench_times[path], "compileTime": compile_times[path]}
       if should_have_llvm_ir(runMethod):
-        result["llvm_ir"] = get_llvm_ir(runMethod, name)
+        dump_llvm_ir(runMethod, name, output_directory)
 
       res.append(result)
     return res
 
 
 if __name__ == '__main__':
-  # expect a single argument
+  # expect two arguments
   if len(os.sys.argv) != 3:
     print("Usage: profile.py <bril_directory> <output_directory>")
     exit(1)
@@ -185,17 +181,6 @@ if __name__ == '__main__':
       (path, _bench_data) = res
       bench_data[path] = _bench_data
 
-  nightly_data = aggregate(compile_times, bench_data)
+  nightly_data = aggregate(compile_times, bench_data, output_path)
   with open(f"{output_path}/data/profile.json", "w") as profile:
     json.dump(nightly_data, profile, indent=2)
-
-  (overview, detailed) = gen_linecount_table()
-
-  with open(f"{output_path}/data/linecount.tex", "w") as linecount:
-      linecount.write(overview)
-
-  with open(f"{output_path}/data/detailed-linecount.tex", "w") as linecount:
-      linecount.write(detailed)
-
-  with open(f"{output_path}/data/nightlytable.tex", "w") as nightly_table:
-      nightly_table.write(gen_nightly_table(nightly_data))

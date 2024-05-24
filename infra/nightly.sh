@@ -69,8 +69,11 @@ popd
 # Update HTML index page.
 cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"
 
-# Copy json directory to the artifact
+# Copy data directory to the artifact
 cp -r "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output/data"
+
+# Copy log
+cp "$NIGHTLY_DIR/log.txt" "$NIGHTLY_DIR/output"
 
 # gzip all JSON in the nightly dir
 if [ "$LOCAL" == "" ]; then

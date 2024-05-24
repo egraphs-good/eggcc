@@ -135,8 +135,6 @@ if __name__ == '__main__':
   else:
     profiles = [bril_dir]
 
-  profiles = profiles[0:1]
-
   to_run = []
   index = 0
   total = len(profiles) * len(treatments)

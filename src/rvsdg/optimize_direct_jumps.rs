@@ -173,7 +173,7 @@ impl SimpleCfgProgram {
                 .iter()
                 .map(|f| {
                     // NB: We could avoid this copy by having `optimize_jumps` take `self` by value.
-                    let mut res = f.optimize_jumps();
+                    let mut res = f.clone();
                     res.simplify_branches();
                     res.optimize_jumps()
                 })

@@ -38,26 +38,24 @@
 //!
 //! The algorithm code is fairly heavily commented.
 
-use std::{collections::VecDeque, iter::once, mem};
+use std::{collections::VecDeque, mem};
 
+use crate::cfg::{BasicBlock, BlockName, Branch, BranchOp, CondVal, Identifier, SimpleCfgFunction};
 use bril_rs::{Argument, Instruction, Literal, Type, ValueOps};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use indexmap::{IndexMap, IndexSet};
 use petgraph::{
-    algo::dominators,
     graph::{EdgeIndex, NodeIndex},
     visit::{Dfs, NodeIndexable},
     Direction,
 };
-
-use crate::cfg::{BasicBlock, BlockName, Branch, BranchOp, CondVal, Identifier, SimpleCfgFunction};
 
 impl SimpleCfgFunction {
     pub(crate) fn simplify_branches(&mut self) {
         // Step 1: compute some information about the CFG.
         // * Find "administrative" nodes.
         // * Find conditional branches.
-        let mut branch_meta = self.get_branch_metadata();
+        let branch_meta = self.get_branch_metadata();
         let mut val_analysis = ValueAnalysis::new(self);
         // Step 2: split conditional branches and mark the relevant constants as
         // known in the later nodes. This lets us reuse the builtin dominance
@@ -92,46 +90,11 @@ impl SimpleCfgFunction {
                     pos: None,
                 },
             );
-
             val_analysis.add_assignment(mid, id.clone(), ValueInfo::Known(lit));
-
         }
-        // Step 3: Compute dominators for the graph. We'll use this for step 4 and step 5.
-        let doms = dominators::simple_fast(&self.graph, self.entry);
-
-        // Step 4: Propagate known values through `id` instructions in the CFG.
-        let mut worklist = vec![self.entry];
-        while let Some(node) = worklist.pop() {
-            let block = &self.graph[node];
-            for (dst, src) in block.instrs.iter().filter_map(id_assigned) {
-                let Some(cs) = branch_meta.constants_known.by_id.get(&src) else {
-                    continue;
-                };
-                // If we are dominated by a block with a known value for `src`,
-                // propagate that value to `dst`.
-                let mut to_assign = None;
-                for (assign_loc, val) in cs {
-                    if doms
-                        .dominators(node)
-                        .into_iter()
-                        .flatten()
-                        .any(|dom| &dom == assign_loc)
-                    {
-                        to_assign = Some((dst.clone(), val.clone()));
-                        break;
-                    }
-                }
-                let Some((dst, val)) = to_assign else {
-                    continue;
-                };
-                branch_meta.constants_known.add_constant(node, dst, val);
-            }
-            // Add all nodes one down the dom tree to the worklist.
-            doms.immediately_dominated_by(node)
-                .filter(|n| *n != node)
-                .for_each(|dom| worklist.push(dom));
-        }
-
+        val_analysis.compute_fixpoint(self);
+        let please_remove = 1;
+        eprintln!("pre-merge=\n{}", self.to_bril());
         // Step 5: Rewrite branches:
         // * For each administrative node...
         // * For each outgoing branch [edge e1] with cond val `v` for `id`
@@ -143,40 +106,48 @@ impl SimpleCfgFunction {
                 .graph
                 .neighbors_directed(*admin_node, Direction::Outgoing)
                 .detach();
-            while let Some((outgoing, _)) = walker.next(&self.graph) {
+            while let Some((outgoing, succ)) = walker.next(&self.graph) {
                 let BranchOp::Cond { arg, val, .. } = self.graph[outgoing].op.clone() else {
                     continue;
                 };
                 let Some(val) = to_lit(&val) else {
                     continue;
                 };
+                if val_analysis.data[admin_node].kills.contains(&arg) {
+                    // We assign the to the branched-on argument in the admin
+                    // node. See if we can fold the constant branch here.
+                    let ValueInfo::Known(lit) = val_analysis.data[admin_node].get_output(&arg)
+                    else {
+                        continue;
+                    };
+                    if lit != val {
+                        continue;
+                    }
+                    // okay, we have found a matching edge. That means we can
+                    // inline the the successor block into this one and merge
+                    // with the next block and inherit its edges.
+                    scratch.extend(self.graph[succ].instrs.iter().cloned());
+                    self.graph[*admin_node].instrs.append(&mut scratch);
+                    let mut walker = self
+                        .graph
+                        .neighbors_directed(*admin_node, Direction::Outgoing)
+                        .detach();
+                    while let Some((outgoing, _)) = walker.next(&self.graph) {
+                        self.graph.remove_edge(outgoing);
+                    }
+                    while let Some((outgoing, succsucc)) = walker.next(&self.graph) {
+                        let weight = self.graph[outgoing].clone();
+                        self.graph.add_edge(*admin_node, succsucc, weight);
+                    }
+                    // Don't run the rest of the loop.
+                    break;
+                }
                 let mut incoming_walker = self
                     .graph
                     .neighbors_directed(*admin_node, Direction::Incoming)
                     .detach();
-
                 while let Some((incoming, pred)) = incoming_walker.next(&self.graph) {
-                    let can_reroute = branch_meta
-                        .constants_known
-                        .by_id
-                        .get(&arg)
-                        .map(|cs| {
-                            cs.iter().any(|(node, lit)| {
-                                doms.dominators(pred).into_iter().flatten().any(|dom| {
-                                    let please_restore=1;
-                                    let res = &dom == node && lit == &val;
-                                    if res {
-                                        eprintln!("predecessor {} of {} is dominated by {} which assigns {arg} to {val}",
-                                   self.graph[pred].name, 
-                                   self.graph[*admin_node].name, 
-                                   self.graph[dom].name, 
-                                    );
-                                    }
-                                    res
-                                })
-                            })
-                        })
-                        .unwrap_or(false);
+                    let can_reroute = matches!(val_analysis.data[&pred].get_output(&arg), ValueInfo::Known(v) if v == val);
                     if !can_reroute {
                         continue;
                     }
@@ -234,9 +205,6 @@ impl SimpleCfgFunction {
             }
         }
 
-        let please_remove = 1;
-        eprintln!("entry={:?}, exit={:?}", self.entry, self.exit);
-
         // Step 6: Remove any nodes no longer reachable from the entry.
         let mut walker = Dfs::new(&self.graph, self.entry);
         while walker.next(&self.graph).is_some() {}
@@ -250,6 +218,9 @@ impl SimpleCfgFunction {
         for node_id in to_remove {
             self.graph.remove_node(node_id);
         }
+
+        let please_remove = 1;
+        eprintln!("post-merge=\n{}", self.to_bril());
     }
 
     fn get_branch_metadata(&self) -> BranchMetadata {
@@ -371,7 +342,7 @@ fn to_lit(cv: &CondVal) -> Option<Literal> {
 }
 
 /// A basic semilattice describing the state of a value.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 enum ValueInfo {
     #[default]
     Bot,
@@ -403,6 +374,7 @@ impl ValueInfo {
 }
 
 /// Monotone transforms on ValueInfos.
+#[derive(Debug)]
 enum Transform {
     Id,
     Negate,
@@ -424,7 +396,7 @@ impl Transform {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct ValueState {
     inherited: IndexMap<Identifier, ValueInfo>,
     transforms: VecDeque<(
@@ -432,14 +404,15 @@ struct ValueState {
         Identifier, /* src */
         Transform,
     )>,
+    kills: HashSet<Identifier>,
     outputs: IndexMap<Identifier, ValueInfo>,
     recompute: bool,
 }
 
 impl ValueState {
-    fn maybe_recompute(&mut self) -> bool{
+    fn maybe_recompute(&mut self) -> bool {
         let res = self.recompute;
-if self.recompute {
+        if self.recompute {
             self.outputs.clear();
             for (id, info) in &self.inherited {
                 self.outputs.insert(id.clone(), info.clone());
@@ -448,6 +421,7 @@ if self.recompute {
                 let src_val = self.outputs.get(src).unwrap_or(&ValueInfo::Bot);
                 let dst_val = transform.apply(src_val);
                 self.outputs.insert(dst.clone(), dst_val);
+                self.kills.insert(dst.clone());
             }
 
             self.recompute = false;
@@ -475,7 +449,7 @@ if self.recompute {
         }
     }
 
-    fn merge_from(&mut self, other: &ValueState)  {
+    fn merge_from(&mut self, other: &ValueState) {
         let mut changed = false;
         for (id, out) in other.outputs() {
             changed |= self.inherited.entry(id.clone()).or_default().merge(out);
@@ -545,14 +519,15 @@ if self.recompute {
     }
 }
 
-
 struct ValueAnalysis {
     data: HashMap<NodeIndex, ValueState>,
 }
 
 impl ValueAnalysis {
     fn new(graph: &SimpleCfgFunction) -> ValueAnalysis {
-        let mut res = ValueAnalysis { data: Default::default() };
+        let mut res = ValueAnalysis {
+            data: Default::default(),
+        };
         for node in graph.graph.node_indices() {
             res.data.insert(node, ValueState::new(&graph.graph[node]));
         }
@@ -566,12 +541,18 @@ impl ValueAnalysis {
     }
     fn add_assignment(&mut self, node: NodeIndex, dst: Identifier, val: ValueInfo) {
         let state = self.data.entry(node).or_default();
-        state.transforms.push_front((dst, Identifier::Num(usize::MAX), Transform::OverWrite(val)));
+        state
+            .transforms
+            .push_front((dst, Identifier::Num(usize::MAX), Transform::OverWrite(val)));
         state.recompute = true;
     }
 
     fn compute_fixpoint(&mut self, func: &SimpleCfgFunction) {
-        let mut worklist = IndexSet::<NodeIndex>::from_iter(once(func.entry));
+        let mut worklist = IndexSet::<NodeIndex>::default();
+        for node in func.graph.node_indices() {
+            self.data.entry(node).or_default().maybe_recompute();
+            worklist.insert(node);
+        }
         while let Some(node) = worklist.pop() {
             let mut cur = mem::take(self.data.get_mut(&node).unwrap());
             for incoming in func.graph.neighbors_directed(node, Direction::Incoming) {

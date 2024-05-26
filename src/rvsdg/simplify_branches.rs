@@ -19,30 +19,36 @@
 //! Meyer, but with some changes:
 //!
 //!  * PCFR operates on the RVSDG directly, while this algorithm operates on the
-//!  resulting CFG.
-//!  * PCFR seems to rely on an RVSDG in _predicate continuation form_, where
-//!  predicates are introduced immediately before they are used. While it is
-//!  possible that eggcc preserves this property, we weren't able to convince
-//!  ourselves of it. The algorithm in this module is robust to some predicates
-//!  being reordered around (e.g.) effectful operations.
+//!  resulting CFG. This is pragmatically useful for eggcc, which already has
+//!  fairly involved RVSDG=>CFG conversion code.
+//!  * PCFR expects an RVSDG in _predicate continuation form_, where predicates
+//!  are introduced immediately before they are used. eggcc almost certainly
+//!  does not preserve this property, and we want to avoid duplicating or
+//!  splitting RVSDG nodes to reintroduce it. The algorithm in this module is
+//!  robust to some predicates being used more than once, sometiems across
+//!  branches.
 //!  * The algorithm in this module has not been optimized for efficiency and as
 //!  a result is likely slower than a good implementation of PCFR. This doesn't
 //!  seem like an inherent issue and the performance of the two should be
 //!  similar after some optimization.
+//!  * The paper from Bahman et. al. also sketches a "ShortCircuitCFG" algorithm
+//!  that is similar to the algorithm here, but appears to make some simplifying
+//!  assumptions related to predicate continuation form.
 //!
-//! Lastly, the algorithm as written assumes that the CFG has the structure
-//! guaranteed by the RVSDG=>CFG conversion: in particular we assume that the
-//! CFG is almost in SSA form, where the only SSA violations occur in assignment
-//! statements that do not lie on the same path through the CFG without
-//! traversing a cycle.
-//!
-//! The algorithm code is fairly heavily commented.
+//! The algorithm code is fairly heavily commented. It relies on computing the
+//! fixpoint of a monotone dataflow analysis tracking the value of boolean
+//! identifiers at each CFG node. This analysis should converge quickly given
+//! the structure of the CFGs we generate, but the current implementation
+//! involves lots of copying of data: If the CFG were in SSA form, I believe
+//! that we could build a more efficient analysis by looking at nodes where
+//! variables are assigned (or branch targets) and relying on dominance
+//! information to infer whether a boolean variable has a known value at a node.
 
 use std::{collections::VecDeque, mem};
 
 use crate::cfg::{BasicBlock, BlockName, Branch, BranchOp, CondVal, Identifier, SimpleCfgFunction};
 use bril_rs::{Argument, Instruction, Literal, Type, ValueOps};
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
 use indexmap::{IndexMap, IndexSet};
 use petgraph::{
     graph::{EdgeIndex, NodeIndex},
@@ -55,12 +61,13 @@ impl SimpleCfgFunction {
         // Step 1: compute some information about the CFG.
         // * Find "administrative" nodes.
         // * Find conditional branches.
+        // * Start off a Value Analysis for the function.
         let branch_meta = self.get_branch_metadata();
         let mut val_analysis = ValueAnalysis::new(self);
         // Step 2: split conditional branches and mark the relevant constants as
-        // known in the later nodes. This lets us reuse the builtin dominance
-        // algorithm from petgraph, even though we really want to compute edge
-        // dominance
+        // known in the later nodes. This lets us simplify the value analysis by
+        // having empty nodes enncapsulate the information imparted by the
+        // branch.
         for (id, edge, val) in branch_meta
             .branches
             .iter()
@@ -73,10 +80,7 @@ impl SimpleCfgFunction {
             let node_bound = usize::MAX - self.graph.node_bound();
             let (source, target) = self.graph.edge_endpoints(edge).unwrap();
             let weight = self.graph.remove_edge(edge).unwrap();
-            // let block_name = BlockName::Placeholder(node_bound);
-            let block_name =
-                BlockName::Named(format!("_{node_bound}_branch_on_{id}_val_{}", val.val));
-            let please_change_block_name = 1;
+            let block_name = BlockName::Placeholder(node_bound);
             let mid = self.graph.add_node(BasicBlock::empty(block_name));
             self.graph.add_edge(source, mid, weight);
             // NB: We rely on the optimize_direct_jumps pass to collapse this
@@ -92,56 +96,66 @@ impl SimpleCfgFunction {
             );
             val_analysis.add_assignment(mid, id.clone(), ValueInfo::Known(lit));
         }
+
+        // Add a "spcaer" node between a basic block and any outgoing branches.
+        // This makes it easier to reroute direct jumps to a known constant value.
+        let to_space = Vec::from_iter(self.graph.node_indices().filter(|node| {
+            self.graph
+                .edges_directed(*node, Direction::Outgoing)
+                .any(|x| matches!(x.weight().op, BranchOp::Cond { .. }))
+        }));
+
+        for node in to_space {
+            let node_bound = usize::MAX - self.graph.node_bound();
+            let spacer = self
+                .graph
+                .add_node(BasicBlock::empty(BlockName::Placeholder(node_bound)));
+            let mut walker = self
+                .graph
+                .neighbors_directed(node, Direction::Outgoing)
+                .detach();
+            while let Some((edge, target)) = walker.next(&self.graph) {
+                let weight = self.graph.remove_edge(edge).unwrap();
+                self.graph.add_edge(spacer, target, weight);
+            }
+            self.graph.add_edge(
+                node,
+                spacer,
+                Branch {
+                    op: BranchOp::Jmp,
+                    pos: None,
+                },
+            );
+        }
+        // Step 3: Compute the fixpoint of the value analysis.
         val_analysis.compute_fixpoint(self);
-        let please_remove = 1;
-        eprintln!("pre-merge=\n{}", self.to_bril());
-        // Step 5: Rewrite branches:
-        // * For each administrative node...
+        // Step 4: Rewrite branches:
+        // * For each administrative node `n``...
         // * For each outgoing branch [edge e1] with cond val `v` for `id`
-        // * Check if a predecessor [via edge e2] node is dominated by a node that has `v` as a known value for `id`.
-        // * If so, copy the contents of the admin node to that predecessor, and reroute e2 to the target of e1.
+        // * Check if `id` was written to in `n`, if it was, then move on
+        // _unless_ we know the value of `id`; in which case we can inline the
+        // successor into `n` and inherit its successors.`
+        // * Otherwise, check if a predecessor [via edge e2] node has `v` as a
+        // known value for `id`.
+        // * If so, copy the contents of the admin node to that predecessor, and
+        // reroute e2 to the target of e1.
         let mut scratch = Vec::new();
         for admin_node in &branch_meta.admin_nodes {
             let mut walker = self
                 .graph
                 .neighbors_directed(*admin_node, Direction::Outgoing)
                 .detach();
-            while let Some((outgoing, succ)) = walker.next(&self.graph) {
+            // Don't reroute past the exit node. We want to make sure it stays reachable.
+            if admin_node == &self.exit {
+                continue;
+            }
+            while let Some((outgoing, _)) = walker.next(&self.graph) {
                 let BranchOp::Cond { arg, val, .. } = self.graph[outgoing].op.clone() else {
                     continue;
                 };
                 let Some(val) = to_lit(&val) else {
                     continue;
                 };
-                if val_analysis.data[admin_node].kills.contains(&arg) {
-                    // We assign the to the branched-on argument in the admin
-                    // node. See if we can fold the constant branch here.
-                    let ValueInfo::Known(lit) = val_analysis.data[admin_node].get_output(&arg)
-                    else {
-                        continue;
-                    };
-                    if lit != val {
-                        continue;
-                    }
-                    // okay, we have found a matching edge. That means we can
-                    // inline the the successor block into this one and merge
-                    // with the next block and inherit its edges.
-                    scratch.extend(self.graph[succ].instrs.iter().cloned());
-                    self.graph[*admin_node].instrs.append(&mut scratch);
-                    let mut walker = self
-                        .graph
-                        .neighbors_directed(*admin_node, Direction::Outgoing)
-                        .detach();
-                    while let Some((outgoing, _)) = walker.next(&self.graph) {
-                        self.graph.remove_edge(outgoing);
-                    }
-                    while let Some((outgoing, succsucc)) = walker.next(&self.graph) {
-                        let weight = self.graph[outgoing].clone();
-                        self.graph.add_edge(*admin_node, succsucc, weight);
-                    }
-                    // Don't run the rest of the loop.
-                    break;
-                }
                 let mut incoming_walker = self
                     .graph
                     .neighbors_directed(*admin_node, Direction::Incoming)
@@ -169,24 +183,10 @@ impl SimpleCfgFunction {
                     // instructions in the current block anyway, we can just
                     // move them up.
                     if is_jump {
-                        let please_remove = 1;
-                        eprintln!(
-                            "rerouting (jump) {} -> {} -> {}",
-                            self.graph[pred].name,
-                            self.graph[*admin_node].name,
-                            self.graph[target].name
-                        );
                         self.graph[pred].instrs.append(&mut scratch);
                         self.graph.add_edge(pred, target, weight);
                         break;
                     } else if target_incoming == 0 {
-                        let please_remove = 1;
-                        eprintln!(
-                            "rerouting (cond) {} -> {} -> {}",
-                            self.graph[pred].name,
-                            self.graph[*admin_node].name,
-                            self.graph[target].name
-                        );
                         // The next safe case is if we are replacing the targets
                         // only incoming edge. In that case, we can move the
                         // data down.
@@ -205,22 +205,22 @@ impl SimpleCfgFunction {
             }
         }
 
-        // Step 6: Remove any nodes no longer reachable from the entry.
+        // Step 5: Remove any nodes no longer reachable from the entry.
         let mut walker = Dfs::new(&self.graph, self.entry);
         while walker.next(&self.graph).is_some() {}
         let mut to_remove = vec![];
         for node_id in self.graph.node_indices() {
             if !walker.discovered.contains(node_id.index()) {
-                eprintln!("removing {node_id:?} aka {}", self.graph[node_id].name);
                 to_remove.push(node_id);
+                assert_ne!(
+                    node_id, self.exit,
+                    "branch simplification removed the exit node!"
+                );
             }
         }
         for node_id in to_remove {
             self.graph.remove_node(node_id);
         }
-
-        let please_remove = 1;
-        eprintln!("post-merge=\n{}", self.to_bril());
     }
 
     fn get_branch_metadata(&self) -> BranchMetadata {
@@ -313,21 +313,6 @@ fn constants_assigned(inst: &Instruction) -> Option<(Identifier, Literal)> {
     }
 }
 
-fn id_assigned(inst: &Instruction) -> Option<(Identifier, Identifier)> {
-    if let Instruction::Value {
-        dest,
-        op: ValueOps::Id,
-        args,
-        ..
-    } = inst
-    {
-        assert_eq!(args.len(), 1);
-        Some((dest.into(), args[0].clone().into()))
-    } else {
-        None
-    }
-}
-
 fn to_lit(cv: &CondVal) -> Option<Literal> {
     if cv.of == 2 {
         Some(if cv.val == 0 {
@@ -358,7 +343,7 @@ impl ValueInfo {
                 *slf = x.clone();
                 true
             }
-            (ValueInfo::Top, x) => false,
+            (ValueInfo::Top, _) => false,
             (slf, ValueInfo::Top) => {
                 *slf = ValueInfo::Top;
                 true
@@ -396,16 +381,20 @@ impl Transform {
     }
 }
 
+/// The state of the (boolean) values in a particular basic block.
 #[derive(Default, Debug)]
 struct ValueState {
+    /// The (pointwise) join of all of the values in incoming branches.
     inherited: IndexMap<Identifier, ValueInfo>,
+    /// The transforms induced by any operations on variables in the block.
     transforms: VecDeque<(
         Identifier, /* dst  */
         Identifier, /* src */
         Transform,
     )>,
-    kills: HashSet<Identifier>,
+    /// The materialized output of transforms on inherited.
     outputs: IndexMap<Identifier, ValueInfo>,
+    /// A variable indicating if `outputs` is stale.
     recompute: bool,
 }
 
@@ -421,7 +410,6 @@ impl ValueState {
                 let src_val = self.outputs.get(src).unwrap_or(&ValueInfo::Bot);
                 let dst_val = transform.apply(src_val);
                 self.outputs.insert(dst.clone(), dst_val);
-                self.kills.insert(dst.clone());
             }
 
             self.recompute = false;
@@ -547,6 +535,7 @@ impl ValueAnalysis {
         state.recompute = true;
     }
 
+    /// A simple worklist algorithm for propagating values through the CFG.
     fn compute_fixpoint(&mut self, func: &SimpleCfgFunction) {
         let mut worklist = IndexSet::<NodeIndex>::default();
         for node in func.graph.node_indices() {

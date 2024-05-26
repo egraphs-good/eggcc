@@ -26,16 +26,13 @@ expression: visualization.result
   v13_: int = id v20_;
   v14_: int = id v6_;
   v15_: int = id v7_;
-  v4_: int = id v12_;
-  v5_: int = id v13_;
-  v6_: int = id v14_;
-  v7_: int = id v15_;
-  jmp .v8_;
 .v17_:
   v4_: int = id v12_;
   v5_: int = id v13_;
   v6_: int = id v14_;
   v7_: int = id v15_;
+  br v11_ .v8_ .v21_;
+.v21_:
   print v4_;
 }
 @main {
@@ -71,16 +68,13 @@ expression: visualization.result
   v20_: int = id v27_;
   v21_: int = id v14_;
   v22_: int = id v15_;
-  v12_: int = id v19_;
-  v13_: int = id v20_;
-  v14_: int = id v21_;
-  v15_: int = id v22_;
-  jmp .v16_;
 .v24_:
   v12_: int = id v19_;
   v13_: int = id v20_;
   v14_: int = id v21_;
   v15_: int = id v22_;
+  br v18_ .v16_ .v28_;
+.v28_:
   v6_: int = id v12_;
   v7_: int = id v13_;
   v8_: int = id v14_;

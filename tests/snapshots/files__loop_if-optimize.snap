@@ -29,7 +29,7 @@ expression: visualization.result
 .v18_:
   v20_: bool = const false;
   v15_: int = id v6_;
-  v16_: bool = id c21_;
+  v16_: bool = id v20_;
   v17_: int = id v8_;
 .v19_:
   v21_: bool = not v5_;

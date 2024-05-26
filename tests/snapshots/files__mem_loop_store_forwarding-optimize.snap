@@ -14,17 +14,12 @@ expression: visualization.result
   v9_: ptr<int> = id v3_;
   v10_: ptr<int> = id v7_;
   v11_: bool = id v0;
-  v8_: ptr<int> = id v9_;
-  v9_: ptr<int> = id v8_;
-  v10_: ptr<int> = id v10_;
-  v11_: bool = id v11_;
-  br v11_ .v12_ .v13_;
 .v12_:
   v8_: ptr<int> = id v9_;
   v9_: ptr<int> = id v8_;
   v10_: ptr<int> = id v10_;
   v11_: bool = id v11_;
-  jmp .v12_;
+  br v11_ .v12_ .v13_;
 .v13_:
   v14_: int = const 10;
   v15_: int = const 20;

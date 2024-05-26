@@ -43,8 +43,8 @@ expression: visualization.result
   v10_: int = const 5;
   v11_: bool = lt v6_ v10_;
   br v11_ .v12_ .v13_;
-.v12_:
-  v14_: int = const 1;
+.v13_:
+  v14_: int = const 2;
   print v14_;
   v15_: int = id v6_;
 .v16_:
@@ -52,17 +52,17 @@ expression: visualization.result
   v18_: int = add v17_ v6_;
   v19_: int = id v18_;
   br v9_ .v20_ .v21_;
-.v20_:
-  v19_: int = id v18_;
-  v6_: int = id v19_;
-  jmp .v7_;
 .v21_:
   v6_: int = id v19_;
   v3_: int = id v6_;
   print v3_;
   ret;
-.v13_:
-  v22_: int = const 2;
+.v20_:
+  v19_: int = id v18_;
+  v6_: int = id v19_;
+  jmp .v7_;
+.v12_:
+  v22_: int = const 1;
   print v22_;
   v15_: int = id v6_;
   jmp .v16_;

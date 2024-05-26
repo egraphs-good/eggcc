@@ -24,6 +24,7 @@ expression: visualization.result
   v19_: int = id v9_;
   v20_: int = id v10_;
   v21_: int = id v11_;
+<<<<<<< HEAD
   br v13_ .b22_ .b23_;
 .b23_:
   v24_: int = div v7_ v8_;
@@ -53,12 +54,18 @@ expression: visualization.result
   v21_: int = id v11_;
 .b22_:
   v42_: bool = not v13_;
+=======
+  br v13_ .v22_ .v23_;
+.v22_:
+  v24_: bool = not v13_;
+>>>>>>> b975e017 (Run branch_simplify in a fixed point)
   v6_: int = id v15_;
   v7_: int = id v17_;
   v8_: int = id v8_;
   v9_: int = id v9_;
   v10_: int = id v10_;
   v11_: int = id v11_;
+<<<<<<< HEAD
   br v42_ .b12_ .b43_;
 .b30_:
   c44_: bool = const true;
@@ -73,5 +80,48 @@ expression: visualization.result
   v39_: int = id v11_;
   jmp .b40_;
 .b43_:
+=======
+  br v24_ .v12_ .v25_;
+.v23_:
+  v26_: int = div v7_ v8_;
+  v27_: int = mul v26_ v8_;
+  v28_: int = sub v7_ v27_;
+  v29_: bool = eq v11_ v28_;
+  v30_: int = add v6_ v9_;
+  br v29_ .v31_ .v32_;
+.v32_:
+  v33_: bool = const true;
+  v34_: int = mul v10_ v7_;
+  v35_: int = add v34_ v9_;
+  v36_: int = id v30_;
+  v37_: bool = id v33_;
+  v38_: int = id v35_;
+  v39_: int = id v8_;
+  v40_: int = id v9_;
+  v41_: int = id v10_;
+  v42_: int = id v11_;
+.v43_:
+  v44_: bool = const true;
+  v15_: int = id v30_;
+  v16_: bool = id v44_;
+  v17_: int = id v38_;
+  v18_: int = id v8_;
+  v19_: int = id v9_;
+  v20_: int = id v10_;
+  v21_: int = id v11_;
+  jmp .v22_;
+.v31_:
+  v45_: bool = const true;
+  v46_: int = div v7_ v8_;
+  v36_: int = id v30_;
+  v37_: bool = id v45_;
+  v38_: int = id v46_;
+  v39_: int = id v8_;
+  v40_: int = id v9_;
+  v41_: int = id v10_;
+  v42_: int = id v11_;
+  jmp .v43_;
+.v25_:
+>>>>>>> b975e017 (Run branch_simplify in a fixed point)
   print v6_;
 }

@@ -15,6 +15,7 @@ expression: visualization.result
   v10_: bool = lt v8_ c9_;
   print v8_;
   v11_: int = id v8_;
+<<<<<<< HEAD
   br v10_ .b12_ .b13_;
 .b12_:
   c14_: int = const 1;
@@ -35,6 +36,31 @@ expression: visualization.result
 .b13_:
   v4_: int = id v11_;
 .b6_:
+=======
+  br v10_ .v12_ .v13_;
+.v13_:
+  v4_: int = id v11_;
+  ret v4_;
+.v12_:
+  v14_: int = const 1;
+  v15_: int = add v14_ v8_;
+  v16_: int = const 2;
+  v17_: bool = lt v15_ v16_;
+  print v15_;
+  v18_: int = id v15_;
+  br v17_ .v19_ .v20_;
+.v20_:
+  v11_: int = id v18_;
+  jmp .v13_;
+.v19_:
+  v21_: int = const 1;
+  v22_: int = add v15_ v21_;
+  print v22_;
+  v23_: int = call @inc v22_;
+  v18_: int = id v23_;
+  jmp .v20_;
+.v6_:
+>>>>>>> b975e017 (Run branch_simplify in a fixed point)
   ret v4_;
 }
 @main {

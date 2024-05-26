@@ -3,6 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: bool) {
+<<<<<<< HEAD
 .b1_:
   c2_: int = const 1;
   v3_: ptr<int> = alloc c2_;
@@ -10,15 +11,30 @@ expression: visualization.result
 .b4_:
   c6_: int = const 2;
   store v3_ c6_;
+=======
+.v1_:
+  v2_: int = const 1;
+  v3_: ptr<int> = alloc v2_;
+  br v0 .v4_ .v5_;
+.v5_:
+  v6_: int = const 3;
+  store v3_ v6_;
+>>>>>>> b975e017 (Run branch_simplify in a fixed point)
   v7_: ptr<int> = id v3_;
   v8_: int = load v3_;
   v9_: int = load v3_;
   print v8_;
   free v3_;
   ret;
+<<<<<<< HEAD
 .b5_:
   c10_: int = const 3;
   store v3_ c10_;
+=======
+.v4_:
+  v10_: int = const 2;
+  store v3_ v10_;
+>>>>>>> b975e017 (Run branch_simplify in a fixed point)
   v7_: ptr<int> = id v3_;
 .b11_:
   v8_: int = load v3_;

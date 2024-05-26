@@ -11,16 +11,16 @@ expression: prog.to_string()
   v11: int = load v4;
   v14: bool = lt v11 v7;
   br v14 .__39__ .__32__;
-.__39__:
-  print v11;
-  free v4;
-  v31: int = id v7;
-  print v31;
-  ret;
 .__32__:
   v24: int = add v11 v1;
   free v4;
   print v24;
+  v31: int = id v7;
+  print v31;
+  ret;
+.__39__:
+  print v11;
+  free v4;
   v31: int = id v7;
 .__42__:
   print v31;

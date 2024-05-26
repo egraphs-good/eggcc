@@ -43,24 +43,24 @@ expression: visualization.result
   v11_: bool = lt v9_ v10_;
   v12_: bool = lt v6_ v10_;
   br v12_ .v13_ .v14_;
-.v13_:
-  v15_: int = const 1;
+.v14_:
+  v15_: int = const 2;
   print v15_;
   v16_: int = id v6_;
 .v17_:
   v18_: int = id v9_;
   br v11_ .v19_ .v20_;
-.v19_:
-  v18_: int = id v9_;
-  v6_: int = id v18_;
-  jmp .v7_;
 .v20_:
   v6_: int = id v18_;
   v3_: int = id v6_;
   print v3_;
   ret;
-.v14_:
-  v21_: int = const 2;
+.v19_:
+  v18_: int = id v9_;
+  v6_: int = id v18_;
+  jmp .v7_;
+.v13_:
+  v21_: int = const 1;
   print v21_;
   v16_: int = id v6_;
   jmp .v17_;

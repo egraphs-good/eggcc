@@ -5,6 +5,7 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
   v2_: bool = lt v0 v0;
+<<<<<<< HEAD
   br v2_ .b3_ .b4_;
 .b3_:
   c5_: int = const 1;
@@ -14,4 +15,15 @@ expression: visualization.result
   c6_: int = const 2;
   print c6_;
 .b7_:
+=======
+  br v2_ .v3_ .v4_;
+.v4_:
+  v5_: int = const 2;
+  print v5_;
+  ret;
+.v3_:
+  v6_: int = const 1;
+  print v6_;
+.v7_:
+>>>>>>> b975e017 (Run branch_simplify in a fixed point)
 }

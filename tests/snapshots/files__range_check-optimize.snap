@@ -54,16 +54,16 @@ expression: visualization.result
   br v9_ .v20_ .v21_;
 .v20_:
   v19_: int = id v18_;
+  v6_: int = id v19_;
+  jmp .v7_;
 .v21_:
   v6_: int = id v19_;
-  br v9_ .v7_ .v22_;
-.v22_:
   v3_: int = id v6_;
   print v3_;
   ret;
 .v13_:
-  v23_: int = const 2;
-  print v23_;
+  v22_: int = const 2;
+  print v22_;
   v15_: int = id v6_;
   jmp .v16_;
 .v5_:

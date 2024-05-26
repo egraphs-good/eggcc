@@ -32,8 +32,8 @@
 //!  seem like an inherent issue and the performance of the two should be
 //!  similar after some optimization.
 //!  * The paper from Bahman et. al. also sketches a "ShortCircuitCFG" algorithm
-//!  that is similar to the algorithm here, but appears to make some simplifying
-//!  assumptions related to predicate continuation form.
+//!  that is similar to the algorithm here, but assumes a sort of SSA form
+//!   
 //!
 //! The algorithm code is fairly heavily commented. It relies on computing the
 //! fixpoint of a monotone dataflow analysis tracking the value of boolean
@@ -44,11 +44,11 @@
 //! variables are assigned (or branch targets) and relying on dominance
 //! information to infer whether a boolean variable has a known value at a node.
 
-use std::{collections::VecDeque, mem};
+use std::{collections::VecDeque, io::Write, mem};
 
 use crate::cfg::{BasicBlock, BlockName, Branch, BranchOp, CondVal, Identifier, SimpleCfgFunction};
 use bril_rs::{Argument, Instruction, Literal, Type, ValueOps};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use indexmap::{IndexMap, IndexSet};
 use petgraph::{
     graph::{EdgeIndex, NodeIndex},
@@ -96,45 +96,13 @@ impl SimpleCfgFunction {
             );
             val_analysis.add_assignment(mid, id.clone(), ValueInfo::Known(lit));
         }
-
-        // Add a "spcaer" node between a basic block and any outgoing branches.
-        // This makes it easier to reroute direct jumps to a known constant value.
-        let to_space = Vec::from_iter(self.graph.node_indices().filter(|node| {
-            self.graph
-                .edges_directed(*node, Direction::Outgoing)
-                .any(|x| matches!(x.weight().op, BranchOp::Cond { .. }))
-        }));
-
-        for node in to_space {
-            let node_bound = usize::MAX - self.graph.node_bound();
-            let spacer = self
-                .graph
-                .add_node(BasicBlock::empty(BlockName::Placeholder(node_bound)));
-            let mut walker = self
-                .graph
-                .neighbors_directed(node, Direction::Outgoing)
-                .detach();
-            while let Some((edge, target)) = walker.next(&self.graph) {
-                let weight = self.graph.remove_edge(edge).unwrap();
-                self.graph.add_edge(spacer, target, weight);
-            }
-            self.graph.add_edge(
-                node,
-                spacer,
-                Branch {
-                    op: BranchOp::Jmp,
-                    pos: None,
-                },
-            );
-        }
         // Step 3: Compute the fixpoint of the value analysis.
         val_analysis.compute_fixpoint(self);
         // Step 4: Rewrite branches:
         // * For each administrative node `n``...
         // * For each outgoing branch [edge e1] with cond val `v` for `id`
         // * Check if `id` was written to in `n`, if it was, then move on
-        // _unless_ we know the value of `id`; in which case we can inline the
-        // successor into `n` and inherit its successors.`
+        // _unless_ we know the value of `id`; in which case we can replace the branch with a jump.
         // * Otherwise, check if a predecessor [via edge e2] node has `v` as a
         // known value for `id`.
         // * If so, copy the contents of the admin node to that predecessor, and
@@ -149,13 +117,49 @@ impl SimpleCfgFunction {
             if admin_node == &self.exit {
                 continue;
             }
-            while let Some((outgoing, _)) = walker.next(&self.graph) {
+            while let Some((outgoing, succ)) = walker.next(&self.graph) {
                 let BranchOp::Cond { arg, val, .. } = self.graph[outgoing].op.clone() else {
                     continue;
                 };
                 let Some(val) = to_lit(&val) else {
                     continue;
                 };
+                if val_analysis.data[admin_node].kills.contains(&arg) {
+                    if succ != self.exit
+                        && self.graph.neighbors(*admin_node).any(|x| x == self.exit)
+                    {
+                        // Don't remove any outgoing links to the exit node.
+                        break;
+                    }
+                    // We assign the to the branched-on argument in the admin
+                    // node. See if we can fold the constant branch here.
+                    let ValueInfo::Known(lit) = val_analysis.data[admin_node].get_output(&arg)
+                    else {
+                        continue;
+                    };
+                    if lit != val {
+                        continue;
+                    }
+                    // okay, we have found a matching edge. Replace this branch
+                    // with a jump.
+                    let mut walker = self
+                        .graph
+                        .neighbors_directed(*admin_node, Direction::Outgoing)
+                        .detach();
+                    while let Some((outgoing, _)) = walker.next(&self.graph) {
+                        self.graph.remove_edge(outgoing);
+                    }
+                    self.graph.add_edge(
+                        *admin_node,
+                        succ,
+                        Branch {
+                            op: BranchOp::Jmp,
+                            pos: None,
+                        },
+                    );
+                    // Don't run the rest of the inner loop.
+                    break;
+                }
                 let mut incoming_walker = self
                     .graph
                     .neighbors_directed(*admin_node, Direction::Incoming)
@@ -392,6 +396,8 @@ struct ValueState {
         Identifier, /* src */
         Transform,
     )>,
+    /// The set of variables written to in this basic block.
+    kills: HashSet<Identifier>,
     /// The materialized output of transforms on inherited.
     outputs: IndexMap<Identifier, ValueInfo>,
     /// A variable indicating if `outputs` is stale.
@@ -410,6 +416,7 @@ impl ValueState {
                 let src_val = self.outputs.get(src).unwrap_or(&ValueInfo::Bot);
                 let dst_val = transform.apply(src_val);
                 self.outputs.insert(dst.clone(), dst_val);
+                self.kills.insert(dst.clone());
             }
 
             self.recompute = false;
@@ -490,7 +497,7 @@ impl ValueState {
                         transforms.push_back((
                             Identifier::from(dest.clone()),
                             Identifier::Num(usize::MAX),
-                            Transform::OverWrite(ValueInfo::Bot),
+                            Transform::OverWrite(ValueInfo::Top),
                         ));
                     }
                 },
@@ -559,5 +566,25 @@ impl ValueAnalysis {
                 }
             }
         }
+    }
+
+    /// Debugging routine for printing out the state of the analysis.
+    #[allow(unused)]
+    fn render(&self, func: &SimpleCfgFunction) -> String {
+        let mut buf = Vec::<u8>::new();
+        for (node, state) in &self.data {
+            let name = &func.graph[*node].name;
+            writeln!(buf, "{name}.inputs: {{").unwrap();
+            for (id, info) in &state.inherited {
+                writeln!(buf, "  {id:?}: {info:?}").unwrap();
+            }
+            writeln!(buf, "}}").unwrap();
+            writeln!(buf, "{name}.outputs: {{").unwrap();
+            for (id, info) in &state.outputs {
+                writeln!(buf, "  {id:?}: {info:?}").unwrap();
+            }
+            writeln!(buf, "}}").unwrap();
+        }
+        String::from_utf8(buf).unwrap()
     }
 }

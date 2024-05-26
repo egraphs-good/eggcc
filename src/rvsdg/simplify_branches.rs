@@ -38,12 +38,16 @@
 //!
 //! The algorithm code is fairly heavily commented.
 
-use std::{ mem};
+use std::{collections::VecDeque, iter::once, mem};
 
-use bril_rs::{Instruction, Literal, ValueOps};
+use bril_rs::{Argument, Instruction, Literal, Type, ValueOps};
+use hashbrown::HashMap;
 use indexmap::{IndexMap, IndexSet};
 use petgraph::{
-    algo::dominators,  graph::{EdgeIndex, NodeIndex}, visit::{Dfs, NodeIndexable}, Direction
+    algo::dominators,
+    graph::{EdgeIndex, NodeIndex},
+    visit::{Dfs, NodeIndexable},
+    Direction,
 };
 
 use crate::cfg::{BasicBlock, BlockName, Branch, BranchOp, CondVal, Identifier, SimpleCfgFunction};
@@ -54,6 +58,7 @@ impl SimpleCfgFunction {
         // * Find "administrative" nodes.
         // * Find conditional branches.
         let mut branch_meta = self.get_branch_metadata();
+        let mut val_analysis = ValueAnalysis::new(self);
         // Step 2: split conditional branches and mark the relevant constants as
         // known in the later nodes. This lets us reuse the builtin dominance
         // algorithm from petgraph, even though we really want to compute edge
@@ -71,7 +76,8 @@ impl SimpleCfgFunction {
             let (source, target) = self.graph.edge_endpoints(edge).unwrap();
             let weight = self.graph.remove_edge(edge).unwrap();
             // let block_name = BlockName::Placeholder(node_bound);
-            let block_name = BlockName::Named(format!("_{node_bound}_branch_on_{id}_val_{}", val.val));
+            let block_name =
+                BlockName::Named(format!("_{node_bound}_branch_on_{id}_val_{}", val.val));
             let please_change_block_name = 1;
             let mid = self.graph.add_node(BasicBlock::empty(block_name));
             self.graph.add_edge(source, mid, weight);
@@ -86,9 +92,9 @@ impl SimpleCfgFunction {
                     pos: None,
                 },
             );
-            branch_meta
-                .constants_known
-                .add_constant(mid, id.clone(), lit);
+
+            val_analysis.add_assignment(mid, id.clone(), ValueInfo::Known(lit));
+
         }
         // Step 3: Compute dominators for the graph. We'll use this for step 4 and step 5.
         let doms = dominators::simple_fast(&self.graph, self.entry);
@@ -227,8 +233,8 @@ impl SimpleCfgFunction {
                 }
             }
         }
-        
-        let please_remove=1;
+
+        let please_remove = 1;
         eprintln!("entry={:?}, exit={:?}", self.entry, self.exit);
 
         // Step 6: Remove any nodes no longer reachable from the entry.
@@ -361,5 +367,227 @@ fn to_lit(cv: &CondVal) -> Option<Literal> {
     } else {
         // Not handling multi-way branches for now.
         None
+    }
+}
+
+/// A basic semilattice describing the state of a value.
+#[derive(Clone, Default)]
+enum ValueInfo {
+    #[default]
+    Bot,
+    Known(Literal),
+    Top,
+}
+
+impl ValueInfo {
+    fn merge(&mut self, other: &ValueInfo) -> bool {
+        match (self, other) {
+            (ValueInfo::Bot, ValueInfo::Bot) => false,
+            (slf @ ValueInfo::Bot, x) => {
+                *slf = x.clone();
+                true
+            }
+            (ValueInfo::Top, x) => false,
+            (slf, ValueInfo::Top) => {
+                *slf = ValueInfo::Top;
+                true
+            }
+            (ValueInfo::Known(l), ValueInfo::Known(r)) if l == r => false,
+            (slf @ ValueInfo::Known(_), ValueInfo::Known(_)) => {
+                *slf = ValueInfo::Top;
+                true
+            }
+            (ValueInfo::Known(_), ValueInfo::Bot) => false,
+        }
+    }
+}
+
+/// Monotone transforms on ValueInfos.
+enum Transform {
+    Id,
+    Negate,
+    OverWrite(ValueInfo),
+}
+
+impl Transform {
+    fn apply(&self, val: &ValueInfo) -> ValueInfo {
+        match self {
+            Transform::Id => val.clone(),
+            Transform::Negate => match val {
+                ValueInfo::Bot => ValueInfo::Bot,
+                ValueInfo::Known(Literal::Bool(b)) => ValueInfo::Known(Literal::Bool(!b)),
+                ValueInfo::Known(..) => ValueInfo::Top,
+                ValueInfo::Top => ValueInfo::Top,
+            },
+            Transform::OverWrite(info) => info.clone(),
+        }
+    }
+}
+
+#[derive(Default)]
+struct ValueState {
+    inherited: IndexMap<Identifier, ValueInfo>,
+    transforms: VecDeque<(
+        Identifier, /* dst  */
+        Identifier, /* src */
+        Transform,
+    )>,
+    outputs: IndexMap<Identifier, ValueInfo>,
+    recompute: bool,
+}
+
+impl ValueState {
+    fn maybe_recompute(&mut self) -> bool{
+        let res = self.recompute;
+if self.recompute {
+            self.outputs.clear();
+            for (id, info) in &self.inherited {
+                self.outputs.insert(id.clone(), info.clone());
+            }
+            for (dst, src, transform) in &self.transforms {
+                let src_val = self.outputs.get(src).unwrap_or(&ValueInfo::Bot);
+                let dst_val = transform.apply(src_val);
+                self.outputs.insert(dst.clone(), dst_val);
+            }
+
+            self.recompute = false;
+        }
+        res
+    }
+    fn outputs(&self) -> impl Iterator<Item = (&Identifier, &ValueInfo)> {
+        assert!(!self.recompute);
+        self.outputs.iter()
+    }
+
+    fn get_output(&self, id: &Identifier) -> ValueInfo {
+        assert!(!self.recompute);
+        self.outputs.get(id).cloned().unwrap_or(ValueInfo::Bot)
+    }
+
+    /// A special case of `merge_from` to handle self-loops.
+    fn merge_self(&mut self) {
+        let mut changed = false;
+        for (id, out) in self.outputs.iter() {
+            changed |= self.inherited.entry(id.clone()).or_default().merge(out);
+        }
+        if changed {
+            self.recompute = true;
+        }
+    }
+
+    fn merge_from(&mut self, other: &ValueState)  {
+        let mut changed = false;
+        for (id, out) in other.outputs() {
+            changed |= self.inherited.entry(id.clone()).or_default().merge(out);
+        }
+        if changed {
+            self.recompute = true;
+        }
+    }
+
+    fn new(block: &BasicBlock) -> ValueState {
+        let mut transforms = VecDeque::new();
+        for instr in &block.instrs {
+            match instr {
+                Instruction::Constant {
+                    dest,
+                    value: lit @ Literal::Bool(..),
+                    ..
+                } => {
+                    // The `src` identifier is unused in this case.
+                    transforms.push_back((
+                        Identifier::from(dest.clone()),
+                        Identifier::Num(usize::MAX),
+                        Transform::OverWrite(ValueInfo::Known(lit.clone())),
+                    ));
+                }
+                Instruction::Value {
+                    args,
+                    dest,
+                    op,
+                    op_type: Type::Bool,
+                    ..
+                } => match op {
+                    ValueOps::Id => {
+                        assert_eq!(args.len(), 1);
+                        transforms.push_back((
+                            Identifier::from(dest.clone()),
+                            args[0].clone().into(),
+                            Transform::Id,
+                        ));
+                    }
+                    ValueOps::Not => {
+                        assert_eq!(args.len(), 1);
+                        transforms.push_back((
+                            Identifier::from(dest.clone()),
+                            args[0].clone().into(),
+                            Transform::Negate,
+                        ));
+                    }
+                    _ => {
+                        transforms.push_back((
+                            Identifier::from(dest.clone()),
+                            Identifier::Num(usize::MAX),
+                            Transform::OverWrite(ValueInfo::Bot),
+                        ));
+                    }
+                },
+                Instruction::Effect { .. } => {}
+                Instruction::Constant { .. } => {}
+                Instruction::Value { .. } => {}
+            }
+        }
+        ValueState {
+            transforms,
+            recompute: true,
+            ..Default::default()
+        }
+    }
+}
+
+
+struct ValueAnalysis {
+    data: HashMap<NodeIndex, ValueState>,
+}
+
+impl ValueAnalysis {
+    fn new(graph: &SimpleCfgFunction) -> ValueAnalysis {
+        let mut res = ValueAnalysis { data: Default::default() };
+        for node in graph.graph.node_indices() {
+            res.data.insert(node, ValueState::new(&graph.graph[node]));
+        }
+        for Argument { name, arg_type } in &graph.args {
+            if let Type::Bool = arg_type {
+                let id = Identifier::from(name.clone());
+                res.add_assignment(graph.entry, id, ValueInfo::Top);
+            }
+        }
+        res
+    }
+    fn add_assignment(&mut self, node: NodeIndex, dst: Identifier, val: ValueInfo) {
+        let state = self.data.entry(node).or_default();
+        state.transforms.push_front((dst, Identifier::Num(usize::MAX), Transform::OverWrite(val)));
+        state.recompute = true;
+    }
+
+    fn compute_fixpoint(&mut self, func: &SimpleCfgFunction) {
+        let mut worklist = IndexSet::<NodeIndex>::from_iter(once(func.entry));
+        while let Some(node) = worklist.pop() {
+            let mut cur = mem::take(self.data.get_mut(&node).unwrap());
+            for incoming in func.graph.neighbors_directed(node, Direction::Incoming) {
+                if incoming == node {
+                    cur.merge_self();
+                } else {
+                    cur.merge_from(&self.data[&incoming]);
+                }
+            }
+            let changed = cur.maybe_recompute();
+            self.data.insert(node, cur);
+            if changed {
+                for outgoing in func.graph.neighbors_directed(node, Direction::Outgoing) {
+                    worklist.insert(outgoing);
+                }
+            }
+        }
     }
 }

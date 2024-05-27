@@ -5,10 +5,10 @@ expression: visualization.result
 @main(v0: int, v1: int) {
 .v2_:
   v3_: int = const 1;
-  v4_: int = const 4;
-  v5_: int = add v1 v4_;
-  v6_: int = const 3;
-  v7_: int = add v0 v6_;
+  v4_: int = const 3;
+  v5_: int = add v0 v4_;
+  v6_: int = const 4;
+  v7_: int = add v1 v6_;
   v8_: int = add v5_ v7_;
   v9_: int = add v3_ v8_;
   print v9_;

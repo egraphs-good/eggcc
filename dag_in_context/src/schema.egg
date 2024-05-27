@@ -94,6 +94,10 @@
   (LessEq)
   (GreaterEq)
   (Eq)
+  (Smin)
+  (Smax)
+  (Shl)
+  (Shr)
   ;; float operators 
   (FAdd)
   (FSub)
@@ -104,6 +108,8 @@
   (FLessEq)
   (FGreaterEq)
   (FEq)
+  (Fmin)
+  (Fmax)
   ;; logical operators
   (And)
   (Or)

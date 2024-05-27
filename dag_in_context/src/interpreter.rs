@@ -4,7 +4,7 @@
 //! shared as the same Rc pointer. Otherwise, effects may be executed multiple times.
 //! The invariant is maintained by translation from RVSDG, type checking, and translation from egglog.
 
-use std::{collections::HashMap, fmt::Display, rc::Rc};
+use std::{collections::HashMap, fmt::Display, ops::{Shl, Shr}, rc::Rc};
 
 use crate::{
     schema::{BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, UnaryOp},
@@ -242,6 +242,22 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::Div => Const(Constant::Int(
                 get_int(e1, self).wrapping_div(get_int(e2, self)),
             )),
+            BinaryOp::Smax => {
+                let a = get_int(e1, self);
+                let b = get_int(e2, self);
+                Const(Constant::Int(if a > b { a } else { b }))
+            },
+            BinaryOp::Smin => {
+                let a = get_int(e1, self);
+                let b = get_int(e2, self);
+                Const(Constant::Int(if a < b { a } else { b }))
+            },
+            BinaryOp::Shl => Const(Constant::Int(
+                get_int(e1, self).shl(get_int(e2, self))
+            )),
+            BinaryOp::Shr => Const(Constant::Int(
+                get_int(e1, self).shr(get_int(e2, self))
+            )),
             BinaryOp::Eq => Const(Constant::Bool(get_int(e1, self) == get_int(e2, self))),
             BinaryOp::LessThan => Const(Constant::Bool(get_int(e1, self) < get_int(e2, self))),
             BinaryOp::GreaterThan => Const(Constant::Bool(get_int(e1, self) > get_int(e2, self))),
@@ -303,6 +319,17 @@ impl<'a> VirtualMachine<'a> {
             BinaryOp::FGreaterEq => {
                 Const(Constant::Bool(get_float(e1, self) >= get_float(e2, self)))
             }
+            BinaryOp::Fmax => {
+                let a = get_float(e1, self);
+                let b = get_float(e2, self);
+                Const(Constant::Float(if a > b { a } else { b }))
+            },
+            BinaryOp::Fmin => {
+                let a = get_float(e1, self);
+                let b = get_float(e2, self);
+                Const(Constant::Float(if a < b { a } else { b }))
+            },
+            
         }
     }
 

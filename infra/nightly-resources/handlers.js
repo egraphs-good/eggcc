@@ -29,7 +29,8 @@ async function load_llvm() {
   const runMode = params.get("runmode");
 
   document.title = `${benchmark} | ${runMode}`;
-  document.getElementById("llvm-header").innerText = `Benchmark: ${benchmark} | Run Mode: ${runMode}`;
+  document.getElementById("llvm-header").innerText =
+    `Benchmark: ${benchmark} | Run Mode: ${runMode}`;
 
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");

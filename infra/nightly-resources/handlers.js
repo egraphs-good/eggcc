@@ -59,16 +59,21 @@ function selectAllModes(enabled) {
   refreshView();
 }
 
-function selectAllBenchmarks(enabled) {
+function selectAllBenchmarks(enabled, category) {
   const checkboxContainer = document.getElementById("benchmarkCheckboxes");
-  Array.from(checkboxContainer.getElementsByTagName("input")).forEach(
-    (checkbox) => {
-      checkbox.checked = enabled;
-      enabled
-        ? GLOBAL_DATA.enabledBenchmarks.add(checkbox.id)
-        : GLOBAL_DATA.enabledBenchmarks.delete(checkbox.id);
-    },
-  );
+  let checkboxes = Array.from(checkboxContainer.getElementsByTagName("input"));
+  if (category === "looped") {
+    const loopedBenchmarks = new Set(
+      GLOBAL_DATA.currentRun.filter((x) => x.looped).map((x) => x.benchmark),
+    );
+    checkboxes = checkboxes.filter((x) => loopedBenchmarks.has(x.id));
+  }
+  checkboxes.forEach((checkbox) => {
+    checkbox.checked = enabled;
+    enabled
+      ? GLOBAL_DATA.enabledBenchmarks.add(checkbox.id)
+      : GLOBAL_DATA.enabledBenchmarks.delete(checkbox.id);
+  });
   refreshView();
 }
 

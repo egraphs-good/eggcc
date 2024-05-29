@@ -206,7 +206,17 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril#5652d6ac53d727c0901a53a0484e8241db887d04"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "bril-rs"
+version = "0.1.0"
+source = "git+https://github.com/uwplse/bril#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
  "serde",
  "serde_json",
@@ -216,9 +226,9 @@ dependencies = [
 [[package]]
 name = "bril2json"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "clap",
  "lalrpop",
  "lalrpop-util",
@@ -228,10 +238,10 @@ dependencies = [
 [[package]]
 name = "brilift"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
  "argh",
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-jit",
@@ -245,9 +255,9 @@ dependencies = [
 [[package]]
 name = "brilirs"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "bril2json",
  "clap",
  "fxhash",
@@ -259,7 +269,7 @@ dependencies = [
 [[package]]
 name = "brillvm"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
  "bril-rs 0.1.0 (git+https://github.com/uwplse/bril)",
  "clap",
@@ -598,7 +608,7 @@ checksum = "675e35c02a51bb4d4618cb4885b3839ce6d1787c97b664474d9208d074742e20"
 name = "eggcc"
 version = "0.1.0"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "bril2json",
  "brilift",
  "brilirs",
@@ -1525,9 +1535,9 @@ dependencies = [
 [[package]]
 name = "rs2bril"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "clap",
  "proc-macro2",
  "syn 2.0.64",

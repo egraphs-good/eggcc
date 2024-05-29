@@ -102,6 +102,22 @@ pub fn div(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Div, l, r))
 }
 
+pub fn smax(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Smax, l, r))
+}
+
+pub fn smin(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Smin, l, r))
+}
+
+pub fn shl(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Shl, l, r))
+}
+
+pub fn shr(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Shr, l, r))
+}
+
 pub fn fadd(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::FAdd, l, r))
 }
@@ -116,6 +132,14 @@ pub fn fmul(l: RcExpr, r: RcExpr) -> RcExpr {
 
 pub fn fdiv(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::FDiv, l, r))
+}
+
+pub fn fmax(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Fmax, l, r))
+}
+
+pub fn fmin(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Fmin, l, r))
 }
 
 pub fn less_than(l: RcExpr, r: RcExpr) -> RcExpr {

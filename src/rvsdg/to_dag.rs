@@ -240,6 +240,11 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::Sub, [a, b]) => sub(a.clone(), b.clone()),
                     (ValueOps::Div, [a, b]) => div(a.clone(), b.clone()),
 
+                    (ValueOps::Smax, [a, b]) => smax(a.clone(), b.clone()),
+                    (ValueOps::Smin, [a, b]) => smin(a.clone(), b.clone()),
+                    (ValueOps::Shl, [a, b]) => shl(a.clone(), b.clone()),
+                    (ValueOps::Shr, [a, b]) => shr(a.clone(), b.clone()),
+
                     (ValueOps::Fadd, [a, b]) => fadd(a.clone(), b.clone()),
                     (ValueOps::Fmul, [a, b]) => fmul(a.clone(), b.clone()),
                     (ValueOps::Fsub, [a, b]) => fsub(a.clone(), b.clone()),
@@ -256,6 +261,8 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::Flt, [a, b]) => fless_than(a.clone(), b.clone()),
                     (ValueOps::Fge, [a, b]) => fgreater_eq(a.clone(), b.clone()),
                     (ValueOps::Fle, [a, b]) => fless_eq(a.clone(), b.clone()),
+                    (ValueOps::Fmax, [a, b]) => fmax(a.clone(), b.clone()),
+                    (ValueOps::Fmin, [a, b]) => fmin(a.clone(), b.clone()),
 
                     (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
                     (ValueOps::Or, [a, b]) => or(a.clone(), b.clone()),

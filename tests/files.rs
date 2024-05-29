@@ -69,8 +69,35 @@ fn generate_tests(glob: &str, slow_test: bool) -> Vec<Trial> {
     trials
 }
 
+fn check_no_duplicates(globs: Vec<&str>) {
+    let mut names = HashSet::<String>::new();
+
+    for glob in globs {
+        for file in glob::glob(glob).unwrap() {
+            let name = file
+                .unwrap()
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
+            if names.contains(&name) {
+                panic!("Duplicate filename {}.", name);
+            }
+            names.insert(name);
+        }
+    }
+}
+
 fn main() {
     let args = libtest_mimic::Arguments::from_args();
+
+    // Check for duplicate files
+    check_no_duplicates(vec![
+        "tests/passing/**/*.bril",
+        "benchmarks/passing/**/*.bril",
+    ]);
+
     let mut tests = generate_tests("tests/passing/**/*.bril", false);
     tests.extend(generate_tests("tests/passing/**/*.rs", false));
 

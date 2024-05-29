@@ -41,53 +41,43 @@ pub struct UnionsAnd<T> {
 
 impl<T> UnionsAnd<T> {
     fn get_unions(&self) -> String {
+        use std::fmt::Write;
+
         self.unions
             .iter()
-            .map(|(a, b)| format!("(union {a} {b})\n"))
-            .collect()
+            .fold(String::new(), |mut output, (a, b)| {
+                let _ = writeln!(output, "(union {a} {b})");
+                output
+            })
     }
 }
 
 impl TreeProgram {
     pub fn add_context(&self) -> TreeProgram {
-        TreeProgram {
-            functions: self
-                .functions
-                .iter()
-                .map(|f| f.clone().func_add_ctx())
-                .collect(),
-            entry: self.entry.clone().func_add_ctx(),
-        }
+        self.add_context_internal(Expr::func_add_ctx)
     }
 
     /// add stand-in variables for all the contexts in the program
     /// useful for testing if you don't care about context in the test
     #[allow(dead_code)]
     pub(crate) fn add_symbolic_ctx(&self) -> TreeProgram {
-        TreeProgram {
-            functions: self
-                .functions
-                .iter()
-                .map(|f| f.clone().add_symbolic_ctx())
-                .collect(),
-            entry: self.entry.clone().add_symbolic_ctx(),
-        }
+        self.add_context_internal(Expr::add_symbolic_ctx)
     }
 
     pub(crate) fn add_dummy_ctx(&self) -> TreeProgram {
+        self.add_context_internal(Expr::add_dummy_ctx)
+    }
+
+    fn add_context_internal(&self, func: impl Fn(&RcExpr) -> RcExpr) -> TreeProgram {
         TreeProgram {
-            functions: self
-                .functions
-                .iter()
-                .map(|f| f.clone().add_dummy_ctx())
-                .collect(),
-            entry: self.entry.clone().add_dummy_ctx(),
+            functions: self.functions.iter().map(&func).collect(),
+            entry: func(&self.entry),
         }
     }
 }
 
 impl Expr {
-    pub(crate) fn func_add_ctx(self: RcExpr) -> RcExpr {
+    pub(crate) fn func_add_ctx(self: &RcExpr) -> RcExpr {
         let Expr::Function(name, arg_ty, ret_ty, body) = &self.as_ref() else {
             panic!("Expected Function, got {:?}", self);
         };
@@ -100,7 +90,7 @@ impl Expr {
         ))
     }
 
-    pub(crate) fn add_dummy_ctx(self: RcExpr) -> RcExpr {
+    pub(crate) fn add_dummy_ctx(self: &RcExpr) -> RcExpr {
         let mut cache = ContextCache {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),
@@ -111,7 +101,7 @@ impl Expr {
         self.add_ctx_with_cache(Assumption::dummy(), &mut cache)
     }
 
-    pub(crate) fn add_symbolic_ctx(self: RcExpr) -> RcExpr {
+    pub(crate) fn add_symbolic_ctx(self: &RcExpr) -> RcExpr {
         let mut cache = ContextCache {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),

@@ -1,6 +1,6 @@
 pub(crate) fn helpers() -> String {
     "
-(repeat 3
+(saturate
 
     (saturate type-helpers)
     (saturate error-checking)
@@ -39,6 +39,7 @@ pub fn mk_schedule() -> String {
         "
 (unstable-combined-ruleset saturating
     always-run
+    passthrough
     canon
     type-analysis
     context
@@ -48,29 +49,39 @@ pub fn mk_schedule() -> String {
     loop-iters-analysis
 )
 
-
-(unstable-combined-ruleset optimizations
+(unstable-combined-ruleset cheap-optimizations
     loop-simplify
     memory
     loop-unroll
     peepholes
 )
 
-(unstable-combined-ruleset expensive-optimizations
-    optimizations
+(unstable-combined-ruleset all-optimizations
+    cheap-optimizations
+    
     switch_rewrite
     ;loop-inv-motion
     loop-strength-reduction
     loop-peel
 )
 
-(run-schedule {helpers})
+(run-schedule
 
-; TODO: add the optimizations back
+    {helpers}
+    loop-peel
 
-(run-schedule (saturate debug-deletes))
+    (repeat 2
+        {helpers}
+        all-optimizations
+    )
 
-(print-size WeSubsumedThis)
+    (repeat 4
+        {helpers}
+        cheap-optimizations
+    )
+
+    {helpers}
+)
 "
     )
 }

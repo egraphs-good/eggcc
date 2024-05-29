@@ -1,11 +1,4 @@
-; (= loop (Loop pred body))
-; (= pred (Project ith (If cond thn els)))
 
-; =>
-
-; (If cond 
-;     (Loop pred body)
-;     (passthrough))
 ;; A Perm is a reverse list of integers
 (datatype Perm (PermPush i64 Perm) (PNil))
 ;; expr1 is a list of expressions of the form (Get expr2 i),
@@ -49,19 +42,50 @@
 (function ApplyPerm (Perm Expr) Expr)
 
 (rewrite (ApplyPerm (PermPush ith rest) expr) 
-         (Concat (ApplyPerm rest expr) (Get expr ith)))
+         (Concat (ApplyPerm rest expr) (Single (Get expr ith)))
+    :when ((= rest (PermPush _jth _rest)))
+    :ruleset always-run)
+(rewrite (ApplyPerm (PermPush ith (PNil)) expr) (Single (Get expr ith))
+    :ruleset always-run)
 
 (ruleset loop-inversion)
 
+;; This is for unified handling of thn/els branches
+(relation ith-arg-is-bool (Expr Expr Expr i64 Expr Expr))
+
 (rule (
     (= loop (DoWhile inpW outW))
-    (= pred (Get outW 0))
     (IVTPermutationAnalysis outW conditional perm)
     (= conditional (If condI inpI thn els))
+
     (= (Get thn ith) (Const (Bool true) _unused1 _unused2))
     (= (Get els ith) (Const (Bool false) _unused3 _unused4))
+) (
+    (ith-arg-is-bool conditional condI inpI ith thn els)
+) :ruleset always-run)
+
+(rule (
+    (= loop (DoWhile inpW outW))
+    (IVTPermutationAnalysis outW conditional perm)
+    (= conditional (If condI inpI thn els))
+
+    (= (Get thn ith) (Const (Bool false) _unused1 _unused2))
+    (= (Get els ith) (Const (Bool true) _unused3 _unused4))
+) (
+    (ith-arg-is-bool conditional condI inpI ith els thn)
+) :ruleset always-run)
+
+(rule (
+    (= loop (DoWhile inpW outW))
+    (IVTPermutationAnalysis outW conditional perm)
+    ;; This generalizes the following conditions:
+    ;;   (= conditional (If condI inpI thn els))
+    ;;     (= (Get thn ith) (Const (Bool true) _unused1 _unused2))
+    ;;     (= (Get els ith) (Const (Bool false) _unused3 _unused4))
+    (ith-arg-is-bool conditional condI inpI ith thn els)
 
     (ContextOf inpW outer-ctx)
+    (ContextOf inpI if-ctx)
     (HasType inpW argW)
 ) (
     ;; first peeled condition
@@ -77,17 +101,27 @@
     ;; the first element of body was true but should be the condition.
     (let new-loop-outputs
         (Concat
-            (Single (Subst new-loop-context inpI condI))
+            (Single (Subst new-loop-context (Arg argW new-loop-context) condI))
             (TupleRemoveAt new-loop-outputs_ 0)))
 
-    (let new-loop (DoWhile inpI new-loop-outputs))
-    (let new-expr
+    (let new-loop (DoWhile (Arg argW new-if-true-ctx) new-loop-outputs))
+    (let new-if
         (If new-if-cond inpW
             new-loop
             (Arg argW new-if-false-ctx)))
 
-    (union new-loop loop)
+    ;; Apply the body of the false branch as an afterprocessing wrapper
+    (let new-expr_
+        (Subst outer-ctx new-if 
+            (Subst if-ctx inpI els)))
+    (let new-expr 
+        (TupleRemoveAt 
+            (ApplyPerm perm new-expr_) 
+            0))
 
-    (union new-loop-context (InLoop inpI new-loop-outputs))
+    (union new-expr loop)
+    (union new-loop-context (InLoop (Arg argW new-if-true-ctx) new-loop-outputs))
+
+    (delete (DoWhile inpW outW))
     (delete (TmpCtx))
 ) :ruleset loop-inversion)

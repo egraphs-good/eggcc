@@ -3,35 +3,35 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-.v1_:
-  v2_: int = const 2;
-  v3_: bool = lt v0 v2_;
+.b1_:
+  c2_: int = const 2;
+  v3_: bool = lt v0 c2_;
   v4_: bool = not v3_;
-  v5_: int = const 0;
-  v6_: int = const 1;
-  v7_: int = const 5;
-  v8_: bool = const true;
-  v9_: int = id v6_;
-  v10_: int = id v6_;
-  v11_: int = id v2_;
-  v12_: bool = id v8_;
-  br v3_ .v13_ .v14_;
-.v13_:
-  v15_: int = const 4;
-  v16_: bool = const false;
-  v9_: int = id v15_;
-  v10_: int = id v6_;
-  v11_: int = id v2_;
-  v12_: bool = id v16_;
-.v14_:
+  c5_: int = const 0;
+  c6_: int = const 1;
+  c7_: int = const 5;
+  c8_: bool = const true;
+  v9_: int = id c6_;
+  v10_: int = id c6_;
+  v11_: int = id c2_;
+  v12_: bool = id c8_;
+  br v3_ .b13_ .b14_;
+.b13_:
+  c15_: int = const 4;
+  c16_: bool = const false;
+  v9_: int = id c15_;
+  v10_: int = id c6_;
+  v11_: int = id c2_;
+  v12_: bool = id c16_;
+.b14_:
   v17_: int = id v9_;
-  v18_: int = id v6_;
-  br v4_ .v19_ .v20_;
-.v19_:
-  v21_: int = add v2_ v9_;
+  v18_: int = id c6_;
+  br v4_ .b19_ .b20_;
+.b19_:
+  v21_: int = add c2_ v9_;
   v17_: int = id v21_;
-  v18_: int = id v6_;
-.v20_:
-  v22_: int = add v17_ v6_;
+  v18_: int = id c6_;
+.b20_:
+  v22_: int = add c6_ v17_;
   print v22_;
 }

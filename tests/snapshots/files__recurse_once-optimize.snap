@@ -3,39 +3,39 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @to_zero(v0: int): int {
-.v1_:
-  v2_: int = const 0;
-  v3_: bool = lt v2_ v0;
+.b1_:
+  c2_: int = const 0;
+  v3_: bool = lt c2_ v0;
   v4_: int = id v0;
-  br v3_ .v5_ .v6_;
-.v5_:
-  v7_: int = const 0;
-  v8_: int = const 1;
-  v9_: int = sub v0 v8_;
-  v10_: bool = lt v7_ v9_;
+  br v3_ .b5_ .b6_;
+.b5_:
+  c7_: int = const 0;
+  c8_: int = const 1;
+  v9_: int = sub v0 c8_;
+  v10_: bool = lt c7_ v9_;
   v11_: int = id v9_;
-  br v10_ .v12_ .v13_;
-.v12_:
-  v14_: int = const 0;
-  v15_: int = const 1;
-  v16_: int = sub v9_ v15_;
-  v17_: bool = lt v14_ v16_;
+  br v10_ .b12_ .b13_;
+.b12_:
+  c14_: int = const 0;
+  c15_: int = const 1;
+  v16_: int = sub v9_ c15_;
+  v17_: bool = lt c14_ v16_;
   v18_: int = id v16_;
-  br v17_ .v19_ .v20_;
-.v19_:
-  v21_: int = const 1;
-  v22_: int = sub v16_ v21_;
+  br v17_ .b19_ .b20_;
+.b19_:
+  c21_: int = const 1;
+  v22_: int = sub v16_ c21_;
   v23_: int = call @to_zero v22_;
   v18_: int = id v23_;
-.v20_:
+.b20_:
   v11_: int = id v18_;
-.v13_:
+.b13_:
   v4_: int = id v11_;
-.v6_:
+.b6_:
   ret v4_;
 }
 @main {
-.v0_:
-  v1_: int = const 0;
-  print v1_;
+.b0_:
+  c1_: int = const 0;
+  print c1_;
 }

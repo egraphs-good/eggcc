@@ -3,29 +3,29 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: bool) {
-.v1_:
-  v2_: int = const 3;
-  v3_: ptr<int> = alloc v2_;
-  v4_: int = const 1;
-  v5_: ptr<int> = ptradd v3_ v4_;
-  v6_: int = const 2;
-  v7_: ptr<int> = ptradd v3_ v6_;
+.b1_:
+  c2_: int = const 3;
+  v3_: ptr<int> = alloc c2_;
+  c4_: int = const 1;
+  v5_: ptr<int> = ptradd v3_ c4_;
+  c6_: int = const 2;
+  v7_: ptr<int> = ptradd v3_ c6_;
   v8_: ptr<int> = id v5_;
   v9_: ptr<int> = id v3_;
   v10_: ptr<int> = id v7_;
   v11_: bool = id v0;
-.v12_:
+.b12_:
   v8_: ptr<int> = id v9_;
   v9_: ptr<int> = id v8_;
   v10_: ptr<int> = id v10_;
   v11_: bool = id v11_;
-  br v11_ .v12_ .v13_;
-.v13_:
-  v14_: int = const 10;
-  v15_: int = const 20;
-  store v9_ v14_;
-  store v10_ v15_;
+  br v11_ .b12_ .b13_;
+.b13_:
+  c14_: int = const 10;
+  c15_: int = const 20;
+  store v9_ c14_;
+  store v10_ c15_;
   v16_: int = load v9_;
-  print v14_;
+  print c14_;
   free v8_;
 }

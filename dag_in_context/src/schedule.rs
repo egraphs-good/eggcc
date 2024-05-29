@@ -52,6 +52,7 @@ pub fn mk_schedule() -> String {
     switch_rewrite
     ;loop-inv-motion
     loop-strength-reduction
+    loop-inversion
   )
   
   (run-schedule

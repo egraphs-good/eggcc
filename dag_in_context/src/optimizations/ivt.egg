@@ -1,0 +1,88 @@
+; (= loop (Loop pred body))
+; (= pred (Project ith (If cond thn els)))
+
+; =>
+
+; (If cond 
+;     (Loop pred body)
+;     (passthrough))
+;; A Perm is a reverse list of integers
+(datatype Perm (PermPush i64 Perm) (PNil))
+;; expr1 is a list of expressions of the form (Project i expr2),
+;; where all the i's form a permutation
+(relation IVTPermutationAnalysisDemand (Expr))
+;;                                    expr1 curr  expr2
+(relation IVTPermutationAnalysisImpl (Expr  Expr  Expr Perm))
+;;                                expr1 expr2
+(relation IVTPermutationAnalysis (Expr Expr Perm))
+
+(rule (
+    (DoWhile inpW outW)
+) (
+    (IVTPermutationAnalysisDemand outW)
+) :ruleset always-run)
+
+(rule (
+    (IVTPermutationAnalysisDemand loop-body)
+    (= loop-body (Concat (Single (Project expr ith))) rest)
+) (
+    (let perm (PermPush ith (PNil)))
+    (IVTPermutationAnalysisImpl loop-body rest expr perm)
+) :ruleset always-run)
+
+(rule (
+    (IVTPermutationAnalysisImpl loop-body curr expr perm)
+    (= curr (Concat (Single (Project expr ith))) rest)
+) (
+    (let new-perm (PermPush ith perm))
+    (IVTPermutationAnalysisImpl loop-body rest expr new-perm)
+) :ruleset always-run)
+
+(rule (
+    (IVTPermutationAnalysisImpl loop-body (Single last) expr perm)
+    (= last (Project expr ith))
+) (
+    (let new-perm (PermPush ith perm))
+    (IVTPermutationAnalysis loop-body expr new-perm)
+) :ruleset always-run)
+
+(function ApplyPerm (Perm Expr) Expr)
+
+(rule (
+    (= loop (DoWhile inpW outW))
+    (= pred (Get outW 0))
+    (IVTPermutationAnalysis outW conditional perm)
+    (= conditional (If condI inpI thn els))
+    (= (Get thn ith) (Const (Bool true) _unused1 _unused2))
+    (= (Get els ith) (Const (Bool false) _unused3 _unused4))
+
+    (ContextOf inpW outer-ctx)
+    (HasType inpW argW)
+) (
+    ;; first peeled condition
+    (let new-if-cond (Subst outer-ctx inpW condI))
+    ;; if contexts
+    (let new-if-true-ctx (InIf true new-if-cond inpW))
+    (let new-if-false-ctx (InIf false new-if-cond inpW))
+    
+    (let new-loop-context (TmpCtx))
+
+    ;; body
+    (let new-loop-outputs_ (ApplyPerm perm (Subst new-loop-context inpI thn)))
+    ;; the first element of body was true but should be the condition.
+    (let new-loop-outputs
+        (Concat
+            (Single (Subst new-loop-context inpI condI))
+            (TupleRemoveAt new-loop-outputs_ 0)))
+
+    (let new-loop (DoWhile inpI new-loop-outputs))
+    (let new-expr
+        (If new-if-cond inpW
+            new-loop
+            (Arg argW new-if-false-ctx)))
+
+    (union new-loop loop)
+
+    (union new-loop-context (InLoop inpI new-loop-outputs))
+    (delete (TmpCtx))
+))

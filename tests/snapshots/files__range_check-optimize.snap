@@ -33,4 +33,61 @@ expression: visualization.result
 .b17_:
   v2_: int = id v15_;
   print v2_;
+<<<<<<< HEAD
+||||||| parent of c8413e1a (More snapshots)
+  br v1_ .v3_ .v4_;
+.v3_:
+  v5_: int = id v2_;
+.v6_:
+  v7_: int = const 6;
+  v8_: bool = lt v5_ v7_;
+  v9_: int = const 5;
+  v10_: bool = lt v5_ v9_;
+  br v10_ .v11_ .v12_;
+.v11_:
+  v13_: int = const 1;
+  print v13_;
+.v14_:
+  v15_: int = const 1;
+  v16_: int = add v15_ v5_;
+  br v8_ .v17_ .v18_;
+.v17_:
+.v19_:
+  v5_: int = id v16_;
+  br v8_ .v6_ .v4_;
+.v18_:
+  jmp .v19_;
+.v12_:
+  v20_: int = const 2;
+  print v20_;
+  jmp .v14_;
+.v4_:
+  v21_: int = phi v2_ v5_ .v0_ .v19_;
+  print v21_;
+=======
+  br v1_ .v3_ .v4_;
+.v3_:
+  v5_: int = id v2_;
+.v6_:
+  v7_: int = const 5;
+  v8_: bool = lt v5_ v7_;
+  br v8_ .v9_ .v10_;
+.v9_:
+  v11_: int = const 1;
+  print v11_;
+.v12_:
+  v13_: int = const 1;
+  v14_: int = add v13_ v5_;
+  v15_: int = const 6;
+  v16_: bool = lt v5_ v15_;
+  v5_: int = id v14_;
+  br v16_ .v6_ .v4_;
+.v10_:
+  v17_: int = const 2;
+  print v17_;
+  jmp .v12_;
+.v4_:
+  v18_: int = phi v2_ v5_ .v0_ .v12_;
+  print v18_;
+>>>>>>> c8413e1a (More snapshots)
 }

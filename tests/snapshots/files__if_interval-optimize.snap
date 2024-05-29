@@ -3,6 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
+<<<<<<< HEAD
 .b1_:
   c2_: bool = const true;
   c3_: int = const 1;
@@ -15,4 +16,20 @@ expression: visualization.result
   v7_: int = id c5_;
 .b9_:
   print c2_;
+||||||| parent of c8413e1a (More snapshots)
+.v1_:
+  v2_: bool = const true;
+  v3_: int = const 0;
+  v4_: bool = le v0 v3_;
+  br v4_ .v5_ .v6_;
+.v6_:
+  v7_: int = const 3;
+.v5_:
+  v8_: int = phi v7_ v3_ .v6_ .v1_;
+  print v2_;
+=======
+.v1_:
+  v2_: bool = const true;
+  print v2_;
+>>>>>>> c8413e1a (More snapshots)
 }

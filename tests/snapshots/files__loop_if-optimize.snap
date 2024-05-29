@@ -9,6 +9,7 @@ expression: visualization.result
   v3_: int = id c1_;
 .b4_:
   v5_: bool = eq v2_ v3_;
+<<<<<<< HEAD
   v6_: int = id v2_;
   v7_: bool = id v5_;
   v8_: int = id v3_;
@@ -38,7 +39,60 @@ expression: visualization.result
   v15_: int = id v6_;
   v16_: bool = id c21_;
   v17_: int = id v8_;
+<<<<<<< HEAD
   jmp .b18_;
 .b20_:
+||||||| parent of 6b47c776 (More snapshots)
+.b19_:
+  v21_: bool = not v5_;
+  v2_: int = id v6_;
+  v3_: int = id v8_;
+  br v21_ .b4_ .b22_;
+.b22_:
+=======
+.b19_:
+  v21_: bool = not v5_;
+  v2_: int = id v6_;
+  v3_: int = id v8_;
+  br v21_ .b4_ .b22_;
+.b22_:
+||||||| parent of c8413e1a (More snapshots)
+  br v5_ .v6_ .v7_;
+.v7_:
+  v8_: int = const 1;
+  v9_: int = add v2_ v8_;
+  v10_: int = add v3_ v8_;
+.v6_:
+  v11_: int = phi v9_ v2_ .v7_ .v4_;
+  v12_: int = phi v10_ v3_ .v7_ .v4_;
+  br v5_ .v13_ .v14_;
+.v13_:
+  v15_: bool = const false;
+.v16_:
+  v18_: bool = phi v17_ v15_ .v14_ .v13_;
+  v19_: bool = not v5_;
+  v2_: int = id v11_;
+  v3_: int = id v12_;
+  br v19_ .v4_ .v20_;
+.v14_:
+  v17_: bool = const true;
+  jmp .v16_;
+.v20_:
+=======
+  br v5_ .v6_ .v7_;
+.v7_:
+  v8_: int = const 1;
+  v9_: int = add v2_ v8_;
+  v10_: int = add v3_ v8_;
+.v6_:
+  v11_: int = phi v9_ v2_ .v7_ .v4_;
+  v12_: int = phi v10_ v3_ .v7_ .v4_;
+  v13_: bool = not v5_;
+  v2_: int = id v11_;
+  v3_: int = id v12_;
+  br v13_ .v4_ .v14_;
+.v14_:
+>>>>>>> c8413e1a (More snapshots)
+>>>>>>> 6b47c776 (More snapshots)
   print v2_;
 }

@@ -8,7 +8,7 @@
 ;     (passthrough))
 ;; A Perm is a reverse list of integers
 (datatype Perm (PermPush i64 Perm) (PNil))
-;; expr1 is a list of expressions of the form (Project i expr2),
+;; expr1 is a list of expressions of the form (Get expr2 i),
 ;; where all the i's form a permutation
 (relation IVTPermutationAnalysisDemand (Expr))
 ;;                                    expr1 curr  expr2
@@ -24,7 +24,7 @@
 
 (rule (
     (IVTPermutationAnalysisDemand loop-body)
-    (= loop-body (Concat (Single (Project expr ith))) rest)
+    (= loop-body (Concat (Single (Get expr ith)) rest))
 ) (
     (let perm (PermPush ith (PNil)))
     (IVTPermutationAnalysisImpl loop-body rest expr perm)
@@ -32,7 +32,7 @@
 
 (rule (
     (IVTPermutationAnalysisImpl loop-body curr expr perm)
-    (= curr (Concat (Single (Project expr ith))) rest)
+    (= curr (Concat (Single (Get expr ith)) rest))
 ) (
     (let new-perm (PermPush ith perm))
     (IVTPermutationAnalysisImpl loop-body rest expr new-perm)
@@ -40,13 +40,18 @@
 
 (rule (
     (IVTPermutationAnalysisImpl loop-body (Single last) expr perm)
-    (= last (Project expr ith))
+    (= last (Get expr ith))
 ) (
     (let new-perm (PermPush ith perm))
     (IVTPermutationAnalysis loop-body expr new-perm)
 ) :ruleset always-run)
 
 (function ApplyPerm (Perm Expr) Expr)
+
+(rewrite (ApplyPerm (PermPush ith rest) expr) 
+         (Concat (ApplyPerm rest expr) (Get expr ith)))
+
+(ruleset loop-inversion)
 
 (rule (
     (= loop (DoWhile inpW outW))
@@ -85,4 +90,4 @@
 
     (union new-loop-context (InLoop inpI new-loop-outputs))
     (delete (TmpCtx))
-))
+) :ruleset loop-inversion)

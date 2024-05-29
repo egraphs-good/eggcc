@@ -3,35 +3,35 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: float) {
-.v1_:
-  v2_: float = const 0;
-  v3_: bool = feq v0 v2_;
-  br v3_ .v4_ .v5_;
-.v4_:
-  print v2_;
+.b1_:
+  c2_: float = const 0;
+  v3_: bool = feq v0 c2_;
+  br v3_ .b4_ .b5_;
+.b4_:
+  print c2_;
   ret;
-.v5_:
+.b5_:
   v6_: bool = feq v0 v0;
-  v7_: bool = const true;
-  v8_: float = id v2_;
-  v9_: bool = id v7_;
-  br v6_ .v10_ .v11_;
-.v10_:
-  v12_: bool = flt v0 v2_;
-  v13_: float = id v2_;
-  br v12_ .v14_ .v15_;
-.v15_:
-  v16_: float = const 1;
-  v17_: float = const 1.0000000001;
-  v18_: float = const 0.9999999999;
-  v19_: float = const 2;
-  v20_: float = id v2_;
-  v21_: float = id v16_;
-  v22_: float = id v17_;
-  v23_: float = id v18_;
-  v24_: float = id v19_;
+  c7_: bool = const true;
+  v8_: float = id c2_;
+  v9_: bool = id c7_;
+  br v6_ .b10_ .b11_;
+.b10_:
+  v12_: bool = flt v0 c2_;
+  v13_: float = id c2_;
+  br v12_ .b14_ .b15_;
+.b15_:
+  c16_: float = const 1;
+  c17_: float = const 1.0000000001;
+  c18_: float = const 0.9999999999;
+  c19_: float = const 2;
+  v20_: float = id c2_;
+  v21_: float = id c16_;
+  v22_: float = id c17_;
+  v23_: float = id c18_;
+  v24_: float = id c19_;
   v25_: float = id v0;
-.v26_:
+.b26_:
   v27_: float = fdiv v25_ v21_;
   v28_: float = fadd v21_ v27_;
   v29_: float = fdiv v28_ v24_;
@@ -39,25 +39,25 @@ expression: visualization.result
   v31_: bool = fge v30_ v23_;
   v32_: bool = fle v30_ v22_;
   v33_: bool = and v31_ v32_;
-  v34_: bool = const true;
+  c34_: bool = const true;
   v35_: float = id v20_;
   v36_: float = id v29_;
-  v37_: bool = id v34_;
+  v37_: bool = id c34_;
   v38_: float = id v22_;
   v39_: float = id v23_;
   v40_: float = id v24_;
   v41_: float = id v25_;
-  br v33_ .v42_ .v43_;
-.v42_:
-  v44_: bool = const false;
+  br v33_ .b42_ .b43_;
+.b42_:
+  c44_: bool = const false;
   v35_: float = id v20_;
   v36_: float = id v29_;
-  v37_: bool = id v44_;
+  v37_: bool = id c44_;
   v38_: float = id v22_;
   v39_: float = id v23_;
   v40_: float = id v24_;
   v41_: float = id v25_;
-.v43_:
+.b43_:
   v45_: bool = not v33_;
   v20_: float = id v20_;
   v21_: float = id v29_;
@@ -65,18 +65,18 @@ expression: visualization.result
   v23_: float = id v23_;
   v24_: float = id v24_;
   v25_: float = id v25_;
-  br v45_ .v26_ .v46_;
-.v46_:
+  br v45_ .b26_ .b46_;
+.b46_:
   print v21_;
   v13_: float = id v20_;
-.v14_:
+.b14_:
   v8_: float = id v13_;
   v9_: bool = id v12_;
-.v11_:
-  br v9_ .v47_ .v48_;
-.v47_:
+.b11_:
+  br v9_ .b47_ .b48_;
+.b47_:
   v49_: float = fdiv v8_ v8_;
   print v49_;
-.v48_:
-.v50_:
+.b48_:
+.b50_:
 }

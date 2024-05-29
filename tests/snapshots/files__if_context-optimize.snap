@@ -3,19 +3,18 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-.v1_:
-  v2_: bool = const true;
-  v3_: int = const 1;
-  v4_: bool = lt v0 v3_;
-  v5_: int = const 0;
-  v6_: int = id v0;
-  v7_: int = id v5_;
-  br v4_ .v8_ .v9_;
-.v9_:
-  v10_: int = const -1;
-  v11_: int = mul v0 v10_;
-  v6_: int = id v11_;
-  v7_: int = id v5_;
-.v8_:
-  print v2_;
+.b1_:
+  c2_: bool = const true;
+  c3_: int = const 0;
+  v4_: bool = le v0 c3_;
+  v5_: int = id v0;
+  v6_: int = id c3_;
+  br v4_ .b7_ .b8_;
+.b8_:
+  c9_: int = const -1;
+  v10_: int = mul c9_ v0;
+  v5_: int = id v10_;
+  v6_: int = id c3_;
+.b7_:
+  print c2_;
 }

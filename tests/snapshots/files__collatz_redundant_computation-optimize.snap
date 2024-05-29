@@ -3,29 +3,29 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-.v1_:
-  v2_: int = const 1;
-  v3_: int = const 3;
-  v4_: int = const 2;
-  v5_: int = const 0;
+.b1_:
+  c2_: int = const 1;
+  c3_: int = const 3;
+  c4_: int = const 2;
+  c5_: int = const 0;
   v6_: int = id v0;
   v7_: int = id v0;
-  v8_: int = id v2_;
-  v9_: int = id v3_;
-  v10_: int = id v4_;
-  v11_: int = id v5_;
-.v12_:
+  v8_: int = id c2_;
+  v9_: int = id c3_;
+  v10_: int = id c4_;
+  v11_: int = id c5_;
+.b12_:
   v13_: bool = eq v7_ v8_;
-  v14_: bool = const false;
+  c14_: bool = const false;
   v15_: int = id v6_;
-  v16_: bool = id v14_;
-  v17_: int = id v8_;
-  v18_: int = id v8_;
+  v16_: bool = id c14_;
+  v17_: int = id v7_;
+  v18_: int = id v7_;
   v19_: int = id v9_;
   v20_: int = id v10_;
   v21_: int = id v11_;
-  br v13_ .v22_ .v23_;
-.v23_:
+  br v13_ .b22_ .b23_;
+.b23_:
   v24_: int = div v7_ v10_;
   v25_: int = mul v10_ v24_;
   v26_: int = sub v7_ v25_;
@@ -33,34 +33,34 @@ expression: visualization.result
   print v7_;
   v28_: int = mul v7_ v9_;
   v29_: int = add v28_ v8_;
-  v30_: bool = const true;
+  c30_: bool = const true;
   v31_: int = id v6_;
-  v32_: bool = id v30_;
+  v32_: bool = id c30_;
   v33_: int = id v29_;
   v34_: int = id v8_;
   v35_: int = id v9_;
   v36_: int = id v10_;
   v37_: int = id v11_;
-  br v27_ .v38_ .v39_;
-.v38_:
-  v40_: bool = const true;
+  br v27_ .b38_ .b39_;
+.b38_:
+  c40_: bool = const true;
   v31_: int = id v6_;
-  v32_: bool = id v40_;
+  v32_: bool = id c40_;
   v33_: int = id v24_;
   v34_: int = id v8_;
   v35_: int = id v9_;
   v36_: int = id v10_;
   v37_: int = id v11_;
-.v39_:
-  v41_: bool = const true;
+.b39_:
+  c41_: bool = const true;
   v15_: int = id v6_;
-  v16_: bool = id v41_;
+  v16_: bool = id c41_;
   v17_: int = id v33_;
   v18_: int = id v8_;
   v19_: int = id v9_;
   v20_: int = id v10_;
   v21_: int = id v11_;
-.v22_:
+.b22_:
   v42_: bool = not v13_;
   v6_: int = id v6_;
   v7_: int = id v17_;
@@ -68,7 +68,7 @@ expression: visualization.result
   v9_: int = id v9_;
   v10_: int = id v10_;
   v11_: int = id v11_;
-  br v42_ .v12_ .v43_;
-.v43_:
+  br v42_ .b12_ .b43_;
+.b43_:
   print v0;
 }

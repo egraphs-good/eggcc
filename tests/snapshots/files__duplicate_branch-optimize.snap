@@ -3,13 +3,13 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-.v1_:
-  v2_: int = const 4;
-  v3_: bool = lt v2_ v0;
-  v4_: int = id v2_;
-  br v3_ .v5_ .v6_;
-.v5_:
-  v4_: int = id v2_;
-.v6_:
-  print v2_;
+.b1_:
+  c2_: int = const 4;
+  v3_: bool = lt c2_ v0;
+  v4_: int = id c2_;
+  br v3_ .b5_ .b6_;
+.b5_:
+  v4_: int = id c2_;
+.b6_:
+  print c2_;
 }

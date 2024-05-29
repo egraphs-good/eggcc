@@ -105,17 +105,21 @@ def should_have_llvm_ir(runMethod):
   ]
 
 # aggregate all profile info into a single json array.
-def aggregate(compile_times, bench_times):
+def aggregate(compile_times, bench_times, looped):
     res = []
 
     for path in sorted(compile_times.keys()):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
-      result = {"runMethod": runMethod, "benchmark": name, "hyperfine": bench_times[path], "compileTime": compile_times[path]}
+      result = {"runMethod": runMethod, "benchmark": name, "hyperfine": bench_times[path], "compileTime": compile_times[path], "looped": looped[name]}
 
       res.append(result)
     return res
 
+def is_looped(bril_file):
+  with open(bril_file) as f:
+    txt = f.read()
+    return "orig_main" in txt
 
 if __name__ == '__main__':
   # expect two arguments
@@ -137,6 +141,11 @@ if __name__ == '__main__':
     profiles = glob(f'{bril_dir}/**/*.bril', recursive=True)
   else:
     profiles = [bril_dir]
+
+  looped = {}
+  for profile in profiles:
+    name = profile.split("/")[-1][:-len(".bril")]
+    looped[name] = is_looped(profile)
 
   to_run = []
   index = 0
@@ -181,7 +190,7 @@ if __name__ == '__main__':
       (path, _bench_data) = res
       bench_data[path] = _bench_data
 
-  nightly_data = aggregate(compile_times, bench_data)
+  nightly_data = aggregate(compile_times, bench_data, looped)
   with open(f"{DATA_DIR}/profile.json", "w") as profile:
     json.dump(nightly_data, profile, indent=2)
 

@@ -7,6 +7,7 @@ expression: visualization.result
   c2_: int = const 2;
   v3_: bool = lt v0 c2_;
   v4_: bool = not v3_;
+<<<<<<< HEAD
   c5_: int = const 0;
   c6_: int = const 1;
   c7_: int = const 5;
@@ -34,4 +35,43 @@ expression: visualization.result
 .b20_:
   v22_: int = add c6_ v17_;
   print v22_;
+||||||| parent of 223685d0 (Snapshots)
+  v5_: int = const 0;
+  v6_: int = const 1;
+  v7_: int = const 5;
+  br v3_ .v8_ .v9_;
+.v8_:
+  v10_: int = const 4;
+  v11_: bool = const false;
+.v12_:
+  v13_: int = phi v6_ v10_ .v9_ .v8_;
+  v15_: bool = phi v14_ v11_ .v9_ .v8_;
+  br v4_ .v16_ .v17_;
+.v16_:
+  v18_: int = add v13_ v2_;
+  jmp .v17_;
+.v9_:
+  v14_: bool = const true;
+  jmp .v12_;
+.v17_:
+  v19_: int = phi v13_ v18_ .v12_ .v16_;
+  v20_: int = add v19_ v6_;
+  print v20_;
+=======
+  v5_: int = const 0;
+  v6_: int = const 1;
+  v7_: int = const 5;
+  br v3_ .v8_ .v9_;
+.v8_:
+  v10_: int = const 4;
+.v9_:
+  v11_: int = phi v6_ v10_ .v1_ .v8_;
+  br v4_ .v12_ .v13_;
+.v12_:
+  v14_: int = add v11_ v2_;
+.v13_:
+  v15_: int = phi v11_ v14_ .v9_ .v12_;
+  v16_: int = add v15_ v6_;
+  print v16_;
+>>>>>>> 223685d0 (Snapshots)
 }

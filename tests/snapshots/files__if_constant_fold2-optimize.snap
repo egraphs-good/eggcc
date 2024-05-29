@@ -3,6 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
+<<<<<<< HEAD
 .b1_:
   c2_: int = const 20;
   c3_: int = const 5;
@@ -20,4 +21,26 @@ expression: visualization.result
   v6_: int = id c2_;
 .b7_:
   print c2_;
+||||||| parent of 223685d0 (Snapshots)
+.v1_:
+  v2_: int = const 20;
+  v3_: int = const 5;
+  v4_: bool = eq v0 v3_;
+  v5_: int = const 4;
+  br v4_ .v6_ .v7_;
+.v7_:
+  v8_: bool = eq v0 v5_;
+  br v8_ .v9_ .v10_;
+.v9_:
+.v11_:
+  jmp .v6_;
+.v10_:
+  jmp .v11_;
+.v6_:
+  print v2_;
+=======
+.v1_:
+  v2_: int = const 20;
+  print v2_;
+>>>>>>> 223685d0 (Snapshots)
 }

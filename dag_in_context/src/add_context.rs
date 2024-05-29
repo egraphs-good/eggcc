@@ -3,11 +3,14 @@
 //! by remembering the most recent context (ex. DoWhile or If).
 //! Mantains the sharing invariant (see restore_sharing_invariant) by using a cache.
 
+use egglog::Term;
 use std::collections::HashMap;
 
 use crate::{
+    print_with_intermediate_helper,
     schema::{Assumption, Expr, RcExpr, TreeProgram},
     schema_helpers::AssumptionRef,
+    to_egglog::TreeToEgglog,
 };
 
 pub struct ContextCache {
@@ -123,6 +126,37 @@ impl<T> LoopContextUnionsAnd<T> {
                 let _ = writeln!(output, "(union {a} {b})");
                 output
             })
+    }
+
+    pub(crate) fn get_unions_with_sharing(
+        &self,
+        printed: &mut String,
+        tree_state: &mut TreeToEgglog,
+        term_cache: &mut HashMap<Term, String>,
+    ) -> String {
+        self.unions
+            .iter()
+            .map(|(a, b)| {
+                let internal_a = a.to_egglog_internal(tree_state);
+                let internal_b = b.to_egglog_internal(tree_state);
+
+                let shared_a = print_with_intermediate_helper(
+                    &tree_state.termdag,
+                    internal_a,
+                    term_cache,
+                    printed,
+                );
+                let shared_b = print_with_intermediate_helper(
+                    &tree_state.termdag,
+                    internal_b,
+                    term_cache,
+                    printed,
+                );
+
+                format!("(union {shared_a} {shared_b})")
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 

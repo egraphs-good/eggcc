@@ -179,7 +179,7 @@ pub fn print_function_inlining_pairs(
         .join("\n");
     format!(
         "{inlined_calls} {printed_pairs} {}",
-        function_inlining_pairs.get_unions()
+        function_inlining_pairs.get_unions_with_sharing(printed, tree_state, term_cache)
     )
 }
 

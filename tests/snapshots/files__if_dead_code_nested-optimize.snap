@@ -1,0 +1,49 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int) {
+.v1_:
+  v2_: int = const 1;
+  v3_: bool = lt v0 v2_;
+  v4_: int = const 0;
+  v5_: int = const 3;
+  v6_: int = const 2;
+  br v3_ .v7_ .v8_;
+.v7_:
+  v9_: bool = lt v0 v4_;
+  v10_: bool = const true;
+  v11_: int = const 1;
+  br v9_ .v12_ .v13_;
+.v13_:
+  v14_: int = const 2;
+.v12_:
+  v15_: int = phi v14_ v11_ .v13_ .v7_;
+  jmp .v16_;
+.v8_:
+  v17_: bool = gt v0 v6_;
+  v18_: bool = const false;
+  br v17_ .v19_ .v20_;
+.v19_:
+  v21_: bool = gt v0 v5_;
+  br v21_ .v22_ .v23_;
+.v22_:
+  v24_: int = const 3;
+.v25_:
+  v27_: int = phi v26_ v24_ .v23_ .v22_;
+.v28_:
+  v30_: int = phi v29_ v27_ .v20_ .v25_;
+  jmp .v16_;
+.v23_:
+  v26_: int = const 4;
+  jmp .v25_;
+.v20_:
+  v29_: int = const 2;
+  jmp .v28_;
+.v16_:
+  v31_: int = phi v30_ v15_ .v28_ .v12_;
+  v32_: int = phi v4_ v11_ .v28_ .v12_;
+  print v32_;
+  print v3_;
+  print v31_;
+}

@@ -71,7 +71,7 @@ pub fn function_inlining_pairs(
     let mut unions = LoopContextUnionsAnd::new();
 
     if iterations == 0 {
-        return LoopContextUnionsAnd::new().swap_value(Vec::new()).0;
+        return unions.swap_value(Vec::new()).0;
     }
 
     let mut all_funcs = vec![program.entry.clone()];

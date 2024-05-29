@@ -569,7 +569,7 @@ impl Run {
             RunType::DagToRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding(true);
-                let rvsdg2 = dag_to_rvsdg(&tree);
+                let rvsdg2 = dag_to_rvsdg(&tree.value);
                 (
                     vec![Visualization {
                         result: rvsdg2.to_svg(),
@@ -582,7 +582,7 @@ impl Run {
             RunType::DagRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding(true);
-                let rvsdg2 = dag_to_rvsdg(&tree);
+                let rvsdg2 = dag_to_rvsdg(&tree.value);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
                 (
@@ -597,7 +597,7 @@ impl Run {
             RunType::CheckExtractIdentical => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding(true);
-                check_roundtrip_egraph(&tree);
+                check_roundtrip_egraph(&tree.value);
                 (vec![], None)
             }
             RunType::Optimize => {
@@ -616,11 +616,11 @@ impl Run {
                 let tree = rvsdg.to_dag_encoding(true);
                 (
                     vec![Visualization {
-                        result: tree_to_svg(&tree),
+                        result: tree_to_svg(&tree.value),
                         file_extension: ".svg".to_string(),
                         name: "".to_string(),
                     }],
-                    Some(Interpretable::TreeProgram(tree)),
+                    Some(Interpretable::TreeProgram(tree.value)),
                 )
             }
             RunType::DagOptimize => {

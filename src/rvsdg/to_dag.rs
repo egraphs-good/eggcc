@@ -17,7 +17,7 @@ use dag_in_context::schema::Constant;
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
 use dag_in_context::{
-    add_context::{Unions, UnionsAnd},
+    add_context::LoopContextUnionsAnd,
     ast::{add, call, dowhile, function, int, less_than, program_vec, tfalse, ttrue},
     schema::{RcExpr, TreeProgram, Type},
 };
@@ -30,7 +30,7 @@ impl RvsdgProgram {
     /// Common subexpressions are shared by the same Rc<Expr> in the dag encoding.
     /// This invariant is maintained by restore_sharing_invariant.
     /// Also adds context to the program.
-    pub fn to_dag_encoding(&self, add_context: bool) -> UnionsAnd<TreeProgram> {
+    pub fn to_dag_encoding(&self, add_context: bool) -> LoopContextUnionsAnd<TreeProgram> {
         let last_function = self.functions.last().unwrap();
         let rest_functions = self.functions.iter().take(self.functions.len() - 1);
         let res = program_vec(
@@ -43,10 +43,7 @@ impl RvsdgProgram {
         if add_context {
             res.add_context()
         } else {
-            UnionsAnd {
-                value: res,
-                unions: Unions::new(),
-            }
+            LoopContextUnionsAnd::new().swap_value(res).0
         }
     }
 }
@@ -414,7 +411,7 @@ fn dag_translation_test(
     let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
     let result = rvsdg.to_dag_encoding(false);
 
-    assert_progs_eq(&result, &expected, "Resulting program is incorrect");
+    assert_progs_eq(&result.value, &expected, "Resulting program is incorrect");
 
     let (found_val, found_printlog) = interpret_dag_prog(&expected, &input_val);
     assert_eq!(
@@ -428,7 +425,7 @@ fn dag_translation_test(
         expected_printlog, found_printlog
     );
 
-    let (found_val, found_printlog) = interpret_dag_prog(&result, &input_val);
+    let (found_val, found_printlog) = interpret_dag_prog(&result.value, &input_val);
     assert_eq!(
         expected_val, found_val,
         "Resulting program produced incorrect result. Expected {:?}, found {:?}",

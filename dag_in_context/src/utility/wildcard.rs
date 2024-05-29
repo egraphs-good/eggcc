@@ -13,8 +13,12 @@ fn test_wildcard() -> crate::Result {
         .with_arg_types(in_ty.clone(), base(intt()))
         .add_ctx(wildcardctx("CTX".to_string()));
 
-    let build = format!("(let expr {})", expr);
-    let check = format!("(check {})", expr_with_wildcard,);
+    let build = format!("(let expr {})\n{}", expr.value, expr.get_unions());
+    let check = format!(
+        "{}\n(check {})",
+        expr_with_wildcard.get_unions(),
+        expr_with_wildcard.value
+    );
 
     egglog_test(
         &build,

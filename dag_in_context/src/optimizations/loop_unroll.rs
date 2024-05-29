@@ -49,7 +49,7 @@ fn loop_unroll_simple() -> crate::Result {
 
     egglog_test(
         &format!("{prog}"),
-        &format!("(check (= {prog} {expected}))"),
+        &format!("(check (= {prog} {}))", expected.value),
         vec![prog.to_program(base(intt()), tuplet!(intt()))],
         intv(0),
         tuplev!(intv(8)),

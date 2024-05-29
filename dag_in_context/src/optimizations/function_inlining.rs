@@ -7,6 +7,7 @@ use std::{
 use egglog::Term;
 
 use crate::{
+    add_context::UnionsAnd,
     print_with_intermediate_helper,
     schema::{Expr, RcExpr, TreeProgram},
     to_egglog::TreeToEgglog,
@@ -45,11 +46,17 @@ fn get_calls_with_cache(
 
 // Pairs a call with its equivalent inlined body, using the passed-in function -> body map
 // to look up the body
-fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBody {
+fn subst_call(
+    call: &RcExpr,
+    func_to_body: &HashMap<String, &RcExpr>,
+    unions: &mut Vec<(String, String)>,
+) -> CallBody {
     if let Expr::Call(func_name, args) = call.as_ref() {
+        let unions_and_value = Expr::subst(args, func_to_body[func_name]);
+        unions.extend(unions_and_value.unions);
         CallBody {
             call: call.clone(),
-            body: Expr::subst(args, func_to_body[func_name]),
+            body: unions_and_value.value,
         }
     } else {
         panic!("Tried to substitute non-calls.")
@@ -57,9 +64,17 @@ fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBod
 }
 
 // Generates a list of (call, body) pairs (in a CallBody) that can be unioned
-pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<CallBody> {
+pub fn function_inlining_pairs(
+    program: &TreeProgram,
+    iterations: usize,
+) -> UnionsAnd<Vec<CallBody>> {
+    let mut unions = Vec::new();
+
     if iterations == 0 {
-        return vec![];
+        return UnionsAnd {
+            unions,
+            value: Vec::new(),
+        };
     }
 
     let mut all_funcs = vec![program.entry.clone()];
@@ -85,7 +100,7 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
 
     let mut inlined_calls = calls
         .iter()
-        .map(|call| subst_call(call, &func_name_to_body))
+        .map(|call| subst_call(call, &func_name_to_body, &mut unions))
         .collect::<Vec<_>>();
 
     // Repeat! Get calls and subst for each new substituted body.
@@ -105,17 +120,20 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
         // Only work on new calls, added from the new inlines
         new_inlines = new_calls
             .iter()
-            .map(|call| subst_call(call, &func_name_to_body))
+            .map(|call| subst_call(call, &func_name_to_body, &mut unions))
             .collect::<Vec<CallBody>>();
         inlined_calls.extend(new_inlines.clone());
     }
 
-    inlined_calls
+    UnionsAnd {
+        unions,
+        value: inlined_calls,
+    }
 }
 
 // Returns a formatted string of (union call body) for each pair
 pub fn print_function_inlining_pairs(
-    function_inlining_pairs: Vec<CallBody>,
+    function_inlining_pairs: UnionsAnd<Vec<CallBody>>,
     printed: &mut String,
     tree_state: &mut TreeToEgglog,
     term_cache: &mut HashMap<Term, String>,
@@ -123,6 +141,7 @@ pub fn print_function_inlining_pairs(
     let inlined_calls = "(relation InlinedCall (String Expr))";
     // Get unions and mark each call as inlined for extraction purposes
     let printed_pairs = function_inlining_pairs
+        .value
         .iter()
         .map(|cb| {
             if let Expr::Call(callee, _) = cb.call.as_ref() {
@@ -164,7 +183,10 @@ pub fn print_function_inlining_pairs(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    format!("{inlined_calls} {printed_pairs}")
+    format!(
+        "{inlined_calls} {printed_pairs} {}",
+        function_inlining_pairs.get_unions()
+    )
 }
 
 // Check that function inling pairs produces the right number of pairs for
@@ -207,7 +229,7 @@ fn test_function_inlining_pairs() {
 
     // No more iterations!
 
-    assert_eq!(pairs.len(), 6)
+    assert_eq!(pairs.value.len(), 6)
 }
 
 // Infinite recursion should produce as many pairs as iterations
@@ -225,6 +247,6 @@ fn test_inf_recursion_function_inlining_pairs() {
 
     for iterations in 0..10 {
         let pairs = function_inlining_pairs(&program, iterations);
-        assert_eq!(pairs.len(), iterations);
+        assert_eq!(pairs.value.len(), iterations);
     }
 }

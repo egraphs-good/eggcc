@@ -21,15 +21,17 @@ fn test_context_of() -> crate::Result {
         (let pred-ctx {ctx})
         (let pred (Bop (Eq) (Arg (Base (IntT)) {ctx}) (Const (Int 5) (Base (IntT)) {ctx})))
         (check (ContextOf pred pred-ctx))
-        (let if {body_with_context})
-        (check (ContextOf if pred-ctx))
-        "
+        (let if {})
+        {}
+        (check (ContextOf if pred-ctx))",
+        body_with_context.value,
+        body_with_context.get_unions(),
     );
 
     crate::egglog_test(
-        &format!("(let build {build})"),
+        &format!("(let build {})\n{}", build.value, build.get_unions()),
         &check,
-        vec![build.func_to_program()],
+        vec![build.value.func_to_program()],
         intv(5),
         intv(5),
         vec![],
@@ -101,12 +103,12 @@ fn test_context_of_no_func_context() -> crate::Result {
     .func_with_arg_types()
     .func_add_ctx();
 
-    let check = format!("(fail (check (ContextOf {} ctx)))", build.clone());
+    let check = format!("(fail (check (ContextOf {} ctx)))", build.value);
 
     crate::egglog_test(
-        &build.to_string(),
+        &format!("{}\n{}", build.value, build.get_unions()),
         &check,
-        vec![build.to_program(base(intt()), base(intt()))],
+        vec![build.value.to_program(base(intt()), base(intt()))],
         val_empty(),
         intv(9),
         vec![],

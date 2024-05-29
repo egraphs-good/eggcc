@@ -85,11 +85,17 @@ fn test_add_constant_fold() -> crate::Result {
     let expr2 = int_ty(3, emptyt()).add_ctx(Assumption::dummy());
 
     egglog_test(
-        &format!("{expr}"),
-        &format!("(check (= {expr} {expr2}))"),
+        &format!("{}\n{}", expr.value, expr.get_unions()),
+        &format!(
+            "{}\n{}\n(check (= {} {}))",
+            expr2.value,
+            expr2.get_unions(),
+            expr.value,
+            expr2.value
+        ),
         vec![
-            expr.to_program(emptyt(), base(intt())),
-            expr2.to_program(emptyt(), base(intt())),
+            expr.value.to_program(emptyt(), base(intt())),
+            expr2.value.to_program(emptyt(), base(intt())),
         ],
         val_empty(),
         intv(3),
@@ -193,12 +199,12 @@ fn context_if() -> crate::Result {
     let f = function("main", base(intt()), base(boolt()), z.clone()).func_with_arg_types();
     let prog = f.to_program(base(intt()), base(boolt()));
     let with_context = prog.add_context();
-    let term = with_context.entry.func_body().unwrap();
+    let term = with_context.value.entry.func_body().unwrap();
 
     egglog_test(
-        &format!("{with_context}"),
+        &format!("{}\n{}", with_context.value, with_context.get_unions()),
         &format!("(check (= {term} (Const (Bool false) (Base (IntT)) somectx)))"),
-        vec![with_context],
+        vec![with_context.value],
         intv(4),
         val_bool(false),
         vec![],
@@ -211,12 +217,12 @@ fn simple_less_than() -> crate::Result {
     let cond = less_eq(int_ty(0, base(intt())), int(-1));
     let prog = program!(function("main", base(intt()), base(boolt()), cond.clone()),);
     let with_context = prog.add_context();
-    let term = with_context.entry.func_body().unwrap();
+    let term = with_context.value.entry.func_body().unwrap();
 
     egglog_test(
-        &format!("{with_context}"),
+        &format!("{}\n{}", with_context.value, with_context.get_unions()),
         &format!("(check (= {term} (Const (Bool false) (Base (IntT)) somectx)))"),
-        vec![with_context],
+        vec![with_context.value],
         intv(4),
         val_bool(false),
         vec![],
@@ -239,15 +245,15 @@ fn context_if_rev() -> crate::Result {
     let f = function("main", base(intt()), base(boolt()), z.clone()).func_with_arg_types();
     let prog = f.to_program(base(intt()), base(boolt()));
     let with_context = prog.add_context();
-    let term = with_context.entry.func_body().unwrap();
+    let term = with_context.value.entry.func_body().unwrap();
 
     egglog_test(
-        &format!("{with_context}"),
+        &format!("{}\n{}", with_context.value, with_context.get_unions()),
         &format!(
             "
         (check (= {term} (Const (Bool false) (Base (IntT)) (InFunc \"main\"))))"
         ),
-        vec![with_context],
+        vec![with_context.value],
         intv(4),
         val_bool(false),
         vec![],
@@ -302,7 +308,7 @@ fn context_if_with_state() -> crate::Result {
         .with_arg_types()
         .add_context();
 
-    let body_with_ctx = prog.entry.func_body().unwrap();
+    let body_with_ctx = prog.value.entry.func_body().unwrap();
 
     let expected = single(tprint(
         ttrue_ty(input_type.clone()),
@@ -311,13 +317,14 @@ fn context_if_with_state() -> crate::Result {
     .add_ctx(Assumption::InFunc("main".to_string()));
 
     egglog_test(
-        &format!("{prog}"),
+        &format!("{}\n{}", prog.value, prog.get_unions()),
         &format!(
-            "
-(check (= {expected} {body_with_ctx}))
-"
+            "{}\n{}\n(check (= {} {body_with_ctx}))",
+            expected.value,
+            expected.get_unions(),
+            expected.value
         ),
-        vec![prog],
+        vec![prog.value],
         val_vec(vec![intv(4), statev()]),
         val_vec(vec![statev()]),
         vec!["true".to_string()],

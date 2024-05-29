@@ -201,12 +201,9 @@ fn test_subst_if() -> crate::Result {
                         {replace_with}
                         {expr}))"
     );
-    let check = format!(
-        "
-(check (= substituted {expected}))"
-    );
+    let check = format!("(check (= substituted {}))", expected.value);
 
-    crate::egglog_test_and_print_program(
+    crate::egglog_test(
         &build.to_string(),
         &check.to_string(),
         vec![expr.to_program(tuplet!(boolt(), intt()), base(intt()))],
@@ -262,16 +259,24 @@ fn test_subst_arg_type_changes() -> crate::Result {
         .add_ctx(Assumption::dummy());
     let ctx = Assumption::dummy();
     let build = format!(
-        "
-(let substituted (Subst {ctx}
-                        {replace_with}
-                        {expr}))"
+        "{}\n{}\n{}\n{}\n(let substituted (Subst {ctx} {} {}))",
+        replace_with.value,
+        replace_with.get_unions(),
+        expr.value,
+        expr.get_unions(),
+        replace_with.value,
+        expr.value
     );
-    let check = format!("(check (= substituted {expected}))");
+    let check = format!(
+        "{}\n{}\n(check (= substituted {}))",
+        expected.value,
+        expected.get_unions(),
+        expected.value
+    );
     crate::egglog_test(
         &build.to_string(),
         &check.to_string(),
-        vec![expr.to_program(base(intt()), base(intt()))],
+        vec![expr.value.to_program(base(intt()), base(intt()))],
         Value::Const(Constant::Int(2)),
         Value::Const(Constant::Int(4)),
         vec![],
@@ -296,16 +301,16 @@ fn test_subst_identity() -> crate::Result {
     let ctx = Assumption::InFunc("main".to_string());
 
     let build = format!(
-        "
-(let substituted (Subst {ctx}
-                        {replace_with}
-                        {expression}))"
+        "{}\n{}\n(let substituted (Subst {ctx} {replace_with} {}))",
+        expression.value,
+        expression.get_unions(),
+        expression.value,
     );
-    let check = format!("(check (= substituted {expression}))");
+    let check = format!("(check (= substituted {}))", expression.value);
     crate::egglog_test(
         &build.to_string(),
         &check.to_string(),
-        vec![expression.func_to_program()],
+        vec![expression.value.func_to_program()],
         intv(5),
         intv(1),
         vec![],
@@ -330,16 +335,21 @@ fn test_subst_add() -> crate::Result {
     let ctx = Assumption::InFunc("main".to_string());
 
     let build = format!(
-        "
-(let substituted (Subst {ctx}
-                        {replace_with}
-                        {expression}))"
+        "{}\n{}\n(let substituted (Subst {ctx} {replace_with} {}))",
+        expression.value,
+        expression.get_unions(),
+        expression.value,
     );
-    let check = format!("(check (= substituted {expected}))");
+    let check = format!(
+        "{}\n{}\n(check (= substituted {}))",
+        expected.value,
+        expected.get_unions(),
+        expected.value,
+    );
     crate::egglog_test(
         &build.to_string(),
         &check.to_string(),
-        vec![expression.func_to_program()],
+        vec![expression.value.func_to_program()],
         intv(5),
         intv(10),
         vec![],

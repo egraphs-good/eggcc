@@ -177,8 +177,8 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
         DefaultCostModel,
     );
 
-    let original_with_ctx = program.add_dummy_ctx();
-    let res_with_ctx = res.add_dummy_ctx();
+    let original_with_ctx = program.add_dummy_ctx().value;
+    let res_with_ctx = res.add_dummy_ctx().value;
 
     if !are_progs_eq(original_with_ctx.clone(), res_with_ctx.clone()) {
         eprintln!("Original program: {}", tree_to_svg(&original_with_ctx));

@@ -65,12 +65,13 @@ impl ContextCache {
 }
 
 pub struct UnionsAnd<T> {
-    unions: Vec<(String, String)>,
+    // marked as public but you probably want `get_unions`
+    pub unions: Vec<(String, String)>,
     pub value: T,
 }
 
 impl<T> UnionsAnd<T> {
-    fn get_unions(&self) -> String {
+    pub fn get_unions(&self) -> String {
         use std::fmt::Write;
 
         self.unions
@@ -83,35 +84,35 @@ impl<T> UnionsAnd<T> {
 }
 
 impl TreeProgram {
-    pub fn add_context(&self) -> TreeProgram {
-        self.add_context_internal(Expr::func_get_ctx, &mut ContextCache::new())
+    pub fn add_context(&self) -> UnionsAnd<TreeProgram> {
+        self.add_context_internal(Expr::func_get_ctx, ContextCache::new())
     }
 
     /// add stand-in variables for all the contexts in the program
     /// useful for testing if you don't care about context in the test
-    pub fn add_symbolic_ctx(&self) -> TreeProgram {
-        self.add_context_internal(
-            |_| Assumption::dummy(),
-            &mut ContextCache::new_symbolic_ctx(),
-        )
+    pub fn add_symbolic_ctx(&self) -> UnionsAnd<TreeProgram> {
+        self.add_context_internal(|_| Assumption::dummy(), ContextCache::new_symbolic_ctx())
     }
 
-    pub fn add_dummy_ctx(&self) -> TreeProgram {
-        self.add_context_internal(|_| Assumption::dummy(), &mut ContextCache::new_dummy_ctx())
+    pub fn add_dummy_ctx(&self) -> UnionsAnd<TreeProgram> {
+        self.add_context_internal(|_| Assumption::dummy(), ContextCache::new_dummy_ctx())
     }
 
     fn add_context_internal(
         &self,
         func: impl Fn(&RcExpr) -> Assumption,
-        cache: &mut ContextCache,
-    ) -> TreeProgram {
-        TreeProgram {
-            functions: self
-                .functions
-                .iter()
-                .map(|f| f.add_ctx_with_cache(func(f), cache))
-                .collect(),
-            entry: self.entry.add_ctx_with_cache(func(&self.entry), cache),
+        mut cache: ContextCache,
+    ) -> UnionsAnd<TreeProgram> {
+        let entry = self.entry.add_ctx_with_cache(func(&self.entry), &mut cache);
+        let functions = self
+            .functions
+            .iter()
+            .map(|f| f.add_ctx_with_cache(func(f), &mut cache))
+            .collect();
+        let value = TreeProgram { functions, entry };
+        UnionsAnd {
+            value,
+            unions: cache.unions,
         }
     }
 }
@@ -124,28 +125,48 @@ impl Expr {
         Assumption::InFunc(name.clone())
     }
 
-    pub fn func_add_ctx(self: &RcExpr) -> RcExpr {
+    pub fn func_add_ctx(self: &RcExpr) -> UnionsAnd<RcExpr> {
         let Expr::Function(name, arg_ty, ret_ty, body) = self.as_ref() else {
             panic!("Expected Function, got {:?}", self);
         };
-        RcExpr::new(Expr::Function(
+        let mut cache = ContextCache::new();
+        let value = RcExpr::new(Expr::Function(
             name.clone(),
             arg_ty.clone(),
             ret_ty.clone(),
-            body.add_ctx_with_cache(self.func_get_ctx(), &mut ContextCache::new()),
-        ))
+            body.add_ctx_with_cache(self.func_get_ctx(), &mut cache),
+        ));
+        UnionsAnd {
+            value,
+            unions: cache.unions,
+        }
     }
 
-    pub fn add_dummy_ctx(self: &RcExpr) -> RcExpr {
-        self.add_ctx_with_cache(Assumption::dummy(), &mut ContextCache::new_dummy_ctx())
+    pub fn add_dummy_ctx(self: &RcExpr) -> UnionsAnd<RcExpr> {
+        let mut cache = ContextCache::new_dummy_ctx();
+        let value = self.add_ctx_with_cache(Assumption::dummy(), &mut cache);
+        UnionsAnd {
+            value,
+            unions: cache.unions,
+        }
     }
 
-    pub fn add_symbolic_ctx(self: &RcExpr) -> RcExpr {
-        self.add_ctx_with_cache(Assumption::dummy(), &mut ContextCache::new_symbolic_ctx())
+    pub fn add_symbolic_ctx(self: &RcExpr) -> UnionsAnd<RcExpr> {
+        let mut cache = ContextCache::new_symbolic_ctx();
+        let value = self.add_ctx_with_cache(Assumption::dummy(), &mut cache);
+        UnionsAnd {
+            value,
+            unions: cache.unions,
+        }
     }
 
-    pub fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> RcExpr {
-        self.add_ctx_with_cache(current_ctx, &mut ContextCache::new())
+    pub fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> UnionsAnd<RcExpr> {
+        let mut cache = ContextCache::new();
+        let value = self.add_ctx_with_cache(current_ctx, &mut cache);
+        UnionsAnd {
+            value,
+            unions: cache.unions,
+        }
     }
 
     fn add_ctx_with_cache(

@@ -76,9 +76,13 @@ fn passthrough_if_predicate() -> crate::Result {
     let build = build.to_program(base(intt()), base(boolt())).add_context();
     let check = check.to_program(base(intt()), base(boolt())).add_context();
     egglog_test(
-        &format!("(let b {build})"),
-        &format!("(let c {check}) (check (= b c))"),
-        vec![build, check],
+        &format!("(let b {})\n{}", build.value, build.get_unions()),
+        &format!(
+            "(let c {})\n{} (check (= b c))",
+            check.value,
+            check.get_unions()
+        ),
+        vec![build.value, check.value],
         intv(3),
         val_bool(true),
         vec![],

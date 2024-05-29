@@ -6,6 +6,7 @@ use std::{
 use strum_macros::EnumIter;
 
 use crate::{
+    add_context::UnionsAnd,
     ast::{base, boolt, floatt, inif, inloop, inswitch, intt},
     schema::{
         Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
@@ -288,12 +289,15 @@ impl Expr {
     }
 
     // Substitute "arg" for Arg() in within. Also replaces context with "arg"'s context.
-    pub fn subst(arg: &RcExpr, within: &RcExpr) -> RcExpr {
+    pub fn subst(arg: &RcExpr, within: &RcExpr) -> UnionsAnd<RcExpr> {
         let mut subst_cache: HashMap<*const Expr, RcExpr> = HashMap::new();
+        let mut unions = Vec::new();
 
         let arg_ty = arg.get_arg_type();
         let arg_ctx = arg.get_ctx();
-        Self::subst_with_cache(arg, &arg_ty, arg_ctx, within, &mut subst_cache)
+        let value =
+            Self::subst_with_cache(arg, &arg_ty, arg_ctx, within, &mut subst_cache, &mut unions);
+        UnionsAnd { value, unions }
     }
 
     fn subst_with_cache(
@@ -302,7 +306,14 @@ impl Expr {
         arg_ctx: &Assumption,
         within: &RcExpr,
         subst_cache: &mut HashMap<*const Expr, RcExpr>,
+        unions: &mut Vec<(String, String)>,
     ) -> RcExpr {
+        let add_ctx = |expr: &RcExpr, unions: &mut Vec<_>, assumption| {
+            let unions_and_value = expr.add_ctx(assumption);
+            unions.extend(unions_and_value.unions);
+            unions_and_value.value
+        };
+
         if let Some(substed) = subst_cache.get(&Rc::as_ptr(within)) {
             return substed.clone();
         }
@@ -314,32 +325,32 @@ impl Expr {
             // Propagate through current scope
             Expr::Top(op, x, y, z) => Rc::new(Expr::Top(
                 op.clone(),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, z, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache, unions),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache, unions),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, z, subst_cache, unions),
             )),
             Expr::Bop(op, x, y) => Rc::new(Expr::Bop(
                 op.clone(),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache, unions),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache, unions),
             )),
             Expr::Uop(op, x) => Rc::new(Expr::Uop(
                 op.clone(),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache, unions),
             )),
             Expr::Get(x, i) => Rc::new(Expr::Get(
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache, unions),
                 *i,
             )),
             Expr::Alloc(amt, x, y, ty) => Rc::new(Expr::Alloc(
                 *amt,
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache, unions),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache, unions),
                 ty.clone(),
             )),
             Expr::Call(name, x) => Rc::new(Expr::Call(
                 name.clone(),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache, unions),
             )),
             Expr::Single(x) => Rc::new(Expr::Single(Self::subst_with_cache(
                 arg,
@@ -347,51 +358,61 @@ impl Expr {
                 arg_ctx,
                 x,
                 subst_cache,
+                unions,
             ))),
             Expr::Concat(x, y) => Rc::new(Expr::Concat(
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, x, subst_cache, unions),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, y, subst_cache, unions),
             )),
             Expr::If(pred, input, then, els) => {
-                let new_pred = Self::subst_with_cache(arg, arg_ty, arg_ctx, pred, subst_cache);
-                let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
+                let new_pred =
+                    Self::subst_with_cache(arg, arg_ty, arg_ctx, pred, subst_cache, unions);
+                let new_input =
+                    Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache, unions);
                 Rc::new(Expr::If(
                     new_pred.clone(),
                     new_input.clone(),
-                    then.add_ctx(inif(true, new_pred.clone(), new_input.clone())),
-                    els.add_ctx(inif(false, new_pred, new_input)),
+                    add_ctx(
+                        then,
+                        unions,
+                        inif(true, new_pred.clone(), new_input.clone()),
+                    ),
+                    add_ctx(els, unions, inif(false, new_pred, new_input)),
                 ))
             }
             Expr::Switch(pred, input, branches) => {
-                let new_pred = Self::subst_with_cache(arg, arg_ty, arg_ctx, pred, subst_cache);
-                let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
+                let new_pred =
+                    Self::subst_with_cache(arg, arg_ty, arg_ctx, pred, subst_cache, unions);
+                let new_input =
+                    Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache, unions);
                 let new_branches = branches
                     .iter()
                     .enumerate()
                     .map(|(i, branch)| {
-                        branch.add_ctx(inswitch(
-                            i.try_into().unwrap(),
-                            new_pred.clone(),
-                            new_input.clone(),
-                        ))
+                        add_ctx(
+                            branch,
+                            unions,
+                            inswitch(i.try_into().unwrap(), new_pred.clone(), new_input.clone()),
+                        )
                     })
                     .collect();
                 Rc::new(Expr::Switch(new_pred, new_input, new_branches))
             }
             Expr::DoWhile(input, body) => {
-                let new_input = Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache);
+                let new_input =
+                    Self::subst_with_cache(arg, arg_ty, arg_ctx, input, subst_cache, unions);
                 Rc::new(Expr::DoWhile(
                     new_input.clone(),
                     // It may seem odd to use the old body in the new context, but this is how
                     // it's done in add_ctx.
-                    body.add_ctx(inloop(new_input, body.clone())),
+                    add_ctx(body, unions, inloop(new_input, body.clone())),
                 ))
             }
             Expr::Function(x, y, z, body) => Rc::new(Expr::Function(
                 x.clone(),
                 y.clone(),
                 z.clone(),
-                Self::subst_with_cache(arg, arg_ty, arg_ctx, body, subst_cache),
+                Self::subst_with_cache(arg, arg_ty, arg_ctx, body, subst_cache, unions),
             )),
 
             // For leaves, replace the type and context

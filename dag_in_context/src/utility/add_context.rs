@@ -119,8 +119,10 @@ fn simple_context() -> crate::Result {
     egglog_test(
         &format!("(let egglog (AddContext {context_to_add} {expr}))"),
         &format!(
-            "
-(check (= egglog {expected}))",
+            "{}\n{}\n(check (= egglog {}))",
+            expected.value,
+            expected.get_unions(),
+            expected.value,
         ),
         vec![expr.to_program(emptyt(), base(intt()))],
         Value::Tuple(vec![]),

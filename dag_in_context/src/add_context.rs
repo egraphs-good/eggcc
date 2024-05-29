@@ -13,6 +13,7 @@ use crate::{
 struct ContextCache {
     with_ctx: HashMap<(*const Expr, AssumptionRef), RcExpr>,
     symbol_gen: HashMap<(*const Expr, AssumptionRef), String>,
+    unions: Vec<(String, String)>,
     /// When true, don't add context- instead, make fresh query variables
     /// and put these in place of context
     symbolic_ctx: bool,
@@ -30,6 +31,20 @@ impl ContextCache {
         let sym = format!("ctx__{}", self.symbol_gen.len());
         self.symbol_gen.insert(key, sym.clone());
         Assumption::WildCard(sym)
+    }
+}
+
+pub struct UnionsAnd<T> {
+    unions: Vec<(String, String)>,
+    pub value: T,
+}
+
+impl<T> UnionsAnd<T> {
+    fn get_unions(&self) -> String {
+        self.unions
+            .iter()
+            .map(|(a, b)| format!("(union {a} {b})\n"))
+            .collect()
     }
 }
 
@@ -89,6 +104,7 @@ impl Expr {
         let mut cache = ContextCache {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),
+            unions: Vec::new(),
             symbolic_ctx: false,
             dummy_ctx: true,
         };
@@ -99,6 +115,7 @@ impl Expr {
         let mut cache = ContextCache {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),
+            unions: Vec::new(),
             symbolic_ctx: true,
             dummy_ctx: false,
         };
@@ -109,6 +126,7 @@ impl Expr {
         let mut cache = ContextCache {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),
+            unions: Vec::new(),
             symbolic_ctx: false,
             dummy_ctx: false,
         };

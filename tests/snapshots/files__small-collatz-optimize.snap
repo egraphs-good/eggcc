@@ -16,6 +16,7 @@ expression: visualization.result
   v11_: int = id c2_;
 .b12_:
   v13_: bool = eq v7_ v9_;
+<<<<<<< HEAD
   c14_: bool = const false;
   v15_: int = id v6_;
   v16_: bool = id c14_;
@@ -55,10 +56,44 @@ expression: visualization.result
   v42_: bool = not v13_;
   v6_: int = id v15_;
   v7_: int = id v17_;
+||||||| parent of fd63f8b9 (more more more mroe more snapshots)
+  br v13_ .v14_ .v15_;
+.v14_:
+  v16_: bool = const false;
+.v17_:
+  v19_: int = phi v18_ v6_ .v20_ .v14_;
+  v22_: bool = phi v21_ v16_ .v20_ .v14_;
+  v24_: int = phi v23_ v9_ .v20_ .v14_;
+  v25_: bool = not v13_;
+  v6_: int = id v19_;
+  v7_: int = id v24_;
+=======
+  br v13_ .v14_ .v15_;
+.v15_:
+  v16_: int = add v6_ v9_;
+  v17_: int = div v7_ v8_;
+  v18_: int = mul v17_ v8_;
+  v19_: int = sub v7_ v18_;
+  v20_: bool = eq v11_ v19_;
+  br v20_ .v21_ .v22_;
+.v21_:
+  v23_: bool = const true;
+  v24_: int = div v7_ v8_;
+.v25_:
+  v27_: bool = phi v26_ v23_ .v22_ .v21_;
+  v29_: int = phi v28_ v24_ .v22_ .v21_;
+.v14_:
+  v30_: int = phi v16_ v6_ .v25_ .v12_;
+  v31_: int = phi v29_ v9_ .v25_ .v12_;
+  v32_: bool = not v13_;
+  v6_: int = id v30_;
+  v7_: int = id v31_;
+>>>>>>> fd63f8b9 (more more more mroe more snapshots)
   v8_: int = id v8_;
   v9_: int = id v9_;
   v10_: int = id v10_;
   v11_: int = id v11_;
+<<<<<<< HEAD
   br v42_ .b12_ .b43_;
 .b30_:
   c44_: bool = const true;
@@ -73,5 +108,37 @@ expression: visualization.result
   v39_: int = id v11_;
   jmp .b40_;
 .b43_:
+||||||| parent of fd63f8b9 (more more more mroe more snapshots)
+  br v25_ .v12_ .v26_;
+.v15_:
+  v27_: int = div v7_ v8_;
+  v28_: int = mul v27_ v8_;
+  v29_: int = sub v7_ v28_;
+  v30_: bool = eq v11_ v29_;
+  v18_: int = add v6_ v9_;
+  br v30_ .v31_ .v32_;
+.v31_:
+  v33_: bool = const true;
+  v34_: int = div v7_ v8_;
+.v20_:
+  v36_: bool = phi v35_ v33_ .v32_ .v31_;
+  v23_: int = phi v37_ v34_ .v32_ .v31_;
+  v21_: bool = const true;
+  jmp .v17_;
+.v32_:
+  v35_: bool = const true;
+  v38_: int = mul v10_ v7_;
+  v37_: int = add v38_ v9_;
+  jmp .v20_;
+.v26_:
+=======
+  br v32_ .v12_ .v33_;
+.v22_:
+  v26_: bool = const true;
+  v34_: int = mul v10_ v7_;
+  v28_: int = add v34_ v9_;
+  jmp .v25_;
+.v33_:
+>>>>>>> fd63f8b9 (more more more mroe more snapshots)
   print v6_;
 }

@@ -13,7 +13,7 @@ expression: visualization.result
   v3_: int = id v2_;
 =======
 .v1_:
-  v2_: int = const 2;
+  v2_: int = const 1;
   v3_: int = id v2_;
 >>>>>>> c8413e1a (More snapshots)
   v4_: int = id v0;

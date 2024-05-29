@@ -16,6 +16,7 @@ expression: visualization.result
   v11_: int = id c5_;
 .b12_:
   v13_: bool = eq v7_ v8_;
+<<<<<<< HEAD
   c14_: bool = const false;
   v15_: int = id v6_;
   v16_: bool = id c14_;
@@ -62,13 +63,78 @@ expression: visualization.result
   v21_: int = id v11_;
 .b22_:
   v42_: bool = not v13_;
+||||||| parent of fd63f8b9 (more more more mroe more snapshots)
+  br v13_ .v14_ .v15_;
+.v14_:
+  v16_: bool = const false;
+.v17_:
+  v19_: bool = phi v18_ v16_ .v20_ .v14_;
+  v22_: int = phi v21_ v7_ .v20_ .v14_;
+  v23_: int = phi v8_ v7_ .v20_ .v14_;
+  v24_: bool = not v13_;
+=======
+  br v13_ .v14_ .v15_;
+.v15_:
+  print v7_;
+  v16_: int = div v7_ v10_;
+  v17_: int = mul v10_ v16_;
+  v18_: int = sub v7_ v17_;
+  v19_: bool = eq v11_ v18_;
+  v20_: int = mul v7_ v9_;
+  v21_: int = add v20_ v8_;
+  br v19_ .v22_ .v23_;
+.v22_:
+  v24_: bool = const true;
+.v25_:
+  v27_: bool = phi v26_ v24_ .v23_ .v22_;
+  v28_: int = phi v21_ v16_ .v23_ .v22_;
+.v14_:
+  v29_: int = phi v28_ v8_ .v25_ .v12_;
+  v30_: bool = not v13_;
+>>>>>>> fd63f8b9 (more more more mroe more snapshots)
   v6_: int = id v6_;
+<<<<<<< HEAD
   v7_: int = id v17_;
+||||||| parent of fd63f8b9 (more more more mroe more snapshots)
+  v7_: int = id v22_;
+=======
+  v7_: int = id v29_;
+>>>>>>> fd63f8b9 (more more more mroe more snapshots)
   v8_: int = id v8_;
   v9_: int = id v9_;
   v10_: int = id v10_;
   v11_: int = id v11_;
+<<<<<<< HEAD
   br v42_ .b12_ .b43_;
 .b43_:
+||||||| parent of fd63f8b9 (more more more mroe more snapshots)
+  br v24_ .v12_ .v25_;
+.v15_:
+  v26_: int = div v7_ v10_;
+  v27_: int = mul v10_ v26_;
+  v28_: int = sub v7_ v27_;
+  v29_: bool = eq v11_ v28_;
+  print v7_;
+  v30_: int = mul v7_ v9_;
+  v31_: int = add v30_ v8_;
+  br v29_ .v32_ .v33_;
+.v32_:
+  v34_: bool = const true;
+.v20_:
+  v36_: bool = phi v35_ v34_ .v33_ .v32_;
+  v21_: int = phi v31_ v26_ .v33_ .v32_;
+  v18_: bool = const true;
+  jmp .v17_;
+.v33_:
+  v35_: bool = const true;
+  jmp .v20_;
+.v25_:
+=======
+  br v30_ .v12_ .v31_;
+.v23_:
+  v26_: bool = const true;
+  jmp .v25_;
+.v31_:
+>>>>>>> fd63f8b9 (more more more mroe more snapshots)
   print v0;
 }

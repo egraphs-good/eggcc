@@ -3,69 +3,69 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @pow(v0: int, v1: int) {
-.v2_:
-  v3_: int = const 0;
+.b2_:
+  c3_: int = const 0;
   v4_: int = id v0;
-  v5_: int = id v3_;
+  v5_: int = id c3_;
   v6_: int = id v0;
   v7_: int = id v1;
-.v8_:
-  v9_: int = const 1;
-  v10_: int = sub v7_ v9_;
+.b8_:
+  c9_: int = const 1;
+  v10_: int = sub v7_ c9_;
   v11_: bool = lt v5_ v10_;
   v12_: int = id v4_;
   v13_: int = id v5_;
   v14_: int = id v6_;
   v15_: int = id v7_;
-  br v11_ .v16_ .v17_;
-.v16_:
+  br v11_ .b16_ .b17_;
+.b16_:
   v18_: int = mul v4_ v6_;
-  v19_: int = const 1;
-  v20_: int = add v19_ v5_;
+  c19_: int = const 1;
+  v20_: int = add c19_ v5_;
   v12_: int = id v18_;
   v13_: int = id v20_;
   v14_: int = id v6_;
   v15_: int = id v7_;
-.v17_:
+.b17_:
   v4_: int = id v12_;
   v5_: int = id v13_;
   v6_: int = id v14_;
   v7_: int = id v15_;
-  br v11_ .v8_ .v21_;
-.v21_:
+  br v11_ .b8_ .b21_;
+.b21_:
   print v4_;
 }
 @main {
-.v0_:
-  v1_: int = const 4;
-  v2_: int = const 0;
-  v3_: int = const 15;
-  v4_: int = id v1_;
-  v5_: int = id v2_;
-  v6_: int = id v1_;
-  v7_: int = id v3_;
-.v8_:
-  v9_: int = const 14;
-  v10_: bool = lt v5_ v9_;
+.b0_:
+  c1_: int = const 4;
+  c2_: int = const 0;
+  c3_: int = const 15;
+  v4_: int = id c1_;
+  v5_: int = id c2_;
+  v6_: int = id c1_;
+  v7_: int = id c3_;
+.b8_:
+  c9_: int = const 14;
+  v10_: bool = lt v5_ c9_;
   v11_: int = id v4_;
   v12_: int = id v5_;
   v13_: int = id v6_;
   v14_: int = id v7_;
-  br v10_ .v15_ .v16_;
-.v15_:
+  br v10_ .b15_ .b16_;
+.b15_:
   v17_: int = mul v4_ v6_;
-  v18_: int = const 1;
-  v19_: int = add v18_ v5_;
+  c18_: int = const 1;
+  v19_: int = add c18_ v5_;
   v11_: int = id v17_;
   v12_: int = id v19_;
   v13_: int = id v6_;
   v14_: int = id v7_;
-.v16_:
+.b16_:
   v4_: int = id v11_;
   v5_: int = id v12_;
   v6_: int = id v13_;
   v7_: int = id v14_;
-  br v10_ .v8_ .v20_;
-.v20_:
+  br v10_ .b8_ .b20_;
+.b20_:
   print v4_;
 }

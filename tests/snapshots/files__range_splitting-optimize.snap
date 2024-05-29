@@ -3,33 +3,33 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main {
-.v0_:
-  v1_: int = const 0;
-  v2_: int = id v1_;
-.v3_:
-  v4_: int = const 1;
-  v5_: int = add v2_ v4_;
-  v6_: int = const 5;
-  v7_: bool = lt v5_ v6_;
-  v8_: bool = lt v2_ v6_;
-  br v8_ .v9_ .v10_;
-.v9_:
-  v11_: int = const 1;
-  print v11_;
+.b0_:
+  c1_: int = const 0;
+  v2_: int = id c1_;
+.b3_:
+  c4_: int = const 1;
+  v5_: int = add c4_ v2_;
+  c6_: int = const 5;
+  v7_: bool = lt v5_ c6_;
+  v8_: bool = lt v2_ c6_;
+  br v8_ .b9_ .b10_;
+.b9_:
+  c11_: int = const 1;
+  print c11_;
   v12_: int = id v2_;
-.v13_:
+.b13_:
   v14_: int = id v5_;
-  br v7_ .v15_ .v16_;
-.v15_:
+  br v7_ .b15_ .b16_;
+.b15_:
   v14_: int = id v5_;
-.v16_:
+.b16_:
   v2_: int = id v14_;
-  br v7_ .v3_ .v17_;
-.v10_:
-  v18_: int = const 2;
-  print v18_;
+  br v7_ .b3_ .b17_;
+.b10_:
+  c18_: int = const 2;
+  print c18_;
   v12_: int = id v2_;
-  jmp .v13_;
-.v17_:
+  jmp .b13_;
+.b17_:
   print v2_;
 }

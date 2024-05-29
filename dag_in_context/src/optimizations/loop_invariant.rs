@@ -124,9 +124,11 @@ pub(crate) fn rules() -> Vec<String> {
 
 #[test]
 fn test_invariant_detect() -> crate::Result {
-    use crate::add_context::UnionsAnd;
+    use crate::add_context::ContextCache;
     use crate::ast::*;
     use crate::schema::Assumption;
+
+    let mut cache = ContextCache::new_dummy_ctx();
 
     let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
     let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
@@ -145,19 +147,13 @@ fn test_invariant_detect() -> crate::Result {
         ),
     )
     .with_arg_types(tuplet!(statet()), output_ty.clone())
-    .add_ctx(Assumption::dummy());
+    .add_ctx_with_cache(Assumption::dummy(), &mut cache);
 
-    let mut u = UnionsAnd {
-        unions: Vec::new(),
-        value: (),
-    };
-    let my_loop_ctx = {
-        let a = parallel!(int(1), int(2), int(3), int(4), getat(0))
+    let my_loop_ctx = inloop(
+        parallel!(int(1), int(2), int(3), int(4), getat(0))
             .with_arg_types(tuplet!(statet()), output_ty.clone())
-            .add_ctx(Assumption::dummy());
-        u.unions.extend(a.unions);
-
-        let b = concat(
+            .add_ctx_with_cache(Assumption::dummy(), &mut cache),
+        concat(
             parallel!(pred.clone(), not_inv.clone(), getat(1)),
             concat(parallel!(getat(2), getat(3)), single(print.clone())),
         )
@@ -165,24 +161,15 @@ fn test_invariant_detect() -> crate::Result {
             output_ty.clone(),
             tuplet!(boolt(), intt(), intt(), intt(), intt(), statet()),
         )
-        .add_ctx(Assumption::dummy());
-        u.unions.extend(b.unions);
+        .add_ctx_with_cache(Assumption::dummy(), &mut cache),
+    );
 
-        inloop(a.value, b.value)
-    };
-
-    let inv = inv.add_ctx(my_loop_ctx.clone());
-    u.unions.extend(inv.unions);
-    let inv_in_print = inv_in_print.add_ctx(my_loop_ctx.clone());
-    u.unions.extend(inv_in_print.unions);
-    let pred = pred.add_ctx(my_loop_ctx.clone());
-    u.unions.extend(pred.unions);
-    let not_inv = not_inv.add_ctx(my_loop_ctx.clone());
-    u.unions.extend(not_inv.unions);
-    let print = print.add_ctx(my_loop_ctx.clone());
-    u.unions.extend(print.unions);
-    let inner_inv = inner_inv.add_ctx(my_loop_ctx.clone());
-    u.unions.extend(inner_inv.unions);
+    let inv = inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
+    let inv_in_print = inv_in_print.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
+    let pred = pred.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
+    let not_inv = not_inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
+    let print = print.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
+    let inner_inv = inner_inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
 
     let build = format!(
         "(let loop {})
@@ -193,14 +180,14 @@ fn test_invariant_detect() -> crate::Result {
         (let print {})
         (let inner_inv {})
         {}",
-        my_loop.value,
-        inv.value,
-        inv_in_print.value,
-        pred.value,
-        not_inv.value,
-        print.value,
-        inner_inv.value,
-        u.get_unions()
+        my_loop,
+        inv,
+        inv_in_print,
+        pred,
+        not_inv,
+        print,
+        inner_inv,
+        cache.get_unions()
     );
     let check = "(check (= true (is-inv-Expr loop inv)))
 		(check (= true (is-inv-Expr loop inv_in_print)))

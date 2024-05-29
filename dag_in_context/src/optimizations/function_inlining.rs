@@ -7,7 +7,7 @@ use std::{
 use egglog::Term;
 
 use crate::{
-    add_context::UnionsAnd,
+    add_context::LoopContextUnionsAnd,
     print_with_intermediate_helper,
     schema::{Expr, RcExpr, TreeProgram},
     to_egglog::TreeToEgglog,
@@ -49,11 +49,11 @@ fn get_calls_with_cache(
 fn subst_call(
     call: &RcExpr,
     func_to_body: &HashMap<String, &RcExpr>,
-    unions: &mut Vec<(String, String)>,
+    unions: &mut LoopContextUnionsAnd<()>,
 ) -> CallBody {
     if let Expr::Call(func_name, args) = call.as_ref() {
         let unions_and_value = Expr::subst(args, func_to_body[func_name]);
-        unions.extend(unions_and_value.unions);
+        unions.unions.extend(unions_and_value.unions);
         CallBody {
             call: call.clone(),
             body: unions_and_value.value,
@@ -67,14 +67,11 @@ fn subst_call(
 pub fn function_inlining_pairs(
     program: &TreeProgram,
     iterations: usize,
-) -> UnionsAnd<Vec<CallBody>> {
-    let mut unions = Vec::new();
+) -> LoopContextUnionsAnd<Vec<CallBody>> {
+    let mut unions = LoopContextUnionsAnd::new();
 
     if iterations == 0 {
-        return UnionsAnd {
-            unions,
-            value: Vec::new(),
-        };
+        return LoopContextUnionsAnd::new().swap_value(Vec::new()).0;
     }
 
     let mut all_funcs = vec![program.entry.clone()];
@@ -125,15 +122,12 @@ pub fn function_inlining_pairs(
         inlined_calls.extend(new_inlines.clone());
     }
 
-    UnionsAnd {
-        unions,
-        value: inlined_calls,
-    }
+    unions.swap_value(inlined_calls).0
 }
 
 // Returns a formatted string of (union call body) for each pair
 pub fn print_function_inlining_pairs(
-    function_inlining_pairs: UnionsAnd<Vec<CallBody>>,
+    function_inlining_pairs: LoopContextUnionsAnd<Vec<CallBody>>,
     printed: &mut String,
     tree_state: &mut TreeToEgglog,
     term_cache: &mut HashMap<Term, String>,

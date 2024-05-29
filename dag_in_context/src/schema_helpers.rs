@@ -6,7 +6,7 @@ use std::{
 use strum_macros::EnumIter;
 
 use crate::{
-    add_context::UnionsAnd,
+    add_context::LoopContextUnionsAnd,
     ast::{base, boolt, floatt, inif, inloop, inswitch, intt},
     schema::{
         Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
@@ -289,15 +289,16 @@ impl Expr {
     }
 
     // Substitute "arg" for Arg() in within. Also replaces context with "arg"'s context.
-    pub fn subst(arg: &RcExpr, within: &RcExpr) -> UnionsAnd<RcExpr> {
+    pub fn subst(arg: &RcExpr, within: &RcExpr) -> LoopContextUnionsAnd<RcExpr> {
         let mut subst_cache: HashMap<*const Expr, RcExpr> = HashMap::new();
-        let mut unions = Vec::new();
+        let mut unions = LoopContextUnionsAnd::new();
 
         let arg_ty = arg.get_arg_type();
         let arg_ctx = arg.get_ctx();
         let value =
             Self::subst_with_cache(arg, &arg_ty, arg_ctx, within, &mut subst_cache, &mut unions);
-        UnionsAnd { value, unions }
+
+        unions.swap_value(value).0
     }
 
     fn subst_with_cache(
@@ -306,11 +307,11 @@ impl Expr {
         arg_ctx: &Assumption,
         within: &RcExpr,
         subst_cache: &mut HashMap<*const Expr, RcExpr>,
-        unions: &mut Vec<(String, String)>,
+        unions: &mut LoopContextUnionsAnd<()>,
     ) -> RcExpr {
-        let add_ctx = |expr: &RcExpr, unions: &mut Vec<_>, assumption| {
+        let add_ctx = |expr: &RcExpr, unions: &mut LoopContextUnionsAnd<()>, assumption| {
             let unions_and_value = expr.add_ctx(assumption);
-            unions.extend(unions_and_value.unions);
+            unions.unions.extend(unions_and_value.unions);
             unions_and_value.value
         };
 

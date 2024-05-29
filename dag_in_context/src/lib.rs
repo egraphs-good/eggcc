@@ -12,7 +12,7 @@ use crate::{
     schedule::mk_schedule,
 };
 
-pub(crate) mod add_context;
+pub mod add_context;
 pub mod ast;
 mod config;
 pub mod dag2svg;

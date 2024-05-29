@@ -17,6 +17,7 @@ use dag_in_context::schema::Constant;
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
 use dag_in_context::{
+    add_context::{Unions, UnionsAnd},
     ast::{add, call, dowhile, function, int, less_than, program_vec, tfalse, ttrue},
     schema::{RcExpr, TreeProgram, Type},
 };
@@ -29,7 +30,7 @@ impl RvsdgProgram {
     /// Common subexpressions are shared by the same Rc<Expr> in the dag encoding.
     /// This invariant is maintained by restore_sharing_invariant.
     /// Also adds context to the program.
-    pub fn to_dag_encoding(&self, add_context: bool) -> TreeProgram {
+    pub fn to_dag_encoding(&self, add_context: bool) -> UnionsAnd<TreeProgram> {
         let last_function = self.functions.last().unwrap();
         let rest_functions = self.functions.iter().take(self.functions.len() - 1);
         let res = program_vec(
@@ -42,7 +43,10 @@ impl RvsdgProgram {
         if add_context {
             res.add_context()
         } else {
-            res
+            UnionsAnd {
+                value: res,
+                unions: Unions::new(),
+            }
         }
     }
 }

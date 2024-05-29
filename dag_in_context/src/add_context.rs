@@ -10,15 +10,21 @@ use crate::{
     schema_helpers::AssumptionRef,
 };
 
-struct ContextCache {
+pub struct ContextCache {
     with_ctx: HashMap<(*const Expr, AssumptionRef), RcExpr>,
     symbol_gen: HashMap<(*const Expr, AssumptionRef), String>,
-    unions: Vec<(String, String)>,
+    loop_contexts: LoopContextUnionsAnd<()>,
     /// When true, don't add context- instead, make fresh query variables
     /// and put these in place of context
     symbolic_ctx: bool,
     /// Replace all context with (InFunc "dummy")
     dummy_ctx: bool,
+}
+
+impl Default for ContextCache {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ContextCache {
@@ -33,44 +39,81 @@ impl ContextCache {
         Assumption::WildCard(sym)
     }
 
-    fn new() -> ContextCache {
+    pub fn new() -> ContextCache {
         ContextCache {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),
-            unions: Vec::new(),
+            loop_contexts: LoopContextUnionsAnd::new(),
             symbolic_ctx: false,
             dummy_ctx: false,
         }
     }
 
-    fn new_symbolic_ctx() -> ContextCache {
+    pub fn new_symbolic_ctx() -> ContextCache {
         ContextCache {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),
-            unions: Vec::new(),
+            loop_contexts: LoopContextUnionsAnd::new(),
             symbolic_ctx: true,
             dummy_ctx: false,
         }
     }
 
-    fn new_dummy_ctx() -> ContextCache {
+    pub fn new_dummy_ctx() -> ContextCache {
         ContextCache {
             with_ctx: HashMap::new(),
             symbol_gen: HashMap::new(),
-            unions: Vec::new(),
+            loop_contexts: LoopContextUnionsAnd::new(),
             symbolic_ctx: false,
             dummy_ctx: true,
         }
     }
+
+    pub fn get_unions(&self) -> String {
+        self.loop_contexts.get_unions()
+    }
 }
 
-pub struct UnionsAnd<T> {
+// not a tuple to prevent auto-impls of Clone, Debug, etc.
+pub struct LoopContextUnionsAnd<T> {
+    var: usize,
     // marked as public but you probably want `get_unions`
-    pub unions: Vec<(String, String)>,
+    pub unions: Vec<(Assumption, Assumption)>,
     pub value: T,
 }
 
-impl<T> UnionsAnd<T> {
+impl Default for LoopContextUnionsAnd<()> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl LoopContextUnionsAnd<()> {
+    pub fn new() -> LoopContextUnionsAnd<()> {
+        LoopContextUnionsAnd {
+            var: 0,
+            unions: Vec::new(),
+            value: (),
+        }
+    }
+}
+
+impl<T> LoopContextUnionsAnd<T> {
+    fn new_placeholder(&mut self) -> Assumption {
+        let placeholder = Assumption::InFunc(format!(" loop_ctx_{}", self.var));
+        self.var += 1;
+        placeholder
+    }
+
+    pub fn swap_value<S>(self, value: S) -> (LoopContextUnionsAnd<S>, T) {
+        let LoopContextUnionsAnd {
+            var,
+            unions,
+            value: old,
+        } = self;
+        (LoopContextUnionsAnd { var, unions, value }, old)
+    }
+
     pub fn get_unions(&self) -> String {
         use std::fmt::Write;
 
@@ -84,17 +127,17 @@ impl<T> UnionsAnd<T> {
 }
 
 impl TreeProgram {
-    pub fn add_context(&self) -> UnionsAnd<TreeProgram> {
+    pub fn add_context(&self) -> LoopContextUnionsAnd<TreeProgram> {
         self.add_context_internal(Expr::func_get_ctx, ContextCache::new())
     }
 
     /// add stand-in variables for all the contexts in the program
     /// useful for testing if you don't care about context in the test
-    pub fn add_symbolic_ctx(&self) -> UnionsAnd<TreeProgram> {
+    pub fn add_symbolic_ctx(&self) -> LoopContextUnionsAnd<TreeProgram> {
         self.add_context_internal(|_| Assumption::dummy(), ContextCache::new_symbolic_ctx())
     }
 
-    pub fn add_dummy_ctx(&self) -> UnionsAnd<TreeProgram> {
+    pub fn add_dummy_ctx(&self) -> LoopContextUnionsAnd<TreeProgram> {
         self.add_context_internal(|_| Assumption::dummy(), ContextCache::new_dummy_ctx())
     }
 
@@ -102,7 +145,7 @@ impl TreeProgram {
         &self,
         func: impl Fn(&RcExpr) -> Assumption,
         mut cache: ContextCache,
-    ) -> UnionsAnd<TreeProgram> {
+    ) -> LoopContextUnionsAnd<TreeProgram> {
         let entry = self.entry.add_ctx_with_cache(func(&self.entry), &mut cache);
         let functions = self
             .functions
@@ -110,10 +153,7 @@ impl TreeProgram {
             .map(|f| f.add_ctx_with_cache(func(f), &mut cache))
             .collect();
         let value = TreeProgram { functions, entry };
-        UnionsAnd {
-            value,
-            unions: cache.unions,
-        }
+        cache.loop_contexts.swap_value(value).0
     }
 }
 
@@ -125,7 +165,7 @@ impl Expr {
         Assumption::InFunc(name.clone())
     }
 
-    pub fn func_add_ctx(self: &RcExpr) -> UnionsAnd<RcExpr> {
+    pub fn func_add_ctx(self: &RcExpr) -> LoopContextUnionsAnd<RcExpr> {
         let Expr::Function(name, arg_ty, ret_ty, body) = self.as_ref() else {
             panic!("Expected Function, got {:?}", self);
         };
@@ -136,40 +176,28 @@ impl Expr {
             ret_ty.clone(),
             body.add_ctx_with_cache(self.func_get_ctx(), &mut cache),
         ));
-        UnionsAnd {
-            value,
-            unions: cache.unions,
-        }
+        cache.loop_contexts.swap_value(value).0
     }
 
-    pub fn add_dummy_ctx(self: &RcExpr) -> UnionsAnd<RcExpr> {
+    pub fn add_dummy_ctx(self: &RcExpr) -> LoopContextUnionsAnd<RcExpr> {
         let mut cache = ContextCache::new_dummy_ctx();
         let value = self.add_ctx_with_cache(Assumption::dummy(), &mut cache);
-        UnionsAnd {
-            value,
-            unions: cache.unions,
-        }
+        cache.loop_contexts.swap_value(value).0
     }
 
-    pub fn add_symbolic_ctx(self: &RcExpr) -> UnionsAnd<RcExpr> {
+    pub fn add_symbolic_ctx(self: &RcExpr) -> LoopContextUnionsAnd<RcExpr> {
         let mut cache = ContextCache::new_symbolic_ctx();
         let value = self.add_ctx_with_cache(Assumption::dummy(), &mut cache);
-        UnionsAnd {
-            value,
-            unions: cache.unions,
-        }
+        cache.loop_contexts.swap_value(value).0
     }
 
-    pub fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> UnionsAnd<RcExpr> {
+    pub fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> LoopContextUnionsAnd<RcExpr> {
         let mut cache = ContextCache::new();
         let value = self.add_ctx_with_cache(current_ctx, &mut cache);
-        UnionsAnd {
-            value,
-            unions: cache.unions,
-        }
+        cache.loop_contexts.swap_value(value).0
     }
 
-    fn add_ctx_with_cache(
+    pub fn add_ctx_with_cache(
         self: &RcExpr,
         current_ctx: Assumption,
         cache: &mut ContextCache,
@@ -197,12 +225,16 @@ impl Expr {
             Expr::Arg(ty, _oldctx) => RcExpr::new(Expr::Arg(ty.clone(), context_to_add)),
             // create new contexts for let, loop, and if
             Expr::DoWhile(inputs, pred_and_body) => {
+                let placeholder = cache.loop_contexts.new_placeholder();
+
                 let new_inputs = inputs.add_ctx_with_cache(current_ctx.clone(), cache);
-                let new_ctx = Assumption::InLoop(new_inputs.clone(), pred_and_body.clone());
-                RcExpr::new(Expr::DoWhile(
-                    new_inputs,
-                    pred_and_body.add_ctx_with_cache(new_ctx, cache),
-                ))
+                let new_pred_and_body =
+                    pred_and_body.add_ctx_with_cache(placeholder.clone(), cache);
+
+                let new_ctx = Assumption::InLoop(new_inputs.clone(), new_pred_and_body.clone());
+                cache.loop_contexts.unions.push((placeholder, new_ctx));
+
+                RcExpr::new(Expr::DoWhile(new_inputs, new_pred_and_body))
             }
             Expr::If(pred, input, then_case, else_calse) => {
                 let new_pred = pred.add_ctx_with_cache(current_ctx.clone(), cache);

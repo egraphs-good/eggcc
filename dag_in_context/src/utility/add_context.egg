@@ -36,6 +36,12 @@
 
 
 ;; ######################################### Operators
+(rewrite (AddContext ctx (Top op c1 c2 c3))
+         (Top op
+           (AddContext ctx c1)
+           (AddContext ctx c2)
+           (AddContext ctx c3))
+               :ruleset context)
 (rewrite (AddContext ctx (Bop op c1 c2))
          (Bop op
            (AddContext ctx c1)

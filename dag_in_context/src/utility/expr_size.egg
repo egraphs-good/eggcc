@@ -9,6 +9,10 @@
 (rule ((= expr (Const n ty assum))) 
       ((set (Expr-size expr) 1))  :ruleset always-run)
 
+(rule ((= expr (Top op x y z))
+       (= sum (+ (Expr-size z) (+ (Expr-size y) (Expr-size x)))))
+      ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)
+
 (rule ((= expr (Bop op x y)) 
        (= sum (+ (Expr-size y) (Expr-size x)))) 
       ((set (Expr-size expr) (+ sum 1))) :ruleset always-run)

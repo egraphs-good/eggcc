@@ -73,6 +73,18 @@
        (HasArgType b ty))
       ((HasArgType lhs ty))
       :ruleset type-analysis)
+(rule ((= lhs (Top _ a b c))
+       (HasArgType a ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Top _ a b c))
+       (HasArgType b ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
+(rule ((= lhs (Top _ a b c))
+       (HasArgType c ty))
+      ((HasArgType lhs ty))
+      :ruleset type-analysis)
 (rule ((= lhs (Get e _))
        (HasArgType e ty))
       ((HasArgType lhs ty))
@@ -285,7 +297,7 @@
 (rule (
         (= lhs (Top (Write) ptr val state))
         (HasType ptr (Base (PointerT ty)))
-        (HasType val (Base t)) ; TODO need to support pointers to pointers
+        (HasType val (Base ty)) ; TODO need to support pointers to pointers
       )
       ((HasType lhs (Base (StateT)))) ; Write returns ()
       :ruleset type-analysis)

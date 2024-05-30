@@ -68,6 +68,10 @@ impl BinaryOp {
             LessThan => "LessThan",
             GreaterEq => "GreaterEq",
             LessEq => "LessEq",
+            Smax => "Smax",
+            Smin => "Smin",
+            Shl => "Shl",
+            Shr => "Shr",
             FAdd => "FAdd",
             FSub => "FSub",
             FMul => "FMul",
@@ -77,6 +81,8 @@ impl BinaryOp {
             FLessThan => "FLessThan",
             FGreaterEq => "FGreaterEq",
             FLessEq => "FLessEq",
+            Fmax => "Fmax",
+            Fmin => "Fmin",
             And => "And",
             Or => "Or",
             Load => "Load",
@@ -690,12 +696,20 @@ impl BinaryOp {
     /// When a binary op has concrete input sorts, return them.
     pub fn types(&self) -> Option<(Type, Type, Type)> {
         match self {
-            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
-                Some((base(intt()), base(intt()), base(intt())))
-            }
-            BinaryOp::FAdd | BinaryOp::FSub | BinaryOp::FMul | BinaryOp::FDiv => {
-                Some((base(floatt()), base(floatt()), base(floatt())))
-            }
+            BinaryOp::Add
+            | BinaryOp::Sub
+            | BinaryOp::Mul
+            | BinaryOp::Div
+            | BinaryOp::Smax
+            | BinaryOp::Smin
+            | BinaryOp::Shl
+            | BinaryOp::Shr => Some((base(intt()), base(intt()), base(intt()))),
+            BinaryOp::FAdd
+            | BinaryOp::FSub
+            | BinaryOp::FMul
+            | BinaryOp::FDiv
+            | BinaryOp::Fmax
+            | BinaryOp::Fmin => Some((base(floatt()), base(floatt()), base(floatt()))),
             BinaryOp::And | BinaryOp::Or => Some((base(boolt()), base(boolt()), base(boolt()))),
             BinaryOp::LessThan
             | BinaryOp::GreaterThan

@@ -3,22 +3,26 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: bool) {
-.v1_:
-  v2_: int = const 1;
-  v3_: ptr<int> = alloc v2_;
-  br v0 .v4_ .v5_;
-.v4_:
-  v6_: int = const 2;
-  store v3_ v6_;
+.b1_:
+  c2_: int = const 1;
+  v3_: ptr<int> = alloc c2_;
+  br v0 .b4_ .b5_;
+.b4_:
+  c6_: int = const 2;
+  store v3_ c6_;
   v7_: ptr<int> = id v3_;
-  jmp .v8_;
-.v5_:
-  v9_: int = const 3;
-  store v3_ v9_;
+  v8_: int = load v3_;
+  v9_: int = load v3_;
+  print v8_;
+  free v3_;
+  ret;
+.b5_:
+  c10_: int = const 3;
+  store v3_ c10_;
   v7_: ptr<int> = id v3_;
-.v8_:
-  v10_: int = load v3_;
-  v11_: int = load v3_;
-  print v10_;
+.b11_:
+  v8_: int = load v3_;
+  v9_: int = load v3_;
+  print v8_;
   free v3_;
 }

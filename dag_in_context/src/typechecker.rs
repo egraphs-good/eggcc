@@ -62,8 +62,8 @@ impl Expr {
         );
         new_expr
     }
-
     /// Adds argument types to the expression.
+    #[allow(dead_code)]
     pub(crate) fn add_arg_type(self: RcExpr, input_ty: Type) -> RcExpr {
         // we need a dummy program, since there are no calls in self
         let prog = program!(function("dummy", tuplet!(), tuplet!(), empty()),);
@@ -73,6 +73,7 @@ impl Expr {
         new_expr
     }
 
+    #[allow(dead_code)]
     pub(crate) fn func_with_arg_types(self: RcExpr) -> RcExpr {
         match self.as_ref() {
             Expr::Function(name, in_ty, out_ty, body) => RcExpr::new(Expr::Function(

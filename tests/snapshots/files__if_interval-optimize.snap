@@ -3,15 +3,16 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-.v1_:
-  v2_: bool = const true;
-  v3_: int = const 0;
-  v4_: bool = le v0 v3_;
-  v5_: int = const 3;
-  v6_: int = id v5_;
-  br v4_ .v7_ .v8_;
-.v7_:
-  v6_: int = id v3_;
-.v8_:
-  print v2_;
+.b1_:
+  c2_: bool = const true;
+  c3_: int = const 1;
+  v4_: bool = lt v0 c3_;
+  c5_: int = const 0;
+  c6_: int = const 3;
+  v7_: int = id c6_;
+  br v4_ .b8_ .b9_;
+.b8_:
+  v7_: int = id c5_;
+.b9_:
+  print c2_;
 }

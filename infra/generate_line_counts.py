@@ -98,7 +98,7 @@ def get_rows_for_benchmark(bench, profile_data):
 
 
 def benchmarks_table():
-    profile_data = json.load(open(f'{output_path}/data/profile.json'))
+    profile_data = json.load(open(f'{output_path}/profile.json'))
     benchmarks = set([x["benchmark"] for x in profile_data])
     rows = header()
     rows += [
@@ -121,15 +121,15 @@ def benchmarks_table():
     return "\n".join(rows)
 
 def generate_latex(output_path):
-    with open(f'{output_path}/data/linecount.tex', "w") as f:
+    with open(f'{output_path}/linecount.tex', "w") as f:
         f.write(linecount_table())
-    with open(f'{output_path}/data/detailed-linecount.tex', "w") as f:
+    with open(f'{output_path}/detailed-linecount.tex', "w") as f:
         f.write(detailed_linecount_table()) 
-    with open(f'{output_path}/data/benchmarks.tex', "w") as f:
+    with open(f'{output_path}/benchmarks.tex', "w") as f:
         f.write(benchmarks_table())
-    tex_files = glob.glob(f"{output_path}/data/*.tex")
+    tex_files = glob.glob(f"{output_path}/*.tex")
     for tex in tex_files:
-        cmd = " ".join(["pdflatex", f"-output-directory {output_path}/data/", tex])
+        cmd = " ".join(["pdflatex", f"-output-directory {output_path}/", tex, "> /dev/null 2>&1"])
         os.system(cmd)
 
 

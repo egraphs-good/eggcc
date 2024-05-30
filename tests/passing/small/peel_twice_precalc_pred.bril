@@ -1,0 +1,12 @@
+@main {
+    i: int = const 0;
+    one: int = const 1;
+
+.loop:
+    cond: bool = lt i one;
+    i: int = add one i;
+    br cond .loop .loop_end;
+
+.loop_end:
+    print i;
+}

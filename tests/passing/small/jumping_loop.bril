@@ -1,0 +1,12 @@
+@main {
+    jump: int = const 4;
+    i: int = const 0;
+    n: int = const 18;
+
+.loop:
+    i: int = add jump i;
+    pred: bool = lt i n;
+    br pred .loop .end;
+
+.end:
+}

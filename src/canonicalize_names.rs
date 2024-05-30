@@ -35,11 +35,13 @@ fn canonicalize_func_names(func: &Function) -> Function {
 }
 
 impl Renamer {
-    fn get_name(&mut self, name: &str) -> String {
+    /// Get a new name for a variable. If the variable has already been renamed,
+    /// return the new name. Otherwise, generate a new name and return it.
+    fn get_name(&mut self, name: &str, prefix: String) -> String {
         if let Some(new_name) = self.name_map.get(name) {
             new_name.clone()
         } else {
-            let new_name = format!("v{}_", self.name_map.len());
+            let new_name = format!("{}{}_", prefix, self.name_map.len());
             self.name_map.insert(name.to_string(), new_name.clone());
             new_name
         }
@@ -58,7 +60,7 @@ impl Renamer {
                 Code::Instruction(self.canonicalize_instruction_names(instr))
             }
             Code::Label { label, pos } => Code::Label {
-                label: self.get_name(label),
+                label: self.get_name(label, "b".to_string()),
                 pos: pos.clone(),
             },
         }
@@ -73,7 +75,7 @@ impl Renamer {
                 const_type,
                 value,
             } => Instruction::Constant {
-                dest: self.get_name(dest),
+                dest: self.get_name(dest, "c".to_string()),
                 op: *op,
                 pos: pos.clone(),
                 const_type: const_type.clone(),
@@ -89,16 +91,22 @@ impl Renamer {
                 op_type,
             } => Instruction::Value {
                 args: {
-                    let mut args: Vec<_> = args.iter().map(|arg| self.get_name(arg)).collect();
+                    let mut args: Vec<_> = args
+                        .iter()
+                        .map(|arg| self.get_name(arg, "v".to_string()))
+                        .collect();
                     use bril_rs::ValueOps::*;
                     if matches!(op, Add | Mul | Eq | And | Or) {
                         args.sort();
                     }
                     args
                 },
-                dest: self.get_name(dest),
+                dest: self.get_name(dest, "v".to_string()),
                 funcs: funcs.clone(),
-                labels: labels.iter().map(|label| self.get_name(label)).collect(),
+                labels: labels
+                    .iter()
+                    .map(|label| self.get_name(label, "b".to_string()))
+                    .collect(),
                 op: *op,
                 pos: pos.clone(),
                 op_type: op_type.clone(),
@@ -110,9 +118,15 @@ impl Renamer {
                 op,
                 pos,
             } => Instruction::Effect {
-                args: args.iter().map(|arg| self.get_name(arg)).collect(),
+                args: args
+                    .iter()
+                    .map(|arg| self.get_name(arg, "v".to_string()))
+                    .collect(),
                 funcs: funcs.clone(),
-                labels: labels.iter().map(|label| self.get_name(label)).collect(),
+                labels: labels
+                    .iter()
+                    .map(|label| self.get_name(label, "b".to_string()))
+                    .collect(),
                 op: *op,
                 pos: pos.clone(),
             },

@@ -21,7 +21,6 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
                 }
                 Ok(res) => res,
             };
-
             if run.interp.should_interp()
                 && result.original_interpreted.as_ref().unwrap()
                     != result.result_interpreted.as_ref().unwrap()

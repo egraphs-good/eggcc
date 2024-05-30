@@ -3,21 +3,21 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @one {
-.v0_:
-  v1_: int = const 3;
-  print v1_;
+.b0_:
+  c1_: int = const 3;
+  print c1_;
 }
 @two {
-.v0_:
-  v1_: int = const 3;
-  print v1_;
+.b0_:
+  c1_: int = const 3;
+  print c1_;
 }
 @three {
-.v0_:
-  v1_: int = const 3;
-  print v1_;
+.b0_:
+  c1_: int = const 3;
+  print c1_;
 }
 @main {
-.v0_:
+.b0_:
   call @three;
 }

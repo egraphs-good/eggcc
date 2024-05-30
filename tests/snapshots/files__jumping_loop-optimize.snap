@@ -5,8 +5,8 @@ expression: visualization.result
 @main {
 .b0_:
   c1_: int = const 0;
-  c2_: int = const 5;
-  c3_: int = const 1;
+  c2_: int = const 18;
+  c3_: int = const 4;
   v4_: int = id c1_;
   v5_: int = id c2_;
   v6_: int = id c3_;

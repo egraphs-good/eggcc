@@ -3,36 +3,36 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int, v1: int) {
-.v2_:
-  v3_: int = const 0;
-  v4_: int = const 1;
-  v5_: int = id v3_;
-  v6_: int = id v4_;
+.b2_:
+  c3_: int = const 0;
+  c4_: int = const 1;
+  v5_: int = id c3_;
+  v6_: int = id c4_;
   v7_: int = id v1;
   v8_: int = id v0;
-.v9_:
+.b9_:
   v10_: bool = lt v5_ v8_;
   v11_: int = id v5_;
   v12_: int = id v6_;
   v13_: int = id v7_;
   v14_: int = id v8_;
-  br v10_ .v15_ .v16_;
-.v15_:
-  v17_: int = const 0;
+  br v10_ .b15_ .b16_;
+.b15_:
+  c17_: int = const 0;
   v18_: int = id v5_;
   v19_: int = id v6_;
-  v20_: int = id v17_;
+  v20_: int = id c17_;
   v21_: int = id v7_;
   v22_: int = id v8_;
-.v23_:
+.b23_:
   v24_: bool = lt v20_ v21_;
   v25_: int = id v18_;
   v26_: int = id v19_;
   v27_: int = id v20_;
   v28_: int = id v21_;
   v29_: int = id v22_;
-  br v24_ .v30_ .v31_;
-.v30_:
+  br v24_ .b30_ .b31_;
+.b30_:
   v32_: int = mul v18_ v21_;
   v33_: int = add v20_ v32_;
   print v33_;
@@ -42,25 +42,32 @@ expression: visualization.result
   v27_: int = id v34_;
   v28_: int = id v21_;
   v29_: int = id v22_;
-.v31_:
   v18_: int = id v25_;
   v19_: int = id v26_;
   v20_: int = id v27_;
   v21_: int = id v28_;
   v22_: int = id v29_;
-  br v24_ .v23_ .v35_;
-.v35_:
-  v36_: int = add v5_ v6_;
-  v11_: int = id v36_;
+  jmp .b23_;
+.b31_:
+  v18_: int = id v25_;
+  v19_: int = id v26_;
+  v20_: int = id v27_;
+  v21_: int = id v28_;
+  v22_: int = id v29_;
+  v35_: int = add v5_ v6_;
+  v11_: int = id v35_;
   v12_: int = id v6_;
   v13_: int = id v7_;
   v14_: int = id v8_;
-.v16_:
   v5_: int = id v11_;
   v6_: int = id v12_;
   v7_: int = id v13_;
   v8_: int = id v14_;
-  br v10_ .v9_ .v37_;
-.v37_:
+  jmp .b9_;
+.b16_:
+  v5_: int = id v11_;
+  v6_: int = id v12_;
+  v7_: int = id v13_;
+  v8_: int = id v14_;
   print v5_;
 }

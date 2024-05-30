@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 use std::iter::once;
 
 use bril_rs::ConstOps;
@@ -70,22 +71,18 @@ impl Xml {
     }
 }
 
-impl ToString for Xml {
-    fn to_string(self: &Xml) -> String {
-        use std::fmt::Write;
-        let mut out = String::new();
-
-        write!(out, "<{}", self.tag).unwrap();
+impl fmt::Display for Xml {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<{}", self.tag)?;
         for (key, value) in &self.attributes {
-            write!(out, "\n\t{key}=\"{value}\"").unwrap();
+            write!(f, "\n\t{key}=\"{value}\"")?;
         }
-        writeln!(out, ">").unwrap();
+        writeln!(f, ">")?;
         for line in self.body.lines() {
-            writeln!(out, "\t{line}").unwrap();
+            writeln!(f, "\t{line}")?;
         }
-        writeln!(out, "</{}>", self.tag).unwrap();
-
-        out
+        writeln!(f, "</{}>", self.tag)?;
+        Ok(())
     }
 }
 
@@ -655,7 +652,7 @@ impl RvsdgProgram {
 
             let (size, mut xml) = function.to_region().to_xml(false);
             // assert that it doesn't have a transform yet
-            assert!(xml.attributes.get("transform").is_none());
+            assert!(!xml.attributes.contains_key("transform"));
             xml.attributes
                 .insert("transform".to_owned(), format!("translate(0, {})", height));
             xmls.push(xml);

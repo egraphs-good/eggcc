@@ -3,22 +3,22 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @inc(v0: int): int {
-.v1_:
-  v2_: int = const 1;
-  v3_: int = add v0 v2_;
-  v4_: int = const 2;
-  v5_: int = mul v3_ v4_;
+.b1_:
+  c2_: int = const 1;
+  v3_: int = add c2_ v0;
+  c4_: int = const 2;
+  v5_: int = mul c4_ v3_;
   ret v5_;
 }
 @double(v0: int): int {
-.v1_:
-  v2_: int = const 2;
-  v3_: int = mul v0 v2_;
+.b1_:
+  c2_: int = const 2;
+  v3_: int = mul c2_ v0;
   ret v3_;
 }
 @main {
-.v0_:
-  v1_: int = const 2;
-  print v1_;
-  print v1_;
+.b0_:
+  c1_: int = const 2;
+  print c1_;
+  print c1_;
 }

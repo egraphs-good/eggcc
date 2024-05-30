@@ -52,7 +52,7 @@ function refreshView() {
 
 function renderWarnings() {
   const toggle = document.getElementById("warnings-toggle");
-  toggle.innerText = `Show ${GLOBAL_DATA.warnings.size} Warnings`;
+  toggle.innerText = `\u25B6 Show ${GLOBAL_DATA.warnings.size} Warnings`;
 
   const warningContainer = document.getElementById("warnings");
   warningContainer.innerHTML = "";

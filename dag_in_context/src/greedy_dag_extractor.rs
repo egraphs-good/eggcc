@@ -857,15 +857,15 @@ impl CostModel for DefaultCostModel {
             "Base" | "TupleT" | "TNil" | "TCons" => 0.,
             "Int" | "Bool" | "Float" => 0.,
             // Algebra
-            "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" => 10.,
-            "FAdd" | "FSub" => 50.,
+            "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" | "Shl" | "Shr" => 10.,
+            "FAdd" | "FSub" | "Fmax" | "Fmin" => 50.,
             "Mul" => 30.,
             "FMul" => 150.,
             "Div" => 50.,
             "FDiv" => 250.,
             // Comparisons
             "Eq" | "LessThan" | "GreaterThan" | "LessEq" | "GreaterEq" => 10.,
-            "Select" => 10.,
+            "Select" | "Smax" | "Smin" => 10.,
             "FEq" => 10.,
             "FLessThan" | "FGreaterThan" | "FLessEq" | "FGreaterEq" => 100.,
             // Effects

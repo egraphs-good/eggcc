@@ -37,6 +37,8 @@ pub fn mk_schedule() -> String {
     context
     interval-analysis
     memory-helpers
+    always-switch-rewrite
+    loop-iters-analysis
   )
   
     
@@ -53,11 +55,11 @@ pub fn mk_schedule() -> String {
     ;loop-inv-motion
     loop-strength-reduction
     loop-inversion
+    loop-peel
   )
   
   (run-schedule
     {helpers}
-    loop-peel
     (repeat 2
       {helpers}
       expensive-optimizations)

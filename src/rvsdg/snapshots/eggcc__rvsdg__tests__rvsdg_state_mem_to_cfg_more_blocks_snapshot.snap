@@ -15,7 +15,8 @@ expression: prog.to_string()
   print v11;
   free v4;
   v31: int = id v7;
-  jmp .__42__;
+  print v31;
+  ret;
 .__32__:
   v24: int = add v11 v1;
   free v4;

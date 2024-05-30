@@ -168,7 +168,16 @@ impl SimpleCfgFunction {
 impl SimpleCfgProgram {
     pub fn optimize_jumps(&self) -> Self {
         SimpleCfgProgram {
-            functions: self.functions.iter().map(|f| f.optimize_jumps()).collect(),
+            functions: self
+                .functions
+                .iter()
+                .map(|f| {
+                    // NB: We could avoid this copy by having `optimize_jumps` take `self` by value.
+                    let mut res = f.optimize_jumps();
+                    res.simplify_branches();
+                    res
+                })
+                .collect(),
         }
     }
 }

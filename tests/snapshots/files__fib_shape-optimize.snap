@@ -23,8 +23,8 @@ expression: visualization.result
   v4_: int = id v9_;
   v5_: int = id v10_;
   v6_: int = id v11_;
-  jmp .v7_;
-.v13_:
+  jmp .b7_;
+.b13_:
   v4_: int = id v9_;
   v5_: int = id v10_;
   v6_: int = id v11_;

@@ -175,7 +175,7 @@ impl SimpleCfgProgram {
                     // NB: We could avoid this copy by having `optimize_jumps` take `self` by value.
                     let mut res = f.optimize_jumps();
                     res.simplify_branches();
-                    res.optimize_jumps()
+                    res
                 })
                 .collect(),
         }

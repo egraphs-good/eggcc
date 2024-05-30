@@ -21,19 +21,8 @@ expression: visualization.result
   v14_: int = id v8_;
   v15_: int = id v9_;
   v16_: int = id v10_;
-<<<<<<< HEAD
   br v12_ .b17_ .b18_;
 .b17_:
-=======
-  br v12_ .v17_ .v18_;
-.v18_:
-  v7_: int = id v13_;
-  v8_: int = id v14_;
-  v9_: int = id v15_;
-  v10_: int = id v16_;
-  ret;
-.v17_:
->>>>>>> b975e017 (Run branch_simplify in a fixed point)
   v19_: int = add v8_ v9_;
   print v19_;
   c20_: int = const 1;
@@ -46,6 +35,11 @@ expression: visualization.result
   v8_: int = id v14_;
   v9_: int = id v15_;
   v10_: int = id v16_;
-  jmp .v11_;
-.v5_:
+  jmp .b11_;
+.b18_:
+  v7_: int = id v13_;
+  v8_: int = id v14_;
+  v9_: int = id v15_;
+  v10_: int = id v16_;
+.b5_:
 }

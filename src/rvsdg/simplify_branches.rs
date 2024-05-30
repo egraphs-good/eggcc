@@ -79,7 +79,6 @@ impl SimpleCfgFunction {
         let mut changed = true;
         let mut var_counter = 0;
         while changed {
-            changed = false;
             // Step 1: compute some information about the CFG.
             // * Find "administrative" nodes.
             // * Find conditional branches.
@@ -120,136 +119,14 @@ impl SimpleCfgFunction {
             }
             // Step 3: Compute the fixpoint of the value analysis.
             val_analysis.compute_fixpoint(self);
-            // Step 4: Rewrite branches:
-            // * For each administrative node `n``...
-            // * For each outgoing branch [edge e1] with cond val `v` for `id`
-            // * Check if `id` was written to in `n`, if it was, then move on
-            // _unless_ we know the value of `id`; in which case we can replace the branch with a jump.
-            // * Otherwise, check if a predecessor [via edge e2] node has `v` as a
-            // known value for `id`.
-            // * If so, copy the contents of the admin node to that predecessor, and
-            // reroute e2 to the target of e1.
-            let mut scratch = Vec::new();
-            for admin_node in &branch_meta.admin_nodes {
-                let mut walker = self
-                    .graph
-                    .neighbors_directed(*admin_node, Direction::Outgoing)
-                    .detach();
-                // Don't reroute past the exit node. We want to make sure it stays reachable.
-                if admin_node == &self.exit {
-                    continue;
-                }
-                while let Some((outgoing, succ)) = walker.next(&self.graph) {
-                    let BranchOp::Cond { arg, val, .. } = self.graph[outgoing].op.clone() else {
-                        continue;
-                    };
-                    let Some(val) = to_lit(&val) else {
-                        continue;
-                    };
-                    if val_analysis.data[admin_node].kills.contains(&arg) {
-                        if succ != self.exit
-                            && self.graph.neighbors(*admin_node).any(|x| x == self.exit)
-                        {
-                            // Don't remove any outgoing links to the exit node.
-                            break;
-                        }
-                        // We assign to the branched-on argument in the admin
-                        // node. See if we can fold the constant branch here.
-                        let ValueInfo::Known(lit) = val_analysis.data[admin_node].get_output(&arg)
-                        else {
-                            continue;
-                        };
-                        if lit != val {
-                            continue;
-                        }
-                        // okay, we have found a matching edge. Replace this branch
-                        // with a jump.
-                        let mut walker = self
-                            .graph
-                            .neighbors_directed(*admin_node, Direction::Outgoing)
-                            .detach();
-                        while let Some((outgoing, _)) = walker.next(&self.graph) {
-                            self.graph.remove_edge(outgoing);
-                        }
-                        self.graph.add_edge(
-                            *admin_node,
-                            succ,
-                            Branch {
-                                op: BranchOp::Jmp,
-                                pos: None,
-                            },
-                        );
-                        changed = true;
-                        // Don't run the rest of the inner loop.
-                        break;
-                    }
-                    let mut incoming_walker = self
-                        .graph
-                        .neighbors_directed(*admin_node, Direction::Incoming)
-                        .detach();
-                    while let Some((incoming, pred)) = incoming_walker.next(&self.graph) {
-                        let can_reroute = matches!(val_analysis.data[&pred].get_output(&arg), ValueInfo::Known(v) if v == val);
-                        if !can_reroute {
-                            continue;
-                        }
-
-                        let weight = self.graph.remove_edge(incoming).unwrap();
-                        // We only have to worry about `instrs` because we
-                        // checked that the footer was empty when we populated
-                        // admin_nodes. We do this because we more or less don't
-                        // use footers on our way back to bril.
-                        scratch.extend(self.graph[*admin_node].instrs.iter().cloned());
-                        let (_, target) = self.graph.edge_endpoints(outgoing).unwrap();
-                        let target_incoming = self
-                            .graph
-                            .neighbors_directed(target, Direction::Incoming)
-                            .count();
-                        let is_jump = matches!(weight.op, BranchOp::Jmp);
-                        // Now it comes to move the block somewhere: if the
-                        // incoming edge is a jump, then we would run all of the
-                        // instructions in the current block anyway, we can just
-                        // move them up.
-                        if is_jump {
-                            self.graph[pred].instrs.append(&mut scratch);
-                            self.graph.add_edge(pred, target, weight);
-                            changed = true;
-                            break;
-                        } else if target_incoming == 0 {
-                            // The next safe case is if we are replacing the targets
-                            // only incoming edge. In that case, we can move the
-                            // data down.
-                            let target_block = &mut self.graph[target];
-                            scratch.append(&mut target_block.instrs);
-                            mem::swap(&mut target_block.instrs, &mut scratch);
-                            self.graph.add_edge(pred, target, weight);
-                            changed = true;
-                            break;
-                        } else {
-                            scratch.clear();
-                            // Otherwise we may need some sort of compatibility check to
-                            // merge the block somewhere. Add the edge back for now:
-                            self.graph.add_edge(*admin_node, target, weight);
-                        }
-                    }
-                }
-            }
-
+            // Step 4: Rewrite branches
+            changed = self.rewrite_branches(&branch_meta, &val_analysis);
             // Step 5: Remove any nodes no longer reachable from the entry.
-            let mut walker = Dfs::new(&self.graph, self.entry);
-            while walker.next(&self.graph).is_some() {}
-            let mut to_remove = vec![];
-            for node_id in self.graph.node_indices() {
-                if !walker.discovered.contains(node_id.index()) {
-                    to_remove.push(node_id);
-                    assert_ne!(
-                        node_id, self.exit,
-                        "branch simplification removed the exit node!"
-                    );
-                }
-            }
-            for node_id in to_remove {
-                self.graph.remove_node(node_id);
-            }
+            self.retain_reachable();
+
+            // Step 6: Rewrite direct jumps. This will un-split any edges split
+            // in step 2, and potentially merge nodes where a conditional branch
+            // was replaced with a jump.
             *self = self.optimize_jumps();
         }
     }
@@ -278,6 +155,150 @@ impl SimpleCfgFunction {
             }
         }
         res
+    }
+
+    /// Remove any nodes that are no longer reachable from the entry node.
+    fn retain_reachable(&mut self) {
+        let mut walker = Dfs::new(&self.graph, self.entry);
+        while walker.next(&self.graph).is_some() {}
+        let mut to_remove = vec![];
+        for node_id in self.graph.node_indices() {
+            if !walker.discovered.contains(node_id.index()) {
+                to_remove.push(node_id);
+                assert_ne!(
+                    node_id, self.exit,
+                    "branch simplification removed the exit node!"
+                );
+            }
+        }
+        for node_id in to_remove {
+            self.graph.remove_node(node_id);
+        }
+    }
+
+    /// Simplify control flow using the information gathered in the initial steps.
+    /// * For each administrative node `n``...
+    /// * For each outgoing branch [edge e1] with cond val `v` for `id`
+    /// * Check if `id` was written to in `n`, if it was, then move on
+    /// _unless_ we know the value of `id`; in which case we can replace the branch with a jump.
+    /// * Otherwise, check if a predecessor [via edge e2] node has `v` as a
+    /// known value for `id`.
+    /// * If so, copy the contents of the admin node to that predecessor, and
+    /// reroute e2 to the target of e1.
+    fn rewrite_branches(
+        &mut self,
+        branch_meta: &BranchMetadata,
+        val_analysis: &ValueAnalysis,
+    ) -> bool {
+        let mut scratch = Vec::new();
+        let mut changed = false;
+        for admin_node in &branch_meta.admin_nodes {
+            let mut walker = self
+                .graph
+                .neighbors_directed(*admin_node, Direction::Outgoing)
+                .detach();
+            // Don't reroute past the exit node. We want to make sure it stays reachable.
+            if admin_node == &self.exit {
+                continue;
+            }
+            while let Some((outgoing, succ)) = walker.next(&self.graph) {
+                let BranchOp::Cond { arg, val, .. } = self.graph[outgoing].op.clone() else {
+                    continue;
+                };
+                let Some(val) = to_lit(&val) else {
+                    continue;
+                };
+                if val_analysis.data[admin_node].kills.contains(&arg) {
+                    if succ != self.exit
+                        && self.graph.neighbors(*admin_node).any(|x| x == self.exit)
+                    {
+                        // Don't remove any outgoing links to the exit node.
+                        break;
+                    }
+                    // We assign to the branched-on argument in the admin
+                    // node. See if we can fold the constant branch here.
+                    let ValueInfo::Known(lit) = val_analysis.data[admin_node].get_output(&arg)
+                    else {
+                        continue;
+                    };
+                    if lit != val {
+                        continue;
+                    }
+                    // okay, we have found a matching edge. Replace this branch
+                    // with a jump.
+                    let mut walker = self
+                        .graph
+                        .neighbors_directed(*admin_node, Direction::Outgoing)
+                        .detach();
+                    while let Some((outgoing, _)) = walker.next(&self.graph) {
+                        self.graph.remove_edge(outgoing);
+                    }
+                    self.graph.add_edge(
+                        *admin_node,
+                        succ,
+                        Branch {
+                            op: BranchOp::Jmp,
+                            pos: None,
+                        },
+                    );
+                    changed = true;
+                    // Don't run the rest of the inner loop.
+                    break;
+                }
+                let mut incoming_walker = self
+                    .graph
+                    .neighbors_directed(*admin_node, Direction::Incoming)
+                    .detach();
+                while let Some((incoming, pred)) = incoming_walker.next(&self.graph) {
+                    // We may be able to reroute a branch if the value in
+                    // question is known to equal the branch value in a
+                    // predecessor block.
+                    if !matches!(val_analysis.data[&pred].get_output(&arg), ValueInfo::Known(v) if v == val)
+                    {
+                        continue;
+                    }
+
+                    // We only have to worry about `instrs` because we
+                    // checked that the footer was empty when we populated
+                    // admin_nodes. We do this because we more or less don't
+                    // use footers on our way back to bril.
+                    scratch.extend(self.graph[*admin_node].instrs.iter().cloned());
+                    let (_, target) = self.graph.edge_endpoints(outgoing).unwrap();
+                    let target_incoming = self
+                        .graph
+                        .neighbors_directed(target, Direction::Incoming)
+                        .count();
+                    let is_jump = matches!(self.graph[incoming].op, BranchOp::Jmp);
+                    // Now it comes to move the block somewhere: if the
+                    // incoming edge is a jump, then we would run all of the
+                    // instructions in the current block anyway, we can just
+                    // move them up.
+                    if is_jump {
+                        let weight = self.graph.remove_edge(incoming).unwrap();
+                        self.graph[pred].instrs.append(&mut scratch);
+                        self.graph.add_edge(pred, target, weight);
+                        changed = true;
+                        break;
+                    } else if target_incoming == 1 {
+                        // The next safe case is if we are replacing the targets
+                        // only incoming edge. In that case, we can move the
+                        // data down.
+                        let weight = self.graph.remove_edge(incoming).unwrap();
+                        let target_block = &mut self.graph[target];
+                        scratch.append(&mut target_block.instrs);
+                        mem::swap(&mut target_block.instrs, &mut scratch);
+                        self.graph.add_edge(pred, target, weight);
+                        changed = true;
+                        break;
+                    } else {
+                        scratch.clear();
+                        // Otherwise we may need some sort of compatibility check to
+                        // merge the block somewhere. Add the edge back for now:
+                    }
+                }
+            }
+        }
+        changed
     }
 }
 
@@ -360,13 +381,17 @@ fn to_lit(cv: &CondVal) -> Option<Literal> {
 /// A basic semilattice describing the state of a value.
 #[derive(Clone, Default, Debug)]
 enum ValueInfo {
+    /// Nothing is currently known about the value.
     #[default]
     Bot,
+    /// The value is known to hold a concrete value.
     Known(Literal),
+    /// We know that we cannot approximate the value with a single constant.
     Top,
 }
 
 impl ValueInfo {
+    /// Merge two ValueInfos, returning true if `self` changed.
     fn merge(&mut self, other: &ValueInfo) -> bool {
         match (self, other) {
             (ValueInfo::Bot, ValueInfo::Bot) => false,
@@ -418,6 +443,10 @@ struct ValueState {
     /// The (pointwise) join of all of the values in incoming branches.
     inherited: IndexMap<Identifier, ValueInfo>,
     /// The transforms induced by any operations on variables in the block.
+    ///
+    /// These are computed during initialization from instructions in a basic
+    /// block and during step 2 of the main algorithm to add values for the
+    /// targets of conditional branches.
     transforms: VecDeque<(
         Identifier, /* dst  */
         Identifier, /* src */

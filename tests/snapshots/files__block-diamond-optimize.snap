@@ -7,7 +7,6 @@ expression: visualization.result
   c2_: int = const 2;
   v3_: bool = lt v0 c2_;
   v4_: bool = not v3_;
-<<<<<<< HEAD
   c5_: int = const 0;
   c6_: int = const 1;
   c7_: int = const 5;
@@ -35,37 +34,4 @@ expression: visualization.result
 .b20_:
   v22_: int = add c6_ v17_;
   print v22_;
-=======
-  v5_: int = const 0;
-  v6_: int = const 1;
-  v7_: int = const 5;
-  v8_: bool = const true;
-  v9_: int = id v6_;
-  v10_: int = id v6_;
-  v11_: int = id v2_;
-  v12_: bool = id v8_;
-  br v3_ .v13_ .v14_;
-.v14_:
-  v15_: int = id v9_;
-  v16_: int = id v6_;
-  br v4_ .v17_ .v18_;
-.v17_:
-  v19_: int = add v2_ v9_;
-  v15_: int = id v19_;
-  v16_: int = id v6_;
-  v20_: int = add v15_ v6_;
-  print v20_;
-  ret;
-.v13_:
-  v21_: int = const 4;
-  v22_: bool = const false;
-  v9_: int = id v21_;
-  v10_: int = id v6_;
-  v11_: int = id v2_;
-  v12_: bool = id v22_;
-  jmp .v14_;
-.v18_:
-  v20_: int = add v15_ v6_;
-  print v20_;
->>>>>>> b975e017 (Run branch_simplify in a fixed point)
 }

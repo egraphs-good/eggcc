@@ -3,7 +3,6 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-<<<<<<< HEAD
 .b1_:
   c2_: int = const 20;
   c3_: int = const 5;
@@ -21,26 +20,4 @@ expression: visualization.result
   v6_: int = id c2_;
 .b7_:
   print c2_;
-=======
-.v1_:
-  v2_: int = const 20;
-  v3_: int = const 5;
-  v4_: bool = eq v0 v3_;
-  v5_: int = const 4;
-  v6_: int = id v2_;
-  br v4_ .v7_ .v8_;
-.v8_:
-  v9_: bool = eq v0 v5_;
-  v10_: int = id v2_;
-  br v9_ .v11_ .v12_;
-.v12_:
-  v6_: int = id v2_;
-  print v2_;
-  ret;
-.v11_:
-  v10_: int = id v2_;
-  jmp .v12_;
-.v7_:
-  print v2_;
->>>>>>> b975e017 (Run branch_simplify in a fixed point)
 }

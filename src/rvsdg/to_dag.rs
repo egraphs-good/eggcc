@@ -123,7 +123,7 @@ impl<'a> DagTranslator<'a> {
     /// the first output using `skip_outputs`.
     fn translate_subregion(
         &mut self,
-        operands: impl Iterator<Item = Operand> + DoubleEndedIterator,
+        operands: impl DoubleEndedIterator<Item = Operand>,
     ) -> RcExpr {
         let resulting_exprs = operands.map(|operand| {
             let res = self.translate_operand(operand);

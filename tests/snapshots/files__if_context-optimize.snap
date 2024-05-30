@@ -3,37 +3,7 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-<<<<<<< HEAD
 .b1_:
   c2_: bool = const true;
-  c3_: int = const 1;
-  v4_: bool = lt v0 c3_;
-  c5_: int = const 0;
-  v6_: int = id v0;
-  v7_: int = id c5_;
-  br v4_ .b8_ .b9_;
-.b9_:
-  c10_: int = const -1;
-  v11_: int = mul c10_ v0;
-  v6_: int = id v11_;
-  v7_: int = id c5_;
-.b8_:
   print c2_;
-||||||| parent of c8413e1a (More snapshots)
-.v1_:
-  v2_: bool = const true;
-  v3_: int = const 0;
-  v4_: bool = le v0 v3_;
-  br v4_ .v5_ .v6_;
-.v6_:
-  v7_: int = const -1;
-  v8_: int = mul v0 v7_;
-.v5_:
-  v9_: int = phi v8_ v0 .v6_ .v1_;
-  print v2_;
-=======
-.v1_:
-  v2_: bool = const true;
-  print v2_;
->>>>>>> c8413e1a (More snapshots)
 }

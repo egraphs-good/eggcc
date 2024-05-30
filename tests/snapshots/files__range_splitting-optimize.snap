@@ -7,6 +7,7 @@ expression: visualization.result
   c1_: int = const 0;
   v2_: int = id c1_;
 .b3_:
+<<<<<<< HEAD
   c4_: int = const 1;
   v5_: int = add c4_ v2_;
   c6_: int = const 5;
@@ -24,67 +25,60 @@ expression: visualization.result
   v14_: int = id v5_;
   v2_: int = id v14_;
   jmp .b3_;
+||||||| parent of 45ef9325 (snapshots again again)
+  c4_: int = const 1;
+  v5_: int = add c4_ v2_;
+  c6_: int = const 5;
+  v7_: bool = lt v5_ c6_;
+  v8_: bool = lt v2_ c6_;
+  br v8_ .b9_ .b10_;
+.b9_:
+  c11_: int = const 1;
+  print c11_;
+  v12_: int = id v2_;
+.b13_:
+  v14_: int = id v5_;
+  br v7_ .b15_ .b16_;
+.b15_:
+  v14_: int = id v5_;
+.b16_:
+  v2_: int = id v14_;
+  br v7_ .b3_ .b17_;
+=======
+  c4_: int = const 5;
+  v5_: bool = lt v2_ c4_;
+  br v5_ .b6_ .b7_;
+.b6_:
+  c8_: int = const 1;
+  print c8_;
+  v9_: int = id v2_;
+>>>>>>> 45ef9325 (snapshots again again)
 .b10_:
+<<<<<<< HEAD
   c17_: int = const 2;
   print c17_;
   v12_: int = id v2_;
   jmp .b13_;
 .b16_:
   v2_: int = id v14_;
-  print v2_;
-<<<<<<< HEAD
-||||||| parent of c8413e1a (More snapshots)
-  br v1_ .v3_ .v4_;
-.v3_:
-  v5_: int = id v2_;
-.v6_:
-  v7_: int = const 1;
-  v8_: int = add v5_ v7_;
-  v9_: int = const 5;
-  v10_: bool = lt v8_ v9_;
-  v11_: bool = lt v5_ v9_;
-  br v11_ .v12_ .v13_;
-.v12_:
-  v14_: int = const 1;
-  print v14_;
-.v15_:
-  br v10_ .v16_ .v17_;
-.v16_:
-.v18_:
-  v5_: int = id v8_;
-  br v10_ .v6_ .v4_;
-.v17_:
-  jmp .v18_;
-.v13_:
-  v19_: int = const 2;
-  print v19_;
-  jmp .v15_;
-.v4_:
-  v20_: int = phi v2_ v5_ .v0_ .v18_;
-  print v20_;
+||||||| parent of 45ef9325 (snapshots again again)
+  c18_: int = const 2;
+  print c18_;
+  v12_: int = id v2_;
+  jmp .b13_;
+.b17_:
 =======
-  br v1_ .v3_ .v4_;
-.v3_:
-  v5_: int = id v2_;
-.v6_:
-  v7_: int = const 5;
-  v8_: bool = lt v5_ v7_;
-  br v8_ .v9_ .v10_;
-.v9_:
-  v11_: int = const 1;
-  print v11_;
-.v12_:
-  v13_: int = const 1;
-  v14_: int = add v13_ v5_;
-  v15_: bool = lt v14_ v7_;
-  v5_: int = id v14_;
-  br v15_ .v6_ .v4_;
-.v10_:
-  v16_: int = const 2;
-  print v16_;
-  jmp .v12_;
-.v4_:
-  v17_: int = phi v2_ v5_ .v0_ .v12_;
-  print v17_;
->>>>>>> c8413e1a (More snapshots)
+  c11_: int = const 1;
+  v12_: int = add c11_ v2_;
+  v13_: bool = lt v12_ c4_;
+  v2_: int = id v12_;
+  br v13_ .b3_ .b14_;
+.b7_:
+  c15_: int = const 2;
+  print c15_;
+  v9_: int = id v2_;
+  jmp .b10_;
+.b14_:
+>>>>>>> 45ef9325 (snapshots again again)
+  print v2_;
 }

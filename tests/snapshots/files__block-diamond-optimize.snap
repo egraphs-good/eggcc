@@ -4,74 +4,30 @@ expression: visualization.result
 ---
 @main(v0: int) {
 .b1_:
-  c2_: int = const 2;
-  v3_: bool = lt v0 c2_;
-  v4_: bool = not v3_;
-<<<<<<< HEAD
-  c5_: int = const 0;
-  c6_: int = const 1;
+  c2_: int = const 1;
+  c3_: int = const 2;
+  v4_: bool = lt v0 c3_;
+  v5_: bool = not v4_;
+  c6_: int = const 0;
   c7_: int = const 5;
-  c8_: bool = const true;
-  v9_: int = id c6_;
-  v10_: int = id c6_;
-  v11_: int = id c2_;
-  v12_: bool = id c8_;
-  br v3_ .b13_ .b14_;
-.b13_:
-  c15_: int = const 4;
-  c16_: bool = const false;
-  v9_: int = id c15_;
-  v10_: int = id c6_;
-  v11_: int = id c2_;
-  v12_: bool = id c16_;
-.b14_:
-  v17_: int = id v9_;
-  v18_: int = id c6_;
-  br v4_ .b19_ .b20_;
-.b19_:
-  v21_: int = add c2_ v9_;
-  v17_: int = id v21_;
-  v18_: int = id c6_;
-.b20_:
-  v22_: int = add c6_ v17_;
-  print v22_;
-||||||| parent of 223685d0 (Snapshots)
-  v5_: int = const 0;
-  v6_: int = const 1;
-  v7_: int = const 5;
-  br v3_ .v8_ .v9_;
-.v8_:
-  v10_: int = const 4;
-  v11_: bool = const false;
-.v12_:
-  v13_: int = phi v6_ v10_ .v9_ .v8_;
-  v15_: bool = phi v14_ v11_ .v9_ .v8_;
-  br v4_ .v16_ .v17_;
-.v16_:
-  v18_: int = add v13_ v2_;
-  jmp .v17_;
-.v9_:
-  v14_: bool = const true;
-  jmp .v12_;
-.v17_:
-  v19_: int = phi v13_ v18_ .v12_ .v16_;
-  v20_: int = add v19_ v6_;
-  print v20_;
-=======
-  v5_: int = const 0;
-  v6_: int = const 1;
-  v7_: int = const 5;
-  br v3_ .v8_ .v9_;
-.v8_:
-  v10_: int = const 4;
-.v9_:
-  v11_: int = phi v6_ v10_ .v1_ .v8_;
-  br v4_ .v12_ .v13_;
-.v12_:
-  v14_: int = add v11_ v2_;
-.v13_:
-  v15_: int = phi v11_ v14_ .v9_ .v12_;
-  v16_: int = add v15_ v6_;
-  print v16_;
->>>>>>> 223685d0 (Snapshots)
+  v8_: int = id c2_;
+  v9_: int = id c2_;
+  v10_: int = id c3_;
+  br v4_ .b11_ .b12_;
+.b11_:
+  c13_: int = const 4;
+  v8_: int = id c13_;
+  v9_: int = id c2_;
+  v10_: int = id c3_;
+.b12_:
+  v14_: int = id v8_;
+  v15_: int = id v9_;
+  br v5_ .b16_ .b17_;
+.b16_:
+  v18_: int = add v10_ v8_;
+  v14_: int = id v18_;
+  v15_: int = id v9_;
+.b17_:
+  v19_: int = add c2_ v14_;
+  print v19_;
 }

@@ -3,19 +3,9 @@ source: tests/files.rs
 expression: visualization.result
 ---
 @main(v0: int) {
-<<<<<<< HEAD
 .b1_:
   c2_: int = const 1;
   v3_: int = id c2_;
-||||||| parent of c8413e1a (More snapshots)
-.v1_:
-  v2_: int = const 1;
-  v3_: int = id v2_;
-=======
-.v1_:
-  v2_: int = const 1;
-  v3_: int = id v2_;
->>>>>>> c8413e1a (More snapshots)
   v4_: int = id v0;
 .b5_:
   v6_: int = add v3_ v3_;

@@ -80,8 +80,8 @@
     (IVTPermutationAnalysis outW conditional perm)
     ;; This generalizes the following conditions:
     ;;   (= conditional (If condI inpI thn els))
-    ;;     (= (Get thn ith) (Const (Bool true) _unused1 _unused2))
-    ;;     (= (Get els ith) (Const (Bool false) _unused3 _unused4))
+    ;;   (= (Get thn ith) (Const (Bool true) _unused1 _unused2))
+    ;;   (= (Get els ith) (Const (Bool false) _unused3 _unused4))
     (ith-arg-is-bool conditional condI inpI ith thn els)
 
     (ContextOf inpW outer-ctx)
@@ -97,12 +97,16 @@
     (let new-loop-context (TmpCtx))
 
     ;; body
-    (let new-loop-outputs_ (ApplyPerm perm (Subst new-loop-context inpI thn)))
+    (let new-loop-outputs_ 
+        (TupleRemoveAt
+            (ApplyPerm perm (Subst new-loop-context inpI thn))
+            0))
     ;; the first element of body was true but should be the condition.
     (let new-loop-outputs
         (Concat
-            (Single (Subst new-loop-context (Arg argW new-loop-context) condI))
-            (TupleRemoveAt new-loop-outputs_ 0)))
+            ; (Single (Subst new-loop-context (Arg argW new-loop-context) condI))
+            (Single (Subst new-loop-context new-loop-outputs_ condI))
+            new-loop-outputs_))
 
     (let new-loop (DoWhile (Arg argW new-if-true-ctx) new-loop-outputs))
     (let new-if

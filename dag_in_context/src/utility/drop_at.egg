@@ -38,6 +38,14 @@
       :ruleset drop)
 
 ;; Operators
+(rule ((= lhs (DropAtInternal newty newctx idx (Top op c1 c2 c3)))
+       (ExprIsResolved (Top op c1 c2 c3)))
+      ((DelayedDropUnion lhs (Top op
+            (DropAtInternal newty newctx idx c1)
+            (DropAtInternal newty newctx idx c2)
+            (DropAtInternal newty newctx idx c3))))
+      :ruleset drop)
+
 (rule ((= lhs (DropAtInternal newty newctx idx (Bop op c1 c2)))
        (ExprIsResolved (Bop op c1 c2)))
       ((DelayedDropUnion lhs (Bop op

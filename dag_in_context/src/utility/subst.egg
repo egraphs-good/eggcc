@@ -44,6 +44,14 @@
       :ruleset subst)
 
 ;; Operators
+(rule ((= lhs (Subst assum to (Top op c1 c2 c3)))
+       (ExprIsResolved (Top op c1 c2 c3)))
+      ((DelayedSubstUnion lhs
+         (Top op (Subst assum to c1)
+                 (Subst assum to c2)
+                 (Subst assum to c3))))
+         :ruleset subst)
+
 (rule ((= lhs (Subst assum to (Bop op c1 c2)))
        (ExprIsResolved (Bop op c1 c2)))
       ((DelayedSubstUnion lhs

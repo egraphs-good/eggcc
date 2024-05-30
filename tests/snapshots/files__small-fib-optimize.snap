@@ -31,11 +31,15 @@ expression: visualization.result
   v14_: int = id v19_;
   v15_: int = id v8_;
   v16_: int = id v10_;
+  v7_: int = id v13_;
+  v8_: int = id v14_;
+  v9_: int = id v15_;
+  v10_: int = id v16_;
+  jmp .b11_;
 .b18_:
   v7_: int = id v13_;
   v8_: int = id v14_;
   v9_: int = id v15_;
   v10_: int = id v16_;
-  br v12_ .b11_ .b5_;
 .b5_:
 }

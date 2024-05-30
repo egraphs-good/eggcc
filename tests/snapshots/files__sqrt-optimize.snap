@@ -72,11 +72,12 @@ expression: visualization.result
 .b14_:
   v8_: float = id v13_;
   v9_: bool = id v12_;
-.b11_:
-  br v9_ .b47_ .b48_;
+  br v9_ .b11_ .b47_;
 .b47_:
-  v49_: float = fdiv v8_ v8_;
-  print v49_;
-.b48_:
-.b50_:
+  ret;
+.b11_:
+  v48_: float = fdiv v8_ v8_;
+  print v48_;
+  jmp .b47_;
+.b49_:
 }

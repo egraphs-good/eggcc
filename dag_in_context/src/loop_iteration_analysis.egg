@@ -1,5 +1,5 @@
 ;; Analysis to get the number of iterations of a loop
-(ruleset loop-iter-analysis)
+(ruleset loop-iters-analysis)
 
 ;;                      inputs, outputs -> number of iterations
 ;; The minimum possible guess is 1 because of do-while loops
@@ -11,7 +11,7 @@
 ;; by default, guess that all loops run 1000 times
 (rule ((DoWhile inputs outputs))
       ((set (LoopNumItersGuess inputs outputs) 1000))
-      :ruleset loop-iter-analysis)
+      :ruleset loop-iters-analysis)
 
 ;; For a loop that is false, its num iters is 1
 (rule
@@ -19,7 +19,7 @@
    (= (Const (Bool false) ty ctx) (Get outputs 0)))
   ((set (LoopNumItersGuess inputs outputs) 1)
    (TerminatingLoop inputs outputs))
-:ruleset loop-iter-analysis)
+:ruleset loop-iters-analysis)
 
 ;; Figure out number of iterations for a loop with constant bounds and initial value
 ;; and i is updated before checking pred
@@ -33,6 +33,7 @@
    ;; updated counter at counter_i
    (= next_counter (Get outputs (+ counter_i 1)))
    ;; increments by some constant each loop
+   ;; TODO: how to handle the invariant case?
    (= next_counter (Bop (Add) (Get (Arg _ty _ctx) counter_i)
                               (Const (Int increment) _ty2 _ctx2)))
    (> increment 0)
@@ -46,7 +47,7 @@
     (set (LoopNumItersGuess inputs outputs) (/ (- end_constant start_const) increment))
     (TerminatingLoop inputs outputs)
   )
-  :ruleset loop-iter-analysis)
+  :ruleset loop-iters-analysis)
 
 ;; Figure out number of iterations for a loop with constant bounds and initial value
 ;; and i is updated after checking pred
@@ -72,5 +73,5 @@
     (set (LoopNumItersGuess inputs outputs) (+ (/ (- end_constant start_const) increment) 1))
     (TerminatingLoop inputs outputs)
   )
-  :ruleset loop-iter-analysis)
+  :ruleset loop-iters-analysis)
 

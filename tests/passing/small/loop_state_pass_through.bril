@@ -1,0 +1,14 @@
+# ARGS: 5
+@main(input: int) {
+    one: int = const 1;
+    i: int = const 1;
+    jmp .loop;
+.loop:
+    max: int = const 10;
+    cond: bool = lt i max;
+    i: int = add i one;
+    br cond .loop .exit;
+.exit:
+    res: int = add i input;
+    print res;
+}

@@ -2,7 +2,6 @@
 ;; Depends on loop iteration analysis
 (ruleset loop-unroll)
 (ruleset loop-peel)
-(ruleset loop-iters-analysis)
 
 ;; loop peeling rule
 ;; Only peel loops that we know iterate < 3 times

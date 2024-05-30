@@ -1,0 +1,15 @@
+@main: int {
+    i: int = const 1;
+    forty: int = const 40;
+    one: int = const 1;
+    
+.loop_body:
+    i: int = add i one;
+    cond: bool = lt i forty;
+    br cond .loop_body .loop_end;
+
+.loop_end:
+    j: int = const 2;
+
+    ret j;
+}

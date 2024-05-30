@@ -72,4 +72,8 @@
       ((subsume (If a b c d)))
       :ruleset subsume-after-helpers)
 
+(relation ToSubsumeLoop (Expr Expr))
+(rule ((ToSubsumeLoop in p-out))
+      ((subsume (DoWhile in p-out)))
+      :ruleset subsume-after-helpers)
 

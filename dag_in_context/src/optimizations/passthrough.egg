@@ -51,8 +51,6 @@
 ; To maintain the invariant, we have to union the other outputs with a pure if statement
 (ruleset state-edge-passthrough)
 
-(relation WeSubsumedThis (Expr Expr Expr Expr))
-
 (rule ((= outputs (If pred inputs then_ else_))
 
        (= (Get then_ i) (Get (Arg arg_ty then_ctx) j))
@@ -79,8 +77,7 @@
        (union lhs (Get inputs j))
        ;; Be careful not to subsume the original if statement immediately,
        ;;  since TupleRemoveAt still needs to match on it
-       (ToSubsumeIf pred inputs then_ else_)
-       (WeSubsumedThis pred inputs then_ else_))
+       (ToSubsumeIf pred inputs then_ else_))
       :ruleset state-edge-passthrough)
 
 ;; Pass through if predicate

@@ -82,8 +82,6 @@ pub fn mk_schedule() -> String {
 
     {helpers}
 )
-
-(print-size WeSubsumedThis)
 "
     )
 }

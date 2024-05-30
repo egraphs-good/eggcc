@@ -1,0 +1,15 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int, v1: int) {
+.b2_:
+  v3_: int = smin v0 v1;
+  v4_: bool = lt v0 v1;
+  v5_: int = id v1;
+  br v4_ .b6_ .b7_;
+.b6_:
+  v5_: int = id v0;
+.b7_:
+  print v3_;
+}

@@ -1,6 +1,34 @@
 (ruleset switch_rewrite)
 (ruleset always-switch-rewrite)
 
+(rule (
+       (= pred (Bop (LessThan) a b))
+       (= if_e (If pred inputs thn els))
+       ; a is an input to the if region
+       (= a (Get inputs i))
+       ; b is an input to the if region
+       (= b (Get inputs j))
+       ; if a < b then a else b
+       (= (Get thn k) (Get (Arg ty (InIf true pred inputs)) i))
+       (= (Get els k) (Get (Arg ty (InIf false pred inputs)) j))
+      )
+      ((union (Get if_e k) (Bop (Smin) a b)))
+      :ruleset switch_rewrite)
+
+(rule (
+       (= pred (Bop (LessThan) a b))
+       (= if_e (If pred inputs thn els))
+       ; a is an input to the if region
+       (= a (Get inputs i))
+       ; b is an input to the if region
+       (= b (Get inputs j))
+       ; if a < b then b else a
+       (= (Get thn k) (Get (Arg ty (InIf true pred inputs)) j))
+       (= (Get els k) (Get (Arg ty (InIf false pred inputs)) i))
+      )
+      ((union (Get if_e k) (Bop (Smax) a b)))
+      :ruleset switch_rewrite) 
+
 ; if (a and b) X Y ~~> if a (if b X Y) Y
 (rule ((= lhs (If (Bop (And) a b) ins X Y))
        (HasType ins (TupleT ins_ty))

@@ -72,7 +72,9 @@
     (= (Get thn ith) (Const (Bool false) _unused1 _unused2))
     (= (Get els ith) (Const (Bool true) _unused3 _unused4))
 ) (
-    (ith-arg-is-bool conditional condI inpI ith els thn)
+    ;; TODO: this may introduce overhead, but is the only way to
+    ;; not have two rules
+    (ith-arg-is-bool conditional (Uop (Not) condI) inpI ith els thn)
 ) :ruleset always-run)
 
 (rule (

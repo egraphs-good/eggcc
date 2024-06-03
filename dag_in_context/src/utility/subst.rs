@@ -185,7 +185,7 @@ fn test_subst_if() -> crate::Result {
 
     let replace_with = parallel!(ttrue(), int(5)).add_arg_type(emptyt());
 
-    let expected = tif(
+    let (expected, expected_cache) = tif(
         ttrue(),
         add(int(5), int(1)),
         add(arg(), int(1)),
@@ -201,7 +201,10 @@ fn test_subst_if() -> crate::Result {
                         {replace_with}
                         {expr}))"
     );
-    let check = format!("(check (= substituted {}))", expected.value);
+    let check = format!(
+        "{expected}\n{}\n(check (= substituted {expected}))",
+        expected_cache.get_unions()
+    );
 
     crate::egglog_test(
         &build.to_string(),
@@ -248,35 +251,29 @@ fn test_subst_arg_type_changes() -> crate::Result {
     use crate::ast::*;
     use crate::schema::Assumption;
     use crate::{interpreter::Value, schema::Constant};
-    let expr = add(iarg(), iarg()).add_ctx(Assumption::dummy());
+    let (expr, expr_cache) = add(iarg(), iarg()).add_dummy_ctx();
     let tupletype = tuplet!(intt(), intt());
-    let replace_with = get(arg(), 0)
+    let (replace_with, replace_with_cache) = get(arg(), 0)
         .with_arg_types(tupletype.clone(), base(intt()))
-        .add_ctx(Assumption::dummy());
+        .add_dummy_ctx();
 
-    let expected = add(get(arg(), 0), get(arg(), 0))
+    let (expected, expected_cache) = add(get(arg(), 0), get(arg(), 0))
         .with_arg_types(tupletype.clone(), base(intt()))
-        .add_ctx(Assumption::dummy());
+        .add_dummy_ctx();
     let ctx = Assumption::dummy();
     let build = format!(
-        "{}\n{}\n{}\n{}\n(let substituted (Subst {ctx} {} {}))",
-        replace_with.value,
-        replace_with.get_unions(),
-        expr.value,
-        expr.get_unions(),
-        replace_with.value,
-        expr.value
+        "{expr}\n{}\n{replace_with}\n{}\n(let substituted (Subst {ctx} {replace_with} {expr}))",
+        replace_with_cache.get_unions(),
+        expr_cache.get_unions()
     );
     let check = format!(
-        "{}\n{}\n(check (= substituted {}))",
-        expected.value,
-        expected.get_unions(),
-        expected.value
+        "{expected}\n{}\n(check (= substituted {expected}))",
+        expected_cache.get_unions()
     );
     crate::egglog_test(
         &build.to_string(),
         &check.to_string(),
-        vec![expr.value.to_program(base(intt()), base(intt()))],
+        vec![expr.to_program(base(intt()), base(intt()))],
         Value::Const(Constant::Int(2)),
         Value::Const(Constant::Int(4)),
         vec![],
@@ -288,7 +285,7 @@ fn test_subst_identity() -> crate::Result {
     use crate::ast::*;
     use crate::schema::Assumption;
 
-    let expression = function(
+    let (expression, expression_cache) = function(
         "main",
         base(intt()),
         base(intt()),
@@ -301,16 +298,14 @@ fn test_subst_identity() -> crate::Result {
     let ctx = Assumption::InFunc("main".to_string());
 
     let build = format!(
-        "{}\n{}\n(let substituted (Subst {ctx} {replace_with} {}))",
-        expression.value,
-        expression.get_unions(),
-        expression.value,
+        "{expression}\n{}\n(let substituted (Subst {ctx} {replace_with} {expression}))",
+        expression_cache.get_unions(),
     );
-    let check = format!("(check (= substituted {}))", expression.value);
+    let check = format!("(check (= substituted {}))", expression);
     crate::egglog_test(
         &build.to_string(),
         &check.to_string(),
-        vec![expression.value.func_to_program()],
+        vec![expression.func_to_program()],
         intv(5),
         intv(1),
         vec![],
@@ -323,33 +318,30 @@ fn test_subst_add() -> crate::Result {
     use crate::schema::Assumption;
 
     let outer_if = add(int(5), arg());
-    let expression = function("main", base(intt()), base(intt()), outer_if)
+    let (expression, expression_cache) = function("main", base(intt()), base(intt()), outer_if)
         .func_with_arg_types()
         .func_add_ctx();
 
     let replace_with = int(5).with_arg_types(base(intt()), base(intt()));
 
-    let expected = function("main", base(intt()), base(intt()), add(int(5), int(5)))
-        .func_with_arg_types()
-        .func_add_ctx();
+    let (expected, expected_cache) =
+        function("main", base(intt()), base(intt()), add(int(5), int(5)))
+            .func_with_arg_types()
+            .func_add_ctx();
     let ctx = Assumption::InFunc("main".to_string());
 
     let build = format!(
-        "{}\n{}\n(let substituted (Subst {ctx} {replace_with} {}))",
-        expression.value,
-        expression.get_unions(),
-        expression.value,
+        "{expression}\n{}\n(let substituted (Subst {ctx} {replace_with} {expression}))",
+        expression_cache.get_unions(),
     );
     let check = format!(
-        "{}\n{}\n(check (= substituted {}))",
-        expected.value,
-        expected.get_unions(),
-        expected.value,
+        "{expected}\n{}\n(check (= substituted {expected}))",
+        expected_cache.get_unions(),
     );
     crate::egglog_test(
         &build.to_string(),
         &check.to_string(),
-        vec![expression.value.func_to_program()],
+        vec![expression.func_to_program()],
         intv(5),
         intv(10),
         vec![],

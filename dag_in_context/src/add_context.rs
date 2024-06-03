@@ -137,14 +137,12 @@ impl TreeProgram {
 
     /// add stand-in variables for all the contexts in the program
     /// useful for testing if you don't care about context in the test
-    pub fn add_symbolic_ctx(&self) -> TreeProgram {
+    pub fn add_symbolic_ctx(&self) -> (TreeProgram, ContextCache) {
         self.add_context_internal(|_| Assumption::dummy(), ContextCache::new_symbolic_ctx())
-            .0
     }
 
-    pub fn add_dummy_ctx(&self) -> TreeProgram {
+    pub fn add_dummy_ctx(&self) -> (TreeProgram, ContextCache) {
         self.add_context_internal(|_| Assumption::dummy(), ContextCache::new_dummy_ctx())
-            .0
     }
 
     fn add_context_internal(
@@ -184,14 +182,16 @@ impl Expr {
         (value, cache)
     }
 
-    pub fn add_dummy_ctx(self: &RcExpr) -> RcExpr {
+    pub fn add_dummy_ctx(self: &RcExpr) -> (RcExpr, ContextCache) {
         let mut cache = ContextCache::new_dummy_ctx();
-        self.add_ctx_with_cache(Assumption::dummy(), &mut cache)
+        let value = self.add_ctx_with_cache(Assumption::dummy(), &mut cache);
+        (value, cache)
     }
 
-    pub fn add_symbolic_ctx(self: &RcExpr) -> RcExpr {
+    pub fn add_symbolic_ctx(self: &RcExpr) -> (RcExpr, ContextCache) {
         let mut cache = ContextCache::new_symbolic_ctx();
-        self.add_ctx_with_cache(Assumption::dummy(), &mut cache)
+        let value = self.add_ctx_with_cache(Assumption::dummy(), &mut cache);
+        (value, cache)
     }
 
     pub fn add_ctx(self: &RcExpr, current_ctx: Assumption) -> (RcExpr, ContextCache) {

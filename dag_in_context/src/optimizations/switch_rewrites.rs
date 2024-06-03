@@ -5,11 +5,11 @@ use crate::egglog_test;
 fn switch_rewrite_three_quarters_and() -> crate::Result {
     use crate::ast::*;
 
-    let build = tif(and(tfalse(), ttrue()), empty(), int(1), int(2))
+    let (build, build_cache) = tif(and(tfalse(), ttrue()), empty(), int(1), int(2))
         .with_arg_types(emptyt(), base(intt()))
         .add_dummy_ctx();
 
-    let check = tif(
+    let (check, check_cache) = tif(
         tfalse(),
         parallel!(ttrue()),
         tif(get(arg(), 0), empty(), int(1), int(2)),
@@ -19,8 +19,11 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
     .add_dummy_ctx();
 
     egglog_test(
-        &format!("(let build_ {build})"),
-        &format!("(let check_ {check})\n(check (= build_ check_))",),
+        &format!("(let build_ {build})\n{}", build_cache.get_unions()),
+        &format!(
+            "(let check_ {check})\n{}\n(check (= build_ check_))",
+            check_cache.get_unions()
+        ),
         vec![],
         val_empty(),
         intv(2),
@@ -32,11 +35,11 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
 fn switch_rewrite_three_quarters_or() -> crate::Result {
     use crate::ast::*;
 
-    let build = tif(or(tfalse(), ttrue()), empty(), int(1), int(2))
+    let (build, build_cache) = tif(or(tfalse(), ttrue()), empty(), int(1), int(2))
         .with_arg_types(emptyt(), base(intt()))
         .add_dummy_ctx();
 
-    let check = tif(
+    let (check, check_cache) = tif(
         tfalse(),
         parallel!(ttrue()),
         int(1),
@@ -46,8 +49,11 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
     .add_dummy_ctx();
 
     egglog_test(
-        &format!("(let build_ {build})"),
-        &format!("(let check_ {check})\n(check (= build_ check_))"),
+        &format!("(let build_ {build})\n{}", build_cache.get_unions()),
+        &format!(
+            "(let check_ {check})\n{}\n(check (= build_ check_))",
+            check_cache.get_unions()
+        ),
         vec![],
         val_empty(),
         intv(1),
@@ -63,18 +69,21 @@ fn switch_rewrite_forward_pred() -> crate::Result {
 
     let arg = get(arg_ty(ctx_ty.clone()), 0);
 
-    let build = get(
+    let (build, build_cache) = get(
         tif(arg.clone(), empty(), single(ttrue()), single(tfalse())),
         0,
     )
     .add_arg_type(ctx_ty.clone())
     .add_dummy_ctx();
 
-    let check = arg.clone().add_arg_type(ctx_ty.clone()).add_dummy_ctx();
+    let (check, check_cache) = arg.clone().add_arg_type(ctx_ty.clone()).add_dummy_ctx();
 
     egglog_test(
-        &format!("(let build_ {build})"),
-        &format!("(let check_ {check})\n(check (= build_ check_))"),
+        &format!("(let build_ {build})\n{}", build_cache.get_unions()),
+        &format!(
+            "(let check_ {check})\n{}\n(check (= build_ check_))",
+            check_cache.get_unions()
+        ),
         vec![],
         val_empty(),
         intv(1),
@@ -90,20 +99,23 @@ fn switch_rewrite_negate_pred() -> crate::Result {
 
     let arg = get(arg_ty(ctx_ty.clone()), 0);
 
-    let build = get(
+    let (build, build_cache) = get(
         tif(arg.clone(), empty(), single(tfalse()), single(ttrue())),
         0,
     )
     .add_arg_type(ctx_ty.clone())
     .add_dummy_ctx();
 
-    let check = not(arg.clone())
+    let (check, check_cache) = not(arg.clone())
         .add_arg_type(ctx_ty.clone())
         .add_dummy_ctx();
 
     egglog_test(
-        &format!("(let build_ {build})"),
-        &format!("(let check_ {check})\n(check (= build_ check_))"),
+        &format!("(let build_ {build})\n{}", build_cache.get_unions()),
+        &format!(
+            "(let check_ {check})\n{}\n(check (= build_ check_))",
+            check_cache.get_unions()
+        ),
         vec![],
         val_empty(),
         intv(1),
@@ -115,7 +127,7 @@ fn switch_rewrite_negate_pred() -> crate::Result {
 fn single_branch_switch() -> crate::Result {
     use crate::ast::*;
 
-    let build = switch_vec(
+    let (build, build_cache) = switch_vec(
         int(1),
         empty(),
         vec![
@@ -126,13 +138,16 @@ fn single_branch_switch() -> crate::Result {
     .with_arg_types(emptyt(), base(intt()))
     .add_dummy_ctx();
 
-    let check = int(1)
+    let (check, check_cache) = int(1)
         .with_arg_types(emptyt(), base(intt()))
         .add_dummy_ctx();
 
     egglog_test(
-        &format!("(let build_ {build})"),
-        &format!("(let check_ {check})\n(check (!= build_ check_))"),
+        &format!("(let build_ {build})\n{}", build_cache.get_unions()),
+        &format!(
+            "(let check_ {check})\n{}\n(check (!= build_ check_))",
+            check_cache.get_unions()
+        ),
         vec![],
         val_empty(),
         intv(1),

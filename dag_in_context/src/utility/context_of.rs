@@ -9,8 +9,8 @@ fn test_context_of() -> crate::Result {
     let body = tif(pred, arg(), arg(), int(4))
         .with_arg_types(base(intt()), base(intt()))
         .with_arg_types(base(intt()), base(intt()));
-    let body_with_context = body.clone().add_ctx(ctx.clone());
-    let build = function("main", base(intt()), base(intt()), body.clone())
+    let (body_with_context, body_cache) = body.clone().add_ctx(ctx.clone());
+    let (build, build_cache) = function("main", base(intt()), base(intt()), body.clone())
         .func_with_arg_types()
         .func_add_ctx();
     let ctx = format!("{}", ctx);
@@ -22,16 +22,15 @@ fn test_context_of() -> crate::Result {
         (let pred (Bop (Eq) (Arg (Base (IntT)) {ctx}) (Const (Int 5) (Base (IntT)) {ctx})))
         (check (ContextOf pred pred-ctx))
         (let if {})
-        {}
+        {body_with_context}
         (check (ContextOf if pred-ctx))",
-        body_with_context.value,
-        body_with_context.get_unions(),
+        body_cache.get_unions(),
     );
 
     crate::egglog_test(
-        &format!("(let build {})\n{}", build.value, build.get_unions()),
+        &format!("(let build {build})\n{}", build_cache.get_unions()),
         &check,
-        vec![build.value.func_to_program()],
+        vec![build.func_to_program()],
         intv(5),
         intv(5),
         vec![],
@@ -88,7 +87,7 @@ fn test_context_of_panics_if_two() {
 fn test_context_of_no_func_context() -> crate::Result {
     use crate::ast::*;
 
-    let build = function(
+    let (build, cache) = function(
         "main",
         emptyt(),
         base(intt()),
@@ -103,12 +102,12 @@ fn test_context_of_no_func_context() -> crate::Result {
     .func_with_arg_types()
     .func_add_ctx();
 
-    let check = format!("(fail (check (ContextOf {} ctx)))", build.value);
+    let check = format!("(fail (check (ContextOf {build} ctx)))");
 
     crate::egglog_test(
-        &format!("{}\n{}", build.value, build.get_unions()),
+        &format!("{build}\n{}", cache.get_unions()),
         &check,
-        vec![build.value.to_program(base(intt()), base(intt()))],
+        vec![build.to_program(base(intt()), base(intt()))],
         val_empty(),
         intv(9),
         vec![],

@@ -73,16 +73,15 @@ fn passthrough_if_predicate() -> crate::Result {
     );
     let check = less_than(arg(), int(5));
 
-    let build = build.to_program(base(intt()), base(boolt())).add_context();
-    let check = check.to_program(base(intt()), base(boolt())).add_context();
+    let (build, build_cache) = build.to_program(base(intt()), base(boolt())).add_context();
+    let (check, check_cache) = check.to_program(base(intt()), base(boolt())).add_context();
     egglog_test(
-        &format!("(let b {})\n{}", build.value, build.get_unions()),
+        &format!("(let b {build})\n{}", build_cache.get_unions()),
         &format!(
-            "(let c {})\n{} (check (= b c))",
-            check.value,
-            check.get_unions()
+            "(let c {check})\n{} (check (= b c))",
+            check_cache.get_unions()
         ),
-        vec![build.value, check.value],
+        vec![build, check],
         intv(3),
         val_bool(true),
         vec![],

@@ -52,11 +52,9 @@ fn subst_call(
     unions: &mut LoopContextUnionsAnd<()>,
 ) -> CallBody {
     if let Expr::Call(func_name, args) = call.as_ref() {
-        let unions_and_value = Expr::subst(args, func_to_body[func_name]);
-        unions.unions.extend(unions_and_value.unions);
         CallBody {
             call: call.clone(),
-            body: unions_and_value.value,
+            body: Expr::subst(args, func_to_body[func_name], unions),
         }
     } else {
         panic!("Tried to substitute non-calls.")
@@ -67,11 +65,10 @@ fn subst_call(
 pub fn function_inlining_pairs(
     program: &TreeProgram,
     iterations: usize,
-) -> LoopContextUnionsAnd<Vec<CallBody>> {
-    let mut unions = LoopContextUnionsAnd::new();
-
+    unions: &mut LoopContextUnionsAnd<()>,
+) -> Vec<CallBody> {
     if iterations == 0 {
-        return unions.swap_value(Vec::new()).0;
+        return vec![];
     }
 
     let mut all_funcs = vec![program.entry.clone()];
@@ -97,7 +94,7 @@ pub fn function_inlining_pairs(
 
     let mut inlined_calls = calls
         .iter()
-        .map(|call| subst_call(call, &func_name_to_body, &mut unions))
+        .map(|call| subst_call(call, &func_name_to_body, unions))
         .collect::<Vec<_>>();
 
     // Repeat! Get calls and subst for each new substituted body.
@@ -117,17 +114,17 @@ pub fn function_inlining_pairs(
         // Only work on new calls, added from the new inlines
         new_inlines = new_calls
             .iter()
-            .map(|call| subst_call(call, &func_name_to_body, &mut unions))
+            .map(|call| subst_call(call, &func_name_to_body, unions))
             .collect::<Vec<CallBody>>();
         inlined_calls.extend(new_inlines.clone());
     }
 
-    unions.swap_value(inlined_calls).0
+    inlined_calls
 }
 
 // Returns a formatted string of (union call body) for each pair
 pub fn print_function_inlining_pairs(
-    function_inlining_pairs: LoopContextUnionsAnd<Vec<CallBody>>,
+    function_inlining_pairs: Vec<CallBody>,
     printed: &mut String,
     tree_state: &mut TreeToEgglog,
     term_cache: &mut HashMap<Term, String>,
@@ -135,7 +132,6 @@ pub fn print_function_inlining_pairs(
     let inlined_calls = "(relation InlinedCall (String Expr))";
     // Get unions and mark each call as inlined for extraction purposes
     let printed_pairs = function_inlining_pairs
-        .value
         .iter()
         .map(|cb| {
             if let Expr::Call(callee, _) = cb.call.as_ref() {
@@ -177,10 +173,7 @@ pub fn print_function_inlining_pairs(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    format!(
-        "{inlined_calls} {printed_pairs} {}",
-        function_inlining_pairs.get_unions_with_sharing(printed, tree_state, term_cache)
-    )
+    format!("{inlined_calls} {printed_pairs}")
 }
 
 // Check that function inling pairs produces the right number of pairs for

@@ -289,16 +289,12 @@ impl Expr {
     }
 
     // Substitute "arg" for Arg() in within. Also replaces context with "arg"'s context.
-    pub fn subst(arg: &RcExpr, within: &RcExpr) -> LoopContextUnionsAnd<RcExpr> {
+    pub fn subst(arg: &RcExpr, within: &RcExpr, unions: &mut LoopContextUnionsAnd<()>) -> RcExpr {
         let mut subst_cache: HashMap<*const Expr, RcExpr> = HashMap::new();
-        let mut unions = LoopContextUnionsAnd::new();
 
         let arg_ty = arg.get_arg_type();
         let arg_ctx = arg.get_ctx();
-        let value =
-            Self::subst_with_cache(arg, &arg_ty, arg_ctx, within, &mut subst_cache, &mut unions);
-
-        unions.swap_value(value).0
+        Self::subst_with_cache(arg, &arg_ty, arg_ctx, within, &mut subst_cache, unions)
     }
 
     fn subst_with_cache(

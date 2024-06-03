@@ -355,7 +355,7 @@ impl Run {
     fn optimize_bril(program: &Program) -> Result<Program, EggCCError> {
         let rvsdg = Optimizer::program_to_rvsdg(program)?;
         let dag = rvsdg.to_dag_encoding(true);
-        let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
+        let optimized = dag_in_context::optimize(dag).map_err(EggCCError::EggLog)?;
         let rvsdg2 = dag_to_rvsdg(&optimized);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
@@ -626,7 +626,7 @@ impl Run {
             RunType::DagOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding(true);
-                let optimized = dag_in_context::optimize(&tree).map_err(EggCCError::EggLog)?;
+                let optimized = dag_in_context::optimize(tree).map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
                         result: tree_to_svg(&optimized),
@@ -639,7 +639,7 @@ impl Run {
             RunType::OptimizedRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding(true);
-                let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
+                let optimized = dag_in_context::optimize(dag).map_err(EggCCError::EggLog)?;
                 let rvsdg = dag_to_rvsdg(&optimized);
                 (
                     vec![Visualization {
@@ -653,7 +653,7 @@ impl Run {
             RunType::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding(true);
-                let egglog = build_program(&dag, true);
+                let egglog = build_program(dag, true);
                 (
                     vec![Visualization {
                         result: egglog,

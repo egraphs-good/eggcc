@@ -114,7 +114,8 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
 }
 
 // It is expected that program has context added
-pub fn build_program(program: &LoopContextUnionsAnd<TreeProgram>, optimize: bool) -> String {
+pub fn build_program(program: LoopContextUnionsAnd<TreeProgram>, optimize: bool) -> String {
+    let (mut unions, program) = program.swap_value(());
     let mut printed = String::new();
 
     // Create a global cache for generating intermediate variables
@@ -127,8 +128,9 @@ pub fn build_program(program: &LoopContextUnionsAnd<TreeProgram>, optimize: bool
     } else {
         function_inlining::print_function_inlining_pairs(
             function_inlining::function_inlining_pairs(
-                &program.value,
+                &program,
                 config::FUNCTION_INLINING_ITERATIONS,
+                &mut unions,
             ),
             &mut printed,
             &mut tree_state,
@@ -137,12 +139,12 @@ pub fn build_program(program: &LoopContextUnionsAnd<TreeProgram>, optimize: bool
     };
 
     // Generate program egglog
-    let term = program.value.to_egglog_with(&mut tree_state);
+    let term = program.to_egglog_with(&mut tree_state);
     let res =
         print_with_intermediate_helper(&tree_state.termdag, term, &mut term_cache, &mut printed);
 
     let loop_context_unions =
-        program.get_unions_with_sharing(&mut printed, &mut tree_state, &mut term_cache);
+        unions.get_unions_with_sharing(&mut printed, &mut tree_state, &mut term_cache);
 
     let prologue = prologue();
 
@@ -154,11 +156,21 @@ pub fn build_program(program: &LoopContextUnionsAnd<TreeProgram>, optimize: bool
 
     format!(
         "
+; Prologue
 {prologue}
+
+; Program nodes
 {printed}
+; Program root
 (let PROG {res})
+
+; Loop context unions
 {loop_context_unions}
+
+; Function inlining unions
 {function_inlining_unions}
+
+; Schedule
 {schedule}
 "
     )
@@ -176,7 +188,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
     let egglog_prog = build_program(
-        &LoopContextUnionsAnd::new().swap_value(program.clone()).0,
+        LoopContextUnionsAnd::new().swap_value(program.clone()).0,
         false,
     );
     log::info!("Running egglog program...");
@@ -204,8 +216,9 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
 
 // It is expected that program has context added
 pub fn optimize(
-    program: &LoopContextUnionsAnd<TreeProgram>,
+    program: LoopContextUnionsAnd<TreeProgram>,
 ) -> std::result::Result<TreeProgram, egglog::Error> {
+    let original_program = program.value.clone();
     let egglog_prog = build_program(program, true);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
@@ -214,7 +227,7 @@ pub fn optimize(
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
     let (_res_cost, res) = extract(
-        &program.value,
+        &original_program,
         serialized,
         unextractables,
         &mut termdag,

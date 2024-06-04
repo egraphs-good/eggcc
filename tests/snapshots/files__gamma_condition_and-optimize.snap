@@ -6,6 +6,7 @@ expression: visualization.result
 .b1_:
   c2_: int = const 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
   v3_: bool = lt v0 c2_;
   v4_: bool = lt c2_ v0;
 ||||||| parent of 96126495 (Fix loop-peel contexts)
@@ -15,6 +16,13 @@ expression: visualization.result
   v3_: bool = gt v0 c2_;
   v4_: bool = lt v0 c2_;
 >>>>>>> 96126495 (Fix loop-peel contexts)
+||||||| parent of 602cb9e5 (Snapshots once more)
+  v3_: bool = gt v0 c2_;
+  v4_: bool = lt v0 c2_;
+=======
+  v3_: bool = lt v0 c2_;
+  v4_: bool = lt c2_ v0;
+>>>>>>> 602cb9e5 (Snapshots once more)
   c5_: int = const 1;
   c6_: int = const 3;
   v7_: int = id c6_;

@@ -18,51 +18,55 @@ treatments = [
   "llvm-O3-eggcc",
 ]
 
-def get_eggcc_options(name, profile_dir):
-  match name:
+# Where to output files that are needed for nightly report
+DATA_DIR = None
+
+# Where to write intermediate files that should be cleaned up at the end of this script
+TMP_DIR = "tmp"
+
+def get_eggcc_options(run_mode, benchmark):
+  llvm_out_dir = f"{DATA_DIR}/llvm/{benchmark}/{run_mode}"
+  match run_mode:
     case "rvsdg-round-trip-to-executable":
-      return f'--run-mode rvsdg-round-trip-to-executable --llvm-output-dir {profile_dir}/llvm-{name}'
+      return f'--run-mode rvsdg-round-trip-to-executable --llvm-output-dir {llvm_out_dir}'
     case "cranelift-O3":
       return f'--run-mode cranelift --optimize-egglog false --optimize-brilift true'
     case "llvm-O0":
-      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
+      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm false --llvm-output-dir {llvm_out_dir}'
     case "llvm-O3":
-      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm true --llvm-output-dir {profile_dir}/llvm-{name}'
+      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm true --llvm-output-dir {llvm_out_dir}'
     case "llvm-O0-eggcc":
-      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm false --llvm-output-dir {profile_dir}/llvm-{name}'
+      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm false --llvm-output-dir {llvm_out_dir}'
     case "llvm-O3-eggcc":
-      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm true --llvm-output-dir {profile_dir}/llvm-{name}'
+      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm true --llvm-output-dir {llvm_out_dir}'
     case _:
-      raise Exception("Unexpected run mode: " + name)
+      raise Exception("Unexpected run mode: " + run_mode)
     
 
 class Benchmark:
   def __init__(self, path, treatment, index, total):
     self.path = path
+    self.name = path.split("/")[-1][:-len(".bril")]
     self.treatment = treatment
     # index of this benchmark (for printing)
     self.index = index
     # total number of benchmarks being run
     self.total = total
 
-def benchmark_name(benchmark_path):
-  return benchmark_path.split("/")[-1][:-len(".bril")]
+def benchmark_profile_dir(name):
+  return f'{TMP_DIR}/{name}'
 
-def benchmark_profile_dir(benchmark_path):
-  return f'./tmp/bench/{benchmark_name(benchmark_path)}'
-
-def setup_benchmark(benchmark_path):
-  # strip off the .bril to get just the profile name
-  profile_dir = benchmark_profile_dir(benchmark_path)
+def setup_benchmark(name):
+  profile_dir = benchmark_profile_dir(name)
   try:
     os.mkdir(profile_dir)
   except FileExistsError:
     print(f'{profile_dir} exists, overwriting contents')
 
 def optimize(benchmark):
-  print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.path} with {benchmark.treatment}')
-  profile_dir = benchmark_profile_dir(benchmark.path)
-  cmd = f'cargo run --release {benchmark.path} {get_eggcc_options(benchmark.treatment, profile_dir)} -o {profile_dir}/{benchmark.treatment}'
+  print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}')
+  profile_dir = benchmark_profile_dir(benchmark.name)
+  cmd = f'cargo run --release {benchmark.path} {get_eggcc_options(benchmark.treatment, benchmark.name)} -o {profile_dir}/{benchmark.treatment}'
   print(f'Running: {cmd}')
   start = time.time()
   subprocess.call(cmd, shell=True)
@@ -72,8 +76,8 @@ def optimize(benchmark):
 
 
 def bench(benchmark):
-  print(f'[{benchmark.index}/{benchmark.total}] Benchmarking {benchmark.path} with {benchmark.treatment}')
-  profile_dir = benchmark_profile_dir(benchmark.path)
+  print(f'[{benchmark.index}/{benchmark.total}] Benchmarking {benchmark.name} with {benchmark.treatment}')
+  profile_dir = benchmark_profile_dir(benchmark.name)
 
   with open(f'{profile_dir}/{benchmark.treatment}-args') as f:
     args = f.read().rstrip()
@@ -100,30 +104,22 @@ def should_have_llvm_ir(runMethod):
     "llvm-O3-eggcc",
   ]
 
-def get_llvm_ir(runMethod, benchmark):
-  path = f'./tmp/bench/{benchmark}/llvm-{runMethod}/{benchmark}-{runMethod}.ll'
-
-  try:
-    with open(path) as f:
-      return f.read()
-  except OSError:
-    return ""
-
-
 # aggregate all profile info into a single json array.
-def aggregate(compile_times, bench_times):
+def aggregate(compile_times, bench_times, looped):
     res = []
 
     for path in sorted(compile_times.keys()):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
-      result = {"runMethod": runMethod, "benchmark": name, "hyperfine": bench_times[path], "compileTime": compile_times[path]}
-      if should_have_llvm_ir(runMethod):
-        result["llvm_ir"] = get_llvm_ir(runMethod, name)
+      result = {"runMethod": runMethod, "benchmark": name, "hyperfine": bench_times[path], "compileTime": compile_times[path], "looped": looped[name]}
 
       res.append(result)
     return res
 
+def is_looped(bril_file):
+  with open(bril_file) as f:
+    txt = f.read()
+    return "orig_main" in txt
 
 if __name__ == '__main__':
   # expect two arguments
@@ -131,17 +127,25 @@ if __name__ == '__main__':
     print("Usage: profile.py <bril_directory> <output_directory>")
     exit(1)
 
-  profile_path, output_path = os.sys.argv[1:]
+  # Create tmp directory for intermediate files
+  try:
+    os.mkdir(TMP_DIR)
+  except FileExistsError:
+    print(f"{TMP_DIR} exits, overwriting contents")
+
+  bril_dir, DATA_DIR = os.sys.argv[1:]
   profiles = []
   # if it is a directory get all files
-  if os.path.isdir(profile_path):
-    print(f'Running all bril files in {profile_path}')
-    profiles = glob(f'{profile_path}/**/*.bril', recursive=True)
+  if os.path.isdir(bril_dir):
+    print(f'Running all bril files in {bril_dir}')
+    profiles = glob(f'{bril_dir}/**/*.bril', recursive=True)
   else:
-    profiles = [profile_path]
+    profiles = [bril_dir]
 
-  for benchmark_path in profiles:
-    setup_benchmark(benchmark_path)
+  looped = {}
+  for profile in profiles:
+    name = profile.split("/")[-1][:-len(".bril")]
+    looped[name] = is_looped(profile)
 
   to_run = []
   index = 0
@@ -150,6 +154,9 @@ if __name__ == '__main__':
     for treatment in treatments:
       to_run.append(Benchmark(benchmark_path, treatment, index, total))
       index += 1
+
+  for benchmark in to_run:
+    setup_benchmark(benchmark.name)
   
 
   compile_times = {}
@@ -183,6 +190,9 @@ if __name__ == '__main__':
       (path, _bench_data) = res
       bench_data[path] = _bench_data
 
-  nightly_data = aggregate(compile_times, bench_data)
-  with open(f"{output_path}/data/profile.json", "w") as profile:
+  nightly_data = aggregate(compile_times, bench_data, looped)
+  with open(f"{DATA_DIR}/profile.json", "w") as profile:
     json.dump(nightly_data, profile, indent=2)
+
+  # Clean up intermediate files
+  os.system(f"rm -rf {TMP_DIR}")

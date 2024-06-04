@@ -113,7 +113,48 @@ impl SimpleCfgFunction {
         match self.get_branch(node) {
             SimpleBranch::NoBranch => {}
             SimpleBranch::Jmp(to) => {
-                if Some(&to) != next_node {
+                if Some(&to) == next_node {
+                    // We will implicitly jump to the next block
+                    return;
+                }
+                // NB: BlockName::Exit isn't always populated; e.g. it isn't
+                // populated in the RVSDG=>CFG code.
+                let target = self.graph.neighbors(node).next().unwrap();
+                if target == self.exit {
+                    // Jumping to the exit block. We want to replace these,
+                    // where possible, with direct returns.
+
+                    // Get the exit block.
+                    let block = &self.graph[self.exit];
+                    match block.instrs.last() {
+                        Some(instr) => {
+                            // There are instructions in the exit block. Copy them over.
+                            self.node_to_bril(self.exit, func, node_order);
+                            if matches!(instr, Instruction::Effect { op, .. } if op != &EffectOps::Return)
+                            {
+                                // We don't end with a return statement. Add one.
+                                func.instrs.push(Code::Instruction(Instruction::Effect {
+                                    op: EffectOps::Return,
+                                    args: vec![],
+                                    funcs: vec![],
+                                    labels: vec![],
+                                    pos: None,
+                                }));
+                            }
+                        }
+                        None => {
+                            // empty block! Just return
+                            func.instrs.push(Code::Instruction(Instruction::Effect {
+                                op: EffectOps::Return,
+                                args: vec![],
+                                funcs: vec![],
+                                labels: vec![],
+                                pos: None,
+                            }));
+                        }
+                    }
+                } else {
+                    // Standard base-case
                     func.instrs.push(Code::Instruction(Instruction::Effect {
                         op: EffectOps::Jump,
                         args: vec![],

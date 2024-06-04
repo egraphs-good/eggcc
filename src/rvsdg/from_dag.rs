@@ -154,6 +154,10 @@ fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
         BinaryOp::GreaterThan => Some(ValueOps::Gt),
         BinaryOp::LessEq => Some(ValueOps::Le),
         BinaryOp::GreaterEq => Some(ValueOps::Ge),
+        BinaryOp::Smax => Some(ValueOps::Smax),
+        BinaryOp::Smin => Some(ValueOps::Smin),
+        BinaryOp::Shl => Some(ValueOps::Shl),
+        BinaryOp::Shr => Some(ValueOps::Shr),
         // float operators
         BinaryOp::FAdd => Some(ValueOps::Fadd),
         BinaryOp::FSub => Some(ValueOps::Fsub),
@@ -164,6 +168,8 @@ fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
         BinaryOp::FGreaterThan => Some(ValueOps::Fgt),
         BinaryOp::FLessEq => Some(ValueOps::Fle),
         BinaryOp::FGreaterEq => Some(ValueOps::Fge),
+        BinaryOp::Fmax => Some(ValueOps::Fmax),
+        BinaryOp::Fmin => Some(ValueOps::Fmin),
         // logical op
         BinaryOp::And => Some(ValueOps::And),
         BinaryOp::Or => Some(ValueOps::Or),

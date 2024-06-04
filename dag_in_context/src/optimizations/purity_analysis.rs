@@ -13,8 +13,10 @@ fn top_is_pure(top: &TernaryOp) -> bool {
 fn bop_is_pure(bop: &BinaryOp) -> bool {
     use BinaryOp::*;
     match bop {
-        Add | Sub | Mul | LessThan | Div | Eq | GreaterThan | LessEq | GreaterEq => true,
-        FAdd | FSub | FMul | FLessThan | FDiv | FEq | FGreaterThan | FLessEq | FGreaterEq => true,
+        Add | Sub | Mul | LessThan | Div | Eq | GreaterThan | LessEq | GreaterEq | Smax | Smin
+        | Shl | Shr => true,
+        FAdd | FSub | FMul | FLessThan | FDiv | FEq | FGreaterThan | FLessEq | FGreaterEq
+        | Fmax | Fmin => true,
         PtrAdd => true,
         And | Or => true,
         Load | Print | Free => false,

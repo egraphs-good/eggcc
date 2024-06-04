@@ -30,6 +30,7 @@ MYDIR="$(cd -P "$(dirname "$src")" && pwd)"
 TOP_DIR="$MYDIR/.."
 RESOURCE_DIR="$MYDIR/nightly-resources"
 NIGHTLY_DIR="$TOP_DIR/nightly"
+DATA_DIR="$TOP_DIR/nightly/data"
 
 # Make sure we're in the right place
 cd $MYDIR
@@ -40,37 +41,39 @@ echo "Switching to nighly script directory: $MYDIR"
 rm -rf $NIGHTLY_DIR
 
 # Prepare output directories
-mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output"
+mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$NIGHTLY_DIR/output"
 
 
 pushd $TOP_DIR
 
 # Run profiler.
-# create temporary directory structure necessary for bench runs
-mkdir -p ./tmp/bench
 
 # locally, run on argument
 if [ "$LOCAL" != "" ]; then
-  ./infra/profile.py "$@" "$NIGHTLY_DIR"
+  ./infra/profile.py "$@" "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt
 else
   export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
   make runtime
   # run on all benchmarks in nightly
-  ./infra/profile.py benchmarks/passing "$NIGHTLY_DIR"
+  ./infra/profile.py benchmarks/passing "$DATA_DIR"  2>&1 | tee $NIGHTLY_DIR/log.txt
 fi
 
 # Generate latex after running the profiler (depends on profile.json)
-./infra/generate_line_counts.py "$NIGHTLY_DIR"
+./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt
 
-rm -r ./tmp/
+# Generate CFGs for LLVM after running the profiler
+./infra/generate_cfgs.py "$DATA_DIR/llvm" 2>&1 | tee $NIGHTLY_DIR/log.txt
 
 popd
 
 # Update HTML index page.
 cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"
 
-# Copy json directory to the artifact
+# Copy data directory to the artifact
 cp -r "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output/data"
+
+# Copy log
+cp "$NIGHTLY_DIR/log.txt" "$NIGHTLY_DIR/output"
 
 # gzip all JSON in the nightly dir
 if [ "$LOCAL" == "" ]; then

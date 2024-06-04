@@ -91,9 +91,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.83"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25bdb32cbbdce2b519a9cd7df3a678443100e265d5e25ca763b7572a5104f5f3"
+checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 
 [[package]]
 name = "arbitrary"
@@ -130,7 +130,7 @@ dependencies = [
  "argh_shared",
  "proc-macro2",
  "quote",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -196,7 +196,7 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
  "serde",
  "serde_json",
@@ -206,7 +206,17 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril#5652d6ac53d727c0901a53a0484e8241db887d04"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "bril-rs"
+version = "0.1.0"
+source = "git+https://github.com/uwplse/bril#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
  "serde",
  "serde_json",
@@ -216,9 +226,9 @@ dependencies = [
 [[package]]
 name = "bril2json"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "clap",
  "lalrpop",
  "lalrpop-util",
@@ -228,10 +238,10 @@ dependencies = [
 [[package]]
 name = "brilift"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
  "argh",
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-jit",
@@ -245,9 +255,9 @@ dependencies = [
 [[package]]
 name = "brilirs"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "bril2json",
  "clap",
  "fxhash",
@@ -259,7 +269,7 @@ dependencies = [
 [[package]]
 name = "brillvm"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
  "bril-rs 0.1.0 (git+https://github.com/uwplse/bril)",
  "clap",
@@ -280,9 +290,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
-version = "1.0.97"
+version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "099a5357d84c4c61eb35fc8eafa9a79a902c2f76911e5747ced4e032edd8d9b4"
+checksum = "41c270e7540d725e65ac7f1b212ac8ce349719624d7bcff99f8e2e488e8cf03f"
 
 [[package]]
 name = "cfg-if"
@@ -321,7 +331,7 @@ dependencies = [
  "heck 0.5.0",
  "proc-macro2",
  "quote",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -494,9 +504,9 @@ dependencies = [
 
 [[package]]
 name = "crc32fast"
-version = "1.4.0"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3855a8a784b474f333699ef2bbca9db2c4a1f6d9088a90a2d25b1eb53111eaa"
+checksum = "a97769d94ddab943e4510d138150169a2758b5ef3eb191a9ee688de3e23ef7b3"
 dependencies = [
  "cfg-if",
 ]
@@ -521,7 +531,7 @@ dependencies = [
 name = "dag_in_context"
 version = "0.1.0"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5)",
  "dot-structures",
  "egglog",
  "egraph-serialize",
@@ -599,7 +609,7 @@ checksum = "675e35c02a51bb4d4618cb4885b3839ce6d1787c97b664474d9208d074742e20"
 name = "eggcc"
 version = "0.1.0"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "bril2json",
  "brilift",
  "brilirs",
@@ -624,7 +634,7 @@ dependencies = [
  "rs2bril",
  "serde_json",
  "smallvec",
- "syn 2.0.64",
+ "syn 2.0.66",
  "tempfile",
  "thiserror",
 ]
@@ -709,7 +719,7 @@ checksum = "f282cfdfe92516eb26c2af8589c274c7c17681f5ecc03c18255fe741c6aa64eb"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -808,9 +818,9 @@ source = "git+https://github.com/oflatt/symbolic-expressions?rev=655b6a4c06b4b3d
 
 [[package]]
 name = "getrandom"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94b22e06ecb0110981051723910cbf0b5f5e09a2062dd7663334ee79a9d1286c"
+checksum = "c4567c8db10ae91089c99af84c68c38da3ec2f087c3f82960bcdbf3656b6f4d7"
 dependencies = [
  "cfg-if",
  "libc",
@@ -949,7 +959,7 @@ source = "git+https://github.com/TheDan64/inkwell.git?rev=6c0fb56b3554e939f9ca61
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -967,9 +977,9 @@ dependencies = [
 
 [[package]]
 name = "instant"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
+checksum = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222"
 dependencies = [
  "cfg-if",
 ]
@@ -1067,15 +1077,15 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.153"
+version = "0.2.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
+checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
 name = "libmimalloc-sys"
-version = "0.1.37"
+version = "0.1.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81eb4061c0582dedea1cbc7aff2240300dd6982e0239d1c99e65c1dbf4a30ba7"
+checksum = "0e7bb23d733dfcc8af652a78b7bf232f0e967710d044732185e561e47c0336b6"
 dependencies = [
  "cc",
  "libc",
@@ -1110,9 +1120,9 @@ checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.4.13"
+version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
+checksum = "78b3ae25bc7c8c38cec158d1f2757ee79e9b3740fbc7ccf0e59e4b08d793fa89"
 
 [[package]]
 name = "llvm-sys"
@@ -1167,9 +1177,9 @@ checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
 
 [[package]]
 name = "mimalloc"
-version = "0.1.41"
+version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f41a2280ded0da56c8cf898babb86e8f10651a34adcfff190ae9a1159c6908d"
+checksum = "e9186d86b79b52f4a77af65604b51225e8db1d6ee7e3f41aec1e40829c71a176"
 dependencies = [
  "libmimalloc-sys",
 ]
@@ -1275,9 +1285,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.12.2"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e4af0ca4f6caed20e900d564c242b8e5d4903fdacf31d3daf527b66fe6f42fb"
+checksum = "f1bf18183cf54e8d6059647fc3063646a1801cf30896933ec2311622cc4b9a27"
 dependencies = [
  "lock_api",
  "parking_lot_core",
@@ -1327,7 +1337,7 @@ dependencies = [
  "pest_meta",
  "proc-macro2",
  "quote",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -1386,9 +1396,9 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.82"
+version = "1.0.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ad3d49ab951a01fbaafe34f2ec74122942fe18a3f9814c3268f1bb72042131b"
+checksum = "ec96c6a92621310b51366f1e28d05ef11489516e93be030060e5fc12024a49d6"
 dependencies = [
  "unicode-ident",
 ]
@@ -1526,12 +1536,12 @@ dependencies = [
 [[package]]
 name = "rs2bril"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57#78881c45aa53231915f333d1d6dcc26cedc63b57"
+source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=78881c45aa53231915f333d1d6dcc26cedc63b57)",
+ "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b)",
  "clap",
  "proc-macro2",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -1588,22 +1598,22 @@ checksum = "61697e0a1c7e512e84a621326239844a24d8207b4669b41bc18b32ea5cbf988b"
 
 [[package]]
 name = "serde"
-version = "1.0.202"
+version = "1.0.203"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "226b61a0d411b2ba5ff6d7f73a476ac4f8bb900373459cd00fab8512828ba395"
+checksum = "7253ab4de971e72fb7be983802300c30b5a7f0c2e56fab8abfc6a214307c0094"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.202"
+version = "1.0.203"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6048858004bcff69094cd972ed40a32500f153bd3be9f716b2eed2e8217c4838"
+checksum = "500cbc0ebeb6f46627f50f3f5811ccf6bf00643be300b4c3eabc0ef55dc5b5ba"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -1711,7 +1721,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustversion",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -1737,9 +1747,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.64"
+version = "2.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ad3dee41f36859875573074334c200d1add8e4a87bb37113ebd31d926b7b11f"
+checksum = "c42f3f41a2de00b01c0aaad383c5a45241efc8b2d1eda5661812fda5f3cdcff5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1786,22 +1796,22 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.60"
+version = "1.0.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "579e9083ca58dd9dcf91a9923bb9054071b9ebbd800b342194c9feb0ee89fc18"
+checksum = "c546c80d6be4bc6a00c0f01730c08df82eaa7a7a61f11d656526506112cc1709"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.60"
+version = "1.0.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2470041c06ec3ac1ab38d0356a6119054dedaea53e12fbefc0de730a1c08524"
+checksum = "46c3384250002a6d5af4d114f2845d37b57521033f30d5c3f46c4d70e1197533"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -1857,9 +1867,9 @@ dependencies = [
 
 [[package]]
 name = "triomphe"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "859eb650cfee7434994602c3a68b25d77ad9e68c8a6cd491616ef86661382eb3"
+checksum = "1b2cb4fbb9995eeb36ac86fadf24031ccd58f99d6b4b2d7b911db70bddb80d90"
 
 [[package]]
 name = "typenum"
@@ -2045,5 +2055,5 @@ checksum = "15e934569e47891f7d9411f1a451d947a60e000ab3bd24fbb970f000387d1b3b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.64",
+ "syn 2.0.66",
 ]

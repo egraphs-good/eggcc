@@ -5,16 +5,19 @@ DIRS = . dag_in_context
 all: nits test
 
 test:
-	$(foreach dir,$(DIRS),(cd $(dir) && cargo insta test --release --unreferenced=reject) &&) :
+	cargo insta test --release --unreferenced=reject
+	cd dag_in_context && cargo insta test --release --unreferenced=reject
 
 test-clean:
-	$(foreach dir,$(DIRS),(cd $(dir) && cargo insta test --release --unreferenced=delete) &&) :
+	cargo insta test --release --unreferenced=delete
+	cd dag_in_context && cargo insta test --release --unreferenced=delete
 
 nits:
 	npx prettier infra/nightly-resources/*.js --check
 	@rustup component add clippy
 	@rustup component add rustfmt
-	$(foreach dir,$(DIRS),(cd $(dir) && cargo clippy --tests -- -D warnings && cargo fmt --check) &&) :
+	cargo clippy --tests -- -D warnings && cargo fmt --check
+	cd dag_in_context && cargo clippy --tests -- -D warnings && cargo fmt --check
 
 
 

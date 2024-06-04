@@ -3,7 +3,7 @@ source: src/rvsdg/tests.rs
 expression: prog.to_string()
 ---
 @main {
-.__0__:
+.__16__:
   v1: int = const 1;
   v4: ptr<int> = alloc v1;
   v8: int = const 10;

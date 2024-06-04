@@ -28,3 +28,10 @@
 ## How to add a test
 - Add a bril file under `tests/`.
 - Run `cargo insta review` to confirm the output for the new file.
+
+
+## How to run local nightly
+- Make sure you have the command `hyperfine` (install if not).
+- Run `bash infra/localnightly.sh <bril file or directory>`
+
+To run the nightly server for an existing nightly, run `cd nightly/output && python3 -m http.server`.

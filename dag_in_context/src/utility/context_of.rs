@@ -18,12 +18,12 @@ fn test_context_of() -> crate::Result {
     // If statement should have the context of its predicate
     let check = format!(
         "
-        (let pred-ctx {ctx})
-        (let pred (Bop (Eq) (Arg (Base (IntT)) {ctx}) (Const (Int 5) (Base (IntT)) {ctx})))
-        (check (ContextOf pred pred-ctx))
-        (let if {})
-        {body_with_context}
-        (check (ContextOf if pred-ctx))",
+(let pred-ctx {ctx})
+(let pred (Bop (Eq) (Arg (Base (IntT)) {ctx}) (Const (Int 5) (Base (IntT)) {ctx})))
+(check (ContextOf pred pred-ctx))
+(let if {body_with_context})
+{}
+(check (ContextOf if pred-ctx))",
         body_cache.get_unions(),
     );
 

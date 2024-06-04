@@ -67,9 +67,6 @@ pub fn mk_schedule() -> String {
 
 (run-schedule
 
-    {helpers}
-    loop-peel
-
     (repeat 2
         {helpers}
         all-optimizations

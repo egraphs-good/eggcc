@@ -185,7 +185,7 @@ fn test_subst_if() -> crate::Result {
 
     let replace_with = parallel!(ttrue(), int(5)).add_arg_type(emptyt());
 
-    let (expected, expected_cache) = tif(
+    let expected = tif(
         ttrue(),
         add(int(5), int(1)),
         add(arg(), int(1)),
@@ -195,16 +195,8 @@ fn test_subst_if() -> crate::Result {
     .add_symbolic_ctx();
     let ctx = Assumption::dummy();
 
-    let build = format!(
-        "
-(let substituted (Subst {ctx}
-                        {replace_with}
-                        {expr}))"
-    );
-    let check = format!(
-        "{expected}\n{}\n(check (= substituted {expected}))",
-        expected_cache.get_unions()
-    );
+    let build = format!("(let substituted (Subst {ctx} {replace_with} {expr}))");
+    let check = format!("(check (= substituted {expected}))");
 
     crate::egglog_test(
         &build.to_string(),

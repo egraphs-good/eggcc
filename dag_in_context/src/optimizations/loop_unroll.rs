@@ -40,7 +40,7 @@ fn loop_unroll_simple() -> crate::Result {
     .add_arg_type(base(intt()));
 
     let unrolled_add = add(add(add(add(getat(0), int(1)), int(1)), int(1)), int(1));
-    let (expected, expected_cache) = dowhile(
+    let expected = dowhile(
         parallel!(int(0)),
         parallel!(less_than(unrolled_add.clone(), int(8)), unrolled_add),
     )
@@ -49,10 +49,7 @@ fn loop_unroll_simple() -> crate::Result {
 
     egglog_test(
         &format!("{prog}"),
-        &format!(
-            "{expected}\n{}\n(check (= {prog} {expected}))",
-            expected_cache.get_unions()
-        ),
+        &format!("(check (= {prog} {expected}))"),
         vec![prog.to_program(base(intt()), tuplet!(intt()))],
         intv(0),
         tuplev!(intv(8)),

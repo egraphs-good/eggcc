@@ -7,44 +7,6 @@ expression: visualization.result
   c1_: int = const 0;
   v2_: int = id c1_;
 .b3_:
-<<<<<<< HEAD
-  c4_: int = const 1;
-  v5_: int = add c4_ v2_;
-  c6_: int = const 5;
-  v7_: bool = lt v5_ c6_;
-  v8_: bool = lt v2_ c6_;
-  br v8_ .b9_ .b10_;
-.b9_:
-  c11_: int = const 1;
-  print c11_;
-  v12_: int = id v2_;
-.b13_:
-  v14_: int = id v5_;
-  br v7_ .b15_ .b16_;
-.b15_:
-  v14_: int = id v5_;
-  v2_: int = id v14_;
-  jmp .b3_;
-||||||| parent of 45ef9325 (snapshots again again)
-  c4_: int = const 1;
-  v5_: int = add c4_ v2_;
-  c6_: int = const 5;
-  v7_: bool = lt v5_ c6_;
-  v8_: bool = lt v2_ c6_;
-  br v8_ .b9_ .b10_;
-.b9_:
-  c11_: int = const 1;
-  print c11_;
-  v12_: int = id v2_;
-.b13_:
-  v14_: int = id v5_;
-  br v7_ .b15_ .b16_;
-.b15_:
-  v14_: int = id v5_;
-.b16_:
-  v2_: int = id v14_;
-  br v7_ .b3_ .b17_;
-=======
   c4_: int = const 5;
   v5_: bool = lt v2_ c4_;
   br v5_ .b6_ .b7_;
@@ -52,22 +14,7 @@ expression: visualization.result
   c8_: int = const 1;
   print c8_;
   v9_: int = id v2_;
->>>>>>> 45ef9325 (snapshots again again)
 .b10_:
-<<<<<<< HEAD
-  c17_: int = const 2;
-  print c17_;
-  v12_: int = id v2_;
-  jmp .b13_;
-.b16_:
-  v2_: int = id v14_;
-||||||| parent of 45ef9325 (snapshots again again)
-  c18_: int = const 2;
-  print c18_;
-  v12_: int = id v2_;
-  jmp .b13_;
-.b17_:
-=======
   c11_: int = const 1;
   v12_: int = add c11_ v2_;
   v13_: bool = lt v12_ c4_;
@@ -79,6 +26,5 @@ expression: visualization.result
   v9_: int = id v2_;
   jmp .b10_;
 .b14_:
->>>>>>> 45ef9325 (snapshots again again)
   print v2_;
 }

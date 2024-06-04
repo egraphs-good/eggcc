@@ -36,8 +36,8 @@ expression: visualization.result
   v28_: float = fadd v21_ v27_;
   v29_: float = fdiv v28_ v24_;
   v30_: float = fdiv v29_ v21_;
-  v31_: bool = fge v30_ v23_;
-  v32_: bool = fle v30_ v22_;
+  v31_: bool = fle v30_ v22_;
+  v32_: bool = fge v30_ v23_;
   v33_: bool = and v31_ v32_;
   v34_: bool = not v33_;
   v20_: float = id v20_;
@@ -53,112 +53,12 @@ expression: visualization.result
 .b14_:
   v8_: float = id v13_;
   v9_: bool = id v12_;
-<<<<<<< HEAD
-  br v9_ .b11_ .b47_;
-.b47_:
-<<<<<<< HEAD
+  br v9_ .b11_ .b36_;
+.b36_:
   ret;
 .b11_:
-  v48_: float = fdiv v8_ v8_;
-  print v48_;
-  jmp .b47_;
-.b49_:
-||||||| parent of 90c66ca4 (more more more mroe more snapshots)
-  v49_: float = fdiv v8_ v8_;
-  print v49_;
-.b48_:
-.b50_:
-=======
-  v49_: float = fdiv v8_ v8_;
-  print v49_;
-.b48_:
-.b50_:
-||||||| parent of fd63f8b9 (more more more mroe more snapshots)
-  br v38_ .v24_ .v39_;
-.v39_:
-  print v19_;
-.v12_:
-  v40_: float = phi v18_ v2_ .v39_ .v9_;
-.v10_:
-  v41_: float = phi v2_ v40_ .v5_ .v12_;
-  v42_: bool = phi v8_ v11_ .v5_ .v12_;
-  br v42_ .v43_ .v44_;
-.v43_:
-  v45_: float = fdiv v41_ v41_;
-  print v45_;
-.v44_:
-  jmp .v6_;
-.v33_:
-  v36_: bool = const true;
-  jmp .v35_;
-.v6_:
-=======
-  br v32_ .v24_ .v33_;
-.v33_:
-  print v19_;
-.v12_:
-  v34_: float = phi v18_ v2_ .v33_ .v9_;
-.v10_:
-  v35_: float = phi v2_ v34_ .v5_ .v12_;
-  v36_: bool = phi v8_ v11_ .v5_ .v12_;
-  br v36_ .v37_ .v38_;
-.v37_:
-  v39_: float = fdiv v35_ v35_;
-  print v39_;
-.v38_:
-.v6_:
->>>>>>> fd63f8b9 (more more more mroe more snapshots)
->>>>>>> 90c66ca4 (more more more mroe more snapshots)
-||||||| parent of 45ef9325 (snapshots again again)
-.b11_:
-  br v9_ .b47_ .b48_;
-.b47_:
-  v49_: float = fdiv v8_ v8_;
-  print v49_;
-.b48_:
-.b50_:
-||||||| parent of fd63f8b9 (more more more mroe more snapshots)
-  br v38_ .v24_ .v39_;
-.v39_:
-  print v19_;
-.v12_:
-  v40_: float = phi v18_ v2_ .v39_ .v9_;
-.v10_:
-  v41_: float = phi v2_ v40_ .v5_ .v12_;
-  v42_: bool = phi v8_ v11_ .v5_ .v12_;
-  br v42_ .v43_ .v44_;
-.v43_:
-  v45_: float = fdiv v41_ v41_;
-  print v45_;
-.v44_:
-  jmp .v6_;
-.v33_:
-  v36_: bool = const true;
-  jmp .v35_;
-.v6_:
-=======
-  br v32_ .v24_ .v33_;
-.v33_:
-  print v19_;
-.v12_:
-  v34_: float = phi v18_ v2_ .v33_ .v9_;
-.v10_:
-  v35_: float = phi v2_ v34_ .v5_ .v12_;
-  v36_: bool = phi v8_ v11_ .v5_ .v12_;
-  br v36_ .v37_ .v38_;
-.v37_:
-  v39_: float = fdiv v35_ v35_;
-  print v39_;
-.v38_:
-.v6_:
->>>>>>> fd63f8b9 (more more more mroe more snapshots)
-=======
-.b11_:
-  br v9_ .b36_ .b37_;
-.b36_:
-  v38_: float = fdiv v8_ v8_;
-  print v38_;
-.b37_:
-.b39_:
->>>>>>> 45ef9325 (snapshots again again)
+  v37_: float = fdiv v8_ v8_;
+  print v37_;
+  jmp .b36_;
+.b38_:
 }

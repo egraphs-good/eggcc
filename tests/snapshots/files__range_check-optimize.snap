@@ -9,55 +9,6 @@ expression: visualization.result
 .b3_:
   c4_: int = const 5;
   v5_: bool = lt v2_ c4_;
-<<<<<<< HEAD
-  c6_: int = const 5;
-  v7_: bool = lt v2_ c6_;
-  br v7_ .b8_ .b9_;
-.b8_:
-  c10_: int = const 1;
-  print c10_;
-  v11_: int = id v2_;
-.b12_:
-  c13_: int = const 1;
-  v14_: int = add c13_ v2_;
-  v15_: int = id v14_;
-  br v5_ .b16_ .b17_;
-.b16_:
-  v15_: int = id v14_;
-  v2_: int = id v15_;
-  jmp .b3_;
-.b9_:
-  c18_: int = const 2;
-  print c18_;
-  v11_: int = id v2_;
-  jmp .b12_;
-.b17_:
-  v2_: int = id v15_;
-||||||| parent of 45ef9325 (snapshots again again)
-  c6_: int = const 5;
-  v7_: bool = lt v2_ c6_;
-  br v7_ .b8_ .b9_;
-.b8_:
-  c10_: int = const 1;
-  print c10_;
-  v11_: int = id v2_;
-.b12_:
-  c13_: int = const 1;
-  v14_: int = add c13_ v2_;
-  v15_: int = id v14_;
-  br v5_ .b16_ .b17_;
-.b16_:
-  v15_: int = id v14_;
-.b17_:
-  v2_: int = id v15_;
-  br v5_ .b3_ .b18_;
-.b9_:
-  c19_: int = const 2;
-  print c19_;
-  v11_: int = id v2_;
-  jmp .b12_;
-.b18_:
-=======
   br v5_ .b6_ .b7_;
 .b6_:
   c8_: int = const 1;
@@ -76,6 +27,5 @@ expression: visualization.result
   v9_: int = id v2_;
   jmp .b10_;
 .b15_:
->>>>>>> 45ef9325 (snapshots again again)
   print v2_;
 }

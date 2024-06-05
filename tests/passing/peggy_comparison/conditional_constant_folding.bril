@@ -1,3 +1,4 @@
+# ARGS: 4
 @main(x: int): int {
     five: int = const 5;
     four: int = const 4;

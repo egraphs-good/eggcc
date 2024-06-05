@@ -1,3 +1,4 @@
+# ARGS: 0
 @main(n: int): int {
     zero: int = const 0;
     x: int = id zero;

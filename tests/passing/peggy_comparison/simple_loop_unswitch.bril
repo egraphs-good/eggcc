@@ -1,3 +1,4 @@
+# ARGS: 40
 @main(n: int): int {
     one: int = const 1;
     zero: int = const 0;

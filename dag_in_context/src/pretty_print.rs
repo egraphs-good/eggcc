@@ -6,7 +6,6 @@ use crate::{
     },
     schema_helpers::AssumptionRef,
     to_egglog::TreeToEgglog,
-    type_analysis,
 };
 use egglog::{Term, TermDag};
 
@@ -207,14 +206,16 @@ impl PrettyPrinter {
     }
 
     fn try_insert_fresh(&mut self, var: NodeRef, info: String) -> String {
-        if self.symbols.get(&var).is_none() {
-            let fresh_var = &self.mk_fresh(info);
-            self.symbols.insert(var, fresh_var.clone());
-            fresh_var.to_owned()
-        } else {
-            let binding: String = self.symbols.get(&var).unwrap().into();
-            println!("found {}", binding.clone());
-            binding
+        match self.symbols.get(&var) {
+            Some(binding) => {
+                println!("found {}", binding.clone());
+                binding.clone()
+            }
+            None => {
+                let fresh_var = &self.mk_fresh(info);
+                self.symbols.insert(var, fresh_var.clone());
+                fresh_var.to_owned()
+            }
         }
     }
 
@@ -275,6 +276,7 @@ impl PrettyPrinter {
         log: &mut Vec<String>,
     ) -> RcExpr {
         let old_expr_addr = Rc::as_ptr(expr);
+        // println!("{:?} has address {:?}", expr, old_expr_addr);
         let num_shared = Rc::strong_count(expr);
         let fold = |pp: &mut PrettyPrinter, new_expr: RcExpr, log: &mut Vec<String>| {
             let binding = pp.try_insert_fresh(NodeRef::Expr(old_expr_addr), expr.abbrev());
@@ -300,14 +302,8 @@ impl PrettyPrinter {
             }
         };
 
-        if self.symbols.contains_key(&NodeRef::Expr(old_expr_addr)) {
-            let binding = self.symbols.get(&NodeRef::Expr(old_expr_addr)).unwrap();
-            println!("here!!{binding}");
-            let node = self.table.get(binding).unwrap();
-            match node {
-                AstNode::Expr(e) => Rc::new(e.clone()),
-                _ => panic!("expect Expr"),
-            }
+        if let Some(binding) = self.symbols.get(&NodeRef::Expr(old_expr_addr)) {
+            Rc::new(Expr::Symbolic(binding.to_owned()))
         } else {
             match expr.as_ref() {
                 Expr::Const(c, ty, assum) if !to_rust => {
@@ -638,6 +634,12 @@ impl BinaryOp {
             FDiv => "fdiv",
             FMul => "fmul",
             FEq => "feq",
+            Smax => "smax",
+            Smin => "smin",
+            Shl => "shl",
+            Shr => "shr",
+            Fmax => "fmax",
+            Fmin => "fmin",
         }
         .into()
     }
@@ -717,11 +719,13 @@ fn test_pretty_print2() -> crate::Result {
     use crate::Value;
     use insta::assert_snapshot;
     let output_ty = tuplet!(intt(), intt(), statet());
-    let inv = sub(getat(0), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
+    let getat0 = getat(0).with_arg_types(output_ty.clone(), base(intt()));
+    let getat1 = getat(1).with_arg_types(output_ty.clone(), base(intt()));
+    let inv = sub(getat0.clone(), getat1.clone());
     let pred = ttrue();
     let my_loop = dowhile(
         parallel!(int(1), int(2), getat(0)),
-        concat(parallel!(pred.clone(), getat(0), inv), single(getat(2))),
+        concat(parallel!(pred.clone(), getat0, inv), single(getat(2))),
     )
     .with_arg_types(tuplet!(statet()), output_ty.clone())
     .add_ctx(schema::Assumption::dummy());

@@ -73,6 +73,7 @@
 
 ;; loop peeling rule
 ;; Only peel loops that we know iterate < 3 times
+(function LoopPeeledPlaceholder (Expr) Assumption :unextractable)
 (rule
  ((= lhs (DoWhile inputs outputs))
   (ContextOf lhs ctx)
@@ -90,15 +91,22 @@
     (InIf true (Get executed-once 0) executed-once-body))
   (let else-ctx
     (InIf false (Get executed-once 0) executed-once-body))
+
+  (let new-loop-arg
+    (Arg inputs-ty then-ctx))
+  (let new-loop-body
+    (Subst (LoopPeeledPlaceholder lhs) new-loop-arg outputs))
+  (union (InLoop new-loop-arg new-loop-body) (LoopPeeledPlaceholder lhs))
+
   (union lhs
     ;; check if we need to continue executing the loop
     (If (Get executed-once 0)
-        executed-once-body ;; inputs are the body executed once
-        (DoWhile (Arg inputs-ty then-ctx)
-          outputs) ;; right now, loop unrolling shares the same outputs, but we could add more context here
-        (Arg inputs-ty else-ctx)))
-   (set (LoopNumItersGuess (Arg inputs-ty then-ctx) outputs) (- old_cost 1))
-    )
+      executed-once-body ;; inputs are the body executed once
+      (DoWhile new-loop-arg new-loop-body)
+      (Arg inputs-ty else-ctx)))
+
+  (set (LoopNumItersGuess new-loop-arg new-loop-body) (- old_cost 1))
+  )
  :ruleset loop-peel)
 
 ;; unroll a loop with constant bounds and initial value

@@ -5,11 +5,5 @@ expression: visualization.result
 @main(v0: int, v1: int) {
 .b2_:
   v3_: int = smax v1 v0;
-  v4_: bool = lt v1 v0;
-  v5_: int = id v1;
-  br v4_ .b6_ .b7_;
-.b6_:
-  v5_: int = id v0;
-.b7_:
   print v3_;
 }

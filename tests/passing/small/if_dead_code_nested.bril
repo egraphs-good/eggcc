@@ -1,0 +1,52 @@
+# ARGS: 1
+@main(arg: int) {
+  minus_one: int = const -1;
+  zero:      int = const 0;
+  one:       int = const 1;
+  two:       int = const 2;
+  three:     int = const 3;
+  ten:       int = const 10;
+
+  isless: bool = le arg zero;
+  br isless .less .greater;
+.less:
+  result: int = const 1;
+  result_predicate: bool = const true;
+
+  inner_pred1: bool = lt arg zero;
+  br inner_pred1 .inner_a1 .inner_b1;
+.inner_a1:
+  x: int = const 1;
+  jmp .inner_done1;
+.inner_b1:
+  x: int = const 2;
+.inner_done1:
+
+  jmp .done;
+.greater:
+  result: int = const 0;
+  result_predicate: bool = const false;
+
+  inner_pred2: bool = gt arg two;
+  br inner_pred2 .inner_a2 .inner_b2;
+.inner_a2:
+
+  inner_inner_pred2: bool = gt arg three;
+  br inner_inner_pred2 .inner_inner_a2 .inner_inner_b2;
+.inner_inner_a2:
+  x: int = const 3;
+  jmp .inner_inner_done2;
+.inner_inner_b2:
+  x: int = const 4;
+.inner_inner_done2:
+
+  jmp .inner_done2;
+.inner_b2:
+  x: int = const 2;
+.inner_done2:
+
+.done:
+  print result;
+  print result_predicate;
+  print x;
+}

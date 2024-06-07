@@ -1,27 +1,35 @@
 pub(crate) fn helpers() -> String {
     "
-;; saturate all helpers first
 (saturate
-  (saturate
-    (saturate type-helpers) ;; resolve type helpers, finding correct types
-    (saturate error-checking) ;; check for errors, relies on type-helpers saturating
-      saturating)
 
-  (saturate drop)
-  apply-drop-unions
-  cleanup-drop
+    (saturate type-helpers)
+    (saturate error-checking)
+    state-edge-passthrough
 
-  subsume-after-helpers
+    (saturate
+        (saturate type-helpers)
+        (saturate error-checking)
+        saturating
+    )
 
-  (saturate subst) ;; do e-substitution
-  apply-subst-unions ;; apply the unions from substitution
-  cleanup-subst ;; clean up substitutions that are done
+    (saturate drop)
+    apply-drop-unions
+    cleanup-drop
 
+    (saturate
+        (saturate type-helpers)
+        (saturate error-checking)
+        saturating
+    )
 
-  (saturate boundary-analysis) ;; find boundaries of invariants
-)
+    (saturate subst)
+    apply-subst-unions
+    cleanup-subst
 
-"
+    subsume-after-helpers
+
+    (saturate boundary-analysis)
+)"
     .to_string()
 }
 
@@ -29,7 +37,7 @@ pub fn mk_schedule() -> String {
     let helpers = helpers();
     format!(
         "
-  (unstable-combined-ruleset saturating
+(unstable-combined-ruleset saturating
     always-run
     passthrough
     canon
@@ -39,33 +47,38 @@ pub fn mk_schedule() -> String {
     memory-helpers
     always-switch-rewrite
     loop-iters-analysis
-  )
-  
-    
-  (unstable-combined-ruleset optimizations
+)
+
+(unstable-combined-ruleset cheap-optimizations
     loop-simplify
     memory
     loop-unroll
     peepholes
-  )
+)
 
-  (unstable-combined-ruleset expensive-optimizations
-    optimizations
+(unstable-combined-ruleset all-optimizations
+    cheap-optimizations
+    
     switch_rewrite
     ;loop-inv-motion
     loop-strength-reduction
     loop-peel
-  )
-  
-  (run-schedule
-    {helpers}
+)
+
+(run-schedule
+
     (repeat 2
-      {helpers}
-      expensive-optimizations)
+        {helpers}
+        all-optimizations
+    )
+
     (repeat 4
-      {helpers}
-      optimizations)
-    {helpers})
-  "
+        {helpers}
+        cheap-optimizations
+    )
+
+    {helpers}
+)
+"
     )
 }

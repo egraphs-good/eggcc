@@ -5,11 +5,5 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
   c2_: int = const 4;
-  v3_: bool = lt c2_ v0;
-  v4_: int = id c2_;
-  br v3_ .b5_ .b6_;
-.b5_:
-  v4_: int = id c2_;
-.b6_:
   print c2_;
 }

@@ -8,11 +8,11 @@ use std::fmt::Write;
 use to_egglog::TreeToEgglog;
 
 use crate::{
-    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    schedule::mk_schedule,
+    add_context::ContextCache, dag2svg::tree_to_svg, interpreter::interpret_dag_prog,
+    optimizations::function_inlining, schedule::mk_schedule,
 };
 
-pub(crate) mod add_context;
+pub mod add_context;
 pub mod ast;
 mod config;
 pub mod dag2svg;
@@ -62,6 +62,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/loop_unroll.egg"),
         include_str!("optimizations/passthrough.egg"),
         include_str!("optimizations/loop_strength_reduction.egg"),
+        include_str!("utility/debug-helper.egg"),
     ]
     .join("\n")
 }
@@ -113,7 +114,7 @@ pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> Str
 }
 
 // It is expected that program has context added
-pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
+pub fn build_program(program: &TreeProgram, cache: &mut ContextCache, optimize: bool) -> String {
     let mut printed = String::new();
 
     // Create a global cache for generating intermediate variables
@@ -121,13 +122,14 @@ pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let mut term_cache = HashMap::<Term, String>::new();
 
     // Generate function inlining egglog
-    let function_inlining = if !optimize {
+    let function_inlining_unions = if !optimize {
         "".to_string()
     } else {
         function_inlining::print_function_inlining_pairs(
             function_inlining::function_inlining_pairs(
                 program,
                 config::FUNCTION_INLINING_ITERATIONS,
+                cache,
             ),
             &mut printed,
             &mut tree_state,
@@ -140,14 +142,36 @@ pub fn build_program(program: &TreeProgram, optimize: bool) -> String {
     let res =
         print_with_intermediate_helper(&tree_state.termdag, term, &mut term_cache, &mut printed);
 
+    let loop_context_unions =
+        cache.get_unions_with_sharing(&mut printed, &mut tree_state, &mut term_cache);
+
+    let prologue = prologue();
+
+    let schedule = if optimize {
+        mk_schedule()
+    } else {
+        "".to_string()
+    };
+
     format!(
-        "{}\n{printed}\n(let PROG {res})\n{function_inlining}\n{}\n",
-        prologue(),
-        if optimize {
-            mk_schedule()
-        } else {
-            "".to_string()
-        }
+        "
+; Prologue
+{prologue}
+
+; Program nodes
+{printed}
+; Program root
+(let PROG {res})
+
+; Loop context unions
+{loop_context_unions}
+
+; Function inlining unions
+{function_inlining_unions}
+
+; Schedule
+{schedule}
+"
     )
 }
 
@@ -162,7 +186,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 /// Checks that the extracted program is the same as the input program.
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
-    let egglog_prog = build_program(program, false);
+    let egglog_prog = build_program(program, &mut ContextCache::new(), false);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&egglog_prog).unwrap();
@@ -176,8 +200,8 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
         DefaultCostModel,
     );
 
-    let original_with_ctx = program.add_dummy_ctx();
-    let res_with_ctx = res.add_dummy_ctx();
+    let (original_with_ctx, _) = program.add_dummy_ctx();
+    let (res_with_ctx, _) = res.add_dummy_ctx();
 
     if !are_progs_eq(original_with_ctx.clone(), res_with_ctx.clone()) {
         eprintln!("Original program: {}", tree_to_svg(&original_with_ctx));
@@ -187,8 +211,11 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
 }
 
 // It is expected that program has context added
-pub fn optimize(program: &TreeProgram) -> std::result::Result<TreeProgram, egglog::Error> {
-    let egglog_prog = build_program(program, true);
+pub fn optimize(
+    program: &TreeProgram,
+    cache: &mut ContextCache,
+) -> std::result::Result<TreeProgram, egglog::Error> {
+    let egglog_prog = build_program(program, cache, true);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(&egglog_prog)?;
@@ -317,7 +344,7 @@ fn egglog_test_internal(
     let program = format!("{}\n{build}\n{}\n{check}\n", prologue(), mk_schedule(),);
 
     if print_program {
-        eprintln!("{}\n{}", program, include_str!("utility/debug-helper.egg"));
+        eprintln!("{program}");
     }
 
     let res = egglog::EGraph::default()

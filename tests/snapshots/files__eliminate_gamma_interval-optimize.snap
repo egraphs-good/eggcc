@@ -5,17 +5,5 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
   c2_: bool = const false;
-  c3_: int = const 10;
-  v4_: bool = lt v0 c3_;
-  c5_: int = const 5;
-  c6_: int = const 3;
-  v7_: int = id c3_;
-  v8_: int = id c6_;
-  br v4_ .b9_ .b10_;
-.b9_:
-  c11_: int = const 7;
-  v7_: int = id c3_;
-  v8_: int = id c11_;
-.b10_:
   print c2_;
 }

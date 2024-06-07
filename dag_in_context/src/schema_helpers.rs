@@ -303,7 +303,7 @@ impl Expr {
             Expr::Switch(cond, inputs, branches) => {
                 let br = branches
                     .iter()
-                    .map(|branch| map_child(branch))
+                    .map(&mut map_child)
                     .collect::<Vec<_>>();
                 Rc::new(Expr::Switch(map_child(cond), map_child(inputs), br))
             }

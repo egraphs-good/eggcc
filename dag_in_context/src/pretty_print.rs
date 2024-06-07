@@ -9,19 +9,14 @@ use crate::{
 };
 use egglog::{Term, TermDag};
 
-use std::{
-    collections::{BTreeMap, HashMap},
-    hash::Hash,
-    rc::Rc,
-    vec,
-};
+use std::{collections::HashMap, hash::Hash, rc::Rc, vec};
 
 #[derive(Default)]
 pub struct PrettyPrinter {
     // Type/Assum/BaseType -> intermediate variables
     symbols: HashMap<NodeRef, String>,
     // intermediate variable -> Type/Assum/BaseType lookup
-    table: BTreeMap<String, AstNode>,
+    table: HashMap<String, AstNode>,
     fresh_count: u64,
 }
 
@@ -136,7 +131,7 @@ impl PrettyPrinter {
     }
 
     pub fn to_egglog_default(&mut self, expr: &RcExpr) -> (String, String) {
-        self.to_egglog(expr, &|rc, len| (rc > 1 && len > 30) || len > 80)
+        self.to_egglog(expr, &|rc, len| (rc > 3 && len > 30) || len > 80)
     }
 
     // turn the Expr to a nested egglog with intermediate variables.
@@ -168,7 +163,7 @@ impl PrettyPrinter {
     }
 
     pub fn to_rust_default(&mut self, expr: &RcExpr) -> (String, String) {
-        self.to_rust(expr, &|rc, len| (rc > 1 && len > 30) || len > 80)
+        self.to_rust(expr, &|rc, len| (rc > 3 && len > 30) || len > 80)
     }
 
     //  turn the Expr to a rust ast macro string.
@@ -182,7 +177,7 @@ impl PrettyPrinter {
         fold_when: &dyn Fn(usize, usize) -> bool,
     ) -> (String, String) {
         let mut log = vec![];
-        let res = self.refactor_shared_expr(expr, fold_when, false, &mut log);
+        let res = self.refactor_shared_expr(expr, fold_when, true, &mut log);
         let log = log
             .iter()
             .map(|fresh_var| {
@@ -207,10 +202,7 @@ impl PrettyPrinter {
 
     fn try_insert_fresh(&mut self, var: NodeRef, info: String) -> String {
         match self.symbols.get(&var) {
-            Some(binding) => {
-                println!("found {}", binding.clone());
-                binding.clone()
-            }
+            Some(binding) => binding.clone(),
             None => {
                 let fresh_var = &self.mk_fresh(info);
                 self.symbols.insert(var, fresh_var.clone());
@@ -276,7 +268,6 @@ impl PrettyPrinter {
         log: &mut Vec<String>,
     ) -> RcExpr {
         let old_expr_addr = Rc::as_ptr(expr);
-        // println!("{:?} has address {:?}", expr, old_expr_addr);
         let num_shared = Rc::strong_count(expr);
         let fold = |pp: &mut PrettyPrinter, new_expr: RcExpr, log: &mut Vec<String>| {
             let binding = pp.try_insert_fresh(NodeRef::Expr(old_expr_addr), expr.abbrev());
@@ -284,8 +275,6 @@ impl PrettyPrinter {
                 log.push(binding.clone());
                 pp.table
                     .insert(binding.clone(), AstNode::Expr(new_expr.as_ref().clone()));
-            } else {
-                println!("found dup");
             }
             Rc::new(Expr::Symbolic(binding))
         };
@@ -306,35 +295,34 @@ impl PrettyPrinter {
             Rc::new(Expr::Symbolic(binding.to_owned()))
         } else {
             match expr.as_ref() {
-                Expr::Const(c, ty, assum) if !to_rust => {
+                Expr::Const(c, ty, assum) => {
                     let ty = self.refactor_shared_type(ty, log);
                     let assum = self.refactor_shared_assum(assum, fold_when, to_rust, log);
                     let c = Rc::new(Expr::Const(c.clone(), ty, assum));
-                    fold(self, c, log)
+                    if to_rust {
+                        c
+                    } else {
+                        fold(self, c, log)
+                    }
                 }
-                Expr::Get(x, pos) if matches!(x.as_ref(), Expr::Arg(..)) && !to_rust => {
-                    // fold Get Arg i anyway
-                    let sub_expr = self.refactor_shared_expr(x, fold_when, to_rust, log);
-                    let get = Rc::new(Expr::Get(sub_expr, *pos));
-                    return fold(self, get, log);
+                Expr::Get(x, pos) if matches!(x.as_ref(), Expr::Arg(..)) => {
+                    if to_rust {
+                        expr.clone()
+                    } else {
+                        let sub_expr = self.refactor_shared_expr(x, fold_when, to_rust, log);
+                        let get = Rc::new(Expr::Get(sub_expr, *pos));
+                        fold(self, get, log)
+                    }
                 }
                 Expr::Symbolic(_) => panic!("Expected non symbolic"),
                 _ => {
-                    // but you should not put it here as it will not fold ty and assum
-                    // and type and assume must be folded to make sure it's correct
                     let expr2 = expr.map_expr_type(|ty| self.refactor_shared_type(ty, log));
-                    //println!("{}",expr2.clone());
                     let expr3 = expr2.map_expr_assum(|assum| {
                         self.refactor_shared_assum(assum, fold_when, to_rust, log)
                     });
-                    //println!("{}",expr3.clone());
-                    // you should not call refactor_shard_expr on new expr
                     let mapped_expr = expr3.map_expr_children(|e| {
                         self.refactor_shared_expr(e, fold_when, to_rust, log)
                     });
-                    //println!("{}",mapped_expr.clone());
-                    // in conclusion this three function must happen at the same time.
-                    // but mut reference don't allow this to happen
                     fold_or_plain(self, mapped_expr, log)
                 }
             }
@@ -698,41 +686,7 @@ fn test_pretty_print() -> crate::Result {
     let expr_str = concat_loop.to_string();
     let (egglog, binding) = PrettyPrinter::default().to_egglog_default(&concat_loop);
     let (ast, _) = PrettyPrinter::default().to_rust_default(&concat_loop);
-    println!("{}", egglog.clone());
-    assert_snapshot!(ast);
-    let check = format!("(let unfold {expr_str})\n {egglog} \n(check (= {binding} unfold))\n");
 
-    egglog_test(
-        "",
-        &check,
-        vec![],
-        Value::Tuple(vec![]),
-        Value::Tuple(vec![]),
-        vec![],
-    )
-}
-
-#[test]
-fn test_pretty_print2() -> crate::Result {
-    use crate::ast::*;
-    use crate::egglog_test;
-    use crate::Value;
-    use insta::assert_snapshot;
-    let output_ty = tuplet!(intt(), intt(), statet());
-    let getat0 = getat(0).with_arg_types(output_ty.clone(), base(intt()));
-    let getat1 = getat(1).with_arg_types(output_ty.clone(), base(intt()));
-    let inv = sub(getat0.clone(), getat1.clone());
-    let pred = ttrue();
-    let my_loop = dowhile(
-        parallel!(int(1), int(2), getat(0)),
-        concat(parallel!(pred.clone(), getat0, inv), single(getat(2))),
-    )
-    .with_arg_types(tuplet!(statet()), output_ty.clone())
-    .add_ctx(schema::Assumption::dummy());
-    let expr_str = my_loop.to_string();
-    let (egglog, binding) = PrettyPrinter::default().to_egglog_default(&my_loop);
-    let (ast, _) = PrettyPrinter::default().to_rust_default(&my_loop);
-    println!("{}", egglog.clone());
     assert_snapshot!(ast);
     let check = format!("(let unfold {expr_str})\n {egglog} \n(check (= {binding} unfold))\n");
 

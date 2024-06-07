@@ -662,7 +662,7 @@ fn test_pretty_print() -> crate::Result {
     let inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
     let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), base(boolt()));
     let print = tprint(inv, getat(4)).with_arg_types(output_ty.clone(), base(statet()));
-    let my_loop = dowhile(
+    let (my_loop, _) = dowhile(
         parallel!(int(1), int(2), int(3), int(4), getat(0)),
         concat(
             parallel!(pred.clone(), getat(0), getat(1)),
@@ -672,7 +672,7 @@ fn test_pretty_print() -> crate::Result {
     .with_arg_types(tuplet!(statet()), output_ty.clone())
     .add_ctx(schema::Assumption::dummy());
 
-    let pureloop = dowhile(
+    let (pureloop, _) = dowhile(
         single(int(1)),
         parallel!(
             less_than(get(arg(), 0), int(3)),

@@ -624,7 +624,7 @@ impl Run {
             }
             RunType::PrettyPrint => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let dag = rvsdg.to_dag_encoding(true);
+                let (dag, _) = rvsdg.to_dag_encoding(true);
                 let res = TreeProgram::pretty_print_to_rust(&dag);
                 (
                     vec![Visualization {
@@ -637,8 +637,9 @@ impl Run {
             }
             RunType::OptimizedPrettyPrint => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let dag = rvsdg.to_dag_encoding(true);
-                let optimized = dag_in_context::optimize(&dag).map_err(EggCCError::EggLog)?;
+                let (prog, mut ctx_cache) = rvsdg.to_dag_encoding(true);
+                let optimized =
+                    dag_in_context::optimize(&prog, &mut ctx_cache).map_err(EggCCError::EggLog)?;
                 let res = TreeProgram::pretty_print_to_rust(&optimized);
                 (
                     vec![Visualization {
@@ -652,8 +653,8 @@ impl Run {
             RunType::TestPrettyPrint => {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
-                let tree = rvsdg.to_dag_encoding(true);
-                let unfolded_program = build_program(&tree, false);
+                let (tree, mut cache) = rvsdg.to_dag_encoding(true);
+                let unfolded_program = build_program(&tree, &mut cache, false);
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");

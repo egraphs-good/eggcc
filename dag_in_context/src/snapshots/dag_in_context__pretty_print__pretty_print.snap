@@ -8,42 +8,35 @@ let concat_v2 = parallel!(int(4), getat(0));
 let concat_v3 = concat(single(int(2)), 
 concat(single(int(3)), 
 concat_v2.clone()));
-let concat_v4 = concat(single(int(1)), 
-concat_v3.clone());
-let less_than_v5 = less_than(getat(0), 
+let less_than_v4 = less_than(getat(0), 
 getat(3));
-let single_v6 = single(getat(0));
-let single_v7 = single(getat(1));
-let single_v8 = single(getat(2));
-let single_v9 = single(getat(3));
-let sub_v10 = sub(getat(2), 
+let single_v5 = single(getat(0));
+let single_v6 = single(getat(1));
+let single_v7 = single(getat(2));
+let single_v8 = single(getat(3));
+let sub_v9 = sub(getat(2), 
 getat(1));
-let tprint_v11 = tprint(sub_v10.clone(), 
+let tprint_v10 = tprint(sub_v9.clone(), 
 getat(4));
-let concat_v12 = concat(concat(single(less_than_v5.clone()), 
-concat(single_v6.clone(), 
-single_v7.clone())), 
-concat(concat(single_v8.clone(), 
-single_v9.clone()), 
-single(tprint_v11.clone())));
-let tpl__v13 = emptyt();
-let single_v14 = single(int(1));
-let tpl_i_v15 = tuplet!(intt());
-let single_v16 = single(less_than(getat(0), 
-int(3)));
-let switch_v17 = switch!(int(0), arg(); parallel!(int(4), int(5)));
-let concat_v18 = concat(single_v16.clone(), 
-single(get(switch_v17.clone(), 0)));
-let in_loop_v19 = inloop(single_v14.clone(), 
-concat_v18.clone());
-let less_than_v20 = less_than(getat(0), 
+let concat_v11 = concat(concat(single(less_than_v4.clone()), 
+concat(single_v5.clone(), 
+single_v6.clone())), 
+concat(concat(single_v7.clone(), 
+single_v8.clone()), 
+single(tprint_v10.clone())));
+let tpl__v12 = emptyt();
+let tpl_i_v13 = tuplet!(intt());
+let in_func_v14 = infunc(" loop_ctx_0");
+let less_than_v15 = less_than(getat(0), 
 int(3));
-let in_switch_v21 = inswitch(0, 
+let in_switch_v16 = inswitch(0, 
 int(0), 
 arg());
-let switch_v22 = switch!(int(0), arg(); parallel!(int(4), int(5)));
-let concat_v23 = concat(dowhile(concat_v4.clone(), 
-concat_v12.clone()), 
-dowhile(single_v14.clone(), 
-parallel!(less_than_v20.clone(), get(switch_v22.clone(), 0))));
-let concat_v24 = concat_v23.clone();
+let switch_v17 = switch!(int(0), arg(); parallel!(int(4), int(5)));
+let dowhile_v18 = dowhile(single(int(1)), 
+parallel!(less_than_v15.clone(), get(switch_v17.clone(), 0)));
+let concat_v19 = concat(dowhile(concat(single(int(1)), 
+concat_v3.clone()), 
+concat_v11.clone()), 
+dowhile_v18.clone());
+let concat_v20 = concat_v19.clone();

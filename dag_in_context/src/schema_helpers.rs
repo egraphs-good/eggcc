@@ -301,10 +301,7 @@ impl Expr {
             Expr::Single(x) => Rc::new(Expr::Single(map_child(x))),
             Expr::Concat(x, y) => Rc::new(Expr::Concat(map_child(x), map_child(y))),
             Expr::Switch(cond, inputs, branches) => {
-                let br = branches
-                    .iter()
-                    .map(&mut map_child)
-                    .collect::<Vec<_>>();
+                let br = branches.iter().map(&mut map_child).collect::<Vec<_>>();
                 Rc::new(Expr::Switch(map_child(cond), map_child(inputs), br))
             }
             Expr::If(pred, input, then, els) => Rc::new(Expr::If(

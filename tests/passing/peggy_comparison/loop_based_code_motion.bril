@@ -1,4 +1,4 @@
-@main: int {
+@main {
     x: int = const 0;
     three: int = const 3;
 
@@ -15,5 +15,5 @@
     five: int = const 5;
     x: int = mul x five;
 
-    ret x;
+    print x;
 }

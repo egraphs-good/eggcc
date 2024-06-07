@@ -1,3 +1,4 @@
+# ARGS: 30 10
 @main(n: int, m: int) {
     i: int = const 0;
     twenty: int = const 20;

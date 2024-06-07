@@ -1,5 +1,5 @@
 # ARGS: 0
-@main(n: int): int {
+@main(n: int) {
     zero: int = const 0;
     x: int = id zero;
     y: int = id zero;
@@ -29,5 +29,5 @@
     jmp .pred;
 
 .end:
-    ret x;
+    print x;
 }

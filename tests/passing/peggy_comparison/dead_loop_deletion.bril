@@ -1,4 +1,4 @@
-@main(): int {
+@main {
     j: int = const 3;
     i: int = const 0;
     forty: int = const 40;
@@ -16,5 +16,5 @@
 .loop_end:
     j: int = const 2;
 
-    ret j;
+    print j;
 }

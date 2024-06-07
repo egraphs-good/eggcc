@@ -1,4 +1,4 @@
-@main: int {
+@main {
     i: int = const 0;
     one: int = const 1;
 
@@ -11,5 +11,5 @@
     jmp .loop_test;
 
 .loop_end:
-    ret i;
+    print i;
 }

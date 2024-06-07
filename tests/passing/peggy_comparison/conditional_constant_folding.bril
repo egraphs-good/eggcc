@@ -1,5 +1,5 @@
 # ARGS: 4
-@main(x: int): int {
+@main(x: int) {
     five: int = const 5;
     four: int = const 4;
     twenty: int = const 20;
@@ -25,5 +25,4 @@
 
 .end:
     print res;
-    ret res;
 }

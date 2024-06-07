@@ -1,5 +1,5 @@
 # ARGS: 40
-@main(n: int): int {
+@main(n: int) {
     one: int = const 1;
     zero: int = const 0;
     i: int = id zero;
@@ -24,5 +24,5 @@
     jmp .loop_test;
 
 .loop_end:
-    ret j;
+    print j;
 }

@@ -68,7 +68,7 @@ function selectAllBenchmarks(enabled, category) {
   let checkboxes = Array.from(checkboxContainer.getElementsByTagName("input"));
   if (category === "looped") {
     const loopedBenchmarks = new Set(
-      GLOBAL_DATA.currentRun.filter((x) => x.looped).map((x) => x.benchmark),
+      GLOBAL_DATA.currentRun.filter((x) => x.metadata.looped).map((x) => x.benchmark),
     );
     checkboxes = checkboxes.filter((x) => loopedBenchmarks.has(x.id));
   }

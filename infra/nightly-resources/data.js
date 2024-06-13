@@ -39,6 +39,16 @@ function shouldHaveLlvm(runMethod) {
   ].includes(runMethod);
 }
 
+function getBrilPathForBenchmark(benchmark) {
+  const o = GLOBAL_DATA.currentRun.find((o) => o.benchmark === benchmark);
+  if (!o) {
+    console.error(
+      `couldn't find entry for ${benchmark} (this shouldn't happen)`,
+    );
+  }
+  return o.metadata.path;
+}
+
 function getDataForBenchmark(benchmark) {
   const executions = GLOBAL_DATA.currentRun
     ?.filter((o) => o.benchmark === benchmark)

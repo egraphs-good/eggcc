@@ -291,11 +291,14 @@ impl PrettyPrinter {
         };
 
         let fold_or_plain = |pp: &mut PrettyPrinter, new_expr: RcExpr, log: &mut Vec<String>| {
-            let size = &new_expr
-                .to_string()
-                .replace(&['(', ')', ' ', '\n', ','][..], "") //don't count those char when computing size
-                .len();
-            if fold_when(num_shared, *size) {
+            // TODO: maybe using the tree depth instead of this size is better
+            // but what if you have a deep expr that is actually short to write down?
+            let size = if to_rust {
+                new_expr.to_ast().len()
+            } else {
+                new_expr.to_string().len()
+            };
+            if fold_when(num_shared, size) {
                 fold(pp, new_expr, log)
             } else {
                 new_expr

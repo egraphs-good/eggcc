@@ -274,6 +274,8 @@ impl Expr {
         }
     }
 
+    // this function might violate RcExpr's invariant
+    // for example function map_child is id function that create new RcExpr, and &self have two same children
     pub fn map_expr_children<F>(self: &RcExpr, mut map_child: F) -> RcExpr
     where
         F: FnMut(&RcExpr) -> RcExpr,

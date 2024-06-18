@@ -1,3 +1,9 @@
+// behaviors: the pretty printer take an RcExpr and return a log with folded top level Expr at the end and folded children
+// of top level Expr before it.
+// limitations:
+// if two similar expr have different context, the to rust pretty printer will still print two expr
+// when to rust, print to parallel!/switch! might not produce the optimal looking thing
+
 use crate::{
     from_egglog::FromEgglog,
     prologue,
@@ -182,8 +188,13 @@ impl PrettyPrinter {
             .iter()
             .map(|fresh_var| {
                 let node = self.table.get(fresh_var).unwrap();
-                let ast = node.ast_node_to_str(true);
-                format!("let {fresh_var} = {ast};")
+                match node {
+                    AstNode::Assumption(_) => String::new(),
+                    _ => {
+                        let ast = node.ast_node_to_str(true);
+                        format!("let {fresh_var} = {ast};")
+                    }
+                }
             })
             .collect::<Vec<_>>()
             .join("\n");
@@ -315,6 +326,8 @@ impl PrettyPrinter {
                     }
                 }
                 Expr::Symbolic(_) => panic!("Expected non symbolic"),
+                Expr::Concat(..) | Expr::Single(..) if to_rust => expr
+                    .map_expr_children(|e| self.refactor_shared_expr(e, fold_when, to_rust, log)),
                 _ => {
                     let expr2 = expr.map_expr_type(|ty| self.refactor_shared_type(ty, log));
                     let expr3 = expr2.map_expr_assum(|assum| {

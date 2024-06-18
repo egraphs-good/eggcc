@@ -3,40 +3,23 @@ source: src/pretty_print.rs
 expression: ast
 ---
 let tpl_s_v0 = tuplet!(statet());
-let in_func_v1 = infunc("dummy");
-let concat_v2 = parallel!(int(4), getat(0));
-let concat_v3 = concat(single(int(2)), 
-concat(single(int(3)), 
-concat_v2.clone()));
-let less_than_v4 = less_than(getat(0), 
+
+let less_than_v2 = less_than(getat(0), 
 getat(3));
-let single_v5 = single(getat(0));
-let single_v6 = single(getat(1));
-let single_v7 = single(getat(2));
-let single_v8 = single(getat(3));
-let sub_v9 = sub(getat(2), 
+let sub_v3 = sub(getat(2), 
 getat(1));
-let tprint_v10 = tprint(sub_v9.clone(), 
+let tprint_v4 = tprint(sub_v3.clone(), 
 getat(4));
-let concat_v11 = concat(concat(single(less_than_v4.clone()), 
-concat(single_v5.clone(), 
-single_v6.clone())), 
-concat(concat(single_v7.clone(), 
-single_v8.clone()), 
-single(tprint_v10.clone())));
-let tpl__v12 = emptyt();
-let tpl_i_v13 = tuplet!(intt());
-let in_func_v14 = infunc(" loop_ctx_0");
-let less_than_v15 = less_than(getat(0), 
+let dowhile_v5 = dowhile(parallel!(int(1), int(2), int(3), int(4), getat(0)), 
+parallel!(less_than_v2.clone(), getat(0), getat(1), getat(2), getat(3), tprint_v4.clone()));
+let tpl__v6 = emptyt();
+let tpl_i_v7 = tuplet!(intt());
+
+let less_than_v9 = less_than(getat(0), 
 int(3));
-let in_switch_v16 = inswitch(0, 
-int(0), 
-arg());
-let switch_v17 = switch!(int(0), arg(); parallel!(int(4), int(5)));
-let dowhile_v18 = dowhile(single(int(1)), 
-parallel!(less_than_v15.clone(), get(switch_v17.clone(), 0)));
-let concat_v19 = concat(dowhile(concat(single(int(1)), 
-concat_v3.clone()), 
-concat_v11.clone()), 
-dowhile_v18.clone());
-let concat_v20 = concat_v19.clone();
+
+let switch_v11 = switch!(int(0), arg(); parallel!(int(4), int(5)));
+let dowhile_v12 = dowhile(single(int(1)), 
+parallel!(less_than_v9.clone(), get(switch_v11.clone(), 0)));
+let concat_v13 = concat(dowhile_v5.clone(), 
+dowhile_v12.clone());

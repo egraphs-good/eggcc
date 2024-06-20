@@ -5,9 +5,9 @@
 
 use ordered_float::OrderedFloat;
 use std::rc::Rc;
-use strum_macros::EnumIter;
+use strum_macros::{Display, EnumIter};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Display)]
 pub enum BaseType {
     IntT,
     FloatT,
@@ -28,6 +28,7 @@ pub enum Type {
     /// `to_egglog` calls `with_arg_types`, so there are never any
     /// unknown types in the egraph.
     Unknown,
+    Symbolic(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
@@ -122,6 +123,7 @@ pub enum Expr {
     DoWhile(RcExpr, RcExpr),
     Arg(Type, Assumption),
     Function(String, Type, Type, RcExpr),
+    Symbolic(String), // now only used for pretty printer
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

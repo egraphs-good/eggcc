@@ -30,6 +30,7 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
+pub mod pretty_print;
 pub mod schedule;
 
 pub type Result = std::result::Result<(), MainError>;
@@ -105,7 +106,7 @@ fn print_with_intermediate_helper(
     }
 }
 
-pub(crate) fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
+pub fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
     let mut printed = String::new();
     let mut cache = HashMap::<Term, String>::new();
     let res = print_with_intermediate_helper(termdag, term, &mut cache, &mut printed);

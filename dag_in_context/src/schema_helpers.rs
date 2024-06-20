@@ -2,7 +2,9 @@ use std::{
     collections::HashMap,
     fmt::{Display, Formatter},
     rc::Rc,
+    vec,
 };
+
 use strum_macros::EnumIter;
 
 use crate::{
@@ -128,6 +130,7 @@ impl Expr {
             Expr::Empty(..) => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,
             Expr::Top(..) => Constructor::Top,
+            Expr::Symbolic(_) => panic!("found symbolic"),
         }
     }
     pub fn func_name(&self) -> Option<String> {
@@ -217,6 +220,7 @@ impl Expr {
             Expr::Const(_, _, _) => vec![],
             Expr::Empty(_, _) => vec![],
             Expr::Arg(_, _) => vec![],
+            Expr::Symbolic(_) => vec![],
         }
     }
 
@@ -245,6 +249,7 @@ impl Expr {
             }
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
             Expr::Arg(_, _) => vec![],
+            Expr::Symbolic(_) => vec![],
         }
     }
 
@@ -265,6 +270,85 @@ impl Expr {
             Expr::DoWhile(x, _) => x.get_arg_type(),
             Expr::Arg(ty, _) => ty.clone(),
             Expr::Function(_, ty, _, _) => ty.clone(),
+            Expr::Symbolic(_) => panic!("found symbolic"),
+        }
+    }
+
+    // this function might violate RcExpr's invariant
+    // for example function map_child is id function that create new RcExpr, and &self have two same children
+    pub fn map_expr_children<F>(self: &RcExpr, mut map_child: F) -> RcExpr
+    where
+        F: FnMut(&RcExpr) -> RcExpr,
+    {
+        match self.as_ref() {
+            Expr::Function(name, ty1, ty2, body) => Rc::new(Expr::Function(
+                name.into(),
+                ty1.clone(),
+                ty2.clone(),
+                map_child(body),
+            )),
+            Expr::Top(op, x, y, z) => Rc::new(Expr::Top(
+                op.clone(),
+                map_child(x),
+                map_child(y),
+                map_child(z),
+            )),
+            Expr::Bop(op, x, y) => Rc::new(Expr::Bop(op.clone(), map_child(x), map_child(y))),
+            Expr::Uop(op, x) => Rc::new(Expr::Uop(op.clone(), map_child(x))),
+            Expr::Get(x, pos) => Rc::new(Expr::Get(map_child(x), *pos)),
+            Expr::Alloc(id, x, y, ty) => {
+                Rc::new(Expr::Alloc(*id, map_child(x), map_child(y), ty.clone()))
+            }
+            Expr::Call(name, x) => Rc::new(Expr::Call(name.into(), map_child(x))),
+            Expr::Single(x) => Rc::new(Expr::Single(map_child(x))),
+            Expr::Concat(x, y) => Rc::new(Expr::Concat(map_child(x), map_child(y))),
+            Expr::Switch(cond, inputs, branches) => {
+                let br = branches.iter().map(&mut map_child).collect::<Vec<_>>();
+                Rc::new(Expr::Switch(map_child(cond), map_child(inputs), br))
+            }
+            Expr::If(pred, input, then, els) => Rc::new(Expr::If(
+                map_child(pred),
+                map_child(input),
+                map_child(then),
+                map_child(els),
+            )),
+            Expr::DoWhile(input, body) => Rc::new(Expr::DoWhile(map_child(input), map_child(body))),
+            Expr::Symbolic(_) => panic!("No symbolic should occur here"),
+            _ => self.clone(),
+        }
+    }
+
+    pub fn map_expr_type<F>(self: &RcExpr, mut map_type: F) -> RcExpr
+    where
+        F: FnMut(&Type) -> Type,
+    {
+        match self.as_ref() {
+            Expr::Function(name, ty1, ty2, body) => Rc::new(Expr::Function(
+                name.into(),
+                map_type(ty1),
+                map_type(ty2),
+                body.clone(),
+            )),
+            Expr::Const(c, ty, assum) => {
+                Rc::new(Expr::Const(c.clone(), map_type(ty), assum.clone()))
+            }
+            Expr::Empty(ty, assum) => Rc::new(Expr::Empty(map_type(ty), assum.clone())),
+            Expr::Arg(ty, assum) => Rc::new(Expr::Arg(map_type(ty), assum.clone())),
+            _ => self.clone(),
+        }
+    }
+
+    pub fn map_expr_assum<F>(self: &RcExpr, mut map_assum: F) -> RcExpr
+    where
+        F: FnMut(&Assumption) -> Assumption,
+    {
+        match self.as_ref() {
+            Expr::Const(c, ty, assum) => {
+                Rc::new(Expr::Const(c.clone(), ty.clone(), map_assum(assum)))
+            }
+            Expr::Empty(ty, assum) => Rc::new(Expr::Empty(ty.clone(), map_assum(assum))),
+            Expr::Arg(ty, assum) => Rc::new(Expr::Arg(ty.clone(), map_assum(assum))),
+            _ => self.clone(),
         }
     }
 
@@ -285,6 +369,7 @@ impl Expr {
             Expr::DoWhile(x, _) => x.get_ctx(),
             Expr::Arg(_, ctx) => ctx,
             Expr::Function(_, _, _, x) => x.get_ctx(),
+            Expr::Symbolic(_) => panic!("found symbolic"),
         }
     }
 
@@ -419,6 +504,7 @@ impl Expr {
                 Rc::new(Expr::Const(c.clone(), arg_ty.clone(), arg_ctx.clone()))
             }
             Expr::Empty(_, _) => Rc::new(Expr::Empty(arg_ty.clone(), arg_ctx.clone())),
+            Expr::Symbolic(_) => panic!("found symbolic"),
         };
 
         // Add the substituted to cache
@@ -806,6 +892,7 @@ impl Type {
             Type::Base(basety) => basety.contains_state(),
             Type::TupleT(types) => types.iter().any(|ty| ty.contains_state()),
             Type::Unknown => panic!("Unknown type"),
+            Type::Symbolic(_) => panic!("Symbolic type"),
         }
     }
 }

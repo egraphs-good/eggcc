@@ -166,6 +166,11 @@ pub enum RunType {
     /// Convert the input bril program to a tree-encoded expression and optimize it with egglog,
     /// outputting the resulting RVSDG
     OptimizedRvsdg,
+    /// Convert the input bril program to a tree-encoded expression and optimize it with egglog,
+    /// outputting the resulting program with pretty-printed rust macro
+    OptimizedPrettyPrint,
+    /// Convert the input bril program to pretty-printed rust macro
+    PrettyPrint,
     /// Give the egglog program used to optimize the tree-encoded expression.
     Egglog,
     /// Check that converting the tree program to egglog
@@ -206,6 +211,8 @@ pub enum RunType {
     /// The different configurations are with and without egglog optimization, and with and without
     /// llvm optimization.
     TestBenchmark,
+    // test the pretty printer
+    TestPrettyPrint,
 }
 
 impl Display for RunType {
@@ -236,8 +243,11 @@ impl RunType {
             | RunType::DagToRvsdg
             | RunType::OptimizedRvsdg
             | RunType::CheckExtractIdentical
+            | RunType::OptimizedPrettyPrint
+            | RunType::PrettyPrint
             | RunType::ToCfg
             | RunType::OptimizedCfg
+            | RunType::TestPrettyPrint
             | RunType::TestBenchmark => false,
             RunType::BrilToJson => false,
         }
@@ -246,7 +256,7 @@ impl RunType {
 
 #[derive(Clone)]
 pub struct ProgWithArguments {
-    program: Program,
+    pub program: Program,
     name: String,
     args: Vec<String>,
 }
@@ -413,6 +423,7 @@ impl Run {
             RunType::DagRoundTrip,
             RunType::Optimize,
             RunType::CheckExtractIdentical,
+            RunType::TestPrettyPrint,
         ] {
             let default = Run {
                 test_type,
@@ -610,6 +621,48 @@ impl Run {
                     }],
                     Some(Interpretable::Bril(bril)),
                 )
+            }
+            RunType::PrettyPrint => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let (dag, _) = rvsdg.to_dag_encoding(true);
+                let res = TreeProgram::pretty_print_to_rust(&dag);
+                (
+                    vec![Visualization {
+                        result: res,
+                        file_extension: ".rs".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
+            }
+            RunType::OptimizedPrettyPrint => {
+                let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
+                let (prog, mut ctx_cache) = rvsdg.to_dag_encoding(true);
+                let optimized =
+                    dag_in_context::optimize(&prog, &mut ctx_cache).map_err(EggCCError::EggLog)?;
+                let res = TreeProgram::pretty_print_to_rust(&optimized);
+                (
+                    vec![Visualization {
+                        result: res,
+                        file_extension: ".rs".to_string(),
+                        name: "".to_string(),
+                    }],
+                    None,
+                )
+            }
+            RunType::TestPrettyPrint => {
+                let rvsdg =
+                    crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
+                let (tree, mut cache) = rvsdg.to_dag_encoding(true);
+                let unfolded_program = build_program(&tree, &mut cache, false);
+                let folded_program = tree.pretty_print_to_egglog();
+                let program =
+                    format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
+                //println!("{}", program);
+                egglog::EGraph::default()
+                    .parse_and_run_program(&program)
+                    .unwrap();
+                (vec![], None)
             }
             RunType::DagConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;

@@ -326,6 +326,7 @@ impl Expr {
                 out_ty.clone(),
                 body.add_ctx_with_cache(current_ctx, cache),
             )),
+            Expr::Symbolic(_) => panic!("found symbol"),
         };
         cache
             .with_ctx

@@ -209,3 +209,69 @@ fn test_invariant_detect() -> crate::Result {
         vec![],
     )
 }
+
+#[test]
+fn test_invariant_hoist() -> crate::Result {
+    use crate::add_context::ContextCache;
+    use crate::ast::*;
+    use crate::schema::Assumption;
+
+    let mut cache = ContextCache::new_dummy_ctx();
+    let output_ty = tuplet!(intt(), intt(), intt(), statet());
+    let inner_inv = sub(getat(2), getat(1));
+    let inv = add(inner_inv.clone(), int(1));
+    let print = tprint(inv.clone(), getat(3));
+
+    let my_loop = dowhile(
+        parallel!(getat(0), getat(1), getat(2), getat(3)),
+        parallel!(
+            less_than(getat(0), getat(1)),
+            int(3),
+            getat(1),
+            getat(2),
+            print,
+        ),
+    )
+    .with_arg_types(output_ty.clone(), output_ty.clone())
+    .add_ctx_with_cache(Assumption::dummy(), &mut cache);
+
+    let new_out_ty = tuplet!(intt(), intt(), intt(), statet(), intt());
+    let mut cache = ContextCache::new_symbolic_ctx();
+
+    let hoisted_loop = dowhile(
+        parallel!(
+            getat(0),
+            getat(1),
+            getat(2),
+            getat(3),
+            add(int(1), sub(getat(2), getat(1)))
+        ),
+        parallel!(
+            less_than(getat(0), getat(1)),
+            int(3),
+            getat(1),
+            getat(2),
+            tprint(getat(4), getat(3)),
+            getat(4)
+        ),
+    )
+    .with_arg_types(output_ty.clone(), new_out_ty)
+    .add_ctx_with_cache(Assumption::dummy(), &mut cache);
+
+    let build = format!("(let loop {}) \n", my_loop);
+    let check = format!(
+        "(check {})
+        (check (= loop (SubTuple {} 0 4)))",
+        hoisted_loop.clone(),
+        hoisted_loop
+    );
+
+    egglog_test(
+        &build,
+        &check,
+        vec![],
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![]),
+        vec![],
+    )
+}

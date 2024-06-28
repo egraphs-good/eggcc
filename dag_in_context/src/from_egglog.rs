@@ -143,7 +143,10 @@ impl<'a> FromEgglog<'a> {
             };
             Assumption::InIf(boolean, self.expr_from_egglog(self.termdag.get(*pred_expr)), self.expr_from_egglog(self.termdag.get(*input_expr)))
           }
-          _ => panic!("Invalid assumption: {:?}", assumption),
+          (name, _) => {
+            eprintln!("Invalid assumption: {:?}", assumption);
+            Assumption::WildCard(name.into())
+          }
         })
     }
 

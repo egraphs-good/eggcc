@@ -60,7 +60,7 @@ pub fn mk_schedule() -> String {
     cheap-optimizations
     
     switch_rewrite
-    ;loop-inv-motion
+    loop-inv-motion
     loop-strength-reduction
     loop-peel
 )

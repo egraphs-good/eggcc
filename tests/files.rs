@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use eggcc::util::{Run, RunType, TestProgram};
+use eggcc::util::{Run, RunMode, TestProgram};
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
@@ -11,7 +11,7 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
-        let snapshot_configurations: HashSet<RunType> = [RunType::Optimize].into_iter().collect();
+        let snapshot_configurations: HashSet<RunMode> = [RunMode::Optimize].into_iter().collect();
         let test_name = run.name() + if snapshot { "_snapshot" } else { "" };
 
         trials.push(Trial::test(test_name, move || {

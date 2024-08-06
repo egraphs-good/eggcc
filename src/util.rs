@@ -147,7 +147,7 @@ fn get_eggcc_root() -> String {
 
 /// Different ways to run eggcc
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ValueEnum, Debug)]
-pub enum RunType {
+pub enum RunMode {
     /// Do nothing to the input bril program besides parse it.
     /// Output the original program.
     Parse,
@@ -215,41 +215,41 @@ pub enum RunType {
     TestPrettyPrint,
 }
 
-impl Display for RunType {
+impl Display for RunMode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.to_possible_value().unwrap().get_name())
     }
 }
 
-impl RunType {
+impl RunMode {
     /// Returns true if the run type produces an IR
     /// that can be interpreted.
     pub fn produces_interpretable(&self) -> bool {
         match self {
-            RunType::Parse
-            | RunType::Optimize
-            | RunType::RvsdgRoundTrip
-            | RunType::RvsdgRoundTripToExecutable
-            | RunType::DagRoundTrip
-            | RunType::CfgRoundTrip
-            | RunType::OptimizeDirectJumps
-            | RunType::DagConversion
-            | RunType::DagOptimize
-            | RunType::Cranelift
-            | RunType::LLVM => true,
-            RunType::RvsdgConversion
-            | RunType::RvsdgToCfg
-            | RunType::Egglog
-            | RunType::DagToRvsdg
-            | RunType::OptimizedRvsdg
-            | RunType::CheckExtractIdentical
-            | RunType::OptimizedPrettyPrint
-            | RunType::PrettyPrint
-            | RunType::ToCfg
-            | RunType::OptimizedCfg
-            | RunType::TestPrettyPrint
-            | RunType::TestBenchmark => false,
-            RunType::BrilToJson => false,
+            RunMode::Parse
+            | RunMode::Optimize
+            | RunMode::RvsdgRoundTrip
+            | RunMode::RvsdgRoundTripToExecutable
+            | RunMode::DagRoundTrip
+            | RunMode::CfgRoundTrip
+            | RunMode::OptimizeDirectJumps
+            | RunMode::DagConversion
+            | RunMode::DagOptimize
+            | RunMode::Cranelift
+            | RunMode::LLVM => true,
+            RunMode::RvsdgConversion
+            | RunMode::RvsdgToCfg
+            | RunMode::Egglog
+            | RunMode::DagToRvsdg
+            | RunMode::OptimizedRvsdg
+            | RunMode::CheckExtractIdentical
+            | RunMode::OptimizedPrettyPrint
+            | RunMode::PrettyPrint
+            | RunMode::ToCfg
+            | RunMode::OptimizedCfg
+            | RunMode::TestPrettyPrint
+            | RunMode::TestBenchmark => false,
+            RunMode::BrilToJson => false,
         }
     }
 }
@@ -324,7 +324,7 @@ impl InterpMode {
 #[derive(Clone)]
 pub struct Run {
     pub prog_with_args: ProgWithArguments,
-    pub test_type: RunType,
+    pub test_type: RunMode,
     pub interp: InterpMode,
     pub profile_out: Option<PathBuf>,
     pub llvm_output_dir: Option<String>,
@@ -381,7 +381,7 @@ impl Run {
         interp: InterpMode,
     ) -> Run {
         Run {
-            test_type: RunType::Cranelift,
+            test_type: RunMode::Cranelift,
             interp,
             prog_with_args: test.read_program(),
             profile_out: None,
@@ -395,7 +395,7 @@ impl Run {
 
     pub fn test_benchmark_config(test: TestProgram) -> Run {
         Run {
-            test_type: RunType::TestBenchmark,
+            test_type: RunMode::TestBenchmark,
             // testing does interpretation separately, ignoring this flag
             interp: InterpMode::None,
             prog_with_args: test.read_program(),
@@ -413,17 +413,17 @@ impl Run {
         let prog = test.clone().read_program();
         let mut res = vec![];
         for test_type in [
-            RunType::RvsdgConversion,
-            RunType::RvsdgRoundTrip,
-            RunType::CfgRoundTrip,
-            RunType::OptimizeDirectJumps,
-            RunType::RvsdgToCfg,
-            RunType::DagConversion,
-            RunType::DagOptimize,
-            RunType::DagRoundTrip,
-            RunType::Optimize,
-            RunType::CheckExtractIdentical,
-            RunType::TestPrettyPrint,
+            RunMode::RvsdgConversion,
+            RunMode::RvsdgRoundTrip,
+            RunMode::CfgRoundTrip,
+            RunMode::OptimizeDirectJumps,
+            RunMode::RvsdgToCfg,
+            RunMode::DagConversion,
+            RunMode::DagOptimize,
+            RunMode::DagRoundTrip,
+            RunMode::Optimize,
+            RunMode::CheckExtractIdentical,
+            RunMode::TestPrettyPrint,
         ] {
             let default = Run {
                 test_type,
@@ -459,7 +459,7 @@ impl Run {
             for optimize_egglog in [true, false] {
                 for optimize_brillvm in [true, false] {
                     res.push(Run {
-                        test_type: RunType::LLVM,
+                        test_type: RunMode::LLVM,
                         interp: InterpMode::Interp,
                         prog_with_args: prog.clone(),
                         profile_out: None,
@@ -479,13 +479,13 @@ impl Run {
     // give a unique name for this run configuration
     pub fn name(&self) -> String {
         let mut name = format!("{}-{}", self.prog_with_args.name, self.test_type);
-        if self.test_type == RunType::Cranelift {
+        if self.test_type == RunMode::Cranelift {
             name += match self.optimize_brilift.unwrap() {
                 false => "-O0",
                 true => "-O3",
             };
         }
-        if self.test_type == RunType::LLVM {
+        if self.test_type == RunMode::LLVM {
             name += match (
                 self.optimize_egglog.unwrap(),
                 self.optimize_bril_llvm.unwrap(),
@@ -525,11 +525,11 @@ impl Run {
         };
 
         let (visualizations, interpretable_out) = match self.test_type {
-            RunType::Parse => (
+            RunMode::Parse => (
                 vec![],
                 Some(Interpretable::Bril(self.prog_with_args.program.clone())),
             ),
-            RunType::BrilToJson => {
+            RunMode::BrilToJson => {
                 let json = serde_json::to_string_pretty(&self.prog_with_args.program).unwrap();
                 (
                     vec![Visualization {
@@ -540,7 +540,7 @@ impl Run {
                     None,
                 )
             }
-            RunType::RvsdgConversion => {
+            RunMode::RvsdgConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let svg = rvsdg.to_svg();
                 (
@@ -552,12 +552,12 @@ impl Run {
                     None,
                 )
             }
-            RunType::OptimizedCfg => {
+            RunMode::OptimizedCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 (cfg.visualizations(), None)
             }
-            RunType::RvsdgRoundTrip => {
+            RunMode::RvsdgRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
@@ -570,14 +570,14 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::RvsdgRoundTripToExecutable => {
+            RunMode::RvsdgRoundTripToExecutable => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
                 let interpretable = self.run_bril_llvm(bril, false, false)?;
                 (vec![], Some(interpretable))
             }
-            RunType::DagToRvsdg => {
+            RunMode::DagToRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (tree, _cache) = rvsdg.to_dag_encoding(true);
                 let rvsdg2 = dag_to_rvsdg(&tree);
@@ -590,7 +590,7 @@ impl Run {
                     None,
                 )
             }
-            RunType::DagRoundTrip => {
+            RunMode::DagRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (tree, _cache) = rvsdg.to_dag_encoding(true);
                 let rvsdg2 = dag_to_rvsdg(&tree);
@@ -605,13 +605,13 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::CheckExtractIdentical => {
+            RunMode::CheckExtractIdentical => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (tree, _cache) = rvsdg.to_dag_encoding(true);
                 check_roundtrip_egraph(&tree);
                 (vec![], None)
             }
-            RunType::Optimize => {
+            RunMode::Optimize => {
                 let bril = Run::optimize_bril(&self.prog_with_args.program)?;
                 (
                     vec![Visualization {
@@ -622,7 +622,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::PrettyPrint => {
+            RunMode::PrettyPrint => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, _) = rvsdg.to_dag_encoding(true);
                 let res = TreeProgram::pretty_print_to_rust(&dag);
@@ -635,7 +635,7 @@ impl Run {
                     None,
                 )
             }
-            RunType::OptimizedPrettyPrint => {
+            RunMode::OptimizedPrettyPrint => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (prog, mut ctx_cache) = rvsdg.to_dag_encoding(true);
                 let optimized =
@@ -650,7 +650,7 @@ impl Run {
                     None,
                 )
             }
-            RunType::TestPrettyPrint => {
+            RunMode::TestPrettyPrint => {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let (tree, mut cache) = rvsdg.to_dag_encoding(true);
@@ -664,7 +664,7 @@ impl Run {
                     .unwrap();
                 (vec![], None)
             }
-            RunType::DagConversion => {
+            RunMode::DagConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (tree, _cache) = rvsdg.to_dag_encoding(true);
                 (
@@ -676,7 +676,7 @@ impl Run {
                     Some(Interpretable::TreeProgram(tree)),
                 )
             }
-            RunType::DagOptimize => {
+            RunMode::DagOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (tree, mut cache) = rvsdg.to_dag_encoding(true);
                 let optimized =
@@ -690,7 +690,7 @@ impl Run {
                     Some(Interpretable::TreeProgram(optimized)),
                 )
             }
-            RunType::OptimizedRvsdg => {
+            RunMode::OptimizedRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
                 let optimized =
@@ -705,7 +705,7 @@ impl Run {
                     None,
                 )
             }
-            RunType::Egglog => {
+            RunMode::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
                 let egglog = build_program(&dag, &mut cache, true);
@@ -718,16 +718,16 @@ impl Run {
                     None,
                 )
             }
-            RunType::RvsdgToCfg => {
+            RunMode::RvsdgToCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 (cfg.visualizations(), None)
             }
-            RunType::ToCfg => {
+            RunMode::ToCfg => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 (cfg.visualizations(), None)
             }
-            RunType::CfgRoundTrip => {
+            RunMode::CfgRoundTrip => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let bril = cfg.to_bril();
                 (
@@ -739,7 +739,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::OptimizeDirectJumps => {
+            RunMode::OptimizeDirectJumps => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let optimized = cfg.optimize_jumps();
                 let bril = optimized.to_bril();
@@ -752,7 +752,7 @@ impl Run {
                     Some(Interpretable::Bril(bril)),
                 )
             }
-            RunType::Cranelift => {
+            RunMode::Cranelift => {
                 let optimize_brilift = self.optimize_brilift.expect(
                     "optimize_brilift is a required flag when running RunMode::CompileBrilift",
                 );
@@ -760,7 +760,7 @@ impl Run {
                     self.run_brilift(self.prog_with_args.program.clone(), optimize_brilift)?;
                 (vec![], Some(interpretable))
             }
-            RunType::LLVM => {
+            RunMode::LLVM => {
                 let optimize_egglog = self.optimize_egglog.expect(
                     "optimize_egglog is a required flag when running RunMode::CompileBrilLLVM",
                 );
@@ -774,7 +774,7 @@ impl Run {
                 )?;
                 (vec![], Some(interpretable))
             }
-            RunType::TestBenchmark => {
+            RunMode::TestBenchmark => {
                 // optimize_egglog and optimize_brilift should not be set
                 assert!(self.optimize_egglog.is_none());
                 assert!(self.optimize_brilift.is_none());

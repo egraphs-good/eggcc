@@ -13,6 +13,8 @@ treatments = [
   "rvsdg-round-trip-to-executable",
   "cranelift-O3",
   "llvm-O0",
+  "llvm-O1",
+  "llvm-O2",
   "llvm-O0-eggcc",
   "llvm-O3",
   "llvm-O3-eggcc",
@@ -32,13 +34,17 @@ def get_eggcc_options(run_mode, benchmark):
     case "cranelift-O3":
       return f'--run-mode cranelift --optimize-egglog false --optimize-brilift true'
     case "llvm-O0":
-      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm false --llvm-output-dir {llvm_out_dir}'
+      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0 --llvm-output-dir {llvm_out_dir}'
+    case "llvm-O1":
+      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O1 --llvm-output-dir {llvm_out_dir}'
+    case "llvm-O2":
+      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O2 --llvm-output-dir {llvm_out_dir}'
     case "llvm-O3":
-      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm true --llvm-output-dir {llvm_out_dir}'
+      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3 --llvm-output-dir {llvm_out_dir}'
     case "llvm-O0-eggcc":
-      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm false --llvm-output-dir {llvm_out_dir}'
+      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm O0 --llvm-output-dir {llvm_out_dir}'
     case "llvm-O3-eggcc":
-      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm true --llvm-output-dir {llvm_out_dir}'
+      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm O3 --llvm-output-dir {llvm_out_dir}'
     case _:
       raise Exception("Unexpected run mode: " + run_mode)
     

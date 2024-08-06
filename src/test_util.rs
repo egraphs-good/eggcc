@@ -9,6 +9,7 @@ macro_rules! to_block {
         BlockName::Named($name.into())
     };
 }
+
 use bril_rs::Type;
 pub(crate) use to_block;
 

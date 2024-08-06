@@ -33,7 +33,7 @@
 (rule (
         (ExpectType e expected msg)
         (HasType e actual)
-        (!= expected actual) ;; OKAY to compare types for equality because we never union types.
+        (!= expected actual) ;; not okay unless we saturate type helpers.
       )
       ((extract "Expecting expression")
        (extract e)

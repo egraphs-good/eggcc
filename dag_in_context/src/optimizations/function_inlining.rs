@@ -7,6 +7,7 @@ use std::{
 use egglog::Term;
 
 use crate::{
+    add_context::ContextCache,
     print_with_intermediate_helper,
     schema::{Expr, RcExpr, TreeProgram},
     to_egglog::TreeToEgglog,
@@ -45,11 +46,15 @@ fn get_calls_with_cache(
 
 // Pairs a call with its equivalent inlined body, using the passed-in function -> body map
 // to look up the body
-fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBody {
+fn subst_call(
+    call: &RcExpr,
+    func_to_body: &HashMap<String, &RcExpr>,
+    cache: &mut ContextCache,
+) -> CallBody {
     if let Expr::Call(func_name, args) = call.as_ref() {
         CallBody {
             call: call.clone(),
-            body: Expr::subst(args, func_to_body[func_name]),
+            body: Expr::subst(args, func_to_body[func_name], cache),
         }
     } else {
         panic!("Tried to substitute non-calls.")
@@ -57,7 +62,11 @@ fn subst_call(call: &RcExpr, func_to_body: &HashMap<String, &RcExpr>) -> CallBod
 }
 
 // Generates a list of (call, body) pairs (in a CallBody) that can be unioned
-pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<CallBody> {
+pub fn function_inlining_pairs(
+    program: &TreeProgram,
+    iterations: usize,
+    cache: &mut ContextCache,
+) -> Vec<CallBody> {
     if iterations == 0 {
         return vec![];
     }
@@ -85,7 +94,7 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
 
     let mut inlined_calls = calls
         .iter()
-        .map(|call| subst_call(call, &func_name_to_body))
+        .map(|call| subst_call(call, &func_name_to_body, cache))
         .collect::<Vec<_>>();
 
     // Repeat! Get calls and subst for each new substituted body.
@@ -105,7 +114,7 @@ pub fn function_inlining_pairs(program: &TreeProgram, iterations: usize) -> Vec<
         // Only work on new calls, added from the new inlines
         new_inlines = new_calls
             .iter()
-            .map(|call| subst_call(call, &func_name_to_body))
+            .map(|call| subst_call(call, &func_name_to_body, cache))
             .collect::<Vec<CallBody>>();
         inlined_calls.extend(new_inlines.clone());
     }
@@ -193,7 +202,7 @@ fn test_function_inlining_pairs() {
 
     let program = program!(main, inc_twice, inc);
 
-    let pairs = function_inlining_pairs(&program, iterations);
+    let pairs = function_inlining_pairs(&program, iterations, &mut ContextCache::new());
 
     // First iteration:
     // call inc_twice 1 --> call inc (call inc 1) ... so the new calls are call inc (call inc 1), call inc 1
@@ -224,7 +233,7 @@ fn test_inf_recursion_function_inlining_pairs() {
     .to_program(base(intt()), base(intt()));
 
     for iterations in 0..10 {
-        let pairs = function_inlining_pairs(&program, iterations);
+        let pairs = function_inlining_pairs(&program, iterations, &mut ContextCache::new());
         assert_eq!(pairs.len(), iterations);
     }
 }

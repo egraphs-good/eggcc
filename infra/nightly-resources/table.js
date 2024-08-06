@@ -121,42 +121,37 @@ function ConvertJsonToTable(
             var value = parsedJson[i][headers[j]];
             var isUrl = urlRegExp.test(value) || javascriptRegExp.test(value);
 
-            if (isUrl)
-              // If value is URL we auto-create a link
-              tbCon += tdRow.format(link.format(value));
-            else {
-              if (value) {
-                if (typeof value == "object") {
-                  // special case for adding class to <td> elts:
-                  // if the value has exactly the form {class: ..., value: ...}
-                  // treat it as just value.value, and set the class of the <td> element to value.class
-                  if (
-                    Object.keys(value).length === 2 &&
-                    value.hasOwnProperty("value") &&
-                    value.hasOwnProperty("class")
-                  ) {
-                    tbCon += '<td class="{0}">{1}</td>'.format(
-                      value.class,
-                      value.value,
-                    );
-                  } else {
-                    //for supporting nested tables
-                    tbCon += tdRow.format(
-                      ConvertJsonToTable(
-                        eval(value.data),
-                        value.tableId,
-                        value.tableClassName,
-                        value.linkText,
-                      ),
-                    );
-                  }
+            if (value) {
+              if (typeof value == "object") {
+                // special case for adding class to <td> elts:
+                // if the value has exactly the form {class: ..., value: ...}
+                // treat it as just value.value, and set the class of the <td> element to value.class
+                if (
+                  Object.keys(value).length === 2 &&
+                  value.hasOwnProperty("value") &&
+                  value.hasOwnProperty("class")
+                ) {
+                  tbCon += '<td class="{0}">{1}</td>'.format(
+                    value.class,
+                    value.value,
+                  );
                 } else {
-                  tbCon += tdRow.format(value);
+                  //for supporting nested tables
+                  tbCon += tdRow.format(
+                    ConvertJsonToTable(
+                      eval(value.data),
+                      value.tableId,
+                      value.tableClassName,
+                      value.linkText,
+                    ),
+                  );
                 }
               } else {
-                // If value == null we format it like PhpMyAdmin NULL values
-                tbCon += tdRow.format(italic.format(value).toUpperCase());
+                tbCon += tdRow.format(value);
               }
+            } else {
+              // If value == null we format it like PhpMyAdmin NULL values
+              tbCon += tdRow.format(italic.format(value).toUpperCase());
             }
           }
           trCon += tr.format(tbCon);

@@ -1,0 +1,11 @@
+# ARGS: 20 30
+@main(x: int, y: int) {
+  cmp: bool = lt x y;
+  res: int = id y;
+  br cmp .then .else;
+  .then:
+    res: int = id x;
+  .else:
+  .done:
+    print res;
+}

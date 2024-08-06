@@ -457,6 +457,7 @@ impl<'a> VirtualMachine<'a> {
                 let e_val = self.interpret_expr(e, arg);
                 self.interpret_call(func_name, &e_val)
             }
+            Expr::Symbolic(_) => panic!("found symbolic"),
         };
         self.eval_cache.insert(Rc::as_ptr(expr), res.clone());
         res

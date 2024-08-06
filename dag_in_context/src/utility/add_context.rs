@@ -114,13 +114,13 @@ fn simple_context() -> crate::Result {
         ttrue().with_arg_types(emptyt(), base(boolt())),
         parallel!().with_arg_types(emptyt(), emptyt()),
     );
-    let expected = expr.add_ctx(context_to_add.clone());
+    let (expected, cache) = expr.add_ctx(context_to_add.clone());
 
     egglog_test(
         &format!("(let egglog (AddContext {context_to_add} {expr}))"),
         &format!(
-            "
-(check (= egglog {expected}))",
+            "{expected}\n{}\n(check (= egglog {expected}))",
+            cache.get_unions(),
         ),
         vec![expr.to_program(emptyt(), base(intt()))],
         Value::Tuple(vec![]),

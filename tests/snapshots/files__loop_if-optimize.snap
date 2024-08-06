@@ -20,25 +20,11 @@ expression: visualization.result
   v6_: int = id v12_;
   v7_: bool = id v5_;
   v8_: int = id v13_;
-  c14_: bool = const true;
-  v15_: int = id v6_;
-  v16_: bool = id c14_;
-  v17_: int = id v8_;
-.b18_:
-  v19_: bool = not v5_;
+.b9_:
+  v14_: bool = not v5_;
   v2_: int = id v6_;
   v3_: int = id v8_;
-  br v19_ .b4_ .b20_;
-.b9_:
-  c14_: bool = const true;
-  v15_: int = id v6_;
-  v16_: bool = id c14_;
-  v17_: int = id v8_;
-  c21_: bool = const false;
-  v15_: int = id v6_;
-  v16_: bool = id c21_;
-  v17_: int = id v8_;
-  jmp .b18_;
-.b20_:
+  br v14_ .b4_ .b15_;
+.b15_:
   print v2_;
 }

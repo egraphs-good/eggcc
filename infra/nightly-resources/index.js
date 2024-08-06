@@ -39,7 +39,7 @@ function refreshView() {
     byBench[benchmark] = getDataForBenchmark(benchmark);
   });
   const tableData = Object.keys(byBench).map((bench) => ({
-    name: bench,
+    name: `<a target="_blank" rel="noopener noreferrer" href="https://github.com/egraphs-good/eggcc/tree/main/${getBrilPathForBenchmark(bench)}">${bench}</a>`,
     executions: { data: byBench[bench] },
   }));
   tableData.sort((l, r) => l.name - r.name);

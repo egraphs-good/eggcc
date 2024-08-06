@@ -81,14 +81,13 @@
        (>= idx len))
       ((panic "Index out of bounds for TupleRemoveAt")) :ruleset always-run)
 
-
 (function TypeListRemoveAt (TypeList i64) TypeList :unextractable)
-(rewrite (TypeListRemoveAt (TNil)       _idx) (TNil) :ruleset type-helpers)
-(rewrite (TypeListRemoveAt (TCons x xs) 0   ) xs     :ruleset type-helpers)
+(rule ((TypeListRemoveAt (TNil) _idx))
+      ((panic "Index out of bounds for TypeListRemoveAt.")) :ruleset type-helpers)
+(rewrite (TypeListRemoveAt (TCons x xs) 0)
+         xs
+         :ruleset type-helpers)
 (rewrite (TypeListRemoveAt (TCons x xs) idx)
          (TCons x (TypeListRemoveAt xs (- idx 1)))
          :when ((> idx 0))
          :ruleset type-helpers)
-
-(rule ((TypeListRemoveAt (TNil) _idx))
-      ((panic "Index out of bounds for TypeListRemoveAt.")) :ruleset type-helpers)

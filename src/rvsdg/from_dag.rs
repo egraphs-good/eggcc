@@ -85,6 +85,7 @@ fn type_to_bril_type(ty: Type) -> Option<bril_rs::Type> {
         }
         Type::Base(basetype) => Some(basetype_to_bril_type(basetype)),
         Type::Unknown => panic!("Expected known type in type_to_bril_type"),
+        Type::Symbolic(_) => panic!("Symbolic not supported"),
     }
 }
 
@@ -244,6 +245,7 @@ impl<'a> TreeToRvsdg<'a> {
                 _ => panic!("Expected at most one type in basic expr type"),
             },
             Type::Unknown => panic!("Expected known type for expr"),
+            Type::Symbolic(_) => panic!("Symbolic type not supported"),
         }
     }
 
@@ -455,6 +457,7 @@ impl<'a> TreeToRvsdg<'a> {
                 assert_eq!(res.len(), 1, "Expected exactly one result for Single node");
                 res
             }
+            Expr::Symbolic(_) => panic!("symbolic not supported"),
         };
         self.translation_cache
             .insert(Rc::as_ptr(&expr), res.clone());

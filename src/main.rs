@@ -1,5 +1,5 @@
 use clap::Parser;
-use eggcc::util::{visualize, InterpMode, Run, RunType, TestProgram};
+use eggcc::util::{visualize, InterpMode, Run, RunMode, TestProgram};
 use std::{ffi::OsStr, path::PathBuf};
 
 #[derive(Debug, Parser)]
@@ -11,8 +11,8 @@ struct Args {
     /// Configure the output of the tool, which can be an optimized bril program,
     /// an optimized CFG, or more.
     /// See documentation for [`RunType`] for different options.
-    #[clap(long, default_value_t = RunType::Optimize)]
-    run_mode: RunType,
+    #[clap(long, default_value_t = RunMode::Optimize)]
+    run_mode: RunMode,
     /// Evaluate the resulting program and output
     /// the result.
     #[clap(long)]

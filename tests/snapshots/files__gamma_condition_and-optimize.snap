@@ -6,7 +6,7 @@ expression: visualization.result
 .b1_:
   c2_: int = const 0;
   v3_: bool = lt v0 c2_;
-  v4_: bool = lt c2_ v0;
+  v4_: bool = gt v0 c2_;
   c5_: int = const 1;
   c6_: int = const 3;
   v7_: int = id c6_;

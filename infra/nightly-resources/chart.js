@@ -2,8 +2,10 @@ const COLORS = {
   "rvsdg-round-trip-to-executable": "red",
   "cranelift-O3": "blue",
   "llvm-O0": "purple",
-  "llvm-O0-eggcc": "pink",
+  "llvm-O1": "green",
+  "llvm-O2": "orange",
   "llvm-O3": "gray",
+  "llvm-O0-eggcc": "pink",
   "llvm-O3-eggcc": "brown",
 };
 

@@ -29,6 +29,7 @@ expression: visualization.result
   print v3_;
   print v17_;
   ret;
+<<<<<<< HEAD
 .b7_:
   v19_: bool = gt v0 c5_;
   c20_: bool = const false;
@@ -49,6 +50,23 @@ expression: visualization.result
   v29_: int = id c34_;
   v30_: bool = id c20_;
   v31_: int = id c2_;
+=======
+.b8_:
+  v20_: bool = gt v0 c6_;
+  c21_: bool = const false;
+  c22_: int = const 2;
+  v23_: int = id c22_;
+  v24_: bool = id c21_;
+  v25_: int = id c4_;
+  br v20_ .b26_ .b27_;
+.b26_:
+  v28_: bool = lt c5_ v0;
+  c29_: int = const 4;
+  v30_: int = id c29_;
+  v31_: bool = id c21_;
+  v32_: int = id c4_;
+  br v28_ .b33_ .b34_;
+>>>>>>> 853f33c6 (add O0 O1 O2 O3 support for llvm)
 .b33_:
   v22_: int = id v29_;
   v23_: bool = id v30_;

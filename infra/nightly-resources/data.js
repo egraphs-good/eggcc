@@ -33,6 +33,8 @@ function shouldHaveLlvm(runMethod) {
   return [
     "rvsdg-round-trip-to-executable",
     "llvm-O0",
+    "llvm-O1",
+    "llvm-O2",
     "llvm-O0-eggcc",
     "llvm-O3",
     "llvm-O3-eggcc",

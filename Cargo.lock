@@ -660,6 +660,7 @@ dependencies = [
 [[package]]
 name = "egglog"
 version = "0.3.0"
+source = "git+https://github.com/egraphs-good/egglog?rev=8ac9cae734925cb342a675af4328e3073fa839ec#8ac9cae734925cb342a675af4328e3073fa839ec"
 dependencies = [
  "chrono",
  "clap",

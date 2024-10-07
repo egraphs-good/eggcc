@@ -13,7 +13,7 @@ use crate::{
     schema_helpers::AssumptionRef,
     to_egglog::TreeToEgglog,
 };
-use egglog::{Term, TermDag};
+use egglog::{ast::DUMMY_SPAN, Term, TermDag};
 
 use std::{collections::HashMap, hash::Hash, rc::Rc, vec};
 
@@ -118,10 +118,10 @@ impl PrettyPrinter {
         let bounded_expr = format!("(let {} {})", binding.clone(), str_expr);
         let prog = prologue().to_owned() + &bounded_expr;
         let mut egraph = egglog::EGraph::default();
-        egraph.parse_and_run_program(&prog).unwrap();
+        egraph.parse_and_run_program(None, &prog).unwrap();
         let mut termdag = TermDag::default();
         let (sort, value) = egraph
-            .eval_expr(&egglog::ast::Expr::Var((), binding.into()))
+            .eval_expr(&egglog::ast::Expr::Var(DUMMY_SPAN.clone(), binding.into()))
             .unwrap();
         let (_, extracted) = egraph.extract(value, &mut termdag, &sort);
         let mut converter = FromEgglog {

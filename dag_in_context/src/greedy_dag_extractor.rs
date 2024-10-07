@@ -1143,7 +1143,7 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
     };
 
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&string_prog).unwrap();
+    egraph.parse_and_run_program(None, &string_prog).unwrap();
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
@@ -1170,7 +1170,7 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
     };
 
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&string_prog).unwrap();
+    egraph.parse_and_run_program(None, &string_prog).unwrap();
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
@@ -1389,7 +1389,7 @@ fn test_validity_of_extraction() {
     };
 
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&string_prog).unwrap();
+    egraph.parse_and_run_program(None, &string_prog).unwrap();
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 

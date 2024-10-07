@@ -190,7 +190,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let egglog_prog = build_program(program, &mut ContextCache::new(), false);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&egglog_prog).unwrap();
+    egraph.parse_and_run_program(None, &egglog_prog).unwrap();
 
     let (serialized, unextractables) = serialized_egraph(egraph);
     let (_res_cost, res) = extract(
@@ -219,7 +219,7 @@ pub fn optimize(
     let egglog_prog = build_program(program, cache, true);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&egglog_prog)?;
+    egraph.parse_and_run_program(None, &egglog_prog)?;
 
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
@@ -271,7 +271,7 @@ fn check_program_gets_type(program: TreeProgram) -> Result {
     );
 
     egglog::EGraph::default()
-        .parse_and_run_program(&s)
+        .parse_and_run_program(None, &s)
         .map(|lines| {
             for line in lines {
                 println!("{}", line);
@@ -349,7 +349,7 @@ fn egglog_test_internal(
     }
 
     let res = egglog::EGraph::default()
-        .parse_and_run_program(&program)
+        .parse_and_run_program(None, &program)
         .map(|lines| {
             for line in lines {
                 println!("{}", line);

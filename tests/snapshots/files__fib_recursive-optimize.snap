@@ -21,10 +21,10 @@ expression: visualization.result
   br v15_ .b16_ .b17_;
 .b16_:
   v18_: bool = eq c2_ c2_;
-  v19_: int = id c2_;
+  v19_: int = id v0;
   br v18_ .b20_ .b21_;
 .b21_:
-  v22_: bool = eq c2_ c2_;
+  v22_: bool = eq c2_ v0;
   br v22_ .b23_ .b24_;
 .b23_:
   v25_: int = call @fac c2_;
@@ -32,7 +32,7 @@ expression: visualization.result
 .b27_:
   v19_: int = id v26_;
 .b20_:
-  v28_: int = id c2_;
+  v28_: int = id v0;
 .b29_:
   v12_: int = id v28_;
 .b13_:
@@ -42,7 +42,7 @@ expression: visualization.result
   ret v5_;
 .b24_:
   c32_: int = const -1;
-  v33_: int = sub c32_ c2_;
+  v33_: int = sub c32_ v0;
   v34_: int = call @fac c32_;
   v35_: int = call @fac v33_;
   v36_: int = add v34_ v35_;
@@ -60,7 +60,7 @@ expression: visualization.result
   br v44_ .b45_ .b46_;
 .b45_:
   v47_: int = call @fac c2_;
-  v48_: int = id c39_;
+  v48_: int = id v0;
 .b49_:
   v41_: int = id v48_;
 .b42_:
@@ -71,7 +71,7 @@ expression: visualization.result
   br v53_ .b54_ .b55_;
 .b54_:
   v56_: int = call @fac c2_;
-  v57_: int = id v0;
+  v57_: int = id c37_;
 .b58_:
   v50_: int = id v57_;
 .b51_:
@@ -113,7 +113,7 @@ expression: visualization.result
   br v84_ .b85_ .b86_;
 .b85_:
   v87_: int = call @fac c2_;
-  v88_: int = id c2_;
+  v88_: int = id v70_;
 .b89_:
   v81_: int = id v88_;
 .b82_:
@@ -128,18 +128,18 @@ expression: visualization.result
   br v95_ .b96_ .b97_;
 .b96_:
   v98_: bool = eq c2_ c2_;
-  v99_: int = id v71_;
+  v99_: int = id c4_;
   br v98_ .b100_ .b101_;
 .b101_:
-  v102_: bool = eq c2_ v71_;
+  v102_: bool = eq c2_ c4_;
   br v102_ .b103_ .b104_;
 .b103_:
   v105_: int = call @fac c2_;
-  v106_: int = id c2_;
+  v106_: int = id c4_;
 .b107_:
   v99_: int = id v106_;
 .b100_:
-  v108_: int = id v71_;
+  v108_: int = id c4_;
 .b109_:
   v92_: int = id v108_;
 .b93_:
@@ -166,7 +166,7 @@ expression: visualization.result
   br v123_ .b124_ .b125_;
 .b124_:
   v126_: int = call @fac c2_;
-  v127_: int = id c4_;
+  v127_: int = id v116_;
 .b128_:
   v120_: int = id v127_;
 .b121_:
@@ -220,7 +220,7 @@ expression: visualization.result
   br v161_ .b162_ .b163_;
 .b162_:
   v164_: int = call @fac c2_;
-  v165_: int = id v154_;
+  v165_: int = id c4_;
 .b166_:
   v158_: int = id v165_;
 .b159_:
@@ -231,7 +231,7 @@ expression: visualization.result
   br v170_ .b171_ .b172_;
 .b171_:
   v173_: int = call @fac c2_;
-  v174_: int = id c4_;
+  v174_: int = id v155_;
 .b175_:
   v167_: int = id v174_;
 .b168_:
@@ -259,51 +259,51 @@ expression: visualization.result
 }
 @main {
 .b0_:
-  c1_: int = const 0;
-  c2_: int = const 2;
+  c1_: int = const 2;
+  c2_: int = const 0;
   v3_: bool = eq c1_ c2_;
   c4_: int = const 1;
   v5_: int = id c4_;
   br v3_ .b6_ .b7_;
 .b7_:
-  v8_: bool = eq c2_ c4_;
+  v8_: bool = eq c1_ c4_;
   br v8_ .b9_ .b10_;
 .b9_:
-  v11_: bool = eq c1_ c1_;
-  v12_: int = id c2_;
+  v11_: bool = eq c2_ c2_;
+  v12_: int = id c4_;
   br v11_ .b13_ .b14_;
 .b14_:
-  v15_: bool = eq c1_ c2_;
+  v15_: bool = eq c2_ c4_;
   br v15_ .b16_ .b17_;
 .b16_:
-  v18_: int = call @fac c1_;
+  v18_: int = call @fac c2_;
   v19_: int = id c2_;
 .b20_:
   v12_: int = id v19_;
 .b13_:
-  v21_: int = id c2_;
+  v21_: int = id c4_;
 .b22_:
   v5_: int = id v21_;
   print v5_;
   ret;
 .b17_:
   c23_: int = const -1;
-  v24_: int = sub c23_ c2_;
+  v24_: int = sub c23_ c4_;
   v25_: int = call @fac c23_;
   v26_: int = call @fac v24_;
   v27_: int = add v25_ v26_;
   v19_: int = id v27_;
   jmp .b20_;
 .b10_:
-  v28_: bool = eq c1_ c1_;
-  v29_: bool = eq c1_ c4_;
+  v28_: bool = eq c2_ c2_;
+  v29_: bool = eq c2_ c4_;
   v30_: int = id c4_;
   br v29_ .b31_ .b32_;
 .b32_:
   v33_: bool = eq c4_ c4_;
   br v33_ .b34_ .b35_;
 .b34_:
-  v36_: int = call @fac c1_;
+  v36_: int = call @fac c2_;
   v37_: int = id c4_;
 .b38_:
   v30_: int = id v37_;
@@ -311,11 +311,11 @@ expression: visualization.result
   v39_: int = id c4_;
   br v28_ .b40_ .b41_;
 .b41_:
-  v42_: bool = eq c1_ c4_;
+  v42_: bool = eq c2_ c4_;
   br v42_ .b43_ .b44_;
 .b43_:
-  v45_: int = call @fac c1_;
-  v46_: int = id c1_;
+  v45_: int = call @fac c2_;
+  v46_: int = id c4_;
 .b47_:
   v39_: int = id v46_;
 .b40_:
@@ -332,7 +332,7 @@ expression: visualization.result
   jmp .b47_;
 .b35_:
   c54_: int = const -1;
-  v55_: int = call @fac c1_;
+  v55_: int = call @fac c2_;
   v56_: int = call @fac c54_;
   v57_: int = add v55_ v56_;
   v37_: int = id v57_;

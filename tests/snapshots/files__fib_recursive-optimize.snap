@@ -270,10 +270,10 @@ expression: visualization.result
   br v8_ .b9_ .b10_;
 .b9_:
   v11_: bool = eq c2_ c2_;
-  v12_: int = id c4_;
+  v12_: int = id c1_;
   br v11_ .b13_ .b14_;
 .b14_:
-  v15_: bool = eq c2_ c4_;
+  v15_: bool = eq c1_ c2_;
   br v15_ .b16_ .b17_;
 .b16_:
   v18_: int = call @fac c2_;
@@ -281,14 +281,14 @@ expression: visualization.result
 .b20_:
   v12_: int = id v19_;
 .b13_:
-  v21_: int = id c4_;
+  v21_: int = id c1_;
 .b22_:
   v5_: int = id v21_;
   print v5_;
   ret;
 .b17_:
   c23_: int = const -1;
-  v24_: int = sub c23_ c4_;
+  v24_: int = sub c23_ c1_;
   v25_: int = call @fac c23_;
   v26_: int = call @fac v24_;
   v27_: int = add v25_ v26_;

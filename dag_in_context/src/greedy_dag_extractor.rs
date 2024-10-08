@@ -1,5 +1,6 @@
 use egglog::{ast::Literal, util::IndexMap, *};
 use egraph_serialize::{ClassId, EGraph, NodeId};
+use indexmap::IndexSet;
 use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
 use rustc_hash::FxHashMap;
@@ -130,7 +131,7 @@ impl<'a> EgraphInfo<'a> {
         let inlined_calls = Self::get_inlined_calls(&egraph);
 
         // get all the roots needed
-        let mut region_roots = HashSet::new();
+        let mut region_roots = IndexSet::new();
         for (_nodeid, node) in &egraph.nodes {
             for root in enode_regions(&egraph, node) {
                 region_roots.insert(root);

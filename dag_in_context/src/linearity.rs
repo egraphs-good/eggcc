@@ -34,7 +34,7 @@ impl<'a> Extractor<'a> {
         &mut self,
         prog: &TreeProgram,
         egraph_info: &EgraphInfo,
-    ) -> HashMap<ClassId, HashSet<NodeId>> {
+    ) -> IndexMap<ClassId, IndexSet<NodeId>> {
         let mut expr_to_term = HashMap::new();
         for (term, expr) in self.term_to_expr.as_ref().unwrap() {
             expr_to_term.insert(Rc::as_ptr(expr), term.clone());
@@ -58,7 +58,7 @@ impl<'a> Extractor<'a> {
             self.find_effectful_nodes_in_region(function.func_body().unwrap(), &mut linearity);
         }
 
-        let effectful_nodes: HashMap<ClassId, HashSet<NodeId>> = linearity
+        let effectful_nodes: IndexMap<ClassId, IndexSet<NodeId>> = linearity
             .effectful_nodes
             .into_iter()
             .map(|(k, v)| {

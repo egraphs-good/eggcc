@@ -63,7 +63,6 @@ use std::{collections::VecDeque, io::Write, mem};
 
 use crate::cfg::{BasicBlock, BlockName, Branch, BranchOp, CondVal, Identifier, SimpleCfgFunction};
 use bril_rs::{Argument, Instruction, Literal, Type, ValueOps};
-use hashbrown::HashSet;
 use indexmap::{IndexMap, IndexSet};
 use petgraph::{
     graph::{EdgeIndex, NodeIndex},
@@ -453,7 +452,7 @@ struct ValueState {
         Transform,
     )>,
     /// The set of variables written to in this basic block.
-    kills: HashSet<Identifier>,
+    kills: IndexSet<Identifier>,
     /// The materialized output of transforms on inherited.
     outputs: IndexMap<Identifier, ValueInfo>,
     /// A variable indicating if `outputs` is stale.

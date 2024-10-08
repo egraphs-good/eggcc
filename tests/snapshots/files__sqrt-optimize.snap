@@ -12,7 +12,7 @@ expression: visualization.result
   ret;
 .b5_:
   v6_: bool = feq v0 v0;
-  c7_: bool = const true;
+  c7_: bool = const false;
   v8_: float = id c2_;
   v9_: bool = id c7_;
   br v6_ .b10_ .b11_;
@@ -36,8 +36,8 @@ expression: visualization.result
   v28_: float = fadd v21_ v27_;
   v29_: float = fdiv v28_ v24_;
   v30_: float = fdiv v29_ v21_;
-  v31_: bool = fle v30_ v22_;
-  v32_: bool = fge v30_ v23_;
+  v31_: bool = fge v30_ v23_;
+  v32_: bool = fle v30_ v22_;
   v33_: bool = and v31_ v32_;
   v34_: bool = not v33_;
   v20_: float = id v20_;
@@ -51,14 +51,15 @@ expression: visualization.result
   print v21_;
   v13_: float = id v20_;
 .b14_:
+  v36_: bool = not v12_;
   v8_: float = id v13_;
-  v9_: bool = id v12_;
-  br v9_ .b11_ .b36_;
-.b36_:
+  v9_: bool = id v36_;
+  br v9_ .b37_ .b11_;
+.b37_:
   ret;
 .b11_:
-  v37_: float = fdiv v8_ v8_;
-  print v37_;
-  jmp .b36_;
-.b38_:
+  v38_: float = fdiv v8_ v8_;
+  print v38_;
+  jmp .b37_;
+.b39_:
 }

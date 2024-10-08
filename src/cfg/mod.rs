@@ -10,7 +10,7 @@ use std::{collections::HashMap, fmt::Display};
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};
-use hashbrown::HashSet;
+use indexmap::IndexSet;
 use petgraph::dot::Dot;
 
 use petgraph::stable_graph::{EdgeReference, StableDiGraph};
@@ -356,7 +356,7 @@ pub type SwitchCfgFunction = CfgFunction<Switch>;
 
 impl<CfgType> CfgFunction<CfgType> {
     pub(crate) fn remove_unreachable(&mut self) {
-        let mut reachable = HashSet::new();
+        let mut reachable = IndexSet::new();
         let mut dfs = DfsPostOrder::new(&self.graph, self.entry);
         while let Some(node) = dfs.next(&self.graph) {
             reachable.insert(node);

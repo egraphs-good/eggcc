@@ -9,7 +9,7 @@
 use std::collections::VecDeque;
 
 use bril_rs::Type;
-use hashbrown::{HashMap, HashSet};
+use indexmap::{IndexMap, IndexSet};
 use petgraph::{
     algo::{dominators, tarjan_scc},
     graph::NodeIndex,
@@ -132,8 +132,8 @@ impl SwitchCfgFunction {
             // The following follows the paper fairly literally.
 
             let scc_set = node_set(scc.iter().copied());
-            let mut entry_arcs = HashSet::new();
-            let mut entry_vertices = HashSet::new();
+            let mut entry_arcs = IndexSet::new();
+            let mut entry_vertices = IndexSet::new();
             for edge_ref in scc
                 .iter()
                 .flat_map(|node| self.graph.edges_directed(*node, Direction::Incoming))
@@ -143,8 +143,8 @@ impl SwitchCfgFunction {
                 entry_vertices.insert(edge_ref.target());
             }
 
-            let mut exit_arcs = HashSet::new();
-            let mut exit_vertices = HashSet::new();
+            let mut exit_arcs = IndexSet::new();
+            let mut exit_vertices = IndexSet::new();
 
             for edge_ref in scc
                 .iter()
@@ -155,7 +155,7 @@ impl SwitchCfgFunction {
                 exit_vertices.insert(edge_ref.target());
             }
 
-            let repetition_arcs: HashSet<EdgeIndex> = entry_vertices
+            let repetition_arcs: IndexSet<EdgeIndex> = entry_vertices
                 .iter()
                 .flat_map(|node| self.graph.edges_directed(*node, Direction::Incoming))
                 .filter(|e| scc_set.is_visited(&e.source()))
@@ -256,8 +256,8 @@ impl SwitchCfgFunction {
         node: NodeIndex,
         targets: impl IntoIterator<Item = NodeIndex>,
         state: &mut RestructureState,
-    ) -> (HashMap<NodeIndex, u32>, Identifier) {
-        let mut blocks = HashMap::new();
+    ) -> (IndexMap<NodeIndex, u32>, Identifier) {
+        let mut blocks = IndexMap::default();
         for node in targets {
             let cur_len = u32::try_from(blocks.len()).unwrap();
             blocks.entry(node).or_insert(cur_len);
@@ -283,9 +283,9 @@ impl SwitchCfgFunction {
     }
 
     /// Compute the subgraph of the CFG dominated by the given edge.
-    fn dominator_graph(&self, edge: EdgeIndex) -> HashSet<NodeIndex> {
-        let mut nodes = HashSet::new();
-        let mut edges = HashSet::new();
+    fn dominator_graph(&self, edge: EdgeIndex) -> IndexSet<NodeIndex> {
+        let mut nodes = IndexSet::default();
+        let mut edges = IndexSet::new();
         edges.insert(edge);
         let mut frontier = VecDeque::with_capacity(1);
         let (_, target) = self.graph.edge_endpoints(edge).unwrap();
@@ -542,9 +542,9 @@ const JMP: Branch = Branch {
 struct Continuation {
     /// Nodes in the "tail" (`T` above) that are targetted by an edge out of the
     /// given branch node.
-    reentry_nodes: HashSet<NodeIndex>,
+    reentry_nodes: IndexSet<NodeIndex>,
     /// A mapping from branch edge, to edges back to nodes not dominated by that edge.
-    exit_arcs: HashMap<EdgeIndex, HashSet<EdgeIndex>>,
+    exit_arcs: IndexMap<EdgeIndex, IndexSet<EdgeIndex>>,
 }
 
 struct EdgeData {

@@ -3,10 +3,10 @@
 //! track those down instead.
 
 use bril_rs::{Code, Function, Instruction, Program};
-use hashbrown::HashMap;
+use indexmap::IndexMap;
 
 struct Renamer {
-    name_map: HashMap<String, String>,
+    name_map: IndexMap<String, String>,
 }
 
 pub(crate) fn canonicalize_bril(prog: &Program) -> Program {
@@ -18,7 +18,7 @@ pub(crate) fn canonicalize_bril(prog: &Program) -> Program {
 
 fn canonicalize_func_names(func: &Function) -> Function {
     let mut renamer = Renamer {
-        name_map: HashMap::new(),
+        name_map: IndexMap::new(),
     };
     for arg in &func.args {
         // don't touch argument names

@@ -4,7 +4,7 @@
 //! This is used by `to_cfg` to clean up
 //! the output.
 
-use hashbrown::HashMap;
+use indexmap::IndexMap;
 use petgraph::{
     graph::EdgeIndex,
     stable_graph::{NodeIndex, StableDiGraph, StableGraph},
@@ -32,7 +32,7 @@ impl SimpleCfgFunction {
         // new graph
         // if a node was fused into another node,
         // it points to the new, fused node
-        let mut node_mapping: HashMap<NodeIndex, NodeIndex> = HashMap::new();
+        let mut node_mapping: IndexMap<NodeIndex, NodeIndex> = IndexMap::new();
 
         // we use a dfs post order
         // so dependencies are visited before parents

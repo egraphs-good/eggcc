@@ -4,12 +4,13 @@
 //! look for here are instructions that may break up basic blocks (`jmp`, `br`,
 //! `ret`), and labels. All other instructions are copied into the CFG.
 use core::fmt::Debug;
+use std::fmt::Display;
 use std::fmt::Formatter;
 use std::str::FromStr;
-use std::{collections::HashMap, fmt::Display};
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};
+use indexmap::IndexMap;
 use indexmap::IndexSet;
 use petgraph::dot::Dot;
 
@@ -611,7 +612,7 @@ pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
 
 struct CfgBuilder {
     cfg: SimpleCfgFunction,
-    label_to_block: HashMap<String, NodeIndex>,
+    label_to_block: IndexMap<String, NodeIndex>,
 }
 
 impl CfgBuilder {
@@ -629,7 +630,7 @@ impl CfgBuilder {
                 return_ty: func.return_type.clone(),
                 _phantom: Simple,
             },
-            label_to_block: HashMap::new(),
+            label_to_block: IndexMap::new(),
         }
     }
 

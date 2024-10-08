@@ -3,9 +3,8 @@ use egraph_serialize::{ClassId, EGraph, NodeId};
 use indexmap::{IndexMap, IndexSet};
 use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
-use rustc_hash::FxHashMap;
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashSet, VecDeque},
     f64::INFINITY,
 };
 use strum::IntoEnumIterator;
@@ -23,12 +22,12 @@ pub(crate) struct EgraphInfo<'a> {
     pub(crate) egraph: EGraph,
     // For every (root, eclass) pair, store the parent
     // (root, enode) pairs that may depend on it.
-    pub(crate) parents: HashMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
+    pub(crate) parents: IndexMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
     pub(crate) roots: Vec<(RootId, NodeId)>,
     pub(crate) cm: &'a dyn CostModel,
     /// Optionally, a loop with (inputs, outputs) can have an estimated number of iterations.
     /// This is found by looking at LoopNumItersGuess in the database.
-    pub(crate) loop_iteration_estimates: HashMap<(RootId, RootId), i64>,
+    pub(crate) loop_iteration_estimates: IndexMap<(RootId, RootId), i64>,
     /// A set of names of functions that are unextractable
     unextractables: IndexSet<String>,
     /// A set of (func args) of calls that have been inlined, to indicate we shouldn't
@@ -39,8 +38,8 @@ pub(crate) struct EgraphInfo<'a> {
 pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
     costsets: Vec<CostSet>,
-    costsetmemo: FxHashMap<(NodeId, Vec<CostSetIndex>), CostSetIndex>,
-    costs: FxHashMap<ClassId, FxHashMap<ClassId, CostSetIndex>>,
+    costsetmemo: IndexMap<(NodeId, Vec<CostSetIndex>), CostSetIndex>,
+    costs: IndexMap<ClassId, IndexMap<ClassId, CostSetIndex>>,
 
     // use to get the type of an expression
     pub(crate) typechecker: TypeChecker<'a>,
@@ -50,7 +49,7 @@ pub(crate) struct Extractor<'a> {
     pub(crate) correspondence: IndexMap<Term, NodeId>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
-    pub(crate) term_to_expr: Option<HashMap<Term, RcExpr>>,
+    pub(crate) term_to_expr: Option<IndexMap<Term, RcExpr>>,
     pub(crate) eclass_type: Option<IndexMap<ClassId, Type>>,
 }
 
@@ -65,7 +64,7 @@ impl<'a> EgraphInfo<'a> {
             .unwrap()
     }
 
-    fn get_loop_iteration_estimates(egraph: &EGraph) -> HashMap<(ClassId, ClassId), i64> {
+    fn get_loop_iteration_estimates(egraph: &EGraph) -> IndexMap<(ClassId, ClassId), i64> {
         // for every eclass that represents a single i64 in the egraph,
         // map the eclass to that integer
         let mut integers: IndexMap<ClassId, i64> = IndexMap::default();
@@ -76,7 +75,7 @@ impl<'a> EgraphInfo<'a> {
             }
         }
 
-        let mut loop_iteration_estimates = HashMap::default();
+        let mut loop_iteration_estimates = IndexMap::default();
 
         // loop over all nodes, finding LoopNumItersGuess nodes
         for (_nodeid, node) in &egraph.nodes {
@@ -219,7 +218,7 @@ impl<'a> EgraphInfo<'a> {
             parents.values().map(|v| v.len()).sum::<usize>()
         );
 
-        let mut parents_sorted = HashMap::default();
+        let mut parents_sorted = IndexMap::default();
         for (key, parents) in parents {
             let mut parents_vec = parents.into_iter().collect::<Vec<_>>();
             parents_vec.sort();

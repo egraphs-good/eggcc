@@ -13,6 +13,7 @@ use dag_in_context::ast::*;
 use dag_in_context::interpreter::Value;
 #[cfg(test)]
 use dag_in_context::schema::Constant;
+use indexmap::IndexMap;
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 use bril_rs::{EffectOps, Literal, ValueOps};
@@ -21,7 +22,6 @@ use dag_in_context::{
     ast::{add, call, dowhile, function, int, less_than, program_vec, tfalse, ttrue},
     schema::{RcExpr, TreeProgram, Type},
 };
-use hashbrown::HashMap;
 
 use super::RvsdgType;
 
@@ -85,7 +85,7 @@ impl StoredValue {
 
 struct DagTranslator<'a> {
     /// `stored_node` is a cache of already translated rvsdg nodes.
-    stored_node: HashMap<Id, StoredValue>,
+    stored_node: IndexMap<Id, StoredValue>,
     /// A reference to the nodes in the RVSDG.
     nodes: &'a [RvsdgBody],
     /// The next id to assign to an alloc.
@@ -353,7 +353,7 @@ impl<'a> DagTranslator<'a> {
 impl RvsdgFunction {
     fn to_dag_encoding(&self) -> RcExpr {
         let mut translator = DagTranslator {
-            stored_node: HashMap::new(),
+            stored_node: IndexMap::new(),
             nodes: &self.nodes,
             next_alloc_id: 0,
         };

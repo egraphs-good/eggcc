@@ -1,10 +1,7 @@
-use std::{
-    collections::{HashMap, HashSet},
-    rc::Rc,
-    vec,
-};
+use std::{rc::Rc, vec};
 
 use egglog::Term;
+use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     add_context::ContextCache,
@@ -23,7 +20,7 @@ pub struct CallBody {
 fn get_calls_with_cache(
     expr: &RcExpr,
     calls: &mut Vec<RcExpr>,
-    seen_exprs: &mut HashSet<*const Expr>,
+    seen_exprs: &mut IndexSet<*const Expr>,
 ) {
     if seen_exprs.get(&Rc::as_ptr(expr)).is_some() {
         return;
@@ -48,7 +45,7 @@ fn get_calls_with_cache(
 // to look up the body
 fn subst_call(
     call: &RcExpr,
-    func_to_body: &HashMap<String, &RcExpr>,
+    func_to_body: &IndexMap<String, &RcExpr>,
     cache: &mut ContextCache,
 ) -> CallBody {
     if let Expr::Call(func_name, args) = call.as_ref() {
@@ -83,10 +80,10 @@ pub fn function_inlining_pairs(
                 func.func_body().expect("Func has body"),
             )
         })
-        .collect::<HashMap<String, &RcExpr>>();
+        .collect::<IndexMap<String, &RcExpr>>();
 
     // Inline once
-    let mut seen_exprs: HashSet<*const Expr> = HashSet::new();
+    let mut seen_exprs: IndexSet<*const Expr> = IndexSet::new();
     let mut calls: Vec<RcExpr> = Vec::new();
     all_funcs
         .iter()
@@ -127,7 +124,7 @@ pub fn print_function_inlining_pairs(
     function_inlining_pairs: Vec<CallBody>,
     printed: &mut String,
     tree_state: &mut TreeToEgglog,
-    term_cache: &mut HashMap<Term, String>,
+    term_cache: &mut IndexMap<Term, String>,
 ) -> String {
     let inlined_calls = "(relation InlinedCall (String Expr))";
     // Get unions and mark each call as inlined for extraction purposes

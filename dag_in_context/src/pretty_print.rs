@@ -14,15 +14,16 @@ use crate::{
     to_egglog::TreeToEgglog,
 };
 use egglog::{ast::DUMMY_SPAN, Term, TermDag};
+use indexmap::IndexMap;
 
-use std::{collections::HashMap, hash::Hash, rc::Rc, vec};
+use std::{hash::Hash, rc::Rc, vec};
 
 #[derive(Default)]
 pub struct PrettyPrinter {
     // Type/Assum/BaseType -> intermediate variables
-    symbols: HashMap<NodeRef, String>,
+    symbols: IndexMap<NodeRef, String>,
     // intermediate variable -> Type/Assum/BaseType lookup
-    table: HashMap<String, AstNode>,
+    table: IndexMap<String, AstNode>,
     fresh_count: u64,
 }
 
@@ -126,7 +127,7 @@ impl PrettyPrinter {
         let (_, extracted) = egraph.extract(value, &mut termdag, &sort);
         let mut converter = FromEgglog {
             termdag: &termdag,
-            conversion_cache: HashMap::default(),
+            conversion_cache: IndexMap::default(),
         };
         let expr = converter.expr_from_egglog(extracted);
         if to_rust {

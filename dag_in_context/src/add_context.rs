@@ -4,7 +4,7 @@
 //! Mantains the sharing invariant (see restore_sharing_invariant) by using a cache.
 
 use egglog::Term;
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use crate::{
     print_with_intermediate_helper,
@@ -14,8 +14,8 @@ use crate::{
 };
 
 pub struct ContextCache {
-    with_ctx: HashMap<(*const Expr, AssumptionRef), RcExpr>,
-    symbol_gen: HashMap<(*const Expr, AssumptionRef), String>,
+    with_ctx: IndexMap<(*const Expr, AssumptionRef), RcExpr>,
+    symbol_gen: IndexMap<(*const Expr, AssumptionRef), String>,
     /// How many placeholder contexts we've created (used to make a unique name each time)
     loop_context_placeholder_counter: usize,
     /// The unions that we need to make between assumptions
@@ -48,8 +48,8 @@ impl ContextCache {
 
     pub fn new() -> ContextCache {
         ContextCache {
-            with_ctx: HashMap::new(),
-            symbol_gen: HashMap::new(),
+            with_ctx: IndexMap::new(),
+            symbol_gen: IndexMap::new(),
             loop_context_placeholder_counter: 0,
             loop_context_unions: Vec::new(),
             symbolic_ctx: false,
@@ -59,8 +59,8 @@ impl ContextCache {
 
     pub fn new_symbolic_ctx() -> ContextCache {
         ContextCache {
-            with_ctx: HashMap::new(),
-            symbol_gen: HashMap::new(),
+            with_ctx: IndexMap::new(),
+            symbol_gen: IndexMap::new(),
             loop_context_placeholder_counter: 0,
             loop_context_unions: Vec::new(),
             symbolic_ctx: true,
@@ -70,8 +70,8 @@ impl ContextCache {
 
     pub fn new_dummy_ctx() -> ContextCache {
         ContextCache {
-            with_ctx: HashMap::new(),
-            symbol_gen: HashMap::new(),
+            with_ctx: IndexMap::new(),
+            symbol_gen: IndexMap::new(),
             loop_context_placeholder_counter: 0,
             loop_context_unions: Vec::new(),
             symbolic_ctx: false,
@@ -94,7 +94,7 @@ impl ContextCache {
         &self,
         printed: &mut String,
         tree_state: &mut TreeToEgglog,
-        term_cache: &mut HashMap<Term, String>,
+        term_cache: &mut IndexMap<Term, String>,
     ) -> String {
         self.loop_context_unions
             .iter()

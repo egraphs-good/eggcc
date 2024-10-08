@@ -63,7 +63,7 @@ use std::{collections::VecDeque, io::Write, mem};
 
 use crate::cfg::{BasicBlock, BlockName, Branch, BranchOp, CondVal, Identifier, SimpleCfgFunction};
 use bril_rs::{Argument, Instruction, Literal, Type, ValueOps};
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashSet;
 use indexmap::{IndexMap, IndexSet};
 use petgraph::{
     graph::{EdgeIndex, NodeIndex},
@@ -575,7 +575,7 @@ impl ValueState {
 }
 
 struct ValueAnalysis {
-    data: HashMap<NodeIndex, ValueState>,
+    data: IndexMap<NodeIndex, ValueState>,
 }
 
 impl ValueAnalysis {

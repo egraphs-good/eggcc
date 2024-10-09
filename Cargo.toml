@@ -9,7 +9,7 @@ name = "files"
 
 
 [dependencies]
-egglog = { git = "https://github.com/egraphs-good/egglog", rev = "a761bacd70f87e2e91ab2006a058f864f93a3d84" }
+egglog = { git = "https://github.com/egraphs-good/egglog", rev = "ad4f8a8a2984d249cb626a222fbde64dac50ecb1" }
 egraph-serialize = "0.2.0"
 log = "0.4.19"
 thiserror = "1"

@@ -201,7 +201,6 @@ pub enum RunMode {
     /// Convert the original program to a RVSDG and then to a CFG, outputting one SVG per function.
     RvsdgToCfg,
     /// Converts to an executable using brilift (not using eggcc).
-    /// Brilift does not support phi nodes right now, so we can't run the optimized program with it.
     Cranelift,
     /// Converts to an executable using brillvm.
     /// `optimize_egglog` and `optimize_bril_llvm` must be set.
@@ -660,7 +659,7 @@ impl Run {
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
                 //println!("{}", program);
                 egglog::EGraph::default()
-                    .parse_and_run_program(&program)
+                    .parse_and_run_program(None, &program)
                     .unwrap();
                 (vec![], None)
             }

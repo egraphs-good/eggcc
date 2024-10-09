@@ -1,10 +1,10 @@
-use egglog::{ast::Literal, util::IndexMap, *};
+use egglog::{ast::Literal, *};
 use egraph_serialize::{ClassId, EGraph, NodeId};
+use indexmap::{IndexMap, IndexSet};
 use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
-use rustc_hash::FxHashMap;
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashSet, VecDeque},
     f64::INFINITY,
 };
 use strum::IntoEnumIterator;
@@ -22,24 +22,24 @@ pub(crate) struct EgraphInfo<'a> {
     pub(crate) egraph: EGraph,
     // For every (root, eclass) pair, store the parent
     // (root, enode) pairs that may depend on it.
-    pub(crate) parents: HashMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
+    pub(crate) parents: IndexMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
     pub(crate) roots: Vec<(RootId, NodeId)>,
     pub(crate) cm: &'a dyn CostModel,
     /// Optionally, a loop with (inputs, outputs) can have an estimated number of iterations.
     /// This is found by looking at LoopNumItersGuess in the database.
-    pub(crate) loop_iteration_estimates: HashMap<(RootId, RootId), i64>,
+    pub(crate) loop_iteration_estimates: IndexMap<(RootId, RootId), i64>,
     /// A set of names of functions that are unextractable
-    unextractables: HashSet<String>,
+    unextractables: IndexSet<String>,
     /// A set of (func args) of calls that have been inlined, to indicate we shouldn't
     /// extract the corresponding (Call func args).
-    inlined_calls: HashSet<(ClassId, ClassId)>,
+    inlined_calls: IndexSet<(ClassId, ClassId)>,
 }
 
 pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
     costsets: Vec<CostSet>,
-    costsetmemo: FxHashMap<(NodeId, Vec<CostSetIndex>), CostSetIndex>,
-    costs: FxHashMap<ClassId, FxHashMap<ClassId, CostSetIndex>>,
+    costsetmemo: IndexMap<(NodeId, Vec<CostSetIndex>), CostSetIndex>,
+    costs: IndexMap<ClassId, IndexMap<ClassId, CostSetIndex>>,
 
     // use to get the type of an expression
     pub(crate) typechecker: TypeChecker<'a>,
@@ -49,8 +49,8 @@ pub(crate) struct Extractor<'a> {
     pub(crate) correspondence: IndexMap<Term, NodeId>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
-    pub(crate) term_to_expr: Option<HashMap<Term, RcExpr>>,
-    pub(crate) eclass_type: Option<HashMap<ClassId, Type>>,
+    pub(crate) term_to_expr: Option<IndexMap<Term, RcExpr>>,
+    pub(crate) eclass_type: Option<IndexMap<ClassId, Type>>,
 }
 
 impl<'a> EgraphInfo<'a> {
@@ -64,18 +64,18 @@ impl<'a> EgraphInfo<'a> {
             .unwrap()
     }
 
-    fn get_loop_iteration_estimates(egraph: &EGraph) -> HashMap<(ClassId, ClassId), i64> {
+    fn get_loop_iteration_estimates(egraph: &EGraph) -> IndexMap<(ClassId, ClassId), i64> {
         // for every eclass that represents a single i64 in the egraph,
         // map the eclass to that integer
-        let mut integers = HashMap::new();
+        let mut integers: IndexMap<ClassId, i64> = IndexMap::default();
         for (nodeid, node) in &egraph.nodes {
             if let Ok(integer) = node.op.parse::<i64>() {
                 let eclass = egraph.nid_to_cid(nodeid);
-                integers.insert(eclass, integer);
+                integers.insert(eclass.clone(), integer);
             }
         }
 
-        let mut loop_iteration_estimates = HashMap::new();
+        let mut loop_iteration_estimates = IndexMap::default();
 
         // loop over all nodes, finding LoopNumItersGuess nodes
         for (_nodeid, node) in &egraph.nodes {
@@ -99,8 +99,8 @@ impl<'a> EgraphInfo<'a> {
         loop_iteration_estimates
     }
 
-    fn get_inlined_calls(egraph: &EGraph) -> HashSet<(ClassId, ClassId)> {
-        let mut inlined_calls = HashSet::new();
+    fn get_inlined_calls(egraph: &EGraph) -> IndexSet<(ClassId, ClassId)> {
+        let mut inlined_calls = IndexSet::new();
 
         // loop over all nodes, finding InlinedCall nodes
         for (_nodeid, node) in &egraph.nodes {
@@ -124,13 +124,13 @@ impl<'a> EgraphInfo<'a> {
     pub(crate) fn new(
         cm: &'a dyn CostModel,
         egraph: EGraph,
-        unextractables: HashSet<String>,
+        unextractables: IndexSet<String>,
     ) -> Self {
         let loop_iteration_estimates = Self::get_loop_iteration_estimates(&egraph);
         let inlined_calls = Self::get_inlined_calls(&egraph);
 
         // get all the roots needed
-        let mut region_roots = HashSet::new();
+        let mut region_roots = IndexSet::new();
         for (_nodeid, node) in &egraph.nodes {
             for root in enode_regions(&egraph, node) {
                 region_roots.insert(root);
@@ -179,7 +179,8 @@ impl<'a> EgraphInfo<'a> {
         roots.sort();
         log::info!("Found {} roots", roots.len());
 
-        let mut parents: HashMap<(RootId, ClassId), HashSet<(RootId, NodeId)>> = HashMap::new();
+        let mut parents: IndexMap<(RootId, ClassId), IndexSet<(RootId, NodeId)>> =
+            IndexMap::default();
         for (root, eclass) in relavent_eclasses {
             // iterate over every root, enode pair
             for enode in egraph.classes()[&eclass].nodes.iter() {
@@ -217,7 +218,7 @@ impl<'a> EgraphInfo<'a> {
             parents.values().map(|v| v.len()).sum::<usize>()
         );
 
-        let mut parents_sorted = HashMap::new();
+        let mut parents_sorted = IndexMap::default();
         for (key, parents) in parents {
             let mut parents_vec = parents.into_iter().collect::<Vec<_>>();
             parents_vec.sort();
@@ -278,7 +279,7 @@ impl<'a> Extractor<'a> {
             termdag: self.termdag,
             conversion_cache: Default::default(),
         };
-        let mut node_to_type: HashMap<ClassId, Type> = Default::default();
+        let mut node_to_type: IndexMap<ClassId, Type> = Default::default();
 
         for (term, node_id) in &self.correspondence {
             let node = info.egraph.nodes.get(node_id).unwrap();
@@ -368,7 +369,7 @@ pub(crate) fn get_root(egraph: &egraph_serialize::EGraph) -> NodeId {
     res.0.clone()
 }
 
-pub fn get_unextractables(egraph: &egglog::EGraph) -> HashSet<String> {
+pub fn get_unextractables(egraph: &egglog::EGraph) -> IndexSet<String> {
     let unextractables = egraph
         .functions
         .iter()
@@ -385,7 +386,7 @@ pub fn get_unextractables(egraph: &egglog::EGraph) -> HashSet<String> {
 
 pub fn serialized_egraph(
     egglog_egraph: egglog::EGraph,
-) -> (egraph_serialize::EGraph, HashSet<String>) {
+) -> (egraph_serialize::EGraph, IndexSet<String>) {
     let config = SerializeConfig::default();
     let egraph = egglog_egraph.serialize(config);
 
@@ -687,7 +688,7 @@ fn node_cost_in_region(
 pub fn extract(
     original_prog: &TreeProgram,
     egraph: egraph_serialize::EGraph,
-    unextractables: HashSet<String>,
+    unextractables: IndexSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
 ) -> (CostSet, TreeProgram) {
@@ -719,7 +720,7 @@ pub fn extract_with_paths(
     // If effectful paths are present,
     // for each region we will only consider
     // effectful nodes that are in effectful_path[rootid]
-    effectful_paths: Option<&HashMap<ClassId, HashSet<NodeId>>>,
+    effectful_paths: Option<&IndexMap<ClassId, IndexSet<NodeId>>>,
 ) -> (CostSet, TreeProgram) {
     if effectful_paths.is_some() {
         log::info!("Re-extracting program after linear path is found.");
@@ -1095,8 +1096,8 @@ fn region_reachable_classes(
     egraph: &egraph_serialize::EGraph,
     root: ClassId,
     cm: &dyn CostModel,
-) -> HashSet<ClassId> {
-    let mut visited = HashSet::new();
+) -> IndexSet<ClassId> {
+    let mut visited = IndexSet::new();
     let mut queue = UniqueQueue::default();
     queue.insert(root);
 
@@ -1143,7 +1144,7 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
     };
 
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&string_prog).unwrap();
+    egraph.parse_and_run_program(None, &string_prog).unwrap();
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
@@ -1170,7 +1171,7 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
     };
 
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&string_prog).unwrap();
+    egraph.parse_and_run_program(None, &string_prog).unwrap();
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
@@ -1389,7 +1390,7 @@ fn test_validity_of_extraction() {
     };
 
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&string_prog).unwrap();
+    egraph.parse_and_run_program(None, &string_prog).unwrap();
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 

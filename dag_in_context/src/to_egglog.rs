@@ -1,9 +1,10 @@
-use std::{collections::HashMap, rc::Rc, vec};
+use std::{rc::Rc, vec};
 
 use egglog::{
     ast::{Literal, Symbol},
     Term, TermDag,
 };
+use indexmap::IndexMap;
 
 use crate::{
     from_egglog::program_from_egglog_preserve_ctx_nodes,
@@ -15,7 +16,7 @@ use crate::{
 pub(crate) struct TreeToEgglog {
     pub termdag: TermDag,
     // Cache for shared subexpressions
-    converted_cache: HashMap<*const Expr, Term>,
+    converted_cache: IndexMap<*const Expr, Term>,
 }
 
 impl TreeToEgglog {
@@ -23,7 +24,7 @@ impl TreeToEgglog {
     pub fn new() -> TreeToEgglog {
         TreeToEgglog {
             termdag: TermDag::default(),
-            converted_cache: HashMap::new(),
+            converted_cache: IndexMap::new(),
         }
     }
 
@@ -292,7 +293,7 @@ impl TreeProgram {
     pub fn to_egglog_with_termdag(&self, termdag: TermDag) -> (Term, TermDag) {
         let mut state = TreeToEgglog {
             termdag,
-            converted_cache: HashMap::new(),
+            converted_cache: IndexMap::new(),
         };
         (self.to_egglog_with(&mut state), state.termdag)
     }
@@ -342,9 +343,21 @@ fn test_expr_parses_to(expr: RcExpr, expected: &str) {
 }
 
 #[cfg(test)]
+pub const DEFAULT_FILENAME: &str = "<unnamed.egg>";
+
+#[cfg(test)]
 fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
+    use std::sync::Arc;
+
+    use egglog::ast::SrcFile;
+
+    let filename = DEFAULT_FILENAME.to_string();
+    let srcfile = Arc::new(SrcFile {
+        name: filename,
+        contents: Some(expected.to_string()),
+    });
     let parser = egglog::ast::parse::ExprParser::new();
-    let parsed = parser.parse(expected).unwrap();
+    let parsed = parser.parse(&srcfile, expected).unwrap();
     let term2 = termdag.expr_to_term(&parsed);
     let pretty1 = termdag.term_to_expr(&term).to_sexp().pretty();
     let pretty2 = termdag.term_to_expr(&term2).to_sexp().pretty();

@@ -1,9 +1,10 @@
 //! Converts from an egglog AST directly to the rust representation of that AST.
 //! Common subexpressions (common terms) must be converted to the same RcExpr (pointer equality).
 
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
 use egglog::{ast::Literal, match_term_app, Term};
+use indexmap::IndexMap;
 
 use crate::schema::{
     Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp,
@@ -11,13 +12,13 @@ use crate::schema::{
 
 pub struct FromEgglog<'a> {
     pub termdag: &'a egglog::TermDag,
-    pub conversion_cache: HashMap<Term, RcExpr>,
+    pub conversion_cache: IndexMap<Term, RcExpr>,
 }
 
 pub fn program_from_egglog(program: Term, termdag: &egglog::TermDag) -> TreeProgram {
     let mut converter = FromEgglog {
         termdag,
-        conversion_cache: HashMap::new(),
+        conversion_cache: IndexMap::new(),
     };
     converter.program_from_egglog(program)
 }
@@ -28,7 +29,7 @@ pub fn program_from_egglog_preserve_ctx_nodes(
 ) -> TreeProgram {
     let mut converter = FromEgglog {
         termdag,
-        conversion_cache: HashMap::new(),
+        conversion_cache: IndexMap::new(),
     };
     converter.program_from_egglog(program)
 }

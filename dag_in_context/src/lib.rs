@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use egglog::{Term, TermDag};
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
+use indexmap::IndexMap;
 use interpreter::Value;
 use schema::TreeProgram;
 use std::fmt::Write;
@@ -79,7 +78,7 @@ pub fn prologue() -> String {
 fn print_with_intermediate_helper(
     termdag: &TermDag,
     term: Term,
-    cache: &mut HashMap<Term, String>,
+    cache: &mut IndexMap<Term, String>,
     res: &mut String,
 ) -> String {
     if let Some(var) = cache.get(&term) {
@@ -108,7 +107,7 @@ fn print_with_intermediate_helper(
 
 pub fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
     let mut printed = String::new();
-    let mut cache = HashMap::<Term, String>::new();
+    let mut cache = IndexMap::<Term, String>::new();
     let res = print_with_intermediate_helper(termdag, term, &mut cache, &mut printed);
     printed.push_str(&format!("(let PROG {res})\n"));
     printed
@@ -120,7 +119,7 @@ pub fn build_program(program: &TreeProgram, cache: &mut ContextCache, optimize: 
 
     // Create a global cache for generating intermediate variables
     let mut tree_state = TreeToEgglog::new();
-    let mut term_cache = HashMap::<Term, String>::new();
+    let mut term_cache = IndexMap::<Term, String>::new();
 
     // Generate function inlining egglog
     let function_inlining_unions = if !optimize {
@@ -190,7 +189,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let egglog_prog = build_program(program, &mut ContextCache::new(), false);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&egglog_prog).unwrap();
+    egraph.parse_and_run_program(None, &egglog_prog).unwrap();
 
     let (serialized, unextractables) = serialized_egraph(egraph);
     let (_res_cost, res) = extract(
@@ -219,7 +218,7 @@ pub fn optimize(
     let egglog_prog = build_program(program, cache, true);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(&egglog_prog)?;
+    egraph.parse_and_run_program(None, &egglog_prog)?;
 
     let (serialized, unextractables) = serialized_egraph(egraph);
     let mut termdag = egglog::TermDag::default();
@@ -271,7 +270,7 @@ fn check_program_gets_type(program: TreeProgram) -> Result {
     );
 
     egglog::EGraph::default()
-        .parse_and_run_program(&s)
+        .parse_and_run_program(None, &s)
         .map(|lines| {
             for line in lines {
                 println!("{}", line);
@@ -349,7 +348,7 @@ fn egglog_test_internal(
     }
 
     let res = egglog::EGraph::default()
-        .parse_and_run_program(&program)
+        .parse_and_run_program(None, &program)
         .map(|lines| {
             for line in lines {
                 println!("{}", line);

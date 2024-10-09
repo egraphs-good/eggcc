@@ -9,7 +9,7 @@ use std::{collections::BTreeMap, fmt, mem};
 use bril_rs::{self, EffectOps, Instruction, ValueOps};
 use fixedbitset::FixedBitSet;
 use hashbrown::HashMap;
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use petgraph::{
     stable_graph::NodeIndex,
     visit::{DfsPostOrder, VisitMap, Visitable},
@@ -270,7 +270,7 @@ impl<'a> fmt::Debug for StateAndNames<'a> {
 /// Type information recorded during live variable analysis.
 #[derive(Default)]
 pub(crate) struct VarTypes {
-    data: HashMap<VarId, VarType>,
+    data: IndexMap<VarId, VarType>,
 }
 
 impl VarTypes {

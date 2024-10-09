@@ -2,11 +2,7 @@
 //! program use memory linearly.
 //! In particular, it finds all the effectful e-nodes in an extracted term that are along the state edge path.
 
-use std::{
-    collections::{HashMap, HashSet},
-    iter,
-    rc::Rc,
-};
+use std::{collections::HashSet, iter, rc::Rc};
 
 use egglog::Term;
 use egraph_serialize::{ClassId, NodeId};
@@ -21,8 +17,8 @@ type EffectfulNodes = IndexMap<ClassId, IndexSet<*const Expr>>;
 
 struct Linearity {
     effectful_nodes: EffectfulNodes,
-    expr_to_term: HashMap<*const Expr, Term>,
-    n2c: HashMap<NodeId, ClassId>,
+    expr_to_term: IndexMap<*const Expr, Term>,
+    n2c: IndexMap<NodeId, ClassId>,
 }
 
 impl<'a> Extractor<'a> {
@@ -34,8 +30,8 @@ impl<'a> Extractor<'a> {
         &mut self,
         prog: &TreeProgram,
         egraph_info: &EgraphInfo,
-    ) -> HashMap<ClassId, HashSet<NodeId>> {
-        let mut expr_to_term = HashMap::new();
+    ) -> IndexMap<ClassId, IndexSet<NodeId>> {
+        let mut expr_to_term = IndexMap::new();
         for (term, expr) in self.term_to_expr.as_ref().unwrap() {
             expr_to_term.insert(Rc::as_ptr(expr), term.clone());
         }
@@ -58,7 +54,7 @@ impl<'a> Extractor<'a> {
             self.find_effectful_nodes_in_region(function.func_body().unwrap(), &mut linearity);
         }
 
-        let effectful_nodes: HashMap<ClassId, HashSet<NodeId>> = linearity
+        let effectful_nodes: IndexMap<ClassId, IndexSet<NodeId>> = linearity
             .effectful_nodes
             .into_iter()
             .map(|(k, v)| {
@@ -72,7 +68,7 @@ impl<'a> Extractor<'a> {
 
         // assert that we only find one node per eclass (otherwise the extractor is incorrect)
         for nodes in effectful_nodes.values() {
-            let mut eclasses = HashSet::new();
+            let mut eclasses = IndexSet::new();
             for node in nodes {
                 assert!(eclasses.insert(egraph_info.egraph.nid_to_cid(node)));
             }
@@ -234,7 +230,7 @@ impl<'a> Extractor<'a> {
                     })
                     .collect();
 
-                let mut effectful_parent: HashMap<*const Expr, RcExpr> = Default::default();
+                let mut effectful_parent: IndexMap<*const Expr, RcExpr> = Default::default();
 
                 for expr in exprs {
                     let Some(expr) = get_if_effectful(self, expr) else {
@@ -279,7 +275,7 @@ impl Expr {
         self: &RcExpr,
         root: &RcExpr,
         reachable_from: &mut IndexMap<*const Expr, IndexSet<*const Expr>>,
-        raw_to_rc: &mut HashMap<*const Expr, RcExpr>,
+        raw_to_rc: &mut IndexMap<*const Expr, RcExpr>,
     ) {
         raw_to_rc
             .entry(Rc::as_ptr(self))

@@ -353,7 +353,14 @@ pub struct Run {
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
-    Executable { executable: String },
+    /// An executable that also prints the number of cycles it took to run to stderr (llvm)
+    CycleMeasuringExecutable {
+        executable: String,
+    },
+    /// An executable that doesn't measure number of cycles (cranelift)
+    Executable {
+        executable: String,
+    },
 }
 
 /// Some sort of visualization of the result, with a name
@@ -373,6 +380,7 @@ pub struct RunOutput {
     // if the result was interpreted, the stdout of interpreting it
     pub result_interpreted: Option<String>,
     pub original_interpreted: Option<String>,
+    pub cycles_taken: Option<u64>,
 }
 
 impl Run {
@@ -520,11 +528,14 @@ impl Run {
             ))
         } else if self.interp == InterpMode::InterpFast {
             let interpretable = self.run_brilift(self.prog_with_args.program.clone(), true);
-            let res = Some(Optimizer::interp(
-                interpretable.as_ref().unwrap(),
-                self.prog_with_args.args.clone(),
-                None,
-            ));
+            let res = Some(
+                Optimizer::interp(
+                    interpretable.as_ref().unwrap(),
+                    self.prog_with_args.args.clone(),
+                    None,
+                )
+                .0,
+            );
 
             // clean up binary
             if let Interpretable::Executable { executable } = interpretable.unwrap() {
@@ -850,11 +861,13 @@ impl Run {
 
             res
         };
+        let cycles_taken = result_interpreted.as_ref().map(|val| val.1).unwrap_or(None);
 
         Ok(RunOutput {
             visualizations,
-            result_interpreted,
+            result_interpreted: result_interpreted.map(|val| val.0),
             original_interpreted,
+            cycles_taken,
         })
     }
 
@@ -1030,7 +1043,7 @@ impl Run {
             self.prog_with_args.args.join(" "),
         );
 
-        Ok(Interpretable::Executable { executable })
+        Ok(Interpretable::CycleMeasuringExecutable { executable })
     }
 }
 

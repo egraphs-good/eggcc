@@ -101,6 +101,7 @@ fn main() {
     if args.interp {
         // just print out the result of interpreting the program
         println!("{}", result.result_interpreted.unwrap());
+        eprintln!("{}", result.cycles_taken.unwrap());
     } else if let &[visualization] = &result.visualizations.as_slice() {
         // when there is just one visualization, print it out without
         // the "visualization of: {}" header for convenience

@@ -1,14 +1,16 @@
 #!/bin/bash
 
+echo "Building runtime.bc and rt.o"
+
 set -e
 
 # remove rt.bc if it exists
-if [ -f brillvm/rt.bc ]; then
-    rm brillvm/rt.bc
+if [ -f runtime/rt.bc ]; then
+    rm runtime/rt.bc
 fi
 
-if [ -f brillvm/rt.bc ]; then
-    rm brillvm/rt.o
+if [ -f runtime/rt.bc ]; then
+    rm runtime/rt.o
 fi
 
 cd runtime

@@ -278,7 +278,6 @@ dependencies = [
 [[package]]
 name = "brillvm"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b#e2be3f5d7e160f02b7aed0ef2bcc3e13ae722d2b"
 dependencies = [
  "bril-rs 0.1.0 (git+https://github.com/uwplse/bril)",
  "clap",

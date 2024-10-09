@@ -3,6 +3,8 @@ const treatments = [
   "rvsdg-round-trip-to-executable",
   "cranelift-O3",
   "llvm-O0",
+  "llvm-O1",
+  "llvm-O2",
   "llvm-O0-eggcc",
   "llvm-O3",
   "llvm-O3-eggcc",

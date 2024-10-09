@@ -1,5 +1,5 @@
 use clap::Parser;
-use eggcc::util::{visualize, InterpMode, Run, RunMode, TestProgram};
+use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
 use std::{ffi::OsStr, path::PathBuf};
 
 #[derive(Debug, Parser)]
@@ -44,7 +44,7 @@ struct Args {
     optimize_brilift: Option<bool>,
     /// For the LLVM run mode, choose between O0 and O3.
     #[clap(long)]
-    optimize_bril_llvm: Option<bool>,
+    optimize_bril_llvm: Option<LLVMOptLevel>,
 }
 
 fn main() {

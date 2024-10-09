@@ -145,6 +145,21 @@ fn get_eggcc_root() -> String {
     std::env::var("EGGCC_ROOT").unwrap_or(".".to_string())
 }
 
+#[derive(Debug, Clone, ValueEnum, Copy)]
+#[clap(rename_all = "verbatim")]
+pub enum LLVMOptLevel {
+    O0,
+    O1,
+    O2,
+    O3,
+}
+
+impl Display for LLVMOptLevel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_possible_value().unwrap().get_name())
+    }
+}
+
 /// Different ways to run eggcc
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ValueEnum, Debug)]
 pub enum RunMode {
@@ -330,7 +345,7 @@ pub struct Run {
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
     pub optimize_brilift: Option<bool>,
-    pub optimize_bril_llvm: Option<bool>,
+    pub optimize_bril_llvm: Option<LLVMOptLevel>,
 }
 
 /// an enum of IRs that can be interpreted
@@ -456,7 +471,7 @@ impl Run {
         #[cfg(feature = "llvm")]
         {
             for optimize_egglog in [true, false] {
-                for optimize_brillvm in [true, false] {
+                for optimize_llvm in [LLVMOptLevel::O0, LLVMOptLevel::O3] {
                     res.push(Run {
                         test_type: RunMode::LLVM,
                         interp: InterpMode::Interp,
@@ -466,7 +481,7 @@ impl Run {
                         llvm_output_dir: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: None,
-                        optimize_bril_llvm: Some(optimize_brillvm),
+                        optimize_bril_llvm: Some(optimize_llvm),
                     });
                 }
             }
@@ -485,15 +500,12 @@ impl Run {
             };
         }
         if self.test_type == RunMode::LLVM {
-            name += match (
-                self.optimize_egglog.unwrap(),
-                self.optimize_bril_llvm.unwrap(),
-            ) {
-                (false, false) => "-O0",
-                (true, false) => "-O0-eggcc",
-                (false, true) => "-O3",
-                (true, true) => "-O3-eggcc",
+            let end = match self.optimize_egglog.unwrap() {
+                false => format!("-{}", self.optimize_bril_llvm.as_ref().unwrap()),
+                true => format!("-{}-eggcc", self.optimize_bril_llvm.as_ref().unwrap()),
             };
+
+            name += &end;
         }
 
         name
@@ -573,7 +585,7 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
-                let interpretable = self.run_bril_llvm(bril, false, false)?;
+                let interpretable = self.run_bril_llvm(bril, false, LLVMOptLevel::O0)?;
                 (vec![], Some(interpretable))
             }
             RunMode::DagToRvsdg => {
@@ -794,7 +806,7 @@ impl Run {
                         self.prog_with_args.program.clone()
                     };
 
-                    for optimize_llvm in [true, false] {
+                    for optimize_llvm in [LLVMOptLevel::O0, LLVMOptLevel::O3] {
                         let interpretable =
                             self.run_bril_llvm(resulting_bril.clone(), false, optimize_llvm)?;
                         let new_interpreted = Optimizer::interp(
@@ -917,11 +929,11 @@ impl Run {
         &self,
         input_prog: Program,
         optimize_egglog: bool,
-        optimize_llvm: bool,
+        llvm_level: LLVMOptLevel,
     ) -> Result<Interpretable, EggCCError> {
         // Make a unique name for this test running bril llvm
         // so we don't have conflicts in /tmp
-        let unique_name = format!("{}_{}_{}", self.name(), optimize_egglog, optimize_llvm);
+        let unique_name = format!("{}_{}_{}", self.name(), optimize_egglog, llvm_level);
 
         let program = if optimize_egglog {
             Run::optimize_bril(&input_prog)?
@@ -962,80 +974,57 @@ impl Run {
                 .status()
                 .unwrap();
         }
-        if optimize_llvm {
+
+        let processed = dir.path().join("postprocessed.ll");
+        // HACK: check if opt-18 exists
+        // otherwise use opt
+        // On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
+        // Also, on some machines, just running `opt-18` hangs, so we pass the version flag
+        let opt_cmd = if Command::new("opt-18").arg("--version").status().is_ok() {
+            "opt-18"
+        } else {
+            "opt"
+        };
+
+        let res = Command::new(opt_cmd)
+            .arg("-passes=sroa")
+            .arg("-S")
+            .arg(file_path.clone())
+            .arg("-o")
+            .arg(processed.clone())
+            .status()
+            .unwrap();
+        if !res.success() {
+            let p1_string = std::fs::read_to_string(file_path.clone()).unwrap();
+            panic!("Opt failed on following input:\n{p1_string}");
+        }
+
+        expect_command_success(
+            Command::new("clang-18")
+                .arg(processed.clone())
+                .arg(format!("-{}", llvm_level))
+                .arg("-fno-vectorize")
+                .arg("-fno-slp-vectorize")
+                .arg("-o")
+                .arg(executable.clone()),
+            "failed to compile llvm ir",
+        );
+        if let Some(output_dir) = &self.llvm_output_dir {
             expect_command_success(
                 Command::new("clang-18")
-                    .arg(file_path.clone())
-                    .arg("-O3")
+                    .current_dir(output_dir)
+                    .arg(processed)
+                    .arg(format!("-{}", llvm_level))
                     .arg("-fno-vectorize")
                     .arg("-fno-slp-vectorize")
+                    .arg("-emit-llvm")
+                    .arg("-S")
                     .arg("-o")
-                    .arg(executable.clone()),
-                "failed to compile llvm ir",
+                    .arg(format!("{}.ll", self.name())),
+                "failed to copy unoptimized llvm ir",
             );
-
-            if let Some(output_dir) = &self.llvm_output_dir {
-                // Emit optimized LLVM IR
-                expect_command_success(
-                    Command::new("clang-18")
-                        .current_dir(output_dir)
-                        .arg(file_path.clone())
-                        .arg("-O3")
-                        .arg("-fno-vectorize")
-                        .arg("-fno-slp-vectorize")
-                        .arg("-emit-llvm")
-                        .arg("-S")
-                        .arg("-o")
-                        .arg(format!("{}.ll", self.name())),
-                    "failed to compile llvm ir and emit llvm ir",
-                );
-            }
-        } else {
-            let processed = dir.path().join("postprocessed.ll");
-            // HACK: check if opt-18 exists
-            // otherwise use opt
-            // On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
-            // Also, on some machines, just running `opt-18` hangs, so we pass the version flag
-            let opt_cmd = if Command::new("opt-18").arg("--version").status().is_ok() {
-                "opt-18"
-            } else {
-                "opt"
-            };
-
-            let res = Command::new(opt_cmd)
-                .arg("-passes=sroa")
-                .arg("-S")
-                .arg(file_path.clone())
-                .arg("-o")
-                .arg(processed.clone())
-                .status()
-                .unwrap();
-            if !res.success() {
-                let p1_string = std::fs::read_to_string(file_path.clone()).unwrap();
-                panic!("Opt failed on following input:\n{p1_string}");
-            }
-            expect_command_success(
-                Command::new("clang-18")
-                    .arg(processed.clone())
-                    .arg("-O0")
-                    .arg("-o")
-                    .arg(executable.clone()),
-                "failed to compile llvm ir",
-            );
-            if let Some(output_dir) = &self.llvm_output_dir {
-                expect_command_success(
-                    Command::new("clang-18")
-                        .current_dir(output_dir)
-                        .arg(processed)
-                        .arg("-O0")
-                        .arg("-emit-llvm")
-                        .arg("-S")
-                        .arg("-o")
-                        .arg(format!("{}.ll", self.name())),
-                    "failed to copy unoptimized llvm ir",
-                );
-            }
         }
+
         let _ = std::fs::write(
             executable.clone() + "-args",
             self.prog_with_args.args.join(" "),

@@ -5,7 +5,7 @@ sudo add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 
 
 sudo apt-get update
 
-sudo apt-get install clang-18 llvm-18
+sudo apt-get install clang-18 llvm-18 libllvm18 llvm-18-dev llvm-18-runtime
 
 sudo apt-get install libpolly-18-dev
 sudo apt-get install libzstd-dev

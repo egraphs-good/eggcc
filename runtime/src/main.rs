@@ -2,12 +2,75 @@
 use std::alloc::{alloc, dealloc};
 use std::convert::TryInto;
 use std::mem::size_of; */
-#![no_std]
 #![no_main]
+#![no_std]
 
 use core::ffi::{c_char, CStr};
 
-use libc_print::std_name::{print, println};
+use libc_print::std_name::{eprintln, print, println};
+
+// code for tick counter from
+// tick_counter = "0.4.5"
+
+// HACK: Some tool in our toolchain is dropping get_ticks_start
+// on aarch64 because it is identical to get_ticks_end.
+// So on aarch we call it something different
+#[no_mangle]
+#[inline(never)]
+#[cfg(target_arch = "aarch64")]
+pub extern "C" fn _bril_get_ticks() -> u64 {
+    use core::arch::asm;
+
+    let tick_counter: u64;
+    unsafe {
+        asm!(
+            "mrs x0, cntvct_el0",
+            out("x0") tick_counter
+        );
+    }
+    tick_counter
+}
+
+#[no_mangle]
+#[inline(never)]
+#[cfg(target_arch = "x86_64")]
+pub extern "C" fn _bril_get_ticks_start() -> u64 {
+    let rax: u64;
+    unsafe {
+        asm!(
+            "mfence",
+            "lfence",
+            "rdtsc",
+            "shl rdx, 32",
+            "or rax, rdx",
+            out("rax") rax
+        );
+    }
+    rax
+}
+
+#[no_mangle]
+#[inline(never)]
+#[cfg(target_arch = "x86_64")]
+pub extern "C" fn _bril_get_ticks_end() -> u64 {
+    let rax: u64;
+    unsafe {
+        asm!(
+            "rdtsc",
+            "lfence",
+            "shl rdx, 32",
+            "or rax, rdx",
+            out("rax") rax
+        );
+    }
+    rax
+}
+
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn _bril_eprintln_unsigned_int(i: u64) {
+    eprintln!("{}", i);
+}
 
 #[no_mangle]
 #[inline(never)]

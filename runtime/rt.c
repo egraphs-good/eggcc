@@ -1,3 +1,5 @@
+// the c runtime is used for cranelift, while the rust one is used for llvm
+
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>

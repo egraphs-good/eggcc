@@ -34,9 +34,3 @@ function getDifference(current, baseline) {
   }
 }
 
-// compare two objects at a particular attribute
-function diffAttribute(results, baseline, attribute) {
-  const current = results[attribute];
-  const baselineNum = baseline?.[attribute];
-  return getDifference(current, baselineNum);
-}

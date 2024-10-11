@@ -11,7 +11,7 @@ import concurrent.futures
 
 treatments = [
   "rvsdg-round-trip-to-executable",
-  "cranelift-O3",
+  #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
   "llvm-O0",
   "llvm-O1",
   "llvm-O2",
@@ -82,7 +82,7 @@ def optimize(benchmark):
 
 
 def bench(benchmark):
-  print(f'[{benchmark.index}/{benchmark.total}] Benchmarking {benchmark.name} with {benchmark.treatment}')
+  print(f'[{benchmark.index}/{benchmark.total}] Benchmarking {benchmark.name} with {benchmark.treatment}', flush=True)
   profile_dir = benchmark_profile_dir(benchmark.name)
 
   with open(f'{profile_dir}/{benchmark.treatment}-args') as f:
@@ -95,10 +95,20 @@ def bench(benchmark):
         #f.write(f'ERROR: No executable found for {name} in {benchmark.path}\n')
       return None
     else:
-      # TODO for final nightly results, remove `--max-runs 2` and let hyperfine find stable results
-      cmd = f'hyperfine --style none --warmup 1 --max-runs 2 --export-json /dev/stdout "{profile_dir}/{benchmark.treatment}{" " + args if len(args) > 0 else ""}"'
-      result = subprocess.run(cmd, capture_output=True, shell=True)
-      return (f'{profile_dir}/{benchmark.treatment}', json.loads(result.stdout))
+      # hyperfine command for measuring time, unused in favor of cycles
+      # cmd = f'hyperfine --style none --warmup 1 --max-runs 2 --export-json /dev/stdout "{profile_dir}/{benchmark.treatment}{" " + args if len(args) > 0 else ""}"'
+      samples = 1000
+      resulting_num_cycles = []
+      for i in range(samples):
+        args_str = " " + args if len(args) > 0 else ""
+        cmd = f'{profile_dir}/{benchmark.treatment}{args_str}'
+        result = subprocess.run(cmd, capture_output=True, shell=True)
+        res_cycles = int(result.stderr)
+        resulting_num_cycles.append(res_cycles)
+        if result.returncode != 0:
+          raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {result.stderr}')
+
+      return (f'{profile_dir}/{benchmark.treatment}', resulting_num_cycles)
 
 # Run modes that we expect to output llvm IR
 def should_have_llvm_ir(runMethod):
@@ -117,7 +127,7 @@ def aggregate(compile_times, bench_times, benchmark_metadata):
     for path in sorted(compile_times.keys()):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
-      result = {"runMethod": runMethod, "benchmark": name, "hyperfine": bench_times[path], "compileTime": compile_times[path], "metadata": benchmark_metadata[name]}
+      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "compileTime": compile_times[path], "metadata": benchmark_metadata[name]}
 
       res.append(result)
     return res

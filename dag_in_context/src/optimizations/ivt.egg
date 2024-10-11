@@ -88,45 +88,40 @@
 
     (ContextOf inpW outer-ctx)
     (ContextOf inpI if-ctx)
-    (HasType inpW argW)
+    (HasType inpI argI)
 ) (
     ;; first peeled condition
     (let new-if-cond (Subst outer-ctx inpW condI))
     ;; if contexts
-    (let new-if-true-ctx (InIf true new-if-cond inpW))
-    (let new-if-false-ctx (InIf false new-if-cond inpW))
+    (let new-if-inp (Subst outer-ctx inpW inpI))
+    (let new-if-true-ctx (InIf true new-if-cond new-if-inp))
+    (let new-if-false-ctx (InIf false new-if-cond new-if-inp))
     
     (let new-loop-context (TmpCtx))
 
     ;; body
     (let new-loop-outputs_ 
-        (TupleRemoveAt
-            (ApplyPerm perm (Subst new-loop-context inpI thn))
-            0))
-    ;; the first element of body was true but should be the condition.
-    (let new-loop-outputs
-        (Concat
-            ; (Single (Subst new-loop-context (Arg argW new-loop-context) condI))
-            (Single (Subst new-loop-context new-loop-outputs_ condI))
-            new-loop-outputs_))
+        (TupleRemoveAt (ApplyPerm perm thn) 0))
+    (let new-loop-outputs 
+        (Subst new-loop-context new-loop-outputs_ 
+            (Concat (Single condI) inpI)))
 
-    (let new-loop (DoWhile (Arg argW new-if-true-ctx) new-loop-outputs))
+    (let new-loop (DoWhile (Arg argI new-if-true-ctx) new-loop-outputs))
     (let new-if
-        (If new-if-cond inpW
+        (If new-if-cond new-if-inp
             new-loop
-            (Arg argW new-if-false-ctx)))
+            (Arg argI new-if-false-ctx)))
 
     ;; Apply the body of the false branch as an afterprocessing wrapper
     (let new-expr_
-        (Subst outer-ctx new-if 
-            (Subst if-ctx inpI els)))
+        (Subst outer-ctx new-if els))
     (let new-expr 
         (TupleRemoveAt 
             (ApplyPerm perm new-expr_) 
             0))
 
     (union new-expr loop)
-    (union new-loop-context (InLoop (Arg argW new-if-true-ctx) new-loop-outputs))
+    (union new-loop-context (InLoop (Arg argI new-if-true-ctx) new-loop-outputs))
 
     (delete (DoWhile inpW outW))
     (delete (TmpCtx))

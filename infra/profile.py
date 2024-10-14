@@ -95,9 +95,10 @@ def bench(benchmark):
     else:
       # hyperfine command for measuring time, unused in favor of cycles
       # cmd = f'hyperfine --style none --warmup 1 --max-runs 2 --export-json /dev/stdout "{profile_dir}/{benchmark.treatment}{" " + args if len(args) > 0 else ""}"'
-      samples = 1000
+      time_per_benchmark = 1.0
       resulting_num_cycles = []
-      for i in range(samples):
+      time_start = time.time()
+      while True:
         args_str = " " + args if len(args) > 0 else ""
         cmd = f'{profile_dir}/{benchmark.treatment}{args_str}'
         result = subprocess.run(cmd, capture_output=True, shell=True)
@@ -106,6 +107,10 @@ def bench(benchmark):
           raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {result.stderr}')
         res_cycles = int(result.stderr)
         resulting_num_cycles.append(res_cycles)
+
+        # if we have run for at least 1 second and we have at least 2 samples, stop
+        if time.time() - time_start > time_per_benchmark and len(resulting_num_cycles) >= 2:
+          break
 
       return (f'{profile_dir}/{benchmark.treatment}', resulting_num_cycles)
 

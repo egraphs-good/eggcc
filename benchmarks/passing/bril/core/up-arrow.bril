@@ -6,6 +6,8 @@
   print ans;
 }
 
+# Computes Knuth’s up arrow notation, with the first argument being the number, the second argument being the number of Knuth’s up arrows, and the third argument being the number of repeats.
+
 @up_arrow(num: int, arrows: int, repeats: int): int {
   one: int = const 1;
 

@@ -1,21 +1,6 @@
-# ARGS: 8000000
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: int = call @orig_main loop_counter;
-  final_output: int = add final_output output;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
+# ARGS: 8010002
 
-@orig_main(input : int): int {
+@main(input : int) {
   n: int = id input;
   v0: int = const 0;
   v1: int = const 10;
@@ -41,6 +26,6 @@
 .for.incre:
   jmp .for.cond.3;
 .for.end.3:
-  ret result;
+  print result;
 }
 

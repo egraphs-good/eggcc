@@ -64,18 +64,16 @@ def benchmark_profile_dir(name):
 
 def setup_benchmark(name):
   profile_dir = benchmark_profile_dir(name)
-  try:
-    os.mkdir(profile_dir)
-  except FileExistsError:
-    print(f'{profile_dir} exists, overwriting contents')
+  os.mkdir(profile_dir)
 
 def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}')
   profile_dir = benchmark_profile_dir(benchmark.name)
   cmd = f'cargo run --release {benchmark.path} {get_eggcc_options(benchmark.treatment, benchmark.name)} -o {profile_dir}/{benchmark.treatment}'
-  print(f'Running: {cmd}')
+  print(f'Running: {cmd}', flush=True)
   start = time.time()
-  subprocess.call(cmd, shell=True)
+  process = subprocess.run(cmd, shell=True)
+  process.check_returncode()
   end = time.time()
   return (f"{profile_dir}/{benchmark.treatment}", end-start)
 
@@ -147,7 +145,10 @@ if __name__ == '__main__':
   try:
     os.mkdir(TMP_DIR)
   except FileExistsError:
-    print(f"{TMP_DIR} exits, overwriting contents")
+    print(f"{TMP_DIR} exits, deleting contents")
+    # remove the files in the directory
+    os.system(f"rm -rf {TMP_DIR}/*")
+
 
   bril_dir, DATA_DIR = os.sys.argv[1:]
   profiles = []
@@ -171,8 +172,9 @@ if __name__ == '__main__':
       to_run.append(Benchmark(benchmark_path, treatment, index, total))
       index += 1
 
-  for benchmark in to_run:
-    setup_benchmark(benchmark.name)
+  benchmark_names = set([benchmark.name for benchmark in to_run])
+  for benchmark_name in benchmark_names:
+    setup_benchmark(benchmark_name)
   
 
   compile_times = {}
@@ -180,8 +182,13 @@ if __name__ == '__main__':
   with concurrent.futures.ThreadPoolExecutor(max_workers = 6) as executor:
     futures = {executor.submit(optimize, benchmark) for benchmark in to_run}
     for future in concurrent.futures.as_completed(futures):
-      (path, compile_time) = future.result()
-      compile_times[path] = compile_time
+      try:
+        (path, compile_time) = future.result()
+        compile_times[path] = compile_time
+      except Exception as e:
+        print(f"Shutting down executor due to error: {e}")
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise e
 
   # running benchmarks sequentially for more reliable results
   # can set this to true for testing
@@ -193,11 +200,16 @@ if __name__ == '__main__':
     with concurrent.futures.ThreadPoolExecutor(max_workers = 6) as executor:
       futures = {executor.submit(bench, benchmark) for benchmark in to_run}
       for future in concurrent.futures.as_completed(futures):
-        res = future.result()
-        if res is None:
-          continue
-        (path, _bench_data) = res
-        bench_data[path] = _bench_data
+        try:
+          res = future.result()
+          if res is None:
+            continue
+          (path, _bench_data) = res
+          bench_data[path] = _bench_data
+        except Exception as e:
+          print(f"Shutting down executor due to error: {e}")
+          executor.shutdown(wait=False, cancel_futures=True)
+          raise e
   else:
     for benchmark in to_run:
       res = bench(benchmark)

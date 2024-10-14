@@ -14,13 +14,13 @@ function tryRound(v, precision) {
 
 // Outputs current_number - baseline_number in a human-readable format
 // If baseline_number is undefined, it will return N/A
-function getDifference(current, baseline) {
+function getDifference(current, baseline, comparison_func) {
   const THRESHOLD = 0.01;
   // if b is undefined, return a
   if (baseline === undefined) {
     return { class: "", value: "N/A" };
   } else {
-    var difference = current - baseline;
+    var difference = comparison_func(current) - comparison_func(baseline);
     // if the difference is negative it will already have a "-"
     var sign = difference < 0 ? "" : "+";
     var cssClass = "";

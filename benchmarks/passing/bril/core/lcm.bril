@@ -1,30 +1,5 @@
-# ARGS: 165
-
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  inner_counter: int = const 10;
-.inner_cond:
-  inner_cond: bool = lt inner_counter loop_bound;
-  br inner_cond .inner_body .inner_done;
-.inner_body:
-  output: int = call @orig_main loop_counter inner_counter;
-  final_output: int = add final_output output;
-  inner_counter: int = add inner_counter loop_incr;
-  jmp .inner_cond;
-.inner_done:
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(x : int, y : int ): int {
+# ARGS: 165 233
+@orig_main(x : int, y : int ) {
   greater: int = id y;
   v4: bool = gt x y;
   br v4 .then.1 .else.1;
@@ -48,8 +23,7 @@
   greater:int = add greater one;
   jmp .foreverloop;
 .loopend:
-  ret greater;
-
+  print greater;
 }
 
 @getMod(val: int, mod: int): int{

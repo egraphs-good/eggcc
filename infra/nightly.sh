@@ -11,6 +11,8 @@ echo "Beginning eggcc nightly script..."
 # -x: before executing each command, print it
 # -e: exit immediately upon first error
 set -x -e
+# if anything in a pipeline fails, fail the whole pipeline
+set -o pipefail
 
 export PATH=~/.cargo/bin:$PATH
 

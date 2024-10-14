@@ -1,52 +1,7 @@
-# ARGS: 112
-
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  loop2_counter: int = const 10;
-.loop2_cond:
-  loop2_cond: bool = lt loop2_counter loop_bound;
-  br loop2_cond .loop2_body .loop2_done;
-.loop2_body:
-  loop3_counter: int = const 10;
-.loop3_cond:
-  loop3_cond: bool = lt loop3_counter loop_bound;
-  br loop3_cond .loop3_body .loop3_done;
-.loop3_body:
-  loop4_counter: int = const 10;
-.loop4_cond:
-  loop4_cond: bool = lt loop4_counter loop_bound;
-  br loop4_cond .loop4_body .loop4_done;
-.loop4_body:
-  output: bool = call @orig_main loop_counter loop2_counter loop3_counter loop4_counter;
-  br output .output_incr .skip;
-.output_incr:
-  final_output: int = add final_output loop_incr;
-.skip:  
-  loop4_counter: int = add loop4_counter loop_incr;
-  jmp .loop4_cond;
-.loop4_done:  
-  loop3_counter: int = add loop3_counter loop_incr;
-  jmp .loop3_cond;
-.loop3_done:  
-  loop2_counter: int = add loop2_counter loop_incr;
-  jmp .loop2_cond;
-.loop2_done:
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-
-@orig_main (width1:int, height1:int, width2:int, height2:int): bool {
+# ARGS: 112 233 900 3211
+@orig_main (width1:int, height1:int, width2:int, height2:int) {
   output: bool = call @fitsInside width1 height1 width2 height2;
-  ret output;
+  print output;
 }
 
 @fitsInside(w1: int, h1: int, w2: int, h2: int) : bool {

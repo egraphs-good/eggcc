@@ -1,4 +1,4 @@
-# ARGS: 7861
+# ARGS: 4371 5 343234 2
 
 @pow(x: int, n: int): int {
   v1: int = id n;

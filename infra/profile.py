@@ -101,10 +101,11 @@ def bench(benchmark):
         args_str = " " + args if len(args) > 0 else ""
         cmd = f'{profile_dir}/{benchmark.treatment}{args_str}'
         result = subprocess.run(cmd, capture_output=True, shell=True)
-        res_cycles = int(result.stderr)
-        resulting_num_cycles.append(res_cycles)
+        
         if result.returncode != 0:
           raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {result.stderr}')
+        res_cycles = int(result.stderr)
+        resulting_num_cycles.append(res_cycles)
 
       return (f'{profile_dir}/{benchmark.treatment}', resulting_num_cycles)
 

@@ -1,7 +1,7 @@
 # ARGS: 14500
 # compute the sum of [1, n] by both loop and formula
 # and compare them to see if the result is the same
-@main(n: int): int {
+@main(n: int) {
     sum: int = const 0;
     first: int = call @sum_by_loop n;
     second: int = call @sum_by_formula n;

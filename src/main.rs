@@ -26,10 +26,7 @@ struct Args {
     /// (only used when interpreting)
     bril_args: Vec<String>,
 
-    /// Where to put the executable (only for the CompileBrilfit run mode)
-    /// If not provided, the executable will be in a file with the same prefix as the
-    /// input file, but with no file extension. That is, if `abc.bril` is passed in,
-    /// then the executable will be in `abc`.
+    /// Where to put the executable (only for the brillift and llvm modes)
     #[clap(short)]
     output_path: Option<String>,
     /// Where to put intermediary files (only for OptimizeBrilLLVM mode)

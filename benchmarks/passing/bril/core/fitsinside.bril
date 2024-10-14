@@ -1,5 +1,5 @@
 # ARGS: 112 233 900 3211
-@orig_main (width1:int, height1:int, width2:int, height2:int) {
+@main (width1:int, height1:int, width2:int, height2:int) {
   output: bool = call @fitsInside width1 height1 width2 height2;
   print output;
 }

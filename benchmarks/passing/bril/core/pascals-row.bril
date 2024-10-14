@@ -1,5 +1,5 @@
 # ARGS: 12000
-@main(v0 : int): int {
+@main(v0 : int) {
   x: int = id v0;
   v1: int = id x;
   sum: int = call @generateNthRow v1;

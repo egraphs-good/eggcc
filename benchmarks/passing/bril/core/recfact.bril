@@ -1,5 +1,5 @@
 # ARGS: 9300
-@main(input: int): int {
+@main(input: int) {
   x: int = id input;
   v1: int = id x;
   f: int = call @fac v1;

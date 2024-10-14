@@ -1,5 +1,5 @@
 # ARGS: 165 233
-@orig_main(x : int, y : int ) {
+@main(x : int, y : int) {
   greater: int = id y;
   v4: bool = gt x y;
   br v4 .then.1 .else.1;

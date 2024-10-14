@@ -116,11 +116,13 @@ impl Optimizer {
                 .args(args)
                 .output()
                 .unwrap();
+                let output_str = String::from_utf8(output.stdout).unwrap();
                 let output_err = String::from_utf8(output.stderr).unwrap();
-                (
-                    String::from_utf8(output.stdout).unwrap(),
-                    Some(output_err.trim().parse().unwrap()),
-                )
+                let error_code = output.status.code().unwrap();
+                if error_code != 0 {
+                    panic!("Error code: {}", error_code);
+                }
+                (output_str, Some(output_err.trim().parse().unwrap()))
             }
             Interpretable::Executable { executable } => {
                 let output = std::process::Command::new(

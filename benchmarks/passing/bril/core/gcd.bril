@@ -5,7 +5,7 @@
 
 # input: two positive integer - op1, op2
 # output: one positive integer - gcd(op1, op2)
-@main(op1 : int, op2: int ) {
+@main(op1 : int, op2: int) {
   # const
   vc0: int = const 0;
   # take two input ops, first iteration

@@ -1,4 +1,4 @@
-# ARGS: 9500
+# ARGS: 920
 
 # Recursive factorial
 @main(a: int) {

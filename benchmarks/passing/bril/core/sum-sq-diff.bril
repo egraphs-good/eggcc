@@ -28,6 +28,7 @@
   v15: int = id res;
   ret v15;
 }
+
 @squareOfSum(n: int): int {
   v0: int = const 0;
   res: int = id v0;
@@ -56,7 +57,7 @@
   v15: int = id square;
   ret v15;
 }
-@main(n: int): int {
+@main(n: int) {
   v0: int = id n;
   sum: int = call @sumOfSquares v0;
   sum: int = id sum;

@@ -1,5 +1,5 @@
 # ARGS: 3400
-@main(v0 : int): int {
+@main(v0 : int) {
   a: int = id v0;
   v1: int = id a;
   sum: int = call @relative_primes v1;

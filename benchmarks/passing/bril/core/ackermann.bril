@@ -3,6 +3,11 @@
 # WARNING: Will quickly exceed stack size
 
 @main(m: int, n: int) {
+  t: int = call @ack m n;
+  print t;
+}
+
+@ack(m: int, n: int): int {
   zero: int = const 0;
   one: int = const 1;
   cond_m: bool = eq m zero;
@@ -22,6 +27,6 @@
   n1: int = sub n one;
   t1: int = call @ack m n1;
   t2: int = call @ack m1 t1;
-  print t2;
+  ret t2;
 }
 

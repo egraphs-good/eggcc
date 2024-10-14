@@ -7,6 +7,7 @@ use std::mem::size_of; */
 
 use core::ffi::{c_char, CStr};
 
+use core::arch::asm;
 use libc_print::std_name::{eprintln, print, println};
 
 // code for tick counter from
@@ -19,8 +20,6 @@ use libc_print::std_name::{eprintln, print, println};
 #[inline(never)]
 #[cfg(target_arch = "aarch64")]
 pub extern "C" fn _bril_get_ticks() -> u64 {
-    use core::arch::asm;
-
     let tick_counter: u64;
     unsafe {
         asm!(

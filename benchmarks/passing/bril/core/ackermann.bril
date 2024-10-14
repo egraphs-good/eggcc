@@ -1,8 +1,8 @@
-# ARGS: 480
+# ARGS: 2 480
 # Compute the Ackermann function recursively.
 # WARNING: Will quickly exceed stack size
 
-@ack(m: int, n: int): int {
+@main(m: int, n: int) {
   zero: int = const 0;
   one: int = const 1;
   cond_m: bool = eq m zero;
@@ -22,28 +22,6 @@
   n1: int = sub n one;
   t1: int = call @ack m n1;
   t2: int = call @ack m1 t1;
-  ret t2;
-}
-
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: int = call @orig_main loop_counter;
-  final_output: int = add final_output output;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(n: int): int {
-  m: int = const 2;
-  tmp: int = call @ack m n;
-  ret tmp;
+  print t2;
 }
 

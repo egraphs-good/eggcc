@@ -1,5 +1,8 @@
 # ARGS: 25
 
+# failing due to brillvm bug:
+# https://github.com/sampsyo/bril/issues/339
+
 @main(starting_m: int) {
   res: int = call @myrec starting_m;
   print res;

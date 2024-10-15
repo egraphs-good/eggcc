@@ -184,8 +184,11 @@ if __name__ == '__main__':
   
 
   compile_times = {}
+  # get the number of cores on this machine 
+  parallelism = os.cpu_count()
+
   # create a thread pool for running optimization
-  with concurrent.futures.ThreadPoolExecutor(max_workers = 6) as executor:
+  with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
     futures = {executor.submit(optimize, benchmark) for benchmark in to_run}
     for future in concurrent.futures.as_completed(futures):
       try:
@@ -203,7 +206,7 @@ if __name__ == '__main__':
   bench_data = {}
   if isParallelBenchmark:
     # create a thread pool for running benchmarks
-    with concurrent.futures.ThreadPoolExecutor(max_workers = 6) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
       futures = {executor.submit(bench, benchmark) for benchmark in to_run}
       for future in concurrent.futures.as_completed(futures):
         try:

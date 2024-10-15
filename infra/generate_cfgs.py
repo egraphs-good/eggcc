@@ -58,7 +58,9 @@ if __name__ == '__main__':
   data_dir = os.sys.argv[1]
   benchmarks = os.listdir(data_dir)
 
-  with concurrent.futures.ThreadPoolExecutor(max_workers = 6) as executor:
+  # get the number of cores on this machine 
+  parallelism = os.cpu_count()
+  with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
     futures = {executor.submit(make_cfgs, bench, data_dir) for bench in benchmarks}
 
     for future in concurrent.futures.as_completed(futures):

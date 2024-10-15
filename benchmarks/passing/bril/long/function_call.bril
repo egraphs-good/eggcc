@@ -12,6 +12,7 @@
   two: int = const 2;
   cond_m: bool = eq m zero;
   res: int = const 0;
+  tmp: int = const 0;
   br cond_m .end .m_nonzero;
 .m_nonzero:
   m:int = sub m one;

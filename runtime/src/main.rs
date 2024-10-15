@@ -34,20 +34,16 @@ pub extern "C" fn _bril_get_ticks() -> u64 {
 #[inline(never)]
 #[cfg(target_arch = "x86_64")]
 pub extern "C" fn _bril_get_ticks_start() -> u64 {
-    let res: u64;
+    let mut res: u64 = 0;
     unsafe {
         asm!(
-            // save rdx to tmp
-            "mov {tmp}, rdx",
             "mfence",
             "lfence",
             "rdtsc",
             "shl rdx, 32",
             "or {res}, rdx",
-            // restore rdx from tmp
-            "mov rdx, {tmp}",
-            res = out(reg) res,
-            tmp = out(reg) _,
+            res = inout(reg) res,
+            out("rdx") _,
         );
     }
     res
@@ -57,19 +53,15 @@ pub extern "C" fn _bril_get_ticks_start() -> u64 {
 #[inline(never)]
 #[cfg(target_arch = "x86_64")]
 pub extern "C" fn _bril_get_ticks_end() -> u64 {
-    let res: u64;
+    let mut res: u64 = 0;
     unsafe {
         asm!(
-            // save rdx to tmp
-            "mov {tmp}, rdx",
             "rdtsc",
             "lfence",
             "shl rdx, 32",
             "or {res}, rdx",
-            // restore rdx from tmp
-            "mov rdx, {tmp}",
-            res = out(reg) res,
-            tmp = out(reg) _,
+            out("rdx") _,
+            res = inout(reg) res,
         );
     }
     res

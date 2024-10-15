@@ -40,8 +40,8 @@ function min_cycles(cycles) {
 function stddev_cycles(cycles) {
   const mean = cycles.reduce((a, b) => a + b, 0) / (cycles.length-1);
   const squared_diffs = cycles.map((c) => (c - mean) ** 2);
-  // kevin said we might want to use bessel's correction
-  const bessels_corrected = squared_diffs.reduce((a, b) => a + b, 0) / (squared_diffs.length - 1);
+  // TODO kevin said we might want to use bessel's correction here
+  const bessels_corrected = squared_diffs.reduce((a, b) => a + b, 0) / squared_diffs.length;
   return Math.sqrt(bessels_corrected);
 }
 
@@ -82,7 +82,28 @@ function getError(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
     return stddev_cycles(entry["cycles"]);
   } else {
-    return undefined;
+    // Error is given using propagation of error formula for two variables
+    // f = baseV / expV
+    const baseline = getEntry(entry.benchmark, BASELINE_MODE);
+    if (!baseline) {
+      addWarning(`No speedup baseline for ${benchmark}`);
+    }
+
+    const baseV = mean_cycles(baseline["cycles"]);
+    const expV = mean_cycles(entry["cycles"]);
+    const baseStd = stddev_cycles(baseline["cycles"]);
+    const expStd = stddev_cycles(entry["cycles"]);
+
+    // Speedup calculation
+    const speedup = baseV / expV;
+
+    // Error propagation
+    const relativeBaseError = baseStd / baseV;
+    const relativeExpError = expStd / expV;
+
+    const speedupError = speedup * Math.sqrt(relativeBaseError**2 + relativeExpError**2);
+
+    return speedupError;
   }
 }
 

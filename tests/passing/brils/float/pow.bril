@@ -1,22 +1,6 @@
-# ARGS: 43000000
+# ARGS: 430000
 
-@main(loop_bound: float) {
-  loop_incr: float = const 1;
-  loop_counter: float = const 10;
-  final_output: float = const 0;
-.loop_cond:
-  loop_cond: bool = flt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: float = call @orig_main loop_counter;
-  final_output: float = fadd final_output output;
-  loop_counter: float = fadd loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(v0: float): float {
+@main(v0: float): float {
   x: float = id v0;
   v1: int = const 2;
   n: int = id v1;
@@ -24,7 +8,7 @@
   v3: int = id n;
   output: float = call @pow v2 v3;
   v4: int = const 0;
-  ret output;
+  print output;
 }
 @pow(x: float, n: int): float {
   v0: float = id x;

@@ -1,4 +1,4 @@
-# ARGS: 9
+# ARGS: 6
 @main(n: int) {
   arrows: int = const 2;
   repeats: int = const 3;

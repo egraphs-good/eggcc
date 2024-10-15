@@ -1,4 +1,4 @@
-# ARGS: 18
+# ARGS: 14
 
 # Compute the 10th element in the catalan sequence, which is given by:
 #   c0 = 0; c(n+1) = sum(ci * c(n-i) for i = 0..n)

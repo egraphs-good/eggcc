@@ -31,7 +31,7 @@ pub extern "C" fn _bril_get_ticks() -> u64 {
 }
 
 #[no_mangle]
-#[inline(never)]
+#[inline(always)]
 #[cfg(target_arch = "x86_64")]
 pub extern "C" fn _bril_get_ticks_start() -> u64 {
     let mut res: u64 = 0;
@@ -50,7 +50,7 @@ pub extern "C" fn _bril_get_ticks_start() -> u64 {
 }
 
 #[no_mangle]
-#[inline(never)]
+#[inline(always)]
 #[cfg(target_arch = "x86_64")]
 pub extern "C" fn _bril_get_ticks_end() -> u64 {
     let mut res: u64 = 0;

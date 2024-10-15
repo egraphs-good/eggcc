@@ -112,7 +112,7 @@
     jmp .part4_i;
 .part4_i_done:
 
-    call @vector_print w N;
+    res: float = call @vector_sum w N;
 
     free A;
     free u1;
@@ -239,18 +239,20 @@
 
 # EXPECTS:
 #   @vector_get defined
-@vector_print(vec: ptr<float>, N: int) {
+@vector_sum(vec: ptr<float>, N: int): float {
     i: int = const 0;
     one: int = const 1;
+    res: float = const 0;
 .while:
     cond: bool = lt i N;
     br cond .body .done;
 .body:
     val: float = call @vector_get vec i;
-    print val;
+    res: float = fadd res val;
     i: int = add i one;
     jmp .while;
 .done:
+    ret res;
 }
 
 # Search for n % m where n and m are floats by

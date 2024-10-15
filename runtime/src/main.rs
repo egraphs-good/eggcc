@@ -74,7 +74,7 @@ pub extern "C" fn _bril_get_ticks_end() -> u64 {
         );
     }
     res*/
-    2
+    3
 }
 
 #[no_mangle]

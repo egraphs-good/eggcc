@@ -1,0 +1,311 @@
+## 2mm computes D := alpha * A * B * C + beta * D
+## for some procedurally generated matrices A, B, C, D
+
+@main {
+    # constants
+    # dimensions correspond to Polybench MEDIUM_DATASET
+
+    NI: int = const 180;
+    fNI: float = const 180;
+    NJ: int = const 190;
+    fNJ: float = const 190;
+    NK: int = const 210;
+    fNK: float = const 210;
+    NL: int = const 220;
+    fNL: float = const 220;
+
+    one: int = const 1;
+    fzero: float = const 0;
+
+    # initialize arrays
+    A: ptr<float> = call @matrix_new NI NK;
+    B: ptr<float> = call @matrix_new NK NJ;
+    C: ptr<float> = call @matrix_new NJ NL;
+    D: ptr<float> = call @matrix_new NI NL;
+    alpha: float = const 1.5;
+    beta: float = const 1.2;
+    call @init A B C D NI fNI NJ fNJ NK fNK NL fNL;
+
+    # main computation
+    # computes D := alpha * A * B * C + beta * D
+
+    # first compute alpha * A * B 
+    tmp: ptr<float> = call @matrix_new NI NJ;
+    
+    i: int = const 0;
+.part1_i:
+    cond: bool = lt i NI;
+    br cond .part1_i_body .part1_i_done;
+.part1_i_body:
+    j: int = const 0;
+.part1_j:
+    cond: bool = lt j NJ;
+    br cond .part1_j_body .part1_j_done;
+.part1_j_body:
+    call @matrix_set tmp i j NJ fzero;
+    k: int = const 0;
+.part1_k:
+    cond: bool = lt k NK;
+    br cond .part1_k_body .part1_k_done;
+.part1_k_body:
+    Aik: float = call @matrix_get A i k NK;
+    Bkj: float = call @matrix_get B k j NJ;
+    incr: float = fmul alpha Aik;
+    incr: float = fmul incr Bkj;
+    call @matrix_incr tmp i j NJ incr;
+    k: int = add k one;
+    jmp .part1_k;
+.part1_k_done:
+    j: int = add j one;
+    jmp .part1_j;
+.part1_j_done:
+    i: int = add i one;
+    jmp .part1_i;
+.part1_i_done:
+
+    i: int = const 0;
+.part2_i:
+    cond: bool = lt i NI;
+    br cond .part2_i_body .part2_i_done;
+.part2_i_body:
+    j: int = const 0;
+.part2_j:
+    cond: bool = lt j NL;
+    br cond .part2_j_body .part2_j_done;
+.part2_j_body:
+    call @matrix_scale D i j NL beta;
+    k: int = const 0;
+.part2_k:
+    cond: bool = lt k NJ;
+    br cond .part2_k_body .part2_k_done;
+.part2_k_body:
+    tmpik: float = call @matrix_get tmp i k NJ;
+    Ckj: float = call @matrix_get C k j NL;
+    incr: float = fmul tmpik Ckj;
+    call @matrix_incr D i j NL incr;
+    k: int = add k one;
+    jmp .part2_k;
+.part2_k_done:
+    j: int = add j one;
+    jmp .part2_j;
+.part2_j_done:
+    i: int = add i one;
+    jmp .part2_i;
+.part2_i_done:
+
+    call @matrix_print D NI NL;
+
+    res: float = load D;
+    free A;
+    free B;
+    free C;
+    free D;
+    free tmp;
+    print res;
+}
+
+@init(A: ptr<float>, B: ptr<float>, C: ptr<float>, D: ptr<float>, 
+      NI: int, fNI: float, NJ: int, fNJ: float, NK: int, fNK: float, NL: int, fNL: float) {
+    one: int = const 1;
+    fzero: float = const 0;
+    fone: float = const 1;
+    ftwo: float = const 2;
+    fthree: float = const 3;
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_A_i:
+    cond: bool = lt i NI;
+    br cond .init_A_i_body .init_A_i_done;
+.init_A_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_A_j:
+    cond: bool = lt j NK;
+    br cond .init_A_j_body .init_A_j_done;
+.init_A_j_body:
+    val: float = fmul fi fj;
+    val: float = fadd val fone;
+    val: float = call @fmod val fNI;
+    val: float = fdiv val fNI;
+    call @matrix_set A i j NK val;
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_A_j;
+.init_A_j_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_A_i;
+.init_A_i_done:
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_B_i:
+    cond: bool = lt i NK;
+    br cond .init_B_i_body .init_B_i_done;
+.init_B_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_B_j:
+    cond: bool = lt j NJ;
+    br cond .init_B_j_body .init_B_j_done;
+.init_B_j_body:
+    val: float = fadd fj fone;
+    val: float = fmul fi val;
+    val: float = call @fmod val fNJ;
+    val: float = fdiv val fNJ;
+    call @matrix_set B i j NJ val;
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_B_j;
+.init_B_j_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_B_i;
+.init_B_i_done:
+    
+    i: int = const 0;
+    fi: float = const 0;
+.init_C_i:
+    cond: bool = lt i NJ;
+    br cond .init_C_i_body .init_C_i_done;
+.init_C_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_C_j:
+    cond: bool = lt j NL;
+    br cond .init_C_j_body .init_C_j_done;
+.init_C_j_body:
+    val: float = fadd fj fthree;
+    val: float = fmul fi val;
+    val: float = fadd val fone;
+    val: float = call @fmod val fNL;
+    val: float = fdiv val fNL;
+    call @matrix_set C i j NL val;
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_C_j;
+.init_C_j_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_C_i;
+.init_C_i_done:
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_D_i:
+    cond: bool = lt i NI;
+    br cond .init_D_i_body .init_D_i_done;
+.init_D_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_D_j:
+    cond: bool = lt j NL;
+    br cond .init_D_j_body .init_D_j_done;
+.init_D_j_body:
+    val: float = fadd fj ftwo;
+    val: float = fmul fi val;
+    val: float = call @fmod val fNK;
+    val: float = fdiv val fNK;
+    call @matrix_set D i j NL val;
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_D_j;
+.init_D_j_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_D_i;
+.init_D_i_done:
+}
+
+@matrix_new(Nrow: int, Ncol: int): ptr<float> {
+    total: int = mul Nrow Ncol;
+    ptr: ptr<float> = alloc total;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<float>, row: int, col: int, Ncol: int): ptr<float> {
+    row_offset: int = mul row Ncol;
+    offset: int = add row_offset col;
+    new_ptr: ptr<float> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_get(mtx: ptr<float>, row: int, col: int, Ncol: int): float {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_set(mtx: ptr<float>, row: int, col: int, Ncol: int, val: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    store ptr val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_incr(mtx: ptr<float>, row: int, col: int, Ncol: int, incr: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    new_val: float = fadd val incr;
+    store ptr new_val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_scale(mtx: ptr<float>, row: int, col: int, Ncol: int, scale: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    new_val: float = fmul val scale;
+    store ptr new_val;
+}
+
+@matrix_print(mtx: ptr<float>, Nrow: int, Ncol: int) {
+    i: int = const 0;
+    one: int = const 1;
+    total: int = mul Nrow Ncol;
+.while:
+    cond: bool = lt i total;
+    br cond .body .done;
+.body:
+    mtx_loc: ptr<float> = ptradd mtx i;
+    val: float = load mtx_loc;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+# Search for n % m where n and m are floats by
+# iteratively subtracting the largest m*2^k that
+# fits inside n. 
+# Takes O((log n/m)^2) time.
+# NOTE: In C, this can be done with a built in 
+# function, but this is the best we can do.
+@fmod(n: float, m: float): float {
+    zero: float = const 0;
+    two: float = const 2;
+    rem: float = id n;
+.while:
+    cond: bool = fge rem m;
+    br cond .body .done;
+.body:
+    decr: float = id m;
+.while_inner:
+    diff: float = fsub rem decr;
+    cond: bool = fge diff zero;
+    br cond .body_inner .done_inner;
+.body_inner:
+    decr: float = fmul decr two;
+    jmp .while_inner;
+.done_inner:
+    decr: float = fdiv decr two;
+    rem: float = fsub rem decr;
+    jmp .while;
+.done:
+    ret rem;
+}

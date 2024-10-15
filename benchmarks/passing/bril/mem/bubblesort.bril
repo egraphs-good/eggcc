@@ -1,4 +1,5 @@
-# ARGS: 31
+# ARGS: 5 3 10 1 9 7
+
 # Bubble Sort for a list containing 5 elements. It is sorted in ascending order. 
 # It can be easily extended to list with any other length. 
 
@@ -63,55 +64,7 @@
     ret;
 }
 
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  loop2_counter: int = const 10;
-.loop2_cond:
-  loop2_cond: bool = lt loop2_counter loop_bound;
-  br loop2_cond .loop2_body .loop2_done;
-.loop2_body:
-  loop3_counter: int = const 10;
-.loop3_cond:
-  loop3_cond: bool = lt loop3_counter loop_bound;
-  br loop3_cond .loop3_body .loop3_done;
-.loop3_body:
-  loop4_counter: int = const 10;
-.loop4_cond:
-  loop4_cond: bool = lt loop4_counter loop_bound;
-  br loop4_cond .loop4_body .loop4_done;
-.loop4_body:
-  loop5_counter: int = const 10;
-.loop5_cond:
-  loop5_cond: bool = lt loop5_counter loop_bound;
-  br loop5_cond .loop5_body .loop5_done;
-.loop5_body:
-  output: int = call @orig_main loop_counter loop2_counter loop3_counter loop4_counter loop5_counter;
-  final_output: int = add final_output output;
-  loop5_counter: int = add loop5_counter loop_incr;
-  jmp .loop5_cond;
-.loop5_done:  
-  loop4_counter: int = add loop4_counter loop_incr;
-  jmp .loop4_cond;
-.loop4_done:  
-  loop3_counter: int = add loop3_counter loop_incr;
-  jmp .loop3_cond;
-.loop3_done:  
-  loop2_counter: int = add loop2_counter loop_incr;
-  jmp .loop2_cond;
-.loop2_done:
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(n1: int, n2: int, n3: int, n4: int, n5: int): int {
+@main(n1: int, n2: int, n3: int, n4: int, n5: int) {
 # Pack the input elements into an array with a starting pointer
     size: int = const 5;
     array: ptr<int> = call @pack size n1 n2 n3 n4 n5;
@@ -142,9 +95,8 @@ sizei: int = sub size one;
     jmp .loopi;
 .donei:
 
-# Print array
     sum: int = call @print_array array size;
 
     free array;
-    ret sum;
+    print sum;
 }

@@ -2,7 +2,7 @@
 import glob
 import os
 
-import concurrent
+import concurrent.futures
 
 def make_cfgs(bench, data_dir):
   cwd = os.getcwd()

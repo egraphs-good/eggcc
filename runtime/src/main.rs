@@ -35,7 +35,7 @@ pub extern "C" fn _bril_get_ticks() -> u64 {
 #[cfg(target_arch = "x86_64")]
 pub extern "C" fn _bril_get_ticks_start() -> u64 {
     let res: u64;
-    unsafe {
+    /*unsafe {
         asm!(
             // save rdx to tmp
             "mov {tmp}, rdx",
@@ -50,7 +50,8 @@ pub extern "C" fn _bril_get_ticks_start() -> u64 {
             tmp = out(reg) _,
         );
     }
-    res
+    res*/
+    2
 }
 
 #[no_mangle]
@@ -58,7 +59,7 @@ pub extern "C" fn _bril_get_ticks_start() -> u64 {
 #[cfg(target_arch = "x86_64")]
 pub extern "C" fn _bril_get_ticks_end() -> u64 {
     let res: u64;
-    unsafe {
+    /*unsafe {
         asm!(
             // save rdx to tmp
             "mov {tmp}, rdx",
@@ -72,7 +73,8 @@ pub extern "C" fn _bril_get_ticks_end() -> u64 {
             tmp = out(reg) _,
         );
     }
-    res
+    res*/
+    2
 }
 
 #[no_mangle]

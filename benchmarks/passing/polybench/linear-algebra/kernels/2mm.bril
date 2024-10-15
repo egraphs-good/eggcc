@@ -95,11 +95,13 @@
 
     call @matrix_print D NI NL;
 
+    res: float = load D;
     free A;
     free B;
     free C;
     free D;
     free tmp;
+    print res;
 }
 
 @init(A: ptr<float>, B: ptr<float>, C: ptr<float>, D: ptr<float>, 

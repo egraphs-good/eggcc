@@ -1,15 +1,15 @@
-# ARGS: 430000
+# ARGS: 4300.0
 
-@main(v0: float): float {
+@main(v0: float) {
   x: float = id v0;
   v1: int = const 2;
   n: int = id v1;
   v2: float = id x;
   v3: int = id n;
   output: float = call @pow v2 v3;
-  v4: int = const 0;
   print output;
 }
+
 @pow(x: float, n: int): float {
   v0: float = id x;
   res: float = id v0;

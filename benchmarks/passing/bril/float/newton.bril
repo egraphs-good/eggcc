@@ -1,21 +1,5 @@
 # ARGS: 2200000
-@main(loop_bound: float) {
-  loop_incr: float = const 1;
-  loop_counter: float = const 10;
-  final_output: float = const 0;
-.loop_cond:
-  loop_cond: bool = flt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: float = call @orig_main loop_counter;
-  final_output: float = fadd final_output output;
-  loop_counter: float = fadd loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(n: float): float {
+@main(n: float) {
   two: float = const 2;
   x: float = fdiv n two; # fist approximation
   prev_x: float = id n;
@@ -29,7 +13,7 @@
   x: float = call @sqrt x n;
   jmp .for.cond.1;
 .for.end.1:
-  ret x;
+  print x;
 }
 
 # one iteration of the newton method:

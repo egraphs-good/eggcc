@@ -1,0 +1,290 @@
+## doitgen is a kernel for the MADNESS framework for 
+## adaptive multiresolution methods in multiwavelet bases,
+## a topic in quantum chemistry.
+
+@main {
+    # constants
+    # dimensions correspond to Polybench MEDIUM_DATASET
+
+    NQ: int = const 40;
+    fNQ: float = const 40;
+    NR: int = const 50;
+    fNR: float = const 50;
+    NP: int = const 60;
+    fNP: float = const 60;
+
+    zero: int = const 0;
+    one: int = const 1;
+    fzero: float = const 0;
+
+    # initialize arrays
+    A: ptr<float> = call @tensor_new NR NQ NP;
+    C4: ptr<float> = call @matrix_new NP NP;
+
+    call @init A C4 NQ fNQ NR fNR NP fNP;
+
+    # main computation
+    sum: ptr<float> = call @vector_new NP;
+
+    r: int = const 0;
+.main_r:
+    cond: bool = lt r NR;
+    br cond .main_r_body .main_r_done;
+.main_r_body:
+    q: int = const 0;
+.main_q:
+    cond: bool = lt q NQ;
+    br cond .main_q_body .main_q_done;
+.main_q_body:
+    p: int = const 0;
+.main_p1:
+    cond: bool = lt p NP;
+    br cond .main_p1_body .main_p1_done;
+.main_p1_body:
+    call @vector_set sum p fzero;
+    s: int = const 0;
+.main_s:
+    cond: bool = lt s NP;
+    br cond .main_s_body .main_s_done;
+.main_s_body:
+    Arqs: float = call @tensor_get A r q s NQ NP;
+    C4sp: float = call @matrix_get C4 s p NP;
+    incr: float = fmul Arqs C4sp;
+    call @vector_incr sum p incr;
+    s: int = add s one;
+    jmp .main_s;
+.main_s_done:
+    p: int = add p one;
+    jmp .main_p1;
+.main_p1_done:
+    p: int = const 0;
+.main_p2:
+    cond: bool = lt p NP;
+    br cond .main_p2_body .main_p2_done;
+.main_p2_body:
+    sump: float = call @vector_get sum p;
+    call @tensor_set A r q p NQ NP sump;
+    p: int = add p one;
+    jmp .main_p2;
+.main_p2_done:
+    q: int = add q one;
+    jmp .main_q;
+.main_q_done:
+    r: int = add r one;
+    jmp .main_r;
+.main_r_done:
+
+    call @tensor_print A NR NQ NP;
+    res: float = load A;
+
+    free A;
+    free sum;
+    free C4;
+    print res;
+}
+
+
+@init(A: ptr<float>, C4: ptr<float>,
+      NQ: int, fNQ: float, NR: int, fNR: float, NP: int, fNP: float) {
+    one: int = const 1;
+    fone: float = const 1;
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_A_i:
+    cond: bool = lt i NR;
+    br cond .init_A_i_body .init_A_i_done;
+.init_A_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_A_j:
+    cond: bool = lt j NQ;
+    br cond .init_A_j_body .init_A_j_done;
+.init_A_j_body:
+    k: int = const 0;
+    fk: float = const 0;
+.init_A_k:
+    cond: bool = lt k NP;
+    br cond .init_A_k_body .init_A_k_done;
+.init_A_k_body:
+    val: float = fmul fi fj;
+    val: float = fadd val fk;
+    val: float = call @fmod val fNP;
+    val: float = fdiv val fNP;
+    call @tensor_set A i j k NQ NP val; 
+    k: int = add k one;
+    fk: float = fadd fk fone;
+    jmp .init_A_k;
+.init_A_k_done:
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_A_j;
+.init_A_j_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_A_i;
+.init_A_i_done:
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_C4_i:
+    cond: bool = lt i NP;
+    br cond .init_C4_i_body .init_C4_i_done;
+.init_C4_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_C4_j:
+    cond: bool = lt j NP;
+    br cond .init_C4_j_body .init_C4_j_done;
+.init_C4_j_body:
+    val: float = fmul fi fj;
+    val: float = call @fmod val fNP;
+    val: float = fdiv val fNP;
+    call @matrix_set C4 i j NP val; 
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_C4_j;
+.init_C4_j_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_C4_i;
+.init_C4_i_done:
+}
+
+@matrix_new(Nrow: int, Ncol: int): ptr<float> {
+    total: int = mul Nrow Ncol;
+    ptr: ptr<float> = alloc total;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<float>, row: int, col: int, Ncol: int): ptr<float> {
+    row_offset: int = mul row Ncol;
+    offset: int = add row_offset col;
+    new_ptr: ptr<float> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_get(mtx: ptr<float>, row: int, col: int, Ncol: int): float {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_set(mtx: ptr<float>, row: int, col: int, Ncol: int, val: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    store ptr val;
+}
+
+@tensor_new(Ni: int, Nj: int, Nk: int): ptr<float> {
+    total: int = mul Ni Nj;
+    total: int = mul total Nk;
+    ptr: ptr<float> = alloc total;
+    ret ptr;
+}
+
+@tensor_loc(tsr: ptr<float>, i: int, j: int, k: int, Nj: int, Nk: int): ptr<float> {
+    offset: int = mul i Nj;
+    offset: int = add offset j;
+    offset: int = mul offset Nk;
+    offset: int = add offset k;
+    new_ptr: ptr<float> = ptradd tsr offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @tensor_loc defined
+@tensor_get(tsr: ptr<float>, i: int, j: int, k: int, Nj: int, Nk: int): float {
+    ptr: ptr<float> = call @tensor_loc tsr i j k Nj Nk;
+    val: float = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @tensor_loc defined
+@tensor_set(tsr: ptr<float>, i: int, j: int, k: int, Nj: int, Nk: int, val: float) {
+    ptr: ptr<float> = call @tensor_loc tsr i j k Nj Nk;
+    store ptr val;
+}
+
+# EXPECTS:
+#   @tensor_loc defined
+@tensor_incr(tsr: ptr<float>, i: int, j: int, k: int, Nj: int, Nk: int, incr: float) {
+    ptr: ptr<float> = call @tensor_loc tsr i j k Nj Nk;
+    val: float = load ptr;
+    new_val: float = fadd val incr;
+    store ptr new_val;
+}
+
+@tensor_print(tsr: ptr<float>, Ni: int, Nj: int, Nk: int) {
+    i: int = const 0;
+    one: int = const 1;
+    total: int = mul Ni Nj;
+    total: int = mul total Nk;
+.while:
+    cond: bool = lt i total;
+    br cond .body .done;
+.body:
+    tsr_loc: ptr<float> = ptradd tsr i;
+    val: float = load tsr_loc;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+@vector_new(N: int): ptr<float> {
+    ptr: ptr<float> = alloc N;
+    ret ptr;
+}
+
+@vector_get(vec: ptr<float>, i: int): float {
+    ptr: ptr<float> = ptradd vec i;
+    val: float = load ptr;
+    ret val;
+}
+
+@vector_set(vec: ptr<float>, i: int, val: float) {
+    ptr: ptr<float> = ptradd vec i;
+    store ptr val;
+}
+
+@vector_incr(vec: ptr<float>, i: int, incr: float) {
+    ptr: ptr<float> = ptradd vec i;
+    val: float = load ptr;
+    new_val: float = fadd val incr;
+    store ptr new_val;
+}
+
+# Search for n % m where n and m are floats by
+# iteratively subtracting the largest m*2^k that
+# fits inside n. 
+# Takes O((log n/m)^2) time.
+# NOTE: In C, this can be done with a built in 
+# function, but this is the best we can do.
+@fmod(n: float, m: float): float {
+    zero: float = const 0;
+    two: float = const 2;
+    rem: float = id n;
+.while:
+    cond: bool = fge rem m;
+    br cond .body .done;
+.body:
+    decr: float = id m;
+.while_inner:
+    diff: float = fsub rem decr;
+    cond: bool = fge diff zero;
+    br cond .body_inner .done_inner;
+.body_inner:
+    decr: float = fmul decr two;
+    jmp .while_inner;
+.done_inner:
+    decr: float = fdiv decr two;
+    rem: float = fsub rem decr;
+    jmp .while;
+.done:
+    ret rem;
+}

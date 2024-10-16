@@ -88,15 +88,15 @@ impl Optimizer {
     }
 
     /// Interpret a program in an `Interpretable` IR.
-    /// Returns the printed output of the program.
+    /// Returns the printed output of the program and optionally the cycles taken to run the program.
     /// The program should not return a value.
     pub fn interp(
         program: &Interpretable,
         args: Vec<String>,
         profile_out: Option<PathBuf>,
-    ) -> String {
+    ) -> (String, Option<u64>) {
         match program {
-            Interpretable::Bril(program) => Self::interp_bril(program, args, profile_out),
+            Interpretable::Bril(program) => (Self::interp_bril(program, args, profile_out), None),
             Interpretable::TreeProgram(program) => {
                 let mut parsed = Self::parse_arguments(args);
                 // add the state value to the end
@@ -107,7 +107,22 @@ impl Optimizer {
                 for line in printed.iter_mut() {
                     line.push('\n');
                 }
-                printed.join("")
+                (printed.join(""), None)
+            }
+            Interpretable::CycleMeasuringExecutable { executable } => {
+                let output = std::process::Command::new(
+                    std::path::Path::new(executable).canonicalize().unwrap(),
+                )
+                .args(args)
+                .output()
+                .unwrap();
+                let output_str = String::from_utf8(output.stdout).unwrap();
+                let output_err = String::from_utf8(output.stderr).unwrap();
+                let error_code = output.status.code().unwrap();
+                if error_code != 0 {
+                    panic!("Error code: {}", error_code);
+                }
+                (output_str, Some(output_err.trim().parse().unwrap()))
             }
             Interpretable::Executable { executable } => {
                 let output = std::process::Command::new(
@@ -118,7 +133,7 @@ impl Optimizer {
                 .unwrap()
                 .stdout;
 
-                String::from_utf8(output).unwrap()
+                (String::from_utf8(output).unwrap(), None)
             }
         }
     }

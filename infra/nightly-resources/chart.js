@@ -1,6 +1,5 @@
 const COLORS = {
   "rvsdg-round-trip-to-executable": "red",
-  "cranelift-O3": "blue",
   "llvm-O0": "purple",
   "llvm-O1": "green",
   "llvm-O2": "orange",
@@ -10,6 +9,42 @@ const COLORS = {
 };
 
 const BASELINE_MODE = "llvm-O0";
+
+// TODO these functions (mean, median, ect) are duplicated in generate_line_counts.py
+// we could move the computation of the latex table to js to solve this problem
+
+// Given a list of integers, compute the mean
+// number of cycles
+function mean_cycles(cycles) {
+  return cycles.reduce((a, b) => a + b, 0) / cycles.length;
+}
+
+function median_cycles(cycles) {
+  const sorted = cycles.sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  } else {
+    return sorted[mid];
+  }
+}
+
+function max_cycles(cycles) {
+  return Math.max(...cycles);
+}
+
+function min_cycles(cycles) {
+  return Math.min(...cycles);
+}
+
+function stddev_cycles(cycles) {
+  const mean = cycles.reduce((a, b) => a + b, 0) / (cycles.length - 1);
+  const squared_diffs = cycles.map((c) => (c - mean) ** 2);
+  // TODO kevin said we might want to use bessel's correction here
+  const bessels_corrected =
+    squared_diffs.reduce((a, b) => a + b, 0) / squared_diffs.length;
+  return Math.sqrt(bessels_corrected);
+}
 
 function getEntry(benchmark, runMode) {
   const entries = GLOBAL_DATA.currentRun.filter(
@@ -28,14 +63,14 @@ function getEntry(benchmark, runMode) {
 
 function getValue(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
-    return entry.hyperfine.results[0].mean;
+    return mean_cycles(entry["cycles"]);
   } else if (GLOBAL_DATA.chart.mode === "speedup") {
     const baseline = getEntry(entry.benchmark, BASELINE_MODE);
     if (!baseline) {
       addWarning(`No speedup baseline for ${benchmark}`);
     }
-    const baseV = baseline.hyperfine.results[0].mean;
-    const expV = entry.hyperfine.results[0].mean;
+    const baseV = mean_cycles(baseline["cycles"]);
+    const expV = mean_cycles(entry["cycles"]);
     // If you change this, also change the displayed formula in index.html
     return baseV / expV;
   } else {
@@ -45,9 +80,31 @@ function getValue(entry) {
 
 function getError(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
-    return entry.hyperfine.results[0].stddev;
+    return stddev_cycles(entry["cycles"]);
   } else {
-    return undefined;
+    // Error is given using propagation of error formula for two variables
+    // f = baseV / expV
+    const baseline = getEntry(entry.benchmark, BASELINE_MODE);
+    if (!baseline) {
+      addWarning(`No speedup baseline for ${benchmark}`);
+    }
+
+    const baseV = mean_cycles(baseline["cycles"]);
+    const expV = mean_cycles(entry["cycles"]);
+    const baseStd = stddev_cycles(baseline["cycles"]);
+    const expStd = stddev_cycles(entry["cycles"]);
+
+    // Speedup calculation
+    const speedup = baseV / expV;
+
+    // Error propagation
+    const relativeBaseError = baseStd / baseV;
+    const relativeExpError = expStd / expV;
+
+    const speedupError =
+      speedup * Math.sqrt(relativeBaseError ** 2 + relativeExpError ** 2);
+
+    return speedupError;
   }
 }
 

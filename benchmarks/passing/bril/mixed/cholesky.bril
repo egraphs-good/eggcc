@@ -1,4 +1,6 @@
-# ARGS: 270000
+# ARGS: 4
+# TODO size has to be 4
+
 # Cholesky decomposition algorithm
 
 # Cholesky decomposition transforms a Hermitian,
@@ -317,25 +319,8 @@
   ret;
 }
 
-@main(loop_bound: float) {
-  loop_incr: float = const 1;
-  loop_counter: float = const 10;
-  final_output: float = const 0;
-.loop_cond:
-  loop_cond: bool = flt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: float = call @orig_main loop_counter;
-  final_output: float = fadd final_output output;
-  loop_counter: float = fadd loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(x: float): float {
+@main(size: int) {
   one: int = const 1;
-  size: int = const 4;
   sqsize: int = mul size size;
   arr1: ptr<float> = call @fillarray;
   arr1_transposed: ptr<float> = call @fillarray;
@@ -345,10 +330,9 @@
   call @matmul size arr1 arr1_transposed hermitian;
   call @cholesky size hermitian res;
   sum: float = call @printarray sqsize res;
-  sum: float = fadd sum x;
   free arr1;
   free arr1_transposed;
   free hermitian;
   free res;
-  ret sum;
+  print sum;
 }

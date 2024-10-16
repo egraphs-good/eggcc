@@ -1,28 +1,38 @@
-# ARGS: 21
+# ARGS: 25
+
+# failing due to brillvm bug:
+# https://github.com/sampsyo/bril/issues/339
+
 @main(starting_m: int) {
-  call @orig_main starting_m;
+  res: int = call @myrec starting_m;
+  print res;
 }
 
-@orig_main(starting_m: int) {
+@myrec(starting_m: int): int {
   m : int = id starting_m;
   zero: int = const 0;
   one: int = const 1;
   two: int = const 2;
   cond_m: bool = eq m zero;
+  res: int = const 0;
+  tmp: int = const 0;
   br cond_m .end .m_nonzero;
 .m_nonzero:
   m:int = sub m one;
-  call @orig_main m;
+  tmp:int = call @myrec m;
+  res:int = add res tmp;
   cond_m: bool = eq m zero;
   br cond_m .end .m_nonzero2;
 .m_nonzero2:
   m:int = sub m one;
-  call @orig_main m;
+  tmp:int = call @myrec m;
+  res:int = add res tmp;
   cond_m: bool = eq m zero;
   br cond_m .end .m_nonzero3;
 .m_nonzero3:
   m:int = sub m one;
-  call @orig_main m;
+  tmp:int = call @myrec m;
+  res:int = add res tmp;
 .end:
-  print starting_m;
+  ret res;
 }

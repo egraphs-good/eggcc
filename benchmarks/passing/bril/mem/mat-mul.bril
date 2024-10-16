@@ -108,23 +108,7 @@
   ret;
 }
 
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: int = call @orig_main loop_counter;
-  final_output: int = add final_output output;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(size: int): int {
+@main(size: int) {
   seed: int = const 109658;
   one: int = const 1;
   rng: ptr<int> = alloc one;
@@ -145,5 +129,5 @@
   sum: int = add sum a;
   sum: int = add sum b;
   sum: int = add sum c;
-  ret sum;
+  print sum;
 }

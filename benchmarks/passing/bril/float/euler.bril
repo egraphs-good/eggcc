@@ -8,7 +8,6 @@
   e: float = id e;
   v1: float = id e;
   print v1;
-  v2: int = const 0;
 }
 
 @factorial(n: float): float {

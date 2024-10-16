@@ -5,24 +5,7 @@
 
 # input: a positive integer
 # output: the integer's factors
-
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: int = call @orig_main loop_counter;
-  final_output: int = add final_output output;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(num: int): int {
+@main(num: int) {
   zer: int = const 0;
   one: int = const 1;
   fac: int = const 2;
@@ -49,5 +32,5 @@
   jmp .loopcheck;
 
 .loopend:
-  ret sum;
+  print sum;
 }

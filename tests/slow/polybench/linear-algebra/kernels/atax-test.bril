@@ -1,0 +1,219 @@
+## atax computes y := A^T * A * x
+## for some procedurally generated matrix A and 
+## some procedurally generated vector x
+
+@main {
+    # constants
+    # dimensions correspond to Polybench MEDIUM_DATASET
+
+    M: int = const 390;
+    fM: float = const 390;
+    N: int = const 410;
+    fN: float = const 410;
+
+    one: int = const 1;
+    fzero: float = const 0;
+
+    # initialize arrays
+    A: ptr<float> = call @matrix_new M N;
+    x: ptr<float> = call @vector_new N;
+    call @init A x M fM N fN;
+
+    # main computation
+    # computes y := A^T * A * x
+
+    y: ptr<float> = call @vector_new N;
+    i: int = const 0;
+.init_y:
+    cond: bool = lt i N;
+    br cond .init_y_body .init_y_done;
+.init_y_body:
+    call @vector_set y i fzero;
+    i: int = add i one;
+    jmp .init_y;
+.init_y_done:
+    
+    tmp: ptr<float> = call @vector_new M;
+    i: int = const 0;
+.main_i:
+    cond: bool = lt i M;
+    br cond .main_i_body .main_i_done;
+.main_i_body:
+    call @vector_set tmp i fzero;
+    j: int = const 0;
+.main_j1:
+    cond: bool = lt j N;
+    br cond .main_j1_body .main_j1_done;
+.main_j1_body:
+    Aij: float = call @matrix_get A i j N;
+    xj: float = call @vector_get x j;
+    tmpi: float = call @vector_get tmp i;
+    new_tmpi: float = fmul Aij xj;
+    new_tmpi: float = fadd tmpi new_tmpi;
+    call @vector_set tmp i new_tmpi;
+    j: int = add j one;
+    jmp .main_j1;
+.main_j1_done:
+    j: int = const 0;
+.main_j2:
+    cond: bool = lt j N;
+    br cond .main_j2_body .main_j2_done;
+.main_j2_body:
+    Aij: float = call @matrix_get A i j N;
+    tmpi: float = call @vector_get tmp i;
+    yj: float = call @vector_get y j;
+    new_yj: float = fmul Aij tmpi;
+    new_yj: float = fadd yj new_yj;
+    call @vector_set y j new_yj;
+    j: int = add j one;
+    jmp .main_j2;
+.main_j2_done:
+    i: int = add i one;
+    jmp .main_i;
+.main_i_done:
+    
+    call @vector_print y N;
+
+    free A;
+    free x;
+    free y;
+    free tmp;
+}
+
+@init(A: ptr<float>, x: ptr<float>, 
+      M: int, fM: float, N: int, fN: float) {
+    one: int = const 1;
+    fzero: float = const 0;
+    fone: float = const 1;
+    ffive: float = const 5;
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_x:
+    cond: bool = lt i N;
+    br cond .init_x_body .init_x_done;
+.init_x_body:
+    val: float = fdiv fi fN;
+    val: float = fadd fone val;
+    call @vector_set x i val;
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_x;
+.init_x_done:
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_A_i:
+    cond: bool = lt i M;
+    br cond .init_A_i_body .init_A_i_done;
+.init_A_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_A_j:
+    cond: bool = lt j N;
+    br cond .init_A_j_body .init_A_j_done;
+.init_A_j_body:
+    val: float = fadd fi fj;
+    val: float = call @fmod val fN;
+    denom: float = fmul ffive fM;
+    val: float = fdiv val denom;
+    call @matrix_set A i j N val;
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_A_j;
+.init_A_j_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_A_i;
+.init_A_i_done:
+}
+
+@matrix_new(Nrow: int, Ncol: int): ptr<float> {
+    total: int = mul Nrow Ncol;
+    ptr: ptr<float> = alloc total;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<float>, row: int, col: int, Ncol: int): ptr<float> {
+    row_offset: int = mul row Ncol;
+    offset: int = add row_offset col;
+    new_ptr: ptr<float> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_get(mtx: ptr<float>, row: int, col: int, Ncol: int): float {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_set(mtx: ptr<float>, row: int, col: int, Ncol: int, val: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    store ptr val;
+}
+
+@vector_new(N: int): ptr<float> {
+    ptr: ptr<float> = alloc N;
+    ret ptr;
+}
+
+@vector_get(vec: ptr<float>, i: int): float {
+    ptr: ptr<float> = ptradd vec i;
+    val: float = load ptr;
+    ret val;
+}
+
+@vector_set(vec: ptr<float>, i: int, val: float) {
+    ptr: ptr<float> = ptradd vec i;
+    store ptr val;
+}
+
+# EXPECTS:
+#   @vector_get defined
+@vector_print(vec: ptr<float>, N: int) {
+    i: int = const 0;
+    one: int = const 1;
+.while:
+    cond: bool = lt i N;
+    br cond .body .done;
+.body:
+    val: float = call @vector_get vec i;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+# Search for n % m where n and m are floats by
+# iteratively subtracting the largest m*2^k that
+# fits inside n. 
+# Takes O((log n/m)^2) time.
+# NOTE: In C, this can be done with a built in 
+# function, but this is the best we can do.
+@fmod(n: float, m: float): float {
+    zero: float = const 0;
+    two: float = const 2;
+    rem: float = id n;
+.while:
+    cond: bool = fge rem m;
+    br cond .body .done;
+.body:
+    decr: float = id m;
+.while_inner:
+    diff: float = fsub rem decr;
+    cond: bool = fge diff zero;
+    br cond .body_inner .done_inner;
+.body_inner:
+    decr: float = fmul decr two;
+    jmp .while_inner;
+.done_inner:
+    decr: float = fdiv decr two;
+    rem: float = fsub rem decr;
+    jmp .while;
+.done:
+    ret rem;
+}

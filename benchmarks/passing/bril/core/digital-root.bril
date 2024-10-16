@@ -4,24 +4,7 @@
 # adding each digit together until the result is a single number.
 # This is equivalent to the input mod 9 except if that value would be zero
 # in which case the digital root is nine.
-
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: int = call @orig_main loop_counter;
-  final_output: int = add final_output output;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(input : int): int {
+@main(input : int) {
     zero: int = const 0;
     ten: int = const 10;
     result: int = const 0;
@@ -47,7 +30,7 @@
 
  .done:
     sum: int = add sum result;
-    ret sum;
+    print sum;
 }
 
 @is_single_digit(input: int): bool {

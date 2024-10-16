@@ -25,10 +25,6 @@
     C: ptr<float> = call @matrix_new NJ NM;
     D: ptr<float> = call @matrix_new NM NL;
     call @init A B C D NI fNI NJ fNJ NK fNK NL fNL NM fNM;
-    call @matrix_print A NI NK;
-    call @matrix_print B NK NJ;
-    call @matrix_print C NJ NM;
-    call @matrix_print D NM NL;
     # main computation
     # computes G := (A * B) * (C * D)
 
@@ -131,7 +127,7 @@
     jmp .part3_i;
 .part3_i_done:
 
-    call @matrix_print G NI NL;
+    res: float = call @matrix_sum G NI NL;
 
     free A;
     free B;
@@ -140,6 +136,7 @@
     free E;
     free F;
     free G;
+    print res;
 }
 
 @init(A: ptr<float>, B: ptr<float>, C: ptr<float>, D: ptr<float>,
@@ -299,21 +296,24 @@
     store ptr new_val;
 }
 
-@matrix_print(mtx: ptr<float>, Nrow: int, Ncol: int) {
+@matrix_sum(mtx: ptr<float>, Nrow: int, Ncol: int): float {
     i: int = const 0;
     one: int = const 1;
     total: int = mul Nrow Ncol;
+    res: float = const 0;
 .while:
     cond: bool = lt i total;
     br cond .body .done;
 .body:
     mtx_loc: ptr<float> = ptradd mtx i;
     val: float = load mtx_loc;
-    print val;
+    res: float = fadd res val;
     i: int = add i one;
     jmp .while;
 .done:
+    ret res;
 }
+
 
 # Search for n % m where n and m are floats by
 # iteratively subtracting the largest m*2^k that

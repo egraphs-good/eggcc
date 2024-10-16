@@ -1,10 +1,12 @@
-# ARGS: 9
+# ARGS: 6
 @main(n: int) {
   arrows: int = const 2;
   repeats: int = const 3;
   ans: int = call @up_arrow n arrows repeats;
   print ans;
 }
+
+# Computes Knuth’s up arrow notation, with the first argument being the number, the second argument being the number of Knuth’s up arrows, and the third argument being the number of repeats.
 
 @up_arrow(num: int, arrows: int, repeats: int): int {
   one: int = const 1;

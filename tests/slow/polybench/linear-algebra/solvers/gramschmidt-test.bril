@@ -1,0 +1,287 @@
+## gramschmidt performs QR decomposition
+## with modified Gram Schmidt.
+
+@main {
+    # constants
+    # dimensions correspond to Polybench MEDIUM_DATASET
+
+    M: int = const 20;
+    fM: float = const 20;
+    N: int = const 30;
+    fN: float = const 30;
+
+    one: int = const 1;
+    fzero: float = const 0;
+
+    A: ptr<float> = call @matrix_new M N;
+    R: ptr<float> = call @matrix_new N N;
+    Q: ptr<float> = call @matrix_new M N;
+    call @init A R Q M fM N fN;
+
+    k: int = const 0;
+.main_k:
+    cond: bool = lt k N;
+    br cond .main_k_body .main_k_done;
+.main_k_body:
+    nrm: float = const 0;
+    i: int = const 0;
+.sum_nrm_i:
+    cond: bool = lt i M;
+    br cond .sum_nrm_i_body .sum_nrm_i_done;
+.sum_nrm_i_body:
+    Aik: float = call @matrix_get A i k N;
+    incr: float = fmul Aik Aik;
+    nrm: float = fadd nrm incr;
+    i: int = add i one;
+    jmp .sum_nrm_i;
+.sum_nrm_i_done:
+    sqrt_nrm: float = call @sqrt nrm;
+    call @matrix_set R k k N sqrt_nrm;
+    i: int = const 0;
+.setQ_i:
+    cond: bool = lt i M;
+    br cond .setQ_i_body .setQ_i_done;
+.setQ_i_body:
+    Aik: float = call @matrix_get A i k N;
+    Rkk: float = call @matrix_get R k k N;
+    val: float = fdiv Aik Rkk;
+    call @matrix_set Q i k N val;
+    i: int = add i one;
+    jmp .setQ_i;
+.setQ_i_done:
+    j: int = add k one;
+.inner_j:
+    cond: bool = lt j N;
+    br cond .inner_j_body .inner_j_done;
+.inner_j_body:
+    call @matrix_set R k j N fzero;
+    i: int = const 0;
+.compute_Rkj_i:
+    cond: bool = lt i M;
+    br cond .compute_Rkj_i_body .compute_Rkj_i_done;
+.compute_Rkj_i_body:
+    Qik: float = call @matrix_get Q i k N;
+    Aij: float = call @matrix_get A i j N;
+    incr: float = fmul Qik Aij;
+    call @matrix_incr R k j N incr;
+    i: int = add i one;
+    jmp .compute_Rkj_i;
+.compute_Rkj_i_done:
+    i: int = const 0;
+.update_Aij_i:
+    cond: bool = lt i M;
+    br cond .update_Aij_i_body .update_Aij_i_done;
+.update_Aij_i_body:
+    Aij: float = call @matrix_get A i j N;
+    Qik: float = call @matrix_get Q i k N;
+    Rkj: float = call @matrix_get R k j N;
+    val: float = fmul Qik Rkj;
+    val: float = fsub Aij val;
+    call @matrix_set A i j N val;
+    i: int = add i one;
+    jmp .update_Aij_i;
+.update_Aij_i_done:
+
+    j: int = add j one;
+    jmp .inner_j;
+.inner_j_done:
+
+    k: int = add k one;
+    jmp .main_k;
+.main_k_done:
+
+    call @matrix_print R N N;
+    call @matrix_print Q M N;
+
+    free A;
+    free R;
+    free Q;
+}
+
+@init(A: ptr<float>, R: ptr<float>, Q: ptr<float>,
+      M: int, fM: float, N: int, fN: float) {
+    one: int = const 1;
+    fone: float = const 1;
+    fzero: float = const 0;
+    fhundred: float = const 100;
+    ften: float = const 10;
+
+    i: int = const 0;
+    fi: float = const 0;
+.init_AQ_i:
+    cond: bool = lt i M;
+    br cond .init_AQ_i_body .init_AQ_i_done;
+.init_AQ_i_body:
+    j: int = const 0;
+    fj: float = const 0;
+.init_AQ_j:
+    cond: bool = lt j N;
+    br cond .init_AQ_j_body .init_AQ_j_done;
+.init_AQ_j_body:
+    val: float = fmul fi fj;
+    val: float = call @fmod val fM;
+    val: float = fdiv val fM;
+    val: float = fmul val fhundred;
+    val: float = fadd val ften;
+    call @matrix_set A i j N val;
+    call @matrix_set Q i j N fzero;
+    j: int = add j one;
+    fj: float = fadd fj fone;
+    jmp .init_AQ_j;
+.init_AQ_j_done:
+    i: int = add i one;
+    fi: float = fadd fi fone;
+    jmp .init_AQ_i;
+.init_AQ_i_done:
+
+    i: int = const 0;
+.init_R_i:
+    cond: bool = lt i N;
+    br cond .init_R_i_body .init_R_i_done;
+.init_R_i_body:
+    j: int = const 0;
+.init_R_j:
+    cond: bool = lt j N;
+    br cond .init_R_j_body .init_R_j_done;
+.init_R_j_body:
+    call @matrix_set R i j N fzero;
+    j: int = add j one;
+    jmp .init_R_j;
+.init_R_j_done:
+    i: int = add i one;
+    jmp .init_R_i;
+.init_R_i_done:
+}
+
+@matrix_new(Nrow: int, Ncol: int): ptr<float> {
+    total: int = mul Nrow Ncol;
+    ptr: ptr<float> = alloc total;
+    ret ptr;
+}
+
+@matrix_loc(mtx: ptr<float>, row: int, col: int, Ncol: int): ptr<float> {
+    row_offset: int = mul row Ncol;
+    offset: int = add row_offset col;
+    new_ptr: ptr<float> = ptradd mtx offset;
+    ret new_ptr;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_get(mtx: ptr<float>, row: int, col: int, Ncol: int): float {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    ret val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_set(mtx: ptr<float>, row: int, col: int, Ncol: int, val: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    store ptr val;
+}
+
+# EXPECTS:
+#   @matrix_loc defined
+@matrix_incr(mtx: ptr<float>, row: int, col: int, Ncol: int, incr: float) {
+    ptr: ptr<float> = call @matrix_loc mtx row col Ncol;
+    val: float = load ptr;
+    new_val: float = fadd val incr;
+    store ptr new_val;
+}
+
+@matrix_print(mtx: ptr<float>, Nrow: int, Ncol: int) {
+    i: int = const 0;
+    one: int = const 1;
+    total: int = mul Nrow Ncol;
+.while:
+    cond: bool = lt i total;
+    br cond .body .done;
+.body:
+    mtx_loc: ptr<float> = ptradd mtx i;
+    val: float = load mtx_loc;
+    print val;
+    i: int = add i one;
+    jmp .while;
+.done:
+}
+
+
+# Search for n % m where n and m are floats by
+# iteratively subtracting the largest m*2^k that
+# fits inside n. 
+# Takes O((log n/m)^2) time.
+# NOTE: In C, this can be done with a built in 
+# function, but this is the best we can do.
+@fmod(n: float, m: float): float {
+    zero: float = const 0;
+    two: float = const 2;
+    rem: float = id n;
+.while:
+    cond: bool = fge rem m;
+    br cond .body .done;
+.body:
+    decr: float = id m;
+.while_inner:
+    diff: float = fsub rem decr;
+    cond: bool = fge diff zero;
+    br cond .body_inner .done_inner;
+.body_inner:
+    decr: float = fmul decr two;
+    jmp .while_inner;
+.done_inner:
+    decr: float = fdiv decr two;
+    rem: float = fsub rem decr;
+    jmp .while;
+.done:
+    ret rem;
+}
+
+# Loop Newton's method until convergence within a
+# multiplicative 1 +/- 1e-10 factor. That is,
+#         x_(i+1) = 1/2 (x_i + n / x_i).
+# 
+# Takes O(log n) iterations.
+# NOTE: C uses a hardware instruction to compute 
+# sqrt, but this is the best we can do.
+@sqrt(n: float): float {
+    # handle zero
+    zero: float = const 0;
+    is_zero: bool = feq n zero;
+    br is_zero .ret_zero .continue_zero;
+.ret_zero:
+    ret zero;
+.continue_zero:
+
+    # handle nan
+    is_not_nan: bool = feq n n;
+    br is_not_nan .continue_nan .ret_nan;
+.ret_nan:
+    nan: float = fdiv zero zero;
+    ret nan;
+.continue_nan:
+
+    # handle negative
+    is_negative: bool = flt n zero;
+    br is_negative .ret_nan .continue_neg;
+.continue_neg:
+
+    # main case
+    two: float = const 2;
+    oneminuseps: float = const 0.9999999999;
+    onepluseps: float = const 1.0000000001;
+    ans: float = const 1;
+.do:
+    next: float = fdiv n ans;
+    next: float = fadd ans next;
+    next: float = fdiv next two;
+.while:
+    quot: float = fdiv next ans;
+    ans: float = id next;
+    big_enough: bool = fge quot oneminuseps;
+    small_enough: bool = fle quot onepluseps;
+    good: bool = and big_enough small_enough;
+    br good .done .do;
+.done:
+    ret ans;
+}

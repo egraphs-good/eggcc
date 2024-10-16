@@ -1,24 +1,7 @@
 # ARGS: 14500
 # compute the sum of [1, n] by both loop and formula
 # and compare them to see if the result is the same
-
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: int = call @orig_main loop_counter;
-  final_output: int = add final_output output;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(n: int): int {
+@main(n: int) {
     sum: int = const 0;
     first: int = call @sum_by_loop n;
     second: int = call @sum_by_formula n;
@@ -30,7 +13,7 @@
     one: int = const 1;
     sum: int = add sum one;
 .done:
-    ret sum;
+    print sum;
 }
 
 @sum_by_loop(n: int): int {

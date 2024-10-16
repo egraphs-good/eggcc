@@ -4,12 +4,14 @@
 @main(n: float) {
     a: float = const 2.0;
     b: float = const 10.0;
+    res: float = const 0.0;
     left : float = call @left_riemann a b n;
-    print left;
+    res : float = fadd res left;
     midpoint: float = call @midpoint_riemann a b n;
-    print midpoint;
+    res : float = fadd res midpoint;
     right : float = call @right_riemann a b n;
-    print right;
+    res : float = fadd res right;
+    print res;
 }
 
 @square_function(x: float): float {

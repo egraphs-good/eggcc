@@ -1,7 +1,6 @@
 // copied from profile.py
 const treatments = [
   "rvsdg-round-trip-to-executable",
-  "cranelift-O3",
   "llvm-O0",
   "llvm-O1",
   "llvm-O2",

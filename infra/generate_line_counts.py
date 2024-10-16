@@ -4,6 +4,7 @@ import glob
 import json
 import subprocess
 import os
+import statistics 
 
 def header():
     return [
@@ -78,19 +79,36 @@ def detailed_linecount_table():
 def round_fmt(v):
     return "{:.3f}".format(round(v, 3))
 
+# given a list of integers (cycles taken for each run)
+# return the mean of the cycles
+def mean_cycles(cycles):
+    return sum(cycles) / len(cycles)
+
+# given a list of integers, return the max
+def max_cycles(cycles):
+    return max(cycles)
+
+def min_cycles(cycles):
+    return min(cycles)
+
+
+# given a list of integers, return the standard deviation
+def stddev_cycles(cycles):
+    return statistics.stdev(cycles)
+
 def get_rows_for_benchmark(bench, profile_data):
     data_for_bench = [x for x in profile_data if x["benchmark"] == bench]
     rows = []
     for (idx, entry) in enumerate(data_for_bench):
         fst_col = r'\multirow{' + str(len(data_for_bench)) + r'}{*}{' + bench.replace("_", r'\_') + r'}' if idx == 0 else ''
-        res = entry["hyperfine"]["results"][0]
+        cycles = entry["cycles"]
         row = " ".join([
             r'\multicolumn{1}{|l|}{' + fst_col + r'} &',
             r'\multicolumn{1}{l|}{' + entry["runMethod"] + r'}  &',
-            r'\multicolumn{1}{l|}{' + round_fmt(res["mean"]) + r'} &',
-            r'\multicolumn{1}{l|}{' + round_fmt(res["max"]) + r'} &',
-            r'\multicolumn{1}{l|}{' + round_fmt(res["min"]) + r'} &',
-            round_fmt(res["stddev"]) + r' \\',
+            r'\multicolumn{1}{l|}{' + round_fmt(mean_cycles(cycles)) + r'} &',
+            r'\multicolumn{1}{l|}{' + round_fmt(max_cycles(cycles)) + r'} &',
+            r'\multicolumn{1}{l|}{' + round_fmt(min_cycles(cycles)) + r'} &',
+            round_fmt(stddev_cycles(cycles)) + r' \\',
         ])
         rows.append(row)
     rows.append(r' \hline')

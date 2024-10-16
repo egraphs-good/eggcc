@@ -38,13 +38,13 @@ function min_cycles(cycles) {
 }
 
 function stddev_cycles(cycles) {
-  const mean = cycles.reduce((a, b) => a + b, 0) / (cycles.length-1);
+  const mean = cycles.reduce((a, b) => a + b, 0) / (cycles.length - 1);
   const squared_diffs = cycles.map((c) => (c - mean) ** 2);
   // TODO kevin said we might want to use bessel's correction here
-  const bessels_corrected = squared_diffs.reduce((a, b) => a + b, 0) / squared_diffs.length;
+  const bessels_corrected =
+    squared_diffs.reduce((a, b) => a + b, 0) / squared_diffs.length;
   return Math.sqrt(bessels_corrected);
 }
-
 
 function getEntry(benchmark, runMode) {
   const entries = GLOBAL_DATA.currentRun.filter(
@@ -101,7 +101,8 @@ function getError(entry) {
     const relativeBaseError = baseStd / baseV;
     const relativeExpError = expStd / expV;
 
-    const speedupError = speedup * Math.sqrt(relativeBaseError**2 + relativeExpError**2);
+    const speedupError =
+      speedup * Math.sqrt(relativeBaseError ** 2 + relativeExpError ** 2);
 
     return speedupError;
   }

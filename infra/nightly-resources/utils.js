@@ -33,4 +33,3 @@ function getDifference(current, baseline, comparison_func) {
     return { class: cssClass, value: `${sign}${tryRound(difference)}` };
   }
 }
-

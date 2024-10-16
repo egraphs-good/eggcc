@@ -12,7 +12,7 @@ strum_macros = "0.25"
 main_error = "0.1.2"
 thiserror = "1.0"
 egraph-serialize = "0.2.0"
-bril-rs = { git = "https://github.com/uwplse/bril", rev = "5292b5b71528eecc2b0217caecbfc6ed61352bcf" }
+bril-rs = { git = "https://github.com/uwplse/bril", rev = "fe255deec1533960b20fff832971e45810202a5d" }
 indexmap = "2.0.0"
 rustc-hash = "1.1.0"
 ordered-float = "3"

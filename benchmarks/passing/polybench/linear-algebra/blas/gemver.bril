@@ -123,6 +123,7 @@
     free x;
     free y;
     free z;
+    print res;
 }
 
 

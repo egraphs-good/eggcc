@@ -22,14 +22,14 @@ smallvec = "1.11.1"
 
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 # currently using the uwplse/bril fork of bril, on eggcc-main
-bril2json = { git = "https://github.com/uwplse/bril", rev = "fe8356c5f452e9dd8fa40bd2499b63a736c49ccf" }
-brilirs = { git = "https://github.com/uwplse/bril", rev = "fe8356c5f452e9dd8fa40bd2499b63a736c49ccf" }
-bril-rs = { git = "https://github.com/uwplse/bril", rev = "fe8356c5f452e9dd8fa40bd2499b63a736c49ccf" }
-brilift = { git = "https://github.com/uwplse/bril", rev = "fe8356c5f452e9dd8fa40bd2499b63a736c49ccf" }
-rs2bril = { git = "https://github.com/uwplse/bril", rev = "fe8356c5f452e9dd8fa40bd2499b63a736c49ccf" ,features = [
+bril2json = { git = "https://github.com/uwplse/bril", rev = "5292b5b71528eecc2b0217caecbfc6ed61352bcf" }
+brilirs = { git = "https://github.com/uwplse/bril", rev = "5292b5b71528eecc2b0217caecbfc6ed61352bcf" }
+bril-rs = { git = "https://github.com/uwplse/bril", rev = "5292b5b71528eecc2b0217caecbfc6ed61352bcf" }
+brilift = { git = "https://github.com/uwplse/bril", rev = "5292b5b71528eecc2b0217caecbfc6ed61352bcf" }
+rs2bril = { git = "https://github.com/uwplse/bril", rev = "5292b5b71528eecc2b0217caecbfc6ed61352bcf" ,features = [
   "import",
 ] }
-brillvm = { git = "https://github.com/uwplse/bril", rev = "fe8356c5f452e9dd8fa40bd2499b63a736c49ccf" }
+brillvm = { git = "https://github.com/uwplse/bril", rev = "5292b5b71528eecc2b0217caecbfc6ed61352bcf" }
 
 
 ordered-float = { version = "3.7" }

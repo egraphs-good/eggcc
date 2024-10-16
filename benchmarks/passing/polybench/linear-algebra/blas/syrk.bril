@@ -218,5 +218,5 @@
     rem: float = fsub rem decr;
     jmp .while;
 .done:
-    ret rem;
+    print rem;
 }

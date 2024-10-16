@@ -1,6 +1,6 @@
 ## syr2k computes a symmetric rank k update
 
-@main {
+@main() {
     # constants
     # dimensions correspond to Polybench MEDIUM_DATASET
 
@@ -218,5 +218,5 @@
     rem: float = fsub rem decr;
     jmp .while;
 .done:
-    print rem;
+    ret rem;
 }

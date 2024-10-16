@@ -57,7 +57,7 @@ else
   export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
   make runtime
   # run on all benchmarks in nightly
-  ./infra/profile.py benchmarks/passing/bril "$DATA_DIR"  2>&1 | tee $NIGHTLY_DIR/log.txt
+  ./infra/profile.py benchmarks/passing "$DATA_DIR"  2>&1 | tee $NIGHTLY_DIR/log.txt
 fi
 
 # Generate latex after running the profiler (depends on profile.json)

@@ -303,6 +303,7 @@ impl TestProgram {
                 let mut file = std::fs::File::open(path.clone()).unwrap();
 
                 file.read_to_string(&mut src).unwrap();
+                let args = Optimizer::parse_bril_args(&src);
                 let syntax = syn::parse_file(&src).unwrap();
                 let name = path.display().to_string();
                 let program = rs2bril::from_file_to_program(syntax, false, Some(name.clone()));
@@ -310,7 +311,7 @@ impl TestProgram {
                 ProgWithArguments {
                     program,
                     name,
-                    args: vec![],
+                    args,
                 }
             }
         }
@@ -553,7 +554,11 @@ impl Run {
 
         let (visualizations, interpretable_out) = match self.test_type {
             RunMode::Parse => (
-                vec![],
+                vec![Visualization {
+                    result: self.prog_with_args.program.to_string(),
+                    file_extension: ".bril".to_string(),
+                    name: "".to_string(),
+                }],
                 Some(Interpretable::Bril(self.prog_with_args.program.clone())),
             ),
             RunMode::BrilToJson => {

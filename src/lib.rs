@@ -63,6 +63,13 @@ impl Optimizer {
                 {
                     args.push(arg);
                 }
+            } else if first_line.contains("// ARGS:") {
+                for arg in first_line["// ARGS: ".len()..]
+                    .split(' ')
+                    .map(|s| s.to_string())
+                {
+                    args.push(arg);
+                }
             }
         }
         args

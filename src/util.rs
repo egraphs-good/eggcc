@@ -305,7 +305,7 @@ impl TestProgram {
                 file.read_to_string(&mut src).unwrap();
                 let args = Optimizer::parse_bril_args(&src);
                 let syntax = syn::parse_file(&src).unwrap();
-                let name = path.display().to_string();
+                let name = path.file_stem().unwrap().to_str().unwrap().to_string();
                 let program = rs2bril::from_file_to_program(syntax, false, Some(name.clone()));
 
                 ProgWithArguments {

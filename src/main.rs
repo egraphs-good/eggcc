@@ -17,6 +17,9 @@ struct Args {
     /// the result.
     #[clap(long)]
     interp: bool,
+    /// Add timing information to the benchmark, measuring cycles before the final print statement.
+    #[clap(long)]
+    add_timing: bool,
     #[clap(long)]
     profile_out: Option<PathBuf>,
 
@@ -86,7 +89,7 @@ fn main() {
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
         optimize_bril_llvm: args.optimize_bril_llvm,
-        add_timing: false,
+        add_timing: args.add_timing,
     };
 
     let result = match run.run() {

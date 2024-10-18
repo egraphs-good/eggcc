@@ -69,7 +69,7 @@ def setup_benchmark(name):
 def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}')
   profile_dir = benchmark_profile_dir(benchmark.name)
-  cmd = f'cargo run --release {benchmark.path} {get_eggcc_options(benchmark.treatment, benchmark.name)} -o {profile_dir}/{benchmark.treatment}'
+  cmd = f'cargo run --release {benchmark.path} --add-timing {get_eggcc_options(benchmark.treatment, benchmark.name)} -o {profile_dir}/{benchmark.treatment}'
   print(f'Running: {cmd}', flush=True)
   start = time.time()
   process = subprocess.run(cmd, shell=True)

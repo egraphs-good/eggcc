@@ -44,11 +44,12 @@
     jmp .main_i;
 .main_i_done:
 
-    call @vector_print x N;
+    res:float = call @vector_sum x N;
 
     free L;
     free x;
     free b;
+    print res;
 }
 
 @init(L: ptr<float>, b: ptr<float>, x: ptr<float>,
@@ -142,16 +143,18 @@
 
 # EXPECTS:
 #   @vector_get defined
-@vector_print(vec: ptr<float>, N: int) {
+@vector_sum(vec: ptr<float>, N: int): float {
     i: int = const 0;
     one: int = const 1;
+    res: float = const 0;
 .while:
     cond: bool = lt i N;
     br cond .body .done;
 .body:
     val: float = call @vector_get vec i;
-    print val;
+    res: float = fadd res val;
     i: int = add i one;
     jmp .while;
 .done:
+    ret res;
 }

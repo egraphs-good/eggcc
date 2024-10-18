@@ -63,14 +63,16 @@
     jmp .part2_i;
 .part2_i_done:
 
-    call @vector_print x1 N;
-    call @vector_print x2 N;
+    res: float = call @vector_sum x1 N;
+    res2: float = call @vector_sum x2 N;
+    res3: float = fadd res res2;
 
     free x1;
     free x2;
     free y_1;
     free y_2;
     free A;
+    print res3;
 }
 
 @init(x1: ptr<float>, x2: ptr<float>, y_1: ptr<float>, y_2: ptr<float>, A: ptr<float>,
@@ -144,18 +146,20 @@
 
 # EXPECTS:
 #   @vector_get defined
-@vector_print(vec: ptr<float>, N: int) {
+@vector_sum(vec: ptr<float>, N: int): float {
     i: int = const 0;
     one: int = const 1;
+    res: float = const 0;
 .while:
     cond: bool = lt i N;
     br cond .body .done;
 .body:
     val: float = call @vector_get vec i;
-    print val;
+    res: float = fadd res val;
     i: int = add i one;
     jmp .while;
 .done:
+    ret res;
 }
 
 @matrix_new(Nrow: int, Ncol: int): ptr<float> {

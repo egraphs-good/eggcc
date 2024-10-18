@@ -1,4 +1,4 @@
-# ARGS: 1400000
+# ARGS: 7
 
 ## let's try to invert a 3x3 matrix lmao
 ## We'll keep an array of 9 integers
@@ -106,23 +106,8 @@
 }
 
 
-@main(loop_bound: float) {
-  loop_incr: float = const 1;
-  loop_counter: float = const 10;
-  final_output: float = const 0;
-.loop_cond:
-  loop_cond: bool = flt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: float = call @orig_main loop_counter;
-  final_output: float = fadd final_output output;
-  loop_counter: float = fadd loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
 
-@orig_main(x: float): float 
+@main(x: float) 
 {
   nine :int = const 9;
   one :int = const 1;
@@ -132,12 +117,11 @@
   three :float = const 3;
   four :float = const 4;
   five :float = const 5;
-  seven :float = const 7;
   store matrix zero;
   ptr :ptr<float> = ptradd matrix one;
   store ptr onef;
   ptr :ptr<float> = ptradd ptr one;
-  store ptr seven;
+  store ptr x;
   ptr :ptr<float> = ptradd ptr one;
   store ptr four;
   ptr :ptr<float> = ptradd ptr one;
@@ -145,7 +129,7 @@
   ptr :ptr<float> = ptradd ptr one;
   store ptr five;
   ptr :ptr<float> = ptradd ptr one;
-  store ptr seven;
+  store ptr x;
   ptr :ptr<float> = ptradd ptr one;
   store ptr four;
   ptr :ptr<float> = ptradd ptr one;
@@ -159,7 +143,7 @@
   free matrix;
   sum: float = fadd sum arr;
   sum: float = fadd sum x;
-  ret sum;
+  print sum;
 }
 
 

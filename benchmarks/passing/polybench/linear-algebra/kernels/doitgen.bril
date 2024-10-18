@@ -74,11 +74,12 @@
     jmp .main_r;
 .main_r_done:
 
-    call @tensor_print A NR NQ NP;
+    res: float = call @tensor_sum A NR NQ NP;
 
     free A;
     free sum;
     free C4;
+    print res;
 }
 
 
@@ -217,21 +218,23 @@
     store ptr new_val;
 }
 
-@tensor_print(tsr: ptr<float>, Ni: int, Nj: int, Nk: int) {
+@tensor_sum(tsr: ptr<float>, Ni: int, Nj: int, Nk: int): float {
     i: int = const 0;
     one: int = const 1;
     total: int = mul Ni Nj;
     total: int = mul total Nk;
+    res: float = const 0;
 .while:
     cond: bool = lt i total;
     br cond .body .done;
 .body:
     tsr_loc: ptr<float> = ptradd tsr i;
     val: float = load tsr_loc;
-    print val;
+    res: float = fadd res val;
     i: int = add i one;
     jmp .while;
 .done:
+    ret res;
 }
 
 @vector_new(N: int): ptr<float> {

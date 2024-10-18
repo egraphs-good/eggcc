@@ -346,6 +346,7 @@ pub struct Run {
     pub optimize_egglog: Option<bool>,
     pub optimize_brilift: Option<bool>,
     pub optimize_bril_llvm: Option<LLVMOptLevel>,
+    pub add_timing: bool,
 }
 
 /// an enum of IRs that can be interpreted
@@ -353,7 +354,14 @@ pub struct Run {
 pub enum Interpretable {
     Bril(Program),
     TreeProgram(TreeProgram),
-    Executable { executable: String },
+    /// An executable that also prints the number of cycles it took to run to stderr (llvm)
+    CycleMeasuringExecutable {
+        executable: String,
+    },
+    /// An executable that doesn't measure number of cycles (cranelift)
+    Executable {
+        executable: String,
+    },
 }
 
 /// Some sort of visualization of the result, with a name
@@ -373,6 +381,7 @@ pub struct RunOutput {
     // if the result was interpreted, the stdout of interpreting it
     pub result_interpreted: Option<String>,
     pub original_interpreted: Option<String>,
+    pub cycles_taken: Option<u64>,
 }
 
 impl Run {
@@ -404,6 +413,7 @@ impl Run {
             optimize_egglog: None,
             optimize_brilift: Some(optimize_brilift),
             optimize_bril_llvm: None,
+            add_timing: false,
         }
     }
 
@@ -420,6 +430,7 @@ impl Run {
             optimize_egglog: None,
             optimize_brilift: None,
             optimize_bril_llvm: None,
+            add_timing: false,
         }
     }
 
@@ -449,6 +460,7 @@ impl Run {
                 optimize_egglog: None,
                 optimize_brilift: None,
                 optimize_bril_llvm: None,
+                add_timing: false,
             };
             if test_type.produces_interpretable() {
                 let interp = Run {
@@ -482,6 +494,7 @@ impl Run {
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: None,
                         optimize_bril_llvm: Some(optimize_llvm),
+                        add_timing: false,
                     });
                 }
             }
@@ -520,11 +533,14 @@ impl Run {
             ))
         } else if self.interp == InterpMode::InterpFast {
             let interpretable = self.run_brilift(self.prog_with_args.program.clone(), true);
-            let res = Some(Optimizer::interp(
-                interpretable.as_ref().unwrap(),
-                self.prog_with_args.args.clone(),
-                None,
-            ));
+            let res = Some(
+                Optimizer::interp(
+                    interpretable.as_ref().unwrap(),
+                    self.prog_with_args.args.clone(),
+                    None,
+                )
+                .0,
+            );
 
             // clean up binary
             if let Interpretable::Executable { executable } = interpretable.unwrap() {
@@ -585,7 +601,8 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
-                let interpretable = self.run_bril_llvm(bril, false, LLVMOptLevel::O0)?;
+                let interpretable =
+                    self.run_bril_llvm(bril, false, LLVMOptLevel::O0, self.add_timing)?;
                 (vec![], Some(interpretable))
             }
             RunMode::DagToRvsdg => {
@@ -782,6 +799,7 @@ impl Run {
                     self.prog_with_args.program.clone(),
                     optimize_egglog,
                     optimize_brillvm,
+                    self.add_timing,
                 )?;
                 (vec![], Some(interpretable))
             }
@@ -807,8 +825,12 @@ impl Run {
                     };
 
                     for optimize_llvm in [LLVMOptLevel::O0, LLVMOptLevel::O3] {
-                        let interpretable =
-                            self.run_bril_llvm(resulting_bril.clone(), false, optimize_llvm)?;
+                        let interpretable = self.run_bril_llvm(
+                            resulting_bril.clone(),
+                            false,
+                            optimize_llvm,
+                            self.add_timing,
+                        )?;
                         let new_interpreted = Optimizer::interp(
                             &interpretable,
                             self.prog_with_args.args.clone(),
@@ -850,11 +872,13 @@ impl Run {
 
             res
         };
+        let cycles_taken = result_interpreted.as_ref().map(|val| val.1).unwrap_or(None);
 
         Ok(RunOutput {
             visualizations,
-            result_interpreted,
+            result_interpreted: result_interpreted.map(|val| val.0),
             original_interpreted,
+            cycles_taken,
         })
     }
 
@@ -930,6 +954,7 @@ impl Run {
         input_prog: Program,
         optimize_egglog: bool,
         llvm_level: LLVMOptLevel,
+        add_timing: bool,
     ) -> Result<Interpretable, EggCCError> {
         // Make a unique name for this test running bril llvm
         // so we don't have conflicts in /tmp
@@ -951,6 +976,7 @@ impl Run {
             args: vec![],
             program: Some(String::from_utf8(buf).unwrap()),
             interpreter: false,
+            add_timing,
         });
 
         let init_ll_name = format!("{}-init.ll", self.name());
@@ -1030,7 +1056,11 @@ impl Run {
             self.prog_with_args.args.join(" "),
         );
 
-        Ok(Interpretable::Executable { executable })
+        if add_timing {
+            Ok(Interpretable::CycleMeasuringExecutable { executable })
+        } else {
+            Ok(Interpretable::Executable { executable })
+        }
     }
 }
 

@@ -93,13 +93,14 @@
     jmp .part2_i;
 .part2_i_done:
 
-    call @matrix_print D NI NL;
+    res: float = call @matrix_sum D NI NL;
 
     free A;
     free B;
     free C;
     free D;
     free tmp;
+    print res;
 }
 
 @init(A: ptr<float>, B: ptr<float>, C: ptr<float>, D: ptr<float>, 
@@ -262,21 +263,24 @@
     store ptr new_val;
 }
 
-@matrix_print(mtx: ptr<float>, Nrow: int, Ncol: int) {
+@matrix_sum(mtx: ptr<float>, Nrow: int, Ncol: int): float {
     i: int = const 0;
     one: int = const 1;
     total: int = mul Nrow Ncol;
+    res: float = const 0;
 .while:
     cond: bool = lt i total;
     br cond .body .done;
 .body:
     mtx_loc: ptr<float> = ptradd mtx i;
     val: float = load mtx_loc;
-    print val;
+    res: float = fadd res val;
     i: int = add i one;
     jmp .while;
 .done:
+    ret res;
 }
+
 
 # Search for n % m where n and m are floats by
 # iteratively subtracting the largest m*2^k that

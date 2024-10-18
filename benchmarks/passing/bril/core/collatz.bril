@@ -3,23 +3,7 @@
 # Compute the Collatz sequence from *n*. This may not terminate for all *n*, but
 # it is at least known to terminate for all *n* up to a large value.
 # see https://en.wikipedia.org/wiki/Collatz_conjecture
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: int = call @orig_main loop_counter;
-  final_output: int = add final_output output;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(x : int): int {
+@main(x : int) {
   one: int = const 1;
   two: int = const 2;
   three: int = const 3;
@@ -45,5 +29,5 @@
   sum: int = add sum x;
   jmp .cond;
 .end:
-  ret sum;
+  print sum;
 }

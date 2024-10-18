@@ -5,9 +5,8 @@ use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
 /// Generate tests for all configurations of a given file
-/// If `just_brilift` is true, only generate tests that
-/// run the full pipeline with brilift
-fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
+// slow_test means the test is too slow to run the interpreter on, so use benchmarking mode
+fn generate_tests(glob: &str, slow_test: bool) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
@@ -47,7 +46,7 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
 
         let snapshot = f.to_str().unwrap().contains("small");
 
-        let configurations = if benchmark_mode {
+        let configurations = if slow_test {
             // in benchmark mode, run a special test pipeline that only runs
             // a few modes, and shares intermediate results
             vec![Run::test_benchmark_config(TestProgram::BrilFile(f.clone()))]
@@ -66,6 +65,7 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
 fn main() {
     let args = libtest_mimic::Arguments::from_args();
     let mut tests = generate_tests("tests/passing/**/*.bril", false);
+    tests.extend(generate_tests("tests/slow/**/*.bril", true));
     // also generate tests for benchmarks
     tests.extend(generate_tests("benchmarks/passing/**/*.bril", true));
 

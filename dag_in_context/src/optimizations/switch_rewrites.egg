@@ -1,6 +1,7 @@
 (ruleset switch_rewrite)
 (ruleset always-switch-rewrite)
 
+; if a < b then a else b ~~> (min a b)
 (rule (
        (= pred (Bop (LessThan) a b))
        (= if_e (If pred inputs thn els))
@@ -15,6 +16,7 @@
       ((union (Get if_e k) (Bop (Smin) a b)))
       :ruleset switch_rewrite)
 
+; if a < b then b else a ~~> (max a b)
 (rule (
        (= pred (Bop (LessThan) a b))
        (= if_e (If pred inputs thn els))
@@ -28,6 +30,34 @@
       )
       ((union (Get if_e k) (Bop (Smax) a b)))
       :ruleset switch_rewrite) 
+
+; if pred then a else b ~~> (select pred a b)
+; where a and b are inputs to the region
+(rule (
+       (= if_e (If pred inputs thn els))
+       (= a (Get inputs i))
+       (= b (Get inputs j))
+       ; if pred then a else b
+       (= (Get thn k) (Get (Arg ty (InIf true pred inputs)) i))
+       (= (Get els k) (Get (Arg ty (InIf false pred inputs)) j))
+       )
+       (
+       (union (Get if_e k) (Top (Select) pred a b))
+       )
+       :ruleset switch_rewrite)
+
+; if pred then (Const a) else (Const b) ~~> (select pred (Const a) (Const b))
+(rule (
+       (= if_e (If pred inputs thn els))
+       (ContextOf if_e ctx)
+       (HasArgType if_e ty)
+       (= (Get thn i) (Const x _ty (InIf true pred inputs)))
+       (= (Get els i) (Const y _ty (InIf false pred inputs)))
+      )
+      (
+       (union (Get if_e i) (Top (Select) pred (Const x ty ctx) (Const y ty ctx)))
+      )
+      :ruleset switch_rewrite)
 
 ; if (a and b) X Y ~~> if a (if b X Y) Y
 (rule ((= lhs (If (Bop (And) a b) ins X Y))

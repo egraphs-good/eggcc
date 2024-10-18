@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, ffi::OsStr};
 
 use eggcc::util::{Run, RunMode, TestProgram};
 use insta::assert_snapshot;
@@ -42,16 +42,23 @@ fn generate_tests(glob: &str, slow_test: bool) -> Vec<Trial> {
     };
 
     for entry in glob::glob(glob).unwrap() {
-        let f = entry.unwrap();
+        let file = entry.unwrap();
 
-        let snapshot = f.to_str().unwrap().contains("small");
+        let snapshot = file.to_str().unwrap().contains("small");
+
+        let testprog = match file.extension().and_then(OsStr::to_str) {
+            Some("rs") => TestProgram::RustFile(file.clone()),
+            Some("bril") => TestProgram::BrilFile(file.clone()),
+            Some(x) => panic!("unexpected file extension {x}"),
+            None => panic!("could not parse file extension"),
+        };
 
         let configurations = if slow_test {
             // in benchmark mode, run a special test pipeline that only runs
             // a few modes, and shares intermediate results
-            vec![Run::test_benchmark_config(TestProgram::BrilFile(f.clone()))]
+            vec![Run::test_benchmark_config(testprog)]
         } else {
-            Run::all_configurations_for(TestProgram::BrilFile(f))
+            Run::all_configurations_for(testprog)
         };
 
         for run in configurations {
@@ -65,6 +72,8 @@ fn generate_tests(glob: &str, slow_test: bool) -> Vec<Trial> {
 fn main() {
     let args = libtest_mimic::Arguments::from_args();
     let mut tests = generate_tests("tests/passing/**/*.bril", false);
+    tests.extend(generate_tests("tests/passing/**/*.rs", false));
+
     tests.extend(generate_tests("tests/slow/**/*.bril", true));
     // also generate tests for benchmarks
     tests.extend(generate_tests("benchmarks/passing/**/*.bril", true));

@@ -25,7 +25,6 @@
 ;; TODO: we could make it work for decrementing loops
 (rule
   ((= lhs (DoWhile inputs outputs))
-   (= num-inputs (tuple-length inputs))
    (= pred (Get outputs 0))
    ;; iteration counter starts at start_const
    (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))
@@ -50,18 +49,18 @@
 ;; and i is updated after checking pred
 (rule
   ((= lhs (DoWhile inputs outputs))
-   (= num-inputs (tuple-length inputs))
    (= pred (Get outputs 0))
    ;; iteration counter starts at start_const
    (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))
+   (= body-arg (Get (Arg _ty _ctx) counter_i))
    ;; updated counter at counter_i
    (= next_counter (Get outputs (+ counter_i 1)))
    ;; increments by a constant each loop
-   (= next_counter (Bop (Add) (Get (Arg _ty _ctx) counter_i)
+   (= next_counter (Bop (Add) body-arg
                               (Const (Int increment) _ty2 _ctx2)))
    (> increment 0)
    ;; while this counter less than end_constant
-   (= pred (Bop (LessThan) (Get (Arg _ty _ctx) counter_i)
+   (= pred (Bop (LessThan) body-arg
                            (Const (Int end_constant) _ty3 _ctx3)))
    ;; end constant is at least start constant
    (>= end_constant start_const)

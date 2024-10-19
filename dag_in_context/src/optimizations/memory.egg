@@ -249,16 +249,18 @@
       :ruleset memory-helpers)
 
 ; Compute and propagate PointsToCells
-(rewrite (PointsToCells (Concat x y) aps)
+(rewrite (PointsToCells concat-x-y aps)
          (TuplePointsTo (Concat-List<PtrPointees>
            (UnwrapTuplePointsTo (PointsToCells x aps))
            (UnwrapTuplePointsTo (PointsToCells y aps))))
-         :when ((HasType (Concat x y) ty) (PointerishType ty))
+         :when ((= concat-x-y (Concat x y))
+                (HasType concat-x-y ty) (PointerishType ty))
          :ruleset memory-helpers)
 
-(rewrite (PointsToCells (Get x i) aps)
+(rewrite (PointsToCells get-x-i aps)
          (GetPointees (PointsToCells x aps) i)
-         :when ((HasType (Get x i) ty) (PointerishType ty))
+         :when ((= get-x-i (Get x i))
+                (HasType get-x-i ty) (PointerishType ty))
          :ruleset memory-helpers)
 
 (rewrite (PointsToCells (Single x) aps)

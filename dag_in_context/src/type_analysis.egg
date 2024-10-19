@@ -509,6 +509,41 @@
       :ruleset error-checking)
 
 ; =================================
+; Predicate to check if a type is not a state type
+; =================================
+
+(relation NonStateBaseType (BaseType))
+(rule ()
+     ((NonStateBaseType (IntT))
+      (NonStateBaseType (BoolT))
+      (NonStateBaseType (FloatT)))
+  :ruleset type-analysis)
+(rule ((= ptr-type (PointerT ty))
+       (NonStateBaseType ty))
+      ((NonStateBaseType ptr-type))
+  :ruleset type-analysis)
+
+(relation NonStateTypeList (TypeList))
+(rule ()
+     ((NonStateTypeList (TNil)))
+  :ruleset type-analysis)
+(rule ((NonStateTypeList tl)
+       (NonStateBaseType hd)
+       (= type-list (TCons hd tl)))
+      ((NonStateTypeList type-list))
+  :ruleset type-analysis)
+
+(relation NonStateType (Type))
+(rule ((NonStateBaseType bt)
+       (= t (Base bt)))
+      ((NonStateType t))
+  :ruleset type-analysis)
+(rule ((NonStateTypeList tl)
+       (= t (TupleT tl)))
+      ((NonStateType t))
+  :ruleset type-analysis)
+
+; =================================
 ; Functions
 ; =================================
 

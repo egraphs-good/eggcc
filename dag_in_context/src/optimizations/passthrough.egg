@@ -23,7 +23,7 @@
        (= (Get branch1 i) (Get (Arg _ _ctx1) j))
        (= passed-through (Get inputs j))
        (HasType lhs lhs_ty)
-       (!= lhs_ty (Base (StateT))))
+       (NonStateType lhs_ty))
       ((union lhs passed-through))
       :ruleset passthrough)
 
@@ -45,7 +45,7 @@
        (= then-branch (Get (Arg arg_ty _then_ctx) j))
        (= else-branch (Get (Arg arg_ty _else_ctx) j))
        (HasType then-branch lhs_ty)
-       (!= lhs_ty (Base (StateT))))
+       (NonStateType lhs_ty))
       ((union (Get if i) (Get inputs j)))
       :ruleset passthrough)
 

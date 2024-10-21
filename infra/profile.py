@@ -213,7 +213,7 @@ if __name__ == '__main__':
   # if it is a directory get all files
   if os.path.isdir(bril_dir):
     print(f'Running all bril files in {bril_dir}')
-    profiles = glob(f'{bril_dir}/**/*.bril', recursive=True)
+    profiles = glob(f'{bril_dir}/**/*.bril', recursive=True) + glob(f'{bril_dir}/**/*.rs', recursive=True)
   else:
     profiles = [bril_dir]
 

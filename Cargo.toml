@@ -22,14 +22,14 @@ smallvec = "1.11.1"
 
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 # currently using the uwplse/bril fork of bril, on eggcc-main
-bril2json = { git = "https://github.com/uwplse/bril", rev = "7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76" }
+bril2json = { path = "../bril/bril-rs/bril2json" }
 brilirs = { git = "https://github.com/uwplse/bril", rev = "7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76" }
 bril-rs = { path = "../bril/bril-rs" }
-brilift = { git = "https://github.com/uwplse/bril", rev = "7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76" }
+brilift = { path = "../bril/brilift" }
 rs2bril = { path = "../bril/bril-rs/rs2bril",features = [
   "import",
 ] }
-brillvm = { path = "../bril/bril-rs" }
+brillvm = { path = "../bril/bril-rs/brillvm" }
 
 
 ordered-float = { version = "3.7" }

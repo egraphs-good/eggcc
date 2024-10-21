@@ -99,11 +99,25 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
     }
     drop(bvh_children);
     drop(bvh_bbox);
+    drop(bvh_start);
+    drop(bvh_size);
     println!("{}", res);
 }
 
-/// Constructs BVH tree, re-arranging the order of triangles
-/// so that the BVH can refer to intervals of in the triangles array.
+fn vec_sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+fn vec_scale(a: [f64; 3], s: f64) -> [f64; 3] {
+    return [a[0] * s, a[1] * s, a[2] * s];
+}
+
+fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+// Constructs BVH tree, re-arranging the order of triangles
+// so that the BVH can refer to intervals of in the triangles array.
 fn build_bvh(
     triangles: &mut [[[f64; 3]; 3]; 100],
     bvh_children: &mut [[i64; 2]; 100],
@@ -116,14 +130,35 @@ fn build_bvh(
 
     let mut directions: [[f64; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
 
-    let num_partitions_try = 32;
+    let num_partitions_try: i64 = 32;
 
     while stack_size > 0 {
-        let node = node_stack[stack_size as usize - 1];
+        let node: i64 = node_stack[stack_size as usize - 1];
         stack_size = stack_size - 1;
 
         let best_partition: [f64; 3] = [0.0; 3];
-        let best_cost: f64 = f64::INFINITY;
+        let large_num: f64 = 9999999999999999.0;
+        let best_cost: f64 = large_num;
+        let direction_index: i64 = 0;
+        while direction_index < 3 {
+            let partition_i: i64 = 0;
+            let partition_i_float: f64 = 0.0;
+            while partition_i < num_partitions_try {
+                let scaled_max: [f64; 3] = vec_scale(bvh_bbox[node][1], 1.0 / 32.0);
+                let scaled_min: [f64; 3] = vec_scale(bvh_bbox[node][0], 1.0 / 32.0);
+                let subtracted: [f64; 3] = vec_sub(scaled_max, scaled_min);
+                let dist: f64 = dot(subtracted, directions[direction_index]) * partition_i_float;
+                drop(scaled_max);
+                drop(scaled_min);
+                drop(subtracted);
+
+                partition_i = partition_i + 1;
+                partition_i_float = partition_i_float + 1.0;
+            }
+            direction_index = direction_index + 1;
+        }
+
+        drop(best_partition);
     }
 
     drop(node_stack);

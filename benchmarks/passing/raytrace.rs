@@ -33,12 +33,14 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
     // Use -1 for no child
     let first_child: [i64; 2] = [-1, -1];
     let mut bvh_children: [[i64; 2]; 100] = [first_child; 100];
-    let first_start: [f64; 3] = [0.0; 3];
-    let first_end: [f64; 3] = [0.0; 3];
+    let dummy_point: [f64; 3] = [0.0; 3];
+    let dummy_bbox: [[f64; 3]; 2] = [dummy_point, dummy_point];
     // For each bvh, store the start position
-    let mut bvh_start: [[f64; 3]; 100] = [first_start; 100];
-    // For each bvh, store the end position
-    let mut bvh_end: [[f64; 3]; 100] = [first_end; 100];
+    let mut bvh_bbox: [[[f64; 3]; 2]; 100] = [dummy_bbox; 100];
+    // for each bvh, store the start index into triangles
+    let mut bvh_start: [i64; 100] = [0; 100];
+    // for each bvh, store the size of the interval into triangles
+    let mut bvh_size: [i64; 100] = [0; 100];
 
     // initialize bvh_children
     let mut ind: i64 = 1;
@@ -48,23 +50,30 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
         ind = ind + 1;
     }
 
-    // initialize bvh_start
-    let mut ind: i64 = 1;
+    // initialize bvh_bbox
+    let mut ind: i64 = 0;
     while ind < 100 {
-        let mut next_start: [f64; 3] = [0.0; 3];
-        bvh_start[ind as usize] = next_start;
+        let start_point: [f64; 3] = [0.0; 3];
+        let end_point: [f64; 3] = [0.0; 3];
+        let next_bbox: [[f64; 3]; 2] = [start_point, end_point];
+        bvh_bbox[ind as usize] = next_bbox;
         ind = ind + 1;
     }
 
-    // initialize bvh_end
-    let mut ind: i64 = 1;
-    while ind < 100 {
-        let mut next_end: [f64; 3] = [0.0; 3];
-        bvh_end[ind as usize] = next_end;
-        ind = ind + 1;
-    }
+    // build the bvh
+    build_bvh(
+        &mut triangles,
+        &mut bvh_children,
+        &mut bvh_bbox,
+        &mut bvh_start,
+        &mut bvh_size,
+    );
 
     let res: f64 = triangles[10][0][0];
+
+    // drop dummy point and dummy bbox
+    drop(dummy_point);
+    drop(dummy_bbox);
 
     // drop the triangles
     let mut ind: i64 = 0;
@@ -79,18 +88,49 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
     }
     drop(triangles);
 
-    // drop bvh_children, bvh_start, bvh_end
+    // drop bvh_children, bvh_bbox
     let mut ind: i64 = 0;
     while ind < 100 {
         drop(bvh_children[ind as usize]);
-        drop(bvh_start[ind as usize]);
-        drop(bvh_end[ind as usize]);
+        drop(bvh_bbox[ind as usize][0]);
+        drop(bvh_bbox[ind as usize][1]);
+        drop(bvh_bbox[ind as usize]);
         ind = ind + 1;
     }
     drop(bvh_children);
-    drop(bvh_start);
-    drop(bvh_end);
+    drop(bvh_bbox);
     println!("{}", res);
+}
+
+/// Constructs BVH tree, re-arranging the order of triangles
+/// so that the BVH can refer to intervals of in the triangles array.
+fn build_bvh(
+    triangles: &mut [[[f64; 3]; 3]; 100],
+    bvh_children: &mut [[i64; 2]; 100],
+    bvh_bbox: &mut [[[f64; 3]; 2]; 100],
+    bvh_start: &mut [i64; 100],
+    bvh_size: &mut [i64; 100],
+) {
+    let mut node_stack: [i64; 100] = [0; 100];
+    let mut stack_size: i64 = 1;
+
+    let mut directions: [[f64; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+
+    let num_partitions_try = 32;
+
+    while stack_size > 0 {
+        let node = node_stack[stack_size as usize - 1];
+        stack_size = stack_size - 1;
+
+        let best_partition: [f64; 3] = [0.0; 3];
+        let best_cost: f64 = f64::INFINITY;
+    }
+
+    drop(node_stack);
+    drop(directions[0]);
+    drop(directions[1]);
+    drop(directions[2]);
+    drop(directions);
 }
 
 fn build_cube(xpos: f64, ypos: f64, width: f64, height: f64, mut triangles: [[[f64; 3]; 3]; 100]) {

@@ -21,6 +21,11 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
 
     build_cube(xpos, ypos, width, height, triangles);
 
+    // For each bvh, store the indices of the two children
+    // Use -1 for no child
+    let empty_children: [i64; 2] = [-1, -1];
+    let mut bvh_children: [[i64; 2]; 100] = [empty_children; 100];
+
     let res: f64 = triangles[10][0];
     let mut ind: i64 = 0;
     while ind < 300 {

@@ -71,19 +71,42 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
 
     // define the output screen
     let dummy_row: [f64; 100] = [0.0; 100];
-    let output: [[f64; 100]; 100] = [dummy_row; 100];
+    let mut output: [[f64; 100]; 100] = [dummy_row; 100];
     drop(dummy_row);
-    let i: i64 = 0;
+    let mut i: i64 = 0;
     while i < 100 {
         let row: [f64; 100] = [0.0; 100];
         output[i as usize] = row;
         i = i + 1;
     }
 
+    // trace one ray per screen pixel
+    let mut row2: i64 = 0;
+    let mut pz: f64 = 0.2;
+    while row2 < 100 {
+        let mut col2: i64 = 0;
+        let mut px: f64 = 0.0;
+        while col2 < 100 {
+            let myray: [[f64; 3]; 2] = sample_ray(px, pz);
+            let tracepoint: [f64; 3] = trace(&triangles, &myray);
+            output[row2 as usize][col2 as usize] = vec_len(tracepoint);
+            col2 = col2 + 1;
+            px = px + 0.002;
+
+            drop(myray[0]);
+            drop(myray[1]);
+            drop(myray);
+            drop(tracepoint);
+            println!("{}", col2);
+        }
+        row2 = row2 + 1;
+        pz = pz - 0.002;
+    }
+
     // print out the screen
-    let rowi: i64 = 0;
+    let mut rowi: i64 = 0;
     while rowi < 100 {
-        let col: i64 = 0;
+        let mut col: i64 = 0;
         while col < 100 {
             let to_print: f64 = output[rowi as usize][col as usize];
             println!("{}", to_print);
@@ -95,7 +118,7 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
     let res: f64 = triangles[10][0][0];
 
     // drop screen
-    let i: i64 = 0;
+    let mut i: i64 = 0;
     while i < 100 {
         drop(output[i as usize]);
         i = i + 1;
@@ -139,27 +162,33 @@ fn vec_sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
 
+fn vec_add(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
 fn vec_scale(a: [f64; 3], s: f64) -> [f64; 3] {
     return [a[0] * s, a[1] * s, a[2] * s];
 }
 
 fn abs(x: f64) -> f64 {
+    let res: f64 = x;
     if x < 0.0 {
-        return -x;
-    } else {
-        return x;
+        res = -res;
     }
+    return res;
 }
 
 fn sqrt(x: f64) -> f64 {
     let mut guess: f64 = x;
-    let tolerance: f64 = 1e-10; // Set precision level
+    let tolerance: f64 = 1e-2; // Set precision level
+    let mut num_iters: i64 = 100;
 
-    while abs(guess * guess - x) > tolerance {
+    while (num_iters > 0 && abs(guess * guess - x) > tolerance) {
         guess = (guess + x / guess) / 2.0;
+        num_iters = num_iters - 1;
     }
 
-    guess
+    return guess;
 }
 
 fn vec_len(a: [f64; 3]) -> f64 {
@@ -206,23 +235,24 @@ fn build_bvh(
         let node: i64 = node_stack[stack_size as usize - 1];
         stack_size = stack_size - 1;
 
-        let best_partition: [f64; 3] = [0.0; 3];
+        let mut best_partition: [f64; 3] = [0.0; 3];
         let large_num: f64 = 9999999999999999.0;
-        let best_cost: f64 = large_num;
-        let direction_index: i64 = 0;
+        let mut best_cost: f64 = large_num;
+        let mut direction_index: i64 = 0;
         while direction_index < 3 {
-            let partition_i: i64 = 0;
-            let partition_i_float: f64 = 0.0;
+            let mut partition_i: i64 = 0;
+            let mut partition_i_float: f64 = 0.0;
             while partition_i < num_partitions_try {
-                let scaled_max: [f64; 3] = vec_scale(bvh_bbox[node][1], 1.0 / 32.0);
-                let scaled_min: [f64; 3] = vec_scale(bvh_bbox[node][0], 1.0 / 32.0);
+                let scaled_max: [f64; 3] = vec_scale(bvh_bbox[node as usize][1], 1.0 / 32.0);
+                let scaled_min: [f64; 3] = vec_scale(bvh_bbox[node as usize][0], 1.0 / 32.0);
                 let subtracted: [f64; 3] = vec_sub(scaled_max, scaled_min);
-                let dist: f64 = dot(subtracted, directions[direction_index]) * partition_i_float;
+                let dist: f64 =
+                    dot(subtracted, directions[direction_index as usize]) * partition_i_float;
                 drop(scaled_max);
                 drop(scaled_min);
                 drop(subtracted);
 
-                let partition: [f64; 3] = vec_scale(directions[direction_index], dist);
+                let partition: [f64; 3] = vec_scale(directions[direction_index as usize], dist);
                 // TODO calculate correct partition cost
                 let cost: f64 = 1.0;
 
@@ -312,19 +342,19 @@ fn partition(
 }
 
 fn min(a: f64, b: f64) -> f64 {
-    if a < b {
-        return a;
-    } else {
-        return b;
+    let res: f64 = a;
+    if b > a {
+        res = b;
     }
+    return res;
 }
 
 fn max(a: f64, b: f64) -> f64 {
-    if a > b {
-        return a;
-    } else {
-        return b;
+    let res: f64 = a;
+    if b < a {
+        res = b;
     }
+    return res;
 }
 
 fn point_max(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
@@ -493,17 +523,90 @@ fn build_cube(xpos: f64, ypos: f64, width: f64, height: f64, mut triangles: [[[f
     }
 }
 
-fn sample_ray(px: f64, py: f64) -> [[f64; 3]; 2] {
+// sample a ray from the camera pixel at (px, pz)
+fn sample_ray(px: f64, pz: f64) -> [[f64; 3]; 2] {
     // virtual camera is at (0, 0, 0)
     // extending to (0.2, 0.0, 0.2)
-    // light is at (0.0, -0.5, 0.0)
-    let mut light: [f64; 3] = [0.0, -0.5, 0.0];
+    // light is at (0.0, -0.5, 0.1)
+    let mut light: [f64; 3] = [0.0, -0.5, 0.1];
 
-    let mut camera_pos: [f64; 3] = [px, py, 0.0];
+    let mut camera_pos: [f64; 3] = [px, 0.0, pz];
     let mut diff: [f64; 3] = vec_sub(camera_pos, light);
     let mut dir: [f64; 3] = vec_normalize(diff);
     let mut ray: [[f64; 3]; 2] = [camera_pos, dir];
     drop(light);
     drop(diff);
     return ray;
+}
+
+fn vec_cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    return [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ];
+}
+
+// intersect a ray with a triangle
+// ray is a source point and normalized direction
+// triangle is 3 points
+// output is the intersection point
+// returns a bool indicating if the intersection is valid
+fn intersect(tri: &[[f64; 3]; 3], ray: &[[f64; 3]; 2], output: &mut [f64; 3]) -> bool {
+    let epsilon: f64 = 0.0000001;
+    let edge1: [f64; 3] = vec_sub(tri[1], tri[0]);
+    let edge2: [f64; 3] = vec_sub(tri[2], tri[0]);
+    let h: [f64; 3] = vec_cross(ray[1], edge2);
+    let a: f64 = dot(edge1, h);
+    let mut res: bool = a > -epsilon && a < epsilon;
+    let f: f64 = 1.0 / a;
+    let s: [f64; 3] = vec_sub(ray[0], tri[0]);
+    let u: f64 = f * dot(s, h);
+    res = res || u < 0.0 || u > 1.0;
+    let q: [f64; 3] = vec_cross(s, edge1);
+    let v: f64 = f * dot(ray[1], q);
+    res = res || v < 0.0 || u + v > 1.0;
+    let t: f64 = f * dot(edge2, q);
+
+    res = res || t < epsilon;
+    let point: [f64; 3] = vec_add(ray[0], vec_scale(ray[1], t));
+
+    output[0] = point[0];
+    output[1] = point[1];
+    output[2] = point[2];
+    drop(edge1);
+    drop(edge2);
+    drop(h);
+    drop(s);
+    drop(q);
+    drop(point);
+    return res;
+}
+
+// Trace a ray and find the first triangle it intersects,
+// returning the intersection point
+// a ray is a source point and normalized direction
+fn trace(triangles: &[[[f64; 3]; 3]; 100], ray: &[[f64; 3]; 2]) -> [f64; 3] {
+    let mut min_dist: f64 = 9999999999999999.0;
+    let mut min_point: [f64; 3] = [0.0; 3];
+    let mut i: i64 = 0;
+    while i < 100 {
+        let tri: [[f64; 3]; 3] = triangles[i as usize];
+        let mut point: [f64; 3] = [0.0; 3];
+        let res: bool = intersect(&tri, ray, &mut point);
+        if res {
+            let subtracted: [f64; 3] = vec_sub(point, ray[0]);
+            let dist: f64 = vec_len(subtracted);
+            if dist < min_dist {
+                min_dist = dist;
+                min_point[0] = point[0];
+                min_point[1] = point[1];
+                min_point[2] = point[2];
+            }
+            drop(subtracted);
+        }
+        drop(point);
+        i = i + 1;
+    }
+    return min_point;
 }

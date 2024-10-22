@@ -243,18 +243,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bril2json"
-version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76#7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76"
-dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76)",
- "clap",
- "lalrpop",
- "lalrpop-util",
- "regex",
-]
-
-[[package]]
 name = "brilift"
 version = "0.1.0"
 dependencies = [
@@ -273,10 +261,9 @@ dependencies = [
 [[package]]
 name = "brilirs"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76#7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76"
 dependencies = [
- "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76)",
- "bril2json 0.1.0 (git+https://github.com/uwplse/bril?rev=7ac4c001115aee8e39e7e0e5ad6e23bdb9c0ab76)",
+ "bril-rs 0.1.0",
+ "bril2json",
  "clap",
  "fxhash",
  "itoa",
@@ -636,7 +623,7 @@ name = "eggcc"
 version = "0.1.0"
 dependencies = [
  "bril-rs 0.1.0",
- "bril2json 0.1.0",
+ "bril2json",
  "brilift",
  "brilirs",
  "brillvm",

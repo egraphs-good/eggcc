@@ -135,22 +135,6 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
     println!("{}", res);
 }
 
-/*
-fn sample_ray(px: f64, py: f64) -> [[f64; 3]; 2] {
-    // virtual camera is at (0, 0, 0)
-    // extending to (0.2, 0.0, 0.2)
-    // light is at (0.0, -0.5, 0.0)
-    let mut light: [f64; 3] = [0.0, -0.5, 0.0];
-
-    let mut camera_pos: [f64; 3] = [px, py, 0.0];
-    let mut diff: [f64; 3] = vec_sub(camera_pos, light);
-    let mut dir: [f64; 3] = vec_normalize(diff);
-    let mut ray: [[f64; 3]; 2] = [camera_pos, dir];
-    drop(light);
-    drop(diff);
-    return ray;
-} */
-
 fn vec_sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
@@ -181,14 +165,12 @@ fn sqrt(x: f64) -> f64 {
 fn vec_len(a: [f64; 3]) -> f64 {
     return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
 }
-/*
-
 
 fn vec_normalize(a: [f64; 3]) -> [f64; 3] {
     let len: f64 = vec_len(a);
     return [a[0] / len, a[1] / len, a[2] / len];
 }
-*/
+
 fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
@@ -509,4 +491,19 @@ fn build_cube(xpos: f64, ypos: f64, width: f64, height: f64, mut triangles: [[[f
         cx = cx + rect_width;
         i = i + 1;
     }
+}
+
+fn sample_ray(px: f64, py: f64) -> [[f64; 3]; 2] {
+    // virtual camera is at (0, 0, 0)
+    // extending to (0.2, 0.0, 0.2)
+    // light is at (0.0, -0.5, 0.0)
+    let mut light: [f64; 3] = [0.0, -0.5, 0.0];
+
+    let mut camera_pos: [f64; 3] = [px, py, 0.0];
+    let mut diff: [f64; 3] = vec_sub(camera_pos, light);
+    let mut dir: [f64; 3] = vec_normalize(diff);
+    let mut ray: [[f64; 3]; 2] = [camera_pos, dir];
+    drop(light);
+    drop(diff);
+    return ray;
 }

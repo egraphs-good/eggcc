@@ -69,7 +69,38 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
         &mut bvh_size,
     );
 
+    // define the output screen
+    let dummy_row: [f64; 100] = [0.0; 100];
+    let output: [[f64; 100]; 100] = [dummy_row; 100];
+    drop(dummy_row);
+    let i: i64 = 0;
+    while i < 100 {
+        let row: [f64; 100] = [0.0; 100];
+        output[i as usize] = row;
+        i = i + 1;
+    }
+
+    // print out the screen
+    let rowi: i64 = 0;
+    while rowi < 100 {
+        let col: i64 = 0;
+        while col < 100 {
+            let to_print: f64 = output[rowi as usize][col as usize];
+            println!("{}", to_print);
+            col = col + 1;
+        }
+        rowi = rowi + 1;
+    }
+
     let res: f64 = triangles[10][0][0];
+
+    // drop screen
+    let i: i64 = 0;
+    while i < 100 {
+        drop(output[i as usize]);
+        i = i + 1;
+    }
+    drop(output);
 
     // drop dummy point and dummy bbox
     drop(dummy_point);
@@ -104,6 +135,22 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
     println!("{}", res);
 }
 
+/*
+fn sample_ray(px: f64, py: f64) -> [[f64; 3]; 2] {
+    // virtual camera is at (0, 0, 0)
+    // extending to (0.2, 0.0, 0.2)
+    // light is at (0.0, -0.5, 0.0)
+    let mut light: [f64; 3] = [0.0, -0.5, 0.0];
+
+    let mut camera_pos: [f64; 3] = [px, py, 0.0];
+    let mut diff: [f64; 3] = vec_sub(camera_pos, light);
+    let mut dir: [f64; 3] = vec_normalize(diff);
+    let mut ray: [[f64; 3]; 2] = [camera_pos, dir];
+    drop(light);
+    drop(diff);
+    return ray;
+} */
+
 fn vec_sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
@@ -112,6 +159,36 @@ fn vec_scale(a: [f64; 3], s: f64) -> [f64; 3] {
     return [a[0] * s, a[1] * s, a[2] * s];
 }
 
+fn abs(x: f64) -> f64 {
+    if x < 0.0 {
+        return -x;
+    } else {
+        return x;
+    }
+}
+
+fn sqrt(x: f64) -> f64 {
+    let mut guess: f64 = x;
+    let tolerance: f64 = 1e-10; // Set precision level
+
+    while abs(guess * guess - x) > tolerance {
+        guess = (guess + x / guess) / 2.0;
+    }
+
+    guess
+}
+
+fn vec_len(a: [f64; 3]) -> f64 {
+    return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+}
+/*
+
+
+fn vec_normalize(a: [f64; 3]) -> [f64; 3] {
+    let len: f64 = vec_len(a);
+    return [a[0] / len, a[1] / len, a[2] / len];
+}
+*/
 fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }

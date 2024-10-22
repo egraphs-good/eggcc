@@ -125,6 +125,17 @@ fn build_bvh(
     bvh_start: &mut [i64; 100],
     bvh_size: &mut [i64; 100],
 ) {
+    make_leaf_node(
+        0,
+        100,
+        triangles,
+        bvh_children,
+        bvh_bbox,
+        bvh_start,
+        bvh_size,
+        0,
+    );
+    let mut bvh_next_free: i64 = 1;
     let mut node_stack: [i64; 100] = [0; 100];
     let mut stack_size: i64 = 1;
 
@@ -152,10 +163,69 @@ fn build_bvh(
                 drop(scaled_min);
                 drop(subtracted);
 
+                let partition: [f64; 3] = vec_scale(directions[direction_index], dist);
+                // TODO calculate correct partition cost
+                let cost: f64 = 1.0;
+
+                if cost < best_cost {
+                    drop(best_partition);
+                    best_cost = cost;
+                    best_partition = partition;
+                } else {
+                    drop(partition);
+                }
+
                 partition_i = partition_i + 1;
                 partition_i_float = partition_i_float + 1.0;
             }
             direction_index = direction_index + 1;
+        }
+
+        let middle: i64 = partition(
+            node,
+            triangles,
+            bvh_children,
+            bvh_bbox,
+            bvh_start,
+            bvh_size,
+            &best_partition,
+        );
+        let left_child: i64 = bvh_next_free;
+        make_leaf_node(
+            bvh_start[node as usize],
+            middle,
+            triangles,
+            bvh_children,
+            bvh_bbox,
+            bvh_start,
+            bvh_size,
+            bvh_next_free,
+        );
+        bvh_next_free = bvh_next_free + 1;
+        let right_child: i64 = bvh_next_free;
+        make_leaf_node(
+            middle,
+            bvh_start[node as usize] + bvh_size[node as usize],
+            triangles,
+            bvh_children,
+            bvh_bbox,
+            bvh_start,
+            bvh_size,
+            bvh_next_free,
+        );
+        bvh_next_free = bvh_next_free + 1;
+
+        bvh_children[node as usize][0] = left_child;
+        bvh_children[node as usize][1] = right_child;
+
+        if bvh_size[left_child as usize] > 1 {
+            node_stack[stack_size as usize] = left_child;
+            stack_size = stack_size + 1;
+        }
+
+        if bvh_size[right_child as usize] > 1 {
+            node_stack[stack_size as usize] = right_child;
+            stack_size = stack_size + 1;
         }
 
         drop(best_partition);
@@ -166,6 +236,116 @@ fn build_bvh(
     drop(directions[1]);
     drop(directions[2]);
     drop(directions);
+}
+
+fn partition(
+    node: i64,
+    triangles: &mut [[[f64; 3]; 3]; 100],
+    bvh_children: &mut [[i64; 2]; 100],
+    bvh_bbox: &mut [[[f64; 3]; 2]; 100],
+    bvh_start: &mut [i64; 100],
+    bvh_size: &mut [i64; 100],
+    partition: &[f64; 3],
+) -> i64 {
+    // always partition the first child in it's own box
+    // TODO make this sort the triangles and actually calculate cost
+    return bvh_start[node as usize] + 1;
+}
+
+fn min(a: f64, b: f64) -> f64 {
+    if a < b {
+        return a;
+    } else {
+        return b;
+    }
+}
+
+fn max(a: f64, b: f64) -> f64 {
+    if a > b {
+        return a;
+    } else {
+        return b;
+    }
+}
+
+fn point_max(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    return [max(a[0], b[0]), max(a[1], b[1]), max(a[2], b[2])];
+}
+
+fn point_min(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    return [min(a[0], b[0]), min(a[1], b[1]), min(a[2], b[2])];
+}
+
+fn triangle_min(tri: [[f64; 3]; 3]) -> [f64; 3] {
+    let point1: [f64; 3] = tri[0];
+    let point2: [f64; 3] = tri[1];
+    let point3: [f64; 3] = tri[2];
+    let min1: [f64; 3] = point_min(point1, point2);
+    let min2: [f64; 3] = point_min(min1, point3);
+    drop(min1);
+    return min2;
+}
+
+fn triangle_max(tri: [[f64; 3]; 3]) -> [f64; 3] {
+    let point1: [f64; 3] = tri[0];
+    let point2: [f64; 3] = tri[1];
+    let point3: [f64; 3] = tri[2];
+    let max1: [f64; 3] = point_max(point1, point2);
+    let max2: [f64; 3] = point_max(max1, point3);
+    drop(max1);
+    return max2;
+}
+
+fn bbox_triangle(tri: [[f64; 3]; 3]) -> [[f64; 3]; 2] {
+    let min: [f64; 3] = triangle_min(tri);
+    let max: [f64; 3] = triangle_max(tri);
+    let bbox: [[f64; 3]; 2] = [min, max];
+    return bbox;
+}
+
+fn bbox_union(a: [[f64; 3]; 2], b: [[f64; 3]; 2]) -> [[f64; 3]; 2] {
+    let min: [f64; 3] = point_min(a[0], b[0]);
+    let max: [f64; 3] = point_max(a[1], b[1]);
+    let bbox: [[f64; 3]; 2] = [min, max];
+    return bbox;
+}
+
+fn make_leaf_node(
+    start: i64,
+    end: i64,
+    triangles: &mut [[[f64; 3]; 3]; 100],
+    bvh_children: &mut [[i64; 2]; 100],
+    bvh_bbox: &mut [[[f64; 3]; 2]; 100],
+    bvh_start: &mut [i64; 100],
+    bvh_size: &mut [i64; 100],
+    node_id: i64,
+) {
+    bvh_start[start as usize] = start;
+    bvh_size[start as usize] = end - start;
+
+    bvh_children[start as usize][0] = node_id;
+    bvh_children[start as usize][1] = node_id;
+
+    let mut i: i64 = start;
+    let mut bbox: [[f64; 3]; 2] = bbox_triangle(triangles[i as usize]);
+    while i < end {
+        let next_bbox: [[f64; 3]; 2] = bbox_triangle(triangles[i as usize]);
+        let bbox_old: [[f64; 3]; 2] = bbox;
+        bbox = bbox_union(bbox, next_bbox);
+        drop(bbox_old[0]);
+        drop(bbox_old[1]);
+        drop(bbox_old);
+        drop(next_bbox[0]);
+        drop(next_bbox[1]);
+        drop(next_bbox);
+
+        i = i + 1;
+    }
+
+    drop(bvh_bbox[node_id as usize][0]);
+    drop(bvh_bbox[node_id as usize][1]);
+    drop(bvh_bbox[node_id as usize]);
+    bvh_bbox[node_id as usize] = bbox;
 }
 
 fn build_cube(xpos: f64, ypos: f64, width: f64, height: f64, mut triangles: [[[f64; 3]; 3]; 100]) {

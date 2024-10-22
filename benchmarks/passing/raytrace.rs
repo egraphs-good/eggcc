@@ -97,7 +97,6 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
             drop(myray[1]);
             drop(myray);
             drop(tracepoint);
-            println!("{}", col2);
         }
         row2 = row2 + 1;
         pz = pz - 0.002;

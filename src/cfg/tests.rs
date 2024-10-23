@@ -26,7 +26,7 @@ macro_rules! cfg_test_function_to_cfg {
 
 cfg_test_function_to_cfg!(
     fib_cfg,
-    include_str!("../../tests/passing/brils/mem/fib.bril"),
+    include_str!("../../tests/passing/brils/mem/fib_test.bril"),
     [
         ENTRY  = (Jmp) => "loop",
         "loop" = (true_cond("cond")) => "body",

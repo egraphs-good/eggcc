@@ -91,7 +91,15 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
         while col2 < 100 {
             let myray: [[f64; 3]; 2] = sample_ray(px, pz);
             let mut res_ray: [[f64; 3]; 2] = [[0.0; 3], [0.0; 3]];
-            let did_intersect: bool = trace(&triangles, &myray, &mut res_ray);
+            let did_intersect: bool = trace(
+                &triangles,
+                &myray,
+                &mut res_ray,
+                &bvh_children,
+                &bvh_bbox,
+                &bvh_start,
+                &bvh_size,
+            );
             if did_intersect {
                 let point_to_light: [f64; 3] = vec_sub(light_pos, res_ray[0]);
                 let point_to_light_norm: [f64; 3] = vec_normalize(point_to_light);
@@ -272,8 +280,15 @@ fn build_bvh(
                 drop(subtracted);
 
                 let partition: [f64; 3] = vec_scale(directions[direction_index as usize], dist);
-                // TODO calculate correct partition cost
-                let cost: f64 = 1.0;
+                let cost: f64 = partition_cost(
+                    node,
+                    triangles,
+                    bvh_children,
+                    bvh_bbox,
+                    bvh_start,
+                    bvh_size,
+                    &partition,
+                );
 
                 if cost < best_cost {
                     drop(best_partition);
@@ -326,12 +341,12 @@ fn build_bvh(
         bvh_children[node as usize][0] = left_child;
         bvh_children[node as usize][1] = right_child;
 
-        if bvh_size[left_child as usize] > 1 {
+        if bvh_size[left_child as usize] > 4 {
             node_stack[stack_size as usize] = left_child;
             stack_size = stack_size + 1;
         }
 
-        if bvh_size[right_child as usize] > 1 {
+        if bvh_size[right_child as usize] > 4 {
             node_stack[stack_size as usize] = right_child;
             stack_size = stack_size + 1;
         }
@@ -346,6 +361,7 @@ fn build_bvh(
     drop(directions);
 }
 
+// currently returns an end index somewhere in the middle
 fn partition(
     node: i64,
     triangles: &mut [[[f64; 3]; 3]; 100],
@@ -353,16 +369,61 @@ fn partition(
     bvh_bbox: &mut [[[f64; 3]; 2]; 100],
     bvh_start: &mut [i64; 100],
     bvh_size: &mut [i64; 100],
-    partition: &[f64; 3],
+    partition_vec: &[f64; 3],
 ) -> i64 {
-    // always partition the first child in it's own box
-    // TODO make this sort the triangles and actually calculate cost
-    return bvh_start[node as usize] + 1;
+    if bvh_size[node as usize] == 1 {
+        return bvh_start[node as usize] + 1;
+    }
+    return bvh_start[node as usize] + bvh_size[node as usize] / 2;
+}
+
+fn bbox_size(bbox: [[f64; 3]; 2]) -> f64 {
+    let diff: [f64; 3] = vec_sub(bbox[1], bbox[0]);
+    let size: f64 = vec_len(diff);
+    drop(diff);
+    return size;
+}
+
+fn partition_cost(
+    node: i64,
+    triangles: &mut [[[f64; 3]; 3]; 100],
+    bvh_children: &mut [[i64; 2]; 100],
+    bvh_bbox: &mut [[[f64; 3]; 2]; 100],
+    bvh_start: &mut [i64; 100],
+    bvh_size: &mut [i64; 100],
+    partition_vec: &[f64; 3],
+) -> f64 {
+    let end: i64 = partition(
+        node,
+        triangles,
+        bvh_children,
+        bvh_bbox,
+        bvh_start,
+        bvh_size,
+        partition_vec,
+    );
+
+    let bbox_left: [[f64; 3]; 2] = bbox_between(bvh_start[node as usize], end, triangles);
+    let bbox_right: [[f64; 3]; 2] = bbox_between(
+        end,
+        bvh_start[node as usize] + bvh_size[node as usize],
+        triangles,
+    );
+    let bbox_left_size: f64 = bbox_size(bbox_left);
+    let bbox_right_size: f64 = bbox_size(bbox_right);
+    let cost: f64 = 1.0 / (bbox_left_size * bbox_right_size);
+    drop(bbox_left[0]);
+    drop(bbox_left[1]);
+    drop(bbox_left);
+    drop(bbox_right[0]);
+    drop(bbox_right[1]);
+    drop(bbox_right);
+    return cost;
 }
 
 fn min(a: f64, b: f64) -> f64 {
     let mut res: f64 = a;
-    if b > a {
+    if b < a {
         res = b;
     }
     return res;
@@ -370,7 +431,7 @@ fn min(a: f64, b: f64) -> f64 {
 
 fn max(a: f64, b: f64) -> f64 {
     let mut res: f64 = a;
-    if b < a {
+    if b > a {
         res = b;
     }
     return res;
@@ -418,22 +479,7 @@ fn bbox_union(a: [[f64; 3]; 2], b: [[f64; 3]; 2]) -> [[f64; 3]; 2] {
     return bbox;
 }
 
-fn make_leaf_node(
-    start: i64,
-    end: i64,
-    triangles: &mut [[[f64; 3]; 3]; 100],
-    bvh_children: &mut [[i64; 2]; 100],
-    bvh_bbox: &mut [[[f64; 3]; 2]; 100],
-    bvh_start: &mut [i64; 100],
-    bvh_size: &mut [i64; 100],
-    node_id: i64,
-) {
-    bvh_start[start as usize] = start;
-    bvh_size[start as usize] = end - start;
-
-    bvh_children[start as usize][0] = node_id;
-    bvh_children[start as usize][1] = node_id;
-
+fn bbox_between(start: i64, end: i64, triangles: &mut [[[f64; 3]; 3]; 100]) -> [[f64; 3]; 2] {
     let mut i: i64 = start;
     let mut bbox: [[f64; 3]; 2] = bbox_triangle(triangles[i as usize]);
     while i < end {
@@ -449,6 +495,28 @@ fn make_leaf_node(
 
         i = i + 1;
     }
+
+    return bbox;
+}
+
+// start inclusive, end exclusive
+fn make_leaf_node(
+    start: i64,
+    end: i64,
+    triangles: &mut [[[f64; 3]; 3]; 100],
+    bvh_children: &mut [[i64; 2]; 100],
+    bvh_bbox: &mut [[[f64; 3]; 2]; 100],
+    bvh_start: &mut [i64; 100],
+    bvh_size: &mut [i64; 100],
+    node_id: i64,
+) {
+    bvh_start[node_id as usize] = start;
+    bvh_size[node_id as usize] = end - start;
+
+    bvh_children[node_id as usize][0] = node_id;
+    bvh_children[node_id as usize][1] = node_id;
+
+    let bbox: [[f64; 3]; 2] = bbox_between(start, end, triangles);
 
     drop(bvh_bbox[node_id as usize][0]);
     drop(bvh_bbox[node_id as usize][1]);
@@ -656,48 +724,97 @@ fn intersect(tri: &[[f64; 3]; 3], ray: &[[f64; 3]; 2], output: &mut [f64; 3]) ->
     return false;
 }
 
+// for a given bounding box, checks if a ray intersects with it
+// needs to do this without casting to a boolean
+fn bbox_ray_intersect(bbox: [[f64; 3]; 2], ray: &[[f64; 3]; 2]) -> bool {
+    let epsilon: f64 = 0.0000001;
+    let t1: f64 = (bbox[0][0] - ray[0][0]) / ray[1][0];
+    let t2: f64 = (bbox[1][0] - ray[0][0]) / ray[1][0];
+    let tmin: f64 = min(t1, t2);
+    let tmax: f64 = max(t1, t2);
+
+    let t3: f64 = (bbox[0][1] - ray[0][1]) / ray[1][1];
+    let t4: f64 = (bbox[1][1] - ray[0][1]) / ray[1][1];
+    let tmin2: f64 = min(t3, t4);
+    let tmax2: f64 = max(t3, t4);
+
+    let t5: f64 = (bbox[0][2] - ray[0][2]) / ray[1][2];
+    let t6: f64 = (bbox[1][2] - ray[0][2]) / ray[1][2];
+    let tmin3: f64 = min(t5, t6);
+    let tmax3: f64 = max(t5, t6);
+
+    let tmin_final: f64 = max(tmin, max(tmin2, tmin3));
+    let tmax_final: f64 = min(tmax, min(tmax2, tmax3));
+
+    return tmax_final >= tmin_final && tmax_final > epsilon;
+}
+
 // Trace a ray and return the new ray in the output
 // Return if the ray intersected with any triangle
 // a ray is a source point and normalized direction
+// Uses the bvh tree to speed up intersection
 fn trace(
     triangles: &[[[f64; 3]; 3]; 100],
     ray: &[[f64; 3]; 2],
     output: &mut [[f64; 3]; 2],
+    bvh_children: &[[i64; 2]; 100],
+    bvh_bbox: &[[[f64; 3]; 2]; 100],
+    bvh_start: &[i64; 100],
+    bvh_size: &[i64; 100],
 ) -> bool {
     let mut min_dist: f64 = 9999999999999999.0;
-    let mut i: i64 = 0;
-    let mut did_intersect: bool = false;
-    while i < 100 {
-        let tri: [[f64; 3]; 3] = triangles[i as usize];
-        let mut point: [f64; 3] = [0.0; 3];
-        let res: bool = intersect(&tri, ray, &mut point);
-        if res {
-            let subtracted: [f64; 3] = vec_sub(point, ray[0]);
-            let dist: f64 = vec_len(subtracted);
-            if dist < min_dist {
-                min_dist = dist;
-                output[0][0] = point[0];
-                output[0][1] = point[1];
-                output[0][2] = point[2];
+    let mut bvh_stack: [i64; 100] = [0; 100];
+    let mut stack_size: i64 = 1;
 
-                // new ray direction is the normal of the triangle
-                let edge1: [f64; 3] = vec_sub(tri[1], tri[0]);
-                let edge2: [f64; 3] = vec_sub(tri[2], tri[0]);
-                let normal: [f64; 3] = vec_cross(edge1, edge2);
-                let normalized_normal: [f64; 3] = vec_normalize(normal);
-                output[1][0] = normalized_normal[0];
-                output[1][1] = normalized_normal[1];
-                output[1][2] = normalized_normal[2];
-                drop(edge1);
-                drop(edge2);
-                drop(normal);
-                drop(normalized_normal);
-                did_intersect = true;
+    let mut did_intersect: bool = false;
+    while stack_size > 0 {
+        let node_index: i64 = bvh_stack[(stack_size - 1) as usize];
+        let bbox: [[f64; 3]; 2] = bvh_bbox[node_index as usize];
+        stack_size = stack_size - 1;
+        if bbox_ray_intersect(bbox, ray) {
+            let child1: i64 = bvh_children[node_index as usize][0];
+            let child2: i64 = bvh_children[node_index as usize][1];
+            if !(child1 == node_index) {
+                bvh_stack[stack_size as usize] = child1;
+                stack_size = stack_size + 1;
+                bvh_stack[stack_size as usize] = child2;
+                stack_size = stack_size + 1;
+            } else {
+                let mut i: i64 = bvh_start[node_index as usize];
+                while i < bvh_start[node_index as usize] + bvh_size[node_index as usize] {
+                    let tri: [[f64; 3]; 3] = triangles[i as usize];
+                    let mut point: [f64; 3] = [0.0; 3];
+                    let res: bool = intersect(&tri, ray, &mut point);
+                    if res {
+                        let subtracted: [f64; 3] = vec_sub(point, ray[0]);
+                        let dist: f64 = vec_len(subtracted);
+                        if dist < min_dist {
+                            min_dist = dist;
+                            output[0][0] = point[0];
+                            output[0][1] = point[1];
+                            output[0][2] = point[2];
+
+                            // new ray direction is the normal of the triangle
+                            let edge1: [f64; 3] = vec_sub(tri[1], tri[0]);
+                            let edge2: [f64; 3] = vec_sub(tri[2], tri[0]);
+                            let normal: [f64; 3] = vec_cross(edge1, edge2);
+                            let normalized_normal: [f64; 3] = vec_normalize(normal);
+                            output[1][0] = normalized_normal[0];
+                            output[1][1] = normalized_normal[1];
+                            output[1][2] = normalized_normal[2];
+                            drop(edge1);
+                            drop(edge2);
+                            drop(normal);
+                            drop(normalized_normal);
+                            did_intersect = true;
+                        }
+                        drop(subtracted);
+                    }
+                    drop(point);
+                    i = i + 1;
+                }
             }
-            drop(subtracted);
         }
-        drop(point);
-        i = i + 1;
     }
     return did_intersect;
 }

@@ -25,7 +25,10 @@ def normalize(floats):
 def visualize(floats):
     # Create a PIL image from the normalized array
     img = Image.fromarray(floats, mode='L')  # 'L' mode is for grayscale
-    img.show()
+
+    # write the image to a file
+    img.save("output.png")
+    #img.show()
 
 # Main function
 def main():

@@ -22,15 +22,14 @@ smallvec = "1.11.1"
 
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 # currently using the uwplse/bril fork of bril, on eggcc-main
-bril2json = { path = "../bril/bril-rs/bril2json" }
-brilirs = { path = "../bril/brilirs" }
-bril-rs = { path = "../bril/bril-rs" }
-brilift = { path = "../bril/brilift" }
-rs2bril = { path = "../bril/bril-rs/rs2bril",features = [
+bril2json = { git = "https://github.com/uwplse/bril", rev = "a48c5e18575aa738e8d08ff483ee23d6c2735107" }
+brilirs = { git = "https://github.com/uwplse/bril", rev = "a48c5e18575aa738e8d08ff483ee23d6c2735107" }
+bril-rs = { git = "https://github.com/uwplse/bril", rev = "a48c5e18575aa738e8d08ff483ee23d6c2735107" }
+brilift = { git = "https://github.com/uwplse/bril", rev = "a48c5e18575aa738e8d08ff483ee23d6c2735107" }
+rs2bril = { git = "https://github.com/uwplse/bril", rev = "a48c5e18575aa738e8d08ff483ee23d6c2735107" ,features = [
   "import",
 ] }
-brillvm = { path = "../bril/bril-rs/brillvm" }
-
+brillvm = { git = "https://github.com/uwplse/bril", rev = "a48c5e18575aa738e8d08ff483ee23d6c2735107" }
 
 ordered-float = { version = "3.7" }
 serde_json = "1.0.103"

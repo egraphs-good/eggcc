@@ -10,7 +10,7 @@ async function fetchText(url) {
   return data;
 }
 
-function getBaselineHyperfine(benchmark, runMethod) {
+function getBaselineCycles(benchmark, runMethod) {
   const baselineData =
     GLOBAL_DATA.baselineRun?.filter((o) => o.benchmark === benchmark) || [];
   if (baselineData.length === 0) {
@@ -24,7 +24,7 @@ function getBaselineHyperfine(benchmark, runMethod) {
         `Baseline had multiple entries for ${benchmark} ${runMethod}`,
       );
     } else {
-      return baseline[0].hyperfine.results[0];
+      return baseline[0]["cycles"];
     }
   }
 }
@@ -53,24 +53,24 @@ function getBrilPathForBenchmark(benchmark) {
 
 function getDataForBenchmark(benchmark) {
   const executions = GLOBAL_DATA.currentRun
-    ?.filter((o) => o.benchmark === benchmark)
-    .map((o) => {
-      const baselineHyperfine = getBaselineHyperfine(o.benchmark, o.runMethod);
-      const hyperfine = o.hyperfine.results[0];
+    ?.filter((row) => row.benchmark === benchmark)
+    .map((row) => {
+      const baselineCycles = getBaselineCycles(row.benchmark, row.runMethod);
+      const cycles = row["cycles"];
       const rowData = {
-        runMethod: o.runMethod,
-        mean: { class: "", value: tryRound(hyperfine.mean) },
-        meanVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "mean"),
-        min: { class: "", value: tryRound(hyperfine.min) },
-        minVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "min"),
-        max: { class: "", value: tryRound(hyperfine.max) },
-        maxVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "max"),
-        median: { class: "", value: tryRound(hyperfine.median) },
-        medianVsBaseline: diffAttribute(hyperfine, baselineHyperfine, "median"),
-        stddev: { class: "", value: tryRound(hyperfine.stddev) },
+        runMethod: row.runMethod,
+        mean: { class: "", value: tryRound(mean_cycles(cycles)) },
+        meanVsBaseline: getDifference(cycles, baselineCycles, mean_cycles),
+        min: { class: "", value: tryRound(min_cycles(cycles)) },
+        minVsBaseline: getDifference(cycles, baselineCycles, min_cycles),
+        max: { class: "", value: tryRound(max_cycles(cycles)) },
+        maxVsBaseline: getDifference(cycles, baselineCycles, max_cycles),
+        median: { class: "", value: tryRound(median_cycles(cycles)) },
+        medianVsBaseline: getDifference(cycles, baselineCycles, median_cycles),
+        stddev: { class: "", value: tryRound(median_cycles(cycles)) },
       };
-      if (shouldHaveLlvm(o.runMethod)) {
-        rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${o.runMethod}">${o.runMethod}</a>`;
+      if (shouldHaveLlvm(row.runMethod)) {
+        rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${row.runMethod}">${row.runMethod}</a>`;
       }
       return rowData;
     });

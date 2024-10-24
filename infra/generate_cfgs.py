@@ -2,6 +2,8 @@
 import glob
 import os
 
+import concurrent.futures
+
 def make_cfgs(bench, data_dir):
   cwd = os.getcwd()
   path = f"{data_dir}/{bench}"
@@ -55,5 +57,16 @@ if __name__ == '__main__':
       exit(1)
   data_dir = os.sys.argv[1]
   benchmarks = os.listdir(data_dir)
-  for bench in benchmarks:
-    make_cfgs(bench, data_dir)
+
+  # get the number of cores on this machine 
+  parallelism = os.cpu_count()
+  with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
+    futures = {executor.submit(make_cfgs, bench, data_dir) for bench in benchmarks}
+
+    for future in concurrent.futures.as_completed(futures):
+      try:
+        future.result()
+      except Exception as e:
+        print(f"Shutting down executor due to error: {e}")
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise e

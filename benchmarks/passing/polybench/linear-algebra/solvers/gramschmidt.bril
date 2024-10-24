@@ -90,12 +90,14 @@
     jmp .main_k;
 .main_k_done:
 
-    call @matrix_print R N N;
-    call @matrix_print Q M N;
+    res: float = call @matrix_sum R N N;
+    res2: float = call @matrix_sum Q M N;
+    res3: float = fadd res res2;
 
     free A;
     free R;
     free Q;
+    print res3;
 }
 
 @init(A: ptr<float>, R: ptr<float>, Q: ptr<float>,
@@ -190,20 +192,22 @@
     store ptr new_val;
 }
 
-@matrix_print(mtx: ptr<float>, Nrow: int, Ncol: int) {
+@matrix_sum(mtx: ptr<float>, Nrow: int, Ncol: int): float {
     i: int = const 0;
     one: int = const 1;
     total: int = mul Nrow Ncol;
+    res: float = const 0;
 .while:
     cond: bool = lt i total;
     br cond .body .done;
 .body:
     mtx_loc: ptr<float> = ptradd mtx i;
     val: float = load mtx_loc;
-    print val;
+    res: float = fadd res val;
     i: int = add i one;
     jmp .while;
 .done:
+    ret res;
 }
 
 

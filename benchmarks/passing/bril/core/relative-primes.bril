@@ -1,26 +1,10 @@
 # ARGS: 3400
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: int = call @orig_main loop_counter;
-  final_output: int = add final_output output;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(v0 : int): int {
+@main(v0 : int) {
   a: int = id v0;
   v1: int = id a;
   sum: int = call @relative_primes v1;
   v2: int = const 0;
-  ret sum;
+  print sum;
 }
 @mod(a: int, b: int): int {
   v0: int = id a;

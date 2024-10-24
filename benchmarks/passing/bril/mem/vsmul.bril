@@ -37,26 +37,15 @@
   ret arr;
 }
 
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  call @orig_main loop_counter;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-}
 
-@orig_main(size: int) {
+@main(size: int) {
   seed: int = const 2023;
   two: int = const 2;
   rng: ptr<int> = alloc seed; 
   store rng seed;
   arr: ptr<int> = call @randarray size rng; 
   i: int = const 0; 
+  val: int = const 0;
   .loop:
     cond: bool = lt i size;
     br cond .body .done;
@@ -68,4 +57,5 @@
   .done:
   free arr;
   free rng;
+  print val;
 }

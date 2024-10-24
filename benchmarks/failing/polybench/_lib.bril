@@ -142,7 +142,7 @@
     store ptr new_val;
 }
 
-@matrix_print(mtx: ptr<float>, Nrow: int, Ncol: int) {
+@matrix_sum(mtx: ptr<float>, Nrow: int, Ncol: int) {
     i: int = const 0;
     one: int = const 1;
     total: int = mul Nrow Ncol;
@@ -190,7 +190,7 @@
 
 # EXPECTS:
 #   @vector_get defined
-@vector_print(vec: ptr<float>, N: int) {
+@vector_sum(vec: ptr<float>, N: int) {
     i: int = const 0;
     one: int = const 1;
 .while:

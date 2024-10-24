@@ -17,6 +17,9 @@ struct Args {
     /// the result.
     #[clap(long)]
     interp: bool,
+    /// Add timing information to the benchmark, measuring cycles before the final print statement.
+    #[clap(long)]
+    add_timing: bool,
     #[clap(long)]
     profile_out: Option<PathBuf>,
 
@@ -26,10 +29,7 @@ struct Args {
     /// (only used when interpreting)
     bril_args: Vec<String>,
 
-    /// Where to put the executable (only for the CompileBrilfit run mode)
-    /// If not provided, the executable will be in a file with the same prefix as the
-    /// input file, but with no file extension. That is, if `abc.bril` is passed in,
-    /// then the executable will be in `abc`.
+    /// Where to put the executable (only for the brillift and llvm modes)
     #[clap(short)]
     output_path: Option<String>,
     /// Where to put intermediary files (only for OptimizeBrilLLVM mode)
@@ -89,6 +89,7 @@ fn main() {
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
         optimize_bril_llvm: args.optimize_bril_llvm,
+        add_timing: args.add_timing,
     };
 
     let result = match run.run() {
@@ -101,6 +102,9 @@ fn main() {
     if args.interp {
         // just print out the result of interpreting the program
         println!("{}", result.result_interpreted.unwrap());
+        if let Some(cycles_taken) = result.cycles_taken {
+            eprintln!("{}", cycles_taken);
+        }
     } else if let &[visualization] = &result.visualizations.as_slice() {
         // when there is just one visualization, print it out without
         // the "visualization of: {}" header for convenience

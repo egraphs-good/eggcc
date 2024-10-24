@@ -1,13 +1,12 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, ffi::OsStr};
 
 use eggcc::util::{Run, RunMode, TestProgram};
 use insta::assert_snapshot;
 use libtest_mimic::Trial;
 
 /// Generate tests for all configurations of a given file
-/// If `just_brilift` is true, only generate tests that
-/// run the full pipeline with brilift
-fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
+// slow_test means the test is too slow to run the interpreter on, so use benchmarking mode
+fn generate_tests(glob: &str, slow_test: bool) -> Vec<Trial> {
     let mut trials = vec![];
 
     let mut mk_trial = |run: Run, snapshot: bool| {
@@ -43,16 +42,23 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
     };
 
     for entry in glob::glob(glob).unwrap() {
-        let f = entry.unwrap();
+        let file = entry.unwrap();
 
-        let snapshot = f.to_str().unwrap().contains("small");
+        let snapshot = file.to_str().unwrap().contains("small");
 
-        let configurations = if benchmark_mode {
+        let testprog = match file.extension().and_then(OsStr::to_str) {
+            Some("rs") => TestProgram::RustFile(file.clone()),
+            Some("bril") => TestProgram::BrilFile(file.clone()),
+            Some(x) => panic!("unexpected file extension {x}"),
+            None => panic!("could not parse file extension"),
+        };
+
+        let configurations = if slow_test {
             // in benchmark mode, run a special test pipeline that only runs
             // a few modes, and shares intermediate results
-            vec![Run::test_benchmark_config(TestProgram::BrilFile(f.clone()))]
+            vec![Run::test_benchmark_config(testprog)]
         } else {
-            Run::all_configurations_for(TestProgram::BrilFile(f))
+            Run::all_configurations_for(testprog)
         };
 
         for run in configurations {
@@ -63,9 +69,39 @@ fn generate_tests(glob: &str, benchmark_mode: bool) -> Vec<Trial> {
     trials
 }
 
+fn check_no_duplicates(globs: Vec<&str>) {
+    let mut names = HashSet::<String>::new();
+
+    for glob in globs {
+        for file in glob::glob(glob).unwrap() {
+            let name = file
+                .unwrap()
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
+            if names.contains(&name) {
+                panic!("Duplicate filename {}.", name);
+            }
+            names.insert(name);
+        }
+    }
+}
+
 fn main() {
     let args = libtest_mimic::Arguments::from_args();
+
+    // Check for duplicate files
+    check_no_duplicates(vec![
+        "tests/passing/**/*.bril",
+        "benchmarks/passing/**/*.bril",
+    ]);
+
     let mut tests = generate_tests("tests/passing/**/*.bril", false);
+    tests.extend(generate_tests("tests/passing/**/*.rs", false));
+
+    tests.extend(generate_tests("tests/slow/**/*.bril", true));
     // also generate tests for benchmarks
     tests.extend(generate_tests("benchmarks/passing/**/*.bril", true));
 

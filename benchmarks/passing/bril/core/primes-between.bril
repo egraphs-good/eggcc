@@ -1,29 +1,5 @@
-# ARGS: 365
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  inner_counter: int = const 10;
-.inner_cond:
-  inner_cond: bool = lt inner_counter loop_bound;
-  br inner_cond .inner_body .inner_done;
-.inner_body:
-  output: int = call @orig_main loop_counter inner_counter;
-  final_output: int = add final_output output;
-  inner_counter: int = add inner_counter loop_incr;
-  jmp .inner_cond;
-.inner_done:
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(a : int, b: int ): int {
+# ARGS: 0 4000
+@main(a : int, b: int ) {
   sum: int = const 0;
   .for.outer.init: # start at interval unless a < 2, then start at 2.
     t0 : int = const 2;
@@ -72,7 +48,7 @@
     t2 : int = add t2 t17;
     jmp .for.outer.cond;
   .for.outer.end:
-  ret sum;
+  print sum;
 }
 
 @mod(a : int, b : int) : int {

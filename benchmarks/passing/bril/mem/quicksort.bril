@@ -1,29 +1,11 @@
-# ARGS: 3500000
+# ARGS: 94
 # An implementation of Quicksort using the Lomuto partition scheme, adapted from the pseudocode on Wikipedia
 # Input: an array of length 6
 # Output: the input array sorted in ascending order
 # Adopted two helper functions, pack and print_array, from Jiajie Li's bubble sort benchmark
 
-@main(loop_bound: int) {
-  loop_incr: int = const 1;
-  loop_counter: int = const 10;
-  final_output: int = const 0;
-.loop_cond:
-  loop_cond: bool = lt loop_counter loop_bound;
-  br loop_cond .loop_body .loop_done;
-.loop_body:
-  output: int = call @orig_main loop_counter;
-  final_output: int = add final_output output;
-  loop_counter: int = add loop_counter loop_incr;
-  jmp .loop_cond;
-.loop_done:
-  print final_output;
-}
-
-@orig_main(x: int): int {
+@main(n1: int) {
     size: int = const 6;
-    ninetyfour: int = const 94;
-    n1: int = add x ninetyfour;
     n2: int = const 21;
     n3: int = const 5;
     n4: int = const 6;
@@ -40,7 +22,7 @@
     sum: int = call @print_array array size;
 
     free array;
-    ret sum;
+    print sum;
 }
 
 @qsort(array : ptr<int>, l: int, r:int) {

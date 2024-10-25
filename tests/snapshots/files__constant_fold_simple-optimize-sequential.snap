@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main {
+.b0_:
+  c1_: int = const 3;
+  c2_: int = const 2;
+  v3_: int = div c1_ c2_;
+  print v3_;
+}

@@ -1,0 +1,9 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int) {
+.b1_:
+  c2_: bool = const false;
+  print c2_;
+}

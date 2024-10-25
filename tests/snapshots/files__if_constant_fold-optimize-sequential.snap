@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int) {
+.b1_:
+  c2_: int = const 6;
+  c3_: int = const 3;
+  print c3_;
+  print c2_;
+}

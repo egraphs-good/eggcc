@@ -33,15 +33,16 @@ pub(crate) fn helpers() -> String {
     .to_string()
 }
 
-fn expensive_optimizations() -> Vec<String> {
-    ["loop-unroll"].iter().map(|opt| opt.to_string()).collect()
+fn cheap_optimizations() -> Vec<String> {
+    ["loop-simplify", "memory", "peepholes"]
+        .iter()
+        .map(|opt| opt.to_string())
+        .collect()
 }
 
 fn optimizations() -> Vec<String> {
     [
-        "loop-simplify",
-        "memory",
-        "peepholes",
+        "loop-unroll",
         "switch_rewrite",
         "loop-inv-motion",
         "loop-strength-reduction",
@@ -49,31 +50,39 @@ fn optimizations() -> Vec<String> {
     ]
     .iter()
     .map(|opt| opt.to_string())
-    .chain(expensive_optimizations().into_iter())
+    .chain(cheap_optimizations())
     .collect()
 }
 
-const OPTIMIZATIONS: &[&str] = &[];
-
-const SATURATING: &[&str] = &[
-    "always-run",
-    "passthrough",
-    "canon",
-    "type-analysis",
-    "context",
-    "interval-analysis",
-    "memory-helpers",
-    "always-switch-rewrite",
-    "loop-iters-analysis",
-];
+fn saturating_rulesets() -> Vec<String> {
+    [
+        "always-run",
+        "passthrough",
+        "canon",
+        "type-analysis",
+        "context",
+        "interval-analysis",
+        "memory-helpers",
+        "always-switch-rewrite",
+        "loop-iters-analysis",
+    ]
+    .iter()
+    .map(|opt| opt.to_string())
+    .collect()
+}
 
 pub fn rulesets() -> String {
-    let all_optimizations = OPTIMIZATIONS.join("\n");
-    let saturating_combined = SATURATING.join("\n");
+    let all_optimizations = optimizations().join("\n");
+    let saturating_combined = saturating_rulesets().join("\n");
+    let cheap_optimizations = cheap_optimizations().join("\n");
     format!(
         "
 (unstable-combined-ruleset saturating
     {saturating_combined}
+)
+
+(unstable-combined-ruleset cheap-optimizations
+    {cheap_optimizations}
 )
 
 (unstable-combined-ruleset all-optimizations
@@ -85,7 +94,7 @@ pub fn rulesets() -> String {
 
 pub fn mk_sequential_schedule() -> Vec<String> {
     let helpers = helpers();
-    OPTIMIZATIONS
+    optimizations()
         .iter()
         .map(|optimization| {
             format!(
@@ -107,9 +116,15 @@ pub fn parallel_schedule() -> Vec<String> {
     vec![format!(
         "
 (run-schedule
-    (repeat 3
+
+    (repeat 2
         {helpers}
         all-optimizations
+    )
+
+    (repeat 4
+        {helpers}
+        cheap-optimizations
     )
 
     {helpers}

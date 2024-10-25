@@ -30,7 +30,7 @@ expression: visualization.result
   print v17_;
   ret;
 .b7_:
-  v19_: bool = gt v0 c5_;
+  v19_: bool = lt c5_ v0;
   c20_: bool = const false;
   c21_: int = const 2;
   v22_: int = id c21_;

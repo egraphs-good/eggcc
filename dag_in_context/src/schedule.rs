@@ -33,19 +33,27 @@ pub(crate) fn helpers() -> String {
     .to_string()
 }
 
-const EXPENSIVE_OPTIMIZATIONS = &[
-    "loop-unroll",
-];
+fn expensive_optimizations() -> Vec<String> {
+    ["loop-unroll"].iter().map(|opt| opt.to_string()).collect()
+}
 
-const OPTIMIZATIONS: &[&str] = &[
-    "loop-simplify",
-    "memory",
-    "peepholes",
-    "switch_rewrite",
-    "loop-inv-motion",
-    "loop-strength-reduction",
-    "loop-peel",
-];
+fn optimizations() -> Vec<String> {
+    [
+        "loop-simplify",
+        "memory",
+        "peepholes",
+        "switch_rewrite",
+        "loop-inv-motion",
+        "loop-strength-reduction",
+        "loop-peel",
+    ]
+    .iter()
+    .map(|opt| opt.to_string())
+    .chain(expensive_optimizations().into_iter())
+    .collect()
+}
+
+const OPTIMIZATIONS: &[&str] = &[];
 
 const SATURATING: &[&str] = &[
     "always-run",

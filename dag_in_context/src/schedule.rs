@@ -101,7 +101,8 @@ pub fn mk_sequential_schedule() -> Vec<String> {
                 "
 (run-schedule
    {helpers}
-   {optimization})
+   {optimization}
+   {helpers})
 "
             )
         })

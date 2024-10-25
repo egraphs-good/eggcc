@@ -5,6 +5,7 @@ const COLORS = {
   "llvm-O2": "orange",
   "llvm-O3": "gray",
   "llvm-O0-eggcc": "pink",
+  "llvm-O0-eggcc-sequential": "blue",
   "llvm-O3-eggcc": "brown",
 };
 

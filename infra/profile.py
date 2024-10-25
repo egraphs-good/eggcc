@@ -16,6 +16,7 @@ treatments = [
   "llvm-O1",
   "llvm-O2",
   "llvm-O0-eggcc",
+  "llvm-O0-eggcc-sequential",
   "llvm-O3",
   "llvm-O3-eggcc",
 ]
@@ -43,6 +44,8 @@ def get_eggcc_options(run_mode, benchmark):
       return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3 --llvm-output-dir {llvm_out_dir}'
     case "llvm-O0-eggcc":
       return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm O0 --llvm-output-dir {llvm_out_dir}'
+    case "llvm-O0-eggcc-sequential":
+      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm O0 --llvm-output-dir {llvm_out_dir} --eggcc-schedule sequential'
     case "llvm-O3-eggcc":
       return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm O3 --llvm-output-dir {llvm_out_dir}'
     case _:
@@ -119,7 +122,10 @@ def should_have_llvm_ir(runMethod):
   return runMethod in [
     "rvsdg-round-trip-to-executable",
     "llvm-O0",
+    "llvm-O1",
+    "llvm-O2",
     "llvm-O0-eggcc",
+    "llvm-O0-eggcc-sequential",
     "llvm-O3",
     "llvm-O3-eggcc",
   ]

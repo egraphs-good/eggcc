@@ -33,52 +33,76 @@ pub(crate) fn helpers() -> String {
     .to_string()
 }
 
-pub fn mk_schedule() -> String {
-    let helpers = helpers();
+const OPTIMIZATIONS: &[&str] = &[
+    "loop-simplify",
+    "memory",
+    "loop-unroll",
+    "peepholes",
+    "switch_rewrite",
+    "loop-inv-motion",
+    "loop-strength-reduction",
+    "loop-peel",
+];
+
+const SATURATING: &[&str] = &[
+    "always-run",
+    "passthrough",
+    "canon",
+    "type-analysis",
+    "context",
+    "interval-analysis",
+    "memory-helpers",
+    "always-switch-rewrite",
+    "loop-iters-analysis",
+];
+
+pub fn rulesets() -> String {
+    let all_optimizations = OPTIMIZATIONS.join("\n");
+    let saturating_combined = SATURATING.join("\n");
     format!(
         "
 (unstable-combined-ruleset saturating
-    always-run
-    passthrough
-    canon
-    type-analysis
-    context
-    interval-analysis
-    memory-helpers
-    always-switch-rewrite
-    loop-iters-analysis
-)
-
-(unstable-combined-ruleset cheap-optimizations
-    loop-simplify
-    memory
-    loop-unroll
-    peepholes
+    {saturating_combined}
 )
 
 (unstable-combined-ruleset all-optimizations
-    cheap-optimizations
-    
-    switch_rewrite
-    loop-inv-motion
-    loop-strength-reduction
-    loop-peel
+    {all_optimizations}
 )
+    "
+    )
+}
 
+pub fn mk_sequential_schedule() -> Vec<String> {
+    let helpers = helpers();
+    OPTIMIZATIONS
+        .iter()
+        .map(|optimization| {
+            format!(
+                "
 (run-schedule
+   {helpers}
+   {optimization})
+"
+            )
+        })
+        .collect()
+}
 
-    (repeat 2
+/// Parallel schedule must return a single string,
+/// a schedule that runs optimizations over the egraph.
+pub fn parallel_schedule() -> Vec<String> {
+    let helpers = helpers();
+
+    vec![format!(
+        "
+(run-schedule
+    (repeat 3
         {helpers}
         all-optimizations
-    )
-
-    (repeat 4
-        {helpers}
-        cheap-optimizations
     )
 
     {helpers}
 )
 "
-    )
+    )]
 }

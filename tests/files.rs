@@ -105,5 +105,9 @@ fn main() {
     // also generate tests for benchmarks
     tests.extend(generate_tests("benchmarks/passing/**/*.bril", true));
 
+    // assert that no two tests have the same name
+    let names: HashSet<String> = tests.iter().map(|t| t.name().to_string()).collect();
+    assert_eq!(names.len(), tests.len());
+
     libtest_mimic::run(&args, tests).exit();
 }

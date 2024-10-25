@@ -352,6 +352,24 @@ pub struct Run {
     pub eggcc_config: EggccConfig,
 }
 
+impl Run {
+    pub fn new(prog_with_args: ProgWithArguments, test_type: RunMode) -> Run {
+        Run {
+            prog_with_args,
+            test_type,
+            interp: InterpMode::None,
+            profile_out: None,
+            output_path: None,
+            llvm_output_dir: None,
+            optimize_egglog: None,
+            optimize_brilift: None,
+            optimize_bril_llvm: None,
+            add_timing: false,
+            eggcc_config: EggccConfig::default(),
+        }
+    }
+}
+
 /// an enum of IRs that can be interpreted
 #[derive(Debug)]
 pub enum Interpretable {
@@ -440,6 +458,7 @@ impl Run {
         }
     }
 
+    /// List all the run configurations that should be tested
     pub fn all_configurations_for(test: TestProgram) -> Vec<Run> {
         let prog = test.clone().read_program();
         let mut res = vec![];
@@ -456,19 +475,7 @@ impl Run {
             RunMode::CheckExtractIdentical,
             RunMode::TestPrettyPrint,
         ] {
-            let default = Run {
-                test_type,
-                interp: InterpMode::None,
-                prog_with_args: prog.clone(),
-                profile_out: None,
-                output_path: None,
-                llvm_output_dir: None,
-                optimize_egglog: None,
-                optimize_brilift: None,
-                optimize_bril_llvm: None,
-                add_timing: false,
-                eggcc_config: EggccConfig::default(),
-            };
+            let default = Run::new(prog.clone(), test_type);
             if test_type.produces_interpretable() {
                 let interp = Run {
                     interp: InterpMode::Interp,
@@ -479,6 +486,10 @@ impl Run {
                 res.push(default);
             }
         }
+        // also test the sequential schedule
+        let mut seq = Run::new(prog.clone(), RunMode::Optimize);
+        seq.eggcc_config.schedule = Schedule::Sequential;
+        res.push(seq);
 
         // run a cranelift baseline
         res.push(Run::compile_brilift_config(
@@ -528,6 +539,11 @@ impl Run {
 
             name += &end;
         }
+
+        name += match self.eggcc_config.schedule {
+            Schedule::Parallel => "",
+            Schedule::Sequential => "-sequential",
+        };
 
         name
     }

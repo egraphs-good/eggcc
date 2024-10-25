@@ -251,7 +251,7 @@ pub fn optimize(
         .zip(0..eggcc_config.stop_after_n_passes)
     {
         // only inline functions on the first pass
-        let egglog_prog = build_program(&res, cache, i == 0, &schedule);
+        let egglog_prog = build_program(&res, cache, i == 0, schedule);
         log::info!("Running egglog program...");
         let mut egraph = egglog::EGraph::default();
         egraph.parse_and_run_program(None, &egglog_prog)?;

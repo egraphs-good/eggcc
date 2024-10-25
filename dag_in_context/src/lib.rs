@@ -219,7 +219,7 @@ pub enum Schedule {
     Sequential,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EggccConfig {
     pub schedule: Schedule,
     pub stop_after_n_passes: usize,
@@ -250,8 +250,10 @@ pub fn optimize(
         .iter()
         .zip(0..eggcc_config.stop_after_n_passes)
     {
+        log::info!("Running pass {}...", i);
         // only inline functions on the first pass
         let egglog_prog = build_program(&res, cache, i == 0, schedule);
+
         log::info!("Running egglog program...");
         let mut egraph = egglog::EGraph::default();
         egraph.parse_and_run_program(None, &egglog_prog)?;

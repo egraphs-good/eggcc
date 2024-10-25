@@ -269,7 +269,7 @@ impl RunMode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProgWithArguments {
     pub program: Program,
     name: String,
@@ -319,7 +319,7 @@ impl TestProgram {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum InterpMode {
     /// Interpret the original program and the result
     Interp,
@@ -337,7 +337,7 @@ impl InterpMode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Run {
     pub prog_with_args: ProgWithArguments,
     pub test_type: RunMode,
@@ -762,9 +762,11 @@ impl Run {
                 )
             }
             RunMode::Egglog => {
+                assert_eq!(self.eggcc_config.schedule, Schedule::Parallel, "Output egglog only works in parallel mode. Sequential mode does not use a single egraph");
+
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
-                assert_eq!(self.eggcc_config.schedule, Schedule::Parallel, "Output egglog only works in parallel mode. Sequential mode does not use a single egraph");
+
                 let schedule_steps = parallel_schedule();
                 assert_eq!(
                     schedule_steps.len(),

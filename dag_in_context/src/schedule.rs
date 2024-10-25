@@ -33,10 +33,13 @@ pub(crate) fn helpers() -> String {
     .to_string()
 }
 
+const EXPENSIVE_OPTIMIZATIONS = &[
+    "loop-unroll",
+];
+
 const OPTIMIZATIONS: &[&str] = &[
     "loop-simplify",
     "memory",
-    "loop-unroll",
     "peepholes",
     "switch_rewrite",
     "loop-inv-motion",

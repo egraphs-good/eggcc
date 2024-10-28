@@ -1,0 +1,15 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@inc(v0: int) {
+.b1_:
+  c2_: int = const 1;
+  v3_: int = add c2_ v0;
+  print v3_;
+}
+@main {
+.b0_:
+  c1_: int = const 1;
+  print c1_;
+}

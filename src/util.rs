@@ -4,7 +4,8 @@ use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
 use dag_in_context::dag2svg::tree_to_svg;
-use dag_in_context::{build_program, check_roundtrip_egraph};
+use dag_in_context::schedule::parallel_schedule;
+use dag_in_context::{build_program, check_roundtrip_egraph, EggccConfig, Schedule};
 
 use dag_in_context::schema::TreeProgram;
 use std::fmt::Debug;
@@ -268,7 +269,7 @@ impl RunMode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProgWithArguments {
     pub program: Program,
     name: String,
@@ -318,7 +319,7 @@ impl TestProgram {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum InterpMode {
     /// Interpret the original program and the result
     Interp,
@@ -336,7 +337,7 @@ impl InterpMode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Run {
     pub prog_with_args: ProgWithArguments,
     pub test_type: RunMode,
@@ -348,6 +349,25 @@ pub struct Run {
     pub optimize_brilift: Option<bool>,
     pub optimize_bril_llvm: Option<LLVMOptLevel>,
     pub add_timing: bool,
+    pub eggcc_config: EggccConfig,
+}
+
+impl Run {
+    pub fn new(prog_with_args: ProgWithArguments, test_type: RunMode) -> Run {
+        Run {
+            prog_with_args,
+            test_type,
+            interp: InterpMode::None,
+            profile_out: None,
+            output_path: None,
+            llvm_output_dir: None,
+            optimize_egglog: None,
+            optimize_brilift: None,
+            optimize_bril_llvm: None,
+            add_timing: false,
+            eggcc_config: EggccConfig::default(),
+        }
+    }
 }
 
 /// an enum of IRs that can be interpreted
@@ -386,10 +406,11 @@ pub struct RunOutput {
 }
 
 impl Run {
-    fn optimize_bril(program: &Program) -> Result<Program, EggCCError> {
+    fn optimize_bril(program: &Program, config: &EggccConfig) -> Result<Program, EggCCError> {
         let rvsdg = Optimizer::program_to_rvsdg(program)?;
         let (dag, mut cache) = rvsdg.to_dag_encoding(true);
-        let optimized = dag_in_context::optimize(&dag, &mut cache).map_err(EggCCError::EggLog)?;
+        let optimized =
+            dag_in_context::optimize(&dag, &mut cache, config).map_err(EggCCError::EggLog)?;
         let rvsdg2 = dag_to_rvsdg(&optimized);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
@@ -415,6 +436,7 @@ impl Run {
             optimize_brilift: Some(optimize_brilift),
             optimize_bril_llvm: None,
             add_timing: false,
+            eggcc_config: EggccConfig::default(),
         }
     }
 
@@ -432,9 +454,11 @@ impl Run {
             optimize_brilift: None,
             optimize_bril_llvm: None,
             add_timing: false,
+            eggcc_config: EggccConfig::default(),
         }
     }
 
+    /// List all the run configurations that should be tested
     pub fn all_configurations_for(test: TestProgram) -> Vec<Run> {
         let prog = test.clone().read_program();
         let mut res = vec![];
@@ -451,18 +475,7 @@ impl Run {
             RunMode::CheckExtractIdentical,
             RunMode::TestPrettyPrint,
         ] {
-            let default = Run {
-                test_type,
-                interp: InterpMode::None,
-                prog_with_args: prog.clone(),
-                profile_out: None,
-                output_path: None,
-                llvm_output_dir: None,
-                optimize_egglog: None,
-                optimize_brilift: None,
-                optimize_bril_llvm: None,
-                add_timing: false,
-            };
+            let default = Run::new(prog.clone(), test_type);
             if test_type.produces_interpretable() {
                 let interp = Run {
                     interp: InterpMode::Interp,
@@ -473,6 +486,10 @@ impl Run {
                 res.push(default);
             }
         }
+        // also test the sequential schedule
+        let mut seq = Run::new(prog.clone(), RunMode::Optimize);
+        seq.eggcc_config.schedule = Schedule::Sequential;
+        res.push(seq);
 
         // run a cranelift baseline
         res.push(Run::compile_brilift_config(
@@ -496,6 +513,7 @@ impl Run {
                         optimize_brilift: None,
                         optimize_bril_llvm: Some(optimize_llvm),
                         add_timing: false,
+                        eggcc_config: EggccConfig::default(),
                     });
                 }
             }
@@ -521,6 +539,11 @@ impl Run {
 
             name += &end;
         }
+
+        name += match self.eggcc_config.schedule {
+            Schedule::Parallel => "",
+            Schedule::Sequential => "-sequential",
+        };
 
         name
     }
@@ -645,7 +668,7 @@ impl Run {
                 (vec![], None)
             }
             RunMode::Optimize => {
-                let bril = Run::optimize_bril(&self.prog_with_args.program)?;
+                let bril = Run::optimize_bril(&self.prog_with_args.program, &self.eggcc_config)?;
                 (
                     vec![Visualization {
                         result: bril.to_string(),
@@ -671,8 +694,8 @@ impl Run {
             RunMode::OptimizedPrettyPrint => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (prog, mut ctx_cache) = rvsdg.to_dag_encoding(true);
-                let optimized =
-                    dag_in_context::optimize(&prog, &mut ctx_cache).map_err(EggCCError::EggLog)?;
+                let optimized = dag_in_context::optimize(&prog, &mut ctx_cache, &self.eggcc_config)
+                    .map_err(EggCCError::EggLog)?;
                 let res = TreeProgram::pretty_print_to_rust(&optimized);
                 (
                     vec![Visualization {
@@ -687,7 +710,7 @@ impl Run {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let (tree, mut cache) = rvsdg.to_dag_encoding(true);
-                let unfolded_program = build_program(&tree, &mut cache, false);
+                let unfolded_program = build_program(&tree, &mut cache, false, "");
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
@@ -712,8 +735,8 @@ impl Run {
             RunMode::DagOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (tree, mut cache) = rvsdg.to_dag_encoding(true);
-                let optimized =
-                    dag_in_context::optimize(&tree, &mut cache).map_err(EggCCError::EggLog)?;
+                let optimized = dag_in_context::optimize(&tree, &mut cache, &self.eggcc_config)
+                    .map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
                         result: tree_to_svg(&optimized),
@@ -726,8 +749,8 @@ impl Run {
             RunMode::OptimizedRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
-                let optimized =
-                    dag_in_context::optimize(&dag, &mut cache).map_err(EggCCError::EggLog)?;
+                let optimized = dag_in_context::optimize(&dag, &mut cache, &self.eggcc_config)
+                    .map_err(EggCCError::EggLog)?;
                 let rvsdg = dag_to_rvsdg(&optimized);
                 (
                     vec![Visualization {
@@ -739,9 +762,19 @@ impl Run {
                 )
             }
             RunMode::Egglog => {
+                assert_eq!(self.eggcc_config.schedule, Schedule::Parallel, "Output egglog only works in parallel mode. Sequential mode does not use a single egraph");
+
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
-                let egglog = build_program(&dag, &mut cache, true);
+
+                let schedule_steps = parallel_schedule();
+                assert_eq!(
+                    schedule_steps.len(),
+                    1,
+                    "Parallel schedule had multiple steps!"
+                );
+
+                let egglog = build_program(&dag, &mut cache, true, &schedule_steps[0]);
                 (
                     vec![Visualization {
                         result: egglog,
@@ -824,7 +857,7 @@ impl Run {
 
                 for optimize_egglog in [true, false] {
                     let resulting_bril = if optimize_egglog {
-                        Run::optimize_bril(&self.prog_with_args.program)?
+                        Run::optimize_bril(&self.prog_with_args.program, &self.eggcc_config)?
                     } else {
                         self.prog_with_args.program.clone()
                     };
@@ -966,7 +999,7 @@ impl Run {
         let unique_name = format!("{}_{}_{}", self.name(), optimize_egglog, llvm_level);
 
         let program = if optimize_egglog {
-            Run::optimize_bril(&input_prog)?
+            Run::optimize_bril(&input_prog, &self.eggcc_config)?
         } else {
             input_prog
         };

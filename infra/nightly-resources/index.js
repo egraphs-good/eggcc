@@ -5,6 +5,7 @@ const treatments = [
   "llvm-O1",
   "llvm-O2",
   "llvm-O0-eggcc",
+  "llvm-O0-eggcc-sequential",
   "llvm-O3",
   "llvm-O3-eggcc",
 ];

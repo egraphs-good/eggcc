@@ -1,0 +1,26 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+@main(v0: int) {
+.b1_:
+  c2_: int = const 0;
+  c3_: int = const 5;
+  v4_: int = id c2_;
+  v5_: int = id c2_;
+  v6_: int = id c3_;
+  v7_: int = id v0;
+.b8_:
+  v9_: int = mul v5_ v6_;
+  v10_: int = add v4_ v9_;
+  c11_: int = const 1;
+  v12_: int = add c11_ v5_;
+  v13_: bool = lt v5_ v7_;
+  v4_: int = id v10_;
+  v5_: int = id v12_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
+  br v13_ .b8_ .b14_;
+.b14_:
+  print v4_;
+}

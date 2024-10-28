@@ -5,6 +5,5 @@ expression: visualization.result
 @main {
 .b0_:
   c1_: int = const 1;
-  c2_: bool = const false;
   print c1_;
 }

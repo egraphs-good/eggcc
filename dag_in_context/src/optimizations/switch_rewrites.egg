@@ -37,9 +37,14 @@
        (= if_e (If pred inputs thn els))
        (= a (Get inputs i))
        (= b (Get inputs j))
+
        ; if pred then a else b
        (= (Get thn k) (Get (Arg ty (InIf true pred inputs)) i))
        (= (Get els k) (Get (Arg ty (InIf false pred inputs)) j))
+
+       ; If i = j, then the arg is just passed through the if, and we
+       ; don't need a select. This will get handled by the passthrough rules.
+       (!= i j)
        )
        (
        (union (Get if_e k) (Top (Select) pred a b))

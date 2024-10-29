@@ -4,25 +4,113 @@
 //! This is used by `to_cfg` to clean up
 //! the output.
 
+use bril_rs::{Instruction, ValueOps};
 use indexmap::IndexMap;
 use petgraph::{
     graph::EdgeIndex,
     stable_graph::{NodeIndex, StableDiGraph, StableGraph},
-    visit::{DfsPostOrder, EdgeRef},
+    visit::{Bfs, DfsPostOrder, EdgeRef, IntoEdgeReferences},
     Direction,
 };
 
-use crate::cfg::{BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram};
+use crate::cfg::{Annotation, BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram};
 
 #[cfg(test)]
 use crate::Optimizer;
 
 impl SimpleCfgFunction {
     pub fn optimize_jumps(&self) -> Self {
-        self.fuse_down().collapse_empty_blocks()
+        // fusing down only needs to happen once
+        // fuze up may need to run until fixed point
+        // collapse empty blocks only need to happen once
+        self.fuse_down().fuze_up().fuze_up().collapse_empty_blocks()
     }
 
-    /// Find cases where a block jumps directly to another block A -> B where B
+    /// Finds blocks with only id instructions and fuses them with their parents
+    /// The parent must jump directly to the block
+    fn fuze_up(&self) -> SimpleCfgFunction {
+        let mut resulting_graph: StableGraph<BasicBlock, Branch> = StableDiGraph::new();
+
+        // maps nodes in the old graph to nodes in the new graph
+        // this is 1 to 1 for this optimization
+        let mut node_mapping: IndexMap<NodeIndex, NodeIndex> = IndexMap::new();
+
+        let mut bfs = Bfs::new(&self.graph, self.entry);
+
+        while let Some(node) = bfs.next(&self.graph) {
+            let incoming_to_node = self
+                .graph
+                .edges_directed(node, Direction::Incoming)
+                .collect::<Vec<_>>();
+
+            // check if the optimization is applicable
+            let should_apply = self.graph[node].instrs.iter().all(|instr| {
+                matches!(
+                    instr,
+                    Instruction::Value {
+                        op: ValueOps::Id,
+                        ..
+                    }
+                )
+            }) && incoming_to_node.iter().all(|edge| {
+                let source = edge.source();
+                let outgoing_from_source = self
+                    .graph
+                    .edges_directed(source, Direction::Outgoing)
+                    .count();
+                outgoing_from_source == 1
+            });
+
+            if should_apply {
+                for parent_edge in incoming_to_node {
+                    let parent = &node_mapping[&parent_edge.source()];
+                    if !resulting_graph[*parent]
+                        .footer
+                        .iter()
+                        .any(|annotation| matches!(annotation, Annotation::AssignRet { .. }))
+                    {
+                        resulting_graph[*parent]
+                            .instrs
+                            .extend(self.graph[node].instrs.to_vec());
+                    }
+                    resulting_graph[*parent]
+                        .footer
+                        .extend(self.graph[node].footer.to_vec());
+                }
+
+                // add a new node, but empty
+                let new_node = resulting_graph.add_node(BasicBlock {
+                    name: self.graph[node].name.clone(),
+                    instrs: vec![],
+                    footer: vec![],
+                    pos: None,
+                });
+                node_mapping.insert(node, new_node);
+            } else {
+                // add the new node
+                let new_node = resulting_graph.add_node(self.graph[node].clone());
+                node_mapping.insert(node, new_node);
+            };
+        }
+
+        for edge in self.graph.edge_references() {
+            let source = &node_mapping[&edge.source()];
+            let target = &node_mapping[&edge.target()];
+            resulting_graph.add_edge(*source, *target, edge.weight().clone());
+        }
+
+        SimpleCfgFunction {
+            name: self.name.clone(),
+            args: self.args.clone(),
+            graph: resulting_graph,
+            entry: node_mapping[&self.entry],
+            exit: node_mapping[&self.exit],
+            _phantom: Simple,
+            return_ty: self.return_ty.clone(),
+        }
+    }
+
+    /// Find cases where a block jumps directly to another block A -> B where
     /// A has only one outgoing edge and B has one incoming edge
     /// Turn it into one block AB
     fn fuse_down(&self) -> SimpleCfgFunction {
@@ -109,20 +197,31 @@ impl SimpleCfgFunction {
     // (where there is only one target edge and the empty node has no instructions)
     // and changes the source edge to point to the target node
     fn collapse_empty_blocks(mut self) -> SimpleCfgFunction {
-        // loop over every non-empty block, and look at its parents
-        for block in self.graph.node_indices().collect::<Vec<_>>() {
-            // find parents
-            let parents: Vec<NodeIndex> = self
-                .graph
-                .edges_directed(block, Direction::Incoming)
-                .map(|edge| edge.source())
-                .collect();
+        let mut to_replace = vec![];
+        // loop over every edge in the graph
+        for edge in self.graph.edge_references() {
+            // if this edge is a source -> empty -> target
+            // and target has only one incoming edge
 
-            for parent in &parents {
-                self.collapse_empty_block(*parent);
+            let target_node = edge.target();
+            let target_outgoing = self.graph.edges_directed(target_node, Direction::Outgoing);
+            if self.graph[target_node].instrs.is_empty()
+                && self.graph[target_node].footer.is_empty()
+            {
+                if let &[target_out] = target_outgoing.collect::<Vec<_>>().as_slice() {
+                    // point to new_target instead
+                    let source_node = edge.source();
+                    let source_edge = edge.id();
+                    let source_weight = edge.weight().clone();
+                    to_replace.push((source_edge, source_node, target_out.target(), source_weight));
+                }
             }
         }
 
+        for (source_edge, source_node, target_node, source_weight) in to_replace {
+            self.graph.remove_edge(source_edge);
+            self.graph.add_edge(source_node, target_node, source_weight);
+        }
         self
     }
 

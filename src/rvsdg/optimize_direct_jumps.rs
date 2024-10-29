@@ -22,11 +22,14 @@ impl SimpleCfgFunction {
         // fusing down only needs to happen once
         // fuze up may need to run until fixed point
         // collapse empty blocks may also need to run until fixed point
-        self.fuse_down()
+        let mut res = self
+            .fuse_down()
             .fuze_up()
             .fuze_up()
             .collapse_empty_blocks()
-            .collapse_empty_blocks()
+            .collapse_empty_blocks();
+        res.remove_unreachable();
+        res
     }
 
     /// Finds blocks with only id instructions and fuses them with their parents
@@ -41,7 +44,8 @@ impl SimpleCfgFunction {
 
             // check if fusing up is possible- instructions are all id
             // and parents directly jump to this block
-            // and the footer is empty
+            // and the footer is empty.
+            // Also needs at least one parent
             let should_apply = self.graph[node].instrs.iter().all(|instr| {
                 matches!(
                     instr,
@@ -56,7 +60,8 @@ impl SimpleCfgFunction {
                     .edges_directed(*parent, Direction::Outgoing)
                     .count();
                 parent_outgoing == 1
-            }) && self.graph[node].footer.is_empty();
+            }) && self.graph[node].footer.is_empty()
+                && !parents.is_empty();
 
             let new_instrs = self.graph[node].instrs.clone();
             // move instructions from node up to parents

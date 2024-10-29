@@ -41,6 +41,7 @@ impl SimpleCfgFunction {
 
             // check if fusing up is possible- instructions are all id
             // and parents directly jump to this block
+            // and the footer is empty
             let should_apply = self.graph[node].instrs.iter().all(|instr| {
                 matches!(
                     instr,
@@ -55,22 +56,19 @@ impl SimpleCfgFunction {
                     .edges_directed(*parent, Direction::Outgoing)
                     .count();
                 parent_outgoing == 1
-            });
+            }) && self.graph[node].footer.is_empty();
 
             let new_instrs = self.graph[node].instrs.clone();
-            let new_footer = self.graph[node].footer.clone();
             // move instructions from node up to parents
             if should_apply {
                 for parent in parents {
                     if self.graph[parent].footer.is_empty() {
                         self.graph[parent].instrs.extend(new_instrs.clone());
                     }
-                    self.graph[parent].footer.extend(new_footer.clone());
                 }
 
                 // delete instructions from node
                 self.graph[node].instrs.clear();
-                self.graph[node].footer.clear();
             }
         }
 

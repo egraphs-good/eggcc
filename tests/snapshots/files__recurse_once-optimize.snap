@@ -27,8 +27,13 @@ expression: visualization.result
   v22_: int = sub v16_ c21_;
   v23_: int = call @to_zero v22_;
   v18_: int = id v23_;
+  v11_: int = id v18_;
+  v4_: int = id v11_;
+  ret v4_;
 .b20_:
   v11_: int = id v18_;
+  v4_: int = id v11_;
+  ret v4_;
 .b13_:
   v4_: int = id v11_;
 .b6_:

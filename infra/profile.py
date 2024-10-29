@@ -105,7 +105,7 @@ def optimize(benchmark):
   process2.check_returncode()
   end_llvm = time.time()
 
-  res = {"path": f"{profile_dir}/{benchmark.treatment}", "compileTimeSecs": end_eggcc-start_eggcc, "llvmCompileTimeSecs": end_llvm-start_llvm}
+  res = {"path": f"{profile_dir}/{benchmark.treatment}", "eggccCompileTimeSecs": end_eggcc-start_eggcc, "llvmCompileTimeSecs": end_llvm-start_llvm}
   return res
 
 
@@ -159,13 +159,17 @@ def should_have_llvm_ir(runMethod):
   ]
 
 # aggregate all profile info into a single json array.
-def aggregate(compile_times, bench_times, benchmark_metadata):
+def aggregate(compile_data, bench_times, benchmark_metadata):
     res = []
 
-    for path in sorted(compile_times.keys()):
+    for path in sorted(compile_data.keys()):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
-      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "compileTimeSecs": compile_times[path], "metadata": benchmark_metadata[name]}
+      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "metadata": benchmark_metadata[name]}
+
+      # add compile time info
+      for key in compile_data[path]:
+        result[key] = compile_data[path][key]
 
       res.append(result)
     return res
@@ -221,7 +225,7 @@ if __name__ == '__main__':
     setup_benchmark(benchmark_name)
   
 
-  compile_times_secs = {}
+  compile_data = {}
   # get the number of cores on this machine 
   parallelism = os.cpu_count()
 
@@ -231,7 +235,10 @@ if __name__ == '__main__':
     for future in concurrent.futures.as_completed(futures):
       try:
         res = future.result()
-        compile_times_secs[res["path"]] = res["compileTimeSecs"]
+        path = res["path"]
+        # remove the path from compile data
+        res.pop("path")
+        compile_data[path] = res
       except Exception as e:
         print(f"Shutting down executor due to error: {e}")
         executor.shutdown(wait=False, cancel_futures=True)
@@ -265,7 +272,7 @@ if __name__ == '__main__':
       (path, _bench_data) = res
       bench_data[path] = _bench_data
 
-  nightly_data = aggregate(compile_times_secs, bench_data, benchmark_metadata)
+  nightly_data = aggregate(compile_data, bench_data, benchmark_metadata)
   with open(f"{DATA_DIR}/profile.json", "w") as profile:
     json.dump(nightly_data, profile, indent=2)
 

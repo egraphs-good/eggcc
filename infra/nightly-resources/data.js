@@ -80,17 +80,20 @@ function getOverallStatistics() {
       }
     }
 
-    const compile_times = [];
+    const eggcc_compile_times = [];
+    const llvm_compile_times = [];
     for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
       const row = getRow(benchmark, treatment);
-      compile_times.push(row.compileTimeSecs);
+      eggcc_compile_times.push(row.eggccCompileTimeSecs);
+      llvm_compile_times.push(row.llvmCompileTimeSecs);
     }
 
     // calculate the geometric mean of the speedups
     result.push({
       runMethod: treatment,
-      geoMeanSpeedup: geometricMean(speedups),
-      averageCompileTimeSecs: compile_times.reduce((a, b) => a + b, 0) / compile_times.length,
+      geoMeanSpeedup: tryRound(geometricMean(speedups)),
+      meanEggccCompileTimeSecs: tryRound(mean(eggcc_compile_times)),
+      meanLlvmCompileTimeSecs: tryRound(mean(llvm_compile_times)),
     });
   }
   return result;
@@ -105,8 +108,8 @@ function getDataForBenchmark(benchmark) {
       const cycles = row["cycles"];
       const rowData = {
         runMethod: row.runMethod,
-        mean: { class: "", value: tryRound(mean_cycles(cycles)) },
-        meanVsBaseline: getDifference(cycles, comparisonCycles, mean_cycles),
+        mean: { class: "", value: tryRound(mean(cycles)) },
+        meanVsBaseline: getDifference(cycles, comparisonCycles, mean),
         min: { class: "", value: tryRound(min_cycles(cycles)) },
         minVsBaseline: getDifference(cycles, comparisonCycles, min_cycles),
         max: { class: "", value: tryRound(max_cycles(cycles)) },
@@ -114,7 +117,8 @@ function getDataForBenchmark(benchmark) {
         median: { class: "", value: tryRound(median_cycles(cycles)) },
         medianVsBaseline: getDifference(cycles, comparisonCycles, median_cycles),
         stddev: { class: "", value: tryRound(median_cycles(cycles)) },
-        compileTimeSecs: { class: "", value: tryRound(row.compileTimeSecs) },
+        eggccCompileTimeSecs: { class: "", value: tryRound(row.eggccCompileTimeSecs) },
+        llvmCompileTimeSecs: { class: "", value: tryRound(row.llvmCompileTimeSecs) },
         speedup: { class: "", value: tryRound(speedup(row, baseline)) }, 
       };
       if (shouldHaveLlvm(row.runMethod)) {

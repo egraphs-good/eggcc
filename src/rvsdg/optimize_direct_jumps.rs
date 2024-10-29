@@ -7,13 +7,12 @@
 use bril_rs::{Instruction, ValueOps};
 use indexmap::IndexMap;
 use petgraph::{
-    graph::EdgeIndex,
     stable_graph::{NodeIndex, StableDiGraph, StableGraph},
-    visit::{Bfs, DfsPostOrder, EdgeRef, IntoEdgeReferences},
+    visit::{DfsPostOrder, EdgeRef, IntoEdgeReferences},
     Direction,
 };
 
-use crate::cfg::{Annotation, BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram};
+use crate::cfg::{BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram};
 
 #[cfg(test)]
 use crate::Optimizer;
@@ -32,22 +31,13 @@ impl SimpleCfgFunction {
 
     /// Finds blocks with only id instructions and fuses them with their parents
     /// The parent must jump directly to the block
-    fn fuze_up(&self) -> SimpleCfgFunction {
-        let mut resulting_graph: StableGraph<BasicBlock, Branch> = StableDiGraph::new();
-
-        // maps nodes in the old graph to nodes in the new graph
-        // this is 1 to 1 for this optimization
-        let mut node_mapping: IndexMap<NodeIndex, NodeIndex> = IndexMap::new();
-
-        let mut bfs = Bfs::new(&self.graph, self.entry);
-
-        while let Some(node) = bfs.next(&self.graph) {
-            let incoming_to_node = self
+    fn fuze_up(mut self) -> SimpleCfgFunction {
+        for node in self.graph.node_indices().collect::<Vec<_>>() {
+            let parents = self
                 .graph
                 .edges_directed(node, Direction::Incoming)
+                .map(|edge| edge.source())
                 .collect::<Vec<_>>();
-
-            // check if the optimization is applicable
             let should_apply = self.graph[node].instrs.iter().all(|instr| {
                 matches!(
                     instr,
@@ -56,62 +46,28 @@ impl SimpleCfgFunction {
                         ..
                     }
                 )
-            }) && incoming_to_node.iter().all(|edge| {
-                let source = edge.source();
-                let outgoing_from_source = self
+            }) && parents.iter().all(|parent| {
+                let parent_outgoing = self
                     .graph
-                    .edges_directed(source, Direction::Outgoing)
+                    .edges_directed(*parent, Direction::Outgoing)
                     .count();
-                outgoing_from_source == 1
+                parent_outgoing == 1
             });
 
+            let new_instrs = self.graph[node].instrs.clone();
+            let new_footer = self.graph[node].footer.clone();
+            // move instructions from node up to parents
             if should_apply {
-                for parent_edge in incoming_to_node {
-                    let parent = &node_mapping[&parent_edge.source()];
-                    if !resulting_graph[*parent]
-                        .footer
-                        .iter()
-                        .any(|annotation| matches!(annotation, Annotation::AssignRet { .. }))
-                    {
-                        resulting_graph[*parent]
-                            .instrs
-                            .extend(self.graph[node].instrs.to_vec());
+                for parent in parents {
+                    if self.graph[parent].footer.is_empty() {
+                        self.graph[parent].instrs.extend(new_instrs.clone());
                     }
-                    resulting_graph[*parent]
-                        .footer
-                        .extend(self.graph[node].footer.to_vec());
+                    self.graph[parent].footer.extend(new_footer.clone());
                 }
-
-                // add a new node, but empty
-                let new_node = resulting_graph.add_node(BasicBlock {
-                    name: self.graph[node].name.clone(),
-                    instrs: vec![],
-                    footer: vec![],
-                    pos: None,
-                });
-                node_mapping.insert(node, new_node);
-            } else {
-                // add the new node
-                let new_node = resulting_graph.add_node(self.graph[node].clone());
-                node_mapping.insert(node, new_node);
-            };
+            }
         }
 
-        for edge in self.graph.edge_references() {
-            let source = &node_mapping[&edge.source()];
-            let target = &node_mapping[&edge.target()];
-            resulting_graph.add_edge(*source, *target, edge.weight().clone());
-        }
-
-        SimpleCfgFunction {
-            name: self.name.clone(),
-            args: self.args.clone(),
-            graph: resulting_graph,
-            entry: node_mapping[&self.entry],
-            exit: node_mapping[&self.exit],
-            _phantom: Simple,
-            return_ty: self.return_ty.clone(),
-        }
+        self
     }
 
     /// Find cases where a block jumps directly to another block A -> B where
@@ -227,44 +183,6 @@ impl SimpleCfgFunction {
             self.graph.add_edge(source_node, target_node, source_weight);
         }
         self
-    }
-
-    /// Detect the case where source -> empty -> target
-    /// The empty block should have a single incoming and single outgoing edge
-    fn get_single_in_single_out(&self, parent_block: NodeIndex) -> Option<(EdgeIndex, EdgeIndex)> {
-        if !self.graph[parent_block].instrs.is_empty()
-            || !self.graph[parent_block].footer.is_empty()
-        {
-            return None;
-        }
-
-        let outgoing = self
-            .graph
-            .edges_directed(parent_block, Direction::Outgoing)
-            .collect::<Vec<_>>();
-        let incoming = self
-            .graph
-            .edges_directed(parent_block, Direction::Incoming)
-            .collect::<Vec<_>>();
-        if let ([source_edge], [outgoing]) = (incoming.as_slice(), outgoing.as_slice()) {
-            Some((source_edge.id(), outgoing.id()))
-        } else {
-            None
-        }
-    }
-
-    /// Detect the case when source -> empty -> target
-    /// and collapse it to source -> target
-    fn collapse_empty_block(&mut self, parent_block: NodeIndex) {
-        if let Some((source_edge, outgoing)) = self.get_single_in_single_out(parent_block) {
-            let weight = self.graph.edge_weight(source_edge).unwrap().clone();
-            let (source, empty) = self.graph.edge_endpoints(source_edge).unwrap();
-            let (empty_, target) = self.graph.edge_endpoints(outgoing).unwrap();
-            assert_eq!(empty, empty_);
-
-            self.graph.remove_edge(source_edge);
-            self.graph.add_edge(source, target, weight);
-        }
     }
 }
 

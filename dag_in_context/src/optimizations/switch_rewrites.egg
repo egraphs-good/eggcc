@@ -57,6 +57,7 @@
       :ruleset switch_rewrite)
 
 ; if pred then A else Const -> select pred A Const
+; where A is an input to the region
 (rule (
        (= if_e (If pred inputs thn els))
        (ContextOf if_e ctx)
@@ -77,6 +78,7 @@
 )
 
 ; if pred then Const else B -> select pred Const B
+; where B is an input to the region
 (rule (
        (= if_e (If pred inputs thn els))
        (ContextOf if_e ctx)

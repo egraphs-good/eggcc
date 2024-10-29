@@ -7,7 +7,6 @@ fn main(x: i64) {
     while !(done == 5) {
         i += 1;
         res += i;
-        // done = ten;
         if i == x {
             done = 5;
         }

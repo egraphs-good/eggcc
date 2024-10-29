@@ -62,7 +62,10 @@ function getBrilPathForBenchmark(benchmark) {
 
 // calculates the geometric mean over a list of ratios
 function geometricMean(values) {
-  return Math.pow(values.reduce((a, b) => a * b, 1), 1 / values.length);
+  return Math.pow(
+    values.reduce((a, b) => a * b, 1),
+    1 / values.length,
+  );
 }
 
 function getOverallStatistics() {
@@ -104,7 +107,10 @@ function getDataForBenchmark(benchmark) {
     ?.filter((row) => row.benchmark === benchmark)
     .map((row) => {
       const baseline = getRow(benchmark, BASELINE_MODE);
-      const comparisonCycles = getComparison(row.benchmark, row.runMethod)?.cycles;
+      const comparisonCycles = getComparison(
+        row.benchmark,
+        row.runMethod,
+      )?.cycles;
       const cycles = row["cycles"];
       const rowData = {
         runMethod: row.runMethod,
@@ -115,11 +121,21 @@ function getDataForBenchmark(benchmark) {
         max: { class: "", value: tryRound(max_cycles(cycles)) },
         maxVsBaseline: getDifference(cycles, comparisonCycles, max_cycles),
         median: { class: "", value: tryRound(median_cycles(cycles)) },
-        medianVsBaseline: getDifference(cycles, comparisonCycles, median_cycles),
+        medianVsBaseline: getDifference(
+          cycles,
+          comparisonCycles,
+          median_cycles,
+        ),
         stddev: { class: "", value: tryRound(median_cycles(cycles)) },
-        eggccCompileTimeSecs: { class: "", value: tryRound(row.eggccCompileTimeSecs) },
-        llvmCompileTimeSecs: { class: "", value: tryRound(row.llvmCompileTimeSecs) },
-        speedup: { class: "", value: tryRound(speedup(row, baseline)) }, 
+        eggccCompileTimeSecs: {
+          class: "",
+          value: tryRound(row.eggccCompileTimeSecs),
+        },
+        llvmCompileTimeSecs: {
+          class: "",
+          value: tryRound(row.llvmCompileTimeSecs),
+        },
+        speedup: { class: "", value: tryRound(speedup(row, baseline)) },
       };
       if (shouldHaveLlvm(row.runMethod)) {
         rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${row.runMethod}">${row.runMethod}</a>`;

@@ -10,7 +10,15 @@ async function fetchText(url) {
   return data;
 }
 
-function getBaselineCycles(benchmark, runMethod) {
+function getRow(benchmark, runMethod) {
+  return GLOBAL_DATA.currentRun.find(
+    (row) => row.benchmark === benchmark && row.runMethod === runMethod,
+  );
+}
+
+// Get the row for the comparison branch
+// for the given benchmark and run method
+function getComparison(benchmark, runMethod) {
   const baselineData =
     GLOBAL_DATA.baselineRun?.filter((o) => o.benchmark === benchmark) || [];
   if (baselineData.length === 0) {
@@ -24,7 +32,7 @@ function getBaselineCycles(benchmark, runMethod) {
         `Baseline had multiple entries for ${benchmark} ${runMethod}`,
       );
     } else {
-      return baseline[0]["cycles"];
+      return baseline[0];
     }
   }
 }
@@ -52,23 +60,62 @@ function getBrilPathForBenchmark(benchmark) {
   return o.metadata.path;
 }
 
+// calculates the geometric mean over a list of ratios
+function geometricMean(values) {
+  return Math.pow(values.reduce((a, b) => a * b, 1), 1 / values.length);
+}
+
+function getOverallStatistics() {
+  // generate one row per treatment...
+  const result = [];
+  for (const treatment of treatments) {
+    // calculate geometric mean of speedups
+    const speedups = [];
+    // for each benchmark, calculate the speedup
+    for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
+      const row = getRow(benchmark, treatment);
+      const baseline = getRow(benchmark, BASELINE_MODE);
+      if (row && baseline) {
+        speedups.push(speedup(row, baseline));
+      }
+    }
+
+    const compile_times = [];
+    for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
+      const row = getRow(benchmark, treatment);
+      compile_times.push(row.compileTimeSecs);
+    }
+
+    // calculate the geometric mean of the speedups
+    result.push({
+      runMethod: treatment,
+      geoMeanSpeedup: geometricMean(speedups),
+      averageCompileTimeSecs: compile_times.reduce((a, b) => a + b, 0) / compile_times.length,
+    });
+  }
+  return result;
+}
+
 function getDataForBenchmark(benchmark) {
   const executions = GLOBAL_DATA.currentRun
     ?.filter((row) => row.benchmark === benchmark)
     .map((row) => {
-      const baselineCycles = getBaselineCycles(row.benchmark, row.runMethod);
+      const baseline = getRow(benchmark, BASELINE_MODE);
+      const comparisonCycles = getComparison(row.benchmark, row.runMethod)?.cycles;
       const cycles = row["cycles"];
       const rowData = {
         runMethod: row.runMethod,
         mean: { class: "", value: tryRound(mean_cycles(cycles)) },
-        meanVsBaseline: getDifference(cycles, baselineCycles, mean_cycles),
+        meanVsBaseline: getDifference(cycles, comparisonCycles, mean_cycles),
         min: { class: "", value: tryRound(min_cycles(cycles)) },
-        minVsBaseline: getDifference(cycles, baselineCycles, min_cycles),
+        minVsBaseline: getDifference(cycles, comparisonCycles, min_cycles),
         max: { class: "", value: tryRound(max_cycles(cycles)) },
-        maxVsBaseline: getDifference(cycles, baselineCycles, max_cycles),
+        maxVsBaseline: getDifference(cycles, comparisonCycles, max_cycles),
         median: { class: "", value: tryRound(median_cycles(cycles)) },
-        medianVsBaseline: getDifference(cycles, baselineCycles, median_cycles),
+        medianVsBaseline: getDifference(cycles, comparisonCycles, median_cycles),
         stddev: { class: "", value: tryRound(median_cycles(cycles)) },
+        compileTimeSecs: { class: "", value: tryRound(row.compileTimeSecs) },
+        speedup: { class: "", value: tryRound(speedup(row, baseline)) }, 
       };
       if (shouldHaveLlvm(row.runMethod)) {
         rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${row.runMethod}">${row.runMethod}</a>`;

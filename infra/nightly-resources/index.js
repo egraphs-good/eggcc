@@ -48,6 +48,11 @@ function refreshView() {
 
   document.getElementById("profile").innerHTML = ConvertJsonToTable(tableData);
 
+  // fill in the overall stats table
+  const overallStats = getOverallStatistics();
+  const overallTable = document.getElementById("overall-stats-table");
+  overallTable.innerHTML = ConvertJsonToTable(overallStats);
+
   renderWarnings();
   refreshChart();
 }

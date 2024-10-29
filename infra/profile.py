@@ -27,29 +27,32 @@ DATA_DIR = None
 # Where to write intermediate files that should be cleaned up at the end of this script
 TMP_DIR = "tmp"
 
-def get_eggcc_options(run_mode, benchmark):
-  llvm_out_dir = f"{DATA_DIR}/llvm/{benchmark}/{run_mode}"
-  match run_mode:
+EGGCC_BINARY = "target/release/eggcc"
+
+
+# returns two strings:
+# the first is the eggcc run mode for optimizing the input bril program
+# the second is the command line arguments for producing an output file using llvm
+def get_eggcc_options(benchmark):
+  match benchmark.treatment:
     case "rvsdg-round-trip-to-executable":
-      return f'--run-mode rvsdg-round-trip-to-executable --llvm-output-dir {llvm_out_dir}'
-    case "cranelift-O3":
-      return f'--run-mode cranelift --optimize-egglog false --optimize-brilift true'
+      return (f'rvsdg-round-trip',  f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
     case "llvm-O0":
-      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0 --llvm-output-dir {llvm_out_dir}'
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
     case "llvm-O1":
-      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O1 --llvm-output-dir {llvm_out_dir}'
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O1')
     case "llvm-O2":
-      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O2 --llvm-output-dir {llvm_out_dir}'
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O2')
     case "llvm-O3":
-      return f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3 --llvm-output-dir {llvm_out_dir}'
-    case "llvm-O0-eggcc":
-      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm O0 --llvm-output-dir {llvm_out_dir}'
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3')
     case "llvm-O0-eggcc-sequential":
-      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm O0 --llvm-output-dir {llvm_out_dir} --eggcc-schedule sequential'
+      return (f'optimize --eggcc-schedule sequential', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
+    case "llvm-O0-eggcc":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
     case "llvm-O3-eggcc":
-      return f'--run-mode llvm --optimize-egglog true --optimize-bril-llvm O3 --llvm-output-dir {llvm_out_dir}'
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3')
     case _:
-      raise Exception("Unexpected run mode: " + run_mode)
+      raise Exception("Unexpected run mode: " + benchmark.treatment)
     
 
 class Benchmark:
@@ -69,16 +72,41 @@ def setup_benchmark(name):
   profile_dir = benchmark_profile_dir(name)
   os.mkdir(profile_dir)
 
+
+# runs optimization on the benchmark, a dictionary with
+# a name and treatment (and index for printing)
+# returns a dictionary with the path to the optimized binary,
+# eggcc compile time, and llvm compile time
 def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}')
   profile_dir = benchmark_profile_dir(benchmark.name)
-  cmd = f'cargo run --release {benchmark.path} --add-timing {get_eggcc_options(benchmark.treatment, benchmark.name)} -o {profile_dir}/{benchmark.treatment}'
-  print(f'Running: {cmd}', flush=True)
-  start = time.time()
-  process = subprocess.run(cmd, shell=True)
+  optimized_bril_file = f'{profile_dir}/{benchmark.treatment}-optimized.bril'
+
+  # get the commands we need to run
+  (eggcc_run_mode, llvm_args) = get_eggcc_options(benchmark)
+  llvm_out_dir = f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}"
+
+  cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode}'
+  cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_dir}'
+
+  print(f'Running: {cmd1}', flush=True)
+  start_eggcc = time.time()
+  process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
   process.check_returncode()
-  end = time.time()
-  return (f"{profile_dir}/{benchmark.treatment}", end-start)
+  end_eggcc = time.time()
+
+  # write the std out to the optimized bril file
+  with open(optimized_bril_file, 'w') as f:
+    f.write(process.stdout)
+
+  print(f'Running: {cmd2}', flush=True)
+  start_llvm = time.time()
+  process2 = subprocess.run(cmd2, shell=True)
+  process2.check_returncode()
+  end_llvm = time.time()
+
+  res = {"path": f"{profile_dir}/{benchmark.treatment}", "compileTimeSecs": end_eggcc-start_eggcc, "llvmCompileTimeSecs": end_llvm-start_llvm}
+  return res
 
 
 
@@ -137,7 +165,7 @@ def aggregate(compile_times, bench_times, benchmark_metadata):
     for path in sorted(compile_times.keys()):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
-      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "compileTime": compile_times[path], "metadata": benchmark_metadata[name]}
+      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "compileTimeSecs": compile_times[path], "metadata": benchmark_metadata[name]}
 
       res.append(result)
     return res
@@ -160,6 +188,10 @@ if __name__ == '__main__':
     print(f"{TMP_DIR} exits, deleting contents")
     # remove the files in the directory
     os.system(f"rm -rf {TMP_DIR}/*")
+
+  # build eggcc
+  print("Building eggcc")
+  os.system("cargo build --release")
 
 
   bril_dir, DATA_DIR = os.sys.argv[1:]
@@ -189,7 +221,7 @@ if __name__ == '__main__':
     setup_benchmark(benchmark_name)
   
 
-  compile_times = {}
+  compile_times_secs = {}
   # get the number of cores on this machine 
   parallelism = os.cpu_count()
 
@@ -198,8 +230,8 @@ if __name__ == '__main__':
     futures = {executor.submit(optimize, benchmark) for benchmark in to_run}
     for future in concurrent.futures.as_completed(futures):
       try:
-        (path, compile_time) = future.result()
-        compile_times[path] = compile_time
+        res = future.result()
+        compile_times_secs[res["path"]] = res["compileTimeSecs"]
       except Exception as e:
         print(f"Shutting down executor due to error: {e}")
         executor.shutdown(wait=False, cancel_futures=True)
@@ -233,9 +265,10 @@ if __name__ == '__main__':
       (path, _bench_data) = res
       bench_data[path] = _bench_data
 
-  nightly_data = aggregate(compile_times, bench_data, benchmark_metadata)
+  nightly_data = aggregate(compile_times_secs, bench_data, benchmark_metadata)
   with open(f"{DATA_DIR}/profile.json", "w") as profile:
     json.dump(nightly_data, profile, indent=2)
 
-  # Clean up intermediate files
+  # remove the tmp directory
   os.system(f"rm -rf {TMP_DIR}")
+

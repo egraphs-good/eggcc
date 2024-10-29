@@ -62,6 +62,13 @@ function getEntry(benchmark, runMode) {
   }
 }
 
+function speedup(entry, baseline) {
+  const baseV = mean_cycles(baseline["cycles"]);
+  const expV = mean_cycles(entry["cycles"]);
+  // If you change this, also change the displayed formula in index.html
+  return baseV / expV;
+}
+
 function getValue(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
     return mean_cycles(entry["cycles"]);
@@ -70,10 +77,7 @@ function getValue(entry) {
     if (!baseline) {
       addWarning(`No speedup baseline for ${benchmark}`);
     }
-    const baseV = mean_cycles(baseline["cycles"]);
-    const expV = mean_cycles(entry["cycles"]);
-    // If you change this, also change the displayed formula in index.html
-    return baseV / expV;
+    return speedup(entry, baseline);
   } else {
     throw new Error(`unknown chart mode ${GLOBAL_DATA.chart.mode}`);
   }

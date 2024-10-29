@@ -38,6 +38,9 @@ impl SimpleCfgFunction {
                 .edges_directed(node, Direction::Incoming)
                 .map(|edge| edge.source())
                 .collect::<Vec<_>>();
+
+            // check if fusing up is possible- instructions are all id
+            // and parents directly jump to this block
             let should_apply = self.graph[node].instrs.iter().all(|instr| {
                 matches!(
                     instr,
@@ -64,6 +67,10 @@ impl SimpleCfgFunction {
                     }
                     self.graph[parent].footer.extend(new_footer.clone());
                 }
+
+                // delete instructions from node
+                self.graph[node].instrs.clear();
+                self.graph[node].footer.clear();
             }
         }
 

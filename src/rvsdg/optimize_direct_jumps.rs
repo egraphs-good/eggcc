@@ -22,8 +22,12 @@ impl SimpleCfgFunction {
     pub fn optimize_jumps(&self) -> Self {
         // fusing down only needs to happen once
         // fuze up may need to run until fixed point
-        // collapse empty blocks only need to happen once
-        self.fuse_down().fuze_up().fuze_up().collapse_empty_blocks()
+        // collapse empty blocks may also need to run until fixed point
+        self.fuse_down()
+            .fuze_up()
+            .fuze_up()
+            .collapse_empty_blocks()
+            .collapse_empty_blocks()
     }
 
     /// Finds blocks with only id instructions and fuses them with their parents

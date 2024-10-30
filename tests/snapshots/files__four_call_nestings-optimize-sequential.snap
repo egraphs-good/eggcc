@@ -6,18 +6,22 @@ expression: visualization.result
 .b0_:
   c1_: int = const 3;
   print c1_;
+  ret;
 }
 @two {
 .b0_:
   c1_: int = const 3;
   print c1_;
+  ret;
 }
 @three {
 .b0_:
   c1_: int = const 3;
   print c1_;
+  ret;
 }
 @main {
 .b0_:
   call @three;
+  ret;
 }

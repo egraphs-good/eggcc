@@ -12,10 +12,14 @@ expression: visualization.result
   v7_: int = id v6_;
   print v7_;
   ret;
+  jmp .b8_;
 .b5_:
-  v8_: int = add v0 v0;
-  v9_: int = mul c2_ v8_;
-  v7_: int = id v9_;
-.b10_:
+  v9_: int = add v0 v0;
+  v10_: int = mul c2_ v9_;
+  v7_: int = id v10_;
   print v7_;
+  ret;
+.b8_:
+  print v7_;
+  ret;
 }

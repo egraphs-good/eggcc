@@ -8,4 +8,5 @@ expression: visualization.result
   c3_: int = const 3;
   print c3_;
   print c2_;
+  ret;
 }

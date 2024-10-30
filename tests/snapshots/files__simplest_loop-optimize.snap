@@ -18,4 +18,5 @@ expression: visualization.result
   v6_: int = id v6_;
   br v9_ .b7_ .b10_;
 .b10_:
+  ret;
 }

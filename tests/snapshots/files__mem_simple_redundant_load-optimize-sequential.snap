@@ -16,13 +16,20 @@ expression: visualization.result
   print v8_;
   free v3_;
   ret;
+  jmp .b10_;
 .b5_:
-  c10_: int = const 3;
-  store v3_ c10_;
+  c11_: int = const 3;
+  store v3_ c11_;
   v7_: ptr<int> = id v3_;
-.b11_:
   v8_: int = load v3_;
   v9_: int = load v3_;
   print v8_;
   free v3_;
+  ret;
+.b10_:
+  v8_: int = load v3_;
+  v9_: int = load v3_;
+  print v8_;
+  free v3_;
+  ret;
 }

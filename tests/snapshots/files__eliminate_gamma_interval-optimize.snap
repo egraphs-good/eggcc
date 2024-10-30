@@ -6,4 +6,5 @@ expression: visualization.result
 .b1_:
   c2_: bool = const false;
   print c2_;
+  ret;
 }

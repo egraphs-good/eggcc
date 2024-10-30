@@ -23,4 +23,5 @@ expression: visualization.result
   br v13_ .b8_ .b14_;
 .b14_:
   print v4_;
+  ret;
 }

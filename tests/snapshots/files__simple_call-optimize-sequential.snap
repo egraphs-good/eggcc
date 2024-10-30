@@ -7,9 +7,11 @@ expression: visualization.result
   c2_: int = const 1;
   v3_: int = add c2_ v0;
   print v3_;
+  ret;
 }
 @main {
 .b0_:
   c1_: int = const 1;
   print c1_;
+  ret;
 }

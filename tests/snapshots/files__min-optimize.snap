@@ -6,4 +6,5 @@ expression: visualization.result
 .b2_:
   v3_: int = smin v0 v1;
   print v3_;
+  ret;
 }

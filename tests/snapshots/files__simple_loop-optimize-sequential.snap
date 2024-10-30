@@ -6,4 +6,5 @@ expression: visualization.result
 .b0_:
   c1_: int = const 0;
   print c1_;
+  ret;
 }

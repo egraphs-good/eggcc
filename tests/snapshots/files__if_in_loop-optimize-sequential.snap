@@ -44,4 +44,5 @@ expression: visualization.result
   v11_: bool = id v11_;
   br v13_ .b12_ .b24_;
 .b24_:
+  ret;
 }

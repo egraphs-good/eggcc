@@ -17,11 +17,15 @@ expression: prog.to_string()
   v31: int = id v7;
   print v31;
   ret;
+  jmp .__42__;
 .__32__:
   v24: int = add v11 v1;
   free v4;
   print v24;
   v31: int = id v7;
+  print v31;
+  ret;
 .__42__:
   print v31;
+  ret;
 }

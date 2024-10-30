@@ -6,4 +6,5 @@ expression: visualization.result
 .b2_:
   v3_: int = smax v1 v0;
   print v3_;
+  ret;
 }

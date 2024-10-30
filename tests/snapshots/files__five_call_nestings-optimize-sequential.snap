@@ -5,23 +5,28 @@ expression: visualization.result
 @one {
 .b0_:
   call @four;
+  ret;
 }
 @two {
 .b0_:
   c1_: int = const 4;
   print c1_;
+  ret;
 }
 @three {
 .b0_:
   c1_: int = const 4;
   print c1_;
+  ret;
 }
 @four {
 .b0_:
   c1_: int = const 4;
   print c1_;
+  ret;
 }
 @main {
 .b0_:
   call @three;
+  ret;
 }

@@ -8,7 +8,7 @@ use bril_rs::{Instruction, ValueOps};
 use indexmap::IndexMap;
 use petgraph::{
     stable_graph::{NodeIndex, StableDiGraph, StableGraph},
-    visit::{DfsPostOrder, EdgeRef, IntoEdgeReferences},
+    visit::{DfsPostOrder, EdgeRef},
     Direction,
 };
 
@@ -176,7 +176,7 @@ impl SimpleCfgFunction {
         let mut to_remove = vec![];
         for node in self.graph.node_indices().collect::<Vec<_>>() {
             // empty block with a single direct jump out
-            if self.graph[node].instrs.is_empty() {
+            if self.graph[node].instrs.is_empty() && self.graph[node].footer.is_empty() {
                 if let [single_child] = self
                     .graph
                     .edges_directed(node, Direction::Outgoing)

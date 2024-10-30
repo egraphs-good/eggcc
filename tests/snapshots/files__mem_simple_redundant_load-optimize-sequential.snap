@@ -27,9 +27,4 @@ expression: visualization.result
   free v3_;
   ret;
 .b10_:
-  v8_: int = load v3_;
-  v9_: int = load v3_;
-  print v8_;
-  free v3_;
-  ret;
 }

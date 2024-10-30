@@ -19,6 +19,4 @@ expression: visualization.result
   print v5_;
   ret;
 .b9_:
-  print v5_;
-  ret;
 }

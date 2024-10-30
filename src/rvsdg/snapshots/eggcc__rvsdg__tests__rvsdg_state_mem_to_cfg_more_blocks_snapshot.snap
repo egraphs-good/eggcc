@@ -26,6 +26,4 @@ expression: prog.to_string()
   print v31;
   ret;
 .__42__:
-  print v31;
-  ret;
 }

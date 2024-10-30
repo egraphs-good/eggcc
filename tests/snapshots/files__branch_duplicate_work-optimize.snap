@@ -20,6 +20,4 @@ expression: visualization.result
   print v7_;
   ret;
 .b8_:
-  print v7_;
-  ret;
 }

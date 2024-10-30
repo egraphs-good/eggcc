@@ -28,12 +28,7 @@ expression: visualization.result
   print v3_;
   print v17_;
   ret;
-.b19_:
-  print v18_;
-  print v3_;
-  print v17_;
-  ret;
-  jmp .b20_;
+  jmp .b19_;
 .b16_:
   v17_: int = id v12_;
   v18_: int = id c10_;
@@ -43,67 +38,52 @@ expression: visualization.result
   ret;
   jmp .b19_;
 .b7_:
-  v21_: bool = gt v0 c5_;
-  c22_: bool = const false;
-  c23_: int = const 2;
-  v24_: int = id c23_;
-  v25_: bool = id c22_;
-  v26_: int = id c2_;
-  br v21_ .b27_ .b28_;
-.b27_:
-  v29_: bool = gt v0 c4_;
-  c30_: int = const 4;
-  v31_: int = id c30_;
-  v32_: bool = id c22_;
-  v33_: int = id c2_;
-  br v29_ .b34_ .b35_;
+  v20_: bool = gt v0 c5_;
+  c21_: bool = const false;
+  c22_: int = const 2;
+  v23_: int = id c22_;
+  v24_: bool = id c21_;
+  v25_: int = id c2_;
+  br v20_ .b26_ .b27_;
+.b26_:
+  v28_: bool = gt v0 c4_;
+  c29_: int = const 4;
+  v30_: int = id c29_;
+  v31_: bool = id c21_;
+  v32_: int = id c2_;
+  br v28_ .b33_ .b34_;
+.b33_:
+  c35_: int = const 3;
+  v30_: int = id c35_;
+  v31_: bool = id c21_;
+  v32_: int = id c2_;
+  v23_: int = id v30_;
+  v24_: bool = id v31_;
+  v25_: int = id v32_;
+  v17_: int = id v23_;
+  v18_: int = id c2_;
+  print v18_;
+  print v3_;
+  print v17_;
+  ret;
+  jmp .b19_;
 .b34_:
-  c36_: int = const 3;
-  v31_: int = id c36_;
-  v32_: bool = id c22_;
-  v33_: int = id c2_;
-  v24_: int = id v31_;
-  v25_: bool = id v32_;
-  v26_: int = id v33_;
-  v17_: int = id v24_;
+  v23_: int = id v30_;
+  v24_: bool = id v31_;
+  v25_: int = id v32_;
+  v17_: int = id v23_;
   v18_: int = id c2_;
   print v18_;
   print v3_;
   print v17_;
   ret;
-.b37_:
-  print v18_;
-  print v3_;
-  print v17_;
-  ret;
-.b38_:
-  print v18_;
-  print v3_;
-  print v17_;
-  ret;
-  jmp .b20_;
-.b35_:
-  v24_: int = id v31_;
-  v25_: bool = id v32_;
-  v26_: int = id v33_;
-  v17_: int = id v24_;
+  jmp .b19_;
+.b27_:
+  v17_: int = id v23_;
   v18_: int = id c2_;
   print v18_;
   print v3_;
   print v17_;
   ret;
-  jmp .b37_;
-.b28_:
-  v17_: int = id v24_;
-  v18_: int = id c2_;
-  print v18_;
-  print v3_;
-  print v17_;
-  ret;
-  jmp .b38_;
-.b20_:
-  print v18_;
-  print v3_;
-  print v17_;
-  ret;
+.b19_:
 }

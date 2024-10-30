@@ -16,6 +16,4 @@ expression: visualization.result
   print v4_;
   ret;
 .b7_:
-  print v4_;
-  ret;
 }

@@ -58,23 +58,15 @@ expression: visualization.result
   br v10_ .b38_ .b39_;
 .b38_:
   ret;
-.b40_:
-  ret;
   jmp .b6_;
 .b39_:
-  v41_: float = fdiv v9_ v9_;
-  print v41_;
+  v40_: float = fdiv v9_ v9_;
+  print v40_;
   ret;
-.b42_:
-  v41_: float = fdiv v9_ v9_;
-  print v41_;
-  ret;
-  jmp .b40_;
+  jmp .b6_;
 .b12_:
-  v41_: float = fdiv v9_ v9_;
-  print v41_;
+  v40_: float = fdiv v9_ v9_;
+  print v40_;
   ret;
-  jmp .b42_;
 .b6_:
-  ret;
 }

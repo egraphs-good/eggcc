@@ -21,7 +21,4 @@ expression: visualization.result
   print v9_;
   ret;
 .b10_:
-  v9_: int = add v5_ v5_;
-  print v9_;
-  ret;
 }

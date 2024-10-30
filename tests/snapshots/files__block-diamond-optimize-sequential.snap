@@ -34,7 +34,4 @@ expression: visualization.result
   print v15_;
   ret;
 .b16_:
-  v15_: int = add c2_ v13_;
-  print v15_;
-  ret;
 }

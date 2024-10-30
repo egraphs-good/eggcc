@@ -46,5 +46,4 @@ expression: visualization.result
   v11_: int = id v17_;
   ret;
 .b7_:
-  ret;
 }

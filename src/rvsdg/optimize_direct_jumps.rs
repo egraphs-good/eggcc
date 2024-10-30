@@ -125,11 +125,8 @@ impl SimpleCfgFunction {
                             == 1
                         {
                             let instrs = self.graph[node].instrs.clone();
-                            let footer = self.graph[node].footer.clone();
                             // move instructions from node up to parent
                             self.graph[*parent].instrs.extend(instrs);
-                            // move footer up to parent
-                            self.graph[*parent].footer.extend(footer);
                         };
                     }
                 }
@@ -160,7 +157,6 @@ impl SimpleCfgFunction {
 
             // check if fusing up is possible- instructions are all id
             // and parents directly jump to this block
-            // and the footer is empty.
             // Also needs at least one parent
             let should_apply = self.graph[node].instrs.iter().all(|instr| {
                 matches!(
@@ -176,16 +172,13 @@ impl SimpleCfgFunction {
                     .edges_directed(*parent, Direction::Outgoing)
                     .count();
                 parent_outgoing == 1
-            }) && self.graph[node].footer.is_empty()
-                && !parents.is_empty();
+            }) && !parents.is_empty();
 
             let new_instrs = self.graph[node].instrs.clone();
             // move instructions from node up to parents
             if should_apply {
                 for parent in parents {
-                    if self.graph[parent].footer.is_empty() {
-                        self.graph[parent].instrs.extend(new_instrs.clone());
-                    }
+                    self.graph[parent].instrs.extend(new_instrs.clone());
                 }
 
                 // delete instructions from node
@@ -246,12 +239,9 @@ impl SimpleCfgFunction {
 
                 // add instructions to the beginning of the next node
                 let mut new_instrs = self.graph[node].instrs.to_vec();
-                let mut new_footer = self.graph[node].footer.to_vec();
                 new_instrs.extend(resulting_graph[new_target].instrs.to_vec());
-                new_footer.extend(resulting_graph[new_target].footer.to_vec());
 
                 resulting_graph[new_target].instrs = new_instrs;
-                resulting_graph[new_target].footer = new_footer;
             } else {
                 // add the node
                 let new_node = resulting_graph.add_node(self.graph[node].clone());
@@ -284,7 +274,7 @@ impl SimpleCfgFunction {
         let mut to_remove = vec![];
         for node in self.graph.node_indices().collect::<Vec<_>>() {
             // empty block with a single direct jump out
-            if self.graph[node].instrs.is_empty() && self.graph[node].footer.is_empty() {
+            if self.graph[node].instrs.is_empty() {
                 if let [single_child] = self
                     .graph
                     .edges_directed(node, Direction::Outgoing)

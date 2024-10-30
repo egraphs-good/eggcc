@@ -22,6 +22,7 @@ impl SimpleCfgFunction {
         // fusing down only needs to happen once
         // fuze up may need to run until fixed point
         // collapse empty blocks may also need to run until fixed point
+        // right now we just run them twice
         let mut res = self
             .fuse_down()
             .fuze_up()
@@ -34,6 +35,13 @@ impl SimpleCfgFunction {
 
     /// Finds blocks with only id instructions and fuses them with their parents
     /// The parent must jump directly to the block
+    /// A -> B -> C
+    ///    /
+    /// D
+    ///
+    /// If B has only id instructions, we can fuse it into both A and D.
+    /// These id instructions are optimized away by register allocation in LLVM, so this is fine.
+    /// If there are non-id instructions, this causes code blowup. Id instructions are "free"
     fn fuze_up(mut self) -> SimpleCfgFunction {
         for node in self.graph.node_indices().collect::<Vec<_>>() {
             let parents = self
@@ -171,14 +179,13 @@ impl SimpleCfgFunction {
         // loop over every edge in the graph
         for edge in self.graph.edge_references() {
             // if this edge is a source -> empty -> target
-            // and target has only one incoming edge
+            // and the empty node has no instructions
 
-            let target_node = edge.target();
-            let target_outgoing = self.graph.edges_directed(target_node, Direction::Outgoing);
-            if self.graph[target_node].instrs.is_empty()
-                && self.graph[target_node].footer.is_empty()
+            let empty_node = edge.target();
+            let empty_outgoing = self.graph.edges_directed(empty_node, Direction::Outgoing);
+            if self.graph[empty_node].instrs.is_empty() && self.graph[empty_node].footer.is_empty()
             {
-                if let &[target_out] = target_outgoing.collect::<Vec<_>>().as_slice() {
+                if let &[target_out] = empty_outgoing.collect::<Vec<_>>().as_slice() {
                     // point to new_target instead
                     let source_node = edge.source();
                     let source_edge = edge.id();

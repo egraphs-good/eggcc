@@ -91,6 +91,7 @@ impl SimpleCfgFunction {
     }
 
     /// Find blocks that return and fuze them with parent blocks that jump unconditionaly to them.
+    /// All parents must jump unconditionally to the block.
     fn return_early(mut self) -> SimpleCfgFunction {
         // for each node
         for node in self.graph.node_indices().collect::<Vec<_>>() {
@@ -101,8 +102,17 @@ impl SimpleCfgFunction {
                 .map(|edge| edge.source())
                 .collect::<Vec<_>>();
 
-            // if the node contains a return
-            if self.has_return(node) {
+            // if the node contains a return, and all parents jump unconditionally to this node
+            // and more than one parent
+            if self.has_return(node)
+                && parents.iter().all(|parent| {
+                    self.graph
+                        .edges_directed(*parent, Direction::Outgoing)
+                        .count()
+                        == 1
+                })
+                && !parents.is_empty()
+            {
                 // for each parent, fuze up
                 for parent in &parents {
                     // if the parent doesn't contain return instructions
@@ -116,9 +126,6 @@ impl SimpleCfgFunction {
                         {
                             let instrs = self.graph[node].instrs.clone();
                             let footer = self.graph[node].footer.clone();
-                            eprintln!("Add instructions {:?} to parent {:?}", instrs, parent);
-                            eprintln!("Add footer {:?} to parent {:?}", footer, parent);
-                            eprintln!("Parent has instrs {:?}", self.graph[*parent].instrs);
                             // move instructions from node up to parent
                             self.graph[*parent].instrs.extend(instrs);
                             // move footer up to parent
@@ -126,6 +133,8 @@ impl SimpleCfgFunction {
                         };
                     }
                 }
+                // clear the instructions in this node
+                self.graph[node].instrs.clear();
             }
         }
 

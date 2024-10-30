@@ -79,8 +79,8 @@ def detailed_linecount_table():
 def round_fmt(v):
     return "{:.3f}".format(round(v, 3))
 
-# given a list of integers (cycles taken for each run)
-# return the mean of the cycles
+# given a list of numbers, compute the mean
+# numbers may be floating-point or integers (for cycles)
 def mean_cycles(cycles):
     return sum(cycles) / len(cycles)
 

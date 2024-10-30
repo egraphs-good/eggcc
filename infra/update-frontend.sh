@@ -1,4 +1,7 @@
 # smalls script to test changes to the javascript or html files
+# copys javascript and html files to the output directory
+
+
 # determine physical directory of this script
 src="${BASH_SOURCE[0]}"
 while [ -L "$src" ]; do

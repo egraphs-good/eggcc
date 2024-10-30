@@ -170,34 +170,41 @@ impl SimpleCfgFunction {
         }
     }
 
-    // this function looks for all CFG fragments of the form
-    // source node --(source edge)-> empty node --(target edge)-> target node
-    // (where there is only one target edge and the empty node has no instructions)
-    // and changes the source edge to point to the target node
+    // this function looks for all CFG empty blocks with a direct jump out
+    // and makes sure they are removed by having the parents skip them
     fn collapse_empty_blocks(mut self) -> SimpleCfgFunction {
-        let mut to_replace = vec![];
-        // loop over every edge in the graph
-        for edge in self.graph.edge_references() {
-            // if this edge is a source -> empty -> target
-            // and the empty node has no instructions
+        let mut to_remove = vec![];
+        for node in self.graph.node_indices().collect::<Vec<_>>() {
+            // empty block with a single direct jump out
+            if self.graph[node].instrs.is_empty() {
+                if let [single_child] = self
+                    .graph
+                    .edges_directed(node, Direction::Outgoing)
+                    .map(|edge| edge.target())
+                    .collect::<Vec<_>>()
+                    .as_slice()
+                {
+                    let parents = self
+                        .graph
+                        .edges_directed(node, Direction::Incoming)
+                        .map(|parent| {
+                            let source = parent.source();
+                            let weight = parent.weight().clone();
+                            to_remove.push(parent.id());
+                            (source, weight)
+                        })
+                        .collect::<Vec<_>>();
 
-            let empty_node = edge.target();
-            let empty_outgoing = self.graph.edges_directed(empty_node, Direction::Outgoing);
-            if self.graph[empty_node].instrs.is_empty() && self.graph[empty_node].footer.is_empty()
-            {
-                if let &[target_out] = empty_outgoing.collect::<Vec<_>>().as_slice() {
-                    // point to new_target instead
-                    let source_node = edge.source();
-                    let source_edge = edge.id();
-                    let source_weight = edge.weight().clone();
-                    to_replace.push((source_edge, source_node, target_out.target(), source_weight));
+                    // for every parent edge, point to child instead of node
+                    for (source, weight) in parents {
+                        self.graph.add_edge(source, *single_child, weight);
+                    }
                 }
             }
         }
 
-        for (source_edge, source_node, target_node, source_weight) in to_replace {
-            self.graph.remove_edge(source_edge);
-            self.graph.add_edge(source_node, target_node, source_weight);
+        for edge in to_remove {
+            self.graph.remove_edge(edge);
         }
         self
     }

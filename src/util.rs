@@ -276,6 +276,19 @@ pub struct ProgWithArguments {
     args: Vec<String>,
 }
 
+impl ProgWithArguments {
+    pub(crate) fn to_viz(&self) -> Visualization {
+        Visualization {
+            result: "# ARGS: ".to_string()
+                + &ListDisplay(&self.args, " ").to_string()
+                + "\n"
+                + &self.program.to_string(),
+            file_extension: ".bril".to_string(),
+            name: "".to_string(),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum TestProgram {
     Prog(ProgWithArguments),
@@ -577,11 +590,7 @@ impl Run {
 
         let (visualizations, interpretable_out) = match self.test_type {
             RunMode::Parse => (
-                vec![Visualization {
-                    result: self.prog_with_args.program.to_string(),
-                    file_extension: ".bril".to_string(),
-                    name: "".to_string(),
-                }],
+                vec![self.prog_with_args.to_viz()],
                 Some(Interpretable::Bril(self.prog_with_args.program.clone())),
             ),
             RunMode::BrilToJson => {
@@ -616,12 +625,13 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
+                let prog_with_args = ProgWithArguments {
+                    program: bril.clone(),
+                    name: self.prog_with_args.name.clone(),
+                    args: self.prog_with_args.args.clone(),
+                };
                 (
-                    vec![Visualization {
-                        result: bril.to_string(),
-                        file_extension: ".bril".to_string(),
-                        name: "".to_string(),
-                    }],
+                    vec![prog_with_args.to_viz()],
                     Some(Interpretable::Bril(bril)),
                 )
             }
@@ -652,12 +662,13 @@ impl Run {
                 let rvsdg2 = dag_to_rvsdg(&tree);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
+                let prog_with_args = ProgWithArguments {
+                    program: bril.clone(),
+                    name: self.prog_with_args.name.clone(),
+                    args: self.prog_with_args.args.clone(),
+                };
                 (
-                    vec![Visualization {
-                        result: bril.to_string(),
-                        file_extension: ".bril".to_string(),
-                        name: "".to_string(),
-                    }],
+                    vec![prog_with_args.to_viz()],
                     Some(Interpretable::Bril(bril)),
                 )
             }
@@ -669,12 +680,13 @@ impl Run {
             }
             RunMode::Optimize => {
                 let bril = Run::optimize_bril(&self.prog_with_args.program, &self.eggcc_config)?;
+                let new_prog_with_args = ProgWithArguments {
+                    program: bril.clone(),
+                    name: self.prog_with_args.name.clone(),
+                    args: self.prog_with_args.args.clone(),
+                };
                 (
-                    vec![Visualization {
-                        result: bril.to_string(),
-                        file_extension: ".bril".to_string(),
-                        name: "".to_string(),
-                    }],
+                    vec![new_prog_with_args.to_viz()],
                     Some(Interpretable::Bril(bril)),
                 )
             }
@@ -796,12 +808,13 @@ impl Run {
             RunMode::CfgRoundTrip => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let bril = cfg.to_bril();
+                let prog_with_args = ProgWithArguments {
+                    program: bril.clone(),
+                    name: self.prog_with_args.name.clone(),
+                    args: self.prog_with_args.args.clone(),
+                };
                 (
-                    vec![Visualization {
-                        result: bril.to_string(),
-                        file_extension: ".bril".to_string(),
-                        name: "".to_string(),
-                    }],
+                    vec![prog_with_args.to_viz()],
                     Some(Interpretable::Bril(bril)),
                 )
             }
@@ -809,12 +822,13 @@ impl Run {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
                 let optimized = cfg.optimize_jumps();
                 let bril = optimized.to_bril();
+                let prog_with_args = ProgWithArguments {
+                    program: bril.clone(),
+                    name: self.prog_with_args.name.clone(),
+                    args: self.prog_with_args.args.clone(),
+                };
                 (
-                    vec![Visualization {
-                        result: bril.to_string(),
-                        file_extension: ".bril".to_string(),
-                        name: "".to_string(),
-                    }],
+                    vec![prog_with_args.to_viz()],
                     Some(Interpretable::Bril(bril)),
                 )
             }

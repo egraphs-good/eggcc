@@ -23,6 +23,12 @@ expression: visualization.result
   v13_: int = id c11_;
   v14_: bool = id c10_;
   v15_: int = id c11_;
+  v18_: int = id v13_;
+  v19_: int = id c11_;
+  print v19_;
+  print v3_;
+  print v18_;
+  ret;
 .b17_:
   v18_: int = id v13_;
   v19_: int = id c11_;
@@ -50,10 +56,25 @@ expression: visualization.result
   v30_: int = id c35_;
   v31_: bool = id c21_;
   v32_: int = id c4_;
+  v23_: int = id v30_;
+  v24_: bool = id v31_;
+  v25_: int = id v32_;
+  v18_: int = id v23_;
+  v19_: int = id c4_;
+  print v19_;
+  print v3_;
+  print v18_;
+  ret;
 .b34_:
   v23_: int = id v30_;
   v24_: bool = id v31_;
   v25_: int = id v32_;
+  v18_: int = id v23_;
+  v19_: int = id c4_;
+  print v19_;
+  print v3_;
+  print v18_;
+  ret;
 .b27_:
   v18_: int = id v23_;
   v19_: int = id c4_;

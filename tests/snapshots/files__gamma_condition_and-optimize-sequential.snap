@@ -17,6 +17,9 @@ expression: visualization.result
   br v4_ .b12_ .b13_;
 .b12_:
   v11_: int = id c5_;
+  v7_: int = id v11_;
+  print v7_;
+  ret;
 .b13_:
   v7_: int = id v11_;
 .b9_:

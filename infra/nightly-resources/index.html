@@ -23,9 +23,9 @@
   <div>
     <button type="button" class="collapsible" onclick="toggle(this, '\u25B6 Show Chart', '\u25BC Hide Chart')">&#x25BC; Hide Chart</button>
     <div class="expanded">
-      <input onclick="onRadioClick(this);" checked type="radio" id="absolute" name="chart-type" value="absolute">
+      <input onclick="onRadioClick('absolute');" checked type="radio" id="absolute" name="chart-type" value="absolute">
       <label for="absolute">Absolute</label>
-      <input onclick="onRadioClick(this);" type="radio" id="speedup" name="chart-type" value="speedup">
+      <input onclick="onRadioClick('speedup');" type="radio" id="speedup" name="chart-type" value="speedup">
       <label for="speedup">Speedup</label><br>
       <p id="speedup-formula">Speedup = (LLVM-O0 TIME / RUN MODE TIME)</p>
       <canvas class="content" id="chart"></canvas>

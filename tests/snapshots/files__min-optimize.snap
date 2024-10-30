@@ -2,6 +2,7 @@
 source: tests/files.rs
 expression: visualization.result
 ---
+# ARGS: 20 30
 @main(v0: int, v1: int) {
 .b2_:
   v3_: int = smin v0 v1;

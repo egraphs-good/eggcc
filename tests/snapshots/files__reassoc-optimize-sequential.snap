@@ -2,6 +2,7 @@
 source: tests/files.rs
 expression: visualization.result
 ---
+# ARGS: 2 4
 @main(v0: int, v1: int) {
 .b2_:
   c3_: int = const 1;

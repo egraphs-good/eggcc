@@ -2,6 +2,7 @@
 source: tests/files.rs
 expression: visualization.result
 ---
+# ARGS: 
 @sub: int {
 .b0_:
   c1_: int = const -1;

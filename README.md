@@ -34,3 +34,6 @@
 - Run `bash infra/localnightly.sh <bril file or directory>`
 
 To run the nightly server for an existing nightly, run `cd nightly/output && python3 -m http.server`.
+
+## Troubleshooting
+- On Mac running `make` might show this error: `Library not loaded: /opt/homebrew/opt/icu4c/lib/libicui18n.74.dylib`. To resolve this, run `brew upgrade`.

@@ -50,7 +50,6 @@ expression: visualization.result
   v33_: int = id v9_;
   v34_: int = id v10_;
   v35_: int = id v11_;
-.b37_:
   v14_: int = id v6_;
   v15_: int = id v31_;
   v16_: int = id v8_;
@@ -66,6 +65,14 @@ expression: visualization.result
   v10_: int = id v18_;
   v11_: int = id v19_;
   br v39_ .b12_ .b40_;
+.b37_:
+  v14_: int = id v6_;
+  v15_: int = id v31_;
+  v16_: int = id v8_;
+  v17_: int = id v9_;
+  v18_: int = id v10_;
+  v19_: int = id v11_;
+  jmp .b20_;
 .b40_:
   print v0;
 }

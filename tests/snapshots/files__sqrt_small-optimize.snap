@@ -56,11 +56,8 @@ expression: visualization.result
   v8_: float = id v13_;
   v9_: bool = id v36_;
   br v9_ .b37_ .b11_;
-.b37_:
-  ret;
 .b11_:
   v38_: float = fdiv v8_ v8_;
   print v38_;
-  jmp .b37_;
-.b39_:
+.b37_:
 }

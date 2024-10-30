@@ -31,8 +31,13 @@ expression: visualization.result
   print v22_;
   v23_: int = call @inc v22_;
   v18_: int = id v23_;
+  v11_: int = id v18_;
+  v4_: int = id v11_;
+  ret v4_;
 .b20_:
   v11_: int = id v18_;
+  v4_: int = id v11_;
+  ret v4_;
 .b13_:
   v4_: int = id v11_;
 .b6_:

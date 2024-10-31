@@ -1,0 +1,28 @@
+# ARGS: 40
+@main(n: int) {
+    one: int = const 1;
+    zero: int = const 0;
+    i: int = id zero;
+    j: int = id zero;
+
+.loop_test:
+    cond: bool = lt i n;
+    br cond .loop_body .loop_end;
+
+.loop_body:
+    print i;
+
+    cond: bool = lt n zero;
+    br cond .thn .ifend;
+
+.thn:
+    j: int = const 2;
+
+.ifend:
+    j: int = add one j;
+    i: int = add one i;
+    jmp .loop_test;
+
+.loop_end:
+    print j;
+}

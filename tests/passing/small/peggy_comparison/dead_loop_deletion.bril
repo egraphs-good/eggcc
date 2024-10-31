@@ -1,0 +1,20 @@
+@main {
+    j: int = const 3;
+    i: int = const 0;
+    forty: int = const 40;
+    one: int = const 1;
+    
+.loop_test:
+    cond: bool = lt i forty;
+    br cond .loop_body .loop_end;
+
+.loop_body:
+    j: int = add j one;
+    i: int = add i one;
+    jmp .loop_test;
+
+.loop_end:
+    j: int = const 2;
+
+    print j;
+}

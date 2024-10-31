@@ -1,0 +1,17 @@
+@main: int {
+    five: int = const 5;
+    one: int = const 1;
+    j: int = const 0;
+    i: int = id five;
+
+.loop_test:
+    cond: bool = eq i five;
+    br cond .loop_body .loop_end;
+
+.loop_body:
+    j: int = add one j;
+    jmp .loop_test;
+
+.loop_end:
+    ret j;
+}

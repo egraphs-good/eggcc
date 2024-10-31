@@ -1,0 +1,13 @@
+# ARGS: 20
+@main(x: int) {
+    cond: bool = const true;
+    br cond .thn .els;
+
+.thn:
+    print x;
+
+.els:
+    one: int = const 1;
+    res: int = sub x one;
+    print res;
+}

@@ -1,0 +1,28 @@
+# ARGS: 4
+@main(x: int) {
+    five: int = const 5;
+    four: int = const 4;
+    twenty: int = const 20;
+    cond: bool = eq x five;
+    br cond .if .else_if_check;
+
+.if:
+    res: int = mul four x;
+    jmp .end;
+
+.else_if_check:
+    cond: bool = eq x four;
+    br cond .else_if .else;
+    jmp .end;
+
+.else_if:
+    res: int = mul five x;
+    jmp .end;
+    
+.else:
+    res: int = id twenty;
+    jmp .end;
+
+.end:
+    print res;
+}

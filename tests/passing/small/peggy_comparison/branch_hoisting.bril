@@ -1,0 +1,33 @@
+# ARGS: 0
+@main(n: int) {
+    zero: int = const 0;
+    x: int = id zero;
+    y: int = id zero;
+    fivehundred: int = const 500;
+
+.pred:
+    whilecond: bool = lt y fivehundred;
+    br whilecond .loopbody .end;
+
+.loopbody:
+    two: int = const 2;
+    ifcond: bool = eq n zero;
+    br ifcond .thn .els;
+
+.thn:
+    x: int = mul y two;
+    jmp .ifend;
+
+.els:
+    three: int = const 3;
+    x: int = mul y three;
+
+.ifend:
+    one: int = const 1;
+    y: int = add one y;
+
+    jmp .pred;
+
+.end:
+    print x;
+}

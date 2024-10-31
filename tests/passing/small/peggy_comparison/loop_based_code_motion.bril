@@ -1,0 +1,19 @@
+@main {
+    x: int = const 0;
+    three: int = const 3;
+
+.loop_test:
+    cond: bool = lt x three;
+    br cond .loop_body .loop_end;
+
+.loop_body:
+    one: int = const 1;
+    x: int = add x one;
+    jmp .loop_test;
+    
+.loop_end:
+    five: int = const 5;
+    x: int = mul x five;
+
+    print x;
+}

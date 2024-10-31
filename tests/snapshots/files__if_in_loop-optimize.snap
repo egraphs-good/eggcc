@@ -2,6 +2,7 @@
 source: tests/files.rs
 expression: visualization.result
 ---
+# ARGS: 1
 @main(v0: int) {
 .b1_:
   c2_: int = const 0;
@@ -30,4 +31,5 @@ expression: visualization.result
   v13_: int = id v13_;
   br v16_ .b14_ .b17_;
 .b17_:
+  ret;
 }

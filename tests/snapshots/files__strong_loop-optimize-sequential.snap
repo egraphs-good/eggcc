@@ -32,4 +32,5 @@ expression: visualization.result
   print v8_;
   print v3_;
   print v6_;
+  ret;
 }

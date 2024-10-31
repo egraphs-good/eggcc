@@ -17,4 +17,5 @@ expression: visualization.result
   br v7_ .b5_ .b8_;
 .b8_:
   print v3_;
+  ret;
 }

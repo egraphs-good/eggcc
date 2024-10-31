@@ -13,4 +13,5 @@ expression: visualization.result
   v8_: int = add v5_ v7_;
   v9_: int = add c3_ v8_;
   print v9_;
+  ret;
 }

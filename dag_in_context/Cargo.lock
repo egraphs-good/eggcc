@@ -161,7 +161,7 @@ dependencies = [
 [[package]]
 name = "bril-rs"
 version = "0.1.0"
-source = "git+https://github.com/uwplse/bril?rev=fe255deec1533960b20fff832971e45810202a5d#fe255deec1533960b20fff832971e45810202a5d"
+source = "git+https://github.com/uwplse/bril?rev=5832cb758964402e8bb3b60b85e2cc36b368e2e7#5832cb758964402e8bb3b60b85e2cc36b368e2e7"
 dependencies = [
  "serde",
  "serde_json",

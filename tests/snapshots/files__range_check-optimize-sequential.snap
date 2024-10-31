@@ -29,4 +29,5 @@ expression: visualization.result
   jmp .b10_;
 .b15_:
   print v2_;
+  ret;
 }

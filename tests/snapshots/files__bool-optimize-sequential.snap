@@ -7,4 +7,5 @@ expression: visualization.result
 .b0_:
   c1_: bool = const true;
   print c1_;
+  ret;
 }

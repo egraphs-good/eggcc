@@ -35,4 +35,5 @@ expression: visualization.result
   v17_: int = load v9_;
   print c15_;
   free v8_;
+  ret;
 }

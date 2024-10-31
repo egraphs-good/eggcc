@@ -11,8 +11,10 @@ expression: visualization.result
   c5_: int = const 1;
   print c5_;
   ret;
+  jmp .b6_;
 .b4_:
-  c6_: int = const 2;
-  print c6_;
-.b7_:
+  c7_: int = const 2;
+  print c7_;
+  ret;
+.b6_:
 }

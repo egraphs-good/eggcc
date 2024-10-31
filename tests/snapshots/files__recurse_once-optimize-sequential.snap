@@ -31,17 +31,23 @@ expression: visualization.result
   v11_: int = id v18_;
   v4_: int = id v11_;
   ret v4_;
+  jmp .b24_;
 .b20_:
   v11_: int = id v18_;
   v4_: int = id v11_;
   ret v4_;
+  jmp .b24_;
 .b13_:
   v4_: int = id v11_;
+  ret v4_;
+  jmp .b24_;
 .b6_:
   ret v4_;
+.b24_:
 }
 @main {
 .b0_:
   c1_: int = const 0;
   print c1_;
+  ret;
 }

@@ -18,4 +18,5 @@ expression: visualization.result
 .b9_:
   v10_: int = add v0 v3_;
   print v10_;
+  ret;
 }

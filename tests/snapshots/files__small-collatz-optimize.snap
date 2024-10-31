@@ -76,4 +76,5 @@ expression: visualization.result
   jmp .b20_;
 .b39_:
   print v6_;
+  ret;
 }

@@ -22,4 +22,5 @@ expression: visualization.result
   c1_: int = const 2;
   print c1_;
   print c1_;
+  ret;
 }

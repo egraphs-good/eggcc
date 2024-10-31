@@ -13,7 +13,13 @@ expression: visualization.result
 .b6_:
   c8_: int = const 2;
   v5_: int = id c8_;
+  v9_: int = add v5_ v5_;
+  print v9_;
+  ret;
+  jmp .b10_;
 .b7_:
   v9_: int = add v5_ v5_;
   print v9_;
+  ret;
+.b10_:
 }

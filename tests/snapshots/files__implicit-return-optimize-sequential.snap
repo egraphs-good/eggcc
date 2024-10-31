@@ -41,6 +41,7 @@ expression: visualization.result
   v9_: int = id v16_;
   v10_: int = id v10_;
   print v6_;
+  ret;
 }
 @main {
 .b0_:
@@ -78,4 +79,5 @@ expression: visualization.result
   v6_: int = id v13_;
   v7_: int = id v14_;
   print v4_;
+  ret;
 }

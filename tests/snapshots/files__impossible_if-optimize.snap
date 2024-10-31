@@ -14,9 +14,11 @@ expression: visualization.result
   v7_: int = id c2_;
   print c2_;
   ret;
+  jmp .b8_;
 .b6_:
   print c2_;
   v7_: int = id c2_;
-.b8_:
   print c2_;
+  ret;
+.b8_:
 }

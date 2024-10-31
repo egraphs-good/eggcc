@@ -10,6 +10,11 @@ expression: visualization.result
   br v3_ .b5_ .b6_;
 .b5_:
   v4_: int = id v0;
+  print v4_;
+  ret;
+  jmp .b7_;
 .b6_:
   print v4_;
+  ret;
+.b7_:
 }

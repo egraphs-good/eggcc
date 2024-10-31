@@ -7,4 +7,5 @@ expression: visualization.result
 .b1_:
   c2_: int = const 4;
   print c2_;
+  ret;
 }

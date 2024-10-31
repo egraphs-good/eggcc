@@ -4,25 +4,192 @@
 //! This is used by `to_cfg` to clean up
 //! the output.
 
+use bril_rs::{EffectOps, Instruction, ValueOps};
 use indexmap::IndexMap;
 use petgraph::{
-    graph::EdgeIndex,
     stable_graph::{NodeIndex, StableDiGraph, StableGraph},
     visit::{DfsPostOrder, EdgeRef},
     Direction,
 };
 
-use crate::cfg::{BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram};
+use crate::cfg::{Annotation, BasicBlock, Branch, Simple, SimpleCfgFunction, SimpleCfgProgram};
 
 #[cfg(test)]
 use crate::Optimizer;
 
 impl SimpleCfgFunction {
+    /// Optimize a CFG by collapsing blocks
     pub fn optimize_jumps(&self) -> Self {
-        self.fuse_down().collapse_empty_blocks()
+        // fusing down only needs to happen once
+        // however, the other passes may need to be run until fixed point
+        // currently we run them twice and call it good
+        let mut res = self
+            .clone()
+            .remove_footers()
+            .add_explicit_return()
+            .fuse_down()
+            .fuze_up()
+            .fuze_up()
+            .return_early()
+            .return_early()
+            .collapse_empty_blocks()
+            .collapse_empty_blocks();
+        res.remove_unreachable();
+        res
     }
 
-    /// Find cases where a block jumps directly to another block A -> B where B
+    /// Converts footers into bril expressions to simplify this pass
+    fn remove_footers(mut self) -> SimpleCfgFunction {
+        for node in self.graph.node_indices().collect::<Vec<_>>() {
+            for annotation in self.graph[node].footer.clone() {
+                match annotation {
+                    Annotation::AssignRet { src } => {
+                        self.graph[node].instrs.push(Instruction::Effect {
+                            op: EffectOps::Return,
+                            args: vec![src.to_string()],
+                            funcs: vec![],
+                            labels: vec![],
+                            pos: None,
+                        });
+                    }
+                    Annotation::AssignCond { .. } => {
+                        panic!("No assigncond should be present for simple cfgs");
+                    }
+                }
+            }
+            self.graph[node].footer.clear();
+        }
+        self
+    }
+
+    fn add_explicit_return(mut self) -> SimpleCfgFunction {
+        // if the exit node has no return instructions
+        if !self.has_return(self.exit) {
+            // add a return instruction
+            self.graph[self.exit].instrs.push(Instruction::Effect {
+                op: EffectOps::Return,
+                args: vec![],
+                funcs: vec![],
+                labels: vec![],
+                pos: None,
+            });
+        }
+        self
+    }
+
+    fn has_return(&self, node: NodeIndex) -> bool {
+        // nodes can return through instructions, annotations, or by being the exit node implicitly
+        self.graph[node].instrs.iter().any(|instr| {
+            matches!(
+                instr,
+                Instruction::Effect {
+                    op: EffectOps::Return,
+                    ..
+                }
+            )
+        })
+    }
+
+    /// Find blocks that return and fuze them with parent blocks that jump unconditionaly to them.
+    /// All parents must jump unconditionally to the block.
+    fn return_early(mut self) -> SimpleCfgFunction {
+        // for each node
+        for node in self.graph.node_indices().collect::<Vec<_>>() {
+            // find all parents
+            let parents = self
+                .graph
+                .edges_directed(node, Direction::Incoming)
+                .map(|edge| edge.source())
+                .collect::<Vec<_>>();
+
+            // if the node contains a return, and all parents jump unconditionally to this node
+            // and more than one parent
+            if self.has_return(node)
+                && parents.iter().all(|parent| {
+                    self.graph
+                        .edges_directed(*parent, Direction::Outgoing)
+                        .count()
+                        == 1
+                })
+                && !parents.is_empty()
+            {
+                // for each parent, fuze up
+                for parent in &parents {
+                    // if the parent doesn't contain return instructions
+                    if !self.has_return(*parent) {
+                        // if the parent jumps unconditionally to this node
+                        if self
+                            .graph
+                            .edges_directed(*parent, Direction::Outgoing)
+                            .count()
+                            == 1
+                        {
+                            let instrs = self.graph[node].instrs.clone();
+                            // move instructions from node up to parent
+                            self.graph[*parent].instrs.extend(instrs);
+                        };
+                    }
+                }
+                // clear the instructions in this node
+                self.graph[node].instrs.clear();
+            }
+        }
+
+        self
+    }
+
+    /// Finds blocks with only id instructions and fuses them with their parents
+    /// The parent must jump directly to the block
+    /// A -> B -> C
+    ///    /
+    /// D
+    ///
+    /// If B has only id instructions, we can fuse it into both A and D.
+    /// These id instructions are optimized away by register allocation in LLVM, so this is fine.
+    /// If there are non-id instructions, this causes code blowup. Id instructions are "free"
+    fn fuze_up(mut self) -> SimpleCfgFunction {
+        for node in self.graph.node_indices().collect::<Vec<_>>() {
+            let parents = self
+                .graph
+                .edges_directed(node, Direction::Incoming)
+                .map(|edge| edge.source())
+                .collect::<Vec<_>>();
+
+            // check if fusing up is possible- instructions are all id
+            // and parents directly jump to this block
+            // Also needs at least one parent
+            let should_apply = self.graph[node].instrs.iter().all(|instr| {
+                matches!(
+                    instr,
+                    Instruction::Value {
+                        op: ValueOps::Id,
+                        ..
+                    }
+                )
+            }) && parents.iter().all(|parent| {
+                let parent_outgoing = self
+                    .graph
+                    .edges_directed(*parent, Direction::Outgoing)
+                    .count();
+                parent_outgoing == 1
+            }) && !parents.is_empty();
+
+            let new_instrs = self.graph[node].instrs.clone();
+            // move instructions from node up to parents
+            if should_apply {
+                for parent in parents {
+                    self.graph[parent].instrs.extend(new_instrs.clone());
+                }
+
+                // delete instructions from node
+                self.graph[node].instrs.clear();
+            }
+        }
+
+        self
+    }
+
+    /// Find cases where a block jumps directly to another block A -> B where
     /// A has only one outgoing edge and B has one incoming edge
     /// Turn it into one block AB
     fn fuse_down(&self) -> SimpleCfgFunction {
@@ -72,12 +239,9 @@ impl SimpleCfgFunction {
 
                 // add instructions to the beginning of the next node
                 let mut new_instrs = self.graph[node].instrs.to_vec();
-                let mut new_footer = self.graph[node].footer.to_vec();
                 new_instrs.extend(resulting_graph[new_target].instrs.to_vec());
-                new_footer.extend(resulting_graph[new_target].footer.to_vec());
 
                 resulting_graph[new_target].instrs = new_instrs;
-                resulting_graph[new_target].footer = new_footer;
             } else {
                 // add the node
                 let new_node = resulting_graph.add_node(self.graph[node].clone());
@@ -104,64 +268,43 @@ impl SimpleCfgFunction {
         }
     }
 
-    // this function looks for all CFG fragments of the form
-    // source node --(source edge)-> empty node --(target edge)-> target node
-    // (where there is only one target edge and the empty node has no instructions)
-    // and changes the source edge to point to the target node
+    // this function looks for all CFG empty blocks with a direct jump out
+    // and makes sure they are removed by having the parents skip them
     fn collapse_empty_blocks(mut self) -> SimpleCfgFunction {
-        // loop over every non-empty block, and look at its parents
-        for block in self.graph.node_indices().collect::<Vec<_>>() {
-            // find parents
-            let parents: Vec<NodeIndex> = self
-                .graph
-                .edges_directed(block, Direction::Incoming)
-                .map(|edge| edge.source())
-                .collect();
+        let mut to_remove = vec![];
+        for node in self.graph.node_indices().collect::<Vec<_>>() {
+            // empty block with a single direct jump out
+            if self.graph[node].instrs.is_empty() {
+                if let [single_child] = self
+                    .graph
+                    .edges_directed(node, Direction::Outgoing)
+                    .map(|edge| edge.target())
+                    .collect::<Vec<_>>()
+                    .as_slice()
+                {
+                    let parents = self
+                        .graph
+                        .edges_directed(node, Direction::Incoming)
+                        .map(|parent| {
+                            let source = parent.source();
+                            let weight = parent.weight().clone();
+                            to_remove.push(parent.id());
+                            (source, weight)
+                        })
+                        .collect::<Vec<_>>();
 
-            for parent in &parents {
-                self.collapse_empty_block(*parent);
+                    // for every parent edge, point to child instead of node
+                    for (source, weight) in parents {
+                        self.graph.add_edge(source, *single_child, weight);
+                    }
+                }
             }
         }
 
+        for edge in to_remove {
+            self.graph.remove_edge(edge);
+        }
         self
-    }
-
-    /// Detect the case where source -> empty -> target
-    /// The empty block should have a single incoming and single outgoing edge
-    fn get_single_in_single_out(&self, parent_block: NodeIndex) -> Option<(EdgeIndex, EdgeIndex)> {
-        if !self.graph[parent_block].instrs.is_empty()
-            || !self.graph[parent_block].footer.is_empty()
-        {
-            return None;
-        }
-
-        let outgoing = self
-            .graph
-            .edges_directed(parent_block, Direction::Outgoing)
-            .collect::<Vec<_>>();
-        let incoming = self
-            .graph
-            .edges_directed(parent_block, Direction::Incoming)
-            .collect::<Vec<_>>();
-        if let ([source_edge], [outgoing]) = (incoming.as_slice(), outgoing.as_slice()) {
-            Some((source_edge.id(), outgoing.id()))
-        } else {
-            None
-        }
-    }
-
-    /// Detect the case when source -> empty -> target
-    /// and collapse it to source -> target
-    fn collapse_empty_block(&mut self, parent_block: NodeIndex) {
-        if let Some((source_edge, outgoing)) = self.get_single_in_single_out(parent_block) {
-            let weight = self.graph.edge_weight(source_edge).unwrap().clone();
-            let (source, empty) = self.graph.edge_endpoints(source_edge).unwrap();
-            let (empty_, target) = self.graph.edge_endpoints(outgoing).unwrap();
-            assert_eq!(empty, empty_);
-
-            self.graph.remove_edge(source_edge);
-            self.graph.add_edge(source, target, weight);
-        }
     }
 }
 

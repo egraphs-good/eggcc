@@ -7,7 +7,7 @@
         (= (Get pred-outputs (+ i 1)) (Get (Arg _ty _ctx) i))
         ;; only pass through pure types, since some loops don't terminate
         ;; so the state edge must pass through them
-        (HasType (Get loop i) lhs_ty)
+        (HasType lhs lhs_ty)
         (PureType lhs_ty)
         )
        ((union lhs (Get inputs i)))
@@ -40,9 +40,11 @@
 
 ;; Pass through if arguments
 (rule ((= if (If pred inputs then_ else_))
-       (= (Get then_ i) (Get (Arg arg_ty _then_ctx) j))
-       (= (Get else_ i) (Get (Arg arg_ty _else_ctx) j))
-       (HasType (Get then_ i) lhs_ty)
+       (= then-branch (Get then_ i))
+       (= else-branch (Get else_ i))
+       (= then-branch (Get (Arg arg_ty _then_ctx) j))
+       (= else-branch (Get (Arg arg_ty _else_ctx) j))
+       (HasType then-branch lhs_ty)
        (!= lhs_ty (Base (StateT))))
       ((union (Get if i) (Get inputs j)))
       :ruleset passthrough)

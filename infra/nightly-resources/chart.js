@@ -5,6 +5,7 @@ const COLORS = {
   "llvm-O2": "orange",
   "llvm-O3": "gray",
   "llvm-O0-eggcc": "pink",
+  "llvm-O0-eggcc-sequential": "blue",
   "llvm-O3-eggcc": "brown",
 };
 
@@ -15,7 +16,7 @@ const BASELINE_MODE = "llvm-O0";
 
 // Given a list of integers, compute the mean
 // number of cycles
-function mean_cycles(cycles) {
+function mean(cycles) {
   return cycles.reduce((a, b) => a + b, 0) / cycles.length;
 }
 
@@ -61,18 +62,22 @@ function getEntry(benchmark, runMode) {
   }
 }
 
+function speedup(entry, baseline) {
+  const baseV = mean(baseline["cycles"]);
+  const expV = mean(entry["cycles"]);
+  // If you change this, also change the displayed formula in index.html
+  return baseV / expV;
+}
+
 function getValue(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
-    return mean_cycles(entry["cycles"]);
+    return mean(entry["cycles"]);
   } else if (GLOBAL_DATA.chart.mode === "speedup") {
     const baseline = getEntry(entry.benchmark, BASELINE_MODE);
     if (!baseline) {
       addWarning(`No speedup baseline for ${benchmark}`);
     }
-    const baseV = mean_cycles(baseline["cycles"]);
-    const expV = mean_cycles(entry["cycles"]);
-    // If you change this, also change the displayed formula in index.html
-    return baseV / expV;
+    return speedup(entry, baseline);
   } else {
     throw new Error(`unknown chart mode ${GLOBAL_DATA.chart.mode}`);
   }
@@ -89,8 +94,8 @@ function getError(entry) {
       addWarning(`No speedup baseline for ${benchmark}`);
     }
 
-    const baseV = mean_cycles(baseline["cycles"]);
-    const expV = mean_cycles(entry["cycles"]);
+    const baseV = mean(baseline["cycles"]);
+    const expV = mean(entry["cycles"]);
     const baseStd = stddev_cycles(baseline["cycles"]);
     const expStd = stddev_cycles(entry["cycles"]);
 

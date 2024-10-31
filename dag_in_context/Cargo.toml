@@ -12,7 +12,7 @@ strum_macros = "0.25"
 main_error = "0.1.2"
 thiserror = "1.0"
 egraph-serialize = "0.2.0"
-bril-rs = { git = "https://github.com/uwplse/bril", rev = "fe255deec1533960b20fff832971e45810202a5d" }
+bril-rs = { git = "https://github.com/uwplse/bril", rev = "5832cb758964402e8bb3b60b85e2cc36b368e2e7" }
 indexmap = "2.0.0"
 rustc-hash = "1.1.0"
 ordered-float = "3"
@@ -23,3 +23,5 @@ rpds = "1.1.0"
 log = "0.4"
 env_logger = "0.11.3"
 insta = { version = "1.31.0", features = ["yaml"] }
+
+clap = { version = "4.4.7", features = ["derive"] }

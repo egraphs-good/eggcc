@@ -5,6 +5,7 @@ const treatments = [
   "llvm-O1",
   "llvm-O2",
   "llvm-O0-eggcc",
+  "llvm-O0-eggcc-sequential",
   "llvm-O3",
   "llvm-O3-eggcc",
 ];
@@ -46,6 +47,11 @@ function refreshView() {
   tableData.sort((l, r) => l.name - r.name);
 
   document.getElementById("profile").innerHTML = ConvertJsonToTable(tableData);
+
+  // fill in the overall stats table
+  const overallStats = getOverallStatistics();
+  const overallTable = document.getElementById("overall-stats-table");
+  overallTable.innerHTML = ConvertJsonToTable(overallStats);
 
   renderWarnings();
   refreshChart();

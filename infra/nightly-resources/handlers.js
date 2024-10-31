@@ -12,6 +12,11 @@ async function load_index() {
   selectAllModes(true);
   selectAllBenchmarks(true);
 
+  // Firefox doesn't handle radio buttons correctly on page reload,
+  // so manually set to absolute view
+  document.getElementById("absolute").checked = true;
+  onRadioClick("absolute");
+
   const previousRuns = await getPreviousRuns();
   const initialRunIdx = findBenchToCompareIdx(previousRuns);
   loadBaseline(previousRuns[initialRunIdx].url);
@@ -111,10 +116,10 @@ async function loadBaseline(url) {
   refreshView();
 }
 
-function onRadioClick(elt) {
-  GLOBAL_DATA.chart.mode = elt.value;
+function onRadioClick(value) {
+  GLOBAL_DATA.chart.mode = value;
   document.getElementById("speedup-formula").style.visibility =
-    elt.value === "speedup" ? "visible" : "hidden";
+    value === "speedup" ? "visible" : "hidden";
   refreshChart();
 }
 

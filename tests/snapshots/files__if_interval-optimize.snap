@@ -2,8 +2,10 @@
 source: tests/files.rs
 expression: visualization.result
 ---
+# ARGS: 1
 @main(v0: int) {
 .b1_:
   c2_: bool = const true;
   print c2_;
+  ret;
 }

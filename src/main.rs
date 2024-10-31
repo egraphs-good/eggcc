@@ -1,4 +1,5 @@
 use clap::Parser;
+use dag_in_context::{EggccConfig, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
 use std::{ffi::OsStr, path::PathBuf};
 
@@ -45,6 +46,11 @@ struct Args {
     /// For the LLVM run mode, choose between O0 and O3.
     #[clap(long)]
     optimize_bril_llvm: Option<LLVMOptLevel>,
+    /// For the eggcc schedule, choose between the sequential and parallel schedules.
+    #[clap(long)]
+    eggcc_schedule: Option<Schedule>,
+    #[clap(long)]
+    stop_after_n_passes: Option<usize>,
 }
 
 fn main() {
@@ -90,6 +96,10 @@ fn main() {
         optimize_brilift: args.optimize_brilift,
         optimize_bril_llvm: args.optimize_bril_llvm,
         add_timing: args.add_timing,
+        eggcc_config: EggccConfig {
+            schedule: args.eggcc_schedule.unwrap_or(Schedule::default()),
+            stop_after_n_passes: args.stop_after_n_passes.unwrap_or(usize::MAX),
+        },
     };
 
     let result = match run.run() {

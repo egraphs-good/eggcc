@@ -33,38 +33,89 @@ pub(crate) fn helpers() -> String {
     .to_string()
 }
 
-pub fn mk_schedule() -> String {
-    let helpers = helpers();
+fn cheap_optimizations() -> Vec<String> {
+    ["loop-simplify", "memory", "peepholes"]
+        .iter()
+        .map(|opt| opt.to_string())
+        .collect()
+}
+
+fn optimizations() -> Vec<String> {
+    [
+        "loop-unroll",
+        "switch_rewrite",
+        "loop-inv-motion",
+        "loop-strength-reduction",
+        "loop-peel",
+    ]
+    .iter()
+    .map(|opt| opt.to_string())
+    .chain(cheap_optimizations())
+    .collect()
+}
+
+fn saturating_rulesets() -> Vec<String> {
+    [
+        "always-run",
+        "passthrough",
+        "canon",
+        "type-analysis",
+        "context",
+        "interval-analysis",
+        "memory-helpers",
+        "always-switch-rewrite",
+        "loop-iters-analysis",
+    ]
+    .iter()
+    .map(|opt| opt.to_string())
+    .collect()
+}
+
+pub fn rulesets() -> String {
+    let all_optimizations = optimizations().join("\n");
+    let saturating_combined = saturating_rulesets().join("\n");
+    let cheap_optimizations = cheap_optimizations().join("\n");
     format!(
         "
 (unstable-combined-ruleset saturating
-    always-run
-    passthrough
-    canon
-    type-analysis
-    context
-    interval-analysis
-    memory-helpers
-    always-switch-rewrite
-    loop-iters-analysis
+    {saturating_combined}
 )
 
 (unstable-combined-ruleset cheap-optimizations
-    loop-simplify
-    memory
-    loop-unroll
-    peepholes
+    {cheap_optimizations}
 )
 
 (unstable-combined-ruleset all-optimizations
-    cheap-optimizations
-    
-    switch_rewrite
-    loop-inv-motion
-    loop-strength-reduction
-    loop-peel
+    {all_optimizations}
 )
+    "
+    )
+}
 
+pub fn mk_sequential_schedule() -> Vec<String> {
+    let helpers = helpers();
+    optimizations()
+        .iter()
+        .map(|optimization| {
+            format!(
+                "
+(run-schedule
+   {helpers}
+   {optimization}
+   {helpers})
+"
+            )
+        })
+        .collect()
+}
+
+/// Parallel schedule must return a single string,
+/// a schedule that runs optimizations over the egraph.
+pub fn parallel_schedule() -> Vec<String> {
+    let helpers = helpers();
+
+    vec![format!(
+        "
 (run-schedule
 
     (repeat 2
@@ -80,5 +131,5 @@ pub fn mk_schedule() -> String {
     {helpers}
 )
 "
-    )
+    )]
 }

@@ -1,14 +1,16 @@
+use clap::ValueEnum;
 use egglog::{Term, TermDag};
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use indexmap::IndexMap;
 use interpreter::Value;
+use schedule::rulesets;
 use schema::TreeProgram;
-use std::fmt::Write;
+use std::{fmt::Write, usize};
 use to_egglog::TreeToEgglog;
 
 use crate::{
     add_context::ContextCache, dag2svg::tree_to_svg, interpreter::interpret_dag_prog,
-    optimizations::function_inlining, schedule::mk_schedule,
+    optimizations::function_inlining, schedule::parallel_schedule,
 };
 
 pub mod add_context;
@@ -63,6 +65,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/passthrough.egg"),
         include_str!("optimizations/loop_strength_reduction.egg"),
         include_str!("utility/debug-helper.egg"),
+        &rulesets(),
     ]
     .join("\n")
 }
@@ -114,7 +117,12 @@ pub fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
 }
 
 // It is expected that program has context added
-pub fn build_program(program: &TreeProgram, cache: &mut ContextCache, optimize: bool) -> String {
+pub fn build_program(
+    program: &TreeProgram,
+    cache: &mut ContextCache,
+    inline: bool,
+    schedule: &str,
+) -> String {
     let mut printed = String::new();
 
     // Create a global cache for generating intermediate variables
@@ -122,7 +130,7 @@ pub fn build_program(program: &TreeProgram, cache: &mut ContextCache, optimize: 
     let mut term_cache = IndexMap::<Term, String>::new();
 
     // Generate function inlining egglog
-    let function_inlining_unions = if !optimize {
+    let function_inlining_unions = if !inline {
         "".to_string()
     } else {
         function_inlining::print_function_inlining_pairs(
@@ -146,12 +154,6 @@ pub fn build_program(program: &TreeProgram, cache: &mut ContextCache, optimize: 
         cache.get_unions_with_sharing(&mut printed, &mut tree_state, &mut term_cache);
 
     let prologue = prologue();
-
-    let schedule = if optimize {
-        mk_schedule()
-    } else {
-        "".to_string()
-    };
 
     format!(
         "
@@ -186,7 +188,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 /// Checks that the extracted program is the same as the input program.
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
-    let egglog_prog = build_program(program, &mut ContextCache::new(), false);
+    let egglog_prog = build_program(program, &mut ContextCache::new(), false, "");
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
@@ -210,25 +212,63 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     }
 }
 
+#[derive(Clone, Default, PartialEq, Eq, Debug, ValueEnum)]
+pub enum Schedule {
+    #[default]
+    Parallel,
+    Sequential,
+}
+
+#[derive(Clone, Debug)]
+pub struct EggccConfig {
+    pub schedule: Schedule,
+    pub stop_after_n_passes: usize,
+}
+
+impl Default for EggccConfig {
+    fn default() -> Self {
+        Self {
+            schedule: Schedule::default(),
+            stop_after_n_passes: usize::MAX,
+        }
+    }
+}
+
 // It is expected that program has context added
 pub fn optimize(
     program: &TreeProgram,
     cache: &mut ContextCache,
+    eggcc_config: &EggccConfig,
 ) -> std::result::Result<TreeProgram, egglog::Error> {
-    let egglog_prog = build_program(program, cache, true);
-    log::info!("Running egglog program...");
-    let mut egraph = egglog::EGraph::default();
-    egraph.parse_and_run_program(None, &egglog_prog)?;
+    let schedule_list = match eggcc_config.schedule {
+        Schedule::Parallel => parallel_schedule(),
+        Schedule::Sequential => schedule::mk_sequential_schedule(),
+    };
+    let mut res = program.clone();
 
-    let (serialized, unextractables) = serialized_egraph(egraph);
-    let mut termdag = egglog::TermDag::default();
-    let (_res_cost, res) = extract(
-        program,
-        serialized,
-        unextractables,
-        &mut termdag,
-        DefaultCostModel,
-    );
+    for (schedule, i) in schedule_list
+        .iter()
+        .zip(0..eggcc_config.stop_after_n_passes)
+    {
+        log::info!("Running pass {}...", i);
+        // only inline functions on the first pass
+        let egglog_prog = build_program(&res, cache, i == 0, schedule);
+
+        log::info!("Running egglog program...");
+        let mut egraph = egglog::EGraph::default();
+        egraph.parse_and_run_program(None, &egglog_prog)?;
+
+        let (serialized, unextractables) = serialized_egraph(egraph);
+        let mut termdag = egglog::TermDag::default();
+        let (_res_cost, iter_result) = extract(
+            program,
+            serialized,
+            unextractables,
+            &mut termdag,
+            DefaultCostModel,
+        );
+        res = iter_result;
+    }
     Ok(res)
 }
 
@@ -341,7 +381,11 @@ fn egglog_test_internal(
         }
     }
 
-    let program = format!("{}\n{build}\n{}\n{check}\n", prologue(), mk_schedule(),);
+    let program = format!(
+        "{}\n{build}\n{}\n{check}\n",
+        prologue(),
+        parallel_schedule().join("\n"),
+    );
 
     if print_program {
         eprintln!("{program}");

@@ -1,0 +1,20 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 20 30
+@main(v0: int, v1: int) {
+.b2_:
+  v3_: bool = lt v0 v1;
+  v4_: int = id v1;
+  br v3_ .b5_ .b6_;
+.b5_:
+  v4_: int = id v0;
+  print v4_;
+  ret;
+  jmp .b7_;
+.b6_:
+  print v4_;
+  ret;
+.b7_:
+}

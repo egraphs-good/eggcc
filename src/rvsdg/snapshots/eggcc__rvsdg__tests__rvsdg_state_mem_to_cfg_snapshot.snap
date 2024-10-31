@@ -11,4 +11,5 @@ expression: prog.to_string()
   v12: int = load v4;
   print v12;
   free v4;
+  ret;
 }

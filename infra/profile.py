@@ -80,7 +80,7 @@ def setup_benchmark(name):
 def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}')
   profile_dir = benchmark_profile_dir(benchmark.name)
-  optimized_bril_file = f'{profile_dir}/{benchmark.treatment}-optimized.bril'
+  optimized_bril_file = f'{profile_dir}/{benchmark.name}-{benchmark.treatment}.bril'
 
   # get the commands we need to run
   (eggcc_run_mode, llvm_args) = get_eggcc_options(benchmark)
@@ -89,7 +89,7 @@ def optimize(benchmark):
   cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode}'
   cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_dir}'
 
-  print(f'Running: {cmd1}', flush=True)
+  print(f'Running c1: {cmd1}', flush=True)
   start_eggcc = time.time()
   process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
   process.check_returncode()
@@ -99,7 +99,7 @@ def optimize(benchmark):
   with open(optimized_bril_file, 'w') as f:
     f.write(process.stdout)
 
-  print(f'Running: {cmd2}', flush=True)
+  print(f'Running c2: {cmd2}', flush=True)
   start_llvm = time.time()
   process2 = subprocess.run(cmd2, shell=True)
   process2.check_returncode()

@@ -21,12 +21,12 @@ def make_cfgs(bench, data_dir):
       opt = "opt"
 
     # https://llvm.org/docs/Passes.html#dot-cfg-print-cfg-of-function-to-dot-file
-    cmd = f"{opt} -disable-output -passes=dot-cfg {bench}-{mode}.ll"
+    cmd = f"{opt} -disable-output -passes=dot-cfg {bench}-{mode}-{mode}.ll"
     os.system(cmd)
 
     # Delete the -init.ll file (We don't need it for nightly,
     # so just reduce the amount of clutter we copy to the nightly machine)
-    os.system(f"rm {bench}-{mode}-init.ll")
+    os.system(f"rm {bench}-{mode}-{mode}-init.ll")
 
     # Find all the dot files (can't use glob because it doesn't match hidden files)
     # There are also a bunch of files that start with ._Z that I don't think we care about?

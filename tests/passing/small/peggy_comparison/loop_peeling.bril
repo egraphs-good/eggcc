@@ -1,0 +1,19 @@
+# ARGS: 5
+@main(n: int) {
+    x: int = const 0;
+    i: int = const 0;
+
+.loop_test:
+    cond: bool = lt i n;
+    br cond .loop_body .loop_end;
+
+.loop_body:
+    five: int = const 5;
+    one: int = const 1;
+    x: int = add x five;
+    i: int = add i one;
+    jmp .loop_test;
+
+.loop_end:
+    print x;
+}

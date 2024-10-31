@@ -1,0 +1,63 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 30 10
+@main(v0: int, v1: int) {
+.b2_:
+  c3_: int = const 0;
+  c4_: int = const 1;
+  c5_: int = const 20;
+  v6_: int = id c3_;
+  v7_: int = id c4_;
+  v8_: int = id v1;
+  v9_: int = id v0;
+  v10_: int = id c5_;
+.b11_:
+  v12_: bool = lt v6_ v10_;
+  v13_: int = id v6_;
+  v14_: int = id v7_;
+  v15_: int = id v8_;
+  v16_: int = id v9_;
+  v17_: int = id v10_;
+  br v12_ .b18_ .b19_;
+.b18_:
+  v20_: int = mul v10_ v9_;
+  v21_: bool = lt v20_ v8_;
+  v22_: int = id v6_;
+  v23_: int = id v7_;
+  v24_: int = id v20_;
+  v25_: int = id v8_;
+  v26_: int = id v9_;
+  v27_: int = id v10_;
+  br v21_ .b28_ .b29_;
+.b28_:
+  v30_: int = add v20_ v7_;
+  v22_: int = id v6_;
+  v23_: int = id v7_;
+  v24_: int = id v30_;
+  v25_: int = id v8_;
+  v26_: int = id v9_;
+  v27_: int = id v10_;
+.b29_:
+  v31_: int = mul v24_ v6_;
+  print v31_;
+  v32_: int = add v6_ v7_;
+  v13_: int = id v32_;
+  v14_: int = id v7_;
+  v15_: int = id v8_;
+  v16_: int = id v9_;
+  v17_: int = id v10_;
+  v6_: int = id v13_;
+  v7_: int = id v14_;
+  v8_: int = id v15_;
+  v9_: int = id v16_;
+  v10_: int = id v17_;
+  jmp .b11_;
+.b19_:
+  v6_: int = id v13_;
+  v7_: int = id v14_;
+  v8_: int = id v15_;
+  v9_: int = id v16_;
+  v10_: int = id v17_;
+}

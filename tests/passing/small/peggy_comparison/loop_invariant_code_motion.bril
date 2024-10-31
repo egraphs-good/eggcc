@@ -1,0 +1,26 @@
+# ARGS: 30 10
+@main(n: int, m: int) {
+    i: int = const 0;
+    twenty: int = const 20;
+    one: int = const 1;
+
+.loop_test:
+    cond: bool = lt i twenty;
+    br cond .loop_body .loop_end;
+
+.loop_body:
+    j: int = mul n twenty;
+    if_cond: bool = lt j m;
+    br if_cond .thn .end_if; 
+
+.thn:
+    j: int = add j one;
+
+.end_if:
+    output: int = mul i j;
+    print output;
+    i: int = add i one;
+    jmp .loop_test;
+
+.loop_end:
+}

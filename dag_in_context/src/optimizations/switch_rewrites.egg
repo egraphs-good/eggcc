@@ -31,76 +31,24 @@
       ((union (Get if_e k) (Bop (Smax) a b)))
       :ruleset switch_rewrite) 
 
-; if pred then a else b ~~> (select pred a b)
-; where a and b are inputs to the region
-(rule (
-       (= if_e (If pred inputs thn els))
-       (= a (Get inputs i))
-       (= b (Get inputs j))
+(rule
+       (
+        (= if_e (If pred inputs thn els))
+        (ContextOf if_e ctx)
 
-       ; if pred then a else b
-       (= (Get thn k) (Get (Arg ty (InIf true pred inputs)) i))
-       (= (Get els k) (Get (Arg ty (InIf false pred inputs)) j))
-
-       ; If i = j, then the arg is just passed through the if, and we
-       ; don't need a select. This will get handled by the passthrough rules.
-       (!= i j)
+        (= thn_out (Get thn i))
+        (= els_out (Get els i))
+        (ExprIsPure thn_out)
+        (ExprIsPure els_out)
+        
+        (> 10 (Expr-size thn_out)) ; TODO: Tune these size limits
+        (> 10 (Expr-size els_out))
        )
        (
-       (union (Get if_e k) (Top (Select) pred a b))
-       )
-       :ruleset switch_rewrite)
-
-(rule (
-       (= if_e (If pred inputs thn els))
-       (ContextOf if_e ctx)
-       (HasArgType if_e ty)
-       (= (Get thn i) (Const x _ty (InIf true pred inputs)))
-       (= (Get els i) (Const y _ty (InIf false pred inputs)))
-      )
-      ((union (Get if_e i) (Top (Select) pred (Const x ty ctx) (Const y ty ctx))))
-      :ruleset switch_rewrite)
-
-; if pred then A else Const -> select pred A Const
-; where A is an input to the region
-(rule (
-       (= if_e (If pred inputs thn els))
-       (ContextOf if_e ctx)
-       (HasArgType if_e ty)
-
-       ; input to the if
-       (= a (Get inputs i))
-       (= (Get thn k) (Get (Arg _ty (InIf true pred inputs)) i))
-
-       (= els_out (Get els k))
-       (= (IntB y) (lo-bound els_out))
-       (= (IntB y) (hi-bound els_out))
-       )
-       (
-       (union (Get if_e k) (Top (Select) pred a (Const (Int y) ty ctx)))
+        (union (Get if_e i)
+               (Top (Select) pred (Subst ctx inputs thn_out) (Subst ctx inputs els_out)))
        )
        :ruleset switch_rewrite
-)
-
-; if pred then Const else B -> select pred Const B
-; where B is an input to the region
-(rule (
-       (= if_e (If pred inputs thn els))
-       (ContextOf if_e ctx)
-       (HasArgType if_e ty)
-
-       (= thn_out (Get thn k))
-       (= (IntB y) (lo-bound thn_out))
-       (= (IntB y) (hi-bound thn_out))
-
-       ; input to the if
-       (= b (Get inputs i))
-       (= (Get els k) (Get (Arg _ty (InIf false pred inputs)) i))
-      )
-      (
-       (union (Get if_e k) (Top (Select) pred (Const (Int y) ty ctx) b))
-      )
-      :ruleset switch_rewrite
 )
 
 ; if (a and b) X Y ~~> if a (if b X Y) Y

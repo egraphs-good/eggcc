@@ -5,25 +5,14 @@ expression: visualization.result
 # ARGS: 1
 @main(v0: int) {
 .b1_:
-  c2_: int = const 1;
-  c3_: int = const 2;
-  v4_: bool = lt v0 c3_;
-  c5_: int = const 4;
-  v6_: int = select v4_ c5_ c2_;
-  v7_: int = id v6_;
-  v8_: int = id c2_;
-  br v4_ .b9_ .b10_;
-.b9_:
-  v11_: int = add c2_ v7_;
-  print v11_;
+  c2_: int = const 2;
+  v3_: bool = lt v0 c2_;
+  c4_: int = const 4;
+  c5_: int = const 1;
+  v6_: int = select v3_ c4_ c5_;
+  v7_: int = add c2_ v6_;
+  v8_: int = select v3_ v6_ v7_;
+  v9_: int = add c5_ v8_;
+  print v9_;
   ret;
-  jmp .b12_;
-.b10_:
-  v13_: int = add c3_ v6_;
-  v7_: int = id v13_;
-  v8_: int = id c2_;
-  v11_: int = add c2_ v7_;
-  print v11_;
-  ret;
-.b12_:
 }

@@ -6,19 +6,7 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
   c2_: int = const 1;
-  c3_: int = const 2;
-  v4_: bool = lt v0 c3_;
-  br v4_ .b5_ .b6_;
-.b5_:
   print c2_;
-  v7_: int = id c2_;
   print c2_;
   ret;
-  jmp .b8_;
-.b6_:
-  print c2_;
-  v7_: int = id c2_;
-  print c2_;
-  ret;
-.b8_:
 }

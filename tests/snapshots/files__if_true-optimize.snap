@@ -9,4 +9,5 @@ expression: visualization.result
   v3_: int = sub v0 c2_;
   print v0;
   print v3_;
+  ret;
 }

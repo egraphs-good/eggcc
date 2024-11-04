@@ -1,4 +1,4 @@
-# ARGS: 3501010
+# ARGS: 150
 @main(n : int) {
 	zero: int = const 0;
 	output: int = call @recPrint n;

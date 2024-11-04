@@ -27,24 +27,22 @@
 ;;    }
 ;; for example, printBinary sums the results of recursive calls
 (rule
-  (;(Function name in out body)
+  ((Function name in out body)
    ;; two outputs
-   ;(= (tuple-length body) 2)
+   (= (tuple-length body) 2)
    ;; body is an if statement
    (= cond (If pred inputs then else))
-   ;(= (Get body 0) (Get cond i1))
-   ;(= (Get body 1) (Get cond i2))
+   (= (Get body 0) (Get cond 0))
+   (= (Get body 1) (Get cond 1))
    (= (tuple-length cond) 2)
    (HasType cond func-ty)
-   ;(HasType inputs inputs-ty)
-   ;(!= i1 i2)
+   (HasType inputs inputs-ty)
 
    ;; in the true branch, we return the results from a recursive call
    (= (Get then 0) (Get (Call name call-inputs) 0))
    (= (Get then 1) (Get (Call name call-inputs) 1))
    )
   (
-    (panic "good")
     ;; new if statement is like the old one, but 
     ;; doesn't do a recursive call
     ;; else branch stays the same
@@ -56,8 +54,6 @@
     (let new-loop
       (DoWhile (Arg func-ty (InFunc name))
         (Concat (Single pred) new-if)))
-    ;; get second two values
-    (let sub-loop
-      (SubTuple new-loop 1 2))
+    (union body new-loop)
   )
   :ruleset rec-to-loop)

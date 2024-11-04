@@ -53,7 +53,6 @@ fn cheap_optimizations() -> Vec<String> {
 
 fn optimizations() -> Vec<String> {
     [
-        "swap-if",
         "loop-unroll",
         "switch_rewrite",
         "loop-inv-motion",
@@ -119,6 +118,7 @@ pub fn parallel_schedule() -> Vec<String> {
       {helpers}
       passthrough
       state-edge-passthrough)
+    (repeat 2 swap-if)
 
     (repeat 2
         {helpers}

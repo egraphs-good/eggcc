@@ -1,4 +1,5 @@
-;; this ruleset depends on swap_if
+;; this ruleset depends on swap_if running twice
+;; swap_if un-permutes the outputs of the function and the if so this rule can match
 (ruleset rec-to-loop)
 
 
@@ -28,29 +29,13 @@
 ;; for example, printBinary sums the results of recursive calls
 (rule
   ((Function name in out body)
-   ;; two outputs
-   (= (tuple-length body) 2)
-   ;; body is an if statement
-   (= cond (If pred inputs then else))
-   (= (Get body 0) (Get cond 0))
-   (= (Get body 1) (Get cond 1))
-   (= (tuple-length cond) 2)
-   (HasType cond func-ty)
-   (HasType inputs inputs-ty)
-
-   ;; in the true branch, we return the results from a recursive call
-   (= (Get then 0) (Get (Call name call-inputs) 0))
-   (= (Get then 1) (Get (Call name call-inputs) 1))
-   )
+   (= body (If pred inputs (Call name call-inputs) else))
+   (HasType body func-ty))
   (
-    ;; new if statement is like the old one, but 
-    ;; doesn't do a recursive call
-    ;; else branch stays the same
+    ;; new if statement doesn't do recursive call
     (let new-if
-      (If pred inputs
-          call-inputs
-          else))
-    ;; output of function may be swapped, undo that here
+      (If pred inputs call-inputs else))
+    ;; new loop continues on the same predicate
     (let new-loop
       (DoWhile (Arg func-ty (InFunc name))
         (Concat (Single pred) new-if)))

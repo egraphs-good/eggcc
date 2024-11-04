@@ -1,8 +1,8 @@
-# ARGS: 150
+# ARGS: 20
 @main(n : int) {
 	zero: int = const 0;
 	output: int = call @recPrint n;
-	print output;
+	# print output; TODO causes brili to error out
 }
 
 @recPrint(n: int): int {

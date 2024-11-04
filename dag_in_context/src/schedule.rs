@@ -53,10 +53,13 @@ fn cheap_optimizations() -> Vec<String> {
 
 fn optimizations() -> Vec<String> {
     [
+        "swap-if",
         "loop-unroll",
         "switch_rewrite",
         "loop-inv-motion",
         "loop-strength-reduction",
+        "loop-peel",
+        "rec-to-loop",
     ]
     .iter()
     .map(|opt| opt.to_string())

@@ -62,6 +62,8 @@ pub fn prologue() -> String {
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
         include_str!("optimizations/loop_unroll.egg"),
+        include_str!("optimizations/swap_if.egg"),
+        include_str!("optimizations/rec_to_loop.egg"),
         include_str!("optimizations/passthrough.egg"),
         include_str!("optimizations/loop_strength_reduction.egg"),
         include_str!("utility/debug-helper.egg"),
@@ -291,7 +293,8 @@ pub fn optimize(
 
         // if we are inlining, save the program
         // TODO we inline on the first pass, but this should be configurable from the schedule
-        let inline_program = if i == 0 { Some(res.clone()) } else { None };
+        // TODO inline
+        let inline_program = if i == 1000 { Some(res.clone()) } else { None };
 
         // TODO experiment with different batches of optimizing functions together
         // currently we use the whole program

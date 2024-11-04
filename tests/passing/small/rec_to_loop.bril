@@ -1,0 +1,21 @@
+# ARGS: 3501010
+@main(n : int) {
+	zero: int = const 0;
+	output: int = call @recPrint n;
+	print output;
+}
+
+@recPrint(n: int): int {
+	zero: int = const 0;
+	cond: bool = eq n zero;
+	br cond .end .rec;
+.rec:
+	print n;
+  one: int = const 1;
+  next: int = sub n one;
+	sum: int = call @recPrint next;
+.end:
+	ret sum;
+}
+
+

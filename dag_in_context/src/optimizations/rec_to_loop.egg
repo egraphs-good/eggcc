@@ -1,0 +1,63 @@
+;; this ruleset depends on swap_if
+(ruleset rec-to-loop)
+
+
+
+;; this rule finds a recursive functions
+;; with a base case and a tail-recursive call
+;; transforms them into a loop
+;; transforming functions that look like this:
+;; function name(inputs) {
+;;    let start = always_runs(inputs);
+;;    if (pred) {
+;;       ret name(rec_case(start));
+;;    } else {
+;;       ret base_case(start);
+;;    }
+;; }
+;; into:
+;; function name(inputs) {
+;;    do {
+;;      let start = always_runs(inputs);
+;;      if (pred) {
+;;         inputs = rec_case(start);
+;;      } else {
+;;         ret base_case(start);
+;;      }
+;;    }
+;; for example, printBinary sums the results of recursive calls
+(rule
+  (;(Function name in out body)
+   ;; two outputs
+   ;(= (tuple-length body) 2)
+   ;; body is an if statement
+   (= cond (If pred inputs then else))
+   ;(= (Get body 0) (Get cond i1))
+   ;(= (Get body 1) (Get cond i2))
+   (= (tuple-length cond) 2)
+   (HasType cond func-ty)
+   ;(HasType inputs inputs-ty)
+   ;(!= i1 i2)
+
+   ;; in the true branch, we return the results from a recursive call
+   (= (Get then 0) (Get (Call name call-inputs) 0))
+   (= (Get then 1) (Get (Call name call-inputs) 1))
+   )
+  (
+    (panic "good")
+    ;; new if statement is like the old one, but 
+    ;; doesn't do a recursive call
+    ;; else branch stays the same
+    (let new-if
+      (If pred inputs
+          call-inputs
+          else))
+    ;; output of function may be swapped, undo that here
+    (let new-loop
+      (DoWhile (Arg func-ty (InFunc name))
+        (Concat (Single pred) new-if)))
+    ;; get second two values
+    (let sub-loop
+      (SubTuple new-loop 1 2))
+  )
+  :ruleset rec-to-loop)

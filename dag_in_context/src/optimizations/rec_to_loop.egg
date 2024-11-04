@@ -31,14 +31,12 @@
   ((Function name in out body)
    (= body (If pred inputs (Call name call-inputs) else))
    (HasType body func-ty))
-  (
-    ;; new if statement doesn't do recursive call
-    (let new-if
-      (If pred inputs call-inputs else))
-    ;; new loop continues on the same predicate
-    (let new-loop
-      (DoWhile (Arg func-ty (InFunc name))
-        (Concat (Single pred) new-if)))
-    (union body new-loop)
-  )
+  (;; new if statement doesn't do recursive call
+   (let new-if
+     (If pred inputs call-inputs else))
+   ;; new loop continues on the same predicate
+   (let new-loop
+     (DoWhile (Arg func-ty (InFunc name))
+       (Concat (Single pred) new-if)))
+   (union body new-loop))
   :ruleset rec-to-loop)

@@ -19,7 +19,11 @@ expression: visualization.result
   v13_: bool = eq v7_ v8_;
   v14_: int = id v6_;
   v15_: int = id v7_;
+<<<<<<< HEAD
   v16_: int = id v7_;
+=======
+  v16_: int = id v8_;
+>>>>>>> d577f31f (fix bug in loop strength reduction, add helper)
   v17_: int = id v9_;
   v18_: int = id v10_;
   v19_: int = id v11_;

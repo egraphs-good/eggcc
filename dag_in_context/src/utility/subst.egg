@@ -27,6 +27,16 @@
       ((HasArgType lhs ty))
       :ruleset subst)
 
+;; Substitution typechecks only when the type of the
+;; argument matches the type of the substitution.
+(rule ((Subst assum to in)
+       (HasArgType in ty)
+       (HasType to ty2)
+       (!= ty ty2))
+      ((panic "Substitution type mismatch! Argument type must match type of substituted term"))
+       :ruleset subst)
+
+
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
 (rule ((= lhs (Subst assum to (Arg ty oldctx)))

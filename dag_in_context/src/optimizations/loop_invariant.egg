@@ -68,12 +68,17 @@
        (= len (tuple-length in)))
       ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
        (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
+
        ;; create an virtual assume node, union it with actuall InLoop later
        (let assum (InExtendedLoop in pred_out new_input))
        (let new_out_branch (Get (Arg new_input_type assum) len))
+
        ;; this two subst only change arg to arg with new type
-       (let substed_pred_out (Subst assum (Arg new_input_type assum) pred_out))
-       (let inv_in_new_loop (Subst assum (Arg new_input_type assum) inv))
+       (let substed_pred_out
+         (Subst assum
+               (SubTuple (Arg new_input_type assum) 0 len) pred_out))
+       (let inv_in_new_loop
+            (Subst assum (SubTuple (Arg new_input_type assum) 0 len) inv))
        (let new_pred_out (Concat substed_pred_out (Single new_out_branch)))
        
        (let new_loop (DoWhile new_input new_pred_out))

@@ -119,7 +119,11 @@ expression: visualization.result
   br v57_ .b58_ .b59_;
 .b58_:
   v60_: int = call @fac c2_;
+<<<<<<< HEAD
   v61_: int = id c4_;
+=======
+  v61_: int = id v0;
+>>>>>>> 3e24659a (fix bug in loop strength reduction, add helper)
   v39_: int = id v61_;
   v42_: int = id c4_;
   jmp .b43_;
@@ -281,7 +285,11 @@ expression: visualization.result
   br v137_ .b138_ .b139_;
 .b138_:
   v140_: int = call @fac c2_;
+<<<<<<< HEAD
   v141_: int = id c4_;
+=======
+  v141_: int = id v67_;
+>>>>>>> 3e24659a (fix bug in loop strength reduction, add helper)
   v133_: int = id v141_;
   v136_: int = id c4_;
   v71_: int = id v136_;
@@ -374,8 +382,19 @@ expression: visualization.result
   v14_: int = id c13_;
   br v12_ .b15_ .b16_;
 .b15_:
+<<<<<<< HEAD
   v17_: int = id c4_;
   v5_: int = id v17_;
+=======
+  v17_: bool = eq c1_ c2_;
+  br v17_ .b18_ .b19_;
+.b18_:
+  v20_: int = call @fac c2_;
+  v21_: int = id c1_;
+  v13_: int = id v21_;
+  v16_: int = id c1_;
+  v5_: int = id v16_;
+>>>>>>> 3e24659a (fix bug in loop strength reduction, add helper)
   print v5_;
   ret;
   jmp .b8_;

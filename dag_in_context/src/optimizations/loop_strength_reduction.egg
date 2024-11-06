@@ -70,37 +70,38 @@
 
         ; We need to create a new type, with one more input
         (let new-arg-ty (TupleT (TLConcat ty-list (TCons (IntT) (TNil)))))
+        (let replace-arg (SubTuple (Arg new-arg-ty (TmpCtx)) 0 n))
 
         ; Value of d in loop. Add context to addend
         (let d-out (Bop (Add) (Get (Arg new-arg-ty (TmpCtx)) n)
-                              (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) addend)))
+                   (Subst (TmpCtx) replace-arg addend)))
 
         ; build the old body, making sure to set the correct arg type and context
         (let new-body
           (Concat
-            (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) pred-and-outputs)
+            (Subst (TmpCtx) replace-arg pred-and-outputs)
             (Single d-out)))
 
         (let new-loop (DoWhile new-inputs new-body))
+
+        (let new-c (Subst (TmpCtx) replace-arg c-out))
 
         ; Now that we have the new loop, union the temporary context with the actual ctx
         (union (TmpCtx) (InLoop new-inputs new-body))
 
         ; Substitute d for the *i expression
         (let new-mul
-            (Bop
-                (Mul)
-                (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) c-out)
-                (Get (Arg new-arg-ty (TmpCtx)) i)))
+            (Bop (Mul) new-c (Get replace-arg i)))
         (union (Get (Arg new-arg-ty (TmpCtx)) n) new-mul)
 
         ; Subsume the multiplication in the new loop to prevent
         ; from firing loop strength reduction again on the new loop
+        ; subsumption needs something to subsume, add it here
+        (let before
+          (Bop (Mul) new-c (Get replace-arg i)))
+        ; now subsume it
         (subsume
-            (Bop
-                (Mul)
-                (Subst (TmpCtx) (Arg new-arg-ty (TmpCtx)) c-out)
-                (Get (Arg new-arg-ty (TmpCtx)) i)))
+          (Bop (Mul) new-c (Get replace-arg i)))
 
         ; Project all but last
         (union old-loop (SubTuple new-loop 0 n))

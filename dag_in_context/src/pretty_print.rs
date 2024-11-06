@@ -670,7 +670,7 @@ impl UnaryOp {
 }
 
 #[test]
-fn test_pretty_print() -> crate::Result {
+fn test_pretty_print_snapshot() -> crate::Result {
     use crate::ast::*;
     use crate::egglog_test;
     use crate::Value;

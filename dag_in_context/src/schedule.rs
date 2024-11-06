@@ -44,9 +44,9 @@ fn optimizations() -> Vec<String> {
     [
         "loop-unroll",
         "switch_rewrite",
-        //"loop-inv-motion",
+        "loop-inv-motion",
         "loop-strength-reduction",
-        //"loop-peel",
+        "loop-peel",
     ]
     .iter()
     .map(|opt| opt.to_string())

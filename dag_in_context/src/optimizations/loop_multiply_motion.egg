@@ -20,7 +20,7 @@
        (= argi (Get (Arg ty ctx) i))
        (= inputs-len (tuple-length (Arg ty ctx)))
        ;; variable is incremented by constant each iteration
-       (= (Get pred_out i)
+       (= (Get pred_out (+ i 1))
           (Bop (Add) argi (Const (Int c) ty ctx)))
        ;; check that it is less than n
        (= (Get pred_out 0)

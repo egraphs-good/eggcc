@@ -909,7 +909,7 @@ impl CostModel for DefaultCostModel {
             // Algebra
             "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" | "Shl" | "Shr" => 10.,
             "FAdd" | "FSub" | "Fmax" | "Fmin" => 50.,
-            "Mul" => 30.,
+            "Mul" => 3000000.,
             "FMul" => 150.,
             "Div" => 50.,
             "FDiv" => 250.,

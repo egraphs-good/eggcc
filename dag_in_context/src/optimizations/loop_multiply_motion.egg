@@ -1,0 +1,53 @@
+(ruleset loop-multiply-motion)
+
+
+;;Example:
+;;
+;;original:
+;; int x = 0;
+;; while (x < 3) {
+;;   x += 1;
+;; }
+;; return x * 5;
+;; optimized:
+;; 
+;; int x = 0;
+;; while (x < 15) {
+;;     x += 5;
+;; }
+;; return x;
+(rule ((= loop (DoWhile in pred_out))
+       (= argi (Get (Arg ty ctx) i))
+       (= inputs-len (tuple-length (Arg ty ctx)))
+       ;; variable is incremented by constant each iteration
+       (= (Get pred_out i)
+          (Bop (Add) argi (Const (Int c) ty ctx)))
+       ;; check that it is less than n
+       (= (Get pred_out 0)
+          (Bop (LessThan) argi (Const (Int n) ty ctx)))
+       ;; overapproximate check that we won't overflow
+       (< (+ n c k) 10000)
+       
+       ;; after the loop, we multiply by some constant
+       (= res (Bop (Mul) (Get loop i) (Const (Int k) ty_outer ctx_outer))))
+      (;; new type
+       (let new-arg-ty
+         (TupleT (TLConcat ty (TCons (Base (IntT)) (TNil)))))
+       (let new-inputs (Concat in (Single (Get in i))))
+       (let new-pred-out
+         (Subst (TmpCtx) (SubTuple (Arg ty ctx) 0 inputs-len) pred_out))
+       (let new-body
+         (Concat new-pred-out
+                          (Single (Add argi (Const (* c k) new-arg-ty (TmpCtx))))))
+       ;; add another value to the loop like i but multiplied
+       (let new-loop
+         (DoWhile new-inputs
+                  new-body))
+       ;; union context
+       (union (TmpCtx) (InLoop new-inputs new-body))
+       ;; old loop equal to new loop
+       (union (SubTuple loop 0 inputs-len) new-loop)
+       ;; multiplication is equal to the new value
+       (union res (Get new-loop inputs-len)))
+    :ruleset loop-multiply-motion)
+       

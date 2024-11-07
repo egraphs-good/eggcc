@@ -22,6 +22,17 @@ pub(crate) struct Region {
     edges: Vec<Edge>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Color {
+    Red,
+    Green,
+    Blue,
+    Black,
+    Orange,
+    Pink,
+    Yellow,
+}
+
 #[derive(Debug)]
 enum Node {
     Unit(String, usize, usize),
@@ -33,7 +44,7 @@ enum Node {
 // Each edge goes from an output port to an input port.
 // `None` refers to the region, `Some(i)` refers to the node at index `i`.
 // The second number is the index of the port that is being referred to.
-type Edge = ((Option<Id>, usize), (Option<Id>, usize));
+type Edge = ((Option<Id>, usize), (Option<Id>, usize), Color);
 
 struct Size {
     width: f32,
@@ -329,7 +340,7 @@ impl Region {
         let mut to_order: BTreeSet<Id> = self.nodes.keys().copied().collect();
         while !to_order.is_empty() {
             let mut next_layer = to_order.clone();
-            for ((a, _), (b, _)) in &edges {
+            for ((a, _), (b, _), _) in &edges {
                 if let (Some(a), Some(b)) = (a, b) {
                     if to_order.contains(b) {
                         next_layer.remove(a);
@@ -384,7 +395,7 @@ impl Region {
         assert_eq!(w, size.width);
         assert_eq!(h, size.height);
 
-        let edges = Xml::group(edges.iter().map(|((a, i), (b, j))| {
+        let edges = Xml::group(edges.iter().map(|((a, i), (b, j), edge_color)| {
             let (a_x, a_y) = match a {
                 None => (blend(size.width, self.srcs, *i), 0.0),
                 Some(a) => (
@@ -449,7 +460,7 @@ impl Region {
                 "path",
                 [
                     ("fill", "transparent"),
-                    ("stroke", "black"),
+                    ("stroke", &format!("{:?}", edge_color)),
                     ("stroke-linecap", "round"),
                     ("stroke-width", &format!("{}", STROKE_WIDTH)),
                     ("d", &path_string),
@@ -573,6 +584,7 @@ fn mk_node_and_input_edges(index: Id, nodes: &[RvsdgBody]) -> (Node, Vec<Edge>) 
                     Operand::Project(i, id) => (Some(*id), *i),
                 },
                 (Some(index), j),
+                Color::Blue,
             )
         })
         .collect();
@@ -627,6 +639,7 @@ fn mk_region(srcs: usize, dsts: &[Operand], nodes: &[RvsdgBody]) -> Region {
                 Operand::Project(i, id) => (Some(*id), *i),
             },
             (None, j),
+            Color::Red,
         )
     }));
 

@@ -165,7 +165,7 @@ pub fn print_function_inlining_pairs(
                 "
 (union {call_with_intermed} {inlined_with_intermed})
 (InlinedCall \"{callee}\" {call_args_with_intermed})
-(subsume (Call \"{callee}\" {call_args_with_intermed}))
+;(subsume (Call \"{callee}\" {call_args_with_intermed}))
 ",
             )
         })

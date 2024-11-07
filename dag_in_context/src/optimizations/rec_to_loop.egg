@@ -18,25 +18,30 @@
 ;; }
 ;; into:
 ;; function name(inputs) {
-;;    do {
-;;      let start = always_runs(inputs);
-;;      if (pred) {
-;;         inputs = rec_case(start);
-;;      } else {
-;;         ret base_case(start);
-;;      }
+;;    let start = always_runs(inputs);
+;;    if (start[0]) {
+;;      do {
+;;         inputs = rec_case(start); // first n tuple items
+;;         start = always_runs(inputs);
+;;      } while (start[0]);
 ;;    }
+;;    ret base_case(start);
 ;; for example, printBinary sums the results of recursive calls
 (rule
   ((Function name in out body)
-   (= body (If pred inputs (Call name call-inputs) else))
+   (= body (If pred inputs (Call name call-inputs) base-case))
+   (HasType inputs inputs-ty)
    (HasType body func-ty))
-  (;; new if statement doesn't do recursive call
-   (let new-if
-     (If pred inputs call-inputs else))
-   ;; new loop continues on the same predicate
-   (let new-loop
-     (DoWhile (Arg func-ty (InFunc name))
-       (Concat (Single pred) new-if)))
-   (union body new-loop))
+  ((let loop
+     (DoWhile (Arg inputs-ty (InIf true pred inputs))
+       (Concat
+         (Single (Subst (InIf true pred inputs) call-inputs pred))
+         (Subst (InIf true pred inputs) call-inputs inputs))))
+    
+  ;; initial start value
+   (let outer-if
+     (If pred inputs
+         loop
+         (Arg inputs-ty (InIf false pred inputs))))
+   (union body (Subst (InFunc name) outer-if base-case)))
   :ruleset rec-to-loop)

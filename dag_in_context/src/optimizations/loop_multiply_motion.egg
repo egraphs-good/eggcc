@@ -26,19 +26,22 @@
        (= (Get pred_out 0)
           (Bop (LessThan) argi (Const (Int n) ty ctx)))
        ;; overapproximate check that we won't overflow
-       (< (+ n c k) 10000)
+       (< (+ n (+ c k)) 10000)
        
        ;; after the loop, we multiply by some constant
-       (= res (Bop (Mul) (Get loop i) (Const (Int k) ty_outer ctx_outer))))
-      (;; new type
+       (= res (Bop (Mul) (Get loop i) (Const (Int k) ty_outer ctx_outer)))
+       (= ty (TupleT ty_list)))
+      ((panic "good")
+        ;; new type
        (let new-arg-ty
-         (TupleT (TLConcat ty (TCons (Base (IntT)) (TNil)))))
+         (TupleT (TLConcat ty_list (TCons (IntT) (TNil)))))
        (let new-inputs (Concat in (Single (Get in i))))
        (let new-pred-out
          (Subst (TmpCtx) (SubTuple (Arg ty ctx) 0 inputs-len) pred_out))
        (let new-body
          (Concat new-pred-out
-                          (Single (Add argi (Const (* c k) new-arg-ty (TmpCtx))))))
+                 (Single (Bop (Add) argi
+                              (Const (Int (* c k)) new-arg-ty (TmpCtx))))))
        ;; add another value to the loop like i but multiplied
        (let new-loop
          (DoWhile new-inputs

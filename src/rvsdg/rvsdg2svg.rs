@@ -1,9 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::iter::once;
 
 use bril_rs::ConstOps;
-use hashbrown::HashMap;
 
 use super::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 
@@ -24,7 +23,7 @@ pub(crate) struct Region {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Color {
+pub(crate) enum Color {
     Red,
     Green,
     Blue,
@@ -32,6 +31,18 @@ enum Color {
     Orange,
     Pink,
     Yellow,
+}
+
+fn fresh_color(i: usize) -> Color {
+    const NUM_COLORS: usize = 7;
+    match i % NUM_COLORS {
+        0 => Color::Green,
+        1 => Color::Blue,
+        2 => Color::Black,
+        3 => Color::Orange,
+        4 => Color::Pink,
+        _ => Color::Yellow,
+    }
 }
 
 #[derive(Debug)]
@@ -48,17 +59,22 @@ enum Node {
 type Edge = ((Option<Id>, usize), (Option<Id>, usize));
 type ColoredEdge = ((Option<Id>, usize), (Option<Id>, usize), Color);
 
-fn color_edges(edges: Vec<Edge>, inputs: &[Color]) -> Vec<ColoredEdge> {
-    let mut colors = HashMap::new();
+fn color_edges(
+    edges: Vec<Edge>,
+    inputs: &[Color],
+    edge_colors: &mut HashMap<Edge, Color>,
+) -> Vec<ColoredEdge> {
     edges
         .iter()
-        .map(|edge| {
+        .enumerate()
+        .map(|(idx, edge)| {
             let ((x, i), (y, j)) = edge;
-            let color = match x {
-                None => inputs[*i],
-                Some(_) => Color::Green,
+            let color = match (x, edge_colors.get(edge)) {
+                (None, _) => inputs[*i],
+                (_, None) => fresh_color(idx),
+                (_, Some(c)) => *c,
             };
-            colors.insert(edge, color);
+            edge_colors.insert(*edge, color);
             ((*x, *i), (*y, *j), color)
         })
         .collect()
@@ -162,7 +178,7 @@ fn port(x: f32, y: f32, color: &str) -> Xml {
 }
 
 impl Node {
-    fn to_xml(&self, inputs: &[Color]) -> (Size, Xml) {
+    fn to_xml(&self, inputs: &[Color], edge_colors: &mut HashMap<Edge, Color>) -> (Size, Xml) {
         match self {
             Node::Unit(text, _, _) => {
                 let size = Size {
@@ -207,7 +223,10 @@ impl Node {
             }
             Node::Match(name, branches) => {
                 let inputs = &inputs[1..]; // first input is the predicate, which we should ignore
-                let children: Vec<_> = branches.iter().map(|t| t.1.to_xml(false, inputs)).collect();
+                let children: Vec<_> = branches
+                    .iter()
+                    .map(|t| t.1.to_xml(false, inputs, edge_colors))
+                    .collect();
                 let size = Size {
                     width: REGION_SPACING * (children.len() + 1) as f32
                         + children.iter().map(|t| t.0.width).sum::<f32>(),
@@ -295,7 +314,7 @@ impl Node {
                 (size, group)
             }
             Node::Loop(region) => {
-                let (s, mut xml) = region.to_xml(true, inputs);
+                let (s, mut xml) = region.to_xml(true, inputs, edge_colors);
                 let size = Size {
                     width: s.width + REGION_SPACING * 2.0,
                     height: s.height + FONT_SIZE + REGION_SPACING * 2.0,
@@ -349,30 +368,49 @@ impl Node {
 }
 
 impl Region {
-    fn to_xml(&self, in_loop: bool, inputs: &[Color]) -> (Size, Xml) {
-        let mut edges = self.edges.clone();
+    fn to_xml(
+        &self,
+        in_loop: bool,
+        inputs: &[Color],
+        edge_colors: &mut HashMap<Edge, Color>,
+    ) -> (Size, Xml) {
+        let mut edges: Vec<Edge> = self.edges.clone();
         edges.sort();
 
         let mut children: BTreeMap<_, _> = self
             .nodes
             .iter()
             .map(|t| {
-                let mut i2: Vec<(&usize, Color)> = edges
+                // Edges that are inputs to this node
+                let mut input_edges: Vec<&Edge> = edges
                     .iter()
                     .filter(|((_, _), (x, _))| match x {
                         Some(i) => i == t.0,
                         None => false,
                     })
-                    .map(|((x, i), (_, j))| match x {
-                        Some(_) => (j, Color::Green),
-                        None => (j, inputs[*i]),
+                    .collect();
+                input_edges.sort_by_key(|(_, (_, x))| x);
+
+                let inputs: Vec<Color> = input_edges
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, edge)| {
+                        let ((x, i), (_, _)) = edge;
+                        let color = match (x, edge_colors.get(*edge)) {
+                            (None, None) => inputs[*i],
+                            (None, Some(c)) => {
+                                assert!(inputs[*i] == *c);
+                                *c
+                            }
+                            (Some(_), None) => fresh_color(idx),
+                            (Some(_), Some(c)) => *c,
+                        };
+                        edge_colors.insert(**edge, color);
+                        color
                     })
                     .collect();
-                i2.sort_by_key(|x| x.0);
-                let inputs: Vec<Color> = i2.iter().map(|(_, c)| *c).collect();
-                println!("inputs for node: {:?}: {:?}", t.1, inputs);
 
-                (t.0, t.1.to_xml(&inputs))
+                (t.0, t.1.to_xml(&inputs, edge_colors))
             })
             .collect();
 
@@ -435,7 +473,7 @@ impl Region {
         assert_eq!(w, size.width);
         assert_eq!(h, size.height);
 
-        let colored_edges = color_edges(edges, inputs);
+        let colored_edges = color_edges(edges, inputs, edge_colors);
 
         let colored_edges = Xml::group(colored_edges.iter().map(|((a, i), (b, j), edge_color)| {
             let (a_x, a_y) = match a {
@@ -544,8 +582,8 @@ impl Region {
 }
 
 impl Region {
-    fn to_svg(&self, inputs: &[Color]) -> String {
-        let (size, xml) = self.to_xml(false, inputs);
+    fn to_svg(&self, inputs: &[Color], edge_colors: &mut HashMap<Edge, Color>) -> String {
+        let (size, xml) = self.to_xml(false, inputs, edge_colors);
         let svg = Xml::new(
             "svg",
             [
@@ -701,13 +739,17 @@ impl RvsdgProgram {
         let mut width: f32 = 0.0;
         let spacing = 50.0;
 
+        let mut edge_colors = HashMap::new();
+
         for (i, function) in self.functions.iter().enumerate() {
             if i > 0 {
                 height += spacing;
             }
 
             let colors: Vec<Color> = function.args.iter().map(|_| Color::Black).collect();
-            let (size, mut xml) = function.to_region().to_xml(false, &colors);
+            let (size, mut xml) = function
+                .to_region()
+                .to_xml(false, &colors, &mut edge_colors);
             // assert that it doesn't have a transform yet
             assert!(!xml.attributes.contains_key("transform"));
             xml.attributes
@@ -735,9 +777,9 @@ impl RvsdgProgram {
 }
 
 impl RvsdgFunction {
-    pub(crate) fn to_svg(&self) -> String {
-        let colors: Vec<Color> = self.args.iter().map(|_| Color::Red).collect();
-        self.to_region().to_svg(&colors)
+    pub(crate) fn to_svg(&self, edge_colors: &mut HashMap<Edge, Color>) -> String {
+        let colors: Vec<Color> = self.args.iter().map(|_| Color::Black).collect();
+        self.to_region().to_svg(&colors, edge_colors)
     }
 
     pub(crate) fn to_region(&self) -> Region {
@@ -824,7 +866,7 @@ mod tests {
                 (RvsdgType::PrintState, Operand::Arg(2)),
             ],
         }
-        .to_svg();
+        .to_svg(&mut HashMap::new());
 
         insta::assert_snapshot!(svg_new);
     }

@@ -894,7 +894,7 @@ impl CostModel for DefaultCostModel {
     fn get_op_cost(&self, op: &str) -> Cost {
         match op {
             // Leaves
-            "Const" => 1.,
+            "Const" => 0.,
             "Arg" => 0.,
             _ if op.parse::<i64>().is_ok() || op.parse::<f64>().is_ok() || op.starts_with('"') => {
                 0.
@@ -909,7 +909,7 @@ impl CostModel for DefaultCostModel {
             // Algebra
             "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" | "Shl" | "Shr" => 10.,
             "FAdd" | "FSub" | "Fmax" | "Fmin" => 50.,
-            "Mul" => 300000000.,
+            "Mul" => 100.,
             "FMul" => 150.,
             "Div" => 50.,
             "FDiv" => 250.,

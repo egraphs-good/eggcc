@@ -144,16 +144,13 @@
                  new-body))
       ;; union context
       (union (TmpCtx) (InLoop new-inputs new-body))
-      ;; old loop up to y is equal to new loop
-      (union (SubTuple loop 0 y) (SubTuple new-loop 0 y))
-      ;; old loop from after y to end is equal to new loop
-      (union (SubTuple loop (+ y 1) (- inputs-len (+ y 1)))
-             (SubTuple new-loop y (- inputs-len (+ y 1))))
-      ;; y is equal to x divided by factor
-      ;; new x location is x-isgreater
-      (union (Get loop y)
-             (Bop (Div) (Get new-loop (- x isgreater))
+      (union loop
+             (Concat
+               (SubTuple new-loop 0 y)
+               (Concat
+                 (Single (Bop (Div) (Get new-loop (- x isgreater))
                   (Const (Int factor) ty-outer ctx-outer)))
+                 (SubTuple new-loop y (- inputs-len (+ y 1))))))
       
       (delete (TmpCtx)))
     :ruleset loop-multiply-motion)

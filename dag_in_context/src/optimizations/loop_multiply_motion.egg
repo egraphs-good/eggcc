@@ -54,3 +54,8 @@
        (union res (Get new-loop inputs-len)))
     :ruleset loop-multiply-motion)
        
+
+
+;; find loops with multiple iteration variables
+;; and try to get rid of one of them by changing the predicate
+(rule ((= loop

@@ -24,23 +24,25 @@
           (Bop (Add) argi (Const (Int c) ty ctx)))
        ;; check that it is less than n
        (= (Get pred_out 0)
-          (Bop (LessThan) argi (Const (Int n) ty ctx)))
+          (Bop (LessThan) (Get pred_out (+ i 1))
+                          (Const (Int n) ty ctx)))
        ;; overapproximate check that we won't overflow
        (< (+ n (+ c k)) 10000)
        
        ;; after the loop, we multiply by some constant
        (= res (Bop (Mul) (Get loop i) (Const (Int k) ty_outer ctx_outer)))
        (= ty (TupleT ty_list)))
-      ((panic "good")
-        ;; new type
+      ( ;; new type
        (let new-arg-ty
          (TupleT (TLConcat ty_list (TCons (IntT) (TNil)))))
+       ;; new inputs with i duplicated
        (let new-inputs (Concat in (Single (Get in i))))
        (let new-pred-out
-         (Subst (TmpCtx) (SubTuple (Arg ty ctx) 0 inputs-len) pred_out))
+         (Subst (TmpCtx)
+                (SubTuple (Arg new-arg-ty (TmpCtx)) 0 inputs-len) pred_out))
        (let new-body
          (Concat new-pred-out
-                 (Single (Bop (Add) argi
+                 (Single (Bop (Add) (Get new-pred-out (+ i 1))
                               (Const (Int (* c k)) new-arg-ty (TmpCtx))))))
        ;; add another value to the loop like i but multiplied
        (let new-loop
@@ -49,13 +51,80 @@
        ;; union context
        (union (TmpCtx) (InLoop new-inputs new-body))
        ;; old loop equal to new loop
-       (union (SubTuple loop 0 inputs-len) new-loop)
+       (union (SubTuple new-loop 0 inputs-len) loop)
        ;; multiplication is equal to the new value
-       (union res (Get new-loop inputs-len)))
+       (union res (Get new-loop inputs-len))
+       (delete (TmpCtx)))
     :ruleset loop-multiply-motion)
        
 
+;; try to consolidate loop iter variables
+;; by finding the one that is used by the predicate and changing it to use the other
+(rule ((= loop (DoWhile inputs pred_out))
+       (HasArgType inputs ty-outer)
+       (ContextOf inputs ctx-outer)
 
-;; find loops with multiple iteration variables
-;; and try to get rid of one of them by changing the predicate
-(rule ((= loop
+       (= argx (Get (Arg ty ctx) x))
+       (= argy (Get (Arg ty ctx) y))
+       (!= x y)
+       (= inputs-len (tuple-length inputs))
+       ;; iter variable x
+       (= (Get pred_out (+ x 1))
+          (Bop (Add) argi (Const (Int xconst) ty ctx)))
+       ;; iter variable y
+       (= (Get pred_out (+ y 1))
+          (Bop (Add) argj (Const (Int yconst) ty ctx)))
+       ;; loop condition is over y
+       (= (Get pred_out 0)
+          (Bop (LessThan) (Get pred_out (+ y 1))
+                          (Const (Int n) ty ctx)))
+       ;; x starts at a constant zero
+       (= (Get inputs x) (Const (Int 0) ty ctx))
+       ;; y starts at a constant
+       (= (Get inputs y) (Const (Int 0) ty ctx))
+       ;; x comes after y in the tuple (special cased)
+       (> x y)
+       ;; x increment is divisible by y increment
+       (= factor (/ xconst yconst))
+       (= (* factor yconst) xconst)
+
+       ;; we won't run into overflow issues
+       (< (+ factor n) 10000)
+       (= ty (TupleT ty_list)))
+     ((panic "good")
+      ;; new inputs with y removed
+      (let new-inputs (TupleRemoveAt inputs y))
+      ;; new type
+      (let new-arg-ty (TupleT (TypeListRemoveAt ty_list y)))
+      ;; new body with y removed
+      (let new-body
+        (DropAtInternal new-arg-ty (TmpCtx)
+                        y
+                        (SubTuple pred_out 1 inputs-len)))
+      ;; x is now at x-1 index
+      (let new-pred-and-body
+        (Concat
+          (Single (Bop (LessThan) (Get new-body (- x 1))
+                       (Const (Int (* factor n)) new-arg-ty (TmpCtx))))
+          new-body))
+      ;; new loop
+      (let new-loop
+        (DoWhile new-inputs
+                 new-body))
+      ;; union context
+      (union (TmpCtx) (InLoop new-inputs new-body))
+      ;; old loop up to y is equal to new loop
+      (union (SubTuple loop 0 y) (SubTuple new-loop 0 y))
+      ;; old loop from after y to end is equal to new loop
+      (union (SubTuple loop (+ y 1) (- inputs-len (+ y 1)))
+             (SubTuple new-loop y (- inputs-len y)))
+      ;; y is equal to x divided by factor
+      ;; new x location is x-1
+      (union (Get loop y)
+             (Bop (Div) (Get new-loop (- x 1))
+                  (Const (Int factor) ty-outer ctx-outer)))
+      
+      (delete (TmpCtx)))
+    :ruleset loop-multiply-motion)
+       
+          

@@ -21,22 +21,73 @@
 ;;    let start = always_runs(inputs);
 ;;    if (start[0]) {
 ;;      do {
-;;         inputs = rec_case(start); // first n tuple items
-;;         start = always_runs(inputs);
+;;         start = always_runs(rec_case(start));
 ;;      } while (start[0]);
 ;;    }
 ;;    ret base_case(start);
+;; }
 ;; for example, printBinary sums the results of recursive calls
 (rule
   ((Function name in out body)
-   (= body (If pred inputs (Call name call-inputs) base-case))
-   (HasType inputs inputs-ty)
+   (= body (If pred always-runs (Call name rec_case) base-case))
+   (HasType always-runs inputs-ty)
    (HasType body func-ty))
   ((let loop
-     (DoWhile (Arg inputs-ty (InIf true pred inputs))
+     (DoWhile (Arg inputs-ty (InIf true pred always-runs))
        (Concat
-         (Single (Subst (InIf true pred inputs) call-inputs pred))
-         (Subst (InIf true pred inputs) call-inputs inputs))))
+         (Single (Subst (InIf true pred always-runs) rec_case pred))
+         (Subst (InIf true pred always-runs) rec_case always-runs))))
+    
+  ;; initial start value
+   (let outer-if
+     (If pred always-runs
+         loop
+         (Arg inputs-ty (InIf false pred always-runs))))
+   (union body (Subst (InFunc name) outer-if base-case)))
+  :ruleset rec-to-loop)
+
+
+
+;; same as above rule, but with an accumulator
+;; function name(inputs) {
+;;    let start = always_runs(inputs);
+;;    if (pred) {
+;;       ret name(rec_case(start)) + f(start);
+;;    } else {
+;;       ret base_case(start);
+;;    }
+;; }
+;; into:
+;; function name(inputs) {
+;;    let start = always_runs(inputs);
+;;    let acc = 0;
+;;    if (start[0]) {
+;;      do {
+;;         start = always_runs(rec_case(start));
+;;         acc = acc + f(start);
+;;      } while (start[0]);
+;;    }
+;;    ret base_case(start) + acc;
+;; }
+(rule
+  ((Function name in out body)
+   (= body (If pred always-runs then-case base-case))
+   (= call (Call name rec-case))
+   (= then-case
+      (Concat (BinOp (Add) (Get call 0) op-arg)
+              (Get call 1)))
+   (HasType inputs inputs-ty)
+   (= inputs-ty (TupleT inputs-ty-list))
+   (HasType body func-ty))
+  ((let loop-ty
+     (TupleT (TLConcat inputs-ty-list (TCons (IntT) (TNil)))))
+   (let new-rec-case
+   (let loop
+     (DoWhile (Concat (Arg inputs-ty (InIf true pred inputs)) (Single (Const 0 (IntT))))
+       (Concat
+         (Single (Subst (InIf true pred inputs) rec_case pred))
+         (Subst (InIf true pred inputs) rec_case inputs))
+    ))
     
   ;; initial start value
    (let outer-if

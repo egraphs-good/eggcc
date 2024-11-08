@@ -147,7 +147,7 @@
       (union (SubTuple loop 0 y) (SubTuple new-loop 0 y))
       ;; old loop from after y to end is equal to new loop
       (union (SubTuple loop (+ y 1) (- inputs-len (+ y 1)))
-             (SubTuple new-loop y (- inputs-len y)))
+             (SubTuple new-loop y (- inputs-len (+ y 1))))
       ;; y is equal to x divided by factor
       ;; new x location is x-isgreater
       (union (Get loop y)

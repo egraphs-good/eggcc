@@ -136,18 +136,11 @@
       (let new-arg-ty (TupleT (TypeListRemoveAt ty_list y)))
       ;; new body with y removed
       (let new-body
-        (DropAt (TmpCtx) y
-                (SubTuple pred_out 1 inputs-len)))
-      ;; x is now at x-isgreater index
-      (let new-pred-and-body
-        (Concat
-          (Single (Bop (LessThan) (Get new-body (- x isgreater))
-                       (Const (Int (* factor n)) new-arg-ty (TmpCtx))))
-          new-body))
+        (DropAtInternal new-arg-ty (TmpCtx) (+ y 1) pred_out))
       ;; new loop
       (let new-loop
         (DoWhile new-inputs
-                 new-pred-and-body))
+                 new-body))
       ;; union context
       (union (TmpCtx) (InLoop new-inputs new-body))
       ;; old loop up to y is equal to new loop

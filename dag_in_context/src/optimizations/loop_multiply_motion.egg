@@ -70,18 +70,18 @@
        (= inputs-len (tuple-length inputs))
        ;; iter variable x
        (= (Get pred_out (+ x 1))
-          (Bop (Add) argi (Const (Int xconst) ty ctx)))
+          (Bop (Add) argx (Const (Int xconst) ty ctx)))
        ;; iter variable y
        (= (Get pred_out (+ y 1))
-          (Bop (Add) argj (Const (Int yconst) ty ctx)))
+          (Bop (Add) argy (Const (Int yconst) ty ctx)))
        ;; loop condition is over y
        (= (Get pred_out 0)
           (Bop (LessThan) (Get pred_out (+ y 1))
                           (Const (Int n) ty ctx)))
        ;; x starts at a constant zero
-       (= (Get inputs x) (Const (Int 0) ty ctx))
+       (= (Get inputs x) (Const (Int 0) ty-outer ctx-outer))
        ;; y starts at a constant
-       (= (Get inputs y) (Const (Int 0) ty ctx))
+       (= (Get inputs y) (Const (Int 0) ty-outer ctx-outer))
        ;; x comes after y in the tuple (special cased)
        (> x y)
        ;; x increment is divisible by y increment

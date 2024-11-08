@@ -87,7 +87,8 @@
       ((IfGreaterThanThenOne x y 0))
       :ruleset always-run)
 
-;; try to consolidate loop iter variables
+;; try to consolidate loop iter variables by finding
+;; equivalence between predicates
 ;; by finding the one that is used by the predicate and changing it to use the other
 (rule ((= loop (DoWhile inputs pred_out))
        (HasArgType inputs ty-outer)
@@ -138,7 +139,7 @@
       ;; new loop
       (let new-loop
         (DoWhile new-inputs
-                 new-body))
+                 new-pred-and-body))
       ;; union context
       (union (TmpCtx) (InLoop new-inputs new-body))
       ;; old loop up to y is equal to new loop

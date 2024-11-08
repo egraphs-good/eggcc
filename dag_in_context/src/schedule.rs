@@ -120,7 +120,7 @@ pub fn parallel_schedule() -> Vec<String> {
       passthrough
       state-edge-passthrough)
 
-    (repeat 3
+    (repeat 2
         {helpers}
         all-optimizations
     )

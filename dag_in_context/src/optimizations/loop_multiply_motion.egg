@@ -40,9 +40,10 @@
        (let new-pred-out
          (Subst (TmpCtx)
                 (SubTuple (Arg new-arg-ty (TmpCtx)) 0 inputs-len) pred_out))
+       (let new-x (Get (Arg new-arg-ty (TmpCtx)) inputs-len))
        (let new-body
          (Concat new-pred-out
-                 (Single (Bop (Add) (Get new-pred-out (+ i 1))
+                 (Single (Bop (Add) new-x
                               (Const (Int (* c k)) new-arg-ty (TmpCtx))))))
        ;; add another value to the loop like i but multiplied
        (let new-loop

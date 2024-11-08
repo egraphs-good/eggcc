@@ -136,7 +136,7 @@
       (let new-arg-ty (TupleT (TypeListRemoveAt ty_list y)))
       ;; new body with y removed
       (let new-body
-        (DropAtInternal new-arg-ty (TmpCtx) (+ y 1) pred_out))
+        (DropAt (TmpCtx) y (TupleRemoveAt pred_out (+ y 1))))
       ;; new loop
       (let new-loop
         (DoWhile new-inputs

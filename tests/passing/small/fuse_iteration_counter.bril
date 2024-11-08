@@ -1,0 +1,18 @@
+# ARGS: 
+@main {
+.b0_:
+  c1_: int = const 0;
+  c2_: int = const 3;
+  i: int = const 0;
+  x: int = const 0;
+.b6_:
+  c7_: int = const 1;
+  i: int = add i c7_;
+  x: int = add x c2_;
+  v11_: bool = lt i c2_;
+  br v11_ .b6_ .b12_;
+.b12_:
+  print x;
+  ret;
+}
+

@@ -14,6 +14,7 @@ use crate::{
     schema::{RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
     typechecker::TypeChecker,
+    EggccConfig,
 };
 
 type RootId = ClassId;
@@ -691,27 +692,31 @@ pub fn extract(
     unextractables: IndexSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
+    eggcc_config: &EggccConfig,
 ) -> (CostSet, TreeProgram) {
     log::info!("Building extraction info");
     let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let (_cost_res, res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
+    let (cost_res, res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
+    if !eggcc_config.linearity {
+        (cost_res, res)
+    } else {
+        let effectful_nodes_along_path =
+            extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
+        extractor_not_linear.costs.clear();
+        let (cost_res, res) = extract_with_paths(
+            extractor_not_linear,
+            &egraph_info,
+            Some(&effectful_nodes_along_path),
+        );
+        extractor_not_linear.check_program_is_linear(&res).unwrap();
 
-    let effectful_nodes_along_path =
-        extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
-    extractor_not_linear.costs.clear();
-    let (cost_res, res) = extract_with_paths(
-        extractor_not_linear,
-        &egraph_info,
-        Some(&effectful_nodes_along_path),
-    );
-    extractor_not_linear.check_program_is_linear(&res).unwrap();
+        log::info!("Extracted program with cost {}", cost_res.total);
+        log::info!("Created {} cost sets", extractor_not_linear.costsets.len());
 
-    log::info!("Extracted program with cost {}", cost_res.total);
-    log::info!("Created {} cost sets", extractor_not_linear.costsets.len());
-
-    (cost_res, res)
+        (cost_res, res)
+    }
 }
 
 pub fn extract_with_paths(
@@ -1154,6 +1159,7 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
         unextractables,
         &mut termdag,
         DefaultCostModel,
+        &EggccConfig::default(),
     );
 
     assert_eq!(cost_set.0.total, expected_cost);
@@ -1412,5 +1418,6 @@ fn test_validity_of_extraction() {
         unextractables,
         &mut termdag,
         DefaultCostModel,
+        &EggccConfig::default(),
     );
 }

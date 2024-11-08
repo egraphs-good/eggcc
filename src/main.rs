@@ -51,6 +51,13 @@ struct Args {
     eggcc_schedule: Option<Schedule>,
     #[clap(long)]
     stop_after_n_passes: Option<usize>,
+
+    /// Turn off enforcement that the output program uses
+    /// memory linearly. This can give an idea of what
+    /// extraction is doing.
+    /// WARNING: Produces unsound results!
+    #[clap(long)]
+    no_linearity: bool,
 }
 
 fn main() {
@@ -99,6 +106,7 @@ fn main() {
         eggcc_config: EggccConfig {
             schedule: args.eggcc_schedule.unwrap_or(Schedule::default()),
             stop_after_n_passes: args.stop_after_n_passes.unwrap_or(usize::MAX),
+            linearity: !args.no_linearity,
         },
     };
 

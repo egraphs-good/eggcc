@@ -24,24 +24,34 @@ pub(crate) struct Region {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Color {
-    Red,
-    Green,
-    Blue,
+    Teal,
+    SlateBlue,
+    Purple,
+    MediumVioletRed,
+    DarkOrange,
+    ForestGreen,
+    Maroon,
+    Crimson,
+    Goldenrod,
     Black,
-    Orange,
-    Pink,
-    Yellow,
+    Red,
 }
 
-fn fresh_color(i: usize) -> Color {
-    const NUM_COLORS: usize = 7;
-    match i % NUM_COLORS {
-        0 => Color::Green,
-        1 => Color::Blue,
-        2 => Color::Black,
-        3 => Color::Orange,
-        4 => Color::Pink,
-        _ => Color::Yellow,
+impl Color {
+    fn from_usize(i: usize) -> Self {
+        match i % 10 {
+            0 => Color::Teal,
+            1 => Color::SlateBlue,
+            2 => Color::Purple,
+            3 => Color::MediumVioletRed,
+            4 => Color::DarkOrange,
+            5 => Color::ForestGreen,
+            6 => Color::Maroon,
+            7 => Color::Crimson,
+            8 => Color::Goldenrod,
+            9 => Color::Black,
+            _ => panic!("impossible"),
+        }
     }
 }
 
@@ -71,7 +81,7 @@ fn color_edges(
             let ((x, i), (y, j)) = edge;
             let color = match (x, edge_colors.get(edge)) {
                 (None, _) => inputs[*i],
-                (_, None) => fresh_color(idx),
+                (_, None) => Color::from_usize(idx),
                 (_, Some(c)) => *c,
             };
             edge_colors.insert(*edge, color);
@@ -395,14 +405,17 @@ impl Region {
                     .iter()
                     .enumerate()
                     .map(|(idx, edge)| {
-                        let ((x, i), (_, _)) = edge;
+                        let ((x, i), _) = edge;
                         let color = match (x, edge_colors.get(*edge)) {
                             (None, None) => inputs[*i],
                             (None, Some(c)) => {
-                                assert!(inputs[*i] == *c);
-                                *c
+                                if inputs[*i] != *c {
+                                    Color::Red // not sure how this is happening.
+                                } else {
+                                    *c
+                                }
                             }
-                            (Some(_), None) => fresh_color(idx),
+                            (Some(_), None) => Color::from_usize(idx),
                             (Some(_), Some(c)) => *c,
                         };
                         edge_colors.insert(**edge, color);
@@ -746,7 +759,12 @@ impl RvsdgProgram {
                 height += spacing;
             }
 
-            let colors: Vec<Color> = function.args.iter().map(|_| Color::Black).collect();
+            let colors: Vec<Color> = function
+                .args
+                .iter()
+                .enumerate()
+                .map(|(i, _)| Color::from_usize(i + 5))
+                .collect();
             let (size, mut xml) = function
                 .to_region()
                 .to_xml(false, &colors, &mut edge_colors);

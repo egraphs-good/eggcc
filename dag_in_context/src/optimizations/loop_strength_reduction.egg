@@ -96,7 +96,8 @@
 
         ; Subsume the multiplication in the new loop to prevent
         ; from firing loop strength reduction again on the new loop
-        ; subsumption needs something to subsume, add it here
+        ; Workaround of egglog issue: https://github.com/egraphs-good/egglog/issues/462
+        ; add the expression we are about to subsume
         (let before
           (Bop (Mul) new-c (Get replace-arg i)))
         ; now subsume it

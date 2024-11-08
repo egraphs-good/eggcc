@@ -43,7 +43,7 @@
        (extract actual)
        (extract "with message")
        (extract msg)
-       (panic "type mismatch"))
+       (panic "type mismatch, use RUST_LOG=info to see type error"))
       :ruleset error-checking)
 
 (relation HasArgType (Expr Type))

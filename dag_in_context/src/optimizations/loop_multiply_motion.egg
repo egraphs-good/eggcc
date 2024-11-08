@@ -58,6 +58,35 @@
     :ruleset loop-multiply-motion)
        
 
+(relation IfGreaterThanThenOne (i64 i64 i64))
+
+(rule ((DoWhile inputs pred_out)
+       (= argx (Get (Arg ty ctx) x))
+       (= argy (Get (Arg ty ctx) y))
+       ;; iter variable x
+       (= (Get pred_out (+ x 1))
+          (Bop (Add) argx (Const (Int xconst) ty ctx)))
+       ;; iter variable y
+       (= (Get pred_out (+ y 1))
+          (Bop (Add) argy (Const (Int yconst) ty ctx)))
+       (> x y))
+      ((IfGreaterThanThenOne x y 1))
+      :ruleset always-run)
+
+
+(rule ((DoWhile inputs pred_out)
+       (= argx (Get (Arg ty ctx) x))
+       (= argy (Get (Arg ty ctx) y))
+       ;; iter variable x
+       (= (Get pred_out (+ x 1))
+          (Bop (Add) argx (Const (Int xconst) ty ctx)))
+       ;; iter variable y
+       (= (Get pred_out (+ y 1))
+          (Bop (Add) argy (Const (Int yconst) ty ctx)))
+       (< x y))
+      ((IfGreaterThanThenOne x y 0))
+      :ruleset always-run)
+
 ;; try to consolidate loop iter variables
 ;; by finding the one that is used by the predicate and changing it to use the other
 (rule ((= loop (DoWhile inputs pred_out))
@@ -82,8 +111,8 @@
        (= (Get inputs x) (Const (Int 0) ty-outer ctx-outer))
        ;; y starts at a constant
        (= (Get inputs y) (Const (Int 0) ty-outer ctx-outer))
-       ;; x comes after y in the tuple (special cased)
-       (> x y)
+       ;; isgreater is 1 when x comes after y
+       (IfGreaterThanThenOne x y isgreater)
        ;; x increment is divisible by y increment
        (= factor (/ xconst yconst))
        (= (* factor yconst) xconst)
@@ -91,8 +120,7 @@
        ;; we won't run into overflow issues
        (< (+ factor n) 10000)
        (= ty (TupleT ty_list)))
-     ((panic "good")
-      ;; new inputs with y removed
+     (;; new inputs with y removed
       (let new-inputs (TupleRemoveAt inputs y))
       ;; new type
       (let new-arg-ty (TupleT (TypeListRemoveAt ty_list y)))
@@ -101,10 +129,10 @@
         (DropAtInternal new-arg-ty (TmpCtx)
                         y
                         (SubTuple pred_out 1 inputs-len)))
-      ;; x is now at x-1 index
+      ;; x is now at x-isgreater index
       (let new-pred-and-body
         (Concat
-          (Single (Bop (LessThan) (Get new-body (- x 1))
+          (Single (Bop (LessThan) (Get new-body (- x isgreater))
                        (Const (Int (* factor n)) new-arg-ty (TmpCtx))))
           new-body))
       ;; new loop
@@ -119,12 +147,10 @@
       (union (SubTuple loop (+ y 1) (- inputs-len (+ y 1)))
              (SubTuple new-loop y (- inputs-len y)))
       ;; y is equal to x divided by factor
-      ;; new x location is x-1
+      ;; new x location is x-isgreater
       (union (Get loop y)
-             (Bop (Div) (Get new-loop (- x 1))
+             (Bop (Div) (Get new-loop (- x isgreater))
                   (Const (Int factor) ty-outer ctx-outer)))
       
       (delete (TmpCtx)))
     :ruleset loop-multiply-motion)
-       
-          

@@ -30,11 +30,13 @@
 ; get stuck on purpose if `i = idx` or if we find a bare `Arg`
 (rule ((= lhs (DropAtInternal newty newctx idx (Get (Arg oldty oldctx) i)))
        (< i idx))
-      ((DelayedDropUnion lhs (Get (Arg newty newctx) i)))
+      ((extract i)
+       (DelayedDropUnion lhs (Get (Arg newty newctx) i)))
       :ruleset drop)
 (rule ((= lhs (DropAtInternal newty newctx idx (Get (Arg oldty oldctx) i)))
        (> i idx))
-      ((DelayedDropUnion lhs (Get (Arg newty newctx) (- i 1))))
+      ((extract i)
+       (DelayedDropUnion lhs (Get (Arg newty newctx) (- i 1))))
       :ruleset drop)
 
 ;; Operators

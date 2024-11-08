@@ -2,10 +2,10 @@
 @main {
 .b0_:
   c1_: int = const 0;
-  c2_: int = const 3;
   i: int = const 0;
   x: int = const 0;
 .b6_:
+  c2_: int = const 3;
   c7_: int = const 1;
   i: int = add i c7_;
   x: int = add x c2_;

@@ -87,6 +87,9 @@
       ((IfGreaterThanThenOne x y 0))
       :ruleset always-run)
 
+
+
+
 ;; try to consolidate loop iter variables by finding
 ;; equivalence between predicates
 ;; by finding the one that is used by the predicate and changing it to use the other
@@ -121,15 +124,20 @@
        ;; we won't run into overflow issues
        (< (+ factor n) 10000)
        (= ty (TupleT ty_list)))
-     (;; new inputs with y removed
+     (;; find another way to express predicate in old loop
+      (let old-x-predicate
+        (Bop (LessThan) (Get pred_out (+ x 1))
+                        (Const (Int (* factor n)) ty ctx)))
+      (union (Get pred_out 0) old-x-predicate)
+      
+      ;; new inputs with y removed
       (let new-inputs (TupleRemoveAt inputs y))
       ;; new type
       (let new-arg-ty (TupleT (TypeListRemoveAt ty_list y)))
       ;; new body with y removed
       (let new-body
-        (DropAtInternal new-arg-ty (TmpCtx)
-                        y
-                        (SubTuple pred_out 1 inputs-len)))
+        (DropAt (TmpCtx) y
+                (SubTuple pred_out 1 inputs-len)))
       ;; x is now at x-isgreater index
       (let new-pred-and-body
         (Concat

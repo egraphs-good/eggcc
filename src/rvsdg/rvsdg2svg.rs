@@ -1,8 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::iter::once;
 
 use bril_rs::ConstOps;
+use indexmap::IndexMap;
 
 use super::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 
@@ -50,7 +51,7 @@ impl Color {
             7 => Color::Crimson,
             8 => Color::Goldenrod,
             9 => Color::Black,
-            _ => panic!("impossible"),
+            _ => unreachable!(),
         }
     }
 }
@@ -72,7 +73,7 @@ type ColoredEdge = ((Option<Id>, usize), (Option<Id>, usize), Color);
 fn color_edges(
     edges: Vec<Edge>,
     inputs: &[Color],
-    edge_colors: &mut HashMap<Edge, Color>,
+    edge_colors: &mut IndexMap<Edge, Color>,
 ) -> Vec<ColoredEdge> {
     edges
         .iter()
@@ -188,7 +189,7 @@ fn port(x: f32, y: f32, color: &str) -> Xml {
 }
 
 impl Node {
-    fn to_xml(&self, inputs: &[Color], edge_colors: &mut HashMap<Edge, Color>) -> (Size, Xml) {
+    fn to_xml(&self, inputs: &[Color], edge_colors: &mut IndexMap<Edge, Color>) -> (Size, Xml) {
         match self {
             Node::Unit(text, _, _) => {
                 let size = Size {
@@ -382,7 +383,7 @@ impl Region {
         &self,
         in_loop: bool,
         inputs: &[Color],
-        edge_colors: &mut HashMap<Edge, Color>,
+        edge_colors: &mut IndexMap<Edge, Color>,
     ) -> (Size, Xml) {
         let mut edges: Vec<Edge> = self.edges.clone();
         edges.sort();
@@ -409,11 +410,8 @@ impl Region {
                         let color = match (x, edge_colors.get(*edge)) {
                             (None, None) => inputs[*i],
                             (None, Some(c)) => {
-                                if inputs[*i] != *c {
-                                    Color::Red // not sure how this is happening.
-                                } else {
-                                    *c
-                                }
+                                assert!(inputs[*i] == *c);
+                                *c
                             }
                             (Some(_), None) => Color::from_usize(idx),
                             (Some(_), Some(c)) => *c,
@@ -595,7 +593,7 @@ impl Region {
 }
 
 impl Region {
-    fn to_svg(&self, inputs: &[Color], edge_colors: &mut HashMap<Edge, Color>) -> String {
+    fn to_svg(&self, inputs: &[Color], edge_colors: &mut IndexMap<Edge, Color>) -> String {
         let (size, xml) = self.to_xml(false, inputs, edge_colors);
         let svg = Xml::new(
             "svg",
@@ -752,8 +750,6 @@ impl RvsdgProgram {
         let mut width: f32 = 0.0;
         let spacing = 50.0;
 
-        let mut edge_colors = HashMap::new();
-
         for (i, function) in self.functions.iter().enumerate() {
             if i > 0 {
                 height += spacing;
@@ -765,6 +761,7 @@ impl RvsdgProgram {
                 .enumerate()
                 .map(|(i, _)| Color::from_usize(i + 5))
                 .collect();
+            let mut edge_colors = IndexMap::new(); // fresh edge_colors map for each function
             let (size, mut xml) = function
                 .to_region()
                 .to_xml(false, &colors, &mut edge_colors);
@@ -795,9 +792,9 @@ impl RvsdgProgram {
 }
 
 impl RvsdgFunction {
-    pub(crate) fn to_svg(&self, edge_colors: &mut HashMap<Edge, Color>) -> String {
-        let colors: Vec<Color> = self.args.iter().map(|_| Color::Black).collect();
-        self.to_region().to_svg(&colors, edge_colors)
+    pub(crate) fn to_svg(&self) -> String {
+        let colors: Vec<Color> = self.args.iter().map(|_| Color::Red).collect();
+        self.to_region().to_svg(&colors, &mut IndexMap::new())
     }
 
     pub(crate) fn to_region(&self) -> Region {
@@ -884,7 +881,7 @@ mod tests {
                 (RvsdgType::PrintState, Operand::Arg(2)),
             ],
         }
-        .to_svg(&mut HashMap::new());
+        .to_svg();
 
         insta::assert_snapshot!(svg_new);
     }

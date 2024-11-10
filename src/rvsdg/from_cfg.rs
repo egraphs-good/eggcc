@@ -8,7 +8,6 @@
 //! look for back-edges dominated by the current node. To detect the start of
 //! branch regions, we look for nodes with more than one successor.
 
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
@@ -144,7 +143,7 @@ pub(crate) fn cfg_func_to_rvsdg(
     if WRITE_INTERMEDIATES {
         File::create("/tmp/rvsdg.svg")
             .unwrap()
-            .write_all(res.to_svg(&mut HashMap::new()).as_bytes())
+            .write_all(res.to_svg().as_bytes())
             .unwrap();
     }
 

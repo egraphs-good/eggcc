@@ -25,4 +25,5 @@ expression: visualization.result
   v3_: int = id v7_;
   v4_: int = id v8_;
   print v3_;
+  ret;
 }

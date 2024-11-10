@@ -21,35 +21,35 @@ expression: svg
 			<path
 				d="M 341.66666 0V 10Q 341.66666 20 331.66666 20H 93.33333Q 83.33333 20 83.33333 30V 50"
 				fill="transparent"
-				stroke="black"
+				stroke="ForestGreen"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
 				d="M 341.66666 0V 10Q 341.66666 20 331.66666 20H 126.666664Q 116.666664 20 116.666664 30V 50"
 				fill="transparent"
-				stroke="black"
+				stroke="ForestGreen"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
 				d="M 683.3333 0V 20Q 683.3333 30 693.3333 30H 706.6667Q 716.6667 30 716.6667 40V 200"
 				fill="transparent"
-				stroke="black"
+				stroke="Maroon"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
 				d="M 100 150V 165Q 100 175 110 175H 448.33334Q 458.33334 175 458.33334 185V 200"
 				fill="transparent"
-				stroke="black"
+				stroke="Teal"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
 			<path
 				d="M 587.5 700V 715Q 587.5 725 577.5 725H 522.5Q 512.5 725 512.5 735V 750"
 				fill="transparent"
-				stroke="black"
+				stroke="DarkOrange"
 				stroke-linecap="round"
 				stroke-width="2">
 			</path>
@@ -132,21 +132,21 @@ expression: svg
 							<path
 								d="M 175 0V 15Q 175 25 185 25H 256.66666Q 266.66666 25 266.66666 35V 200"
 								fill="transparent"
-								stroke="black"
+								stroke="Maroon"
 								stroke-linecap="round"
 								stroke-width="2">
 							</path>
 							<path
 								d="M 100 150V 165Q 100 175 110 175H 223.33333Q 233.33333 175 233.33333 185V 200"
 								fill="transparent"
-								stroke="black"
+								stroke="Teal"
 								stroke-linecap="round"
 								stroke-width="2">
 							</path>
 							<path
 								d="M 250 300V 315Q 250 325 240 325H 185Q 175 325 175 335V 350"
 								fill="transparent"
-								stroke="black"
+								stroke="Purple"
 								stroke-linecap="round"
 								stroke-width="2">
 							</path>
@@ -272,21 +272,21 @@ expression: svg
 							<path
 								d="M 175 0V 15Q 175 25 185 25H 256.66666Q 266.66666 25 266.66666 35V 200"
 								fill="transparent"
-								stroke="black"
+								stroke="Maroon"
 								stroke-linecap="round"
 								stroke-width="2">
 							</path>
 							<path
 								d="M 100 150V 165Q 100 175 110 175H 223.33333Q 233.33333 175 233.33333 185V 200"
 								fill="transparent"
-								stroke="black"
+								stroke="Teal"
 								stroke-linecap="round"
 								stroke-width="2">
 							</path>
 							<path
 								d="M 250 300V 315Q 250 325 240 325H 185Q 175 325 175 335V 350"
 								fill="transparent"
-								stroke="black"
+								stroke="Purple"
 								stroke-linecap="round"
 								stroke-width="2">
 							</path>

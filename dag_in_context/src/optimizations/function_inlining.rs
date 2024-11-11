@@ -137,42 +137,37 @@ pub fn print_function_inlining_pairs(
     let printed_pairs = function_inlining_pairs
         .iter()
         .map(|cb| {
-            if let Expr::Call(callee, _) = cb.call.as_ref() {
-                let call_term = cb.call.to_egglog_with(tree_state);
-                let call_with_intermed = print_with_intermediate_helper(
-                    &tree_state.termdag,
-                    call_term.clone(),
-                    term_cache,
-                    printed,
-                );
+            let Expr::Call(callee, _) = cb.call.as_ref() else {
+                panic!("Tried to inline non-call")
+            };
+            let call_term = cb.call.to_egglog_with(tree_state);
+            let call_with_intermed = print_with_intermediate_helper(
+                &tree_state.termdag,
+                call_term.clone(),
+                term_cache,
+                printed,
+            );
 
-                let body_term = cb.body.to_egglog_with(tree_state);
-                let inlined_with_intermed = print_with_intermediate_helper(
-                    &tree_state.termdag,
-                    body_term,
-                    term_cache,
-                    printed,
-                );
+            let body_term = cb.body.to_egglog_with(tree_state);
+            let inlined_with_intermed =
+                print_with_intermediate_helper(&tree_state.termdag, body_term, term_cache, printed);
 
-                let call_args = cb.call.children_exprs()[0].to_egglog_with(tree_state);
-                let call_args_with_intermed = print_with_intermediate_helper(
-                    &tree_state.termdag,
-                    call_args.clone(),
-                    term_cache,
-                    printed,
-                );
-                format!(
-                    // We need to subsume, otherwise the Call in the original program could get
-                    // substituted into another context during optimization and no longer match InlinedCall.
-                    "
+            let call_args = cb.call.children_exprs()[0].to_egglog_with(tree_state);
+            let call_args_with_intermed = print_with_intermediate_helper(
+                &tree_state.termdag,
+                call_args.clone(),
+                term_cache,
+                printed,
+            );
+            format!(
+                // We need to subsume, otherwise the Call in the original program could get
+                // substituted into another context during optimization and no longer match InlinedCall.
+                "
 (union {call_with_intermed} {inlined_with_intermed})
 (InlinedCall \"{callee}\" {call_args_with_intermed})
 (subsume (Call \"{callee}\" {call_args_with_intermed}))
 ",
-                )
-            } else {
-                panic!("Tried to inline non-call")
-            }
+            )
         })
         .collect::<Vec<_>>()
         .join("\n");

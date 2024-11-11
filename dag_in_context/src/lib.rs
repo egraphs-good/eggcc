@@ -170,6 +170,19 @@ pub fn build_program(
     let loop_context_unions =
         cache.get_unions_with_sharing(&mut printed, &mut tree_state, &mut term_cache);
 
+    // set the type of each function
+    for func in fns {
+        let func = program.get_function(func).unwrap();
+        let func_name = func.func_name().unwrap();
+        let input_ty = func.func_input_ty().unwrap();
+        let func_ty = func.func_output_ty().unwrap();
+        writeln!(
+            &mut printed,
+            "(FunctionHasType \"{func_name}\" {input_ty} {func_ty})",
+        )
+        .unwrap();
+    }
+
     let prologue = prologue();
 
     format!(

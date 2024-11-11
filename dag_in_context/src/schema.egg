@@ -200,7 +200,9 @@
 ;                   name   input ty  output ty  output
 (function Function (String Type      Type       Expr)      Expr)
 
-
+; to get the type of a funciton, look in this table
+; since we might not be optimizing the entire program
+(relation FunctionHasType (String Type Type))
 
 ; Rulesets
 (ruleset always-run)

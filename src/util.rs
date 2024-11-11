@@ -722,7 +722,7 @@ impl Run {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let (tree, mut cache) = rvsdg.to_dag_encoding(true);
-                let unfolded_program = build_program(&tree, &mut cache, false, "");
+                let unfolded_program = build_program(&tree, None, &tree.fns(), &mut cache, "");
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
@@ -786,7 +786,8 @@ impl Run {
                     "Parallel schedule had multiple steps!"
                 );
 
-                let egglog = build_program(&dag, &mut cache, true, &schedule_steps[0]);
+                let egglog =
+                    build_program(&dag, Some(&dag), &dag.fns(), &mut cache, &schedule_steps[0]);
                 (
                     vec![Visualization {
                         result: egglog,

@@ -116,11 +116,15 @@ pub fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
     printed
 }
 
-// It is expected that program has context added
+// Build an egglog program that optimizes a particular batch of functions `fns`
+// with a schedule `schedule`.
+// If `inline_program` is true, it also inlines calls in `fns`.
+// `inline_program` is the program to inline calls from, allowing us to inline unoptimized function bodies.
 pub fn build_program(
     program: &TreeProgram,
+    inline_program: Option<&TreeProgram>,
+    fns: &[String],
     cache: &mut ContextCache,
-    inline: bool,
     schedule: &str,
 ) -> String {
     let mut printed = String::new();
@@ -130,15 +134,12 @@ pub fn build_program(
     let mut term_cache = IndexMap::<Term, String>::new();
 
     // Generate function inlining egglog
-    let function_inlining_unions = if !inline {
-        "".to_string()
-    } else {
+    let function_inlining_unions = if let Some(inline_program) = inline_program {
         let mut pairs = vec![];
-        // TODO do inlining for particular function instead
-        for func in program.fns() {
+        for func in fns {
             pairs.extend(function_inlining::function_inlining_pairs(
-                program,
-                &func,
+                inline_program,
+                vec![func.clone()],
                 config::FUNCTION_INLINING_ITERATIONS,
                 cache,
             ));
@@ -150,12 +151,21 @@ pub fn build_program(
             &mut tree_state,
             &mut term_cache,
         )
+    } else {
+        "".to_string()
     };
 
     // Generate program egglog
-    let term = program.to_egglog_with(&mut tree_state);
-    let res =
-        print_with_intermediate_helper(&tree_state.termdag, term, &mut term_cache, &mut printed);
+    for func in fns {
+        let func = program.get_function(func).unwrap();
+        let term = func.to_egglog_with(&mut tree_state);
+        let _func_var = print_with_intermediate_helper(
+            &tree_state.termdag,
+            term,
+            &mut term_cache,
+            &mut printed,
+        );
+    }
 
     let loop_context_unions =
         cache.get_unions_with_sharing(&mut printed, &mut tree_state, &mut term_cache);
@@ -169,8 +179,6 @@ pub fn build_program(
 
 ; Program nodes
 {printed}
-; Program root
-(let PROG {res})
 
 ; Loop context unions
 {loop_context_unions}
@@ -195,7 +203,8 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 /// Checks that the extracted program is the same as the input program.
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
-    let egglog_prog = build_program(program, &mut ContextCache::new(), false, "");
+    let fns = program.fns();
+    let egglog_prog = build_program(program, None, &fns, &mut ContextCache::new(), "");
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
@@ -203,6 +212,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let (serialized, unextractables) = serialized_egraph(egraph);
     let (_res_cost, res) = extract(
         program,
+        program.fns(),
         serialized,
         unextractables,
         &mut termdag,
@@ -264,24 +274,41 @@ pub fn optimize(
         .zip(0..eggcc_config.stop_after_n_passes)
     {
         log::info!("Running pass {}...", i);
-        // only inline functions on the first pass
-        let egglog_prog = build_program(&res, cache, i == 0, schedule);
+        let fns = res.fns();
 
-        log::info!("Running egglog program...");
-        let mut egraph = egglog::EGraph::default();
-        egraph.parse_and_run_program(None, &egglog_prog)?;
+        // if we are inlining, save the program
+        // TODO we inline on the first pass, but this should be configurable from the schedule
+        let inline_program = if i == 0 { Some(res.clone()) } else { None };
 
-        let (serialized, unextractables) = serialized_egraph(egraph);
-        let mut termdag = egglog::TermDag::default();
-        let (_res_cost, iter_result) = extract(
-            program,
-            serialized,
-            unextractables,
-            &mut termdag,
-            DefaultCostModel,
-            eggcc_config,
-        );
-        res = iter_result;
+        for func in fns {
+            log::info!("Running pass {} on {}", i, func);
+            log::info!("Schedule: {}", schedule);
+            // only inline functions on the first pass
+            let egglog_prog = build_program(
+                &res,
+                inline_program.as_ref(),
+                &[func.clone()],
+                cache,
+                schedule,
+            );
+
+            log::info!("Running egglog program...");
+            let mut egraph = egglog::EGraph::default();
+            egraph.parse_and_run_program(None, &egglog_prog)?;
+
+            let (serialized, unextractables) = serialized_egraph(egraph);
+            let mut termdag = egglog::TermDag::default();
+            let (_res_cost, iter_result) = extract(
+                program,
+                vec![func.clone()],
+                serialized,
+                unextractables,
+                &mut termdag,
+                DefaultCostModel,
+                eggcc_config,
+            );
+            res = iter_result;
+        }
     }
     Ok(res)
 }

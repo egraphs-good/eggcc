@@ -537,6 +537,28 @@ impl TreeProgram {
         res.extend(self.functions.iter().filter_map(|expr| expr.func_name()));
         res
     }
+
+    pub fn replace_fn(&self, name: &str, new_fn: RcExpr) -> TreeProgram {
+        let mut new_fns = self.functions.clone();
+        if let Some(idx) = self
+            .functions
+            .iter()
+            .position(|expr| expr.func_name() == Some(name.to_string()))
+        {
+            new_fns[idx] = new_fn.clone();
+        } else if self.entry.func_name() == Some(name.to_string()) {
+            return TreeProgram {
+                entry: new_fn.clone(),
+                functions: self.functions.clone(),
+            };
+        } else {
+            panic!("Function {} not found", name);
+        }
+        TreeProgram {
+            entry: self.entry.clone(),
+            functions: new_fns,
+        }
+    }
 }
 
 use std::iter;

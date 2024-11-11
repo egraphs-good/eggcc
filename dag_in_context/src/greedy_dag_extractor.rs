@@ -573,6 +573,19 @@ impl<'a> Extractor<'a> {
 
         let mut shared_total = NotNan::new(0.).unwrap();
         let mut unshared_total = info.cm.get_op_cost(&node.op);
+
+        // special case: when the call is recursive, set super high cost
+        if node.op == "Call" {
+            let func_name = &node.children[0];
+            let func_name_str = &info.egraph[func_name].op;
+            assert!(func_name_str.starts_with('\"') && func_name_str.ends_with('\"'));
+            let func_name_str_without_quotes = &func_name_str[1..func_name_str.len() - 1];
+            if func_name_str_without_quotes == info._func {
+                eprintln!("here");
+                unshared_total = NotNan::new(100000000000.0).unwrap();
+            }
+        }
+
         let mut costs: HashTrieMap<ClassId, (Term, Cost)> = Default::default();
         let index_of_biggest_child = child_cost_sets
             .iter()

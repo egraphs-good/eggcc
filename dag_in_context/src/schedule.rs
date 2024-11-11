@@ -31,8 +31,9 @@ pub(crate) fn helpers() -> String {
 
 ;; be careful to finish dropping and substituting before subsuming things!
 ;; otherwise substitution or dropat may not finish, violating the weak linearity invariant
-subsume-after-helpers"
-        .to_string()
+(saturate subsume-after-helpers)
+"
+    .to_string()
 }
 
 fn cheap_optimizations() -> Vec<String> {

@@ -133,12 +133,19 @@ pub fn build_program(
     let function_inlining_unions = if !inline {
         "".to_string()
     } else {
-        function_inlining::print_function_inlining_pairs(
-            function_inlining::function_inlining_pairs(
+        let mut pairs = vec![];
+        // TODO do inlining for particular function instead
+        for func in program.fns() {
+            pairs.extend(function_inlining::function_inlining_pairs(
                 program,
+                &func,
                 config::FUNCTION_INLINING_ITERATIONS,
                 cache,
-            ),
+            ));
+        }
+
+        function_inlining::print_function_inlining_pairs(
+            pairs,
             &mut printed,
             &mut tree_state,
             &mut term_cache,

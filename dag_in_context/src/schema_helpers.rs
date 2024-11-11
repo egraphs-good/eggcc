@@ -528,6 +528,15 @@ impl TreeProgram {
         let expr = termdag.term_to_expr(&term);
         expr.to_sexp().pretty()
     }
+
+    pub fn fns(&self) -> Vec<String> {
+        let mut res = vec![];
+        if let Some(name) = self.entry.func_name() {
+            res.push(name);
+        }
+        res.extend(self.functions.iter().filter_map(|expr| expr.func_name()));
+        res
+    }
 }
 
 use std::iter;

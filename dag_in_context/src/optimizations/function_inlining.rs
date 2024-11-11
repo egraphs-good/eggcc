@@ -58,9 +58,11 @@ fn subst_call(
     }
 }
 
-// Generates a list of (call, body) pairs (in a CallBody) that can be unioned
+/// Generates a list of (call, body) pairs (in a CallBody) that can be unioned
+/// This inlines calls inside the function `func`
 pub fn function_inlining_pairs(
     program: &TreeProgram,
+    func: &str,
     iterations: usize,
     cache: &mut ContextCache,
 ) -> Vec<CallBody> {
@@ -70,6 +72,10 @@ pub fn function_inlining_pairs(
 
     let mut all_funcs = vec![program.entry.clone()];
     all_funcs.extend(program.functions.clone());
+    let target_func = all_funcs
+        .iter()
+        .find(|f| f.func_name().expect("Func has name") == func)
+        .expect("Function not found");
 
     // Make func name -> body map
     let func_name_to_body = all_funcs
@@ -85,9 +91,7 @@ pub fn function_inlining_pairs(
     // Inline once
     let mut seen_exprs: IndexSet<*const Expr> = IndexSet::new();
     let mut calls: Vec<RcExpr> = Vec::new();
-    all_funcs
-        .iter()
-        .for_each(|func| get_calls_with_cache(func, &mut calls, &mut seen_exprs));
+    get_calls_with_cache(target_func, &mut calls, &mut seen_exprs);
 
     let mut inlined_calls = calls
         .iter()
@@ -199,7 +203,9 @@ fn test_function_inlining_pairs() {
 
     let program = program!(main, inc_twice, inc);
 
-    let pairs = function_inlining_pairs(&program, iterations, &mut ContextCache::new());
+    let pairs_inc_twice =
+        function_inlining_pairs(&program, "inc_twice", iterations, &mut ContextCache::new());
+    let pairs_inc = function_inlining_pairs(&program, "inc", iterations, &mut ContextCache::new());
 
     // First iteration:
     // call inc_twice 1 --> call inc (call inc 1) ... so the new calls are call inc (call inc 1), call inc 1
@@ -213,7 +219,8 @@ fn test_function_inlining_pairs() {
 
     // No more iterations!
 
-    assert_eq!(pairs.len(), 6)
+    assert_eq!(pairs_inc_twice.len(), 2);
+    assert_eq!(pairs_inc.len(), 2)
 }
 
 // Infinite recursion should produce as many pairs as iterations
@@ -230,7 +237,8 @@ fn test_inf_recursion_function_inlining_pairs() {
     .to_program(base(intt()), base(intt()));
 
     for iterations in 0..10 {
-        let pairs = function_inlining_pairs(&program, iterations, &mut ContextCache::new());
+        let pairs =
+            function_inlining_pairs(&program, "inf_rec", iterations, &mut ContextCache::new());
         assert_eq!(pairs.len(), iterations);
     }
 }

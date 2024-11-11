@@ -4,7 +4,7 @@ pub(crate) fn helpers() -> String {
 
     (saturate type-helpers)
     (saturate error-checking)
-    ;state-edge-passthrough
+    state-edge-passthrough
 
     (saturate
         (saturate type-helpers)

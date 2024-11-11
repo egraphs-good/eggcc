@@ -291,7 +291,7 @@ pub fn optimize(
 
         // if we are inlining, save the program
         // TODO we inline on the first pass, but this should be configurable from the schedule
-        let inline_program = if i == 100000 { Some(res.clone()) } else { None };
+        let inline_program = if i == 0 { Some(res.clone()) } else { None };
 
         for func in fns {
             log::info!("Running pass {} on {}", i, func);

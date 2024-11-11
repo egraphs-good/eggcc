@@ -858,7 +858,7 @@ pub fn extract_with_paths(
     let root_costset_index = *extractor
         .costs
         .get(&root_eclass)
-        .expect(&format!("Failed to extract function {}!", func))
+        .unwrap_or_else(|| panic!("Failed to extract function {}!", func))
         .get(&root_eclass)
         .unwrap_or_else(|| {
             if effectful_paths.is_some() {

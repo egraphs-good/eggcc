@@ -312,7 +312,7 @@ pub fn optimize(
             let (serialized, unextractables) = serialized_egraph(egraph);
             let mut termdag = egglog::TermDag::default();
             let (_res_cost, iter_result) = extract(
-                program,
+                &res,
                 vec![func.clone()],
                 serialized,
                 unextractables,

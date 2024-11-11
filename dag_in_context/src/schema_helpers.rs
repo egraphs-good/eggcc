@@ -538,25 +538,17 @@ impl TreeProgram {
         res
     }
 
-    pub fn replace_fn(&self, name: &str, new_fn: RcExpr) -> TreeProgram {
-        let mut new_fns = self.functions.clone();
-        if let Some(idx) = self
-            .functions
-            .iter()
-            .position(|expr| expr.func_name() == Some(name.to_string()))
-        {
-            new_fns[idx] = new_fn.clone();
-        } else if self.entry.func_name() == Some(name.to_string()) {
-            return TreeProgram {
-                entry: new_fn.clone(),
-                functions: self.functions.clone(),
-            };
+    pub fn replace_fn(&mut self, name: &str, new_fn: RcExpr) {
+        if self.entry.func_name() == Some(name.to_string()) {
+            self.entry = new_fn;
         } else {
+            for fn_expr in self.functions.iter_mut() {
+                if fn_expr.func_name() == Some(name.to_string()) {
+                    *fn_expr = new_fn.clone();
+                    return;
+                }
+            }
             panic!("Function {} not found", name);
-        }
-        TreeProgram {
-            entry: self.entry.clone(),
-            functions: new_fns,
         }
     }
 }

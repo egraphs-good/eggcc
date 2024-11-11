@@ -756,7 +756,7 @@ pub fn extract(
             termdag,
             &cost_model,
         );
-        new_prog = new_prog.replace_fn(&func, extracted);
+        new_prog.replace_fn(&func, extracted);
         cost += fn_cost.total;
     }
     (cost, new_prog)

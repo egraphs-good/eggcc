@@ -858,13 +858,19 @@ pub fn extract_with_paths(
     let root_costset_index = *extractor
         .costs
         .get(&root_eclass)
-        .expect("Failed to extract program! Also failed to extract any functions in program.")
+        .expect(&format!("Failed to extract function {}!", func))
         .get(&root_eclass)
         .unwrap_or_else(|| {
             if effectful_paths.is_some() {
-                panic!("Failed to extract program after linear path is found!");
+                panic!(
+                    "Failed to extract function {} after linear path is found!",
+                    func
+                );
             } else {
-                panic!("Failed to extract program during initial extraction!");
+                panic!(
+                    "Failed to extract function {} during initial extraction!",
+                    func
+                );
             }
         });
     let root_costset = extractor.costsets[root_costset_index].clone();

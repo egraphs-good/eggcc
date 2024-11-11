@@ -4,7 +4,7 @@ pub(crate) fn helpers() -> String {
 
     (saturate type-helpers)
     (saturate error-checking)
-    state-edge-passthrough
+    ;state-edge-passthrough
 
     (saturate
         (saturate type-helpers)
@@ -26,11 +26,13 @@ pub(crate) fn helpers() -> String {
     apply-subst-unions
     cleanup-subst
 
-    subsume-after-helpers
-
     (saturate boundary-analysis)
-)"
-    .to_string()
+)
+
+;; be careful to finish dropping and substituting before subsuming things!
+;; otherwise substitution or dropat may not finish, violating the weak linearity invariant
+subsume-after-helpers"
+        .to_string()
 }
 
 fn cheap_optimizations() -> Vec<String> {

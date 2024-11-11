@@ -709,6 +709,7 @@ fn extract_fn(
     unextractables: IndexSet<String>,
     termdag: &mut TermDag,
     cost_model: &impl CostModel,
+    eggcc_config: &EggccConfig,
 ) -> (CostSet, RcExpr) {
     log::info!("Building extraction info");
     let egraph_info = EgraphInfo::new(func, cost_model, &egraph, unextractables);
@@ -744,6 +745,7 @@ pub fn extract(
     unextractables: IndexSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
+    eggcc_config: &EggccConfig,
 ) -> (Cost, TreeProgram) {
     let mut new_prog = original_prog.clone();
     let mut cost = NotNan::new(0.).unwrap();
@@ -755,6 +757,7 @@ pub fn extract(
             unextractables.clone(),
             termdag,
             &cost_model,
+            eggcc_config,
         );
         new_prog.replace_fn(&func, extracted);
         cost += fn_cost.total;

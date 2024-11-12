@@ -1083,6 +1083,10 @@ impl Run {
                 .arg(format!("-{}", llvm_level))
                 .arg("-fno-vectorize")
                 .arg("-fno-slp-vectorize")
+                .arg("-mllvm")
+                .arg("-regalloc=greedy")
+                .arg("-mllvm")
+                .arg("-optimize-regalloc")
                 .arg("-o")
                 .arg(executable.clone()),
             "failed to compile llvm ir",
@@ -1095,6 +1099,10 @@ impl Run {
                     .arg(format!("-{}", llvm_level))
                     .arg("-fno-vectorize")
                     .arg("-fno-slp-vectorize")
+                    .arg("-mllvm")
+                    .arg("-regalloc=greedy")
+                    .arg("-mllvm")
+                    .arg("-optimize-regalloc")
                     .arg("-emit-llvm")
                     .arg("-S")
                     .arg("-o")

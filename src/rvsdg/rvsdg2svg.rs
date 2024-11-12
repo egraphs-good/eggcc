@@ -35,7 +35,6 @@ pub(crate) enum Color {
     Crimson,
     Goldenrod,
     Black,
-    Red,
 }
 
 impl Color {
@@ -793,7 +792,12 @@ impl RvsdgProgram {
 
 impl RvsdgFunction {
     pub(crate) fn to_svg(&self) -> String {
-        let colors: Vec<Color> = self.args.iter().map(|_| Color::Red).collect();
+        let colors: Vec<Color> = self
+            .args
+            .iter()
+            .enumerate()
+            .map(|(i, _)| Color::from_usize(i + 5))
+            .collect();
         self.to_region().to_svg(&colors, &mut IndexMap::new())
     }
 
@@ -876,10 +880,7 @@ mod tests {
                     Type::Int,
                 )),
             ],
-            results: vec![
-                (RvsdgType::Bril(Type::Int), Operand::Project(0, 10)),
-                (RvsdgType::PrintState, Operand::Arg(2)),
-            ],
+            results: vec![(RvsdgType::Bril(Type::Int), Operand::Project(0, 10))],
         }
         .to_svg();
 

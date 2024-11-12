@@ -1080,6 +1080,7 @@ impl Run {
         expect_command_success(
             Command::new("clang-18")
                 .arg(processed.clone())
+                .arg("-g0")
                 .arg(format!("-{}", llvm_level))
                 .arg("-fno-vectorize")
                 .arg("-fno-slp-vectorize")
@@ -1096,6 +1097,7 @@ impl Run {
                 Command::new("clang-18")
                     .current_dir(output_dir)
                     .arg(processed)
+                    .arg("-g0")
                     .arg(format!("-{}", llvm_level))
                     .arg("-fno-vectorize")
                     .arg("-fno-slp-vectorize")

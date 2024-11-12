@@ -171,8 +171,8 @@ pub fn build_program(
         cache.get_unions_with_sharing(&mut printed, &mut tree_state, &mut term_cache);
 
     // set the type of each function
-    for func in fns {
-        let func = program.get_function(func).unwrap();
+    for func in program.fns() {
+        let func = program.get_function(&func).unwrap();
         let func_name = func.func_name().unwrap();
         let input_ty = func.func_input_ty().unwrap();
         let func_ty = func.func_output_ty().unwrap();

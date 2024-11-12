@@ -58,7 +58,6 @@ fn optimizations() -> Vec<String> {
         "loop-inv-motion",
         "loop-strength-reduction",
         "loop-peel",
-        "rec-to-loop",
     ]
     .iter()
     .map(|opt| opt.to_string())
@@ -111,15 +110,26 @@ pub fn mk_sequential_schedule() -> Vec<String> {
 pub fn parallel_schedule() -> Vec<String> {
     let helpers = helpers();
 
-    vec![format!(
-        "
+    vec![
+        format!(
+            "
 (run-schedule
     (saturate
       {helpers}
       passthrough
       state-edge-passthrough)
-    (repeat 2 swap-if)
-
+    (repeat 2
+      {helpers}
+      swap-if)
+    {helpers}
+    rec-to-loop
+    {helpers})"
+        ),
+        format!(
+            "
+;; HACK: when INLINE appears in this string
+;; we perform inlining in this pass
+(run-schedule
     (repeat 2
         {helpers}
         all-optimizations
@@ -133,5 +143,6 @@ pub fn parallel_schedule() -> Vec<String> {
     {helpers}
 )
 "
-    )]
+        ),
+    ]
 }

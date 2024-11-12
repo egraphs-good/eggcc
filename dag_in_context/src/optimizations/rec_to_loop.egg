@@ -86,8 +86,7 @@
    (= always-runs-len (tuple-length always-runs))
    (= start-ty (TupleT start-ty-list))
    (HasType body func-ty))
-  ((panic "good")
-    (let loop-ty
+  ((let loop-ty
      (TupleT (TLConcat start-ty-list (TCons (IntT) (TNil)))))
    ;; recursive case in the loop
    (let new-rec-case

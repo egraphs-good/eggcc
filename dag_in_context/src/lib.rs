@@ -293,8 +293,11 @@ pub fn optimize(
 
         // if we are inlining, save the program
         // TODO we inline on the first pass, but this should be configurable from the schedule
-        // TODO inline
-        let inline_program = if i == 1000 { Some(res.clone()) } else { None };
+        let inline_program = if schedule.contains("INLINE") {
+            Some(res.clone())
+        } else {
+            None
+        };
 
         // TODO experiment with different batches of optimizing functions together
         // currently we use the whole program

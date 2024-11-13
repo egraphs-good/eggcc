@@ -1054,6 +1054,7 @@ impl Run {
         }
 
         let processed = dir.path().join("postprocessed.ll");
+        let optimized = dir.path().join("optimized.ll");
         // HACK: check if opt-18 exists
         // otherwise use opt
         // On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
@@ -1064,6 +1065,8 @@ impl Run {
             "opt"
         };
 
+        // first, run sroa to get rid of memory-based registers
+        // from the bril2llvm compiler
         let res = Command::new(opt_cmd)
             .arg("-passes=sroa")
             .arg("-S")
@@ -1077,6 +1080,7 @@ impl Run {
             panic!("Opt failed on following input:\n{p1_string}");
         }
 
+        // Now, run the llvm optimizer and generate optimized llvm
         expect_command_success(
             Command::new("clang-18")
                 .arg(processed.clone())
@@ -1084,6 +1088,20 @@ impl Run {
                 .arg(format!("-{}", llvm_level))
                 .arg("-fno-vectorize")
                 .arg("-fno-slp-vectorize")
+                .arg("-emit-llvm")
+                .arg("-S")
+                .arg("-o")
+                .arg(optimized.clone()),
+            "failed to copy unoptimized llvm ir",
+        );
+
+        // Lower the optimized LLVM but don't do target-specific optimizations besides register allocation
+        // We use O0 and disable debug info
+        expect_command_success(
+            Command::new("clang-18")
+                .arg(optimized.clone())
+                .arg("-g0")
+                .arg("-O0")
                 .arg("-mllvm")
                 .arg("-regalloc=greedy")
                 .arg("-mllvm")
@@ -1092,24 +1110,14 @@ impl Run {
                 .arg(executable.clone()),
             "failed to compile llvm ir",
         );
+
         if let Some(output_dir) = &self.llvm_output_dir {
+            // move optimized.ll to the output dir
             expect_command_success(
-                Command::new("clang-18")
-                    .current_dir(output_dir)
-                    .arg(processed)
-                    .arg("-g0")
-                    .arg(format!("-{}", llvm_level))
-                    .arg("-fno-vectorize")
-                    .arg("-fno-slp-vectorize")
-                    .arg("-mllvm")
-                    .arg("-regalloc=greedy")
-                    .arg("-mllvm")
-                    .arg("-optimize-regalloc")
-                    .arg("-emit-llvm")
-                    .arg("-S")
-                    .arg("-o")
-                    .arg(format!("{}.ll", self.name())),
-                "failed to copy unoptimized llvm ir",
+                Command::new("mv")
+                    .arg(optimized)
+                    .arg(format!("{}/{}.ll", output_dir, self.name())),
+                "failed to move optimized llvm ir",
             );
         }
 

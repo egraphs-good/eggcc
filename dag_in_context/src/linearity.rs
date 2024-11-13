@@ -2,7 +2,7 @@
 //! program use memory linearly.
 //! In particular, it finds all the effectful e-nodes in an extracted term that are along the state edge path.
 
-use std::{collections::HashSet, iter, rc::Rc};
+use std::{collections::HashSet, rc::Rc};
 
 use egglog::Term;
 use egraph_serialize::{ClassId, NodeId};
@@ -26,9 +26,9 @@ impl<'a> Extractor<'a> {
     /// edge path (the path of the state edge from the argument to the return value).
     /// Input: a term representing the program
     /// Output: a map from root ids to the set of effectful nodes along the state edge path in this region
-    pub fn find_effectful_nodes_in_program(
+    pub fn find_effectful_nodes_in_function(
         &mut self,
-        prog: &TreeProgram,
+        func: &RcExpr,
         egraph_info: &EgraphInfo,
     ) -> IndexMap<ClassId, IndexSet<NodeId>> {
         let mut expr_to_term = IndexMap::new();
@@ -48,11 +48,7 @@ impl<'a> Extractor<'a> {
             n2c,
         };
 
-        self.find_effectful_nodes_in_region(prog.entry.func_body().unwrap(), &mut linearity);
-        for function in &prog.functions {
-            // root of the function is the body of the function
-            self.find_effectful_nodes_in_region(function.func_body().unwrap(), &mut linearity);
-        }
+        self.find_effectful_nodes_in_region(func.func_body().unwrap(), &mut linearity);
 
         let effectful_nodes: IndexMap<ClassId, IndexSet<NodeId>> = linearity
             .effectful_nodes
@@ -195,72 +191,70 @@ impl<'a> Extractor<'a> {
         }
     }
 
-    pub fn check_program_is_linear(&mut self, prog: &TreeProgram) -> Result<(), String> {
-        for fun in iter::once(&prog.entry).chain(prog.functions.iter()) {
-            let mut reachables = Default::default();
-            let mut raw_to_rc = Default::default();
-            let fun_body = fun.func_body().unwrap();
-            fun_body.collect_reachable(fun_body, &mut reachables, &mut raw_to_rc);
+    pub fn check_function_is_linear(&mut self, fun: &RcExpr) -> Result<(), String> {
+        let mut reachables = Default::default();
+        let mut raw_to_rc = Default::default();
+        let fun_body = fun.func_body().unwrap();
+        fun_body.collect_reachable(fun_body, &mut reachables, &mut raw_to_rc);
 
-            // if the raw pointer is effectful, then return its RcExpr, otherwise None.
-            // Gracefully handles `Function` which is not supported by Extractor::is_effectful.
-            let get_if_effectful = |this: &mut Extractor<'a>, expr: *const Expr| {
-                let rcexpr = raw_to_rc.get(&expr).unwrap();
-                if let Expr::Function(_name, _inp, _out, body) = rcexpr.as_ref() {
-                    if this.is_effectful(body) {
-                        return Some(rcexpr);
-                    }
-                } else if this.is_effectful(rcexpr) {
+        // if the raw pointer is effectful, then return its RcExpr, otherwise None.
+        // Gracefully handles `Function` which is not supported by Extractor::is_effectful.
+        let get_if_effectful = |this: &mut Extractor<'a>, expr: *const Expr| {
+            let rcexpr = raw_to_rc.get(&expr).unwrap();
+            if let Expr::Function(_name, _inp, _out, body) = rcexpr.as_ref() {
+                if this.is_effectful(body) {
                     return Some(rcexpr);
                 }
-                None
-            };
+            } else if this.is_effectful(rcexpr) {
+                return Some(rcexpr);
+            }
+            None
+        };
 
-            for (region, exprs) in reachables {
-                // get all effectful operators in the region,
-                // and check if they are used exactly once.
-                let mut dangling_effectful: HashSet<*const Expr> = exprs
-                    .iter()
-                    .filter_map(|&expr| {
-                        if get_if_effectful(self, expr).is_some() {
-                            Some(expr)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+        for (region, exprs) in reachables {
+            // get all effectful operators in the region,
+            // and check if they are used exactly once.
+            let mut dangling_effectful: HashSet<*const Expr> = exprs
+                .iter()
+                .filter_map(|&expr| {
+                    if get_if_effectful(self, expr).is_some() {
+                        Some(expr)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
-                let mut effectful_parent: IndexMap<*const Expr, RcExpr> = Default::default();
+            let mut effectful_parent: IndexMap<*const Expr, RcExpr> = Default::default();
 
-                for expr in exprs {
-                    let Some(expr) = get_if_effectful(self, expr) else {
-                        continue;
-                    };
-                    // Arg is a leaf and does not have effectful children.
-                    if !matches!(expr.as_ref(), Expr::Arg(..)) {
-                        // We can view region nodes as a giant opaque operator
-                        // and only need to consider children that are in the same scope
-                        let children = expr.children_same_scope();
-                        let mut effectful_child_iter =
-                            children.iter().filter(|child| self.is_effectful(child));
-                        let effectful_child = effectful_child_iter
-                            .next()
-                            .expect("Expect one effectful child from an effectful operator");
-                        assert!(effectful_child_iter.next().is_none());
-                        if !dangling_effectful.remove(&Rc::as_ptr(effectful_child)) {
-                            return Err(
+            for expr in exprs {
+                let Some(expr) = get_if_effectful(self, expr) else {
+                    continue;
+                };
+                // Arg is a leaf and does not have effectful children.
+                if !matches!(expr.as_ref(), Expr::Arg(..)) {
+                    // We can view region nodes as a giant opaque operator
+                    // and only need to consider children that are in the same scope
+                    let children = expr.children_same_scope();
+                    let mut effectful_child_iter =
+                        children.iter().filter(|child| self.is_effectful(child));
+                    let effectful_child = effectful_child_iter
+                        .next()
+                        .expect("Expect one effectful child from an effectful operator");
+                    assert!(effectful_child_iter.next().is_none());
+                    if !dangling_effectful.remove(&Rc::as_ptr(effectful_child)) {
+                        return Err(
                                 format!("Resulting program violated linearity! Effectful expression's state edge was referenced twice. Parent 1: {}\n\n Parent 2: {}\n\n Child referenced twice: {}", effectful_parent.get(&Rc::as_ptr(effectful_child)).unwrap(), expr, effectful_child),
                             );
-                        }
-                        effectful_parent.insert(Rc::as_ptr(effectful_child), expr.clone());
                     }
+                    effectful_parent.insert(Rc::as_ptr(effectful_child), expr.clone());
                 }
-                if get_if_effectful(self, region).is_some() && !dangling_effectful.remove(&region) {
-                    panic!("The region operator is either consumed or not effectful.");
-                }
-                if !dangling_effectful.is_empty() {
-                    return Err("Resulting program violated linearity! There are unconsumed effectful operators.".to_string());
-                }
+            }
+            if get_if_effectful(self, region).is_some() && !dangling_effectful.remove(&region) {
+                panic!("The region operator is either consumed or not effectful.");
+            }
+            if !dangling_effectful.is_empty() {
+                return Err("Resulting program violated linearity! There are unconsumed effectful operators.".to_string());
             }
         }
         Ok(())

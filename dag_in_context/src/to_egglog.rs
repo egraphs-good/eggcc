@@ -120,20 +120,20 @@ impl Assumption {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
         match self {
             Assumption::InLoop(lhs, rhs) => {
-                let lhs = lhs.to_egglog_internal(term_dag);
-                let rhs = rhs.to_egglog_internal(term_dag);
+                let lhs = lhs.to_egglog_with(term_dag);
+                let rhs = rhs.to_egglog_with(term_dag);
                 term_dag.app("InLoop".into(), vec![lhs, rhs])
             }
             Assumption::InIf(is_then, pred, input) => {
-                let pred = pred.to_egglog_internal(term_dag);
+                let pred = pred.to_egglog_with(term_dag);
                 let is_then = term_dag.lit(Literal::Bool(*is_then));
-                let input = input.to_egglog_internal(term_dag);
+                let input = input.to_egglog_with(term_dag);
                 term_dag.app("InIf".into(), vec![is_then, pred, input])
             }
             Assumption::InSwitch(branch, pred, input) => {
-                let pred = pred.to_egglog_internal(term_dag);
+                let pred = pred.to_egglog_with(term_dag);
                 let branch = term_dag.lit(Literal::Int(*branch));
-                let input = input.to_egglog_internal(term_dag);
+                let input = input.to_egglog_with(term_dag);
                 term_dag.app("InSwitch".into(), vec![branch, pred, input])
             }
             Assumption::WildCard(str) => term_dag.var(str.into()),
@@ -166,11 +166,11 @@ impl UnaryOp {
 impl Expr {
     pub fn to_egglog(self: &RcExpr) -> (Term, TermDag) {
         let mut state = TreeToEgglog::new();
-        let term = self.to_egglog_internal(&mut state);
+        let term = self.to_egglog_with(&mut state);
         (term, state.termdag)
     }
 
-    pub(crate) fn to_egglog_internal(self: &RcExpr, term_dag: &mut TreeToEgglog) -> Term {
+    pub(crate) fn to_egglog_with(self: &RcExpr, term_dag: &mut TreeToEgglog) -> Term {
         if let Some(term) = term_dag.converted_cache.get(&Rc::as_ptr(self)) {
             return term.clone();
         }
@@ -182,37 +182,37 @@ impl Expr {
                 term_dag.app("Const".into(), vec![child, ty, ctx])
             }
             Expr::Bop(op, lhs, rhs) => {
-                let lhs = lhs.to_egglog_internal(term_dag);
-                let rhs = rhs.to_egglog_internal(term_dag);
+                let lhs = lhs.to_egglog_with(term_dag);
+                let rhs = rhs.to_egglog_with(term_dag);
                 let op = op.to_egglog_internal(term_dag);
                 term_dag.app("Bop".into(), vec![op, lhs, rhs])
             }
             Expr::Top(op, x, y, z) => {
-                let x = x.to_egglog_internal(term_dag);
-                let y = y.to_egglog_internal(term_dag);
-                let z = z.to_egglog_internal(term_dag);
+                let x = x.to_egglog_with(term_dag);
+                let y = y.to_egglog_with(term_dag);
+                let z = z.to_egglog_with(term_dag);
                 let op = op.to_egglog_internal(term_dag);
                 term_dag.app("Top".into(), vec![op, x, y, z])
             }
             Expr::Uop(op, expr) => {
-                let expr = expr.to_egglog_internal(term_dag);
+                let expr = expr.to_egglog_with(term_dag);
                 let op = op.to_egglog_internal(term_dag);
                 term_dag.app("Uop".into(), vec![op, expr])
             }
             Expr::Get(expr, index) => {
-                let expr = expr.to_egglog_internal(term_dag);
+                let expr = expr.to_egglog_with(term_dag);
                 let lit_index = term_dag.lit(Literal::Int(*index as i64));
                 term_dag.app("Get".into(), vec![expr, lit_index])
             }
             Expr::Alloc(id, expr, state, ty) => {
                 let id = term_dag.lit(Literal::Int(*id));
-                let expr = expr.to_egglog_internal(term_dag);
+                let expr = expr.to_egglog_with(term_dag);
                 let ty = ty.to_egglog_internal(term_dag);
-                let state = state.to_egglog_internal(term_dag);
+                let state = state.to_egglog_with(term_dag);
                 term_dag.app("Alloc".into(), vec![id, expr, state, ty])
             }
             Expr::Call(name, arg) => {
-                let arg = arg.to_egglog_internal(term_dag);
+                let arg = arg.to_egglog_with(term_dag);
                 let name_lit = term_dag.lit(Literal::String(name.into()));
                 term_dag.app("Call".into(), vec![name_lit, arg])
             }
@@ -222,34 +222,31 @@ impl Expr {
                 term_dag.app("Empty".into(), vec![ty, ctx])
             }
             Expr::Single(expr) => {
-                let expr = expr.to_egglog_internal(term_dag);
+                let expr = expr.to_egglog_with(term_dag);
                 term_dag.app("Single".into(), vec![expr])
             }
             Expr::Concat(lhs, rhs) => {
-                let lhs = lhs.to_egglog_internal(term_dag);
-                let rhs = rhs.to_egglog_internal(term_dag);
+                let lhs = lhs.to_egglog_with(term_dag);
+                let rhs = rhs.to_egglog_with(term_dag);
                 term_dag.app("Concat".into(), vec![lhs, rhs])
             }
             Expr::Switch(expr, inputs, cases) => {
-                let expr = expr.to_egglog_internal(term_dag);
-                let inputs = inputs.to_egglog_internal(term_dag);
-                let cases = cases
-                    .iter()
-                    .map(|c| c.to_egglog_internal(term_dag))
-                    .collect();
+                let expr = expr.to_egglog_with(term_dag);
+                let inputs = inputs.to_egglog_with(term_dag);
+                let cases = cases.iter().map(|c| c.to_egglog_with(term_dag)).collect();
                 let cases = to_listexpr(cases, term_dag);
                 term_dag.app("Switch".into(), vec![expr, inputs, cases])
             }
             Expr::If(cond, input, then, els) => {
-                let cond = cond.to_egglog_internal(term_dag);
-                let then = then.to_egglog_internal(term_dag);
-                let inputs = input.to_egglog_internal(term_dag);
-                let els = els.to_egglog_internal(term_dag);
+                let cond = cond.to_egglog_with(term_dag);
+                let then = then.to_egglog_with(term_dag);
+                let inputs = input.to_egglog_with(term_dag);
+                let els = els.to_egglog_with(term_dag);
                 term_dag.app("If".into(), vec![cond, inputs, then, els])
             }
             Expr::DoWhile(cond, body) => {
-                let cond = cond.to_egglog_internal(term_dag);
-                let body = body.to_egglog_internal(term_dag);
+                let cond = cond.to_egglog_with(term_dag);
+                let body = body.to_egglog_with(term_dag);
                 term_dag.app("DoWhile".into(), vec![cond, body])
             }
             Expr::Arg(ty, ctx) => {
@@ -258,7 +255,7 @@ impl Expr {
                 term_dag.app("Arg".into(), vec![ty, ctx])
             }
             Expr::Function(name, ty_in, ty_out, body) => {
-                let body = body.to_egglog_internal(term_dag);
+                let body = body.to_egglog_with(term_dag);
                 let ty_in = ty_in.to_egglog_internal(term_dag);
                 let ty_out = ty_out.to_egglog_internal(term_dag);
                 let name_lit = term_dag.lit(Literal::String(name.into()));
@@ -301,11 +298,11 @@ impl TreeProgram {
     // TODO Implement sharing of common subexpressions using
     // a cache and the Rc's pointer.
     pub(crate) fn to_egglog_with(&self, term_dag: &mut TreeToEgglog) -> Term {
-        let entry_term = self.entry.to_egglog_internal(term_dag);
+        let entry_term = self.entry.to_egglog_with(term_dag);
         let functions_terms = self
             .functions
             .iter()
-            .map(|expr| expr.to_egglog_internal(term_dag))
+            .map(|expr| expr.to_egglog_with(term_dag))
             .collect();
         let functions_list = to_listexpr(functions_terms, term_dag);
         term_dag.app("Program".into(), vec![entry_term, functions_list])

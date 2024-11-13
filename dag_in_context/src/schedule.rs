@@ -26,10 +26,13 @@ pub(crate) fn helpers() -> String {
     apply-subst-unions
     cleanup-subst
 
-    subsume-after-helpers
-
     (saturate boundary-analysis)
-)"
+)
+
+;; be careful to finish dropping and substituting before subsuming things!
+;; otherwise substitution or dropat may not finish, violating the weak linearity invariant
+(saturate subsume-after-helpers)
+"
     .to_string()
 }
 

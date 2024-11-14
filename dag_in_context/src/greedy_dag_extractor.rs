@@ -135,15 +135,11 @@ impl<'a> EgraphInfo<'a> {
     ) -> Self {
         let loop_iteration_estimates = Self::get_loop_iteration_estimates(egraph);
         let inlined_calls = Self::get_inlined_calls(egraph);
+        let n2c = |nid: &NodeId| egraph.nid_to_cid(nid).clone();
+        let func_root = get_root(egraph, func);
 
         // get all the roots needed
-        let mut region_roots = IndexSet::new();
-        for (_nodeid, node) in &egraph.nodes {
-            for root in enode_regions(egraph, node) {
-                region_roots.insert(root);
-            }
-        }
-        let n2c = |nid: &NodeId| egraph.nid_to_cid(nid).clone();
+        let mut region_roots = find_reachable(egraph, n2c(&func_root.clone()), cm, false, true);
         // also add the function as a root
         region_roots.insert(n2c(&get_root(egraph, func)));
 
@@ -158,7 +154,7 @@ impl<'a> EgraphInfo<'a> {
                 i,
                 region_roots.len()
             );
-            let reachable = region_reachable_classes(egraph, root.clone(), cm);
+            let reachable = find_reachable(egraph, root.clone(), cm, true, false);
             for eclass in reachable {
                 // if type is not expr add to count
                 if egraph.class_data[&eclass].typ.as_ref().unwrap() != "Expr" {
@@ -1010,30 +1006,6 @@ where
     }
 }
 
-// For a given enode,
-// return the roots for sub-regions
-fn enode_regions(
-    egraph: &egraph_serialize::EGraph,
-    enode: &egraph_serialize::Node,
-) -> Vec<ClassId> {
-    enode_children(egraph, enode)
-        .iter()
-        .filter_map(
-            |EnodeChild {
-                 child,
-                 is_subregion,
-                 ..
-             }| {
-                if *is_subregion {
-                    Some(child.clone())
-                } else {
-                    None
-                }
-            },
-        )
-        .collect()
-}
-
 struct EnodeChild {
     child: ClassId,
     is_subregion: bool,
@@ -1150,12 +1122,15 @@ fn type_is_part_of_ast(ty: &str) -> bool {
 
 /// Reachable eclasses in the same region as the root.
 /// Does not include subregions, assumptions, or anything that does not have the correct type.
-fn region_reachable_classes(
+fn find_reachable(
     egraph: &egraph_serialize::EGraph,
     root: ClassId,
     cm: &dyn CostModel,
+    include_non_roots: bool,
+    recursive: bool,
 ) -> IndexSet<ClassId> {
     let mut visited = IndexSet::new();
+    let mut result = IndexSet::new();
     let mut queue = UniqueQueue::default();
     queue.insert(root);
 
@@ -1169,6 +1144,9 @@ fn region_reachable_classes(
             continue;
         }
         if visited.insert(eclass.clone()) {
+            if include_non_roots {
+                result.insert(eclass.clone());
+            }
             for node in &egraph.classes()[&eclass].nodes {
                 // skip nodes with infinite cost
                 if cm.get_op_cost(&egraph[node].op).is_infinite() {
@@ -1181,15 +1159,22 @@ fn region_reachable_classes(
                     is_assumption,
                 } in enode_children(egraph, &egraph[node])
                 {
-                    if !is_subregion && !is_assumption {
-                        queue.insert(child);
+                    if !is_assumption {
+                        if is_subregion {
+                            if recursive {
+                                queue.insert(child.clone());
+                                result.insert(child);
+                            }
+                        } else {
+                            queue.insert(child);
+                        }
                     }
                 }
             }
         }
     }
 
-    visited
+    result
 }
 
 #[cfg(test)]

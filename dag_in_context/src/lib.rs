@@ -293,17 +293,15 @@ pub fn optimize(
         // TODO we inline on the first pass, but this should be configurable from the schedule
         let inline_program = if i == 0 { Some(res.clone()) } else { None };
 
-        for func in fns {
-            log::info!("Running pass {} on {}", i, func);
+        // TODO experiment with different batches of optimizing functions together
+        // currently we use the whole program
+        let batches = vec![fns.clone()];
+
+        for batch in batches {
+            log::info!("Running pass {} on batch {:?}", i, batch);
             log::info!("Schedule: {}", schedule);
             // only inline functions on the first pass
-            let egglog_prog = build_program(
-                &res,
-                inline_program.as_ref(),
-                &[func.clone()],
-                cache,
-                schedule,
-            );
+            let egglog_prog = build_program(&res, inline_program.as_ref(), &batch, cache, schedule);
 
             log::info!("Running egglog program...");
             let mut egraph = egglog::EGraph::default();
@@ -313,7 +311,7 @@ pub fn optimize(
             let mut termdag = egglog::TermDag::default();
             let (_res_cost, iter_result) = extract(
                 &res,
-                vec![func.clone()],
+                batch,
                 serialized,
                 unextractables,
                 &mut termdag,

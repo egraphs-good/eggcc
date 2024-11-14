@@ -1106,7 +1106,6 @@ impl Run {
                 .arg("-fno-vectorize")
                 .arg("-fno-slp-vectorize")
                 .arg("-emit-llvm")
-                .arg("-disable-O0-optnone")
                 .arg("-S")
                 .arg("-o")
                 .arg(optimized.clone()),
@@ -1130,7 +1129,6 @@ impl Run {
                 .arg("-regalloc=greedy")
                 .arg("-mllvm")
                 .arg("-optimize-regalloc")
-                .arg("-disable-O0-optnone")
                 .arg("-o")
                 .arg(executable.clone()),
             "failed to compile llvm ir",

@@ -6,12 +6,11 @@ import concurrent.futures
 import subprocess
 
 def make_cfgs(bench, data_dir):
-  cwd = os.getcwd()
-  path = f"{data_dir}/{bench}"
-  runmodes = os.listdir(path)
+  bench_path = f"{data_dir}/{bench}"
+  runmodes = os.listdir(bench_path)
+  
   for mode in runmodes:
-    os.chdir(f"{path}/{mode}")
-
+    path = f"{bench_path}/{mode}"
     # HACK: check if opt-18 exists
     # otherwise use opt
     # On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
@@ -24,34 +23,35 @@ def make_cfgs(bench, data_dir):
       opt = "opt"
 
     # https://llvm.org/docs/Passes.html#dot-cfg-print-cfg-of-function-to-dot-file
-    for filename in glob.glob("*.ll"):
-      if "init" in filename:
-        # Delete the -init.ll file (We don't need it for nightly,
-        # so just reduce the amount of clutter we copy to the nightly machine)
-        os.system(f"rm {filename}")
-      else:
-        os.system(f"{opt} -disable-output -passes=dot-cfg {filename}")
+    # spawn a shell in the path and run opt
+    opt_res = subprocess.run(f"{opt} -disable-output -passes=dot-cfg optimized.ll", shell=True, cwd=path)
+    if opt_res.returncode != 0:
+      print(f"Error running opt on {path}/optimized.ll")
+      exit(1)
+      
 
     # Find all the dot files (can't use glob because it doesn't match hidden files)
     # There are also a bunch of files that start with ._Z that I don't think we care about?
-    dots = [f for f in os.listdir(".") if f.endswith(".dot") and not f.startswith("._Z") and not f.startswith("._bril")]
+    dots = [f for f in os.listdir(f"{path}") if f.endswith(".dot") and not f.startswith("._Z") and not f.startswith("._bril")]
     for dot in dots:
       name = dot.split(".")[1]
 
       # Convert to png
-      cmd = f"dot -Tpng -o {name}.png {dot}"
-      os.system(cmd)
+      cmd = f"dot -Tpng -o {path}/{name}.png {path}/{dot}"
+      dot_res = subprocess.run(cmd, shell=True).returncode
+      if dot_res != 0:
+        print(f"Error converting {dot} to png")
+        exit(1)
 
-    pngs = glob.glob("*.png")
+    pngs = glob.glob(f"{path}/*.png")
+    pngs_names = [os.path.basename(png) for png in pngs]
     print(f"Generated {len(pngs)} CFGs for {bench} {mode}")
-    with open("png_names.txt", "w") as f:
-      f.write("\n".join(pngs))
+    with open(f"{path}/png_names.txt", "w") as f:
+      f.write("\n".join(pngs_names))
 
     # Clean up dot files
-    os.system("rm .*.dot")
+    os.system(f"rm {path}/.*.dot")
 
-    # Reset dir
-    os.chdir(cwd)
 
 
 if __name__ == '__main__':

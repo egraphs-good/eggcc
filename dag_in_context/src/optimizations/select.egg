@@ -1,0 +1,21 @@
+(ruleset select)
+
+(rule
+       (
+        (= if_e (If pred inputs thn els))
+        (ContextOf if_e ctx)
+
+        (= thn_out (Get thn i))
+        (= els_out (Get els i))
+        (ExprIsPure thn_out)
+        (ExprIsPure els_out)
+        
+        (> 10 (Expr-size thn_out)) ; TODO: Tune these size limits
+        (> 10 (Expr-size els_out))
+       )
+       (
+        (union (Get if_e i)
+               (Top (Select) pred (Subst ctx inputs thn_out) (Subst ctx inputs els_out)))
+       )
+       :ruleset select
+)

@@ -27,6 +27,7 @@ pub(crate) fn helpers() -> String {
     cleanup-subst
 
     (saturate boundary-analysis)
+    (saturate terms)
 )
 
 ;; be careful to finish dropping and substituting before subsuming things!
@@ -133,6 +134,8 @@ pub fn parallel_schedule() -> Vec<String> {
 
     {helpers}
 )
+
+(print-function TCPair 100)
 "
     )]
 }

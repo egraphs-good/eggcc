@@ -239,3 +239,44 @@
 (bop->string (PtrAdd) "PtrAdd")
 (bop->string (Print) "Print")
 (bop->string (Free) "Free")
+
+; TERMS
+(datatype Term)
+(datatype ListTerm (TermCons Term ListTerm) (TermNil))
+
+; TODO: Will probably need ctx so that we can resubstitute?
+; (datatype TermAssumption
+;   ; Assume nothing
+;   (InFunc String)
+;   ; The term is in a loop with `input` and `pred_output`.
+;   ; InLoop is a special context because it describes the argument of the loop. It is a *scope context*.
+;   ;      input    pred_output
+;   (InLoop Term     Term)
+;   ; Branch of the switch, and what the predicate is, and what the input is
+;   (InSwitch i64 Term Term)
+;   ; If the predicate was true, and what the predicate is, and what the input is
+;   (InIf bool Term Term)
+; )
+
+(function TermArg (Type) Term)
+
+(function TermConst (Constant Type) Term)
+
+(function TermEmpty (Type) Term)
+
+; Term Operators
+(function TermTop (TernaryOp Term Term Term) Term)
+(function TermBop (BinaryOp Term Term) Term)
+(function TermUop (UnaryOp Term) Term)
+(function TermGet (Term i64) Term)
+(function TermAlloc (i64 Term Term BaseType) Term)
+(function TermCall (String Term) Term)
+
+(function TermSingle (Term) Term)
+(function TermConcat (Term Term) Term)
+
+(function TermSwitch (Term Term ListTerm) Term)
+(function TermIf (Term Term Term Term) Term)
+
+(function TermDoWhile (Term Term) Term)
+

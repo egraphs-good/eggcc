@@ -146,13 +146,41 @@ fn get_eggcc_root() -> String {
     std::env::var("EGGCC_ROOT").unwrap_or(".".to_string())
 }
 
-#[derive(Debug, Clone, ValueEnum, Copy)]
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, ValueEnum, Copy, Eq, PartialEq)]
 #[clap(rename_all = "verbatim")]
 pub enum LLVMOptLevel {
-    O0,
-    O1,
-    O2,
-    O3,
+    O0_O0,
+    O1_O0,
+    O2_O0,
+    O3_O0,
+    /// Use LLVM O3 and also lower to a binary using O3
+    /// Other modes use O0 to lower the optimized llvm to a binary
+    O3_O3,
+}
+
+impl LLVMOptLevel {
+    pub fn llvm_opt_level(&self) -> String {
+        match self {
+            LLVMOptLevel::O0_O0 => "O0",
+            LLVMOptLevel::O1_O0 => "O1",
+            LLVMOptLevel::O2_O0 => "O2",
+            LLVMOptLevel::O3_O0 => "O3",
+            LLVMOptLevel::O3_O3 => "O3",
+        }
+        .to_string()
+    }
+
+    pub fn lower_opt_level(&self) -> String {
+        match self {
+            LLVMOptLevel::O0_O0 => "O0",
+            LLVMOptLevel::O1_O0 => "O0",
+            LLVMOptLevel::O2_O0 => "O0",
+            LLVMOptLevel::O3_O0 => "O0",
+            LLVMOptLevel::O3_O3 => "O3",
+        }
+        .to_string()
+    }
 }
 
 impl Display for LLVMOptLevel {
@@ -514,7 +542,7 @@ impl Run {
         #[cfg(feature = "llvm")]
         {
             for optimize_egglog in [true, false] {
-                for optimize_llvm in [LLVMOptLevel::O0, LLVMOptLevel::O3] {
+                for optimize_llvm in [LLVMOptLevel::O0_O0, LLVMOptLevel::O3_O0] {
                     res.push(Run {
                         test_type: RunMode::LLVM,
                         interp: InterpMode::Interp,
@@ -640,7 +668,7 @@ impl Run {
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
                 let interpretable =
-                    self.run_bril_llvm(bril, false, LLVMOptLevel::O0, self.add_timing)?;
+                    self.run_bril_llvm(bril, false, LLVMOptLevel::O0_O0, self.add_timing)?;
                 (vec![], Some(interpretable))
             }
             RunMode::DagToRvsdg => {
@@ -876,7 +904,7 @@ impl Run {
                         self.prog_with_args.program.clone()
                     };
 
-                    for optimize_llvm in [LLVMOptLevel::O0, LLVMOptLevel::O3] {
+                    for optimize_llvm in [LLVMOptLevel::O0_O0, LLVMOptLevel::O3_O0] {
                         let interpretable = self.run_bril_llvm(
                             resulting_bril.clone(),
                             false,
@@ -1085,23 +1113,29 @@ impl Run {
             Command::new("clang-18")
                 .arg(processed.clone())
                 .arg("-g0")
-                .arg(format!("-{}", llvm_level))
+                .arg(format!("-{}", llvm_level.llvm_opt_level()))
                 .arg("-fno-vectorize")
                 .arg("-fno-slp-vectorize")
                 .arg("-emit-llvm")
                 .arg("-S")
                 .arg("-o")
                 .arg(optimized.clone()),
-            "failed to copy unoptimized llvm ir",
+            "failed to optimize llvm ir",
         );
 
         // Lower the optimized LLVM but don't do target-specific optimizations besides register allocation
         // We use O0 and disable debug info
         expect_command_success(
             Command::new("clang-18")
-                .arg(optimized.clone())
-                .arg("-g0")
-                .arg("-O0")
+                .arg(
+                    // in O3-O3 mode, use processed so we aren't running the front end twice
+                    if llvm_level == LLVMOptLevel::O3_O3 {
+                        processed.clone()
+                    } else {
+                        optimized.clone()
+                    },
+                )
+                .arg(format!("-{}", llvm_level.lower_opt_level()))
                 .arg("-mllvm")
                 .arg("-regalloc=greedy")
                 .arg("-mllvm")

@@ -12,13 +12,14 @@ import concurrent.futures
 treatments = [
   "rvsdg-round-trip-to-executable",
   #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
-  "llvm-O0",
-  "llvm-O1",
-  "llvm-O2",
-  "llvm-O0-eggcc",
-  "llvm-O0-eggcc-sequential",
-  "llvm-O3",
-  "llvm-O3-eggcc",
+  "llvm-O0-O0",
+  "llvm-O1-O0",
+  "llvm-O2-O0",
+  "llvm-eggcc-O0-O0",
+  "llvm-eggcc-sequential-O0-O0",
+  "llvm-O3-O0",
+  "llvm-O3-O3",
+  "llvm-eggcc-O3-O0",
 ]
 
 # Where to output files that are needed for nightly report
@@ -36,21 +37,23 @@ EGGCC_BINARY = "target/release/eggcc"
 def get_eggcc_options(benchmark):
   match benchmark.treatment:
     case "rvsdg-round-trip-to-executable":
-      return (f'rvsdg-round-trip',  f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
-    case "llvm-O0":
-      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
-    case "llvm-O1":
-      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O1')
-    case "llvm-O2":
-      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O2')
-    case "llvm-O3":
-      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3')
-    case "llvm-O0-eggcc-sequential":
-      return (f'optimize --eggcc-schedule sequential', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
-    case "llvm-O0-eggcc":
-      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
-    case "llvm-O3-eggcc":
-      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3')
+      return (f'rvsdg-round-trip',  f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-O0-O0":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-O1-O0":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O1_O0')
+    case "llvm-O2-O0":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O2_O0')
+    case "llvm-O3-O0":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
+    case "llvm-O3-O3":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
+    case "llvm-eggcc-sequential-O0-O0":
+      return (f'optimize --eggcc-schedule sequential', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-O0-O0":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-O3-O0":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -149,13 +152,14 @@ def bench(benchmark):
 def should_have_llvm_ir(runMethod):
   return runMethod in [
     "rvsdg-round-trip-to-executable",
-    "llvm-O0",
-    "llvm-O1",
-    "llvm-O2",
-    "llvm-O0-eggcc",
-    "llvm-O0-eggcc-sequential",
-    "llvm-O3",
-    "llvm-O3-eggcc",
+    "llvm-O0-O0",
+    "llvm-O1-O0",
+    "llvm-O2-O0",
+    "llvm-eggcc-O0-O0",
+    "llvm-eggcc-sequential-O0-O0",
+    "llvm-O3-O0",
+    "llvm-O3-O3",
+    "llvm-eggcc-O3-O0",
   ]
 
 # aggregate all profile info into a single json array.
@@ -195,7 +199,11 @@ if __name__ == '__main__':
 
   # build eggcc
   print("Building eggcc")
-  os.system("cargo build --release")
+  buildres = os.system("cargo build --release")
+  if buildres != 0:
+    print("Failed to build eggcc")
+    exit(1)
+
 
 
   bril_dir, DATA_DIR = os.sys.argv[1:]

@@ -40,13 +40,14 @@ function getComparison(benchmark, runMethod) {
 function shouldHaveLlvm(runMethod) {
   return [
     "rvsdg-round-trip-to-executable",
-    "llvm-O0",
-    "llvm-O1",
-    "llvm-O2",
-    "llvm-O0-eggcc",
-    "llvm-O0-eggcc-sequential",
-    "llvm-O3",
-    "llvm-O3-eggcc",
+    "llvm-O0-O0",
+    "llvm-O1-O0",
+    "llvm-O2-O0",
+    "llvm-eggcc-O0-O0",
+    "llvm-eggcc-sequential-O0-O0",
+    "llvm-O3-O0",
+    "llvm-O3-O0",
+    "llvm-eggcc-O3-O0",
   ].includes(runMethod);
 }
 

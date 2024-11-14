@@ -19,11 +19,11 @@ fn listlike(el_tys: Vec<&str>, el_relations: Vec<&str>) -> String {
 (function Length-{datatype} ({datatype}) i64)
 (rule ((= x (Nil-{datatype})))
       ((set (Length-{datatype} x) 0))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 (rule ((= x (Cons-{datatype} {el} tl))
        (= l (Length-{datatype} tl)))
       ((set (Length-{datatype} x) (+ l 1)))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 (rule ((= x (Nil-{datatype})))
       ((set (Length-{datatype} x) 0))
       :ruleset memory-helpers)
@@ -35,30 +35,30 @@ fn listlike(el_tys: Vec<&str>, el_relations: Vec<&str>) -> String {
 (relation IsEmpty-{datatype} ({datatype}))
 (rule ((= x (Nil-{datatype})))
       ((IsEmpty-{datatype} x))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 
 (relation IsNonEmpty-{datatype} ({datatype}))
 (rule ((= x (Cons-{datatype} {el} tl)))
       ((IsNonEmpty-{datatype} x))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 
 (function RevConcat-{datatype} ({datatype} {datatype}) {datatype} :cost 1000)
 (rewrite (RevConcat-{datatype} (Nil-{datatype}) l)
          l
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (RevConcat-{datatype} (Cons-{datatype} {el} tl) l)
          (RevConcat-{datatype} tl (Cons-{datatype} {el} l))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 (function Rev-{datatype} ({datatype}) {datatype} :cost 1000)
 (rewrite (Rev-{datatype} m)
          (RevConcat-{datatype} m (Nil-{datatype}))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 (function Concat-{datatype} ({datatype} {datatype}) {datatype} :cost 1000)
 (rewrite (Concat-{datatype} x y)
          (RevConcat-{datatype} (Rev-{datatype} x) y)
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 ; SuffixAt and At must be demanded, otherwise these are O(N^2)
 (relation DemandAt-{datatype} ({datatype}))
@@ -66,11 +66,11 @@ fn listlike(el_tys: Vec<&str>, el_relations: Vec<&str>) -> String {
 (relation At-{datatype} ({datatype} i64 {tys_s}))
 (rule ((DemandAt-{datatype} x))
       ((SuffixAt-{datatype} x 0 x))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 (rule ((SuffixAt-{datatype} x i (Cons-{datatype} {el} tl)))
       ((SuffixAt-{datatype} x (+ i 1) tl)
        (At-{datatype} x i {el}))
-      :ruleset always-run)"
+      :ruleset memory-always-run)"
     ));
 
     for el_relation in el_relations {
@@ -79,12 +79,12 @@ fn listlike(el_tys: Vec<&str>, el_relations: Vec<&str>) -> String {
 (relation All<{el_relation}> ({datatype}))
 (rule ((= x (Nil-{datatype})))
       ((All<{el_relation}> x))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 (rule ((= x (Cons-{datatype} {el} tl))
        ({el_relation} {el})
        (All<{el_relation}> tl))
       ((All<{el_relation}> x))
-      :ruleset always-run)
+      :ruleset memory-always-run)
         "
         ));
     }
@@ -103,45 +103,45 @@ pub(crate) fn rules() -> String {
     (I i64))
 
 (function MaxIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
-(rewrite (MaxIntOrInfinity (Infinity) _) (Infinity) :ruleset always-run)
-(rewrite (MaxIntOrInfinity _ (Infinity)) (Infinity) :ruleset always-run)
-(rewrite (MaxIntOrInfinity (NegInfinity) x) x :ruleset always-run)
-(rewrite (MaxIntOrInfinity x (NegInfinity)) x :ruleset always-run)
-(rewrite (MaxIntOrInfinity (I x) (I y)) (I (max x y)) :ruleset always-run)
+(rewrite (MaxIntOrInfinity (Infinity) _) (Infinity) :ruleset memory-always-run)
+(rewrite (MaxIntOrInfinity _ (Infinity)) (Infinity) :ruleset memory-always-run)
+(rewrite (MaxIntOrInfinity (NegInfinity) x) x :ruleset memory-always-run)
+(rewrite (MaxIntOrInfinity x (NegInfinity)) x :ruleset memory-always-run)
+(rewrite (MaxIntOrInfinity (I x) (I y)) (I (max x y)) :ruleset memory-always-run)
 
 (function MinIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
-(rewrite (MinIntOrInfinity (NegInfinity) _) (NegInfinity) :ruleset always-run)
-(rewrite (MinIntOrInfinity _ (NegInfinity)) (NegInfinity) :ruleset always-run)
-(rewrite (MinIntOrInfinity (Infinity) x) x :ruleset always-run)
-(rewrite (MinIntOrInfinity x (Infinity)) x :ruleset always-run)
-(rewrite (MinIntOrInfinity (I x) (I y)) (I (min x y)) :ruleset always-run)
+(rewrite (MinIntOrInfinity (NegInfinity) _) (NegInfinity) :ruleset memory-always-run)
+(rewrite (MinIntOrInfinity _ (NegInfinity)) (NegInfinity) :ruleset memory-always-run)
+(rewrite (MinIntOrInfinity (Infinity) x) x :ruleset memory-always-run)
+(rewrite (MinIntOrInfinity x (Infinity)) x :ruleset memory-always-run)
+(rewrite (MinIntOrInfinity (I x) (I y)) (I (min x y)) :ruleset memory-always-run)
 
 (function AddIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
-(rewrite (AddIntOrInfinity (Infinity) (Infinity)) (Infinity) :ruleset always-run)
-(rewrite (AddIntOrInfinity (Infinity) (I _)) (Infinity) :ruleset always-run)
-(rewrite (AddIntOrInfinity (I _) (Infinity)) (Infinity) :ruleset always-run)
-(rewrite (AddIntOrInfinity (NegInfinity) (NegInfinity)) (NegInfinity) :ruleset always-run)
-(rewrite (AddIntOrInfinity (NegInfinity) (I _)) (NegInfinity) :ruleset always-run)
-(rewrite (AddIntOrInfinity (I _) (NegInfinity)) (NegInfinity) :ruleset always-run)
-(rewrite (AddIntOrInfinity (I x) (I y)) (I (+ x y)) :ruleset always-run)
+(rewrite (AddIntOrInfinity (Infinity) (Infinity)) (Infinity) :ruleset memory-always-run)
+(rewrite (AddIntOrInfinity (Infinity) (I _)) (Infinity) :ruleset memory-always-run)
+(rewrite (AddIntOrInfinity (I _) (Infinity)) (Infinity) :ruleset memory-always-run)
+(rewrite (AddIntOrInfinity (NegInfinity) (NegInfinity)) (NegInfinity) :ruleset memory-always-run)
+(rewrite (AddIntOrInfinity (NegInfinity) (I _)) (NegInfinity) :ruleset memory-always-run)
+(rewrite (AddIntOrInfinity (I _) (NegInfinity)) (NegInfinity) :ruleset memory-always-run)
+(rewrite (AddIntOrInfinity (I x) (I y)) (I (+ x y)) :ruleset memory-always-run)
 
 (datatype IntInterval (MkIntInterval IntOrInfinity IntOrInfinity))
 
 (function UnionIntInterval (IntInterval IntInterval) IntInterval)
 (rewrite (UnionIntInterval (MkIntInterval lo1 hi1) (MkIntInterval lo2 hi2))
          (MkIntInterval (MinIntOrInfinity lo1 lo2) (MaxIntOrInfinity hi1 hi2))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 (function IntersectIntInterval (IntInterval IntInterval) IntInterval)
 (rewrite (IntersectIntInterval (MkIntInterval lo1 hi1) (MkIntInterval lo2 hi2))
          (MkIntInterval (MaxIntOrInfinity lo1 lo2) (MinIntOrInfinity hi1 hi2))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 (function AddIntInterval (IntInterval IntInterval) IntInterval)
 (rewrite (AddIntInterval (MkIntInterval lo1 hi1) (MkIntInterval lo2 hi2))
          (MkIntInterval (AddIntOrInfinity lo1 lo2)
                         (AddIntOrInfinity hi1 hi2))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 {Listi64IntInterval}
 
@@ -151,12 +151,12 @@ pub(crate) fn rules() -> String {
   (function UnionHelper-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
   (rewrite (Union-List<i64+IntInterval> m1 m2)
            (Rev-List<i64+IntInterval> (UnionHelper-List<i64+IntInterval> m1 m2 (Nil-List<i64+IntInterval>)))
-           :ruleset always-run)
+           :ruleset memory-always-run)
 
   ; both m1 and m2 empty
   (rewrite (UnionHelper-List<i64+IntInterval> (Nil-List<i64+IntInterval>) (Nil-List<i64+IntInterval>) res)
            res
-           :ruleset always-run)
+           :ruleset memory-always-run)
   ; take from m1 when m2 empty and vice versa
   (rewrite
     (UnionHelper-List<i64+IntInterval>
@@ -167,7 +167,7 @@ pub(crate) fn rules() -> String {
       (Nil-List<i64+IntInterval>)
       tl
       (Cons-List<i64+IntInterval> hd0 hd1 res))
-    :ruleset always-run)
+    :ruleset memory-always-run)
   (rewrite
     (UnionHelper-List<i64+IntInterval>
       (Cons-List<i64+IntInterval> hd0 hd1 tl)
@@ -177,7 +177,7 @@ pub(crate) fn rules() -> String {
       tl
       (Nil-List<i64+IntInterval>)
       (Cons-List<i64+IntInterval> hd0 hd1 res))
-    :ruleset always-run)
+    :ruleset memory-always-run)
 
   ; when both nonempty and smallest key different, take smaller key
   (rule ((= f (UnionHelper-List<i64+IntInterval> l1 l2 res))
@@ -186,14 +186,14 @@ pub(crate) fn rules() -> String {
          (< k1 k2))
         ((union f
            (UnionHelper-List<i64+IntInterval> tl1 l2 (Cons-List<i64+IntInterval> k1 a1 res))))
-        :ruleset always-run)
+        :ruleset memory-always-run)
   (rule ((= f (UnionHelper-List<i64+IntInterval> l1 l2 res))
          (= l1 (Cons-List<i64+IntInterval> k1 a1 tl1))
          (= l2 (Cons-List<i64+IntInterval> k2 b1 tl2))
          (< k2 k1))
         ((union f
            (UnionHelper-List<i64+IntInterval> l1 tl2 (Cons-List<i64+IntInterval> k2 b1 res))))
-        :ruleset always-run)
+        :ruleset memory-always-run)
 
   ; when shared smallest key, union interval
   (rule ((= f (UnionHelper-List<i64+IntInterval> l1 l2 res))
@@ -202,7 +202,7 @@ pub(crate) fn rules() -> String {
         ((union f
            (UnionHelper-List<i64+IntInterval> tl1 tl2
              (Cons-List<i64+IntInterval> k (UnionIntInterval a1 b1) res))))
-        :ruleset always-run)
+        :ruleset memory-always-run)
 
 (function Intersect-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
   ; The third argument of the helper is a WIP result map.
@@ -210,15 +210,15 @@ pub(crate) fn rules() -> String {
   (function IntersectHelper-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
   (rewrite (Intersect-List<i64+IntInterval> m1 m2)
            (Rev-List<i64+IntInterval> (IntersectHelper-List<i64+IntInterval> m1 m2 (Nil-List<i64+IntInterval>)))
-           :ruleset always-run)
+           :ruleset memory-always-run)
 
   ; m1 or m2 empty
   (rewrite (IntersectHelper-List<i64+IntInterval> (Nil-List<i64+IntInterval>) m2 res)
            res
-           :ruleset always-run)
+           :ruleset memory-always-run)
   (rewrite (IntersectHelper-List<i64+IntInterval> m1 (Nil-List<i64+IntInterval>) res)
            res
-           :ruleset always-run)
+           :ruleset memory-always-run)
 
   ; when both nonempty and smallest key different, drop smaller key
   (rule ((= f (IntersectHelper-List<i64+IntInterval> l1 l2 res))
@@ -226,13 +226,13 @@ pub(crate) fn rules() -> String {
          (= l2 (Cons-List<i64+IntInterval> k2 b1 tl2))
          (< k1 k2))
         ((union f (IntersectHelper-List<i64+IntInterval> tl1 l2 res)))
-        :ruleset always-run)
+        :ruleset memory-always-run)
   (rule ((= f (IntersectHelper-List<i64+IntInterval> l1 l2 res))
          (= l1 (Cons-List<i64+IntInterval> k1 a1 tl1))
          (= l2 (Cons-List<i64+IntInterval> k2 b1 tl2))
          (< k2 k1))
         ((union f (IntersectHelper-List<i64+IntInterval> tl1 l2 res)))
-        :ruleset always-run)
+        :ruleset memory-always-run)
 
 (datatype MyBool (MyTrue) (MyFalse))
 
@@ -240,32 +240,32 @@ pub(crate) fn rules() -> String {
 (rewrite (IntIntervalValid (MkIntInterval (I lo) (I hi)))
          (MyTrue)
          :when ((<= lo hi))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (IntIntervalValid (MkIntInterval (I lo) (I hi)))
          (MyFalse)
          :when ((> lo hi))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (IntIntervalValid (MkIntInterval (NegInfinity) _))
          (MyTrue)
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (IntIntervalValid (MkIntInterval _ (Infinity)))
          (MyTrue)
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 (function ConsIfNonEmpty (i64 IntInterval List<i64+IntInterval>)
           List<i64+IntInterval>
           :cost 100)
 (rule ((ConsIfNonEmpty k v tl))
       ((IntIntervalValid v))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 (rule ((= f (ConsIfNonEmpty k v tl))
        (= (MyTrue) (IntIntervalValid v)))
       ((union f (Cons-List<i64+IntInterval> k v tl)))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 (rule ((= f (ConsIfNonEmpty k v tl))
        (= (MyFalse) (IntIntervalValid v)))
       ((union f tl))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 
   ; when shared smallest key, intersect interval
   (rule ((= f (IntersectHelper-List<i64+IntInterval> l1 l2 res))
@@ -274,17 +274,17 @@ pub(crate) fn rules() -> String {
         ((union f
            (IntersectHelper-List<i64+IntInterval> tl1 tl2
              (ConsIfNonEmpty k (IntersectIntInterval a1 b1) res))))
-        :ruleset always-run)
+        :ruleset memory-always-run)
 
 (function AddIntIntervalToAll (IntInterval List<i64+IntInterval>)
                               List<i64+IntInterval>)
 (rewrite (AddIntIntervalToAll _ (Nil-List<i64+IntInterval>))
          (Nil-List<i64+IntInterval>)
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (AddIntIntervalToAll x (Cons-List<i64+IntInterval> allocid offset tl))
          (Cons-List<i64+IntInterval> allocid (AddIntInterval x offset)
            (AddIntIntervalToAll x tl))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 (datatype PtrPointees
   (PointsTo List<i64+IntInterval>)
@@ -293,37 +293,37 @@ pub(crate) fn rules() -> String {
 (function AddIntIntervalToPtrPointees (IntInterval PtrPointees) PtrPointees)
 (rewrite (AddIntIntervalToPtrPointees interval (PointsAnywhere))
          (PointsAnywhere)
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (AddIntIntervalToPtrPointees interval (PointsTo l))
          (PointsTo (AddIntIntervalToAll interval l))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 (function Union-PtrPointees (PtrPointees PtrPointees) PtrPointees)
 (rewrite (Union-PtrPointees (PointsAnywhere) _)
          (PointsAnywhere)
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (Union-PtrPointees _ (PointsAnywhere))
          (PointsAnywhere)
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (Union-PtrPointees (PointsTo x) (PointsTo y))
          (PointsTo (Union-List<i64+IntInterval> x y))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (function Intersect-PtrPointees (PtrPointees PtrPointees) PtrPointees)
 (rewrite (Intersect-PtrPointees (PointsAnywhere) x)
          x
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (Intersect-PtrPointees x (PointsAnywhere))
          x
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (Intersect-PtrPointees (PointsTo x) (PointsTo y))
          (PointsTo (Intersect-List<i64+IntInterval> x y))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 (relation PointsNowhere-PtrPointees (PtrPointees))
 (rule ((= f (PointsTo x))
        (IsEmpty-List<i64+IntInterval> x))
       ((PointsNowhere-PtrPointees f))
-      :ruleset always-run)
+      :ruleset memory-always-run)
 
 {ListPointees}
 
@@ -331,7 +331,7 @@ pub(crate) fn rules() -> String {
 (function Zip<Union-PtrPointees> (List<PtrPointees> List<PtrPointees>) List<PtrPointees> :cost 1000)
 (rewrite (Zip<Union-PtrPointees> (Nil-List<PtrPointees>) (Nil-List<PtrPointees>))
          (Nil-List<PtrPointees>)
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (Zip<Union-PtrPointees>
            (Cons-List<PtrPointees> x0 tl1)
            (Cons-List<PtrPointees> y0 tl2))
@@ -339,19 +339,19 @@ pub(crate) fn rules() -> String {
             (Union-PtrPointees x0 y0)
             (Zip<Union-PtrPointees> tl1 tl2))
          :when ((= (Length-List<PtrPointees> tl1) (Length-List<PtrPointees> tl2)))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 (function Zip<Intersect-PtrPointees> (List<PtrPointees> List<PtrPointees>) List<PtrPointees> :cost 1000)
 (rewrite (Zip<Intersect-PtrPointees> (Nil-List<PtrPointees>) (Nil-List<PtrPointees>))
          (Nil-List<PtrPointees>)
-         :ruleset always-run)
+         :ruleset memory-always-run)
 (rewrite (Zip<Intersect-PtrPointees>
            (Cons-List<PtrPointees> x0 tl1)
            (Cons-List<PtrPointees> y0 tl2))
          (Cons-List<PtrPointees>
             (Intersect-PtrPointees x0 y0)
             (Zip<Intersect-PtrPointees> tl1 tl2))
-         :ruleset always-run)
+         :ruleset memory-always-run)
 
 "
     )

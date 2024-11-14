@@ -384,7 +384,7 @@ pub struct Run {
     pub test_type: RunMode,
     pub interp: InterpMode,
     pub profile_out: Option<PathBuf>,
-    pub llvm_output_dir: Option<String>,
+    pub optimized_llvm_out: Option<PathBuf>,
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
     pub optimize_brilift: Option<bool>,
@@ -401,7 +401,7 @@ impl Run {
             interp: InterpMode::None,
             profile_out: None,
             output_path: None,
-            llvm_output_dir: None,
+            optimized_llvm_out: None,
             optimize_egglog: None,
             optimize_brilift: None,
             optimize_bril_llvm: None,
@@ -472,7 +472,7 @@ impl Run {
             prog_with_args: test.read_program(),
             profile_out: None,
             output_path: None,
-            llvm_output_dir: None,
+            optimized_llvm_out: None,
             optimize_egglog: None,
             optimize_brilift: Some(optimize_brilift),
             optimize_bril_llvm: None,
@@ -489,7 +489,7 @@ impl Run {
             prog_with_args: test.read_program(),
             profile_out: None,
             output_path: None,
-            llvm_output_dir: None,
+            optimized_llvm_out: None,
             // no need to set optimization flags, since all combinations are tested
             optimize_egglog: None,
             optimize_brilift: None,
@@ -549,7 +549,7 @@ impl Run {
                         prog_with_args: prog.clone(),
                         profile_out: None,
                         output_path: None,
-                        llvm_output_dir: None,
+                        optimized_llvm_out: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: None,
                         optimize_bril_llvm: Some(optimize_llvm),
@@ -1070,17 +1070,6 @@ impl Run {
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", unique_name));
 
-        // Copy init file to $output_dir
-        if let Some(output_dir) = &self.llvm_output_dir {
-            std::fs::create_dir_all(output_dir)
-                .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
-            std::process::Command::new("cp")
-                .arg(file_path.clone())
-                .arg(output_dir)
-                .status()
-                .unwrap();
-        }
-
         let processed = dir.path().join("postprocessed.ll");
         let optimized = dir.path().join("optimized.ll");
         // HACK: check if opt-18 exists
@@ -1145,12 +1134,10 @@ impl Run {
             "failed to compile llvm ir",
         );
 
-        if let Some(output_dir) = &self.llvm_output_dir {
+        if let Some(output_llvm_file) = &self.optimized_llvm_out {
             // move optimized.ll to the output dir
             expect_command_success(
-                Command::new("mv")
-                    .arg(optimized)
-                    .arg(format!("{}/{}.ll", output_dir, self.name())),
+                Command::new("mv").arg(optimized).arg(output_llvm_file),
                 "failed to move optimized llvm ir",
             );
         }

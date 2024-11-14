@@ -87,10 +87,12 @@ def optimize(benchmark):
 
   # get the commands we need to run
   (eggcc_run_mode, llvm_args) = get_eggcc_options(benchmark)
-  llvm_out_dir = f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}"
+  # make the llvm output directory
+  os.makedirs(f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}", exist_ok=True)
+  llvm_out_file = f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}/optimized.ll"
 
   cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode}'
-  cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_dir}'
+  cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_file}'
 
   print(f'Running c1: {cmd1}', flush=True)
   start_eggcc = time.time()

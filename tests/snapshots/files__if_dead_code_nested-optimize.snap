@@ -12,49 +12,89 @@ expression: visualization.result
   br v3_ .b6_ .b7_;
 .b6_:
   v8_: bool = lt v0 c2_;
-  c9_: int = const 1;
-  v10_: int = select v8_ c9_ c5_;
-  v11_: int = id v10_;
-  v12_: int = id c9_;
-  c13_: int = const 1;
-  v14_: int = select v3_ c13_ c2_;
-  print v14_;
-  print v3_;
-  print v11_;
-  ret;
-  jmp .b15_;
-.b7_:
-  v16_: bool = gt v0 c5_;
-  c17_: bool = const false;
-  c18_: int = const 2;
-  v19_: int = id c18_;
-  v20_: bool = id c17_;
-  v21_: int = id c2_;
-  br v16_ .b22_ .b23_;
-.b22_:
-  v24_: bool = gt v0 c4_;
-  c25_: int = const 4;
-  v26_: int = select v24_ c4_ c25_;
-  v19_: int = id v26_;
-  v20_: bool = id c17_;
-  v21_: int = id c2_;
-  v11_: int = id v19_;
-  v12_: int = id c2_;
-  c13_: int = const 1;
-  v14_: int = select v3_ c13_ c2_;
-  print v14_;
-  print v3_;
-  print v11_;
-  ret;
-  jmp .b15_;
-.b23_:
-  v11_: int = id v19_;
-  v12_: int = id c2_;
-  c13_: int = const 1;
-  v14_: int = select v3_ c13_ c2_;
-  print v14_;
-  print v3_;
-  print v11_;
-  ret;
+  c9_: bool = const true;
+  c10_: int = const 1;
+  c11_: int = const 2;
+  v12_: int = id c11_;
+  v13_: bool = id c9_;
+  v14_: int = id c10_;
+  br v8_ .b15_ .b16_;
 .b15_:
+  v12_: int = id c10_;
+  v13_: bool = id c9_;
+  v14_: int = id c10_;
+  v17_: int = id v12_;
+  v18_: int = id c10_;
+  c19_: int = const 1;
+  v20_: int = select v3_ c19_ c2_;
+  print v20_;
+  print v3_;
+  print v17_;
+  ret;
+  jmp .b21_;
+.b16_:
+  v17_: int = id v12_;
+  v18_: int = id c10_;
+  c19_: int = const 1;
+  v20_: int = select v3_ c19_ c2_;
+  print v20_;
+  print v3_;
+  print v17_;
+  ret;
+  jmp .b21_;
+.b7_:
+  v22_: bool = gt v0 c5_;
+  c23_: bool = const false;
+  c24_: int = const 2;
+  v25_: int = id c24_;
+  v26_: bool = id c23_;
+  v27_: int = id c2_;
+  br v22_ .b28_ .b29_;
+.b28_:
+  v30_: bool = gt v0 c4_;
+  c31_: int = const 4;
+  v32_: int = id c31_;
+  v33_: bool = id c23_;
+  v34_: int = id c2_;
+  br v30_ .b35_ .b36_;
+.b35_:
+  c37_: int = const 3;
+  v32_: int = id c37_;
+  v33_: bool = id c23_;
+  v34_: int = id c2_;
+  v25_: int = id v32_;
+  v26_: bool = id v33_;
+  v27_: int = id v34_;
+  v17_: int = id v25_;
+  v18_: int = id c2_;
+  c19_: int = const 1;
+  v20_: int = select v3_ c19_ c2_;
+  print v20_;
+  print v3_;
+  print v17_;
+  ret;
+  jmp .b21_;
+.b36_:
+  v25_: int = id v32_;
+  v26_: bool = id v33_;
+  v27_: int = id v34_;
+  v17_: int = id v25_;
+  v18_: int = id c2_;
+  c19_: int = const 1;
+  v20_: int = select v3_ c19_ c2_;
+  print v20_;
+  print v3_;
+  print v17_;
+  ret;
+  jmp .b21_;
+.b29_:
+  v17_: int = id v25_;
+  v18_: int = id c2_;
+  c19_: int = const 1;
+  v20_: int = select v3_ c19_ c2_;
+  print v20_;
+  print v3_;
+  print v17_;
+  ret;
+.b21_:
 }

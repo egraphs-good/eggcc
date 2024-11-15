@@ -1,5 +1,8 @@
 // ARGS: -0.2 2.0 -0.2 0.4 0.4
 
+// prints out the brightness of each pixel on a screen
+// use `visualize_raytrace_result.py` to visualize the output as a png
+
 // builds a cube mesh with two sides
 // z is positive going up, x goes positive to the right
 // y is positive going into the screen

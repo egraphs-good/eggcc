@@ -1,3 +1,5 @@
+# Use this file on the output of `raytracewithscreen.rs` to visualize the output of the ray tracing algorithm.
+
 import numpy as np
 from PIL import Image
 

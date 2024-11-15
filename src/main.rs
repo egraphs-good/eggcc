@@ -33,9 +33,9 @@ struct Args {
     /// Where to put the executable (only for the brillift and llvm modes)
     #[clap(short)]
     output_path: Option<String>,
-    /// Where to put intermediary files (only for OptimizeBrilLLVM mode)
+    /// Where to put the optimized llvm file (for the llvm mode)
     #[clap(long)]
-    llvm_output_dir: Option<String>,
+    llvm_output_dir: Option<PathBuf>,
     /// For the LLVM run mode, choose whether to first run eggcc
     /// to optimize the bril program before going to LLVM.
     #[clap(long)]
@@ -98,7 +98,7 @@ fn main() {
         },
         profile_out: args.profile_out,
         output_path: args.output_path,
-        llvm_output_dir: args.llvm_output_dir,
+        optimized_llvm_out: args.llvm_output_dir,
         optimize_egglog: args.optimize_egglog,
         optimize_brilift: args.optimize_brilift,
         optimize_bril_llvm: args.optimize_bril_llvm,

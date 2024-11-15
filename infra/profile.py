@@ -223,7 +223,10 @@ if __name__ == '__main__':
 
   benchmark_metadata = {}
   for profile in profiles:
-    name = profile.split("/")[-1][:-len(".bril")]
+    bench_name_parts = profile.split("/")[-1].split(".")
+    if len(bench_name_parts) != 2:
+      raise Exception(f"Invalid benchmark name: {profile}")
+    name = bench_name_parts[0]
     benchmark_metadata[name] = {"looped": is_looped(profile), "path": profile}
 
   to_run = []

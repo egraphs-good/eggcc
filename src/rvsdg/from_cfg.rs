@@ -20,6 +20,7 @@ use petgraph::dot::Dot;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use petgraph::{algo::dominators::Dominators, stable_graph::NodeIndex};
+use rpds::List;
 use smallvec::SmallVec;
 
 use crate::cfg::{ret_id, Annotation, BranchOp, CondVal, SwitchCfgFunction};
@@ -47,6 +48,7 @@ pub(crate) fn cfg_func_to_rvsdg(
     cfg: &mut SwitchCfgFunction,
     function_types: &FunctionTypes,
 ) -> Result<RvsdgFunction> {
+    eprintln!("Converting CFG to RVSDG: {}", cfg.name);
     if WRITE_INTERMEDIATES {
         File::create("/tmp/cfg-unstructured.dot")
             .unwrap()
@@ -94,7 +96,7 @@ pub(crate) fn cfg_func_to_rvsdg(
     };
 
     let start = builder.cfg.entry;
-    builder.compute_branch_info(vec![], start);
+    builder.compute_branch_info(List::new(), start);
 
     let state_var = builder.analysis.state_var;
 
@@ -730,12 +732,14 @@ impl<'a> RvsdgBuilder<'a> {
         (ins, outs)
     }
 
-    fn compute_branch_info(&mut self, mut last_branch: Vec<NodeIndex>, cur: NodeIndex) {
+    fn compute_branch_info(&mut self, mut last_branch: List<NodeIndex>, cur: NodeIndex) {
+        eprintln!("branch len: {}, cur: {cur:?}", last_branch.len(), cur = cur);
         // NB: we could get a big-O improvement by using a cons list. We could
         // even allocate nodes in an arena!
         let (ins, outs) = self.non_loop_neighbors(cur);
         if ins.len() > 1 {
-            let branch = last_branch.pop().unwrap();
+            let branch = *last_branch.first().unwrap();
+            last_branch = last_branch.drop_first().unwrap();
             assert_eq!(
                 *self.join_point.entry(branch).or_insert(cur),
                 cur,
@@ -746,9 +750,9 @@ impl<'a> RvsdgBuilder<'a> {
             [] => {}
             [x] => self.compute_branch_info(last_branch, *x),
             rest => {
-                last_branch.push(cur);
+                let new_branch = last_branch.push_front(cur);
                 for n in rest {
-                    self.compute_branch_info(last_branch.clone(), *n)
+                    self.compute_branch_info(new_branch.clone(), *n)
                 }
             }
         }

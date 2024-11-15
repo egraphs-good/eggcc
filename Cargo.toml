@@ -19,6 +19,7 @@ hashbrown = "0.14"
 indexmap = "2.0"
 fixedbitset = "0.4.2"
 smallvec = "1.11.1"
+rpds = "1.1.0"
 
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 # currently using the uwplse/bril fork of bril, on eggcc-main
@@ -61,3 +62,6 @@ write-intermediates = []
 # Runs tests relying on LLVM. This may not be available on all systems.
 llvm = []
 default = ["llvm"]
+
+[profile.release]
+debug = true

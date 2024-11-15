@@ -540,6 +540,7 @@ name = "dag_in_context"
 version = "0.1.0"
 dependencies = [
  "bril-rs 0.1.0 (git+https://github.com/uwplse/bril?rev=a48c5e18575aa738e8d08ff483ee23d6c2735107)",
+ "clap",
  "dot-structures",
  "egglog",
  "egraph-serialize",
@@ -639,6 +640,7 @@ dependencies = [
  "log",
  "ordered-float",
  "petgraph",
+ "rpds",
  "rs2bril",
  "serde_json",
  "smallvec",

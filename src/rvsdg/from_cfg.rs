@@ -49,7 +49,6 @@ pub(crate) fn cfg_func_to_rvsdg(
     cfg: &mut SwitchCfgFunction,
     function_types: &FunctionTypes,
 ) -> Result<RvsdgFunction> {
-    eprintln!("Converting CFG to RVSDG: {}", cfg.name);
     if WRITE_INTERMEDIATES {
         File::create("/tmp/cfg-unstructured.dot")
             .unwrap()

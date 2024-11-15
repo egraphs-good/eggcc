@@ -62,6 +62,3 @@ write-intermediates = []
 # Runs tests relying on LLVM. This may not be available on all systems.
 llvm = []
 default = ["llvm"]
-
-[profile.release]
-debug = true

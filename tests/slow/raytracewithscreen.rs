@@ -130,18 +130,17 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
 
     drop(light_pos);
 
-    // the test version of the benchmark prints out the screen here
-    // (aka raytracewithscreen.rs)
-    //let mut rowi: i64 = 0;
-    //while rowi < 100 {
-    //let mut col: i64 = 0;
-    //while col < 100 {
-    //  let to_print: f64 = output[rowi as usize][col as usize];
-    //println!("{}", to_print);
-    //col = col + 1;
-    //}
-    //rowi = rowi + 1;
-    //}
+    // print out the screen
+    let mut rowi: i64 = 0;
+    while rowi < 100 {
+        let mut col: i64 = 0;
+        while col < 100 {
+            let to_print: f64 = output[rowi as usize][col as usize];
+            println!("{}", to_print);
+            col = col + 1;
+        }
+        rowi = rowi + 1;
+    }
 
     let res: f64 = triangles[10][0][0];
 

@@ -1,10 +1,8 @@
 pub(crate) fn helpers() -> String {
     "
 (saturate
-
     (saturate type-helpers)
     (saturate error-checking)
-    state-edge-passthrough
 
     (saturate
         (saturate type-helpers)
@@ -31,7 +29,7 @@ pub(crate) fn helpers() -> String {
 
 ;; be careful to finish dropping and substituting before subsuming things!
 ;; otherwise substitution or dropat may not finish, violating the weak linearity invariant
-(saturate subsume-after-helpers)
+subsume-after-helpers
 "
     .to_string()
 }
@@ -60,7 +58,6 @@ fn optimizations() -> Vec<String> {
 fn saturating_rulesets() -> Vec<String> {
     [
         "always-run",
-        "passthrough",
         "canon",
         "type-analysis",
         "context",
@@ -97,19 +94,26 @@ pub fn rulesets() -> String {
 
 pub fn mk_sequential_schedule() -> Vec<String> {
     let helpers = helpers();
-    optimizations()
-        .iter()
-        .map(|optimization| {
-            format!(
-                "
+
+    let mut res = vec![format!(
+        "
+(run-schedule
+   (saturate
+      {helpers}
+      passthrough
+      state-edge-passthrough))"
+    )];
+    res.extend(optimizations().iter().map(|optimization| {
+        format!(
+            "
 (run-schedule
    {helpers}
    {optimization}
    {helpers})
 "
-            )
-        })
-        .collect()
+        )
+    }));
+    res
 }
 
 /// Parallel schedule must return a single string,
@@ -120,6 +124,10 @@ pub fn parallel_schedule() -> Vec<String> {
     vec![format!(
         "
 (run-schedule
+    (saturate
+      {helpers}
+      passthrough
+      state-edge-passthrough)
 
     (repeat 2
         {helpers}

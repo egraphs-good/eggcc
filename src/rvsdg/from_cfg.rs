@@ -13,6 +13,7 @@ use std::io::Write;
 use std::process::Command;
 
 use bril_rs::{ConstOps, EffectOps, Instruction, Literal, Position, Type, ValueOps};
+use hashbrown::HashSet;
 use indexmap::IndexMap;
 use petgraph::algo::dominators;
 
@@ -96,7 +97,8 @@ pub(crate) fn cfg_func_to_rvsdg(
     };
 
     let start = builder.cfg.entry;
-    builder.compute_branch_info(List::new(), start);
+    let mut memo = HashSet::new();
+    builder.compute_branch_info(List::new(), start, &mut memo);
 
     let state_var = builder.analysis.state_var;
 
@@ -732,8 +734,15 @@ impl<'a> RvsdgBuilder<'a> {
         (ins, outs)
     }
 
-    fn compute_branch_info(&mut self, mut last_branch: List<NodeIndex>, cur: NodeIndex) {
-        eprintln!("branch len: {}, cur: {cur:?}", last_branch.len(), cur = cur);
+    fn compute_branch_info(
+        &mut self,
+        mut last_branch: List<NodeIndex>,
+        cur: NodeIndex,
+        memo: &mut HashSet<(List<NodeIndex>, NodeIndex)>,
+    ) {
+        if !memo.insert((last_branch.clone(), cur)) {
+            return;
+        }
         // NB: we could get a big-O improvement by using a cons list. We could
         // even allocate nodes in an arena!
         let (ins, outs) = self.non_loop_neighbors(cur);
@@ -748,11 +757,11 @@ impl<'a> RvsdgBuilder<'a> {
         }
         match outs.as_slice() {
             [] => {}
-            [x] => self.compute_branch_info(last_branch, *x),
+            [x] => self.compute_branch_info(last_branch, *x, memo),
             rest => {
                 let new_branch = last_branch.push_front(cur);
                 for n in rest {
-                    self.compute_branch_info(new_branch.clone(), *n)
+                    self.compute_branch_info(new_branch.clone(), *n, memo)
                 }
             }
         }

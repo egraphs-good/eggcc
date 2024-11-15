@@ -61,7 +61,11 @@ def get_eggcc_options(benchmark):
 class Benchmark:
   def __init__(self, path, treatment, index, total):
     self.path = path
-    self.name = path.split("/")[-1][:-len(".bril")]
+    # assert the file doesn't have any dots in the name besides the last
+    if path.split("/")[-1].count(".") != 1:
+      raise Exception(f"File {path} has multiple dots in name")
+    # name is the name of the file without extension
+    self.name = path.split("/")[-1].split(".")[0]
     self.treatment = treatment
     # index of this benchmark (for printing)
     self.index = index

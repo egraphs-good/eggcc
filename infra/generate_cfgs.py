@@ -16,7 +16,7 @@ def make_cfgs(bench, data_dir):
     # On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
     # Also, on some machines, just running `opt-18` hangs, so we pass the version flag
     # Catch the output using shell
-    opt18_res = subprocess.run("opt-18", shell=True, capture_output=True, text=True)
+    opt18_res = subprocess.run("opt-18", shell=True, capture_output=True)
     if opt18_res.returncode == 0:
       opt = "opt-18"
     else:

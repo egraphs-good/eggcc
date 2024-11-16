@@ -204,6 +204,8 @@
 
 ; Rulesets
 (ruleset always-run)
+(ruleset context-of)
+(ruleset tuple-helpers)
 (ruleset is-resolved)
 (ruleset always-run-postprocess)
 (ruleset memory-always-run)

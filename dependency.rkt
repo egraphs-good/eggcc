@@ -6,12 +6,17 @@
 (define ignored-relations (list 'TmpCtx))
 (define ignored-rulesets (list "debug-deletes"))
 ;; Spurious dependencies
-(define ignored-computes (list (cons "subst" 'HasArgType)))
+(define ignored-computes (list
+                          (cons "subst" 'HasArgType)
+                          (cons "always-run-postprocess" 'tuple-length)
+
+                          )
+  )
 (define grouping `(
-                  ;  (("type-analysis" "type-helpers" "always-run")
-                  ;   .
-                  ;   "type-analysis*\ntype-helpers*\nalways-run*"
-                  ;   )
+                    ; (("type-analysis" "type-helpers" "always-run")
+                    ;  .
+                    ;  "type-analysis*\ntype-helpers*\nalways-run*"
+                    ;  )
                    (("subst" "apply-subst-unions" "cleanup-subst")
                     .
                     "subst*\napply-subst-unions\ncleanup-subst")
@@ -20,6 +25,16 @@
                     "drop*\napply-drop-unions\ncleanup-drop")
                    (("memory-helpers" "memory") . "(saturate\n(saturate memory-helpers)\n(saturate memory))")
                    (("loop-iters-analysis" "loop-unroll" "loop-peel") . "(saturate loop-iters-analysis)\nloop-unroll-and-unroll")
+
+                   (("loop-unroll"
+                     "switch_rewrite"
+                     "loop-inv-motion"
+                     "loop-strength-reduction"
+                     "loop-peel"
+                     "loop-inversion"
+                     "loop-simplify"
+                     "peepholes") . "all-optimizations")
+
                    )
   )
 
@@ -157,8 +172,8 @@
     (thunk
      (displayln "digraph G {")
      (for ([r rulesets])
-     (displayln (format "  \"~a\" [shape=box];" (string-replace r "-" "_")))
-     )
+       (displayln (format "  \"~a\" [shape=box];" (string-replace r "-" "_")))
+       )
 
      (for* ([r1 rulesets]
             [r2 rulesets])
@@ -226,3 +241,5 @@
     (values ruleset d)
     ))
 (generate-dot-from-dependencies helper-dependencies "helper-dependencies.dot")
+
+(displayln (dep-computes (hash-ref dependencies "always-run")))

@@ -25,19 +25,24 @@
        (= len (TypeList-length tl)))
       ((set (tuple-length expr) len)) :ruleset always-run)
 
+;; Duplicate the same rule for postprocess
+(rule ((HasType expr (TupleT tl))
+       (= len (TypeList-length tl)))
+      ((set (tuple-length expr) len)) :ruleset always-run-postprocess)
+
 ;; Create a Get for every index, and rewrite it to see through Concat
-(rule ((Single expr)) ((union (Get (Single expr) 0) expr)) :ruleset always-run)
+(rule ((Single expr)) ((union (Get (Single expr) 0) expr)) :ruleset tuple-helpers)
 ;; initial get
 (rule ((> (tuple-length tuple) 0))
       ((Get tuple 0))
-      :ruleset always-run)
+      :ruleset tuple-helpers)
 ;; next get
 (rule ((= len (tuple-length tuple))
        (= ith (Get tuple i))
        (< (+ i 1) len)
        )
        ((Get tuple (+ 1 i)))
-       :ruleset always-run)
+       :ruleset tuple-helpers)
 
 ;; descend left
 (rule ((Get (Concat expr1 expr2) i)
@@ -45,14 +50,14 @@
        (< i len1))
       ((union (Get (Concat expr1 expr2) i)
               (Get expr1 i)))
-       :ruleset always-run)
+       :ruleset tuple-helpers)
 ;; descend right
 (rule ((Get (Concat expr1 expr2) i)
        (= (tuple-length expr1) len1)
        (>= i len1))
       ((union (Get (Concat expr1 expr2) i)
               (Get expr2 (- i len1))))
-       :ruleset always-run)
+       :ruleset tuple-helpers)
 
 
 ;; A temporary context.

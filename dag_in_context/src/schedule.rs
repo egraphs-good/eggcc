@@ -15,6 +15,8 @@
 pub(crate) fn helpers() -> String {
     "
 (repeat 1
+    (saturate tuple-helpers)
+    (saturate context-of)
     (saturate
         (saturate 
             (saturate type-helpers)
@@ -26,23 +28,21 @@ pub(crate) fn helpers() -> String {
 
     (saturate interval-analysis)
     (saturate always-switch-rewrite)
-    (saturate
-        (saturate memory-always-run)
-        (saturate memory-helpers)
-        (saturate memory))
+    ;; (repeat 1
+        ;; (saturate memory-always-run)
+        ;; (saturate memory-helpers)
+        ;; (saturate memory))
 
     (saturate canon)
 
     (repeat 2
         state-edge-passthrough
-        (repeat 1
-            passthrough
+        passthrough
 
-            subsume-after-helpers
-        )
+        subsume-after-helpers
     )
 
-    (saturate
+     (saturate
         (saturate 
             (saturate type-helpers)
             type-analysis)
@@ -57,6 +57,7 @@ pub(crate) fn helpers() -> String {
         apply-drop-unions
         cleanup-drop
     )
+
 )
 
 boundary-analysis
@@ -67,9 +68,27 @@ boundary-analysis
 
 pub(crate) fn after_helpers() -> String {
     "
-    (saturate 
-        (saturate type-helpers)
-        always-run-postprocess)
+    ;; If you add any rule to postprocess,
+    ;; Make sure the analysis it depends on is up to date
+    (saturate
+        (saturate tuple-helpers)
+        (saturate context-of)
+
+        (saturate 
+            (saturate type-helpers)
+            type-analysis)
+        (saturate is-resolved)
+
+        (saturate subst)
+        apply-subst-unions
+        cleanup-subst
+        (saturate context)
+
+        (saturate drop)
+        apply-drop-unions
+        cleanup-drop
+
+        (saturate always-run-postprocess))
 "
     .to_string()
 }
@@ -77,7 +96,7 @@ pub(crate) fn after_helpers() -> String {
 fn cheap_optimizations() -> String {
     [
         "loop-simplify",
-        "memory",
+        // "memory",
         "peepholes",
     ]
     .iter()
@@ -151,25 +170,6 @@ pub fn mk_sequential_schedule() -> Vec<String> {
    {helpers}
    {optimization}
    {after_helpers})
-
-(run-schedule {helpers})
-(run-schedule
-    (saturate
-        (saturate 
-            (saturate type-helpers)
-            type-analysis)
-        (saturate is-resolved)
-
-        (saturate subst)
-        apply-subst-unions
-        cleanup-subst
-        (saturate context)
-
-        (saturate drop)
-        apply-drop-unions
-        cleanup-drop
-    )
-)
 "
             )
         })
@@ -183,7 +183,7 @@ pub fn parallel_schedule() -> Vec<String> {
     let after_helpers = after_helpers();
     let mut schedule = "".to_string();
     let all_optimization_iter = 2;
-    let cheap_optimization_iter = 4;
+    let cheap_optimization_iter = 2;
     for _ in 0..all_optimization_iter {
         schedule.push_str(&format!(
             "
@@ -197,30 +197,10 @@ pub fn parallel_schedule() -> Vec<String> {
         schedule.push_str(&format!(
             "
             (run-schedule {helpers})
-            (run-schedule cheap-optimizations)
-            (run-schedule {helpers} {after_helpers})
+            ;; (run-schedule cheap-optimizations)
+            (run-schedule {after_helpers})
             "
         ));
     }
-    // schedule.push_str(&format!("
-    // (run-schedule {helpers})
-    // (run-schedule
-    //     (saturate
-    //         (saturate 
-    //             (saturate type-helpers)
-    //             type-analysis)
-    //         (saturate is-resolved)
-
-    //         (saturate subst)
-    //         apply-subst-unions
-    //         cleanup-subst
-    //         (saturate context)
-
-    //         (saturate drop)
-    //         apply-drop-unions
-    //         cleanup-drop
-    //     )
-    // )
-    // "));
     vec![schedule]
 }

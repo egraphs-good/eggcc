@@ -44,9 +44,9 @@
 (rewrite (ApplyPerm (PermPush ith rest) expr) 
          (Concat (ApplyPerm rest expr) (Single (Get expr ith)))
     :when ((= rest (PermPush _jth _rest)))
-    :ruleset always-run)
+    :ruleset always-run-postprocess)
 (rewrite (ApplyPerm (PermPush ith (PNil)) expr) (Single (Get expr ith))
-    :ruleset always-run)
+    :ruleset always-run-postprocess)
 
 (ruleset loop-inversion)
 

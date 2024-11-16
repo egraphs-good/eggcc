@@ -2,7 +2,7 @@
 // These are constraints that will break eggcc if not respected,
 // specifically linearity and inequality
 // Type helpers need to be run before error checking
-// passthrough depends on 
+// passthrough depends on
 // * substitution needs to be saturated before extraction
 //  * all the soft constraints need to be run before substitution
 
@@ -34,13 +34,6 @@ pub(crate) fn helpers() -> String {
         ;; (saturate memory))
 
     (saturate canon)
-
-    (repeat 2
-        state-edge-passthrough
-        passthrough
-
-        subsume-after-helpers
-    )
 
      (saturate
         (saturate 
@@ -161,19 +154,28 @@ pub fn rulesets() -> String {
 pub fn mk_sequential_schedule() -> Vec<String> {
     let helpers = helpers();
     let after_helpers = after_helpers();
-    optimizations()
-        .iter()
-        .map(|optimization| {
-            format!(
-                "
+    let mut res = vec![format!(
+        "
+        (run-schedule (saturate
+            {helpers}
+            state-edge-passthrough
+            passthrough
+            subsume-after-helpers
+            {after_helpers}
+        ))
+        "
+    )];
+    res.extend(optimizations().iter().map(|optimization| {
+        format!(
+            "
 (run-schedule
    {helpers}
    {optimization}
    {after_helpers})
 "
-            )
-        })
-        .collect()
+        )
+    }));
+    res
 }
 
 /// Parallel schedule must return a single string,
@@ -197,10 +199,23 @@ pub fn parallel_schedule() -> Vec<String> {
         schedule.push_str(&format!(
             "
             (run-schedule {helpers})
-            ;; (run-schedule cheap-optimizations)
+            (run-schedule cheap-optimizations)
             (run-schedule {after_helpers})
             "
         ));
     }
-    vec![schedule]
+    vec![
+        format!(
+            "
+            (run-schedule (saturate
+                {helpers}
+                state-edge-passthrough
+                passthrough
+                subsume-after-helpers
+                {after_helpers}
+            ))
+            "
+        ),
+        schedule,
+    ]
 }

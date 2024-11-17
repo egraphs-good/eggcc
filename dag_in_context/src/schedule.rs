@@ -113,32 +113,11 @@ fn optimizations() -> Vec<String> {
     .collect()
 }
 
-fn saturating_rulesets() -> Vec<String> {
-    [
-        "always-run",
-        "canon",
-        "type-analysis",
-        "context",
-        "interval-analysis",
-        "memory-helpers",
-        "always-switch-rewrite",
-        "loop-iters-analysis",
-    ]
-    .iter()
-    .map(|opt| opt.to_string())
-    .collect()
-}
-
 pub fn rulesets() -> String {
     let all_optimizations = optimizations().join("\n");
-    let saturating_combined = saturating_rulesets().join("\n");
     let cheap_optimizations = cheap_optimizations();
     format!(
         "
-(unstable-combined-ruleset saturating
-    {saturating_combined}
-)
-
 (unstable-combined-ruleset cheap-optimizations
     {cheap_optimizations}
 )
@@ -159,8 +138,8 @@ pub fn mk_sequential_schedule() -> Vec<String> {
             {helpers}
             state-edge-passthrough
             passthrough
-            subsume-after-helpers
             {after_helpers}
+            subsume-after-helpers
         ))
         "
     )];

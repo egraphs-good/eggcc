@@ -60,4 +60,5 @@ expression: visualization.result
   v8_: int = id v15_;
   v9_: int = id v16_;
   v10_: int = id v17_;
+  ret;
 }

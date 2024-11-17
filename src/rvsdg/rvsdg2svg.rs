@@ -3,6 +3,7 @@ use std::fmt;
 use std::iter::once;
 
 use bril_rs::ConstOps;
+use indexmap::IndexMap;
 
 use super::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 
@@ -22,6 +23,38 @@ pub(crate) struct Region {
     edges: Vec<Edge>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Color {
+    Teal,
+    SlateBlue,
+    Purple,
+    MediumVioletRed,
+    DarkOrange,
+    ForestGreen,
+    Maroon,
+    Crimson,
+    Goldenrod,
+    Black,
+}
+
+impl Color {
+    fn from_usize(i: usize) -> Self {
+        match i % 10 {
+            0 => Color::Teal,
+            1 => Color::SlateBlue,
+            2 => Color::Purple,
+            3 => Color::MediumVioletRed,
+            4 => Color::DarkOrange,
+            5 => Color::ForestGreen,
+            6 => Color::Maroon,
+            7 => Color::Crimson,
+            8 => Color::Goldenrod,
+            9 => Color::Black,
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[derive(Debug)]
 enum Node {
     Unit(String, usize, usize),
@@ -34,6 +67,28 @@ enum Node {
 // `None` refers to the region, `Some(i)` refers to the node at index `i`.
 // The second number is the index of the port that is being referred to.
 type Edge = ((Option<Id>, usize), (Option<Id>, usize));
+type ColoredEdge = ((Option<Id>, usize), (Option<Id>, usize), Color);
+
+fn color_edges(
+    edges: Vec<Edge>,
+    inputs: &[Color],
+    edge_colors: &mut IndexMap<Edge, Color>,
+) -> Vec<ColoredEdge> {
+    edges
+        .iter()
+        .enumerate()
+        .map(|(idx, edge)| {
+            let ((x, i), (y, j)) = edge;
+            let color = match (x, edge_colors.get(edge)) {
+                (None, _) => inputs[*i],
+                (_, None) => Color::from_usize(idx),
+                (_, Some(c)) => *c,
+            };
+            edge_colors.insert(*edge, color);
+            ((*x, *i), (*y, *j), color)
+        })
+        .collect()
+}
 
 struct Size {
     width: f32,
@@ -133,7 +188,7 @@ fn port(x: f32, y: f32, color: &str) -> Xml {
 }
 
 impl Node {
-    fn to_xml(&self) -> (Size, Xml) {
+    fn to_xml(&self, inputs: &[Color], edge_colors: &mut IndexMap<Edge, Color>) -> (Size, Xml) {
         match self {
             Node::Unit(text, _, _) => {
                 let size = Size {
@@ -177,7 +232,11 @@ impl Node {
                 (size, group)
             }
             Node::Match(name, branches) => {
-                let children: Vec<_> = branches.iter().map(|t| t.1.to_xml(false)).collect();
+                let inputs = &inputs[1..]; // first input is the predicate, which we should ignore
+                let children: Vec<_> = branches
+                    .iter()
+                    .map(|t| t.1.to_xml(false, inputs, edge_colors))
+                    .collect();
                 let size = Size {
                     width: REGION_SPACING * (children.len() + 1) as f32
                         + children.iter().map(|t| t.0.width).sum::<f32>(),
@@ -265,7 +324,7 @@ impl Node {
                 (size, group)
             }
             Node::Loop(region) => {
-                let (s, mut xml) = region.to_xml(true);
+                let (s, mut xml) = region.to_xml(true, inputs, edge_colors);
                 let size = Size {
                     width: s.width + REGION_SPACING * 2.0,
                     height: s.height + FONT_SIZE + REGION_SPACING * 2.0,
@@ -319,11 +378,51 @@ impl Node {
 }
 
 impl Region {
-    fn to_xml(&self, in_loop: bool) -> (Size, Xml) {
-        let mut edges = self.edges.clone();
+    fn to_xml(
+        &self,
+        in_loop: bool,
+        inputs: &[Color],
+        edge_colors: &mut IndexMap<Edge, Color>,
+    ) -> (Size, Xml) {
+        let mut edges: Vec<Edge> = self.edges.clone();
         edges.sort();
 
-        let mut children: BTreeMap<_, _> = self.nodes.iter().map(|t| (t.0, t.1.to_xml())).collect();
+        let mut children: BTreeMap<_, _> = self
+            .nodes
+            .iter()
+            .map(|t| {
+                // Edges that are inputs to this node
+                let mut input_edges: Vec<&Edge> = edges
+                    .iter()
+                    .filter(|((_, _), (x, _))| match x {
+                        Some(i) => i == t.0,
+                        None => false,
+                    })
+                    .collect();
+                input_edges.sort_by_key(|(_, (_, x))| x);
+
+                let inputs: Vec<Color> = input_edges
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, edge)| {
+                        let ((x, i), _) = edge;
+                        let color = match (x, edge_colors.get(*edge)) {
+                            (None, None) => inputs[*i],
+                            (None, Some(c)) => {
+                                assert!(inputs[*i] == *c);
+                                *c
+                            }
+                            (Some(_), None) => Color::from_usize(idx),
+                            (Some(_), Some(c)) => *c,
+                        };
+                        edge_colors.insert(**edge, color);
+                        color
+                    })
+                    .collect();
+
+                (t.0, t.1.to_xml(&inputs, edge_colors))
+            })
+            .collect();
 
         let mut layers: Vec<Vec<Id>> = vec![];
         let mut to_order: BTreeSet<Id> = self.nodes.keys().copied().collect();
@@ -384,7 +483,9 @@ impl Region {
         assert_eq!(w, size.width);
         assert_eq!(h, size.height);
 
-        let edges = Xml::group(edges.iter().map(|((a, i), (b, j))| {
+        let colored_edges = color_edges(edges, inputs, edge_colors);
+
+        let colored_edges = Xml::group(colored_edges.iter().map(|((a, i), (b, j), edge_color)| {
             let (a_x, a_y) = match a {
                 None => (blend(size.width, self.srcs, *i), 0.0),
                 Some(a) => (
@@ -449,7 +550,7 @@ impl Region {
                 "path",
                 [
                     ("fill", "transparent"),
-                    ("stroke", "black"),
+                    ("stroke", &format!("{:?}", edge_color)),
                     ("stroke-linecap", "round"),
                     ("stroke-width", &format!("{}", STROKE_WIDTH)),
                     ("d", &path_string),
@@ -483,13 +584,16 @@ impl Region {
             "",
         );
 
-        (size, Xml::group([background, edges, nodes, srcs, dsts]))
+        (
+            size,
+            Xml::group([background, colored_edges, nodes, srcs, dsts]),
+        )
     }
 }
 
 impl Region {
-    fn to_svg(&self) -> String {
-        let (size, xml) = self.to_xml(false);
+    fn to_svg(&self, inputs: &[Color], edge_colors: &mut IndexMap<Edge, Color>) -> String {
+        let (size, xml) = self.to_xml(false, inputs, edge_colors);
         let svg = Xml::new(
             "svg",
             [
@@ -650,7 +754,16 @@ impl RvsdgProgram {
                 height += spacing;
             }
 
-            let (size, mut xml) = function.to_region().to_xml(false);
+            let colors: Vec<Color> = function
+                .args
+                .iter()
+                .enumerate()
+                .map(|(i, _)| Color::from_usize(i + 5))
+                .collect();
+            let mut edge_colors = IndexMap::new(); // fresh edge_colors map for each function
+            let (size, mut xml) = function
+                .to_region()
+                .to_xml(false, &colors, &mut edge_colors);
             // assert that it doesn't have a transform yet
             assert!(!xml.attributes.contains_key("transform"));
             xml.attributes
@@ -679,7 +792,13 @@ impl RvsdgProgram {
 
 impl RvsdgFunction {
     pub(crate) fn to_svg(&self) -> String {
-        self.to_region().to_svg()
+        let colors: Vec<Color> = self
+            .args
+            .iter()
+            .enumerate()
+            .map(|(i, _)| Color::from_usize(i + 5))
+            .collect();
+        self.to_region().to_svg(&colors, &mut IndexMap::new())
     }
 
     pub(crate) fn to_region(&self) -> Region {
@@ -761,10 +880,7 @@ mod tests {
                     Type::Int,
                 )),
             ],
-            results: vec![
-                (RvsdgType::Bril(Type::Int), Operand::Project(0, 10)),
-                (RvsdgType::PrintState, Operand::Arg(2)),
-            ],
+            results: vec![(RvsdgType::Bril(Type::Int), Operand::Project(0, 10))],
         }
         .to_svg();
 

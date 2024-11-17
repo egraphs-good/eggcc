@@ -1,6 +1,6 @@
 async function showIR(benchmark, runMode) {
   const llvm = await fetchText(
-    `./data/llvm/${benchmark}/${runMode}/${benchmark}-${runMode}.ll`,
+    `./data/llvm/${benchmark}/${runMode}/optimized.ll`,
   );
   document.getElementById("llvm-ir").innerText = llvm;
 }

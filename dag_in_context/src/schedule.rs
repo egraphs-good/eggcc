@@ -116,7 +116,6 @@ fn optimizations() -> Vec<String> {
 fn saturating_rulesets() -> Vec<String> {
     [
         "always-run",
-        "passthrough",
         "canon",
         "type-analysis",
         "context",
@@ -173,6 +172,9 @@ pub fn mk_sequential_schedule() -> Vec<String> {
    {optimization}
    {after_helpers})
 "
+        )
+    }));
+    res
         )
     }));
     res

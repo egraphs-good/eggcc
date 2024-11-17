@@ -1,15 +1,16 @@
 const COLORS = {
   "rvsdg-round-trip-to-executable": "red",
-  "llvm-O0": "purple",
-  "llvm-O1": "green",
-  "llvm-O2": "orange",
-  "llvm-O3": "gray",
-  "llvm-O0-eggcc": "pink",
-  "llvm-O0-eggcc-sequential": "blue",
-  "llvm-O3-eggcc": "brown",
+  "llvm-O0-O0": "purple",
+  "llvm-O1-O0": "green",
+  "llvm-O2-O0": "orange",
+  "llvm-O3-O0": "gray",
+  "llvm-O3Lower": "yellow",
+  "llvm-eggcc-O0-O0": "pink",
+  "llvm-eggcc-sequential-O0-O0": "blue",
+  "llvm-eggcc-O3-O0": "brown",
 };
 
-const BASELINE_MODE = "llvm-O0";
+const BASELINE_MODE = "llvm-O0-O0";
 
 // TODO these functions (mean, median, ect) are duplicated in generate_line_counts.py
 // we could move the computation of the latex table to js to solve this problem

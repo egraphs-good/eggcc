@@ -528,6 +528,29 @@ impl TreeProgram {
         let expr = termdag.term_to_expr(&term);
         expr.to_sexp().pretty()
     }
+
+    pub fn fns(&self) -> Vec<String> {
+        let mut res = vec![];
+        if let Some(name) = self.entry.func_name() {
+            res.push(name);
+        }
+        res.extend(self.functions.iter().filter_map(|expr| expr.func_name()));
+        res
+    }
+
+    pub fn replace_fn(&mut self, name: &str, new_fn: RcExpr) {
+        if self.entry.func_name() == Some(name.to_string()) {
+            self.entry = new_fn;
+        } else {
+            for fn_expr in self.functions.iter_mut() {
+                if fn_expr.func_name() == Some(name.to_string()) {
+                    *fn_expr = new_fn.clone();
+                    return;
+                }
+            }
+            panic!("Function {} not found", name);
+        }
+    }
 }
 
 use std::iter;

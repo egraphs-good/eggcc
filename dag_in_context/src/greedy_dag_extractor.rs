@@ -14,12 +14,14 @@ use crate::{
     schema::{RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
     typechecker::TypeChecker,
+    EggccConfig,
 };
 
 type RootId = ClassId;
 
 pub(crate) struct EgraphInfo<'a> {
-    pub(crate) egraph: EGraph,
+    pub(crate) egraph: &'a EGraph,
+    pub(crate) _func: String,
     // For every (root, eclass) pair, store the parent
     // (root, enode) pairs that may depend on it.
     pub(crate) parents: IndexMap<(RootId, ClassId), Vec<(RootId, NodeId)>>,
@@ -62,6 +64,10 @@ impl<'a> EgraphInfo<'a> {
             .typ
             .as_ref()
             .unwrap()
+    }
+
+    pub(crate) fn n2c(&self, nid: &NodeId) -> ClassId {
+        self.egraph.nid_to_cid(nid).clone()
     }
 
     fn get_loop_iteration_estimates(egraph: &EGraph) -> IndexMap<(ClassId, ClassId), i64> {
@@ -122,22 +128,20 @@ impl<'a> EgraphInfo<'a> {
     }
 
     pub(crate) fn new(
+        func: &str,
         cm: &'a dyn CostModel,
-        egraph: EGraph,
+        egraph: &'a EGraph,
         unextractables: IndexSet<String>,
     ) -> Self {
-        let loop_iteration_estimates = Self::get_loop_iteration_estimates(&egraph);
-        let inlined_calls = Self::get_inlined_calls(&egraph);
+        let loop_iteration_estimates = Self::get_loop_iteration_estimates(egraph);
+        let inlined_calls = Self::get_inlined_calls(egraph);
+        let n2c = |nid: &NodeId| egraph.nid_to_cid(nid).clone();
+        let func_root = get_root(egraph, func);
 
         // get all the roots needed
-        let mut region_roots = IndexSet::new();
-        for (_nodeid, node) in &egraph.nodes {
-            for root in enode_regions(&egraph, node) {
-                region_roots.insert(root);
-            }
-        }
-        // also add the root of the egraph to region_roots
-        region_roots.insert(egraph.nid_to_cid(&get_root(&egraph)).clone());
+        let mut region_roots = find_reachable(egraph, n2c(&func_root.clone()), cm, false, true);
+        // also add the function as a root
+        region_roots.insert(n2c(&get_root(egraph, func)));
 
         log::info!("Found {} regions", region_roots.len());
 
@@ -150,7 +154,7 @@ impl<'a> EgraphInfo<'a> {
                 i,
                 region_roots.len()
             );
-            let reachable = region_reachable_classes(&egraph, root.clone(), cm);
+            let reachable = find_reachable(egraph, root.clone(), cm, true, false);
             for eclass in reachable {
                 // if type is not expr add to count
                 if egraph.class_data[&eclass].typ.as_ref().unwrap() != "Expr" {
@@ -169,7 +173,7 @@ impl<'a> EgraphInfo<'a> {
         // find all the (root, enode) pairs that are root nodes (no children)
         for (root, eclass) in &relavent_eclasses {
             for enode in egraph.classes()[eclass].nodes.iter() {
-                if enode_children(&egraph, &egraph[enode]).is_empty() {
+                if enode_children(egraph, &egraph[enode]).is_empty() {
                     roots.push((root.clone(), enode.clone()));
                 }
             }
@@ -196,7 +200,7 @@ impl<'a> EgraphInfo<'a> {
                     child,
                     is_subregion,
                     is_assumption,
-                } in enode_children(&egraph, node)
+                } in enode_children(egraph, node)
                 {
                     if is_assumption {
                         continue;
@@ -227,6 +231,7 @@ impl<'a> EgraphInfo<'a> {
 
         EgraphInfo {
             cm,
+            _func: func.to_string(),
             egraph,
             unextractables,
             parents: parents_sorted,
@@ -274,7 +279,7 @@ impl<'a> Extractor<'a> {
 
     /// Convert the extracted terms to expressions, and also
     /// store their types.
-    fn terms_to_expressions(&mut self, info: &EgraphInfo, prog: Term) -> TreeProgram {
+    fn convert_term_to_expr(&mut self, info: &EgraphInfo, prog: Term) -> RcExpr {
         let mut converter = FromEgglog {
             termdag: self.termdag,
             conversion_cache: Default::default(),
@@ -296,7 +301,7 @@ impl<'a> Extractor<'a> {
             }
         }
 
-        let converted_prog = converter.program_from_egglog(prog);
+        let converted_prog = converter.expr_from_egglog(prog);
 
         self.eclass_type = Some(node_to_type);
         self.term_to_expr = Some(converter.conversion_cache);
@@ -359,13 +364,21 @@ impl<'a> Extractor<'a> {
     }
 }
 
-pub(crate) fn get_root(egraph: &egraph_serialize::EGraph) -> NodeId {
-    let mut root_nodes = egraph
+pub(crate) fn get_root(egraph: &egraph_serialize::EGraph, func: &str) -> NodeId {
+    let root_nodes = egraph
         .nodes
         .iter()
-        .filter(|(_nid, node)| node.op == "Program");
-    let res = root_nodes.next().unwrap();
-    assert!(root_nodes.next().is_none());
+        .filter(|(_nid, node)| node.op == "Function");
+    let mut found = root_nodes.filter(|(_nid, node)| {
+        let child_id = node.children[0].clone();
+        let child_str = &egraph.nodes[&child_id].op;
+        // remove extra quotes from child_str
+        assert!(child_str.starts_with('\"') && child_str.ends_with('\"'));
+        let child_str = &child_str[1..child_str.len() - 1];
+        child_str == func
+    });
+    let res = found.next().unwrap();
+    assert!(found.next().is_none());
     res.0.clone()
 }
 
@@ -550,7 +563,7 @@ impl<'a> Extractor<'a> {
             .iter()
             .map(|idx| &self.costsets[*idx])
             .zip(
-                enode_children(&info.egraph, node)
+                enode_children(info.egraph, node)
                     .iter()
                     .map(|c| c.is_subregion),
             )
@@ -657,7 +670,7 @@ fn node_cost_in_region(
     let node = &info.egraph[&node_id];
 
     // get the cost sets for the children
-    let child_cost_sets = enode_children(&info.egraph, node)
+    let child_cost_sets = enode_children(info.egraph, node)
         .iter()
         .filter_map(
             |EnodeChild {
@@ -685,49 +698,84 @@ fn node_cost_in_region(
     extractor.calculate_cost_set(node_id, child_cost_sets, info)
 }
 
+fn extract_fn(
+    original_prog: &TreeProgram,
+    func: &str,
+    egraph: egraph_serialize::EGraph,
+    unextractables: IndexSet<String>,
+    termdag: &mut TermDag,
+    cost_model: &impl CostModel,
+    eggcc_config: &EggccConfig,
+) -> (CostSet, RcExpr) {
+    log::info!("Building extraction info");
+    let egraph_info = EgraphInfo::new(func, cost_model, &egraph, unextractables);
+    let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
+
+    let (cost_res, res) = extract_with_paths(func, extractor_not_linear, &egraph_info, None);
+
+    if !eggcc_config.linearity {
+        (cost_res, res)
+    } else {
+        let effectful_nodes_along_path =
+            extractor_not_linear.find_effectful_nodes_in_function(&res, &egraph_info);
+        extractor_not_linear.costs.clear();
+        let (cost_res, res) = extract_with_paths(
+            func,
+            extractor_not_linear,
+            &egraph_info,
+            Some(&effectful_nodes_along_path),
+        );
+        extractor_not_linear.check_function_is_linear(&res).unwrap();
+
+        (cost_res, res)
+    }
+}
+
+/// Inputs: a program, serialized egraph, and a set of functions to extract.
+/// Also needs to know a set of unextractable functions and a cost model.
+/// Produces a new program with the functions specified replaced by their extracted versions.
 pub fn extract(
     original_prog: &TreeProgram,
+    fns: Vec<String>,
     egraph: egraph_serialize::EGraph,
     unextractables: IndexSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
-) -> (CostSet, TreeProgram) {
-    log::info!("Building extraction info");
-    let egraph_info = EgraphInfo::new(&cost_model, egraph, unextractables);
-    let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
-
-    let (_cost_res, res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
-
-    let effectful_nodes_along_path =
-        extractor_not_linear.find_effectful_nodes_in_program(&res, &egraph_info);
-    extractor_not_linear.costs.clear();
-    let (cost_res, res) = extract_with_paths(
-        extractor_not_linear,
-        &egraph_info,
-        Some(&effectful_nodes_along_path),
-    );
-    extractor_not_linear.check_program_is_linear(&res).unwrap();
-
-    log::info!("Extracted program with cost {}", cost_res.total);
-    log::info!("Created {} cost sets", extractor_not_linear.costsets.len());
-
-    (cost_res, res)
+    eggcc_config: &EggccConfig,
+) -> (Cost, TreeProgram) {
+    let mut new_prog = original_prog.clone();
+    let mut cost = NotNan::new(0.).unwrap();
+    for func in fns {
+        let (fn_cost, extracted) = extract_fn(
+            &new_prog,
+            &func,
+            egraph.clone(),
+            unextractables.clone(),
+            termdag,
+            &cost_model,
+            eggcc_config,
+        );
+        new_prog.replace_fn(&func, extracted);
+        cost += fn_cost.total;
+    }
+    (cost, new_prog)
 }
 
+/// Extract the function specified by `func` from the egraph.
 pub fn extract_with_paths(
+    func: &str,
     extractor: &mut Extractor,
     info: &EgraphInfo,
     // If effectful paths are present,
     // for each region we will only consider
     // effectful nodes that are in effectful_path[rootid]
     effectful_paths: Option<&IndexMap<ClassId, IndexSet<NodeId>>>,
-) -> (CostSet, TreeProgram) {
+) -> (CostSet, RcExpr) {
     if effectful_paths.is_some() {
         log::info!("Re-extracting program after linear path is found.");
     } else {
         log::info!("Extracting program for the first time.");
     }
-    let n2c = |nid: &NodeId| info.egraph.nid_to_cid(nid);
     let mut worklist = UniqueQueue::default();
 
     // first, add all the roots to the worklist
@@ -736,7 +784,7 @@ pub fn extract_with_paths(
     }
 
     while let Some((rootid, nodeid)) = worklist.pop() {
-        let classid = n2c(&nodeid);
+        let classid = info.n2c(&nodeid);
         let node = info.egraph.nodes.get(&nodeid).unwrap();
         if info.unextractables.contains(&node.op) {
             continue;
@@ -745,14 +793,14 @@ pub fn extract_with_paths(
         // Skip inlined calls
         if node.op == "Call"
             && info.inlined_calls.contains(&(
-                n2c(&node.children[0]).clone(),
-                n2c(&node.children[1]).clone(),
+                info.n2c(&node.children[0]).clone(),
+                info.n2c(&node.children[1]).clone(),
             ))
         {
             continue;
         }
 
-        let sort_of_node = info.get_sort_of_eclass(classid);
+        let sort_of_node = info.get_sort_of_eclass(&classid);
         // if node is effectful, we only consider it if it is in the effectful path
         if sort_of_node == "Expr" && effectful_paths.is_some() {
             let effectful_lookup = extractor.is_eclass_effectful(classid.clone());
@@ -776,7 +824,7 @@ pub fn extract_with_paths(
 
         // create a new region_costs map if it doesn't exist
         let region_costs = extractor.costs.entry(rootid.clone()).or_default();
-        let lookup = region_costs.get(classid);
+        let lookup = region_costs.get(&classid);
         let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
         if let Some(lookup) = lookup {
             let costset = extractor.costsets.get(*lookup).unwrap();
@@ -801,24 +849,30 @@ pub fn extract_with_paths(
         }
     }
 
-    let root_eclass = n2c(&get_root(&info.egraph));
+    let root_eclass = info.n2c(&get_root(info.egraph, func));
 
     let root_costset_index = *extractor
         .costs
-        .get(root_eclass)
-        .expect("Failed to extract program! Also failed to extract any functions in program.")
-        .get(root_eclass)
+        .get(&root_eclass)
+        .unwrap_or_else(|| panic!("Failed to extract function {}!", func))
+        .get(&root_eclass)
         .unwrap_or_else(|| {
             if effectful_paths.is_some() {
-                panic!("Failed to extract program after linear path is found!");
+                panic!(
+                    "Failed to extract function {} after linear path is found!",
+                    func
+                );
             } else {
-                panic!("Failed to extract program during initial extraction!");
+                panic!(
+                    "Failed to extract function {} during initial extraction!",
+                    func
+                );
             }
         });
     let root_costset = extractor.costsets[root_costset_index].clone();
 
     // now run translation to expressions
-    let resulting_prog = extractor.terms_to_expressions(info, root_costset.term.clone());
+    let resulting_prog = extractor.convert_term_to_expr(info, root_costset.term.clone());
 
     let root_cost = root_costset.total;
     if root_cost.is_infinite() {
@@ -952,30 +1006,6 @@ where
     }
 }
 
-// For a given enode,
-// return the roots for sub-regions
-fn enode_regions(
-    egraph: &egraph_serialize::EGraph,
-    enode: &egraph_serialize::Node,
-) -> Vec<ClassId> {
-    enode_children(egraph, enode)
-        .iter()
-        .filter_map(
-            |EnodeChild {
-                 child,
-                 is_subregion,
-                 ..
-             }| {
-                if *is_subregion {
-                    Some(child.clone())
-                } else {
-                    None
-                }
-            },
-        )
-        .collect()
-}
-
 struct EnodeChild {
     child: ClassId,
     is_subregion: bool,
@@ -1092,12 +1122,15 @@ fn type_is_part_of_ast(ty: &str) -> bool {
 
 /// Reachable eclasses in the same region as the root.
 /// Does not include subregions, assumptions, or anything that does not have the correct type.
-fn region_reachable_classes(
+fn find_reachable(
     egraph: &egraph_serialize::EGraph,
     root: ClassId,
     cm: &dyn CostModel,
+    include_non_roots: bool,
+    recursive: bool,
 ) -> IndexSet<ClassId> {
     let mut visited = IndexSet::new();
+    let mut result = IndexSet::new();
     let mut queue = UniqueQueue::default();
     queue.insert(root);
 
@@ -1111,6 +1144,9 @@ fn region_reachable_classes(
             continue;
         }
         if visited.insert(eclass.clone()) {
+            if include_non_roots {
+                result.insert(eclass.clone());
+            }
             for node in &egraph.classes()[&eclass].nodes {
                 // skip nodes with infinite cost
                 if cm.get_op_cost(&egraph[node].op).is_infinite() {
@@ -1123,15 +1159,22 @@ fn region_reachable_classes(
                     is_assumption,
                 } in enode_children(egraph, &egraph[node])
                 {
-                    if !is_subregion && !is_assumption {
-                        queue.insert(child);
+                    if !is_assumption {
+                        if is_subregion {
+                            if recursive {
+                                queue.insert(child.clone());
+                                result.insert(child);
+                            }
+                        } else {
+                            queue.insert(child);
+                        }
                     }
                 }
             }
         }
     }
 
-    visited
+    result
 }
 
 #[cfg(test)]
@@ -1150,13 +1193,15 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
 
     let cost_set = extract(
         prog,
+        prog.fns(),
         serialized_egraph,
         unextractables,
         &mut termdag,
         DefaultCostModel,
+        &EggccConfig::default(),
     );
 
-    assert_eq!(cost_set.0.total, expected_cost);
+    assert_eq!(cost_set.0, expected_cost);
 }
 
 /// This only runs extract_without_linearity once
@@ -1175,12 +1220,24 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
-    let egraph_info = EgraphInfo::new(&DefaultCostModel, serialized_egraph, unextractables);
-    let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
+    let mut err = Ok(());
+    for func in prog.fns() {
+        let egraph_info = EgraphInfo::new(
+            &func,
+            &DefaultCostModel,
+            &serialized_egraph,
+            unextractables.clone(),
+        );
+        let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
-    let (_cost_res, prog) = extract_with_paths(extractor_not_linear, &egraph_info, None);
-    let res = extractor_not_linear.check_program_is_linear(&prog);
-    match res {
+        let (_cost_res, prog) = extract_with_paths(&func, extractor_not_linear, &egraph_info, None);
+        let res = extractor_not_linear.check_function_is_linear(&prog);
+        if let Err(e) = res {
+            err = Err(e);
+            break;
+        }
+    }
+    match err {
         Ok(_) => panic!("Expected program to be non-linear!"),
         Err(e) => assert!(e.starts_with(error_message)),
     }
@@ -1395,22 +1452,25 @@ fn test_validity_of_extraction() {
     let mut termdag = TermDag::default();
 
     let egraph_info = EgraphInfo::new(
+        "main",
         &DefaultCostModel,
-        serialized_egraph.clone(),
+        &serialized_egraph,
         unextractables.clone(),
     );
     let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);
 
-    let (_cost_res, res) = extract_with_paths(extractor_not_linear, &egraph_info, None);
+    let (_cost_res, res) = extract_with_paths("main", extractor_not_linear, &egraph_info, None);
     // first extraction should fail linearity check
-    assert!(extractor_not_linear.check_program_is_linear(&res).is_err());
+    assert!(extractor_not_linear.check_function_is_linear(&res).is_err());
 
     // second extraction should succeed
     extract(
         &prog,
+        vec!["main".to_string()],
         serialized_egraph,
         unextractables,
         &mut termdag,
         DefaultCostModel,
+        &EggccConfig::default(),
     );
 }

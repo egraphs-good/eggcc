@@ -523,7 +523,7 @@
 
 (rule (
         (= lhs (Call name arg))
-        (Function name in-ty out-ty body)
+        (FunctionHasType name in-ty out-ty)
       )
       ; Expect the arg to have the right type for the function
       ((ExpectType arg in-ty "function called with wrong arg type"))
@@ -531,7 +531,7 @@
 
 (rule (
         (= lhs (Call name arg))
-        (Function name in-ty out-ty body)
+        (FunctionHasType name in-ty out-ty)
         (HasType arg in-ty)
         ; We don't need to check the type of the function body, it will
         ; be checked elsewhere. If we did require (HasType body out-ty),

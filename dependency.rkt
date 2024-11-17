@@ -94,7 +94,7 @@
               (define datatypes (filter (lambda (x) (eq? (car x) 'datatype)) schema))
               (define (get-funcs-from-datatype dt) (map first (cddr dt)))
               (append funcs (append* (map get-funcs-from-datatype datatypes)))))
-(define primitives (list '+ '- '* '/ 'max 'min '> '>= '< '% '<= '!=))
+(define primitives (list '+ '- '* '/ 'max 'min '> '>= '< '% '<= '!= 'and 'or 'bool-<))
 
 (define (get-query-deps rule)
   (define keywords (append (list '=) primitives AST ignored-relations))
@@ -242,4 +242,6 @@
     ))
 (generate-dot-from-dependencies helper-dependencies "helper-dependencies.dot")
 
-(displayln (dep-computes (hash-ref dependencies "always-run")))
+; (displayln (dep-computes (hash-ref dependencies "always-run")))
+
+(displayln (hash-ref dependencies "interval-analysis"))

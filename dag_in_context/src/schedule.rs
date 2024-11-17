@@ -175,9 +175,6 @@ pub fn mk_sequential_schedule() -> Vec<String> {
         )
     }));
     res
-        )
-    }));
-    res
 }
 
 /// Parallel schedule must return a single string,
@@ -213,8 +210,11 @@ pub fn parallel_schedule() -> Vec<String> {
                 {helpers}
                 state-edge-passthrough
                 passthrough
-                subsume-after-helpers
                 {after_helpers}
+                ;; subsume-after-helpers should be run after
+                ;; always-run-postprocess, which resolves
+                ;; TupleRemoveAt
+                subsume-after-helpers
             ))
             "
         ),

@@ -18,9 +18,11 @@ pub(crate) fn helpers() -> String {
     (saturate
         (saturate
           type-analysis
-          (saturate type-helpers))
-        error-checking
-        always-run
+          (saturate type-helpers)
+          error-checking
+          always-run
+          context)
+        
         (saturate drop)
         apply-drop-unions
         cleanup-drop

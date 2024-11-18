@@ -359,10 +359,46 @@ pub(crate) fn rules() -> String {
 
 #[cfg(test)]
 use crate::egglog_test;
+
 #[cfg(test)]
-use crate::egglog_test_and_print_program;
+use crate::schema::TreeProgram;
 #[cfg(test)]
 use crate::schema::{BaseType, Type};
+#[cfg(test)]
+use crate::Value;
+#[cfg(test)]
+use main_error::MainError;
+
+#[cfg(test)]
+// TODO we don't use memory in the main schedule yet
+// so here enable it for tests
+fn memory_egglog_test(
+    build: &str,
+    check: &str,
+    progs: Vec<TreeProgram>,
+    input: Value,
+    expected: Value,
+    expected_log: Vec<String>,
+) -> Result<(), MainError> {
+    egglog_test(
+        build,
+        &format!(
+            "
+    ;; TODO we don't run memory in the main loop right now
+    (run-schedule
+        (repeat 6
+        (saturate
+            always-run
+            memory-helpers)
+        memory))        
+        {check}"
+        ),
+        progs,
+        input,
+        expected,
+        expected_log,
+    )
+}
 
 #[test]
 fn load_after_write() -> crate::Result {
@@ -386,9 +422,12 @@ fn load_after_write() -> crate::Result {
     let state = get(val_and_state, 1);
     let res = tprint(val, state);
 
-    egglog_test(
+    memory_egglog_test(
         &format!("{res}"),
-        &format!("(check (= {res} (Bop (Print) {two} rest)))"),
+        &format!(
+            "
+        (check (= {res} (Bop (Print) {two} rest)))"
+        ),
         vec![],
         val_empty(),
         val_empty(),
@@ -428,7 +467,7 @@ fn load_after_write_without_alias() -> crate::Result {
     let res = tprint(val, state).with_arg_types(tuplet!(statet()), Type::Base(statet()));
     let f = function("main", tuplet!(statet()), Type::Base(statet()), res.clone())
         .func_with_arg_types();
-    egglog_test(
+    memory_egglog_test(
         &format!("{f}"),
         &format!("(check (= {res} (Bop (Print) {two} rest)))"),
         vec![],
@@ -488,7 +527,7 @@ fn simple_loop_swap() -> crate::Result {
     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let f =
         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
-    egglog_test_and_print_program(
+    memory_egglog_test(
         &format!("{f}"),
         &format!("(let ten {ten}) (let val {val}) (check (= val ten))"),
         vec![],
@@ -568,18 +607,10 @@ fn pqrs_deep_loop_swap() -> crate::Result {
     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
     let f =
         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
-    egglog_test(
+    memory_egglog_test(
         &format!("{f}"),
         &format!(
             "
-        ;; TODO we don't run memory in the main loop right now
-        (run-schedule
-          (repeat 6
-            (saturate
-                always-run
-                memory-helpers)
-            memory))
-        
         (let ten {ten}) (let val {val}) (check (= val ten))"
         ),
         vec![],
@@ -620,7 +651,7 @@ fn redundant_load_elim() -> crate::Result {
         res.clone(),
     )
     .func_with_arg_types();
-    egglog_test_and_print_program(
+    memory_egglog_test(
         &format!("{f}"),
         &format!(
             "(print-function PointsToExpr 1000)

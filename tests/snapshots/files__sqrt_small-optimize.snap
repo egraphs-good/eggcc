@@ -24,40 +24,6 @@ expression: visualization.result
   v15_: bool = id c8_;
   br v13_ .b16_ .b17_;
 .b16_:
-<<<<<<< HEAD
-  c17_: float = const 1;
-  c18_: float = const 1.0000000001;
-  c19_: float = const 0.9999999999;
-  c20_: float = const 2;
-  v21_: float = id c2_;
-  v22_: float = id c17_;
-  v23_: float = id c18_;
-  v24_: float = id c19_;
-  v25_: float = id c20_;
-  v26_: float = id v0;
-.b27_:
-  v28_: float = fdiv v26_ v22_;
-  v29_: float = fadd v22_ v28_;
-  v30_: float = fdiv v29_ v25_;
-  v31_: float = fdiv v30_ v22_;
-  v32_: bool = fle v31_ v23_;
-  v33_: bool = fge v31_ v24_;
-  v34_: bool = and v32_ v33_;
-  v35_: bool = not v34_;
-  v21_: float = id v21_;
-  v22_: float = id v30_;
-  v23_: float = id v23_;
-  v24_: float = id v24_;
-  v25_: float = id v25_;
-  v26_: float = id v26_;
-  br v35_ .b27_ .b36_;
-.b36_:
-  print v22_;
-  v14_: float = id v21_;
-.b15_:
-  v37_: bool = not v13_;
-=======
->>>>>>> d577f31f (fix bug in loop strength reduction, add helper)
   v9_: float = id v14_;
   v10_: bool = id v15_;
   v18_: float = fdiv v9_ v9_;
@@ -80,8 +46,8 @@ expression: visualization.result
   v31_: float = fadd v24_ v30_;
   v32_: float = fdiv v31_ v27_;
   v33_: float = fdiv v32_ v24_;
-  v34_: bool = fge v33_ v26_;
-  v35_: bool = fle v33_ v25_;
+  v34_: bool = fle v33_ v25_;
+  v35_: bool = fge v33_ v26_;
   v36_: bool = and v34_ v35_;
   v37_: bool = not v36_;
   v23_: float = id v23_;

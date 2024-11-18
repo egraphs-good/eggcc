@@ -39,7 +39,8 @@ pub(crate) fn helpers() -> String {
 }
 
 fn cheap_optimizations() -> Vec<String> {
-    ["loop-simplify", "memory", "peepholes"]
+    // loop peeling is cheap, runs only on short loops
+    ["loop-simplify", "memory", "peepholes", "loop-peel"]
         .iter()
         .map(|opt| opt.to_string())
         .collect()
@@ -51,7 +52,6 @@ fn optimizations() -> Vec<String> {
         "switch_rewrite",
         "loop-inv-motion",
         "loop-strength-reduction",
-        "loop-peel",
     ]
     .iter()
     .map(|opt| opt.to_string())

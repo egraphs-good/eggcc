@@ -148,12 +148,7 @@ impl<'a> EgraphInfo<'a> {
         let mut num_not_expr = 0;
         // find all the (root, child) pairs that are important
         let mut relavent_eclasses: Vec<(ClassId, ClassId)> = vec![];
-        for (i, root) in region_roots.iter().enumerate() {
-            log::info!(
-                "Finding reachable classes for region {} of {}",
-                i,
-                region_roots.len()
-            );
+        for root in region_roots.iter() {
             let reachable = find_reachable(egraph, root.clone(), cm, true, false);
             for eclass in reachable {
                 // if type is not expr add to count

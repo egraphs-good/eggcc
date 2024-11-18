@@ -1,35 +1,34 @@
 pub(crate) fn helpers() -> String {
     "
 (saturate
-    (saturate type-helpers)
-    (saturate error-checking)
-
     (saturate
-        (saturate type-helpers)
-        (saturate error-checking)
-        saturating
+        (saturate
+          type-analysis
+          (saturate type-helpers))
+        error-checking
+        always-run
+        canon
+        context
+        interval-analysis
+        always-switch-rewrite
+        loop-iters-analysis
+        ; memory-helpers TODO run memory helpers for memory optimizations
     )
 
     (saturate drop)
     apply-drop-unions
     cleanup-drop
 
-    (saturate
-        (saturate type-helpers)
-        (saturate error-checking)
-        saturating
-    )
-
     (saturate subst)
     apply-subst-unions
     cleanup-subst
-
-    (saturate boundary-analysis)
 )
 
 ;; be careful to finish dropping and substituting before subsuming things!
 ;; otherwise substitution or dropat may not finish, violating the weak linearity invariant
 subsume-after-helpers
+
+(saturate boundary-analysis)
 "
     .to_string()
 }
@@ -55,32 +54,11 @@ fn optimizations() -> Vec<String> {
     .collect()
 }
 
-fn saturating_rulesets() -> Vec<String> {
-    [
-        "always-run",
-        "canon",
-        "type-analysis",
-        "context",
-        "interval-analysis",
-        "memory-helpers",
-        "always-switch-rewrite",
-        "loop-iters-analysis",
-    ]
-    .iter()
-    .map(|opt| opt.to_string())
-    .collect()
-}
-
 pub fn rulesets() -> String {
     let all_optimizations = optimizations().join("\n");
-    let saturating_combined = saturating_rulesets().join("\n");
     let cheap_optimizations = cheap_optimizations().join("\n");
     format!(
         "
-(unstable-combined-ruleset saturating
-    {saturating_combined}
-)
-
 (unstable-combined-ruleset cheap-optimizations
     {cheap_optimizations}
 )

@@ -7,14 +7,14 @@ expression: visualization.result
 .b0_:
   c1_: int = const 2;
   v2_: ptr<int> = alloc c1_;
-  c3_: int = const 10;
-  c4_: int = const 1;
-  v5_: ptr<int> = ptradd v2_ c4_;
-  c6_: int = const 20;
-  store v2_ c3_;
-  store v5_ c6_;
+  c3_: int = const 1;
+  v4_: ptr<int> = ptradd v2_ c3_;
+  c5_: int = const 20;
+  c6_: int = const 10;
+  store v2_ c6_;
+  store v4_ c5_;
   v7_: int = load v2_;
-  print c3_;
+  print v7_;
   free v2_;
   ret;
 }

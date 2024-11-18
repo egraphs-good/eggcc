@@ -570,7 +570,18 @@ fn pqrs_deep_loop_swap() -> crate::Result {
         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
     egglog_test(
         &format!("{f}"),
-        &format!("(let ten {ten}) (let val {val}) (check (= val ten))"),
+        &format!(
+            "
+        ;; TODO we don't run memory in the main loop right now
+        (run-schedule
+          (repeat 6
+            (saturate
+                always-run
+                memory-helpers)
+            memory))
+        
+        (let ten {ten}) (let val {val}) (check (= val ten))"
+        ),
         vec![],
         val_empty(),
         val_empty(),

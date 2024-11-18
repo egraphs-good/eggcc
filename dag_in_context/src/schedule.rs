@@ -1,6 +1,5 @@
 pub(crate) fn helpers() -> String {
     "
-(saturate
     (saturate
         (saturate
           type-analysis
@@ -15,20 +14,26 @@ pub(crate) fn helpers() -> String {
         ; memory-helpers TODO run memory helpers for memory optimizations
     )
 
-    (saturate drop)
-    apply-drop-unions
-    cleanup-drop
+    
+    (saturate
+        (saturate
+          type-analysis
+          (saturate type-helpers))
+        error-checking
+        always-run
+        (saturate drop)
+        apply-drop-unions
+        cleanup-drop
 
-    (saturate subst)
-    apply-subst-unions
-    cleanup-subst
-)
+        (saturate subst)
+        apply-subst-unions
+        cleanup-subst)
 
-;; be careful to finish dropping and substituting before subsuming things!
-;; otherwise substitution or dropat may not finish, violating the weak linearity invariant
-subsume-after-helpers
+    ;; be careful to finish dropping and substituting before subsuming things!
+    ;; otherwise substitution or dropat may not finish, violating the weak linearity invariant
+    subsume-after-helpers
 
-(saturate boundary-analysis)
+    (saturate boundary-analysis)
 "
     .to_string()
 }

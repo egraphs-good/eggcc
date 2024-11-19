@@ -53,12 +53,13 @@
         (ContextOf old-mul loop-ctx)
 
         (= arg-type (TupleT ty-list))
-        ; n is index of our new, temporary variable d
-        (= n (tuple-length inputs))
     )
     (
         ; Each time we need to update d by the product of the multiplied constant and the loop increment
         (let addend (Bop (Mul) c-out loop-incr-out))
+
+        ; n is index of our new, temporary variable d
+        (let n (tuple-length inputs))
 
         ; Initial value of d is i * c
         (let d-init (Bop (Mul) c-in (Get inputs i)))

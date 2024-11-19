@@ -57,16 +57,16 @@
 (rewrite (SubTuple expr x 0)
          (Empty ty ctx)
          :when ((HasArgType expr ty) (ContextOf expr ctx))
-         :ruleset always-run-postprocess)
+         :ruleset always-run)
 
 (rewrite (SubTuple expr x 1)
          (Single (Get expr x))
-         :ruleset always-run-postprocess)
+         :ruleset always-run)
 
 (rewrite (SubTuple expr a b)
          (Concat (Single (Get expr a)) (SubTuple expr (+ a 1) (- b 1)))
          :when ((> b 1))
-         :ruleset always-run-postprocess)
+         :ruleset always-run)
 
 ; Helper functions to remove one element from a tuple or type list
 ;                           tuple    idx
@@ -75,15 +75,15 @@
          (Concat (SubTuple tuple 0 idx)
                  (SubTuple tuple (+ idx 1) (- len (+ idx 1))))
          :when ((= len (tuple-length tuple)))
-         :ruleset always-run-postprocess)
+         :ruleset always-run)
 (rule ((TupleRemoveAt tuple idx)
        (= len (tuple-length tuple))
        (>= idx len))
-      ((panic "Index out of bounds for TupleRemoveAt")) :ruleset always-run-postprocess)
+      ((panic "Index out of bounds for TupleRemoveAt")) :ruleset always-run)
 
 (function TypeListRemoveAt (TypeList i64) TypeList :unextractable)
 (rule ((TypeListRemoveAt (TNil) _idx))
-      ((panic "Index out of bounds for TypeListRemoveAt.")) :ruleset always-run-postprocess)
+      ((panic "Index out of bounds for TypeListRemoveAt.")) :ruleset type-helpers)
 (rewrite (TypeListRemoveAt (TCons x xs) 0)
          xs
          :ruleset type-helpers)

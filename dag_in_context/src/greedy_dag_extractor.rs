@@ -846,7 +846,7 @@ impl CostModel for DefaultCostModel {
         match op {
             // Leaves
             "Const" => 1.,
-            "Arg" => 0.1,
+            "Arg" => 0.,
             _ if op.parse::<i64>().is_ok() || op.parse::<f64>().is_ok() || op.starts_with('"') => {
                 0.
             }

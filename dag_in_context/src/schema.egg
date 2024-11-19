@@ -204,9 +204,6 @@
 
 ; Rulesets
 (ruleset always-run)
-(ruleset is-resolved)
-(ruleset always-run-postprocess)
-(ruleset memory-always-run)
 (ruleset error-checking)
 (ruleset memory)
 (ruleset memory-helpers)

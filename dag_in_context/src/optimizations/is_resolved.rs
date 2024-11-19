@@ -21,7 +21,7 @@ fn rule_for_ctor(ctor: Constructor) -> String {
         .join("\n");
     let pat = ctor.construct(|field| field.var());
     let sort = ctor.sort().name();
-    format!("(rule ((= lhs {pat}) {query}) (({sort}IsResolved lhs)) :ruleset is-resolved)")
+    format!("(rule ((= lhs {pat}) {query}) (({sort}IsResolved lhs)) :ruleset always-run)")
 }
 
 pub(crate) fn rules() -> Vec<String> {

@@ -7,7 +7,6 @@ pub(crate) fn helpers() -> String {
         error-checking
         always-run
         canon
-        context
         interval-analysis
         always-switch-rewrite
         loop-iters-analysis

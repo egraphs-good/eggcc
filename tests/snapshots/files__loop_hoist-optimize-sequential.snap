@@ -5,22 +5,24 @@ expression: visualization.result
 # ARGS: 1 2 3 4
 @main(v0: int, v1: int, v2: int, v3: int) {
 .b4_:
-  v5_: int = id v0;
-  v6_: int = id v3;
-  v7_: int = id v2;
-  v8_: int = id v1;
-.b9_:
-  v10_: int = sub v7_ v8_;
+  v5_: int = sub v2 v1;
+  v6_: int = id v0;
+  v7_: int = id v3;
+  v8_: int = id v2;
+  v9_: int = id v1;
+  v10_: int = id v5_;
+.b11_:
   print v10_;
-  v11_: int = add v10_ v5_;
-  v12_: bool = lt v11_ v6_;
-  v13_: bool = not v12_;
-  v5_: int = id v11_;
-  v6_: int = id v6_;
+  v12_: int = add v10_ v6_;
+  v13_: bool = lt v12_ v7_;
+  v14_: bool = not v13_;
+  v6_: int = id v12_;
   v7_: int = id v7_;
   v8_: int = id v8_;
-  br v13_ .b9_ .b14_;
-.b14_:
-  print v5_;
+  v9_: int = id v9_;
+  v10_: int = id v10_;
+  br v14_ .b11_ .b15_;
+.b15_:
+  print v6_;
   ret;
 }

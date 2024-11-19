@@ -1,19 +1,7 @@
 pub(crate) fn helpers() -> String {
     "
-    (saturate
-        (saturate
-          type-analysis
-          (saturate type-helpers))
-        error-checking
-        always-run
-        canon
-        interval-analysis
-        always-switch-rewrite
-        loop-iters-analysis
-        ; memory-helpers TODO run memory helpers for memory optimizations
-    )
-
-    
+    ;; first, run substitution and drop to saturation
+    ;; these depend on type analysis, always-run, and context
     (saturate
         (saturate
           type-analysis
@@ -30,10 +18,24 @@ pub(crate) fn helpers() -> String {
         apply-subst-unions
         cleanup-subst)
 
-    ;; be careful to finish dropping and substituting before subsuming things!
-    ;; otherwise substitution or dropat may not finish, violating the weak linearity invariant
+    ;; now run canonicalization helpers, interval analysis
+    (saturate
+        (saturate
+          type-analysis
+          (saturate type-helpers))
+        error-checking
+        always-run
+        canon
+        interval-analysis
+        always-switch-rewrite
+        loop-iters-analysis
+        ; memory-helpers TODO run memory helpers for memory optimizations
+    )
+
+    ;; finally, subsume now that helpers are done
     subsume-after-helpers
 
+    ;; do a boundary analysis for loop invariant code motion
     (saturate boundary-analysis)
 "
     .to_string()

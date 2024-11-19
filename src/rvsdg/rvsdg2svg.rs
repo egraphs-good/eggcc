@@ -815,7 +815,7 @@ mod tests {
     use bril_rs::{Literal, Type, ValueOps};
 
     #[test]
-    fn rvsdg2svg_basic() {
+    fn rvsdg2svg_basic_snapshot() {
         let svg_new = RvsdgFunction {
             name: "main".to_owned(),
             args: vec![RvsdgType::Bril(Type::Int), RvsdgType::PrintState],

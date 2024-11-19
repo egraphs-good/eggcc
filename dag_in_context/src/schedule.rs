@@ -1,6 +1,24 @@
 pub(crate) fn helpers() -> String {
     "
-(saturate
+    ;; first, run substitution and drop to saturation
+    ;; these depend on type analysis, always-run, and context
+    (saturate
+        (saturate
+          type-analysis
+          (saturate type-helpers)
+          error-checking
+          always-run
+          context)
+        
+        (saturate drop)
+        apply-drop-unions
+        cleanup-drop
+
+        (saturate subst)
+        apply-subst-unions
+        cleanup-subst)
+
+    ;; now run canonicalization helpers, interval analysis
     (saturate
         (saturate
           type-analysis
@@ -8,32 +26,25 @@ pub(crate) fn helpers() -> String {
         error-checking
         always-run
         canon
-        context
         interval-analysis
         always-switch-rewrite
         loop-iters-analysis
         ; memory-helpers TODO run memory helpers for memory optimizations
     )
 
-    (saturate drop)
-    apply-drop-unions
-    cleanup-drop
+    ;; finally, subsume now that helpers are done
+    subsume-after-helpers
 
-    (saturate subst)
-    apply-subst-unions
-    cleanup-subst
-)
-
-;; be careful to finish dropping and substituting before subsuming things!
-;; otherwise substitution or dropat may not finish, violating the weak linearity invariant
-subsume-after-helpers
-
-(saturate boundary-analysis)
+    ;; do a boundary analysis for loop invariant code motion
+    (saturate boundary-analysis)
 "
     .to_string()
 }
 
 fn cheap_optimizations() -> Vec<String> {
+    // TODO enable loop peeling
+    // currently causes saturation issues, probably by creating dead loops that are allowed to have any value
+
     ["loop-simplify", "memory", "peepholes"]
         .iter()
         .map(|opt| opt.to_string())
@@ -46,7 +57,6 @@ fn optimizations() -> Vec<String> {
         "switch_rewrite",
         "loop-inv-motion",
         "loop-strength-reduction",
-        "loop-peel",
     ]
     .iter()
     .map(|opt| opt.to_string())

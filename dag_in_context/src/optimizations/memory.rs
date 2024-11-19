@@ -469,7 +469,18 @@ fn load_after_write_without_alias() -> crate::Result {
         .func_with_arg_types();
     memory_egglog_test(
         &format!("{f}"),
-        &format!("(check (= {res} (Bop (Print) {two} rest)))"),
+        &format!(
+            "
+        ;; TODO we don't run memory in the main loop right now
+        (run-schedule
+          (repeat 6
+            (saturate
+                always-run
+                memory-helpers)
+            memory))
+        
+        (check (= {res} (Bop (Print) {two} rest)))"
+        ),
         vec![],
         val_empty(),
         val_empty(),
@@ -529,7 +540,17 @@ fn simple_loop_swap() -> crate::Result {
         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
     memory_egglog_test(
         &format!("{f}"),
-        &format!("(let ten {ten}) (let val {val}) (check (= val ten))"),
+        &format!(
+            "
+        ;; TODO we don't run memory in the main loop right now
+        (run-schedule
+          (repeat 6
+            (saturate
+                always-run
+                memory-helpers)
+            memory))
+        (let ten {ten}) (let val {val}) (check (= val ten))"
+        ),
         vec![],
         val_empty(),
         val_empty(),
@@ -654,7 +675,15 @@ fn redundant_load_elim() -> crate::Result {
     memory_egglog_test(
         &format!("{f}"),
         &format!(
-            "(print-function PointsToExpr 1000)
+            "
+        ;; TODO we don't run memory in the main loop right now
+        (run-schedule
+          (repeat 6
+            (saturate
+                always-run
+                memory-helpers)
+            memory))
+        (print-function PointsToExpr 1000)
         (check (= {res} (Bop (Print) {load1_val} rest)))"
         ),
         vec![],

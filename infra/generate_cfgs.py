@@ -6,6 +6,7 @@ import concurrent.futures
 import subprocess
 
 def make_cfgs(bench, data_dir):
+  print(f"Generating CFGs for {bench}", flush=True)
   bench_path = f"{data_dir}/{bench}"
   runmodes = os.listdir(bench_path)
   
@@ -16,7 +17,7 @@ def make_cfgs(bench, data_dir):
     # On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
     # Also, on some machines, just running `opt-18` hangs, so we pass the version flag
     # Catch the output using shell
-    opt18_res = subprocess.run("opt-18", shell=True, capture_output=True)
+    opt18_res = subprocess.run("opt-18 --version", shell=True, capture_output=True)
     if opt18_res.returncode == 0:
       opt = "opt-18"
     else:

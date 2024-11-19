@@ -40,7 +40,7 @@ expression: visualization.result
   ret;
   jmp .b20_;
 .b8_:
-  v21_: bool = gt v0 c6_;
+  v21_: bool = lt c6_ v0;
   c22_: bool = const false;
   c23_: int = const 2;
   v24_: int = id c23_;
@@ -48,7 +48,7 @@ expression: visualization.result
   v26_: int = id c4_;
   br v21_ .b27_ .b28_;
 .b27_:
-  v29_: bool = gt v0 c5_;
+  v29_: bool = lt c5_ v0;
   c30_: int = const 4;
   v31_: int = id c30_;
   v32_: bool = id c22_;

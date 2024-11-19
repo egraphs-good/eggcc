@@ -46,8 +46,8 @@ expression: visualization.result
   v31_: float = fadd v24_ v30_;
   v32_: float = fdiv v31_ v27_;
   v33_: float = fdiv v32_ v24_;
-  v34_: bool = fle v33_ v25_;
-  v35_: bool = fge v33_ v26_;
+  v34_: bool = fge v33_ v26_;
+  v35_: bool = fle v33_ v25_;
   v36_: bool = and v34_ v35_;
   v37_: bool = not v36_;
   v23_: float = id v23_;

@@ -32,4 +32,5 @@ expression: visualization.result
   v4_: int = id v9_;
   v5_: int = id v10_;
   print v3_;
+  ret;
 }

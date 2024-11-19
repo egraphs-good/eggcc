@@ -28,4 +28,5 @@ expression: visualization.result
   c13_: int = const 5;
   v14_: int = mul c13_ v3_;
   print v14_;
+  ret;
 }

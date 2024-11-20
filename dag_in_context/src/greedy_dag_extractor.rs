@@ -14,7 +14,6 @@ use crate::{
     schema::{RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
     typechecker::TypeChecker,
-    EggccConfig,
 };
 
 type RootId = ClassId;

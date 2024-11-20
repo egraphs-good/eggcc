@@ -334,6 +334,9 @@ pub fn optimize(
             );
             res = iter_result;
         }
+
+        // now add context to res again for the next pass, since context might be less specific
+        res = res.add_context().0;
     }
     Ok(res)
 }

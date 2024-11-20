@@ -712,7 +712,7 @@ fn extract_fn(
     unextractables: IndexSet<String>,
     termdag: &mut TermDag,
     cost_model: &impl CostModel,
-    eggcc_config: &EggccConfig,
+    should_maintain_linearity: bool,
 ) -> (CostSet, RcExpr) {
     log::info!("Building extraction info");
     let egraph_info = EgraphInfo::new(func, cost_model, &egraph, unextractables);
@@ -720,7 +720,7 @@ fn extract_fn(
 
     let (cost_res, res) = extract_with_paths(func, extractor_not_linear, &egraph_info, None);
 
-    if !eggcc_config.linearity {
+    if !should_maintain_linearity {
         (cost_res, res)
     } else {
         let effectful_nodes_along_path =
@@ -748,7 +748,7 @@ pub fn extract(
     unextractables: IndexSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
-    eggcc_config: &EggccConfig,
+    should_maintain_linearity: bool,
 ) -> (Cost, TreeProgram) {
     let mut new_prog = original_prog.clone();
     let mut cost = NotNan::new(0.).unwrap();
@@ -760,7 +760,7 @@ pub fn extract(
             unextractables.clone(),
             termdag,
             &cost_model,
-            eggcc_config,
+            should_maintain_linearity,
         );
         new_prog.replace_fn(&func, extracted);
         cost += fn_cost.total;
@@ -1205,7 +1205,7 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
         unextractables,
         &mut termdag,
         DefaultCostModel,
-        &EggccConfig::default(),
+        true,
     );
 
     assert_eq!(cost_set.0, expected_cost);
@@ -1478,6 +1478,6 @@ fn test_validity_of_extraction() {
         unextractables,
         &mut termdag,
         DefaultCostModel,
-        &EggccConfig::default(),
+        true
     );
 }

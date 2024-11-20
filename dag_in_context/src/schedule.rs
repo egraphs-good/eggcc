@@ -135,6 +135,10 @@ pub fn parallel_schedule() -> Vec<String> {
 ;; HACK: when INLINE appears in this string
 ;; we perform inlining in this pass
 (run-schedule
+    (saturate
+      {helpers}
+      passthrough
+      state-edge-passthrough)
     (repeat 2
         {helpers}
         all-optimizations

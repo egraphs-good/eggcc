@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::rulesets;
 use schema::TreeProgram;
-use std::{fmt::Write, usize};
+use std::{cmp::min, fmt::Write, usize};
 use to_egglog::TreeToEgglog;
 
 use crate::{
@@ -232,7 +232,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
         unextractables,
         &mut termdag,
         DefaultCostModel,
-        &EggccConfig::default(),
+        true,
     );
 
     let (original_with_ctx, _) = program.add_dummy_ctx();
@@ -288,6 +288,14 @@ pub fn optimize(
         .iter()
         .zip(0..eggcc_config.stop_after_n_passes)
     {
+        let mut should_maintain_linearity = true;
+        if i == min(
+            eggcc_config.stop_after_n_passes - 1,
+            schedule_list.len() - 1,
+        ) {
+            should_maintain_linearity = eggcc_config.linearity;
+        }
+
         log::info!("Running pass {}...", i);
         let fns = res.fns();
 
@@ -322,7 +330,7 @@ pub fn optimize(
                 unextractables,
                 &mut termdag,
                 DefaultCostModel,
-                eggcc_config,
+                should_maintain_linearity,
             );
             res = iter_result;
         }

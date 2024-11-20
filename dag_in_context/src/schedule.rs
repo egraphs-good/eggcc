@@ -83,14 +83,25 @@ pub fn rulesets() -> String {
 pub fn mk_sequential_schedule() -> Vec<String> {
     let helpers = helpers();
 
-    let mut res = vec![format!(
-        "
+    let mut res = vec![
+        format!(
+            "
 (run-schedule
    (saturate
       {helpers}
       passthrough
       state-edge-passthrough))"
-    )];
+        ),
+        format!(
+            "
+(run-schedule
+    (repeat 2
+      {helpers}
+      loop-inversion
+      {helpers}
+    ))"
+        ),
+    ];
     res.extend(optimizations().iter().map(|optimization| {
         format!(
             "
@@ -104,19 +115,29 @@ pub fn mk_sequential_schedule() -> Vec<String> {
     res
 }
 
-/// Parallel schedule must return a single string,
-/// a schedule that runs optimizations over the egraph.
 pub fn parallel_schedule() -> Vec<String> {
     let helpers = helpers();
 
-    vec![format!(
-        "
+    vec![
+        format!(
+            "
 (run-schedule
-    (saturate
+   (saturate
       {helpers}
       passthrough
-      state-edge-passthrough)
-
+      state-edge-passthrough))"
+        ),
+        format!(
+            "
+(run-schedule
+    (repeat 3
+      {helpers}
+      loop-inversion)
+      {helpers})"
+        ),
+        format!(
+            "
+(run-schedule
     (repeat 2
         {helpers}
         all-optimizations
@@ -128,7 +149,8 @@ pub fn parallel_schedule() -> Vec<String> {
     )
 
     {helpers}
-)
-"
-    )]
+    )
+    "
+        ),
+    ]
 }

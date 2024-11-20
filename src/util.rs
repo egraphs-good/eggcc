@@ -808,14 +808,12 @@ impl Run {
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
 
                 let schedule_steps = parallel_schedule();
-                assert_eq!(
-                    schedule_steps.len(),
-                    1,
-                    "Parallel schedule had multiple steps!"
-                );
+                if schedule_steps.len() != 1 {
+                    log::warn!("Parallel schedule had multiple steps! You may need to adjust the schedule to make eggcc tractable.");
+                }
 
                 let egglog =
-                    build_program(&dag, Some(&dag), &dag.fns(), &mut cache, &schedule_steps[0]);
+                    build_program(&dag, Some(&dag), &dag.fns(), &mut cache, &schedule_steps.join("\n"));
                 (
                     vec![Visualization {
                         result: egglog,

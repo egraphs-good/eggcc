@@ -581,7 +581,6 @@ impl<'a> Extractor<'a> {
             assert!(func_name_str.starts_with('\"') && func_name_str.ends_with('\"'));
             let func_name_str_without_quotes = &func_name_str[1..func_name_str.len() - 1];
             if func_name_str_without_quotes == info._func {
-                eprintln!("here");
                 unshared_total = NotNan::new(100000000000.0).unwrap();
             }
         }

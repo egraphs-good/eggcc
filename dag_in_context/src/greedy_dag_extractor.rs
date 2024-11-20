@@ -900,6 +900,20 @@ pub trait CostModel {
 }
 
 pub struct DefaultCostModel;
+pub struct TestCostModel;
+
+impl CostModel for TestCostModel {
+    fn get_op_cost(&self, op: &str) -> Cost {
+        match op {
+            "Get" => (0.).try_into().unwrap(),
+            _ => DefaultCostModel.get_op_cost(op),
+        }
+    }
+
+    fn ignore_children(&self, op: &str) -> bool {
+        DefaultCostModel.ignore_children(op)
+    }
+}
 
 impl CostModel for DefaultCostModel {
     fn get_op_cost(&self, op: &str) -> Cost {
@@ -1206,7 +1220,7 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
         serialized_egraph,
         unextractables,
         &mut termdag,
-        DefaultCostModel,
+        TestCostModel,
         true,
     );
 
@@ -1300,7 +1314,7 @@ fn test_dag_extract() {
             )
         )
     );
-    let cost_model = DefaultCostModel;
+    let cost_model = TestCostModel;
     let cost_inside_loop = cost_model.get_op_cost("LessThan")
     // while the same const is used several times, it is only counted twice
     + cost_model.get_op_cost("Const")
@@ -1324,7 +1338,7 @@ fn simple_dag_extract() {
         tuplet!(intt(), statet()),
         parallel!(int(10), getat(1))
     ),);
-    let cost_model = DefaultCostModel;
+    let cost_model = TestCostModel;
 
     let expected_cost = cost_model.get_op_cost("Const");
     dag_extraction_test(&prog, expected_cost);
@@ -1462,7 +1476,7 @@ fn test_validity_of_extraction() {
 
     let egraph_info = EgraphInfo::new(
         "main",
-        &DefaultCostModel,
+        &TestCostModel,
         &serialized_egraph,
         unextractables.clone(),
     );
@@ -1479,7 +1493,7 @@ fn test_validity_of_extraction() {
         serialized_egraph,
         unextractables,
         &mut termdag,
-        DefaultCostModel,
+        TestCostModel,
         true,
     );
 }

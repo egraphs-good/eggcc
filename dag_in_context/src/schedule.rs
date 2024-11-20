@@ -91,6 +91,12 @@ pub fn mk_sequential_schedule() -> Vec<String> {
       passthrough
       state-edge-passthrough))"
     )];
+    res.push(format!(
+        "
+;; HACK: when INLINE appears in this string
+;; we perform inlining in this pass
+(run-schedule {helpers})"
+    ));
     res.extend(optimizations().iter().map(|optimization| {
         format!(
             "

@@ -93,6 +93,16 @@ pub fn mk_sequential_schedule() -> Vec<String> {
     )];
     res.push(format!(
         "
+(run-schedule
+  (repeat 2
+      {helpers}
+      swap-if)
+  {helpers}
+  rec-to-loop
+  {helpers})"
+    ));
+    res.push(format!(
+        "
 ;; HACK: when INLINE appears in this string
 ;; we perform inlining in this pass
 (run-schedule {helpers})"
@@ -137,8 +147,7 @@ pub fn parallel_schedule() -> Vec<String> {
 (run-schedule
     (saturate
       {helpers}
-      passthrough
-      state-edge-passthrough)
+      passthrough)
     (repeat 2
         {helpers}
         all-optimizations

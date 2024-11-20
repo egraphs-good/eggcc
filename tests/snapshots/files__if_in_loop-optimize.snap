@@ -8,7 +8,7 @@ expression: visualization.result
   c2_: int = const 0;
   c3_: int = const 1;
   c4_: int = const 10;
-  v5_: bool = lt v0 c3_;
+  v5_: bool = le v0 c2_;
   v6_: int = select v5_ c3_ c2_;
   v7_: int = id c2_;
   v8_: int = id c3_;

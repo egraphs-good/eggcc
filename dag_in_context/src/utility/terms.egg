@@ -85,15 +85,15 @@
       ((set (ExtractedExpr lhs) (TCPair (TermConcat t1 t2) (+ c1 c2))))
       :ruleset terms)
 
-; todo switch
 
-(rule (
-        (= lhs (If pred inputs thn els))
-        (= (TCPair t1 c1) (ExtractedExpr pred))
-        (= (TCPair t2 c2) (ExtractedExpr inputs))
-        (= (TCPair t3 c3) (ExtractedExpr thn))
-        (= (TCPair t4 c4) (ExtractedExpr els))
-      )
-      ; cost of if is 10 + cost of pred + cost of input + max of branch costs
-      ((set (ExtractedExpr lhs) (TCPair (TermIf t1 t2 t3 t4) (+ 10 (+ (+ c1 c2) (max c3 c4))))))
-      :ruleset terms)
+; todo Control flow - not sure if needed
+; (rule (
+;         (= lhs (If pred inputs thn els))
+;         (= (TCPair t1 c1) (ExtractedExpr pred))
+;         (= (TCPair t2 c2) (ExtractedExpr inputs))
+;         (= (TCPair t3 c3) (ExtractedExpr thn))
+;         (= (TCPair t4 c4) (ExtractedExpr els))
+;       )
+;       ; cost of if is 10 + cost of pred + cost of input + max of branch costs
+;       ((set (ExtractedExpr lhs) (TCPair (TermIf t1 t2 t3 t4) (+ 10 (+ (+ c1 c2) (max c3 c4))))))
+;       :ruleset terms)

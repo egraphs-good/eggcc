@@ -272,11 +272,13 @@
 (function TermAlloc (i64 Term Term BaseType) Term)
 (function TermCall (String Term) Term)
 
+; Tuple Operators
 (function TermSingle (Term) Term)
 (function TermConcat (Term Term) Term)
 
-(function TermSwitch (Term Term ListTerm) Term)
-(function TermIf (Term Term Term Term) Term)
+; Control Flow (TODO? Not sure if needed)
+; (function TermSwitch (Term Term ListTerm) Term)
+; (function TermIf (Term Term Term Term) Term)
 
-(function TermDoWhile (Term Term) Term)
+; (function TermDoWhile (Term Term) Term)
 

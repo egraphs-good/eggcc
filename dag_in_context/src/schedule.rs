@@ -1,7 +1,7 @@
 pub(crate) fn helpers() -> String {
     "
 (saturate
-
+    (saturate terms)
     (saturate type-helpers)
     (saturate error-checking)
     state-edge-passthrough
@@ -22,12 +22,12 @@ pub(crate) fn helpers() -> String {
         saturating
     )
 
+    (saturate term-subst)
     (saturate subst)
     apply-subst-unions
     cleanup-subst
 
     (saturate boundary-analysis)
-    (saturate terms)
 )
 
 ;; be careful to finish dropping and substituting before subsuming things!
@@ -46,6 +46,7 @@ fn cheap_optimizations() -> Vec<String> {
 
 fn optimizations() -> Vec<String> {
     [
+        "select_opt",
         "loop-unroll",
         "switch_rewrite",
         "loop-inv-motion",
@@ -135,7 +136,6 @@ pub fn parallel_schedule() -> Vec<String> {
     {helpers}
 )
 
-(print-function TCPair 100)
 "
     )]
 }

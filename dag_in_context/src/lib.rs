@@ -41,6 +41,7 @@ pub fn prologue() -> String {
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
         include_str!("utility/util.egg"),
+        include_str!("utility/terms.egg"),
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::is_resolved::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
@@ -49,6 +50,7 @@ pub fn prologue() -> String {
         //&optimizations::conditional_invariant_code_motion::rules().join("\n"),
         include_str!("utility/add_context.egg"),
         include_str!("utility/context-prop.egg"),
+        include_str!("utility/term-subst.egg"),
         include_str!("utility/subst.egg"),
         include_str!("utility/context_of.egg"),
         include_str!("utility/canonicalize.egg"),
@@ -56,6 +58,7 @@ pub fn prologue() -> String {
         include_str!("utility/drop_at.egg"),
         include_str!("interval_analysis.egg"),
         include_str!("optimizations/switch_rewrites.egg"),
+        include_str!("optimizations/select.egg"),
         include_str!("optimizations/peepholes.egg"),
         &optimizations::memory::rules(),
         include_str!("optimizations/memory.egg"),
@@ -65,7 +68,6 @@ pub fn prologue() -> String {
         include_str!("optimizations/passthrough.egg"),
         include_str!("optimizations/loop_strength_reduction.egg"),
         include_str!("utility/debug-helper.egg"),
-        include_str!("utility/terms.egg"),
         &rulesets(),
     ]
     .join("\n")

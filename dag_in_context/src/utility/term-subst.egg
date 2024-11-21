@@ -1,0 +1,73 @@
+(ruleset term-subst)
+
+
+; Instantiate the term as an Expr in the provided context
+; where references to (Arg) in the term are replaced by Expr
+(function TermSubst (Assumption Expr Term) Expr :unextractable)
+
+; type rule to get the arg type of a substitution
+(rule (
+        (= lhs (TermSubst ctx e1 term))
+        (HasArgType e1 ty)       
+      )
+      ((HasArgType lhs ty))
+      :ruleset term-subst)
+
+
+; leaf node
+; replace the context
+(rule ((= lhs (TermSubst ctx e (TermArg _ty))))
+      ((union lhs (AddContext ctx e)))
+      :ruleset term-subst)
+
+(rule ((= lhs (TermSubst ctx e (TermConst c _ty)))
+       (HasArgType e newty))
+      ((union lhs (Const c newty ctx)))
+      :ruleset term-subst)
+
+(rule ((= lhs (TermSubst ctx e (TermEmpty _ty)))
+       (HasArgType e newty))
+      ((union lhs (Empty newty ctx)))
+      :ruleset term-subst)
+
+; Operators
+(rule ((= lhs (TermSubst ctx e (TermTop op t1 t2 t3))))
+      ((union lhs (Top op (TermSubst ctx e t1)
+                          (TermSubst ctx e t2)
+                          (TermSubst ctx e t3))))
+      :ruleset term-subst)
+
+(rule ((= lhs (TermSubst ctx e (TermBop op t1 t2))))
+      ((union lhs (Bop op (TermSubst ctx e t1)
+                          (TermSubst ctx e t2))))
+      :ruleset term-subst)
+
+(rule ((= lhs (TermSubst ctx e (TermUop op t1))))
+      ((union lhs (Uop op (TermSubst ctx e t1))))
+      :ruleset term-subst)
+
+(rule ((= lhs (TermSubst ctx e (TermGet t idx))))
+      ((union lhs (Get (TermSubst ctx e t) idx)))
+      :ruleset term-subst)
+
+(rule ((= lhs (TermSubst ctx e (TermAlloc id t1 t2 ty))))
+      ((union lhs (Alloc id (TermSubst ctx e t1)
+                            (TermSubst ctx e t2)
+                            ty)))
+      :ruleset term-subst)
+
+(rule ((= lhs (TermSubst ctx e (TermCall name t))))
+      ((union lhs (Call name (TermSubst ctx e t))))
+      :ruleset term-subst)
+
+(rule ((= lhs (TermSubst ctx e (TermSingle t))))
+      ((union lhs (Single (TermSubst ctx e t))))
+      :ruleset term-subst)
+
+(rule ((= lhs (TermSubst ctx e (TermConcat t1 t2))))
+      ((union lhs (Concat (TermSubst ctx e t1)
+                          (TermSubst ctx e t2))))
+      :ruleset term-subst)
+
+; Control Flow
+; TODO

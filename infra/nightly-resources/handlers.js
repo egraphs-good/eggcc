@@ -10,7 +10,7 @@ async function load_index() {
 
   // Everything selected by default
   selectAllModes(true);
-  selectAllBenchmarks(true);
+  selectBenchmarks("all");
 
   // Firefox doesn't handle radio buttons correctly on page reload,
   // so manually set to absolute view
@@ -34,8 +34,9 @@ async function load_llvm() {
   const runMode = params.get("runmode");
 
   document.title = `${benchmark} | ${runMode}`;
-  document.getElementById("llvm-header").innerText =
-    `Benchmark: ${benchmark} | Run Mode: ${runMode}`;
+  document.getElementById(
+    "llvm-header"
+  ).innerText = `Benchmark: ${benchmark} | Run Mode: ${runMode}`;
 
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");
@@ -63,25 +64,48 @@ function selectAllModes(enabled) {
       enabled
         ? GLOBAL_DATA.enabledModes.add(checkbox.id)
         : GLOBAL_DATA.enabledModes.delete(checkbox.id);
-    },
+    }
   );
   refreshView();
 }
 
-function selectAllBenchmarks(enabled, category) {
+function selectBenchmarks(category) {
   const checkboxContainer = document.getElementById("benchmarkCheckboxes");
   let checkboxes = Array.from(checkboxContainer.getElementsByTagName("input"));
-  if (category === "looped") {
-    const loopedBenchmarks = new Set(
-      GLOBAL_DATA.currentRun
-        .filter((x) => x.metadata.looped)
-        .map((x) => x.benchmark),
-    );
-    checkboxes = checkboxes.filter((x) => loopedBenchmarks.has(x.id));
+  const benches = [...new Set(GLOBAL_DATA.currentRun.map((x) => x.benchmark))];
+  // For sorting by time, just take the max of the cycles across all run modes
+  const benchmarkSpeeds = benches.map((b) => ({
+    bench: b,
+    time: Math.max(
+      ...GLOBAL_DATA.currentRun
+        .filter((x) => x.benchmark === b)
+        .map((x) => Math.max(...x.cycles))
+    ),
+  }));
+  switch (category) {
+    case "all":
+      checkboxes.forEach((c) => (c.checked = true));
+      break;
+    case "none":
+      checkboxes.forEach((c) => (c.checked = false));
+      break;
+    case "fast":
+      const fastest = benchmarkSpeeds
+        .sort((a, b) => a.time - b.time)
+        .slice(0, 5)
+        .map((x) => x.bench);
+      checkboxes.forEach((c) => (c.checked = fastest.includes(c.id)));
+      break;
+    case "slow":
+      const slowest = benchmarkSpeeds
+        .sort((a, b) => b.time - a.time)
+        .slice(0, 5)
+        .map((x) => x.bench);
+      checkboxes.forEach((c) => (c.checked = slowest.includes(c.id)));
+      break;
   }
   checkboxes.forEach((checkbox) => {
-    checkbox.checked = enabled;
-    enabled
+    checkbox.checked
       ? GLOBAL_DATA.enabledBenchmarks.add(checkbox.id)
       : GLOBAL_DATA.enabledBenchmarks.delete(checkbox.id);
   });
@@ -102,14 +126,14 @@ async function loadBaseline(url) {
   GLOBAL_DATA.baselineRun = await fetchJson(`${url}/data/profile.json`);
 
   const baselineBenchmarks = new Set(
-    GLOBAL_DATA.baselineRun.map((o) => o.benchmark),
+    GLOBAL_DATA.baselineRun.map((o) => o.benchmark)
   );
   const currentBenchmarks = new Set(
-    GLOBAL_DATA.currentRun.map((o) => o.benchmark),
+    GLOBAL_DATA.currentRun.map((o) => o.benchmark)
   );
   baselineBenchmarks.difference(currentBenchmarks).forEach((benchmark) => {
     addWarning(
-      `Baseline run had benchmark ${benchmark} that the current run doesn't`,
+      `Baseline run had benchmark ${benchmark} that the current run doesn't`
     );
   });
 

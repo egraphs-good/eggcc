@@ -169,13 +169,13 @@ def should_have_llvm_ir(runMethod):
   ]
 
 # aggregate all profile info into a single json array.
-def aggregate(compile_data, bench_times, benchmark_metadata):
+def aggregate(compile_data, bench_times, paths):
     res = []
 
     for path in sorted(compile_data.keys()):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
-      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "metadata": benchmark_metadata[name]}
+      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "path": paths[name]}
 
       # add compile time info
       for key in compile_data[path]:
@@ -183,11 +183,6 @@ def aggregate(compile_data, bench_times, benchmark_metadata):
 
       res.append(result)
     return res
-
-def is_looped(bril_file):
-  with open(bril_file) as f:
-    txt = f.read()
-    return "orig_main" in txt
 
 if __name__ == '__main__':
   # expect two arguments
@@ -221,13 +216,13 @@ if __name__ == '__main__':
   else:
     profiles = [bril_dir]
 
-  benchmark_metadata = {}
+  paths = {}
   for profile in profiles:
     bench_name_parts = profile.split("/")[-1].split(".")
     if len(bench_name_parts) != 2:
       raise Exception(f"Invalid benchmark name: {profile}")
     name = bench_name_parts[0]
-    benchmark_metadata[name] = {"looped": is_looped(profile), "path": profile}
+    paths[name] = profile
 
   to_run = []
   index = 0
@@ -289,7 +284,7 @@ if __name__ == '__main__':
       (path, _bench_data) = res
       bench_data[path] = _bench_data
 
-  nightly_data = aggregate(compile_data, bench_data, benchmark_metadata)
+  nightly_data = aggregate(compile_data, bench_data, paths)
   with open(f"{DATA_DIR}/profile.json", "w") as profile:
     json.dump(nightly_data, profile, indent=2)
 

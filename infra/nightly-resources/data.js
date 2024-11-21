@@ -12,7 +12,7 @@ async function fetchText(url) {
 
 function getRow(benchmark, runMethod) {
   return GLOBAL_DATA.currentRun.find(
-    (row) => row.benchmark === benchmark && row.runMethod === runMethod,
+    (row) => row.benchmark === benchmark && row.runMethod === runMethod
   );
 }
 
@@ -29,7 +29,7 @@ function getComparison(benchmark, runMethod) {
       addWarning(`No baseline data for ${benchmark} ${runMethod}`);
     } else if (baseline.length !== 1) {
       throw new Error(
-        `Baseline had multiple entries for ${benchmark} ${runMethod}`,
+        `Baseline had multiple entries for ${benchmark} ${runMethod}`
       );
     } else {
       return baseline[0];
@@ -55,17 +55,17 @@ function getBrilPathForBenchmark(benchmark) {
   const o = GLOBAL_DATA.currentRun.find((o) => o.benchmark === benchmark);
   if (!o) {
     console.error(
-      `couldn't find entry for ${benchmark} (this shouldn't happen)`,
+      `couldn't find entry for ${benchmark} (this shouldn't happen)`
     );
   }
-  return o.metadata.path;
+  return o.path;
 }
 
 // calculates the geometric mean over a list of ratios
 function geometricMean(values) {
   return Math.pow(
     values.reduce((a, b) => a * b, 1),
-    1 / values.length,
+    1 / values.length
   );
 }
 
@@ -110,7 +110,7 @@ function getDataForBenchmark(benchmark) {
       const baseline = getRow(benchmark, BASELINE_MODE);
       const comparisonCycles = getComparison(
         row.benchmark,
-        row.runMethod,
+        row.runMethod
       )?.cycles;
       const cycles = row["cycles"];
       const rowData = {
@@ -125,7 +125,7 @@ function getDataForBenchmark(benchmark) {
         medianVsBaseline: getDifference(
           cycles,
           comparisonCycles,
-          median_cycles,
+          median_cycles
         ),
         stddev: { class: "", value: tryRound(median_cycles(cycles)) },
         eggccCompileTimeSecs: {

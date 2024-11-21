@@ -25,11 +25,11 @@
 
 ; Compute smallest Expr bottom-up
 (rule ((= lhs (Const c ty ass)))
-      ((set (ExtractedExpr lhs) (TCPair (TermConst c ty) 1)))
+      ((set (ExtractedExpr lhs) (TCPair (TermConst c) 1)))
       :ruleset terms)
 
 (rule ((= lhs (Arg ty ass)))
-      ((set (ExtractedExpr lhs) (TCPair (TermArg ty) 1)))
+      ((set (ExtractedExpr lhs) (TCPair (TermArg) 1)))
       :ruleset terms)
 
 (rule (

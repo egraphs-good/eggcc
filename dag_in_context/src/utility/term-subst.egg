@@ -16,16 +16,16 @@
 
 ; leaf node
 ; replace the context
-(rule ((= lhs (TermSubst ctx e (TermArg _ty))))
+(rule ((= lhs (TermSubst ctx e (TermArg))))
       ((union lhs (AddContext ctx e)))
       :ruleset term-subst)
 
-(rule ((= lhs (TermSubst ctx e (TermConst c _ty)))
+(rule ((= lhs (TermSubst ctx e (TermConst c)))
        (HasArgType e newty))
       ((union lhs (Const c newty ctx)))
       :ruleset term-subst)
 
-(rule ((= lhs (TermSubst ctx e (TermEmpty _ty)))
+(rule ((= lhs (TermSubst ctx e (TermEmpty)))
        (HasArgType e newty))
       ((union lhs (Empty newty ctx)))
       :ruleset term-subst)

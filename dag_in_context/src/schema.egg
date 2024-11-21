@@ -258,11 +258,11 @@
 ;   (InIf bool Term Term)
 ; )
 
-(function TermArg (Type) Term)
+(function TermArg () Term)
 
-(function TermConst (Constant Type) Term)
+(function TermConst (Constant) Term)
 
-(function TermEmpty (Type) Term)
+(function TermEmpty () Term)
 
 ; Term Operators
 (function TermTop (TernaryOp Term Term Term) Term)

@@ -22,6 +22,7 @@ pub(crate) fn helpers() -> String {
     (saturate
         (saturate
           type-analysis
+          (saturate terms)
           (saturate type-helpers)
           error-checking
           always-run
@@ -31,6 +32,7 @@ pub(crate) fn helpers() -> String {
         apply-drop-unions
         cleanup-drop
 
+        (saturate term-subst)
         (saturate subst)
         apply-subst-unions
         cleanup-subst)
@@ -70,6 +72,7 @@ fn cheap_optimizations() -> Vec<String> {
 
 fn optimizations() -> Vec<String> {
     [
+        "select_opt",
         "loop-unroll",
         "switch_rewrite",
         "loop-inv-motion",

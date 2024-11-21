@@ -9,6 +9,10 @@
         (= els_out (Get els i))
         (ExprIsPure thn_out)
         (ExprIsPure els_out)
+
+        ; Make sure we're not selecting the state edge
+        (HasType thn_out ty)
+        (!= ty (Base (StateT)))
         
         (> 10 (Expr-size thn_out)) ; TODO: Tune these size limits
         (> 10 (Expr-size els_out))

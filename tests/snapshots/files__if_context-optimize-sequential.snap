@@ -2,10 +2,13 @@
 source: tests/files.rs
 expression: visualization.result
 ---
-# ARGS: 1
+# ARGS: 20
 @main(v0: int) {
 .b1_:
-  c2_: bool = const true;
-  print c2_;
+  c2_: int = const 3;
+  v3_: bool = eq c2_ v0;
+  v4_: int = mul c2_ v0;
+  v5_: int = select v3_ c2_ v4_;
+  print v5_;
   ret;
 }

@@ -43,6 +43,7 @@ fn purity_rules_for_ctor(ctor: Constructor) -> String {
             let children_pure_queries = ctor.filter_map_fields(|field| match field.purpose {
                 Purpose::Static(Sort::BinaryOp)
                 | Purpose::Static(Sort::UnaryOp)
+                | Purpose::Static(Sort::TernaryOp)
                 | Purpose::SubExpr
                 | Purpose::CapturedSubListExpr
                 | Purpose::CapturedExpr => Some(format!(
@@ -86,11 +87,11 @@ pub(crate) fn rules() -> Vec<String> {
         (relation ListExprIsPure (ListExpr))
         (relation BinaryOpIsPure (BinaryOp))
         (relation UnaryOpIsPure (UnaryOp))
-        (relation TopIsPure (TernaryOp))"
+        (relation TernaryOpIsPure (TernaryOp))"
             .to_string(),
     )
     .chain(TernaryOp::iter().filter_map(|top| {
-        top_is_pure(&top).then(|| format!("(TopIsPure ({name}))", name = top.name()))
+        top_is_pure(&top).then(|| format!("(TernaryOpIsPure ({name}))", name = top.name()))
     }))
     .chain(BinaryOp::iter().filter_map(|bop| {
         bop_is_pure(&bop).then(|| format!("(BinaryOpIsPure ({name}))", name = bop.name()))

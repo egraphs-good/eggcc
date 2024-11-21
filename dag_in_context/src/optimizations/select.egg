@@ -1,8 +1,5 @@
 (ruleset select_opt)
 
-(relation DebugTerm (String Term))
-(relation DebugExpr (String Expr))
-
 (rule
        (
         (= if_e (If pred inputs thn els))
@@ -19,8 +16,6 @@
         (= (TCPair t2 c2) (ExtractedExpr els_out))
        )
        (
-       ; (union (Get if_e i)
-       ;        (Top (Select) pred (Subst ctx inputs thn_out) (Subst ctx inputs els_out)))
         (union (Get if_e i)
                (Top (Select) pred (TermSubst ctx inputs t1) (TermSubst ctx inputs t2)))
        )

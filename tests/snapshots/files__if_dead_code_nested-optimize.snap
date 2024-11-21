@@ -25,30 +25,11 @@ expression: visualization.result
   jmp .b15_;
 .b7_:
   v16_: bool = gt v0 c5_;
-  c17_: bool = const false;
-  c18_: int = const 2;
-  v19_: int = id c18_;
-  v20_: bool = id c17_;
-  v21_: int = id c2_;
-  br v16_ .b22_ .b23_;
-.b22_:
-  v24_: bool = gt v0 c4_;
-  c25_: int = const 4;
-  v26_: int = select v24_ c4_ c25_;
-  v19_: int = id v26_;
-  v20_: bool = id c17_;
-  v21_: int = id c2_;
-  v11_: int = id v19_;
-  v12_: int = id c2_;
-  c13_: int = const 1;
-  v14_: int = select v3_ c13_ c2_;
-  print v14_;
-  print v3_;
-  print v11_;
-  ret;
-  jmp .b15_;
-.b23_:
-  v11_: int = id v19_;
+  v17_: bool = gt v0 c4_;
+  c18_: int = const 4;
+  v19_: int = select v17_ c4_ c18_;
+  v20_: int = select v16_ v19_ c5_;
+  v11_: int = id v20_;
   v12_: int = id c2_;
   c13_: int = const 1;
   v14_: int = select v3_ c13_ c2_;

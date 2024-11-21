@@ -806,8 +806,8 @@ impl Run {
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
 
                 let eggcc_config = EggccConfig {
-                    // stop before the last pass.
-                    stop_after_n_passes: -2,
+                    // stop before the last pass that user specified.
+                    stop_after_n_passes: self.eggcc_config.stop_after_n_passes - 1,
                     .. self.eggcc_config.clone()
                 };
                 let optimized = dag_in_context::optimize(&dag, &mut cache, &eggcc_config)

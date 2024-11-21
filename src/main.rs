@@ -53,6 +53,10 @@ struct Args {
     /// This argument specifies how many passes to run (all passes by default).
     /// If stop_after_n_passes is negative,
     /// run [0 ... schedule.len() + stop_after_n_passes + 1] passes.
+    /// 
+    /// This flag also works with `--run-mode egglog` mode,
+    /// where it prints the egglog program being processed by the last pass
+    /// this flag specifies.
     #[clap(long)]
     stop_after_n_passes: Option<i64>,
 

@@ -66,6 +66,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/rec_to_loop.egg"),
         include_str!("optimizations/passthrough.egg"),
         include_str!("optimizations/loop_strength_reduction.egg"),
+        include_str!("optimizations/ivt.egg"),
         include_str!("utility/debug-helper.egg"),
         &rulesets(),
     ]

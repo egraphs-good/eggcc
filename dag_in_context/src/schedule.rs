@@ -95,6 +95,15 @@ pub fn mk_sequential_schedule() -> Vec<String> {
         "
 (run-schedule
   (repeat 2
+    {helpers}
+    loop-inversion)
+  
+  {helpers})"
+    ));
+    res.push(format!(
+        "
+(run-schedule
+  (repeat 2
       {helpers}
       swap-if)
   {helpers}
@@ -120,8 +129,6 @@ pub fn mk_sequential_schedule() -> Vec<String> {
     res
 }
 
-/// Parallel schedule must return a single string,
-/// a schedule that runs optimizations over the egraph.
 pub fn parallel_schedule() -> Vec<String> {
     let helpers = helpers();
 
@@ -129,7 +136,7 @@ pub fn parallel_schedule() -> Vec<String> {
         format!(
             "
 (run-schedule
-    (saturate
+   (saturate
       {helpers}
       passthrough
       state-edge-passthrough)
@@ -138,6 +145,15 @@ pub fn parallel_schedule() -> Vec<String> {
       swap-if)
     {helpers}
     rec-to-loop
+    {helpers})"
+        ),
+        format!(
+            "
+(run-schedule
+    (repeat 3
+      {helpers}
+      loop-inversion)
+
     {helpers})"
         ),
         format!(

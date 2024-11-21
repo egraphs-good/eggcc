@@ -812,8 +812,13 @@ impl Run {
                     log::warn!("Parallel schedule had multiple steps! You may need to adjust the schedule to make eggcc tractable.");
                 }
 
-                let egglog =
-                    build_program(&dag, Some(&dag), &dag.fns(), &mut cache, &schedule_steps.join("\n"));
+                let egglog = build_program(
+                    &dag,
+                    Some(&dag),
+                    &dag.fns(),
+                    &mut cache,
+                    &schedule_steps.join("\n"),
+                );
                 (
                     vec![Visualization {
                         result: egglog,

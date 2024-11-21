@@ -91,6 +91,22 @@ pub fn mk_sequential_schedule() -> Vec<String> {
       passthrough
       state-edge-passthrough))"
     )];
+    res.push(format!(
+        "
+(run-schedule
+  (repeat 2
+      {helpers}
+      swap-if)
+  {helpers}
+  rec-to-loop
+  {helpers})"
+    ));
+    res.push(format!(
+        "
+;; HACK: when INLINE appears in this string
+;; we perform inlining in this pass
+(run-schedule {helpers})"
+    ));
     res.extend(optimizations().iter().map(|optimization| {
         format!(
             "
@@ -109,14 +125,29 @@ pub fn mk_sequential_schedule() -> Vec<String> {
 pub fn parallel_schedule() -> Vec<String> {
     let helpers = helpers();
 
-    vec![format!(
-        "
+    vec![
+        format!(
+            "
 (run-schedule
     (saturate
       {helpers}
       passthrough
       state-edge-passthrough)
-
+    (repeat 2
+      {helpers}
+      swap-if)
+    {helpers}
+    rec-to-loop
+    {helpers})"
+        ),
+        format!(
+            "
+;; HACK: when INLINE appears in this string
+;; we perform inlining in this pass
+(run-schedule
+    (saturate
+      {helpers}
+      passthrough)
     (repeat 2
         {helpers}
         all-optimizations
@@ -130,5 +161,6 @@ pub fn parallel_schedule() -> Vec<String> {
     {helpers}
 )
 "
-    )]
+        ),
+    ]
 }

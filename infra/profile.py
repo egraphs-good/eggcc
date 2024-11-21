@@ -135,7 +135,7 @@ def bench(benchmark):
     else:
       # hyperfine command for measuring time, unused in favor of cycles
       # cmd = f'hyperfine --style none --warmup 1 --max-runs 2 --export-json /dev/stdout "{profile_dir}/{benchmark.treatment}{" " + args if len(args) > 0 else ""}"'
-      time_per_benchmark = 1.0
+      time_per_benchmark = 2.0
       resulting_num_cycles = []
       time_start = time.time()
       while True:

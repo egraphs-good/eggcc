@@ -8,15 +8,7 @@ expression: visualization.result
   v3_: int = mul v0 v1;
   c4_: int = const 20;
   v5_: bool = lt v3_ c4_;
-  v6_: int = id v1;
-  br v5_ .b7_ .b8_;
-.b7_:
-  v6_: int = id v0;
+  v6_: int = select v5_ v0 v1;
   print v6_;
   ret;
-  jmp .b9_;
-.b8_:
-  print v6_;
-  ret;
-.b9_:
 }

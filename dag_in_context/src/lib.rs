@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::rulesets;
 use schema::TreeProgram;
-use std::{fmt::Write, usize};
+use std::{cmp::min, fmt::Write, usize};
 use to_egglog::TreeToEgglog;
 
 use crate::{
@@ -62,6 +62,8 @@ pub fn prologue() -> String {
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
         include_str!("optimizations/loop_unroll.egg"),
+        include_str!("optimizations/swap_if.egg"),
+        include_str!("optimizations/rec_to_loop.egg"),
         include_str!("optimizations/passthrough.egg"),
         include_str!("optimizations/loop_strength_reduction.egg"),
         include_str!("utility/debug-helper.egg"),
@@ -230,7 +232,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
         unextractables,
         &mut termdag,
         DefaultCostModel,
-        &EggccConfig::default(),
+        true,
     );
 
     let (original_with_ctx, _) = program.add_dummy_ctx();
@@ -286,12 +288,24 @@ pub fn optimize(
         .iter()
         .zip(0..eggcc_config.stop_after_n_passes)
     {
+        let mut should_maintain_linearity = true;
+        if i == min(
+            eggcc_config.stop_after_n_passes - 1,
+            schedule_list.len() - 1,
+        ) {
+            should_maintain_linearity = eggcc_config.linearity;
+        }
+
         log::info!("Running pass {}...", i);
         let fns = res.fns();
 
         // if we are inlining, save the program
         // TODO we inline on the first pass, but this should be configurable from the schedule
-        let inline_program = if i == 0 { Some(res.clone()) } else { None };
+        let inline_program = if schedule.contains("INLINE") {
+            Some(res.clone())
+        } else {
+            None
+        };
 
         // TODO experiment with different batches of optimizing functions together
         // currently we use the whole program
@@ -316,10 +330,13 @@ pub fn optimize(
                 unextractables,
                 &mut termdag,
                 DefaultCostModel,
-                eggcc_config,
+                should_maintain_linearity,
             );
             res = iter_result;
         }
+
+        // now add context to res again for the next pass, since context might be less specific
+        res = res.add_context().0;
     }
     Ok(res)
 }

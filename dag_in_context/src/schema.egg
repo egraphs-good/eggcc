@@ -207,6 +207,7 @@
 ; Rulesets
 (ruleset always-run)
 (ruleset is-resolved)
+(ruleset tuple-helpers)
 (ruleset error-checking)
 (ruleset memory)
 (ruleset memory-helpers)

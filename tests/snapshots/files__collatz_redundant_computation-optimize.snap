@@ -18,7 +18,7 @@ expression: visualization.result
 .b12_:
   v13_: bool = eq v7_ v8_;
   v14_: int = id v6_;
-  v15_: int = id v8_;
+  v15_: int = id v7_;
   v16_: int = id v8_;
   v17_: int = id v9_;
   v18_: int = id v10_;

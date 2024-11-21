@@ -146,13 +146,41 @@ fn get_eggcc_root() -> String {
     std::env::var("EGGCC_ROOT").unwrap_or(".".to_string())
 }
 
-#[derive(Debug, Clone, ValueEnum, Copy)]
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, ValueEnum, Copy, Eq, PartialEq)]
 #[clap(rename_all = "verbatim")]
 pub enum LLVMOptLevel {
-    O0,
-    O1,
-    O2,
-    O3,
+    O0_O0,
+    O1_O0,
+    O2_O0,
+    O3_O0,
+    /// Use LLVM O3 and also lower to a binary using O3
+    /// Other modes use O0 to lower the optimized llvm to a binary
+    O3_O3,
+}
+
+impl LLVMOptLevel {
+    pub fn llvm_opt_level(&self) -> String {
+        match self {
+            LLVMOptLevel::O0_O0 => "O0",
+            LLVMOptLevel::O1_O0 => "O1",
+            LLVMOptLevel::O2_O0 => "O2",
+            LLVMOptLevel::O3_O0 => "O3",
+            LLVMOptLevel::O3_O3 => "O3",
+        }
+        .to_string()
+    }
+
+    pub fn lower_opt_level(&self) -> String {
+        match self {
+            LLVMOptLevel::O0_O0 => "O0",
+            LLVMOptLevel::O1_O0 => "O0",
+            LLVMOptLevel::O2_O0 => "O0",
+            LLVMOptLevel::O3_O0 => "O0",
+            LLVMOptLevel::O3_O3 => "O3",
+        }
+        .to_string()
+    }
 }
 
 impl Display for LLVMOptLevel {
@@ -356,7 +384,7 @@ pub struct Run {
     pub test_type: RunMode,
     pub interp: InterpMode,
     pub profile_out: Option<PathBuf>,
-    pub llvm_output_dir: Option<String>,
+    pub optimized_llvm_out: Option<PathBuf>,
     pub output_path: Option<String>,
     pub optimize_egglog: Option<bool>,
     pub optimize_brilift: Option<bool>,
@@ -373,7 +401,7 @@ impl Run {
             interp: InterpMode::None,
             profile_out: None,
             output_path: None,
-            llvm_output_dir: None,
+            optimized_llvm_out: None,
             optimize_egglog: None,
             optimize_brilift: None,
             optimize_bril_llvm: None,
@@ -444,7 +472,7 @@ impl Run {
             prog_with_args: test.read_program(),
             profile_out: None,
             output_path: None,
-            llvm_output_dir: None,
+            optimized_llvm_out: None,
             optimize_egglog: None,
             optimize_brilift: Some(optimize_brilift),
             optimize_bril_llvm: None,
@@ -461,7 +489,7 @@ impl Run {
             prog_with_args: test.read_program(),
             profile_out: None,
             output_path: None,
-            llvm_output_dir: None,
+            optimized_llvm_out: None,
             // no need to set optimization flags, since all combinations are tested
             optimize_egglog: None,
             optimize_brilift: None,
@@ -514,14 +542,14 @@ impl Run {
         #[cfg(feature = "llvm")]
         {
             for optimize_egglog in [true, false] {
-                for optimize_llvm in [LLVMOptLevel::O0, LLVMOptLevel::O3] {
+                for optimize_llvm in [LLVMOptLevel::O0_O0, LLVMOptLevel::O3_O0] {
                     res.push(Run {
                         test_type: RunMode::LLVM,
                         interp: InterpMode::Interp,
                         prog_with_args: prog.clone(),
                         profile_out: None,
                         output_path: None,
-                        llvm_output_dir: None,
+                        optimized_llvm_out: None,
                         optimize_egglog: Some(optimize_egglog),
                         optimize_brilift: None,
                         optimize_bril_llvm: Some(optimize_llvm),
@@ -640,7 +668,7 @@ impl Run {
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
                 let interpretable =
-                    self.run_bril_llvm(bril, false, LLVMOptLevel::O0, self.add_timing)?;
+                    self.run_bril_llvm(bril, false, LLVMOptLevel::O0_O0, self.add_timing)?;
                 (vec![], Some(interpretable))
             }
             RunMode::DagToRvsdg => {
@@ -780,14 +808,22 @@ impl Run {
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
 
                 let schedule_steps = parallel_schedule();
-                assert_eq!(
-                    schedule_steps.len(),
-                    1,
-                    "Parallel schedule had multiple steps!"
-                );
+                if schedule_steps.len() != 1 {
+                    log::warn!("Parallel schedule had multiple steps! You may need to adjust the schedule to make eggcc tractable.");
+                }
 
-                let egglog =
-                    build_program(&dag, Some(&dag), &dag.fns(), &mut cache, &schedule_steps[0]);
+                // TODO make the egglog run mode use intermediate egglog files instead of sticking passes together
+                let egglog = build_program(
+                    &dag,
+                    Some(&dag),
+                    &dag.fns(),
+                    &mut cache,
+                    &schedule_steps
+                        .iter()
+                        .map(|pass| pass.egglog_schedule().to_string())
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                );
                 (
                     vec![Visualization {
                         result: egglog,
@@ -877,7 +913,7 @@ impl Run {
                         self.prog_with_args.program.clone()
                     };
 
-                    for optimize_llvm in [LLVMOptLevel::O0, LLVMOptLevel::O3] {
+                    for optimize_llvm in [LLVMOptLevel::O0_O0, LLVMOptLevel::O3_O0] {
                         let interpretable = self.run_bril_llvm(
                             resulting_bril.clone(),
                             false,
@@ -1043,18 +1079,8 @@ impl Run {
             .clone()
             .unwrap_or_else(|| format!("/tmp/{}", unique_name));
 
-        // Copy init file to $output_dir
-        if let Some(output_dir) = &self.llvm_output_dir {
-            std::fs::create_dir_all(output_dir)
-                .unwrap_or_else(|_| panic!("could not create output dir {}", output_dir));
-            std::process::Command::new("cp")
-                .arg(file_path.clone())
-                .arg(output_dir)
-                .status()
-                .unwrap();
-        }
-
         let processed = dir.path().join("postprocessed.ll");
+        let optimized = dir.path().join("optimized.ll");
         // HACK: check if opt-18 exists
         // otherwise use opt
         // On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
@@ -1065,6 +1091,8 @@ impl Run {
             "opt"
         };
 
+        // first, run sroa to get rid of memory-based registers
+        // from the bril2llvm compiler
         let res = Command::new(opt_cmd)
             .arg("-passes=sroa")
             .arg("-S")
@@ -1078,29 +1106,48 @@ impl Run {
             panic!("Opt failed on following input:\n{p1_string}");
         }
 
+        // Now, run the llvm optimizer and generate optimized llvm
         expect_command_success(
             Command::new("clang-18")
                 .arg(processed.clone())
-                .arg(format!("-{}", llvm_level))
+                .arg("-g0")
+                .arg(format!("-{}", llvm_level.llvm_opt_level()))
                 .arg("-fno-vectorize")
                 .arg("-fno-slp-vectorize")
+                .arg("-emit-llvm")
+                .arg("-S")
+                .arg("-o")
+                .arg(optimized.clone()),
+            "failed to optimize llvm ir",
+        );
+
+        // Lower the optimized LLVM but don't do target-specific optimizations besides register allocation
+        // We use O0 and disable debug info
+        expect_command_success(
+            Command::new("clang-18")
+                .arg(
+                    // in O3-O3 mode, use processed so we aren't running the front end twice
+                    if llvm_level == LLVMOptLevel::O3_O3 {
+                        processed.clone()
+                    } else {
+                        optimized.clone()
+                    },
+                )
+                .arg(format!("-{}", llvm_level.lower_opt_level()))
+                .arg("-mllvm")
+                .arg("-regalloc=greedy")
+                .arg("-mllvm")
+                .arg("-optimize-regalloc")
                 .arg("-o")
                 .arg(executable.clone()),
             "failed to compile llvm ir",
         );
-        if let Some(output_dir) = &self.llvm_output_dir {
+
+        if let Some(output_llvm_file) = &self.optimized_llvm_out {
+            // move optimized.ll to the output dir
             expect_command_success(
-                Command::new("clang-18")
-                    .current_dir(output_dir)
-                    .arg(processed)
-                    .arg(format!("-{}", llvm_level))
-                    .arg("-fno-vectorize")
-                    .arg("-fno-slp-vectorize")
-                    .arg("-emit-llvm")
-                    .arg("-S")
-                    .arg("-o")
-                    .arg(format!("{}.ll", self.name())),
-                "failed to copy unoptimized llvm ir",
+                Command::new("mv").arg(optimized).arg(output_llvm_file),
+                "failed to move optimized llvm ir",
             );
         }
 

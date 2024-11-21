@@ -14,7 +14,7 @@ expression: visualization.result
   v7_: ptr<int> = id v3_;
   v8_: int = load v3_;
   v9_: int = load v3_;
-  print v8_;
+  print v9_;
   free v3_;
   ret;
   jmp .b10_;
@@ -24,7 +24,7 @@ expression: visualization.result
   v7_: ptr<int> = id v3_;
   v8_: int = load v3_;
   v9_: int = load v3_;
-  print v8_;
+  print v9_;
   free v3_;
   ret;
 .b10_:

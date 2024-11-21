@@ -14,7 +14,6 @@ use crate::{
     schema::{RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
     typechecker::TypeChecker,
-    EggccConfig,
 };
 
 type RootId = ClassId;
@@ -148,12 +147,7 @@ impl<'a> EgraphInfo<'a> {
         let mut num_not_expr = 0;
         // find all the (root, child) pairs that are important
         let mut relavent_eclasses: Vec<(ClassId, ClassId)> = vec![];
-        for (i, root) in region_roots.iter().enumerate() {
-            log::info!(
-                "Finding reachable classes for region {} of {}",
-                i,
-                region_roots.len()
-            );
+        for root in region_roots.iter() {
             let reachable = find_reachable(egraph, root.clone(), cm, true, false);
             for eclass in reachable {
                 // if type is not expr add to count
@@ -578,6 +572,18 @@ impl<'a> Extractor<'a> {
 
         let mut shared_total = NotNan::new(0.).unwrap();
         let mut unshared_total = info.cm.get_op_cost(&node.op);
+
+        // special case: when the call is recursive, set super high cost
+        if node.op == "Call" {
+            let func_name = &node.children[0];
+            let func_name_str = &info.egraph[func_name].op;
+            assert!(func_name_str.starts_with('\"') && func_name_str.ends_with('\"'));
+            let func_name_str_without_quotes = &func_name_str[1..func_name_str.len() - 1];
+            if func_name_str_without_quotes == info._func {
+                unshared_total = NotNan::new(100000000000.0).unwrap();
+            }
+        }
+
         let mut costs: HashTrieMap<ClassId, (Term, Cost)> = Default::default();
         let index_of_biggest_child = child_cost_sets
             .iter()
@@ -705,7 +711,7 @@ fn extract_fn(
     unextractables: IndexSet<String>,
     termdag: &mut TermDag,
     cost_model: &impl CostModel,
-    eggcc_config: &EggccConfig,
+    should_maintain_linearity: bool,
 ) -> (CostSet, RcExpr) {
     log::info!("Building extraction info");
     let egraph_info = EgraphInfo::new(func, cost_model, &egraph, unextractables);
@@ -713,7 +719,7 @@ fn extract_fn(
 
     let (cost_res, res) = extract_with_paths(func, extractor_not_linear, &egraph_info, None);
 
-    if !eggcc_config.linearity {
+    if !should_maintain_linearity {
         (cost_res, res)
     } else {
         let effectful_nodes_along_path =
@@ -741,7 +747,7 @@ pub fn extract(
     unextractables: IndexSet<String>,
     termdag: &mut TermDag,
     cost_model: impl CostModel,
-    eggcc_config: &EggccConfig,
+    should_maintain_linearity: bool,
 ) -> (Cost, TreeProgram) {
     let mut new_prog = original_prog.clone();
     let mut cost = NotNan::new(0.).unwrap();
@@ -753,7 +759,7 @@ pub fn extract(
             unextractables.clone(),
             termdag,
             &cost_model,
-            eggcc_config,
+            should_maintain_linearity,
         );
         new_prog.replace_fn(&func, extracted);
         cost += fn_cost.total;
@@ -894,6 +900,20 @@ pub trait CostModel {
 }
 
 pub struct DefaultCostModel;
+pub struct TestCostModel;
+
+impl CostModel for TestCostModel {
+    fn get_op_cost(&self, op: &str) -> Cost {
+        match op {
+            "Get" => (0.).try_into().unwrap(),
+            _ => DefaultCostModel.get_op_cost(op),
+        }
+    }
+
+    fn ignore_children(&self, op: &str) -> bool {
+        DefaultCostModel.ignore_children(op)
+    }
+}
 
 impl CostModel for DefaultCostModel {
     fn get_op_cost(&self, op: &str) -> Cost {
@@ -906,7 +926,10 @@ impl CostModel for DefaultCostModel {
             }
             "true" | "false" | "()" => 0.,
             // Lists
-            "Empty" | "Single" | "Concat" | "Get" | "Nil" | "Cons" => 0.,
+            "Empty" | "Single" | "Concat" | "Nil" | "Cons" => 0.,
+            // small cost for get to encourage canonicalization
+            // enables state edge passthrough to work as a pass
+            "Get" => 0.01,
             // Types
             "IntT" | "BoolT" | "FloatT" | "PointerT" | "StateT" => 0.,
             "Base" | "TupleT" | "TNil" | "TCons" => 0.,
@@ -1197,8 +1220,8 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
         serialized_egraph,
         unextractables,
         &mut termdag,
-        DefaultCostModel,
-        &EggccConfig::default(),
+        TestCostModel,
+        true,
     );
 
     assert_eq!(cost_set.0, expected_cost);
@@ -1291,7 +1314,7 @@ fn test_dag_extract() {
             )
         )
     );
-    let cost_model = DefaultCostModel;
+    let cost_model = TestCostModel;
     let cost_inside_loop = cost_model.get_op_cost("LessThan")
     // while the same const is used several times, it is only counted twice
     + cost_model.get_op_cost("Const")
@@ -1315,7 +1338,7 @@ fn simple_dag_extract() {
         tuplet!(intt(), statet()),
         parallel!(int(10), getat(1))
     ),);
-    let cost_model = DefaultCostModel;
+    let cost_model = TestCostModel;
 
     let expected_cost = cost_model.get_op_cost("Const");
     dag_extraction_test(&prog, expected_cost);
@@ -1453,7 +1476,7 @@ fn test_validity_of_extraction() {
 
     let egraph_info = EgraphInfo::new(
         "main",
-        &DefaultCostModel,
+        &TestCostModel,
         &serialized_egraph,
         unextractables.clone(),
     );
@@ -1470,7 +1493,7 @@ fn test_validity_of_extraction() {
         serialized_egraph,
         unextractables,
         &mut termdag,
-        DefaultCostModel,
-        &EggccConfig::default(),
+        TestCostModel,
+        true,
     );
 }

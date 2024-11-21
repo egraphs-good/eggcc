@@ -12,13 +12,14 @@ import concurrent.futures
 treatments = [
   "rvsdg-round-trip-to-executable",
   #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
-  "llvm-O0",
-  "llvm-O1",
-  "llvm-O2",
-  "llvm-O0-eggcc",
-  "llvm-O0-eggcc-sequential",
-  "llvm-O3",
-  "llvm-O3-eggcc",
+  "llvm-O0-O0",
+  "llvm-O1-O0",
+  "llvm-O2-O0",
+  "llvm-eggcc-O0-O0",
+  "llvm-eggcc-sequential-O0-O0",
+  "llvm-O3-O0",
+  "llvm-O3-O3",
+  "llvm-eggcc-O3-O0",
 ]
 
 # Where to output files that are needed for nightly report
@@ -36,21 +37,23 @@ EGGCC_BINARY = "target/release/eggcc"
 def get_eggcc_options(benchmark):
   match benchmark.treatment:
     case "rvsdg-round-trip-to-executable":
-      return (f'rvsdg-round-trip',  f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
-    case "llvm-O0":
-      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
-    case "llvm-O1":
-      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O1')
-    case "llvm-O2":
-      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O2')
-    case "llvm-O3":
-      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3')
-    case "llvm-O0-eggcc-sequential":
-      return (f'optimize --eggcc-schedule sequential', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
-    case "llvm-O0-eggcc":
-      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0')
-    case "llvm-O3-eggcc":
-      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3')
+      return (f'rvsdg-round-trip',  f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-O0-O0":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-O1-O0":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O1_O0')
+    case "llvm-O2-O0":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O2_O0')
+    case "llvm-O3-O0":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
+    case "llvm-O3-O3":
+      return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
+    case "llvm-eggcc-sequential-O0-O0":
+      return (f'optimize --eggcc-schedule sequential', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-O0-O0":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-O3-O0":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -58,7 +61,11 @@ def get_eggcc_options(benchmark):
 class Benchmark:
   def __init__(self, path, treatment, index, total):
     self.path = path
-    self.name = path.split("/")[-1][:-len(".bril")]
+    # assert the file doesn't have any dots in the name besides the last
+    if path.split("/")[-1].count(".") != 1:
+      raise Exception(f"File {path} has multiple dots in name")
+    # name is the name of the file without extension
+    self.name = path.split("/")[-1].split(".")[0]
     self.treatment = treatment
     # index of this benchmark (for printing)
     self.index = index
@@ -84,10 +91,12 @@ def optimize(benchmark):
 
   # get the commands we need to run
   (eggcc_run_mode, llvm_args) = get_eggcc_options(benchmark)
-  llvm_out_dir = f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}"
+  # make the llvm output directory
+  os.makedirs(f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}", exist_ok=True)
+  llvm_out_file = f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}/optimized.ll"
 
   cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode}'
-  cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_dir}'
+  cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_file}'
 
   print(f'Running c1: {cmd1}', flush=True)
   start_eggcc = time.time()
@@ -126,7 +135,7 @@ def bench(benchmark):
     else:
       # hyperfine command for measuring time, unused in favor of cycles
       # cmd = f'hyperfine --style none --warmup 1 --max-runs 2 --export-json /dev/stdout "{profile_dir}/{benchmark.treatment}{" " + args if len(args) > 0 else ""}"'
-      time_per_benchmark = 1.0
+      time_per_benchmark = 2.0
       resulting_num_cycles = []
       time_start = time.time()
       while True:
@@ -149,23 +158,24 @@ def bench(benchmark):
 def should_have_llvm_ir(runMethod):
   return runMethod in [
     "rvsdg-round-trip-to-executable",
-    "llvm-O0",
-    "llvm-O1",
-    "llvm-O2",
-    "llvm-O0-eggcc",
-    "llvm-O0-eggcc-sequential",
-    "llvm-O3",
-    "llvm-O3-eggcc",
+    "llvm-O0-O0",
+    "llvm-O1-O0",
+    "llvm-O2-O0",
+    "llvm-eggcc-O0-O0",
+    "llvm-eggcc-sequential-O0-O0",
+    "llvm-O3-O0",
+    "llvm-O3-O3",
+    "llvm-eggcc-O3-O0",
   ]
 
 # aggregate all profile info into a single json array.
-def aggregate(compile_data, bench_times, benchmark_metadata):
+def aggregate(compile_data, bench_times, paths):
     res = []
 
     for path in sorted(compile_data.keys()):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
-      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "metadata": benchmark_metadata[name]}
+      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "path": paths[name]}
 
       # add compile time info
       for key in compile_data[path]:
@@ -173,11 +183,6 @@ def aggregate(compile_data, bench_times, benchmark_metadata):
 
       res.append(result)
     return res
-
-def is_looped(bril_file):
-  with open(bril_file) as f:
-    txt = f.read()
-    return "orig_main" in txt
 
 if __name__ == '__main__':
   # expect two arguments
@@ -195,7 +200,11 @@ if __name__ == '__main__':
 
   # build eggcc
   print("Building eggcc")
-  os.system("cargo build --release")
+  buildres = os.system("cargo build --release")
+  if buildres != 0:
+    print("Failed to build eggcc")
+    exit(1)
+
 
 
   bril_dir, DATA_DIR = os.sys.argv[1:]
@@ -203,14 +212,17 @@ if __name__ == '__main__':
   # if it is a directory get all files
   if os.path.isdir(bril_dir):
     print(f'Running all bril files in {bril_dir}')
-    profiles = glob(f'{bril_dir}/**/*.bril', recursive=True)
+    profiles = glob(f'{bril_dir}/**/*.bril', recursive=True) + glob(f'{bril_dir}/**/*.rs', recursive=True)
   else:
     profiles = [bril_dir]
 
-  benchmark_metadata = {}
+  paths = {}
   for profile in profiles:
-    name = profile.split("/")[-1][:-len(".bril")]
-    benchmark_metadata[name] = {"looped": is_looped(profile), "path": profile}
+    bench_name_parts = profile.split("/")[-1].split(".")
+    if len(bench_name_parts) != 2:
+      raise Exception(f"Invalid benchmark name: {profile}")
+    name = bench_name_parts[0]
+    paths[name] = profile
 
   to_run = []
   index = 0
@@ -272,7 +284,7 @@ if __name__ == '__main__':
       (path, _bench_data) = res
       bench_data[path] = _bench_data
 
-  nightly_data = aggregate(compile_data, bench_data, benchmark_metadata)
+  nightly_data = aggregate(compile_data, bench_data, paths)
   with open(f"{DATA_DIR}/profile.json", "w") as profile:
     json.dump(nightly_data, profile, indent=2)
 

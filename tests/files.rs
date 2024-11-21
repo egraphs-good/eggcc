@@ -102,8 +102,10 @@ fn main() {
     tests.extend(generate_tests("tests/passing/**/*.rs", false));
 
     tests.extend(generate_tests("tests/slow/**/*.bril", true));
+    tests.extend(generate_tests("tests/slow/**/*.rs", true));
     // also generate tests for benchmarks
     tests.extend(generate_tests("benchmarks/passing/**/*.bril", true));
+    tests.extend(generate_tests("benchmarks/passing/**/*.rs", true));
 
     // assert that no two tests have the same name
     let names: HashSet<String> = tests.iter().map(|t| t.name().to_string()).collect();

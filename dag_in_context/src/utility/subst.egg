@@ -27,6 +27,16 @@
       ((HasArgType lhs ty))
       :ruleset subst)
 
+;; Substitution typechecks only when the type of the
+;; argument matches the type of the substitution.
+(rule ((Subst assum to in)
+       (HasArgType in ty)
+       (HasType to ty2)
+       (!= ty ty2))
+      ((panic "Substitution type mismatch! Argument type must match type of substituted term"))
+       :ruleset subst)
+
+
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
 (rule ((= lhs (Subst assum to (Arg _ty _oldctx)))
@@ -44,53 +54,61 @@
       :ruleset subst)
 
 ;; Operators
-(rule ((= lhs (Subst assum to (Top op c1 c2 c3)))
-       (ExprIsResolved (Top op c1 c2 c3)))
+(rule ((= e (Top op c1 c2 c3))
+       (= lhs (Subst assum to e))
+       (ExprIsResolved e))
       ((DelayedSubstUnion lhs
          (Top op (Subst assum to c1)
                  (Subst assum to c2)
                  (Subst assum to c3))))
          :ruleset subst)
 
-(rule ((= lhs (Subst assum to (Bop op c1 c2)))
-       (ExprIsResolved (Bop op c1 c2)))
+(rule ((= e (Bop op c1 c2))
+       (= lhs (Subst assum to e))
+       (ExprIsResolved e))
       ((DelayedSubstUnion lhs
          (Bop op (Subst assum to c1)
                  (Subst assum to c2))))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (Uop op c1)))
-       (ExprIsResolved (Uop op c1)))
+(rule ((= e (Uop op c1))
+       (= lhs (Subst assum to e))
+       (ExprIsResolved e))
       ((DelayedSubstUnion lhs
          (Uop op (Subst assum to c1))))
          :ruleset subst)
 
-(rule ((= lhs (Subst assum to (Get c1 index)))
-       (ExprIsResolved (Get c1 index)))
+(rule ((= e (Get c1 index))
+       (= lhs (Subst assum to e))
+       (ExprIsResolved e))
       ((DelayedSubstUnion lhs
          (Get (Subst assum to c1) index)))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (Alloc id c1 c2 ty)))
-       (ExprIsResolved (Alloc id c1 c2 ty)))
+(rule ((= e (Alloc id c1 c2 ty))
+       (= lhs (Subst assum to e))
+       (ExprIsResolved e))
       ((DelayedSubstUnion lhs
          (Alloc id (Subst assum to c1)
                    (Subst assum to c2)
                    ty)))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (Call name c1)))
-       (ExprIsResolved (Call name c1)))
+(rule ((= e (Call name c1))
+       (= lhs (Subst assum to e))
+       (ExprIsResolved e))
       ((DelayedSubstUnion lhs
          (Call name (Subst assum to c1))))
          :ruleset subst)
 
 
 ;; Tuple operators
-(rule ((= lhs (Subst assum to (Single c1)))
-       (ExprIsResolved (Single c1)))
+(rule ((= e (Single c1))
+       (= lhs (Subst assum to e))
+       (ExprIsResolved e))
       ((DelayedSubstUnion lhs
          (Single (Subst assum to c1))))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (Concat c1 c2)))
-       (ExprIsResolved (Concat c1 c2)))
+(rule ((= e (Concat c1 c2))
+       (= lhs (Subst assum to e))
+       (ExprIsResolved e))
       ((DelayedSubstUnion lhs
          (Concat (Subst assum to c1)
                  (Subst assum to c2))))
@@ -114,8 +132,9 @@
              c1
              c2)))
          :ruleset subst)
-(rule ((= lhs (Subst assum to (DoWhile in out)))
-       (ExprIsResolved (DoWhile in out)))
+(rule ((= e (DoWhile in out))
+       (= lhs (Subst assum to e))
+       (ExprIsResolved e))
       ((DelayedSubstUnion lhs
          (DoWhile (Subst assum to in)
                   out)))

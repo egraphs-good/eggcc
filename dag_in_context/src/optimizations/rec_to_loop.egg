@@ -1,0 +1,132 @@
+;; this ruleset depends on swap_if running twice
+;; swap_if un-permutes the outputs of the function and the if so this rule can match
+(ruleset rec-to-loop)
+
+
+
+;; this rule finds a recursive functions
+;; with a base case and a tail-recursive call
+;; transforms them into a loop
+;; transforming functions that look like this:
+;; function name(inputs) {
+;;    let start = always_runs(inputs);
+;;    if (pred) {
+;;       ret name(rec_case(start));
+;;    } else {
+;;       ret base_case(start);
+;;    }
+;; }
+;; into:
+;; function name(inputs) {
+;;    let start = always_runs(inputs);
+;;    if (start[0]) {
+;;      do {
+;;         start = always_runs(rec_case(start));
+;;      } while (start[0]);
+;;    }
+;;    ret base_case(start);
+;; }
+;; for example, printBinary sums the results of recursive calls
+(rule
+  ((Function name in out body)
+   (= body (If pred always-runs (Call name rec_case) base-case))
+   (HasType always-runs start-ty)
+   (HasType body func-ty))
+  ((let loop-inputs (Arg start-ty (InIf true pred always-runs)))
+   (let loop-outputs
+     (Concat
+         (Single (Subst (TmpCtx) rec_case pred))
+         (Subst (TmpCtx) rec_case always-runs)))
+   (union (TmpCtx) (InLoop loop-inputs loop-outputs))
+   (delete (TmpCtx))
+
+   (let loop
+     (DoWhile loop-inputs loop-outputs))
+    
+    
+  ;; initial start value
+   (let outer-if
+     (If pred always-runs
+         loop
+         (Arg start-ty (InIf false pred always-runs))))
+   (union body (Subst (InFunc name) outer-if base-case)))
+  :ruleset rec-to-loop)
+
+
+
+;; same as above rule, but with an accumulator
+;; function name(inputs) {
+;;    let start = always_runs(inputs);
+;;    if (pred) {
+;;       ret name(rec_case(start)) + f(start);
+;;    } else {
+;;       ret base_case(start);
+;;    }
+;; }
+;; into:
+;; function name(inputs) {
+;;    let start = always_runs(inputs);
+;;    let acc = 0;
+;;    if (start[0]) {
+;;      do {
+;;         start = always_runs(rec_case(start));
+;;         acc = acc + extra(start);
+;;      } while (start[0]);
+;;    }
+;;    ret base_case(start) + acc;
+;; }
+(rule
+  ((Function name in out body)
+   (= body (If pred always-runs then-case base-case))
+   (= call (Call name rec-case))
+   (= then-case
+      (Concat (Single (Bop (Add) (Get call 0) extra))
+              (Single (Get call 1))))
+   (HasType always-runs start-ty)
+   (= always-runs-len (tuple-length always-runs))
+   (= start-ty (TupleT start-ty-list))
+   (HasType body func-ty))
+  ((let loop-ty
+     (TupleT (TLConcat start-ty-list (TCons (IntT) (TNil)))))
+   ;; recursive case in the loop
+   (let new-rec-case
+    (Subst (TmpCtx)
+           (SubTuple (Arg loop-ty (TmpCtx)) 0 always-runs-len) rec-case))
+   ;; extra computation in the loop
+   (let new-extra
+    (Subst (TmpCtx)
+           (SubTuple (Arg loop-ty (TmpCtx)) 0 always-runs-len) extra))
+   ;; acc starts at 0
+   (let loop-inputs
+     (Concat (Arg start-ty (InIf true pred always-runs)) (Single (Const (Int 0) start-ty (InIf true pred always-runs)))))
+   (let loop-outputs
+     (Concat
+         (Single (Subst (TmpCtx) new-rec-case pred))
+         (Concat
+           (Subst (TmpCtx) new-rec-case always-runs)
+           ;; add extra to acc
+           (Single (Bop (Add) (Get (Arg loop-ty (TmpCtx)) always-runs-len) new-extra)))))
+   ;; loop starts at zero, adds extra each iteration
+   (let loop
+     (DoWhile loop-inputs loop-outputs))
+   ;; union tmpctx
+   (union (TmpCtx) (InLoop loop-inputs loop-outputs))
+   (delete (TmpCtx))
+  
+   (let outer-if
+     (If pred always-runs
+         loop
+         (Concat
+           (Arg start-ty (InIf false pred always-runs))
+           ;; otherwise acc is 0
+           (Single (Const (Int 0) start-ty (InIf false pred always-runs))))))
+   ;; base case over latest start value
+   (let new-base-case
+     (Subst (InFunc name) (SubTuple outer-if 0 always-runs-len) base-case))
+   ;; add base case to acc
+   (let res
+     (Concat
+      (Single (Bop (Add) (Get new-base-case 0) (Get outer-if always-runs-len)))
+      (Single (Get new-base-case 1))))
+   (union body res))
+  :ruleset rec-to-loop)

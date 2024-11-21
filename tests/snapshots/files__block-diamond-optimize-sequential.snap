@@ -19,19 +19,19 @@ expression: visualization.result
   v7_: int = id c12_;
   v8_: int = id c2_;
   v9_: int = id c3_;
-  v13_: int = id v7_;
-  v14_: int = id v8_;
-  v15_: int = add c2_ v13_;
+  v13_: int = id v8_;
+  v14_: int = id v7_;
+  v15_: int = add c2_ v14_;
   print v15_;
   ret;
   jmp .b16_;
 .b11_:
-  v13_: int = id v7_;
-  v14_: int = id v8_;
+  v13_: int = id v8_;
+  v14_: int = id v7_;
   v17_: int = add v7_ v9_;
-  v13_: int = id v17_;
-  v14_: int = id v8_;
-  v15_: int = add c2_ v13_;
+  v13_: int = id v8_;
+  v14_: int = id v17_;
+  v15_: int = add c2_ v14_;
   print v15_;
   ret;
 .b16_:

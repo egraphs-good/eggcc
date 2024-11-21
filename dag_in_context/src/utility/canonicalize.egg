@@ -41,14 +41,14 @@
 ; Make Concats right-deep
 (rewrite (Concat (Concat a b) c)
          (Concat a (Concat b c))
-         :ruleset always-run)
+         :ruleset tuple-helpers)
 ; Simplify Concat's with empty
 (rewrite (Concat (Empty ty ctx) x)
          x
-         :ruleset always-run)
+         :ruleset tuple-helpers)
 (rewrite (Concat x (Empty ty ctx))
          x
-         :ruleset always-run)
+         :ruleset tuple-helpers)
 
 ; Make a tuple that is a sub-range of another tuple
 ;                   tuple start len

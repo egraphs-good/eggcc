@@ -8,5 +8,4 @@ pub mod loop_unroll;
 pub mod memory;
 pub mod passthrough;
 mod peepholes;
-pub mod purity_analysis;
 pub mod switch_rewrites;

@@ -45,7 +45,7 @@ pub fn prologue() -> String {
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::is_resolved::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
-        &optimizations::purity_analysis::rules().join("\n"),
+        include_str!("optimizations/purity_analysis.egg"),
         // TODO cond inv code motion with regions
         //&optimizations::conditional_invariant_code_motion::rules().join("\n"),
         include_str!("utility/add_context.egg"),

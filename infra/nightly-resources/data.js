@@ -58,7 +58,7 @@ function getBrilPathForBenchmark(benchmark) {
       `couldn't find entry for ${benchmark} (this shouldn't happen)`,
     );
   }
-  return o.metadata.path;
+  return o.path;
 }
 
 // calculates the geometric mean over a list of ratios

@@ -56,11 +56,11 @@
     <div class="filters">
       <div>
         <p>Benchmarks</p>
-        <button onclick="selectAllBenchmarks(true, 'all')">Select All</button>
-        <button onclick="selectAllBenchmarks(false, 'all')">Deselect All</button>
+        <button onclick="selectBenchmarks('all')">Select All</button>
+        <button onclick="selectBenchmarks('none')">Deselect All</button>
         <br />
-        <button onclick="selectAllBenchmarks(true, 'looped')">Select All Looped</button>
-        <button onclick="selectAllBenchmarks(false, 'looped')">Deselect All Looped</button>
+        <button onclick="selectBenchmarks('fast')">5 Fastest</button>
+        <button onclick="selectBenchmarks('slow')">5 Slowest</button>
       </div>
       <div id="benchmarkCheckboxes"></div>
     </div>

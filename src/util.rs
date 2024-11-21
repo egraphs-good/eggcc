@@ -812,12 +812,17 @@ impl Run {
                     log::warn!("Parallel schedule had multiple steps! You may need to adjust the schedule to make eggcc tractable.");
                 }
 
+                // TODO make the egglog run mode use intermediate egglog files instead of sticking passes together
                 let egglog = build_program(
                     &dag,
                     Some(&dag),
                     &dag.fns(),
                     &mut cache,
-                    &schedule_steps.join("\n"),
+                    &schedule_steps
+                        .iter()
+                        .map(|pass| pass.egglog_schedule().to_string())
+                        .collect::<Vec<String>>()
+                        .join("\n"),
                 );
                 (
                     vec![Visualization {

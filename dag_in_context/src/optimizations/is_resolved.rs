@@ -60,7 +60,7 @@ fn test_is_resolved() -> crate::Result {
 
 (let substituted (Subst {ctx} {add1} {myloop}))
 ;; run the IsResolved rules
-(run-schedule (saturate always-run))
+(run-schedule (saturate is-resolved))
 
 (check (ExprIsResolved {add1}))
 ;; substitution hasn't happened

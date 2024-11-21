@@ -2,21 +2,6 @@ pub(crate) fn helpers() -> String {
     "
     ;; first, run substitution and drop to saturation
     ;; these depend on type analysis, always-run, and context
-    ;; (saturate
-    ;;     (saturate
-    ;;       type-analysis
-    ;;       (saturate type-helpers)
-    ;;       error-checking
-    ;;       always-run
-    ;;       context)
-        
-    ;;     (saturate drop)
-    ;;     apply-drop-unions
-    ;;     cleanup-drop
-
-    ;;     (saturate subst)
-    ;;     apply-subst-unions
-    ;;     cleanup-subst)
 
     ;; first, saturate always run
     (saturate

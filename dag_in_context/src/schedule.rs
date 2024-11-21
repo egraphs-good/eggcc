@@ -2,41 +2,60 @@ pub(crate) fn helpers() -> String {
     "
     ;; first, run substitution and drop to saturation
     ;; these depend on type analysis, always-run, and context
-    (saturate
-        (saturate
-          type-analysis
-          (saturate type-helpers)
-          error-checking
-          always-run
-          context)
+    ;; (saturate
+    ;;     (saturate
+    ;;       type-analysis
+    ;;       (saturate type-helpers)
+    ;;       error-checking
+    ;;       always-run
+    ;;       context)
         
-        (saturate drop)
-        apply-drop-unions
-        cleanup-drop
+    ;;     (saturate drop)
+    ;;     apply-drop-unions
+    ;;     cleanup-drop
+
+    ;;     (saturate subst)
+    ;;     apply-subst-unions
+    ;;     cleanup-subst)
+
+    ;; first, saturate always run
+    (saturate
+        (saturate 
+            (saturate type-helpers)
+            type-analysis)
+        (saturate 
+            (saturate type-helpers)
+            always-run)
+        error-checking)
+
+    ;; second, saturate substitution and drop
+    ;; which depend on context and is-resolved
+    (saturate
+        (saturate 
+            (saturate type-helpers)
+            type-analysis)
+        (saturate is-resolved)
 
         (saturate subst)
         apply-subst-unions
-        cleanup-subst)
+        cleanup-subst
+        (saturate context)
 
-    ;; now run canonicalization helpers, interval analysis
-    (saturate
-        (saturate
-          type-analysis
-          (saturate type-helpers))
-        error-checking
-        always-run
-        canon
-        interval-analysis
-        always-switch-rewrite
-        loop-iters-analysis
-        ; memory-helpers TODO run memory helpers for memory optimizations
+        (saturate drop)
+        apply-drop-unions
+        cleanup-drop
     )
+
+    (saturate canon)
+    (saturate interval-analysis)
+    (saturate always-switch-rewrite)
+    ;; memory-helpers TODO run memory helpers for memory optimizations
 
     ;; finally, subsume now that helpers are done
     subsume-after-helpers
 
     ;; do a boundary analysis for loop invariant code motion
-    (saturate boundary-analysis)
+    boundary-analysis
 "
     .to_string()
 }
@@ -45,10 +64,14 @@ fn cheap_optimizations() -> Vec<String> {
     // TODO enable loop peeling
     // currently causes saturation issues, probably by creating dead loops that are allowed to have any value
 
-    ["loop-simplify", "memory", "peepholes"]
-        .iter()
-        .map(|opt| opt.to_string())
-        .collect()
+    [
+        "loop-simplify",
+        // "memory",
+        "peepholes",
+    ]
+    .iter()
+    .map(|opt| opt.to_string())
+    .collect()
 }
 
 fn optimizations() -> Vec<String> {

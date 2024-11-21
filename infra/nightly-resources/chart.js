@@ -50,13 +50,13 @@ function stddev_cycles(cycles) {
 
 function getEntry(benchmark, runMode) {
   const entries = GLOBAL_DATA.currentRun.filter(
-    (entry) => entry.benchmark === benchmark && entry.runMethod === runMode
+    (entry) => entry.benchmark === benchmark && entry.runMethod === runMode,
   );
   if (entries.length === 0) {
     addWarning(`no data for ${benchmark} ${runMode}`);
   } else if (entries.length > 1) {
     throw new Error(
-      `duplicate entries for ${benchmark} ${runMode} (this probably shouldn't happen)`
+      `duplicate entries for ${benchmark} ${runMode} (this probably shouldn't happen)`,
     );
   } else {
     return entries[0];

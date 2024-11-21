@@ -34,9 +34,8 @@ async function load_llvm() {
   const runMode = params.get("runmode");
 
   document.title = `${benchmark} | ${runMode}`;
-  document.getElementById(
-    "llvm-header"
-  ).innerText = `Benchmark: ${benchmark} | Run Mode: ${runMode}`;
+  document.getElementById("llvm-header").innerText =
+    `Benchmark: ${benchmark} | Run Mode: ${runMode}`;
 
   if (!benchmark || !runMode) {
     console.error("missing query params, this probably shouldn't happen");
@@ -64,7 +63,7 @@ function selectAllModes(enabled) {
       enabled
         ? GLOBAL_DATA.enabledModes.add(checkbox.id)
         : GLOBAL_DATA.enabledModes.delete(checkbox.id);
-    }
+    },
   );
   refreshView();
 }
@@ -79,7 +78,7 @@ function selectBenchmarks(category) {
     time: Math.max(
       ...GLOBAL_DATA.currentRun
         .filter((x) => x.benchmark === b)
-        .map((x) => Math.max(...x.cycles))
+        .map((x) => Math.max(...x.cycles)),
     ),
   }));
   switch (category) {
@@ -126,14 +125,14 @@ async function loadBaseline(url) {
   GLOBAL_DATA.baselineRun = await fetchJson(`${url}/data/profile.json`);
 
   const baselineBenchmarks = new Set(
-    GLOBAL_DATA.baselineRun.map((o) => o.benchmark)
+    GLOBAL_DATA.baselineRun.map((o) => o.benchmark),
   );
   const currentBenchmarks = new Set(
-    GLOBAL_DATA.currentRun.map((o) => o.benchmark)
+    GLOBAL_DATA.currentRun.map((o) => o.benchmark),
   );
   baselineBenchmarks.difference(currentBenchmarks).forEach((benchmark) => {
     addWarning(
-      `Baseline run had benchmark ${benchmark} that the current run doesn't`
+      `Baseline run had benchmark ${benchmark} that the current run doesn't`,
     );
   });
 

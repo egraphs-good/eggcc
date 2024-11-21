@@ -295,7 +295,7 @@ pub fn optimize(
     };
     for (schedule, i) in schedule_list
         .iter()
-        .zip(0..eggcc_config.stop_after_n_passes)
+        .zip(0..stop_after_n_passes)
     {
         let mut should_maintain_linearity = true;
         if i == min(

@@ -293,15 +293,9 @@ pub fn optimize(
     } else {
         eggcc_config.stop_after_n_passes
     };
-    for (schedule, i) in schedule_list
-        .iter()
-        .zip(0..stop_after_n_passes)
-    {
+    for (schedule, i) in schedule_list.iter().zip(0..stop_after_n_passes) {
         let mut should_maintain_linearity = true;
-        if i == min(
-            stop_after_n_passes - 1,
-            schedule_list.len() as i64 - 1,
-        ) {
+        if i == min(stop_after_n_passes - 1, schedule_list.len() as i64 - 1) {
             should_maintain_linearity = eggcc_config.linearity;
         }
 

@@ -173,8 +173,6 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
         )),
         CompilerPass::InlineWithSchedule(format!(
             "
-;; HACK: when INLINE appears in this string
-;; we perform inlining in this pass
 (run-schedule
     (saturate
       {helpers}

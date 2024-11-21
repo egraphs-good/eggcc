@@ -49,8 +49,12 @@ struct Args {
     /// For the eggcc schedule, choose between the sequential and parallel schedules.
     #[clap(long)]
     eggcc_schedule: Option<Schedule>,
+    /// Eggcc by default performs several passes.
+    /// This argument specifies how many passes to run (all passes by default).
+    /// If stop_after_n_passes is negative,
+    /// run [0 ... schedule.len() + stop_after_n_passes + 1] passes.
     #[clap(long)]
-    stop_after_n_passes: Option<usize>,
+    stop_after_n_passes: Option<i64>,
 
     /// Turn off enforcement that the output program uses
     /// memory linearly. This can give an idea of what
@@ -105,7 +109,7 @@ fn main() {
         add_timing: args.add_timing,
         eggcc_config: EggccConfig {
             schedule: args.eggcc_schedule.unwrap_or(Schedule::default()),
-            stop_after_n_passes: args.stop_after_n_passes.unwrap_or(usize::MAX),
+            stop_after_n_passes: args.stop_after_n_passes.unwrap_or(-1),
             linearity: !args.no_linearity,
         },
     };

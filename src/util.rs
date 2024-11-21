@@ -4,7 +4,7 @@ use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
 use dag_in_context::dag2svg::tree_to_svg;
-use dag_in_context::schedule::parallel_schedule;
+use dag_in_context::schedule::{self, parallel_schedule};
 use dag_in_context::{build_program, check_roundtrip_egraph, EggccConfig, Schedule};
 
 use dag_in_context::schema::TreeProgram;
@@ -802,27 +802,31 @@ impl Run {
                 )
             }
             RunMode::Egglog => {
-                assert_eq!(self.eggcc_config.schedule, Schedule::Parallel, "Output egglog only works in parallel mode. Sequential mode does not use a single egraph");
-
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
 
-                let schedule_steps = parallel_schedule();
-                if schedule_steps.len() != 1 {
-                    log::warn!("Parallel schedule had multiple steps! You may need to adjust the schedule to make eggcc tractable.");
-                }
+                let eggcc_config = EggccConfig {
+                    // stop before the last pass.
+                    stop_after_n_passes: -2,
+                    .. self.eggcc_config.clone()
+                };
+                let optimized = dag_in_context::optimize(&dag, &mut cache, &eggcc_config)
+                    .map_err(EggCCError::EggLog)?;
 
-                // TODO make the egglog run mode use intermediate egglog files instead of sticking passes together
+                let schedules = parallel_schedule();
+                let last_schedule_step = schedules.last().unwrap();
+
+                let inline_program = match last_schedule_step {
+                    schedule::CompilerPass::Schedule(_) => None,
+                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&optimized),
+                };
+
                 let egglog = build_program(
-                    &dag,
-                    Some(&dag),
+                    &optimized,
+                    inline_program,
                     &dag.fns(),
                     &mut cache,
-                    &schedule_steps
-                        .iter()
-                        .map(|pass| pass.egglog_schedule().to_string())
-                        .collect::<Vec<String>>()
-                        .join("\n"),
+                    last_schedule_step.egglog_schedule(),
                 );
                 (
                     vec![Visualization {

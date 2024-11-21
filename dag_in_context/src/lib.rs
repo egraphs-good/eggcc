@@ -302,10 +302,9 @@ pub fn optimize(
 
         // if we are inlining, save the program
         // TODO we inline on the first pass, but this should be configurable from the schedule
-        let inline_program = if schedule.contains("INLINE") {
-            Some(res.clone())
-        } else {
-            None
+        let inline_program = match schedule {
+            schedule::CompilerPass::Schedule(_) => None,
+            schedule::CompilerPass::InlineWithSchedule(_) => Some(res.clone()),
         };
 
         // TODO experiment with different batches of optimizing functions together
@@ -314,9 +313,15 @@ pub fn optimize(
 
         for batch in batches {
             log::info!("Running pass {} on batch {:?}", i, batch);
-            log::info!("Schedule: {}", schedule);
+            log::info!("Schedule: {:?}", schedule);
             // only inline functions on the first pass
-            let egglog_prog = build_program(&res, inline_program.as_ref(), &batch, cache, schedule);
+            let egglog_prog = build_program(
+                &res,
+                inline_program.as_ref(),
+                &batch,
+                cache,
+                schedule.egglog_schedule(),
+            );
 
             log::info!("Running egglog program...");
             let mut egraph = egglog::EGraph::default();
@@ -454,7 +459,11 @@ fn egglog_test_internal(
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
         prologue(),
-        parallel_schedule().join("\n"),
+        parallel_schedule()
+            .iter()
+            .map(|pass| pass.egglog_schedule().to_string())
+            .collect::<Vec<String>>()
+            .join("\n"),
     );
 
     if print_program {

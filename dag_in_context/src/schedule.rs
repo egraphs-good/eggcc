@@ -1,3 +1,20 @@
+#[derive(Debug)]
+pub enum CompilerPass {
+    // Run the given egglog schedule, then extract
+    Schedule(String),
+    // Run inlining and the given egglog schedule, then extract
+    InlineWithSchedule(String),
+}
+
+impl CompilerPass {
+    pub fn egglog_schedule(&self) -> &str {
+        match self {
+            CompilerPass::Schedule(s) => s,
+            CompilerPass::InlineWithSchedule(s) => s,
+        }
+    }
+}
+
 pub(crate) fn helpers() -> String {
     "
     ;; first, run substitution and drop to saturation
@@ -80,18 +97,18 @@ pub fn rulesets() -> String {
     )
 }
 
-pub fn mk_sequential_schedule() -> Vec<String> {
+pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
     let helpers = helpers();
 
-    let mut res = vec![format!(
+    let mut res = vec![CompilerPass::Schedule(format!(
         "
 (run-schedule
    (saturate
       {helpers}
       passthrough
       state-edge-passthrough))"
-    )];
-    res.push(format!(
+    ))];
+    res.push(CompilerPass::Schedule(format!(
         "
 (run-schedule
   (repeat 2
@@ -99,8 +116,8 @@ pub fn mk_sequential_schedule() -> Vec<String> {
     loop-inversion)
   
   {helpers})"
-    ));
-    res.push(format!(
+    )));
+    res.push(CompilerPass::Schedule(format!(
         "
 (run-schedule
   (repeat 2
@@ -109,31 +126,29 @@ pub fn mk_sequential_schedule() -> Vec<String> {
   {helpers}
   rec-to-loop
   {helpers})"
-    ));
-    res.push(format!(
+    )));
+    res.push(CompilerPass::InlineWithSchedule(format!(
         "
-;; HACK: when INLINE appears in this string
-;; we perform inlining in this pass
 (run-schedule {helpers})"
-    ));
+    )));
     res.extend(optimizations().iter().map(|optimization| {
-        format!(
+        CompilerPass::Schedule(format!(
             "
 (run-schedule
    {helpers}
    {optimization}
    {helpers})
 "
-        )
+        ))
     }));
     res
 }
 
-pub fn parallel_schedule() -> Vec<String> {
+pub fn parallel_schedule() -> Vec<CompilerPass> {
     let helpers = helpers();
 
     vec![
-        format!(
+        CompilerPass::Schedule(format!(
             "
 (run-schedule
    (saturate
@@ -146,8 +161,8 @@ pub fn parallel_schedule() -> Vec<String> {
     {helpers}
     rec-to-loop
     {helpers})"
-        ),
-        format!(
+        )),
+        CompilerPass::Schedule(format!(
             "
 (run-schedule
     (repeat 3
@@ -155,8 +170,8 @@ pub fn parallel_schedule() -> Vec<String> {
       loop-inversion)
 
     {helpers})"
-        ),
-        format!(
+        )),
+        CompilerPass::InlineWithSchedule(format!(
             "
 ;; HACK: when INLINE appears in this string
 ;; we perform inlining in this pass
@@ -177,6 +192,6 @@ pub fn parallel_schedule() -> Vec<String> {
     {helpers}
 )
 "
-        ),
+        )),
     ]
 }

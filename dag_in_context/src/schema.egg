@@ -208,6 +208,7 @@
 (ruleset always-run)
 (ruleset is-resolved)
 (ruleset tuple-helpers)
+(ruleset context-of)
 (ruleset error-checking)
 (ruleset memory)
 (ruleset memory-helpers)

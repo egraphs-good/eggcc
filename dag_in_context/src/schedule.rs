@@ -3,6 +3,7 @@ pub(crate) fn helpers() -> String {
     ;; first, run substitution and drop to saturation
     ;; these depend on type analysis, always-run, and context
     ;; first, saturate always run
+    (saturate context-of)
     (saturate tuple-helpers)
     (saturate
         (saturate 

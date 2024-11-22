@@ -1,0 +1,17 @@
+# ARGS: 20000
+@main(loop_bound: int) {
+  loop_incr: int = const 1;
+  loop_counter: int = const 10;
+  output: int = const 1;
+  final_output: int = const 0;
+.loop_cond:
+  loop_cond: bool = lt loop_counter loop_bound;
+  br loop_cond .loop_body .loop_done;
+.loop_body:
+  output: int = add output output;
+  final_output: int = add final_output output;
+  loop_counter: int = add loop_counter loop_incr;
+  jmp .loop_cond;
+.loop_done:
+  print final_output;
+}

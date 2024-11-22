@@ -5,12 +5,7 @@ expression: visualization.result
 # ARGS: 1
 @main(v0: int) {
 .b1_:
-  c2_: int = const 0;
-  v3_: bool = le v0 c2_;
-  c4_: int = const 3;
-  v5_: int = select v3_ c2_ c4_;
-  c6_: int = const 10;
-  v7_: bool = lt v5_ c6_;
-  print v7_;
+  c2_: bool = const true;
+  print c2_;
   ret;
 }

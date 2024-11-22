@@ -7,14 +7,6 @@ expression: visualization.result
 .b0_:
   c1_: int = const 1;
   c2_: bool = const false;
-  v3_: bool = id c2_;
-  v3_: bool = id v3_;
-.b4_:
-  br v3_ .b5_ .b6_;
-.b5_:
-  v3_: bool = id v3_;
-  jmp .b4_;
-.b6_:
   print c1_;
   ret;
 }

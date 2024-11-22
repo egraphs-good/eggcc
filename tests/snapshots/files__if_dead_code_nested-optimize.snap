@@ -5,77 +5,74 @@ expression: visualization.result
 # ARGS: 1
 @main(v0: int) {
 .b1_:
-  c2_: int = const 0;
-  v3_: bool = le v0 c2_;
-  c4_: int = const 3;
-  c5_: int = const 2;
-  br v3_ .b6_ .b7_;
-.b6_:
-  v8_: bool = lt v0 c2_;
-  c9_: int = const 1;
-  v10_: int = select v8_ c9_ c5_;
-  v11_: int = id v10_;
-  v12_: int = id c9_;
-  c13_: int = const 1;
-  v14_: int = select v3_ c13_ c2_;
+  c2_: int = const 1;
+  v3_: bool = lt v0 c2_;
+  c4_: int = const 0;
+  c5_: int = const 3;
+  c6_: int = const 2;
+  br v3_ .b7_ .b8_;
+.b7_:
+  v9_: bool = lt v0 c4_;
+  c10_: int = const 1;
+  v11_: int = select v9_ c10_ c6_;
+  v12_: int = id v11_;
+  v13_: int = id c10_;
+  v14_: int = select v3_ c2_ c4_;
   print v14_;
   print v3_;
-  print v11_;
+  print v12_;
   ret;
   jmp .b15_;
-.b7_:
-  v16_: bool = lt c5_ v0;
+.b8_:
+  v16_: bool = lt c6_ v0;
   c17_: bool = const false;
   c18_: int = const 2;
   v19_: int = id c18_;
   v20_: bool = id c17_;
-  v21_: int = id c2_;
+  v21_: int = id c4_;
   br v16_ .b22_ .b23_;
 .b22_:
-  v24_: bool = lt c4_ v0;
+  v24_: bool = lt c5_ v0;
   c25_: int = const 4;
   v26_: int = id c25_;
   v27_: bool = id c17_;
-  v28_: int = id c2_;
+  v28_: int = id c4_;
   br v24_ .b29_ .b30_;
 .b29_:
   c31_: int = const 3;
   v26_: int = id c31_;
   v27_: bool = id c17_;
-  v28_: int = id c2_;
+  v28_: int = id c4_;
   v19_: int = id v26_;
   v20_: bool = id v27_;
   v21_: int = id v28_;
-  v11_: int = id v19_;
-  v12_: int = id c2_;
-  c13_: int = const 1;
-  v14_: int = select v3_ c13_ c2_;
+  v12_: int = id v19_;
+  v13_: int = id c4_;
+  v14_: int = select v3_ c2_ c4_;
   print v14_;
   print v3_;
-  print v11_;
+  print v12_;
   ret;
   jmp .b15_;
 .b30_:
   v19_: int = id v26_;
   v20_: bool = id v27_;
   v21_: int = id v28_;
-  v11_: int = id v19_;
-  v12_: int = id c2_;
-  c13_: int = const 1;
-  v14_: int = select v3_ c13_ c2_;
+  v12_: int = id v19_;
+  v13_: int = id c4_;
+  v14_: int = select v3_ c2_ c4_;
   print v14_;
   print v3_;
-  print v11_;
+  print v12_;
   ret;
   jmp .b15_;
 .b23_:
-  v11_: int = id v19_;
-  v12_: int = id c2_;
-  c13_: int = const 1;
-  v14_: int = select v3_ c13_ c2_;
+  v12_: int = id v19_;
+  v13_: int = id c4_;
+  v14_: int = select v3_ c2_ c4_;
   print v14_;
   print v3_;
-  print v11_;
+  print v12_;
   ret;
 .b15_:
 }

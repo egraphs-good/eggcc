@@ -29,7 +29,7 @@ expression: visualization.result
   v23_: int = id v22_;
   v24_: int = id v5_;
   v25_: int = id v6_;
-  v26_: int = id v7_;
+  v26_: int = id v6_;
   v27_: int = id v8_;
 .b28_:
   c29_: int = const 1;

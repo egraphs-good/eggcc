@@ -5,21 +5,7 @@ expression: visualization.result
 # ARGS: 4
 @main(v0: int) {
 .b1_:
-  c2_: int = const 5;
-  v3_: bool = eq c2_ v0;
-  c4_: int = const 4;
-  c5_: int = const 20;
-  v6_: int = id c5_;
-  br v3_ .b7_ .b8_;
-.b7_:
-  print v6_;
+  c2_: int = const 20;
+  print c2_;
   ret;
-  jmp .b9_;
-.b8_:
-  v10_: bool = eq c4_ v0;
-  v11_: int = select v10_ c5_ c5_;
-  v6_: int = id v11_;
-  print v6_;
-  ret;
-.b9_:
 }

@@ -69,7 +69,7 @@
        (ContextOf expr ctx)
       )
       ((union expr (Const (Int x) ty ctx)))
-      :ruleset interval-rewrite)
+      :ruleset interval-analysis)
 
 (rule (
        (= (BoolB x) (lo-bound expr))
@@ -78,7 +78,7 @@
        (ContextOf expr ctx)
       )
       ((union expr (Const (Bool x) ty ctx)))
-      :ruleset interval-rewrite)
+      :ruleset interval-analysis)
 
 ; lower bound being true means the bool must be true
 (rule (
@@ -87,7 +87,7 @@
        (ContextOf expr ctx)
       )
       ((union expr (Const (Bool true) ty ctx)))
-      :ruleset interval-rewrite)
+      :ruleset interval-analysis)
 
 ; upper bound being false means the bool must be false
 (rule (
@@ -96,7 +96,7 @@
        (ContextOf expr ctx)
       )
       ((union expr (Const (Bool false) ty ctx)))
-      :ruleset interval-rewrite)
+      :ruleset interval-analysis)
 
 ; =================================
 ; Arithmetic

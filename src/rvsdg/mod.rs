@@ -32,6 +32,7 @@ pub(crate) mod from_cfg;
 pub(crate) mod from_dag;
 pub(crate) mod live_variables;
 pub(crate) mod optimize_direct_jumps;
+mod passthrough;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod simplify_branches;
@@ -131,6 +132,27 @@ impl<Op> BasicExpr<Op> {
             BasicExpr::Effect(_, operands) => operands.push(op),
         }
     }
+
+    pub(crate) fn map_operands(&mut self, f: impl Fn(&Op) -> Op) {
+        match self {
+            BasicExpr::Op(_, operands, _) => {
+                for operand in operands {
+                    *operand = f(operand);
+                }
+            }
+            BasicExpr::Call(_, operands, _, _) => {
+                for operand in operands {
+                    *operand = f(operand);
+                }
+            }
+            BasicExpr::Const(_, _, _) => {}
+            BasicExpr::Effect(_, operands) => {
+                for operand in operands {
+                    *operand = f(operand);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -171,7 +193,7 @@ pub(crate) enum RvsdgBody {
     },
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum RvsdgType {
     Bril(Type),
     PrintState,
@@ -202,6 +224,7 @@ impl RvsdgType {
 /// The function has arguments, a result, and nodes.
 /// The nodes are stored in a vector, and variants of RvsdgBody refer
 /// to nodes by their index in the vector.
+#[derive(Clone)]
 pub struct RvsdgFunction {
     /// The name of this function.
     pub(crate) name: String,
@@ -235,6 +258,7 @@ impl fmt::Debug for RvsdgFunction {
 /// For now, it's simply a vector of [RvsdgFunction]s.
 /// In the future, we may want functions to be represented within
 /// the RVSDG.
+#[derive(Clone)]
 pub struct RvsdgProgram {
     /// A list of functions in this program.
     /// The last function is the entry point (main function).
@@ -253,5 +277,62 @@ pub(crate) fn cfg_to_rvsdg(
     for func in cfg_restructured.functions.iter_mut() {
         functions.push(cfg_func_to_rvsdg(func, &func_types).map_err(EggCCError::RvsdgError)?);
     }
-    Ok(RvsdgProgram { functions })
+    let mut prog = RvsdgProgram { functions };
+
+    // now run passthrough optimization to clean it up
+    prog = prog.optimize_passthrough();
+    Ok(prog)
+}
+
+impl RvsdgBody {
+    pub(crate) fn map_operands(&mut self, f: impl Fn(&Operand) -> Operand) {
+        match self {
+            RvsdgBody::BasicOp(basic_expr) => {
+                basic_expr.map_operands(f);
+            }
+            RvsdgBody::If {
+                pred,
+                inputs,
+                then_branch,
+                else_branch,
+            } => {
+                *pred = f(pred);
+                for input in inputs {
+                    *input = f(input);
+                }
+                for branch in then_branch {
+                    *branch = f(branch);
+                }
+                for branch in else_branch {
+                    *branch = f(branch);
+                }
+            }
+            RvsdgBody::Gamma {
+                pred,
+                inputs,
+                outputs,
+            } => {
+                *pred = f(pred);
+                for input in inputs {
+                    *input = f(input);
+                }
+                for output in outputs.iter_mut().flatten() {
+                    *output = f(output);
+                }
+            }
+            RvsdgBody::Theta {
+                pred,
+                inputs,
+                outputs,
+            } => {
+                *pred = f(pred);
+                for input in inputs {
+                    *input = f(input);
+                }
+                for output in outputs {
+                    *output = f(output);
+                }
+            }
+        }
+    }
 }

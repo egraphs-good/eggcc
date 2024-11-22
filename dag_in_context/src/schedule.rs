@@ -41,6 +41,8 @@ pub(crate) fn helpers() -> String {
 
     ;; do a boundary analysis for loop invariant code motion
     boundary-analysis
+
+    loop-iters-analysis
 "
     .to_string()
 }

@@ -21,7 +21,7 @@ fn rule_for_ctor(ctor: Constructor) -> String {
         .join("\n");
     let pat = ctor.construct(|field| field.var());
     let sort = ctor.sort().name();
-    format!("(rule ((= lhs {pat}) {query}) (({sort}IsResolved lhs)) :ruleset always-run)")
+    format!("(rule ((= lhs {pat}) {query}) (({sort}IsResolved lhs)) :ruleset is-resolved)")
 }
 
 pub(crate) fn rules() -> Vec<String> {
@@ -60,7 +60,7 @@ fn test_is_resolved() -> crate::Result {
 
 (let substituted (Subst {ctx} {add1} {myloop}))
 ;; run the IsResolved rules
-(run-schedule (saturate always-run))
+(run-schedule (saturate is-resolved))
 
 (check (ExprIsResolved {add1}))
 ;; substitution hasn't happened

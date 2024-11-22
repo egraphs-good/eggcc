@@ -206,6 +206,7 @@
 
 ; Rulesets
 (ruleset always-run)
+(ruleset is-resolved)
 (ruleset error-checking)
 (ruleset memory)
 (ruleset memory-helpers)

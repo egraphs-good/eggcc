@@ -374,7 +374,7 @@ expression: visualization.result
   v14_: int = id c13_;
   br v12_ .b15_ .b16_;
 .b15_:
-  v17_: int = id c4_;
+  v17_: int = id c2_;
   v5_: int = id v17_;
   print v5_;
   ret;
@@ -386,7 +386,7 @@ expression: visualization.result
   v21_: int = call @fac c1_;
   v22_: int = id c13_;
   v14_: int = id v22_;
-  v17_: int = id c4_;
+  v17_: int = id c2_;
   v5_: int = id v17_;
   print v5_;
   ret;
@@ -399,7 +399,7 @@ expression: visualization.result
   v27_: int = add v25_ v26_;
   v22_: int = id v27_;
   v14_: int = id v22_;
-  v17_: int = id c4_;
+  v17_: int = id c2_;
   v5_: int = id v17_;
   print v5_;
   ret;

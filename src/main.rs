@@ -1,7 +1,7 @@
 use clap::Parser;
 use dag_in_context::{EggccConfig, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
-use std::{ffi::OsStr, path::PathBuf};
+use std::{ffi::OsStr, i64, path::PathBuf};
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -52,7 +52,7 @@ struct Args {
     /// Eggcc by default performs several passes.
     /// This argument specifies how many passes to run (all passes by default).
     /// If stop_after_n_passes is negative,
-    /// run [0 ... schedule.len() + stop_after_n_passes + 1] passes.
+    /// run [0 ... schedule.len() + stop_after_n_passes] passes.
     ///
     /// This flag also works with `--run-mode egglog` mode,
     /// where it prints the egglog program being processed by the last pass
@@ -113,7 +113,7 @@ fn main() {
         add_timing: args.add_timing,
         eggcc_config: EggccConfig {
             schedule: args.eggcc_schedule.unwrap_or(Schedule::default()),
-            stop_after_n_passes: args.stop_after_n_passes.unwrap_or(-1),
+            stop_after_n_passes: args.stop_after_n_passes.unwrap_or(i64::MAX),
             linearity: !args.no_linearity,
         },
     };

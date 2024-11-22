@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::rulesets;
 use schema::TreeProgram;
-use std::{cmp::min, fmt::Write};
+use std::{cmp::min, fmt::Write, i64};
 use to_egglog::TreeToEgglog;
 
 use crate::{
@@ -270,7 +270,7 @@ impl Default for EggccConfig {
     fn default() -> Self {
         Self {
             schedule: Schedule::default(),
-            stop_after_n_passes: -1,
+            stop_after_n_passes: i64::MAX,
             linearity: true,
         }
     }
@@ -289,7 +289,7 @@ pub fn optimize(
     let mut res = program.clone();
 
     let stop_after_n_passes = if eggcc_config.stop_after_n_passes < 0 {
-        schedule_list.len() as i64 + eggcc_config.stop_after_n_passes + 1
+        schedule_list.len() as i64 + eggcc_config.stop_after_n_passes
     } else {
         eggcc_config.stop_after_n_passes
     };

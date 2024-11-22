@@ -805,9 +805,11 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
 
+                // to deal with i64::MAX
+                let stop_after_n_passes = i64::min(self.eggcc_config.stop_after_n_passes, parallel_schedule().len() as i64);
                 let eggcc_config = EggccConfig {
                     // stop before the last pass that user specified.
-                    stop_after_n_passes: self.eggcc_config.stop_after_n_passes - 1,
+                    stop_after_n_passes: stop_after_n_passes - 1,
                     ..self.eggcc_config.clone()
                 };
                 let optimized = dag_in_context::optimize(&dag, &mut cache, &eggcc_config)

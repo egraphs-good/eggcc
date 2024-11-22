@@ -1,4 +1,5 @@
 (ruleset interval-analysis)
+(ruleset interval-rewrite)
 
 (datatype Bound
   (IntB i64)
@@ -68,7 +69,7 @@
        (ContextOf expr ctx)
       )
       ((union expr (Const (Int x) ty ctx)))
-      :ruleset interval-analysis)
+      :ruleset interval-rewrite)
 
 (rule (
        (= (BoolB x) (lo-bound expr))
@@ -77,7 +78,7 @@
        (ContextOf expr ctx)
       )
       ((union expr (Const (Bool x) ty ctx)))
-      :ruleset interval-analysis)
+      :ruleset interval-rewrite)
 
 ; lower bound being true means the bool must be true
 (rule (
@@ -86,7 +87,7 @@
        (ContextOf expr ctx)
       )
       ((union expr (Const (Bool true) ty ctx)))
-      :ruleset interval-analysis)
+      :ruleset interval-rewrite)
 
 ; upper bound being false means the bool must be false
 (rule (
@@ -95,7 +96,7 @@
        (ContextOf expr ctx)
       )
       ((union expr (Const (Bool false) ty ctx)))
-      :ruleset interval-analysis)
+      :ruleset interval-rewrite)
 
 ; =================================
 ; Arithmetic
@@ -208,7 +209,7 @@
        (= (BoolB true) (lo-bound cond))
       )
       ((union lhs (Subst if_ctx inputs thn)))
-      :ruleset interval-analysis)
+      :ruleset interval-rewrite)
 
 ; if the predicate is false, merge with else branch
 (rule (
@@ -217,7 +218,7 @@
        (= (BoolB false) (hi-bound cond))
       )
       ((union lhs (Subst if_ctx inputs els)))
-      :ruleset interval-analysis)
+      :ruleset interval-rewrite)
 
 ; lo-bound of If is the min of the lower bounds
 ; hi-bound of If is the max of the upper bounds

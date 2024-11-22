@@ -29,11 +29,13 @@ expression: visualization.result
 .b20_:
   v6_: int = id v11_;
   v7_: int = id v12_;
-  ret v7_;
-  jmp .b21_;
+  v21_: int = add v6_ v7_;
+  ret v21_;
+  jmp .b22_;
 .b9_:
-  ret v7_;
-.b21_:
+  v21_: int = add v6_ v7_;
+  ret v21_;
+.b22_:
 }
 @main(v0: int) {
 .b1_:
@@ -61,11 +63,13 @@ expression: visualization.result
 .b20_:
   v6_: int = id v11_;
   v7_: int = id v12_;
-  print v7_;
+  v21_: int = add v6_ v7_;
+  print v21_;
   ret;
-  jmp .b21_;
+  jmp .b22_;
 .b9_:
-  print v7_;
+  v21_: int = add v6_ v7_;
+  print v21_;
   ret;
-.b21_:
+.b22_:
 }

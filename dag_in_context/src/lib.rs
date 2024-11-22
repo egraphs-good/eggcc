@@ -193,14 +193,22 @@ pub fn build_program(
 ; Prologue
 {prologue}
 
-; Program nodes
-{printed}
-
-; Loop context unions
-{loop_context_unions}
-
+; required by function_inlining_unoins
 ; Function inlining unions
-{function_inlining_unions}
+(relation InlinedCall (String Expr))
+
+(ruleset initialization)
+(rule () (
+    ; Program nodes
+    {printed}
+
+    ; Loop context unions
+    {loop_context_unions}
+
+    ; Function inlining unions
+    {function_inlining_unions}
+) :ruleset initialization)
+(run initialization 1) 
 
 ; Schedule
 {schedule}

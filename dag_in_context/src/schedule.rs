@@ -22,7 +22,6 @@ pub(crate) fn helpers() -> String {
     (saturate
         (saturate
           type-analysis
-          (saturate terms)
           (saturate type-helpers)
           error-checking
           always-run
@@ -56,6 +55,7 @@ pub(crate) fn helpers() -> String {
 
     ;; do a boundary analysis for loop invariant code motion
     (saturate boundary-analysis)
+    (saturate terms)
 "
     .to_string()
 }

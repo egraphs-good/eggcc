@@ -12,13 +12,23 @@ expression: visualization.result
   v6_: int = id v0;
 .b7_:
   v8_: bool = lt v4_ v6_;
-  v9_: int = add v4_ v5_;
-  v10_: int = select v8_ v9_ v4_;
-  v4_: int = id v10_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  br v8_ .b7_ .b11_;
-.b11_:
+  v9_: int = id v4_;
+  v10_: int = id v5_;
+  v11_: int = id v6_;
+  br v8_ .b12_ .b13_;
+.b12_:
+  v14_: int = add v4_ v5_;
+  v9_: int = id v14_;
+  v10_: int = id v5_;
+  v11_: int = id v6_;
+  v4_: int = id v9_;
+  v5_: int = id v10_;
+  v6_: int = id v11_;
+  jmp .b7_;
+.b13_:
+  v4_: int = id v9_;
+  v5_: int = id v10_;
+  v6_: int = id v11_;
   print v4_;
   ret;
 }

@@ -57,6 +57,13 @@
         ((ExprIsPure (Get _tup _i)))
         :ruleset always-run)
 
+(rule (
+        (= lhs (Get (Arg (TupleT tylist) _ctx) i))
+        (!= (TypeList-ith tylist i) (StateT))
+      )
+      ((ExprIsPure lhs))
+      :ruleset always-run)
+
 (rule ((Concat _x _y) (ExprIsPure _x) (ExprIsPure _y))
         ((ExprIsPure (Concat _x _y)))
         :ruleset always-run)
@@ -77,9 +84,10 @@
         ((ExprIsPure (DoWhile _in _pred-and-output)))
         :ruleset always-run)
 
-(rule ((Arg _ty _ctx))
-        ((ExprIsPure (Arg _ty _ctx)))
-        :ruleset always-run)
+; state edge is not pure!
+; (rule ((Arg _ty _ctx))
+;         ((ExprIsPure (Arg _ty _ctx)))
+;         :ruleset always-run)
 
 (rule ((Call _f _arg) (ExprIsPure _arg) (ExprIsPure (Function _f inty outty out)))
         ((ExprIsPure (Call _f _arg)))

@@ -5,8 +5,7 @@ expression: visualization.result
 # ARGS: 
 @main {
 .b0_:
-  c1_: int = const 1;
-  print c1_;
+  c1_: int = const 0;
   v2_: int = id c1_;
 .b3_:
   c4_: int = const 5;

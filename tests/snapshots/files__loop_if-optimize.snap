@@ -6,42 +6,27 @@ expression: visualization.result
 @main {
 .b0_:
   c1_: int = const 0;
-  v2_: bool = eq c1_ c1_;
-  v3_: bool = not v2_;
-  c4_: int = const 1;
-  v5_: int = select v2_ c1_ c4_;
-  v6_: int = id v5_;
-  v7_: int = id v5_;
-  br v3_ .b8_ .b9_;
-.b8_:
-  v10_: int = id v5_;
-  v11_: int = id v5_;
-.b12_:
-  v13_: bool = eq v10_ v11_;
-  v14_: int = id v10_;
-  v15_: bool = id v13_;
-  v16_: int = id v11_;
-  br v13_ .b17_ .b18_;
-.b18_:
-  c19_: int = const 1;
-  v20_: int = add c19_ v10_;
-  v21_: int = add c19_ v11_;
-  v14_: int = id v20_;
-  v15_: bool = id v13_;
-  v16_: int = id v21_;
-.b17_:
-  v22_: bool = not v13_;
-  v10_: int = id v14_;
-  v11_: int = id v16_;
-  br v22_ .b12_ .b23_;
-.b23_:
-  v6_: int = id v10_;
-  v7_: int = id v11_;
-  print v6_;
-  ret;
-  jmp .b24_;
+  v2_: int = id c1_;
+  v3_: int = id c1_;
+.b4_:
+  v5_: bool = eq v2_ v3_;
+  v6_: int = id v2_;
+  v7_: bool = id v5_;
+  v8_: int = id v3_;
+  br v5_ .b9_ .b10_;
+.b10_:
+  c11_: int = const 1;
+  v12_: int = add c11_ v2_;
+  v13_: int = add c11_ v3_;
+  v6_: int = id v12_;
+  v7_: bool = id v5_;
+  v8_: int = id v13_;
 .b9_:
-  print v6_;
+  v14_: bool = not v5_;
+  v2_: int = id v6_;
+  v3_: int = id v8_;
+  br v14_ .b4_ .b15_;
+.b15_:
+  print v2_;
   ret;
-.b24_:
 }

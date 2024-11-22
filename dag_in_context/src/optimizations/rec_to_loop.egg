@@ -53,6 +53,22 @@
   :ruleset rec-to-loop)
 
 
+;; Stores information about how to use a binary
+;; operator to accumulate values
+;; (bop start-val base-case-op)
+(relation Accum-Bop (BinaryOp i64 BinaryOp))
+
+;; addition is easy, it starts at 0 and adds the result of the recursive call
+(Accum-Bop (Add) 0 (Add))
+
+;; subtraction starts at zero, but adds the base case at the end
+(Accum-Bop (Sub) 0 (Add))
+
+;; multiplication starts at 1, and multiplies the result of the recursive call
+(Accum-Bop (Mul) 1 (Mul))
+
+;; It seems like integers have these properties based on: https://stackoverflow.com/questions/69480173/which-arithmetic-properties-do-twos-complement-integers-have
+
 
 ;; same as above rule, but with an accumulator
 ;; function name(inputs) {
@@ -80,8 +96,9 @@
    (= body (If pred always-runs then-case base-case))
    (= call (Call name rec-case))
    (= then-case
-      (Concat (Single (Bop (Add) (Get call 0) extra))
+      (Concat (Single (Bop acc-op (Get call 0) extra))
               (Single (Get call 1))))
+   (Accum-Bop acc-op initial-int base-case-op)
    (HasType always-runs start-ty)
    (= always-runs-len (tuple-length always-runs))
    (= start-ty (TupleT start-ty-list))
@@ -98,14 +115,14 @@
            (SubTuple (Arg loop-ty (TmpCtx)) 0 always-runs-len) extra))
    ;; acc starts at 0
    (let loop-inputs
-     (Concat (Arg start-ty (InIf true pred always-runs)) (Single (Const (Int 0) start-ty (InIf true pred always-runs)))))
+     (Concat (Arg start-ty (InIf true pred always-runs)) (Single (Const (Int initial-int) start-ty (InIf true pred always-runs)))))
    (let loop-outputs
      (Concat
          (Single (Subst (TmpCtx) new-rec-case pred))
          (Concat
            (Subst (TmpCtx) new-rec-case always-runs)
            ;; add extra to acc
-           (Single (Bop (Add) (Get (Arg loop-ty (TmpCtx)) always-runs-len) new-extra)))))
+           (Single (Bop acc-op (Get (Arg loop-ty (TmpCtx)) always-runs-len) new-extra)))))
    ;; loop starts at zero, adds extra each iteration
    (let loop
      (DoWhile loop-inputs loop-outputs))
@@ -126,7 +143,7 @@
    ;; add base case to acc
    (let res
      (Concat
-      (Single (Bop (Add) (Get new-base-case 0) (Get outer-if always-runs-len)))
+      (Single (Bop base-case-op (Get new-base-case 0) (Get outer-if always-runs-len)))
       (Single (Get new-base-case 1))))
    (union body res))
   :ruleset rec-to-loop)

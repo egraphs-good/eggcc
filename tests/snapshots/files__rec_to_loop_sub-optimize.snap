@@ -1,0 +1,71 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 20
+@recPrint(v0: int): int {
+.b1_:
+  c2_: int = const 0;
+  v3_: bool = eq c2_ v0;
+  v4_: bool = not v3_;
+  c5_: int = const 0;
+  v6_: int = id v0;
+  v7_: int = id c5_;
+  br v4_ .b8_ .b9_;
+.b8_:
+  c10_: int = const 0;
+  v11_: int = id v0;
+  v12_: int = id c10_;
+.b13_:
+  c14_: int = const 1;
+  v15_: int = sub v11_ c14_;
+  v16_: int = sub v12_ c14_;
+  c17_: int = const 0;
+  v18_: bool = eq c17_ v15_;
+  v19_: bool = not v18_;
+  v11_: int = id v15_;
+  v12_: int = id v16_;
+  br v19_ .b13_ .b20_;
+.b20_:
+  v6_: int = id v11_;
+  v7_: int = id v12_;
+  ret v7_;
+  jmp .b21_;
+.b9_:
+  ret v7_;
+.b21_:
+}
+@main(v0: int) {
+.b1_:
+  c2_: int = const 0;
+  v3_: bool = eq c2_ v0;
+  v4_: bool = not v3_;
+  c5_: int = const 0;
+  v6_: int = id v0;
+  v7_: int = id c5_;
+  br v4_ .b8_ .b9_;
+.b8_:
+  c10_: int = const 0;
+  v11_: int = id v0;
+  v12_: int = id c10_;
+.b13_:
+  c14_: int = const 1;
+  v15_: int = sub v11_ c14_;
+  v16_: int = sub v12_ c14_;
+  c17_: int = const 0;
+  v18_: bool = eq c17_ v15_;
+  v19_: bool = not v18_;
+  v11_: int = id v15_;
+  v12_: int = id v16_;
+  br v19_ .b13_ .b20_;
+.b20_:
+  v6_: int = id v11_;
+  v7_: int = id v12_;
+  print v7_;
+  ret;
+  jmp .b21_;
+.b9_:
+  print v7_;
+  ret;
+.b21_:
+}

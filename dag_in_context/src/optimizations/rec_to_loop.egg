@@ -67,7 +67,7 @@
 ;; multiplication starts at 1, and multiplies the result of the recursive call
 (Accum-Bop (Mul) 1 (Mul))
 
-
+;; It seems like integers have these properties based on: https://stackoverflow.com/questions/69480173/which-arithmetic-properties-do-twos-complement-integers-have
 
 
 ;; same as above rule, but with an accumulator

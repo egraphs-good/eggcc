@@ -161,6 +161,16 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
         CompilerPass::Schedule(format!(
             "
 (run-schedule
+  {helpers}
+  (repeat 2
+    {helpers}
+    loop-inversion)
+  {helpers})
+        "
+        )),
+        CompilerPass::Schedule(format!(
+            "
+(run-schedule
    (saturate
       {helpers}
       passthrough

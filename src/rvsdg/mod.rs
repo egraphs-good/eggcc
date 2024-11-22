@@ -44,6 +44,7 @@ use std::fmt;
 use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 
 use dag_in_context::schema::BaseType;
+use hashbrown::{HashMap, HashSet};
 use thiserror::Error;
 
 use crate::{
@@ -133,7 +134,7 @@ impl<Op> BasicExpr<Op> {
         }
     }
 
-    pub(crate) fn map_operands(&mut self, f: impl Fn(&Op) -> Op) {
+    pub(crate) fn map_operands(&mut self, f: &mut impl FnMut(&Op) -> Op) {
         match self {
             BasicExpr::Op(_, operands, _) => {
                 for operand in operands {
@@ -285,7 +286,7 @@ pub(crate) fn cfg_to_rvsdg(
 }
 
 impl RvsdgBody {
-    pub(crate) fn map_operands(&mut self, f: impl Fn(&Operand) -> Operand) {
+    pub(crate) fn map_operands(&mut self, f: &mut impl FnMut(&Operand) -> Operand) {
         match self {
             RvsdgBody::BasicOp(basic_expr) => {
                 basic_expr.map_operands(f);
@@ -334,5 +335,71 @@ impl RvsdgBody {
                 }
             }
         }
+    }
+
+    pub(crate) fn map_same_region_operands(&mut self, fun: &mut impl FnMut(&Operand) -> Operand) {
+        match self {
+            RvsdgBody::BasicOp(basic_expr) => {
+                basic_expr.map_operands(fun);
+            }
+            RvsdgBody::If {
+                pred,
+                inputs,
+                then_branch: _,
+                else_branch: _,
+            } => {
+                *pred = fun(pred);
+                for input in inputs {
+                    *input = fun(input);
+                }
+            }
+            RvsdgBody::Gamma {
+                pred,
+                inputs,
+                outputs: _,
+            } => {
+                *pred = fun(pred);
+                for input in inputs {
+                    *input = fun(input);
+                }
+            }
+            RvsdgBody::Theta {
+                pred: _,
+                inputs,
+                outputs: _,
+            } => {
+                for input in inputs {
+                    *input = fun(input);
+                }
+            }
+        }
+    }
+
+    pub(crate) fn num_outputs(&self) -> usize {
+        match self {
+            RvsdgBody::BasicOp(basic_expr) => basic_expr.num_outputs(),
+            RvsdgBody::If { then_branch, .. } => then_branch.len(),
+            RvsdgBody::Gamma { outputs, .. } => outputs[0].len(),
+            RvsdgBody::Theta { outputs, .. } => outputs.len(),
+        }
+    }
+}
+
+impl RvsdgFunction {
+    pub(crate) fn uses_analysis(&self) -> HashMap<Id, HashSet<Id>> {
+        let mut uses = HashMap::new();
+        for (i, node) in self.nodes.iter().enumerate() {
+            let mut used = HashSet::new();
+            node.clone().map_operands(&mut |op| {
+                if let Operand::Project(_, region) = op {
+                    used.insert(*region);
+                }
+                *op
+            });
+            for use_id in used {
+                uses.entry(use_id).or_insert_with(HashSet::new).insert(i);
+            }
+        }
+        uses
     }
 }

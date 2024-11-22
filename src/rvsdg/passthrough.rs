@@ -266,8 +266,8 @@ impl RvsdgFunction {
 
         // for each node and each output, try to pass through the value
         // if we can, fix up all references to this node
-        let _uses = new_func.uses_analysis();
-        //let empty_set = Default::default();
+        let uses = new_func.uses_analysis();
+        let empty_set = Default::default();
         for id in 0..new_func.nodes.len() {
             let id = id as Id;
             let mut output_index = 0;
@@ -276,17 +276,16 @@ impl RvsdgFunction {
                 if let Some(passed_through_operand) = new_func.passthrough_operand(id, output_index)
                 {
                     // rewrite all uses of this node to use the passed through value or offset
-                    // TODO use use analysis for speed: for node_use in uses.get(&id).unwrap_or(&empty_set) {
-                    for use_node in new_func.nodes.iter_mut() {
-                        //let use_node = &mut new_func.nodes[*node_use];
+                    for node_use in uses.get(&id).unwrap_or(&empty_set) {
+                        let use_node = &mut new_func.nodes[*node_use];
                         use_node.map_operands(&mut |operand| {
-                            if let Operand::Project(proj_id, project_index) = *operand {
+                            if let Operand::Project(project_index, proj_id) = *operand {
                                 if proj_id == id {
                                     match project_index.cmp(&output_index) {
                                         std::cmp::Ordering::Less => *operand,
                                         std::cmp::Ordering::Equal => passed_through_operand,
                                         std::cmp::Ordering::Greater => {
-                                            Operand::Project(id, project_index - 1)
+                                            Operand::Project(project_index - 1, id)
                                         }
                                     }
                                 } else {
@@ -301,16 +300,14 @@ impl RvsdgFunction {
 
                     // also rewrite the function results if needed
                     for (_ty, result) in new_func.results.iter_mut() {
-                        if let Operand::Project(proj_id, project_index) = *result {
-                            if proj_id == id && project_index > output_index {
-                                *result = Operand::Project(id, project_index - 1);
-                            } else if proj_id == id && project_index == output_index {
+                        if let Operand::Project(project_index, project_id) = *result {
+                            if project_id == id && project_index > output_index {
+                                *result = Operand::Project(project_index - 1, id);
+                            } else if project_id == id && project_index == output_index {
                                 *result = passed_through_operand;
                             }
                         }
                     }
-
-                    return new_func;
                 }
                 output_index += 1;
             }

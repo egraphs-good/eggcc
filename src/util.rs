@@ -806,7 +806,10 @@ impl Run {
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
 
                 // to deal with i64::MAX
-                let stop_after_n_passes = i64::min(self.eggcc_config.stop_after_n_passes, parallel_schedule().len() as i64);
+                let stop_after_n_passes = i64::min(
+                    self.eggcc_config.stop_after_n_passes,
+                    parallel_schedule().len() as i64,
+                );
                 let eggcc_config = EggccConfig {
                     // stop before the last pass that user specified.
                     stop_after_n_passes: stop_after_n_passes - 1,

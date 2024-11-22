@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::rulesets;
 use schema::TreeProgram;
-use std::{cmp::min, fmt::Write, i64};
+use std::{fmt::Write, i64};
 use to_egglog::TreeToEgglog;
 
 use crate::{
@@ -258,12 +258,24 @@ pub struct EggccConfig {
     pub schedule: Schedule,
     /// Stop after this many passes.
     /// If stop_after_n_passes is negative,
-    /// run [0 ... schedule.len() + stop_after_n_passes + 1] passes.
+    /// run [0 ... schedule.len() + stop_after_n_passes] passes.
     pub stop_after_n_passes: i64,
     /// For debugging, disable extraction with linearity
     /// and just return the first program found.
     /// This produces unsound results but is useful for seeing the intermediate extracted result.
     pub linearity: bool,
+}
+
+impl EggccConfig {
+    pub fn get_normalized_cutoff(&self, schedule_len: usize) -> usize {
+        if self.stop_after_n_passes < 0 {
+            (schedule_len as i64 + self.stop_after_n_passes) as usize
+        } else if self.stop_after_n_passes > schedule_len as i64 {
+            schedule_len
+        } else {
+            self.stop_after_n_passes as usize
+        }
+    }
 }
 
 impl Default for EggccConfig {
@@ -288,14 +300,10 @@ pub fn optimize(
     };
     let mut res = program.clone();
 
-    let stop_after_n_passes = if eggcc_config.stop_after_n_passes < 0 {
-        schedule_list.len() as i64 + eggcc_config.stop_after_n_passes
-    } else {
-        eggcc_config.stop_after_n_passes
-    };
-    for (schedule, i) in schedule_list.iter().zip(0..stop_after_n_passes) {
+    let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
+    for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
         let mut should_maintain_linearity = true;
-        if i == min(stop_after_n_passes - 1, schedule_list.len() as i64 - 1) {
+        if i == cutoff - 1 {
             should_maintain_linearity = eggcc_config.linearity;
         }
 

@@ -805,21 +805,21 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
 
-                // to deal with i64::MAX
-                let stop_after_n_passes = i64::min(
-                    self.eggcc_config.stop_after_n_passes,
-                    parallel_schedule().len() as i64,
-                );
+                // how many actual passes to run
+                let cutoff = self
+                    .eggcc_config
+                    .get_normalized_cutoff(parallel_schedule().len());
+                assert!(cutoff != 0);
+                let cutoff = cutoff - 1;
                 let eggcc_config = EggccConfig {
-                    // stop before the last pass that user specified.
-                    stop_after_n_passes: stop_after_n_passes - 1,
+                    stop_after_n_passes: cutoff as i64,
                     ..self.eggcc_config.clone()
                 };
                 let optimized = dag_in_context::optimize(&dag, &mut cache, &eggcc_config)
                     .map_err(EggCCError::EggLog)?;
 
                 let schedules = parallel_schedule();
-                let last_schedule_step = schedules.last().unwrap();
+                let last_schedule_step = &schedules[cutoff];
 
                 let inline_program = match last_schedule_step {
                     schedule::CompilerPass::Schedule(_) => None,

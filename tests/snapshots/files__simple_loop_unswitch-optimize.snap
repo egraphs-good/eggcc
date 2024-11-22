@@ -6,44 +6,45 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
   c2_: int = const 0;
-  c3_: int = const 1;
-  v4_: int = id c2_;
+  v3_: bool = lt c2_ v0;
+  c4_: int = const 1;
   v5_: int = id c2_;
-  v6_: int = id c3_;
-  v7_: int = id v0;
-  v8_: int = id c2_;
-.b9_:
-  v10_: bool = lt v5_ v7_;
-  v11_: int = id v4_;
-  v12_: int = id v5_;
-  v13_: int = id v6_;
-  v14_: int = id v7_;
-  v15_: int = id v8_;
-  br v10_ .b16_ .b17_;
-.b16_:
+  v6_: int = id c2_;
+  v7_: int = id c4_;
+  v8_: int = id v0;
+  v9_: int = id c2_;
+  br v3_ .b10_ .b11_;
+.b10_:
+  c12_: bool = const false;
+  v13_: int = id c2_;
+  v14_: int = id c2_;
+  v15_: int = id c4_;
+  v16_: int = id v0;
+  v17_: int = id c2_;
+  v18_: bool = id c12_;
+.b19_:
+  print v14_;
+  v20_: int = add v13_ v15_;
+  v21_: int = add v14_ v15_;
+  v22_: bool = lt v21_ v16_;
+  v13_: int = id v20_;
+  v14_: int = id v21_;
+  v15_: int = id v15_;
+  v16_: int = id v16_;
+  v17_: int = id v17_;
+  v18_: bool = id v18_;
+  br v22_ .b19_ .b23_;
+.b23_:
+  v5_: int = id v13_;
+  v6_: int = id v14_;
+  v7_: int = id c4_;
+  v8_: int = id v0;
+  v9_: int = id c2_;
   print v5_;
-  v18_: bool = lt v7_ v8_;
-  c19_: int = const 2;
-  v20_: int = select v18_ c19_ v4_;
-  v21_: int = add v20_ v6_;
-  v22_: int = add v5_ v6_;
-  v11_: int = id v21_;
-  v12_: int = id v22_;
-  v13_: int = id v6_;
-  v14_: int = id v7_;
-  v15_: int = id v8_;
-  v4_: int = id v11_;
-  v5_: int = id v12_;
-  v6_: int = id v13_;
-  v7_: int = id v14_;
-  v8_: int = id v15_;
-  jmp .b9_;
-.b17_:
-  v4_: int = id v11_;
-  v5_: int = id v12_;
-  v6_: int = id v13_;
-  v7_: int = id v14_;
-  v8_: int = id v15_;
-  print v4_;
   ret;
+  jmp .b24_;
+.b11_:
+  print v5_;
+  ret;
+.b24_:
 }

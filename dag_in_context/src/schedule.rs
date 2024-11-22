@@ -84,6 +84,7 @@ fn optimizations() -> Vec<String> {
         "switch_rewrite",
         "loop-inv-motion",
         "loop-strength-reduction",
+        // "loop-inversion"
     ]
     .iter()
     .map(|opt| opt.to_string())
@@ -110,14 +111,16 @@ pub fn rulesets() -> String {
 pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
     let helpers = helpers();
 
-    let mut res = vec![CompilerPass::Schedule(format!(
+    let mut res = vec![];
+
+    res.push(CompilerPass::Schedule(format!(
         "
 (run-schedule
    (saturate
       {helpers}
       passthrough
       state-edge-passthrough))"
-    ))];
+    )));
     res.push(CompilerPass::Schedule(format!(
         "
 (run-schedule
@@ -158,6 +161,15 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
     let helpers = helpers();
 
     vec![
+//         CompilerPass::Schedule(format!(
+//             "
+// (run-schedule
+//     (repeat 3
+//       {helpers}
+//       loop-inversion)
+
+//     {helpers})"
+//         )),
         CompilerPass::Schedule(format!(
             "
 (run-schedule
@@ -172,15 +184,6 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
     rec-to-loop
     {helpers})"
         )),
-        CompilerPass::Schedule(format!(
-            "
-(run-schedule
-    (repeat 3
-      {helpers}
-      loop-inversion)
-
-    {helpers})"
-        )),
         CompilerPass::InlineWithSchedule(format!(
             "
 ;; HACK: when INLINE appears in this string
@@ -189,12 +192,12 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
     (saturate
       {helpers}
       passthrough)
-    (repeat 2
+    (repeat 1
         {helpers}
         all-optimizations
     )
 
-    (repeat 4
+    (repeat 2
         {helpers}
         cheap-optimizations
     )

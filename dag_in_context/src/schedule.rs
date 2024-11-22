@@ -30,6 +30,11 @@ pub(crate) fn helpers() -> String {
             always-run)
         error-checking)
 
+    (saturate canon)
+    (saturate interval-analysis)
+    (saturate always-switch-rewrite)
+    ;; memory-helpers TODO run memory helpers for memory optimizations
+
     ;; second, saturate substitution and drop
     ;; which depend on context and is-resolved
     (saturate
@@ -47,11 +52,6 @@ pub(crate) fn helpers() -> String {
         apply-drop-unions
         cleanup-drop
     )
-
-    (saturate canon)
-    (saturate interval-analysis)
-    (saturate always-switch-rewrite)
-    ;; memory-helpers TODO run memory helpers for memory optimizations
 
     ;; finally, subsume now that helpers are done
     subsume-after-helpers

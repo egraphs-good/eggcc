@@ -123,6 +123,6 @@
     (union new-expr loop)
     (union new-loop-context (InLoop (Arg argI new-if-true-ctx) new-loop-outputs))
 
-    (delete (DoWhile inpW outW))
+    (subsume (DoWhile inpW outW))
     (delete (TmpCtx))
 ) :ruleset loop-inversion)

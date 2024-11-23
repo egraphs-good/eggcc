@@ -59,34 +59,19 @@
 
 (rewrite (SubTuple expr x 0)
          (Empty ty ctx)
+         :subsume
          :when ((HasArgType expr ty) (ContextOf expr ctx))
          :ruleset always-run)
 
 (rewrite (SubTuple expr x 1)
          (Single (Get expr x))
+         :subsume
          :ruleset always-run)
 
 (rewrite (SubTuple expr a b)
          (Concat (Single (Get expr a)) (SubTuple expr (+ a 1) (- b 1)))
+         :subsume
          :when ((> b 1))
-         :ruleset always-run)
-
-; Also figure out what existing expressions are subtuples of other things
-; this helps remove concat layers
-(rule ((Get expr i))
-      ((union (Single (Get expr i))
-              (SubTuple expr i 1)))
-      :ruleset always-run)
-
-(rewrite (Concat (SubTuple expr a b)
-                 (SubTuple expr (+ a b) c))
-         (SubTuple expr a (+ b c))
-         :ruleset always-run)
-;; a subtuple which is the entire tuple is the tuple itself
-;; this removes unecessary layers of concat
-(rewrite (SubTuple expr 0 len)
-         expr
-         :when ((= len (tuple-length expr)))
          :ruleset always-run)
 
 ; Helper functions to remove one element from a tuple or type list

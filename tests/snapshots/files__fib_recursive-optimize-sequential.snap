@@ -365,8 +365,8 @@ expression: visualization.result
   v18_: bool = eq c13_ c2_;
   br v18_ .b19_ .b20_;
 .b19_:
-  v21_: int = call @fac c2_;
-  v22_: int = id c2_;
+  v21_: int = call @fac c13_;
+  v22_: int = id c13_;
   v14_: int = id v22_;
   v17_: int = id c1_;
   v5_: int = id v17_;

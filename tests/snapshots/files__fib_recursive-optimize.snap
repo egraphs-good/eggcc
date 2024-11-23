@@ -355,8 +355,8 @@ expression: visualization.result
 }
 @main {
 .b0_:
-  c1_: int = const 0;
-  c2_: int = const 2;
+  c1_: int = const 2;
+  c2_: int = const 0;
   v3_: bool = eq c1_ c2_;
   c4_: int = const 1;
   v5_: int = id c4_;
@@ -366,27 +366,27 @@ expression: visualization.result
   ret;
   jmp .b8_;
 .b7_:
-  v9_: bool = eq c2_ c4_;
+  v9_: bool = eq c1_ c4_;
   br v9_ .b10_ .b11_;
 .b10_:
-  v12_: bool = eq c1_ c1_;
+  v12_: bool = eq c2_ c2_;
   c13_: int = const 1;
   v14_: int = id c13_;
   br v12_ .b15_ .b16_;
 .b15_:
-  v17_: int = id c2_;
+  v17_: int = id c1_;
   v5_: int = id v17_;
   print v5_;
   ret;
   jmp .b8_;
 .b16_:
-  v18_: bool = eq c13_ c1_;
+  v18_: bool = eq c13_ c2_;
   br v18_ .b19_ .b20_;
 .b19_:
-  v21_: int = call @fac c1_;
+  v21_: int = call @fac c2_;
   v22_: int = id c13_;
   v14_: int = id v22_;
-  v17_: int = id c2_;
+  v17_: int = id c1_;
   v5_: int = id v17_;
   print v5_;
   ret;
@@ -399,14 +399,14 @@ expression: visualization.result
   v27_: int = add v25_ v26_;
   v22_: int = id v27_;
   v14_: int = id v22_;
-  v17_: int = id c2_;
+  v17_: int = id c1_;
   v5_: int = id v17_;
   print v5_;
   ret;
   jmp .b8_;
 .b11_:
-  v28_: bool = eq c1_ c1_;
-  v29_: bool = eq c1_ c4_;
+  v28_: bool = eq c2_ c2_;
+  v29_: bool = eq c2_ c4_;
   v30_: int = id c4_;
   br v29_ .b31_ .b32_;
 .b31_:
@@ -421,10 +421,10 @@ expression: visualization.result
   ret;
   jmp .b8_;
 .b36_:
-  v38_: bool = eq c1_ c4_;
+  v38_: bool = eq c2_ c4_;
   br v38_ .b39_ .b40_;
 .b39_:
-  v41_: int = call @fac c1_;
+  v41_: int = call @fac c2_;
   v42_: int = id c4_;
   v33_: int = id v42_;
   v37_: int = add v30_ v33_;
@@ -451,14 +451,14 @@ expression: visualization.result
   v48_: bool = eq c4_ c4_;
   br v48_ .b49_ .b50_;
 .b49_:
-  v51_: int = call @fac c1_;
+  v51_: int = call @fac c2_;
   v52_: int = id c4_;
   v30_: int = id v52_;
   v33_: int = id c4_;
   jmp .b34_;
 .b50_:
   c53_: int = const -1;
-  v54_: int = call @fac c1_;
+  v54_: int = call @fac c2_;
   v55_: int = call @fac c53_;
   v56_: int = add v54_ v55_;
   v52_: int = id v56_;

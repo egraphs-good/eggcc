@@ -337,8 +337,8 @@ expression: visualization.result
 }
 @main {
 .b0_:
-  c1_: int = const 2;
-  c2_: int = const 0;
+  c1_: int = const 0;
+  c2_: int = const 2;
   v3_: bool = eq c1_ c2_;
   c4_: int = const 1;
   v5_: int = id c4_;
@@ -348,27 +348,27 @@ expression: visualization.result
   ret;
   jmp .b8_;
 .b7_:
-  v9_: bool = eq c1_ c4_;
+  v9_: bool = eq c2_ c4_;
   br v9_ .b10_ .b11_;
 .b10_:
-  v12_: bool = eq c2_ c2_;
+  v12_: bool = eq c1_ c1_;
   c13_: int = const 1;
   v14_: int = id c13_;
   br v12_ .b15_ .b16_;
 .b15_:
-  v17_: int = id c1_;
+  v17_: int = id c2_;
   v5_: int = id v17_;
   print v5_;
   ret;
   jmp .b8_;
 .b16_:
-  v18_: bool = eq c13_ c2_;
+  v18_: bool = eq c13_ c1_;
   br v18_ .b19_ .b20_;
 .b19_:
   v21_: int = call @fac c13_;
   v22_: int = id c13_;
   v14_: int = id v22_;
-  v17_: int = id c1_;
+  v17_: int = id c2_;
   v5_: int = id v17_;
   print v5_;
   ret;
@@ -381,24 +381,24 @@ expression: visualization.result
   v27_: int = add v24_ v26_;
   v22_: int = id v27_;
   v14_: int = id v22_;
-  v17_: int = id c1_;
+  v17_: int = id c2_;
   v5_: int = id v17_;
   print v5_;
   ret;
   jmp .b8_;
 .b11_:
-  v28_: bool = eq c2_ c4_;
+  v28_: bool = eq c1_ c4_;
   v29_: int = id c4_;
   br v28_ .b30_ .b31_;
 .b31_:
   v32_: bool = eq c4_ c4_;
   br v32_ .b33_ .b34_;
 .b33_:
-  v35_: int = call @fac c2_;
+  v35_: int = call @fac c1_;
   v36_: int = id c4_;
   v29_: int = id v36_;
 .b30_:
-  v37_: bool = eq c2_ c2_;
+  v37_: bool = eq c1_ c1_;
   v38_: int = id c4_;
   br v37_ .b39_ .b40_;
 .b39_:
@@ -409,10 +409,10 @@ expression: visualization.result
   ret;
   jmp .b8_;
 .b40_:
-  v42_: bool = eq c2_ c4_;
+  v42_: bool = eq c1_ c4_;
   br v42_ .b43_ .b44_;
 .b43_:
-  v45_: int = call @fac c2_;
+  v45_: int = call @fac c1_;
   v46_: int = id c4_;
   v38_: int = id v46_;
   v41_: int = add v29_ v38_;
@@ -436,7 +436,7 @@ expression: visualization.result
   ret;
   jmp .b8_;
 .b34_:
-  v52_: int = call @fac c2_;
+  v52_: int = call @fac c1_;
   c53_: int = const -1;
   v54_: int = call @fac c53_;
   v55_: int = add v52_ v54_;

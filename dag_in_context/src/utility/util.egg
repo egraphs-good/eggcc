@@ -40,16 +40,11 @@
        :ruleset always-run)
 
 ;; descend left
-(rule ((Get (Concat expr1 expr2) 0)
-       (= expr1 (Single expr1-inner)))
-      ((union (Get (Concat expr1 expr2) 0) expr1-inner))
+(rewrite (Get (Concat (Single expr1) expr2) 0) expr1
        :ruleset always-run)
 ;; descend right
-(rule ((Get (Concat expr1 expr2) i)
-       (= expr1 (Single expr1-inner))
-       (> i 0))
-      ((union (Get (Concat expr1 expr2) i)
-              (Get expr2 (- i 1))))
+(rewrite (Get (Concat (Single expr1) expr2) i) (Get expr2 (- i 1))
+       :when ((> i 0))
        :ruleset always-run)
 
 

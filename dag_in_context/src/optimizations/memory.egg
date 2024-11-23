@@ -240,7 +240,8 @@
 (rule ((PointsToCells (Get x i) ap))
       ((PointsToCells x ap))
       :ruleset memory-helpers)
-(rule ((PointsToCells (Concat x y) ap))
+(rule ((PointsToCells (Concat x y) ap)
+       (= x (Single x-inner)))
       ((PointsToCells x ap)
        (PointsToCells y ap))
       :ruleset memory-helpers)
@@ -254,6 +255,7 @@
            (UnwrapTuplePointsTo (PointsToCells x aps))
            (UnwrapTuplePointsTo (PointsToCells y aps))))
          :when ((= concat-x-y (Concat x y))
+                (= x (Single x-inner))
                 (HasType concat-x-y ty) (PointerishType ty))
          :ruleset memory-helpers)
 

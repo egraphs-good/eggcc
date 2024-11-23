@@ -63,9 +63,9 @@
 (rewrite (AddContext ctx (Single c1))
          (Single (AddContext ctx c1))
          :ruleset context)
-(rewrite (AddContext ctx (Concat c1 c2))
+(rewrite (AddContext ctx (Concat (Single c1) c2))
          (Concat
-           (AddContext ctx c1)
+           (Single (AddContext ctx c1))
            (AddContext ctx c2))
          :ruleset context)
 

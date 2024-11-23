@@ -5,20 +5,34 @@
 (rewrite (TLConcat (TNil) r) r :ruleset type-helpers)
 (rewrite (TLConcat (TCons hd tl) r)
          (TCons hd (TLConcat tl r))
+         :subsume
          :ruleset type-helpers)
 
 (function TypeList-length (TypeList) i64 :unextractable)
 (function TypeList-ith (TypeList i64) BaseType :unextractable)
-(function TypeList-suffix (TypeList i64) TypeList :unextractable)
+; (function TypeList-suffix (TypeList i64) TypeList :unextractable)
 
-(rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset type-helpers)
+;; Don't match on TypeList-ith because it is now lazily instantiated!!
+(rule () ((set (TypeList-length (TNil)) 0)) :ruleset type-helpers)
+(rule ((= lst (TCons hd tl))
+       (= len (TypeList-length tl)))
+      ((set (TypeList-length lst) (+ 1 len))) :ruleset type-helpers)
+(rewrite (TypeList-ith (TCons hd tl) 0) hd :ruleset type-helpers)
+(rewrite (TypeList-ith (TCons hd tl) i) (TypeList-ith tl (- i 1)) 
+      :when ((> i 0)) 
+      :ruleset type-helpers)
+; (rule ((= (TypeList-ith list i) ty)
+;        (TypeList-ith (TypeList-suffix list 0) i))
+;       ((= (TypeList-ith list i) ty)) :ruleset type-helpers)
 
-(rule ((= (TypeList-suffix top n) (TCons hd tl)))
-    ((union (TypeList-ith top n) hd)
-     (union (TypeList-suffix top (+ n 1)) tl)) :ruleset type-helpers)
+; (rule ((TupleT tylist)) ((union (TypeList-suffix tylist 0) tylist)) :ruleset type-helpers)
 
-(rule ((= (TypeList-suffix list n) (TNil)))
-    ((set (TypeList-length list) n)) :ruleset type-helpers)
+; (rule ((= (TypeList-suffix top n) (TCons hd tl)))
+;     ((union (TypeList-ith top n) hd)
+;      (union (TypeList-suffix top (+ n 1)) tl)) :ruleset type-helpers)
+
+; (rule ((= (TypeList-suffix list n) (TNil)))
+;     ((set (TypeList-length list) n)) :ruleset type-helpers)
 
 (rule ((TypeList-ith list i)
        (= (TypeList-length list) n)
@@ -372,13 +386,14 @@
       :ruleset type-analysis)
 
 (rule (
+        (= e1 (Single e1-inner))
         (= lhs (Concat e1 e2))
-        (HasType e1 (TupleT tylist1))
+        (HasType e1-inner (Base t1))
         (HasType e2 (TupleT tylist2))
       )
       ; TLConcat needs to compute immediately, so we need to saturate type-helpers
       ; rules between every iter of type-analysis rules.
-      ((HasType lhs (TupleT (TLConcat tylist1 tylist2))))
+      ((HasType lhs (TupleT (TCons t1 tylist2))))
       :ruleset type-analysis)
 
 ; =================================

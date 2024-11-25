@@ -20,7 +20,7 @@ impl RvsdgProgram {
 
 impl RvsdgFunction {
     fn operand_remove_ith_arg(
-        &self,
+        &mut self,
         operand: &Operand,
         ith: usize,
         cache: &mut HashMap<Id, bool>,
@@ -51,7 +51,7 @@ impl RvsdgFunction {
     /// Checks if there are no references to the
     /// ith argument starting from this node.
     fn remove_ith_arg(
-        &self,
+        &mut self,
         node_id: Id,
         ith: usize,
         cache: &mut HashMap<Id, bool>,
@@ -61,14 +61,16 @@ impl RvsdgFunction {
             return result;
         }
         let mut can_remove = true;
-        let node = &self.nodes[node_id];
+        let new_node = self.nodes[node_id]
+            .clone()
+            .map_same_region_operands(&mut |operand| {
+                let (result, new_operand) =
+                    self.operand_remove_ith_arg(operand, ith, cache, perform_removal);
+                can_remove = can_remove && result;
+                new_operand
+            });
 
-        node.clone().map_same_region_operands(&mut |operand| {
-            let (result, new_operand) =
-                self.operand_remove_ith_arg(operand, ith, cache, perform_removal);
-            can_remove = can_remove && result;
-            new_operand
-        });
+        self.nodes[node_id] = new_node;
 
         cache.insert(node_id, can_remove);
         can_remove
@@ -229,6 +231,9 @@ impl RvsdgFunction {
                             }
                         }
                         if can_remove {
+                            // remove ith from outputs
+                            outputs.remove(ith);
+
                             // remove the ith argument from the body of each
                             let mut cache = Default::default();
                             for output in outputs.iter_mut() {
@@ -243,8 +248,7 @@ impl RvsdgFunction {
 
                             // remove input index from inputs
                             let passed_through = inputs.remove(input_index);
-                            // remove ith from outputs
-                            outputs.remove(ith);
+
                             let new_region = RvsdgBody::Theta {
                                 pred,
                                 inputs,
@@ -296,7 +300,6 @@ impl RvsdgFunction {
                             }
                         });
                     }
-                    //}
 
                     // also rewrite the function results if needed
                     for (_ty, result) in new_func.results.iter_mut() {

@@ -337,8 +337,11 @@ impl RvsdgBody {
         }
     }
 
-    pub(crate) fn map_same_region_operands(&mut self, fun: &mut impl FnMut(&Operand) -> Operand) {
-        match self {
+    pub(crate) fn map_same_region_operands(
+        mut self,
+        fun: &mut impl FnMut(&Operand) -> Operand,
+    ) -> Self {
+        match &mut self {
             RvsdgBody::BasicOp(basic_expr) => {
                 basic_expr.map_operands(fun);
             }
@@ -373,6 +376,7 @@ impl RvsdgBody {
                 }
             }
         }
+        self
     }
 
     pub(crate) fn num_outputs(&self) -> usize {

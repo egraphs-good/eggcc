@@ -14,6 +14,7 @@ expression: visualization.result
   v9_: int = id v0;
   v10_: int = id c5_;
 .b11_:
+<<<<<<< HEAD
   v12_: int = mul v10_ v9_;
   v13_: bool = lt v12_ v8_;
   v14_: int = add v12_ v7_;
@@ -28,6 +29,53 @@ expression: visualization.result
   v9_: int = id v9_;
   v10_: int = id v10_;
   br v18_ .b11_ .b19_;
+=======
+  v12_: bool = lt v6_ v10_;
+  v13_: int = id v6_;
+  v14_: int = id v7_;
+  v15_: int = id v8_;
+  v16_: int = id v9_;
+  v17_: int = id v10_;
+  br v12_ .b18_ .b19_;
+.b18_:
+  v20_: int = mul v10_ v9_;
+  v21_: bool = lt v20_ v8_;
+<<<<<<< HEAD
+  v22_: int = add v20_ v7_;
+  v23_: int = select v21_ v22_ v20_;
+  v24_: int = mul v23_ v6_;
+  print v24_;
+  v25_: int = add v6_ v7_;
+  v13_: int = id v25_;
+=======
+  v22_: int = id v6_;
+  v23_: int = id v7_;
+  v24_: int = id v20_;
+  v25_: int = id v9_;
+  br v21_ .b26_ .b27_;
+.b26_:
+  v28_: int = add v20_ v7_;
+  v22_: int = id v6_;
+  v23_: int = id v7_;
+  v24_: int = id v28_;
+  v25_: int = id v9_;
+.b27_:
+  v29_: int = mul v24_ v6_;
+  print v29_;
+  v30_: int = add v6_ v7_;
+  v13_: int = id v30_;
+>>>>>>> f4e994eb (snapshots)
+  v14_: int = id v7_;
+  v15_: int = id v8_;
+  v16_: int = id v9_;
+  v17_: int = id v10_;
+  v6_: int = id v13_;
+  v7_: int = id v14_;
+  v8_: int = id v15_;
+  v9_: int = id v16_;
+  v10_: int = id v17_;
+  jmp .b11_;
+>>>>>>> bd5b3865 (snapshots)
 .b19_:
   ret;
 }

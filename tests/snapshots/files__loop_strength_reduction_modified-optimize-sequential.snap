@@ -19,6 +19,7 @@ expression: visualization.result
   v12_: int = id c5_;
   v13_: int = id c6_;
 .b14_:
+<<<<<<< HEAD
   v15_: int = mul v12_ v9_;
   print v15_;
   v16_: int = add v7_ v8_;
@@ -30,11 +31,97 @@ expression: visualization.result
   v7_: int = id v16_;
   v8_: int = id v8_;
   v9_: int = id v20_;
+=======
+  v15_: bool = lt v7_ v13_;
+  v16_: int = id v7_;
+  v17_: int = id v8_;
+  v18_: int = id v9_;
+  v19_: int = id v10_;
+  v20_: int = id v11_;
+  v21_: int = id v12_;
+<<<<<<< HEAD
+  v22_: int = id v13_;
+  br v15_ .b23_ .b24_;
+.b23_:
+  v25_: int = mul v12_ v9_;
+  print v25_;
+  v26_: int = add v7_ v8_;
+  v27_: bool = eq v11_ v7_;
+  v28_: int = add v8_ v9_;
+  v29_: int = add v10_ v28_;
+  v30_: int = select v27_ v29_ v28_;
+  v16_: int = id v26_;
+  v17_: int = id v8_;
+  v18_: int = id v30_;
+=======
+  br v15_ .b22_ .b23_;
+.b22_:
+  v24_: int = mul v12_ v9_;
+  print v24_;
+  v25_: int = add v7_ v8_;
+  v26_: bool = eq v11_ v7_;
+  v27_: int = add v8_ v9_;
+  v28_: int = id v7_;
+  v29_: int = id v27_;
+  v30_: int = id v10_;
+  v31_: int = id v12_;
+  br v26_ .b32_ .b33_;
+.b32_:
+  v34_: int = add v10_ v27_;
+  v28_: int = id v7_;
+  v29_: int = id v34_;
+  v30_: int = id v10_;
+  v31_: int = id v12_;
+  v16_: int = id v25_;
+  v17_: int = id v8_;
+  v18_: int = id v29_;
+  v19_: int = id v10_;
+  v20_: int = id v11_;
+  v21_: int = id v12_;
+  v7_: int = id v16_;
+  v8_: int = id v8_;
+  v9_: int = id v18_;
+>>>>>>> bd5b3865 (snapshots)
   v10_: int = id v10_;
   v11_: int = id v11_;
   v12_: int = id v12_;
   v13_: int = id v13_;
+<<<<<<< HEAD
   br v21_ .b14_ .b22_;
 .b22_:
+=======
+  br v15_ .b14_ .b35_;
+.b35_:
+>>>>>>> bd5b3865 (snapshots)
   ret;
+  jmp .b36_;
+.b33_:
+  v16_: int = id v25_;
+  v17_: int = id v8_;
+  v18_: int = id v29_;
+>>>>>>> f4e994eb (snapshots)
+  v19_: int = id v10_;
+  v20_: int = id v11_;
+  v21_: int = id v12_;
+  v7_: int = id v16_;
+  v8_: int = id v8_;
+  v9_: int = id v18_;
+  v10_: int = id v10_;
+  v11_: int = id v11_;
+  v12_: int = id v12_;
+  v13_: int = id v13_;
+  jmp .b14_;
+.b23_:
+  v7_: int = id v16_;
+  v8_: int = id v8_;
+  v9_: int = id v18_;
+  v10_: int = id v10_;
+  v11_: int = id v11_;
+  v12_: int = id v12_;
+  v13_: int = id v13_;
+  ret;
+<<<<<<< HEAD
+=======
+.b36_:
+>>>>>>> f4e994eb (snapshots)
 }

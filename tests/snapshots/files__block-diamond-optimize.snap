@@ -10,9 +10,26 @@ expression: visualization.result
   c4_: int = const 4;
   c5_: int = const 1;
   v6_: int = select v3_ c4_ c5_;
+<<<<<<< HEAD
   v7_: int = add c2_ v6_;
   v8_: int = select v3_ v6_ v7_;
   v9_: int = add c5_ v8_;
   print v9_;
   ret;
+=======
+  v7_: int = id v6_;
+  br v3_ .b8_ .b9_;
+.b8_:
+  v10_: int = add c5_ v7_;
+  print v10_;
+  ret;
+  jmp .b11_;
+.b9_:
+  v12_: int = add c2_ v6_;
+  v7_: int = id v12_;
+  v10_: int = add c5_ v7_;
+  print v10_;
+  ret;
+.b11_:
+>>>>>>> f4e994eb (snapshots)
 }

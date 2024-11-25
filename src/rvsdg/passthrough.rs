@@ -230,6 +230,11 @@ impl RvsdgFunction {
                                         .0;
                             }
                         }
+                        can_remove = can_remove
+                            && self
+                                .operand_remove_ith_arg(&pred, input_index, &mut cache, false)
+                                .0;
+
                         if can_remove {
                             // remove ith from outputs
                             outputs.remove(ith);

@@ -30,9 +30,22 @@ expression: visualization.result
   v24_: int = mul v23_ v8_;
   v25_: int = sub v7_ v24_;
   v26_: bool = eq v11_ v25_;
+<<<<<<< HEAD
   v27_: int = mul v10_ v7_;
   v28_: int = add v27_ v9_;
   v29_: int = select v26_ v23_ v28_;
+=======
+  br v26_ .b27_ .b28_;
+.b27_:
+  c29_: bool = const true;
+  v30_: int = div v7_ v8_;
+  v31_: int = id v22_;
+  v32_: bool = id c29_;
+  v33_: int = id v30_;
+  v34_: int = id v8_;
+  v35_: int = id v9_;
+  v36_: int = id v10_;
+>>>>>>> f4e994eb (snapshots)
   v14_: int = id v22_;
   v15_: int = id v29_;
   v16_: int = id v8_;
@@ -40,15 +53,41 @@ expression: visualization.result
   v18_: int = id v10_;
   v19_: int = id v11_;
 .b20_:
+<<<<<<< HEAD
   v30_: bool = not v13_;
+=======
+  v37_: bool = not v13_;
+>>>>>>> f4e994eb (snapshots)
   v6_: int = id v14_;
   v7_: int = id v15_;
   v8_: int = id v16_;
   v9_: int = id v17_;
   v10_: int = id v18_;
   v11_: int = id v19_;
+<<<<<<< HEAD
   br v30_ .b12_ .b31_;
 .b31_:
+=======
+  br v37_ .b12_ .b38_;
+.b28_:
+  c39_: bool = const true;
+  v40_: int = mul v10_ v7_;
+  v41_: int = add v40_ v9_;
+  v31_: int = id v22_;
+  v32_: bool = id c39_;
+  v33_: int = id v41_;
+  v34_: int = id v8_;
+  v35_: int = id v9_;
+  v36_: int = id v10_;
+  v14_: int = id v22_;
+  v15_: int = id v33_;
+  v16_: int = id v8_;
+  v17_: int = id v9_;
+  v18_: int = id v10_;
+  v19_: int = id v11_;
+  jmp .b20_;
+.b38_:
+>>>>>>> f4e994eb (snapshots)
   print v6_;
   ret;
 }

@@ -12,7 +12,12 @@ impl RvsdgProgram {
     pub(crate) fn optimize_passthrough(&self) -> RvsdgProgram {
         let mut new_program: RvsdgProgram = self.clone();
         for func in new_program.functions.iter_mut() {
-            *func = func.optimize_passthrough();
+            let mut did_something = true;
+            while did_something {
+                let (new_func, changed) = func.optimize_passthrough();
+                did_something = changed;
+                *func = new_func;
+            }
         }
         new_program
     }
@@ -270,8 +275,11 @@ impl RvsdgFunction {
         }
     }
 
-    fn optimize_passthrough(&self) -> RvsdgFunction {
+    /// Returns a new function with some passthrough optimizations.
+    /// Also returns a boolean indicating if any changes were made.
+    fn optimize_passthrough(&self) -> (RvsdgFunction, bool) {
         let mut new_func: RvsdgFunction = self.clone();
+        let mut did_something = false;
 
         // for each node and each output, try to pass through the value
         // if we can, fix up all references to this node
@@ -284,6 +292,7 @@ impl RvsdgFunction {
             while output_index < new_func.nodes[id].num_outputs() {
                 if let Some(passed_through_operand) = new_func.passthrough_operand(id, output_index)
                 {
+                    did_something = true;
                     // rewrite all uses of this node to use the passed through value or offset
                     for node_use in uses.get(&id).unwrap_or(&empty_set) {
                         let use_node = &mut new_func.nodes[*node_use];
@@ -321,6 +330,6 @@ impl RvsdgFunction {
             }
         }
 
-        new_func
+        (new_func, did_something)
     }
 }

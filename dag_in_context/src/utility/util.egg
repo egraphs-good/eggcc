@@ -25,27 +25,69 @@
        (= len (TypeList-length tl)))
       ((set (tuple-length expr) len)) :ruleset always-run)
 
+(relation tuples-to-generate-get-for (Expr))
+(relation tuples-to-generate-get-for-list (ListExpr))
+
+(rule ((= e (DoWhile inputs pred_out)))
+      ((tuples-to-generate-get-for e)
+       (tuples-to-generate-get-for inputs)
+       (tuples-to-generate-get-for pred_out))
+      :ruleset always-run)
+(rule ((= e (If cond inputs thn els)))
+       ((tuples-to-generate-get-for e)
+        (tuples-to-generate-get-for inputs)
+        (tuples-to-generate-get-for thn)
+        (tuples-to-generate-get-for els))
+       :ruleset always-run)
+(rule ((= e (Switch pred inputs branch)))
+      ((tuples-to-generate-get-for e)
+       (tuples-to-generate-get-for-list branch)
+       (tuples-to-generate-get-for inputs))
+       :ruleset always-run)
+(rule ((tuples-to-generate-get-for-list (Cons hd tl)))
+      ((tuples-to-generate-get-for hd)
+       (tuples-to-generate-get-for-list tl))
+      :ruleset always-run)
+
+
 ;; Create a Get for every index, and rewrite it to see through Concat
-(rule ((Single expr)) ((union (Get (Single expr) 0) expr)) :ruleset always-run)
+; (rule ((Single expr)) ((union (Get (Single expr) 0) expr)) :ruleset always-run)
 ;; initial get
-(rule ((> (tuple-length tuple) 0))
+(rule ((> (tuple-length tuple) 0)
+       (tuples-to-generate-get-for tuple))
       ((Get tuple 0))
       :ruleset always-run)
 ;; next get
 (rule ((= len (tuple-length tuple))
        (= ith (Get tuple i))
        (< (+ i 1) len)
+       (tuples-to-generate-get-for tuple)
        )
        ((Get tuple (+ 1 i)))
        :ruleset always-run)
 
-;; descend left
-(rewrite (Get (Concat (Single expr1) expr2) 0) expr1
-       :ruleset always-run)
-;; descend right
-(rewrite (Get (Concat (Single expr1) expr2) i) (Get expr2 (- i 1))
-       :when ((> i 0))
-       :ruleset always-run)
+(function List-suffix (Expr i64) Expr)
+(rule ((Get x i))
+      ((union (List-suffix x 0) x))
+      :ruleset always-run)
+(rule ((= (List-suffix x n) (Concat (Single hd) tl)))
+      ((union (List-suffix x (+ n 1)) tl))
+      :ruleset always-run)
+(rule ((= lhs (Get x i))
+       (= (List-suffix x i) (Concat (Single e) rest)))
+      ((union lhs e))
+      :ruleset always-run)
+(rule ((= lhs (Get x i))
+       (= (List-suffix x i) (Single e)))
+      ((union lhs e))
+      :ruleset always-run)
+; ;; descend left
+; (rewrite (Get (Concat (Single expr1) expr2) 0) expr1
+;        :ruleset always-run)
+; ;; descend right
+; (rewrite (Get (Concat (Single expr1) expr2) i) (Get expr2 (- i 1))
+;        :when ((> i 0))
+;        :ruleset always-run)
 
 
 ;; A temporary context.

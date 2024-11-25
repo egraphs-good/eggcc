@@ -386,7 +386,7 @@ fn memory_egglog_test(
             "
     ;; TODO we don't run memory in the main loop right now
     (run-schedule
-        (repeat 6
+        (saturate
         (saturate
             always-run
             memory-helpers)

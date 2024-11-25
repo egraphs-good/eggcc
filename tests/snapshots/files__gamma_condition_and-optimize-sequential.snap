@@ -6,8 +6,8 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
   c2_: int = const 0;
-  v3_: bool = lt v0 c2_;
-  v4_: bool = lt c2_ v0;
+  v3_: bool = gt v0 c2_;
+  v4_: bool = lt v0 c2_;
   v5_: bool = and v3_ v4_;
   c6_: int = const 1;
   v7_: int = id c6_;
@@ -30,7 +30,7 @@ expression: visualization.result
   v21_: int = id c6_;
 .b22_:
   v23_: int = add v19_ v21_;
-  v24_: bool = gt v23_ v20_;
+  v24_: bool = lt v20_ v23_;
   v25_: bool = not v24_;
   v19_: int = id v23_;
   v20_: int = id v20_;

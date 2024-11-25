@@ -13,12 +13,12 @@ expression: visualization.result
   ret v4_;
   jmp .b7_;
 .b6_:
-  c8_: int = const 1;
-  v9_: int = sub v0 c8_;
-  c10_: int = const 0;
-  v11_: bool = eq c10_ v9_;
+  c8_: int = const 0;
+  c9_: int = const 1;
+  v10_: int = sub v0 c9_;
+  v11_: bool = eq c8_ v10_;
   print v0;
-  v12_: int = id v9_;
+  v12_: int = id v10_;
   br v11_ .b13_ .b14_;
 .b13_:
   v4_: int = id v12_;
@@ -26,10 +26,10 @@ expression: visualization.result
   jmp .b7_;
 .b14_:
   c15_: int = const 1;
-  v16_: int = sub v9_ c15_;
+  v16_: int = sub v10_ c15_;
   c17_: int = const 0;
   v18_: bool = eq c17_ v16_;
-  print v9_;
+  print v10_;
   v19_: int = id v16_;
   br v18_ .b20_ .b21_;
 .b20_:

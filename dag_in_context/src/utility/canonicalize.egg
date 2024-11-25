@@ -74,6 +74,14 @@
          :when ((> b 1))
          :ruleset always-run)
 
+; ;; This rule makes sure every tuple can be 
+; ;; normalized as a list of (Concat (Single e1) (Concat (Single e2) ...))
+(rewrite e (SubTuple e 0 len)
+      :when ((tuples-to-generate-get-for e)
+             (HasType e (TupleT t))
+             (= len (TypeList-length t)))
+      :ruleset always-run)
+
 ; Helper functions to remove one element from a tuple or type list
 ;                           tuple    idx
 (function TupleRemoveAt    (Expr     i64) Expr     :unextractable)

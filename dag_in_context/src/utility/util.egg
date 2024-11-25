@@ -48,6 +48,9 @@
       ((tuples-to-generate-get-for hd)
        (tuples-to-generate-get-for-list tl))
       :ruleset always-run)
+(rule ((= e (Arg t a)))
+      ((tuples-to-generate-get-for e))
+      :ruleset always-run)
 
 
 ;; Create a Get for every index, and rewrite it to see through Concat

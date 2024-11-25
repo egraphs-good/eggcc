@@ -132,7 +132,7 @@ pub fn print_function_inlining_pairs(
     tree_state: &mut TreeToEgglog,
     term_cache: &mut IndexMap<Term, String>,
 ) -> String {
-    let inlined_calls = "(relation InlinedCall (String Expr))";
+    let inlined_calls = "";
     // Get unions and mark each call as inlined for extraction purposes
     let printed_pairs = function_inlining_pairs
         .iter()

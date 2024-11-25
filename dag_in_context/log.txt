@@ -1,2 +1,0 @@
-    Finished `release` profile [optimized] target(s) in 0.07s
-     Running `target/release/dag_in_context benchmarks/passing/raytrace.rs`

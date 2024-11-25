@@ -9,6 +9,7 @@ snapshot_kind: text
   c2_: int = const 0;
   c3_: int = const 1;
   c4_: int = const 10;
+<<<<<<< HEAD
   v5_: int = id c2_;
   v6_: int = id c3_;
   v7_: int = id v0;
@@ -18,6 +19,18 @@ snapshot_kind: text
   v11_: bool = lt v7_ v6_;
   v12_: int = select v11_ v6_ v8_;
   print v12_;
+=======
+  v5_: bool = le v0 c2_;
+  v6_: int = id c2_;
+  v7_: int = id c3_;
+  v8_: int = id v0;
+  v9_: int = id c2_;
+  v10_: int = id c4_;
+  v11_: bool = id v5_;
+.b12_:
+  v13_: int = select v11_ v7_ v9_;
+  print v13_;
+>>>>>>> f4e994eb (snapshots)
   print v11_;
   v13_: int = add v5_ v6_;
   v14_: bool = lt v5_ v9_;

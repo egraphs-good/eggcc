@@ -77,6 +77,7 @@ expression: visualization.result
   v12_: int = id v5_;
   v13_: int = id v6_;
   v14_: int = id v7_;
+<<<<<<< HEAD
   v15_: int = id v8_;
   br v10_ .b16_ .b17_;
 .b16_:
@@ -90,21 +91,48 @@ expression: visualization.result
   v25_: int = add c24_ v5_;
   v11_: int = id v23_;
   v12_: int = id v25_;
+=======
+  br v10_ .b15_ .b16_;
+.b15_:
+  v17_: bool = eq v6_ v7_;
+  c18_: int = const 2;
+  br v17_ .b19_ .b20_;
+.b19_:
+  v21_: int = mul c18_ v5_;
+  v22_: int = id v21_;
+  v23_: int = id v5_;
+  v24_: int = id v7_;
+.b25_:
+  c26_: int = const 1;
+  v27_: int = add c26_ v5_;
+  v11_: int = id v22_;
+  v12_: int = id v27_;
+>>>>>>> f4e994eb (snapshots)
   v13_: int = id v6_;
   v14_: int = id v7_;
-  v15_: int = id v8_;
   v4_: int = id v11_;
   v5_: int = id v12_;
-  v6_: int = id v13_;
-  v7_: int = id v14_;
-  v8_: int = id v15_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
+  v8_: int = id v8_;
   jmp .b9_;
+<<<<<<< HEAD
 .b17_:
+=======
+.b20_:
+  c28_: int = const 3;
+  v29_: int = mul c28_ v5_;
+  v22_: int = id v29_;
+  v23_: int = id v5_;
+  v24_: int = id v7_;
+  jmp .b25_;
+.b16_:
+>>>>>>> f4e994eb (snapshots)
   v4_: int = id v11_;
   v5_: int = id v12_;
-  v6_: int = id v13_;
-  v7_: int = id v14_;
-  v8_: int = id v15_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
+  v8_: int = id v8_;
   print v4_;
 >>>>>>> 3208e41b (convert perm to use subst)
   ret;

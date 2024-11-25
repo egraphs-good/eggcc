@@ -5,8 +5,14 @@ expression: visualization.result
 # ARGS: 20
 @main(v0: int) {
 .b1_:
+<<<<<<< HEAD
   c2_: int = const 10;
   c3_: int = const 5;
+=======
+  c2_: int = const 5;
+  c3_: int = const 10;
+<<<<<<< HEAD
+>>>>>>> 1d1f4930 (snapshots)
   v4_: bool = eq c2_ c3_;
   v5_: bool = not v4_;
   c6_: int = const 0;
@@ -40,6 +46,48 @@ expression: visualization.result
   v9_: int = id v15_;
   v10_: int = id v16_;
   print v7_;
+=======
+  v4_: int = id c2_;
+  v5_: int = id c3_;
+  v6_: int = id c2_;
+  v7_: int = id v0;
+.b8_:
+  c9_: int = const 5;
+  v10_: bool = eq c9_ v5_;
+  v11_: bool = not v10_;
+  v12_: bool = not v11_;
+  v13_: bool = not v12_;
+  v14_: int = id v4_;
+  v15_: int = id v5_;
+  v16_: int = id v6_;
+  v17_: int = id v7_;
+  br v13_ .b18_ .b19_;
+.b18_:
+  c20_: int = const 1;
+  v21_: int = add c20_ v6_;
+  v22_: int = add v21_ v4_;
+  v23_: bool = eq v21_ v7_;
+  c24_: int = const 5;
+  v25_: int = select v23_ c24_ v5_;
+  v14_: int = id v22_;
+  v15_: int = id v25_;
+  v16_: int = id v21_;
+  v17_: int = id v7_;
+  v4_: int = id v14_;
+  v5_: int = id v15_;
+  v6_: int = id v16_;
+  v7_: int = id v17_;
+.b26_:
+  br v11_ .b8_ .b27_;
+.b19_:
+  v4_: int = id v14_;
+  v5_: int = id v15_;
+  v6_: int = id v16_;
+  v7_: int = id v17_;
+  jmp .b26_;
+.b27_:
+  print v4_;
+>>>>>>> bd5b3865 (snapshots)
   ret;
   jmp .b27_;
 .b12_:

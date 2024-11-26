@@ -130,15 +130,17 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
             .map(basetype_to_rvsdg_type)
             .collect(),
         nodes,
-        // functions return a single value and a state edge
-        // or just a state edge
         results: match output_type {
             Type::TupleT(types) => types
                 .into_iter()
                 .map(basetype_to_rvsdg_type)
                 .zip(converted)
                 .collect(),
-            _ => panic!("expected tuple type for function output type"),
+            Type::Base(ty) => vec![(basetype_to_rvsdg_type(ty), converted[0])],
+            Type::Unknown => panic!("Expected known type for function output"),
+            Type::Symbolic(_) => {
+                panic!("Symbolic type not supported in tree program to rvsdg conversion")
+            }
         },
     }
 }

@@ -1,6 +1,6 @@
 use clap::ValueEnum;
 use egglog::{Term, TermDag};
-use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
+use greedy_dag_extractor::{extract, has_debug_exprs, serialized_egraph, DefaultCostModel};
 use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::rulesets;
@@ -242,6 +242,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
         &mut termdag,
         DefaultCostModel,
         true,
+        false,
     );
 
     let (original_with_ctx, _) = program.add_dummy_ctx();
@@ -336,7 +337,14 @@ pub fn optimize(
             egraph.parse_and_run_program(None, &egglog_prog)?;
 
             let (serialized, unextractables) = serialized_egraph(egraph);
+
             let mut termdag = egglog::TermDag::default();
+            let has_debug_exprs = has_debug_exprs(&serialized);
+            if has_debug_exprs {
+                log::info!(
+                    "Program has debug expressions, extracting them instead of original program."
+                );
+            }
             let (_res_cost, iter_result) = extract(
                 &res,
                 batch,
@@ -345,8 +353,15 @@ pub fn optimize(
                 &mut termdag,
                 DefaultCostModel,
                 should_maintain_linearity,
+                has_debug_exprs,
             );
+
             res = iter_result;
+
+            if has_debug_exprs {
+                log::info!("Program has debug expressions, stopping pass {}.", i);
+                return Ok(res);
+            }
         }
 
         // now add context to res again for the next pass, since context might be less specific

@@ -6,12 +6,13 @@ use rpds::HashTrieMap;
 use std::{
     collections::{HashSet, VecDeque},
     f64::INFINITY,
+    rc::Rc,
 };
 use strum::IntoEnumIterator;
 
 use crate::{
     from_egglog::FromEgglog,
-    schema::{RcExpr, TreeProgram, Type},
+    schema::{Expr, RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
     typechecker::TypeChecker,
 };
@@ -128,19 +129,18 @@ impl<'a> EgraphInfo<'a> {
 
     pub(crate) fn new(
         func: &str,
+        func_root: ClassId,
         cm: &'a dyn CostModel,
         egraph: &'a EGraph,
         unextractables: IndexSet<String>,
     ) -> Self {
         let loop_iteration_estimates = Self::get_loop_iteration_estimates(egraph);
         let inlined_calls = Self::get_inlined_calls(egraph);
-        let n2c = |nid: &NodeId| egraph.nid_to_cid(nid).clone();
-        let func_root = get_root(egraph, func);
 
         // get all the roots needed
-        let mut region_roots = find_reachable(egraph, n2c(&func_root.clone()), cm, false, true);
+        let mut region_roots = find_reachable(egraph, func_root.clone(), cm, false, true);
         // also add the function as a root
-        region_roots.insert(n2c(&get_root(egraph, func)));
+        region_roots.insert(func_root);
 
         log::info!("Found {} regions", region_roots.len());
 
@@ -704,9 +704,11 @@ fn node_cost_in_region(
     extractor.calculate_cost_set(node_id, child_cost_sets, info)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_fn(
     original_prog: &TreeProgram,
     func: &str,
+    rootid: ClassId,
     egraph: egraph_serialize::EGraph,
     unextractables: IndexSet<String>,
     termdag: &mut TermDag,
@@ -714,10 +716,16 @@ fn extract_fn(
     should_maintain_linearity: bool,
 ) -> (CostSet, RcExpr) {
     log::info!("Building extraction info");
-    let egraph_info = EgraphInfo::new(func, cost_model, &egraph, unextractables);
+    let egraph_info = EgraphInfo::new(func, rootid.clone(), cost_model, &egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
 
-    let (cost_res, res) = extract_with_paths(func, extractor_not_linear, &egraph_info, None);
+    let (cost_res, res) = extract_with_paths(
+        func,
+        rootid.clone(),
+        extractor_not_linear,
+        &egraph_info,
+        None,
+    );
 
     if !should_maintain_linearity {
         (cost_res, res)
@@ -727,6 +735,7 @@ fn extract_fn(
         extractor_not_linear.costs.clear();
         let (cost_res, res) = extract_with_paths(
             func,
+            rootid,
             extractor_not_linear,
             &egraph_info,
             Some(&effectful_nodes_along_path),
@@ -737,9 +746,26 @@ fn extract_fn(
     }
 }
 
+/// Returns the roots of DebugExpr relation and fresh names
+/// for the extracted functions.
+fn find_debug_roots(egraph: egraph_serialize::EGraph) -> Vec<(ClassId, String)> {
+    let mut debug_roots = vec![];
+    for (ith, (_nodeid, node)) in egraph.nodes.iter().enumerate() {
+        if node.op == "DebugExpr" {
+            let child_id = node.children[0].clone();
+            let child_eclass = egraph.nid_to_cid(&child_id);
+            let ith_name = format!("debug_{}", ith);
+            debug_roots.push((child_eclass.clone(), ith_name));
+        }
+    }
+    log::info!("Found {} debug roots", debug_roots.len());
+    debug_roots
+}
+
 /// Inputs: a program, serialized egraph, and a set of functions to extract.
 /// Also needs to know a set of unextractable functions and a cost model.
 /// Produces a new program with the functions specified replaced by their extracted versions.
+#[allow(clippy::too_many_arguments)]
 pub fn extract(
     original_prog: &TreeProgram,
     fns: Vec<String>,
@@ -748,28 +774,65 @@ pub fn extract(
     termdag: &mut TermDag,
     cost_model: impl CostModel,
     should_maintain_linearity: bool,
+    extract_debug_exprs: bool,
 ) -> (Cost, TreeProgram) {
-    let mut new_prog = original_prog.clone();
-    let mut cost = NotNan::new(0.).unwrap();
-    for func in fns {
-        let (fn_cost, extracted) = extract_fn(
-            &new_prog,
-            &func,
-            egraph.clone(),
-            unextractables.clone(),
-            termdag,
-            &cost_model,
-            should_maintain_linearity,
-        );
-        new_prog.replace_fn(&func, extracted);
-        cost += fn_cost.total;
+    if extract_debug_exprs {
+        log::info!("Extracting debug expressions.");
+        let debug_roots = find_debug_roots(egraph.clone());
+        let mut extracted_fns = vec![];
+        let mut total_cost = NotNan::new(0.).unwrap();
+        let mut typechecker = TypeChecker::new(original_prog, true);
+        for (root, name) in debug_roots {
+            let (cost, extracted) = extract_fn(
+                original_prog,
+                &name,
+                root,
+                egraph.clone(),
+                unextractables.clone(),
+                termdag,
+                &cost_model,
+                false,
+            );
+            total_cost += cost.total;
+            let output_ty = typechecker
+                .add_arg_types_to_expr(extracted.clone(), &None)
+                .0;
+            let input_ty = TypeChecker::get_arg_type(&extracted);
+            // make a function out of the expr
+            let func = Expr::Function(name.clone(), input_ty, output_ty, extracted);
+            extracted_fns.push(Rc::new(func));
+        }
+        assert!(!extracted_fns.is_empty());
+        let new_prog = TreeProgram {
+            entry: extracted_fns[0].clone(),
+            functions: extracted_fns[1..].to_vec(),
+        };
+        (total_cost, new_prog)
+    } else {
+        let mut new_prog = original_prog.clone();
+        let mut cost = NotNan::new(0.).unwrap();
+        for func in fns {
+            let (fn_cost, extracted) = extract_fn(
+                &new_prog,
+                &func,
+                egraph.nid_to_cid(&get_root(&egraph, &func)).clone(),
+                egraph.clone(),
+                unextractables.clone(),
+                termdag,
+                &cost_model,
+                should_maintain_linearity,
+            );
+            new_prog.replace_fn(&func, extracted);
+            cost += fn_cost.total;
+        }
+        (cost, new_prog)
     }
-    (cost, new_prog)
 }
 
 /// Extract the function specified by `func` from the egraph.
 pub fn extract_with_paths(
     func: &str,
+    func_root: ClassId,
     extractor: &mut Extractor,
     info: &EgraphInfo,
     // If effectful paths are present,
@@ -855,13 +918,11 @@ pub fn extract_with_paths(
         }
     }
 
-    let root_eclass = info.n2c(&get_root(info.egraph, func));
-
     let root_costset_index = *extractor
         .costs
-        .get(&root_eclass)
+        .get(&func_root)
         .unwrap_or_else(|| panic!("Failed to extract function {}!", func))
-        .get(&root_eclass)
+        .get(&func_root)
         .unwrap_or_else(|| {
             if effectful_paths.is_some() {
                 panic!(
@@ -1222,6 +1283,7 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
         &mut termdag,
         TestCostModel,
         true,
+        false,
     );
 
     assert_eq!(cost_set.0, expected_cost);
@@ -1247,13 +1309,20 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
     for func in prog.fns() {
         let egraph_info = EgraphInfo::new(
             &func,
+            serialized_egraph
+                .nid_to_cid(&get_root(&serialized_egraph, &func))
+                .clone(),
             &DefaultCostModel,
             &serialized_egraph,
             unextractables.clone(),
         );
         let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
-        let (_cost_res, prog) = extract_with_paths(&func, extractor_not_linear, &egraph_info, None);
+        let root = serialized_egraph
+            .nid_to_cid(&get_root(&serialized_egraph, &func))
+            .clone();
+        let (_cost_res, prog) =
+            extract_with_paths(&func, root, extractor_not_linear, &egraph_info, None);
         let res = extractor_not_linear.check_function_is_linear(&prog);
         if let Err(e) = res {
             err = Err(e);
@@ -1474,15 +1543,23 @@ fn test_validity_of_extraction() {
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
+    let root = serialized_egraph.nid_to_cid(&get_root(&serialized_egraph, "main"));
     let egraph_info = EgraphInfo::new(
         "main",
+        root.clone(),
         &TestCostModel,
         &serialized_egraph,
         unextractables.clone(),
     );
     let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);
 
-    let (_cost_res, res) = extract_with_paths("main", extractor_not_linear, &egraph_info, None);
+    let (_cost_res, res) = extract_with_paths(
+        "main",
+        root.clone(),
+        extractor_not_linear,
+        &egraph_info,
+        None,
+    );
     // first extraction should fail linearity check
     assert!(extractor_not_linear.check_function_is_linear(&res).is_err());
 
@@ -1495,5 +1572,15 @@ fn test_validity_of_extraction() {
         &mut termdag,
         TestCostModel,
         true,
+        false,
     );
+}
+
+pub(crate) fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> bool {
+    for (_, node) in &serialized_egraph.nodes {
+        if node.op == "DebugExpr" {
+            return true;
+        }
+    }
+    false
 }

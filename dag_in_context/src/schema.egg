@@ -240,3 +240,8 @@
 (bop->string (PtrAdd) "PtrAdd")
 (bop->string (Print) "Print")
 (bop->string (Free) "Free")
+
+
+;; If anything is put in the DebugExpr relation, we'll extract them instead of the original program.
+;; These can then be visualized using the `optimized-rvsdg` run mode
+(relation DebugExpr (Expr))

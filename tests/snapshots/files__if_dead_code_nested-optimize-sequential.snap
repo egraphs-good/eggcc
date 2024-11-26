@@ -12,20 +12,15 @@ expression: visualization.result
   c6_: int = const 2;
   br v3_ .b7_ .b8_;
 .b7_:
-  v9_: bool = lt v0 c4_;
-  c10_: int = const 1;
-  c11_: int = const 2;
-  v12_: int = id c10_;
-  v13_: int = id c11_;
-  br v9_ .b14_ .b15_;
-.b14_:
-  v12_: int = id c10_;
-  v13_: int = id c10_;
-  v16_: int = id v12_;
-  v17_: int = id v13_;
-  v18_: int = select v3_ c2_ c4_;
-  print v18_;
+  c9_: int = const 1;
+  v10_: bool = lt v0 c4_;
+  v11_: int = select v10_ c9_ c6_;
+  v12_: int = id c9_;
+  v13_: int = id v11_;
+  v14_: int = select v3_ c2_ c4_;
+  print v14_;
   print v3_;
+<<<<<<< HEAD
 <<<<<<< HEAD
   print v12_;
   ret;
@@ -83,61 +78,36 @@ expression: visualization.result
 =======
   print v17_;
 >>>>>>> 8a786fe5 (snapshots)
+=======
+  print v13_;
+>>>>>>> b2d10132 (snapshots)
   ret;
-  jmp .b19_;
-.b15_:
-  v16_: int = id v12_;
-  v17_: int = id v13_;
-  v18_: int = select v3_ c2_ c4_;
-  print v18_;
-  print v3_;
-  print v17_;
-  ret;
-  jmp .b19_;
+  jmp .b15_;
 .b8_:
-  v20_: bool = lt c6_ v0;
-  c21_: int = const 2;
-  v22_: int = id c4_;
-  v23_: int = id c21_;
-  br v20_ .b24_ .b25_;
-.b24_:
-  v26_: bool = lt c5_ v0;
-  c27_: int = const 4;
-  v28_: int = id c4_;
-  v29_: int = id c27_;
-  br v26_ .b30_ .b31_;
-.b30_:
-  c32_: int = const 3;
-  v28_: int = id c4_;
-  v29_: int = id c32_;
-  v22_: int = id v28_;
-  v23_: int = id v29_;
-  v16_: int = id v22_;
-  v17_: int = id v23_;
-  v18_: int = select v3_ c2_ c4_;
-  print v18_;
-  print v3_;
-  print v17_;
-  ret;
-  jmp .b19_;
-.b31_:
-  v22_: int = id v28_;
-  v23_: int = id v29_;
-  v16_: int = id v22_;
-  v17_: int = id v23_;
-  v18_: int = select v3_ c2_ c4_;
-  print v18_;
-  print v3_;
-  print v17_;
-  ret;
-  jmp .b19_;
-.b25_:
-  v16_: int = id v22_;
-  v17_: int = id v23_;
-  v18_: int = select v3_ c2_ c4_;
-  print v18_;
-  print v3_;
-  print v17_;
-  ret;
+  v16_: bool = lt c6_ v0;
+  c17_: int = const 2;
+  v18_: int = id c17_;
+  br v16_ .b19_ .b20_;
 .b19_:
+  v21_: bool = lt c5_ v0;
+  c22_: int = const 4;
+  v23_: int = select v21_ c5_ c22_;
+  v18_: int = id v23_;
+  v12_: int = id c4_;
+  v13_: int = id v18_;
+  v14_: int = select v3_ c2_ c4_;
+  print v14_;
+  print v3_;
+  print v13_;
+  ret;
+  jmp .b15_;
+.b20_:
+  v12_: int = id c4_;
+  v13_: int = id v18_;
+  v14_: int = select v3_ c2_ c4_;
+  print v14_;
+  print v3_;
+  print v13_;
+  ret;
+.b15_:
 }

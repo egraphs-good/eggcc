@@ -99,6 +99,7 @@ expression: visualization.result
   br v17_ .b19_ .b20_;
 .b19_:
   v21_: int = mul c18_ v5_;
+<<<<<<< HEAD
   v22_: int = id v21_;
   v23_: int = id v5_;
   v24_: int = id v7_;
@@ -108,6 +109,15 @@ expression: visualization.result
   v11_: int = id v22_;
   v12_: int = id v27_;
 >>>>>>> f4e994eb (snapshots)
+=======
+  v22_: int = id v5_;
+  v23_: int = id v21_;
+.b24_:
+  c25_: int = const 1;
+  v26_: int = add c25_ v5_;
+  v11_: int = id v23_;
+  v12_: int = id v26_;
+>>>>>>> 0dff68b7 (snapshots)
   v13_: int = id v6_;
   v14_: int = id v7_;
   v4_: int = id v11_;
@@ -120,12 +130,11 @@ expression: visualization.result
 .b17_:
 =======
 .b20_:
-  c28_: int = const 3;
-  v29_: int = mul c28_ v5_;
-  v22_: int = id v29_;
-  v23_: int = id v5_;
-  v24_: int = id v7_;
-  jmp .b25_;
+  c27_: int = const 3;
+  v28_: int = mul c27_ v5_;
+  v22_: int = id v5_;
+  v23_: int = id v28_;
+  jmp .b24_;
 .b16_:
 >>>>>>> f4e994eb (snapshots)
   v4_: int = id v11_;

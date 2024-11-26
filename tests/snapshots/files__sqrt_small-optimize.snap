@@ -14,6 +14,7 @@ expression: visualization.result
   jmp .b6_;
 .b5_:
   v7_: bool = feq v0 v0;
+<<<<<<< HEAD
   v8_: bool = flt v0 c2_;
   v9_: bool = not v8_;
   c10_: bool = const false;
@@ -74,5 +75,58 @@ expression: visualization.result
   v12_: float = id v17_;
   v13_: bool = id v18_;
   jmp .b15_;
+=======
+  c8_: bool = const false;
+  v9_: float = id c2_;
+  v10_: bool = id c8_;
+  br v7_ .b11_ .b12_;
+.b11_:
+  v13_: bool = flt v0 c2_;
+  br v13_ .b14_ .b15_;
+.b15_:
+  c16_: float = const 1;
+  c17_: float = const 1.0000000001;
+  c18_: float = const 0.9999999999;
+  c19_: float = const 2;
+  v20_: float = id c16_;
+  v21_: float = id c17_;
+  v22_: float = id c18_;
+  v23_: float = id c19_;
+  v24_: float = id v0;
+.b25_:
+  v26_: float = fdiv v24_ v20_;
+  v27_: float = fadd v20_ v26_;
+  v28_: float = fdiv v27_ v23_;
+  v29_: float = fdiv v28_ v20_;
+  v30_: bool = fle v29_ v21_;
+  v31_: bool = fge v29_ v22_;
+  v32_: bool = and v30_ v31_;
+  v33_: bool = not v32_;
+  v20_: float = id v28_;
+  v21_: float = id v21_;
+  v22_: float = id v22_;
+  v23_: float = id v23_;
+  v24_: float = id v24_;
+  br v33_ .b25_ .b34_;
+.b34_:
+  print v20_;
+.b14_:
+  v35_: bool = not v13_;
+  v9_: float = id c2_;
+  v10_: bool = id v35_;
+  br v10_ .b36_ .b37_;
+.b36_:
+  ret;
+  jmp .b6_;
+.b37_:
+  v38_: float = fdiv c2_ c2_;
+  print v38_;
+  ret;
+  jmp .b6_;
+.b12_:
+  v38_: float = fdiv c2_ c2_;
+  print v38_;
+  ret;
+>>>>>>> 0dff68b7 (snapshots)
 .b6_:
 }

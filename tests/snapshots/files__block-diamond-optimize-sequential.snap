@@ -6,11 +6,14 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
 <<<<<<< HEAD
+<<<<<<< HEAD
   c2_: int = const 2;
   v3_: bool = lt v0 c2_;
   c4_: int = const 0;
   c5_: int = const 1;
 =======
+=======
+>>>>>>> 1b371807 (snapshots after rebase)
 <<<<<<< HEAD
   c2_: int = const 1;
   c3_: int = const 2;
@@ -53,26 +56,31 @@ expression: visualization.result
   v15_: int = add c2_ v14_;
   print v15_;
 =======
+=======
+>>>>>>> 661bd577 (snapshots after rebase)
   c2_: int = const 2;
   v3_: bool = lt v0 c2_;
-  c4_: int = const 4;
+  c4_: int = const 0;
   c5_: int = const 1;
-  v6_: int = select v3_ c4_ c5_;
-  v7_: int = id v6_;
-  br v3_ .b8_ .b9_;
-.b8_:
-  v10_: int = add c5_ v7_;
-  print v10_;
+  c6_: int = const 5;
+  v7_: int = id c5_;
+  v8_: int = id c5_;
+  v9_: int = id c2_;
+  br v3_ .b10_ .b11_;
+.b10_:
+  c12_: bool = const true;
+  c13_: int = const 4;
+  v14_: int = select c12_ c13_ c2_;
+  v7_: int = id v14_;
+  v8_: int = id c5_;
+  v9_: int = id c2_;
+  v15_: int = id v7_;
+  v16_: int = add c5_ v15_;
+  print v16_;
   ret;
-  jmp .b11_;
-.b9_:
-  v12_: int = add c2_ v6_;
-  v7_: int = id v12_;
-  v10_: int = add c5_ v7_;
-  print v10_;
->>>>>>> f86ff8ac (snapshots)
-  ret;
+  jmp .b17_;
 .b11_:
+<<<<<<< HEAD
 <<<<<<< HEAD
   v13_: int = add c3_ v7_;
   v14_: int = select v4_ v7_ v13_;
@@ -86,9 +94,18 @@ expression: visualization.result
 >>>>>>> f4e994eb (snapshots)
   v15_: int = add c2_ v14_;
   print v15_;
-  ret;
-.b16_:
 =======
+<<<<<<< HEAD
 >>>>>>> f86ff8ac (snapshots)
 >>>>>>> 8a786fe5 (snapshots)
+=======
+  v15_: int = id v7_;
+  v18_: int = add c2_ v7_;
+  v15_: int = id v18_;
+  v16_: int = add c5_ v15_;
+  print v16_;
+>>>>>>> 661bd577 (snapshots after rebase)
+  ret;
+.b17_:
+>>>>>>> 1b371807 (snapshots after rebase)
 }

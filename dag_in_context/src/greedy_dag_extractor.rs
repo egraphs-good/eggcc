@@ -776,6 +776,23 @@ pub fn extract(
     should_maintain_linearity: bool,
     extract_debug_exprs: bool,
 ) -> (Cost, TreeProgram) {
+    let mut new_prog = original_prog.clone();
+    let mut cost = NotNan::new(0.).unwrap();
+    for func in fns {
+        let (fn_cost, extracted) = extract_fn(
+            &new_prog,
+            &func,
+            egraph.nid_to_cid(&get_root(&egraph, &func)).clone(),
+            egraph.clone(),
+            unextractables.clone(),
+            termdag,
+            &cost_model,
+            should_maintain_linearity,
+        );
+        new_prog.replace_fn(&func, extracted);
+        cost += fn_cost.total;
+    }
+
     if extract_debug_exprs {
         log::info!("Extracting debug expressions.");
         let debug_roots = find_debug_roots(egraph.clone());
@@ -803,30 +820,10 @@ pub fn extract(
             extracted_fns.push(Rc::new(func));
         }
         assert!(!extracted_fns.is_empty());
-        let new_prog = TreeProgram {
-            entry: extracted_fns[0].clone(),
-            functions: extracted_fns[1..].to_vec(),
-        };
-        (total_cost, new_prog)
-    } else {
-        let mut new_prog = original_prog.clone();
-        let mut cost = NotNan::new(0.).unwrap();
-        for func in fns {
-            let (fn_cost, extracted) = extract_fn(
-                &new_prog,
-                &func,
-                egraph.nid_to_cid(&get_root(&egraph, &func)).clone(),
-                egraph.clone(),
-                unextractables.clone(),
-                termdag,
-                &cost_model,
-                should_maintain_linearity,
-            );
-            new_prog.replace_fn(&func, extracted);
-            cost += fn_cost.total;
-        }
-        (cost, new_prog)
+        new_prog.functions.extend(extracted_fns);
     }
+
+    (cost, new_prog)
 }
 
 /// Extract the function specified by `func` from the egraph.

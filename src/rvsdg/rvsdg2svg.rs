@@ -377,6 +377,36 @@ impl Node {
     }
 }
 
+// make an svg with the text on a white background
+fn svg_text(string: &str, width: f32) -> Xml {
+    let background = Xml::new(
+        "rect",
+        [
+            ("fill", "white"),
+            ("stroke", "black"),
+            ("stroke-width", &format!("{}", STROKE_WIDTH)),
+            ("width", &format!("{}", width)),
+            ("height", &format!("{}", FONT_SIZE)),
+            ("rx", &format!("{}", CORNER_RADIUS)),
+        ],
+        "",
+    );
+
+    let text = Xml::new(
+        "text",
+        [
+            ("text-anchor", "left"),
+            ("fill", "black"),
+            ("x", &format!("{}", FONT_SIZE * 0.25)),
+            ("y", &format!("{}", FONT_SIZE * 0.75)),
+            ("font-size", &format!("{}", FONT_SIZE)),
+        ],
+        string,
+    );
+
+    Xml::group([background, text])
+}
+
 impl Region {
     fn to_xml(
         &self,
@@ -764,6 +794,15 @@ impl RvsdgProgram {
             let (size, mut xml) = function
                 .to_region()
                 .to_xml(false, &colors, &mut edge_colors);
+
+            // add the function's name to the svg
+            let name = svg_text(&function.name, size.width);
+            xml.attributes.insert(
+                "transform".to_owned(),
+                format!("translate(0, {})", FONT_SIZE),
+            );
+            xml = Xml::group([name, xml]);
+
             // assert that it doesn't have a transform yet
             assert!(!xml.attributes.contains_key("transform"));
             xml.attributes

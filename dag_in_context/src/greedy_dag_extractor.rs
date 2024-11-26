@@ -704,6 +704,7 @@ fn node_cost_in_region(
     extractor.calculate_cost_set(node_id, child_cost_sets, info)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_fn(
     original_prog: &TreeProgram,
     func: &str,
@@ -764,6 +765,7 @@ fn find_debug_roots(egraph: egraph_serialize::EGraph) -> Vec<(ClassId, String)> 
 /// Inputs: a program, serialized egraph, and a set of functions to extract.
 /// Also needs to know a set of unextractable functions and a cost model.
 /// Produces a new program with the functions specified replaced by their extracted versions.
+#[allow(clippy::too_many_arguments)]
 pub fn extract(
     original_prog: &TreeProgram,
     fns: Vec<String>,
@@ -795,7 +797,7 @@ pub fn extract(
             let output_ty = typechecker
                 .add_arg_types_to_expr(extracted.clone(), &None)
                 .0;
-            let input_ty = typechecker.get_arg_type(&extracted);
+            let input_ty = TypeChecker::get_arg_type(&extracted);
             // make a function out of the expr
             let func = Expr::Function(name.clone(), input_ty, output_ty, extracted);
             extracted_fns.push(Rc::new(func));
@@ -1307,14 +1309,18 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
     for func in prog.fns() {
         let egraph_info = EgraphInfo::new(
             &func,
-            serialized_egraph.nid_to_cid(&get_root(&serialized_egraph, &func)),
+            serialized_egraph
+                .nid_to_cid(&get_root(&serialized_egraph, &func))
+                .clone(),
             &DefaultCostModel,
             &serialized_egraph,
             unextractables.clone(),
         );
         let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
-        let root = serialized_egraph.nid_to_cid(&get_root(&serialized_egraph, &func));
+        let root = serialized_egraph
+            .nid_to_cid(&get_root(&serialized_egraph, &func))
+            .clone();
         let (_cost_res, prog) =
             extract_with_paths(&func, root, extractor_not_linear, &egraph_info, None);
         let res = extractor_not_linear.check_function_is_linear(&prog);
@@ -1547,8 +1553,13 @@ fn test_validity_of_extraction() {
     );
     let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);
 
-    let (_cost_res, res) =
-        extract_with_paths("main", root, extractor_not_linear, &egraph_info, None);
+    let (_cost_res, res) = extract_with_paths(
+        "main",
+        root.clone(),
+        extractor_not_linear,
+        &egraph_info,
+        None,
+    );
     // first extraction should fail linearity check
     assert!(extractor_not_linear.check_function_is_linear(&res).is_err());
 

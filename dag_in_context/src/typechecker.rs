@@ -550,22 +550,22 @@ impl<'a> TypeChecker<'a> {
         (res_ty, res_expr)
     }
 
-    pub(crate) fn get_arg_type(&self, expr: &RcExpr) -> Type {
+    pub(crate) fn get_arg_type(expr: &RcExpr) -> Type {
         match expr.as_ref() {
             Expr::Arg(ty, _) => ty.clone(),
             Expr::Const(_, ty, _) => ty.clone(),
-            Expr::Top(_, rc, _, _) => self.get_arg_type(rc),
-            Expr::Bop(_, left, _) => self.get_arg_type(left),
-            Expr::Uop(_, inner) => self.get_arg_type(inner),
-            Expr::Get(child, _) => self.get_arg_type(child),
-            Expr::Alloc(_, amount, _, _) => self.get_arg_type(amount),
-            Expr::Call(_, arg) => self.get_arg_type(arg),
+            Expr::Top(_, rc, _, _) => Self::get_arg_type(rc),
+            Expr::Bop(_, left, _) => Self::get_arg_type(left),
+            Expr::Uop(_, inner) => Self::get_arg_type(inner),
+            Expr::Get(child, _) => Self::get_arg_type(child),
+            Expr::Alloc(_, amount, _, _) => Self::get_arg_type(amount),
+            Expr::Call(_, arg) => Self::get_arg_type(arg),
             Expr::Empty(ty, _) => ty.clone(),
-            Expr::Single(arg) => self.get_arg_type(arg),
-            Expr::Concat(left, _) => self.get_arg_type(left),
-            Expr::Switch(_, input, _) => self.get_arg_type(input),
-            Expr::If(pred, _, _, _) => self.get_arg_type(pred),
-            Expr::DoWhile(inputs, _) => self.get_arg_type(inputs),
+            Expr::Single(arg) => Self::get_arg_type(arg),
+            Expr::Concat(left, _) => Self::get_arg_type(left),
+            Expr::Switch(_, input, _) => Self::get_arg_type(input),
+            Expr::If(pred, _, _, _) => Self::get_arg_type(pred),
+            Expr::DoWhile(inputs, _) => Self::get_arg_type(inputs),
             Expr::Function(_, inty, _, _) => inty.clone(),
             Expr::Symbolic(_) => panic!("Found symbolic expr in get_arg_type"),
         }

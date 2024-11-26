@@ -38,6 +38,7 @@ pub(crate) fn helpers() -> String {
             type-analysis)
         (saturate is-resolved)
 
+        (saturate term-subst)
         (saturate subst)
         apply-subst-unions
         cleanup-subst
@@ -50,6 +51,7 @@ pub(crate) fn helpers() -> String {
 
     (saturate canon)
     (saturate interval-analysis)
+    (saturate terms)
     ;; memory-helpers TODO run memory helpers for memory optimizations
 
     ;; finally, subsume now that helpers are done
@@ -81,6 +83,7 @@ fn cheap_optimizations() -> Vec<String> {
 
 fn optimizations() -> Vec<String> {
     [
+        "select_opt",
         "loop-unroll",
         "switch_rewrite",
         "loop-inv-motion",

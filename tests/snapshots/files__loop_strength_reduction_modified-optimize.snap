@@ -34,45 +34,11 @@ expression: visualization.result
   v26_: int = add v7_ v8_;
   v27_: bool = eq v11_ v7_;
   v28_: int = add v8_ v9_;
-  v29_: int = id v7_;
-  v30_: int = id v8_;
-  v31_: int = id v28_;
-  v32_: int = id v10_;
-  v33_: int = id v11_;
-  v34_: int = id v12_;
-  v35_: int = id v13_;
-  br v27_ .b36_ .b37_;
-.b36_:
-  v38_: int = add v10_ v28_;
-  v29_: int = id v7_;
-  v30_: int = id v8_;
-  v31_: int = id v38_;
-  v32_: int = id v10_;
-  v33_: int = id v7_;
-  v34_: int = id v12_;
-  v35_: int = id v13_;
+  v29_: int = add v10_ v28_;
+  v30_: int = select v27_ v29_ v28_;
   v16_: int = id v26_;
   v17_: int = id v8_;
-  v18_: int = id v31_;
-  v19_: int = id v10_;
-  v20_: int = id v11_;
-  v21_: int = id v12_;
-  v22_: int = id v13_;
-  v7_: int = id v16_;
-  v8_: int = id v17_;
-  v9_: int = id v18_;
-  v10_: int = id v19_;
-  v11_: int = id v20_;
-  v12_: int = id v21_;
-  v13_: int = id v22_;
-  br v15_ .b14_ .b39_;
-.b39_:
-  ret;
-  jmp .b40_;
-.b37_:
-  v16_: int = id v26_;
-  v17_: int = id v8_;
-  v18_: int = id v31_;
+  v18_: int = id v30_;
   v19_: int = id v10_;
   v20_: int = id v11_;
   v21_: int = id v12_;
@@ -94,5 +60,4 @@ expression: visualization.result
   v12_: int = id v21_;
   v13_: int = id v22_;
   ret;
-.b40_:
 }

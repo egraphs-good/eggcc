@@ -39,16 +39,16 @@
 
 ;; leaf node with context
 ;; replace this context- subst assumes the context is more specific
-(rule ((= lhs (Subst assum to (Arg ty oldctx)))
+(rule ((= lhs (Subst assum to (Arg _ty _oldctx)))
        )
       ;; add the assumption `to`
       ((DelayedSubstUnion lhs (AddContext assum to)))
       :ruleset subst)
-(rule ((= lhs (Subst assum to (Const c ty oldctx)))
+(rule ((= lhs (Subst assum to (Const c _ty _oldctx)))
        (HasArgType to newty))
       ((DelayedSubstUnion lhs (Const c newty assum)))
       :ruleset subst)
-(rule ((= lhs (Subst assum to (Empty ty oldctx)))
+(rule ((= lhs (Subst assum to (Empty _ty _oldctx)))
        (HasArgType to newty))
       ((DelayedSubstUnion lhs (Empty newty assum)))
       :ruleset subst)

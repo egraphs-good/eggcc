@@ -4,6 +4,12 @@
 (function is-inv-Expr (Expr Expr) bool :unextractable :merge (or old new))
 (function is-inv-ListExpr (Expr ListExpr) bool :unextractable :merge (or old new))
 
+(ruleset boundary-analysis)
+;; An Expr is on boundary when it is invariant and its parent is not
+;                       loop invariant-expr
+(relation boundary-Expr (Expr Expr))
+
+
 ;; in default, when there is a find, set is-inv to false
 (rule ((BodyContainsExpr loop term)
        (= loop (DoWhile inputs pred_out)))
@@ -26,11 +32,203 @@
        (= i (ListExpr-length list)))
     ((set (is-inv-ListExpr loop list) true)) :ruleset always-run)
 
+;; Constants are invariant
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Const _n _ty _ctx)))
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
 
-(ruleset boundary-analysis)
-;; An Expr is on boundary when it is invariant and its parent is not
-;                       loop invariant-expr
-(relation boundary-Expr (Expr Expr))
+;; Passed through values are invariant
+(rule ((= loop (DoWhile in pred_out))
+       (= expr (Get pred_out (+ i 1)))
+       (= expr (Get (Arg ty ctx) i))) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Top _op _x _y _z))  
+       (= true (is-inv-Expr loop _x))
+       (= true (is-inv-Expr loop _y))
+       (= true (is-inv-Expr loop _z))
+       (TopIsPure _op)
+       ) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Bop _op _x _y)) (BinaryOpIsPure _op) 
+       (= true (is-inv-Expr loop _x)) (= true (is-inv-Expr loop _y)) 
+       ) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Uop _op _x)) (UnaryOpIsPure _op) 
+       (= true (is-inv-Expr loop _x)) 
+       ) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Get _tup _i))  
+       (= true (is-inv-Expr loop _tup)) 
+       ) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Concat _x _y))  
+       (= true (is-inv-Expr loop _x)) (= true (is-inv-Expr loop _y)) 
+       ) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Single _x))  
+       (= true (is-inv-Expr loop _x)) 
+       ) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Switch _pred _inputs _branches))  
+       (= true (is-inv-Expr loop _pred)) (= true (is-inv-Expr loop _inputs)) (= true (is-inv-ListExpr loop _branches)) 
+       ) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (If _pred _input _then _else))  
+       (= true (is-inv-Expr loop _pred)) (= true (is-inv-Expr loop _input)) 
+       ) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (DoWhile _in _pred-and-output))  
+       (= true (is-inv-Expr loop _in)) 
+       (ExprIsPure expr)) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Call _func _arg))  
+       (= true (is-inv-Expr loop _arg)) 
+       (ExprIsPure expr)) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+(rule ((BodyContainsExpr loop expr) 
+       (= loop (DoWhile in out)) 
+       (= expr (Empty _ty _ctx))  
+        
+       ) 
+      ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
+
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Top _op _x _y _z)) 
+       (= expr1 _x)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Top _op _x _y _z)) 
+       (= expr1 _y)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Top _op _x _y _z)) 
+       (= expr1 _z)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Bop _op _x _y)) 
+       (= expr1 _x)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Bop _op _x _y)) 
+       (= expr1 _y)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Uop _op _x)) 
+       (= expr1 _x)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Concat _x _y)) 
+       (= expr1 _x)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Concat _x _y)) 
+       (= expr1 _y)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Single _x)) 
+       (= expr1 _x)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Switch _pred _inputs _branches)) 
+       (= expr1 _pred)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Switch _pred _inputs _branches)) 
+       (= expr1 _inputs)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (If _pred _input _then _else)) 
+       (= expr1 _pred)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (If _pred _input _then _else)) 
+       (= expr1 _input)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (DoWhile _in _pred-and-output)) 
+       (= expr1 _in)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Call _func _arg)) 
+       (= expr1 _arg)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Alloc _id _e _state _ty)) 
+       (= expr1 _e)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+(rule ((= true (is-inv-Expr loop expr1)) 
+       (= false (is-inv-Expr loop expr2)) 
+       (= expr2 (Alloc _id _e _state _ty)) 
+       (= expr1 _state)) 
+       ((boundary-Expr loop expr1)) :ruleset boundary-analysis)
+
+
 
 ;; boundary for ListExpr's children
 (rule ((= true (is-inv-Expr loop expr))
@@ -66,28 +264,8 @@
        (= in_type (TupleT tylist))
        (= false (hoisted-loop in pred_out))
        (= len (tuple-length in)))
-      ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
-       (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
-
-       ;; create an virtual assume node, union it with actuall InLoop later
-       (let assum (InExtendedLoop in pred_out new_input))
-       (let new_out_branch (Get (Arg new_input_type assum) len))
-
-       ;; this two subst only change arg to arg with new type
-       (let substed_pred_out
-         (Subst assum
-               (SubTuple (Arg new_input_type assum) 0 len) pred_out))
-       (let inv_in_new_loop
-            (Subst assum (SubTuple (Arg new_input_type assum) 0 len) inv))
-       (let new_pred_out (Concat substed_pred_out (Single new_out_branch)))
+      ((DebugExpr inv)
+       (DebugExpr loop)
        
-       (let new_loop (DoWhile new_input new_pred_out))
-       (union assum (InLoop new_input new_pred_out))
-       (union inv_in_new_loop new_out_branch)
-       (let wrapper (SubTuple new_loop 0 len))
-       (union loop wrapper)
-       (subsume (DoWhile in pred_out)) 
-       ;; don't hoist same loop again
-       (set (hoisted-loop in pred_out) true)
       )
        :ruleset loop-inv-motion)

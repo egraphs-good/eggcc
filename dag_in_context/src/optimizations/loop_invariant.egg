@@ -41,7 +41,9 @@
 ;; Passed through values are invariant
 (rule ((= loop (DoWhile in pred_out))
        (= expr (Get pred_out (+ i 1)))
-       (= expr (Get (Arg ty ctx) i))) 
+       (= expr (Get (Arg ty ctx) i))
+       (HasType expr ty)
+       (PureType ty)) 
       ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
 
 (rule ((BodyContainsExpr loop expr) 

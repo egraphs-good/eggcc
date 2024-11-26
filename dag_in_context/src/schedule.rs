@@ -50,7 +50,6 @@ pub(crate) fn helpers() -> String {
 
     (saturate canon)
     (saturate interval-analysis)
-    (saturate always-switch-rewrite)
     ;; memory-helpers TODO run memory helpers for memory optimizations
 
     ;; finally, subsume now that helpers are done
@@ -70,6 +69,8 @@ fn cheap_optimizations() -> Vec<String> {
 
     [
         "loop-simplify",
+        "interval-rewrite",
+        "always-switch-rewrite",
         // "memory",
         "peepholes",
     ]

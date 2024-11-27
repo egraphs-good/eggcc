@@ -80,11 +80,12 @@
 (rule (
     (= loop (DoWhile inpW outW))
     (IVTPermutationAnalysis outW conditional perm)
-    ;; This generalizes the following conditions:
+    ;; Only handle if statments that have this form:
     ;;   (= conditional (If condI inpI thn els))
     ;;   (= (Get thn ith) (Const (Bool true) _unused1 _unused2))
     ;;   (= (Get els ith) (Const (Bool false) _unused3 _unused4))
     (ith-arg-is-bool conditional condI inpI ith thn els)
+    (= (Get outW 0) (Get ith conditional))
 
     (ContextOf inpW outer-ctx)
     (ContextOf inpI if-ctx)

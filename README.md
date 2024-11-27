@@ -37,3 +37,5 @@ To run the nightly server for an existing nightly, run `cd nightly/output && pyt
 
 ## Troubleshooting
 - On Mac running `make` might show this error: `Library not loaded: /opt/homebrew/opt/icu4c/lib/libicui18n.74.dylib`. To resolve this, run `brew upgrade`.
+- On Mac, if you get a linker error complaining about not being able to find
+  zstd, try adding zstd to your `LIBRARY_PATH` in `.zshrc` or `.zprofile`, e.g: `export LIBRARY_PATH="$LIBRARY_PATH:/opt/homebrew/opt/zstd/lib"`

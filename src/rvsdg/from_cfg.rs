@@ -10,6 +10,7 @@
 
 use std::fs::File;
 use std::io::Write;
+use std::mem;
 use std::process::Command;
 
 use bril_rs::{ConstOps, EffectOps, Instruction, Literal, Position, Type, ValueOps};
@@ -215,15 +216,23 @@ impl<'a> RvsdgBuilder<'a> {
         let pos = self.cfg.graph[block].pos.clone();
         let mut arg = 0;
         for input in live_vars.iter() {
-            let Some(op) = self.store.get(&input).copied() else {
-                continue;
+            let op = match self.store.get(&input).copied() {
+                Some(op) => op,
+                None => {
+                    // Attempt to synthesize a placeholder.
+                    let Some(ty) = self.analysis.var_types.get_type(input) else {
+                        // Hopefully we don't need this variable. If we do, it
+                        // will cause a scope error downstream.
+                        continue;
+                    };
+                    Operand::Project(0, get_placeholder(ty, &mut self.expr))
+                }
             };
             input_vars.push(input);
             inputs.push(op);
             self.store.insert(input, Operand::Arg(arg));
             arg += 1;
         }
-
         // Now we "run" the loop until we reach the end:
         let tail = if let Some(tail) = loop_tail {
             let mut next = self.try_branch(block)?.unwrap();
@@ -415,10 +424,8 @@ impl<'a> RvsdgBuilder<'a> {
             input_vars.push(var);
         }
 
+        let old_store = mem::take(&mut self.store);
         for (_, succ) in succs {
-            // NB: for deeply-nested branches, an immutable hashmap would be
-            // more efficient here.
-            let old_store = self.store.clone();
             // First, make sure that all inputs are correctly bound to inputs to the block.
             for (i, var) in input_vars.iter().copied().enumerate() {
                 self.store.insert(var, Operand::Arg(i));
@@ -444,25 +451,7 @@ impl<'a> RvsdgBuilder<'a> {
                             self.analysis.intern.get_var(var)
                         );
                     };
-                    match ty {
-                        VarType::Bril(bril_ty) => {
-                            let lit = match bril_ty {
-                                Type::Int => Literal::Int(0),
-                                Type::Bool => Literal::Bool(false),
-                                Type::Float => Literal::Float(0.0),
-                                Type::Char => Literal::Char('x'),
-                                Type::Pointer(_) => {
-                                    unimplemented!("placeholder values for pointers aren't yet implemented")
-                                },
-                            };
-                            let op = get_id(
-                                &mut self.expr,
-                                RvsdgBody::BasicOp(BasicExpr::Const(ConstOps::Const, lit, bril_ty)),
-                            );
-                            Operand::Project(0, op)
-                        }
-                        VarType::State => panic!("state variable unbound"),
-                    }
+                    Operand::Project(0, get_placeholder(ty, &mut self.expr))
                 });
                 output_vec.push(op);
                 if fill_output {
@@ -470,8 +459,9 @@ impl<'a> RvsdgBuilder<'a> {
                 }
             }
             outputs.push(output_vec);
-            self.store = old_store;
+            self.store.clear();
         }
+        self.store = old_store;
 
         let pred = pred_op;
         let gamma_node = match bril_type {
@@ -785,5 +775,36 @@ fn get_op(
             id: intern.get_var(var).clone(),
             pos: pos.clone(),
         }),
+    }
+}
+
+/// bril allows code with the following shape:
+///
+/// > do { x = 1 } while (y); print x
+///
+/// In RVSDG terms, we want to turn this into a Theta node. This node needs to
+/// have `x` as an output because it's used after the loop. But all Theta node
+/// outputs must also be inputs. In a language like LLVM we might just use
+/// something like `undef` for this, but without undef we need to come up with a
+/// well-typed placeholder value that isn't read. This function generates such a
+/// value.
+fn get_placeholder(ty: VarType, exprs: &mut Vec<RvsdgBody>) -> Id {
+    match ty {
+        VarType::Bril(ty) => {
+            let lit = match ty {
+                Type::Int => Literal::Int(0),
+                Type::Bool => Literal::Bool(false),
+                Type::Float => Literal::Float(0.0),
+                Type::Char => Literal::Char('x'),
+                Type::Pointer(_) => {
+                    unimplemented!("placeholder values for pointers aren't yet implemented")
+                }
+            };
+            get_id(
+                exprs,
+                RvsdgBody::BasicOp(BasicExpr::Const(ConstOps::Const, lit, ty)),
+            )
+        }
+        VarType::State => panic!("attempt to create a placeholder value for the state variable"),
     }
 }

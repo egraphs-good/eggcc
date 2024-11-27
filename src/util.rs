@@ -1081,14 +1081,22 @@ impl Run {
 
         let processed = dir.path().join("postprocessed.ll");
         let optimized = dir.path().join("optimized.ll");
-        // HACK: check if opt-18 exists
-        // otherwise use opt
+        // HACK: check if opt-18/clang-18 exists
+        // otherwise use opt/clang
         // On Linux, sometimes it's called opt-18, while on mac it seems to be just opt
         // Also, on some machines, just running `opt-18` hangs, so we pass the version flag
+        // NB: on newer mac installs, opt-19 and clang-19 will be in the path,
+        // but opt/clang will not be.
         let opt_cmd = if Command::new("opt-18").arg("--version").status().is_ok() {
             "opt-18"
         } else {
             "opt"
+        };
+
+        let clang_cmd = if Command::new("clang-18").arg("--version").status().is_ok() {
+            "clang-18"
+        } else {
+            "clang"
         };
 
         // first, run sroa to get rid of memory-based registers
@@ -1108,7 +1116,7 @@ impl Run {
 
         // Now, run the llvm optimizer and generate optimized llvm
         expect_command_success(
-            Command::new("clang-18")
+            Command::new(clang_cmd)
                 .arg(processed.clone())
                 .arg("-g0")
                 .arg(format!("-{}", llvm_level.llvm_opt_level()))
@@ -1124,7 +1132,7 @@ impl Run {
         // Lower the optimized LLVM but don't do target-specific optimizations besides register allocation
         // We use O0 and disable debug info
         expect_command_success(
-            Command::new("clang-18")
+            Command::new(clang_cmd)
                 .arg(
                     // in O3-O3 mode, use processed so we aren't running the front end twice
                     if llvm_level == LLVMOptLevel::O3_O3 {

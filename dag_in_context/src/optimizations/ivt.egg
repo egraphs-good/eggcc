@@ -1,5 +1,6 @@
 
 ;; A Perm is a reverse list of integers
+;; Applying a permutation allows us to reorder a tuple according to the permutation
 (datatype Perm (PermPush i64 Perm) (PNil))
 ;; expr1 is a list of expressions of the form (Get expr2 i),
 ;; where all the i's form a permutation

@@ -85,7 +85,7 @@
     ;;   (= (Get thn ith) (Const (Bool true) _unused1 _unused2))
     ;;   (= (Get els ith) (Const (Bool false) _unused3 _unused4))
     (ith-arg-is-bool conditional condI inpI ith thn els)
-    (= (Get outW 0) (Get ith conditional))
+    (= (Get outW 0) (Get conditional ith))
 
     (ContextOf inpW outer-ctx)
     (ContextOf inpI if-ctx)

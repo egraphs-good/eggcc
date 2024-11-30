@@ -3,7 +3,7 @@ use egglog::{Term, TermDag};
 use greedy_dag_extractor::{extract, serialized_egraph, DefaultCostModel};
 use indexmap::IndexMap;
 use interpreter::Value;
-use schedule::rulesets;
+use schedule::{rulesets, CompilerPass};
 use schema::TreeProgram;
 use std::{fmt::Write, i64};
 use to_egglog::TreeToEgglog;
@@ -252,6 +252,14 @@ pub enum Schedule {
     Parallel,
     Sequential,
 }
+impl Schedule {
+    pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
+        match self {
+            Schedule::Parallel => parallel_schedule(),
+            Schedule::Sequential => schedule::mk_sequential_schedule(),
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct EggccConfig {
@@ -294,10 +302,7 @@ pub fn optimize(
     cache: &mut ContextCache,
     eggcc_config: &EggccConfig,
 ) -> std::result::Result<TreeProgram, egglog::Error> {
-    let schedule_list = match eggcc_config.schedule {
-        Schedule::Parallel => parallel_schedule(),
-        Schedule::Sequential => schedule::mk_sequential_schedule(),
-    };
+    let schedule_list = eggcc_config.schedule.get_schedule_list();
     let mut res = program.clone();
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());

@@ -4,7 +4,7 @@ use crate::{EggCCError, Optimizer};
 use bril_rs::Program;
 use clap::ValueEnum;
 use dag_in_context::dag2svg::tree_to_svg;
-use dag_in_context::schedule::parallel_schedule;
+use dag_in_context::schedule::{self};
 use dag_in_context::{build_program, check_roundtrip_egraph, EggccConfig, Schedule};
 
 use dag_in_context::schema::TreeProgram;
@@ -802,27 +802,34 @@ impl Run {
                 )
             }
             RunMode::Egglog => {
-                assert_eq!(self.eggcc_config.schedule, Schedule::Parallel, "Output egglog only works in parallel mode. Sequential mode does not use a single egraph");
-
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let (dag, mut cache) = rvsdg.to_dag_encoding(true);
+                let schedules = self.eggcc_config.schedule.get_schedule_list();
 
-                let schedule_steps = parallel_schedule();
-                if schedule_steps.len() != 1 {
-                    log::warn!("Parallel schedule had multiple steps! You may need to adjust the schedule to make eggcc tractable.");
-                }
+                // how many actual passes to run
+                let cutoff = self.eggcc_config.get_normalized_cutoff(schedules.len());
+                assert!(cutoff != 0);
+                let cutoff = cutoff - 1;
+                let eggcc_config = EggccConfig {
+                    stop_after_n_passes: cutoff as i64,
+                    ..self.eggcc_config.clone()
+                };
+                let optimized = dag_in_context::optimize(&dag, &mut cache, &eggcc_config)
+                    .map_err(EggCCError::EggLog)?;
 
-                // TODO make the egglog run mode use intermediate egglog files instead of sticking passes together
+                let last_schedule_step = &schedules[cutoff];
+
+                let inline_program = match last_schedule_step {
+                    schedule::CompilerPass::Schedule(_) => None,
+                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&optimized),
+                };
+
                 let egglog = build_program(
-                    &dag,
-                    Some(&dag),
+                    &optimized,
+                    inline_program,
                     &dag.fns(),
                     &mut cache,
-                    &schedule_steps
-                        .iter()
-                        .map(|pass| pass.egglog_schedule().to_string())
-                        .collect::<Vec<String>>()
-                        .join("\n"),
+                    last_schedule_step.egglog_schedule(),
                 );
                 (
                     vec![Visualization {
@@ -1198,5 +1205,52 @@ impl FreshNameGen {
         let name = self.next;
         self.next += 1;
         name
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use dag_in_context::Schedule;
+
+    use super::{Run, RunMode};
+
+    #[test]
+    fn test_to_egglog_cutoff() {
+        let test_program = super::TestProgram::BrilFile("tests/passing/small/add.bril".into());
+        let build_run = move |schedule: &Schedule, stop_after_n_passes| {
+            let mut run = Run::new(test_program.clone().read_program(), RunMode::Egglog);
+            run.eggcc_config.schedule = schedule.clone();
+            run.eggcc_config.stop_after_n_passes = stop_after_n_passes;
+            run
+        };
+        let mut prog = vec![];
+        for schedule in [Schedule::Sequential, Schedule::Parallel] {
+            let sched_len = schedule.get_schedule_list().len() as i64;
+            // 0 is not valid because to_egglog starts with 1
+            for i in 1..sched_len + 1 {
+                let run1 = build_run(&schedule, i);
+                let result1 = run1.run().unwrap().visualizations[0].result.clone();
+                // When stop_after_n == sched_len, there would be no negative case (which would otherwise be 0).
+                if i != sched_len {
+                    let run2 = build_run(&schedule, -sched_len + i);
+                    let result2 = run2.run().unwrap().visualizations[0].result.clone();
+                    assert_eq!(
+                        result1, result2,
+                        "Negative stop_after_n_passes does not generate the consistent program"
+                    );
+                }
+
+                prog.push(result1);
+            }
+        }
+
+        for i in 0..prog.len() {
+            for j in i + 1..prog.len() {
+                assert_ne!(
+                    prog[i], prog[j],
+                    "Two schedule steps have the same schedule"
+                );
+            }
+        }
     }
 }

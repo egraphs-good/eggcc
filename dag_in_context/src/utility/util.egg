@@ -25,35 +25,67 @@
        (= len (TypeList-length tl)))
       ((set (tuple-length expr) len)) :ruleset always-run)
 
+
+;; Leading expressions are tuples that are used as a whole
+;; during optimization and are matched in the query.
+(relation leading-Expr (Expr))
+(relation leading-Expr-list (ListExpr))
+
+(rule ((= e (DoWhile inputs pred_out)))
+      ((leading-Expr e)
+       (leading-Expr inputs)
+       (leading-Expr pred_out))
+      :ruleset always-run)
+(rule ((= e (If cond inputs thn els)))
+       ((leading-Expr e)
+        (leading-Expr inputs)
+        (leading-Expr thn)
+        (leading-Expr els))
+       :ruleset always-run)
+(rule ((= e (Switch pred inputs branch)))
+      ((leading-Expr e)
+       (leading-Expr-list branch)
+       (leading-Expr inputs))
+       :ruleset always-run)
+(rule ((leading-Expr-list (Cons hd tl)))
+      ((leading-Expr hd)
+       (leading-Expr-list tl))
+      :ruleset always-run)
+(rule ((= e (Arg t a)))
+      ((leading-Expr e))
+      :ruleset always-run)
+
 ;; Create a Get for every index, and rewrite it to see through Concat
 (rule ((Single expr)) ((union (Get (Single expr) 0) expr)) :ruleset always-run)
 ;; initial get
-(rule ((> (tuple-length tuple) 0))
+(rule ((leading-Expr tuple)
+       (> (tuple-length tuple) 0))
       ((Get tuple 0))
       :ruleset always-run)
 ;; next get
-(rule ((= len (tuple-length tuple))
+(rule ((leading-Expr tuple)
+       (= len (tuple-length tuple))
        (= ith (Get tuple i))
        (< (+ i 1) len)
        )
        ((Get tuple (+ 1 i)))
        :ruleset always-run)
 
-;; descend left
-(rule ((Get (Concat expr1 expr2) i)
-       (= (tuple-length expr1) len1)
-       (< i len1))
-      ((union (Get (Concat expr1 expr2) i)
-              (Get expr1 i)))
-       :ruleset always-run)
-;; descend right
-(rule ((Get (Concat expr1 expr2) i)
-       (= (tuple-length expr1) len1)
-       (>= i len1))
-      ((union (Get (Concat expr1 expr2) i)
-              (Get expr2 (- i len1))))
-       :ruleset always-run)
-
+(function List-suffix (Expr i64) Expr)
+(rule ((Get x i))
+      ((union (List-suffix x 0) x))
+      :ruleset always-run)
+(rule ((= (List-suffix x n) (Concat (Single hd) tl)))
+      ((union (List-suffix x (+ n 1)) tl))
+      :ruleset always-run)
+(rule ((= lhs (Get x i))
+       (= (List-suffix x i) (Concat (Single e) rest)))
+      ((union lhs e))
+      :ruleset always-run)
+(rule ((= lhs (Get x i))
+       (= (List-suffix x i) (Single e)))
+      ((union lhs e))
+      :ruleset always-run)
 
 ;; A temporary context.
 ;; Be sure to delete at the end of all actions or else!!!

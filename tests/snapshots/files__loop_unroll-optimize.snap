@@ -1,6 +1,7 @@
 ---
 source: tests/files.rs
 expression: visualization.result
+snapshot_kind: text
 ---
 # ARGS: 
 @main {
@@ -11,19 +12,12 @@ expression: visualization.result
   v4_: int = id c2_;
 .b5_:
   v6_: bool = lt v3_ v4_;
-  v7_: int = id v3_;
-  v8_: int = id v4_;
-  br v6_ .b9_ .b10_;
+  v7_: int = add v3_ v4_;
+  v8_: int = select v6_ v7_ v3_;
+  v3_: int = id v8_;
+  v4_: int = id v4_;
+  br v6_ .b5_ .b9_;
 .b9_:
-  v11_: int = add v3_ v4_;
-  v7_: int = id v11_;
-  v8_: int = id v4_;
-  v3_: int = id v7_;
-  v4_: int = id v8_;
-  jmp .b5_;
-.b10_:
-  v3_: int = id v7_;
-  v4_: int = id v8_;
   print v3_;
   ret;
 }

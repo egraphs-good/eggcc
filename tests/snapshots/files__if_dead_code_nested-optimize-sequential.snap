@@ -24,7 +24,7 @@ expression: visualization.result
   ret;
   jmp .b15_;
 .b8_:
-  v16_: bool = gt v0 c6_;
+  v16_: bool = lt c6_ v0;
   c17_: bool = const false;
   c18_: int = const 2;
   v19_: int = id c18_;

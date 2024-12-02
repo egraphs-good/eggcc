@@ -4,11 +4,12 @@
 (datatype Perm (PermPush i64 Perm) (PNil))
 ;; expr1 is a list of expressions of the form (Get expr2 i),
 ;; where all the i's form a permutation
+;; The permutation is stored as an expression such that (Subst assum expr2 perm) = expr1
 (relation IVTPermutationAnalysisDemand (Expr))
-;;                                    expr1 curr  expr2
-(relation IVTPermutationAnalysisImpl (Expr  Expr  Expr Perm))
-;;                                expr1 expr2
-(relation IVTPermutationAnalysis (Expr Expr Perm))
+;;                                    expr1 curr  expr2  perm
+(relation IVTPermutationAnalysisImpl (Expr  Expr  Expr   Expr))
+;;                                expr1 expr2 perm
+(relation IVTPermutationAnalysis (Expr Expr Expr))
 
 (rule (
     (DoWhile inpW outW)
@@ -19,35 +20,30 @@
 (rule (
     (IVTPermutationAnalysisDemand loop-body)
     (= loop-body (Concat (Single (Get expr ith)) rest))
+    (HasType expr expr-ty)
 ) (
-    (let perm (PermPush ith (PNil)))
+    (let perm (Single (Get (Arg expr-ty (InFunc "no-ctx")) ith)))
     (IVTPermutationAnalysisImpl loop-body rest expr perm)
 ) :ruleset always-run)
 
 (rule (
     (IVTPermutationAnalysisImpl loop-body curr expr perm)
     (= curr (Concat (Single (Get expr ith)) rest))
+    (HasType expr expr-ty)
 ) (
-    (let new-perm (PermPush ith perm))
+    (let new-perm (Concat perm (Single (Get (Arg expr-ty (InFunc "no-ctx")) ith))))
     (IVTPermutationAnalysisImpl loop-body rest expr new-perm)
 ) :ruleset always-run)
 
 (rule (
     (IVTPermutationAnalysisImpl loop-body (Single last) expr perm)
     (= last (Get expr ith))
+    (HasType expr expr-ty)
 ) (
-    (let new-perm (PermPush ith perm))
+    (let new-perm (Concat perm (Single (Get (Arg expr-ty (InFunc "no-ctx")) ith))))
     (IVTPermutationAnalysis loop-body expr new-perm)
 ) :ruleset always-run)
 
-(function ApplyPerm (Perm Expr) Expr)
-
-(rewrite (ApplyPerm (PermPush ith rest) expr) 
-         (Concat (ApplyPerm rest expr) (Single (Get expr ith)))
-    :when ((= rest (PermPush _jth _rest)))
-    :ruleset always-run)
-(rewrite (ApplyPerm (PermPush ith (PNil)) expr) (Single (Get expr ith))
-    :ruleset always-run)
 
 (ruleset loop-inversion)
 
@@ -103,7 +99,7 @@
 
     ;; body
     (let new-loop-outputs_ 
-        (TupleRemoveAt (ApplyPerm perm thn) 0))
+        (TupleRemoveAt (Subst if-ctx thn perm) 0))
     (let new-loop-outputs 
         (Subst new-loop-context new-loop-outputs_ 
             (Concat (Single condI) inpI)))
@@ -119,7 +115,7 @@
         (Subst outer-ctx new-if els))
     (let new-expr 
         (TupleRemoveAt 
-            (ApplyPerm perm new-expr_) 
+            (Subst outer-ctx new-expr_ perm) 
             0))
 
     (union new-expr loop)

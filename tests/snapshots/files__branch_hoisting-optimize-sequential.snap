@@ -23,26 +23,12 @@ expression: visualization.result
 .b16_:
   v18_: bool = eq v6_ v7_;
   c19_: int = const 2;
-<<<<<<< HEAD
   v20_: int = mul c19_ v5_;
   c21_: int = const 3;
   v22_: int = mul c21_ v5_;
   v23_: int = select v18_ v20_ v22_;
   c24_: int = const 1;
   v25_: int = add c24_ v5_;
-=======
-  br v18_ .b20_ .b21_;
-.b20_:
-  v22_: int = mul c19_ v5_;
-  v23_: int = id v22_;
-  v24_: int = id v5_;
-  v25_: int = id v7_;
-  v26_: int = id v7_;
-  v27_: int = id v8_;
-.b28_:
-  c29_: int = const 1;
-  v30_: int = add c29_ v5_;
->>>>>>> 2476fe58 (convert perm to use subst)
   v11_: int = id v23_;
   v12_: int = id v25_;
   v13_: int = id v6_;

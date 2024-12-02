@@ -52,8 +52,8 @@
        (= true (is-inv-Expr loop _x))
        (= true (is-inv-Expr loop _y))
        (= true (is-inv-Expr loop _z))
-       (TopIsPure _op)
-       ) 
+       (TernaryOpIsPure _op)
+       )
       ((set (is-inv-Expr loop expr) true)) :ruleset always-run)
 
 (rule ((BodyContainsExpr loop expr) 

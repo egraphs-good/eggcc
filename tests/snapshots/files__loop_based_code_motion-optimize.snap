@@ -11,6 +11,7 @@ expression: visualization.result
   v4_: int = id c2_;
 .b5_:
 <<<<<<< HEAD
+<<<<<<< HEAD
   c6_: int = const 1;
   v7_: int = add c6_ v3_;
   v8_: bool = lt v7_ v4_;
@@ -22,6 +23,8 @@ expression: visualization.result
   v11_: int = mul c10_ v3_;
   print v11_;
 =======
+=======
+>>>>>>> cdb622b7 (snapshots)
   v6_: bool = lt v3_ v4_;
 <<<<<<< HEAD
   v7_: int = id v3_;
@@ -60,10 +63,16 @@ expression: visualization.result
   c10_: int = const 1;
   v11_: int = add c10_ v3_;
   v7_: int = id v11_;
+=======
+  c6_: int = const 1;
+  v7_: int = add c6_ v3_;
+  v8_: bool = lt v7_ v4_;
+>>>>>>> 12e698fa (snapshots)
   v3_: int = id v7_;
   v4_: int = id v4_;
-  jmp .b5_;
+  br v8_ .b5_ .b9_;
 .b9_:
+<<<<<<< HEAD
   v3_: int = id v7_;
   v4_: int = id v4_;
   c12_: int = const 5;
@@ -71,6 +80,14 @@ expression: visualization.result
   print v13_;
 >>>>>>> f4e994eb (snapshots)
 >>>>>>> 8a786fe5 (snapshots)
+<<<<<<< HEAD
 >>>>>>> bd5b3865 (snapshots)
+=======
+=======
+  c10_: int = const 5;
+  v11_: int = mul c10_ v3_;
+  print v11_;
+>>>>>>> 12e698fa (snapshots)
+>>>>>>> cdb622b7 (snapshots)
   ret;
 }

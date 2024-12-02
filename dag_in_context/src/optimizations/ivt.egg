@@ -55,7 +55,6 @@
 (rule (
     (= (IVTNewInputsAnalysisImpl loop-body curr expr) (IVTAnalysisRes perm pperm passthrough-tys len))
     (= curr (Concat (Single (Get expr ith)) rest))
-    (HasType expr expr-ty)
 ) (
     (let new-perm (Concat perm (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith))))
     (set (IVTNewInputsAnalysisImpl loop-body rest expr)

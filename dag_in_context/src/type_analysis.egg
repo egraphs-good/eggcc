@@ -138,6 +138,12 @@
        (!= ty ty2))
       ((panic "if branches else branch has incorrect input type"))
       :ruleset error-checking)
+(rule ((= (TmpType) (Base ty)))
+      ((panic "TmpType should not be equal to any types"))
+      :ruleset error-checking)
+(rule ((= (TmpType) (TupleT tylist)))
+      ((panic "TmpType should not be equal to any types"))
+      :ruleset error-checking)
 
 
 (rule ((= lhs (DoWhile ins body))

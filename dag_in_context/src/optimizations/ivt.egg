@@ -1,129 +1,161 @@
+(relation IVTNewInputsAnalysisDemand (Expr))
 
-;; A Perm is a reverse list of integers
-;; Applying a permutation allows us to reorder a tuple according to the permutation
-(datatype Perm (PermPush i64 Perm) (PNil))
-;; expr1 is a list of expressions of the form (Get expr2 i),
-;; where all the i's form a permutation
-(relation IVTPermutationAnalysisDemand (Expr))
-;;                                    expr1 curr  expr2
-(relation IVTPermutationAnalysisImpl (Expr  Expr  Expr Perm))
-;;                                expr1 expr2
-(relation IVTPermutationAnalysis (Expr Expr Perm))
+;;                                  expr1 curr  expr2  perm passthrough-perm passthrough-type passthrough-type-len
+(relation IVTNewInputsAnalysisImpl (Expr  Expr  Expr   Expr Expr TypeList i64))
+
+;; IVTNewInputsAnalysis computes a permutation perm which corresponds to accessing elements of an if region.
+;; It also makes accesses of passthrough arguments access new indices after the length of the if region.
+;; For example, if expr1 is: [get(if, 1), get(arg, 1), get(if, 0), get(arg, 3)]
+;; It produces a new permutation: [get(arg, 1), get(arg, 2), get(arg, 0), get(arg, 3)]
+;; The accesses of the if statement remain unchanged, and the accesses of the passthrough arguments are moved to the end.
+;; This new permutation is intended to be used with a substitution argument (Concat if-statement passthrough-args)
+;; Also produced is a passthrough-perm, which selects all of the passthrough arguments and puts them in a single tuple
+;;                              expr1 expr2 perm passthrough-perm passthrough-type
+(relation IVTNewInputsAnalysis (Expr  Expr  Expr Expr TypeList))
+
 
 (rule (
     (DoWhile inpW outW)
 ) (
-    (IVTPermutationAnalysisDemand outW)
+    (IVTNewInputsAnalysisDemand outW)
 ) :ruleset always-run)
 
 (rule (
-    (IVTPermutationAnalysisDemand loop-body)
-    (= loop-body (Concat (Single (Get expr ith)) rest))
+    (IVTNewInputsAnalysisDemand loop-body)
+    ;; first input is a predicate
+    (= loop-body (Concat (Single pred) rest))
+    ;; another input is an if statement with shared predicate
+    (= (Get loop-body i) (Get (If pred inputs thn else) j))
+    (!= i 0)
 ) (
-    (let perm (PermPush ith (PNil)))
-    (IVTPermutationAnalysisImpl loop-body rest expr perm)
+    (let perm (Empty (TmpType) (InFunc "no-ctx")))
+    (IVTNewInputsAnalysisImpl loop-body rest
+      (If pred inputs thn else) perm perm (TNil) 0)
 ) :ruleset always-run)
 
+;; recursive case for accessing the if statement
 (rule (
-    (IVTPermutationAnalysisImpl loop-body curr expr perm)
+    (IVTNewInputsAnalysisImpl loop-body curr expr perm pperm passthrough-tys len)
     (= curr (Concat (Single (Get expr ith)) rest))
 ) (
-    (let new-perm (PermPush ith perm))
-    (IVTPermutationAnalysisImpl loop-body rest expr new-perm)
+    (let new-perm (Concat perm (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith))))
+    (IVTNewInputsAnalysisImpl loop-body rest expr new-perm  pperm passthrough-tys len)
 ) :ruleset always-run)
 
+;; recursive case for accessing a passed-through argument
 (rule (
-    (IVTPermutationAnalysisImpl loop-body (Single last) expr perm)
+    (IVTNewInputsAnalysisImpl loop-body curr expr perm pperm passthrough-tys len)
+    (= curr (Concat (Single (Get (Arg ty ctx) ith)) rest))
+    (= (Get loop-body (+ ith 1)) (Get curr 0))
+    (HasType (Get (Arg ty ctx) ith) (Base new-ty))
+    (= expr (If pred inputs then else))
+    (= (tuple-length inputs) inputs-len)
+) (
+    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ inputs-len len))))
+    (let new-perm (Concat perm get-passed-through))
+    (let original-get-index (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith)))
+    (let new-pperm (Concat pperm original-get-index))
+    (let new-passthrough-tys (TLConcat passthrough-tys (TCons new-ty (TNil))))
+    (IVTNewInputsAnalysisImpl loop-body rest expr new-perm new-pperm new-passthrough-tys (+ len 1))
+) :ruleset always-run)
+
+; base case for accessing if statement
+(rule (
+    (IVTNewInputsAnalysisImpl loop-body (Single last) expr perm pperm passthrough-tys len)
     (= last (Get expr ith))
 ) (
-    (let new-perm (PermPush ith perm))
-    (IVTPermutationAnalysis loop-body expr new-perm)
+    (let new-perm (Concat perm (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith))))
+    (IVTNewInputsAnalysis loop-body expr new-perm pperm passthrough-tys)
 ) :ruleset always-run)
 
-(function ApplyPerm (Perm Expr) Expr)
+; base case for accessing a passed-through argument
+(rule (
+    (IVTNewInputsAnalysisImpl loop-body curr expr perm pperm passthrough-tys len)
+    (= curr (Single (Get (Arg ty ctx) ith)))
+    (= (Get loop-body (+ ith 1)) (Get curr 0))
+    (HasType (Get (Arg ty ctx) ith) (Base new-ty))
+    (= expr (If pred inputs then else))
+    (= (tuple-length inputs) inputs-len)
+) (
+    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ inputs-len len))))
+    (let new-perm (Concat perm get-passed-through))
+    (let original-get-index (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith)))
+    (let new-pperm (Concat pperm original-get-index))
+    (let new-passthrough-tys (TLConcat passthrough-tys (TCons new-ty (TNil))))
+    (IVTNewInputsAnalysis loop-body expr new-perm new-pperm new-passthrough-tys)
+) :ruleset always-run)
 
-(rewrite (ApplyPerm (PermPush ith rest) expr) 
-         (Concat (ApplyPerm rest expr) (Single (Get expr ith)))
-    :when ((= rest (PermPush _jth _rest)))
-    :ruleset always-run)
-(rewrite (ApplyPerm (PermPush ith (PNil)) expr) (Single (Get expr ith))
-    :ruleset always-run)
 
 (ruleset loop-inversion)
 
-;; This is for unified handling of thn/els branches
-(relation ith-arg-is-bool (Expr Expr Expr i64 Expr Expr))
-
 (rule (
     (= loop (DoWhile inpW outW))
-    (IVTPermutationAnalysis outW conditional perm)
-    (= conditional (If condI inpI thn els))
-
-    (= (Get thn ith) (Const (Bool true) _unused1 _unused2))
-    (= (Get els ith) (Const (Bool false) _unused3 _unused4))
-) (
-    (ith-arg-is-bool conditional condI inpI ith thn els)
-) :ruleset always-run)
-
-(rule (
-    (= loop (DoWhile inpW outW))
-    (IVTPermutationAnalysis outW conditional perm)
-    (= conditional (If condI inpI thn els))
-
-    (= (Get thn ith) (Const (Bool false) _unused1 _unused2))
-    (= (Get els ith) (Const (Bool true) _unused3 _unused4))
-) (
-    ;; TODO: this may introduce overhead, but is the only way to
-    ;; not have two rules
-    (ith-arg-is-bool conditional (Uop (Not) condI) inpI ith els thn)
-) :ruleset always-run)
-
-(rule (
-    (= loop (DoWhile inpW outW))
-    (IVTPermutationAnalysis outW conditional perm)
-    ;; Only handle if statments that have this form:
-    ;;   (= conditional (If condI inpI thn els))
-    ;;   (= (Get thn ith) (Const (Bool true) _unused1 _unused2))
-    ;;   (= (Get els ith) (Const (Bool false) _unused3 _unused4))
-    (ith-arg-is-bool conditional condI inpI ith thn els)
-    (= (Get outW 0) (Get conditional ith))
+    (IVTNewInputsAnalysis outW if perm pperm passthrough-tys)
+    (= if-inputs-len (tuple-length if-inputs))
+    (= passthrough-len (TypeList-length passthrough-tys))
+    (= if (If if-cond if-inputs then else))
 
     (ContextOf inpW outer-ctx)
-    (ContextOf inpI if-ctx)
-    (HasType inpI argI)
+    (ContextOf if-inputs if-ctx)
+    (HasType if-inputs inputs-ty)
+    (= inputs-ty (TupleT inputs-ty-list))
 ) (
-    ;; first peeled condition
-    (let new-if-cond (Subst outer-ctx inpW condI))
+    ;; new peeled condition, checks the if's condition before the first iteration
+    (let new-if-cond (Subst outer-ctx inpW if-cond))
+
+    ;; new inputs to the if are 1) the inputs run once unconditionally concatted with
+    ;; 2) the passthrough values
+    (let new-if-inp
+        (Concat (Subst outer-ctx inpW if-inputs)
+                (Subst outer-ctx inpW pperm)))
     ;; if contexts
-    (let new-if-inp (Subst outer-ctx inpW inpI))
     (let new-if-true-ctx (InIf true new-if-cond new-if-inp))
     (let new-if-false-ctx (InIf false new-if-cond new-if-inp))
 
+    (let new-loop-arg-ty (TupleT (TLConcat inputs-ty-list passthrough-tys)))
+    (let new-loop-arg (Arg new-loop-arg-ty (TmpCtx)))
     (let new-loop-context (TmpCtx))
 
     ;; body
-    (let new-loop-outputs_ 
-        (TupleRemoveAt (ApplyPerm perm thn) 0))
-    (let new-loop-outputs 
-        (Subst new-loop-context new-loop-outputs_ 
-            (Concat (Single condI) inpI)))
+    ;; loop begins by running the then branch of the if statement, which uses the first if-inputs-length elements of arg
+    (let then-arg (SubTuple new-loop-arg 0 if-inputs-len))
+    (let new-then-branch
+        (Subst new-loop-context then-arg then))
+    ;; the inputs are then run on the combination of
+    ;; the then branch and the passthrough values
+    (let then-branch-and-passthrough
+      (Concat new-then-branch (SubTuple new-loop-arg if-inputs-len passthrough-len)))
+    ;; permute them to move passthrough and if outputs back
+    ;; to where if-inputs and if-cond expect them to be
+    (let permuted-then-branch-and-passthrough
+      (Subst new-loop-context then-branch-and-passthrough perm))
+    ;; substitute into inputs and condi
+    (let new-inputs-after-then-branch 
+        (Subst new-loop-context permuted-then-branch-and-passthrough
+            (Concat (Single if-cond) if-inputs)))
+    (let new-loop-outputs
+        (Concat new-inputs-after-then-branch
+           (SubTuple new-loop-arg if-inputs-len passthrough-len)))
 
-    (let new-loop (DoWhile (Arg argI new-if-true-ctx) new-loop-outputs))
+    (let new-loop (DoWhile (Arg new-loop-arg-ty new-if-true-ctx) new-loop-outputs))
     (let new-if
         (If new-if-cond new-if-inp
             new-loop
-            (Arg argI new-if-false-ctx)))
+            (Arg new-loop-arg-ty new-if-false-ctx)))
 
     ;; Apply the body of the false branch as an afterprocessing wrapper
-    (let new-expr_
-        (Subst outer-ctx new-if els))
-    (let new-expr 
-        (TupleRemoveAt 
-            (ApplyPerm perm new-expr_) 
-            0))
+    (let final-if-inputs
+       (SubTuple new-if 0 if-inputs-len))
+    (let else-branch-end
+        (Subst outer-ctx final-if-inputs else))
+    (let else-branch-end-and-passthrough
+        (Concat else-branch-end
+               (SubTuple new-if if-inputs-len passthrough-len)))
+    (let final-permuted
+        (Subst outer-ctx else-branch-end-and-passthrough perm))
 
-    (union new-expr loop)
-    (union new-loop-context (InLoop (Arg argI new-if-true-ctx) new-loop-outputs))
+    (union final-permuted loop)
+    (union new-loop-context (InLoop (Arg new-loop-arg-ty new-if-true-ctx) new-loop-outputs))
 
     (subsume (DoWhile inpW outW))
     (delete (TmpCtx))

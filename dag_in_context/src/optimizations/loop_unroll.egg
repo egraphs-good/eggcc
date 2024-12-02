@@ -1,74 +1,7 @@
 ;; Some simple simplifications of loops
+;; Depends on loop iteration analysis
 (ruleset loop-unroll)
 (ruleset loop-peel)
-(ruleset loop-iters-analysis)
-
-;;                      inputs, outputs -> number of iterations
-;; The minimum possible guess is 1 because of do-while loops
-;; TODO: dead loop deletion can turn loops with a false condition to a body
-(function LoopNumItersGuess (Expr Expr) i64 :merge (max 1 (min old new)))
-
-;; by default, guess that all loops run 1000 times
-(rule ((DoWhile inputs outputs))
-      ((set (LoopNumItersGuess inputs outputs) 1000))
-      :ruleset loop-iters-analysis)
-
-;; For a loop that is false, its num iters is 1
-(rule 
-  ((= loop (DoWhile inputs outputs))
-   (= (Const (Bool false) ty ctx) (Get outputs 0)))
-  ((set (LoopNumItersGuess inputs outputs) 1))
-:ruleset loop-iters-analysis)
-
-;; Figure out number of iterations for a loop with constant bounds and initial value
-;; and i is updated before checking pred
-;; TODO: we could make it work for decrementing loops
-(rule
-  ((= lhs (DoWhile inputs outputs))
-   (= pred (Get outputs 0))
-   ;; iteration counter starts at start_const
-   (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))
-   ;; updated counter at counter_i
-   (= next_counter (Get outputs (+ counter_i 1)))
-   ;; increments by some constant each loop
-   (= next_counter (Bop (Add) (Get (Arg _ty _ctx) counter_i)
-                              (Const (Int increment) _ty2 _ctx2)))
-   (> increment 0)
-   ;; while next_counter less than end_constant
-   (= pred (Bop (LessThan) next_counter
-                           (Const (Int end_constant) _ty3 _ctx3)))
-   ;; end constant is at least start constant
-   (>= end_constant start_const)
-  )
-  (
-    (set (LoopNumItersGuess inputs outputs) (/ (- end_constant start_const) increment))
-  )
-  :ruleset loop-iters-analysis)
-
-;; Figure out number of iterations for a loop with constant bounds and initial value
-;; and i is updated after checking pred
-(rule
-  ((= lhs (DoWhile inputs outputs))
-   (= pred (Get outputs 0))
-   ;; iteration counter starts at start_const
-   (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))
-   (= body-arg (Get (Arg _ty _ctx) counter_i))
-   ;; updated counter at counter_i
-   (= next_counter (Get outputs (+ counter_i 1)))
-   ;; increments by a constant each loop
-   (= next_counter (Bop (Add) body-arg
-                              (Const (Int increment) _ty2 _ctx2)))
-   (> increment 0)
-   ;; while this counter less than end_constant
-   (= pred (Bop (LessThan) body-arg
-                           (Const (Int end_constant) _ty3 _ctx3)))
-   ;; end constant is at least start constant
-   (>= end_constant start_const)
-  )
-  (
-    (set (LoopNumItersGuess inputs outputs) (+ (/ (- end_constant start_const) increment) 1))
-  )
-  :ruleset loop-iters-analysis)
 
 ;; loop peeling rule
 ;; Only peel loops that we know iterate < 3 times

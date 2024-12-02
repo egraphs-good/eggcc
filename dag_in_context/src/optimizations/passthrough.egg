@@ -1,7 +1,8 @@
+;; Relies on loop iteration analysis
 (ruleset passthrough)
 
 
-;; Pass through thetas
+;; Pass through thetas: pure case
 (rule ((= lhs (Get loop i))
         (= loop (DoWhile inputs pred-outputs))
         (= (Get pred-outputs (+ i 1)) (Get (Arg _ty _ctx) i))
@@ -11,6 +12,33 @@
         (PureType lhs_ty)
         )
        ((union lhs (Get inputs i)))
+       :ruleset passthrough)
+
+; ;; Pass through thetas: state edge case
+(rule ((= loop (DoWhile inputs pred-outputs))
+        (= (Get pred-outputs (+ i 1)) (Get (Arg _ty _ctx) i))
+        ;; It is OK to pass through state edges as long as the loop terminates
+        (TerminatingLoop inputs pred-outputs))
+      (
+       ;; To maintain the linearity invariant, we must remove the state edge
+       ;; from the loop.
+       (let new-inputs (TupleRemoveAt inputs i))
+       (let removed-outputs (TupleRemoveAt pred-outputs (+ i 1)))
+       (let new-outputs (DropAt (TmpCtx) i removed-outputs))
+       
+       (let projected-old-loop (TupleRemoveAt loop i))
+       (let new-loop (DoWhile new-inputs new-outputs))
+       (union new-loop projected-old-loop)
+
+       ;; Resolve the temporary context
+       (union (TmpCtx) (InLoop new-inputs new-outputs))
+       (delete (TmpCtx))
+
+       ;; State edge can be gotten without the loop now
+       (union (Get loop i) (Get inputs i))
+
+       ;; Subsume the loop later
+       (ToSubsumeLoop inputs pred-outputs))
        :ruleset passthrough)
 
 ;; Pass through switch arguments

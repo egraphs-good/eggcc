@@ -5,11 +5,26 @@ expression: visualization.result
 # ARGS: 0
 @main(v0: int) {
 .b1_:
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+  c2_: int = const 0;
+  c3_: int = const 500;
+  v4_: bool = eq c2_ v0;
+  v5_: int = id c2_;
+  v6_: int = id c2_;
+=======
+<<<<<<< HEAD
+>>>>>>> 9cd70739 (snapshots)
   c2_: bool = const true;
   c3_: int = const 0;
   c4_: int = const 500;
   v5_: int = id c3_;
   v6_: int = id c3_;
+<<<<<<< HEAD
+=======
+>>>>>>> 67ded1b9 (snapshots)
+>>>>>>> 9cd70739 (snapshots)
   v7_: int = id v0;
 <<<<<<< HEAD
   v8_: int = id c3_;
@@ -141,7 +156,36 @@ expression: visualization.result
   v5_: int = id v12_;
   v6_: int = id v6_;
   v7_: int = id v7_;
+=======
+  c2_: int = const 0;
+  c3_: int = const 500;
+  v4_: int = id c2_;
+  v5_: int = id c2_;
+  v6_: int = id v0;
+  v7_: int = id c2_;
+  v8_: int = id v0;
+  v9_: int = id c2_;
+  v10_: int = id c3_;
+.b11_:
+  v12_: bool = eq v6_ v7_;
+  c13_: int = const 2;
+  v14_: int = mul c13_ v5_;
+  c15_: int = const 3;
+  v16_: int = mul c15_ v5_;
+  v17_: int = select v12_ v14_ v16_;
+  c18_: int = const 1;
+  v19_: int = add c18_ v5_;
+  v20_: bool = lt v19_ v10_;
+  v4_: int = id v17_;
+  v5_: int = id v19_;
+  v6_: int = id v8_;
+  v7_: int = id v9_;
+>>>>>>> cdb622b7 (snapshots)
   v8_: int = id v8_;
+  v9_: int = id v9_;
+  v10_: int = id v10_;
+  br v20_ .b11_ .b21_;
+.b21_:
   print v4_;
 >>>>>>> 3208e41b (convert perm to use subst)
   ret;

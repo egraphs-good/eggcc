@@ -7,12 +7,16 @@ expression: visualization.result
 .b2_:
   c3_: int = const 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> cdb622b7 (snapshots)
   c4_: int = const 1;
   v5_: int = sub v1 c4_;
   v6_: bool = lt c3_ v5_;
   v7_: int = id v0;
   v8_: int = id c3_;
   v9_: int = id v0;
+<<<<<<< HEAD
   v10_: int = id v1;
   br v6_ .b11_ .b12_;
 .b11_:
@@ -76,7 +80,47 @@ expression: visualization.result
 .b12_:
   print v7_;
   ret;
+<<<<<<< HEAD
 .b26_:
+=======
+.b24_:
+=======
+  v10_: int = id v0;
+  v11_: int = id v1;
+  br v6_ .b12_ .b13_;
+.b12_:
+  v14_: int = id v0;
+  v15_: int = id c3_;
+  v16_: int = id v0;
+  v17_: int = id v0;
+  v18_: int = id v1;
+.b19_:
+  v20_: int = mul v14_ v16_;
+  c21_: int = const 1;
+  v22_: int = add c21_ v15_;
+  c23_: int = const 14;
+  v24_: bool = lt v22_ c23_;
+  v14_: int = id v20_;
+  v15_: int = id v22_;
+  v16_: int = id v17_;
+  v17_: int = id v17_;
+  v18_: int = id v18_;
+  br v24_ .b19_ .b25_;
+.b25_:
+  v7_: int = id v14_;
+  v8_: int = id v15_;
+  v9_: int = id v16_;
+  v10_: int = id v17_;
+  v11_: int = id v18_;
+  print v7_;
+  ret;
+  jmp .b26_;
+.b13_:
+  print v7_;
+  ret;
+.b26_:
+>>>>>>> cdb622b7 (snapshots)
+>>>>>>> 9cd70739 (snapshots)
 }
 @main {
 .b0_:
@@ -86,6 +130,7 @@ expression: visualization.result
   v4_: int = id c1_;
   v5_: int = id c2_;
   v6_: int = id c1_;
+<<<<<<< HEAD
   v7_: int = id c3_;
 .b8_:
 <<<<<<< HEAD
@@ -115,16 +160,31 @@ expression: visualization.result
   v12_: int = id v18_;
   v13_: int = id v6_;
   v4_: int = id v11_;
+=======
+  v7_: int = id c1_;
+  v8_: int = id c3_;
+.b9_:
+  v10_: int = mul v4_ v6_;
+  c11_: int = const 1;
+  v12_: int = add c11_ v5_;
+  c13_: int = const 14;
+  v14_: bool = lt v12_ c13_;
+  v4_: int = id v10_;
+>>>>>>> cdb622b7 (snapshots)
   v5_: int = id v12_;
-  v6_: int = id v6_;
+  v6_: int = id v7_;
   v7_: int = id v7_;
-  jmp .b8_;
+  v8_: int = id v8_;
+  br v14_ .b9_ .b15_;
 .b15_:
+<<<<<<< HEAD
   v4_: int = id v11_;
   v5_: int = id v12_;
   v6_: int = id v6_;
   v7_: int = id v7_;
 >>>>>>> bd5b3865 (snapshots)
+=======
+>>>>>>> cdb622b7 (snapshots)
   print v4_;
   ret;
 }

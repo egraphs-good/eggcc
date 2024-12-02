@@ -9,6 +9,9 @@ expression: visualization.result
   v3_: bool = lt c2_ v0;
   v4_: int = id c2_;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> cdb622b7 (snapshots)
   v5_: int = id c2_;
   v6_: int = id v0;
   br v3_ .b7_ .b8_;
@@ -27,6 +30,7 @@ expression: visualization.result
   v11_: int = id v11_;
   br v17_ .b12_ .b18_;
 .b18_:
+<<<<<<< HEAD
   v4_: int = id v9_;
   v5_: int = id v10_;
   v6_: int = id v11_;
@@ -55,6 +59,12 @@ expression: visualization.result
   v5_: int = id v5_;
   print v3_;
 >>>>>>> bd5b3865 (snapshots)
+=======
+  v4_: int = id v9_;
+  v5_: int = id v10_;
+  v6_: int = id v11_;
+  print v4_;
+>>>>>>> cdb622b7 (snapshots)
   ret;
   jmp .b19_;
 .b8_:

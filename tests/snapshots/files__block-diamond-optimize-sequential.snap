@@ -7,6 +7,7 @@ expression: visualization.result
 .b1_:
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   c2_: int = const 2;
   v3_: bool = lt v0 c2_;
   c4_: int = const 0;
@@ -58,6 +59,8 @@ expression: visualization.result
 =======
 =======
 >>>>>>> 661bd577 (snapshots after rebase)
+=======
+>>>>>>> 12e698fa (snapshots)
   c2_: int = const 2;
   v3_: bool = lt v0 c2_;
   c4_: int = const 0;
@@ -74,12 +77,14 @@ expression: visualization.result
   v7_: int = id v14_;
   v8_: int = id c5_;
   v9_: int = id c2_;
-  v15_: int = id v7_;
-  v16_: int = add c5_ v15_;
-  print v16_;
+  v15_: int = add c2_ v7_;
+  v16_: int = select v3_ v7_ v15_;
+  v17_: int = add c5_ v16_;
+  print v17_;
   ret;
-  jmp .b17_;
+  jmp .b18_;
 .b11_:
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
   v13_: int = add c3_ v7_;
@@ -108,4 +113,12 @@ expression: visualization.result
   ret;
 .b17_:
 >>>>>>> 1b371807 (snapshots after rebase)
+=======
+  v15_: int = add c2_ v7_;
+  v16_: int = select v3_ v7_ v15_;
+  v17_: int = add c5_ v16_;
+  print v17_;
+  ret;
+.b18_:
+>>>>>>> 12e698fa (snapshots)
 }

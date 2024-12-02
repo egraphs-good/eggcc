@@ -19,6 +19,9 @@ expression: visualization.result
   v9_: int = id c4_;
   v10_: int = id c4_;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> cdb622b7 (snapshots)
   v11_: int = id c4_;
   v12_: int = id v0;
   br v8_ .b13_ .b14_;
@@ -39,6 +42,7 @@ expression: visualization.result
   v18_: int = id v18_;
   br v23_ .b19_ .b24_;
 .b24_:
+<<<<<<< HEAD
   v9_: int = id v15_;
   v10_: int = id v16_;
   v11_: int = id v17_;
@@ -71,6 +75,15 @@ expression: visualization.result
   br v13_ .b12_ .b23_;
 .b23_:
 >>>>>>> bd5b3865 (snapshots)
+=======
+  v9_: int = id v15_;
+  v10_: int = id v16_;
+  v11_: int = id v17_;
+  v12_: int = id v18_;
+  ret;
+  jmp .b7_;
+.b14_:
+>>>>>>> cdb622b7 (snapshots)
   ret;
 .b7_:
 }

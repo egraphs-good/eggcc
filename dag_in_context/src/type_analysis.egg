@@ -510,7 +510,11 @@
         (HasType pred-body (TupleT (TCons (BoolT) out-tys)))
         (!= in-tys out-tys)
       )
-      ((panic "input types and output types don't match"))
+      ((extract "Got input type:")
+       (extract in-tys)
+       (extract "But got output type:")
+       (extract out-tys)
+       (panic "input types and output types don't match"))
       :ruleset error-checking)
 
 ; =================================

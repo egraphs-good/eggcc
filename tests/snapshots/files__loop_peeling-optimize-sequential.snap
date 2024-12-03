@@ -6,34 +6,31 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
   c2_: int = const 0;
-  v3_: bool = lt c2_ v0;
+  v3_: int = id c2_;
   v4_: int = id c2_;
-  v5_: int = id c2_;
-  v6_: int = id v0;
-  br v3_ .b7_ .b8_;
-.b7_:
-  v9_: int = id c2_;
-  v10_: int = id c2_;
-  v11_: int = id v0;
-.b12_:
+  v5_: int = id v0;
+.b6_:
+  v7_: bool = lt v4_ v5_;
+  v8_: int = id v3_;
+  v9_: int = id v4_;
+  v10_: int = id v5_;
+  br v7_ .b11_ .b12_;
+.b11_:
   c13_: int = const 5;
-  v14_: int = add c13_ v9_;
+  v14_: int = add c13_ v3_;
   c15_: int = const 1;
-  v16_: int = add c15_ v10_;
-  v17_: bool = lt v16_ v11_;
-  v9_: int = id v14_;
-  v10_: int = id v16_;
-  v11_: int = id v11_;
-  br v17_ .b12_ .b18_;
-.b18_:
+  v16_: int = add c15_ v4_;
+  v8_: int = id v14_;
+  v9_: int = id v16_;
+  v10_: int = id v5_;
+  v3_: int = id v8_;
   v4_: int = id v9_;
   v5_: int = id v10_;
-  v6_: int = id v11_;
-  print v4_;
+  jmp .b6_;
+.b12_:
+  v3_: int = id v8_;
+  v4_: int = id v9_;
+  v5_: int = id v10_;
+  print v3_;
   ret;
-  jmp .b19_;
-.b8_:
-  print v4_;
-  ret;
-.b19_:
 }

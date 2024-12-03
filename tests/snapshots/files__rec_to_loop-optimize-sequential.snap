@@ -7,51 +7,75 @@ expression: visualization.result
 .b1_:
   c2_: int = const 0;
   v3_: bool = eq c2_ v0;
-  v4_: bool = not v3_;
-  v5_: int = id v0;
-  br v4_ .b6_ .b7_;
+  v4_: int = id v0;
+  br v3_ .b5_ .b6_;
+.b5_:
+  ret v4_;
+  jmp .b7_;
 .b6_:
-  v8_: int = id v0;
-.b9_:
-  print v8_;
-  c10_: int = const 1;
-  v11_: int = sub v8_ c10_;
-  c12_: int = const 0;
-  v13_: bool = eq c12_ v11_;
-  v14_: bool = not v13_;
-  v8_: int = id v11_;
-  br v14_ .b9_ .b15_;
-.b15_:
-  v5_: int = id v8_;
-  ret c2_;
-  jmp .b16_;
+  c8_: int = const 1;
+  v9_: int = sub v0 c8_;
+  c10_: int = const 0;
+  v11_: bool = eq c10_ v9_;
+  print v0;
+  v12_: int = id v9_;
+  br v11_ .b13_ .b14_;
+.b13_:
+  v4_: int = id v12_;
+  ret v4_;
+  jmp .b7_;
+.b14_:
+  c15_: int = const 1;
+  v16_: int = sub v9_ c15_;
+  c17_: int = const 0;
+  v18_: bool = eq c17_ v16_;
+  print v9_;
+  v19_: int = id v16_;
+  br v18_ .b20_ .b21_;
+.b20_:
+  v12_: int = id v19_;
+  v4_: int = id v12_;
+  ret v4_;
+  jmp .b7_;
+.b21_:
+  c22_: int = const 1;
+  v23_: int = sub v16_ c22_;
+  print v16_;
+  v24_: int = call @recPrint v23_;
+  v19_: int = id v24_;
+  v12_: int = id v19_;
+  v4_: int = id v12_;
+  ret v4_;
 .b7_:
-  ret c2_;
-.b16_:
 }
 @main(v0: int) {
 .b1_:
   c2_: int = const 0;
   v3_: bool = eq c2_ v0;
-  v4_: bool = not v3_;
-  v5_: int = id v0;
-  br v4_ .b6_ .b7_;
+  v4_: int = id v0;
+  br v3_ .b5_ .b6_;
+.b5_:
+  ret;
+  jmp .b7_;
 .b6_:
-  v8_: int = id v0;
-.b9_:
-  print v8_;
-  c10_: int = const 1;
-  v11_: int = sub v8_ c10_;
-  c12_: int = const 0;
-  v13_: bool = eq c12_ v11_;
-  v14_: bool = not v13_;
-  v8_: int = id v11_;
-  br v14_ .b9_ .b15_;
-.b15_:
-  v5_: int = id v8_;
+  c8_: int = const 1;
+  v9_: int = sub v0 c8_;
+  c10_: int = const 0;
+  v11_: bool = eq c10_ v9_;
+  print v0;
+  v12_: int = id v9_;
+  br v11_ .b13_ .b14_;
+.b13_:
+  v4_: int = id v12_;
   ret;
-  jmp .b16_;
+  jmp .b7_;
+.b14_:
+  c15_: int = const 1;
+  v16_: int = sub v9_ c15_;
+  print v9_;
+  v17_: int = call @recPrint v16_;
+  v12_: int = id v17_;
+  v4_: int = id v12_;
+  ret;
 .b7_:
-  ret;
-.b16_:
 }

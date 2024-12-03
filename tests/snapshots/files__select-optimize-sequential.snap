@@ -5,48 +5,50 @@ expression: visualization.result
 # ARGS: 20
 @main(v0: int) {
 .b1_:
-  c2_: int = const 5;
+  c2_: int = const 0;
   c3_: int = const 10;
-  v4_: bool = eq c2_ c3_;
-  v5_: bool = not v4_;
-  c6_: int = const 0;
-  v7_: int = id c6_;
-  v8_: int = id c3_;
-  v9_: int = id c6_;
-  v10_: int = id v0;
-  br v5_ .b11_ .b12_;
-.b11_:
-  v13_: int = id c6_;
-  v14_: int = id c3_;
-  v15_: int = id c6_;
-  v16_: int = id v0;
-.b17_:
-  c18_: int = const 1;
-  v19_: int = add c18_ v15_;
-  v20_: bool = eq v16_ v19_;
-  v21_: int = add v13_ v19_;
-  v22_: int = select v20_ v21_ v21_;
-  c23_: int = const 5;
-  v24_: int = select v20_ c23_ v14_;
-  v25_: int = select v20_ v19_ v19_;
-  v26_: int = select v20_ v16_ v16_;
-  v27_: bool = eq c23_ v24_;
-  v28_: bool = not v27_;
-  v13_: int = id v22_;
+  v4_: int = id c2_;
+  v5_: int = id c3_;
+  v6_: int = id c2_;
+  v7_: int = id v0;
+.b8_:
+  c9_: int = const 5;
+  v10_: bool = eq c9_ v5_;
+  v11_: bool = not v10_;
+  v12_: bool = not v11_;
+  v13_: bool = not v12_;
+  v14_: int = id v4_;
+  v15_: int = id v5_;
+  v16_: int = id v6_;
+  v17_: int = id v7_;
+  br v13_ .b18_ .b19_;
+.b18_:
+  c20_: int = const 1;
+  v21_: int = add c20_ v6_;
+  v22_: bool = eq v21_ v7_;
+  v23_: int = add v21_ v4_;
+  v24_: int = select v22_ v23_ v23_;
+  c25_: int = const 5;
+  v26_: int = select v22_ c25_ v5_;
+  v27_: int = select v22_ v21_ v21_;
+  v28_: int = select v22_ v7_ v7_;
   v14_: int = id v24_;
-  v15_: int = id v25_;
-  v16_: int = id v26_;
-  br v28_ .b17_ .b29_;
+  v15_: int = id v26_;
+  v16_: int = id v27_;
+  v17_: int = id v28_;
+  v4_: int = id v14_;
+  v5_: int = id v15_;
+  v6_: int = id v16_;
+  v7_: int = id v17_;
 .b29_:
-  v7_: int = id v13_;
-  v8_: int = id v14_;
-  v9_: int = id v15_;
-  v10_: int = id v16_;
-  print v7_;
-  ret;
-  jmp .b30_;
-.b12_:
-  print v7_;
-  ret;
+  br v11_ .b8_ .b30_;
+.b19_:
+  v4_: int = id v14_;
+  v5_: int = id v15_;
+  v6_: int = id v16_;
+  v7_: int = id v17_;
+  jmp .b29_;
 .b30_:
+  print v4_;
+  ret;
 }

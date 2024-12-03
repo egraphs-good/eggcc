@@ -125,8 +125,9 @@ pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
     res.push(CompilerPass::Schedule(format!(
         "
 (run-schedule
-  (repeat 2
+  (repeat 3
     {helpers}
+    (saturate ivt-analysis)
     loop-inversion)
   
   {helpers})"

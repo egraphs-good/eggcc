@@ -1,7 +1,24 @@
 (relation IVTNewInputsAnalysisDemand (Expr))
 
-;;                                  expr1 curr  expr2  perm passthrough-perm passthrough-type passthrough-type-len
-(relation IVTNewInputsAnalysisImpl (Expr  Expr  Expr   Expr Expr TypeList i64))
+(ruleset ivt-analysis)
+
+(sort IVTRes)
+;;                              perm passthrough-perm passthrough-type passthrough-type-len
+(function IVTAnalysisRes (Expr Expr             TypeList         i64) IVTRes)
+(function IVTMin (IVTRes IVTRes) IVTRes)
+
+(rule ((= lhs (IVTMin (IVTAnalysisRes _a _b _c len1) (IVTAnalysisRes _d _e _f len2)))
+       (<= len1 len2))
+      ((union lhs (IVTAnalysisRes _a _b _c len1)))
+        :ruleset ivt-analysis)
+(rule ((= lhs (IVTMin (IVTAnalysisRes _a _b _c len1) (IVTAnalysisRes _d _e _f len2)))
+       (> len1 len2))
+      ((union lhs (IVTAnalysisRes _d _e _f len2)))
+        :ruleset ivt-analysis)
+
+;; use an analysis to avoid exploring all combinations of passthrough vs not passed through values. Always prefer not passed through
+;;                                  expr1 curr  expr2  result
+(function IVTNewInputsAnalysisImpl (Expr  Expr  Expr) IVTRes :merge (IVTMin old new))
 
 ;; IVTNewInputsAnalysis computes a permutation perm which corresponds to accessing elements of an if region.
 ;; It also makes accesses of passthrough arguments access new indices after the length of the if region.
@@ -10,15 +27,15 @@
 ;; The accesses of the if statement remain unchanged, and the accesses of the passthrough arguments are moved to the end.
 ;; This new permutation is intended to be used with a substitution argument (Concat if-statement passthrough-args)
 ;; Also produced is a passthrough-perm, which selects all of the passthrough arguments and puts them in a single tuple
-;;                              expr1 expr2 perm passthrough-perm passthrough-type
-(relation IVTNewInputsAnalysis (Expr  Expr  Expr Expr TypeList))
+;;                              expr1 expr2 result
+(function IVTNewInputsAnalysis (Expr  Expr) IVTRes :merge (IVTMin old new))
 
 
 (rule (
     (DoWhile inpW outW)
 ) (
     (IVTNewInputsAnalysisDemand outW)
-) :ruleset always-run)
+) :ruleset ivt-analysis)
 
 (rule (
     (IVTNewInputsAnalysisDemand loop-body)
@@ -29,22 +46,24 @@
     (!= i 0)
 ) (
     (let perm (Empty (TmpType) (InFunc "no-ctx")))
-    (IVTNewInputsAnalysisImpl loop-body rest
-      (If pred inputs thn else) perm perm (TNil) 0)
-) :ruleset always-run)
+    (set
+     (IVTNewInputsAnalysisImpl loop-body rest (If pred inputs thn else))
+     (IVTAnalysisRes perm perm (TNil) 0))
+) :ruleset ivt-analysis)
 
 ;; recursive case for accessing the if statement
 (rule (
-    (IVTNewInputsAnalysisImpl loop-body curr expr perm pperm passthrough-tys len)
+    (= (IVTNewInputsAnalysisImpl loop-body curr expr) (IVTAnalysisRes perm pperm passthrough-tys len))
     (= curr (Concat (Single (Get expr ith)) rest))
 ) (
     (let new-perm (Concat perm (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith))))
-    (IVTNewInputsAnalysisImpl loop-body rest expr new-perm  pperm passthrough-tys len)
-) :ruleset always-run)
+    (set (IVTNewInputsAnalysisImpl loop-body rest expr)
+         (IVTAnalysisRes new-perm  pperm passthrough-tys len))
+) :ruleset ivt-analysis)
 
 ;; recursive case for accessing a passed-through argument
 (rule (
-    (IVTNewInputsAnalysisImpl loop-body curr expr perm pperm passthrough-tys len)
+    (= (IVTNewInputsAnalysisImpl loop-body curr expr) (IVTAnalysisRes perm pperm passthrough-tys len))
     (= curr (Concat (Single (Get (Arg ty ctx) ith)) rest))
     (= (Get loop-body (+ ith 1)) (Get curr 0))
     (HasType (Get (Arg ty ctx) ith) (Base new-ty))
@@ -56,21 +75,22 @@
     (let original-get-index (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith)))
     (let new-pperm (Concat pperm original-get-index))
     (let new-passthrough-tys (TLConcat passthrough-tys (TCons new-ty (TNil))))
-    (IVTNewInputsAnalysisImpl loop-body rest expr new-perm new-pperm new-passthrough-tys (+ len 1))
-) :ruleset always-run)
+    (set (IVTNewInputsAnalysisImpl loop-body rest expr)
+         (IVTAnalysisRes new-perm new-pperm new-passthrough-tys (+ len 1)))
+) :ruleset ivt-analysis)
 
 ; base case for accessing if statement
 (rule (
-    (IVTNewInputsAnalysisImpl loop-body (Single last) expr perm pperm passthrough-tys len)
+    (= (IVTNewInputsAnalysisImpl loop-body (Single last) expr) (IVTAnalysisRes perm pperm passthrough-tys len))
     (= last (Get expr ith))
 ) (
     (let new-perm (Concat perm (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith))))
-    (IVTNewInputsAnalysis loop-body expr new-perm pperm passthrough-tys)
-) :ruleset always-run)
+    (set (IVTNewInputsAnalysis loop-body expr) (IVTAnalysisRes new-perm pperm passthrough-tys len))
+) :ruleset ivt-analysis)
 
 ; base case for accessing a passed-through argument
 (rule (
-    (IVTNewInputsAnalysisImpl loop-body curr expr perm pperm passthrough-tys len)
+    (= (IVTNewInputsAnalysisImpl loop-body curr expr) (IVTAnalysisRes perm pperm passthrough-tys len))
     (= curr (Single (Get (Arg ty ctx) ith)))
     (= (Get loop-body (+ ith 1)) (Get curr 0))
     (HasType (Get (Arg ty ctx) ith) (Base new-ty))
@@ -82,15 +102,15 @@
     (let original-get-index (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith)))
     (let new-pperm (Concat pperm original-get-index))
     (let new-passthrough-tys (TLConcat passthrough-tys (TCons new-ty (TNil))))
-    (IVTNewInputsAnalysis loop-body expr new-perm new-pperm new-passthrough-tys)
-) :ruleset always-run)
+    (set (IVTNewInputsAnalysis loop-body expr) (IVTAnalysisRes new-perm new-pperm new-passthrough-tys (+ len 1)))
+) :ruleset ivt-analysis)
 
 
 (ruleset loop-inversion)
 
 (rule (
     (= loop (DoWhile inpW outW))
-    (IVTNewInputsAnalysis outW if perm pperm passthrough-tys)
+    (= (IVTNewInputsAnalysis outW if) (IVTAnalysisRes perm pperm passthrough-tys _len))
     (= if-inputs-len (tuple-length if-inputs))
     (= passthrough-len (TypeList-length passthrough-tys))
     (= if (If if-cond if-inputs then else))

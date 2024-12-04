@@ -31,10 +31,6 @@
       ((delete (BinaryOpIsPure e)))
       :ruleset debug-deletes)
 
-(rule ((TypeList-suffix e a))
-      ((delete (TypeList-suffix e a)))
-      :ruleset debug-deletes)
-
 (rule ((ContextOf e a))
       ((delete (ContextOf e a)))
       :ruleset debug-deletes)

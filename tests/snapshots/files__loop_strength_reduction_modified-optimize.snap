@@ -18,6 +18,7 @@ expression: visualization.result
   v11_: int = id c4_;
   v12_: int = id c5_;
 <<<<<<< HEAD
+<<<<<<< HEAD
   v13_: int = id c6_;
 .b14_:
 <<<<<<< HEAD
@@ -101,6 +102,10 @@ expression: visualization.result
   v8_: int = id v8_;
   v9_: int = id v38_;
 =======
+=======
+  v13_: int = id c6_;
+.b14_:
+>>>>>>> 10665900 (snapshots after rebase)
   v15_: bool = lt v7_ v13_;
   v16_: int = id v7_;
   v17_: int = id v8_;
@@ -108,6 +113,7 @@ expression: visualization.result
   v19_: int = id v10_;
   v20_: int = id v11_;
   v21_: int = id v12_;
+<<<<<<< HEAD
 <<<<<<< HEAD
   v22_: int = id v13_;
   br v15_ .b23_ .b24_;
@@ -123,6 +129,8 @@ expression: visualization.result
   v17_: int = id v8_;
   v18_: int = id v30_;
 =======
+=======
+>>>>>>> 10665900 (snapshots after rebase)
   br v15_ .b22_ .b23_;
 .b22_:
   v24_: int = mul v12_ v9_;
@@ -130,6 +138,7 @@ expression: visualization.result
   v25_: int = add v7_ v8_;
   v26_: bool = eq v11_ v7_;
   v27_: int = add v8_ v9_;
+<<<<<<< HEAD
   v28_: int = id v27_;
   v29_: int = id v10_;
   br v26_ .b30_ .b31_;
@@ -210,5 +219,27 @@ expression: visualization.result
   br v25_ .b18_ .b26_;
 .b26_:
 >>>>>>> cdb622b7 (snapshots)
+=======
+  v28_: int = add v10_ v27_;
+  v29_: int = select v26_ v28_ v27_;
+  v16_: int = id v25_;
+  v17_: int = id v8_;
+  v18_: int = id v29_;
+  v19_: int = id v10_;
+  v20_: int = id v11_;
+  v21_: int = id v12_;
+.b23_:
+  v30_: int = add v7_ v8_;
+  v31_: int = select v15_ v30_ v7_;
+  v7_: int = id v31_;
+  v8_: int = id v8_;
+  v9_: int = id v18_;
+  v10_: int = id v10_;
+  v11_: int = id v11_;
+  v12_: int = id v12_;
+  v13_: int = id v13_;
+  br v15_ .b14_ .b32_;
+.b32_:
+>>>>>>> 10665900 (snapshots after rebase)
   ret;
 }

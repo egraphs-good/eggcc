@@ -20,13 +20,11 @@ expression: visualization.result
   v14_: int = select v3_ c2_ c4_;
   print v14_;
   print v3_;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
   print v12_;
   ret;
   jmp .b15_;
 .b8_:
+<<<<<<< HEAD
   v16_: bool = lt c6_ v0;
   c17_: bool = const false;
   c18_: int = const 2;
@@ -88,6 +86,8 @@ expression: visualization.result
   ret;
   jmp .b15_;
 .b8_:
+=======
+>>>>>>> d417cf77 (snapshots after rebase)
   v16_: bool = lt c6_ v0;
   c17_: int = const 2;
   v18_: int = id c17_;

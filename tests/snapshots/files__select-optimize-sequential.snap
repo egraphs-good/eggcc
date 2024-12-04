@@ -59,119 +59,6 @@ expression: visualization.result
   v10_: bool = eq c9_ v5_;
   v11_: bool = not v10_;
   v12_: bool = not v11_;
-<<<<<<< HEAD
-  v13_: bool = not v12_;
-  v14_: int = id v4_;
-  v15_: int = id v5_;
-  v16_: int = id v6_;
-  v17_: int = id v7_;
-  br v13_ .b18_ .b19_;
-.b18_:
-  c20_: int = const 1;
-  v21_: int = add c20_ v6_;
-<<<<<<< HEAD
-  v22_: bool = eq v21_ v7_;
-  v23_: int = add v21_ v4_;
-  v24_: int = select v22_ v23_ v23_;
-  c25_: int = const 5;
-  v26_: int = select v22_ c25_ v5_;
-  v27_: int = select v22_ v21_ v21_;
-  v28_: int = select v22_ v7_ v7_;
-  v14_: int = id v24_;
-<<<<<<< HEAD
-  v15_: int = id v26_;
-  v16_: int = id v27_;
-  v17_: int = id v28_;
-=======
-  v15_: int = id v25_;
-  v16_: int = id v26_;
-  v17_: int = id v27_;
-=======
-  v22_: int = add v21_ v4_;
-  v23_: bool = eq v21_ v7_;
-  c24_: int = const 5;
-  v25_: int = select v23_ c24_ v5_;
-  v14_: int = id v22_;
-  v15_: int = id v25_;
-  v16_: int = id v21_;
-  v17_: int = id v7_;
->>>>>>> f4e994eb (snapshots)
->>>>>>> 8a786fe5 (snapshots)
-  v4_: int = id v14_;
-  v5_: int = id v15_;
-  v6_: int = id v16_;
-  v7_: int = id v17_;
-<<<<<<< HEAD
-.b29_:
-  br v11_ .b8_ .b30_;
-=======
-<<<<<<< HEAD
-.b31_:
-  br v11_ .b8_ .b32_;
-.b29_:
-  v14_: int = id v24_;
-  v15_: int = id v25_;
-  v16_: int = id v26_;
-  v17_: int = id v27_;
-  v4_: int = id v14_;
-  v5_: int = id v15_;
-  v6_: int = id v16_;
-  v7_: int = id v17_;
-  jmp .b31_;
-=======
-.b26_:
-  br v11_ .b8_ .b27_;
->>>>>>> f4e994eb (snapshots)
->>>>>>> 8a786fe5 (snapshots)
-.b19_:
-  v4_: int = id v14_;
-  v5_: int = id v15_;
-  v6_: int = id v16_;
-  v7_: int = id v17_;
-<<<<<<< HEAD
-  jmp .b29_;
-.b30_:
-=======
-<<<<<<< HEAD
-  jmp .b31_;
-.b32_:
-=======
-  jmp .b26_;
-.b27_:
->>>>>>> f4e994eb (snapshots)
-<<<<<<< HEAD
->>>>>>> 8a786fe5 (snapshots)
-=======
-=======
-  v12_: int = id v4_;
-  v13_: int = id v5_;
-  v14_: int = id v6_;
-  v15_: int = id v7_;
-  br v11_ .b16_ .b17_;
-.b16_:
-  c18_: int = const 1;
-  v19_: int = add c18_ v6_;
-  v20_: int = add v19_ v4_;
-  v21_: bool = eq v19_ v7_;
-  c22_: int = const 5;
-  v23_: int = select v21_ c22_ v5_;
-  v12_: int = id v20_;
-  v13_: int = id v23_;
-  v14_: int = id v19_;
-  v15_: int = id v7_;
-  v4_: int = id v12_;
-  v5_: int = id v13_;
-  v6_: int = id v14_;
-  v7_: int = id v15_;
-  jmp .b8_;
-.b17_:
-  v4_: int = id v12_;
-  v5_: int = id v13_;
-  v6_: int = id v14_;
-  v7_: int = id v15_;
->>>>>>> 0dff68b7 (snapshots)
->>>>>>> b2d10132 (snapshots)
-=======
   v13_: int = id v4_;
   v14_: int = id v5_;
   v15_: int = id v6_;
@@ -201,7 +88,6 @@ expression: visualization.result
   v7_: int = id v16_;
   jmp .b19_;
 .b20_:
->>>>>>> 12e698fa (snapshots)
   print v4_;
 >>>>>>> bd5b3865 (snapshots)
   ret;

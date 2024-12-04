@@ -7,6 +7,7 @@ expression: visualization.result
 .b1_:
   c2_: int = const 20;
   c3_: int = const 0;
+<<<<<<< HEAD
   v4_: bool = lt c3_ v0;
 <<<<<<< HEAD
   v5_: int = id c2_;
@@ -63,4 +64,27 @@ expression: visualization.result
   ret;
 .b16_:
 >>>>>>> cdb622b7 (snapshots)
+=======
+  v4_: int = id c3_;
+  v5_: int = id v0;
+.b6_:
+  v7_: bool = lt v4_ v5_;
+  v8_: int = id v4_;
+  br v7_ .b9_ .b10_;
+.b9_:
+  print v4_;
+  c11_: int = const 1;
+  v12_: int = add c11_ v4_;
+  v8_: int = id v12_;
+.b10_:
+  c13_: int = const 1;
+  v14_: int = add c13_ v4_;
+  v15_: int = select v7_ v14_ v4_;
+  v4_: int = id v15_;
+  v5_: int = id v5_;
+  br v7_ .b6_ .b16_;
+.b16_:
+  print c2_;
+  ret;
+>>>>>>> 10665900 (snapshots after rebase)
 }

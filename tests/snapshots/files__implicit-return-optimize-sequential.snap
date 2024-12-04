@@ -8,6 +8,7 @@ expression: visualization.result
   c3_: int = const 0;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cdb622b7 (snapshots)
   c4_: int = const 1;
@@ -45,6 +46,8 @@ expression: visualization.result
   v10_: int = id v18_;
   print v7_;
 =======
+=======
+>>>>>>> 10665900 (snapshots after rebase)
   v4_: int = id v0;
   v5_: int = id c3_;
   v6_: int = id v0;
@@ -52,6 +55,7 @@ expression: visualization.result
 .b8_:
   c9_: int = const 14;
   v10_: bool = lt v5_ c9_;
+<<<<<<< HEAD
   v11_: int = id v4_;
   v12_: int = id v5_;
   v13_: int = id v6_;
@@ -120,7 +124,25 @@ expression: visualization.result
   ret;
 .b26_:
 >>>>>>> cdb622b7 (snapshots)
+<<<<<<< HEAD
 >>>>>>> 9cd70739 (snapshots)
+=======
+=======
+  v11_: int = mul v4_ v6_;
+  v12_: int = select v10_ v11_ v4_;
+  c13_: int = const 1;
+  v14_: int = add c13_ v5_;
+  v15_: int = select v10_ v14_ v5_;
+  v4_: int = id v12_;
+  v5_: int = id v15_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
+  br v10_ .b8_ .b16_;
+.b16_:
+  print v4_;
+  ret;
+>>>>>>> 10665900 (snapshots after rebase)
+>>>>>>> bd275b57 (snapshots after rebase)
 }
 @main {
 .b0_:
@@ -130,6 +152,7 @@ expression: visualization.result
   v4_: int = id c1_;
   v5_: int = id c2_;
   v6_: int = id c1_;
+<<<<<<< HEAD
 <<<<<<< HEAD
   v7_: int = id c3_;
 .b8_:
@@ -185,6 +208,23 @@ expression: visualization.result
 >>>>>>> bd5b3865 (snapshots)
 =======
 >>>>>>> cdb622b7 (snapshots)
+=======
+  v7_: int = id c3_;
+.b8_:
+  c9_: int = const 14;
+  v10_: bool = lt v5_ c9_;
+  v11_: int = mul v4_ v6_;
+  v12_: int = select v10_ v11_ v4_;
+  c13_: int = const 1;
+  v14_: int = add c13_ v5_;
+  v15_: int = select v10_ v14_ v5_;
+  v4_: int = id v12_;
+  v5_: int = id v15_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
+  br v10_ .b8_ .b16_;
+.b16_:
+>>>>>>> 10665900 (snapshots after rebase)
   print v4_;
   ret;
 }

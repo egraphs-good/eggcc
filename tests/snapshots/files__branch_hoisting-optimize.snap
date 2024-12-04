@@ -163,6 +163,7 @@ expression: visualization.result
   v5_: int = id c2_;
   v6_: int = id v0;
   v7_: int = id c2_;
+<<<<<<< HEAD
   v8_: int = id v0;
   v9_: int = id c2_;
   v10_: int = id c3_;
@@ -181,11 +182,40 @@ expression: visualization.result
   v6_: int = id v8_;
   v7_: int = id v9_;
 >>>>>>> cdb622b7 (snapshots)
+=======
+  v8_: int = id c3_;
+.b9_:
+  v10_: bool = lt v5_ v8_;
+  v11_: int = id v4_;
+  v12_: int = id v5_;
+  v13_: int = id v6_;
+  v14_: int = id v7_;
+  br v10_ .b15_ .b16_;
+.b15_:
+  v17_: bool = eq v6_ v7_;
+  c18_: int = const 2;
+  v19_: int = mul c18_ v5_;
+  c20_: int = const 3;
+  v21_: int = mul c20_ v5_;
+  v22_: int = select v17_ v19_ v21_;
+  c23_: int = const 1;
+  v24_: int = add c23_ v5_;
+  v11_: int = id v22_;
+  v12_: int = id v24_;
+  v13_: int = id v6_;
+  v14_: int = id v7_;
+.b16_:
+  c25_: int = const 1;
+  v26_: int = add c25_ v5_;
+  v27_: int = select v10_ v26_ v5_;
+  v4_: int = id v11_;
+  v5_: int = id v27_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
+>>>>>>> 10665900 (snapshots after rebase)
   v8_: int = id v8_;
-  v9_: int = id v9_;
-  v10_: int = id v10_;
-  br v20_ .b11_ .b21_;
-.b21_:
+  br v10_ .b9_ .b28_;
+.b28_:
   print v4_;
 >>>>>>> 3208e41b (convert perm to use subst)
   ret;

@@ -6,8 +6,9 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
   c2_: int = const 0;
-  v3_: bool = lt c2_ v0;
+  v3_: int = id c2_;
   v4_: int = id c2_;
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -65,10 +66,22 @@ expression: visualization.result
   v6_: int = id v11_;
   print v4_;
 >>>>>>> cdb622b7 (snapshots)
+=======
+  v5_: int = id v0;
+.b6_:
+  v7_: bool = lt v4_ v5_;
+  c8_: int = const 5;
+  v9_: int = add c8_ v3_;
+  v10_: int = select v7_ v9_ v3_;
+  c11_: int = const 1;
+  v12_: int = add c11_ v4_;
+  v13_: int = select v7_ v12_ v4_;
+  v3_: int = id v10_;
+  v4_: int = id v13_;
+  v5_: int = id v5_;
+  br v7_ .b6_ .b14_;
+.b14_:
+  print v3_;
+>>>>>>> 10665900 (snapshots after rebase)
   ret;
-  jmp .b19_;
-.b8_:
-  print v4_;
-  ret;
-.b19_:
 }

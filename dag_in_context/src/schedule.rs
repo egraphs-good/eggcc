@@ -37,11 +37,12 @@ pub(crate) fn helpers() -> String {
             (saturate type-helpers)
             type-analysis)
         (saturate is-resolved)
+        cleanup-subst
 
         (saturate term-subst)
         (saturate subst)
         apply-subst-unions
-        cleanup-subst
+        
         (saturate context)
 
         (saturate drop)

@@ -7,7 +7,17 @@ expression: visualization.result
 .b1_:
   c2_: int = const 1;
   v3_: int = sub v0 c2_;
+  c4_: bool = const true;
+  v5_: int = id v0;
+  br c4_ .b6_ .b7_;
+.b6_:
   print v0;
+  v5_: int = id v0;
   print v3_;
   ret;
+  jmp .b8_;
+.b7_:
+  print v3_;
+  ret;
+.b8_:
 }

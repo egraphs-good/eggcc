@@ -142,7 +142,7 @@ impl<'a> FromEgglog<'a> {
             else {
               panic!("Invalid boolean: {:?}", is_then)
             };
-            Assumption::InIf(boolean.clone(), self.expr_from_egglog(self.termdag.get(*pred_expr).clone()), self.expr_from_egglog(self.termdag.get(*input_expr).clone()))
+            Assumption::InIf(*boolean, self.expr_from_egglog(self.termdag.get(*pred_expr).clone()), self.expr_from_egglog(self.termdag.get(*input_expr).clone()))
           }
           (name, _) => {
             eprintln!("Invalid assumption: {:?}", assumption);
@@ -265,7 +265,7 @@ impl<'a> FromEgglog<'a> {
             let basetype = self.termdag.get(*type_);
             let state = self.termdag.get(*state);
             Rc::new(Expr::Alloc(
-              alloc_id.clone(),
+              *alloc_id,
               self.expr_from_egglog(expr.clone()),
               self.expr_from_egglog(state.clone()),
               self.basetype_from_egglog(basetype.clone()),

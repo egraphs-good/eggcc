@@ -5,9 +5,7 @@ expression: visualization.result
 # ARGS: 
 @main {
 .b0_:
-  c1_: bool = const true;
-  c2_: int = const 1;
-  print c2_;
-  ret;
+  c1_: int = const 1;
+  print c1_;
   ret;
 }

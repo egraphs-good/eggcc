@@ -8,43 +8,27 @@ expression: visualization.result
   c2_: int = const 0;
   v3_: bool = lt v0 c2_;
   v4_: bool = gt v0 c2_;
-  v5_: bool = and v3_ v4_;
-  c6_: int = const 1;
+  c5_: int = const 1;
+  c6_: int = const 3;
   v7_: int = id c6_;
-  br v5_ .b8_ .b9_;
+  br v3_ .b8_ .b9_;
 .b8_:
+  c10_: int = const 3;
+  v11_: int = id c10_;
+  br v4_ .b12_ .b13_;
+.b12_:
+  v11_: int = id c5_;
+  v7_: int = id v11_;
   print v7_;
   ret;
-  jmp .b10_;
+  jmp .b14_;
+.b13_:
+  v7_: int = id v11_;
+  print v7_;
+  ret;
+  jmp .b14_;
 .b9_:
-  v11_: bool = lt v0 c2_;
-  v12_: bool = gt v0 c2_;
-  v13_: bool = and v11_ v12_;
-  c14_: int = const 3;
-  v15_: int = id c14_;
-  br v13_ .b16_ .b17_;
-.b16_:
-  c18_: int = const 2;
-  v19_: int = id c18_;
-  v20_: int = id c2_;
-  v21_: int = id c6_;
-.b22_:
-  v23_: int = add v19_ v21_;
-  v24_: bool = gt v23_ v20_;
-  v25_: bool = not v24_;
-  v19_: int = id v23_;
-  v20_: int = id v20_;
-  v21_: int = id v21_;
-  br v25_ .b22_ .b26_;
-.b26_:
-  v15_: int = id v19_;
-  v7_: int = id v15_;
   print v7_;
   ret;
-  jmp .b10_;
-.b17_:
-  v7_: int = id v15_;
-  print v7_;
-  ret;
-.b10_:
+.b14_:
 }

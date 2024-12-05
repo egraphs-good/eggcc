@@ -39,13 +39,21 @@ function min_cycles(cycles) {
   return Math.min(...cycles);
 }
 
-function stddev_cycles(cycles) {
+function stddev(cycles) {
   const mean = cycles.reduce((a, b) => a + b, 0) / (cycles.length - 1);
   const squared_diffs = cycles.map((c) => (c - mean) ** 2);
-  // TODO kevin said we might want to use bessel's correction here
-  const bessels_corrected =
-    squared_diffs.reduce((a, b) => a + b, 0) / squared_diffs.length;
-  return Math.sqrt(bessels_corrected);
+  // TODO kevin said we might want to use bessel's correction here, but we don't currently
+  const res =
+    squared_diffs.reduce((a, b) => a + b, 0) / (squared_diffs.length - 1);
+  return Math.sqrt(res);
+}
+
+function confidence_interval_98percent(cycles) {
+  const std = stddev(cycles);
+  const z_val = 2.326;
+  const n = cycles.length;
+  const error = (z_val * std) / Math.sqrt(n);
+  return error;
 }
 
 function getEntry(benchmark, runMode) {
@@ -86,7 +94,7 @@ function getValue(entry) {
 
 function getError(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
-    return stddev_cycles(entry["cycles"]);
+    return confidence_interval_98percent(entry["cycles"]);
   } else {
     // Error is given using propagation of error formula for two variables
     // f = baseV / expV
@@ -97,8 +105,8 @@ function getError(entry) {
 
     const baseV = mean(baseline["cycles"]);
     const expV = mean(entry["cycles"]);
-    const baseStd = stddev_cycles(baseline["cycles"]);
-    const expStd = stddev_cycles(entry["cycles"]);
+    const baseStd = stddev(baseline["cycles"]);
+    const expStd = stddev(entry["cycles"]);
 
     // Speedup calculation
     const speedup = baseV / expV;

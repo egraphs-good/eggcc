@@ -181,6 +181,9 @@
 ; ex: get(parallel!(arg(), int(2)), 0) ignores the first element of the tuple
 ; so it's equivalent to infinite other times with any other value as the first element of the tuple.
 ; Check ExprIsResolved to confirm that the substitution finished (all sub-substitutions are done).
-(rule ((ExprIsResolved (Subst assum to in)))
+; also check that to and in are resolved to confirm that we did run substitution this iteration.
+(rule ((ExprIsResolved (Subst assum to in))
+       (ExprIsResolved to)
+       (ExprIsResolved in))
       ((subsume (Subst assum to in)))
       :ruleset cleanup-subst)

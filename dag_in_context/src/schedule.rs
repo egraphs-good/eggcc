@@ -182,6 +182,7 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
 (run-schedule
     (repeat 3
       {helpers}
+      (saturate ivt-analysis)
       loop-inversion)
 
     {helpers})"

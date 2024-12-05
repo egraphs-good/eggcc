@@ -30,21 +30,21 @@ pub(crate) fn helpers() -> String {
             always-run)
         error-checking)
 
-    ;; second, saturate substitution and drop
-    ;; which depend on context and is-resolved
     (saturate
         (saturate 
             (saturate type-helpers)
             type-analysis)
+
+        ;; first, check which eclasses are resolved
         (saturate is-resolved)
-        cleanup-subst
-
         (saturate term-subst)
+        ;; do substutition for one round, subsuming as we go
         (saturate subst)
+        ;; apply the equalities found
         apply-subst-unions
-        
-        (saturate context)
 
+        ;; add context
+        (saturate context)
         (saturate drop)
         apply-drop-unions
         cleanup-drop

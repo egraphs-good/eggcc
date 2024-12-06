@@ -52,12 +52,12 @@ pushd $TOP_DIR
 
 # locally, run on argument
 if [ "$LOCAL" != "" ]; then
-  ./infra/profile.py "$@" "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt
+  ./infra/profile.py "$DATA_DIR" "$@" 2>&1 | tee $NIGHTLY_DIR/log.txt
 else
   export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
   make runtime
   # run on all benchmarks in nightly
-  ./infra/profile.py benchmarks/passing "$DATA_DIR"  2>&1 | tee $NIGHTLY_DIR/log.txt
+  ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee $NIGHTLY_DIR/log.txt
 fi
 
 # Generate latex after running the profiler (depends on profile.json)

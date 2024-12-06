@@ -1,3 +1,5 @@
+# ARGS: 3
+
 # Tower of Hanoi puzzle.
 #
 # Input:  Number of disks.
@@ -24,7 +26,6 @@
   ret res;
 }
 
-# ARGS: 3
 @main (disks: int) {
   src: int = const 0;
   dst: int = const 2;

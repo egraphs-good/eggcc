@@ -135,7 +135,7 @@ def bench(benchmark):
     else:
       # hyperfine command for measuring time, unused in favor of cycles
       # cmd = f'hyperfine --style none --warmup 1 --max-runs 2 --export-json /dev/stdout "{profile_dir}/{benchmark.treatment}{" " + args if len(args) > 0 else ""}"'
-      time_per_benchmark = 2.0
+      time_per_benchmark = 5.0
       resulting_num_cycles = []
       time_start = time.time()
       while True:
@@ -186,9 +186,19 @@ def aggregate(compile_data, bench_times, paths):
 
 if __name__ == '__main__':
   # expect two arguments
-  if len(os.sys.argv) != 3:
-    print("Usage: profile.py <bril_directory> <output_directory>")
+  if len(os.sys.argv) != 3 and len(os.sys.argv) != 4:
+    print("Usage: profile.py <output_directory> <bril_directory> <--parallel>")
     exit(1)
+
+  # running benchmarks sequentially for more reliable results
+  # can set this to true for testing
+  isParallelBenchmark = False
+  if len(os.sys.argv) == 4:
+    if os.sys.argv[3] == "--parallel":
+      isParallelBenchmark = True
+    else:
+      print("Usage: profile.py <output_directory> <bril_directory> <--parallel>")
+      exit(1)
 
   # Create tmp directory for intermediate files
   try:
@@ -207,7 +217,7 @@ if __name__ == '__main__':
 
 
 
-  bril_dir, DATA_DIR = os.sys.argv[1:]
+  DATA_DIR, bril_dir  = os.sys.argv[1:3]
   profiles = []
   # if it is a directory get all files
   if os.path.isdir(bril_dir):
@@ -256,9 +266,6 @@ if __name__ == '__main__':
         executor.shutdown(wait=False, cancel_futures=True)
         raise e
 
-  # running benchmarks sequentially for more reliable results
-  # can set this to true for testing
-  isParallelBenchmark = False
 
   bench_data = {}
   if isParallelBenchmark:

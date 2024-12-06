@@ -496,7 +496,7 @@ impl<'a> Extractor<'a> {
                             correspondance,
                             termdag,
                             current_costs,
-                            child,
+                            child.clone(),
                             other_costs,
                         );
                         new_children.push(new_child);

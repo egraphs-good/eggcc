@@ -27,6 +27,10 @@
   (TupleT TypeList)
 )
 
+; use TmpType for helpers where the type doesn't matter
+; these shouldn't appear in values in the program, only intermediate terms (such as in ivt.egg permutations)
+(function TmpType () Type :unextractable)
+
 (function TNil () TypeList)
 (function TCons (BaseType TypeList) TypeList) ; Head element should never be a tuple
 

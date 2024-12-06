@@ -68,6 +68,22 @@
          :when ((> b 1))
          :ruleset always-run)
 
+; Some of our rules (like ivt.egg) match on `Concat`.
+; These may be missing if a tuple is used directly (i.e. (DoWhile inputs (If pred thn else))).
+; So add these concats for every region in the database
+(rule ((= lhs (DoWhile inputs body))
+       (= size (tuple-length lhs)))
+      ((union lhs (SubTuple lhs 0 size)))
+      :ruleset always-run)
+(rule ((= lhs (If pred inputs thn els))
+       (= size (tuple-length lhs)))
+      ((union lhs (SubTuple lhs 0 size)))
+      :ruleset always-run)
+(rule ((= lhs (Switch pred inputs bodies))
+       (= size (tuple-length lhs)))
+      ((union lhs (SubTuple lhs 0 size)))
+      :ruleset always-run)
+
 ; Also figure out what existing expressions are subtuples of other things
 ; this helps remove concat layers
 (rule ((Get expr i))

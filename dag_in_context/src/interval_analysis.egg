@@ -4,6 +4,7 @@
 (datatype Bound
   (IntB i64)
   (BoolB bool)
+  (Dead) ;; a bound on dead code, so any value can be chosen
   (bound-max Bound Bound)
   (bound-min Bound Bound))
 
@@ -11,22 +12,24 @@
 (function lo-bound (Expr) Bound :unextractable :merge (bound-max old new))
 (function hi-bound (Expr) Bound :unextractable :merge (bound-min old new))
 
-; if lo > hi, panic
-; We can't run these rules because unreachable branches may have impossible intervals
-; Consider re-enabling these rules if we implement an is-reachable analysis
-; (rule (
-;         (= (IntB lo) (lo-bound expr))
-;         (= (IntB hi) (hi-bound expr))
-;         (> lo hi)
-;       ) 
-;       ((panic "lo bound greater than hi bound"))
-;       :ruleset interval-analysis)
-; (rule (
-;         (= (BoolB true) (lo-bound expr))
-;         (= (BoolB false) (hi-bound expr))
-;       ) 
-;       ((panic "lo bound greater than hi bound"))
-;       :ruleset interval-analysis)
+; if lo > hi, we have proven that this code is dead (as long as all our rules are sound)
+; In this case, interval analysis might start going crazy and fail to saturate
+; So we immediately set the bounds to (Dead)
+(rule (
+         (= (IntB lo) (lo-bound expr))
+         (= (IntB hi) (hi-bound expr))
+         (> lo hi)
+       ) 
+       ((set (lo-bound expr) (Dead))
+        (set (hi-bound expr) (Dead)))
+       :ruleset interval-analysis)
+(rule (
+      (= (BoolB true) (lo-bound expr))
+      (= (BoolB false) (hi-bound expr))
+      ) 
+      ((set (lo-bound expr) (Dead))
+       (set (hi-bound expr) (Dead)))
+       :ruleset interval-analysis)
 
 ; combinators
 (rewrite (bound-max (IntB x) (IntB y))
@@ -40,6 +43,18 @@
          :ruleset interval-analysis)
 (rewrite (bound-min (BoolB x) (BoolB y))
          (BoolB (and x y))
+         :ruleset interval-analysis)
+(rewrite (bound-max (Dead) anything)
+         (Dead)
+         :ruleset interval-analysis)
+(rewrite (bound-max anything (Dead))
+         (Dead)
+         :ruleset interval-analysis)
+(rewrite (bound-min (Dead) anything)
+         (Dead)
+         :ruleset interval-analysis)
+(rewrite (bound-min anything (Dead))
+         (Dead)
          :ruleset interval-analysis)
 
 ; =================================

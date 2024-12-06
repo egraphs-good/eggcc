@@ -15,7 +15,6 @@
 
 .then:
   v4: int = const 100;
-  print v4;
 
 .else:
   v4: int = const 50;

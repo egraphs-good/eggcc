@@ -62,7 +62,6 @@ pub fn prologue() -> String {
         include_str!("optimizations/peepholes.egg"),
         &optimizations::memory::rules(),
         include_str!("optimizations/memory.egg"),
-        &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
         include_str!("optimizations/loop_unroll.egg"),
         include_str!("optimizations/swap_if.egg"),
@@ -70,6 +69,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/passthrough.egg"),
         include_str!("optimizations/loop_strength_reduction.egg"),
         include_str!("optimizations/ivt.egg"),
+        include_str!("optimizations/loop_invariant.egg"),
         include_str!("utility/debug-helper.egg"),
         &rulesets(),
     ]

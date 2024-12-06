@@ -1,7 +1,6 @@
 ---
 source: tests/files.rs
 expression: visualization.result
-snapshot_kind: text
 ---
 # ARGS: 1
 @main(v0: int) {
@@ -15,7 +14,7 @@ snapshot_kind: text
   v8_: int = id c2_;
   v9_: int = id c4_;
 .b10_:
-  v11_: bool = lt v7_ v6_;
+  v11_: bool = le v7_ v8_;
   v12_: int = select v11_ v6_ v8_;
   print v12_;
   print v11_;

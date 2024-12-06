@@ -14,19 +14,17 @@ expression: visualization.result
 .b6_:
   c8_: int = const 1;
   print c8_;
-  v9_: int = id v2_;
-.b10_:
-  c11_: int = const 1;
-  v12_: int = add c11_ v2_;
-  v13_: bool = lt v12_ c4_;
-  v2_: int = id v12_;
-  br v13_ .b3_ .b14_;
+.b9_:
+  c10_: int = const 1;
+  v11_: int = add c10_ v2_;
+  v12_: bool = lt v11_ c4_;
+  v2_: int = id v11_;
+  br v12_ .b3_ .b13_;
 .b7_:
-  c15_: int = const 2;
-  print c15_;
-  v9_: int = id v2_;
-  jmp .b10_;
-.b14_:
+  c14_: int = const 2;
+  print c14_;
+  jmp .b9_;
+.b13_:
   print v2_;
   ret;
 }

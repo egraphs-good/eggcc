@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
 runModes = ["llvm-O0-O0", "llvm-eggcc-O0-O0"]
+runModeXOffsets = []
+for runMode in runModes:
+    runModeXOffsets.append(len(runModeXOffsets) * 0.5)
 
 # Read profile.json from nightly/output/data/profile.json
 profile = []
@@ -31,17 +34,14 @@ filtered = sorted(filtered, key=lambda b: b.get('benchmark', ''))
 x_label_map = {}
 outlier_x = []
 outlier_y = []
-run_method_offset = {}
 run_method_spacing = 1.0
 
 for idx, benchmark in enumerate(filtered):
     benchmark_name = benchmark.get('benchmark', f'benchmark_{idx}')
     run_method = benchmark.get('runMethod', '')
-    if run_method not in run_method_offset:
-        run_method_offset[run_method] = len(run_method_offset) * run_method_spacing
 
     if benchmark_name not in x_label_map:
-        x_label_map[benchmark_name] = len(x_labels) + run_method_offset[run_method]
+        x_label_map[benchmark_name] = len(x_labels)
         x_labels.append(benchmark_name)
 
     # Assign color for each runMethod
@@ -54,7 +54,7 @@ for idx, benchmark in enumerate(filtered):
 
     for cycle in benchmark.get('cycles', [])[:100]:
         # Add a small random jitter to x value to prevent overlap
-        jittered_x = x_label_map[benchmark_name] + random.uniform(-0.2, 0.2)
+        jittered_x = x_label_map[benchmark_name] + random.uniform(-0.15, 0.15) + runModeXOffsets[runModes.index(run_method)]
         if cycle < lower_y_bound:
             outlier_x.append(jittered_x)
             outlier_y.append(lower_y_bound)
@@ -70,7 +70,7 @@ for idx, benchmark in enumerate(filtered):
 
 # Create the jitter plot
 plt.figure(figsize=(12, 6))
-plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5)
+plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=20)
 
 # Plot outliers as red 'x' marks
 plt.scatter(outlier_x, outlier_y, color='red', marker='x', s=50, label=f'Outliers not between {lower_y_bound} and {upper_y_bound} cycles', alpha=0.9)

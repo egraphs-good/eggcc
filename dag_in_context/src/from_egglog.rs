@@ -41,19 +41,19 @@ impl<'a> FromEgglog<'a> {
             let Term::Lit(Literal::Int(integer)) = self.termdag.get(*lit) else {
               panic!("Invalid integer: {:?}", lit)
             };
-            Constant::Int(integer)
+            Constant::Int(*integer)
           }
           ("Bool", [lit]) => {
             let Term::Lit(Literal::Bool(boolean)) = self.termdag.get(*lit) else {
               panic!("Invalid boolean: {:?}", lit)
             };
-            Constant::Bool(boolean)
+            Constant::Bool(*boolean)
           }
           ("Float", [lit]) => {
             let Term::Lit(Literal::F64(f)) = self.termdag.get(*lit) else {
               panic!("Invalid float: {:?}", lit)
             };
-            Constant::Float(f)
+            Constant::Float(*f)
           }
           _ => panic!("Invalid constant: {:?}", constant),
         })
@@ -64,7 +64,7 @@ impl<'a> FromEgglog<'a> {
           ("IntT", []) => BaseType::IntT,
           ("FloatT", []) => BaseType::FloatT,
           ("BoolT", []) => BaseType::BoolT,
-          ("PointerT", [basetype]) => BaseType::PointerT(Box::new(self.basetype_from_egglog(self.termdag.get(*basetype)))),
+          ("PointerT", [basetype]) => BaseType::PointerT(Box::new(self.basetype_from_egglog(self.termdag.get(*basetype).clone()))),
           ("StateT", []) => BaseType::StateT,
           _ => panic!("Invalid basetype: {:?}", basetype),
         })
@@ -77,8 +77,8 @@ impl<'a> FromEgglog<'a> {
           ("TCons", [type_, tlistexpr]) => {
             let type_ = self.termdag.get(*type_);
             let tlistexpr = self.termdag.get(*tlistexpr);
-            acc.push(self.basetype_from_egglog(type_));
-            self.vec_from_tlistexpr_helper(tlistexpr, acc);
+            acc.push(self.basetype_from_egglog(type_.clone()));
+            self.vec_from_tlistexpr_helper(tlistexpr.clone(), acc);
           }
           _ => panic!("Invalid tlistexpr: {:?}", tlistexpr),
         })
@@ -96,9 +96,9 @@ impl<'a> FromEgglog<'a> {
           ("Nil", []) => (),
           ("Cons", [expr, listexpr]) => {
             let expr = self.termdag.get(*expr);
-            acc.push(self.expr_from_egglog(expr));
+            acc.push(self.expr_from_egglog(expr.clone()));
             let listexpr = self.termdag.get(*listexpr);
-            self.vec_from_listexpr_helper(listexpr, acc);
+            self.vec_from_listexpr_helper(listexpr.clone(), acc);
           }
           _ => panic!("Invalid listexpr: {:?}", listexpr),
         })
@@ -112,10 +112,10 @@ impl<'a> FromEgglog<'a> {
 
     pub(crate) fn type_from_egglog(&mut self, type_: Term) -> Type {
         match_term_app!(type_.clone(); {
-          ("Base", [basetype]) => Type::Base(self.basetype_from_egglog(self.termdag.get(*basetype))),
+          ("Base", [basetype]) => Type::Base(self.basetype_from_egglog(self.termdag.get(*basetype).clone())),
           ("TupleT", [types]) => {
             let types = self.termdag.get(*types);
-            Type::TupleT(self.vec_from_tlistexpr(types))
+            Type::TupleT(self.vec_from_tlistexpr(types.clone()))
           }
           _ => panic!("Invalid type: {:?}", type_),
         })
@@ -126,8 +126,8 @@ impl<'a> FromEgglog<'a> {
         {
           ("InLoop", [lhs, rhs]) => {
             Assumption::InLoop(
-              self.expr_from_egglog(self.termdag.get(*lhs)),
-              self.expr_from_egglog(self.termdag.get(*rhs)),
+              self.expr_from_egglog(self.termdag.get(*lhs).clone()),
+              self.expr_from_egglog(self.termdag.get(*rhs).clone()),
             )
           }
           ("InFunc", [str]) => {
@@ -142,7 +142,7 @@ impl<'a> FromEgglog<'a> {
             else {
               panic!("Invalid boolean: {:?}", is_then)
             };
-            Assumption::InIf(boolean, self.expr_from_egglog(self.termdag.get(*pred_expr)), self.expr_from_egglog(self.termdag.get(*input_expr)))
+            Assumption::InIf(*boolean, self.expr_from_egglog(self.termdag.get(*pred_expr).clone()), self.expr_from_egglog(self.termdag.get(*input_expr).clone()))
           }
           (name, _) => {
             eprintln!("Invalid assumption: {:?}", assumption);
@@ -213,7 +213,7 @@ impl<'a> FromEgglog<'a> {
         {
           ("Const", [constant, ty, ctx]) => {
             let constant = self.termdag.get(*constant);
-            Rc::new(Expr::Const(self.const_from_egglog(constant), self.type_from_egglog(self.termdag.get(*ty)), self.assumption_from_egglog(self.termdag.get(*ctx))))
+            Rc::new(Expr::Const(self.const_from_egglog(constant.clone()), self.type_from_egglog(self.termdag.get(*ty).clone()), self.assumption_from_egglog(self.termdag.get(*ctx).clone())))
           }
           ("Top", [op, lhs, mid, rhs]) => {
             let op = self.termdag.get(*op);
@@ -221,10 +221,10 @@ impl<'a> FromEgglog<'a> {
             let mid = self.termdag.get(*mid);
             let rhs = self.termdag.get(*rhs);
             Rc::new(Expr::Top(
-              self.top_from_egglog(op),
-              self.expr_from_egglog(lhs),
-              self.expr_from_egglog(mid),
-              self.expr_from_egglog(rhs),
+              self.top_from_egglog(op.clone()),
+              self.expr_from_egglog(lhs.clone()),
+              self.expr_from_egglog(mid.clone()),
+              self.expr_from_egglog(rhs.clone()),
             ))
           }
           ("Bop", [op, lhs, rhs]) => {
@@ -232,17 +232,17 @@ impl<'a> FromEgglog<'a> {
             let lhs = self.termdag.get(*lhs);
             let rhs = self.termdag.get(*rhs);
             Rc::new(Expr::Bop(
-              self.binop_from_egglog(op),
-              self.expr_from_egglog(lhs),
-              self.expr_from_egglog(rhs),
+              self.binop_from_egglog(op.clone()),
+              self.expr_from_egglog(lhs.clone()),
+              self.expr_from_egglog(rhs.clone()),
             ))
           }
           ("Uop", [op, expr]) => {
             let op = self.termdag.get(*op);
             let expr = self.termdag.get(*expr);
             Rc::new(Expr::Uop(
-              self.uop_from_egglog(op),
-              self.expr_from_egglog(expr),
+              self.uop_from_egglog(op.clone()),
+              self.expr_from_egglog(expr.clone()),
             ))
           }
           ("Get", [expr, index]) => {
@@ -252,8 +252,8 @@ impl<'a> FromEgglog<'a> {
               panic!("Invalid index: {:?}", index)
             };
             Rc::new(Expr::Get(
-              self.expr_from_egglog(expr),
-              index.try_into().unwrap(),
+              self.expr_from_egglog(expr.clone()),
+              (*index).try_into().unwrap(),
             ))
           }
           ("Alloc", [alloc_id, expr, state, type_]) => {
@@ -265,10 +265,10 @@ impl<'a> FromEgglog<'a> {
             let basetype = self.termdag.get(*type_);
             let state = self.termdag.get(*state);
             Rc::new(Expr::Alloc(
-              alloc_id,
-              self.expr_from_egglog(expr),
-              self.expr_from_egglog(state),
-              self.basetype_from_egglog(basetype),
+              *alloc_id,
+              self.expr_from_egglog(expr.clone()),
+              self.expr_from_egglog(state.clone()),
+              self.basetype_from_egglog(basetype.clone()),
             ))
           }
           ("Call", [lit, expr]) => {
@@ -278,20 +278,20 @@ impl<'a> FromEgglog<'a> {
             let expr = self.termdag.get(*expr);
             Rc::new(Expr::Call(
               string.to_string(),
-              self.expr_from_egglog(expr),
+              self.expr_from_egglog(expr.clone()),
             ))
           }
-          ("Empty", [ty, ctx]) => Rc::new(Expr::Empty(self.type_from_egglog(self.termdag.get(*ty)), self.assumption_from_egglog(self.termdag.get(*ctx)))),
+          ("Empty", [ty, ctx]) => Rc::new(Expr::Empty(self.type_from_egglog(self.termdag.get(*ty).clone()), self.assumption_from_egglog(self.termdag.get(*ctx).clone()))),
           ("Single", [expr]) => {
             let expr = self.termdag.get(*expr);
-            Rc::new(Expr::Single(self.expr_from_egglog(expr)))
+            Rc::new(Expr::Single(self.expr_from_egglog(expr.clone())))
           }
           ("Concat", [lhs, rhs]) => {
             let lhs = self.termdag.get(*lhs);
             let rhs = self.termdag.get(*rhs);
             Rc::new(Expr::Concat(
-              self.expr_from_egglog(lhs),
-              self.expr_from_egglog(rhs),
+              self.expr_from_egglog(lhs.clone()),
+              self.expr_from_egglog(rhs.clone()),
             ))
           }
           ("Switch", [expr, expr2, exprs]) => {
@@ -299,9 +299,9 @@ impl<'a> FromEgglog<'a> {
             let expr2 = self.termdag.get(*expr2);
             let exprs = self.termdag.get(*exprs);
             Rc::new(Expr::Switch(
-              self.expr_from_egglog(expr),
-              self.expr_from_egglog(expr2),
-              self.vec_from_listexpr(exprs),
+              self.expr_from_egglog(expr.clone()),
+              self.expr_from_egglog(expr2.clone()),
+              self.vec_from_listexpr(exprs.clone()),
             ))
           }
           ("If", [cond, input, then_, else_]) => {
@@ -310,23 +310,23 @@ impl<'a> FromEgglog<'a> {
             let then_ = self.termdag.get(*then_);
             let else_ = self.termdag.get(*else_);
             Rc::new(Expr::If(
-              self.expr_from_egglog(cond),
-              self.expr_from_egglog(input),
-              self.expr_from_egglog(then_),
-              self.expr_from_egglog(else_),
+              self.expr_from_egglog(cond.clone()),
+              self.expr_from_egglog(input.clone()),
+              self.expr_from_egglog(then_.clone()),
+              self.expr_from_egglog(else_.clone()),
             ))
           }
           ("DoWhile", [cond, body]) => {
             let cond = self.termdag.get(*cond);
             let body = self.termdag.get(*body);
             Rc::new(Expr::DoWhile(
-              self.expr_from_egglog(cond),
-              self.expr_from_egglog(body),
+              self.expr_from_egglog(cond.clone()),
+              self.expr_from_egglog(body.clone()),
             ))
           }
           ("Arg", [ty, ctx]) => {
             let type_ = self.termdag.get(*ty);
-            Rc::new(Expr::Arg(self.type_from_egglog(type_), self.assumption_from_egglog(self.termdag.get(*ctx))))
+            Rc::new(Expr::Arg(self.type_from_egglog(type_.clone()), self.assumption_from_egglog(self.termdag.get(*ctx).clone())))
           }
           ("Function", [lit, type1, type2, expr]) => {
             let Term::Lit(Literal::String(string)) = self.termdag.get(*lit) else {
@@ -337,9 +337,9 @@ impl<'a> FromEgglog<'a> {
             let expr = self.termdag.get(*expr);
             Rc::new(Expr::Function(
               string.to_string(),
-              self.type_from_egglog(type1),
-              self.type_from_egglog(type2),
-              self.expr_from_egglog(expr),
+              self.type_from_egglog(type1.clone()),
+              self.type_from_egglog(type2.clone()),
+              self.expr_from_egglog(expr.clone()),
             ))
           }
           _ => panic!("Invalid expr: {:?}", expr),
@@ -358,8 +358,8 @@ impl<'a> FromEgglog<'a> {
           ("Program", [entry, functions]) => {
             let entry = self.termdag.get(*entry);
             let others = self.termdag.get(*functions);
-            let entry = self.expr_from_egglog(entry);
-            let functions = self.vec_from_listexpr(others);
+            let entry = self.expr_from_egglog(entry.clone());
+            let functions = self.vec_from_listexpr(others.clone());
             TreeProgram { entry, functions }
           }
           _ => panic!("Invalid program: {:?}", program),

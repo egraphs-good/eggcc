@@ -30,20 +30,21 @@ pub(crate) fn helpers() -> String {
             always-run)
         error-checking)
 
-    ;; second, saturate substitution and drop
-    ;; which depend on context and is-resolved
     (saturate
         (saturate 
             (saturate type-helpers)
             type-analysis)
+
+        ;; first, check which eclasses are resolved
         (saturate is-resolved)
-
         (saturate term-subst)
+        ;; do substutition for one round, subsuming as we go
         (saturate subst)
+        ;; apply the equalities found
         apply-subst-unions
-        cleanup-subst
-        (saturate context)
 
+        ;; add context
+        (saturate context)
         (saturate drop)
         apply-drop-unions
         cleanup-drop
@@ -125,8 +126,9 @@ pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
     res.push(CompilerPass::Schedule(format!(
         "
 (run-schedule
-  (repeat 2
+  (repeat 3
     {helpers}
+    (saturate ivt-analysis)
     loop-inversion)
   
   {helpers})"
@@ -181,6 +183,7 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
 (run-schedule
     (repeat 3
       {helpers}
+      (saturate ivt-analysis)
       loop-inversion)
 
     {helpers})"

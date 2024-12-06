@@ -5,31 +5,33 @@ expression: visualization.result
 # ARGS: 1
 @main(v0: int) {
 .b1_:
-  c2_: int = const 1;
-  c3_: int = const 2;
-  v4_: bool = lt v0 c3_;
-  c5_: int = const 0;
+  c2_: int = const 2;
+  v3_: bool = lt v0 c2_;
+  c4_: int = const 0;
+  c5_: int = const 1;
   c6_: int = const 5;
-  v7_: int = id c2_;
-  v8_: int = id c2_;
-  v9_: int = id c3_;
-  br v4_ .b10_ .b11_;
+  v7_: int = id c5_;
+  v8_: int = id c5_;
+  v9_: int = id c2_;
+  br v3_ .b10_ .b11_;
 .b10_:
-  c12_: int = const 4;
-  v7_: int = id c12_;
-  v8_: int = id c2_;
-  v9_: int = id c3_;
-  v13_: int = add c3_ v7_;
-  v14_: int = select v4_ v7_ v13_;
-  v15_: int = add c2_ v14_;
-  print v15_;
+  c12_: bool = const true;
+  c13_: int = const 4;
+  v14_: int = select c12_ c13_ c2_;
+  v7_: int = id v14_;
+  v8_: int = id c5_;
+  v9_: int = id c2_;
+  v15_: int = add c2_ v7_;
+  v16_: int = select v3_ v7_ v15_;
+  v17_: int = add c5_ v16_;
+  print v17_;
   ret;
-  jmp .b16_;
+  jmp .b18_;
 .b11_:
-  v13_: int = add c3_ v7_;
-  v14_: int = select v4_ v7_ v13_;
-  v15_: int = add c2_ v14_;
-  print v15_;
+  v15_: int = add c2_ v7_;
+  v16_: int = select v3_ v7_ v15_;
+  v17_: int = add c5_ v16_;
+  print v17_;
   ret;
-.b16_:
+.b18_:
 }

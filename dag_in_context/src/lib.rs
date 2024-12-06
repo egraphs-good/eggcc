@@ -101,7 +101,7 @@ fn print_with_intermediate_helper(
             let child_vars = children
                 .iter()
                 .map(|child| {
-                    print_with_intermediate_helper(termdag, termdag.get(*child), cache, res)
+                    print_with_intermediate_helper(termdag, termdag.get(*child).clone(), cache, res)
                 })
                 .collect::<Vec<String>>()
                 .join(" ");

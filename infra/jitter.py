@@ -53,7 +53,7 @@ def make_plot(lower_y_bound, upper_y_bound, output):
 
       for cycle in benchmark.get('cycles', [])[:100]:
           # Add a small random jitter to x value to prevent overlap
-          jittered_x = x_label_map[benchmark_name] + random.uniform(-0.15, 0.15) + runModeXOffsets[runModes.index(run_method)]
+          jittered_x = x_label_map[benchmark_name] + random.uniform(-0.2, 0.2) + runModeXOffsets[runModes.index(run_method)]
           if cycle < lower_y_bound:
               outlier_x.append(jittered_x)
               outlier_y.append(lower_y_bound)
@@ -69,7 +69,7 @@ def make_plot(lower_y_bound, upper_y_bound, output):
 
   # Create the jitter plot
   plt.figure(figsize=(12, 6))
-  plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=20)
+  plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=15)
 
   # Plot outliers as red 'x' marks
   plt.scatter(outlier_x, outlier_y, color='red', marker='x', s=50, label=f'Outliers not between {lower_y_bound} and {upper_y_bound} cycles', alpha=0.9)

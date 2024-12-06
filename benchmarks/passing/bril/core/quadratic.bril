@@ -1,6 +1,9 @@
 # ARGS: -5 8 21
+
+# quadratic formula modified for eggcc- just return and print one value
 @main(a: int, b: int, c: int) {
-  call @quadratic a b c;
+  res: int = call @quadratic a b c;
+  print res;
 }
 
 @sqrt(x: int): int {
@@ -35,7 +38,7 @@
   ret v17;
 }
 
-@quadratic(a: int, b: int, c: int) {
+@quadratic(a: int, b: int, c: int): int {
   v0: int = id b;
   v1: int = id b;
   v2: int = mul v0 v1;
@@ -67,11 +70,5 @@
   v24: int = id r1;
   v25: int = id d;
   v26: int = div v24 v25;
-  print v26;
-  v27: int = const 0;
-  v28: int = id r2;
-  v29: int = id d;
-  v30: int = div v28 v29;
-  print v30;
-  v31: int = const 0;
+  ret v26;
 }

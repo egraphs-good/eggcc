@@ -1,3 +1,5 @@
+# ARGS: 96 false
+
 # For a cyclic group Zn of integers modulo n with the group operation addition (module n)
 # compute the order of each element u in Zn
 # ord(u) = n/gcd(u,n)=lcm(u,n)/u
@@ -61,7 +63,8 @@
 # compute the orders of elements [1,n)
 # if use_lcm = true then compute order using lcm
 # else compute order using gcd
-@orders(u: int, n: int, use_lcm: bool) {
+@orders(u: int, n: int, use_lcm: bool): int {
+  res: int = const 0;
 .for.cond:
   is_term: bool = eq u n;
   br is_term .for.finish .for.body;
@@ -75,20 +78,20 @@
   gcdun: int = call @gcd u n;
   ordu: int = div n gcdun;
 .for.body.print:
-  print u ordu;
+  res: int = add res ordu;
   one: int = const 1;
   u: int = add u one;
   jmp .for.cond;
 .for.finish:
-  ret;
+  ret res;
 }
 
-# ARGS: 96 false
+
 # u = 0 is special case which we take care of in main
 @main(n: int, use_lcm: bool) {
   zero: int = const 0;
   u: int = const 1;
   n: int = call @abs n;
-  print zero u;
-  call @orders u n use_lcm;
+  res: int = call @orders u n use_lcm;
+  print res;
 }

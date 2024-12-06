@@ -5,9 +5,11 @@
 # If a pair of sides a and b are found, then they are
 # printed; otherwise, nothing is printed. If there are
 # multiple triples for the given n then all are printed.
+# Modified for eggcc: print the sum of all the two sides multiplied together.
 
 @main(n: int) {
   one: int = const 1;
+  res: int = const 0;
 
   n_sq: int = mul n n;
 
@@ -25,7 +27,8 @@
   br found .found .inner_continue;
 
 .found:
-  print b a;
+  prod: int = mul a b;
+  res: int = add res prod;
 
 .inner_continue:
   b: int = add b one;
@@ -38,4 +41,5 @@
   br done .finish .outer_loop;
 
 .finish:
+  print res;
 }

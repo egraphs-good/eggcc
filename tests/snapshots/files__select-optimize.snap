@@ -6,6 +6,7 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
 <<<<<<< HEAD
+<<<<<<< HEAD
   c2_: int = const 10;
   c3_: int = const 5;
 =======
@@ -47,6 +48,10 @@ expression: visualization.result
   v10_: int = id v16_;
   print v7_;
 =======
+=======
+  c2_: int = const 0;
+  c3_: int = const 10;
+>>>>>>> 46e3c07a (snapshots)
   v4_: int = id c2_;
   v5_: int = id c3_;
   v6_: int = id c2_;
@@ -72,11 +77,5 @@ expression: visualization.result
   br v11_ .b8_ .b22_;
 .b22_:
   print v4_;
->>>>>>> bd5b3865 (snapshots)
   ret;
-  jmp .b27_;
-.b12_:
-  print v7_;
-  ret;
-.b27_:
 }

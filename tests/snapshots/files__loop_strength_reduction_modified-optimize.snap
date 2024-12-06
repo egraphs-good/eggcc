@@ -19,6 +19,7 @@ expression: visualization.result
   v12_: int = id c5_;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   v13_: int = id c6_;
 .b14_:
 <<<<<<< HEAD
@@ -191,6 +192,8 @@ expression: visualization.result
 >>>>>>> d124e6ed (snapshots)
 .b33_:
 =======
+=======
+>>>>>>> 46e3c07a (snapshots)
   v13_: int = id c2_;
   v14_: int = id c3_;
   v15_: int = id c4_;
@@ -218,28 +221,5 @@ expression: visualization.result
   v17_: int = id v17_;
   br v25_ .b18_ .b26_;
 .b26_:
->>>>>>> cdb622b7 (snapshots)
-=======
-  v28_: int = add v10_ v27_;
-  v29_: int = select v26_ v28_ v27_;
-  v16_: int = id v25_;
-  v17_: int = id v8_;
-  v18_: int = id v29_;
-  v19_: int = id v10_;
-  v20_: int = id v11_;
-  v21_: int = id v12_;
-.b23_:
-  v30_: int = add v7_ v8_;
-  v31_: int = select v15_ v30_ v7_;
-  v7_: int = id v31_;
-  v8_: int = id v8_;
-  v9_: int = id v18_;
-  v10_: int = id v10_;
-  v11_: int = id v11_;
-  v12_: int = id v12_;
-  v13_: int = id v13_;
-  br v15_ .b14_ .b32_;
-.b32_:
->>>>>>> 10665900 (snapshots after rebase)
   ret;
 }

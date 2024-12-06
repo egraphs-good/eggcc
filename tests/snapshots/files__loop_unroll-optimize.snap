@@ -10,22 +10,12 @@ expression: visualization.result
   v3_: int = id c1_;
   v4_: int = id c2_;
 .b5_:
-<<<<<<< HEAD
   v6_: int = add v3_ v4_;
   v7_: bool = lt v6_ v4_;
   v3_: int = id v6_;
   v4_: int = id v4_;
   br v7_ .b5_ .b8_;
 .b8_:
-=======
-  v6_: bool = lt v3_ v4_;
-  v7_: int = add v3_ v4_;
-  v8_: int = select v6_ v7_ v3_;
-  v3_: int = id v8_;
-  v4_: int = id v4_;
-  br v6_ .b5_ .b9_;
-.b9_:
->>>>>>> cdb622b7 (snapshots)
   print v3_;
   ret;
 }

@@ -6,10 +6,6 @@ expression: visualization.result
 @main(v0: int, v1: int) {
 .b2_:
   c3_: int = const 0;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 10665900 (snapshots after rebase)
   c4_: int = const 1;
   v5_: int = id c3_;
   v6_: int = id c4_;
@@ -20,195 +16,50 @@ expression: visualization.result
   v11_: int = id v5_;
   v12_: int = id v6_;
   v13_: int = id v7_;
-<<<<<<< HEAD
-<<<<<<< HEAD
-  v14_: int = id v8_;
-  br v10_ .b15_ .b16_;
-.b15_:
-  c17_: int = const 0;
-  v18_: bool = lt c17_ v7_;
-  v19_: int = id v5_;
-  v20_: int = id v6_;
-  v21_: int = id c17_;
-  v22_: int = id v7_;
-  v23_: int = id v8_;
-  br v18_ .b24_ .b25_;
-.b24_:
-  v26_: int = mul v5_ v7_;
-  v27_: int = id v5_;
-  v28_: int = id v6_;
-  v29_: int = id c17_;
-  v30_: int = id v7_;
-  v31_: int = id v8_;
-  v32_: int = id v26_;
-.b33_:
-  v34_: int = add v29_ v32_;
-  print v34_;
-  v35_: int = add v28_ v29_;
-  v36_: bool = lt v35_ v30_;
-  v27_: int = id v27_;
-  v28_: int = id v28_;
-  v29_: int = id v35_;
-  v30_: int = id v30_;
-  v31_: int = id v31_;
-  v32_: int = id v32_;
-  br v36_ .b33_ .b37_;
-.b37_:
-  v19_: int = id v27_;
-  v20_: int = id v28_;
-  v21_: int = id v29_;
-  v22_: int = id v30_;
-  v23_: int = id v31_;
-.b25_:
-  v38_: int = add v5_ v6_;
-  v11_: int = id v38_;
-=======
-=======
->>>>>>> 10665900 (snapshots after rebase)
   br v10_ .b14_ .b15_;
 .b14_:
   c16_: int = const 0;
-  v17_: int = id v5_;
-  v18_: int = id v6_;
-  v19_: int = id c16_;
-  v20_: int = id v7_;
-.b21_:
-  v22_: bool = lt v19_ v20_;
-  v23_: int = id v17_;
-  v24_: int = id v18_;
-  v25_: int = id v19_;
-  v26_: int = id v20_;
-  br v22_ .b27_ .b28_;
-.b27_:
-  v29_: int = mul v17_ v20_;
-  v30_: int = add v19_ v29_;
+  v17_: bool = lt c16_ v7_;
+  v18_: int = id v5_;
+  v19_: int = id v6_;
+  v20_: int = id c16_;
+  v21_: int = id v7_;
+  br v17_ .b22_ .b23_;
+.b22_:
+  v24_: int = id v5_;
+  v25_: int = id v6_;
+  v26_: int = id c16_;
+  v27_: int = id v7_;
+.b28_:
+  v29_: int = mul v24_ v27_;
+  v30_: int = add v26_ v29_;
   print v30_;
-  v31_: int = add v18_ v19_;
-  v23_: int = id v17_;
-  v24_: int = id v18_;
-<<<<<<< HEAD
-  v25_: int = id v31_;
-  v26_: int = id v20_;
-  v17_: int = id v23_;
-  v18_: int = id v24_;
-  v19_: int = id v25_;
-  v20_: int = id v26_;
-  jmp .b21_;
-.b28_:
-  v17_: int = id v23_;
-  v18_: int = id v24_;
-  v19_: int = id v25_;
-  v20_: int = id v26_;
-  v32_: int = add v5_ v6_;
-  v11_: int = id v32_;
->>>>>>> bd5b3865 (snapshots)
-  v12_: int = id v6_;
-  v13_: int = id v7_;
-  v5_: int = id v11_;
-  v6_: int = id v6_;
-  v7_: int = id v7_;
-  v8_: int = id v8_;
-  jmp .b9_;
-.b15_:
-  v5_: int = id v11_;
-  v6_: int = id v6_;
-  v7_: int = id v7_;
-  v8_: int = id v8_;
-  print v5_;
-=======
-  v4_: bool = lt c3_ v0;
-  c5_: int = const 1;
-  v6_: int = id c3_;
-  v7_: int = id c5_;
-  v8_: int = id v1;
-  v9_: int = id c5_;
-  v10_: int = id v1;
-  v11_: int = id v0;
-  br v4_ .b12_ .b13_;
-.b12_:
-  v14_: int = id c3_;
-  v15_: int = id c5_;
-  v16_: int = id v1;
-  v17_: int = id c5_;
-  v18_: int = id v1;
-  v19_: int = id v0;
-.b20_:
-  c21_: int = const 0;
-  v22_: int = id v14_;
-  v23_: int = id v15_;
-  v24_: int = id c21_;
-  v25_: int = id v16_;
-.b26_:
-  v27_: bool = lt v24_ v25_;
-  v28_: int = id v22_;
-  v29_: int = id v23_;
-  v30_: int = id v24_;
-  v31_: int = id v25_;
-  br v27_ .b32_ .b33_;
-.b32_:
-  v34_: int = mul v22_ v25_;
-  v35_: int = add v24_ v34_;
-  print v35_;
-  v36_: int = add v23_ v24_;
-  v28_: int = id v22_;
-  v29_: int = id v23_;
-  v30_: int = id v36_;
-  v31_: int = id v25_;
-  v22_: int = id v28_;
-  v23_: int = id v29_;
-  v24_: int = id v30_;
-  v25_: int = id v31_;
-  jmp .b26_;
+  v31_: int = add v25_ v26_;
+  v32_: bool = lt v31_ v27_;
+  v24_: int = id v24_;
+  v25_: int = id v25_;
+  v26_: int = id v31_;
+  v27_: int = id v27_;
+  br v32_ .b28_ .b33_;
 .b33_:
-  v22_: int = id v28_;
-  v23_: int = id v29_;
-  v24_: int = id v30_;
-  v25_: int = id v31_;
-  v37_: int = add v14_ v15_;
-  v38_: bool = lt v37_ v19_;
-  v14_: int = id v37_;
-  v15_: int = id v17_;
-  v16_: int = id v18_;
-  v17_: int = id v17_;
-  v18_: int = id v18_;
-  v19_: int = id v19_;
-  br v38_ .b20_ .b39_;
-.b39_:
-  v6_: int = id v14_;
-  v7_: int = id v15_;
-  v8_: int = id v16_;
-  v9_: int = id v17_;
-  v10_: int = id v18_;
-  v11_: int = id v19_;
-  print v6_;
->>>>>>> cdb622b7 (snapshots)
-=======
-  v25_: int = id v31_;
-  v26_: int = id v20_;
-  v17_: int = id v23_;
   v18_: int = id v24_;
   v19_: int = id v25_;
   v20_: int = id v26_;
-  jmp .b21_;
-.b28_:
-  v17_: int = id v23_;
-  v18_: int = id v24_;
-  v19_: int = id v25_;
-  v20_: int = id v26_;
-  v32_: int = add v5_ v6_;
-  v11_: int = id v32_;
+  v21_: int = id v27_;
+.b23_:
+  v34_: int = add v5_ v6_;
+  v11_: int = id v34_;
   v12_: int = id v6_;
   v13_: int = id v7_;
 .b15_:
-  v33_: int = add v5_ v6_;
-  v34_: int = select v10_ v33_ v5_;
-  v5_: int = id v34_;
+  v35_: int = add v5_ v6_;
+  v36_: int = select v10_ v35_ v5_;
+  v5_: int = id v36_;
   v6_: int = id v6_;
   v7_: int = id v7_;
   v8_: int = id v8_;
-  br v10_ .b9_ .b35_;
-.b35_:
+  br v10_ .b9_ .b37_;
+.b37_:
   print v5_;
->>>>>>> 10665900 (snapshots after rebase)
   ret;
 }

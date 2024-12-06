@@ -6,7 +6,10 @@ expression: visualization.result
 @main(v0: int, v1: int) {
 .b2_:
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 6c2faea7 (snapshots)
 <<<<<<< HEAD
   c3_: int = const 0;
   c4_: int = const 1;
@@ -41,6 +44,7 @@ expression: visualization.result
   c4_: int = const 0;
   c5_: int = const 1;
   c6_: int = const 20;
+<<<<<<< HEAD
   v7_: int = id c4_;
 <<<<<<< HEAD
 =======
@@ -89,10 +93,19 @@ expression: visualization.result
 <<<<<<< HEAD
 =======
 =======
+>>>>>>> 6c2faea7 (snapshots)
+=======
+  c3_: int = const 0;
+  c4_: int = const 1;
+  c5_: int = const 20;
+  v6_: int = id c3_;
+>>>>>>> 46e3c07a (snapshots)
+  v7_: int = id c4_;
   v8_: int = id v1;
   v9_: int = id v0;
   v10_: int = id c5_;
 .b11_:
+<<<<<<< HEAD
   v12_: bool = lt v6_ v10_;
   v13_: int = id v6_;
   v14_: int = id v7_;
@@ -127,6 +140,35 @@ expression: visualization.result
   v10_: int = id v17_;
 >>>>>>> bd5b3865 (snapshots)
 >>>>>>> 1d1f4930 (snapshots)
+<<<<<<< HEAD
 >>>>>>> d0be4185 (snapshots)
+=======
+=======
+  v12_: int = mul v10_ v9_;
+  v13_: bool = lt v12_ v8_;
+  v14_: int = add v12_ v7_;
+  v15_: int = select v13_ v14_ v12_;
+  v16_: int = add v6_ v7_;
+  v17_: int = add v16_ v7_;
+  v18_: int = add v17_ v7_;
+  v19_: int = mul v15_ v18_;
+  v20_: int = mul v15_ v17_;
+  v21_: int = mul v15_ v16_;
+  v22_: int = mul v15_ v6_;
+  print v22_;
+  print v21_;
+  print v20_;
+  print v19_;
+  v23_: int = add v18_ v7_;
+  v24_: bool = lt v23_ v10_;
+  v6_: int = id v23_;
+  v7_: int = id v7_;
+  v8_: int = id v8_;
+  v9_: int = id v9_;
+  v10_: int = id v10_;
+  br v24_ .b11_ .b25_;
+.b25_:
+>>>>>>> 46e3c07a (snapshots)
+>>>>>>> 6c2faea7 (snapshots)
   ret;
 }

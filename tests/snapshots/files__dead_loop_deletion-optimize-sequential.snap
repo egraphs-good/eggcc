@@ -7,6 +7,7 @@ expression: visualization.result
 .b0_:
   c1_: int = const 2;
 <<<<<<< HEAD
+<<<<<<< HEAD
   c2_: int = const 3;
   c3_: int = const 0;
   c4_: int = const 1;
@@ -38,6 +39,8 @@ expression: visualization.result
 =======
 >>>>>>> bd5b3865 (snapshots)
 >>>>>>> d0be4185 (snapshots)
+=======
+>>>>>>> 6c2faea7 (snapshots)
   print c1_;
   ret;
 }

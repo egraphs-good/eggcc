@@ -1,6 +1,7 @@
 ---
 source: tests/files.rs
 expression: visualization.result
+snapshot_kind: text
 ---
 # ARGS: 1
 @main(v0: int) {
@@ -17,8 +18,8 @@ expression: visualization.result
   ret;
   jmp .b10_;
 .b9_:
-  v11_: bool = lt v0 c2_;
-  v12_: bool = gt v0 c2_;
+  v11_: bool = lt c2_ v0;
+  v12_: bool = lt v0 c2_;
   v13_: bool = and v11_ v12_;
   c14_: int = const 3;
   v15_: int = id c14_;
@@ -30,7 +31,7 @@ expression: visualization.result
   v21_: int = id c6_;
 .b22_:
   v23_: int = add v19_ v21_;
-  v24_: bool = gt v23_ v20_;
+  v24_: bool = lt v20_ v23_;
   v25_: bool = not v24_;
   v19_: int = id v23_;
   v20_: int = id v20_;

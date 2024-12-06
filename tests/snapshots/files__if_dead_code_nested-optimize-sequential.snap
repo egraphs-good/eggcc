@@ -24,7 +24,7 @@ expression: visualization.result
   ret;
   jmp .b15_;
 .b8_:
-  v16_: bool = gt v0 c6_;
+  v16_: bool = lt c6_ v0;
   c17_: bool = const false;
   c18_: int = const 2;
   v19_: int = id c18_;
@@ -34,10 +34,30 @@ expression: visualization.result
 .b22_:
   v24_: bool = lt c5_ v0;
   c25_: int = const 4;
-  v26_: int = select v24_ c5_ c25_;
+  v26_: int = id c25_;
+  v27_: bool = id c17_;
+  v28_: int = id c4_;
+  br v24_ .b29_ .b30_;
+.b29_:
+  c31_: int = const 3;
+  v26_: int = id c31_;
+  v27_: bool = id c17_;
+  v28_: int = id c4_;
   v19_: int = id v26_;
-  v20_: bool = id c17_;
-  v21_: int = id c4_;
+  v20_: bool = id v27_;
+  v21_: int = id v28_;
+  v12_: int = id v19_;
+  v13_: int = id c4_;
+  v14_: int = select v3_ c2_ c4_;
+  print v14_;
+  print v3_;
+  print v12_;
+  ret;
+  jmp .b15_;
+.b30_:
+  v19_: int = id v26_;
+  v20_: bool = id v27_;
+  v21_: int = id v28_;
   v12_: int = id v19_;
   v13_: int = id c4_;
   v14_: int = select v3_ c2_ c4_;

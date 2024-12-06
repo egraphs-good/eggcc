@@ -78,6 +78,14 @@ fn test_tuple_ith() -> crate::Result {
                   (Concat (Single (Const (Int 0) {emptyt} {ctx})) (Single (Const (Int 1) {emptyt} {ctx})))
                   (Concat (Single (Const (Int 2) {emptyt} {ctx})) (Single (Const (Int 3) {emptyt} {ctx})))))
     
+    ;; Gets of tup and tup2 are only generated when tup and tup2 are in critical positions
+    ;; like inputs to a DoWhile, 
+    (let tup_type (TupleT (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (IntT) (TNil)))))))
+    (let body (Concat (Const (Bool true) tup_type (TmpCtx)) (Arg tup_type (TmpCtx))))
+    (let loop (DoWhile tup body))
+    (union (TmpCtx) (InLoop tup body))
+    (delete (TmpCtx))
+    
     ;; with print
     (let tup2 (Concat 
                 (Concat 
@@ -85,6 +93,11 @@ fn test_tuple_ith() -> crate::Result {
                     (Concat (Single (Const (Int 1) {emptyt} {ctx})) 
                                 (Single (Const (Int 2) {emptyt} {ctx}))))
                 (Single (Const (Int 3) {emptyt} {ctx}))))
+    (let tup2_type (TupleT (TCons (StateT) (TCons (IntT) (TCons (IntT) (TCons (IntT) (TNil)))))))
+    (let body2 (Concat (Const (Bool true) tup2_type (TmpCtx)) (Arg tup2_type (TmpCtx))))
+    (let loop2 (DoWhile tup2 body2))
+    (union (TmpCtx) (InLoop tup2 body2))
+    (delete (TmpCtx))
     "
     );
 

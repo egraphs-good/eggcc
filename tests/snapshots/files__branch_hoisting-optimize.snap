@@ -5,45 +5,32 @@ expression: visualization.result
 # ARGS: 0
 @main(v0: int) {
 .b1_:
-  c2_: bool = const true;
-  c3_: int = const 0;
-  c4_: int = const 500;
-  v5_: int = id c3_;
-  v6_: int = id c3_;
+  c2_: int = const 0;
+  c3_: int = const 500;
+  v4_: bool = eq c2_ v0;
+  v5_: int = id c2_;
+  v6_: int = id c2_;
   v7_: int = id v0;
-  v8_: int = id c3_;
-  v9_: int = id c4_;
-  v10_: int = id c3_;
-  v11_: int = id c3_;
-  v12_: int = id v0;
-  v13_: int = id c3_;
-  v14_: int = id c4_;
-.b15_:
-  v16_: bool = eq v12_ v13_;
+  v8_: int = id c2_;
+  v9_: int = id c3_;
+  v10_: bool = id v4_;
+.b11_:
+  c12_: int = const 2;
+  v13_: int = mul c12_ v6_;
+  c14_: int = const 3;
+  v15_: int = mul c14_ v6_;
+  v16_: int = select v10_ v13_ v15_;
   c17_: int = const 1;
-  v18_: int = add c17_ v11_;
-  v19_: int = add c17_ v18_;
-  v20_: int = add c17_ v19_;
-  c21_: int = const 2;
-  v22_: int = mul c21_ v20_;
-  c23_: int = const 3;
-  v24_: int = mul c23_ v20_;
-  v25_: int = select v16_ v22_ v24_;
-  v26_: int = add c17_ v20_;
-  v27_: bool = lt v26_ v14_;
-  v10_: int = id v25_;
-  v11_: int = id v26_;
-  v12_: int = id v12_;
-  v13_: int = id v13_;
-  v14_: int = id v14_;
-  br v27_ .b15_ .b28_;
-.b28_:
-  v5_: int = id v10_;
-  v6_: int = id v11_;
-  v7_: int = id v12_;
-  v8_: int = id v13_;
-  v9_: int = id v14_;
+  v18_: int = add c17_ v6_;
+  v19_: bool = lt v18_ v9_;
+  v5_: int = id v16_;
+  v6_: int = id v18_;
+  v7_: int = id v7_;
+  v8_: int = id v8_;
+  v9_: int = id v9_;
+  v10_: bool = id v10_;
+  br v19_ .b11_ .b20_;
+.b20_:
   print v5_;
-  ret;
   ret;
 }

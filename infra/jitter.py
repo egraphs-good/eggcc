@@ -7,21 +7,19 @@ import matplotlib.ticker as mticker
 import sys
 
 runModes = ["llvm-O0-O0", "llvm-eggcc-O0-O0"]
-runModeXOffsets = []
+runModeYOffsets = []
 for runMode in runModes:
-  runModeXOffsets.append(len(runModeXOffsets) * 0.5)
+  runModeYOffsets.append(len(runModeYOffsets) * 0.5)
 
 
-
-def make_plot(profile, lower_y_bound, upper_y_bound, output):
+def make_plot(profile, lower_x_bound, upper_x_bound, output):
   # Prepare the data for the jitter plot
-  x_labels = []
-  x_data = []
+  y_labels = []
   y_data = []
+  x_data = []
   colors = []
   color_map = {}
   next_color = 0
-
 
   filtered = profile
   filtered = [b for b in profile if b.get('runMethod', '') in runModes]
@@ -29,8 +27,8 @@ def make_plot(profile, lower_y_bound, upper_y_bound, output):
   # Sort benchmarks by name
   filtered = sorted(filtered, key=lambda b: b.get('benchmark', ''))
 
-  # Assign numeric x values to each benchmark label, separated by runMethod
-  x_label_map = {}
+  # Assign numeric y values to each benchmark label, separated by runMethod
+  y_label_map = {}
   outlier_x = []
   outlier_y = []
 
@@ -38,9 +36,9 @@ def make_plot(profile, lower_y_bound, upper_y_bound, output):
       benchmark_name = benchmark.get('benchmark', f'benchmark_{idx}')
       run_method = benchmark.get('runMethod', '')
 
-      if benchmark_name not in x_label_map:
-          x_label_map[benchmark_name] = len(x_labels)
-          x_labels.append(benchmark_name)
+      if benchmark_name not in y_label_map:
+          y_label_map[benchmark_name] = len(y_labels)
+          y_labels.append(benchmark_name)
 
       # Assign color for each runMethod
       if 'runMethod' not in benchmark:
@@ -51,41 +49,41 @@ def make_plot(profile, lower_y_bound, upper_y_bound, output):
       color = color_map[run_method]
 
       for cycle in benchmark.get('cycles', [])[:100]:
-          # Add a small random jitter to x value to prevent overlap
-          jittered_x = x_label_map[benchmark_name] + random.uniform(-0.2, 0.2) + runModeXOffsets[runModes.index(run_method)]
-          if cycle < lower_y_bound:
-              outlier_x.append(jittered_x)
-              outlier_y.append(lower_y_bound)
-          elif cycle > upper_y_bound:
+          # Add a small random jitter to y value to prevent overlap
+          jittered_y = y_label_map[benchmark_name] + random.uniform(-0.2, 0.2) + runModeYOffsets[runModes.index(run_method)]
+          if cycle < lower_x_bound:
+              outlier_x.append(lower_x_bound)
+              outlier_y.append(jittered_y)
+          elif cycle > upper_x_bound:
               # Record outlier data
-              outlier_x.append(jittered_x)
-              outlier_y.append(upper_y_bound)
+              outlier_x.append(upper_x_bound)
+              outlier_y.append(jittered_y)
           else:
               # Normal data points
-              x_data.append(jittered_x)
-              y_data.append(cycle)
+              x_data.append(cycle)
+              y_data.append(jittered_y)
               colors.append(color)
 
   # Create the jitter plot
-  plt.figure(figsize=(max(len(filtered) / (len(runModes)*4), 6), 6))
+  plt.figure(figsize=(10, max(len(filtered) / (len(runModes)*4), 6)))
   plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=15)
 
   # Plot outliers as red 'x' marks
-  plt.scatter(outlier_x, outlier_y, color='red', marker='x', s=50, label=f'Outliers not between {lower_y_bound} and {upper_y_bound} cycles', alpha=0.9)
+  plt.scatter(outlier_x, outlier_y, color='red', marker='x', s=50, label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles', alpha=0.9)
 
   # Set the labels and title
-  plt.xticks(range(len(x_labels)), x_labels, rotation=45, ha='right')
-  plt.xlabel('Benchmark')
-  plt.ylabel('Cycles')
+  plt.yticks(range(len(y_labels)), y_labels, rotation=0, ha='right')
+  plt.ylabel('Benchmark')
+  plt.xlabel('Cycles')
   plt.title('Jitter Plot of Benchmarks and Cycles')
 
-  # Set y-axis to display numbers instead of scientific notation
-  plt.gca().yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{int(x)}'))
+  # Set x-axis to display numbers instead of scientific notation
+  plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{int(x)}'))
 
   # Create a legend based on runMethod
   handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color_map[rm], markersize=10, alpha=0.7) for rm in color_map]
-  handles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers not between {lower_y_bound} and {upper_y_bound} cycles'))
-  plt.legend(handles, list(color_map.keys()) + [f'Outliers not between {lower_y_bound} and {upper_y_bound} cycles'], title='Run Method', loc='upper right')
+  handles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'))
+  plt.legend(handles, list(color_map.keys()) + [f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'], title='Run Method', loc='upper right')
 
   # Save the plot to a PNG file in the nightly directory
   plt.tight_layout()
@@ -104,7 +102,6 @@ if __name__ == '__main__':
     profile = []
     with open(profile_file) as f:
         profile = json.load(f)
-
 
     make_plot(profile, 0, 1000000000, f'{output_folder}/jitter_plot_full_range.png')
     make_plot(profile, 0, 2000, f'{output_folder}/jitter_plot_2k_cycles.png')

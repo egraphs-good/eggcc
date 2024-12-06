@@ -1,20 +1,19 @@
+#!/usr/bin/env python3
+
 import json
 import random
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+import sys
 
 runModes = ["llvm-O0-O0", "llvm-eggcc-O0-O0"]
 runModeXOffsets = []
 for runMode in runModes:
-    runModeXOffsets.append(len(runModeXOffsets) * 0.5)
-
-# Read profile.json from nightly/output/data/profile.json
-profile = []
-with open('nightly/output/data/profile.json') as f:
-    profile = json.load(f)
+  runModeXOffsets.append(len(runModeXOffsets) * 0.5)
 
 
-def make_plot(lower_y_bound, upper_y_bound, output):
+
+def make_plot(profile, lower_y_bound, upper_y_bound, output):
   # Prepare the data for the jitter plot
   x_labels = []
   x_data = []
@@ -68,7 +67,7 @@ def make_plot(lower_y_bound, upper_y_bound, output):
               colors.append(color)
 
   # Create the jitter plot
-  plt.figure(figsize=(12, 6))
+  plt.figure(figsize=(max(len(filtered) / (len(runModes)*4), 6), 6))
   plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=15)
 
   # Plot outliers as red 'x' marks
@@ -93,6 +92,20 @@ def make_plot(lower_y_bound, upper_y_bound, output):
   plt.savefig(output)
 
 
-make_plot(0, 1000000000, 'nightly/output/jitter_plot_full_range.png')
-make_plot(0, 2000, 'nightly/output/jitter_plot_2k_cycles.png')
-make_plot(0, 100000, 'nightly/output/jitter_plot_100k_cycles.png')
+if __name__ == '__main__':
+    # parse two arguments: the output folder and the profile.json file
+    if len(sys.argv) != 3:
+        print("Usage: python jitter.py <output_folder> <profile.json>")
+        sys.exit(1)
+    output_folder = sys.argv[1]
+    profile_file = sys.argv[2]
+
+    # Read profile.json from nightly/output/data/profile.json
+    profile = []
+    with open(profile_file) as f:
+        profile = json.load(f)
+
+
+    make_plot(profile, 0, 1000000000, f'{output_folder}/jitter_plot_full_range.png')
+    make_plot(profile, 0, 2000, f'{output_folder}/jitter_plot_2k_cycles.png')
+    make_plot(profile, 0, 100000, f'{output_folder}/jitter_plot_100k_cycles.png')

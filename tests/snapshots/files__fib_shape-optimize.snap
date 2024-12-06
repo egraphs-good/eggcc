@@ -6,68 +6,10 @@ expression: visualization.result
 @main(v0: int) {
 .b1_:
   c2_: int = const 0;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> cdb622b7 (snapshots)
   v3_: bool = lt c2_ v0;
   c4_: int = const 1;
   v5_: int = id c2_;
   v6_: int = id c4_;
-<<<<<<< HEAD
-  v7_: int = id v0;
-  br v3_ .b8_ .b9_;
-.b8_:
-  v10_: int = id c2_;
-  v11_: int = id c4_;
-  v12_: int = id v0;
-.b13_:
-  v14_: int = add v10_ v11_;
-  v15_: bool = lt v14_ v12_;
-  v10_: int = id v14_;
-  v11_: int = id v11_;
-  v12_: int = id v12_;
-  br v15_ .b13_ .b16_;
-.b16_:
-  v5_: int = id v10_;
-  v6_: int = id v11_;
-  v7_: int = id v12_;
-  print v5_;
-=======
-=======
->>>>>>> 10665900 (snapshots after rebase)
-  c3_: int = const 1;
-  v4_: int = id c2_;
-  v5_: int = id c3_;
-  v6_: int = id v0;
-.b7_:
-  v8_: bool = lt v4_ v6_;
-<<<<<<< HEAD
-  v9_: int = id v4_;
-  v10_: int = id v5_;
-  br v8_ .b11_ .b12_;
-.b11_:
-  v13_: int = add v4_ v5_;
-  v9_: int = id v13_;
-  v10_: int = id v5_;
-  v4_: int = id v9_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  jmp .b7_;
-.b12_:
-  v4_: int = id v9_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  print v4_;
->>>>>>> bd5b3865 (snapshots)
-  ret;
-  jmp .b17_;
-.b9_:
-  print v5_;
-  ret;
-.b17_:
-=======
   v7_: int = id c4_;
   v8_: int = id v0;
   br v3_ .b9_ .b10_;
@@ -96,16 +38,4 @@ expression: visualization.result
   print v5_;
   ret;
 .b19_:
->>>>>>> cdb622b7 (snapshots)
-=======
-  v9_: int = add v4_ v5_;
-  v10_: int = select v8_ v9_ v4_;
-  v4_: int = id v10_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  br v8_ .b7_ .b11_;
-.b11_:
-  print v4_;
-  ret;
->>>>>>> 10665900 (snapshots after rebase)
 }

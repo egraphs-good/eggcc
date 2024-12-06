@@ -127,7 +127,7 @@ function getDataForBenchmark(benchmark) {
           comparisonCycles,
           median_cycles,
         ),
-        stddev: { class: "", value: tryRound(median_cycles(cycles)) },
+        stddev: { class: "", value: tryRound(stddev(cycles)) },
         eggccCompileTimeSecs: {
           class: "",
           value: tryRound(row.eggccCompileTimeSecs),

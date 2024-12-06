@@ -39,21 +39,29 @@ function min_cycles(cycles) {
   return Math.min(...cycles);
 }
 
-function stddev(cycles) {
+function variance(cycles) {
   const mean = cycles.reduce((a, b) => a + b, 0) / (cycles.length - 1);
   const squared_diffs = cycles.map((c) => (c - mean) ** 2);
   // TODO kevin said we might want to use bessel's correction here, but we don't currently
   const res =
     squared_diffs.reduce((a, b) => a + b, 0) / (squared_diffs.length - 1);
-  return Math.sqrt(res);
+  return res;
+}
+
+
+function stddev(cycles) {
+  return Math.sqrt(variance(cycles));
+}
+
+function variance_to_confidence_interval(variance, n) {
+  const std = Math.sqrt(variance);
+  const z_val = 2.326;
+  const error = (z_val * std) / Math.sqrt(n);
+  return error;
 }
 
 function confidence_interval_98percent(cycles) {
-  const std = stddev(cycles);
-  const z_val = 2.326;
-  const n = cycles.length;
-  const error = (z_val * std) / Math.sqrt(n);
-  return error;
+  return variance_to_confidence_interval(variance(cycles), cycles.length);
 }
 
 function getEntry(benchmark, runMode) {
@@ -92,33 +100,34 @@ function getValue(entry) {
   }
 }
 
+// Get the variance of two random variables BASE and EXP
+// where BASE is the baseline and EXP is the experiment
+function speedup_ratio_variance(entry) {
+  const baseline = getEntry(entry.benchmark, BASELINE_MODE);
+  if (!baseline) {
+    addWarning(`No speedup baseline for ${benchmark}`);
+  }
+
+  // use the delta method, described here: https://stats.stackexchange.com/questions/197489/is-there-any-way-to-calculate-confidence-intervals-ci-of-a-ratio
+  // to estimate the variance
+  // This assumes two things:
+  // 1. The two random variables are independent, so the covariance is 0
+  // 2. The two random variables are normally distributed
+
+  const baseVariance = variance(baselince["cycles"]);
+  const expVariance = variance(entry["cycles"]);
+  const baseMean = mean(baseline["cycles"]);
+  const expMean = mean(entry["cycles"]);
+
+  return (baseVariance / Math.pow(expMean, 2.0)) + (Math.pow(baseMean, 2.0) / Math.pow(expMean, 4.0)) * expVariance;
+}
+
 function getError(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
     return confidence_interval_98percent(entry["cycles"]);
   } else {
-    // Error is given using propagation of error formula for two variables
-    // f = baseV / expV
-    const baseline = getEntry(entry.benchmark, BASELINE_MODE);
-    if (!baseline) {
-      addWarning(`No speedup baseline for ${benchmark}`);
-    }
-
-    const baseV = mean(baseline["cycles"]);
-    const expV = mean(entry["cycles"]);
-    const baseStd = stddev(baseline["cycles"]);
-    const expStd = stddev(entry["cycles"]);
-
-    // Speedup calculation
-    const speedup = baseV / expV;
-
-    // Error propagation
-    const relativeBaseError = baseStd / baseV;
-    const relativeExpError = expStd / expV;
-
-    const speedupError =
-      speedup * Math.sqrt(relativeBaseError ** 2 + relativeExpError ** 2);
-
-    return speedupError;
+    // TODO what is n here? This is almost certainly not right
+    return variance_to_confidence_interval(speedup_ratio_variance(entry), (entry["cycles"].length + entry["cycles"].length) / 2);
   }
 }
 

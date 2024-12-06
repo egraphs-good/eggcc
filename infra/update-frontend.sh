@@ -17,4 +17,4 @@ NIGHTLY_DIR="$TOP_DIR/nightly"
 echo "Copying resources to $NIGHTLY_DIR/output"
 cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"
 
-cd nightly/output && python3 -m http.server 8002
+cd nightly/output && python3 -m http.server 8003

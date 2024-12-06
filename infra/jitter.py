@@ -77,7 +77,8 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   plt.xlabel('Cycles')
   plt.title('Jitter Plot of Benchmarks and Cycles')
 
-  # Set x-axis to display numbers instead of scientific notation
+  # Set x-axis to start at zero and display numbers instead of scientific notation
+  plt.gca().set_xlim(left=0)
   plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{int(x)}'))
 
   # Create a legend based on runMethod

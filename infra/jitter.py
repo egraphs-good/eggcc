@@ -54,7 +54,7 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
           if cycle < lower_x_bound:
               outlier_x.append(lower_x_bound)
               outlier_y.append(jittered_y)
-          elif cycle > upper_x_bound:
+          elif upper_x_bound != None and cycle > upper_x_bound:
               # Record outlier data
               outlier_x.append(upper_x_bound)
               outlier_y.append(jittered_y)
@@ -69,7 +69,8 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=15)
 
   # Plot outliers as red 'x' marks
-  plt.scatter(outlier_x, outlier_y, color='red', marker='x', s=50, label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles', alpha=0.9)
+  if upper_x_bound:
+    plt.scatter(outlier_x, outlier_y, color='red', marker='x', s=50, label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles', alpha=0.9)
 
   # Set the labels and title
   plt.yticks(range(len(y_labels)), y_labels, rotation=0, ha='right')
@@ -83,7 +84,8 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
 
   # Create a legend based on runMethod
   handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color_map[rm], markersize=10, alpha=0.7) for rm in color_map]
-  handles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'))
+  if upper_x_bound != None:
+    andles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'))
   plt.legend(handles, list(color_map.keys()) + [f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'], title='Run Method', loc='upper right')
 
   # Save the plot to a PNG file in the nightly directory
@@ -104,6 +106,6 @@ if __name__ == '__main__':
     with open(profile_file) as f:
         profile = json.load(f)
 
-    make_plot(profile, 0, 1000000000, f'{output_folder}/jitter_plot_full_range.png')
+    make_plot(profile, 0, None, f'{output_folder}/jitter_plot_full_range.png')
     make_plot(profile, 0, 2000, f'{output_folder}/jitter_plot_2k_cycles.png')
     make_plot(profile, 0, 100000, f'{output_folder}/jitter_plot_100k_cycles.png')

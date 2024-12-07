@@ -11,7 +11,6 @@ runModeYOffsets = []
 for runMode in runModes:
   runModeYOffsets.append(len(runModeYOffsets) * 0.5)
 
-
 def make_plot(profile, lower_x_bound, upper_x_bound, output):
   # Prepare the data for the jitter plot
   y_labels = []
@@ -27,7 +26,7 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   # Sort benchmarks by name
   filtered = sorted(filtered, key=lambda b: b.get('benchmark', ''))
 
-  # Assign numeric y values to each benchmark label, separated by runMethod
+  # Assign numeric y values to each benchmark label
   y_label_map = {}
   outlier_x = []
   outlier_y = []
@@ -38,7 +37,8 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
 
       if benchmark_name not in y_label_map:
           y_label_map[benchmark_name] = len(y_labels)
-          y_labels.append(benchmark_name)
+          # HACK: add a new line to move the benchmark name down
+          y_labels.append("\n" + benchmark_name)
 
       # Assign color for each runMethod
       if 'runMethod' not in benchmark:
@@ -50,7 +50,7 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
 
       for cycle in benchmark.get('cycles', [])[:100]:
           # Add a small random jitter to y value to prevent overlap
-          jittered_y = y_label_map[benchmark_name] + random.uniform(-0.2, 0.2) + runModeYOffsets[runModes.index(run_method)]
+          jittered_y = y_label_map[benchmark_name] + random.uniform(-0.2, 0.2) + runModeYOffsets[runModes.index(run_method)] - 0.2
           if cycle < lower_x_bound:
               outlier_x.append(lower_x_bound)
               outlier_y.append(jittered_y)
@@ -65,7 +65,7 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
               colors.append(color)
 
   # Create the jitter plot
-  plt.figure(figsize=(10, max(len(filtered) / (len(runModes)*4), 6)))
+  plt.figure(figsize=(10, max(len(filtered) / (len(runModes)*3), 6)))
   plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=15)
 
   # Plot outliers as red 'x' marks
@@ -78,6 +78,10 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   plt.xlabel('Cycles')
   plt.title('Jitter Plot of Benchmarks and Cycles')
 
+  # Add horizontal lines at each tick
+  for i in range(len(y_labels)):
+      plt.axhline(y=i, color='gray', linestyle='--', linewidth=0.5)
+
   # Set x-axis to start at zero and display numbers instead of scientific notation
   plt.gca().set_xlim(left=0)
   plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{int(x)}'))
@@ -85,13 +89,12 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   # Create a legend based on runMethod
   handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color_map[rm], markersize=10, alpha=0.7) for rm in color_map]
   if upper_x_bound != None:
-    andles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'))
+    handles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'))
   plt.legend(handles, list(color_map.keys()) + [f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'], title='Run Method', loc='upper right')
 
   # Save the plot to a PNG file in the nightly directory
   plt.tight_layout()
   plt.savefig(output)
-
 
 if __name__ == '__main__':
     # parse two arguments: the output folder and the profile.json file

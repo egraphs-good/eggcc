@@ -65,7 +65,8 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
               colors.append(color)
 
   # Create the jitter plot
-  plt.figure(figsize=(10, max(len(filtered) / (len(runModes)*3), 6)))
+  # HACK: make the plot longer when we have more benchamrks
+  plt.figure(figsize=(10, max(len(filtered) / (len(runModes)*2), 6)))
   plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=15)
 
   # Plot outliers as red 'x' marks
@@ -90,7 +91,7 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color_map[rm], markersize=10, alpha=0.7) for rm in color_map]
   if upper_x_bound != None:
     handles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'))
-  plt.legend(handles, list(color_map.keys()) + [f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'], title='Run Method', loc='upper right')
+  plt.legend(handles, list(color_map.keys()) + [f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'], title='Run Method', loc='upper right', bbox_to_anchor=(1.25, 1.05))
 
   # Save the plot to a PNG file in the nightly directory
   plt.tight_layout()

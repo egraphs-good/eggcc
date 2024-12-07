@@ -6,14 +6,33 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import sys
 
-runModes = ["llvm-O0-O0", "llvm-eggcc-O0-O0"]
+runModes = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
+benchmark_space = 1.0 / len(runModes)
 runModeYOffsets = []
 for runMode in runModes:
-  runModeYOffsets.append(len(runModeYOffsets) * 0.5)
+  runModeYOffsets.append(len(runModeYOffsets) * benchmark_space)
+
+
+
+def baseline_cycles(rows):
+  # assert only one row has a runMethod of llvm-O0-O0
+  count = 0
+  for row in rows:
+      if row.get('runMethod', '') == 'llvm-O0-O0':
+          count += 1
+  assert(count == 1)
+  for row in rows:
+      if row.get('runMethod', '') == 'llvm-O0-O0':
+          return row.get('cycles', [])
+  # throw exception if we don't have a baseline
+  raise KeyError("Missing baseline in profile.json")
+
+circle_size = 15
 
 def make_plot(profile, lower_x_bound, upper_x_bound, output):
   # Prepare the data for the jitter plot
-  y_labels = []
+  # first y label is empty, underneath the first benchmark
+  y_labels = [""]
   y_data = []
   x_data = []
   colors = []
@@ -23,7 +42,22 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   filtered = profile
   filtered = [b for b in profile if b.get('runMethod', '') in runModes]
 
-  # Sort benchmarks by name
+  grouped_by_benchmark = {}
+  for benchmark in filtered:
+      benchmark_name = benchmark.get('benchmark', '')
+      if benchmark_name not in grouped_by_benchmark:
+          grouped_by_benchmark[benchmark_name] = []
+      grouped_by_benchmark[benchmark_name].append(benchmark)
+  grouped_by_benchmark = [grouped_by_benchmark[benchmark] for benchmark in grouped_by_benchmark]
+  # sort each group by runMethod
+  for group in grouped_by_benchmark:
+      group.sort(key=lambda b: b.get('runMethod', ''))
+  # the order of the groups is the average cycles of the baseline
+  grouped_by_benchmark.sort(key=lambda group: sum(baseline_cycles(group)) / len(group))
+  
+  filtered = [benchmark for group in grouped_by_benchmark for benchmark in group]
+
+      
   filtered = sorted(filtered, key=lambda b: b.get('benchmark', ''))
 
   # Assign numeric y values to each benchmark label
@@ -50,7 +84,8 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
 
       for cycle in benchmark.get('cycles', [])[:100]:
           # Add a small random jitter to y value to prevent overlap
-          jittered_y = y_label_map[benchmark_name] + random.uniform(-0.2, 0.2) + runModeYOffsets[runModes.index(run_method)] - 0.2
+          jittered_y = y_label_map[benchmark_name] + random.uniform(0.0, benchmark_space) + runModeYOffsets[runModes.index(run_method)]
+          print(f"jittered_y: {jittered_y}")
           if cycle < lower_x_bound:
               outlier_x.append(lower_x_bound)
               outlier_y.append(jittered_y)
@@ -67,7 +102,7 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   # Create the jitter plot
   # HACK: make the plot longer when we have more benchamrks
   plt.figure(figsize=(10, max(len(filtered) / (len(runModes)*2), 6)))
-  plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=15)
+  plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=circle_size)
 
   # Plot outliers as red 'x' marks
   if upper_x_bound:

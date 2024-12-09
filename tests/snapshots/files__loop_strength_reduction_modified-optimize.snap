@@ -17,6 +17,7 @@ expression: visualization.result
   v10_: int = id c3_;
   v11_: int = id c4_;
   v12_: int = id c5_;
+<<<<<<< HEAD
   v13_: int = id c6_;
 .b14_:
 <<<<<<< HEAD
@@ -198,15 +199,41 @@ expression: visualization.result
   v11_: int = id v15_;
   v12_: int = id v16_;
   v13_: int = id v13_;
+=======
+  v13_: int = id c2_;
+  v14_: int = id c3_;
+  v15_: int = id c4_;
+  v16_: int = id c5_;
+  v17_: int = id c6_;
+.b18_:
+  v19_: int = mul v12_ v9_;
+  print v19_;
+  v20_: int = add v7_ v8_;
+  v21_: bool = eq v11_ v7_;
+  v22_: int = add v8_ v9_;
+  v23_: int = add v10_ v22_;
+  v24_: int = select v21_ v23_ v22_;
+  v25_: bool = lt v20_ v17_;
+  v7_: int = id v20_;
+  v8_: int = id v13_;
+  v9_: int = id v24_;
+  v10_: int = id v14_;
+  v11_: int = id v15_;
+  v12_: int = id v16_;
+  v13_: int = id v13_;
+>>>>>>> 2a5403b2 (fix bug in ivt now that gets are not always there)
   v14_: int = id v14_;
   v15_: int = id v15_;
   v16_: int = id v16_;
   v17_: int = id v17_;
   br v25_ .b18_ .b26_;
 .b26_:
+<<<<<<< HEAD
 =======
   br v15_ .b14_ .b32_;
 .b32_:
 >>>>>>> 6de82dd2 (snapshots)
+=======
+>>>>>>> 2a5403b2 (fix bug in ivt now that gets are not always there)
   ret;
 }

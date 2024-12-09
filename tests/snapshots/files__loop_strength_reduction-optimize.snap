@@ -13,6 +13,7 @@ expression: visualization.result
   v6_: int = id c2_;
   v7_: int = id c1_;
   v8_: int = id c3_;
+<<<<<<< HEAD
   v9_: int = id c4_;
 .b10_:
 <<<<<<< HEAD
@@ -95,6 +96,8 @@ expression: visualization.result
 =======
 =======
 >>>>>>> 46e3c07a (snapshots)
+=======
+>>>>>>> 2a5403b2 (fix bug in ivt now that gets are not always there)
   v9_: int = id c2_;
   v10_: int = id c3_;
   v11_: int = id c4_;
@@ -108,6 +111,7 @@ expression: visualization.result
   v6_: int = id v9_;
   v7_: int = id v15_;
   v8_: int = id v10_;
+<<<<<<< HEAD
   v9_: int = id v9_;
   v10_: int = id v10_;
   v11_: int = id v11_;
@@ -161,5 +165,12 @@ expression: visualization.result
 >>>>>>> 6c2faea7 (snapshots)
 =======
 >>>>>>> 6de82dd2 (snapshots)
+=======
+  v9_: int = id v9_;
+  v10_: int = id v10_;
+  v11_: int = id v11_;
+  br v16_ .b12_ .b17_;
+.b17_:
+>>>>>>> 2a5403b2 (fix bug in ivt now that gets are not always there)
   ret;
 }

@@ -63,9 +63,11 @@
 
 ;; recursive case for accessing a passed-through argument
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr expr) (IVTAnalysisRes perm pperm passthrough-tys len))
-    (= curr (Concat (Single (Get (Arg ty ctx) ith)) rest))
-    (= (Get loop-body (+ ith 1)) (Get curr 0))
+    (= (IVTNewInputsAnalysisImpl loop-body curr expr)
+       (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= curr (Concat (Single next) rest))
+    (= next (Get (Arg ty ctx) ith))
+    (= next (Get loop-body (+ ith 1)))
     (HasType (Get (Arg ty ctx) ith) (Base new-ty))
     (= expr (If pred inputs then else))
     (= (tuple-length inputs) inputs-len)

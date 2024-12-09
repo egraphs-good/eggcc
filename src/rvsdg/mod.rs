@@ -268,6 +268,7 @@ pub struct RvsdgProgram {
 
 pub(crate) fn cfg_to_rvsdg(
     cfg: &SimpleCfgProgram,
+    optimize_passthrough: bool,
 ) -> std::result::Result<RvsdgProgram, EggCCError> {
     // Rvsdg translation also restructured the cfg
     // so make a copy for that.
@@ -281,7 +282,9 @@ pub(crate) fn cfg_to_rvsdg(
     let mut prog = RvsdgProgram { functions };
 
     // now run passthrough optimization to clean it up
-    prog = prog.optimize_passthrough();
+    if optimize_passthrough {
+        prog = prog.optimize_passthrough();
+    }
     Ok(prog)
 }
 

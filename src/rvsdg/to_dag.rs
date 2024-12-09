@@ -403,7 +403,7 @@ fn dag_translation_test(
 
     let prog = parse_from_string(program);
     let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    let rvsdg = cfg_to_rvsdg(&cfg, false).unwrap();
     let result = rvsdg.to_dag_encoding();
 
     assert_progs_eq(&result, &expected, "Resulting program is incorrect");

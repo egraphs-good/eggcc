@@ -72,7 +72,8 @@ impl Optimizer {
                 }
             }
         }
-        args
+        // filter out empty args
+        args.into_iter().filter(|arg| !arg.is_empty()).collect()
     }
 
     /// Produces a vector of values, one per string argument to the program
@@ -229,7 +230,7 @@ impl Optimizer {
 
     pub fn program_to_rvsdg(program: &Program) -> Result<RvsdgProgram, EggCCError> {
         let cfg = Self::program_to_cfg(program);
-        rvsdg::cfg_to_rvsdg(&cfg)
+        rvsdg::cfg_to_rvsdg(&cfg, true)
     }
 
     pub fn fresh_var(&mut self) -> String {

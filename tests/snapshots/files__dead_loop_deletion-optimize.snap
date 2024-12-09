@@ -8,6 +8,7 @@ expression: visualization.result
   c1_: int = const 2;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   c2_: int = const 3;
   c3_: int = const 0;
   c4_: int = const 1;
@@ -49,6 +50,8 @@ expression: visualization.result
 =======
 >>>>>>> 46e3c07a (snapshots)
 >>>>>>> 6c2faea7 (snapshots)
+=======
+>>>>>>> 6de82dd2 (snapshots)
   print c1_;
   ret;
 }

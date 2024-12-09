@@ -5,53 +5,8 @@ expression: visualization.result
 # ARGS: 20
 @main(v0: int) {
 .b1_:
-<<<<<<< HEAD
-<<<<<<< HEAD
-  c2_: int = const 10;
-  c3_: int = const 5;
-=======
-  c2_: int = const 5;
-  c3_: int = const 10;
-<<<<<<< HEAD
->>>>>>> 1d1f4930 (snapshots)
-  v4_: bool = eq c2_ c3_;
-  v5_: bool = not v4_;
-  c6_: int = const 0;
-  v7_: int = id c6_;
-  v8_: int = id c2_;
-  v9_: int = id c6_;
-  v10_: int = id v0;
-  br v5_ .b11_ .b12_;
-.b11_:
-  v13_: int = id c6_;
-  v14_: int = id c2_;
-  v15_: int = id c6_;
-  v16_: int = id v0;
-.b17_:
-  c18_: int = const 1;
-  v19_: int = add c18_ v15_;
-  v20_: int = add v13_ v19_;
-  v21_: bool = eq v16_ v19_;
-  c22_: int = const 5;
-  v23_: int = select v21_ c22_ v14_;
-  v24_: bool = eq c22_ v23_;
-  v25_: bool = not v24_;
-  v13_: int = id v20_;
-  v14_: int = id v23_;
-  v15_: int = id v19_;
-  v16_: int = id v16_;
-  br v25_ .b17_ .b26_;
-.b26_:
-  v7_: int = id v13_;
-  v8_: int = id v14_;
-  v9_: int = id v15_;
-  v10_: int = id v16_;
-  print v7_;
-=======
-=======
   c2_: int = const 0;
   c3_: int = const 10;
->>>>>>> 46e3c07a (snapshots)
   v4_: int = id c2_;
   v5_: int = id c3_;
   v6_: int = id c2_;
@@ -61,21 +16,20 @@ expression: visualization.result
   v10_: bool = eq c9_ v5_;
   v11_: bool = not v10_;
   v12_: bool = not v11_;
-  v13_: bool = not v12_;
-  c14_: int = const 1;
-  v15_: int = add c14_ v6_;
-  v16_: int = add v15_ v4_;
-  v17_: int = select v13_ v16_ v4_;
-  v18_: bool = eq v15_ v7_;
-  v19_: int = select v18_ c9_ v5_;
-  v20_: int = select v13_ v19_ v5_;
-  v21_: int = select v13_ v15_ v6_;
-  v4_: int = id v17_;
-  v5_: int = id v20_;
-  v6_: int = id v21_;
+  c13_: int = const 1;
+  v14_: int = add c13_ v6_;
+  v15_: int = add v14_ v4_;
+  v16_: int = select v12_ v4_ v15_;
+  v17_: bool = eq v14_ v7_;
+  v18_: int = select v17_ c9_ v5_;
+  v19_: int = select v12_ v5_ v18_;
+  v20_: int = select v12_ v6_ v14_;
+  v4_: int = id v16_;
+  v5_: int = id v19_;
+  v6_: int = id v20_;
   v7_: int = id v7_;
-  br v11_ .b8_ .b22_;
-.b22_:
+  br v11_ .b8_ .b21_;
+.b21_:
   print v4_;
   ret;
 }

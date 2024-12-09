@@ -92,6 +92,12 @@ fn main() {
         return;
     }
 
+    // check that file exists, give error when it doesn't
+    if !args.file.exists() {
+        eprintln!("file {} does not exist", args.file.display());
+        return;
+    }
+
     let file = match args.file.extension().and_then(OsStr::to_str) {
         Some("rs") => TestProgram::RustFile(args.file.clone()),
         Some("bril") => TestProgram::BrilFile(args.file.clone()),

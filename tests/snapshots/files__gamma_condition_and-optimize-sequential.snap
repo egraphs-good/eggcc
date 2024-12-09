@@ -11,46 +11,19 @@ expression: visualization.result
   v4_: bool = lt v0 c2_;
 =======
   v3_: bool = lt v0 c2_;
+<<<<<<< HEAD
   v4_: bool = lt c2_ v0;
 >>>>>>> d0be4185 (snapshots)
+=======
+  v4_: bool = gt v0 c2_;
+>>>>>>> 6de82dd2 (snapshots)
   v5_: bool = and v3_ v4_;
   c6_: int = const 1;
   c7_: int = const 1;
   v8_: int = id c7_;
   br v5_ .b9_ .b10_;
 .b9_:
-<<<<<<< HEAD
-  v11_: bool = lt c2_ v0;
-  v12_: bool = lt v0 c2_;
-  v13_: bool = and v11_ v12_;
-  c14_: int = const 3;
-  v15_: int = id c14_;
-  br v13_ .b16_ .b17_;
-.b16_:
-  c18_: int = const 2;
-  v19_: int = id c18_;
-  v20_: int = id c2_;
-  v21_: int = id c6_;
-.b22_:
-  v23_: int = add v19_ v21_;
-  v24_: bool = lt v20_ v23_;
-  v25_: bool = not v24_;
-  v19_: int = id v23_;
-  v20_: int = id v20_;
-  v21_: int = id v21_;
-  br v25_ .b22_ .b26_;
-.b26_:
-  v15_: int = id v19_;
-  v7_: int = id v15_;
-  print v7_;
-  ret;
-  jmp .b10_;
-.b17_:
-  v7_: int = id v15_;
-  print v7_;
-=======
   print v8_;
->>>>>>> 1d1f4930 (snapshots)
   ret;
   jmp .b11_;
 .b10_:
@@ -67,7 +40,7 @@ expression: visualization.result
   v22_: int = id c6_;
 .b23_:
   v24_: int = add v20_ v22_;
-  v25_: bool = gt v24_ v21_;
+  v25_: bool = lt v21_ v24_;
   v26_: bool = not v25_;
   v20_: int = id v24_;
   v21_: int = id v21_;

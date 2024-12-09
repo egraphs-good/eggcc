@@ -271,8 +271,28 @@
        (= in_type (TupleT tylist))
        (= false (hoisted-loop in pred_out))
        (= len (tuple-length in)))
-      ((DebugExpr inv)
-       (DebugExpr loop)
+      ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
+       (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
+
+       ;; create an virtual assume node, union it with actuall InLoop later
+       (let assum (InExtendedLoop in pred_out new_input))
+       (let new_out_branch (Get (Arg new_input_type assum) len))
+
+       ;; this two subst only change arg to arg with new type
+       (let substed_pred_out
+         (Subst assum
+               (SubTuple (Arg new_input_type assum) 0 len) pred_out))
+       (let inv_in_new_loop
+            (Subst assum (SubTuple (Arg new_input_type assum) 0 len) inv))
+       (let new_pred_out (Concat substed_pred_out (Single new_out_branch)))
        
+       (let new_loop (DoWhile new_input new_pred_out))
+       (union assum (InLoop new_input new_pred_out))
+       (union inv_in_new_loop new_out_branch)
+       (let wrapper (SubTuple new_loop 0 len))
+       (union loop wrapper)
+       (subsume (DoWhile in pred_out)) 
+       ;; don't hoist same loop again
+       (set (hoisted-loop in pred_out) true)
       )
        :ruleset loop-inv-motion)

@@ -7,6 +7,12 @@ import matplotlib.ticker as mticker
 import sys
 
 runModes = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
+# copied from chart.js
+color_map = {
+    "llvm-O0-O0" : "purple",
+    "llvm-eggcc-O0-O0" : "pink",
+    "llvm-O3-O0" : "gray"
+}
 benchmark_space = 1.0 / len(runModes)
 runModeYOffsets = []
 for runMode in runModes:
@@ -32,11 +38,10 @@ circle_size = 15
 def make_plot(profile, lower_x_bound, upper_x_bound, output):
   # Prepare the data for the jitter plot
   # first y label is empty, underneath the first benchmark
-  y_labels = [""]
+  y_labels = []
   y_data = []
   x_data = []
   colors = []
-  color_map = {}
   next_color = 0
 
   filtered = profile
@@ -71,8 +76,7 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
 
       if benchmark_name not in y_label_map:
           y_label_map[benchmark_name] = len(y_labels)
-          # HACK: add a new line to move the benchmark name down
-          y_labels.append("\n" + benchmark_name)
+          y_labels.append(benchmark_name)
 
       # Assign color for each runMethod
       if 'runMethod' not in benchmark:
@@ -85,7 +89,6 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
       for cycle in benchmark.get('cycles', [])[:100]:
           # Add a small random jitter to y value to prevent overlap
           jittered_y = y_label_map[benchmark_name] + random.uniform(0.0, benchmark_space) + runModeYOffsets[runModes.index(run_method)]
-          print(f"jittered_y: {jittered_y}")
           if cycle < lower_x_bound:
               outlier_x.append(lower_x_bound)
               outlier_y.append(jittered_y)
@@ -108,8 +111,9 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   if upper_x_bound:
     plt.scatter(outlier_x, outlier_y, color='red', marker='x', s=50, label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles', alpha=0.9)
 
-  # Set the labels and title
-  plt.yticks(range(len(y_labels)), y_labels, rotation=0, ha='right')
+  # Use y labels on the minor ticks
+  plt.yticks([a+0.5 for a in range(len(y_labels))], y_labels, rotation=0, ha='right')
+
   plt.ylabel('Benchmark')
   plt.xlabel('Cycles')
   plt.title('Jitter Plot of Benchmarks and Cycles')

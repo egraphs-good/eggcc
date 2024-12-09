@@ -1,6 +1,8 @@
+# ARGS: 954320
+
 # Input: an integer
 # Output: if an number contains digits in strictly decreasing order
-# ARGS: 954320
+
 @main(x: int) {
   tmp0: bool = call @is_decreasing x;
   tmp: bool = id tmp0;

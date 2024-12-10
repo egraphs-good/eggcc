@@ -1,7 +1,7 @@
 use clap::Parser;
 use dag_in_context::{EggccConfig, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
-use std::{ffi::OsStr, i64, path::PathBuf};
+use std::{ffi::OsStr, i64, iter::once, path::PathBuf};
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -66,6 +66,9 @@ struct Args {
     /// WARNING: Produces unsound results!
     #[clap(long)]
     no_linearity: bool,
+
+    #[clap(long)]
+    optimize_function: Option<String>,
 }
 
 fn main() {
@@ -115,6 +118,7 @@ fn main() {
             schedule: args.eggcc_schedule.unwrap_or(Schedule::default()),
             stop_after_n_passes: args.stop_after_n_passes.unwrap_or(i64::MAX),
             linearity: !args.no_linearity,
+            optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
         },
     };
 

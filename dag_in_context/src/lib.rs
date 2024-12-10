@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::{rulesets, CompilerPass};
 use schema::TreeProgram;
-use std::{fmt::Write, i64};
+use std::{collections::HashSet, fmt::Write, i64};
 use to_egglog::TreeToEgglog;
 
 use crate::{
@@ -284,6 +284,8 @@ pub struct EggccConfig {
     /// and just return the first program found.
     /// This produces unsound results but is useful for seeing the intermediate extracted result.
     pub linearity: bool,
+    /// When Some, optimize only the functions in this set.
+    pub optimize_functions: Option<HashSet<String>>,
 }
 
 impl EggccConfig {
@@ -304,6 +306,7 @@ impl Default for EggccConfig {
             schedule: Schedule::default(),
             stop_after_n_passes: i64::MAX,
             linearity: true,
+            optimize_functions: None,
         }
     }
 }
@@ -336,7 +339,22 @@ pub fn optimize(
 
         // TODO experiment with different batches of optimizing functions together
         // currently we use the whole program
-        let batches = vec![fns.clone()];
+        let batches = match &eggcc_config.optimize_functions {
+            Some(allowed_fns) => {
+                // check that all allowed_fns are in fns
+                for allowed_fn in allowed_fns {
+                    if !fns.contains(allowed_fn) {
+                        panic!(
+                            "Told to optimize function {}, but not found in program",
+                            allowed_fn
+                        );
+                    }
+                }
+
+                vec![allowed_fns.iter().cloned().collect()]
+            }
+            None => vec![fns.clone()],
+        };
 
         for batch in batches {
             log::info!("Running pass {} on batch {:?}", i, batch);

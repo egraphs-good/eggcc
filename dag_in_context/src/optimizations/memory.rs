@@ -429,8 +429,8 @@ fn load_after_write() -> crate::Result {
         (check (= {res} (Bop (Print) {two} rest)))"
         ),
         vec![],
-        val_empty(),
-        val_empty(),
+        emptyv(),
+        emptyv(),
         vec![],
     )
 }
@@ -482,8 +482,8 @@ fn load_after_write_without_alias() -> crate::Result {
         (check (= {res} (Bop (Print) {two} rest)))"
         ),
         vec![],
-        val_empty(),
-        val_empty(),
+        emptyv(),
+        emptyv(),
         vec![],
     )
 }
@@ -552,8 +552,8 @@ fn simple_loop_swap() -> crate::Result {
         (let ten {ten}) (let val {val}) (check (= val ten))"
         ),
         vec![],
-        val_empty(),
-        val_empty(),
+        emptyv(),
+        emptyv(),
         vec![],
     )
 }
@@ -635,8 +635,8 @@ fn pqrs_deep_loop_swap() -> crate::Result {
         (let ten {ten}) (let val {val}) (check (= val ten))"
         ),
         vec![],
-        val_empty(),
-        val_empty(),
+        emptyv(),
+        emptyv(),
         vec![],
     )
 }
@@ -687,8 +687,8 @@ fn redundant_load_elim() -> crate::Result {
         (check (= {res} (Bop (Print) {load1_val} rest)))"
         ),
         vec![],
-        val_empty(),
-        val_empty(),
+        emptyv(),
+        emptyv(),
         vec![],
     )
 }

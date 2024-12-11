@@ -68,9 +68,9 @@
     (= (Get loop-body (+ ith 1)) (Get curr 0))
     (HasType (Get (Arg ty ctx) ith) (Base new-ty))
     (= expr (If pred inputs then else))
-    (= (tuple-length inputs) inputs-len)
+    (= (tuple-length expr) if-len)
 ) (
-    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ inputs-len len))))
+    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ if-len len))))
     (let new-perm (Concat perm get-passed-through))
     (let original-get-index (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith)))
     (let new-pperm (Concat pperm original-get-index))
@@ -95,9 +95,9 @@
     (= (Get loop-body (+ ith 1)) (Get curr 0))
     (HasType (Get (Arg ty ctx) ith) (Base new-ty))
     (= expr (If pred inputs then else))
-    (= (tuple-length inputs) inputs-len)
+    (= (tuple-length expr) if-len)
 ) (
-    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ inputs-len len))))
+    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ if-len len))))
     (let new-perm (Concat perm get-passed-through))
     (let original-get-index (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith)))
     (let new-pperm (Concat pperm original-get-index))

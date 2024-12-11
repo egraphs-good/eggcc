@@ -60,6 +60,9 @@ else
   ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee $NIGHTLY_DIR/log.txt
 fi
 
+# generate the jitter plots
+./infra/jitter.py "$NIGHTLY_DIR/output" "$NIGHTLY_DIR/data/profile.json" 2>&1 | tee $NIGHTLY_DIR/log.txt
+
 # Generate latex after running the profiler (depends on profile.json)
 ./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt
 

@@ -24,7 +24,7 @@ fn arith_rewrites() -> Result {
         &format!("(let expr_ {expr})"),
         &format!("(check (= expr_ {expected}))"),
         vec![],
-        val_empty(),
+        emptyv(),
         intv(1),
         vec![],
     )

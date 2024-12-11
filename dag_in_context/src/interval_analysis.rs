@@ -61,19 +61,19 @@ fn interval_test(
 #[test]
 fn constant_interval_test() -> crate::Result {
     let e = int(3);
-    int_interval_test(e, base(intt()), val_empty(), intv(3), 3, 3)
+    int_interval_test(e, base(intt()), emptyv(), intv(3), 3, 3)
 }
 
 #[test]
 fn constant_interval_test2() -> crate::Result {
     let e = ttrue();
-    bool_interval_test(e, base(boolt()), val_empty(), val_bool(true), true, true)
+    bool_interval_test(e, base(boolt()), emptyv(), val_bool(true), true, true)
 }
 
 #[test]
 fn constant_fold() -> crate::Result {
     let e = add(int(3), int(2));
-    int_interval_test(e, base(intt()), val_empty(), intv(5), 5, 5)
+    int_interval_test(e, base(intt()), emptyv(), intv(5), 5, 5)
 }
 
 #[test]
@@ -94,7 +94,7 @@ fn test_add_constant_fold() -> crate::Result {
             expr.to_program(emptyt(), base(intt())),
             expr2.to_program(emptyt(), base(intt())),
         ],
-        val_empty(),
+        emptyv(),
         intv(3),
         vec![],
     )
@@ -103,13 +103,13 @@ fn test_add_constant_fold() -> crate::Result {
 #[test]
 fn test_add_interval() -> crate::Result {
     let e = add(int(3), int(4)).with_arg_types(emptyt(), base(intt()));
-    int_interval_test(e, base(intt()), val_empty(), intv(7), 7, 7)
+    int_interval_test(e, base(intt()), emptyv(), intv(7), 7, 7)
 }
 
 #[test]
 fn test_lt_interval() -> crate::Result {
     let e = less_than(int(2), int(3)).with_arg_types(emptyt(), base(boolt()));
-    bool_interval_test(e, base(boolt()), val_empty(), val_bool(true), true, true)
+    bool_interval_test(e, base(boolt()), emptyv(), val_bool(true), true, true)
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn test_if_constant_fold() -> crate::Result {
     let c = less_than(int(2), int(3)).with_arg_types(emptyt(), base(boolt()));
     let e = tif(c, arg(), int_ty(3, emptyt()), int_ty(4, emptyt()));
 
-    int_interval_test(e, base(intt()), val_empty(), intv(3), 3, 3)
+    int_interval_test(e, base(intt()), emptyv(), intv(3), 3, 3)
 }
 
 #[test]
@@ -320,8 +320,8 @@ fn context_if_with_state() -> crate::Result {
             expected_cache.get_unions(),
         ),
         vec![prog],
-        val_vec(vec![intv(4), statev()]),
-        val_vec(vec![statev()]),
+        tuplev!(intv(4), statev()),
+        tuplev!(statev()),
         vec!["true".to_string()],
     )
 }

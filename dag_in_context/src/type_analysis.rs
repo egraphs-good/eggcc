@@ -35,26 +35,12 @@ fn type_test_with_log(
 #[cfg(test)]
 #[allow(dead_code)]
 fn type_error_test(inp: RcExpr) {
-    let _ = egglog_test(
-        &format!("{inp}"),
-        "",
-        vec![],
-        val_empty(),
-        val_empty(),
-        vec![],
-    );
+    let _ = egglog_test(&format!("{inp}"), "", vec![], emptyv(), emptyv(), vec![]);
 }
 
 #[cfg(test)]
 fn _debug(inp: RcExpr, after: &str) -> crate::Result {
-    egglog_test(
-        &format!("{inp}"),
-        after,
-        vec![],
-        val_empty(),
-        val_empty(),
-        vec![],
-    )
+    egglog_test(&format!("{inp}"), after, vec![], emptyv(), emptyv(), vec![])
 }
 
 #[test]
@@ -63,7 +49,7 @@ fn primitives() -> crate::Result {
     type_test(int(12), base(intt()), intv(0), intv(12))?;
     type_test(ttrue(), base(boolt()), intv(0), val_bool(true))?;
     type_test(tfalse(), base(boolt()), intv(0), val_bool(false))?;
-    type_test(empty(), emptyt(), intv(0), val_empty())
+    type_test(empty(), emptyt(), intv(0), emptyv())
 }
 
 /* Fix type tests after dag semantics

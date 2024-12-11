@@ -62,12 +62,8 @@ pub fn val_bool(i: bool) -> Value {
     Value::Const(Constant::Bool(i))
 }
 
-pub fn val_empty() -> Value {
+pub fn emptyv() -> Value {
     Value::Tuple(vec![])
-}
-
-pub fn val_vec(vals: Vec<Value>) -> Value {
-    Value::Tuple(vals)
 }
 
 /// Construct a tuple type from the child types

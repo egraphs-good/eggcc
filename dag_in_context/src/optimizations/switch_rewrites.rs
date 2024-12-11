@@ -26,7 +26,7 @@ fn switch_rewrite_three_quarters_and() -> crate::Result {
             check_cache.get_unions()
         ),
         vec![],
-        val_empty(),
+        emptyv(),
         intv(2),
         vec![],
     )
@@ -57,7 +57,7 @@ fn switch_rewrite_three_quarters_or() -> crate::Result {
             check_cache.get_unions()
         ),
         vec![],
-        val_empty(),
+        emptyv(),
         intv(1),
         vec![],
     )
@@ -87,7 +87,7 @@ fn switch_rewrite_forward_pred() -> crate::Result {
             check_cache.get_unions()
         ),
         vec![],
-        val_empty(),
+        emptyv(),
         intv(1),
         vec![],
     )
@@ -119,7 +119,7 @@ fn switch_rewrite_negate_pred() -> crate::Result {
             check_cache.get_unions()
         ),
         vec![],
-        val_empty(),
+        emptyv(),
         intv(1),
         vec![],
     )
@@ -151,7 +151,7 @@ fn single_branch_switch() -> crate::Result {
             check_cache.get_unions()
         ),
         vec![],
-        val_empty(),
+        emptyv(),
         intv(1),
         vec![],
     )

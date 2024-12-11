@@ -9,3 +9,4 @@ pub mod memory;
 pub mod passthrough;
 mod peepholes;
 pub mod switch_rewrites;
+pub mod ivt;

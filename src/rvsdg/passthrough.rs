@@ -4,17 +4,19 @@
 //! The egglog rules are slow, so we do it in rust.
 //! However, the egglog rules can run in conjunction with other optimizations so they are still valuable.
 
+use dag_in_context::schema::Type;
 use hashbrown::HashMap;
 
 use super::{Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
 
 impl RvsdgProgram {
     pub(crate) fn optimize_passthrough(&self) -> RvsdgProgram {
+        let types = self.typecheck();
         let mut new_program: RvsdgProgram = self.clone();
         for func in new_program.functions.iter_mut() {
             let mut did_something = true;
             while did_something {
-                let (new_func, changed) = func.optimize_passthrough();
+                let (new_func, changed) = func.optimize_passthrough(types.get(&func.name).unwrap());
                 did_something = changed;
                 *func = new_func;
             }
@@ -85,7 +87,12 @@ impl RvsdgFunction {
     /// check if the node is a region and the index is a passed through value.
     /// If so, remove it without fixing up any references to the node.
     /// Returns the input operand that was passed through if successful.
-    fn passthrough_operand(&mut self, node_id: Id, ith: usize) -> Option<Operand> {
+    fn passthrough_operand(
+        &mut self,
+        node_id: Id,
+        ith: usize,
+        types: &[Option<Type>],
+    ) -> Option<Operand> {
         let region: RvsdgBody = self.nodes[node_id].clone();
         match region {
             RvsdgBody::If {
@@ -217,6 +224,9 @@ impl RvsdgFunction {
                 mut outputs,
             } => {
                 if let Operand::Arg(input_index) = outputs[ith] {
+                    if types[input_index].as_ref().map(|ty| ty.contains_state()) != Some(false) {
+                        return None;
+                    }
                     // for loops, input_index needs to match ith
                     if input_index == ith {
                         // check that we can remove ith arg
@@ -277,7 +287,7 @@ impl RvsdgFunction {
 
     /// Returns a new function with some passthrough optimizations.
     /// Also returns a boolean indicating if any changes were made.
-    fn optimize_passthrough(&self) -> (RvsdgFunction, bool) {
+    fn optimize_passthrough(&self, types: &[Option<Type>]) -> (RvsdgFunction, bool) {
         let mut new_func: RvsdgFunction = self.clone();
         let mut did_something = false;
 
@@ -290,7 +300,8 @@ impl RvsdgFunction {
             let mut output_index = 0;
             // be sure to calculate num_outputs() each iteration
             while output_index < new_func.nodes[id].num_outputs() {
-                if let Some(passed_through_operand) = new_func.passthrough_operand(id, output_index)
+                if let Some(passed_through_operand) =
+                    new_func.passthrough_operand(id, output_index, types)
                 {
                     did_something = true;
                     // rewrite all uses of this node to use the passed through value or offset

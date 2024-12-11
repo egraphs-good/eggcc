@@ -4,7 +4,7 @@
 //! When we translate if nodes, we add context nodes at the inputs to the region.
 //! Common sub-expressions can still be shared across branches, avoiding blowup from context nodes.
 //! We are careful to add context to every leaf node (Empty, Arg, and Const)
-use std::iter;
+use std::{iter, rc::Rc};
 
 #[cfg(test)]
 use crate::{cfg::program_to_cfg, rvsdg::cfg_to_rvsdg, util::parse_from_string};
@@ -13,6 +13,7 @@ use dag_in_context::ast::*;
 use dag_in_context::interpreter::Value;
 #[cfg(test)]
 use dag_in_context::schema::Constant;
+use hashbrown::HashMap;
 use indexmap::IndexMap;
 
 use crate::rvsdg::{BasicExpr, Id, Operand, RvsdgBody, RvsdgFunction, RvsdgProgram};
@@ -25,21 +26,53 @@ use dag_in_context::{
 use super::RvsdgType;
 
 impl RvsdgProgram {
+    fn to_dag_encoding_and_caches(&self) -> (TreeProgram, HashMap<String, DagTranslator>) {
+        let mut translators = HashMap::<String, DagTranslator>::new();
+        let last_function = self.functions.last().unwrap();
+        let rest_functions = self.functions.iter().take(self.functions.len() - 1);
+
+        let (last_prog, last_translator) = last_function.to_dag_encoding();
+        let mut translated: Vec<RcExpr> = vec![];
+        for function in rest_functions {
+            let (prog, translator) = function.to_dag_encoding();
+            translated.push(prog);
+            translators.insert(function.name.clone(), translator);
+        }
+        translators.insert(last_function.name.clone(), last_translator);
+        let res = program_vec(last_prog, translated).restore_sharing_invariant();
+        (res, translators)
+    }
+
     /// Converts an RVSDG program to the dag encoding.
     /// Common subexpressions are shared by the same Rc<Expr> in the dag encoding.
     /// This invariant is maintained by restore_sharing_invariant.
     /// Also adds context to the program.
     pub fn to_dag_encoding(&self) -> TreeProgram {
-        let last_function = self.functions.last().unwrap();
-        let rest_functions = self.functions.iter().take(self.functions.len() - 1);
+        self.to_dag_encoding_and_caches().0
+    }
 
-        program_vec(
-            last_function.to_dag_encoding(),
-            rest_functions
-                .map(|f| f.to_dag_encoding())
-                .collect::<Vec<_>>(),
-        )
-        .restore_sharing_invariant()
+    /// For each function in the RVSDG, the type of each node in `nodes`.
+    /// Unreachable nodes may be mapped to None.
+    pub fn typecheck(&self) -> HashMap<String, Vec<Option<Type>>> {
+        let (converted, caches) = self.to_dag_encoding_and_caches();
+        let type_cache = converted.typecheck();
+        eprintln!("Type cache: {:?}", type_cache);
+
+        let mut func_to_types = HashMap::new();
+        for function in &self.functions {
+            let cache = caches.get(&function.name).unwrap();
+            let mut types = vec![];
+            for node in 0..function.nodes.len() {
+                if let Some(cached) = cache.stored_node.get(&node) {
+                    types.push(type_cache.get(&Rc::as_ptr(&cached.expr)).cloned());
+                } else {
+                    types.push(None);
+                }
+            }
+            func_to_types.insert(function.name.clone(), types);
+        }
+        eprintln!("Func to types: {:?}", func_to_types);
+        func_to_types
     }
 }
 
@@ -346,7 +379,7 @@ impl<'a> DagTranslator<'a> {
 }
 
 impl RvsdgFunction {
-    fn to_dag_encoding(&self) -> RcExpr {
+    fn to_dag_encoding(&self) -> (RcExpr, DagTranslator) {
         let mut translator = DagTranslator {
             stored_node: IndexMap::new(),
             nodes: &self.nodes,
@@ -364,16 +397,19 @@ impl RvsdgFunction {
             .filter_map(|r| r.0.to_tree_type())
             .collect::<Vec<_>>();
 
-        function(
-            self.name.as_str(),
-            Type::TupleT(
-                self.args
-                    .iter()
-                    .filter_map(|ty| ty.to_tree_type())
-                    .collect(),
+        (
+            function(
+                self.name.as_str(),
+                Type::TupleT(
+                    self.args
+                        .iter()
+                        .filter_map(|ty| ty.to_tree_type())
+                        .collect(),
+                ),
+                tuplet_vec(result_types),
+                parallel_vec_nonempty(translated_results),
             ),
-            tuplet_vec(result_types),
-            parallel_vec_nonempty(translated_results),
+            translator,
         )
     }
 }

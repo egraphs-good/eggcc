@@ -5,19 +5,19 @@ expression: visualization.result
 # ARGS: 20
 @main(v0: int) {
 .b1_:
-  c2_: int = const 5;
-  c3_: int = const 10;
+  c2_: int = const 10;
+  c3_: int = const 5;
   v4_: bool = eq c2_ c3_;
   v5_: bool = not v4_;
   c6_: int = const 0;
   v7_: int = id c6_;
-  v8_: int = id c3_;
+  v8_: int = id c2_;
   v9_: int = id c6_;
   v10_: int = id v0;
   br v5_ .b11_ .b12_;
 .b11_:
   v13_: int = id c6_;
-  v14_: int = id c3_;
+  v14_: int = id c2_;
   v15_: int = id c6_;
   v16_: int = id v0;
 .b17_:

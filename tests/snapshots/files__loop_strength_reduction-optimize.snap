@@ -13,22 +13,8 @@ expression: visualization.result
   v6_: int = id c2_;
   v7_: int = id c1_;
   v8_: int = id c3_;
-<<<<<<< HEAD
   v9_: int = id c4_;
 .b10_:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-  v11_: int = mul v7_ v8_;
-  print v11_;
-  v12_: int = add v5_ v6_;
-  v13_: int = add v6_ v7_;
-  v14_: bool = lt v12_ v9_;
-  v5_: int = id v12_;
-=======
-<<<<<<< HEAD
->>>>>>> d0be4185 (snapshots)
   v11_: int = add v6_ v7_;
   v12_: int = add v11_ v6_;
   v13_: int = add v12_ v6_;
@@ -47,130 +33,11 @@ expression: visualization.result
   v22_: int = add v13_ v6_;
   v23_: bool = lt v21_ v9_;
   v5_: int = id v21_;
-<<<<<<< HEAD
-=======
->>>>>>> 1d1f4930 (snapshots)
->>>>>>> d0be4185 (snapshots)
   v6_: int = id v6_;
   v7_: int = id v22_;
   v8_: int = id v8_;
   v9_: int = id v9_;
-<<<<<<< HEAD
   br v23_ .b10_ .b24_;
 .b24_:
-=======
-<<<<<<< HEAD
-  br v14_ .b10_ .b15_;
-.b15_:
-=======
-  br v23_ .b10_ .b24_;
-.b24_:
-=======
-=======
-  v9_: int = id c4_;
-.b10_:
->>>>>>> 10665900 (snapshots after rebase)
-=======
->>>>>>> 6de82dd2 (snapshots)
-  v11_: bool = lt v5_ v9_;
-  v12_: int = id v5_;
-  v13_: int = id v6_;
-  v14_: int = id v7_;
-  v15_: int = id v8_;
-  br v11_ .b16_ .b17_;
-.b16_:
-  v18_: int = mul v7_ v8_;
-  print v18_;
-  v19_: int = add v5_ v6_;
-  v20_: int = add v6_ v7_;
-  v12_: int = id v19_;
-  v13_: int = id v6_;
-  v14_: int = id v20_;
-  v15_: int = id v8_;
-<<<<<<< HEAD
-<<<<<<< HEAD
-  v5_: int = id v12_;
-  v6_: int = id v6_;
-  v7_: int = id v14_;
-  v8_: int = id v8_;
-=======
-=======
->>>>>>> 46e3c07a (snapshots)
-=======
->>>>>>> 2a5403b2 (fix bug in ivt now that gets are not always there)
-  v9_: int = id c2_;
-  v10_: int = id c3_;
-  v11_: int = id c4_;
-.b12_:
-  v13_: int = mul v7_ v8_;
-  print v13_;
-  v14_: int = add v5_ v6_;
-  v15_: int = add v6_ v7_;
-  v16_: bool = lt v14_ v11_;
-  v5_: int = id v14_;
-  v6_: int = id v9_;
-  v7_: int = id v15_;
-  v8_: int = id v10_;
-<<<<<<< HEAD
-  v9_: int = id v9_;
-  v10_: int = id v10_;
-  v11_: int = id v11_;
-  br v16_ .b12_ .b17_;
-.b17_:
-<<<<<<< HEAD
-<<<<<<< HEAD
-  v5_: int = id v12_;
-  v6_: int = id v6_;
-  v7_: int = id v14_;
-  v8_: int = id v8_;
-  v9_: int = id v9_;
->>>>>>> bd5b3865 (snapshots)
-<<<<<<< HEAD
->>>>>>> 1d1f4930 (snapshots)
-<<<<<<< HEAD
->>>>>>> d0be4185 (snapshots)
-=======
-=======
-=======
->>>>>>> cdb622b7 (snapshots)
-<<<<<<< HEAD
->>>>>>> 67ded1b9 (snapshots)
-<<<<<<< HEAD
->>>>>>> 9cd70739 (snapshots)
-=======
-=======
-=======
-=======
->>>>>>> 6de82dd2 (snapshots)
-.b17_:
-  v21_: int = add v5_ v6_;
-  v22_: int = select v11_ v21_ v5_;
-  v23_: int = add v6_ v7_;
-  v24_: int = select v11_ v23_ v7_;
-  v5_: int = id v22_;
-  v6_: int = id v6_;
-  v7_: int = id v24_;
-  v8_: int = id v8_;
-  v9_: int = id v9_;
-  br v11_ .b10_ .b25_;
-.b25_:
-<<<<<<< HEAD
->>>>>>> 10665900 (snapshots after rebase)
->>>>>>> d417cf77 (snapshots after rebase)
-<<<<<<< HEAD
->>>>>>> bd275b57 (snapshots after rebase)
-=======
-=======
->>>>>>> 46e3c07a (snapshots)
->>>>>>> 6c2faea7 (snapshots)
-=======
->>>>>>> 6de82dd2 (snapshots)
-=======
-  v9_: int = id v9_;
-  v10_: int = id v10_;
-  v11_: int = id v11_;
-  br v16_ .b12_ .b17_;
-.b17_:
->>>>>>> 2a5403b2 (fix bug in ivt now that gets are not always there)
   ret;
 }

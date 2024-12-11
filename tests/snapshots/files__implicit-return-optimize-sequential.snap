@@ -6,97 +6,12 @@ expression: visualization.result
 @pow(v0: int, v1: int) {
 .b2_:
   c3_: int = const 0;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 2a5403b2 (fix bug in ivt now that gets are not always there)
   c4_: int = const 1;
   v5_: int = sub v1 c4_;
   v6_: bool = lt c3_ v5_;
   v7_: int = id v0;
   v8_: int = id c3_;
   v9_: int = id v0;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  v10_: int = id v1;
-  br v6_ .b11_ .b12_;
-.b11_:
-  c13_: int = const 1;
-  v14_: int = sub v1 c13_;
-  v15_: int = id v0;
-  v16_: int = id c3_;
-  v17_: int = id v0;
-  v18_: int = id v1;
-  v19_: int = id v14_;
-.b20_:
-  v21_: int = mul v15_ v17_;
-  c22_: int = const 1;
-  v23_: int = add c22_ v16_;
-  v24_: bool = lt v23_ v19_;
-  v15_: int = id v21_;
-  v16_: int = id v23_;
-  v17_: int = id v17_;
-  v18_: int = id v18_;
-  v19_: int = id v19_;
-  br v24_ .b20_ .b25_;
-.b25_:
-  v7_: int = id v15_;
-  v8_: int = id v16_;
-  v9_: int = id v17_;
-  v10_: int = id v18_;
-  print v7_;
-=======
-=======
->>>>>>> 10665900 (snapshots after rebase)
-=======
->>>>>>> 6de82dd2 (snapshots)
-  v4_: int = id v0;
-  v5_: int = id c3_;
-  v6_: int = id v0;
-  v7_: int = id v1;
-.b8_:
-  c9_: int = const 14;
-  v10_: bool = lt v5_ c9_;
-<<<<<<< HEAD
-<<<<<<< HEAD
-  v11_: int = id v4_;
-  v12_: int = id v5_;
-  v13_: int = id v6_;
-  br v10_ .b14_ .b15_;
-.b14_:
-  v16_: int = mul v4_ v6_;
-  c17_: int = const 1;
-  v18_: int = add c17_ v5_;
-  v11_: int = id v16_;
-  v12_: int = id v18_;
-  v13_: int = id v6_;
-  v4_: int = id v11_;
-  v5_: int = id v12_;
-  v6_: int = id v6_;
-  v7_: int = id v7_;
-  jmp .b8_;
-.b15_:
-  v4_: int = id v11_;
-  v5_: int = id v12_;
-  v6_: int = id v6_;
-  v7_: int = id v7_;
-  print v4_;
->>>>>>> bd5b3865 (snapshots)
-  ret;
-  jmp .b26_;
-.b12_:
-  print v7_;
-  ret;
-<<<<<<< HEAD
-.b26_:
-=======
-.b24_:
-=======
-=======
->>>>>>> 6c2faea7 (snapshots)
-=======
->>>>>>> 2a5403b2 (fix bug in ivt now that gets are not always there)
   v10_: int = id v0;
   v11_: int = id v1;
   br v6_ .b12_ .b13_;
@@ -110,8 +25,8 @@ expression: visualization.result
   v20_: int = mul v14_ v16_;
   c21_: int = const 1;
   v22_: int = add c21_ v15_;
-  c23_: int = const 14;
-  v24_: bool = lt v22_ c23_;
+  v23_: int = sub v18_ c21_;
+  v24_: bool = lt v22_ v23_;
   v14_: int = id v20_;
   v15_: int = id v22_;
   v16_: int = id v17_;
@@ -125,59 +40,12 @@ expression: visualization.result
   v10_: int = id v17_;
   v11_: int = id v18_;
   print v7_;
-<<<<<<< HEAD
   ret;
   jmp .b26_;
 .b13_:
   print v7_;
   ret;
 .b26_:
-<<<<<<< HEAD
->>>>>>> cdb622b7 (snapshots)
-<<<<<<< HEAD
->>>>>>> 9cd70739 (snapshots)
-=======
-=======
-  v11_: int = mul v4_ v6_;
-  v12_: int = select v10_ v11_ v4_;
-  c13_: int = const 1;
-  v14_: int = add c13_ v5_;
-  v15_: int = select v10_ v14_ v5_;
-  v4_: int = id v12_;
-  v5_: int = id v15_;
-  v6_: int = id v6_;
-  v7_: int = id v7_;
-  br v10_ .b8_ .b16_;
-.b16_:
-  print v4_;
-  ret;
->>>>>>> 10665900 (snapshots after rebase)
->>>>>>> bd275b57 (snapshots after rebase)
-=======
->>>>>>> 6c2faea7 (snapshots)
-=======
-  v11_: int = mul v4_ v6_;
-  v12_: int = select v10_ v11_ v4_;
-  c13_: int = const 1;
-  v14_: int = add c13_ v5_;
-  v15_: int = select v10_ v14_ v5_;
-  v4_: int = id v12_;
-  v5_: int = id v15_;
-  v6_: int = id v6_;
-  v7_: int = id v7_;
-  br v10_ .b8_ .b16_;
-.b16_:
-  print v4_;
-  ret;
->>>>>>> 6de82dd2 (snapshots)
-=======
-  ret;
-  jmp .b26_;
-.b13_:
-  print v7_;
-  ret;
-.b26_:
->>>>>>> 2a5403b2 (fix bug in ivt now that gets are not always there)
 }
 @main {
 .b0_:

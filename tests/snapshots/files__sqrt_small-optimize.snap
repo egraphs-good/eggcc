@@ -23,82 +23,12 @@ expression: visualization.result
   br v7_ .b14_ .b15_;
 .b14_:
   v16_: bool = flt v0 c2_;
-<<<<<<< HEAD
-  v17_: float = id c2_;
-  v18_: bool = id c10_;
-  br v16_ .b19_ .b20_;
-.b19_:
-  v12_: float = id v17_;
-  v13_: bool = id v18_;
-.b15_:
-  br v11_ .b21_ .b22_;
-.b21_:
-  ret;
-  jmp .b6_;
-.b22_:
-  v23_: float = fdiv v12_ v12_;
-  print v23_;
-  ret;
-  jmp .b6_;
-.b20_:
-  c24_: float = const 1;
-  c25_: float = const 1.0000000001;
-  c26_: float = const 0.9999999999;
-  c27_: float = const 2;
-  v28_: float = id c2_;
-  v29_: float = id c24_;
-  v30_: float = id c25_;
-  v31_: float = id c26_;
-  v32_: float = id c27_;
-  v33_: float = id v0;
-.b34_:
-  v35_: float = fdiv v33_ v29_;
-  v36_: float = fadd v29_ v35_;
-  v37_: float = fdiv v36_ v32_;
-  v38_: float = fdiv v37_ v29_;
-  v39_: bool = fge v38_ v31_;
-  v40_: bool = fle v38_ v30_;
-  v41_: bool = and v39_ v40_;
-  v42_: bool = not v41_;
-  v28_: float = id v28_;
-  v29_: float = id v37_;
-  v30_: float = id v30_;
-  v31_: float = id v31_;
-  v32_: float = id v32_;
-  v33_: float = id v33_;
-  br v42_ .b34_ .b43_;
-.b43_:
-  print v29_;
-  c44_: bool = const true;
-  v17_: float = id v28_;
-  v18_: bool = id c44_;
-  v12_: float = id v17_;
-  v13_: bool = id v18_;
-  jmp .b15_;
-=======
-  c8_: bool = const false;
-  v9_: float = id c2_;
-  v10_: bool = id c8_;
-  br v7_ .b11_ .b12_;
-.b11_:
-  v13_: bool = flt v0 c2_;
-  br v13_ .b14_ .b15_;
-.b15_:
-  c16_: float = const 1;
-  c17_: float = const 1.0000000001;
-  c18_: float = const 0.9999999999;
-  c19_: float = const 2;
-  v20_: float = id c16_;
-  v21_: float = id c17_;
-  v22_: float = id c18_;
-=======
   br v16_ .b17_ .b18_;
 .b18_:
   c19_: float = const 1;
   c20_: float = const 1.0000000001;
   c21_: float = const 0.9999999999;
   c22_: float = const 2;
->>>>>>> 9cd70739 (snapshots)
   v23_: float = id c19_;
   v24_: float = id c20_;
   v25_: float = id c21_;
@@ -109,8 +39,8 @@ expression: visualization.result
   v30_: float = fadd v23_ v29_;
   v31_: float = fdiv v30_ v26_;
   v32_: float = fdiv v31_ v23_;
-  v33_: bool = fle v32_ v24_;
-  v34_: bool = fge v32_ v25_;
+  v33_: bool = fge v32_ v25_;
+  v34_: bool = fle v32_ v24_;
   v35_: bool = and v33_ v34_;
   v36_: bool = not v35_;
   v23_: float = id v31_;

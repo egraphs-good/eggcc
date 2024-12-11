@@ -6,52 +6,6 @@ expression: visualization.result
 @main {
 .b0_:
   c1_: int = const 2;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  c2_: int = const 3;
-  c3_: int = const 0;
-  c4_: int = const 1;
-  c5_: int = const 40;
-  v6_: int = id c2_;
-  v7_: int = id c3_;
-  v8_: int = id c4_;
-  v9_: int = id c5_;
-.b10_:
-  v11_: int = add v6_ v8_;
-  v12_: int = add v11_ v8_;
-  v13_: int = add v12_ v8_;
-  v14_: int = add v13_ v8_;
-  v15_: int = add v7_ v8_;
-  v16_: int = add v15_ v8_;
-  v17_: int = add v16_ v8_;
-  v18_: int = add v17_ v8_;
-  v19_: bool = lt v18_ v9_;
-  v6_: int = id v14_;
-  v7_: int = id v18_;
-  v8_: int = id v8_;
-  v9_: int = id v9_;
-<<<<<<< HEAD
-  br v19_ .b10_ .b20_;
-.b20_:
-=======
-<<<<<<< HEAD
-  br v13_ .b10_ .b14_;
-.b14_:
-=======
-  br v19_ .b10_ .b20_;
-.b20_:
-=======
->>>>>>> bd5b3865 (snapshots)
->>>>>>> 1d1f4930 (snapshots)
-<<<<<<< HEAD
->>>>>>> d0be4185 (snapshots)
-=======
-=======
->>>>>>> 46e3c07a (snapshots)
->>>>>>> 6c2faea7 (snapshots)
-=======
->>>>>>> 6de82dd2 (snapshots)
   print c1_;
   ret;
 }

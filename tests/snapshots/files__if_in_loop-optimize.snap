@@ -14,15 +14,7 @@ expression: visualization.result
   v8_: int = id c2_;
   v9_: int = id c4_;
 .b10_:
-<<<<<<< HEAD
-<<<<<<< HEAD
   v11_: bool = lt v7_ v6_;
-=======
-  v11_: bool = le v7_ v8_;
->>>>>>> 53e56695 (snapshots)
-=======
-  v11_: bool = lt v7_ v6_;
->>>>>>> 9cd70739 (snapshots)
   v12_: int = select v11_ v6_ v8_;
   print v12_;
   print v11_;

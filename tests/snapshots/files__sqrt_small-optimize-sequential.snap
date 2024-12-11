@@ -39,8 +39,8 @@ expression: visualization.result
   v30_: float = fadd v23_ v29_;
   v31_: float = fdiv v30_ v26_;
   v32_: float = fdiv v31_ v23_;
-  v33_: bool = fle v32_ v24_;
-  v34_: bool = fge v32_ v25_;
+  v33_: bool = fge v32_ v25_;
+  v34_: bool = fle v32_ v24_;
   v35_: bool = and v33_ v34_;
   v36_: bool = not v35_;
   v23_: float = id v31_;

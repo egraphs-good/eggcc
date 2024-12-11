@@ -9,8 +9,8 @@ use std::{collections::HashSet, fmt::Write, i64};
 use to_egglog::TreeToEgglog;
 
 use crate::{
-    add_context::ContextCache, dag2svg::tree_to_svg, interpreter::interpret_dag_prog,
-    optimizations::function_inlining, schedule::parallel_schedule,
+    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
+    schedule::parallel_schedule,
 };
 
 pub mod add_context;
@@ -124,15 +124,16 @@ pub fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
 
 // Build an egglog program that optimizes a particular batch of functions `fns`
 // with a schedule `schedule`.
+// Adds context to the program before optimizing.
 // If `inline_program` is true, it also inlines calls in `fns`.
 // `inline_program` is the program to inline calls from, allowing us to inline unoptimized function bodies.
 pub fn build_program(
     program: &TreeProgram,
     inline_program: Option<&TreeProgram>,
     fns: &[String],
-    cache: &mut ContextCache,
     schedule: &str,
 ) -> String {
+    let (program, mut context_cache) = program.add_context();
     let mut printed = String::new();
 
     // Create a global cache for generating intermediate variables
@@ -147,7 +148,7 @@ pub fn build_program(
                 inline_program,
                 vec![func.clone()],
                 config::FUNCTION_INLINING_ITERATIONS,
-                cache,
+                &mut context_cache,
             ));
         }
 
@@ -174,7 +175,7 @@ pub fn build_program(
     }
 
     let loop_context_unions =
-        cache.get_unions_with_sharing(&mut printed, &mut tree_state, &mut term_cache);
+        context_cache.get_unions_with_sharing(&mut printed, &mut tree_state, &mut term_cache);
 
     // set the type of each function
     for func in program.fns() {
@@ -231,7 +232,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
     let fns = program.fns();
-    let egglog_prog = build_program(program, None, &fns, &mut ContextCache::new(), "");
+    let egglog_prog = build_program(program, None, &fns, "");
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
@@ -311,10 +312,10 @@ impl Default for EggccConfig {
     }
 }
 
-// It is expected that program has context added
+// Optimizes a tree program using the given schedule.
+// Adds context to the program before optimizing.
 pub fn optimize(
     program: &TreeProgram,
-    cache: &mut ContextCache,
     eggcc_config: &EggccConfig,
 ) -> std::result::Result<TreeProgram, egglog::Error> {
     let schedule_list = eggcc_config.schedule.get_schedule_list();
@@ -364,7 +365,6 @@ pub fn optimize(
                 &res,
                 inline_program.as_ref(),
                 &batch,
-                cache,
                 schedule.egglog_schedule(),
             );
 

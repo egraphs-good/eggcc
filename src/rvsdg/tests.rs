@@ -197,7 +197,7 @@ fn rvsdg_expr() {
     "#;
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    let rvsdg = cfg_to_rvsdg(&cfg, false).unwrap();
 
     let mut expected = RvsdgTest::default();
     let one = expected.lit_int(1);
@@ -222,7 +222,7 @@ fn rvsdg_print() {
     "#;
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    let rvsdg = cfg_to_rvsdg(&cfg, false).unwrap();
 
     let mut expected = RvsdgTest::default();
     let v0 = expected.lit_int(1);
@@ -260,7 +260,7 @@ fn rvsdg_state_gamma() {
     "#;
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    let rvsdg = cfg_to_rvsdg(&cfg, false).unwrap();
 
     let mut expected = RvsdgTest::default();
     let c = expected.lit_bool(true);
@@ -288,7 +288,7 @@ fn rvsdg_state_mem() {
     }"#;
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg).unwrap();
+    let rvsdg = cfg_to_rvsdg(&cfg, false).unwrap();
 
     let mut expected = RvsdgTest::default();
     let x = expected.lit_int(1);
@@ -318,7 +318,7 @@ fn rvsdg_state_mem_to_cfg_snapshot() {
     }"#;
     let prog = parse_from_string(PROGRAM);
     let cfg_in = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg_in).unwrap();
+    let rvsdg = cfg_to_rvsdg(&cfg_in, false).unwrap();
     let cfg_out = rvsdg.to_cfg();
     let prog = cfg_out.to_bril();
     // Up to renaming and reordering non-dependent ops, we get the same program
@@ -350,7 +350,7 @@ fn rvsdg_state_mem_to_cfg_more_blocks_snapshot() {
     }"#;
     let prog = parse_from_string(PROGRAM);
     let cfg_in = program_to_cfg(&prog);
-    let rvsdg = cfg_to_rvsdg(&cfg_in).unwrap();
+    let rvsdg = cfg_to_rvsdg(&cfg_in, false).unwrap();
     let cfg_out = rvsdg.to_cfg();
     let prog = cfg_out.to_bril();
     assert_snapshot!(prog.to_string());
@@ -374,7 +374,7 @@ fn rvsdg_unstructured() {
       }"#;
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
-    let rvsdg = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
+    let rvsdg = &cfg_to_rvsdg(&cfg, false).unwrap().functions[0];
 
     // It's hard to write a useful test that's more than just a "change
     // detector" here. In this case, the function is not computing anything
@@ -466,7 +466,7 @@ fn rvsdg_basic_odd_branch() {
     // test correctness of RVSDGs converted from CFG
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
-    let actual = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
+    let actual = &cfg_to_rvsdg(&cfg, false).unwrap().functions[0];
 
     assert!(deep_equal(&expected, actual));
 }
@@ -543,7 +543,7 @@ fn rvsdg_odd_branch_egg_roundtrip() {
     // test correctness of RVSDGs converted from CFG
     let prog = parse_from_string(PROGRAM);
     let cfg = program_to_cfg(&prog);
-    let actual = &cfg_to_rvsdg(&cfg).unwrap().functions[0];
+    let actual = &cfg_to_rvsdg(&cfg, false).unwrap().functions[0];
     assert!(deep_equal(&expected, actual));
 }
 

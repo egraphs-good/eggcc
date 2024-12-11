@@ -23,30 +23,27 @@ expression: visualization.result
 .b17_:
   c18_: int = const 1;
   v19_: int = add c18_ v15_;
-  v20_: bool = eq v16_ v19_;
-  v21_: int = add v13_ v19_;
-  v22_: int = select v20_ v21_ v21_;
-  c23_: int = const 5;
-  v24_: int = select v20_ c23_ v14_;
-  v25_: int = select v20_ v19_ v19_;
-  v26_: int = select v20_ v16_ v16_;
-  v27_: bool = eq c23_ v24_;
-  v28_: bool = not v27_;
-  v13_: int = id v22_;
-  v14_: int = id v24_;
-  v15_: int = id v25_;
-  v16_: int = id v26_;
-  br v28_ .b17_ .b29_;
-.b29_:
+  v20_: int = add v13_ v19_;
+  v21_: bool = eq v16_ v19_;
+  c22_: int = const 5;
+  v23_: int = select v21_ c22_ v14_;
+  v24_: bool = eq c22_ v23_;
+  v25_: bool = not v24_;
+  v13_: int = id v20_;
+  v14_: int = id v23_;
+  v15_: int = id v19_;
+  v16_: int = id v16_;
+  br v25_ .b17_ .b26_;
+.b26_:
   v7_: int = id v13_;
   v8_: int = id v14_;
   v9_: int = id v15_;
   v10_: int = id v16_;
   print v7_;
   ret;
-  jmp .b30_;
+  jmp .b27_;
 .b12_:
   print v7_;
   ret;
-.b30_:
+.b27_:
 }

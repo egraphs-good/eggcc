@@ -449,9 +449,8 @@ pub struct RunOutput {
 impl Run {
     fn optimize_bril(program: &Program, config: &EggccConfig) -> Result<Program, EggCCError> {
         let rvsdg = Optimizer::program_to_rvsdg(program)?;
-        let (dag, mut cache) = rvsdg.to_dag_encoding(true);
-        let optimized =
-            dag_in_context::optimize(&dag, &mut cache, config).map_err(EggCCError::EggLog)?;
+        let dag = rvsdg.to_dag_encoding();
+        let optimized = dag_in_context::optimize(&dag, config).map_err(EggCCError::EggLog)?;
         let rvsdg2 = dag_to_rvsdg(&optimized);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
@@ -673,8 +672,8 @@ impl Run {
             }
             RunMode::DagToRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (tree, _cache) = rvsdg.to_dag_encoding(true);
-                let rvsdg2 = dag_to_rvsdg(&tree);
+                let dag = rvsdg.to_dag_encoding();
+                let rvsdg2 = dag_to_rvsdg(&dag);
                 (
                     vec![Visualization {
                         result: rvsdg2.to_svg(),
@@ -686,8 +685,8 @@ impl Run {
             }
             RunMode::DagRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (tree, _cache) = rvsdg.to_dag_encoding(true);
-                let rvsdg2 = dag_to_rvsdg(&tree);
+                let dag = rvsdg.to_dag_encoding();
+                let rvsdg2 = dag_to_rvsdg(&dag);
                 let cfg = rvsdg2.to_cfg();
                 let bril = cfg.to_bril();
                 let prog_with_args = ProgWithArguments {
@@ -702,7 +701,7 @@ impl Run {
             }
             RunMode::CheckExtractIdentical => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (tree, _cache) = rvsdg.to_dag_encoding(true);
+                let tree = rvsdg.to_dag_encoding();
                 check_roundtrip_egraph(&tree);
                 (vec![], None)
             }
@@ -720,7 +719,7 @@ impl Run {
             }
             RunMode::PrettyPrint => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (dag, _) = rvsdg.to_dag_encoding(true);
+                let dag = rvsdg.to_dag_encoding();
                 let res = TreeProgram::pretty_print_to_rust(&dag);
                 (
                     vec![Visualization {
@@ -733,8 +732,8 @@ impl Run {
             }
             RunMode::OptimizedPrettyPrint => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (prog, mut ctx_cache) = rvsdg.to_dag_encoding(true);
-                let optimized = dag_in_context::optimize(&prog, &mut ctx_cache, &self.eggcc_config)
+                let prog = rvsdg.to_dag_encoding();
+                let optimized = dag_in_context::optimize(&prog, &self.eggcc_config)
                     .map_err(EggCCError::EggLog)?;
                 let res = TreeProgram::pretty_print_to_rust(&optimized);
                 (
@@ -749,8 +748,8 @@ impl Run {
             RunMode::TestPrettyPrint => {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
-                let (tree, mut cache) = rvsdg.to_dag_encoding(true);
-                let unfolded_program = build_program(&tree, None, &tree.fns(), &mut cache, "");
+                let tree = rvsdg.to_dag_encoding();
+                let unfolded_program = build_program(&tree, None, &tree.fns(), "");
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
@@ -762,7 +761,7 @@ impl Run {
             }
             RunMode::DagConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (tree, _cache) = rvsdg.to_dag_encoding(true);
+                let tree = rvsdg.to_dag_encoding();
                 (
                     vec![Visualization {
                         result: tree_to_svg(&tree),
@@ -774,8 +773,8 @@ impl Run {
             }
             RunMode::DagOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (tree, mut cache) = rvsdg.to_dag_encoding(true);
-                let optimized = dag_in_context::optimize(&tree, &mut cache, &self.eggcc_config)
+                let tree = rvsdg.to_dag_encoding();
+                let optimized = dag_in_context::optimize(&tree, &self.eggcc_config)
                     .map_err(EggCCError::EggLog)?;
                 (
                     vec![Visualization {
@@ -788,8 +787,8 @@ impl Run {
             }
             RunMode::OptimizedRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (dag, mut cache) = rvsdg.to_dag_encoding(true);
-                let optimized = dag_in_context::optimize(&dag, &mut cache, &self.eggcc_config)
+                let dag = rvsdg.to_dag_encoding();
+                let optimized = dag_in_context::optimize(&dag, &self.eggcc_config)
                     .map_err(EggCCError::EggLog)?;
                 let rvsdg = dag_to_rvsdg(&optimized);
                 (
@@ -803,7 +802,7 @@ impl Run {
             }
             RunMode::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let (dag, mut cache) = rvsdg.to_dag_encoding(true);
+                let dag = rvsdg.to_dag_encoding();
                 let schedules = self.eggcc_config.schedule.get_schedule_list();
 
                 // how many actual passes to run
@@ -814,8 +813,8 @@ impl Run {
                     stop_after_n_passes: cutoff as i64,
                     ..self.eggcc_config.clone()
                 };
-                let optimized = dag_in_context::optimize(&dag, &mut cache, &eggcc_config)
-                    .map_err(EggCCError::EggLog)?;
+                let optimized =
+                    dag_in_context::optimize(&dag, &eggcc_config).map_err(EggCCError::EggLog)?;
 
                 let last_schedule_step = &schedules[cutoff];
 
@@ -828,7 +827,6 @@ impl Run {
                     &optimized,
                     inline_program,
                     &dag.fns(),
-                    &mut cache,
                     last_schedule_step.egglog_schedule(),
                 );
                 (

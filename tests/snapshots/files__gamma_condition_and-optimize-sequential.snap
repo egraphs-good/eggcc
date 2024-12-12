@@ -1,14 +1,13 @@
 ---
 source: tests/files.rs
 expression: visualization.result
-snapshot_kind: text
 ---
 # ARGS: 1
 @main(v0: int) {
 .b1_:
   c2_: int = const 0;
-  v3_: bool = lt v0 c2_;
-  v4_: bool = gt v0 c2_;
+  v3_: bool = lt c2_ v0;
+  v4_: bool = lt v0 c2_;
   v5_: bool = and v3_ v4_;
   c6_: int = const 1;
   v7_: int = id c6_;

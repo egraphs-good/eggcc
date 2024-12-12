@@ -14,20 +14,18 @@ expression: visualization.result
 .b6_:
   c8_: int = const 1;
   print c8_;
-  v9_: int = id v2_;
-.b10_:
-  c11_: int = const 1;
-  v12_: int = add c11_ v2_;
-  c13_: int = const 6;
-  v14_: bool = lt v2_ c13_;
-  v2_: int = id v12_;
-  br v14_ .b3_ .b15_;
+.b9_:
+  c10_: int = const 1;
+  v11_: int = add c10_ v2_;
+  c12_: int = const 6;
+  v13_: bool = lt v2_ c12_;
+  v2_: int = id v11_;
+  br v13_ .b3_ .b14_;
 .b7_:
-  c16_: int = const 2;
-  print c16_;
-  v9_: int = id v2_;
-  jmp .b10_;
-.b15_:
+  c15_: int = const 2;
+  print c15_;
+  jmp .b9_;
+.b14_:
   print v2_;
   ret;
 }

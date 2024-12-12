@@ -26,15 +26,16 @@ expression: visualization.result
   v18_: int = add v8_ v9_;
   v19_: int = add v10_ v18_;
   v20_: int = select v17_ v19_ v18_;
-  v21_: bool = lt v16_ v13_;
+  v21_: int = select v17_ v10_ v10_;
+  v22_: bool = lt v16_ v13_;
   v7_: int = id v16_;
   v8_: int = id v8_;
   v9_: int = id v20_;
-  v10_: int = id v10_;
+  v10_: int = id v21_;
   v11_: int = id v11_;
   v12_: int = id v12_;
   v13_: int = id v13_;
-  br v21_ .b14_ .b22_;
-.b22_:
+  br v22_ .b14_ .b23_;
+.b23_:
   ret;
 }

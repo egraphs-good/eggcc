@@ -32,6 +32,7 @@ pub(crate) mod from_cfg;
 pub(crate) mod from_dag;
 pub(crate) mod live_variables;
 pub(crate) mod optimize_direct_jumps;
+mod passthrough;
 pub(crate) mod restructure;
 pub(crate) mod rvsdg2svg;
 pub(crate) mod simplify_branches;
@@ -43,6 +44,7 @@ use std::fmt;
 use bril_rs::{ConstOps, EffectOps, Literal, Type, ValueOps};
 
 use dag_in_context::schema::BaseType;
+use hashbrown::{HashMap, HashSet};
 use thiserror::Error;
 
 use crate::{
@@ -131,6 +133,27 @@ impl<Op> BasicExpr<Op> {
             BasicExpr::Effect(_, operands) => operands.push(op),
         }
     }
+
+    pub(crate) fn map_operands(&mut self, f: &mut impl FnMut(&Op) -> Op) {
+        match self {
+            BasicExpr::Op(_, operands, _) => {
+                for operand in operands {
+                    *operand = f(operand);
+                }
+            }
+            BasicExpr::Call(_, operands, _, _) => {
+                for operand in operands {
+                    *operand = f(operand);
+                }
+            }
+            BasicExpr::Const(_, _, _) => {}
+            BasicExpr::Effect(_, operands) => {
+                for operand in operands {
+                    *operand = f(operand);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -171,7 +194,7 @@ pub(crate) enum RvsdgBody {
     },
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum RvsdgType {
     Bril(Type),
     PrintState,
@@ -202,6 +225,7 @@ impl RvsdgType {
 /// The function has arguments, a result, and nodes.
 /// The nodes are stored in a vector, and variants of RvsdgBody refer
 /// to nodes by their index in the vector.
+#[derive(Clone)]
 pub struct RvsdgFunction {
     /// The name of this function.
     pub(crate) name: String,
@@ -235,6 +259,7 @@ impl fmt::Debug for RvsdgFunction {
 /// For now, it's simply a vector of [RvsdgFunction]s.
 /// In the future, we may want functions to be represented within
 /// the RVSDG.
+#[derive(Clone)]
 pub struct RvsdgProgram {
     /// A list of functions in this program.
     /// The last function is the entry point (main function).
@@ -243,6 +268,7 @@ pub struct RvsdgProgram {
 
 pub(crate) fn cfg_to_rvsdg(
     cfg: &SimpleCfgProgram,
+    optimize_passthrough: bool,
 ) -> std::result::Result<RvsdgProgram, EggCCError> {
     // Rvsdg translation also restructured the cfg
     // so make a copy for that.
@@ -253,5 +279,134 @@ pub(crate) fn cfg_to_rvsdg(
     for func in cfg_restructured.functions.iter_mut() {
         functions.push(cfg_func_to_rvsdg(func, &func_types).map_err(EggCCError::RvsdgError)?);
     }
-    Ok(RvsdgProgram { functions })
+    let mut prog = RvsdgProgram { functions };
+
+    // now run passthrough optimization to clean it up
+    if optimize_passthrough {
+        prog = prog.optimize_passthrough();
+    }
+    Ok(prog)
+}
+
+impl RvsdgBody {
+    pub(crate) fn map_operands(&mut self, f: &mut impl FnMut(&Operand) -> Operand) {
+        match self {
+            RvsdgBody::BasicOp(basic_expr) => {
+                basic_expr.map_operands(f);
+            }
+            RvsdgBody::If {
+                pred,
+                inputs,
+                then_branch,
+                else_branch,
+            } => {
+                *pred = f(pred);
+                for input in inputs {
+                    *input = f(input);
+                }
+                for branch in then_branch {
+                    *branch = f(branch);
+                }
+                for branch in else_branch {
+                    *branch = f(branch);
+                }
+            }
+            RvsdgBody::Gamma {
+                pred,
+                inputs,
+                outputs,
+            } => {
+                *pred = f(pred);
+                for input in inputs {
+                    *input = f(input);
+                }
+                for output in outputs.iter_mut().flatten() {
+                    *output = f(output);
+                }
+            }
+            RvsdgBody::Theta {
+                pred,
+                inputs,
+                outputs,
+            } => {
+                *pred = f(pred);
+                for input in inputs {
+                    *input = f(input);
+                }
+                for output in outputs {
+                    *output = f(output);
+                }
+            }
+        }
+    }
+
+    pub(crate) fn map_same_region_operands(
+        mut self,
+        fun: &mut impl FnMut(&Operand) -> Operand,
+    ) -> Self {
+        match &mut self {
+            RvsdgBody::BasicOp(basic_expr) => {
+                basic_expr.map_operands(fun);
+            }
+            RvsdgBody::If {
+                pred,
+                inputs,
+                then_branch: _,
+                else_branch: _,
+            } => {
+                *pred = fun(pred);
+                for input in inputs {
+                    *input = fun(input);
+                }
+            }
+            RvsdgBody::Gamma {
+                pred,
+                inputs,
+                outputs: _,
+            } => {
+                *pred = fun(pred);
+                for input in inputs {
+                    *input = fun(input);
+                }
+            }
+            RvsdgBody::Theta {
+                pred: _,
+                inputs,
+                outputs: _,
+            } => {
+                for input in inputs {
+                    *input = fun(input);
+                }
+            }
+        }
+        self
+    }
+
+    pub(crate) fn num_outputs(&self) -> usize {
+        match self {
+            RvsdgBody::BasicOp(basic_expr) => basic_expr.num_outputs(),
+            RvsdgBody::If { then_branch, .. } => then_branch.len(),
+            RvsdgBody::Gamma { outputs, .. } => outputs[0].len(),
+            RvsdgBody::Theta { outputs, .. } => outputs.len(),
+        }
+    }
+}
+
+impl RvsdgFunction {
+    pub(crate) fn uses_analysis(&self) -> HashMap<Id, HashSet<Id>> {
+        let mut uses = HashMap::new();
+        for (i, node) in self.nodes.iter().enumerate() {
+            let mut used = HashSet::new();
+            node.clone().map_operands(&mut |op| {
+                if let Operand::Project(_, region) = op {
+                    used.insert(*region);
+                }
+                *op
+            });
+            for use_id in used {
+                uses.entry(use_id).or_insert_with(HashSet::new).insert(i);
+            }
+        }
+        uses
+    }
 }

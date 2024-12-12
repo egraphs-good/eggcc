@@ -1,7 +1,6 @@
 ---
 source: tests/files.rs
 expression: visualization.result
-snapshot_kind: text
 ---
 # ARGS: 1
 @main(v0: int) {

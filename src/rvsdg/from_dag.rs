@@ -460,7 +460,7 @@ impl<'a> TreeToRvsdg<'a> {
                 assert_eq!(res.len(), 1, "Expected exactly one result for Single node");
                 res
             }
-            Expr::Symbolic(_) => panic!("symbolic not supported"),
+            Expr::Symbolic(_, _ty) => panic!("symbolic not supported"),
         };
         self.translation_cache
             .insert(Rc::as_ptr(&expr), res.clone());

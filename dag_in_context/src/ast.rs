@@ -30,6 +30,10 @@ pub fn statet() -> BaseType {
     BaseType::StateT
 }
 
+pub fn sym(s: impl Into<String>, ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Symbolic(s.into(), Some(ty)))
+}
+
 pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
 }

@@ -288,7 +288,7 @@ impl PrettyPrinter {
                 pp.table
                     .insert(binding.clone(), AstNode::Expr(new_expr.as_ref().clone()));
             }
-            Rc::new(Expr::Symbolic(binding))
+            Rc::new(Expr::Symbolic(binding, None))
         };
 
         let fold_or_plain = |pp: &mut PrettyPrinter, new_expr: RcExpr, log: &mut Vec<String>| {
@@ -307,7 +307,7 @@ impl PrettyPrinter {
         };
 
         if let Some(binding) = self.symbols.get(&NodeRef::Expr(old_expr_addr)) {
-            Rc::new(Expr::Symbolic(binding.to_owned()))
+            Rc::new(Expr::Symbolic(binding.to_owned(), None))
         } else {
             match expr.as_ref() {
                 Expr::Const(c, ty, assum) => {
@@ -329,7 +329,7 @@ impl PrettyPrinter {
                         fold(self, get, log)
                     }
                 }
-                Expr::Symbolic(_) => panic!("Expected non symbolic"),
+                Expr::Symbolic(_, _ty) => panic!("Expected non symbolic"),
                 Expr::Concat(..) | Expr::Single(..) if to_rust => expr
                     .map_expr_children(|e| self.refactor_shared_expr(e, fold_when, to_rust, log)),
                 _ => {
@@ -407,7 +407,7 @@ impl Expr {
             Expr::DoWhile(..) => "dowhile".into(),
             Expr::Arg(..) => "arg".into(),
             Expr::Function(name, ..) => "fun_".to_owned() + name,
-            Expr::Symbolic(var) => "symbolic_".to_owned() + var,
+            Expr::Symbolic(var, _ty) => "symbolic_".to_owned() + var,
         }
     }
 
@@ -492,7 +492,7 @@ impl Expr {
                     body.to_ast(),
                 )
             }
-            Expr::Symbolic(str) => format!("{str}.clone()"),
+            Expr::Symbolic(str, _ty) => format!("{str}.clone()"),
         }
     }
 }

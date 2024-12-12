@@ -261,7 +261,7 @@ impl Expr {
                 let name_lit = term_dag.lit(Literal::String(name.into()));
                 term_dag.app("Function".into(), vec![name_lit, ty_in, ty_out, body])
             }
-            Expr::Symbolic(name) => term_dag.var(name.into()),
+            Expr::Symbolic(name, _ty) => term_dag.var(name.into()),
         };
 
         term_dag

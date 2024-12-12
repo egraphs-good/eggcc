@@ -114,6 +114,7 @@
     (= if-inputs-len (tuple-length if-inputs))
     (= passthrough-len (TypeList-length passthrough-tys))
     (= if (If if-cond if-inputs then else))
+    (= if-len (tuple-length if))
 
     (ContextOf inpW outer-ctx)
     (ContextOf if-inputs if-ctx)

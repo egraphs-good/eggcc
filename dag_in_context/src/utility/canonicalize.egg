@@ -83,6 +83,10 @@
        (= size (tuple-length lhs)))
       ((union lhs (SubTuple lhs 0 size)))
       :ruleset always-run)
+(rule ((= lhs (Arg ty ctx))
+       (= size (tuple-length lhs)))
+      ((union lhs (SubTuple lhs 0 size)))
+      :ruleset always-run)
 
 ; Also figure out what existing expressions are subtuples of other things
 ; this helps remove concat layers

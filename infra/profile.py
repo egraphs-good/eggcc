@@ -154,7 +154,7 @@ def bench(benchmark):
         # if we have run for at least 1 second and we have at least 2 samples, stop
         #if time.time() - time_start > time_per_benchmark and len(resulting_num_cycles) >= 2:
          # break
-        if num_samples_so_far >= SAMPLES_PER_BENCHMARK_AND_TREATMENT+NUM_WARMUP_SAMPLES:
+        if num_samples_so_far >= SAMPLES_PER_BENCHMARK_AND_TREATMENT + NUM_WARMUP_SAMPLES:
           break
       # throw away the first NUM_WARMUP_SAMPLES samples
       resulting_num_cycles = resulting_num_cycles[NUM_WARMUP_SAMPLES:]

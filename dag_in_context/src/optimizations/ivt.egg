@@ -17,11 +17,6 @@
         :ruleset ivt-analysis)
 
 
-(sort Node)
-;; store a particular if node for later
-;; stored as the if eclass, pred, inputs, then, else
-(function IfNode (Expr Expr Expr Expr Expr) Node)
-
 ;; use an analysis to avoid exploring all combinations of passthrough vs not passed through values. Always prefer not passed through
 ;;                                  expr1 curr  if  result
 (function IVTNewInputsAnalysisImpl (Expr  Expr  Node) IVTRes :merge (IVTMin old new))

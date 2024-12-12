@@ -6,46 +6,46 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import sys
 
-runModes = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
+RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
 # copied from chart.js
-color_map = {
+COLOR_MAP = {
     "llvm-O0-O0" : "purple",
     "llvm-eggcc-O0-O0" : "pink",
     "llvm-O3-O0" : "gray"
 }
-benchmark_space = 1.0 / len(runModes)
-runModeYOffsets = []
-for runMode in runModes:
-  runModeYOffsets.append(len(runModeYOffsets) * benchmark_space)
+BENCHMARK_SPACE = 1.0 / len(RUN_MODES)
+CIRCLE_SIZE = 15
+
+RUN_MODE_Y_OFFSETS = []
+
+for runMode in RUN_MODES:
+  RUN_MODE_Y_OFFSETS.append(len(RUN_MODE_Y_OFFSETS) * BENCHMARK_SPACE)
 
 
 
+# rows has the same type as the profile.json file: a list of dictionaries
+# however it should only contain rows for a single benchmark, with all the different runMethods
 def baseline_cycles(rows):
   # assert only one row has a runMethod of llvm-O0-O0
-  count = 0
-  for row in rows:
-      if row.get('runMethod', '') == 'llvm-O0-O0':
-          count += 1
+  count = [row.get('runMethod', '') == 'llvm-O0-O0' for row in rows].count(True)
   assert(count == 1)
+
   for row in rows:
       if row.get('runMethod', '') == 'llvm-O0-O0':
           return row.get('cycles', [])
   # throw exception if we don't have a baseline
   raise KeyError("Missing baseline in profile.json")
 
-circle_size = 15
 
-def make_plot(profile, lower_x_bound, upper_x_bound, output):
+def make_plot(profile, upper_x_bound, output):
   # Prepare the data for the jitter plot
   # first y label is empty, underneath the first benchmark
   y_labels = []
   y_data = []
   x_data = []
   colors = []
-  next_color = 0
 
-  filtered = profile
-  filtered = [b for b in profile if b.get('runMethod', '') in runModes]
+  filtered = [b for b in profile if b.get('runMethod', '') in RUN_MODES]
 
   grouped_by_benchmark = {}
   for benchmark in filtered:
@@ -81,18 +81,12 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
       # Assign color for each runMethod
       if 'runMethod' not in benchmark:
           raise KeyError(f"Missing 'runMethod' field in benchmark: {benchmark_name}")
-      if run_method not in color_map:
-          color_map[run_method] = f'C{next_color}'
-          next_color += 1
-      color = color_map[run_method]
+      color = COLOR_MAP[run_method]
 
       for cycle in benchmark.get('cycles', [])[:100]:
           # Add a small random jitter to y value to prevent overlap
-          jittered_y = y_label_map[benchmark_name] + random.uniform(0.0, benchmark_space) + runModeYOffsets[runModes.index(run_method)]
-          if cycle < lower_x_bound:
-              outlier_x.append(lower_x_bound)
-              outlier_y.append(jittered_y)
-          elif upper_x_bound != None and cycle > upper_x_bound:
+          jittered_y = y_label_map[benchmark_name] + random.uniform(0.0, BENCHMARK_SPACE) + RUN_MODE_Y_OFFSETS[RUN_MODES.index(run_method)]
+          if upper_x_bound != None and cycle > upper_x_bound:
               # Record outlier data
               outlier_x.append(upper_x_bound)
               outlier_y.append(jittered_y)
@@ -104,12 +98,12 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
 
   # Create the jitter plot
   # HACK: make the plot longer when we have more benchamrks
-  plt.figure(figsize=(10, max(len(filtered) / (len(runModes)*2), 6)))
-  plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=circle_size)
+  plt.figure(figsize=(10, max(len(filtered) / (len(RUN_MODES)*2), 6)))
+  plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=CIRCLE_SIZE)
 
   # Plot outliers as red 'x' marks
   if upper_x_bound:
-    plt.scatter(outlier_x, outlier_y, color='red', marker='x', s=50, label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles', alpha=0.9)
+    plt.scatter(outlier_x, outlier_y, color='red', marker='x', s=50, label=f'Outliers above {upper_x_bound}', alpha=0.9)
 
   # Use y labels on the minor ticks
   plt.yticks([a+0.5 for a in range(len(y_labels))], y_labels, rotation=0, ha='right')
@@ -127,10 +121,10 @@ def make_plot(profile, lower_x_bound, upper_x_bound, output):
   plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{int(x)}'))
 
   # Create a legend based on runMethod
-  handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color_map[rm], markersize=10, alpha=0.7) for rm in color_map]
+  handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=COLOR_MAP[rm], markersize=10, alpha=0.7) for rm in COLOR_MAP]
   if upper_x_bound != None:
-    handles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'))
-  plt.legend(handles, list(color_map.keys()) + [f'Outliers not between {lower_x_bound} and {upper_x_bound} cycles'], title='Run Method', loc='upper right', bbox_to_anchor=(1.25, 1.05))
+    handles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers above {upper_x_bound}'))
+  plt.legend(handles, list(COLOR_MAP.keys()) + [f'Outliers above {upper_x_bound}'], title='Run Method', loc='upper right', bbox_to_anchor=(1.25, 1.05))
 
   # Save the plot to a PNG file in the nightly directory
   plt.tight_layout()
@@ -149,6 +143,6 @@ if __name__ == '__main__':
     with open(profile_file) as f:
         profile = json.load(f)
 
-    make_plot(profile, 0, None, f'{output_folder}/jitter_plot_full_range.png')
-    make_plot(profile, 0, 2000, f'{output_folder}/jitter_plot_2k_cycles.png')
-    make_plot(profile, 0, 100000, f'{output_folder}/jitter_plot_100k_cycles.png')
+    make_plot(profile, None, f'{output_folder}/jitter_plot_full_range.png')
+    make_plot(profile, 2000, f'{output_folder}/jitter_plot_2k_cycles.png')
+    make_plot(profile, 100000, f'{output_folder}/jitter_plot_100k_cycles.png')

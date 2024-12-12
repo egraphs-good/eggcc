@@ -20,16 +20,16 @@ expression: visualization.result
   v14_: int = id c4_;
 .b15_:
   v16_: bool = eq v12_ v13_;
-  c17_: int = const 1;
-  v18_: int = add c17_ v11_;
-  v19_: int = add c17_ v18_;
-  v20_: int = add c17_ v19_;
-  c21_: int = const 2;
-  v22_: int = mul c21_ v20_;
+  c17_: int = const 2;
+  c18_: int = const 1;
+  v19_: int = add c18_ v11_;
+  v20_: int = add c18_ v19_;
+  v21_: int = add c18_ v20_;
+  v22_: int = mul c17_ v21_;
   c23_: int = const 3;
-  v24_: int = mul c23_ v20_;
+  v24_: int = mul c23_ v21_;
   v25_: int = select v16_ v22_ v24_;
-  v26_: int = add c17_ v20_;
+  v26_: int = add c18_ v21_;
   v27_: bool = lt v26_ v14_;
   v10_: int = id v25_;
   v11_: int = id v26_;

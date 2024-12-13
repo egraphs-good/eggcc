@@ -187,7 +187,7 @@ impl<'a> Extractor<'a> {
                 self.find_effectful_nodes_in_region(body, linearity)
             }
             Expr::Const(_, _, _) => panic!("Const has no effect"),
-            Expr::Symbolic(_) => panic!("found symbolic"),
+            Expr::Symbolic(_, _ty) => panic!("found symbolic"),
         }
     }
 

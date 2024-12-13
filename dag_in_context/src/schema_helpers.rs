@@ -130,7 +130,7 @@ impl Expr {
             Expr::Empty(..) => Constructor::Empty,
             Expr::Alloc(..) => Constructor::Alloc,
             Expr::Top(..) => Constructor::Top,
-            Expr::Symbolic(_) => panic!("found symbolic"),
+            Expr::Symbolic(_, _ty) => panic!("found symbolic"),
         }
     }
     pub fn func_name(&self) -> Option<String> {
@@ -220,7 +220,7 @@ impl Expr {
             Expr::Const(_, _, _) => vec![],
             Expr::Empty(_, _) => vec![],
             Expr::Arg(_, _) => vec![],
-            Expr::Symbolic(_) => vec![],
+            Expr::Symbolic(_, _ty) => vec![],
         }
     }
 
@@ -249,7 +249,7 @@ impl Expr {
             }
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
             Expr::Arg(_, _) => vec![],
-            Expr::Symbolic(_) => vec![],
+            Expr::Symbolic(_, _ty) => vec![],
         }
     }
 
@@ -270,7 +270,7 @@ impl Expr {
             Expr::DoWhile(x, _) => x.get_arg_type(),
             Expr::Arg(ty, _) => ty.clone(),
             Expr::Function(_, ty, _, _) => ty.clone(),
-            Expr::Symbolic(_) => panic!("found symbolic"),
+            Expr::Symbolic(_, _ty) => panic!("found symbolic"),
         }
     }
 
@@ -313,7 +313,7 @@ impl Expr {
                 map_child(els),
             )),
             Expr::DoWhile(input, body) => Rc::new(Expr::DoWhile(map_child(input), map_child(body))),
-            Expr::Symbolic(_) => panic!("No symbolic should occur here"),
+            Expr::Symbolic(_, _ty) => panic!("No symbolic should occur here"),
             _ => self.clone(),
         }
     }
@@ -369,7 +369,7 @@ impl Expr {
             Expr::DoWhile(x, _) => x.get_ctx(),
             Expr::Arg(_, ctx) => ctx,
             Expr::Function(_, _, _, x) => x.get_ctx(),
-            Expr::Symbolic(_) => panic!("found symbolic"),
+            Expr::Symbolic(_, _ty) => panic!("found symbolic"),
         }
     }
 
@@ -504,7 +504,7 @@ impl Expr {
                 Rc::new(Expr::Const(c.clone(), arg_ty.clone(), arg_ctx.clone()))
             }
             Expr::Empty(_, _) => Rc::new(Expr::Empty(arg_ty.clone(), arg_ctx.clone())),
-            Expr::Symbolic(_) => panic!("found symbolic"),
+            Expr::Symbolic(_, _ty) => panic!("found symbolic"),
         };
 
         // Add the substituted to cache

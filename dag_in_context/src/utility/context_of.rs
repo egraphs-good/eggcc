@@ -49,8 +49,8 @@ fn test_context_of_base_case() -> crate::Result {
         &format!("(let build {build})"),
         &check,
         vec![],
-        crate::ast::val_empty(),
-        crate::ast::val_empty(),
+        crate::ast::emptyv(),
+        crate::ast::emptyv(),
         vec![],
     )
 }
@@ -76,8 +76,8 @@ fn test_context_of_panics_if_two() {
         &build,
         check,
         vec![],
-        crate::ast::val_empty(),
-        crate::ast::val_empty(),
+        crate::ast::emptyv(),
+        crate::ast::emptyv(),
         vec![],
     );
 }
@@ -108,7 +108,7 @@ fn test_context_of_no_func_context() -> crate::Result {
         &format!("{build}\n{}", cache.get_unions()),
         &check,
         vec![build.to_program(base(intt()), base(intt()))],
-        val_empty(),
+        emptyv(),
         intv(9),
         vec![],
     )

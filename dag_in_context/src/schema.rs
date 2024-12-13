@@ -123,7 +123,8 @@ pub enum Expr {
     DoWhile(RcExpr, RcExpr),
     Arg(Type, Assumption),
     Function(String, Type, Type, RcExpr),
-    Symbolic(String), // now only used for pretty printer
+    // optionally, the type of this symbol for typechecking
+    Symbolic(String, Option<Type>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

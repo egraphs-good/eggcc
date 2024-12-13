@@ -16,9 +16,10 @@
       ((union lhs (IVTAnalysisRes _d _e _f len2)))
         :ruleset ivt-analysis)
 
+
 ;; use an analysis to avoid exploring all combinations of passthrough vs not passed through values. Always prefer not passed through
-;;                                  expr1 curr  expr2  result
-(function IVTNewInputsAnalysisImpl (Expr  Expr  Expr) IVTRes :merge (IVTMin old new))
+;;                                  expr1 curr  if  result
+(function IVTNewInputsAnalysisImpl (Expr  Expr  Node) IVTRes :merge (IVTMin old new))
 
 ;; IVTNewInputsAnalysis computes a permutation perm which corresponds to accessing elements of an if region.
 ;; It also makes accesses of passthrough arguments access new indices after the length of the if region.
@@ -27,8 +28,8 @@
 ;; The accesses of the if statement remain unchanged, and the accesses of the passthrough arguments are moved to the end.
 ;; This new permutation is intended to be used with a substitution argument (Concat if-statement passthrough-args)
 ;; Also produced is a passthrough-perm, which selects all of the passthrough arguments and puts them in a single tuple
-;;                              expr1 expr2 result
-(function IVTNewInputsAnalysis (Expr  Expr) IVTRes :merge (IVTMin old new))
+;;                              expr1 if result
+(function IVTNewInputsAnalysis (Expr  Node) IVTRes :merge (IVTMin old new))
 
 
 (rule (
@@ -42,67 +43,70 @@
     ;; first input is a predicate
     (= loop-body (Concat (Single pred) rest))
     ;; another input is an if statement with shared predicate
-    (= (Get loop-body i) (Get (If pred inputs thn else) j))
+    (= if-eclass (If pred inputs thn else))
+    (= (Get loop-body i) (Get if-eclass j))
     (!= i 0)
 ) (
     (let perm (Empty (TmpType) (InFunc "no-ctx")))
     (set
-     (IVTNewInputsAnalysisImpl loop-body rest (If pred inputs thn else))
+     (IVTNewInputsAnalysisImpl loop-body rest (IfNode if-eclass pred inputs thn else))
      (IVTAnalysisRes perm perm (TNil) 0))
 ) :ruleset ivt-analysis)
 
 ;; recursive case for accessing the if statement
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr expr) (IVTAnalysisRes perm pperm passthrough-tys len))
-    (= curr (Concat (Single (Get expr ith)) rest))
+    (= (IVTNewInputsAnalysisImpl loop-body curr ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ifnode (IfNode if-eclass pred inputs then else))
+    (= curr (Concat (Single (Get if-eclass ith)) rest))
 ) (
     (let new-perm (Concat perm (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith))))
-    (set (IVTNewInputsAnalysisImpl loop-body rest expr)
+    (set (IVTNewInputsAnalysisImpl loop-body rest ifnode)
          (IVTAnalysisRes new-perm  pperm passthrough-tys len))
 ) :ruleset ivt-analysis)
 
 ;; recursive case for accessing a passed-through argument
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr expr) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= (IVTNewInputsAnalysisImpl loop-body curr ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ifnode (IfNode if-eclass pred inputs then else))
     (= curr (Concat (Single (Get (Arg ty ctx) ith)) rest))
     (= (Get loop-body (+ ith 1)) (Get curr 0))
     (HasType (Get (Arg ty ctx) ith) (Base new-ty))
-    (= expr (If pred inputs then else))
-    (= (tuple-length inputs) inputs-len)
+    (= (tuple-length if-eclass) if-len)
 ) (
-    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ inputs-len len))))
+    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ if-len len))))
     (let new-perm (Concat perm get-passed-through))
     (let original-get-index (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith)))
     (let new-pperm (Concat pperm original-get-index))
     (let new-passthrough-tys (TLConcat passthrough-tys (TCons new-ty (TNil))))
-    (set (IVTNewInputsAnalysisImpl loop-body rest expr)
+    (set (IVTNewInputsAnalysisImpl loop-body rest ifnode)
          (IVTAnalysisRes new-perm new-pperm new-passthrough-tys (+ len 1)))
 ) :ruleset ivt-analysis)
 
 ; base case for accessing if statement
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body (Single last) expr) (IVTAnalysisRes perm pperm passthrough-tys len))
-    (= last (Get expr ith))
+    (= (IVTNewInputsAnalysisImpl loop-body (Single last) ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ifnode (IfNode if-eclass pred inputs then else))
+    (= last (Get if-eclass ith))
 ) (
     (let new-perm (Concat perm (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith))))
-    (set (IVTNewInputsAnalysis loop-body expr) (IVTAnalysisRes new-perm pperm passthrough-tys len))
+    (set (IVTNewInputsAnalysis loop-body ifnode) (IVTAnalysisRes new-perm pperm passthrough-tys len))
 ) :ruleset ivt-analysis)
 
 ; base case for accessing a passed-through argument
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr expr) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= (IVTNewInputsAnalysisImpl loop-body curr ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ifnode (IfNode if-eclass pred inputs then else))
     (= curr (Single (Get (Arg ty ctx) ith)))
     (= (Get loop-body (+ ith 1)) (Get curr 0))
     (HasType (Get (Arg ty ctx) ith) (Base new-ty))
-    (= expr (If pred inputs then else))
-    (= (tuple-length inputs) inputs-len)
+    (= (tuple-length if-eclass) if-len)
 ) (
-    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ inputs-len len))))
+    (let get-passed-through (Single (Get (Arg (TmpType) (InFunc "no-ctx")) (+ if-len len))))
     (let new-perm (Concat perm get-passed-through))
     (let original-get-index (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith)))
     (let new-pperm (Concat pperm original-get-index))
     (let new-passthrough-tys (TLConcat passthrough-tys (TCons new-ty (TNil))))
-    (set (IVTNewInputsAnalysis loop-body expr) (IVTAnalysisRes new-perm new-pperm new-passthrough-tys (+ len 1)))
+    (set (IVTNewInputsAnalysis loop-body ifnode) (IVTAnalysisRes new-perm new-pperm new-passthrough-tys (+ len 1)))
 ) :ruleset ivt-analysis)
 
 
@@ -110,10 +114,10 @@
 
 (rule (
     (= loop (DoWhile inpW outW))
-    (= (IVTNewInputsAnalysis outW if) (IVTAnalysisRes perm pperm passthrough-tys _len))
+    (= (IVTNewInputsAnalysis outW ifnode) (IVTAnalysisRes perm pperm passthrough-tys _len))
+    (= ifnode (IfNode if if-cond if-inputs then else))
     (= if-inputs-len (tuple-length if-inputs))
     (= passthrough-len (TypeList-length passthrough-tys))
-    (= if (If if-cond if-inputs then else))
 
     (ContextOf inpW outer-ctx)
     (ContextOf if-inputs if-ctx)

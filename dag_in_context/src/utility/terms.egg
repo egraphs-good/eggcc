@@ -97,3 +97,8 @@
 ;       ; cost of if is 10 + cost of pred + cost of input + max of branch costs
 ;       ((set (ExtractedExpr lhs) (TCPair (TermIf t1 t2 t3 t4) (+ 10 (+ (+ c1 c2) (max c3 c4))))))
 ;       :ruleset terms)
+
+(sort Node)
+;; store a particular if node for later
+;; stored as the if eclass, pred, inputs, then, else
+(function IfNode (Expr Expr Expr Expr Expr) Node)

@@ -30,6 +30,10 @@ pub fn statet() -> BaseType {
     BaseType::StateT
 }
 
+pub fn sym(s: impl Into<String>, ty: Type) -> RcExpr {
+    RcExpr::new(Expr::Symbolic(s.into(), Some(ty)))
+}
+
 pub fn tuplet_vec(types: Vec<BaseType>) -> Type {
     Type::TupleT(types)
 }
@@ -62,12 +66,8 @@ pub fn val_bool(i: bool) -> Value {
     Value::Const(Constant::Bool(i))
 }
 
-pub fn val_empty() -> Value {
+pub fn emptyv() -> Value {
     Value::Tuple(vec![])
-}
-
-pub fn val_vec(vals: Vec<Value>) -> Value {
-    Value::Tuple(vals)
 }
 
 /// Construct a tuple type from the child types

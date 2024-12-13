@@ -529,6 +529,11 @@ impl<'a> TypeChecker<'a> {
                 (found_ty.clone(), expr.clone())
             }
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
+            Expr::Symbolic(_, ty) => (
+                ty.clone()
+                    .expect("symbolic expression missing type annotation"),
+                expr.clone(),
+            ),
             // should have covered all cases, but rust can't prove it
             // due to the side conditions
             _ => panic!("Unexpected expression {:?}", expr.clone()),
@@ -567,7 +572,7 @@ impl<'a> TypeChecker<'a> {
             Expr::If(pred, _, _, _) => Self::get_arg_type(pred),
             Expr::DoWhile(inputs, _) => Self::get_arg_type(inputs),
             Expr::Function(_, inty, _, _) => inty.clone(),
-            Expr::Symbolic(_) => panic!("Found symbolic expr in get_arg_type"),
+            Expr::Symbolic(_, _ty) => panic!("Found symbolic expr in get_arg_type"),
         }
     }
 }

@@ -45,6 +45,13 @@
        (panic "type mismatch- check RUST_LOG=info for expressions that mismatched"))
       :ruleset error-checking)
 
+
+(rule ((= (Const c1 ty1 ctx1) (Const c2 ty2 ctx2))
+       (= ctx1 (InFunc name))
+       (!= c1 c2))
+      ((panic "Unsoundness detected: const values differ at top level"))
+      :ruleset error-checking)
+
 (relation HasArgType (Expr Type))
 
 (rule ((HasArgType (Arg t1 ctx) t2)

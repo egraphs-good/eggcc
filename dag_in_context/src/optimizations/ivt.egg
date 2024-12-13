@@ -118,7 +118,6 @@
     (= ifnode (IfNode if if-cond if-inputs then else))
     (= if-inputs-len (tuple-length if-inputs))
     (= passthrough-len (TypeList-length passthrough-tys))
-    (= if-len (tuple-length if))
 
     (ContextOf inpW outer-ctx)
     (ContextOf if-inputs if-ctx)

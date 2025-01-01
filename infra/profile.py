@@ -9,6 +9,9 @@ import subprocess
 
 import concurrent.futures
 
+NUM_WARMUP_SAMPLES = 50
+SAMPLES_PER_BENCHMARK_AND_TREATMENT = 200
+
 treatments = [
   "rvsdg-round-trip-to-executable",
   #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
@@ -135,9 +138,8 @@ def bench(benchmark):
     else:
       # hyperfine command for measuring time, unused in favor of cycles
       # cmd = f'hyperfine --style none --warmup 1 --max-runs 2 --export-json /dev/stdout "{profile_dir}/{benchmark.treatment}{" " + args if len(args) > 0 else ""}"'
-      time_per_benchmark = 5.0
+      num_samples_so_far = 0
       resulting_num_cycles = []
-      time_start = time.time()
       while True:
         args_str = " " + args if len(args) > 0 else ""
         cmd = f'{profile_dir}/{benchmark.treatment}{args_str}'
@@ -148,9 +150,14 @@ def bench(benchmark):
         res_cycles = int(result.stderr)
         resulting_num_cycles.append(res_cycles)
 
+        num_samples_so_far += 1
         # if we have run for at least 1 second and we have at least 2 samples, stop
-        if time.time() - time_start > time_per_benchmark and len(resulting_num_cycles) >= 2:
+        #if time.time() - time_start > time_per_benchmark and len(resulting_num_cycles) >= 2:
+         # break
+        if num_samples_so_far >= SAMPLES_PER_BENCHMARK_AND_TREATMENT + NUM_WARMUP_SAMPLES:
           break
+      # throw away the first NUM_WARMUP_SAMPLES samples
+      resulting_num_cycles = resulting_num_cycles[NUM_WARMUP_SAMPLES:]
 
       return (f'{profile_dir}/{benchmark.treatment}', resulting_num_cycles)
 

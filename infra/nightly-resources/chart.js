@@ -53,17 +53,6 @@ function stddev(cycles) {
   return Math.sqrt(variance(cycles));
 }
 
-function variance_to_confidence_interval(variance, n) {
-  const std = Math.sqrt(variance);
-  const z_val = 2.326;
-  const error = (z_val * std) / Math.sqrt(n);
-  return error;
-}
-
-function confidence_interval_98percent(cycles) {
-  return variance_to_confidence_interval(variance(cycles), cycles.length);
-}
-
 function getEntry(benchmark, runMode) {
   const entries = GLOBAL_DATA.currentRun.filter(
     (entry) => entry.benchmark === benchmark && entry.runMethod === runMode,

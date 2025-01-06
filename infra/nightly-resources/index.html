@@ -24,9 +24,9 @@
     <div class="expanded">
       <input onclick="onRadioClick('absolute');" checked type="radio" id="absolute" name="chart-type" value="absolute">
       <label for="absolute">Absolute</label>
-      <input onclick="onRadioClick('speedup');" type="radio" id="speedup" name="chart-type" value="speedup">
-      <label for="speedup">Speedup</label><br>
-      <p id="speedup-formula">Speedup = (LLVM-O0 TIME / RUN MODE TIME)</p>
+      <input onclick="onRadioClick('normalized');" type="radio" id="normalized" name="chart-type" value="normalized">
+      <label for="normalized">Normalized</label><br>
+      <p id="normalized-formula">Normalized = (RUN MODE MEAN / LLVM-O0-O0 MEAN)</p>
       <canvas class="content" id="chart"></canvas>
     </div>
   </div>

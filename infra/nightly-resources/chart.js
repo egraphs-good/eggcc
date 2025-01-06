@@ -79,55 +79,40 @@ function getEntry(benchmark, runMode) {
   }
 }
 
-function speedup(entry, baseline) {
+function normalized(entry, baseline) {
   const baseV = mean(baseline["cycles"]);
   const expV = mean(entry["cycles"]);
   // If you change this, also change the displayed formula in index.html
-  return baseV / expV;
+  return expV / baseV;
 }
 
 function getValue(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
     return mean(entry["cycles"]);
-  } else if (GLOBAL_DATA.chart.mode === "speedup") {
+  } else if (GLOBAL_DATA.chart.mode === "normalized") {
     const baseline = getEntry(entry.benchmark, BASELINE_MODE);
     if (!baseline) {
-      addWarning(`No speedup baseline for ${benchmark}`);
+      addWarning(`No normalized baseline for ${benchmark}`);
     }
-    return speedup(entry, baseline);
+    return normalized(entry, baseline);
   } else {
     throw new Error(`unknown chart mode ${GLOBAL_DATA.chart.mode}`);
   }
-}
-
-// Get the variance of two random variables BASE and EXP
-// where BASE is the baseline and EXP is the experiment
-function speedup_ratio_variance(entry) {
-  const baseline = getEntry(entry.benchmark, BASELINE_MODE);
-  if (!baseline) {
-    addWarning(`No speedup baseline for ${benchmark}`);
-  }
-
-  // use the delta method, described here: https://stats.stackexchange.com/questions/197489/is-there-any-way-to-calculate-confidence-intervals-ci-of-a-ratio
-  // to estimate the variance
-  // This assumes two things:
-  // 1. The two random variables are independent, so the covariance is 0
-  // 2. The two random variables are normally distributed
-
-  const baseVariance = variance(baselince["cycles"]);
-  const expVariance = variance(entry["cycles"]);
-  const baseMean = mean(baseline["cycles"]);
-  const expMean = mean(entry["cycles"]);
-
-  return (baseVariance / Math.pow(expMean, 2.0)) + (Math.pow(baseMean, 2.0) / Math.pow(expMean, 4.0)) * expVariance;
 }
 
 function getError(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
     return confidence_interval_98percent(entry["cycles"]);
   } else {
+    const baseline = getEntry(entry.benchmark, BASELINE_MODE);
+    if (!baseline) {
+      addWarning(`No normalized baseline for ${benchmark}`);
+    }
+    const baseline_mean = mean(baseline["cycles"]);
+    const normalized = entry["cycles"].map((c) => c / baseline_mean);
+
     // TODO what is n here? This is almost certainly not right
-    return variance_to_confidence_interval(speedup_ratio_variance(entry), (entry["cycles"].length + entry["cycles"].length) / 2);
+    return confidence_interval_98percent(normalized);
   }
 }
 
@@ -183,8 +168,8 @@ function parseDataForChart() {
     });
   });
 
-  // Show baseline as dotted line at 1x if speedup
-  if (GLOBAL_DATA.chart.mode === "speedup") {
+  // Show baseline as dotted line at 1x if normalized
+  if (GLOBAL_DATA.chart.mode === "normalized") {
     datasets[BASELINE_MODE] = {
       label: BASELINE_MODE,
       data: Array(benchmarks.size + 1).fill(1),

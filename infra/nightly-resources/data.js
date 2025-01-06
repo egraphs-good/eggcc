@@ -73,14 +73,14 @@ function getOverallStatistics() {
   // generate one row per treatment...
   const result = [];
   for (const treatment of treatments) {
-    // calculate geometric mean of speedups
-    const speedups = [];
-    // for each benchmark, calculate the speedup
+    // calculate geometric mean of normalizeds
+    const normalizeds = [];
+    // for each benchmark, calculate the normalized
     for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
       const row = getRow(benchmark, treatment);
       const baseline = getRow(benchmark, BASELINE_MODE);
       if (row && baseline) {
-        speedups.push(speedup(row, baseline));
+        normalizeds.push(normalized(row, baseline));
       }
     }
 
@@ -92,10 +92,10 @@ function getOverallStatistics() {
       llvm_compile_times.push(row.llvmCompileTimeSecs);
     }
 
-    // calculate the geometric mean of the speedups
+    // calculate the geometric mean of the normalizeds
     result.push({
       runMethod: treatment,
-      geoMeanSpeedup: tryRound(geometricMean(speedups)),
+      geoMeannormalized: tryRound(geometricMean(normalizeds)),
       meanEggccCompileTimeSecs: tryRound(mean(eggcc_compile_times)),
       meanLlvmCompileTimeSecs: tryRound(mean(llvm_compile_times)),
     });
@@ -136,7 +136,7 @@ function getDataForBenchmark(benchmark) {
           class: "",
           value: tryRound(row.llvmCompileTimeSecs),
         },
-        speedup: { class: "", value: tryRound(speedup(row, baseline)) },
+        normalized: { class: "", value: tryRound(normalized(row, baseline)) },
       };
       if (shouldHaveLlvm(row.runMethod)) {
         rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${row.runMethod}">${row.runMethod}</a>`;

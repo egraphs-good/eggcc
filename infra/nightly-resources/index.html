@@ -66,12 +66,16 @@
     </div>
   </div>
   
-  <h2> Jitter Plots </h2>
-  <image id="jitter-plot" src="jitter_plot_full_range.png"/>
-  <image id="jitter-plot" src="jitter_plot_100k_cycles.png"/>
-  <image id="jitter-plot" src="jitter_plot_2k_cycles.png"/>
-  
-  
+  <h2>Jitter Plots</h2>
+  <button type="button" class="collapsible" id="jitter-toggle"
+    onclick="toggle(this, `\u25B6 Show`, `\u25BC Hide`)">
+    &#9654; Show
+  </button>
+  <div class="content collapsed" id="jitters">
+    <image id="jitter-plot" src="jitter_plot_full_range.png" />
+    <image id="jitter-plot" src="jitter_plot_100k_cycles.png" />
+    <image id="jitter-plot" src="jitter_plot_2k_cycles.png" />
+  </div>
 
   <h2>Overall Stats</h2>
   <t>Warning: compile-time statistics are not very trustworthy in parallel mode.</t>

@@ -34,9 +34,9 @@ fn main(input: i64) {
 /*fn target(input: i64) {
     let mut res: i64 = abs(input) * 3;
     if (input > 0) {
-        res = res + 1;
+        res = res + 1 + unrelated_fn(input);
     } else {
-        res = res - 1;
+        res = res - 1 + other_unrelated_fn(input);
     }
 
     println!("{}", res);

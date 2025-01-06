@@ -35,9 +35,11 @@ fn main(input: i64) {
 fn target(input: i64) {
     let mut res: i64 = 0;
     if (input > 0) {
-        res = res + input + 1;
+        res = res + input*3 + 1;
+        res = res + unrelated_fn(input);
     } else {
-        res = res - input - 1;
+        res = res - input*3 - 1;
+        res = res + other_unrelated_fn(input);
     }
 
     println!("{}", res);

@@ -27,7 +27,7 @@
       <input onclick="onRadioClick('normalized');" type="radio" id="normalized" name="chart-type" value="normalized">
       <label for="normalized">Normalized</label><br>
       <p id="normalized-formula">Normalized = (RUN MODE MEAN / LLVM-O0-O0 MEAN)</p>
-      <p id="error-formula">Error bars show 98th percentile confidence intervals</p>
+      <p id="error-formula">Error bars show standard deviation</p>
       <canvas class="content" id="chart"></canvas>
     </div>
   </div>
@@ -73,9 +73,7 @@
     &#9654; Show
   </button>
   <div class="content collapsed" id="jitters">
-    <image id="jitter-plot" src="jitter_plot_full_range.png" />
-    <image id="jitter-plot" src="jitter_plot_100k_cycles.png" />
-    <image id="jitter-plot" src="jitter_plot_2k_cycles.png" />
+    <image id="jitter-plot" src="jitter_plot_max_4.png"/>
   </div>
 
   <h2>Overall Stats</h2>

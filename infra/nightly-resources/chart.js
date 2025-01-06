@@ -102,7 +102,7 @@ function getValue(entry) {
 
 function getError(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
-    return confidence_interval_98percent(entry["cycles"]);
+    return stddev(entry["cycles"]);
   } else {
     const baseline = getEntry(entry.benchmark, BASELINE_MODE);
     if (!baseline) {
@@ -112,7 +112,7 @@ function getError(entry) {
     const normalized = entry["cycles"].map((c) => c / baseline_mean);
 
     // TODO what is n here? This is almost certainly not right
-    return confidence_interval_98percent(normalized);
+    return stddev(normalized);
   }
 }
 

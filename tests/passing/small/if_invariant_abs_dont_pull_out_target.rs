@@ -18,28 +18,14 @@ fn other_unrelated_fn(input: i64) -> i64 {
 }
 
 fn main(input: i64) {
-    let mut res: i64 = abs(input) * 2;
-
+    let mut res: i64 = 0;
     if (input > 0) {
-        res = res + abs(input) + 1;
+        res = res + input * 3 + 1;
         res = res + unrelated_fn(input);
     } else {
-        res = res + abs(input) - 1;
+        res = res - input * 3 - 1;
         res = res + other_unrelated_fn(input);
     }
 
     println!("{}", res);
 }
-
-/*
-fn target(input: i64) {
-    let mut res: i64 = 0;
-    if (input > 0) {
-        res = res + input + 1;
-    } else {
-        res = res - input - 1;
-    }
-
-    println!("{}", res);
-}
-*/

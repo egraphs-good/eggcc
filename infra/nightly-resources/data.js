@@ -74,13 +74,13 @@ function getOverallStatistics() {
   const result = [];
   for (const treatment of treatments) {
     // calculate geometric mean of normalizeds
-    const normalizeds = [];
+    const normalized_cycles = [];
     // for each benchmark, calculate the normalized
     for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
       const row = getRow(benchmark, treatment);
       const baseline = getRow(benchmark, BASELINE_MODE);
       if (row && baseline) {
-        normalizeds.push(normalized(row, baseline));
+        normalized_cycles.push(normalized(row, baseline));
       }
     }
 
@@ -95,7 +95,7 @@ function getOverallStatistics() {
     // calculate the geometric mean of the normalizeds
     result.push({
       runMethod: treatment,
-      geoMeannormalized: tryRound(geometricMean(normalizeds)),
+      geoMeanNormalized: tryRound(geometricMean(normalized_cycles)),
       meanEggccCompileTimeSecs: tryRound(mean(eggcc_compile_times)),
       meanLlvmCompileTimeSecs: tryRound(mean(llvm_compile_times)),
     });

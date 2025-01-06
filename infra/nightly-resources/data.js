@@ -73,9 +73,8 @@ function getOverallStatistics() {
   // generate one row per treatment...
   const result = [];
   for (const treatment of treatments) {
-    // calculate geometric mean of normalizeds
     const normalized_cycles = [];
-    // for each benchmark, calculate the normalized
+    // for each benchmark, calculate the normalized cycles
     for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
       const row = getRow(benchmark, treatment);
       const baseline = getRow(benchmark, BASELINE_MODE);
@@ -92,7 +91,6 @@ function getOverallStatistics() {
       llvm_compile_times.push(row.llvmCompileTimeSecs);
     }
 
-    // calculate the geometric mean of the normalizeds
     result.push({
       runMethod: treatment,
       geoMeanNormalized: tryRound(geometricMean(normalized_cycles)),

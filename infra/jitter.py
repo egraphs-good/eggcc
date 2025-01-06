@@ -154,5 +154,3 @@ if __name__ == '__main__':
         profile = json.load(f)
 
     make_plot(profile, 4, f'{output_folder}/jitter_plot_max_4.png')
-    #make_plot(profile, 2000, f'{output_folder}/jitter_plot_2k_cycles.png')
-    #make_plot(profile, 100000, f'{output_folder}/jitter_plot_100k_cycles.png')

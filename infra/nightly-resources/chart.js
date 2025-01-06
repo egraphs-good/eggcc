@@ -48,7 +48,6 @@ function variance(cycles) {
   return res;
 }
 
-
 function stddev(cycles) {
   return Math.sqrt(variance(cycles));
 }

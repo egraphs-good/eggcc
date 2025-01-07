@@ -996,7 +996,7 @@ impl CostModel for DefaultCostModel {
             "Base" | "TupleT" | "TNil" | "TCons" => 0.,
             "Int" | "Bool" | "Float" => 0.,
             // Algebra
-            "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" | "Shl" | "Shr" => 10.,
+            "Abs" | "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" | "Shl" | "Shr" => 10.,
             "FAdd" | "FSub" | "Fmax" | "Fmin" => 50.,
             "Mul" => 30.,
             "FMul" => 150.,

@@ -23,14 +23,14 @@ rpds = "1.1.0"
 
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 # currently using the uwplse/bril fork of bril, on eggcc-main
-bril2json = { git = "https://github.com/uwplse/bril", rev = "f303a7d384f21a891d0215dc47e5ea947f014cf5" }
-brilirs = { git = "https://github.com/uwplse/bril", rev = "f303a7d384f21a891d0215dc47e5ea947f014cf5" }
-bril-rs = { git = "https://github.com/uwplse/bril", rev = "f303a7d384f21a891d0215dc47e5ea947f014cf5" }
-brilift = { git = "https://github.com/uwplse/bril", rev = "f303a7d384f21a891d0215dc47e5ea947f014cf5" }
-rs2bril = { git = "https://github.com/uwplse/bril", rev = "f303a7d384f21a891d0215dc47e5ea947f014cf5" ,features = [
+bril2json = { git = "https://github.com/uwplse/bril", rev = "53b855bb847a459616b02f830b7d9b8848612dd8" }
+brilirs = { git = "https://github.com/uwplse/bril", rev = "53b855bb847a459616b02f830b7d9b8848612dd8" }
+bril-rs = { git = "https://github.com/uwplse/bril", rev = "53b855bb847a459616b02f830b7d9b8848612dd8" }
+brilift = { git = "https://github.com/uwplse/bril", rev = "53b855bb847a459616b02f830b7d9b8848612dd8" }
+rs2bril = { git = "https://github.com/uwplse/bril", rev = "53b855bb847a459616b02f830b7d9b8848612dd8" ,features = [
   "import",
 ] }
-brillvm = { git = "https://github.com/uwplse/bril", rev = "f303a7d384f21a891d0215dc47e5ea947f014cf5" }
+brillvm = { git = "https://github.com/uwplse/bril", rev = "53b855bb847a459616b02f830b7d9b8848612dd8" }
 
 ordered-float = "3.7.0"
 serde_json = "1.0.103"

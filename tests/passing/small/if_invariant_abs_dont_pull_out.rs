@@ -18,7 +18,7 @@ fn other_unrelated_fn(input: i64) -> i64 {
 }
 
 fn main(input: i64) {
-    let mut res: i64 = abs(input) * 2;
+    let mut res: i64 = 0;
 
     if (input > 0) {
         res = res + abs(input) + 1;

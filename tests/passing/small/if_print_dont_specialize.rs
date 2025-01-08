@@ -1,6 +1,6 @@
-// ARGS: 10
+// ARGS: 10 20
 
-fn main(input: i64) {
+fn main(a: i64, b: i64) {
     let mut res: i64 = 0;
     if (a == b) {
         res = a * b;

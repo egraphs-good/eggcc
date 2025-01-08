@@ -1,0 +1,37 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 2 2
+@main(v0: int, v1: int) {
+.b2_:
+  v3_: int = mul v0 v0;
+  v4_: int = mul v0 v3_;
+  v5_: int = mul v0 v4_;
+  v6_: int = mul v0 v5_;
+  v7_: int = mul v0 v6_;
+  v8_: bool = eq v1 v7_;
+  br v8_ .b9_ .b10_;
+.b9_:
+  v11_: int = mul v0 v0;
+  v12_: int = mul v0 v11_;
+  v13_: int = mul v0 v12_;
+  v14_: int = mul v0 v13_;
+  v15_: int = mul v0 v14_;
+  v16_: int = mul v1 v15_;
+  v17_: int = id v16_;
+  print v17_;
+  ret;
+  jmp .b18_;
+.b10_:
+  v19_: int = mul v0 v0;
+  v20_: int = mul v0 v19_;
+  v21_: int = mul v0 v20_;
+  v22_: int = mul v0 v21_;
+  v23_: int = mul v0 v22_;
+  v24_: int = mul v1 v23_;
+  v17_: int = id v24_;
+  print v17_;
+  ret;
+.b18_:
+}

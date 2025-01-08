@@ -1,0 +1,22 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 2 3
+@main(v0: int, v1: int) {
+.b2_:
+  v3_: bool = lt v1 v0;
+  br v3_ .b4_ .b5_;
+.b4_:
+  v6_: int = mul v0 v1;
+  v7_: int = id v6_;
+  print v7_;
+  ret;
+  jmp .b8_;
+.b5_:
+  v9_: int = mul v0 v1;
+  v7_: int = id v9_;
+  print v7_;
+  ret;
+.b8_:
+}

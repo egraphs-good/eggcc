@@ -20,3 +20,27 @@
 (rewrite (Bop (Or) e (Const (Bool false) ty ctx)) e :ruleset peepholes)
 (rewrite (Bop (Or) (Const (Bool true) ty ctx) e) (Const (Bool true) ty ctx) :ruleset peepholes)
 (rewrite (Bop (Or) e (Const (Bool true) ty ctx)) (Const (Bool true) ty ctx) :ruleset peepholes)
+
+(rule (
+        (= expr (Bop (Sub) x x))
+        (HasArgType expr ty)
+        (ContextOf expr ctx)
+      )
+      (
+        (Debug "x-x=0" expr)
+        (union expr (Const (Int 0) ty ctx)))
+      :ruleset peepholes)
+
+; (x - y) + z => x + (z - y)
+; (rewrite (Bop (Add) (Bop (Sub) x y) z) (Bop (Add) x (Bop (Sub) z y)) :ruleset peepholes)
+(rule (
+        (= lhs (Bop (Add) (Bop (Sub) x y) z))
+      )
+      (
+        (Debug "reassoc" lhs)
+        (union lhs (Bop (Add) x (Bop (Sub) y z)))
+      )
+      :ruleset peepholes)
+
+; (a + b) - c => a + (b - c)
+(rewrite (Bop (Sub) (Bop (Add) a b) c) (Bop (Add) a (Bop (Sub) b c)) :ruleset peepholes)

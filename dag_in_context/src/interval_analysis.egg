@@ -1,6 +1,8 @@
 (ruleset interval-analysis)
 (ruleset interval-rewrite)
 
+(relation Debug (String Expr))
+
 (datatype Bound
   (IntB i64)
   (BoolB bool)
@@ -245,6 +247,41 @@
        (= (IntB hb) (hi-bound b))
       )
       ((set (hi-bound lhs) (BoolB (bool-< la hb))))
+      :ruleset interval-analysis)
+
+; Abs
+
+; absolute value is non-negative
+(rule (
+        (= lhs (Uop (Abs) x))
+      )
+      (
+            (Debug "rule1" lhs)
+            (set (lo-bound lhs) (IntB 0)))
+      :ruleset interval-analysis)
+
+; abs(x) = x if x >= 0
+(rule (
+        (= lhs (Uop (Abs) x))
+        (= (IntB lx) (lo-bound x))
+        (>= lx 0)
+      )
+      (
+            (Debug "rule2" lhs)
+            (union lhs x))
+      :ruleset interval-analysis)
+
+; abs(x) = -x if x <= 0
+(rule (
+        (= lhs (Uop (Abs) x))
+        (= (IntB hx) (hi-bound x))
+        (<= hx 0)
+        (HasArgType lhs ty)
+        (ContextOf lhs ctx)
+      )
+      (
+            (Debug "rule3" lhs)
+            (union lhs (Bop (Sub) (Const (Int 0) ty ctx) x)))
       :ruleset interval-analysis)
 
 ; =================================

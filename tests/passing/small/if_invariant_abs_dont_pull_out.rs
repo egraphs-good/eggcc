@@ -30,21 +30,3 @@ fn main(input: i64) {
 
     println!("{}", res);
 }
-
-/*
-// target optimized code
-fn main(input: i64) {
-    let mut res: i64 = abs(input) * 2;
-
-    if (input > 0) {
-       times4 = input << 2;
-       res = res + times4;
-       res = unrelated_fn(input, res);
-    } else {
-       res = other_unrelated_fn(input, res);
-    }
-
-    println!("{}", res);
-}
-
-*/

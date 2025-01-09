@@ -1,0 +1,90 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: -20
+@abs(v0: int): int {
+.b1_:
+  c2_: int = const 0;
+  v3_: bool = lt v0 c2_;
+  v4_: int = id v0;
+  br v3_ .b5_ .b6_;
+.b5_:
+  c7_: int = const -1;
+  v8_: int = mul c7_ v0;
+  v4_: int = id v8_;
+  ret v4_;
+  jmp .b9_;
+.b6_:
+  ret v4_;
+.b9_:
+}
+@unrelated_fn(v0: int): int {
+.b1_:
+  c2_: int = const 4;
+  v3_: int = div v0 c2_;
+  ret v3_;
+}
+@other_unrelated_fn(v0: int): int {
+.b1_:
+  c2_: int = const 3;
+  v3_: int = mul c2_ v0;
+  c4_: int = const 5;
+  v5_: int = div v3_ c4_;
+  ret v5_;
+}
+@main(v0: int) {
+.b1_:
+  c2_: int = const 0;
+  v3_: bool = lt c2_ v0;
+  c4_: int = const 2;
+  v5_: bool = lt v0 c2_;
+  v6_: int = id v0;
+  br v5_ .b7_ .b8_;
+.b7_:
+  c9_: int = const -1;
+  v10_: int = mul c9_ v0;
+  v6_: int = id v10_;
+.b8_:
+  v11_: int = mul c4_ v6_;
+  br v3_ .b12_ .b13_;
+.b12_:
+  c14_: int = const 4;
+  v15_: int = div v0 c14_;
+  v16_: int = add v0 v11_;
+  v17_: int = add v15_ v16_;
+  v18_: int = id v17_;
+  print v18_;
+  ret;
+  jmp .b19_;
+.b13_:
+  c20_: int = const 0;
+  v21_: bool = lt v0 c20_;
+  v22_: int = id v0;
+  br v21_ .b23_ .b24_;
+.b23_:
+  c25_: int = const -1;
+  v26_: int = mul c25_ v0;
+  v22_: int = id v26_;
+  v27_: int = add v11_ v22_;
+  c28_: int = const 3;
+  v29_: int = mul c28_ v0;
+  c30_: int = const 5;
+  v31_: int = div v29_ c30_;
+  v32_: int = add v27_ v31_;
+  v18_: int = id v32_;
+  print v18_;
+  ret;
+  jmp .b19_;
+.b24_:
+  v27_: int = add v11_ v22_;
+  c28_: int = const 3;
+  v29_: int = mul c28_ v0;
+  c30_: int = const 5;
+  v31_: int = div v29_ c30_;
+  v32_: int = add v27_ v31_;
+  v18_: int = id v32_;
+  print v18_;
+  ret;
+.b19_:
+}

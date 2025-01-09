@@ -141,8 +141,8 @@ async function loadBaseline(url) {
 
 function onRadioClick(value) {
   GLOBAL_DATA.chart.mode = value;
-  document.getElementById("speedup-formula").style.visibility =
-    value === "speedup" ? "visible" : "hidden";
+  document.getElementById("normalized-formula").style.visibility =
+    value === "normalized" ? "visible" : "hidden";
   refreshChart();
 }
 

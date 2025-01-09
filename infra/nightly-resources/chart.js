@@ -39,13 +39,17 @@ function min_cycles(cycles) {
   return Math.min(...cycles);
 }
 
-function stddev_cycles(cycles) {
+function variance(cycles) {
   const mean = cycles.reduce((a, b) => a + b, 0) / (cycles.length - 1);
   const squared_diffs = cycles.map((c) => (c - mean) ** 2);
-  // TODO kevin said we might want to use bessel's correction here
-  const bessels_corrected =
-    squared_diffs.reduce((a, b) => a + b, 0) / squared_diffs.length;
-  return Math.sqrt(bessels_corrected);
+  // TODO kevin said we might want to use bessel's correction here, but we don't currently
+  const res =
+    squared_diffs.reduce((a, b) => a + b, 0) / (squared_diffs.length - 1);
+  return res;
+}
+
+function stddev(cycles) {
+  return Math.sqrt(variance(cycles));
 }
 
 function getEntry(benchmark, runMode) {
@@ -63,54 +67,41 @@ function getEntry(benchmark, runMode) {
   }
 }
 
-function speedup(entry, baseline) {
+function normalized(entry, baseline) {
   const baseV = mean(baseline["cycles"]);
   const expV = mean(entry["cycles"]);
   // If you change this, also change the displayed formula in index.html
-  return baseV / expV;
+  return expV / baseV;
 }
 
 function getValue(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
     return mean(entry["cycles"]);
-  } else if (GLOBAL_DATA.chart.mode === "speedup") {
+  } else if (GLOBAL_DATA.chart.mode === "normalized") {
     const baseline = getEntry(entry.benchmark, BASELINE_MODE);
     if (!baseline) {
-      addWarning(`No speedup baseline for ${benchmark}`);
+      addWarning(`No normalized baseline for ${benchmark}`);
     }
-    return speedup(entry, baseline);
+    return normalized(entry, baseline);
   } else {
     throw new Error(`unknown chart mode ${GLOBAL_DATA.chart.mode}`);
   }
 }
 
+// get error bars for the bar chart
 function getError(entry) {
   if (GLOBAL_DATA.chart.mode === "absolute") {
-    return stddev_cycles(entry["cycles"]);
+    return stddev(entry["cycles"]);
   } else {
-    // Error is given using propagation of error formula for two variables
-    // f = baseV / expV
+    // when normalized, normalize the values then take the stddev
     const baseline = getEntry(entry.benchmark, BASELINE_MODE);
     if (!baseline) {
-      addWarning(`No speedup baseline for ${benchmark}`);
+      addWarning(`No normalized baseline for ${benchmark}`);
     }
+    const baseline_mean = mean(baseline["cycles"]);
+    const normalized = entry["cycles"].map((c) => c / baseline_mean);
 
-    const baseV = mean(baseline["cycles"]);
-    const expV = mean(entry["cycles"]);
-    const baseStd = stddev_cycles(baseline["cycles"]);
-    const expStd = stddev_cycles(entry["cycles"]);
-
-    // Speedup calculation
-    const speedup = baseV / expV;
-
-    // Error propagation
-    const relativeBaseError = baseStd / baseV;
-    const relativeExpError = expStd / expV;
-
-    const speedupError =
-      speedup * Math.sqrt(relativeBaseError ** 2 + relativeExpError ** 2);
-
-    return speedupError;
+    return stddev(normalized);
   }
 }
 
@@ -166,8 +157,8 @@ function parseDataForChart() {
     });
   });
 
-  // Show baseline as dotted line at 1x if speedup
-  if (GLOBAL_DATA.chart.mode === "speedup") {
+  // Show baseline as dotted line at 1x if normalized
+  if (GLOBAL_DATA.chart.mode === "normalized") {
     datasets[BASELINE_MODE] = {
       label: BASELINE_MODE,
       data: Array(benchmarks.size + 1).fill(1),

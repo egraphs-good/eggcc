@@ -186,6 +186,16 @@
       ((ExpectType e (Base (BoolT)) "(Not)"))
       :ruleset type-analysis)
 
+(rule (
+        (= lhs (Uop (Abs) e))
+        (HasType e (Base (IntT)))
+      )
+      ((HasType lhs (Base (IntT))))
+      :ruleset type-analysis)
+(rule ((= lhs (Uop (Abs) e)))
+      ((ExpectType e (Base (IntT)) "(Abs)"))
+      :ruleset type-analysis)
+
 
 (rule (
         (= lhs (Bop (Print) e state))

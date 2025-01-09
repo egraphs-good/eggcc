@@ -26,21 +26,11 @@
         (HasArgType expr ty)
         (ContextOf expr ctx)
       )
-      (
-        (Debug "x-x=0" expr)
-        (union expr (Const (Int 0) ty ctx)))
+      ((union expr (Const (Int 0) ty ctx)))
       :ruleset peepholes)
 
 ; (x - y) + z => x + (z - y)
-; (rewrite (Bop (Add) (Bop (Sub) x y) z) (Bop (Add) x (Bop (Sub) z y)) :ruleset peepholes)
-(rule (
-        (= lhs (Bop (Add) (Bop (Sub) x y) z))
-      )
-      (
-        (Debug "reassoc" lhs)
-        (union lhs (Bop (Add) x (Bop (Sub) y z)))
-      )
-      :ruleset peepholes)
+(rewrite (Bop (Add) (Bop (Sub) x y) z) (Bop (Add) x (Bop (Sub) z y)) :ruleset peepholes)
 
 ; (a + b) - c => a + (b - c)
 (rewrite (Bop (Sub) (Bop (Add) a b) c) (Bop (Add) a (Bop (Sub) b c)) :ruleset peepholes)

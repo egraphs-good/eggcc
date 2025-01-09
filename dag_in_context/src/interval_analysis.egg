@@ -248,14 +248,6 @@
       :ruleset interval-analysis)
 
 ; Abs
-
-; absolute value is non-negative
-(rule (
-        (= lhs (Uop (Abs) x))
-      )
-      ((set (lo-bound lhs) (IntB 0)))
-      :ruleset interval-analysis)
-
 ; abs(x) = x if x >= 0
 (rule (
         (= lhs (Uop (Abs) x))

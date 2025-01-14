@@ -5,6 +5,5 @@ fn main(input: i64) {
     while (res < 100) {
         res = res * 2;
     }
-
     println!("{}", res);
 }

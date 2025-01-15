@@ -949,6 +949,8 @@ pub fn extract_with_paths(
         panic!("Failed to extract program! Found negative cost on result node.");
     }
 
+    log::info!("extracted with cost {}", root_cost);
+
     (root_costset, resulting_prog)
 }
 
@@ -1160,6 +1162,30 @@ fn enode_children(
             vec![
                 EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
                 EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+            ]
+        }
+        // We mark operators like (Add) and (Mul) as region roots
+        // because we want their cost to be counted every time they
+        // are referenced at a different place, just like a region.
+        ("Uop", [op, a]) => {
+            vec![
+                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false),
+                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false),
+            ]
+        }
+        ("Bop", [op, a, b]) => {
+            vec![
+                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false),
+                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false),
+            ]
+        }
+        ("Top", [op, a, b, c]) => {
+            vec![
+                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false),
+                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false),
             ]
         }
         _ => {

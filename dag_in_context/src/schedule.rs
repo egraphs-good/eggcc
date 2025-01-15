@@ -72,8 +72,8 @@ fn cheap_optimizations() -> Vec<String> {
 
     [
         "loop-simplify",
-        "interval-rewrite",
-        "always-switch-rewrite",
+        // "interval-rewrite",
+        // "always-switch-rewrite",
         // "memory",
         "peepholes",
     ]
@@ -84,11 +84,11 @@ fn cheap_optimizations() -> Vec<String> {
 
 fn optimizations() -> Vec<String> {
     [
-        "select_opt",
+        // "select_opt",
         "loop-unroll",
-        "switch_rewrite",
-        "loop-inv-motion",
-        "loop-strength-reduction",
+        // "switch_rewrite",
+        // "loop-inv-motion",
+        // "loop-strength-reduction",
     ]
     .iter()
     .map(|opt| opt.to_string())

@@ -1425,6 +1425,25 @@ fn test_dag_extract() {
 }
 
 #[test]
+fn test_shares_costs() {
+    use crate::ast::*;
+
+    let add_10_2 = add(int(10), int(2));
+    let add_twice = add(add_10_2.clone(), add_10_2.clone());
+    let add_four_times = add(add_twice.clone(), add_twice.clone());
+    let prog = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(add_four_times, getat(1))
+    ),);
+    let cost_model = TestCostModel;
+    let expected_cost = cost_model.get_op_cost("Const") * 2. + cost_model.get_op_cost("Add") * 3.;
+
+    dag_extraction_test(&prog, expected_cost);
+}
+
+#[test]
 fn simple_dag_extract() {
     use crate::ast::*;
     let prog = program!(function(

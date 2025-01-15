@@ -73,6 +73,7 @@ pub enum BinaryOp {
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum UnaryOp {
+    Abs,
     Not,
 }
 

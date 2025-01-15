@@ -194,12 +194,14 @@ fn effect_op_from_binary_op(bop: BinaryOp) -> Option<EffectOps> {
 
 fn value_op_from_unary_op(uop: UnaryOp) -> Option<ValueOps> {
     match uop {
+        UnaryOp::Abs => Some(ValueOps::Abs),
         UnaryOp::Not => Some(ValueOps::Not),
     }
 }
 
 fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
     match uop {
+        UnaryOp::Abs => None,
         UnaryOp::Not => None,
     }
 }

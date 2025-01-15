@@ -100,6 +100,7 @@ impl UnaryOp {
     pub(crate) fn name(&self) -> &'static str {
         use UnaryOp::*;
         match self {
+            Abs => "Abs",
             Not => "Not",
         }
     }
@@ -861,6 +862,7 @@ impl BinaryOp {
 impl UnaryOp {
     pub(crate) fn types(&self) -> Option<(Type, Type)> {
         match self {
+            UnaryOp::Abs => Some((base(intt()), base(intt()))),
             UnaryOp::Not => Some((base(boolt()), base(boolt()))),
         }
     }

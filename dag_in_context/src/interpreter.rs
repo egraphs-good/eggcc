@@ -334,8 +334,10 @@ impl<'a> VirtualMachine<'a> {
     }
 
     fn interpret_uop(&mut self, uop: &UnaryOp, e: &RcExpr, arg: &Value) -> Value {
+        let get_int = |e: &RcExpr, vm: &mut Self| vm.interp_int_expr(e, arg);
         match uop {
             UnaryOp::Not => Const(Constant::Bool(!self.interp_bool_expr(e, arg))),
+            UnaryOp::Abs => Const(Constant::Int(get_int(e, self).abs())),
         }
     }
 

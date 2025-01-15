@@ -38,6 +38,7 @@
     (
         ;; Find loop
         (= old-loop (DoWhile inputs pred-and-outputs))
+        (match-once-unstable old-loop inputs pred-and-outputs)
         (ContextOf pred-and-outputs loop-ctx)
 
         ; Find loop variable (argument that gets incremented with an invariant)

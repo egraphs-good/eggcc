@@ -28,8 +28,9 @@
 ;; }
 ;; for example, printBinary sums the results of recursive calls
 (rule
-  ((Function name in out body)
+  ((= func (Function name in out body))
    (= body (If pred always-runs (Call name rec_case) base-case))
+   (match-once-unstable "rec-to-loop-easy" func name in out body)
    (HasType always-runs start-ty)
    (HasType body func-ty))
   ((let loop-inputs (Arg start-ty (InIf true pred always-runs)))
@@ -92,7 +93,8 @@
 ;;    ret base_case(start) + acc;
 ;; }
 (rule
-  ((Function name in out body)
+  ((= func (Function name in out body))
+   (match-once-unstable "rec-to-loop-hard" func name in out body)
    (= body (If pred always-runs then-case base-case))
    (= call (Call name rec-case))
    (= then-case

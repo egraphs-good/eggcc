@@ -114,6 +114,7 @@
 
 (rule (
     (= loop (DoWhile inpW outW))
+    (match-once-unstable "loop-inversion-ivt" loop inpW outW)
     (= (IVTNewInputsAnalysis outW ifnode) (IVTAnalysisRes perm pperm passthrough-tys _len))
     (= ifnode (IfNode if if-cond if-inputs then else))
     (= if-inputs-len (tuple-length if-inputs))

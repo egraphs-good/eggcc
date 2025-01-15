@@ -25,6 +25,7 @@
 ;; TODO: we could make it work for decrementing loops
 (rule
   ((= lhs (DoWhile inputs outputs))
+   (match-once-unstable lhs inputs outputs)
    (= pred (Get outputs 0))
    ;; iteration counter starts at start_const
    (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))

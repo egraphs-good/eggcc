@@ -291,3 +291,4 @@
 
 ; (function TermDoWhile (Term Term) Term)
 
+(clear-match-cache-unstable)

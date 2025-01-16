@@ -91,6 +91,8 @@ def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}')
   profile_dir = benchmark_profile_dir(benchmark.name)
   optimized_bril_file = f'{profile_dir}/{benchmark.name}-{benchmark.treatment}.bril'
+  eggcc_run_data = f'{profile_dir}/{benchmark.treatment}-eggcc-run-data.json'
+  llvm_run_data = f'{profile_dir}/{benchmark.treatment}-llvm-run-data.json'
 
   # get the commands we need to run
   (eggcc_run_mode, llvm_args) = get_eggcc_options(benchmark)
@@ -98,26 +100,38 @@ def optimize(benchmark):
   os.makedirs(f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}", exist_ok=True)
   llvm_out_file = f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}/optimized.ll"
 
-  cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode}'
-  cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_file}'
+  cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode} --run-data-out {eggcc_run_data}'
+  cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --run-data-out {llvm_run_data} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_file}'
 
   print(f'Running c1: {cmd1}', flush=True)
-  start_eggcc = time.time()
   process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
   process.check_returncode()
-  end_eggcc = time.time()
 
   # write the std out to the optimized bril file
   with open(optimized_bril_file, 'w') as f:
     f.write(process.stdout)
 
   print(f'Running c2: {cmd2}', flush=True)
-  start_llvm = time.time()
   process2 = subprocess.run(cmd2, shell=True)
   process2.check_returncode()
-  end_llvm = time.time()
 
-  res = {"path": f"{profile_dir}/{benchmark.treatment}", "eggccCompileTimeSecs": end_eggcc-start_eggcc, "llvmCompileTimeSecs": end_llvm-start_llvm}
+  eggcc_compile_time = 0
+  # parse json from eggcc run data
+  with open(eggcc_run_data) as f:
+    eggcc_data = json.load(f)
+    secs = eggcc_data["eggcc_compile_time"]["secs"]
+    nanos = eggcc_data["eggcc_compile_time"]["nanos"]
+    eggcc_compile_time = secs + nanos / 1e9
+  
+  llvm_compile_time = 0
+  with open(llvm_run_data) as f:
+    llvm_data = json.load(f)
+    secs = llvm_data["llvm_compile_time"]["secs"]
+    nanos = llvm_data["llvm_compile_time"]["nanos"]
+    llvm_compile_time = secs + nanos / 1e9
+
+
+  res = {"path": f"{profile_dir}/{benchmark.treatment}", "eggccCompileTimeSecs": eggcc_compile_time, "llvmCompileTimeSecs": llvm_compile_time}
   return res
 
 

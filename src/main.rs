@@ -33,6 +33,9 @@ struct Args {
     /// Where to put the executable (only for the brillift and llvm modes)
     #[clap(short)]
     output_path: Option<String>,
+    /// Output metadata about the run to a file
+    #[clap(long)]
+    run_data_out: Option<PathBuf>,
     /// Where to put the optimized llvm file (for the llvm mode)
     #[clap(long)]
     llvm_output_dir: Option<PathBuf>,
@@ -76,6 +79,8 @@ fn main() {
 
     // enable logging
     env_logger::init();
+
+    let start_time = std::time::Instant::now();
 
     if let Some(debug_dir) = args.debug_dir {
         if let Result::Err(error) = visualize(TestProgram::BrilFile(args.file.clone()), debug_dir) {
@@ -122,12 +127,20 @@ fn main() {
         },
     };
 
-    let result = match run.run() {
+    let mut result = match run.run() {
         Ok(result) => result,
         Err(error) => {
             panic!("{}", error);
         }
     };
+
+    let eggcc_duration = start_time.elapsed();
+    result.eggcc_compile_time = eggcc_duration;
+
+    if let Some(run_data_output_path) = args.run_data_out {
+        let file = std::fs::File::create(run_data_output_path).unwrap();
+        serde_json::to_writer_pretty(file, &result).unwrap();
+    }
 
     if args.interp {
         // just print out the result of interpreting the program

@@ -84,7 +84,7 @@ fn cheap_optimizations() -> Vec<String> {
 
 fn optimizations() -> Vec<String> {
     [
-        // "select_opt",
+        "select_opt",
         "loop-unroll",
         // "switch_rewrite",
         // "loop-inv-motion",

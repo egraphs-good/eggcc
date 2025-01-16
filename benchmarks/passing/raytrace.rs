@@ -107,7 +107,7 @@ fn main(xpos: f64, ypos: f64, zpos: f64, width: f64, height: f64) {
 
                 let brightness: f64 = 1.0 / (light_dist * light_dist);
                 let light_dot: f64 = dot(point_to_light_norm, res_ray[1]);
-                let abs_light_dot: f64 = abs(light_dot);
+                let abs_light_dot: f64 = fabs(light_dot);
 
                 output[row2 as usize][col2 as usize] = brightness * abs_light_dot;
                 drop(point_to_light);
@@ -198,7 +198,7 @@ fn vec_scale(a: [f64; 3], s: f64) -> [f64; 3] {
     return [a[0] * s, a[1] * s, a[2] * s];
 }
 
-fn abs(x: f64) -> f64 {
+fn fabs(x: f64) -> f64 {
     let mut res: f64 = x;
     if x < 0.0 {
         res = -res;
@@ -211,7 +211,7 @@ fn sqrt(x: f64) -> f64 {
     let tolerance: f64 = 1e-2; // Set precision level
     let mut num_iters: i64 = 100;
 
-    while (num_iters > 0 && abs(guess * guess - x) > tolerance) {
+    while (num_iters > 0 && fabs(guess * guess - x) > tolerance) {
         guess = (guess + x / guess) / 2.0;
         num_iters = num_iters - 1;
     }
@@ -422,7 +422,7 @@ fn partition_cost(
     return cost;
 }
 
-fn min(a: f64, b: f64) -> f64 {
+fn fmin(a: f64, b: f64) -> f64 {
     let mut res: f64 = a;
     if b < a {
         res = b;
@@ -430,7 +430,7 @@ fn min(a: f64, b: f64) -> f64 {
     return res;
 }
 
-fn max(a: f64, b: f64) -> f64 {
+fn fmax(a: f64, b: f64) -> f64 {
     let mut res: f64 = a;
     if b > a {
         res = b;
@@ -439,11 +439,11 @@ fn max(a: f64, b: f64) -> f64 {
 }
 
 fn point_max(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
-    return [max(a[0], b[0]), max(a[1], b[1]), max(a[2], b[2])];
+    return [fmax(a[0], b[0]), fmax(a[1], b[1]), fmax(a[2], b[2])];
 }
 
 fn point_min(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
-    return [min(a[0], b[0]), min(a[1], b[1]), min(a[2], b[2])];
+    return [fmin(a[0], b[0]), fmin(a[1], b[1]), fmin(a[2], b[2])];
 }
 
 fn triangle_min(tri: [[f64; 3]; 3]) -> [f64; 3] {
@@ -731,21 +731,21 @@ fn bbox_ray_intersect(bbox: [[f64; 3]; 2], ray: &[[f64; 3]; 2]) -> bool {
     let epsilon: f64 = 0.0000001;
     let t1: f64 = (bbox[0][0] - ray[0][0]) / ray[1][0];
     let t2: f64 = (bbox[1][0] - ray[0][0]) / ray[1][0];
-    let tmin: f64 = min(t1, t2);
-    let tmax: f64 = max(t1, t2);
+    let tmin: f64 = fmin(t1, t2);
+    let tmax: f64 = fmax(t1, t2);
 
     let t3: f64 = (bbox[0][1] - ray[0][1]) / ray[1][1];
     let t4: f64 = (bbox[1][1] - ray[0][1]) / ray[1][1];
-    let tmin2: f64 = min(t3, t4);
-    let tmax2: f64 = max(t3, t4);
+    let tmin2: f64 = fmin(t3, t4);
+    let tmax2: f64 = fmax(t3, t4);
 
     let t5: f64 = (bbox[0][2] - ray[0][2]) / ray[1][2];
     let t6: f64 = (bbox[1][2] - ray[0][2]) / ray[1][2];
-    let tmin3: f64 = min(t5, t6);
-    let tmax3: f64 = max(t5, t6);
+    let tmin3: f64 = fmin(t5, t6);
+    let tmax3: f64 = fmax(t5, t6);
 
-    let tmin_final: f64 = max(tmin, max(tmin2, tmin3));
-    let tmax_final: f64 = min(tmax, min(tmax2, tmax3));
+    let tmin_final: f64 = fmax(tmin, fmax(tmin2, tmin3));
+    let tmax_final: f64 = fmin(tmax, fmin(tmax2, tmax3));
 
     return tmax_final >= tmin_final && tmax_final > epsilon;
 }

@@ -8,10 +8,12 @@ use dag_in_context::schedule::{self};
 use dag_in_context::{build_program, check_roundtrip_egraph, EggccConfig, Schedule};
 
 use dag_in_context::schema::TreeProgram;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 use std::{
     ffi::OsStr,
     fmt::{Display, Formatter},
@@ -430,20 +432,27 @@ pub enum Interpretable {
 /// and a file extension.
 /// For CFGs, the name is the name of the function and the vizalization
 /// is a SVG.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Visualization {
     pub result: String,
     pub file_extension: String,
     pub name: String,
 }
 
-#[derive(Clone)]
-pub struct RunOutput {
+#[derive(Clone, Serialize, Deserialize)]
+pub struct RunResult {
+    #[serde(skip)]
     pub visualizations: Vec<Visualization>,
     // if the result was interpreted, the stdout of interpreting it
     pub result_interpreted: Option<String>,
     pub original_interpreted: Option<String>,
     pub cycles_taken: Option<u64>,
+    // measures the time to optimize the program, without considering lowering
+    // computed in run_bril_llvm
+    pub llvm_compile_time: Duration,
+    // eggcc_compile_time is filled out by main.rs
+    // so that we don't miss any time spent in the main function
+    pub eggcc_compile_time: Duration,
 }
 
 impl Run {
@@ -588,7 +597,7 @@ impl Run {
         name
     }
 
-    pub fn run(&self) -> Result<RunOutput, EggCCError> {
+    pub fn run(&self) -> Result<RunResult, EggCCError> {
         let original_interpreted = if self.interp == InterpMode::Interp {
             Some(Optimizer::interp_bril(
                 &self.prog_with_args.program,
@@ -615,6 +624,7 @@ impl Run {
             None
         };
 
+        let mut llvm_compile_time = Duration::from_millis(0);
         let (visualizations, interpretable_out) = match self.test_type {
             RunMode::Parse => (
                 vec![self.prog_with_args.to_viz()],
@@ -666,8 +676,9 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
-                let interpretable =
+                let (interpretable, llvm_time) =
                     self.run_bril_llvm(bril, false, LLVMOptLevel::O0_O0, self.add_timing)?;
+                llvm_compile_time = llvm_time;
                 (vec![], Some(interpretable))
             }
             RunMode::DagToRvsdg => {
@@ -889,12 +900,13 @@ impl Run {
                 let optimize_brillvm = self.optimize_bril_llvm.expect(
                     "optimize_bril_llvm is a required flag when running RunMode::CompileBrilLLVM",
                 );
-                let interpretable = self.run_bril_llvm(
+                let (interpretable, llvm_time) = self.run_bril_llvm(
                     self.prog_with_args.program.clone(),
                     optimize_egglog,
                     optimize_brillvm,
                     self.add_timing,
                 )?;
+                llvm_compile_time = llvm_time;
                 (vec![], Some(interpretable))
             }
             RunMode::TestBenchmark => {
@@ -919,7 +931,7 @@ impl Run {
                     };
 
                     for optimize_llvm in [LLVMOptLevel::O0_O0, LLVMOptLevel::O3_O0] {
-                        let interpretable = self.run_bril_llvm(
+                        let (interpretable, _time) = self.run_bril_llvm(
                             resulting_bril.clone(),
                             false,
                             optimize_llvm,
@@ -968,11 +980,14 @@ impl Run {
         };
         let cycles_taken = result_interpreted.as_ref().map(|val| val.1).unwrap_or(None);
 
-        Ok(RunOutput {
+        Ok(RunResult {
             visualizations,
             result_interpreted: result_interpreted.map(|val| val.0),
             original_interpreted,
             cycles_taken,
+            llvm_compile_time,
+            // eggcc_compile_time is filled out by main.rs
+            eggcc_compile_time: Duration::from_millis(0),
         })
     }
 
@@ -1049,7 +1064,7 @@ impl Run {
         optimize_egglog: bool,
         llvm_level: LLVMOptLevel,
         add_timing: bool,
-    ) -> Result<Interpretable, EggCCError> {
+    ) -> Result<(Interpretable, Duration), EggCCError> {
         // Make a unique name for this test running bril llvm
         // so we don't have conflicts in /tmp
         let unique_name = format!("{}_{}_{}", self.name(), optimize_egglog, llvm_level);
@@ -1120,6 +1135,7 @@ impl Run {
         }
 
         // Now, run the llvm optimizer and generate optimized llvm
+        let llvm_time_start = Instant::now();
         expect_command_success(
             Command::new(clang_cmd)
                 .arg(processed.clone())
@@ -1133,6 +1149,7 @@ impl Run {
                 .arg(optimized.clone()),
             "failed to optimize llvm ir",
         );
+        let llvm_time = llvm_time_start.elapsed();
 
         // Lower the optimized LLVM but don't do target-specific optimizations besides register allocation
         // We use O0 and disable debug info
@@ -1170,9 +1187,12 @@ impl Run {
         );
 
         if add_timing {
-            Ok(Interpretable::CycleMeasuringExecutable { executable })
+            Ok((
+                Interpretable::CycleMeasuringExecutable { executable },
+                llvm_time,
+            ))
         } else {
-            Ok(Interpretable::Executable { executable })
+            Ok((Interpretable::Executable { executable }, llvm_time))
         }
     }
 }

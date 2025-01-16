@@ -645,7 +645,11 @@ impl Run {
             }
             RunMode::OptimizedCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
-                let cfg = rvsdg.to_cfg();
+                let dag = rvsdg.to_dag_encoding();
+                let optimized = dag_in_context::optimize(&dag, &self.eggcc_config)
+                    .map_err(EggCCError::EggLog)?;
+                let rvsdg2 = dag_to_rvsdg(&optimized);
+                let cfg = rvsdg2.to_cfg();
                 (cfg.visualizations(), None)
             }
             RunMode::RvsdgRoundTrip => {

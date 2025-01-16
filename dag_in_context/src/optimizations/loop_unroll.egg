@@ -148,3 +148,40 @@
   :ruleset loop-unroll)
 
 
+
+
+;; general unrolling by factor of 8
+(rule
+  ((= lhs (DoWhile inputs outputs))
+   (= num-inputs (tuple-length inputs))
+   (= pred (Get outputs 0))
+   ;; iteration counter starts at start_const
+   (= (Const (Int start_const) _ty1 _ctx1) (Get inputs counter_i))
+   ;; updated counter at counter_i
+   (= next_counter (Get outputs (+ counter_i 1)))
+   ;; increments by one each loop
+   (= next_counter (Bop (Add) (Get (Arg _ty _ctx) counter_i)
+                              (Const (Int 1) _ty2 _ctx2)))
+   ;; while less than end_constant
+   (= pred (Bop (LessThan) next_counter end_const))
+   (= old_cost (LoopNumItersGuess inputs outputs))
+  )
+  (
+    (let one-iter (SubTuple outputs 1 num-inputs))
+    (let unrolled
+        (Subst (TmpCtx) one-iter
+          (Subst (TmpCtx) one-iter
+            (Subst (TmpCtx) one-iter
+               outputs))))
+    (union lhs
+      (DoWhile inputs
+        unrolled))
+    (let actual-ctx (InLoop inputs unrolled))
+    (union (TmpCtx) actual-ctx)
+
+    (set (LoopNumItersGuess inputs unrolled) (/ old_cost 4))
+    (delete (TmpCtx))
+  )
+  :ruleset loop-unroll)
+
+

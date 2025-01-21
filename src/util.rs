@@ -1141,8 +1141,6 @@ impl Run {
                 .arg(processed.clone())
                 .arg("-g0")
                 .arg(format!("-{}", llvm_level.llvm_opt_level()))
-                .arg("-fno-vectorize")
-                .arg("-fno-slp-vectorize")
                 .arg("-emit-llvm")
                 .arg("-S")
                 .arg("-o")

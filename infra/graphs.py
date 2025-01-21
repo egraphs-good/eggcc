@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import sys
+import os
 
 RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
 BAR_CHART_RUN_MODES = ["llvm-O3-O3", "llvm-O3-O0", "llvm-eggcc-O0-O0"]
@@ -216,19 +217,41 @@ def make_bar_chart(profile, output_file):
   plt.savefig(output_file)
 
 
+def benchmarks_in_folder(folder):
+  # recursively find all files
+  files = []
+  for root, _, filenames in os.walk(folder):
+    for filename in filenames:
+      files.append(os.path.join(root, filename))
+  # just get file name without extension
+  return [os.path.splitext(os.path.basename(f))[0] for f in files]
+  
+
 if __name__ == '__main__':
-    # parse two arguments: the output folder and the profile.json file
-    if len(sys.argv) != 3:
-        print("Usage: python graphs.py <output_folder> <profile.json>")
-        sys.exit(1)
-    output_folder = sys.argv[1]
-    profile_file = sys.argv[2]
+  # parse two arguments: the output folder and the profile.json file
+  if len(sys.argv) != 5:
+      print("Usage: python graphs.py <output_folder> <profile.json> <bril_benchmarks_folder> <polybench_folder>")
+      sys.exit(1)
+  output_folder = sys.argv[1]
+  profile_file = sys.argv[2]
+  bril_benchmarks_folder = sys.argv[3]
+  polybench_folder = sys.argv[4]
 
-    # Read profile.json from nightly/output/data/profile.json
-    profile = []
-    with open(profile_file) as f:
-        profile = json.load(f)
+  # Read profile.json from nightly/output/data/profile.json
+  profile = []
+  with open(profile_file) as f:
+      profile = json.load(f)
 
-    make_jitter(profile, 4, f'{output_folder}/jitter_plot_max_4.png')
+  # assert that all the benchmarks in the profile are in one of the benchmark suites
+  all_benchmarks = benchmarks_in_folder(bril_benchmarks_folder) + benchmarks_in_folder(polybench_folder)
+  for benchmark in profile:
+    if benchmark.get('benchmark') != 'raytrace':
+      if benchmark.get('benchmark') not in all_benchmarks:
+        raise KeyError(f"Unknown benchmark {benchmark.get('benchmark', '')}")
 
-    make_bar_chart(profile, f'{output_folder}/bar_chart.png')
+  make_jitter(profile, 4, f'{output_folder}/jitter_plot_max_4.png')
+
+  profile_bril = [b for b in profile if b.get('benchmark', '') in benchmarks_in_folder(bril_benchmarks_folder)]
+  profile_polybench = [b for b in profile if b.get('benchmark', '') in benchmarks_in_folder(polybench_folder)]
+  make_bar_chart(profile_bril, f'{output_folder}/bril_bar_chart.png')
+  make_bar_chart(profile_polybench, f'{output_folder}/polybench_bar_chart.png')

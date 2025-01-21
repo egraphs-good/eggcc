@@ -6,6 +6,9 @@
 # Takes a single argument- the directory of bril files
 # to test (or a single bril file)
 
+# The single argument can instead also be --update
+# in which case the script will skip the profiling step, and only update the front end visualizations
+
 echo "Beginning eggcc nightly script..."
 
 # -x: before executing each command, print it
@@ -40,10 +43,11 @@ echo "Switching to nighly script directory: $MYDIR"
 
 # Clean previous nightly run
 # CAREFUL using -f
-rm -rf $NIGHTLY_DIR
-
-# Prepare output directories
-mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$NIGHTLY_DIR/output"
+if [ "$@" != "--update" ]; then
+  rm -rf $DATA_DIR
+  # Prepare output directories
+  mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$NIGHTLY_DIR/output"
+fi
 
 
 pushd $TOP_DIR
@@ -51,7 +55,9 @@ pushd $TOP_DIR
 # Run profiler.
 
 # locally, run on argument
-if [ "$LOCAL" != "" ]; then
+if [ "$@" == "--update" ]; then
+  echo "skipping profile.py, updating front end"
+elif [ "$LOCAL" != "" ]; then
   ./infra/profile.py "$DATA_DIR" "$@" 2>&1 | tee $NIGHTLY_DIR/log.txt
 else
   export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
@@ -60,8 +66,8 @@ else
   ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee $NIGHTLY_DIR/log.txt
 fi
 
-# generate the jitter plots
-./infra/jitter.py "$NIGHTLY_DIR/output" "$NIGHTLY_DIR/data/profile.json" 2>&1 | tee $NIGHTLY_DIR/log.txt
+# generate the plots
+./infra/graphs.py "$NIGHTLY_DIR/output" "$NIGHTLY_DIR/data/profile.json" 2>&1 | tee $NIGHTLY_DIR/log.txt
 
 # Generate latex after running the profiler (depends on profile.json)
 ./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt

@@ -4,20 +4,22 @@ import json
 import random
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+import numpy as np
 import sys
 
 RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
+BAR_CHART_RUN_MODES = ["llvm-O3-O3", "llvm-O3-O0", "llvm-eggcc-O0-O0"]
 # copied from chart.js
 COLOR_MAP = {
   "llvm-O0-O0" : "purple",
   "llvm-eggcc-O0-O0" : "pink",
-  "llvm-O3-O0" : "gray"
+  "llvm-O3-O0" : "gray",
+  "llvm-O3-O3": "gold",
 }
 BENCHMARK_SPACE = 1.0 / len(RUN_MODES)
 CIRCLE_SIZE = 15
 
 RUN_MODE_Y_OFFSETS = []
-
 for runMode in RUN_MODES:
   RUN_MODE_Y_OFFSETS.append(len(RUN_MODE_Y_OFFSETS) * BENCHMARK_SPACE)
 
@@ -42,7 +44,22 @@ def get_baseline_cycles(data, benchmark_name):
   group = [row for row in data if row.get('benchmark', '') == benchmark_name]
   return group_baseline_cycles(group)
 
-def make_plot(profile, upper_x_bound, output):
+def get_cycles(data, benchmark_name, run_method):
+  for row in data:
+    if row.get('benchmark', '') == benchmark_name and row.get('runMethod', '') == run_method:
+      return row.get('cycles')
+  raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
+
+def group_by_benchmark(profile):
+  grouped_by_benchmark = {}
+  for benchmark in profile:
+    benchmark_name = benchmark.get('benchmark', '')
+    if benchmark_name not in grouped_by_benchmark:
+      grouped_by_benchmark[benchmark_name] = []
+    grouped_by_benchmark[benchmark_name].append(benchmark)
+  return [grouped_by_benchmark[benchmark] for benchmark in grouped_by_benchmark]
+
+def make_jitter(profile, upper_x_bound, output):
   # Prepare the data for the jitter plot
   # first y label is empty, underneath the first benchmark
   y_labels = []
@@ -52,13 +69,7 @@ def make_plot(profile, upper_x_bound, output):
 
   filtered = [b for b in profile if b.get('runMethod', '') in RUN_MODES]
 
-  grouped_by_benchmark = {}
-  for benchmark in filtered:
-      benchmark_name = benchmark.get('benchmark', '')
-      if benchmark_name not in grouped_by_benchmark:
-          grouped_by_benchmark[benchmark_name] = []
-      grouped_by_benchmark[benchmark_name].append(benchmark)
-  grouped_by_benchmark = [grouped_by_benchmark[benchmark] for benchmark in grouped_by_benchmark]
+  grouped_by_benchmark = group_by_benchmark(filtered)
 
   # sort each group by runMethod
   for group in grouped_by_benchmark:
@@ -140,6 +151,71 @@ def make_plot(profile, upper_x_bound, output):
   plt.tight_layout()
   plt.savefig(output)
 
+def mean(lst):
+  return sum(lst) / len(lst)
+
+def normalized(profile, benchmark, treatment):
+  baseline = get_baseline_cycles(profile, benchmark)
+  treatment_cycles = get_cycles(profile, benchmark, treatment)
+  return mean(treatment_cycles) / mean(baseline)
+
+# make a bar chart given a profile.json
+def make_bar_chart(profile, output_file):
+  # for each benchmark
+  grouped_by_benchmark = group_by_benchmark(profile)
+  sorted_by_llvm_O3 = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), 'llvm-O3-O3'))
+  benchmarks = [group[0].get('benchmark') for group in sorted_by_llvm_O3]
+
+
+  # add a bar for each runmode, benchmark pair
+  label_x = np.arange(len(benchmarks))
+  bar_w = 0.25
+  current_pos = 0
+
+  y_vals = []
+  x_vals = []
+  x_colors = []
+
+  fig, ax = plt.subplots()
+  fig.set_size_inches(15, 6)
+  
+  for benchmark in benchmarks:
+    baseline_cycles = get_baseline_cycles(profile, benchmark)
+    for runmode in BAR_CHART_RUN_MODES:
+      y_vals.append(normalized(profile, benchmark, runmode))
+      x_vals.append(current_pos)
+      x_colors.append(COLOR_MAP[runmode])
+      current_pos += bar_w
+    current_pos += bar_w
+
+  ax.set_ylabel('Normalized Cycles')
+  ax.set_title('Normalized Cycles by Benchmark and Run Mode')
+  ax.set_xticks(label_x + bar_w, benchmarks, rotation=45, ha='right')
+
+  # add the bars
+  for idx, val in enumerate(y_vals):
+    ax.bar(x_vals[idx], val, bar_w, color=x_colors[idx])
+  
+  # add the legend
+  handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in BAR_CHART_RUN_MODES]
+  ax.legend(handles, BAR_CHART_RUN_MODES, title='Run Mode', loc='upper right', bbox_to_anchor=(1.25, 1.05))
+
+  # make a max of 1.5 slowdown
+  ax.set_ylim(0, 1.5)
+
+  # add a dotted line at 1.0
+  ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=0.5)
+
+  # for outliers, add x marks to the top
+  for idx, val in enumerate(y_vals):
+    if val > 1.5:
+      ax.text(x_vals[idx], 1.5, 'x', color='red', ha='center', va='center')
+
+
+  plt.tight_layout()
+  plt.savefig(output_file)
+
+
 if __name__ == '__main__':
     # parse two arguments: the output folder and the profile.json file
     if len(sys.argv) != 3:
@@ -153,4 +229,6 @@ if __name__ == '__main__':
     with open(profile_file) as f:
         profile = json.load(f)
 
-    make_plot(profile, 4, f'{output_folder}/jitter_plot_max_4.png')
+    make_jitter(profile, 4, f'{output_folder}/jitter_plot_max_4.png')
+
+    make_bar_chart(profile, f'{output_folder}/bar_chart.png')

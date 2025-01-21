@@ -167,6 +167,9 @@
    (= old_cost (LoopNumItersGuess inputs outputs))
   )
   (
+    (let pre_loop_condition
+      TODO)
+      
     (let one-iter (SubTuple outputs 1 num-inputs))
     (let unrolled
         (Subst (TmpCtx) one-iter

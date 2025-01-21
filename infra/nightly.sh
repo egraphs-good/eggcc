@@ -67,7 +67,8 @@ else
 fi
 
 # generate the plots
-./infra/graphs.py "$NIGHTLY_DIR/output" "$NIGHTLY_DIR/data/profile.json" 2>&1 | tee $NIGHTLY_DIR/log.txt
+# needs to know what the two benchmark suites are
+./infra/graphs.py "$NIGHTLY_DIR/output" "$NIGHTLY_DIR/data/profile.json" benchmarks/passing/bril benchmarks/passing/polybench 2>&1 | tee $NIGHTLY_DIR/log.txt
 
 # Generate latex after running the profiler (depends on profile.json)
 ./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt

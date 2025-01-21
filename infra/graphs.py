@@ -219,7 +219,7 @@ def make_bar_chart(profile, output_file):
 if __name__ == '__main__':
     # parse two arguments: the output folder and the profile.json file
     if len(sys.argv) != 3:
-        print("Usage: python jitter.py <output_folder> <profile.json>")
+        print("Usage: python graphs.py <output_folder> <profile.json>")
         sys.exit(1)
     output_folder = sys.argv[1]
     profile_file = sys.argv[2]

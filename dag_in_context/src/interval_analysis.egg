@@ -168,10 +168,10 @@
         (= lhs (Bop (Mul) x y))
         (= (IntB hi-x) (hi-bound x))
         (= (IntB hi-y) (hi-bound y))
-        (<= hi-x 0)
-        (<= hi-y 0) 
+        (< hi-x 0)
+        (< hi-y 0) 
       )
-      ((set (lo-bound lhs) (IntB 0)))
+      ((set (lo-bound lhs) (IntB 1)))
       :ruleset interval-analysis)
 
 ; negative * positive is negative
@@ -179,13 +179,46 @@
         (= lhs (Bop (Mul) x y))
         (= (IntB hi-x) (hi-bound x))
         (= (IntB lo-y) (lo-bound y))
-        (<= hi-x 0) ; x <= 0 (x is negative)
-        (>= lo-y 0) ; y >= 0 (y is positive)
+        (< hi-x 0) ; x < 0 (x is negative)
+        (> lo-y 0) ; y > 0 (y is positive)
+      )
+      ((set (hi-bound lhs) (IntB -1)))
+      :ruleset interval-analysis)
+
+; positive * positive is positive
+(rule (
+        (= lhs (Bop (Mul) x y))
+        (= (IntB lo-x) (lo-bound x))
+        (= (IntB lo-y) (lo-bound y))
+        (> lo-x 0)
+        (> lo-y 0)
+      )
+      ((set (lo-bound lhs) (IntB 1)))
+      :ruleset interval-analysis)
+
+; non-positive * non-positive is non-negative
+(rule (
+        (= lhs (Bop (Mul) x y))
+        (= (IntB hi-x) (hi-bound x))
+        (= (IntB hi-y) (hi-bound y))
+        (<= hi-x 0)
+        (<= hi-y 0) 
+      )
+      ((set (lo-bound lhs) (IntB 0)))
+      :ruleset interval-analysis)
+
+; non-positive * non-negative is non-positive
+(rule (
+        (= lhs (Bop (Mul) x y))
+        (= (IntB hi-x) (hi-bound x))
+        (= (IntB lo-y) (lo-bound y))
+        (<= hi-x 0) ; x <= 0 (x is non-positive)
+        (>= lo-y 0) ; y >= 0 (y is non-negative)
       )
       ((set (hi-bound lhs) (IntB 0)))
       :ruleset interval-analysis)
 
-; positive * positive is positive
+; non-negative * non-negative is non-negative
 (rule (
         (= lhs (Bop (Mul) x y))
         (= (IntB lo-x) (lo-bound x))
@@ -212,6 +245,27 @@
        (= (IntB hb) (hi-bound b))
       )
       ((set (hi-bound lhs) (BoolB (bool-< la hb))))
+      :ruleset interval-analysis)
+
+; Abs
+; abs(x) = x if x >= 0
+(rule (
+        (= lhs (Uop (Abs) x))
+        (= (IntB lx) (lo-bound x))
+        (>= lx 0)
+      )
+      ((union lhs x))
+      :ruleset interval-analysis)
+
+; abs(x) = -x if x <= 0
+(rule (
+        (= lhs (Uop (Abs) x))
+        (= (IntB hx) (hi-bound x))
+        (<= hx 0)
+        (HasArgType lhs ty)
+        (ContextOf lhs ctx)
+      )
+      ((union lhs (Bop (Sub) (Const (Int 0) ty ctx) x)))
       :ruleset interval-analysis)
 
 ; =================================
@@ -282,7 +336,7 @@
         (HasType inputs ty)
       )
       ; expr < value was true, so we know expr is at most (hi-bound value) - 1
-      ((set (hi-bound (Get ctx i)) (IntB (- v 1)))) 
+      ((set (hi-bound (Get ctx i)) (IntB (- v 1))))
       :ruleset interval-analysis)
 (rule (
         ; expr < value

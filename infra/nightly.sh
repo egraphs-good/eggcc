@@ -35,6 +35,7 @@ MYDIR="$(cd -P "$(dirname "$src")" && pwd)"
 TOP_DIR="$MYDIR/.."
 RESOURCE_DIR="$MYDIR/nightly-resources"
 NIGHTLY_DIR="$TOP_DIR/nightly"
+OUTPUT_DIR="$NIGHTLY_DIR/output"
 DATA_DIR="$TOP_DIR/nightly/data"
 
 # Make sure we're in the right place
@@ -44,10 +45,15 @@ echo "Switching to nighly script directory: $MYDIR"
 # Clean previous nightly run
 # CAREFUL using -f
 if [ "$@" != "--update" ]; then
-  rm -rf $DATA_DIR
+  rm -rf $NIGHTLY_DIR
   # Prepare output directories
-  mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$NIGHTLY_DIR/output"
+  mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$OUTPUT_DIR"
+else
+  echo "updating front end only (output folder) due to --update flag"
+  rm -rf $OUTPUT_DIR
+  mkdir -p "$OUTPUT_DIR"
 fi
+
 
 
 pushd $TOP_DIR
@@ -68,7 +74,7 @@ fi
 
 # generate the plots
 # needs to know what the two benchmark suites are
-./infra/graphs.py "$NIGHTLY_DIR/output" "$NIGHTLY_DIR/data/profile.json" benchmarks/passing/bril benchmarks/passing/polybench 2>&1 | tee $NIGHTLY_DIR/log.txt
+./infra/graphs.py "$OUTPUT_DIR" "$NIGHTLY_DIR/data/profile.json" benchmarks/passing/bril benchmarks/passing/polybench 2>&1 | tee $NIGHTLY_DIR/log.txt
 
 # Generate latex after running the profiler (depends on profile.json)
 ./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt
@@ -79,22 +85,22 @@ fi
 popd
 
 # Update HTML index page.
-cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"
+cp "$RESOURCE_DIR"/* "$OUTPUT_DIR"
 
 # Copy data directory to the artifact
-cp -r "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output/data"
+cp -r "$NIGHTLY_DIR/data" "$OUTPUT_DIR/data"
 
 # Copy log
-cp "$NIGHTLY_DIR/log.txt" "$NIGHTLY_DIR/output"
+cp "$NIGHTLY_DIR/log.txt" "$OUTPUT_DIR"
 
 # gzip all JSON in the nightly dir
 if [ "$LOCAL" == "" ]; then
-  gzip "$NIGHTLY_DIR/output/data/profile.json"
+  gzip "$OUTPUT_DIR/data/profile.json"
 fi
 
 
 # This is the uploading part, copied directly from Herbie's nightly script.
-DIR="$NIGHTLY_DIR/output"
+DIR="$OUTPUT_DIR"
 B=$(git rev-parse --abbrev-ref HEAD)
 C=$(git rev-parse HEAD | sed 's/\(..........\).*/\1/')
 RDIR="$(date +%s):$(hostname):$B:$C"

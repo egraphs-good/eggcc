@@ -3,11 +3,8 @@
 # the results to the nightly-results server. It also generates some HTML
 # to display the equiderivability tests in a nicely-formatted way.
 
-# Takes a single argument- the directory of bril files
-# to test (or a single bril file)
-
-# The single argument can instead also be --update
-# in which case the script will skip the profiling step, and only update the front end visualizations
+# Takes no arguments, unless in LOCAL mode
+# see infra/localnightly.sh for an example of how to run this script locally
 
 echo "Beginning eggcc nightly script..."
 
@@ -59,7 +56,6 @@ fi
 pushd $TOP_DIR
 
 # Run profiler.
-
 # locally, run on argument
 if [ "$@" == "--update" ]; then
   echo "skipping profile.py, updating front end"
@@ -72,15 +68,19 @@ else
   ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee $NIGHTLY_DIR/log.txt
 fi
 
+# Generate CFGs for LLVM after running the profiler
+if [ "$@" == "--update" ]; then
+  echo "skipping generate_cfgs.py"
+else
+  ./infra/generate_cfgs.py "$DATA_DIR/llvm" 2>&1 | tee $NIGHTLY_DIR/log.txt
+fi
+
 # generate the plots
-# needs to know what the two benchmark suites are
-./infra/graphs.py "$OUTPUT_DIR" "$NIGHTLY_DIR/data/profile.json" benchmarks/passing/bril benchmarks/passing/polybench 2>&1 | tee $NIGHTLY_DIR/log.txt
+# needs to know what the benchmark suites are
+./infra/graphs.py "$OUTPUT_DIR" "$NIGHTLY_DIR/data/profile.json" benchmarks/passing 2>&1 | tee $NIGHTLY_DIR/log.txt
 
 # Generate latex after running the profiler (depends on profile.json)
 ./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt
-
-# Generate CFGs for LLVM after running the profiler
-./infra/generate_cfgs.py "$DATA_DIR/llvm" 2>&1 | tee $NIGHTLY_DIR/log.txt
 
 popd
 

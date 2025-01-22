@@ -229,29 +229,25 @@ def benchmarks_in_folder(folder):
 
 if __name__ == '__main__':
   # parse two arguments: the output folder and the profile.json file
-  if len(sys.argv) != 5:
-      print("Usage: python graphs.py <output_folder> <profile.json> <bril_benchmarks_folder> <polybench_folder>")
+  if len(sys.argv) != 4:
+      print("Usage: python graphs.py <output_folder> <profile.json> <benchmark_suite_folder>")
       sys.exit(1)
   output_folder = sys.argv[1]
   profile_file = sys.argv[2]
-  bril_benchmarks_folder = sys.argv[3]
-  polybench_folder = sys.argv[4]
+  benchmark_suite_folder = sys.argv[3]
 
   # Read profile.json from nightly/output/data/profile.json
   profile = []
   with open(profile_file) as f:
       profile = json.load(f)
 
-  # assert that all the benchmarks in the profile are in one of the benchmark suites
-  all_benchmarks = benchmarks_in_folder(bril_benchmarks_folder) + benchmarks_in_folder(polybench_folder)
-  for benchmark in profile:
-    if benchmark.get('benchmark') != 'raytrace':
-      if benchmark.get('benchmark') not in all_benchmarks:
-        raise KeyError(f"Unknown benchmark {benchmark.get('benchmark', '')}")
+  # folders in 
+  benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
 
   make_jitter(profile, 4, f'{output_folder}/jitter_plot_max_4.png')
 
-  profile_bril = [b for b in profile if b.get('benchmark', '') in benchmarks_in_folder(bril_benchmarks_folder)]
-  profile_polybench = [b for b in profile if b.get('benchmark', '') in benchmarks_in_folder(polybench_folder)]
-  make_bar_chart(profile_bril, f'{output_folder}/bril_bar_chart.png')
-  make_bar_chart(profile_polybench, f'{output_folder}/polybench_bar_chart.png')
+  for suite in benchmark_suites:
+    suite_path = os.path.join(benchmark_suite_folder, suite)
+    suite_benchmarks = benchmarks_in_folder(suite_path)
+    profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
+    make_bar_chart(profile_for_suite, f'{output_folder}/{suite}_bar_chart.png')

@@ -69,11 +69,13 @@ pub enum BinaryOp {
     Load,
     Print,
     Free,
+    Bitand,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, PartialOrd, Ord)]
 pub enum UnaryOp {
     Not,
+    Neg,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

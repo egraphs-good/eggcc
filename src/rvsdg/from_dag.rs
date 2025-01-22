@@ -148,6 +148,7 @@ fn tree_func_to_rvsdg(func: RcExpr, program: &TreeProgram) -> RvsdgFunction {
 fn value_op_from_binary_op(bop: BinaryOp) -> Option<ValueOps> {
     match bop {
         // integer operators
+        BinaryOp::Bitand => Some(ValueOps::Bitand),
         BinaryOp::Add => Some(ValueOps::Add),
         BinaryOp::Sub => Some(ValueOps::Sub),
         BinaryOp::Mul => Some(ValueOps::Mul),
@@ -194,12 +195,14 @@ fn effect_op_from_binary_op(bop: BinaryOp) -> Option<EffectOps> {
 
 fn value_op_from_unary_op(uop: UnaryOp) -> Option<ValueOps> {
     match uop {
+        UnaryOp::Neg => Some(ValueOps::Neg),
         UnaryOp::Not => Some(ValueOps::Not),
     }
 }
 
 fn effect_op_from_unary_op(uop: UnaryOp) -> Option<EffectOps> {
     match uop {
+        UnaryOp::Neg => None,
         UnaryOp::Not => None,
     }
 }

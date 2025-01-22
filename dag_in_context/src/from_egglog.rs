@@ -163,6 +163,7 @@ impl<'a> FromEgglog<'a> {
     fn binop_from_egglog(&mut self, op: Term) -> BinaryOp {
         match_term_app!(op.clone();
         {
+          ("Bitand", []) => BinaryOp::Bitand,
           ("Add", []) => BinaryOp::Add,
           ("Sub", []) => BinaryOp::Sub,
           ("Mul", []) => BinaryOp::Mul,
@@ -201,6 +202,7 @@ impl<'a> FromEgglog<'a> {
         match_term_app!(uop.clone();
         {
           ("Not", []) => UnaryOp::Not,
+          ("Neg", []) => UnaryOp::Neg,
           _ => panic!("Invalid unary op: {:?}", uop),
         })
     }

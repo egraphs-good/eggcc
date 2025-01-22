@@ -615,6 +615,7 @@ impl BinaryOp {
         use schema::BinaryOp::*;
         // the same as schema_helper's
         match self {
+            Bitand => "bitand",
             Add => "add",
             Sub => "sub",
             Mul => "mul",
@@ -662,9 +663,9 @@ impl TernaryOp {
 
 impl UnaryOp {
     pub fn to_ast(&self) -> String {
-        use schema::UnaryOp::Not;
         match self {
-            Not => "not".into(),
+            UnaryOp::Neg => "neg".into(),
+            UnaryOp::Not => "not".into(),
         }
     }
 }

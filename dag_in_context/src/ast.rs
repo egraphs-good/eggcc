@@ -86,6 +86,14 @@ macro_rules! tuplev {
 }
 pub use tuplev;
 
+pub fn neg(l: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Uop(UnaryOp::Neg, l))
+}
+
+pub fn bitand(l: RcExpr, r: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Bop(BinaryOp::Bitand, l, r))
+}
+
 pub fn add(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Add, l, r))
 }

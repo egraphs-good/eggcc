@@ -71,26 +71,12 @@
   one: int = const 1;
   zero: int = const 0; 
 
-  sel: int = sub c one;
-
-  ans: int = id zero; 
-
-  less: bool = lt sel zero;
-  equal: bool = eq sel zero;
-  greater: bool = gt sel zero; 
-
-  br less .and_op .useless_lbl;
-.useless_lbl:
-  br equal .or_op .xor_op;
-
-.and_op:
-  ans: int = call @AND a b;
-  jmp .end;
-.or_op:
-  ans: int = call @OR a b;
-  jmp .end;
-.xor_op:
-  ans: int = call @XOR a b;
-.end:  
+.loop_header:
+  c: int = sub c one; 
+  a: int = call @XOR a b;
+  test: bool = gt c zero;
+  br test .loop_header .end;
+.end:
+  ans: int = id a;
   print ans;
 }

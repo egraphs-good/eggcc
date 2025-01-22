@@ -34,3 +34,12 @@
 
 ; (a + b) - c => a + (b - c)
 (rewrite (Bop (Sub) (Bop (Add) a b) c) (Bop (Add) a (Bop (Sub) b c)) :ruleset peepholes)
+
+; (a * x) + a => a * (x + 1)
+(rule (
+        (= expr (Bop (Add) (Bop (Mul) a x) a))
+        (HasArgType expr ty)
+        (ContextOf expr ctx)
+      )
+      ((union expr (Bop (Mul) a (Bop (Add) x (Const (Int 1) ty ctx)))))
+      :ruleset peepholes)

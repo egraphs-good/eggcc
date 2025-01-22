@@ -76,6 +76,35 @@
     <image id="jitter-plot" src="jitter_plot_max_4.png"/>
   </div>
 
+  <h2> Bril Normalized Chart</h2>
+  <button type="button" class="collapsible" id="bril-toggle"
+    onclick="toggle(this, `\u25B6 Show`, `\u25BC Hide`)">
+    &#9654; Show
+  </button>
+  <div class="content collapsed" id="bril-normalized-plot">
+    <image id="bril-plot" src="bril_bar_chart.png"/>
+  </div>
+
+  <h2> Polybench Normalized Chart</h2>
+  <button type="button" class="collapsible" id="polybench-toggle"
+    onclick="toggle(this, `\u25B6 Show`, `\u25BC Hide`)">
+    &#9654; Show
+  </button>
+  <div class="content collapsed" id="polybench-normalized-plot">
+    <image id="polybench-plot" src="polybench_bar_chart.png"/>
+  </div>
+
+  <h2> Raytracer Normalized Chart</h2>
+  <button type="button" class="collapsible" id="polybench-toggle"
+    onclick="toggle(this, `\u25B6 Show`, `\u25BC Hide`)">
+    &#9654; Show
+  </button>
+  <div class="content collapsed" id="raytrace-normalized-plot">
+    <image id="raytrace-plot" src="raytrace_bar_chart.png"/>
+  </div>
+
+
+
   <h2>Overall Stats</h2>
   <t>Warning: compile-time statistics are not very trustworthy in parallel mode.</t>
   <div id="overall-stats-table"></div>

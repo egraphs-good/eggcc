@@ -1,0 +1,49 @@
+(ruleset cicm)
+
+(rule (
+        (= if_e (If pred orig_ins thn els))
+        (HasArgType thn (TupleT tylist))
+        (HasArgType els (TupleT tylist))
+        (ContextOf if_e outer_ctx)
+
+        (= e1 (Uop o x))
+        (HasType e1 (Base ty))
+        (= (TCPair t1 c1) (ExtractedExpr e1))
+        (> 10 (Expr-size e1))
+        (ExprIsPure e1)
+        (ContextOf e1 (InIf true pred orig_ins))
+
+        (= e2 (Uop o y))
+        (HasType e2 (Base ty))
+        (= (TCPair t2 c2) (ExtractedExpr e2))
+        (> 10 (Expr-size e2))
+        (ExprIsPure e2)
+        (ContextOf e2 (InIf false pred orig_ins))
+
+        (= t1 t2)
+      )
+      (
+        ; pull the term out to the outer context
+        (let new_term (TermSubst outer_ctx orig_ins t1)) 
+        
+        ; Add it as an input to the new if
+        (let new_ins (Concat orig_ins (Single new_term)))
+        (let new_ins_ty (TupleT (TLConcat tylist (TCons ty (TNil)))))
+        (let orig_ins_len (TypeList-length tylist))
+
+        ; New contexts
+        (let if_tr (InIf true  pred new_ins))
+        (let if_fa (InIf false pred new_ins))
+
+        ; New regions
+        (let new_thn (Subst if_tr (SubTuple (Arg new_ins_ty if_tr) 0 orig_ins_len) thn))
+        (let new_els (Subst if_fa (SubTuple (Arg new_ins_ty if_fa) 0 orig_ins_len) els))
+        
+        ; Union the new arg with the original expr in each branch
+        (union (Get (Arg new_ins_ty if_tr) orig_ins_len) (Subst if_tr (SubTuple (Arg new_ins_ty if_tr) 0 orig_ins_len) e1))
+        (union (Get (Arg new_ins_ty if_fa) orig_ins_len) (Subst if_fa (SubTuple (Arg new_ins_ty if_fa) 0 orig_ins_len) e2))
+
+        ; Create new if and union it with the original
+        (union if_e (If pred new_ins new_thn new_els))
+      )
+    :ruleset cicm)

@@ -557,21 +557,23 @@ impl<'a> Extractor<'a> {
         }
     }
 
-    fn try_break_up_term(&self, term: &Term) -> Option<Vec<Term>> {
+    fn try_break_up_term(&self, termdag: &TermDag, term: &Term) -> Option<Vec<Term>> {
         match term {
             Term::App(head, children) => {
                 if head.to_string() == "Concat" {
-                    let child_terms = children.iter().map(|child| self.termdag.get(*child));
+                    let child_terms = children.iter().map(|child| termdag.get(*child));
                     let mut child_broken_up = vec![];
                     for child_term in child_terms {
-                        let broken_up = self.try_break_up_term(child_term)?;
+                        let broken_up = self.try_break_up_term(termdag, child_term)?;
                         child_broken_up.extend(broken_up);
                     }
                     Some(child_broken_up)
                 } else if head.to_string() == "Empty" {
                     Some(vec![])
+                } else if head.to_string() == "Single" {
+                    Some(vec![termdag.get(children[0]).clone()])
                 } else {
-                    return None
+                    return None;
                 }
             }
             Term::Lit(_) => None,
@@ -579,11 +581,63 @@ impl<'a> Extractor<'a> {
         }
     }
 
-    fn calculate_cost_given_children_used(&mut self, index: CostSetIndex, children: Vec<usize>) -> Cost {
-        let cost_set = &self.costsets[index];
-        let term = &cost_set.term;
-        let broken_up_term = self.try_break_up_term(term).unwrap();
-        todo!()
+    /// Given a term, returns what indices of the argument are used in the term
+    /// Returns None if the type is not a tuple or arg is used directly
+    fn get_arg_indices_used(
+        &self,
+        termdag: &TermDag,
+        term: Term,
+        used: &mut HashSet<usize>,
+    ) -> Option<()> {
+        match &term {
+            Term::App(head, children) => {
+                if head.to_string() == "Arg" {
+                    None
+                } else if head.to_string() == "Get" {
+                    // check if we are getting an arg
+                    let child = termdag.get(children[0]).clone();
+                    match &child {
+                        Term::App(head, _arg_children) => {
+                            if head.to_string() == "Arg" {
+                                // now we only care about the index
+                                let Term::Lit(Literal::Int(lit)) = termdag.get(children[1]) else {
+                                    panic!(
+                                        "Expected literal in Get index, got {:?}",
+                                        termdag.get(children[1])
+                                    );
+                                };
+                                used.insert(*lit as usize);
+                                Some(())
+                            } else {
+                                self.get_arg_indices_used(termdag, child, used)
+                            }
+                        }
+                        _ => self.get_arg_indices_used(termdag, child, used),
+                    }
+                } else {
+                    for child in children {
+                        self.get_arg_indices_used(termdag, termdag.get(*child).clone(), used)?;
+                    }
+                    Some(())
+                }
+            }
+            Term::Var(_) => panic!("Found variable in term during extraction"),
+            Term::Lit(_l) => Some(()),
+        }
+    }
+
+    /// build a concat term from a list of terms
+    fn build_concat(&self, termdag: &mut TermDag, children: Vec<Term>) -> Term {
+        if children.is_empty() {
+            termdag.app("Empty".into(), vec![])
+        } else {
+            let mut in_progress = termdag.app("Empty".into(), vec![]);
+            for child in children.into_iter() {
+                let single = termdag.app("Single".into(), vec![child]);
+                in_progress = termdag.app("Concat".into(), vec![in_progress, single]);
+            }
+            in_progress
+        }
     }
 
     /// Given a node and cost sets for children, calculate the cost set for the node.
@@ -607,11 +661,7 @@ impl<'a> Extractor<'a> {
         let child_cost_sets = child_cost_set_indecies
             .iter()
             .map(|idx| &self.costsets[*idx])
-            .zip(
-                enode_children(info.egraph, node)
-                    .iter()
-                    .map(|c| c.is_subregion),
-            )
+            .zip(enode_children(info.egraph, node))
             .collect::<Vec<_>>();
         // cycle detection
         if child_cost_sets
@@ -636,26 +686,6 @@ impl<'a> Extractor<'a> {
         }
 
         let mut costs: HashTrieMap<ClassId, (Term, Cost)> = Default::default();
-        let index_of_biggest_child = child_cost_sets
-            .iter()
-            .enumerate()
-            .max_by_key(
-                |(_idx, (cs, is_region_root))| {
-                    if *is_region_root {
-                        0
-                    } else {
-                        cs.costs.size()
-                    }
-                },
-            )
-            .map(|(idx, _)| idx);
-        if let Some(index_of_biggest_child) = index_of_biggest_child {
-            let (biggest_child_set, is_region_root) = &child_cost_sets[index_of_biggest_child];
-            if !is_region_root {
-                costs = biggest_child_set.costs.clone();
-                shared_total = biggest_child_set.total;
-            }
-        }
 
         let mut children_terms = vec![];
         let mut termdag_tmp = TermDag::default();
@@ -665,26 +695,72 @@ impl<'a> Extractor<'a> {
         std::mem::swap(self.termdag, &mut termdag_tmp);
 
         if !info.cm.ignore_children(&node.op) {
-            for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
-                if *is_region_root {
+            for (child_set, enode_child) in child_cost_sets.iter() {
+                let mut add_to_shared = false;
+                if enode_child.is_subregion {
                     children_terms.push(child_set.term.clone());
-                } else {
-                    // costs is empty, replace it with the child one
-                    if Some(index) == index_of_biggest_child {
-                        // skip the biggest child's cost
-                        children_terms.push(child_set.term.clone());
-                    } else {
-                        let (child_term, net_cost) = self.add_term_to_cost_set(
-                            info,
-                            &mut new_correspondence,
-                            &mut termdag_tmp,
-                            &mut costs,
-                            child_set.term.clone(),
-                            &child_set.costs,
-                        );
-                        shared_total += net_cost;
-                        children_terms.push(child_term);
+                } else if enode_child.is_inputs {
+                    // special case- try to only add cost for inputs that are used
+                    // first, get all the indices of the children that are used
+                    let mut used_children = HashSet::new();
+                    for (child_set, enode_child) in child_cost_sets.iter() {
+                        if enode_child.is_subregion {
+                            if let Some(()) = self.get_arg_indices_used(
+                                &termdag_tmp,
+                                child_set.term.clone(),
+                                &mut used_children,
+                            ) {
+                                // keep going
+                            } else {
+                                add_to_shared = true;
+                            }
+                        }
                     }
+
+                    if !add_to_shared {
+                        // now that we have which children are used, try to break up the inputs
+                        if let Some(broken_up_terms) =
+                            self.try_break_up_term(&termdag_tmp, &child_set.term)
+                        {
+                            let mut new_input_children = vec![];
+                            for (idx, new_term) in broken_up_terms.iter().enumerate() {
+                                if used_children.contains(&idx) {
+                                    let (child_term, net_cost) = self.add_term_to_cost_set(
+                                        info,
+                                        &mut new_correspondence,
+                                        &mut termdag_tmp,
+                                        &mut costs,
+                                        new_term.clone(),
+                                        &child_set.costs,
+                                    );
+                                    shared_total += net_cost;
+                                    new_input_children.push(child_term);
+                                } else {
+                                    new_input_children
+                                        .push(termdag_tmp.app("DeadCode".into(), vec![]));
+                                }
+                            }
+                            let new_term = self.build_concat(&mut termdag_tmp, new_input_children);
+                            children_terms.push(new_term);
+                        } else {
+                            add_to_shared = true;
+                        }
+                    }
+                } else {
+                    add_to_shared = true;
+                }
+
+                if add_to_shared {
+                    let (child_term, net_cost) = self.add_term_to_cost_set(
+                        info,
+                        &mut new_correspondence,
+                        &mut termdag_tmp,
+                        &mut costs,
+                        child_set.term.clone(),
+                        &child_set.costs,
+                    );
+                    shared_total += net_cost;
+                    children_terms.push(child_term);
                 }
             }
 
@@ -1376,7 +1452,11 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
         false,
     );
 
-    assert_eq!(cost_set.0, expected_cost);
+    assert_eq!(
+        cost_set.0, expected_cost,
+        "Expected cost to be {}",
+        expected_cost
+    );
 }
 
 /// This only runs extract_without_linearity once
@@ -1519,6 +1599,30 @@ fn test_dag_extract_if() {
         + cost_model.get_op_cost("If");
     let cost_total = cost_if + cost_model.get_op_cost("Get");
     dag_extraction_test(&prog, cost_total);
+}
+fn test_cost_dead_code_to_if() {
+    use crate::ast::*;
+
+    let prog = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        tif(
+            ttrue(),
+            parallel!(int(10), int(20), getat(1)),
+            parallel!(add(getat(0), getat(0)), getat(2)),
+            parallel!(add(getat(0), getat(0)), getat(2))
+        ),
+    ),);
+    let cost_model = TestCostModel;
+    // count the constant 10 and the constant true
+    // don't count the constant 20
+    let expected_cost = cost_model.get_op_cost("Const") * 2.
+        + cost_model.get_op_cost("Add")
+        + cost_model.get_op_cost("Add")
+        + cost_model.get_op_cost("If");
+
+    dag_extraction_test(&prog, expected_cost);
 }
 
 #[test]

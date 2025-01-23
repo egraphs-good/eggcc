@@ -581,6 +581,31 @@ impl<'a> Extractor<'a> {
         }
     }
 
+    /// Get terms for the ty and ctx of a term
+    fn get_arg_ty_and_ctx(&self, termdag: &TermDag, term: &Term) -> Option<(Term, Term)> {
+        match &term {
+            Term::App(head, children) => {
+                if head.to_string() == "Arg" {
+                    let arg_ty = termdag.get(children[0]).clone();
+                    let ctx = termdag.get(children[1]).clone();
+                    Some((arg_ty, ctx))
+                } else if head.to_string() == "Const" {
+                    let arg_ty = termdag.get(children[1]).clone();
+                    let ctx = termdag.get(children[2]).clone();
+                    Some((arg_ty, ctx))
+                } else {
+                    for child in children {
+                        if let Some(res) = self.get_arg_ty_and_ctx(termdag, termdag.get(*child)) {
+                            return Some(res);
+                        }
+                    }
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     /// Given a term, returns what indices of the argument are used in the term
     /// Returns None if the type is not a tuple or arg is used directly
     fn get_arg_indices_used(
@@ -627,11 +652,17 @@ impl<'a> Extractor<'a> {
     }
 
     /// build a concat term from a list of terms
-    fn build_concat(&self, termdag: &mut TermDag, children: Vec<Term>) -> Term {
+    fn build_concat(
+        &self,
+        termdag: &mut TermDag,
+        children: Vec<Term>,
+        ty: &Term,
+        ctx: &Term,
+    ) -> Term {
         if children.is_empty() {
-            termdag.app("Empty".into(), vec![])
+            termdag.app("Empty".into(), vec![ty.clone(), ctx.clone()])
         } else {
-            let mut in_progress = termdag.app("Empty".into(), vec![]);
+            let mut in_progress = termdag.app("Empty".into(), vec![ty.clone(), ctx.clone()]);
             for child in children.into_iter() {
                 let single = termdag.app("Single".into(), vec![child]);
                 in_progress = termdag.app("Concat".into(), vec![in_progress, single]);
@@ -740,8 +771,15 @@ impl<'a> Extractor<'a> {
                                         .push(termdag_tmp.app("DeadCode".into(), vec![]));
                                 }
                             }
-                            let new_term = self.build_concat(&mut termdag_tmp, new_input_children);
-                            children_terms.push(new_term);
+                            if let Some((ty, ctx)) =
+                                self.get_arg_ty_and_ctx(&termdag_tmp, &child_set.term)
+                            {
+                                let new_term =
+                                    self.build_concat(&mut termdag_tmp, new_input_children, &ty, &ctx);
+                                children_terms.push(new_term);
+                            } else {
+                                add_to_shared = true;
+                            }
                         } else {
                             add_to_shared = true;
                         }

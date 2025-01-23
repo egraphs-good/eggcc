@@ -133,7 +133,6 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
   select.value = formatRun(previousRuns[initialIdx]);
 }
 
-
 async function refreshLatexMacros() {
   const latexMacrosTextArea = document.getElementById("latex-macros-text");
   const latexMacros = await fetch("nightlymacros.tex").then((r) => r.text());

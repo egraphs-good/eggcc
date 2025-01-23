@@ -124,6 +124,9 @@ pub enum Expr {
     DoWhile(RcExpr, RcExpr),
     Arg(Type, Assumption),
     Function(String, Type, Type, RcExpr),
+    // deadcode can be produced by the extractor
+    // it is removed by the deadcode pass, which is run right at the end of extraction
+    DeadCode(),
     // optionally, the type of this symbol for typechecking
     Symbolic(String, Option<Type>),
 }

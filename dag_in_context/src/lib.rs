@@ -20,6 +20,7 @@ pub mod dag2svg;
 pub mod dag_typechecker;
 pub mod from_egglog;
 mod greedy_dag_extractor;
+mod remove_dead_code_nodes;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
 mod linearity;

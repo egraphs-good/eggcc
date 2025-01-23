@@ -949,7 +949,7 @@ pub fn extract(
     should_maintain_linearity: bool,
     extract_debug_exprs: bool,
 ) -> (Cost, TreeProgram) {
-    if extract_debug_exprs {
+    let (cost, prog) = if extract_debug_exprs {
         log::info!("Extracting debug expressions.");
         let debug_roots = find_debug_roots(egraph.clone());
         let mut extracted_fns = vec![];
@@ -999,7 +999,9 @@ pub fn extract(
             cost += fn_cost.total;
         }
         (cost, new_prog)
-    }
+    };
+
+    (cost, prog.remove_dead_code_nodes())
 }
 
 /// Extract the function specified by `func` from the egraph.

@@ -43,3 +43,5 @@
       )
       ((union expr (Bop (Mul) a (Bop (Add) x (Const (Int 1) ty ctx)))))
       :ruleset peepholes)
+
+(rewrite (Top (Select) pred x x) x :ruleset peepholes)

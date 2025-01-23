@@ -196,6 +196,7 @@ impl<'a> EgraphInfo<'a> {
                     child,
                     is_subregion,
                     is_assumption,
+                    is_inputs: _is_inputs,
                 } in enode_children(egraph, node)
                 {
                     if is_assumption {
@@ -707,6 +708,7 @@ fn node_cost_in_region(
                  child,
                  is_subregion,
                  is_assumption,
+                 is_inputs: _is_inputs,
              }| {
                 // for assumptions, just return a dummy context every time
                 if *is_assumption {
@@ -1120,14 +1122,17 @@ struct EnodeChild {
     child: ClassId,
     is_subregion: bool,
     is_assumption: bool,
+    // cost of inputs is calculated specially- dead code is not included in cost
+    is_inputs: bool,
 }
 
 impl EnodeChild {
-    fn new(child: ClassId, is_subregion: bool, is_assumption: bool) -> Self {
+    fn new(child: ClassId, is_subregion: bool, is_assumption: bool, is_inputs: bool) -> Self {
         EnodeChild {
             child,
             is_subregion,
             is_assumption,
+            is_inputs,
         }
     }
 }
@@ -1140,52 +1145,52 @@ fn enode_children(
 ) -> Vec<EnodeChild> {
     match (enode.op.as_str(), enode.children.as_slice()) {
         ("DoWhile", [input, body]) => vec![
-            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
-            EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
+            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false, true),
+            EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false, false),
         ],
         ("If", [pred, input, then_branch, else_branch]) => vec![
-            EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
-            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
-            EnodeChild::new(egraph.nid_to_cid(then_branch).clone(), true, false),
-            EnodeChild::new(egraph.nid_to_cid(else_branch).clone(), true, false),
+            EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false, false),
+            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false, true),
+            EnodeChild::new(egraph.nid_to_cid(then_branch).clone(), true, false, false),
+            EnodeChild::new(egraph.nid_to_cid(else_branch).clone(), true, false, false),
         ],
         ("Switch", [pred, input, branchlist]) => {
             let mut res = vec![
-                EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false, true),
             ];
             res.extend(
                 get_conslist_children(egraph, egraph.nid_to_cid(branchlist).clone())
                     .into_iter()
-                    .map(|cid| EnodeChild::new(cid, true, false)),
+                    .map(|cid| EnodeChild::new(cid, true, false, false)),
             );
             res
         }
         ("Function", [name, args, ret, body]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(name).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(args).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ret).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
+                EnodeChild::new(egraph.nid_to_cid(name).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(args).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ret).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false, false),
             ]
         }
         ("Arg", [ty, ctx]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true, false),
             ]
         }
         ("Const", [c, ty, ctx]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true, false),
             ]
         }
         ("Empty", [ty, ctx]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true, false),
             ]
         }
         // We mark operators like (Add) and (Mul) as region roots
@@ -1193,23 +1198,23 @@ fn enode_children(
         // are referenced at a different place, just like a region.
         ("Uop", [op, a]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false),
-                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false, false),
+                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false, false),
             ]
         }
         ("Bop", [op, a, b]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false),
-                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false, false),
+                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false, false),
             ]
         }
         ("Top", [op, a, b, c]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false),
-                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false, false),
+                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false, false),
             ]
         }
         _ => {
@@ -1217,6 +1222,7 @@ fn enode_children(
             for child in &enode.children {
                 children.push(EnodeChild::new(
                     egraph.nid_to_cid(child).clone(),
+                    false,
                     false,
                     false,
                 ));
@@ -1291,6 +1297,7 @@ fn find_reachable(
                     child,
                     is_subregion,
                     is_assumption,
+                    is_inputs: _is_inputs,
                 } in enode_children(egraph, &egraph[node])
                 {
                     if !is_assumption {

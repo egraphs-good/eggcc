@@ -343,6 +343,9 @@ impl<'a> FromEgglog<'a> {
               self.expr_from_egglog(expr.clone()),
             ))
           }
+          ("DeadCode", []) => {
+            Rc::new(Expr::DeadCode())
+          }
           _ => panic!("Invalid expr: {:?}", expr),
         });
 

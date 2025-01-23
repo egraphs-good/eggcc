@@ -5,25 +5,23 @@ expression: visualization.result
 # ARGS: 20
 @main(v0: int) {
 .b1_:
-  c2_: int = const 6;
+  c2_: int = const 5;
   v3_: int = mul c2_ v0;
   c4_: int = const 0;
   v5_: bool = lt c4_ v0;
-  c6_: int = const 5;
-  v7_: int = mul c6_ v0;
-  br v5_ .b8_ .b9_;
-.b8_:
-  c10_: int = const 10;
-  print c10_;
-  v11_: int = id v3_;
+  br v5_ .b6_ .b7_;
+.b6_:
+  c8_: int = const 20;
+  print c8_;
+  v9_: int = id v3_;
   print v3_;
   ret;
-  jmp .b12_;
-.b9_:
-  c13_: int = const 20;
-  print c13_;
-  v11_: int = id v3_;
+  jmp .b10_;
+.b7_:
+  c11_: int = const 20;
+  print c11_;
+  v9_: int = id v3_;
   print v3_;
   ret;
-.b12_:
+.b10_:
 }

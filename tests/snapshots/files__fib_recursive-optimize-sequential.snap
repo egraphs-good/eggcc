@@ -1,7 +1,6 @@
 ---
 source: tests/files.rs
 expression: visualization.result
-snapshot_kind: text
 ---
 # ARGS: 
 @fac(v0: int): int {
@@ -19,37 +18,37 @@ snapshot_kind: text
   br v9_ .b10_ .b11_;
 .b10_:
   v12_: bool = eq c2_ c2_;
-  v13_: int = id c4_;
+  v13_: int = id v0;
   br v12_ .b14_ .b15_;
 .b14_:
-  v16_: int = id c4_;
+  v16_: int = id v0;
   v5_: int = id v16_;
   ret v5_;
   jmp .b8_;
 .b15_:
-  v17_: bool = eq c2_ c4_;
+  v17_: bool = eq c2_ v0;
   br v17_ .b18_ .b19_;
 .b18_:
   v20_: bool = eq c2_ c2_;
-  v21_: int = id c4_;
+  v21_: int = id v0;
   br v20_ .b22_ .b23_;
 .b22_:
-  v24_: int = id c4_;
+  v24_: int = id v0;
   v13_: int = id v24_;
-  v16_: int = id c4_;
+  v16_: int = id v0;
   v5_: int = id v16_;
   ret v5_;
   jmp .b8_;
 .b23_:
-  v25_: bool = eq c2_ c4_;
+  v25_: bool = eq c2_ v0;
   br v25_ .b26_ .b27_;
 .b26_:
   v28_: int = call @fac c2_;
-  v29_: int = id c4_;
+  v29_: int = id v0;
   v21_: int = id v29_;
-  v24_: int = id c4_;
+  v24_: int = id v0;
   v13_: int = id v24_;
-  v16_: int = id c4_;
+  v16_: int = id v0;
   v5_: int = id v16_;
   ret v5_;
   jmp .b8_;
@@ -61,19 +60,19 @@ snapshot_kind: text
   v34_: int = add v31_ v33_;
   v29_: int = id v34_;
   v21_: int = id v29_;
-  v24_: int = id c4_;
+  v24_: int = id v0;
   v13_: int = id v24_;
-  v16_: int = id c4_;
+  v16_: int = id v0;
   v5_: int = id v16_;
   ret v5_;
   jmp .b8_;
 .b19_:
   c35_: int = const -1;
   v36_: bool = eq c2_ c35_;
-  v37_: int = id c4_;
+  v37_: int = id v0;
   br v36_ .b38_ .b39_;
 .b39_:
-  v40_: bool = eq c35_ c4_;
+  v40_: bool = eq c35_ v0;
   br v40_ .b41_ .b42_;
 .b41_:
   v43_: int = call @fac c2_;
@@ -82,18 +81,18 @@ snapshot_kind: text
 .b38_:
   c45_: int = const -2;
   v46_: bool = eq c2_ c45_;
-  v47_: int = id c4_;
+  v47_: int = id v0;
   br v46_ .b48_ .b49_;
 .b48_:
   v50_: int = add v37_ v47_;
   v24_: int = id v50_;
   v13_: int = id v24_;
-  v16_: int = id c4_;
+  v16_: int = id v0;
   v5_: int = id v16_;
   ret v5_;
   jmp .b8_;
 .b49_:
-  v51_: bool = eq c45_ c4_;
+  v51_: bool = eq c45_ v0;
   br v51_ .b52_ .b53_;
 .b52_:
   v54_: int = call @fac c2_;
@@ -102,7 +101,7 @@ snapshot_kind: text
   v50_: int = add v37_ v47_;
   v24_: int = id v50_;
   v13_: int = id v24_;
-  v16_: int = id c4_;
+  v16_: int = id v0;
   v5_: int = id v16_;
   ret v5_;
   jmp .b8_;
@@ -117,7 +116,7 @@ snapshot_kind: text
   v50_: int = add v37_ v47_;
   v24_: int = id v50_;
   v13_: int = id v24_;
-  v16_: int = id c4_;
+  v16_: int = id v0;
   v5_: int = id v16_;
   ret v5_;
   jmp .b8_;
@@ -140,10 +139,10 @@ snapshot_kind: text
   br v71_ .b72_ .b73_;
 .b72_:
   v74_: bool = eq c2_ c2_;
-  v75_: int = id c4_;
+  v75_: int = id v66_;
   br v74_ .b76_ .b77_;
 .b76_:
-  v78_: int = id c4_;
+  v78_: int = id v66_;
   v68_: int = id v78_;
 .b69_:
   v79_: int = sub v66_ c4_;
@@ -161,10 +160,10 @@ snapshot_kind: text
   br v85_ .b86_ .b87_;
 .b86_:
   v88_: bool = eq c2_ c2_;
-  v89_: int = id c4_;
+  v89_: int = id v79_;
   br v88_ .b90_ .b91_;
 .b90_:
-  v92_: int = id c4_;
+  v92_: int = id v79_;
   v81_: int = id v92_;
   v84_: int = add v68_ v81_;
   v16_: int = id v84_;
@@ -172,13 +171,13 @@ snapshot_kind: text
   ret v5_;
   jmp .b8_;
 .b91_:
-  v93_: bool = eq c2_ c4_;
+  v93_: bool = eq c2_ v79_;
   br v93_ .b94_ .b95_;
 .b94_:
   v96_: int = call @fac c2_;
-  v97_: int = id c4_;
+  v97_: int = id v79_;
   v89_: int = id v97_;
-  v92_: int = id c4_;
+  v92_: int = id v79_;
   v81_: int = id v92_;
   v84_: int = add v68_ v81_;
   v16_: int = id v84_;
@@ -193,7 +192,7 @@ snapshot_kind: text
   v102_: int = add v101_ v99_;
   v97_: int = id v102_;
   v89_: int = id v97_;
-  v92_: int = id c4_;
+  v92_: int = id v79_;
   v81_: int = id v92_;
   v84_: int = add v68_ v81_;
   v16_: int = id v84_;
@@ -210,7 +209,7 @@ snapshot_kind: text
   br v108_ .b109_ .b110_;
 .b109_:
   v111_: int = call @fac c2_;
-  v112_: int = id c4_;
+  v112_: int = id v103_;
   v105_: int = id v112_;
 .b106_:
   v113_: int = sub v103_ c4_;
@@ -231,7 +230,7 @@ snapshot_kind: text
   br v119_ .b120_ .b121_;
 .b120_:
   v122_: int = call @fac c2_;
-  v123_: int = id c4_;
+  v123_: int = id v113_;
   v115_: int = id v123_;
   v118_: int = add v105_ v115_;
   v92_: int = id v118_;
@@ -267,13 +266,13 @@ snapshot_kind: text
   v105_: int = id v112_;
   jmp .b106_;
 .b77_:
-  v134_: bool = eq c2_ c4_;
+  v134_: bool = eq c2_ v66_;
   br v134_ .b135_ .b136_;
 .b135_:
   v137_: int = call @fac c2_;
-  v138_: int = id c4_;
+  v138_: int = id v66_;
   v75_: int = id v138_;
-  v78_: int = id c4_;
+  v78_: int = id v66_;
   v68_: int = id v78_;
   jmp .b69_;
 .b136_:
@@ -284,7 +283,7 @@ snapshot_kind: text
   v143_: int = add v140_ v142_;
   v138_: int = id v143_;
   v75_: int = id v138_;
-  v78_: int = id c4_;
+  v78_: int = id v66_;
   v68_: int = id v78_;
   jmp .b69_;
 .b73_:
@@ -350,12 +349,12 @@ snapshot_kind: text
   jmp .b8_;
 .b7_:
   v9_: bool = eq c1_ c4_;
-  br v9_ .b10_ .b11_;
-.b10_:
-  v12_: bool = eq c2_ c2_;
+  v10_: bool = eq c2_ c2_;
+  br v9_ .b11_ .b12_;
+.b11_:
   c13_: int = const 1;
   v14_: int = id c13_;
-  br v12_ .b15_ .b16_;
+  br v10_ .b15_ .b16_;
 .b15_:
   v17_: int = id c1_;
   v5_: int = id v17_;
@@ -387,62 +386,65 @@ snapshot_kind: text
   print v5_;
   ret;
   jmp .b8_;
-.b11_:
+.b12_:
   v28_: bool = eq c2_ c4_;
   v29_: int = id c4_;
   br v28_ .b30_ .b31_;
-.b31_:
-  v32_: bool = eq c4_ c4_;
-  br v32_ .b33_ .b34_;
-.b33_:
-  v35_: int = call @fac c2_;
-  v36_: int = id c4_;
-  v29_: int = id v36_;
 .b30_:
-  v37_: bool = eq c2_ c2_;
-  v38_: int = id c4_;
-  br v37_ .b39_ .b40_;
-.b39_:
-  v41_: int = add v29_ v38_;
-  v17_: int = id v41_;
-  v5_: int = id v17_;
-  print v5_;
-  ret;
-  jmp .b8_;
-.b40_:
-  v42_: bool = eq c2_ c4_;
-  br v42_ .b43_ .b44_;
-.b43_:
-  v45_: int = call @fac c2_;
-  v46_: int = id c4_;
-  v38_: int = id v46_;
-  v41_: int = add v29_ v38_;
-  v17_: int = id v41_;
-  v5_: int = id v17_;
-  print v5_;
-  ret;
-  jmp .b8_;
-.b44_:
-  c47_: int = const -1;
-  v48_: int = call @fac c47_;
-  c49_: int = const -2;
-  v50_: int = call @fac c49_;
-  v51_: int = add v48_ v50_;
-  v46_: int = id v51_;
-  v38_: int = id v46_;
-  v41_: int = add v29_ v38_;
-  v17_: int = id v41_;
-  v5_: int = id v17_;
-  print v5_;
-  ret;
-  jmp .b8_;
+  v32_: int = id c4_;
+.b33_:
+  br v10_ .b34_ .b35_;
 .b34_:
+  v36_: int = add v29_ v32_;
+  v17_: int = id v36_;
+  v5_: int = id v17_;
+  print v5_;
+  ret;
+  jmp .b8_;
+.b35_:
+  v37_: bool = eq c2_ c4_;
+  br v37_ .b38_ .b39_;
+.b38_:
+  v40_: int = call @fac c2_;
+  v41_: int = id c4_;
+  v32_: int = id v41_;
+  v36_: int = add v29_ v32_;
+  v17_: int = id v36_;
+  v5_: int = id v17_;
+  print v5_;
+  ret;
+  jmp .b8_;
+.b39_:
+  c42_: int = const -1;
+  v43_: int = call @fac c42_;
+  c44_: int = const -2;
+  v45_: int = call @fac c44_;
+  v46_: int = add v43_ v45_;
+  v41_: int = id v46_;
+  v32_: int = id v41_;
+  v36_: int = add v29_ v32_;
+  v17_: int = id v36_;
+  v5_: int = id v17_;
+  print v5_;
+  ret;
+  jmp .b8_;
+.b31_:
+  v47_: bool = eq c4_ c4_;
+  br v47_ .b48_ .b49_;
+.b48_:
+  v50_: int = call @fac c2_;
+  v51_: int = id c4_;
+  v29_: int = id v51_;
+  v32_: int = id c4_;
+  jmp .b33_;
+.b49_:
   v52_: int = call @fac c2_;
   c53_: int = const -1;
   v54_: int = call @fac c53_;
   v55_: int = add v52_ v54_;
-  v36_: int = id v55_;
-  v29_: int = id v36_;
-  jmp .b30_;
+  v51_: int = id v55_;
+  v29_: int = id v51_;
+  v32_: int = id c4_;
+  jmp .b33_;
 .b8_:
 }

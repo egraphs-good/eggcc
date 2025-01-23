@@ -255,7 +255,7 @@
         (>= lx 0)
       )
       ((union lhs x))
-      :ruleset interval-analysis)
+      :ruleset interval-rewrite)
 
 ; abs(x) = -x if x <= 0
 (rule (
@@ -266,7 +266,7 @@
         (ContextOf lhs ctx)
       )
       ((union lhs (Bop (Sub) (Const (Int 0) ty ctx) x)))
-      :ruleset interval-analysis)
+      :ruleset interval-rewrite)
 
 ; =================================
 ; Conditionals

@@ -164,8 +164,8 @@ def normalized(profile, benchmark, treatment):
 def make_bar_chart(profile, output_file):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
-  sorted_by_llvm_O3 = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), 'llvm-O3-O3'))
-  benchmarks = [group[0].get('benchmark') for group in sorted_by_llvm_O3]
+  sorted_by_llvm_O3_O0 = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), 'llvm-O3-O0'))
+  benchmarks = [group[0].get('benchmark') for group in sorted_by_llvm_O3_O0]
 
 
   # add a bar for each runmode, benchmark pair
@@ -216,6 +216,39 @@ def make_bar_chart(profile, output_file):
   plt.tight_layout()
   plt.savefig(output_file)
 
+def dedup(lst):
+  return list(dict.fromkeys(lst))
+
+def format_latex_macro(name, value):
+  return f"\\newcommand{{\\{name}}}{{{value}}}\n"
+
+# given a ratio, format it as a percentage and create a latex macro
+def format_latex_macro_percent(name, percent_as_ratio):
+  percent = percent_as_ratio * 100
+  return format_latex_macro(name, f"{percent:.2f}")
+
+def make_macros(profile, output_file):
+  number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 = 0
+  benchmarks = dedup([b.get('benchmark') for b in profile])
+
+  for benchmark in benchmarks:
+    baseline_cycles = get_baseline_cycles(profile, benchmark)
+    llvm_O3_O0_cycles = get_cycles(profile, benchmark, 'llvm-O3-O0')
+    eggcc_O0_O0_cycles = get_cycles(profile, benchmark, 'llvm-eggcc-O0-O0')
+
+    perf_improvement_llvm = mean(baseline_cycles) - mean(llvm_O3_O0_cycles)
+    perf_improvement_eggcc = mean(baseline_cycles) - mean(eggcc_O0_O0_cycles)
+    if perf_improvement_llvm < 0:
+      number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 += 1
+    else:
+      if perf_improvement_eggcc > 0.8 * perf_improvement_llvm:
+        number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 += 1
+  ratio_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 = number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 / len(benchmarks)
+
+  with open(output_file, 'w') as f:
+    f.write(format_latex_macro_percent('percentRecoverEightyPercentPerformanceImprovementEggccVsLlvmOThreeOZero', ratio_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0))
+
+
 
 def benchmarks_in_folder(folder):
   # recursively find all files
@@ -251,3 +284,5 @@ if __name__ == '__main__':
     suite_benchmarks = benchmarks_in_folder(suite_path)
     profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
     make_bar_chart(profile_for_suite, f'{output_folder}/{suite}_bar_chart.png')
+
+  make_macros(profile, f'{output_folder}/nightlymacros.tex')

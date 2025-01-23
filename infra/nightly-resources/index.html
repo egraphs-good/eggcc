@@ -103,6 +103,16 @@
     <image id="raytrace-plot" src="raytrace_bar_chart.png"/>
   </div>
 
+  <h2> Latex Macros </h2>
+  <button type="button" class="collapsible" id="latex-toggle"
+    onclick="toggle(this, `\u25B6 Show`, `\u25BC Hide`)">
+    &#9654; Show
+  </button>
+  <!-- show the latex as a copyable text box from the latexmacros.tex file -->
+  <div class="content collapsed" id="latex-macros">
+    <textarea id="latex-macros-text" rows="10" cols="50" readonly></textarea>
+  </div>
+
 
 
   <h2>Overall Stats</h2>

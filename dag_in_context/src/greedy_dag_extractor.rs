@@ -43,6 +43,10 @@ pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
     costsets: Vec<CostSet>,
     costsetmemo: IndexMap<(NodeId, Vec<CostSetIndex>), CostSetIndex>,
+    /// For a given region (based on the region's root),
+    /// stores a map from classes in that region to the chosen term for the eclass.
+    /// Regions are extracted separately since different regions
+    /// have different allowed state edge paths.
     costs: IndexMap<ClassId, IndexMap<ClassId, CostSetIndex>>,
 
     // use to get the type of an expression
@@ -551,6 +555,35 @@ impl<'a> Extractor<'a> {
         } else {
             child_set.iter().map(|cs| cs.total).sum()
         }
+    }
+
+    fn try_break_up_term(&self, term: &Term) -> Option<Vec<Term>> {
+        match term {
+            Term::App(head, children) => {
+                if head.to_string() == "Concat" {
+                    let child_terms = children.iter().map(|child| self.termdag.get(*child));
+                    let mut child_broken_up = vec![];
+                    for child_term in child_terms {
+                        let broken_up = self.try_break_up_term(child_term)?;
+                        child_broken_up.extend(broken_up);
+                    }
+                    Some(child_broken_up)
+                } else if head.to_string() == "Empty" {
+                    Some(vec![])
+                } else {
+                    return None
+                }
+            }
+            Term::Lit(_) => None,
+            Term::Var(_) => None,
+        }
+    }
+
+    fn calculate_cost_given_children_used(&mut self, index: CostSetIndex, children: Vec<usize>) -> Cost {
+        let cost_set = &self.costsets[index];
+        let term = &cost_set.term;
+        let broken_up_term = self.try_break_up_term(term).unwrap();
+        todo!()
     }
 
     /// Given a node and cost sets for children, calculate the cost set for the node.

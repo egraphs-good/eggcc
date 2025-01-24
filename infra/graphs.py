@@ -45,11 +45,17 @@ def get_baseline_cycles(data, benchmark_name):
   group = [row for row in data if row.get('benchmark', '') == benchmark_name]
   return group_baseline_cycles(group)
 
-def get_cycles(data, benchmark_name, run_method):
+def get_row(data, benchmark_name, run_method):
   for row in data:
     if row.get('benchmark', '') == benchmark_name and row.get('runMethod', '') == run_method:
-      return row.get('cycles')
+      return row
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
+
+def get_cycles(data, benchmark_name, run_method):
+  return get_row(data, benchmark_name, run_method).get('cycles')
+
+def get_eggcc_compile_time(data, benchmark_name):
+  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0').get('eggccCompileTimeSecs')
 
 def group_by_benchmark(profile):
   grouped_by_benchmark = {}
@@ -260,6 +266,67 @@ def benchmarks_in_folder(folder):
   return [os.path.splitext(os.path.basename(f))[0] for f in files]
   
 
+def get_code_size(benchmark, suites_path):
+  # search for all files in the benchmark folder
+  files = []
+  for root, _, filenames in os.walk(suites_path):
+    for filename in filenames:
+      files.append(os.path.join(root, filename))
+  
+  file = False
+  # find file with matching name to benchmark without extension
+  # error if two files match
+  for f in files:
+    if os.path.splitext(os.path.basename(f))[0] == benchmark:
+      if file:
+        raise KeyError(f"Multiple files match benchmark {benchmark}")
+      file = f
+  
+  if not file:
+    raise KeyError(f"No file found for benchmark {benchmark}")
+  
+  # get the size of the file
+  # if it's a bril file use lines without empty lines
+  if file.endswith('.bril'):
+    with open(file) as f:
+      return len([line for line in f if line.strip()])
+    
+  # if it's a .rs files convert it to bril first with `cargo run --run-mode parse`
+  if file.endswith('.rs'):
+    popen_res = os.popen(f'cargo run {file} --run-mode parse')
+    output_str = popen_res.read()
+    error_code = popen_res.close()
+    if error_code:
+      raise KeyError(f"Failed to convert {file} to bril")
+
+    return len([line for line in output_str.split('\n') if line.strip()])
+  
+  raise KeyError(f"Unsupported file type for benchmark {benchmark}: {file}")
+
+
+def make_code_size_vs_compile_time(profile, output, suites_path):
+  benchmarks = dedup([b.get('benchmark') for b in profile])
+
+  data = []
+  for benchmark in benchmarks:
+    compile_time = get_eggcc_compile_time(profile, benchmark)
+    code_size = get_code_size(benchmark, suites_path)
+    data.append((code_size, compile_time))
+
+  x = [d[0] for d in data]
+  y = [d[1] for d in data]
+
+  # graph data
+  plt.figure(figsize=(10, 6))
+  plt.scatter(x, y)
+  plt.xlabel('Bril Number of Instructions')
+  plt.ylabel('EggCC Compile Time (s)')
+  plt.title('EggCC Compile Time vs Code Size')
+  plt.savefig(output)
+
+
+
+
 if __name__ == '__main__':
   # parse two arguments: the output folder and the profile.json file
   if len(sys.argv) != 4:
@@ -286,3 +353,5 @@ if __name__ == '__main__':
     make_bar_chart(profile_for_suite, f'{output_folder}/{suite}_bar_chart.png')
 
   make_macros(profile, f'{output_folder}/nightlymacros.tex')
+
+  make_code_size_vs_compile_time(profile, f'{output_folder}/code_size_vs_compile_time.png', benchmark_suite_folder)

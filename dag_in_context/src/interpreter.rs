@@ -460,6 +460,7 @@ impl<'a> VirtualMachine<'a> {
                 self.interpret_call(func_name, &e_val)
             }
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
+            Expr::DeadCode() => panic!("found dead code"),
         };
         self.eval_cache.insert(Rc::as_ptr(expr), res.clone());
         res

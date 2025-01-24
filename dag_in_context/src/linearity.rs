@@ -188,6 +188,7 @@ impl<'a> Extractor<'a> {
             }
             Expr::Const(_, _, _) => panic!("Const has no effect"),
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
+            Expr::DeadCode() => panic!("found dead code"),
         }
     }
 
@@ -202,7 +203,7 @@ impl<'a> Extractor<'a> {
         let get_if_effectful = |this: &mut Extractor<'a>, expr: *const Expr| {
             let rcexpr = raw_to_rc.get(&expr).unwrap();
             if let Expr::Function(_name, _inp, _out, body) = rcexpr.as_ref() {
-                if this.is_effectful(body) {
+                if this.is_effectful(&body) {
                     return Some(rcexpr);
                 }
             } else if this.is_effectful(rcexpr) {

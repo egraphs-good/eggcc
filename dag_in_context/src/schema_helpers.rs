@@ -132,6 +132,7 @@ impl Expr {
             Expr::Alloc(..) => Constructor::Alloc,
             Expr::Top(..) => Constructor::Top,
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
+            Expr::DeadCode() => panic!("found dead code"),
         }
     }
     pub fn func_name(&self) -> Option<String> {
@@ -222,6 +223,7 @@ impl Expr {
             Expr::Empty(_, _) => vec![],
             Expr::Arg(_, _) => vec![],
             Expr::Symbolic(_, _ty) => vec![],
+            Expr::DeadCode() => vec![],
         }
     }
 
@@ -251,6 +253,7 @@ impl Expr {
             Expr::DoWhile(inputs, _body) => vec![inputs.clone()],
             Expr::Arg(_, _) => vec![],
             Expr::Symbolic(_, _ty) => vec![],
+            Expr::DeadCode() => vec![],
         }
     }
 
@@ -272,6 +275,7 @@ impl Expr {
             Expr::Arg(ty, _) => ty.clone(),
             Expr::Function(_, ty, _, _) => ty.clone(),
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
+            Expr::DeadCode() => panic!("found dead code"),
         }
     }
 
@@ -371,6 +375,7 @@ impl Expr {
             Expr::Arg(_, ctx) => ctx,
             Expr::Function(_, _, _, x) => x.get_ctx(),
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
+            Expr::DeadCode() => panic!("found dead code"),
         }
     }
 
@@ -506,6 +511,7 @@ impl Expr {
             }
             Expr::Empty(_, _) => Rc::new(Expr::Empty(arg_ty.clone(), arg_ctx.clone())),
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
+            Expr::DeadCode() => panic!("found dead code"),
         };
 
         // Add the substituted to cache

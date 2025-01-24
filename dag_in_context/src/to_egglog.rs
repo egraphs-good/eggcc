@@ -262,6 +262,7 @@ impl Expr {
                 term_dag.app("Function".into(), vec![name_lit, ty_in, ty_out, body])
             }
             Expr::Symbolic(name, _ty) => term_dag.var(name.into()),
+            Expr::DeadCode() => panic!("Dead code should not be converted to egglog"),
         };
 
         term_dag

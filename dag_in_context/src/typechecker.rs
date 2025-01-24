@@ -534,6 +534,7 @@ impl<'a> TypeChecker<'a> {
                     .expect("symbolic expression missing type annotation"),
                 expr.clone(),
             ),
+            Expr::DeadCode() => panic!("Found dead code in typechecker"),
             // should have covered all cases, but rust can't prove it
             // due to the side conditions
             _ => panic!("Unexpected expression {:?}", expr.clone()),
@@ -573,6 +574,7 @@ impl<'a> TypeChecker<'a> {
             Expr::DoWhile(inputs, _) => Self::get_arg_type(inputs),
             Expr::Function(_, inty, _, _) => inty.clone(),
             Expr::Symbolic(_, _ty) => panic!("Found symbolic expr in get_arg_type"),
+            Expr::DeadCode() => panic!("Found dead code in get_arg_type"),
         }
     }
 }

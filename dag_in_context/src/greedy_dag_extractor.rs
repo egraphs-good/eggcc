@@ -774,8 +774,12 @@ impl<'a> Extractor<'a> {
                             if let Some((ty, ctx)) =
                                 self.get_arg_ty_and_ctx(&termdag_tmp, &child_set.term)
                             {
-                                let new_term =
-                                    self.build_concat(&mut termdag_tmp, new_input_children, &ty, &ctx);
+                                let new_term = self.build_concat(
+                                    &mut termdag_tmp,
+                                    new_input_children,
+                                    &ty,
+                                    &ctx,
+                                );
                                 children_terms.push(new_term);
                             } else {
                                 add_to_shared = true;
@@ -949,7 +953,7 @@ pub fn extract(
     should_maintain_linearity: bool,
     extract_debug_exprs: bool,
 ) -> (Cost, TreeProgram) {
-    let (cost, prog) = if extract_debug_exprs {
+    let (cost, mut prog) = if extract_debug_exprs {
         log::info!("Extracting debug expressions.");
         let debug_roots = find_debug_roots(egraph.clone());
         let mut extracted_fns = vec![];
@@ -1001,7 +1005,8 @@ pub fn extract(
         (cost, new_prog)
     };
 
-    (cost, prog.remove_dead_code_nodes())
+    prog.remove_dead_code_nodes();
+    (cost, prog)
 }
 
 /// Extract the function specified by `func` from the egraph.

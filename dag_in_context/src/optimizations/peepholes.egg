@@ -20,3 +20,28 @@
 (rewrite (Bop (Or) e (Const (Bool false) ty ctx)) e :ruleset peepholes)
 (rewrite (Bop (Or) (Const (Bool true) ty ctx) e) (Const (Bool true) ty ctx) :ruleset peepholes)
 (rewrite (Bop (Or) e (Const (Bool true) ty ctx)) (Const (Bool true) ty ctx) :ruleset peepholes)
+
+(rule (
+        (= expr (Bop (Sub) x x))
+        (HasArgType expr ty)
+        (ContextOf expr ctx)
+      )
+      ((union expr (Const (Int 0) ty ctx)))
+      :ruleset peepholes)
+
+; (x - y) + z => x + (z - y)
+(rewrite (Bop (Add) (Bop (Sub) x y) z) (Bop (Add) x (Bop (Sub) z y)) :ruleset peepholes)
+
+; (a + b) - c => a + (b - c)
+(rewrite (Bop (Sub) (Bop (Add) a b) c) (Bop (Add) a (Bop (Sub) b c)) :ruleset peepholes)
+
+; (a * x) + a => a * (x + 1)
+(rule (
+        (= expr (Bop (Add) (Bop (Mul) a x) a))
+        (HasArgType expr ty)
+        (ContextOf expr ctx)
+      )
+      ((union expr (Bop (Mul) a (Bop (Add) x (Const (Int 1) ty ctx)))))
+      :ruleset peepholes)
+
+(rewrite (Top (Select) pred x x) x :ruleset peepholes)

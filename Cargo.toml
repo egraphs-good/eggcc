@@ -36,6 +36,7 @@ ordered-float = "3.7.0"
 serde_json = "1.0.103"
 dot-structures = "0.1.1"
 graphviz-rust = "0.8.0"
+serde = "1.0.217"
 
 dag_in_context = { path = "dag_in_context" }
 

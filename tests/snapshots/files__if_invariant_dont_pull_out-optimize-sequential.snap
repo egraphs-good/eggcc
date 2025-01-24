@@ -1,0 +1,48 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 20
+@unrelated_fn(v0: int, v1: int): int {
+.b2_:
+  c3_: int = const 3;
+  v4_: int = div v1 c3_;
+  v5_: int = div v0 v4_;
+  ret v5_;
+}
+@other_unrelated_fn(v0: int, v1: int): int {
+.b2_:
+  c3_: int = const 5;
+  v4_: int = div v0 c3_;
+  v5_: int = div v1 v4_;
+  ret v5_;
+}
+@main(v0: int) {
+.b1_:
+  c2_: int = const 0;
+  v3_: bool = gt v0 c2_;
+  v4_: int = abs v0;
+  c5_: int = const 2;
+  v6_: int = mul c5_ v4_;
+  c7_: int = const 3;
+  v8_: int = mul c7_ v4_;
+  br v3_ .b9_ .b10_;
+.b9_:
+  v11_: int = sub v8_ v0;
+  c12_: int = const 3;
+  v13_: int = div v11_ c12_;
+  v14_: int = div v0 v13_;
+  v15_: int = id v14_;
+  print v15_;
+  ret;
+  jmp .b16_;
+.b10_:
+  v17_: int = add v0 v8_;
+  c18_: int = const 5;
+  v19_: int = div v0 c18_;
+  v20_: int = div v17_ v19_;
+  v15_: int = id v20_;
+  print v15_;
+  ret;
+.b16_:
+}

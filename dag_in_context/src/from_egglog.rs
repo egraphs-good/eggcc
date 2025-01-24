@@ -201,6 +201,7 @@ impl<'a> FromEgglog<'a> {
     fn uop_from_egglog(&mut self, uop: Term) -> UnaryOp {
         match_term_app!(uop.clone();
         {
+          ("Abs", []) => UnaryOp::Abs,
           ("Not", []) => UnaryOp::Not,
           ("Neg", []) => UnaryOp::Neg,
           _ => panic!("Invalid unary op: {:?}", uop),

@@ -265,6 +265,7 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::Or, [a, b]) => or(a.clone(), b.clone()),
                     (ValueOps::Not, [a]) => not(a.clone()),
                     (ValueOps::Neg, [a]) => neg(a.clone()),
+                    (ValueOps::Abs, [a]) => abs(a.clone()),
 
                     (ValueOps::PtrAdd, [a, b]) => ptradd(a.clone(), b.clone()),
                     (ValueOps::Load, [a, b]) => load(a.clone(), b.clone()),

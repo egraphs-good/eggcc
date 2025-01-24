@@ -3,8 +3,8 @@
 # the results to the nightly-results server. It also generates some HTML
 # to display the equiderivability tests in a nicely-formatted way.
 
-# Takes a single argument- the directory of bril files
-# to test (or a single bril file)
+# Takes no arguments, unless in LOCAL mode
+# see infra/localnightly.sh for an example of how to run this script locally
 
 echo "Beginning eggcc nightly script..."
 
@@ -32,6 +32,7 @@ MYDIR="$(cd -P "$(dirname "$src")" && pwd)"
 TOP_DIR="$MYDIR/.."
 RESOURCE_DIR="$MYDIR/nightly-resources"
 NIGHTLY_DIR="$TOP_DIR/nightly"
+OUTPUT_DIR="$NIGHTLY_DIR/output"
 DATA_DIR="$TOP_DIR/nightly/data"
 
 # Make sure we're in the right place
@@ -40,18 +41,25 @@ echo "Switching to nighly script directory: $MYDIR"
 
 # Clean previous nightly run
 # CAREFUL using -f
-rm -rf $NIGHTLY_DIR
+if [ "$@" != "--update" ]; then
+  rm -rf $NIGHTLY_DIR
+  # Prepare output directories
+  mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$OUTPUT_DIR"
+else
+  echo "updating front end only (output folder) due to --update flag"
+  rm -rf $OUTPUT_DIR
+  mkdir -p "$OUTPUT_DIR"
+fi
 
-# Prepare output directories
-mkdir -p "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$NIGHTLY_DIR/output"
 
 
 pushd $TOP_DIR
 
 # Run profiler.
-
 # locally, run on argument
-if [ "$LOCAL" != "" ]; then
+if [ "$@" == "--update" ]; then
+  echo "skipping profile.py, updating front end"
+elif [ "$LOCAL" != "" ]; then
   ./infra/profile.py "$DATA_DIR" "$@" 2>&1 | tee $NIGHTLY_DIR/log.txt
 else
   export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
@@ -60,34 +68,39 @@ else
   ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee $NIGHTLY_DIR/log.txt
 fi
 
-# generate the jitter plots
-./infra/jitter.py "$NIGHTLY_DIR/output" "$NIGHTLY_DIR/data/profile.json" 2>&1 | tee $NIGHTLY_DIR/log.txt
+# Generate CFGs for LLVM after running the profiler
+if [ "$@" == "--update" ]; then
+  echo "skipping generate_cfgs.py"
+else
+  ./infra/generate_cfgs.py "$DATA_DIR/llvm" 2>&1 | tee $NIGHTLY_DIR/log.txt
+fi
+
+# generate the plots
+# needs to know what the benchmark suites are
+./infra/graphs.py "$OUTPUT_DIR" "$NIGHTLY_DIR/data/profile.json" benchmarks/passing 2>&1 | tee $NIGHTLY_DIR/log.txt
 
 # Generate latex after running the profiler (depends on profile.json)
 ./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt
 
-# Generate CFGs for LLVM after running the profiler
-./infra/generate_cfgs.py "$DATA_DIR/llvm" 2>&1 | tee $NIGHTLY_DIR/log.txt
-
 popd
 
 # Update HTML index page.
-cp "$RESOURCE_DIR"/* "$NIGHTLY_DIR/output"
+cp "$RESOURCE_DIR"/* "$OUTPUT_DIR"
 
 # Copy data directory to the artifact
-cp -r "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/output/data"
+cp -r "$NIGHTLY_DIR/data" "$OUTPUT_DIR/data"
 
 # Copy log
-cp "$NIGHTLY_DIR/log.txt" "$NIGHTLY_DIR/output"
+cp "$NIGHTLY_DIR/log.txt" "$OUTPUT_DIR"
 
 # gzip all JSON in the nightly dir
 if [ "$LOCAL" == "" ]; then
-  gzip "$NIGHTLY_DIR/output/data/profile.json"
+  gzip "$OUTPUT_DIR/data/profile.json"
 fi
 
 
 # This is the uploading part, copied directly from Herbie's nightly script.
-DIR="$NIGHTLY_DIR/output"
+DIR="$OUTPUT_DIR"
 B=$(git rev-parse --abbrev-ref HEAD)
 C=$(git rev-parse HEAD | sed 's/\(..........\).*/\1/')
 RDIR="$(date +%s):$(hostname):$B:$C"

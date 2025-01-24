@@ -94,6 +94,10 @@ pub fn bitand(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Bitand, l, r))
 }
 
+pub fn abs(l: RcExpr) -> RcExpr {
+    RcExpr::new(Expr::Uop(UnaryOp::Abs, l))
+}
+
 pub fn add(l: RcExpr, r: RcExpr) -> RcExpr {
     RcExpr::new(Expr::Bop(BinaryOp::Add, l, r))
 }

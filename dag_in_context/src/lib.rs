@@ -71,6 +71,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/loop_strength_reduction.egg"),
         include_str!("optimizations/ivt.egg"),
         include_str!("optimizations/conditional_invariant_code_motion.egg"),
+        include_str!("optimizations/conditional_push_in.egg"),
         include_str!("utility/debug-helper.egg"),
         &rulesets(),
     ]

@@ -528,13 +528,27 @@ impl<'a> TypeChecker<'a> {
                 }
                 (found_ty.clone(), expr.clone())
             }
+            Expr::DeadCode(found_ty, ty) => {
+                if let Some(arg_tys) = arg_tys {
+                    assert_eq!(
+                        &found_ty,
+                        &arg_tys.get(),
+                        "Expected argument type to be {:?}. Got {:?}",
+                        arg_tys.get(),
+                        found_ty
+                    );
+                }
+                (
+                    ty.clone(),
+                    expr.clone(),
+                )
+            }
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
             Expr::Symbolic(_, ty) => (
                 ty.clone()
                     .expect("symbolic expression missing type annotation"),
                 expr.clone(),
             ),
-            Expr::DeadCode() => panic!("Found dead code in typechecker"),
             // should have covered all cases, but rust can't prove it
             // due to the side conditions
             _ => panic!("Unexpected expression {:?}", expr.clone()),
@@ -559,6 +573,7 @@ impl<'a> TypeChecker<'a> {
     pub(crate) fn get_arg_type(expr: &RcExpr) -> Type {
         match expr.as_ref() {
             Expr::Arg(ty, _) => ty.clone(),
+            Expr::DeadCode(ty, _) => ty.clone(),
             Expr::Const(_, ty, _) => ty.clone(),
             Expr::Top(_, rc, _, _) => Self::get_arg_type(rc),
             Expr::Bop(_, left, _) => Self::get_arg_type(left),
@@ -574,7 +589,6 @@ impl<'a> TypeChecker<'a> {
             Expr::DoWhile(inputs, _) => Self::get_arg_type(inputs),
             Expr::Function(_, inty, _, _) => inty.clone(),
             Expr::Symbolic(_, _ty) => panic!("Found symbolic expr in get_arg_type"),
-            Expr::DeadCode() => panic!("Found dead code in get_arg_type"),
         }
     }
 }

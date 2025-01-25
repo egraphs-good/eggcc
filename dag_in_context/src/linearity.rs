@@ -32,7 +32,7 @@ impl<'a> Extractor<'a> {
         egraph_info: &EgraphInfo,
     ) -> IndexMap<ClassId, IndexSet<NodeId>> {
         let mut expr_to_term = IndexMap::new();
-        for (term, expr) in self.term_to_expr.as_ref().unwrap() {
+        for (term, expr) in &self.term_to_expr {
             expr_to_term.insert(Rc::as_ptr(expr), term.clone());
         }
         let n2c = egraph_info
@@ -188,7 +188,7 @@ impl<'a> Extractor<'a> {
             }
             Expr::Const(_, _, _) => panic!("Const has no effect"),
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
-            Expr::DeadCode() => panic!("found dead code"),
+            Expr::DeadCode(_arg_ty, _ty) => panic!("found dead code"),
         }
     }
 

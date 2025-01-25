@@ -239,9 +239,11 @@ impl<'a> Extractor<'a> {
                     let children = expr.children_same_scope();
                     let mut effectful_child_iter =
                         children.iter().filter(|child| self.is_effectful(child));
-                    let effectful_child = effectful_child_iter
-                        .next()
-                        .expect("Expect one effectful child from an effectful operator");
+                    let Some(effectful_child) = effectful_child_iter.next() else {
+                        return Err(
+                                format!("Resulting program violated linearity! Effectful node without effectful child. Usually, this means that the state edge wasn't consumed and we generated a dead code node. {:?}", expr),
+                            );
+                    };
                     assert!(effectful_child_iter.next().is_none());
                     if !dangling_effectful.remove(&Rc::as_ptr(effectful_child)) {
                         return Err(

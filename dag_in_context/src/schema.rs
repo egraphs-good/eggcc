@@ -126,7 +126,8 @@ pub enum Expr {
     Function(String, Type, Type, RcExpr),
     // deadcode can be produced by the extractor
     // it is removed by the deadcode pass, which is run right at the end of extraction
-    DeadCode(),
+    // the first type is the argument type, the second is the type of the dead code
+    DeadCode(Type, Type),
     // optionally, the type of this symbol for typechecking
     Symbolic(String, Option<Type>),
 }

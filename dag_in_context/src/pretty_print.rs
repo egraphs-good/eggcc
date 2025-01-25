@@ -537,7 +537,7 @@ impl Assumption {
 impl BaseType {
     pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
         let mut state = TreeToEgglog::new();
-        let term = self.to_egglog_internal(&mut state);
+        let term = self.to_egglog_internal(&mut state.termdag);
         (term, state.termdag)
     }
 

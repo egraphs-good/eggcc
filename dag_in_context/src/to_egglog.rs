@@ -67,7 +67,7 @@ impl Constant {
 }
 
 impl BaseType {
-    pub(crate) fn to_egglog_internal(&self, state: &mut TreeToEgglog) -> Term {
+    pub(crate) fn to_egglog_internal(&self, state: &mut TermDag) -> Term {
         match self {
             BaseType::IntT => state.app("IntT".into(), vec![]),
             BaseType::FloatT => state.app("FloatT".into(), vec![]),
@@ -91,13 +91,13 @@ impl Type {
     pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
         match self {
             Type::Base(base) => {
-                let baset = base.to_egglog_internal(term_dag);
+                let baset = base.to_egglog_internal(&mut term_dag.termdag);
                 term_dag.app("Base".into(), vec![baset])
             }
             Type::TupleT(types) => {
                 let types = types
                     .iter()
-                    .map(|t| t.to_egglog_internal(term_dag))
+                    .map(|t| t.to_egglog_internal(&mut term_dag.termdag))
                     .collect();
                 let tlist = to_tlistexpr(types, term_dag);
                 term_dag.app("TupleT".into(), vec![tlist])
@@ -207,7 +207,7 @@ impl Expr {
             Expr::Alloc(id, expr, state, ty) => {
                 let id = term_dag.lit(Literal::Int(*id));
                 let expr = expr.to_egglog_with(term_dag);
-                let ty = ty.to_egglog_internal(term_dag);
+                let ty = ty.to_egglog_internal(&mut term_dag.termdag);
                 let state = state.to_egglog_with(term_dag);
                 term_dag.app("Alloc".into(), vec![id, expr, state, ty])
             }

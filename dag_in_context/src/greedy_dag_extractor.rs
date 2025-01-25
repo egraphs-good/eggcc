@@ -16,7 +16,6 @@ use crate::{
     from_egglog::FromEgglog,
     schema::{Expr, RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
-    to_egglog::TreeToEgglog,
     typechecker::TypeChecker,
 };
 
@@ -53,8 +52,9 @@ pub(crate) struct Extractor<'a> {
     // use to get the type of an expression
     pub(crate) typechecker: TypeChecker<'a>,
 
-    // Each term must correspond to a node in the egraph. We store that here
-    // Use an indexmap for deterministic order of iteration
+    // Each term must correspond to a node in the egraph.
+    // This allows us to recover the node from the term for banning nodes outside
+    // the stateful path.
     pub(crate) correspondence: IndexMap<Term, NodeId>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
@@ -330,9 +330,9 @@ impl<'a> Extractor<'a> {
             let dummy = self
                 .termdag
                 .lit(Literal::String(format!("dummy_{class_id}").into()));
-            Self::add_correspondence(&mut self.correspondence, dummy.clone(), node_id.clone());
+            self.add_correspondence(dummy.clone(), node_id.clone());
             let term = self.termdag.app("InFunc".into(), vec![dummy]);
-            Self::add_correspondence(&mut self.correspondence, term.clone(), node_id.clone());
+            self.add_correspondence(term.clone(), node_id.clone());
             let costset = CostSet {
                 costs: Default::default(),
                 total: 0.0.try_into().unwrap(),
@@ -441,17 +441,13 @@ impl<'a> Extractor<'a> {
             self.termdag.app(op.into(), children)
         };
 
-        Self::add_correspondence(&mut self.correspondence, term.clone(), node_id.clone());
+        self.add_correspondence(term.clone(), node_id.clone());
 
         term
     }
 
-    fn add_correspondence(
-        correspondence: &mut IndexMap<Term, NodeId>,
-        term: Term,
-        node_id: NodeId,
-    ) {
-        if let Some(existing) = correspondence.insert(term.clone(), node_id.clone()) {
+    fn add_correspondence(&mut self, term: Term, node_id: NodeId) {
+        if let Some(existing) = self.correspondence.insert(term.clone(), node_id.clone()) {
             assert_eq!(existing, node_id, "Congruence invariant violated! Found two different nodes for the same term. Perhaps we used delete in egglog, which could cause this problem.");
         }
     }
@@ -469,49 +465,57 @@ impl<'a> Extractor<'a> {
     /// This function would be called with `Neg(b)` as `term`, and would return `Neg(a)` as the new term.
     /// This restores the invariant that we only extract one term per eclass.
     fn add_term_to_cost_set(
-        &self,
+        &mut self,
         info: &EgraphInfo,
-        correspondence: &mut IndexMap<Term, NodeId>,
-        termdag: &mut TermDag,
         current_costs: &mut HashTrieMap<ClassId, (Term, Cost)>,
         term: Term,
         other_costs: &HashTrieMap<ClassId, (Term, Cost)>,
     ) -> (Term, Cost) {
-        let nodeid = &self.term_node(&term);
-        let eclass = info.egraph.nid_to_cid(nodeid);
-        if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
-            (existing_term.clone(), NotNan::new(0.).unwrap())
-        } else {
-            let unshared_cost = match other_costs.get(eclass) {
-                Some((_, cost)) => *cost,
-                None => NotNan::new(0.).unwrap(),
-            };
-            let mut cost = unshared_cost;
-            let new_term = match term {
-                Term::App(head, children) => {
-                    let mut new_children = vec![];
-                    for child in children {
-                        let child = termdag.get(child);
-                        let (new_child, child_cost) = self.add_term_to_cost_set(
-                            info,
-                            correspondence,
-                            termdag,
-                            current_costs,
-                            child.clone(),
-                            other_costs,
-                        );
-                        new_children.push(new_child);
-                        cost += child_cost;
-                    }
-                    termdag.app(head, new_children)
+        match &term {
+            Term::Lit(_) => {
+                // literals are always unique
+                return (term, NotNan::new(0.).unwrap());
+            }
+            Term::App(head, children) => {
+                if is_type_operator(&head.to_string()) {
+                    // types are not unioned, so they should be unique
+                    return (term, NotNan::new(0.).unwrap());
                 }
-                _ => term,
-            };
-            Self::add_correspondence(correspondence, new_term.clone(), nodeid.clone());
-            *current_costs =
-                current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
+                let nodeid = &self.term_node(&term);
+                let eclass = info.egraph.nid_to_cid(nodeid);
+                if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
+                    (existing_term.clone(), NotNan::new(0.).unwrap())
+                } else {
+                    let unshared_cost = match other_costs.get(eclass) {
+                        Some((_, cost)) => *cost,
+                        None => NotNan::new(0.).unwrap(),
+                    };
+                    let mut cost = unshared_cost;
+                    let new_term = {
+                        let mut new_children = vec![];
+                        for child in children {
+                            let child = self.termdag.get(*child);
+                            let (new_child, child_cost) = self.add_term_to_cost_set(
+                                info,
+                                current_costs,
+                                child.clone(),
+                                other_costs,
+                            );
+                            new_children.push(new_child);
+                            cost += child_cost;
+                        }
+                        self.termdag.app(*head, new_children)
+                    };
+                    self.add_correspondence(new_term.clone(), nodeid.clone());
+                    *current_costs =
+                        current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
 
-            (new_term, cost)
+                    (new_term, cost)
+                }
+            }
+            Term::Var(_) => {
+                panic!("Found variable in term during extraction");
+            }
         }
     }
 
@@ -551,21 +555,21 @@ impl<'a> Extractor<'a> {
         }
     }
 
-    fn try_break_up_term(&self, termdag: &TermDag, term: &Term) -> Option<Vec<Term>> {
+    fn try_break_up_term(&self, term: &Term) -> Option<Vec<Term>> {
         match term {
             Term::App(head, children) => {
                 if head.to_string() == "Concat" {
-                    let child_terms = children.iter().map(|child| termdag.get(*child));
+                    let child_terms = children.iter().map(|child| self.termdag.get(*child));
                     let mut child_broken_up = vec![];
                     for child_term in child_terms {
-                        let broken_up = self.try_break_up_term(termdag, child_term)?;
+                        let broken_up = self.try_break_up_term(child_term)?;
                         child_broken_up.extend(broken_up);
                     }
                     Some(child_broken_up)
                 } else if head.to_string() == "Empty" {
                     Some(vec![])
                 } else if head.to_string() == "Single" {
-                    Some(vec![termdag.get(children[0]).clone()])
+                    Some(vec![self.termdag.get(children[0]).clone()])
                 } else {
                     return None;
                 }
@@ -576,20 +580,20 @@ impl<'a> Extractor<'a> {
     }
 
     /// Get terms for the ty and ctx of a term
-    fn get_arg_ty_and_ctx(&self, termdag: &TermDag, term: &Term) -> Option<(Term, Term)> {
+    fn get_arg_ty_and_ctx(&self, term: &Term) -> Option<(Term, Term)> {
         match &term {
             Term::App(head, children) => {
                 if head.to_string() == "Arg" {
-                    let arg_ty = termdag.get(children[0]).clone();
-                    let ctx = termdag.get(children[1]).clone();
+                    let arg_ty = self.termdag.get(children[0]).clone();
+                    let ctx = self.termdag.get(children[1]).clone();
                     Some((arg_ty, ctx))
                 } else if head.to_string() == "Const" {
-                    let arg_ty = termdag.get(children[1]).clone();
-                    let ctx = termdag.get(children[2]).clone();
+                    let arg_ty = self.termdag.get(children[1]).clone();
+                    let ctx = self.termdag.get(children[2]).clone();
                     Some((arg_ty, ctx))
                 } else {
                     for child in children {
-                        if let Some(res) = self.get_arg_ty_and_ctx(termdag, termdag.get(*child)) {
+                        if let Some(res) = self.get_arg_ty_and_ctx(self.termdag.get(*child)) {
                             return Some(res);
                         }
                     }
@@ -602,40 +606,36 @@ impl<'a> Extractor<'a> {
 
     /// Given a term, returns what indices of the argument are used in the term
     /// Returns None if the type is not a tuple or arg is used directly
-    fn get_arg_indices_used(
-        &self,
-        termdag: &TermDag,
-        term: Term,
-        used: &mut HashSet<usize>,
-    ) -> Option<()> {
+    fn get_arg_indices_used(&self, term: Term, used: &mut HashSet<usize>) -> Option<()> {
         match &term {
             Term::App(head, children) => {
                 if head.to_string() == "Arg" {
                     None
                 } else if head.to_string() == "Get" {
                     // check if we are getting an arg
-                    let child = termdag.get(children[0]).clone();
+                    let child = self.termdag.get(children[0]).clone();
                     match &child {
                         Term::App(head, _arg_children) => {
                             if head.to_string() == "Arg" {
                                 // now we only care about the index
-                                let Term::Lit(Literal::Int(lit)) = termdag.get(children[1]) else {
+                                let Term::Lit(Literal::Int(lit)) = self.termdag.get(children[1])
+                                else {
                                     panic!(
                                         "Expected literal in Get index, got {:?}",
-                                        termdag.get(children[1])
+                                        self.termdag.get(children[1])
                                     );
                                 };
                                 used.insert(*lit as usize);
                                 Some(())
                             } else {
-                                self.get_arg_indices_used(termdag, child, used)
+                                self.get_arg_indices_used(child, used)
                             }
                         }
-                        _ => self.get_arg_indices_used(termdag, child, used),
+                        _ => self.get_arg_indices_used(child, used),
                     }
                 } else {
                     for child in children {
-                        self.get_arg_indices_used(termdag, termdag.get(*child).clone(), used)?;
+                        self.get_arg_indices_used(self.termdag.get(*child).clone(), used)?;
                     }
                     Some(())
                 }
@@ -645,23 +645,49 @@ impl<'a> Extractor<'a> {
         }
     }
 
-    /// build a concat term from a list of terms
-    fn build_concat(
-        &self,
-        termdag: &mut TermDag,
-        children: Vec<Term>,
-        ty: &Term,
-        ctx: &Term,
-    ) -> Term {
-        if children.is_empty() {
-            termdag.app("Empty".into(), vec![ty.clone(), ctx.clone()])
-        } else {
-            let mut in_progress = termdag.app("Empty".into(), vec![ty.clone(), ctx.clone()]);
-            for child in children.into_iter() {
-                let single = termdag.app("Single".into(), vec![child]);
-                in_progress = termdag.app("Concat".into(), vec![in_progress, single]);
-            }
-            in_progress
+    /// Replaces the leafs of the model_term with children
+    /// Also adds to the `correspondence` map based on the model term.
+    fn build_concat(&mut self, model_term: Term, children: &Vec<Term>) -> (Term, usize) {
+        let existing_node = self
+            .correspondence
+            .get(&model_term)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Failed to find correspondence for term {:?} in build_concat",
+                    model_term
+                )
+            })
+            .clone();
+        match model_term.clone() {
+            Term::Lit(literal) => panic!("Unexpected literal in model term: {:?}", literal),
+            Term::Var(op) => panic!("Unexpected variable in model term: {:?}", op),
+            Term::App(op, vec) => match (op.as_str(), vec.as_slice()) {
+                ("Concat", [left, right]) => {
+                    let (left_term, left_size) =
+                        self.build_concat(self.termdag.get(*left).clone(), children);
+                    assert!(left_size < children.len());
+                    let new_children = children.split_at(left_size).1.to_vec();
+                    let (right_term, right_size) =
+                        self.build_concat(self.termdag.get(*right).clone(), &new_children);
+                    assert!(right_size <= new_children.len());
+                    let new_term = self
+                        .termdag
+                        .app("Concat".into(), vec![left_term, right_term]);
+
+                    self.correspondence
+                        .insert(new_term.clone(), existing_node.clone());
+
+                    (new_term, left_size + right_size)
+                }
+                ("Single", [_single]) => {
+                    let new_term = self.termdag.app("Single".into(), vec![children[0].clone()]);
+                    self.correspondence
+                        .insert(new_term.clone(), existing_node.clone());
+                    (new_term, 1)
+                }
+                ("Empty", []) => (model_term.clone(), 0),
+                _ => panic!("Unexpected app in model term: {:?}", op),
+            },
         }
     }
 
@@ -696,9 +722,14 @@ impl<'a> Extractor<'a> {
             })
             .collect::<Vec<_>>();
 
+        // we need to borrow cost sets, so swap them out
+        // we mutate self for typechecking and termdag throughout this code
+        let mut cost_sets_tmp = Default::default();
+        std::mem::swap(&mut self.costsets, &mut cost_sets_tmp);
+
         let child_cost_sets = child_cost_set_indecies
             .iter()
-            .map(|idx| &self.costsets[*idx])
+            .map(|idx| &cost_sets_tmp[*idx])
             .zip(enode_children)
             .collect::<Vec<_>>();
         // cycle detection
@@ -726,11 +757,6 @@ impl<'a> Extractor<'a> {
         let mut costs: HashTrieMap<ClassId, (Term, Cost)> = Default::default();
 
         let mut children_terms = vec![];
-        let mut termdag_tmp = TermDag::default();
-        let mut new_correspondence = IndexMap::default();
-        // swap out the termdag and correspondance for the temporary one
-        // necessary because we have already borrowed the costsets of self, so self can't be borrowed mutably
-        std::mem::swap(self.termdag, &mut termdag_tmp);
 
         if !info.cm.ignore_children(&node.op) {
             for ((child_set, enode_child), child_type) in child_cost_sets.iter().zip(child_types) {
@@ -743,11 +769,9 @@ impl<'a> Extractor<'a> {
                     let mut used_children = HashSet::new();
                     for (child_set, enode_child) in child_cost_sets.iter() {
                         if enode_child.is_subregion {
-                            if let Some(()) = self.get_arg_indices_used(
-                                &termdag_tmp,
-                                child_set.term.clone(),
-                                &mut used_children,
-                            ) {
+                            if let Some(()) = self
+                                .get_arg_indices_used(child_set.term.clone(), &mut used_children)
+                            {
                                 // keep going
                             } else {
                                 add_to_shared = true;
@@ -757,48 +781,45 @@ impl<'a> Extractor<'a> {
 
                     if !add_to_shared {
                         // now that we have which children are used, try to break up the inputs
-                        if let (Some(broken_up_terms), Some((ty, ctx))) = (
-                            self.try_break_up_term(&termdag_tmp, &child_set.term),
-                            self.get_arg_ty_and_ctx(&termdag_tmp, &child_set.term),
+                        if let (Some(broken_up_terms), Some((ty, _ctx))) = (
+                            self.try_break_up_term(&child_set.term),
+                            self.get_arg_ty_and_ctx(&&child_set.term),
                         ) {
                             let Some(Type::TupleT(child_types)) = child_type else {
                                 panic!("Expected tuple type for inputs, got {:?}", child_type);
                             };
 
                             let mut new_input_children = vec![];
-                            for (idx, (new_term, input_child_ty)) in
+                            for (idx, (input_tuple_term, input_child_ty)) in
                                 broken_up_terms.iter().zip(child_types).enumerate()
                             {
                                 if used_children.contains(&idx) {
                                     let (child_term, net_cost) = self.add_term_to_cost_set(
                                         info,
-                                        &mut new_correspondence,
-                                        &mut termdag_tmp,
                                         &mut costs,
-                                        new_term.clone(),
+                                        input_tuple_term.clone(),
                                         &child_set.costs,
                                     );
                                     shared_total += net_cost;
                                     new_input_children.push(child_term);
                                 } else {
-                                    let mut tree_to_egglog = TreeToEgglog {
-                                        termdag: termdag_tmp,
-                                        converted_cache: Default::default(),
-                                    };
                                     let term_ty_base =
-                                        input_child_ty.to_egglog_internal(&mut tree_to_egglog);
-                                    termdag_tmp = tree_to_egglog.termdag;
+                                        input_child_ty.to_egglog_internal(&mut self.termdag);
                                     let term_ty =
-                                        termdag_tmp.app("Base".into(), vec![term_ty_base]);
+                                        self.termdag.app("Base".into(), vec![term_ty_base]);
 
-                                    new_input_children.push(
-                                        termdag_tmp
-                                            .app("DeadCode".into(), vec![ty.clone(), term_ty]),
-                                    );
+                                    let deadcode_term = self
+                                        .termdag
+                                        .app("DeadCode".into(), vec![ty.clone(), term_ty]);
+                                    new_input_children.push(deadcode_term.clone());
+                                    let old_term_node =
+                                        self.correspondence.get(input_tuple_term).unwrap();
+                                    self.add_correspondence(deadcode_term, old_term_node.clone());
                                 }
                             }
-                            let new_term =
-                                self.build_concat(&mut termdag_tmp, new_input_children, &ty, &ctx);
+                            let (new_term, children_used) =
+                                self.build_concat(child_set.term.clone(), &new_input_children);
+                            assert_eq!(children_used, new_input_children.len());
                             children_terms.push(new_term);
                         } else {
                             add_to_shared = true;
@@ -811,8 +832,6 @@ impl<'a> Extractor<'a> {
                 if add_to_shared {
                     let (child_term, net_cost) = self.add_term_to_cost_set(
                         info,
-                        &mut new_correspondence,
-                        &mut termdag_tmp,
                         &mut costs,
                         child_set.term.clone(),
                         &child_set.costs,
@@ -831,14 +850,6 @@ impl<'a> Extractor<'a> {
             unshared_total += self.subregions_cost(info, nodeid.clone(), css);
         }
 
-        // swap back the termdag and correspondance
-        std::mem::swap(self.termdag, &mut termdag_tmp);
-
-        // add the new correspondence to the main correspondence
-        for (term, nodeid) in new_correspondence {
-            Self::add_correspondence(&mut self.correspondence, term, nodeid);
-        }
-
         let term = self.get_term(info, nodeid.clone(), children_terms);
 
         // no need to add something that costs 0 to the set
@@ -846,6 +857,8 @@ impl<'a> Extractor<'a> {
             costs = costs.insert(cid.clone(), (term.clone(), unshared_total));
         }
         let total = unshared_total + shared_total;
+
+        std::mem::swap(&mut self.costsets, &mut cost_sets_tmp);
 
         self.costsets.push(CostSet { total, costs, term });
         let index = self.costsets.len() - 1;
@@ -1307,6 +1320,16 @@ impl EnodeChild {
     }
 }
 
+fn is_type_operator(op: &str) -> bool {
+    op == "TupleT"
+        || op == "Base"
+        || op == "IntT"
+        || op == "BoolT"
+        || op == "FloatT"
+        || op == "PointerT"
+        || op == "StateT"
+}
+
 /// For a given enode, returns a vector of children eclasses.
 /// Also, for each child returns if the child is a region root.
 fn enode_children(
@@ -1750,7 +1773,7 @@ fn test_linearity_check_2() {
     ),);
     dag_extraction_linearity_check(
         &bad_program_2,
-        "Resulting program violated linearity! There are unconsumed effectful operators.",
+        "Resulting program violated linearity! Effectful node without effectful child.",
     );
 }
 

@@ -16,6 +16,7 @@ use crate::{
     from_egglog::FromEgglog,
     schema::{Expr, RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
+    to_egglog::TreeToEgglog,
     typechecker::TypeChecker,
 };
 
@@ -57,7 +58,7 @@ pub(crate) struct Extractor<'a> {
     pub(crate) correspondence: IndexMap<Term, NodeId>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
-    pub(crate) term_to_expr: Option<IndexMap<Term, RcExpr>>,
+    pub(crate) term_to_expr: IndexMap<Term, RcExpr>,
     pub(crate) eclass_type: Option<IndexMap<ClassId, Type>>,
 }
 
@@ -245,16 +246,18 @@ impl<'a> EgraphInfo<'a> {
 
 impl<'a> Extractor<'a> {
     pub(crate) fn term_to_expr(&mut self, term: &Term) -> RcExpr {
-        self.term_to_expr
-            .as_ref()
-            .unwrap()
-            .get(term)
-            .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term))
-            .clone()
+        let mut converter = FromEgglog {
+            termdag: self.termdag,
+            conversion_cache: Default::default(),
+        };
+        std::mem::swap(&mut self.term_to_expr, &mut converter.conversion_cache);
+        let converted_prog = converter.expr_from_egglog(term.clone());
+
+        self.term_to_expr = converter.conversion_cache;
+        converted_prog
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn term_to_type(&mut self, term: &Term) -> Type {
+    pub(crate) fn typecheck_term(&mut self, term: &Term) -> Type {
         let expr = self.term_to_expr(term);
         self.typechecker.add_arg_types_to_expr(expr, &None).0
     }
@@ -280,35 +283,26 @@ impl<'a> Extractor<'a> {
 
     /// Convert the extracted terms to expressions, and also
     /// store their types.
-    fn convert_term_to_expr(&mut self, info: &EgraphInfo, prog: Term) -> RcExpr {
-        let mut converter = FromEgglog {
-            termdag: self.termdag,
-            conversion_cache: Default::default(),
-        };
+    fn compute_eclass_types(&mut self, info: &EgraphInfo, prog: Term) -> RcExpr {
+        let res = self.term_to_expr(&prog);
+
         let mut node_to_type: IndexMap<ClassId, Type> = Default::default();
 
-        for (term, node_id) in &self.correspondence {
+        for (term, node_id) in &self.correspondence.clone() {
             let node = info.egraph.nodes.get(node_id).unwrap();
             let eclass = info.egraph.nid_to_cid(node_id);
             let sort_of_eclass = info.get_sort_of_eclass(eclass);
             // only convert expressions (that are not functions)
             if sort_of_eclass == "Expr" && node.op != "Function" {
-                let expr = converter.expr_from_egglog(term.clone());
-                let ty = self
-                    .typechecker
-                    .add_arg_types_to_expr(expr.clone(), &None)
-                    .0;
+                let ty = self.typecheck_term(term);
                 node_to_type.insert(eclass.clone(), ty);
             }
         }
 
-        let converted_prog = converter.expr_from_egglog(prog);
-
         self.eclass_type = Some(node_to_type);
-        self.term_to_expr = Some(converter.conversion_cache);
 
         // return the converted program
-        converted_prog
+        res
     }
 
     pub(crate) fn term_node(&self, term: &Term) -> NodeId {
@@ -477,7 +471,7 @@ impl<'a> Extractor<'a> {
     fn add_term_to_cost_set(
         &self,
         info: &EgraphInfo,
-        correspondance: &mut IndexMap<Term, NodeId>,
+        correspondence: &mut IndexMap<Term, NodeId>,
         termdag: &mut TermDag,
         current_costs: &mut HashTrieMap<ClassId, (Term, Cost)>,
         term: Term,
@@ -500,7 +494,7 @@ impl<'a> Extractor<'a> {
                         let child = termdag.get(child);
                         let (new_child, child_cost) = self.add_term_to_cost_set(
                             info,
-                            correspondance,
+                            correspondence,
                             termdag,
                             current_costs,
                             child.clone(),
@@ -513,7 +507,7 @@ impl<'a> Extractor<'a> {
                 }
                 _ => term,
             };
-            Self::add_correspondence(correspondance, new_term.clone(), nodeid.clone());
+            Self::add_correspondence(correspondence, new_term.clone(), nodeid.clone());
             *current_costs =
                 current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
 
@@ -689,10 +683,23 @@ impl<'a> Extractor<'a> {
         let cid = info.egraph.nid_to_cid(&nodeid);
         let node = &info.egraph[&nodeid];
 
+        let enode_children = enode_children(info.egraph, node);
+        let child_types = child_cost_set_indecies
+            .iter()
+            .zip(enode_children.iter())
+            .map(|(idx, child)| {
+                if child.is_inputs {
+                    Some(self.typecheck_term(&self.costsets[*idx].term.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
         let child_cost_sets = child_cost_set_indecies
             .iter()
             .map(|idx| &self.costsets[*idx])
-            .zip(enode_children(info.egraph, node))
+            .zip(enode_children)
             .collect::<Vec<_>>();
         // cycle detection
         if child_cost_sets
@@ -726,7 +733,7 @@ impl<'a> Extractor<'a> {
         std::mem::swap(self.termdag, &mut termdag_tmp);
 
         if !info.cm.ignore_children(&node.op) {
-            for (child_set, enode_child) in child_cost_sets.iter() {
+            for ((child_set, enode_child), child_type) in child_cost_sets.iter().zip(child_types) {
                 let mut add_to_shared = false;
                 if enode_child.is_subregion {
                     children_terms.push(child_set.term.clone());
@@ -750,11 +757,18 @@ impl<'a> Extractor<'a> {
 
                     if !add_to_shared {
                         // now that we have which children are used, try to break up the inputs
-                        if let Some(broken_up_terms) =
-                            self.try_break_up_term(&termdag_tmp, &child_set.term)
-                        {
+                        if let (Some(broken_up_terms), Some((ty, ctx))) = (
+                            self.try_break_up_term(&termdag_tmp, &child_set.term),
+                            self.get_arg_ty_and_ctx(&termdag_tmp, &child_set.term),
+                        ) {
+                            let Some(Type::TupleT(child_types)) = child_type else {
+                                panic!("Expected tuple type for inputs, got {:?}", child_type);
+                            };
+
                             let mut new_input_children = vec![];
-                            for (idx, new_term) in broken_up_terms.iter().enumerate() {
+                            for (idx, (new_term, input_child_ty)) in
+                                broken_up_terms.iter().zip(child_types).enumerate()
+                            {
                                 if used_children.contains(&idx) {
                                     let (child_term, net_cost) = self.add_term_to_cost_set(
                                         info,
@@ -767,23 +781,25 @@ impl<'a> Extractor<'a> {
                                     shared_total += net_cost;
                                     new_input_children.push(child_term);
                                 } else {
-                                    new_input_children
-                                        .push(termdag_tmp.app("DeadCode".into(), vec![]));
+                                    let mut tree_to_egglog = TreeToEgglog {
+                                        termdag: termdag_tmp,
+                                        converted_cache: Default::default(),
+                                    };
+                                    let term_ty_base =
+                                        input_child_ty.to_egglog_internal(&mut tree_to_egglog);
+                                    termdag_tmp = tree_to_egglog.termdag;
+                                    let term_ty =
+                                        termdag_tmp.app("Base".into(), vec![term_ty_base]);
+
+                                    new_input_children.push(
+                                        termdag_tmp
+                                            .app("DeadCode".into(), vec![ty.clone(), term_ty]),
+                                    );
                                 }
                             }
-                            if let Some((ty, ctx)) =
-                                self.get_arg_ty_and_ctx(&termdag_tmp, &child_set.term)
-                            {
-                                let new_term = self.build_concat(
-                                    &mut termdag_tmp,
-                                    new_input_children,
-                                    &ty,
-                                    &ctx,
-                                );
-                                children_terms.push(new_term);
-                            } else {
-                                add_to_shared = true;
-                            }
+                            let new_term =
+                                self.build_concat(&mut termdag_tmp, new_input_children, &ty, &ctx);
+                            children_terms.push(new_term);
                         } else {
                             add_to_shared = true;
                         }
@@ -1118,8 +1134,8 @@ pub fn extract_with_paths(
         });
     let root_costset = extractor.costsets[root_costset_index].clone();
 
-    // now run translation to expressions
-    let resulting_prog = extractor.convert_term_to_expr(info, root_costset.term.clone());
+    // now run translation to expressions and compute eclass types
+    let resulting_prog = extractor.compute_eclass_types(info, root_costset.term.clone());
 
     let root_cost = root_costset.total;
     if root_cost.is_infinite() {

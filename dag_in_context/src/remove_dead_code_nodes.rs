@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     rc::Rc,
 };
 
@@ -77,7 +77,7 @@ fn partition_inputs(
     let mut new_dead_indicies = vec![];
     for input in inputs {
         match input.as_ref() {
-            Expr::DeadCode() => {
+            Expr::DeadCode(_arg_ty, _ty) => {
                 new_dead_indicies.push(new_inputs.len());
             }
             _ => {
@@ -194,10 +194,10 @@ fn remove_dead_code_expr(
                 ))
             }
         }
-        Expr::DeadCode() => {
+        Expr::DeadCode(_arg_ty, _ty) => {
             panic!("Reached dead code without being in inputs of control flow node");
         }
-        Expr::Function(_, _, _, expr) => panic!("Found function inside of function"),
+        Expr::Function(_, _, _, _expr) => panic!("Found function inside of function"),
         _ => {
             expr.map_expr_children(|expr| remove_dead_code_expr(expr.clone(), memo, dead_indicies))
         }

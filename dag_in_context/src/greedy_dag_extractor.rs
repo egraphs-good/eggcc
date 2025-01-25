@@ -697,12 +697,12 @@ impl<'a> Extractor<'a> {
     fn calculate_cost_set(
         &mut self,
         nodeid: NodeId,
-        child_cost_set_indecies: Vec<CostSetIndex>,
+        child_cost_set_indicies: Vec<CostSetIndex>,
         info: &EgraphInfo,
     ) -> Option<CostSetIndex> {
         if let Some(&idx) = self
             .costsetmemo
-            .get(&(nodeid.clone(), child_cost_set_indecies.clone()))
+            .get(&(nodeid.clone(), child_cost_set_indicies.clone()))
         {
             return Some(idx);
         }
@@ -710,7 +710,7 @@ impl<'a> Extractor<'a> {
         let node = &info.egraph[&nodeid];
 
         let enode_children = enode_children(info.egraph, node);
-        let child_types = child_cost_set_indecies
+        let child_types = child_cost_set_indicies
             .iter()
             .zip(enode_children.iter())
             .map(|(idx, child)| {
@@ -727,7 +727,7 @@ impl<'a> Extractor<'a> {
         let mut cost_sets_tmp = Default::default();
         std::mem::swap(&mut self.costsets, &mut cost_sets_tmp);
 
-        let child_cost_sets = child_cost_set_indecies
+        let child_cost_sets = child_cost_set_indicies
             .iter()
             .map(|idx| &cost_sets_tmp[*idx])
             .zip(enode_children)
@@ -863,7 +863,7 @@ impl<'a> Extractor<'a> {
         self.costsets.push(CostSet { total, costs, term });
         let index = self.costsets.len() - 1;
         self.costsetmemo
-            .insert((nodeid, child_cost_set_indecies), index);
+            .insert((nodeid, child_cost_set_indicies), index);
 
         Some(index)
     }

@@ -4,45 +4,42 @@ expression: visualization.result
 ---
 # ARGS: 20
 @unrelated_fn(v0: int, v1: int): int {
-.b2_:
-  c3_: int = const 3;
-  v4_: int = div v1 c3_;
-  v5_: int = div v0 v4_;
-  ret v5_;
+  c2_: int = const 3;
+  v3_: int = div v1 c2_;
+  v4_: int = div v0 v3_;
+  ret v4_;
 }
 @other_unrelated_fn(v0: int, v1: int): int {
-.b2_:
-  c3_: int = const 5;
-  v4_: int = div v0 c3_;
-  v5_: int = div v1 v4_;
-  ret v5_;
+  c2_: int = const 5;
+  v3_: int = div v0 c2_;
+  v4_: int = div v1 v3_;
+  ret v4_;
 }
 @main(v0: int) {
-.b1_:
-  c2_: int = const 0;
-  v3_: bool = gt v0 c2_;
-  v4_: int = abs v0;
-  c5_: int = const 2;
-  v6_: int = mul c5_ v4_;
-  c7_: int = const 3;
-  v8_: int = mul c7_ v4_;
-  br v3_ .b9_ .b10_;
+  c1_: int = const 0;
+  v2_: bool = gt v0 c1_;
+  v3_: int = abs v0;
+  c4_: int = const 2;
+  v5_: int = mul c4_ v3_;
+  c6_: int = const 3;
+  v7_: int = mul c6_ v3_;
+  br v2_ .b8_ .b9_;
+.b8_:
+  v10_: int = sub v7_ v0;
+  c11_: int = const 3;
+  v12_: int = div v10_ c11_;
+  v13_: int = div v0 v12_;
+  v14_: int = id v13_;
+  print v14_;
+  ret;
+  jmp .b15_;
 .b9_:
-  v11_: int = sub v8_ v0;
-  c12_: int = const 3;
-  v13_: int = div v11_ c12_;
-  v14_: int = div v0 v13_;
-  v15_: int = id v14_;
-  print v15_;
+  v16_: int = add v0 v7_;
+  c17_: int = const 5;
+  v18_: int = div v0 c17_;
+  v19_: int = div v16_ v18_;
+  v14_: int = id v19_;
+  print v14_;
   ret;
-  jmp .b16_;
-.b10_:
-  v17_: int = add v0 v8_;
-  c18_: int = const 5;
-  v19_: int = div v0 c18_;
-  v20_: int = div v17_ v19_;
-  v15_: int = id v20_;
-  print v15_;
-  ret;
-.b16_:
+.b15_:
 }

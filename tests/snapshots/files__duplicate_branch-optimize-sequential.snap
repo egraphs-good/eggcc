@@ -4,8 +4,7 @@ expression: visualization.result
 ---
 # ARGS: 5
 @main(v0: int) {
-.b1_:
-  c2_: int = const 4;
-  print c2_;
+  c1_: int = const 4;
+  print c1_;
   ret;
 }

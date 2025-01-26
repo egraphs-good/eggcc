@@ -7,6 +7,7 @@ use super::{Annotation, BasicBlock, BlockName, SimpleBranch, SimpleCfgFunction, 
 use petgraph::{
     stable_graph::NodeIndex,
     visit::{Dfs, Walker},
+    Direction,
 };
 
 impl SimpleCfgProgram {
@@ -55,7 +56,17 @@ impl SimpleCfgFunction {
                 "logic bug: DFS of graph visited node {node:?} twice"
             );
         }
-        self.push_label(&mut func, self.entry);
+        // In bril, we don't need a label for the entry block unless we need to jump back to it at
+        // some point. Unconditionally adding the label creates extraneous jumps in the bril-llvm
+        // output.
+        if self
+            .graph
+            .neighbors_directed(self.entry, Direction::Incoming)
+            .next()
+            .is_some()
+        {
+            self.push_label(&mut func, self.entry);
+        }
         self.node_to_bril(self.entry, &mut func, &node_order);
         Dfs::new(&self.graph, self.entry)
             .iter(&self.graph)

@@ -299,10 +299,12 @@ impl SimpleCfgFunction {
         for edge in to_remove {
             self.graph.remove_edge(edge);
         }
-        while self.graph[self.entry].instrs.is_empty() {
+        while self.graph[self.entry].instrs.is_empty() && self.entry != self.exit {
             if let Some(child) = single_exit(&self.graph, self.entry) {
                 self.graph.remove_node(self.entry);
                 self.entry = child;
+            } else {
+                break;
             }
         }
         self
@@ -310,9 +312,15 @@ impl SimpleCfgFunction {
 }
 
 fn single_exit(graph: &StableDiGraph<BasicBlock, Branch>, node: NodeIndex) -> Option<NodeIndex> {
-    let mut iter = graph
-        .edges_directed(node, Direction::Outgoing)
-        .map(|edge| edge.target());
+    single_neighbor(graph, node, Direction::Outgoing)
+}
+
+fn single_neighbor(
+    graph: &StableDiGraph<BasicBlock, Branch>,
+    node: NodeIndex,
+    dir: Direction,
+) -> Option<NodeIndex> {
+    let mut iter = graph.edges_directed(node, dir).map(|edge| edge.target());
     let target = iter.next()?;
     if iter.next().is_some() || target == node {
         None

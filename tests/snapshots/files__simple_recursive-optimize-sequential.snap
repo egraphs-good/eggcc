@@ -4,42 +4,40 @@ expression: visualization.result
 ---
 # ARGS: 
 @inc(v0: int): int {
-.b1_:
-  c2_: int = const 2;
-  v3_: bool = lt v0 c2_;
-  v4_: int = id v0;
-  br v3_ .b5_ .b6_;
+  c1_: int = const 2;
+  v2_: bool = lt v0 c1_;
+  v3_: int = id v0;
+  br v2_ .b4_ .b5_;
+.b4_:
+  v6_: int = id v0;
+.b7_:
+  c8_: int = const 1;
+  v9_: int = add c8_ v6_;
+  print v9_;
+  c10_: int = const 2;
+  v11_: bool = lt v9_ c10_;
+  v6_: int = id v9_;
+  br v11_ .b7_ .b12_;
+.b12_:
+  v3_: int = id v6_;
+  ret v3_;
+  jmp .b13_;
 .b5_:
-  v7_: int = id v0;
-.b8_:
-  c9_: int = const 1;
-  v10_: int = add c9_ v7_;
-  print v10_;
-  c11_: int = const 2;
-  v12_: bool = lt v10_ c11_;
-  v7_: int = id v10_;
-  br v12_ .b8_ .b13_;
+  ret v3_;
 .b13_:
-  v4_: int = id v7_;
-  ret v4_;
-  jmp .b14_;
-.b6_:
-  ret v4_;
-.b14_:
 }
 @main {
-.b0_:
-  c1_: int = const 0;
-  v2_: int = id c1_;
-.b3_:
-  c4_: int = const 1;
-  v5_: int = add c4_ v2_;
-  print v5_;
-  c6_: int = const 2;
-  v7_: bool = lt v5_ c6_;
-  v2_: int = id v5_;
-  br v7_ .b3_ .b8_;
-.b8_:
-  print v2_;
+  c0_: int = const 0;
+  v1_: int = id c0_;
+.b2_:
+  c3_: int = const 1;
+  v4_: int = add c3_ v1_;
+  print v4_;
+  c5_: int = const 2;
+  v6_: bool = lt v4_ c5_;
+  v1_: int = id v4_;
+  br v6_ .b2_ .b7_;
+.b7_:
+  print v1_;
   ret;
 }

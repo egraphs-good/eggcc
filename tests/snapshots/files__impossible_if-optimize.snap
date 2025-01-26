@@ -4,21 +4,20 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
-.b1_:
-  c2_: int = const 1;
-  c3_: int = const 2;
-  v4_: bool = lt v0 c3_;
-  br v4_ .b5_ .b6_;
+  c1_: int = const 1;
+  c2_: int = const 2;
+  v3_: bool = lt v0 c2_;
+  br v3_ .b4_ .b5_;
+.b4_:
+  print c1_;
+  v6_: int = id c1_;
+  print c1_;
+  ret;
+  jmp .b7_;
 .b5_:
-  print c2_;
-  v7_: int = id c2_;
-  print c2_;
+  print c1_;
+  v6_: int = id c1_;
+  print c1_;
   ret;
-  jmp .b8_;
-.b6_:
-  print c2_;
-  v7_: int = id c2_;
-  print c2_;
-  ret;
-.b8_:
+.b7_:
 }

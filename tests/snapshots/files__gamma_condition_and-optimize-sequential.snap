@@ -4,47 +4,46 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
-.b1_:
-  c2_: int = const 0;
-  v3_: bool = lt v0 c2_;
-  v4_: bool = lt c2_ v0;
-  v5_: bool = and v3_ v4_;
-  c6_: int = const 1;
-  v7_: int = id c6_;
-  br v5_ .b8_ .b9_;
+  c1_: int = const 0;
+  v2_: bool = lt v0 c1_;
+  v3_: bool = lt c1_ v0;
+  v4_: bool = and v2_ v3_;
+  c5_: int = const 1;
+  v6_: int = id c5_;
+  br v4_ .b7_ .b8_;
+.b7_:
+  print v6_;
+  ret;
+  jmp .b9_;
 .b8_:
-  print v7_;
-  ret;
-  jmp .b10_;
-.b9_:
-  v11_: bool = lt v0 c2_;
-  v12_: bool = lt c2_ v0;
-  v13_: bool = and v11_ v12_;
-  c14_: int = const 3;
-  v15_: int = id c14_;
-  br v13_ .b16_ .b17_;
-.b16_:
-  c18_: int = const 2;
-  v19_: int = id c18_;
-  v20_: int = id c2_;
-  v21_: int = id c6_;
-.b22_:
-  v23_: int = add v19_ v21_;
-  v24_: bool = lt v20_ v23_;
-  v25_: bool = not v24_;
-  v19_: int = id v23_;
+  v10_: bool = lt v0 c1_;
+  v11_: bool = lt c1_ v0;
+  v12_: bool = and v10_ v11_;
+  c13_: int = const 3;
+  v14_: int = id c13_;
+  br v12_ .b15_ .b16_;
+.b15_:
+  c17_: int = const 2;
+  v18_: int = id c17_;
+  v19_: int = id c1_;
+  v20_: int = id c5_;
+.b21_:
+  v22_: int = add v18_ v20_;
+  v23_: bool = lt v19_ v22_;
+  v24_: bool = not v23_;
+  v18_: int = id v22_;
+  v19_: int = id v19_;
   v20_: int = id v20_;
-  v21_: int = id v21_;
-  br v25_ .b22_ .b26_;
-.b26_:
-  v15_: int = id v19_;
-  v7_: int = id v15_;
-  print v7_;
+  br v24_ .b21_ .b25_;
+.b25_:
+  v14_: int = id v18_;
+  v6_: int = id v14_;
+  print v6_;
   ret;
-  jmp .b10_;
-.b17_:
-  v7_: int = id v15_;
-  print v7_;
+  jmp .b9_;
+.b16_:
+  v6_: int = id v14_;
+  print v6_;
   ret;
-.b10_:
+.b9_:
 }

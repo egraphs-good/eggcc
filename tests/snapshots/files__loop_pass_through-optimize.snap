@@ -4,19 +4,18 @@ expression: visualization.result
 ---
 # ARGS: 5
 @main(v0: int) {
-.b1_:
-  c2_: int = const 1;
-  v3_: int = id c2_;
-  v4_: int = id v0;
-.b5_:
-  v6_: int = add v3_ v3_;
-  c7_: int = const 10;
-  v8_: bool = lt v3_ c7_;
-  v3_: int = id v6_;
-  v4_: int = id v4_;
-  br v8_ .b5_ .b9_;
-.b9_:
-  v10_: int = add v0 v3_;
-  print v10_;
+  c1_: int = const 1;
+  v2_: int = id c1_;
+  v3_: int = id v0;
+.b4_:
+  v5_: int = add v2_ v2_;
+  c6_: int = const 10;
+  v7_: bool = lt v2_ c6_;
+  v2_: int = id v5_;
+  v3_: int = id v3_;
+  br v7_ .b4_ .b8_;
+.b8_:
+  v9_: int = add v0 v2_;
+  print v9_;
   ret;
 }

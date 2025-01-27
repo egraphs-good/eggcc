@@ -4,8 +4,7 @@ expression: visualization.result
 ---
 # ARGS: 
 @main {
-.b0_:
-  c1_: bool = const true;
-  print c1_;
+  c0_: bool = const true;
+  print c0_;
   ret;
 }

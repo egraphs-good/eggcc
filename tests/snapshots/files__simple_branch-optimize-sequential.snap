@@ -4,11 +4,10 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
-.b1_:
-  c2_: int = const 0;
-  v3_: bool = lt v0 c2_;
-  c4_: int = const 1;
-  v5_: int = select v3_ c4_ c2_;
-  print v5_;
+  c1_: int = const 0;
+  v2_: bool = lt v0 c1_;
+  c3_: int = const 1;
+  v4_: int = select v2_ c3_ c1_;
+  print v4_;
   ret;
 }

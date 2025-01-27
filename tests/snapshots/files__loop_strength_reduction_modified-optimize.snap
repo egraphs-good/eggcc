@@ -4,58 +4,57 @@ expression: visualization.result
 ---
 # ARGS: 
 @main {
-.b0_:
-  c1_: int = const 0;
-  c2_: int = const 1;
-  c3_: int = const 3;
-  c4_: int = const 150;
-  c5_: int = const 5;
-  c6_: int = const 300;
+  c0_: int = const 0;
+  c1_: int = const 1;
+  c2_: int = const 3;
+  c3_: int = const 150;
+  c4_: int = const 5;
+  c5_: int = const 300;
+  v6_: int = id c0_;
   v7_: int = id c1_;
-  v8_: int = id c2_;
-  v9_: int = id c1_;
+  v8_: int = id c0_;
+  v9_: int = id c2_;
   v10_: int = id c3_;
   v11_: int = id c4_;
   v12_: int = id c5_;
-  v13_: int = id c6_;
-.b14_:
-  v15_: int = add v7_ v8_;
-  v16_: int = add v15_ v8_;
-  v17_: bool = eq v11_ v16_;
-  v18_: bool = eq v11_ v15_;
-  v19_: bool = eq v11_ v7_;
-  v20_: int = add v8_ v9_;
-  v21_: int = add v10_ v20_;
-  v22_: int = select v19_ v21_ v20_;
-  v23_: int = add v22_ v8_;
-  v24_: int = add v10_ v23_;
-  v25_: int = select v18_ v24_ v23_;
-  v26_: int = add v25_ v8_;
-  v27_: int = add v10_ v26_;
-  v28_: int = select v17_ v27_ v26_;
-  v29_: int = mul v12_ v28_;
-  v30_: int = mul v12_ v25_;
-  v31_: int = mul v12_ v22_;
-  v32_: int = mul v12_ v9_;
-  print v32_;
+.b13_:
+  v14_: int = add v6_ v7_;
+  v15_: int = add v14_ v7_;
+  v16_: bool = eq v10_ v15_;
+  v17_: bool = eq v10_ v14_;
+  v18_: bool = eq v10_ v6_;
+  v19_: int = add v7_ v8_;
+  v20_: int = add v19_ v9_;
+  v21_: int = select v18_ v20_ v19_;
+  v22_: int = add v21_ v7_;
+  v23_: int = add v22_ v9_;
+  v24_: int = select v17_ v23_ v22_;
+  v25_: int = add v24_ v7_;
+  v26_: int = add v25_ v9_;
+  v27_: int = select v16_ v26_ v25_;
+  v28_: int = mul v11_ v27_;
+  v29_: int = mul v11_ v24_;
+  v30_: int = mul v11_ v21_;
+  v31_: int = mul v11_ v8_;
   print v31_;
   print v30_;
   print v29_;
-  v33_: int = add v16_ v8_;
-  v34_: int = add v33_ v8_;
-  v35_: bool = eq v11_ v33_;
-  v36_: int = add v28_ v8_;
-  v37_: int = add v10_ v36_;
-  v38_: int = select v35_ v37_ v36_;
-  v39_: bool = lt v34_ v13_;
-  v7_: int = id v34_;
-  v8_: int = id v8_;
-  v9_: int = id v38_;
+  print v28_;
+  v32_: int = add v15_ v7_;
+  v33_: int = add v32_ v7_;
+  v34_: bool = eq v10_ v32_;
+  v35_: int = add v27_ v7_;
+  v36_: int = add v35_ v9_;
+  v37_: int = select v34_ v36_ v35_;
+  v38_: bool = lt v33_ v12_;
+  v6_: int = id v33_;
+  v7_: int = id v7_;
+  v8_: int = id v37_;
+  v9_: int = id v9_;
   v10_: int = id v10_;
   v11_: int = id v11_;
   v12_: int = id v12_;
-  v13_: int = id v13_;
-  br v39_ .b14_ .b40_;
-.b40_:
+  br v38_ .b13_ .b39_;
+.b39_:
   ret;
 }

@@ -4,30 +4,29 @@ expression: visualization.result
 ---
 # ARGS: 
 @main {
-.b0_:
-  c1_: int = const 0;
-  v2_: int = id c1_;
-.b3_:
-  c4_: int = const 5;
-  v5_: bool = lt v2_ c4_;
-  br v5_ .b6_ .b7_;
+  c0_: int = const 0;
+  v1_: int = id c0_;
+.b2_:
+  c3_: int = const 5;
+  v4_: bool = lt v1_ c3_;
+  br v4_ .b5_ .b6_;
+.b5_:
+  c7_: int = const 1;
+  print c7_;
+  v8_: int = id v1_;
+.b9_:
+  c10_: int = const 1;
+  v11_: int = add c10_ v1_;
+  c12_: int = const 6;
+  v13_: bool = lt v1_ c12_;
+  v1_: int = id v11_;
+  br v13_ .b2_ .b14_;
 .b6_:
-  c8_: int = const 1;
-  print c8_;
-  v9_: int = id v2_;
-.b10_:
-  c11_: int = const 1;
-  v12_: int = add c11_ v2_;
-  c13_: int = const 6;
-  v14_: bool = lt v2_ c13_;
-  v2_: int = id v12_;
-  br v14_ .b3_ .b15_;
-.b7_:
-  c16_: int = const 2;
-  print c16_;
-  v9_: int = id v2_;
-  jmp .b10_;
-.b15_:
-  print v2_;
+  c15_: int = const 2;
+  print c15_;
+  v8_: int = id v1_;
+  jmp .b9_;
+.b14_:
+  print v1_;
   ret;
 }

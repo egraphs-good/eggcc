@@ -481,6 +481,12 @@ impl<'a> Extractor<'a> {
                     // types are not unioned, so they should be unique
                     return (term, NotNan::new(0.).unwrap());
                 }
+
+                if head.to_string() == "DeadCode" {
+                    // no need to add to cost set
+                    return (term, NotNan::new(0.).unwrap());
+                }
+
                 let nodeid = &self.term_node(&term);
                 let eclass = info.egraph.nid_to_cid(nodeid);
                 if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {

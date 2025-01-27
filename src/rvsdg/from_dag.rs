@@ -463,7 +463,7 @@ impl<'a> TreeToRvsdg<'a> {
                 res
             }
             Expr::Symbolic(_, _ty) => panic!("symbolic not supported"),
-            Expr::DeadCode(_, _) => {
+            Expr::DeadCode(_) => {
                 panic!("dead code should have been removed at the end of extraction!")
             }
         };

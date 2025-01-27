@@ -343,13 +343,8 @@ impl<'a> FromEgglog<'a> {
               self.expr_from_egglog(expr.clone()),
             ))
           }
-          ("DeadCode", [arg_ty, ty]) => {
-            let arg_ty = self.termdag.get(*arg_ty);
-            let ty = self.termdag.get(*ty);
-            Rc::new(Expr::DeadCode(
-              self.type_from_egglog(arg_ty.clone()),
-              self.type_from_egglog(ty.clone()),
-            ))
+          ("DeadCode", [subexpr]) => {
+            Rc::new(Expr::DeadCode(self.expr_from_egglog(self.termdag.get(*subexpr).clone())))
           }
           _ => panic!("Invalid expr: {:?}", expr),
         });

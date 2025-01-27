@@ -188,7 +188,7 @@ impl<'a> Extractor<'a> {
             }
             Expr::Const(_, _, _) => panic!("Const has no effect"),
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
-            Expr::DeadCode(_arg_ty, _ty) => panic!("found dead code"),
+            Expr::DeadCode(_subexpr) => panic!("found dead code"),
         }
     }
 
@@ -240,9 +240,7 @@ impl<'a> Extractor<'a> {
                     let mut effectful_child_iter =
                         children.iter().filter(|child| self.is_effectful(child));
                     let Some(effectful_child) = effectful_child_iter.next() else {
-                        return Err(
-                                format!("Resulting program violated linearity! Effectful node without effectful child. Usually, this means that the state edge wasn't consumed and we generated a dead code node. {:?}", expr),
-                            );
+                        panic!("Effectful operator does not have effectful children in extracted term. This should not happen.");
                     };
                     assert!(effectful_child_iter.next().is_none());
                     if !dangling_effectful.remove(&Rc::as_ptr(effectful_child)) {

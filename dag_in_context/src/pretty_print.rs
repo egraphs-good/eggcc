@@ -408,7 +408,7 @@ impl Expr {
             Expr::Arg(..) => "arg".into(),
             Expr::Function(name, ..) => "fun_".to_owned() + name,
             Expr::Symbolic(var, _ty) => "symbolic_".to_owned() + var,
-            Expr::DeadCode(_arg_ty, _ty) => todo!("dead code pretty print"),
+            Expr::DeadCode(_subexpr) => todo!("dead code pretty print"),
         }
     }
 
@@ -494,7 +494,7 @@ impl Expr {
                 )
             }
             Expr::Symbolic(str, _ty) => format!("{str}.clone()"),
-            Expr::DeadCode(_arg_ty, _ty) => todo!("dead code ast"),
+            Expr::DeadCode(_subexpr) => todo!("dead code ast"),
         }
     }
 }

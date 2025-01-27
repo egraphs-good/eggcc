@@ -23,7 +23,6 @@ impl TypeStack {
 }
 
 impl TreeProgram {
-    #[allow(dead_code)]
     pub(crate) fn typecheck(&self) -> TypeCache {
         let mut checker = TypeChecker::new(self, true);
         checker.add_arg_types();
@@ -528,20 +527,9 @@ impl<'a> TypeChecker<'a> {
                 }
                 (found_ty.clone(), expr.clone())
             }
-            Expr::DeadCode(found_ty, ty) => {
-                if let Some(arg_tys) = arg_tys {
-                    assert_eq!(
-                        &found_ty,
-                        &arg_tys.get(),
-                        "Expected argument type to be {:?}. Got {:?}",
-                        arg_tys.get(),
-                        found_ty
-                    );
-                }
-                (
-                    ty.clone(),
-                    expr.clone(),
-                )
+            Expr::DeadCode(subexpr) => {
+                let (ty, new_subexpr) = self.add_arg_types_to_expr(subexpr.clone(), arg_tys);
+                (ty, RcExpr::new(Expr::DeadCode(new_subexpr)))
             }
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
             Expr::Symbolic(_, ty) => (
@@ -573,7 +561,7 @@ impl<'a> TypeChecker<'a> {
     pub(crate) fn get_arg_type(expr: &RcExpr) -> Type {
         match expr.as_ref() {
             Expr::Arg(ty, _) => ty.clone(),
-            Expr::DeadCode(ty, _) => ty.clone(),
+            Expr::DeadCode(subexpr) => Self::get_arg_type(subexpr),
             Expr::Const(_, ty, _) => ty.clone(),
             Expr::Top(_, rc, _, _) => Self::get_arg_type(rc),
             Expr::Bop(_, left, _) => Self::get_arg_type(left),

@@ -1,10 +1,7 @@
-use std::{
-    collections::HashMap,
-    rc::Rc,
-};
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::parallel_vec,
+    ast::parallel_vec_ty,
     schema::{Expr, RcExpr, TreeProgram, Type},
 };
 
@@ -33,7 +30,7 @@ fn remove_dead_code_fn(func: RcExpr) -> RcExpr {
     }
 }
 
-fn remove_dead_code_ty(ty: Type, dead_indicies: &Vec<usize>) -> Type {
+fn remove_dead_code_ty(ty: Type, dead_indicies: &[usize]) -> Type {
     match ty {
         Type::Base(base_type) => {
             assert!(dead_indicies.is_empty());
@@ -68,17 +65,19 @@ fn try_split_inputs(expr: RcExpr) -> Option<Vec<RcExpr>> {
     }
 }
 
-fn partition_inputs(
+/// given a vector of inputs, add the non-dead ones to a new vector
+/// and return the indicies of the dead ones
+fn partition_inputs_and_remove_dead_code(
     inputs: Vec<RcExpr>,
     memo: &mut HashMap<(*const Expr, Vec<usize>), RcExpr>,
     current_dead: &Vec<usize>,
 ) -> (Vec<RcExpr>, Vec<usize>) {
     let mut new_inputs = vec![];
     let mut new_dead_indicies = vec![];
-    for input in inputs {
+    for (index, input) in inputs.iter().enumerate() {
         match input.as_ref() {
-            Expr::DeadCode(_arg_ty, _ty) => {
-                new_dead_indicies.push(new_inputs.len());
+            Expr::DeadCode(_subexpr) => {
+                new_dead_indicies.push(index);
             }
             _ => {
                 new_inputs.push(remove_dead_code_expr(input.clone(), memo, current_dead));
@@ -110,7 +109,7 @@ fn remove_dead_code_expr(
                     let new_ty = remove_dead_code_ty(ty.clone(), dead_indicies);
                     let mut new_index = *index;
                     for dead_index in dead_indicies {
-                        if *dead_index <= *index {
+                        if dead_index < index {
                             new_index -= 1;
                         }
                     }
@@ -133,33 +132,27 @@ fn remove_dead_code_expr(
             }
         }
         Expr::DoWhile(inputs, body) => {
-            if let Some(split_inputs) = try_split_inputs(inputs.clone()) {
-                let (new_inputs, new_dead_indicies) =
-                    partition_inputs(split_inputs, memo, dead_indicies);
-                RcExpr::new(Expr::DoWhile(
-                    parallel_vec(new_inputs),
-                    remove_dead_code_expr(body.clone(), memo, &new_dead_indicies),
-                ))
-            } else {
-                RcExpr::new(Expr::DoWhile(
-                    remove_dead_code_expr(inputs.clone(), memo, &vec![]),
-                    remove_dead_code_expr(body.clone(), memo, &vec![]),
-                ))
-            }
+            // TODO: dead code isn't generated for loops yet, but a fancier
+            // extractor could
+            RcExpr::new(Expr::DoWhile(
+                remove_dead_code_expr(inputs.clone(), memo, dead_indicies),
+                remove_dead_code_expr(body.clone(), memo, &vec![]),
+            ))
         }
         Expr::If(pred, inputs, then, else_case) => {
             if let Some(split_inputs) = try_split_inputs(inputs.clone()) {
                 let (new_inputs, new_dead_indicies) =
-                    partition_inputs(split_inputs, memo, dead_indicies);
+                    partition_inputs_and_remove_dead_code(split_inputs, memo, dead_indicies);
+                let new_pred = remove_dead_code_expr(pred.clone(), memo, dead_indicies);
                 RcExpr::new(Expr::If(
-                    pred.clone(),
-                    parallel_vec(new_inputs),
+                    new_pred.clone(),
+                    parallel_vec_ty(new_inputs, new_pred.get_arg_type()),
                     remove_dead_code_expr(then.clone(), memo, &new_dead_indicies),
                     remove_dead_code_expr(else_case.clone(), memo, &new_dead_indicies),
                 ))
             } else {
                 RcExpr::new(Expr::If(
-                    pred.clone(),
+                    remove_dead_code_expr(pred.clone(), memo, dead_indicies),
                     remove_dead_code_expr(inputs.clone(), memo, dead_indicies),
                     remove_dead_code_expr(then.clone(), memo, &vec![]),
                     remove_dead_code_expr(else_case.clone(), memo, &vec![]),
@@ -169,7 +162,7 @@ fn remove_dead_code_expr(
         Expr::Switch(pred, inputs, branches) => {
             if let Some(split_inputs) = try_split_inputs(inputs.clone()) {
                 let (new_inputs, new_dead_indicies) =
-                    partition_inputs(split_inputs, memo, dead_indicies);
+                    partition_inputs_and_remove_dead_code(split_inputs, memo, dead_indicies);
                 let mut new_branches = vec![];
                 for branch in branches.iter() {
                     new_branches.push(remove_dead_code_expr(
@@ -178,14 +171,15 @@ fn remove_dead_code_expr(
                         &new_dead_indicies,
                     ));
                 }
+                let new_pred = remove_dead_code_expr(pred.clone(), memo, dead_indicies);
                 RcExpr::new(Expr::Switch(
-                    pred.clone(),
-                    parallel_vec(new_inputs),
+                    new_pred.clone(),
+                    parallel_vec_ty(new_inputs, new_pred.get_arg_type()),
                     new_branches,
                 ))
             } else {
                 RcExpr::new(Expr::Switch(
-                    pred.clone(),
+                    remove_dead_code_expr(pred.clone(), memo, dead_indicies),
                     remove_dead_code_expr(inputs.clone(), memo, dead_indicies),
                     branches
                         .iter()
@@ -194,7 +188,7 @@ fn remove_dead_code_expr(
                 ))
             }
         }
-        Expr::DeadCode(_arg_ty, _ty) => {
+        Expr::DeadCode(_subexpr) => {
             panic!("Reached dead code without being in inputs of control flow node");
         }
         Expr::Function(_, _, _, _expr) => panic!("Found function inside of function"),

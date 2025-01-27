@@ -201,7 +201,7 @@ impl<'a> EgraphInfo<'a> {
                     child,
                     is_subregion,
                     is_assumption,
-                    is_inputs: _is_inputs,
+                    is_if_inputs: _is_inputs,
                 } in enode_children(egraph, node)
                 {
                     if is_assumption {
@@ -474,7 +474,7 @@ impl<'a> Extractor<'a> {
         match &term {
             Term::Lit(_) => {
                 // literals are always unique
-                return (term, NotNan::new(0.).unwrap());
+                (term, NotNan::new(0.).unwrap())
             }
             Term::App(head, children) => {
                 if is_type_operator(&head.to_string()) {
@@ -579,31 +579,6 @@ impl<'a> Extractor<'a> {
         }
     }
 
-    /// Get terms for the ty and ctx of a term
-    fn get_arg_ty_and_ctx(&self, term: &Term) -> Option<(Term, Term)> {
-        match &term {
-            Term::App(head, children) => {
-                if head.to_string() == "Arg" {
-                    let arg_ty = self.termdag.get(children[0]).clone();
-                    let ctx = self.termdag.get(children[1]).clone();
-                    Some((arg_ty, ctx))
-                } else if head.to_string() == "Const" {
-                    let arg_ty = self.termdag.get(children[1]).clone();
-                    let ctx = self.termdag.get(children[2]).clone();
-                    Some((arg_ty, ctx))
-                } else {
-                    for child in children {
-                        if let Some(res) = self.get_arg_ty_and_ctx(self.termdag.get(*child)) {
-                            return Some(res);
-                        }
-                    }
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
     /// Given a term, returns what indices of the argument are used in the term
     /// Returns None if the type is not a tuple or arg is used directly
     fn get_arg_indices_used(&self, term: Term, used: &mut HashSet<usize>) -> Option<()> {
@@ -685,7 +660,7 @@ impl<'a> Extractor<'a> {
                         .insert(new_term.clone(), existing_node.clone());
                     (new_term, 1)
                 }
-                ("Empty", []) => (model_term.clone(), 0),
+                ("Empty", [_arg_ty, _ctx]) => (model_term.clone(), 0),
                 _ => panic!("Unexpected app in model term: {:?}", op),
             },
         }
@@ -710,17 +685,6 @@ impl<'a> Extractor<'a> {
         let node = &info.egraph[&nodeid];
 
         let enode_children = enode_children(info.egraph, node);
-        let child_types = child_cost_set_indicies
-            .iter()
-            .zip(enode_children.iter())
-            .map(|(idx, child)| {
-                if child.is_inputs {
-                    Some(self.typecheck_term(&self.costsets[*idx].term.clone()))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
 
         // we need to borrow cost sets, so swap them out
         // we mutate self for typechecking and termdag throughout this code
@@ -737,6 +701,8 @@ impl<'a> Extractor<'a> {
             .iter()
             .any(|(cs, _)| cs.costs.contains_key(cid))
         {
+            // remember to swap costsets back!
+            std::mem::swap(&mut self.costsets, &mut cost_sets_tmp);
             return None;
         }
 
@@ -747,7 +713,9 @@ impl<'a> Extractor<'a> {
         if node.op == "Call" {
             let func_name = &node.children[0];
             let func_name_str = &info.egraph[func_name].op;
-            assert!(func_name_str.starts_with('\"') && func_name_str.ends_with('\"'));
+            if !func_name_str.starts_with('\"') && func_name_str.ends_with('\"') {
+                panic!("Function name not a string: {:?}", func_name_str);
+            }
             let func_name_str_without_quotes = &func_name_str[1..func_name_str.len() - 1];
             if func_name_str_without_quotes == info._func {
                 unshared_total = NotNan::new(100000000000.0).unwrap();
@@ -759,11 +727,11 @@ impl<'a> Extractor<'a> {
         let mut children_terms = vec![];
 
         if !info.cm.ignore_children(&node.op) {
-            for ((child_set, enode_child), child_type) in child_cost_sets.iter().zip(child_types) {
+            for (child_set, enode_child) in child_cost_sets.iter() {
                 let mut add_to_shared = false;
                 if enode_child.is_subregion {
                     children_terms.push(child_set.term.clone());
-                } else if enode_child.is_inputs {
+                } else if enode_child.is_if_inputs {
                     // special case- try to only add cost for inputs that are used
                     // first, get all the indices of the children that are used
                     let mut used_children = HashSet::new();
@@ -781,18 +749,9 @@ impl<'a> Extractor<'a> {
 
                     if !add_to_shared {
                         // now that we have which children are used, try to break up the inputs
-                        if let (Some(broken_up_terms), Some((ty, _ctx))) = (
-                            self.try_break_up_term(&child_set.term),
-                            self.get_arg_ty_and_ctx(&&child_set.term),
-                        ) {
-                            let Some(Type::TupleT(child_types)) = child_type else {
-                                panic!("Expected tuple type for inputs, got {:?}", child_type);
-                            };
-
+                        if let Some(broken_up_terms) = self.try_break_up_term(&child_set.term) {
                             let mut new_input_children = vec![];
-                            for (idx, (input_tuple_term, input_child_ty)) in
-                                broken_up_terms.iter().zip(child_types).enumerate()
-                            {
+                            for (idx, input_tuple_term) in broken_up_terms.iter().enumerate() {
                                 if used_children.contains(&idx) {
                                     let (child_term, net_cost) = self.add_term_to_cost_set(
                                         info,
@@ -803,14 +762,9 @@ impl<'a> Extractor<'a> {
                                     shared_total += net_cost;
                                     new_input_children.push(child_term);
                                 } else {
-                                    let term_ty_base =
-                                        input_child_ty.to_egglog_internal(&mut self.termdag);
-                                    let term_ty =
-                                        self.termdag.app("Base".into(), vec![term_ty_base]);
-
                                     let deadcode_term = self
                                         .termdag
-                                        .app("DeadCode".into(), vec![ty.clone(), term_ty]);
+                                        .app("DeadCode".into(), vec![input_tuple_term.clone()]);
                                     new_input_children.push(deadcode_term.clone());
                                     let old_term_node =
                                         self.correspondence.get(input_tuple_term).unwrap();
@@ -858,6 +812,7 @@ impl<'a> Extractor<'a> {
         }
         let total = unshared_total + shared_total;
 
+        // swap borrowed costsets back!
         std::mem::swap(&mut self.costsets, &mut cost_sets_tmp);
 
         self.costsets.push(CostSet { total, costs, term });
@@ -888,7 +843,7 @@ fn node_cost_in_region(
                  child,
                  is_subregion,
                  is_assumption,
-                 is_inputs: _is_inputs,
+                 is_if_inputs: _is_inputs,
              }| {
                 // for assumptions, just return a dummy context every time
                 if *is_assumption {
@@ -1306,16 +1261,16 @@ struct EnodeChild {
     is_subregion: bool,
     is_assumption: bool,
     // cost of inputs is calculated specially- dead code is not included in cost
-    is_inputs: bool,
+    is_if_inputs: bool,
 }
 
 impl EnodeChild {
-    fn new(child: ClassId, is_subregion: bool, is_assumption: bool, is_inputs: bool) -> Self {
+    fn new(child: ClassId, is_subregion: bool, is_assumption: bool, if_if_inputs: bool) -> Self {
         EnodeChild {
             child,
             is_subregion,
             is_assumption,
-            is_inputs,
+            is_if_inputs: if_if_inputs,
         }
     }
 }
@@ -1338,7 +1293,7 @@ fn enode_children(
 ) -> Vec<EnodeChild> {
     match (enode.op.as_str(), enode.children.as_slice()) {
         ("DoWhile", [input, body]) => vec![
-            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false, true),
+            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false, false),
             EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false, false),
         ],
         ("If", [pred, input, then_branch, else_branch]) => vec![
@@ -1490,7 +1445,7 @@ fn find_reachable(
                     child,
                     is_subregion,
                     is_assumption,
-                    is_inputs: _is_inputs,
+                    is_if_inputs: _is_inputs,
                 } in enode_children(egraph, &egraph[node])
                 {
                     if !is_assumption {
@@ -1585,7 +1540,14 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
     }
     match err {
         Ok(_) => panic!("Expected program to be non-linear!"),
-        Err(e) => assert!(e.starts_with(error_message)),
+        Err(e) => {
+            if !e.starts_with(error_message) {
+                panic!(
+                    "Expected error message to start with '{}', got '{}'",
+                    error_message, e
+                );
+            }
+        }
     }
 }
 
@@ -1773,7 +1735,7 @@ fn test_linearity_check_2() {
     ),);
     dag_extraction_linearity_check(
         &bad_program_2,
-        "Resulting program violated linearity! Effectful node without effectful child.",
+        "Resulting program violated linearity! There are unconsumed effectful operators",
     );
 }
 

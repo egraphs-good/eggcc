@@ -20,11 +20,11 @@ pub mod dag2svg;
 pub mod dag_typechecker;
 pub mod from_egglog;
 mod greedy_dag_extractor;
-mod remove_dead_code_nodes;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
 mod linearity;
 mod optimizations;
+mod remove_dead_code_nodes;
 pub mod schema;
 pub mod schema_helpers;
 mod to_egglog;
@@ -394,6 +394,9 @@ pub fn optimize(
                 should_maintain_linearity,
                 has_debug_exprs,
             );
+
+            // typecheck the program as a sanity check
+            iter_result.typecheck();
 
             res = iter_result;
 

@@ -311,6 +311,18 @@ where
     }
 }
 
+pub fn parallel_vec_ty<I: IntoIterator<Item = RcExpr>>(es: I, ty: Type) -> RcExpr
+where
+    <I as IntoIterator>::IntoIter: DoubleEndedIterator,
+{
+    let mut iter = es.into_iter().rev();
+    if let Some(e) = iter.next() {
+        iter.fold(single(e), |acc, x| cons(x, acc))
+    } else {
+        RcExpr::new(Expr::Empty(ty, Assumption::dummy()))
+    }
+}
+
 /// A helper for ensuring the list of expressions is non-empty.
 /// This prevents missing adding context to a leaf node (e.g. empty).
 pub fn parallel_vec_nonempty<I: IntoIterator<Item = RcExpr>>(es: I) -> RcExpr

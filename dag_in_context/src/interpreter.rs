@@ -460,7 +460,10 @@ impl<'a> VirtualMachine<'a> {
                 self.interpret_call(func_name, &e_val)
             }
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
-            Expr::DeadCode(_arg_ty, _ty) => panic!("found dead code"),
+            // dead code marks it as dead, but we can still evaluate it
+            // soundly
+            // dead code should be removed by the dead code pass after extraction
+            Expr::DeadCode(subexpr) => self.interpret_expr(subexpr, arg),
         };
         self.eval_cache.insert(Rc::as_ptr(expr), res.clone());
         res

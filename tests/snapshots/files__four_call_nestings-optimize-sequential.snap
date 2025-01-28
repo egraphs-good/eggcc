@@ -4,25 +4,21 @@ expression: visualization.result
 ---
 # ARGS: 
 @one {
-.b0_:
-  c1_: int = const 3;
-  print c1_;
+  c0_: int = const 3;
+  print c0_;
   ret;
 }
 @two {
-.b0_:
-  c1_: int = const 3;
-  print c1_;
+  c0_: int = const 3;
+  print c0_;
   ret;
 }
 @three {
-.b0_:
-  c1_: int = const 3;
-  print c1_;
+  c0_: int = const 3;
+  print c0_;
   ret;
 }
 @main {
-.b0_:
   call @three;
   ret;
 }

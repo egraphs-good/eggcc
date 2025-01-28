@@ -4,51 +4,50 @@ expression: visualization.result
 ---
 # ARGS: 8888
 @main(v0: int) {
-.b1_:
-  c2_: int = const 0;
-  c3_: int = const 2;
-  c4_: int = const 1;
-  c5_: int = const 3;
-  v6_: int = id c2_;
-  v7_: int = id v0;
+  c1_: int = const 0;
+  c2_: int = const 2;
+  c3_: int = const 1;
+  c4_: int = const 3;
+  v5_: int = id c1_;
+  v6_: int = id v0;
+  v7_: int = id c2_;
   v8_: int = id c3_;
   v9_: int = id c4_;
-  v10_: int = id c5_;
-  v11_: int = id c2_;
-.b12_:
-  v13_: bool = eq v7_ v9_;
+  v10_: int = id c1_;
+.b11_:
+  v12_: bool = eq v6_ v8_;
+  v13_: int = id v5_;
   v14_: int = id v6_;
   v15_: int = id v7_;
   v16_: int = id v8_;
   v17_: int = id v9_;
   v18_: int = id v10_;
-  v19_: int = id v11_;
-  br v13_ .b20_ .b21_;
-.b21_:
-  v22_: int = add v6_ v9_;
-  v23_: int = div v7_ v8_;
-  v24_: int = mul v23_ v8_;
-  v25_: int = sub v7_ v24_;
-  v26_: bool = eq v11_ v25_;
-  v27_: int = mul v10_ v7_;
-  v28_: int = add v27_ v9_;
-  v29_: int = select v26_ v23_ v28_;
-  v14_: int = id v22_;
-  v15_: int = id v29_;
+  br v12_ .b19_ .b20_;
+.b20_:
+  v21_: int = add v5_ v8_;
+  v22_: int = div v6_ v7_;
+  v23_: int = mul v22_ v7_;
+  v24_: int = sub v6_ v23_;
+  v25_: bool = eq v10_ v24_;
+  v26_: int = mul v6_ v9_;
+  v27_: int = add v26_ v8_;
+  v28_: int = select v25_ v22_ v27_;
+  v13_: int = id v21_;
+  v14_: int = id v28_;
+  v15_: int = id v7_;
   v16_: int = id v8_;
   v17_: int = id v9_;
   v18_: int = id v10_;
-  v19_: int = id v11_;
-.b20_:
-  v30_: bool = not v13_;
+.b19_:
+  v29_: bool = not v12_;
+  v5_: int = id v13_;
   v6_: int = id v14_;
   v7_: int = id v15_;
   v8_: int = id v16_;
   v9_: int = id v17_;
   v10_: int = id v18_;
-  v11_: int = id v19_;
-  br v30_ .b12_ .b31_;
-.b31_:
-  print v6_;
+  br v29_ .b11_ .b30_;
+.b30_:
+  print v5_;
   ret;
 }

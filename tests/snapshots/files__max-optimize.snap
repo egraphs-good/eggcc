@@ -4,8 +4,7 @@ expression: visualization.result
 ---
 # ARGS: 20 30
 @main(v0: int, v1: int) {
-.b2_:
-  v3_: int = smax v1 v0;
-  print v3_;
+  v2_: int = smax v1 v0;
+  print v2_;
   ret;
 }

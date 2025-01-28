@@ -24,8 +24,8 @@ expression: visualization.result
   br v2_ .b6_ .b7_;
 .b6_:
   c8_: int = const 4;
-  v9_: int = div v0 c8_;
-  v10_: int = add v0 v5_;
+  v9_: int = div v3_ c8_;
+  v10_: int = add v3_ v5_;
   v11_: int = add v10_ v9_;
   v12_: int = id v11_;
   print v12_;

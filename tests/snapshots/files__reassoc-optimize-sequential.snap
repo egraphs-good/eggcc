@@ -4,13 +4,13 @@ expression: visualization.result
 ---
 # ARGS: 2 4
 @main(v0: int, v1: int) {
-  c2_: int = const 1;
-  c3_: int = const 3;
-  v4_: int = add c3_ v0;
-  c5_: int = const 4;
-  v6_: int = add c5_ v1;
-  v7_: int = add v4_ v6_;
-  v8_: int = add c2_ v7_;
+  c2_: int = const 4;
+  v3_: int = add c2_ v1;
+  c4_: int = const 3;
+  v5_: int = add c4_ v0;
+  v6_: int = add v3_ v5_;
+  c7_: int = const 1;
+  v8_: int = add c7_ v6_;
   print v8_;
   ret;
 }

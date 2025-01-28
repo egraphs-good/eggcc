@@ -663,10 +663,10 @@ impl TernaryOp {
 
 impl UnaryOp {
     pub fn to_ast(&self) -> String {
-        use schema::UnaryOp::{Abs, Not, Neg};
+        use schema::UnaryOp::{Abs, Neg, Not};
         match self {
-            Neg => "neg".into(),
             Abs => "abs".into(),
+            Neg => "neg".into(),
             Not => "not".into(),
         }
     }

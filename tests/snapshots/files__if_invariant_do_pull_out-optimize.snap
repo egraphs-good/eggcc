@@ -27,8 +27,8 @@ expression: visualization.result
   br v3_ .b7_ .b8_;
 .b7_:
   c9_: int = const 4;
-  v10_: int = div v0 c9_;
-  v11_: int = add v0 v6_;
+  v10_: int = div v4_ c9_;
+  v11_: int = add v4_ v6_;
   v12_: int = add v10_ v11_;
   v13_: int = id v12_;
   print v13_;
@@ -39,8 +39,8 @@ expression: visualization.result
   v16_: int = mul c15_ v0;
   c17_: int = const 5;
   v18_: int = div v16_ c17_;
-  v19_: int = sub v6_ v0;
-  v20_: int = add v18_ v19_;
+  v19_: int = sub v18_ v0;
+  v20_: int = add v19_ v6_;
   v13_: int = id v20_;
   print v13_;
   ret;

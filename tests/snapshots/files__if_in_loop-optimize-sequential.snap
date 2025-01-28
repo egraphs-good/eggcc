@@ -1,32 +1,30 @@
 ---
 source: tests/files.rs
 expression: visualization.result
-snapshot_kind: text
 ---
 # ARGS: 1
 @main(v0: int) {
-.b1_:
-  c2_: int = const 0;
-  c3_: int = const 1;
-  c4_: int = const 10;
+  c1_: int = const 0;
+  c2_: int = const 1;
+  c3_: int = const 10;
+  v4_: int = id c1_;
   v5_: int = id c2_;
-  v6_: int = id c3_;
-  v7_: int = id v0;
-  v8_: int = id c2_;
-  v9_: int = id c4_;
-.b10_:
-  v11_: bool = lt v7_ v6_;
-  v12_: int = select v11_ v6_ v8_;
-  print v12_;
+  v6_: int = id v0;
+  v7_: int = id c1_;
+  v8_: int = id c3_;
+.b9_:
+  v10_: bool = lt v6_ v5_;
+  v11_: int = select v10_ v5_ v7_;
   print v11_;
-  v13_: int = add v5_ v6_;
-  v14_: bool = lt v5_ v9_;
-  v5_: int = id v13_;
+  print v10_;
+  v12_: int = add v4_ v5_;
+  v13_: bool = lt v4_ v8_;
+  v4_: int = id v12_;
+  v5_: int = id v5_;
   v6_: int = id v6_;
   v7_: int = id v7_;
   v8_: int = id v8_;
-  v9_: int = id v9_;
-  br v14_ .b10_ .b15_;
-.b15_:
+  br v13_ .b9_ .b14_;
+.b14_:
   ret;
 }

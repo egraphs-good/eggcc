@@ -4,31 +4,30 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
-.b1_:
-  c2_: int = const 0;
-  v3_: bool = lt v0 c2_;
-  v4_: bool = lt c2_ v0;
-  c5_: int = const 1;
-  c6_: int = const 3;
-  v7_: int = id c6_;
-  br v3_ .b8_ .b9_;
-.b8_:
-  c10_: int = const 3;
-  v11_: int = id c10_;
-  br v4_ .b12_ .b13_;
+  c1_: int = const 0;
+  v2_: bool = lt v0 c1_;
+  v3_: bool = lt c1_ v0;
+  c4_: int = const 1;
+  c5_: int = const 3;
+  v6_: int = id c5_;
+  br v2_ .b7_ .b8_;
+.b7_:
+  c9_: int = const 3;
+  v10_: int = id c9_;
+  br v3_ .b11_ .b12_;
+.b11_:
+  v10_: int = id c4_;
+  v6_: int = id v10_;
+  print v6_;
+  ret;
+  jmp .b13_;
 .b12_:
-  v11_: int = id c5_;
-  v7_: int = id v11_;
-  print v7_;
+  v6_: int = id v10_;
+  print v6_;
   ret;
-  jmp .b14_;
+  jmp .b13_;
+.b8_:
+  print v6_;
+  ret;
 .b13_:
-  v7_: int = id v11_;
-  print v7_;
-  ret;
-  jmp .b14_;
-.b9_:
-  print v7_;
-  ret;
-.b14_:
 }

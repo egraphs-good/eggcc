@@ -4,17 +4,16 @@ expression: visualization.result
 ---
 # ARGS: 
 @main {
-.b0_:
-  c1_: int = const 2;
-  v2_: ptr<int> = alloc c1_;
-  c3_: int = const 1;
-  v4_: ptr<int> = ptradd v2_ c3_;
-  c5_: int = const 20;
-  c6_: int = const 10;
-  store v2_ c6_;
-  store v4_ c5_;
-  v7_: int = load v2_;
-  print v7_;
-  free v2_;
+  c0_: int = const 2;
+  v1_: ptr<int> = alloc c0_;
+  c2_: int = const 1;
+  v3_: ptr<int> = ptradd v1_ c2_;
+  c4_: int = const 20;
+  c5_: int = const 10;
+  store v1_ c5_;
+  store v3_ c4_;
+  v6_: int = load v1_;
+  print v6_;
+  free v1_;
   ret;
 }

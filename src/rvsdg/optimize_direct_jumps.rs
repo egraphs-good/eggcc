@@ -203,7 +203,8 @@ impl SimpleCfgFunction {
 
         // we use a dfs post order
         // so dependencies are visited before parents
-        // This ensures that `node_mapping[&next]` succeeds.
+        // This ensures that `node_mapping[&next]` succeeds most of the time (can still fail with
+        // some loops).
         let mut dfs = DfsPostOrder::new(&self.graph, self.entry);
 
         let mut edges_to_add = vec![];
@@ -231,9 +232,9 @@ impl SimpleCfgFunction {
                 None
             };
             // single outgoing edge
-            if let Some(next) = target {
+            if target.is_some() && node_mapping.contains_key(&target.unwrap()) {
+                let next = target.unwrap();
                 let new_target = node_mapping[&next];
-
                 // this node will be mapped to the previous
                 node_mapping.insert(node, new_target);
 
@@ -274,14 +275,8 @@ impl SimpleCfgFunction {
         let mut to_remove = vec![];
         for node in self.graph.node_indices().collect::<Vec<_>>() {
             // empty block with a single direct jump out
-            if self.graph[node].instrs.is_empty() {
-                if let [single_child] = self
-                    .graph
-                    .edges_directed(node, Direction::Outgoing)
-                    .map(|edge| edge.target())
-                    .collect::<Vec<_>>()
-                    .as_slice()
-                {
+            if node != self.entry && self.graph[node].instrs.is_empty() {
+                if let Some(single_child) = single_exit(&self.graph, node) {
                     let parents = self
                         .graph
                         .edges_directed(node, Direction::Incoming)
@@ -295,7 +290,7 @@ impl SimpleCfgFunction {
 
                     // for every parent edge, point to child instead of node
                     for (source, weight) in parents {
-                        self.graph.add_edge(source, *single_child, weight);
+                        self.graph.add_edge(source, single_child, weight);
                     }
                 }
             }
@@ -304,7 +299,33 @@ impl SimpleCfgFunction {
         for edge in to_remove {
             self.graph.remove_edge(edge);
         }
+        while self.graph[self.entry].instrs.is_empty() && self.entry != self.exit {
+            if let Some(child) = single_exit(&self.graph, self.entry) {
+                self.graph.remove_node(self.entry);
+                self.entry = child;
+            } else {
+                break;
+            }
+        }
         self
+    }
+}
+
+fn single_exit(graph: &StableDiGraph<BasicBlock, Branch>, node: NodeIndex) -> Option<NodeIndex> {
+    single_neighbor(graph, node, Direction::Outgoing)
+}
+
+fn single_neighbor(
+    graph: &StableDiGraph<BasicBlock, Branch>,
+    node: NodeIndex,
+    dir: Direction,
+) -> Option<NodeIndex> {
+    let mut iter = graph.edges_directed(node, dir).map(|edge| edge.target());
+    let target = iter.next()?;
+    if iter.next().is_some() || target == node {
+        None
+    } else {
+        Some(target)
     }
 }
 
@@ -343,6 +364,47 @@ fn single_node() {
         graph,
         entry: node,
         exit: node,
+        name: "test".to_string(),
+        _phantom: Simple,
+        return_ty: None,
+    };
+
+    cfg_test_equiv!(input_cfg.optimize_jumps(), []);
+}
+
+#[test]
+fn empty_entry_empty_exit() {
+    // TODO these imports are very bad
+    use crate::cfg::BlockName;
+    use crate::test_util::*;
+
+    let mut graph = StableDiGraph::new();
+    let n1 = graph.add_node(BasicBlock {
+        name: BlockName::Entry,
+        instrs: vec![],
+        footer: vec![],
+        pos: None,
+    });
+    let n2 = graph.add_node(BasicBlock {
+        name: BlockName::Exit,
+        instrs: vec![],
+        footer: vec![],
+        pos: None,
+    });
+
+    graph.add_edge(
+        n1,
+        n2,
+        Branch {
+            op: crate::cfg::BranchOp::Jmp,
+            pos: None,
+        },
+    );
+    let input_cfg = SimpleCfgFunction {
+        args: vec![],
+        graph,
+        entry: n1,
+        exit: n2,
         name: "test".to_string(),
         _phantom: Simple,
         return_ty: None,

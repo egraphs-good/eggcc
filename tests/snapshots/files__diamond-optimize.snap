@@ -4,17 +4,16 @@ expression: visualization.result
 ---
 # ARGS: 3
 @main(v0: int) {
-.b1_:
-  v2_: bool = lt v0 v0;
-  br v2_ .b3_ .b4_;
+  v1_: bool = lt v0 v0;
+  br v1_ .b2_ .b3_;
+.b2_:
+  c4_: int = const 1;
+  print c4_;
+  ret;
+  jmp .b5_;
 .b3_:
-  c5_: int = const 1;
-  print c5_;
+  c6_: int = const 2;
+  print c6_;
   ret;
-  jmp .b6_;
-.b4_:
-  c7_: int = const 2;
-  print c7_;
-  ret;
-.b6_:
+.b5_:
 }

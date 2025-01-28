@@ -4,31 +4,30 @@ expression: visualization.result
 ---
 # ARGS: 0
 @main(v0: int) {
-.b1_:
-  c2_: int = const 0;
-  c3_: int = const 500;
-  v4_: int = id c2_;
-  v5_: int = id c2_;
-  v6_: int = id v0;
+  c1_: int = const 0;
+  c2_: int = const 500;
+  v3_: int = id c1_;
+  v4_: int = id c1_;
+  v5_: int = id v0;
+  v6_: int = id c1_;
   v7_: int = id c2_;
-  v8_: int = id c3_;
-.b9_:
-  v10_: bool = eq v6_ v7_;
-  c11_: int = const 2;
-  v12_: int = mul c11_ v5_;
-  c13_: int = const 3;
-  v14_: int = mul c13_ v5_;
-  v15_: int = select v10_ v12_ v14_;
-  c16_: int = const 1;
-  v17_: int = add c16_ v5_;
-  v18_: bool = lt v17_ v8_;
-  v4_: int = id v15_;
-  v5_: int = id v17_;
+.b8_:
+  v9_: bool = eq v5_ v6_;
+  c10_: int = const 2;
+  v11_: int = mul c10_ v4_;
+  c12_: int = const 3;
+  v13_: int = mul c12_ v4_;
+  v14_: int = select v9_ v11_ v13_;
+  c15_: int = const 1;
+  v16_: int = add c15_ v4_;
+  v17_: bool = lt v16_ v7_;
+  v3_: int = id v14_;
+  v4_: int = id v16_;
+  v5_: int = id v5_;
   v6_: int = id v6_;
   v7_: int = id v7_;
-  v8_: int = id v8_;
-  br v18_ .b9_ .b19_;
-.b19_:
-  print v4_;
+  br v17_ .b8_ .b18_;
+.b18_:
+  print v3_;
   ret;
 }

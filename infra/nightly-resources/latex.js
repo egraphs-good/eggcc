@@ -1,4 +1,3 @@
-
 // format a number to 2 decimal places as a string
 // but only if it is a number
 function formatNumber(num) {
@@ -59,5 +58,3 @@ function jsonToLatexTable(json) {
 
   return res;
 }
-
-

@@ -52,7 +52,6 @@ function addTableTo(element, data) {
   const tableDiv = document.createElement("div");
   tableDiv.innerHTML = ConvertJsonToTable(data);
   element.appendChild(tableDiv);
-
 }
 
 function refreshView() {
@@ -165,5 +164,3 @@ async function refreshLatexMacros() {
   const latexMacros = await fetch("nightlymacros.tex").then((r) => r.text());
   latexMacrosTextArea.value = latexMacros;
 }
-
-

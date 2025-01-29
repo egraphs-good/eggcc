@@ -32,6 +32,29 @@ function clearWarnings() {
   GLOBAL_DATA.warnings.clear();
 }
 
+function addTableTo(element, data) {
+  // clear elements in element
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+
+  // add a button that copies latex for table
+  const copyButton = document.createElement("button");
+  copyButton.innerText = "Copy Latex";
+  copyButton.onclick = () => {
+    const table = jsonToLatexTable(data);
+    navigator.clipboard.writeText(table);
+  };
+
+  element.appendChild(copyButton);
+
+  // add a new div for the table
+  const tableDiv = document.createElement("div");
+  tableDiv.innerHTML = ConvertJsonToTable(data);
+  element.appendChild(tableDiv);
+
+}
+
 function refreshView() {
   if (!GLOBAL_DATA.baselineRun) {
     addWarning("no baseline to compare to");
@@ -49,10 +72,14 @@ function refreshView() {
 
   document.getElementById("profile").innerHTML = ConvertJsonToTable(tableData);
 
+  addTableTo(document.getElementById("profile"), tableData);
+
   // fill in the overall stats table
   const overallStats = getOverallStatistics();
+  console.log(overallStats);
+
   const overallTable = document.getElementById("overall-stats-table");
-  overallTable.innerHTML = ConvertJsonToTable(overallStats);
+  addTableTo(overallTable, overallStats);
 
   renderWarnings();
   refreshChart();
@@ -138,3 +165,5 @@ async function refreshLatexMacros() {
   const latexMacros = await fetch("nightlymacros.tex").then((r) => r.text());
   latexMacrosTextArea.value = latexMacros;
 }
+
+

@@ -138,3 +138,39 @@ async function refreshLatexMacros() {
   const latexMacros = await fetch("nightlymacros.tex").then((r) => r.text());
   latexMacrosTextArea.value = latexMacros;
 }
+
+
+function addGraphs() {
+  var prevElement = document.getElementById("plots");
+  // for each plot in graphs folder, add button to show plot
+  fetch("graphs.json").then((r) => r.json()).then((data) => {
+    data.forEach((plot) => {
+      const button = document.createElement("button");
+      button.id = plot;
+      button.onclick = function () {
+        toggle(button, `\u25B6 Show ${plot}`, `\u25BC Hide ${plot}`);
+      }
+      button.innerText = `\u25B6 Show ${plot}`;
+
+      // insert right after plots element
+      prevElement.insertAdjacentElement("afterend", button);
+      prevElement = button;
+
+      // create div for plot
+      const plotDiv = document.createElement("div");
+      plotDiv.classList.add("content");
+      plotDiv.classList.add("collapsed");
+      plotDiv.id = `${plot}-content`;
+      prevElement.insertAdjacentElement("afterend", plotDiv);
+      prevElement = plotDiv;
+
+      // create img for plot
+      const img = document.createElement("img");
+      img.src = `graphs/${plot}`;
+      plotDiv.appendChild(img);
+    });
+  });
+}
+
+// on page load, add graphs
+window.addEventListener("load", addGraphs);

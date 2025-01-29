@@ -333,6 +333,7 @@ if __name__ == '__main__':
       print("Usage: python graphs.py <output_folder> <profile.json> <benchmark_suite_folder>")
       sys.exit(1)
   output_folder = sys.argv[1]
+  graphs_folder = output_folder + '/graphs'
   profile_file = sys.argv[2]
   benchmark_suite_folder = sys.argv[3]
 
@@ -344,14 +345,25 @@ if __name__ == '__main__':
   # folders in 
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
 
-  make_jitter(profile, 4, f'{output_folder}/jitter_plot_max_4.png')
+  make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
   for suite in benchmark_suites:
     suite_path = os.path.join(benchmark_suite_folder, suite)
     suite_benchmarks = benchmarks_in_folder(suite_path)
     profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
-    make_bar_chart(profile_for_suite, f'{output_folder}/{suite}_bar_chart.png')
+    make_bar_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.png')
 
   make_macros(profile, f'{output_folder}/nightlymacros.tex')
 
-  make_code_size_vs_compile_time(profile, f'{output_folder}/code_size_vs_compile_time.png', benchmark_suite_folder)
+  make_code_size_vs_compile_time(profile, f'{graphs_folder}/code_size_vs_compile_time.png', benchmark_suite_folder)
+
+  # make json list of graph names and put in in output
+  graph_names = []
+  # read all files in the graphs folder
+  for root, _, filenames in os.walk(graphs_folder):
+    for filename in filenames:
+      graph_names.append(filename)
+  with open(f'{output_folder}/graphs.json', 'w') as f:
+    json.dump(graph_names, f)
+
+  

@@ -159,7 +159,7 @@ def make_jitter(profile, upper_x_bound, output):
   plt.savefig(output)
 
 def mean(lst):
-  return sum(lst) / len(lst)
+  return float(sum(lst)) / float(len(lst))
 
 def normalized(profile, benchmark, treatment):
   baseline = get_baseline_cycles(profile, benchmark)
@@ -293,6 +293,7 @@ def get_code_size(benchmark, suites_path):
     
   # if it's a .rs files convert it to bril first with `cargo run --run-mode parse`
   if file.endswith('.rs'):
+    return 0 # TODO revert
     popen_res = os.popen(f'cargo run {file} --run-mode parse')
     output_str = popen_res.read()
     error_code = popen_res.close()
@@ -303,6 +304,42 @@ def get_code_size(benchmark, suites_path):
   
   raise KeyError(f"Unsupported file type for benchmark {benchmark}: {file}")
 
+
+def make_xy_graph(profile, output):
+  y_axis_treatment = 'llvm-eggcc-O0-O0'
+  x_axis_treatment = 'llvm-O3-O0'
+
+  benchmarks = dedup([b.get('benchmark') for b in profile])
+
+  data = []
+  for benchmark in benchmarks:
+    x = mean(get_cycles(profile, benchmark, x_axis_treatment)) / 1000000.0
+    y = mean(get_cycles(profile, benchmark, y_axis_treatment)) / 1000000.0
+    data.append((x, y))
+  
+  x = [d[0] for d in data]
+  y = [d[1] for d in data]
+  print(x)
+  print(y)
+  # graph data
+  plt.figure(figsize=(10, 10))
+  plt.scatter(x, y)
+  plt.xlabel(f'{x_axis_treatment} Cycles (Millions)')
+  plt.ylabel(f'{y_axis_treatment} Cycles (Millions)')
+  plt.title(f'{y_axis_treatment} vs {x_axis_treatment}')
+
+  # set max bounds to be the same
+  max_val = max(max(x), max(y))
+  # set max bound
+  plt.xlim(0, 100)
+  plt.ylim(0, 100)
+
+
+  # add a line for the diagonal
+  plt.plot([0, max_val], [0, max_val], color='gray', linestyle='--', linewidth=0.5)
+
+  # save the graph
+  plt.savefig(output)
 
 def make_code_size_vs_compile_time(profile, output, suites_path):
   benchmarks = dedup([b.get('benchmark') for b in profile])
@@ -356,6 +393,8 @@ if __name__ == '__main__':
   make_macros(profile, f'{output_folder}/nightlymacros.tex')
 
   make_code_size_vs_compile_time(profile, f'{graphs_folder}/code_size_vs_compile_time.png', benchmark_suite_folder)
+
+  make_xy_graph(profile, f'{graphs_folder}/xy_graph_eggcc_llvm.png')
 
   # make json list of graph names and put in in output
   graph_names = []

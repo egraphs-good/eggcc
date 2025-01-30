@@ -1119,10 +1119,11 @@ impl Run {
             "clang"
         };
 
-        // first, run sroa to get rid of memory-based registers
+        // Run sroa to get rid of memory-based registers
+        // Run simplifycfg to remove any remaining extraneous jumps introduced by RVSDG conversion
         // from the bril2llvm compiler
         let res = Command::new(opt_cmd)
-            .arg("-passes=sroa")
+            .arg("-passes=sroa,simplifycfg")
             .arg("-S")
             .arg(file_path.clone())
             .arg("-o")

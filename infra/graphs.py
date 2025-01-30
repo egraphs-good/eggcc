@@ -293,7 +293,6 @@ def get_code_size(benchmark, suites_path):
     
   # if it's a .rs files convert it to bril first with `cargo run --run-mode parse`
   if file.endswith('.rs'):
-    return 0 # TODO revert
     popen_res = os.popen(f'cargo run {file} --run-mode parse')
     output_str = popen_res.read()
     error_code = popen_res.close()
@@ -313,8 +312,8 @@ def make_xy_graph(profile, output):
 
   data = []
   for benchmark in benchmarks:
-    x = mean(get_cycles(profile, benchmark, x_axis_treatment)) / 1000000.0
-    y = mean(get_cycles(profile, benchmark, y_axis_treatment)) / 1000000.0
+    x = normalized(profile, benchmark, x_axis_treatment)
+    y = normalized(profile, benchmark, y_axis_treatment)
     data.append((x, y))
   
   x = [d[0] for d in data]
@@ -324,15 +323,21 @@ def make_xy_graph(profile, output):
   # graph data
   plt.figure(figsize=(10, 10))
   plt.scatter(x, y)
-  plt.xlabel(f'{x_axis_treatment} Cycles (Millions)')
-  plt.ylabel(f'{y_axis_treatment} Cycles (Millions)')
+  plt.xlabel(f'{x_axis_treatment} Cycles (Normliazed to LLVM-O0-O0)')
+  plt.ylabel(f'{y_axis_treatment} Cycles (Normalized to LLVM-O0-O0)')
   plt.title(f'{y_axis_treatment} vs {x_axis_treatment}')
 
   # set max bounds to be the same
   max_val = max(max(x), max(y))
   # set max bound
-  plt.xlim(0, 100)
-  plt.ylim(0, 100)
+  plt.xlim(0, 1.4)
+  plt.ylim(0, 1.4)
+
+  # show outliers as red x marks
+  for idx, val in enumerate(x):
+    if val > 1.4 or y[idx] > 1.4:
+      plt.text(min(val, 1.4), min(y[idx], 1.4), 'x', color='red', ha='center', va='center')
+      
 
 
   # add a line for the diagonal

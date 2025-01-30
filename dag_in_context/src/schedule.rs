@@ -197,10 +197,10 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
       {helpers}
       passthrough)
 
-    (repeat 6
+    (repeat 5
         {helpers}
-        cheap-optimizations
         all-optimizations
+        cheap-optimizations
     )
 
     {helpers}

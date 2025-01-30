@@ -196,15 +196,11 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
     (saturate
       {helpers}
       passthrough)
-    interval-rewrite
-    (repeat 2
-        {helpers}
-        all-optimizations
-    )
 
-    (repeat 4
+    (repeat 6
         {helpers}
         cheap-optimizations
+        all-optimizations
     )
 
     {helpers}

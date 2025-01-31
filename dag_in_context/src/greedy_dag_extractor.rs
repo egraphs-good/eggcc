@@ -3,7 +3,9 @@ use egraph_serialize::{ClassId, EGraph, NodeId};
 use indexmap::{IndexMap, IndexSet};
 use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
+use smallvec::SmallVec;
 use std::{
+    cmp::max,
     collections::{HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
@@ -516,10 +518,17 @@ impl<'a> Extractor<'a> {
 
     // Get the cost of a subregion
     // For DoWhile nodes, use special logic to calculate the cost based on iteration count
-    fn subregion_cost(&self, info: &EgraphInfo, nodeid: NodeId, child_set: &CostSet) -> Cost {
+    fn subregions_cost(
+        &self,
+        info: &EgraphInfo,
+        nodeid: NodeId,
+        child_set: SmallVec<[&CostSet; 3]>,
+    ) -> Cost {
         let node = info.egraph.nodes.get(&nodeid).unwrap();
 
         if node.op == "DoWhile" {
+            assert!(child_set.len() == 1);
+            let child_set = child_set[0];
             let inputs = info.egraph.nid_to_cid(&node.children[0]);
             let outputs = info.egraph.nid_to_cid(&node.children[1]);
 
@@ -530,8 +539,15 @@ impl<'a> Extractor<'a> {
                 .unwrap_or(1000);
 
             child_set.total * NotNan::new(loop_num_iters_guess as f64).unwrap()
+        } else if node.op == "If" { // Currently we don't do this for "Switch"
+                                    // because the branches of Switch is hidden
+                                    // behind an ListExpr
+            assert!(child_set.len() == 2);
+            let thn = child_set[0];
+            let els = child_set[1];
+            max(thn.total, els.total)
         } else {
-            child_set.total
+            child_set.iter().map(|cs| cs.total).sum()
         }
     }
 
@@ -617,7 +633,6 @@ impl<'a> Extractor<'a> {
             for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
                 if *is_region_root {
                     children_terms.push(child_set.term.clone());
-                    unshared_total += self.subregion_cost(info, nodeid.clone(), child_set);
                 } else {
                     // costs is empty, replace it with the child one
                     if Some(index) == index_of_biggest_child {
@@ -637,6 +652,14 @@ impl<'a> Extractor<'a> {
                     }
                 }
             }
+
+            // We separately compute the cost of all the subregions
+            let css: SmallVec<[&CostSet; 3]> = child_cost_sets
+                .iter()
+                .filter(|(_, is_region_root)| *is_region_root)
+                .map(|(cs, _)| *cs)
+                .collect();
+            unshared_total += self.subregions_cost(info, nodeid.clone(), css);
         }
 
         // swap back the termdag and correspondance
@@ -1422,6 +1445,37 @@ fn test_dag_extract() {
     // two of the same function
     let expected_cost = cost_of_one_func * 2.;
     dag_extraction_test(&prog, expected_cost);
+}
+
+#[test]
+fn test_dag_extract_if() {
+    use crate::ast::*;
+    let prog = program!(function(
+        "func_if",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        parallel!(
+            get(
+                tif(
+                    less_than(int(10), int(10)),
+                    parallel!(getat(0)),
+                    parallel!(mul(int(0), int(0))),
+                    parallel!(int(1))
+                ),
+                0
+            ),
+            getat(1)
+        )
+    ),);
+    let cost_model = TestCostModel;
+    let cost_then = cost_model.get_op_cost("Mul") + cost_model.get_op_cost("Const");
+    let cost_if = cost_then
+        + cost_model.get_op_cost("LessThan")
+        + cost_model.get_op_cost("Const")
+        + cost_model.get_op_cost("Get")
+        + cost_model.get_op_cost("If");
+    let cost_total = cost_if + cost_model.get_op_cost("Get");
+    dag_extraction_test(&prog, cost_total);
 }
 
 #[test]

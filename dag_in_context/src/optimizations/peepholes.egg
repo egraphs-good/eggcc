@@ -45,3 +45,5 @@
       :ruleset peepholes)
 
 (rewrite (Top (Select) pred x x) x :ruleset peepholes)
+(rewrite (Top (Select) (Const (Bool true) ty ctx) x y) x :ruleset peepholes)
+(rewrite (Top (Select) (Const (Bool false) ty ctx) x y) y :ruleset peepholes)

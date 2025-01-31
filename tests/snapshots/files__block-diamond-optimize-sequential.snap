@@ -14,23 +14,21 @@ expression: visualization.result
   v8_: int = id c2_;
   br v3_ .b9_ .b10_;
 .b9_:
-  c11_: bool = const true;
-  c12_: int = const 4;
-  v13_: int = select c11_ c12_ c2_;
-  v6_: int = id v13_;
+  c11_: int = const 4;
+  v6_: int = id c11_;
   v7_: int = id c1_;
   v8_: int = id c2_;
-  v14_: int = add c2_ v6_;
-  v15_: int = select v3_ v6_ v14_;
-  v16_: int = add c1_ v15_;
-  print v16_;
+  v12_: int = add c2_ v6_;
+  v13_: int = select v3_ v6_ v12_;
+  v14_: int = add c1_ v13_;
+  print v14_;
   ret;
-  jmp .b17_;
+  jmp .b15_;
 .b10_:
-  v14_: int = add c2_ v6_;
-  v15_: int = select v3_ v6_ v14_;
-  v16_: int = add c1_ v15_;
-  print v16_;
+  v12_: int = add c2_ v6_;
+  v13_: int = select v3_ v6_ v12_;
+  v14_: int = add c1_ v13_;
+  print v14_;
   ret;
-.b17_:
+.b15_:
 }

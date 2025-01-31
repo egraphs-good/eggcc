@@ -322,6 +322,19 @@
       ((set (hi-bound (Get lhs i)) (bound-max hi-thn hi-els)))
       :ruleset interval-analysis)
 
+
+; if the predicate is also an input to the region, merge with true/false in each branch
+(rule (
+       (= if_e (If pred inputs thn els))
+       (= pred (Get inputs i))
+       (HasType inputs ty)
+      )
+      (
+       (union (Get (Arg ty (InIf true  pred inputs)) i) (Const (Bool true)  ty (InIf true  pred inputs)))
+       (union (Get (Arg ty (InIf false pred inputs)) i) (Const (Bool false) ty (InIf false pred inputs)))
+      )
+      :ruleset interval-analysis)
+
 ; If the If takes a tuple
 (rule (
         ; expr < value

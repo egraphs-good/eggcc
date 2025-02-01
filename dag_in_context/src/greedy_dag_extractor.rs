@@ -539,9 +539,10 @@ impl<'a> Extractor<'a> {
                 .unwrap_or(1000);
 
             child_set.total * NotNan::new(loop_num_iters_guess as f64).unwrap()
-        } else if node.op == "If" { // Currently we don't do this for "Switch"
-                                    // because the branches of Switch is hidden
-                                    // behind an ListExpr
+        } else if node.op == "If" {
+            // Currently we don't do this for "Switch"
+            // because the branches of Switch is hidden
+            // behind an ListExpr
             assert!(child_set.len() == 2);
             let thn = child_set[0];
             let els = child_set[1];
@@ -1469,7 +1470,9 @@ fn test_dag_extract_if() {
     ),);
     let cost_model = TestCostModel;
     let cost_then = cost_model.get_op_cost("Mul") + cost_model.get_op_cost("Const");
+    let cost_else = cost_model.get_op_cost("Const");
     let cost_if = cost_then
+        + cost_else * 0.3
         + cost_model.get_op_cost("LessThan")
         + cost_model.get_op_cost("Const")
         + cost_model.get_op_cost("Get")

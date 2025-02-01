@@ -48,7 +48,9 @@
 
 (rule ((= (Const c1 ty1 ctx1) (Const c2 ty2 ctx2))
        (= ctx1 (InFunc name))
-       (!= c1 c2))
+       (!= c1 c2)
+       ;; these are artificial InFunc contexts from making loop contexts
+       (= (count-matches name " loop_ctx_") 0))
       ((panic "Unsoundness detected: const values differ at top level"))
       :ruleset error-checking)
 

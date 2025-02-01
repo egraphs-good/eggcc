@@ -5,7 +5,7 @@ use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
 use smallvec::SmallVec;
 use std::{
-    cmp::max,
+    cmp::{max, min},
     collections::{HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
@@ -545,7 +545,7 @@ impl<'a> Extractor<'a> {
             assert!(child_set.len() == 2);
             let thn = child_set[0];
             let els = child_set[1];
-            max(thn.total, els.total)
+            max(thn.total, els.total) + min(thn.total, els.total) * 0.3
         } else {
             child_set.iter().map(|cs| cs.total).sum()
         }

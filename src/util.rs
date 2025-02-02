@@ -1123,7 +1123,7 @@ impl Run {
         // Run simplifycfg to remove any remaining extraneous jumps introduced by RVSDG conversion
         // from the bril2llvm compiler
         let res = Command::new(opt_cmd)
-            .arg("-passes=simplifycfg,sroa")
+            .arg("-passes=simplifycfg,sroa,simplifycfg")
             .arg("-S")
             .arg(file_path.clone())
             .arg("-o")

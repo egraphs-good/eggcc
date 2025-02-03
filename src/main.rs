@@ -74,7 +74,7 @@ struct Args {
     optimize_function: Option<String>,
 
     #[clap(long)]
-    with_lowering_peepholes: bool,
+    no_lowering_peepholes: bool,
 }
 
 fn main() {
@@ -127,7 +127,7 @@ fn main() {
             stop_after_n_passes: args.stop_after_n_passes.unwrap_or(i64::MAX),
             linearity: !args.no_linearity,
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
-            with_lowering_peepholes: args.with_lowering_peepholes,
+            with_lowering_peepholes: !args.no_lowering_peepholes,
         },
     };
 

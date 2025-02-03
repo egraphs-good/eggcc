@@ -6,6 +6,7 @@ const treatments = [
   "llvm-O2-O0",
   "llvm-eggcc-O0-O0",
   "llvm-eggcc-sequential-O0-O0",
+  "llvm-eggcc-O0-O0-no-lowering",
   "llvm-O3-O0",
   "llvm-O3-O3",
   "llvm-eggcc-O3-O0",
@@ -44,7 +45,7 @@ function refreshView() {
   });
   const tableData = Object.keys(byBench).map((bench) => ({
     name: `<a target="_blank" rel="noopener noreferrer" href="https://github.com/egraphs-good/eggcc/tree/main/${getBrilPathForBenchmark(
-      bench,
+      bench
     )}">${bench}</a>`,
     executions: { data: byBench[bench] },
   }));
@@ -98,18 +99,18 @@ function makeSelectors() {
   treatments.forEach((mode) => {
     const checkbox = makeCheckbox(
       document.getElementById("modeCheckboxes"),
-      mode,
+      mode
     );
     checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.enabledModes);
   });
 
   const benchmarks = Array.from(
-    new Set(GLOBAL_DATA.currentRun.map((o) => o.benchmark)),
+    new Set(GLOBAL_DATA.currentRun.map((o) => o.benchmark))
   ).sort();
   benchmarks.forEach((benchmark) => {
     const checkbox = makeCheckbox(
       document.getElementById("benchmarkCheckboxes"),
-      benchmark,
+      benchmark
     );
     checkbox.onchange = () =>
       toggleCheckbox(benchmark, GLOBAL_DATA.enabledBenchmarks);
@@ -121,7 +122,7 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
 
   const formatRun = (run) =>
     `${run.branch} - ${run.commit} - ${new Date(
-      run.date * 1000,
+      run.date * 1000
     ).toDateString()}`;
 
   previousRuns.forEach((nightly) => {

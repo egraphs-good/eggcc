@@ -9,6 +9,7 @@ const treatments = [
   "llvm-O3-O0",
   "llvm-O3-O3",
   "llvm-eggcc-O3-O0",
+  "llvm-eggcc-O3-O3",
 ];
 
 const GLOBAL_DATA = {
@@ -42,7 +43,9 @@ function refreshView() {
     byBench[benchmark] = getDataForBenchmark(benchmark);
   });
   const tableData = Object.keys(byBench).map((bench) => ({
-    name: `<a target="_blank" rel="noopener noreferrer" href="https://github.com/egraphs-good/eggcc/tree/main/${getBrilPathForBenchmark(bench)}">${bench}</a>`,
+    name: `<a target="_blank" rel="noopener noreferrer" href="https://github.com/egraphs-good/eggcc/tree/main/${getBrilPathForBenchmark(
+      bench,
+    )}">${bench}</a>`,
     executions: { data: byBench[bench] },
   }));
   tableData.sort((l, r) => l.name - r.name);

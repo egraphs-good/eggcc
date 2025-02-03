@@ -188,7 +188,6 @@ impl<'a> Extractor<'a> {
             }
             Expr::Const(_, _, _) => panic!("Const has no effect"),
             Expr::Symbolic(_, _ty) => panic!("found symbolic"),
-            Expr::DeadCode(_subexpr) => panic!("found dead code"),
         }
     }
 

@@ -527,10 +527,6 @@ impl<'a> TypeChecker<'a> {
                 }
                 (found_ty.clone(), expr.clone())
             }
-            Expr::DeadCode(subexpr) => {
-                let (ty, new_subexpr) = self.add_arg_types_to_expr(subexpr.clone(), arg_tys);
-                (ty, RcExpr::new(Expr::DeadCode(new_subexpr)))
-            }
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
             Expr::Symbolic(_, ty) => (
                 ty.clone()
@@ -561,7 +557,6 @@ impl<'a> TypeChecker<'a> {
     pub(crate) fn get_arg_type(expr: &RcExpr) -> Type {
         match expr.as_ref() {
             Expr::Arg(ty, _) => ty.clone(),
-            Expr::DeadCode(subexpr) => Self::get_arg_type(subexpr),
             Expr::Const(_, ty, _) => ty.clone(),
             Expr::Top(_, rc, _, _) => Self::get_arg_type(rc),
             Expr::Bop(_, left, _) => Self::get_arg_type(left),

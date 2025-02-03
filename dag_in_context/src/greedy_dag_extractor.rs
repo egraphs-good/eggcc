@@ -464,12 +464,15 @@ impl<'a> Extractor<'a> {
     /// violating the invariant that we only extract one term per eclass.
     /// This function would be called with `Neg(b)` as `term`, and would return `Neg(a)` as the new term.
     /// This restores the invariant that we only extract one term per eclass.
+    ///
+    /// When is_free is true, return 0 for the cost and don't add new nodes to the cost set.
     fn add_term_to_cost_set(
         &mut self,
         info: &EgraphInfo,
         current_costs: &mut HashTrieMap<ClassId, (Term, Cost)>,
         term: Term,
         other_costs: &HashTrieMap<ClassId, (Term, Cost)>,
+        is_free: bool,
     ) -> (Term, Cost) {
         match &term {
             Term::Lit(_) => {
@@ -482,11 +485,6 @@ impl<'a> Extractor<'a> {
                     return (term, NotNan::new(0.).unwrap());
                 }
 
-                if head.to_string() == "DeadCode" {
-                    // no need to add to cost set
-                    return (term, NotNan::new(0.).unwrap());
-                }
-
                 let nodeid = &self.term_node(&term);
                 let eclass = info.egraph.nid_to_cid(nodeid);
                 if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
@@ -494,9 +492,14 @@ impl<'a> Extractor<'a> {
                 } else {
                     let unshared_cost = match other_costs.get(eclass) {
                         Some((_, cost)) => *cost,
+                        // no cost stored, so it's free
                         None => NotNan::new(0.).unwrap(),
                     };
                     let mut cost = unshared_cost;
+                    if is_free {
+                        cost = NotNan::new(0.).unwrap();
+                    }
+
                     let new_term = {
                         let mut new_children = vec![];
                         for child in children {
@@ -506,6 +509,7 @@ impl<'a> Extractor<'a> {
                                 current_costs,
                                 child.clone(),
                                 other_costs,
+                                is_free,
                             );
                             new_children.push(new_child);
                             cost += child_cost;
@@ -513,8 +517,11 @@ impl<'a> Extractor<'a> {
                         self.termdag.app(*head, new_children)
                     };
                     self.add_correspondence(new_term.clone(), nodeid.clone());
-                    *current_costs =
-                        current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
+
+                    if cost > NotNan::new(0.).unwrap() {
+                        *current_costs =
+                            current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
+                    }
 
                     (new_term, cost)
                 }
@@ -752,30 +759,22 @@ impl<'a> Extractor<'a> {
                             }
                         }
                     }
+                    eprintln!("used children: {:?}", used_children);
 
                     if !add_to_shared {
                         // now that we have which children are used, try to break up the inputs
                         if let Some(broken_up_terms) = self.try_break_up_term(&child_set.term) {
                             let mut new_input_children = vec![];
                             for (idx, input_tuple_term) in broken_up_terms.iter().enumerate() {
-                                if used_children.contains(&idx) {
-                                    let (child_term, net_cost) = self.add_term_to_cost_set(
-                                        info,
-                                        &mut costs,
-                                        input_tuple_term.clone(),
-                                        &child_set.costs,
-                                    );
-                                    shared_total += net_cost;
-                                    new_input_children.push(child_term);
-                                } else {
-                                    let deadcode_term = self
-                                        .termdag
-                                        .app("DeadCode".into(), vec![input_tuple_term.clone()]);
-                                    new_input_children.push(deadcode_term.clone());
-                                    let old_term_node =
-                                        self.correspondence.get(input_tuple_term).unwrap();
-                                    self.add_correspondence(deadcode_term, old_term_node.clone());
-                                }
+                                let (child_term, net_cost) = self.add_term_to_cost_set(
+                                    info,
+                                    &mut costs,
+                                    input_tuple_term.clone(),
+                                    &child_set.costs,
+                                    !used_children.contains(&idx),
+                                );
+                                shared_total += net_cost;
+                                new_input_children.push(child_term);
                             }
                             let (new_term, children_used) =
                                 self.build_concat(child_set.term.clone(), &new_input_children);
@@ -795,6 +794,7 @@ impl<'a> Extractor<'a> {
                         &mut costs,
                         child_set.term.clone(),
                         &child_set.costs,
+                        false,
                     );
                     shared_total += net_cost;
                     children_terms.push(child_term);

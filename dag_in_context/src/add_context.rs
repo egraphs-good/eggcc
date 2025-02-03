@@ -327,9 +327,6 @@ impl Expr {
                 body.add_ctx_with_cache(current_ctx, cache),
             )),
             Expr::Symbolic(s, ty) => RcExpr::new(Expr::Symbolic(s.clone(), ty.clone())),
-            Expr::DeadCode(subexpr) => RcExpr::new(Expr::DeadCode(
-                subexpr.add_ctx_with_cache(current_ctx, cache),
-            )),
         };
         cache
             .with_ctx

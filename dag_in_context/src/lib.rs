@@ -268,9 +268,9 @@ pub enum Schedule {
     Sequential,
 }
 impl Schedule {
-    pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
+    pub fn get_schedule_list(&self, with_lowering_peepholes: bool) -> Vec<CompilerPass> {
         match self {
-            Schedule::Parallel => parallel_schedule(),
+            Schedule::Parallel => parallel_schedule(with_lowering_peepholes),
             Schedule::Sequential => schedule::mk_sequential_schedule(),
         }
     }
@@ -289,6 +289,7 @@ pub struct EggccConfig {
     pub linearity: bool,
     /// When Some, optimize only the functions in this set.
     pub optimize_functions: Option<HashSet<String>>,
+    pub with_lowering_peepholes: bool,
 }
 
 impl EggccConfig {
@@ -310,6 +311,7 @@ impl Default for EggccConfig {
             stop_after_n_passes: i64::MAX,
             linearity: true,
             optimize_functions: None,
+            with_lowering_peepholes: true,
         }
     }
 }
@@ -320,7 +322,9 @@ pub fn optimize(
     program: &TreeProgram,
     eggcc_config: &EggccConfig,
 ) -> std::result::Result<TreeProgram, egglog::Error> {
-    let schedule_list = eggcc_config.schedule.get_schedule_list();
+    let schedule_list = eggcc_config
+        .schedule
+        .get_schedule_list(eggcc_config.with_lowering_peepholes);
     let mut res = program.clone();
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
@@ -520,7 +524,7 @@ fn egglog_test_internal(
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
         prologue(),
-        parallel_schedule()
+        parallel_schedule(true)
             .iter()
             .map(|pass| pass.egglog_schedule().to_string())
             .collect::<Vec<String>>()

@@ -4,10 +4,18 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
+<<<<<<< HEAD
   c1_: int = const 1;
   c2_: int = const 2;
   v3_: bool = lt v0 c2_;
   c4_: int = const 0;
+=======
+<<<<<<< HEAD
+  c1_: int = const 2;
+  v2_: bool = lt v0 c1_;
+  c3_: int = const 0;
+  c4_: int = const 1;
+>>>>>>> d193ebae (snapshots)
   c5_: int = const 5;
   v6_: int = id c1_;
   v7_: int = id c1_;
@@ -33,4 +41,34 @@ expression: visualization.result
   print v16_;
   ret;
 .b17_:
+=======
+.b1_:
+  c2_: int = const 2;
+  v3_: bool = lt v0 c2_;
+  c4_: int = const 1;
+  v5_: int = id c4_;
+  v6_: int = id c4_;
+  v7_: int = id c2_;
+  br v3_ .b8_ .b9_;
+.b8_:
+  c10_: bool = const true;
+  c11_: int = const 4;
+  v12_: int = select c10_ c11_ c2_;
+  v5_: int = id v12_;
+  v6_: int = id c4_;
+  v7_: int = id c2_;
+  v13_: int = add c2_ v5_;
+  v14_: int = select v3_ v5_ v13_;
+  v15_: int = add c4_ v14_;
+  print v15_;
+  ret;
+  jmp .b16_;
+.b9_:
+  v13_: int = add c2_ v5_;
+  v14_: int = select v3_ v5_ v13_;
+  v15_: int = add c4_ v14_;
+  print v15_;
+  ret;
+.b16_:
+>>>>>>> 4bb7bcbd (snapshots)
 }

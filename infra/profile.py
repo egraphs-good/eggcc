@@ -23,6 +23,7 @@ treatments = [
   "llvm-O3-O0",
   "llvm-O3-O3",
   "llvm-eggcc-O3-O0",
+  "llvm-eggcc-O3-O3",
 ]
 
 # Where to output files that are needed for nightly report
@@ -57,6 +58,8 @@ def get_eggcc_options(benchmark):
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-O3-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
+    case "llvm-eggcc-O3-O3":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     

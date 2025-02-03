@@ -759,7 +759,6 @@ impl<'a> Extractor<'a> {
                             }
                         }
                     }
-                    eprintln!("used children: {:?}", used_children);
 
                     if !add_to_shared {
                         // now that we have which children are used, try to break up the inputs

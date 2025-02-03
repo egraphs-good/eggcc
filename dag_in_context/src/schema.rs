@@ -124,9 +124,6 @@ pub enum Expr {
     DoWhile(RcExpr, RcExpr),
     Arg(Type, Assumption),
     Function(String, Type, Type, RcExpr),
-    // marks a subexpression as dead code that can be dropped
-    // used by extraction, then dead code is removed by a dead code pass
-    DeadCode(RcExpr),
     // optionally, the type of this symbol for typechecking
     Symbolic(String, Option<Type>),
 }

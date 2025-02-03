@@ -343,9 +343,6 @@ impl<'a> FromEgglog<'a> {
               self.expr_from_egglog(expr.clone()),
             ))
           }
-          ("DeadCode", [subexpr]) => {
-            Rc::new(Expr::DeadCode(self.expr_from_egglog(self.termdag.get(*subexpr).clone())))
-          }
           _ => panic!("Invalid expr: {:?}", expr),
         });
 

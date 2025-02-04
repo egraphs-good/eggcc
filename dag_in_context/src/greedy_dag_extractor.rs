@@ -496,10 +496,6 @@ impl<'a> Extractor<'a> {
                         None => NotNan::new(0.).unwrap(),
                     };
 
-                    if is_free {
-                        unshared_cost = NotNan::new(0.).unwrap();
-                    }
-
                     let mut cost = unshared_cost;
 
                     let new_term = {

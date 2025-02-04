@@ -463,7 +463,8 @@ impl<'a> Extractor<'a> {
     /// However, a and b could have the same eclass if they are equal, but we chose different terms,
     /// violating the invariant that we only extract one term per eclass.
     /// This function would be called with `Neg(b)` as `term`, and would return `Neg(a)` as the new term.
-    /// This restores the invariant that we only extract one term per eclass.
+    /// This restores the invariant that we only extract one term per eclass for effectful nodes.
+    /// Dead code detection can add terms that are not in the cost set, breaking this invariant.
     ///
     /// When is_free is true, return 0 for the cost and don't add new nodes to the cost set.
     fn add_term_to_cost_set(
@@ -472,7 +473,6 @@ impl<'a> Extractor<'a> {
         current_costs: &mut HashTrieMap<ClassId, (Term, Cost)>,
         term: Term,
         other_costs: &HashTrieMap<ClassId, (Term, Cost)>,
-        is_free: bool,
     ) -> (Term, Cost) {
         match &term {
             Term::Lit(_) => {
@@ -496,9 +496,6 @@ impl<'a> Extractor<'a> {
                         None => NotNan::new(0.).unwrap(),
                     };
                     let mut cost = unshared_cost;
-                    if is_free {
-                        cost = NotNan::new(0.).unwrap();
-                    }
 
                     let new_term = {
                         let mut new_children = vec![];
@@ -509,7 +506,6 @@ impl<'a> Extractor<'a> {
                                 current_costs,
                                 child.clone(),
                                 other_costs,
-                                is_free,
                             );
                             new_children.push(new_child);
                             cost += child_cost;
@@ -765,13 +761,16 @@ impl<'a> Extractor<'a> {
                         if let Some(broken_up_terms) = self.try_break_up_term(&child_set.term) {
                             let mut new_input_children = vec![];
                             for (idx, input_tuple_term) in broken_up_terms.iter().enumerate() {
-                                let (child_term, net_cost) = self.add_term_to_cost_set(
-                                    info,
-                                    &mut costs,
-                                    input_tuple_term.clone(),
-                                    &child_set.costs,
-                                    !used_children.contains(&idx),
-                                );
+                                let (child_term, net_cost) = if used_children.contains(&idx) {
+                                    self.add_term_to_cost_set(
+                                        info,
+                                        &mut costs,
+                                        input_tuple_term.clone(),
+                                        &child_set.costs,
+                                    )
+                                } else {
+                                    (input_tuple_term.clone(), NotNan::new(0.).unwrap())
+                                };
                                 shared_total += net_cost;
                                 new_input_children.push(child_term);
                             }

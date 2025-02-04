@@ -520,8 +520,10 @@ impl<'a> Extractor<'a> {
                     };
                     self.add_correspondence(new_term.clone(), nodeid.clone());
 
-                    *current_costs =
-                        current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
+                    if !is_free {
+                        *current_costs =
+                            current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
+                    }
 
                     (new_term, cost)
                 }

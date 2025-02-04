@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 egglog = { git = "https://github.com/egraphs-good/egglog", rev = "246b195" }
+smallvec = "1.11.1"
 strum = "0.25"
 strum_macros = "0.25"
 main_error = "0.1.2"

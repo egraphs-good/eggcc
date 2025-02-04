@@ -248,6 +248,7 @@ dependencies = [
  "ordered-float",
  "rpds",
  "rustc-hash",
+ "smallvec",
  "strum",
  "strum_macros",
  "symbol_table 0.3.0",

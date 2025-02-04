@@ -19,27 +19,25 @@ expression: visualization.result
   c1_: int = const 0;
   v2_: bool = gt v0 c1_;
   v3_: int = abs v0;
-  c4_: int = const 2;
+  c4_: int = const 3;
   v5_: int = mul c4_ v3_;
-  c6_: int = const 3;
-  v7_: int = mul c6_ v3_;
-  br v2_ .b8_ .b9_;
-.b8_:
-  c10_: int = const 4;
-  v11_: int = div v0 c10_;
-  v12_: int = add v11_ v7_;
-  v13_: int = id v12_;
-  print v13_;
+  br v2_ .b6_ .b7_;
+.b6_:
+  c8_: int = const 4;
+  v9_: int = div v0 c8_;
+  v10_: int = add v5_ v9_;
+  v11_: int = id v10_;
+  print v11_;
   ret;
-  jmp .b14_;
-.b9_:
-  c15_: int = const 3;
-  v16_: int = mul c15_ v0;
-  c17_: int = const 5;
-  v18_: int = div v16_ c17_;
-  v19_: int = add v18_ v7_;
-  v13_: int = id v19_;
-  print v13_;
+  jmp .b12_;
+.b7_:
+  c13_: int = const 3;
+  v14_: int = mul c13_ v0;
+  c15_: int = const 5;
+  v16_: int = div v14_ c15_;
+  v17_: int = add v16_ v5_;
+  v11_: int = id v17_;
+  print v11_;
   ret;
-.b14_:
+.b12_:
 }

@@ -783,13 +783,10 @@ impl<'a> Extractor<'a> {
         if node.op == "Arg" {
             // first argument is type
             let ty = self.typecheck_term(&term);
-            match ty {
-                Type::TupleT(base_types) => {
-                    for i in 0..base_types.len() {
-                        args_used.insert(i);
-                    }
+            if let Type::TupleT(base_types) = ty {
+                for i in 0..base_types.len() {
+                    args_used.insert(i);
                 }
-                _ => (),
             }
         }
 

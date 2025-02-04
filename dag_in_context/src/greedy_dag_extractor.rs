@@ -490,7 +490,7 @@ impl<'a> Extractor<'a> {
                 if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
                     (existing_term.clone(), NotNan::new(0.).unwrap())
                 } else {
-                    let mut unshared_cost = match other_costs.get(eclass) {
+                    let unshared_cost = match other_costs.get(eclass) {
                         Some((_, cost)) => *cost,
                         // no cost stored, so it's free
                         None => NotNan::new(0.).unwrap(),

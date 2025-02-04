@@ -1,0 +1,7 @@
+# ARGS: 21324
+
+@main (a: int) {
+  t: int = neg a;
+  lb: int = bitand a t;
+  print lb;
+}

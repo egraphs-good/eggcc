@@ -20,6 +20,7 @@ treatments = [
   "llvm-O2-O0",
   "llvm-eggcc-O0-O0",
   "llvm-eggcc-sequential-O0-O0",
+  "llvm-eggcc-O0-O0-no-lowering",
   "llvm-O3-O0",
   "llvm-O3-O3",
   "llvm-eggcc-O3-O0",
@@ -52,6 +53,8 @@ def get_eggcc_options(benchmark):
       return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
     case "llvm-O3-O3":
       return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
+    case "llvm-eggcc-O0-O0-no-lowering":
+      return (f'optimize --no-lowering-peepholes', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-sequential-O0-O0":
       return (f'optimize --eggcc-schedule sequential', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-O0-O0":

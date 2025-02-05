@@ -42,7 +42,8 @@ pub(crate) struct EgraphInfo<'a> {
 pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
     costsets: Vec<CostSet>,
-    costsetmemo: IndexMap<(NodeId, Vec<CostSetIndex>), CostSetIndex>,
+    costsetmemo: IndexMap<Term, CostSetIndex>,
+    ctx_memo: HashMap<ClassId, CostSetIndex>,
     /// For a given region (based on the region's root),
     /// stores a map from classes in that region to the chosen term for the eclass.
     /// Regions are extracted separately since different regions
@@ -321,7 +322,7 @@ impl<'a> Extractor<'a> {
     ) -> CostSetIndex {
         // get any node in the class
         let node_id = info.egraph.classes()[&class_id].nodes.first().unwrap();
-        if let Some(existing) = self.costsetmemo.get(&(node_id.clone(), vec![])) {
+        if let Some(existing) = self.ctx_memo.get(&class_id) {
             *existing
         } else {
             // HACK: this term gets a context (InFunc "dummy_{class_id}").
@@ -336,12 +337,12 @@ impl<'a> Extractor<'a> {
             let costset = CostSet {
                 costs: Default::default(),
                 total: 0.0.try_into().unwrap(),
-                term,
+                term: term.clone(),
                 args_used: Default::default(),
             };
             self.costsets.push(costset);
-            self.costsetmemo
-                .insert((node_id.clone(), vec![]), self.costsets.len() - 1);
+            self.costsetmemo.insert(term, self.costsets.len() - 1);
+            self.ctx_memo.insert(class_id, self.costsets.len() - 1);
             self.costsets.len() - 1
         }
     }
@@ -351,6 +352,7 @@ impl<'a> Extractor<'a> {
             termdag,
             costsets: Default::default(),
             costsetmemo: Default::default(),
+            ctx_memo: Default::default(),
             correspondence: Default::default(),
             costs: Default::default(),
             term_to_expr: Default::default(),
@@ -651,10 +653,16 @@ impl<'a> Extractor<'a> {
         child_cost_set_indicies: Vec<CostSetIndex>,
         info: &EgraphInfo,
     ) -> Option<CostSetIndex> {
-        if let Some(&idx) = self
-            .costsetmemo
-            .get(&(nodeid.clone(), child_cost_set_indicies.clone()))
-        {
+        let original_term = self.get_term(
+            info,
+            nodeid.clone(),
+            child_cost_set_indicies
+                .iter()
+                .map(|idx| self.costsets[*idx].term.clone())
+                .collect(),
+        );
+
+        if let Some(&idx) = self.costsetmemo.get(&original_term) {
             return Some(idx);
         }
         let cid = info.egraph.nid_to_cid(&nodeid);
@@ -820,8 +828,7 @@ impl<'a> Extractor<'a> {
             args_used,
         });
         let index = self.costsets.len() - 1;
-        self.costsetmemo
-            .insert((nodeid, child_cost_set_indicies), index);
+        self.costsetmemo.insert(original_term, index);
 
         Some(index)
     }

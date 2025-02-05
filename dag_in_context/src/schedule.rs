@@ -162,8 +162,14 @@ pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
     res
 }
 
-pub fn parallel_schedule() -> Vec<CompilerPass> {
+pub fn parallel_schedule(with_lowering_peepholes: bool) -> Vec<CompilerPass> {
     let helpers = helpers();
+
+    let lowering_peepholes = if with_lowering_peepholes {
+        "lowering-peepholes"
+    } else {
+        ""
+    };
 
     vec![
         CompilerPass::Schedule(format!(
@@ -204,6 +210,7 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
     (repeat 4
         {helpers}
         cheap-optimizations
+        {lowering_peepholes}
     )
 
     {helpers}

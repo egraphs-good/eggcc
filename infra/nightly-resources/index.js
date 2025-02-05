@@ -6,6 +6,7 @@ const treatments = [
   "llvm-O2-O0",
   "llvm-eggcc-O0-O0",
   "llvm-eggcc-sequential-O0-O0",
+  "llvm-eggcc-O0-O0-no-lowering",
   "llvm-O3-O0",
   "llvm-O3-O3",
   "llvm-eggcc-O3-O0",

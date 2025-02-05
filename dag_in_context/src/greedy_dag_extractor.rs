@@ -6,7 +6,7 @@ use rpds::HashTrieMap;
 use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
 };
@@ -1656,6 +1656,8 @@ fn test_dag_extract_if() {
     let cost_total = cost_if + cost_model.get_op_cost("Get");
     dag_extraction_test(&prog, cost_total);
 }
+
+#[test]
 fn test_cost_dead_code_to_if() {
     use crate::ast::*;
 
@@ -1674,8 +1676,7 @@ fn test_cost_dead_code_to_if() {
     // count the constant 10 and the constant true
     // don't count the constant 20
     let expected_cost = cost_model.get_op_cost("Const") * 2.
-        + cost_model.get_op_cost("Add")
-        + cost_model.get_op_cost("Add")
+        + cost_model.get_op_cost("Add") * 1.3 // if cost model
         + cost_model.get_op_cost("If");
 
     dag_extraction_test(&prog, expected_cost);

@@ -524,7 +524,7 @@ fn egglog_test_internal(
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
         prologue(),
-        parallel_schedule(true)
+        parallel_schedule(true /* with_lowering_peepholes */)
             .iter()
             .map(|pass| pass.egglog_schedule().to_string())
             .collect::<Vec<String>>()

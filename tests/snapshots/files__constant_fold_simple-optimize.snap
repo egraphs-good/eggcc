@@ -5,8 +5,8 @@ expression: visualization.result
 # ARGS: 
 @main {
   c0_: int = const 3;
-  c1_: int = const 2;
-  v2_: int = div c0_ c1_;
+  c1_: int = const 1;
+  v2_: int = shr c0_ c1_;
   print v2_;
   ret;
 }

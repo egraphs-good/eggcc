@@ -7,8 +7,8 @@ expression: visualization.result
   c1_: int = const 10;
   c2_: int = const 0;
   v3_: bool = gt v0 c2_;
-  c4_: int = const 2;
-  v5_: int = mul c4_ v0;
+  c4_: int = const 1;
+  v5_: int = shl v0 c4_;
   c6_: int = const 5;
   v7_: int = mul c6_ v5_;
   c8_: int = const -3;

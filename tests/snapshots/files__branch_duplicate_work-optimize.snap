@@ -7,8 +7,9 @@ expression: visualization.result
   c1_: int = const 2;
   v2_: bool = lt v0 c1_;
   v3_: int = add v0 v0;
-  v4_: int = mul c1_ v3_;
-  v5_: int = select v2_ v3_ v4_;
-  print v5_;
+  c4_: int = const 1;
+  v5_: int = shl v3_ c4_;
+  v6_: int = select v2_ v3_ v5_;
+  print v6_;
   ret;
 }

@@ -25,8 +25,8 @@ expression: visualization.result
   br v12_ .b19_ .b20_;
 .b20_:
   v21_: int = add v5_ v8_;
-  v22_: int = div v6_ v7_;
-  v23_: int = mul v22_ v7_;
+  v22_: int = shr v6_ v8_;
+  v23_: int = shl v22_ v8_;
   v24_: int = sub v6_ v23_;
   v25_: bool = eq v10_ v24_;
   v26_: int = mul v6_ v9_;

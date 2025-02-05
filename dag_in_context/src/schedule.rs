@@ -90,6 +90,7 @@ fn optimizations() -> Vec<String> {
         "loop-inv-motion",
         "loop-strength-reduction",
         "cicm",
+        "push-in",
     ]
     .iter()
     .map(|opt| opt.to_string())

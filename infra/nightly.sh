@@ -33,6 +33,7 @@ TOP_DIR="$MYDIR/.."
 RESOURCE_DIR="$MYDIR/nightly-resources"
 NIGHTLY_DIR="$TOP_DIR/nightly"
 OUTPUT_DIR="$NIGHTLY_DIR/output"
+GRAPHS_DIR="$NIGHTLY_DIR/output/graphs"
 DATA_DIR="$TOP_DIR/nightly/data"
 
 # Make sure we're in the right place
@@ -44,11 +45,11 @@ echo "Switching to nighly script directory: $MYDIR"
 if [ "$@" != "--update" ]; then
   rm -rf $NIGHTLY_DIR
   # Prepare output directories
-  mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$OUTPUT_DIR"
+  mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$OUTPUT_DIR" "$GRAPHS_DIR"
 else
   echo "updating front end only (output folder) due to --update flag"
   rm -rf $OUTPUT_DIR
-  mkdir -p "$OUTPUT_DIR"
+  mkdir -p "$OUTPUT_DIR" "$GRAPHS_DIR"
 fi
 
 

@@ -9,6 +9,7 @@ const treatments = [
   "llvm-O3-O0",
   "llvm-O3-O3",
   "llvm-eggcc-O3-O0",
+  "llvm-eggcc-O3-O3",
 ];
 
 const GLOBAL_DATA = {
@@ -32,6 +33,28 @@ function clearWarnings() {
   GLOBAL_DATA.warnings.clear();
 }
 
+function addTableTo(element, data) {
+  // clear elements in element
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+
+  // add a button that copies latex for table
+  const copyButton = document.createElement("button");
+  copyButton.innerText = "Copy Latex";
+  copyButton.onclick = () => {
+    const table = jsonToLatexTable(data);
+    navigator.clipboard.writeText(table);
+  };
+
+  element.appendChild(copyButton);
+
+  // add a new div for the table
+  const tableDiv = document.createElement("div");
+  tableDiv.innerHTML = ConvertJsonToTable(data);
+  element.appendChild(tableDiv);
+}
+
 function refreshView() {
   if (!GLOBAL_DATA.baselineRun) {
     addWarning("no baseline to compare to");
@@ -42,17 +65,23 @@ function refreshView() {
     byBench[benchmark] = getDataForBenchmark(benchmark);
   });
   const tableData = Object.keys(byBench).map((bench) => ({
-    name: `<a target="_blank" rel="noopener noreferrer" href="https://github.com/egraphs-good/eggcc/tree/main/${getBrilPathForBenchmark(bench)}">${bench}</a>`,
+    name: `<a target="_blank" rel="noopener noreferrer" href="https://github.com/egraphs-good/eggcc/tree/main/${getBrilPathForBenchmark(
+      bench,
+    )}">${bench}</a>`,
     executions: { data: byBench[bench] },
   }));
   tableData.sort((l, r) => l.name - r.name);
 
   document.getElementById("profile").innerHTML = ConvertJsonToTable(tableData);
 
+  addTableTo(document.getElementById("profile"), tableData);
+
   // fill in the overall stats table
   const overallStats = getOverallStatistics();
+  console.log(overallStats);
+
   const overallTable = document.getElementById("overall-stats-table");
-  overallTable.innerHTML = ConvertJsonToTable(overallStats);
+  addTableTo(overallTable, overallStats);
 
   renderWarnings();
   refreshChart();
@@ -138,3 +167,40 @@ async function refreshLatexMacros() {
   const latexMacros = await fetch("nightlymacros.tex").then((r) => r.text());
   latexMacrosTextArea.value = latexMacros;
 }
+
+function addGraphs() {
+  var prevElement = document.getElementById("plots");
+  // for each plot in graphs folder, add button to show plot
+  fetch("graphs.json")
+    .then((r) => r.json())
+    .then((data) => {
+      data.forEach((plot) => {
+        const button = document.createElement("button");
+        button.id = plot;
+        button.onclick = function () {
+          toggle(button, `\u25B6 Show ${plot}`, `\u25BC Hide ${plot}`);
+        };
+        button.innerText = `\u25B6 Show ${plot}`;
+
+        // insert right after plots element
+        prevElement.insertAdjacentElement("afterend", button);
+        prevElement = button;
+
+        // create div for plot
+        const plotDiv = document.createElement("div");
+        plotDiv.classList.add("content");
+        plotDiv.classList.add("collapsed");
+        plotDiv.id = `${plot}-content`;
+        prevElement.insertAdjacentElement("afterend", plotDiv);
+        prevElement = plotDiv;
+
+        // create img for plot
+        const img = document.createElement("img");
+        img.src = `graphs/${plot}`;
+        plotDiv.appendChild(img);
+      });
+    });
+}
+
+// on page load, add graphs
+window.addEventListener("load", addGraphs);

@@ -256,6 +256,8 @@ def make_macros(profile, benchmark_suites, output_file):
     # report the number of benchmarks in the profile
     out.write(format_latex_macro("NumBenchmarksAllSuites", len(dedup([b.get('benchmark') for b in profile]))))
 
+    
+
 
 
   

@@ -47,7 +47,16 @@ function addTableTo(element, data) {
     navigator.clipboard.writeText(table);
   };
 
+  // add a button that copies latex macros for table
+  const copyMacrosButton = document.createElement("button");
+  copyMacrosButton.innerText = "Copy Latex Macros";
+  copyMacrosButton.onclick = () => {
+    const macros = jsonToLatexMacros(data, "runMethod");
+    navigator.clipboard.writeText(macros);
+  };
+
   element.appendChild(copyButton);
+  element.appendChild(copyMacrosButton);
 
   // add a new div for the table
   const tableDiv = document.createElement("div");
@@ -71,8 +80,6 @@ function refreshView() {
     executions: { data: byBench[bench] },
   }));
   tableData.sort((l, r) => l.name - r.name);
-
-  document.getElementById("profile").innerHTML = ConvertJsonToTable(tableData);
 
   addTableTo(document.getElementById("profile"), tableData);
 

@@ -38,7 +38,7 @@ function jsonColumns(json, rowIndex) {
 
 // convert a javascript array object to a latex table
 // each element of the array is a dictionary associating a header with a value
-// example element: { geoMeanNormalized : "0.619", meanEggccCompileTimeSecs : "0.001", meanLlvmCompileTimeSecs : "0.447",  
+// example element: { geoMeanNormalized : "0.619", meanEggccCompileTimeSecs : "0.001", meanLlvmCompileTimeSecs : "0.447",
 // runMethod : "llvm-O1-O0" }
 function jsonToLatexTable(json) {
   console.log(json);
@@ -84,7 +84,6 @@ function jsonToLatexTable(json) {
   return res;
 }
 
-
 // change dashes to underscores
 function convertStringToValidLatexVar(str) {
   return str.replace(/-/g, "_");
@@ -93,11 +92,10 @@ function convertStringToValidLatexVar(str) {
 // convert a javascript array object storing a table
 // to a bunch of latex macros, one for each row, column pair
 // each element of the array is a dictionary associating a header with a value
-// example element: { geoMeanNormalized : "0.619", meanEggccCompileTimeSecs : "0.001", meanLlvmCompileTimeSecs : "0.447",  
+// example element: { geoMeanNormalized : "0.619", meanEggccCompileTimeSecs : "0.001", meanLlvmCompileTimeSecs : "0.447",
 // runMethod : "llvm-O1-O0" }
 // rowIndex is the name of the header of the left column, in this case "runMethod"
 function jsonToLatexMacros(json, rowIndex) {
-
   var names = [];
   var res = "";
 
@@ -109,7 +107,12 @@ function jsonToLatexMacros(json, rowIndex) {
   for (var i = 0; i < cols.length; i++) {
     for (var j = 0; j < headers.length; j++) {
       var name = `${convertStringToValidLatexVar(cols[i])}${convertStringToValidLatexVar(headers[j])}`;
-      res += "\\newcommand{\\" + name + "}{" + formatNumber(json[i][headers[j]]) + "}\n";
+      res +=
+        "\\newcommand{\\" +
+        name +
+        "}{" +
+        formatNumber(json[i][headers[j]]) +
+        "}\n";
 
       names.push(name);
     }

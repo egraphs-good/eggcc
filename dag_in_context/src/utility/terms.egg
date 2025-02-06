@@ -1,5 +1,6 @@
 (ruleset terms)
 (ruleset terms-helpers)
+(ruleset terms-helpers-helpers)
 
 (sort TermAndCost)
 (function Smaller (TermAndCost TermAndCost) TermAndCost)
@@ -38,14 +39,14 @@
         (< cost1 cost2)
       )
       ((union lhs (TCPair t1 cost1)))
-      :ruleset terms-helpers)
+      :ruleset terms-helpers-helpers)
 
 (rule (
         (= lhs (Smaller (TCPair t1 cost1) (TCPair t2 cost2)))
         (> cost1 cost2) 
       )
       ((union lhs (TCPair t2 cost2)))
-      :ruleset terms-helpers)
+      :ruleset terms-helpers-helpers)
 
 
 (rule (
@@ -54,7 +55,7 @@
       )
       ;; arbitrarily pick first one
       ((union lhs (TCPair t1 cost1)))
-      :ruleset terms-helpers)
+      :ruleset terms-helpers-helpers)
 
 
 ; Compute smallest Expr bottom-up

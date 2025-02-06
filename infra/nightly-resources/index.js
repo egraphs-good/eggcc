@@ -14,6 +14,7 @@ const treatments = [
 
 const GLOBAL_DATA = {
   enabledModes: new Set(),
+  enabledSuites: new Set(),
   enabledBenchmarks: new Set(),
   warnings: new Set(),
   currentRun: [],
@@ -33,11 +34,11 @@ function clearWarnings() {
   GLOBAL_DATA.warnings.clear();
 }
 
-function addTableTo(element, data) {
-  // clear elements in element
-  while (element.firstChild) {
-    element.removeChild(element.firstChild);
-  }
+function addTableTo(element, data, title) {
+  // add a h2 element with the title
+  const h2 = document.createElement("h2");
+  h2.innerText = title;
+  element.appendChild(h2);
 
   // add a button that copies latex for table
   const copyButton = document.createElement("button");
@@ -64,13 +65,11 @@ function addTableTo(element, data) {
   element.appendChild(tableDiv);
 }
 
-function refreshView() {
-  if (!GLOBAL_DATA.baselineRun) {
-    addWarning("no baseline to compare to");
-  }
-
+function tableForSuite(suite) {
   const byBench = {};
-  GLOBAL_DATA.enabledBenchmarks.forEach((benchmark) => {
+  Array.from(GLOBAL_DATA.enabledBenchmarks)
+  .filter((benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite)
+  .forEach((benchmark) => {
     byBench[benchmark] = getDataForBenchmark(benchmark);
   });
   const tableData = Object.keys(byBench).map((bench) => ({
@@ -80,15 +79,42 @@ function refreshView() {
     executions: { data: byBench[bench] },
   }));
   tableData.sort((l, r) => l.name - r.name);
+  return tableData;
+}
 
-  addTableTo(document.getElementById("profile"), tableData);
+
+function dedup(arr) {
+  return Array.from(new Set(arr));
+}
+
+function getSuites() {
+  return dedup(GLOBAL_DATA.currentRun).map((benchmark) => benchmark.suite);
+}
+
+
+function refreshView() {
+  if (!GLOBAL_DATA.baselineRun) {
+    addWarning("no baseline to compare to");
+  }
+
+  // clear the tables element
+  while (document.getElementById("tables").firstChild) {
+    document.getElementById("tables").removeChild(document.getElementById("tables").firstChild);
+  }
 
   // fill in the overall stats table
   const overallStats = getOverallStatistics();
-  console.log(overallStats);
 
-  const overallTable = document.getElementById("overall-stats-table");
-  addTableTo(overallTable, overallStats);
+  addTableTo(document.getElementById("tables"), overallStats, "Overall Stats");
+
+
+  for (const suite of getSuites()) {
+    const tableData = tableForSuite(suite);
+    addTableTo(document.getElementById("tables"), tableData, suite + " Stats");
+  }
+
+
+  
 
   renderWarnings();
   refreshChart();
@@ -134,6 +160,15 @@ function makeSelectors() {
       mode,
     );
     checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.enabledModes);
+  });
+
+  const suites = getSuites();
+  suites.forEach((suite) => {
+    const checkbox = makeCheckbox(
+      document.getElementById("suiteCheckboxes"),
+      suite,
+    );
+    checkbox.onchange = () => toggleCheckbox(suite, GLOBAL_DATA.enabledSuites);
   });
 
   const benchmarks = Array.from(

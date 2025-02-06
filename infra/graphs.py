@@ -245,16 +245,16 @@ def benchmarks_in_folder(folder):
 
 # given a profile.json, list of suite paths, and an output file
 def make_macros(profile, benchmark_suites, output_file):
-  # report number of benchmarks in each benchmark suite
-  for suite in benchmark_suites:
-    suite_name = os.path.basename(suite)
-    benchmarks = benchmarks_in_folder(suite)
-    macro_name = f"Num{suite_name}Benchmarks"
-    with open(output_file, 'a') as f:
-      f.write(format_latex_macro(macro_name, len(benchmarks)))
-  
-  # report the number of benchmarks in the profile
-  f.write(format_latex_macro("NumBenchmarksAllSuites", len(profile)))
+  with open(output_file, 'a') as out:
+    # report number of benchmarks in each benchmark suite
+    for suite in benchmark_suites:
+      suite_name = os.path.basename(suite)
+      benchmarks = benchmarks_in_folder(suite)
+      macro_name = f"Num{suite_name}Benchmarks"
+      out.write(format_latex_macro(macro_name, len(benchmarks)))
+    
+    # report the number of benchmarks in the profile
+    out.write(format_latex_macro("NumBenchmarksAllSuites", len(dedup([b.get('benchmark') for b in profile]))))
 
 
 

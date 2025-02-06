@@ -233,29 +233,6 @@ def format_latex_macro_percent(name, percent_as_ratio):
   percent = percent_as_ratio * 100
   return format_latex_macro(name, f"{percent:.2f}")
 
-def make_macros(profile, output_file):
-  number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 = 0
-  benchmarks = dedup([b.get('benchmark') for b in profile])
-
-  for benchmark in benchmarks:
-    baseline_cycles = get_baseline_cycles(profile, benchmark)
-    llvm_O3_O0_cycles = get_cycles(profile, benchmark, 'llvm-O3-O0')
-    eggcc_O0_O0_cycles = get_cycles(profile, benchmark, 'llvm-eggcc-O0-O0')
-
-    perf_improvement_llvm = mean(baseline_cycles) - mean(llvm_O3_O0_cycles)
-    perf_improvement_eggcc = mean(baseline_cycles) - mean(eggcc_O0_O0_cycles)
-    if perf_improvement_llvm < 0:
-      number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 += 1
-    else:
-      if perf_improvement_eggcc > 0.8 * perf_improvement_llvm:
-        number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 += 1
-  ratio_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 = number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 / len(benchmarks)
-
-  with open(output_file, 'w') as f:
-    f.write(format_latex_macro_percent('percentRecoverEightyPercentPerformanceImprovementEggccVsLlvmOThreeOZero', ratio_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0))
-
-
-
 def benchmarks_in_folder(folder):
   # recursively find all files
   files = []
@@ -264,6 +241,23 @@ def benchmarks_in_folder(folder):
       files.append(os.path.join(root, filename))
   # just get file name without extension
   return [os.path.splitext(os.path.basename(f))[0] for f in files]
+
+
+# given a profile.json, list of suite paths, and an output file
+def make_macros(profile, benchmark_suites, output_file):
+  # report number of benchmarks in each benchmark suite
+  for suite in benchmark_suites:
+    suite_name = os.path.basename(suite)
+    benchmarks = benchmarks_in_folder(suite)
+    macro_name = f"Num{suite_name}Benchmarks"
+    with open(output_file, 'a') as f:
+      f.write(format_latex_macro(macro_name, len(benchmarks)))
+  
+  # report the number of benchmarks in the profile
+  f.write(format_latex_macro("NumBenchmarksAllSuites", len(profile)))
+
+
+
   
 
 def get_code_size(benchmark, suites_path):
@@ -344,16 +338,17 @@ if __name__ == '__main__':
 
   # folders in 
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
+  benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
-  for suite in benchmark_suites:
-    suite_path = os.path.join(benchmark_suite_folder, suite)
+  for suite_path in benchmark_suites:
+    suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)
     profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
     make_bar_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.png')
 
-  make_macros(profile, f'{output_folder}/nightlymacros.tex')
+  make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
 
   make_code_size_vs_compile_time(profile, f'{graphs_folder}/code_size_vs_compile_time.png', benchmark_suite_folder)
 

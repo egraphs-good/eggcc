@@ -62,6 +62,7 @@ impl BinaryOp {
     pub(crate) fn name(&self) -> &'static str {
         use BinaryOp::*;
         match self {
+            Bitand => "Bitand",
             Add => "Add",
             Sub => "Sub",
             Mul => "Mul",
@@ -101,6 +102,7 @@ impl UnaryOp {
         use UnaryOp::*;
         match self {
             Abs => "Abs",
+            Neg => "Neg",
             Not => "Not",
         }
     }
@@ -826,7 +828,8 @@ impl BinaryOp {
     /// When a binary op has concrete input sorts, return them.
     pub fn types(&self) -> Option<(Type, Type, Type)> {
         match self {
-            BinaryOp::Add
+            BinaryOp::Bitand
+            | BinaryOp::Add
             | BinaryOp::Sub
             | BinaryOp::Mul
             | BinaryOp::Div
@@ -863,6 +866,7 @@ impl UnaryOp {
     pub(crate) fn types(&self) -> Option<(Type, Type)> {
         match self {
             UnaryOp::Abs => Some((base(intt()), base(intt()))),
+            UnaryOp::Neg => Some((base(intt()), base(intt()))),
             UnaryOp::Not => Some((base(boolt()), base(boolt()))),
         }
     }

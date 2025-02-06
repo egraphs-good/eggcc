@@ -32,7 +32,7 @@ impl<'a> Extractor<'a> {
         egraph_info: &EgraphInfo,
     ) -> IndexMap<ClassId, IndexSet<NodeId>> {
         let mut expr_to_term = IndexMap::new();
-        for (term, expr) in self.term_to_expr.as_ref().unwrap() {
+        for (term, expr) in &self.term_to_expr {
             expr_to_term.insert(Rc::as_ptr(expr), term.clone());
         }
         let n2c = egraph_info
@@ -238,9 +238,9 @@ impl<'a> Extractor<'a> {
                     let children = expr.children_same_scope();
                     let mut effectful_child_iter =
                         children.iter().filter(|child| self.is_effectful(child));
-                    let effectful_child = effectful_child_iter
-                        .next()
-                        .expect("Expect one effectful child from an effectful operator");
+                    let Some(effectful_child) = effectful_child_iter.next() else {
+                        panic!("Effectful operator does not have effectful children in extracted term. This should not happen.");
+                    };
                     assert!(effectful_child_iter.next().is_none());
                     if !dangling_effectful.remove(&Rc::as_ptr(effectful_child)) {
                         return Err(

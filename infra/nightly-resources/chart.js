@@ -117,7 +117,7 @@ function parseDataForChart() {
     data[mode] = {};
     benchmarks.forEach((benchmark) => {
       const entry = getEntry(benchmark, mode);
-      if (entry) {
+      if (entry && GLOBAL_DATA.enabledSuites.has(entry.suite)) {
         data[mode][benchmark] = {
           mode: mode,
           benchmark: benchmark,

@@ -51,9 +51,9 @@
 (rule (
         (= lhs (Smaller (TCPair t1 cost1) (TCPair t2 cost2)))
         (= cost1 cost2) 
-        (!= t1 t2)
       )
-      ((panic "Should have been handled by PotentialExtractedExpr"))
+      ;; arbitrarily pick first one
+      ((union lhs (TCPair t1 cost1)))
       :ruleset terms-helpers)
 
 

@@ -30,8 +30,8 @@ impl SimpleCfgFunction {
             .fuse_down()
             .fuze_up()
             .fuze_up()
-            //.return_early()
-            //.return_early()
+            .return_early()
+            .return_early()
             .collapse_empty_blocks()
             .collapse_empty_blocks();
         res.remove_unreachable();

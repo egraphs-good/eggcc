@@ -30,15 +30,18 @@ const GLOBAL_DATA = {
 // using checkedSuites and checkedBenchmarks
 function enabledBenchmarks() {
   return Array.from(GLOBAL_DATA.checkedBenchmarks).filter((benchmark) =>
-    GLOBAL_DATA.checkedSuites.has(getRow(benchmark, BASELINE_MODE).suite))
+    GLOBAL_DATA.checkedSuites.has(getRow(benchmark, BASELINE_MODE).suite),
+  );
 }
 
 // filter current run for enabled benchmarks
 // and by checked run modes
 function enabledSubsetOfCurrentRun() {
   const benchmarks = enabledBenchmarks();
-  return GLOBAL_DATA.currentRun.filter((entry) =>
-    GLOBAL_DATA.checkedModes.has(entry.runMethod) && benchmarks.includes(entry),
+  return GLOBAL_DATA.currentRun.filter(
+    (entry) =>
+      GLOBAL_DATA.checkedModes.has(entry.runMethod) &&
+      benchmarks.includes(entry),
   );
 }
 
@@ -68,7 +71,12 @@ function addTableTo(element, data, title) {
   const copyMacrosButton = document.createElement("button");
   copyMacrosButton.innerText = "Copy Latex Macros";
   copyMacrosButton.onclick = () => {
-    const macros = nestedJsonToLatexMacros(data, "name", "executions", "runMethod");
+    const macros = nestedJsonToLatexMacros(
+      data,
+      "name",
+      "executions",
+      "runMethod",
+    );
     console.log("macros");
     console.log(macros);
     navigator.clipboard.writeText(macros);
@@ -86,10 +94,10 @@ function addTableTo(element, data, title) {
 function tableForSuite(suite) {
   const byBench = {};
   Array.from(GLOBAL_DATA.checkedBenchmarks)
-  .filter((benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite)
-  .forEach((benchmark) => {
-    byBench[benchmark] = getDataForBenchmark(benchmark);
-  });
+    .filter((benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite)
+    .forEach((benchmark) => {
+      byBench[benchmark] = getDataForBenchmark(benchmark);
+    });
   const tableData = Object.keys(byBench).map((bench) => ({
     name: `<a target="_blank" rel="noopener noreferrer" href="https://github.com/egraphs-good/eggcc/tree/main/${getBrilPathForBenchmark(
       bench,
@@ -100,7 +108,6 @@ function tableForSuite(suite) {
   return tableData;
 }
 
-
 function dedup(arr) {
   return Array.from(new Set(arr));
 }
@@ -109,7 +116,6 @@ function getSuites() {
   return dedup(GLOBAL_DATA.currentRun.map((benchmark) => benchmark.suite));
 }
 
-
 function refreshView() {
   if (!GLOBAL_DATA.baselineRun) {
     addWarning("no baseline to compare to");
@@ -117,7 +123,9 @@ function refreshView() {
 
   // clear the tables element
   while (document.getElementById("tables").firstChild) {
-    document.getElementById("tables").removeChild(document.getElementById("tables").firstChild);
+    document
+      .getElementById("tables")
+      .removeChild(document.getElementById("tables").firstChild);
   }
 
   // fill in the overall stats table
@@ -126,14 +134,10 @@ function refreshView() {
   console.log("here");
   addTableTo(document.getElementById("tables"), overallStats, "Overall Stats");
 
-
   for (const suite of getSuites()) {
     const tableData = tableForSuite(suite);
     addTableTo(document.getElementById("tables"), tableData, suite + " Stats");
   }
-
-
-  
 
   renderWarnings();
   refreshChart();

@@ -21,25 +21,25 @@ expression: visualization.result
   v3_: int = abs v0;
   c4_: int = const 2;
   v5_: int = mul c4_ v3_;
-  c6_: int = const 3;
-  v7_: int = mul c6_ v3_;
-  br v2_ .b8_ .b9_;
-.b8_:
-  v10_: int = sub v7_ v0;
-  c11_: int = const 3;
-  v12_: int = div v10_ c11_;
-  v13_: int = div v0 v12_;
-  v14_: int = id v13_;
-  print v14_;
+  br v2_ .b6_ .b7_;
+.b6_:
+  v8_: int = sub v5_ v0;
+  v9_: int = add v3_ v8_;
+  c10_: int = const 3;
+  v11_: int = div v9_ c10_;
+  v12_: int = div v0 v11_;
+  v13_: int = id v12_;
+  print v13_;
   ret;
-  jmp .b15_;
-.b9_:
-  v16_: int = add v0 v7_;
+  jmp .b14_;
+.b7_:
+  v15_: int = add v3_ v5_;
+  v16_: int = add v0 v15_;
   c17_: int = const 5;
   v18_: int = div v0 c17_;
   v19_: int = div v16_ v18_;
-  v14_: int = id v19_;
-  print v14_;
+  v13_: int = id v19_;
+  print v13_;
   ret;
-.b15_:
+.b14_:
 }

@@ -1,7 +1,7 @@
 ---
 source: tests/files.rs
-assertion_line: 36
 expression: visualization.result
+snapshot_kind: text
 ---
 # ARGS: 21324
 @main(v0: int) {

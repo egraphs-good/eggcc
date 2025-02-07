@@ -115,7 +115,7 @@ function convertStringToValidLatexVar(str) {
   if (str.includes("<")) {
     var div = document.createElement("div");
     div.innerHTML = str;
-    str = div.textContent
+    str = div.textContent;
   }
   return str.replace(/-/g, "_");
 }
@@ -158,7 +158,6 @@ function jsonToLatexMacros(json, rowIndex, prefix) {
 
   return res;
 }
-
 
 // given a json like the following:
 /// [{ "name": "raytrace", "executions": { data: other_table} }] ...

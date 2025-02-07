@@ -13,9 +13,9 @@ const treatments = [
 ];
 
 const GLOBAL_DATA = {
-  enabledModes: new Set(),
-  enabledSuites: new Set(),
-  enabledBenchmarks: new Set(),
+  checkedModes: new Set(),
+  checkedSuites: new Set(),
+  checkedBenchmarks: new Set(),
   warnings: new Set(),
   currentRun: [],
   baselineRun: [],
@@ -25,6 +25,22 @@ const GLOBAL_DATA = {
     sortBy: undefined,
   },
 };
+
+// filter to all the benchmark names that are enabled
+// using checkedSuites and checkedBenchmarks
+function enabledBenchmarks() {
+  return Array.from(GLOBAL_DATA.checkedBenchmarks).filter((benchmark) =>
+    GLOBAL_DATA.checkedSuites.has(getRow(benchmark, BASELINE_MODE).suite))
+}
+
+// filter current run for enabled benchmarks
+// and by checked run modes
+function enabledSubsetOfCurrentRun() {
+  const benchmarks = enabledBenchmarks();
+  return GLOBAL_DATA.currentRun.filter((entry) =>
+    GLOBAL_DATA.checkedModes.has(entry.runMethod) && benchmarks.includes(entry),
+  );
+}
 
 function addWarning(warning) {
   GLOBAL_DATA.warnings.add(warning);
@@ -67,7 +83,7 @@ function addTableTo(element, data, title) {
 
 function tableForSuite(suite) {
   const byBench = {};
-  Array.from(GLOBAL_DATA.enabledBenchmarks)
+  Array.from(GLOBAL_DATA.checkedBenchmarks)
   .filter((benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite)
   .forEach((benchmark) => {
     byBench[benchmark] = getDataForBenchmark(benchmark);
@@ -88,7 +104,7 @@ function dedup(arr) {
 }
 
 function getSuites() {
-  return dedup(GLOBAL_DATA.currentRun).map((benchmark) => benchmark.suite);
+  return dedup(GLOBAL_DATA.currentRun.map((benchmark) => benchmark.suite));
 }
 
 
@@ -160,7 +176,7 @@ function makeSelectors() {
       document.getElementById("modeCheckboxes"),
       mode,
     );
-    checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.enabledModes);
+    checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.checkedModes);
   });
 
   const suites = getSuites();
@@ -169,7 +185,7 @@ function makeSelectors() {
       document.getElementById("suiteCheckboxes"),
       suite,
     );
-    checkbox.onchange = () => toggleCheckbox(suite, GLOBAL_DATA.enabledSuites);
+    checkbox.onchange = () => toggleCheckbox(suite, GLOBAL_DATA.checkedSuites);
   });
 
   const benchmarks = Array.from(
@@ -181,7 +197,7 @@ function makeSelectors() {
       benchmark,
     );
     checkbox.onchange = () =>
-      toggleCheckbox(benchmark, GLOBAL_DATA.enabledBenchmarks);
+      toggleCheckbox(benchmark, GLOBAL_DATA.checkedBenchmarks);
   });
 }
 

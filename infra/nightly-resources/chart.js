@@ -107,17 +107,17 @@ function getError(entry) {
 }
 
 function parseDataForChart() {
-  const benchmarks = GLOBAL_DATA.enabledBenchmarks;
+  const benchmarks = enabledBenchmarks();
   const sortByMode = GLOBAL_DATA.chart.sortBy;
   let sortedBenchmarks = Array.from(benchmarks).sort();
 
   const data = {};
   // First, compute value and error for each mode and benchmark
-  GLOBAL_DATA.enabledModes.forEach((mode) => {
+  GLOBAL_DATA.checkedModes.forEach((mode) => {
     data[mode] = {};
     benchmarks.forEach((benchmark) => {
       const entry = getEntry(benchmark, mode);
-      if (entry && GLOBAL_DATA.enabledSuites.has(entry.suite)) {
+      if (entry) {
         data[mode][benchmark] = {
           mode: mode,
           benchmark: benchmark,
@@ -137,11 +137,11 @@ function parseDataForChart() {
   // ChartJS wants the data formatted so that there's an array of values for each mode
   // and a corresponding array of labels (benchmarks)
   const datasets = {};
-  GLOBAL_DATA.enabledModes.forEach((mode) => {
+  GLOBAL_DATA.checkedModes.forEach((mode) => {
     datasets[mode] = {
       label: mode,
       backgroundColor: COLORS[mode],
-      data: Array(benchmarks.size).fill(0),
+      data: Array(benchmarks.length).fill(0),
       borderWidth: 1,
       errorBars: {},
     };
@@ -162,7 +162,7 @@ function parseDataForChart() {
   if (GLOBAL_DATA.chart.mode === "normalized") {
     datasets[BASELINE_MODE] = {
       label: BASELINE_MODE,
-      data: Array(benchmarks.size + 1).fill(1),
+      data: Array(benchmarks.length + 1).fill(1),
       type: "line",
       borderColor: COLORS[BASELINE_MODE],
       fill: false,

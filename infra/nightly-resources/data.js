@@ -76,7 +76,7 @@ function getOverallStatistics() {
   for (const treatment of treatments) {
     const normalized_cycles = [];
     // for each benchmark, calculate the normalized cycles
-    for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
+    for (const benchmark of enabledBenchmarks()) {
       const row = getRow(benchmark, treatment);
       const baseline = getRow(benchmark, BASELINE_MODE);
       if (row && baseline) {
@@ -86,7 +86,7 @@ function getOverallStatistics() {
 
     const eggcc_compile_times = [];
     const llvm_compile_times = [];
-    for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
+    for (const benchmark of enabledBenchmarks()) {
       const row = getRow(benchmark, treatment);
       eggcc_compile_times.push(row.eggccCompileTimeSecs);
       llvm_compile_times.push(row.llvmCompileTimeSecs);

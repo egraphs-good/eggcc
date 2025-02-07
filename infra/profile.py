@@ -192,40 +192,21 @@ def should_have_llvm_ir(runMethod):
     "llvm-eggcc-O3-O0",
   ]
 
-def get_suite(path):
-  # get the absolute path to the benchmark
-  benchmark_path = os.path.abspath(path)
-  suite_name = "unknown"
-  
-  while not os.path.basename(benchmark_path) == "passing":
-    suite_name = os.path.basename(benchmark_path)
-    print(f"Suite name: {suite_name}")
-    # go up one dir
-    benchmark_path = os.path.dirname(benchmark_path)
-
-    # if we are at the root, break
-    if benchmark_path == "/":
-      suite_name = "unknown"
-      break
-  return suite_name
-  
-  
-
 # aggregate all profile info into a single json array.
 def aggregate(compile_data, bench_times, paths):
-  res = []
+    res = []
 
-  for path in sorted(compile_data.keys()):
-    name = path.split("/")[-2]
-    runMethod = path.split("/")[-1]
-    result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "path": paths[name], "suite": get_suite(paths[name])}
+    for path in sorted(compile_data.keys()):
+      name = path.split("/")[-2]
+      runMethod = path.split("/")[-1]
+      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "path": paths[name]}
 
-    # add compile time info
-    for key in compile_data[path]:
-      result[key] = compile_data[path][key]
+      # add compile time info
+      for key in compile_data[path]:
+        result[key] = compile_data[path][key]
 
-    res.append(result)
-  return res
+      res.append(result)
+    return res
 
 if __name__ == '__main__':
   # expect two arguments

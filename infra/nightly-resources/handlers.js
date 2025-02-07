@@ -11,6 +11,7 @@ async function load_index() {
   // Everything selected by default
   selectAllModes(true);
   selectBenchmarks("all");
+  selectAllSuites();
 
   // Firefox doesn't handle radio buttons correctly on page reload,
   // so manually set to absolute view
@@ -53,6 +54,17 @@ async function load_table() {
   const tex = await fetchText(`./data/${table}.tex`);
   document.getElementById("table").innerText = tex;
   document.getElementById("table-pdf").href = `./data/${table}.pdf`;
+}
+
+function selectAllSuites() {
+  const checkboxContainer = document.getElementById("suiteCheckboxes");
+  Array.from(checkboxContainer.getElementsByTagName("input")).forEach(
+    (checkbox) => {
+      checkbox.checked = true;
+      GLOBAL_DATA.enabledSuites.add(checkbox.id);
+    },
+  );
+  refreshView();
 }
 
 function selectAllModes(enabled) {

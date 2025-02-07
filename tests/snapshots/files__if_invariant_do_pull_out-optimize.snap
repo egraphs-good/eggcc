@@ -25,9 +25,16 @@ expression: visualization.result
 .b6_:
   c8_: int = const 4;
   v9_: int = div v0 c8_;
+<<<<<<< HEAD
   v10_: int = add v5_ v9_;
   v11_: int = id v10_;
   print v11_;
+=======
+  v10_: int = add v0 v5_;
+  v11_: int = add v10_ v9_;
+  v12_: int = id v11_;
+  print v12_;
+>>>>>>> ad23a471 (snapshots)
   ret;
   jmp .b12_;
 .b7_:

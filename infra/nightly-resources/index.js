@@ -68,7 +68,9 @@ function addTableTo(element, data, title) {
   const copyMacrosButton = document.createElement("button");
   copyMacrosButton.innerText = "Copy Latex Macros";
   copyMacrosButton.onclick = () => {
-    const macros = jsonToLatexMacros(data, "runMethod");
+    const macros = nestedJsonToLatexMacros(data, "name", "executions", "runMethod");
+    console.log("macros");
+    console.log(macros);
     navigator.clipboard.writeText(macros);
   };
 

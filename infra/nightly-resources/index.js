@@ -105,6 +105,7 @@ function refreshView() {
   // fill in the overall stats table
   const overallStats = getOverallStatistics();
 
+  console.log("here");
   addTableTo(document.getElementById("tables"), overallStats, "Overall Stats");
 
 
@@ -211,6 +212,7 @@ async function refreshLatexMacros() {
 }
 
 function addGraphs() {
+  console.log("addgraphs");
   var prevElement = document.getElementById("plots");
   // for each plot in graphs folder, add button to show plot
   fetch("graphs.json")

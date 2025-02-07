@@ -57,6 +57,10 @@ pub(crate) fn helpers() -> String {
      (saturate
        terms-helpers
        (saturate terms-helpers-helpers)))
+
+    ;; cicm index
+    cicm-index
+
     ;; memory-helpers TODO run memory helpers for memory optimizations
 
     ;; finally, subsume now that helpers are done

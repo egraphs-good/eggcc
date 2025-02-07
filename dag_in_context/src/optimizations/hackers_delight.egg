@@ -1,0 +1,71 @@
+;; Hacker's delight optimizations
+
+(ruleset hacker)
+
+;; A simple analysis to identify loops that run exactly #popcount times
+
+;; IsIsEven e x => e is a boolean expression that checks whether x is an even number
+(relation IsIsEven (Expr Expr))
+
+(rule (
+    (= two (Const (Int 2) ty ctx))
+    (= e (Bop (Eq) x (Bop (Mul) (Bop (Div) x two) two)))
+) (
+    (IsIsEven e x)
+) :ruleset hacker)
+
+;; PopcountIterations lp n pos => loop lp runs exactly popcount(n) times at index pos
+(relation PopcountIterations (Expr Expr i64))
+
+(rule (
+    ;; Grab the outer if
+    (= outerif (If cond inputs evenbr oddbr))
+    ;; There exists an argument n
+    (= n (Get inputs i))
+    ;; The condition is on the parity of n
+    (IsIsEven cond n)
+    ;; In the even/true branch, there is a loop
+    (= evenbr (DoWhile lp_inputs lp_pred_outputs))
+    ;; n is passed into to the loop
+    (= (Get lp_inputs j) (Get (Arg _ty1 _ctx1) i))
+    ;; the loop continues as long as n / 2 is even
+    (= two (Const (Int 2) _ty2 _ctx2))
+    (= nd2 (Bop (Div) (Get (Arg _ty3 _ctx3) j) two))
+    (IsIsEven (Get lp_pred_outputs 0) nd2)
+    ;; n is divided by 2 every loop
+    (= nd2 (Get lp_pred_outputs (+ j 1)))
+    ;; In the odd/false branch, we look for an n
+    (= (Get (Arg _ty4 _ctx4) i) (Get oddbr j))
+) (
+    (PopcountIterations outerif n j)
+) :ruleset hacker)
+
+;; Identify and optimize lowbit
+
+(rule (
+    (PopcountIterations outerif n i)
+    (= outerif (If cond inputs evenbr oddbr))
+    ;; In the even branch, it returns a value that doubles every iter
+    (= evenbr (DoWhile lp_inputs lp_pred_outputs))
+    (= (Const (Int 1) _ty1 _ctx1) (Get lp_inputs j))
+    (= two (Const (Int 2) _ty2 _ctx2))
+    (= (Bop (Mul) (Get (Arg _ty3 _ctx3) j) two) (Get lp_pred_outputs (+ j 1)))    
+    ;; In the odd branch, it returns an 1
+    (= (Const (Int 1) _ty0 _ctx0) (Get oddbr j))
+) (
+    (let lowbitn (Bop (Bitand) n (Uop (Neg) n)))
+    (union (Get outerif j) lowbitn)
+    (union (Get outerif i) (Bop (Div) n lowbitn))
+) :ruleset hacker)
+
+;; Try to get rid of the state_edge hanging there
+;; TODO: This is obviously cheating
+
+(rule (
+    (PopcountIterations anyif n i)
+    (= anyif (If cond inputs thenbr elsebr))
+    (HasType (Get anyif j) (Base (StateT)))
+    (HasType (Get inputs k) (Base (StateT)))
+) (
+    (union (Get anyif j) (Get inputs k))
+) :ruleset hacker)

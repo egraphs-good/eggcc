@@ -71,6 +71,7 @@ fn cheap_optimizations() -> Vec<String> {
     // currently causes saturation issues, probably by creating dead loops that are allowed to have any value
 
     [
+        "hacker",
         "loop-simplify",
         "interval-rewrite",
         "always-switch-rewrite",

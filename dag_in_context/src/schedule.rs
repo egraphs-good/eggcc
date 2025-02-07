@@ -196,7 +196,8 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
 (run-schedule
     (saturate
       {helpers}
-      passthrough)
+      passthrough
+      state-edge-passthrough)
     (repeat 2
         {helpers}
         all-optimizations
@@ -207,7 +208,10 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
         cheap-optimizations
     )
 
-    {helpers}
+    (saturate
+      {helpers}
+      passthrough
+      state-edge-passthrough)
 )
 "
         )),

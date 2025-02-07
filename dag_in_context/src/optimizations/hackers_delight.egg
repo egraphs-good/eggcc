@@ -58,14 +58,16 @@
     (union (Get outerif i) (Bop (Div) n lowbitn))
 ) :ruleset hacker)
 
-;; Try to get rid of the state_edge hanging there
-;; TODO: This is obviously cheating
+;; Try to do a state-edge-passthrough for loops
+;; PopcountIterations guarantees termination for non-zero values
+;; lowbit(0) is undefined behavior
 
 (rule (
     (PopcountIterations anyif n i)
     (= anyif (If cond inputs thenbr elsebr))
-    (HasType (Get anyif j) (Base (StateT)))
-    (HasType (Get inputs k) (Base (StateT)))
+    (= thenbr (DoWhile lpinputs pred_outputs))
+    (= (Get pred_outputs (+ j 1)) (Get (Arg arg_ty then_ctx) j))
+    (HasType (Get pred_outputs (+ j 1)) (Base (StateT)))
 ) (
-    (union (Get anyif j) (Get inputs k))
+    (union (Get thenbr j) (Get lpinputs j))
 ) :ruleset hacker)

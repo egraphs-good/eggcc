@@ -1,6 +1,7 @@
 ---
 source: tests/files.rs
 expression: visualization.result
+snapshot_kind: text
 ---
 # ARGS: 20
 @unrelated_fn(v0: int, v1: int): int {
@@ -25,7 +26,7 @@ expression: visualization.result
 .b6_:
   c8_: int = const 3;
   v9_: int = div v5_ c8_;
-  v10_: int = div v0 v9_;
+  v10_: int = div v3_ v9_;
   v11_: int = id v10_;
   print v11_;
   ret;

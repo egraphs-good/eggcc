@@ -3,9 +3,10 @@ source: tests/files.rs
 expression: visualization.result
 snapshot_kind: text
 ---
-# ARGS: 1
+# ARGS: 21324
 @main(v0: int) {
-  c1_: int = const 3;
-  print c1_;
+  v1_: int = neg v0;
+  v2_: int = bitand v0 v1_;
+  print v2_;
   ret;
 }

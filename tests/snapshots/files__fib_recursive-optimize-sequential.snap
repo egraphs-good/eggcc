@@ -1,6 +1,7 @@
 ---
 source: tests/files.rs
 expression: visualization.result
+snapshot_kind: text
 ---
 # ARGS: 
 @fac(v0: int): int {
@@ -381,8 +382,8 @@ expression: visualization.result
   v17_: bool = eq c12_ c1_;
   br v17_ .b18_ .b19_;
 .b18_:
-  v20_: int = call @fac c12_;
-  v21_: int = id c12_;
+  v20_: int = call @fac c1_;
+  v21_: int = id c1_;
   v13_: int = id v21_;
   v16_: int = id c0_;
   v4_: int = id v16_;

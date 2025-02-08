@@ -31,8 +31,10 @@
 (BinaryOpIsPure (And))
 (BinaryOpIsPure (Or))
 (BinaryOpIsPure (PtrAdd))
+(BinaryOpIsPure (Bitand))
 (UnaryOpIsPure (Not))
 (UnaryOpIsPure (Abs))
+(UnaryOpIsPure (Neg))
 
 (rule ((Function _name _tyin _tyout _out) (ExprIsPure _out))
         ((ExprIsPure (Function _name _tyin _tyout _out)))

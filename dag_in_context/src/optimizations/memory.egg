@@ -508,6 +508,8 @@
 (ruleset memsimple)
 (ruleset add-to-debug-expr)
 
+; NoAlias
+
 (relation NoAlias (Expr Expr))
 
 (rule ((Bop (PtrAdd) e i)
@@ -562,14 +564,18 @@
        (= second-load (Bop (Load) addr first-load)))
       ((union (Get first-load 0) (Get second-load 0))
        (union (Get first-load 1) (Get second-load 1))
-       (panic "same load"))
+       (panic "same load")
+       )
       :ruleset memsimple)
 
 ; store then a load to the same address can be forwarded
 (rule ((= write (Top (Write) addr write-val state))
        (= load (Bop (Load) addr write)))
       ((union (Get load 0) write-val)
-       (union (Get load 1) write))
+       (union (Get load 1) write)
+       (panic "store forward")
+       
+       )
       :ruleset memsimple)
 
 

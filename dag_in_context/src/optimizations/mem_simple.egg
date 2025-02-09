@@ -70,7 +70,7 @@
       )
       :ruleset mem-simple)
 
-; A load then a write to a different address can be swapped
+; A load then a write to different addresses can be swapped
 (rule ((NoAlias load-addr write-addr)
        (= load (Bop (Load) load-addr state))
        (= write (Top (Write) write-addr write-val (Get load 1))))
@@ -100,17 +100,6 @@
        )
       :ruleset mem-simple)
 
-; A load then a write to a different address can be swapped
-(rule ((NoAlias load-addr write-addr)
-       (= load (Bop (Load) load-addr state))
-       (= write (Top (Write) write-addr write-val (Get load 1))))
-      ((let new-write (Top (Write) write-addr write-val state))
-       (let new-load (Bop (Load) load-addr new-write))
-       (union write (Get new-load 1))
-       (union (Get load 0) (Get new-load 0))
-       (DidMemOptimization "commute load then write"))
-      :ruleset mem-simple)
-
 ; Two writes of the same value to the same address can be compressed
 (rule ((= first-write (Top (Write) addr write-val state))
        (= second-write (Top (Write) addr write-val first-write)))
@@ -126,9 +115,10 @@
       :ruleset mem-simple)
 
 ; A load doesn't change the state
-(rule ((= load (Bop (Load) addr state)))
-      ((union (Get load 1) state))
-      :ruleset mem-simple)
+; TODO: why does this break weaklylinear?
+; (rule ((= load (Bop (Load) addr state)))
+;       ((union (Get load 1) state))
+;       :ruleset mem-simple)
 
 ; (rule ((DidMemOptimization _))
 ;       ((panic "DidMemOptimization"))

@@ -55,7 +55,7 @@
 ; Memory optimizations
 ; ============================
 
-(relation DidMemOptimization (string))
+(relation DidMemOptimization (String))
 
 ; A write and a load to different addresses can be swapped
 (rule ((NoAlias write-addr load-addr)

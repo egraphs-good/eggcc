@@ -506,7 +506,6 @@
 ; ============================
 
 (ruleset memsimple)
-(ruleset add-to-debug-expr)
 
 ; NoAlias
 
@@ -543,9 +542,8 @@
       ((NoAlias y x))
       :ruleset memsimple)
 
+ ; Write then a load to a different address can be swapped
 (rule ((NoAlias write-addr load-addr)
-       ; write then a load to a different address
-       ; can be swapped
        (= write (Top (Write) write-addr write-val state))
        (= load (Bop (Load) load-addr write)))
       (; Final state

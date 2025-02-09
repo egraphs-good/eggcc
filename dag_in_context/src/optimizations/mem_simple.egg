@@ -1,0 +1,135 @@
+
+(ruleset mem-simple)
+
+; ============================
+; NoAlias analysis
+; ============================
+
+(relation NoAlias (Expr Expr))
+
+(rule ((Bop (PtrAdd) e i)
+       (= (lo-bound i) (IntB lo))
+       (> lo 0))
+      ((NoAlias e (Bop (PtrAdd) e i)))
+      :ruleset mem-simple)
+
+(rule ((Bop (PtrAdd) e i)
+       (= (hi-bound i) (IntB hi))
+       (< hi 0))
+      ((NoAlias e (Bop (PtrAdd) e i)))
+      :ruleset mem-simple)
+
+(rule ((= p1 (Bop (PtrAdd) p i))
+       (= p2 (Bop (PtrAdd) p (Bop (Add) i diff)))
+       (= (lo-bound diff) (IntB lo))
+       (> lo 0))
+      ((NoAlias p1 p2))
+      :ruleset mem-simple)
+
+(rule ((= p1 (Bop (PtrAdd) p i))
+       (= p2 (Bop (PtrAdd) p (Bop (Add) i diff)))
+       (= (hi-bound diff) (IntB hi))
+       (< hi 0))
+      ((NoAlias p1 p2))
+      :ruleset mem-simple)
+
+(rule ((= p1 (Bop (PtrAdd) p i))
+       (= p2 (Bop (PtrAdd) p (Bop (Sub) i diff)))
+       (= (lo-bound diff) (IntB lo))
+       (> lo 0))
+      ((NoAlias p1 p2))
+      :ruleset mem-simple)
+
+(rule ((= p1 (Bop (PtrAdd) p i))
+       (= p2 (Bop (PtrAdd) p (Bop (Sub) i diff)))
+       (= (hi-bound diff) (IntB hi))
+       (< hi 0))
+      ((NoAlias p1 p2))
+      :ruleset mem-simple)
+
+(rule ((NoAlias x y))
+      ((NoAlias y x))
+      :ruleset mem-simple)
+
+; ============================
+; Memory optimizations
+; ============================
+
+(relation DidMemOptimization (string))
+
+; A write and a load to different addresses can be swapped
+(rule ((NoAlias write-addr load-addr)
+       (= write (Top (Write) write-addr write-val state))
+       (= load (Bop (Load) load-addr write)))
+      ((let new-load (Bop (Load) load-addr state))
+       (union
+          (Get load 1)
+          (Top (Write) write-addr write-val (Get new-load 1)))
+       (union (Get load 0) (Get new-load 0))
+       (DidMemOptimization "commute write then load")
+      )
+      :ruleset mem-simple)
+
+; A load then a write to a different address can be swapped
+(rule ((NoAlias load-addr write-addr)
+       (= load (Bop (Load) load-addr state))
+       (= write (Top (Write) write-addr write-val (Get load 1))))
+      ((let new-write (Top (Write) write-addr write-val state))
+       (let new-load (Bop (Load) load-addr new-write))
+       (union write (Get new-load 1))
+       (union (Get load 0) (Get new-load 0))
+       (DidMemOptimization "commute load then write")
+       )
+      :ruleset mem-simple)
+
+; Two loads to the same address can be compressed
+(rule ((= first-load (Bop (Load) addr state))
+       (= second-load (Bop (Load) addr first-load)))
+      ((union (Get first-load 0) (Get second-load 0))
+       (union (Get first-load 1) (Get second-load 1))
+       (DidMemOptimization "duplicate load")
+       )
+      :ruleset mem-simple)
+
+; A write and a load to the same address can be forwarded
+(rule ((= write (Top (Write) addr write-val state))
+       (= load (Bop (Load) addr write)))
+      ((union (Get load 0) write-val)
+       (union (Get load 1) write)
+       (DidMemOptimization "store forward")
+       )
+      :ruleset mem-simple)
+
+; A load then a write to a different address can be swapped
+(rule ((NoAlias load-addr write-addr)
+       (= load (Bop (Load) load-addr state))
+       (= write (Top (Write) write-addr write-val (Get load 1))))
+      ((let new-write (Top (Write) write-addr write-val state))
+       (let new-load (Bop (Load) load-addr new-write))
+       (union write (Get new-load 1))
+       (union (Get load 0) (Get new-load 0))
+       (DidMemOptimization "commute load then write"))
+      :ruleset mem-simple)
+
+; Two writes of the same value to the same address can be compressed
+(rule ((= first-write (Top (Write) addr write-val state))
+       (= second-write (Top (Write) addr write-val first-write)))
+      ((union first-write second-write)
+       (DidMemOptimization "duplicate write"))
+      :ruleset mem-simple)
+
+; A write shadows a previous write to the same address
+(rule ((= first-write (Top (Write) addr shadowed-val state))
+       (= second-write (Top (Write) addr write-val first-write)))
+      ((union second-write (Top (Write) addr write-val state))
+       (DidMemOptimization "shadowed write"))
+      :ruleset mem-simple)
+
+; A load doesn't change the state
+(rule ((= load (Bop (Load) addr state)))
+      ((union (Get load 1) state))
+      :ruleset mem-simple)
+
+; (rule ((DidMemOptimization _))
+;       ((panic "DidMemOptimization"))
+;       :ruleset mem-simple)

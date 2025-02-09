@@ -45,3 +45,13 @@
       :ruleset peepholes)
 
 (rewrite (Top (Select) pred x x) x :ruleset peepholes)
+
+; constant fold `(x + const1) + const2` even when x is not constant
+(rewrite (Bop (Add) (Bop (Add) x (Const (Int i) ty ctx)) (Const (Int j) ty ctx))
+         (Bop (Add) x (Const (Int (+ i j)) ty ctx))
+         :ruleset peepholes)
+
+; ptradd(ptradd(p, x), y) => ptradd(p, x + y)
+(rewrite (Bop (PtrAdd) (Bop (PtrAdd) p x) y)
+         (Bop (PtrAdd) p (Bop (Add) x y))
+         :ruleset peepholes)

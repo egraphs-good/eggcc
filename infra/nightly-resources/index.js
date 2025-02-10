@@ -122,12 +122,9 @@ function refreshView() {
   for (const suite of getSuites()) {
     const tableData = tableForSuite(suite);
     addTableTo(document.getElementById("tables"), tableData, suite + " Stats");
-    latexMacros = latexMacros + nestedJsonToLatexMacros(
-      tableData,
-      "name",
-      "executions",
-      "runMethod",
-    );
+    latexMacros =
+      latexMacros +
+      nestedJsonToLatexMacros(tableData, "name", "executions", "runMethod");
   }
 
   renderWarnings();

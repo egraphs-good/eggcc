@@ -358,8 +358,6 @@ pub(crate) fn rules() -> String {
 }
 
 #[cfg(test)]
-use crate::ast::*;
-#[cfg(test)]
 use crate::egglog_test;
 
 #[cfg(test)]
@@ -490,75 +488,75 @@ fn load_after_write_without_alias() -> crate::Result {
     )
 }
 
-// #[test]
-// fn simple_loop_swap() -> crate::Result {
-//     // p = alloc(alloc_id, 4, int*)
-//     // q = ptradd(p, 1)
-//     // r = ptradd(p, 2)
-//     // // (p, r) don't alias
-//     // do {
-//     //   p, q = q, p
-//     // } while true;
-//     // // (p, r) still shouldn't alias
-//     use crate::ast::*;
-//     let alloc_id = 1;
-//     let state = getat(0);
-//     let p_and_state = alloc(alloc_id, int(4), state, pointert(intt()));
-//     let p = get(p_and_state.clone(), 0);
-//     let state = get(p_and_state, 1);
-//     let loop1 = dowhile(
-//         parallel!(
-//             state,                     // state
-//             p.clone(),                 // p
-//             ptradd(p.clone(), int(1)), // q
-//             ptradd(p.clone(), int(2)), // r
-//         ),
-//         parallel!(
-//             ttrue(),  // pred
-//             getat(0), // state
-//             getat(2), // q
-//             getat(1), // p
-//             getat(3), // r
-//         ),
-//     )
-//     .with_arg_types(
-//         tuplet!(statet()),
-//         tuplet!(
-//             statet(),
-//             pointert(intt()),
-//             pointert(intt()),
-//             pointert(intt())
-//         ),
-//     );
-//     let state = get(loop1.clone(), 0);
-//     let p = get(loop1.clone(), 1);
-//     let r = get(loop1.clone(), 3);
-//     let state = write(p.clone(), int(10), state);
-//     let state = write(r.clone(), int(20), state);
-//     let val_and_state = load(p.clone(), state);
-//     let val = get(val_and_state.clone(), 0).with_arg_types(tuplet!(statet()), Type::Base(intt()));
-//     let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
-//     let f =
-//         function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
-//     memory_egglog_test(
-//         &format!("{f}"),
-//         &format!(
-//             "
-//         ;; TODO we don't run memory in the main loop right now
-//         (run-schedule
-//           (repeat 6
-//             (saturate
-//                 always-run
-//                 memory-helpers)
-//             memory))
-//         (let ten {ten}) (let val {val}) (check (= val ten))"
-//         ),
-//         vec![],
-//         emptyv(),
-//         emptyv(),
-//         vec![],
-//     )
-// }
+#[test]
+fn simple_loop_swap() -> crate::Result {
+    // p = alloc(alloc_id, 4, int*)
+    // q = ptradd(p, 1)
+    // r = ptradd(p, 2)
+    // // (p, r) don't alias
+    // do {
+    //   p, q = q, p
+    // } while true;
+    // // (p, r) still shouldn't alias
+    use crate::ast::*;
+    let alloc_id = 1;
+    let state = getat(0);
+    let p_and_state = alloc(alloc_id, int(4), state, pointert(intt()));
+    let p = get(p_and_state.clone(), 0);
+    let state = get(p_and_state, 1);
+    let loop1 = dowhile(
+        parallel!(
+            state,                     // state
+            p.clone(),                 // p
+            ptradd(p.clone(), int(1)), // q
+            ptradd(p.clone(), int(2)), // r
+        ),
+        parallel!(
+            ttrue(),  // pred
+            getat(0), // state
+            getat(2), // q
+            getat(1), // p
+            getat(3), // r
+        ),
+    )
+    .with_arg_types(
+        tuplet!(statet()),
+        tuplet!(
+            statet(),
+            pointert(intt()),
+            pointert(intt()),
+            pointert(intt())
+        ),
+    );
+    let state = get(loop1.clone(), 0);
+    let p = get(loop1.clone(), 1);
+    let r = get(loop1.clone(), 3);
+    let state = write(p.clone(), int(10), state);
+    let state = write(r.clone(), int(20), state);
+    let val_and_state = load(p.clone(), state);
+    let val = get(val_and_state.clone(), 0).with_arg_types(tuplet!(statet()), Type::Base(intt()));
+    let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
+    let f =
+        function("main", tuplet!(statet()), Type::Base(intt()), val.clone()).func_with_arg_types();
+    memory_egglog_test(
+        &format!("{f}"),
+        &format!(
+            "
+        ;; TODO we don't run memory in the main loop right now
+        (run-schedule
+          (repeat 6
+            (saturate
+                always-run
+                memory-helpers)
+            memory))
+        (let ten {ten}) (let val {val}) (check (= val ten))"
+        ),
+        vec![],
+        emptyv(),
+        emptyv(),
+        vec![],
+    )
+}
 
 #[test]
 fn pqrs_deep_loop_swap() -> crate::Result {

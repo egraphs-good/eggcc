@@ -218,14 +218,6 @@
       ((PointsToCells body (TypeToPointees in-ty)))
       :ruleset memory-helpers)
 
-
-
-; (rule ((DoWhile inputs pred-body)
-;        (HasType inputs inputs-ty))
-;       ((PointsToCells pred-body (TypeToPointees inputs-ty)))
-;       :ruleset memory-helpers)
-
-
 ; Demand PointsToCells along state edge and pointer-typed values
 (rule ((PointsToCells (Bop (Print) e state) ap))
       ((PointsToCells state ap))
@@ -305,36 +297,12 @@
                 (= (IntB hi) (hi-bound e)))
          :ruleset memory-helpers)
 
-; ptr points to [cell 0, 3-5]
-; if <args: ptr> c
-;   ptradd ptr 1
-; else
-;   ptradd ptr -1
-
-; (PointsToCells (If c inputs t e) [cell 0, 3-5])
-
-; 
-
-
-
-
-
-
-; look into ifs, smarter but heavier version
 (rewrite (PointsToCells (If c inputs t e) aps)
          (UnionPointees
            (PointsToCells t (PointsToCells inputs aps))
            (PointsToCells e (PointsToCells inputs aps)))
          :when ((HasType (If c inputs t e) ty) (PointerishType ty))
-         :ruleset memory-helpers)
-
-; look into ifs, forgetting everything about arguments for efficiency
-(rewrite (PointsToCells (If c inputs t e) aps)
-         (UnionPointees
-           (PointsToCells t (TypeToPointees inputs-ty))
-           (PointsToCells e (TypeToPointees inputs-ty)))
-         :when ((HasType inputs inputs-ty))
-         :ruleset memory-helpers)
+         :ruleset memory)
 
 (rewrite (PointsToCells (Alloc id sz state ty) aps)
          (TuplePointsTo
@@ -350,44 +318,44 @@
          :ruleset memory-helpers)
 
 ; arg pointees * loop in * loop out * i64 -> result pointees
-; (function PointsToCellsAtIter (Pointees Expr Expr i64) Pointees)
+(function PointsToCellsAtIter (Pointees Expr Expr i64) Pointees)
 
-; ; compute first two
-; (rule ((= e (DoWhile inputs pred-body))
-;        (PointsToCells e aps))
-;       ((set (PointsToCellsAtIter aps inputs pred-body 0)
-;             (PointsToCells inputs aps))
-;        (set (PointsToCellsAtIter aps inputs pred-body 1)
-;             (UnionPointees
-;               (PointsToCellsAtIter aps inputs pred-body 0)
-;               (PointeesDropFirst
-;                 (PointsToCells pred-body (PointsToCellsAtIter aps inputs pred-body 0))))))
-;       :ruleset memory-helpers)
+; compute first two
+(rule ((= e (DoWhile inputs pred-body))
+       (PointsToCells e aps))
+      ((set (PointsToCellsAtIter aps inputs pred-body 0)
+            (PointsToCells inputs aps))
+       (set (PointsToCellsAtIter aps inputs pred-body 1)
+            (UnionPointees
+              (PointsToCellsAtIter aps inputs pred-body 0)
+              (PointeesDropFirst
+                (PointsToCells pred-body (PointsToCellsAtIter aps inputs pred-body 0))))))
+      :ruleset memory-helpers)
 
 ; avoid quadratic query
-; (function succ (i64) i64 :unextractable)
-; (rule ((PointsToCellsAtIter aps inputs pred-body i))
-;       ((set (succ i) (+ i 1)))
-;       :ruleset memory-helpers)
+(function succ (i64) i64 :unextractable)
+(rule ((PointsToCellsAtIter aps inputs pred-body i))
+      ((set (succ i) (+ i 1)))
+      :ruleset memory-helpers)
 
 ; Note that this rule is bounded by ruleset memory
-; (rule ((= pointees0 (PointsToCellsAtIter aps inputs pred-body i))
-;        (= pointees1 (PointsToCellsAtIter aps inputs pred-body (succ i)))
-;        (Resolved-Pointees pointees0)
-;        (Resolved-Pointees pointees1)
-;        (!= pointees0 pointees1))
-;       ((set (PointsToCellsAtIter aps inputs pred-body (+ i 2))
-;             (UnionPointees
-;               pointees1
-;               (PointeesDropFirst
-;                 (PointsToCells pred-body pointees1)))))
-;       :ruleset memory)
+(rule ((= pointees0 (PointsToCellsAtIter aps inputs pred-body i))
+       (= pointees1 (PointsToCellsAtIter aps inputs pred-body (succ i)))
+       (Resolved-Pointees pointees0)
+       (Resolved-Pointees pointees1)
+       (!= pointees0 pointees1))
+      ((set (PointsToCellsAtIter aps inputs pred-body (+ i 2))
+            (UnionPointees
+              pointees1
+              (PointeesDropFirst
+                (PointsToCells pred-body pointees1)))))
+      :ruleset memory)
 
-; (rule ((= pointees (PointsToCellsAtIter aps inputs pred-body i))
-;        (= pointees (PointsToCellsAtIter aps inputs pred-body (succ i))))
-;       ((set (PointsToCells (DoWhile inputs pred-body) aps)
-;             pointees))
-;       :ruleset memory)
+(rule ((= pointees (PointsToCellsAtIter aps inputs pred-body i))
+       (= pointees (PointsToCellsAtIter aps inputs pred-body (succ i))))
+      ((set (PointsToCells (DoWhile inputs pred-body) aps)
+            pointees))
+      :ruleset memory)
 
 (rule ((PtrPointsTo (PointsTo l)))
       ((DemandAt-List<i64+IntInterval> l))

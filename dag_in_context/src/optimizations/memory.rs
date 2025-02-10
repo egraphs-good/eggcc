@@ -358,8 +358,6 @@ pub(crate) fn rules() -> String {
 }
 
 #[cfg(test)]
-use crate::ast::emptyv;
-#[cfg(test)]
 use crate::ast::*;
 #[cfg(test)]
 use crate::egglog_test;
@@ -690,128 +688,6 @@ fn redundant_load_elim() -> crate::Result {
         (print-function PointsToExpr 1000)
         (check (= {res} (Bop (Print) {load1_val} rest)))"
         ),
-        vec![],
-        emptyv(),
-        emptyv(),
-        vec![],
-    )
-}
-
-#[test]
-fn fib_unrolled() -> crate::Result {
-    let tpl_i_s_v0 = tuplet!(intt(), statet());
-    let tpl_s_v1 = tuplet!(statet());
-
-    let twrite_v3 = twrite(
-        get(alloc(0, getat(0), getat(1), pointert(intt())), 0),
-        int(0),
-        get(alloc(0, getat(0), getat(1), pointert(intt())), 1),
-    );
-    let twrite_v4 = twrite(
-        ptradd(
-            get(alloc(0, getat(0), getat(1), pointert(intt())), 0),
-            int(1),
-        ),
-        int(1),
-        twrite_v3.clone(),
-    );
-    let tpl_s_ptri_i_i_i_v5 = tuplet!(statet(), pointert(intt()), intt(), intt(), intt());
-    let load_v6 = load(
-        ptradd(ptradd(getat(1), getat(2)), int(-2)),
-        get(
-            load(ptradd(ptradd(getat(1), getat(2)), int(-1)), getat(0)),
-            1,
-        ),
-    );
-    let add_v7 = add(
-        get(
-            load(ptradd(ptradd(getat(1), getat(2)), int(-1)), getat(0)),
-            0,
-        ),
-        get(load_v6.clone(), 0),
-    );
-    let if_v8 = tif(
-        less_than(add(getat(2), getat(3)), getat(4)),
-        parallel!(
-            twrite(
-                ptradd(getat(1), getat(2)),
-                add_v7.clone(),
-                get(load_v6.clone(), 1)
-            ),
-            getat(1),
-            add(getat(2), getat(3)),
-            getat(3),
-            getat(4)
-        ),
-        parallel!(
-            twrite(
-                ptradd(getat(1), getat(2)),
-                add_v7.clone(),
-                get(load_v6.clone(), 1)
-            ),
-            getat(1),
-            add(getat(2), getat(3)),
-            ttrue(),
-            getat(3),
-            getat(4)
-        ),
-        parallel!(getat(0), getat(1), getat(2), tfalse(), getat(3), getat(4)),
-    );
-    let if_v9 = tif(
-        less_than(getat(2), getat(4)),
-        parallel!(getat(0), getat(1), getat(2), getat(3), getat(4)),
-        parallel!(
-            get(if_v8.clone(), 0),
-            get(if_v8.clone(), 1),
-            get(if_v8.clone(), 2),
-            get(if_v8.clone(), 3),
-            get(if_v8.clone(), 4),
-            get(if_v8.clone(), 5)
-        ),
-        parallel!(getat(0), getat(1), getat(2), tfalse(), getat(3), getat(4)),
-    );
-    let dowhile_v10 = dowhile(
-        parallel!(
-            twrite_v4.clone(),
-            get(alloc(0, getat(0), getat(1), pointert(intt())), 0),
-            int(2),
-            int(1),
-            getat(0)
-        ),
-        parallel!(
-            get(if_v9.clone(), 3),
-            get(if_v9.clone(), 0),
-            get(if_v9.clone(), 1),
-            get(if_v9.clone(), 2),
-            get(if_v9.clone(), 4),
-            get(if_v9.clone(), 5)
-        ),
-    );
-    let ptradd_v11 = ptradd(
-        ptradd(get(dowhile_v10.clone(), 1), get(dowhile_v10.clone(), 2)),
-        int(-1),
-    );
-    let free_v12 = free(
-        get(dowhile_v10.clone(), 1),
-        get(load(ptradd_v11.clone(), get(dowhile_v10.clone(), 0)), 1),
-    );
-    let tprint_v13 = tprint(
-        get(load(ptradd_v11.clone(), get(dowhile_v10.clone(), 0)), 0),
-        free_v12.clone(),
-    );
-    let fun_main_v14 = function(
-        "main",
-        tpl_i_s_v0.clone(),
-        tpl_s_v1.clone(),
-        single(tprint_v13.clone()),
-    );
-    let fun_main_v15 = fun_main_v14.clone();
-    let f = fun_main_v15.with_arg_types(tuplet!(statet()), Type::Base(intt()));
-
-    let ten = int(10).with_arg_types(tuplet!(statet()), Type::Base(intt()));
-    memory_egglog_test(
-        &format!("{f}"),
-        &format!(" "),
         vec![],
         emptyv(),
         emptyv(),

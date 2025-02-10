@@ -1,4 +1,4 @@
-# ARGS: 5
+# ARGS: 1000
 
 @main(halfinput : int) {
   two: int = const 2;

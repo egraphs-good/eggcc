@@ -67,23 +67,7 @@ function addTableTo(element, data, title) {
     navigator.clipboard.writeText(table);
   };
 
-  // add a button that copies latex macros for table
-  const copyMacrosButton = document.createElement("button");
-  copyMacrosButton.innerText = "Copy Latex Macros";
-  copyMacrosButton.onclick = () => {
-    const macros = nestedJsonToLatexMacros(
-      data,
-      "name",
-      "executions",
-      "runMethod",
-    );
-    console.log("macros");
-    console.log(macros);
-    navigator.clipboard.writeText(macros);
-  };
-
   element.appendChild(copyButton);
-  element.appendChild(copyMacrosButton);
 
   // add a new div for the table
   const tableDiv = document.createElement("div");
@@ -130,18 +114,25 @@ function refreshView() {
 
   // fill in the overall stats table
   const overallStats = getOverallStatistics();
-
-  console.log("here");
   addTableTo(document.getElementById("tables"), overallStats, "Overall Stats");
+
+  var latexMacros = "";
+  latexMacros = latexMacros + jsonToLatexMacros(overallStats, "runMethod", "");
 
   for (const suite of getSuites()) {
     const tableData = tableForSuite(suite);
     addTableTo(document.getElementById("tables"), tableData, suite + " Stats");
+    latexMacros = latexMacros + nestedJsonToLatexMacros(
+      tableData,
+      "name",
+      "executions",
+      "runMethod",
+    );
   }
 
   renderWarnings();
   refreshChart();
-  refreshLatexMacros();
+  refreshLatexMacros(latexMacros);
 }
 
 function renderWarnings() {
@@ -227,10 +218,10 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
   select.value = formatRun(previousRuns[initialIdx]);
 }
 
-async function refreshLatexMacros() {
+async function refreshLatexMacros(tableMacros) {
   const latexMacrosTextArea = document.getElementById("latex-macros-text");
   const latexMacros = await fetch("nightlymacros.tex").then((r) => r.text());
-  latexMacrosTextArea.value = latexMacros;
+  latexMacrosTextArea.value = tableMacros + latexMacros;
 }
 
 function addGraphs() {

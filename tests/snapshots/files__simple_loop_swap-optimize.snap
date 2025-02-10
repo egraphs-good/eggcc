@@ -6,14 +6,13 @@ expression: visualization.result
 @main {
   c0_: int = const 2;
   v1_: ptr<int> = alloc c0_;
-  c2_: int = const 1;
-  v3_: ptr<int> = ptradd v1_ c2_;
-  c4_: int = const 20;
-  c5_: int = const 10;
-  store v1_ c5_;
-  store v3_ c4_;
-  v6_: int = load v1_;
-  print v6_;
+  c2_: int = const 10;
+  c3_: int = const 1;
+  v4_: ptr<int> = ptradd v1_ c3_;
+  c5_: int = const 20;
+  store v1_ c2_;
+  store v4_ c5_;
+  print c2_;
   free v1_;
   ret;
 }

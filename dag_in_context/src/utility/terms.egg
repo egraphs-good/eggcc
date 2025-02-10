@@ -1,5 +1,7 @@
 (ruleset terms)
+;; helpers keeps track of the new best extracted terms
 (ruleset terms-helpers)
+;; helpers-helpers runs `Smaller` rules, resolving the merge function for helpers
 (ruleset terms-helpers-helpers)
 
 (sort TermAndCost)
@@ -7,8 +9,8 @@
 
 (function ExtractedExpr (Expr) TermAndCost
   :merge (Smaller old new))
-;; potential extractions- use so that we don't modify the
-;; timestamp of ExtractedExpr when the costs are equal
+;; potential extractions- use so that when the costs are equal, we don't change the term
+;; this preserves egglog's timestamp of when the last time ExtractedExpr was changed, fixing a big performance problem
 (relation PotentialExtractedExpr (Expr TermAndCost))
 
 (function TCPair (Term i64) TermAndCost)

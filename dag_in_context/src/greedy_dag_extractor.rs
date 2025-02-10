@@ -6,7 +6,7 @@ use rpds::HashTrieMap;
 use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
 };
@@ -42,18 +42,24 @@ pub(crate) struct EgraphInfo<'a> {
 pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
     costsets: Vec<CostSet>,
-    costsetmemo: IndexMap<(NodeId, Vec<CostSetIndex>), CostSetIndex>,
+    costsetmemo: IndexMap<Term, CostSetIndex>,
+    ctx_memo: HashMap<ClassId, CostSetIndex>,
+    /// For a given region (based on the region's root),
+    /// stores a map from classes in that region to the chosen term for the eclass.
+    /// Regions are extracted separately since different regions
+    /// have different allowed state edge paths.
     costs: IndexMap<ClassId, IndexMap<ClassId, CostSetIndex>>,
 
     // use to get the type of an expression
     pub(crate) typechecker: TypeChecker<'a>,
 
-    // Each term must correspond to a node in the egraph. We store that here
-    // Use an indexmap for deterministic order of iteration
+    // Each term must correspond to a node in the egraph.
+    // This allows us to recover the node from the term for banning nodes outside
+    // the stateful path.
     pub(crate) correspondence: IndexMap<Term, NodeId>,
     // Get the expression corresponding to a term.
     // This is computed after the extraction is done.
-    pub(crate) term_to_expr: Option<IndexMap<Term, RcExpr>>,
+    pub(crate) term_to_expr: IndexMap<Term, RcExpr>,
     pub(crate) eclass_type: Option<IndexMap<ClassId, Type>>,
 }
 
@@ -196,6 +202,7 @@ impl<'a> EgraphInfo<'a> {
                     child,
                     is_subregion,
                     is_assumption,
+                    is_if_inputs: _is_inputs,
                 } in enode_children(egraph, node)
                 {
                     if is_assumption {
@@ -240,16 +247,18 @@ impl<'a> EgraphInfo<'a> {
 
 impl<'a> Extractor<'a> {
     pub(crate) fn term_to_expr(&mut self, term: &Term) -> RcExpr {
-        self.term_to_expr
-            .as_ref()
-            .unwrap()
-            .get(term)
-            .unwrap_or_else(|| panic!("Failed to find correspondence for term {:?}", term))
-            .clone()
+        let mut converter = FromEgglog {
+            termdag: self.termdag,
+            conversion_cache: Default::default(),
+        };
+        std::mem::swap(&mut self.term_to_expr, &mut converter.conversion_cache);
+        let converted_prog = converter.expr_from_egglog(term.clone());
+
+        self.term_to_expr = converter.conversion_cache;
+        converted_prog
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn term_to_type(&mut self, term: &Term) -> Type {
+    pub(crate) fn typecheck_term(&mut self, term: &Term) -> Type {
         let expr = self.term_to_expr(term);
         self.typechecker.add_arg_types_to_expr(expr, &None).0
     }
@@ -275,35 +284,26 @@ impl<'a> Extractor<'a> {
 
     /// Convert the extracted terms to expressions, and also
     /// store their types.
-    fn convert_term_to_expr(&mut self, info: &EgraphInfo, prog: Term) -> RcExpr {
-        let mut converter = FromEgglog {
-            termdag: self.termdag,
-            conversion_cache: Default::default(),
-        };
+    fn compute_eclass_types(&mut self, info: &EgraphInfo, prog: Term) -> RcExpr {
+        let res = self.term_to_expr(&prog);
+
         let mut node_to_type: IndexMap<ClassId, Type> = Default::default();
 
-        for (term, node_id) in &self.correspondence {
+        for (term, node_id) in &self.correspondence.clone() {
             let node = info.egraph.nodes.get(node_id).unwrap();
             let eclass = info.egraph.nid_to_cid(node_id);
             let sort_of_eclass = info.get_sort_of_eclass(eclass);
             // only convert expressions (that are not functions)
             if sort_of_eclass == "Expr" && node.op != "Function" {
-                let expr = converter.expr_from_egglog(term.clone());
-                let ty = self
-                    .typechecker
-                    .add_arg_types_to_expr(expr.clone(), &None)
-                    .0;
+                let ty = self.typecheck_term(term);
                 node_to_type.insert(eclass.clone(), ty);
             }
         }
 
-        let converted_prog = converter.expr_from_egglog(prog);
-
         self.eclass_type = Some(node_to_type);
-        self.term_to_expr = Some(converter.conversion_cache);
 
         // return the converted program
-        converted_prog
+        res
     }
 
     pub(crate) fn term_node(&self, term: &Term) -> NodeId {
@@ -322,7 +322,7 @@ impl<'a> Extractor<'a> {
     ) -> CostSetIndex {
         // get any node in the class
         let node_id = info.egraph.classes()[&class_id].nodes.first().unwrap();
-        if let Some(existing) = self.costsetmemo.get(&(node_id.clone(), vec![])) {
+        if let Some(existing) = self.ctx_memo.get(&class_id) {
             *existing
         } else {
             // HACK: this term gets a context (InFunc "dummy_{class_id}").
@@ -331,17 +331,18 @@ impl<'a> Extractor<'a> {
             let dummy = self
                 .termdag
                 .lit(Literal::String(format!("dummy_{class_id}").into()));
-            Self::add_correspondence(&mut self.correspondence, dummy.clone(), node_id.clone());
+            self.add_correspondence(dummy.clone(), node_id.clone());
             let term = self.termdag.app("InFunc".into(), vec![dummy]);
-            Self::add_correspondence(&mut self.correspondence, term.clone(), node_id.clone());
+            self.add_correspondence(term.clone(), node_id.clone());
             let costset = CostSet {
                 costs: Default::default(),
                 total: 0.0.try_into().unwrap(),
-                term,
+                term: term.clone(),
+                args_used: Default::default(),
             };
             self.costsets.push(costset);
-            self.costsetmemo
-                .insert((node_id.clone(), vec![]), self.costsets.len() - 1);
+            self.costsetmemo.insert(term, self.costsets.len() - 1);
+            self.ctx_memo.insert(class_id, self.costsets.len() - 1);
             self.costsets.len() - 1
         }
     }
@@ -351,6 +352,7 @@ impl<'a> Extractor<'a> {
             termdag,
             costsets: Default::default(),
             costsetmemo: Default::default(),
+            ctx_memo: Default::default(),
             correspondence: Default::default(),
             costs: Default::default(),
             term_to_expr: Default::default(),
@@ -412,6 +414,7 @@ pub struct CostSet {
     /// Maps classes to the chosen term for the eclass,
     /// along with the cost for that term (excluding child costs).
     pub costs: HashTrieMap<ClassId, (Term, Cost)>,
+    pub args_used: HashSet<usize>,
     /// The resulting term
     pub term: Term,
 }
@@ -442,17 +445,13 @@ impl<'a> Extractor<'a> {
             self.termdag.app(op.into(), children)
         };
 
-        Self::add_correspondence(&mut self.correspondence, term.clone(), node_id.clone());
+        self.add_correspondence(term.clone(), node_id.clone());
 
         term
     }
 
-    fn add_correspondence(
-        correspondence: &mut IndexMap<Term, NodeId>,
-        term: Term,
-        node_id: NodeId,
-    ) {
-        if let Some(existing) = correspondence.insert(term.clone(), node_id.clone()) {
+    fn add_correspondence(&mut self, term: Term, node_id: NodeId) {
+        if let Some(existing) = self.correspondence.insert(term.clone(), node_id.clone()) {
             assert_eq!(existing, node_id, "Congruence invariant violated! Found two different nodes for the same term. Perhaps we used delete in egglog, which could cause this problem.");
         }
     }
@@ -469,50 +468,73 @@ impl<'a> Extractor<'a> {
     /// violating the invariant that we only extract one term per eclass.
     /// This function would be called with `Neg(b)` as `term`, and would return `Neg(a)` as the new term.
     /// This restores the invariant that we only extract one term per eclass.
+    ///
+    /// When is_free is true, return 0 for the cost and don't add new nodes to the cost set.
     fn add_term_to_cost_set(
-        &self,
+        &mut self,
         info: &EgraphInfo,
-        correspondance: &mut IndexMap<Term, NodeId>,
-        termdag: &mut TermDag,
         current_costs: &mut HashTrieMap<ClassId, (Term, Cost)>,
         term: Term,
         other_costs: &HashTrieMap<ClassId, (Term, Cost)>,
+        is_free: bool,
     ) -> (Term, Cost) {
-        let nodeid = &self.term_node(&term);
-        let eclass = info.egraph.nid_to_cid(nodeid);
-        if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
-            (existing_term.clone(), NotNan::new(0.).unwrap())
-        } else {
-            let unshared_cost = match other_costs.get(eclass) {
-                Some((_, cost)) => *cost,
-                None => NotNan::new(0.).unwrap(),
-            };
-            let mut cost = unshared_cost;
-            let new_term = match term {
-                Term::App(head, children) => {
-                    let mut new_children = vec![];
-                    for child in children {
-                        let child = termdag.get(child);
-                        let (new_child, child_cost) = self.add_term_to_cost_set(
-                            info,
-                            correspondance,
-                            termdag,
-                            current_costs,
-                            child.clone(),
-                            other_costs,
-                        );
-                        new_children.push(new_child);
-                        cost += child_cost;
-                    }
-                    termdag.app(head, new_children)
+        match &term {
+            Term::Lit(_) => {
+                // literals are always unique
+                (term, NotNan::new(0.).unwrap())
+            }
+            Term::App(head, children) => {
+                if is_type_operator(&head.to_string()) {
+                    // types are not unioned, so they should be unique
+                    return (term, NotNan::new(0.).unwrap());
                 }
-                _ => term,
-            };
-            Self::add_correspondence(correspondance, new_term.clone(), nodeid.clone());
-            *current_costs =
-                current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
 
-            (new_term, cost)
+                let nodeid = &self.term_node(&term);
+                let eclass = info.egraph.nid_to_cid(nodeid);
+                if let Some((existing_term, _existing_cost)) = current_costs.get(eclass) {
+                    (existing_term.clone(), NotNan::new(0.).unwrap())
+                } else {
+                    let unshared_cost = if is_free {
+                        NotNan::new(0.).unwrap()
+                    } else {
+                        match other_costs.get(eclass) {
+                            Some((_, cost)) => *cost,
+                            // no cost stored, so it's free
+                            None => NotNan::new(0.).unwrap(),
+                        }
+                    };
+
+                    let mut cost = unshared_cost;
+
+                    let new_term = {
+                        let mut new_children = vec![];
+                        for child in children {
+                            let child = self.termdag.get(*child);
+                            let (new_child, child_cost) = self.add_term_to_cost_set(
+                                info,
+                                current_costs,
+                                child.clone(),
+                                other_costs,
+                                is_free,
+                            );
+                            new_children.push(new_child);
+                            cost += child_cost;
+                        }
+                        self.termdag.app(*head, new_children)
+                    };
+                    self.add_correspondence(new_term.clone(), nodeid.clone());
+
+                    if !is_free {
+                        *current_costs =
+                            current_costs.insert(eclass.clone(), (new_term.clone(), unshared_cost));
+                    }
+
+                    (new_term, cost)
+                }
+            }
+            Term::Var(_) => {
+                panic!("Found variable in term during extraction");
+            }
         }
     }
 
@@ -552,49 +574,133 @@ impl<'a> Extractor<'a> {
         }
     }
 
+    fn try_break_up_term(&self, term: &Term) -> Option<Vec<Term>> {
+        match term {
+            Term::App(head, children) => {
+                if head.to_string() == "Concat" {
+                    let child_terms = children.iter().map(|child| self.termdag.get(*child));
+                    let mut child_broken_up = vec![];
+                    for child_term in child_terms {
+                        let broken_up = self.try_break_up_term(child_term)?;
+                        child_broken_up.extend(broken_up);
+                    }
+                    Some(child_broken_up)
+                } else if head.to_string() == "Empty" {
+                    Some(vec![])
+                } else if head.to_string() == "Single" {
+                    Some(vec![self.termdag.get(children[0]).clone()])
+                } else {
+                    return None;
+                }
+            }
+            Term::Lit(_) => None,
+            Term::Var(_) => None,
+        }
+    }
+
+    /// Replaces the leafs of the model_term with children
+    /// Also adds to the `correspondence` map based on the model term.
+    fn build_concat(&mut self, model_term: Term, children: &Vec<Term>) -> (Term, usize) {
+        let existing_node = self
+            .correspondence
+            .get(&model_term)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Failed to find correspondence for term {:?} in build_concat",
+                    model_term
+                )
+            })
+            .clone();
+        match model_term.clone() {
+            Term::Lit(literal) => panic!("Unexpected literal in model term: {:?}", literal),
+            Term::Var(op) => panic!("Unexpected variable in model term: {:?}", op),
+            Term::App(op, vec) => match (op.as_str(), vec.as_slice()) {
+                ("Concat", [left, right]) => {
+                    let (left_term, left_size) =
+                        self.build_concat(self.termdag.get(*left).clone(), children);
+                    assert!(left_size < children.len());
+                    let new_children = children.split_at(left_size).1.to_vec();
+                    let (right_term, right_size) =
+                        self.build_concat(self.termdag.get(*right).clone(), &new_children);
+                    assert!(right_size <= new_children.len());
+                    let new_term = self
+                        .termdag
+                        .app("Concat".into(), vec![left_term, right_term]);
+
+                    self.correspondence
+                        .insert(new_term.clone(), existing_node.clone());
+
+                    (new_term, left_size + right_size)
+                }
+                ("Single", [_single]) => {
+                    let new_term = self.termdag.app("Single".into(), vec![children[0].clone()]);
+                    self.correspondence
+                        .insert(new_term.clone(), existing_node.clone());
+                    (new_term, 1)
+                }
+                ("Empty", [_arg_ty, _ctx]) => (model_term.clone(), 0),
+                _ => panic!("Unexpected app in model term: {:?}", op),
+            },
+        }
+    }
+
     /// Given a node and cost sets for children, calculate the cost set for the node.
     /// This function is cached so that we don't re-calculate cost sets.
     /// If a cycle is detected, we return None.
     fn calculate_cost_set(
         &mut self,
         nodeid: NodeId,
-        child_cost_set_indecies: Vec<CostSetIndex>,
+        child_cost_set_indicies: Vec<CostSetIndex>,
         info: &EgraphInfo,
     ) -> Option<CostSetIndex> {
-        if let Some(&idx) = self
-            .costsetmemo
-            .get(&(nodeid.clone(), child_cost_set_indecies.clone()))
-        {
+        let original_term = self.get_term(
+            info,
+            nodeid.clone(),
+            child_cost_set_indicies
+                .iter()
+                .map(|idx| self.costsets[*idx].term.clone())
+                .collect(),
+        );
+
+        if let Some(&idx) = self.costsetmemo.get(&original_term) {
             return Some(idx);
         }
         let cid = info.egraph.nid_to_cid(&nodeid);
         let node = &info.egraph[&nodeid];
 
-        let child_cost_sets = child_cost_set_indecies
+        let enode_children = enode_children(info.egraph, node);
+
+        // we need to borrow cost sets, so swap them out
+        // we mutate self for typechecking and termdag throughout this code
+        let mut cost_sets_tmp = Default::default();
+        std::mem::swap(&mut self.costsets, &mut cost_sets_tmp);
+
+        let child_cost_sets = child_cost_set_indicies
             .iter()
-            .map(|idx| &self.costsets[*idx])
-            .zip(
-                enode_children(info.egraph, node)
-                    .iter()
-                    .map(|c| c.is_subregion),
-            )
+            .map(|idx| &cost_sets_tmp[*idx])
+            .zip(enode_children)
             .collect::<Vec<_>>();
         // cycle detection
         if child_cost_sets
             .iter()
             .any(|(cs, _)| cs.costs.contains_key(cid))
         {
+            // remember to swap costsets back!
+            std::mem::swap(&mut self.costsets, &mut cost_sets_tmp);
             return None;
         }
 
         let mut shared_total = NotNan::new(0.).unwrap();
         let mut unshared_total = info.cm.get_op_cost(&node.op);
+        let mut args_used = HashSet::new();
 
         // special case: when the call is recursive, set super high cost
         if node.op == "Call" {
             let func_name = &node.children[0];
             let func_name_str = &info.egraph[func_name].op;
-            assert!(func_name_str.starts_with('\"') && func_name_str.ends_with('\"'));
+            if !func_name_str.starts_with('\"') && func_name_str.ends_with('\"') {
+                panic!("Function name not a string: {:?}", func_name_str);
+            }
             let func_name_str_without_quotes = &func_name_str[1..func_name_str.len() - 1];
             if func_name_str_without_quotes == info._func {
                 unshared_total = NotNan::new(100000000000.0).unwrap();
@@ -602,73 +708,75 @@ impl<'a> Extractor<'a> {
         }
 
         let mut costs: HashTrieMap<ClassId, (Term, Cost)> = Default::default();
-        let index_of_biggest_child = child_cost_sets
-            .iter()
-            .enumerate()
-            .max_by_key(
-                |(_idx, (cs, is_region_root))| {
-                    if *is_region_root {
-                        0
-                    } else {
-                        cs.costs.size()
-                    }
-                },
-            )
-            .map(|(idx, _)| idx);
-        if let Some(index_of_biggest_child) = index_of_biggest_child {
-            let (biggest_child_set, is_region_root) = &child_cost_sets[index_of_biggest_child];
-            if !is_region_root {
-                costs = biggest_child_set.costs.clone();
-                shared_total = biggest_child_set.total;
-            }
-        }
 
         let mut children_terms = vec![];
-        let mut termdag_tmp = TermDag::default();
-        let mut new_correspondence = IndexMap::default();
-        // swap out the termdag and correspondance for the temporary one
-        // necessary because we have already borrowed the costsets of self, so self can't be borrowed mutably
-        std::mem::swap(self.termdag, &mut termdag_tmp);
 
         if !info.cm.ignore_children(&node.op) {
-            for (index, (child_set, is_region_root)) in child_cost_sets.iter().enumerate() {
-                if *is_region_root {
-                    children_terms.push(child_set.term.clone());
-                } else {
-                    // costs is empty, replace it with the child one
-                    if Some(index) == index_of_biggest_child {
-                        // skip the biggest child's cost
-                        children_terms.push(child_set.term.clone());
-                    } else {
-                        let (child_term, net_cost) = self.add_term_to_cost_set(
-                            info,
-                            &mut new_correspondence,
-                            &mut termdag_tmp,
-                            &mut costs,
-                            child_set.term.clone(),
-                            &child_set.costs,
-                        );
-                        shared_total += net_cost;
-                        children_terms.push(child_term);
+            for (child_set, enode_child) in child_cost_sets.iter() {
+                let (mut new_child, should_add) = if enode_child.is_subregion {
+                    (child_set.term.clone(), false)
+                } else if enode_child.is_if_inputs {
+                    // special case- try to only add cost for inputs that are used
+
+                    // first, get all the indices of the children that are used
+                    let mut used_children: HashSet<usize> = HashSet::new();
+                    for (child_set, enode_child) in child_cost_sets.iter() {
+                        if enode_child.is_subregion {
+                            used_children.extend(child_set.args_used.iter());
+                        }
                     }
+
+                    // now that we have which children are used, try to break up the inputs
+                    if let Some(broken_up_terms) = self.try_break_up_term(&child_set.term) {
+                        let mut new_input_children = vec![];
+                        for (idx, input_tuple_term) in broken_up_terms.iter().enumerate() {
+                            let (child_term, net_cost) = self.add_term_to_cost_set(
+                                info,
+                                &mut costs,
+                                input_tuple_term.clone(),
+                                &child_set.costs,
+                                !used_children.contains(&idx),
+                            );
+                            shared_total += net_cost;
+                            new_input_children.push(child_term);
+                        }
+                        let (new_term, children_used) =
+                            self.build_concat(child_set.term.clone(), &new_input_children);
+                        assert_eq!(children_used, new_input_children.len());
+                        (new_term, false)
+                    } else {
+                        (child_set.term.clone(), true)
+                    }
+                } else {
+                    (child_set.term.clone(), true)
+                };
+
+                if should_add {
+                    let (new_new_child_term, net_cost) = self.add_term_to_cost_set(
+                        info,
+                        &mut costs,
+                        new_child.clone(),
+                        &child_set.costs,
+                        false,
+                    );
+                    shared_total += net_cost;
+                    new_child = new_new_child_term;
+                }
+                children_terms.push(new_child);
+
+                // if it's not a subregion, add to args_used
+                if !enode_child.is_subregion {
+                    args_used.extend(child_set.args_used.iter());
                 }
             }
 
             // We separately compute the cost of all the subregions
             let css: SmallVec<[&CostSet; 3]> = child_cost_sets
                 .iter()
-                .filter(|(_, is_region_root)| *is_region_root)
+                .filter(|(_, child)| child.is_subregion)
                 .map(|(cs, _)| *cs)
                 .collect();
             unshared_total += self.subregions_cost(info, nodeid.clone(), css);
-        }
-
-        // swap back the termdag and correspondance
-        std::mem::swap(self.termdag, &mut termdag_tmp);
-
-        // add the new correspondence to the main correspondence
-        for (term, nodeid) in new_correspondence {
-            Self::add_correspondence(&mut self.correspondence, term, nodeid);
         }
 
         let term = self.get_term(info, nodeid.clone(), children_terms);
@@ -679,10 +787,48 @@ impl<'a> Extractor<'a> {
         }
         let total = unshared_total + shared_total;
 
-        self.costsets.push(CostSet { total, costs, term });
+        // for an argument, add all indicies
+        if node.op == "Arg" {
+            // first argument is type
+            let ty = self.typecheck_term(&term);
+            if let Type::TupleT(base_types) = ty {
+                for i in 0..base_types.len() {
+                    args_used.insert(i);
+                }
+            }
+        }
+
+        // for a get of an arg, clear args used except for the one used
+        if node.op == "Get" {
+            let arg_term = &child_cost_sets[0].0.term;
+            match arg_term {
+                Term::App(symbol, _items) => {
+                    if symbol.to_string() == "Arg" {
+                        let arg_index = child_cost_sets[1].0.term.clone();
+                        match arg_index {
+                            Term::Lit(Literal::Int(i)) => {
+                                args_used.clear();
+                                args_used.insert(i as usize);
+                            }
+                            _ => panic!("Unexpected term in Get: {:?}", arg_term),
+                        }
+                    }
+                }
+                _ => panic!("Unexpected term in Get: {:?}", arg_term),
+            }
+        }
+
+        // swap borrowed costsets back!
+        std::mem::swap(&mut self.costsets, &mut cost_sets_tmp);
+
+        self.costsets.push(CostSet {
+            total,
+            costs,
+            term,
+            args_used,
+        });
         let index = self.costsets.len() - 1;
-        self.costsetmemo
-            .insert((nodeid, child_cost_set_indecies), index);
+        self.costsetmemo.insert(original_term, index);
 
         Some(index)
     }
@@ -707,6 +853,7 @@ fn node_cost_in_region(
                  child,
                  is_subregion,
                  is_assumption,
+                 is_if_inputs: _is_inputs,
              }| {
                 // for assumptions, just return a dummy context every time
                 if *is_assumption {
@@ -800,7 +947,7 @@ pub fn extract(
     should_maintain_linearity: bool,
     extract_debug_exprs: bool,
 ) -> (Cost, TreeProgram) {
-    if extract_debug_exprs {
+    let (cost, mut prog) = if extract_debug_exprs {
         log::info!("Extracting debug expressions.");
         let debug_roots = find_debug_roots(egraph.clone());
         let mut extracted_fns = vec![];
@@ -850,7 +997,10 @@ pub fn extract(
             cost += fn_cost.total;
         }
         (cost, new_prog)
-    }
+    };
+
+    prog.remove_dead_code_nodes();
+    (cost, prog)
 }
 
 /// Extract the function specified by `func` from the egraph.
@@ -962,8 +1112,8 @@ pub fn extract_with_paths(
         });
     let root_costset = extractor.costsets[root_costset_index].clone();
 
-    // now run translation to expressions
-    let resulting_prog = extractor.convert_term_to_expr(info, root_costset.term.clone());
+    // now run translation to expressions and compute eclass types
+    let resulting_prog = extractor.compute_eclass_types(info, root_costset.term.clone());
 
     let root_cost = root_costset.total;
     if root_cost.is_infinite() {
@@ -1120,16 +1270,29 @@ struct EnodeChild {
     child: ClassId,
     is_subregion: bool,
     is_assumption: bool,
+    // cost of inputs is calculated specially- dead code is not included in cost
+    is_if_inputs: bool,
 }
 
 impl EnodeChild {
-    fn new(child: ClassId, is_subregion: bool, is_assumption: bool) -> Self {
+    fn new(child: ClassId, is_subregion: bool, is_assumption: bool, if_if_inputs: bool) -> Self {
         EnodeChild {
             child,
             is_subregion,
             is_assumption,
+            is_if_inputs: if_if_inputs,
         }
     }
+}
+
+fn is_type_operator(op: &str) -> bool {
+    op == "TupleT"
+        || op == "Base"
+        || op == "IntT"
+        || op == "BoolT"
+        || op == "FloatT"
+        || op == "PointerT"
+        || op == "StateT"
 }
 
 /// For a given enode, returns a vector of children eclasses.
@@ -1140,52 +1303,52 @@ fn enode_children(
 ) -> Vec<EnodeChild> {
     match (enode.op.as_str(), enode.children.as_slice()) {
         ("DoWhile", [input, body]) => vec![
-            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
-            EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
+            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false, false),
+            EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false, false),
         ],
         ("If", [pred, input, then_branch, else_branch]) => vec![
-            EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
-            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
-            EnodeChild::new(egraph.nid_to_cid(then_branch).clone(), true, false),
-            EnodeChild::new(egraph.nid_to_cid(else_branch).clone(), true, false),
+            EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false, false),
+            EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false, true),
+            EnodeChild::new(egraph.nid_to_cid(then_branch).clone(), true, false, false),
+            EnodeChild::new(egraph.nid_to_cid(else_branch).clone(), true, false, false),
         ],
         ("Switch", [pred, input, branchlist]) => {
             let mut res = vec![
-                EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(pred).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(input).clone(), false, false, true),
             ];
             res.extend(
                 get_conslist_children(egraph, egraph.nid_to_cid(branchlist).clone())
                     .into_iter()
-                    .map(|cid| EnodeChild::new(cid, true, false)),
+                    .map(|cid| EnodeChild::new(cid, true, false, false)),
             );
             res
         }
         ("Function", [name, args, ret, body]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(name).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(args).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ret).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false),
+                EnodeChild::new(egraph.nid_to_cid(name).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(args).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ret).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(body).clone(), true, false, false),
             ]
         }
         ("Arg", [ty, ctx]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true, false),
             ]
         }
         ("Const", [c, ty, ctx]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true, false),
             ]
         }
         ("Empty", [ty, ctx]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true),
+                EnodeChild::new(egraph.nid_to_cid(ty).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(ctx).clone(), false, true, false),
             ]
         }
         // We mark operators like (Add) and (Mul) as region roots
@@ -1193,23 +1356,23 @@ fn enode_children(
         // are referenced at a different place, just like a region.
         ("Uop", [op, a]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false),
-                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false, false),
+                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false, false),
             ]
         }
         ("Bop", [op, a, b]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false),
-                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false, false),
+                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false, false),
             ]
         }
         ("Top", [op, a, b, c]) => {
             vec![
-                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false),
-                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false),
-                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false),
+                EnodeChild::new(egraph.nid_to_cid(op).clone(), true, false, false),
+                EnodeChild::new(egraph.nid_to_cid(a).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(b).clone(), false, false, false),
+                EnodeChild::new(egraph.nid_to_cid(c).clone(), false, false, false),
             ]
         }
         _ => {
@@ -1217,6 +1380,7 @@ fn enode_children(
             for child in &enode.children {
                 children.push(EnodeChild::new(
                     egraph.nid_to_cid(child).clone(),
+                    false,
                     false,
                     false,
                 ));
@@ -1291,6 +1455,7 @@ fn find_reachable(
                     child,
                     is_subregion,
                     is_assumption,
+                    is_if_inputs: _is_inputs,
                 } in enode_children(egraph, &egraph[node])
                 {
                     if !is_assumption {
@@ -1336,7 +1501,11 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
         false,
     );
 
-    assert_eq!(cost_set.0, expected_cost);
+    assert_eq!(
+        cost_set.0, expected_cost,
+        "Expected cost to be {}",
+        expected_cost
+    );
 }
 
 /// This only runs extract_without_linearity once
@@ -1381,7 +1550,14 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
     }
     match err {
         Ok(_) => panic!("Expected program to be non-linear!"),
-        Err(e) => assert!(e.starts_with(error_message)),
+        Err(e) => {
+            if !e.starts_with(error_message) {
+                panic!(
+                    "Expected error message to start with '{}', got '{}'",
+                    error_message, e
+                );
+            }
+        }
     }
 }
 
@@ -1482,6 +1658,31 @@ fn test_dag_extract_if() {
 }
 
 #[test]
+fn test_cost_dead_code_to_if() {
+    use crate::ast::*;
+
+    let prog = program!(function(
+        "main",
+        tuplet!(intt(), statet()),
+        tuplet!(intt(), statet()),
+        tif(
+            ttrue(),
+            parallel!(int(10), int(20), getat(1)),
+            parallel!(add(getat(0), getat(0)), getat(2)),
+            parallel!(add(getat(0), getat(0)), getat(2))
+        ),
+    ),);
+    let cost_model = TestCostModel;
+    // count the constant 10 and the constant true
+    // don't count the constant 20
+    let expected_cost = cost_model.get_op_cost("Const") * 2.
+        + cost_model.get_op_cost("Add") * 1.3 // if cost model
+        + cost_model.get_op_cost("If");
+
+    dag_extraction_test(&prog, expected_cost);
+}
+
+#[test]
 fn simple_dag_extract() {
     use crate::ast::*;
     let prog = program!(function(
@@ -1545,7 +1746,7 @@ fn test_linearity_check_2() {
     ),);
     dag_extraction_linearity_check(
         &bad_program_2,
-        "Resulting program violated linearity! There are unconsumed effectful operators.",
+        "Resulting program violated linearity! There are unconsumed effectful operators",
     );
 }
 

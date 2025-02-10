@@ -59,7 +59,7 @@ impl<'a> FromEgglog<'a> {
         })
     }
 
-    fn basetype_from_egglog(&mut self, basetype: Term) -> BaseType {
+    pub(crate) fn basetype_from_egglog(&mut self, basetype: Term) -> BaseType {
         match_term_app!(basetype.clone(); {
           ("IntT", []) => BaseType::IntT,
           ("FloatT", []) => BaseType::FloatT,

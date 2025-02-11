@@ -75,10 +75,14 @@ function addTableTo(element, data, title) {
   element.appendChild(tableDiv);
 }
 
+function benchmarksInSuite(suite) {
+  return enabledBenchmarks()
+    .filter((benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite)
+}
+
 function tableForSuite(suite) {
   const byBench = {};
-  Array.from(GLOBAL_DATA.checkedBenchmarks)
-    .filter((benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite)
+  benchmarksInSuite(suite)
     .forEach((benchmark) => {
       byBench[benchmark] = getDataForBenchmark(benchmark);
     });
@@ -113,11 +117,18 @@ function refreshView() {
   }
 
   // fill in the overall stats table
-  const overallStats = getOverallStatistics();
+  const overallStats = getOverallStatistics(undefined);
   addTableTo(document.getElementById("tables"), overallStats, "Overall Stats");
 
   var latexMacros = "";
-  latexMacros = latexMacros + jsonToLatexMacros(overallStats, "runMethod", "");
+  latexMacros = latexMacros + jsonToLatexMacros(overallStats, "runMethod", "overall");
+
+  for (const suite of getSuites()) {
+    const tableData = getOverallStatistics(suite);
+    addTableTo(document.getElementById("tables"), tableData, suite + " Overall Stats");
+    latexMacros = latexMacros + jsonToLatexMacros(tableData, "runMethod", suite);
+  }
+
 
   for (const suite of getSuites()) {
     const tableData = tableForSuite(suite);

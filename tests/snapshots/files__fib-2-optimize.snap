@@ -46,18 +46,18 @@ expression: visualization.result
   v8_: int = id v14_;
   v9_: int = id v15_;
   v10_: int = id v16_;
-  c31_: int = const -1;
-  v32_: int = add c31_ v8_;
-  v33_: ptr<int> = ptradd v7_ v32_;
+  v31_: ptr<int> = ptradd v7_ v8_;
+  c32_: int = const -1;
+  v33_: ptr<int> = ptradd v31_ c32_;
   v34_: int = load v33_;
   free v7_;
   print v34_;
   ret;
   jmp .b35_;
 .b12_:
-  c31_: int = const -1;
-  v32_: int = add c31_ v8_;
-  v33_: ptr<int> = ptradd v7_ v32_;
+  v31_: ptr<int> = ptradd v7_ v8_;
+  c32_: int = const -1;
+  v33_: ptr<int> = ptradd v31_ c32_;
   v34_: int = load v33_;
   free v7_;
   print v34_;

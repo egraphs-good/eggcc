@@ -57,7 +57,7 @@
 
 (relation DidMemOptimization (String))
 
-; A write and a load to different addresses can be swapped
+; A write then a load to different addresses can be swapped
 (rule ((NoAlias write-addr load-addr)
        (= write (Top (Write) write-addr write-val state))
        (= load (Bop (Load) load-addr write)))
@@ -71,16 +71,18 @@
       :ruleset mem-simple)
 
 ; A load then a write to different addresses can be swapped
-(rule ((NoAlias load-addr write-addr)
-       (= load (Bop (Load) load-addr state))
-       (= write (Top (Write) write-addr write-val (Get load 1))))
-      ((let new-write (Top (Write) write-addr write-val state))
-       (let new-load (Bop (Load) load-addr new-write))
-       (union write (Get new-load 1))
-       (union (Get load 0) (Get new-load 0))
-       (DidMemOptimization "commute load then write")
-       )
-      :ruleset mem-simple)
+; Actually, does this break WeaklyLinear if the stored value depends on the
+; loaded value? Commenting this out for now.
+; (rule ((NoAlias load-addr write-addr)
+;        (= load (Bop (Load) load-addr state))
+;        (= write (Top (Write) write-addr write-val (Get load 1))))
+;       ((let new-write (Top (Write) write-addr write-val state))
+;        (let new-load (Bop (Load) load-addr new-write))
+;        (union write (Get new-load 1))
+;        (union (Get load 0) (Get new-load 0))
+;        (DidMemOptimization "commute load then write")
+;        )
+;       :ruleset mem-simple)
 
 ; Two loads to the same address can be compressed
 (rule ((= first-load (Bop (Load) addr state))

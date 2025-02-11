@@ -8,6 +8,7 @@
         (HasArgType thn (TupleT tylist))
         (HasArgType els (TupleT tylist))
         (HasType x (Base x_ty))
+        (= orig_ins_len (TypeList-length tylist))
       )
       (
         ; New inputs
@@ -23,7 +24,6 @@
         (let arg_fa (Arg new_ins_ty if_fa))
 
         ; SubTuple
-        (let orig_ins_len (TypeList-length tylist))
         (let st_tr (SubTuple arg_tr 0 orig_ins_len))
         (let st_fa (SubTuple arg_fa 0 orig_ins_len))
 
@@ -47,6 +47,7 @@
         (HasArgType thn (TupleT tylist))
         (HasArgType els (TupleT tylist))
         (HasType x (Base x_ty))
+        (= orig_ins_len (TypeList-length tylist))
       )
       (
         ; New inputs
@@ -62,7 +63,6 @@
         (let arg_fa (Arg new_ins_ty if_fa))
 
         ; SubTuple
-        (let orig_ins_len (TypeList-length tylist))
         (let st_tr (SubTuple arg_tr 0 orig_ins_len))
         (let st_fa (SubTuple arg_fa 0 orig_ins_len))
 
@@ -86,6 +86,7 @@
         (HasArgType thn (TupleT tylist))
         (HasArgType els (TupleT tylist))
         (HasType x (Base x_ty))
+        (= orig_ins_len (TypeList-length tylist))
       )
       (
         ; New inputs
@@ -101,7 +102,6 @@
         (let arg_fa (Arg new_ins_ty if_fa))
 
         ; SubTuple
-        (let orig_ins_len (TypeList-length tylist))
         (let st_tr (SubTuple arg_tr 0 orig_ins_len))
         (let st_fa (SubTuple arg_fa 0 orig_ins_len))
 

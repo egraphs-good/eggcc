@@ -35,6 +35,7 @@
         (ContextOf e2 (InIf false pred orig_ins))
 
         (= t1 t2)
+        (= orig_ins_len (TypeList-length tylist))
       )
       (
         ; pull the term out to the outer context
@@ -43,7 +44,6 @@
         ; Add it as an input to the new if
         (let new_ins (Concat orig_ins (Single new_term)))
         (let new_ins_ty (TupleT (TLConcat tylist (TCons ty (TNil)))))
-        (let orig_ins_len (TypeList-length tylist))
 
         ; New contexts
         (let if_tr (InIf true  pred new_ins))
@@ -109,6 +109,7 @@
         (ExprIsPure e2)
 
         (= t1 t2)
+        (= orig_ins_len (TypeList-length tylist))
       )
       (
         ; pull the term out to the outer context
@@ -117,7 +118,6 @@
         ; Add it as an input to the new if
         (let new_ins (Concat orig_ins (Single new_term)))
         (let new_ins_ty (TupleT (TLConcat tylist (TCons ty (TNil)))))
-        (let orig_ins_len (TypeList-length tylist))
 
         ; New contexts
         (let if_tr (InIf true  pred new_ins))

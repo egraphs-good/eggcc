@@ -13,7 +13,7 @@ use crate::{
     schema_helpers::AssumptionRef,
     to_egglog::TreeToEgglog,
 };
-use egglog::{ast::DUMMY_SPAN, Term, TermDag};
+use egglog::{ast::Span, Term, TermDag};
 use indexmap::IndexMap;
 
 use std::{hash::Hash, rc::Rc, vec};
@@ -122,9 +122,9 @@ impl PrettyPrinter {
         egraph.parse_and_run_program(None, &prog).unwrap();
         let mut termdag = TermDag::default();
         let (sort, value) = egraph
-            .eval_expr(&egglog::ast::Expr::Var(DUMMY_SPAN.clone(), binding.into()))
+            .eval_expr(&egglog::ast::Expr::Var(Span::Panic, binding.into()))
             .unwrap();
-        let (_, extracted) = egraph.extract(value, &mut termdag, &sort);
+        let (_, extracted) = egraph.extract(value, &mut termdag, &sort).unwrap();
         let mut converter = FromEgglog {
             termdag: &termdag,
             conversion_cache: IndexMap::default(),
@@ -350,8 +350,9 @@ impl PrettyPrinter {
 impl Expr {
     pub fn pretty(&self) -> String {
         let (term, termdag) = Rc::new(self.clone()).to_egglog();
-        let expr = termdag.term_to_expr(&term);
-        expr.to_sexp().pretty()
+        let expr = termdag.term_to_expr(&term, Span::Panic);
+        // TODO is this a pretty enough string after egglog update?
+        expr.to_string()
     }
 
     fn gather_concat_children(&self) -> Vec<String> {
@@ -500,8 +501,8 @@ impl Expr {
 impl Assumption {
     pub fn pretty(&self) -> String {
         let (term, termdag) = self.to_egglog();
-        let expr = termdag.term_to_expr(&term);
-        expr.to_sexp().pretty()
+        let expr = termdag.term_to_expr(&term, Span::Panic);
+        expr.to_string()
     }
 
     pub fn to_ast(&self) -> String {
@@ -541,8 +542,8 @@ impl BaseType {
 
     pub fn pretty(&self) -> String {
         let (term, termdag) = self.to_egglog();
-        let expr = termdag.term_to_expr(&term);
-        expr.to_sexp().pretty()
+        let expr = termdag.term_to_expr(&term, Span::Panic);
+        expr.to_string()
     }
 
     pub fn to_ast(&self) -> String {
@@ -569,8 +570,8 @@ impl BaseType {
 impl Type {
     pub fn pretty(&self) -> String {
         let (term, termdag) = self.to_egglog();
-        let expr = termdag.term_to_expr(&term);
-        expr.to_sexp().pretty()
+        let expr = termdag.term_to_expr(&term, Span::Panic);
+        expr.to_string()
     }
 
     pub fn to_ast(&self) -> String {

@@ -669,14 +669,13 @@ dependencies = [
 
 [[package]]
 name = "egglog"
-version = "0.3.0"
-source = "git+https://github.com/egraphs-good/egglog?rev=246b195#246b19568c9e99fae2f4a8d869dcc2e8ec296f63"
+version = "0.4.0"
+source = "git+https://github.com/egraphs-good/egglog?rev=161a36f#161a36f402b4b60d5457ce3979f10b4d95005d58"
 dependencies = [
  "chrono",
  "clap",
  "egraph-serialize",
  "env_logger 0.10.2",
- "generic_symbolic_expressions",
  "hashbrown 0.15.2",
  "im",
  "im-rc",
@@ -687,7 +686,6 @@ dependencies = [
  "num",
  "ordered-float",
  "rustc-hash",
- "serde_json",
  "smallvec",
  "symbol_table 0.4.0",
  "thiserror",
@@ -842,12 +840,6 @@ dependencies = [
  "typenum",
  "version_check",
 ]
-
-[[package]]
-name = "generic_symbolic_expressions"
-version = "5.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "597eb584fb7cfd1935294fc3608a453fc35a58dfa9da4299c8fd3bc75a4c0b4b"
 
 [[package]]
 name = "getrandom"

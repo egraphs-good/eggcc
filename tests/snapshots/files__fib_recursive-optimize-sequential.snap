@@ -99,6 +99,7 @@ expression: visualization.result
   ret v4_;
   jmp .b7_;
 .b48_:
+<<<<<<< HEAD
   c51_: int = const -3;
   v52_: int = call @fac c51_;
   c53_: int = const -4;
@@ -108,11 +109,22 @@ expression: visualization.result
   v41_: int = id v50_;
   v45_: int = add v38_ v41_;
   v23_: int = id v45_;
+=======
+  v50_: bool = eq c44_ v0;
+  br v50_ .b51_ .b52_;
+.b51_:
+  v53_: int = call @fac c1_;
+  v54_: int = id c44_;
+  v46_: int = id v54_;
+  v49_: int = add v36_ v46_;
+  v23_: int = id v49_;
+>>>>>>> 49672a64 (upgrade to latest egglog)
   v12_: int = id v23_;
   v15_: int = id v0;
   v4_: int = id v15_;
   ret v4_;
   jmp .b7_;
+<<<<<<< HEAD
 .b40_:
   v56_: bool = eq c36_ v0;
   br v56_ .b57_ .b58_;
@@ -132,6 +144,32 @@ expression: visualization.result
   v38_: int = id v60_;
   v41_: int = id v0;
   jmp .b42_;
+=======
+.b52_:
+  c55_: int = const -3;
+  v56_: int = call @fac c55_;
+  c57_: int = const -4;
+  v58_: int = call @fac c57_;
+  v59_: int = add v56_ v58_;
+  v54_: int = id v59_;
+  v46_: int = id v54_;
+  v49_: int = add v36_ v46_;
+  v23_: int = id v49_;
+  v12_: int = id v23_;
+  v15_: int = id v0;
+  v4_: int = id v15_;
+  ret v4_;
+  jmp .b7_;
+.b41_:
+  c60_: int = const -2;
+  v61_: int = call @fac c60_;
+  c62_: int = const -3;
+  v63_: int = call @fac c62_;
+  v64_: int = add v61_ v63_;
+  v43_: int = id v64_;
+  v36_: int = id v43_;
+  jmp .b37_;
+>>>>>>> 49672a64 (upgrade to latest egglog)
 .b10_:
   v66_: int = sub v0 c3_;
   v67_: int = sub v66_ c3_;
@@ -178,6 +216,7 @@ expression: visualization.result
   v4_: int = id v15_;
   ret v4_;
   jmp .b7_;
+<<<<<<< HEAD
 .b88_:
   c91_: int = const -1;
   v92_: int = call @fac c91_;
@@ -210,6 +249,20 @@ expression: visualization.result
   v73_: int = id v85_;
   v77_: int = add v70_ v73_;
   v15_: int = id v77_;
+=======
+.b94_:
+  c97_: int = const -1;
+  v98_: int = call @fac c97_;
+  c99_: int = const -2;
+  v100_: int = call @fac c99_;
+  v101_: int = add v100_ v98_;
+  v96_: int = id v101_;
+  v88_: int = id v96_;
+  v91_: int = id v78_;
+  v80_: int = id v91_;
+  v83_: int = add v67_ v80_;
+  v15_: int = id v83_;
+>>>>>>> 49672a64 (upgrade to latest egglog)
   v4_: int = id v15_;
   ret v4_;
   jmp .b7_;
@@ -260,6 +313,7 @@ expression: visualization.result
   v126_: int = call @fac v124_;
   v127_: int = add v125_ v126_;
   v122_: int = id v127_;
+<<<<<<< HEAD
   v100_: int = id v122_;
   v103_: int = id c3_;
   jmp .b104_;
@@ -322,6 +376,67 @@ expression: visualization.result
   v70_: int = id v135_;
   v73_: int = id c3_;
   jmp .b74_;
+=======
+  v114_: int = id v122_;
+  v117_: int = add v104_ v114_;
+  v91_: int = id v117_;
+  v80_: int = id v91_;
+  v83_: int = add v67_ v80_;
+  v15_: int = id v83_;
+  v4_: int = id v15_;
+  ret v4_;
+  jmp .b7_;
+.b109_:
+  v128_: int = sub v102_ c3_;
+  v129_: int = call @fac v128_;
+  v130_: int = sub v128_ c3_;
+  v131_: int = call @fac v130_;
+  v132_: int = add v129_ v131_;
+  v111_: int = id v132_;
+  v104_: int = id v111_;
+  jmp .b105_;
+.b76_:
+  v133_: bool = eq c1_ v65_;
+  br v133_ .b134_ .b135_;
+.b134_:
+  v136_: int = call @fac c1_;
+  v137_: int = id v65_;
+  v74_: int = id v137_;
+  v77_: int = id v65_;
+  v67_: int = id v77_;
+  jmp .b68_;
+.b135_:
+  c138_: int = const -1;
+  v139_: int = call @fac c138_;
+  c140_: int = const -2;
+  v141_: int = call @fac c140_;
+  v142_: int = add v139_ v141_;
+  v137_: int = id v142_;
+  v74_: int = id v137_;
+  v77_: int = id v65_;
+  v67_: int = id v77_;
+  jmp .b68_;
+.b72_:
+  v143_: int = sub v65_ c3_;
+  v144_: bool = eq c1_ v143_;
+  v145_: int = id c3_;
+  br v144_ .b146_ .b147_;
+.b147_:
+  v148_: bool = eq c3_ v143_;
+  br v148_ .b149_ .b150_;
+.b149_:
+  v151_: int = call @fac c1_;
+  v152_: int = id c3_;
+  v145_: int = id v152_;
+.b146_:
+  v153_: int = sub v143_ c3_;
+  v154_: bool = eq c1_ v153_;
+  v155_: int = id c3_;
+  br v154_ .b156_ .b157_;
+.b157_:
+  v158_: bool = eq c3_ v153_;
+  br v158_ .b159_ .b160_;
+>>>>>>> 49672a64 (upgrade to latest egglog)
 .b159_:
   v163_: int = sub v147_ c3_;
   v164_: int = sub v163_ c3_;
@@ -402,6 +517,7 @@ expression: visualization.result
   print v4_;
   ret;
   jmp .b7_;
+<<<<<<< HEAD
 .b11_:
   v27_: bool = eq c1_ c3_;
   v28_: int = id c3_;
@@ -426,10 +542,25 @@ expression: visualization.result
   v31_: int = id v40_;
   v35_: int = add v28_ v31_;
   v16_: int = id v35_;
+=======
+.b10_:
+  v27_: bool = eq c1_ c1_;
+  v28_: bool = eq c1_ c3_;
+  v29_: int = id c3_;
+  br v28_ .b30_ .b31_;
+.b30_:
+  v32_: int = id c3_;
+.b33_:
+  br v27_ .b34_ .b35_;
+.b34_:
+  v36_: int = add v29_ v32_;
+  v16_: int = id v36_;
+>>>>>>> 49672a64 (upgrade to latest egglog)
   v4_: int = id v16_;
   print v4_;
   ret;
   jmp .b7_;
+<<<<<<< HEAD
 .b38_:
   c41_: int = const -2;
   c42_: int = const -1;
@@ -440,10 +571,36 @@ expression: visualization.result
   v31_: int = id v40_;
   v35_: int = add v28_ v31_;
   v16_: int = id v35_;
+=======
+.b35_:
+  v37_: bool = eq c1_ c3_;
+  br v37_ .b38_ .b39_;
+.b38_:
+  v40_: int = call @fac c1_;
+  v41_: int = id c3_;
+  v32_: int = id v41_;
+  v36_: int = add v29_ v32_;
+  v16_: int = id v36_;
   v4_: int = id v16_;
   print v4_;
   ret;
   jmp .b7_;
+.b39_:
+  c42_: int = const -1;
+  v43_: int = call @fac c42_;
+  c44_: int = const -2;
+  v45_: int = call @fac c44_;
+  v46_: int = add v43_ v45_;
+  v41_: int = id v46_;
+  v32_: int = id v41_;
+  v36_: int = add v29_ v32_;
+  v16_: int = id v36_;
+>>>>>>> 49672a64 (upgrade to latest egglog)
+  v4_: int = id v16_;
+  print v4_;
+  ret;
+  jmp .b7_;
+<<<<<<< HEAD
 .b30_:
   v46_: bool = eq c3_ c3_;
   br v46_ .b47_ .b48_;
@@ -462,5 +619,25 @@ expression: visualization.result
   v28_: int = id v50_;
   v31_: int = id c3_;
   jmp .b32_;
+=======
+.b31_:
+  v47_: bool = eq c3_ c3_;
+  br v47_ .b48_ .b49_;
+.b48_:
+  v50_: int = call @fac c1_;
+  v51_: int = id c3_;
+  v29_: int = id v51_;
+  v32_: int = id c3_;
+  jmp .b33_;
+.b49_:
+  v52_: int = call @fac c1_;
+  c53_: int = const -1;
+  v54_: int = call @fac c53_;
+  v55_: int = add v52_ v54_;
+  v51_: int = id v55_;
+  v29_: int = id v51_;
+  v32_: int = id c3_;
+  jmp .b33_;
+>>>>>>> 49672a64 (upgrade to latest egglog)
 .b7_:
 }

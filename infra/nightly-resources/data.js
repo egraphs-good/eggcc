@@ -70,11 +70,11 @@ function geometricMean(values) {
   );
 }
 
-// suite can be undefined, in which case it uses all 
+// suite can be undefined, in which case it uses all
 // enabled benchmarks
 function getOverallStatistics(suite) {
   var benchmarks = enabledBenchmarks();
-  if (typeof(suite) !== 'undefined') {
+  if (typeof suite !== "undefined") {
     benchmarks = benchmarksInSuite(suite);
   }
 

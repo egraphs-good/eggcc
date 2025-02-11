@@ -76,16 +76,16 @@ function addTableTo(element, data, title) {
 }
 
 function benchmarksInSuite(suite) {
-  return enabledBenchmarks()
-    .filter((benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite)
+  return enabledBenchmarks().filter(
+    (benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite,
+  );
 }
 
 function tableForSuite(suite) {
   const byBench = {};
-  benchmarksInSuite(suite)
-    .forEach((benchmark) => {
-      byBench[benchmark] = getDataForBenchmark(benchmark);
-    });
+  benchmarksInSuite(suite).forEach((benchmark) => {
+    byBench[benchmark] = getDataForBenchmark(benchmark);
+  });
   const tableData = Object.keys(byBench).map((bench) => ({
     name: `<a target="_blank" rel="noopener noreferrer" href="https://github.com/egraphs-good/eggcc/tree/main/${getBrilPathForBenchmark(
       bench,
@@ -121,14 +121,19 @@ function refreshView() {
   addTableTo(document.getElementById("tables"), overallStats, "Overall Stats");
 
   var latexMacros = "";
-  latexMacros = latexMacros + jsonToLatexMacros(overallStats, "runMethod", "overall");
+  latexMacros =
+    latexMacros + jsonToLatexMacros(overallStats, "runMethod", "overall");
 
   for (const suite of getSuites()) {
     const tableData = getOverallStatistics(suite);
-    addTableTo(document.getElementById("tables"), tableData, suite + " Overall Stats");
-    latexMacros = latexMacros + jsonToLatexMacros(tableData, "runMethod", suite);
+    addTableTo(
+      document.getElementById("tables"),
+      tableData,
+      suite + " Overall Stats",
+    );
+    latexMacros =
+      latexMacros + jsonToLatexMacros(tableData, "runMethod", suite);
   }
-
 
   for (const suite of getSuites()) {
     const tableData = tableForSuite(suite);

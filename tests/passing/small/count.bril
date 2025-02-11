@@ -1,45 +1,41 @@
-# ARGS: 5
+# ARGS: 100000
 
-@main(input : int) {
+@main(halfinput : int) {
+  two: int = const 2;
+  input: int = mul halfinput two;
   zero: int = const 0;
   one: int = const 1;
   vals: ptr<int> = alloc input;
   store vals zero;
-  vals_i: ptr<int> = ptradd vals one;
-  store vals_i one;
+  vals_1: ptr<int> = ptradd vals one;
+  store vals_1 one;
   i: int = const 2;
 .loop:
   cond: bool = lt i input;
   br cond .body .done;
 .body:
   neg_one: int = const -1;
-  neg_two: int = const -2;
+  one: int = const 1;
+  two: int = const 2;
+
   vals_i: ptr<int> = ptradd vals i;
   vals_i_minus_one: ptr<int> = ptradd vals_i neg_one;
-  vals_i_minus_two: ptr<int> = ptradd vals_i neg_two;
   tmp: int = load vals_i_minus_one;
-  tmp2: int = load vals_i_minus_two;
-  tmp: int = add tmp tmp2;
+  tmp: int = add tmp one;
   store vals_i tmp;
   i: int = add i one;
-  cond: bool = lt i input;
-  br cond .body2 .done;
-.body2:
-  neg_one: int = const -1;
-  neg_two: int = const -2;
+
   vals_i: ptr<int> = ptradd vals i;
   vals_i_minus_one: ptr<int> = ptradd vals_i neg_one;
-  vals_i_minus_two: ptr<int> = ptradd vals_i neg_two;
   tmp: int = load vals_i_minus_one;
-  tmp2: int = load vals_i_minus_two;
-  tmp: int = add tmp tmp2;
+  tmp: int = add tmp one;
   store vals_i tmp;
   i: int = add i one;
   jmp .loop;
 .done:
   last_plus_one: ptr<int> = ptradd vals i;
-  neg_one_: int = const -1;
-  last: ptr<int> = ptradd last_plus_one neg_one_;
+  neg_one: int = const -1;
+  last: ptr<int> = ptradd last_plus_one neg_one;
   tmp: int = load last;
   free vals;
   print tmp;

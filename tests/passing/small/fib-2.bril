@@ -1,4 +1,4 @@
-# ARGS: 5
+# ARGS: 100000
 
 @main(input : int) {
   zero: int = const 0;

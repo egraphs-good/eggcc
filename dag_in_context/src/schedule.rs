@@ -52,7 +52,11 @@ pub(crate) fn helpers() -> String {
 
     (saturate canon)
     (saturate interval-analysis)
-    (saturate terms)
+    (saturate
+     terms
+     (saturate
+       terms-helpers
+       (saturate terms-helpers-helpers)))
     ;; memory-helpers TODO run memory helpers for memory optimizations
 
     ;; finally, subsume now that helpers are done

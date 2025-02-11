@@ -245,6 +245,30 @@
       ((panic "(Load) expected pointer, received tuple"))
       :ruleset error-checking)
 
+(rule (
+        (= lhs (Top (Select) pred v1 v2))
+      )
+      ((ExpectType pred (Base (BoolT)) "(Select)"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Top (Select) pred v1 v2))
+        (HasType v1 ty)
+        (HasType v2 ty)
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Top (Select) pred v1 v2))
+        (HasType v1 ty1)
+        (HasType v2 ty2)
+        (!= ty1 ty2)
+      )
+      ((panic "(Select) branches had different types"))
+      :ruleset error-checking)
+
+
 ; Binary ops
 
 ;; Operators that have type Type -> Type -> Type

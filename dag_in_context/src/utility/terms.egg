@@ -15,7 +15,7 @@
 
 (constructor TCPair (Term i64) TermAndCost)
 
-(function NoTerm () Term)
+(constructor NoTerm () Term)
 
 ;; set extracted expr to default value
 (rule ((PotentialExtractedExpr expr termandcost))

@@ -341,24 +341,18 @@ pub fn optimize(
             schedule::CompilerPass::InlineWithSchedule(_) => Some(res.clone()),
         };
 
+        let allowed_fns = if let Some(allowed_fns) = &eggcc_config.optimize_functions {
+            allowed_fns.iter().cloned().collect()
+        } else {
+            fns.clone()
+        };
+
         // TODO experiment with different batches of optimizing functions together
         // currently we use the whole program
-        let batches = match &eggcc_config.optimize_functions {
-            Some(allowed_fns) => {
-                // check that all allowed_fns are in fns
-                for allowed_fn in allowed_fns {
-                    if !fns.contains(allowed_fn) {
-                        panic!(
-                            "Told to optimize function {}, but not found in program",
-                            allowed_fn
-                        );
-                    }
-                }
-
-                vec![allowed_fns.iter().cloned().collect()]
-            }
-            None => vec![fns.clone()],
-        };
+        let batches = allowed_fns
+            .iter()
+            .map(|func| vec![func.clone()])
+            .collect::<Vec<_>>();
 
         for batch in batches {
             log::info!("Running pass {} on batch {:?}", i, batch);

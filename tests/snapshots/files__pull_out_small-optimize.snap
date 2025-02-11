@@ -12,19 +12,15 @@ expression: visualization.result
 .b5_:
   c7_: int = const 20;
   print c7_;
-  c8_: int = const 5;
-  v9_: int = mul c8_ v0;
-  v10_: int = id v9_;
+  v8_: int = id v2_;
   print v2_;
   ret;
-  jmp .b11_;
+  jmp .b9_;
 .b6_:
-  c12_: int = const 20;
-  print c12_;
-  c13_: int = const 5;
-  v14_: int = mul c13_ v0;
-  v10_: int = id v14_;
+  c10_: int = const 20;
+  print c10_;
+  v8_: int = id v2_;
   print v2_;
   ret;
-.b11_:
+.b9_:
 }

@@ -7,7 +7,7 @@
         (= (TCPair t1 c1) (ExtractedExpr e1))
         (= (TCPair t1 c2) (ExtractedExpr e2))
         (ContextOf e1 (InIf true pred1 orig_ins3))
-        (ContextOf e2 (InIf true pred2 orig_ins4))
+        (ContextOf e2 (InIf false pred2 orig_ins4))
         (!= e1 e2)
      )
      ((InvCodeMotionCandidate e1 e2))

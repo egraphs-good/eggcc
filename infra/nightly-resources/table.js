@@ -53,6 +53,9 @@ function ConvertJsonToTable(
   tableClassName,
   linkText,
 ) {
+  // copy the table right away so we don't mutate it
+  parsedJson = JSON.parse(JSON.stringify(parsedJson));
+
   //Patterns for links and NULL value
   var italic = "<i>{0}</i>";
   var link = linkText

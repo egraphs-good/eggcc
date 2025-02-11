@@ -109,7 +109,20 @@ function jsonToLatexTable(json) {
   return res;
 }
 
-// change dashes to underscores
+const replenum = {
+  0: "zero",
+  1: "one",
+  2: "two",
+  3: "three",
+  4: "four",
+  5: "five",
+  6: "six",
+  7: "seven",
+  8: "eight",
+  9: "nine",
+};
+
+// remove dashes and underscores, replace numbers with words
 function convertStringToValidLatexVar(str) {
   // if the str is valid html, get the text content
   if (str.includes("<")) {
@@ -117,7 +130,10 @@ function convertStringToValidLatexVar(str) {
     div.innerHTML = str;
     str = div.textContent;
   }
-  return str.replace(/-/g, "_");
+
+  const dashes_removed = str.replace(/-/g, "").replace(/_/g, "");
+
+  return dashes_removed.replace(/\d/g, (match) => replenum[match]);
 }
 
 // convert a javascript array object storing a table

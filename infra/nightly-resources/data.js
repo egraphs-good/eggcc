@@ -115,17 +115,10 @@ function getDataForBenchmark(benchmark) {
       const rowData = {
         runMethod: row.runMethod,
         mean: { class: "", value: tryRound(mean(cycles)) },
-        meanVsBaseline: getDifference(cycles, comparisonCycles, mean),
+        meanVsOtherBranch: getDifference(cycles, comparisonCycles, mean),
         min: { class: "", value: tryRound(min_cycles(cycles)) },
-        minVsBaseline: getDifference(cycles, comparisonCycles, min_cycles),
         max: { class: "", value: tryRound(max_cycles(cycles)) },
-        maxVsBaseline: getDifference(cycles, comparisonCycles, max_cycles),
         median: { class: "", value: tryRound(median_cycles(cycles)) },
-        medianVsBaseline: getDifference(
-          cycles,
-          comparisonCycles,
-          median_cycles,
-        ),
         stddev: { class: "", value: tryRound(stddev(cycles)) },
         eggccCompileTimeSecs: {
           class: "",

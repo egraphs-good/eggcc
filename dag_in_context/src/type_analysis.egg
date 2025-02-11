@@ -1,14 +1,14 @@
 (ruleset type-analysis)
 (ruleset type-helpers)       ;; these rules need to saturate between every iter of type-analysis rules
 
-(function TLConcat (TypeList TypeList) TypeList :unextractable)
+(constructor TLConcat (TypeList TypeList) TypeList :unextractable)
 (rewrite (TLConcat (TNil) r) r :ruleset type-helpers)
 (rewrite (TLConcat (TCons hd tl) r)
          (TCons hd (TLConcat tl r))
          :ruleset type-helpers)
 
-(function TypeList-length (TypeList) i64 :unextractable)
-(function TypeList-ith (TypeList i64) BaseType :unextractable)
+(function TypeList-length (TypeList) i64 :no-merge)
+(constructor TypeList-ith (TypeList i64) BaseType :unextractable)
 ;; Don't match on TypeList-ith because it is now lazily instantiated!
 (rule () ((set (TypeList-length (TNil)) 0)) :ruleset type-helpers)
 (rule ((= lst (TCons hd tl))

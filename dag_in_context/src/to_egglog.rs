@@ -53,7 +53,7 @@ impl Constant {
                 term_dag.app("Bool".into(), vec![b])
             }
             Constant::Float(f) => {
-                let b = term_dag.lit(Literal::F64(*f));
+                let b = term_dag.lit(Literal::Float(*f));
                 term_dag.app("Float".into(), vec![b])
             }
         }
@@ -341,12 +341,13 @@ fn test_expr_parses_to(expr: RcExpr, expected: &str) {
 
 #[cfg(test)]
 fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
-    use egglog::ast::parse_expr;
+    use egglog::ast::{Parser, Span};
 
-    let parsed = parse_expr(None, expected).unwrap();
+    let mut parser = Parser::default();
+    let parsed = parser.get_expr_from_string(None, expected).unwrap();
     let term2 = termdag.expr_to_term(&parsed);
-    let pretty1 = termdag.term_to_expr(&term).to_sexp().pretty();
-    let pretty2 = termdag.term_to_expr(&term2).to_sexp().pretty();
+    let pretty1 = termdag.term_to_expr(&term, Span::Panic).to_string();
+    let pretty2 = termdag.term_to_expr(&term2, Span::Panic).to_string();
     assert!(pretty1 == pretty2, "Expected:\n{pretty2}\nGot:\n{pretty1}");
 }
 

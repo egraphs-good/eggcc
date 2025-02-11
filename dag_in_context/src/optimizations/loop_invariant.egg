@@ -1,8 +1,8 @@
 ;; Loop Invariant
 
 ;; bool: whether the term in the Expr is an invariant.
-(function is-inv-Expr (Expr Expr) bool :unextractable :merge (or old new))
-(function is-inv-ListExpr (Expr ListExpr) bool :unextractable :merge (or old new))
+(function is-inv-Expr (Expr Expr) bool :merge (or old new))
+(function is-inv-ListExpr (Expr ListExpr) bool :merge (or old new))
 
 ;; in default, when there is a find, set is-inv to false
 (rule ((BodyContainsExpr loop term)
@@ -45,11 +45,11 @@
       ((boundary-Expr loop expr)) :ruleset boundary-analysis)
 
 
-(function hoisted-loop (Expr Expr) bool :unextractable :merge (or old new) )
+(function hoisted-loop (Expr Expr) bool :merge (or old new) )
 (rule ((= loop (DoWhile in pred_out)))
       ((set (hoisted-loop in pred_out) false)) :ruleset always-run)
 
-(function InExtendedLoop (Expr Expr Expr) Assumption)
+(constructor InExtendedLoop (Expr Expr Expr) Assumption)
 
 ;; mock function
 (ruleset loop-inv-motion)

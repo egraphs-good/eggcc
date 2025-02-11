@@ -3,7 +3,7 @@
 
 ; Instantiate the term as an Expr in the provided context
 ; where references to (Arg) in the term are replaced by Expr
-(function TermSubst (Assumption Expr Term) Expr :unextractable)
+(constructor TermSubst (Assumption Expr Term) Expr :unextractable)
 
 ; type rule to get the arg type of a substitution
 (rule (

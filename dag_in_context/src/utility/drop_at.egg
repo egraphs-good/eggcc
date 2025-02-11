@@ -8,11 +8,11 @@
 ;; (DropAt ctx idx in) removes all references to `(Get (Arg ...) idx)` in `in`.
 ;; It also replaces the leaf contexts with `ctx` and fixes up argument types,
 ;; as well as updating `(Get (Arg ...) j)` to `(Get (Arg ...) (- j 1))` for j > idx.
-(function DropAt (Assumption i64 Expr) Expr :unextractable)
-(function DelayedDropUnion (Expr Expr) Expr :unextractable)
+(constructor DropAt (Assumption i64 Expr) Expr :unextractable)
+(constructor DelayedDropUnion (Expr Expr) Expr :unextractable)
 
 ;; Helper that precomputes the arg type that we need
-(function DropAtInternal (Type Assumption i64 Expr) Expr :unextractable)
+(constructor DropAtInternal (Type Assumption i64 Expr) Expr :unextractable)
 (rule ((= lhs (DropAt ctx idx in))
        (HasArgType in (TupleT oldty)))
 

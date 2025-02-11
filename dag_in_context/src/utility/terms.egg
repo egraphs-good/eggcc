@@ -5,7 +5,7 @@
 (ruleset terms-helpers-helpers)
 
 (sort TermAndCost)
-(function Smaller (TermAndCost TermAndCost) TermAndCost)
+(constructor Smaller (TermAndCost TermAndCost) TermAndCost)
 
 (function ExtractedExpr (Expr) TermAndCost
   :merge (Smaller old new))
@@ -13,7 +13,7 @@
 ;; this preserves egglog's timestamp of when the last time ExtractedExpr was changed, fixing a big performance problem
 (relation PotentialExtractedExpr (Expr TermAndCost))
 
-(function TCPair (Term i64) TermAndCost)
+(constructor TCPair (Term i64) TermAndCost)
 
 (function NoTerm () Term)
 
@@ -138,4 +138,4 @@
 (sort Node)
 ;; store a particular if node for later
 ;; stored as the if eclass, pred, inputs, then, else
-(function IfNode (Expr Expr Expr Expr Expr) Node)
+(constructor IfNode (Expr Expr Expr Expr Expr) Node)

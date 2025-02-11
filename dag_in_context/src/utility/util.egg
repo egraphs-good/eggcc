@@ -1,7 +1,7 @@
-(function ListExpr-length (ListExpr) i64)
-(function ListExpr-ith (ListExpr i64) Expr :unextractable)
-(function ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
-(function Append (ListExpr Expr) ListExpr :unextractable)
+(function ListExpr-length (ListExpr) i64 :no-merge)
+(constructor ListExpr-ith (ListExpr i64) Expr :unextractable)
+(constructor ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
+(constructor Append (ListExpr Expr) ListExpr :unextractable)
 
 (rule ((Switch pred inputs branch)) ((union (ListExpr-suffix branch 0) branch)) :ruleset always-run)
 
@@ -19,7 +19,7 @@
    (Cons e (Nil))
    :ruleset always-run)
 
-(function tuple-length (Expr) i64 :unextractable)
+(function tuple-length (Expr) i64 :no-merge)
 
 (rule ((HasType expr (TupleT tl))
        (= len (TypeList-length tl)))
@@ -71,7 +71,7 @@
        ((Get tuple (+ 1 i)))
        :ruleset always-run)
 
-(function List-suffix (Expr i64) Expr)
+(constructor List-suffix (Expr i64) Expr)
 (rule ((Get x i))
       ((union (List-suffix x 0) x))
       :ruleset always-run)
@@ -90,7 +90,7 @@
 ;; A temporary context.
 ;; Be sure to delete at the end of all actions or else!!!
 ;; This is safer than using a persistant context, since we may miss an important part of the query.
-(function TmpCtx () Assumption)
+(constructor TmpCtx () Assumption)
 
 (rule ((TmpCtx))
   ((panic "TmpCtx should not exist outside rule body"))

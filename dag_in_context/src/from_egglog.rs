@@ -50,7 +50,7 @@ impl<'a> FromEgglog<'a> {
             Constant::Bool(*boolean)
           }
           ("Float", [lit]) => {
-            let Term::Lit(Literal::F64(f)) = self.termdag.get(*lit) else {
+            let Term::Lit(Literal::Float(f)) = self.termdag.get(*lit) else {
               panic!("Invalid float: {:?}", lit)
             };
             Constant::Float(*f)

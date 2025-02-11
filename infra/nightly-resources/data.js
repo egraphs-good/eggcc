@@ -100,10 +100,10 @@ function getOverallStatistics(suite) {
     }
 
     result.push({
-      runMethod: treatment,
-      geoMeanNormalized: tryRound(geometricMean(normalized_cycles)),
-      meanEggccCompileTimeSecs: tryRound(mean(eggcc_compile_times)),
-      meanLlvmCompileTimeSecs: tryRound(mean(llvm_compile_times)),
+      "Treatment": treatment,
+      "Normalized Mean": tryRound(geometricMean(normalized_cycles)),
+      "Eggcc Compile Time": tryRound(mean(eggcc_compile_times)),
+      "LLVM Compile Time": tryRound(mean(llvm_compile_times)),
     });
   }
   return result;

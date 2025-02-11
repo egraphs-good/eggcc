@@ -1,6 +1,6 @@
 ;; Compute the tree size of program, not dag size
-(function Expr-size (Expr) i64 :unextractable :merge (min old new) )
-(function ListExpr-size (ListExpr) i64 :unextractable :merge (min old new))
+(function Expr-size (Expr) i64 :merge (min old new) )
+(function ListExpr-size (ListExpr) i64 :merge (min old new))
 
 (rule ((= expr (Function name tyin tyout out)) 
        (= sum (Expr-size out))) 

@@ -433,7 +433,7 @@ impl<'a> Extractor<'a> {
             } else if let Ok(n) = op.parse::<i64>() {
                 self.termdag.lit(ast::Literal::Int(n))
             } else if let Ok(f) = op.parse::<f64>() {
-                self.termdag.lit(ast::Literal::F64(OrderedFloat::from(f)))
+                self.termdag.lit(ast::Literal::Float(OrderedFloat::from(f)))
             } else if op == "true" {
                 self.termdag.lit(ast::Literal::Bool(true))
             } else if op == "false" {

@@ -107,4 +107,4 @@
       ((subsume (If a b c d)))
       :ruleset subsume-after-helpers)
 
-
+(ruleset add-to-debug-expr)

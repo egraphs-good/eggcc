@@ -57,6 +57,7 @@ pub(crate) fn helpers() -> String {
      (saturate
        terms-helpers
        (saturate terms-helpers-helpers)))
+    (saturate mem-simple)
 
     ;; cicm index
     cicm-index
@@ -215,6 +216,7 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
     )
 
     {helpers}
+    add-to-debug-expr
 )
 "
         )),

@@ -1,0 +1,66 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 100000
+@main(v0: int) {
+  c1_: int = const 2;
+  v2_: bool = lt c1_ v0;
+  v3_: ptr<int> = alloc v0;
+  c4_: int = const 1;
+  v5_: ptr<int> = ptradd v3_ c4_;
+  c6_: int = const 0;
+  store v3_ c6_;
+  store v5_ c4_;
+  v7_: ptr<int> = id v3_;
+  v8_: int = id c1_;
+  v9_: int = id c4_;
+  v10_: int = id v0;
+  br v2_ .b11_ .b12_;
+.b11_:
+  v13_: ptr<int> = id v3_;
+  v14_: int = id c1_;
+  v15_: int = id c4_;
+  v16_: int = id v0;
+.b17_:
+  v18_: ptr<int> = ptradd v13_ v14_;
+  c19_: int = const -1;
+  v20_: int = add c19_ v14_;
+  v21_: ptr<int> = ptradd v13_ v20_;
+  v22_: int = load v21_;
+  c23_: int = const -2;
+  v24_: int = add c23_ v14_;
+  v25_: ptr<int> = ptradd v13_ v24_;
+  v26_: int = load v25_;
+  v27_: int = add v22_ v26_;
+  store v18_ v27_;
+  v28_: int = add v14_ v15_;
+  v29_: bool = lt v28_ v16_;
+  v13_: ptr<int> = id v13_;
+  v14_: int = id v28_;
+  v15_: int = id v15_;
+  v16_: int = id v16_;
+  br v29_ .b17_ .b30_;
+.b30_:
+  v7_: ptr<int> = id v13_;
+  v8_: int = id v14_;
+  v9_: int = id v15_;
+  v10_: int = id v16_;
+  v31_: ptr<int> = ptradd v7_ v8_;
+  c32_: int = const -1;
+  v33_: ptr<int> = ptradd v31_ c32_;
+  v34_: int = load v33_;
+  free v7_;
+  print v34_;
+  ret;
+  jmp .b35_;
+.b12_:
+  v31_: ptr<int> = ptradd v7_ v8_;
+  c32_: int = const -1;
+  v33_: ptr<int> = ptradd v31_ c32_;
+  v34_: int = load v33_;
+  free v7_;
+  print v34_;
+  ret;
+.b35_:
+}

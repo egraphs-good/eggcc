@@ -63,6 +63,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/peepholes.egg"),
         &optimizations::memory::rules(),
         include_str!("optimizations/memory.egg"),
+        include_str!("optimizations/mem_simple.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
         include_str!("optimizations/loop_unroll.egg"),

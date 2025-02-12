@@ -14,29 +14,28 @@ expression: visualization.result
   v7_: int = id c2_;
   v8_: int = id c3_;
 .b9_:
-  v10_: int = add v5_ v6_;
-  v11_: int = add v10_ v5_;
+  c10_: int = const 2;
+  v11_: int = add c10_ v6_;
   v12_: int = add v11_ v5_;
   v13_: int = mul v12_ v7_;
   v14_: int = mul v11_ v7_;
-  v15_: int = mul v10_ v7_;
-  v16_: int = mul v6_ v7_;
+  v15_: int = add v5_ v6_;
+  v16_: int = mul v15_ v7_;
+  v17_: int = mul v6_ v7_;
+  print v17_;
   print v16_;
-  print v15_;
   print v14_;
   print v13_;
-  v17_: int = add v4_ v5_;
-  v18_: int = add v17_ v5_;
-  v19_: int = add v18_ v5_;
-  v20_: int = add v19_ v5_;
-  v21_: int = add v12_ v5_;
-  v22_: bool = lt v20_ v8_;
-  v4_: int = id v20_;
+  v18_: int = add c10_ v4_;
+  v19_: int = add c10_ v18_;
+  v20_: int = add c10_ v11_;
+  v21_: bool = lt v19_ v8_;
+  v4_: int = id v19_;
   v5_: int = id v5_;
-  v6_: int = id v21_;
+  v6_: int = id v20_;
   v7_: int = id v7_;
   v8_: int = id v8_;
-  br v22_ .b9_ .b23_;
-.b23_:
+  br v21_ .b9_ .b22_;
+.b22_:
   ret;
 }

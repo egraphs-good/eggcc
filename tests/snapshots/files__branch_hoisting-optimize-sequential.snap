@@ -15,24 +15,23 @@ expression: visualization.result
   v9_: bool = id v3_;
 .b10_:
   c11_: int = const 1;
-  v12_: int = add c11_ v5_;
-  v13_: int = add c11_ v12_;
+  c12_: int = const 2;
+  v13_: int = add c12_ v5_;
   v14_: int = add c11_ v13_;
-  c15_: int = const 2;
-  v16_: int = mul c15_ v14_;
-  c17_: int = const 3;
-  v18_: int = mul c17_ v14_;
-  v19_: int = select v9_ v16_ v18_;
-  v20_: int = add c11_ v14_;
-  v21_: bool = lt v20_ v8_;
-  v4_: int = id v19_;
-  v5_: int = id v20_;
+  v15_: int = mul c12_ v14_;
+  c16_: int = const 3;
+  v17_: int = mul c16_ v14_;
+  v18_: int = select v9_ v15_ v17_;
+  v19_: int = add c12_ v13_;
+  v20_: bool = lt v19_ v8_;
+  v4_: int = id v18_;
+  v5_: int = id v19_;
   v6_: int = id v6_;
   v7_: int = id v7_;
   v8_: int = id v8_;
   v9_: bool = id v9_;
-  br v21_ .b10_ .b22_;
-.b22_:
+  br v20_ .b10_ .b21_;
+.b21_:
   print v4_;
   ret;
 }

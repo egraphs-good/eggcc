@@ -1,0 +1,90 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 100000
+@main(v0: int) {
+  v1_: ptr<int> = alloc v0;
+  c2_: int = const 1;
+  v3_: ptr<int> = ptradd v1_ c2_;
+  c4_: int = const 0;
+  store v1_ c4_;
+  store v3_ c2_;
+  c5_: int = const 2;
+  v6_: ptr<int> = id v1_;
+  v7_: int = id c5_;
+  v8_: int = id c2_;
+  v9_: int = id v0;
+.b10_:
+  v11_: bool = lt v7_ v9_;
+  c12_: bool = const false;
+  v13_: ptr<int> = id v6_;
+  v14_: int = id v7_;
+  v15_: bool = id c12_;
+  v16_: int = id v8_;
+  v17_: int = id v9_;
+  br v11_ .b18_ .b19_;
+.b18_:
+  v20_: int = add v7_ v8_;
+  v21_: bool = lt v20_ v9_;
+  v22_: ptr<int> = ptradd v6_ v7_;
+  c23_: int = const -1;
+  v24_: int = add c23_ v7_;
+  v25_: ptr<int> = ptradd v6_ v24_;
+  v26_: int = load v25_;
+  c27_: int = const -2;
+  v28_: int = add c27_ v7_;
+  v29_: ptr<int> = ptradd v6_ v28_;
+  v30_: int = load v29_;
+  v31_: int = add v26_ v30_;
+  store v22_ v31_;
+  v32_: ptr<int> = id v6_;
+  v33_: int = id v20_;
+  v34_: int = id v8_;
+  v35_: int = id v9_;
+  br v21_ .b36_ .b37_;
+.b36_:
+  v38_: ptr<int> = ptradd v6_ v20_;
+  c39_: int = const -2;
+  v40_: int = add c39_ v20_;
+  v41_: ptr<int> = ptradd v6_ v40_;
+  c42_: int = const -1;
+  v43_: int = add c42_ v20_;
+  v44_: ptr<int> = ptradd v6_ v43_;
+  v45_: int = load v44_;
+  v46_: int = load v41_;
+  v47_: int = add v45_ v46_;
+  store v38_ v47_;
+  v48_: int = add v20_ v8_;
+  v32_: ptr<int> = id v6_;
+  v33_: int = id v48_;
+  v34_: int = id v8_;
+  v35_: int = id v9_;
+.b37_:
+  c49_: int = const 2;
+  v50_: int = add c49_ v7_;
+  v51_: int = select v21_ v50_ v20_;
+  v13_: ptr<int> = id v6_;
+  v14_: int = id v51_;
+  v15_: bool = id v21_;
+  v16_: int = id v8_;
+  v17_: int = id v9_;
+.b19_:
+  v52_: int = add v7_ v8_;
+  v53_: bool = lt v52_ v9_;
+  c54_: bool = const false;
+  v55_: bool = select v11_ v53_ c54_;
+  v6_: ptr<int> = id v6_;
+  v7_: int = id v14_;
+  v8_: int = id v8_;
+  v9_: int = id v9_;
+  br v55_ .b10_ .b56_;
+.b56_:
+  v57_: ptr<int> = ptradd v6_ v7_;
+  c58_: int = const -1;
+  v59_: ptr<int> = ptradd v57_ c58_;
+  v60_: int = load v59_;
+  free v6_;
+  print v60_;
+  ret;
+}

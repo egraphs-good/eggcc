@@ -14,27 +14,6 @@ expression: visualization.result
   v8_: int = id c3_;
   v9_: bool = eq c2_ v0;
   v10_: int = id c2_;
-<<<<<<< HEAD
-  v11_: int = id v0;
-  v12_: int = id c2_;
-  v13_: int = id c3_;
-.b14_:
-  v15_: bool = eq v11_ v12_;
-  c16_: int = const 1;
-  v17_: int = add c16_ v10_;
-  v18_: int = add c16_ v17_;
-  v19_: int = add c16_ v18_;
-  c20_: int = const 2;
-  v21_: int = mul c20_ v19_;
-  c22_: int = const 3;
-  v23_: int = mul c22_ v19_;
-  v24_: int = select v15_ v21_ v23_;
-  v25_: int = add c16_ v19_;
-  v26_: bool = lt v25_ v13_;
-  v9_: int = id v24_;
-  v10_: int = id v25_;
-  v11_: int = id v11_;
-=======
   v11_: int = id c2_;
   v12_: int = id v0;
   v13_: int = id c2_;
@@ -52,7 +31,6 @@ expression: visualization.result
   v25_: bool = lt v24_ v14_;
   v10_: int = id v22_;
   v11_: int = id v24_;
->>>>>>> 291f89a3 (snapshots)
   v12_: int = id v12_;
   v13_: int = id v13_;
   v14_: int = id v14_;

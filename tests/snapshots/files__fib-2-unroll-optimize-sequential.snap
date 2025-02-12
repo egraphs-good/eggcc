@@ -61,29 +61,30 @@ expression: visualization.result
   v34_: int = id v8_;
   v35_: int = id v9_;
 .b37_:
-  v49_: int = add v20_ v8_;
-  v50_: int = select v21_ v49_ v20_;
+  c49_: int = const 2;
+  v50_: int = add c49_ v7_;
+  v51_: int = select v21_ v50_ v20_;
   v13_: ptr<int> = id v6_;
-  v14_: int = id v50_;
+  v14_: int = id v51_;
   v15_: bool = id v21_;
   v16_: int = id v8_;
   v17_: int = id v9_;
 .b19_:
-  v51_: int = add v7_ v8_;
-  v52_: bool = lt v51_ v9_;
-  c53_: bool = const false;
-  v54_: bool = select v11_ v52_ c53_;
+  v52_: int = add v7_ v8_;
+  v53_: bool = lt v52_ v9_;
+  c54_: bool = const false;
+  v55_: bool = select v11_ v53_ c54_;
   v6_: ptr<int> = id v6_;
   v7_: int = id v14_;
   v8_: int = id v8_;
   v9_: int = id v9_;
-  br v54_ .b10_ .b55_;
-.b55_:
-  v56_: ptr<int> = ptradd v6_ v7_;
-  c57_: int = const -1;
-  v58_: ptr<int> = ptradd v56_ c57_;
-  v59_: int = load v58_;
+  br v55_ .b10_ .b56_;
+.b56_:
+  v57_: ptr<int> = ptradd v6_ v7_;
+  c58_: int = const -1;
+  v59_: ptr<int> = ptradd v57_ c58_;
+  v60_: int = load v59_;
   free v6_;
-  print v59_;
+  print v60_;
   ret;
 }

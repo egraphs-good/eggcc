@@ -11,7 +11,7 @@ import concurrent.futures
 
 
 # testing mode takes much fewer samples than the real eval in the paper
-IS_TESTING_MODE = True
+IS_TESTING_MODE = False
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -21,7 +21,7 @@ def num_warmup_samples():
 def num_samples():
   if IS_TESTING_MODE:
     return 100
-  return 1000
+  return 300
 
 
 def average(lst):

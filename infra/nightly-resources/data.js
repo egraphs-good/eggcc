@@ -100,7 +100,7 @@ function getOverallStatistics(suite) {
     }
 
     result.push({
-      "Treatment": treatment,
+      Treatment: treatment,
       "Normalized Mean": tryRound(geometricMean(normalized_cycles)),
       "Eggcc Compile Time": tryRound(mean(eggcc_compile_times)),
       "LLVM Compile Time": tryRound(mean(llvm_compile_times)),

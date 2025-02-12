@@ -132,7 +132,8 @@ function refreshView() {
       suite + " Overall Stats",
     );
     latexMacros =
-      latexMacros + jsonToLatexMacros(tableData, "Treatment", suite + "Overall");
+      latexMacros +
+      jsonToLatexMacros(tableData, "Treatment", suite + "Overall");
   }
 
   for (const suite of getSuites()) {

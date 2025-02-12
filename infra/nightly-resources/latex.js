@@ -2,7 +2,6 @@
 // expects json in the same format as `table.js`
 // when a string is valid html, gets the text context of the string to display it
 
-
 // format a number to 2 decimal places as a string
 // but only if it is a number
 function formatLatexTableValueWithoutXspace(num) {
@@ -139,7 +138,10 @@ function convertStringToValidLatexVar(str) {
 
   const dashes_removed = str.replace(/-/g, "").replace(/_/g, "");
 
-  const nums_removed = dashes_removed.replace(/\d/g, (match) => replenum[match]);
+  const nums_removed = dashes_removed.replace(
+    /\d/g,
+    (match) => replenum[match],
+  );
 
   const parens_removed = nums_removed.replace(/\(/g, "").replace(/\)/g, "");
   const spaces_removed = parens_removed.replace(/\s/g, "");

@@ -2,21 +2,21 @@
 
 (datatype ExprSet (ES ExprSetPrim))
 
-(function ExprSet-intersect (ExprSet ExprSet) ExprSet)
+(constructor ExprSet-intersect (ExprSet ExprSet) ExprSet)
 (rewrite (ExprSet-intersect (ES set1) (ES set2)) (ES (set-intersect set1 set2))
          :ruleset memory-helpers)
-(function ExprSet-union (ExprSet ExprSet) ExprSet)
+(constructor ExprSet-union (ExprSet ExprSet) ExprSet)
 (rewrite (ExprSet-union (ES set1) (ES set2)) (ES (set-union set1 set2))
          :ruleset memory-helpers)
 (relation ExprSet-contains (ExprSet Expr))
 (rule ((ES set1) (set-contains set1 x))
       ((ExprSet-contains (ES set1) x))
       :ruleset memory-helpers)
-(function ExprSet-insert (ExprSet Expr) ExprSet)
+(constructor ExprSet-insert (ExprSet Expr) ExprSet)
 (rewrite (ExprSet-insert (ES set1) x)
          (ES (set-insert set1 x))
          :ruleset memory-helpers)
-(function ExprSet-length (ExprSet) i64)
+(function ExprSet-length (ExprSet) i64 :no-merge)
 (rewrite (ExprSet-length (ES set1)) (set-length set1) :ruleset memory-helpers)
 
 ; ============================
@@ -37,11 +37,11 @@
           (TuplePointsTo List<PtrPointees>)
           (PtrPointsTo PtrPointees))
 
-(function UnwrapPtrPointsTo (Pointees) PtrPointees)
+(constructor UnwrapPtrPointsTo (Pointees) PtrPointees)
 (rewrite (UnwrapPtrPointsTo (PtrPointsTo x))
          x
          :ruleset memory-helpers)
-(function UnwrapTuplePointsTo (Pointees) List<PtrPointees>)
+(constructor UnwrapTuplePointsTo (Pointees) List<PtrPointees>)
 (rewrite (UnwrapTuplePointsTo (TuplePointsTo x))
          x
          :ruleset memory-helpers)
@@ -56,7 +56,7 @@
       ((PointsNowhere f))
       :ruleset memory-helpers)
 
-(function UnionPointees (Pointees Pointees) Pointees)
+(constructor UnionPointees (Pointees Pointees) Pointees)
 (rewrite (UnionPointees (PtrPointsTo x) (PtrPointsTo y))
          (PtrPointsTo (Union-PtrPointees x y))
          :ruleset memory-helpers)
@@ -64,7 +64,7 @@
          (TuplePointsTo (Zip<Union-PtrPointees> x y))
          :when ((= (Length-List<PtrPointees> x) (Length-List<PtrPointees> y)))
          :ruleset memory-helpers)
-(function IntersectPointees (Pointees Pointees) Pointees)
+(constructor IntersectPointees (Pointees Pointees) Pointees)
 (rewrite (IntersectPointees (PtrPointsTo x) (PtrPointsTo y))
          (PtrPointsTo (Intersect-PtrPointees x y))
          :ruleset memory-helpers)
@@ -72,13 +72,13 @@
          (TuplePointsTo (Zip<Intersect-PtrPointees> x y))
          :ruleset memory-helpers)
 
-(function GetPointees (Pointees i64) Pointees)
+(constructor GetPointees (Pointees i64) Pointees)
 (rule ((= f (GetPointees (TuplePointsTo l) i))
        (At-List<PtrPointees> l i x))
       ((union f (PtrPointsTo x)))
       :ruleset memory-helpers)
 
-(function PointeesDropFirst (Pointees) Pointees)
+(constructor PointeesDropFirst (Pointees) Pointees)
 (rewrite (PointeesDropFirst (TuplePointsTo (Cons-List<PtrPointees> hd tl)))
          (TuplePointsTo tl)
          :ruleset memory-helpers)
@@ -149,7 +149,7 @@
 
 ;;;;;
 
-(function BaseTypeToPtrPointees (BaseType) PtrPointees :cost 100)
+(constructor BaseTypeToPtrPointees (BaseType) PtrPointees :cost 100)
 (rewrite (BaseTypeToPtrPointees (PointerT _))
          (PointsAnywhere)
          :ruleset memory-helpers)
@@ -163,7 +163,7 @@
          (PointsTo (Nil-List<i64+IntInterval>))
          :ruleset memory-helpers)
 
-(function TypeListToList<PtrPointees> (TypeList) List<PtrPointees> :cost 1000)
+(constructor TypeListToList<PtrPointees> (TypeList) List<PtrPointees> :cost 1000)
 (rewrite (TypeListToList<PtrPointees> (TNil))
          (Nil-List<PtrPointees>)
          :ruleset memory-helpers)
@@ -173,7 +173,7 @@
             (TypeListToList<PtrPointees> tl))
          :ruleset memory-helpers)
 
-(function TypeToPointees (Type) Pointees :cost 1000)
+(constructor TypeToPointees (Type) Pointees :cost 1000)
 (rewrite (TypeToPointees (TupleT tylist))
          (TuplePointsTo (TypeListToList<PtrPointees> tylist))
          :ruleset memory-helpers)
@@ -211,7 +211,7 @@
 ; ============================
 
 ;                             arg pointees  result pointees
-(function PointsToCells (Expr Pointees)     Pointees :unextractable) 
+(constructor PointsToCells (Expr Pointees)     Pointees :unextractable) 
 
 ; Top-level demand
 (rule ((Function name in-ty out-ty body))
@@ -318,7 +318,7 @@
          :ruleset memory-helpers)
 
 ; arg pointees * loop in * loop out * i64 -> result pointees
-(function PointsToCellsAtIter (Pointees Expr Expr i64) Pointees)
+(constructor PointsToCellsAtIter (Pointees Expr Expr i64) Pointees)
 
 ; compute first two
 (rule ((= e (DoWhile inputs pred-body))
@@ -333,7 +333,7 @@
       :ruleset memory-helpers)
 
 ; avoid quadratic query
-(function succ (i64) i64 :unextractable)
+(function succ (i64) i64 :no-merge)
 (rule ((PointsToCellsAtIter aps inputs pred-body i))
       ((set (succ i) (+ i 1)))
       :ruleset memory-helpers)
@@ -395,7 +395,7 @@
 ; ============================
 
 ;                       program point, pointer
-(function PointsToExpr (Expr           Expr) Expr :unextractable)
+(constructor PointsToExpr (Expr           Expr) Expr :unextractable)
 
 ; After a load, the ptr points to the loaded value
 (rule ((= f (Bop (Load) ptr state)))
@@ -447,7 +447,7 @@
 ; ============================
 
 ; ;                       program point, cell
-; (function CellHasValues (Expr i64) ExprSet :merge (ExprSet-intersect old new))
+; (constructor CellHasValues (Expr i64) ExprSet :merge (ExprSet-intersect old new))
 
 ; ; At the time of an alloc, a cell doesn't contain any values
 ; (rule ((= f (Alloc id amt state ty)))

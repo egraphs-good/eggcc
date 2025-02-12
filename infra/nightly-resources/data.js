@@ -70,13 +70,20 @@ function geometricMean(values) {
   );
 }
 
-function getOverallStatistics() {
+// suite can be undefined, in which case it uses all
+// enabled benchmarks
+function getOverallStatistics(suite) {
+  var benchmarks = enabledBenchmarks();
+  if (typeof suite !== "undefined") {
+    benchmarks = benchmarksInSuite(suite);
+  }
+
   // generate one row per treatment...
   const result = [];
   for (const treatment of treatments) {
     const normalized_cycles = [];
     // for each benchmark, calculate the normalized cycles
-    for (const benchmark of enabledBenchmarks()) {
+    for (const benchmark of benchmarks) {
       const row = getRow(benchmark, treatment);
       const baseline = getRow(benchmark, BASELINE_MODE);
       if (row && baseline) {
@@ -86,7 +93,7 @@ function getOverallStatistics() {
 
     const eggcc_compile_times = [];
     const llvm_compile_times = [];
-    for (const benchmark of enabledBenchmarks()) {
+    for (const benchmark of benchmarks) {
       const row = getRow(benchmark, treatment);
       eggcc_compile_times.push(row.eggccCompileTimeSecs);
       llvm_compile_times.push(row.llvmCompileTimeSecs);
@@ -115,17 +122,10 @@ function getDataForBenchmark(benchmark) {
       const rowData = {
         runMethod: row.runMethod,
         mean: { class: "", value: tryRound(mean(cycles)) },
-        meanVsBaseline: getDifference(cycles, comparisonCycles, mean),
+        meanVsOtherBranch: getDifference(cycles, comparisonCycles, mean),
         min: { class: "", value: tryRound(min_cycles(cycles)) },
-        minVsBaseline: getDifference(cycles, comparisonCycles, min_cycles),
         max: { class: "", value: tryRound(max_cycles(cycles)) },
-        maxVsBaseline: getDifference(cycles, comparisonCycles, max_cycles),
         median: { class: "", value: tryRound(median_cycles(cycles)) },
-        medianVsBaseline: getDifference(
-          cycles,
-          comparisonCycles,
-          median_cycles,
-        ),
         stddev: { class: "", value: tryRound(stddev(cycles)) },
         eggccCompileTimeSecs: {
           class: "",

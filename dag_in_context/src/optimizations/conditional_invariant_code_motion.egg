@@ -1,4 +1,18 @@
 (ruleset cicm)
+(ruleset cicm-index)
+
+(relation InvCodeMotionCandidate (Expr Expr))
+
+(rule (
+        (= (TCPair t1 c1) (ExtractedExpr e1))
+        (= (TCPair t1 c2) (ExtractedExpr e2))
+        (ContextOf e1 (InIf true pred1 orig_ins3))
+        (ContextOf e2 (InIf false pred2 orig_ins4))
+        (!= e1 e2)
+     )
+     ((InvCodeMotionCandidate e1 e2))
+     :ruleset cicm-index)
+
 
 (rule (
         (= if_e (If pred orig_ins thn els))
@@ -21,6 +35,7 @@
         (ContextOf e2 (InIf false pred orig_ins))
 
         (= t1 t2)
+        (= orig_ins_len (TypeList-length tylist))
       )
       (
         ; pull the term out to the outer context
@@ -29,7 +44,6 @@
         ; Add it as an input to the new if
         (let new_ins (Concat orig_ins (Single new_term)))
         (let new_ins_ty (TupleT (TLConcat tylist (TCons ty (TNil)))))
-        (let orig_ins_len (TypeList-length tylist))
 
         ; New contexts
         (let if_tr (InIf true  pred new_ins))
@@ -67,27 +81,35 @@
       )
     :ruleset cicm)
 
+       
+
 (rule (
+        (InvCodeMotionCandidate e1 e2)
         (= if_e (If pred orig_ins thn els))
         (HasArgType thn (TupleT tylist))
         (HasArgType els (TupleT tylist))
         (ContextOf if_e outer_ctx)
 
+        (ContextOf e1 (InIf true pred orig_ins))
+        (ContextOf e2 (InIf false pred orig_ins))
         (= e1 (Bop o x1 y1))
-        (HasType e1 (Base ty))
+        
+        (= e2 (Bop o x2 y2))
+        
         (= (TCPair t1 c1) (ExtractedExpr e1))
         (> 10 (Expr-size e1))
         (ExprIsPure e1)
-        (ContextOf e1 (InIf true pred orig_ins))
+        (HasType e1 (Base ty))
+        
 
-        (= e2 (Bop o x2 y2))
+        
         (HasType e2 (Base ty))
         (= (TCPair t2 c2) (ExtractedExpr e2))
         (> 10 (Expr-size e2))
         (ExprIsPure e2)
-        (ContextOf e2 (InIf false pred orig_ins))
 
         (= t1 t2)
+        (= orig_ins_len (TypeList-length tylist))
       )
       (
         ; pull the term out to the outer context
@@ -96,7 +118,6 @@
         ; Add it as an input to the new if
         (let new_ins (Concat orig_ins (Single new_term)))
         (let new_ins_ty (TupleT (TLConcat tylist (TCons ty (TNil)))))
-        (let orig_ins_len (TypeList-length tylist))
 
         ; New contexts
         (let if_tr (InIf true  pred new_ins))

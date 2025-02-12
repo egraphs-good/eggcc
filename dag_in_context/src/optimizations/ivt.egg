@@ -4,8 +4,8 @@
 
 (sort IVTRes)
 ;;                              perm passthrough-perm passthrough-type passthrough-type-len
-(function IVTAnalysisRes (Expr Expr             TypeList         i64) IVTRes)
-(function IVTMin (IVTRes IVTRes) IVTRes)
+(constructor IVTAnalysisRes (Expr Expr             TypeList         i64) IVTRes)
+(constructor IVTMin (IVTRes IVTRes) IVTRes)
 
 (rule ((= lhs (IVTMin (IVTAnalysisRes _a _b _c len1) (IVTAnalysisRes _d _e _f len2)))
        (<= len1 len2))

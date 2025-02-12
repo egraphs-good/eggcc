@@ -52,7 +52,7 @@
 
 ; Make a tuple that is a sub-range of another tuple
 ;                   tuple start len
-(function SubTuple (Expr  i64   i64) Expr :unextractable)
+(constructor SubTuple (Expr  i64   i64) Expr :unextractable)
 
 (rewrite (SubTuple expr x 0)
          (Empty ty ctx)
@@ -108,7 +108,7 @@
 
 ; Helper functions to remove one element from a tuple or type list
 ;                           tuple    idx
-(function TupleRemoveAt    (Expr     i64) Expr     :unextractable)
+(constructor TupleRemoveAt    (Expr     i64) Expr     :unextractable)
 (rewrite (TupleRemoveAt tuple idx)
          (Concat (SubTuple tuple 0 idx)
                  (SubTuple tuple (+ idx 1) (- len (+ idx 1))))
@@ -119,7 +119,7 @@
        (>= idx len))
       ((panic "Index out of bounds for TupleRemoveAt")) :ruleset always-run)
 
-(function TypeListRemoveAt (TypeList i64) TypeList :unextractable)
+(constructor TypeListRemoveAt (TypeList i64) TypeList :unextractable)
 (rule ((TypeListRemoveAt (TNil) _idx))
       ((panic "Index out of bounds for TypeListRemoveAt.")) :ruleset type-helpers)
 (rewrite (TypeListRemoveAt (TCons x xs) 0)

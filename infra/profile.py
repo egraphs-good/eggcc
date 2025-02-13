@@ -20,7 +20,7 @@ def num_warmup_samples():
   
 def num_samples():
   if IS_TESTING_MODE:
-    return 100
+    return 10
   return 1000
 
 
@@ -30,16 +30,9 @@ def average(lst):
 
 treatments = [
   "rvsdg-round-trip-to-executable",
-  #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
   "llvm-O0-O0",
-  "llvm-O1-O0",
-  "llvm-O2-O0",
   "llvm-eggcc-O0-O0",
   "llvm-eggcc-sequential-O0-O0",
-  "llvm-O3-O0",
-  "llvm-O3-O3",
-  "llvm-eggcc-O3-O0",
-  "llvm-eggcc-O3-O3",
 ]
 
 # Where to output files that are needed for nightly report

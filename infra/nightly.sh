@@ -69,19 +69,9 @@ else
   ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee $NIGHTLY_DIR/log.txt
 fi
 
-# Generate CFGs for LLVM after running the profiler
-if [ "$@" == "--update" ]; then
-  echo "skipping generate_cfgs.py"
-else
-  ./infra/generate_cfgs.py "$DATA_DIR/llvm" 2>&1 | tee $NIGHTLY_DIR/log.txt
-fi
-
 # generate the plots
 # needs to know what the benchmark suites are
 ./infra/graphs.py "$OUTPUT_DIR" "$NIGHTLY_DIR/data/profile.json" benchmarks/passing 2>&1 | tee $NIGHTLY_DIR/log.txt
-
-# Generate latex after running the profiler (depends on profile.json)
-./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt
 
 popd
 

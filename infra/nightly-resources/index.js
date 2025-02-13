@@ -2,14 +2,8 @@
 const treatments = [
   "rvsdg-round-trip-to-executable",
   "llvm-O0-O0",
-  "llvm-O1-O0",
-  "llvm-O2-O0",
   "llvm-eggcc-O0-O0",
   "llvm-eggcc-sequential-O0-O0",
-  "llvm-O3-O0",
-  "llvm-O3-O3",
-  "llvm-eggcc-O3-O0",
-  "llvm-eggcc-O3-O3",
 ];
 
 const GLOBAL_DATA = {
@@ -30,7 +24,7 @@ const GLOBAL_DATA = {
 // using checkedSuites and checkedBenchmarks
 function enabledBenchmarks() {
   return Array.from(GLOBAL_DATA.checkedBenchmarks).filter((benchmark) =>
-    GLOBAL_DATA.checkedSuites.has(getRow(benchmark, BASELINE_MODE).suite),
+    GLOBAL_DATA.checkedSuites.has(getRow(benchmark, BASELINE_MODE).suite)
   );
 }
 
@@ -41,7 +35,7 @@ function enabledSubsetOfCurrentRun() {
   return GLOBAL_DATA.currentRun.filter(
     (entry) =>
       GLOBAL_DATA.checkedModes.has(entry.runMethod) &&
-      benchmarks.includes(entry),
+      benchmarks.includes(entry)
   );
 }
 
@@ -77,7 +71,7 @@ function addTableTo(element, data, title) {
 
 function benchmarksInSuite(suite) {
   return enabledBenchmarks().filter(
-    (benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite,
+    (benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite
   );
 }
 
@@ -88,7 +82,7 @@ function tableForSuite(suite) {
   });
   const tableData = Object.keys(byBench).map((bench) => ({
     name: `<a target="_blank" rel="noopener noreferrer" href="https://github.com/egraphs-good/eggcc/tree/main/${getBrilPathForBenchmark(
-      bench,
+      bench
     )}">${bench}</a>`,
     executions: { data: byBench[bench] },
   }));
@@ -129,7 +123,7 @@ function refreshView() {
     addTableTo(
       document.getElementById("tables"),
       tableData,
-      suite + " Overall Stats",
+      suite + " Overall Stats"
     );
     latexMacros =
       latexMacros +
@@ -185,7 +179,7 @@ function makeSelectors() {
   treatments.forEach((mode) => {
     const checkbox = makeCheckbox(
       document.getElementById("modeCheckboxes"),
-      mode,
+      mode
     );
     checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.checkedModes);
   });
@@ -194,18 +188,18 @@ function makeSelectors() {
   suites.forEach((suite) => {
     const checkbox = makeCheckbox(
       document.getElementById("suiteCheckboxes"),
-      suite,
+      suite
     );
     checkbox.onchange = () => toggleCheckbox(suite, GLOBAL_DATA.checkedSuites);
   });
 
   const benchmarks = Array.from(
-    new Set(GLOBAL_DATA.currentRun.map((o) => o.benchmark)),
+    new Set(GLOBAL_DATA.currentRun.map((o) => o.benchmark))
   ).sort();
   benchmarks.forEach((benchmark) => {
     const checkbox = makeCheckbox(
       document.getElementById("benchmarkCheckboxes"),
-      benchmark,
+      benchmark
     );
     checkbox.onchange = () =>
       toggleCheckbox(benchmark, GLOBAL_DATA.checkedBenchmarks);
@@ -217,7 +211,7 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
 
   const formatRun = (run) =>
     `${run.branch} - ${run.commit} - ${new Date(
-      run.date * 1000,
+      run.date * 1000
     ).toDateString()}`;
 
   previousRuns.forEach((nightly) => {

@@ -8,14 +8,24 @@ import numpy as np
 import sys
 import os
 
-RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
-BAR_CHART_RUN_MODES = ["llvm-O3-O3", "llvm-O3-O0", "llvm-eggcc-O0-O0"]
+RUN_MODES = [
+  "rvsdg-round-trip-to-executable",
+  "llvm-O0-O0",
+  "llvm-eggcc-O0-O0",
+  "llvm-eggcc-sequential-O0-O0",
+]
+BAR_CHART_RUN_MODES = [
+  "rvsdg-round-trip-to-executable",
+  "llvm-O0-O0",
+  "llvm-eggcc-O0-O0",
+  "llvm-eggcc-sequential-O0-O0",
+]
 # copied from chart.js
 COLOR_MAP = {
   "llvm-O0-O0" : "purple",
   "llvm-eggcc-O0-O0" : "pink",
-  "llvm-O3-O0" : "gray",
-  "llvm-O3-O3": "gold",
+  "rvsdg-round-trip-to-executable": "red",
+  "llvm-eggcc-sequential-O0-O0" : "blue"
 }
 BENCHMARK_SPACE = 1.0 / len(RUN_MODES)
 CIRCLE_SIZE = 15
@@ -170,8 +180,8 @@ def normalized(profile, benchmark, treatment):
 def make_bar_chart(profile, output_file):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
-  sorted_by_llvm_O3_O0 = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), 'llvm-O3-O0'))
-  benchmarks = [group[0].get('benchmark') for group in sorted_by_llvm_O3_O0]
+  sorted_by_llvm_O0_O0 = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), 'llvm-O0-O0'))
+  benchmarks = [group[0].get('benchmark') for group in sorted_by_llvm_O0_O0]
 
 
   # add a bar for each runmode, benchmark pair

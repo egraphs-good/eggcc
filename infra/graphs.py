@@ -287,7 +287,7 @@ def get_code_size(benchmark, suites_path):
     
   # if it's a .rs files convert it to bril first with `cargo run --run-mode parse`
   if file.endswith('.rs'):
-    popen_res = os.popen(f'cargo run {file} --run-mode parse')
+    popen_res = os.popen(f'cargo run --release {file} --run-mode parse')
     output_str = popen_res.read()
     error_code = popen_res.close()
     if error_code:

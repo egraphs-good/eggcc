@@ -70,6 +70,14 @@ struct Args {
     #[clap(long)]
     no_linearity: bool,
 
+    // Flag to disable function inlining
+    #[clap(long)]
+    no_inlining: bool,
+
+    // Flag to disable loop unrolling
+    #[clap(long)]
+    no_unrolling: bool,
+
     #[clap(long)]
     optimize_function: Option<String>,
 }
@@ -123,6 +131,8 @@ fn main() {
             schedule: args.eggcc_schedule.unwrap_or(Schedule::default()),
             stop_after_n_passes: args.stop_after_n_passes.unwrap_or(i64::MAX),
             linearity: !args.no_linearity,
+            inlining: !args.no_inlining,
+            unrolling: !args.no_unrolling,
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
         },
     };

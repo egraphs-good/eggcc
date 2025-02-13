@@ -4,6 +4,8 @@ const treatments = [
   "llvm-O0-O0",
   "llvm-eggcc-O0-O0",
   "llvm-eggcc-sequential-O0-O0",
+  "llvm-eggcc-no-inlining-O0-O0",
+  "llvm-eggcc-no-unrolling-O0-O0",
 ];
 
 const GLOBAL_DATA = {

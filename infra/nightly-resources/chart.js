@@ -1,14 +1,12 @@
 const COLORS = {
   "rvsdg-round-trip-to-executable": "red",
   "llvm-O0-O0": "purple",
-  "llvm-O1-O0": "green",
-  "llvm-O2-O0": "orange",
-  "llvm-O3-O0": "gray",
-  "llvm-O3-O3": "gold",
   "llvm-eggcc-O0-O0": "pink",
   "llvm-eggcc-sequential-O0-O0": "blue",
   "llvm-eggcc-O3-O0": "brown",
   "llvm-eggcc-O3-O3": "lightblue",
+  "llvm-eggcc-no-inlining-O0-O0": "green",
+  "llvm-eggcc-no-unrolling-O0-O0": "orange",
 };
 
 const BASELINE_MODE = "llvm-O0-O0";
@@ -55,13 +53,13 @@ function stddev(cycles) {
 
 function getEntry(benchmark, runMode) {
   const entries = GLOBAL_DATA.currentRun.filter(
-    (entry) => entry.benchmark === benchmark && entry.runMethod === runMode,
+    (entry) => entry.benchmark === benchmark && entry.runMethod === runMode
   );
   if (entries.length === 0) {
     addWarning(`no data for ${benchmark} ${runMode}`);
   } else if (entries.length > 1) {
     throw new Error(
-      `duplicate entries for ${benchmark} ${runMode} (this probably shouldn't happen)`,
+      `duplicate entries for ${benchmark} ${runMode} (this probably shouldn't happen)`
     );
   } else {
     return entries[0];

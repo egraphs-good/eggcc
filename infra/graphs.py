@@ -13,19 +13,25 @@ RUN_MODES = [
   "llvm-O0-O0",
   "llvm-eggcc-O0-O0",
   "llvm-eggcc-sequential-O0-O0",
+  "llvm-eggcc-no-inlining-O0-O0",
+  "llvm-eggcc-no-unrolling-O0-O0"
 ]
 BAR_CHART_RUN_MODES = [
   "rvsdg-round-trip-to-executable",
   "llvm-O0-O0",
   "llvm-eggcc-O0-O0",
   "llvm-eggcc-sequential-O0-O0",
+  "llvm-eggcc-no-inlining-O0-O0",
+  "llvm-eggcc-no-unrolling-O0-O0"
 ]
 # copied from chart.js
 COLOR_MAP = {
   "llvm-O0-O0" : "purple",
   "llvm-eggcc-O0-O0" : "pink",
   "rvsdg-round-trip-to-executable": "red",
-  "llvm-eggcc-sequential-O0-O0" : "blue"
+  "llvm-eggcc-sequential-O0-O0" : "blue",
+  "llvm-eggcc-no-inlining-O0-O0": "green",
+  "llvm-eggcc-no-unrolling-O0-O0": "orange",
 }
 BENCHMARK_SPACE = 1.0 / len(RUN_MODES)
 CIRCLE_SIZE = 15

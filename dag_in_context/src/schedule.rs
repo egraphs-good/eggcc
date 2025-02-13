@@ -91,24 +91,36 @@ fn cheap_optimizations() -> Vec<String> {
     .collect()
 }
 
-fn optimizations() -> Vec<String> {
-    [
-        "select_opt",
-        "loop-unroll",
-        "switch_rewrite",
-        "loop-inv-motion",
-        "loop-strength-reduction",
-        "cicm",
-        "push-in",
-    ]
-    .iter()
-    .map(|opt| opt.to_string())
-    .chain(cheap_optimizations())
-    .collect()
+fn optimizations(unrolling: bool) -> Vec<String> {
+    let opts = if unrolling {
+        vec![
+            "select_opt",
+            "loop-unroll",
+            "switch_rewrite",
+            "loop-inv-motion",
+            "loop-strength-reduction",
+            "cicm",
+            "push-in",
+        ]
+    } else {
+        vec![
+            "select_opt",
+            "switch_rewrite",
+            "loop-inv-motion",
+            "loop-strength-reduction",
+            "cicm",
+            "push-in",
+        ]
+    };
+
+    opts.iter()
+        .map(|opt| opt.to_string())
+        .chain(cheap_optimizations())
+        .collect()
 }
 
-pub fn rulesets() -> String {
-    let all_optimizations = optimizations().join("\n");
+pub fn rulesets(unrolling: bool) -> String {
+    let all_optimizations = optimizations(unrolling).join("\n");
     let cheap_optimizations = cheap_optimizations().join("\n");
     format!(
         "
@@ -123,7 +135,7 @@ pub fn rulesets() -> String {
     )
 }
 
-pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
+pub fn mk_sequential_schedule(unrolling: bool) -> Vec<CompilerPass> {
     let helpers = helpers();
 
     let mut res = vec![CompilerPass::Schedule(format!(
@@ -158,7 +170,7 @@ pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
         "
 (run-schedule {helpers})"
     )));
-    res.extend(optimizations().iter().map(|optimization| {
+    res.extend(optimizations(unrolling).iter().map(|optimization| {
         CompilerPass::Schedule(format!(
             "
 (run-schedule

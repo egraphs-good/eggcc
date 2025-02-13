@@ -37,7 +37,7 @@ pub mod schedule;
 
 pub type Result = std::result::Result<(), MainError>;
 
-pub fn prologue() -> String {
+pub fn prologue(unrolling: bool) -> String {
     [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
@@ -75,7 +75,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/conditional_invariant_code_motion.egg"),
         include_str!("optimizations/conditional_push_in.egg"),
         include_str!("utility/debug-helper.egg"),
-        &rulesets(),
+        &rulesets(unrolling),
     ]
     .join("\n")
 }
@@ -136,6 +136,7 @@ pub fn build_program(
     inline_program: Option<&TreeProgram>,
     fns: &[String],
     schedule: &str,
+    unrolling: bool,
 ) -> String {
     let (program, mut context_cache) = program.add_context();
     let mut printed = String::new();
@@ -194,7 +195,7 @@ pub fn build_program(
         .unwrap();
     }
 
-    let prologue = prologue();
+    let prologue = prologue(unrolling);
 
     format!(
         "
@@ -236,7 +237,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
     let fns = program.fns();
-    let egglog_prog = build_program(program, None, &fns, "");
+    let egglog_prog = build_program(program, None, &fns, "", true /* unrolling */);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
@@ -270,10 +271,10 @@ pub enum Schedule {
     Sequential,
 }
 impl Schedule {
-    pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
+    pub fn get_schedule_list(&self, unrolling: bool) -> Vec<CompilerPass> {
         match self {
             Schedule::Parallel => parallel_schedule(),
-            Schedule::Sequential => schedule::mk_sequential_schedule(),
+            Schedule::Sequential => schedule::mk_sequential_schedule(unrolling),
         }
     }
 }
@@ -291,6 +292,12 @@ pub struct EggccConfig {
     pub linearity: bool,
     /// When Some, optimize only the functions in this set.
     pub optimize_functions: Option<HashSet<String>>,
+
+    // flag to enable/disable function inlining
+    pub inlining: bool,
+
+    // flag to enable/disable loop unrolling
+    pub unrolling: bool,
 }
 
 impl EggccConfig {
@@ -311,6 +318,8 @@ impl Default for EggccConfig {
             schedule: Schedule::default(),
             stop_after_n_passes: i64::MAX,
             linearity: true,
+            inlining: true,
+            unrolling: true,
             optimize_functions: None,
         }
     }
@@ -322,7 +331,9 @@ pub fn optimize(
     program: &TreeProgram,
     eggcc_config: &EggccConfig,
 ) -> std::result::Result<TreeProgram, egglog::Error> {
-    let schedule_list = eggcc_config.schedule.get_schedule_list();
+    let schedule_list = eggcc_config
+        .schedule
+        .get_schedule_list(eggcc_config.unrolling);
     let mut res = program.clone();
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
@@ -337,9 +348,13 @@ pub fn optimize(
 
         // if we are inlining, save the program
         // TODO we inline on the first pass, but this should be configurable from the schedule
-        let inline_program = match schedule {
-            schedule::CompilerPass::Schedule(_) => None,
-            schedule::CompilerPass::InlineWithSchedule(_) => Some(res.clone()),
+        let inline_program = if eggcc_config.inlining {
+            match schedule {
+                schedule::CompilerPass::Schedule(_) => None,
+                schedule::CompilerPass::InlineWithSchedule(_) => Some(res.clone()),
+            }
+        } else {
+            None
         };
 
         // TODO experiment with different batches of optimizing functions together
@@ -370,6 +385,7 @@ pub fn optimize(
                 inline_program.as_ref(),
                 &batch,
                 schedule.egglog_schedule(),
+                eggcc_config.unrolling,
             );
 
             log::info!("Running egglog program...");
@@ -524,7 +540,7 @@ fn egglog_test_internal(
 
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
-        prologue(),
+        prologue(true /* unrolling */),
         parallel_schedule()
             .iter()
             .map(|pass| pass.egglog_schedule().to_string())

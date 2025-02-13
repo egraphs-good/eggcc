@@ -20,7 +20,7 @@ def num_warmup_samples():
   
 def num_samples():
   if IS_TESTING_MODE:
-    return 10
+    return 100
   return 1000
 
 

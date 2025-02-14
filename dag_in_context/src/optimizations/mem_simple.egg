@@ -1,12 +1,42 @@
 (ruleset mem-simple)
 
 ; ============================
-; NotEqual analysis
+; Lesser analysis
 ; ============================
 
+; (Lesser x y) -> x < y
+; Invariant: arguments of Lesser are in the same context
 (relation Lesser (Expr Expr))
 
-; invariant: arguments of Lesser are in the same context
+; x < (x + positive)
+(rule ((= add (Bop (Add) x y))
+       (= (lo-bound y) (IntB y-lo))
+       (> y-lo 0))
+      ((Lesser x add))
+      :ruleset mem-simple)
+
+; (x + negative) < x
+(rule ((= add (Bop (Add) x y))
+       (= (hi-bound y) (IntB y-hi))
+       (< y-hi 0))
+      ((Lesser add x))
+      :ruleset mem-simple)
+
+; (x - positive) < x
+(rule ((= sub (Bop (Sub) x y))
+       (= (lo-bound y) (IntB y-lo))
+       (> y-lo 0))
+      ((Lesser sub x))
+      :ruleset mem-simple)
+
+; (x - negative) < x
+(rule ((= sub (Bop (Sub) x y))
+       (= (hi-bound y) (IntB y-hi))
+       (< y-hi 0))
+      ((Lesser x sub))
+      :ruleset mem-simple)
+
+; Import knowledge from interval analysis
 (rule ((= (lo-bound x) (IntB x-lo))
        (= (hi-bound y) (IntB y-hi))
        (ContextOf x ctx)
@@ -15,18 +45,40 @@
       ((Lesser y x))
       :ruleset mem-simple)
 
-;; push lesser into if
+; Push lesser into if
 (rule ((= if (If pred inputs thn els))
        (= (Get inputs i) inputs-i)
        (= (Get inputs j) inputs-j)
        (Lesser inputs-i inputs-j)
        (= arg-i (Get (Arg ty (InIf which pred inputs)) i))
        (= arg-j (Get (Arg ty (InIf which pred inputs)) j)))
-      ((Lesser arg-i arg-j)
-       )
+      ((Lesser arg-i arg-j))
       :ruleset mem-simple)
 
-; push lesser into loop
+; Pull lesser out of if
+(rule ((= if (If pred inputs thn els))
+       (Lesser (Get thn i) (Get thn j))
+       (Lesser (Get els i) (Get els j)))
+      ((Lesser (Get if i) (Get if j)))
+      :ruleset mem-simple)
+
+; (LesserOrEq x y) -> x <= y
+(relation LesserOrEq (Expr Expr))
+(rule ((Lesser x y))
+      ((LesserOrEq x y))
+      :ruleset mem-simple)
+(rule ((= (lo-bound x) (IntB x-lo))
+       (= (hi-bound y) (IntB y-hi))
+       (ContextOf x ctx)
+       (ContextOf y ctx)
+       (<= y-hi x-lo))
+      ((LesserOrEq y x))
+      :ruleset mem-simple)
+
+; When two loop variables begin with a lesser relation, both are incremented
+; each iteration, and the increment for the lesser is less than or equal to
+; the increment for the greater, then the lesser relation applies within the
+; loop.
 (rule ((= loop (DoWhile inputs pred-body))
        (= (Get inputs i) inputs-i)
        (= (Get inputs j) inputs-j)
@@ -35,13 +87,19 @@
        (= arg-j (Get (Arg ty (InLoop inputs pred-body)) j))
        (= next-arg-i (Get pred-body (+ i 1))) ; offset by one because pred is before body
        (= next-arg-j (Get pred-body (+ j 1))) ; offset by one because pred is before body
-       (= next-arg-i (Bop (Add) arg-i one))
-       (= next-arg-j (Bop (Add) arg-j one))
-       (= (lo-bound one) (IntB 1))
-       (= (hi-bound one) (IntB 1)))
-
+       (= next-arg-i (Bop (Add) arg-i i-diff))
+       (= next-arg-j (Bop (Add) arg-j j-diff))
+       (LesserOrEq i-diff j-diff))
       ((Lesser arg-i arg-j))
       :ruleset mem-simple)
+
+; If Lesser applies loop variables, it must be invariant and apply to outputs
+(rule ((= loop (DoWhile inputs pred-body))
+       (= arg-i (Get (Arg ty (InLoop inputs pred-body)) i))
+       (= arg-j (Get (Arg ty (InLoop inputs pred-body)) j))
+       (Lesser arg-i arg-j))
+      ((Lesser (Get loop i) (Get loop j)))
+       :ruleset mem-simple)
 
 ; Transitivity
 (rule ((Lesser x y)
@@ -55,9 +113,9 @@
 ; NoAlias analysis
 ; ============================
 
-; NoAlias is actually a special case of NotEqual; they work on
-; disjoint types (int vs ptr). But let's merge them in a follow
-; up PR to make sure it doesn't have observable effects.
+; NoAlias is actually a special case of Lesser; they work on
+; disjoint types (int vs ptr) and NoAlias doesn't have transitivity. But let's
+; merge them in a follow up PR to make sure it doesn't have observable effects.
 (relation NoAlias (Expr Expr))
 
 (rule ((= p1 (Bop (PtrAdd) p i1))
@@ -120,39 +178,51 @@
       :ruleset mem-simple)
 
 ; ============================
+; WriteIsLive analysis
+; ============================
+
+; (WriteIsLive write state) -> the written value is guaranteed to not yet be
+; overwritten at that state
+(relation WriteIsLive (Expr Expr))
+
+(rule ((= write (Top (Write) addr write-val state)))
+      ((WriteIsLive write write))
+      :ruleset mem-simple)
+
+(rule ((= load (Bop (Load) addr state))
+       (WriteIsLive write state))
+      ((WriteIsLive write (Get load 1)))
+      :ruleset mem-simple)
+
+(rule ((= write (Top (Write) addr write-val state))
+       (= write2 (Top (Write) addr2 write-val2 state2))
+       (WriteIsLive write state2)
+       (NoAlias addr addr2))
+      ((WriteIsLive write write2))
+      :ruleset mem-simple)
+
+; ============================
 ; Memory optimizations
 ; ============================
 
 (relation DidMemOptimization (String))
 
 ; A write then a load to different addresses can be swapped
-(rule ((NoAlias write-addr load-addr)
-       (= write (Top (Write) write-addr write-val state))
-       (= load (Bop (Load) load-addr write)))
-      ((let new-load (Bop (Load) load-addr state))
-       (union
-          (Get load 1)
-          (Top (Write) write-addr write-val (Get new-load 1)))
-       (union (Get load 0) (Get new-load 0))
-       (DidMemOptimization "commute write then load")
-      )
-      :ruleset mem-simple)
-
-; A load then a write to different addresses can be swapped
-; Actually, does this break WeaklyLinear if the stored value depends on the
-; loaded value? Commenting this out for now.
-; (rule ((NoAlias load-addr write-addr)
-;        (= load (Bop (Load) load-addr state))
-;        (= write (Top (Write) write-addr write-val (Get load 1))))
-;       ((let new-write (Top (Write) write-addr write-val state))
-;        (let new-load (Bop (Load) load-addr new-write))
-;        (union write (Get new-load 1))
+; Safe, but not necessary
+; (rule ((NoAlias write-addr load-addr)
+;        (= write (Top (Write) write-addr write-val state))
+;        (= load (Bop (Load) load-addr write)))
+;       ((let new-load (Bop (Load) load-addr state))
+;        (union
+;           (Get load 1)
+;           (Top (Write) write-addr write-val (Get new-load 1)))
 ;        (union (Get load 0) (Get new-load 0))
-;        (DidMemOptimization "commute load then write")
-;        )
+;        (DidMemOptimization "commute write then load")
+;       )
 ;       :ruleset mem-simple)
 
 ; Two loads to the same address can be compressed
+; TODO: replace with LoadIsLive
 (rule ((= first-load (Bop (Load) addr state))
        (= second-load (Bop (Load) addr first-load)))
       ((union (Get first-load 0) (Get second-load 0))
@@ -162,10 +232,11 @@
       :ruleset mem-simple)
 
 ; A write and a load to the same address can be forwarded
-(rule ((= write (Top (Write) addr write-val state))
-       (= load (Bop (Load) addr write)))
+(rule ((= write (Top (Write) addr write-val orig-state))
+       (= load (Bop (Load) addr state))
+       (WriteIsLive write state))
       ((union (Get load 0) write-val)
-       (union (Get load 1) write)
+       (union (Get load 1) state)
        (DidMemOptimization "store forward")
        )
       :ruleset mem-simple)
@@ -177,17 +248,12 @@
        (DidMemOptimization "duplicate write"))
       :ruleset mem-simple)
 
-; A write shadows a previous write to the same address
-(rule ((= first-write (Top (Write) addr shadowed-val state))
-       (= second-write (Top (Write) addr write-val first-write)))
-      ((union second-write (Top (Write) addr write-val state))
-       (DidMemOptimization "shadowed write"))
-      :ruleset mem-simple)
-
-; A load doesn't change the state
-; TODO: why does this break weaklylinear?
-; (rule ((= load (Bop (Load) addr state)))
-;       ((union (Get load 1) state))
+; TODO: replace with analysis that checks whether a write was loaded from. but this might not be sound, as due to unions there might be multiple state paths to get here, and its only loaded on some?
+; ; A write shadows a previous write to the same address
+; (rule ((= first-write (Top (Write) addr shadowed-val state))
+;        (= second-write (Top (Write) addr write-val first-write)))
+;       ((union second-write (Top (Write) addr write-val state))
+;        (DidMemOptimization "shadowed write"))
 ;       :ruleset mem-simple)
 
 ; (rule ((DidMemOptimization _))

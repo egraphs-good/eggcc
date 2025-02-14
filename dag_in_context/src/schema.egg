@@ -292,3 +292,5 @@
 
 ; (constructor TermDoWhile (Term Term) Term)
 
+
+(ruleset never)

@@ -80,7 +80,7 @@ function getOverallStatistics(suite) {
 
   // generate one row per treatment...
   const result = [];
-  for (const treatment of treatments) {
+  for (const treatment of treatments()) {
     const normalized_cycles = [];
     // for each benchmark, calculate the normalized cycles
     for (const benchmark of benchmarks) {

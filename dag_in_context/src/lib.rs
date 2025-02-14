@@ -80,6 +80,48 @@ pub fn prologue() -> String {
     .join("\n")
 }
 
+fn ablate_prologue(prologue: &str, ablate: &str) -> String {
+    let mut found_ruleset = false;
+    let lines: Vec<String> = prologue
+        .lines()
+        .map(|line| {
+            if line.contains(&format!("(ruleset {})", ablate)) {
+                found_ruleset = true;
+                line.replace(&format!("(ruleset {})", ablate), "")
+            } else if line.contains(&format!(":ruleset {}", ablate)) {
+                line.replace(&format!(":ruleset {}", ablate), ":ruleset never")
+            } else {
+                line.to_string()
+            }
+        })
+        .collect();
+
+    assert!(
+        found_ruleset,
+        "No ruleset {} found in prologue to ablate",
+        ablate
+    );
+    lines.join("\n")
+}
+
+fn ablate_schedule(schedule: &str, ablate: &str) -> String {
+    let mut found_schedule = false;
+    let lines: Vec<String> = schedule
+        .lines()
+        .map(|line| {
+            if line.contains(ablate) {
+                found_schedule = true;
+                line.replace(ablate, "never")
+            } else {
+                line.to_string()
+            }
+        })
+        .collect();
+
+    assert!(found_schedule, "No schedule {} found to ablate", ablate);
+    lines.join("\n")
+}
+
 /// Adds an egglog program to `res` that adds the given term
 /// to the database.
 /// Returns a fresh variable referring to the program.
@@ -136,6 +178,7 @@ pub fn build_program(
     inline_program: Option<&TreeProgram>,
     fns: &[String],
     schedule: &str,
+    ablate: Option<&str>,
 ) -> String {
     let (program, mut context_cache) = program.add_context();
     let mut printed = String::new();
@@ -195,6 +238,14 @@ pub fn build_program(
     }
 
     let prologue = prologue();
+    let (prologue, schedule) = if let Some(ablate) = ablate {
+        (
+            ablate_prologue(&prologue, ablate),
+            ablate_schedule(schedule, ablate),
+        )
+    } else {
+        (prologue, schedule.to_string())
+    };
 
     format!(
         "
@@ -236,7 +287,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
     let fns = program.fns();
-    let egglog_prog = build_program(program, None, &fns, "");
+    let egglog_prog = build_program(program, None, &fns, "", None);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
@@ -291,6 +342,7 @@ pub struct EggccConfig {
     pub linearity: bool,
     /// When Some, optimize only the functions in this set.
     pub optimize_functions: Option<HashSet<String>>,
+    pub ablate: Option<String>,
 }
 
 impl EggccConfig {
@@ -312,6 +364,7 @@ impl Default for EggccConfig {
             stop_after_n_passes: i64::MAX,
             linearity: true,
             optimize_functions: None,
+            ablate: None,
         }
     }
 }
@@ -370,6 +423,7 @@ pub fn optimize(
                 inline_program.as_ref(),
                 &batch,
                 schedule.egglog_schedule(),
+                eggcc_config.ablate.as_deref(),
             );
 
             log::info!("Running egglog program...");

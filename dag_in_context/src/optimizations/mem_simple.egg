@@ -49,6 +49,8 @@
       ((Lesser x z))
       :ruleset mem-simple)
 
+; TODO: learn args are Lesser when If condition is LessThan
+
 ; ============================
 ; NoAlias analysis
 ; ============================

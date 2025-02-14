@@ -1,3 +1,7 @@
+// STANDARD_DATASET parameters:
+// #   define TSTEPS 20
+// #   define N 1000
+
 fn modulo(a: i64, b: i64) -> i64 {
     let div: i64 = a / b; // Integer division
     let remainder: i64 = a - (div * b); // Compute remainder manually
@@ -8,7 +12,7 @@ fn modulo(a: i64, b: i64) -> i64 {
     }
 }
 
-fn init_array(n: i64, nf: f64, a: &mut [[f64; 20]; 20]) {
+fn init_array(n: i64, nf: f64, a: &mut [[f64; 1000]; 1000]) {
     let mut i: i64 = 0;
     let mut fi: f64 = 0.0;
     while i < n {
@@ -24,7 +28,7 @@ fn init_array(n: i64, nf: f64, a: &mut [[f64; 20]; 20]) {
     }
 }
 
-fn sum_array(n: i64, a: &[[f64; 20]; 20]) -> f64 {
+fn sum_array(n: i64, a: &[[f64; 1000]; 1000]) -> f64 {
     let mut i: i64 = 0;
     let mut sum: f64 = 0.0;
     while i < n {
@@ -42,7 +46,7 @@ fn sum_array(n: i64, a: &[[f64; 20]; 20]) -> f64 {
     return sum;
 }
 
-fn kernel_seidel_2d(tsteps: i64, n: i64, a: &mut [[f64; 20]; 20]) {
+fn kernel_seidel_2d(tsteps: i64, n: i64, a: &mut [[f64; 1000]; 1000]) {
     let mut k: i64 = 0;
     while k < tsteps {
         let mut i: i64 = 1;
@@ -68,11 +72,11 @@ fn kernel_seidel_2d(tsteps: i64, n: i64, a: &mut [[f64; 20]; 20]) {
 }
 
 fn main() {
-    let n: i64 = 20;
-    let nf: f64 = 20.0;
-    let tsteps: i64 = 1000;
+    let n: i64 = 1000;
+    let nf: f64 = 1000.0;
+    let tsteps: i64 = 20;
 
-    let mut a: [[f64; 20]; 20] = [[0.0; 20]; 20];
+    let mut a: [[f64; 1000]; 1000] = [[0.0; 1000]; 1000];
 
     let res: f64 = 1.1;
 

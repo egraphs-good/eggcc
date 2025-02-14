@@ -1,3 +1,8 @@
+// // STANDARD_DATASET parameters:
+// #   define TMAX 50
+// #   define NX 1000
+// #   define NY 1000
+
 fn modulo(a: i64, b: i64) -> i64 {
     let div: i64 = a / b; // Integer division
     let remainder: i64 = a - (div * b); // Compute remainder manually

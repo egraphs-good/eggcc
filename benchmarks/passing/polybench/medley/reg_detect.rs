@@ -1,3 +1,8 @@
+// STANDARD_DATASET parameters:
+// #   define NITER 10000
+// #   define LENGTH 64
+// #   define MAXGRID 6
+
 fn modulo(a: i64, b: i64) -> i64 {
     let div: i64 = a / b; // Integer division
     let remainder: i64 = a - (div * b); // Compute remainder manually
@@ -9,19 +14,21 @@ fn modulo(a: i64, b: i64) -> i64 {
 }
 
 fn init_array(
-    sum_tang: &mut [[f64; 50]; 50],
-    mean: &mut [[f64; 50]; 50],
-    path: &mut [[f64; 50]; 50],
+    maxgrid: i64,
+    maxgridf: f64,
+    sum_tang: &mut [[f64; 6]; 6],
+    mean: &mut [[f64; 6]; 6],
+    path: &mut [[f64; 6]; 6],
 ) {
     let mut i: i64 = 0;
     let mut fi: f64 = 0.0;
-    while i < 50 {
+    while i < maxgrid {
         let mut j: i64 = 0;
         let mut fj: f64 = 0.0;
-        while j < 50 {
+        while j < maxgrid {
             sum_tang[i][j] = (fi + 1.0) * (fj + 1.0);
-            mean[i][j] = (fi - fj) / 50.0;
-            path[i][j] = (fi * (fj - 1.0)) / 50.0;
+            mean[i][j] = (fi - fj) / maxgridf;
+            path[i][j] = (fi * (fj - 1.0)) / maxgridf;
             j += 1;
             fj += 1.0;
         }
@@ -30,15 +37,15 @@ fn init_array(
     }
 }
 
-fn sum_array(path: &[[f64; 50]; 50]) -> f64 {
+fn sum_array(maxgrid: i64, path: &[[f64; 6]; 6]) -> f64 {
     let mut sum: f64 = 0.0;
     let mut i: i64 = 0;
 
-    while i < 50 {
+    while i < maxgrid {
         let mut j: i64 = 0;
-        while j < 50 {
+        while j < maxgrid {
             sum += path[i][j];
-            if modulo(i * 50 + j, 20) == 0 {
+            if modulo(i * maxgrid + j, 20) == 0 {
                 sum += 20.0;
             }
             j += 1;
@@ -49,24 +56,27 @@ fn sum_array(path: &[[f64; 50]; 50]) -> f64 {
 }
 
 fn kernel_reg_detect(
-    sum_tang: &[[f64; 50]; 50],
-    mean: &mut [[f64; 50]; 50],
-    path: &mut [[f64; 50]; 50],
-    diff: &mut [[[f64; 25]; 50]; 50],
-    sum_diff: &mut [[[f64; 25]; 50]; 50],
+    niter: i64,
+    maxgrid: i64,
+    length: i64,
+    sum_tang: &[[f64; 6]; 6],
+    mean: &mut [[f64; 6]; 6],
+    path: &mut [[f64; 6]; 6],
+    diff: &mut [[[f64; 25]; 6]; 6],
+    sum_diff: &mut [[[f64; 25]; 6]; 6],
 ) {
     let mut t: i64 = 0;
     let mut i: i64 = 0;
     let mut j: i64 = 0;
     let mut cnt: i64 = 0;
-    while t < 10 {
+    while t < niter {
         // loop 1
         j = 0;
-        while j < 50 {
+        while j < maxgrid {
             i = j;
-            while i < 50 {
+            while i < maxgrid {
                 cnt = 0;
-                while cnt < 25 {
+                while cnt < length {
                     diff[j][i][cnt] = sum_tang[j][i];
                     cnt += 1;
                 }
@@ -77,12 +87,12 @@ fn kernel_reg_detect(
 
         // loop 2
         j = 0;
-        while j < 50 {
+        while j < maxgrid {
             i = j;
-            while i < 50 {
+            while i < maxgrid {
                 sum_diff[j][i][0] = diff[j][i][0];
-                cnt = 0;
-                while cnt < 25 {
+                cnt = 1;
+                while cnt < length {
                     sum_diff[j][i][cnt] = sum_diff[j][i][cnt - 1] + diff[j][i][cnt];
                     cnt += 1;
                 }
@@ -93,16 +103,16 @@ fn kernel_reg_detect(
 
         // loop 3
         i = 0;
-        while i < 50 {
+        while i < maxgrid {
             path[0][i] = mean[0][i];
             i += 1;
         }
 
         // loop 4
         j = 1;
-        while j < 50 {
+        while j < maxgrid {
             i = j;
-            while i < 50 {
+            while i < maxgrid {
                 path[j][i] = path[j - 1][i - 1] + mean[j][i];
                 i += 1;
             }
@@ -113,15 +123,28 @@ fn kernel_reg_detect(
 }
 
 fn main() {
-    let mut sum_tang: [[f64; 50]; 50] = [[0.0; 50]; 50];
-    let mut mean: [[f64; 50]; 50] = [[0.0; 50]; 50];
-    let mut path: [[f64; 50]; 50] = [[0.0; 50]; 50];
-    let mut diff: [[[f64; 25]; 50]; 50] = [[[0.0; 25]; 50]; 50];
-    let mut sum_diff: [[[f64; 25]; 50]; 50] = [[[0.0; 25]; 50]; 50];
+    let niter: i64 = 10000;
+    let length: i64 = 64;
+    let maxgrid: i64 = 6;
+    let maxgridf: f64 = 6.0;
+    let mut sum_tang: [[f64; 6]; 6] = [[0.0; 6]; 6];
+    let mut mean: [[f64; 6]; 6] = [[0.0; 6]; 6];
+    let mut path: [[f64; 6]; 6] = [[0.0; 6]; 6];
+    let mut diff: [[[f64; 64]; 6]; 6] = [[[0.0; 64]; 6]; 6];
+    let mut sum_diff: [[[f64; 64]; 6]; 6] = [[[0.0; 64]; 6]; 6];
 
-    init_array(&mut sum_tang, &mut mean, &mut path);
-    kernel_reg_detect(&sum_tang, &mut mean, &mut path, &mut diff, &mut sum_diff);
-    let res: f64 = sum_array(&path);
+    init_array(maxgrid, maxgridf, &mut sum_tang, &mut mean, &mut path);
+    kernel_reg_detect(
+        niter,
+        maxgrid,
+        length,
+        &sum_tang,
+        &mut mean,
+        &mut path,
+        &mut diff,
+        &mut sum_diff,
+    );
+    let res: f64 = sum_array(maxgrid, &path);
 
     println!("{}", res);
 }

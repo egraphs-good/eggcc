@@ -1,3 +1,7 @@
+// STANDARD_DATASET parameters:
+// #   define TSTEPS 20
+// #   define N 1000
+
 fn modulo(a: i64, b: i64) -> i64 {
     let div: i64 = a / b; // Integer division
     let remainder: i64 = a - (div * b); // Compute remainder manually
@@ -51,7 +55,7 @@ fn kernel_jacobi_2d_imper(a: &mut [[f64; 1000]; 1000], b: &mut [[f64; 1000]; 100
     let mut t: i64 = 0;
     let mut i: i64 = 0;
     let mut j: i64 = 0;
-    while t < 100 {
+    while t < 20 {
         i = 1;
         while i < n - 1 {
             j = 1;

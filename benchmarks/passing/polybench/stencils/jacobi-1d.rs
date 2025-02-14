@@ -1,3 +1,7 @@
+// STANDARD_DATASET parameters:
+// #   define TSTEPS 100
+// #   define N 10000
+
 fn modulo(a: i64, b: i64) -> i64 {
     let div: i64 = a / b; // Integer division
     let remainder: i64 = a - (div * b); // Compute remainder manually

@@ -27,7 +27,7 @@ def num_samples():
 def average(lst):
   return sum(lst) / len(lst)
 
-TO_ABLATE = "" # change to a ruleset to ablate
+TO_ABLATE = "mem-simple" # change to a ruleset to ablate
 
 treatments = [
   "rvsdg-round-trip-to-executable",

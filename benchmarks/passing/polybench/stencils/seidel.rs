@@ -10,17 +10,17 @@ fn modulo(a: i64, b: i64) -> i64 {
 
 fn init_array(n: i64, nf: f64, a: &mut [[f64; 20]; 20]) {
     let mut i: i64 = 0;
-    let mut i_float: f64 = 0.0;
+    let mut fi: f64 = 0.0;
     while i < n {
         let mut j: i64 = 0;
-        let mut jf: f64 = 0.0;
+        let mut fj: f64 = 0.0;
         while j < n {
-            a[i][j] = ((i_float * (jf + 2.0) + 2.0) / nf);
+            a[i][j] = ((fi * (fj + 2.0) + 2.0) / nf);
             j = j + 1;
-            jf = jf + 1.0;
+            fj = fj + 1.0;
         }
         i = i + 1;
-        i_float = i_float + 1.0;
+        fi = fi + 1.0;
     }
 }
 

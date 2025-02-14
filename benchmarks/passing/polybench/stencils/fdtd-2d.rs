@@ -20,26 +20,26 @@ fn init_array(
     fict: &mut [f64; 50],
 ) {
     let mut i: i64 = 0;
-    let mut i_float: f64 = 0.0;
+    let mut fi: f64 = 0.0;
     while i < tmax {
-        fict[i] = i_float;
+        fict[i] = fi;
         i = i + 1;
-        i_float = i_float + 1.0;
+        fi = fi + 1.0;
     }
     i = 0;
-    i_float = 0.0;
+    fi = 0.0;
     while i < nx {
         let mut j: i64 = 0;
-        let mut jf: f64 = 0.0;
+        let mut fj: f64 = 0.0;
         while j < ny {
-            ex[i][j] = (i_float * (jf + 1.0)) / nxf;
-            ey[i][j] = (i_float * (jf + 2.0)) / nyf;
-            hz[i][j] = (i_float * (jf + 3.0)) / nxf;
+            ex[i][j] = (fi * (fj + 1.0)) / nxf;
+            ey[i][j] = (fi * (fj + 2.0)) / nyf;
+            hz[i][j] = (fi * (fj + 3.0)) / nxf;
             j = j + 1;
-            jf = jf + 1.0;
+            fj = fj + 1.0;
         }
         i = i + 1;
-        i_float = i_float + 1.0;
+        fi = fi + 1.0;
     }
 }
 
@@ -89,7 +89,7 @@ fn kernel_fdtd_2d(
         }
 
         let mut i: i64 = 0;
-        let mut i_float: f64 = 0.0;
+        let mut fi: f64 = 0.0;
         while i < nx {
             j = 0;
             while j < ny {

@@ -1,11 +1,68 @@
-
 (ruleset mem-simple)
+
+; ============================
+; NotEqual analysis
+; ============================
+
+(relation Lesser (Expr Expr))
+
+; invariant: arguments of Lesser are in the same context
+(rule ((= (lo-bound x) (IntB x-lo))
+       (= (hi-bound y) (IntB y-hi))
+       (ContextOf x ctx)
+       (ContextOf y ctx)
+       (< y-hi x-lo))
+      ((Lesser y x))
+      :ruleset mem-simple)
+
+;; push lesser into if
+(rule ((= if (If pred inputs thn els))
+       (= (Get inputs i) inputs-i)
+       (= (Get inputs j) inputs-j)
+       (Lesser inputs-i inputs-j)
+       (= arg-i (Get (Arg ty (InIf which pred inputs)) i))
+       (= arg-j (Get (Arg ty (InIf which pred inputs)) j)))
+      ((Lesser arg-i arg-j)
+       )
+      :ruleset mem-simple)
+
+; push lesser into loop
+(rule ((= loop (DoWhile inputs pred-body))
+       (= (Get inputs i) inputs-i)
+       (= (Get inputs j) inputs-j)
+       (Lesser inputs-i inputs-j)
+       (= arg-i (Get (Arg ty (InLoop inputs pred-body)) i))
+       (= arg-j (Get (Arg ty (InLoop inputs pred-body)) j))
+       (= next-arg-i (Get pred-body (+ i 1))) ; offset by one because pred is before body
+       (= next-arg-j (Get pred-body (+ j 1))) ; offset by one because pred is before body
+       (= next-arg-i (Bop (Add) arg-i one))
+       (= next-arg-j (Bop (Add) arg-j one))
+       (= (lo-bound one) (IntB 1))
+       (= (hi-bound one) (IntB 1)))
+
+      ((Lesser arg-i arg-j))
+      :ruleset mem-simple)
+
+; Transitivity
+(rule ((Lesser x y)
+       (Lesser y z))
+      ((Lesser x z))
+      :ruleset mem-simple)
 
 ; ============================
 ; NoAlias analysis
 ; ============================
 
+; NoAlias is actually a special case of NotEqual; they work on
+; disjoint types (int vs ptr). But let's merge them in a follow
+; up PR to make sure it doesn't have observable effects.
 (relation NoAlias (Expr Expr))
+
+(rule ((= p1 (Bop (PtrAdd) p i1))
+       (= p2 (Bop (PtrAdd) p i2))
+       (Lesser i1 i2))
+      ((NoAlias p1 p2))
+      :ruleset mem-simple)
 
 (rule ((Bop (PtrAdd) e i)
        (= (lo-bound i) (IntB lo))
@@ -49,6 +106,15 @@
 
 (rule ((NoAlias x y))
       ((NoAlias y x))
+      :ruleset mem-simple)
+
+(rule ((= if (If pred inputs thn els))
+       (= (Get inputs i) inputs-i)
+       (= (Get inputs j) inputs-j)
+       (NoAlias inputs-i inputs-j)
+       (= arg-i (Get (Arg ty (InIf which pred inputs)) i))
+       (= arg-j (Get (Arg ty (InIf which pred inputs)) j)))
+      ((NoAlias arg-i arg-j))
       :ruleset mem-simple)
 
 ; ============================

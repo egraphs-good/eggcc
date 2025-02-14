@@ -9,6 +9,9 @@ const COLORS = {
   "llvm-eggcc-sequential-O0-O0": "blue",
   "llvm-eggcc-O3-O0": "brown",
   "llvm-eggcc-O3-O3": "lightblue",
+  "llvm-eggcc-ablation-O0-O0": "blue",
+  "llvm-eggcc-ablation-O3-O0": "green",
+  "llvm-eggcc-ablation-O3-O3": "orange",
 };
 
 const BASELINE_MODE = "llvm-O0-O0";

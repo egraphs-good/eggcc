@@ -7,15 +7,24 @@ import matplotlib.ticker as mticker
 import numpy as np
 import sys
 import os
+import profile
 
 RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
 BAR_CHART_RUN_MODES = ["llvm-O3-O3", "llvm-O3-O0", "llvm-eggcc-O0-O0"]
+
+if profile.TO_ABLATE != "":
+  RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
+  BAR_CHART_RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
+
 # copied from chart.js
 COLOR_MAP = {
   "llvm-O0-O0" : "purple",
   "llvm-eggcc-O0-O0" : "pink",
   "llvm-O3-O0" : "gray",
   "llvm-O3-O3": "gold",
+  "llvm-eggcc-ablation-O0-O0": "blue",
+  "llvm-eggcc-ablation-O3-O0": "green",
+  "llvm-eggcc-ablation-O3-O3": "orange",
 }
 BENCHMARK_SPACE = 1.0 / len(RUN_MODES)
 CIRCLE_SIZE = 15

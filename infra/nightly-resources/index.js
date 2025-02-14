@@ -1,17 +1,4 @@
 // copied from profile.py
-const treatments = [
-  "rvsdg-round-trip-to-executable",
-  "llvm-O0-O0",
-  "llvm-O1-O0",
-  "llvm-O2-O0",
-  "llvm-eggcc-O0-O0",
-  "llvm-eggcc-sequential-O0-O0",
-  "llvm-O3-O0",
-  "llvm-O3-O3",
-  "llvm-eggcc-O3-O0",
-  "llvm-eggcc-O3-O3",
-];
-
 const GLOBAL_DATA = {
   checkedModes: new Set(),
   checkedSuites: new Set(),
@@ -25,6 +12,10 @@ const GLOBAL_DATA = {
     sortBy: undefined,
   },
 };
+
+function treatments() {
+  return GLOBAL_DATA.currentRun.map((x) => x.runMethod);
+}
 
 // filter to all the benchmark names that are enabled
 // using checkedSuites and checkedBenchmarks
@@ -182,7 +173,7 @@ function makeCheckbox(parent, mode) {
 }
 
 function makeSelectors() {
-  treatments.forEach((mode) => {
+  treatments().forEach((mode) => {
     const checkbox = makeCheckbox(
       document.getElementById("modeCheckboxes"),
       mode,

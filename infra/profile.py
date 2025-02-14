@@ -27,6 +27,7 @@ def num_samples():
 def average(lst):
   return sum(lst) / len(lst)
 
+TO_ABLATE = "" # change to a ruleset to ablate
 
 treatments = [
   "rvsdg-round-trip-to-executable",
@@ -41,6 +42,13 @@ treatments = [
   "llvm-eggcc-O3-O0",
   "llvm-eggcc-O3-O3",
 ]
+
+if TO_ABLATE != "":
+  treatments.extend([
+    "llvm-eggcc-ablation-O0-O0",
+    "llvm-eggcc-ablation-O3-O0",
+    "llvm-eggcc-ablation-O3-O3",
+  ])
 
 # Where to output files that are needed for nightly report
 DATA_DIR = None
@@ -76,6 +84,12 @@ def get_eggcc_options(benchmark):
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
     case "llvm-eggcc-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
+    case "llvm-eggcc-ablation-O0-O0":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0 --ablate {TO_ABLATE}')
+    case "llvm-eggcc-ablation-O3-O0":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0 --ablate {TO_ABLATE}')
+    case "llvm-eggcc-ablation-O3-O3":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     

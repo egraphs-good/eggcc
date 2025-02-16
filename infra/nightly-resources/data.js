@@ -92,10 +92,14 @@ function getOverallStatistics(suite) {
     }
 
     const eggcc_compile_times = [];
+    const eggcc_extraction_times = [];
+    const eggcc_serialization_times = [];
     const llvm_compile_times = [];
     for (const benchmark of benchmarks) {
       const row = getRow(benchmark, treatment);
       eggcc_compile_times.push(row.eggccCompileTimeSecs);
+      eggcc_extraction_times.push(row.eggccExtractionTimeSecs);
+      eggcc_serialization_times.push(row.eggccSerializationTimeSecs);
       llvm_compile_times.push(row.llvmCompileTimeSecs);
     }
 
@@ -103,6 +107,8 @@ function getOverallStatistics(suite) {
       Treatment: treatment,
       "Normalized Mean": tryRound(geometricMean(normalized_cycles)),
       "Eggcc Compile Time": tryRound(mean(eggcc_compile_times)),
+      "Eggcc Serialization Time": tryRound(mean(eggcc_serialization_times)),
+      "Eggcc Extraction Time": tryRound(mean(eggcc_extraction_times)),
       "LLVM Compile Time": tryRound(mean(llvm_compile_times)),
     });
   }
@@ -133,11 +139,11 @@ function getDataForBenchmark(benchmark) {
         },
         eggccSerializationTimeSecs: {
           class: "",
-          value: tryRound(row.eggccSerializationTimeSecs)
+          value: tryRound(row.eggccSerializationTimeSecs),
         },
         eggccExtractionTimeSecs: {
           class: "",
-          value: tryRound(row.eggccExtractionTimeSecs)
+          value: tryRound(row.eggccExtractionTimeSecs),
         },
         llvmCompileTimeSecs: {
           class: "",

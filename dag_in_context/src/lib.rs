@@ -5,7 +5,12 @@ use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::{rulesets, CompilerPass};
 use schema::TreeProgram;
-use std::{collections::HashSet, fmt::Write, i64, time::{Duration, Instant}};
+use std::{
+    collections::HashSet,
+    fmt::Write,
+    i64,
+    time::{Duration, Instant},
+};
 use to_egglog::TreeToEgglog;
 
 use crate::{
@@ -371,7 +376,7 @@ impl Default for EggccConfig {
 
 // Optimizes a tree program using the given schedule.
 // Adds context to the program before optimizing.
-// If successful, returns the optimized program and the time 
+// If successful, returns the optimized program and the time
 // it takes for serialization and extraction
 pub fn optimize(
     program: &TreeProgram,

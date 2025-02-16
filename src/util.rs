@@ -922,12 +922,13 @@ impl Run {
                 let optimize_brillvm = self.optimize_bril_llvm.expect(
                     "optimize_bril_llvm is a required flag when running RunMode::CompileBrilLLVM",
                 );
-                let (interpretable, llvm_time, serialization_time, extraction_time) = self.run_bril_llvm(
-                    self.prog_with_args.program.clone(),
-                    optimize_egglog,
-                    optimize_brillvm,
-                    self.add_timing,
-                )?;
+                let (interpretable, llvm_time, serialization_time, extraction_time) = self
+                    .run_bril_llvm(
+                        self.prog_with_args.program.clone(),
+                        optimize_egglog,
+                        optimize_brillvm,
+                        self.add_timing,
+                    )?;
                 llvm_compile_time = llvm_time;
 
                 eggcc_serialization_time += serialization_time;

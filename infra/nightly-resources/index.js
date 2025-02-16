@@ -14,7 +14,7 @@ const GLOBAL_DATA = {
 };
 
 function treatments() {
-  return GLOBAL_DATA.currentRun.map((x) => x.runMethod);
+  return dedup(GLOBAL_DATA.currentRun.map((x) => x.runMethod));
 }
 
 // filter to all the benchmark names that are enabled

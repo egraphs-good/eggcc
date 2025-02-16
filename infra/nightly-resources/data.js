@@ -131,6 +131,14 @@ function getDataForBenchmark(benchmark) {
           class: "",
           value: tryRound(row.eggccCompileTimeSecs),
         },
+        eggccSerializationTimeSecs: {
+          class: "",
+          value: tryRound(row.eggccSerializationTimeSecs)
+        },
+        eggccExtractionTimeSecs: {
+          class: "",
+          value: tryRound(row.eggccExtractionTimeSecs)
+        },
         llvmCompileTimeSecs: {
           class: "",
           value: tryRound(row.llvmCompileTimeSecs),

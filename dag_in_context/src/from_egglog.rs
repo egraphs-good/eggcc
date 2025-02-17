@@ -6,8 +6,12 @@ use std::rc::Rc;
 use egglog::{ast::Literal, match_term_app, Term};
 use indexmap::IndexMap;
 
-use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp,
+use crate::{
+    greedy_dag_extractor::is_dummy_ctx,
+    schema::{
+        Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
+        UnaryOp,
+    },
 };
 
 pub struct FromEgglog<'a> {
@@ -144,6 +148,7 @@ impl<'a> FromEgglog<'a> {
             };
             Assumption::InIf(*boolean, self.expr_from_egglog(self.termdag.get(*pred_expr).clone()), self.expr_from_egglog(self.termdag.get(*input_expr).clone()))
           }
+          (x, []) if is_dummy_ctx(x) => Assumption::dummy(),
           (name, _) => {
             eprintln!("Invalid assumption: {:?}", assumption);
             Assumption::WildCard(name.into())

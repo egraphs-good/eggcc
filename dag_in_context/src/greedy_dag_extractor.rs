@@ -1,12 +1,12 @@
 use egglog::{ast::Literal, *};
-use egraph_serialize::{ClassId, EGraph, NodeId};
+use egraph_serialize::{ClassId, EGraph, Node, NodeId};
 use indexmap::{IndexMap, IndexSet};
 use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
 use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
 };
@@ -43,7 +43,6 @@ pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
     costsets: Vec<CostSet>,
     costsetmemo: IndexMap<Term, CostSetIndex>,
-    ctx_memo: HashMap<ClassId, CostSetIndex>,
     /// For a given region (based on the region's root),
     /// stores a map from classes in that region to the chosen term for the eclass.
     /// Regions are extracted separately since different regions
@@ -201,13 +200,9 @@ impl<'a> EgraphInfo<'a> {
                 for EnodeChild {
                     child,
                     is_subregion,
-                    is_assumption,
                     is_if_inputs: _is_inputs,
                 } in enode_children(egraph, node)
                 {
-                    if is_assumption {
-                        continue;
-                    }
                     let child_region = if is_subregion {
                         child.clone()
                     } else {
@@ -313,46 +308,11 @@ impl<'a> Extractor<'a> {
             .clone()
     }
 
-    /// A method for getting a dummy context nodes.
-    /// Contexts create cycles, but we don't need to extract them, so we invent an imaginary term here.
-    pub(crate) fn get_dummy_context(
-        &mut self,
-        info: &EgraphInfo,
-        class_id: ClassId,
-    ) -> CostSetIndex {
-        // get any node in the class
-        let node_id = info.egraph.classes()[&class_id].nodes.first().unwrap();
-        if let Some(existing) = self.ctx_memo.get(&class_id) {
-            *existing
-        } else {
-            // HACK: this term gets a context (InFunc "dummy_{class_id}").
-            // The class id allows terms to correspond one to one with nodes (we don't want the same dummy node
-            // for two different contexts).
-            let dummy = self
-                .termdag
-                .lit(Literal::String(format!("dummy_{class_id}").into()));
-            self.add_correspondence(dummy.clone(), node_id.clone());
-            let term = self.termdag.app("InFunc".into(), vec![dummy]);
-            self.add_correspondence(term.clone(), node_id.clone());
-            let costset = CostSet {
-                costs: Default::default(),
-                total: 0.0.try_into().unwrap(),
-                term: term.clone(),
-                args_used: Default::default(),
-            };
-            self.costsets.push(costset);
-            self.costsetmemo.insert(term, self.costsets.len() - 1);
-            self.ctx_memo.insert(class_id, self.costsets.len() - 1);
-            self.costsets.len() - 1
-        }
-    }
-
     pub(crate) fn new(original_prog: &'a TreeProgram, termdag: &'a mut TermDag) -> Self {
         Extractor {
             termdag,
             costsets: Default::default(),
             costsetmemo: Default::default(),
-            ctx_memo: Default::default(),
             correspondence: Default::default(),
             costs: Default::default(),
             term_to_expr: Default::default(),
@@ -852,13 +812,9 @@ fn node_cost_in_region(
             |EnodeChild {
                  child,
                  is_subregion,
-                 is_assumption,
                  is_if_inputs: _is_inputs,
              }| {
-                // for assumptions, just return a dummy context every time
-                if *is_assumption {
-                    Some(extractor.get_dummy_context(info, child.clone()))
-                } else if *is_subregion {
+                if *is_subregion {
                     extractor.costs.get(child)?.get(child).copied()
                 } else {
                     let region_costs = extractor.costs.get(&rootid).unwrap();
@@ -886,6 +842,9 @@ fn extract_fn(
     cost_model: &impl CostModel,
     should_maintain_linearity: bool,
 ) -> (CostSet, RcExpr) {
+    // prune egraph
+    let egraph = prune_egraph(&egraph, rootid.clone());
+
     log::info!("Building extraction info");
     let egraph_info = EgraphInfo::new(func, rootid.clone(), cost_model, &egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
@@ -1155,6 +1114,11 @@ impl CostModel for TestCostModel {
 impl CostModel for DefaultCostModel {
     fn get_op_cost(&self, op: &str) -> Cost {
         match op {
+            // Tmp contexts
+            x if is_dummy_ctx(x) => 0.,
+            x if is_type_operator(x) => 0.,
+            // constant types
+            "Int" | "Bool" | "Float" => 0.,
             // Leaves
             "Const" => 1.,
             "Arg" => 0.,
@@ -1167,10 +1131,6 @@ impl CostModel for DefaultCostModel {
             // small cost for get to encourage canonicalization
             // enables state edge passthrough to work as a pass
             "Get" => 0.01,
-            // Types
-            "IntT" | "BoolT" | "FloatT" | "PointerT" | "StateT" => 0.,
-            "Base" | "TupleT" | "TNil" | "TCons" => 0.,
-            "Int" | "Bool" | "Float" => 0.,
             // Algebra
             "Abs" | "Bitand" | "Neg" | "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" | "Shl"
             | "Shr" => 10.,
@@ -1270,30 +1230,22 @@ where
 struct EnodeChild {
     child: ClassId,
     is_subregion: bool,
-    is_assumption: bool,
     // cost of inputs is calculated specially- dead code is not included in cost
     is_if_inputs: bool,
 }
 
 impl EnodeChild {
-    fn new(child: ClassId, is_subregion: bool, is_assumption: bool, if_if_inputs: bool) -> Self {
+    fn new(child: ClassId, is_subregion: bool, _is_assumption: bool, if_if_inputs: bool) -> Self {
         EnodeChild {
             child,
             is_subregion,
-            is_assumption,
             is_if_inputs: if_if_inputs,
         }
     }
 }
 
-fn is_type_operator(op: &str) -> bool {
-    op == "TupleT"
-        || op == "Base"
-        || op == "IntT"
-        || op == "BoolT"
-        || op == "FloatT"
-        || op == "PointerT"
-        || op == "StateT"
+pub(crate) fn is_dummy_ctx(op: &str) -> bool {
+    op.starts_with("DumC")
 }
 
 /// For a given enode, returns a vector of children eclasses.
@@ -1435,9 +1387,6 @@ fn find_reachable(
 
     while let Some(eclass) = queue.pop() {
         let eclass_type = egraph.class_data[&eclass].typ.as_ref().unwrap();
-        if eclass_type == "Assumption" {
-            panic!("Found assumption in region reachable classes");
-        }
 
         if !type_is_part_of_ast(eclass_type) {
             continue;
@@ -1455,19 +1404,16 @@ fn find_reachable(
                 for EnodeChild {
                     child,
                     is_subregion,
-                    is_assumption,
                     is_if_inputs: _is_inputs,
                 } in enode_children(egraph, &egraph[node])
                 {
-                    if !is_assumption {
-                        if is_subregion {
-                            if recursive {
-                                queue.insert(child.clone());
-                                result.insert(child);
-                            }
-                        } else {
-                            queue.insert(child);
+                    if is_subregion {
+                        if recursive {
+                            queue.insert(child.clone());
+                            result.insert(child);
                         }
+                    } else {
+                        queue.insert(child);
                     }
                 }
             }
@@ -1868,4 +1814,68 @@ pub(crate) fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> b
         }
     }
     false
+}
+
+// Prunes an egraph to only reachable nodes, removing context and types
+// replaces types with "UnknownT" and replaces context with unique identifiers
+fn prune_egraph(egraph: &egraph_serialize::EGraph, root: ClassId) -> egraph_serialize::EGraph {
+    let mut new_egraph = egraph_serialize::EGraph::default();
+    let mut visited = HashSet::new();
+
+    let mut todo = vec![root];
+
+    while let Some(class) = todo.pop() {
+        if !visited.insert(class.clone()) {
+            continue;
+        }
+
+        for nodeid in &egraph.classes()[&class].nodes {
+            let node = &egraph[nodeid];
+            // if the op is a ctx, replace it with a fresh DumC
+            if is_ctx_operator(&node.op) {
+                let new_node = Node {
+                    op: format!("DumC{}", nodeid),
+                    children: vec![],
+                    eclass: node.eclass.clone(),
+                    cost: NotNan::new(0.).unwrap(),
+                    subsumed: false,
+                };
+
+                new_egraph.add_node(nodeid.clone(), new_node);
+            } else {
+                // copy node to new_egraph
+                new_egraph.add_node(nodeid.clone(), node.clone());
+
+                // add children to queue
+                for child in &node.children {
+                    todo.push(egraph.nid_to_cid(child).clone());
+                }
+            }
+        }
+    }
+
+    // now copy over class data for each class
+    for (class, data) in &egraph.class_data {
+        if visited.contains(class) {
+            new_egraph.class_data.insert(class.clone(), data.clone());
+        }
+    }
+
+    new_egraph
+}
+
+fn is_type_operator(op: &str) -> bool {
+    op == "TupleT"
+        || op == "Base"
+        || op == "IntT"
+        || op == "BoolT"
+        || op == "FloatT"
+        || op == "PointerT"
+        || op == "StateT"
+        || op == "TNil"
+        || op == "TCons"
+}
+
+fn is_ctx_operator(op: &str) -> bool {
+    op == "InFunc" || op == "InLoop" || op == "InSwitch" || op == "InIf" || is_dummy_ctx(op)
 }

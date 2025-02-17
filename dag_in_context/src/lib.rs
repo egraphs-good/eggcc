@@ -494,7 +494,7 @@ pub fn optimize(
             if let (Some(timeout), Some(current_time)) =
                 (eggcc_config.ilp_extraction_test_timeout, ilp_test_time)
             {
-                let res = extract_ilp(batch, serialized, timeout);
+                let res = extract_ilp(batch, serialized, &DefaultCostModel, timeout);
 
                 match res {
                     Some(time) => {

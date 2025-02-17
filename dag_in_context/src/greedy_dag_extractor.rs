@@ -169,7 +169,7 @@ impl<'a> EgraphInfo<'a> {
 
         log::info!("Found {} relavent eclasses", relavent_eclasses.len());
         if relavent_eclasses.len() > egraph.classes().len() * 3 {
-            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclasses: {}. (Root, eclass) pairs: {}. Region roots: {}. Non-Expr: {}", relavent_eclasses.len() / egraph.classes().len(), egraph.classes().len(), relavent_eclasses.len(), region_roots.len(), num_not_expr);
+            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclassnes: {}. (Root, eclass) pairs: {}. Region roots: {}. Non-Expr: {}", relavent_eclasses.len() / egraph.classes().len(), egraph.classes().len(), relavent_eclasses.len(), region_roots.len(), num_not_expr);
         }
 
         let mut roots = vec![];
@@ -414,7 +414,7 @@ impl<'a> Extractor<'a> {
 
     fn add_correspondence(&mut self, term: Term, node_id: NodeId) {
         if let Some(existing) = self.correspondence.insert(term.clone(), node_id.clone()) {
-            assert_eq!(existing, node_id, "Congruence invariant violated! Found two different nodes for the same term. Perhaps we used delete in egglog, which could cause this problem.");
+            assert_eq!(existing, node_id, "Congruence invariant violated! Found two different nodes for the same term. Perhaps we used delete in egglog, which could cause this problem. Term: {:?}", term);
         }
     }
 
@@ -845,7 +845,7 @@ fn extract_fn(
     should_maintain_linearity: bool,
 ) -> (CostSet, RcExpr) {
     // prune egraph
-    let egraph = prune_egraph(&egraph, rootid.clone());
+    let egraph = prune_egraph(&egraph, rootid.clone(), cost_model);
 
     log::info!("Building extraction info");
     let egraph_info = EgraphInfo::new(func, rootid.clone(), cost_model, &egraph, unextractables);
@@ -968,6 +968,7 @@ pub fn extract(
 pub fn extract_ilp(
     fns: Vec<String>,
     egraph: egraph_serialize::EGraph,
+    cost_model: &impl CostModel,
     timeout: Duration,
 ) -> Option<Duration> {
     log::info!("Extracting functions with ILP {:?}", fns);
@@ -979,6 +980,7 @@ pub fn extract_ilp(
             &func,
             egraph.nid_to_cid(&get_root(&egraph, &func)).clone(),
             egraph.clone(),
+            cost_model,
             timeout,
         );
 
@@ -995,10 +997,11 @@ pub fn extract_fn_ilp(
     func: &str,
     rootid: ClassId,
     egraph: egraph_serialize::EGraph,
+    cost_model: &impl CostModel,
     timeout: Duration,
 ) -> Option<Duration> {
     // prune egraph
-    let egraph = prune_egraph(&egraph, rootid.clone());
+    let egraph = prune_egraph(&egraph, rootid.clone(), cost_model);
 
     // run ILP extraction, timing it
     let ilp_extractor = FasterCbcExtractorWithTimeout::new(timeout.as_secs() as u32 + 10);
@@ -1046,6 +1049,12 @@ pub fn extract_with_paths(
     while let Some((rootid, nodeid)) = worklist.pop() {
         let classid = info.n2c(&nodeid);
         let node = info.egraph.nodes.get(&nodeid).unwrap();
+
+        // skip nodes with infinite cost
+        if info.cm.get_op_cost(&node.op).is_infinite() {
+            continue;
+        }
+
         if info.unextractables.contains(&node.op) {
             continue;
         }
@@ -1876,7 +1885,11 @@ pub(crate) fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> b
 
 // Prunes an egraph to only reachable nodes, removing context and types
 // replaces types with "UnknownT" and replaces context with unique identifiers
-fn prune_egraph(egraph: &egraph_serialize::EGraph, root: ClassId) -> egraph_serialize::EGraph {
+fn prune_egraph(
+    egraph: &egraph_serialize::EGraph,
+    root: ClassId,
+    cost_model: &impl CostModel,
+) -> egraph_serialize::EGraph {
     let mut new_egraph = egraph_serialize::EGraph::default();
     let mut visited = HashSet::new();
 
@@ -1892,10 +1905,21 @@ fn prune_egraph(egraph: &egraph_serialize::EGraph, root: ClassId) -> egraph_seri
             // if the op is a ctx, replace it with a fresh DumC
             if is_ctx_operator(&node.op) {
                 let new_node = Node {
-                    op: format!("DumC{}", nodeid),
+                    op: format!("DumC{}", node.eclass),
                     children: vec![],
                     eclass: node.eclass.clone(),
                     cost: NotNan::new(0.).unwrap(),
+                    subsumed: false,
+                };
+
+                new_egraph.add_node(nodeid.clone(), new_node);
+            // if it has infinite cost, replace with DumA node
+            } else if cost_model.get_op_cost(&node.op).is_infinite() {
+                let new_node = Node {
+                    op: format!("DumA{}", node.eclass),
+                    children: vec![],
+                    eclass: node.eclass.clone(),
+                    cost: NotNan::new(100000000.).unwrap(),
                     subsumed: false,
                 };
 

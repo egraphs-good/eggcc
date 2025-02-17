@@ -359,6 +359,7 @@ pub struct EggccConfig {
 pub struct EggccTimeStatistics {
     pub eggcc_extraction_time: Duration,
     pub eggcc_serialization_time: Duration,
+    // if ilp didn't time out, what portion of the time was spent in the extraction gym code
     pub ilp_test_time: Option<Duration>,
 }
 

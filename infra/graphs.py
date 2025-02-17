@@ -94,6 +94,9 @@ def get_eggcc_compile_time(data, benchmark_name):
 def get_eggcc_extraction_time(data, benchmark_name):
   return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0').get('eggccExtractionTimeSecs')
 
+def get_ilp_test_time_seconds(data, benchmark_name):
+  return get_row(data, benchmark_name, 'eggcc-ILP-O0-O0').get('ilpTestTimeSeconds')
+
 def group_by_benchmark(profile):
   grouped_by_benchmark = {}
   for benchmark in profile:
@@ -102,6 +105,52 @@ def group_by_benchmark(profile):
       grouped_by_benchmark[benchmark_name] = []
     grouped_by_benchmark[benchmark_name].append(benchmark)
   return [grouped_by_benchmark[benchmark] for benchmark in grouped_by_benchmark]
+
+# a graph of how the ilp solver time changes
+# compared to the number of lines in the bril file
+# when the ilp solve time is null it timed out
+def make_ilp(json, output, benchmark_suite_folder):
+  ilp_timeout = profile.ilp_extraction_test_timeout()
+
+  num_lines = []
+  ilp_times  = []
+  is_ilp_timeout = []
+  eggcc_extract_time = []
+
+  benchmarks = dedup([b.get('benchmark') for b in json])
+
+  for benchmark in benchmarks:
+    extraction_time = get_eggcc_extraction_time(json, benchmark)
+    ilp_time = get_ilp_test_time_seconds(json, benchmark)
+
+    if ilp_time == None:
+      is_ilp_timeout.append(True)
+      ilp_time = ilp_timeout
+    else:
+      is_ilp_timeout.append(False)
+    
+    num_lines.append(get_code_size(benchmark, benchmark_suite_folder))
+    eggcc_extract_time.append(extraction_time)
+    ilp_times.append(ilp_time)
+  
+  # graph data
+  plt.figure(figsize=(10, 6))
+
+  # graph eggcc extraction times
+  plt.scatter(num_lines, eggcc_extract_time, label='EggCC Extraction Time', color='blue')
+
+  # graph ilp times, putting red x marks for timeouts
+  plt.scatter(num_lines, ilp_times, label='ILP Solver Time', color='orange')
+  plt.scatter([num_lines[i] for i in range(len(num_lines)) if is_ilp_timeout[i]], [ilp_times[i] for i in range(len(num_lines)) if is_ilp_timeout[i]], color='red', marker='x', label='ILP Solver Timeout')
+
+  plt.xlabel('Bril Number of Instructions')
+  plt.ylabel('Extraction Time')
+  plt.title('ILP Solver Time vs Code Size')
+  plt.savefig(output)
+
+
+
+
 
 def make_jitter(profile, upper_x_bound, output):
   # Prepare the data for the jitter plot
@@ -432,18 +481,7 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
 
 
 
-
-
-if __name__ == '__main__':
-  # parse two arguments: the output folder and the profile.json file
-  if len(sys.argv) != 4:
-      print("Usage: python graphs.py <output_folder> <profile.json> <benchmark_suite_folder>")
-      sys.exit(1)
-  output_folder = sys.argv[1]
-  graphs_folder = output_folder + '/graphs'
-  profile_file = sys.argv[2]
-  benchmark_suite_folder = sys.argv[3]
-
+def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder):
   # Read profile.json from nightly/output/data/profile.json
   profile = []
   with open(profile_file) as f:
@@ -454,6 +492,8 @@ if __name__ == '__main__':
   benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
+
+  make_ilp(profile, f'{graphs_folder}/ilp_vs_lines.png', benchmark_suite_folder)
 
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)
@@ -492,5 +532,12 @@ if __name__ == '__main__':
       graph_names.append(filename)
   with open(f'{output_folder}/graphs.json', 'w') as f:
     json.dump(graph_names, f)
+
+if __name__ == '__main__':
+  # parse two arguments: the output folder and the profile.json file
+  if len(sys.argv) != 4:
+      print("Usage: python graphs.py <output_folder> <profile.json> <benchmark_suite_folder>")
+      sys.exit(1)
+  make_graphs(sys.argv[1], sys.argv[1] + '/graphs', sys.argv[2], sys.argv[3])
 
   

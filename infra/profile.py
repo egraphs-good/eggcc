@@ -26,10 +26,10 @@ def num_samples():
 
 # timeout in seconds, per function, that we give ILP to find
 # a solution ignoring linearity constraints
-def ilp_test_timeout():
+def ilp_extraction_test_timeout():
   if IS_TESTING_MODE:
-    return 10
-  return 100
+    return 30 # 30 second timeout
+  return 300 # 5 minute timeout
 
 def average(lst):
   return sum(lst) / len(lst)
@@ -48,6 +48,7 @@ treatments = [
   "llvm-O3-O3",
   "llvm-eggcc-O3-O0",
   "llvm-eggcc-O3-O3",
+  "eggcc-ILP-O0-O0"
 ]
 
 if TO_ABLATE != "":
@@ -97,6 +98,9 @@ def get_eggcc_options(benchmark):
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0 --ablate {TO_ABLATE}')
     case "llvm-eggcc-ablation-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
+    case "eggcc-ILP-O0-O0":
+      # run with the ilp-extraction-timeout flag
+      return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -158,6 +162,7 @@ def optimize(benchmark):
   eggcc_compile_time = 0
   eggcc_extraction_time = 0
   eggcc_serialization_time = 0
+  ilp_test_time = None
   # parse json from eggcc run data
   with open(eggcc_run_data) as f:
     eggcc_data = json.load(f)
@@ -172,6 +177,12 @@ def optimize(benchmark):
     secs = eggcc_data["eggcc_extraction_time"]["secs"]
     nanos = eggcc_data["eggcc_extraction_time"]["nanos"]
     eggcc_extraction_time = secs + nanos / 1e9
+
+    if eggcc_data["ilp_test_time"] is not None:
+      secs = eggcc_data["ilp_test_time"]["secs"]
+      nanos = eggcc_data["ilp_test_time"]["nanos"]
+      ilp_test_time = secs + nanos / 1e9
+    
   
   llvm_compile_time = 0
   with open(llvm_run_data) as f:
@@ -187,6 +198,7 @@ def optimize(benchmark):
         "eggccSerializationTimeSecs": eggcc_serialization_time,
         "eggccExtractionTimeSecs": eggcc_extraction_time,
         "llvmCompileTimeSecs": llvm_compile_time,
+        "ilpTestTimeSecs": ilp_test_time,
     }
   return res
 

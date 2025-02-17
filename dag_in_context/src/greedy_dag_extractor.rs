@@ -9,6 +9,7 @@ use std::{
     collections::{HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
+    sync::Arc,
     time::{Duration, Instant},
 };
 use strum::IntoEnumIterator;
@@ -1905,7 +1906,7 @@ fn prune_egraph(
             // if the op is a ctx, replace it with a fresh DumC
             if is_ctx_operator(&node.op) {
                 let new_node = Node {
-                    op: format!("DumC{}", node.eclass),
+                    op: format!("DumC{}", nodeid),
                     children: vec![],
                     eclass: node.eclass.clone(),
                     cost: NotNan::new(0.).unwrap(),

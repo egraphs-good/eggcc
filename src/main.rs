@@ -69,6 +69,10 @@ struct Args {
     /// WARNING: Produces unsound results!
     #[clap(long)]
     no_linearity: bool,
+    /// If we are testing ILP extraction, the timeout
+    /// in milliseconds for the test.
+    #[clap(long)]
+    ilp_extraction_test_timeout: Option<u64>,
 
     #[clap(long)]
     optimize_function: Option<String>,

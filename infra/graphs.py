@@ -310,7 +310,7 @@ def get_code_size(benchmark, suites_path):
   raise KeyError(f"Unsupported file type for benchmark {benchmark}: {file}")
 
 
-def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, extraction_time_output, suites_path):
+def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, extraction_time_output, ratio_output, suites_path):
   benchmarks = dedup([b.get('benchmark') for b in profile])
 
   data = []
@@ -318,11 +318,14 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
     compile_time = get_eggcc_compile_time(profile, benchmark)
     extraction_time = get_eggcc_extraction_time(profile, benchmark)
     code_size = get_code_size(benchmark, suites_path)
+    if code_size > 300:
+      continue
     data.append((code_size, compile_time, extraction_time))
 
   x = [d[0] for d in data]
   y1 = [d[1] for d in data]
   y2 = [d[2] for d in data]
+  y3 = [d[2] / d[1] for d in data]
 
   # graph data
   plt.figure(figsize=(10, 6))
@@ -341,11 +344,11 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
   plt.savefig(extraction_time_output)
 
   plt.figure(figsize=(10, 6))
-  plt.scatter(y1, y2)
-  plt.xlabel('EggCC Compile Time (s)')
-  plt.ylabel('EggCC Extraction Time (s)')
+  plt.scatter(x, y3)
+  plt.xlabel('Bril Number of Instructions')
+  plt.ylabel('Extraction Ratio')
   plt.title('EggCC Compile Time vs Extraction Time')
-  plt.savefig(extraction_time_output)
+  plt.savefig(ratio_output)
 
 
 
@@ -380,7 +383,12 @@ if __name__ == '__main__':
 
   make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
 
-  make_code_size_vs_compile_and_extraction_time(profile, f'{graphs_folder}/code_size_vs_compile_time.png', f'{graphs_folder}/code_size_vs_extraction_time.png', benchmark_suite_folder)
+  make_code_size_vs_compile_and_extraction_time(
+    profile, 
+    f'{graphs_folder}/code_size_vs_compile_time.png', 
+    f'{graphs_folder}/code_size_vs_extraction_time.png', 
+    f'{graphs_folder}/extraction_ratio.png',
+    benchmark_suite_folder)
 
   # make json list of graph names and put in in output
   graph_names = []

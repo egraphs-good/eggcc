@@ -24,6 +24,13 @@ def num_samples():
   return 1000
 
 
+# timeout in seconds, per function, that we give ILP to find
+# a solution ignoring linearity constraints
+def ilp_test_timeout():
+  if IS_TESTING_MODE:
+    return 10
+  return 100
+
 def average(lst):
   return sum(lst) / len(lst)
 

@@ -5,7 +5,9 @@ use bril_rs::Program;
 use clap::ValueEnum;
 use dag_in_context::dag2svg::tree_to_svg;
 use dag_in_context::schedule::{self};
-use dag_in_context::{build_program, check_roundtrip_egraph, EggccConfig, Schedule};
+use dag_in_context::{
+    build_program, check_roundtrip_egraph, EggccConfig, EggccTimeStatistics, Schedule,
+};
 
 use dag_in_context::schema::TreeProgram;
 use serde::{Deserialize, Serialize};
@@ -455,23 +457,28 @@ pub struct RunResult {
     pub eggcc_compile_time: Duration,
     pub eggcc_extraction_time: Duration,
     pub eggcc_serialization_time: Duration,
+    /// None when ilp isn't being tested or ilp timed out
+    /// Some when ilp didn't time out, the sum of all time
+    /// spent in ILP
+    pub ilp_test_time: Option<Duration>,
 }
 
 impl Run {
     fn optimize_bril(
         program: &Program,
         config: &EggccConfig,
-    ) -> Result<(Program, Duration, Duration), EggCCError> {
+    ) -> Result<(Program, EggccTimeStatistics), EggCCError> {
         let rvsdg = Optimizer::program_to_rvsdg(program)?;
         let dag = rvsdg.to_dag_encoding();
-        let optimized = dag_in_context::optimize(&dag, config).map_err(EggCCError::EggLog)?;
-        let rvsdg2 = dag_to_rvsdg(&optimized.0);
+        let (optimized, time_stats) =
+            dag_in_context::optimize(&dag, config).map_err(EggCCError::EggLog)?;
+        let rvsdg2 = dag_to_rvsdg(&optimized);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
         // re-name variables in the bril, hiding our nondeterminism bug ):
         let bril = canonicalize_bril(&bril);
 
-        Ok((bril, optimized.1, optimized.2))
+        Ok((bril, time_stats))
     }
 
     pub fn compile_brilift_config(
@@ -630,12 +637,11 @@ impl Run {
         };
 
         let mut llvm_compile_time = Duration::from_millis(0);
-        let mut eggcc_extraction_time = Duration::from_millis(0);
-        let mut eggcc_serialization_time = Duration::from_millis(0);
-        let (visualizations, interpretable_out) = match self.test_type {
+        let (visualizations, interpretable_out, time_statistics) = match self.test_type {
             RunMode::Parse => (
                 vec![self.prog_with_args.to_viz()],
                 Some(Interpretable::Bril(self.prog_with_args.program.clone())),
+                EggccTimeStatistics::default(),
             ),
             RunMode::BrilToJson => {
                 let json = serde_json::to_string_pretty(&self.prog_with_args.program).unwrap();
@@ -646,6 +652,7 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::RvsdgConversion => {
@@ -658,12 +665,13 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::OptimizedCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
-                (cfg.visualizations(), None)
+                (cfg.visualizations(), None, EggccTimeStatistics::default())
             }
             RunMode::RvsdgRoundTrip => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
@@ -677,18 +685,17 @@ impl Run {
                 (
                     vec![prog_with_args.to_viz()],
                     Some(Interpretable::Bril(bril)),
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::RvsdgRoundTripToExecutable => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
-                let (interpretable, llvm_time, serialization_time, extraction_time) =
+                let (interpretable, llvm_time, time_stats) =
                     self.run_bril_llvm(bril, false, LLVMOptLevel::O0_O0, self.add_timing)?;
                 llvm_compile_time = llvm_time;
-                eggcc_serialization_time += serialization_time;
-                eggcc_extraction_time += extraction_time;
-                (vec![], Some(interpretable))
+                (vec![], Some(interpretable), time_stats)
             }
             RunMode::DagToRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
@@ -701,6 +708,7 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::DagRoundTrip => {
@@ -717,26 +725,27 @@ impl Run {
                 (
                     vec![prog_with_args.to_viz()],
                     Some(Interpretable::Bril(bril)),
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::CheckExtractIdentical => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding();
                 check_roundtrip_egraph(&tree);
-                (vec![], None)
+                (vec![], None, EggccTimeStatistics::default())
             }
             RunMode::Optimize => {
-                let bril = Run::optimize_bril(&self.prog_with_args.program, &self.eggcc_config)?;
-                eggcc_serialization_time += bril.1;
-                eggcc_extraction_time += bril.2;
+                let (bril, stats) =
+                    Run::optimize_bril(&self.prog_with_args.program, &self.eggcc_config)?;
                 let new_prog_with_args = ProgWithArguments {
-                    program: bril.0.clone(),
+                    program: bril.clone(),
                     name: self.prog_with_args.name.clone(),
                     args: self.prog_with_args.args.clone(),
                 };
                 (
                     vec![new_prog_with_args.to_viz()],
-                    Some(Interpretable::Bril(bril.0)),
+                    Some(Interpretable::Bril(bril)),
+                    stats,
                 )
             }
             RunMode::PrettyPrint => {
@@ -750,16 +759,15 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::OptimizedPrettyPrint => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let prog = rvsdg.to_dag_encoding();
-                let optimized = dag_in_context::optimize(&prog, &self.eggcc_config)
+                let (optimized, time_stats) = dag_in_context::optimize(&prog, &self.eggcc_config)
                     .map_err(EggCCError::EggLog)?;
-                eggcc_serialization_time += optimized.1;
-                eggcc_extraction_time += optimized.2;
-                let res = TreeProgram::pretty_print_to_rust(&optimized.0);
+                let res = TreeProgram::pretty_print_to_rust(&optimized);
                 (
                     vec![Visualization {
                         result: res,
@@ -767,6 +775,7 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
+                    time_stats,
                 )
             }
             RunMode::TestPrettyPrint => {
@@ -781,7 +790,7 @@ impl Run {
                 egglog::EGraph::default()
                     .parse_and_run_program(None, &program)
                     .unwrap();
-                (vec![], None)
+                (vec![], None, EggccTimeStatistics::default())
             }
             RunMode::DagConversion => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
@@ -793,34 +802,32 @@ impl Run {
                         name: "".to_string(),
                     }],
                     Some(Interpretable::TreeProgram(tree)),
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::DagOptimize => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let tree = rvsdg.to_dag_encoding();
-                let optimized = dag_in_context::optimize(&tree, &self.eggcc_config)
+                let (optimized, time_stats) = dag_in_context::optimize(&tree, &self.eggcc_config)
                     .map_err(EggCCError::EggLog)?;
 
-                eggcc_serialization_time += optimized.1;
-                eggcc_extraction_time += optimized.2;
                 (
                     vec![Visualization {
-                        result: tree_to_svg(&optimized.0),
+                        result: tree_to_svg(&optimized),
                         file_extension: ".svg".to_string(),
                         name: "".to_string(),
                     }],
-                    Some(Interpretable::TreeProgram(optimized.0)),
+                    Some(Interpretable::TreeProgram(optimized)),
+                    time_stats,
                 )
             }
             RunMode::OptimizedRvsdg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding();
-                let optimized = dag_in_context::optimize(&dag, &self.eggcc_config)
+                let (optimized, time_stats) = dag_in_context::optimize(&dag, &self.eggcc_config)
                     .map_err(EggCCError::EggLog)?;
 
-                eggcc_serialization_time += optimized.1;
-                eggcc_extraction_time += optimized.2;
-                let rvsdg = dag_to_rvsdg(&optimized.0);
+                let rvsdg = dag_to_rvsdg(&optimized);
                 (
                     vec![Visualization {
                         result: rvsdg.to_svg(),
@@ -828,6 +835,7 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
+                    time_stats,
                 )
             }
             RunMode::Egglog => {
@@ -843,20 +851,18 @@ impl Run {
                     stop_after_n_passes: cutoff as i64,
                     ..self.eggcc_config.clone()
                 };
-                let optimized =
+                let (optimized, time_stats) =
                     dag_in_context::optimize(&dag, &eggcc_config).map_err(EggCCError::EggLog)?;
 
-                eggcc_serialization_time += optimized.1;
-                eggcc_extraction_time += optimized.2;
                 let last_schedule_step = &schedules[cutoff];
 
                 let inline_program = match last_schedule_step {
                     schedule::CompilerPass::Schedule(_) => None,
-                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&optimized.0),
+                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&optimized),
                 };
 
                 let egglog = build_program(
-                    &optimized.0,
+                    &optimized,
                     inline_program,
                     &dag.fns(),
                     last_schedule_step.egglog_schedule(),
@@ -869,16 +875,17 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
+                    time_stats,
                 )
             }
             RunMode::RvsdgToCfg => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
-                (cfg.visualizations(), None)
+                (cfg.visualizations(), None, EggccTimeStatistics::default())
             }
             RunMode::ToCfg => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
-                (cfg.visualizations(), None)
+                (cfg.visualizations(), None, EggccTimeStatistics::default())
             }
             RunMode::CfgRoundTrip => {
                 let cfg = Optimizer::program_to_cfg(&self.prog_with_args.program);
@@ -891,6 +898,7 @@ impl Run {
                 (
                     vec![prog_with_args.to_viz()],
                     Some(Interpretable::Bril(bril)),
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::OptimizeDirectJumps => {
@@ -905,6 +913,7 @@ impl Run {
                 (
                     vec![prog_with_args.to_viz()],
                     Some(Interpretable::Bril(bril)),
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::Cranelift => {
@@ -913,7 +922,7 @@ impl Run {
                 );
                 let interpretable =
                     self.run_brilift(self.prog_with_args.program.clone(), optimize_brilift)?;
-                (vec![], Some(interpretable))
+                (vec![], Some(interpretable), EggccTimeStatistics::default())
             }
             RunMode::LLVM => {
                 let optimize_egglog = self.optimize_egglog.expect(
@@ -922,18 +931,15 @@ impl Run {
                 let optimize_brillvm = self.optimize_bril_llvm.expect(
                     "optimize_bril_llvm is a required flag when running RunMode::CompileBrilLLVM",
                 );
-                let (interpretable, llvm_time, serialization_time, extraction_time) = self
-                    .run_bril_llvm(
-                        self.prog_with_args.program.clone(),
-                        optimize_egglog,
-                        optimize_brillvm,
-                        self.add_timing,
-                    )?;
+                let (interpretable, llvm_time, time_stats) = self.run_bril_llvm(
+                    self.prog_with_args.program.clone(),
+                    optimize_egglog,
+                    optimize_brillvm,
+                    self.add_timing,
+                )?;
                 llvm_compile_time = llvm_time;
 
-                eggcc_serialization_time += serialization_time;
-                eggcc_extraction_time += extraction_time;
-                (vec![], Some(interpretable))
+                (vec![], Some(interpretable), time_stats)
             }
             RunMode::TestBenchmark => {
                 // optimize_egglog and optimize_brilift should not be set
@@ -953,15 +959,13 @@ impl Run {
                     let resulting_bril = if optimize_egglog {
                         let bril =
                             Run::optimize_bril(&self.prog_with_args.program, &self.eggcc_config)?;
-                        eggcc_serialization_time += bril.1;
-                        eggcc_extraction_time += bril.2;
                         bril.0
                     } else {
                         self.prog_with_args.program.clone()
                     };
 
                     for optimize_llvm in [LLVMOptLevel::O0_O0, LLVMOptLevel::O3_O0] {
-                        let (interpretable, _time, _, _) = self.run_bril_llvm(
+                        let (interpretable, _time, _time_stats) = self.run_bril_llvm(
                             resulting_bril.clone(),
                             false,
                             optimize_llvm,
@@ -981,7 +985,8 @@ impl Run {
                     }
                 }
 
-                (vec![], None)
+                // for test benchmark we don't care about eggcc time stats
+                (vec![], None, EggccTimeStatistics::default())
             }
         };
 
@@ -1018,8 +1023,9 @@ impl Run {
             llvm_compile_time,
             // eggcc_compile_time is filled out by main.rs
             eggcc_compile_time: Duration::from_millis(0),
-            eggcc_extraction_time,
-            eggcc_serialization_time,
+            eggcc_extraction_time: time_statistics.eggcc_extraction_time,
+            eggcc_serialization_time: time_statistics.eggcc_serialization_time,
+            ilp_test_time: time_statistics.ilp_test_time,
         })
     }
 
@@ -1096,20 +1102,15 @@ impl Run {
         optimize_egglog: bool,
         llvm_level: LLVMOptLevel,
         add_timing: bool,
-    ) -> Result<(Interpretable, Duration, Duration, Duration), EggCCError> {
-        let mut eggcc_serialization_time = Duration::from_millis(0);
-        let mut eggcc_extraction_time = Duration::from_millis(0);
+    ) -> Result<(Interpretable, Duration, EggccTimeStatistics), EggCCError> {
         // Make a unique name for this test running bril llvm
         // so we don't have conflicts in /tmp
         let unique_name = format!("{}_{}_{}", self.name(), optimize_egglog, llvm_level);
 
-        let program = if optimize_egglog {
-            let bril = Run::optimize_bril(&input_prog, &self.eggcc_config)?;
-            eggcc_serialization_time += bril.1;
-            eggcc_extraction_time += bril.2;
-            bril.0
+        let (program, time_stats) = if optimize_egglog {
+            Run::optimize_bril(&input_prog, &self.eggcc_config)?
         } else {
-            input_prog
+            (input_prog, EggccTimeStatistics::default())
         };
 
         let mut buf = Vec::new();
@@ -1246,15 +1247,13 @@ impl Run {
             Ok((
                 Interpretable::CycleMeasuringExecutable { executable },
                 llvm_time,
-                eggcc_serialization_time,
-                eggcc_extraction_time,
+                time_stats,
             ))
         } else {
             Ok((
                 Interpretable::Executable { executable },
                 llvm_time,
-                eggcc_serialization_time,
-                eggcc_extraction_time,
+                time_stats,
             ))
         }
     }

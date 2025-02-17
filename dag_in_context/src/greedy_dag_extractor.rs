@@ -9,10 +9,12 @@ use std::{
     collections::{HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
+    time::{Duration, Instant},
 };
 use strum::IntoEnumIterator;
 
 use crate::{
+    fastercbcextractor::FasterCbcExtractorWithTimeout,
     from_egglog::FromEgglog,
     schema::{Expr, RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
@@ -960,6 +962,62 @@ pub fn extract(
 
     prog.remove_dead_code_nodes();
     (cost, prog)
+}
+
+// Returns a duration or None if any extractions timed out
+pub fn extract_ilp(
+    fns: Vec<String>,
+    egraph: egraph_serialize::EGraph,
+    timeout: Duration,
+) -> Option<Duration> {
+    log::info!("Extracting functions with ILP {:?}", fns);
+
+    let mut total = Duration::new(0, 0);
+    for func in fns {
+        log::info!("Extracting function {} with ILP", func);
+        let res = extract_fn_ilp(
+            &func,
+            egraph.nid_to_cid(&get_root(&egraph, &func)).clone(),
+            egraph.clone(),
+            timeout,
+        );
+
+        if res.is_none() {
+            return None;
+        }
+
+        total += res.unwrap();
+    }
+    Some(total)
+}
+
+pub fn extract_fn_ilp(
+    func: &str,
+    rootid: ClassId,
+    egraph: egraph_serialize::EGraph,
+    timeout: Duration,
+) -> Option<Duration> {
+    // prune egraph
+    let egraph = prune_egraph(&egraph, rootid.clone());
+
+    // run ILP extraction, timing it
+    let ilp_extractor = FasterCbcExtractorWithTimeout::new(timeout.as_secs() as u32 + 10);
+
+    let before = Instant::now();
+
+    ilp_extractor.extract(&egraph, &vec![rootid.clone()]);
+
+    let elapsed = before.elapsed();
+    log::info!(
+        "ILP extraction for {} took {} seconds",
+        func,
+        elapsed.as_secs_f64()
+    );
+    if elapsed > timeout {
+        None
+    } else {
+        Some(elapsed)
+    }
 }
 
 /// Extract the function specified by `func` from the egraph.

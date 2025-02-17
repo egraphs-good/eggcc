@@ -24,5 +24,7 @@ rpds = "1.1.0"
 log = "0.4"
 env_logger = "0.11.3"
 insta = { version = "1.31.0", features = ["yaml"] }
+coin_cbc = "0.1.8"
+
 
 clap = { version = "4.4.7", features = ["derive"] }

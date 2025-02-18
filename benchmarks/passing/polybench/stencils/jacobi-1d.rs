@@ -9,21 +9,15 @@ fn init_array(n: i64, nf: f64, a: &mut [f64; 400], b: &mut [f64; 400]) {
     }
 }
 
-// Can't print multiple results on nightly
-// fn print_array(n: i64, a: &[f64; 400]) {
-//     let mut i: i64 = 0;
-//     while i < n {
-//         let x: f64 = a[i as usize];
-//         println!("{} ", x);
-//         i += 1;
-//     }
-// }
-
 fn sum_array(n: i64, a: &[f64; 400]) -> f64 {
     let mut i: i64 = 0;
     let mut sum: f64 = 0.0;
     while i < n {
-        sum += a[i as usize];
+        let x: f64 = a[i as usize];
+        // Can't print multiple things on nightly.
+        // Uncomment to run locally to check output.
+        // println!("{} ", x);
+        sum += x;
         i += 1;
     }
     return sum;
@@ -56,7 +50,6 @@ fn main() {
 
     init_array(n, nf, &mut a, &mut b);
     kernel_jacobi_1d(tsteps, n, &mut a, &mut b);
-    // print_array(n, &a);
 
     let res: f64 = sum_array(n, &a);
 

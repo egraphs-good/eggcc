@@ -149,7 +149,8 @@ def optimize(benchmark):
 
   print(f'Running c1: {cmd1}', flush=True)
   process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
-  process.check_returncode()
+  if process.returncode != 0:
+    print(f'Error running {benchmark.name} with {benchmark.treatment}: {process.stderr}')
 
   # write the std out to the optimized bril file
   with open(optimized_bril_file, 'w') as f:
@@ -157,7 +158,8 @@ def optimize(benchmark):
 
   print(f'Running c2: {cmd2}', flush=True)
   process2 = subprocess.run(cmd2, shell=True)
-  process2.check_returncode()
+  if process2.returncode != 0:
+    print(f'Error running {benchmark.name} with {benchmark.treatment}: {process2.stderr}')
 
   eggcc_compile_time = 0
   eggcc_extraction_time = 0

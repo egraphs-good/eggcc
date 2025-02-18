@@ -1144,13 +1144,23 @@ impl Run {
         // Also, on some machines, just running `opt-18` hangs, so we pass the version flag
         // NB: on newer mac installs, opt-19 and clang-19 will be in the path,
         // but opt/clang will not be.
-        let opt_cmd = if Command::new("opt-18").arg("--version").status().is_ok() {
+        let opt_cmd = if Command::new("opt-18")
+            .stdout(Stdio::null())
+            .arg("--version")
+            .status()
+            .is_ok()
+        {
             "opt-18"
         } else {
             "opt"
         };
 
-        let clang_cmd = if Command::new("clang-18").arg("--version").status().is_ok() {
+        let clang_cmd = if Command::new("clang-18")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .status()
+            .is_ok()
+        {
             "clang-18"
         } else {
             "clang"
@@ -1171,6 +1181,12 @@ impl Run {
             panic!("Opt failed on following input:\n{p1_string}");
         }
 
+        let hostmachinearchuntrimmed = expect_command_success(
+            Command::new(clang_cmd).arg("-dumpmachine"),
+            "failed to get host machine arch",
+        );
+        let hostmachinearch = hostmachinearchuntrimmed.trim();
+
         // Now, run the llvm optimizer and generate optimized llvm
         let llvm_time_start = Instant::now();
         expect_command_success(
@@ -1185,6 +1201,11 @@ impl Run {
             "failed to optimize llvm ir",
         );
         let llvm_time = llvm_time_start.elapsed();
+
+        // now add the host machine arch to the generated llvm ir
+        let mut llvm_ir = std::fs::read_to_string(optimized.clone()).unwrap();
+        llvm_ir = format!("target triple = \"{}\"\n{}", hostmachinearch, llvm_ir);
+        std::fs::write(optimized.clone(), llvm_ir).unwrap();
 
         // Lower the optimized LLVM but don't do target-specific optimizations besides register allocation
         // We use O0 and disable debug info
@@ -1239,11 +1260,17 @@ impl Run {
     }
 }
 
-fn expect_command_success(cmd: &mut std::process::Command, message: &str) {
-    let status = cmd.status().unwrap();
-    if !status.success() {
-        panic!("Command failed: {}", message);
+fn expect_command_success(cmd: &mut std::process::Command, message: &str) -> String {
+    let output = cmd.output().unwrap();
+    if !output.status.success() {
+        panic!(
+            "Command failed: {}\nStderr: {}",
+            message,
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
+
+    String::from_utf8(output.stdout).unwrap()
 }
 
 pub(crate) struct FreshNameGen {

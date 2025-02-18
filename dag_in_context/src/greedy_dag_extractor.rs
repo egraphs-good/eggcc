@@ -1894,7 +1894,7 @@ fn prune_egraph(
     let mut new_egraph = egraph_serialize::EGraph::default();
     let mut visited = HashSet::new();
 
-    let mut todo = vec![root];
+    let mut todo = vec![root.clone()];
 
     while let Some(class) = todo.pop() {
         if !visited.insert(class.clone()) {
@@ -1943,6 +1943,8 @@ fn prune_egraph(
             new_egraph.class_data.insert(class.clone(), data.clone());
         }
     }
+
+    new_egraph.root_eclasses = vec![root];
 
     new_egraph
 }

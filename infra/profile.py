@@ -355,6 +355,12 @@ if __name__ == '__main__':
   total = len(profiles) * len(treatments)
   for benchmark_path in profiles:
     for treatment in treatments:
+
+      # EVIL HACK: skip ILP mode for raytrace benchmark
+      # since it uses too much memory
+      if benchmark_path.endswith("raytrace.rs") and treatment == "eggcc-ILP-O0-O0":
+        print("Skipping raytrace.rs with eggcc-ILP-O0-O0", flush=True)
+        continue
       to_run.append(Benchmark(benchmark_path, treatment, index, total))
       index += 1
 
@@ -365,7 +371,7 @@ if __name__ == '__main__':
 
   compile_data = {}
   # get the number of cores on this machine 
-  parallelism = os.cpu_count()
+  parallelism = 2#os.cpu_count()
 
   # create a thread pool for running optimization
   with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:

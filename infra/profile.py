@@ -257,7 +257,6 @@ def get_suite(path):
 
     oldpath = path
     path = os.path.dirname(path)
-    print(os.path.basename(path))
     if os.path.basename(path) == "passing":
       return os.path.basename(oldpath)
 

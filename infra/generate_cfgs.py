@@ -25,7 +25,7 @@ def make_cfgs(bench, data_dir):
 
     # https://llvm.org/docs/Passes.html#dot-cfg-print-cfg-of-function-to-dot-file
     # spawn a shell in the path and run opt
-    opt_res = subprocess.run(f"{opt} -disable-output -passes=dot-cfg optimized.ll", shell=True, cwd=path)
+    opt_res = subprocess.run(f"{opt} -disable-output -passes=dot-cfg optimized.ll", shell=True, cwd=path, capture_output=True)
     if opt_res.returncode != 0:
       print(f"Error running opt on {path}/optimized.ll")
       exit(1)
@@ -39,7 +39,7 @@ def make_cfgs(bench, data_dir):
 
       # Convert to png
       cmd = f"dot -Tpng -o {path}/{name}.png {path}/{dot}"
-      dot_res = subprocess.run(cmd, shell=True).returncode
+      dot_res = subprocess.run(cmd, shell=True, capture_output=True).returncode
       if dot_res != 0:
         print(f"Error converting {dot} to png")
         exit(1)

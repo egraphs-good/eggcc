@@ -4,7 +4,8 @@ expression: visualization.result
 ---
 # ARGS: 
 @one {
-  call @four;
+  c0_: int = const 4;
+  print c0_;
   ret;
 }
 @two {
@@ -23,6 +24,6 @@ expression: visualization.result
   ret;
 }
 @main {
-  call @three;
+  call @four;
   ret;
 }

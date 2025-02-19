@@ -7,24 +7,26 @@ expression: visualization.result
   c1_: int = const 0;
   c2_: int = const 1;
   c3_: int = const 10;
-  v4_: int = id c1_;
-  v5_: int = id c2_;
-  v6_: int = id v0;
-  v7_: int = id c1_;
-  v8_: int = id c3_;
-.b9_:
-  v10_: bool = lt v6_ v5_;
-  v11_: int = select v10_ v5_ v7_;
-  print v11_;
+  v4_: bool = lt v0 c2_;
+  v5_: int = id c1_;
+  v6_: int = id c2_;
+  v7_: int = id v0;
+  v8_: int = id c1_;
+  v9_: int = id c3_;
+  v10_: bool = id v4_;
+.b11_:
+  v12_: int = select v10_ v6_ v8_;
+  print v12_;
   print v10_;
-  v12_: int = add v4_ v5_;
-  v13_: bool = lt v4_ v8_;
-  v4_: int = id v12_;
-  v5_: int = id v5_;
+  v13_: int = add v5_ v6_;
+  v14_: bool = lt v5_ v9_;
+  v5_: int = id v13_;
   v6_: int = id v6_;
   v7_: int = id v7_;
   v8_: int = id v8_;
-  br v13_ .b9_ .b14_;
-.b14_:
+  v9_: int = id v9_;
+  v10_: bool = id v10_;
+  br v14_ .b11_ .b15_;
+.b15_:
   ret;
 }

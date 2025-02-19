@@ -966,7 +966,9 @@ impl Run {
                         // that causes llvm O3 to produce a different result than llvm O0
                         // on raytracewithscreen.
                         // This is not an issue of eggcc per se, so we skip it for now.
-                        if self.prog_with_args.name.contains("raytracewithscreen") && optimize_llvm == LLVMOptLevel::O3_O0 {
+                        if self.prog_with_args.name.contains("raytracewithscreen")
+                            && optimize_llvm == LLVMOptLevel::O3_O0
+                        {
                             continue;
                         }
                         let (interpretable, _time, _, _) = self.run_bril_llvm(

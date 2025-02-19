@@ -5,7 +5,12 @@ use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::{rulesets, CompilerPass};
 use schema::TreeProgram;
-use std::{collections::HashSet, fmt::Write, i64};
+use std::{
+    collections::HashSet,
+    fmt::Write,
+    i64,
+    time::{Duration, Instant},
+};
 use to_egglog::TreeToEgglog;
 
 use crate::{
@@ -371,10 +376,14 @@ impl Default for EggccConfig {
 
 // Optimizes a tree program using the given schedule.
 // Adds context to the program before optimizing.
+// If successful, returns the optimized program and the time
+// it takes for serialization and extraction
 pub fn optimize(
     program: &TreeProgram,
     eggcc_config: &EggccConfig,
-) -> std::result::Result<TreeProgram, egglog::Error> {
+) -> std::result::Result<(TreeProgram, Duration, Duration), egglog::Error> {
+    let mut eggcc_serialization_time = Duration::from_millis(0);
+    let mut eggcc_extraction_time = Duration::from_millis(0);
     let schedule_list = eggcc_config.schedule.get_schedule_list();
     let mut res = program.clone();
 
@@ -430,8 +439,10 @@ pub fn optimize(
             let mut egraph = egglog::EGraph::default();
             egraph.parse_and_run_program(None, &egglog_prog)?;
 
+            let serialization_start = Instant::now();
             let (serialized, unextractables) = serialized_egraph(egraph);
 
+            let extraction_start = Instant::now();
             let mut termdag = egglog::TermDag::default();
             let has_debug_exprs = has_debug_exprs(&serialized);
             if has_debug_exprs {
@@ -450,6 +461,11 @@ pub fn optimize(
                 has_debug_exprs,
             );
 
+            let extraction_end = Instant::now();
+
+            eggcc_extraction_time += extraction_end - extraction_start;
+            eggcc_serialization_time += extraction_start - serialization_start;
+
             // typecheck the program as a sanity check
             iter_result.typecheck();
 
@@ -457,14 +473,14 @@ pub fn optimize(
 
             if has_debug_exprs {
                 log::info!("Program has debug expressions, stopping pass {}.", i);
-                return Ok(res);
+                return Ok((res, eggcc_serialization_time, eggcc_extraction_time));
             }
         }
 
         // now add context to res again for the next pass, since context might be less specific
         res = res.add_context().0;
     }
-    Ok(res)
+    Ok((res, eggcc_serialization_time, eggcc_extraction_time))
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

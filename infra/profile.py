@@ -149,12 +149,22 @@ def optimize(benchmark):
   process2.check_returncode()
 
   eggcc_compile_time = 0
+  eggcc_extraction_time = 0
+  eggcc_serialization_time = 0
   # parse json from eggcc run data
   with open(eggcc_run_data) as f:
     eggcc_data = json.load(f)
     secs = eggcc_data["eggcc_compile_time"]["secs"]
     nanos = eggcc_data["eggcc_compile_time"]["nanos"]
     eggcc_compile_time = secs + nanos / 1e9
+
+    secs = eggcc_data["eggcc_serialization_time"]["secs"]
+    nanos = eggcc_data["eggcc_serialization_time"]["nanos"]
+    eggcc_serialization_time = secs + nanos / 1e9
+
+    secs = eggcc_data["eggcc_extraction_time"]["secs"]
+    nanos = eggcc_data["eggcc_extraction_time"]["nanos"]
+    eggcc_extraction_time = secs + nanos / 1e9
   
   llvm_compile_time = 0
   with open(llvm_run_data) as f:
@@ -164,7 +174,13 @@ def optimize(benchmark):
     llvm_compile_time = secs + nanos / 1e9
 
 
-  res = {"path": f"{profile_dir}/{benchmark.treatment}", "eggccCompileTimeSecs": eggcc_compile_time, "llvmCompileTimeSecs": llvm_compile_time}
+    res = {
+        "path": f"{profile_dir}/{benchmark.treatment}",
+        "eggccCompileTimeSecs": eggcc_compile_time,
+        "eggccSerializationTimeSecs": eggcc_serialization_time,
+        "eggccExtractionTimeSecs": eggcc_extraction_time,
+        "llvmCompileTimeSecs": llvm_compile_time,
+    }
   return res
 
 
@@ -241,7 +257,6 @@ def get_suite(path):
 
     oldpath = path
     path = os.path.dirname(path)
-    print(os.path.basename(path))
     if os.path.basename(path) == "passing":
       return os.path.basename(oldpath)
 

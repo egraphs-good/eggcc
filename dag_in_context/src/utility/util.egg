@@ -73,15 +73,22 @@
 
 ;; push gets through concats
 (rewrite (Get (Single expr) 0) expr :ruleset always-run)
-(rule ((Get (Concat a b) i)
+(rule ((= lhs (Get (Concat a b) i))
        (= len (tuple-length a))
        (< i len))
-      ((Get a i))
+      ((union lhs (Get a i)))
       :ruleset always-run)
-(rule ((Get (Concat a b) i)
+(rule ((= lhs (Get (Concat a b) i))
        (= len (tuple-length a))
        (>= i len))
-      ((Get b (- i len)))
+      ((union lhs (Get b (- i len))))
+      :ruleset always-run)
+(rule ((Get (Single expr) i)
+       (!= i 0))
+      ((panic "Get out of bounds"))
+      :ruleset always-run)
+(rule ((Get (Empty ty ctx) i))
+      ((panic "Get out of bounds"))
       :ruleset always-run)
 
 ;; A temporary context.

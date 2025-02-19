@@ -5,7 +5,12 @@ use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::{rulesets, CompilerPass};
 use schema::TreeProgram;
-use std::{collections::HashSet, fmt::Write, i64};
+use std::{
+    collections::HashSet,
+    fmt::Write,
+    i64,
+    time::{Duration, Instant},
+};
 use to_egglog::TreeToEgglog;
 
 use crate::{
@@ -24,6 +29,7 @@ pub mod interpreter;
 pub(crate) mod interval_analysis;
 mod linearity;
 mod optimizations;
+mod remove_dead_code_nodes;
 pub mod schema;
 pub mod schema_helpers;
 mod to_egglog;
@@ -62,6 +68,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/peepholes.egg"),
         &optimizations::memory::rules(),
         include_str!("optimizations/memory.egg"),
+        include_str!("optimizations/mem_simple.egg"),
         &optimizations::loop_invariant::rules().join("\n"),
         include_str!("optimizations/loop_simplify.egg"),
         include_str!("optimizations/loop_unroll.egg"),
@@ -76,6 +83,48 @@ pub fn prologue() -> String {
         &rulesets(),
     ]
     .join("\n")
+}
+
+fn ablate_prologue(prologue: &str, ablate: &str) -> String {
+    let mut found_ruleset = false;
+    let lines: Vec<String> = prologue
+        .lines()
+        .map(|line| {
+            if line.contains(&format!("(ruleset {})", ablate)) {
+                found_ruleset = true;
+                line.replace(&format!("(ruleset {})", ablate), "")
+            } else if line.contains(&format!(":ruleset {}", ablate)) {
+                line.replace(&format!(":ruleset {}", ablate), ":ruleset never")
+            } else {
+                line.to_string()
+            }
+        })
+        .collect();
+
+    assert!(
+        found_ruleset,
+        "No ruleset {} found in prologue to ablate",
+        ablate
+    );
+    lines.join("\n")
+}
+
+fn ablate_schedule(schedule: &str, ablate: &str) -> String {
+    let mut found_schedule = false;
+    let lines: Vec<String> = schedule
+        .lines()
+        .map(|line| {
+            if line.contains(ablate) {
+                found_schedule = true;
+                line.replace(ablate, "never")
+            } else {
+                line.to_string()
+            }
+        })
+        .collect();
+
+    assert!(found_schedule, "No schedule {} found to ablate", ablate);
+    lines.join("\n")
 }
 
 /// Adds an egglog program to `res` that adds the given term
@@ -134,6 +183,7 @@ pub fn build_program(
     inline_program: Option<&TreeProgram>,
     fns: &[String],
     schedule: &str,
+    ablate: Option<&str>,
 ) -> String {
     let (program, mut context_cache) = program.add_context();
     let mut printed = String::new();
@@ -193,6 +243,14 @@ pub fn build_program(
     }
 
     let prologue = prologue();
+    let (prologue, schedule) = if let Some(ablate) = ablate {
+        (
+            ablate_prologue(&prologue, ablate),
+            ablate_schedule(schedule, ablate),
+        )
+    } else {
+        (prologue, schedule.to_string())
+    };
 
     format!(
         "
@@ -234,7 +292,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
     let fns = program.fns();
-    let egglog_prog = build_program(program, None, &fns, "");
+    let egglog_prog = build_program(program, None, &fns, "", None);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
@@ -289,6 +347,7 @@ pub struct EggccConfig {
     pub linearity: bool,
     /// When Some, optimize only the functions in this set.
     pub optimize_functions: Option<HashSet<String>>,
+    pub ablate: Option<String>,
 }
 
 impl EggccConfig {
@@ -310,16 +369,21 @@ impl Default for EggccConfig {
             stop_after_n_passes: i64::MAX,
             linearity: true,
             optimize_functions: None,
+            ablate: None,
         }
     }
 }
 
 // Optimizes a tree program using the given schedule.
 // Adds context to the program before optimizing.
+// If successful, returns the optimized program and the time
+// it takes for serialization and extraction
 pub fn optimize(
     program: &TreeProgram,
     eggcc_config: &EggccConfig,
-) -> std::result::Result<TreeProgram, egglog::Error> {
+) -> std::result::Result<(TreeProgram, Duration, Duration), egglog::Error> {
+    let mut eggcc_serialization_time = Duration::from_millis(0);
+    let mut eggcc_extraction_time = Duration::from_millis(0);
     let schedule_list = eggcc_config.schedule.get_schedule_list();
     let mut res = program.clone();
 
@@ -368,14 +432,17 @@ pub fn optimize(
                 inline_program.as_ref(),
                 &batch,
                 schedule.egglog_schedule(),
+                eggcc_config.ablate.as_deref(),
             );
 
             log::info!("Running egglog program...");
             let mut egraph = egglog::EGraph::default();
             egraph.parse_and_run_program(None, &egglog_prog)?;
 
+            let serialization_start = Instant::now();
             let (serialized, unextractables) = serialized_egraph(egraph);
 
+            let extraction_start = Instant::now();
             let mut termdag = egglog::TermDag::default();
             let has_debug_exprs = has_debug_exprs(&serialized);
             if has_debug_exprs {
@@ -394,18 +461,26 @@ pub fn optimize(
                 has_debug_exprs,
             );
 
+            let extraction_end = Instant::now();
+
+            eggcc_extraction_time += extraction_end - extraction_start;
+            eggcc_serialization_time += extraction_start - serialization_start;
+
+            // typecheck the program as a sanity check
+            iter_result.typecheck();
+
             res = iter_result;
 
             if has_debug_exprs {
                 log::info!("Program has debug expressions, stopping pass {}.", i);
-                return Ok(res);
+                return Ok((res, eggcc_serialization_time, eggcc_extraction_time));
             }
         }
 
         // now add context to res again for the next pass, since context might be less specific
         res = res.add_context().0;
     }
-    Ok(res)
+    Ok((res, eggcc_serialization_time, eggcc_extraction_time))
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

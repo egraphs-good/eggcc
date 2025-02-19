@@ -453,20 +453,25 @@ pub struct RunResult {
     // eggcc_compile_time is filled out by main.rs
     // so that we don't miss any time spent in the main function
     pub eggcc_compile_time: Duration,
+    pub eggcc_extraction_time: Duration,
+    pub eggcc_serialization_time: Duration,
 }
 
 impl Run {
-    fn optimize_bril(program: &Program, config: &EggccConfig) -> Result<Program, EggCCError> {
+    fn optimize_bril(
+        program: &Program,
+        config: &EggccConfig,
+    ) -> Result<(Program, Duration, Duration), EggCCError> {
         let rvsdg = Optimizer::program_to_rvsdg(program)?;
         let dag = rvsdg.to_dag_encoding();
         let optimized = dag_in_context::optimize(&dag, config).map_err(EggCCError::EggLog)?;
-        let rvsdg2 = dag_to_rvsdg(&optimized);
+        let rvsdg2 = dag_to_rvsdg(&optimized.0);
         let cfg = rvsdg2.to_cfg();
         let bril = cfg.to_bril();
         // re-name variables in the bril, hiding our nondeterminism bug ):
         let bril = canonicalize_bril(&bril);
 
-        Ok(bril)
+        Ok((bril, optimized.1, optimized.2))
     }
 
     pub fn compile_brilift_config(
@@ -625,6 +630,8 @@ impl Run {
         };
 
         let mut llvm_compile_time = Duration::from_millis(0);
+        let mut eggcc_extraction_time = Duration::from_millis(0);
+        let mut eggcc_serialization_time = Duration::from_millis(0);
         let (visualizations, interpretable_out) = match self.test_type {
             RunMode::Parse => (
                 vec![self.prog_with_args.to_viz()],
@@ -676,9 +683,11 @@ impl Run {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let cfg = rvsdg.to_cfg();
                 let bril = cfg.to_bril();
-                let (interpretable, llvm_time) =
+                let (interpretable, llvm_time, serialization_time, extraction_time) =
                     self.run_bril_llvm(bril, false, LLVMOptLevel::O0_O0, self.add_timing)?;
                 llvm_compile_time = llvm_time;
+                eggcc_serialization_time += serialization_time;
+                eggcc_extraction_time += extraction_time;
                 (vec![], Some(interpretable))
             }
             RunMode::DagToRvsdg => {
@@ -718,14 +727,16 @@ impl Run {
             }
             RunMode::Optimize => {
                 let bril = Run::optimize_bril(&self.prog_with_args.program, &self.eggcc_config)?;
+                eggcc_serialization_time += bril.1;
+                eggcc_extraction_time += bril.2;
                 let new_prog_with_args = ProgWithArguments {
-                    program: bril.clone(),
+                    program: bril.0.clone(),
                     name: self.prog_with_args.name.clone(),
                     args: self.prog_with_args.args.clone(),
                 };
                 (
                     vec![new_prog_with_args.to_viz()],
-                    Some(Interpretable::Bril(bril)),
+                    Some(Interpretable::Bril(bril.0)),
                 )
             }
             RunMode::PrettyPrint => {
@@ -746,7 +757,9 @@ impl Run {
                 let prog = rvsdg.to_dag_encoding();
                 let optimized = dag_in_context::optimize(&prog, &self.eggcc_config)
                     .map_err(EggCCError::EggLog)?;
-                let res = TreeProgram::pretty_print_to_rust(&optimized);
+                eggcc_serialization_time += optimized.1;
+                eggcc_extraction_time += optimized.2;
+                let res = TreeProgram::pretty_print_to_rust(&optimized.0);
                 (
                     vec![Visualization {
                         result: res,
@@ -760,7 +773,7 @@ impl Run {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let tree = rvsdg.to_dag_encoding();
-                let unfolded_program = build_program(&tree, None, &tree.fns(), "");
+                let unfolded_program = build_program(&tree, None, &tree.fns(), "", None);
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
@@ -787,13 +800,16 @@ impl Run {
                 let tree = rvsdg.to_dag_encoding();
                 let optimized = dag_in_context::optimize(&tree, &self.eggcc_config)
                     .map_err(EggCCError::EggLog)?;
+
+                eggcc_serialization_time += optimized.1;
+                eggcc_extraction_time += optimized.2;
                 (
                     vec![Visualization {
-                        result: tree_to_svg(&optimized),
+                        result: tree_to_svg(&optimized.0),
                         file_extension: ".svg".to_string(),
                         name: "".to_string(),
                     }],
-                    Some(Interpretable::TreeProgram(optimized)),
+                    Some(Interpretable::TreeProgram(optimized.0)),
                 )
             }
             RunMode::OptimizedRvsdg => {
@@ -801,7 +817,10 @@ impl Run {
                 let dag = rvsdg.to_dag_encoding();
                 let optimized = dag_in_context::optimize(&dag, &self.eggcc_config)
                     .map_err(EggCCError::EggLog)?;
-                let rvsdg = dag_to_rvsdg(&optimized);
+
+                eggcc_serialization_time += optimized.1;
+                eggcc_extraction_time += optimized.2;
+                let rvsdg = dag_to_rvsdg(&optimized.0);
                 (
                     vec![Visualization {
                         result: rvsdg.to_svg(),
@@ -827,18 +846,21 @@ impl Run {
                 let optimized =
                     dag_in_context::optimize(&dag, &eggcc_config).map_err(EggCCError::EggLog)?;
 
+                eggcc_serialization_time += optimized.1;
+                eggcc_extraction_time += optimized.2;
                 let last_schedule_step = &schedules[cutoff];
 
                 let inline_program = match last_schedule_step {
                     schedule::CompilerPass::Schedule(_) => None,
-                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&optimized),
+                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&optimized.0),
                 };
 
                 let egglog = build_program(
-                    &optimized,
+                    &optimized.0,
                     inline_program,
                     &dag.fns(),
                     last_schedule_step.egglog_schedule(),
+                    eggcc_config.ablate.as_deref(),
                 );
                 (
                     vec![Visualization {
@@ -900,13 +922,17 @@ impl Run {
                 let optimize_brillvm = self.optimize_bril_llvm.expect(
                     "optimize_bril_llvm is a required flag when running RunMode::CompileBrilLLVM",
                 );
-                let (interpretable, llvm_time) = self.run_bril_llvm(
-                    self.prog_with_args.program.clone(),
-                    optimize_egglog,
-                    optimize_brillvm,
-                    self.add_timing,
-                )?;
+                let (interpretable, llvm_time, serialization_time, extraction_time) = self
+                    .run_bril_llvm(
+                        self.prog_with_args.program.clone(),
+                        optimize_egglog,
+                        optimize_brillvm,
+                        self.add_timing,
+                    )?;
                 llvm_compile_time = llvm_time;
+
+                eggcc_serialization_time += serialization_time;
+                eggcc_extraction_time += extraction_time;
                 (vec![], Some(interpretable))
             }
             RunMode::TestBenchmark => {
@@ -925,13 +951,17 @@ impl Run {
 
                 for optimize_egglog in [true, false] {
                     let resulting_bril = if optimize_egglog {
-                        Run::optimize_bril(&self.prog_with_args.program, &self.eggcc_config)?
+                        let bril =
+                            Run::optimize_bril(&self.prog_with_args.program, &self.eggcc_config)?;
+                        eggcc_serialization_time += bril.1;
+                        eggcc_extraction_time += bril.2;
+                        bril.0
                     } else {
                         self.prog_with_args.program.clone()
                     };
 
                     for optimize_llvm in [LLVMOptLevel::O0_O0, LLVMOptLevel::O3_O0] {
-                        let (interpretable, _time) = self.run_bril_llvm(
+                        let (interpretable, _time, _, _) = self.run_bril_llvm(
                             resulting_bril.clone(),
                             false,
                             optimize_llvm,
@@ -988,6 +1018,8 @@ impl Run {
             llvm_compile_time,
             // eggcc_compile_time is filled out by main.rs
             eggcc_compile_time: Duration::from_millis(0),
+            eggcc_extraction_time,
+            eggcc_serialization_time,
         })
     }
 
@@ -1064,13 +1096,18 @@ impl Run {
         optimize_egglog: bool,
         llvm_level: LLVMOptLevel,
         add_timing: bool,
-    ) -> Result<(Interpretable, Duration), EggCCError> {
+    ) -> Result<(Interpretable, Duration, Duration, Duration), EggCCError> {
+        let mut eggcc_serialization_time = Duration::from_millis(0);
+        let mut eggcc_extraction_time = Duration::from_millis(0);
         // Make a unique name for this test running bril llvm
         // so we don't have conflicts in /tmp
         let unique_name = format!("{}_{}_{}", self.name(), optimize_egglog, llvm_level);
 
         let program = if optimize_egglog {
-            Run::optimize_bril(&input_prog, &self.eggcc_config)?
+            let bril = Run::optimize_bril(&input_prog, &self.eggcc_config)?;
+            eggcc_serialization_time += bril.1;
+            eggcc_extraction_time += bril.2;
+            bril.0
         } else {
             input_prog
         };
@@ -1188,9 +1225,16 @@ impl Run {
             Ok((
                 Interpretable::CycleMeasuringExecutable { executable },
                 llvm_time,
+                eggcc_serialization_time,
+                eggcc_extraction_time,
             ))
         } else {
-            Ok((Interpretable::Executable { executable }, llvm_time))
+            Ok((
+                Interpretable::Executable { executable },
+                llvm_time,
+                eggcc_serialization_time,
+                eggcc_extraction_time,
+            ))
         }
     }
 }

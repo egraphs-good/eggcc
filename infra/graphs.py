@@ -7,15 +7,24 @@ import matplotlib.ticker as mticker
 import numpy as np
 import sys
 import os
+import profile
 
 RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
 BAR_CHART_RUN_MODES = ["llvm-O3-O3", "llvm-O3-O0", "llvm-eggcc-O0-O0"]
+
+if profile.TO_ABLATE != "":
+  RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
+  BAR_CHART_RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
+
 # copied from chart.js
 COLOR_MAP = {
   "llvm-O0-O0" : "purple",
   "llvm-eggcc-O0-O0" : "pink",
   "llvm-O3-O0" : "gray",
   "llvm-O3-O3": "gold",
+  "llvm-eggcc-ablation-O0-O0": "blue",
+  "llvm-eggcc-ablation-O3-O0": "green",
+  "llvm-eggcc-ablation-O3-O3": "orange",
 }
 BENCHMARK_SPACE = 1.0 / len(RUN_MODES)
 CIRCLE_SIZE = 15
@@ -56,6 +65,9 @@ def get_cycles(data, benchmark_name, run_method):
 
 def get_eggcc_compile_time(data, benchmark_name):
   return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0').get('eggccCompileTimeSecs')
+
+def get_eggcc_extraction_time(data, benchmark_name):
+  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0').get('eggccExtractionTimeSecs')
 
 def group_by_benchmark(profile):
   grouped_by_benchmark = {}
@@ -233,29 +245,6 @@ def format_latex_macro_percent(name, percent_as_ratio):
   percent = percent_as_ratio * 100
   return format_latex_macro(name, f"{percent:.2f}")
 
-def make_macros(profile, output_file):
-  number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 = 0
-  benchmarks = dedup([b.get('benchmark') for b in profile])
-
-  for benchmark in benchmarks:
-    baseline_cycles = get_baseline_cycles(profile, benchmark)
-    llvm_O3_O0_cycles = get_cycles(profile, benchmark, 'llvm-O3-O0')
-    eggcc_O0_O0_cycles = get_cycles(profile, benchmark, 'llvm-eggcc-O0-O0')
-
-    perf_improvement_llvm = mean(baseline_cycles) - mean(llvm_O3_O0_cycles)
-    perf_improvement_eggcc = mean(baseline_cycles) - mean(eggcc_O0_O0_cycles)
-    if perf_improvement_llvm < 0:
-      number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 += 1
-    else:
-      if perf_improvement_eggcc > 0.8 * perf_improvement_llvm:
-        number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 += 1
-  ratio_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 = number_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0 / len(benchmarks)
-
-  with open(output_file, 'w') as f:
-    f.write(format_latex_macro_percent('percentRecoverEightyPercentPerformanceImprovementEggccVsLlvmOThreeOZero', ratio_recover_80_percent_performance_improvement_eggcc_vs_llvm_O3_O0))
-
-
-
 def benchmarks_in_folder(folder):
   # recursively find all files
   files = []
@@ -264,6 +253,23 @@ def benchmarks_in_folder(folder):
       files.append(os.path.join(root, filename))
   # just get file name without extension
   return [os.path.splitext(os.path.basename(f))[0] for f in files]
+
+
+# given a profile.json, list of suite paths, and an output file
+def make_macros(profile, benchmark_suites, output_file):
+  with open(output_file, 'a') as out:
+    # report number of benchmarks in each benchmark suite
+    for suite in benchmark_suites:
+      suite_name = os.path.basename(suite)
+      benchmarks = benchmarks_in_folder(suite)
+      macro_name = f"Num{suite_name}Benchmarks"
+      out.write(format_latex_macro(macro_name, len(benchmarks)))
+    
+    # report the number of benchmarks in the profile
+    out.write(format_latex_macro("NumBenchmarksAllSuites", len(dedup([b.get('benchmark') for b in profile]))))
+
+
+
   
 
 def get_code_size(benchmark, suites_path):
@@ -304,25 +310,46 @@ def get_code_size(benchmark, suites_path):
   raise KeyError(f"Unsupported file type for benchmark {benchmark}: {file}")
 
 
-def make_code_size_vs_compile_time(profile, output, suites_path):
+def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, extraction_time_output, ratio_output, suites_path):
   benchmarks = dedup([b.get('benchmark') for b in profile])
 
   data = []
   for benchmark in benchmarks:
     compile_time = get_eggcc_compile_time(profile, benchmark)
+    extraction_time = get_eggcc_extraction_time(profile, benchmark)
     code_size = get_code_size(benchmark, suites_path)
-    data.append((code_size, compile_time))
+    if code_size > 300:
+      continue
+    data.append((code_size, compile_time, extraction_time))
 
   x = [d[0] for d in data]
-  y = [d[1] for d in data]
+  y1 = [d[1] for d in data]
+  y2 = [d[2] for d in data]
+  y3 = [d[2] / d[1] for d in data]
 
   # graph data
   plt.figure(figsize=(10, 6))
-  plt.scatter(x, y)
+  plt.scatter(x, y1)
   plt.xlabel('Bril Number of Instructions')
   plt.ylabel('EggCC Compile Time (s)')
   plt.title('EggCC Compile Time vs Code Size')
-  plt.savefig(output)
+  plt.savefig(compile_time_output)
+
+
+  plt.figure(figsize=(10, 6))
+  plt.scatter(x, y2)
+  plt.xlabel('Bril Number of Instructions')
+  plt.ylabel('EggCC Extraction Time (s)')
+  plt.title('EggCC Extraction Time vs Code Size')
+  plt.savefig(extraction_time_output)
+
+  plt.figure(figsize=(10, 6))
+  plt.scatter(x, y3)
+  plt.xlabel('Bril Number of Instructions')
+  plt.ylabel('Extraction Ratio')
+  plt.title('EggCC Compile Time vs Extraction Time')
+  plt.savefig(ratio_output)
+
 
 
 
@@ -333,6 +360,7 @@ if __name__ == '__main__':
       print("Usage: python graphs.py <output_folder> <profile.json> <benchmark_suite_folder>")
       sys.exit(1)
   output_folder = sys.argv[1]
+  graphs_folder = output_folder + '/graphs'
   profile_file = sys.argv[2]
   benchmark_suite_folder = sys.argv[3]
 
@@ -343,15 +371,32 @@ if __name__ == '__main__':
 
   # folders in 
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
+  benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
-  make_jitter(profile, 4, f'{output_folder}/jitter_plot_max_4.png')
+  make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
-  for suite in benchmark_suites:
-    suite_path = os.path.join(benchmark_suite_folder, suite)
+  for suite_path in benchmark_suites:
+    suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)
     profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
-    make_bar_chart(profile_for_suite, f'{output_folder}/{suite}_bar_chart.png')
+    make_bar_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.png')
 
-  make_macros(profile, f'{output_folder}/nightlymacros.tex')
+  make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
 
-  make_code_size_vs_compile_time(profile, f'{output_folder}/code_size_vs_compile_time.png', benchmark_suite_folder)
+  make_code_size_vs_compile_and_extraction_time(
+    profile, 
+    f'{graphs_folder}/code_size_vs_compile_time.png', 
+    f'{graphs_folder}/code_size_vs_extraction_time.png', 
+    f'{graphs_folder}/extraction_ratio.png',
+    benchmark_suite_folder)
+
+  # make json list of graph names and put in in output
+  graph_names = []
+  # read all files in the graphs folder
+  for root, _, filenames in os.walk(graphs_folder):
+    for filename in filenames:
+      graph_names.append(filename)
+  with open(f'{output_folder}/graphs.json', 'w') as f:
+    json.dump(graph_names, f)
+
+  

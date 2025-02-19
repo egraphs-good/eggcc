@@ -1,14 +1,14 @@
 (ruleset type-analysis)
 (ruleset type-helpers)       ;; these rules need to saturate between every iter of type-analysis rules
 
-(function TLConcat (TypeList TypeList) TypeList :unextractable)
+(constructor TLConcat (TypeList TypeList) TypeList :unextractable)
 (rewrite (TLConcat (TNil) r) r :ruleset type-helpers)
 (rewrite (TLConcat (TCons hd tl) r)
          (TCons hd (TLConcat tl r))
          :ruleset type-helpers)
 
-(function TypeList-length (TypeList) i64 :unextractable)
-(function TypeList-ith (TypeList i64) BaseType :unextractable)
+(function TypeList-length (TypeList) i64 :no-merge)
+(constructor TypeList-ith (TypeList i64) BaseType :unextractable)
 ;; Don't match on TypeList-ith because it is now lazily instantiated!
 (rule () ((set (TypeList-length (TNil)) 0)) :ruleset type-helpers)
 (rule ((= lst (TCons hd tl))
@@ -246,6 +246,30 @@
       )
       ((panic "(Load) expected pointer, received tuple"))
       :ruleset error-checking)
+
+(rule (
+        (= lhs (Top (Select) pred v1 v2))
+      )
+      ((ExpectType pred (Base (BoolT)) "(Select)"))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Top (Select) pred v1 v2))
+        (HasType v1 ty)
+        (HasType v2 ty)
+      )
+      ((HasType lhs ty))
+      :ruleset type-analysis)
+
+(rule (
+        (= lhs (Top (Select) pred v1 v2))
+        (HasType v1 ty1)
+        (HasType v2 ty2)
+        (!= ty1 ty2)
+      )
+      ((panic "(Select) branches had different types"))
+      :ruleset error-checking)
+
 
 ; Binary ops
 

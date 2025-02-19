@@ -72,7 +72,7 @@
 
 ;; loop peeling rule
 ;; Only peel loops that we know iterate < 3 times
-(function LoopPeeledPlaceholder (Expr) Assumption :unextractable)
+(constructor LoopPeeledPlaceholder (Expr) Assumption :unextractable)
 (rule
  ((= lhs (DoWhile inputs outputs))
   (ContextOf lhs ctx)

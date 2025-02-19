@@ -9,8 +9,25 @@ import subprocess
 
 import concurrent.futures
 
-NUM_WARMUP_SAMPLES = 50
-SAMPLES_PER_BENCHMARK_AND_TREATMENT = 200
+
+# testing mode takes much fewer samples than the real eval in the paper
+IS_TESTING_MODE = True
+
+def num_warmup_samples():
+  if IS_TESTING_MODE:
+    return 2
+  return 50
+  
+def num_samples():
+  if IS_TESTING_MODE:
+    return 100
+  return 1000
+
+
+def average(lst):
+  return sum(lst) / len(lst)
+
+TO_ABLATE = "" # change to a ruleset to ablate
 
 treatments = [
   "rvsdg-round-trip-to-executable",
@@ -25,6 +42,13 @@ treatments = [
   "llvm-eggcc-O3-O0",
   "llvm-eggcc-O3-O3",
 ]
+
+if TO_ABLATE != "":
+  treatments.extend([
+    "llvm-eggcc-ablation-O0-O0",
+    "llvm-eggcc-ablation-O3-O0",
+    "llvm-eggcc-ablation-O3-O3",
+  ])
 
 # Where to output files that are needed for nightly report
 DATA_DIR = None
@@ -60,6 +84,12 @@ def get_eggcc_options(benchmark):
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
     case "llvm-eggcc-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
+    case "llvm-eggcc-ablation-O0-O0":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0 --ablate {TO_ABLATE}')
+    case "llvm-eggcc-ablation-O3-O0":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0 --ablate {TO_ABLATE}')
+    case "llvm-eggcc-ablation-O3-O3":
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -119,12 +149,22 @@ def optimize(benchmark):
   process2.check_returncode()
 
   eggcc_compile_time = 0
+  eggcc_extraction_time = 0
+  eggcc_serialization_time = 0
   # parse json from eggcc run data
   with open(eggcc_run_data) as f:
     eggcc_data = json.load(f)
     secs = eggcc_data["eggcc_compile_time"]["secs"]
     nanos = eggcc_data["eggcc_compile_time"]["nanos"]
     eggcc_compile_time = secs + nanos / 1e9
+
+    secs = eggcc_data["eggcc_serialization_time"]["secs"]
+    nanos = eggcc_data["eggcc_serialization_time"]["nanos"]
+    eggcc_serialization_time = secs + nanos / 1e9
+
+    secs = eggcc_data["eggcc_extraction_time"]["secs"]
+    nanos = eggcc_data["eggcc_extraction_time"]["nanos"]
+    eggcc_extraction_time = secs + nanos / 1e9
   
   llvm_compile_time = 0
   with open(llvm_run_data) as f:
@@ -134,9 +174,22 @@ def optimize(benchmark):
     llvm_compile_time = secs + nanos / 1e9
 
 
-  res = {"path": f"{profile_dir}/{benchmark.treatment}", "eggccCompileTimeSecs": eggcc_compile_time, "llvmCompileTimeSecs": llvm_compile_time}
+    res = {
+        "path": f"{profile_dir}/{benchmark.treatment}",
+        "eggccCompileTimeSecs": eggcc_compile_time,
+        "eggccSerializationTimeSecs": eggcc_serialization_time,
+        "eggccExtractionTimeSecs": eggcc_extraction_time,
+        "llvmCompileTimeSecs": llvm_compile_time,
+    }
   return res
 
+
+def take_sample(cmd, benchmark):
+  result = subprocess.run(cmd, capture_output=True, shell=True)
+        
+  if result.returncode != 0:
+    raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {result.stderr}')
+  return int(result.stderr)
 
 
 def bench(benchmark):
@@ -155,27 +208,30 @@ def bench(benchmark):
     else:
       # hyperfine command for measuring time, unused in favor of cycles
       # cmd = f'hyperfine --style none --warmup 1 --max-runs 2 --export-json /dev/stdout "{profile_dir}/{benchmark.treatment}{" " + args if len(args) > 0 else ""}"'
+
+      args_str = " " + args if len(args) > 0 else ""
+      cmd = f'{profile_dir}/{benchmark.treatment}{args_str}'
       num_samples_so_far = 0
+      warmup_cycles = []
       resulting_num_cycles = []
+
+      # take some warmup cycles
+      while len(warmup_cycles) < num_warmup_samples():
+        warmup_cycles.append(take_sample(cmd, benchmark))
+
+      num_to_run = num_samples()
+      print(f'Running {num_to_run} samples for {benchmark.name} with {benchmark.treatment}', flush=True)
+
       while True:
-        args_str = " " + args if len(args) > 0 else ""
-        cmd = f'{profile_dir}/{benchmark.treatment}{args_str}'
-        result = subprocess.run(cmd, capture_output=True, shell=True)
-        
-        if result.returncode != 0:
-          raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {result.stderr}')
-        res_cycles = int(result.stderr)
-        resulting_num_cycles.append(res_cycles)
+        resulting_num_cycles.append(take_sample(cmd, benchmark))
 
         num_samples_so_far += 1
         # if we have run for at least 1 second and we have at least 2 samples, stop
         #if time.time() - time_start > time_per_benchmark and len(resulting_num_cycles) >= 2:
          # break
-        if num_samples_so_far >= SAMPLES_PER_BENCHMARK_AND_TREATMENT + NUM_WARMUP_SAMPLES:
+        if num_samples_so_far >= num_to_run:
           break
-      # throw away the first NUM_WARMUP_SAMPLES samples
-      resulting_num_cycles = resulting_num_cycles[NUM_WARMUP_SAMPLES:]
-
+      
       return (f'{profile_dir}/{benchmark.treatment}', resulting_num_cycles)
 
 # Run modes that we expect to output llvm IR
@@ -192,6 +248,20 @@ def should_have_llvm_ir(runMethod):
     "llvm-eggcc-O3-O0",
   ]
 
+# go up in directory until hitting "passing" folder
+def get_suite(path):
+  while True:
+    # if we can't go up anymore, return unknown
+    if os.path.dirname(path) == path:
+      return "unknown"
+
+    oldpath = path
+    path = os.path.dirname(path)
+    print(os.path.basename(path))
+    if os.path.basename(path) == "passing":
+      return os.path.basename(oldpath)
+
+
 # aggregate all profile info into a single json array.
 def aggregate(compile_data, bench_times, paths):
     res = []
@@ -199,7 +269,9 @@ def aggregate(compile_data, bench_times, paths):
     for path in sorted(compile_data.keys()):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
-      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "path": paths[name]}
+      suite = get_suite(paths[name])
+      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "path": paths[name], "suite": suite}
+      
 
       # add compile time info
       for key in compile_data[path]:

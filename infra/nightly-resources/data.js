@@ -70,13 +70,20 @@ function geometricMean(values) {
   );
 }
 
-function getOverallStatistics() {
+// suite can be undefined, in which case it uses all
+// enabled benchmarks
+function getOverallStatistics(suite) {
+  var benchmarks = enabledBenchmarks();
+  if (typeof suite !== "undefined") {
+    benchmarks = benchmarksInSuite(suite);
+  }
+
   // generate one row per treatment...
   const result = [];
-  for (const treatment of treatments) {
+  for (const treatment of treatments()) {
     const normalized_cycles = [];
     // for each benchmark, calculate the normalized cycles
-    for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
+    for (const benchmark of benchmarks) {
       const row = getRow(benchmark, treatment);
       const baseline = getRow(benchmark, BASELINE_MODE);
       if (row && baseline) {
@@ -85,18 +92,24 @@ function getOverallStatistics() {
     }
 
     const eggcc_compile_times = [];
+    const eggcc_extraction_times = [];
+    const eggcc_serialization_times = [];
     const llvm_compile_times = [];
-    for (const benchmark of GLOBAL_DATA.enabledBenchmarks) {
+    for (const benchmark of benchmarks) {
       const row = getRow(benchmark, treatment);
       eggcc_compile_times.push(row.eggccCompileTimeSecs);
+      eggcc_extraction_times.push(row.eggccExtractionTimeSecs);
+      eggcc_serialization_times.push(row.eggccSerializationTimeSecs);
       llvm_compile_times.push(row.llvmCompileTimeSecs);
     }
 
     result.push({
-      runMethod: treatment,
-      geoMeanNormalized: tryRound(geometricMean(normalized_cycles)),
-      meanEggccCompileTimeSecs: tryRound(mean(eggcc_compile_times)),
-      meanLlvmCompileTimeSecs: tryRound(mean(llvm_compile_times)),
+      Treatment: treatment,
+      "Normalized Mean": tryRound(geometricMean(normalized_cycles)),
+      "Eggcc Compile Time": tryRound(mean(eggcc_compile_times)),
+      "Eggcc Serialization Time": tryRound(mean(eggcc_serialization_times)),
+      "Eggcc Extraction Time": tryRound(mean(eggcc_extraction_times)),
+      "LLVM Compile Time": tryRound(mean(llvm_compile_times)),
     });
   }
   return result;
@@ -115,21 +128,22 @@ function getDataForBenchmark(benchmark) {
       const rowData = {
         runMethod: row.runMethod,
         mean: { class: "", value: tryRound(mean(cycles)) },
-        meanVsBaseline: getDifference(cycles, comparisonCycles, mean),
+        meanVsOtherBranch: getDifference(cycles, comparisonCycles, mean),
         min: { class: "", value: tryRound(min_cycles(cycles)) },
-        minVsBaseline: getDifference(cycles, comparisonCycles, min_cycles),
         max: { class: "", value: tryRound(max_cycles(cycles)) },
-        maxVsBaseline: getDifference(cycles, comparisonCycles, max_cycles),
         median: { class: "", value: tryRound(median_cycles(cycles)) },
-        medianVsBaseline: getDifference(
-          cycles,
-          comparisonCycles,
-          median_cycles,
-        ),
         stddev: { class: "", value: tryRound(stddev(cycles)) },
         eggccCompileTimeSecs: {
           class: "",
           value: tryRound(row.eggccCompileTimeSecs),
+        },
+        eggccSerializationTimeSecs: {
+          class: "",
+          value: tryRound(row.eggccSerializationTimeSecs),
+        },
+        eggccExtractionTimeSecs: {
+          class: "",
+          value: tryRound(row.eggccExtractionTimeSecs),
         },
         llvmCompileTimeSecs: {
           class: "",

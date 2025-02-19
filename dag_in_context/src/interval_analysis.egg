@@ -9,8 +9,8 @@
   (bound-min Bound Bound))
 
 ; bound tables
-(function lo-bound (Expr) Bound :unextractable :merge (bound-max old new))
-(function hi-bound (Expr) Bound :unextractable :merge (bound-min old new))
+(function lo-bound (Expr) Bound :merge (bound-max old new))
+(function hi-bound (Expr) Bound :merge (bound-min old new))
 
 ; if lo > hi, we have proven that this code is dead (as long as all our rules are sound)
 ; In this case, interval analysis might start going crazy and fail to saturate

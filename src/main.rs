@@ -72,6 +72,9 @@ struct Args {
 
     #[clap(long)]
     optimize_function: Option<String>,
+
+    #[clap(long)]
+    ablate: Option<String>,
 }
 
 fn main() {
@@ -124,6 +127,7 @@ fn main() {
             stop_after_n_passes: args.stop_after_n_passes.unwrap_or(i64::MAX),
             linearity: !args.no_linearity,
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
+            ablate: args.ablate,
         },
     };
 

@@ -23,17 +23,22 @@ fn init_array(n: i64, path: &mut [[i64; 500]; 500]) {
     }
 }
 
-fn print_array(n: i64, path: &[[i64; 500]; 500]) {
+fn sum_array(n: i64, path: &[[i64; 500]; 500]) -> i64 {
+    let mut sum: i64 = 0;
     let mut i: i64 = 0;
     while i < n {
         let mut j: i64 = 0;
         while j < n {
             let x: i64 = path[i as usize][j as usize];
-            println!("{} ", x);
+            // Can't print multiple things on nightly.
+            // Uncomment to run locally to check output.
+            // println!("{} ", x);
+            sum += x;
             j += 1;
         }
         i += 1;
     }
+    return sum;
 }
 
 fn kernel_floyd_warshall(n: i64, path: &mut [[i64; 500]; 500]) {
@@ -73,7 +78,7 @@ fn main() {
 
     init_array(n, &mut path);
     kernel_floyd_warshall(n, &mut path);
-    print_array(n, &path);
+    let res: i64 = sum_array(n, &path);
 
     // Drop
     i = 0;
@@ -82,4 +87,6 @@ fn main() {
         i += 1;
     }
     drop(path);
+
+    println!("{}", res);
 }

@@ -19,6 +19,7 @@ expression: visualization.result
   ret;
 }
 @main {
-  call @three;
+  c0_: int = const 3;
+  print c0_;
   ret;
 }

@@ -19,6 +19,6 @@ expression: visualization.result
   ret;
 }
 @main {
-  call @three;
+  call @one;
   ret;
 }

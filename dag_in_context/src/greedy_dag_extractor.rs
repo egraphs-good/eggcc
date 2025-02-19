@@ -1901,6 +1901,7 @@ fn prune_egraph(
             continue;
         }
 
+        let mut has_non_inf_cost = false;
         for nodeid in &egraph.classes()[&class].nodes {
             let node = &egraph[nodeid];
             // if the op is a ctx, replace it with a fresh DumC
@@ -1914,13 +1915,14 @@ fn prune_egraph(
                 };
 
                 new_egraph.add_node(nodeid.clone(), new_node);
-            // if it has infinite cost, replace with DumA node
+                has_non_inf_cost = true;
+            // if it has infinite cost, replace with a dummy node
             } else if cost_model.get_op_cost(&node.op).is_infinite() {
                 let new_node = Node {
                     op: format!("DumA{}", node.eclass),
                     children: vec![],
                     eclass: node.eclass.clone(),
-                    cost: NotNan::new(100000000.).unwrap(),
+                    cost: NotNan::new(0.).unwrap(),
                     subsumed: false,
                 };
 
@@ -1933,7 +1935,16 @@ fn prune_egraph(
                 for child in &node.children {
                     todo.push(egraph.nid_to_cid(child).clone());
                 }
+                has_non_inf_cost = true;
             }
+        }
+
+        // if all the nodes had infinite cost, print them out and error
+        if !has_non_inf_cost {
+            panic!(
+                "All nodes in class had infinite cost. Nodes: {:?}",
+                egraph.classes()[&class].nodes
+            );
         }
     }
 

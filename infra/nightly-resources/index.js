@@ -16,7 +16,9 @@ const GLOBAL_DATA = {
 function treatments() {
   let treatments = dedup(GLOBAL_DATA.currentRun.map((x) => x.runMethod));
   // exclude ILP treatment
-  treatments = treatments.filter((treatment) => treatment !== "eggcc-ILP-O0-O0");
+  treatments = treatments.filter(
+    (treatment) => treatment !== "eggcc-ILP-O0-O0",
+  );
   return treatments;
 }
 

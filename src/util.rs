@@ -6,7 +6,7 @@ use clap::ValueEnum;
 use dag_in_context::dag2svg::tree_to_svg;
 use dag_in_context::schedule::{self};
 use dag_in_context::{
-    build_program, check_roundtrip_egraph, EggccConfig, EggccTimeStatistics, Schedule,
+    build_program, check_roundtrip_egraph, EggccConfig, EggccTimeStatistics, ExtractionTimeSample, Schedule
 };
 
 use dag_in_context::schema::TreeProgram;
@@ -460,7 +460,7 @@ pub struct RunResult {
     /// None when ilp isn't being tested or ilp timed out
     /// Some when ilp didn't time out, the sum of all time
     /// spent in ILP
-    pub ilp_test_time: Option<Duration>,
+    pub ilp_test_times: Vec<ExtractionTimeSample>,
 }
 
 impl Run {
@@ -1025,7 +1025,7 @@ impl Run {
             eggcc_compile_time: Duration::from_millis(0),
             eggcc_extraction_time: time_statistics.eggcc_extraction_time,
             eggcc_serialization_time: time_statistics.eggcc_serialization_time,
-            ilp_test_time: time_statistics.ilp_test_time,
+            ilp_test_times: time_statistics.ilp_test_times,
         })
     }
 

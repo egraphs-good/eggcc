@@ -28,7 +28,7 @@ def num_samples():
 # a solution ignoring linearity constraints
 def ilp_extraction_test_timeout():
   if IS_TESTING_MODE:
-    return 20 # 20 second timeout
+    return 60 # 1 minute timeout
   return 300 # 5 minute timeout
 
 def average(lst):
@@ -132,7 +132,7 @@ def setup_benchmark(name):
 # returns a dictionary with the path to the optimized binary,
 # eggcc compile time, and llvm compile time
 def optimize(benchmark):
-  print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}')
+  print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}', flush=True)
   profile_dir = benchmark_profile_dir(benchmark.name)
   optimized_bril_file = f'{profile_dir}/{benchmark.name}-{benchmark.treatment}.bril'
   eggcc_run_data = f'{profile_dir}/{benchmark.treatment}-eggcc-run-data.json'
@@ -162,7 +162,7 @@ def optimize(benchmark):
   eggcc_compile_time = 0
   eggcc_extraction_time = 0
   eggcc_serialization_time = 0
-  ilp_test_time = None
+  ilp_test_times = []
   # parse json from eggcc run data
   with open(eggcc_run_data) as f:
     eggcc_data = json.load(f)
@@ -178,10 +178,7 @@ def optimize(benchmark):
     nanos = eggcc_data["eggcc_extraction_time"]["nanos"]
     eggcc_extraction_time = secs + nanos / 1e9
 
-    if eggcc_data["ilp_test_time"] is not None:
-      secs = eggcc_data["ilp_test_time"]["secs"]
-      nanos = eggcc_data["ilp_test_time"]["nanos"]
-      ilp_test_time = secs + nanos / 1e9
+    ilp_test_times = eggcc_data["ilp_test_times"]
     
   
   llvm_compile_time = 0
@@ -198,7 +195,7 @@ def optimize(benchmark):
         "eggccSerializationTimeSecs": eggcc_serialization_time,
         "eggccExtractionTimeSecs": eggcc_extraction_time,
         "llvmCompileTimeSecs": llvm_compile_time,
-        "ilpTestTimeSecs": ilp_test_time,
+        "ilpTestTimes": ilp_test_times,
     }
   return res
 

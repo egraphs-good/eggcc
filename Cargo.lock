@@ -583,6 +583,8 @@ dependencies = [
  "ordered-float",
  "rpds",
  "rustc-hash",
+ "serde",
+ "serde_json",
  "smallvec",
  "strum",
  "strum_macros",

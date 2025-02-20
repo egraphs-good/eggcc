@@ -94,9 +94,9 @@ def get_eggcc_compile_time(data, benchmark_name):
 def get_eggcc_extraction_time(data, benchmark_name):
   return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0')['eggccExtractionTimeSecs']
 
-def get_ilp_test_time_seconds(data, benchmark_name):
+def get_ilp_test_times(data, benchmark_name):
   row = get_row(data, benchmark_name, 'eggcc-ILP-O0-O0')
-  return row['ilpTestTimeSecs']
+  return row['ilpTestTimes']
 
 def group_by_benchmark(profile):
   grouped_by_benchmark = {}
@@ -113,10 +113,9 @@ def group_by_benchmark(profile):
 def make_ilp(json, output, benchmark_suite_folder):
   ilp_timeout = profile.ilp_extraction_test_timeout()
 
-  num_lines = []
-  ilp_times  = []
-  is_ilp_timeout = []
-  eggcc_extract_time = []
+  eggcc_points = []
+  ilp_timeout_points = []
+  ilp_points = []
 
   benchmarks = dedup([b.get('benchmark') for b in json])
 
@@ -124,37 +123,44 @@ def make_ilp(json, output, benchmark_suite_folder):
     # exclude raytrace, since it uses too much memory
     if benchmark == 'raytrace':
       continue
-    extraction_time = get_eggcc_extraction_time(json, benchmark)
-    ilp_time = get_ilp_test_time_seconds(json, benchmark)
-    print("ilp time", ilp_time)
+    # a list of ExtractionTimeSample
+    ilp_test_times = get_ilp_test_times(json, benchmark)
 
-    if ilp_time == None:
-      is_ilp_timeout.append(True)
-      ilp_time = ilp_timeout
-    else:
-      is_ilp_timeout.append(False)
-    
-    num_lines.append(get_code_size(benchmark, benchmark_suite_folder))
-    eggcc_extract_time.append(extraction_time)
-    ilp_times.append(ilp_time)
+    for sample in ilp_test_times:
+      ilp_time = sample["ilp_time"]
+      egraph_size = sample["egraph_size"]
+      eggcc_time = sample["eggcc_time"]
+
+      eggcc_time = eggcc_time["secs"] + eggcc_time["nanos"] / 1e9
+
+      if ilp_time == None:
+        ilp_timeout_points.append([egraph_size, ilp_timeout])
+      else:
+        ilp_points.append([egraph_size, ilp_time["secs"] + ilp_time["nanos"] / 1e9])
+      eggcc_points.append([egraph_size, eggcc_time])
   
-  # graph data
+    # graph data
   plt.figure(figsize=(10, 6))
 
-  # graph eggcc extraction times
-  plt.scatter(num_lines, eggcc_extract_time, label='EggCC Extraction Time', color='blue')
+  # Plot extraction time points
+  eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
+  plt.scatter(eggcc_x, eggcc_y, color='blue', label='EggCC Extraction Time', alpha=0.7, edgecolors='w', linewidth=0.5)
 
-  # graph ilp times, putting red x marks for timeouts
-  plt.scatter(num_lines, ilp_times, label='ILP Solver Time', color='orange')
-  plt.scatter([num_lines[i] for i in range(len(num_lines)) if is_ilp_timeout[i]], [ilp_times[i] for i in range(len(num_lines)) if is_ilp_timeout[i]], color='red', marker='x', label='ILP Solver Timeout')
+  # Plot ILP timeout points
+  ilp_timeout_x, ilp_timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
+  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='red', label='ILP Timeout', alpha=0.7, marker='x', s=50)
 
-  plt.xlabel('Bril Number of Instructions')
+  # Plot ILP solve time points
+  ilp_x, ilp_y = zip(*ilp_points) if ilp_points else ([], [])
+  plt.scatter(ilp_x, ilp_y, color='green', label='ILP Solve Time', alpha=0.7, edgecolors='w', linewidth=0.5)
+
+  plt.xlabel('Size of egraph')
   plt.ylabel('Extraction Time')
-  plt.title('ILP Solver Time vs Code Size')
+  plt.title('ILP Extraction vs eggcc Extraction')
+  plt.legend()
+  plt.grid(True, linestyle='--', linewidth=0.5)
+
   plt.savefig(output)
-
-
-
 
 
 def make_jitter(profile, upper_x_bound, output):

@@ -7,6 +7,7 @@ use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::{rulesets, CompilerPass};
 use schema::TreeProgram;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     fmt::Write,
@@ -356,11 +357,18 @@ pub struct EggccConfig {
     pub ilp_extraction_test_timeout: Option<Duration>,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ExtractionTimeSample {
+    pub egraph_size: usize,
+    pub ilp_time: Option<Duration>,
+    pub eggcc_time: Duration,
+}
+
 pub struct EggccTimeStatistics {
     pub eggcc_extraction_time: Duration,
     pub eggcc_serialization_time: Duration,
     // if ilp didn't time out, what portion of the time was spent in the extraction gym code
-    pub ilp_test_time: Option<Duration>,
+    pub ilp_test_times: Vec<ExtractionTimeSample>,
 }
 
 impl Default for EggccTimeStatistics {
@@ -368,7 +376,7 @@ impl Default for EggccTimeStatistics {
         Self {
             eggcc_extraction_time: Duration::from_millis(0),
             eggcc_serialization_time: Duration::from_millis(0),
-            ilp_test_time: None,
+            ilp_test_times: vec![],
         }
     }
 }
@@ -410,7 +418,7 @@ pub fn optimize(
     let mut eggcc_extraction_time = Duration::from_millis(0);
     let schedule_list = eggcc_config.schedule.get_schedule_list();
     let mut res = program.clone();
-    let mut ilp_test_time = Some(Duration::from_millis(0));
+    let mut ilp_test_times = vec![];
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
@@ -479,7 +487,7 @@ pub fn optimize(
                 &res,
                 batch.clone(),
                 serialized.clone(),
-                unextractables,
+                unextractables.clone(),
                 &mut termdag,
                 DefaultCostModel,
                 should_maintain_linearity,
@@ -492,17 +500,17 @@ pub fn optimize(
             eggcc_serialization_time += extraction_start - serialization_start;
 
             // now extract with ILP if we were told to
-            if let (Some(timeout), Some(current_time)) =
-                (eggcc_config.ilp_extraction_test_timeout, ilp_test_time)
-            {
-                let res = extract_ilp(batch, serialized, &DefaultCostModel, timeout);
+            if let Some(timeout) = eggcc_config.ilp_extraction_test_timeout {
+                let times = extract_ilp(
+                    &res,
+                    batch,
+                    serialized,
+                    unextractables,
+                    DefaultCostModel,
+                    timeout,
+                );
 
-                match res {
-                    Some(time) => {
-                        ilp_test_time = Some(time + current_time);
-                    }
-                    None => ilp_test_time = None,
-                }
+                ilp_test_times.extend(times);
             }
 
             // typecheck the program as a sanity check
@@ -517,7 +525,7 @@ pub fn optimize(
                     EggccTimeStatistics {
                         eggcc_extraction_time,
                         eggcc_serialization_time,
-                        ilp_test_time,
+                        ilp_test_times,
                     },
                 ));
             }
@@ -531,7 +539,7 @@ pub fn optimize(
         EggccTimeStatistics {
             eggcc_extraction_time,
             eggcc_serialization_time,
-            ilp_test_time,
+            ilp_test_times,
         },
     ))
 }

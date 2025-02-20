@@ -1004,17 +1004,25 @@ pub fn extract_fn_ilp(
 
     let before = Instant::now();
 
-    ilp_extractor.extract(&egraph, &[rootid.clone()]);
+    let ilp_res = ilp_extractor.extract(&egraph, &[rootid.clone()]);
 
     let elapsed = before.elapsed();
+
+    // print out ilp res
+    for choice in ilp_res.choices {
+        eprintln!("Choice: {:?}", choice);
+    }
+
     log::info!(
         "ILP extraction for {} took {} seconds",
         func,
         elapsed.as_secs_f64()
     );
+    eprintln!("elapsed: {:?}", elapsed);
     if elapsed > timeout {
         None
     } else {
+        eprintln!("time taken: {:?}", elapsed);
         Some(elapsed)
     }
 }
@@ -1917,7 +1925,7 @@ fn prune_egraph(
                     op: format!("DumA{}", node.eclass),
                     children: vec![],
                     eclass: node.eclass.clone(),
-                    cost: NotNan::new(0.).unwrap(),
+                    cost: NotNan::new(INFINITY).unwrap(),
                     subsumed: false,
                 };
 

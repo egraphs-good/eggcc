@@ -86,16 +86,17 @@ def get_row(data, benchmark_name, run_method):
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
 def get_cycles(data, benchmark_name, run_method):
-  return get_row(data, benchmark_name, run_method).get('cycles')
+  return get_row(data, benchmark_name, run_method)['cycles']
 
 def get_eggcc_compile_time(data, benchmark_name):
-  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0').get('eggccCompileTimeSecs')
+  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0')['eggccCompileTimeSecs']
 
 def get_eggcc_extraction_time(data, benchmark_name):
-  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0').get('eggccExtractionTimeSecs')
+  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0')['eggccExtractionTimeSecs']
 
 def get_ilp_test_time_seconds(data, benchmark_name):
-  return get_row(data, benchmark_name, 'eggcc-ILP-O0-O0').get('ilpTestTimeSeconds')
+  row = get_row(data, benchmark_name, 'eggcc-ILP-O0-O0')
+  return row['ilpTestTimeSecs']
 
 def group_by_benchmark(profile):
   grouped_by_benchmark = {}
@@ -125,6 +126,7 @@ def make_ilp(json, output, benchmark_suite_folder):
       continue
     extraction_time = get_eggcc_extraction_time(json, benchmark)
     ilp_time = get_ilp_test_time_seconds(json, benchmark)
+    print("ilp time", ilp_time)
 
     if ilp_time == None:
       is_ilp_timeout.append(True)
@@ -489,7 +491,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   profile = []
   with open(profile_file) as f:
       profile = json.load(f)
-
+    
   # folders in 
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
   benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]

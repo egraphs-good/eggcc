@@ -13,6 +13,7 @@
 - Install llvm 18 with `brew install llvm@18`  
   - If you get an error with this step, try upgrading MacOS to at least Sonoma (14)
 - Add llvm to PATH in your `.zshrc` file: `export PATH="/opt/homebrew/Cellar/llvm@18/18.1.8/bin/:$PATH"`
+- Install cbc using `brew tap coin-or-tools/coinor` and `brew install coin-or-tools/coinor/cbc`
 - Open a new terminal (`source`ing alone may not work).
 - Run `make runtime` to install the bril llvm runtime. If this fails, try running `cargo clean` in `runtime` and trying again.
 - You may need to add LSystem to your path: `export LIBRARY_PATH="$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"`
@@ -25,6 +26,7 @@
 
 ## Installation- Linux
 - Install llvm 18. For Ubuntu users, we have a script for installation: `./install_ubuntu.sh`
+- Install cbc with `sudo apt install coinor-libcbc-dev`
 - Run `make runtime` to install the bril llvm runtime.
 - Run the tests with `make` and ensure things build and run without errors.
 

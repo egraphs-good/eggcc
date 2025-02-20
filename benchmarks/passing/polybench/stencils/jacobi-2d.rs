@@ -1,4 +1,4 @@
-fn init_array(n: i64, nf: f64, a: &mut [[f64; 250]; 250], b: &mut [[f64; 250]; 250]) {
+fn init_array(n: i64, nf: f64, a: &mut [[f64; 90]; 90], b: &mut [[f64; 90]; 90]) {
     let mut i: i64 = 0;
     let mut fi: f64 = 0.0;
     while i < n {
@@ -15,7 +15,7 @@ fn init_array(n: i64, nf: f64, a: &mut [[f64; 250]; 250], b: &mut [[f64; 250]; 2
     }
 }
 
-fn sum_array(n: i64, a: &[[f64; 250]; 250]) -> f64 {
+fn sum_array(n: i64, a: &[[f64; 90]; 90]) -> f64 {
     let mut sum: f64 = 0.0;
     let mut i: i64 = 0;
     while i < n {
@@ -33,7 +33,7 @@ fn sum_array(n: i64, a: &[[f64; 250]; 250]) -> f64 {
     return sum;
 }
 
-fn kernel_jacobi_2d(tsteps: i64, n: i64, a: &mut [[f64; 250]; 250], b: &mut [[f64; 250]; 250]) {
+fn kernel_jacobi_2d(tsteps: i64, n: i64, a: &mut [[f64; 90]; 90], b: &mut [[f64; 90]; 90]) {
     let mut t: i64 = 0;
     while t < tsteps {
         let mut i: i64 = 1;
@@ -70,20 +70,20 @@ fn kernel_jacobi_2d(tsteps: i64, n: i64, a: &mut [[f64; 250]; 250], b: &mut [[f6
 }
 
 fn main() {
-    let n: i64 = 250;
-    let mut nf: f64 = 250.0;
-    let tsteps: i64 = 100;
+    let n: i64 = 90;
+    let mut nf: f64 = 90.0;
+    let tsteps: i64 = 40;
 
-    let mut dummy: [f64; 250] = [0.0; 250];
+    let mut dummy: [f64; 90] = [0.0; 90];
 
-    let mut a: [[f64; 250]; 250] = [dummy; 250];
-    let mut b: [[f64; 250]; 250] = [dummy; 250];
+    let mut a: [[f64; 90]; 90] = [dummy; 90];
+    let mut b: [[f64; 90]; 90] = [dummy; 90];
 
     // Init
     let mut i: i64 = 0;
     while i < n {
-        a[i] = [0.0; 250];
-        b[i] = [0.0; 250];
+        a[i] = [0.0; 90];
+        b[i] = [0.0; 90];
         i += 1;
     }
 

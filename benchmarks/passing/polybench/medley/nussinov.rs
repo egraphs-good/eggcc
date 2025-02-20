@@ -24,7 +24,7 @@ fn match_base(b1: i64, b2: i64) -> i64 {
     }
 }
 
-fn init_array(n: i64, seq: &mut [i64; 500], table: &mut [[i64; 500]; 500]) {
+fn init_array(n: i64, seq: &mut [i64; 180], table: &mut [[i64; 180]; 180]) {
     let mut i: i64 = 0;
     while i < n {
         seq[i as usize] = modulo(i + 1, 4);
@@ -42,7 +42,7 @@ fn init_array(n: i64, seq: &mut [i64; 500], table: &mut [[i64; 500]; 500]) {
     }
 }
 
-fn sum_array(n: i64, table: &[[i64; 500]; 500]) -> i64 {
+fn sum_array(n: i64, table: &[[i64; 180]; 180]) -> i64 {
     let mut sum: i64 = 0;
     let mut i: i64 = 0;
     while i < n {
@@ -60,7 +60,7 @@ fn sum_array(n: i64, table: &[[i64; 500]; 500]) -> i64 {
     return sum;
 }
 
-fn kernel_nussinov(n: i64, seq: &mut [i64; 500], table: &mut [[i64; 500]; 500]) {
+fn kernel_nussinov(n: i64, seq: &mut [i64; 180], table: &mut [[i64; 180]; 180]) {
     let mut i: i64 = n - 1;
     while i >= 0 {
         let mut j: i64 = i + 1;
@@ -106,15 +106,15 @@ fn kernel_nussinov(n: i64, seq: &mut [i64; 500], table: &mut [[i64; 500]; 500]) 
 }
 
 fn main() {
-    let n: i64 = 500;
-    let mut seq: [i64; 500] = [0; 500];
-    let dummy: [i64; 500] = [0; 500];
-    let mut table: [[i64; 500]; 500] = [dummy; 500];
+    let n: i64 = 180;
+    let mut seq: [i64; 180] = [0; 180];
+    let dummy: [i64; 180] = [0; 180];
+    let mut table: [[i64; 180]; 180] = [dummy; 180];
 
     // Init
     let mut i: i64 = 0;
     while i < n {
-        table[i] = [0; 500];
+        table[i] = [0; 180];
         i += 1;
     }
     drop(dummy);

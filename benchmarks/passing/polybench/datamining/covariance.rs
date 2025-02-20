@@ -1,4 +1,4 @@
-fn init_array(m: i64, mf: f64, n: i64, data: &mut [[f64; 240]; 260]) {
+fn init_array(m: i64, mf: f64, n: i64, data: &mut [[f64; 80]; 100]) {
     let mut i: i64 = 0;
     let mut fi: f64 = 0.0;
     while i < n {
@@ -14,7 +14,7 @@ fn init_array(m: i64, mf: f64, n: i64, data: &mut [[f64; 240]; 260]) {
     }
 }
 
-fn sum_array(m: i64, cov: &[[f64; 240]; 240]) -> f64 {
+fn sum_array(m: i64, cov: &[[f64; 80]; 80]) -> f64 {
     let mut sum: f64 = 0.0;
     let mut i: i64 = 0;
     while i < m {
@@ -36,9 +36,9 @@ fn kernel_covariance(
     m: i64,
     n: i64,
     nf: f64,
-    data: &mut [[f64; 240]; 260],
-    cov: &mut [[f64; 240]; 240],
-    mean: &mut [f64; 240],
+    data: &mut [[f64; 80]; 100],
+    cov: &mut [[f64; 80]; 80],
+    mean: &mut [f64; 80],
 ) {
     let mut j: i64 = 0;
     while j < m {
@@ -83,24 +83,24 @@ fn kernel_covariance(
 }
 
 fn main() {
-    let n: i64 = 260;
-    let nf: f64 = 260.0;
-    let m: i64 = 240;
-    let mf: f64 = 240.0;
-    let dummy: [f64; 240] = [0.0; 240];
-    let mut data: [[f64; 240]; 260] = [dummy; 260];
-    let mut cov: [[f64; 240]; 240] = [dummy; 240];
-    let mut mean: [f64; 240] = [0.0; 240];
+    let n: i64 = 100;
+    let nf: f64 = 100.0;
+    let m: i64 = 80;
+    let mf: f64 = 80.0;
+    let dummy: [f64; 80] = [0.0; 80];
+    let mut data: [[f64; 80]; 100] = [dummy; 100];
+    let mut cov: [[f64; 80]; 80] = [dummy; 80];
+    let mut mean: [f64; 80] = [0.0; 80];
 
     // Init
     let mut i: i64 = 0;
     while i < n {
-        data[i] = [0.0; 240];
+        data[i] = [0.0; 80];
         i += 1;
     }
     i = 0;
     while i < m {
-        cov[i] = [0.0; 240];
+        cov[i] = [0.0; 80];
         i += 1;
     }
     drop(dummy);

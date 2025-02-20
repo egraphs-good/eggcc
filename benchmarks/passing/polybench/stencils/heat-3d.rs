@@ -1,4 +1,4 @@
-fn init_array(n: i64, nf: f64, a: &mut [[[f64; 40]; 40]; 40], b: &mut [[[f64; 40]; 40]; 40]) {
+fn init_array(n: i64, nf: f64, a: &mut [[[f64; 20]; 20]; 20], b: &mut [[[f64; 20]; 20]; 20]) {
     let mut i: i64 = 0;
     let mut fi: f64 = 0.0;
     while i < n {
@@ -21,7 +21,7 @@ fn init_array(n: i64, nf: f64, a: &mut [[[f64; 40]; 40]; 40], b: &mut [[[f64; 40
     }
 }
 
-fn sum_array(n: i64, a: &[[[f64; 40]; 40]; 40]) -> f64 {
+fn sum_array(n: i64, a: &[[[f64; 20]; 20]; 20]) -> f64 {
     let mut sum: f64 = 0.0;
     let mut i: i64 = 0;
     while i < n {
@@ -46,8 +46,8 @@ fn sum_array(n: i64, a: &[[[f64; 40]; 40]; 40]) -> f64 {
 fn kernel_heat_3d(
     tsteps: i64,
     n: i64,
-    a: &mut [[[f64; 40]; 40]; 40],
-    b: &mut [[[f64; 40]; 40]; 40],
+    a: &mut [[[f64; 20]; 20]; 20],
+    b: &mut [[[f64; 20]; 20]; 20],
 ) {
     let mut t: i64 = 1;
     while t <= tsteps {
@@ -107,23 +107,23 @@ fn kernel_heat_3d(
 }
 
 fn main() {
-    let n: i64 = 40;
-    let nf: f64 = 40.0;
-    let tsteps: i64 = 400;
+    let n: i64 = 20;
+    let nf: f64 = 20.0;
+    let tsteps: i64 = 40;
 
-    let inner_dummy: [f64; 40] = [0.0; 40];
-    let dummy: [[f64; 40]; 40] = [inner_dummy; 40];
-    let mut a: [[[f64; 40]; 40]; 40] = [dummy; 40];
-    let mut b: [[[f64; 40]; 40]; 40] = [dummy; 40];
+    let inner_dummy: [f64; 20] = [0.0; 20];
+    let dummy: [[f64; 20]; 20] = [inner_dummy; 20];
+    let mut a: [[[f64; 20]; 20]; 20] = [dummy; 20];
+    let mut b: [[[f64; 20]; 20]; 20] = [dummy; 20];
 
     let mut i: i64 = 0;
     while i < n {
-        let a_elt: [[f64; 40]; 40] = [inner_dummy; 40];
-        let b_elt: [[f64; 40]; 40] = [inner_dummy; 40];
+        let a_elt: [[f64; 20]; 20] = [inner_dummy; 20];
+        let b_elt: [[f64; 20]; 20] = [inner_dummy; 20];
         let mut j: i64 = 0;
         while j < n {
-            a_elt[j] = [0.0; 40];
-            b_elt[j] = [0.0; 40];
+            a_elt[j] = [0.0; 20];
+            b_elt[j] = [0.0; 20];
             j += 1;
         }
         a[i] = a_elt;

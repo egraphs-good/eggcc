@@ -1,4 +1,4 @@
-fn init_array(n: i64, nf: f64, u: &mut [[f64; 200]; 200]) {
+fn init_array(n: i64, nf: f64, u: &mut [[f64; 60]; 60]) {
     let mut i: i64 = 0;
     let mut fi: f64 = 0.0;
     while i < n {
@@ -14,7 +14,7 @@ fn init_array(n: i64, nf: f64, u: &mut [[f64; 200]; 200]) {
     }
 }
 
-fn sum_array(n: i64, u: &[[f64; 200]; 200]) -> f64 {
+fn sum_array(n: i64, u: &[[f64; 60]; 60]) -> f64 {
     let mut sum: f64 = 0.0;
     let mut i: i64 = 0;
     while i < n {
@@ -37,10 +37,10 @@ fn kernel_adi(
     tstepsf: f64,
     n: i64,
     nf: f64,
-    u: &mut [[f64; 200]; 200],
-    v: &mut [[f64; 200]; 200],
-    p: &mut [[f64; 200]; 200],
-    q: &mut [[f64; 200]; 200],
+    u: &mut [[f64; 60]; 60],
+    v: &mut [[f64; 60]; 60],
+    p: &mut [[f64; 60]; 60],
+    q: &mut [[f64; 60]; 60],
 ) {
     let dx: f64 = 1.0 / nf;
     let dy: f64 = 1.0 / nf;
@@ -81,25 +81,25 @@ fn kernel_adi(
 }
 
 fn main() {
-    let n: i64 = 200;
-    let nf: f64 = 200.0;
-    let tsteps: i64 = 100;
-    let tstepsf: f64 = 100.0;
+    let n: i64 = 60;
+    let nf: f64 = 60.0;
+    let tsteps: i64 = 40;
+    let tstepsf: f64 = 40.0;
 
-    let mut dummy: [f64; 200] = [0.0; 200];
+    let mut dummy: [f64; 60] = [0.0; 60];
 
-    let mut u: [[f64; 200]; 200] = [dummy; 200];
-    let mut v: [[f64; 200]; 200] = [dummy; 200];
-    let mut p: [[f64; 200]; 200] = [dummy; 200];
-    let mut q: [[f64; 200]; 200] = [dummy; 200];
+    let mut u: [[f64; 60]; 60] = [dummy; 60];
+    let mut v: [[f64; 60]; 60] = [dummy; 60];
+    let mut p: [[f64; 60]; 60] = [dummy; 60];
+    let mut q: [[f64; 60]; 60] = [dummy; 60];
 
     // Init
     let mut i: i64 = 0;
     while i < n {
-        u[i] = [0.0; 200];
-        v[i] = [0.0; 200];
-        p[i] = [0.0; 200];
-        q[i] = [0.0; 200];
+        u[i] = [0.0; 60];
+        v[i] = [0.0; 60];
+        p[i] = [0.0; 60];
+        q[i] = [0.0; 60];
         i += 1;
     }
 

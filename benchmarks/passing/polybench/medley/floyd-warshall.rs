@@ -8,7 +8,7 @@ fn modulo(a: i64, b: i64) -> i64 {
     }
 }
 
-fn init_array(n: i64, path: &mut [[i64; 500]; 500]) {
+fn init_array(n: i64, path: &mut [[i64; 180]; 180]) {
     let mut i: i64 = 0;
     while i < n {
         let mut j: i64 = 0;
@@ -23,7 +23,7 @@ fn init_array(n: i64, path: &mut [[i64; 500]; 500]) {
     }
 }
 
-fn sum_array(n: i64, path: &[[i64; 500]; 500]) -> i64 {
+fn sum_array(n: i64, path: &[[i64; 180]; 180]) -> i64 {
     let mut sum: i64 = 0;
     let mut i: i64 = 0;
     while i < n {
@@ -41,7 +41,7 @@ fn sum_array(n: i64, path: &[[i64; 500]; 500]) -> i64 {
     return sum;
 }
 
-fn kernel_floyd_warshall(n: i64, path: &mut [[i64; 500]; 500]) {
+fn kernel_floyd_warshall(n: i64, path: &mut [[i64; 180]; 180]) {
     let mut k: i64 = 0;
     while k < n {
         let mut i: i64 = 0;
@@ -63,15 +63,15 @@ fn kernel_floyd_warshall(n: i64, path: &mut [[i64; 500]; 500]) {
 }
 
 fn main() {
-    let n: i64 = 500;
+    let n: i64 = 180;
 
-    let dummy: [i64; 500] = [0; 500];
-    let mut path: [[i64; 500]; 500] = [dummy; 500];
+    let dummy: [i64; 180] = [0; 180];
+    let mut path: [[i64; 180]; 180] = [dummy; 180];
 
     // Init
     let mut i: i64 = 0;
     while i < n {
-        path[i] = [0; 500];
+        path[i] = [0; 180];
         i += 1;
     }
     drop(dummy);

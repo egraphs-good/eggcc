@@ -19,6 +19,7 @@ use crate::{
     schema::{Expr, RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
     typechecker::TypeChecker,
+    ExtractionTimeSample,
 };
 
 type RootId = ClassId;
@@ -966,29 +967,49 @@ pub fn extract(
 
 // Returns a duration or None if any extractions timed out
 pub fn extract_ilp(
+    original_prog: &TreeProgram,
     fns: Vec<String>,
     egraph: egraph_serialize::EGraph,
-    cost_model: &impl CostModel,
+    unextractables: IndexSet<String>,
+    cost_model: impl CostModel,
     timeout: Duration,
-) -> Option<Duration> {
+) -> Vec<ExtractionTimeSample> {
+    let mut termdag = egglog::TermDag::default();
     log::info!("Extracting functions with ILP {:?}", fns);
 
-    let mut total = Duration::new(0, 0);
-    for func in fns {
-        log::info!("Extracting function {} with ILP", func);
-        let res = extract_fn_ilp(
-            &func,
-            egraph.nid_to_cid(&get_root(&egraph, &func)).clone(),
-            egraph.clone(),
-            cost_model,
-            timeout,
-        );
+    let mut samples = vec![];
+    for name in fns {
+        log::info!("Extracting function {} with ILP", name);
+        let root = egraph.nid_to_cid(&get_root(&egraph, &name)).clone();
 
-        total += res?;
+        let egraph = prune_egraph(&egraph, root.clone(), &cost_model);
+        let egraph_size = egraph.nodes.len();
+
+        let ilp_time = extract_fn_ilp(&name, root.clone(), egraph.clone(), &cost_model, timeout);
+
+        let time_before = Instant::now();
+        let _res2 = extract_fn(
+            original_prog,
+            &name,
+            root,
+            egraph.clone(),
+            unextractables.clone(),
+            &mut termdag,
+            &cost_model,
+            false,
+        );
+        let eggcc_time = time_before.elapsed();
+
+        samples.push(ExtractionTimeSample {
+            egraph_size,
+            ilp_time,
+            eggcc_time,
+        });
     }
-    Some(total)
+    samples
 }
 
+// returns how long impl extraction took
 pub fn extract_fn_ilp(
     func: &str,
     rootid: ClassId,
@@ -1000,18 +1021,13 @@ pub fn extract_fn_ilp(
     let egraph = prune_egraph(&egraph, rootid.clone(), cost_model);
 
     // run ILP extraction, timing it
-    let ilp_extractor = FasterCbcExtractorWithTimeout::new(timeout.as_secs() as u32 + 10);
+    let ilp_extractor = FasterCbcExtractorWithTimeout::new(timeout.as_secs() as u32);
 
     let before = Instant::now();
 
-    let ilp_res = ilp_extractor.extract(&egraph, &[rootid.clone()]);
+    ilp_extractor.extract(&egraph, &[rootid.clone()]);
 
     let elapsed = before.elapsed();
-
-    // print out ilp res
-    for choice in ilp_res.choices {
-        eprintln!("Choice: {:?}", choice);
-    }
 
     log::info!(
         "ILP extraction for {} took {} seconds",

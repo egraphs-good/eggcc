@@ -120,6 +120,9 @@ def make_ilp(json, output, benchmark_suite_folder):
   benchmarks = dedup([b.get('benchmark') for b in json])
 
   for benchmark in benchmarks:
+    # exclude raytrace, since it uses too much memory
+    if benchmark == 'raytrace':
+      continue
     extraction_time = get_eggcc_extraction_time(json, benchmark)
     ilp_time = get_ilp_test_time_seconds(json, benchmark)
 

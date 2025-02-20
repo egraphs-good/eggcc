@@ -28,7 +28,7 @@ def num_samples():
 # a solution ignoring linearity constraints
 def ilp_extraction_test_timeout():
   if IS_TESTING_MODE:
-    return 10 # 10 second timeout
+    return 5 # 5 second timeout
   return 300 # 5 minute timeout
 
 def average(lst):
@@ -371,7 +371,7 @@ if __name__ == '__main__':
 
   compile_data = {}
   # get the number of cores on this machine 
-  parallelism = 2#os.cpu_count()
+  parallelism = os.cpu_count()
 
   # create a thread pool for running optimization
   with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:

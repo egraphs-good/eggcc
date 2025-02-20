@@ -14,7 +14,10 @@ const GLOBAL_DATA = {
 };
 
 function treatments() {
-  return dedup(GLOBAL_DATA.currentRun.map((x) => x.runMethod));
+  let treatments = dedup(GLOBAL_DATA.currentRun.map((x) => x.runMethod));
+  // exclude ILP treatment
+  treatments = treatments.filter((treatment) => treatment !== "eggcc-ILP-O0-O0");
+  return treatments;
 }
 
 // filter to all the benchmark names that are enabled

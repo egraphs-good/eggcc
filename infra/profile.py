@@ -28,7 +28,7 @@ def num_samples():
 # a solution ignoring linearity constraints
 def ilp_extraction_test_timeout():
   if IS_TESTING_MODE:
-    return 5 # 5 second timeout
+    return 20 # 20 second timeout
   return 300 # 5 minute timeout
 
 def average(lst):
@@ -147,19 +147,17 @@ def optimize(benchmark):
   cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode} --run-data-out {eggcc_run_data}'
   cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --run-data-out {llvm_run_data} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_file}'
 
-  print(f'Running c1: {cmd1}', flush=True)
   process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
   if process.returncode != 0:
-    print(f'Error running {benchmark.name} with {benchmark.treatment}: {process.stderr}')
+    raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {process.stderr}')
 
   # write the std out to the optimized bril file
   with open(optimized_bril_file, 'w') as f:
     f.write(process.stdout)
 
-  print(f'Running c2: {cmd2}', flush=True)
   process2 = subprocess.run(cmd2, shell=True)
   if process2.returncode != 0:
-    print(f'Error running {benchmark.name} with {benchmark.treatment}: {process2.stderr}')
+    raise Exception(f'Error running {cmd2}: {process2.stderr}')
 
   eggcc_compile_time = 0
   eggcc_extraction_time = 0

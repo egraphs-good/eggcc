@@ -42,7 +42,7 @@ impl FasterGreedyDagExtractor {
         let mut childrens_classes = node
             .children
             .iter()
-            .map(|c| egraph.nid_to_cid(&c).clone())
+            .map(|c| egraph.nid_to_cid(c).clone())
             .collect::<Vec<ClassId>>();
         childrens_classes.sort();
         childrens_classes.dedup();
@@ -65,7 +65,7 @@ impl FasterGreedyDagExtractor {
             .iter()
             .max_by_key(|s| costs.get(s).unwrap().costs.len())
             .unwrap();
-        let mut result = costs.get(&id_of_biggest).unwrap().costs.clone();
+        let mut result = costs.get(id_of_biggest).unwrap().costs.clone();
         for child_cid in &childrens_classes {
             if child_cid == id_of_biggest {
                 continue;
@@ -73,11 +73,11 @@ impl FasterGreedyDagExtractor {
 
             let next_cost = &costs.get(child_cid).unwrap().costs;
             for (key, value) in next_cost.iter() {
-                result.insert(key.clone(), value.clone());
+                result.insert(key.clone(), *value);
             }
         }
 
-        let contains = result.contains_key(&cid);
+        let contains = result.contains_key(cid);
         result.insert(cid.clone(), node.cost);
 
         let result_cost = if contains {
@@ -86,11 +86,11 @@ impl FasterGreedyDagExtractor {
             result.values().sum()
         };
 
-        return CostSet {
+        CostSet {
             costs: result,
             total: result_cost,
             choice: node_id.clone(),
-        };
+        }
     }
 }
 

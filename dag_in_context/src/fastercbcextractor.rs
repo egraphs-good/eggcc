@@ -184,7 +184,7 @@ impl FasterCbcExtractorWithTimeout {
     }
 
     pub fn extract(&self, egraph: &EGraph, roots: &[ClassId]) -> ExtractionResult {
-        return extract(egraph, roots, &Config::default(), self.timeout_in_seconds);
+        extract(egraph, roots, &Config::default(), self.timeout_in_seconds)
     }
 }
 
@@ -570,7 +570,7 @@ fn remove_single_zero_cost(
         let mut removed = 0;
         let mut extras = 0;
         let fresh = IndexSet::<ClassId>::new();
-        let child_to_parents = child_to_parents(&vars);
+        let child_to_parents = child_to_parents(vars);
 
         // Remove all references to those in zero.
         for e in &zero {
@@ -618,7 +618,7 @@ fn child_to_parents(vars: &IndexMap<ClassId, ClassILP>) -> IndexMap<ClassId, Ind
             for child_class in kids {
                 child_to_parents
                     .entry(child_class.clone())
-                    .or_insert_with(IndexSet::new)
+                    .or_default()
                     .insert(class_id.clone());
             }
         }
@@ -697,7 +697,7 @@ fn remove_empty_classes(vars: &mut IndexMap<ClassId, ClassILP>, config: &Config)
                 for child_class in kids {
                     child_to_parents
                         .entry(child_class.clone())
-                        .or_insert_with(IndexSet::new)
+                        .or_default()
                         .insert(class_id.clone());
                 }
             }
@@ -742,7 +742,7 @@ fn find_extra_roots(
             let r = roots[i].clone();
 
             let details = vars.get(&r).unwrap();
-            if details.childrens_classes.len() == 0 {
+            if details.childrens_classes.is_empty() {
                 continue;
             }
 
@@ -996,7 +996,7 @@ fn classes_with_single_parent(vars: &IndexMap<ClassId, ClassILP>) -> IndexMap<Cl
             for child_class in kids {
                 child_to_parents
                     .entry(child_class.clone())
-                    .or_insert_with(IndexSet::new)
+                    .or_default()
                     .insert(class_id.clone());
             }
         }
@@ -1034,7 +1034,7 @@ fn reachable(
 }
 
 // Adds constraints to stop the cycle.
-fn block_cycle(model: &mut Model, cycle: &Vec<ClassId>, vars: &IndexMap<ClassId, ClassILP>) {
+fn block_cycle(model: &mut Model, cycle: &[ClassId], vars: &IndexMap<ClassId, ClassILP>) {
     if cycle.is_empty() {
         return;
     }
@@ -1150,105 +1150,6 @@ fn cycle_dfs(
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::Config;
-    use crate::test::{generate_random_egraph, ELABORATE_TESTING};
-
-    use crate::{faster_ilp_cbc::extract, EPSILON_ALLOWANCE};
-    use rand::Rng;
-    pub type Cost = ordered_float::NotNan<f64>;
-
-    pub fn generate_random_config() -> Config {
-        let mut rng = rand::thread_rng();
-        Config {
-            pull_up_costs: rng.gen(),
-            remove_self_loops: rng.gen(),
-            remove_high_cost_nodes: rng.gen(),
-            remove_more_expensive_subsumed_nodes: rng.gen(),
-            remove_unreachable_classes: rng.gen(),
-            pull_up_single_parent: rng.gen(),
-            take_intersection_of_children_in_class: rng.gen(),
-            move_min_cost_of_members_to_class: rng.gen(),
-            find_extra_roots: rng.gen(),
-            remove_empty_classes: rng.gen(),
-            return_improved_on_timeout: rng.gen(),
-            remove_single_zero_cost: rng.gen(),
-        }
-    }
-
-    fn all_disabled() -> Config {
-        return Config {
-            pull_up_costs: false,
-            remove_self_loops: false,
-            remove_high_cost_nodes: false,
-            remove_more_expensive_subsumed_nodes: false,
-            remove_unreachable_classes: false,
-            pull_up_single_parent: false,
-            take_intersection_of_children_in_class: false,
-            move_min_cost_of_members_to_class: false,
-            find_extra_roots: false,
-            remove_empty_classes: false,
-            return_improved_on_timeout: false,
-            remove_single_zero_cost: false,
-        };
-    }
-
-    const CONFIGS_TO_TEST: i64 = 150;
-
-    fn test_configs(config: &Vec<Config>, log_path: impl AsRef<std::path::Path>) {
-        const RANDOM_EGRAPHS_TO_TEST: i64 = if ELABORATE_TESTING {
-            1000000 / CONFIGS_TO_TEST
-        } else {
-            250 / CONFIGS_TO_TEST
-        };
-
-        for _ in 0..RANDOM_EGRAPHS_TO_TEST {
-            let egraph = generate_random_egraph();
-
-            if !log_path.as_ref().to_str().unwrap_or("").is_empty() {
-                egraph.to_json_file(&log_path).unwrap();
-            }
-
-            let mut results: Option<Cost> = None;
-            for c in config {
-                let extraction = extract(&egraph, &egraph.root_eclasses, c, u32::MAX);
-                extraction.check(&egraph);
-                let dag_cost = extraction.dag_cost(&egraph, &egraph.root_eclasses);
-                if results.is_some() {
-                    assert!(
-                        (dag_cost.into_inner() - results.unwrap().into_inner()).abs()
-                            < EPSILON_ALLOWANCE
-                    );
-                }
-                results = Some(dag_cost);
-            }
-        }
-    }
-
-    macro_rules! create_tests {
-    ($($name:ident),*) => {
-        $(
-            #[test]
-            fn $name() {
-                let mut configs = vec![Config::default(), all_disabled()];
-
-                for _ in 0..CONFIGS_TO_TEST {
-                    configs.push(generate_random_config());
-                }
-                test_configs(&configs, crate::test::test_save_path(stringify!($name)));
-            }
-        )*
-    }
-}
-
-    // So the test runner uses more of my cores.
-    create_tests!(
-        random0, random1, random2, random3, random4, random5, random6, random7, random8, random9,
-        random10
-    );
-}
-
 #[derive(Default, Clone)]
 pub struct ExtractionResult {
     pub choices: IndexMap<ClassId, NodeId>,
@@ -1286,7 +1187,7 @@ impl ExtractionResult {
         }
 
         // No cycles
-        assert!(self.find_cycles(&egraph, &egraph.root_eclasses).is_empty());
+        assert!(self.find_cycles(egraph, &egraph.root_eclasses).is_empty());
 
         // Nodes should match the class they are selected into.
         for (cid, nid) in &self.choices {

@@ -9,7 +9,6 @@ use std::{
     collections::{HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
-    sync::Arc,
     time::{Duration, Instant},
 };
 use strum::IntoEnumIterator;
@@ -985,11 +984,7 @@ pub fn extract_ilp(
             timeout,
         );
 
-        if res.is_none() {
-            return None;
-        }
-
-        total += res.unwrap();
+        total += res?;
     }
     Some(total)
 }
@@ -1009,7 +1004,7 @@ pub fn extract_fn_ilp(
 
     let before = Instant::now();
 
-    ilp_extractor.extract(&egraph, &vec![rootid.clone()]);
+    ilp_extractor.extract(&egraph, &[rootid.clone()]);
 
     let elapsed = before.elapsed();
     log::info!(

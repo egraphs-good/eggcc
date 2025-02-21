@@ -17,7 +17,7 @@ expression: visualization.result
   br v8_ .b9_ .b10_;
 .b9_:
   v11_: int = call @fac c1_;
-  v12_: int = id c3_;
+  v12_: int = id v0;
   v4_: int = id v12_;
   ret v4_;
   jmp .b7_;

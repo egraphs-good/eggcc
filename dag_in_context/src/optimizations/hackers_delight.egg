@@ -14,8 +14,8 @@
     (IsIsEven e x)
 ) :ruleset hacker)
 
-;; PopcountIterations lp n pos => loop lp runs exactly popcount(n) times at index pos
-(relation PopcountIterations (Expr Expr i64))
+;; NTZIterations lp n pos => loop lp runs exactly number_of_trailing_zeros(n) times at index pos
+(relation NTZIterations (Expr Expr i64))
 
 (rule (
     ;; Grab the outer if
@@ -37,13 +37,13 @@
     ;; In the odd/false branch, we look for an n
     (= (Get (Arg _ty4 _ctx4) i) (Get oddbr j))
 ) (
-    (PopcountIterations outerif n j)
+    (NTZIterations outerif n j)
 ) :ruleset hacker)
 
 ;; Identify and optimize lowbit
 
 (rule (
-    (PopcountIterations outerif n i)
+    (NTZIterations outerif n i)
     (= outerif (If cond inputs evenbr oddbr))
     ;; In the even branch, it returns a value that doubles every iter
     (= evenbr (DoWhile lp_inputs lp_pred_outputs))
@@ -59,15 +59,32 @@
 ) :ruleset hacker)
 
 ;; Try to do a state-edge-passthrough for loops
-;; PopcountIterations guarantees termination for non-zero values
+;; NLZIterations guarantees termination for non-zero values
 ;; lowbit(0) is undefined behavior
 
+(function DummyLoopContext (Expr Expr Expr) Assumption)
+
 (rule (
-    (PopcountIterations anyif n i)
+    (NTZIterations anyif n i)
     (= anyif (If cond inputs thenbr elsebr))
     (= thenbr (DoWhile lpinputs pred_outputs))
     (= (Get pred_outputs (+ j 1)) (Get (Arg arg_ty then_ctx) j))
     (HasType (Get pred_outputs (+ j 1)) (Base (StateT)))
 ) (
+    (let newlpinputs (TupleRemoveAt lpinputs j))
+    (let newpred_outputs (TupleRemoveAt pred_outputs (+ j 1)))
+    
+    (let newlpctx (DummyLoopContext newlpinputs newpred_outputs pred_outputs))
+
+    (let newbody (DropAt newlpctx j newpred_outputs))
+
+    (union newlpctx (InLoop newlpinputs newbody))
+
+    (let newlp (DoWhile newlpinputs newbody))
+    (let oldlp (TupleRemoveAt thenbr j))
+
+    (union newlp oldlp)
+
     (union (Get thenbr j) (Get lpinputs j))
+
 ) :ruleset hacker)

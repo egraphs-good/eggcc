@@ -55,7 +55,7 @@
       ((leading-Expr e))
       :ruleset always-run)
 
-;; Create a Get for every index, and rewrite it to see through Concat
+;; Create a Get for everything that is a leading expression, so not everything needs a Get node
 (rule ((Single expr)) ((union (Get (Single expr) 0) expr)) :ruleset always-run)
 ;; initial get
 (rule ((leading-Expr tuple)
@@ -71,25 +71,64 @@
        ((Get tuple (+ 1 i)))
        :ruleset always-run)
 
-;; push gets through concats
-(rewrite (Get (Single expr) 0) expr :ruleset always-run)
-(rule ((= lhs (Get (Concat a b) i))
-       (= len (tuple-length a))
-       (< i len))
-      ((union lhs (Get a i)))
+;; push Get through Concat in a way that isn't quadratic
+;; add-gets to      original-expr   current-expr    start-index
+(relation Add-Gets (Expr            Expr            i64))
+(rule ((Get x i))
+      ((Add-Gets x x 0))
       :ruleset always-run)
-(rule ((= lhs (Get (Concat a b) i))
-       (= len (tuple-length a))
-       (>= i len))
-      ((union lhs (Get b (- i len))))
+(rule ((Add-Gets orig (Concat left right) n)
+       (= len (tuple-length left)))
+      ((Add-Gets orig left n)
+       (Add-Gets orig right (+ n len)))
       :ruleset always-run)
-(rule ((Get (Single expr) i)
-       (!= i 0))
-      ((panic "Get out of bounds"))
+
+(rule ((Add-Gets orig (Single e) n))
+      ((union (Get orig n) e))
       :ruleset always-run)
-(rule ((Get (Empty ty ctx) i))
-      ((panic "Get out of bounds"))
+
+;; now, for things other than Concat we Add-All-Gets
+;; put things here (potentially tuples) that are not
+;; just an eclass with a Concat
+(relation Not-Just-Concat (Expr))
+;; original-expr, current-expr, offset, current-pos
+(relation Add-All-Gets (Expr Expr i64 i64))
+(rule ((Add-Gets orig something n)
+       (Not-Just-Concat something))
+      ((Add-All-Gets orig something n 0))
       :ruleset always-run)
+
+(rule ((Add-All-Gets orig something offset pos)
+       (< pos (tuple-length something)))
+      ((union (Get orig (+ offset pos)) (Get something pos))
+       (Add-All-Gets orig something offset (+ pos 1)))
+      :ruleset always-run)
+
+(rule ((= lhs (Arg a b)))
+      ((Not-Just-Concat lhs))
+      :ruleset always-run)
+(rule ((= lhs (Top a b c d)))
+      ((Not-Just-Concat lhs))
+      :ruleset always-run)
+(rule ((= lhs (Bop a b c)))
+      ((Not-Just-Concat lhs))
+      :ruleset always-run)
+(rule ((= lhs (Call a b)))
+      ((Not-Just-Concat lhs))
+      :ruleset always-run)
+(rule ((= lhs (Uop a b)))
+      ((Not-Just-Concat lhs))
+      :ruleset always-run)
+(rule ((= lhs (Switch a b c)))
+      ((Not-Just-Concat lhs))
+      :ruleset always-run)
+(rule ((= lhs (If a b c d)))
+      ((Not-Just-Concat lhs))
+      :ruleset always-run)
+(rule ((= lhs (DoWhile a b)))
+      ((Not-Just-Concat lhs))
+      :ruleset always-run)
+
 
 ;; A temporary context.
 ;; Be sure to delete at the end of all actions or else!!!

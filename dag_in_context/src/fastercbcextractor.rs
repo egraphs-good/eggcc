@@ -183,17 +183,20 @@ impl FasterCbcExtractorWithTimeout {
         Self { timeout_in_seconds }
     }
 
-    pub fn extract(&self, egraph: &EGraph, roots: &[ClassId]) -> ExtractionResult {
+    pub fn extract(&self, egraph: &EGraph, roots: &[ClassId]) -> Option<ExtractionResult> {
         extract(egraph, roots, &Config::default(), self.timeout_in_seconds)
     }
 }
 
+// Modified from extraction gym to return none on timeout
 fn extract(
     egraph: &EGraph,
     roots_slice: &[ClassId],
     config: &Config,
     timeout: u32,
-) -> ExtractionResult {
+) -> Option<ExtractionResult> {
+    let start_time = Instant::now();
+
     // todo from now on we don't use roots_slice - be good to prevent using it any more.
     let mut roots = roots_slice.to_vec();
     roots.sort();
@@ -358,32 +361,16 @@ fn extract(
 
     log::info!("Objective function terms: {}", objective_fn_terms);
 
-    if false {
-        //config.initialise_with_approx
-        // set initial solution based on a non-optimal extraction.
-        // using this causes the ILP solver to return unsound results.
-        set_initial_solution(&vars, &mut model, &initial_result);
-    }
-
-    if false {
-        return initial_result;
-    }
-
     log::info!(
         "Time spent before solving: {}ms",
         simp_start_time.elapsed().as_millis()
     );
 
-    let start_time = SystemTime::now();
-
     loop {
         // Set the solver limit based on how long has passed already.
-        if let Ok(difference) = SystemTime::now().duration_since(start_time) {
-            let seconds = timeout.saturating_sub(difference.as_secs().try_into().unwrap());
-            model.set_parameter("seconds", &seconds.to_string());
-        } else {
-            model.set_parameter("seconds", "0");
-        }
+        let difference = start_time.elapsed().as_secs();
+        let seconds = timeout.saturating_sub(difference.try_into().unwrap());
+        model.set_parameter("seconds", &seconds.to_string());
 
         //This starts from scratch solving each time. I've looked quickly
         //at the API and didn't see how to call it incrementally.
@@ -397,7 +384,7 @@ fn extract(
 
         if solution.raw().is_proven_infeasible() {
             log::info!("Infeasible, returning empty solution");
-            return ExtractionResult::default();
+            return Some(ExtractionResult::default());
         }
 
         let stopped_without_finishing = solution.raw().status() != coin_cbc::raw::Status::Finished;
@@ -405,16 +392,7 @@ fn extract(
         if stopped_without_finishing {
             log::info!("CBC stopped before finishing");
 
-            if !config.return_improved_on_timeout
-                || solution.raw().obj_value() > initial_result_cost.into_inner()
-            {
-                log::info!(
-                    "Unfinished CBC solution returned, solver: {}, initial: {}",
-                    solution.raw().obj_value(),
-                    initial_result_cost
-                );
-                return initial_result;
-            }
+            return None;
         }
 
         let mut cost = 0.0;

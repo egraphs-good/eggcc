@@ -1025,7 +1025,7 @@ pub fn extract_fn_ilp(
 
     let before = Instant::now();
 
-    ilp_extractor.extract(&egraph, &[rootid.clone()]);
+    let res = ilp_extractor.extract(&egraph, &[rootid.clone()]);
 
     let elapsed = before.elapsed();
 
@@ -1035,11 +1035,11 @@ pub fn extract_fn_ilp(
         elapsed.as_secs_f64()
     );
     eprintln!("elapsed: {:?}", elapsed);
-    if elapsed > timeout {
+    if res.is_none() {
         None
     } else {
         eprintln!("time taken: {:?}", elapsed);
-        Some(elapsed)
+        Some(min(elapsed, timeout))
     }
 }
 

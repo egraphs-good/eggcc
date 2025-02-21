@@ -378,7 +378,7 @@ def dedup(lst):
   return list(dict.fromkeys(lst))
 
 def format_latex_macro(name, value):
-  return f"\\newcommand{{\\{name}}}{{{value}}}\n"
+  return f"\\newcommand{{\\{name}}}{{{value}\\xspace}}\n"
 
 # given a ratio, format it as a percentage and create a latex macro
 def format_latex_macro_percent(name, percent_as_ratio):
@@ -406,10 +406,16 @@ def make_macros(profile, benchmark_suites, output_file):
       out.write(format_latex_macro(macro_name, len(benchmarks)))
     
     # report the number of benchmarks in the profile
-    out.write(format_latex_macro("NumBenchmarksAllSuites", len(dedup([b.get('benchmark') for b in profile]))))
+    benchmarks = dedup([b.get('benchmark') for b in profile])
+    out.write(format_latex_macro("NumBenchmarksAllSuites", len(benchmarks)))
 
-
-
+    ilp_all = []
+    for benchmark in benchmarks:
+      # skip raytrace
+      if benchmark == 'raytrace':
+        continue
+      ilp_all = ilp_all + get_ilp_test_times(profile, benchmark)
+    out.write(format_latex_macro_percent("PercentILPTimeout", len(list(filter(lambda x: x["ilp_time"] == None, ilp_all))) / len(ilp_all)))
   
 
 def get_code_size(benchmark, suites_path):

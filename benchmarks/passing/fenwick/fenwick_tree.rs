@@ -37,7 +37,9 @@ fn lowbit_naive(a : i64) -> i64 {
     return lb;
 }
 
+/* 
 fn lowbit(n : i64) -> i64 {
     let lb : i64 = n & (-n);
     return lb;
 }
+*/

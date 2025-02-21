@@ -62,7 +62,7 @@
 ;; NLZIterations guarantees termination for non-zero values
 ;; lowbit(0) is undefined behavior
 
-(function DummyLoopContext (Expr Expr Expr) Assumption)
+(constructor DummyLoopContext (Expr Expr Expr) Assumption)
 
 (rule (
     (NTZIterations anyif n i)

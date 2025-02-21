@@ -66,7 +66,7 @@ else
   export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
   make runtime
   # run on all benchmarks in nightly
-  ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee $NIGHTLY_DIR/log.txt
+  ./infra/profile.py "$DATA_DIR/" benchmarks/passing/raytrace/raytrace.rs  2>&1 | tee $NIGHTLY_DIR/log.txt
 fi
 
 # Generate CFGs for LLVM after running the profiler

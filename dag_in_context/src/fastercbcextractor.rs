@@ -60,7 +60,6 @@ use indexmap::IndexSet;
 use ordered_float::NotNan;
 use rustc_hash::FxHashSet;
 use std::fmt;
-use std::time::SystemTime;
 
 #[derive(Debug)]
 pub struct Config {
@@ -259,7 +258,7 @@ fn extract(
         if class.members() == 0 {
             if roots.contains(classid) {
                 log::info!("Infeasible, root has no possible children, returning empty solution");
-                return ExtractionResult::default();
+                return Some(ExtractionResult::default());
             }
 
             model.set_col_upper(class.active, 0.0);
@@ -433,26 +432,7 @@ fn extract(
 
         if stopped_without_finishing {
             log::info!("Timed out");
-            if cycles.is_empty() {
-                // The reported cost of the solution sometimes differs to the dag cost, so we're
-                // a bit carefu..
-                let extraction_dag_cost = result.dag_cost(egraph, &roots);
-
-                // Not sure if this will ever fail..
-                result.check(egraph);
-                if extraction_dag_cost < initial_result_cost {
-                    log::info!(
-                        "Returning result of incomplete search saving: {}",
-                        initial_result_cost - extraction_dag_cost
-                    );
-                    return result;
-                } else {
-                    return initial_result;
-                }
-            } else {
-                log::info!("Found cycle in solution, but solver timed out");
-                return initial_result;
-            }
+            return None;
         }
 
         if cycles.is_empty() {
@@ -460,7 +440,7 @@ fn extract(
             assert!((result.dag_cost(egraph, &roots) - cost).abs() < EPSILON_ALLOWANCE);
             assert!((cost - solution.raw().obj_value()).abs() < EPSILON_ALLOWANCE);
 
-            return result;
+            return Some(result);
         } else {
             log::info!("Refining by blocking cycles: {}", cycles.len());
             for c in &cycles {

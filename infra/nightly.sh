@@ -42,14 +42,14 @@ echo "Switching to nighly script directory: $MYDIR"
 
 # Clean previous nightly run
 # CAREFUL using -f
-if [ "$@" != "--update" ]; then
-  rm -rf $NIGHTLY_DIR
-  # Prepare output directories
-  mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$OUTPUT_DIR" "$GRAPHS_DIR"
-else
+if [ "$1" == "--update" ]; then
   echo "updating front end only (output folder) due to --update flag"
   rm -rf $OUTPUT_DIR
   mkdir -p "$OUTPUT_DIR" "$GRAPHS_DIR"
+else
+  rm -rf $NIGHTLY_DIR
+  # Prepare output directories
+  mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$OUTPUT_DIR" "$GRAPHS_DIR"
 fi
 
 
@@ -58,7 +58,7 @@ pushd $TOP_DIR
 
 # Run profiler.
 # locally, run on argument
-if [ "$@" == "--update" ]; then
+if [ "$1" == "--update" ]; then
   echo "skipping profile.py, updating front end"
 elif [ "$LOCAL" != "" ]; then
   ./infra/profile.py "$DATA_DIR" "$@" 2>&1 | tee $NIGHTLY_DIR/log.txt
@@ -70,7 +70,7 @@ else
 fi
 
 # Generate CFGs for LLVM after running the profiler
-if [ "$@" == "--update" ]; then
+if [ "$1" == "--update" ]; then
   echo "skipping generate_cfgs.py"
 else
   ./infra/generate_cfgs.py "$DATA_DIR/llvm" 2>&1 | tee $NIGHTLY_DIR/log.txt

@@ -1,17 +1,18 @@
 ---
 source: tests/files.rs
 expression: visualization.result
+snapshot_kind: text
 ---
 # ARGS: 1
 @main(v0: int) {
-  c1_: int = const 2;
-  v2_: bool = lt v0 c1_;
-  c3_: int = const 4;
-  c4_: int = const 1;
-  v5_: int = select v2_ c3_ c4_;
-  v6_: int = add c1_ v5_;
-  v7_: int = select v2_ v5_ v6_;
-  v8_: int = add c4_ v7_;
+  c1_: int = const 1;
+  c2_: int = const 2;
+  v3_: bool = lt v0 c2_;
+  c4_: int = const 4;
+  v5_: int = select v3_ c4_ c1_;
+  v6_: int = add c2_ v5_;
+  v7_: int = select v3_ v5_ v6_;
+  v8_: int = add c1_ v7_;
   print v8_;
   ret;
 }

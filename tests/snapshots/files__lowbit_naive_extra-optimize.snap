@@ -1,0 +1,52 @@
+---
+source: tests/files.rs
+expression: visualization.result
+snapshot_kind: text
+---
+# ARGS: 21324
+@main(v0: int) {
+  c1_: int = const 2;
+  v2_: int = div v0 c1_;
+  v3_: int = mul c1_ v2_;
+  v4_: bool = eq v0 v3_;
+  c5_: int = const 0;
+  c6_: int = const 1;
+  v7_: int = id c5_;
+  v8_: int = id c6_;
+  v9_: int = id v0;
+  br v4_ .b10_ .b11_;
+.b10_:
+  v12_: int = id c5_;
+  v13_: int = id c6_;
+  v14_: int = id v0;
+.b15_:
+  c16_: int = const 1;
+  v17_: int = add c16_ v12_;
+  c18_: int = const 2;
+  v19_: int = mul c18_ v13_;
+  v20_: int = div v14_ c18_;
+  v21_: int = div v20_ c18_;
+  v22_: int = mul c18_ v21_;
+  v23_: bool = eq v20_ v22_;
+  v12_: int = id v17_;
+  v13_: int = id v19_;
+  v14_: int = id v20_;
+  br v23_ .b15_ .b24_;
+.b24_:
+  v7_: int = id v12_;
+  v8_: int = id v13_;
+  v9_: int = id v14_;
+  v25_: int = neg v0;
+  v26_: int = bitand v0 v25_;
+  print v26_;
+  print v7_;
+  ret;
+  jmp .b27_;
+.b11_:
+  v25_: int = neg v0;
+  v26_: int = bitand v0 v25_;
+  print v26_;
+  print v7_;
+  ret;
+.b27_:
+}

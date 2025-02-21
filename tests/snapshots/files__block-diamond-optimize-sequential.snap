@@ -5,33 +5,31 @@ snapshot_kind: text
 ---
 # ARGS: 1
 @main(v0: int) {
-  c1_: int = const 2;
-  v2_: bool = lt v0 c1_;
-  c3_: int = const 0;
-  c4_: int = const 1;
-  c5_: int = const 5;
-  v6_: int = id c4_;
-  v7_: int = id c4_;
-  v8_: int = id c1_;
-  br v2_ .b9_ .b10_;
-.b9_:
-  c11_: bool = const true;
-  c12_: int = const 4;
-  v13_: int = select c11_ c12_ c1_;
-  v6_: int = id v13_;
-  v7_: int = id c4_;
-  v8_: int = id c1_;
-  v14_: int = add c1_ v6_;
-  v15_: int = select v2_ v6_ v14_;
-  v16_: int = add c4_ v15_;
-  print v16_;
+  c1_: int = const 1;
+  c2_: int = const 2;
+  v3_: bool = lt v0 c2_;
+  v4_: int = id c1_;
+  v5_: int = id c1_;
+  v6_: int = id c2_;
+  br v3_ .b7_ .b8_;
+.b7_:
+  c9_: bool = const true;
+  c10_: int = const 4;
+  v11_: int = select c9_ c10_ c2_;
+  v4_: int = id v11_;
+  v5_: int = id c1_;
+  v6_: int = id c2_;
+  v12_: int = add c2_ v4_;
+  v13_: int = select v3_ v4_ v12_;
+  v14_: int = add c1_ v13_;
+  print v14_;
   ret;
-  jmp .b17_;
-.b10_:
-  v14_: int = add c1_ v6_;
-  v15_: int = select v2_ v6_ v14_;
-  v16_: int = add c4_ v15_;
-  print v16_;
+  jmp .b15_;
+.b8_:
+  v12_: int = add c2_ v4_;
+  v13_: int = select v3_ v4_ v12_;
+  v14_: int = add c1_ v13_;
+  print v14_;
   ret;
-.b17_:
+.b15_:
 }

@@ -23,7 +23,6 @@ impl TypeStack {
 }
 
 impl TreeProgram {
-    #[allow(dead_code)]
     pub(crate) fn typecheck(&self) -> TypeCache {
         let mut checker = TypeChecker::new(self, true);
         checker.add_arg_types();

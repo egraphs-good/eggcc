@@ -29,10 +29,10 @@
 
 ; use TmpType for helpers where the type doesn't matter
 ; these shouldn't appear in values in the program, only intermediate terms (such as in ivt.egg permutations)
-(function TmpType () Type)
+(constructor TmpType () Type)
 
-(function TNil () TypeList)
-(function TCons (BaseType TypeList) TypeList) ; Head element should never be a tuple
+(constructor TNil () TypeList)
+(constructor TCons (BaseType TypeList) TypeList) ; Head element should never be a tuple
 
 
 ; =================================
@@ -61,7 +61,7 @@
 
 ; Only a single argument is bound- if multiple values are needed, arg will be a tuple.
 ; e.g. `(Get (Arg tuple_type) 1)` gets the second value in the argument with some tuple_type.
-(function Arg (Type Assumption) Expr)
+(constructor Arg (Type Assumption) Expr)
 
 ; Constants
 (datatype Constant
@@ -70,11 +70,11 @@
   (Float f64))
 ; All leaf nodes need the type of the argument
 ; Type is the type of the bound argument in scope
-(function Const (Constant Type Assumption) Expr)
+(constructor Const (Constant Type Assumption) Expr)
 
 ; An empty tuple.
 ; Type is the type of the bound argument in scope
-(function Empty (Type Assumption) Expr)
+(constructor Empty (Type Assumption) Expr)
 
 
 ; =================================
@@ -137,17 +137,17 @@
   (Not))
 
 ; Operators
-(function Top   (TernaryOp Expr Expr Expr) Expr)
-(function Bop   (BinaryOp Expr Expr) Expr)
-(function Uop   (UnaryOp Expr) Expr)
+(constructor Top   (TernaryOp Expr Expr Expr) Expr)
+(constructor Bop   (BinaryOp Expr Expr) Expr)
+(constructor Uop   (UnaryOp Expr) Expr)
 ; gets from a tuple. static index
-(function Get   (Expr i64) Expr)
+(constructor Get   (Expr i64) Expr)
 ; (Alloc id amount state_edge pointer_type)
 ; allocate an integer amount of memory for a particular type
 ; returns (pointer to the allocated memory, state edge)
-(function Alloc (i64 Expr Expr BaseType)      Expr)
+(constructor Alloc (i64 Expr Expr BaseType)      Expr)
 ;               name of func   arg
-(function Call (String         Expr) Expr)
+(constructor Call (String         Expr) Expr)
 
 
 
@@ -164,12 +164,12 @@
 
 ; A tuple with a single element.
 ; Necessary because we only use `Concat` to add to tuples.
-(function Single (Expr) Expr)
+(constructor Single (Expr) Expr)
 ; Concat appends the elemnts from two tuples together
 ; e.g. (Concat (Concat (Single a) (Single b))
 ;              (Concat (Single c) (Single d))) = (a, b, c, d)
 ;                 expr1       expr2
-(function Concat (Expr        Expr)       Expr)
+(constructor Concat (Expr        Expr)       Expr)
 
 
 
@@ -180,10 +180,10 @@
 ; Switch on a list of lazily-evaluated branches.
 ; pred must be an integer
 ;                 pred  inputs   branches     chosen
-(function Switch (Expr  Expr     ListExpr)    Expr)
+(constructor Switch (Expr  Expr     ListExpr)    Expr)
 ; If is like switch, but with a boolean predicate
 ;             pred inputs   then else
-(function If (Expr Expr     Expr Expr) Expr)
+(constructor If (Expr Expr     Expr Expr) Expr)
 
 
 ; A do-while loop.
@@ -195,7 +195,7 @@
 ; pred-and-body must be a flat tuple (pred, out1, out2, ..., outi)
 ; input must be the same type as (out1, out2, ..., outi)
 ;                  input   pred-and-body
-(function DoWhile (Expr    Expr)                   Expr)
+(constructor DoWhile (Expr    Expr)                   Expr)
 
 
 ; =================================
@@ -204,9 +204,9 @@
 (sort ProgramType)
 ; An entry function and a list of additional functions.
 ;                      entry function     other functions
-(function Program     (Expr               ListExpr) ProgramType)
+(constructor Program     (Expr               ListExpr) ProgramType)
 ;                   name   input ty  output ty  output
-(function Function (String Type      Type       Expr)      Expr)
+(constructor Function (String Type      Type       Expr)      Expr)
 
 ; to get the type of a funciton, look in this table
 ; since we might not be optimizing the entire program
@@ -271,27 +271,29 @@
 ;   (InIf bool Term Term)
 ; )
 
-(function TermArg () Term)
+(constructor TermArg () Term)
 
-(function TermConst (Constant) Term)
+(constructor TermConst (Constant) Term)
 
-(function TermEmpty () Term)
+(constructor TermEmpty () Term)
 
 ; Term Operators
-(function TermTop (TernaryOp Term Term Term) Term)
-(function TermBop (BinaryOp Term Term) Term)
-(function TermUop (UnaryOp Term) Term)
-(function TermGet (Term i64) Term)
-(function TermAlloc (i64 Term Term BaseType) Term)
-(function TermCall (String Term) Term)
+(constructor TermTop (TernaryOp Term Term Term) Term)
+(constructor TermBop (BinaryOp Term Term) Term)
+(constructor TermUop (UnaryOp Term) Term)
+(constructor TermGet (Term i64) Term)
+(constructor TermAlloc (i64 Term Term BaseType) Term)
+(constructor TermCall (String Term) Term)
 
 ; Tuple Operators
-(function TermSingle (Term) Term)
-(function TermConcat (Term Term) Term)
+(constructor TermSingle (Term) Term)
+(constructor TermConcat (Term Term) Term)
 
 ; Control Flow (TODO? Not sure if needed)
-; (function TermSwitch (Term Term ListTerm) Term)
-; (function TermIf (Term Term Term Term) Term)
+; (constructor TermSwitch (Term Term ListTerm) Term)
+; (constructor TermIf (Term Term Term Term) Term)
 
-; (function TermDoWhile (Term Term) Term)
+; (constructor TermDoWhile (Term Term) Term)
 
+
+(ruleset never)

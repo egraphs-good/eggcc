@@ -5,6 +5,7 @@ use std::{
     vec,
 };
 
+use egglog::ast::Span;
 use strum_macros::EnumIter;
 
 use crate::{
@@ -528,8 +529,8 @@ impl TreeProgram {
 
     pub fn pretty(&self) -> String {
         let (term, termdag) = self.to_egglog();
-        let expr = termdag.term_to_expr(&term);
-        expr.to_sexp().pretty()
+        let expr = termdag.term_to_expr(&term, Span::Panic);
+        expr.to_string()
     }
 
     pub fn fns(&self) -> Vec<String> {

@@ -1,19 +1,20 @@
 (ruleset select_opt)
 
+
+;; inlined (Get thn i) makes the query faster ):
 (rule
        (
         (= if_e (If pred inputs thn els))
-        (ContextOf if_e ctx)
 
-        (= thn_out (Get thn i))
-        (= els_out (Get els i))
-        (ExprIsPure thn_out)
-        (ExprIsPure els_out)
+        (ExprIsPure (Get thn i))
+        (ExprIsPure (Get els i))
         
-        (> 10 (Expr-size thn_out)) ; TODO: Tune these size limits
-        (> 10 (Expr-size els_out))
-        (= (TCPair t1 c1) (ExtractedExpr thn_out))
-        (= (TCPair t2 c2) (ExtractedExpr els_out))
+        (> 10 (Expr-size (Get thn i))) ; TODO: Tune these size limits
+        (> 10 (Expr-size (Get els i)))
+        (= (TCPair t1 c1) (ExtractedExpr (Get thn i)))
+        (= (TCPair t2 c2) (ExtractedExpr (Get els i)))
+
+        (ContextOf if_e ctx)
        )
        (
         (union (Get if_e i)

@@ -1,35 +1,72 @@
 (ruleset terms)
+;; helpers keeps track of the new best extracted terms
+(ruleset terms-helpers)
+;; helpers-helpers runs `Smaller` rules, resolving the merge function for helpers
+(ruleset terms-helpers-helpers)
 
 (sort TermAndCost)
-(function Smaller (TermAndCost TermAndCost) TermAndCost)
+(constructor Smaller (TermAndCost TermAndCost) TermAndCost)
 
 (function ExtractedExpr (Expr) TermAndCost
   :merge (Smaller old new))
+;; potential extractions- use so that when the costs are equal, we don't change the term
+;; this preserves egglog's timestamp of when the last time ExtractedExpr was changed, fixing a big performance problem
+(relation PotentialExtractedExpr (Expr TermAndCost))
 
-(function TCPair (Term i64) TermAndCost)
+(constructor TCPair (Term i64) TermAndCost)
+
+(constructor NoTerm () Term)
+
+;; set extracted expr to default value
+(rule ((PotentialExtractedExpr expr termandcost))
+      ((set (ExtractedExpr expr) (TCPair (NoTerm) 10000000000000000)))
+      :ruleset terms-helpers)
+
+;; set extracted expr to new value as long as not equal
+(rule ((PotentialExtractedExpr expr (TCPair term cost))
+       (= (ExtractedExpr expr) (TCPair oldterm oldcost))
+       (< cost oldcost))
+      ((set (ExtractedExpr expr) (TCPair term cost)))
+      :ruleset terms-helpers)
+
+;; if the cost is negative panic, terms got too big
+(rule ((PotentialExtractedExpr expr (TCPair term cost))
+       (< cost 0))
+      ((panic "Negative cost"))
+      :ruleset terms-helpers)
 
 ;; Resolve Smaller
 (rule (
         (= lhs (Smaller (TCPair t1 cost1) (TCPair t2 cost2)))
-        (<= cost1 cost2)
+        (< cost1 cost2)
       )
       ((union lhs (TCPair t1 cost1)))
-      :ruleset terms)
+      :ruleset terms-helpers-helpers)
 
 (rule (
         (= lhs (Smaller (TCPair t1 cost1) (TCPair t2 cost2)))
         (> cost1 cost2) 
       )
       ((union lhs (TCPair t2 cost2)))
-      :ruleset terms)
+      :ruleset terms-helpers-helpers)
+
+
+(rule (
+        (= lhs (Smaller (TCPair t1 cost1) (TCPair t2 cost2)))
+        (= cost1 cost2) 
+      )
+      ;; arbitrarily pick first one
+      ((union lhs (TCPair t1 cost1)))
+      :ruleset terms-helpers-helpers)
+
 
 ; Compute smallest Expr bottom-up
 (rule ((= lhs (Const c ty ass)))
-      ((set (ExtractedExpr lhs) (TCPair (TermConst c) 1)))
+      ((PotentialExtractedExpr lhs (TCPair (TermConst c) 1)))
       :ruleset terms)
 
 (rule ((= lhs (Arg ty ass)))
-      ((set (ExtractedExpr lhs) (TCPair (TermArg) 1)))
+      ((PotentialExtractedExpr lhs (TCPair (TermArg) 1)))
       :ruleset terms)
 
 (rule (
@@ -37,7 +74,7 @@
         (= (TCPair t1 c1) (ExtractedExpr e1))
         (= (TCPair t2 c2) (ExtractedExpr e2))
       )
-      ((set (ExtractedExpr lhs) (TCPair (TermBop o t1 t2) (+ 1 (+ c1 c2)))))
+      ((PotentialExtractedExpr lhs (TCPair (TermBop o t1 t2) (+ 1 (+ c1 c2)))))
       :ruleset terms)
 
 (rule (
@@ -46,14 +83,14 @@
         (= (TCPair t2 c2) (ExtractedExpr e2))
         (= (TCPair t3 c3) (ExtractedExpr e3))
       )
-      ((set (ExtractedExpr lhs) (TCPair (TermTop o t1 t2 t3) (+ (+ 1 c1) (+ c2 c3)))))
+      ((PotentialExtractedExpr lhs (TCPair (TermTop o t1 t2 t3) (+ (+ 1 c1) (+ c2 c3)))))
       :ruleset terms)
 
 (rule (
         (= lhs (Uop o e1))
         (= (TCPair t1 c1) (ExtractedExpr e1))
       )
-      ((set (ExtractedExpr lhs) (TCPair (TermUop o t1) (+ 1 c1))))
+      ((PotentialExtractedExpr lhs (TCPair (TermUop o t1) (+ 1 c1))))
       :ruleset terms)
 
 (rule (
@@ -61,7 +98,7 @@
         (= (TCPair t1 c1) (ExtractedExpr tup))
       )
       ; cost of the get is the same as the  cost of the whole tuple
-      ((set (ExtractedExpr lhs) (TCPair (TermGet t1 i) c1)))
+      ((PotentialExtractedExpr lhs (TCPair (TermGet t1 i) c1)))
       :ruleset terms)
 
 ; todo Alloc
@@ -73,7 +110,7 @@
         (= (TCPair t1 c1) (ExtractedExpr e1))
       )
       ; cost of single is same as cost of the element
-      ((set (ExtractedExpr lhs) (TCPair (TermSingle t1) c1)))
+      ((PotentialExtractedExpr lhs (TCPair (TermSingle t1) c1)))
       :ruleset terms)
 
 (rule (
@@ -82,7 +119,7 @@
         (= (TCPair t2 c2) (ExtractedExpr e2))
       )
       ; cost of concat is sum of the costs
-      ((set (ExtractedExpr lhs) (TCPair (TermConcat t1 t2) (+ c1 c2))))
+      ((PotentialExtractedExpr lhs (TCPair (TermConcat t1 t2) (+ c1 c2))))
       :ruleset terms)
 
 
@@ -95,10 +132,10 @@
 ;         (= (TCPair t4 c4) (ExtractedExpr els))
 ;       )
 ;       ; cost of if is 10 + cost of pred + cost of input + max of branch costs
-;       ((set (ExtractedExpr lhs) (TCPair (TermIf t1 t2 t3 t4) (+ 10 (+ (+ c1 c2) (max c3 c4))))))
+;       ((PotentialExtractedExpr lhs (TCPair (TermIf t1 t2 t3 t4) (+ 10 (+ (+ c1 c2) (max c3 c4))))))
 ;       :ruleset terms)
 
 (sort Node)
 ;; store a particular if node for later
 ;; stored as the if eclass, pred, inputs, then, else
-(function IfNode (Expr Expr Expr Expr Expr) Node)
+(constructor IfNode (Expr Expr Expr Expr Expr) Node)

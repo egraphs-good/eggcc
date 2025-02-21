@@ -54,6 +54,10 @@
         <button onclick="selectAllModes(false)">Select None</button>
       </div>
       <div id="modeCheckboxes"></div>
+      <div>
+        <p>Benchmark Suites</p>
+      </div>
+      <div id="suiteCheckboxes"></div>
     </div>
     <div class="filters">
       <div>
@@ -82,23 +86,12 @@
     <textarea id="latex-macros-text" rows="10" cols="50" readonly></textarea>
   </div>
 
-  <h2>Code Size vs Compile Time</h2>
-  <button type="button" class="collapsible" id="code-size-toggle"
-    onclick="toggle(this, `\u25B6 Show`, `\u25BC Hide`)">
-    &#9654; Show
-  </button>
-  <div class="content collapsed" id="code-size">
-    <image id="code-size-plot" src="code_size_vs_compile_time.png"/>
-  </div>
+
+
+  <div id="tables"></div>
 
 
 
-  <h2>Overall Stats</h2>
-  <t>Warning: compile-time statistics are not very trustworthy in parallel mode.</t>
-  <div id="overall-stats-table"></div>
-
-  <h2>Detailed Table</h2>
-  <div id="profile"></div>
   </div>
   <h2>Raw</h2>
   <p>

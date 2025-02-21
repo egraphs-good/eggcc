@@ -16,7 +16,7 @@ fn listlike(el_tys: Vec<&str>, el_relations: Vec<&str>) -> String {
   (Nil-{datatype})
   (Cons-{datatype} {tys_s} {datatype}))
 
-(function Length-{datatype} ({datatype}) i64)
+(function Length-{datatype} ({datatype}) i64 :no-merge)
 (rule ((= x (Nil-{datatype})))
       ((set (Length-{datatype} x) 0))
       :ruleset always-run)
@@ -42,7 +42,7 @@ fn listlike(el_tys: Vec<&str>, el_relations: Vec<&str>) -> String {
       ((IsNonEmpty-{datatype} x))
       :ruleset always-run)
 
-(function RevConcat-{datatype} ({datatype} {datatype}) {datatype} :cost 1000)
+(constructor RevConcat-{datatype} ({datatype} {datatype}) {datatype} :cost 1000)
 (rewrite (RevConcat-{datatype} (Nil-{datatype}) l)
          l
          :ruleset always-run)
@@ -50,12 +50,12 @@ fn listlike(el_tys: Vec<&str>, el_relations: Vec<&str>) -> String {
          (RevConcat-{datatype} tl (Cons-{datatype} {el} l))
          :ruleset always-run)
 
-(function Rev-{datatype} ({datatype}) {datatype} :cost 1000)
+(constructor Rev-{datatype} ({datatype}) {datatype} :cost 1000)
 (rewrite (Rev-{datatype} m)
          (RevConcat-{datatype} m (Nil-{datatype}))
          :ruleset always-run)
 
-(function Concat-{datatype} ({datatype} {datatype}) {datatype} :cost 1000)
+(constructor Concat-{datatype} ({datatype} {datatype}) {datatype} :cost 1000)
 (rewrite (Concat-{datatype} x y)
          (RevConcat-{datatype} (Rev-{datatype} x) y)
          :ruleset always-run)
@@ -102,21 +102,21 @@ pub(crate) fn rules() -> String {
     (NegInfinity)
     (I i64))
 
-(function MaxIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
+(constructor MaxIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
 (rewrite (MaxIntOrInfinity (Infinity) _) (Infinity) :ruleset always-run)
 (rewrite (MaxIntOrInfinity _ (Infinity)) (Infinity) :ruleset always-run)
 (rewrite (MaxIntOrInfinity (NegInfinity) x) x :ruleset always-run)
 (rewrite (MaxIntOrInfinity x (NegInfinity)) x :ruleset always-run)
 (rewrite (MaxIntOrInfinity (I x) (I y)) (I (max x y)) :ruleset always-run)
 
-(function MinIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
+(constructor MinIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
 (rewrite (MinIntOrInfinity (NegInfinity) _) (NegInfinity) :ruleset always-run)
 (rewrite (MinIntOrInfinity _ (NegInfinity)) (NegInfinity) :ruleset always-run)
 (rewrite (MinIntOrInfinity (Infinity) x) x :ruleset always-run)
 (rewrite (MinIntOrInfinity x (Infinity)) x :ruleset always-run)
 (rewrite (MinIntOrInfinity (I x) (I y)) (I (min x y)) :ruleset always-run)
 
-(function AddIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
+(constructor AddIntOrInfinity (IntOrInfinity IntOrInfinity) IntOrInfinity)
 (rewrite (AddIntOrInfinity (Infinity) (Infinity)) (Infinity) :ruleset always-run)
 (rewrite (AddIntOrInfinity (Infinity) (I _)) (Infinity) :ruleset always-run)
 (rewrite (AddIntOrInfinity (I _) (Infinity)) (Infinity) :ruleset always-run)
@@ -127,17 +127,17 @@ pub(crate) fn rules() -> String {
 
 (datatype IntInterval (MkIntInterval IntOrInfinity IntOrInfinity))
 
-(function UnionIntInterval (IntInterval IntInterval) IntInterval)
+(constructor UnionIntInterval (IntInterval IntInterval) IntInterval)
 (rewrite (UnionIntInterval (MkIntInterval lo1 hi1) (MkIntInterval lo2 hi2))
          (MkIntInterval (MinIntOrInfinity lo1 lo2) (MaxIntOrInfinity hi1 hi2))
          :ruleset always-run)
 
-(function IntersectIntInterval (IntInterval IntInterval) IntInterval)
+(constructor IntersectIntInterval (IntInterval IntInterval) IntInterval)
 (rewrite (IntersectIntInterval (MkIntInterval lo1 hi1) (MkIntInterval lo2 hi2))
          (MkIntInterval (MaxIntOrInfinity lo1 lo2) (MinIntOrInfinity hi1 hi2))
          :ruleset always-run)
 
-(function AddIntInterval (IntInterval IntInterval) IntInterval)
+(constructor AddIntInterval (IntInterval IntInterval) IntInterval)
 (rewrite (AddIntInterval (MkIntInterval lo1 hi1) (MkIntInterval lo2 hi2))
          (MkIntInterval (AddIntOrInfinity lo1 lo2)
                         (AddIntOrInfinity hi1 hi2))
@@ -145,10 +145,10 @@ pub(crate) fn rules() -> String {
 
 {Listi64IntInterval}
 
-(function Union-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
+(constructor Union-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
   ; The third argument of the helper is a WIP result map.
   ; Invariant: keys of the result map are not present in the first two and are in descending order
-  (function UnionHelper-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
+  (constructor UnionHelper-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
   (rewrite (Union-List<i64+IntInterval> m1 m2)
            (Rev-List<i64+IntInterval> (UnionHelper-List<i64+IntInterval> m1 m2 (Nil-List<i64+IntInterval>)))
            :ruleset always-run)
@@ -204,10 +204,10 @@ pub(crate) fn rules() -> String {
              (Cons-List<i64+IntInterval> k (UnionIntInterval a1 b1) res))))
         :ruleset always-run)
 
-(function Intersect-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
+(constructor Intersect-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
   ; The third argument of the helper is a WIP result map.
   ; Invariant: keys of the result map are not present in the first two and are in descending order
-  (function IntersectHelper-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
+  (constructor IntersectHelper-List<i64+IntInterval> (List<i64+IntInterval> List<i64+IntInterval> List<i64+IntInterval>) List<i64+IntInterval>)
   (rewrite (Intersect-List<i64+IntInterval> m1 m2)
            (Rev-List<i64+IntInterval> (IntersectHelper-List<i64+IntInterval> m1 m2 (Nil-List<i64+IntInterval>)))
            :ruleset always-run)
@@ -236,7 +236,7 @@ pub(crate) fn rules() -> String {
 
 (datatype MyBool (MyTrue) (MyFalse))
 
-(function IntIntervalValid (IntInterval) MyBool)
+(constructor IntIntervalValid (IntInterval) MyBool)
 (rewrite (IntIntervalValid (MkIntInterval (I lo) (I hi)))
          (MyTrue)
          :when ((<= lo hi))
@@ -252,7 +252,7 @@ pub(crate) fn rules() -> String {
          (MyTrue)
          :ruleset always-run)
 
-(function ConsIfNonEmpty (i64 IntInterval List<i64+IntInterval>)
+(constructor ConsIfNonEmpty (i64 IntInterval List<i64+IntInterval>)
           List<i64+IntInterval>
           :cost 100)
 (rule ((ConsIfNonEmpty k v tl))
@@ -276,7 +276,7 @@ pub(crate) fn rules() -> String {
              (ConsIfNonEmpty k (IntersectIntInterval a1 b1) res))))
         :ruleset always-run)
 
-(function AddIntIntervalToAll (IntInterval List<i64+IntInterval>)
+(constructor AddIntIntervalToAll (IntInterval List<i64+IntInterval>)
                               List<i64+IntInterval>)
 (rewrite (AddIntIntervalToAll _ (Nil-List<i64+IntInterval>))
          (Nil-List<i64+IntInterval>)
@@ -290,7 +290,7 @@ pub(crate) fn rules() -> String {
   (PointsTo List<i64+IntInterval>)
   (PointsAnywhere))
 
-(function AddIntIntervalToPtrPointees (IntInterval PtrPointees) PtrPointees)
+(constructor AddIntIntervalToPtrPointees (IntInterval PtrPointees) PtrPointees)
 (rewrite (AddIntIntervalToPtrPointees interval (PointsAnywhere))
          (PointsAnywhere)
          :ruleset always-run)
@@ -298,7 +298,7 @@ pub(crate) fn rules() -> String {
          (PointsTo (AddIntIntervalToAll interval l))
          :ruleset always-run)
 
-(function Union-PtrPointees (PtrPointees PtrPointees) PtrPointees)
+(constructor Union-PtrPointees (PtrPointees PtrPointees) PtrPointees)
 (rewrite (Union-PtrPointees (PointsAnywhere) _)
          (PointsAnywhere)
          :ruleset always-run)
@@ -308,7 +308,7 @@ pub(crate) fn rules() -> String {
 (rewrite (Union-PtrPointees (PointsTo x) (PointsTo y))
          (PointsTo (Union-List<i64+IntInterval> x y))
          :ruleset always-run)
-(function Intersect-PtrPointees (PtrPointees PtrPointees) PtrPointees)
+(constructor Intersect-PtrPointees (PtrPointees PtrPointees) PtrPointees)
 (rewrite (Intersect-PtrPointees (PointsAnywhere) x)
          x
          :ruleset always-run)
@@ -328,7 +328,7 @@ pub(crate) fn rules() -> String {
 {ListPointees}
 
 
-(function Zip<Union-PtrPointees> (List<PtrPointees> List<PtrPointees>) List<PtrPointees> :cost 1000)
+(constructor Zip<Union-PtrPointees> (List<PtrPointees> List<PtrPointees>) List<PtrPointees> :cost 1000)
 (rewrite (Zip<Union-PtrPointees> (Nil-List<PtrPointees>) (Nil-List<PtrPointees>))
          (Nil-List<PtrPointees>)
          :ruleset always-run)
@@ -341,7 +341,7 @@ pub(crate) fn rules() -> String {
          :when ((= (Length-List<PtrPointees> tl1) (Length-List<PtrPointees> tl2)))
          :ruleset always-run)
 
-(function Zip<Intersect-PtrPointees> (List<PtrPointees> List<PtrPointees>) List<PtrPointees> :cost 1000)
+(constructor Zip<Intersect-PtrPointees> (List<PtrPointees> List<PtrPointees>) List<PtrPointees> :cost 1000)
 (rewrite (Zip<Intersect-PtrPointees> (Nil-List<PtrPointees>) (Nil-List<PtrPointees>))
          (Nil-List<PtrPointees>)
          :ruleset always-run)

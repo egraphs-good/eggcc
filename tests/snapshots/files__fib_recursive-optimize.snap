@@ -52,11 +52,11 @@ expression: visualization.result
   ret v4_;
   jmp .b7_;
 .b26_:
-  c29_: int = const -2;
-  c30_: int = const -1;
-  v31_: int = call @fac c30_;
-  v32_: int = call @fac c29_;
-  v33_: int = add v31_ v32_;
+  c29_: int = const -1;
+  v30_: int = call @fac c29_;
+  c31_: int = const -2;
+  v32_: int = call @fac c31_;
+  v33_: int = add v30_ v32_;
   v28_: int = id v33_;
   v20_: int = id v28_;
   v23_: int = id c1_;
@@ -99,11 +99,11 @@ expression: visualization.result
   ret v4_;
   jmp .b7_;
 .b48_:
-  c51_: int = const -4;
-  c52_: int = const -3;
-  v53_: int = call @fac c52_;
-  v54_: int = call @fac c51_;
-  v55_: int = add v53_ v54_;
+  c51_: int = const -3;
+  v52_: int = call @fac c51_;
+  c53_: int = const -4;
+  v54_: int = call @fac c53_;
+  v55_: int = add v52_ v54_;
   v50_: int = id v55_;
   v41_: int = id v50_;
   v45_: int = add v38_ v41_;
@@ -123,11 +123,11 @@ expression: visualization.result
   v41_: int = id v0;
   jmp .b42_;
 .b58_:
-  c61_: int = const -3;
-  c62_: int = const -2;
-  v63_: int = call @fac c62_;
-  v64_: int = call @fac c61_;
-  v65_: int = add v63_ v64_;
+  c61_: int = const -2;
+  v62_: int = call @fac c61_;
+  c63_: int = const -3;
+  v64_: int = call @fac c63_;
+  v65_: int = add v62_ v64_;
   v60_: int = id v65_;
   v38_: int = id v60_;
   v41_: int = id v0;
@@ -179,11 +179,11 @@ expression: visualization.result
   ret v4_;
   jmp .b7_;
 .b88_:
-  c91_: int = const -2;
-  c92_: int = const -1;
-  v93_: int = call @fac c92_;
-  v94_: int = call @fac c91_;
-  v95_: int = add v93_ v94_;
+  c91_: int = const -1;
+  v92_: int = call @fac c91_;
+  c93_: int = const -2;
+  v94_: int = call @fac c93_;
+  v95_: int = add v92_ v94_;
   v90_: int = id v95_;
   v82_: int = id v90_;
   v85_: int = id v67_;
@@ -287,11 +287,11 @@ expression: visualization.result
   v73_: int = id c3_;
   jmp .b74_;
 .b138_:
-  c141_: int = const -2;
-  c142_: int = const -1;
-  v143_: int = call @fac c142_;
-  v144_: int = call @fac c141_;
-  v145_: int = add v143_ v144_;
+  c141_: int = const -1;
+  v142_: int = call @fac c141_;
+  c143_: int = const -2;
+  v144_: int = call @fac c143_;
+  v145_: int = add v142_ v144_;
   v140_: int = id v145_;
   v132_: int = id v140_;
   v135_: int = id v66_;

@@ -1,0 +1,20 @@
+# ARGS: 1
+@main(v0: int) {
+  c1_: int = const 1;
+  c2_: int = const 2;
+  v3_: bool = lt v0 c2_;
+  c4_: int = const 4;
+  v5_: int = select v3_ c4_ c1_;
+  v6_: int = id v5_;
+  v7_: int = id c1_;
+  br v3_ .b8_ .b9_;
+.b9_:
+  v10_: int = add c2_ v5_;
+  v6_: int = id v10_;
+  v7_: int = id c1_;
+.b8_:
+  v11_: int = add c1_ v6_;
+  print v11_;
+  ret;
+}
+

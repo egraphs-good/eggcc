@@ -1,20 +1,8 @@
 // copied from profile.py
-const treatments = [
-  "rvsdg-round-trip-to-executable",
-  "llvm-O0-O0",
-  "llvm-O1-O0",
-  "llvm-O2-O0",
-  "llvm-eggcc-O0-O0",
-  "llvm-eggcc-sequential-O0-O0",
-  "llvm-O3-O0",
-  "llvm-O3-O3",
-  "llvm-eggcc-O3-O0",
-  "llvm-eggcc-O3-O3",
-];
-
 const GLOBAL_DATA = {
-  enabledModes: new Set(),
-  enabledBenchmarks: new Set(),
+  checkedModes: new Set(),
+  checkedSuites: new Set(),
+  checkedBenchmarks: new Set(),
   warnings: new Set(),
   currentRun: [],
   baselineRun: [],
@@ -25,6 +13,29 @@ const GLOBAL_DATA = {
   },
 };
 
+function treatments() {
+  return dedup(GLOBAL_DATA.currentRun.map((x) => x.runMethod));
+}
+
+// filter to all the benchmark names that are enabled
+// using checkedSuites and checkedBenchmarks
+function enabledBenchmarks() {
+  return Array.from(GLOBAL_DATA.checkedBenchmarks).filter((benchmark) =>
+    GLOBAL_DATA.checkedSuites.has(getRow(benchmark, BASELINE_MODE).suite),
+  );
+}
+
+// filter current run for enabled benchmarks
+// and by checked run modes
+function enabledSubsetOfCurrentRun() {
+  const benchmarks = enabledBenchmarks();
+  return GLOBAL_DATA.currentRun.filter(
+    (entry) =>
+      GLOBAL_DATA.checkedModes.has(entry.runMethod) &&
+      benchmarks.includes(entry),
+  );
+}
+
 function addWarning(warning) {
   GLOBAL_DATA.warnings.add(warning);
 }
@@ -33,11 +44,11 @@ function clearWarnings() {
   GLOBAL_DATA.warnings.clear();
 }
 
-function addTableTo(element, data) {
-  // clear elements in element
-  while (element.firstChild) {
-    element.removeChild(element.firstChild);
-  }
+function addTableTo(element, data, title) {
+  // add a h2 element with the title
+  const h2 = document.createElement("h2");
+  h2.innerText = title;
+  element.appendChild(h2);
 
   // add a button that copies latex for table
   const copyButton = document.createElement("button");
@@ -55,13 +66,15 @@ function addTableTo(element, data) {
   element.appendChild(tableDiv);
 }
 
-function refreshView() {
-  if (!GLOBAL_DATA.baselineRun) {
-    addWarning("no baseline to compare to");
-  }
+function benchmarksInSuite(suite) {
+  return enabledBenchmarks().filter(
+    (benchmark) => getRow(benchmark, BASELINE_MODE).suite === suite,
+  );
+}
 
+function tableForSuite(suite) {
   const byBench = {};
-  GLOBAL_DATA.enabledBenchmarks.forEach((benchmark) => {
+  benchmarksInSuite(suite).forEach((benchmark) => {
     byBench[benchmark] = getDataForBenchmark(benchmark);
   });
   const tableData = Object.keys(byBench).map((bench) => ({
@@ -71,21 +84,60 @@ function refreshView() {
     executions: { data: byBench[bench] },
   }));
   tableData.sort((l, r) => l.name - r.name);
+  return tableData;
+}
 
-  document.getElementById("profile").innerHTML = ConvertJsonToTable(tableData);
+function dedup(arr) {
+  return Array.from(new Set(arr));
+}
 
-  addTableTo(document.getElementById("profile"), tableData);
+function getSuites() {
+  return dedup(GLOBAL_DATA.currentRun.map((benchmark) => benchmark.suite));
+}
+
+function refreshView() {
+  if (!GLOBAL_DATA.baselineRun) {
+    addWarning("no baseline to compare to");
+  }
+
+  // clear the tables element
+  while (document.getElementById("tables").firstChild) {
+    document
+      .getElementById("tables")
+      .removeChild(document.getElementById("tables").firstChild);
+  }
 
   // fill in the overall stats table
-  const overallStats = getOverallStatistics();
-  console.log(overallStats);
+  const overallStats = getOverallStatistics(undefined);
+  addTableTo(document.getElementById("tables"), overallStats, "Overall Stats");
 
-  const overallTable = document.getElementById("overall-stats-table");
-  addTableTo(overallTable, overallStats);
+  var latexMacros = "";
+  latexMacros =
+    latexMacros + jsonToLatexMacros(overallStats, "Treatment", "overall");
+
+  for (const suite of getSuites()) {
+    const tableData = getOverallStatistics(suite);
+    addTableTo(
+      document.getElementById("tables"),
+      tableData,
+      suite + " Overall Stats",
+    );
+    latexMacros =
+      latexMacros +
+      jsonToLatexMacros(tableData, "Treatment", suite + "Overall");
+  }
+
+  for (const suite of getSuites()) {
+    const tableData = tableForSuite(suite);
+    addTableTo(document.getElementById("tables"), tableData, suite + " Stats");
+    latexMacros =
+      latexMacros +
+      nestedJsonToLatexMacros(tableData, "name", "executions", "runMethod");
+  }
 
   renderWarnings();
   refreshChart();
-  refreshLatexMacros();
+  refreshLatexMacros(latexMacros);
 }
 
 function renderWarnings() {
@@ -121,12 +173,21 @@ function makeCheckbox(parent, mode) {
 }
 
 function makeSelectors() {
-  treatments.forEach((mode) => {
+  treatments().forEach((mode) => {
     const checkbox = makeCheckbox(
       document.getElementById("modeCheckboxes"),
       mode,
     );
-    checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.enabledModes);
+    checkbox.onchange = () => toggleCheckbox(mode, GLOBAL_DATA.checkedModes);
+  });
+
+  const suites = getSuites();
+  suites.forEach((suite) => {
+    const checkbox = makeCheckbox(
+      document.getElementById("suiteCheckboxes"),
+      suite,
+    );
+    checkbox.onchange = () => toggleCheckbox(suite, GLOBAL_DATA.checkedSuites);
   });
 
   const benchmarks = Array.from(
@@ -138,7 +199,7 @@ function makeSelectors() {
       benchmark,
     );
     checkbox.onchange = () =>
-      toggleCheckbox(benchmark, GLOBAL_DATA.enabledBenchmarks);
+      toggleCheckbox(benchmark, GLOBAL_DATA.checkedBenchmarks);
   });
 }
 
@@ -162,13 +223,14 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
   select.value = formatRun(previousRuns[initialIdx]);
 }
 
-async function refreshLatexMacros() {
+async function refreshLatexMacros(tableMacros) {
   const latexMacrosTextArea = document.getElementById("latex-macros-text");
   const latexMacros = await fetch("nightlymacros.tex").then((r) => r.text());
-  latexMacrosTextArea.value = latexMacros;
+  latexMacrosTextArea.value = tableMacros + latexMacros;
 }
 
 function addGraphs() {
+  console.log("addgraphs");
   var prevElement = document.getElementById("plots");
   // for each plot in graphs folder, add button to show plot
   fetch("graphs.json")

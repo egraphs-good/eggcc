@@ -6,7 +6,8 @@ use clap::ValueEnum;
 use dag_in_context::dag2svg::tree_to_svg;
 use dag_in_context::schedule::{self};
 use dag_in_context::{
-    build_program, check_roundtrip_egraph, EggccConfig, EggccTimeStatistics, ExtractionTimeSample, Schedule
+    build_program, check_roundtrip_egraph, EggccConfig, EggccTimeStatistics, ExtractionTimeSample,
+    Schedule,
 };
 
 use dag_in_context::schema::TreeProgram;

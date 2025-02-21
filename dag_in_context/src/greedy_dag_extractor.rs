@@ -1560,22 +1560,25 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
 
     let mut err = Ok(());
     for func in prog.fns() {
+        let root = serialized_egraph.nid_to_cid(&get_root(&serialized_egraph, &func));
+        let pruned = prune_egraph(&serialized_egraph, root.clone(), &DefaultCostModel);
+
         let egraph_info = EgraphInfo::new(
             &func,
-            serialized_egraph
-                .nid_to_cid(&get_root(&serialized_egraph, &func))
-                .clone(),
+            root.clone(),
             &DefaultCostModel,
-            &serialized_egraph,
+            &pruned,
             unextractables.clone(),
         );
         let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
-        let root = serialized_egraph
-            .nid_to_cid(&get_root(&serialized_egraph, &func))
-            .clone();
-        let (_cost_res, prog) =
-            extract_with_paths(&func, root, extractor_not_linear, &egraph_info, None);
+        let (_cost_res, prog) = extract_with_paths(
+            &func,
+            root.clone(),
+            extractor_not_linear,
+            &egraph_info,
+            None,
+        );
         let res = extractor_not_linear.check_function_is_linear(&prog);
         if let Err(e) = res {
             err = Err(e);
@@ -1862,11 +1865,13 @@ fn test_validity_of_extraction() {
     let mut termdag = TermDag::default();
 
     let root = serialized_egraph.nid_to_cid(&get_root(&serialized_egraph, "main"));
+
+    let pruned = prune_egraph(&serialized_egraph, root.clone(), &DefaultCostModel);
     let egraph_info = EgraphInfo::new(
         "main",
         root.clone(),
         &TestCostModel,
-        &serialized_egraph,
+        &pruned,
         unextractables.clone(),
     );
     let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);

@@ -100,8 +100,8 @@ fn sum_array(
 ) -> f64 {
     let mut sum: f64 = 0.0;
     let mut i: i64 = 0;
+    let mut j: i64 = 0;
     while i < nx {
-        let mut j: i64 = 0;
         while j < ny {
             let x: f64 = ex[i as usize][j as usize];
             // Can't print multiple things on nightly.
@@ -114,8 +114,8 @@ fn sum_array(
     }
 
     i = 0;
+    j = 0;
     while i < nx {
-        let mut j: i64 = 0;
         while j < ny {
             let x: f64 = ey[i as usize][j as usize];
             // Can't print multiple things on nightly.
@@ -128,8 +128,8 @@ fn sum_array(
     }
 
     i = 0;
+    j = 0;
     while i < nx {
-        let mut j: i64 = 0;
         while j < ny {
             let x: f64 = hz[i as usize][j as usize];
             // Can't print multiple things on nightly.
@@ -140,6 +140,7 @@ fn sum_array(
         }
         i += 1;
     }
+    return sum;
 }
 
 fn main() {

@@ -1,11 +1,13 @@
 fn modulo(a: i64, b: i64) -> i64 {
     let div: i64 = a / b; // Integer division
     let remainder: i64 = a - (div * b); // Compute remainder manually
+    let mut res: i64 = 0;
     if remainder < 0 {
-        return remainder + b; // Ensure non-negative result
+        res = remainder + b; // Ensure non-negative result
     } else {
-        return remainder;
+        res = remainder;
     }
+    return res;
 }
 
 fn max_score(s1: i64, s2: i64) -> i64 {

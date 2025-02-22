@@ -11,19 +11,23 @@ fn modulo(a: i64, b: i64) -> i64 {
 }
 
 fn max_score(s1: i64, s2: i64) -> i64 {
+    let mut res: i64 = 0;
     if s1 >= s2 {
-        return s1;
+        res = s1;
     } else {
-        return s2;
+        res = s2;
     }
+    return res;
 }
 
 fn match_base(b1: i64, b2: i64) -> i64 {
+    let mut res: i64 = 0;
     if (b1 + b2) == 3 {
-        return 1;
+        res = 1;
     } else {
-        return 0;
+        res = 0;
     }
+    return res;
 }
 
 fn init_array(n: i64, seq: &mut [i64; 180], table: &mut [[i64; 180]; 180]) {

@@ -61,13 +61,17 @@ def get_row(data, benchmark_name, run_method):
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
 def get_cycles(data, benchmark_name, run_method):
-  return get_row(data, benchmark_name, run_method).get('cycles')
+  return get_row(data, benchmark_name, run_method)['cycles']
 
 def get_eggcc_compile_time(data, benchmark_name):
-  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0').get('eggccCompileTimeSecs')
+  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0')['eggccCompileTimeSecs']
 
 def get_eggcc_extraction_time(data, benchmark_name):
-  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0').get('eggccExtractionTimeSecs')
+  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0')['eggccExtractionTimeSecs']
+
+def get_ilp_test_times(data, benchmark_name):
+  row = get_row(data, benchmark_name, 'eggcc-ILP-O0-O0')
+  return row['ilpTestTimes']
 
 def group_by_benchmark(profile):
   grouped_by_benchmark = {}
@@ -77,6 +81,62 @@ def group_by_benchmark(profile):
       grouped_by_benchmark[benchmark_name] = []
     grouped_by_benchmark[benchmark_name].append(benchmark)
   return [grouped_by_benchmark[benchmark] for benchmark in grouped_by_benchmark]
+
+# a graph of how the ilp solver time changes
+# compared to the number of lines in the bril file
+# when the ilp solve time is null it timed out
+def make_ilp(json, output, benchmark_suite_folder):
+  ilp_timeout = profile.ilp_extraction_test_timeout()
+
+  eggcc_points = []
+  ilp_timeout_points = []
+  ilp_points = []
+
+  benchmarks = dedup([b.get('benchmark') for b in json])
+
+  for benchmark in benchmarks:
+    # exclude raytrace, since it uses too much memory
+    if benchmark == 'raytrace':
+      continue
+    # a list of ExtractionTimeSample
+    ilp_test_times = get_ilp_test_times(json, benchmark)
+
+    for sample in ilp_test_times:
+      ilp_time = sample["ilp_time"]
+      egraph_size = sample["egraph_size"]
+      eggcc_time = sample["eggcc_time"]
+
+      eggcc_time = eggcc_time["secs"] + eggcc_time["nanos"] / 1e9
+
+      if ilp_time == None:
+        ilp_timeout_points.append([egraph_size, ilp_timeout])
+      else:
+        ilp_points.append([egraph_size, ilp_time["secs"] + ilp_time["nanos"] / 1e9])
+      eggcc_points.append([egraph_size, eggcc_time])
+  
+    # graph data
+  plt.figure(figsize=(10, 6))
+
+  # Plot extraction time points
+  eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
+  plt.scatter(eggcc_x, eggcc_y, color='blue', label='EggCC Extraction Time', alpha=0.7, edgecolors='w', linewidth=0.5)
+
+  # Plot ILP timeout points
+  ilp_timeout_x, ilp_timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
+  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='red', label='ILP Timeout', alpha=0.7, marker='x', s=50)
+
+  # Plot ILP solve time points
+  ilp_x, ilp_y = zip(*ilp_points) if ilp_points else ([], [])
+  plt.scatter(ilp_x, ilp_y, color='green', label='ILP Solve Time', alpha=0.7, edgecolors='w', linewidth=0.5)
+
+  plt.xlabel('Size of egraph')
+  plt.ylabel('Extraction Time')
+  plt.title('ILP Extraction vs eggcc Extraction')
+  plt.legend()
+  plt.grid(True, linestyle='--', linewidth=0.5)
+
+  plt.savefig(output)
+
 
 def make_jitter(profile, upper_x_bound, output):
   # Prepare the data for the jitter plot
@@ -238,7 +298,7 @@ def dedup(lst):
   return list(dict.fromkeys(lst))
 
 def format_latex_macro(name, value):
-  return f"\\newcommand{{\\{name}}}{{{value}}}\n"
+  return f"\\newcommand{{\\{name}}}{{{value}\\xspace}}\n"
 
 # given a ratio, format it as a percentage and create a latex macro
 def format_latex_macro_percent(name, percent_as_ratio):
@@ -266,10 +326,16 @@ def make_macros(profile, benchmark_suites, output_file):
       out.write(format_latex_macro(macro_name, len(benchmarks)))
     
     # report the number of benchmarks in the profile
-    out.write(format_latex_macro("NumBenchmarksAllSuites", len(dedup([b.get('benchmark') for b in profile]))))
+    benchmarks = dedup([b.get('benchmark') for b in profile])
+    out.write(format_latex_macro("NumBenchmarksAllSuites", len(benchmarks)))
 
-
-
+    ilp_all = []
+    for benchmark in benchmarks:
+      # skip raytrace
+      if benchmark == 'raytrace':
+        continue
+      ilp_all = ilp_all + get_ilp_test_times(profile, benchmark)
+    out.write(format_latex_macro_percent("PercentILPTimeout", len(list(filter(lambda x: x["ilp_time"] == None, ilp_all))) / len(ilp_all)))
   
 
 def get_code_size(benchmark, suites_path):
@@ -352,28 +418,19 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
 
 
 
-
-
-if __name__ == '__main__':
-  # parse two arguments: the output folder and the profile.json file
-  if len(sys.argv) != 4:
-      print("Usage: python graphs.py <output_folder> <profile.json> <benchmark_suite_folder>")
-      sys.exit(1)
-  output_folder = sys.argv[1]
-  graphs_folder = output_folder + '/graphs'
-  profile_file = sys.argv[2]
-  benchmark_suite_folder = sys.argv[3]
-
+def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder):
   # Read profile.json from nightly/output/data/profile.json
   profile = []
   with open(profile_file) as f:
       profile = json.load(f)
-
+    
   # folders in 
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
   benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
+
+  make_ilp(profile, f'{graphs_folder}/ilp_vs_lines.png', benchmark_suite_folder)
 
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)
@@ -398,5 +455,12 @@ if __name__ == '__main__':
       graph_names.append(filename)
   with open(f'{output_folder}/graphs.json', 'w') as f:
     json.dump(graph_names, f)
+
+if __name__ == '__main__':
+  # parse two arguments: the output folder and the profile.json file
+  if len(sys.argv) != 4:
+      print("Usage: python graphs.py <output_folder> <profile.json> <benchmark_suite_folder>")
+      sys.exit(1)
+  make_graphs(sys.argv[1], sys.argv[1] + '/graphs', sys.argv[2], sys.argv[3])
 
   

@@ -1,7 +1,7 @@
 use clap::Parser;
 use dag_in_context::{EggccConfig, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
-use std::{ffi::OsStr, i64, iter::once, path::PathBuf};
+use std::{ffi::OsStr, i64, iter::once, path::PathBuf, time::Duration};
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -69,6 +69,10 @@ struct Args {
     /// WARNING: Produces unsound results!
     #[clap(long)]
     no_linearity: bool,
+    /// If we are testing ILP extraction, the timeout
+    /// for this test in seconds
+    #[clap(long)]
+    ilp_extraction_test_timeout: Option<u64>,
 
     #[clap(long)]
     optimize_function: Option<String>,
@@ -128,6 +132,7 @@ fn main() {
             linearity: !args.no_linearity,
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
             ablate: args.ablate,
+            ilp_extraction_test_timeout: args.ilp_extraction_test_timeout.map(Duration::from_secs),
         },
     };
 

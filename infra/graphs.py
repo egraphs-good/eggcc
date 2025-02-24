@@ -17,19 +17,36 @@ if profile.TO_ABLATE != "":
 # copied from chart.js
 COLOR_MAP = {
   "rvsdg-round-trip-to-executable": "red",
-  "llvm-O0-O0": "purple",
+  "llvm-O0-O0": "black",
   "llvm-O1-O0": "green",
   "llvm-O2-O0": "orange",
-  "llvm-O3-O0": "gray",
+  "llvm-O3-O0": "purple",
   "llvm-O3-O3": "gold",
-  "llvm-eggcc-O0-O0": "pink",
-  "llvm-eggcc-sequential-O0-O0": "blue",
+  "llvm-eggcc-O0-O0": "blue",
+  "llvm-eggcc-sequential-O0-O0": "pink",
   "llvm-eggcc-O3-O0": "brown",
   "llvm-eggcc-O3-O3": "lightblue",
   "llvm-eggcc-ablation-O0-O0": "blue",
   "llvm-eggcc-ablation-O3-O0": "green",
   "llvm-eggcc-ablation-O3-O3": "orange",
 }
+
+SHAPE_MAP = {
+  "rvsdg-round-trip-to-executable": "o",
+  "llvm-O0-O0": "s",
+  "llvm-O1-O0": "o",
+  "llvm-O2-O0": "o",
+  "llvm-O3-O0": "o",
+  "llvm-O3-O3": "o",
+  "llvm-eggcc-O0-O0": "o",
+  "llvm-eggcc-sequential-O0-O0": "o",
+  "llvm-eggcc-O3-O0": "o",
+  "llvm-eggcc-O3-O3": "o",
+  "llvm-eggcc-ablation-O0-O0": "o",
+  "llvm-eggcc-ablation-O3-O0": "o",
+  "llvm-eggcc-ablation-O3-O3": "o",
+}
+
 BENCHMARK_SPACE = 1.0 / len(RUN_MODES)
 CIRCLE_SIZE = 15
 
@@ -185,7 +202,7 @@ def normalized(profile, benchmark, treatment):
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
-def make_bar_chart(profile, output_file, treatments):
+def make_normalized_chart(profile, output_file, treatments, y_max):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
   sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
@@ -194,7 +211,6 @@ def make_bar_chart(profile, output_file, treatments):
 
   spacing = 0.2
   current_pos = 0
-  y_max = 2
 
   fig, ax = plt.subplots()
   fig.set_size_inches(10, 6)
@@ -220,9 +236,9 @@ def make_bar_chart(profile, output_file, treatments):
 
       # for outliers, add x marks to the top
       if yval > y_max:
-        ax.text(yval, y_max, 'x', color='red', ha='center', va='center', zorder=3)
+        ax.text(current_pos, y_max, 'x', color='red', ha='center', va='center', zorder=3)
       else:
-        ax.scatter(current_pos, yval, color=COLOR_MAP[runmode], s=CIRCLE_SIZE, zorder=3)
+        ax.scatter(current_pos, yval, color=COLOR_MAP[runmode], s=CIRCLE_SIZE, zorder=3, marker=SHAPE_MAP[runmode])
 
     current_pos += spacing * 3
 
@@ -242,7 +258,7 @@ def make_bar_chart(profile, output_file, treatments):
 
   ax.set_ylim(0.25, y_max)
 
-  ax.set_xlim(-spacing, current_pos)
+  ax.set_xlim(-spacing, current_pos - spacing * 2)
 
   # add a dotted line at 1.0
   ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=0.5)
@@ -395,7 +411,12 @@ if __name__ == '__main__':
     suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)
     profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
-    make_bar_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.png', ["llvm-eggcc-O0-O0", "llvm-O0-O0"])
+
+    y_max = 2.0
+    if suite == "polybench":
+      y_max = 10.0
+
+    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.png', ["llvm-eggcc-O0-O0", "llvm-O0-O0"], y_max)
 
   make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
   """

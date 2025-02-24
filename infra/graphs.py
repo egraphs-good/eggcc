@@ -10,18 +10,22 @@ import os
 import profile
 
 RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
-BAR_CHART_RUN_MODES = ["llvm-O3-O3", "llvm-O3-O0", "llvm-eggcc-O0-O0"]
 
 if profile.TO_ABLATE != "":
   RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
-  BAR_CHART_RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
 
 # copied from chart.js
 COLOR_MAP = {
-  "llvm-O0-O0" : "purple",
-  "llvm-eggcc-O0-O0" : "pink",
-  "llvm-O3-O0" : "gray",
+  "rvsdg-round-trip-to-executable": "red",
+  "llvm-O0-O0": "purple",
+  "llvm-O1-O0": "green",
+  "llvm-O2-O0": "orange",
+  "llvm-O3-O0": "gray",
   "llvm-O3-O3": "gold",
+  "llvm-eggcc-O0-O0": "pink",
+  "llvm-eggcc-sequential-O0-O0": "blue",
+  "llvm-eggcc-O3-O0": "brown",
+  "llvm-eggcc-O3-O3": "lightblue",
   "llvm-eggcc-ablation-O0-O0": "blue",
   "llvm-eggcc-ablation-O3-O0": "green",
   "llvm-eggcc-ablation-O3-O3": "orange",
@@ -34,16 +38,18 @@ for runMode in RUN_MODES:
   RUN_MODE_Y_OFFSETS.append(len(RUN_MODE_Y_OFFSETS) * BENCHMARK_SPACE)
 
 
+BASELINE_TREATMENT = 'llvm-O3-O0'
+
 
 # rows has the same type as the profile.json file: a list of dictionaries
 # however it should only contain rows for a single benchmark, with all the different runMethods
-def group_baseline_cycles(rows):
+def group_cycles(rows, treatment):
   # assert only one row has a runMethod of llvm-O0-O0
-  count = [row.get('runMethod', '') == 'llvm-O0-O0' for row in rows].count(True)
+  count = [row.get('runMethod', '') == treatment for row in rows].count(True)
   assert(count == 1)
 
   for row in rows:
-      if row.get('runMethod', '') == 'llvm-O0-O0':
+      if row.get('runMethod', '') == treatment:
           return row.get('cycles', [])
   # throw exception if we don't have a baseline
   raise KeyError("Missing baseline in profile.json")
@@ -52,7 +58,7 @@ def group_baseline_cycles(rows):
 # given a profile.json, find the baseline cycles for the benchmark
 def get_baseline_cycles(data, benchmark_name):
   group = [row for row in data if row.get('benchmark', '') == benchmark_name]
-  return group_baseline_cycles(group)
+  return group_cycles(group, BASELINE_TREATMENT)
 
 def get_row(data, benchmark_name, run_method):
   for row in data:
@@ -95,7 +101,7 @@ def make_jitter(profile, upper_x_bound, output):
       group.sort(key=lambda b: RUN_MODES.index(b.get('runMethod', '')))
 
   # the order of the groups is the average cycles of the baseline
-  grouped_by_benchmark.sort(key=lambda group: sum(group_baseline_cycles(group)) / len(group))
+  grouped_by_benchmark.sort(key=lambda group: sum(group_cycles(group, BASELINE_TREATMENT)) / len(group))
   
   filtered = [benchmark for group in grouped_by_benchmark for benchmark in group]
 
@@ -179,16 +185,15 @@ def normalized(profile, benchmark, treatment):
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
-def make_bar_chart(profile, output_file):
+def make_bar_chart(profile, output_file, treatments):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
-  sorted_by_llvm_O3_O0 = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), 'llvm-O3-O0'))
-  benchmarks = [group[0].get('benchmark') for group in sorted_by_llvm_O3_O0]
+  sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
+  benchmarks = [group[0].get('benchmark') for group in sorted_by_eggcc]
 
 
-  # add a bar for each runmode, benchmark pair
-  label_x = np.arange(len(benchmarks))
-  bar_w = 0.25
+  bar_w = 0.3
+  space_per_benchmark = bar_w * (len(treatments) + 1)
   current_pos = 0
 
   y_vals = []
@@ -196,11 +201,10 @@ def make_bar_chart(profile, output_file):
   x_colors = []
 
   fig, ax = plt.subplots()
-  fig.set_size_inches(15, 6)
+  fig.set_size_inches(14, 6)
   
   for benchmark in benchmarks:
-    baseline_cycles = get_baseline_cycles(profile, benchmark)
-    for runmode in BAR_CHART_RUN_MODES:
+    for runmode in treatments:
       y_vals.append(normalized(profile, benchmark, runmode))
       x_vals.append(current_pos)
       x_colors.append(COLOR_MAP[runmode])
@@ -209,6 +213,8 @@ def make_bar_chart(profile, output_file):
 
   ax.set_ylabel('Normalized Cycles')
   ax.set_title('Normalized Cycles by Benchmark and Run Mode')
+  # add a bar for each runmode, benchmark pair
+  label_x = np.arange(len(benchmarks)) * bar_w * (len(treatments) + 1)
   ax.set_xticks(label_x + bar_w, benchmarks, rotation=45, ha='right')
 
   # add the bars
@@ -216,19 +222,22 @@ def make_bar_chart(profile, output_file):
     ax.bar(x_vals[idx], val, bar_w, color=x_colors[idx])
   
   # add the legend
-  handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in BAR_CHART_RUN_MODES]
-  ax.legend(handles, BAR_CHART_RUN_MODES, title='Run Mode', loc='upper right', bbox_to_anchor=(1.25, 1.05))
+  handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in treatments]
+  ax.legend(handles, treatments, title='Run Mode', loc='upper right', bbox_to_anchor=(0.2, 1.05))
 
+  y_max = 2
   # make a max of 1.5 slowdown
-  ax.set_ylim(0, 1.5)
+  ax.set_ylim(0, y_max)
+
+  ax.set_xlim(-bar_w, current_pos)
 
   # add a dotted line at 1.0
   ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=0.5)
 
   # for outliers, add x marks to the top
   for idx, val in enumerate(y_vals):
-    if val > 1.5:
-      ax.text(x_vals[idx], 1.5, 'x', color='red', ha='center', va='center')
+    if val > y_max:
+      ax.text(x_vals[idx], y_max, 'x', color='red', ha='center', va='center')
 
 
   plt.tight_layout()
@@ -379,16 +388,17 @@ if __name__ == '__main__':
     suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)
     profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
-    make_bar_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.png')
+    make_bar_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.png', ["llvm-eggcc-O0-O0", "llvm-O0-O0"])
 
   make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
-
+  """
   make_code_size_vs_compile_and_extraction_time(
     profile, 
     f'{graphs_folder}/code_size_vs_compile_time.png', 
     f'{graphs_folder}/code_size_vs_extraction_time.png', 
     f'{graphs_folder}/extraction_ratio.png',
     benchmark_suite_folder)
+    """
 
   # make json list of graph names and put in in output
   graph_names = []

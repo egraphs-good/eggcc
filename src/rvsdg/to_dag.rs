@@ -231,6 +231,7 @@ impl<'a> DagTranslator<'a> {
                     .map(|c| self.translate_operand(*c).to_single_expr())
                     .collect::<Vec<_>>();
                 let expr = match (op, children.as_slice()) {
+                    (ValueOps::Bitand, [a, b]) => bitand(a.clone(), b.clone()),
                     (ValueOps::Add, [a, b]) => add(a.clone(), b.clone()),
                     (ValueOps::Mul, [a, b]) => mul(a.clone(), b.clone()),
                     (ValueOps::Sub, [a, b]) => sub(a.clone(), b.clone()),
@@ -263,6 +264,7 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::And, [a, b]) => and(a.clone(), b.clone()),
                     (ValueOps::Or, [a, b]) => or(a.clone(), b.clone()),
                     (ValueOps::Not, [a]) => not(a.clone()),
+                    (ValueOps::Neg, [a]) => neg(a.clone()),
                     (ValueOps::Abs, [a]) => abs(a.clone()),
 
                     (ValueOps::PtrAdd, [a, b]) => ptradd(a.clone(), b.clone()),

@@ -1,6 +1,7 @@
 ---
 source: tests/files.rs
 expression: visualization.result
+snapshot_kind: text
 ---
 # ARGS: 20
 @main(v0: int) {
@@ -10,15 +11,16 @@ expression: visualization.result
   v4_: int = mul c3_ v0;
   c5_: int = const 5;
   v6_: int = mul c5_ v4_;
-  c7_: int = const -3;
-  v8_: int = mul c7_ v4_;
-  v9_: int = select v2_ v6_ v8_;
-  v10_: bool = ge v9_ c1_;
-  c11_: int = const 10;
-  v12_: int = mul c11_ v9_;
-  c13_: int = const 37;
-  v14_: int = mul c13_ v9_;
-  v15_: int = select v10_ v12_ v14_;
-  print v15_;
+  c7_: int = const 3;
+  v8_: int = neg c7_;
+  v9_: int = mul v4_ v8_;
+  v10_: int = select v2_ v6_ v9_;
+  v11_: bool = ge v10_ c1_;
+  c12_: int = const 10;
+  v13_: int = mul c12_ v10_;
+  c14_: int = const 37;
+  v15_: int = mul c14_ v10_;
+  v16_: int = select v11_ v13_ v15_;
+  print v16_;
   ret;
 }

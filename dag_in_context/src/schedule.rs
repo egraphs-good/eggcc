@@ -80,6 +80,7 @@ fn cheap_optimizations() -> Vec<String> {
     // currently causes saturation issues, probably by creating dead loops that are allowed to have any value
 
     [
+        "hacker",
         "loop-simplify",
         "interval-rewrite",
         "always-switch-rewrite",
@@ -204,7 +205,8 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
 (run-schedule
     (saturate
       {helpers}
-      passthrough)
+      passthrough
+      state-edge-passthrough)
     (repeat 2
         {helpers}
         all-optimizations
@@ -215,7 +217,10 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
         cheap-optimizations
     )
 
-    {helpers}
+    (saturate
+      {helpers}
+      passthrough
+      state-edge-passthrough)
     add-to-debug-expr
 )
 "

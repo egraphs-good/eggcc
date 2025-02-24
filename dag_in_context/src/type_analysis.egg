@@ -187,6 +187,19 @@
       :ruleset type-analysis)
 
 (rule (
+      (= lhs (Uop (Neg) e))
+      (HasType e (Base (IntT)))
+) (
+      (HasType lhs (Base (IntT)))
+) :ruleset type-analysis)
+
+(rule (
+      (= lhs (Uop (Neg) e))
+) (
+      (ExpectType e (Base (IntT)) "(Neg)")
+) :ruleset type-analysis)
+
+(rule (
         (= lhs (Uop (Abs) e))
         (HasType e (Base (IntT)))
       )
@@ -276,6 +289,7 @@
 ;; operator since there's a lot of them.
 ;; In the future we can also extend to other constructs.
 (relation bop-of-type (BinaryOp Type))
+(bop-of-type (Bitand) (Base (IntT)))
 (bop-of-type (Add) (Base (IntT)))
 (bop-of-type (Sub) (Base (IntT)))
 (bop-of-type (Div) (Base (IntT)))

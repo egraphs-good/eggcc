@@ -88,6 +88,8 @@
   (Write)
   (Select))
 (datatype BinaryOp
+  ;; Bitwise operators
+  (Bitand)
   ;; integer operators
   (Add)
   (Sub)
@@ -130,6 +132,7 @@
   ; given a pointer and state edge, frees the whole memory region at the pointer
   (Free))
 (datatype UnaryOp
+  (Neg)
   (Abs)
   (Not))
 

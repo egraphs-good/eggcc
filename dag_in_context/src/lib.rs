@@ -80,6 +80,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/conditional_invariant_code_motion.egg"),
         include_str!("optimizations/conditional_push_in.egg"),
         include_str!("utility/debug-helper.egg"),
+        include_str!("optimizations/hackers_delight.egg"),
         &rulesets(),
     ]
     .join("\n")

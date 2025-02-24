@@ -1,0 +1,20 @@
+# ARGS: 21324
+
+@main (a: int) {
+  lb: int = const 1;
+  two: int = const 2;
+
+.loop:
+  t0: int = div a two;
+  t1: int = mul t0 two;
+  cond: bool = eq t1 a;
+  br cond .cont .end;
+
+.cont:
+  a: int = div a two;
+  lb: int = mul lb two;
+  jmp .loop;
+
+.end:
+  print lb;
+}

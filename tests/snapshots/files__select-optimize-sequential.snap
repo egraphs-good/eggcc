@@ -1,22 +1,23 @@
 ---
 source: tests/files.rs
 expression: visualization.result
+snapshot_kind: text
 ---
 # ARGS: 20
 @main(v0: int) {
-  c1_: int = const 5;
-  c2_: int = const 10;
+  c1_: int = const 10;
+  c2_: int = const 5;
   v3_: bool = eq c1_ c2_;
   v4_: bool = not v3_;
   c5_: int = const 0;
   v6_: int = id c5_;
-  v7_: int = id c2_;
+  v7_: int = id c1_;
   v8_: int = id c5_;
   v9_: int = id v0;
   br v4_ .b10_ .b11_;
 .b10_:
   v12_: int = id c5_;
-  v13_: int = id c2_;
+  v13_: int = id c1_;
   v14_: int = id c5_;
   v15_: int = id v0;
 .b16_:

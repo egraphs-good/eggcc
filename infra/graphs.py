@@ -192,53 +192,60 @@ def make_bar_chart(profile, output_file, treatments):
   benchmarks = [group[0].get('benchmark') for group in sorted_by_eggcc]
 
 
-  bar_w = 0.3
-  space_per_benchmark = bar_w * (len(treatments) + 1)
+  spacing = 0.2
   current_pos = 0
-
-  y_vals = []
-  x_vals = []
-  x_colors = []
+  y_max = 2
 
   fig, ax = plt.subplots()
-  fig.set_size_inches(14, 6)
+  fig.set_size_inches(10, 6)
   
   for benchmark in benchmarks:
+    miny = 100000
+    maxy = 0
+    min_color = None
+
     for runmode in treatments:
-      y_vals.append(normalized(profile, benchmark, runmode))
-      x_vals.append(current_pos)
-      x_colors.append(COLOR_MAP[runmode])
-      current_pos += bar_w
-    current_pos += bar_w
+      yval = normalized(profile, benchmark, runmode)
+
+      if yval < miny:
+        min_color = COLOR_MAP[runmode]
+        miny = yval
+      maxy = max(maxy, yval)
+
+    # draw a line between the two points
+    ax.plot([current_pos, current_pos], [miny, maxy], color=min_color, linestyle='--', linewidth=1, zorder=2)
+
+    for runmode in treatments:
+      yval = normalized(profile, benchmark, runmode)
+
+      # for outliers, add x marks to the top
+      if yval > y_max:
+        ax.text(yval, y_max, 'x', color='red', ha='center', va='center', zorder=3)
+      else:
+        ax.scatter(current_pos, yval, color=COLOR_MAP[runmode], s=CIRCLE_SIZE, zorder=3)
+
+    current_pos += spacing * 3
 
   ax.set_ylabel('Normalized Cycles')
   ax.set_title('Normalized Cycles by Benchmark and Run Mode')
   # add a bar for each runmode, benchmark pair
-  label_x = np.arange(len(benchmarks)) * bar_w * (len(treatments) + 1)
-  ax.set_xticks(label_x + bar_w, benchmarks, rotation=45, ha='right')
+  # ax.set_xticks(label_x + bar_w, benchmarks, rotation=45, ha='right')
+  # turn off x labels
+  ax.set_xticks([])
+  ax.set_xticklabels([])
 
-  # add the bars
-  for idx, val in enumerate(y_vals):
-    ax.bar(x_vals[idx], val, bar_w, color=x_colors[idx])
+    
   
   # add the legend
   handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in treatments]
   ax.legend(handles, treatments, title='Run Mode', loc='upper right', bbox_to_anchor=(0.2, 1.05))
 
-  y_max = 2
-  # make a max of 1.5 slowdown
-  ax.set_ylim(0, y_max)
+  ax.set_ylim(0.25, y_max)
 
-  ax.set_xlim(-bar_w, current_pos)
+  ax.set_xlim(-spacing, current_pos)
 
   # add a dotted line at 1.0
   ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=0.5)
-
-  # for outliers, add x marks to the top
-  for idx, val in enumerate(y_vals):
-    if val > y_max:
-      ax.text(x_vals[idx], y_max, 'x', color='red', ha='center', va='center')
-
 
   plt.tight_layout()
   plt.savefig(output_file)

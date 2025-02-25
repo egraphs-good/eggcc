@@ -253,18 +253,47 @@ def make_normalized_chart(profile, output_file, treatments, y_max):
     
   
   # add the legend
-  handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in treatments]
-  ax.legend(handles, treatments, title='Run Mode', loc='upper right', bbox_to_anchor=(0.2, 1.05))
+  #handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in treatments]
+  handles = [plt.Line2D([0], [0], marker=SHAPE_MAP[rm], color='w', markerfacecolor=COLOR_MAP[rm], markersize=10, alpha=0.7) for rm in treatments]
+
+  # add dotted line at 1.0 to handles
+  handles.append(plt.Line2D([0], [0], color='gray', linestyle='--', linewidth=1.0, label='1.0'))
+
+  treatmentsLegend = [f"{rm}" for rm in treatments]
+  treatmentsLegend.append(BASELINE_TREATMENT)
+  treatmentsLegend = [to_paper_names_treatment(t) for t in treatmentsLegend]
+
+
+  ax.legend(handles, treatmentsLegend, title=
+          'Treatment', loc='upper right', bbox_to_anchor=(0.2, 1.05))
 
   ax.set_ylim(0.25, y_max)
 
   ax.set_xlim(-spacing, current_pos - spacing * 2)
 
   # add a dotted line at 1.0
-  ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=0.5)
+  ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=1.0)
 
   plt.tight_layout()
   plt.savefig(output_file)
+
+def to_paper_names_treatment(treatment):
+  if treatment == 'llvm-O0-O0':
+    return 'LLVM-O0-O0'
+  if treatment == 'llvm-O3-O0':
+    return 'LLVM-O3-O0'
+  if treatment == 'llvm-eggcc-O0-O0':
+    return 'EGGCC-O0-O0'
+  if treatment == 'llvm-eggcc-O3-O0':
+    return 'EGGCC-O3-O0'
+  if treatment == 'llvm-eggcc-ablation-O0-O0':
+    return 'EGGCC-Ablation-O0-O0'
+  if treatment == 'llvm-eggcc-ablation-O3-O0':
+    return 'EGGCC-Ablation-O3-O0'
+  if treatment == 'llvm-eggcc-ablation-O3-O3':
+    return 'EGGCC-Ablation-O3-O3'
+  raise KeyError(f"Unknown treatment {treatment}")
+
 
 def dedup(lst):
   return list(dict.fromkeys(lst))

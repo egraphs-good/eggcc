@@ -202,7 +202,7 @@ def normalized(profile, benchmark, treatment):
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
-def make_normalized_chart(profile, output_file, treatments, y_max):
+def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
   sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
@@ -213,7 +213,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max):
   current_pos = 0
 
   fig, ax = plt.subplots()
-  fig.set_size_inches(10, 6)
+  fig.set_size_inches(width, height)
   
   for benchmark in benchmarks:
     miny = 100000
@@ -242,8 +242,8 @@ def make_normalized_chart(profile, output_file, treatments, y_max):
 
     current_pos += spacing * 3
 
-  ax.set_ylabel('Normalized Cycles')
-  ax.set_title('Normalized Cycles by Benchmark and Run Mode')
+  ax.set_ylabel('Time Relative To LLVM-O3-O0')
+  # ax.set_title('Normalized Cycles by Benchmark and Run Mode')
   # add a bar for each runmode, benchmark pair
   # ax.set_xticks(label_x + bar_w, benchmarks, rotation=45, ha='right')
   # turn off x labels
@@ -265,7 +265,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max):
 
 
   ax.legend(handles, treatmentsLegend, title=
-          'Treatment', loc='upper right', bbox_to_anchor=(0.2, 1.05))
+          'Treatment', loc='upper right', bbox_to_anchor=(xanchor, 1.05))
 
   ax.set_ylim(0.25, y_max)
 
@@ -441,11 +441,17 @@ if __name__ == '__main__':
     suite_benchmarks = benchmarks_in_folder(suite_path)
     profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
 
+    width = 10
+    height = 4
     y_max = 2.0
+    xanchor = 0.2
     if suite == "polybench":
       y_max = 10.0
+      width = 5
+      height = 3.5
+      xanchor = 0.4
 
-    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.png', ["llvm-eggcc-O0-O0", "llvm-O0-O0"], y_max)
+    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["llvm-eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor)
 
   make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
   """

@@ -142,7 +142,7 @@ def make_ilp(json, output, benchmark_suite_folder):
     # graph data
   plt.figure(figsize=(10, 8))
 
-  psize = 350
+  psize = 150
   alpha = 0.2
   circleLineWidth = 1.0
   # Plot extraction time points
@@ -151,7 +151,7 @@ def make_ilp(json, output, benchmark_suite_folder):
 
   # Plot ILP timeout points
   ilp_timeout_x, ilp_timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
-  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='red', label='ILP Timeout', alpha=alpha, marker='x', s=psize, linewidths=circleLineWidth, edgecolors='red')
+  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='purple', label='ILP Timeout', alpha=alpha/2, marker='o', s=psize, linewidths=circleLineWidth, edgecolors='red')
 
   # Plot ILP solve time points
   ilp_x, ilp_y = zip(*ilp_points) if ilp_points else ([], [])
@@ -169,7 +169,7 @@ def make_ilp(json, output, benchmark_suite_folder):
   plt.yticks(fontsize=fsize)
 
   # set x limit to 330 k
-  plt.gca().set_xlim(left=0, right=330000)
+  plt.gca().set_xlim(left=-1000, right=330000)
   plt.tight_layout()
 
   plt.savefig(output)

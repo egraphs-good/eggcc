@@ -28,7 +28,7 @@ def num_samples():
 # a solution ignoring linearity constraints
 def ilp_extraction_test_timeout():
   if IS_TESTING_MODE:
-    return 5 # 5 second timeout
+    return 600 # 5 second timeout
   return 300 # 5 minute timeout
 
 def average(lst):

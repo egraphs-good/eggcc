@@ -156,12 +156,17 @@ def make_ilp(json, output, benchmark_suite_folder):
 
   plt.xlabel('Size of egraph')
   plt.ylabel('Extraction Time')
+  plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
   plt.title('ILP Extraction vs eggcc Extraction')
   plt.legend()
   plt.grid(True, linestyle='--', linewidth=0.5)
 
   plt.savefig(output)
 
+
+# Format x-axis labels to be in "k" format
+def format_k(x, pos):
+    return f"{int(x / 1000)}k"
 
 def make_jitter(profile, upper_x_bound, output):
   # Prepare the data for the jitter plot
@@ -415,7 +420,10 @@ def make_macros(profile, benchmark_suites, output_file):
       if benchmark == 'raytrace':
         continue
       ilp_all = ilp_all + get_ilp_test_times(profile, benchmark)
+
+    ilp_all_above_100k = list(filter(lambda x: x["egraph_size"] > 100000, ilp_all))
     out.write(format_latex_macro_percent("PercentILPTimeout", len(list(filter(lambda x: x["ilp_time"] == None, ilp_all))) / len(ilp_all)))
+    out.write(format_latex_macro_percent("PercentILPTimeoutAbove100k", len(list(filter(lambda x: x["ilp_time"] == None, ilp_all_above_100k))) / max(len(ilp_all_above_100k), 1)))
   
 
 def get_code_size(benchmark, suites_path):

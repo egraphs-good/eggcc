@@ -143,17 +143,19 @@ def make_ilp(json, output, benchmark_suite_folder):
   plt.figure(figsize=(10, 8))
 
   psize = 350
+  alpha = 0.2
+  circleLineWidth = 1.0
   # Plot extraction time points
   eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
-  plt.scatter(eggcc_x, eggcc_y, color='blue', label=f'{EGGCC_NAME} Extraction Time', alpha=0.7, edgecolors='w', linewidth=0.5, s=psize)
+  plt.scatter(eggcc_x, eggcc_y, color='blue', label=f'{EGGCC_NAME} Extraction Time', s=psize, alpha=alpha, linewidths=circleLineWidth, edgecolors='blue')
 
   # Plot ILP timeout points
   ilp_timeout_x, ilp_timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
-  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='red', label='ILP Timeout', alpha=0.7, marker='x', s=psize)
+  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='red', label='ILP Timeout', alpha=alpha, marker='x', s=psize, linewidths=circleLineWidth, edgecolors='red')
 
   # Plot ILP solve time points
   ilp_x, ilp_y = zip(*ilp_points) if ilp_points else ([], [])
-  plt.scatter(ilp_x, ilp_y, color='green', label='ILP Solve Time', alpha=0.7, edgecolors='w', linewidth=0.5, s=psize)
+  plt.scatter(ilp_x, ilp_y, color='green', label='ILP Solve Time', alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='green')
 
   fsize = 27
   plt.xlabel('Size of egraph', fontsize=fsize)
@@ -161,7 +163,6 @@ def make_ilp(json, output, benchmark_suite_folder):
   plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
   # slightly down
   plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 0.9))
-  plt.grid(True, linestyle='--', linewidth=0.5)
 
   # set axis font size
   plt.xticks(fontsize=fsize)

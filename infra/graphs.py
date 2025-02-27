@@ -145,7 +145,7 @@ def make_ilp(json, output, benchmark_suite_folder):
   psize = 350
   # Plot extraction time points
   eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
-  plt.scatter(eggcc_x, eggcc_y, color='blue', label='EggCC Extraction Time', alpha=0.7, edgecolors='w', linewidth=0.5, s=psize)
+  plt.scatter(eggcc_x, eggcc_y, color='blue', label=f'{EGGCC_NAME} Extraction Time', alpha=0.7, edgecolors='w', linewidth=0.5, s=psize)
 
   # Plot ILP timeout points
   ilp_timeout_x, ilp_timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])

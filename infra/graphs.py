@@ -9,6 +9,8 @@ import sys
 import os
 import profile
 
+EGGCC_NAME = "eqcc"
+
 RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
 
 if profile.TO_ABLATE != "":
@@ -187,7 +189,8 @@ def make_jitter(profile, upper_x_bound, output):
   handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=COLOR_MAP[rm], markersize=10, alpha=0.7) for rm in COLOR_MAP]
   if upper_x_bound != None:
     handles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers above {upper_x_bound}'))
-  plt.legend(handles, list(COLOR_MAP.keys()) + [f'Outliers above {upper_x_bound}'], title='Run Method', loc='upper right', bbox_to_anchor=(1.25, 1.05))
+  paper_names = [to_paper_names_treatment(rm) for rm in COLOR_MAP]
+  plt.legend(handles, paper_names + [f'Outliers above {upper_x_bound}'], title='Treatment', loc='upper right', bbox_to_anchor=(1.25, 1.05))
 
   # Save the plot to a PNG file in the nightly directory
   plt.tight_layout()
@@ -277,21 +280,34 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   plt.tight_layout()
   plt.savefig(output_file)
 
+# TODO change back after anonymization is lifted
 def to_paper_names_treatment(treatment):
   if treatment == 'llvm-O0-O0':
     return 'LLVM-O0-O0'
   if treatment == 'llvm-O3-O0':
     return 'LLVM-O3-O0'
   if treatment == 'llvm-eggcc-O0-O0':
-    return 'EGGCC-O0-O0'
+    return 'EQCC-O0-O0'
   if treatment == 'llvm-eggcc-O3-O0':
-    return 'EGGCC-O3-O0'
+    return 'EQCC-O3-O0'
   if treatment == 'llvm-eggcc-ablation-O0-O0':
-    return 'EGGCC-Ablation-O0-O0'
+    return 'EQCC-Ablation-O0-O0'
   if treatment == 'llvm-eggcc-ablation-O3-O0':
-    return 'EGGCC-Ablation-O3-O0'
+    return 'EQCC-Ablation-O3-O0'
   if treatment == 'llvm-eggcc-ablation-O3-O3':
-    return 'EGGCC-Ablation-O3-O3'
+    return 'EQCC-Ablation-O3-O3'
+  if treatment == 'rvsdg-round-trip-to-executable':
+    return 'RVSDG-Executable'
+  if treatment == 'llvm-O1-O0':
+    return 'LLVM-O1-O0'
+  if treatment == 'llvm-O2-O0':
+    return 'LLVM-O2-O0'
+  if treatment == 'llvm-O3-O3':
+    return 'LLVM-O3-O3'
+  if treatment == 'llvm-eggcc-sequential-O0-O0':
+    return 'EQCC-Sequential-O0-O0'
+  if treatment == 'llvm-eggcc-O3-O3':
+    return 'EQCC-O3-O3'
   raise KeyError(f"Unknown treatment {treatment}")
 
 
@@ -392,23 +408,23 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
   plt.figure(figsize=(10, 6))
   plt.scatter(x, y1)
   plt.xlabel('Bril Number of Instructions')
-  plt.ylabel('EggCC Compile Time (s)')
-  plt.title('EggCC Compile Time vs Code Size')
+  plt.ylabel(f'{EGGCC_NAME} Compile Time (s)')
+  plt.title(f'{EGGCC_NAME} Compile Time vs Code Size')
   plt.savefig(compile_time_output)
 
 
   plt.figure(figsize=(10, 6))
   plt.scatter(x, y2)
   plt.xlabel('Bril Number of Instructions')
-  plt.ylabel('EggCC Extraction Time (s)')
-  plt.title('EggCC Extraction Time vs Code Size')
+  plt.ylabel(f'{EGGCC_NAME} Extraction Time (s)')
+  plt.title(f'{EGGCC_NAME} Extraction Time vs Code Size')
   plt.savefig(extraction_time_output)
 
   plt.figure(figsize=(10, 6))
   plt.scatter(x, y3)
   plt.xlabel('Bril Number of Instructions')
   plt.ylabel('Extraction Ratio')
-  plt.title('EggCC Compile Time vs Extraction Time')
+  plt.title(f'{EGGCC_NAME} Compile Time vs Extraction Time')
   plt.savefig(ratio_output)
 
 

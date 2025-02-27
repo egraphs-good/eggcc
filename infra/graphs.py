@@ -140,26 +140,36 @@ def make_ilp(json, output, benchmark_suite_folder):
       eggcc_points.append([egraph_size, eggcc_time])
   
     # graph data
-  plt.figure(figsize=(10, 6))
+  plt.figure(figsize=(10, 8))
 
+  psize = 350
   # Plot extraction time points
   eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
-  plt.scatter(eggcc_x, eggcc_y, color='blue', label='EggCC Extraction Time', alpha=0.7, edgecolors='w', linewidth=0.5)
+  plt.scatter(eggcc_x, eggcc_y, color='blue', label='EggCC Extraction Time', alpha=0.7, edgecolors='w', linewidth=0.5, s=psize)
 
   # Plot ILP timeout points
   ilp_timeout_x, ilp_timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
-  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='red', label='ILP Timeout', alpha=0.7, marker='x', s=50)
+  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='red', label='ILP Timeout', alpha=0.7, marker='x', s=psize)
 
   # Plot ILP solve time points
   ilp_x, ilp_y = zip(*ilp_points) if ilp_points else ([], [])
-  plt.scatter(ilp_x, ilp_y, color='green', label='ILP Solve Time', alpha=0.7, edgecolors='w', linewidth=0.5)
+  plt.scatter(ilp_x, ilp_y, color='green', label='ILP Solve Time', alpha=0.7, edgecolors='w', linewidth=0.5, s=psize)
 
-  plt.xlabel('Size of egraph')
-  plt.ylabel('Extraction Time')
+  fsize = 27
+  plt.xlabel('Size of egraph', fontsize=fsize)
+  plt.ylabel('Extraction Time', fontsize=fsize)
   plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
-  plt.title('ILP Extraction vs eggcc Extraction')
-  plt.legend()
+  # slightly down
+  plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 0.9))
   plt.grid(True, linestyle='--', linewidth=0.5)
+
+  # set axis font size
+  plt.xticks(fontsize=fsize)
+  plt.yticks(fontsize=fsize)
+
+  # set x limit to 330 k
+  plt.gca().set_xlim(left=0, right=330000)
+  plt.tight_layout()
 
   plt.savefig(output)
 
@@ -518,7 +528,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
-  make_ilp(profile, f'{graphs_folder}/ilp_vs_lines.png', benchmark_suite_folder)
+  make_ilp(profile, f'{graphs_folder}/ilp_vs_lines.pdf', benchmark_suite_folder)
 
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)

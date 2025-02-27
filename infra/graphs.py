@@ -9,6 +9,8 @@ import sys
 import os
 import profile
 
+EGGCC_NAME = "eqcc"
+
 RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
 BAR_CHART_RUN_MODES = ["llvm-O3-O3", "llvm-O3-O0", "llvm-eggcc-O0-O0"]
 
@@ -120,7 +122,7 @@ def make_ilp(json, output, benchmark_suite_folder):
   psize = 350
   # Plot extraction time points
   eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
-  plt.scatter(eggcc_x, eggcc_y, color='blue', label='EggCC Extraction Time', alpha=0.7, edgecolors='w', linewidth=0.5, s=psize)
+  plt.scatter(eggcc_x, eggcc_y, color='blue', label=f'{EGGCC_NAME} Extraction Time', alpha=0.7, edgecolors='w', linewidth=0.5, s=psize)
 
   # Plot ILP timeout points
   ilp_timeout_x, ilp_timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
@@ -415,23 +417,23 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
   plt.figure(figsize=(10, 6))
   plt.scatter(x, y1)
   plt.xlabel('Bril Number of Instructions')
-  plt.ylabel('EggCC Compile Time (s)')
-  plt.title('EggCC Compile Time vs Code Size')
+  plt.ylabel(f'{EGGCC_NAME} Compile Time (s)')
+  plt.title(f'{EGGCC_NAME} Compile Time vs Code Size')
   plt.savefig(compile_time_output)
 
 
   plt.figure(figsize=(10, 6))
   plt.scatter(x, y2)
   plt.xlabel('Bril Number of Instructions')
-  plt.ylabel('EggCC Extraction Time (s)')
-  plt.title('EggCC Extraction Time vs Code Size')
+  plt.ylabel(f'{EGGCC_NAME} Extraction Time (s)')
+  plt.title(f'{EGGCC_NAME} Extraction Time vs Code Size')
   plt.savefig(extraction_time_output)
 
   plt.figure(figsize=(10, 6))
   plt.scatter(x, y3)
   plt.xlabel('Bril Number of Instructions')
   plt.ylabel('Extraction Ratio')
-  plt.title('EggCC Compile Time vs Extraction Time')
+  plt.title(f'{EGGCC_NAME} Compile Time vs Extraction Time')
   plt.savefig(ratio_output)
 
 

@@ -19,9 +19,9 @@ if profile.TO_ABLATE != "":
 # copied from chart.js
 COLOR_MAP = {
   "rvsdg-round-trip-to-executable": "red",
-  "llvm-O0-O0": "black",
+  "llvm-O0-O0": "orange",
   "llvm-O1-O0": "green",
-  "llvm-O2-O0": "orange",
+  "llvm-O2-O0": "black",
   "llvm-O3-O0": "purple",
   "llvm-O3-O3": "gold",
   "llvm-eggcc-O0-O0": "blue",
@@ -205,7 +205,7 @@ def normalized(profile, benchmark, treatment):
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
-def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor):
+def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
   sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
@@ -234,14 +234,17 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     # draw a line between the two points
     ax.plot([current_pos, current_pos], [miny, maxy], color=min_color, linestyle='--', linewidth=1, zorder=2)
 
+    i = 0
     for runmode in treatments:
       yval = normalized(profile, benchmark, runmode)
 
       # for outliers, add x marks to the top
       if yval > y_max:
-        ax.text(current_pos, y_max, 'x', color='red', ha='center', va='center', zorder=3)
+        jitter_amt = 0.05
+        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color=COLOR_MAP[runmode])
       else:
         ax.scatter(current_pos, yval, color=COLOR_MAP[runmode], s=CIRCLE_SIZE, zorder=3, marker=SHAPE_MAP[runmode])
+      i += 1
 
     current_pos += spacing * 3
 
@@ -268,7 +271,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
 
 
   ax.legend(handles, treatmentsLegend, title=
-          'Treatment', loc='upper right', bbox_to_anchor=(xanchor, 1.05))
+          'Treatment', loc='upper right', bbox_to_anchor=(xanchor, yanchor))
 
   ax.set_ylim(0.25, y_max)
 
@@ -460,14 +463,16 @@ if __name__ == '__main__':
     width = 10
     height = 4
     y_max = 2.0
-    xanchor = 0.2
+    xanchor = 0.8
+    yanchor = 0.4
     if suite == "polybench":
       y_max = 10.0
       width = 5
       height = 3.5
       xanchor = 0.4
+      yanchor = 0.95
 
-    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["llvm-eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor)
+    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["llvm-eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
 
   make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
   """

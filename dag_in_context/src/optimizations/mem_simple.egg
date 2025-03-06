@@ -7,6 +7,16 @@
 
 (relation NoAlias (Expr Expr))
 
+; Push NoAlias into if
+(rule ((= if (If pred inputs thn els))
+       (= (Get inputs i) inputs-i)
+       (= (Get inputs j) inputs-j)
+       (NoAlias inputs-i inputs-j)
+       (= arg-i (Get (Arg ty (InIf which pred inputs)) i))
+       (= arg-j (Get (Arg ty (InIf which pred inputs)) j)))
+      ((NoAlias arg-i arg-j))
+      :ruleset mem-simple)
+
 (rule ((Bop (PtrAdd) e i)
        (= (lo-bound i) (IntB lo))
        (> lo 0))

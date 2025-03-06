@@ -9,7 +9,7 @@ import sys
 import os
 import profile
 
-EGGCC_NAME = "eqcc"
+EGGCC_NAME = "eggcc"
 
 RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
 

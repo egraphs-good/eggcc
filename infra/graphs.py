@@ -9,23 +9,46 @@ import sys
 import os
 import profile
 
+EGGCC_NAME = "eggcc"
+
 RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
-BAR_CHART_RUN_MODES = ["llvm-O3-O3", "llvm-O3-O0", "llvm-eggcc-O0-O0"]
 
 if profile.TO_ABLATE != "":
   RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
-  BAR_CHART_RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
 
 # copied from chart.js
 COLOR_MAP = {
-  "llvm-O0-O0" : "purple",
-  "llvm-eggcc-O0-O0" : "pink",
-  "llvm-O3-O0" : "gray",
+  "rvsdg-round-trip-to-executable": "red",
+  "llvm-O0-O0": "orange",
+  "llvm-O1-O0": "green",
+  "llvm-O2-O0": "black",
+  "llvm-O3-O0": "purple",
   "llvm-O3-O3": "gold",
+  "llvm-eggcc-O0-O0": "blue",
+  "llvm-eggcc-sequential-O0-O0": "pink",
+  "llvm-eggcc-O3-O0": "brown",
+  "llvm-eggcc-O3-O3": "lightblue",
   "llvm-eggcc-ablation-O0-O0": "blue",
   "llvm-eggcc-ablation-O3-O0": "green",
   "llvm-eggcc-ablation-O3-O3": "orange",
 }
+
+SHAPE_MAP = {
+  "rvsdg-round-trip-to-executable": "o",
+  "llvm-O0-O0": "s",
+  "llvm-O1-O0": "o",
+  "llvm-O2-O0": "o",
+  "llvm-O3-O0": "o",
+  "llvm-O3-O3": "o",
+  "llvm-eggcc-O0-O0": "o",
+  "llvm-eggcc-sequential-O0-O0": "o",
+  "llvm-eggcc-O3-O0": "o",
+  "llvm-eggcc-O3-O3": "o",
+  "llvm-eggcc-ablation-O0-O0": "o",
+  "llvm-eggcc-ablation-O3-O0": "o",
+  "llvm-eggcc-ablation-O3-O3": "o",
+}
+
 BENCHMARK_SPACE = 1.0 / len(RUN_MODES)
 CIRCLE_SIZE = 15
 
@@ -34,16 +57,18 @@ for runMode in RUN_MODES:
   RUN_MODE_Y_OFFSETS.append(len(RUN_MODE_Y_OFFSETS) * BENCHMARK_SPACE)
 
 
+BASELINE_TREATMENT = 'llvm-O3-O0'
+
 
 # rows has the same type as the profile.json file: a list of dictionaries
 # however it should only contain rows for a single benchmark, with all the different runMethods
-def group_baseline_cycles(rows):
+def group_cycles(rows, treatment):
   # assert only one row has a runMethod of llvm-O0-O0
-  count = [row.get('runMethod', '') == 'llvm-O0-O0' for row in rows].count(True)
+  count = [row.get('runMethod', '') == treatment for row in rows].count(True)
   assert(count == 1)
 
   for row in rows:
-      if row.get('runMethod', '') == 'llvm-O0-O0':
+      if row.get('runMethod', '') == treatment:
           return row.get('cycles', [])
   # throw exception if we don't have a baseline
   raise KeyError("Missing baseline in profile.json")
@@ -52,7 +77,7 @@ def group_baseline_cycles(rows):
 # given a profile.json, find the baseline cycles for the benchmark
 def get_baseline_cycles(data, benchmark_name):
   group = [row for row in data if row.get('benchmark', '') == benchmark_name]
-  return group_baseline_cycles(group)
+  return group_cycles(group, BASELINE_TREATMENT)
 
 def get_row(data, benchmark_name, run_method):
   for row in data:
@@ -95,7 +120,7 @@ def make_jitter(profile, upper_x_bound, output):
       group.sort(key=lambda b: RUN_MODES.index(b.get('runMethod', '')))
 
   # the order of the groups is the average cycles of the baseline
-  grouped_by_benchmark.sort(key=lambda group: sum(group_baseline_cycles(group)) / len(group))
+  grouped_by_benchmark.sort(key=lambda group: sum(group_cycles(group, BASELINE_TREATMENT)) / len(group))
   
   filtered = [benchmark for group in grouped_by_benchmark for benchmark in group]
 
@@ -164,7 +189,8 @@ def make_jitter(profile, upper_x_bound, output):
   handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=COLOR_MAP[rm], markersize=10, alpha=0.7) for rm in COLOR_MAP]
   if upper_x_bound != None:
     handles.append(plt.Line2D([0], [0], marker='x', color='red', markersize=10, linestyle='None', label=f'Outliers above {upper_x_bound}'))
-  plt.legend(handles, list(COLOR_MAP.keys()) + [f'Outliers above {upper_x_bound}'], title='Run Method', loc='upper right', bbox_to_anchor=(1.25, 1.05))
+  paper_names = [to_paper_names_treatment(rm) for rm in COLOR_MAP]
+  plt.legend(handles, paper_names + [f'Outliers above {upper_x_bound}'], title='Treatment', loc='upper right', bbox_to_anchor=(1.25, 1.05))
 
   # Save the plot to a PNG file in the nightly directory
   plt.tight_layout()
@@ -179,60 +205,114 @@ def normalized(profile, benchmark, treatment):
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
-def make_bar_chart(profile, output_file):
+def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
-  sorted_by_llvm_O3_O0 = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), 'llvm-O3-O0'))
-  benchmarks = [group[0].get('benchmark') for group in sorted_by_llvm_O3_O0]
+  sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
+  benchmarks = [group[0].get('benchmark') for group in sorted_by_eggcc]
 
 
-  # add a bar for each runmode, benchmark pair
-  label_x = np.arange(len(benchmarks))
-  bar_w = 0.25
+  spacing = 0.2
   current_pos = 0
 
-  y_vals = []
-  x_vals = []
-  x_colors = []
-
   fig, ax = plt.subplots()
-  fig.set_size_inches(15, 6)
+  fig.set_size_inches(width, height)
   
   for benchmark in benchmarks:
-    baseline_cycles = get_baseline_cycles(profile, benchmark)
-    for runmode in BAR_CHART_RUN_MODES:
-      y_vals.append(normalized(profile, benchmark, runmode))
-      x_vals.append(current_pos)
-      x_colors.append(COLOR_MAP[runmode])
-      current_pos += bar_w
-    current_pos += bar_w
+    miny = 100000
+    maxy = 0
+    min_color = None
 
-  ax.set_ylabel('Normalized Cycles')
-  ax.set_title('Normalized Cycles by Benchmark and Run Mode')
-  ax.set_xticks(label_x + bar_w, benchmarks, rotation=45, ha='right')
+    for runmode in treatments:
+      yval = normalized(profile, benchmark, runmode)
 
-  # add the bars
-  for idx, val in enumerate(y_vals):
-    ax.bar(x_vals[idx], val, bar_w, color=x_colors[idx])
+      if yval < miny:
+        min_color = COLOR_MAP[runmode]
+        miny = yval
+      maxy = max(maxy, yval)
+
+    # draw a line between the two points
+    ax.plot([current_pos, current_pos], [miny, maxy], color=min_color, linestyle='--', linewidth=1, zorder=2)
+
+    i = 0
+    for runmode in treatments:
+      yval = normalized(profile, benchmark, runmode)
+
+      # for outliers, add x marks to the top
+      if yval > y_max:
+        jitter_amt = 0.05
+        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color=COLOR_MAP[runmode])
+      else:
+        ax.scatter(current_pos, yval, color=COLOR_MAP[runmode], s=CIRCLE_SIZE, zorder=3, marker=SHAPE_MAP[runmode])
+      i += 1
+
+    current_pos += spacing * 3
+
+  ax.set_ylabel('Time Relative To LLVM-O3-O0')
+  # ax.set_title('Normalized Cycles by Benchmark and Run Mode')
+  # add a bar for each runmode, benchmark pair
+  # ax.set_xticks(label_x + bar_w, benchmarks, rotation=45, ha='right')
+  # turn off x labels
+  ax.set_xticks([])
+  ax.set_xticklabels([])
+
+    
   
   # add the legend
-  handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in BAR_CHART_RUN_MODES]
-  ax.legend(handles, BAR_CHART_RUN_MODES, title='Run Mode', loc='upper right', bbox_to_anchor=(1.25, 1.05))
+  #handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in treatments]
+  handles = [plt.Line2D([0], [0], marker=SHAPE_MAP[rm], color='w', markerfacecolor=COLOR_MAP[rm], markersize=10, alpha=0.7) for rm in treatments]
 
-  # make a max of 1.5 slowdown
-  ax.set_ylim(0, 1.5)
+  # add dotted line at 1.0 to handles
+  handles.append(plt.Line2D([0], [0], color='gray', linestyle='--', linewidth=1.0, label='1.0'))
+
+  treatmentsLegend = [f"{rm}" for rm in treatments]
+  treatmentsLegend.append(BASELINE_TREATMENT)
+  treatmentsLegend = [to_paper_names_treatment(t) for t in treatmentsLegend]
+
+
+  ax.legend(handles, treatmentsLegend, title=
+          'Treatment', loc='upper right', bbox_to_anchor=(xanchor, yanchor))
+
+  ax.set_ylim(0.25, y_max)
+
+  ax.set_xlim(-spacing, current_pos - spacing * 2)
 
   # add a dotted line at 1.0
-  ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=0.5)
-
-  # for outliers, add x marks to the top
-  for idx, val in enumerate(y_vals):
-    if val > 1.5:
-      ax.text(x_vals[idx], 1.5, 'x', color='red', ha='center', va='center')
-
+  ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=1.0)
 
   plt.tight_layout()
   plt.savefig(output_file)
+
+# TODO change back after anonymization is lifted
+def to_paper_names_treatment(treatment):
+  if treatment == 'llvm-O0-O0':
+    return 'LLVM-O0-O0'
+  if treatment == 'llvm-O3-O0':
+    return 'LLVM-O3-O0'
+  if treatment == 'llvm-eggcc-O0-O0':
+    return 'EQCC-O0-O0'
+  if treatment == 'llvm-eggcc-O3-O0':
+    return 'EQCC-O3-O0'
+  if treatment == 'llvm-eggcc-ablation-O0-O0':
+    return 'EQCC-Ablation-O0-O0'
+  if treatment == 'llvm-eggcc-ablation-O3-O0':
+    return 'EQCC-Ablation-O3-O0'
+  if treatment == 'llvm-eggcc-ablation-O3-O3':
+    return 'EQCC-Ablation-O3-O3'
+  if treatment == 'rvsdg-round-trip-to-executable':
+    return 'RVSDG-Executable'
+  if treatment == 'llvm-O1-O0':
+    return 'LLVM-O1-O0'
+  if treatment == 'llvm-O2-O0':
+    return 'LLVM-O2-O0'
+  if treatment == 'llvm-O3-O3':
+    return 'LLVM-O3-O3'
+  if treatment == 'llvm-eggcc-sequential-O0-O0':
+    return 'EQCC-Sequential-O0-O0'
+  if treatment == 'llvm-eggcc-O3-O3':
+    return 'EQCC-O3-O3'
+  raise KeyError(f"Unknown treatment {treatment}")
+
 
 def dedup(lst):
   return list(dict.fromkeys(lst))
@@ -331,23 +411,23 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
   plt.figure(figsize=(10, 6))
   plt.scatter(x, y1)
   plt.xlabel('Bril Number of Instructions')
-  plt.ylabel('EggCC Compile Time (s)')
-  plt.title('EggCC Compile Time vs Code Size')
+  plt.ylabel(f'{EGGCC_NAME} Compile Time (s)')
+  plt.title(f'{EGGCC_NAME} Compile Time vs Code Size')
   plt.savefig(compile_time_output)
 
 
   plt.figure(figsize=(10, 6))
   plt.scatter(x, y2)
   plt.xlabel('Bril Number of Instructions')
-  plt.ylabel('EggCC Extraction Time (s)')
-  plt.title('EggCC Extraction Time vs Code Size')
+  plt.ylabel(f'{EGGCC_NAME} Extraction Time (s)')
+  plt.title(f'{EGGCC_NAME} Extraction Time vs Code Size')
   plt.savefig(extraction_time_output)
 
   plt.figure(figsize=(10, 6))
   plt.scatter(x, y3)
   plt.xlabel('Bril Number of Instructions')
   plt.ylabel('Extraction Ratio')
-  plt.title('EggCC Compile Time vs Extraction Time')
+  plt.title(f'{EGGCC_NAME} Compile Time vs Extraction Time')
   plt.savefig(ratio_output)
 
 
@@ -379,16 +459,30 @@ if __name__ == '__main__':
     suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)
     profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
-    make_bar_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.png')
+
+    width = 10
+    height = 4
+    y_max = 2.0
+    xanchor = 0.8
+    yanchor = 0.4
+    if suite == "polybench":
+      y_max = 10.0
+      width = 5
+      height = 3.5
+      xanchor = 0.4
+      yanchor = 0.95
+
+    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["llvm-eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
 
   make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
-
+  """
   make_code_size_vs_compile_and_extraction_time(
     profile, 
     f'{graphs_folder}/code_size_vs_compile_time.png', 
     f'{graphs_folder}/code_size_vs_extraction_time.png', 
     f'{graphs_folder}/extraction_ratio.png',
     benchmark_suite_folder)
+    """
 
   # make json list of graph names and put in in output
   graph_names = []

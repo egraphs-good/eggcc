@@ -4,7 +4,7 @@ expression: visualization.result
 ---
 # ARGS: 
 @one {
-  call @two;
+  call @four;
   ret;
 }
 @two {
@@ -23,6 +23,6 @@ expression: visualization.result
   ret;
 }
 @main {
-  call @one;
+  call @three;
   ret;
 }

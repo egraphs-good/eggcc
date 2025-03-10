@@ -6,7 +6,7 @@ use rpds::HashTrieMap;
 use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
     time::{Duration, Instant},
@@ -1908,6 +1908,46 @@ pub(crate) fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> b
     false
 }
 
+/// Given an egraph where some nodes are dropped,
+/// fix up the node ids to be valid.
+fn rename_to_valid_children(
+    original_egraph: &egraph_serialize::EGraph,
+    egraph: &egraph_serialize::EGraph,
+) -> egraph_serialize::EGraph {
+    let mut new_egraph = egraph_serialize::EGraph::default();
+
+    let mut new_representative = HashMap::new();
+
+    for node in egraph.nodes.iter() {
+        new_representative.insert(egraph.nid_to_cid(node.0), node.0);
+    }
+
+    for (nodeid, node) in egraph.nodes.iter() {
+        let new_children = node.children.iter().map(|child| {
+            (*new_representative
+                .get(&original_egraph.nid_to_cid(child))
+                .unwrap_or_else(|| panic!("Failed to find child {:?} in new egraph", child)))
+            .clone()
+        });
+
+        let new_node = egraph_serialize::Node {
+            children: new_children.collect(),
+            ..node.clone()
+        };
+
+        new_egraph.add_node(nodeid.clone(), new_node);
+    }
+
+    // copy over class data for each class
+    for (class, data) in &egraph.class_data {
+        new_egraph.class_data.insert(class.clone(), data.clone());
+    }
+
+    new_egraph.root_eclasses = egraph.root_eclasses.clone();
+
+    new_egraph
+}
+
 // Prunes an egraph to only reachable nodes, removing context and types
 // replaces types with "UnknownT" and replaces context with unique identifiers
 fn prune_egraph(
@@ -1940,17 +1980,16 @@ fn prune_egraph(
 
                 new_egraph.add_node(nodeid.clone(), new_node);
                 has_non_inf_cost = true;
-            // if it has infinite cost, replace with a dummy node
+            // if it has infinite cost, skip it
             } else if cost_model.get_op_cost(&node.op).is_infinite() {
-                let new_node = Node {
-                    op: format!("DumA{}", node.eclass),
-                    children: vec![],
-                    eclass: node.eclass.clone(),
-                    cost: NotNan::new(INFINITY).unwrap(),
-                    subsumed: false,
-                };
-
-                new_egraph.add_node(nodeid.clone(), new_node);
+            }
+            // if the node is an integer, we copy it over later
+            else if node.op.parse::<i64>().is_ok() {
+                has_non_inf_cost = true;
+            }
+            // if the node stores a string, we copy it over later
+            else if node.op.starts_with('"') {
+                has_non_inf_cost = true;
             } else {
                 // copy node to new_egraph
                 new_egraph.add_node(nodeid.clone(), node.clone());
@@ -1972,7 +2011,32 @@ fn prune_egraph(
         }
     }
 
-    // now copy over class data for each class
+    // copy over "InlinedCall" and "LoopNumItersGuess" nodes, which depend on integers and strings
+    for (nodeid, node) in &egraph.nodes {
+        if node.op == "InlinedCall" && visited.contains(&egraph.nid_to_cid(&node.children[1])) {
+            new_egraph.add_node(nodeid.clone(), node.clone());
+        }
+
+        if node.op == "LoopNumItersGuess"
+            && visited.contains(&egraph.nid_to_cid(&node.children[0]))
+            && visited.contains(&egraph.nid_to_cid(&node.children[1]))
+        {
+            // copy over the node
+            new_egraph.add_node(nodeid.clone(), node.clone());
+        }
+
+        // if the node is an integer, copy it over
+        if node.op.parse::<i64>().is_ok() {
+            new_egraph.add_node(nodeid.clone(), node.clone());
+        }
+
+        // if the node stores a string, copy it over
+        if node.op.starts_with('"') {
+            new_egraph.add_node(nodeid.clone(), node.clone());
+        }
+    }
+
+    // copy over class data for each class
     for (class, data) in &egraph.class_data {
         if visited.contains(class) {
             new_egraph.class_data.insert(class.clone(), data.clone());
@@ -1981,7 +2045,7 @@ fn prune_egraph(
 
     new_egraph.root_eclasses = vec![root];
 
-    new_egraph
+    rename_to_valid_children(egraph, &new_egraph)
 }
 
 fn is_type_operator(op: &str) -> bool {

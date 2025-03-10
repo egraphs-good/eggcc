@@ -13,25 +13,26 @@ expression: visualization.result
   v7_: int = id c1_;
   v8_: int = id c2_;
   v9_: bool = id v3_;
-  v10_: int = id c1_;
-.b11_:
-  c12_: int = const 3;
-  v13_: int = mul c12_ v5_;
-  v14_: int = select v9_ v10_ v13_;
-  c15_: int = const 1;
-  v16_: int = add c15_ v5_;
-  c17_: int = const 2;
-  v18_: int = add c17_ v10_;
-  v19_: bool = lt v16_ v8_;
-  v4_: int = id v14_;
-  v5_: int = id v16_;
+.b10_:
+  c11_: int = const 1;
+  v12_: int = add c11_ v5_;
+  c13_: int = const 2;
+  v14_: int = add c13_ v12_;
+  v15_: int = mul c13_ v14_;
+  c16_: int = const 3;
+  v17_: int = mul c16_ v14_;
+  v18_: int = select v9_ v15_ v17_;
+  v19_: int = add c13_ v5_;
+  v20_: int = add c13_ v19_;
+  v21_: bool = lt v20_ v8_;
+  v4_: int = id v18_;
+  v5_: int = id v20_;
   v6_: int = id v6_;
   v7_: int = id v7_;
   v8_: int = id v8_;
   v9_: bool = id v9_;
-  v10_: int = id v18_;
-  br v19_ .b11_ .b20_;
-.b20_:
+  br v21_ .b10_ .b22_;
+.b22_:
   print v4_;
   ret;
 }

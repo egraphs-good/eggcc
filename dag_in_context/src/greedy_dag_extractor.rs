@@ -1,5 +1,5 @@
 use egglog::{ast::Literal, *};
-use egraph_serialize::{ClassId, EGraph, NodeId};
+use egraph_serialize::{ClassId, EGraph, Node, NodeId};
 use indexmap::{IndexMap, IndexSet};
 use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
@@ -9,14 +9,17 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
+    time::{Duration, Instant},
 };
 use strum::IntoEnumIterator;
 
 use crate::{
+    fastercbcextractor::FasterCbcExtractorWithTimeout,
     from_egglog::FromEgglog,
     schema::{Expr, RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
     typechecker::TypeChecker,
+    ExtractionTimeSample,
 };
 
 type RootId = ClassId;
@@ -43,7 +46,6 @@ pub(crate) struct Extractor<'a> {
     pub(crate) termdag: &'a mut TermDag,
     costsets: Vec<CostSet>,
     costsetmemo: IndexMap<Term, CostSetIndex>,
-    ctx_memo: HashMap<ClassId, CostSetIndex>,
     /// For a given region (based on the region's root),
     /// stores a map from classes in that region to the chosen term for the eclass.
     /// Regions are extracted separately since different regions
@@ -168,7 +170,7 @@ impl<'a> EgraphInfo<'a> {
 
         log::info!("Found {} relavent eclasses", relavent_eclasses.len());
         if relavent_eclasses.len() > egraph.classes().len() * 3 {
-            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclasses: {}. (Root, eclass) pairs: {}. Region roots: {}. Non-Expr: {}", relavent_eclasses.len() / egraph.classes().len(), egraph.classes().len(), relavent_eclasses.len(), region_roots.len(), num_not_expr);
+            eprintln!("Warning: significant sharing between region roots, {}x blowup. May cause bad extraction performance. Eclassnes: {}. (Root, eclass) pairs: {}. Region roots: {}. Non-Expr: {}", relavent_eclasses.len() / egraph.classes().len(), egraph.classes().len(), relavent_eclasses.len(), region_roots.len(), num_not_expr);
         }
 
         let mut roots = vec![];
@@ -201,13 +203,9 @@ impl<'a> EgraphInfo<'a> {
                 for EnodeChild {
                     child,
                     is_subregion,
-                    is_assumption,
                     is_if_inputs: _is_inputs,
                 } in enode_children(egraph, node)
                 {
-                    if is_assumption {
-                        continue;
-                    }
                     let child_region = if is_subregion {
                         child.clone()
                     } else {
@@ -313,46 +311,11 @@ impl<'a> Extractor<'a> {
             .clone()
     }
 
-    /// A method for getting a dummy context nodes.
-    /// Contexts create cycles, but we don't need to extract them, so we invent an imaginary term here.
-    pub(crate) fn get_dummy_context(
-        &mut self,
-        info: &EgraphInfo,
-        class_id: ClassId,
-    ) -> CostSetIndex {
-        // get any node in the class
-        let node_id = info.egraph.classes()[&class_id].nodes.first().unwrap();
-        if let Some(existing) = self.ctx_memo.get(&class_id) {
-            *existing
-        } else {
-            // HACK: this term gets a context (InFunc "dummy_{class_id}").
-            // The class id allows terms to correspond one to one with nodes (we don't want the same dummy node
-            // for two different contexts).
-            let dummy = self
-                .termdag
-                .lit(Literal::String(format!("dummy_{class_id}").into()));
-            self.add_correspondence(dummy.clone(), node_id.clone());
-            let term = self.termdag.app("InFunc".into(), vec![dummy]);
-            self.add_correspondence(term.clone(), node_id.clone());
-            let costset = CostSet {
-                costs: Default::default(),
-                total: 0.0.try_into().unwrap(),
-                term: term.clone(),
-                args_used: Default::default(),
-            };
-            self.costsets.push(costset);
-            self.costsetmemo.insert(term, self.costsets.len() - 1);
-            self.ctx_memo.insert(class_id, self.costsets.len() - 1);
-            self.costsets.len() - 1
-        }
-    }
-
     pub(crate) fn new(original_prog: &'a TreeProgram, termdag: &'a mut TermDag) -> Self {
         Extractor {
             termdag,
             costsets: Default::default(),
             costsetmemo: Default::default(),
-            ctx_memo: Default::default(),
             correspondence: Default::default(),
             costs: Default::default(),
             term_to_expr: Default::default(),
@@ -452,7 +415,7 @@ impl<'a> Extractor<'a> {
 
     fn add_correspondence(&mut self, term: Term, node_id: NodeId) {
         if let Some(existing) = self.correspondence.insert(term.clone(), node_id.clone()) {
-            assert_eq!(existing, node_id, "Congruence invariant violated! Found two different nodes for the same term. Perhaps we used delete in egglog, which could cause this problem.");
+            assert_eq!(existing, node_id, "Congruence invariant violated! Found two different nodes for the same term. Perhaps we used delete in egglog, which could cause this problem. Term: {:?}", term);
         }
     }
 
@@ -852,13 +815,9 @@ fn node_cost_in_region(
             |EnodeChild {
                  child,
                  is_subregion,
-                 is_assumption,
                  is_if_inputs: _is_inputs,
              }| {
-                // for assumptions, just return a dummy context every time
-                if *is_assumption {
-                    Some(extractor.get_dummy_context(info, child.clone()))
-                } else if *is_subregion {
+                if *is_subregion {
                     extractor.costs.get(child)?.get(child).copied()
                 } else {
                     let region_costs = extractor.costs.get(&rootid).unwrap();
@@ -886,6 +845,9 @@ fn extract_fn(
     cost_model: &impl CostModel,
     should_maintain_linearity: bool,
 ) -> (CostSet, RcExpr) {
+    // prune egraph
+    let egraph = prune_egraph(&egraph, rootid.clone(), cost_model);
+
     log::info!("Building extraction info");
     let egraph_info = EgraphInfo::new(func, rootid.clone(), cost_model, &egraph, unextractables);
     let extractor_not_linear = &mut Extractor::new(original_prog, termdag);
@@ -1003,6 +965,84 @@ pub fn extract(
     (cost, prog)
 }
 
+// Returns a duration or None if any extractions timed out
+pub fn extract_ilp(
+    original_prog: &TreeProgram,
+    fns: Vec<String>,
+    egraph: egraph_serialize::EGraph,
+    unextractables: IndexSet<String>,
+    cost_model: impl CostModel,
+    timeout: Duration,
+) -> Vec<ExtractionTimeSample> {
+    let mut termdag = egglog::TermDag::default();
+    log::info!("Extracting functions with ILP {:?}", fns);
+
+    let mut samples = vec![];
+    for name in fns {
+        log::info!("Extracting function {} with ILP", name);
+        let root = egraph.nid_to_cid(&get_root(&egraph, &name)).clone();
+
+        let egraph = prune_egraph(&egraph, root.clone(), &cost_model);
+        let egraph_size = egraph.nodes.len();
+
+        let ilp_time = extract_fn_ilp(&name, root.clone(), egraph.clone(), &cost_model, timeout);
+
+        let time_before = Instant::now();
+        let _res2 = extract_fn(
+            original_prog,
+            &name,
+            root,
+            egraph.clone(),
+            unextractables.clone(),
+            &mut termdag,
+            &cost_model,
+            false,
+        );
+        let eggcc_time = time_before.elapsed();
+
+        samples.push(ExtractionTimeSample {
+            egraph_size,
+            ilp_time,
+            eggcc_time,
+        });
+    }
+    samples
+}
+
+// returns how long impl extraction took
+pub fn extract_fn_ilp(
+    func: &str,
+    rootid: ClassId,
+    egraph: egraph_serialize::EGraph,
+    cost_model: &impl CostModel,
+    timeout: Duration,
+) -> Option<Duration> {
+    // prune egraph
+    let egraph = prune_egraph(&egraph, rootid.clone(), cost_model);
+
+    // run ILP extraction, timing it
+    let ilp_extractor = FasterCbcExtractorWithTimeout::new(timeout.as_secs() as u32);
+
+    let before = Instant::now();
+
+    let res = ilp_extractor.extract(&egraph, &[rootid.clone()]);
+
+    let elapsed = before.elapsed();
+
+    log::info!(
+        "ILP extraction for {} took {} seconds",
+        func,
+        elapsed.as_secs_f64()
+    );
+    eprintln!("elapsed: {:?}", elapsed);
+    if res.is_none() {
+        None
+    } else {
+        eprintln!("time taken: {:?}", elapsed);
+        Some(min(elapsed, timeout))
+    }
+}
+
 /// Extract the function specified by `func` from the egraph.
 pub fn extract_with_paths(
     func: &str,
@@ -1029,6 +1069,12 @@ pub fn extract_with_paths(
     while let Some((rootid, nodeid)) = worklist.pop() {
         let classid = info.n2c(&nodeid);
         let node = info.egraph.nodes.get(&nodeid).unwrap();
+
+        // skip nodes with infinite cost
+        if info.cm.get_op_cost(&node.op).is_infinite() {
+            continue;
+        }
+
         if info.unextractables.contains(&node.op) {
             continue;
         }
@@ -1155,6 +1201,11 @@ impl CostModel for TestCostModel {
 impl CostModel for DefaultCostModel {
     fn get_op_cost(&self, op: &str) -> Cost {
         match op {
+            // Tmp contexts
+            x if is_dummy_ctx(x) => 0.,
+            x if is_type_operator(x) => 0.,
+            // constant types
+            "Int" | "Bool" | "Float" => 0.,
             // Leaves
             "Const" => 1.,
             "Arg" => 0.,
@@ -1167,10 +1218,6 @@ impl CostModel for DefaultCostModel {
             // small cost for get to encourage canonicalization
             // enables state edge passthrough to work as a pass
             "Get" => 0.01,
-            // Types
-            "IntT" | "BoolT" | "FloatT" | "PointerT" | "StateT" => 0.,
-            "Base" | "TupleT" | "TNil" | "TCons" => 0.,
-            "Int" | "Bool" | "Float" => 0.,
             // Algebra
             "Abs" | "Bitand" | "Neg" | "Add" | "PtrAdd" | "Sub" | "And" | "Or" | "Not" | "Shl"
             | "Shr" => 10.,
@@ -1270,30 +1317,22 @@ where
 struct EnodeChild {
     child: ClassId,
     is_subregion: bool,
-    is_assumption: bool,
     // cost of inputs is calculated specially- dead code is not included in cost
     is_if_inputs: bool,
 }
 
 impl EnodeChild {
-    fn new(child: ClassId, is_subregion: bool, is_assumption: bool, if_if_inputs: bool) -> Self {
+    fn new(child: ClassId, is_subregion: bool, _is_assumption: bool, if_if_inputs: bool) -> Self {
         EnodeChild {
             child,
             is_subregion,
-            is_assumption,
             is_if_inputs: if_if_inputs,
         }
     }
 }
 
-fn is_type_operator(op: &str) -> bool {
-    op == "TupleT"
-        || op == "Base"
-        || op == "IntT"
-        || op == "BoolT"
-        || op == "FloatT"
-        || op == "PointerT"
-        || op == "StateT"
+pub(crate) fn is_dummy_ctx(op: &str) -> bool {
+    op.starts_with("DumC")
 }
 
 /// For a given enode, returns a vector of children eclasses.
@@ -1435,9 +1474,6 @@ fn find_reachable(
 
     while let Some(eclass) = queue.pop() {
         let eclass_type = egraph.class_data[&eclass].typ.as_ref().unwrap();
-        if eclass_type == "Assumption" {
-            panic!("Found assumption in region reachable classes");
-        }
 
         if !type_is_part_of_ast(eclass_type) {
             continue;
@@ -1455,19 +1491,16 @@ fn find_reachable(
                 for EnodeChild {
                     child,
                     is_subregion,
-                    is_assumption,
                     is_if_inputs: _is_inputs,
                 } in enode_children(egraph, &egraph[node])
                 {
-                    if !is_assumption {
-                        if is_subregion {
-                            if recursive {
-                                queue.insert(child.clone());
-                                result.insert(child);
-                            }
-                        } else {
-                            queue.insert(child);
+                    if is_subregion {
+                        if recursive {
+                            queue.insert(child.clone());
+                            result.insert(child);
                         }
+                    } else {
+                        queue.insert(child);
                     }
                 }
             }
@@ -1527,22 +1560,25 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
 
     let mut err = Ok(());
     for func in prog.fns() {
+        let root = serialized_egraph.nid_to_cid(&get_root(&serialized_egraph, &func));
+        let pruned = prune_egraph(&serialized_egraph, root.clone(), &DefaultCostModel);
+
         let egraph_info = EgraphInfo::new(
             &func,
-            serialized_egraph
-                .nid_to_cid(&get_root(&serialized_egraph, &func))
-                .clone(),
+            root.clone(),
             &DefaultCostModel,
-            &serialized_egraph,
+            &pruned,
             unextractables.clone(),
         );
         let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
-        let root = serialized_egraph
-            .nid_to_cid(&get_root(&serialized_egraph, &func))
-            .clone();
-        let (_cost_res, prog) =
-            extract_with_paths(&func, root, extractor_not_linear, &egraph_info, None);
+        let (_cost_res, prog) = extract_with_paths(
+            &func,
+            root.clone(),
+            extractor_not_linear,
+            &egraph_info,
+            None,
+        );
         let res = extractor_not_linear.check_function_is_linear(&prog);
         if let Err(e) = res {
             err = Err(e);
@@ -1829,11 +1865,13 @@ fn test_validity_of_extraction() {
     let mut termdag = TermDag::default();
 
     let root = serialized_egraph.nid_to_cid(&get_root(&serialized_egraph, "main"));
+
+    let pruned = prune_egraph(&serialized_egraph, root.clone(), &DefaultCostModel);
     let egraph_info = EgraphInfo::new(
         "main",
         root.clone(),
         &TestCostModel,
-        &serialized_egraph,
+        &pruned,
         unextractables.clone(),
     );
     let extractor_not_linear = &mut Extractor::new(&prog, &mut termdag);
@@ -1868,4 +1906,161 @@ pub(crate) fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> b
         }
     }
     false
+}
+
+/// Given an egraph where some nodes are dropped,
+/// fix up the node ids to be valid.
+fn rename_to_valid_children(
+    original_egraph: &egraph_serialize::EGraph,
+    egraph: &egraph_serialize::EGraph,
+) -> egraph_serialize::EGraph {
+    let mut new_egraph = egraph_serialize::EGraph::default();
+
+    let mut new_representative = HashMap::new();
+
+    for node in egraph.nodes.iter() {
+        new_representative.insert(egraph.nid_to_cid(node.0), node.0);
+    }
+
+    for (nodeid, node) in egraph.nodes.iter() {
+        let new_children = node.children.iter().map(|child| {
+            (*new_representative
+                .get(&original_egraph.nid_to_cid(child))
+                .unwrap_or_else(|| panic!("Failed to find child {:?} in new egraph", child)))
+            .clone()
+        });
+
+        let new_node = egraph_serialize::Node {
+            children: new_children.collect(),
+            ..node.clone()
+        };
+
+        new_egraph.add_node(nodeid.clone(), new_node);
+    }
+
+    // copy over class data for each class
+    for (class, data) in &egraph.class_data {
+        new_egraph.class_data.insert(class.clone(), data.clone());
+    }
+
+    new_egraph.root_eclasses.clone_from(&egraph.root_eclasses);
+
+    new_egraph
+}
+
+// Prunes an egraph to only reachable nodes, removing context and types
+// replaces types with "UnknownT" and replaces context with unique identifiers
+fn prune_egraph(
+    egraph: &egraph_serialize::EGraph,
+    root: ClassId,
+    cost_model: &impl CostModel,
+) -> egraph_serialize::EGraph {
+    let mut new_egraph = egraph_serialize::EGraph::default();
+    let mut visited = HashSet::new();
+
+    let mut todo = vec![root.clone()];
+
+    while let Some(class) = todo.pop() {
+        if !visited.insert(class.clone()) {
+            continue;
+        }
+
+        let mut has_non_inf_cost = false;
+        for nodeid in &egraph.classes()[&class].nodes {
+            let node = &egraph[nodeid];
+            // if the op is a ctx, replace it with a fresh DumC
+            if is_ctx_operator(&node.op) {
+                let new_node = Node {
+                    op: format!("DumC{}", nodeid),
+                    children: vec![],
+                    eclass: node.eclass.clone(),
+                    cost: NotNan::new(0.).unwrap(),
+                    subsumed: false,
+                };
+
+                new_egraph.add_node(nodeid.clone(), new_node);
+                has_non_inf_cost = true;
+            // if it has infinite cost, skip it
+            } else if cost_model.get_op_cost(&node.op).is_infinite() {
+            }
+            // if the node is an integer, we copy it over later
+            else if let Ok(_parse) = node.op.parse::<i64>() {
+                has_non_inf_cost = true;
+            }
+            // if the node stores a string, we copy it over later
+            else if node.op.starts_with('"') {
+                has_non_inf_cost = true;
+            } else {
+                // copy node to new_egraph
+                new_egraph.add_node(nodeid.clone(), node.clone());
+
+                // add children to queue
+                for child in &node.children {
+                    todo.push(egraph.nid_to_cid(child).clone());
+                }
+                has_non_inf_cost = true;
+            }
+        }
+
+        // It's possible that no nodes in the eclass had finite cost
+        // because DropAt can fail to finish for some eclasses.
+        // This is expected, so add any of the nodes in the eclass to the new egraph.
+        if !has_non_inf_cost {
+            let nodeid = &egraph.classes()[&class].nodes[0];
+            let node = &egraph[nodeid];
+            new_egraph.add_node(nodeid.clone(), node.clone());
+        }
+    }
+
+    // copy over "InlinedCall" and "LoopNumItersGuess" nodes, which depend on integers and strings
+    for (nodeid, node) in &egraph.nodes {
+        if node.op == "InlinedCall" && visited.contains(egraph.nid_to_cid(&node.children[1])) {
+            new_egraph.add_node(nodeid.clone(), node.clone());
+        }
+
+        if node.op == "LoopNumItersGuess"
+            && visited.contains(egraph.nid_to_cid(&node.children[0]))
+            && visited.contains(egraph.nid_to_cid(&node.children[1]))
+        {
+            // copy over the node
+            new_egraph.add_node(nodeid.clone(), node.clone());
+        }
+
+        // if the node is an integer, copy it over
+        if node.op.parse::<i64>().is_ok() {
+            new_egraph.add_node(nodeid.clone(), node.clone());
+        }
+
+        // if the node stores a string, copy it over
+        if node.op.starts_with('"') {
+            new_egraph.add_node(nodeid.clone(), node.clone());
+        }
+    }
+
+    // copy over class data for each class
+    for (class, data) in &egraph.class_data {
+        if visited.contains(class) {
+            new_egraph.class_data.insert(class.clone(), data.clone());
+        }
+    }
+
+    new_egraph.root_eclasses = vec![root];
+
+    rename_to_valid_children(egraph, &new_egraph)
+}
+
+fn is_type_operator(op: &str) -> bool {
+    op == "TupleT"
+        || op == "Base"
+        || op == "IntT"
+        || op == "BoolT"
+        || op == "FloatT"
+        || op == "PointerT"
+        || op == "StateT"
+        || op == "TNil"
+        || op == "TCons"
+}
+
+fn is_ctx_operator(op: &str) -> bool {
+    op == "InFunc" || op == "InLoop" || op == "InSwitch" || op == "InIf" || is_dummy_ctx(op)
 }

@@ -1,10 +1,13 @@
 use clap::ValueEnum;
 use egglog::{Term, TermDag};
-use greedy_dag_extractor::{extract, has_debug_exprs, serialized_egraph, DefaultCostModel};
+use greedy_dag_extractor::{
+    extract, extract_ilp, has_debug_exprs, serialized_egraph, DefaultCostModel,
+};
 use indexmap::IndexMap;
 use interpreter::Value;
 use schedule::{rulesets, CompilerPass};
 use schema::TreeProgram;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     fmt::Write,
@@ -37,6 +40,8 @@ pub(crate) mod type_analysis;
 pub mod typechecker;
 pub(crate) mod utility;
 use main_error::MainError;
+pub mod extractiongymfastergreedydag;
+pub mod fastercbcextractor;
 pub mod pretty_print;
 pub mod schedule;
 
@@ -349,6 +354,31 @@ pub struct EggccConfig {
     /// When Some, optimize only the functions in this set.
     pub optimize_functions: Option<HashSet<String>>,
     pub ablate: Option<String>,
+    pub ilp_extraction_test_timeout: Option<Duration>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ExtractionTimeSample {
+    pub egraph_size: usize,
+    pub ilp_time: Option<Duration>,
+    pub eggcc_time: Duration,
+}
+
+pub struct EggccTimeStatistics {
+    pub eggcc_extraction_time: Duration,
+    pub eggcc_serialization_time: Duration,
+    // if ilp didn't time out, what portion of the time was spent in the extraction gym code
+    pub ilp_test_times: Vec<ExtractionTimeSample>,
+}
+
+impl Default for EggccTimeStatistics {
+    fn default() -> Self {
+        Self {
+            eggcc_extraction_time: Duration::from_millis(0),
+            eggcc_serialization_time: Duration::from_millis(0),
+            ilp_test_times: vec![],
+        }
+    }
 }
 
 impl EggccConfig {
@@ -371,6 +401,7 @@ impl Default for EggccConfig {
             linearity: true,
             optimize_functions: None,
             ablate: None,
+            ilp_extraction_test_timeout: None,
         }
     }
 }
@@ -382,11 +413,12 @@ impl Default for EggccConfig {
 pub fn optimize(
     program: &TreeProgram,
     eggcc_config: &EggccConfig,
-) -> std::result::Result<(TreeProgram, Duration, Duration), egglog::Error> {
+) -> std::result::Result<(TreeProgram, EggccTimeStatistics), egglog::Error> {
     let mut eggcc_serialization_time = Duration::from_millis(0);
     let mut eggcc_extraction_time = Duration::from_millis(0);
     let schedule_list = eggcc_config.schedule.get_schedule_list();
     let mut res = program.clone();
+    let mut ilp_test_times = vec![];
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
@@ -453,9 +485,9 @@ pub fn optimize(
             }
             let (_res_cost, iter_result) = extract(
                 &res,
-                batch,
-                serialized,
-                unextractables,
+                batch.clone(),
+                serialized.clone(),
+                unextractables.clone(),
                 &mut termdag,
                 DefaultCostModel,
                 should_maintain_linearity,
@@ -467,6 +499,20 @@ pub fn optimize(
             eggcc_extraction_time += extraction_end - extraction_start;
             eggcc_serialization_time += extraction_start - serialization_start;
 
+            // now extract with ILP if we were told to
+            if let Some(timeout) = eggcc_config.ilp_extraction_test_timeout {
+                let times = extract_ilp(
+                    &res,
+                    batch,
+                    serialized,
+                    unextractables,
+                    DefaultCostModel,
+                    timeout,
+                );
+
+                ilp_test_times.extend(times);
+            }
+
             // typecheck the program as a sanity check
             iter_result.typecheck();
 
@@ -474,14 +520,28 @@ pub fn optimize(
 
             if has_debug_exprs {
                 log::info!("Program has debug expressions, stopping pass {}.", i);
-                return Ok((res, eggcc_serialization_time, eggcc_extraction_time));
+                return Ok((
+                    res,
+                    EggccTimeStatistics {
+                        eggcc_extraction_time,
+                        eggcc_serialization_time,
+                        ilp_test_times,
+                    },
+                ));
             }
         }
 
         // now add context to res again for the next pass, since context might be less specific
         res = res.add_context().0;
     }
-    Ok((res, eggcc_serialization_time, eggcc_extraction_time))
+    Ok((
+        res,
+        EggccTimeStatistics {
+            eggcc_extraction_time,
+            eggcc_serialization_time,
+            ilp_test_times,
+        },
+    ))
 }
 
 fn check_program_gets_type(program: TreeProgram) -> Result {

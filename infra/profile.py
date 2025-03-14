@@ -24,6 +24,13 @@ def num_samples():
   return 1000
 
 
+# timeout in seconds, per function, that we give ILP to find
+# a solution ignoring linearity constraints
+def ilp_extraction_test_timeout():
+  if IS_TESTING_MODE:
+    return 5 # 5 second timeout
+  return 600 # 5 minute timeout
+
 def average(lst):
   return sum(lst) / len(lst)
 
@@ -41,6 +48,7 @@ treatments = [
   "llvm-O3-O3",
   "llvm-eggcc-O3-O0",
   "llvm-eggcc-O3-O3",
+  "eggcc-ILP-O0-O0"
 ]
 
 if TO_ABLATE != "":
@@ -90,6 +98,9 @@ def get_eggcc_options(benchmark):
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0 --ablate {TO_ABLATE}')
     case "llvm-eggcc-ablation-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
+    case "eggcc-ILP-O0-O0":
+      # run with the ilp-extraction-timeout flag
+      return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -121,7 +132,7 @@ def setup_benchmark(name):
 # returns a dictionary with the path to the optimized binary,
 # eggcc compile time, and llvm compile time
 def optimize(benchmark):
-  print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}')
+  print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}', flush=True)
   profile_dir = benchmark_profile_dir(benchmark.name)
   optimized_bril_file = f'{profile_dir}/{benchmark.name}-{benchmark.treatment}.bril'
   eggcc_run_data = f'{profile_dir}/{benchmark.treatment}-eggcc-run-data.json'
@@ -136,21 +147,22 @@ def optimize(benchmark):
   cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode} --run-data-out {eggcc_run_data}'
   cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --run-data-out {llvm_run_data} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_file}'
 
-  print(f'Running c1: {cmd1}', flush=True)
   process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
-  process.check_returncode()
+  if process.returncode != 0:
+    raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {process.stderr}')
 
   # write the std out to the optimized bril file
   with open(optimized_bril_file, 'w') as f:
     f.write(process.stdout)
 
-  print(f'Running c2: {cmd2}', flush=True)
   process2 = subprocess.run(cmd2, shell=True)
-  process2.check_returncode()
+  if process2.returncode != 0:
+    raise Exception(f'Error running {cmd2}: {process2.stderr}')
 
   eggcc_compile_time = 0
   eggcc_extraction_time = 0
   eggcc_serialization_time = 0
+  ilp_test_times = []
   # parse json from eggcc run data
   with open(eggcc_run_data) as f:
     eggcc_data = json.load(f)
@@ -165,6 +177,9 @@ def optimize(benchmark):
     secs = eggcc_data["eggcc_extraction_time"]["secs"]
     nanos = eggcc_data["eggcc_extraction_time"]["nanos"]
     eggcc_extraction_time = secs + nanos / 1e9
+
+    ilp_test_times = eggcc_data["ilp_test_times"]
+    
   
   llvm_compile_time = 0
   with open(llvm_run_data) as f:
@@ -180,6 +195,7 @@ def optimize(benchmark):
         "eggccSerializationTimeSecs": eggcc_serialization_time,
         "eggccExtractionTimeSecs": eggcc_extraction_time,
         "llvmCompileTimeSecs": llvm_compile_time,
+        "ilpTestTimes": ilp_test_times,
     }
   return res
 
@@ -334,6 +350,12 @@ if __name__ == '__main__':
   total = len(profiles) * len(treatments)
   for benchmark_path in profiles:
     for treatment in treatments:
+
+      # EVIL HACK: skip ILP mode for raytrace benchmark
+      # since it uses too much memory
+      if benchmark_path.endswith("raytrace.rs") and treatment == "eggcc-ILP-O0-O0":
+        print("Skipping raytrace.rs with eggcc-ILP-O0-O0", flush=True)
+        continue
       to_run.append(Benchmark(benchmark_path, treatment, index, total))
       index += 1
 

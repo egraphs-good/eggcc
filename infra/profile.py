@@ -279,6 +279,20 @@ def aggregate(compile_data, bench_times, paths):
       res.append(result)
     return res
 
+def all_benchmarks(path):
+  # if it's a file, return it
+  if os.path.isfile(path):
+    return [path]
+
+  return glob(f'{path}/**/*.bril', recursive=True) + glob(f'{path}/**/*.rs', recursive=True)
+
+def build_eggcc():
+  print("Building eggcc")
+  buildres = os.system("cargo build --release")
+  if buildres != 0:
+    print("Failed to build eggcc")
+    exit(1)
+
 if __name__ == '__main__':
   # expect two arguments
   if len(os.sys.argv) != 3 and len(os.sys.argv) != 4:
@@ -304,11 +318,7 @@ if __name__ == '__main__':
     os.system(f"rm -rf {TMP_DIR}/*")
 
   # build eggcc
-  print("Building eggcc")
-  buildres = os.system("cargo build --release")
-  if buildres != 0:
-    print("Failed to build eggcc")
-    exit(1)
+  build_eggcc()
 
 
 
@@ -317,7 +327,7 @@ if __name__ == '__main__':
   # if it is a directory get all files
   if os.path.isdir(bril_dir):
     print(f'Running all bril files in {bril_dir}')
-    profiles = glob(f'{bril_dir}/**/*.bril', recursive=True) + glob(f'{bril_dir}/**/*.rs', recursive=True)
+    profiles = all_benchmarks(bril_dir)
   else:
     profiles = [bril_dir]
 

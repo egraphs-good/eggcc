@@ -1943,7 +1943,7 @@ fn rename_to_valid_children(
         new_egraph.class_data.insert(class.clone(), data.clone());
     }
 
-    new_egraph.root_eclasses = egraph.root_eclasses.clone();
+    new_egraph.root_eclasses.clone_from(&egraph.root_eclasses);
 
     new_egraph
 }
@@ -1984,7 +1984,7 @@ fn prune_egraph(
             } else if cost_model.get_op_cost(&node.op).is_infinite() {
             }
             // if the node is an integer, we copy it over later
-            else if node.op.parse::<i64>().is_ok() {
+            else if let Ok(_parse) = node.op.parse::<i64>() {
                 has_non_inf_cost = true;
             }
             // if the node stores a string, we copy it over later
@@ -2013,13 +2013,13 @@ fn prune_egraph(
 
     // copy over "InlinedCall" and "LoopNumItersGuess" nodes, which depend on integers and strings
     for (nodeid, node) in &egraph.nodes {
-        if node.op == "InlinedCall" && visited.contains(&egraph.nid_to_cid(&node.children[1])) {
+        if node.op == "InlinedCall" && visited.contains(egraph.nid_to_cid(&node.children[1])) {
             new_egraph.add_node(nodeid.clone(), node.clone());
         }
 
         if node.op == "LoopNumItersGuess"
-            && visited.contains(&egraph.nid_to_cid(&node.children[0]))
-            && visited.contains(&egraph.nid_to_cid(&node.children[1]))
+            && visited.contains(egraph.nid_to_cid(&node.children[0]))
+            && visited.contains(egraph.nid_to_cid(&node.children[1]))
         {
             // copy over the node
             new_egraph.add_node(nodeid.clone(), node.clone());

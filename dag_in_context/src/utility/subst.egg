@@ -49,7 +49,7 @@
        )
       ;; add the assumption `to`
       ((DelayedSubstUnion lhs (AddContext assum to))
-      (subsume (Subst assum to e)))
+       (subsume (Subst assum to e)))
       :ruleset subst)
 (rule ((= lhs (Subst assum to e))
        (= e (Const c _ty _oldctx))

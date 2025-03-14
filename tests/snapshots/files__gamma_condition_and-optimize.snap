@@ -1,22 +1,10 @@
 ---
 source: tests/files.rs
 expression: visualization.result
-snapshot_kind: text
 ---
 # ARGS: 1
 @main(v0: int) {
   c1_: int = const 3;
-<<<<<<< HEAD
-=======
-  c2_: int = const 0;
-  v3_: bool = lt v0 c2_;
-  c4_: int = const 3;
-  v5_: int = id c4_;
-  br v3_ .b6_ .b7_;
-.b6_:
-  c8_: int = const 3;
-  v5_: int = id c8_;
->>>>>>> d78c04d4 (snapshots)
   print c1_;
   ret;
 }

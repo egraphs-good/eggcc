@@ -2002,12 +2002,13 @@ fn prune_egraph(
             }
         }
 
-        // if all the nodes had infinite cost, print them out and error
+        // It's possible that no nodes in the eclass had finite cost
+        // because DropAt can fail to finish for some eclasses.
+        // This is expected, so add any of the nodes in the eclass to the new egraph.
         if !has_non_inf_cost {
-            panic!(
-                "All nodes in class had infinite cost. Nodes: {:?}",
-                egraph.classes()[&class].nodes
-            );
+            let nodeid = &egraph.classes()[&class].nodes[0];
+            let node = &egraph[nodeid];
+            new_egraph.add_node(nodeid.clone(), node.clone());
         }
     }
 

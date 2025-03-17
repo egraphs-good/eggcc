@@ -1,12 +1,13 @@
 import profile
 import os, concurrent, subprocess
 
-def serialize_egraph(benchmark_path, output_dir):
-  cmd = f'{profile.EGGCC_BINARY} {benchmark_path} --run-mode serialize > {output_dir}/{os.path.basename(benchmark_path)}.json'
+def get_egglog_file(benchmark_path, output_dir):
+  basename_without_extension = os.path.basename(benchmark_path).split('.')[0]
+  new_name = f'{output_dir}/{basename_without_extension}.egglog'
+  cmd = f'{profile.EGGCC_BINARY} {benchmark_path} --run-mode egglog > {new_name}'
   print(f"Running {cmd}", flush=True)
   process = subprocess.run(cmd, shell=True, capture_output=True)
   process.check_returncode()
-
 
 if __name__ == '__main__':
   if len(os.sys.argv) != 3:
@@ -30,7 +31,7 @@ if __name__ == '__main__':
   print(f"Found {len(benchmarks)} benchmarks")
 
   with concurrent.futures.ThreadPoolExecutor(max_workers = os.cpu_count()) as executor:
-    futures = {executor.submit(serialize_egraph, benchmark, output_dir) for benchmark in benchmarks}
+    futures = {executor.submit(get_egglog_file, benchmark, output_dir) for benchmark in benchmarks}
 
     for future in concurrent.futures.as_completed(futures):
       try:

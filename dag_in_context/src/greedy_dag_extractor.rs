@@ -1061,12 +1061,15 @@ pub fn extract_with_paths(
     }
     let mut worklist: PriorityQueue<(ClassId, ClassId)> = PriorityQueue::default();
 
+    let mut parents = info.parents.clone();
     let root_node = (ClassId::from("ROOT_NODE".to_string()), ClassId::from("ROOT_NODE".to_string()));
-    let _ = info.parents.get(&root_node).insert(&info.roots);
+    let _ = parents.insert(root_node.clone(), info.roots.clone());
     worklist.insert(root_node, NotNan::new(0.0).unwrap());
 
     while let Some((rootid, classid)) = worklist.pop() {
-        if let Some(parents) = info.parents.get(&(rootid.clone(), classid.clone())) {
+        dbg!(&rootid);
+        if let Some(parents) = parents.get(&(rootid.clone(), classid.clone())) {
+            dbg!(parents);
             for parent in parents {
                 let (rootid, nodeid) = parent.clone();
 
@@ -1125,6 +1128,7 @@ pub fn extract_with_paths(
                 if let Some(cost_set_index) =
                     node_cost_in_region(rootid.clone(), nodeid.clone(), extractor, info)
                 {
+                    dbg!(node);
                     let cost_set = &extractor.costsets[cost_set_index];
                     let region_costs = extractor.costs.get_mut(&rootid).unwrap();
                     if cost_set.total < prev_cost {
@@ -1136,6 +1140,11 @@ pub fn extract_with_paths(
         }
     }
 
+    dbg!(&func_root);
+    dbg!(extractor
+        .costs
+        .get(&func_root));
+    dbg!(&extractor.costs);
     let root_costset_index = *extractor
         .costs
         .get(&func_root)
@@ -1379,10 +1388,12 @@ where
     T: Eq + std::hash::Hash + Ord + Clone,
 {
     pub fn insert(&mut self, t: T, c: Cost) {
-        if let Some(old_cost) = self.set.insert(t.clone(), c) {
+        if let Some(old_cost) = self.set.get(&t) {
+            let old_cost = *old_cost;
             if old_cost <= c {
                 return;
             }
+            let _ = self.set.insert(t.clone(), c);
             // if the cost is lower, we need to remove the old one
             self.queue.remove(&PriorityQueuePayload {
                 data: t.clone(),
@@ -1394,6 +1405,7 @@ where
                 cost: c,
             });
         } else {
+            let _ = self.set.insert(t.clone(), c);
             // if the cost is new, we need to add it
             self.queue.insert(PriorityQueuePayload {
                 data: t.clone(),
@@ -1407,7 +1419,10 @@ where
         // In the UniqueQueue, we remove the element from the set,
         // but here we don't because we want to guard against the same data
         // being added in the future (property of Dijkstra)
-        res.as_ref().map(|t| t.data.clone())
+        res.as_ref().map(|t| {
+            // self.set.remove(&t.data);
+            t.data.clone()
+        })
     }
 }
 

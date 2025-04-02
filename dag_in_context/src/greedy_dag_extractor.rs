@@ -1063,9 +1063,7 @@ pub fn extract_with_paths(
     worklist.insert(root_node, NotNan::new(0.0).unwrap());
 
     while let Some((rootid, classid)) = worklist.pop() {
-        dbg!((&rootid, &classid));
         if let Some(parents) = parents.get(&(rootid.clone(), classid.clone())) {
-            dbg!(parents);
             for parent in parents {
                 let (rootid, nodeid) = parent.clone();
 
@@ -1124,11 +1122,9 @@ pub fn extract_with_paths(
                 if let Some(cost_set_index) =
                     node_cost_in_region(rootid.clone(), nodeid.clone(), extractor, info)
                 {
-                    dbg!(node);
                     let cost_set = &extractor.costsets[cost_set_index];
                     let region_costs = extractor.costs.get_mut(&rootid).unwrap();
                     if cost_set.total < prev_cost {
-                        eprintln!("updated ({rootid}, {classid})");
                         region_costs.insert(classid.clone(), cost_set_index);
                         worklist.insert((rootid, classid), cost_set.total);
                     }
@@ -1137,11 +1133,6 @@ pub fn extract_with_paths(
         }
     }
 
-    dbg!(&func_root);
-    dbg!(extractor
-        .costs
-        .get(&func_root));
-    dbg!(&extractor.costs);
     let root_costset_index = *extractor
         .costs
         .get(&func_root)
@@ -1384,7 +1375,6 @@ where
         // being added in the future (property of Dijkstra)
         let res = res.as_ref().map(|t| {
             self.set.remove(&t.data);
-            eprintln!("poped {:?}", t.data);
             t.data.clone()
         });
         res

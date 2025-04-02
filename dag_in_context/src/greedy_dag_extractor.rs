@@ -5,7 +5,11 @@ use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
 use smallvec::SmallVec;
 use std::{
-    cmp::{max, min}, collections::{BTreeSet, HashMap, HashSet, VecDeque}, f64::INFINITY, rc::Rc, time::{Duration, Instant}
+    cmp::{max, min},
+    collections::{BTreeSet, HashMap, HashSet, VecDeque},
+    f64::INFINITY,
+    rc::Rc,
+    time::{Duration, Instant},
 };
 use strum::IntoEnumIterator;
 
@@ -1058,7 +1062,10 @@ pub fn extract_with_paths(
     let mut worklist: PriorityQueue<(ClassId, ClassId)> = PriorityQueue::default();
 
     let mut parents = info.parents.clone();
-    let root_node = (ClassId::from("ROOT_NODE".to_string()), ClassId::from("ROOT_NODE".to_string()));
+    let root_node = (
+        ClassId::from("ROOT_NODE".to_string()),
+        ClassId::from("ROOT_NODE".to_string()),
+    );
     let _ = parents.insert(root_node.clone(), info.roots.clone());
     worklist.insert(root_node, NotNan::new(0.0).unwrap());
 

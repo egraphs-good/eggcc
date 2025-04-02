@@ -1,0 +1,9 @@
+   Compiling dag_in_context v0.1.0 (/Users/yihongzhang/eggcc/dag_in_context)
+warning: unused imports: `Ordering`, `fmt::Display`
+ --> src/greedy_dag_extractor.rs:8:21
+  |
+8 |     cmp::{max, min, Ordering}, collections::{BTreeSet, HashMap, HashSet, VecDeque}, f64::INFINITY, fmt::Display, rc::Rc, time::{Duration,...
+  |                     ^^^^^^^^                                                                       ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+

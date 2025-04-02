@@ -5,11 +5,7 @@ use ordered_float::{NotNan, OrderedFloat};
 use rpds::HashTrieMap;
 use smallvec::SmallVec;
 use std::{
-    cmp::{max, min, Ordering},
-    collections::{BTreeSet, HashMap, HashSet, VecDeque},
-    f64::INFINITY,
-    rc::Rc,
-    time::{Duration, Instant},
+    cmp::{max, min}, collections::{BTreeSet, HashMap, HashSet, VecDeque}, f64::INFINITY, rc::Rc, time::{Duration, Instant}
 };
 use strum::IntoEnumIterator;
 
@@ -1067,7 +1063,7 @@ pub fn extract_with_paths(
     worklist.insert(root_node, NotNan::new(0.0).unwrap());
 
     while let Some((rootid, classid)) = worklist.pop() {
-        dbg!(&rootid);
+        dbg!((&rootid, &classid));
         if let Some(parents) = parents.get(&(rootid.clone(), classid.clone())) {
             dbg!(parents);
             for parent in parents {
@@ -1132,6 +1128,7 @@ pub fn extract_with_paths(
                     let cost_set = &extractor.costsets[cost_set_index];
                     let region_costs = extractor.costs.get_mut(&rootid).unwrap();
                     if cost_set.total < prev_cost {
+                        eprintln!("updated ({rootid}, {classid})");
                         region_costs.insert(classid.clone(), cost_set_index);
                         worklist.insert((rootid, classid), cost_set.total);
                     }
@@ -1321,44 +1318,10 @@ where
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct PriorityQueuePayload<D, C> {
-    data: D,
     cost: C,
-}
-
-impl<D, C> PartialEq for PriorityQueuePayload<D, C>
-where
-    D: Eq,
-    C: PartialOrd,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.data == other.data
-    }
-}
-impl<D, C> Eq for PriorityQueuePayload<D, C>
-where
-    D: Eq,
-    C: PartialOrd,
-{
-}
-impl<D, C> PartialOrd for PriorityQueuePayload<D, C>
-where
-    D: Eq,
-    C: PartialOrd,
-{
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.cost.partial_cmp(&other.cost)
-    }
-}
-impl<D, C> Ord for PriorityQueuePayload<D, C>
-where
-    D: Eq,
-    C: PartialOrd,
-{
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
-    }
+    data: D,
 }
 
 #[derive(Clone)]
@@ -1385,7 +1348,7 @@ where
 // This implementation is Dijkstra-specific
 impl<T> PriorityQueue<T>
 where
-    T: Eq + std::hash::Hash + Ord + Clone,
+    T: Eq + std::hash::Hash + Ord + Clone + std::fmt::Debug,
 {
     pub fn insert(&mut self, t: T, c: Cost) {
         if let Some(old_cost) = self.set.get(&t) {
@@ -1405,7 +1368,7 @@ where
                 cost: c,
             });
         } else {
-            let _ = self.set.insert(t.clone(), c);
+            self.set.insert(t.clone(), c);
             // if the cost is new, we need to add it
             self.queue.insert(PriorityQueuePayload {
                 data: t.clone(),
@@ -1419,10 +1382,12 @@ where
         // In the UniqueQueue, we remove the element from the set,
         // but here we don't because we want to guard against the same data
         // being added in the future (property of Dijkstra)
-        res.as_ref().map(|t| {
-            // self.set.remove(&t.data);
+        let res = res.as_ref().map(|t| {
+            self.set.remove(&t.data);
+            eprintln!("poped {:?}", t.data);
             t.data.clone()
-        })
+        });
+        res
     }
 }
 

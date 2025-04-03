@@ -6,7 +6,7 @@ use rpds::HashTrieMap;
 use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{BTreeSet, HashMap, HashSet, VecDeque},
     f64::INFINITY,
     rc::Rc,
     time::{Duration, Instant},
@@ -1059,79 +1059,81 @@ pub fn extract_with_paths(
     } else {
         log::info!("Extracting program for the first time.");
     }
-    let mut worklist = UniqueQueue::default();
+    let mut worklist: PriorityQueue<(ClassId, ClassId)> = PriorityQueue::default();
 
-    // first, add all the roots to the worklist
-    for (root, nodeid) in &info.roots {
-        worklist.insert((root.clone(), nodeid.clone()));
-    }
+    let mut parents = info.parents.clone();
+    let root_node = (
+        ClassId::from("ROOT_NODE".to_string()),
+        ClassId::from("ROOT_NODE".to_string()),
+    );
+    let _ = parents.insert(root_node.clone(), info.roots.clone());
+    worklist.insert(root_node, NotNan::new(0.0).unwrap());
 
-    while let Some((rootid, nodeid)) = worklist.pop() {
-        let classid = info.n2c(&nodeid);
-        let node = info.egraph.nodes.get(&nodeid).unwrap();
+    while let Some((rootid, classid)) = worklist.pop() {
+        if let Some(parents) = parents.get(&(rootid.clone(), classid.clone())) {
+            for parent in parents {
+                let (rootid, nodeid) = parent.clone();
 
-        // skip nodes with infinite cost
-        if info.cm.get_op_cost(&node.op).is_infinite() {
-            continue;
-        }
+                let classid = info.n2c(&nodeid);
+                let node = info.egraph.nodes.get(&nodeid).unwrap();
 
-        if info.unextractables.contains(&node.op) {
-            continue;
-        }
-
-        // Skip inlined calls
-        if node.op == "Call"
-            && info.inlined_calls.contains(&(
-                info.n2c(&node.children[0]).clone(),
-                info.n2c(&node.children[1]).clone(),
-            ))
-        {
-            continue;
-        }
-
-        let sort_of_node = info.get_sort_of_eclass(&classid);
-        // if node is effectful, we only consider it if it is in the effectful path
-        if sort_of_node == "Expr" && effectful_paths.is_some() {
-            let effectful_lookup = extractor.is_eclass_effectful(classid.clone());
-            if effectful_lookup.is_none() && node.op != "Function" {
-                // skip when type is unknown
-                continue;
-            }
-            if let Some(true) = effectful_lookup {
-                let effectful_nodes = effectful_paths.unwrap().get(&rootid);
-                if effectful_nodes.is_none() {
-                    // continue when this root isn't in effectful_paths
+                // skip nodes with infinite cost
+                if info.cm.get_op_cost(&node.op).is_infinite() {
                     continue;
                 }
 
-                // skip nodes not on the path
-                if !effectful_nodes.unwrap().contains(&nodeid) {
+                if info.unextractables.contains(&node.op) {
                     continue;
                 }
-            }
-        }
 
-        // create a new region_costs map if it doesn't exist
-        let region_costs = extractor.costs.entry(rootid.clone()).or_default();
-        let lookup = region_costs.get(&classid);
-        let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
-        if let Some(lookup) = lookup {
-            let costset = extractor.costsets.get(*lookup).unwrap();
-            prev_cost = costset.total;
-        }
+                // Skip inlined calls
+                if node.op == "Call"
+                    && info.inlined_calls.contains(&(
+                        info.n2c(&node.children[0]).clone(),
+                        info.n2c(&node.children[1]).clone(),
+                    ))
+                {
+                    continue;
+                }
 
-        if let Some(cost_set_index) =
-            node_cost_in_region(rootid.clone(), nodeid.clone(), extractor, info)
-        {
-            let cost_set = &extractor.costsets[cost_set_index];
-            let region_costs = extractor.costs.get_mut(&rootid).unwrap();
-            if cost_set.total < prev_cost {
-                region_costs.insert(classid.clone(), cost_set_index);
+                let sort_of_node = info.get_sort_of_eclass(&classid);
+                // if node is effectful, we only consider it if it is in the effectful path
+                if sort_of_node == "Expr" && effectful_paths.is_some() {
+                    let effectful_lookup = extractor.is_eclass_effectful(classid.clone());
+                    if effectful_lookup.is_none() && node.op != "Function" {
+                        // skip when type is unknown
+                        continue;
+                    }
+                    if let Some(true) = effectful_lookup {
+                        let effectful_nodes = effectful_paths.unwrap().get(&rootid);
+                        if effectful_nodes.is_none() {
+                            // continue when this root isn't in effectful_paths
+                            continue;
+                        }
 
-                // we updated this eclass's cost, so we need to update its parents
-                if let Some(parents) = info.parents.get(&(rootid.clone(), classid.clone())) {
-                    for parent in parents {
-                        worklist.insert(parent.clone());
+                        // skip nodes not on the path
+                        if !effectful_nodes.unwrap().contains(&nodeid) {
+                            continue;
+                        }
+                    }
+                }
+
+                let region_costs = extractor.costs.entry(rootid.clone()).or_default();
+                let lookup = region_costs.get(&classid);
+                let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
+                if let Some(lookup) = lookup {
+                    let costset = extractor.costsets.get(*lookup).unwrap();
+                    prev_cost = costset.total;
+                }
+
+                if let Some(cost_set_index) =
+                    node_cost_in_region(rootid.clone(), nodeid.clone(), extractor, info)
+                {
+                    let cost_set = &extractor.costsets[cost_set_index];
+                    let region_costs = extractor.costs.get_mut(&rootid).unwrap();
+                    if cost_set.total < prev_cost {
+                        region_costs.insert(classid.clone(), cost_set_index);
+                        worklist.insert((rootid, classid), cost_set.total);
                     }
                 }
             }
@@ -1311,6 +1313,78 @@ where
         let r = self.queue.is_empty();
         debug_assert_eq!(r, self.set.is_empty());
         r
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct PriorityQueuePayload<D, C> {
+    cost: C,
+    data: D,
+}
+
+#[derive(Clone)]
+pub(crate) struct PriorityQueue<T>
+where
+    T: Eq + std::hash::Hash + Ord + Clone,
+{
+    set: HashMap<T, Cost>,
+    queue: BTreeSet<PriorityQueuePayload<T, Cost>>,
+}
+
+impl<T> Default for PriorityQueue<T>
+where
+    T: Eq + std::hash::Hash + Ord + Clone,
+{
+    fn default() -> Self {
+        PriorityQueue {
+            set: Default::default(),
+            queue: Default::default(),
+        }
+    }
+}
+
+// This implementation is Dijkstra-specific
+impl<T> PriorityQueue<T>
+where
+    T: Eq + std::hash::Hash + Ord + Clone + std::fmt::Debug,
+{
+    pub fn insert(&mut self, t: T, c: Cost) {
+        if let Some(old_cost) = self.set.get(&t) {
+            let old_cost = *old_cost;
+            if old_cost <= c {
+                return;
+            }
+            let _ = self.set.insert(t.clone(), c);
+            // if the cost is lower, we need to remove the old one
+            self.queue.remove(&PriorityQueuePayload {
+                data: t.clone(),
+                cost: old_cost,
+            });
+            // and add the new one
+            self.queue.insert(PriorityQueuePayload {
+                data: t.clone(),
+                cost: c,
+            });
+        } else {
+            self.set.insert(t.clone(), c);
+            // if the cost is new, we need to add it
+            self.queue.insert(PriorityQueuePayload {
+                data: t.clone(),
+                cost: c,
+            });
+        }
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        let res = self.queue.pop_first();
+        // In the UniqueQueue, we remove the element from the set,
+        // but here we don't because we want to guard against the same data
+        // being added in the future (property of Dijkstra)
+        let res = res.as_ref().map(|t| {
+            self.set.remove(&t.data);
+            t.data.clone()
+        });
+        res
     }
 }
 

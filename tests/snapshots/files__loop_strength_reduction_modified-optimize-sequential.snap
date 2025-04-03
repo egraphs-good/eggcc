@@ -43,7 +43,7 @@ expression: visualization.result
   print v31_;
   print v30_;
   v34_: int = add c14_ v15_;
-  v35_: int = add c14_ v17_;
+  v35_: int = add v15_ v7_;
   v36_: bool = eq v10_ v35_;
   v37_: int = add c20_ v29_;
   v38_: int = add v29_ v7_;

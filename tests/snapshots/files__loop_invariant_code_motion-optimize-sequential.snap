@@ -18,19 +18,19 @@ expression: visualization.result
   v13_: int = id c4_;
   v14_: int = id v8_;
 .b15_:
-  v16_: int = add v10_ v9_;
-  c17_: int = const 2;
-  v18_: int = add c17_ v16_;
+  c16_: int = const 2;
+  v17_: int = add c16_ v9_;
+  v18_: int = add v10_ v17_;
   v19_: int = mul v14_ v18_;
-  v20_: int = add c17_ v9_;
-  v21_: int = mul v14_ v20_;
-  v22_: int = mul v14_ v16_;
+  v20_: int = mul v14_ v17_;
+  v21_: int = add v10_ v9_;
+  v22_: int = mul v14_ v21_;
   v23_: int = mul v14_ v9_;
   print v23_;
   print v22_;
-  print v21_;
+  print v20_;
   print v19_;
-  v24_: int = add c17_ v20_;
+  v24_: int = add c16_ v17_;
   v25_: bool = lt v24_ v13_;
   v9_: int = id v24_;
   v10_: int = id v10_;

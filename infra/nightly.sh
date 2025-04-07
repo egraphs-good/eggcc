@@ -98,15 +98,3 @@ cp "$NIGHTLY_DIR/log.txt" "$OUTPUT_DIR"
 if [ "$LOCAL" == "" ]; then
   gzip "$OUTPUT_DIR/data/profile.json"
 fi
-
-
-# This is the uploading part, copied directly from Herbie's nightly script.
-DIR="$OUTPUT_DIR"
-B=$(git rev-parse --abbrev-ref HEAD)
-C=$(git rev-parse HEAD | sed 's/\(..........\).*/\1/')
-RDIR="$(date +%s):$(hostname):$B:$C"
-
-# Upload the artifact!
-if [ "$LOCAL" == "" ]; then
-  nightly-results publish --name "$RDIR" "$DIR"
-fi

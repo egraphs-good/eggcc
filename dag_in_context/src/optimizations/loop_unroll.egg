@@ -1,6 +1,5 @@
 ;; Some simple simplifications of loops
 (ruleset loop-unroll)
-(ruleset loop-peel)
 (ruleset loop-iters-analysis)
 
 ;;                      inputs, outputs -> number of iterations
@@ -72,42 +71,47 @@
 
 ;; loop peeling rule
 ;; Only peel loops that we know iterate < 3 times
-(constructor LoopPeeledPlaceholder (Expr) Assumption :unextractable)
-(rule
- ((= lhs (DoWhile inputs outputs))
-  (ContextOf lhs ctx)
-  (HasType inputs inputs-ty)
-  (= outputs-len (tuple-length outputs))
-  (= old_cost (LoopNumItersGuess inputs outputs))
-  (< old_cost 3)
-  )
- (
-  (let executed-once
-    (Subst ctx inputs outputs))
-  (let executed-once-body
-     (SubTuple executed-once 1 (- outputs-len 1)))
-  (let then-ctx
-    (InIf true (Get executed-once 0) executed-once-body))
-  (let else-ctx
-    (InIf false (Get executed-once 0) executed-once-body))
+;; (constructor LoopPeeledPlaceholder (Expr) Assumption :unextractable)
 
-  (let new-loop-arg
-    (Arg inputs-ty then-ctx))
-  (let new-loop-body
-    (Subst (LoopPeeledPlaceholder lhs) new-loop-arg outputs))
-  (union (InLoop new-loop-arg new-loop-body) (LoopPeeledPlaceholder lhs))
-
-  (union lhs
-    ;; check if we need to continue executing the loop
-    (If (Get executed-once 0)
-      executed-once-body ;; inputs are the body executed once
-      (DoWhile new-loop-arg new-loop-body)
-      (Arg inputs-ty else-ctx)))
-
-  (set (LoopNumItersGuess new-loop-arg new-loop-body) (- old_cost 1))
-  )
- :ruleset loop-peel)
-
+;; WARNING: THIS RULE DOES NOT MAINTAIN WEAK LINEARITY
+;; If another already peeled loop exists in the egraph, it can violate the invariant.
+;; See the eggcc paper for what rules are safe.
+;; (ruleset loop-peel)
+;;(rule
+;; ((= lhs (DoWhile inputs outputs))
+;;  (ContextOf lhs ctx)
+;;  (HasType inputs inputs-ty)
+;;  (= outputs-len (tuple-length outputs))
+;;  (= old_cost (LoopNumItersGuess inputs outputs))
+;;  (< old_cost 3)
+;;  )
+;; (
+;;  (let executed-once
+;;    (Subst ctx inputs outputs))
+;;  (let executed-once-body
+;;     (SubTuple executed-once 1 (- outputs-len 1)))
+;;  (let then-ctx
+;;    (InIf true (Get executed-once 0) executed-once-body))
+;;  (let else-ctx
+;;    (InIf false (Get executed-once 0) executed-once-body))
+;;
+;;  (let new-loop-arg
+;;    (Arg inputs-ty then-ctx))
+;;  (let new-loop-body
+;;    (Subst (LoopPeeledPlaceholder lhs) new-loop-arg outputs))
+;;  (union (InLoop new-loop-arg new-loop-body) (LoopPeeledPlaceholder lhs))
+;;
+;;  (union lhs
+;;    ;; check if we need to continue executing the loop
+;;    (If (Get executed-once 0)
+;;      executed-once-body ;; inputs are the body executed once
+;;      (DoWhile new-loop-arg new-loop-body)
+;;      (Arg inputs-ty else-ctx)))
+;;
+;;  (set (LoopNumItersGuess new-loop-arg new-loop-body) (- old_cost 1))
+;;  )
+;; :ruleset loop-peel)
+;;
 ;; unroll a loop with constant bounds and initial value
 (rule
   ((= lhs (DoWhile inputs outputs))

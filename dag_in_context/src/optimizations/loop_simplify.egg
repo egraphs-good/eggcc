@@ -1,9 +1,0 @@
-;; Some simple simplifications of loops
-(ruleset loop-simplify)
-
-(rewrite
- (DoWhile (Arg ty ctx)
-  (Concat (Single (Const (Bool false) ty ctx2))
-    (Single (Const constant ty ctx2))))
- (Single (Const constant ty ctx))
- :ruleset loop-simplify)

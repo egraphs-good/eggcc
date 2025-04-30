@@ -145,10 +145,3 @@
 
        :ruleset switch_rewrite)
 
-(rewrite (If (Const (Bool true)  ty ctx) ins thn els)
-         (Subst ctx ins thn)
-         :ruleset always-switch-rewrite)
-
-(rewrite (If (Const (Bool false) ty ctx) ins thn els)
-         (Subst ctx ins els)
-         :ruleset always-switch-rewrite)

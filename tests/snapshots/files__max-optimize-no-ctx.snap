@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 20 30
+@main(v0: int, v1: int) {
+  v2_: bool = gt v0 v1;
+  v3_: int = select v2_ v0 v1;
+  print v3_;
+  ret;
+}

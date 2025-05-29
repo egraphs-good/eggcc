@@ -1,0 +1,78 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 16.0
+@main(v0: float) {
+  c1_: float = const 0;
+  v2_: bool = feq v0 c1_;
+  br v2_ .b3_ .b4_;
+.b3_:
+  print c1_;
+  ret;
+  jmp .b5_;
+.b4_:
+  v6_: bool = feq v0 v0;
+  v7_: bool = flt v0 c1_;
+  c8_: bool = const false;
+  c9_: bool = const true;
+  v10_: bool = select v7_ c8_ c9_;
+  v11_: bool = select v6_ v10_ c8_;
+  v12_: float = id c1_;
+  v13_: bool = id c8_;
+  br v6_ .b14_ .b15_;
+.b14_:
+  v16_: bool = flt v0 c1_;
+  v17_: float = id c1_;
+  v18_: bool = id c8_;
+  br v16_ .b19_ .b20_;
+.b19_:
+  v12_: float = id v17_;
+  v13_: bool = id v18_;
+.b15_:
+  br v11_ .b21_ .b22_;
+.b21_:
+  ret;
+  jmp .b5_;
+.b22_:
+  v23_: float = fdiv v12_ v12_;
+  print v23_;
+  ret;
+  jmp .b5_;
+.b20_:
+  c24_: float = const 1;
+  c25_: float = const 1.0000000001;
+  c26_: float = const 0.9999999999;
+  c27_: float = const 2;
+  v28_: float = id c1_;
+  v29_: float = id c24_;
+  v30_: float = id c25_;
+  v31_: float = id c26_;
+  v32_: float = id c27_;
+  v33_: float = id v0;
+.b34_:
+  v35_: float = fdiv v33_ v29_;
+  v36_: float = fadd v29_ v35_;
+  v37_: float = fdiv v36_ v32_;
+  v38_: float = fdiv v37_ v29_;
+  v39_: bool = fge v38_ v31_;
+  v40_: bool = fle v38_ v30_;
+  v41_: bool = and v39_ v40_;
+  v42_: bool = not v41_;
+  v28_: float = id v28_;
+  v29_: float = id v37_;
+  v30_: float = id v30_;
+  v31_: float = id v31_;
+  v32_: float = id v32_;
+  v33_: float = id v33_;
+  br v42_ .b34_ .b43_;
+.b43_:
+  print v29_;
+  c44_: bool = const true;
+  v17_: float = id v28_;
+  v18_: bool = id c44_;
+  v12_: float = id v17_;
+  v13_: bool = id v18_;
+  jmp .b15_;
+.b5_:
+}

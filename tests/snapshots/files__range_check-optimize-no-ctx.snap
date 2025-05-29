@@ -1,0 +1,32 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 
+@main {
+  c0_: int = const 0;
+  v1_: int = id c0_;
+.b2_:
+  c3_: int = const 5;
+  v4_: bool = lt v1_ c3_;
+  br v4_ .b5_ .b6_;
+.b5_:
+  c7_: int = const 1;
+  print c7_;
+  v8_: int = id v1_;
+.b9_:
+  c10_: int = const 1;
+  v11_: int = add c10_ v1_;
+  c12_: int = const 6;
+  v13_: bool = lt v1_ c12_;
+  v1_: int = id v11_;
+  br v13_ .b2_ .b14_;
+.b6_:
+  c15_: int = const 2;
+  print c15_;
+  v8_: int = id v1_;
+  jmp .b9_;
+.b14_:
+  print v1_;
+  ret;
+}

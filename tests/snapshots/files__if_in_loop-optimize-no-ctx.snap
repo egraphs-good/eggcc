@@ -1,0 +1,36 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 1
+@main(v0: int) {
+  c1_: int = const 0;
+  c2_: int = const 1;
+  c3_: int = const 10;
+  v4_: int = sub v0 c2_;
+  v5_: bool = lt v0 c2_;
+  v6_: int = select v5_ c2_ c1_;
+  v7_: int = id c1_;
+  v8_: int = id c2_;
+  v9_: int = id v0;
+  v10_: int = id c1_;
+  v11_: int = id c3_;
+  v12_: int = id v4_;
+  v13_: int = id v6_;
+.b14_:
+  v15_: bool = lt v12_ v10_;
+  print v13_;
+  print v15_;
+  v16_: int = add v7_ v8_;
+  v17_: bool = lt v7_ v11_;
+  v7_: int = id v16_;
+  v8_: int = id v8_;
+  v9_: int = id v9_;
+  v10_: int = id v10_;
+  v11_: int = id v11_;
+  v12_: int = id v12_;
+  v13_: int = id v13_;
+  br v17_ .b14_ .b18_;
+.b18_:
+  ret;
+}

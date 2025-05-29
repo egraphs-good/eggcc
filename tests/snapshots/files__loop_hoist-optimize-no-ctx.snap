@@ -1,0 +1,27 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 1 2 3 4
+@main(v0: int, v1: int, v2: int, v3: int) {
+  v4_: int = sub v2 v1;
+  v5_: int = id v0;
+  v6_: int = id v3;
+  v7_: int = id v2;
+  v8_: int = id v1;
+  v9_: int = id v4_;
+.b10_:
+  print v9_;
+  v11_: int = add v5_ v9_;
+  v12_: bool = lt v11_ v6_;
+  v13_: bool = not v12_;
+  v5_: int = id v11_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
+  v8_: int = id v8_;
+  v9_: int = id v9_;
+  br v13_ .b10_ .b14_;
+.b14_:
+  print v5_;
+  ret;
+}

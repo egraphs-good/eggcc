@@ -19,8 +19,7 @@ use std::{
 use to_egglog::TreeToEgglog;
 
 use crate::{
-    dag2svg::tree_to_svg, from_egglog::FromEgglog, interpreter::interpret_dag_prog,
-    optimizations::function_inlining, schedule::parallel_schedule, util::run_cmd_line,
+    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining::perform_inlining, remove_context::remove_new_contexts, schedule::parallel_schedule
 };
 
 pub mod add_context;
@@ -34,6 +33,7 @@ pub mod interpreter;
 pub(crate) mod interval_analysis;
 mod linearity;
 mod optimizations;
+mod remove_context;
 mod remove_dead_code_nodes;
 pub mod schema;
 pub mod schema_helpers;
@@ -65,8 +65,8 @@ pub fn prologue() -> String {
         include_str!("utility/add_context.egg"),
         include_str!("utility/context-prop.egg"),
         include_str!("utility/term-subst.egg"),
-        include_str!("utility/subst.egg"),
         include_str!("utility/context_of.egg"),
+        include_str!("utility/subst.egg"),
         include_str!("utility/canonicalize.egg"),
         include_str!("utility/expr_size.egg"),
         include_str!("utility/drop_at.egg"),
@@ -194,35 +194,34 @@ pub fn build_program(
     fns: &[String],
     schedule: &str,
     ablate: Option<&str>,
+    use_context: bool,
 ) -> String {
-    let (program, mut context_cache) = program.add_context();
+    // inlining first before adding context
+    let to_inline = inline_program.unwrap_or(program);
+    let inlined = if inline_program.is_some() {
+        perform_inlining(
+            to_inline,
+            fns.to_vec(),
+            config::FUNCTION_INLINING_ITERATIONS,
+        )
+    } else {
+        program.clone()
+    };
+
+    // Then add context or dummy context based on flag
+    let (program, context_cache) = if use_context {
+        inlined.add_context()
+    } else {
+        inlined.add_dummy_ctx()
+    };
     let mut printed = String::new();
 
     // Create a global cache for generating intermediate variables
     let mut tree_state = TreeToEgglog::new();
     let mut term_cache = IndexMap::<Term, String>::new();
 
-    // Generate function inlining egglog
-    let function_inlining_unions = if let Some(inline_program) = inline_program {
-        let mut pairs = vec![];
-        for func in fns {
-            pairs.extend(function_inlining::function_inlining_pairs(
-                inline_program,
-                vec![func.clone()],
-                config::FUNCTION_INLINING_ITERATIONS,
-                &mut context_cache,
-            ));
-        }
-
-        function_inlining::print_function_inlining_pairs(
-            pairs,
-            &mut printed,
-            &mut tree_state,
-            &mut term_cache,
-        )
-    } else {
-        "".to_string()
-    };
+    // No union-based inlining; already applied AST-based inlining
+    let function_inlining_unions = String::new();
 
     // Generate program egglog
     for func in fns {
@@ -260,6 +259,12 @@ pub fn build_program(
         )
     } else {
         (prologue, schedule.to_string())
+    };
+
+    let prologue = if !use_context {
+        remove_new_contexts(&prologue)
+    } else {
+        prologue
     };
 
     format!(
@@ -302,7 +307,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
     let fns = program.fns();
-    let egglog_prog = build_program(program, None, &fns, "", None);
+    let egglog_prog = build_program(program, None, &fns, "", None, true);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
@@ -356,6 +361,7 @@ pub struct EggccConfig {
     pub use_tiger: bool,
     /// If use_tiger is true and tiger_ilp is true, use ILP extraction in tiger instead of greedy extraction.
     pub tiger_ilp: bool,
+    pub use_context: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -413,6 +419,7 @@ impl Default for EggccConfig {
             non_weakly_linear: false,
             use_tiger: false,
             tiger_ilp: false,
+            use_context: true,
         }
     }
 }
@@ -615,6 +622,17 @@ pub fn optimize(
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
+        // Add context first thing, since function inlining depends on it already having context
+        // After every extraction, context is erased.
+        // HACK: inlining relies on context, so always add it when inlining
+        res = if eggcc_config.use_context
+            || matches!(schedule, schedule::CompilerPass::InlineWithSchedule(_))
+        {
+            res.add_context().0
+        } else {
+            res.add_dummy_ctx().0
+        };
+
         let mut should_maintain_linearity = true;
         if i == cutoff - 1 {
             should_maintain_linearity = eggcc_config.linearity;
@@ -659,6 +677,7 @@ pub fn optimize(
                 &batch,
                 schedule.egglog_schedule(),
                 eggcc_config.ablate.as_deref(),
+                eggcc_config.use_context,
             );
 
             log::info!("Running egglog program...");
@@ -723,9 +742,6 @@ pub fn optimize(
                 ));
             }
         }
-
-        // now add context to res again for the next pass, since context might be less specific
-        res = res.add_context().0;
     }
     Ok((
         res,

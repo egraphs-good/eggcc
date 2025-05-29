@@ -1,0 +1,41 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 21324
+@main(v0: int) {
+  c1_: int = const 2;
+  v2_: int = div v0 c1_;
+  v3_: int = mul c1_ v2_;
+  v4_: bool = eq v0 v3_;
+  c5_: int = const 1;
+  v6_: int = id c5_;
+  v7_: int = id c1_;
+  v8_: int = id v0;
+  br v4_ .b9_ .b10_;
+.b9_:
+  v11_: int = id c5_;
+  v12_: int = id c1_;
+  v13_: int = id v0;
+.b14_:
+  v15_: int = mul v11_ v12_;
+  v16_: int = div v13_ v12_;
+  v17_: int = div v16_ v12_;
+  v18_: int = mul v12_ v17_;
+  v19_: bool = eq v16_ v18_;
+  v11_: int = id v15_;
+  v12_: int = id v12_;
+  v13_: int = id v16_;
+  br v19_ .b14_ .b20_;
+.b20_:
+  v6_: int = id v11_;
+  v7_: int = id v12_;
+  v8_: int = id v13_;
+  print v6_;
+  ret;
+  jmp .b21_;
+.b10_:
+  print v6_;
+  ret;
+.b21_:
+}

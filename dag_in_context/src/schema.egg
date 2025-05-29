@@ -300,5 +300,6 @@
 (function LoopNumItersGuess (Expr Expr) i64 :merge (max 1 (min old new)))
 
 
+(let DUMMYCTX (InFunc "DUMMY"))
 
 (ruleset never)

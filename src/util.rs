@@ -518,6 +518,11 @@ impl Run {
         seq.eggcc_config.schedule = Schedule::Sequential;
         res.push(seq);
 
+        // also test no context mode
+        let mut no_ctx = Run::new(prog.clone(), RunMode::Optimize);
+        no_ctx.eggcc_config.use_context = false;
+        res.push(no_ctx);
+
         // run a cranelift baseline
         res.push(Run::compile_brilift_config(
             test.clone(),
@@ -571,6 +576,10 @@ impl Run {
             Schedule::Parallel => "",
             Schedule::Sequential => "-sequential",
         };
+
+        if !self.eggcc_config.use_context {
+            name += "-no-ctx";
+        }
 
         name
     }
@@ -748,7 +757,14 @@ impl Run {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let tree = rvsdg.to_dag_encoding();
-                let unfolded_program = build_program(&tree, None, &tree.fns(), "", None);
+                let unfolded_program = build_program(
+                    &tree,
+                    None,
+                    &tree.fns(),
+                    "",
+                    self.eggcc_config.ablate.as_deref(),
+                    self.eggcc_config.use_context,
+                );
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
@@ -833,6 +849,7 @@ impl Run {
                     &dag.fns(),
                     last_schedule_step.egglog_schedule(),
                     eggcc_config.ablate.as_deref(),
+                    eggcc_config.use_context,
                 );
                 (
                     vec![Visualization {
@@ -1281,7 +1298,6 @@ mod test {
                 schedule: schedule.clone(),
                 ..EggccConfig::default()
             };
-
             let sched_len = config.get_schedule_list().len() as i64;
             // 0 is not valid because to_egglog starts with 1
             for i in 1..sched_len + 1 {

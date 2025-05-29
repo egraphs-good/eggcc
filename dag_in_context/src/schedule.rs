@@ -78,7 +78,6 @@ pub(crate) fn helpers() -> String {
 fn cheap_optimizations() -> Vec<String> {
     [
         "hacker",
-        "loop-simplify",
         "interval-rewrite",
         "always-switch-rewrite",
         // "memory",

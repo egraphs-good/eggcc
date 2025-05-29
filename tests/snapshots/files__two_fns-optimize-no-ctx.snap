@@ -1,0 +1,14 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 
+@sub: int {
+  c0_: int = const -1;
+  ret c0_;
+}
+@main {
+  c0_: int = const 3;
+  print c0_;
+  ret;
+}

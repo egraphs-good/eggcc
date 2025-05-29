@@ -37,9 +37,6 @@ pub(crate) struct EgraphInfo<'a> {
     pub(crate) loop_iteration_estimates: IndexMap<(RootId, RootId), i64>,
     /// A set of names of functions that are unextractable
     unextractables: IndexSet<String>,
-    /// A set of (func args) of calls that have been inlined, to indicate we shouldn't
-    /// extract the corresponding (Call func args).
-    inlined_calls: IndexSet<(ClassId, ClassId)>,
 }
 
 pub(crate) struct Extractor<'a> {
@@ -115,28 +112,6 @@ impl<'a> EgraphInfo<'a> {
         loop_iteration_estimates
     }
 
-    fn get_inlined_calls(egraph: &EGraph) -> IndexSet<(ClassId, ClassId)> {
-        let mut inlined_calls = IndexSet::new();
-
-        // loop over all nodes, finding InlinedCall nodes
-        for (_nodeid, node) in &egraph.nodes {
-            if node.op == "InlinedCall" {
-                assert_eq!(
-                    node.children.len(),
-                    2,
-                    "InlinedCall node has wrong number of children. Node: {:?}",
-                    node
-                );
-                inlined_calls.insert((
-                    egraph.nid_to_cid(&node.children[0]).clone(),
-                    egraph.nid_to_cid(&node.children[1]).clone(),
-                ));
-            }
-        }
-
-        inlined_calls
-    }
-
     pub(crate) fn new(
         func: &str,
         func_root: ClassId,
@@ -145,7 +120,6 @@ impl<'a> EgraphInfo<'a> {
         unextractables: IndexSet<String>,
     ) -> Self {
         let loop_iteration_estimates = Self::get_loop_iteration_estimates(egraph);
-        let inlined_calls = Self::get_inlined_calls(egraph);
 
         // get all the roots needed
         let mut region_roots = find_reachable(egraph, func_root.clone(), cm, false, true);
@@ -238,7 +212,6 @@ impl<'a> EgraphInfo<'a> {
             parents: parents_sorted,
             roots,
             loop_iteration_estimates,
-            inlined_calls,
         }
     }
 }
@@ -325,7 +298,7 @@ impl<'a> Extractor<'a> {
     }
 }
 
-pub(crate) fn get_root(egraph: &egraph_serialize::EGraph, func: &str) -> NodeId {
+pub(crate) fn get_root(egraph: &egraph_serialize::EGraph, func: &str) -> ClassId {
     let root_nodes = egraph
         .nodes
         .iter()
@@ -339,8 +312,7 @@ pub(crate) fn get_root(egraph: &egraph_serialize::EGraph, func: &str) -> NodeId 
         child_str == func
     });
     let res = found.next().unwrap();
-    assert!(found.next().is_none());
-    res.0.clone()
+    egraph.nid_to_cid(res.0).clone()
 }
 
 pub fn get_unextractables(egraph: &egglog::EGraph) -> IndexSet<String> {
@@ -870,6 +842,7 @@ fn extract_fn(
     if !should_maintain_linearity {
         (cost_res, res)
     } else {
+        eprintln!("extracting {} with linearity checks", func);
         let effectful_nodes_along_path =
             extractor_not_linear.find_effectful_nodes_in_function(&res, &egraph_info);
         extractor_not_linear.costs.clear();
@@ -955,7 +928,7 @@ pub fn greedy_dag_extract(
             let (fn_cost, extracted) = extract_fn(
                 &new_prog,
                 &func,
-                egraph.nid_to_cid(&get_root(&egraph, &func)).clone(),
+                get_root(&egraph, &func),
                 egraph.clone(),
                 unextractables.clone(),
                 termdag,
@@ -987,7 +960,7 @@ pub fn extract_ilp(
     let mut samples = vec![];
     for name in fns {
         log::info!("Extracting function {} with ILP", name);
-        let root = egraph.nid_to_cid(&get_root(&egraph, &name)).clone();
+        let root = get_root(&egraph, &name);
 
         let egraph = prune_egraph(&egraph, root.clone(), &cost_model);
         let egraph_size = egraph.nodes.len();
@@ -1090,16 +1063,6 @@ pub fn extract_with_paths(
                 }
 
                 if info.unextractables.contains(&node.op) {
-                    continue;
-                }
-
-                // Skip inlined calls
-                if node.op == "Call"
-                    && info.inlined_calls.contains(&(
-                        info.n2c(&node.children[0]).clone(),
-                        info.n2c(&node.children[1]).clone(),
-                    ))
-                {
                     continue;
                 }
 
@@ -1227,7 +1190,11 @@ impl CostModel for DefaultCostModel {
             // Leaves
             "Const" => 1.,
             "Arg" => 0.,
-            _ if op.parse::<i64>().is_ok() || op.parse::<f64>().is_ok() || op.starts_with('"') => {
+            _ if op.parse::<i64>().is_ok()
+                || op.parse::<f64>().is_ok()
+                || op.parse::<bool>().is_ok()
+                || op.starts_with('"') =>
+            {
                 0.
             }
             "true" | "false" | "()" => 0.,
@@ -1252,7 +1219,7 @@ impl CostModel for DefaultCostModel {
             // Effects
             "Print" | "Write" | "Load" => 50.,
             "Alloc" | "Free" => 100.,
-            "Call" => 1000000., // This (very roughly) bounds the size of an expression we inline
+            "Call" => 1000000., // high cost of calls by default
             // Control
             "Program" | "Function" => 0.,
             // custom logic for DoWhile will multiply the body by the LoopNumItersGuess
@@ -1650,7 +1617,7 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
 
     let mut err = Ok(());
     for func in prog.fns() {
-        let root = serialized_egraph.nid_to_cid(&get_root(&serialized_egraph, &func));
+        let root = get_root(&serialized_egraph, &func);
         let pruned = prune_egraph(&serialized_egraph, root.clone(), &DefaultCostModel);
 
         let egraph_info = EgraphInfo::new(
@@ -1955,7 +1922,7 @@ fn test_validity_of_extraction() {
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
-    let root = serialized_egraph.nid_to_cid(&get_root(&serialized_egraph, "main"));
+    let root = get_root(&serialized_egraph, "main");
 
     let pruned = prune_egraph(&serialized_egraph, root.clone(), &DefaultCostModel);
     let egraph_info = EgraphInfo::new(
@@ -2103,12 +2070,8 @@ pub fn prune_egraph(
         }
     }
 
-    // copy over "InlinedCall" and "LoopNumItersGuess" nodes, which depend on integers and strings
+    // copy over "LoopNumItersGuess" nodes, which depend on integers and strings
     for (nodeid, node) in &egraph.nodes {
-        if node.op == "InlinedCall" && visited.contains(egraph.nid_to_cid(&node.children[1])) {
-            new_egraph.add_node(nodeid.clone(), node.clone());
-        }
-
         if node.op == "LoopNumItersGuess"
             && visited.contains(egraph.nid_to_cid(&node.children[0]))
             && visited.contains(egraph.nid_to_cid(&node.children[1]))

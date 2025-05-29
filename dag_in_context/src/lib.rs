@@ -189,8 +189,13 @@ pub fn build_program(
     fns: &[String],
     schedule: &str,
     ablate: Option<&str>,
+    use_context: bool,
 ) -> String {
-    let (program, mut context_cache) = program.add_context();
+    let (program, mut context_cache) = if use_context {
+        program.add_context()
+    } else {
+        program.add_dummy_ctx()
+    };
     let mut printed = String::new();
 
     // Create a global cache for generating intermediate variables
@@ -297,7 +302,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
     let fns = program.fns();
-    let egglog_prog = build_program(program, None, &fns, "", None);
+    let egglog_prog = build_program(program, None, &fns, "", None, true);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
@@ -354,6 +359,7 @@ pub struct EggccConfig {
     pub optimize_functions: Option<HashSet<String>>,
     pub ablate: Option<String>,
     pub ilp_extraction_test_timeout: Option<Duration>,
+    pub use_context: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -401,6 +407,7 @@ impl Default for EggccConfig {
             optimize_functions: None,
             ablate: None,
             ilp_extraction_test_timeout: None,
+            use_context: true,
         }
     }
 }
@@ -421,6 +428,14 @@ pub fn optimize(
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
+        // Add context first thing, since function inlining depends on it already having context
+        // After every extraction, context is erased.
+        res = if eggcc_config.use_context {
+            res.add_context().0
+        } else {
+            res.add_dummy_ctx().0
+        };
+
         let mut should_maintain_linearity = true;
         if i == cutoff - 1 {
             should_maintain_linearity = eggcc_config.linearity;
@@ -465,6 +480,7 @@ pub fn optimize(
                 &batch,
                 schedule.egglog_schedule(),
                 eggcc_config.ablate.as_deref(),
+                eggcc_config.use_context,
             );
 
             log::info!("Running egglog program...");
@@ -529,9 +545,6 @@ pub fn optimize(
                 ));
             }
         }
-
-        // now add context to res again for the next pass, since context might be less specific
-        res = res.add_context().0;
     }
     Ok((
         res,

@@ -7,6 +7,8 @@
         (= (Bop o (Const c ty outer_ctx) x) (Get orig_inputs i))
         (HasArgType thn (TupleT tylist))
         (HasArgType els (TupleT tylist))
+        ; ensure that the type is pure, maintaining weak linearity
+        (PureType (TupleT tylist))
         (HasType x (Base x_ty))
         (= orig_ins_len (TypeList-length tylist))
       )

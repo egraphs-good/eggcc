@@ -295,5 +295,7 @@
 
 ; (constructor TermDoWhile (Term Term) Term)
 
+; dummy context used when context doesn't matter
+(let DUMMYCTX (InFunc "dummy"))
 
 (ruleset never)

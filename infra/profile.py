@@ -49,7 +49,7 @@ treatments = [
   "llvm-eggcc-O3-O0",
   "llvm-eggcc-O3-O3",
   "eggcc-ILP-O0-O0",
-  "eggcc-NOCTX-O0-O0",
+  "llvm-eggcc-NOCTX-O0-O0",
 ]
 
 if TO_ABLATE != "":

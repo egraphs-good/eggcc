@@ -225,8 +225,6 @@ pub fn build_program(
     } else {
         "".to_string()
     };
-    eprintln!("printed: {}", printed);
-    eprintln!("function_inlining_unions: {}", function_inlining_unions);
 
     // Generate program egglog
     for func in fns {

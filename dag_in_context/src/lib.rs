@@ -192,7 +192,8 @@ pub fn build_program(
     ablate: Option<&str>,
     use_context: bool,
 ) -> String {
-    let (program, mut context_cache) = if use_context {
+    // HACK- inlining relies on context, we add it here
+    let (program, mut context_cache) = if use_context || inline_program.is_some() {
         program.add_context()
     } else {
         program.add_dummy_ctx()
@@ -224,6 +225,8 @@ pub fn build_program(
     } else {
         "".to_string()
     };
+    eprintln!("printed: {}", printed);
+    eprintln!("function_inlining_unions: {}", function_inlining_unions);
 
     // Generate program egglog
     for func in fns {
@@ -431,7 +434,10 @@ pub fn optimize(
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
         // Add context first thing, since function inlining depends on it already having context
         // After every extraction, context is erased.
-        res = if eggcc_config.use_context {
+        // HACK: inlining relies on context, so always add it when inlining
+        res = if eggcc_config.use_context
+            || matches!(schedule, schedule::CompilerPass::InlineWithSchedule(_))
+        {
             res.add_context().0
         } else {
             res.add_dummy_ctx().0

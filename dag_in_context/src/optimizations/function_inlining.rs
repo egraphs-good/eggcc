@@ -132,7 +132,6 @@ pub fn print_function_inlining_pairs(
     tree_state: &mut TreeToEgglog,
     term_cache: &mut IndexMap<Term, String>,
 ) -> String {
-    let inlined_calls = "";
     // Get unions and mark each call as inlined for extraction purposes
     let printed_pairs = function_inlining_pairs
         .iter()
@@ -171,7 +170,7 @@ pub fn print_function_inlining_pairs(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    format!("{inlined_calls} {printed_pairs}")
+    format!("{printed_pairs}")
 }
 
 // Check that function inling pairs produces the right number of pairs for

@@ -162,6 +162,9 @@ pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
   rec-to-loop
   {helpers})"
     )));
+    // Inlining has to be run separately because it does not
+    // maintain weak linearity!
+    // It doesn't compose with other optimizations.
     res.push(CompilerPass::InlineWithSchedule(format!(
         "
 (run-schedule {helpers})"
@@ -207,7 +210,14 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
 
     {helpers})"
         )),
+        // Inlining has to be run separately because it does not
+        // maintain weak linearity!
+        // It doesn't compose with other optimizations.
         CompilerPass::InlineWithSchedule(format!(
+            "
+    (run-schedule {helpers})"
+        )),
+        CompilerPass::Schedule(format!(
             "
 (run-schedule
     (saturate

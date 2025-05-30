@@ -31,7 +31,8 @@
   ((Function name in out body)
    (= body (If pred always-runs (Call name rec_case) base-case))
    (HasType always-runs start-ty)
-   (HasType body func-ty))
+   (HasType body func-ty)
+   (ContextOf body bodyctx))
   ((let loop-inputs (Arg start-ty (InIf true pred always-runs)))
    (let loop-outputs
      (Concat
@@ -44,12 +45,20 @@
      (DoWhile loop-inputs loop-outputs))
     
     
-  ;; initial start value
+   ;; initial start value
    (let outer-if
      (If pred always-runs
          loop
          (Arg start-ty (InIf false pred always-runs))))
-   (union body (Subst (InFunc name) outer-if base-case)))
+   (let new-impl (Subst (InFunc name) outer-if base-case))
+  
+   ;; wrap in extra if statement, maintaining weak linearity
+   ;; body and (Subst (InFunc name) outer-if base-case) have a different set of provided values
+   (let wrapped (If (Const (Bool true) start-ty bodyctx)
+                    (Arg start-ty bodyctx)
+                    new-impl
+                    new-impl))
+   (union body wrapped))
   :ruleset rec-to-loop)
 
 

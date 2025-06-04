@@ -7,7 +7,7 @@ expression: visualization.result
   c1_: int = const 3;
   v2_: bool = eq c1_ v0;
   v3_: int = mul c1_ v0;
-  v4_: int = select v2_ c1_ v3_;
+  v4_: int = select v2_ v0 v3_;
   print v4_;
   ret;
 }

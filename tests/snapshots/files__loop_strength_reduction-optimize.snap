@@ -15,18 +15,28 @@ expression: visualization.result
   v8_: int = id c3_;
   v9_: int = id c0_;
 .b10_:
+  c11_: int = const 15;
+  v12_: int = add c11_ v9_;
+  c13_: int = const 10;
+  v14_: int = add c13_ v9_;
+  v15_: int = add v7_ v9_;
   print v9_;
-  v11_: int = add v4_ v5_;
-  v12_: int = add v5_ v6_;
-  v13_: int = add v7_ v9_;
-  v14_: bool = lt v11_ v8_;
-  v4_: int = id v11_;
+  print v15_;
+  print v14_;
+  print v12_;
+  c16_: int = const 4;
+  v17_: int = add c16_ v4_;
+  v18_: int = add c16_ v6_;
+  c19_: int = const 20;
+  v20_: int = add c19_ v9_;
+  v21_: bool = lt v17_ v8_;
+  v4_: int = id v17_;
   v5_: int = id v5_;
-  v6_: int = id v12_;
+  v6_: int = id v18_;
   v7_: int = id v7_;
   v8_: int = id v8_;
-  v9_: int = id v13_;
-  br v14_ .b10_ .b15_;
-.b15_:
+  v9_: int = id v20_;
+  br v21_ .b10_ .b22_;
+.b22_:
   ret;
 }

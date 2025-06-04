@@ -15,12 +15,8 @@ impl CompilerPass {
     }
 }
 
-pub(crate) fn helpers() -> String {
-    "
-    ;; first, run substitution and drop to saturation
-    ;; these depend on type analysis, always-run, and context
-
-    ;; first, saturate always run
+pub(crate) fn types_and_indexing() -> String {
+    ";; first, saturate always run
     (saturate
         (saturate 
             (saturate type-helpers)
@@ -28,14 +24,24 @@ pub(crate) fn helpers() -> String {
         (saturate 
             (saturate type-helpers)
             always-run)
-        error-checking)
+        error-checking)"
+        .to_string()
+}
 
+pub(crate) fn helpers() -> String {
+    let types_and_indexing = types_and_indexing();
+    format!(
+        "
+    ;; rules use always-run helpers like SubTuple, so run these before substitution
+    {types_and_indexing}
+
+    ;; substitution depends on type helpers and ExprIsResolved
     (saturate
         (saturate 
             (saturate type-helpers)
             type-analysis)
 
-        ;; first, check which eclasses are resolved
+        ;; check which eclasses are resolved
         (saturate is-resolved)
         (saturate term-subst)
         ;; do substutition for one round, subsuming as we go
@@ -50,13 +56,18 @@ pub(crate) fn helpers() -> String {
         cleanup-drop
     )
 
-    (saturate canon)
-    (saturate interval-analysis)
+    ;; similar to subst, run term-related things
     (saturate
      terms
      (saturate
        terms-helpers
        (saturate terms-helpers-helpers)))
+
+    ;; run type checking and indexing for newly created terms from substitution
+    {types_and_indexing}
+
+    (saturate canon)
+    (saturate interval-analysis)
     (saturate mem-simple)
 
     ;; cicm index
@@ -72,7 +83,7 @@ pub(crate) fn helpers() -> String {
 
     loop-iters-analysis
 "
-    .to_string()
+    )
 }
 
 fn cheap_optimizations() -> Vec<String> {

@@ -28,21 +28,25 @@
 
 
 (ruleset boundary-analysis)
-;; An Expr is on boundary when it is invariant and its parent is not
-;                       loop invariant-expr
-(relation boundary-Expr (Expr Expr))
 
-;; boundary for ListExpr's children
+;; An Expr is on boundary when it is invariant and its parent is not
+;; We use a function so that we choose just one at a time
+;; This is an evil hack!
+;                       loop invariant-expr
+(function boundary-Expr (Expr) Expr :merge new)
+
+
 (rule ((= true (is-inv-Expr loop expr))
        (= false (is-inv-ListExpr loop list))
-       (= expr (ListExpr-ith list i)))
-      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+       (= expr (ListExpr-ith list i))
+       )
+      ((set (boundary-Expr loop) expr)) :ruleset boundary-analysis)
 
 ;; if a output branch/pred is invariant, it's also boundary-Expr
 (rule ((= true (is-inv-Expr loop expr))
        (= loop (DoWhile in pred_out))
        (= expr (Get pred_out i))) 
-      ((boundary-Expr loop expr)) :ruleset boundary-analysis)
+      ((set (boundary-Expr loop) expr)) :ruleset boundary-analysis)
 
 
 (function hoisted-loop (Expr Expr) bool :merge (or old new) )
@@ -54,7 +58,7 @@
 ;; mock function
 (ruleset loop-inv-motion)
 
-(rule ((boundary-Expr loop inv)
+(rule ((= (boundary-Expr loop) inv)
        (> (Expr-size inv) 1)
        ;; TODO: replace Expr-size when cost model is ready
        (= loop (DoWhile in pred_out))
@@ -66,7 +70,8 @@
        (= in_type (TupleT tylist))
        (= false (hoisted-loop in pred_out))
        (= len (tuple-length in)))
-      ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
+      ((DebugExpr inv)
+       (let new_input (Concat in (Single (Subst loop_ctx in inv))))
        (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
 
        ;; create an virtual assume node, union it with actuall InLoop later

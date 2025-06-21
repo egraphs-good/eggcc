@@ -103,7 +103,7 @@ fn boundary_for_ctor(ctor: Constructor) -> Option<String> {
        (= false (is-inv-Expr loop expr2)) 
        (= expr2 {ctor_pattern}) 
        (= expr1 {var})) 
-       ((boundary-Expr loop expr1)){ruleset})"
+       ((set (boundary-Expr loop) expr1)){ruleset})"
                         )),
                         _ => None,
                     }

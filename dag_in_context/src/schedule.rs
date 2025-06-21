@@ -79,6 +79,7 @@ pub(crate) fn helpers() -> String {
     subsume-after-helpers
 
     ;; do a boundary analysis for loop invariant code motion
+    ;; don't saturate!! it doesn't saturate (evil hack)
     boundary-analysis
 
     loop-iters-analysis

@@ -28,12 +28,16 @@
 
 ;; pick a random invariant expression
 (rule ((is-inv-Expr body expr)
-       (DoWhile pred body))
+       (DoWhile pred body)
+       (HasType expr inv_type)
+       (= inv_type (Base base_inv_ty)))
       ((set (to-hoist pred body) expr)) :ruleset boundary-analysis-prep)
 
 ;; pick a bigger one if possible
 (rule ((is-inv-Expr body expr)
        (DoWhile pred body)
+       (HasType expr inv_type)
+       (= inv_type (Base base_inv_ty))
        (= current (to-hoist pred body))
        (> (Expr-size expr) (Expr-size current)))
       ((set (to-hoist pred body) expr)) :ruleset boundary-analysis)

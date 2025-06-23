@@ -103,50 +103,52 @@
       :ruleset switch_rewrite
 )
 
-; TODO these rules make the raytracer use tons of memory
-; Ideas
-;  - Make them more specific if we see an optimization opportunity
-;  - Run them as a separate pass with peepholes
-;  - Identify why they make the egraph blow up (could be just adding lots of regions)
 ; if (a and b) X Y ~~> if a (if b X Y) Y
-;(rule ((= lhs (If (Bop (And) a b) ins X Y))
-;       (HasType ins (TupleT ins_ty))
-;       (= len (tuple-length ins)))
-;
-;      ((let outer_ins (Concat (Single b) ins))
-;       (let outer_ins_ty (TupleT (TCons (BoolT) ins_ty)))
-;
-;       (let inner_pred    (Get      (Arg outer_ins_ty (InIf true  a outer_ins)) 0))
-;       (let sub_arg_true  (SubTuple (Arg outer_ins_ty (InIf true  a outer_ins)) 1 len))
-;       (let sub_arg_false (SubTuple (Arg outer_ins_ty (InIf false a outer_ins)) 1 len))
-;
-;       (let inner_X (AddContext (InIf true  inner_pred sub_arg_true) X))
-;       (let inner_Y (AddContext (InIf false inner_pred sub_arg_true) Y))
-;       (let outer_Y (Subst      (InIf false a          outer_ins) sub_arg_false Y))
-;
-;       (let inner (If inner_pred sub_arg_true inner_X inner_Y))
-;       (union lhs (If a          outer_ins    inner   outer_Y)))
-;
-;       :ruleset switch_rewrite)
-;
-;; if (a or b) X Y ~~> if a X (if b X Y)
-;(rule ((= lhs (If (Bop (Or) a b) ins X Y))
-;       (HasType ins (TupleT ins_ty))
-;       (= len (tuple-length ins)))
-;
-;      ((let outer_ins (Concat (Single b) ins))
-;       (let outer_ins_ty (TupleT (TCons (BoolT) ins_ty)))
-;
-;       (let inner_pred    (Get      (Arg outer_ins_ty (InIf false a outer_ins)) 0))
-;       (let sub_arg_true  (SubTuple (Arg outer_ins_ty (InIf true  a outer_ins)) 1 len))
-;       (let sub_arg_false (SubTuple (Arg outer_ins_ty (InIf false a outer_ins)) 1 len))
-;
-;       (let outer_X (Subst      (InIf true  a          outer_ins) sub_arg_true X))
-;       (let inner_X (AddContext (InIf true  inner_pred sub_arg_false) X))
-;       (let inner_Y (AddContext (InIf false inner_pred sub_arg_false) Y))
-;
-;       (let inner (If inner_pred sub_arg_false inner_X inner_Y))
-;       (union lhs (If a          outer_ins     outer_X inner  )))
-;
-;       :ruleset switch_rewrite)
+(rule ((= lhs (If (Bop (And) a b) ins X Y))
+       (HasType ins (TupleT ins_ty))
+       (= len (tuple-length ins))
+       
+       ;; For early returns, Y might be fairly large
+       ;; limit the size we match on here
+       (< (Expr-size Y) 100))
 
+      ((let outer_ins (Concat (Single b) ins))
+       (let outer_ins_ty (TupleT (TCons (BoolT) ins_ty)))
+
+       (let inner_pred    (Get      (Arg outer_ins_ty (InIf true  a outer_ins)) 0))
+       (let sub_arg_true  (SubTuple (Arg outer_ins_ty (InIf true  a outer_ins)) 1 len))
+       (let sub_arg_false (SubTuple (Arg outer_ins_ty (InIf false a outer_ins)) 1 len))
+
+       (let inner_Y (AddContext (InIf false inner_pred sub_arg_true) Y))
+       (let outer_Y (Subst      (InIf false a          outer_ins) sub_arg_false Y))
+
+       (let inner (If inner_pred sub_arg_true X inner_Y))
+       (union lhs (If a          outer_ins    inner   outer_Y)))
+
+       :ruleset switch_rewrite)
+
+; if (a or b) X Y ~~> if a X (if b X Y)
+(rule ((= lhs (If (Bop (Or) a b) ins X Y))
+       (HasType ins (TupleT ins_ty))
+       (= len (tuple-length ins))
+       
+       ;; limit the size, since X and Y get new contexts
+       (< (Expr-size X) 100)
+       (< (Expr-size Y) 100)
+       )
+
+      ((let outer_ins (Concat (Single b) ins))
+       (let outer_ins_ty (TupleT (TCons (BoolT) ins_ty)))
+
+       (let inner_pred    (Get      (Arg outer_ins_ty (InIf false a outer_ins)) 0))
+       (let sub_arg_true  (SubTuple (Arg outer_ins_ty (InIf true  a outer_ins)) 1 len))
+       (let sub_arg_false (SubTuple (Arg outer_ins_ty (InIf false a outer_ins)) 1 len))
+
+       (let outer_X (Subst      (InIf true  a          outer_ins) sub_arg_true X))
+       (let inner_X (AddContext (InIf true  inner_pred sub_arg_false) X))
+       (let inner_Y (AddContext (InIf false inner_pred sub_arg_false) Y))
+
+       (let inner (If inner_pred sub_arg_false inner_X inner_Y))
+       (union lhs (If a          outer_ins     outer_X inner  )))
+
+       :ruleset switch_rewrite)

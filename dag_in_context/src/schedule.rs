@@ -16,7 +16,7 @@ impl CompilerPass {
 }
 
 pub(crate) fn types_and_indexing() -> String {
-    ";; first, saturate always run
+    "
     (saturate
         (saturate 
             (saturate type-helpers)
@@ -32,10 +32,12 @@ pub(crate) fn helpers() -> String {
     let types_and_indexing = types_and_indexing();
     format!(
         "
-    ;; rules use always-run helpers like SubTuple, so run these before substitution
+    ;; optimization rules use always-run helpers like SubTuple
+    ;; These should be resolved before substitution
     {types_and_indexing}
 
     ;; substitution depends on type helpers and ExprIsResolved
+    ;; run substitution multiple times for nested substitution
     (saturate
         (saturate 
             (saturate type-helpers)
@@ -56,16 +58,18 @@ pub(crate) fn helpers() -> String {
         cleanup-drop
     )
 
-    ;; similar to subst, run term-related things
+    ;; similar to substitution, run term-related things
     (saturate
      terms
      (saturate
        terms-helpers
        (saturate terms-helpers-helpers)))
 
-    ;; run type checking and indexing for newly created terms from substitution
+    ;; run type checking and indexing again
+    ;; for newly created terms from substitution
     {types_and_indexing}
 
+    ;; canonicalization and analysis
     (saturate canon)
     (saturate interval-analysis)
     (saturate mem-simple)
@@ -73,13 +77,12 @@ pub(crate) fn helpers() -> String {
     ;; cicm index
     cicm-index
 
-    ;; memory-helpers TODO run memory helpers for memory optimizations
+    ;; TODO right now we don't run memory-helpers, we run mem-simple instead
 
     ;; finally, subsume now that helpers are done
     subsume-after-helpers
 
-    ;; do a boundary analysis for loop invariant code motion
-    ;; don't saturate!! it doesn't saturate (evil hack)
+    ;; do a boundary analysis for loop invariant code motion (no need for multiple iters)
     boundary-analysis
 
     loop-iters-analysis
@@ -92,7 +95,7 @@ fn cheap_optimizations() -> Vec<String> {
         "hacker",
         "interval-rewrite",
         "always-switch-rewrite",
-        // "memory",
+        // "memory", TODO right now we just run mem-simple
         "peepholes",
     ]
     .iter()

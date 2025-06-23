@@ -74,7 +74,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
        {op_is_pure} 
        {is_inv_ctor}
        {is_pure}) 
-      ((is-inv-Expr loop expr))
+      ((is-inv-Expr body expr))
       {ruleset})"
             ))
         }
@@ -128,6 +128,7 @@ fn test_invariant_detect() -> crate::Result {
     let mut cache = ContextCache::new_dummy_ctx();
 
     let output_ty = tuplet!(intt(), intt(), intt(), intt(), statet());
+    let basic_inv = getat(1).with_arg_types(output_ty.clone(), base(intt()));
     let inner_inv = sub(getat(2), getat(1)).with_arg_types(output_ty.clone(), base(intt()));
     let inv = add(inner_inv.clone(), int(3)).with_arg_types(output_ty.clone(), base(intt()));
     let pred = less_than(getat(0), getat(3)).with_arg_types(output_ty.clone(), base(boolt()));
@@ -136,9 +137,13 @@ fn test_invariant_detect() -> crate::Result {
     let print =
         tprint(inv_in_print.clone(), getat(4)).with_arg_types(output_ty.clone(), base(statet()));
 
-    let body = concat(
-        parallel!(pred.clone(), not_inv.clone(), getat(1)),
-        concat(parallel!(getat(2), getat(3)), single(print.clone())),
+    let body = parallel!(
+        pred.clone(),
+        not_inv.clone(),
+        getat(1),
+        getat(2),
+        getat(3),
+        print.clone(),
     )
     .with_arg_types(
         output_ty.clone(),
@@ -164,32 +169,28 @@ fn test_invariant_detect() -> crate::Result {
     let not_inv = not_inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
     let print = print.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
     let inner_inv = inner_inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
+    let basic_inv = basic_inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
 
     let build = format!(
-        "(let loop {})
-        (let body {})
-        (let inv {})
-        (let inv_in_print {})
-        (let pred {})
-        (let not_inv {})
-        (let print {})
-        (let inner_inv {})
+        "(let loop {my_loop})
+        (let body {body})
+        (let inv {inv})
+        (let inv_in_print {inv_in_print})
+        (let pred {pred})
+        (let not_inv {not_inv})
+        (let print {print})
+        (let inner_inv {inner_inv})
+        (let basic_inv {basic_inv})
         {}",
-        my_loop,
-        body,
-        inv,
-        inv_in_print,
-        pred,
-        not_inv,
-        print,
-        inner_inv,
         cache.get_unions()
     );
-    let check = "(check (is-inv-Expr body inv))
+    let check = "
+        (check (is-inv-Expr body basic_inv))
+        (check (is-inv-Expr body inner_inv))
+        (check (is-inv-Expr body inv))
 		(check (is-inv-Expr body inv_in_print))
-		(check (is-inv-Expr body pred))
-		(fail (check (is-inv-Expr body not_inv)))
-        (check (is-inv-Expr body inner_inv))";
+		(fail (check (is-inv-Expr body pred)))
+		(fail (check (is-inv-Expr body not_inv)))";
 
     egglog_test(
         &build,

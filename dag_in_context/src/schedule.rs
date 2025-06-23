@@ -82,8 +82,9 @@ pub(crate) fn helpers() -> String {
     ;; finally, subsume now that helpers are done
     subsume-after-helpers
 
-    ;; do a boundary analysis for loop invariant code motion (no need for multiple iters)
-    boundary-analysis
+    ;; do a boundary analysis for loop invariant code motion (see evil hack in loop_invariant.egg)
+    boundary-analysis-prep
+    (repeat 2 boundary-analysis)
 
     loop-iters-analysis
 "

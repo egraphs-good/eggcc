@@ -2,10 +2,6 @@
 (ruleset loop-unroll)
 (ruleset loop-iters-analysis)
 
-;;                      inputs, outputs -> number of iterations
-;; The minimum possible guess is 1 because of do-while loops
-;; TODO: dead loop deletion can turn loops with a false condition to a body
-(function LoopNumItersGuess (Expr Expr) i64 :merge (max 1 (min old new)))
 
 ;; by default, guess that all loops run 1000 times
 (rule ((DoWhile inputs outputs))

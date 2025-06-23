@@ -295,5 +295,10 @@
 
 ; (constructor TermDoWhile (Term Term) Term)
 
+;;                      inputs, outputs -> number of iterations
+;; The minimum possible guess is 1 because of do-while loops
+(function LoopNumItersGuess (Expr Expr) i64 :merge (max 1 (min old new)))
+
+
 
 (ruleset never)

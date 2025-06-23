@@ -18,6 +18,7 @@
 
 
 (ruleset boundary-analysis)
+(ruleset boundary-analysis-prep)
 
 ;; We use a function so that we choose just one
 ;; thing to hoist at a time
@@ -27,8 +28,13 @@
 
 ;; pick a random invariant expression
 (rule ((is-inv-Expr body expr))
-      ((set (to-hoist body) expr)) :ruleset boundary-analysis)
+      ((set (to-hoist body) expr)) :ruleset boundary-analysis-prep)
 
+;; pick a bigger one if possible
+(rule ((is-inv-Expr body expr)
+       (= current (to-hoist body))
+       (> (Expr-size expr) (Expr-size current)))
+      ((set (to-hoist body) expr)) :ruleset boundary-analysis)
 
 ;; mock function
 (ruleset loop-inv-motion)
@@ -43,7 +49,8 @@
        (HasType inv inv_type)
        (= inv_type (Base base_inv_ty))
        (= in_type (TupleT tylist))
-       (= len (tuple-length in)))
+       (= len (tuple-length in))
+       (= iter-guess (LoopNumItersGuess in body)))
       ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
        (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
 
@@ -66,5 +73,6 @@
        (union loop wrapper)
        (subsume (DoWhile in body)) 
        (delete (TmpCtx))
+       (set (LoopNumItersGuess new_input new_body) iter-guess)
       )
        :ruleset loop-inv-motion)

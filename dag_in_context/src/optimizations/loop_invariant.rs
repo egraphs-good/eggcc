@@ -11,21 +11,20 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
     match ctor {
         Constructor::Get => Some(format!(
             "
-(rule ((BodyContainsExpr loop expr) 
-       (= loop (DoWhile in out)) 
+(rule ((BodyContainsExpr body expr) 
+       (= loop (DoWhile in body))
        (= expr (Get (Arg ty ctx) i)) 
-       (= loop (DoWhile in pred_out))
-       (= expr (Get pred_out (+ i 1)))) 
-      ((set (is-inv-Expr loop expr) true)){ruleset})"
+       (= expr (Get body (+ i 1))))
+      ((set (is-inv-Expr body expr) true)){ruleset})"
         )),
         Constructor::Const => {
             let ctor_pattern = ctor.construct(|field| field.var());
             Some(format!(
                 "
-(rule ((BodyContainsExpr loop expr) 
-       (= loop (DoWhile in out)) 
+(rule ((BodyContainsExpr body expr) 
+       (= loop (DoWhile in body)) 
        (= expr {ctor_pattern}))
-      ((set (is-inv-Expr loop expr) true)){ruleset})"
+      ((set (is-inv-Expr body expr) true)){ruleset})"
             ))
         }
         _ => None,
@@ -52,7 +51,7 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
                     Purpose::SubExpr | Purpose::CapturedSubListExpr => {
                         let var = field.var();
                         let sort = field.sort().name();
-                        Some(format!("(= true (is-inv-{sort} loop {var}))"))
+                        Some(format!("(is-inv-{sort} body {var})"))
                     }
                 })
                 .join(" ");
@@ -69,47 +68,15 @@ fn is_invariant_rule_for_ctor(ctor: Constructor) -> Option<String> {
 
             Some(format!(
                 "
-(rule ((BodyContainsExpr loop expr) 
-       (= loop (DoWhile in out)) 
-       (= expr {ctor_pattern}) {op_is_pure} 
-       {is_inv_ctor} 
+(rule ((BodyContainsExpr body expr) 
+       (= loop (DoWhile in body)) 
+       (= expr {ctor_pattern})
+       {op_is_pure} 
+       {is_inv_ctor}
        {is_pure}) 
-      ((set (is-inv-Expr loop expr) true)){ruleset})"
+      ((is-inv-Expr loop expr))
+      {ruleset})"
             ))
-        }
-    }
-}
-
-fn boundary_for_ctor(ctor: Constructor) -> Option<String> {
-    let ruleset = " :ruleset boundary-analysis";
-
-    match ctor {
-        // Ops with one SubExpr should not be boundary, except effects
-        // ListExpr handled separately
-        Constructor::Cons
-        | Constructor::Nil
-        | Constructor::Arg
-        | Constructor::Get
-        | Constructor::Function => None,
-        _ => {
-            let ctor_pattern = ctor.construct(|field| field.var());
-            let res = ctor
-                .filter_map_fields(|field| {
-                    let var = field.var();
-                    match field.purpose {
-                        Purpose::SubExpr => Some(format!(
-                            "
-(rule ((= true (is-inv-Expr loop expr1)) 
-       (= false (is-inv-Expr loop expr2)) 
-       (= expr2 {ctor_pattern}) 
-       (= expr1 {var})) 
-       ((set (boundary-Expr loop) expr1)){ruleset})"
-                        )),
-                        _ => None,
-                    }
-                })
-                .join("\n");
-            Some(res)
         }
     }
 }
@@ -118,7 +85,6 @@ pub(crate) fn rules() -> Vec<String> {
     iter::once(include_str!("loop_invariant.egg").to_string())
         .chain(Constructor::iter().filter_map(is_inv_base_case_for_ctor))
         .chain(Constructor::iter().filter_map(is_invariant_rule_for_ctor))
-        .chain(Constructor::iter().filter_map(boundary_for_ctor))
         .collect::<Vec<_>>()
 }
 
@@ -139,12 +105,17 @@ fn test_invariant_detect() -> crate::Result {
     let print =
         tprint(inv_in_print.clone(), getat(4)).with_arg_types(output_ty.clone(), base(statet()));
 
+    let body = concat(
+        parallel!(pred.clone(), not_inv.clone(), getat(1)),
+        concat(parallel!(getat(2), getat(3)), single(print.clone())),
+    )
+    .with_arg_types(
+        output_ty.clone(),
+        tuplet!(boolt(), intt(), intt(), intt(), intt(), statet()),
+    );
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4), getat(0)),
-        concat(
-            parallel!(pred.clone(), not_inv.clone(), getat(1)),
-            concat(parallel!(getat(2), getat(3)), single(print.clone())),
-        ),
+        body.clone(),
     )
     .with_arg_types(tuplet!(statet()), output_ty.clone())
     .add_ctx_with_cache(Assumption::dummy(), &mut cache);
@@ -153,15 +124,7 @@ fn test_invariant_detect() -> crate::Result {
         parallel!(int(1), int(2), int(3), int(4), getat(0))
             .with_arg_types(tuplet!(statet()), output_ty.clone())
             .add_ctx_with_cache(Assumption::dummy(), &mut cache),
-        concat(
-            parallel!(pred.clone(), not_inv.clone(), getat(1)),
-            concat(parallel!(getat(2), getat(3)), single(print.clone())),
-        )
-        .with_arg_types(
-            output_ty.clone(),
-            tuplet!(boolt(), intt(), intt(), intt(), intt(), statet()),
-        )
-        .add_ctx_with_cache(Assumption::dummy(), &mut cache),
+        body.clone(),
     );
 
     let inv = inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
@@ -170,9 +133,11 @@ fn test_invariant_detect() -> crate::Result {
     let not_inv = not_inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
     let print = print.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
     let inner_inv = inner_inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
+    let body = body.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
 
     let build = format!(
         "(let loop {})
+        (let body {})
         (let inv {})
         (let inv_in_print {})
         (let pred {})
@@ -181,6 +146,7 @@ fn test_invariant_detect() -> crate::Result {
         (let inner_inv {})
         {}",
         my_loop,
+        body,
         inv,
         inv_in_print,
         pred,
@@ -189,16 +155,16 @@ fn test_invariant_detect() -> crate::Result {
         inner_inv,
         cache.get_unions()
     );
-    let check = "(check (= true (is-inv-Expr loop inv)))
-		(check (= true (is-inv-Expr loop inv_in_print)))
-		(check (= false (is-inv-Expr loop pred)))
-		(check (= false (is-inv-Expr loop not_inv)))
-        (check (boundary-Expr loop inv))
-        (check (boundary-Expr loop inv_in_print))
-        (fail (check (boundary-Expr loop not_inv)))
-        (fail (check (boundary-Expr loop pred)))
-        (check (= true (is-inv-Expr loop inner_inv)))
-        (fail (check (boundary-Expr loop inner_inv)))";
+    let check = "(check (= true (is-inv-Expr body inv)))
+		(check (is-inv-Expr body inv_in_print))
+		(fail (check (is-inv-Expr body pred)))
+		(fail (check (is-inv-Expr body not_inv)))
+        (check (boundary-Expr body inv))
+        (check (boundary-Expr body inv_in_print))
+        (fail (check (boundary-Expr body not_inv)))
+        (fail (check (boundary-Expr body pred)))
+        (check (is-inv-Expr body inner_inv))
+        (fail (check (boundary-Expr body inner_inv)))";
 
     egglog_test(
         &build,

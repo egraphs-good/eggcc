@@ -11,7 +11,7 @@ fn captured_expr_rule_for_ctor(ctor: Constructor) -> Option<String> {
     let pat = ctor.construct(|field| field.var());
     let actions = ctor.filter_map_fields(|field| {
         (field.purpose == Purpose::CapturedExpr)
-            .then(|| format!("(BodyContainsExpr {pat} {e})", e = field.var()))
+            .then(|| format!("(BodyContainsExpr {e} {e})", e = field.var()))
     });
     // TODO body contains for switches
 
@@ -67,30 +67,30 @@ use crate::Value;
 
 #[test]
 fn test_body_contains() -> crate::Result {
-    let myloop = dowhile(
-        single(int(1)),
-        parallel!(
-            greater_than(get(arg(), 0), get(arg(), 0),),
-            // subloop
-            add(
-                get(
-                    dowhile(
-                        single(int(10)),
-                        parallel!(tfalse(), get(parallel!(int(20), int(30)), 0))
-                    ),
-                    0
+    let body = parallel!(
+        greater_than(get(arg(), 0), get(arg(), 0),),
+        // subloop
+        add(
+            get(
+                dowhile(
+                    single(int(10)),
+                    parallel!(tfalse(), get(parallel!(int(20), int(30)), 0))
                 ),
-                int(1)
-            )
-        ),
+                0
+            ),
+            int(1)
+        )
     )
-    .with_arg_types(emptyt(), tuplet!(intt()));
+    .with_arg_types(tuplet!(intt()), tuplet!(boolt(), intt()));
+
+    let myloop = dowhile(single(int(1)), body.clone()).with_arg_types(emptyt(), tuplet!(intt()));
+
     let build = format!("{myloop}");
     let check = format!(
         "
-(fail (check (BodyContainsExpr {myloop} {num1})))
-(check (BodyContainsExpr {myloop} {num1inside}))
-(check (BodyContainsExpr {myloop} {num10inside}))
+(fail (check (BodyContainsExpr {body} {num1})))
+(check (BodyContainsExpr {body} {num1inside}))
+(check (BodyContainsExpr {body} {num10inside}))
     ",
         num1 = int_ty(1, emptyt()),
         num1inside = int_ty(1, tuplet!(intt())),

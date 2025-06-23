@@ -218,7 +218,7 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
       {helpers}
       passthrough
       state-edge-passthrough)
-    (repeat 2
+    (repeat 3
         {helpers}
         all-optimizations
     )

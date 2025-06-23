@@ -23,23 +23,25 @@
 ;; We use a function so that we choose just one
 ;; thing to hoist at a time
 ;; This is an evil hack!
-;                   loop-body invariant-expr
-(function to-hoist (Expr) Expr :merge new)
+;                   pred body invariant-expr
+(function to-hoist (Expr Expr) Expr :merge new)
 
 ;; pick a random invariant expression
-(rule ((is-inv-Expr body expr))
-      ((set (to-hoist body) expr)) :ruleset boundary-analysis-prep)
+(rule ((is-inv-Expr body expr)
+       (DoWhile pred body))
+      ((set (to-hoist pred body) expr)) :ruleset boundary-analysis-prep)
 
 ;; pick a bigger one if possible
 (rule ((is-inv-Expr body expr)
-       (= current (to-hoist body))
+       (DoWhile pred body)
+       (= current (to-hoist pred body))
        (> (Expr-size expr) (Expr-size current)))
-      ((set (to-hoist body) expr)) :ruleset boundary-analysis)
+      ((set (to-hoist pred body) expr)) :ruleset boundary-analysis)
 
 ;; mock function
 (ruleset loop-inv-motion)
 
-(rule ((= (to-hoist body) inv)
+(rule ((= (to-hoist in body) inv)
        (> (Expr-size inv) 1)
        ;; TODO: replace Expr-size when cost model is ready
        (= loop (DoWhile in body))

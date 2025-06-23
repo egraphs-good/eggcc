@@ -14,11 +14,11 @@ expression: visualization.result
   v8_: int = id c2_;
   v9_: bool = id v3_;
 .b10_:
-  c11_: int = const 3;
-  v12_: int = add c11_ v5_;
-  c13_: int = const 2;
-  v14_: int = mul c13_ v12_;
-  v15_: int = mul c11_ v12_;
+  c11_: int = const 2;
+  c12_: int = const 3;
+  v13_: int = add c12_ v5_;
+  v14_: int = mul c11_ v13_;
+  v15_: int = mul c12_ v13_;
   v16_: int = select v9_ v14_ v15_;
   c17_: int = const 4;
   v18_: int = add c17_ v5_;

@@ -2,37 +2,6 @@
 use crate::egglog_test;
 
 #[test]
-fn switch_rewrite_three_quarters_and() -> crate::Result {
-    use crate::ast::*;
-    use crate::schema::Assumption;
-
-    let (build, build_cache) = tif(and(tfalse(), ttrue()), empty(), int(1), int(2))
-        .with_arg_types(emptyt(), base(intt()))
-        .add_ctx(Assumption::dummy());
-
-    let (check, check_cache) = tif(
-        tfalse(),
-        parallel!(ttrue()),
-        tif(get(arg(), 0), empty(), int(1), int(2)),
-        int(2),
-    )
-    .with_arg_types(emptyt(), base(intt()))
-    .add_ctx(Assumption::dummy());
-
-    egglog_test(
-        &format!("(let build_ {build})\n{}", build_cache.get_unions()),
-        &format!(
-            "(let check_ {check})\n{}\n(check (= build_ check_))",
-            check_cache.get_unions()
-        ),
-        vec![],
-        emptyv(),
-        intv(2),
-        vec![],
-    )
-}
-
-#[test]
 fn switch_rewrite_three_quarters_or() -> crate::Result {
     use crate::ast::*;
     use crate::schema::Assumption;

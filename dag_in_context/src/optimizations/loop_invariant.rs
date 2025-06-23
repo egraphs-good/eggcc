@@ -15,7 +15,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
        (= loop (DoWhile in body))
        (= expr (Get (Arg ty ctx) i)) 
        (= expr (Get body (+ i 1))))
-      ((set (is-inv-Expr body expr) true)){ruleset})"
+      ((is-inv-Expr body expr)){ruleset})"
         )),
         Constructor::Const => {
             let ctor_pattern = ctor.construct(|field| field.var());
@@ -24,7 +24,7 @@ fn is_inv_base_case_for_ctor(ctor: Constructor) -> Option<String> {
 (rule ((BodyContainsExpr body expr) 
        (= loop (DoWhile in body)) 
        (= expr {ctor_pattern}))
-      ((set (is-inv-Expr body expr) true)){ruleset})"
+      ((is-inv-Expr body expr)){ruleset})"
             ))
         }
         _ => None,
@@ -89,6 +89,37 @@ pub(crate) fn rules() -> Vec<String> {
 }
 
 #[test]
+fn simple_inv_detect() -> crate::Result {
+    use crate::add_context::ContextCache;
+    use crate::ast::*;
+    let inty = tuplet!(intt(), intt(), intt(),);
+    let body = parallel!(ttrue(), getat(0), getat(0), getat(1)).with_arg_type(inty.clone());
+    let myloop = dowhile(parallel!(int(1), int(2), int(3)), body.clone()).with_arg_type(tuplet!());
+
+    let check = format!(
+        "
+    (check (is-inv-Expr {body} {}))
+    (check (is-inv-Expr {body} {}))
+    (fail (check (is-inv-Expr {body} {})))
+    (fail (check (is-inv-Expr {body} {})))
+    ",
+        getat(0).with_arg_type(inty.clone()), // first value is inv
+        get(body.clone(), 2).with_arg_type(inty.clone()), // second result of loop is also inv
+        getat(1).with_arg_type(inty.clone()), // not inv
+        getat(2).with_arg_type(inty.clone())  // not inv
+    );
+
+    egglog_test(
+        &format!("(let loop {})", myloop),
+        &check,
+        vec![],
+        Value::Tuple(vec![]),
+        Value::Tuple(vec![]),
+        vec![],
+    )
+}
+
+#[test]
 fn test_invariant_detect() -> crate::Result {
     use crate::add_context::ContextCache;
     use crate::ast::*;
@@ -113,19 +144,19 @@ fn test_invariant_detect() -> crate::Result {
         output_ty.clone(),
         tuplet!(boolt(), intt(), intt(), intt(), intt(), statet()),
     );
+
+    let my_loop_ctx = inloop(
+        parallel!(int(1), int(2), int(3), int(4), getat(0))
+            .with_arg_types(tuplet!(statet()), output_ty.clone()),
+        body.clone(),
+    );
+
+    let body = body.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
     let my_loop = dowhile(
         parallel!(int(1), int(2), int(3), int(4), getat(0)),
         body.clone(),
     )
-    .with_arg_types(tuplet!(statet()), output_ty.clone())
-    .add_ctx_with_cache(Assumption::dummy(), &mut cache);
-
-    let my_loop_ctx = inloop(
-        parallel!(int(1), int(2), int(3), int(4), getat(0))
-            .with_arg_types(tuplet!(statet()), output_ty.clone())
-            .add_ctx_with_cache(Assumption::dummy(), &mut cache),
-        body.clone(),
-    );
+    .with_arg_types(tuplet!(statet()), output_ty.clone());
 
     let inv = inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
     let inv_in_print = inv_in_print.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
@@ -133,7 +164,6 @@ fn test_invariant_detect() -> crate::Result {
     let not_inv = not_inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
     let print = print.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
     let inner_inv = inner_inv.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
-    let body = body.add_ctx_with_cache(my_loop_ctx.clone(), &mut cache);
 
     let build = format!(
         "(let loop {})
@@ -155,16 +185,11 @@ fn test_invariant_detect() -> crate::Result {
         inner_inv,
         cache.get_unions()
     );
-    let check = "(check (= true (is-inv-Expr body inv)))
+    let check = "(check (is-inv-Expr body inv))
 		(check (is-inv-Expr body inv_in_print))
-		(fail (check (is-inv-Expr body pred)))
+		(check (is-inv-Expr body pred))
 		(fail (check (is-inv-Expr body not_inv)))
-        (check (boundary-Expr body inv))
-        (check (boundary-Expr body inv_in_print))
-        (fail (check (boundary-Expr body not_inv)))
-        (fail (check (boundary-Expr body pred)))
-        (check (is-inv-Expr body inner_inv))
-        (fail (check (boundary-Expr body inner_inv)))";
+        (check (is-inv-Expr body inner_inv))";
 
     egglog_test(
         &build,
@@ -184,7 +209,7 @@ fn test_invariant_hoist() -> crate::Result {
 
     let mut cache = ContextCache::new_dummy_ctx();
     let output_ty = tuplet!(intt(), intt(), intt(), statet());
-    let inner_inv = sub(getat(2), getat(1));
+    let inner_inv = getat(1);
     let inv = add(inner_inv.clone(), int(1));
     let print = tprint(inv.clone(), getat(3));
 
@@ -210,7 +235,7 @@ fn test_invariant_hoist() -> crate::Result {
             getat(1),
             getat(2),
             getat(3),
-            add(int(1), sub(getat(2), getat(1)))
+            add(int(1), getat(1))
         ),
         parallel!(
             less_than(getat(0), getat(1)),
@@ -227,7 +252,7 @@ fn test_invariant_hoist() -> crate::Result {
     let build = format!("(let loop {}) \n", my_loop);
     let check = format!(
         "(check {})
-        (check (= loop (SubTuple {} 0 4)))",
+         (check (= loop (SubTuple {} 0 4)))",
         hoisted_loop.clone(),
         hoisted_loop
     );

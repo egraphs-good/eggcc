@@ -4,26 +4,17 @@
 (relation is-inv-Expr (Expr Expr))
 (relation is-inv-ListExpr (Expr ListExpr))
 
-;; in default, when there is a find, set is-inv to false
-(rule ((BodyContainsExpr body term)
-       (= loop (DoWhile inputs body)))
-      ((is-inv-Expr body term)) :ruleset always-run)
-(rule ((BodyContainsListExpr loop term)
-       (= loop (DoWhile inputs body)))
-      ((is-inv-ListExpr loop term)) :ruleset always-run)
-
 (relation is-inv-ListExpr-helper (Expr ListExpr i64))
 (rule ((BodyContainsListExpr body list) ) 
       ((is-inv-ListExpr-helper body list 0)) :ruleset always-run)
 
-(rule ((is-inv-ListExpr-helper loop list i)
-       (= true (is-inv-Expr loop expr))
-       (= expr (ListExpr-ith list i)))
-    ((is-inv-ListExpr-helper loop list (+ i 1))) :ruleset always-run)
+(rule ((is-inv-ListExpr-helper body list i)
+       (is-inv-Expr body (ListExpr-ith list i)))
+    ((is-inv-ListExpr-helper body list (+ i 1))) :ruleset always-run)
 
-(rule ((is-inv-ListExpr-helper loop list i)
+(rule ((is-inv-ListExpr-helper body list i)
        (= i (ListExpr-length list)))
-    ((is-inv-ListExpr loop list)) :ruleset always-run)
+    ((is-inv-ListExpr body list)) :ruleset always-run)
 
 
 (ruleset boundary-analysis)
@@ -32,11 +23,10 @@
 ;; thing to hoist at a time
 ;; This is an evil hack!
 ;                   loop-body invariant-expr
-(function to-hoist (Expr Expr) Expr :merge new)
+(function to-hoist (Expr) Expr :merge new)
 
 ;; pick a random invariant expression
-(rule ((= true (is-inv-Expr body expr))
-       )
+(rule ((is-inv-Expr body expr))
       ((set (to-hoist body) expr)) :ruleset boundary-analysis)
 
 
@@ -53,7 +43,6 @@
        (HasType inv inv_type)
        (= inv_type (Base base_inv_ty))
        (= in_type (TupleT tylist))
-       (= false (hoisted-loop in body))
        (= len (tuple-length in)))
       ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
        (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))

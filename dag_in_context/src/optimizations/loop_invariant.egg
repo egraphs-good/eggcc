@@ -70,8 +70,7 @@
        (= in_type (TupleT tylist))
        (= false (hoisted-loop in pred_out))
        (= len (tuple-length in)))
-      ((DebugExpr inv)
-       (let new_input (Concat in (Single (Subst loop_ctx in inv))))
+      ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
        (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
 
        ;; create an virtual assume node, union it with actuall InLoop later

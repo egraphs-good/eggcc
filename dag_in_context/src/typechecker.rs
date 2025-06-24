@@ -46,6 +46,7 @@ impl TreeProgram {
 }
 
 impl Expr {
+    #[allow(dead_code)]
     pub(crate) fn with_arg_type(self: RcExpr, input_ty: Type) -> RcExpr {
         // we need a dummy program, since there are no calls in self
         let prog = program!(function("dummy", tuplet!(), tuplet!(), empty()),);

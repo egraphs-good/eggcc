@@ -90,7 +90,6 @@ pub(crate) fn rules() -> Vec<String> {
 
 #[test]
 fn simple_inv_detect() -> crate::Result {
-    use crate::add_context::ContextCache;
     use crate::ast::*;
     let inty = tuplet!(intt(), intt(), intt(),);
     let body = parallel!(ttrue(), getat(0), getat(0), getat(1)).with_arg_type(inty.clone());
@@ -123,7 +122,6 @@ fn simple_inv_detect() -> crate::Result {
 fn test_invariant_detect() -> crate::Result {
     use crate::add_context::ContextCache;
     use crate::ast::*;
-    use crate::schema::Assumption;
 
     let mut cache = ContextCache::new_dummy_ctx();
 

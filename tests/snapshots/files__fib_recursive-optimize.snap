@@ -403,65 +403,61 @@ expression: visualization.result
   ret;
   jmp .b7_;
 .b10_:
-  v27_: bool = eq c1_ c1_;
-  v28_: bool = eq c1_ c3_;
-  v29_: int = id c3_;
-  br v28_ .b30_ .b31_;
+  v27_: bool = eq c1_ c3_;
+  v28_: int = id c1_;
+  br v27_ .b29_ .b30_;
 .b30_:
-  v32_: int = id c3_;
-.b33_:
-  br v27_ .b34_ .b35_;
-.b34_:
-  v36_: int = add v29_ v32_;
-  v16_: int = id v36_;
-  v4_: int = id v16_;
-  print v4_;
-  ret;
-  jmp .b7_;
-.b35_:
-  v37_: bool = eq c1_ c3_;
-  br v37_ .b38_ .b39_;
+  v31_: bool = eq c3_ c3_;
+  br v31_ .b32_ .b33_;
+.b32_:
+  v34_: int = call @fac c1_;
+  v35_: int = id c3_;
+  v28_: int = id v35_;
+.b29_:
+  v36_: bool = eq c1_ c1_;
+  v37_: int = id c3_;
+  br v36_ .b38_ .b39_;
 .b38_:
-  v40_: int = call @fac c3_;
-  v41_: int = id c3_;
-  v32_: int = id v41_;
-  v36_: int = add v29_ v32_;
-  v16_: int = id v36_;
+  v40_: int = add v28_ v37_;
+  v16_: int = id v40_;
   v4_: int = id v16_;
   print v4_;
   ret;
   jmp .b7_;
 .b39_:
-  c42_: int = const -2;
-  c43_: int = const -1;
-  v44_: int = call @fac c43_;
-  v45_: int = call @fac c42_;
-  v46_: int = add v44_ v45_;
-  v41_: int = id v46_;
-  v32_: int = id v41_;
-  v36_: int = add v29_ v32_;
-  v16_: int = id v36_;
+  v41_: bool = eq c1_ c3_;
+  br v41_ .b42_ .b43_;
+.b42_:
+  v44_: int = call @fac c3_;
+  v45_: int = id c3_;
+  v37_: int = id v45_;
+  v40_: int = add v28_ v37_;
+  v16_: int = id v40_;
   v4_: int = id v16_;
   print v4_;
   ret;
   jmp .b7_;
-.b31_:
-  v47_: bool = eq c3_ c3_;
-  br v47_ .b48_ .b49_;
-.b48_:
-  v50_: int = call @fac c1_;
-  v51_: int = id c3_;
-  v29_: int = id v51_;
-  v32_: int = id c3_;
-  jmp .b33_;
-.b49_:
-  c52_: int = const -1;
-  v53_: int = call @fac c1_;
-  v54_: int = call @fac c52_;
-  v55_: int = add v53_ v54_;
-  v51_: int = id v55_;
-  v29_: int = id v51_;
-  v32_: int = id c3_;
-  jmp .b33_;
+.b43_:
+  c46_: int = const -2;
+  c47_: int = const -1;
+  v48_: int = call @fac c47_;
+  v49_: int = call @fac c46_;
+  v50_: int = add v48_ v49_;
+  v45_: int = id v50_;
+  v37_: int = id v45_;
+  v40_: int = add v28_ v37_;
+  v16_: int = id v40_;
+  v4_: int = id v16_;
+  print v4_;
+  ret;
+  jmp .b7_;
+.b33_:
+  c51_: int = const -1;
+  v52_: int = call @fac c1_;
+  v53_: int = call @fac c51_;
+  v54_: int = add v52_ v53_;
+  v35_: int = id v54_;
+  v28_: int = id v35_;
+  jmp .b29_;
 .b7_:
 }

@@ -7,7 +7,6 @@ use smallvec::SmallVec;
 use std::{
     cmp::{max, min},
     collections::{BTreeSet, HashMap, HashSet, VecDeque},
-    f64::INFINITY,
     rc::Rc,
     time::{Duration, Instant},
 };
@@ -421,7 +420,7 @@ impl<'a> Extractor<'a> {
 
     /// Add `term` to `current_costs`, returning
     /// 1) a new term that takes advantage of sharing
-    /// with respect to `current_costs` and
+    ///    with respect to `current_costs` and
     /// 2) the net cost of adding the new term
     ///
     /// Ex:
@@ -1120,7 +1119,7 @@ pub fn extract_with_paths(
 
                 let region_costs = extractor.costs.entry(rootid.clone()).or_default();
                 let lookup = region_costs.get(&classid);
-                let mut prev_cost: Cost = std::f64::INFINITY.try_into().unwrap();
+                let mut prev_cost: Cost = f64::INFINITY.try_into().unwrap();
                 if let Some(lookup) = lookup {
                     let costset = extractor.costsets.get(*lookup).unwrap();
                     prev_cost = costset.total;
@@ -1244,7 +1243,7 @@ impl CostModel for DefaultCostModel {
             "If" | "Switch" => 50.,
             // Schema
             "Bop" | "Uop" | "Top" => 0.,
-            _ => INFINITY,
+            _ => f64::INFINITY,
         }
         .try_into()
         .unwrap()

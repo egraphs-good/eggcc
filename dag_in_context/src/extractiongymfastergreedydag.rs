@@ -2,7 +2,7 @@
 // For example (+ (* x x ) (* x x )) has one mulitplication
 // included in the cost.
 
-use std::{collections::HashMap, f64::INFINITY};
+use std::collections::HashMap;
 
 use crate::fastercbcextractor::ExtractionResult;
 
@@ -55,7 +55,7 @@ impl FasterGreedyDagExtractor {
             // Shortcut. Can't be cheaper so return junk.
             return CostSet {
                 costs: Default::default(),
-                total: NotNan::new(INFINITY).unwrap(),
+                total: NotNan::new(f64::INFINITY).unwrap(),
                 choice: node_id.clone(),
             };
         }
@@ -81,7 +81,7 @@ impl FasterGreedyDagExtractor {
         result.insert(cid.clone(), node.cost);
 
         let result_cost = if contains {
-            NotNan::new(INFINITY).unwrap()
+            NotNan::new(f64::INFINITY).unwrap()
         } else {
             result.values().sum()
         };
@@ -129,7 +129,7 @@ impl FasterGreedyDagExtractor {
             let node = &egraph[&node_id];
             if node.children.iter().all(|c| costs.contains_key(n2c(c))) {
                 let lookup = costs.get(class_id);
-                let mut prev_cost = NotNan::new(INFINITY).unwrap();
+                let mut prev_cost = NotNan::new(f64::INFINITY).unwrap();
                 if lookup.is_some() {
                     prev_cost = lookup.unwrap().total;
                 }
@@ -156,8 +156,7 @@ Notably, insert/pop operations have O(1) expected amortized runtime complexity.
 
 Thanks @Bastacyclop for the implementation!
 */
-#[derive(Clone)]
-#[cfg_attr(feature = "serde-1", derive(Serialize, Deserialize))]
+#[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct UniqueQueue<T>
 where
     T: Eq + std::hash::Hash + Clone,

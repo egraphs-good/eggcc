@@ -20,21 +20,21 @@
 //! Meyer, but it has a different structure:
 //!
 //!  * PCFR operates on the RVSDG directly, while this algorithm operates on the
-//!  resulting CFG. This is pragmatically useful for eggcc, which already has
-//!  fairly involved RVSDG=>CFG conversion code.
+//!    resulting CFG. This is pragmatically useful for eggcc, which already has
+//!    fairly involved RVSDG=>CFG conversion code.
 //!  * PCFR expects an RVSDG in _predicate continuation form_, where predicates
-//!  are introduced immediately before they are used. eggcc almost certainly
-//!  does not preserve this property, and we want to avoid duplicating or
-//!  splitting RVSDG nodes to reintroduce it. The algorithm in this module is
-//!  robust to some predicates being used more than once, sometiems across
-//!  branches.
+//!    are introduced immediately before they are used. eggcc almost certainly
+//!    does not preserve this property, and we want to avoid duplicating or
+//!    splitting RVSDG nodes to reintroduce it. The algorithm in this module is
+//!    robust to some predicates being used more than once, sometiems across
+//!    branches.
 //!  * The algorithm in this module has not been optimized for efficiency and as
-//!  a result is likely slower than a good implementation of PCFR. This doesn't
-//!  seem like an inherent issue and the performance of the two should be
-//!  similar after some optimization.
+//!    a result is likely slower than a good implementation of PCFR. This doesn't
+//!    seem like an inherent issue and the performance of the two should be
+//!    similar after some optimization.
 //!  * The paper from Bahman et. al. also sketches a "ShortCircuitCFG" algorithm
-//!  that is similar to the algorithm here, but makes some simplifying
-//!  assumptions, potentially based again on predicate continuation form.
+//!    that is similar to the algorithm here, but makes some simplifying
+//!    assumptions, potentially based again on predicate continuation form.
 //!   
 //! # Algorithm Overview
 //! The algorithm code is fairly heavily commented. It relies on computing the
@@ -45,11 +45,11 @@
 //! in code comments), we apply two kinds of rewrites on the CFG:
 //!
 //!   * For patterns like `X -[e]-> Y -[if a=1]-> Z` where we know that `a=1` in `X`
-//!   (and `Y` doesn't overwrite `a`), rewrite to `X -[e]-> Z`.
+//!     (and `Y` doesn't overwrite `a`), rewrite to `X -[e]-> Z`.
 //!   * For patterns like `X -[if a=1]-> Y` where we know that `a=1` in `X`,
-//!   rewrite to `X -[jump]-> Y` and remove all other outgoing edges from `X`.
-//!   If this is the only incoming branch to `Y`, a future optimize_direct_jumps
-//!   pass will merge the two blocks entirely.
+//!     rewrite to `X -[jump]-> Y` and remove all other outgoing edges from `X`.
+//!     If this is the only incoming branch to `Y`, a future optimize_direct_jumps
+//!     pass will merge the two blocks entirely.
 //!
 //! The boolean value analysis should converge quickly given the structure of
 //! the CFGs we generate, but the current implementation involves lots of
@@ -179,11 +179,11 @@ impl SimpleCfgFunction {
     /// * For each administrative node `n``...
     /// * For each outgoing branch [edge e1] with cond val `v` for `id`
     /// * Check if `id` was written to in `n`, if it was, then move on
-    /// _unless_ we know the value of `id`; in which case we can replace the branch with a jump.
+    ///   _unless_ we know the value of `id`; in which case we can replace the branch with a jump.
     /// * Otherwise, check if a predecessor [via edge e2] node has `v` as a
-    /// known value for `id`.
+    ///   known value for `id`.
     /// * If so, copy the contents of the admin node to that predecessor, and
-    /// reroute e2 to the target of e1.
+    ///   reroute e2 to the target of e1.
     fn rewrite_branches(
         &mut self,
         branch_meta: &BranchMetadata,

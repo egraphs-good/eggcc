@@ -1,7 +1,7 @@
 use clap::Parser;
 use dag_in_context::{EggccConfig, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
-use std::{ffi::OsStr, i64, iter::once, path::PathBuf, time::Duration};
+use std::{ffi::OsStr, iter::once, path::PathBuf, time::Duration};
 
 #[derive(Debug, Parser)]
 struct Args {

@@ -741,10 +741,10 @@ fn deep_equal(f1: &RvsdgFunction, f2: &RvsdgFunction) -> bool {
         }
     }
 
-    return f1.results.len() == f2.results.len()
+    f1.results.len() == f2.results.len()
         && f1
             .results
             .iter()
             .zip(f2.results.iter())
-            .all(|((t1, o1), (t2, o2))| t1 == t2 && ops_equal(o1, o2, f1, f2));
+            .all(|((t1, o1), (t2, o2))| t1 == t2 && ops_equal(o1, o2, f1, f2))
 }

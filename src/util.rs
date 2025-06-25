@@ -131,17 +131,13 @@ where
 
     let output = child.wait_with_output()?;
     match output.status.code() {
-        Some(0) => Ok(String::from_utf8(output.stdout).map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("utf8 error: {}", e))
-        })?),
-        Some(e) => Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("program returned error code {}", e),
-        )),
-        None => Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "program was killed by a signal",
-        )),
+        Some(0) => Ok(String::from_utf8(output.stdout)
+            .map_err(|e| std::io::Error::other(format!("utf8 error: {}", e)))?),
+        Some(e) => Err(std::io::Error::other(format!(
+            "program returned error code {}",
+            e
+        ))),
+        None => Err(std::io::Error::other("program was killed by a signal")),
     }
 }
 

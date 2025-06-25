@@ -503,7 +503,8 @@ impl<'a> Extractor<'a> {
     // Get the cost of a subregion
     // For DoWhile nodes, use special logic to calculate the cost based on iteration count
     fn subregions_cost(
-        &self,
+        // mutable self for typechecking terms
+        &mut self,
         info: &EgraphInfo,
         nodeid: NodeId,
         child_set: SmallVec<[&CostSet; 3]>,
@@ -522,7 +523,15 @@ impl<'a> Extractor<'a> {
                 .cloned()
                 .unwrap_or(1000);
 
+            let child_type = self.typecheck_term(&child_set.term);
+            // register pressure- add the cost of keeping lots of registers around, one per value passing through loop
+            let register_pressure = match child_type {
+                Type::TupleT(tys) => tys.len() as f64 * loop_num_iters_guess as f64 * 35.0,
+                _ => 1.0 * loop_num_iters_guess as f64 * 35.0,
+            };
+
             child_set.total * NotNan::new(loop_num_iters_guess as f64).unwrap()
+                + NotNan::new(register_pressure).unwrap()
         } else if node.op == "If" {
             // Currently we don't do this for "Switch"
             // because the branches of Switch is hidden

@@ -6,7 +6,7 @@
     inv: int = mul sub arg3; # invariant is worth hoisting now that it uses two instructions, one of them a mul
     arg1: int = add arg1 inv;
     print inv;
-    pred : bool = lt arg1 arg4;
+    pred : bool = gt arg1 arg4;
     br pred .done .entry;
 .done:
     print arg1;

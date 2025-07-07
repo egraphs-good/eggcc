@@ -228,6 +228,7 @@ impl Optimizer {
     }
 
     pub fn program_to_rvsdg(program: &Program) -> Result<RvsdgProgram, EggCCError> {
+        eprintln!("Converting program to Rvsdg...");
         let cfg = Self::program_to_cfg(program);
         rvsdg::cfg_to_rvsdg(&cfg)
     }

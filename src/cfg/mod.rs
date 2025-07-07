@@ -32,6 +32,7 @@ pub(crate) mod to_bril;
 /// Convert a program to a cfg.
 /// Loops over all the functions, translating individually.
 pub(crate) fn program_to_cfg(program: &Program) -> SimpleCfgProgram {
+    eprintln!("Converting program to CFG");
     let mut functions = Vec::new();
     for func in &program.functions {
         let cfg = function_to_cfg(func);
@@ -463,6 +464,7 @@ impl SimpleCfgFunction {
 /// exit node branched to from all return statements.
 /// Generates a Cfg<Switch> because it returns a value in the annotation
 pub(crate) fn function_to_cfg(func: &Function) -> SimpleCfgFunction {
+    eprintln!("Converting function {} to CFG", func.name);
     let mut builder = CfgBuilder::new(func);
     let mut block = Vec::new();
     let mut anns = Vec::new();

@@ -503,7 +503,8 @@ impl<'a> Extractor<'a> {
     // Get the cost of a subregion
     // For DoWhile nodes, use special logic to calculate the cost based on iteration count
     fn subregions_cost(
-        &self,
+        // mutable self for typechecking terms
+        &mut self,
         info: &EgraphInfo,
         nodeid: NodeId,
         child_set: SmallVec<[&CostSet; 3]>,
@@ -522,7 +523,13 @@ impl<'a> Extractor<'a> {
                 .cloned()
                 .unwrap_or(1000);
 
-            child_set.total * NotNan::new(loop_num_iters_guess as f64).unwrap()
+            let child_type = self.typecheck_term(&child_set.term);
+            // register pressure- add the cost of keeping lots of registers around, one per value passing through loop
+            let register_pressure = info
+                .cm
+                .loop_register_pressure_cost(&child_type, loop_num_iters_guess);
+
+            child_set.total * NotNan::new(loop_num_iters_guess as f64).unwrap() + register_pressure
         } else if node.op == "If" {
             // Currently we don't do this for "Switch"
             // because the branches of Switch is hidden
@@ -1181,6 +1188,15 @@ pub trait CostModel {
 
     /// if true, the op's children are ignored in calculating the cost
     fn ignore_children(&self, op: &str) -> bool;
+
+    fn loop_register_pressure_cost(&self, ty: &Type, loop_num_iters_guess: i64) -> Cost {
+        match ty {
+            Type::TupleT(tys) => {
+                NotNan::new(tys.len() as f64 * loop_num_iters_guess as f64 * 35.0).unwrap()
+            }
+            _ => NotNan::new(1.0 * loop_num_iters_guess as f64 * 35.0).unwrap(),
+        }
+    }
 }
 
 pub struct DefaultCostModel;
@@ -1728,7 +1744,8 @@ fn test_dag_extract() {
     let cost_of_one_func = cost_model.get_op_cost("DoWhile")
         + NotNan::new(1000.).unwrap() * cost_inside_loop
         + cost_model.get_op_cost("Const")
-        + cost_model.get_op_cost("Add");
+        + cost_model.get_op_cost("Add")
+        + cost_model.loop_register_pressure_cost(&tuplet!(boolt(), intt()), 1000);
     // two of the same function
     let expected_cost = cost_of_one_func * 2.;
     dag_extraction_test(&prog, expected_cost);

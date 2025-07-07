@@ -18,9 +18,9 @@ expression: visualization.result
 @main(v0: int) {
   c1_: int = const 0;
   v2_: bool = lt c1_ v0;
-  c3_: int = const 2;
-  v4_: int = abs v0;
-  v5_: int = mul c3_ v4_;
+  v3_: int = abs v0;
+  c4_: int = const 2;
+  v5_: int = mul c4_ v3_;
   br v2_ .b6_ .b7_;
 .b6_:
   c8_: int = const 3;

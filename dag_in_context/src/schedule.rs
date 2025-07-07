@@ -15,12 +15,8 @@ impl CompilerPass {
     }
 }
 
-pub(crate) fn helpers() -> String {
+pub(crate) fn types_and_indexing() -> String {
     "
-    ;; first, run substitution and drop to saturation
-    ;; these depend on type analysis, always-run, and context
-
-    ;; first, saturate always run
     (saturate
         (saturate 
             (saturate type-helpers)
@@ -28,14 +24,26 @@ pub(crate) fn helpers() -> String {
         (saturate 
             (saturate type-helpers)
             always-run)
-        error-checking)
+        error-checking)"
+        .to_string()
+}
 
+pub(crate) fn helpers() -> String {
+    let types_and_indexing = types_and_indexing();
+    format!(
+        "
+    ;; optimization rules use always-run helpers like SubTuple
+    ;; These should be resolved before substitution
+    {types_and_indexing}
+
+    ;; substitution depends on type helpers and ExprIsResolved
+    ;; run substitution multiple times for nested substitution
     (saturate
         (saturate 
             (saturate type-helpers)
             type-analysis)
 
-        ;; first, check which eclasses are resolved
+        ;; check which eclasses are resolved
         (saturate is-resolved)
         (saturate term-subst)
         ;; do substutition for one round, subsuming as we go
@@ -50,29 +58,38 @@ pub(crate) fn helpers() -> String {
         cleanup-drop
     )
 
-    (saturate canon)
-    (saturate interval-analysis)
+    ;; similar to substitution, run term-related things
     (saturate
      terms
      (saturate
        terms-helpers
        (saturate terms-helpers-helpers)))
+
+    ;; run type checking and indexing again
+    ;; for newly created terms from substitution
+    {types_and_indexing}
+
+    ;; canonicalization and analysis
+    (saturate canon)
+    (saturate interval-analysis)
     (saturate mem-simple)
 
     ;; cicm index
     cicm-index
 
-    ;; memory-helpers TODO run memory helpers for memory optimizations
+    ;; TODO right now we don't run memory-helpers, we run mem-simple instead
 
     ;; finally, subsume now that helpers are done
     subsume-after-helpers
 
     ;; do a boundary analysis for loop invariant code motion
+    boundary-analysis-prep
+    ;; set which expression to hoist (see evil hack in loop_invariant.egg)
     boundary-analysis
 
     loop-iters-analysis
 "
-    .to_string()
+    )
 }
 
 fn cheap_optimizations() -> Vec<String> {
@@ -80,7 +97,7 @@ fn cheap_optimizations() -> Vec<String> {
         "hacker",
         "interval-rewrite",
         "always-switch-rewrite",
-        // "memory",
+        // "memory", TODO right now we just run mem-simple
         "peepholes",
     ]
     .iter()

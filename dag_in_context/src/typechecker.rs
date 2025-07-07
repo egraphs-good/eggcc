@@ -46,6 +46,16 @@ impl TreeProgram {
 }
 
 impl Expr {
+    #[allow(dead_code)]
+    pub(crate) fn with_arg_type(self: RcExpr, input_ty: Type) -> RcExpr {
+        // we need a dummy program, since there are no calls in self
+        let prog = program!(function("dummy", tuplet!(), tuplet!(), empty()),);
+        let mut checker = TypeChecker::new(&prog, false);
+        let (_ty, new_expr) =
+            checker.add_arg_types_to_expr(self.clone(), &Some(TypeStack(vec![input_ty])));
+        new_expr
+    }
+
     /// Performs type checking, and also replaces any `Unknown` types
     /// in arguments with the correct types.
     /// Expects an expression without any call statements.

@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     fmt::Write,
-    i64,
     time::{Duration, Instant},
 };
 use to_egglog::TreeToEgglog;

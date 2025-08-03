@@ -37,18 +37,18 @@ def make_cfgs(bench, data_dir):
     for dot in dots:
       name = dot.split(".")[1]
 
-      # Convert to png
-      cmd = f"dot -Tpng -o {path}/{name}.png {path}/{dot}"
+      # Convert to svg
+      cmd = f"dot -Tsvg -o {path}/{name}.svg {path}/{dot}"
       dot_res = subprocess.run(cmd, shell=True, capture_output=True).returncode
       if dot_res != 0:
-        print(f"Error converting {dot} to png")
+        print(f"Error converting {dot} to svg")
         exit(1)
 
-    pngs = glob.glob(f"{path}/*.png")
-    pngs_names = [os.path.basename(png) for png in pngs]
-    print(f"Generated {len(pngs)} CFGs for {bench} {mode}")
-    with open(f"{path}/png_names.txt", "w") as f:
-      f.write("\n".join(pngs_names))
+    svgs = glob.glob(f"{path}/*.svg")
+    svgs_names = [os.path.basename(svg) for svg in svgs]
+    print(f"Generated {len(svgs)} CFGs for {bench} {mode}")
+    with open(f"{path}/svg_names.txt", "w") as f:
+      f.write("\n".join(svgs_names))
 
     # Clean up dot files
     os.system(f"rm {path}/.*.dot")

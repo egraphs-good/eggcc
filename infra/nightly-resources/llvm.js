@@ -6,41 +6,41 @@ async function showIR(benchmark, runMode) {
 }
 
 async function showCFGs(benchmark, runMode) {
-  let pngs = (
-    await fetchText(`./data/llvm/${benchmark}/${runMode}/png_names.txt`)
+  let svgs = (
+    await fetchText(`./data/llvm/${benchmark}/${runMode}/svg_names.txt`)
   ).split("\n");
 
-  // Move main.png and _main.png to top
-  const _main = "_main.png";
-  if (pngs.includes(_main)) {
-    pngs = pngs.filter((x) => x !== _main);
-    pngs.unshift(_main);
+  // Move main.svg and _main.svg to top
+  const _main = "_main.svg";
+  if (svgs.includes(_main)) {
+    svgs = svgs.filter((x) => x !== _main);
+    svgs.unshift(_main);
   }
-  const main = "main.png";
-  if (pngs.includes(main)) {
-    pngs = pngs.filter((x) => x !== main);
-    pngs.unshift(main);
+  const main = "main.svg";
+  if (svgs.includes(main)) {
+    svgs = svgs.filter((x) => x !== main);
+    svgs.unshift(main);
   }
 
-  const pngContainer = document.getElementById("llvm-cfg");
-  pngs.forEach((png) => {
+  const svgContainer = document.getElementById("llvm-cfg");
+  svgs.forEach((svg) => {
     const elt = document.createElement("div");
 
     const btn = document.createElement("button");
-    btn.innerText = `\u25B6 Show ${png}`;
+    btn.innerText = `\u25B6 Show ${svg}`;
     btn.classList.add("collapsible");
-    btn.classList.add("pngToggle");
+    btn.classList.add("svgToggle");
     btn.onclick = (elt) =>
-      toggle(elt.target, `\u25B6 Show ${png}`, `\u25BC Hide ${png}`);
+      toggle(elt.target, `\u25B6 Show ${svg}`, `\u25BC Hide ${svg}`);
 
     elt.appendChild(btn);
 
     const img = document.createElement("img");
     img.classList.add("cfg");
     img.classList.add("collapsed");
-    img.src = `data/llvm/${benchmark}/${runMode}/${png}`;
+    img.src = `data/llvm/${benchmark}/${runMode}/${svg}`;
     elt.appendChild(img);
 
-    pngContainer.appendChild(elt);
+    svgContainer.appendChild(elt);
   });
 }

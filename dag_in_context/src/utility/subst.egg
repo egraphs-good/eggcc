@@ -35,10 +35,10 @@
        ;; tmptype disables typechecking
        (!= ty (TmpType))
        (!= ty2 (TmpType)))
-      ((extract "Extracting type mismatch")
-       (extract ty)
-       (extract ty2)
-       (panic "Substitution type mismatch! Argument type must match type of substituted term"))
+;      ((extract "Extracting type mismatch")
+;       (extract ty)
+;       (extract ty2)
+       ((panic "Substitution type mismatch! Argument type must match type of substituted term"))
        :ruleset subst)
 
 

@@ -8,16 +8,16 @@
 (constructor ExprSet-union (ExprSet ExprSet) ExprSet)
 (rewrite (ExprSet-union (ES set1) (ES set2)) (ES (set-union set1 set2))
          :ruleset memory-helpers)
-(relation ExprSet-contains (ExprSet Expr))
-(rule ((ES set1) (set-contains set1 x))
-      ((ExprSet-contains (ES set1) x))
-      :ruleset memory-helpers)
+;(relation ExprSet-contains (ExprSet Expr))
+;(rule ((ES set1) (set-contains set1 x))
+;      ((ExprSet-contains (ES set1) x))
+;      :ruleset memory-helpers)
 (constructor ExprSet-insert (ExprSet Expr) ExprSet)
 (rewrite (ExprSet-insert (ES set1) x)
          (ES (set-insert set1 x))
          :ruleset memory-helpers)
-(function ExprSet-length (ExprSet) i64 :no-merge)
-(rewrite (ExprSet-length (ES set1)) (set-length set1) :ruleset memory-helpers)
+;(function ExprSet-length (ExprSet) i64 :no-merge)
+;(rewrite (ExprSet-length (ES set1)) (set-length set1) :ruleset memory-helpers)
 
 ; ============================
 ; Pointees

@@ -848,18 +848,18 @@ impl Run {
                     stop_after_n_passes: cutoff as i64,
                     ..self.eggcc_config.clone()
                 };
-                let (optimized, time_stats) =
-                    dag_in_context::optimize(&dag, &eggcc_config).map_err(EggCCError::EggLog)?;
+                // let (optimized, time_stats) =
+                //    dag_in_context::optimize(&dag, &eggcc_config).map_err(EggCCError::EggLog)?;
 
                 let last_schedule_step = &schedules[cutoff];
 
                 let inline_program = match last_schedule_step {
                     schedule::CompilerPass::Schedule(_) => None,
-                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&optimized),
+                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&dag),
                 };
 
                 let egglog = build_program(
-                    &optimized,
+                    &dag,
                     inline_program,
                     &dag.fns(),
                     last_schedule_step.egglog_schedule(),
@@ -872,7 +872,7 @@ impl Run {
                         name: "".to_string(),
                     }],
                     None,
-                    time_stats,
+                    EggccTimeStatistics::default(),
                 )
             }
             RunMode::RvsdgToCfg => {

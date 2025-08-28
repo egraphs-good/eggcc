@@ -1,0 +1,12 @@
+# ARGS: 10 20
+@main(x: int, y: int) {
+  px: ptr<int> = alloc x;
+  py: ptr<int> = alloc y;
+  loadx: int = load px; 
+  loady: int = load py;
+  print loadx;
+  print loady;
+  free px;
+  free py;
+  ret;
+}

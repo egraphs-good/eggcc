@@ -128,9 +128,9 @@
 
 ; A load doesn't change the state
 ; TODO: why does this break weaklylinear?
-; (rule ((= load (Bop (Load) addr state)))
-;       ((union (Get load 1) state))
-;       :ruleset mem-simple)
+(rule ((= load (Bop (Load) addr state)))
+      ((union (Get load 1) state))
+      :ruleset mem-simple)
 
 ; (rule ((DidMemOptimization _))
 ;       ((panic "DidMemOptimization"))

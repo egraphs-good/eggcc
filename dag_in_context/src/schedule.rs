@@ -109,6 +109,7 @@ fn optimizations() -> Vec<String> {
     [
         "select_opt",
         "loop-unroll",
+        "loop-peel",
         "switch_rewrite",
         "loop-inv-motion",
         "loop-strength-reduction",

@@ -1,10 +1,10 @@
 @main() {
 i: int = const 0;
 one: int = const 1;
-three: int = const 3;
+two: int = const 2;
 .loop:
   i: int = add i one;
-  cond: bool = lt i three;
+  cond: bool = lt i two;
   br cond .loop .done;
 .done:
   print i;

@@ -135,9 +135,9 @@
 ;; This is safer than using a persistant context, since we may miss an important part of the query.
 (constructor TmpCtx () Assumption)
 
-(rule ((TmpCtx))
-  ((panic "TmpCtx should not exist outside rule body"))
-  :ruleset always-run)
+;(rule ((TmpCtx))
+;  ((panic "TmpCtx should not exist outside rule body"))
+;  :ruleset always-run)
 
 
 (ruleset subsume-after-helpers)

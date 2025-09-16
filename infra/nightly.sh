@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# haobin_nightly_test branch: modified to run the prototype extractor
+
 # The primary purpose of this script is to run all the tests and upload 
 # the results to the nightly-results server. It also generates some HTML
 # to display the equiderivability tests in a nicely-formatted way.
@@ -13,6 +16,9 @@ echo "Beginning eggcc nightly script..."
 set -x -e
 # if anything in a pipeline fails, fail the whole pipeline
 set -o pipefail
+
+# let time command return just wall clock time in seconds
+export TIMEFORMAT='%3R'
 
 export PATH=~/.cargo/bin:$PATH
 
@@ -36,24 +42,78 @@ OUTPUT_DIR="$NIGHTLY_DIR/output"
 GRAPHS_DIR="$NIGHTLY_DIR/output/graphs"
 DATA_DIR="$TOP_DIR/nightly/data"
 
+EGGLOG_DIR="$NIGHTLY_DIR/egglog"
+TIGER_DIR="$NIGHTLY_DIR/tiger"
+
 # Make sure we're in the right place
 cd $MYDIR
 echo "Switching to nighly script directory: $MYDIR"
 
 # Clean previous nightly run
 # CAREFUL using -f
-if [ "$1" == "--update" ]; then
-  echo "updating front end only (output folder) due to --update flag"
-  rm -rf $OUTPUT_DIR
-  mkdir -p "$OUTPUT_DIR" "$GRAPHS_DIR"
-else
+#if [ "$1" == "--update" ]; then
+#  echo "updating front end only (output folder) due to --update flag"
+#  rm -rf $OUTPUT_DIR
+#  mkdir -p "$OUTPUT_DIR" "$GRAPHS_DIR"
+#else
+#if [ "$LOCAL" == "" ]; then
   rm -rf $NIGHTLY_DIR
   # Prepare output directories
-  mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$OUTPUT_DIR" "$GRAPHS_DIR"
+  # mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$OUTPUT_DIR" "$GRAPHS_DIR"
+#fi
+
+mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$OUTPUT_DIR"
+
+# fetch and compile Egglog
+if [ ! -d $EGGLOG_DIR ]; then
+  EGGLOG_VERSION="0be495630546acffbd545ba60feb9302281ce95c"
+  git clone --revision=$EGGLOG_VERSION git@github.com:egraphs-good/egglog.git "$EGGLOG_DIR"
+  pushd "$EGGLOG_DIR"
+  cargo build --release
+  popd
+  test "$EGGLOD_DIR/target/release/egglog"
 fi
 
+# fetch and compile TIGER
+if [ ! -d $TIGER_DIR ]; then
+  TIGER_VERSION="0c0d798e7f2c7ecb83a01ebf272e3606befd460a"
+  git clone --revision=$TIGER git@github.com:FTRobbin/tiger-prototype.git "$TIGER_DIR"
+  pushd "$TIGER_DIR"
+  make all
+  popd
+  test "$TIGER_DIR/json2egraph"
+  test "$TIGER_DIR/main"
+fi
 
+pushd $TOP_DIR
 
+#if [ "$LOCAL" == "" ]; then
+#  # prepare environment for eggcc?
+#  export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
+#  make runtime
+#fi
+
+if [ "$LOCAL" != "" ]; then
+  ./infra/profile.py "$DATA_DIR" "$@" 2>&1 | tee $NIGHTLY_DIR/log.txt
+else
+  # run on all benchmarks in nightly
+  ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee $NIGHTLY_DIR/log.txt
+fi
+
+popd
+
+# Copy data directory to the artifact
+cp -r "$NIGHTLY_DIR/data" "$OUTPUT_DIR/data"
+
+# Copy log
+cp "$NIGHTLY_DIR/log.txt" "$OUTPUT_DIR"
+
+# gzip all JSON in the nightly dir
+if [ "$LOCAL" == "" ]; then
+  gzip "$OUTPUT_DIR/data/profile.json"
+fi
+
+: << 'OLDSCRIPT'
 pushd $TOP_DIR
 
 # Run profiler.
@@ -98,3 +158,5 @@ cp "$NIGHTLY_DIR/log.txt" "$OUTPUT_DIR"
 if [ "$LOCAL" == "" ]; then
   gzip "$OUTPUT_DIR/data/profile.json"
 fi
+
+OLDSCRIPT

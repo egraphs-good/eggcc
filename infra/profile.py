@@ -37,18 +37,19 @@ def average(lst):
 TO_ABLATE = "" # change to a ruleset to ablate
 
 treatments = [
-  "rvsdg-round-trip-to-executable",
+  #"rvsdg-round-trip-to-executable",
   #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
-  "llvm-O0-O0",
-  "llvm-O1-O0",
-  "llvm-O2-O0",
-  "llvm-eggcc-O0-O0",
-  "llvm-eggcc-sequential-O0-O0",
-  "llvm-O3-O0",
-  "llvm-O3-O3",
-  "llvm-eggcc-O3-O0",
-  "llvm-eggcc-O3-O3",
-  "eggcc-ILP-O0-O0"
+  #"llvm-O0-O0",
+  #"llvm-O1-O0",
+  #"llvm-O2-O0",
+  #"llvm-eggcc-O0-O0",
+  #"llvm-eggcc-sequential-O0-O0",
+  #"llvm-O3-O0",
+  #"llvm-O3-O3",
+  #"llvm-eggcc-O3-O0",
+  #"llvm-eggcc-O3-O3",
+  #"eggcc-ILP-O0-O0",
+  "egglog"
 ]
 
 if TO_ABLATE != "":
@@ -63,9 +64,13 @@ DATA_DIR = None
 
 # Where to write intermediate files that should be cleaned up at the end of this script
 TMP_DIR = "tmp"
+TIMEOUT = 60
 
 EGGCC_BINARY = "target/release/eggcc"
-
+EGGLOG_BINARY = "nightly/egglog/target/release/egglog"
+EGGLOG_FLAGS = "--max-functions=1000000000 --max-calls-per-function=1000000000"
+TIGER_JSON2EGRAPH_BINARY = "nightly/tiger/json2egraph"
+TIGER_MAIN_BINARY = "nightly/tiger/main"
 
 # returns two strings:
 # the first is the eggcc run mode for optimizing the input bril program
@@ -199,6 +204,51 @@ def optimize(benchmark):
     }
   return res
 
+# runs the prototype extractor
+def run_tiger(benchmark):
+  print(f'[{benchmark.index}/{benchmark.total}] Run TIGER workflow on {benchmark.name} ', flush=True)
+  profile_dir = benchmark_profile_dir(benchmark.name)
+  os.makedirs(f"{DATA_DIR}/tiger/{benchmark.name}", exist_ok=True)
+  eggcc_output = f"{DATA_DIR}/tiger/{benchmark.name}/eggcc_output.egg"
+  egglog_output = f"{DATA_DIR}/tiger/{benchmark.name}/eggcc_output.json"
+  egraph_output = f"{DATA_DIR}/tiger/{benchmark.name}/egraph.in"
+  extraction_output = f"{DATA_DIR}/tiger/{benchmark.name}/extraction.out"
+
+  cmds = [f'{EGGCC_BINARY} {benchmark.path} --run-mode {benchmark.treatment} > {eggcc_output}',
+          f'{EGGLOG_BINARY} {EGGLOG_FLAGS} --to-json {eggcc_output}',
+          f'{TIGER_JSON2EGRAPH_BINARY} < {egglog_output} > {egraph_output}',
+          f'{TIGER_MAIN_BINARY} < {egraph_output} > {extraction_output}']
+
+  def time_command(cmd):
+    cmd_with_time = f'time {cmd}'
+    try:
+      process = subprocess.run(cmd_with_time, shell=True, capture_output=True, timeout=TIMEOUT, text=True)
+      if process.returncode == 0:
+        wctime = process.stderr.split()[-1]
+        return float(wctime)
+      else:
+        return "EXCEPTION"
+    except:
+      return "TIMEOUT"
+  
+  skipping=False
+  times=[]
+  for cmd in cmds:
+    if not skipping:
+      times.append(time_command(cmd))
+      if times[-1] == "TIMEOUT" or times[-1] == "EXCEPTION":
+        skipping = True
+    else:
+      times.append("Skipped")
+
+  res = {
+      "path": f"{profile_dir}",
+      "eggccTimeSecs": times[0],
+      "egglogTimeSecs": times[1],
+      "tigerPreProcessingTimeSecs": times[2],
+      "tigerExtractionTimeSecs": times[3],
+  }
+  return res
 
 def take_sample(cmd, benchmark):
   result = subprocess.run(cmd, capture_output=True, shell=True)
@@ -380,7 +430,7 @@ if __name__ == '__main__':
 
   # create a thread pool for running optimization
   with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
-    futures = {executor.submit(optimize, benchmark) for benchmark in to_run}
+    futures = {executor.submit(run_tiger, benchmark) for benchmark in to_run}
     for future in concurrent.futures.as_completed(futures):
       try:
         res = future.result()
@@ -392,8 +442,15 @@ if __name__ == '__main__':
         print(f"Shutting down executor due to error: {e}")
         executor.shutdown(wait=False, cancel_futures=True)
         raise e
+  
+  with open(f"{DATA_DIR}/profile.json", "w") as profile:
+    json.dump(compile_data, profile, indent=2)
 
+  # remove the tmp directory
+  os.system(f"rm -rf {TMP_DIR}")
 
+"""
+  COMMENT
   bench_data = {}
   if isParallelBenchmark:
     # create a thread pool for running benchmarks
@@ -424,4 +481,4 @@ if __name__ == '__main__':
 
   # remove the tmp directory
   os.system(f"rm -rf {TMP_DIR}")
-
+"""

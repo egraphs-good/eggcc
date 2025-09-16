@@ -855,7 +855,7 @@ impl Run {
 
                 let inline_program = match last_schedule_step {
                     schedule::CompilerPass::Schedule(_) => None,
-                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&dag),
+                    schedule::CompilerPass::InlineWithSchedule(_) => Some(&optimized),
                 };
 
                 // let aggr_schedule = schedules.iter().fold(String::default(),  |s, cp| {s + (cp.egglog_schedule())});
@@ -863,8 +863,7 @@ impl Run {
                 let egglog = build_program(
                     &optimized,
                     inline_program,
-                    //&dag.fns(),
-                    &optimized.fns(),
+                    &dag.fns(),
                     //&aggr_schedule,
                     last_schedule_step.egglog_schedule(),
                     eggcc_config.ablate.as_deref(),

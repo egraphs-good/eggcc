@@ -64,7 +64,7 @@ DATA_DIR = None
 
 # Where to write intermediate files that should be cleaned up at the end of this script
 TMP_DIR = "tmp"
-TIMEOUT = 60
+TIMEOUT = 300
 
 EGGCC_BINARY = "target/release/eggcc"
 EGGLOG_BINARY = "nightly/egglog/target/release/egglog"

@@ -31,8 +31,7 @@
   ((Function name in out body)
    (= body (If pred always-runs (Call name rec_case) base-case))
    (HasType always-runs start-ty)
-   (HasType body func-ty)
-   (ContextOf body bodyctx))
+   (HasType body func-ty))
   ((let loop-inputs (Arg start-ty (InIf true pred always-runs)))
    (let loop-outputs
      (Concat
@@ -45,14 +44,14 @@
      (DoWhile loop-inputs loop-outputs))
     
     
-   ;; initial start value
+  ;; initial start value
    (let outer-if
      (If pred always-runs
          loop
          (Arg start-ty (InIf false pred always-runs))))
-   (let new-impl (IfSubst outer-if base-case))
-  
-   (union body new-impl))
+   (union (Function name in out body)
+     (Function name in out 
+      (Subst (InFunc name) outer-if base-case))))
   :ruleset rec-to-loop)
 
 
@@ -105,10 +104,7 @@
    (HasType always-runs start-ty)
    (= always-runs-len (tuple-length always-runs))
    (= start-ty (TupleT start-ty-list))
-   (HasType body func-ty)
-   (HasArgType body bodyargty)
-   (ContextOf body bodyctx)
-   )
+   (HasType body func-ty))
   ((let loop-ty
      (TupleT (TLConcat start-ty-list (TCons (IntT) (TNil)))))
    ;; recursive case in the loop
@@ -136,14 +132,8 @@
    (union (TmpCtx) (InLoop loop-inputs loop-outputs))
    (delete (TmpCtx))
   
-   (let wrapper-ty
-     (TupleT (TLConcat (TCons (BoolT) (TNil)) 
-                       start-ty-list)))
-   (let wrapper-ctx DUMMYCTX)
-   (let wrapper-arg (Arg wrapper-ty wrapper-ctx))
-
    (let outer-if
-     (If (Get wrapper-arg 0) (SubTuple wrapper-arg 1 always-runs-len)
+     (If pred always-runs
          loop
          (Concat
            (Arg start-ty (InIf false pred always-runs))
@@ -157,16 +147,6 @@
      (Concat
       (Single (Bop base-case-op (Get new-base-case 0) (Get outer-if always-runs-len)))
       (Single (Get new-base-case 1))))
-
-
-   ;; finally, we make a wrapper that runs pred and
-   ;; always-runs first
-   (let wrapper
-     (If (Const (Bool true) bodyargty bodyctx)
-         (Concat (Single pred) always-runs)
-         res
-         res))
-   (union body wrapper))
+   (union (Function name in out body)
+          (Function name in out res)))
   :ruleset rec-to-loop)
-
-

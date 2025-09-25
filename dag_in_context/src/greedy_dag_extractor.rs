@@ -324,7 +324,7 @@ impl<'a> Extractor<'a> {
     }
 }
 
-pub(crate) fn get_root(egraph: &egraph_serialize::EGraph, func: &str) -> NodeId {
+pub(crate) fn get_root(egraph: &egraph_serialize::EGraph, func: &str) -> ClassId {
     let root_nodes = egraph
         .nodes
         .iter()
@@ -338,8 +338,7 @@ pub(crate) fn get_root(egraph: &egraph_serialize::EGraph, func: &str) -> NodeId 
         child_str == func
     });
     let res = found.next().unwrap();
-    assert!(found.next().is_none());
-    res.0.clone()
+    egraph.nid_to_cid(res.0).clone()
 }
 
 pub fn get_unextractables(egraph: &egglog::EGraph) -> IndexSet<String> {
@@ -947,7 +946,7 @@ pub fn extract(
             let (fn_cost, extracted) = extract_fn(
                 &new_prog,
                 &func,
-                egraph.nid_to_cid(&get_root(&egraph, &func)).clone(),
+                get_root(&egraph, &func),
                 egraph.clone(),
                 unextractables.clone(),
                 termdag,
@@ -979,7 +978,7 @@ pub fn extract_ilp(
     let mut samples = vec![];
     for name in fns {
         log::info!("Extracting function {} with ILP", name);
-        let root = egraph.nid_to_cid(&get_root(&egraph, &name)).clone();
+        let root = get_root(&egraph, &name);
 
         let egraph = prune_egraph(&egraph, root.clone(), &cost_model);
         let egraph_size = egraph.nodes.len();

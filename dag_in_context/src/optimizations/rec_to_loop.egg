@@ -104,7 +104,8 @@
    (HasType always-runs start-ty)
    (= always-runs-len (tuple-length always-runs))
    (= start-ty (TupleT start-ty-list))
-   (HasType body func-ty))
+   (HasType body func-ty)
+   (ContextOf body body-ctx))
   ((let loop-ty
      (TupleT (TLConcat start-ty-list (TCons (IntT) (TNil)))))
    ;; recursive case in the loop
@@ -141,7 +142,7 @@
            (Single (Const (Int 0) start-ty (InIf false pred always-runs))))))
    ;; base case over latest start value
    (let new-base-case
-     (Subst (InFunc name) (SubTuple outer-if 0 always-runs-len) base-case))
+     (Subst body-ctx (SubTuple outer-if 0 always-runs-len) base-case))
    ;; add base case to acc
    (let res
      (Concat

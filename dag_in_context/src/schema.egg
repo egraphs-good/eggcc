@@ -299,8 +299,4 @@
 ;; The minimum possible guess is 1 because of do-while loops
 (function LoopNumItersGuess (Expr Expr) i64 :merge (max 1 (min old new)))
 
-
-; dummy context used when context doesn't matter
-(let DUMMYCTX (InFunc "dummy"))
-
 (ruleset never)

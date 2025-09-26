@@ -549,6 +549,11 @@ impl Run {
         seq.eggcc_config.schedule = Schedule::Sequential;
         res.push(seq);
 
+        // also test no context mode
+        let mut no_ctx = Run::new(prog.clone(), RunMode::Optimize);
+        no_ctx.eggcc_config.use_context = false;
+        res.push(no_ctx);
+
         // run a cranelift baseline
         res.push(Run::compile_brilift_config(
             test.clone(),
@@ -602,6 +607,10 @@ impl Run {
             Schedule::Parallel => "",
             Schedule::Sequential => "-sequential",
         };
+
+        if !self.eggcc_config.use_context {
+            name += "-no-ctx";
+        }
 
         name
     }

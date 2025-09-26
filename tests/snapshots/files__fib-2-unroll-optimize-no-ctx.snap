@@ -45,19 +45,19 @@ expression: visualization.result
   v36_: ptr<int> = ptradd v6_ v20_;
   c37_: int = const -2;
   v38_: ptr<int> = ptradd v36_ c37_;
-  v39_: ptr<int> = ptradd v6_ v7_;
-  v40_: int = load v39_;
-  v41_: int = load v38_;
-  v42_: int = add v40_ v41_;
-  store v36_ v42_;
-  v43_: int = add v20_ v8_;
+  c39_: int = const -1;
+  v40_: ptr<int> = ptradd v36_ c39_;
+  v41_: int = load v40_;
+  v42_: int = load v38_;
+  v43_: int = add v41_ v42_;
+  store v36_ v43_;
+  v44_: int = add v20_ v8_;
   v30_: ptr<int> = id v6_;
-  v31_: int = id v43_;
+  v31_: int = id v44_;
   v32_: int = id v8_;
   v33_: int = id v9_;
 .b35_:
-  c44_: int = const 2;
-  v45_: int = add c44_ v7_;
+  v45_: int = add v20_ v8_;
   v46_: int = select v21_ v45_ v20_;
   v13_: ptr<int> = id v6_;
   v14_: int = id v46_;

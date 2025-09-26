@@ -1,0 +1,13 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 20 30
+@main(v0: int, v1: int) {
+  v2_: int = mul v0 v1;
+  c3_: int = const 20;
+  v4_: bool = lt v2_ c3_;
+  v5_: int = select v4_ v0 v1;
+  print v5_;
+  ret;
+}

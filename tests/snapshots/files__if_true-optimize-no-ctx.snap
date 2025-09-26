@@ -1,0 +1,12 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 20
+@main(v0: int) {
+  c1_: int = const 1;
+  v2_: int = sub v0 c1_;
+  print v0;
+  print v2_;
+  ret;
+}

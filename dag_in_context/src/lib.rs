@@ -16,8 +16,8 @@ use std::{
 use to_egglog::TreeToEgglog;
 
 use crate::{
-    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    remove_context::remove_new_contexts, schedule::parallel_schedule,
+    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, remove_context::remove_new_contexts,
+    schedule::parallel_schedule,
 };
 
 pub mod add_context;
@@ -192,11 +192,23 @@ pub fn build_program(
     ablate: Option<&str>,
     use_context: bool,
 ) -> String {
-    // HACK- inlining relies on context, we add it here
-    let (program, mut context_cache) = if use_context || inline_program.is_some() {
-        program.add_context()
+    // New: perform AST-based inlining first (ignoring context), then add context
+    let to_inline = inline_program.unwrap_or(program);
+    let inlined = if inline_program.is_some() {
+        optimizations::function_inlining::inline_program(
+            to_inline,
+            fns.to_vec(),
+            config::FUNCTION_INLINING_ITERATIONS,
+        )
     } else {
-        program.add_dummy_ctx()
+        program.clone()
+    };
+
+    // Then add context or dummy context based on flag
+    let (program, context_cache) = if use_context {
+        inlined.add_context()
+    } else {
+        inlined.add_dummy_ctx()
     };
     let mut printed = String::new();
 
@@ -204,27 +216,8 @@ pub fn build_program(
     let mut tree_state = TreeToEgglog::new();
     let mut term_cache = IndexMap::<Term, String>::new();
 
-    // Generate function inlining egglog
-    let function_inlining_unions = if let Some(inline_program) = inline_program {
-        let mut pairs = vec![];
-        for func in fns {
-            pairs.extend(function_inlining::function_inlining_pairs(
-                inline_program,
-                vec![func.clone()],
-                config::FUNCTION_INLINING_ITERATIONS,
-                &mut context_cache,
-            ));
-        }
-
-        function_inlining::print_function_inlining_pairs(
-            pairs,
-            &mut printed,
-            &mut tree_state,
-            &mut term_cache,
-        )
-    } else {
-        "".to_string()
-    };
+    // No union-based inlining; already applied AST-based inlining
+    let function_inlining_unions = String::new();
 
     // Generate program egglog
     for func in fns {

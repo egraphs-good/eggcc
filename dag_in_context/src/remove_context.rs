@@ -97,7 +97,49 @@ fn sexpr_head(list: &SExpr) -> Option<&str> {
     None
 }
 
-fn transform(expr: &SExpr, in_rule_body: bool) -> SExpr {
+fn contains_context(expr: &SExpr) -> bool {
+    match expr {
+        SExpr::Atom(_) => false,
+        SExpr::List(items) => {
+            if let Some(head) = sexpr_head(expr) {
+                let arity = items.len().saturating_sub(1);
+                let is_ctx = match head {
+                    "InFunc" => arity == 1,
+                    "InLoop" => arity == 2,
+                    "InSwitch" => arity == 3,
+                    "InIf" => arity == 3,
+                    _ => false,
+                };
+                if is_ctx {
+                    return true;
+                }
+            }
+            items.iter().any(contains_context)
+        }
+    }
+}
+
+fn replace_context_with_dummy(expr: &SExpr) -> SExpr {
+    match expr {
+        SExpr::Atom(a) => SExpr::Atom(a.clone()),
+        SExpr::List(items) => {
+            if let Some(head) = sexpr_head(expr) {
+                let arity = items.len().saturating_sub(1);
+                let is_ctx = matches!(head, "InFunc" | "InLoop" | "InSwitch" | "InIf")
+                    && ((head == "InFunc" && arity == 1)
+                        || (head == "InLoop" && arity == 2)
+                        || (head == "InSwitch" && arity == 3)
+                        || (head == "InIf" && arity == 3));
+                if is_ctx {
+                    return SExpr::Atom("DUMMYCTX".to_string());
+                }
+            }
+            SExpr::List(items.iter().map(replace_context_with_dummy).collect())
+        }
+    }
+}
+
+fn transform(expr: &SExpr) -> SExpr {
     use SExpr::*;
     match expr {
         Atom(a) => Atom(a.clone()),
@@ -107,36 +149,35 @@ fn transform(expr: &SExpr, in_rule_body: bool) -> SExpr {
                 if h == "rule" && items.len() >= 3 {
                     let mut out: Vec<SExpr> = Vec::with_capacity(items.len());
                     out.push(Atom("rule".to_string()));
-                    // Query: no replacements
-                    out.push(transform(&items[1], false));
-                    // Body: enable replacements
-                    out.push(transform(&items[2], true));
-                    // Any trailing attrs or metadata: no replacements
+                    // Query: recurse without replacement to normalize
+                    let new_query = transform(&items[1]);
+                    let query_has_ctx = contains_context(&new_query);
+                    out.push(new_query);
+                    // Body handling depends on whether query references context
+                    let body = &items[2];
+                    let new_body = if query_has_ctx {
+                        if contains_context(body) {
+                            List(vec![List(vec![
+                                Atom("panic".to_string()),
+                                Atom("\"context should not be present\"".to_string()),
+                            ])])
+                        } else {
+                            transform(body)
+                        }
+                    } else {
+                        // Query doesn't use context: replace contexts in body with DUMMYCTX
+                        replace_context_with_dummy(body)
+                    };
+                    out.push(new_body);
+                    // Any trailing attrs or metadata
                     for extra in items.iter().skip(3) {
-                        out.push(transform(extra, false));
+                        out.push(transform(extra));
                     }
                     return List(out);
                 }
             }
 
-            // If inside a rule body, replace context constructors with DUMMYCTX
-            if in_rule_body {
-                if let Some(head) = sexpr_head(expr) {
-                    let arity = items.len().saturating_sub(1);
-                    let is_ctx = match head {
-                        "InFunc" => arity == 1,
-                        "InLoop" => arity == 2,
-                        "InSwitch" => arity == 3,
-                        "InIf" => arity == 3,
-                        _ => false,
-                    };
-                    if is_ctx {
-                        return Atom("DUMMYCTX".to_string());
-                    }
-                }
-            }
-
-            List(items.iter().map(|e| transform(e, in_rule_body)).collect())
+            List(items.iter().map(transform).collect())
         }
     }
 }
@@ -154,13 +195,10 @@ fn print_sexpr(expr: &SExpr) -> String {
 pub(crate) fn remove_new_contexts(s: &str) -> String {
     let tokens = tokenize(s);
     let parsed = parse(&tokens);
-    let transformed: Vec<SExpr> = parsed.iter().map(|e| transform(e, false)).collect();
-
-    let res = transformed
+    let transformed: Vec<SExpr> = parsed.iter().map(|e| transform(e)).collect();
+    transformed
         .iter()
         .map(|e| print_sexpr(e))
         .collect::<Vec<_>>()
-        .join("\n");
-    eprintln!("res: {}", res);
-    res
+        .join("\n")
 }

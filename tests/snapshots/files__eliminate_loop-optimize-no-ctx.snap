@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 
+@main {
+  c0_: int = const 1;
+  c1_: bool = const false;
+  print c0_;
+  ret;
+}

@@ -549,6 +549,11 @@ impl Run {
         seq.eggcc_config.schedule = Schedule::Sequential;
         res.push(seq);
 
+        // also test no context mode
+        let mut no_ctx = Run::new(prog.clone(), RunMode::Optimize);
+        no_ctx.eggcc_config.use_context = false;
+        res.push(no_ctx);
+
         // run a cranelift baseline
         res.push(Run::compile_brilift_config(
             test.clone(),
@@ -602,6 +607,10 @@ impl Run {
             Schedule::Parallel => "",
             Schedule::Sequential => "-sequential",
         };
+
+        if !self.eggcc_config.use_context {
+            name += "-no-ctx";
+        }
 
         name
     }
@@ -779,7 +788,14 @@ impl Run {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let tree = rvsdg.to_dag_encoding();
-                let unfolded_program = build_program(&tree, None, &tree.fns(), "", None);
+                let unfolded_program = build_program(
+                    &tree,
+                    None,
+                    &tree.fns(),
+                    "",
+                    self.eggcc_config.ablate.as_deref(),
+                    self.eggcc_config.use_context,
+                );
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
@@ -838,7 +854,7 @@ impl Run {
             RunMode::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding();
-                let schedules = self.eggcc_config.schedule.get_schedule_list();
+                let schedules = self.eggcc_config.get_schedule_list();
 
                 // how many actual passes to run
                 let cutoff = self.eggcc_config.get_normalized_cutoff(schedules.len());
@@ -864,6 +880,7 @@ impl Run {
                     &dag.fns(),
                     last_schedule_step.egglog_schedule(),
                     eggcc_config.ablate.as_deref(),
+                    eggcc_config.use_context,
                 );
                 (
                     vec![Visualization {

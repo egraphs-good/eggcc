@@ -115,15 +115,6 @@
       ((delete (TypeList-ith a b)))
       :ruleset debug-deletes)
 
-(rule ((InIf a b c))
-      ((delete (InIf a b c)))
-      :ruleset debug-deletes)
-(rule ((InLoop a b))
-      ((delete (InLoop a b)))
-      :ruleset debug-deletes)
-(rule ((InFunc a))
-      ((delete (InFunc a)))
-      :ruleset debug-deletes)
 
 (rule ((TupleT a))
       ((delete (TupleT a)))

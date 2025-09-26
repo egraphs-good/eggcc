@@ -132,7 +132,6 @@ pub fn print_function_inlining_pairs(
     tree_state: &mut TreeToEgglog,
     term_cache: &mut IndexMap<Term, String>,
 ) -> String {
-    let inlined_calls = "";
     // Get unions and mark each call as inlined for extraction purposes
     let printed_pairs = function_inlining_pairs
         .iter()
@@ -171,7 +170,168 @@ pub fn print_function_inlining_pairs(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    format!("{inlined_calls} {printed_pairs}")
+    format!("{printed_pairs}")
+}
+
+// =====================
+// New AST-based inliner
+// =====================
+
+#[allow(dead_code)]
+fn subst_no_ctx(arg: &RcExpr, within: &RcExpr) -> RcExpr {
+    use Expr::*;
+    match within.as_ref() {
+        Arg(_, _) => arg.clone(),
+        Top(op, x, y, z) => Rc::new(Top(
+            op.clone(),
+            subst_no_ctx(arg, x),
+            subst_no_ctx(arg, y),
+            subst_no_ctx(arg, z),
+        )),
+        Bop(op, x, y) => Rc::new(Bop(op.clone(), subst_no_ctx(arg, x), subst_no_ctx(arg, y))),
+        Uop(op, x) => Rc::new(Uop(op.clone(), subst_no_ctx(arg, x))),
+        Get(x, i) => Rc::new(Get(subst_no_ctx(arg, x), *i)),
+        Alloc(n, a, s, bt) => Rc::new(Alloc(
+            *n,
+            subst_no_ctx(arg, a),
+            subst_no_ctx(arg, s),
+            bt.clone(),
+        )),
+        Call(name, x) => Rc::new(Call(name.clone(), subst_no_ctx(arg, x))),
+        Empty(ty, ctx) => Rc::new(Empty(ty.clone(), ctx.clone())),
+        Const(c, ty, ctx) => Rc::new(Const(c.clone(), ty.clone(), ctx.clone())),
+        Single(x) => Rc::new(Single(subst_no_ctx(arg, x))),
+        Concat(x, y) => Rc::new(Concat(subst_no_ctx(arg, x), subst_no_ctx(arg, y))),
+        If(p, i, t, e) => Rc::new(If(
+            subst_no_ctx(arg, p),
+            subst_no_ctx(arg, i),
+            subst_no_ctx(arg, t),
+            subst_no_ctx(arg, e),
+        )),
+        Switch(p, i, bs) => Rc::new(Switch(
+            subst_no_ctx(arg, p),
+            subst_no_ctx(arg, i),
+            bs.iter().map(|b| subst_no_ctx(arg, b)).collect(),
+        )),
+        DoWhile(i, pb) => Rc::new(DoWhile(subst_no_ctx(arg, i), subst_no_ctx(arg, pb))),
+        Function(n, tin, tout, b) => Rc::new(Function(
+            n.clone(),
+            tin.clone(),
+            tout.clone(),
+            subst_no_ctx(arg, b),
+        )),
+        Symbolic(s, ty) => Rc::new(Symbolic(s.clone(), ty.clone())),
+    }
+}
+
+#[allow(dead_code)]
+fn inline_once_in_expr(expr: &RcExpr, func_name_to_body: &IndexMap<String, RcExpr>) -> RcExpr {
+    use Expr::*;
+    match expr.as_ref() {
+        Call(name, args) => {
+            if let Some(body) = func_name_to_body.get(name) {
+                // Inline one level: substitute arg for Arg in callee's body
+                subst_no_ctx(args, body)
+            } else {
+                Rc::new(Call(
+                    name.clone(),
+                    inline_once_in_expr(args, func_name_to_body),
+                ))
+            }
+        }
+        Top(op, x, y, z) => Rc::new(Top(
+            op.clone(),
+            inline_once_in_expr(x, func_name_to_body),
+            inline_once_in_expr(y, func_name_to_body),
+            inline_once_in_expr(z, func_name_to_body),
+        )),
+        Bop(op, x, y) => Rc::new(Bop(
+            op.clone(),
+            inline_once_in_expr(x, func_name_to_body),
+            inline_once_in_expr(y, func_name_to_body),
+        )),
+        Uop(op, x) => Rc::new(Uop(op.clone(), inline_once_in_expr(x, func_name_to_body))),
+        Get(x, i) => Rc::new(Get(inline_once_in_expr(x, func_name_to_body), *i)),
+        Alloc(n, a, s, bt) => Rc::new(Alloc(
+            *n,
+            inline_once_in_expr(a, func_name_to_body),
+            inline_once_in_expr(s, func_name_to_body),
+            bt.clone(),
+        )),
+        Single(x) => Rc::new(Single(inline_once_in_expr(x, func_name_to_body))),
+        Concat(x, y) => Rc::new(Concat(
+            inline_once_in_expr(x, func_name_to_body),
+            inline_once_in_expr(y, func_name_to_body),
+        )),
+        If(p, i, t, e) => Rc::new(If(
+            inline_once_in_expr(p, func_name_to_body),
+            inline_once_in_expr(i, func_name_to_body),
+            inline_once_in_expr(t, func_name_to_body),
+            inline_once_in_expr(e, func_name_to_body),
+        )),
+        Switch(p, i, bs) => Rc::new(Switch(
+            inline_once_in_expr(p, func_name_to_body),
+            inline_once_in_expr(i, func_name_to_body),
+            bs.iter()
+                .map(|b| inline_once_in_expr(b, func_name_to_body))
+                .collect(),
+        )),
+        DoWhile(i, pb) => Rc::new(DoWhile(
+            inline_once_in_expr(i, func_name_to_body),
+            inline_once_in_expr(pb, func_name_to_body),
+        )),
+        Function(n, tin, tout, b) => Rc::new(Function(
+            n.clone(),
+            tin.clone(),
+            tout.clone(),
+            inline_once_in_expr(b, func_name_to_body),
+        )),
+        Const(_, _, _) | Empty(_, _) | Arg(_, _) | Symbolic(_, _) => expr.clone(),
+    }
+}
+
+#[allow(dead_code)]
+fn build_func_body_map(program: &TreeProgram) -> IndexMap<String, RcExpr> {
+    let mut map: IndexMap<String, RcExpr> = IndexMap::new();
+    let mut push_fn = |f: &RcExpr| {
+        let name = f
+            .func_name()
+            .expect("Function should have name for inlining");
+        let body = f.func_body().expect("Function should have body").clone();
+        map.insert(name, body);
+    };
+    push_fn(&program.entry);
+    for f in &program.functions {
+        push_fn(f);
+    }
+    map
+}
+
+pub fn inline_program(program: &TreeProgram, fns: Vec<String>, iterations: usize) -> TreeProgram {
+    if iterations == 0 || fns.is_empty() {
+        return program.clone();
+    }
+    let func_name_to_body = build_func_body_map(program);
+    let rewrite_fn = |func: &RcExpr| {
+        let name = func.func_name().unwrap();
+        let mut body = func.func_body().unwrap().clone();
+        if fns.contains(&name) {
+            for _ in 0..iterations {
+                // Inline one level per iteration
+                body = inline_once_in_expr(&body, &func_name_to_body);
+            }
+        }
+        Rc::new(Expr::Function(
+            name,
+            func.func_input_ty().unwrap(),
+            func.func_output_ty().unwrap(),
+            body,
+        ))
+    };
+
+    let entry = rewrite_fn(&program.entry);
+    let functions = program.functions.iter().map(|f| rewrite_fn(f)).collect();
+    TreeProgram { entry, functions }
 }
 
 // Check that function inling pairs produces the right number of pairs for

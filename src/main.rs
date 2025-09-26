@@ -79,6 +79,9 @@ struct Args {
 
     #[clap(long)]
     ablate: Option<String>,
+
+    #[clap(long)]
+    no_context: bool,
 }
 
 fn main() {
@@ -133,6 +136,7 @@ fn main() {
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
             ablate: args.ablate,
             ilp_extraction_test_timeout: args.ilp_extraction_test_timeout.map(Duration::from_secs),
+            use_context: !args.no_context,
         },
     };
 

@@ -854,7 +854,7 @@ impl Run {
             RunMode::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding();
-                let schedules = self.eggcc_config.schedule.get_schedule_list();
+                let schedules = self.eggcc_config.get_schedule_list();
 
                 // how many actual passes to run
                 let cutoff = self.eggcc_config.get_normalized_cutoff(schedules.len());

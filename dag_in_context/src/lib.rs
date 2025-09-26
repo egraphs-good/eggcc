@@ -17,7 +17,7 @@ use to_egglog::TreeToEgglog;
 
 use crate::{
     dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    schedule::parallel_schedule,
+    remove_context::remove_new_contexts, schedule::parallel_schedule,
 };
 
 pub mod add_context;
@@ -31,6 +31,7 @@ pub mod interpreter;
 pub(crate) mod interval_analysis;
 mod linearity;
 mod optimizations;
+mod remove_context;
 mod remove_dead_code_nodes;
 pub mod schema;
 pub mod schema_helpers;
@@ -263,6 +264,12 @@ pub fn build_program(
         (prologue, schedule.to_string())
     };
 
+    let prologue = if !use_context {
+        remove_new_contexts(&prologue)
+    } else {
+        prologue
+    };
+
     format!(
         "
 ; Prologue
@@ -336,14 +343,6 @@ pub enum Schedule {
     Parallel,
     Sequential,
 }
-impl Schedule {
-    pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
-        match self {
-            Schedule::Parallel => parallel_schedule(),
-            Schedule::Sequential => schedule::mk_sequential_schedule(),
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct EggccConfig {
@@ -388,6 +387,13 @@ impl Default for EggccTimeStatistics {
 }
 
 impl EggccConfig {
+    pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
+        match self.schedule {
+            Schedule::Parallel => parallel_schedule(),
+            Schedule::Sequential => schedule::mk_sequential_schedule(),
+        }
+    }
+
     pub fn get_normalized_cutoff(&self, schedule_len: usize) -> usize {
         if self.stop_after_n_passes < 0 {
             (schedule_len as i64 + self.stop_after_n_passes) as usize
@@ -423,7 +429,7 @@ pub fn optimize(
 ) -> std::result::Result<(TreeProgram, EggccTimeStatistics), egglog::Error> {
     let mut eggcc_serialization_time = Duration::from_millis(0);
     let mut eggcc_extraction_time = Duration::from_millis(0);
-    let schedule_list = eggcc_config.schedule.get_schedule_list();
+    let schedule_list = eggcc_config.get_schedule_list();
     let mut res = program.clone();
     let mut ilp_test_times = vec![];
 

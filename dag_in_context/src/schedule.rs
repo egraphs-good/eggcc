@@ -75,7 +75,7 @@ pub(crate) fn helpers() -> String {
     (saturate mem-simple)
 
     ;; cicm index
-    cicm-index
+    (saturate cicm-index)
 
     ;; TODO right now we don't run memory-helpers, we run mem-simple instead
 

@@ -1209,7 +1209,11 @@ impl CostModel for DefaultCostModel {
             // Leaves
             "Const" => 1.,
             "Arg" => 0.,
-            _ if op.parse::<i64>().is_ok() || op.parse::<f64>().is_ok() || op.parse::<bool>().is_ok() ||  op.starts_with('"') => {
+            _ if op.parse::<i64>().is_ok()
+                || op.parse::<f64>().is_ok()
+                || op.parse::<bool>().is_ok()
+                || op.starts_with('"') =>
+            {
                 0.
             }
             "true" | "false" | "()" => 0.,

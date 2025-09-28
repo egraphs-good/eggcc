@@ -97,5 +97,5 @@ cp "$NIGHTLY_DIR/log.txt" "$OUTPUT_DIR"
 # gzip all JSON and svgs in the nightly dir
 if [ "$LOCAL" == "" ]; then
   gzip "$OUTPUT_DIR/data/profile.json"
-  gzip "$OUTPUT_DIR/*.svg"
+  find "$OUTPUT_DIR" -name '*.svg' -exec gzip {} +
 fi

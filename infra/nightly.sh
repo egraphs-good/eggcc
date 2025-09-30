@@ -98,4 +98,5 @@ cp "$NIGHTLY_DIR/log.txt" "$OUTPUT_DIR"
 if [ "$LOCAL" == "" ]; then
   gzip "$OUTPUT_DIR/data/profile.json"
   find "$OUTPUT_DIR" -name '*.svg' -exec gzip {} +
+  find "$OUTPUT_DIR" -name '*.ll' -exec gzip {} +
 fi

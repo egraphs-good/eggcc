@@ -39,6 +39,7 @@
   (HasType inputs inputs-ty)
   (= outputs-len (tuple-length outputs))
   (= old_cost (LoopNumItersGuess inputs outputs))
+  (<= old_cost 5)
   )
  (
   (let executed-once
@@ -53,8 +54,9 @@
   (let new-loop-arg
     (Arg inputs-ty then-ctx))
   (let new-loop-body
-    (Subst (LoopPeeledPlaceholder lhs) new-loop-arg outputs))
-  (union (InLoop new-loop-arg new-loop-body) (LoopPeeledPlaceholder lhs))
+    (Subst (TmpCtx) new-loop-arg outputs))
+  (union (InLoop new-loop-arg new-loop-body) (TmpCtx))
+  (delete (TmpCtx))
 
   (union lhs
     ;; check if we need to continue executing the loop

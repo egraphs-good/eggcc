@@ -85,6 +85,7 @@ pub fn prologue() -> String {
         include_str!("optimizations/conditional_push_in.egg"),
         include_str!("utility/debug-helper.egg"),
         include_str!("optimizations/hackers_delight.egg"),
+        include_str!("optimizations/non_weakly_linear.egg"),
         &rulesets(),
     ]
     .join("\n")

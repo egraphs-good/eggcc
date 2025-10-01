@@ -224,6 +224,8 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
         {helpers}
         all-optimizations
     )
+    ;; non-weakly-linear optimizations once
+    non-weakly-linear
 
     (repeat 4
         {helpers}

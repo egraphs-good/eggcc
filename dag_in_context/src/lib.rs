@@ -331,14 +331,6 @@ pub enum Schedule {
     Parallel,
     Sequential,
 }
-impl Schedule {
-    pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
-        match self {
-            Schedule::Parallel => parallel_schedule(),
-            Schedule::Sequential => schedule::mk_sequential_schedule(),
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct EggccConfig {
@@ -355,6 +347,7 @@ pub struct EggccConfig {
     pub optimize_functions: Option<HashSet<String>>,
     pub ablate: Option<String>,
     pub ilp_extraction_test_timeout: Option<Duration>,
+    pub non_weakly_linear: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -382,6 +375,13 @@ impl Default for EggccTimeStatistics {
 }
 
 impl EggccConfig {
+    pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
+        match self.schedule {
+            Schedule::Parallel => parallel_schedule(self),
+            Schedule::Sequential => schedule::mk_sequential_schedule(),
+        }
+    }
+
     pub fn get_normalized_cutoff(&self, schedule_len: usize) -> usize {
         if self.stop_after_n_passes < 0 {
             (schedule_len as i64 + self.stop_after_n_passes) as usize
@@ -402,6 +402,7 @@ impl Default for EggccConfig {
             optimize_functions: None,
             ablate: None,
             ilp_extraction_test_timeout: None,
+            non_weakly_linear: false,
         }
     }
 }
@@ -416,7 +417,7 @@ pub fn optimize(
 ) -> std::result::Result<(TreeProgram, EggccTimeStatistics), egglog::Error> {
     let mut eggcc_serialization_time = Duration::from_millis(0);
     let mut eggcc_extraction_time = Duration::from_millis(0);
-    let schedule_list = eggcc_config.schedule.get_schedule_list();
+    let schedule_list = eggcc_config.get_schedule_list();
     let mut res = program.clone();
     let mut ilp_test_times = vec![];
 
@@ -656,7 +657,7 @@ fn egglog_test_internal(
     let program = format!(
         "{}\n{build}\n{}\n{check}\n",
         prologue(),
-        parallel_schedule()
+        parallel_schedule(&EggccConfig::default())
             .iter()
             .map(|pass| pass.egglog_schedule().to_string())
             .collect::<Vec<String>>()

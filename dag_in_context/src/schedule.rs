@@ -1,3 +1,5 @@
+use crate::EggccConfig;
+
 #[derive(Debug)]
 pub enum CompilerPass {
     // Run the given egglog schedule, then extract
@@ -185,7 +187,7 @@ pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
     res
 }
 
-pub fn parallel_schedule() -> Vec<CompilerPass> {
+pub fn parallel_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
     let helpers = helpers();
 
     vec![
@@ -225,7 +227,7 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
         all-optimizations
     )
     ;; non-weakly-linear optimizations once
-    non-weakly-linear
+        {}
 
     (repeat 4
         {helpers}
@@ -238,7 +240,12 @@ pub fn parallel_schedule() -> Vec<CompilerPass> {
       state-edge-passthrough)
     add-to-debug-expr
 )
-"
+",
+            if config.non_weakly_linear {
+                "non-weakly-linear"
+            } else {
+                ""
+            }
         )),
     ]
 }

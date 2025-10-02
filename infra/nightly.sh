@@ -66,7 +66,9 @@ mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$OUTPUT_DIR"
 
 # fetch and compile Egglog
 if [ ! -d $EGGLOG_DIR ]; then
-  EGGLOG_VERSION="0be495630546acffbd545ba60feb9302281ce95c"
+  # EGGLOG_VERSION="0be495630546acffbd545ba60feb9302281ce95c"
+  # TODO: DO NOT USE VERY OLD EGGLOG!!!
+  EGGLOG_VERSION="161a36f402b4b60d5457ce3979f10b4d95005d58"
   git clone --revision=$EGGLOG_VERSION git@github.com:egraphs-good/egglog.git "$EGGLOG_DIR"
   pushd "$EGGLOG_DIR"
   cargo build --release
@@ -76,7 +78,7 @@ fi
 
 # fetch and compile TIGER
 if [ ! -d $TIGER_DIR ]; then
-  TIGER_VERSION="0c0d798e7f2c7ecb83a01ebf272e3606befd460a"
+  TIGER_VERSION="fc88ef60d5c8f233b61862985b4cdc076c4770ea"
   git clone --revision=$TIGER git@github.com:FTRobbin/tiger-prototype.git "$TIGER_DIR"
   pushd "$TIGER_DIR"
   make all

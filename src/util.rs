@@ -863,6 +863,7 @@ impl Run {
                 let egglog = build_program(
                     &optimized,
                     inline_program,
+                    //inline_program,
                     &dag.fns(),
                     //&aggr_schedule,
                     last_schedule_step.egglog_schedule(),

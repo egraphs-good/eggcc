@@ -222,13 +222,13 @@ def run_tiger(benchmark):
   def time_command(cmd):
     cmd_with_time = f'time {cmd}'
     try:
-      process = subprocess.run(cmd_with_time, shell=True, capture_output=True, timeout=TIMEOUT, text=True)
+      process = subprocess.run(cmd_with_time, shell=True, capture_output=True, timeout=TIMEOUT)
       if process.returncode == 0:
         wctime = process.stderr.split()[-1]
         return float(wctime)
       else:
         return "EXCEPTION"
-    except:
+    except subprocess.TimeoutExpired:
       return "TIMEOUT"
   
   skipping=False
@@ -426,7 +426,8 @@ if __name__ == '__main__':
 
   compile_data = {}
   # get the number of cores on this machine 
-  parallelism = os.cpu_count()
+  # parallelism = os.cpu_count()
+  parallelism = 1
 
   # create a thread pool for running optimization
   with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:

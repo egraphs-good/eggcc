@@ -14,7 +14,7 @@ from generate_cfgs import make_cfgs
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
 # Tiger extractor specific first-phase timeout (seconds) when using --use-tiger
-TIGER_EXTRACT_TIMEOUT_SECS = int(os.environ.get("TIGER_EXTRACT_TIMEOUT_SECS", "600"))
+TIGER_EXTRACT_TIMEOUT_SECS = 0#10 * 60
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -412,12 +412,12 @@ if __name__ == '__main__':
   timed_out_paths = set()
   successful = {}
   for cpath, data in compile_data.items():
-    bench = cpath.split("/")[-2]
+    benche = cpath.split("/")[-2]
     mode = cpath.split("/")[-1]
     if data["timedOut"]:
       timed_out_paths.add(cpath)
     else:
-      successful.setdefault(bench, []).append(mode)
+      successful.setdefault(benche, []).append(mode)
 
   bench_data = {}
   if isParallelBenchmark:

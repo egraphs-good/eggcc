@@ -1,11 +1,11 @@
 //! State-walk search utilities for Tiger extractor.
 use crate::tiger_extractor_core::TigerExtractor;
 use crate::tiger_extractor_types::{ExtractableSet, RegionSubEGraph};
-use crate::tiger_format::{TigerEClass, TigerEGraph};
+use crate::tiger_format::TigerEClass;
 use egraph_serialize::ClassId;
 use indexmap::{IndexMap, IndexSet};
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap, VecDeque};
+use std::collections::{BinaryHeap, HashMap};
 
 impl<'a> TigerExtractor<'a> {
     pub fn build_state_walk(&self, root_cid: ClassId) -> Vec<ClassId> {
@@ -88,6 +88,7 @@ impl<'a> TigerExtractor<'a> {
         &self,
         rsub: &RegionSubEGraph,
     ) -> (Vec<(ClassId, usize)>, bool, IndexMap<ClassId, u32>) {
+        let _rsub = rsub; // silence unused if conditional compilation removes uses
         if rsub.region_to_orig.is_empty() {
             return (Vec::new(), false, IndexMap::new());
         }
@@ -178,7 +179,7 @@ impl<'a> TigerExtractor<'a> {
         }
         while let Some((Reverse((cost, len)), si)) = heap.pop() {
             // Take state snapshot
-            let (cur_region_idx, cur_cost, cur_len, cur_es, cur_parent) = {
+            let (cur_region_idx, cur_cost, cur_len, cur_es, _cur_parent) = {
                 let st = &rstates[si];
                 if st.cost != cost || st.len != len {
                     continue;
@@ -265,23 +266,25 @@ impl<'a> TigerExtractor<'a> {
         (path_rev, weak_linearity, wlcnt.into_iter().collect())
     }
 
+    #[allow(dead_code)]
     pub(crate) fn guided_find_state_walk_region(
         &self,
-        rsub: &RegionSubEGraph,
-    ) -> Vec<(ClassId, usize)> {
-        vec![]
+        _rsub: &RegionSubEGraph,
+    ) -> (Vec<(ClassId, usize)>, bool, IndexMap<ClassId, u32>) {
+        // Currently unused implementation placeholder retained for future use.
+        (Vec::new(), false, IndexMap::new())
     }
 
     pub fn analyze_state_walk_ordering(
         &self,
         sw: &[(ClassId, usize)],
-        rsub: Option<&RegionSubEGraph>,
+        _rsub: Option<&RegionSubEGraph>,
     ) -> Vec<ClassId> {
         // Work over either a region subgraph (if provided) or full tiger graph.
         // This mirrors C++ analyzeStateWalkOrdering: compute an ordering of pure eclasses
         // whose extraction readiness depends (transitively) on effectful nodes along the walk.
         let (eclasses, class_index): (Vec<&TigerEClass>, &IndexMap<ClassId, usize>) =
-            if let Some(rs) = rsub {
+            if let Some(rs) = _rsub {
                 (rs.egraph.eclasses.iter().collect(), &rs.egraph.class_index)
             } else {
                 (

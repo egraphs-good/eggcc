@@ -1,5 +1,5 @@
 use crate::tiger_format::{TigerEClass, TigerEGraph, TigerENode};
-use egraph_serialize::{ClassId, EGraph};
+use egraph_serialize::ClassId;
 use indexmap::{IndexMap, IndexSet};
 
 pub type ExtractableSet = Vec<bool>;

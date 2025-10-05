@@ -11,6 +11,12 @@ use indexmap::{IndexMap, IndexSet};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 
+#[allow(
+    clippy::type_complexity,
+    clippy::question_mark,
+    clippy::manual_filter,
+    clippy::manual_div_ceil
+)]
 impl<'a> TigerExtractor<'a> {
     // --- Basic helpers ---
     // build_state_walk, effectful_children, build_longest_state_walk moved to tiger_extractor_statewalk

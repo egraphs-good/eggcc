@@ -19,7 +19,7 @@ pub enum TigerReconstructError {
 }
 
 fn build_expr_from_extraction(
-    serialized: &EGraph,
+    _serialized: &EGraph,
     tiger: &TigerEGraph,
     extraction: &TigerExtraction,
 ) -> Result<RcExpr, TigerReconstructError> {
@@ -79,7 +79,7 @@ fn build_expr_from_extraction(
             // TODO: Inspect serialized original node to recover literal and context accurately.
             "Const" => {
                 // Try to peek at first child (constant constructor head) if present
-                let val = if let Some(first_child) = rc_children.get(0) {
+                let val = if let Some(first_child) = rc_children.first() {
                     // Heuristically pattern match on Debug formatting
                     let s = format!("{}", first_child.as_ref());
                     if s.contains("Bool true") {
@@ -241,7 +241,6 @@ fn build_expr_from_extraction(
                 })?;
                 Rc::new(Get(rc_children[0].clone(), idx))
             }
-            // ...existing code...
             other => return Err(TigerReconstructError::UnsupportedHead(other.to_string())),
         };
         built[idx] = Some(expr);

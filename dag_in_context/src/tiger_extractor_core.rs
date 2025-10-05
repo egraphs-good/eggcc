@@ -4,7 +4,7 @@ use crate::tiger_extractor_types::{
 };
 use crate::tiger_format::{build_tiger_egraph, TigerEGraph};
 use egraph_serialize::{ClassId, EGraph};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 
 /// Core Tiger extractor struct (split from monolithic implementation).
 pub struct TigerExtractor<'a> {
@@ -22,9 +22,6 @@ impl<'a> TigerExtractor<'a> {
 impl<'a> TigerExtractor<'a> {
     // Orchestrator kept here; methods it calls are defined across split modules.
     pub fn extract(&self, functions: &[String]) -> TigerExtractionResult {
-        use crate::tiger_extractor_types::RegionSubEGraph;
-        use crate::tiger_extractor_types::TigerExtractionENode; // not directly used but keeps parity
-        use std::collections::HashMap;
         let mut chosen_enodes: IndexMap<ClassId, usize> = IndexMap::new();
         let mut state_walks: IndexMap<ClassId, Vec<ClassId>> = IndexMap::new();
         let mut regions: IndexMap<ClassId, Vec<TigerRegion>> = IndexMap::new();

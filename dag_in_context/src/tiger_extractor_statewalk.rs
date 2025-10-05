@@ -68,23 +68,76 @@ impl<'a> TigerExtractor<'a> {
 
     // --- New: find argument (leaf effectful enode) inside a region egraph ---
     fn find_arg_in_region(&self, rsub: &RegionSubEGraph) -> Option<(usize, usize)> {
-        // Return (region_eclass_index, enode_index)
-        for (ri, ec) in rsub.egraph.eclasses.iter().enumerate() {
-            if ec.is_effectful {
-                for (en_i, en) in ec.enodes.iter().enumerate() {
-                    if en.children.is_empty() {
-                        return Some((ri, en_i));
+        // Heuristic parity improvement: pick deepest effectful leaf (no effectful children).
+        if rsub.egraph.eclasses.is_empty() {
+            return None;
+        }
+        let n = rsub.egraph.eclasses.len();
+        // Compute depth from root (index 0) along effectful edges.
+        let mut depth = vec![usize::MAX; n];
+        use std::collections::VecDeque;
+        let mut q = VecDeque::new();
+        depth[0] = 0;
+        q.push_back(0);
+        while let Some(u) = q.pop_front() {
+            let d = depth[u];
+            let ec = &rsub.egraph.eclasses[u];
+            for en in &ec.enodes {
+                for &ch in &en.children {
+                    if rsub.egraph.eclasses[ch].is_effectful {
+                        if depth[ch] == usize::MAX {
+                            depth[ch] = d + 1;
+                            q.push_back(ch);
+                        }
                     }
                 }
             }
         }
-        // Fallback: region root first enode
-        if !rsub.egraph.eclasses.is_empty() {
-            if !rsub.egraph.eclasses[0].enodes.is_empty() {
-                return Some((0, 0));
+        // Collect candidate (effectful eclass, enode) pairs that have no effectful child.
+        let mut candidates: Vec<(usize, usize)> = Vec::new();
+        for (ri, ec) in rsub.egraph.eclasses.iter().enumerate() {
+            if !ec.is_effectful {
+                continue;
+            }
+            for (en_i, en) in ec.enodes.iter().enumerate() {
+                let mut has_eff_child = false;
+                for &ch in &en.children {
+                    if rsub.egraph.eclasses[ch].is_effectful {
+                        has_eff_child = true;
+                        break;
+                    }
+                }
+                if !has_eff_child {
+                    candidates.push((ri, en_i));
+                }
             }
         }
-        None
+        if candidates.is_empty() {
+            // Fallback to previous simple scan
+            for (ri, ec) in rsub.egraph.eclasses.iter().enumerate() {
+                if ec.is_effectful {
+                    if !ec.enodes.is_empty() {
+                        return Some((ri, 0));
+                    }
+                }
+            }
+            return None;
+        }
+        candidates.sort_by(|&(a_ec, a_en), &(b_ec, b_en)| {
+            // Depth: larger is better (reverse order), so compare b then a.
+            let da = depth[a_ec];
+            let db = depth[b_ec];
+            db.cmp(&da)
+                .then_with(|| {
+                    // Cost tie-break: smaller subregion cost better.
+                    let ca = rsub.n_subregion[a_ec][a_en];
+                    let cb = rsub.n_subregion[b_ec][b_en];
+                    ca.cmp(&cb)
+                })
+                .then_with(|| rsub.region_to_orig[a_ec].cmp(&rsub.region_to_orig[b_ec]))
+                .then_with(|| a_en.cmp(&b_en))
+        });
+        Some(candidates[0])
     }
 
     // --- Reimplemented unguided state-walk search (C++ parity) ---
@@ -309,12 +362,13 @@ impl<'a> TigerExtractor<'a> {
                 let mut best = usize::MAX;
                 for (en_i, en) in ec.enodes.iter().enumerate() {
                     let add = rsub.n_subregion[i][en_i]
-                        + en
-                            .children
+                        + en.children
                             .iter()
                             .filter(|&&ch| !rsub.egraph.eclasses[ch].is_effectful)
                             .count();
-                    if add < best { best = add; }
+                    if add < best {
+                        best = add;
+                    }
                 }
                 min_enode_cost[i] = if best == usize::MAX { 0 } else { best };
             }
@@ -347,35 +401,61 @@ impl<'a> TigerExtractor<'a> {
                                 < b.classes.iter().map(|(c, _)| c).collect::<Vec<_>>())
                 }
             };
-            if better { best = Some(path.clone()); }
+            if better {
+                best = Some(path.clone());
+            }
             let (last_cid, last_en) = path.classes.last().unwrap();
             let last_idx = rsub.egraph.class_index[last_cid];
             let last_ec = &rsub.egraph.eclasses[last_idx];
             let chosen = &last_ec.enodes[*last_en];
             // Gather effectful children and order by heuristic (min future enode cost), then lex id.
-            let mut eff_children: Vec<usize> = chosen.children.iter().copied().filter(|&ch| rsub.egraph.eclasses[ch].is_effectful).collect();
+            let mut eff_children: Vec<usize> = chosen
+                .children
+                .iter()
+                .copied()
+                .filter(|&ch| rsub.egraph.eclasses[ch].is_effectful)
+                .collect();
             eff_children.sort_by(|&a, &b| {
-                min_enode_cost[a]
-                    .cmp(&min_enode_cost[b])
-                    .then_with(|| rsub.egraph.eclasses[a].original.cmp(&rsub.egraph.eclasses[b].original))
+                min_enode_cost[a].cmp(&min_enode_cost[b]).then_with(|| {
+                    rsub.egraph.eclasses[a]
+                        .original
+                        .cmp(&rsub.egraph.eclasses[b].original)
+                })
             });
-            if eff_children.is_empty() { continue; }
+            if eff_children.is_empty() {
+                continue;
+            }
             for child_idx in eff_children {
                 let child_cid = rsub.egraph.eclasses[child_idx].original.clone();
-                if path.classes.iter().any(|(c, _)| *c == child_cid) { continue; }
+                if path.classes.iter().any(|(c, _)| *c == child_cid) {
+                    continue;
+                }
                 let child_ec = &rsub.egraph.eclasses[child_idx];
                 // Push only the cheapest enode first; others deferred after discovering longer path candidates.
                 // Collect enodes sorted by (local add cost, enode index) to mimic greedy heuristic.
-                let mut cenodes: Vec<(usize, usize)> = child_ec.enodes.iter().enumerate().map(|(cen_i, cen)| {
-                    let add = rsub.n_subregion[child_idx][cen_i]
-                        + cen.children.iter().filter(|&&ch| !rsub.egraph.eclasses[ch].is_effectful).count();
-                    (add, cen_i)
-                }).collect();
+                let mut cenodes: Vec<(usize, usize)> = child_ec
+                    .enodes
+                    .iter()
+                    .enumerate()
+                    .map(|(cen_i, cen)| {
+                        let add = rsub.n_subregion[child_idx][cen_i]
+                            + cen
+                                .children
+                                .iter()
+                                .filter(|&&ch| !rsub.egraph.eclasses[ch].is_effectful)
+                                .count();
+                        (add, cen_i)
+                    })
+                    .collect();
                 cenodes.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
                 for (add_cost, cen_i) in cenodes.into_iter() {
                     let mut new_path = path.classes.clone();
                     new_path.push((child_cid.clone(), cen_i));
-                    heap.push(Ranked(Path { len: path.len + 1, cost: path.cost + add_cost, classes: new_path }));
+                    heap.push(Ranked(Path {
+                        len: path.len + 1,
+                        cost: path.cost + add_cost,
+                        classes: new_path,
+                    }));
                 }
             }
         }

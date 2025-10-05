@@ -35,13 +35,19 @@ impl<'a> TigerExtractor<'a> {
         let mut weak_linearity_excess: IndexMap<ClassId, usize> = IndexMap::new();
         let mut weak_linearity_violation: IndexMap<ClassId, bool> = IndexMap::new();
         let mut weak_linearity_counts: IndexMap<ClassId, IndexMap<ClassId, u32>> = IndexMap::new();
+        let mut state_walk_pure_ordering: IndexMap<ClassId, Vec<ClassId>> = IndexMap::new();
         let mut debug_lines: Vec<String> = Vec::new();
 
         for func in functions {
             if let Some(root_body) = self.function_body_root(func) {
                 let mut used_strategy = String::new();
                 let mut wl_flag = false;
-                let mut best: Option<(TigerExtraction, Vec<ClassId>, Vec<(ClassId, usize)>, IndexMap<ClassId, u32>)> = None;
+                let mut best: Option<(
+                    TigerExtraction,
+                    Vec<ClassId>,
+                    Vec<(ClassId, usize)>,
+                    IndexMap<ClassId, u32>,
+                )> = None;
                 if let Some((ex, walk, guided, wl, wlcounts)) =
                     self.advanced_recursive_multi_region_extraction(&root_body)
                 {
@@ -66,7 +72,12 @@ impl<'a> TigerExtractor<'a> {
                 } else {
                     used_strategy = "fallback-naive".into();
                     let walk_ids = self.build_state_walk(root_body.clone());
-                    (self.naive_extraction(&root_body), walk_ids, Vec::new(), IndexMap::new())
+                    (
+                        self.naive_extraction(&root_body),
+                        walk_ids,
+                        Vec::new(),
+                        IndexMap::new(),
+                    )
                 };
                 let lin_ok = self.region_linearity_check(&extraction)
                     && self.valid_extraction(&extraction, &root_body);
@@ -83,12 +94,26 @@ impl<'a> TigerExtractor<'a> {
                     .saturating_sub(state_walks[&root_body].len());
                 weak_linearity_excess.insert(root_body.clone(), excess);
                 weak_linearity_violation.insert(root_body.clone(), wl_flag || excess > 0);
-                let (rs, rs_stats) = self.build_regions_for_walk(&state_walks[&root_body]);
+                let (rs, rs_stats) = if !guided_pairs.is_empty() {
+                    self.build_regions_for_walk_with_pairs(&guided_pairs)
+                } else {
+                    let walk_pairs_tmp: Vec<(ClassId, usize)> =
+                        walk_ids.iter().map(|c| (c.clone(), 0usize)).collect();
+                    self.build_regions_for_walk_with_pairs(&walk_pairs_tmp)
+                };
                 regions.insert(root_body.clone(), rs);
                 region_stats.insert(root_body.clone(), rs_stats);
                 extractions.insert(root_body.clone(), extraction.clone());
                 linearity_ok.insert(root_body.clone(), lin_ok);
                 weak_linearity_counts.insert(root_body.clone(), wlcounts);
+                // Derive pure ordering diagnostic (use guided if available else unguided walk mapping with dummy enode index 0)
+                let walk_pairs: Vec<(ClassId, usize)> = if !guided_pairs.is_empty() {
+                    guided_pairs.clone()
+                } else {
+                    walk_ids.iter().map(|c| (c.clone(), 0usize)).collect()
+                };
+                let pure_ord = self.analyze_state_walk_ordering(&walk_pairs, None);
+                state_walk_pure_ordering.insert(root_body.clone(), pure_ord);
                 debug_lines.push(format!(
                     "func={} strategy={} lin_ok={} wl_violation={} excess={} regions={} nodes={}",
                     func,
@@ -113,6 +138,7 @@ impl<'a> TigerExtractor<'a> {
             weak_linearity_excess,
             weak_linearity_violation,
             weak_linearity_counts,
+            state_walk_pure_ordering,
         }
     }
 }

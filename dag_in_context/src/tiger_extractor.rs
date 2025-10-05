@@ -62,10 +62,21 @@ impl<'a> TigerExtractor<'a> {
                     acc.insert(*v);
                 }
                 *remain -= 1;
-                if *remain == 0 && (dis[p_ec].is_empty() || acc.len() < dis[p_ec].len()) {
-                    dis[p_ec] = acc.clone();
-                    pick[p_ec] = Some(p_en);
-                    heap.push(Reverse((dis[p_ec].len(), p_ec)));
+                if *remain == 0 {
+                    let new_len = acc.len();
+                    let better = dis[p_ec].is_empty()
+                        || new_len < dis[p_ec].len()
+                        || (new_len == dis[p_ec].len()
+                            && match (pick[p_ec], Some(p_en)) {
+                                (None, _) => true,
+                                (Some(old_en), Some(ne)) => ne < old_en,
+                                _ => false,
+                            });
+                    if better {
+                        dis[p_ec] = acc.clone();
+                        pick[p_ec] = Some(p_en);
+                        heap.push(Reverse((dis[p_ec].len(), p_ec)));
+                    }
                 }
             }
         }
@@ -510,6 +521,91 @@ impl<'a> TigerExtractor<'a> {
         }
         (regions, stats)
     }
+    pub fn build_regions_for_walk_with_pairs(
+        &self,
+        walk_pairs: &[(ClassId, usize)],
+    ) -> (Vec<TigerRegion>, Vec<TigerRegionStats>) {
+        if walk_pairs.is_empty() {
+            return (Vec::new(), Vec::new());
+        }
+        use std::collections::HashMap;
+        let mut enode_map: HashMap<ClassId, usize> = HashMap::new();
+        for (cid, en_i) in walk_pairs {
+            enode_map.insert(cid.clone(), *en_i);
+        }
+        let walk: Vec<ClassId> = walk_pairs.iter().map(|(c, _)| c.clone()).collect();
+        let mut regions = Vec::new();
+        let mut stats = Vec::new();
+        for (i, anchor) in walk.iter().enumerate() {
+            let next = walk.get(i + 1).cloned();
+            let mut members: IndexSet<ClassId> = IndexSet::new();
+            let mut q = VecDeque::new();
+            members.insert(anchor.clone());
+            q.push_back(anchor.clone());
+            while let Some(cur) = q.pop_front() {
+                let t_idx = match self.tiger.class_index.get(&cur) {
+                    Some(v) => *v,
+                    None => continue,
+                };
+                let tec = &self.tiger.eclasses[t_idx];
+                // Only consider the chosen enode for anchors if provided, otherwise all enodes.
+                let chosen_filter = enode_map.get(&cur).copied();
+                for (en_i, en) in tec.enodes.iter().enumerate() {
+                    if let Some(cf) = chosen_filter {
+                        if tec.is_effectful && en_i != cf {
+                            continue;
+                        }
+                    }
+                    let mut seen_eff = false;
+                    for &ch_ti in &en.children {
+                        let ch_ec = &self.tiger.eclasses[ch_ti];
+                        let ch_cid = ch_ec.original.clone();
+                        if ch_ec.is_effectful {
+                            // Permit traversal only along the state edge toward next anchor when present.
+                            if Some(&ch_cid) == next.as_ref() {
+                                members.insert(ch_cid);
+                            } else if !seen_eff {
+                                // This is the state edge if next is None or mismatch (terminal or divergence)
+                                seen_eff = true;
+                                if !members.contains(&ch_cid) {
+                                    members.insert(ch_cid.clone());
+                                    q.push_back(ch_cid);
+                                }
+                            }
+                        } else if !members.contains(&ch_cid) {
+                            members.insert(ch_cid.clone());
+                            q.push_back(ch_cid);
+                        }
+                    }
+                }
+            }
+            let (mut total, mut eff_en, mut pure_en) = (0, 0, 0);
+            for cid in &members {
+                if let Some(&ti) = self.tiger.class_index.get(cid) {
+                    let ec = &self.tiger.eclasses[ti];
+                    for _ in &ec.enodes {
+                        total += 1;
+                        if ec.is_effectful {
+                            eff_en += 1;
+                        } else {
+                            pure_en += 1;
+                        }
+                    }
+                }
+            }
+            regions.push(TigerRegion {
+                anchor: anchor.clone(),
+                next_anchor: next.clone(),
+                members: members.clone(),
+            });
+            stats.push(TigerRegionStats {
+                total_enodes: total,
+                effectful_enodes: eff_en,
+                pure_enodes: pure_en,
+            });
+        }
+        (regions, stats)
+    }
 
     // --- Walk-constrained extraction ---
     pub fn region_extraction_with_state_walk(
@@ -604,7 +700,7 @@ impl<'a> TigerExtractor<'a> {
             eclasses: new_classes,
             class_index,
         };
-        // SCost extraction on reconstructed graph
+        // SCost extraction on reconstructed graph with deterministic tie-break on enode index
         let n = g.eclasses.len();
         let mut dis: Vec<IndexSet<usize>> = vec![IndexSet::new(); n];
         let mut pick: Vec<Option<usize>> = vec![None; n];
@@ -644,10 +740,21 @@ impl<'a> TigerExtractor<'a> {
                     acc.insert(*v);
                 }
                 *rem -= 1;
-                if *rem == 0 && (dis[p_ec].is_empty() || acc.len() < dis[p_ec].len()) {
-                    dis[p_ec] = acc.clone();
-                    pick[p_ec] = Some(p_en);
-                    heap.push(Reverse((dis[p_ec].len(), p_ec)));
+                if *rem == 0 {
+                    let new_len = acc.len();
+                    let better = dis[p_ec].is_empty()
+                        || new_len < dis[p_ec].len()
+                        || (new_len == dis[p_ec].len()
+                            && match (pick[p_ec], Some(p_en)) {
+                                (None, _) => true,
+                                (Some(old_en), Some(ne)) => ne < old_en,
+                                _ => false,
+                            });
+                    if better {
+                        dis[p_ec] = acc.clone();
+                        pick[p_ec] = Some(p_en);
+                        heap.push(Reverse((dis[p_ec].len(), p_ec)));
+                    }
                 }
             }
         }

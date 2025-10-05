@@ -207,4 +207,5 @@ pub struct TigerExtractionResult {
     pub weak_linearity_excess: IndexMap<ClassId, usize>,
     pub weak_linearity_violation: IndexMap<ClassId, bool>,
     pub weak_linearity_counts: IndexMap<ClassId, IndexMap<ClassId, u32>>,
+    pub state_walk_pure_ordering: IndexMap<ClassId, Vec<ClassId>>,
 }

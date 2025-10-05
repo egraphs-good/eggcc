@@ -13,6 +13,8 @@ from generate_cfgs import make_cfgs
 
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
+# Tiger extractor specific first-phase timeout (seconds) when using --use-tiger
+TIGER_EXTRACT_TIMEOUT_SECS = int(os.environ.get("TIGER_EXTRACT_TIMEOUT_SECS", "600"))
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -50,7 +52,8 @@ treatments = [
   "llvm-O3-O3",
   "llvm-eggcc-O3-O0",
   "llvm-eggcc-O3-O3",
-  "eggcc-ILP-O0-O0"
+  "eggcc-ILP-O0-O0",
+  "llvm-eggcc-tiger-O0-O0",
 ]
 
 if TO_ABLATE != "":
@@ -59,8 +62,6 @@ if TO_ABLATE != "":
     "llvm-eggcc-ablation-O3-O0",
     "llvm-eggcc-ablation-O3-O3",
   ])
-
-TIMEOUT_SECS = 0
 
 # Where to output files that are needed for nightly report
 DATA_DIR = None
@@ -105,6 +106,8 @@ def get_eggcc_options(benchmark):
     case "eggcc-ILP-O0-O0":
       # run with the ilp-extraction-timeout flag
       return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-tiger-O0-O0":
+      return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -151,7 +154,10 @@ def optimize(benchmark):
 
   timed_out = False
   try:
-    process = subprocess.run(cmd1, shell=True, capture_output=True, text=True, timeout=TIMEOUT_SECS)
+    if "--use-tiger" in eggcc_run_mode:
+      process = subprocess.run(cmd1, shell=True, capture_output=True, text=True, timeout=TIGER_EXTRACT_TIMEOUT_SECS)
+    else:
+      process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
   except subprocess.TimeoutExpired:
     timed_out = True
     process = None
@@ -211,9 +217,10 @@ def optimize(benchmark):
 
 def take_sample(cmd, benchmark):
   try:
-    result = subprocess.run(cmd, capture_output=True, shell=True, timeout=TIMEOUT_SECS)
+    # (No timeout for benchmark sample execution; extraction already constrained if tiger)
+    result = subprocess.run(cmd, capture_output=True, shell=True)
   except subprocess.TimeoutExpired:
-    raise Exception(f'Timeout ({TIMEOUT_SECS}s) executing benchmark sample for {benchmark.name} {benchmark.treatment}: {cmd}')
+    raise Exception(f'Timeout executing benchmark sample for {benchmark.name} {benchmark.treatment}: {cmd}')
   if result.returncode != 0:
     raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {result.stderr}')
   return int(result.stderr)

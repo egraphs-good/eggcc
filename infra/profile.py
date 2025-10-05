@@ -13,8 +13,8 @@ from generate_cfgs import make_cfgs
 
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
-# Tiger extractor specific first-phase timeout (seconds) when using --use-tiger
-TIGER_EXTRACT_TIMEOUT_SECS = 0#10 * 60
+# Tiger timeout (seconds) when using --use-tiger
+TIGER_RUN_TIMEOUT_SECS = 10 * 60 # 10 minutes
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -155,7 +155,7 @@ def optimize(benchmark):
   timed_out = False
   try:
     if "--use-tiger" in eggcc_run_mode:
-      process = subprocess.run(cmd1, shell=True, capture_output=True, text=True, timeout=TIGER_EXTRACT_TIMEOUT_SECS)
+      process = subprocess.run(cmd1, shell=True, capture_output=True, text=True, timeout=TIGER_RUN_TIMEOUT_SECS)
     else:
       process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
   except subprocess.TimeoutExpired:

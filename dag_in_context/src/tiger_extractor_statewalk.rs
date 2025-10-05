@@ -66,78 +66,21 @@ impl<'a> TigerExtractor<'a> {
         }
     }
 
-    // --- New: find argument (leaf effectful enode) inside a region egraph ---
+    // --- find argument (leaf effectful enode) inside a region egraph (C++ parity) ---
     fn find_arg_in_region(&self, rsub: &RegionSubEGraph) -> Option<(usize, usize)> {
-        // Heuristic parity improvement: pick deepest effectful leaf (no effectful children).
-        if rsub.egraph.eclasses.is_empty() {
-            return None;
-        }
-        let n = rsub.egraph.eclasses.len();
-        // Compute depth from root (index 0) along effectful edges.
-        let mut depth = vec![usize::MAX; n];
-        use std::collections::VecDeque;
-        let mut q = VecDeque::new();
-        depth[0] = 0;
-        q.push_back(0);
-        while let Some(u) = q.pop_front() {
-            let d = depth[u];
-            let ec = &rsub.egraph.eclasses[u];
-            for en in &ec.enodes {
-                for &ch in &en.children {
-                    if rsub.egraph.eclasses[ch].is_effectful {
-                        if depth[ch] == usize::MAX {
-                            depth[ch] = d + 1;
-                            q.push_back(ch);
-                        }
-                    }
-                }
-            }
-        }
-        // Collect candidate (effectful eclass, enode) pairs that have no effectful child.
-        let mut candidates: Vec<(usize, usize)> = Vec::new();
+        // C++ findArg: first effectful eclass containing an enode with zero children.
+        // Iterate region eclasses in order and pick the first such enode.
         for (ri, ec) in rsub.egraph.eclasses.iter().enumerate() {
             if !ec.is_effectful {
                 continue;
             }
             for (en_i, en) in ec.enodes.iter().enumerate() {
-                let mut has_eff_child = false;
-                for &ch in &en.children {
-                    if rsub.egraph.eclasses[ch].is_effectful {
-                        has_eff_child = true;
-                        break;
-                    }
-                }
-                if !has_eff_child {
-                    candidates.push((ri, en_i));
+                if en.children.is_empty() {
+                    return Some((ri, en_i));
                 }
             }
         }
-        if candidates.is_empty() {
-            // Fallback to previous simple scan
-            for (ri, ec) in rsub.egraph.eclasses.iter().enumerate() {
-                if ec.is_effectful {
-                    if !ec.enodes.is_empty() {
-                        return Some((ri, 0));
-                    }
-                }
-            }
-            return None;
-        }
-        candidates.sort_by(|&(a_ec, a_en), &(b_ec, b_en)| {
-            // Depth: larger is better (reverse order), so compare b then a.
-            let da = depth[a_ec];
-            let db = depth[b_ec];
-            db.cmp(&da)
-                .then_with(|| {
-                    // Cost tie-break: smaller subregion cost better.
-                    let ca = rsub.n_subregion[a_ec][a_en];
-                    let cb = rsub.n_subregion[b_ec][b_en];
-                    ca.cmp(&cb)
-                })
-                .then_with(|| rsub.region_to_orig[a_ec].cmp(&rsub.region_to_orig[b_ec]))
-                .then_with(|| a_en.cmp(&b_en))
-        });
-        Some(candidates[0])
+        None
     }
 
     // --- Reimplemented unguided state-walk search (C++ parity) ---
@@ -326,140 +269,7 @@ impl<'a> TigerExtractor<'a> {
         &self,
         rsub: &RegionSubEGraph,
     ) -> Vec<(ClassId, usize)> {
-        if rsub.region_to_orig.is_empty() {
-            return vec![];
-        }
-        #[derive(Clone, Eq, PartialEq)]
-        struct Path {
-            classes: Vec<(ClassId, usize)>,
-            len: usize,
-            cost: usize,
-        }
-        #[derive(Eq, PartialEq)]
-        struct Ranked(Path);
-        impl Ord for Ranked {
-            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                self.0
-                    .len
-                    .cmp(&other.0.len)
-                    .then_with(|| other.0.cost.cmp(&self.0.cost))
-                    .then_with(|| {
-                        let a: Vec<&ClassId> = self.0.classes.iter().map(|(c, _)| c).collect();
-                        let b: Vec<&ClassId> = other.0.classes.iter().map(|(c, _)| c).collect();
-                        a.cmp(&b)
-                    })
-            }
-        }
-        impl PartialOrd for Ranked {
-            fn partial_cmp(&self, o: &Self) -> Option<std::cmp::Ordering> {
-                Some(self.cmp(o))
-            }
-        }
-        // Precompute a heuristic: minimal per-effectful-class enode cost (subregion + pure children)
-        let mut min_enode_cost: Vec<usize> = vec![0; rsub.egraph.eclasses.len()];
-        for (i, ec) in rsub.egraph.eclasses.iter().enumerate() {
-            if ec.is_effectful {
-                let mut best = usize::MAX;
-                for (en_i, en) in ec.enodes.iter().enumerate() {
-                    let add = rsub.n_subregion[i][en_i]
-                        + en.children
-                            .iter()
-                            .filter(|&&ch| !rsub.egraph.eclasses[ch].is_effectful)
-                            .count();
-                    if add < best {
-                        best = add;
-                    }
-                }
-                min_enode_cost[i] = if best == usize::MAX { 0 } else { best };
-            }
-        }
-        let mut best: Option<Path> = None;
-        let mut heap: BinaryHeap<Ranked> = BinaryHeap::new();
-        let root_cid = rsub.region_to_orig[0].clone();
-        let root_ec = &rsub.egraph.eclasses[0];
-        for (en_i, en) in root_ec.enodes.iter().enumerate() {
-            let cost_local = rsub.n_subregion[0][en_i]
-                + en.children
-                    .iter()
-                    .filter(|&&ch| !rsub.egraph.eclasses[ch].is_effectful)
-                    .count();
-            heap.push(Ranked(Path {
-                classes: vec![(root_cid.clone(), en_i)],
-                len: 1,
-                cost: cost_local,
-            }));
-        }
-        while let Some(Ranked(path)) = heap.pop() {
-            let better = match &best {
-                None => true,
-                Some(b) => {
-                    path.len > b.len
-                        || (path.len == b.len && path.cost < b.cost)
-                        || (path.len == b.len
-                            && path.cost == b.cost
-                            && path.classes.iter().map(|(c, _)| c).collect::<Vec<_>>()
-                                < b.classes.iter().map(|(c, _)| c).collect::<Vec<_>>())
-                }
-            };
-            if better {
-                best = Some(path.clone());
-            }
-            let (last_cid, last_en) = path.classes.last().unwrap();
-            let last_idx = rsub.egraph.class_index[last_cid];
-            let last_ec = &rsub.egraph.eclasses[last_idx];
-            let chosen = &last_ec.enodes[*last_en];
-            // Gather effectful children and order by heuristic (min future enode cost), then lex id.
-            let mut eff_children: Vec<usize> = chosen
-                .children
-                .iter()
-                .copied()
-                .filter(|&ch| rsub.egraph.eclasses[ch].is_effectful)
-                .collect();
-            eff_children.sort_by(|&a, &b| {
-                min_enode_cost[a].cmp(&min_enode_cost[b]).then_with(|| {
-                    rsub.egraph.eclasses[a]
-                        .original
-                        .cmp(&rsub.egraph.eclasses[b].original)
-                })
-            });
-            if eff_children.is_empty() {
-                continue;
-            }
-            for child_idx in eff_children {
-                let child_cid = rsub.egraph.eclasses[child_idx].original.clone();
-                if path.classes.iter().any(|(c, _)| *c == child_cid) {
-                    continue;
-                }
-                let child_ec = &rsub.egraph.eclasses[child_idx];
-                // Push only the cheapest enode first; others deferred after discovering longer path candidates.
-                // Collect enodes sorted by (local add cost, enode index) to mimic greedy heuristic.
-                let mut cenodes: Vec<(usize, usize)> = child_ec
-                    .enodes
-                    .iter()
-                    .enumerate()
-                    .map(|(cen_i, cen)| {
-                        let add = rsub.n_subregion[child_idx][cen_i]
-                            + cen
-                                .children
-                                .iter()
-                                .filter(|&&ch| !rsub.egraph.eclasses[ch].is_effectful)
-                                .count();
-                        (add, cen_i)
-                    })
-                    .collect();
-                cenodes.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
-                for (add_cost, cen_i) in cenodes.into_iter() {
-                    let mut new_path = path.classes.clone();
-                    new_path.push((child_cid.clone(), cen_i));
-                    heap.push(Ranked(Path {
-                        len: path.len + 1,
-                        cost: path.cost + add_cost,
-                        classes: new_path,
-                    }));
-                }
-            }
-        }
-        best.map(|p| p.classes).unwrap_or_default()
+        vec![]
     }
 
     pub fn analyze_state_walk_ordering(

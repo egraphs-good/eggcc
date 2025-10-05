@@ -43,6 +43,7 @@ pub mod extractiongymfastergreedydag;
 pub mod fastercbcextractor;
 pub mod pretty_print;
 pub mod schedule;
+mod tiger_format;
 
 pub type Result = std::result::Result<(), MainError>;
 
@@ -348,6 +349,8 @@ pub struct EggccConfig {
     pub ablate: Option<String>,
     pub ilp_extraction_test_timeout: Option<Duration>,
     pub non_weakly_linear: bool,
+    /// If true, use the experimental tiger extractor format output instead of greedy extractor.
+    pub use_tiger: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -403,6 +406,7 @@ impl Default for EggccConfig {
             ablate: None,
             ilp_extraction_test_timeout: None,
             non_weakly_linear: false,
+            use_tiger: false,
         }
     }
 }
@@ -484,16 +488,36 @@ pub fn optimize(
                     "Program has debug expressions, extracting them instead of original program."
                 );
             }
-            let (_res_cost, iter_result) = extract(
-                &res,
-                batch.clone(),
-                serialized.clone(),
-                unextractables.clone(),
-                &mut termdag,
-                DefaultCostModel,
-                should_maintain_linearity,
-                has_debug_exprs,
-            );
+            let (_res_cost, iter_result) = if eggcc_config.use_tiger {
+                // tiger mode currently just builds the tiger graph; placeholder for future extraction
+                let tiger_graph = crate::tiger_format::build_tiger_egraph(&serialized);
+                eprintln!(
+                    "Tiger graph built ({} eclasses)",
+                    tiger_graph.eclasses.len()
+                );
+                // fall back to greedy extract result so pipeline continues
+                extract(
+                    &res,
+                    batch.clone(),
+                    serialized.clone(),
+                    unextractables.clone(),
+                    &mut termdag,
+                    DefaultCostModel,
+                    should_maintain_linearity,
+                    has_debug_exprs,
+                )
+            } else {
+                extract(
+                    &res,
+                    batch.clone(),
+                    serialized.clone(),
+                    unextractables.clone(),
+                    &mut termdag,
+                    DefaultCostModel,
+                    should_maintain_linearity,
+                    has_debug_exprs,
+                )
+            };
 
             let extraction_end = Instant::now();
 

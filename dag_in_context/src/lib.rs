@@ -45,6 +45,7 @@ pub mod pretty_print;
 pub mod schedule;
 pub mod tiger_extractor;
 pub mod tiger_extractor_core;
+pub mod tiger_extractor_statewalk;
 pub mod tiger_extractor_types;
 mod tiger_format;
 

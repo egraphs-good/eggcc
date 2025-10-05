@@ -13,16 +13,10 @@ use indexmap::{IndexMap, IndexSet};
 /// the prototype algorithms.
 #[derive(Debug, Clone)]
 pub struct TigerENode {
-    /// An operator / head string (currently just the node op; the C++ version
-    /// sometimes bakes in extra disambiguation info – we can extend later).
     pub head: String,
-    /// The ID (index) of the containing class in the tiger vector (not the original ClassId).
     pub eclass_idx: usize,
-    /// Children are indices of tiger eclasses (not original ClassIds).
     pub children: Vec<usize>,
-    /// Original class id for back reference.
     pub original_class: ClassId,
-    /// Original node id (useful for mapping back into the serialized egraph).
     pub original_node: NodeId,
 }
 
@@ -61,12 +55,85 @@ pub fn default_is_effectful(egraph: &EGraph, cid: &ClassId) -> bool {
         .unwrap_or(false)
 }
 
+/// Perform a simple fixpoint over type nodes to discover effectful types, then
+/// mark expression nodes whose children reference an effectful type.
+pub fn analyze_effectful_expr_eclasses(egraph: &EGraph) -> IndexSet<ClassId> {
+    // 1. Identify type eclasses and build adjacency (type parent -> type children)
+    let mut type_children: IndexMap<ClassId, IndexSet<ClassId>> = IndexMap::new();
+    let mut all_type_classes: IndexSet<ClassId> = IndexSet::new();
+    for (cid, class) in egraph.classes() {
+        let sort = egraph.class_data[cid].typ.as_deref().unwrap_or("");
+        if sort == "Type" {
+            all_type_classes.insert(cid.clone());
+        }
+        if sort == "Type" {
+            let mut kids = IndexSet::new();
+            for nid in &class.nodes {
+                let node = &egraph[nid];
+                for ch in &node.children {
+                    let cc = egraph.nid_to_cid(ch).clone();
+                    kids.insert(cc);
+                }
+            }
+            type_children.insert(cid.clone(), kids);
+        }
+    }
+    // 2. Seed effectful types: any type eclass containing an op with substring "State"
+    let mut is_effectful_type: IndexSet<ClassId> = IndexSet::new();
+    for cid in &all_type_classes {
+        let class = &egraph.classes()[cid];
+        if class
+            .nodes
+            .iter()
+            .any(|nid| egraph[nid].op.contains("State"))
+        {
+            is_effectful_type.insert(cid.clone());
+        }
+    }
+    // 3. Propagate: if a type has any child effectful type => it is effectful
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for cid in &all_type_classes {
+            if is_effectful_type.contains(cid) {
+                continue;
+            }
+            if let Some(kids) = type_children.get(cid) {
+                if kids.iter().any(|k| is_effectful_type.contains(k)) {
+                    is_effectful_type.insert(cid.clone());
+                    changed = true;
+                }
+            }
+        }
+    }
+    // 4. Mark expression eclasses effectful if they refer to an effectful type child.
+    let mut effectful_exprs: IndexSet<ClassId> = IndexSet::new();
+    for (cid, class) in egraph.classes() {
+        let sort = egraph.class_data[cid].typ.as_deref().unwrap_or("");
+        if sort == "Expr" {
+            'outer: for nid in &class.nodes {
+                let node = &egraph[nid];
+                for ch in &node.children {
+                    let cc = egraph.nid_to_cid(ch);
+                    if is_effectful_type.contains(cc) {
+                        effectful_exprs.insert(cid.clone());
+                        break 'outer;
+                    }
+                }
+            }
+        }
+    }
+    effectful_exprs
+}
+
 /// Build the tiger representation from a serialized egraph using a custom predicate
 /// to decide whether an eclass is effectful.
 pub fn build_tiger_egraph_with<F>(egraph: &EGraph, mut is_effectful: F) -> TigerEGraph
 where
     F: FnMut(&EGraph, &ClassId) -> bool,
 {
+    // Pre-compute improved effectful expression set
+    let improved = analyze_effectful_expr_eclasses(egraph);
     // Stable ordering: iterate over the classes map in its insertion order
     // (IndexMap in the serializer preserves determinism) and assign
     // contiguous indices 0..n just like the C++ structure expects.
@@ -86,7 +153,11 @@ where
 
     // First pass: fill eclasses with meta & effectful flag.
     for (cid, &idx) in &class_index {
-        let eff = is_effectful(egraph, cid);
+        let eff = if improved.contains(cid) {
+            true
+        } else {
+            is_effectful(egraph, cid)
+        };
         tiger_eclasses[idx].is_effectful = eff;
         tiger_eclasses[idx].original = cid.clone();
     }

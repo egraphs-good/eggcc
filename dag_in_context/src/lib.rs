@@ -43,6 +43,7 @@ pub mod extractiongymfastergreedydag;
 pub mod fastercbcextractor;
 pub mod pretty_print;
 pub mod schedule;
+pub mod tiger_extractor;
 mod tiger_format;
 
 pub type Result = std::result::Result<(), MainError>;
@@ -489,12 +490,17 @@ pub fn optimize(
                 );
             }
             let (_res_cost, iter_result) = if eggcc_config.use_tiger {
-                // tiger mode currently just builds the tiger graph; placeholder for future extraction
+                // Build tiger graph and run partial tiger extraction for logging.
                 let tiger_graph = crate::tiger_format::build_tiger_egraph(&serialized);
-                eprintln!(
+                log::info!(
                     "Tiger graph built ({} eclasses)",
                     tiger_graph.eclasses.len()
                 );
+                let tiger_extractor = crate::tiger_extractor::TigerExtractor::new(&serialized);
+                let tiger_res = tiger_extractor.extract(&batch);
+                for line in tiger_res.debug.lines() {
+                    log::info!("[tiger] {line}");
+                }
                 // fall back to greedy extract result so pipeline continues
                 extract(
                     &res,

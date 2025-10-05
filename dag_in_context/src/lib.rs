@@ -509,12 +509,52 @@ pub fn optimize(
                 match crate::tiger_reconstruct::reconstruct_program_from_tiger(
                     &res,
                     &serialized,
+                    &tiger_graph,
                     &batch,
                     &tiger_res,
                 ) {
                     Ok(tp) => {
                         log::info!("Tiger reconstruction succeeded.");
-                        (DefaultCostModel.default_zero_cost(), tp)
+                        // Recompute cost on a fresh egraph containing ONLY the reconstructed program.
+                        let cost_batch = batch.clone();
+                        let cost_prog = tp.clone();
+                        // Build minimal egglog program (no optimization schedule) just to load the program.
+                        let cost_egglog = build_program(
+                            &cost_prog,
+                            None,
+                            &cost_batch,
+                            "", // empty schedule so only initialization runs
+                            None,
+                        );
+                        let mut cost_egraph = egglog::EGraph::default();
+                        if let Err(e) = cost_egraph.parse_and_run_program(None, &cost_egglog) {
+                            log::warn!("Cost egraph build failed: {e}, defaulting cost to greedy fallback on original batch");
+                            let (c_fallback, _) = extract(
+                                &res,
+                                batch.clone(),
+                                serialized.clone(),
+                                unextractables.clone(),
+                                &mut termdag,
+                                DefaultCostModel,
+                                should_maintain_linearity,
+                                has_debug_exprs,
+                            );
+                            (c_fallback, tp)
+                        } else {
+                            let (ser2, unex2) = serialized_egraph(cost_egraph);
+                            let mut termdag2 = egglog::TermDag::default();
+                            let (c, _re_extracted) = extract(
+                                &cost_prog,
+                                cost_batch,
+                                ser2,
+                                unex2,
+                                &mut termdag2,
+                                DefaultCostModel,
+                                should_maintain_linearity,
+                                false, // no debug exprs expected in cost pass
+                            );
+                            (c, tp)
+                        }
                     }
                     Err(e) => {
                         log::warn!(

@@ -44,6 +44,7 @@ pub mod fastercbcextractor;
 pub mod pretty_print;
 pub mod schedule;
 pub mod tiger_extractor;
+pub mod tiger_extractor_types;
 mod tiger_format;
 
 pub type Result = std::result::Result<(), MainError>;

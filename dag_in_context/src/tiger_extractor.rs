@@ -1,61 +1,63 @@
 #![allow(clippy::collapsible_if)]
 use crate::greedy_dag_extractor::get_root; // used by function_body_root
 use crate::tiger_format::{build_tiger_egraph, TigerEClass, TigerEGraph, TigerENode};
+use crate::tiger_extractor_types::{ExtractableSet, TigerRegion, TigerRegionStats, TigerExtraction, TigerExtractionENode, RegionSubEGraph, create_region_egraph, TigerExtractionResult};
 use egraph_serialize::{ClassId, EGraph};
 use indexmap::{IndexMap, IndexSet};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::collections::{HashMap, VecDeque};
 
+// --- Removed type and struct definitions moved to tiger_extractor_types module ---
 // Global alias (was incorrectly inside impl causing unstable inherent associated type error)
-pub type ExtractableSet = Vec<bool>;
+// pub type ExtractableSet = Vec<bool>;
 
-#[derive(Debug, Clone)]
-pub struct TigerRegion {
-    /// Effectful anchor at start of this region segment
-    pub anchor: ClassId,
-    /// Optional next effectful anchor (None for last segment)
-    pub next_anchor: Option<ClassId>,
-    /// All eclasses (including anchor and maybe next anchor) in this region segment
-    pub members: IndexSet<ClassId>,
-}
+// #[derive(Debug, Clone)]
+// pub struct TigerRegion {
+//     /// Effectful anchor at start of this region segment
+//     pub anchor: ClassId,
+//     /// Optional next effectful anchor (None for last segment)
+//     pub next_anchor: Option<ClassId>,
+//     /// All eclasses (including anchor and maybe next anchor) in this region segment
+//     pub members: IndexSet<ClassId>,
+// }
 
-#[derive(Debug, Clone)]
-pub struct TigerRegionStats {
-    pub total_enodes: usize,
-    pub effectful_enodes: usize,
-    pub pure_enodes: usize,
-}
+// #[derive(Debug, Clone)]
+// pub struct TigerRegionStats {
+//     pub total_enodes: usize,
+//     pub effectful_enodes: usize,
+//     pub pure_enodes: usize,
+// }
 
 // --- Added full extraction data structures (early port) ---
-#[derive(Debug, Clone)]
-pub struct TigerExtractionENode {
-    pub eclass: ClassId,
-    /// index into the tiger.eclasses[tiger.class_index[eclass]].enodes vec
-    pub enode_index: usize,
-    pub children: Vec<usize>, // indices into extraction.nodes
-}
+// #[derive(Debug, Clone)]
+// pub struct TigerExtractionENode {
+//     pub eclass: ClassId,
+//     /// index into the tiger.eclasses[tiger.class_index[eclass]].enodes vec
+//     pub enode_index: usize,
+//     pub children: Vec<usize>, // indices into extraction.nodes
+// }
 
-#[derive(Debug, Clone, Default)]
-pub struct TigerExtraction {
-    pub nodes: Vec<TigerExtractionENode>,
-    pub root_index: Option<usize>,
-}
+// #[derive(Debug, Clone, Default)]
+// pub struct TigerExtraction {
+//     pub nodes: Vec<TigerExtractionENode>,
+//     pub root_index: Option<usize>,
+// }
 
-impl TigerExtraction {
-    pub fn new() -> Self {
-        Self {
-            nodes: vec![],
-            root_index: None,
-        }
-    }
+// impl TigerExtraction {
+//     pub fn new() -> Self {
+//         Self {
+//             nodes: vec![],
+//             root_index: None,
+//         }
+//     }
 
-    pub fn add_node(&mut self, node: TigerExtractionENode) -> usize {
-        let idx = self.nodes.len();
-        self.nodes.push(node);
-        idx
-    }
-}
+//     pub fn add_node(&mut self, node: TigerExtractionENode) -> usize {
+//         let idx = self.nodes.len();
+//         self.nodes.push(node);
+//         idx
+//     }
+// }
 
 /// A very early partial port of the prototype tiger extractor.
 /// Currently it:
@@ -68,201 +70,6 @@ impl TigerExtraction {
 pub struct TigerExtractor<'a> {
     serialized: &'a EGraph,
     tiger: TigerEGraph,
-}
-
-#[derive(Debug, Clone)]
-/// Region-subgraph mapping produced by `create_region_egraph` (port of C++ createRegionEGraph).
-pub struct RegionSubEGraph {
-    /// Pruned / transformed egraph restricted to a region root and its reachable pure closure.
-    pub egraph: TigerEGraph,
-    /// Map from original ClassId -> region egraph index.
-    pub orig_to_region: IndexMap<ClassId, usize>,
-    /// Vector mapping region index -> original ClassId.
-    pub region_to_orig: Vec<ClassId>,
-    /// For each region eclass (outer index) and each of its enodes (inner index),
-    /// number of additional effectful children beyond the first (aka subregion children).
-    pub n_subregion: Vec<Vec<usize>>, // mirrors tiger.cpp nsubregion
-}
-
-impl RegionSubEGraph {
-    pub fn size(&self) -> usize {
-        self.egraph.eclasses.len()
-    }
-}
-
-/// Build a region-restricted egraph starting at `region_root`.
-/// Mirrors tiger.cpp createRegionEGraph:
-///  1. First BFS over effectual backbone: include at most the first effectual child edge per enode;
-///     count subsequent effectual children in n_subregion.
-pub fn create_region_egraph(tiger: &TigerEGraph, region_root: &ClassId) -> RegionSubEGraph {
-    let mut orig_to_region: IndexMap<ClassId, usize> = IndexMap::new();
-    let mut region_to_orig: Vec<ClassId> = Vec::new();
-    let mut n_subregion: Vec<Vec<usize>> = Vec::new();
-
-    // Inline function logic without capturing mutable borrows simultaneously.
-    fn ensure_mapping(
-        tiger: &TigerEGraph,
-        cid: &ClassId,
-        orig_to_region: &mut IndexMap<ClassId, usize>,
-        region_to_orig: &mut Vec<ClassId>,
-        n_subregion: &mut Vec<Vec<usize>>,
-    ) {
-        if orig_to_region.contains_key(cid) {
-            return;
-        }
-        if let Some(&t_idx) = tiger.class_index.get(cid) {
-            let row_len = tiger.eclasses[t_idx].enodes.len();
-            let new_idx = region_to_orig.len();
-            region_to_orig.push(cid.clone());
-            orig_to_region.insert(cid.clone(), new_idx);
-            n_subregion.push(vec![0usize; row_len]);
-        }
-    }
-
-    ensure_mapping(
-        tiger,
-        region_root,
-        &mut orig_to_region,
-        &mut region_to_orig,
-        &mut n_subregion,
-    );
-
-    // 1. Effectful backbone expansion
-    let mut idx = 0;
-    while idx < region_to_orig.len() {
-        let orig_cid = region_to_orig[idx].clone();
-        let t_idx = match tiger.class_index.get(&orig_cid) {
-            Some(v) => *v,
-            None => {
-                idx += 1;
-                continue;
-            }
-        };
-        let tec = &tiger.eclasses[t_idx];
-        let r_idx = *orig_to_region.get(&orig_cid).unwrap();
-        for (en_i, en) in tec.enodes.iter().enumerate() {
-            let mut seen_effectful = false;
-            for &child_t_idx in &en.children {
-                let child_ec = &tiger.eclasses[child_t_idx];
-                if child_ec.is_effectful {
-                    if seen_effectful {
-                        n_subregion[r_idx][en_i] += 1;
-                        continue;
-                    }
-                    seen_effectful = true;
-                    ensure_mapping(
-                        tiger,
-                        &child_ec.original,
-                        &mut orig_to_region,
-                        &mut region_to_orig,
-                        &mut n_subregion,
-                    );
-                }
-            }
-        }
-        idx += 1;
-    }
-
-    // 2. Pure closure expansion
-    let mut idx2 = 0;
-    while idx2 < region_to_orig.len() {
-        let orig_cid = region_to_orig[idx2].clone();
-        let t_idx = match tiger.class_index.get(&orig_cid) {
-            Some(v) => *v,
-            None => {
-                idx2 += 1;
-                continue;
-            }
-        };
-        let tec = &tiger.eclasses[t_idx];
-        for en in &tec.enodes {
-            for &child_t_idx in &en.children {
-                let child_ec = &tiger.eclasses[child_t_idx];
-                if !child_ec.is_effectful {
-                    ensure_mapping(
-                        tiger,
-                        &child_ec.original,
-                        &mut orig_to_region,
-                        &mut region_to_orig,
-                        &mut n_subregion,
-                    );
-                }
-            }
-        }
-        idx2 += 1;
-    }
-
-    // 3. Rebuild pruned TigerEGraph (preserving order of region_to_orig as indices)
-    let mut region_eclasses: Vec<TigerEClass> = Vec::with_capacity(region_to_orig.len());
-    for (r_idx, orig_cid) in region_to_orig.iter().enumerate() {
-        let t_idx = match tiger.class_index.get(orig_cid) {
-            Some(v) => *v,
-            None => continue,
-        };
-        let orig_class = &tiger.eclasses[t_idx];
-        let mut new_class = TigerEClass {
-            enodes: Vec::new(),
-            is_effectful: orig_class.is_effectful,
-            original: orig_cid.clone(),
-        };
-        for en in &orig_class.enodes {
-            let mut new_children = Vec::new();
-            let mut seen_effectful = false;
-            for &child_t_idx in &en.children {
-                let child_ec = &tiger.eclasses[child_t_idx];
-                let child_cid = child_ec.original.clone();
-                if child_ec.is_effectful {
-                    if seen_effectful {
-                        continue;
-                    } // prune additional effectful children in region graph
-                    seen_effectful = true;
-                }
-                if let Some(&mapped_idx) = orig_to_region.get(&child_cid) {
-                    new_children.push(mapped_idx);
-                }
-            }
-            new_class.enodes.push(TigerENode {
-                head: en.head.clone(),
-                eclass_idx: r_idx,
-                children: new_children,
-                original_class: orig_cid.clone(),
-                original_node: en.original_node.clone(),
-            });
-        }
-        region_eclasses.push(new_class);
-    }
-    // Build class_index for region graph (region indices already contiguous)
-    let mut region_class_index: IndexMap<ClassId, usize> = IndexMap::new();
-    for (i, cid) in region_to_orig.iter().enumerate() {
-        region_class_index.insert(cid.clone(), i);
-    }
-    let region_graph = TigerEGraph {
-        eclasses: region_eclasses,
-        class_index: region_class_index,
-    };
-
-    RegionSubEGraph {
-        egraph: region_graph,
-        orig_to_region,
-        region_to_orig,
-        n_subregion,
-    }
-}
-
-pub struct TigerExtractionResult {
-    pub chosen_enodes: IndexMap<ClassId, usize>, // eclass -> enode index
-    pub state_walks: IndexMap<ClassId, Vec<ClassId>>, // function root class -> linear effectual path
-    pub regions: IndexMap<ClassId, Vec<TigerRegion>>, // function root body -> region segments
-    pub region_stats: IndexMap<ClassId, Vec<TigerRegionStats>>, // parallel to regions
-    pub extractions: IndexMap<ClassId, TigerExtraction>, // function root body -> extraction (naive)
-    pub linearity_ok: IndexMap<ClassId, bool>,
-    pub debug: String,
-    // New: guided state walk with enode indices (if available)
-    pub guided_state_walks: IndexMap<ClassId, Vec<(ClassId, usize)>>,
-    // New: weak linearity excess (extra effectful eclasses beyond state walk)
-    pub weak_linearity_excess: IndexMap<ClassId, usize>,
-    // New: weak linearity violation flag observed during unguided search (wlcnt > 1)
-    pub weak_linearity_violation: IndexMap<ClassId, bool>,
 }
 
 impl<'a> TigerExtractor<'a> {
@@ -757,7 +564,7 @@ impl<'a> TigerExtractor<'a> {
         rec(&extraction.nodes, root_idx, &effectful)
     }
 
-    // Build region segments and stats from an effectful state walk (approximate parity with C++ createRegionEGraph + region partition).
+    // Build region segments and stats from an effectual state walk (approximate parity with C++ createRegionEGraph + region partition).
     fn build_regions_for_walk(&self, walk: &[ClassId]) -> (Vec<TigerRegion>, Vec<TigerRegionStats>) {
         if walk.is_empty() { return (Vec::new(), Vec::new()); }
         let mut regions_out = Vec::new();
@@ -779,7 +586,7 @@ impl<'a> TigerExtractor<'a> {
                         if ch_ec.is_effectful {
                             if Some(&ch_cid)==next_anchor.as_ref() { // include next anchor but don't traverse
                                 members.insert(ch_cid);
-                            } else if !seen_eff { // first effectful child allowed inside this region segment
+                            } else if !seen_eff { // first effectual child allowed inside this region segment
                                 seen_eff = true;
                                 if !members.contains(&ch_cid) {
                                     members.insert(ch_cid.clone());
@@ -1280,7 +1087,7 @@ impl<'a> TigerExtractor<'a> {
         Some(self.serialized.nid_to_cid(&root_nid).clone())
     }
 
-    // Helper: collect all effectful reachable eclasses from root following any effectful edge (first-order over full serialized egraph)
+    // Helper: collect all effectful reachable eclasses from root following any effectual edge (first-order over full serialized egraph)
     fn effectful_reachable(&self, root: &ClassId) -> IndexSet<ClassId> {
         let mut seen: IndexSet<ClassId> = IndexSet::new();
         let mut q: VecDeque<ClassId> = VecDeque::new();
@@ -1305,7 +1112,7 @@ impl<'a> TigerExtractor<'a> {
         seen
     }
 
-    // Naive extraction: pick first enode per eclass reachable from root via DFS (effectful + pure closure)
+    // Naive extraction: pick first enode per eclass reachable from root via DFS (effectual + pure closure)
     fn naive_extraction(&self, root: &ClassId) -> TigerExtraction {
         let mut extraction = TigerExtraction::new();
         let mut memo: HashMap<ClassId, usize> = HashMap::new();

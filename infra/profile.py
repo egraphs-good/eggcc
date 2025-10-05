@@ -8,6 +8,7 @@ from sys import stdout
 import subprocess
 
 import concurrent.futures
+from generate_cfgs import make_cfgs
 
 
 # testing mode takes much fewer samples than the real eval in the paper
@@ -36,6 +37,7 @@ def average(lst):
 
 TO_ABLATE = "" # change to a ruleset to ablate
 
+
 treatments = [
   "rvsdg-round-trip-to-executable",
   #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
@@ -57,6 +59,8 @@ if TO_ABLATE != "":
     "llvm-eggcc-ablation-O3-O0",
     "llvm-eggcc-ablation-O3-O3",
   ])
+
+TIMEOUT_SECS = 0
 
 # Where to output files that are needed for nightly report
 DATA_DIR = None
@@ -140,69 +144,76 @@ def optimize(benchmark):
 
   # get the commands we need to run
   (eggcc_run_mode, llvm_args) = get_eggcc_options(benchmark)
-  # make the llvm output directory
   os.makedirs(f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}", exist_ok=True)
   llvm_out_file = f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}/optimized.ll"
-
   cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode} --run-data-out {eggcc_run_data}'
   cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --run-data-out {llvm_run_data} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_file}'
 
-  process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
+  timed_out = False
+  try:
+    process = subprocess.run(cmd1, shell=True, capture_output=True, text=True, timeout=TIMEOUT_SECS)
+  except subprocess.TimeoutExpired:
+    timed_out = True
+    process = None
+
+  if timed_out:
+    # Provide default (sentinel) values; skip second phase entirely.
+    res = {
+      "path": f"{profile_dir}/{benchmark.treatment}",
+      "eggccCompileTimeSecs": False,
+      "eggccSerializationTimeSecs": False,
+      "eggccExtractionTimeSecs": False,
+      "llvmCompileTimeSecs": False,
+      "ilpTestTimes": False,
+      "timedOut": True,
+    }
+    return res
+
   if process.returncode != 0:
     raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {process.stderr}')
 
-  # write the std out to the optimized bril file
   with open(optimized_bril_file, 'w') as f:
     f.write(process.stdout)
 
+  # Second command intentionally has no timeout (can run longer than first phase)
   process2 = subprocess.run(cmd2, shell=True)
   if process2.returncode != 0:
     raise Exception(f'Error running {cmd2}: {process2.stderr}')
 
-  eggcc_compile_time = 0
-  eggcc_extraction_time = 0
-  eggcc_serialization_time = 0
+  eggcc_compile_time = eggcc_extraction_time = eggcc_serialization_time = 0.0
   ilp_test_times = []
-  # parse json from eggcc run data
-  with open(eggcc_run_data) as f:
-    eggcc_data = json.load(f)
-    secs = eggcc_data["eggcc_compile_time"]["secs"]
-    nanos = eggcc_data["eggcc_compile_time"]["nanos"]
-    eggcc_compile_time = secs + nanos / 1e9
+  # parse json from eggcc run data (guard if file unexpectedly missing)
+  if os.path.isfile(eggcc_run_data):
+    with open(eggcc_run_data) as f:
+      eggcc_data = json.load(f)
+      secs = eggcc_data["eggcc_compile_time"]["secs"]; nanos = eggcc_data["eggcc_compile_time"]["nanos"]; eggcc_compile_time = secs + nanos / 1e9
+      secs = eggcc_data["eggcc_serialization_time"]["secs"]; nanos = eggcc_data["eggcc_serialization_time"]["nanos"]; eggcc_serialization_time = secs + nanos / 1e9
+      secs = eggcc_data["eggcc_extraction_time"]["secs"]; nanos = eggcc_data["eggcc_extraction_time"]["nanos"]; eggcc_extraction_time = secs + nanos / 1e9
+      ilp_test_times = eggcc_data.get("ilp_test_times", [])
 
-    secs = eggcc_data["eggcc_serialization_time"]["secs"]
-    nanos = eggcc_data["eggcc_serialization_time"]["nanos"]
-    eggcc_serialization_time = secs + nanos / 1e9
+  llvm_compile_time = 0.0
+  if os.path.isfile(llvm_run_data):
+    with open(llvm_run_data) as f:
+      llvm_data = json.load(f)
+      secs = llvm_data["llvm_compile_time"]["secs"]; nanos = llvm_data["llvm_compile_time"]["nanos"]; llvm_compile_time = secs + nanos / 1e9
 
-    secs = eggcc_data["eggcc_extraction_time"]["secs"]
-    nanos = eggcc_data["eggcc_extraction_time"]["nanos"]
-    eggcc_extraction_time = secs + nanos / 1e9
-
-    ilp_test_times = eggcc_data["ilp_test_times"]
-    
-  
-  llvm_compile_time = 0
-  with open(llvm_run_data) as f:
-    llvm_data = json.load(f)
-    secs = llvm_data["llvm_compile_time"]["secs"]
-    nanos = llvm_data["llvm_compile_time"]["nanos"]
-    llvm_compile_time = secs + nanos / 1e9
-
-
-    res = {
-        "path": f"{profile_dir}/{benchmark.treatment}",
-        "eggccCompileTimeSecs": eggcc_compile_time,
-        "eggccSerializationTimeSecs": eggcc_serialization_time,
-        "eggccExtractionTimeSecs": eggcc_extraction_time,
-        "llvmCompileTimeSecs": llvm_compile_time,
-        "ilpTestTimes": ilp_test_times,
-    }
+  res = {
+    "path": f"{profile_dir}/{benchmark.treatment}",
+    "eggccCompileTimeSecs": eggcc_compile_time,
+    "eggccSerializationTimeSecs": eggcc_serialization_time,
+    "eggccExtractionTimeSecs": eggcc_extraction_time,
+    "llvmCompileTimeSecs": llvm_compile_time,
+    "ilpTestTimes": ilp_test_times,
+    "timedOut": False,
+  }
   return res
 
 
 def take_sample(cmd, benchmark):
-  result = subprocess.run(cmd, capture_output=True, shell=True)
-        
+  try:
+    result = subprocess.run(cmd, capture_output=True, shell=True, timeout=TIMEOUT_SECS)
+  except subprocess.TimeoutExpired:
+    raise Exception(f'Timeout ({TIMEOUT_SECS}s) executing benchmark sample for {benchmark.name} {benchmark.treatment}: {cmd}')
   if result.returncode != 0:
     raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {result.stderr}')
   return int(result.stderr)
@@ -285,13 +296,11 @@ def aggregate(compile_data, bench_times, paths):
       name = path.split("/")[-2]
       runMethod = path.split("/")[-1]
       suite = get_suite(paths[name])
-      result = {"runMethod": runMethod, "benchmark": name, "cycles": bench_times[path], "path": paths[name], "suite": suite}
-      
-
-      # add compile time info
+      cycles = bench_times.get(path, False)  # false if not benchmarked (e.g., timed out)
+      result = {"runMethod": runMethod, "benchmark": name, "cycles": cycles, "path": paths[name], "suite": suite}
+      # merge compile info (contains timedOut flag)
       for key in compile_data[path]:
         result[key] = compile_data[path][key]
-
       res.append(result)
     return res
 
@@ -385,7 +394,6 @@ if __name__ == '__main__':
       try:
         res = future.result()
         path = res["path"]
-        # remove the path from compile data
         res.pop("path")
         compile_data[path] = res
       except Exception as e:
@@ -393,12 +401,21 @@ if __name__ == '__main__':
         executor.shutdown(wait=False, cancel_futures=True)
         raise e
 
+  # Derive timed-out paths and successful (non-timeout) run modes per benchmark (avoid duplication later)
+  timed_out_paths = set()
+  successful = {}
+  for cpath, data in compile_data.items():
+    bench = cpath.split("/")[-2]
+    mode = cpath.split("/")[-1]
+    if data["timedOut"]:
+      timed_out_paths.add(cpath)
+    else:
+      successful.setdefault(bench, []).append(mode)
 
   bench_data = {}
   if isParallelBenchmark:
-    # create a thread pool for running benchmarks
     with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
-      futures = {executor.submit(bench, benchmark) for benchmark in to_run}
+      futures = {executor.submit(bench, benchmark) for benchmark in to_run if f"{TMP_DIR}/{benchmark.name}/{benchmark.treatment}" not in timed_out_paths}
       for future in concurrent.futures.as_completed(futures):
         try:
           res = future.result()
@@ -412,6 +429,10 @@ if __name__ == '__main__':
           raise e
   else:
     for benchmark in to_run:
+      path_key = f"{TMP_DIR}/{benchmark.name}/{benchmark.treatment}"
+      if path_key in timed_out_paths:
+        print(f"Skipping benchmarking (timed out optimize) {benchmark.name} {benchmark.treatment}", flush=True)
+        continue
       res = bench(benchmark)
       if res is None:
         continue
@@ -421,6 +442,17 @@ if __name__ == '__main__':
   nightly_data = aggregate(compile_data, bench_data, paths)
   with open(f"{DATA_DIR}/profile.json", "w") as profile:
     json.dump(nightly_data, profile, indent=2)
+
+  # Parallel CFG generation only for successful
+  with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+    futures = {executor.submit(make_cfgs, bench, f"{DATA_DIR}/llvm", modes) for bench, modes in successful.items()}
+    for future in concurrent.futures.as_completed(futures):
+      try:
+        future.result()
+      except Exception as e:
+        print(f"CFG generation error: {e}")
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise e
 
   # remove the tmp directory
   os.system(f"rm -rf {TMP_DIR}")

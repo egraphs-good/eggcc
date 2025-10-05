@@ -48,6 +48,7 @@ pub mod tiger_extractor_core;
 pub mod tiger_extractor_statewalk;
 pub mod tiger_extractor_types;
 mod tiger_format;
+pub mod tiger_reconstruct;
 
 pub type Result = std::result::Result<(), MainError>;
 
@@ -493,7 +494,7 @@ pub fn optimize(
                 );
             }
             let (_res_cost, iter_result) = if eggcc_config.use_tiger {
-                // Build tiger graph and run partial tiger extraction for logging.
+                // Tiger path: run tiger extractor, attempt reconstruction to TreeProgram.
                 let tiger_graph = crate::tiger_format::build_tiger_egraph(&serialized);
                 log::info!(
                     "Tiger graph built ({} eclasses)",
@@ -504,17 +505,34 @@ pub fn optimize(
                 for line in tiger_res.debug.lines() {
                     log::info!("[tiger] {line}");
                 }
-                // fall back to greedy extract result so pipeline continues
-                extract(
+                // Attempt to reconstruct program directly from tiger extraction.
+                match crate::tiger_reconstruct::reconstruct_program_from_tiger(
                     &res,
-                    batch.clone(),
-                    serialized.clone(),
-                    unextractables.clone(),
-                    &mut termdag,
-                    DefaultCostModel,
-                    should_maintain_linearity,
-                    has_debug_exprs,
-                )
+                    &serialized,
+                    &batch,
+                    &tiger_res,
+                ) {
+                    Ok(tp) => {
+                        log::info!("Tiger reconstruction succeeded.");
+                        (DefaultCostModel.default_zero_cost(), tp)
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "Tiger reconstruction failed ({}), falling back to greedy extractor.",
+                            e
+                        );
+                        extract(
+                            &res,
+                            batch.clone(),
+                            serialized.clone(),
+                            unextractables.clone(),
+                            &mut termdag,
+                            DefaultCostModel,
+                            should_maintain_linearity,
+                            has_debug_exprs,
+                        )
+                    }
+                }
             } else {
                 extract(
                     &res,

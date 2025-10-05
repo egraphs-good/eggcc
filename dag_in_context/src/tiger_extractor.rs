@@ -668,22 +668,22 @@ impl<'a> TigerExtractor<'a> {
 
     /// Validate structural properties of an extraction similar to tiger.cpp validExtraction.
     pub fn valid_extraction(&self, extraction: &TigerExtraction, root: &ClassId) -> bool {
-        let Some(root_idx) = extraction.root_index else {
-            return false;
-        };
-        if extraction.nodes.is_empty() {
-            return false;
-        }
-        if extraction.nodes[root_idx].eclass != *root {
-            return false;
-        }
-        // bounds & child structure / acyclicity
+        let Some(root_idx) = extraction.root_index else { return false; };
+        if extraction.nodes.is_empty() { return false; }
+        if extraction.nodes[root_idx].eclass != *root { return false; }
+        // Preload mapping for quick access
         for (i, n) in extraction.nodes.iter().enumerate() {
-            // child indices must be < i (topological order we maintain)
-            for &ch in &n.children {
-                if ch >= i {
-                    return false;
-                }
+            for &ch in &n.children { if ch >= i { return false; } }
+            // validate children refer to actual enode children in original tiger graph
+            let Some(&ti) = self.tiger.class_index.get(&n.eclass) else { return false; };
+            if n.enode_index >= self.tiger.eclasses[ti].enodes.len() { return false; }
+            let ten = &self.tiger.eclasses[ti].enodes[n.enode_index];
+            // gather original child eclasses for membership check
+            let mut orig_child_cids: IndexSet<ClassId> = IndexSet::new();
+            for &ch_ti in &ten.children { orig_child_cids.insert(self.tiger.eclasses[ch_ti].original.clone()); }
+            for &ch_idx in &n.children {
+                let child_node = &extraction.nodes[ch_idx];
+                if !orig_child_cids.contains(&child_node.eclass) { return false; }
             }
         }
         true
@@ -755,6 +755,53 @@ impl<'a> TigerExtractor<'a> {
             true
         }
         rec(&extraction.nodes, root_idx, &effectful)
+    }
+
+    // Build region segments and stats from an effectful state walk (approximate parity with C++ createRegionEGraph + region partition).
+    fn build_regions_for_walk(&self, walk: &[ClassId]) -> (Vec<TigerRegion>, Vec<TigerRegionStats>) {
+        if walk.is_empty() { return (Vec::new(), Vec::new()); }
+        let mut regions_out = Vec::new();
+        let mut stats_out = Vec::new();
+        for (i, anchor) in walk.iter().enumerate() {
+            let next_anchor = walk.get(i+1).cloned();
+            // BFS limited closure similar to region graph: allow at most first effectual child per enode; do not traverse past next_anchor.
+            let mut members: IndexSet<ClassId> = IndexSet::new();
+            let mut q: VecDeque<ClassId> = VecDeque::new();
+            members.insert(anchor.clone()); q.push_back(anchor.clone());
+            while let Some(cur) = q.pop_front() {
+                let t_idx = match self.tiger.class_index.get(&cur) { Some(v)=>*v, None=>continue };
+                let tec = &self.tiger.eclasses[t_idx];
+                for en in &tec.enodes {
+                    let mut seen_eff = false;
+                    for &ch_ti in &en.children {
+                        let ch_ec = &self.tiger.eclasses[ch_ti];
+                        let ch_cid = ch_ec.original.clone();
+                        if ch_ec.is_effectful {
+                            if Some(&ch_cid)==next_anchor.as_ref() { // include next anchor but don't traverse
+                                members.insert(ch_cid);
+                            } else if !seen_eff { // first effectful child allowed inside this region segment
+                                seen_eff = true;
+                                if !members.contains(&ch_cid) {
+                                    members.insert(ch_cid.clone());
+                                    q.push_back(ch_cid);
+                                }
+                            }
+                        } else { // pure child
+                            if !members.contains(&ch_cid) {
+                                members.insert(ch_cid.clone());
+                                q.push_back(ch_cid);
+                            }
+                        }
+                    }
+                }
+            }
+            // Stats
+            let mut total_en = 0usize; let mut eff_en = 0usize; let mut pure_en = 0usize;
+            for cid in &members { if let Some(&ti)= self.tiger.class_index.get(cid) { let ec=&self.tiger.eclasses[ti]; for en in &ec.enodes { total_en+=1; if ec.is_effectful { eff_en+=1; } else { pure_en+=1; } } } }
+            regions_out.push(TigerRegion { anchor: anchor.clone(), next_anchor: next_anchor.clone(), members: members.clone() });
+            stats_out.push(TigerRegionStats { total_enodes: total_en, effectful_enodes: eff_en, pure_enodes: pure_en });
+        }
+        (regions_out, stats_out)
     }
 
     /// Build an extraction constrained to a guided state walk (simplified port of regionExtractionWithStateWalk).
@@ -1356,23 +1403,24 @@ impl<'a> TigerExtractor<'a> {
                     guided_state_walks.insert(root_body.clone(), guided_pairs.clone());
                 }
                 let eff_reach = self.effectful_reachable(&root_body);
-                let excess = eff_reach
-                    .len()
-                    .saturating_sub(state_walks[&root_body].len());
+                let excess = eff_reach.len().saturating_sub(state_walks[&root_body].len());
                 weak_linearity_excess.insert(root_body.clone(), excess);
                 weak_linearity_violation.insert(root_body.clone(), wl_flag || excess > 0);
+                // Build regions & stats from walk (parity approximation)
+                let (rs, rs_stats) = self.build_regions_for_walk(&state_walks[&root_body]);
+                regions.insert(root_body.clone(), rs);
+                region_stats.insert(root_body.clone(), rs_stats);
                 extractions.insert(root_body.clone(), extraction.clone());
                 linearity_ok.insert(root_body.clone(), lin_ok);
-                // placeholder empty region info (parity TODO)
-                regions.insert(root_body.clone(), Vec::new());
-                region_stats.insert(root_body.clone(), Vec::new());
                 debug_lines.push(format!(
-                    "func={} strategy={} lin_ok={} wl_violation={} excess={}",
+                    "func={} strategy={} lin_ok={} wl_violation={} excess={} regions={} nodes={}",
                     func,
                     used_strategy,
                     lin_ok,
                     weak_linearity_violation[&root_body],
-                    weak_linearity_excess[&root_body]
+                    weak_linearity_excess[&root_body],
+                    regions[&root_body].len(),
+                    extraction.nodes.len()
                 ));
             }
         }

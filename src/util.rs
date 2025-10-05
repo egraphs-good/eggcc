@@ -1308,8 +1308,8 @@ mod test {
         };
         let mut prog = vec![];
         for schedule in [Schedule::Sequential, Schedule::Parallel] {
-            let mut config = EggccConfig {
-                schedule,
+            let config = EggccConfig {
+                schedule: schedule.clone(),
                 ..EggccConfig::default()
             };
 

@@ -17,7 +17,7 @@ use to_egglog::TreeToEgglog;
 
 use crate::{
     dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    schedule::parallel_schedule,
+    schedule::parallel_schedule, tiger_extractor_core::TigerExtractor,
 };
 
 pub mod add_context;
@@ -44,6 +44,7 @@ pub mod fastercbcextractor;
 pub mod pretty_print;
 pub mod schedule;
 pub mod tiger_extractor;
+pub mod tiger_extractor_core;
 pub mod tiger_extractor_types;
 mod tiger_format;
 
@@ -497,7 +498,7 @@ pub fn optimize(
                     "Tiger graph built ({} eclasses)",
                     tiger_graph.eclasses.len()
                 );
-                let tiger_extractor = crate::tiger_extractor::TigerExtractor::new(&serialized);
+                let tiger_extractor = TigerExtractor::new(&serialized);
                 let tiger_res = tiger_extractor.extract(&batch);
                 for line in tiger_res.debug.lines() {
                     log::info!("[tiger] {line}");

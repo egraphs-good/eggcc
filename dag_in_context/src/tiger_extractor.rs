@@ -121,14 +121,25 @@ impl<'a> TigerExtractor<'a> {
     pub fn advanced_region_extraction(
         &self,
         root: &ClassId,
-    ) -> Option<(TigerExtraction, Vec<ClassId>, Vec<(ClassId, usize)>, bool)> {
+    ) -> Option<(
+        TigerExtraction,
+        Vec<ClassId>,
+        Vec<(ClassId, usize)>,
+        bool,
+        IndexMap<ClassId, u32>,
+    )> {
         let rsub = create_region_egraph(&self.tiger, root);
         let guided_full = self.guided_find_state_walk_region(&rsub);
-        let (walk_pairs, guided_pairs, wl) = if guided_full.len() > 1 {
-            (guided_full.clone(), guided_full.clone(), false)
+        let (walk_pairs, guided_pairs, wl, wlcounts) = if guided_full.len() > 1 {
+            (
+                guided_full.clone(),
+                guided_full.clone(),
+                false,
+                IndexMap::new(),
+            )
         } else {
-            let (p, wl) = self.unguided_find_state_walk_region(&rsub);
-            (p.clone(), Vec::new(), wl)
+            let (p, wl, cnts) = self.unguided_find_state_walk_region(&rsub);
+            (p.clone(), Vec::new(), wl, cnts)
         };
         let walk_ids: Vec<ClassId> = walk_pairs.iter().map(|(c, _)| c.clone()).collect();
         let mut extraction = self.scost_region_extraction(&rsub, root)?;
@@ -141,22 +152,28 @@ impl<'a> TigerExtractor<'a> {
                 }
             }
         }
-        Some((extraction, walk_ids, guided_pairs, wl))
+        Some((extraction, walk_ids, guided_pairs, wl, wlcounts))
     }
     pub fn advanced_multi_region_extraction(
         &self,
         root: &ClassId,
-    ) -> Option<(TigerExtraction, Vec<ClassId>, Vec<(ClassId, usize)>, bool)> {
+    ) -> Option<(
+        TigerExtraction,
+        Vec<ClassId>,
+        Vec<(ClassId, usize)>,
+        bool,
+        IndexMap<ClassId, u32>,
+    )> {
         let full_rsub = create_region_egraph(&self.tiger, root);
         if full_rsub.region_to_orig.is_empty() {
             return None;
         }
         let guided_full = self.guided_find_state_walk_region(&full_rsub);
-        let (walk_pairs, guided_pairs, wl) = if guided_full.len() > 1 {
-            (guided_full.clone(), guided_full, false)
+        let (walk_pairs, guided_pairs, wl, wlcounts) = if guided_full.len() > 1 {
+            (guided_full.clone(), guided_full, false, IndexMap::new())
         } else {
-            let (p, wl) = self.unguided_find_state_walk_region(&full_rsub);
-            (p.clone(), Vec::new(), wl)
+            let (p, wl, cnts) = self.unguided_find_state_walk_region(&full_rsub);
+            (p.clone(), Vec::new(), wl, cnts)
         };
         if walk_pairs.is_empty() {
             return None;
@@ -194,22 +211,33 @@ impl<'a> TigerExtractor<'a> {
         if let Some(first_anchor) = walk.first() {
             merged.root_index = map.get(first_anchor).copied();
         }
-        Some((merged, walk, guided_pairs, wl))
+        Some((merged, walk, guided_pairs, wl, wlcounts))
     }
     pub fn advanced_recursive_multi_region_extraction(
         &self,
         root: &ClassId,
-    ) -> Option<(TigerExtraction, Vec<ClassId>, Vec<(ClassId, usize)>, bool)> {
+    ) -> Option<(
+        TigerExtraction,
+        Vec<ClassId>,
+        Vec<(ClassId, usize)>,
+        bool,
+        IndexMap<ClassId, u32>,
+    )> {
         let rsub_root = create_region_egraph(&self.tiger, root);
         if rsub_root.region_to_orig.is_empty() {
             return None;
         }
         let guided_full = self.guided_find_state_walk_region(&rsub_root);
-        let (walk_pairs, guided_pairs, wl) = if guided_full.len() > 1 {
-            (guided_full.clone(), guided_full.clone(), false)
+        let (walk_pairs, guided_pairs, wl, wlcounts) = if guided_full.len() > 1 {
+            (
+                guided_full.clone(),
+                guided_full.clone(),
+                false,
+                IndexMap::new(),
+            )
         } else {
-            let (p, wl) = self.unguided_find_state_walk_region(&rsub_root);
-            (p.clone(), Vec::new(), wl)
+            let (p, wl, cnts) = self.unguided_find_state_walk_region(&rsub_root);
+            (p.clone(), Vec::new(), wl, cnts)
         };
         if walk_pairs.is_empty() {
             return None;
@@ -245,7 +273,7 @@ impl<'a> TigerExtractor<'a> {
                 let mut wl_region = false;
                 // Try unguided state-walk based region extraction (C++ parity)
                 let mut re = if !rsub.region_to_orig.is_empty() {
-                    let (walk, wl) = this.unguided_find_state_walk_region(&rsub);
+                    let (walk, wl, _cnts) = this.unguided_find_state_walk_region(&rsub);
                     wl_region |= wl;
                     if !walk.is_empty() {
                         if let Some(wex) = this.region_extraction_with_state_walk(&rsub, &walk) {
@@ -312,7 +340,7 @@ impl<'a> TigerExtractor<'a> {
         let (root_idx, wl_rec) = builder.extract_region_recursive(root, self)?;
         builder.ext.root_index = Some(root_idx);
         let overall_wl = wl || wl_rec; // combine top-level walk wl with recursive region wls
-        Some((builder.ext, walk_ids, guided_pairs, overall_wl))
+        Some((builder.ext, walk_ids, guided_pairs, overall_wl, wlcounts))
     }
 
     // --- Validation & linearity ---

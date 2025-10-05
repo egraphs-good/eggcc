@@ -91,13 +91,13 @@ impl<'a> TigerExtractor<'a> {
     pub fn unguided_find_state_walk_region(
         &self,
         rsub: &RegionSubEGraph,
-    ) -> (Vec<(ClassId, usize)>, bool) {
+    ) -> (Vec<(ClassId, usize)>, bool, IndexMap<ClassId, u32>) {
         if rsub.region_to_orig.is_empty() {
-            return (Vec::new(), false);
+            return (Vec::new(), false, IndexMap::new());
         }
         let root_region_idx = 0usize;
         let Some((init_region_idx, init_enode_idx)) = self.find_arg_in_region(rsub) else {
-            return (Vec::new(), false);
+            return (Vec::new(), false, IndexMap::new());
         };
         let mut rev_edges: Vec<Vec<(usize, usize)>> = vec![vec![]; rsub.egraph.eclasses.len()];
         for (ri, ec) in rsub.egraph.eclasses.iter().enumerate() {
@@ -254,7 +254,7 @@ impl<'a> TigerExtractor<'a> {
         let goal = match goal_state {
             Some(g) => g,
             None => {
-                return (Vec::new(), weak_linearity);
+                return (Vec::new(), weak_linearity, wlcnt.into_iter().collect());
             }
         };
         let mut path_rev: Vec<(ClassId, usize)> = Vec::new();
@@ -266,7 +266,7 @@ impl<'a> TigerExtractor<'a> {
             cur = st.parent;
         }
         path_rev.reverse();
-        (path_rev, weak_linearity)
+        (path_rev, weak_linearity, wlcnt.into_iter().collect())
     }
 
     pub(crate) fn guided_find_state_walk_region(
@@ -302,6 +302,23 @@ impl<'a> TigerExtractor<'a> {
                 Some(self.cmp(o))
             }
         }
+        // Precompute a heuristic: minimal per-effectful-class enode cost (subregion + pure children)
+        let mut min_enode_cost: Vec<usize> = vec![0; rsub.egraph.eclasses.len()];
+        for (i, ec) in rsub.egraph.eclasses.iter().enumerate() {
+            if ec.is_effectful {
+                let mut best = usize::MAX;
+                for (en_i, en) in ec.enodes.iter().enumerate() {
+                    let add = rsub.n_subregion[i][en_i]
+                        + en
+                            .children
+                            .iter()
+                            .filter(|&&ch| !rsub.egraph.eclasses[ch].is_effectful)
+                            .count();
+                    if add < best { best = add; }
+                }
+                min_enode_cost[i] = if best == usize::MAX { 0 } else { best };
+            }
+        }
         let mut best: Option<Path> = None;
         let mut heap: BinaryHeap<Ranked> = BinaryHeap::new();
         let root_cid = rsub.region_to_orig[0].clone();
@@ -330,44 +347,35 @@ impl<'a> TigerExtractor<'a> {
                                 < b.classes.iter().map(|(c, _)| c).collect::<Vec<_>>())
                 }
             };
-            if better {
-                best = Some(path.clone());
-            }
+            if better { best = Some(path.clone()); }
             let (last_cid, last_en) = path.classes.last().unwrap();
             let last_idx = rsub.egraph.class_index[last_cid];
             let last_ec = &rsub.egraph.eclasses[last_idx];
             let chosen = &last_ec.enodes[*last_en];
-            // Collect all effectful children (previously only first). This enables branching search.
-            let mut eff_children: Vec<usize> = Vec::new();
-            for &ch in &chosen.children {
-                if rsub.egraph.eclasses[ch].is_effectful {
-                    eff_children.push(ch);
-                }
-            }
-            if eff_children.is_empty() {
-                continue; // leaf
-            }
-            // Explore each effectful child (variable ordering branching)
+            // Gather effectful children and order by heuristic (min future enode cost), then lex id.
+            let mut eff_children: Vec<usize> = chosen.children.iter().copied().filter(|&ch| rsub.egraph.eclasses[ch].is_effectful).collect();
+            eff_children.sort_by(|&a, &b| {
+                min_enode_cost[a]
+                    .cmp(&min_enode_cost[b])
+                    .then_with(|| rsub.egraph.eclasses[a].original.cmp(&rsub.egraph.eclasses[b].original))
+            });
+            if eff_children.is_empty() { continue; }
             for child_idx in eff_children {
                 let child_cid = rsub.egraph.eclasses[child_idx].original.clone();
-                if path.classes.iter().any(|(c, _)| *c == child_cid) {
-                    continue; // avoid cycles
-                }
+                if path.classes.iter().any(|(c, _)| *c == child_cid) { continue; }
                 let child_ec = &rsub.egraph.eclasses[child_idx];
-                for (cen_i, cen) in child_ec.enodes.iter().enumerate() {
-                    let add_cost = rsub.n_subregion[child_idx][cen_i]
-                        + cen
-                            .children
-                            .iter()
-                            .filter(|&&ch| !rsub.egraph.eclasses[ch].is_effectful)
-                            .count();
+                // Push only the cheapest enode first; others deferred after discovering longer path candidates.
+                // Collect enodes sorted by (local add cost, enode index) to mimic greedy heuristic.
+                let mut cenodes: Vec<(usize, usize)> = child_ec.enodes.iter().enumerate().map(|(cen_i, cen)| {
+                    let add = rsub.n_subregion[child_idx][cen_i]
+                        + cen.children.iter().filter(|&&ch| !rsub.egraph.eclasses[ch].is_effectful).count();
+                    (add, cen_i)
+                }).collect();
+                cenodes.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+                for (add_cost, cen_i) in cenodes.into_iter() {
                     let mut new_path = path.classes.clone();
                     new_path.push((child_cid.clone(), cen_i));
-                    heap.push(Ranked(Path {
-                        len: path.len + 1,
-                        cost: path.cost + add_cost,
-                        classes: new_path,
-                    }));
+                    heap.push(Ranked(Path { len: path.len + 1, cost: path.cost + add_cost, classes: new_path }));
                 }
             }
         }

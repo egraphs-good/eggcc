@@ -34,38 +34,39 @@ impl<'a> TigerExtractor<'a> {
         let mut guided_state_walks: IndexMap<ClassId, Vec<(ClassId, usize)>> = IndexMap::new();
         let mut weak_linearity_excess: IndexMap<ClassId, usize> = IndexMap::new();
         let mut weak_linearity_violation: IndexMap<ClassId, bool> = IndexMap::new();
+        let mut weak_linearity_counts: IndexMap<ClassId, IndexMap<ClassId, u32>> = IndexMap::new();
         let mut debug_lines: Vec<String> = Vec::new();
 
         for func in functions {
             if let Some(root_body) = self.function_body_root(func) {
                 let mut used_strategy = String::new();
                 let mut wl_flag = false;
-                let mut best: Option<(TigerExtraction, Vec<ClassId>, Vec<(ClassId, usize)>)> = None;
-                if let Some((ex, walk, guided, wl)) =
+                let mut best: Option<(TigerExtraction, Vec<ClassId>, Vec<(ClassId, usize)>, IndexMap<ClassId, u32>)> = None;
+                if let Some((ex, walk, guided, wl, wlcounts)) =
                     self.advanced_recursive_multi_region_extraction(&root_body)
                 {
                     wl_flag = wl;
-                    best = Some((ex, walk, guided));
+                    best = Some((ex, walk, guided, wlcounts));
                     used_strategy = "recursive-multi-region".into();
-                } else if let Some((ex, walk, guided, wl)) =
+                } else if let Some((ex, walk, guided, wl, wlcounts)) =
                     self.advanced_multi_region_extraction(&root_body)
                 {
                     wl_flag = wl;
-                    best = Some((ex, walk, guided));
+                    best = Some((ex, walk, guided, wlcounts));
                     used_strategy = "multi-region".into();
-                } else if let Some((ex, walk, guided, wl)) =
+                } else if let Some((ex, walk, guided, wl, wlcounts)) =
                     self.advanced_region_extraction(&root_body)
                 {
                     wl_flag = wl;
-                    best = Some((ex, walk, guided));
+                    best = Some((ex, walk, guided, wlcounts));
                     used_strategy = "single-region".into();
                 }
-                let (extraction, walk_ids, guided_pairs) = if let Some(b) = best {
+                let (extraction, walk_ids, guided_pairs, wlcounts) = if let Some(b) = best {
                     b
                 } else {
                     used_strategy = "fallback-naive".into();
                     let walk_ids = self.build_state_walk(root_body.clone());
-                    (self.naive_extraction(&root_body), walk_ids, Vec::new())
+                    (self.naive_extraction(&root_body), walk_ids, Vec::new(), IndexMap::new())
                 };
                 let lin_ok = self.region_linearity_check(&extraction)
                     && self.valid_extraction(&extraction, &root_body);
@@ -87,6 +88,7 @@ impl<'a> TigerExtractor<'a> {
                 region_stats.insert(root_body.clone(), rs_stats);
                 extractions.insert(root_body.clone(), extraction.clone());
                 linearity_ok.insert(root_body.clone(), lin_ok);
+                weak_linearity_counts.insert(root_body.clone(), wlcounts);
                 debug_lines.push(format!(
                     "func={} strategy={} lin_ok={} wl_violation={} excess={} regions={} nodes={}",
                     func,
@@ -110,6 +112,7 @@ impl<'a> TigerExtractor<'a> {
             guided_state_walks,
             weak_linearity_excess,
             weak_linearity_violation,
+            weak_linearity_counts,
         }
     }
 }

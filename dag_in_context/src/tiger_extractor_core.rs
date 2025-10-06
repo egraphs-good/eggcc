@@ -42,21 +42,23 @@ impl<'a> TigerExtractor<'a> {
                 let mut best: Option<(TigerExtraction, Vec<ClassId>, IndexMap<ClassId, u32>)> =
                     None;
                 let root = root_body.clone();
+                // Parity with legacy C++: disable multi/recursive region strategies.
+                // if let Some((ex, walk, wl, wlcounts)) = self
+                //     .advanced_recursive_multi_region_extraction(&root)
+                //     .map(|(a, b, _c, d, e)| (a, b, d, e))
+                // {
+                //     wl_flag = wl;
+                //     best = Some((ex, walk, wlcounts));
+                //     used_strategy = "recursive-multi-region".into();
+                // } else if let Some((ex, walk, wl, wlcounts)) = self
+                //     .advanced_multi_region_extraction(&root)
+                //     .map(|(a, b, _c, d, e)| (a, b, d, e))
+                // {
+                //     wl_flag = wl;
+                //     best = Some((ex, walk, wlcounts));
+                //     used_strategy = "multi-region".into();
+                // } else
                 if let Some((ex, walk, wl, wlcounts)) = self
-                    .advanced_recursive_multi_region_extraction(&root)
-                    .map(|(a, b, _c, d, e)| (a, b, d, e))
-                {
-                    wl_flag = wl;
-                    best = Some((ex, walk, wlcounts));
-                    used_strategy = "recursive-multi-region".into();
-                } else if let Some((ex, walk, wl, wlcounts)) = self
-                    .advanced_multi_region_extraction(&root)
-                    .map(|(a, b, _c, d, e)| (a, b, d, e))
-                {
-                    wl_flag = wl;
-                    best = Some((ex, walk, wlcounts));
-                    used_strategy = "multi-region".into();
-                } else if let Some((ex, walk, wl, wlcounts)) = self
                     .advanced_region_extraction(&root)
                     .map(|(a, b, _c, d, e)| (a, b, d, e))
                 {

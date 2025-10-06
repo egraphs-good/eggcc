@@ -1,9 +1,11 @@
 use clap::ValueEnum;
 use egglog::{Term, TermDag};
+use egraph_serialize::Cost;
 use greedy_dag_extractor::{
-    extract, extract_ilp, has_debug_exprs, serialized_egraph, DefaultCostModel,
+    extract_ilp, greedy_dag_extract, has_debug_exprs, serialized_egraph, DefaultCostModel,
 };
 use indexmap::IndexMap;
+use indexmap::IndexSet;
 use interpreter::Value;
 use schedule::{rulesets, CompilerPass};
 use schema::TreeProgram;
@@ -16,8 +18,9 @@ use std::{
 use to_egglog::TreeToEgglog;
 
 use crate::{
-    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    schedule::parallel_schedule, tiger_extractor_core::TigerExtractor,
+    dag2svg::tree_to_svg, greedy_dag_extractor::CostModel, interpreter::interpret_dag_prog,
+    optimizations::function_inlining, schedule::parallel_schedule,
+    tiger_extractor_core::TigerExtractor,
 };
 
 pub mod add_context;
@@ -310,7 +313,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
 
     let (serialized, unextractables) = serialized_egraph(egraph);
-    let (_res_cost, res) = extract(
+    let (_res_cost, res) = greedy_dag_extract(
         program,
         program.fns(),
         serialized,
@@ -416,6 +419,95 @@ impl Default for EggccConfig {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn extract(
+    eggcc_config: &EggccConfig,
+    original_prog: &TreeProgram,
+    batch: Vec<String>,
+    egraph: &egraph_serialize::EGraph,
+    unextractables: &IndexSet<String>,
+    termdag: &mut TermDag,
+    should_maintain_linearity: bool,
+    extract_debug_exprs: bool,
+) -> (Cost, TreeProgram) {
+    if eggcc_config.use_tiger {
+        // Tiger path: run tiger extractor, attempt reconstruction to TreeProgram.
+        let tiger_graph = crate::tiger_format::build_tiger_egraph(egraph);
+        log::info!(
+            "Tiger graph built ({} eclasses)",
+            tiger_graph.eclasses.len()
+        );
+        let tiger_extractor = TigerExtractor::new(egraph);
+        let tiger_res = tiger_extractor.extract(&batch);
+        for line in tiger_res.debug.lines() {
+            log::info!("[tiger] {line}");
+        }
+        // Attempt to reconstruct program directly from tiger extraction.
+        match crate::tiger_reconstruct::reconstruct_program_from_tiger(
+            original_prog,
+            &egraph,
+            &tiger_graph,
+            &batch,
+            &tiger_res,
+        ) {
+            Ok(tp) => {
+                // check for linearity
+                match linearity::check_program_is_linear(&tp) {
+                    Ok(()) => {}
+                    Err(e) => {
+                        panic!("Tiger reconstruction produced non-linear program ({}).", e);
+                    }
+                }
+
+                log::info!("Tiger reconstruction succeeded.");
+                // Recompute cost on a fresh egraph containing ONLY the reconstructed program.
+                let cost_batch = batch.clone();
+                let cost_prog = tp.clone();
+                // Build minimal egglog program (no optimization schedule) just to load the program.
+                let cost_egglog = build_program(
+                    &cost_prog,
+                    None,
+                    &cost_batch,
+                    "", // empty schedule so only initialization runs
+                    None,
+                );
+                let mut cost_egraph = egglog::EGraph::default();
+                if let Err(e) = cost_egraph.parse_and_run_program(None, &cost_egglog) {
+                    panic!("Failed to compute cost after using tiger");
+                } else {
+                    let (ser2, unex2) = serialized_egraph(cost_egraph);
+                    let mut termdag2 = egglog::TermDag::default();
+                    let (c, _re_extracted) = greedy_dag_extract(
+                        &cost_prog,
+                        cost_batch,
+                        ser2,
+                        unex2,
+                        &mut termdag2,
+                        DefaultCostModel,
+                        should_maintain_linearity,
+                        false, // no debug exprs expected in cost pass
+                    );
+                    (c, tp)
+                }
+            }
+            Err(e) => {
+                panic!("Tiger reconstruction failed ({}).", e);
+            }
+        }
+    } else {
+        greedy_dag_extract(
+            original_prog,
+            batch.clone(),
+            egraph.clone(),
+            unextractables.clone(),
+            termdag,
+            DefaultCostModel,
+            should_maintain_linearity,
+            extract_debug_exprs,
+        )
+    }
+}
+
 // Optimizes a tree program using the given schedule.
 // Adds context to the program before optimizing.
 // If successful, returns the optimized program and the time
@@ -493,98 +585,16 @@ pub fn optimize(
                     "Program has debug expressions, extracting them instead of original program."
                 );
             }
-            let (_res_cost, iter_result) = if eggcc_config.use_tiger {
-                // Tiger path: run tiger extractor, attempt reconstruction to TreeProgram.
-                let tiger_graph = crate::tiger_format::build_tiger_egraph(&serialized);
-                log::info!(
-                    "Tiger graph built ({} eclasses)",
-                    tiger_graph.eclasses.len()
-                );
-                let tiger_extractor = TigerExtractor::new(&serialized);
-                let tiger_res = tiger_extractor.extract(&batch);
-                for line in tiger_res.debug.lines() {
-                    log::info!("[tiger] {line}");
-                }
-                // Attempt to reconstruct program directly from tiger extraction.
-                match crate::tiger_reconstruct::reconstruct_program_from_tiger(
-                    &res,
-                    &serialized,
-                    &tiger_graph,
-                    &batch,
-                    &tiger_res,
-                ) {
-                    Ok(tp) => {
-                        log::info!("Tiger reconstruction succeeded.");
-                        // Recompute cost on a fresh egraph containing ONLY the reconstructed program.
-                        let cost_batch = batch.clone();
-                        let cost_prog = tp.clone();
-                        // Build minimal egglog program (no optimization schedule) just to load the program.
-                        let cost_egglog = build_program(
-                            &cost_prog,
-                            None,
-                            &cost_batch,
-                            "", // empty schedule so only initialization runs
-                            None,
-                        );
-                        let mut cost_egraph = egglog::EGraph::default();
-                        if let Err(e) = cost_egraph.parse_and_run_program(None, &cost_egglog) {
-                            log::warn!("Cost egraph build failed: {e}, defaulting cost to greedy fallback on original batch");
-                            let (c_fallback, _) = extract(
-                                &res,
-                                batch.clone(),
-                                serialized.clone(),
-                                unextractables.clone(),
-                                &mut termdag,
-                                DefaultCostModel,
-                                should_maintain_linearity,
-                                has_debug_exprs,
-                            );
-                            (c_fallback, tp)
-                        } else {
-                            let (ser2, unex2) = serialized_egraph(cost_egraph);
-                            let mut termdag2 = egglog::TermDag::default();
-                            let (c, _re_extracted) = extract(
-                                &cost_prog,
-                                cost_batch,
-                                ser2,
-                                unex2,
-                                &mut termdag2,
-                                DefaultCostModel,
-                                should_maintain_linearity,
-                                false, // no debug exprs expected in cost pass
-                            );
-                            (c, tp)
-                        }
-                    }
-                    Err(e) => {
-                        log::warn!(
-                            "Tiger reconstruction failed ({}), falling back to greedy extractor.",
-                            e
-                        );
-                        extract(
-                            &res,
-                            batch.clone(),
-                            serialized.clone(),
-                            unextractables.clone(),
-                            &mut termdag,
-                            DefaultCostModel,
-                            should_maintain_linearity,
-                            has_debug_exprs,
-                        )
-                    }
-                }
-            } else {
-                extract(
-                    &res,
-                    batch.clone(),
-                    serialized.clone(),
-                    unextractables.clone(),
-                    &mut termdag,
-                    DefaultCostModel,
-                    should_maintain_linearity,
-                    has_debug_exprs,
-                )
-            };
+            let (_res_cost, iter_result) = extract(
+                eggcc_config,
+                &res,
+                batch.clone(),
+                &serialized,
+                &unextractables,
+                &mut termdag,
+                should_maintain_linearity,
+                has_debug_exprs,
+            );
 
             let extraction_end = Instant::now();
 

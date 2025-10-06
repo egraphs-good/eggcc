@@ -1,3 +1,5 @@
+// This is the old tiger implementation by Haobin, converted to rust but kept here for reference. Not maintained.
+
 #include<map>
 #include<set>
 #include<queue>

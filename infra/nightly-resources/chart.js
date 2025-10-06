@@ -116,21 +116,25 @@ function parseDataForChart() {
   let sortedBenchmarks = Array.from(benchmarks).sort();
 
   const data = {};
-  // First, compute value and error for each mode and benchmark
   GLOBAL_DATA.checkedModes.forEach((mode) => {
     data[mode] = {};
     benchmarks.forEach((benchmark) => {
       const entry = getEntry(benchmark, mode);
       if (entry) {
+        let effectiveEntry = entry;
+        if (entry.timedOut || !Array.isArray(entry.cycles)) {
+          // Represent timeout with a single NaN so reducers surface an issue but we handle before charting
+          effectiveEntry = { ...entry, cycles: [NaN] };
+        }
         data[mode][benchmark] = {
           mode: mode,
-          benchmark: benchmark,
-          value: getValue(entry),
-          error: getError(entry),
+            benchmark: benchmark,
+            value: (effectiveEntry.cycles.length && isFinite(effectiveEntry.cycles[0])) ? getValue(effectiveEntry) : 0,
+            error: 0,
+            timedOut: entry.timedOut === true,
         };
       }
     });
-    // Then, sort the benchmarks by the specified mode
     if (mode === sortByMode) {
       sortedBenchmarks = Object.values(data[mode])
         .sort((a, b) => b.value - a.value)
@@ -138,8 +142,6 @@ function parseDataForChart() {
     }
   });
 
-  // ChartJS wants the data formatted so that there's an array of values for each mode
-  // and a corresponding array of labels (benchmarks)
   const datasets = {};
   GLOBAL_DATA.checkedModes.forEach((mode) => {
     datasets[mode] = {
@@ -151,13 +153,12 @@ function parseDataForChart() {
     };
     Object.values(data[mode]).forEach((point) => {
       const idx = sortedBenchmarks.indexOf(point.benchmark);
-
       datasets[mode].data[idx] = point.value;
-      if (point.error) {
-        datasets[mode].errorBars[point.benchmark] = {
-          plus: point.error,
-          minus: point.error,
-        };
+      if (point.timedOut) {
+        // encode timeout visually by setting a striped pattern via custom property
+        datasets[mode].errorBars[point.benchmark] = { plus: 0, minus: 0, timedOut: true };
+      } else if (point.error) {
+        datasets[mode].errorBars[point.benchmark] = { plus: point.error, minus: point.error };
       }
     });
   });

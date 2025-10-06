@@ -308,6 +308,17 @@ def aggregate(compile_data, bench_times, paths):
       # merge compile info (contains timedOut flag)
       for key in compile_data[path]:
         result[key] = compile_data[path][key]
+      # Enforce timeout invariant
+      if result.get("timedOut"):
+        for k in ["cycles", "eggccCompileTimeSecs", "eggccSerializationTimeSecs", "eggccExtractionTimeSecs", "llvmCompileTimeSecs", "ilpTestTimes"]:
+          result[k] = False
+      else:
+        # basic sanity checks (best effort)
+        for k in ["eggccCompileTimeSecs", "eggccSerializationTimeSecs", "eggccExtractionTimeSecs", "llvmCompileTimeSecs"]:
+          if not isinstance(result.get(k), (int, float)):
+            raise Exception(f"Non-timeout entry missing numeric field {k} for {name} {runMethod}")
+        if not (isinstance(result.get("cycles"), list) and len(result["cycles"]) > 0):
+            raise Exception(f"Non-timeout entry has invalid cycles for {name} {runMethod}")
       res.append(result)
     return res
 

@@ -865,7 +865,7 @@ pub fn reconstruct_program_from_tiger(
                 node.original_node
             );
         }
-    assert!(extractor.valid_extraction(tex, root_cid));
+        assert!(extractor.valid_extraction(tex, root_cid));
         let mut body = build_expr_from_extraction(serialized, tiger, tex)?;
         // If extraction gave us a full function, unwrap its body.
         if let Expr::Function(_, _in_ty, _out_ty, inner) = body.as_ref() {

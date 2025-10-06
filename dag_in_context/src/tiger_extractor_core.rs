@@ -32,8 +32,8 @@ impl<'a> TigerExtractor<'a> {
         let mut weak_linearity_violation: IndexMap<ClassId, bool> = IndexMap::new();
         let mut weak_linearity_counts: IndexMap<ClassId, IndexMap<ClassId, u32>> = IndexMap::new();
         let mut state_walk_pure_ordering: IndexMap<ClassId, Vec<ClassId>> = IndexMap::new();
-    let mut guided_state_walks: IndexMap<ClassId, Vec<(ClassId, usize)>> = IndexMap::new();
-    let mut function_roots: IndexMap<String, ClassId> = IndexMap::new();
+        let mut guided_state_walks: IndexMap<ClassId, Vec<(ClassId, usize)>> = IndexMap::new();
+        let mut function_roots: IndexMap<String, ClassId> = IndexMap::new();
         let mut debug_lines: Vec<String> = Vec::new();
 
         for func in functions {

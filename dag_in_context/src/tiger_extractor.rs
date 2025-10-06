@@ -6,7 +6,7 @@ use crate::tiger_extractor_types::{
     TigerRegion, TigerRegionStats,
 };
 use crate::tiger_format::{TigerEClass, TigerEGraph, TigerENode};
-use egraph_serialize::ClassId;
+use egraph_serialize::{ClassId, NodeId};
 use indexmap::{IndexMap, IndexSet};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, VecDeque};
@@ -18,6 +18,13 @@ use std::collections::{BinaryHeap, HashMap, VecDeque};
     clippy::manual_div_ceil
 )]
 impl<'a> TigerExtractor<'a> {
+    fn original_enode_index(&self, cid: &ClassId, node: &NodeId) -> Option<usize> {
+        let &ti = self.tiger.class_index.get(cid)?;
+        self.tiger.eclasses[ti]
+            .enodes
+            .iter()
+            .position(|en| &en.original_node == node)
+    }
     // --- Basic helpers ---
     // build_state_walk, effectful_children, build_longest_state_walk moved to tiger_extractor_statewalk
 
@@ -112,10 +119,16 @@ impl<'a> TigerExtractor<'a> {
                     child_indices.push(ci);
                 }
             }
+            let orig_cid = g.eclasses[ec_idx].original.clone();
+            let orig_node = en.original_node.clone();
+            let Some(orig_idx) = self.original_enode_index(&orig_cid, &orig_node) else {
+                return None;
+            };
             let ex_idx = extraction.add_node(TigerExtractionENode {
-                eclass: g.eclasses[ec_idx].original.clone(),
-                enode_index: chosen,
+                eclass: orig_cid,
+                enode_index: orig_idx,
                 children: child_indices,
+                original_node: orig_node,
             });
             eclass_to_ex[ec_idx] = Some(ex_idx);
         }
@@ -202,6 +215,7 @@ impl<'a> TigerExtractor<'a> {
                         eclass: node.eclass.clone(),
                         enode_index: node.enode_index,
                         children: new_children,
+                        original_node: node.original_node.clone(),
                     });
                     map.insert(node.eclass.clone(), gidx);
                 }
@@ -313,6 +327,7 @@ impl<'a> TigerExtractor<'a> {
                         eclass: cid.clone(),
                         enode_index: n.enode_index,
                         children: child_indices,
+                        original_node: n.original_node.clone(),
                     });
                     local.insert(cid.clone(), ex_idx);
                 }
@@ -331,34 +346,47 @@ impl<'a> TigerExtractor<'a> {
 
     // --- Validation & linearity ---
     pub fn valid_extraction(&self, extraction: &TigerExtraction, root: &ClassId) -> bool {
+        let n_nodes = extraction.nodes.len();
+        if n_nodes == 0 {
+            return false;
+        }
         let Some(root_idx) = extraction.root_index else {
             return false;
         };
-        if extraction.nodes.is_empty() {
+        if root_idx != n_nodes - 1 {
             return false;
         }
         if extraction.nodes[root_idx].eclass != *root {
             return false;
         }
-        for (i, n) in extraction.nodes.iter().enumerate() {
-            for &ch in &n.children {
-                if ch >= i {
-                    return false;
-                }
-            }
-            let Some(&ti) = self.tiger.class_index.get(&n.eclass) else {
+        for i in (0..n_nodes).rev() {
+            let node = &extraction.nodes[i];
+            let Some(&ti) = self.tiger.class_index.get(&node.eclass) else {
                 return false;
             };
-            if n.enode_index >= self.tiger.eclasses[ti].enodes.len() {
+            let tec = &self.tiger.eclasses[ti];
+            if node.enode_index >= tec.enodes.len() {
                 return false;
             }
-            let ten = &self.tiger.eclasses[ti].enodes[n.enode_index];
-            let mut orig: IndexSet<ClassId> = IndexSet::new();
-            for &ch_ti in &ten.children {
-                orig.insert(self.tiger.eclasses[ch_ti].original.clone());
+            let ten = &tec.enodes[node.enode_index];
+            if ten.original_node != node.original_node {
+                return false;
             }
-            for &ci in &n.children {
-                if !orig.contains(&extraction.nodes[ci].eclass) {
+            if node.children.len() != ten.children.len() {
+                return false;
+            }
+            for (j, &ch_idx) in node.children.iter().enumerate() {
+                if ch_idx >= n_nodes {
+                    return false;
+                }
+                if ch_idx >= i {
+                    return false;
+                } // acyclicity / topological order
+                let child = &extraction.nodes[ch_idx];
+                let Some(&child_ti) = self.tiger.class_index.get(&child.eclass) else {
+                    return false;
+                };
+                if child_ti != ten.children[j] {
                     return false;
                 }
             }
@@ -369,58 +397,64 @@ impl<'a> TigerExtractor<'a> {
         let Some(root_idx) = extraction.root_index else {
             return false;
         };
-        let mut eff: HashMap<ClassId, bool> = HashMap::new();
-        for n in &extraction.nodes {
-            if let Some(&ti) = self.tiger.class_index.get(&n.eclass) {
-                eff.insert(n.eclass.clone(), self.tiger.eclasses[ti].is_effectful);
-            }
+        let mut node_effectful: Vec<bool> = Vec::with_capacity(extraction.nodes.len());
+        for node in &extraction.nodes {
+            let Some(&ti) = self.tiger.class_index.get(&node.eclass) else {
+                return false;
+            };
+            node_effectful.push(self.tiger.eclasses[ti].is_effectful);
         }
-        fn rec(nodes: &[TigerExtractionENode], cur: usize, eff: &HashMap<ClassId, bool>) -> bool {
+        fn rec(nodes: &[TigerExtractionENode], effectful: &[bool], cur: usize) -> bool {
             let mut statewalk = vec![cur];
             let mut onpath = vec![false; nodes.len()];
             onpath[cur] = true;
-            let mut sub = Vec::new();
-            for i in 0..statewalk.len() {
-                let u = statewalk[i];
-                let mut next_eff = None;
+            let mut subregions: Vec<usize> = Vec::new();
+            let mut vis = vec![false; nodes.len()];
+            let mut q = VecDeque::new();
+
+            let mut idx = 0;
+            while idx < statewalk.len() {
+                let u = statewalk[idx];
+                let mut next_eff: Option<usize> = None;
                 for &ch in &nodes[u].children {
-                    if *eff.get(&nodes[ch].eclass).unwrap_or(&false) {
-                        if next_eff.is_none() {
+                    if effectful[ch] {
+                        if next_eff.is_some() {
+                            subregions.push(ch);
+                        } else {
                             next_eff = Some(ch);
                             statewalk.push(ch);
                             onpath[ch] = true;
-                        } else {
-                            sub.push(ch);
                         }
+                    } else if !vis[ch] {
+                        vis[ch] = true;
+                        q.push_back(ch);
                     }
                 }
+                idx += 1;
             }
-            let mut q = VecDeque::new();
-            let mut seen = vec![false; nodes.len()];
-            for &p in &statewalk {
-                q.push_back(p);
-                seen[p] = true;
-            }
+
             while let Some(u) = q.pop_front() {
                 for &ch in &nodes[u].children {
-                    if *eff.get(&nodes[ch].eclass).unwrap_or(&false) {
+                    if effectful[ch] {
                         if !onpath[ch] {
                             return false;
                         }
-                    } else if !seen[ch] {
-                        seen[ch] = true;
+                    } else if !vis[ch] {
+                        vis[ch] = true;
                         q.push_back(ch);
                     }
                 }
             }
-            for &sr in &sub {
-                if !rec(nodes, sr, eff) {
+
+            for sr in subregions {
+                if !rec(nodes, effectful, sr) {
                     return false;
                 }
             }
             true
         }
-        rec(&extraction.nodes, root_idx, &eff)
+
+        rec(&extraction.nodes, &node_effectful, root_idx)
     }
 
     // --- Region building from walk (stats) ---
@@ -670,10 +704,16 @@ impl<'a> TigerExtractor<'a> {
                     child_indices.push(ci);
                 }
             }
+            let orig_cid = g.eclasses[ec_idx].original.clone();
+            let orig_node = en.original_node.clone();
+            let Some(orig_idx) = self.original_enode_index(&orig_cid, &orig_node) else {
+                return None;
+            };
             let ex_idx = extraction.add_node(TigerExtractionENode {
-                eclass: g.eclasses[ec_idx].original.clone(),
-                enode_index: chosen,
+                eclass: orig_cid,
+                enode_index: orig_idx,
                 children: child_indices,
+                original_node: orig_node,
             });
             map[ec_idx] = Some(ex_idx);
         }
@@ -690,31 +730,42 @@ impl<'a> TigerExtractor<'a> {
         let mut edges: Vec<Vec<(usize, usize)>> = vec![vec![]; n];
         let mut counters: Vec<Vec<usize>> = vec![vec![]; n];
         let mut q: VecDeque<usize> = VecDeque::new();
+
         for ec_idx in 0..n {
-            let ec = &self.tiger.eclasses[ec_idx];
             if seed.get(ec_idx).copied().unwrap_or(false) {
                 ret[ec_idx] = true;
                 q.push_back(ec_idx);
                 continue;
             }
-            if !ec.is_effectful {
-                counters[ec_idx] = vec![0; ec.enodes.len()];
-                let mut has_leaf = false;
-                for (en_i, en) in ec.enodes.iter().enumerate() {
-                    if en.children.is_empty() {
-                        has_leaf = true;
-                    }
-                    counters[ec_idx][en_i] = en.children.len();
-                    for &ch in &en.children {
-                        edges[ch].push((ec_idx, en_i));
-                    }
+
+            let ec = &self.tiger.eclasses[ec_idx];
+            if ec.is_effectful {
+                continue;
+            }
+
+            let mut has_leaf = false;
+            for en in &ec.enodes {
+                if en.children.is_empty() {
+                    has_leaf = true;
+                    break;
                 }
-                if has_leaf {
-                    ret[ec_idx] = true;
-                    q.push_back(ec_idx);
+            }
+
+            if has_leaf {
+                ret[ec_idx] = true;
+                q.push_back(ec_idx);
+                continue;
+            }
+
+            counters[ec_idx] = vec![0; ec.enodes.len()];
+            for (en_i, en) in ec.enodes.iter().enumerate() {
+                counters[ec_idx][en_i] = en.children.len();
+                for &ch in &en.children {
+                    edges[ch].push((ec_idx, en_i));
                 }
             }
         }
+
         while let Some(u) = q.pop_front() {
             for &(p_ec, p_en) in &edges[u] {
                 if ret[p_ec] {
@@ -729,6 +780,7 @@ impl<'a> TigerExtractor<'a> {
                 }
             }
         }
+
         ret
     }
     pub fn compress_extractable(&self, es: &ExtractableSet) -> Vec<u64> {
@@ -793,10 +845,13 @@ impl<'a> TigerExtractor<'a> {
                     child_indices.push(ci);
                 }
             }
+            let orig_node = en.original_node.clone();
+            let orig_idx = this.original_enode_index(cid, &orig_node).unwrap_or(chosen);
             let idx = ext.add_node(TigerExtractionENode {
                 eclass: cid.clone(),
-                enode_index: chosen,
+                enode_index: orig_idx,
                 children: child_indices,
+                original_node: orig_node,
             });
             memo.insert(cid.clone(), idx);
             Some(idx)

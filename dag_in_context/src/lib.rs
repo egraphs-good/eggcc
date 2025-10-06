@@ -449,6 +449,7 @@ fn extract(
             &tiger_graph,
             &batch,
             &tiger_res,
+            &tiger_extractor,
         ) {
             Ok(tp) => {
                 // check for linearity

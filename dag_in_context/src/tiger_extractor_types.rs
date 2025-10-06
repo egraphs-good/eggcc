@@ -1,5 +1,5 @@
 use crate::tiger_format::{TigerEClass, TigerEGraph, TigerENode};
-use egraph_serialize::ClassId;
+use egraph_serialize::{ClassId, NodeId};
 use indexmap::{IndexMap, IndexSet};
 
 pub type ExtractableSet = Vec<bool>;
@@ -23,6 +23,7 @@ pub struct TigerExtractionENode {
     pub eclass: ClassId,
     pub enode_index: usize,
     pub children: Vec<usize>,
+    pub original_node: NodeId,
 }
 
 #[derive(Debug, Clone, Default)]

@@ -1,4 +1,5 @@
 use crate::schema::{RcExpr, TreeProgram};
+use crate::tiger_extractor_core::TigerExtractor;
 use crate::tiger_extractor_types::{TigerExtraction, TigerExtractionResult};
 use crate::tiger_format::TigerEGraph;
 use egraph_serialize::EGraph;
@@ -19,290 +20,801 @@ pub enum TigerReconstructError {
 }
 
 fn build_expr_from_extraction(
-    _serialized: &EGraph,
+    serialized: &EGraph,
     tiger: &TigerEGraph,
     extraction: &TigerExtraction,
 ) -> Result<RcExpr, TigerReconstructError> {
     use crate::schema::Expr::*;
     use crate::schema::{
-        Assumption, BinaryOp, Constant as SchemaConstant, TernaryOp, Type as SchemaType, UnaryOp,
+        Assumption, BaseType, BinaryOp, Constant as SchemaConstant, TernaryOp, Type as SchemaType,
+        UnaryOp,
     };
-    let mut built: Vec<Option<RcExpr>> = vec![None; extraction.nodes.len()];
+    use ordered_float::OrderedFloat;
+
+    #[derive(Clone, Debug)]
+    enum BuiltValue {
+        Expr(RcExpr),
+        Type(SchemaType),
+        BaseType(BaseType),
+        TypeList(Vec<BaseType>),
+        ListExpr(Vec<RcExpr>),
+        Assumption(Assumption),
+        Constant(SchemaConstant),
+        BinaryOp(BinaryOp),
+        UnaryOp(UnaryOp),
+        TernaryOp(TernaryOp),
+        Int(i64),
+        Bool(bool),
+        Float(OrderedFloat<f64>),
+        String(String),
+    }
+
+    fn expect_value<'a>(
+        values: &'a [Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<&'a BuiltValue, TigerReconstructError> {
+        values
+            .get(idx)
+            .and_then(|v| v.as_ref())
+            .ok_or(TigerReconstructError::ChildIndexRange)
+    }
+
+    fn expect_expr(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<RcExpr, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::Expr(expr) => Ok(expr.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected Expr child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_type(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<SchemaType, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::Type(ty) => Ok(ty.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected Type child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_base_type(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<BaseType, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::BaseType(bt) => Ok(bt.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected BaseType child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_type_list(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<Vec<BaseType>, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::TypeList(list) => Ok(list.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected TypeList child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_list_expr(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<Vec<RcExpr>, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::ListExpr(list) => Ok(list.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected ListExpr child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_assumption(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<Assumption, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::Assumption(a) => Ok(a.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected Assumption child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_constant(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<SchemaConstant, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::Constant(c) => Ok(c.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected Constant child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_binary_op(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<BinaryOp, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::BinaryOp(op) => Ok(op.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected BinaryOp child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_unary_op(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<UnaryOp, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::UnaryOp(op) => Ok(op.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected UnaryOp child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_ternary_op(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<TernaryOp, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::TernaryOp(op) => Ok(op.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected TernaryOp child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_int(values: &[Option<BuiltValue>], idx: usize) -> Result<i64, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::Int(v) => Ok(*v),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected i64 child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_bool(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<bool, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::Bool(v) => Ok(*v),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected bool child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_float(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<OrderedFloat<f64>, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::Float(v) => Ok(*v),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected f64 child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn expect_string(
+        values: &[Option<BuiltValue>],
+        idx: usize,
+    ) -> Result<String, TigerReconstructError> {
+        match expect_value(values, idx)? {
+            BuiltValue::String(s) => Ok(s.clone()),
+            other => Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected String child at index {idx}, found {other:?}",
+            ))),
+        }
+    }
+
+    fn parse_binary_op(op: &str) -> Option<BinaryOp> {
+        use BinaryOp::*;
+        Some(match op {
+            "Add" => Add,
+            "Sub" => Sub,
+            "Mul" => Mul,
+            "Div" => Div,
+            "Eq" => Eq,
+            "LessThan" => LessThan,
+            "GreaterThan" => GreaterThan,
+            "LessEq" => LessEq,
+            "GreaterEq" => GreaterEq,
+            "Smax" => Smax,
+            "Smin" => Smin,
+            "Shl" => Shl,
+            "Shr" => Shr,
+            "FAdd" => FAdd,
+            "FSub" => FSub,
+            "FMul" => FMul,
+            "FDiv" => FDiv,
+            "FEq" => FEq,
+            "FLessThan" => FLessThan,
+            "FGreaterThan" => FGreaterThan,
+            "FLessEq" => FLessEq,
+            "FGreaterEq" => FGreaterEq,
+            "Fmax" => Fmax,
+            "Fmin" => Fmin,
+            "And" => And,
+            "Or" => Or,
+            "PtrAdd" => PtrAdd,
+            "Load" => Load,
+            "Print" => Print,
+            "Free" => Free,
+            "Bitand" => Bitand,
+            _ => return None,
+        })
+    }
+
+    fn parse_unary_op(op: &str) -> Option<UnaryOp> {
+        use UnaryOp::*;
+        Some(match op {
+            "Abs" => Abs,
+            "Not" => Not,
+            "Neg" => Neg,
+            _ => return None,
+        })
+    }
+
+    fn parse_ternary_op(op: &str) -> Option<TernaryOp> {
+        use TernaryOp::*;
+        Some(match op {
+            "Write" => Write,
+            "Select" => Select,
+            _ => return None,
+        })
+    }
+
+    fn parse_string_literal(raw: &str) -> String {
+        if raw.starts_with('"') && raw.ends_with('"') && raw.len() >= 2 {
+            let inner = &raw[1..raw.len() - 1];
+            let mut result = String::with_capacity(inner.len());
+            let mut chars = inner.chars();
+            while let Some(ch) = chars.next() {
+                if ch == '\\' {
+                    if let Some(next) = chars.next() {
+                        result.push(match next {
+                            '\\' => '\\',
+                            '"' => '"',
+                            'n' => '\n',
+                            't' => '\t',
+                            other => other,
+                        });
+                    }
+                } else {
+                    result.push(ch);
+                }
+            }
+            result
+        } else {
+            raw.to_string()
+        }
+    }
+
+    fn usize_from_i64(v: i64, ctx: &str) -> Result<usize, TigerReconstructError> {
+        if v < 0 {
+            Err(TigerReconstructError::UnsupportedHead(format!(
+                "expected non-negative index for {ctx}, found {v}"
+            )))
+        } else {
+            Ok(v as usize)
+        }
+    }
+
+    let mut values: Vec<Option<BuiltValue>> = vec![None; extraction.nodes.len()];
     for (idx, en) in extraction.nodes.iter().enumerate() {
-        let t_idx = *tiger
+        let tiger_idx = *tiger
             .class_index
             .get(&en.eclass)
             .expect("eclass missing in tiger graph");
-        let ten = &tiger.eclasses[t_idx].enodes[en.enode_index];
+        let ten = &tiger.eclasses[tiger_idx].enodes[en.enode_index];
         let op = ten.head.as_str();
-        let mut rc_children: Vec<RcExpr> = Vec::new();
-        for &ch_idx in &en.children {
-            let Some(ch_expr) = &built[ch_idx] else {
-                return Err(TigerReconstructError::ChildIndexRange);
-            };
-            rc_children.push(ch_expr.clone());
-        }
-        // Helpers
-        let bop2 = |opv: BinaryOp, c: &Vec<RcExpr>| -> Result<RcExpr, TigerReconstructError> {
-            if c.len() != 2 {
-                return Err(TigerReconstructError::UnsupportedHead(format!(
-                    "{op} arity {} != 2",
-                    c.len()
-                )));
-            }
-            Ok(Rc::new(Bop(opv, c[0].clone(), c[1].clone())))
-        };
-        let uop1 = |opv: UnaryOp, c: &Vec<RcExpr>| -> Result<RcExpr, TigerReconstructError> {
-            if c.len() != 1 {
-                return Err(TigerReconstructError::UnsupportedHead(format!(
-                    "{op} arity {} != 1",
-                    c.len()
-                )));
-            }
-            Ok(Rc::new(Uop(opv, c[0].clone())))
-        };
-        let expr: RcExpr = match op {
-            // Handle type AST nodes: map to placeholder Empty with Unknown type.
-            "IntT" | "BoolT" | "StateT" | "FloatT" | "TupleT" | "TNil" | "Base" => {
-                Rc::new(Empty(SchemaType::Unknown, Assumption::dummy()))
-            }
-            "PointerT" => {
-                // expect 1 child (inner type)
-                if rc_children.len() != 1 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "PointerT arity {} != 1",
-                        rc_children.len()
-                    )));
-                }
-                Rc::new(Empty(SchemaType::Unknown, Assumption::dummy()))
-            }
-            "TCons" => {
-                // part of type lists; produce placeholder
-                if rc_children.len() != 2 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "TCons arity {} != 2",
-                        rc_children.len()
-                    )));
-                }
-                Rc::new(Empty(SchemaType::Unknown, Assumption::dummy()))
-            }
-            // Flattened function wrapper: take last child as body
-            "Function" => {
-                if let Some(body) = rc_children.last() {
-                    body.clone()
-                } else {
-                    return Err(TigerReconstructError::UnsupportedHead(
-                        "Function(no children)".into(),
-                    ));
-                }
-            }
-            // Leaf / scope ops
-            "Arg" => Rc::new(Arg(SchemaType::Unknown, Assumption::dummy())),
-            "Empty" => Rc::new(Empty(SchemaType::Unknown, Assumption::dummy())),
-            // Very conservative Const reconstruction: default value based on child head if available.
-            // TODO: Inspect serialized original node to recover literal and context accurately.
-            "Const" => {
-                // Try to peek at first child (constant constructor head) if present
-                let val = if let Some(first_child) = rc_children.first() {
-                    // Heuristically pattern match on Debug formatting
-                    let s = format!("{}", first_child.as_ref());
-                    if s.contains("Bool true") {
-                        SchemaConstant::Bool(true)
-                    } else if s.contains("Bool false") {
-                        SchemaConstant::Bool(false)
-                    } else {
-                        SchemaConstant::Int(0)
-                    }
-                } else {
-                    SchemaConstant::Int(0)
-                };
-                Rc::new(Const(val, SchemaType::Unknown, Assumption::dummy()))
-            }
-            // Ternary ops (Write(ptr,val,state), Select(cond,then,else))
-            "Write" => {
-                if rc_children.len() != 3 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "Write arity {} != 3",
-                        rc_children.len()
-                    )));
-                }
-                Rc::new(Top(
-                    TernaryOp::Write,
-                    rc_children[0].clone(),
-                    rc_children[1].clone(),
-                    rc_children[2].clone(),
-                ))
-            }
-            "Select" => {
-                if rc_children.len() != 3 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "Select arity {} != 3",
-                        rc_children.len()
-                    )));
-                }
-                Rc::new(Top(
-                    TernaryOp::Select,
-                    rc_children[0].clone(),
-                    rc_children[1].clone(),
-                    rc_children[2].clone(),
-                ))
-            }
-            // Binary ops
-            "Add" => bop2(BinaryOp::Add, &rc_children)?,
-            "Sub" => bop2(BinaryOp::Sub, &rc_children)?,
-            "Mul" => bop2(BinaryOp::Mul, &rc_children)?,
-            "Div" => bop2(BinaryOp::Div, &rc_children)?,
-            "Eq" => bop2(BinaryOp::Eq, &rc_children)?,
-            "LessThan" => bop2(BinaryOp::LessThan, &rc_children)?,
-            "GreaterThan" => bop2(BinaryOp::GreaterThan, &rc_children)?,
-            "LessEq" => bop2(BinaryOp::LessEq, &rc_children)?,
-            "GreaterEq" => bop2(BinaryOp::GreaterEq, &rc_children)?,
-            "Smax" => bop2(BinaryOp::Smax, &rc_children)?,
-            "Smin" => bop2(BinaryOp::Smin, &rc_children)?,
-            "Shl" => bop2(BinaryOp::Shl, &rc_children)?,
-            "Shr" => bop2(BinaryOp::Shr, &rc_children)?,
-            "FAdd" => bop2(BinaryOp::FAdd, &rc_children)?,
-            "FSub" => bop2(BinaryOp::FSub, &rc_children)?,
-            "FMul" => bop2(BinaryOp::FMul, &rc_children)?,
-            "FDiv" => bop2(BinaryOp::FDiv, &rc_children)?,
-            "FEq" => bop2(BinaryOp::FEq, &rc_children)?,
-            "FLessThan" => bop2(BinaryOp::FLessThan, &rc_children)?,
-            "FGreaterThan" => bop2(BinaryOp::FGreaterThan, &rc_children)?,
-            "FLessEq" => bop2(BinaryOp::FLessEq, &rc_children)?,
-            "FGreaterEq" => bop2(BinaryOp::FGreaterEq, &rc_children)?,
-            "Fmax" => bop2(BinaryOp::Fmax, &rc_children)?,
-            "Fmin" => bop2(BinaryOp::Fmin, &rc_children)?,
-            "And" => bop2(BinaryOp::And, &rc_children)?,
-            "Or" => bop2(BinaryOp::Or, &rc_children)?,
-            "PtrAdd" => bop2(BinaryOp::PtrAdd, &rc_children)?,
-            "Load" => bop2(BinaryOp::Load, &rc_children)?,
-            "Print" => bop2(BinaryOp::Print, &rc_children)?,
-            "Free" => bop2(BinaryOp::Free, &rc_children)?,
-            "Bitand" => bop2(BinaryOp::Bitand, &rc_children)?,
-            // Unary ops
-            "Abs" => uop1(UnaryOp::Abs, &rc_children)?,
-            "Not" => uop1(UnaryOp::Not, &rc_children)?,
-            "Neg" => uop1(UnaryOp::Neg, &rc_children)?,
-            // Simple tuple constructors
-            "Single" => {
-                if rc_children.len() != 1 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "Single arity {} != 1",
-                        rc_children.len()
-                    )));
-                }
-                Rc::new(Single(rc_children[0].clone()))
-            }
-            "Concat" => {
-                if rc_children.len() != 2 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "Concat arity {} != 2",
-                        rc_children.len()
-                    )));
-                }
-                Rc::new(Concat(rc_children[0].clone(), rc_children[1].clone()))
-            }
-            // Control flow (flattened) – placeholders until full reconstruction of constants & indices
-            // We currently require exact arities to avoid silent mis-reconstruction.
-            "If" => {
-                if rc_children.len() != 4 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "If arity {} != 4",
-                        rc_children.len()
-                    )));
-                }
-                Rc::new(If(
-                    rc_children[0].clone(),
-                    rc_children[1].clone(),
-                    rc_children[2].clone(),
-                    rc_children[3].clone(),
-                ))
-            }
-            "Switch" => {
-                // Expect: pred, input, branches... (at least pred,input, one branch)
-                if rc_children.len() < 3 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "Switch arity {} < 3",
-                        rc_children.len()
-                    )));
-                }
-                let pred = rc_children[0].clone();
-                let input = rc_children[1].clone();
-                let branches = rc_children[2..].to_vec();
-                Rc::new(Switch(pred, input, branches))
-            }
-            "DoWhile" => {
-                if rc_children.len() != 2 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "DoWhile arity {} != 2",
-                        rc_children.len()
-                    )));
-                }
-                Rc::new(DoWhile(rc_children[0].clone(), rc_children[1].clone()))
-            }
-            // Tuple & indexing helpers (Get handled ONLY if 2 children and second is a Const Int below once constants supported)
-            "Get" => {
-                if rc_children.len() != 2 {
-                    return Err(TigerReconstructError::UnsupportedHead(format!(
-                        "Get arity {} != 2",
-                        rc_children.len()
-                    )));
-                }
-                // Expect rhs to ultimately encode an integer constant; we currently only support small indices 0..=1024 via string parse fallback.
-                let mut idx_opt: Option<usize> = None;
-                // Attempt to parse from Debug string of second child (e.g., Const (Int N) ...)
-                let dbg = format!("{}", rc_children[1].as_ref());
-                for tok in dbg.split(|c: char| !c.is_ascii_digit()) {
-                    if !tok.is_empty() {
-                        if let Ok(v) = tok.parse::<usize>() {
-                            idx_opt = Some(v);
-                            break;
-                        }
-                    }
-                }
-                let idx = idx_opt.ok_or_else(|| {
-                    TigerReconstructError::UnsupportedHead("Get(second child not int const)".into())
+        let sort = serialized
+            .class_data
+            .get(&en.eclass)
+            .and_then(|d| d.typ.as_deref())
+            .unwrap_or("Expr");
+
+        let built_value = match sort {
+            "String" => BuiltValue::String(parse_string_literal(op)),
+            "i64" => {
+                let value = op.parse::<i64>().map_err(|_| {
+                    TigerReconstructError::UnsupportedHead(format!("invalid i64 literal '{op}'"))
                 })?;
-                Rc::new(Get(rc_children[0].clone(), idx))
+                BuiltValue::Int(value)
+            }
+            "bool" => {
+                let value = match op {
+                    "true" => true,
+                    "false" => false,
+                    other => {
+                        return Err(TigerReconstructError::UnsupportedHead(format!(
+                            "invalid bool literal '{other}'"
+                        )))
+                    }
+                };
+                BuiltValue::Bool(value)
+            }
+            "f64" => {
+                let value = op.parse::<f64>().map_err(|_| {
+                    TigerReconstructError::UnsupportedHead(format!("invalid f64 literal '{op}'"))
+                })?;
+                BuiltValue::Float(OrderedFloat(value))
+            }
+            "BinaryOp" => BuiltValue::BinaryOp(parse_binary_op(op).ok_or_else(|| {
+                TigerReconstructError::UnsupportedHead(format!("unknown BinaryOp variant '{op}'"))
+            })?),
+            "UnaryOp" => BuiltValue::UnaryOp(parse_unary_op(op).ok_or_else(|| {
+                TigerReconstructError::UnsupportedHead(format!("unknown UnaryOp variant '{op}'"))
+            })?),
+            "TernaryOp" => BuiltValue::TernaryOp(parse_ternary_op(op).ok_or_else(|| {
+                TigerReconstructError::UnsupportedHead(format!("unknown TernaryOp variant '{op}'"))
+            })?),
+            "BaseType" => {
+                use BaseType::*;
+                let value = match op {
+                    "IntT" => IntT,
+                    "BoolT" => BoolT,
+                    "FloatT" => FloatT,
+                    "StateT" => StateT,
+                    "PointerT" => {
+                        if en.children.len() != 1 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "PointerT arity {} != 1",
+                                en.children.len()
+                            )));
+                        }
+                        PointerT(Box::new(expect_base_type(&values, en.children[0])?))
+                    }
+                    other => {
+                        return Err(TigerReconstructError::UnsupportedHead(format!(
+                            "unknown BaseType variant '{other}'"
+                        )))
+                    }
+                };
+                BuiltValue::BaseType(value)
+            }
+            "TypeList" => {
+                let value = match op {
+                    "TNil" => Vec::new(),
+                    "TCons" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "TCons arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        let head = expect_base_type(&values, en.children[0])?;
+                        let mut tail = expect_type_list(&values, en.children[1])?;
+                        tail.insert(0, head);
+                        tail
+                    }
+                    "TLConcat" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "TLConcat arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        let mut left = expect_type_list(&values, en.children[0])?;
+                        let right = expect_type_list(&values, en.children[1])?;
+                        left.extend(right);
+                        left
+                    }
+                    other => {
+                        return Err(TigerReconstructError::UnsupportedHead(format!(
+                            "unknown TypeList variant '{other}'"
+                        )))
+                    }
+                };
+                BuiltValue::TypeList(value)
+            }
+            "Type" => {
+                use SchemaType::*;
+                let value = match op {
+                    "Base" => {
+                        if en.children.len() != 1 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Base arity {} != 1",
+                                en.children.len()
+                            )));
+                        }
+                        Base(expect_base_type(&values, en.children[0])?)
+                    }
+                    "TupleT" => {
+                        if en.children.len() != 1 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "TupleT arity {} != 1",
+                                en.children.len()
+                            )));
+                        }
+                        TupleT(expect_type_list(&values, en.children[0])?)
+                    }
+                    "TmpType" => Unknown,
+                    other => {
+                        return Err(TigerReconstructError::UnsupportedHead(format!(
+                            "unknown Type variant '{other}'"
+                        )))
+                    }
+                };
+                BuiltValue::Type(value)
+            }
+            "Constant" => {
+                use SchemaConstant::*;
+                let value = match op {
+                    "Int" => {
+                        if en.children.len() != 1 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Constant::Int arity {} != 1",
+                                en.children.len()
+                            )));
+                        }
+                        Int(expect_int(&values, en.children[0])?)
+                    }
+                    "Bool" => {
+                        if en.children.len() != 1 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Constant::Bool arity {} != 1",
+                                en.children.len()
+                            )));
+                        }
+                        Bool(expect_bool(&values, en.children[0])?)
+                    }
+                    "Float" => {
+                        if en.children.len() != 1 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Constant::Float arity {} != 1",
+                                en.children.len()
+                            )));
+                        }
+                        Float(expect_float(&values, en.children[0])?)
+                    }
+                    other => {
+                        return Err(TigerReconstructError::UnsupportedHead(format!(
+                            "unknown Constant variant '{other}'"
+                        )))
+                    }
+                };
+                BuiltValue::Constant(value)
+            }
+            "Assumption" => {
+                use Assumption::*;
+                let value = match op {
+                    "InFunc" => {
+                        if en.children.len() != 1 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "InFunc arity {} != 1",
+                                en.children.len()
+                            )));
+                        }
+                        InFunc(expect_string(&values, en.children[0])?)
+                    }
+                    "InLoop" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "InLoop arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        InLoop(
+                            expect_expr(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                        )
+                    }
+                    "InIf" => {
+                        if en.children.len() != 3 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "InIf arity {} != 3",
+                                en.children.len()
+                            )));
+                        }
+                        InIf(
+                            expect_bool(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                            expect_expr(&values, en.children[2])?,
+                        )
+                    }
+                    "InSwitch" => {
+                        if en.children.len() != 3 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "InSwitch arity {} != 3",
+                                en.children.len()
+                            )));
+                        }
+                        InSwitch(
+                            expect_int(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                            expect_expr(&values, en.children[2])?,
+                        )
+                    }
+                    "WildCard" => {
+                        if en.children.len() != 1 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "WildCard arity {} != 1",
+                                en.children.len()
+                            )));
+                        }
+                        WildCard(expect_string(&values, en.children[0])?)
+                    }
+                    other => {
+                        return Err(TigerReconstructError::UnsupportedHead(format!(
+                            "unknown Assumption variant '{other}'"
+                        )))
+                    }
+                };
+                BuiltValue::Assumption(value)
+            }
+            "ListExpr" => {
+                let value = match op {
+                    "Nil" => Vec::new(),
+                    "Cons" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Cons arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        let head = expect_expr(&values, en.children[0])?;
+                        let mut tail = expect_list_expr(&values, en.children[1])?;
+                        tail.insert(0, head);
+                        tail
+                    }
+                    other => {
+                        return Err(TigerReconstructError::UnsupportedHead(format!(
+                            "unknown ListExpr variant '{other}'"
+                        )))
+                    }
+                };
+                BuiltValue::ListExpr(value)
+            }
+            "Expr" => {
+                let value = match op {
+                    "Const" => {
+                        if en.children.len() != 3 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Const arity {} != 3",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Const(
+                            expect_constant(&values, en.children[0])?,
+                            expect_type(&values, en.children[1])?,
+                            expect_assumption(&values, en.children[2])?,
+                        ))
+                    }
+                    "Arg" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Arg arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Arg(
+                            expect_type(&values, en.children[0])?,
+                            expect_assumption(&values, en.children[1])?,
+                        ))
+                    }
+                    "Empty" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Empty arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Empty(
+                            expect_type(&values, en.children[0])?,
+                            expect_assumption(&values, en.children[1])?,
+                        ))
+                    }
+                    "Bop" => {
+                        if en.children.len() != 3 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Bop arity {} != 3",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Bop(
+                            expect_binary_op(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                            expect_expr(&values, en.children[2])?,
+                        ))
+                    }
+                    "Uop" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Uop arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Uop(
+                            expect_unary_op(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                        ))
+                    }
+                    "Top" => {
+                        if en.children.len() != 4 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Top arity {} != 4",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Top(
+                            expect_ternary_op(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                            expect_expr(&values, en.children[2])?,
+                            expect_expr(&values, en.children[3])?,
+                        ))
+                    }
+                    "Get" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Get arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        let idx_val = expect_int(&values, en.children[1])?;
+                        Rc::new(Get(
+                            expect_expr(&values, en.children[0])?,
+                            usize_from_i64(idx_val, "Get")?,
+                        ))
+                    }
+                    "Alloc" => {
+                        if en.children.len() != 4 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Alloc arity {} != 4",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Alloc(
+                            expect_int(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                            expect_expr(&values, en.children[2])?,
+                            expect_base_type(&values, en.children[3])?,
+                        ))
+                    }
+                    "Call" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Call arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Call(
+                            expect_string(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                        ))
+                    }
+                    "Single" => {
+                        if en.children.len() != 1 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Single arity {} != 1",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Single(expect_expr(&values, en.children[0])?))
+                    }
+                    "Concat" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Concat arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Concat(
+                            expect_expr(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                        ))
+                    }
+                    "If" => {
+                        if en.children.len() != 4 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "If arity {} != 4",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(If(
+                            expect_expr(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                            expect_expr(&values, en.children[2])?,
+                            expect_expr(&values, en.children[3])?,
+                        ))
+                    }
+                    "Switch" => {
+                        if en.children.len() != 3 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Switch arity {} != 3",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Switch(
+                            expect_expr(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                            expect_list_expr(&values, en.children[2])?,
+                        ))
+                    }
+                    "DoWhile" => {
+                        if en.children.len() != 2 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "DoWhile arity {} != 2",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(DoWhile(
+                            expect_expr(&values, en.children[0])?,
+                            expect_expr(&values, en.children[1])?,
+                        ))
+                    }
+                    "Function" => {
+                        if en.children.len() != 4 {
+                            return Err(TigerReconstructError::UnsupportedHead(format!(
+                                "Function arity {} != 4",
+                                en.children.len()
+                            )));
+                        }
+                        Rc::new(Function(
+                            expect_string(&values, en.children[0])?,
+                            expect_type(&values, en.children[1])?,
+                            expect_type(&values, en.children[2])?,
+                            expect_expr(&values, en.children[3])?,
+                        ))
+                    }
+                    "Symbolic" => {
+                        if en.children.is_empty() {
+                            return Err(TigerReconstructError::UnsupportedHead(
+                                "Symbolic arity 0".into(),
+                            ));
+                        }
+                        let name = expect_string(&values, en.children[0])?;
+                        let ty = if en.children.len() > 1 {
+                            Some(expect_type(&values, en.children[1])?)
+                        } else {
+                            None
+                        };
+                        Rc::new(Symbolic(name, ty))
+                    }
+                    other => {
+                        return Err(TigerReconstructError::UnsupportedHead(format!(
+                            "unknown Expr constructor '{other}'"
+                        )))
+                    }
+                };
+                BuiltValue::Expr(value)
             }
             other => {
-                // Fallback literal / symbol handling for leaf nodes (parity with greedy_dag_extractor get_term logic)
-                if rc_children.is_empty() {
-                    if other.starts_with('"') && other.ends_with('"') && other.len() >= 2 {
-                        let s = &other[1..other.len() - 1];
-                        Rc::new(Symbolic(s.to_string(), None))
-                    } else if other == "true" || other == "false" {
-                        Rc::new(Const(
-                            SchemaConstant::Bool(other == "true"),
-                            SchemaType::Unknown,
-                            Assumption::dummy(),
-                        ))
-                    } else if let Ok(n) = other.parse::<i64>() {
-                        Rc::new(Const(
-                            SchemaConstant::Int(n),
-                            SchemaType::Unknown,
-                            Assumption::dummy(),
-                        ))
-                    } else if let Ok(f) = other.parse::<f64>() {
-                        Rc::new(Const(
-                            SchemaConstant::Float(ordered_float::OrderedFloat(f)),
-                            SchemaType::Unknown,
-                            Assumption::dummy(),
-                        ))
-                    } else {
-                        return Err(TigerReconstructError::UnsupportedHead(other.to_string()));
-                    }
-                } else {
-                    return Err(TigerReconstructError::UnsupportedHead(other.to_string()));
-                }
+                return Err(TigerReconstructError::UnsupportedHead(format!(
+                    "unsupported sort '{other}' for op '{op}'"
+                )))
             }
         };
-        built[idx] = Some(expr);
+
+        values[idx] = Some(built_value);
     }
-    if let Some(ridx) = extraction.root_index {
-        Ok(built[ridx].as_ref().unwrap().clone())
-    } else {
-        Err(TigerReconstructError::MissingRoot("<unknown>".into()))
+
+    let ridx = extraction
+        .root_index
+        .ok_or_else(|| TigerReconstructError::MissingRoot("<unknown>".into()))?;
+    match values.get(ridx).and_then(|v| v.as_ref()) {
+        Some(BuiltValue::Expr(expr)) => Ok(expr.clone()),
+        Some(other) => Err(TigerReconstructError::UnsupportedHead(format!(
+            "root index did not resolve to Expr; found {other:?}"
+        ))),
+        None => Err(TigerReconstructError::ChildIndexRange),
     }
 }
 
@@ -312,6 +824,7 @@ pub fn reconstruct_program_from_tiger(
     tiger: &TigerEGraph,
     batch: &[String],
     tiger_res: &TigerExtractionResult,
+    extractor: &TigerExtractor,
 ) -> Result<TreeProgram, TigerReconstructError> {
     use crate::schema::Expr;
     let mut new_funcs: IndexMap<String, RcExpr> = IndexMap::new();
@@ -329,6 +842,29 @@ pub fn reconstruct_program_from_tiger(
         let Some(tex) = tiger_res.extractions.get(root_cid) else {
             return Err(TigerReconstructError::MissingExtraction(fname.clone()));
         };
+
+        // check that it's a valid extraction with a root index
+        eprintln!(
+            "[tiger reconstruct] Reconstructing function {fname} from extraction with {} nodes, root_cid = {root_cid}, root_index = {:?}",
+            tex.nodes.len(),
+            tex.root_index
+        );
+        for (idx, node) in tex.nodes.iter().enumerate() {
+            let sort = serialized
+                .class_data
+                .get(&node.eclass)
+                .and_then(|d| d.typ.as_deref())
+                .unwrap_or("<unknown>");
+            eprintln!(
+                "  [extraction] idx={idx} eclass={} sort={} enode_index={} children={:?} original_node={:?}",
+                node.eclass,
+                sort,
+                node.enode_index,
+                node.children,
+                node.original_node
+            );
+        }
+        assert!(extractor.valid_extraction(tex, root_cid));
         let mut body = build_expr_from_extraction(serialized, tiger, tex)?;
         // If extraction gave us a full function, unwrap its body.
         if let Expr::Function(_, _in_ty, _out_ty, inner) = body.as_ref() {

@@ -26,6 +26,8 @@ pub struct TigerEClass {
     pub is_effectful: bool,
     /// Original ClassId.
     pub original: ClassId,
+    /// Optional sort string from the serialized e-graph.
+    pub sort: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -149,6 +151,7 @@ where
         enodes: Vec::new(),
         is_effectful: false,
         original: ClassId::from("__uninit__".to_string()),
+        sort: None,
     });
 
     // First pass: fill eclasses with meta & effectful flag.
@@ -160,6 +163,7 @@ where
         };
         tiger_eclasses[idx].is_effectful = eff;
         tiger_eclasses[idx].original = cid.clone();
+        tiger_eclasses[idx].sort = egraph.class_data.get(cid).and_then(|d| d.typ.clone());
     }
 
     // Second pass: create tiger enodes.

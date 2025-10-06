@@ -2,7 +2,6 @@ use crate::schema::{RcExpr, TreeProgram};
 use crate::tiger_extractor_core::TigerExtractor;
 use crate::tiger_extractor_types::{TigerExtraction, TigerExtractionResult};
 use crate::tiger_format::TigerEGraph;
-use egraph_serialize::EGraph;
 use indexmap::IndexMap;
 use std::rc::Rc;
 use thiserror::Error;
@@ -20,7 +19,6 @@ pub enum TigerReconstructError {
 }
 
 fn build_expr_from_extraction(
-    serialized: &EGraph,
     tiger: &TigerEGraph,
     extraction: &TigerExtraction,
 ) -> Result<RcExpr, TigerReconstructError> {
@@ -323,13 +321,10 @@ fn build_expr_from_extraction(
             .class_index
             .get(&en.eclass)
             .expect("eclass missing in tiger graph");
-        let ten = &tiger.eclasses[tiger_idx].enodes[en.enode_index];
+        let tec = &tiger.eclasses[tiger_idx];
+        let ten = &tec.enodes[en.enode_index];
         let op = ten.head.as_str();
-        let sort = serialized
-            .class_data
-            .get(&en.eclass)
-            .and_then(|d| d.typ.as_deref())
-            .unwrap_or("Expr");
+        let sort = tec.sort.as_deref().unwrap_or("Expr");
 
         let built_value = match sort {
             "String" => BuiltValue::String(parse_string_literal(op)),
@@ -820,7 +815,6 @@ fn build_expr_from_extraction(
 
 pub fn reconstruct_program_from_tiger(
     original_prog: &TreeProgram,
-    serialized: &EGraph,
     tiger: &TigerEGraph,
     batch: &[String],
     tiger_res: &TigerExtractionResult,
@@ -851,10 +845,11 @@ pub fn reconstruct_program_from_tiger(
             tex.root_index
         );
         for (idx, node) in tex.nodes.iter().enumerate() {
-            let sort = serialized
-                .class_data
+            let sort = tiger
+                .class_index
                 .get(&node.eclass)
-                .and_then(|d| d.typ.as_deref())
+                .and_then(|&ti| tiger.eclasses.get(ti))
+                .and_then(|tec| tec.sort.as_deref())
                 .unwrap_or("<unknown>");
             eprintln!(
                 "  [extraction] idx={idx} eclass={} sort={} enode_index={} children={:?} original_node={:?}",
@@ -866,7 +861,7 @@ pub fn reconstruct_program_from_tiger(
             );
         }
         assert!(extractor.valid_extraction(tex, root_cid));
-        let mut body = build_expr_from_extraction(serialized, tiger, tex)?;
+        let mut body = build_expr_from_extraction(tiger, tex)?;
         // If extraction gave us a full function, unwrap its body.
         if let Expr::Function(_, _in_ty, _out_ty, inner) = body.as_ref() {
             eprintln!("[tiger reconstruct] Unwrapping extracted Function node for {fname} and using its body");

@@ -336,6 +336,7 @@ impl<'a> TigerExtractor<'a> {
                 enodes: vec![],
                 is_effectful: ec.is_effectful,
                 original: ec.original.clone(),
+                sort: ec.sort.clone(),
             };
             if !ec.is_effectful {
                 for en in &ec.enodes {
@@ -369,6 +370,7 @@ impl<'a> TigerExtractor<'a> {
                     enodes: vec![],
                     is_effectful: true,
                     original: orig_ec.original.clone(),
+                    sort: orig_ec.sort.clone(),
                 });
                 dup
             } else {

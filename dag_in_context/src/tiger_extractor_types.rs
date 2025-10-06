@@ -153,6 +153,7 @@ pub fn create_region_egraph(tiger: &TigerEGraph, region_root: &ClassId) -> Regio
             enodes: vec![],
             is_effectful: orig_class.is_effectful,
             original: orig.clone(),
+            sort: orig_class.sort.clone(),
         };
         for en in &orig_class.enodes {
             let mut new_children = Vec::new();

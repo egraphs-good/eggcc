@@ -445,7 +445,6 @@ fn extract(
         // Attempt to reconstruct program directly from tiger extraction.
         match crate::tiger_reconstruct::reconstruct_program_from_tiger(
             original_prog,
-            &egraph,
             &tiger_graph,
             &batch,
             &tiger_res,

@@ -73,8 +73,9 @@ impl<'a> TigerExtractor<'a> {
                     let walk_ids = self.build_state_walk(root.clone());
                     (self.naive_extraction(&root), walk_ids, IndexMap::new())
                 };
-                let lin_ok = self.region_linearity_check(&extraction)
-                    && self.valid_extraction(&extraction, &root);
+                assert!(self.valid_extraction(&extraction, &root));
+                assert!(self.region_linearity_check(&extraction));
+
                 if let Some(ridx) = extraction.root_index {
                     chosen_enodes.insert(root.clone(), extraction.nodes[ridx].enode_index);
                 }
@@ -89,17 +90,15 @@ impl<'a> TigerExtractor<'a> {
                 regions.insert(root.clone(), rs);
                 region_stats.insert(root.clone(), rs_stats);
                 extractions.insert(root.clone(), extraction.clone());
-                linearity_ok.insert(root.clone(), lin_ok);
                 weak_linearity_counts.insert(root.clone(), wlcounts);
                 // Derive pure ordering diagnostic (use guided if available else unguided walk mapping with dummy enode index 0)
                 let walk_pairs: Vec<(ClassId, usize)> = Vec::new();
                 let pure_ord = self.analyze_state_walk_ordering(&walk_pairs, None);
                 state_walk_pure_ordering.insert(root.clone(), pure_ord);
                 debug_lines.push(format!(
-                    "func={} strategy={} lin_ok={} wl_violation={} excess={} regions={} nodes={}",
+                    "func={} strategy={} wl_violation={} excess={} regions={} nodes={}",
                     func,
                     used_strategy,
-                    lin_ok,
                     weak_linearity_violation[&root],
                     weak_linearity_excess[&root],
                     regions[&root].len(),

@@ -69,6 +69,10 @@ struct Args {
     /// WARNING: Produces unsound results!
     #[clap(long)]
     no_linearity: bool,
+    /// Allow rules that don't obey weak linearity.
+    /// With the two pass extractor, this will probably error out.
+    #[clap(long)]
+    non_weakly_linear: bool,
     /// If we are testing ILP extraction, the timeout
     /// for this test in seconds
     #[clap(long)]
@@ -130,6 +134,7 @@ fn main() {
             schedule: args.eggcc_schedule.unwrap_or(Schedule::default()),
             stop_after_n_passes: args.stop_after_n_passes.unwrap_or(i64::MAX),
             linearity: !args.no_linearity,
+            non_weakly_linear: args.non_weakly_linear,
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
             ablate: args.ablate,
             ilp_extraction_test_timeout: args.ilp_extraction_test_timeout.map(Duration::from_secs),

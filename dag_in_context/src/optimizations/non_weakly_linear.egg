@@ -1,0 +1,70 @@
+(ruleset non-weakly-linear)
+
+; Eliminate if when predicate is statically true
+(rule (
+  (= pred (Const (Bool true) _ty ctx))
+  (= if_e (If pred inputs thn els))
+) (
+  (union if_e (Subst ctx inputs thn))
+) :ruleset non-weakly-linear)
+
+; Eliminate if when predicate is statically false
+(rule (
+  (= pred (Const (Bool false) _ty ctx))
+  (= if_e (If pred inputs thn els))
+) (
+  (union if_e (Subst ctx inputs els))
+) :ruleset non-weakly-linear)
+
+
+; Make every load unioned with the input
+(rule ((= load (Bop (Load) load-addr state)))
+      ((union (Get load 1) state))
+      :ruleset non-weakly-linear)
+
+
+; Pass through of state edges for ifs, regardless of type
+(rule ((= if (If pred inputs then_ else_))
+       (= then-branch (Get then_ i))
+       (= else-branch (Get else_ i))
+       (= then-branch (Get (Arg arg_ty _then_ctx) j))
+       (= else-branch (Get (Arg arg_ty _else_ctx) j)))
+      ((union (Get if i) (Get inputs j)))
+      :ruleset non-weakly-linear)
+
+;; peel a loop once 
+(rule
+ ((= lhs (DoWhile inputs outputs))
+  (ContextOf lhs ctx)
+  (HasType inputs inputs-ty)
+  (= outputs-len (tuple-length outputs))
+  (= old_cost (LoopNumItersGuess inputs outputs))
+  (<= old_cost 5)
+  )
+ (
+  (let executed-once
+    (Subst ctx inputs outputs))
+  (let executed-once-body
+     (SubTuple executed-once 1 (- outputs-len 1)))
+  (let then-ctx
+    (InIf true (Get executed-once 0) executed-once-body))
+  (let else-ctx
+    (InIf false (Get executed-once 0) executed-once-body))
+
+  (let new-loop-arg
+    (Arg inputs-ty then-ctx))
+  (let new-loop-body
+    (Subst (TmpCtx) new-loop-arg outputs))
+  (union (InLoop new-loop-arg new-loop-body) (TmpCtx))
+  (delete (TmpCtx))
+
+  (union lhs
+    ;; check if we need to continue executing the loop
+    (If (Get executed-once 0)
+      executed-once-body ;; inputs are the body executed once
+      (DoWhile new-loop-arg new-loop-body)
+      (Arg inputs-ty else-ctx)))
+
+  (set (LoopNumItersGuess new-loop-arg new-loop-body) (- old_cost 1))
+  )
+ :ruleset non-weakly-linear)

@@ -838,7 +838,7 @@ impl Run {
             RunMode::Egglog => {
                 let rvsdg = Optimizer::program_to_rvsdg(&self.prog_with_args.program)?;
                 let dag = rvsdg.to_dag_encoding();
-                let schedules = self.eggcc_config.schedule.get_schedule_list();
+                let schedules = self.eggcc_config.get_schedule_list();
 
                 // how many actual passes to run
                 let cutoff = self.eggcc_config.get_normalized_cutoff(schedules.len());
@@ -1297,7 +1297,7 @@ impl FreshNameGen {
 
 #[cfg(test)]
 mod test {
-    use dag_in_context::Schedule;
+    use dag_in_context::{EggccConfig, Schedule};
 
     use super::{Run, RunMode};
 
@@ -1312,7 +1312,12 @@ mod test {
         };
         let mut prog = vec![];
         for schedule in [Schedule::Sequential, Schedule::Parallel] {
-            let sched_len = schedule.get_schedule_list().len() as i64;
+            let config = EggccConfig {
+                schedule: schedule.clone(),
+                ..EggccConfig::default()
+            };
+
+            let sched_len = config.get_schedule_list().len() as i64;
             // 0 is not valid because to_egglog starts with 1
             for i in 1..sched_len + 1 {
                 let run1 = build_run(&schedule, i);

@@ -62,6 +62,30 @@ fn build_expr_from_extraction(
             Ok(Rc::new(Uop(opv, c[0].clone())))
         };
         let expr: RcExpr = match op {
+            // Handle type AST nodes: map to placeholder Empty with Unknown type.
+            "IntT" | "BoolT" | "StateT" | "FloatT" | "TupleT" | "TNil" | "Base" => {
+                Rc::new(Empty(SchemaType::Unknown, Assumption::dummy()))
+            }
+            "PointerT" => {
+                // expect 1 child (inner type)
+                if rc_children.len() != 1 {
+                    return Err(TigerReconstructError::UnsupportedHead(format!(
+                        "PointerT arity {} != 1",
+                        rc_children.len()
+                    )));
+                }
+                Rc::new(Empty(SchemaType::Unknown, Assumption::dummy()))
+            }
+            "TCons" => {
+                // part of type lists; produce placeholder
+                if rc_children.len() != 2 {
+                    return Err(TigerReconstructError::UnsupportedHead(format!(
+                        "TCons arity {} != 2",
+                        rc_children.len()
+                    )));
+                }
+                Rc::new(Empty(SchemaType::Unknown, Assumption::dummy()))
+            }
             // Flattened function wrapper: take last child as body
             "Function" => {
                 if let Some(body) = rc_children.last() {
@@ -241,7 +265,37 @@ fn build_expr_from_extraction(
                 })?;
                 Rc::new(Get(rc_children[0].clone(), idx))
             }
-            other => return Err(TigerReconstructError::UnsupportedHead(other.to_string())),
+            other => {
+                // Fallback literal / symbol handling for leaf nodes (parity with greedy_dag_extractor get_term logic)
+                if rc_children.is_empty() {
+                    if other.starts_with('"') && other.ends_with('"') && other.len() >= 2 {
+                        let s = &other[1..other.len() - 1];
+                        Rc::new(Symbolic(s.to_string(), None))
+                    } else if other == "true" || other == "false" {
+                        Rc::new(Const(
+                            SchemaConstant::Bool(other == "true"),
+                            SchemaType::Unknown,
+                            Assumption::dummy(),
+                        ))
+                    } else if let Ok(n) = other.parse::<i64>() {
+                        Rc::new(Const(
+                            SchemaConstant::Int(n),
+                            SchemaType::Unknown,
+                            Assumption::dummy(),
+                        ))
+                    } else if let Ok(f) = other.parse::<f64>() {
+                        Rc::new(Const(
+                            SchemaConstant::Float(ordered_float::OrderedFloat(f)),
+                            SchemaType::Unknown,
+                            Assumption::dummy(),
+                        ))
+                    } else {
+                        return Err(TigerReconstructError::UnsupportedHead(other.to_string()));
+                    }
+                } else {
+                    return Err(TigerReconstructError::UnsupportedHead(other.to_string()));
+                }
+            }
         };
         built[idx] = Some(expr);
     }

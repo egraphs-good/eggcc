@@ -1,6 +1,7 @@
 use crate::greedy_dag_extractor::get_root;
 use crate::tiger_extractor_types::{
-    TigerExtraction, TigerExtractionResult, TigerRegion, TigerRegionStats,
+    create_region_egraph, TigerExtraction, TigerExtractionENode, TigerExtractionResult,
+    TigerRegion, TigerRegionStats,
 };
 use crate::tiger_format::{build_tiger_egraph, TigerEGraph};
 use egraph_serialize::{ClassId, EGraph};
@@ -20,7 +21,6 @@ impl<'a> TigerExtractor<'a> {
 }
 
 impl<'a> TigerExtractor<'a> {
-    // Orchestrator kept here; methods it calls are defined across split modules.
     pub fn extract(&self, functions: &[String]) -> TigerExtractionResult {
         let mut chosen_enodes: IndexMap<ClassId, usize> = IndexMap::new();
         let mut state_walks: IndexMap<ClassId, Vec<ClassId>> = IndexMap::new();
@@ -32,80 +32,95 @@ impl<'a> TigerExtractor<'a> {
         let mut weak_linearity_violation: IndexMap<ClassId, bool> = IndexMap::new();
         let mut weak_linearity_counts: IndexMap<ClassId, IndexMap<ClassId, u32>> = IndexMap::new();
         let mut state_walk_pure_ordering: IndexMap<ClassId, Vec<ClassId>> = IndexMap::new();
+        let mut guided_state_walks: IndexMap<ClassId, Vec<(ClassId, usize)>> = IndexMap::new();
         let mut debug_lines: Vec<String> = Vec::new();
-        let guided_state_walks: IndexMap<ClassId, Vec<(ClassId, usize)>> = IndexMap::new();
 
         for func in functions {
-            if let Some(root_body) = self.function_body_root(func) {
-                let mut used_strategy = String::new();
-                let mut wl_flag = false;
-                let mut best: Option<(TigerExtraction, Vec<ClassId>, IndexMap<ClassId, u32>)> =
-                    None;
-                let root = root_body.clone();
-                // Parity with legacy C++: disable multi/recursive region strategies.
-                // if let Some((ex, walk, wl, wlcounts)) = self
-                //     .advanced_recursive_multi_region_extraction(&root)
-                //     .map(|(a, b, _c, d, e)| (a, b, d, e))
-                // {
-                //     wl_flag = wl;
-                //     best = Some((ex, walk, wlcounts));
-                //     used_strategy = "recursive-multi-region".into();
-                // } else if let Some((ex, walk, wl, wlcounts)) = self
-                //     .advanced_multi_region_extraction(&root)
-                //     .map(|(a, b, _c, d, e)| (a, b, d, e))
-                // {
-                //     wl_flag = wl;
-                //     best = Some((ex, walk, wlcounts));
-                //     used_strategy = "multi-region".into();
-                // } else
-                if let Some((ex, walk, wl, wlcounts)) = self
-                    .advanced_region_extraction(&root)
-                    .map(|(a, b, _c, d, e)| (a, b, d, e))
-                {
-                    wl_flag = wl;
-                    best = Some((ex, walk, wlcounts));
-                    used_strategy = "single-region".into();
-                }
-                let (extraction, walk_ids, wlcounts) = if let Some(b) = best {
-                    b
-                } else {
-                    used_strategy = "fallback-naive".into();
-                    let walk_ids = self.build_state_walk(root.clone());
-                    (self.naive_extraction(&root), walk_ids, IndexMap::new())
-                };
-                assert!(self.valid_extraction(&extraction, &root));
-                assert!(self.region_linearity_check(&extraction));
-
-                if let Some(ridx) = extraction.root_index {
-                    chosen_enodes.insert(root.clone(), extraction.nodes[ridx].enode_index);
-                }
-                state_walks.insert(root.clone(), walk_ids.clone());
-                let eff_reach = self.effectful_reachable(&root);
-                let excess = eff_reach.len().saturating_sub(state_walks[&root].len());
-                weak_linearity_excess.insert(root.clone(), excess);
-                weak_linearity_violation.insert(root.clone(), wl_flag || excess > 0);
-                // Previously conditional on guided_state_walks; now always empty
-                let rs: Vec<TigerRegion> = Vec::new();
-                let rs_stats: Vec<TigerRegionStats> = Vec::new();
-                regions.insert(root.clone(), rs);
-                region_stats.insert(root.clone(), rs_stats);
-                extractions.insert(root.clone(), extraction.clone());
-                weak_linearity_counts.insert(root.clone(), wlcounts);
-                // Derive pure ordering diagnostic (use guided if available else unguided walk mapping with dummy enode index 0)
-                let walk_pairs: Vec<(ClassId, usize)> = Vec::new();
-                let pure_ord = self.analyze_state_walk_ordering(&walk_pairs, None);
-                state_walk_pure_ordering.insert(root.clone(), pure_ord);
-                debug_lines.push(format!(
-                    "func={} strategy={} wl_violation={} excess={} regions={} nodes={}",
-                    func,
-                    used_strategy,
-                    weak_linearity_violation[&root],
-                    weak_linearity_excess[&root],
-                    regions[&root].len(),
-                    extraction.nodes.len()
-                ));
+            let Some(root_cid) = self.function_body_root(func) else {
+                debug_lines.push(format!("func={} missing_root", func));
+                continue;
+            };
+            let Some(&root_idx) = self.tiger.class_index.get(&root_cid) else {
+                debug_lines.push(format!("func={} missing_tiger_class", func));
+                continue;
+            };
+            if !self.tiger.eclasses[root_idx].is_effectful {
+                debug_lines.push(format!("func={} skipped_pure_root", func));
+                continue;
             }
+
+            let mut region_root_id: Vec<Option<usize>> = vec![None; self.tiger.eclasses.len()];
+            let mut region_roots: Vec<ClassId> = Vec::new();
+            region_roots.push(root_cid.clone());
+            region_root_id[root_idx] = Some(0);
+
+            for ec in self.tiger.eclasses.iter() {
+                if !ec.is_effectful {
+                    continue;
+                }
+                for en in &ec.enodes {
+                    let mut subregion_root = false;
+                    for &child_idx in &en.children {
+                        let child_ec = &self.tiger.eclasses[child_idx];
+                        if child_ec.is_effectful {
+                            if subregion_root {
+                                if region_root_id[child_idx].is_none() {
+                                    let new_id = region_roots.len();
+                                    region_root_id[child_idx] = Some(new_id);
+                                    region_roots.push(child_ec.original.clone());
+                                }
+                            } else {
+                                subregion_root = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            let mut extracted_roots: Vec<Option<usize>> = vec![None; region_roots.len()];
+            let mut extraction = TigerExtraction::new();
+            let Some(root_region_id) = region_root_id[root_idx] else {
+                debug_lines.push(format!("func={} missing_region_root_id", func));
+                continue;
+            };
+            let Some(root_global_idx) = self.reconstruct_extraction(
+                &region_roots,
+                &region_root_id,
+                &mut extracted_roots,
+                &mut extraction,
+                root_region_id,
+            ) else {
+                debug_lines.push(format!("func={} reconstruction_failed", func));
+                continue;
+            };
+            extraction.root_index = Some(root_global_idx);
+
+            assert!(self.valid_extraction(&extraction, &root_cid));
+            assert!(self.region_linearity_check(&extraction));
+
+            if let Some(ridx) = extraction.root_index {
+                chosen_enodes.insert(root_cid.clone(), extraction.nodes[ridx].enode_index);
+            }
+
+            extractions.insert(root_cid.clone(), extraction.clone());
+            linearity_ok.insert(root_cid.clone(), true);
+            state_walks.insert(root_cid.clone(), Vec::new());
+            weak_linearity_counts.insert(root_cid.clone(), IndexMap::new());
+            weak_linearity_excess.insert(root_cid.clone(), 0);
+            weak_linearity_violation.insert(root_cid.clone(), false);
+            regions.insert(root_cid.clone(), Vec::new());
+            region_stats.insert(root_cid.clone(), Vec::new());
+            state_walk_pure_ordering.insert(root_cid.clone(), Vec::new());
+            guided_state_walks.insert(root_cid.clone(), Vec::new());
+
+            debug_lines.push(format!(
+                "Function root: {} (idx={}) extracted_nodes={}",
+                root_cid,
+                root_idx,
+                extraction.nodes.len()
+            ));
         }
+
         TigerExtractionResult {
             chosen_enodes,
             state_walks,
@@ -120,6 +135,83 @@ impl<'a> TigerExtractor<'a> {
             weak_linearity_counts,
             state_walk_pure_ordering,
         }
+    }
+
+    fn reconstruct_extraction(
+        &self,
+        region_roots: &[ClassId],
+        region_root_id: &[Option<usize>],
+        extracted_roots: &mut Vec<Option<usize>>,
+        extraction: &mut TigerExtraction,
+        cur_region: usize,
+    ) -> Option<usize> {
+        if let Some(existing) = extracted_roots.get(cur_region).and_then(|v| *v) {
+            return Some(existing);
+        }
+
+        let region_root = region_roots.get(cur_region)?;
+        let rsub = create_region_egraph(&self.tiger, region_root);
+        let (walk_pairs, _wl_flag, _wl_counts) = self.unguided_find_state_walk_region(&rsub);
+        if walk_pairs.is_empty() {
+            return None;
+        }
+        let region_extraction = self.region_extraction_with_state_walk(&rsub, &walk_pairs)?;
+
+        let mut local_to_global: Vec<usize> = vec![usize::MAX; region_extraction.nodes.len()];
+        for (idx, node) in region_extraction.nodes.iter().enumerate() {
+            let &tiger_idx = self.tiger.class_index.get(&node.eclass)?;
+            let original_enode = &self.tiger.eclasses[tiger_idx].enodes[node.enode_index];
+            let mut child_iter = node.children.iter().copied();
+            let mut final_children: Vec<usize> = Vec::with_capacity(original_enode.children.len());
+            let mut seen_effectful = false;
+            for &child_idx in &original_enode.children {
+                let child_ec = &self.tiger.eclasses[child_idx];
+                if child_ec.is_effectful {
+                    if seen_effectful {
+                        let region_idx = region_root_id.get(child_idx).copied().flatten()?;
+                        let child_global = self.reconstruct_extraction(
+                            region_roots,
+                            region_root_id,
+                            extracted_roots,
+                            extraction,
+                            region_idx,
+                        )?;
+                        final_children.push(child_global);
+                    } else {
+                        seen_effectful = true;
+                        let local_child_idx = child_iter.next()?;
+                        let mapped = *local_to_global.get(local_child_idx)?;
+                        if mapped == usize::MAX {
+                            return None;
+                        }
+                        final_children.push(mapped);
+                    }
+                } else {
+                    let local_child_idx = child_iter.next()?;
+                    let mapped = *local_to_global.get(local_child_idx)?;
+                    if mapped == usize::MAX {
+                        return None;
+                    }
+                    final_children.push(mapped);
+                }
+            }
+            if child_iter.next().is_some() {
+                return None;
+            }
+
+            let new_idx = extraction.add_node(TigerExtractionENode {
+                eclass: node.eclass.clone(),
+                enode_index: node.enode_index,
+                children: final_children,
+                original_node: node.original_node.clone(),
+            });
+            local_to_global[idx] = new_idx;
+        }
+
+        let root_local = region_extraction.root_index?;
+        let root_global = local_to_global[root_local];
+        extracted_roots[cur_region] = Some(root_global);
+        Some(root_global)
     }
 }
 

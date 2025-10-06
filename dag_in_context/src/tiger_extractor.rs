@@ -29,7 +29,7 @@ impl<'a> TigerExtractor<'a> {
     // build_state_walk, effectful_children, build_longest_state_walk moved to tiger_extractor_statewalk
 
     // --- SCost region extraction inside RegionSubEGraph ---
-    fn scost_region_extraction(
+    pub(crate) fn scost_region_extraction(
         &self,
         rsub: &RegionSubEGraph,
         root_orig: &ClassId,

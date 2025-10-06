@@ -837,8 +837,9 @@ pub fn reconstruct_program_from_tiger(
         new_funcs.insert(name.clone(), original_prog.entry.clone());
     }
     for fname in batch {
-        let root_cid =
-            serialized.nid_to_cid(&crate::greedy_dag_extractor::get_root(serialized, fname));
+        let Some(root_cid) = tiger_res.function_roots.get(fname) else {
+            return Err(TigerReconstructError::MissingExtraction(fname.clone()));
+        };
         let Some(tex) = tiger_res.extractions.get(root_cid) else {
             return Err(TigerReconstructError::MissingExtraction(fname.clone()));
         };
@@ -864,7 +865,7 @@ pub fn reconstruct_program_from_tiger(
                 node.original_node
             );
         }
-        assert!(extractor.valid_extraction(tex, root_cid));
+    assert!(extractor.valid_extraction(tex, root_cid));
         let mut body = build_expr_from_extraction(serialized, tiger, tex)?;
         // If extraction gave us a full function, unwrap its body.
         if let Expr::Function(_, _in_ty, _out_ty, inner) = body.as_ref() {

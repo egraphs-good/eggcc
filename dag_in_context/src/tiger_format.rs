@@ -186,6 +186,31 @@ where
         }
     }
 
+    // Ensure function definitions and their bodies are treated as effectful so that
+    // reconstruction always considers them anchors, even when the body itself is pure.
+    let mut function_classes: Vec<usize> = Vec::new();
+    let mut function_bodies: Vec<usize> = Vec::new();
+    for (ec_idx, ec) in tiger_eclasses.iter().enumerate() {
+        let mut contains_function = false;
+        for en in &ec.enodes {
+            if en.head == "Function" {
+                contains_function = true;
+                if let Some(body_idx) = en.children.get(3) {
+                    function_bodies.push(*body_idx);
+                }
+            }
+        }
+        if contains_function {
+            function_classes.push(ec_idx);
+        }
+    }
+    for idx in function_classes {
+        tiger_eclasses[idx].is_effectful = true;
+    }
+    for idx in function_bodies {
+        tiger_eclasses[idx].is_effectful = true;
+    }
+
     TigerEGraph {
         eclasses: tiger_eclasses,
         class_index,

@@ -32,7 +32,8 @@ impl<'a> TigerExtractor<'a> {
         let mut weak_linearity_violation: IndexMap<ClassId, bool> = IndexMap::new();
         let mut weak_linearity_counts: IndexMap<ClassId, IndexMap<ClassId, u32>> = IndexMap::new();
         let mut state_walk_pure_ordering: IndexMap<ClassId, Vec<ClassId>> = IndexMap::new();
-        let mut guided_state_walks: IndexMap<ClassId, Vec<(ClassId, usize)>> = IndexMap::new();
+    let mut guided_state_walks: IndexMap<ClassId, Vec<(ClassId, usize)>> = IndexMap::new();
+    let mut function_roots: IndexMap<String, ClassId> = IndexMap::new();
         let mut debug_lines: Vec<String> = Vec::new();
 
         for func in functions {
@@ -112,6 +113,7 @@ impl<'a> TigerExtractor<'a> {
             region_stats.insert(root_cid.clone(), Vec::new());
             state_walk_pure_ordering.insert(root_cid.clone(), Vec::new());
             guided_state_walks.insert(root_cid.clone(), Vec::new());
+            function_roots.insert(func.clone(), root_cid.clone());
 
             debug_lines.push(format!(
                 "Function root: {} (idx={}) extracted_nodes={}",
@@ -134,6 +136,7 @@ impl<'a> TigerExtractor<'a> {
             weak_linearity_violation,
             weak_linearity_counts,
             state_walk_pure_ordering,
+            function_roots,
         }
     }
 
@@ -152,10 +155,11 @@ impl<'a> TigerExtractor<'a> {
         let region_root = region_roots.get(cur_region)?;
         let rsub = create_region_egraph(&self.tiger, region_root);
         let (walk_pairs, _wl_flag, _wl_counts) = self.unguided_find_state_walk_region(&rsub);
-        if walk_pairs.is_empty() {
-            return None;
-        }
-        let region_extraction = self.region_extraction_with_state_walk(&rsub, &walk_pairs)?;
+        let region_extraction = if walk_pairs.is_empty() {
+            self.scost_region_extraction(&rsub, region_root)?
+        } else {
+            self.region_extraction_with_state_walk(&rsub, &walk_pairs)?
+        };
 
         let mut local_to_global: Vec<usize> = vec![usize::MAX; region_extraction.nodes.len()];
         for (idx, node) in region_extraction.nodes.iter().enumerate() {

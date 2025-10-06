@@ -23,9 +23,9 @@
   <div>
     <button type="button" class="collapsible" onclick="toggle(this, '\u25B6 Show Chart', '\u25BC Hide Chart')">&#x25BC; Hide Chart</button>
     <div class="expanded">
-      <input onclick="onRadioClick('absolute');" checked type="radio" id="absolute" name="chart-type" value="absolute">
+      <input onclick="onRadioClick('absolute');" type="radio" id="absolute" name="chart-type" value="absolute">
       <label for="absolute">Absolute</label>
-      <input onclick="onRadioClick('normalized');" type="radio" id="normalized" name="chart-type" value="normalized">
+      <input onclick="onRadioClick('normalized');" checked type="radio" id="normalized" name="chart-type" value="normalized">
       <label for="normalized">Normalized</label><br>
       <p id="normalized-formula">Normalized = (RUN MODE MEAN / LLVM-O0-O0 MEAN)</p>
       <p id="error-formula">Error bars show standard deviation</p>

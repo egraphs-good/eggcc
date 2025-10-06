@@ -13,10 +13,9 @@ async function load_index() {
   selectBenchmarks("all");
   selectAllSuites();
 
-  // Firefox doesn't handle radio buttons correctly on page reload,
-  // so manually set to absolute view
-  document.getElementById("absolute").checked = true;
-  onRadioClick("absolute");
+  // Default to normalized view instead of absolute
+  document.getElementById("normalized").checked = true;
+  onRadioClick("normalized");
 
   const previousRuns = await getPreviousRuns();
   const initialRunIdx = findBenchToCompareIdx(previousRuns);

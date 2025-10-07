@@ -84,7 +84,7 @@ function getOverallStatistics(suite) {
     for (const benchmark of benchmarks) {
       const row = getRow(benchmark, treatment);
       const baseline = getRow(benchmark, BASELINE_MODE);
-      if (row && baseline && !row.timedOut) {
+      if (row && baseline && !row.failed) {
         normalized_cycles.push(normalized(row, baseline));
       }
     }
@@ -95,7 +95,7 @@ function getOverallStatistics(suite) {
     const llvm_compile_times = [];
     for (const benchmark of benchmarks) {
       const row = getRow(benchmark, treatment);
-      if (!row || row.timedOut) continue;
+      if (!row || row.failed) continue;
       eggcc_compile_times.push(row.eggccCompileTimeSecs);
       eggcc_extraction_times.push(row.eggccExtractionTimeSecs);
       eggcc_serialization_times.push(row.eggccSerializationTimeSecs);
@@ -134,56 +134,56 @@ function getDataForBenchmark(benchmark) {
         row.runMethod,
       )?.cycles;
       const cycles = row.cycles;
-      const isTimeout = row.timedOut;
+      const didFail = row.failed;
       const rowData = {
         runMethod: row.runMethod,
         mean: {
-          class: isTimeout ? "timeout" : "",
-          value: isTimeout ? "timeout" : tryRound(mean(cycles)),
+          class: didFail ? "timeout" : "",
+          value: didFail ? "timeout" : tryRound(mean(cycles)),
         },
-        meanVsOtherBranch: isTimeout
+        meanVsOtherBranch: didFail
           ? { class: "timeout", value: "timeout" }
           : getDifference(cycles, comparisonCycles, mean),
         min: {
-          class: isTimeout ? "timeout" : "",
-          value: isTimeout ? "timeout" : tryRound(min_cycles(cycles)),
+          class: didFail ? "timeout" : "",
+          value: didFail ? "timeout" : tryRound(min_cycles(cycles)),
         },
         max: {
-          class: isTimeout ? "timeout" : "",
-          value: isTimeout ? "timeout" : tryRound(max_cycles(cycles)),
+          class: didFail ? "timeout" : "",
+          value: didFail ? "timeout" : tryRound(max_cycles(cycles)),
         },
         median: {
-          class: isTimeout ? "timeout" : "",
-          value: isTimeout ? "timeout" : tryRound(median_cycles(cycles)),
+          class: didFail ? "timeout" : "",
+          value: didFail ? "timeout" : tryRound(median_cycles(cycles)),
         },
         stddev: {
-          class: isTimeout ? "timeout" : "",
-          value: isTimeout ? "timeout" : tryRound(stddev(cycles)),
+          class: didFail ? "timeout" : "",
+          value: didFail ? "timeout" : tryRound(stddev(cycles)),
         },
         eggccCompileTimeSecs: {
-          class: isTimeout ? "timeout" : "",
+          class: didFail ? "timeout" : "",
           value: tryRound(row.eggccCompileTimeSecs),
         },
         eggccSerializationTimeSecs: {
-          class: isTimeout ? "timeout" : "",
+          class: didFail ? "timeout" : "",
           value: tryRound(row.eggccSerializationTimeSecs),
         },
         eggccExtractionTimeSecs: {
-          class: isTimeout ? "timeout" : "",
+          class: didFail ? "timeout" : "",
           value: tryRound(row.eggccExtractionTimeSecs),
         },
         llvmCompileTimeSecs: {
-          class: isTimeout ? "timeout" : "",
+          class: didFail ? "timeout" : "",
           value: tryRound(row.llvmCompileTimeSecs),
         },
         normalized: {
-          class: isTimeout ? "timeout" : "",
+          class: didFail ? "timeout" : "",
           value:
-            isTimeout || !baseline
+            didFail || !baseline
               ? "timeout"
               : tryRound(normalized(row, baseline)),
         },
-        timedOut: !!row.timedOut,
+        failed: !!row.failed,
       };
       if (shouldHaveLlvm(row.runMethod)) {
         rowData.runMethod = `<a target="_blank" rel="noopener noreferrer" href="llvm.html?benchmark=${benchmark}&runmode=${row.runMethod}">${row.runMethod}</a>`;

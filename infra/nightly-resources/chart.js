@@ -169,10 +169,10 @@ function parseDataForChart() {
     benchmarks.forEach((benchmark) => {
       const entry = getEntry(benchmark, mode);
       if (!entry) return;
-      const isTimedOut = entry.timedOut || !Array.isArray(entry.cycles);
+      const didFail = entry.failed || !Array.isArray(entry.cycles);
       let value = 0;
       let error = 0;
-      if (!isTimedOut) {
+      if (!didFail) {
         value = getValue(entry);
         error = getError(entry);
       }
@@ -181,7 +181,7 @@ function parseDataForChart() {
         benchmark,
         value,
         error,
-        timedOut: isTimedOut,
+        failed: didFail,
       };
     });
     if (mode === sortByMode) {
@@ -194,10 +194,10 @@ function parseDataForChart() {
   // For each mode lift timeout bars to max non-timeout height (works for absolute & normalized)
   GLOBAL_DATA.checkedModes.forEach((mode) => {
     const points = Object.values(data[mode]);
-    const nonTimeout = points.filter((p) => !p.timedOut).map((p) => p.value);
+    const nonTimeout = points.filter((p) => !p.failed).map((p) => p.value);
     const maxValue = nonTimeout.length ? Math.max(...nonTimeout) : 1;
     points.forEach((p) => {
-      if (p.timedOut) {
+      if (p.failed) {
         p.value = maxValue;
         p.error = 0;
       }
@@ -214,9 +214,9 @@ function parseDataForChart() {
       const idx = sortedBenchmarks.indexOf(point.benchmark);
       if (idx === -1) return;
       dsData[idx] = point.value;
-      if (point.timedOut) {
+      if (point.failed) {
         timeoutFlags[idx] = true;
-        errorBars[point.benchmark] = { plus: 0, minus: 0, timedOut: true };
+        errorBars[point.benchmark] = { plus: 0, minus: 0, failed: true };
       } else if (point.error) {
         errorBars[point.benchmark] = { plus: point.error, minus: point.error };
       }

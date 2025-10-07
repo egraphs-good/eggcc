@@ -88,7 +88,7 @@ function selectBenchmarks(category) {
     const runs = GLOBAL_DATA.currentRun.filter((x) => x.benchmark === b);
     const validCycleArrays = runs
       .filter(
-        (r) => !r.timedOut && Array.isArray(r.cycles) && r.cycles.length > 0,
+        (r) => !r.failed && Array.isArray(r.cycles) && r.cycles.length > 0,
       )
       .map((r) => r.cycles);
     let time;

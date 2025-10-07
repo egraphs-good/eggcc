@@ -95,32 +95,18 @@ pub(crate) fn helpers() -> String {
 }
 
 fn cheap_optimizations() -> Vec<String> {
-    [
-        "hacker",
-        "interval-rewrite",
-        "always-switch-rewrite",
-        // "memory", TODO right now we just run mem-simple
-        "peepholes",
-    ]
-    .iter()
-    .map(|opt| opt.to_string())
-    .collect()
+    ["interval-rewrite"]
+        .iter()
+        .map(|opt| opt.to_string())
+        .collect()
 }
 
 fn optimizations() -> Vec<String> {
-    [
-        "select_opt",
-        "loop-unroll",
-        "switch_rewrite",
-        "loop-inv-motion",
-        "loop-strength-reduction",
-        "cicm",
-        "push-in",
-    ]
-    .iter()
-    .map(|opt| opt.to_string())
-    .chain(cheap_optimizations())
-    .collect()
+    ["push-in"]
+        .iter()
+        .map(|opt| opt.to_string())
+        .chain(cheap_optimizations())
+        .collect()
 }
 
 pub fn rulesets() -> String {

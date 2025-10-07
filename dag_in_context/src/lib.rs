@@ -451,7 +451,6 @@ fn find_tiger_binary(binary: &str) -> Option<PathBuf> {
 
     None
 }
-
 fn run_tiger_pipeline(egraph: &egraph_serialize::EGraph) -> std::result::Result<String, String> {
     let json = serde_json::to_string_pretty(egraph)
         .map_err(|err| format!("failed to serialize egraph: {err}"))?;
@@ -497,6 +496,7 @@ fn extract(
                 println!("tiger output:\n{tiger_output}");
             }
             Err(err) => {
+                // keep this as a panic
                 panic!("tiger pipeline failed: {err}");
             }
         }

@@ -4,14 +4,13 @@
 
 use std::{collections::HashSet, rc::Rc};
 
+use crate::schema::{BinaryOp, Expr, RcExpr, TernaryOp, TreeProgram, Type};
+use crate::typechecker::TypeChecker;
 use egglog::Term;
 use egraph_serialize::{ClassId, NodeId};
 use indexmap::{IndexMap, IndexSet};
 
-use crate::{
-    greedy_dag_extractor::{EgraphInfo, Extractor},
-    schema::{Expr, *},
-};
+use crate::greedy_dag_extractor::{EgraphInfo, Extractor};
 
 type EffectfulNodes = IndexMap<ClassId, IndexSet<*const Expr>>;
 
@@ -192,25 +191,21 @@ impl<'a> Extractor<'a> {
     }
 }
 
+/// Check that a program is linear in its use of state.
+#[allow(dead_code)]
 pub fn check_program_is_linear(prog: &TreeProgram) -> Result<(), String> {
     for func in &prog.functions {
-        check_function_is_linear(func)?;
+        check_function_is_linear(func, prog)?;
     }
-    check_function_is_linear(&prog.entry)
+    check_function_is_linear(&prog.entry, prog)
 }
 
-pub fn check_function_is_linear(fun: &RcExpr) -> Result<(), String> {
-    use crate::schema::{Expr, TreeProgram, Type};
-    use crate::typechecker::TypeChecker;
+pub fn check_function_is_linear(fun: &RcExpr, prog_for_types: &TreeProgram) -> Result<(), String> {
     let mut reachables: IndexMap<*const Expr, IndexSet<*const Expr>> = Default::default();
     let mut raw_to_rc: IndexMap<*const Expr, RcExpr> = Default::default();
     let fun_body = fun.func_body().unwrap();
     fun_body.collect_reachable(fun_body, &mut reachables, &mut raw_to_rc);
-    let prog = TreeProgram {
-        entry: fun.clone(),
-        functions: vec![],
-    };
-    let mut tc = TypeChecker::new(&prog, true);
+    let mut tc = TypeChecker::new(&prog_for_types, true);
     // Precompute effectfulness for every reachable expr exactly once to avoid mutable borrow conflicts.
     let mut effectful_cache: IndexMap<*const Expr, bool> = IndexMap::new();
     for (_region, exprs) in &reachables {

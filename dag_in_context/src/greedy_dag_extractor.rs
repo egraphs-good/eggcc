@@ -880,7 +880,7 @@ fn extract_fn(
             &egraph_info,
             Some(&effectful_nodes_along_path),
         );
-        check_function_is_linear(&res).unwrap();
+        check_function_is_linear(&res, original_prog).unwrap();
 
         (cost_res, res)
     }
@@ -1662,14 +1662,14 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
         );
         let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
-        let (_cost_res, prog) = extract_with_paths(
+        let (_cost_res, func) = extract_with_paths(
             &func,
             root.clone(),
             extractor_not_linear,
             &egraph_info,
             None,
         );
-        let res = check_function_is_linear(&prog);
+        let res = check_function_is_linear(&func, prog);
         if let Err(e) = res {
             err = Err(e);
             break;
@@ -1975,7 +1975,7 @@ fn test_validity_of_extraction() {
         None,
     );
     // first extraction should fail linearity check
-    assert!(check_function_is_linear(&res).is_err());
+    assert!(check_function_is_linear(&res, prog).is_err());
 
     // second extraction should succeed
     greedy_dag_extract(
@@ -2130,8 +2130,7 @@ pub fn prune_egraph(
 
     // copy over class data for each class
     for (class, data) in &egraph.class_data {
-        if new_egraph.classes().contains_key(class)
-        {
+        if new_egraph.classes().contains_key(class) {
             new_egraph.class_data.insert(class.clone(), data.clone());
         }
     }

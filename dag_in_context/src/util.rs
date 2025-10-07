@@ -1,9 +1,10 @@
 use std::{
     ffi::OsStr,
-    fs::{self, File},
+    io::{Seek, SeekFrom, Write},
     process::{Command, Stdio},
-    time::{SystemTime, UNIX_EPOCH},
 };
+
+use tempfile::tempfile;
 
 /// Invokes some program with the given arguments, piping the given input to the program.
 /// Returns an error if the program returns a non-zero exit code.
@@ -14,38 +15,18 @@ where
     S2: AsRef<OsStr>,
     I: IntoIterator<Item = S2>,
 {
-    // Write the input to a temporary file so the child can read it directly.
-    let mut temp_path = std::env::temp_dir();
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    temp_path.push(format!(
-        "eggcc-run-cmd-{}-{}.tmp",
-        std::process::id(),
-        unique
-    ));
-
-    fs::write(&temp_path, input)?;
-    let input_file = File::open(&temp_path)?;
+    // Write the input to a temporary file so the child can read it directly without
+    // relying on manually managed filesystem paths.
+    let mut temp_file = tempfile()?;
+    temp_file.write_all(input.as_bytes())?;
+    temp_file.seek(SeekFrom::Start(0))?;
 
     let output = Command::new(program)
         .args(args)
-        .stdin(Stdio::from(input_file))
+        .stdin(Stdio::from(temp_file))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .output();
-
-    let output = match output {
-        Ok(out) => {
-            let _ = fs::remove_file(&temp_path);
-            out
-        }
-        Err(err) => {
-            let _ = fs::remove_file(&temp_path);
-            return Err(err);
-        }
-    };
+        .output()?;
 
     match output.status.code() {
         Some(0) => Ok(String::from_utf8(output.stdout)

@@ -1,7 +1,6 @@
 .PHONY: test test-clean nits nightly runtime
 
 DIRS = . dag_in_context
-CPPFLAGS = -O2 -Wno-unused-result
 
 all: nits test
 

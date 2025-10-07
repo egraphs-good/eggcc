@@ -1975,7 +1975,7 @@ fn test_validity_of_extraction() {
         None,
     );
     // first extraction should fail linearity check
-    assert!(check_function_is_linear(&res, prog).is_err());
+    assert!(check_function_is_linear(&res, &prog).is_err());
 
     // second extraction should succeed
     greedy_dag_extract(

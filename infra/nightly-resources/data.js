@@ -104,11 +104,21 @@ function getOverallStatistics(suite) {
 
     result.push({
       Treatment: treatment,
-      "Normalized Mean": normalized_cycles.length ? tryRound(geometricMean(normalized_cycles)) : "timeout",
-      "Eggcc Compile Time": eggcc_compile_times.length ? tryRound(mean(eggcc_compile_times)) : "timeout",
-      "Eggcc Serialization Time": eggcc_serialization_times.length ? tryRound(mean(eggcc_serialization_times)) : "timeout",
-      "Eggcc Extraction Time": eggcc_extraction_times.length ? tryRound(mean(eggcc_extraction_times)) : "timeout",
-      "LLVM Compile Time": llvm_compile_times.length ? tryRound(mean(llvm_compile_times)) : "timeout",
+      "Normalized Mean": normalized_cycles.length
+        ? tryRound(geometricMean(normalized_cycles))
+        : "timeout",
+      "Eggcc Compile Time": eggcc_compile_times.length
+        ? tryRound(mean(eggcc_compile_times))
+        : "timeout",
+      "Eggcc Serialization Time": eggcc_serialization_times.length
+        ? tryRound(mean(eggcc_serialization_times))
+        : "timeout",
+      "Eggcc Extraction Time": eggcc_extraction_times.length
+        ? tryRound(mean(eggcc_extraction_times))
+        : "timeout",
+      "LLVM Compile Time": llvm_compile_times.length
+        ? tryRound(mean(llvm_compile_times))
+        : "timeout",
     });
   }
   return result;
@@ -127,17 +137,52 @@ function getDataForBenchmark(benchmark) {
       const isTimeout = row.timedOut;
       const rowData = {
         runMethod: row.runMethod,
-        mean: { class: isTimeout ? "timeout" : "", value: isTimeout ? "timeout" : tryRound(mean(cycles)) },
-        meanVsOtherBranch: isTimeout ? { class: "timeout", value: "timeout" } : getDifference(cycles, comparisonCycles, mean),
-        min: { class: isTimeout ? "timeout" : "", value: isTimeout ? "timeout" : tryRound(min_cycles(cycles)) },
-        max: { class: isTimeout ? "timeout" : "", value: isTimeout ? "timeout" : tryRound(max_cycles(cycles)) },
-        median: { class: isTimeout ? "timeout" : "", value: isTimeout ? "timeout" : tryRound(median_cycles(cycles)) },
-        stddev: { class: isTimeout ? "timeout" : "", value: isTimeout ? "timeout" : tryRound(stddev(cycles)) },
-        eggccCompileTimeSecs: { class: isTimeout ? "timeout" : "", value: tryRound(row.eggccCompileTimeSecs) },
-        eggccSerializationTimeSecs: { class: isTimeout ? "timeout" : "", value: tryRound(row.eggccSerializationTimeSecs) },
-        eggccExtractionTimeSecs: { class: isTimeout ? "timeout" : "", value: tryRound(row.eggccExtractionTimeSecs) },
-        llvmCompileTimeSecs: { class: isTimeout ? "timeout" : "", value: tryRound(row.llvmCompileTimeSecs) },
-        normalized: { class: isTimeout ? "timeout" : "", value: isTimeout || !baseline ? "timeout" : tryRound(normalized(row, baseline)) },
+        mean: {
+          class: isTimeout ? "timeout" : "",
+          value: isTimeout ? "timeout" : tryRound(mean(cycles)),
+        },
+        meanVsOtherBranch: isTimeout
+          ? { class: "timeout", value: "timeout" }
+          : getDifference(cycles, comparisonCycles, mean),
+        min: {
+          class: isTimeout ? "timeout" : "",
+          value: isTimeout ? "timeout" : tryRound(min_cycles(cycles)),
+        },
+        max: {
+          class: isTimeout ? "timeout" : "",
+          value: isTimeout ? "timeout" : tryRound(max_cycles(cycles)),
+        },
+        median: {
+          class: isTimeout ? "timeout" : "",
+          value: isTimeout ? "timeout" : tryRound(median_cycles(cycles)),
+        },
+        stddev: {
+          class: isTimeout ? "timeout" : "",
+          value: isTimeout ? "timeout" : tryRound(stddev(cycles)),
+        },
+        eggccCompileTimeSecs: {
+          class: isTimeout ? "timeout" : "",
+          value: tryRound(row.eggccCompileTimeSecs),
+        },
+        eggccSerializationTimeSecs: {
+          class: isTimeout ? "timeout" : "",
+          value: tryRound(row.eggccSerializationTimeSecs),
+        },
+        eggccExtractionTimeSecs: {
+          class: isTimeout ? "timeout" : "",
+          value: tryRound(row.eggccExtractionTimeSecs),
+        },
+        llvmCompileTimeSecs: {
+          class: isTimeout ? "timeout" : "",
+          value: tryRound(row.llvmCompileTimeSecs),
+        },
+        normalized: {
+          class: isTimeout ? "timeout" : "",
+          value:
+            isTimeout || !baseline
+              ? "timeout"
+              : tryRound(normalized(row, baseline)),
+        },
         timedOut: !!row.timedOut,
       };
       if (shouldHaveLlvm(row.runMethod)) {
@@ -151,7 +196,9 @@ function getDataForBenchmark(benchmark) {
     cols.forEach((col) => {
       const numeric = executions.filter((e) => e[col].value !== "timeout");
       if (numeric.length === 0) return;
-      const sorted = numeric.map((e) => e[col]).sort((a, b) => a.value - b.value);
+      const sorted = numeric
+        .map((e) => e[col])
+        .sort((a, b) => a.value - b.value);
       const min = sorted[0].value;
       const max = sorted[sorted.length - 1].value;
       sorted.forEach((item) => {

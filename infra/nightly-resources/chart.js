@@ -112,10 +112,10 @@ function getError(entry) {
 
 // Register a plugin to draw hatch pattern over timeout bars without affecting legend colors.
 (function registerTimeoutPatternPlugin() {
-  if (typeof Chart === 'undefined') return; // safety
+  if (typeof Chart === "undefined") return; // safety
   if (Chart._timeoutPatternPluginRegistered) return;
   const plugin = {
-    afterDatasetsDraw: function(chart) {
+    afterDatasetsDraw: function (chart) {
       const ctx = chart.ctx;
       chart.config.data.datasets.forEach((ds, dsIndex) => {
         if (!ds._timeoutFlags) return;
@@ -125,21 +125,25 @@ function getError(entry) {
           const model = bar._model || bar; // Chart.js v2 vs potential future
           const left = model.x - model.width / 2;
           const right = model.x + model.width / 2;
-            const top = model.y;
-            const bottom = model.base;
+          const top = model.y;
+          const bottom = model.base;
           ctx.save();
           ctx.beginPath();
           ctx.rect(left, top, right - left, bottom - top);
           ctx.clip();
           ctx.globalAlpha = 0.35;
-          ctx.fillStyle = ds.backgroundColor || COLORS[ds.label] || 'gray';
+          ctx.fillStyle = ds.backgroundColor || COLORS[ds.label] || "gray";
           ctx.fillRect(left, top, right - left, bottom - top);
           ctx.globalAlpha = 1.0;
-          ctx.strokeStyle = 'white';
+          ctx.strokeStyle = "white";
           ctx.lineWidth = 2;
           // diagonal stripes
           const step = 8;
-          for (let x = left - (bottom - top); x < right + (bottom - top); x += step) {
+          for (
+            let x = left - (bottom - top);
+            x < right + (bottom - top);
+            x += step
+          ) {
             ctx.beginPath();
             ctx.moveTo(x, bottom);
             ctx.lineTo(x + (bottom - top), top);
@@ -148,7 +152,7 @@ function getError(entry) {
           ctx.restore();
         });
       });
-    }
+    },
   };
   Chart.plugins.register(plugin); // Chart.js 2 style
   Chart._timeoutPatternPluginRegistered = true;
@@ -172,7 +176,13 @@ function parseDataForChart() {
         value = getValue(entry);
         error = getError(entry);
       }
-      data[mode][benchmark] = { mode, benchmark, value, error, timedOut: isTimedOut };
+      data[mode][benchmark] = {
+        mode,
+        benchmark,
+        value,
+        error,
+        timedOut: isTimedOut,
+      };
     });
     if (mode === sortByMode) {
       sortedBenchmarks = Object.values(data[mode])
@@ -184,9 +194,9 @@ function parseDataForChart() {
   // For each mode lift timeout bars to max non-timeout height (works for absolute & normalized)
   GLOBAL_DATA.checkedModes.forEach((mode) => {
     const points = Object.values(data[mode]);
-    const nonTimeout = points.filter(p => !p.timedOut).map(p => p.value);
+    const nonTimeout = points.filter((p) => !p.timedOut).map((p) => p.value);
     const maxValue = nonTimeout.length ? Math.max(...nonTimeout) : 1;
-    points.forEach(p => {
+    points.forEach((p) => {
       if (p.timedOut) {
         p.value = maxValue;
         p.error = 0;
@@ -200,7 +210,7 @@ function parseDataForChart() {
     const dsData = Array(sortedBenchmarks.length).fill(0);
     const timeoutFlags = Array(sortedBenchmarks.length).fill(false);
     const errorBars = {};
-    points.forEach(point => {
+    points.forEach((point) => {
       const idx = sortedBenchmarks.indexOf(point.benchmark);
       if (idx === -1) return;
       dsData[idx] = point.value;
@@ -235,7 +245,10 @@ function parseDataForChart() {
     };
   }
 
-  return { labels: Array.from(sortedBenchmarks), datasets: Object.values(datasets) };
+  return {
+    labels: Array.from(sortedBenchmarks),
+    datasets: Object.values(datasets),
+  };
 }
 
 function initializeChart() {

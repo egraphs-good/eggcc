@@ -205,7 +205,7 @@ pub fn check_function_is_linear(fun: &RcExpr, prog_for_types: &TreeProgram) -> R
     let mut raw_to_rc: IndexMap<*const Expr, RcExpr> = Default::default();
     let fun_body = fun.func_body().unwrap();
     fun_body.collect_reachable(fun_body, &mut reachables, &mut raw_to_rc);
-    let mut tc = TypeChecker::new(&prog_for_types, true);
+    let mut tc = TypeChecker::new(prog_for_types, true);
     // Precompute effectfulness for every reachable expr exactly once to avoid mutable borrow conflicts.
     let mut effectful_cache: IndexMap<*const Expr, bool> = IndexMap::new();
     for (_region, exprs) in &reachables {

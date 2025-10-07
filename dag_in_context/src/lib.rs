@@ -39,6 +39,7 @@ pub mod schema_helpers;
 mod to_egglog;
 pub(crate) mod type_analysis;
 pub mod typechecker;
+pub mod util;
 pub(crate) mod utility;
 use main_error::MainError;
 pub mod extractiongymfastergreedydag;
@@ -424,6 +425,10 @@ fn extract(
     extract_debug_exprs: bool,
 ) -> (Cost, TreeProgram) {
     if eggcc_config.use_tiger {
+        // 1. get the serialized egraph
+        // 2. use run_cmd_line to call json2egraph in the "target" folder. make sure this works in debug and release mode
+        // 3. use run_cmd_line to call tiger in the "target" folder on the output of json2egraph
+        // 4. print the output from tiger for now
         // TODO: integrate with tiger
         todo!()
     } else {

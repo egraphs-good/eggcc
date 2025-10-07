@@ -18,7 +18,6 @@ use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 use std::{
-    ffi::OsStr,
     fmt::{Display, Formatter},
     io,
     path::PathBuf,
@@ -111,35 +110,6 @@ pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
     Ok(())
 }
 
-/// Invokes some program with the given arguments, piping the given input to the program.
-/// Returns an error if the program returns a non-zero exit code.
-/// Code adapted from https://github.com/egraphs-good/egg/blob/e7845c5ae34267256b544c8e6b5bc36d91d096d2/src/dot.rs#L127
-pub fn run_cmd_line<S1, S2, I>(program: S1, args: I, input: &str) -> std::io::Result<String>
-where
-    S1: AsRef<OsStr>,
-    S2: AsRef<OsStr>,
-    I: IntoIterator<Item = S2>,
-{
-    let mut child = Command::new(program)
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()?;
-
-    let stdin = child.stdin.as_mut().expect("Failed to open stdin");
-    write!(stdin, "{}", input)?;
-
-    let output = child.wait_with_output()?;
-    match output.status.code() {
-        Some(0) => Ok(String::from_utf8(output.stdout)
-            .map_err(|e| std::io::Error::other(format!("utf8 error: {}", e)))?),
-        Some(e) => Err(std::io::Error::other(format!(
-            "program returned error code {}",
-            e
-        ))),
-        None => Err(std::io::Error::other("program was killed by a signal")),
-    }
-}
 
 // Get the eggcc repo root directory. Set by $EGGCC_ROOT, defaults to current
 // directory.

@@ -1,6 +1,8 @@
 #[cfg(test)]
 use crate::{egglog_test, interpreter::Value};
 
+
+
 #[test]
 fn test_list_util() -> crate::Result {
     use crate::ast::emptyt;

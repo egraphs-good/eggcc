@@ -10,6 +10,7 @@ use std::str::FromStr;
 use std::{fmt, mem};
 
 use bril_rs::{Argument, Code, EffectOps, Function, Instruction, Position, Program, Type};
+use dag_in_context::util::run_cmd_line;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use petgraph::dot::Dot;
@@ -19,7 +20,7 @@ use petgraph::visit::{EdgeRef, Visitable};
 use petgraph::{graph::NodeIndex, visit::DfsPostOrder};
 
 use crate::rvsdg::from_cfg::FunctionTypes;
-use crate::util::{run_cmd_line, ListDisplay, Visualization};
+use crate::util::{ListDisplay, Visualization};
 
 /// A subset of nodes for a particular CFG.
 pub(crate) type NodeSet = <StableDiGraph<BasicBlock, Branch> as Visitable>::Map;

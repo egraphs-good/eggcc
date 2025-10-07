@@ -1,6 +1,7 @@
 .PHONY: test test-clean nits nightly runtime
 
 DIRS = . dag_in_context
+CPPFLAGS = -O2 -Wno-unused-result
 
 all: nits test
 
@@ -19,6 +20,14 @@ nits:
 	cargo clippy --tests -- -D warnings && cargo fmt --check
 	cd dag_in_context && cargo clippy --tests -- -D warnings && cargo fmt --check
 
+
+tiger: json2egraph tigermain
+
+json2egraph:
+	cd dag_in_context/src/tiger && g++ $(CPPFLAGS) json2egraph.cpp -o ../../../target/json2egraph
+
+tigermain:
+	cd dag_in_context/src/tiger && g++ $(CPPFLAGS) main.cpp -o ../../../target/tiger
 
 
 # build the llvm runtime for bril

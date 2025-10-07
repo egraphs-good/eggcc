@@ -19,7 +19,9 @@ use std::{
 use to_egglog::TreeToEgglog;
 
 use crate::{
-    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining::perform_inlining, remove_context::remove_new_contexts, schedule::parallel_schedule
+    dag2svg::tree_to_svg, interpreter::interpret_dag_prog,
+    optimizations::function_inlining::perform_inlining, remove_context::remove_new_contexts,
+    schedule::parallel_schedule,
 };
 
 pub mod add_context;

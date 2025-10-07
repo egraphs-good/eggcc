@@ -1,14 +1,8 @@
-use std::{rc::Rc, vec};
+use std::rc::Rc;
 
-use egglog::Term;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 
-use crate::{
-    add_context::ContextCache,
-    print_with_intermediate_helper,
-    schema::{Expr, RcExpr, TreeProgram},
-    to_egglog::TreeToEgglog,
-};
+use crate::schema::{Expr, RcExpr, TreeProgram};
 
 fn subst_expr(arg: &RcExpr, within: &RcExpr) -> RcExpr {
     let mut cache = IndexMap::new();

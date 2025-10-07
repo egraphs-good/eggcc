@@ -195,10 +195,10 @@ fn print_sexpr(expr: &SExpr) -> String {
 pub(crate) fn remove_new_contexts(s: &str) -> String {
     let tokens = tokenize(s);
     let parsed = parse(&tokens);
-    let transformed: Vec<SExpr> = parsed.iter().map(|e| transform(e)).collect();
+    let transformed: Vec<SExpr> = parsed.iter().map(transform).collect();
     transformed
         .iter()
-        .map(|e| print_sexpr(e))
+        .map(print_sexpr)
         .collect::<Vec<_>>()
         .join("\n")
 }

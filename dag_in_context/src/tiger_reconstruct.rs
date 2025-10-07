@@ -352,7 +352,7 @@ fn build_expr_from_extraction(
                 })?;
                 BuiltValue::Float(OrderedFloat(value))
             }
-            
+
             "BinaryOp" => BuiltValue::BinaryOp(parse_binary_op(op).ok_or_else(|| {
                 TigerReconstructError::UnsupportedHead(format!("unknown BinaryOp variant '{op}'"))
             })?),
@@ -363,7 +363,16 @@ fn build_expr_from_extraction(
                 TigerReconstructError::UnsupportedHead(format!("unknown TernaryOp variant '{op}'"))
             })?),
             "Assumption" => {
-                panic!("found assumption");
+                use crate::schema::Assumption::*;
+                let value = match op {
+                    "InFunc" => InFunc("dummy".to_string()),
+                    other => {
+                        return Err(TigerReconstructError::UnsupportedHead(format!(
+                            "unknown Assumption variant '{other}'"
+                        )))
+                    }
+                };
+                BuiltValue::Assumption(value)
             }
             "BaseType" => {
                 use BaseType::*;

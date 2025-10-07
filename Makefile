@@ -21,15 +21,6 @@ nits:
 	cd dag_in_context && cargo clippy --tests -- -D warnings && cargo fmt --check
 
 
-tiger: json2egraph tigermain
-
-json2egraph:
-	cd dag_in_context/src/tiger && g++ $(CPPFLAGS) json2egraph.cpp -o ../../../target/json2egraph
-
-tigermain:
-	cd dag_in_context/src/tiger && g++ $(CPPFLAGS) main.cpp -o ../../../target/tiger
-
-
 # build the llvm runtime for bril
 # if you edit the runtime crate, you must re-run this to rebuild rt.bc
 runtime:

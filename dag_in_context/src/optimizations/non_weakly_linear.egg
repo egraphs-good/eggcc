@@ -33,38 +33,38 @@
       :ruleset non-weakly-linear)
 
 ;; peel a loop once 
-(rule
- ((= lhs (DoWhile inputs outputs))
-  (ContextOf lhs ctx)
-  (HasType inputs inputs-ty)
-  (= outputs-len (tuple-length outputs))
-  (= old_cost (LoopNumItersGuess inputs outputs))
-  (<= old_cost 5)
-  )
- (
-  (let executed-once
-    (Subst ctx inputs outputs))
-  (let executed-once-body
-     (SubTuple executed-once 1 (- outputs-len 1)))
-  (let then-ctx
-    (InIf true (Get executed-once 0) executed-once-body))
-  (let else-ctx
-    (InIf false (Get executed-once 0) executed-once-body))
+;; (rule
+;; ((= lhs (DoWhile inputs outputs))
+;;  (ContextOf lhs ctx)
+;;  (HasType inputs inputs-ty)
+;;  (= outputs-len (tuple-length outputs))
+;;  (= old_cost (LoopNumItersGuess inputs outputs))
+;;  (<= old_cost 5)
+;;  )
+;; (
+;;  (let executed-once
+;;    (Subst ctx inputs outputs))
+;;  (let executed-once-body
+;;     (SubTuple executed-once 1 (- outputs-len 1)))
+;;  (let then-ctx
+;;    (InIf true (Get executed-once 0) executed-once-body))
+;;  (let else-ctx
+;;    (InIf false (Get executed-once 0) executed-once-body))
 
-  (let new-loop-arg
-    (Arg inputs-ty then-ctx))
-  (let new-loop-body
-    (Subst (TmpCtx) new-loop-arg outputs))
-  (union (InLoop new-loop-arg new-loop-body) (TmpCtx))
-  (delete (TmpCtx))
+;;  (let new-loop-arg
+;;    (Arg inputs-ty then-ctx))
+;;  (let new-loop-body
+;;    (Subst (TmpCtx) new-loop-arg outputs))
+;;  (union (InLoop new-loop-arg new-loop-body) (TmpCtx))
+;;  (delete (TmpCtx))
 
-  (union lhs
+;;  (union lhs
     ;; check if we need to continue executing the loop
-    (If (Get executed-once 0)
-      executed-once-body ;; inputs are the body executed once
-      (DoWhile new-loop-arg new-loop-body)
-      (Arg inputs-ty else-ctx)))
+;;    (If (Get executed-once 0)
+;;      executed-once-body ;; inputs are the body executed once
+;;      (DoWhile new-loop-arg new-loop-body)
+;;      (Arg inputs-ty else-ctx)))
 
-  (set (LoopNumItersGuess new-loop-arg new-loop-body) (- old_cost 1))
-  )
- :ruleset non-weakly-linear)
+;;  (set (LoopNumItersGuess new-loop-arg new-loop-body) (- old_cost 1))
+;;  )
+;; :ruleset non-weakly-linear)

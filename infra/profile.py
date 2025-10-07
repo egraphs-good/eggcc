@@ -214,7 +214,7 @@ def run_tiger(benchmark):
   egraph_output = f"{DATA_DIR}/tiger/{benchmark.name}/egraph.in"
   extraction_output = f"{DATA_DIR}/tiger/{benchmark.name}/extraction.out"
 
-  cmds = [f'{EGGCC_BINARY} {benchmark.path} --run-mode {benchmark.treatment} > {eggcc_output}',
+  cmds = [f'{EGGCC_BINARY} {benchmark.path} --non-weakly-linear --run-mode {benchmark.treatment} > {eggcc_output}',
           f'{EGGLOG_BINARY} {EGGLOG_FLAGS} --to-json {eggcc_output}',
           f'{TIGER_JSON2EGRAPH_BINARY} < {egglog_output} > {egraph_output}',
           f'{TIGER_MAIN_BINARY} < {egraph_output} > {extraction_output}']

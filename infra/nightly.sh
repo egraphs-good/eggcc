@@ -78,7 +78,7 @@ fi
 
 # fetch and compile TIGER
 if [ ! -d $TIGER_DIR ]; then
-  TIGER_VERSION="fc88ef60d5c8f233b61862985b4cdc076c4770ea"
+  TIGER_VERSION="5e0e28fd4ec27e4b2e28fc52b284973cd399fc69"
   git clone --revision=$TIGER git@github.com:FTRobbin/tiger-prototype.git "$TIGER_DIR"
   pushd "$TIGER_DIR"
   make all

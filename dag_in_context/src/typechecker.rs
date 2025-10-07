@@ -130,9 +130,6 @@ impl<'a> TypeChecker<'a> {
     }
 
     pub(crate) fn add_arg_types(&mut self) -> TreeProgram {
-        // Debug assertion: all declared function types must be known (not Unknown)
-        // before we attempt to propagate argument types. This helps catch reconstruction
-        // issues where a function signature was left with Unknown.
         TreeProgram {
             entry: self.add_arg_types_to_func(self.program.entry.clone()),
             functions: self
@@ -147,7 +144,6 @@ impl<'a> TypeChecker<'a> {
     pub(crate) fn add_arg_types_to_func(&mut self, func: RcExpr) -> RcExpr {
         match func.as_ref() {
             Expr::Function(name, in_ty, out_ty, body) => {
-                // Additional per-function debug assertions (redundant with global pass but localizes panic site)
                 assert!(
                     !matches!(in_ty, Type::Unknown),
                     "Function {name} has unknown input type"
@@ -158,12 +154,6 @@ impl<'a> TypeChecker<'a> {
                 );
                 let (expr_ty, new_body) =
                     self.add_arg_types_to_expr(body.clone(), &Some(TypeStack(vec![in_ty.clone()])));
-                if expr_ty != *out_ty {
-                    eprintln!(
-                        "[typechecker debug] Function {name}: expected return {:?} got {:?}\nBody (after arg typing): {}\nOriginal body: {}",
-                        out_ty, expr_ty, new_body, body
-                    );
-                }
                 assert_eq!(
                     expr_ty, *out_ty,
                     "Expected return type to be {:?}. Got {:?}",

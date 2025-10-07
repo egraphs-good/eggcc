@@ -5,6 +5,7 @@ import os
 import time
 from glob import glob
 from sys import stdout
+import sys
 import subprocess
 
 import concurrent.futures
@@ -181,6 +182,7 @@ def optimize(benchmark):
     return failure_data
 
   if process.returncode != 0:
+    print(f'Error running {cmd1}: {process.stderr}', flush=True, file=sys.stderr)
     failure_data["error"] = f'Error running {cmd1}: {process.stderr}'
     return failure_data
 
@@ -461,7 +463,7 @@ if __name__ == '__main__':
     for benchmark in to_run:
       path_key = f"{TMP_DIR}/{benchmark.name}/{benchmark.treatment}"
       if path_key in failed_paths:
-        print(f"Skipping benchmarking (timed out optimize) {benchmark.name} {benchmark.treatment}", flush=True)
+        print(f"Skipping benchmarking due to failure: {benchmark.name} {benchmark.treatment}", flush=True)
         continue
       res = bench(benchmark)
       if res is None:

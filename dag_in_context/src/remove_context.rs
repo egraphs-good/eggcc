@@ -98,19 +98,12 @@ fn sexpr_head(list: &SExpr) -> Option<&str> {
 }
 
 fn contains_context(expr: &SExpr) -> bool {
+    eprintln!("checking for context in {:?}", expr);
     match expr {
         SExpr::Atom(_) => false,
         SExpr::List(items) => {
             if let Some(head) = sexpr_head(expr) {
-                let arity = items.len().saturating_sub(1);
-                let is_ctx = match head {
-                    "InFunc" => arity == 1,
-                    "InLoop" => arity == 2,
-                    "InSwitch" => arity == 3,
-                    "InIf" => arity == 3,
-                    _ => false,
-                };
-                if is_ctx {
+                if matches!(head, "InFunc" | "InLoop" | "InSwitch" | "InIf") {
                     return true;
                 }
             }
@@ -146,24 +139,19 @@ fn transform(expr: &SExpr) -> SExpr {
         List(items) => {
             // Special-case rule structure: (rule (query ...) (body ...) ...)
             if let Some(Atom(h)) = items.first() {
-                if h == "rule" && items.len() >= 3 {
+                if h == "rule" {
                     let mut out: Vec<SExpr> = Vec::with_capacity(items.len());
                     out.push(Atom("rule".to_string()));
                     // Query: recurse without replacement to normalize
-                    let new_query = transform(&items[1]);
-                    let query_has_ctx = contains_context(&new_query);
-                    out.push(new_query);
+                    let query_has_ctx = contains_context(&items[1]);
+                    out.push(items[1].clone());
                     // Body handling depends on whether query references context
                     let body = &items[2];
                     let new_body = if query_has_ctx {
-                        if contains_context(body) {
-                            List(vec![List(vec![
-                                Atom("panic".to_string()),
-                                Atom("\"context should not be present\"".to_string()),
-                            ])])
-                        } else {
-                            transform(body)
-                        }
+                        List(vec![List(vec![
+                            Atom("panic".to_string()),
+                            Atom("\"context should not be present\"".to_string()),
+                        ])])
                     } else {
                         // Query doesn't use context: replace contexts in body with DUMMYCTX
                         replace_context_with_dummy(body)
@@ -193,6 +181,7 @@ fn print_sexpr(expr: &SExpr) -> String {
 }
 
 pub(crate) fn remove_new_contexts(s: &str) -> String {
+    eprintln!("removing context...");
     let tokens = tokenize(s);
     let parsed = parse(&tokens);
     let transformed: Vec<SExpr> = parsed.iter().map(transform).collect();

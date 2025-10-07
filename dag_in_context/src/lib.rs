@@ -491,9 +491,10 @@ fn extract(
     extract_debug_exprs: bool,
 ) -> (Cost, TreeProgram) {
     if eggcc_config.use_tiger {
+        // TODO get output term from tiger
         match run_tiger_pipeline(egraph) {
             Ok(tiger_output) => {
-                println!("tiger output:\n{tiger_output}");
+                eprintln!("tiger output:\n{tiger_output}");
             }
             Err(err) => {
                 // keep this as a panic

@@ -162,21 +162,27 @@ def optimize(benchmark):
     timed_out = True
     process = None
 
-  if timed_out:
-    # Provide default (sentinel) values; skip second phase entirely.
-    res = {
+  failure_data = {
       "path": f"{profile_dir}/{benchmark.treatment}",
       "eggccCompileTimeSecs": False,
       "eggccSerializationTimeSecs": False,
       "eggccExtractionTimeSecs": False,
       "llvmCompileTimeSecs": False,
       "ilpTestTimes": False,
-      "timedOut": True,
+      "failed": True,
+      "timedOut": False,
+      "error": '',
     }
-    return res
+
+
+  if timed_out:
+    failure_data["timedOut"] = True
+    failure_data["error"] = f'Timeout running {cmd1} after {TIGER_RUN_TIMEOUT_SECS} seconds'
+    return failure_data
 
   if process.returncode != 0:
-    raise Exception(f'Error running {benchmark.name} with {benchmark.treatment}: {process.stderr}')
+    failure_data["error"] = f'Error running {cmd1}: {process.stderr}'
+    return failure_data
 
   with open(optimized_bril_file, 'w') as f:
     f.write(process.stdout)
@@ -210,6 +216,7 @@ def optimize(benchmark):
     "eggccExtractionTimeSecs": eggcc_extraction_time,
     "llvmCompileTimeSecs": llvm_compile_time,
     "ilpTestTimes": ilp_test_times,
+    "failed": False,
     "timedOut": False,
   }
   return res
@@ -305,11 +312,10 @@ def aggregate(compile_data, bench_times, paths):
       suite = get_suite(paths[name])
       cycles = bench_times.get(path, False)  # false if not benchmarked (e.g., timed out)
       result = {"runMethod": runMethod, "benchmark": name, "cycles": cycles, "path": paths[name], "suite": suite}
-      # merge compile info (contains timedOut flag)
       for key in compile_data[path]:
         result[key] = compile_data[path][key]
       # Enforce timeout invariant
-      if result.get("timedOut"):
+      if result.get("failed"):
         for k in ["cycles", "eggccCompileTimeSecs", "eggccSerializationTimeSecs", "eggccExtractionTimeSecs", "llvmCompileTimeSecs", "ilpTestTimes"]:
           result[k] = False
       else:
@@ -420,20 +426,20 @@ if __name__ == '__main__':
         raise e
 
   # Derive timed-out paths and successful (non-timeout) run modes per benchmark (avoid duplication later)
-  timed_out_paths = set()
+  failed_paths = set()
   successful = {}
   for cpath, data in compile_data.items():
     benche = cpath.split("/")[-2]
     mode = cpath.split("/")[-1]
-    if data["timedOut"]:
-      timed_out_paths.add(cpath)
+    if data["failed"]:
+      failed_paths.add(cpath)
     else:
       successful.setdefault(benche, []).append(mode)
 
   bench_data = {}
   if isParallelBenchmark:
     with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
-      futures = {executor.submit(bench, benchmark) for benchmark in to_run if f"{TMP_DIR}/{benchmark.name}/{benchmark.treatment}" not in timed_out_paths}
+      futures = {executor.submit(bench, benchmark) for benchmark in to_run if f"{TMP_DIR}/{benchmark.name}/{benchmark.treatment}" not in failed_paths}
       for future in concurrent.futures.as_completed(futures):
         try:
           res = future.result()
@@ -448,7 +454,7 @@ if __name__ == '__main__':
   else:
     for benchmark in to_run:
       path_key = f"{TMP_DIR}/{benchmark.name}/{benchmark.treatment}"
-      if path_key in timed_out_paths:
+      if path_key in failed_paths:
         print(f"Skipping benchmarking (timed out optimize) {benchmark.name} {benchmark.treatment}", flush=True)
         continue
       res = bench(benchmark)

@@ -13,7 +13,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
 ]
 ```
 
-## Check `timedOut` first. If true, ignore all other metric fields (they will be `false`).
+## Check `failed` first. If true, ignore all other metric fields (they will be `false`).
 
 ## Example (Non-timeout)
 ```
@@ -28,6 +28,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
   "eggccExtractionTimeSecs": 5.678,
   "llvmCompileTimeSecs": 0.890,
   "ilpTestTimes": [],
+  "failed": false,
   "timedOut": false
 }
 ```
@@ -45,6 +46,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
   "eggccExtractionTimeSecs": false,
   "llvmCompileTimeSecs": false,
   "ilpTestTimes": false,
+  "failed": true,
   "timedOut": true
 }
 ```

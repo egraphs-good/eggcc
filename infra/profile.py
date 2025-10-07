@@ -198,9 +198,15 @@ def optimize(benchmark):
   if os.path.isfile(eggcc_run_data):
     with open(eggcc_run_data) as f:
       eggcc_data = json.load(f)
-      secs = eggcc_data["eggcc_compile_time"]["secs"]; nanos = eggcc_data["eggcc_compile_time"]["nanos"]; eggcc_compile_time = secs + nanos / 1e9
-      secs = eggcc_data["eggcc_serialization_time"]["secs"]; nanos = eggcc_data["eggcc_serialization_time"]["nanos"]; eggcc_serialization_time = secs + nanos / 1e9
-      secs = eggcc_data["eggcc_extraction_time"]["secs"]; nanos = eggcc_data["eggcc_extraction_time"]["nanos"]; eggcc_extraction_time = secs + nanos / 1e9
+      secs = eggcc_data["eggcc_compile_time"]["secs"]
+      nanos = eggcc_data["eggcc_compile_time"]["nanos"]
+      eggcc_compile_time = secs + nanos / 1e9
+      secs = eggcc_data["eggcc_serialization_time"]["secs"]
+      nanos = eggcc_data["eggcc_serialization_time"]["nanos"]
+      eggcc_serialization_time = secs + nanos / 1e9
+      secs = eggcc_data["eggcc_extraction_time"]["secs"]
+      nanos = eggcc_data["eggcc_extraction_time"]["nanos"]
+      eggcc_extraction_time = secs + nanos / 1e9
       ilp_test_times = eggcc_data.get("ilp_test_times", [])
 
   llvm_compile_time = 0.0

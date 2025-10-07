@@ -17,6 +17,7 @@ use std::{
 };
 use to_egglog::TreeToEgglog;
 
+use crate::tiger_extractor_core::tiger_extractor_extract;
 use crate::{
     dag2svg::tree_to_svg, greedy_dag_extractor::CostModel, interpreter::interpret_dag_prog,
     optimizations::function_inlining, schedule::parallel_schedule,
@@ -437,8 +438,8 @@ fn extract(
             "Tiger graph built ({} eclasses)",
             tiger_graph.eclasses.len()
         );
-        let tiger_extractor = TigerExtractor::new(egraph);
-        let tiger_res = tiger_extractor.extract(&batch);
+        
+        let tiger_res = tiger_extractor_extract(&egraph, &batch);
         for line in tiger_res.debug.lines() {
             log::info!("[tiger] {line}");
         }
@@ -448,7 +449,6 @@ fn extract(
             &tiger_graph,
             &batch,
             &tiger_res,
-            &tiger_extractor,
         ) {
             Ok(tp) => {
                 // check for linearity

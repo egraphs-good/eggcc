@@ -2041,7 +2041,7 @@ fn rename_to_valid_children(
 
 // Prunes an egraph to only reachable nodes, removing context and types
 // replaces types with "UnknownT" and replaces context with unique identifiers
-fn prune_egraph(
+pub fn prune_egraph(
     egraph: &egraph_serialize::EGraph,
     root: ClassId,
     cost_model: &impl CostModel,
@@ -2130,7 +2130,8 @@ fn prune_egraph(
 
     // copy over class data for each class
     for (class, data) in &egraph.class_data {
-        if visited.contains(class) {
+        if new_egraph.classes().contains_key(class)
+        {
             new_egraph.class_data.insert(class.clone(), data.clone());
         }
     }

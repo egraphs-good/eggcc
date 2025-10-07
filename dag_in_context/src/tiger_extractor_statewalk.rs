@@ -7,7 +7,7 @@ use indexmap::{IndexMap, IndexSet};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
 
-impl<'a> TigerExtractor<'a> {
+impl TigerExtractor {
     pub fn build_state_walk(&self, root_cid: ClassId) -> Vec<ClassId> {
         self.build_longest_state_walk(root_cid)
     }

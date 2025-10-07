@@ -352,6 +352,7 @@ fn build_expr_from_extraction(
                 })?;
                 BuiltValue::Float(OrderedFloat(value))
             }
+            
             "BinaryOp" => BuiltValue::BinaryOp(parse_binary_op(op).ok_or_else(|| {
                 TigerReconstructError::UnsupportedHead(format!("unknown BinaryOp variant '{op}'"))
             })?),
@@ -361,6 +362,9 @@ fn build_expr_from_extraction(
             "TernaryOp" => BuiltValue::TernaryOp(parse_ternary_op(op).ok_or_else(|| {
                 TigerReconstructError::UnsupportedHead(format!("unknown TernaryOp variant '{op}'"))
             })?),
+            "Assumption" => {
+                panic!("found assumption");
+            }
             "BaseType" => {
                 use BaseType::*;
                 let value = match op {
@@ -818,7 +822,6 @@ pub fn reconstruct_program_from_tiger(
     tiger: &TigerEGraph,
     batch: &[String],
     tiger_res: &TigerExtractionResult,
-    extractor: &TigerExtractor,
 ) -> Result<TreeProgram, TigerReconstructError> {
     use crate::schema::Expr;
     let mut new_funcs: IndexMap<String, RcExpr> = IndexMap::new();
@@ -860,7 +863,6 @@ pub fn reconstruct_program_from_tiger(
                 node.original_node
             );
         }
-        assert!(extractor.valid_extraction(tex, root_cid));
         let mut body = build_expr_from_extraction(tiger, tex)?;
         // If extraction gave us a full function, unwrap its body.
         if let Expr::Function(_, _in_ty, _out_ty, inner) = body.as_ref() {

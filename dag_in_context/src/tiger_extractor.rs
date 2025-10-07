@@ -17,7 +17,7 @@ use std::collections::{BinaryHeap, HashMap, VecDeque};
     clippy::manual_filter,
     clippy::manual_div_ceil
 )]
-impl<'a> TigerExtractor<'a> {
+impl TigerExtractor {
     fn original_enode_index(&self, cid: &ClassId, node: &NodeId) -> Option<usize> {
         let &ti = self.tiger.class_index.get(cid)?;
         self.tiger.eclasses[ti]

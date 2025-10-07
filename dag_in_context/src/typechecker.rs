@@ -144,6 +144,14 @@ impl<'a> TypeChecker<'a> {
     pub(crate) fn add_arg_types_to_func(&mut self, func: RcExpr) -> RcExpr {
         match func.as_ref() {
             Expr::Function(name, in_ty, out_ty, body) => {
+                assert!(
+                    !matches!(in_ty, Type::Unknown),
+                    "Function {name} has unknown input type"
+                );
+                assert!(
+                    !matches!(out_ty, Type::Unknown),
+                    "Function {name} has unknown output type"
+                );
                 let (expr_ty, new_body) =
                     self.add_arg_types_to_expr(body.clone(), &Some(TypeStack(vec![in_ty.clone()])));
                 assert_eq!(

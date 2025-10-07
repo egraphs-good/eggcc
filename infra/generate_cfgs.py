@@ -5,10 +5,19 @@ import os
 import concurrent.futures
 import subprocess
 
-def make_cfgs(bench, data_dir):
+def make_cfgs(bench, data_dir, allowed_modes=None):
+  """Generate CFG PNGs for a benchmark.
+  If allowed_modes is not None, only process those run mode directory names.
+  """
   print(f"Generating CFGs for {bench}", flush=True)
   bench_path = f"{data_dir}/{bench}"
-  runmodes = os.listdir(bench_path)
+  try:
+    runmodes = os.listdir(bench_path)
+  except FileNotFoundError:
+    print(f"Bench path not found: {bench_path}")
+    return
+  if allowed_modes is not None:
+    runmodes = [m for m in runmodes if m in allowed_modes]
   
   for mode in runmodes:
     path = f"{bench_path}/{mode}"
@@ -28,14 +37,17 @@ def make_cfgs(bench, data_dir):
     opt_res = subprocess.run(f"{opt} -disable-output -passes=dot-cfg optimized.ll", shell=True, cwd=path, capture_output=True)
     if opt_res.returncode != 0:
       print(f"Error running opt on {path}/optimized.ll")
-      exit(1)
+      continue
       
 
     # Find all the dot files (can't use glob because it doesn't match hidden files)
     # There are also a bunch of files that start with ._Z that I don't think we care about?
     dots = [f for f in os.listdir(f"{path}") if f.endswith(".dot") and not f.startswith("._Z") and not f.startswith("._bril")]
     for dot in dots:
-      name = dot.split(".")[1]
+      parts = dot.split(".")
+      if len(parts) < 2:
+        continue
+      name = parts[1]
 
       # Convert to svg
       cmd = f"dot -Tsvg -o {path}/{name}.svg {path}/{dot}"
@@ -53,25 +65,3 @@ def make_cfgs(bench, data_dir):
     # Clean up dot files
     os.system(f"rm {path}/.*.dot")
 
-
-
-if __name__ == '__main__':
-  # expect a single argument
-  if len(os.sys.argv) != 2:
-      print("Usage: generate_line_counts.py <data directory>")
-      exit(1)
-  data_dir = os.sys.argv[1]
-  benchmarks = os.listdir(data_dir)
-
-  # get the number of cores on this machine 
-  parallelism = os.cpu_count()
-  with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
-    futures = {executor.submit(make_cfgs, bench, data_dir) for bench in benchmarks}
-
-    for future in concurrent.futures.as_completed(futures):
-      try:
-        future.result()
-      except Exception as e:
-        print(f"Shutting down executor due to error: {e}")
-        executor.shutdown(wait=False, cancel_futures=True)
-        raise e

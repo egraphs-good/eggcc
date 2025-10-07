@@ -15,6 +15,9 @@ function formatLatexTableValueWithoutXspace(num) {
       return div.textContent;
     }
     return num;
+  } else if (typeof num === "boolean") {
+    // Show the boolean literally
+    return String(num);
   } else if (typeof num == "object") {
     // expect it to have the form {class: ..., value: ...}
     // treat it as just value.value

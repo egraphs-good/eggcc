@@ -110,27 +110,80 @@ function getError(entry) {
   }
 }
 
+// Register a plugin to draw hatch pattern over timeout bars without affecting legend colors.
+(function registerTimeoutPatternPlugin() {
+  if (typeof Chart === "undefined") return; // safety
+  if (Chart._timeoutPatternPluginRegistered) return;
+  const plugin = {
+    afterDatasetsDraw: function (chart) {
+      const ctx = chart.ctx;
+      chart.config.data.datasets.forEach((ds, dsIndex) => {
+        if (!ds._timeoutFlags) return;
+        const meta = chart.getDatasetMeta(dsIndex);
+        meta.data.forEach((bar, i) => {
+          if (!ds._timeoutFlags[i]) return;
+          const model = bar._model || bar; // Chart.js v2 vs potential future
+          const left = model.x - model.width / 2;
+          const right = model.x + model.width / 2;
+          const top = model.y;
+          const bottom = model.base;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(left, top, right - left, bottom - top);
+          ctx.clip();
+          ctx.globalAlpha = 0.35;
+          ctx.fillStyle = ds.backgroundColor || COLORS[ds.label] || "gray";
+          ctx.fillRect(left, top, right - left, bottom - top);
+          ctx.globalAlpha = 1.0;
+          ctx.strokeStyle = "white";
+          ctx.lineWidth = 2;
+          // diagonal stripes
+          const step = 8;
+          for (
+            let x = left - (bottom - top);
+            x < right + (bottom - top);
+            x += step
+          ) {
+            ctx.beginPath();
+            ctx.moveTo(x, bottom);
+            ctx.lineTo(x + (bottom - top), top);
+            ctx.stroke();
+          }
+          ctx.restore();
+        });
+      });
+    },
+  };
+  Chart.plugins.register(plugin); // Chart.js 2 style
+  Chart._timeoutPatternPluginRegistered = true;
+})();
+
 function parseDataForChart() {
   const benchmarks = enabledBenchmarks();
   const sortByMode = GLOBAL_DATA.chart.sortBy;
   let sortedBenchmarks = Array.from(benchmarks).sort();
 
   const data = {};
-  // First, compute value and error for each mode and benchmark
   GLOBAL_DATA.checkedModes.forEach((mode) => {
     data[mode] = {};
     benchmarks.forEach((benchmark) => {
       const entry = getEntry(benchmark, mode);
-      if (entry) {
-        data[mode][benchmark] = {
-          mode: mode,
-          benchmark: benchmark,
-          value: getValue(entry),
-          error: getError(entry),
-        };
+      if (!entry) return;
+      const didFail = entry.failed || !Array.isArray(entry.cycles);
+      let value = 0;
+      let error = 0;
+      if (!didFail) {
+        value = getValue(entry);
+        error = getError(entry);
       }
+      data[mode][benchmark] = {
+        mode,
+        benchmark,
+        value,
+        error,
+        failed: didFail,
+      };
     });
-    // Then, sort the benchmarks by the specified mode
     if (mode === sortByMode) {
       sortedBenchmarks = Object.values(data[mode])
         .sort((a, b) => b.value - a.value)
@@ -138,35 +191,50 @@ function parseDataForChart() {
     }
   });
 
-  // ChartJS wants the data formatted so that there's an array of values for each mode
-  // and a corresponding array of labels (benchmarks)
-  const datasets = {};
+  // For each mode lift timeout bars to max non-timeout height (works for absolute & normalized)
   GLOBAL_DATA.checkedModes.forEach((mode) => {
-    datasets[mode] = {
-      label: mode,
-      backgroundColor: COLORS[mode],
-      data: Array(benchmarks.length).fill(0),
-      borderWidth: 1,
-      errorBars: {},
-    };
-    Object.values(data[mode]).forEach((point) => {
-      const idx = sortedBenchmarks.indexOf(point.benchmark);
-
-      datasets[mode].data[idx] = point.value;
-      if (point.error) {
-        datasets[mode].errorBars[point.benchmark] = {
-          plus: point.error,
-          minus: point.error,
-        };
+    const points = Object.values(data[mode]);
+    const nonTimeout = points.filter((p) => !p.failed).map((p) => p.value);
+    const maxValue = nonTimeout.length ? Math.max(...nonTimeout) : 1;
+    points.forEach((p) => {
+      if (p.failed) {
+        p.value = maxValue;
+        p.error = 0;
       }
     });
   });
 
-  // Show baseline as dotted line at 1x if normalized
+  const datasets = {};
+  GLOBAL_DATA.checkedModes.forEach((mode) => {
+    const points = Object.values(data[mode]);
+    const dsData = Array(sortedBenchmarks.length).fill(0);
+    const timeoutFlags = Array(sortedBenchmarks.length).fill(false);
+    const errorBars = {};
+    points.forEach((point) => {
+      const idx = sortedBenchmarks.indexOf(point.benchmark);
+      if (idx === -1) return;
+      dsData[idx] = point.value;
+      if (point.failed) {
+        timeoutFlags[idx] = true;
+        errorBars[point.benchmark] = { plus: 0, minus: 0, failed: true };
+      } else if (point.error) {
+        errorBars[point.benchmark] = { plus: point.error, minus: point.error };
+      }
+    });
+    datasets[mode] = {
+      label: mode,
+      backgroundColor: COLORS[mode], // keep solid color for legend
+      data: dsData,
+      borderWidth: 1,
+      errorBars,
+      _timeoutFlags: timeoutFlags,
+    };
+  });
+
   if (GLOBAL_DATA.chart.mode === "normalized") {
     datasets[BASELINE_MODE] = {
       label: BASELINE_MODE,
-      data: Array(benchmarks.length + 1).fill(1),
+      data: Array(sortedBenchmarks.length + 1).fill(1),
       type: "line",
       borderColor: COLORS[BASELINE_MODE],
       fill: false,

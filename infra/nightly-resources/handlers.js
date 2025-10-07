@@ -13,10 +13,9 @@ async function load_index() {
   selectBenchmarks("all");
   selectAllSuites();
 
-  // Firefox doesn't handle radio buttons correctly on page reload,
-  // so manually set to absolute view
-  document.getElementById("absolute").checked = true;
-  onRadioClick("absolute");
+  // Default to normalized view instead of absolute
+  document.getElementById("normalized").checked = true;
+  onRadioClick("normalized");
 
   const previousRuns = await getPreviousRuns();
   const initialRunIdx = findBenchToCompareIdx(previousRuns);
@@ -84,15 +83,24 @@ function selectBenchmarks(category) {
   const checkboxContainer = document.getElementById("benchmarkCheckboxes");
   let checkboxes = Array.from(checkboxContainer.getElementsByTagName("input"));
   const benches = [...new Set(GLOBAL_DATA.currentRun.map((x) => x.benchmark))];
-  // For sorting by time, just take the max of the cycles across all run modes
-  const benchmarkSpeeds = benches.map((b) => ({
-    bench: b,
-    time: Math.max(
-      ...GLOBAL_DATA.currentRun
-        .filter((x) => x.benchmark === b)
-        .map((x) => Math.max(...x.cycles)),
-    ),
-  }));
+  // Representative time per benchmark using only non-timed-out runs.
+  const benchmarkSpeeds = benches.map((b) => {
+    const runs = GLOBAL_DATA.currentRun.filter((x) => x.benchmark === b);
+    const validCycleArrays = runs
+      .filter(
+        (r) => !r.failed && Array.isArray(r.cycles) && r.cycles.length > 0,
+      )
+      .map((r) => r.cycles);
+    let time;
+    if (validCycleArrays.length === 0) {
+      // All runs timed out or no cycle data: treat as Infinity.
+      time = Number.POSITIVE_INFINITY;
+    } else {
+      const maxes = validCycleArrays.map((arr) => Math.max(...arr));
+      time = Math.max(...maxes);
+    }
+    return { bench: b, time };
+  });
   switch (category) {
     case "all":
       checkboxes.forEach((c) => (c.checked = true));
@@ -102,6 +110,7 @@ function selectBenchmarks(category) {
       break;
     case "fast":
       const fastest = benchmarkSpeeds
+        .filter((x) => Number.isFinite(x.time))
         .sort((a, b) => a.time - b.time)
         .slice(0, 5)
         .map((x) => x.bench);
@@ -109,6 +118,7 @@ function selectBenchmarks(category) {
       break;
     case "slow":
       const slowest = benchmarkSpeeds
+        .filter((x) => Number.isFinite(x.time))
         .sort((a, b) => b.time - a.time)
         .slice(0, 5)
         .map((x) => x.bench);

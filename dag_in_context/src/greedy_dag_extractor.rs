@@ -15,6 +15,7 @@ use strum::IntoEnumIterator;
 use crate::{
     fastercbcextractor::FasterCbcExtractorWithTimeout,
     from_egglog::FromEgglog,
+    linearity::check_function_is_linear,
     schema::{Expr, RcExpr, TreeProgram, Type},
     schema_helpers::Sort,
     typechecker::TypeChecker,
@@ -879,7 +880,7 @@ fn extract_fn(
             &egraph_info,
             Some(&effectful_nodes_along_path),
         );
-        extractor_not_linear.check_function_is_linear(&res).unwrap();
+        check_function_is_linear(&res, original_prog).unwrap();
 
         (cost_res, res)
     }
@@ -905,7 +906,7 @@ fn find_debug_roots(egraph: egraph_serialize::EGraph) -> Vec<(ClassId, String)> 
 /// Also needs to know a set of unextractable functions and a cost model.
 /// Produces a new program with the functions specified replaced by their extracted versions.
 #[allow(clippy::too_many_arguments)]
-pub fn extract(
+pub fn greedy_dag_extract(
     original_prog: &TreeProgram,
     fns: Vec<String>,
     egraph: egraph_serialize::EGraph,
@@ -1613,7 +1614,7 @@ fn dag_extraction_test(prog: &TreeProgram, expected_cost: NotNan<f64>) {
     let (serialized_egraph, unextractables) = serialized_egraph(egraph);
     let mut termdag = TermDag::default();
 
-    let cost_set = extract(
+    let cost_set = greedy_dag_extract(
         prog,
         prog.fns(),
         serialized_egraph,
@@ -1661,14 +1662,14 @@ fn dag_extraction_linearity_check(prog: &TreeProgram, error_message: &str) {
         );
         let extractor_not_linear = &mut Extractor::new(prog, &mut termdag);
 
-        let (_cost_res, prog) = extract_with_paths(
+        let (_cost_res, func) = extract_with_paths(
             &func,
             root.clone(),
             extractor_not_linear,
             &egraph_info,
             None,
         );
-        let res = extractor_not_linear.check_function_is_linear(&prog);
+        let res = check_function_is_linear(&func, prog);
         if let Err(e) = res {
             err = Err(e);
             break;
@@ -1974,10 +1975,10 @@ fn test_validity_of_extraction() {
         None,
     );
     // first extraction should fail linearity check
-    assert!(extractor_not_linear.check_function_is_linear(&res).is_err());
+    assert!(check_function_is_linear(&res, &prog).is_err());
 
     // second extraction should succeed
-    extract(
+    greedy_dag_extract(
         &prog,
         vec!["main".to_string()],
         serialized_egraph,
@@ -2040,7 +2041,7 @@ fn rename_to_valid_children(
 
 // Prunes an egraph to only reachable nodes, removing context and types
 // replaces types with "UnknownT" and replaces context with unique identifiers
-fn prune_egraph(
+pub fn prune_egraph(
     egraph: &egraph_serialize::EGraph,
     root: ClassId,
     cost_model: &impl CostModel,
@@ -2129,7 +2130,7 @@ fn prune_egraph(
 
     // copy over class data for each class
     for (class, data) in &egraph.class_data {
-        if visited.contains(class) {
+        if new_egraph.classes().contains_key(class) {
             new_egraph.class_data.insert(class.clone(), data.clone());
         }
     }

@@ -1,9 +1,11 @@
 use clap::ValueEnum;
 use egglog::{Term, TermDag};
+use egraph_serialize::Cost;
 use greedy_dag_extractor::{
-    extract, extract_ilp, has_debug_exprs, serialized_egraph, DefaultCostModel,
+    extract_ilp, greedy_dag_extract, has_debug_exprs, serialized_egraph, DefaultCostModel,
 };
 use indexmap::IndexMap;
+use indexmap::IndexSet;
 use interpreter::Value;
 use schedule::{rulesets, CompilerPass};
 use schema::TreeProgram;
@@ -304,7 +306,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
 
     let (serialized, unextractables) = serialized_egraph(egraph);
-    let (_res_cost, res) = extract(
+    let (_res_cost, res) = greedy_dag_extract(
         program,
         program.fns(),
         serialized,
@@ -348,6 +350,8 @@ pub struct EggccConfig {
     pub ablate: Option<String>,
     pub ilp_extraction_test_timeout: Option<Duration>,
     pub non_weakly_linear: bool,
+    /// If true, use the experimental tiger extractor format output instead of greedy extractor.
+    pub use_tiger: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -403,7 +407,36 @@ impl Default for EggccConfig {
             ablate: None,
             ilp_extraction_test_timeout: None,
             non_weakly_linear: false,
+            use_tiger: false,
         }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn extract(
+    eggcc_config: &EggccConfig,
+    original_prog: &TreeProgram,
+    batch: Vec<String>,
+    egraph: &egraph_serialize::EGraph,
+    unextractables: &IndexSet<String>,
+    termdag: &mut TermDag,
+    should_maintain_linearity: bool,
+    extract_debug_exprs: bool,
+) -> (Cost, TreeProgram) {
+    if eggcc_config.use_tiger {
+        // TODO: integrate with tiger
+        todo!()
+    } else {
+        greedy_dag_extract(
+            original_prog,
+            batch.clone(),
+            egraph.clone(),
+            unextractables.clone(),
+            termdag,
+            DefaultCostModel,
+            should_maintain_linearity,
+            extract_debug_exprs,
+        )
     }
 }
 
@@ -485,12 +518,12 @@ pub fn optimize(
                 );
             }
             let (_res_cost, iter_result) = extract(
+                eggcc_config,
                 &res,
                 batch.clone(),
-                serialized.clone(),
-                unextractables.clone(),
+                &serialized,
+                &unextractables,
                 &mut termdag,
-                DefaultCostModel,
                 should_maintain_linearity,
                 has_debug_exprs,
             );

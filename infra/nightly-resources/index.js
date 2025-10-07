@@ -8,7 +8,7 @@ const GLOBAL_DATA = {
   baselineRun: [],
   chart: {
     chart: undefined,
-    mode: "absolute",
+    mode: "normalized",
     sortBy: undefined,
   },
 };

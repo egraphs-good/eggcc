@@ -110,7 +110,6 @@ pub fn visualize(test: TestProgram, output_dir: PathBuf) -> io::Result<()> {
     Ok(())
 }
 
-
 // Get the eggcc repo root directory. Set by $EGGCC_ROOT, defaults to current
 // directory.
 fn get_eggcc_root() -> String {

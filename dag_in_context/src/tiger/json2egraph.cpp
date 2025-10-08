@@ -12,9 +12,15 @@ using namespace std;
 
 queue<string> tokenbuf;
 
+inline string read_string() {
+	static char buf[505];
+	scanf("%s", buf);
+	return buf;
+}
+
 void read_next_token() {
 	string s;
-	cin >> s;
+	s = read_string();
 	if (s[0] == '{' || s[0] == '}') {
 		tokenbuf.push(s);
 	} else if (s[0] == '\"') {
@@ -24,10 +30,10 @@ void read_next_token() {
 			tokenbuf.push(s.substr(1, s.size() - 3));
 		} else {
 			string sb;
-			cin >> sb;
+			sb = read_string();
 			s = s + string(" ") + sb;
 			while (s[s.size() - 1] != '\"' && s[s.size() - 2] != '\"') {
-				cin >> sb;
+				sb = read_string();
 				s = s + string(" ") + sb;
 			}
 			//cout << s << endl;
@@ -160,7 +166,8 @@ vector<EClassId> findFunctionRoots() {
 	for (int i = 0; i < (int)egraph.size(); ++i) {
 		for (int j = 0; j < (int)egraph[i].size(); ++j) {
 			if (egraph[i][j].op == string("Function")) {
-				ret.push_back(enodeidmp[egraph[i][j].ch.back()].first);
+				//ret.push_back(enodeidmp[egraph[i][j].ch.back()].first);
+				ret.push_back(i);
 			}
 		}
 	}
@@ -243,27 +250,78 @@ void mark_effectful_exprs() {
 					hasEffectfulType[ec] = true;
 				}
 			}
+			// Additionally, mark function roots as effectful
+			if (egraph[i][j].op == string("Function")) {
+				hasEffectfulType[i] = true;
+			}
 		}
 	}
 }
 
 vector<bool> reachable;
 
+vector<bool> necessary_types;
+
 void mark_reachable(EClassId root) {
-	reachable = vector<bool>(egraph.size(), false);
-	queue<EClassId> q;
+	if (reachable[root]) {
+		return;
+	}
+	queue<EClassId> q, tq;
 	reachable[root] = true;
 	q.push(root);
 	while (q.size()) {
 		EClassId u = q.front();
 		q.pop();
 		for (int i = 0; i < (int)egraph[u].size(); ++i) {
-			for (int j = 0; j < (int)egraph[u][i].ch.size(); ++j) {
-				if (!egraph[u][i].subsumed) {
+			if (!egraph[u][i].subsumed) {
+				for (int j = 0; j < (int)egraph[u][i].ch.size(); ++j) {
 					EClassId v = enodeidmp[egraph[u][i].ch[j]].first;
 					if (!reachable[v] && (isExpr(v) || isPrimitiveEClass(v))) {
 						reachable[v] = true;
 						q.push(v);
+					}
+				}
+				// Special cases for Function and Alloc to preserve the types they depend on
+				if (egraph[u][i].op == "Function") {
+					assert(egraph[u][i].ch.size() == 4);
+					EClassId inputt = enodeidmp[egraph[u][i].ch[1]].first,
+							 outputt = enodeidmp[egraph[u][i].ch[2]].first;
+					assert(isType(inputt));
+					assert(isType(outputt));
+					if (!necessary_types[inputt]) {
+						necessary_types[inputt] = true;
+						tq.push(inputt);
+					}
+					if (!necessary_types[outputt]) {
+						necessary_types[outputt] = true;
+						tq.push(outputt);
+					}
+				}
+				if (egraph[u][i].op == "Alloc") {
+					assert(egraph[u][i].ch.size() == 4);
+					EClassId ty = enodeidmp[egraph[u][i].ch[3]].first;
+					assert(isType(ty));
+					if (!necessary_types[ty]) {
+						necessary_types[ty] = true;
+						tq.push(ty);
+					}
+				}
+			}
+		}
+	}
+	while (tq.size()) {
+		EClassId u = tq.front();
+		tq.pop();
+		assert(isType(u));
+		for (int i = 0; i < (int)egraph[u].size(); ++i) {
+			if (!egraph[u][i].subsumed && egraph[u][i].op != "TypeList-ith" && egraph[u][i].op != "TLConcat") {
+				//cout << egraph[u][i].name << ' ' << egraph[u][i].op << endl;
+				for (int j = 0; j < (int)egraph[u][i].ch.size(); ++j) {
+					//cout << " " << egraph[u][i].ch[j] << endl;
+					EClassId v = enodeidmp[egraph[u][i].ch[j]].first;
+					if (!necessary_types[v]) {
+						necessary_types[v] = true;
+						tq.push(v);
 					}
 				}
 			}
@@ -359,7 +417,9 @@ const char* EXTRACTABLEOP[] = {
     // Schema
     "Bop",
 	"Uop",
-	"Top"
+	"Top",
+	// Function
+	"Function"
 };
 
 bool isExtractableOP (const string &op) {
@@ -383,19 +443,25 @@ void build_simple_egraph() {
 			g.eclasses.push_back(EClass());
 			g.eclasses.back().isEffectful = hasEffectfulType[i];
 		}
+		if (necessary_types[i]) {
+			neweclassidmp[i] = g.eclasses.size();
+			g.eclasses.push_back(EClass());
+			g.eclasses.back().isEffectful = false;
+		}
 	}
 	for (int i = 0; i < (int)egraph.size(); ++i) {
 		if (reachable[i]) {
 			if (isExpr(i)) {
 				EClassId nid = neweclassidmp[i];
 				for (int j = 0; j < (int)egraph[i].size(); ++j) {
-					if (!egraph[i][j].subsumed  && isExtractableOP(egraph[i][j].op)) {
+					if (!egraph[i][j].subsumed && isExtractableOP(egraph[i][j].op)) {
 						ENode en;
 						en.head = egraph[i][j].name + "###" + egraph[i][j].op;
 						en.eclass = nid;
 						for (int k = 0; k < (int)egraph[i][j].ch.size(); ++k) {
-							if (neweclassidmp.count(enodeidmp[egraph[i][j].ch[k]].first)) {
-								en.ch.push_back(neweclassidmp[enodeidmp[egraph[i][j].ch[k]].first]);
+							EClassId v = enodeidmp[egraph[i][j].ch[k]].first;
+							if (neweclassidmp.count(v) && (!isType(v) || egraph[i][j].op == "Function" || egraph[i][j].op == "Alloc")) {
+								en.ch.push_back(neweclassidmp[v]);
 							}
 						}
 						g.eclasses[nid].enodes.push_back(en);
@@ -409,14 +475,32 @@ void build_simple_egraph() {
 						en.head = egraph[i][j].name + "###" + egraph[i][j].op;
 						en.eclass = nid;
 						for (int k = 0; k < (int)egraph[i][j].ch.size(); ++k) {
-							if (neweclassidmp.count(enodeidmp[egraph[i][j].ch[k]].first)) {
-								en.ch.push_back(neweclassidmp[enodeidmp[egraph[i][j].ch[k]].first]);
+							EClassId v = enodeidmp[egraph[i][j].ch[k]].first;
+							if (neweclassidmp.count(v) && !isType(v)) {
+								en.ch.push_back(neweclassidmp[v]);
 							}
 						}
 						g.eclasses[nid].enodes.push_back(en);
 					}
 				}
 			}
+		}
+		// preserve necessary types
+		if (necessary_types[i]) {
+			EClassId nid = neweclassidmp[i];
+			for (int j = 0; j < (int)egraph[i].size(); ++j) {
+				if (egraph[i][j].op != "TypeList-ith" && egraph[i][j].op != "TLConcat") {
+					ENode en;
+					en.head = egraph[i][j].name + "###" + egraph[i][j].op;
+					en.eclass = nid;
+					for (int k = 0; k < (int)egraph[i][j].ch.size(); ++k) {
+						assert(neweclassidmp.count(enodeidmp[egraph[i][j].ch[k]].first));
+						en.ch.push_back(neweclassidmp[enodeidmp[egraph[i][j].ch[k]].first]);
+					}
+					g.eclasses[nid].enodes.push_back(en);
+				}
+			}
+			assert(g.eclasses[nid].enodes.size() == 1);
 		}
 	}
 }
@@ -447,7 +531,10 @@ int main() {
 	propagate_effectful_types();
 	mark_effectful_exprs();
 	vector<EClassId> roots = findFunctionRoots();
+	reachable = vector<bool>(egraph.size(), false);
+	necessary_types = vector<bool>(egraph.size(), false);	
 	for (int i = 0; i < (int)roots.size(); ++i) {
+		//cout << roots[i] << ' ' << egraph[roots[i]][0].name << endl;
 		mark_reachable(roots[i]);
 	}
 	build_simple_egraph();

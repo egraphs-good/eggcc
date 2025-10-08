@@ -12,6 +12,8 @@
 
 using namespace std;
 
+const bool DEBUG = false;
+
 const char* TMPFILENAME = "extract.tmp";
 
 FILE* preprocessing() {
@@ -1106,12 +1108,26 @@ void print_egg_end() {
 }
 
 int main() {
-	FILE* ppin = preprocessing();
-	EGraph g = read_egraph(ppin);
-	//print_egraph(g);
-	EClassId fun_root;
+	EGraph g;
+	vector<EClassId> fun_roots;
+	if (DEBUG) {
+		FILE* ppin = preprocessing();
+		g = read_egraph(ppin);
+		EClassId fun_root;
+		while (fscanf(ppin, "%d", &fun_root) != -1) {
+			fun_roots.push_back(fun_root);
+		}
+	} else {
+		g = read_egraph(stdin);
+		EClassId fun_root;
+		while (scanf("%d", &fun_root) != -1) {
+			fun_roots.push_back(fun_root);
+		}	
+	}
+	//print_egraph(g);	
 	print_egg_init();
-	while (fscanf(ppin, "%d", &fun_root) != -1) {
+	for (int _ = 0; _ < (int)fun_roots.size(); ++_) {
+		EClassId fun_root = fun_roots[_];
 		if (!g.eclasses[fun_root].isEffectful) {
 			//cerr << "Skipping pure function : " << fun_root << endl;
 			//TODO extract pure function

@@ -11,10 +11,13 @@ import profile
 
 EGGCC_NAME = "eggcc"
 
-RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
+GRAPH_RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
 
 if profile.TO_ABLATE != "":
-  RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
+  GRAPH_RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
+
+# need ilp and graph run modes for this script to work
+NECESSARY_MODES = GRAPH_RUN_MODES + ["eggcc-ILP-O0-O0"]
 
 # copied from chart.js
 COLOR_MAP = {
@@ -52,11 +55,11 @@ SHAPE_MAP = {
   "llvm-eggcc-ablation-O3-O3": "o",
 }
 
-BENCHMARK_SPACE = 1.0 / len(RUN_MODES)
+BENCHMARK_SPACE = 1.0 / len(GRAPH_RUN_MODES)
 CIRCLE_SIZE = 15
 
 RUN_MODE_Y_OFFSETS = []
-for runMode in RUN_MODES:
+for runMode in GRAPH_RUN_MODES:
   RUN_MODE_Y_OFFSETS.append(len(RUN_MODE_Y_OFFSETS) * BENCHMARK_SPACE)
 
 
@@ -190,13 +193,13 @@ def make_jitter(profile, upper_x_bound, output):
   x_data = []
   colors = []
 
-  filtered = [b for b in profile if b.get('runMethod', '') in RUN_MODES]
+  filtered = [b for b in profile if b.get('runMethod', '') in GRAPH_RUN_MODES]
 
   grouped_by_benchmark = group_by_benchmark(filtered)
 
   # sort each group by runMethod
   for group in grouped_by_benchmark:
-      group.sort(key=lambda b: RUN_MODES.index(b.get('runMethod', '')))
+      group.sort(key=lambda b: GRAPH_RUN_MODES.index(b.get('runMethod', '')))
 
   # the order of the groups is the average cycles of the baseline
   grouped_by_benchmark.sort(key=lambda group: sum(group_cycles(group, BASELINE_TREATMENT)) / len(group))
@@ -230,7 +233,7 @@ def make_jitter(profile, upper_x_bound, output):
     for cycle in benchmark.get('cycles', [])[:100]:
       normalized = cycle / baseline_mean
       # Add a small random jitter to y value to prevent overlap
-      jittered_y = y_label_map[benchmark_name] + random.uniform(0.0, BENCHMARK_SPACE) + RUN_MODE_Y_OFFSETS[RUN_MODES.index(run_method)]
+      jittered_y = y_label_map[benchmark_name] + random.uniform(0.0, BENCHMARK_SPACE) + RUN_MODE_Y_OFFSETS[GRAPH_RUN_MODES.index(run_method)]
       if upper_x_bound != None and normalized > upper_x_bound:
           # Record outlier data
           outlier_x.append(upper_x_bound)
@@ -243,7 +246,7 @@ def make_jitter(profile, upper_x_bound, output):
 
   # Create the jitter plot
   # HACK: make the plot longer when we have more benchamrks
-  plt.figure(figsize=(10, max(len(filtered) / (len(RUN_MODES)*2), 6)))
+  plt.figure(figsize=(10, max(len(filtered) / (len(GRAPH_RUN_MODES)*2), 6)))
   plt.scatter(x_data, y_data, c=colors, alpha=0.7, edgecolors='w', linewidth=0.5, s=CIRCLE_SIZE)
 
   # Plot outliers as red 'x' marks
@@ -585,6 +588,11 @@ if __name__ == '__main__':
   if len(sys.argv) != 4:
       print("Usage: python graphs.py <output_folder> <profile.json> <benchmark_suite_folder>")
       sys.exit(1)
+
+  # if UNSAFE_TREATMENTS is true and TREATMENTS isn't a subset of treatments, exit
+  if profile.UNSAFE_TREATMENTS and not set(NECESSARY_MODES).issubset(set(profile.treatments)):
+      print("Skipping graphing: NECESSARY_MODES is true and GRAPH_RUN_MODES is not a subset of treatments")
+      sys.exit(0)
   make_graphs(sys.argv[1], sys.argv[1] + '/graphs', sys.argv[2], sys.argv[3])
 
   

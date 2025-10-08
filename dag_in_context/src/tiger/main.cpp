@@ -956,11 +956,155 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 	return extracted_roots[cur_region];
 }
 
+void print_egg_init() {
+	const char* schema = 
+R"(
+(datatype Expr)
+
+(sort TypeList)
+
+(datatype BaseType
+  (IntT)
+  (BoolT)
+  (FloatT)
+  (PointerT BaseType)
+  (StateT)
+)
+
+(datatype Type
+  (Base BaseType)
+  (TupleT TypeList)
+)
+
+(constructor TNil () TypeList)
+(constructor TCons (BaseType TypeList) TypeList)
+
+(let DumT (TupleT (TNil)))
+
+(datatype Assumption    
+  (DumC)
+)
+
+(constructor Arg (Type Assumption) Expr)
+
+(datatype Constant
+  (Int i64)
+  (Bool bool)
+  (Float f64)
+)
+
+(constructor Const (Constant Type Assumption) Expr)
+
+(datatype TernaryOp
+  (Write)
+  (Select)
+)
+
+(datatype BinaryOp
+  (Bitand)
+  (Add)
+  (Sub)
+  (Div)
+  (Mul)
+  (LessThan)
+  (GreaterThan)
+  (LessEq)
+  (GreaterEq)
+  (Eq)
+  (Smin)
+  (Smax)
+  (Shl)
+  (Shr)
+  (FAdd)
+  (FSub)
+  (FDiv)
+  (FMul)
+  (FLessThan)
+  (FGreaterThan) 
+  (FLessEq)
+  (FGreaterEq)
+  (FEq)
+  (Fmin)
+  (Fmax)
+  (And)
+  (Or)
+  (Load)
+  (PtrAdd)
+  (Print)
+  (Free)
+)
+
+(datatype UnaryOp
+  (Neg)
+  (Abs)
+  (Not)
+)
+
+(constructor Top   (TernaryOp Expr Expr Expr) Expr)
+(constructor Bop   (BinaryOp Expr Expr) Expr)
+(constructor Uop   (UnaryOp Expr) Expr)
+
+(constructor Get   (Expr i64) Expr)
+(constructor Alloc (i64 Expr Expr BaseType) Expr)
+(constructor Call  (String Expr) Expr)
+
+(constructor Single (Expr) Expr)
+(constructor Concat (Expr Expr) Expr)
+
+(constructor If (Expr Expr Expr Expr) Expr)
+
+(constructor DoWhile (Expr Expr) Expr)
+
+(constructor Function (String Type Type Expr) Expr)
+)";
+	printf("%s", schema);
+}
+
+void print_egg_extraction(const EGraph &g, const Extraction &e) {
+	static int funid = 0, cnt = 0;
+	printf("; Function #%d\n", ++funid);
+	printf("(rule () (\n");
+	vector<string> var(e.size());
+	for (int i = 0; i < (int)e.size(); ++i) {
+		string head = g.eclasses[e[i].c].enodes[e[i].n].head;
+		string name, op;
+		int pos = head.find("###");
+		name = head.substr(0, pos);
+		op = head.substr(pos + 3, head.length() - pos - 3);
+		if (name.length() > 9 && name.substr(0, 9) == "primitive") {
+			if (op[0] == '\\') {
+				var[i] = op.substr(1, op.length() - 3) + "\"";
+			} else {
+				var[i] = op;
+			}
+		} else {
+			string curvar = string("__tmp") + to_string(cnt++);
+			var[i] = curvar;
+			printf("\t(let %s (", curvar.c_str());
+			if (op == "Arg") {
+				assert(e[i].ch.size() == 0);
+				printf("Arg DumT (DumC)");
+			} else if (op == "Const") {
+				assert(e[i].ch.size() == 1);
+				printf("Const %s DumT (DumC)", var[e[i].ch[0]].c_str());
+			} else {
+				printf("%s", op.c_str());
+				for (int j = 0; j < (int)e[i].ch.size(); ++j) {
+					printf(" %s", var[e[i].ch[j]].c_str());
+				}
+			}
+			printf("))\n");
+		}
+	}
+	printf("))\n");
+}
+
 int main() {
 	FILE* ppin = preprocessing();
 	EGraph g = read_egraph(ppin);
 	//print_egraph(g);
 	EClassId fun_root;
+	print_egg_init();
 	while (fscanf(ppin, "%d", &fun_root) != -1) {
 		if (!g.eclasses[fun_root].isEffectful) {
 			//cerr << "Skipping pure function : " << fun_root << endl;
@@ -995,7 +1139,8 @@ int main() {
 		vector<ExtractionENodeId> extracted_roots(region_roots.size(), -1);
 		Extraction e;
 		reconstructExtraction(g, region_roots, region_root_id, extracted_roots, e, region_root_id[fun_root]);
-		print_extraction(g, e);
+		//print_extraction(g, e);
+		print_egg_extraction(g, e);
 		assert(linearExtraction(g, fun_root, e));
 	}
 	/*

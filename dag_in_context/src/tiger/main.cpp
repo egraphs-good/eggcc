@@ -876,7 +876,7 @@ pair<EClassId, ENodeId> findArg(const EGraph &g) {
 	}
 	if (narg == 0) {
 		cerr << "Error: Failed to find arg!" << endl;
-		//print_egraph(g);
+		print_egraph(g);
 		assert(false);
 	} else if (narg > 1) {
 		cerr << "Warning: Found mulitple arg in different eclasses!!" << endl;

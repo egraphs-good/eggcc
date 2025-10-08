@@ -272,39 +272,46 @@ void mark_reachable(EClassId root) {
 	while (q.size()) {
 		EClassId u = q.front();
 		q.pop();
+		if (isPrimitiveEClass(u)) {
+			continue;
+		}
 		for (int i = 0; i < (int)egraph[u].size(); ++i) {
-			if (!egraph[u][i].subsumed) {
-				for (int j = 0; j < (int)egraph[u][i].ch.size(); ++j) {
-					EClassId v = enodeidmp[egraph[u][i].ch[j]].first;
-					if (!reachable[v] && (isExpr(v) || isPrimitiveEClass(v))) {
-						reachable[v] = true;
-						q.push(v);
-					}
+			for (int j = 0; j < (int)egraph[u][i].ch.size(); ++j) {
+				EClassId v = enodeidmp[egraph[u][i].ch[j]].first;
+				if (!reachable[v] && (isExpr(v) || isPrimitiveEClass(v))) {
+					reachable[v] = true;
+					q.push(v);
 				}
-				// Special cases for Function and Alloc to preserve the types they depend on
-				if (egraph[u][i].op == "Function") {
-					assert(egraph[u][i].ch.size() == 4);
-					EClassId inputt = enodeidmp[egraph[u][i].ch[1]].first,
-							 outputt = enodeidmp[egraph[u][i].ch[2]].first;
-					assert(isType(inputt));
-					assert(isType(outputt));
-					if (!necessary_types[inputt]) {
-						necessary_types[inputt] = true;
-						tq.push(inputt);
-					}
-					if (!necessary_types[outputt]) {
-						necessary_types[outputt] = true;
-						tq.push(outputt);
-					}
+			}
+			if (egraph[u][i].op == "Function") {
+				cerr << "Found Function : " << egraph[u][i].name << endl;
+			}
+			if (egraph[u][i].op == "Arg") {
+				cerr << "Found Arg : " << egraph[u][i].name << endl;
+			}
+			// Special cases for Function and Alloc to preserve the types they depend on
+			if (egraph[u][i].op == "Function") {
+				assert(egraph[u][i].ch.size() == 4);
+				EClassId inputt = enodeidmp[egraph[u][i].ch[1]].first,
+							outputt = enodeidmp[egraph[u][i].ch[2]].first;
+				assert(isType(inputt));
+				assert(isType(outputt));
+				if (!necessary_types[inputt]) {
+					necessary_types[inputt] = true;
+					tq.push(inputt);
 				}
-				if (egraph[u][i].op == "Alloc") {
-					assert(egraph[u][i].ch.size() == 4);
-					EClassId ty = enodeidmp[egraph[u][i].ch[3]].first;
-					assert(isType(ty));
-					if (!necessary_types[ty]) {
-						necessary_types[ty] = true;
-						tq.push(ty);
-					}
+				if (!necessary_types[outputt]) {
+					necessary_types[outputt] = true;
+					tq.push(outputt);
+				}
+			}
+			if (egraph[u][i].op == "Alloc") {
+				assert(egraph[u][i].ch.size() == 4);
+				EClassId ty = enodeidmp[egraph[u][i].ch[3]].first;
+				assert(isType(ty));
+				if (!necessary_types[ty]) {
+					necessary_types[ty] = true;
+					tq.push(ty);
 				}
 			}
 		}
@@ -314,7 +321,7 @@ void mark_reachable(EClassId root) {
 		tq.pop();
 		assert(isType(u));
 		for (int i = 0; i < (int)egraph[u].size(); ++i) {
-			if (!egraph[u][i].subsumed && egraph[u][i].op != "TypeList-ith" && egraph[u][i].op != "TLConcat") {
+			if (egraph[u][i].op != "TypeList-ith" && egraph[u][i].op != "TLConcat") {
 				//cout << egraph[u][i].name << ' ' << egraph[u][i].op << endl;
 				for (int j = 0; j < (int)egraph[u][i].ch.size(); ++j) {
 					//cout << " " << egraph[u][i].ch[j] << endl;
@@ -448,13 +455,14 @@ void build_simple_egraph() {
 			g.eclasses.push_back(EClass());
 			g.eclasses.back().isEffectful = false;
 		}
+		assert(!(necessary_types[i] && reachable[i]));
 	}
 	for (int i = 0; i < (int)egraph.size(); ++i) {
 		if (reachable[i]) {
 			if (isExpr(i)) {
 				EClassId nid = neweclassidmp[i];
 				for (int j = 0; j < (int)egraph[i].size(); ++j) {
-					if (!egraph[i][j].subsumed && isExtractableOP(egraph[i][j].op)) {
+					if (isExtractableOP(egraph[i][j].op)) {
 						ENode en;
 						en.head = egraph[i][j].name + "###" + egraph[i][j].op;
 						en.eclass = nid;
@@ -469,7 +477,7 @@ void build_simple_egraph() {
 				}
 			} else {
 				for (int j = 0; j < (int)egraph[i].size(); ++j) {
-					if (!egraph[i][j].subsumed && isPrimitiveENode(i, j) && isExtractableOP(egraph[i][j].op)) {
+					if (isPrimitiveENode(i, j) && isExtractableOP(egraph[i][j].op)) {
 						EClassId nid = neweclassidmp[i];
 						ENode en;
 						en.head = egraph[i][j].name + "###" + egraph[i][j].op;

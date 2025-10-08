@@ -453,25 +453,18 @@ fn find_tiger_binary(binary: &str) -> Option<PathBuf> {
 }
 fn extract_program_with_egglog(
     original_prog: &TreeProgram,
+    batch: &[String],
     egraph: &mut egglog::EGraph,
 ) -> TreeProgram {
     let function_symbol: Symbol = "Function".into();
     let (rows, termdag) = match egraph.function_to_dag(function_symbol, usize::MAX) {
         Ok(res) => res,
         Err(err) => {
-            log::warn!(
-                "Failed to read Function table from tiger egraph ({err}); returning original program"
-            );
-            return original_prog.clone();
+            panic!("Failed to convert egglog egraph to term dag: {err}");
         }
     };
 
-    if rows.is_empty() {
-        log::warn!(
-            "Tiger pipeline produced no extractable functions; returning original program"
-        );
-        return original_prog.clone();
-    }
+    let target_names: IndexSet<String> = batch.iter().cloned().collect();
 
     let mut converter = FromEgglog {
         termdag: &termdag,
@@ -480,78 +473,37 @@ fn extract_program_with_egglog(
 
     let mut extracted: IndexMap<String, RcExpr> = IndexMap::new();
 
-    for (func_term, value_term) in rows {
+    for (_func_term, value_term) in rows {
         // For constructors, the extracted term is in the output position.
         let expr = converter.expr_from_egglog(value_term);
         match expr.as_ref() {
             Expr::Function(func_name, _, _, _) => {
+                if !target_names.contains(func_name) {
+                    continue;
+                }
                 if extracted.insert(func_name.clone(), expr.clone()).is_some() {
-                    log::warn!(
+                    panic!(
                         "Duplicate function {func_name} encountered during extraction; overwriting previous result"
                     );
                 }
             }
             other => {
-                // Attempt to recover the declared name to help debugging.
-                let declared_name = match func_term {
-                    Term::App(_, children) if !children.is_empty() => {
-                        let term = termdag.get(children[0]);
-                        if let Term::Lit(egglog::ast::Literal::String(sym)) = term {
-                            sym.to_string()
-                        } else {
-                            "<unknown>".to_string()
-                        }
-                    }
-                    _ => "<unknown>".to_string(),
-                };
-                log::warn!(
-                    "Skipping non-function expression extracted for {declared_name}: {other:?}"
-                );
+                panic!("Expected extracted expression to be a function, got {other:?}");
             }
         }
     }
+    let mut res = original_prog.clone();
 
-    if extracted.is_empty() {
-        log::warn!(
-            "Egglog extraction yielded zero function expressions; returning original program"
-        );
-        return original_prog.clone();
+    for name in &target_names {
+        res.replace_fn(name, extracted.get(name).unwrap().clone());
     }
 
-    let entry_name = original_prog
-        .entry
-        .func_name()
-        .expect("entry program must be a function");
-    let entry = extracted
-        .shift_remove(&entry_name)
-        .unwrap_or_else(|| original_prog.entry.clone());
-
-    let mut functions = Vec::with_capacity(original_prog.functions.len() + extracted.len());
-    for func in &original_prog.functions {
-        let name = func
-            .func_name()
-            .expect("non-entry program component must be a function");
-        if let Some(updated) = extracted.shift_remove(&name) {
-            functions.push(updated);
-        } else {
-            functions.push(func.clone());
-        }
-    }
-
-    if !extracted.is_empty() {
-        let mut remaining: Vec<_> = extracted.into_iter().collect();
-        remaining.sort_by(|(a, _), (b, _)| a.cmp(b));
-        for (_name, expr) in remaining {
-            functions.push(expr);
-        }
-    }
-
-    TreeProgram { entry, functions }
+    res
 }
 
 fn run_tiger_pipeline(
     original_prog: &TreeProgram,
-    _batch: &[String],
+    batch: &[String],
     egraph: &egraph_serialize::EGraph,
     _should_maintain_linearity: bool,
 ) -> TreeProgram {
@@ -591,7 +543,7 @@ fn run_tiger_pipeline(
         .map_err(|err| format!("failed to run tiger egglog program: {err}"))
         .unwrap();
 
-    extract_program_with_egglog(original_prog, &mut tiger_egraph).override_arg_types()
+    extract_program_with_egglog(original_prog, batch, &mut tiger_egraph).override_arg_types()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -604,14 +556,9 @@ fn extract(
     termdag: &mut TermDag,
     should_maintain_linearity: bool,
     extract_debug_exprs: bool,
-) ->  TreeProgram {
+) -> TreeProgram {
     if eggcc_config.use_tiger {
-        run_tiger_pipeline(
-            original_prog,
-            &batch,
-            egraph,
-            should_maintain_linearity,
-        )
+        run_tiger_pipeline(original_prog, &batch, egraph, should_maintain_linearity)
     } else {
         greedy_dag_extract(
             original_prog,
@@ -622,7 +569,8 @@ fn extract(
             DefaultCostModel,
             should_maintain_linearity,
             extract_debug_exprs,
-        ).1
+        )
+        .1
     }
 }
 

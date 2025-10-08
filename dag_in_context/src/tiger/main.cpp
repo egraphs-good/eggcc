@@ -1056,6 +1056,8 @@ R"(
 (constructor DoWhile (Expr Expr) Expr)
 
 (constructor Function (String Type Type Expr) Expr)
+
+(ruleset reconstruction)
 )";
 	printf("%s", schema);
 }
@@ -1096,7 +1098,11 @@ void print_egg_extraction(const EGraph &g, const Extraction &e) {
 			printf("))\n");
 		}
 	}
-	printf("))\n");
+	printf(") :ruleset reconstruction)\n");
+}
+
+void print_egg_end() {
+	printf("(run reconstruction 1)\n");
 }
 
 int main() {
@@ -1143,6 +1149,7 @@ int main() {
 		print_egg_extraction(g, e);
 		assert(linearExtraction(g, fun_root, e));
 	}
+	print_egg_end();
 	/*
 	vector<pair<EGraph, SubEGraphMap>> region_egraphs;
 	for (int i = 0; i < (int)region_roots.size(); ++i) {

@@ -13,6 +13,8 @@ const COLORS = {
   "llvm-eggcc-ablation-O3-O0": "green",
   "llvm-eggcc-ablation-O3-O3": "orange",
   "eggcc-ILP-O0-O0": "red",
+  "llvm-eggcc-tiger-O0-O0": "cyan",
+  "llvm-eggcc-tiger-WL-O0-O0": "magenta",
 };
 
 const BASELINE_MODE = "llvm-O0-O0";

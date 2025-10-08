@@ -19,9 +19,9 @@ if profile.TO_ABLATE != "":
 # copied from chart.js
 COLOR_MAP = {
   "rvsdg-round-trip-to-executable": "red",
-  "llvm-O0-O0": "orange",
+  "llvm-O0-O0": "black",
   "llvm-O1-O0": "green",
-  "llvm-O2-O0": "black",
+  "llvm-O2-O0": "orange",
   "llvm-O3-O0": "purple",
   "llvm-O3-O3": "gold",
   "llvm-eggcc-O0-O0": "blue",
@@ -31,6 +31,9 @@ COLOR_MAP = {
   "llvm-eggcc-ablation-O0-O0": "blue",
   "llvm-eggcc-ablation-O3-O0": "green",
   "llvm-eggcc-ablation-O3-O3": "orange",
+  "eggcc-ILP-O0-O0": "red",
+  "llvm-eggcc-tiger-O0-O0": "cyan",
+  "llvm-eggcc-tiger-WL-O0-O0": "magenta",
 }
 
 SHAPE_MAP = {
@@ -387,6 +390,14 @@ def to_paper_names_treatment(treatment):
     return 'EQCC-Sequential-O0-O0'
   if treatment == 'llvm-eggcc-O3-O3':
     return 'EQCC-O3-O3'
+  if treatment == 'eggcc-ILP-O0-O0':
+    return 'EQCC-ILP-O0-O0'
+  if treatment == 'llvm-eggcc-NOCTX-O0-O0':
+    return 'EQCC-NOCTX-O0-O0'
+  if treatment == 'llvm-eggcc-tiger-O0-O0':
+    return 'EQCC-Tiger-O0-O0'
+  if treatment == 'llvm-eggcc-tiger-WL-O0-O0':
+    return 'EQCC-Tiger-WL-O0-O0'
   raise KeyError(f"Unknown treatment {treatment}")
 
 

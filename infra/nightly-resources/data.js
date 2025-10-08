@@ -49,6 +49,8 @@ function shouldHaveLlvm(runMethod) {
     "llvm-O3-O3",
     "llvm-eggcc-O3-O0",
     "llvm-eggcc-O3-O3",
+    "llvm-eggcc-tiger-O0-O0",
+    "llvm-eggcc-tiger-WL-O0-O0",
   ].includes(runMethod);
 }
 

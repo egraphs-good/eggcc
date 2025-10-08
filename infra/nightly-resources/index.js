@@ -234,7 +234,9 @@ async function refreshLatexMacros(tableMacros) {
   try {
     const response = await fetch("nightlymacros.tex");
     if (!response.ok) {
-      throw new Error(`Failed to load nightlymacros.tex: ${response.status}. This is expected if you are running with UNSAFE_TREATMENTS.`);
+      throw new Error(
+        `Failed to load nightlymacros.tex: ${response.status}. This is expected if you are running with UNSAFE_TREATMENTS.`,
+      );
     }
     latexMacros = await response.text();
   } catch (error) {
@@ -250,7 +252,9 @@ function addGraphs() {
   fetch("graphs.json")
     .then((response) => {
       if (!response.ok) {
-        throw new Error(`Failed to load graphs.json: ${response.status}. Expected if you have UNSAFE_TREATMENTS enabled.`);
+        throw new Error(
+          `Failed to load graphs.json: ${response.status}. Expected if you have UNSAFE_TREATMENTS enabled.`,
+        );
       }
       return response.json();
     })

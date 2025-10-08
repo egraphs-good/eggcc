@@ -29,6 +29,13 @@ impl TreeProgram {
         checker.type_cache
     }
 
+    /// Like with_arg_types but existing arg types may be garbage.
+    pub(crate) fn override_arg_types(&self) -> TreeProgram {
+        let mut checker = TypeChecker::new(self, false);
+        checker.allow_garbage_arg_types = true;
+        checker.add_arg_types()
+    }
+
     /// Adds correct types to arguments in the program
     /// and performs type checking.
     /// Maintains the invariant that common subexpressions are shared using
@@ -117,6 +124,8 @@ pub(crate) struct TypeChecker<'a> {
     /// As a result, the type_expr_cache contains expressions from the original program.
     #[allow(dead_code)]
     expect_fully_typed: bool,
+    /// When inferring argument types, existing ones may be incorrect.
+    allow_garbage_arg_types: bool,
 }
 
 impl<'a> TypeChecker<'a> {
@@ -126,6 +135,7 @@ impl<'a> TypeChecker<'a> {
             type_cache: IndexMap::new(),
             type_expr_cache: IndexMap::new(),
             expect_fully_typed,
+            allow_garbage_arg_types: false,
         }
     }
 
@@ -193,13 +203,44 @@ impl<'a> TypeChecker<'a> {
         }
 
         let (res_ty, mut res_expr) = match expr.as_ref() {
-            Expr::Const(constant, ty, ctx) => {
+            // Replace the argument type with the new type
+            Expr::Arg(Type::Unknown, ctx) => {
+                if self.expect_fully_typed {
+                    panic!("Expected type to be known in arg")
+                }
+                (
+                    arg_tys.as_ref().unwrap().get().clone(),
+                    Rc::new(Expr::Arg(
+                        arg_tys.as_ref().unwrap().get().clone(),
+                        ctx.clone(),
+                    )),
+                )
+            }
+            Expr::Arg(found_ty, ctx) => {
+                if let Some(arg_tys) = arg_tys {
+                    if !self.allow_garbage_arg_types {
+                        assert_eq!(
+                            &found_ty,
+                            &arg_tys.get(),
+                            "Expected argument type to be {:?}. Got {:?}",
+                            arg_tys.get(),
+                            found_ty
+                        );
+                    }
+                }
+                let res_ty = match arg_tys {
+                    Some(tys) => tys.get().clone(),
+                    None => found_ty.clone(),
+                };
+                (res_ty.clone(), Rc::new(Expr::Arg(res_ty, ctx.clone())))
+            }
+            Expr::Const(constant, found_ty, ctx) => {
                 let cty = match constant {
                     Constant::Int(_) => Type::Base(BaseType::IntT),
                     Constant::Bool(_) => Type::Base(BaseType::BoolT),
                     Constant::Float(_) => Type::Base(BaseType::FloatT),
                 };
-                match ty {
+                match found_ty {
                     Type::Unknown => {
                         if self.expect_fully_typed {
                             panic!("Expected type to be known in constant")
@@ -215,18 +256,60 @@ impl<'a> TypeChecker<'a> {
                     }
                     _ => {
                         if let Some(tys) = arg_tys {
-                            assert_eq!(
-                                tys.get(),
-                                ty,
-                                "Expected arg type in constant to be {:?}. Got {:?}",
-                                tys.get(),
-                                ty
-                            );
+                            if !self.allow_garbage_arg_types {
+                                assert_eq!(
+                                    tys.get(),
+                                    found_ty,
+                                    "Expected arg type in constant to be {:?}. Got {:?}",
+                                    tys.get(),
+                                    found_ty
+                                );
+                            }
                         }
-                        (cty, expr.clone())
+
+                        let res_arg_ty = match arg_tys {
+                            Some(tys) => tys.get().clone(),
+                            None => found_ty.clone(),
+                        };
+                        (
+                            cty.clone(),
+                            RcExpr::new(Expr::Const(constant.clone(), res_arg_ty, ctx.clone())),
+                        )
                     }
                 }
             }
+            Expr::Empty(found_ty, ctx) => match found_ty {
+                Type::Unknown => {
+                    if self.expect_fully_typed {
+                        panic!("Expected type to be known in empty")
+                    }
+                    (
+                        emptyt(),
+                        RcExpr::new(Expr::Empty(
+                            arg_tys.as_ref().unwrap().get().clone(),
+                            ctx.clone(),
+                        )),
+                    )
+                }
+                _ => {
+                    if let Some(arg_tys) = arg_tys {
+                        if !self.allow_garbage_arg_types {
+                            assert_eq!(
+                                arg_tys.get(),
+                                found_ty,
+                                "Expected arg type in empty to be {:?}. Got {:?}",
+                                arg_tys.get(),
+                                found_ty
+                            );
+                        }
+                    }
+                    let res_arg_ty = match arg_tys {
+                        Some(tys) => tys.get().clone(),
+                        None => found_ty.clone(),
+                    };
+                    (emptyt(), RcExpr::new(Expr::Empty(res_arg_ty, ctx.clone())))
+                }
+            },
             Expr::Top(TernaryOp::Write, left, right, state) => {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_tys);
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_tys);
@@ -387,32 +470,7 @@ impl<'a> TypeChecker<'a> {
                     RcExpr::new(Expr::Call(string.clone(), new_arg)),
                 )
             }
-            Expr::Empty(ty, ctx) => match ty {
-                Type::Unknown => {
-                    if self.expect_fully_typed {
-                        panic!("Expected type to be known in empty")
-                    }
-                    (
-                        emptyt(),
-                        RcExpr::new(Expr::Empty(
-                            arg_tys.as_ref().unwrap().get().clone(),
-                            ctx.clone(),
-                        )),
-                    )
-                }
-                _ => {
-                    if let Some(arg_tys) = arg_tys {
-                        assert_eq!(
-                            arg_tys.get(),
-                            ty,
-                            "Expected arg type in empty to be {:?}. Got {:?}",
-                            arg_tys.get(),
-                            ty
-                        );
-                    }
-                    (emptyt(), expr.clone())
-                }
-            },
+
             Expr::Single(arg) => {
                 let (Type::Base(basety), new_arg) =
                     self.add_arg_types_to_expr(arg.clone(), arg_tys)
@@ -519,31 +577,6 @@ impl<'a> TypeChecker<'a> {
                     Type::TupleT(out_tys[1..].to_vec()),
                     RcExpr::new(Expr::DoWhile(new_inputs, new_pred_and_outputs)),
                 )
-            }
-            // Replace the argument type with the new type
-            Expr::Arg(Type::Unknown, ctx) => {
-                if self.expect_fully_typed {
-                    panic!("Expected type to be known in arg")
-                }
-                (
-                    arg_tys.as_ref().unwrap().get().clone(),
-                    Rc::new(Expr::Arg(
-                        arg_tys.as_ref().unwrap().get().clone(),
-                        ctx.clone(),
-                    )),
-                )
-            }
-            Expr::Arg(found_ty, _ctx) => {
-                if let Some(arg_tys) = arg_tys {
-                    assert_eq!(
-                        &found_ty,
-                        &arg_tys.get(),
-                        "Expected argument type to be {:?}. Got {:?}",
-                        arg_tys.get(),
-                        found_ty
-                    );
-                }
-                (found_ty.clone(), expr.clone())
             }
             Expr::Function(_, _, _, _) => panic!("Expected expression, got function"),
             Expr::Symbolic(_, ty) => (

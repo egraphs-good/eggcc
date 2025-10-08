@@ -264,6 +264,12 @@ vector<bool> reachable;
 
 vector<bool> necessary_types;
 
+bool isTypeNormalForm(const string &op) {
+	return op == "IntT" || op == "BoolT" || op == "FloatT" ||
+		   op == "PointerT" || op == "StateT" || op == "Base" ||
+		   op == "TupleT" || op == "TNil" || op == "TCons";
+}
+
 void mark_reachable(EClassId root) {
 	if (reachable[root]) {
 		return;
@@ -321,9 +327,13 @@ void mark_reachable(EClassId root) {
 	while (tq.size()) {
 		EClassId u = tq.front();
 		tq.pop();
+		if (!isType(u)) {
+			cerr << "Found non-type children of a type: " << endl;
+			cerr << egraph[u][0].name << ' ' << egraph[u][0].op << endl;
+		}
 		assert(isType(u));
 		for (int i = 0; i < (int)egraph[u].size(); ++i) {
-			if (egraph[u][i].op != "TypeList-ith" && egraph[u][i].op != "TLConcat") {
+			if (isTypeNormalForm(egraph[u][i].op)) {
 				//cout << egraph[u][i].name << ' ' << egraph[u][i].op << endl;
 				for (int j = 0; j < (int)egraph[u][i].ch.size(); ++j) {
 					//cout << " " << egraph[u][i].ch[j] << endl;
@@ -499,7 +509,7 @@ void build_simple_egraph() {
 		if (necessary_types[i]) {
 			EClassId nid = neweclassidmp[i];
 			for (int j = 0; j < (int)egraph[i].size(); ++j) {
-				if (egraph[i][j].op != "TypeList-ith" && egraph[i][j].op != "TLConcat") {
+				if (isTypeNormalForm(egraph[i][j].op)) {
 					ENode en;
 					en.head = egraph[i][j].name + "###" + egraph[i][j].op;
 					en.eclass = nid;

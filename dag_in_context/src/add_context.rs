@@ -238,26 +238,34 @@ impl Expr {
             Expr::Arg(ty, _oldctx) => RcExpr::new(Expr::Arg(ty.clone(), context_to_add)),
             // create new contexts for let, loop, and if
             Expr::DoWhile(inputs, pred_and_body) => {
-                // We need to make loop contexts point to their enclosing loops in the e-graph.
-                // (This creates a cycle in the e-graph, but we can still extract because
-                // our extractor ignores context.)
+                // dummy context case
+                if cache.dummy_ctx {
+                    let new_inputs = inputs.add_ctx_with_cache(Assumption::dummy(), cache);
+                    let new_pred_and_body =
+                        pred_and_body.add_ctx_with_cache(Assumption::dummy(), cache);
+                    return RcExpr::new(Expr::DoWhile(new_inputs, new_pred_and_body));
+                } else {
+                    // We need to make loop contexts point to their enclosing loops in the e-graph.
+                    // (This creates a cycle in the e-graph, but we can still extract because
+                    // our extractor ignores context.)
 
-                // To do this we have to first make a placeholder context
-                // that we can use to build the body. Once we've built the body, we can
-                // build the real `InLoop` context. Finally, we'll have to union the
-                // placeholder context with the `InLoop` one later, which we track using
-                // the `push_loop_context_union` function.
+                    // To do this we have to first make a placeholder context
+                    // that we can use to build the body. Once we've built the body, we can
+                    // build the real `InLoop` context. Finally, we'll have to union the
+                    // placeholder context with the `InLoop` one later, which we track using
+                    // the `push_loop_context_union` function.
 
-                let placeholder = cache.new_placeholder();
+                    let placeholder = cache.new_placeholder();
 
-                let new_inputs = inputs.add_ctx_with_cache(current_ctx.clone(), cache);
-                let new_pred_and_body =
-                    pred_and_body.add_ctx_with_cache(placeholder.clone(), cache);
+                    let new_inputs = inputs.add_ctx_with_cache(current_ctx.clone(), cache);
+                    let new_pred_and_body =
+                        pred_and_body.add_ctx_with_cache(placeholder.clone(), cache);
 
-                let new_ctx = Assumption::InLoop(new_inputs.clone(), new_pred_and_body.clone());
-                cache.push_loop_context_union(placeholder, new_ctx);
+                    let new_ctx = Assumption::InLoop(new_inputs.clone(), new_pred_and_body.clone());
+                    cache.push_loop_context_union(placeholder, new_ctx);
 
-                RcExpr::new(Expr::DoWhile(new_inputs, new_pred_and_body))
+                    RcExpr::new(Expr::DoWhile(new_inputs, new_pred_and_body))
+                }
             }
             Expr::If(pred, input, then_case, else_calse) => {
                 let new_pred = pred.add_ctx_with_cache(current_ctx.clone(), cache);

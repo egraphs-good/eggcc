@@ -86,6 +86,8 @@ struct Args {
 
     #[clap(long)]
     use_tiger: bool,
+    #[clap(long)]
+    no_context: bool,
 }
 
 fn main() {
@@ -142,6 +144,7 @@ fn main() {
             ablate: args.ablate,
             ilp_extraction_test_timeout: args.ilp_extraction_test_timeout.map(Duration::from_secs),
             use_tiger: args.use_tiger,
+            use_context: !args.no_context,
         },
     };
 

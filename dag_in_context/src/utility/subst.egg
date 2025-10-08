@@ -12,6 +12,23 @@
 ;; In other words, it must refine the equivalence relation of `in` with `to` as the argument.
 (constructor Subst (Assumption Expr Expr) Expr :unextractable)
 
+
+;; Use an if statement with a true boolean to substitute `to` for `in`.
+;; This is used when substitution can't be used due to
+;; the weak linearity constraint.
+(constructor IfSubst (Expr Expr) Expr)
+
+(rule ((= lhs (IfSubst to in))
+       (HasArgType to ty)
+       (ContextOf to ctx))
+      ((union lhs
+         (If (Const (Bool true) ty ctx)
+           to
+           in
+           in)))
+       :ruleset subst)
+
+
 ;; Used to delay unions for the subst ruleset.
 ;; This is necessary because substitution may not terminate if it can
 ;; observe its own results- it may create infinitly large terms.

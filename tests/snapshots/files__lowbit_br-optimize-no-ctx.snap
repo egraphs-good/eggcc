@@ -1,0 +1,11 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 21324
+@main(v0: int) {
+  v1_: int = neg v0;
+  v2_: int = bitand v0 v1_;
+  print v2_;
+  ret;
+}

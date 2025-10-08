@@ -3,11 +3,17 @@
 
 (relation InvCodeMotionCandidate (Expr Expr))
 
+;; speeds up the InvCodeMotionCandidate relation by removing indirection
+(relation ExtractedExprCache (Term Expr Assumption))
+
+(rule ((= (TCPair t1 c1) (ExtractedExpr e1))
+       (ContextOf e1 ctx1))
+      ((ExtractedExprCache t1 e1 ctx1))
+      :ruleset cicm-index)
+
 (rule (
-        (= (TCPair t1 c1) (ExtractedExpr e1))
-        (= (TCPair t1 c2) (ExtractedExpr e2))
-        (ContextOf e1 (InIf true pred1 orig_ins3))
-        (ContextOf e2 (InIf false pred2 orig_ins4))
+        (ExtractedExprCache t1 e1 (InIf true pred1 orig_ins3))
+        (ExtractedExprCache t1 e2 (InIf false pred2 orig_ins4))
         (!= e1 e2)
      )
      ((InvCodeMotionCandidate e1 e2))

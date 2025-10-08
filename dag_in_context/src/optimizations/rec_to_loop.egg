@@ -49,7 +49,9 @@
      (If pred always-runs
          loop
          (Arg start-ty (InIf false pred always-runs))))
-   (union body (Subst (InFunc name) outer-if base-case)))
+   (union (Function name in out body)
+     (Function name in out 
+      (Subst (InFunc name) outer-if base-case))))
   :ruleset rec-to-loop)
 
 
@@ -102,7 +104,8 @@
    (HasType always-runs start-ty)
    (= always-runs-len (tuple-length always-runs))
    (= start-ty (TupleT start-ty-list))
-   (HasType body func-ty))
+   (HasType body func-ty)
+   (ContextOf body body-ctx))
   ((let loop-ty
      (TupleT (TLConcat start-ty-list (TCons (IntT) (TNil)))))
    ;; recursive case in the loop
@@ -139,11 +142,12 @@
            (Single (Const (Int 0) start-ty (InIf false pred always-runs))))))
    ;; base case over latest start value
    (let new-base-case
-     (Subst (InFunc name) (SubTuple outer-if 0 always-runs-len) base-case))
+     (Subst body-ctx (SubTuple outer-if 0 always-runs-len) base-case))
    ;; add base case to acc
    (let res
      (Concat
       (Single (Bop base-case-op (Get new-base-case 0) (Get outer-if always-runs-len)))
       (Single (Get new-base-case 1))))
-   (union body res))
+   (union (Function name in out body)
+          (Function name in out res)))
   :ruleset rec-to-loop)

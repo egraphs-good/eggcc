@@ -55,6 +55,7 @@ treatments = [
   "llvm-eggcc-O3-O3",
   "eggcc-ILP-O0-O0",
   "llvm-eggcc-tiger-O0-O0",
+  "llvm-eggcc-NOCTX-O0-O0",
 ]
 
 if TO_ABLATE != "":
@@ -109,6 +110,9 @@ def get_eggcc_options(benchmark):
       return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-O0-O0":
       return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-NOCTX-O0-O0":
+      # run with the no-context flag
+      return (f'optimize --no-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     

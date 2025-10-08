@@ -8,6 +8,8 @@
         (HasArgType thn (TupleT tylist))
         (HasArgType els (TupleT tylist))
         (HasType x (Base x_ty))
+        ; ensure pure type for weak linearity
+        (PureBaseType x_ty)
         (= orig_ins_len (TypeList-length tylist))
       )
       (

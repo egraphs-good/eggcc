@@ -95,18 +95,32 @@ pub(crate) fn helpers() -> String {
 }
 
 fn cheap_optimizations() -> Vec<String> {
-    ["interval-rewrite"]
-        .iter()
-        .map(|opt| opt.to_string())
-        .collect()
+    [
+        "hacker",
+        "interval-rewrite",
+        "always-switch-rewrite",
+        // "memory", TODO right now we just run mem-simple
+        "peepholes",
+    ]
+    .iter()
+    .map(|opt| opt.to_string())
+    .collect()
 }
 
 fn optimizations() -> Vec<String> {
-    ["push-in"]
-        .iter()
-        .map(|opt| opt.to_string())
-        .chain(cheap_optimizations())
-        .collect()
+    [
+        "select_opt",
+        "loop-unroll",
+        "switch_rewrite",
+        "loop-inv-motion",
+        "loop-strength-reduction",
+        "cicm",
+        "push-in",
+    ]
+    .iter()
+    .map(|opt| opt.to_string())
+    .chain(cheap_optimizations())
+    .collect()
 }
 
 pub fn rulesets() -> String {
@@ -156,9 +170,6 @@ pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
   rec-to-loop
   {helpers})"
     )));
-    // Inlining has to be run separately because it does not
-    // maintain weak linearity!
-    // It doesn't compose with other optimizations.
     res.push(CompilerPass::InlineWithSchedule(format!(
         "
 (run-schedule {helpers})"
@@ -204,14 +215,7 @@ pub fn parallel_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
 
     {helpers})"
         )),
-        // Inlining has to be run separately because it does not
-        // maintain weak linearity!
-        // It doesn't compose with other optimizations.
         CompilerPass::InlineWithSchedule(format!(
-            "
-    (run-schedule {helpers})"
-        )),
-        CompilerPass::Schedule(format!(
             "
 (run-schedule
     (saturate

@@ -175,7 +175,7 @@ fn print_sexpr(expr: &SExpr) -> String {
 }
 
 pub(crate) fn remove_new_contexts(s: &str) -> String {
-    eprintln!("removing context...");
+    log::info!("removing context...");
     let tokens = tokenize(s);
     let parsed = parse(&tokens);
     let transformed: Vec<SExpr> = parsed.iter().map(transform).collect();

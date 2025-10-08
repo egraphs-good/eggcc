@@ -842,7 +842,7 @@ fn extract_fn(
     if !should_maintain_linearity {
         (cost_res, res)
     } else {
-        eprintln!("extracting {} with linearity checks", func);
+        log::info!("extracting {} with linearity checks", func);
         let effectful_nodes_along_path =
             extractor_not_linear.find_effectful_nodes_in_function(&res, &egraph_info);
         extractor_not_linear.costs.clear();

@@ -97,17 +97,16 @@ fn sexpr_head(list: &SExpr) -> Option<&str> {
     None
 }
 
-fn contains_context(expr: &SExpr) -> bool {
-    eprintln!("checking for context in {:?}", expr);
+fn query_uses_context(expr: &SExpr) -> bool {
     match expr {
         SExpr::Atom(_) => false,
         SExpr::List(items) => {
             if let Some(head) = sexpr_head(expr) {
-                if matches!(head, "InFunc" | "InLoop" | "InSwitch" | "InIf") {
+                if matches!(head, "InLoop" | "InSwitch" | "InIf") {
                     return true;
                 }
             }
-            items.iter().any(contains_context)
+            items.iter().any(query_uses_context)
         }
     }
 }
@@ -117,12 +116,7 @@ fn replace_context_with_dummy(expr: &SExpr) -> SExpr {
         SExpr::Atom(a) => SExpr::Atom(a.clone()),
         SExpr::List(items) => {
             if let Some(head) = sexpr_head(expr) {
-                let arity = items.len().saturating_sub(1);
-                let is_ctx = matches!(head, "InFunc" | "InLoop" | "InSwitch" | "InIf")
-                    && ((head == "InFunc" && arity == 1)
-                        || (head == "InLoop" && arity == 2)
-                        || (head == "InSwitch" && arity == 3)
-                        || (head == "InIf" && arity == 3));
+                let is_ctx = matches!(head, "InFunc" | "InLoop" | "InSwitch" | "InIf");
                 if is_ctx {
                     return SExpr::Atom("DUMMYCTX".to_string());
                 }
@@ -143,7 +137,7 @@ fn transform(expr: &SExpr) -> SExpr {
                     let mut out: Vec<SExpr> = Vec::with_capacity(items.len());
                     out.push(Atom("rule".to_string()));
                     // Query: recurse without replacement to normalize
-                    let query_has_ctx = contains_context(&items[1]);
+                    let query_has_ctx = query_uses_context(&items[1]);
                     out.push(items[1].clone());
                     // Body handling depends on whether query references context
                     let body = &items[2];

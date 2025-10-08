@@ -1,5 +1,5 @@
 use clap::ValueEnum;
-use egglog::{Term, TermDag};
+use egglog::{ast::Symbol, Term, TermDag};
 use egraph_serialize::Cost;
 use greedy_dag_extractor::{
     extract_ilp, greedy_dag_extract, has_debug_exprs, serialized_egraph, DefaultCostModel,
@@ -8,7 +8,7 @@ use indexmap::IndexMap;
 use indexmap::IndexSet;
 use interpreter::Value;
 use schedule::{rulesets, CompilerPass};
-use schema::TreeProgram;
+use schema::{Expr, RcExpr, TreeProgram};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -19,8 +19,8 @@ use std::{
 use to_egglog::TreeToEgglog;
 
 use crate::{
-    dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    schedule::parallel_schedule, util::run_cmd_line,
+    dag2svg::tree_to_svg, from_egglog::FromEgglog, interpreter::interpret_dag_prog,
+    optimizations::function_inlining, schedule::parallel_schedule, util::run_cmd_line,
 };
 
 pub mod add_context;
@@ -451,32 +451,147 @@ fn find_tiger_binary(binary: &str) -> Option<PathBuf> {
 
     None
 }
-fn run_tiger_pipeline(egraph: &egraph_serialize::EGraph) -> std::result::Result<String, String> {
+fn extract_program_with_egglog(
+    original_prog: &TreeProgram,
+    egraph: &mut egglog::EGraph,
+) -> TreeProgram {
+    let function_symbol: Symbol = "Function".into();
+    let (rows, termdag) = match egraph.function_to_dag(function_symbol, usize::MAX) {
+        Ok(res) => res,
+        Err(err) => {
+            log::warn!(
+                "Failed to read Function table from tiger egraph ({err}); returning original program"
+            );
+            return original_prog.clone();
+        }
+    };
+
+    if rows.is_empty() {
+        log::warn!(
+            "Tiger pipeline produced no extractable functions; returning original program"
+        );
+        return original_prog.clone();
+    }
+
+    let mut converter = FromEgglog {
+        termdag: &termdag,
+        conversion_cache: IndexMap::new(),
+    };
+
+    let mut extracted: IndexMap<String, RcExpr> = IndexMap::new();
+
+    for (func_term, value_term) in rows {
+        // For constructors, the extracted term is in the output position.
+        let expr = converter.expr_from_egglog(value_term);
+        match expr.as_ref() {
+            Expr::Function(func_name, _, _, _) => {
+                if extracted.insert(func_name.clone(), expr.clone()).is_some() {
+                    log::warn!(
+                        "Duplicate function {func_name} encountered during extraction; overwriting previous result"
+                    );
+                }
+            }
+            other => {
+                // Attempt to recover the declared name to help debugging.
+                let declared_name = match func_term {
+                    Term::App(_, children) if !children.is_empty() => {
+                        let term = termdag.get(children[0]);
+                        if let Term::Lit(egglog::ast::Literal::String(sym)) = term {
+                            sym.to_string()
+                        } else {
+                            "<unknown>".to_string()
+                        }
+                    }
+                    _ => "<unknown>".to_string(),
+                };
+                log::warn!(
+                    "Skipping non-function expression extracted for {declared_name}: {other:?}"
+                );
+            }
+        }
+    }
+
+    if extracted.is_empty() {
+        log::warn!(
+            "Egglog extraction yielded zero function expressions; returning original program"
+        );
+        return original_prog.clone();
+    }
+
+    let entry_name = original_prog
+        .entry
+        .func_name()
+        .expect("entry program must be a function");
+    let entry = extracted
+        .shift_remove(&entry_name)
+        .unwrap_or_else(|| original_prog.entry.clone());
+
+    let mut functions = Vec::with_capacity(original_prog.functions.len() + extracted.len());
+    for func in &original_prog.functions {
+        let name = func
+            .func_name()
+            .expect("non-entry program component must be a function");
+        if let Some(updated) = extracted.shift_remove(&name) {
+            functions.push(updated);
+        } else {
+            functions.push(func.clone());
+        }
+    }
+
+    if !extracted.is_empty() {
+        let mut remaining: Vec<_> = extracted.into_iter().collect();
+        remaining.sort_by(|(a, _), (b, _)| a.cmp(b));
+        for (_name, expr) in remaining {
+            functions.push(expr);
+        }
+    }
+
+    TreeProgram { entry, functions }
+}
+
+fn run_tiger_pipeline(
+    original_prog: &TreeProgram,
+    _batch: &[String],
+    egraph: &egraph_serialize::EGraph,
+    _should_maintain_linearity: bool,
+) -> TreeProgram {
     let json = serde_json::to_string_pretty(egraph)
-        .map_err(|err| format!("failed to serialize egraph: {err}"))?;
+        .map_err(|err| format!("failed to serialize egraph: {err}"))
+        .unwrap();
     let json_input = format!("{json}\n");
 
     let json2egraph_bin = find_tiger_binary("json2egraph")
-        .ok_or_else(|| "json2egraph binary not found; build the tiger tools first".to_string())?;
+        .ok_or_else(|| "json2egraph binary not found; build the tiger tools first".to_string())
+        .unwrap();
 
     let egraph_text = run_cmd_line(
         json2egraph_bin.as_os_str(),
         std::iter::empty::<&std::ffi::OsStr>(),
         &json_input,
     )
-    .map_err(|err| format!("json2egraph invocation failed: {err}"))?;
+    .map_err(|err| format!("json2egraph invocation failed: {err}"))
+    .unwrap();
 
     let tiger_bin = find_tiger_binary("tiger")
-        .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())?;
+        .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())
+        .unwrap();
 
     let tiger_output = run_cmd_line(
         tiger_bin.as_os_str(),
         std::iter::empty::<&std::ffi::OsStr>(),
         &egraph_text,
     )
-    .map_err(|err| format!("tiger invocation failed: {err}"))?;
+    .map_err(|err| format!("tiger invocation failed: {err}"))
+    .unwrap();
 
-    Ok(tiger_output)
+    // Tiger returns an egglog file containing just one program, run the egglog program
+    let mut tiger_egraph = egglog::EGraph::default();
+    tiger_egraph
+        .parse_and_run_program(None, &tiger_output)
+        .map_err(|err| format!("failed to run tiger egglog program: {err}"))
+        .unwrap();
+
+    extract_program_with_egglog(original_prog, &mut tiger_egraph).override_arg_types()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -489,30 +604,26 @@ fn extract(
     termdag: &mut TermDag,
     should_maintain_linearity: bool,
     extract_debug_exprs: bool,
-) -> (Cost, TreeProgram) {
+) ->  TreeProgram {
     if eggcc_config.use_tiger {
-        // TODO get output term from tiger
-        match run_tiger_pipeline(egraph) {
-            Ok(tiger_output) => {
-                eprintln!("tiger output:\n{tiger_output}");
-            }
-            Err(err) => {
-                // keep this as a panic
-                panic!("tiger pipeline failed: {err}");
-            }
-        }
+        run_tiger_pipeline(
+            original_prog,
+            &batch,
+            egraph,
+            should_maintain_linearity,
+        )
+    } else {
+        greedy_dag_extract(
+            original_prog,
+            batch.clone(),
+            egraph.clone(),
+            unextractables.clone(),
+            termdag,
+            DefaultCostModel,
+            should_maintain_linearity,
+            extract_debug_exprs,
+        ).1
     }
-
-    greedy_dag_extract(
-        original_prog,
-        batch.clone(),
-        egraph.clone(),
-        unextractables.clone(),
-        termdag,
-        DefaultCostModel,
-        should_maintain_linearity,
-        extract_debug_exprs,
-    )
 }
 
 // Optimizes a tree program using the given schedule.
@@ -592,7 +703,7 @@ pub fn optimize(
                     "Program has debug expressions, extracting them instead of original program."
                 );
             }
-            let (_res_cost, iter_result) = extract(
+            let iter_result = extract(
                 eggcc_config,
                 &res,
                 batch.clone(),

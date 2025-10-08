@@ -20,7 +20,6 @@ nits:
 	cd dag_in_context && cargo clippy --tests -- -D warnings && cargo fmt --check
 
 
-
 # build the llvm runtime for bril
 # if you edit the runtime crate, you must re-run this to rebuild rt.bc
 runtime:

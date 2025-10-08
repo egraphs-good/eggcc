@@ -13,13 +13,14 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     fmt::Write,
+    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 use to_egglog::TreeToEgglog;
 
 use crate::{
     dag2svg::tree_to_svg, interpreter::interpret_dag_prog, optimizations::function_inlining,
-    schedule::parallel_schedule,
+    schedule::parallel_schedule, util::run_cmd_line,
 };
 
 pub mod add_context;
@@ -39,6 +40,7 @@ pub mod schema_helpers;
 mod to_egglog;
 pub(crate) mod type_analysis;
 pub mod typechecker;
+pub mod util;
 pub(crate) mod utility;
 use main_error::MainError;
 pub mod extractiongymfastergreedydag;
@@ -412,6 +414,71 @@ impl Default for EggccConfig {
     }
 }
 
+fn find_tiger_binary(binary: &str) -> Option<PathBuf> {
+    let binary_name = if cfg!(windows) {
+        format!("{binary}.exe")
+    } else {
+        binary.to_string()
+    };
+
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    let mut candidate_dirs = Vec::new();
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(dir) = current_exe.parent() {
+            candidate_dirs.push(dir.to_path_buf());
+        }
+    }
+
+    let target_root = manifest_dir
+        .parent()
+        .map(|workspace_root| workspace_root.join("target"))
+        .unwrap_or_else(|| manifest_dir.join("target"));
+
+    candidate_dirs.push(target_root.join("release"));
+    candidate_dirs.push(target_root.join("debug"));
+
+    let mut seen = HashSet::new();
+    for dir in candidate_dirs {
+        if !seen.insert(dir.clone()) {
+            continue;
+        }
+        let candidate = dir.join(&binary_name);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+
+    None
+}
+fn run_tiger_pipeline(egraph: &egraph_serialize::EGraph) -> std::result::Result<String, String> {
+    let json = serde_json::to_string_pretty(egraph)
+        .map_err(|err| format!("failed to serialize egraph: {err}"))?;
+    let json_input = format!("{json}\n");
+
+    let json2egraph_bin = find_tiger_binary("json2egraph")
+        .ok_or_else(|| "json2egraph binary not found; build the tiger tools first".to_string())?;
+
+    let egraph_text = run_cmd_line(
+        json2egraph_bin.as_os_str(),
+        std::iter::empty::<&std::ffi::OsStr>(),
+        &json_input,
+    )
+    .map_err(|err| format!("json2egraph invocation failed: {err}"))?;
+
+    let tiger_bin = find_tiger_binary("tiger")
+        .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())?;
+
+    let tiger_output = run_cmd_line(
+        tiger_bin.as_os_str(),
+        std::iter::empty::<&std::ffi::OsStr>(),
+        &egraph_text,
+    )
+    .map_err(|err| format!("tiger invocation failed: {err}"))?;
+
+    Ok(tiger_output)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn extract(
     eggcc_config: &EggccConfig,
@@ -424,20 +491,28 @@ fn extract(
     extract_debug_exprs: bool,
 ) -> (Cost, TreeProgram) {
     if eggcc_config.use_tiger {
-        // TODO: integrate with tiger
-        todo!()
-    } else {
-        greedy_dag_extract(
-            original_prog,
-            batch.clone(),
-            egraph.clone(),
-            unextractables.clone(),
-            termdag,
-            DefaultCostModel,
-            should_maintain_linearity,
-            extract_debug_exprs,
-        )
+        // TODO get output term from tiger
+        match run_tiger_pipeline(egraph) {
+            Ok(tiger_output) => {
+                eprintln!("tiger output:\n{tiger_output}");
+            }
+            Err(err) => {
+                // keep this as a panic
+                panic!("tiger pipeline failed: {err}");
+            }
+        }
     }
+
+    greedy_dag_extract(
+        original_prog,
+        batch.clone(),
+        egraph.clone(),
+        unextractables.clone(),
+        termdag,
+        DefaultCostModel,
+        should_maintain_linearity,
+        extract_debug_exprs,
+    )
 }
 
 // Optimizes a tree program using the given schedule.

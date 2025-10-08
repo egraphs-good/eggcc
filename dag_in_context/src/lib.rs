@@ -452,9 +452,8 @@ fn find_tiger_binary(binary: &str) -> Option<PathBuf> {
     None
 }
 
-
 // This function is a helper for extracting using egglog's built-in extraction, which doesn't consider linearity.
-// We currently only use it for extracting from the egraph tiger produces, which doesn't do any unions (it just encodes a single program). 
+// We currently only use it for extracting from the egraph tiger produces, which doesn't do any unions (it just encodes a single program).
 fn extract_program_with_egglog(
     original_prog: &TreeProgram,
     batch: &[String],

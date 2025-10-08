@@ -10,6 +10,8 @@
 
 using namespace std;
 
+const bool DEBUG = false;
+
 queue<string> tokenbuf;
 
 inline string read_string() {
@@ -520,7 +522,9 @@ void print_egraph(const EGraph &g) {
 		const EClass &c = g.eclasses[i];
 		int f = c.isEffectful ? 1 : 0,
 			m = c.enodes.size();
-		printf("# %d\n", i);
+		if (DEBUG) {
+			printf("# %d\n", i);
+		}
 		printf("%d %d\n", f, m);
 		for (int j = 0; j < m; ++j) {
 			const ENode &n = c.enodes[j];

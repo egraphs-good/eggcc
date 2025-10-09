@@ -931,9 +931,13 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		ENodeId child_node;
 	};
 
+	// Picking an enode in an eclass
 	vector<vector<string> > pickVar(g.eclasses.size());
+	// Cost of picking an enode in an eclass
 	vector<vector<long long> > pickCost(g.eclasses.size());
+	// Choosing an eclass, enode, child index, and child enode index
 	vector<vector<vector<vector<int> > > > choiceIndex(g.eclasses.size());
+	// For each child enode, which choice variables point to it
 	vector<vector<vector<int> > > childParents(g.eclasses.size());
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		pickVar[c].resize(g.eclasses[c].enodes.size());
@@ -942,7 +946,9 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		childParents[c].resize(g.eclasses[c].enodes.size());
 	}
 
+	// All choice variables
 	vector<ChoiceVar> choices;
+	// initialize choices, pickVar, pickCost, choiceIndex, childParents
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
 			pickVar[c][n] = string("p_") + to_string(c) + "_" + to_string(n);
@@ -1015,6 +1021,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	}
 
 	bool firstTerm = true;
+	// minimize sum pickCost[c][n] * pickVar[c][n]
 	lp << "Minimize\n obj:";
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
@@ -1029,6 +1036,8 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		lp << " 0";
 	}
 	lp << "\nSubject To\n";
+
+	// TODO what do these constraints do?
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		if (g.eclasses[c].enodes.empty()) {
 			fail("encountered eclass with no enodes");
@@ -1505,13 +1514,14 @@ int main(int argc, char** argv) {
 	} else {
 		g = read_egraph(stdin);
 		EClassId fun_root;
-		cout << "root" << endl;
-		while (scanf("%d", &fun_root) != -1) {
-			cout << fun_root << endl;
+		while (true) {
+			int scan_res = scanf("%d", &fun_root);
+			if (scan_res != 1) {
+				break;
+			}
 			fun_roots.push_back(fun_root);
-		}	
+		}
 	}
-	cout << "Read egraph with " <<  endl;
 	//print_egraph(g);	
 	print_egg_init();
 	for (int _ = 0; _ < (int)fun_roots.size(); ++_) {

@@ -186,7 +186,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		lp << " child_link_" << idx << ": " << cv.name << " - " << pickVar[cv.child_class][cv.child_node] << " <= 0\n";
 	}
 
-	// Effectful enodes may not be targeted by multiple parents.
+	// Linearity: effectful enodes may not be targeted by multiple parents.
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		if (!g.eclasses[c].isEffectful) {
 			continue;
@@ -218,34 +218,6 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		   << " - " << orderVar[cv.parent_class][cv.parent_node]
 		   << " + " << maxOrder << " " << cv.name
 		   << " <= " << (maxOrder - 1) << "\n";
-	}
-
-
-	// linearity- the number of incoming effectful edges equals the number of outgoing effectful edges, except at init and root
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		if (!g.eclasses[c].isEffectful) {
-			continue;
-		}
-		lp << " effect_flow_" << c << ":";
-		bool first = true;
-		for (int idx : effectOutgoing[c]) {
-			lp << (first ? " " : " + ") << choices[idx].name;
-			first = false;
-		}
-		for (int idx : effectIncoming[c]) {
-			lp << (first ? " -" : " - ") << choices[idx].name;
-			first = false;
-		}
-		if (first) {
-			lp << " 0";
-		}
-		int delta = 0;
-		if (c == root) {
-			delta = 1;
-		} else if (c == initc) {
-			delta = -1;
-		}
-		lp << " = " << delta << "\n";
 	}
 
 
@@ -356,9 +328,9 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (root_enode == -1) {
 		fail("no root enode selected");
 	}
-	if (!pickSelected[initc].empty() && !pickSelected[initc][initn]) {
-		fail("init enode not selected");
-	}
+	//if (!pickSelected[initc].empty() && !pickSelected[initc][initn]) {
+		//fail("init enode not selected");
+	//}
 
 	vector<vector<vector<ENodeId> > > childSelection(g.eclasses.size());
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {

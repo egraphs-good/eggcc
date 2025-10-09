@@ -55,16 +55,15 @@ fn main() {
     build_binary(&tiger_dir.join("json2egraph.cpp"), &json2egraph_out, &[]);
     build_binary(&tiger_dir.join("main.cpp"), &tiger_out, &["-DEMIT_JSON"]);
 
-    println!(
-        "cargo::rerun-if-changed={}",
-        tiger_dir.join("json2egraph.cpp").display()
-    );
-    println!(
-        "cargo::rerun-if-changed={}",
-        tiger_dir.join("main.cpp").display()
-    );
-    println!(
-        "cargo::rerun-if-changed={}",
-        tiger_dir.join("makefile").display()
-    );
+    if let Ok(entries) = fs::read_dir(&tiger_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(ext) = path.extension() {
+                if ext == "cpp" {
+                    println!("cargo::rerun-if-changed={}", path.display());
+                }
+            }
+        }
+    }
 }
+    

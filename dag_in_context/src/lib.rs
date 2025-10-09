@@ -543,13 +543,9 @@ fn run_tiger_pipeline(
         Vec::new()
     };
 
-    let tiger_output = run_cmd_line(
-        tiger_bin.as_os_str(),
-        tiger_args,
-        &egraph_text,
-    )
-    .map_err(|err| format!("tiger invocation failed: {err}"))
-    .unwrap();
+    let tiger_output = run_cmd_line(tiger_bin.as_os_str(), tiger_args, &egraph_text)
+        .map_err(|err| format!("tiger invocation failed: {err}"))
+        .unwrap();
 
     // Tiger returns an egglog file containing just one program, run the egglog program
     let mut tiger_egraph = egglog::EGraph::default();
@@ -573,7 +569,13 @@ fn extract(
     extract_debug_exprs: bool,
 ) -> TreeProgram {
     if eggcc_config.use_tiger {
-        run_tiger_pipeline(eggcc_config, original_prog, &batch, egraph, should_maintain_linearity)
+        run_tiger_pipeline(
+            eggcc_config,
+            original_prog,
+            &batch,
+            egraph,
+            should_maintain_linearity,
+        )
     } else {
         greedy_dag_extract(
             original_prog,

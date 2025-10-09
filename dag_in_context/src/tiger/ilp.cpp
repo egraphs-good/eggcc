@@ -159,7 +159,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		lp << " >= 1\n";
 	}
 
-	// Only pick one child per child index of a picked enode
+	// Pick at least one child per child index of a picked enode
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
 			const vector<vector<int> > &idx_lists = choiceIndex[c][n];
@@ -174,7 +174,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 					lp << (first ? " " : " + ") << choices[idx].name;
 					first = false;
 				}
-				lp << " - " << pickVar[c][n] << " = 0\n";
+				lp << " >= 1\n";
 			}
 		}
 	}
@@ -319,9 +319,9 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (root_enodes.empty()) {
 		fail("no root enode selected");
 	}
-	if (!pickSelected[initc].empty() && !pickSelected[initc][initn]) {
+	/*if (!pickSelected[initc].empty() && !pickSelected[initc][initn]) {
 		fail("init enode not selected");
-	}
+	}*/
 
 	vector<vector<vector<ENodeId> > > childSelection(g.eclasses.size());
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {

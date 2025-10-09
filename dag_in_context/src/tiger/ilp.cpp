@@ -245,7 +245,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		out_debug << in_debug.rdbuf();
 	}
 
-	string cmd = string("cbc \"") + lp_path + "\" solve solu \"" + sol_path + "\" > /dev/null 2>&1";
+	string cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > /dev/null 2>&1";
 	int ret = system(cmd.c_str());
 	if (ret != 0) {
 		fail("cbc invocation failed");
@@ -264,7 +264,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	unordered_map<string, double> values;
 	bool infeasible = false;
 	while (getline(sol, line)) {
-		if (line.find("Infeasible") != string::npos) {
+		if (line.find("Infeasible") != string::npos || line.find("infeasible") != string::npos) {
 			infeasible = true;
 			break;
 		}
@@ -328,9 +328,9 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (root_enode == -1) {
 		fail("no root enode selected");
 	}
-	//if (!pickSelected[initc].empty() && !pickSelected[initc][initn]) {
-		//fail("init enode not selected");
-	//}
+	if (!pickSelected[initc].empty() && !pickSelected[initc][initn]) {
+		fail("init enode not selected");
+	}
 
 	vector<vector<vector<ENodeId> > > childSelection(g.eclasses.size());
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
@@ -366,6 +366,14 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 			for (int child_idx = 0; child_idx < (int)childSelection[c][n].size(); ++child_idx) {
 				int child_enode = childSelection[c][n][child_idx];
 				if (child_enode == -1) {
+					cerr << "Missing child selection for eclass " << c << " node " << n
+					     << " child index " << child_idx << " options:";
+					for (int idx : choiceIndex[c][n][child_idx]) {
+						cerr << ' ' << choices[idx].name << "="
+						     << (values.count(choices[idx].name) ? values[choices[idx].name] : 0.0);
+					}
+					cerr << " (pickVar=" << (values.count(pickVar[c][n]) ? values[pickVar[c][n]] : 0.0)
+					     << ")" << endl;
 					fail("missing child selection for picked enode");
 				}
 				EClassId child_class = g.eclasses[c].enodes[n].ch[child_idx];

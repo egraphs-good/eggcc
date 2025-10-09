@@ -142,7 +142,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	}
 	lp << "\nSubject To\n";
 
-	// Require exactly one root enode; other eclasses may select multiple enodes as needed
+	// Require at least one root enode to be picked
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		if (g.eclasses[c].enodes.empty()) {
 			fail("encountered eclass with no enodes");
@@ -156,7 +156,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 			lp << (first ? " " : " + ") << pickVar[c][n];
 			first = false;
 		}
-		lp << " = 1\n";
+		lp << " > 0\n";
 	}
 
 	// Only pick one child per child index of a picked enode
@@ -205,12 +205,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		}
 	}
 
-	// Link order variables to selected enodes and enforce acyclicity.
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			lp << " order_active_" << c << '_' << n << ": " << orderVar[c][n] << " - " << maxOrder << " " << pickVar[c][n] << " <= 0\n";
-		}
-	}
+	// Order variables must decrease along chosen edges to prevent cycles
 	for (int idx = 0; idx < (int)choices.size(); ++idx) {
 		const ChoiceVar &cv = choices[idx];
 		lp << " order_edge_" << idx << ": " << orderVar[cv.child_class][cv.child_node]

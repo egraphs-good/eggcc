@@ -41,6 +41,9 @@ def average(lst):
 TO_ABLATE = "" # change to a ruleset to ablate
 
 
+# use for running a subset of the treatments
+# disables checks that ensure the data is complete
+UNSAFE_TREATMENTS = False
 treatments = [
   "rvsdg-round-trip-to-executable",
   #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
@@ -57,6 +60,15 @@ treatments = [
   "llvm-eggcc-tiger-WL-O0-O0",
   "llvm-eggcc-tiger-O0-O0"
 ]
+
+example_subset_treatments = [
+  "llvm-O0-O0",
+  "llvm-eggcc-O0-O0",
+  "llvm-O3-O0",
+  "llvm-eggcc-tiger-WL-O0-O0",
+  "llvm-eggcc-tiger-O0-O0"
+]
+
 
 if TO_ABLATE != "":
   treatments.extend([

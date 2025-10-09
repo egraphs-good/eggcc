@@ -230,16 +230,34 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
 
 async function refreshLatexMacros(tableMacros) {
   const latexMacrosTextArea = document.getElementById("latex-macros-text");
-  const latexMacros = await fetch("nightlymacros.tex").then((r) => r.text());
+  let latexMacros = "";
+  try {
+    const response = await fetch("nightlymacros.tex");
+    if (!response.ok) {
+      throw new Error(
+        `Failed to load nightlymacros.tex: ${response.status}. This is expected if you are running with UNSAFE_TREATMENTS.`,
+      );
+    }
+    latexMacros = await response.text();
+  } catch (error) {
+    console.error(error);
+    addWarning(error);
+  }
   latexMacrosTextArea.value = tableMacros + latexMacros;
 }
 
 function addGraphs() {
-  console.log("addgraphs");
   var prevElement = document.getElementById("plots");
   // for each plot in graphs folder, add button to show plot
   fetch("graphs.json")
-    .then((r) => r.json())
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load graphs.json: ${response.status}. Expected if you have UNSAFE_TREATMENTS enabled.`,
+        );
+      }
+      return response.json();
+    })
     .then((data) => {
       data.forEach((plot) => {
         const button = document.createElement("button");
@@ -261,11 +279,18 @@ function addGraphs() {
         prevElement.insertAdjacentElement("afterend", plotDiv);
         prevElement = plotDiv;
 
-        // create img for plot
-        const img = document.createElement("img");
-        img.src = `graphs/${plot}`;
-        plotDiv.appendChild(img);
+        // create link for plot pdf
+        const link = document.createElement("a");
+        link.href = `graphs/${plot}`;
+        link.innerText = `Open ${plot}`;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        plotDiv.appendChild(link);
       });
+    })
+    .catch((error) => {
+      console.error(error);
+      addWarning(error);
     });
 }
 

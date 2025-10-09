@@ -354,6 +354,8 @@ pub struct EggccConfig {
     pub non_weakly_linear: bool,
     /// If true, use the experimental tiger extractor format output instead of greedy extractor.
     pub use_tiger: bool,
+    /// If use_tiger is true and tiger_ilp is true, use ILP extraction in tiger instead of greedy extraction.
+    pub tiger_ilp: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -410,6 +412,7 @@ impl Default for EggccConfig {
             ilp_extraction_test_timeout: None,
             non_weakly_linear: false,
             use_tiger: false,
+            tiger_ilp: false,
         }
     }
 }
@@ -507,6 +510,7 @@ fn extract_program_with_egglog(
 // Run tiger extractor pipeline using the tiger binaries built from c++.
 // See the build.rs file.
 fn run_tiger_pipeline(
+    eggcc_config: &EggccConfig,
     original_prog: &TreeProgram,
     batch: &[String],
     egraph: &egraph_serialize::EGraph,
@@ -563,7 +567,7 @@ fn extract(
     extract_debug_exprs: bool,
 ) -> TreeProgram {
     if eggcc_config.use_tiger {
-        run_tiger_pipeline(original_prog, &batch, egraph, should_maintain_linearity)
+        run_tiger_pipeline(eggcc_config, original_prog, &batch, egraph, should_maintain_linearity)
     } else {
         greedy_dag_extract(
             original_prog,

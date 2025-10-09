@@ -14,6 +14,8 @@ using namespace std;
 
 const bool DEBUG = false;
 
+bool g_ilp_mode = false;
+
 const char* TMPFILENAME = "extract.tmp";
 
 FILE* preprocessing() {
@@ -896,7 +898,15 @@ EClassId pick_next_variable_heuristics(const vector<EClassId> &v) {
 	}
 }
 
+
 typedef int RegionId;
+
+// the main function for getting a linear extraction from a region
+// this uses ILP in ilp mode or the unguided statewalk search in the normal mode
+Extraction extractRegion(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
+	StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
+	return regionExtractionWithStateWalk(g, root, sw).second;
+}
 
 ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> &region_roots, const vector<RegionId> &region_root_id, vector<ExtractionENodeId> &extracted_roots, Extraction &e, const RegionId &cur_region) {
 	if (extracted_roots[cur_region] != -1) {
@@ -912,8 +922,7 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 	EClassId argc = arg.first;
 	ENodeId argn = arg.second;
 	EClassId root = rmap.inv[region_root];
-	StateWalk sw = UnguidedFindStateWalk(gr, argc, argn, root, rmap.nsubregion);
-	Extraction er = regionExtractionWithStateWalk(gr, root, sw).second;
+	Extraction er = extractRegion(gr, argc, argn, root, rmap.nsubregion);
 	Extraction ner(er.size());
 	for (int i = 0; i < (int)er.size(); ++i) {
 		ExtractionENode &en = er[i], &nen = ner[i];
@@ -1112,7 +1121,16 @@ void print_egg_end() {
 	printf("(run reconstruction 1)\n");
 }
 
-int main() {
+int main(int argc, char** argv) {
+	for (int i = 1; i < argc; ++i) {
+		string arg = argv[i];
+		if (arg == "--ilp-mode") {
+			g_ilp_mode = true;
+			continue;
+		}
+		cerr << "Unknown argument: " << arg << endl;
+		return 1;
+	}
 	EGraph g;
 	vector<EClassId> fun_roots;
 	if (DEBUG) {

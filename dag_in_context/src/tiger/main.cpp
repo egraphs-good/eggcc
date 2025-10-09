@@ -995,6 +995,8 @@ R"(
   (Float f64)
 )
 
+(constructor Empty (Type Assumption) Expr)
+
 (constructor Const (Constant Type Assumption) Expr)
 
 (datatype TernaryOp
@@ -1091,6 +1093,9 @@ void print_egg_extraction(const EGraph &g, const Extraction &e) {
 			} else if (op == "Const") {
 				assert(e[i].ch.size() == 1);
 				printf("Const %s DumT (DumC)", var[e[i].ch[0]].c_str());
+			} else if (op == "Empty") {
+				assert(e[i].ch.size() == 0);
+				printf("Empty DumT (DumC)");
 			} else {
 				printf("%s", op.c_str());
 				for (int j = 0; j < (int)e[i].ch.size(); ++j) {

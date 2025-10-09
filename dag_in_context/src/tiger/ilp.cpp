@@ -156,7 +156,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 			lp << (first ? " " : " + ") << pickVar[c][n];
 			first = false;
 		}
-		lp << " > 0\n";
+		lp << " >= 1\n";
 	}
 
 	// Only pick one child per child index of a picked enode
@@ -310,16 +310,13 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (pickSelected[root].empty()) {
 		fail("root eclass has no selected enode");
 	}
-	ENodeId root_enode = -1;
+	vector<ENodeId> root_enodes;
 	for (ENodeId n = 0; n < (ENodeId)pickSelected[root].size(); ++n) {
 		if (pickSelected[root][n]) {
-			if (root_enode != -1) {
-				fail("multiple root enodes selected");
-			}
-			root_enode = n;
+			root_enodes.push_back(n);
 		}
 	}
-	if (root_enode == -1) {
+	if (root_enodes.empty()) {
 		fail("no root enode selected");
 	}
 	if (!pickSelected[initc].empty() && !pickSelected[initc][initn]) {
@@ -443,7 +440,9 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		return idx;
 	};
 
-	build(root, root_enode);
+	for (ENodeId root_node : root_enodes) {
+		build(root, root_node);
+	}
 	if (extraction.empty()) {
 		fail("extraction is empty");
 	}

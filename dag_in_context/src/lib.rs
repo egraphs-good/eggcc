@@ -546,9 +546,7 @@ fn run_tiger_pipeline(
     // print egraph text out with eprintln
     eprintln!("Tiger input egraph:\n{}", egraph_text);
 
-    let tiger_output = run_cmd_line(tiger_bin.as_os_str(), tiger_args, &egraph_text)
-        .map_err(|err| format!("tiger invocation failed: {err}"))
-        .unwrap();
+    let tiger_output = run_cmd_line(tiger_bin.as_os_str(), tiger_args, &egraph_text).unwrap();
 
     // Tiger returns an egglog file containing just one program, run the egglog program
     let mut tiger_egraph = egglog::EGraph::default();

@@ -942,8 +942,6 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	// Effectful child flow tracking
 	vector<vector<int> > effectOutgoing(g.eclasses.size());
 	vector<vector<int> > effectIncoming(g.eclasses.size());
-	// Ensure every selected parent chooses exactly one enode for each child position
-	// Force every picked parent enode to assign exactly one child enode per position
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		pickVar[c].resize(g.eclasses[c].enodes.size());
 		pickCost[c].resize(g.eclasses[c].enodes.size());
@@ -951,7 +949,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		childParents[c].resize(g.eclasses[c].enodes.size());
 	}
 
-	// All choice variables
+	// All choice variables (a partiacular edge between an enode at a child index and another enode)
 	vector<ChoiceVar> choices;
 	// initialize choices, pickVar, pickCost, choiceIndex, childParents
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
@@ -1063,6 +1061,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		lp << " = 1\n";
 	}
 
+	// Only pick one child per child index of a picked enode
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
 			const vector<vector<int> > &idx_lists = choiceIndex[c][n];
@@ -1081,25 +1080,15 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 			}
 		}
 	}
-
-	// Child edges can only fire when the destination enode is also picked
+	
+	// If you choose a child edge, you must pick that enode.
 	for (int idx = 0; idx < (int)choices.size(); ++idx) {
 		const ChoiceVar &cv = choices[idx];
 		lp << " child_link_" << idx << ": " << cv.name << " - " << pickVar[cv.child_class][cv.child_node] << " <= 0\n";
 	}
 
-	// Limit how many parents consume a particular enode (except root/init allowances)
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			int allowance = (c == root || c == initc) ? 1 : 0;
-			lp << " child_needed_" << c << '_' << n << ": " << pickVar[c][n];
-			for (int idx : childParents[c][n]) {
-				lp << " - " << choices[idx].name;
-			}
-			lp << " <= " << allowance << "\n";
-		}
-	}
-	// Route a single effectful state path from root to init via flow conservation
+
+	// linearity- the number of incoming effectful edges equals the number of outgoing effectful edges, except at init and root
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		if (!g.eclasses[c].isEffectful) {
 			continue;
@@ -1126,18 +1115,6 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		lp << " = " << delta << "\n";
 	}
 
-	if (initc < (EClassId)g.eclasses.size()) {
-		if (initn < 0 || initn >= (ENodeId)g.eclasses[initc].enodes.size()) {
-			fail("init enode index out of bounds");
-		}
-		lp << " force_init_" << initc << '_' << initn << ": " << pickVar[initc][initn] << " = 1\n";
-		for (ENodeId n = 0; n < (ENodeId)g.eclasses[initc].enodes.size(); ++n) {
-			if (n == initn) {
-				continue;
-			}
-			lp << " block_init_" << initc << '_' << n << ": " << pickVar[initc][n] << " = 0\n";
-		}
-	}
 
 	lp << "Binary\n";
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {

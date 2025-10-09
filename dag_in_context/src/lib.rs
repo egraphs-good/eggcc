@@ -537,9 +537,15 @@ fn run_tiger_pipeline(
         .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())
         .unwrap();
 
+    let tiger_args: Vec<&std::ffi::OsStr> = if eggcc_config.tiger_ilp {
+        vec![std::ffi::OsStr::new("--ilp-mode")]
+    } else {
+        Vec::new()
+    };
+
     let tiger_output = run_cmd_line(
         tiger_bin.as_os_str(),
-        std::iter::empty::<&std::ffi::OsStr>(),
+        tiger_args,
         &egraph_text,
     )
     .map_err(|err| format!("tiger invocation failed: {err}"))

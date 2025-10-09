@@ -901,11 +901,21 @@ EClassId pick_next_variable_heuristics(const vector<EClassId> &v) {
 
 typedef int RegionId;
 
+
+Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion)  {
+	
+
+}
+
 // the main function for getting a linear extraction from a region
 // this uses ILP in ilp mode or the unguided statewalk search in the normal mode
 Extraction extractRegion(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
-	StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
-	return regionExtractionWithStateWalk(g, root, sw).second;
+	if (g_ilp_mode) {
+		return extractRegionILP(g, initc, initn, root, nsubregion);
+	} else {
+		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
+		return regionExtractionWithStateWalk(g, root, sw).second;
+	}
 }
 
 ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> &region_roots, const vector<RegionId> &region_root_id, vector<ExtractionENodeId> &extracted_roots, Extraction &e, const RegionId &cur_region) {

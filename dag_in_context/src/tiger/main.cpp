@@ -1087,6 +1087,26 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		lp << " child_link_" << idx << ": " << cv.name << " - " << pickVar[cv.child_class][cv.child_node] << " <= 0\n";
 	}
 
+	// Effectful enodes may not be targeted by multiple parents.
+	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
+		if (!g.eclasses[c].isEffectful) {
+			continue;
+		}
+		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
+			const vector<int> &parents = childParents[c][n];
+			if (parents.empty()) {
+				continue;
+			}
+			lp << " child_unique_" << c << '_' << n << ":";
+			bool first = true;
+			for (int idx : parents) {
+				lp << (first ? " " : " + ") << choices[idx].name;
+				first = false;
+			}
+			lp << " <= 1\n";
+		}
+	}
+
 
 	// linearity- the number of incoming effectful edges equals the number of outgoing effectful edges, except at init and root
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
@@ -1285,11 +1305,19 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 
 	vector<ExtractionENode> extraction;
 	unordered_map<long long, ExtractionENodeId> nodeIndex;
+	unordered_set<long long> usedEffectful;
 	unordered_set<long long> visiting;
 	function<ExtractionENodeId(EClassId, ENodeId)> build = [&](EClassId c, ENodeId n) -> ExtractionENodeId {
-		long long key = (static_cast<long long>(c) << 32) ^ n;
-		if (nodeIndex.count(key)) {
-			return nodeIndex[key];
+		long long key = (static_cast<long long>(c) << 32) | static_cast<unsigned long long>(static_cast<unsigned int>(n));
+		if (g.eclasses[c].isEffectful) {
+			if (usedEffectful.count(key)) {
+				fail("effectful enode reused multiple times in extraction");
+			}
+		} else {
+			auto it = nodeIndex.find(key);
+			if (it != nodeIndex.end()) {
+				return it->second;
+			}
 		}
 		if (visiting.count(key)) {
 			fail("cycle detected when building extraction");
@@ -1315,6 +1343,9 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		ExtractionENodeId idx = extraction.size();
 		extraction.push_back(node);
 		nodeIndex[key] = idx;
+		if (g.eclasses[c].isEffectful) {
+			usedEffectful.insert(key);
+		}
 		return idx;
 	};
 

@@ -219,7 +219,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	} 
 
 	// Linearity: effectful enodes may not be targeted by multiple effectful parents.
-	/*for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
+	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		if (!g.eclasses[c].isEffectful) {
 			continue;
 		}
@@ -241,7 +241,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
       }
 			lp << " <= 1\n";
 		}
-	}*/
+	}
 
 	// Order variables must decrease along chosen edges to prevent cycles.
 	// When parent and child are the same enode, forbid taking that edge to avoid duplicate constraints.

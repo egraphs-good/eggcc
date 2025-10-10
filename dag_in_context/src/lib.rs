@@ -543,9 +543,6 @@ fn run_tiger_pipeline(
         Vec::new()
     };
 
-    // print egraph text out with eprintln
-    eprintln!("Tiger input egraph:\n{}", egraph_text);
-
     let tiger_output = run_cmd_line(tiger_bin.as_os_str(), tiger_args, &egraph_text).unwrap();
 
     // Tiger returns an egglog file containing just one program, run the egglog program

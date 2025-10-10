@@ -183,10 +183,10 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	for (int idx = 0; idx < (int)choices.size(); ++idx) {
 		const ChoiceVar &cv = choices[idx];
 		lp << " child_link_" << idx << ": " << cv.name << " - " << pickVar[cv.child_class][cv.child_node] << " <= 0\n";
-	}
+	} 
 
-	// Linearity: effectful enodes may not be targeted by multiple parents.
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
+	// Linearity: effectful enodes may not be targeted by multiple effectful parents.
+	/*for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		if (!g.eclasses[c].isEffectful) {
 			continue;
 		}
@@ -198,12 +198,17 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 			lp << " child_unique_" << c << '_' << n << ":";
 			bool first = true;
 			for (int idx : parents) {
-				lp << (first ? " " : " + ") << choices[idx].name;
-				first = false;
+        if (g.eclasses[choices[idx].parent_class].isEffectful) {
+				  lp << (first ? " " : " + ") << choices[idx].name;
+				  first = false;
+        }
 			}
+      if (first) {
+        lp << " 0";
+      }
 			lp << " <= 1\n";
 		}
-	}
+	}*/
 
 	// Order variables must decrease along chosen edges to prevent cycles
 	for (int idx = 0; idx < (int)choices.size(); ++idx) {
@@ -285,6 +290,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		}
 	}
 	if (infeasible) {
+    print_egraph(g);
 		fail("cbc reported infeasibility");
 	}
 
@@ -400,17 +406,12 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	unordered_set<long long> visiting;
 	function<ExtractionENodeId(EClassId, ENodeId)> build = [&](EClassId c, ENodeId n) -> ExtractionENodeId {
 		long long key = (static_cast<long long>(c) << 32) | static_cast<unsigned long long>(static_cast<unsigned int>(n));
-		if (g.eclasses[c].isEffectful) {
-			if (usedEffectful.count(key)) {
-				fail("effectful enode reused multiple times in extraction");
-			}
-		} else {
-			auto it = nodeIndex.find(key);
-			if (it != nodeIndex.end()) {
-				return it->second;
-			}
-		}
-		if (visiting.count(key)) {
+		
+    auto it = nodeIndex.find(key);
+    if (it != nodeIndex.end()) {
+      return it->second;
+    }
+    if (visiting.count(key)) {
 			fail("cycle detected when building extraction");
 		}
 		visiting.insert(key);

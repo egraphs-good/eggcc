@@ -717,6 +717,7 @@ StateWalk UnguidedFindStateWalk(const EGraph &g, const EClassId initc, const ENo
 		print_egraph(g);
 		cout << root << endl;
 		cout << initc << endl;
+		exit (1);
 	}
 	assert(goal != -1);
 	ExVertexId cur = goal;

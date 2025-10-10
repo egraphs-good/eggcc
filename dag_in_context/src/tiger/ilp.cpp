@@ -222,20 +222,18 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	}*/
 
 	// Order variables must decrease along chosen edges to prevent cycles.
-	// When parent and child are the same enode, the constraint reduces to
-	// maxOrder * s_edge <= maxOrder - 1, which forbids selecting that edge
-	// without introducing duplicate matrix entries.
+	// When parent and child are the same enode, instead forbid it (preventing duplicate entries)
 	for (int idx = 0; idx < (int)choices.size(); ++idx) {
 		const ChoiceVar &cv = choices[idx];
 		if (cv.parent_class == cv.child_class && cv.parent_node == cv.child_node) {
-			lp << " order_edge_" << idx << ": " << maxOrder << " " << cv.name
-			   << " <= " << (maxOrder - 1) << "\n";
-			continue;
-		}
-		lp << " order_edge_" << idx << ": " << orderVar[cv.child_class][cv.child_node]
-		   << " - " << orderVar[cv.parent_class][cv.parent_node]
-		   << " + " << maxOrder << " " << cv.name
-		   << " <= " << (maxOrder - 1) << "\n";
+			lp << " order_edge_" << idx << ": " << cv.name
+			   << " <= " << -1 << "\n";
+		} else {
+		  lp << " order_edge_" << idx << ": " << orderVar[cv.child_class][cv.child_node]
+		     << " - " << orderVar[cv.parent_class][cv.parent_node]
+		     << " + " << maxOrder << " " << cv.name
+		     << " <= " << (maxOrder - 1) << "\n";
+    }
 	}
 
 
@@ -330,7 +328,23 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		}
 	}
 	if (infeasible) {
-    print_egraph(g);
+    cout << "infeasible" << endl;
+    debugprint_egraph(g);
+    // try the old extraction method for debugging
+    StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
+
+    // does this state walk use a node multiple times?
+    unordered_set<ENodeId> used_nodes;
+    for (const auto &p : sw) {
+      if (used_nodes.count(p.second)) {
+        cerr << "state walk reuses node " << p.second << endl;
+        exit(1);
+      }
+      used_nodes.insert(p.second);
+    }
+
+
+		regionExtractionWithStateWalk(g, root, sw);
 		fail("cbc reported infeasibility");
 	}
 

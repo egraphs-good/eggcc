@@ -115,23 +115,23 @@ void debugprint_egraph(const EGraph &g) {
 	for (int i = 0; i < n; ++i) {
 		cnt += g.eclasses[i].enodes.size();
 	}
-	printf("# eclasses: %d\n# enodes: %d\n", n, cnt);
+	fprintf(stderr, "# eclasses: %d\n# enodes: %d\n", n, cnt);
 	for (int i = 0; i < n; ++i) {
-		printf("# eclass %d\n", i);
+		fprintf(stderr, "# eclass %d\n", i);
 		const EClass &c = g.eclasses[i];
 		int f = c.isEffectful ? 1 : 0,
 			m = c.enodes.size();
-		printf("%d %d\n", f, m);
+		fprintf(stderr, "%d %d\n", f, m);
 		for (int j = 0; j < m; ++j) {
 			const ENode &n = c.enodes[j];
 			int l = n.ch.size();
-			printf("%s\n%d%c", n.head.c_str(), l, l == 0 ? '\n' : ' ');
+			fprintf(stderr, "%s\n%d%c", n.head.c_str(), l, l == 0 ? '\n' : ' ');
 			for (int k = 0; k < l; ++k) {
-				printf("%s%d%c", g.eclasses[n.ch[k]].isEffectful ? "!" : " ", n.ch[k], k == l - 1 ? '\n' : ' ');
+				fprintf(stderr, "%s%d%c", g.eclasses[n.ch[k]].isEffectful ? "!" : " ", n.ch[k], k == l - 1 ? '\n' : ' ');
 			}
 			//printf("%d\n", n.cost);
 		}
-		printf("\n");
+		fprintf(stderr,"\n");
 	}
 }
 

@@ -109,6 +109,16 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	string sol_path(sol_template);
 	close(sol_fd);
 
+	char log_template[] = "/tmp/extract_regionXXXXXX.log";
+	int log_fd = mkstemps(log_template, 4);
+	if (log_fd == -1) {
+		unlink(lp_path.c_str());
+		unlink(sol_path.c_str());
+		fail("failed to create log temp file");
+	}
+	string log_path(log_template);
+	close(log_fd);
+
 	struct FileCleaner {
 		string path;
 		~FileCleaner() {
@@ -119,6 +129,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	};
 	FileCleaner lp_cleaner{lp_path};
 	FileCleaner sol_cleaner{sol_path};
+	FileCleaner log_cleaner{log_path};
 
 	ofstream lp(lp_path.c_str());
 	if (!lp.good()) {
@@ -210,9 +221,17 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		}
 	}*/
 
-	// Order variables must decrease along chosen edges to prevent cycles
+	// Order variables must decrease along chosen edges to prevent cycles.
+	// When parent and child are the same enode, the constraint reduces to
+	// maxOrder * s_edge <= maxOrder - 1, which forbids selecting that edge
+	// without introducing duplicate matrix entries.
 	for (int idx = 0; idx < (int)choices.size(); ++idx) {
 		const ChoiceVar &cv = choices[idx];
+		if (cv.parent_class == cv.child_class && cv.parent_node == cv.child_node) {
+			lp << " order_edge_" << idx << ": " << maxOrder << " " << cv.name
+			   << " <= " << (maxOrder - 1) << "\n";
+			continue;
+		}
 		lp << " order_edge_" << idx << ": " << orderVar[cv.child_class][cv.child_node]
 		   << " - " << orderVar[cv.parent_class][cv.parent_node]
 		   << " + " << maxOrder << " " << cv.name
@@ -244,15 +263,36 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		out_debug << in_debug.rdbuf();
 	}
 
-	string cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > /dev/null 2>&1";
+	string cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	int ret = system(cmd.c_str());
+	string solver_log;
+	{
+		ifstream log_in(log_path.c_str(), ios::binary);
+		stringstream buffer;
+		buffer << log_in.rdbuf();
+		solver_log = buffer.str();
+	}
+	{
+		ifstream in_debug_log(log_path.c_str(), ios::binary);
+		ofstream out_debug_log("/tmp/tiger_last_extract.log", ios::binary);
+		out_debug_log << in_debug_log.rdbuf();
+	}
 	if (ret != 0) {
+		cerr << "cbc log output:\n" << solver_log << endl;
 		fail("cbc invocation failed");
+	}
+	if (solver_log.find("ERROR") != string::npos || solver_log.find("Error") != string::npos) {
+		cerr << "cbc log output:\n" << solver_log << endl;
+		fail("cbc reported an error while solving");
 	}
 
 	ifstream sol(sol_path.c_str());
 	if (!sol.good()) {
 		fail("failed to open solution file");
+	}
+	if (sol.peek() == ifstream::traits_type::eof()) {
+		cerr << "cbc log output:\n" << solver_log << endl;
+		fail("cbc produced an empty solution file");
 	}
 	{
 		ifstream in_debug_sol(sol_path.c_str(), ios::binary);
@@ -304,13 +344,21 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 			}
 		}
 	}
+	bool saw_root_assignment = false;
 	if (!g.eclasses[root].enodes.empty()) {
 		cerr << "ILP root diagnostics (class " << root << "):\n";
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[root].enodes.size(); ++n) {
-			cerr << "  " << pickVar[root][n] << " = "
-			     << (values.count(pickVar[root][n]) ? values[pickVar[root][n]] : 0.0)
+			double root_value = values.count(pickVar[root][n]) ? values[pickVar[root][n]] : 0.0;
+			if (values.count(pickVar[root][n])) {
+				saw_root_assignment = true;
+			}
+			cerr << "  " << pickVar[root][n] << " = " << root_value
 			     << " (" << (pickSelected[root][n] ? "selected" : "not selected") << ")\n";
 		}
+	}
+	if (!saw_root_assignment) {
+		cerr << "cbc log output:\n" << solver_log << endl;
+		fail("solution file did not contain root variable assignments");
 	}
 
 	if (pickSelected[root].empty()) {

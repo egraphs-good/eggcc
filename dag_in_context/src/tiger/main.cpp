@@ -90,6 +90,17 @@ EGraph read_egraph(FILE* ppin) {
 	return g;
 }
 
+void print_enode(ostream &out, const ENode &n) {
+	out << n.head << "(";
+	for (int i = 0; i < (int)n.ch.size(); ++i) {
+		if (i > 0) {
+			out << ",";
+		}
+		out << n.ch[i];
+	}
+	out << ")";
+}
+
 void print_egraph(const EGraph &g) {
 	int n = g.eclasses.size();
 	printf("%d\n", n);

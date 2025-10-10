@@ -1,3 +1,14 @@
+EClassId enode_to_eclass(const EGraph &g, ENodeId n) {
+	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
+		for (ENodeId m = 0; m < (ENodeId)g.eclasses[c].enodes.size(); ++m) {
+			if (n == m) {
+				return c;
+			}
+		}
+	}
+	return -1;
+}
+
 Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion)  {
 	auto fail = [&](const string &msg) -> void {
 		cerr << "ILP extraction error: " << msg << endl;
@@ -329,7 +340,6 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	}
 	if (infeasible) {
     cout << "infeasible" << endl;
-    debugprint_egraph(g);
     // try the old extraction method for debugging
     StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
 
@@ -338,6 +348,15 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
     for (const auto &p : sw) {
       if (used_nodes.count(p.second)) {
         cerr << "state walk reuses node " << p.second << endl;
+
+				// print out the eclass of the reused node
+				cerr << "in eclass " << enode_to_eclass(g, p.second) << " which has enodes:" << endl;
+				for (const auto &en : g.eclasses[enode_to_eclass(g, p.second)].enodes) {
+					cerr << "  ";
+					print_enode(cerr, en);
+					cerr << endl;
+				}
+
         exit(1);
       }
       used_nodes.insert(p.second);

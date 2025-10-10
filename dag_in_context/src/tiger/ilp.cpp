@@ -68,87 +68,46 @@ static SolverSolution parse_solver_solution(const string &sol_path,
 	if (result.infeasible) {
 		return result;
 	}
-	bool xml_mode = solver_uses_xml;
-	if (!xml_mode) {
-		for (const string &raw_line : lines) {
-			string trimmed = trim_copy(raw_line);
-			if (!trimmed.empty() && trimmed[0] == '<' && trimmed.find("<variable") != string::npos) {
-				xml_mode = true;
-				break;
-			}
+	
+	for (const string &raw_line : lines) {
+		string trimmed = trim_copy(raw_line);
+		if (trimmed.empty()) {
+			continue;
 		}
-	}
-	if (xml_mode) {
-		for (const string &raw_line : lines) {
-			size_t var_pos = raw_line.find("<variable");
-			if (var_pos == string::npos) {
-				continue;
-			}
-			size_t name_pos = raw_line.find("name=\"", var_pos);
-			size_t value_pos = raw_line.find("value=\"", var_pos);
-			if (name_pos == string::npos || value_pos == string::npos) {
-				continue;
-			}
-			name_pos += 6;
-			size_t name_end = raw_line.find('"', name_pos);
-			if (name_end == string::npos) {
-				continue;
-			}
-			value_pos += 7;
-			size_t value_end = raw_line.find('"', value_pos);
-			if (value_end == string::npos) {
-				continue;
-			}
-			string name = raw_line.substr(name_pos, name_end - name_pos);
-			string value_str = raw_line.substr(value_pos, value_end - value_pos);
+		if (trimmed[0] == '#') {
+			continue;
+		}
+		string lower_trimmed = lowercase_ascii(trimmed);
+		if (lower_trimmed.find("objective value") != string::npos ||
+			lower_trimmed.find("solution status") != string::npos ||
+			lower_trimmed.find("solution time") != string::npos) {
+			continue;
+		}
+		stringstream ss(trimmed);
+		vector<string> tokens;
+		string tok;
+		while (ss >> tok) {
+			tokens.push_back(tok);
+		}
+		if (tokens.empty()) {
+			continue;
+		}
+		if (tokens.size() >= 2 &&
+				((isalpha(static_cast<unsigned char>(tokens[0][0])) || tokens[0][0] == '_' ||
+					tokens[0].find('(') != string::npos))) {
 			try {
-				double value = stod(value_str);
-				result.values[name] = value;
-			} catch (...) {
+				double value = stod(tokens[1]);
+				result.values[tokens[0]] = value;
 				continue;
+			} catch (...) {
 			}
 		}
-	} else {
-		for (const string &raw_line : lines) {
-			string trimmed = trim_copy(raw_line);
-			if (trimmed.empty()) {
+		if (tokens.size() >= 3) {
+			try {
+				double value = stod(tokens[2]);
+				result.values[tokens[1]] = value;
 				continue;
-			}
-			if (trimmed[0] == '#') {
-				continue;
-			}
-			string lower_trimmed = lowercase_ascii(trimmed);
-			if (lower_trimmed.find("objective value") != string::npos ||
-				lower_trimmed.find("solution status") != string::npos ||
-				lower_trimmed.find("solution time") != string::npos) {
-				continue;
-			}
-			stringstream ss(trimmed);
-			vector<string> tokens;
-			string tok;
-			while (ss >> tok) {
-				tokens.push_back(tok);
-			}
-			if (tokens.empty()) {
-				continue;
-			}
-			if (tokens.size() >= 2 &&
-					((isalpha(static_cast<unsigned char>(tokens[0][0])) || tokens[0][0] == '_' ||
-					  tokens[0].find('(') != string::npos))) {
-				try {
-					double value = stod(tokens[1]);
-					result.values[tokens[0]] = value;
-					continue;
-				} catch (...) {
-				}
-			}
-			if (tokens.size() >= 3) {
-				try {
-					double value = stod(tokens[2]);
-					result.values[tokens[1]] = value;
-					continue;
-				} catch (...) {
-				}
+			} catch (...) {
 			}
 		}
 	}

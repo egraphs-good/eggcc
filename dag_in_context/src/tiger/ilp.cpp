@@ -1,3 +1,6 @@
+
+bool g_use_gurobi = true;
+
 EClassId enode_to_eclass(const EGraph &g, ENodeId n) {
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId m = 0; m < (ENodeId)g.eclasses[c].enodes.size(); ++m) {
@@ -288,7 +291,12 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		out_debug << in_debug.rdbuf();
 	}
 
-	string cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
+	string cmd = "";
+	if (g_use_gurobi) {
+		cmd = string("gurobi_cl ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
+	} else {
+		cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
+	}
 	int ret = system(cmd.c_str());
 	string solver_log;
 	{

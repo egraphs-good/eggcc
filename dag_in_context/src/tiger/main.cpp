@@ -9,10 +9,19 @@
 #include<string>
 #include<iostream>
 #include<algorithm>
+#include<fstream>
+#include<sstream>
+#include<cstdlib>
+#include<unistd.h>
+#include<unordered_map>
+#include<unordered_set>
+#include<functional>
 
 using namespace std;
 
 const bool DEBUG = false;
+
+bool g_ilp_mode = false;
 
 const char* TMPFILENAME = "extract.tmp";
 
@@ -81,6 +90,17 @@ EGraph read_egraph(FILE* ppin) {
 	return g;
 }
 
+void print_enode(ostream &out, const ENode &n) {
+	out << n.head << "(";
+	for (int i = 0; i < (int)n.ch.size(); ++i) {
+		if (i > 0) {
+			out << ",";
+		}
+		out << n.ch[i];
+	}
+	out << ")";
+}
+
 void print_egraph(const EGraph &g) {
 	int n = g.eclasses.size();
 	printf("%d\n", n);
@@ -106,23 +126,23 @@ void debugprint_egraph(const EGraph &g) {
 	for (int i = 0; i < n; ++i) {
 		cnt += g.eclasses[i].enodes.size();
 	}
-	printf("# eclasses: %d\n# enodes: %d\n", n, cnt);
+	fprintf(stderr, "# eclasses: %d\n# enodes: %d\n", n, cnt);
 	for (int i = 0; i < n; ++i) {
-		printf("# eclass %d\n", i);
+		fprintf(stderr, "# eclass %d\n", i);
 		const EClass &c = g.eclasses[i];
 		int f = c.isEffectful ? 1 : 0,
 			m = c.enodes.size();
-		printf("%d %d\n", f, m);
+		fprintf(stderr, "%d %d\n", f, m);
 		for (int j = 0; j < m; ++j) {
 			const ENode &n = c.enodes[j];
 			int l = n.ch.size();
-			printf("%s\n%d%c", n.head.c_str(), l, l == 0 ? '\n' : ' ');
+			fprintf(stderr, "%s\n%d%c", n.head.c_str(), l, l == 0 ? '\n' : ' ');
 			for (int k = 0; k < l; ++k) {
-				printf("%s%d%c", g.eclasses[n.ch[k]].isEffectful ? "!" : " ", n.ch[k], k == l - 1 ? '\n' : ' ');
+				fprintf(stderr, "%s%d%c", g.eclasses[n.ch[k]].isEffectful ? "!" : " ", n.ch[k], k == l - 1 ? '\n' : ' ');
 			}
 			//printf("%d\n", n.cost);
 		}
-		printf("\n");
+		fprintf(stderr,"\n");
 	}
 }
 
@@ -708,6 +728,7 @@ StateWalk UnguidedFindStateWalk(const EGraph &g, const EClassId initc, const ENo
 		print_egraph(g);
 		cout << root << endl;
 		cout << initc << endl;
+		exit (1);
 	}
 	assert(goal != -1);
 	ExVertexId cur = goal;
@@ -896,7 +917,22 @@ EClassId pick_next_variable_heuristics(const vector<EClassId> &v) {
 	}
 }
 
+
 typedef int RegionId;
+
+// HACK: include ilp.cpp directly
+#include "ilp.cpp"
+
+// the main function for getting a linear extraction from a region
+// this uses ILP in ilp mode or the unguided statewalk search in the normal mode
+Extraction extractRegion(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
+	if (g_ilp_mode) {
+		return extractRegionILP(g, initc, initn, root, nsubregion);
+	} else {
+		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
+		return regionExtractionWithStateWalk(g, root, sw).second;
+	}
+}
 
 ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> &region_roots, const vector<RegionId> &region_root_id, vector<ExtractionENodeId> &extracted_roots, Extraction &e, const RegionId &cur_region) {
 	if (extracted_roots[cur_region] != -1) {
@@ -912,8 +948,7 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 	EClassId argc = arg.first;
 	ENodeId argn = arg.second;
 	EClassId root = rmap.inv[region_root];
-	StateWalk sw = UnguidedFindStateWalk(gr, argc, argn, root, rmap.nsubregion);
-	Extraction er = regionExtractionWithStateWalk(gr, root, sw).second;
+	Extraction er = extractRegion(gr, argc, argn, root, rmap.nsubregion);
 	Extraction ner(er.size());
 	for (int i = 0; i < (int)er.size(); ++i) {
 		ExtractionENode &en = er[i], &nen = ner[i];
@@ -1112,7 +1147,16 @@ void print_egg_end() {
 	printf("(run reconstruction 1)\n");
 }
 
-int main() {
+int main(int argc, char** argv) {
+	for (int i = 1; i < argc; ++i) {
+		string arg = argv[i];
+		if (arg == "--ilp-mode") {
+			g_ilp_mode = true;
+			continue;
+		}
+		cerr << "Unknown argument: " << arg << endl;
+		return 1;
+	}
 	EGraph g;
 	vector<EClassId> fun_roots;
 	if (DEBUG) {
@@ -1125,9 +1169,13 @@ int main() {
 	} else {
 		g = read_egraph(stdin);
 		EClassId fun_root;
-		while (scanf("%d", &fun_root) != -1) {
+		while (true) {
+			int scan_res = scanf("%d", &fun_root);
+			if (scan_res != 1) {
+				break;
+			}
 			fun_roots.push_back(fun_root);
-		}	
+		}
 	}
 	//print_egraph(g);	
 	print_egg_init();

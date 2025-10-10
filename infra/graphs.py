@@ -37,6 +37,7 @@ COLOR_MAP = {
   "eggcc-ILP-O0-O0": "red",
   "llvm-eggcc-tiger-O0-O0": "cyan",
   "llvm-eggcc-tiger-WL-O0-O0": "magenta",
+  "llvm-eggcc-tiger-ILP-O0-O0": "green",
 }
 
 SHAPE_MAP = {
@@ -401,6 +402,8 @@ def to_paper_names_treatment(treatment):
     return 'EQCC-Tiger-O0-O0'
   if treatment == 'llvm-eggcc-tiger-WL-O0-O0':
     return 'EQCC-Tiger-WL-O0-O0'
+  if treatment == 'llvm-eggcc-tiger-ILP-O0-O0':
+    return 'EQCC-Tiger-ILP-O0-O0'
   raise KeyError(f"Unknown treatment {treatment}")
 
 

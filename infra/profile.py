@@ -58,7 +58,8 @@ treatments = [
   "llvm-eggcc-O3-O3",
   "eggcc-ILP-O0-O0",
   "llvm-eggcc-tiger-WL-O0-O0",
-  "llvm-eggcc-tiger-O0-O0"
+  "llvm-eggcc-tiger-O0-O0",
+  "llvm-eggcc-tiger-ILP-O0-O0"
 ]
 
 example_subset_treatments = [
@@ -124,6 +125,8 @@ def get_eggcc_options(benchmark):
       return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-O0-O0":
       return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-tiger-ILP-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -175,6 +178,7 @@ def optimize(benchmark):
     else:
       process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
   except subprocess.TimeoutExpired:
+    print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {TIGER_RUN_TIMEOUT_SECS} seconds', flush=True)
     timed_out = True
     process = None
 
@@ -197,7 +201,7 @@ def optimize(benchmark):
     return failure_data
 
   if process.returncode != 0:
-    print(f'Error running {cmd1}: {process.stderr}', flush=True, file=sys.stderr)
+    print(f'[{benchmark.index}/{benchmark.total}] Error running {cmd1}: {process.stderr}', flush=True, file=sys.stderr)
     failure_data["error"] = f'Error running {cmd1}: {process.stderr}'
     return failure_data
 

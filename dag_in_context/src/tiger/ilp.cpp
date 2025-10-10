@@ -9,6 +9,15 @@ EClassId enode_to_eclass(const EGraph &g, ENodeId n) {
 	return -1;
 }
 
+void print_eclass(ostream &out, const EGraph &g, EClassId c) {
+	out << "EClass " << c << (g.eclasses[c].isEffectful ? " (effectful)" : "") << ":\n";
+	for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
+		out << "  ";
+		print_enode(out, g.eclasses[c].enodes[n]);
+		out << "\n";
+	}
+}
+
 Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion)  {
 	auto fail = [&](const string &msg) -> void {
 		cerr << "ILP extraction error: " << msg << endl;
@@ -339,29 +348,37 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		}
 	}
 	if (infeasible) {
-    cout << "infeasible" << endl;
-    // try the old extraction method for debugging
-    StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
+		cout << "infeasible" << endl;
+		// try the old extraction method for debugging
+		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
 
-    // does this state walk use a node multiple times?
-    unordered_set<ENodeId> used_nodes;
-    for (const auto &p : sw) {
-      if (used_nodes.count(p.second)) {
-        cerr << "state walk reuses node " << p.second << endl;
+		// does this state walk use a node multiple times?
+		auto encode_node = [](EClassId cls, ENodeId node) -> long long {
+			return (static_cast<long long>(cls) << 32) |
+			       static_cast<unsigned long long>(static_cast<unsigned int>(node));
+		};
+		unordered_set<long long> used_nodes;
+		for (const auto &p : sw) {
+			cerr << "visiting node " << p.second << " in eclass " << p.first << endl;
+			print_enode(cerr, g.eclasses[p.first].enodes[p.second]);
+			cerr << endl;
+
+			if (used_nodes.count(encode_node(p.first, p.second))) {
+				cerr << "state walk reuses node " << p.second << endl;
 
 				// print out the eclass of the reused node
 				cerr << "in eclass " << enode_to_eclass(g, p.second) << " which has enodes:" << endl;
-				for (const auto &en : g.eclasses[enode_to_eclass(g, p.second)].enodes) {
-					cerr << "  ";
-					print_enode(cerr, en);
-					cerr << endl;
-				}
+				print_eclass(cerr, g, enode_to_eclass(g, p.second));
 
-        exit(1);
-      }
-      used_nodes.insert(p.second);
-    }
+				// print out effectful child enodes of the reused node
+				const ENode &en = g.eclasses[enode_to_eclass(g, p.second)].enodes[0];
+				cerr << "which has effectful children:" << endl;
+				print_eclass(cerr, g, en.ch[0]);
 
+				exit(1);
+			}
+			used_nodes.insert(encode_node(p.first, p.second));
+		}
 
 		regionExtractionWithStateWalk(g, root, sw);
 		fail("cbc reported infeasibility");

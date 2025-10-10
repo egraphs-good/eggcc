@@ -525,6 +525,38 @@ void build_simple_egraph() {
 	}
 }
 
+void prune_empty_child_enodes(EGraph &g) {
+	vector<bool> empty(g.eclasses.size(), false);
+	for (size_t i = 0; i < g.eclasses.size(); ++i) {
+		empty[i] = g.eclasses[i].enodes.empty();
+	}
+	bool changed = true;
+	while (changed) {
+		changed = false;
+		for (size_t i = 0; i < g.eclasses.size(); ++i) {
+			vector<ENode> &enodes = g.eclasses[i].enodes;
+			auto new_end = remove_if(enodes.begin(), enodes.end(), [&](const ENode &en) {
+				for (EClassId child : en.ch) {
+					if (child < 0 || child >= (EClassId)g.eclasses.size() || empty[child]) {
+						return true;
+					}
+				}
+				return false;
+			});
+			if (new_end != enodes.end()) {
+				enodes.erase(new_end, enodes.end());
+				changed = true;
+			}
+		}
+		for (size_t i = 0; i < g.eclasses.size(); ++i) {
+			if (!empty[i] && g.eclasses[i].enodes.empty()) {
+				empty[i] = true;
+				changed = true;
+			}
+		}
+	}
+}
+
 void print_egraph(const EGraph &g) {
 	int n = g.eclasses.size();
 	printf("%d\n", n);
@@ -560,6 +592,7 @@ int main() {
 		mark_reachable(roots[i]);
 	}
 	build_simple_egraph();
+	prune_empty_child_enodes(g);
 	print_egraph(g);
 	for (int i = 0; i < (int)roots.size(); ++i) {
 		assert(neweclassidmp.count(roots[i]));

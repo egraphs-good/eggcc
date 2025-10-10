@@ -190,7 +190,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		lp << " >= 1\n";
 	}
 
-	// Pick at least one child per child index of a picked enode
+	// If you pick an enode, for every child index pick at least one child edge.
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
 			const vector<vector<int> > &idx_lists = choiceIndex[c][n];
@@ -204,13 +204,15 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 				for (int idx : list) {
 					lp << (first ? " " : " + ") << choices[idx].name;
 					first = false;
+					// sanity check: assert that the parent eclass of the choice is c and parent_node is n
+					assert(choices[idx].parent_class == c && choices[idx].parent_node == n);
 				}
-				lp << " >= 1\n";
+				lp << " >= " << pickVar[c][n] << "\n";
 			}
 		}
 	}
 	
-	// If you choose a child edge, you must pick that enode.
+	// If you choose a child edge, you must pick the enode it points to.
 	for (int idx = 0; idx < (int)choices.size(); ++idx) {
 		const ChoiceVar &cv = choices[idx];
 		lp << " child_link_" << idx << ": " << cv.name << " - " << pickVar[cv.child_class][cv.child_node] << " <= 0\n";
@@ -359,22 +361,12 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		};
 		unordered_set<long long> used_nodes;
 		for (const auto &p : sw) {
-			cerr << "visiting node " << p.second << " in eclass " << p.first << endl;
-			print_enode(cerr, g.eclasses[p.first].enodes[p.second]);
-			cerr << endl;
-
 			if (used_nodes.count(encode_node(p.first, p.second))) {
 				cerr << "state walk reuses node " << p.second << endl;
 
 				// print out the eclass of the reused node
 				cerr << "in eclass " << enode_to_eclass(g, p.second) << " which has enodes:" << endl;
 				print_eclass(cerr, g, enode_to_eclass(g, p.second));
-
-				// print out effectful child enodes of the reused node
-				const ENode &en = g.eclasses[enode_to_eclass(g, p.second)].enodes[0];
-				cerr << "which has effectful children:" << endl;
-				print_eclass(cerr, g, en.ch[0]);
-
 				exit(1);
 			}
 			used_nodes.insert(encode_node(p.first, p.second));

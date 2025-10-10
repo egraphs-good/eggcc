@@ -1,6 +1,163 @@
 
 bool g_use_gurobi = true;
 
+struct SolverSolution {
+	unordered_map<string, double> values;
+	bool infeasible = false;
+};
+
+static inline bool is_space_char(char ch) {
+	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\f' || ch == '\v';
+}
+
+static string trim_copy(const string &s) {
+	size_t start = 0;
+	while (start < s.size() && is_space_char(s[start])) {
+		++start;
+	}
+	size_t end = s.size();
+	while (end > start && is_space_char(s[end - 1])) {
+		--end;
+	}
+	return s.substr(start, end - start);
+}
+
+static string lowercase_ascii(string s) {
+	for (char &ch : s) {
+		if (ch >= 'A' && ch <= 'Z') {
+			ch = ch - 'A' + 'a';
+		}
+	}
+	return s;
+}
+
+static bool contains_case_insensitive(const string &haystack, const string &needle) {
+	string hay_lower = lowercase_ascii(haystack);
+	string needle_lower = lowercase_ascii(needle);
+	return hay_lower.find(needle_lower) != string::npos;
+}
+
+template <typename FailFn>
+static SolverSolution parse_solver_solution(const string &sol_path,
+															const string &solver_log,
+															const string &solver_name,
+															bool solver_uses_xml,
+															const FailFn &fail_with_log) {
+	SolverSolution result;
+	ifstream sol(sol_path.c_str());
+	if (!sol.good()) {
+		fail_with_log(string("failed to open ") + solver_name + " solution file");
+	}
+	vector<string> lines;
+	string line;
+	bool has_content = false;
+	while (getline(sol, line)) {
+		lines.push_back(line);
+		if (!line.empty()) {
+			has_content = true;
+		}
+		if (line.find("Infeasible") != string::npos || line.find("infeasible") != string::npos ||
+			line.find("INFEASIBLE") != string::npos) {
+			result.infeasible = true;
+		}
+	}
+	sol.close();
+	if (!has_content && !result.infeasible) {
+		fail_with_log(string("") + solver_name + " produced an empty solution file");
+	}
+	if (result.infeasible) {
+		return result;
+	}
+	bool xml_mode = solver_uses_xml;
+	if (!xml_mode) {
+		for (const string &raw_line : lines) {
+			string trimmed = trim_copy(raw_line);
+			if (!trimmed.empty() && trimmed[0] == '<' && trimmed.find("<variable") != string::npos) {
+				xml_mode = true;
+				break;
+			}
+		}
+	}
+	if (xml_mode) {
+		for (const string &raw_line : lines) {
+			size_t var_pos = raw_line.find("<variable");
+			if (var_pos == string::npos) {
+				continue;
+			}
+			size_t name_pos = raw_line.find("name=\"", var_pos);
+			size_t value_pos = raw_line.find("value=\"", var_pos);
+			if (name_pos == string::npos || value_pos == string::npos) {
+				continue;
+			}
+			name_pos += 6;
+			size_t name_end = raw_line.find('"', name_pos);
+			if (name_end == string::npos) {
+				continue;
+			}
+			value_pos += 7;
+			size_t value_end = raw_line.find('"', value_pos);
+			if (value_end == string::npos) {
+				continue;
+			}
+			string name = raw_line.substr(name_pos, name_end - name_pos);
+			string value_str = raw_line.substr(value_pos, value_end - value_pos);
+			try {
+				double value = stod(value_str);
+				result.values[name] = value;
+			} catch (...) {
+				continue;
+			}
+		}
+	} else {
+		for (const string &raw_line : lines) {
+			string trimmed = trim_copy(raw_line);
+			if (trimmed.empty()) {
+				continue;
+			}
+			if (trimmed[0] == '#') {
+				continue;
+			}
+			string lower_trimmed = lowercase_ascii(trimmed);
+			if (lower_trimmed.find("objective value") != string::npos ||
+				lower_trimmed.find("solution status") != string::npos ||
+				lower_trimmed.find("solution time") != string::npos) {
+				continue;
+			}
+			stringstream ss(trimmed);
+			vector<string> tokens;
+			string tok;
+			while (ss >> tok) {
+				tokens.push_back(tok);
+			}
+			if (tokens.empty()) {
+				continue;
+			}
+			if (tokens.size() >= 2 &&
+					((isalpha(static_cast<unsigned char>(tokens[0][0])) || tokens[0][0] == '_' ||
+					  tokens[0].find('(') != string::npos))) {
+				try {
+					double value = stod(tokens[1]);
+					result.values[tokens[0]] = value;
+					continue;
+				} catch (...) {
+				}
+			}
+			if (tokens.size() >= 3) {
+				try {
+					double value = stod(tokens[2]);
+					result.values[tokens[1]] = value;
+					continue;
+				} catch (...) {
+				}
+			}
+		}
+	}
+	if (result.values.empty() && contains_case_insensitive(solver_log, "infeasible")) {
+		result.infeasible = true;
+	}
+	return result;
+}
+
 EClassId enode_to_eclass(const EGraph &g, ENodeId n) {
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId m = 0; m < (ENodeId)g.eclasses[c].enodes.size(); ++m) {
@@ -291,6 +448,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		out_debug << in_debug.rdbuf();
 	}
 
+	string solver_name = g_use_gurobi ? "gurobi" : "cbc";
 	string cmd = "";
 	if (g_use_gurobi) {
 		cmd = string("gurobi_cl ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
@@ -311,57 +469,29 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		out_debug_log << in_debug_log.rdbuf();
 	}
 	if (ret != 0) {
-		cerr << "cbc log output:\n" << solver_log << endl;
-		fail("cbc invocation failed");
+		cerr << solver_name << " log output:\n" << solver_log << endl;
+		fail(solver_name + " invocation failed");
 	}
 	if (solver_log.find("ERROR") != string::npos || solver_log.find("Error") != string::npos) {
-		cerr << "cbc log output:\n" << solver_log << endl;
-		fail("cbc reported an error while solving");
-	}
-
-	ifstream sol(sol_path.c_str());
-	if (!sol.good()) {
-		fail("failed to open solution file");
-	}
-	if (sol.peek() == ifstream::traits_type::eof()) {
-		cerr << "cbc log output:\n" << solver_log << endl;
-		fail("cbc produced an empty solution file");
+		cerr << solver_name << " log output:\n" << solver_log << endl;
+		fail(solver_name + " reported an error while solving");
 	}
 	{
 		ifstream in_debug_sol(sol_path.c_str(), ios::binary);
 		ofstream out_debug_sol("/tmp/tiger_last_extract.sol", ios::binary);
 		out_debug_sol << in_debug_sol.rdbuf();
 	}
-	string line;
-	unordered_map<string, double> values;
-	bool infeasible = false;
-	while (getline(sol, line)) {
-		if (line.find("Infeasible") != string::npos || line.find("infeasible") != string::npos) {
-			infeasible = true;
-			break;
-		}
-		stringstream ss(line);
-		vector<string> tokens;
-		string tok;
-		while (ss >> tok) {
-			tokens.push_back(tok);
-		}
-		if (tokens.size() >= 2 && isalpha(tokens[0][0])) {
-			try {
-				double value = stod(tokens[1]);
-				values[tokens[0]] = value;
-			} catch (...) {
-				continue;
-			}
-		} else if (tokens.size() >= 3) {
-			try {
-				double value = stod(tokens[2]);
-				values[tokens[1]] = value;
-			} catch (...) {
-				continue;
-			}
-		}
-	}
+	auto fail_with_log = [&](const string &msg) {
+		cerr << solver_name << " log output:\n" << solver_log << endl;
+		fail(msg);
+	};
+	SolverSolution solver_solution = parse_solver_solution(sol_path, solver_log, solver_name, g_use_gurobi, fail_with_log);
+	const unordered_map<string, double> &values = solver_solution.values;
+	bool infeasible = solver_solution.infeasible;
+	auto get_value = [&](const string &name) -> double {
+		auto it = values.find(name);
+		return it != values.end() ? it->second : 0.0;
+	};
 	if (infeasible) {
 		cout << "infeasible" << endl;
 		// try the old extraction method for debugging
@@ -386,14 +516,14 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		}
 
 		regionExtractionWithStateWalk(g, root, sw);
-		fail("cbc reported infeasibility");
+		fail(solver_name + " reported infeasibility");
 	}
 
 	vector<vector<int> > pickSelected(g.eclasses.size());
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		pickSelected[c].assign(g.eclasses[c].enodes.size(), 0);
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			double v = values.count(pickVar[c][n]) ? values[pickVar[c][n]] : 0.0;
+			double v = get_value(pickVar[c][n]);
 			if (v > 0.5) {
 				pickSelected[c][n] = 1;
 			}
@@ -403,7 +533,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (!g.eclasses[root].enodes.empty()) {
 		cerr << "ILP root diagnostics (class " << root << "):\n";
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[root].enodes.size(); ++n) {
-			double root_value = values.count(pickVar[root][n]) ? values[pickVar[root][n]] : 0.0;
+			double root_value = get_value(pickVar[root][n]);
 			if (values.count(pickVar[root][n])) {
 				saw_root_assignment = true;
 			}
@@ -412,7 +542,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		}
 	}
 	if (!saw_root_assignment) {
-		cerr << "cbc log output:\n" << solver_log << endl;
+		cerr << solver_name << " log output:\n" << solver_log << endl;
 		fail("solution file did not contain root variable assignments");
 	}
 
@@ -446,7 +576,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 			for (int child_idx = 0; child_idx < (int)idx_lists.size(); ++child_idx) {
 				const vector<int> &list = idx_lists[child_idx];
 				for (int idx : list) {
-					double v = values.count(choices[idx].name) ? values[choices[idx].name] : 0.0;
+					double v = get_value(choices[idx].name);
 					if (v > 0.5) {
 						if (childSelection[c][n][child_idx] != -1) {
 							fail("multiple child selections detected for a single child");
@@ -468,12 +598,10 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 				if (child_enode == -1) {
 					cerr << "Missing child selection for eclass " << c << " node " << n
 					     << " child index " << child_idx << " options:";
-					for (int idx : choiceIndex[c][n][child_idx]) {
-						cerr << ' ' << choices[idx].name << "="
-						     << (values.count(choices[idx].name) ? values[choices[idx].name] : 0.0);
+						for (int idx : choiceIndex[c][n][child_idx]) {
+							cerr << ' ' << choices[idx].name << "=" << get_value(choices[idx].name);
 					}
-					cerr << " (pickVar=" << (values.count(pickVar[c][n]) ? values[pickVar[c][n]] : 0.0)
-					     << ")" << endl;
+						cerr << " (pickVar=" << get_value(pickVar[c][n]) << ")" << endl;
 					fail("missing child selection for picked enode");
 				}
 				EClassId child_class = g.eclasses[c].enodes[n].ch[child_idx];

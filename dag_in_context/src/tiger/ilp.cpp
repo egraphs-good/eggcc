@@ -228,17 +228,22 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 			if (parents.empty()) {
 				continue;
 			}
+			vector<int> effectful_parents;
+			effectful_parents.reserve(parents.size());
+			for (int idx : parents) {
+				if (g.eclasses[choices[idx].parent_class].isEffectful) {
+					effectful_parents.push_back(idx);
+				}
+			}
+			if (effectful_parents.empty()) {
+				continue;
+			}
 			lp << " child_unique_" << c << '_' << n << ":";
 			bool first = true;
-			for (int idx : parents) {
-        if (g.eclasses[choices[idx].parent_class].isEffectful) {
-				  lp << (first ? " " : " + ") << choices[idx].name;
-				  first = false;
-        }
+			for (int idx : effectful_parents) {
+				lp << (first ? " " : " + ") << choices[idx].name;
+				first = false;
 			}
-      if (first) {
-        lp << " 0";
-      }
 			lp << " <= 1\n";
 		}
 	}

@@ -207,7 +207,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 					// sanity check: assert that the parent eclass of the choice is c and parent_node is n
 					assert(choices[idx].parent_class == c && choices[idx].parent_node == n);
 				}
-				lp << " >= " << pickVar[c][n] << "\n";
+				lp << " - " << pickVar[c][n] << " >= 0\n";
 			}
 		}
 	}
@@ -244,18 +244,18 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	}*/
 
 	// Order variables must decrease along chosen edges to prevent cycles.
-	// When parent and child are the same enode, instead forbid it (preventing duplicate entries)
+	// When parent and child are the same enode, forbid taking that edge to avoid duplicate constraints.
 	for (int idx = 0; idx < (int)choices.size(); ++idx) {
 		const ChoiceVar &cv = choices[idx];
 		if (cv.parent_class == cv.child_class && cv.parent_node == cv.child_node) {
-			lp << " order_edge_" << idx << ": " << cv.name
-			   << " <= " << -1 << "\n";
+			lp << " order_edge_" << idx << ": " << maxOrder << " " << cv.name
+			   << " <= " << (maxOrder - 1) << "\n";
 		} else {
-		  lp << " order_edge_" << idx << ": " << orderVar[cv.child_class][cv.child_node]
-		     << " - " << orderVar[cv.parent_class][cv.parent_node]
-		     << " + " << maxOrder << " " << cv.name
-		     << " <= " << (maxOrder - 1) << "\n";
-    }
+			lp << " order_edge_" << idx << ": " << orderVar[cv.child_class][cv.child_node]
+			   << " - " << orderVar[cv.parent_class][cv.parent_node]
+			   << " + " << maxOrder << " " << cv.name
+			   << " <= " << (maxOrder - 1) << "\n";
+		}
 	}
 
 

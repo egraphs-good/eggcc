@@ -58,7 +58,8 @@ treatments = [
   "llvm-eggcc-O3-O3",
   "eggcc-ILP-O0-O0",
   "llvm-eggcc-tiger-WL-O0-O0",
-  "llvm-eggcc-tiger-O0-O0"
+  "llvm-eggcc-tiger-O0-O0",
+  "llvm-eggcc-tiger-ILP-O0-O0"
 ]
 
 example_subset_treatments = [
@@ -124,6 +125,8 @@ def get_eggcc_options(benchmark):
       return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-O0-O0":
       return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-tiger-ILP-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     

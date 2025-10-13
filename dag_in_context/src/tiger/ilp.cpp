@@ -222,6 +222,18 @@ EClassId enode_to_eclass(const EGraph &g, ENodeId n) {
 	return -1;
 }
 
+void print_enode(ostream &out, const ENode &n) {
+	out << n.head << "(";
+	for (int i = 0; i < (int)n.ch.size(); ++i) {
+		if (i > 0) {
+			out << ",";
+		}
+		out << n.ch[i];
+	}
+	out << ")";
+}
+
+
 void print_eclass(ostream &out, const EGraph &g, EClassId c) {
 	out << "EClass " << c << (g.eclasses[c].isEffectful ? " (effectful)" : "") << ":\n";
 	for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {

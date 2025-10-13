@@ -264,17 +264,23 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		ENodeId child_node;
 	};
 
+	// VARIABLES
 	// Picking an enode in an eclass
-	vector<vector<string> > pickVar(g.eclasses.size());
-	// Cost of picking an enode in an eclass
-	vector<vector<long long> > pickCost(g.eclasses.size());
+	vector<vector<string> > pickNode(g.eclasses.size());
 	// Choosing an eclass, enode, child index, and child enode index
 	vector<vector<vector<vector<int> > > > choiceIndex(g.eclasses.size());
-	// For each child enode, which choice variables point to it
-	vector<vector<vector<int> > > childParents(g.eclasses.size());
 	// Order variables for acyclicity
 	vector<vector<string> > orderVar(g.eclasses.size());
+
+	// COST MODEL
+	// Cost of picking an enode in an eclass
+	vector<vector<long long> > pickCost(g.eclasses.size());
+	
+	// CACHES
+	// For each child enode, which choice variables point to it
+	vector<vector<vector<int> > > childParents(g.eclasses.size());
 	// Effectful child flow tracking
+	// For a given eclass, which choice variables are outgoing/incoming effectful edges
 	vector<vector<int> > effectOutgoing(g.eclasses.size());
 	vector<vector<int> > effectIncoming(g.eclasses.size());
 
@@ -284,7 +290,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	}
 	int maxOrder = max(1, total_enodes);
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		pickVar[c].resize(g.eclasses[c].enodes.size());
+		pickNode[c].resize(g.eclasses[c].enodes.size());
 		pickCost[c].resize(g.eclasses[c].enodes.size());
 		choiceIndex[c].resize(g.eclasses[c].enodes.size());
 		childParents[c].resize(g.eclasses[c].enodes.size());
@@ -293,10 +299,10 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 
 	// All choice variables (a partiacular edge between an enode at a child index and another enode)
 	vector<ChoiceVar> choices;
-	// initialize choices, pickVar, pickCost, choiceIndex, childParents
+	// initialize choices, pickNode, pickCost, choiceIndex, childParents
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			pickVar[c][n] = string("p_") + to_string(c) + "_" + to_string(n);
+			pickNode[c][n] = string("p_") + to_string(c) + "_" + to_string(n);
 			orderVar[c][n] = string("o_") + to_string(c) + "_" + to_string(n);
 			long long add = 0;
 			if (c < (EClassId)nsubregion.size() && n < (ENodeId)nsubregion[c].size()) {
@@ -382,7 +388,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	}
 
 	bool firstTerm = true;
-	// minimize sum pickCost[c][n] * pickVar[c][n]
+	// minimize sum pickCost[c][n] * pickNode[c][n]
 	lp << "Minimize\n obj:";
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
@@ -390,7 +396,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 				lp << " +";
 			}
 			firstTerm = false;
-			lp << " " << pickCost[c][n] << " " << pickVar[c][n];
+			lp << " " << pickCost[c][n] << " " << pickNode[c][n];
 		}
 	}
 	if (firstTerm) {
@@ -409,7 +415,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		lp << " pick_sum_" << c << ":";
 		bool first = true;
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			lp << (first ? " " : " + ") << pickVar[c][n];
+			lp << (first ? " " : " + ") << pickNode[c][n];
 			first = false;
 		}
 		lp << " >= 1\n";
@@ -432,7 +438,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 					// sanity check: assert that the parent eclass of the choice is c and parent_node is n
 					assert(choices[idx].parent_class == c && choices[idx].parent_node == n);
 				}
-				lp << " - " << pickVar[c][n] << " >= 0\n";
+				lp << " - " << pickNode[c][n] << " >= 0\n";
 			}
 		}
 	}
@@ -440,7 +446,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	// If you choose a child edge, you must pick the enode it points to.
 	for (int idx = 0; idx < (int)choices.size(); ++idx) {
 		const ChoiceVar &cv = choices[idx];
-		lp << " child_link_" << idx << ": " << cv.name << " - " << pickVar[cv.child_class][cv.child_node] << " <= 0\n";
+		lp << " child_link_" << idx << ": " << cv.name << " - " << pickNode[cv.child_class][cv.child_node] << " <= 0\n";
 	} 
 
 	// Linearity: effectful enodes may not be targeted by multiple effectful parents.
@@ -492,14 +498,14 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	lp << "Bounds\n";
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			lp << " 0 <= " << orderVar[c][n] << " <= " << maxOrder << "\n";
+			lp << " 0 <= " << orderVar[c][n] << " < " << maxOrder << "\n";
 		}
 	}
 
 	lp << "Binary\n";
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			lp << " " << pickVar[c][n] << "\n";
+			lp << " " << pickNode[c][n] << "\n";
 		}
 	}
 	for (const ChoiceVar &cv : choices) {
@@ -593,7 +599,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		pickSelected[c].assign(g.eclasses[c].enodes.size(), 0);
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			double v = get_value(pickVar[c][n]);
+			double v = get_value(pickNode[c][n]);
 			if (v > 0.5) {
 				pickSelected[c][n] = 1;
 			}
@@ -603,11 +609,11 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (!g.eclasses[root].enodes.empty()) {
 		cerr << "ILP root diagnostics (class " << root << "):\n";
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[root].enodes.size(); ++n) {
-			double root_value = get_value(pickVar[root][n]);
-			if (values.count(pickVar[root][n])) {
+			double root_value = get_value(pickNode[root][n]);
+			if (values.count(pickNode[root][n])) {
 				saw_root_assignment = true;
 			}
-			cerr << "  " << pickVar[root][n] << " = " << root_value
+			cerr << "  " << pickNode[root][n] << " = " << root_value
 			     << " (" << (pickSelected[root][n] ? "selected" : "not selected") << ")\n";
 		}
 	}
@@ -671,7 +677,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 						for (int idx : choiceIndex[c][n][child_idx]) {
 							cerr << ' ' << choices[idx].name << "=" << get_value(choices[idx].name);
 					}
-						cerr << " (pickVar=" << get_value(pickVar[c][n]) << ")" << endl;
+						cerr << " (pickNode=" << get_value(pickNode[c][n]) << ")" << endl;
 					fail("missing child selection for picked enode");
 				}
 				EClassId child_class = g.eclasses[c].enodes[n].ch[child_idx];

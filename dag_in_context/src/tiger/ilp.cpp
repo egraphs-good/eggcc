@@ -1,5 +1,83 @@
 
-bool g_use_gurobi = true;
+#include <chrono>
+#include <errno.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <thread>
+#include <unistd.h>
+
+bool g_use_gurobi = false;
+// 5 minute timeout
+int g_ilp_timeout_seconds = 5 * 60;
+
+static int run_command_with_timeout(const string &command, int timeout_seconds, bool &timed_out) {
+	timed_out = false;
+#if defined(_WIN32)
+	(void)timeout_seconds;
+	int result = system(command.c_str());
+	return result;
+#else
+	pid_t pid = fork();
+	if (pid < 0) {
+		return -1;
+	}
+	if (pid == 0) {
+		execl("/bin/sh", "sh", "-c", command.c_str(), (char *)nullptr);
+		_exit(127);
+	}
+
+	int status = 0;
+	if (timeout_seconds <= 0) {
+		while (waitpid(pid, &status, 0) < 0) {
+			if (errno != EINTR) {
+				int err = errno;
+				kill(pid, SIGKILL);
+				waitpid(pid, &status, 0);
+				errno = err;
+				return -1;
+			}
+		}
+	} else {
+			auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
+		while (true) {
+			pid_t result = waitpid(pid, &status, WNOHANG);
+			if (result == pid) {
+				break;
+			}
+			if (result == 0) {
+					if (std::chrono::steady_clock::now() >= deadline) {
+					timed_out = true;
+					kill(pid, SIGKILL);
+					waitpid(pid, &status, 0);
+					break;
+				}
+					std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				continue;
+			}
+			if (result == -1) {
+				if (errno == EINTR) {
+					continue;
+				}
+				kill(pid, SIGKILL);
+				waitpid(pid, &status, 0);
+				return -1;
+			}
+		}
+	}
+
+	if (timed_out) {
+		return -1;
+	}
+	if (WIFEXITED(status)) {
+		return WEXITSTATUS(status);
+	}
+	if (WIFSIGNALED(status)) {
+		return 128 + WTERMSIG(status);
+	}
+	return -1;
+#endif
+}
 
 struct SolverSolution {
 	unordered_map<string, double> values;
@@ -414,7 +492,8 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	} else {
 		cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}
-	int ret = system(cmd.c_str());
+	bool solver_timed_out = false;
+	int ret = run_command_with_timeout(cmd, g_ilp_timeout_seconds, solver_timed_out);
 	string solver_log;
 	{
 		ifstream log_in(log_path.c_str(), ios::binary);
@@ -426,6 +505,10 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		ifstream in_debug_log(log_path.c_str(), ios::binary);
 		ofstream out_debug_log("/tmp/tiger_last_extract.log", ios::binary);
 		out_debug_log << in_debug_log.rdbuf();
+	}
+	if (solver_timed_out) {
+		cout << "TIMEOUT" << endl;
+		fail(solver_name + " timed out after " + to_string(g_ilp_timeout_seconds) + " seconds");
 	}
 	if (ret != 0) {
 		cerr << solver_name << " log output:\n" << solver_log << endl;

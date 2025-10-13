@@ -495,7 +495,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	lp << "Bounds\n";
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			lp << " 0 <= " << orderVar[c][n] << " < " << maxOrder << "\n";
+			lp << " 0 <= " << orderVar[c][n] << " <= " << (maxOrder - 1) << "\n";
 		}
 	}
 

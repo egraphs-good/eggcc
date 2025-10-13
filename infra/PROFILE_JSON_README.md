@@ -29,7 +29,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
   "llvmCompileTimeSecs": 0.890,
   "ilpTestTimes": [],
   "failed": false,
-  "timedOut": false
+  "ILPTimeOut": false
 }
 ```
 
@@ -47,6 +47,6 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
   "llvmCompileTimeSecs": false,
   "ilpTestTimes": false,
   "failed": true,
-  "timedOut": true
+  "ILPTimeOut": true
 }
 ```

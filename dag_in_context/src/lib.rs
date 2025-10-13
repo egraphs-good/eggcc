@@ -543,7 +543,17 @@ fn run_tiger_pipeline(
         Vec::new()
     };
 
-    let tiger_output = run_cmd_line(tiger_bin.as_os_str(), tiger_args, &egraph_text).unwrap();
+    let tiger_output = match run_cmd_line(tiger_bin.as_os_str(), tiger_args, &egraph_text) {
+        Ok(output) => output,
+        Err(err) => {
+            let message = err.to_string();
+            if message.contains("TIMEOUT") {
+                println!("TIMEOUT");
+                std::process::exit(1);
+            }
+            panic!("tiger invocation failed: {message}");
+        }
+    };
 
     // Tiger returns an egglog file containing just one program, run the egglog program
     let mut tiger_egraph = egglog::EGraph::default();

@@ -10,12 +10,17 @@ use tempfile::tempfile;
 
 struct CommandFailure {
     status: ExitStatus,
+    stdout: String,
     stderr: String,
 }
 
 impl CommandFailure {
-    fn new(status: ExitStatus, stderr: String) -> Self {
-        Self { status, stderr }
+    fn new(status: ExitStatus, stdout: String, stderr: String) -> Self {
+        Self {
+            status,
+            stdout,
+            stderr,
+        }
     }
 
     fn exit_code(&self) -> Option<i32> {
@@ -29,6 +34,12 @@ impl fmt::Display for CommandFailure {
             Some(code) => writeln!(f, "program returned error code {code}")?,
             None => writeln!(f, "program was terminated by signal")?,
         };
+
+        if self.stdout.is_empty() {
+            writeln!(f, "stdout: <empty>")?
+        } else {
+            writeln!(f, "stdout:\n{}", self.stdout)?;
+        }
 
         if self.stderr.is_empty() {
             write!(f, "stderr: <empty>")
@@ -68,15 +79,17 @@ where
         .stderr(Stdio::piped())
         .output()?;
 
-    match output.status.success() {
-        true => Ok(String::from_utf8(output.stdout)
-            .map_err(|e| std::io::Error::other(format!("utf8 error: {e}")))?),
-        false => {
-            let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-            Err(std::io::Error::other(CommandFailure::new(
-                output.status,
-                stderr,
-            )))
-        }
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|e| std::io::Error::other(format!("utf8 error: {e}")))?;
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+
+    if output.status.success() {
+        Ok(stdout)
+    } else {
+        Err(std::io::Error::other(CommandFailure::new(
+            output.status,
+            stdout,
+            stderr,
+        )))
     }
 }

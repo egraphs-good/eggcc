@@ -6,7 +6,7 @@ json2egraph:
 	g++ $(CPPFLAGS) json2egraph.cpp -o json2egraph
 
 main:
-	g++ $(CPPFLAGS) main.cpp -o main
+	g++ $(CPPFLAGS) main.cpp ilp.cpp -o main
 
 egraph2json:
 	g++ $(CPPFLAGS) egraph2json.cpp -o egraph2json

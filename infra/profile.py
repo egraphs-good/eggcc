@@ -196,7 +196,7 @@ def optimize(benchmark):
   # check for an ILP timeout in the output
   if "TIMEOUT" in process.stdout:
     failure_data["ILPTimeOut"] = True
-    failure_data["error"] = f'Timeout running {cmd1} after {EGGCC_TIMEOUT_SECS} seconds'
+    failure_data["error"] = f'ILP timeout while extracting a region.'
     return failure_data
 
   if process.returncode != 0:

@@ -16,6 +16,7 @@
 #include<unordered_map>
 #include<unordered_set>
 #include<functional>
+#include"ilp.h"
 
 using namespace std;
 
@@ -36,24 +37,6 @@ FILE* preprocessing() {
 	fclose(out);
 	return fopen(TMPFILENAME, "r");
 }
-
-typedef int EClassId;
-
-struct ENode {
-	string head;
-	EClassId eclass;
-	vector<EClassId> ch;
-	//int cost;
-};
-
-struct EClass {
-	vector<ENode> enodes;
-	bool isEffectful;
-};
-
-struct EGraph {
-	vector<EClass> eclasses;
-};
 
 EGraph read_egraph(FILE* ppin) {
 	EGraph g;
@@ -145,18 +128,6 @@ void debugprint_egraph(const EGraph &g) {
 		fprintf(stderr,"\n");
 	}
 }
-
-typedef int ENodeId;
-
-typedef int ExtractionENodeId;
-
-struct ExtractionENode {
-	EClassId c;
-	ENodeId n;
-	vector<ExtractionENodeId> ch;
-};
-
-typedef vector<ExtractionENode> Extraction;
 
 bool validExtraction(const EGraph &g, const EClassId root, const Extraction &e) {
 	if (e.size() == 0 || e.back().c != root) { // root
@@ -919,9 +890,6 @@ EClassId pick_next_variable_heuristics(const vector<EClassId> &v) {
 
 
 typedef int RegionId;
-
-// HACK: include ilp.cpp directly
-#include "ilp.cpp"
 
 // the main function for getting a linear extraction from a region
 // this uses ILP in ilp mode or the unguided statewalk search in the normal mode

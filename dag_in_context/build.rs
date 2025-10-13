@@ -4,18 +4,17 @@ use std::{
     process::Command,
 };
 
-fn build_binary(source: &Path, output: &Path, extra_flags: &[&str]) {
-    let tiger_dir = source
-        .parent()
-        .expect("source file should have a parent directory");
-
+fn build_binary(tiger_dir: &Path, sources: &[&str], output: &Path, extra_flags: &[&str]) {
     let mut cmd = Command::new("g++");
     cmd.current_dir(tiger_dir)
         .args(["-std=c++17", "-O2", "-Wno-unused-result"])
-        .args(extra_flags)
-        .arg(source.file_name().expect("source file name"))
-        .arg("-o")
-        .arg(output);
+        .args(extra_flags);
+
+    for source in sources {
+        cmd.arg(source);
+    }
+
+    cmd.arg("-o").arg(output);
 
     let status = cmd
         .status()
@@ -24,7 +23,7 @@ fn build_binary(source: &Path, output: &Path, extra_flags: &[&str]) {
     if !status.success() {
         panic!(
             "failed to compile {:?} -> {:?} with status {}",
-            source, output, status
+            sources, output, status
         );
     }
 }
@@ -52,19 +51,22 @@ fn main() {
     let json2egraph_out = target_dir.join(binary_name("json2egraph"));
     let tiger_out = target_dir.join(binary_name("tiger"));
 
-    build_binary(&tiger_dir.join("json2egraph.cpp"), &json2egraph_out, &[]);
-    build_binary(&tiger_dir.join("main.cpp"), &tiger_out, &["-DEMIT_JSON"]);
+    build_binary(&tiger_dir, &["json2egraph.cpp"], &json2egraph_out, &[]);
+    build_binary(
+        &tiger_dir,
+        &["main.cpp", "ilp.cpp"],
+        &tiger_out,
+        &["-DEMIT_JSON"],
+    );
 
-    println!(
-        "cargo::rerun-if-changed={}",
-        tiger_dir.join("json2egraph.cpp").display()
-    );
-    println!(
-        "cargo::rerun-if-changed={}",
-        tiger_dir.join("main.cpp").display()
-    );
-    println!(
-        "cargo::rerun-if-changed={}",
-        tiger_dir.join("makefile").display()
-    );
+    if let Ok(entries) = fs::read_dir(&tiger_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(ext) = path.extension() {
+                if ext == "cpp" || ext == "h" {
+                    println!("cargo::rerun-if-changed={}", path.display());
+                }
+            }
+        }
+    }
 }

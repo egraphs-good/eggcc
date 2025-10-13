@@ -14,8 +14,8 @@ from generate_cfgs import make_cfgs
 
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
-# Tiger timeout (seconds) when using --use-tiger
-TIGER_RUN_TIMEOUT_SECS = 10 * 60 # 10 minutes
+# Timeout (seconds) for eggcc. Timeouts are treated as failures.
+EGGCC_TIMEOUT_SECS = 20 * 60 # 20 minutes
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -58,7 +58,8 @@ treatments = [
   "llvm-eggcc-O3-O3",
   "eggcc-ILP-O0-O0",
   "llvm-eggcc-tiger-WL-O0-O0",
-  "llvm-eggcc-tiger-O0-O0"
+  "llvm-eggcc-tiger-O0-O0",
+  "llvm-eggcc-tiger-ILP-O0-O0"
 ]
 
 example_subset_treatments = [
@@ -124,6 +125,8 @@ def get_eggcc_options(benchmark):
       return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-O0-O0":
       return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-tiger-ILP-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -168,16 +171,6 @@ def optimize(benchmark):
   cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode} --run-data-out {eggcc_run_data}'
   cmd2 = f'{EGGCC_BINARY} {optimized_bril_file} --run-data-out {llvm_run_data} --add-timing {llvm_args} -o {profile_dir}/{benchmark.treatment} --llvm-output-dir {llvm_out_file}'
 
-  timed_out = False
-  try:
-    if "--use-tiger" in eggcc_run_mode:
-      process = subprocess.run(cmd1, shell=True, capture_output=True, text=True, timeout=TIGER_RUN_TIMEOUT_SECS)
-    else:
-      process = subprocess.run(cmd1, shell=True, capture_output=True, text=True)
-  except subprocess.TimeoutExpired:
-    timed_out = True
-    process = None
-
   failure_data = {
       "path": f"{profile_dir}/{benchmark.treatment}",
       "eggccCompileTimeSecs": False,
@@ -186,18 +179,28 @@ def optimize(benchmark):
       "llvmCompileTimeSecs": False,
       "ilpTestTimes": False,
       "failed": True,
-      "timedOut": False,
+      "ILPTimeOut": False,
       "error": '',
     }
 
+  timed_out = False
+  try:
+    process = subprocess.run(cmd1, shell=True, capture_output=True, text=True, timeout=EGGCC_TIMEOUT_SECS)
+  except subprocess.TimeoutExpired:
+    # Timeouts are failures
+    print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {EGGCC_TIMEOUT_SECS} seconds', flush=True)
+    failure_data["error"] = f'Timeout running {cmd1} after {EGGCC_TIMEOUT_SECS} seconds'
+    return failure_data
 
-  if timed_out:
-    failure_data["timedOut"] = True
-    failure_data["error"] = f'Timeout running {cmd1} after {TIGER_RUN_TIMEOUT_SECS} seconds'
+
+  # check for an ILP timeout in the output
+  if "TIMEOUT" in process.stdout:
+    failure_data["ILPTimeOut"] = True
+    failure_data["error"] = f'ILP timeout while extracting a region.'
     return failure_data
 
   if process.returncode != 0:
-    print(f'Error running {cmd1}: {process.stderr}', flush=True, file=sys.stderr)
+    print(f'[{benchmark.index}/{benchmark.total}] Error running {cmd1}: {process.stderr}', flush=True, file=sys.stderr)
     failure_data["error"] = f'Error running {cmd1}: {process.stderr}'
     return failure_data
 
@@ -240,7 +243,7 @@ def optimize(benchmark):
     "llvmCompileTimeSecs": llvm_compile_time,
     "ilpTestTimes": ilp_test_times,
     "failed": False,
-    "timedOut": False,
+    "ILPTimeOut": False,
   }
   return res
 

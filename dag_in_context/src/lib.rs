@@ -18,6 +18,8 @@ use std::{
 };
 use to_egglog::TreeToEgglog;
 
+use crate::from_egglog::FromEgglog;
+use crate::util::run_cmd_line;
 use crate::{
     dag2svg::tree_to_svg, interpreter::interpret_dag_prog,
     optimizations::function_inlining::perform_inlining, remove_context::remove_new_contexts,

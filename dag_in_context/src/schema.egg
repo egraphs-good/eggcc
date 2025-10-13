@@ -300,6 +300,10 @@
 (function LoopNumItersGuess (Expr Expr) i64 :merge (max 1 (min old new)))
 
 
+;; A hint for no-context mode that this rule
+;; fundamentally relies on context and can't be fixed using dummy contexts
+(relation RELIESONCONTEXT ())
+;; A dummy context for use in no context mode
 (let DUMMYCTX (InFunc "DUMMY"))
 
 (ruleset never)

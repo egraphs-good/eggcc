@@ -59,7 +59,7 @@ treatments = [
   "eggcc-ILP-O0-O0",
   "llvm-eggcc-tiger-WL-O0-O0",
   "llvm-eggcc-tiger-O0-O0",
-  "llvm-eggcc-tiger-ILP-O0-O0"
+  "llvm-eggcc-tiger-ILP-O0-O0",
   "llvm-eggcc-NOCTX-O0-O0",
 ]
 

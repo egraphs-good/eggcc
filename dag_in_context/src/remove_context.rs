@@ -126,14 +126,42 @@ fn replace_context_with_dummy(expr: &SExpr) -> SExpr {
     }
 }
 
-fn transform(expr: &SExpr) -> SExpr {
+fn list_is_relies_on_context(list: &[SExpr]) -> bool {
+    if list.len() == 1 {
+        if let SExpr::Atom(atom) = &list[0] {
+            return atom == "RELIESONCONTEXT";
+        }
+    }
+    false
+}
+
+fn contains_relies_on_context(expr: &SExpr) -> bool {
+    match expr {
+        SExpr::Atom(_) => false,
+        SExpr::List(items) => {
+            if list_is_relies_on_context(items) {
+                return true;
+            }
+            items.iter().any(contains_relies_on_context)
+        }
+    }
+}
+
+fn rule_relies_on_context(items: &[SExpr]) -> bool {
+    items.iter().skip(1).any(contains_relies_on_context)
+}
+
+fn transform(expr: &SExpr) -> Option<SExpr> {
     use SExpr::*;
     match expr {
-        Atom(a) => Atom(a.clone()),
+        Atom(a) => Some(Atom(a.clone())),
         List(items) => {
             // Special-case rule structure: (rule (query ...) (body ...) ...)
             if let Some(Atom(h)) = items.first() {
                 if h == "rule" {
+                    if rule_relies_on_context(items) {
+                        return None;
+                    }
                     let mut out: Vec<SExpr> = Vec::with_capacity(items.len());
                     out.push(Atom("rule".to_string()));
                     // Query: recurse without replacement to normalize
@@ -153,13 +181,13 @@ fn transform(expr: &SExpr) -> SExpr {
                     out.push(new_body);
                     // Any trailing attrs or metadata
                     for extra in items.iter().skip(3) {
-                        out.push(transform(extra));
+                        out.push(extra.clone());
                     }
-                    return List(out);
+                    return Some(List(out));
                 }
             }
 
-            List(items.iter().map(transform).collect())
+            Some(List(items.clone()))
         }
     }
 }
@@ -178,7 +206,7 @@ pub(crate) fn remove_new_contexts(s: &str) -> String {
     log::info!("removing context...");
     let tokens = tokenize(s);
     let parsed = parse(&tokens);
-    let transformed: Vec<SExpr> = parsed.iter().map(transform).collect();
+    let transformed: Vec<SExpr> = parsed.iter().filter_map(transform).collect();
     transformed
         .iter()
         .map(print_sexpr)

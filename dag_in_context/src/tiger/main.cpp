@@ -10,12 +10,6 @@
 #include<iostream>
 #include<algorithm>
 #include<fstream>
-#include<sstream>
-#include<cstdlib>
-#include<unistd.h>
-#include<unordered_map>
-#include<unordered_set>
-#include<functional>
 #include"ilp.h"
 
 using namespace std;

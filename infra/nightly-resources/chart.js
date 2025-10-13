@@ -121,10 +121,13 @@ function getError(entry) {
     afterDatasetsDraw: function (chart) {
       const ctx = chart.ctx;
       chart.config.data.datasets.forEach((ds, dsIndex) => {
-        if (!ds._timeoutFlags) return;
+        const timeoutFlags = ds._timeoutFlags || [];
+        const errorFlags = ds._errorFlags || [];
         const meta = chart.getDatasetMeta(dsIndex);
         meta.data.forEach((bar, i) => {
-          if (!ds._timeoutFlags[i]) return;
+          const isTimeout = Boolean(timeoutFlags[i]);
+          const isError = Boolean(errorFlags[i]);
+          if (!isTimeout && !isError) return;
           const model = bar._model || bar; // Chart.js v2 vs potential future
           const left = model.x - model.width / 2;
           const right = model.x + model.width / 2;
@@ -134,11 +137,15 @@ function getError(entry) {
           ctx.beginPath();
           ctx.rect(left, top, right - left, bottom - top);
           ctx.clip();
-          ctx.globalAlpha = 0.35;
-          ctx.fillStyle = ds.backgroundColor || COLORS[ds.label] || "gray";
+          ctx.globalAlpha = isError ? 0.45 : 0.35;
+          if (isError) {
+            ctx.fillStyle = "#ff0000";
+          } else {
+            ctx.fillStyle = ds.backgroundColor || COLORS[ds.label] || "gray";
+          }
           ctx.fillRect(left, top, right - left, bottom - top);
           ctx.globalAlpha = 1.0;
-          ctx.strokeStyle = "white";
+          ctx.strokeStyle = isError ? "#ff0000" : "white";
           ctx.lineWidth = 2;
           // diagonal stripes
           const step = 8;
@@ -172,6 +179,7 @@ function parseDataForChart() {
     benchmarks.forEach((benchmark) => {
       const entry = getEntry(benchmark, mode);
       if (!entry) return;
+      const ilpTimeout = Boolean(entry.ILPTimeOut);
       const didFail = entry.failed || !Array.isArray(entry.cycles);
       let value = 0;
       let error = 0;
@@ -185,6 +193,7 @@ function parseDataForChart() {
         value,
         error,
         failed: didFail,
+        ilpTimeout,
       };
     });
     if (mode === sortByMode) {
@@ -212,13 +221,18 @@ function parseDataForChart() {
     const points = Object.values(data[mode]);
     const dsData = Array(sortedBenchmarks.length).fill(0);
     const timeoutFlags = Array(sortedBenchmarks.length).fill(false);
+    const errorFlags = Array(sortedBenchmarks.length).fill(false);
     const errorBars = {};
     points.forEach((point) => {
       const idx = sortedBenchmarks.indexOf(point.benchmark);
       if (idx === -1) return;
       dsData[idx] = point.value;
       if (point.failed) {
-        timeoutFlags[idx] = true;
+        if (point.ilpTimeout) {
+          timeoutFlags[idx] = true;
+        } else {
+          errorFlags[idx] = true;
+        }
         errorBars[point.benchmark] = { plus: 0, minus: 0, failed: true };
       } else if (point.error) {
         errorBars[point.benchmark] = { plus: point.error, minus: point.error };
@@ -231,6 +245,7 @@ function parseDataForChart() {
       borderWidth: 1,
       errorBars,
       _timeoutFlags: timeoutFlags,
+      _errorFlags: errorFlags,
     };
   });
 

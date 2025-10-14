@@ -61,7 +61,8 @@
        (= in_type (TupleT tylist))
        (= len (tuple-length in))
        (= iter-guess (LoopNumItersGuess in body)))
-      ((let new_input (Concat in (Single (Subst loop_ctx in inv))))
+      ((RELIESONCONTEXT)
+       (let new_input (Concat in (Single (Subst loop_ctx in inv))))
        (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
 
        ;; create an virtual assume node, union it with actuall InLoop later

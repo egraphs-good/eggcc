@@ -41,5 +41,6 @@ Extraction extractRegionILP(const EGraph &g, EClassId initc, ENodeId initn, ECla
 
 extern bool g_use_gurobi;
 extern int g_ilp_timeout_seconds;
+extern bool g_ilp_minimize_objective;
 
 #endif  // DAG_IN_CONTEXT_TIGER_ILP_H

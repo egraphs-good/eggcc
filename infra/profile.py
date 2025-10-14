@@ -43,20 +43,20 @@ TO_ABLATE = "" # change to a ruleset to ablate
 
 # use for running a subset of the treatments
 # disables checks that ensure the data is complete
-UNSAFE_TREATMENTS = False
+UNSAFE_TREATMENTS = True
 treatments = [
-  "rvsdg-round-trip-to-executable",
+  #"rvsdg-round-trip-to-executable",
   #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
   "llvm-O0-O0",
-  "llvm-O1-O0",
-  "llvm-O2-O0",
+  #"llvm-O1-O0",
+  #"llvm-O2-O0",
   "llvm-eggcc-O0-O0",
-  "llvm-eggcc-sequential-O0-O0",
+  #"llvm-eggcc-sequential-O0-O0",
   "llvm-O3-O0",
-  "llvm-O3-O3",
-  "llvm-eggcc-O3-O0",
-  "llvm-eggcc-O3-O3",
-  "eggcc-ILP-O0-O0",
+  #"llvm-O3-O3",
+  #"llvm-eggcc-O3-O0",
+  #"llvm-eggcc-O3-O3",
+  #"eggcc-ILP-O0-O0",
   "llvm-eggcc-tiger-WL-O0-O0",
   "llvm-eggcc-tiger-O0-O0",
   "llvm-eggcc-tiger-ILP-O0-O0",
@@ -123,11 +123,11 @@ def get_eggcc_options(benchmark):
       # run with the ilp-extraction-timeout flag
       return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-WL-O0-O0":
-      return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --use-tiger --no-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-O0-O0":
-      return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --use-tiger --no-context --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-ILP-O0-O0":
-      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --use-tiger --tiger-ilp --no-context --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-NOCTX-O0-O0":
       # run with the no-context flag
       return (f'optimize --no-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')

@@ -89,6 +89,7 @@ struct Args {
 
     #[clap(long)]
     tiger_ilp: bool,
+    /// In this mode, rules that match on context are disabled. References to context in the rule body are replaced with a dummy context. Finally, any rules that depend on context fundamentally (annotated manually) are skipped.
     #[clap(long)]
     no_context: bool,
 }

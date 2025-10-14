@@ -15,7 +15,7 @@ from generate_cfgs import make_cfgs
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
 # Timeout (seconds) for eggcc. Timeouts are treated as failures.
-EGGCC_TIMEOUT_SECS = 20 * 60 # 20 minutes
+EGGCC_TIMEOUT_SECS = 40 * 60 # 20 minutes
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -43,20 +43,20 @@ TO_ABLATE = "" # change to a ruleset to ablate
 
 # use for running a subset of the treatments
 # disables checks that ensure the data is complete
-UNSAFE_TREATMENTS = True
+UNSAFE_TREATMENTS = False
 treatments = [
-  #"rvsdg-round-trip-to-executable",
+  "rvsdg-round-trip-to-executable",
   #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
   "llvm-O0-O0",
-  #"llvm-O1-O0",
-  #"llvm-O2-O0",
+  "llvm-O1-O0",
+  "llvm-O2-O0",
   "llvm-eggcc-O0-O0",
-  #"llvm-eggcc-sequential-O0-O0",
+  "llvm-eggcc-sequential-O0-O0",
   "llvm-O3-O0",
-  #"llvm-O3-O3",
-  #"llvm-eggcc-O3-O0",
-  #"llvm-eggcc-O3-O3",
-  #"eggcc-ILP-O0-O0",
+  "llvm-O3-O3",
+  "llvm-eggcc-O3-O0",
+  "llvm-eggcc-O3-O3",
+  "eggcc-ILP-O0-O0",
   "llvm-eggcc-tiger-WL-O0-O0",
   "llvm-eggcc-tiger-O0-O0",
   "llvm-eggcc-tiger-ILP-O0-O0",

@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <thread>
+#include <unistd.h>
 #include <unordered_set>
 #include <vector>
 
@@ -23,6 +24,20 @@ using namespace std;
 bool g_use_gurobi = false;
 // 5 minute timeout
 int g_ilp_timeout_seconds = 5 * 60;
+
+static void kill_process_group(pid_t pid) {
+	if (pid <= 0) {
+		return;
+	}
+	pid_t pgid = getpgid(pid);
+	if (pgid == pid) {
+		if (kill(-pgid, SIGKILL) == -1 && errno != ESRCH) {
+			kill(pid, SIGKILL);
+		}
+	} else {
+		kill(pid, SIGKILL);
+	}
+}
 
 static int run_command_with_timeout(const string &command, int timeout_seconds, bool &timed_out) {
 	timed_out = false;
@@ -36,16 +51,21 @@ static int run_command_with_timeout(const string &command, int timeout_seconds, 
 		return -1;
 	}
 	if (pid == 0) {
+		if (setsid() == -1) {
+			setpgid(0, 0);
+		}
 		execl("/bin/sh", "sh", "-c", command.c_str(), (char *)nullptr);
 		_exit(127);
 	}
+	setpgid(pid, pid);
+		
 
 	int status = 0;
 	if (timeout_seconds <= 0) {
 		while (waitpid(pid, &status, 0) < 0) {
 			if (errno != EINTR) {
 				int err = errno;
-				kill(pid, SIGKILL);
+				kill_process_group(pid);
 				waitpid(pid, &status, 0);
 				errno = err;
 				return -1;
@@ -61,7 +81,7 @@ static int run_command_with_timeout(const string &command, int timeout_seconds, 
 			if (result == 0) {
 					if (std::chrono::steady_clock::now() >= deadline) {
 					timed_out = true;
-					kill(pid, SIGKILL);
+					kill_process_group(pid);
 					waitpid(pid, &status, 0);
 					break;
 				}
@@ -72,7 +92,7 @@ static int run_command_with_timeout(const string &command, int timeout_seconds, 
 				if (errno == EINTR) {
 					continue;
 				}
-				kill(pid, SIGKILL);
+				kill_process_group(pid);
 				waitpid(pid, &status, 0);
 				return -1;
 			}

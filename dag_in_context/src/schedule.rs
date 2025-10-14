@@ -38,9 +38,10 @@ pub(crate) fn helpers() -> String {
     ;; These should be resolved before substitution
     {types_and_indexing}
 
-    ;; substitution depends on type helpers and ExprIsResolved
-    ;; run substitution multiple times for nested substitution
-    (saturate
+    ;; Substitution doesn't necessarily saturate if run multiple times, since
+    ;; dead code can enable infinite new substitutions.
+    ;; We run in 5 times, so no rules can do more than 5 substitutions.
+    (repeat 5
         (saturate 
             (saturate type-helpers)
             type-analysis)
@@ -59,6 +60,11 @@ pub(crate) fn helpers() -> String {
         apply-drop-unions
         cleanup-drop
     )
+
+    (saturate 
+        (saturate type-helpers)
+        type-analysis)
+    (saturate is-resolved)
 
     ;; similar to substitution, run term-related things
     (saturate
@@ -145,7 +151,7 @@ pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
     let mut res = vec![CompilerPass::Schedule(format!(
         "
 (run-schedule
-   (saturate
+   (repeat 4
       {helpers}
       passthrough
       state-edge-passthrough))"
@@ -194,7 +200,7 @@ pub fn parallel_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
         CompilerPass::Schedule(format!(
             "
 (run-schedule
-   (saturate
+   (repeat 3
       {helpers}
       passthrough
       state-edge-passthrough)
@@ -218,7 +224,7 @@ pub fn parallel_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
         CompilerPass::InlineWithSchedule(format!(
             "
 (run-schedule
-    (saturate
+    (repeat 3
       {helpers}
       passthrough
       state-edge-passthrough)
@@ -234,7 +240,7 @@ pub fn parallel_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
         cheap-optimizations
     )
 
-    (saturate
+    (repeat 3
       {helpers}
       passthrough
       state-edge-passthrough)

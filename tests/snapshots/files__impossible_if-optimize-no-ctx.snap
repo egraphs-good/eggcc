@@ -9,15 +9,26 @@ expression: visualization.result
   v3_: bool = lt v0 c2_;
   br v3_ .b4_ .b5_;
 .b4_:
+  v6_: bool = lt v0 c2_;
+  br v6_ .b7_ .b8_;
+.b7_:
   print c1_;
-  v6_: int = id c1_;
+  v9_: int = id c1_;
+  v10_: int = id v9_;
   print c1_;
   ret;
-  jmp .b7_;
+  jmp .b11_;
+.b8_:
+  print c2_;
+  v9_: int = id c1_;
+  v10_: int = id v9_;
+  print c1_;
+  ret;
+  jmp .b11_;
 .b5_:
   print c1_;
-  v6_: int = id c1_;
+  v10_: int = id c1_;
   print c1_;
   ret;
-.b7_:
+.b11_:
 }

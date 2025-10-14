@@ -6,13 +6,13 @@ expression: visualization.result
 @main(v0: int) {
   c1_: int = const 0;
   v2_: bool = gt v0 c1_;
-  c3_: int = const 2;
-  v4_: int = mul c3_ v0;
-  c5_: int = const 5;
-  v6_: int = mul c5_ v4_;
+  c3_: int = const 5;
+  c4_: int = const 2;
+  v5_: int = mul c4_ v0;
+  v6_: int = mul c3_ v5_;
   c7_: int = const 3;
   v8_: int = neg c7_;
-  v9_: int = mul v4_ v8_;
+  v9_: int = mul v5_ v8_;
   v10_: int = select v2_ v6_ v9_;
   v11_: bool = ge v10_ c1_;
   c12_: int = const 10;

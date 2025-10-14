@@ -31,8 +31,9 @@ expression: visualization.result
   v20_: int = select v17_ c18_ c19_;
   c21_: int = const 2;
   v22_: int = select v16_ v20_ c21_;
+  c23_: int = const 0;
   v12_: int = id v22_;
-  v13_: int = id c3_;
+  v13_: int = id c23_;
   v14_: int = select v2_ c1_ c3_;
   print v14_;
   print v2_;

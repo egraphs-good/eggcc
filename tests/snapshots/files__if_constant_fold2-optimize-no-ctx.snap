@@ -4,7 +4,15 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
-  c1_: int = const 20;
-  print c1_;
+  c1_: int = const 5;
+  v2_: bool = eq c1_ v0;
+  c3_: int = const 4;
+  v4_: int = mul c3_ v0;
+  v5_: bool = eq c3_ v0;
+  v6_: int = mul c1_ v0;
+  c7_: int = const 20;
+  v8_: int = select v5_ v6_ c7_;
+  v9_: int = select v2_ v4_ v8_;
+  print v9_;
   ret;
 }

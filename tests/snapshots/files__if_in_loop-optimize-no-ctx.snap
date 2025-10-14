@@ -7,30 +7,26 @@ expression: visualization.result
   c1_: int = const 0;
   c2_: int = const 1;
   c3_: int = const 10;
-  v4_: int = sub v0 c2_;
-  v5_: bool = lt v0 c2_;
-  v6_: int = select v5_ c2_ c1_;
+  v4_: int = id c1_;
+  v5_: int = id c2_;
+  v6_: int = id v0;
   v7_: int = id c1_;
-  v8_: int = id c2_;
-  v9_: int = id v0;
-  v10_: int = id c1_;
-  v11_: int = id c3_;
-  v12_: int = id v4_;
-  v13_: int = id v6_;
-.b14_:
-  v15_: bool = lt v12_ v10_;
+  v8_: int = id c3_;
+.b9_:
+  v10_: bool = le v6_ v7_;
+  c11_: int = const 1;
+  c12_: int = const 0;
+  v13_: int = select v10_ c11_ c12_;
   print v13_;
-  print v15_;
-  v16_: int = add v7_ v8_;
-  v17_: bool = lt v7_ v11_;
-  v7_: int = id v16_;
+  print v10_;
+  v14_: int = add v4_ v5_;
+  v15_: bool = lt v4_ v8_;
+  v4_: int = id v14_;
+  v5_: int = id v5_;
+  v6_: int = id v6_;
+  v7_: int = id v7_;
   v8_: int = id v8_;
-  v9_: int = id v9_;
-  v10_: int = id v10_;
-  v11_: int = id v11_;
-  v12_: int = id v12_;
-  v13_: int = id v13_;
-  br v17_ .b14_ .b18_;
-.b18_:
+  br v15_ .b9_ .b16_;
+.b16_:
   ret;
 }

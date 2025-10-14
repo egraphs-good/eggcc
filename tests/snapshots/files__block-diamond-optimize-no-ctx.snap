@@ -7,11 +7,43 @@ expression: visualization.result
   c1_: int = const 1;
   c2_: int = const 2;
   v3_: bool = lt v0 c2_;
-  c4_: int = const 4;
-  v5_: int = select v3_ c4_ c1_;
-  v6_: int = add c2_ v5_;
-  v7_: int = select v3_ v5_ v6_;
-  v8_: int = add c1_ v7_;
-  print v8_;
+  c4_: int = const 5;
+  v5_: bool = lt v0 c4_;
+  c6_: bool = const true;
+  c7_: bool = const false;
+  v8_: bool = select v5_ c6_ c7_;
+  v9_: bool = select v3_ v8_ c7_;
+  c10_: int = const 0;
+  br v3_ .b11_ .b12_;
+.b11_:
+  v13_: bool = lt v0 c4_;
+  v14_: int = add c10_ c2_;
+  v15_: int = add c2_ v14_;
+  v16_: int = select v13_ v15_ v14_;
+  c17_: bool = const true;
+  c18_: bool = const false;
+  v19_: bool = select v13_ c17_ c18_;
+  v20_: int = id v16_;
+  v21_: int = id c1_;
+  v22_: int = id c2_;
+  v23_: bool = id v19_;
+  v24_: int = add c2_ v20_;
+  v25_: int = select v9_ v20_ v24_;
+  v26_: int = add c1_ v25_;
+  print v26_;
   ret;
+  jmp .b27_;
+.b12_:
+  v28_: int = add c10_ c1_;
+  c29_: bool = const false;
+  v20_: int = id v28_;
+  v21_: int = id c1_;
+  v22_: int = id c2_;
+  v23_: bool = id c29_;
+  v24_: int = add c2_ v20_;
+  v25_: int = select v9_ v20_ v24_;
+  v26_: int = add c1_ v25_;
+  print v26_;
+  ret;
+.b27_:
 }

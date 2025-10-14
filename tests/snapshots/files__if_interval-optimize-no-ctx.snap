@@ -4,7 +4,13 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
-  c1_: bool = const true;
-  print c1_;
+  c1_: int = const 1;
+  v2_: bool = lt v0 c1_;
+  c3_: int = const 0;
+  c4_: int = const 3;
+  v5_: int = select v2_ c3_ c4_;
+  c6_: int = const 10;
+  v7_: bool = lt v5_ c6_;
+  print v7_;
   ret;
 }

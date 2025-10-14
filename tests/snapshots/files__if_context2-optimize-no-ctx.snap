@@ -4,7 +4,12 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
-  c1_: bool = const true;
-  print c1_;
+  c1_: int = const 1;
+  v2_: bool = lt v0 c1_;
+  c3_: int = const -1;
+  v4_: int = mul c3_ v0;
+  v5_: int = select v2_ v0 v4_;
+  v6_: bool = lt v5_ c1_;
+  print v6_;
   ret;
 }

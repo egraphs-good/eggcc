@@ -626,17 +626,6 @@ pub fn optimize(
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
-        // Add context first thing, since function inlining depends on it already having context
-        // After every extraction, context is erased.
-        // HACK: inlining relies on context, so always add it when inlining
-        res = if eggcc_config.use_context
-            || matches!(schedule, schedule::CompilerPass::InlineWithSchedule(_))
-        {
-            res.add_context().0
-        } else {
-            res.add_dummy_ctx().0
-        };
-
         let mut should_maintain_linearity = true;
         if i == cutoff - 1 {
             should_maintain_linearity = eggcc_config.linearity;

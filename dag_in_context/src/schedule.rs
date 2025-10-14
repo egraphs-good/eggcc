@@ -30,6 +30,7 @@ pub(crate) fn types_and_indexing() -> String {
         .to_string()
 }
 
+// Unfortunately due to substition, helpers cannot be saturated.
 pub(crate) fn helpers() -> String {
     let types_and_indexing = types_and_indexing();
     format!(

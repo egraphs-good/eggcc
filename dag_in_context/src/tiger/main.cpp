@@ -1,15 +1,17 @@
-#include<map>
-#include<set>
-#include<queue>
-#include<vector>
-#include<cstdio>
-#include<climits>
-#include<cassert>
-#include<cstring>
-#include<string>
-#include<iostream>
 #include<algorithm>
+#include<cassert>
+#include<chrono>
+#include<climits>
+#include<cstring>
+#include<cstdio>
+#include<cstdlib>
 #include<fstream>
+#include<iostream>
+#include<map>
+#include<queue>
+#include<set>
+#include<string>
+#include<vector>
 #include"ilp.h"
 
 using namespace std;
@@ -880,8 +882,16 @@ Extraction extractRegion(const EGraph &g, const EClassId initc, const ENodeId in
 	if (g_ilp_mode) {
 		return extractRegionILP(g, initc, initn, root, nsubregion);
 	} else {
+		auto start = std::chrono::steady_clock::now();
 		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
-		return regionExtractionWithStateWalk(g, root, sw).second;
+		Extraction extraction = regionExtractionWithStateWalk(g, root, sw).second;
+		auto elapsed = std::chrono::steady_clock::now() - start;
+		auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+		if (elapsed_seconds > g_ilp_timeout_seconds) {
+			cout << "TIMEOUT" << endl;
+			std::exit(1);
+		}
+		return extraction;
 	}
 }
 

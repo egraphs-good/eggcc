@@ -311,6 +311,18 @@ static unordered_map<string, bool> build_binary_value_map(
 }
 
 template <typename FailFn>
+static bool require_binary_value(const unordered_map<string, bool> &value_map,
+									 const string &name,
+									 const FailFn &fail) {
+	auto it = value_map.find(name);
+	if (it == value_map.end()) {
+		fail(string("missing solver assignment for variable ") + name);
+		return false;
+	}
+	return it->second;
+}
+
+template <typename FailFn>
 vector<pair<EClassId, ENodeId>> build_child_selection_for_roots(
 		const EGraph &g,
 		EClassId root_class,
@@ -346,11 +358,7 @@ vector<pair<EClassId, ENodeId>> build_child_selection_for_roots(
 			vector<int> selected_choices;
 			selected_choices.reserve(choice_list.size());
 			for (int choice_idx : choice_list) {
-				bool chosen = false;
-				auto it_val = value_map.find(choices[choice_idx].name);
-				if (it_val != value_map.end()) {
-					chosen = it_val->second;
-				}
+				bool chosen = require_binary_value(value_map, choices[choice_idx].name, fail);
 				if (chosen) {
 					selected_choices.push_back(choice_idx);
 				}
@@ -359,18 +367,10 @@ vector<pair<EClassId, ENodeId>> build_child_selection_for_roots(
 				cerr << "Missing child selection for eclass " << c << " node " << n
 				     << " child index " << child_idx << " options:";
 				for (int idx : choice_list) {
-					bool opt_v = false;
-					auto it_opt = value_map.find(choices[idx].name);
-					if (it_opt != value_map.end()) {
-						opt_v = it_opt->second;
-					}
+					bool opt_v = require_binary_value(value_map, choices[idx].name, fail);
 					cerr << ' ' << choices[idx].name << "=" << (opt_v ? 1 : 0);
 				}
-				bool pick_v = false;
-				auto it_pick = value_map.find(pickNode[c][n]);
-				if (it_pick != value_map.end()) {
-					pick_v = it_pick->second;
-				}
+				bool pick_v = require_binary_value(value_map, pickNode[c][n], fail);
 				cerr << " (pickNode=" << (pick_v ? 1 : 0) << ")" << endl;
 				fail("missing child selection for picked enode");
 			}
@@ -432,18 +432,10 @@ vector<pair<EClassId, ENodeId>> build_child_selection_for_roots(
 				cerr << "Missing child selection for eclass " << c << " node " << n
 				     << " child index " << child_idx << " options:";
 				for (int idx : choice_list) {
-					bool opt_v = false;
-					auto it_opt = value_map.find(choices[idx].name);
-					if (it_opt != value_map.end()) {
-						opt_v = it_opt->second;
-					}
+					bool opt_v = require_binary_value(value_map, choices[idx].name, fail);
 					cerr << ' ' << choices[idx].name << "=" << (opt_v ? 1 : 0);
 				}
-				bool pick_v = false;
-				auto it_pick = value_map.find(pickNode[c][n]);
-				if (it_pick != value_map.end()) {
-					pick_v = it_pick->second;
-				}
+				bool pick_v = require_binary_value(value_map, pickNode[c][n], fail);
 				cerr << " (pickNode=" << (pick_v ? 1 : 0) << ")" << endl;
 				fail("missing child selection for picked enode");
 			}
@@ -811,7 +803,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		pickSelected[c].assign(g.eclasses[c].enodes.size(), 0);
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			bool selected = value_map.at(pickNode[c][n]);
+			bool selected = require_binary_value(value_map, pickNode[c][n], fail);
 			if (selected) {
 				pickSelected[c][n] = 1;
 			}
@@ -821,7 +813,8 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (!g.eclasses[root].enodes.empty()) {
 		cerr << "ILP root diagnostics (class " << root << "):\n";
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[root].enodes.size(); ++n) {
-			double root_value = value_map.at(pickNode[root][n]) ? 1.0 : 0.0;
+			bool root_selected = require_binary_value(value_map, pickNode[root][n], fail);
+			double root_value = root_selected ? 1.0 : 0.0;
 			if (values.count(pickNode[root][n])) {
 				saw_root_assignment = true;
 			}

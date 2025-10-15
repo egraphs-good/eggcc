@@ -2,7 +2,6 @@
 
 import json
 import os
-import time
 from glob import glob
 from sys import stdout
 import sys

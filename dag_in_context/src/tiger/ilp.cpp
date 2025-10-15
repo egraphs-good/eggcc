@@ -663,13 +663,10 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		fail("init enode not selected");
 	}*/
 
-	vector<vector<vector<vector<ENodeId> > > > childSelectionOptions(g.eclasses.size());
 	vector<vector<vector<ENodeId> > > childSelection(g.eclasses.size());
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		childSelectionOptions[c].resize(g.eclasses[c].enodes.size());
 		childSelection[c].resize(g.eclasses[c].enodes.size());
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			childSelectionOptions[c][n].resize(g.eclasses[c].enodes[n].ch.size());
 			childSelection[c][n].assign(g.eclasses[c].enodes[n].ch.size(), -1);
 		}
 	}
@@ -682,35 +679,12 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 				for (int idx : list) {
 					double v = get_value(choices[idx].name);
 					if (v > 0.5) {
-						childSelectionOptions[c][n][child_idx].push_back(choices[idx].child_node);
+						if (childSelection[c][n][child_idx] != -1) {
+							fail("multiple child selections detected for a single child");
+						}
+						childSelection[c][n][child_idx] = choices[idx].child_node;
 					}
 				}
-			}
-		}
-	}
-
-	// pick children, preferring selected children when possible
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			const ENode &en = g.eclasses[c].enodes[n];
-			for (int child_idx = 0; child_idx < (int)en.ch.size(); ++child_idx) {
-				const vector<ENodeId> &options = childSelectionOptions[c][n][child_idx];
-				if (options.empty()) {
-					continue;
-				}
-				EClassId child_class = en.ch[child_idx];
-				ENodeId chosen = -1;
-				for (ENodeId candidate : options) {
-					if (candidate >= 0 && candidate < (ENodeId)g.eclasses[child_class].enodes.size() &&
-						pickSelected[child_class][candidate]) {
-						chosen = candidate;
-						break;
-					}
-				}
-				if (chosen == -1) {
-					chosen = options.back();
-				}
-				childSelection[c][n][child_idx] = chosen;
 			}
 		}
 	}

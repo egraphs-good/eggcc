@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -278,7 +279,38 @@ static inline long long encode_child_selection_key(EClassId cls, ENodeId node) {
 	       static_cast<unsigned long long>(static_cast<unsigned int>(node));
 }
 
-template <typename GetValueFn, typename FailFn>
+static unordered_map<string, bool> build_binary_value_map(
+		const vector<vector<string> > &pickNode,
+		const vector<ChoiceVar> &choices,
+		const unordered_map<string, double> &raw_values) {
+	size_t estimate = choices.size();
+	for (const auto &row : pickNode) {
+		estimate += row.size();
+	}
+	unordered_map<string, bool> result;
+	result.reserve(estimate);
+	for (const auto &row : pickNode) {
+		for (const string &name : row) {
+			double value = 0.0;
+			auto it = raw_values.find(name);
+			if (it != raw_values.end()) {
+				value = it->second;
+			}
+			result.emplace(name, value > 0.5);
+		}
+	}
+	for (const ChoiceVar &cv : choices) {
+		double value = 0.0;
+		auto it = raw_values.find(cv.name);
+		if (it != raw_values.end()) {
+			value = it->second;
+		}
+		result.emplace(cv.name, value > 0.5);
+	}
+	return result;
+}
+
+template <typename FailFn>
 vector<pair<EClassId, ENodeId>> build_child_selection_for_roots(
 		const EGraph &g,
 		EClassId root_class,
@@ -287,7 +319,7 @@ vector<pair<EClassId, ENodeId>> build_child_selection_for_roots(
 		const vector<vector<vector<vector<int> > > > &choiceIndex,
 		const vector<ChoiceVar> &choices,
 		const vector<vector<string> > &pickNode,
-		const GetValueFn &get_value,
+		const unordered_map<string, bool> &value_map,
 		const FailFn &fail,
 		vector<vector<vector<ENodeId> > > &childSelection) {
 	unordered_set<long long> visiting;
@@ -314,8 +346,12 @@ vector<pair<EClassId, ENodeId>> build_child_selection_for_roots(
 			vector<int> selected_choices;
 			selected_choices.reserve(choice_list.size());
 			for (int choice_idx : choice_list) {
-				double v = get_value(choices[choice_idx].name);
-				if (v > 0.5) {
+				bool chosen = false;
+				auto it_val = value_map.find(choices[choice_idx].name);
+				if (it_val != value_map.end()) {
+					chosen = it_val->second;
+				}
+				if (chosen) {
 					selected_choices.push_back(choice_idx);
 				}
 			}
@@ -323,9 +359,19 @@ vector<pair<EClassId, ENodeId>> build_child_selection_for_roots(
 				cerr << "Missing child selection for eclass " << c << " node " << n
 				     << " child index " << child_idx << " options:";
 				for (int idx : choice_list) {
-					cerr << ' ' << choices[idx].name << "=" << get_value(choices[idx].name);
+					bool opt_v = false;
+					auto it_opt = value_map.find(choices[idx].name);
+					if (it_opt != value_map.end()) {
+						opt_v = it_opt->second;
+					}
+					cerr << ' ' << choices[idx].name << "=" << (opt_v ? 1 : 0);
 				}
-				cerr << " (pickNode=" << get_value(pickNode[c][n]) << ")" << endl;
+				bool pick_v = false;
+				auto it_pick = value_map.find(pickNode[c][n]);
+				if (it_pick != value_map.end()) {
+					pick_v = it_pick->second;
+				}
+				cerr << " (pickNode=" << (pick_v ? 1 : 0) << ")" << endl;
 				fail("missing child selection for picked enode");
 			}
 			int chosen_choice_idx = selected_choices[0];
@@ -386,9 +432,19 @@ vector<pair<EClassId, ENodeId>> build_child_selection_for_roots(
 				cerr << "Missing child selection for eclass " << c << " node " << n
 				     << " child index " << child_idx << " options:";
 				for (int idx : choice_list) {
-					cerr << ' ' << choices[idx].name << "=" << get_value(choices[idx].name);
+					bool opt_v = false;
+					auto it_opt = value_map.find(choices[idx].name);
+					if (it_opt != value_map.end()) {
+						opt_v = it_opt->second;
+					}
+					cerr << ' ' << choices[idx].name << "=" << (opt_v ? 1 : 0);
 				}
-				cerr << " (pickNode=" << get_value(pickNode[c][n]) << ")" << endl;
+				bool pick_v = false;
+				auto it_pick = value_map.find(pickNode[c][n]);
+				if (it_pick != value_map.end()) {
+					pick_v = it_pick->second;
+				}
+				cerr << " (pickNode=" << (pick_v ? 1 : 0) << ")" << endl;
 				fail("missing child selection for picked enode");
 			}
 			EClassId child_class = en.ch[child_idx];
@@ -723,10 +779,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	SolverSolution solver_solution = parse_solver_solution(sol_path, solver_log, solver_name, g_use_gurobi, fail_with_log);
 	const unordered_map<string, double> &values = solver_solution.values;
 	bool infeasible = solver_solution.infeasible;
-	auto get_value = [&](const string &name) -> double {
-		auto it = values.find(name);
-		return it != values.end() ? it->second : 0.0;
-	};
+	unordered_map<string, bool> value_map = build_binary_value_map(pickNode, choices, values);
 	if (infeasible) {
 		cout << "infeasible" << endl;
 		// try the old extraction method for debugging
@@ -758,8 +811,8 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		pickSelected[c].assign(g.eclasses[c].enodes.size(), 0);
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			double v = get_value(pickNode[c][n]);
-			if (v > 0.5) {
+			bool selected = value_map.at(pickNode[c][n]);
+			if (selected) {
 				pickSelected[c][n] = 1;
 			}
 		}
@@ -768,7 +821,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (!g.eclasses[root].enodes.empty()) {
 		cerr << "ILP root diagnostics (class " << root << "):\n";
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[root].enodes.size(); ++n) {
-			double root_value = get_value(pickNode[root][n]);
+			double root_value = value_map.at(pickNode[root][n]) ? 1.0 : 0.0;
 			if (values.count(pickNode[root][n])) {
 				saw_root_assignment = true;
 			}
@@ -807,7 +860,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 
 	vector<pair<EClassId, ENodeId>> child_selection_order =
 		build_child_selection_for_roots(g, root, root_enodes, pickSelected, choiceIndex,
-		                                choices, pickNode, get_value, fail, childSelection);
+		                                choices, pickNode, value_map, fail, childSelection);
 	cerr << "Selected parent/child edges:\n";
 	for (const auto &node : child_selection_order) {
 		EClassId c = node.first;

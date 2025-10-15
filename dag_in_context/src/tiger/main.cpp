@@ -1115,8 +1115,8 @@ int main(int argc, char** argv) {
 			g_ilp_mode = true;
 			continue;
 		}
-		if (arg == "--ilp-minimize") {
-			g_ilp_minimize_objective = true;
+		if (arg == "--ilp-no-minimize") {
+			g_ilp_minimize_objective = false;
 			continue;
 		}
 		cerr << "Unknown argument: " << arg << endl;

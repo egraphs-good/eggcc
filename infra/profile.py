@@ -426,7 +426,11 @@ if __name__ == '__main__':
 
   compile_data = {}
   # get the number of cores on this machine 
-  parallelism = os.cpu_count()
+  parallelism = (os.cpu_count() - 1)
+  # for large machines leave a few cores free
+  if parallelism > 30:
+    parallelism -= 4
+
 
   # create a thread pool for running optimization
   with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:

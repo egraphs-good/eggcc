@@ -22,11 +22,11 @@
 
 using namespace std;
 
-bool g_use_gurobi = true;
+bool g_use_gurobi = false;
 // 1 minute timeout
 // TODO increase for eval runs
-int g_ilp_timeout_seconds = 5 * 60;
-bool g_ilp_minimize_objective = false;
+int g_ilp_timeout_seconds = 1 * 60;
+bool g_ilp_minimize_objective = true;
 
 static void kill_process_group(pid_t pid) {
 	if (pid <= 0) {

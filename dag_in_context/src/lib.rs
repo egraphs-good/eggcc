@@ -366,6 +366,8 @@ pub struct EggccConfig {
     /// If use_tiger is true and tiger_ilp is true, use ILP extraction in tiger instead of greedy extraction.
     pub tiger_ilp: bool,
     pub use_context: bool,
+    /// When using the tiger ILP extractor, minimize the objective in the solver.
+    pub ilp_minimize_objective: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -424,6 +426,7 @@ impl Default for EggccConfig {
             use_tiger: false,
             tiger_ilp: false,
             use_context: true,
+            ilp_minimize_objective: true,
         }
     }
 }
@@ -548,11 +551,13 @@ fn run_tiger_pipeline(
         .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())
         .unwrap();
 
-    let tiger_args: Vec<&std::ffi::OsStr> = if eggcc_config.tiger_ilp {
-        vec![std::ffi::OsStr::new("--ilp-mode")]
-    } else {
-        Vec::new()
-    };
+    let mut tiger_args: Vec<&std::ffi::OsStr> = Vec::new();
+    if eggcc_config.tiger_ilp {
+        tiger_args.push(std::ffi::OsStr::new("--ilp-mode"));
+        if !eggcc_config.ilp_minimize_objective {
+            tiger_args.push(std::ffi::OsStr::new("--ilp-no-minimize"));
+        }
+    }
 
     let tiger_output = match run_cmd_line(tiger_bin.as_os_str(), tiger_args, &egraph_text) {
         Ok(output) => output,

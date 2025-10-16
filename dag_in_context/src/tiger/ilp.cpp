@@ -381,6 +381,55 @@ void build_child_selection_for_roots(
 	}
 }
 
+template <typename FailFn>
+static ExtractionENodeId build_extraction_node(
+		const EGraph &g,
+		const vector<vector<vector<ENodeId> > > &childSelection,
+		EClassId c,
+		ENodeId n,
+		vector<ExtractionENode> &extraction,
+		unordered_map<long long, ExtractionENodeId> &nodeIndex,
+		unordered_set<long long> &usedEffectful,
+		unordered_set<long long> &visiting,
+		const FailFn &fail) {
+	long long key = (static_cast<long long>(c) << 32) |
+	               static_cast<unsigned long long>(static_cast<unsigned int>(n));
+	auto it = nodeIndex.find(key);
+	if (it != nodeIndex.end()) {
+		return it->second;
+	}
+	if (visiting.count(key)) {
+		fail("cycle detected when building extraction");
+	}
+	visiting.insert(key);
+	const ENode &en = g.eclasses[c].enodes[n];
+	vector<ExtractionENodeId> ch_idx;
+	ch_idx.reserve(en.ch.size());
+	for (int child_i = 0; child_i < (int)en.ch.size(); ++child_i) {
+		EClassId child_class = en.ch[child_i];
+		ENodeId child_node = childSelection[c][n][child_i];
+		if (child_node == -1) {
+			fail("missing child during extraction reconstruction");
+		}
+		ExtractionENodeId child_ex = build_extraction_node(
+			g, childSelection, child_class, child_node,
+			extraction, nodeIndex, usedEffectful, visiting, fail);
+		ch_idx.push_back(child_ex);
+	}
+	visiting.erase(key);
+	ExtractionENode node;
+	node.c = c;
+	node.n = n;
+	node.ch = ch_idx;
+	ExtractionENodeId idx = extraction.size();
+	extraction.push_back(node);
+	nodeIndex[key] = idx;
+	if (g.eclasses[c].isEffectful) {
+		usedEffectful.insert(key);
+	}
+	return idx;
+}
+
 } // namespace
 
 Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion)  {
@@ -788,45 +837,10 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	unordered_map<long long, ExtractionENodeId> nodeIndex;
 	unordered_set<long long> usedEffectful;
 	unordered_set<long long> visiting;
-	function<ExtractionENodeId(EClassId, ENodeId)> build = [&](EClassId c, ENodeId n) -> ExtractionENodeId {
-		long long key = (static_cast<long long>(c) << 32) | static_cast<unsigned long long>(static_cast<unsigned int>(n));
-		
-    auto it = nodeIndex.find(key);
-    if (it != nodeIndex.end()) {
-      return it->second;
-    }
-    if (visiting.count(key)) {
-			fail("cycle detected when building extraction");
-		}
-		visiting.insert(key);
-		const ENode &en = g.eclasses[c].enodes[n];
-		vector<ExtractionENodeId> ch_idx;
-		ch_idx.reserve(en.ch.size());
-		for (int child_i = 0; child_i < (int)en.ch.size(); ++child_i) {
-			EClassId child_class = en.ch[child_i];
-			ENodeId child_node = childSelection[c][n][child_i];
-			if (child_node == -1) {
-				fail("missing child during extraction reconstruction");
-			}
-			ExtractionENodeId child_ex = build(child_class, child_node);
-			ch_idx.push_back(child_ex);
-		}
-		visiting.erase(key);
-		ExtractionENode node;
-		node.c = c;
-		node.n = n;
-		node.ch = ch_idx;
-		ExtractionENodeId idx = extraction.size();
-		extraction.push_back(node);
-		nodeIndex[key] = idx;
-		if (g.eclasses[c].isEffectful) {
-			usedEffectful.insert(key);
-		}
-		return idx;
-	};
 
 	for (ENodeId root_node : root_enodes) {
-		build(root, root_node);
+		build_extraction_node(g, childSelection, root, root_node,
+								extraction, nodeIndex, usedEffectful, visiting, fail);
 	}
 	if (extraction.empty()) {
 		fail("extraction is empty");

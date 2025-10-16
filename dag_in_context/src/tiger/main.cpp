@@ -140,7 +140,8 @@ bool validExtraction(const EGraph &g, const EClassId root, const Extraction &e) 
 				cerr << "Found: " << ch << endl;
 				return false;
 			}
-			if (e[ch].c != g.eclasses[n.c].enodes[n.n].ch[j]) {
+			EClassId expected_child = g.eclasses[n.c].enodes[n.n].ch[j];
+			if (e[ch].c != expected_child) {
 				cerr << "Error: Extraction referring to a child of wrong eclass." << endl;
 				return false;
 			}
@@ -276,51 +277,59 @@ struct SubEGraphMap {
 	vector<vector<int> > nsubregion;
 };
 
+static EClassId get_inv_entry_or_fail(const map<EClassId, EClassId> &inv,
+									 		 EClassId key,
+									 		 const char *context) {
+	auto it = inv.find(key);
+	if (it == inv.end()) {
+		cerr << "Error: SubEGraphMap missing mapping for eclass " << key;
+		if (context != nullptr) {
+			cerr << " while " << context;
+		}
+		cerr << endl;
+		exit(1);
+	}
+	return it->second;
+}
+
 pair<EGraph, SubEGraphMap> createRegionEGraph(const EGraph &g, const EClassId region_root) {
 	SubEGraphMap mp;
-	mp.inv[region_root] = 0;
-	mp.eclassmp.push_back(region_root);
-	mp.nsubregion.push_back(vector<int>(g.eclasses[region_root].enodes.size(), 0));
-	// First BFS: only follow non-subregion child edges to get connected effectful eclasses
-	for (int _ = 0; _ < (int)mp.eclassmp.size(); ++_) {
-		EClassId u = mp.eclassmp[_];
-		assert(mp.nsubregion[mp.inv[u]].size() == g.eclasses[u].enodes.size());
+	queue<EClassId> worklist;
+	auto enqueue = [&](EClassId c) {
+		if (mp.inv.count(c)) {
+			return;
+		}
+		mp.inv[c] = mp.eclassmp.size();
+		mp.eclassmp.push_back(c);
+		mp.nsubregion.push_back(vector<int>(g.eclasses[c].enodes.size(), 0));
+		worklist.push(c);
+	};
+
+	enqueue(region_root);
+	while (!worklist.empty()) {
+		EClassId u = worklist.front();
+		worklist.pop();
+		EClassId u_idx = get_inv_entry_or_fail(mp.inv, u, "accessing nsubregion");
+		assert(mp.nsubregion[u_idx].size() == g.eclasses[u].enodes.size());
+		bool parent_effectful = g.eclasses[u].isEffectful;
 		for (int i = 0; i < (int)g.eclasses[u].enodes.size(); ++i) {
-			bool subregionchild = false;
+			bool saw_effectful_child = false;
 			for (int j = 0; j < (int)g.eclasses[u].enodes[i].ch.size(); ++j) {
 				EClassId v = g.eclasses[u].enodes[i].ch[j];
 				if (g.eclasses[v].isEffectful) {
-					if (subregionchild) {
-						mp.nsubregion[mp.inv[u]][i]++;
+					if (saw_effectful_child) {
+						if (parent_effectful) {
+							mp.nsubregion[u_idx][i]++;
+						}
 						continue;
 					}
-					subregionchild = true;
-					if (!mp.inv.count(v)) {
-						mp.inv[v] = mp.eclassmp.size();
-						mp.eclassmp.push_back(v);
-						mp.nsubregion.push_back(vector<int>(g.eclasses[v].enodes.size(), 0));
-					}
+					saw_effectful_child = true;
 				}
+				enqueue(v);
 			}
 		}
 	}
-	// Second BFS: only look at pure children
-	for (int _ = 0; _ < (int)mp.eclassmp.size(); ++_) {
-		EClassId u = mp.eclassmp[_];
-		for (int i = 0; i < (int)g.eclasses[u].enodes.size(); ++i) {
-			for (int j = 0; j < (int)g.eclasses[u].enodes[i].ch.size(); ++j) {
-				EClassId v = g.eclasses[u].enodes[i].ch[j];
-				if (!g.eclasses[v].isEffectful) {
-					if (!mp.inv.count(v)) {
-						mp.inv[v] = mp.eclassmp.size();
-						mp.eclassmp.push_back(v);
-						mp.nsubregion.push_back(vector<int>(g.eclasses[v].enodes.size(), 0));
-					}
-				}
-			}
-		}
-	}
-	// Add all the enodes
+
 	EGraph gr;
 	for (int i = 0; i < (int)mp.eclassmp.size(); ++i) {
 		EClass c;
@@ -338,7 +347,7 @@ pair<EGraph, SubEGraphMap> createRegionEGraph(const EGraph &g, const EClassId re
 					}
 					subregionchild = true;
 				}
-				c.enodes[j].ch.push_back(mp.inv[cp]);
+				c.enodes[j].ch.push_back(get_inv_entry_or_fail(mp.inv, cp, "building region egraph"));
 			}
 		}
 		gr.eclasses.push_back(c);
@@ -908,7 +917,7 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 	pair<EClassId, ENodeId> arg = findArg(gr);
 	EClassId argc = arg.first;
 	ENodeId argn = arg.second;
-	EClassId root = rmap.inv[region_root];
+	EClassId root = get_inv_entry_or_fail(rmap.inv, region_root, "getting region root mapping");
 	Extraction er = extractRegion(gr, argc, argn, root, rmap.nsubregion);
 	Extraction ner(er.size());
 	for (int i = 0; i < (int)er.size(); ++i) {
@@ -948,7 +957,7 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 				ner[i].ch[j] += delta;
 			}
 		}
-	}
+		}
 	e.insert(e.end(), ner.begin(), ner.end());
 	extracted_roots[cur_region] = e.size() - 1;
 	return extracted_roots[cur_region];

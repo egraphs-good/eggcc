@@ -275,6 +275,7 @@ struct SubEGraphMap {
 	vector<EClassId> eclassmp;
 	map<EClassId, EClassId> inv;
 	vector<vector<int> > nsubregion;
+	vector<vector<ENodeId> > enode_map;
 };
 
 static EClassId get_inv_entry_or_fail(const map<EClassId, EClassId> &inv,
@@ -292,6 +293,21 @@ static EClassId get_inv_entry_or_fail(const map<EClassId, EClassId> &inv,
 	return it->second;
 }
 
+static bool should_skip_region_enode(const EGraph &g,
+								 const EClassId parent_eclass,
+								 const ENode &enode,
+								 const EClassId region_root) {
+	if (!g.eclasses[parent_eclass].isEffectful) {
+		return false;
+	}
+	for (EClassId child : enode.ch) {
+		if (g.eclasses[child].isEffectful && child == region_root) {
+			return true;
+		}
+	}
+	return false;
+}
+
 pair<EGraph, SubEGraphMap> createRegionEGraph(const EGraph &g, const EClassId region_root) {
 	SubEGraphMap mp;
 	queue<EClassId> worklist;
@@ -302,6 +318,7 @@ pair<EGraph, SubEGraphMap> createRegionEGraph(const EGraph &g, const EClassId re
 		mp.inv[c] = mp.eclassmp.size();
 		mp.eclassmp.push_back(c);
 		mp.nsubregion.push_back(vector<int>(g.eclasses[c].enodes.size(), 0));
+		mp.enode_map.push_back(vector<ENodeId>());
 		worklist.push(c);
 	};
 
@@ -334,22 +351,37 @@ pair<EGraph, SubEGraphMap> createRegionEGraph(const EGraph &g, const EClassId re
 	for (int i = 0; i < (int)mp.eclassmp.size(); ++i) {
 		EClass c;
 		c.isEffectful = g.eclasses[mp.eclassmp[i]].isEffectful;
-		c.enodes.resize(g.eclasses[mp.eclassmp[i]].enodes.size());
-		for (int j = 0; j < (int)g.eclasses[mp.eclassmp[i]].enodes.size(); ++j) {
+		const auto &orig_enodes = g.eclasses[mp.eclassmp[i]].enodes;
+		vector<int> filtered_nsubregion;
+		vector<ENodeId> filtered_enode_map;
+		for (int j = 0; j < (int)orig_enodes.size(); ++j) {
+			const ENode &orig_node = orig_enodes[j];
+			if (should_skip_region_enode(g, mp.eclassmp[i], orig_node, region_root)) {
+				continue;
+			}
+			ENode node;
+			node.eclass = i;
+			node.head = orig_node.head;
 			bool subregionchild = false;
-			c.enodes[j].eclass = i;
-			c.enodes[j].head = g.eclasses[mp.eclassmp[i]].enodes[j].head;
-			for (int k = 0; k < (int)g.eclasses[mp.eclassmp[i]].enodes[j].ch.size(); ++k) {
-				EClassId cp = g.eclasses[mp.eclassmp[i]].enodes[j].ch[k];
+			for (int k = 0; k < (int)orig_node.ch.size(); ++k) {
+				EClassId cp = orig_node.ch[k];
 				if (g.eclasses[cp].isEffectful) {
 					if (subregionchild) {
 						continue;
 					}
 					subregionchild = true;
 				}
-				c.enodes[j].ch.push_back(get_inv_entry_or_fail(mp.inv, cp, "building region egraph"));
+				node.ch.push_back(get_inv_entry_or_fail(mp.inv, cp, "building region egraph"));
 			}
+			c.enodes.push_back(node);
+			filtered_nsubregion.push_back(mp.nsubregion[i][j]);
+			filtered_enode_map.push_back(j);
 		}
+		assert(!c.enodes.empty() && "Region eclass became empty after filtering unextractable nodes");
+		assert(filtered_nsubregion.size() == c.enodes.size());
+		assert(filtered_enode_map.size() == c.enodes.size());
+		mp.nsubregion[i] = filtered_nsubregion;
+		mp.enode_map[i] = filtered_enode_map;
 		gr.eclasses.push_back(c);
 	}
 	return make_pair(gr, mp);
@@ -924,7 +956,9 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 		ExtractionENode &en = er[i], &nen = ner[i];
 		EClassId oric = rmap.eclassmp[en.c];
 		nen.c = oric;
-		ENodeId orin = en.n;
+		assert(en.c < (int)rmap.enode_map.size());
+		assert(en.n < (int)rmap.enode_map[en.c].size());
+		ENodeId orin = rmap.enode_map[en.c][en.n];
 		nen.n = orin;
 		bool subregionchild = false;
 		for (int j = 0, k = 0; j < (int)g.eclasses[oric].enodes[orin].ch.size(); ++j) {

@@ -16,6 +16,8 @@ const COLORS = {
   "llvm-eggcc-tiger-O0-O0": "cyan",
   "llvm-eggcc-tiger-WL-O0-O0": "magenta",
   "llvm-eggcc-tiger-ILP-O0-O0": "green",
+  "llvm-eggcc-tiger-ILP-NOMIN-O0-O0": "darkgreen",
+  "llvm-eggcc-NOCTX-O0-O0": "gray",
 };
 
 const BASELINE_MODE = "llvm-O0-O0";

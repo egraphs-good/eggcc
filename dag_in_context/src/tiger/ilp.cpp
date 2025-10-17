@@ -15,14 +15,32 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <thread>
+#include <unistd.h>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 using namespace std;
 
 bool g_use_gurobi = false;
-// 5 minute timeout
-int g_ilp_timeout_seconds = 5 * 60;
+// 1 minute timeout
+// TODO increase for eval runs
+int g_ilp_timeout_seconds = 1 * 60;
+bool g_ilp_minimize_objective = true;
+
+static void kill_process_group(pid_t pid) {
+	if (pid <= 0) {
+		return;
+	}
+	pid_t pgid = getpgid(pid);
+	if (pgid == pid) {
+		if (kill(-pgid, SIGKILL) == -1 && errno != ESRCH) {
+			kill(pid, SIGKILL);
+		}
+	} else {
+		kill(pid, SIGKILL);
+	}
+}
 
 static int run_command_with_timeout(const string &command, int timeout_seconds, bool &timed_out) {
 	timed_out = false;
@@ -36,16 +54,21 @@ static int run_command_with_timeout(const string &command, int timeout_seconds, 
 		return -1;
 	}
 	if (pid == 0) {
+		if (setsid() == -1) {
+			setpgid(0, 0);
+		}
 		execl("/bin/sh", "sh", "-c", command.c_str(), (char *)nullptr);
 		_exit(127);
 	}
+	setpgid(pid, pid);
+		
 
 	int status = 0;
 	if (timeout_seconds <= 0) {
 		while (waitpid(pid, &status, 0) < 0) {
 			if (errno != EINTR) {
 				int err = errno;
-				kill(pid, SIGKILL);
+				kill_process_group(pid);
 				waitpid(pid, &status, 0);
 				errno = err;
 				return -1;
@@ -61,7 +84,7 @@ static int run_command_with_timeout(const string &command, int timeout_seconds, 
 			if (result == 0) {
 					if (std::chrono::steady_clock::now() >= deadline) {
 					timed_out = true;
-					kill(pid, SIGKILL);
+					kill_process_group(pid);
 					waitpid(pid, &status, 0);
 					break;
 				}
@@ -72,7 +95,7 @@ static int run_command_with_timeout(const string &command, int timeout_seconds, 
 				if (errno == EINTR) {
 					continue;
 				}
-				kill(pid, SIGKILL);
+				kill_process_group(pid);
 				waitpid(pid, &status, 0);
 				return -1;
 			}
@@ -240,6 +263,175 @@ void print_eclass(ostream &out, const EGraph &g, EClassId c) {
 	}
 }
 
+namespace {
+
+struct ChoiceVar {
+	string name;
+	EClassId parent_class;
+	ENodeId parent_node;
+	int child_idx;
+	EClassId child_class;
+	ENodeId child_node;
+};
+
+static inline long long encode_child_selection_key(EClassId cls, ENodeId node) {
+	return (static_cast<long long>(cls) << 32) |
+	       static_cast<unsigned long long>(static_cast<unsigned int>(node));
+}
+
+static unordered_map<string, bool> build_binary_value_map(
+		const vector<vector<string> > &pickNode,
+		const vector<ChoiceVar> &choices,
+		const unordered_map<string, double> &raw_values) {
+	size_t estimate = choices.size();
+	for (const auto &row : pickNode) {
+		estimate += row.size();
+	}
+	unordered_map<string, bool> result;
+	result.reserve(estimate);
+	for (const auto &row : pickNode) {
+		for (const string &name : row) {
+			double value = 0.0;
+			auto it = raw_values.find(name);
+			if (it != raw_values.end()) {
+				value = it->second;
+			}
+			result.emplace(name, value > 0.5);
+		}
+	}
+	for (const ChoiceVar &cv : choices) {
+		double value = 0.0;
+		auto it = raw_values.find(cv.name);
+		if (it != raw_values.end()) {
+			value = it->second;
+		}
+		result.emplace(cv.name, value > 0.5);
+	}
+	return result;
+}
+
+template <typename FailFn>
+static bool require_binary_value(const unordered_map<string, bool> &value_map,
+									 const string &name,
+									 const FailFn &fail) {
+	auto it = value_map.find(name);
+	if (it == value_map.end()) {
+		fail(string("missing solver assignment for variable ") + name);
+		return false;
+	}
+	return it->second;
+}
+
+template <typename FailFn>
+void build_child_selection_for_roots(
+		const EGraph &g,
+		EClassId root_class,
+		const vector<ENodeId> &root_enodes,
+		const vector<vector<int> > &pickSelected,
+		const vector<vector<vector<vector<int> > > > &choiceIndex,
+		const vector<ChoiceVar> &choices,
+		const vector<vector<string> > &pickNode,
+		const unordered_map<string, bool> &value_map,
+		const FailFn &fail,
+		vector<vector<vector<ENodeId> > > &childSelection) {
+	(void)root_class;
+	(void)root_enodes;
+	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
+		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
+			if (!pickSelected[c][n]) {
+				continue;
+			}
+			const ENode &en = g.eclasses[c].enodes[n];
+			for (int child_idx = 0; child_idx < (int)en.ch.size(); ++child_idx) {
+				const vector<int> &choice_list = choiceIndex[c][n][child_idx];
+				if (choice_list.empty()) {
+					continue;
+				}
+
+				int chosen_choice_idx = -1;
+				for (int idx : choice_list) {
+					bool chosen = require_binary_value(value_map, choices[idx].name, fail);
+					if (chosen && (chosen_choice_idx == -1 || idx < chosen_choice_idx)) {
+						chosen_choice_idx = idx;
+					}
+				}
+				if (chosen_choice_idx == -1) {
+					cerr << "Missing child selection for eclass " << c << " node " << n
+				     << " child index " << child_idx << " options:";
+					for (int idx : choice_list) {
+						bool opt_v = require_binary_value(value_map, choices[idx].name, fail);
+						cerr << ' ' << choices[idx].name << "=" << (opt_v ? 1 : 0);
+					}
+					bool pick_v = require_binary_value(value_map, pickNode[c][n], fail);
+					cerr << " (pickNode=" << (pick_v ? 1 : 0) << ")" << endl;
+					fail("missing child selection for picked enode");
+				}
+				const ChoiceVar &chosen = choices[chosen_choice_idx];
+				EClassId child_class = chosen.child_class;
+				ENodeId child_node = chosen.child_node;
+				if (child_node < 0 || child_node >= (ENodeId)g.eclasses[child_class].enodes.size()) {
+					fail("child selection index out of bounds");
+				}
+				if (!pickSelected[child_class][child_node]) {
+					fail("child enode not marked as picked");
+				}
+				childSelection[c][n][child_idx] = child_node;
+			}
+		}
+	}
+}
+
+template <typename FailFn>
+static ExtractionENodeId build_extraction_node(
+		const EGraph &g,
+		const vector<vector<vector<ENodeId> > > &childSelection,
+		EClassId c,
+		ENodeId n,
+		vector<ExtractionENode> &extraction,
+		unordered_map<long long, ExtractionENodeId> &nodeIndex,
+		unordered_set<long long> &usedEffectful,
+		unordered_set<long long> &visiting,
+		const FailFn &fail) {
+	long long key = (static_cast<long long>(c) << 32) |
+	               static_cast<unsigned long long>(static_cast<unsigned int>(n));
+	auto it = nodeIndex.find(key);
+	if (it != nodeIndex.end()) {
+		return it->second;
+	}
+	if (visiting.count(key)) {
+		fail("cycle detected when building extraction");
+	}
+	visiting.insert(key);
+	const ENode &en = g.eclasses[c].enodes[n];
+	vector<ExtractionENodeId> ch_idx;
+	ch_idx.reserve(en.ch.size());
+	for (int child_i = 0; child_i < (int)en.ch.size(); ++child_i) {
+		EClassId child_class = en.ch[child_i];
+		ENodeId child_node = childSelection[c][n][child_i];
+		if (child_node == -1) {
+			fail("missing child during extraction reconstruction");
+		}
+		ExtractionENodeId child_ex = build_extraction_node(
+			g, childSelection, child_class, child_node,
+			extraction, nodeIndex, usedEffectful, visiting, fail);
+		ch_idx.push_back(child_ex);
+	}
+	visiting.erase(key);
+	ExtractionENode node;
+	node.c = c;
+	node.n = n;
+	node.ch = ch_idx;
+	ExtractionENodeId idx = extraction.size();
+	extraction.push_back(node);
+	nodeIndex[key] = idx;
+	if (g.eclasses[c].isEffectful) {
+		usedEffectful.insert(key);
+	}
+	return idx;
+}
+
+} // namespace
+
 Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion)  {
 	auto fail = [&](const string &msg) -> void {
 		cerr << "ILP extraction error: " << msg << endl;
@@ -251,15 +443,6 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		sw.push_back(make_pair(root, initn));
 		return regionExtractionWithStateWalk(g, root, sw).second;
 	}
-
-	struct ChoiceVar {
-		string name;
-		EClassId parent_class;
-		ENodeId parent_node;
-		int child_idx;
-		EClassId child_class;
-		ENodeId child_node;
-	};
 
 	// VARIABLES
 	// Picking an enode in an eclass
@@ -385,21 +568,27 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	}
 
 	bool firstTerm = true;
-	// minimize sum pickCost[c][n] * pickNode[c][n]
-	lp << "Minimize\n obj:";
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			if (!firstTerm) {
-				lp << " +";
+	// optionally minimize sum pickCost[c][n] * pickNode[c][n]
+	lp << "Minimize\n";
+	if (g_ilp_minimize_objective) {
+		lp << " obj:";
+		for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
+			for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
+				if (!firstTerm) {
+					lp << " +";
+				}
+				firstTerm = false;
+				lp << " " << pickCost[c][n] << " " << pickNode[c][n];
 			}
-			firstTerm = false;
-			lp << " " << pickCost[c][n] << " " << pickNode[c][n];
 		}
+		if (firstTerm) {
+			lp << " 0";
+		}
+		lp << "\n";
+	} else {
+		lp << " obj: 0\n";
 	}
-	if (firstTerm) {
-		lp << " 0";
-	}
-	lp << "\nSubject To\n";
+	lp << "Subject To\n";
 
 	// Require at least one root enode to be picked
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
@@ -561,10 +750,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	SolverSolution solver_solution = parse_solver_solution(sol_path, solver_log, solver_name, g_use_gurobi, fail_with_log);
 	const unordered_map<string, double> &values = solver_solution.values;
 	bool infeasible = solver_solution.infeasible;
-	auto get_value = [&](const string &name) -> double {
-		auto it = values.find(name);
-		return it != values.end() ? it->second : 0.0;
-	};
+	unordered_map<string, bool> value_map = build_binary_value_map(pickNode, choices, values);
 	if (infeasible) {
 		cout << "infeasible" << endl;
 		// try the old extraction method for debugging
@@ -596,8 +782,8 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		pickSelected[c].assign(g.eclasses[c].enodes.size(), 0);
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			double v = get_value(pickNode[c][n]);
-			if (v > 0.5) {
+			bool selected = require_binary_value(value_map, pickNode[c][n], fail);
+			if (selected) {
 				pickSelected[c][n] = 1;
 			}
 		}
@@ -606,7 +792,8 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (!g.eclasses[root].enodes.empty()) {
 		cerr << "ILP root diagnostics (class " << root << "):\n";
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[root].enodes.size(); ++n) {
-			double root_value = get_value(pickNode[root][n]);
+			bool root_selected = require_binary_value(value_map, pickNode[root][n], fail);
+			double root_value = root_selected ? 1.0 : 0.0;
 			if (values.count(pickNode[root][n])) {
 				saw_root_assignment = true;
 			}
@@ -643,110 +830,17 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		}
 	}
 
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			const vector<vector<int> > &idx_lists = choiceIndex[c][n];
-			for (int child_idx = 0; child_idx < (int)idx_lists.size(); ++child_idx) {
-				const vector<int> &list = idx_lists[child_idx];
-				for (int idx : list) {
-					double v = get_value(choices[idx].name);
-					if (v > 0.5) {
-						if (childSelection[c][n][child_idx] != -1) {
-							fail("multiple child selections detected for a single child");
-						}
-						childSelection[c][n][child_idx] = choices[idx].child_node;
-					}
-				}
-			}
-		}
-	}
-
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			if (!pickSelected[c][n]) {
-				continue;
-			}
-			for (int child_idx = 0; child_idx < (int)childSelection[c][n].size(); ++child_idx) {
-				int child_enode = childSelection[c][n][child_idx];
-				if (child_enode == -1) {
-					cerr << "Missing child selection for eclass " << c << " node " << n
-					     << " child index " << child_idx << " options:";
-						for (int idx : choiceIndex[c][n][child_idx]) {
-							cerr << ' ' << choices[idx].name << "=" << get_value(choices[idx].name);
-					}
-						cerr << " (pickNode=" << get_value(pickNode[c][n]) << ")" << endl;
-					fail("missing child selection for picked enode");
-				}
-				EClassId child_class = g.eclasses[c].enodes[n].ch[child_idx];
-				if (child_enode < 0 || child_enode >= (ENodeId)g.eclasses[child_class].enodes.size()) {
-					fail("child selection index out of bounds");
-				}
-				if (!pickSelected[child_class][child_enode]) {
-					fail("child enode not marked as picked");
-				}
-			}
-		}
-	}
-	cerr << "Selected parent/child edges:\n";
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			if (!pickSelected[c][n]) {
-				continue;
-			}
-			const ENode &en = g.eclasses[c].enodes[n];
-			cerr << "  eclass " << c << " node " << n << " (" << en.head << ") ->";
-			for (int child_i = 0; child_i < (int)en.ch.size(); ++child_i) {
-				EClassId child_class = en.ch[child_i];
-				ENodeId child_node = childSelection[c][n][child_i];
-				cerr << " (" << child_class << "," << child_node << ")";
-			}
-			cerr << "\n";
-		}
-	}
+	build_child_selection_for_roots(g, root, root_enodes, pickSelected, choiceIndex,
+	                                choices, pickNode, value_map, fail, childSelection);
 
 	vector<ExtractionENode> extraction;
 	unordered_map<long long, ExtractionENodeId> nodeIndex;
 	unordered_set<long long> usedEffectful;
 	unordered_set<long long> visiting;
-	function<ExtractionENodeId(EClassId, ENodeId)> build = [&](EClassId c, ENodeId n) -> ExtractionENodeId {
-		long long key = (static_cast<long long>(c) << 32) | static_cast<unsigned long long>(static_cast<unsigned int>(n));
-		
-    auto it = nodeIndex.find(key);
-    if (it != nodeIndex.end()) {
-      return it->second;
-    }
-    if (visiting.count(key)) {
-			fail("cycle detected when building extraction");
-		}
-		visiting.insert(key);
-		const ENode &en = g.eclasses[c].enodes[n];
-		vector<ExtractionENodeId> ch_idx;
-		ch_idx.reserve(en.ch.size());
-		for (int child_i = 0; child_i < (int)en.ch.size(); ++child_i) {
-			EClassId child_class = en.ch[child_i];
-			ENodeId child_node = childSelection[c][n][child_i];
-			if (child_node == -1) {
-				fail("missing child during extraction reconstruction");
-			}
-			ExtractionENodeId child_ex = build(child_class, child_node);
-			ch_idx.push_back(child_ex);
-		}
-		visiting.erase(key);
-		ExtractionENode node;
-		node.c = c;
-		node.n = n;
-		node.ch = ch_idx;
-		ExtractionENodeId idx = extraction.size();
-		extraction.push_back(node);
-		nodeIndex[key] = idx;
-		if (g.eclasses[c].isEffectful) {
-			usedEffectful.insert(key);
-		}
-		return idx;
-	};
 
 	for (ENodeId root_node : root_enodes) {
-		build(root, root_node);
+		build_extraction_node(g, childSelection, root, root_node,
+								extraction, nodeIndex, usedEffectful, visiting, fail);
 	}
 	if (extraction.empty()) {
 		fail("extraction is empty");

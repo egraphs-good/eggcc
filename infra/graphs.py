@@ -404,6 +404,8 @@ def to_paper_names_treatment(treatment):
     return 'EQCC-Tiger-WL-O0-O0'
   if treatment == 'llvm-eggcc-tiger-ILP-O0-O0':
     return 'EQCC-Tiger-ILP-O0-O0'
+  if treatment == 'llvm-eggcc-tiger-ILP-NOMIN-O0-O0':
+    return 'EQCC-Tiger-ILP-NOMIN-O0-O0'
   raise KeyError(f"Unknown treatment {treatment}")
 
 

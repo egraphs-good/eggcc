@@ -1,0 +1,50 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 1
+@main(v0: int) {
+  c1_: int = const 0;
+  v2_: bool = lt v0 c1_;
+  v3_: bool = lt c1_ v0;
+  v4_: bool = and v2_ v3_;
+  c5_: int = const 1;
+  c6_: int = const 1;
+  v7_: int = id c6_;
+  br v4_ .b8_ .b9_;
+.b8_:
+  print v7_;
+  ret;
+  jmp .b10_;
+.b9_:
+  v11_: bool = lt v0 c1_;
+  v12_: bool = lt c1_ v0;
+  v13_: bool = and v11_ v12_;
+  c14_: int = const 3;
+  v15_: int = id c14_;
+  br v13_ .b16_ .b17_;
+.b16_:
+  c18_: int = const 2;
+  v19_: int = id c18_;
+  v20_: int = id c1_;
+  v21_: int = id c5_;
+.b22_:
+  v23_: int = add v19_ v21_;
+  v24_: bool = lt v20_ v23_;
+  v25_: bool = not v24_;
+  v19_: int = id v23_;
+  v20_: int = id v20_;
+  v21_: int = id v21_;
+  br v25_ .b22_ .b26_;
+.b26_:
+  v15_: int = id v19_;
+  v7_: int = id v15_;
+  print v7_;
+  ret;
+  jmp .b10_;
+.b17_:
+  v7_: int = id v15_;
+  print v7_;
+  ret;
+.b10_:
+}

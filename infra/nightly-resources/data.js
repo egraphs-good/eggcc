@@ -52,6 +52,7 @@ function shouldHaveLlvm(runMethod) {
     "llvm-eggcc-tiger-O0-O0",
     "llvm-eggcc-tiger-WL-O0-O0",
     "llvm-eggcc-tiger-ILP-O0-O0",
+    "llvm-eggcc-tiger-ILP-NOMIN-O0-O0",
   ].includes(runMethod);
 }
 

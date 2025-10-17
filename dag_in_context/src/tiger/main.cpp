@@ -1,15 +1,17 @@
-#include<map>
-#include<set>
-#include<queue>
-#include<vector>
-#include<cstdio>
-#include<climits>
-#include<cassert>
-#include<cstring>
-#include<string>
-#include<iostream>
 #include<algorithm>
+#include<cassert>
+#include<chrono>
+#include<climits>
+#include<cstring>
+#include<cstdio>
+#include<cstdlib>
 #include<fstream>
+#include<iostream>
+#include<map>
+#include<queue>
+#include<set>
+#include<string>
+#include<vector>
 #include"ilp.h"
 
 using namespace std;
@@ -138,7 +140,8 @@ bool validExtraction(const EGraph &g, const EClassId root, const Extraction &e) 
 				cerr << "Found: " << ch << endl;
 				return false;
 			}
-			if (e[ch].c != g.eclasses[n.c].enodes[n.n].ch[j]) {
+			EClassId expected_child = g.eclasses[n.c].enodes[n.n].ch[j];
+			if (e[ch].c != expected_child) {
 				cerr << "Error: Extraction referring to a child of wrong eclass." << endl;
 				return false;
 			}
@@ -272,73 +275,113 @@ struct SubEGraphMap {
 	vector<EClassId> eclassmp;
 	map<EClassId, EClassId> inv;
 	vector<vector<int> > nsubregion;
+	vector<vector<ENodeId> > enode_map;
 };
+
+static EClassId get_inv_entry_or_fail(const map<EClassId, EClassId> &inv,
+									 		 EClassId key,
+									 		 const char *context) {
+	auto it = inv.find(key);
+	if (it == inv.end()) {
+		cerr << "Error: SubEGraphMap missing mapping for eclass " << key;
+		if (context != nullptr) {
+			cerr << " while " << context;
+		}
+		cerr << endl;
+		exit(1);
+	}
+	return it->second;
+}
+
+static bool should_skip_region_enode(const EGraph &g,
+								 const EClassId parent_eclass,
+								 const ENode &enode,
+								 const EClassId region_root) {
+	if (!g.eclasses[parent_eclass].isEffectful) {
+		return false;
+	}
+	for (EClassId child : enode.ch) {
+		if (g.eclasses[child].isEffectful && child == region_root) {
+			return true;
+		}
+	}
+	return false;
+}
 
 pair<EGraph, SubEGraphMap> createRegionEGraph(const EGraph &g, const EClassId region_root) {
 	SubEGraphMap mp;
-	mp.inv[region_root] = 0;
-	mp.eclassmp.push_back(region_root);
-	mp.nsubregion.push_back(vector<int>(g.eclasses[region_root].enodes.size(), 0));
-	// First BFS: only follow non-subregion child edges to get connected effectful eclasses
-	for (int _ = 0; _ < (int)mp.eclassmp.size(); ++_) {
-		EClassId u = mp.eclassmp[_];
-		assert(mp.nsubregion[mp.inv[u]].size() == g.eclasses[u].enodes.size());
+	queue<EClassId> worklist;
+	auto enqueue = [&](EClassId c) {
+		if (mp.inv.count(c)) {
+			return;
+		}
+		mp.inv[c] = mp.eclassmp.size();
+		mp.eclassmp.push_back(c);
+		mp.nsubregion.push_back(vector<int>(g.eclasses[c].enodes.size(), 0));
+		mp.enode_map.push_back(vector<ENodeId>());
+		worklist.push(c);
+	};
+
+	enqueue(region_root);
+	while (!worklist.empty()) {
+		EClassId u = worklist.front();
+		worklist.pop();
+		EClassId u_idx = get_inv_entry_or_fail(mp.inv, u, "accessing nsubregion");
+		assert(mp.nsubregion[u_idx].size() == g.eclasses[u].enodes.size());
+		bool parent_effectful = g.eclasses[u].isEffectful;
 		for (int i = 0; i < (int)g.eclasses[u].enodes.size(); ++i) {
-			bool subregionchild = false;
+			bool saw_effectful_child = false;
 			for (int j = 0; j < (int)g.eclasses[u].enodes[i].ch.size(); ++j) {
 				EClassId v = g.eclasses[u].enodes[i].ch[j];
 				if (g.eclasses[v].isEffectful) {
-					if (subregionchild) {
-						mp.nsubregion[mp.inv[u]][i]++;
+					if (saw_effectful_child) {
+						if (parent_effectful) {
+							mp.nsubregion[u_idx][i]++;
+						}
 						continue;
 					}
-					subregionchild = true;
-					if (!mp.inv.count(v)) {
-						mp.inv[v] = mp.eclassmp.size();
-						mp.eclassmp.push_back(v);
-						mp.nsubregion.push_back(vector<int>(g.eclasses[v].enodes.size(), 0));
-					}
+					saw_effectful_child = true;
 				}
+				enqueue(v);
 			}
 		}
 	}
-	// Second BFS: only look at pure children
-	for (int _ = 0; _ < (int)mp.eclassmp.size(); ++_) {
-		EClassId u = mp.eclassmp[_];
-		for (int i = 0; i < (int)g.eclasses[u].enodes.size(); ++i) {
-			for (int j = 0; j < (int)g.eclasses[u].enodes[i].ch.size(); ++j) {
-				EClassId v = g.eclasses[u].enodes[i].ch[j];
-				if (!g.eclasses[v].isEffectful) {
-					if (!mp.inv.count(v)) {
-						mp.inv[v] = mp.eclassmp.size();
-						mp.eclassmp.push_back(v);
-						mp.nsubregion.push_back(vector<int>(g.eclasses[v].enodes.size(), 0));
-					}
-				}
-			}
-		}
-	}
-	// Add all the enodes
+
 	EGraph gr;
 	for (int i = 0; i < (int)mp.eclassmp.size(); ++i) {
 		EClass c;
 		c.isEffectful = g.eclasses[mp.eclassmp[i]].isEffectful;
-		c.enodes.resize(g.eclasses[mp.eclassmp[i]].enodes.size());
-		for (int j = 0; j < (int)g.eclasses[mp.eclassmp[i]].enodes.size(); ++j) {
+		const auto &orig_enodes = g.eclasses[mp.eclassmp[i]].enodes;
+		vector<int> filtered_nsubregion;
+		vector<ENodeId> filtered_enode_map;
+		for (int j = 0; j < (int)orig_enodes.size(); ++j) {
+			const ENode &orig_node = orig_enodes[j];
+			if (should_skip_region_enode(g, mp.eclassmp[i], orig_node, region_root)) {
+				continue;
+			}
+			ENode node;
+			node.eclass = i;
+			node.head = orig_node.head;
 			bool subregionchild = false;
-			c.enodes[j].eclass = i;
-			c.enodes[j].head = g.eclasses[mp.eclassmp[i]].enodes[j].head;
-			for (int k = 0; k < (int)g.eclasses[mp.eclassmp[i]].enodes[j].ch.size(); ++k) {
-				EClassId cp = g.eclasses[mp.eclassmp[i]].enodes[j].ch[k];
+			for (int k = 0; k < (int)orig_node.ch.size(); ++k) {
+				EClassId cp = orig_node.ch[k];
 				if (g.eclasses[cp].isEffectful) {
 					if (subregionchild) {
 						continue;
 					}
 					subregionchild = true;
 				}
-				c.enodes[j].ch.push_back(mp.inv[cp]);
+				node.ch.push_back(get_inv_entry_or_fail(mp.inv, cp, "building region egraph"));
 			}
+			c.enodes.push_back(node);
+			filtered_nsubregion.push_back(mp.nsubregion[i][j]);
+			filtered_enode_map.push_back(j);
 		}
+		assert(!c.enodes.empty() && "Region eclass became empty after filtering unextractable nodes");
+		assert(filtered_nsubregion.size() == c.enodes.size());
+		assert(filtered_enode_map.size() == c.enodes.size());
+		mp.nsubregion[i] = filtered_nsubregion;
+		mp.enode_map[i] = filtered_enode_map;
 		gr.eclasses.push_back(c);
 	}
 	return make_pair(gr, mp);
@@ -880,8 +923,16 @@ Extraction extractRegion(const EGraph &g, const EClassId initc, const ENodeId in
 	if (g_ilp_mode) {
 		return extractRegionILP(g, initc, initn, root, nsubregion);
 	} else {
+		auto start = std::chrono::steady_clock::now();
 		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
-		return regionExtractionWithStateWalk(g, root, sw).second;
+		Extraction extraction = regionExtractionWithStateWalk(g, root, sw).second;
+		auto elapsed = std::chrono::steady_clock::now() - start;
+		auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+		if (elapsed_seconds > g_ilp_timeout_seconds) {
+			cout << "TIMEOUT" << endl;
+			std::exit(1);
+		}
+		return extraction;
 	}
 }
 
@@ -898,14 +949,16 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 	pair<EClassId, ENodeId> arg = findArg(gr);
 	EClassId argc = arg.first;
 	ENodeId argn = arg.second;
-	EClassId root = rmap.inv[region_root];
+	EClassId root = get_inv_entry_or_fail(rmap.inv, region_root, "getting region root mapping");
 	Extraction er = extractRegion(gr, argc, argn, root, rmap.nsubregion);
 	Extraction ner(er.size());
 	for (int i = 0; i < (int)er.size(); ++i) {
 		ExtractionENode &en = er[i], &nen = ner[i];
 		EClassId oric = rmap.eclassmp[en.c];
 		nen.c = oric;
-		ENodeId orin = en.n;
+		assert(en.c < (int)rmap.enode_map.size());
+		assert(en.n < (int)rmap.enode_map[en.c].size());
+		ENodeId orin = rmap.enode_map[en.c][en.n];
 		nen.n = orin;
 		bool subregionchild = false;
 		for (int j = 0, k = 0; j < (int)g.eclasses[oric].enodes[orin].ch.size(); ++j) {
@@ -938,7 +991,7 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 				ner[i].ch[j] += delta;
 			}
 		}
-	}
+		}
 	e.insert(e.end(), ner.begin(), ner.end());
 	extracted_roots[cur_region] = e.size() - 1;
 	return extracted_roots[cur_region];
@@ -1103,6 +1156,10 @@ int main(int argc, char** argv) {
 		string arg = argv[i];
 		if (arg == "--ilp-mode") {
 			g_ilp_mode = true;
+			continue;
+		}
+		if (arg == "--ilp-no-minimize") {
+			g_ilp_minimize_objective = false;
 			continue;
 		}
 		cerr << "Unknown argument: " << arg << endl;

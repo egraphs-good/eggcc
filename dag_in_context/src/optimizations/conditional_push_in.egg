@@ -8,9 +8,12 @@
         (HasArgType thn (TupleT tylist))
         (HasArgType els (TupleT tylist))
         (HasType x (Base x_ty))
+        ; ensure pure type for weak linearity
+        (PureBaseType x_ty)
         (= orig_ins_len (TypeList-length tylist))
       )
       (
+        (RELIESONCONTEXT)
         ; New inputs
         (let new_ins (Concat orig_inputs (Single x)))
         (let new_ins_ty (TupleT (TLConcat tylist (TCons x_ty (TNil)))))

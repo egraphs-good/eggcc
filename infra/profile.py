@@ -2,7 +2,6 @@
 
 import json
 import os
-import time
 from glob import glob
 from sys import stdout
 import sys
@@ -15,7 +14,7 @@ from generate_cfgs import make_cfgs
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
 # Timeout (seconds) for eggcc. Timeouts are treated as failures.
-EGGCC_TIMEOUT_SECS = 20 * 60 # 20 minutes
+EGGCC_TIMEOUT_SECS = 40 * 60 # 40 minutes
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -59,7 +58,9 @@ treatments = [
   "eggcc-ILP-O0-O0",
   "llvm-eggcc-tiger-WL-O0-O0",
   "llvm-eggcc-tiger-O0-O0",
-  "llvm-eggcc-tiger-ILP-O0-O0"
+  "llvm-eggcc-tiger-ILP-O0-O0",
+  "llvm-eggcc-tiger-ILP-NOMIN-O0-O0",
+  "llvm-eggcc-NOCTX-O0-O0",
 ]
 
 example_subset_treatments = [
@@ -122,11 +123,17 @@ def get_eggcc_options(benchmark):
       # run with the ilp-extraction-timeout flag
       return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-WL-O0-O0":
-      return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --use-tiger --no-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-O0-O0":
-      return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --use-tiger --no-context --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "llvm-eggcc-tiger-ILP-O0-O0":
-      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --use-tiger --tiger-ilp --no-context --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "llvm-eggcc-tiger-ILP-NOMIN-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --no-context --non-weakly-linear --ilp-no-minimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+
+    case "llvm-eggcc-NOCTX-O0-O0":
+      # run with the no-context flag
+      return (f'optimize --no-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -422,7 +429,11 @@ if __name__ == '__main__':
 
   compile_data = {}
   # get the number of cores on this machine 
-  parallelism = os.cpu_count()
+  parallelism = (os.cpu_count() - 1)
+  # for large machines leave a few cores free
+  if parallelism > 30:
+    parallelism -= 4
+
 
   # create a thread pool for running optimization
   with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:

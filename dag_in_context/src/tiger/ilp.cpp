@@ -23,9 +23,9 @@
 using namespace std;
 
 bool g_use_gurobi = false;
-// 1 minute timeout
+// 30 sec timeout
 // TODO increase for eval runs
-int g_ilp_timeout_seconds = 1 * 60;
+int g_ilp_timeout_seconds = 30;
 bool g_ilp_minimize_objective = true;
 
 static void kill_process_group(pid_t pid) {
@@ -592,11 +592,11 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 
 	// Require at least one root enode to be picked
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		if (g.eclasses[c].enodes.empty()) {
-			fail("encountered eclass with no enodes");
-		}
 		if (c != root) {
 			continue;
+		}
+		if (g.eclasses[c].enodes.empty()) {
+			fail("encountered eclass with no enodes");
 		}
 		lp << " pick_sum_" << c << ":";
 		bool first = true;

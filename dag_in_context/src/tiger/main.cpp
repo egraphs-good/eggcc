@@ -10,6 +10,7 @@
 #include<map>
 #include<queue>
 #include<set>
+#include<utility>
 #include<string>
 #include<vector>
 #include"ilp.h"
@@ -278,6 +279,72 @@ struct SubEGraphMap {
 	vector<vector<ENodeId> > enode_map;
 };
 
+// Prune any nodes that refer to empty eclasses
+// Then can happen after we prune nodes that have this same subregion as a child.
+static void prune_region_egraph(EGraph &g,
+					     vector<vector<int> > *nsubregion,
+					     vector<vector<ENodeId> > *enode_map) {
+	vector<bool> empty(g.eclasses.size(), false);
+	for (size_t i = 0; i < g.eclasses.size(); ++i) {
+		empty[i] = g.eclasses[i].enodes.empty();
+	}
+	bool changed = true;
+	while (changed) {
+		changed = false;
+		for (size_t i = 0; i < g.eclasses.size(); ++i) {
+			vector<ENode> &enodes = g.eclasses[i].enodes;
+			vector<ENode> filtered;
+			filtered.reserve(enodes.size());
+			vector<int> filtered_nsub;
+			vector<ENodeId> filtered_map;
+			if (nsubregion != nullptr) {
+				filtered_nsub.reserve((*nsubregion)[i].size());
+			}
+			if (enode_map != nullptr) {
+				filtered_map.reserve((*enode_map)[i].size());
+			}
+			bool removed = false;
+			for (size_t j = 0; j < enodes.size(); ++j) {
+				const ENode &en = enodes[j];
+				bool invalid = false;
+				for (EClassId child : en.ch) {
+					if (child < 0 || child >= (EClassId)g.eclasses.size() || empty[child]) {
+						invalid = true;
+						break;
+					}
+				}
+				if (invalid) {
+					removed = true;
+				} else {
+					filtered.push_back(en);
+					if (nsubregion != nullptr) {
+						filtered_nsub.push_back((*nsubregion)[i][j]);
+					}
+					if (enode_map != nullptr) {
+						filtered_map.push_back((*enode_map)[i][j]);
+					}
+				}
+			}
+			if (removed) {
+				enodes = std::move(filtered);
+				if (nsubregion != nullptr) {
+					(*nsubregion)[i] = std::move(filtered_nsub);
+				}
+				if (enode_map != nullptr) {
+					(*enode_map)[i] = std::move(filtered_map);
+				}
+				changed = true;
+			}
+		}
+		for (size_t i = 0; i < g.eclasses.size(); ++i) {
+			if (!empty[i] && g.eclasses[i].enodes.empty()) {
+				empty[i] = true;
+				changed = true;
+			}
+		}
+	}
+}
+
 static EClassId get_inv_entry_or_fail(const map<EClassId, EClassId> &inv,
 									 		 EClassId key,
 									 		 const char *context) {
@@ -377,12 +444,19 @@ pair<EGraph, SubEGraphMap> createRegionEGraph(const EGraph &g, const EClassId re
 			filtered_nsubregion.push_back(mp.nsubregion[i][j]);
 			filtered_enode_map.push_back(j);
 		}
-		assert(!c.enodes.empty() && "Region eclass became empty after filtering unextractable nodes");
 		assert(filtered_nsubregion.size() == c.enodes.size());
 		assert(filtered_enode_map.size() == c.enodes.size());
 		mp.nsubregion[i] = filtered_nsubregion;
 		mp.enode_map[i] = filtered_enode_map;
 		gr.eclasses.push_back(c);
+	}
+
+	prune_region_egraph(gr, &mp.nsubregion, &mp.enode_map);
+	EClassId root_idx = get_inv_entry_or_fail(mp.inv, region_root, "getting region root mapping after pruning region egraph");
+	if (gr.eclasses[root_idx].enodes.empty()) {
+		cerr << "Error: Region root eclass " << region_root
+		     << " became empty after pruning invalid enodes." << endl;
+		exit(1);
 	}
 	return make_pair(gr, mp);
 }

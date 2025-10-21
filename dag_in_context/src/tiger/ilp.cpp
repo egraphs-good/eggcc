@@ -708,7 +708,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	string solver_name = g_use_gurobi ? "gurobi" : "cbc";
 	string cmd = "";
 	if (g_use_gurobi) {
-		cmd = string("gurobi_cl ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
+		cmd = string("gurobi_cl Threads=1 ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
 	} else {
 		cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}

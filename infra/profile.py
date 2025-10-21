@@ -50,34 +50,35 @@ treatments = [
   "llvm-O0-O0",
   "llvm-O1-O0",
   "llvm-O2-O0",
-  "llvm-eggcc-O0-O0",
-  "llvm-eggcc-sequential-O0-O0",
+  "eggcc-O0-O0",
+  "eggcc-sequential-O0-O0",
   "llvm-O3-O0",
   "llvm-O3-O3",
-  "llvm-eggcc-O3-O0",
-  "llvm-eggcc-O3-O3",
+  "eggcc-O3-O0",
+  "eggcc-O3-O3",
   "eggcc-ILP-O0-O0",
-  "llvm-eggcc-tiger-WL-O0-O0",
-  "llvm-eggcc-tiger-O0-O0",
-  "llvm-eggcc-tiger-ILP-O0-O0",
-  "llvm-eggcc-tiger-ILP-NOMIN-O0-O0",
-  "llvm-eggcc-NOCTX-O0-O0",
+  "eggcc-tiger-WL-O0-O0",
+  "eggcc-tiger-O0-O0",
+  "eggcc-tiger-ILP-O0-O0",
+  "eggcc-tiger-ILP-NOMIN-O0-O0",
+  "eggcc-tiger-ILP-WITHCTX-O0-O0",
+  "eggcc-WITHCTX-O0-O0",
 ]
 
 example_subset_treatments = [
   "llvm-O0-O0",
-  "llvm-eggcc-O0-O0",
+  "eggcc-O0-O0",
   "llvm-O3-O0",
-  "llvm-eggcc-tiger-WL-O0-O0",
-  "llvm-eggcc-tiger-O0-O0"
+  "eggcc-tiger-WL-O0-O0",
+  "eggcc-tiger-O0-O0"
 ]
 
 
 if TO_ABLATE != "":
   treatments.extend([
-    "llvm-eggcc-ablation-O0-O0",
-    "llvm-eggcc-ablation-O3-O0",
-    "llvm-eggcc-ablation-O3-O3",
+    "eggcc-ablation-O0-O0",
+    "eggcc-ablation-O3-O0",
+    "eggcc-ablation-O3-O3",
   ])
 
 # Where to output files that are needed for nightly report
@@ -140,35 +141,38 @@ def get_eggcc_options(benchmark):
       return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
     case "llvm-O3-O3":
       return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
-    case "llvm-eggcc-sequential-O0-O0":
+    case "eggcc-sequential-O0-O0":
       return (f'optimize --eggcc-schedule sequential', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-O0-O0":
+    case "eggcc-O0-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-O3-O0":
+    case "eggcc-O3-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
-    case "llvm-eggcc-O3-O3":
+    case "eggcc-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
-    case "llvm-eggcc-ablation-O0-O0":
+    case "eggcc-ablation-O0-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0 --ablate {TO_ABLATE}')
-    case "llvm-eggcc-ablation-O3-O0":
+    case "eggcc-ablation-O3-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0 --ablate {TO_ABLATE}')
-    case "llvm-eggcc-ablation-O3-O3":
+    case "eggcc-ablation-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
+    # TODO rip out old ILP
     case "eggcc-ILP-O0-O0":
       # run with the ilp-extraction-timeout flag
       return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-tiger-WL-O0-O0":
-      return (f'optimize --use-tiger --no-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-tiger-O0-O0":
-      return (f'optimize --use-tiger --no-context --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-tiger-ILP-O0-O0":
-      return (f'optimize --use-tiger --tiger-ilp --no-context --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-tiger-ILP-NOMIN-O0-O0":
-      return (f'optimize --use-tiger --tiger-ilp --no-context --non-weakly-linear --ilp-no-minimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-WL-O0-O0":
+      return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-O0-O0":
+      return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-ILP-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-ILP-WITHCTX-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-ILP-NOMIN-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --ilp-no-minimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
 
-    case "llvm-eggcc-NOCTX-O0-O0":
-      # run with the no-context flag
-      return (f'optimize --no-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-WITHCTX-O0-O0":
+      # run with the with-context flag
+      return (f'optimize --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     

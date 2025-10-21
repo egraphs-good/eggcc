@@ -11,10 +11,10 @@ import profile
 
 EGGCC_NAME = "eggcc"
 
-GRAPH_RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
+GRAPH_RUN_MODES = ["llvm-O0-O0", "eggcc-O0-O0", "llvm-O3-O0"]
 
 if profile.TO_ABLATE != "":
-  GRAPH_RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
+  GRAPH_RUN_MODES.extend(["eggcc-ablation-O0-O0", "eggcc-ablation-O3-O0", "eggcc-ablation-O3-O3"])
 
 # need ilp and graph run modes for this script to work
 NECESSARY_MODES = GRAPH_RUN_MODES + ["eggcc-ILP-O0-O0"]
@@ -27,17 +27,19 @@ COLOR_MAP = {
   "llvm-O2-O0": "orange",
   "llvm-O3-O0": "purple",
   "llvm-O3-O3": "gold",
-  "llvm-eggcc-O0-O0": "blue",
-  "llvm-eggcc-sequential-O0-O0": "pink",
-  "llvm-eggcc-O3-O0": "brown",
-  "llvm-eggcc-O3-O3": "lightblue",
-  "llvm-eggcc-ablation-O0-O0": "blue",
-  "llvm-eggcc-ablation-O3-O0": "green",
-  "llvm-eggcc-ablation-O3-O3": "orange",
+  "eggcc-O0-O0": "blue",
+  "eggcc-sequential-O0-O0": "pink",
+  "eggcc-O3-O0": "brown",
+  "eggcc-O3-O3": "lightblue",
+  "eggcc-ablation-O0-O0": "blue",
+  "eggcc-ablation-O3-O0": "green",
+  "eggcc-ablation-O3-O3": "orange",
   "eggcc-ILP-O0-O0": "red",
-  "llvm-eggcc-tiger-O0-O0": "cyan",
-  "llvm-eggcc-tiger-WL-O0-O0": "magenta",
-  "llvm-eggcc-tiger-ILP-O0-O0": "green",
+  "eggcc-tiger-O0-O0": "cyan",
+  "eggcc-tiger-WL-O0-O0": "magenta",
+  "eggcc-tiger-ILP-O0-O0": "green",
+  "eggcc-tiger-ILP-NOMIN-O0-O0": "darkgreen",
+  "eggcc-tiger-ILP-WITHCTX-O0-O0": "darkcyan",
 }
 
 SHAPE_MAP = {
@@ -47,13 +49,13 @@ SHAPE_MAP = {
   "llvm-O2-O0": "o",
   "llvm-O3-O0": "o",
   "llvm-O3-O3": "o",
-  "llvm-eggcc-O0-O0": "o",
-  "llvm-eggcc-sequential-O0-O0": "o",
-  "llvm-eggcc-O3-O0": "o",
-  "llvm-eggcc-O3-O3": "o",
-  "llvm-eggcc-ablation-O0-O0": "o",
-  "llvm-eggcc-ablation-O3-O0": "o",
-  "llvm-eggcc-ablation-O3-O3": "o",
+  "eggcc-O0-O0": "o",
+  "eggcc-sequential-O0-O0": "o",
+  "eggcc-O3-O0": "o",
+  "eggcc-O3-O3": "o",
+  "eggcc-ablation-O0-O0": "o",
+  "eggcc-ablation-O3-O0": "o",
+  "eggcc-ablation-O3-O3": "o",
 }
 
 BENCHMARK_SPACE = 1.0 / len(GRAPH_RUN_MODES)
@@ -96,10 +98,10 @@ def get_cycles(data, benchmark_name, run_method):
   return get_row(data, benchmark_name, run_method)['cycles']
 
 def get_eggcc_compile_time(data, benchmark_name):
-  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0')['eggccCompileTimeSecs']
+  return get_row(data, benchmark_name, 'eggcc-O0-O0')['eggccCompileTimeSecs']
 
 def get_eggcc_extraction_time(data, benchmark_name):
-  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0')['eggccExtractionTimeSecs']
+  return get_row(data, benchmark_name, 'eggcc-O0-O0')['eggccExtractionTimeSecs']
 
 def get_ilp_test_times(data, benchmark_name):
   row = get_row(data, benchmark_name, 'eggcc-ILP-O0-O0')
@@ -372,15 +374,15 @@ def to_paper_names_treatment(treatment):
     return 'LLVM-O0-O0'
   if treatment == 'llvm-O3-O0':
     return 'LLVM-O3-O0'
-  if treatment == 'llvm-eggcc-O0-O0':
+  if treatment == 'eggcc-O0-O0':
     return 'EQCC-O0-O0'
-  if treatment == 'llvm-eggcc-O3-O0':
+  if treatment == 'eggcc-O3-O0':
     return 'EQCC-O3-O0'
-  if treatment == 'llvm-eggcc-ablation-O0-O0':
+  if treatment == 'eggcc-ablation-O0-O0':
     return 'EQCC-Ablation-O0-O0'
-  if treatment == 'llvm-eggcc-ablation-O3-O0':
+  if treatment == 'eggcc-ablation-O3-O0':
     return 'EQCC-Ablation-O3-O0'
-  if treatment == 'llvm-eggcc-ablation-O3-O3':
+  if treatment == 'eggcc-ablation-O3-O3':
     return 'EQCC-Ablation-O3-O3'
   if treatment == 'rvsdg-round-trip-to-executable':
     return 'RVSDG-Executable'
@@ -390,21 +392,23 @@ def to_paper_names_treatment(treatment):
     return 'LLVM-O2-O0'
   if treatment == 'llvm-O3-O3':
     return 'LLVM-O3-O3'
-  if treatment == 'llvm-eggcc-sequential-O0-O0':
+  if treatment == 'eggcc-sequential-O0-O0':
     return 'EQCC-Sequential-O0-O0'
-  if treatment == 'llvm-eggcc-O3-O3':
+  if treatment == 'eggcc-O3-O3':
     return 'EQCC-O3-O3'
   if treatment == 'eggcc-ILP-O0-O0':
     return 'EQCC-ILP-O0-O0'
-  if treatment == 'llvm-eggcc-NOCTX-O0-O0':
-    return 'EQCC-NOCTX-O0-O0'
-  if treatment == 'llvm-eggcc-tiger-O0-O0':
+  if treatment == 'eggcc-WITHCTX-O0-O0':
+    return 'EQCC-WITHCTX-O0-O0'
+  if treatment == 'eggcc-tiger-O0-O0':
     return 'EQCC-Tiger-O0-O0'
-  if treatment == 'llvm-eggcc-tiger-WL-O0-O0':
+  if treatment == 'eggcc-tiger-WL-O0-O0':
     return 'EQCC-Tiger-WL-O0-O0'
-  if treatment == 'llvm-eggcc-tiger-ILP-O0-O0':
+  if treatment == 'eggcc-tiger-ILP-O0-O0':
     return 'EQCC-Tiger-ILP-O0-O0'
-  if treatment == 'llvm-eggcc-tiger-ILP-NOMIN-O0-O0':
+  if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
+    return 'EQCC-Tiger-ILP-WITHCTX-O0-O0'
+  if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
     return 'EQCC-Tiger-ILP-NOMIN-O0-O0'
   raise KeyError(f"Unknown treatment {treatment}")
 
@@ -567,7 +571,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       xanchor = 0.4
       yanchor = 0.95
 
-    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["llvm-eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
+    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
 
   make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
   """

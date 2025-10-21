@@ -2,6 +2,7 @@
 
 import json
 import os
+import signal
 from glob import glob
 from sys import stdout
 import sys
@@ -14,7 +15,7 @@ from generate_cfgs import make_cfgs
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
 # Timeout (seconds) for eggcc. Timeouts are treated as failures.
-EGGCC_TIMEOUT_SECS = 40 * 60 # 40 minutes
+EGGCC_TIMEOUT_SECS = 20 * 60 # 20 minutes
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -86,6 +87,40 @@ DATA_DIR = None
 TMP_DIR = "tmp"
 
 EGGCC_BINARY = "target/release/eggcc"
+
+
+def _terminate_process_tree(proc):
+  try:
+    os.killpg(proc.pid, signal.SIGTERM)
+  except ProcessLookupError:
+    return
+  try:
+    proc.wait(timeout=5)
+  except subprocess.TimeoutExpired:
+    try:
+      os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+      pass
+    proc.wait()
+
+
+def run_with_timeout_killing_tree(cmd, timeout_secs):
+  with subprocess.Popen(
+      cmd,
+      shell=True,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE,
+      text=True,
+      start_new_session=True) as proc:
+    try:
+      stdout, stderr = proc.communicate(timeout=timeout_secs)
+      return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)
+    except subprocess.TimeoutExpired as exc:
+      _terminate_process_tree(proc)
+      stdout, stderr = proc.communicate()
+      exc.output = stdout
+      exc.stderr = stderr
+      raise
 
 
 # returns two strings:
@@ -192,7 +227,7 @@ def optimize(benchmark):
 
   timed_out = False
   try:
-    process = subprocess.run(cmd1, shell=True, capture_output=True, text=True, timeout=EGGCC_TIMEOUT_SECS)
+    process = run_with_timeout_killing_tree(cmd1, EGGCC_TIMEOUT_SECS)
   except subprocess.TimeoutExpired:
     # Timeouts are failures
     print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {EGGCC_TIMEOUT_SECS} seconds', flush=True)

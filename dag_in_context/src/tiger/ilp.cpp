@@ -23,9 +23,9 @@
 using namespace std;
 
 bool g_use_gurobi = false;
-// 30 sec timeout
+// 10 sec timeout
 // TODO increase for eval runs
-int g_ilp_timeout_seconds = 30;
+int g_ilp_timeout_seconds = 10;
 bool g_ilp_minimize_objective = true;
 
 static void kill_process_group(pid_t pid) {

@@ -284,60 +284,53 @@ struct SubEGraphMap {
 static void prune_region_egraph(EGraph &g,
 					     vector<vector<int> > *nsubregion,
 					     vector<vector<ENodeId> > *enode_map) {
+	assert(nsubregion != nullptr);
+	assert(enode_map != nullptr);
+	assert(nsubregion->size() == g.eclasses.size());
+	assert(enode_map->size() == g.eclasses.size());
+
 	vector<bool> empty(g.eclasses.size(), false);
 	for (size_t i = 0; i < g.eclasses.size(); ++i) {
 		empty[i] = g.eclasses[i].enodes.empty();
 	}
+
 	bool changed = true;
 	while (changed) {
 		changed = false;
 		for (size_t i = 0; i < g.eclasses.size(); ++i) {
 			vector<ENode> &enodes = g.eclasses[i].enodes;
-			vector<ENode> filtered;
-			filtered.reserve(enodes.size());
-			vector<int> filtered_nsub;
-			vector<ENodeId> filtered_map;
-			if (nsubregion != nullptr) {
-				filtered_nsub.reserve((*nsubregion)[i].size());
-			}
-			if (enode_map != nullptr) {
-				filtered_map.reserve((*enode_map)[i].size());
-			}
-			bool removed = false;
+			vector<int> &subregion_counts = (*nsubregion)[i];
+			vector<ENodeId> &orig_enode_ids = (*enode_map)[i];
+			assert(subregion_counts.size() == enodes.size());
+			assert(orig_enode_ids.size() == enodes.size());
+
+			size_t write_idx = 0;
 			for (size_t j = 0; j < enodes.size(); ++j) {
-				const ENode &en = enodes[j];
-				bool invalid = false;
-				for (EClassId child : en.ch) {
-					if (child < 0 || child >= (EClassId)g.eclasses.size() || empty[child]) {
-						invalid = true;
+				const ENode &node = enodes[j];
+				bool prune = false;
+				for (EClassId child : node.ch) {
+					if (child < 0 || child >= static_cast<EClassId>(g.eclasses.size()) || empty[child]) {
+						prune = true;
 						break;
 					}
 				}
-				if (invalid) {
-					removed = true;
+				if (!prune) {
+					if (write_idx != j) {
+						enodes[write_idx] = node;
+						subregion_counts[write_idx] = subregion_counts[j];
+						orig_enode_ids[write_idx] = orig_enode_ids[j];
+					}
+					++write_idx;
 				} else {
-					filtered.push_back(en);
-					if (nsubregion != nullptr) {
-						filtered_nsub.push_back((*nsubregion)[i][j]);
-					}
-					if (enode_map != nullptr) {
-						filtered_map.push_back((*enode_map)[i][j]);
-					}
+					changed = true;
 				}
 			}
-			if (removed) {
-				enodes = std::move(filtered);
-				if (nsubregion != nullptr) {
-					(*nsubregion)[i] = std::move(filtered_nsub);
-				}
-				if (enode_map != nullptr) {
-					(*enode_map)[i] = std::move(filtered_map);
-				}
-				changed = true;
+			if (write_idx != enodes.size()) {
+				enodes.resize(write_idx);
+				subregion_counts.resize(write_idx);
+				orig_enode_ids.resize(write_idx);
 			}
-		}
-		for (size_t i = 0; i < g.eclasses.size(); ++i) {
-			if (!empty[i] && g.eclasses[i].enodes.empty()) {
+			if (!empty[i] && enodes.empty()) {
 				empty[i] = true;
 				changed = true;
 			}
@@ -367,10 +360,15 @@ static bool should_skip_region_enode(const EGraph &g,
 	if (!g.eclasses[parent_eclass].isEffectful) {
 		return false;
 	}
+	bool saw_effectful_child = false;
 	for (EClassId child : enode.ch) {
-		if (g.eclasses[child].isEffectful && child == region_root) {
+		if (!g.eclasses[child].isEffectful) {
+			continue;
+		}
+		if (saw_effectful_child && child == region_root) {
 			return true;
 		}
+		saw_effectful_child = true;
 	}
 	return false;
 }

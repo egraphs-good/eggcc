@@ -163,6 +163,7 @@ def make_region_extract_plot(json, output):
   psize = 150
   alpha = 0.2
   circleLineWidth = 1.0
+  timeoutLineWidth = 3.0
   # Plot extraction time points
   eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
   plt.scatter(eggcc_x, eggcc_y, color='blue', label=f'{EGGCC_NAME} Extraction Time', s=psize, alpha=alpha, linewidths=circleLineWidth, edgecolors='blue')
@@ -173,7 +174,7 @@ def make_region_extract_plot(json, output):
 
   # Plot ILP timeout points
   timeout_x, timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
-  plt.scatter(timeout_x, timeout_y, color='red', marker='x', label="ILP Timeout (5 min)", alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='red')
+  plt.scatter(timeout_x, timeout_y, color='red', marker='x', label="ILP Timeout (5 min)", alpha=alpha, s=psize, linewidths=timeoutLineWidth, edgecolors='red')
 
   fsize = 27
   plt.xlabel('Size of Regionalized e-graph', fontsize=fsize)
